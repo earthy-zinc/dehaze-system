@@ -38,7 +38,9 @@ function getNav(dirPath, arr){
 }
 
 module.exports = function filterNav(){
-    let nav = [];
+    let nav = [
+        { text: '首页', link: '/' }
+    ];
     getNav(document, nav);
     return nav.filter((item) => {
         if(item.text === '.vuepress') return false;
