@@ -1,30 +1,28 @@
-# JAVA 练习
+# 一、Java基础
 
-## 〇、Java基础
+## 1、UML类图
 
-### 1、UML类图
-
-#### 1）泛化关系Generalization
+### 1）泛化关系Generalization
 
 用来描述继承关系，用一个三角形和实线构成，三角形的箭头由子类指向父类。
 
-#### 2）实现关系Realization
+### 2）实现关系Realization
 
 用来实现一个接口，用一个三角形和虚线构成，三角形的箭头由实现类指向接口。
 
-#### 3）聚合关系Aggregation
+### 3）聚合关系Aggregation
 
 表示整体是由部分构成的，但是整体与部分不是强依赖的，整体不存在了部分还会存在。用一个空心菱形和实线构成，菱形指向整体。
 
-#### 4）组合关系Composition
+### 4）组合关系Composition
 
 表示整体是由部分组成，而整体和部分是强依赖的，整体和部分缺一不可。用一个实心菱形和实线构成，实心菱形指向整体。
 
-#### 5）关联关系Association
+### 5）关联关系Association
 
 表示不同类对象之间是有关联的，这种关联关系是静态的，需要事先定义，在创建时就已完成关联。可以是1对1，一对多，多对多。用一条实线和两数字来表示。数字表示具体的关联关系究竟是1对1还是1对多或者多对多
 
-#### 6）依赖关系Dependency
+### 6）依赖关系Dependency
 
 依赖关系是在运行过程中才出现起作用的，在使用到相关资源的时候才会显现出依赖关系。主要有三种形式：
 
@@ -34,7 +32,7 @@
 
 用一条虚线和箭头组成，其中箭头指向被依赖的类。
 
-### 2、枚举类
+## 2、枚举类
 
 Java中枚举是一个特殊的类，用于表示一组常量。使用enum关键字来定义，每个常量之间用逗号分割。基本语法如下
 
@@ -81,7 +79,7 @@ enum Weekday {
 }
 ```
 
-### 3、包装类
+## 3、包装类
 
 在Java中数据类型有基本类型和它对应的包装类型。之所以要包装基本数据类型，是因为Java中很多代码只能操作对象，而不能操作基本数据类型。而包装类除了实现基本数据类型的功能，还提供了一些静态方法，静态变量和实例方法，以方便对数据的操作。
 
@@ -96,18 +94,18 @@ enum Weekday {
 | double   | Double    |
 | char     | Character |
 
-#### 基本类型和包装类之间的转换
+### 基本类型和包装类之间的转换
 
 * 每个包装类都有一个静态方法Type.valueOf()，接收基本类型，返回引用类型。
 * 也有一个实例方法typeValue()返回对应的基本类型。
 
 基本类型和包装类之间的转化，称为装箱和拆箱，为了方便我们使用，Java引入了自动装箱和拆箱技术，可以将基本类型赋值给引用类型，也可以将引用类型赋值给基本类型。Java编译器会帮我们转换。
 
-#### 重写Object类的方法
+### 重写Object类的方法
 
 所有的包装类都是继承了Object类，也重写了它的三个方法equals, hashCode, toString
 
-##### boolean equals(Object obj)
+#### boolean equals(Object obj)
 
 equals函数用来判断当前对象和参数传入的对象是否相同。应该反应对象之间逻辑相等的关系
 
@@ -115,25 +113,25 @@ equals函数用来判断当前对象和参数传入的对象是否相同。应�
 
 这种默认实现是不合适的，子类都应该重写该实现，所有包装类都重写了该实现，实际比较的是其包装的基本类型的值。
 
-##### int hashCode()
+#### int hashCode()
 
 返回一个对象的哈希值，哈希值是一个int类型的数，由对象中一般不变的属性映射而来，用来快速对对象进行区分和分组。一个对象的哈希值不能边，相同对象的哈希值必须一样。不同对象的哈希值一般不同。子类重写equals方法时，也必须重写hashCode，
 
-##### String toString()
+#### String toString()
 
-##### Comparable接口
+#### Comparable接口
 
 每个包装类也都实现了可比较（Comparable）接口，用当前对象和参数对象进行比较，小于参数对象时返回-1，等于返回0，大于返回1。
 
-##### 字符串和包装类之间的转换
+#### 字符串和包装类之间的转换
 
 除了Character类以外，每个包装类都有一个静态的valueOf(String)方法，根据字符串返回包装类对象，也有一个静态的parseType方法，根据字符串返回基本类型的值。
 
-#### 不可变性
+### 不可变性
 
 包装类都是不可变类，实例对象一旦创建就没有办法修改了
 
-### 4、字符串
+## 4、字符串
 
 | 方法                                                   | 说明                                               |
 | ------------------------------------------------------ | -------------------------------------------------- |
@@ -151,13 +149,13 @@ equals函数用来判断当前对象和参数传入的对象是否相同。应�
 | trim()                                                 | 删除结尾和开头的空格，返回新字符串                 |
 | split()                                                | 字符串分割，返回分割后的子字符串数组               |
 
-### 5、StringBuilder
+## 5、StringBuilder
 
 StringBuilder类内部封装了一个字符数组，与String不同，它不是final的，可以修改，字符数组中不一定所有位置都已经被使用，他有一个实例变量，表示数组中已经使用的字符个数。StringBuilder继承自AbstractStringBuilder，默认情况下构造方法会创建一个长度为16的字符数组，已使用字符的个数默认值为0
 
 而StringBuilder的append方法会拷贝字符到内部的字符数组中，如果字符数组长度不够，就会进行扩展，实际使用的长度用count体现。扩展的逻辑是分配一个足够长度的新数组，然后将原有内容拷贝到这个新数组中，最后让内部的字符数指向这个新数组。拷贝主要是靠数组拷贝方法Arrays.copyOf(value, newCapacity)
 
-### 6、类
+## 6、类
 
 **static** 表示类方法、也称静态方法，可以直接通过类名来调用，不需要创建实例。
 
@@ -170,17 +168,17 @@ StringBuilder类内部封装了一个字符数组，与String不同，它不是f
 * 类型实例具有的属性，通过实例变量体现
 * 类型实例可以进行的操作，通过实例方法体现
 
-#### 类变量
+### 类变量
 
 类型本身具有的属性通过类变量体现，经常用于表示一个类型中的常量。
 
-#### 类方法与实例方法
+### 类方法与实例方法
 
 类方法只能访问类变量，而不能访问实例变量，可以调用其他的类方法，但是不能够调用实例方法
 
 实例方法既能够访问实例变量，也能访问类变量，既可以调用实例方法，也可以调用类方法
 
-#### 构造方法
+### 构造方法
 
 在创建对象时对实例变量赋初值，这种方法被称为构造方法，构造方法的特点是：
 
@@ -190,7 +188,7 @@ StringBuilder类内部封装了一个字符数组，与String不同，它不是f
 
 私有的构造方法：如果能够创建类的实例，但是只能被类的静态方法调用，单例模式，类的对象只能有一个，对象是通过静态方法获取的，而静态方法调用私有构造方法创建一个对象，如果对象已经被创建过了，就会重用该对象。
 
-### 7、继承
+## 7、继承
 
 **super**
 
@@ -208,13 +206,13 @@ super关键字用于指代父类，可以用于调用父类的构造方法，访
 
 如果子类和父类拥有重名的属性和方法，在类的外部访问时，会根据指定的静态类型来判断调用的时子类还是父类的方法。如果指定静态类型是子类，则会调用子类的静态方法，反之调用父类的方法。这称为静态绑定，即访问绑定到变量的静态类型，静态绑定在程序编译阶段就可以决定，但是动态绑定需要程序运行时。
 
-#### 父子类型的转换
+### 父子类型的转换
 
 一个父类的变量，能不能转换为一个子类的变量，取决于这个父类变量的动态类型是不是这个子类或者子类的子类。
 
 **模板方法**父类定义了实现的模板，但是具体的实现由子类提供。  
 
-#### 类加载
+### 类加载
 
 类的加载是指将类的相关信息加载进内存。在Java中，类是动态加载的，当第一次使用这个类的时候才会加载，加载一个类时，会查看其父类是否已经加载，如果没有就会加载他的父类
 
@@ -240,7 +238,7 @@ super关键字用于指代父类，可以用于调用父类的构造方法，访
 
 对于继承层级较深的情况，这种查找调用的效率就会比较第，因此我们可以使用虚方法表来优化。在类加载的时候，为每一个类创建一个表，这个表包括该类的对象所有动态绑定的方法及其地址，包括父类的方法，但一个方法只会有一条记录。
 
-### 8、接口
+## 8、接口
 
 Java使用implements这个关键子表示实现接口。接口表示的是对象所具有的某种能力。实现接口就必须要实现接口中声明的方法。
 
@@ -260,7 +258,7 @@ Java使用implements这个关键子表示实现接口。接口表示的是对象
 
 instanceof除了可以判断一个对象是否是另一个类的子类，也就是判断继承关系，也可以用来判断一个对象是否实现了某接口
 
-### 9、抽象类
+## 9、抽象类
 
 只有子类才知道如何实现的方法。一般定义为抽象方法，抽象方法是相对于具体方法而言的，具体方法有实现代码，而抽象方法只有声明，没有实现。
 
@@ -274,7 +272,7 @@ instanceof除了可以判断一个对象是否是另一个类的子类，也就�
 
 继承的好处是可以服用代码，只重写需要的即可，需要写的代码比较少。
 
-### 10、内部类
+## 10、内部类
 
 内部类与包含它的外部类之间有比较密切的关系，而与其他类关系不大，定义在类内部，可以实现对外部完全隐藏，有更好的封装性，代码实现上也往往更加简洁。
 
@@ -291,11 +289,11 @@ instanceof除了可以判断一个对象是否是另一个类的子类，也就�
 
 方法内部类在方法内定义和使用，成员内部类和静态内部类可以被外部使用。
 
-#### 静态内部类
+### 静态内部类
 
 静态内部类可以访问外部类的静态变量和方法。
 
-#### 成员内部类
+### 成员内部类
 
 成员内部类除了静态变量和方法，还可以直接访问外部类的实例变量和方法，成员内部类不可以定义静态变量和方法。方法内部类和匿名内部类也不可以。
 
@@ -305,13 +303,13 @@ instanceof除了可以判断一个对象是否是另一个类的子类，也就�
 
 外部类的一些方法的返回值可能是某个接口，为了返回这个接口，外部类方法可能使用内部类实现这个接口。
 
-#### 方法内部类
+### 方法内部类
 
 指的是一个类直接定义在了外部类的方法中，方法可以是实例方法和静态方法。如果方法内部类要访问方法的参数和方法中的局部变量，这些变量需要被声明为final。
 
 方法内部类访问方法中的参数和局部变量，这是通过在构造方法中传递参数来实现的。
 
-#### 匿名内部类
+### 匿名内部类
 
 匿名内部类没有名字，在创建对象的时候同时定义类。匿名内部类是与new关键字关联的，new后面是父类或者父接口，然后圆括号，里面可以是传递给父类的构造方法参数，最后大括号定义内部类。
 
@@ -319,23 +317,23 @@ instanceof除了可以判断一个对象是否是另一个类的子类，也就�
 
 如果对象只会创建一次，而且不需要自定义构造方法来接受参数，可以使用匿名内部类。在调用方法的时候，很多方法需要一个接口参数，这个接口是需要实现的，因此我们可以调用方法的时候在参数列表中传入一个匿名内部类，实现这个接口的方法。
 
-### 11、包
+## 11、包
 
 包是分割类和接口的一个层次结构，包有名称，这个名称用顿号分割，表示层次结构，带有完整包名的类名称为其完全限定名。
 
-#### 声明类所在的包
+### 声明类所在的包
 
 在没有定义类所在的包的默认情况下，类位于默认包中，定义类的时候，我们应该使用关键字package声明其包名，包声明语句应位于源代码最前面，包名和文件目录结构必须完全匹配，。从源文件的根目录算起。
 
-#### 通过包使用类
+### 通过包使用类
 
 同一个包下面的类之间相互引用是不需要包名的，可以直接使用，如果类不再同一个包内，则必须要知道其所在的包，有两种方法，一种是通过类的完全限定名，另一种是将用到的类引入到当前类。引入到当前类，关键字是import，这个关键字放在package之后，类定义之前。
 
-#### 包范围可见性
+### 包范围可见性
 
-#### Java打包
+### Java打包
 
-#### 程序的编译和连接
+### 程序的编译和连接
 
 从源代码到运行的程序，有编译和连接两个步骤，编译时将源代码文件变成一种字节码，后缀class文件。连接是在运行时动态执行的，class文件不能直接运行，运行的是Java虚拟机，解析class文件，转换成机器能够识别的二进制代码，然后运行，连接就是根据引用到的类加载相应的字节码并执行。
 
@@ -343,32 +341,40 @@ Java编译和运行是，需要指定一个类路径，对于jar包，类路径�
 
 因此，import时编译时的概念，用于确定完全限定名，在运行时，只根据完全限定名寻找并加载类，编译和运行都依赖类路径
 
-### 12、随机
+## 12、随机
 
 Math类中的静态方法random生成一个double类型的0-1之间的随机数，包括0但不包括1 
 
-### 13、文件
+## 13、文件
+
+IO流以`byte`（字节）为最小单位，因此也称为*字节流*。在Java中，`InputStream`代表输入字节流，`OuputStream`代表输出字节流，这是最基本的两种IO流。字节流传输的最小数据单位是字节byte。
+
+如果我们要读写的是字符，并且字符不全是以单字节表示的ASCII字符，那么按照char读写更方便，这种流称为*字符流*。Java提供了`Reader`和`Writer`表示字符流，字符流传输的最小数据单位是char。使用`Reader`和`Writer`，读取的数据源虽然是字节，但是他们内部对若干字节做了编码和解码，然后将字节转换成了字符。本质上能够自动编码和解码的`InputStream`和`OuputStream`。
+
+因此实际上我们也能够自己编写逻辑，实现字节到字符的编码和解码，究竟使用`InputStream`和`OuputStream`还是`Reader`和`Writer`取决于数据源是文本还是其他文件。
+
+Java提供一个FILE的类实现对文件的操作。FILE对象即可以表示文件，也可以表示目录。只有当我们调用FILE对象的某些方法时，才回真正执行磁盘操作。
 
 所有的文件都是以二进制的形式保存的，但是为了便于理解和处理文件，文件就有了文件类型的概念，文件类型以后辍名来体现，每种文件类型都有一定的格式，代表着文件含义和二进制之间的映射关系。对于一种文件类型往往有一种或者多种应用程序可以解读它，进行查看和编辑，一个应用程序往往可以解读一种或者多种文件类型。在操作系统中，一种后缀名往往关联一个应用程序，打开文件时，操作系统查找相应关联的应用程序。
 
 文本类型可以粗略的分为文本文件和二进制文件，基本上文本文件每个二进制字节都是某个可打印字符的一部分，但是二进制文件中，每个字节就不一定表示字符，可能表示的是颜色、字体、声音大小等等。
 
-#### 文本文件
+### 文本文件
 
 文本文件包含的基本都是可打印字符，字符到二进制的映射称为编码，编码有多种方式，应用程序应该如何识别编码方式呢，对于utf-8文件，在文件最开头有三个特殊字节，称为BOM字节序标记。
 
-#### 文件系统
+### 文件系统
 
 * 绝对路径：从根目录到当前文件的完整路径
 * 相对路径：相对于当前目录而言
 
-#### 文件读写
+### 文件读写
 
 硬盘访问延时，相比内存是比较慢的。一般读写文件需要两次数据拷贝，从用户态和内核态相互切换，然而这种谢欢是由开销的。
 
 为了提高文件操作效率，应用程序使用缓冲区。读取文件时，即使目前只需要少量内容，在预知还会接着读取时，就会异地读取较多内容，放在读缓冲区，下次读取时，就可以直接从缓冲区读取，减少访问操作系统和硬盘。写文件时，先写到缓冲区，满了以后再一次性调用操作系统写入硬盘。
 
-#### Java中的文件概念
+### Java中的文件概念
 
 在Java中文件不是单独处理的，而是为输入输出设备的一种，Java使用同一的概念处理输入输出操作。这个概念叫做流。输入流可以获取数据，输出流可以到显示终端、文件、网络等。
 
@@ -380,15 +386,15 @@ Java中对流的操作有加密、压缩、计算信息摘要、计算检验和�
 
 关于文件路径，文件源数据、文件目录、访问权限等等文件属性，Java使用File这个类进行管理
 
-#### NIO
+### NIO
 
 NIO （new input and output）是一种看待输入输出不同的方式，他有缓冲区和通道的概念，更接近操作系统。
 
-#### 序列化和反序列化
+### 序列化和反序列化
 
 序列化就是将内存中的Java对象持久的保存到一个六种，反序列化就是从流中恢复Java对象到内存，序列化和反序列化，主要目的是：一对象状态持久化，网络远程调用传递和返回对象。Java默认的序列化不够通用，现在通常使用json
 
-#### File类
+### File类
 
 **构造方法**
 
@@ -436,7 +442,7 @@ File(File parent, String child)
 |                                                              |                                                              |
 |                                                              |                                                              |
 
-#### 二进制文件
+### 二进制文件
 
 以二进制方式读写的流主要有：
 
@@ -446,7 +452,7 @@ File(File parent, String child)
 * DataInputStream / DataOutputStream 装饰类，按照基本类型和字符串而非只是字节读写流
 * BufferedInputStream / BufferedOutputStream 装饰类，对输入输出流提供缓冲功能
 
-##### InputStream / OutputStream
+#### InputStream / OutputStream
 
 从流中读取的基本方法：
 
@@ -493,13 +499,13 @@ close();
 
 向流中写入一个字节，flush方法将缓冲而未实际写入的数据进行实际写入，再BufferedOutputStream中，调用会将其缓冲区内容写到其装饰的流中，并调用该流的flush方法。
 
-##### FileInputStream / FileOutputStream
+#### FileInputStream / FileOutputStream
 
 关于文件输入输出流，构造时有两个参数，一类时文件路径，可以是File对象，也可以是文件路径名，如果文件已经存在，需要指定是追加还是覆盖，使用文件输出流会实际打开文件。
 
 文件输入流
 
-#### 文本文件和字符流
+### 文本文件和字符流
 
 Java中主要的字符流有这几种：
 
@@ -511,15 +517,15 @@ Java中主要的字符流有这几种：
 * BufferedReader / BufferedWriter
 * PrintWriter 装饰类，将基本类型和对象转会为其字符串形式输出的
 
-### 14、Arrays
+## 14、Arrays
 
 Java有一个类Arrays包含一些对数组操作的静态方法。
 
-#### toString
+### toString
 
 输出数组的字符串形式
 
-#### 数组排序
+### 数组排序
 
 Arrays对于每种基本类型的数组，都有一个重载的sort()方法
 
@@ -527,23 +533,23 @@ Arrays对于每种基本类型的数组，都有一个重载的sort()方法
 
 传递比较器Comparator给sort方法，体现了程序设计中不变和变化相分离，排序的基本步骤和算法是不变的，但是按什么排序是变化的，sort方法将不变的算法设计为主体逻辑，而将变化的排序方式设计为参数，允许调用者动态指定，叫做策略模式。
 
-#### 查找
+### 查找
 
 在已排序数组中进行查找，Arrays类已经实现了二分查找binarySearch可以针对基本类型数组，或者对象数组。
 
-#### 拷贝copyOf
+### 拷贝copyOf
 
-#### 数组比较equals
+### 数组比较equals
 
-#### 填充值fill
+### 填充值fill
 
-#### 哈希值hashCode
+### 哈希值hashCode
 
-#### 多维数组
+### 多维数组
 
 
 
-## 一、异常处理
+## 15、异常处理
 
 Java标准库常用的异常
 
@@ -584,22 +590,12 @@ Commons Logging定义了6个日志级别，默认级别及以上的日志信息�
 * DEBUG 调试信息
 * TRACE 追踪信息
 
-## 二、输入输出
-
-IO流以`byte`（字节）为最小单位，因此也称为*字节流*。在Java中，`InputStream`代表输入字节流，`OuputStream`代表输出字节流，这是最基本的两种IO流。字节流传输的最小数据单位是字节byte。
-
-如果我们要读写的是字符，并且字符不全是以单字节表示的ASCII字符，那么按照char读写更方便，这种流称为*字符流*。Java提供了`Reader`和`Writer`表示字符流，字符流传输的最小数据单位是char。使用`Reader`和`Writer`，读取的数据源虽然是字节，但是他们内部对若干字节做了编码和解码，然后将字节转换成了字符。本质上能够自动编码和解码的`InputStream`和`OuputStream`。
-
-因此实际上我们也能够自己编写逻辑，实现字节到字符的编码和解码，究竟使用`InputStream`和`OuputStream`还是`Reader`和`Writer`取决于数据源是文本还是其他文件。
-
-Java提供一个FILE的类实现对文件的操作。FILE对象即可以表示文件，也可以表示目录。只有当我们调用FILE对象的某些方法时，才回真正执行磁盘操作。
-
-## 三、日期与时间
+## 16、日期与时间
 
 * 时刻：所有计算机系统内部都用一个整数表示时刻，这个整数时距离格林尼治时间的毫秒数，与时区无关
 * 时区：同一时刻世界各个地区的时间可能是不一样的，具体时间与时区有关，一共有24个时区。
 
-#### Java 8 中表示日期和时间的类
+**Java 8 中表示日期和时间的类**
 
 * Instant : 表示时刻，不直接对应年月日
 * LocalDateTime：表示与时区无关的日期和时间信息
@@ -608,7 +604,7 @@ Java提供一个FILE的类实现对文件的操作。FILE对象即可以表示�
 * ZonedDateTime：特定时区的日期和时间
 * ZoneId / ZoneOffset：表示时区
 
-## 五、函数式编程
+## 17、函数式编程
 
 函数式编程是把函数作为基本的运算单元，函数可以做为变量，可以接受函数，还可以返回函数，支持函数式编程的编码风格我们称之为lambda表达式。语法如下：
 
@@ -622,7 +618,7 @@ Java提供一个FILE的类实现对文件的操作。FILE对象即可以表示�
 (参数列表) -> 返回值;
 ```
 
-### 1、通过接口传递代码
+### 通过接口传递代码
 
 File类有两个方法list、listFiles它需要传递一个FilenameFilter对象，但实际上需要的并不是这个对象，而是这个对象所包含的方法。这两个对象希望接收一段方法代码作为参数，但是没有办法直接传递这个方法代码本身，只能传递一个接口。通过接口传递行为代码，就需要传递一个实现了该接口的实例对象。我们需要在后续的代码中实现这个接口，并且重写它对应的方法，最简单的方式时使用匿名内部类。
 
@@ -933,7 +929,7 @@ public static <T> Collector<T, ?, List<T>> toList(){
 
 分组操作收集器groupingBy类似于数据库查询语言中的groupBy语句，及那个元素流中的每一个元素分到一个组，可以针对分组在进行收集和处理。
 
-## 七、反射
+## 18、反射
 
 在编程的时候，我们清楚我们要操作数据的数据类型，比如我们会根据类型来创建对象，根据类型定义变量，数据类型可能是基本类型、类、接口或数组，将特定类型的对象传递给方法，根据类型访问对象的属性，调用对象的方法。
 
@@ -1063,7 +1059,7 @@ ClassLoader是类加载器，Initialize表示类加载后，是否执行类的�
 
 
 
-## 八、注解
+## 19、注解
 
 ### 1、注解的介绍
 
@@ -1156,7 +1152,7 @@ public @interface Report{
 
 那么这样一来，我们就自己定义了一个方法，获取字段的注解，并判断实例对象是否满足该注解的条件。检查逻辑是我们自己编写的，JVM并不会添加任何逻辑，因此检查方法好坏由我们自己决定。
 
-## 九、泛型
+## 20、泛型
 
 ### 1、泛型标记符
 
@@ -1188,7 +1184,7 @@ public static <T extends Comparable<T>> void print(T data){}//规定只接受com
 
 泛型类的声明规则与泛型方法类似，但是类型参数是声明在类名的后面，用于规定类内的属性的类型。
 
-## 十一、集合
+## 21、集合
 
 Java标准库自带的`java.util`包提供了集合类`collection`，他是除了`Map`之外的所有集合类的根接口。Java主要提供了三种类型的集合。Java的集合接口和实现类分离，支持泛型。访问集合可以通过抽象的迭代器来实现，这样就无需知道集合内部元素存储方式。
 
@@ -1256,7 +1252,7 @@ Java标准库自带的`java.util`包提供了集合类`collection`，他是除�
 * `Map<E>`接口主要有三种实现：EnumMap TreeMap HashMap
 * Map有键值的概念，一个键映射到一个值，Map按照键存储和访问值，键不能重复，即一个键只会存储一份，给同一个键重复设值会覆盖原来的值，
 
-## 十二、多线程
+## 22、多线程
 
 ### 1、并发问题三要素
 
@@ -1557,7 +1553,7 @@ static Callable<Integer> externalTask = () -> {
 
 如果我们有一个异步任务执行服务，通过这个任务执行服务调用外部服务，一般就返回Future表示异步结果。
 
-## 十一、网络编程
+## 23、网络编程
 
 ### 1、socket
 
@@ -1681,7 +1677,7 @@ HTTP 服务端本质上是一个TCP服务器，由之前所创建的服务器代
 * 复用线程；
 * IO异常处理；
 
-## 十二、Web开发
+## 24、Web开发
 
 ### 1、Servlet介绍
 
@@ -1798,7 +1794,7 @@ session.setAttribute("user",userName);
 
 #### 7）Listener
 
-## 十三、动态代理
+## 25、动态代理
 
 动态代理在运行时动态的创建一个类，实现一个或者多个接口，可以在不修改原有类的基础上动态的为通过该类的对象添加方法，修改行为。
 
@@ -1881,7 +1877,1018 @@ getProxy方法生成一个代理对象，然后将代理对象转换称被代理
 
 Java原生代理的是对象，需要现有一个实际的对象，使用自定义的类引用该对象，然后创建一个代理类和代理对象。
 
-## 十四、类加载机制
+# 二、Java并发框架
+
+## 锁
+
+### 乐观锁和悲观锁
+
+悲观锁：对于同一个数据的并发操作，总是认为自己在使用数据时会有别的线程来修改数据，因此在获取数据之前会先加锁，确保数据不会被别的线程所修改。synchronized和Lock实现类都是悲观锁
+
+```java
+//方法1 synchronized悲观锁
+public synchronized void test(){
+    //操作同步资源
+}
+//方法2 Lock悲观锁
+private ReentrantLock lock = new ReentrantLock();//创建锁，多个线程中锁为同一个
+public void modifyPublicResources(){
+    lock.lock();
+    //操作同步资源
+    lock.unlock();
+}
+```
+
+乐观锁：对于同一个数据的并发操作，认为自己在使用数据时不会有别的线程修改数据，因此不会添加锁，只有在更新数据时判断之前有没有别的线程更新了这个数据，如果没有被更新，则写入自己修改的数据。
+
+```java
+private AtomicInteger atomicInteger = new AtomicInteger();
+atomicInteger.incrementAndGet();
+```
+
+因此，悲观锁适合写操作多的场景，先加锁可以保证写操作时数据正确。
+
+乐观锁适合读操作多的场景，不加锁可以使其读操作性能大幅提升。
+
+### 自旋锁和适应性自旋锁
+
+阻塞或者唤醒一个Java线程需要操作系统切换CPU状态，这种状态转换需要耗费处理器事件，如果同步代码块中的内容很简单，状态转换消耗的事件甚至会比执行代码的时间还要长。在许多场景中，同步资源的锁定时间很短，为了这一小段时间切换线程，线程挂起和回复现场的花费有可能让系统得不偿失。如果物理机器有多个处理器，能够让两个或者以上的线程同时并行执行，我们就可以让后面那个请求锁的线程不放弃CPU执行时间，看看持有锁的线程是否会很快地释放锁。
+
+那么等待锁释放的那个线程，我们就需要让线程自旋，也就是循环询问是否有锁，如果在自旋完成后，前面锁定同步资源的线程已经释放了锁，那么当前线程就可以不必阻塞而是直接获取同步资源，从而避免切换线程的开销，这就是自旋锁。
+
+**缺点**
+
+自旋锁等待虽然避免了线程切换的开销，但是要占用处理器的时间。如果锁被占用的时间过长，那么自旋的线程就只能白白浪费处理器资源。所以自旋等待的时间必须有一定的限度，如果自旋超过了限定次数，就应该挂起线程，释放处理器资源。
+
+自旋锁的实现同样采用CAS对比后交换愿你指令完成。
+
+### 无锁、偏向锁、轻量级锁、重量级锁
+
+### 公平锁和非公平锁
+
+公平锁指的是多个线程按照申请所得顺序来获取锁，线程直接进入队列中排队，队列中的第一个线程才能够获取锁。公平锁的优点是等待锁的线程不会饿死。缺点是整体吞吐效率相对非公平锁要低。等待队列中除了第一个线程以外的所有线程都会阻塞。CPU唤醒阻塞线程的开销比非公平锁要大。
+
+非公平锁是多个线程加锁时直接尝试获取锁，获取不到时才会到队列队尾等待，但是如果此时的锁刚好可用，那么这个线程就可以无需阻塞直接获取到锁，所以非公平锁有可能出现这种情况：后申请锁的线程先获取到锁。非公平锁的有点事可以减少唤起线程的开销，整体吞吐效率高，因为线程有几率不阻塞直接获取到锁，CPU不必唤醒所有线程逐一询问。但是缺点是处于等待队列中的线程可能会饿死。
+
+### 可重入锁和非可重入锁
+
+可重入锁又叫做递归锁，是指同一个线程在外层方法获取锁的时候，在进入该线程内层方法时会自动获取锁。不会因为之气那已经获取过还没有释放就阻塞。ReentrantLock和synchronized都是可重入锁。可重入锁在一定程度上可以避免死锁。
+
+比如说同一个类中的两个方法都是被内置的锁synchronized修饰的，在其中一个方法内部调用另一个被synchronized加锁的方法，进入过另一个方法是可以直接获得当前对象的锁，而不必等待刚刚的方法释放锁。而非可重入锁在调用另一个方法是，进入方法内部则无法获取到锁，因为该锁被外部方法占用，且无法释放，此时就会造成死锁。
+
+重入锁和非重入锁中记录了一个同步状态status来计算重入次数，当线程尝试获取锁是，可重入锁先尝试并更新这个值，如果值不为0，则会判断当前线程是否是获取到了这个锁的线程，如果是的status+1.且当前线程可以尝试再次获取锁。而非重入锁在获取更新status值时，如果值不为0，则会导致其获取锁失败，当前线程阻塞。
+
+### 独享锁和共享锁
+
+独享锁也叫做排他锁，是指该锁一次只能被一个线程所持有，如果线程对数据加上排他锁后，其他线程则不能再对数据加任何类型的锁。获取排他锁的线程既能够读取数据也能够修改数据。
+
+共享锁指的是该锁可以被多个线程所持有，如果线程对数据加上共享锁后，其他线程只能对数据加上共享锁而不能加排他锁，获得共享锁的线程只能够读数据而不能够写数据。
+
+## synchronized
+
+synchronized负责给线程加锁，一把锁只能同时被一个线程获取，没有获取到锁的线程只能等待。每个实例对对应有自己的一把锁，不同实例之间互不影响。但是锁的如果时类级别的化，锁class、锁static，所有该类的实例对象共用一把锁。用synchronized修饰的方法，无论方法是正常执行完毕还是抛出异常，都会释放锁。
+
+### 对象锁
+
+使用synchronized把代码块包裹起来，手动制定锁定对象，可以是this，也可以是自定义的锁
+
+```java
+public class SynchronizedObjectLock implements Runnable{
+    static SynchronizedObjectLock instance = new SynchronizedObjectLock();
+    @Override
+    public void run(){
+        synchronized (this){
+            System.out.println(Thread.currentThread().getName());
+            try{Thread.sleep(3000);}catch (InterruptedException e){}
+        }
+    }
+    public static void main(String[] args){
+        Thread t1 = new Thread(instance);
+        Thread t2 = new Thread(instance);
+        t1.start();
+        t2.start();
+    }
+}
+```
+
+synchronized添加在普通方法上，锁的对象默认为this当前实例
+
+### 类锁
+
+synchronized修饰静态的方法或者制定锁对象为class对象
+
+```java
+synchronized(SynchronizedObjectLock.class){
+    // 代码
+}
+```
+
+这里锁住的就是类级别的对象
+
+### 原理分析
+
+#### 加锁和释放锁
+
+我们在加入synchronized关键字后，编译器会给对应的代码加入两个指令，分别是monitorenter 和 monitorexit，这两个指令会让对象在执行时使其锁计数器加减1，每个对象同时只与一个锁相关联。
+
+#### 可重入原理
+
+
+
+#### 可见性原理
+
+
+
+### JVM锁优化
+
+
+
+## volatile
+
+## final
+
+
+
+## CAS
+
+### 概念
+
+CAS的全称时Compare and Swap，即对比后交换，是CPU的一条原子指令，其作用是让CPU先进行比较两个只是否相等，然后原子性的更新某个位置的值，它是基于硬件平台的汇编指令实现的，也就是说CAS靠硬件实现，JVM封装了汇编的调用。因为CAS操作是原子性的，所以在多线程并发的时候可以不用使用所。JDK中大量使用了CAS这个指令来更新数据而不是使用重量级锁synchronized来保证原子更新。
+
+* java为我们提供了AtomicInteger原子类，该类底层基于CAS指令进行更新数据，不需要加锁就可以完成在多线程并发场景下的数据一致性。
+
+```java
+private AtomicInteger i = new AtomicInteger(0);
+//原子操作
+public int add(){
+    return i.addAndGet(1);
+}
+```
+
+* 在多线程环境下为了保持数据一致性，我们使用synchronized对变量的值进行加锁。
+
+```java
+private int i = 0;
+public synchronized int add(){
+    return i++;
+}
+```
+
+
+
+### 缺点
+
+CAS的方式是乐观锁，而synchronized是悲观锁，乐观锁解决并发问题在通常情况下性能更优。但是CAS也存在一些问题。
+
+#### ABA问题
+
+CAS对比后交换指令，需要在操作值的时候，检查值有没有变化，如果没有发生变化则更新，但是如果一个值原来是A，变成了B，随后又变成了A，那么使用CAS进行检查时就会发现他的值没有发生变化，但是实际上却已经变化了。
+
+ABA问题我们可以采用版本号来解决，在变量前面追加上版本号，每次变量更新的时候，把版本号加1。
+
+#### 循环开销时间大
+
+自旋的CAS如果长时间不能够成功，会给CPU带来很大的开销，如果JVM能够支持处理器提供的pause指令，那么效率则会有一定的提升。pause指令的作用是：1、延迟流水线执行命令，使CPU不会消耗过多的资源。2、避免在退出循环时因为存在内存顺序冲突而引起CPU流水线被清空，从而提高CPU执行效率。
+
+#### 只能保证一个共享变量的原子操作
+
+对于多个共享变量的操作，循环CAS无法保证原子性，需要使用锁。
+
+### 解决方案
+
+#### AtomicStampedReference
+
+该类主要维护包含一个对象引用以及一个可以自动更新的整数的pair对象来解决ABA问题。
+
+```java
+public class AtomicStampedReference<V> {
+    private static class Pair<T> {
+        final T reference;
+        final int stamp;//用于标志版本
+        static <T> Pair<T> of(T reference, int stamp){
+            return new Pair<T>(reference, stamp);
+        }
+    }
+    private volatile Pair<V> pair;
+    
+    public boolean compareAndSet(V expectedReference, V newReference, int expectedStamp, int newStamp){
+        Pair<V> current = pair;
+        return // 略
+    }
+    
+    private boolean casPair(Pair<V> cmp, Pair<V> val){
+        return UNSAFE.compareAndSwapObject(this, pairOffset, cmp, val);
+    }
+}
+```
+
+如果发现元素值和版本号都没有发生变化，和新的值也相同，则返回true表示成功；
+
+如果元素值和版本号没有变化，和新的值不完全相同，则构造Pair对象，执行CAS更新
+
+## Unsafe类
+
+### 概念
+
+Unsafe是JDK提供的一个类，用于提供一些执行低级别、不安全操作的方法，如直接访问系统内存资源、自主管理内存资源等。这些方法在提升Java运行效率、增加Java语言底层资源操作能力方面起到了很大的作用。Unsafe类使Java语言拥有了类似C语言指针一样的操作内存空间的能力。
+
+Unsafe类提供的API可以分为内存操作、CAS、类操作、对象操作、系统信息获取、内存屏障、数组操作等几类。
+
+```java
+public final int getAndAddInt(Object paramObject, long paramLong, int paramInt){
+    int i;
+    do{
+        i = getIntVolatile(paramObject, paramLong);
+    }while(!compareAndSwapInt(paramObject, paramLong, i, i + paramInt));
+    return i;
+}
+```
+
+Unsafe类在内部使用自旋的方式进行CAS更新。也就是通过while循环，如果更新失败，则循环重试。
+
+在底层方法中，使用C++语言来跟操作系统进行沟通，并直接调用汇编语言实现该功能
+
+```c++
+UNSAFE_ENTRY(jboolean, Unsafe_CompareAndSwapInt(JNIEnv *env, jobject unsafe, jobject offset, jint e, jint x))
+    UnsafeWrapper("Unsafe_compareAndSwapInt");
+	oop p = JNIHandles::resolve(obj);
+	jint* addr = (jint *)index_oop_from_field_offset_long(p, offset);
+	return (jint)(Atomic::cmpxchg(x, addr, e))==e;
+UNSAFE_END
+    
+// 在windows中
+inline jint Atomic::cmpxchg(jint exchange_value, volatile jint* dest, jint compare_value){
+    int mp = os::isMP();
+    _asm{
+        mov edx, dest
+        mov ecx, exchange_value
+        mov eax, compare_value
+        LOCK_IF_MP(mp)
+        cmpxchg dword ptr [edx],ecx
+    }
+}
+```
+
+Unsafe类提供了硬件级别的操作，比如说获取某个属性在内存中的位置、修改对象的字段值。
+
+## AtomicInteger
+
+| API                     | 说明                                                         |
+| ----------------------- | ------------------------------------------------------------ |
+| get()                   | 获取当前值                                                   |
+| getAndSet(int newValue) | 获取并设置新的值                                             |
+| getAndIncrement()       | 获取当前值并自增                                             |
+| getAndDecrement()       | 获取当前值并自减                                             |
+| getAndAdd(int delta)    | 获取当前值并加上预期的值                                     |
+| lazySet(int newValue)   | 懒设置，最终会设置成新的值，但是会不够及时。其他线程可能在这段时间里读到旧值 |
+
+在使用AtomicInteger之前，多线程要让变量自增需要这些写：
+
+```java
+private volatile int count = 0;
+public synchronized void increment(){count++;}
+public int getCount(){return count;}
+```
+
+在使用AtomicInteger后
+
+```java
+private AtomicInteger count = new AtomicInteger();
+private void increment(){
+    count.incrementAndGet();
+}
+public int getCount(){
+    return count.get();
+}
+```
+
+AtomicInteger在底层使用的是volatile的变量和CAS来进行更改数据的。
+
+* volatile保证线程的可见性，多线程并发誓，一个线程修改数据，可以保证其他线程立马看到修改后的值
+* CAS比较后对换原子指令保证数据更新时的原子性
+
+## 原子更新类
+
+使用原子方式更新基本类型，Atomic包提供了三类。
+
+| 类名          | 说明             |
+| ------------- | ---------------- |
+| AtomicBoolean | 原子更新布尔类型 |
+| AtomicInteger | 原子更新整型     |
+| AtomicLong    | 原子更新长整型   |
+
+使用原子方式更新数组中的某个元素，Atomi提供了三类。
+
+| 类名                 | 说明                         |
+| -------------------- | ---------------------------- |
+| AtomicIntegerArray   | 原子更新整型数组里的元素     |
+| AtomicLongArray      | 原子更新长整型数组里的元素   |
+| AtomicReferenceArray | 原子更新引用类型数组里的元素 |
+
+使用原子方式更新引用类型，也是三个类，这三个类首先需要构造一个引用对象，然后把引用对象设置进入Atomic类，然后调用compareAndSet等一些方法进行原子操作。原理都是基于Unsafe类实现。
+
+| 类名                    | 说明                                               |
+| ----------------------- | -------------------------------------------------- |
+| AtomicReference         | 原子更新引用类型                                   |
+| AtomicStampedReferece   | 原子更新引用类型，内部使用Pair来存储元素值及版本号 |
+| AtomicMarkableReference | 原子更新带有标记为的引用类型                       |
+
+使用原子更新字段类。需要两步：1、因为原子更新字段类都是抽象类，每次使用的时候必须使用静态方法创建一个更新器，并且设置想要更新的类和属性。2、更新的字段必须使用volatile修饰。
+
+| 类名                        | 说明                         |
+| --------------------------- | ---------------------------- |
+| AtomicIntegerFieldUpdater   | 原子更新整型的字段更新其     |
+| AtomicLongFieldUpdater      | 原子更新长整型字段的更新器   |
+| AtomicReferenceFieldUpdater | 更新的字段需要用volatile修饰 |
+
+## LockSupport
+
+## AQS
+
+## ReentrantLock
+
+## ReentrantReadWriteLock
+
+# 三、Maven
+
+Maven是一个Java项目的管理和构建工具。
+
+* Maven使用`pom.xml`定义项目的内容，并且使用预设的目录结构。
+* 在Maven中声明一个依赖项就可以自动下载并导入到`classpath`（项目路径中）。
+* Maven使用`groupId artifactId version`唯一定位一个依赖（公司名称，项目名称，版本号）。
+
+一个Maven项目的目录结构如下：
+
+```ascii
+a-maven-project				 项目名称
+├── pom.xml					项目的描述文件
+├── src				  		项目源代码存放处
+│   ├── main		
+│   │   ├── java		 	存放Java源代码
+│   │   └── resources		 存放资源文件的目录
+│   └── test
+│       ├── java		 	 存放测试用的代码
+│       └── resources	 	 存放测试用的资源
+└── target					所有编译、打包生成的文件
+```
+
+**依赖管理**
+
+Maven解决了依赖管理的问题，比如说我们的项目依赖一个文件，而这个文件又依赖另一些文件，那么Maven就可以把这一连串依赖的文件帮我们下载并配置号。
+
+**依赖关系**
+
+Maven定义了几种依赖关系，分别是编译中、测试时、运行中、提供四种依赖关系
+
+| 范围     | 说明                                              |
+| -------- | ------------------------------------------------- |
+| compile  | （默认情况）编译时需要用到                        |
+| test     | 编译测试文件时需要用到                            |
+| runtime  | 运行时需要，编译时不需要                          |
+| provided | 编译时需要用到，但是运行时由JDK或者其他服务器提供 |
+
+
+
+# 四、Spring
+
+## 一、Spring FrameWork
+
+### 1、`IoC`容器
+
+#### 1）容器的概念
+
+容器是为某些特定组件对象提供必要支持的一个软件环境。他提供了一些底层服务，让容器所承载的对象不必在考虑这些问题。Tomcat就是一个Servlet容器，底层实现了TCP连接，解析HTTP协议等非常复杂的服务。我们自己就无需在组件中编写这些复杂的逻辑。IoC容器它可以管理所有轻量级的JavaBean组件，提供的底层服务包括组件的生命周期管理、配置和组装服务、AOP支持，以及建立在AOP基础上的声明式事务服务等。
+
+#### 2）控制反转IoC
+
+`IoC`意为控制反转（Inversion of Control），对程序中对象的创建、配置这样的控制权由应用程序转移到了`IoC`容器，那对于某个具体的实例对象它的所有组件对象不再由应用程序自己创建和配置，而是通过`IoC`容器负责。这样应用程序能够直接使用已经创建并配置好的组件。
+
+在设计上`IoC`容器是一个无侵入的容器，应用程序的组件无需实现Spring的特定接口，那么这些组件即可以在spring容器中运行，又能够自己编写代码组装他所需要的对象。还有就是在测试的时候，也就不需要实现接口，不依赖与Spring容器，可单独测试。
+
+#### 3）依赖注入
+
+这些组件需要通过注入机制来装入到实例对象中，供实例对象使用。依赖注入的方式可以有两种，一种是通过`setXXX()`方法注入，另一种是通过构造方法实现。Spring的IoC容器同时支持属性注入和构造方法注入，并允许混合使用。
+
+因为`IoC`容器需要负责实例化所有组件对象，所以需要告诉容器如何创建组件对象，以及各个组件对象之间的依赖关系，即装配方式。在Spring可以通过两种方式实现，一种是XML配置文件，另一种是通过注解。
+
+#### 4）组件装配
+
+##### I   通过XML装配组件
+
+我们需要自己将组件之间的依赖关系描述出来，然后交给容器来创建并装配。
+
+**第一步 编写配置文件application.xml**
+
+我们需要编写一个特定的名叫application的配置文件`application.xml`告诉Spring容器应该如何创建、并按顺序正确的注入到相应的组件中。Bean表示这是一个Java Bean或者说是一个组件。id唯一标识了一个Java Bean，class提供了文件路径。每个Java Bean内部可以有一个或多个需要注入的属性，以property标签表示。而这些属性也是一个Java Bean，name表示在这个组件内部这个需要注入的属性的名称是什么。ref表示这个需要注入的属性所指向的Java Bean的id。这些Java Bean在配置文件的相对位置并不重要，但是每个组件中要注入的属性需要写全，不写全的画spring会漏掉注入该属性。如果注入的不是Java Bean那么将ref改为value。
+
+总结来说，Java Bean通过引用注入，数据类型通过value注入。
+
+```xml
+<bean id="userService" class="com.itranswarp.learnjava.service.UserService">
+    <property name="mailService" ref="mailService" />			<!--引用注入-->
+    <property name="username" value="root" />				    <!--值注入-->
+    <property name="password" value="password" />
+</bean>
+```
+
+**第二步 在代码中加载配置文件**
+
+我们需要创建一个`Spring IoC`容器的实例，然后加载配置文件。接下来我们就可以从Spring容器中取出组件并使用它。Spring容器命名为应用程序上下文，就是`ApplicationContext`，它是一个接口，用来加载配置文件，有很多实现类。通过xml加载需要`ClassPathXmlApplicationContext`实现类来帮我们自动从项目路径下查找指定的配置文件，参数为配置文件名。通过注解加载需要`AnnotationConfigApplicationContext`实现类，参数为配置类名称，必须传入一个标注了`@Configuration`的类名。。
+
+##### II   通过注解装配组件
+
+见组件详解
+
+### 2、AOP
+
+在实际开发中有很多功能是许多组件通用的，但又是非核心的业务逻辑。让框架把一些很多个不同的组件之间通用的非核心的业务逻辑通过某种方法，织入到组件中。那么AOP要把切面即一些非核心、但又必要的逻辑织入核心逻辑中，我们在调用某个业务方法时，spring会对该方法进行拦截，并在拦截前后进行安全检查、日志、事务等处理。从而完成了整个业务流程。有3种方式实现。
+
+* 编译期，由编译器把切面（非核心的逻辑）编译进字节码。
+* 类加载器：当目标被装载到JVM时，通过一个特殊的类加载器，对目标类的字节码重新增强
+* 运行期：通过动态代理实现运行期动态织入。
+
+Spring的AOP实现就是基于JVM的动态代理，通过AOP技术，可以让我们把一些常用的功能如权限检查、日志、事务等，从每个业务方法中剥离出来。
+
+我们使用AOP非常简单，一共需要三步：
+
+1. 定义切入方法，并在方法上通过AspectJ的注解告诉Spring应该在何处调用此方法；
+2. 在需要切入方法的地方标记`@Component`和`@Aspect`；
+3. 在`@Configuration`类上标注`@EnableAspectJAutoProxy`。
+
+我们还可以通过自定义注解来切入功能。在那些需要切入这种常用的功能的方法头上，标记一个自定义注解，而在切入方法（常用的功能逻辑所在的方法）的AOP注解参数中填入该注解的名称，参数格式为`"@annotation(your_annotation_name)"`，那么只要标注了你自定义注解的地方，spring都会把切入方法切入到里面。
+
+## 二、Spring Web
+
+### 1、Controller层
+
+在MVC模式中，controller作为控制器，控制视图和模型之间的交流，使视图和模型分离开。在Web应用中，也是类似的概念，控制层接受前端发来的请求，交由对应的服务层处理，然后返回响应结果。在整个架构中，我们大致上可以把Controller看做是前端和后端交互的中介，由于前端发来的请求多种多样，后端负责处理这些请求的类以及方法也都不同，因此我们需要一个中间商，接收前端发来的请求，先对其进行简单的处理，识别该请求的意图，然后交由对应的方法去处理。Controller层因此有着承前启后的作用。
+
+HTTP请求分为请求行、请求头、请求体三部分。请求行中携带了请求方法、URL、HTTP协议版本。请求头中携带了HTTP请求的一些必要信息，而请求体中是请求所携带的数据。每一个请求向服务器请求的数据都不太一样，因此请求行、请求头、请求体中的内容也不太一样。服务器要根据这些请求返回不同的数据，首先就是要分辨这些请求到底是想请求什么。
+
+Web应用中Controller负责接收HTTP请求，那么Controller层就需要对请求进行分析处理。分析HTTP请求的意图，然后交由Service层去处理。在Controller层中，我们有两大任务，获取请求信息、返回响应数据。为了处理好这两大任务，我们划分出以下几个步骤：
+
+1. 首先，请求是多种多样的，单一的Controller无法满足所有请求的要求。我们先把请求分类，不同的URL对应着不同种类的请求。URL是有层级的，我们可以对请求的种类再进一步细分。因此我们设置了不同的Controller类、不同的Controller方法、来处理不同种类的请求，这时候就需要**指定请求的映射规则**。
+2. 其次，对于同一类的请求，我们就具体的了解请求的数据是什么，那么我们就需要**获取请求参数**或者**获取请求体**，来进一步识别请求是想要获取哪些数据。
+3. 还有一点，对于服务器中某些私密的资源，我们不可能让任意的请求都能获取到，因此需要识别HTTP请求的身份，是否具有相关的权限去获取资源。那么我们就需要**获取请求头**。
+4. 如果上面的方法不能够满足我们需要的话，我们可以直接获取封装在一个对象中的HTTP请求的全部信息，这叫做**获取原生对象**。
+5. 
+
+#### 1）指定请求映射规则
+
+@RequestMapping用于映射前端HTTP发来的Request请求，对于前端发来的不同请求，我们应该指定不同的Controller、不同的方法来处理。RequestMapping注解就是让我们设置HTTP请求映射到对应controller方法上的相关规则，比如说指定一个controller方法处理的请求路径、请求方式、请求参数等等一系列配置。施加@RequestMapping注解上配置的参数会限制HTTP请求映射到该方法上的范围。
+
+@RequestMapping注解参数说明
+
+| 参数         | 值       | 说明                                                         |
+| ------------ | -------- | ------------------------------------------------------------ |
+| name         | String   | 为该RequestMapping设置一个名字                               |
+| value / path | String[] | 指定接收的URI路径。支持Ant样式路径匹配方法，yml占位符如.`${path}` |
+| method       | emum[]   | 指定接收的请求方法。`public enum RequestMethod {GET,HEAD,POST,PATCH,DELETE,OPTIONS,TRACE}` |
+| params       | String[] | 指定接受的请求参数。只有HTTP请求带有对应的参数时，才会被该Controller处理，使用`!`表示不能具有该类请求。 |
+| header       | String[] | 指定接收的请求头。具有某些请求头或者某些请求头有特定的值，才会被该Controller处理，使用`!`表示不能具有该类请求头。 |
+| consumes     | String[] | 指定接收的请求内容类型Content-Type                           |
+| produces     | String[] | 指定从HTTP请求中发来的可接受响应的Content-Type               |
+
+注：
+
+1、注意到@RequestMapping可以使用在类上和方法上，在方法上的@RequestMapping会继承类上已有的设置。
+
+2、Ant样式路径匹配方法
+
+| 路径 | 说明                        | 实例                                                         |
+| ---- | --------------------------- | ------------------------------------------------------------ |
+| ?    | 匹配任意单个字符，不包含`/` | `/p?ttern`匹配该文件夹下符合该规则的的文件夹（不包含子文件夹） |
+| *    | 匹配0或者任意数量的字符     | `/*.jsp`匹配当前文件夹下任何JSP文件（不包含子文件夹）        |
+| **   | 匹配0或者更多的目录         | `/**/*.jsp`匹配该文件夹及其子文件夹任何JSP文件               |
+
+#### 2）获取请求参数
+
+##### 获取路径参数
+
+@PathVariable用来获取通过URL路径传递的请求参数，通常添加在Controller方法的参数中，Controller方法所映射的路径中需要写明通过路径传递了哪些参数。@PathVariable注解参数有两个，分别是value：映射请求路径参数，required：请求路径参数是否必须
+
+```java
+@RequestMapping("/user/{id}/{name}")
+public String findUser(@PathVariable("id")  Integer id,
+                       @PathVariable("name") String name){
+    // TODO
+}
+```
+
+##### 获取请求体中JSON格式参数
+
+@RequestsBody用来获取请求体中的JSON数据，并将JSON数据转化为JAVA对象，需要JSON数据属性名和JAVA对象变量名一一对应，才回将数据传递到Java对象中，否则无法获取对应的请求数据。
+
+注意：使用@RequestsBody获取请求体数据，需要请求头中的 Content-Type 值为application/json否则会无法获取。
+
+##### 获取QueryParameter格式参数
+
+@RequestParam用于获取QueryParameter格式参数。类似于`URI?name1=value1&name2=value2`格式在URL上传输的参数叫做QueryParameter格式参数，默认情况下，Controller映射到的请求参数都是QueryParameter类型的参数，且需要请求中参数名和Controller方法中变量名一一对应，才能映射成功。
+
+**总结：**通过`@RequestsBody`和`@RequestParam`两个注解，我们可以直接单独获取每一个请求参数，也可以将参数封装到自定义实体对象中，实体类中的成员变量要和请求参数名对应上。并且要提供对应的set/get方法。
+
+##### `@RequestsBody`和`@RequestParam`注解的其他属性
+
+| 属性         | 值      | 说明                                     |
+| ------------ | ------- | ---------------------------------------- |
+| required     | boolean | 请求参数是否必须传入                     |
+| defaultValue | String  | 如果没有传入对应请求参数，指定一个默认值 |
+
+##### 参数类型转换
+
+// TODO
+
+#### 3）获取请求头和cookie
+
+@RequestsHeader用于获取请求头信息，在注解中填写请求头名称我们就可以获取到对应请求头的值
+
+```java
+@Controller
+public class RequestResponseController {
+    @RequestMapping("/getHeader")
+    public String getHeader(@RequestHeader(value = "device-type") String deviceType){
+        System.out.println(deviceType);
+        return "test";
+    }
+}
+```
+
+ @CookieValue用于获取cookie信息，使用方法和@RequestsHeader注解类似，在注解中填写cookie的名称我们就可以获取到对应cookie的值
+
+```java
+@Controller
+public class RequestResponseController {
+    @RequestMapping("/getCookie")
+    public String getCookie(@CookieValue("JSESSIONID") String sessionId){
+        System.out.println(sessionId);
+        return "test";
+    }
+}
+```
+
+#### 4）获取原生对象
+
+我们之前使用servlet的时候，Controller获取的是request对象，response，session对象等。SpringMVC帮助我们简化了对请求信息的处理，因此我们可以通过一些注解直接获取到我们想要的信息。但是SpringMVC中也提供了获取这些原生对象的方法，只需要在方法上添加对应类型的参数就行。SpringMVC会把我们需要的对象传给我们的形参。不过这时候我们就需要使用servlet的API来处理这些数据，会稍显繁琐和麻烦。通常在我们需要设置响应头或者进行文件传输时会获取原生的对象，数据传输只需要写入响应体就可以了。
+
+```java
+@Controller
+public class RequestResponseController {
+    @RequestMapping("/getReqAndRes")
+    public String getReqAndRes(HttpServletRequest request, HttpServletResponse response, HttpSession session){
+        return "test";
+    }
+}
+```
+
+#### 5）设置返回响应体
+
+我们通过添加@ResponseBody注解就可以返回JSON格式的响应体，springMVC会为我们自动将Java对象转化为JSON
+
+#### 6）文件传输
+
+##### 文件上传
+
+HTTP请求需要满足条件：1、请求方式为POST。2、请求头Content-Type为multipart/form-data
+
+SpringMVC接收文件：需要Controller方法中的参数为MutipartFile类型的。该类型有以下几种常见的方法
+
+| 方法 | 说明 |
+| ---- | ---- |
+|      |      |
+
+##### 文件下载
+
+SpringMVC封装HTTP响应需要的条件：1、设置响应头的Content-Type属性为对应文件的MIME类型。2、设置响应头的Content-Disposition。3、文件数据以二进制形式写入响应体中。
+
+### 2、拦截器
+
+
+
+![image-20220426221837696](E:\StudyDoc\同步空间\4.阅读笔记\图片\image-20220426221837696.png)
+
+
+
+### 3、异常处理
+
+SpringMVC为我们提供了注解@ControllerAdvice声明一个类为spring管理的一个组件，可以为特定的Controller添加“通知”。是AOP原理的实现，也就是说将@ControllerAdvice中声明的方法织入到Controller中。
+
+@ExceptionHandler用于捕获Controller中抛出的异常，与@ExceptionHandler注解配合，我们可以通过自定义的拦截规则在Controller发生异常之后进行拦截，在拦截之后，我们转而通过自定义的方法来继续拦截后的处理，从而返回给前端自定义的异常信息。
+
+默认情况下，@ControllerAdvice会在发生异常后拦截所有的Controller然后进行处理。@RestControllerAdvice会将返回值写入响应体中，相当于@ControllerAdvice + @ResponseBody 。总结来说可以通过@ControllerAdvice和@ExceptionHandler实现全局的异常处理。
+
+```java
+@ControllerAdvice
+public class MyControllerAdvice {
+    @ExceptionHandler({NullPointerException.class,ArithmeticException.class})
+    @ResponseBody
+    public Result handlerException(Exception ex){
+        Result result = new Result();
+        result.setMsg(ex.getMessage());
+        result.setCode(500);
+        return result;
+    }
+}
+
+```
+
+### 4、SpringMVC执行流程
+
+1. 用户发起请求被DispatchServlet所处理
+2. DispatchServlet通过HandlerMapping根据HTTP请求内容查找能够处理这个请求的Handler（Controller）。HandlerMapping就是用来处理HTTP请求和处理方法之间的映射关系
+3. HandlerMapping返回一个能够处理请求的执行链给DispatchServlet，包含了Handler方法和拦截器
+4. HandlerAdapter执行对应的Handler方法，把HTTP请求数据转换成合适的类型，作为Handler的方法参数传入
+5. Handler方法执行完成之后的返回值被放到响应体中，然后返回给DispatchServlet，然后发送响应数据
+
+## 三、SpringBoot
+
+
+
+## 四、Druid
+
+
+
+## 五、Mybatis
+
+### 1、介绍
+
+![mybatis架构](E:\StudyDoc\同步空间\4.阅读笔记\图片\mybatis-1.png)
+
+我们把mybatis的功能架构分为了三层：
+
+1. 接口层：提供给程序员调用的接口API，程序员通过这些API来操作数据库，接口层收到调用请求就会转而调用数据处理层来完成具体的数据处理。
+2. 数据处理层：负责对具体的从参数映射、SQL语句的解析、执行、以及执行结果的映射处理等，主要的作用就是根据调用的请求完成一次数据库的操作。
+3. 基础支撑层：负责最基础的功能支撑，包括连接池管理、事务管理、配置的加载、缓存处理。这些都是进行数据库查询通用的东西，我们把他从数据库操作中抽取出来作为最基本的组件，为上层的数据处理层提供最基础的支撑。
+
+最后是引导层，引导层不参与SQL语句的处理，它只是为了在应用程序中配置mybatis的各种功能如何去运行。
+
+### 2、总体框架设计
+
+#### 1）接口层
+
+接口层是mybatis提供给程序员调用的应用程序接口，我们通过接口层就可以方便的调用数据库获取数据。目前mybatis提供两种方式与数据库进行交互。
+
+* 创建SqlSession对象。第一种是创建一个SQL语句会话对象（SqlSession）使用该对象完成对数据库的交互，该对象内部维护了与数据库的连接，提供了与数据库进行增删改查操作的方法。
+* 使用Mapper接口。第二种是通过接口调用的方式，mybatis中应用程序的某个对象与数据库某个表连接的桥梁是通过mapper映射实现的，配置文件中的每一个mapper结点都对应着一个mapper接口。接口中的每一个方法对应这配置文件中每一条SQL语句。我们在配置好以后，mybatis会根据相应的接口方法通过动态代理生成一个mapper实例，我们在调用mapper接口的某一个方法的时候，mybatis会根据这个方法的名称还有参数类型，确定SQL语句，实现对数据库的操作。
+
+#### 2）数据处理层
+
+我们在Java中调用这些对数据库增删改查方法的时候，会传入一些参数，这些参数可能是具体要存的数据，或者是其他的东西，mybatis的数据处理层所要实现的功能就是从这里展开的，主要完成两个功能
+
+* 一是通过传入的参数构建动态的SQL语句
+* 二是执行对应的SQL语句并封装查询结果映射到Java对象中。
+
+#### 3）框架支撑层
+
+框架支撑层，负责数据库查询中一些通用的东西，主要有以下几点内容
+
+* 事务管理机制：
+* 连接池管理机制：
+* 缓存机制：为了减少数据库的压力，提高数据利用率，mybatis会对一些查询结果缓存到本地中，在一定的时间间隔内多次的同一查询，mybatis会直接返回缓存的内容，而不会再去数据库中查找。
+* SQL语句的配置方式：Java程序中SQL语句配置方式有两种，一种是通过XML来配置，另一种是在mapper接口上使用注解来配置。这个功能就是为了识别并处理两种不同的配置方式而存在的。
+
+### 3、实现功能的层次结构
+
+1. 我们使用mybatis查询数据库，首先就是要创建一个SQL会话对象，也就是SqlSession，创建完成之后，就开启了一个与数据库的连接会话，我们可以通过这个对象，来执行SQL语句、提交或者回滚事务。
+2. 但是实际上出于分离职责、防止一个对象身兼太多职责，SqlSession只是执行数据库查询的第一层对象，它会紧接着调用Executor对象，这个对象会负责SQL动态语句的生成，对查询出来的结果进行缓存，对这些结果进行维护，定期删除等。
+3. 其次是语句处理器对象，由于Java程序在底层与数据库的交互是通过JDBC实现的，mybatis是在JDBC的基础上做出了进一步的封装。因此语句处理器对象StatementHandler主要负责与JDBC语句之间的交互。设置语句参数，将返回的结果映射到Java对象。
+4. 接下来就是JDBC层，是真正负责查询数据库的东西。
+
+![实现功能而层次结构](E:\StudyDoc\同步空间\4.阅读笔记\图片\mybatis-2.png)
+
+### 4、mybatis初始化
+
+我们如果想要在自己的程序中引入一个插件或者是框架，单单只把软件包导入进来是没有作用的，我们要在程序中使用它就需要进行一系列的配置，就比如Java的那些内置工具，他就在那但我们不能直接使用，我们调用的时候新建该对象，需要传入一些参数。类比到框架的初始化及配置上，就是这个道理。
+
+mybatis初始化的方式主要有两种：一种是通过XML配置。第二种是基于Java的API
+
+#### 1）XML配置初始化
+
+#### 2）Java的API初始化
+
+
+
+
+
+
+
+
+
+
+## 六、Mybatis Plus
+
+### 1、在项目中引入Mybatis Plus
+
+* 第一步，添加相应依赖
+* 第二步，需要在 Spring Boot 启动类中添加 `@MapperScan` 注解，扫描 Mapper 文件夹
+* 第三步，编写 Mapper 包下的接口，继承Mybatis Plus提供的`BaseMapper<T>`
+
+默认情况下，Mybatis Plus 实体类有如下的映射关系：
+
+| 映射关系                       | 说明                                                      |
+| ------------------------------ | --------------------------------------------------------- |
+| 下划线映射为实体类的驼峰式命名 | 表名：st_user -> stUser 类。字段名：real_name -> realName |
+| 数据表主键名为 id              | 插入数据时会自增，不需要我们进行指定                      |
+| 字段名与实体类属性一一对应     |                                                           |
+
+对应注解
+
+| 注解        | 说明                         |
+| ----------- | ---------------------------- |
+| @TableName  | 表名注解，标识实体类对应的表 |
+| @TableId    | 主键注解，用于实体类主键字段 |
+| @TableField | 非主键的字段注解             |
+
+## 七、Spring操作Redis
+
+Spring通过模板方式提供了对Redis的数据查询和操作功能。
+
+RedisTemplate就是在一个方法中定义了一个算法的骨架，但是把进一步的步骤延迟到子类去实现，模板方法使得子类可以在不改变算法结构的情况下，重新定义算法的某些步骤。
+
+RedisTemplate对Redis中的物种基础类型，分别提供了五个子类进行操作。
+
+```java
+ValueOperations valueOperations = redisTemplate.opsForValue();
+HashOperations valueOperations = redisTemplate.opsForHash();
+ListOperations valueOperations = redisTemplate.opsForList();
+SetOperations valueOperations = redisTemplate.opsForSet();
+ZsetOperations valueOperations = redisTemplate.opsForZset();
+
+```
+
+
+
+## 八、ElasticSearch
+
+
+
+## 九、Mongodb
+
+
+
+##  十、Lombok
+
+| 注解                     | 说明                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| @Slf4j                   | 自动生成该类的log静态常量                                    |
+| @Log4j2                  | 注解在类上。为类提供一个 属性名为log 的 log4j 日志对象，和@Log4j注解类似。 |
+| @Setter                  | 注解在属性上，为属性提供setter方法。注解在类上，为所有属性添加setter方法 |
+| @Getter                  | 注解在属性上，为属性提供getter方法。注解在类上，为所有属性添加getter方法 |
+| @EqualsAndHashCode       |                                                              |
+| @RequiredArgsConstructor |                                                              |
+| @NoArgsConstructor       |                                                              |
+| @AllArgsConstructor      |                                                              |
+| @NotNull                 |                                                              |
+| @NullAble                |                                                              |
+| @ToString                |                                                              |
+| @Value                   | 所有变量为final，等同于添加@Getter @ToString @EqualsAndHashCode @RequiredArgsConstructor |
+| @Data                    | 等同于添加@Getter/@Setter @ToString @EqualsAndHashCode @RequiredArgsConstructor |
+| @Builder                 | 自动生成流式 set 值写法                                      |
+
+注：@EqualsAndHashCode默认情况下，会使用所有非瞬态(non-transient)和非静态(non-static)字段来生成equals和hascode方法，也可以指定具体使用哪些属性。如果某些变量不想加入判断通过exclude排除，或者使用of指定使用某些字段
+
+## 十一、Swagger
+
+### 1、SpringBoot集成Swagger
+
+1. 添加对应的依赖
+2. 新建一个配置类，添加@EnableSwagger2和@Configuration注解，打开并自定义配置Swagger
+3. 通过`http://项目IP:端口/swagger-ui.html`访问API接口文档
+
+[附：SpringBoot集成Swagger详细教程](http://www.imooc.com/wiki/swaggerlesson/springbootswagger.html)
+
+### 2、常用注解
+
+Swagger是为了解决企业中接口（api）中定义统一标准规范的文档生成工具。可以通过在代码中添加Swagger的注解来生成统一的API接口文档。注解主要有以下几种：
+
+| 注解名称           | 使用地方         | 说明                          |
+| ------------------ | ---------------- | ----------------------------- |
+| @Api               | 类               | 描述后端API接口类级别上的说明 |
+| @ApiOperation      | 方法             | 描述后端API接口的信息         |
+| @ApiParam          | 方法、参数、字段 | 对方法、参数添加元数据        |
+| @ApiModel          | 类               | 对类进行说明                  |
+| @ApiModelPropery   | 方法、字段       | 对类的属性说明                |
+| @ApiIgnore         | 类、方法、参数   | Swagger将会忽略这些           |
+| @ApiImplicitParam  | 方法             | 单独请求的参数                |
+| @ApiImplicitParams | 方法             |                               |
+
+| 注解参数    | 类型     | 默认值 | 涉及注解      | 说明                 |
+| ----------- | -------- | ------ | ------------- | -------------------- |
+| value       | String   |        |               | 描述接口用途         |
+| tags        | String[] |        |               | 接口分组             |
+| notes       | String   |        | @ApiOpreation | 对接口做出进一步描述 |
+| httpMethod  | String   |        | @ApiOpreation | 接口请求方法         |
+| nickname    | String   |        | @ApiOpreation | 接口别名             |
+| protocols   | String   |        |               | 接口使用的网络协议   |
+| hidden      | Boolean  |        |               | 是否隐藏该接口       |
+| code        | int      |        | @ApiOpreation | 接口返回状态码       |
+| description |          |        | @Api          |                      |
+| produces    |          |        | @Api          |                      |
+| consumes    |          |        | @Api          |                      |
+
+### 3、Swagger配置
+
+创建Swagger的配置代码如下：
+
+```java
+@EnableSwagger2
+@Configuration
+public Class Swagger2Config{
+    @Bean
+    public Docket createApiDoc(){
+        return new Docket(DocumentationType.SWAGGER_2)
+            .apiInfo(apiInfo())
+            .select()
+            .apis(RequestHandlerSelector.basePackage("your_package_name"))
+            .paths(PathSelectors.any())
+            .build();
+    }
+    private ApiInfo apiInfo(){
+        return new ApiInfoBuilder()
+            .title()
+            .description()
+            .version()
+            .build();
+    }
+}
+```
+
+| 方法名      | 描述            |
+| ----------- | --------------- |
+| title       | 填写API文档标题 |
+| description | 填写API文档描述 |
+| version     | 填写API文档版本 |
+| bulid       | 创建ApiInfo实例 |
+
+
+
+
+
+
+
+## 附录
+
+### 1、Spring注解详解
+
+#### 1）配置类注解
+
+| 注解                     | 说明                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| @SpringBootApplication   | 声明让Spring Boot自动给程序进行必要的配置，等同于@Configuration ，@EnableAutoConfiguration 和 @ComponentScan 三个配置。 |
+| @Configuration           | 说明这是一个配置类                                           |
+| @EnableAutoConfiguration | Spring Boot自动配置，尝试根据你添加的jar依赖自动配置你的Spring应用。 |
+| @ComponentScan           | 自动搜索当前类所在的包以及子包，把所有标注为需要装配的的Bean自动创建出来。默认会装配标识了@Controller，@Service，@Repository，@Component注解的类到spring容器中。如果通过注解实现装配组件，这个配置类需要位于项目的根目录，让Spring明白在哪里扫描。以便扫描到整个项目的组件类 |
+| @Import                  | 引入带有@Configuration的java类。                             |
+| @ImportResourse          | 引入spring配置文件 applicationContext.xml                    |
+
+注：@Configuration注解的配置类有如下要求：
+
+1. @Configuration不可以是final类型；
+2. @Configuration不可以是匿名类；
+3. 嵌套的configuration必须是静态类。
+
+#### 2）组件注解
+
+| 注解           | 说明                                                         |
+| -------------- | ------------------------------------------------------------ |
+| @Component     | 说明这是一个交给Spring保管的JAVA Bean。泛指各种组件。        |
+| @Bean          | 产生一个Bean对象，将它交给spring管理，产生方法只会调用一次。 |
+| @Scope         | 声明一个原型（Prototype）的Bean时，需要添加一个额外的`@Scope`注解 |
+| @Order         | 指明注入的Bean的顺序                                         |
+| @PostConstruct | 定义组件初始化时运行的方法                                   |
+| @PreDestroy    | 定义组件销毁前运行的方法                                     |
+
+注：@Bean属性说明
+
+属性有：value、name、autowire、initMethod、destroyMethod。
+
+* name 和 value 两个属性是相同的含义的， 在代码中定义了别名。为 bean 起一个名字，如果默认没有写该属性，那么就使用方法的名称为该 bean 的名称。
+
+* autowire指定 bean 的装配方式， 根据名称 和 根*[欢迎转载听雨的人博客]*据类型 装配， 一般不设置，采用默认即可。autowire指定的装配方式 有三种Autowire.NO (默认设置)、Autowire.BY_NAME、Autowire.BY_TYPE。
+
+* initMethod和destroyMethod指定bean的初始化方法和销毁方法， 直接指定方法名称即可，不用带括号。
+
+#### 3）注入注解
+
+| 注解       | 说明                                                 |
+| ---------- | ---------------------------------------------------- |
+| @Resource  | 按名称注入                                           |
+| @Autowired | 按类型注入                                           |
+| @Inject    | 按类型注入                                           |
+| @Value     | 将常量、配置文件中的值、其他bean的属性值注入到变量中 |
+
+##### @Resource
+
+需要JAVA Bean注入时使用，可以写到字段和setter方法上，选其一即可。Resource默认按照名称自动注入，属性 name 解析为bean的名字，type解析为bean的类型。注入规则如下：
+
+- 如果同时指定了name和type，则从Spring上下文中找到唯一匹配的bean进行装配，找不到则抛出异常。
+- 如果指定了name，则从上下文中查找名称（id）匹配的bean进行装配，找不到则抛出异常。
+- 如果指定了type，则从上下文中找到类似匹配的唯一bean进行装配，找不到或是找到多个，都会抛出异常。
+- 如果既没有指定name，又没有指定type，则自动按照byName方式进行装配；如果没有匹配，则回退为一个原始类型进行匹配，如果匹配则自动装配。
+
+##### @Autowired
+
+需要JAVA Bean注入时使用，可以写到字段和setter方法上，选其一即可。但是`Autowired`只按类型注入，默认情况下要求依赖的对象必须存在，如果允许null值，需要设置属性required=false，如果需要按名称来装配，需要和@Qualifier注解一起使用。
+
+##### @Inject
+
+需要JAVA Bean注入时使用，可以作用在变量、setter方法、构造函数上。默认根据类型type进行自动装配的，如果需要按名称进行装配，则需要配合@Named。
+
+##### @Value
+
+通过注解将常量、配置文件中的值、其他bean的属性值注入到变量中，作为变量的初始值。bean属性、系统属性、表达式注入，使用@Value("#{}")。bean属性注入*[Power By听雨的人]*需要注入者和被注入者属于同一个IOC容器，或者父子IOC容器关系，在同一个作用域内。配置文件属性注入@Value*[Power By听雨的人]*("${}")
+
+#### 4）MVC注解
+
+| 注解               | 说明                                                         |
+| ------------------ | ------------------------------------------------------------ |
+| @Controller        | 负责处理由DispatcherServlet 分发的请求，把用户请求的数据经过处理封装成一个模型，然后再把这个模型返回给对应的视图进行展示。Controller 不会直接依赖于HttpServletRequest 和HttpServletResponse 等HttpServlet 对象，它们可以通过Controller 的方法参数灵活的获取到。 |
+| @Service           | 修饰MVC中Service层的组件                                     |
+| @Repository        | 注解DAO层（Mapper层）                                        |
+| @RequestBody       | 修饰返回的数据，当返回的数据不是html标签的页面，而是其他某种格式的数据时（如json、xml等）使用。 |
+| @RestController    | 相当于@Controller和@ResponseBody                             |
+| @RequestMapping    | 是用来处理请求地址映射的注解，可以用于类或者方法上。用在类上表示类中所有响应请求的方法都是以该地址作为父路径。一共有六个属性。 |
+| @RequestParam      | 获取前端请求传来的参数，有三个属性：defaultValue 表示设置默认值，required 通过boolean设置是否是必须要传入的参数，value 值表示接受的传入的参数类型。 |
+|                    |                                                              |
+| @ModelAttribute    |                                                              |
+| @SessionAttributes |                                                              |
+| @PathVarible       |                                                              |
+
+注：@RequestMapping的六个属性
+
+1. value：指定请求的实际地址（默认属性）
+2. method：指定请求的类型，GET POST DELETE PUT
+3. consumes：指定处理请求的Content-Type(内容类型)
+4. produces：指定返回的内容类型，仅当请求包含该类型时才回返回相应的数据
+5. params：指定请求必须包含某些参数值才会处理该请求
+6. headers：指定请求必须包含某些指定的header值才会处理该请求
+
+#### 5）AOP切面注解
+
+Spring支持AspectJ的注解式aop编程，需要在java的配置类中使用@EnableAspectJAutoProxy注解开启Spring对AspectJ代理的支持。
+
+| 注解                   | 说明                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| @EnableAspectAutoProxy | 开启Aspect代理，使用AOP注解必备                              |
+| @Aspect                | 声明一个切面类，该类中的方法都会在合适的时机中插入到需要该方法的地方，方法也需要注解标识 |
+| @Before                | 在指定方法执行前执行此方法，需要在注解参数中传入指定方法全名 |
+| @After                 | 在指定方法执行后执行此方法                                   |
+| @AfterRunning          | 在方法返回结果后执行此方法                                   |
+| @AfterThrowing         | 在方法抛出异常后执行此方法                                   |
+| @Around                | 围绕着方法执行                                               |
+| @PointCut              |                                                              |
+
+## 
+
+
+
+# 五、Spring Security
+
+## 1、概述
+
+### 认证与授权
+
+一般的Web应用都需要对用户进行认证和授权两个操作。
+
+认证：Authentication 验证当前访问系统的用户是不是本系统的用户，并且需要确认具体是哪一个用户。
+
+授权： Authorization 对经过认证后的用户判断它是否有权限进行某个操作
+
+### 一般流程
+
+1. 当用户登录时，前端将用户输入的用户名密码传输到后台，后台使用一个类对象将其封装起来，在Spring Security中使用的是`UsernamePasswordAuthenticationToken`类
+2. 程序需要负责验证前端传来的这个对象，验证方法就是调用service服务——根据用户名从数据库中取出用户信息到实体类的实例中，然后比较两者密码，如果密码正确就成功登录。登录成功的同时把包含着用户信息如用户名、密码、用户具有的权限等信息的一个对象放到类似于Session的对象中（SecurityContextHolder）
+3. 用户访问一个资源的时候，首先要判断该资源是否是限制访问的资源，如果是的化，需要判断当前用户是否登录，没有登录就跳转到登录页面。
+4. 如果用户已经登陆，访问某一个限制访问的资源，程序要根据用户请求的地址（url）从数据库中取出该资源对应的所有可以访问该资源的角色，与当前用户所对应的角色一一对比，判断用户是否可以访问。
+
+![[外链图片转存失败,源站可能有防盗链机制,建议将图片保存下来直接上传(img-LKooVd3p-1648311184478)(C:\Users\30666\AppData\Roaming\Typora\typora-user-images\image-20220326160405082.png?lastModify=1648282919)]](https://img-blog.csdnimg.cn/993321379a3843f2bb0cb8df913acb2a.png?x-oss-process=image/watermark,type_d3F5LXplbmhlaQ,shadow_50,text_Q1NETiBA5LiD5a-75YyX6YeM,size_20,color_FFFFFF,t_70,g_se,x_16)
+
+用户提交的用户名和密码首先经过了一个认证过滤器，在这里将请求信息封装成一个类——Authentication类，这个类会存放用户信息，并且之后会存放用户的认证结果。然后调用认证方法到下一个地方进行认证。（也就是说判断是否是当前系统的用户）这里会通过一个认证管理器，认证管理器委托数据库访问认证提供者进行认证，这个提供者主要负责认证逻辑处理工作，首先从`UserDetailsService`用户详情服务商中调用`loadUserByUsername()`获取用户信息，会返回的用户详情信息类实例`UserDetails`，这个提供者通过密码加密器对比前端传来的密码和数据库中存在的密码是否一致。然后根据比对结果填充封装后的请求信息类。随后，过滤器便收到了认证的结果，过滤器将结果保存在服务器的一个叫做`SecurityContextHolder`的地方。通过这样一个方法`SecurityContextHolder.getContext().setAuthentication( authentication )`将认证结果保存。
+
+部分方法说明：
+
+1. `UsernamePasswordAuthenticationFilter`是处理用户名和密码认证方式的一个过滤器，将请求信息封装为Authentication类
+2. `AuthenticationManager`是一个接口，定义了认证的方法，也是认证的入口，在这里他是用来管理各种认证方法的。有一个实现类ProviderManager里面会有一列表的认证方式。我们在自己写的登录认证Service中需要注入这样的接口，调用他的认证方法进行认证。会返回认证信息Authentication。我们可以对返回的认证信息进行后续的操作，如获取其中的用户信息构造jwtToken，然后将其存放在redis中
+3. UserDetailsService接口：在这里我们需要指定相应的从数据库查询用户信息的方法。我们需要自己实现这个接口，注入一个DAO然后将其从数据库中查询到的用户信息转换成Security中要求的UserDetails对象即可。
+4. UserDetails接口：这个接口存放了用户信息，以及与用户认证和授权有关的方法，Security会调用这个接口的实现类来判断账户的认证授权情况。
+
+## 2、认证
+
+## 3、授权
+
+## 4、自定义失败处理
+
+## 5、跨域
+
+## 6、自定义权限校验方法
+
+## 7、CSRF
+
+## 8、认证处理器
+
+
+# 六、JVM——Java虚拟机
+
+## 1、类加载机制
 
 类加载器就是加载其他类的类，她负责将字节码文件加载到内存，创建Class对象。
 
