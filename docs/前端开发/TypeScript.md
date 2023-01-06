@@ -7,7 +7,7 @@
 | boolean        | 布尔值                                                       | let isDone: boolean = false;                                 |
 | number         | 数字。Typescript中所有的数字都是浮点数，不仅支持十进制和十六进制，还支持二进制和八进制 | let dec: number = 6;                                         |
 | string         | 字符串。使用双引号或者单引号表示字符串。模板字符串：被反引号包围，用`${expr}`这种形式嵌入表达式 | let name: string ="bob";<br>let sentence: string = `hello, ${name}` |
-| list           | 数组。有两种方式可以定义，第一种再元素类型后面接上`[]`，第二种使用数组泛型`Array<元素类型>` | let list: number[] = [1, 2, 3];<br>let list: Array<Number> = [1, 2, 3]; |
+| list           | 数组。有两种方式可以定义，第一种再元素类型后面接上`[]`，第二种使用数组泛型`Array<元素类型>` | let list: number[] = [1, 2, 3];<br>let list: `Array<Number>` = [1, 2, 3]; |
 | tuple          | 元组类型允许表示一个一致元素数量和类型的数组，各种元素的类型不必相同。 | let x: [string, number];<br>x = ["hello", 10];<br>x[0];      |
 | enum           | 枚举类型，默认情况下从0为元素进行编号。                      | enum Color {Red, Green, Blue}<br>let c: Color = Color.Green; |
 | any            | 任意类型，允许再编译时可选择性的包含或者移除类型检查         |                                                              |

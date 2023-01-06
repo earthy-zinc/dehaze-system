@@ -656,17 +656,17 @@ Runnable task = () -> System.out.println("hello");
 
 Java 8中定义了很多预定义的函数式接口，用于常见类型的代码传递。
 
-| 函数接口            | 方法定义               | 说明                                 |
-| ------------------- | ---------------------- | ------------------------------------ |
-| Predicate<T>        | boolean test(T t)      | 谓词，测试输入是否满足条件           |
-| Function<T, R>      | R apply(T t)           | 函数转换，输入类型为T，输出类型为R   |
-| Consumer<T>         | void accept(T t)       | 消费者，输入类型为T                  |
-| Supplier<T>         | T get()                |                                      |
-| UnaryOperator<T>    | T apply(T t)           | 函数转换的特例，输入和输出的类型一样 |
-| BiFUnction<T, U, R> | R apply(T t, U u)      | 函数转换，接受两个参数，输出R        |
-| BinaryOperator<T>   | T apply(T t, T u)      | 输入和输出都一样                     |
-| BiConsumer<T, U>    | void accept(T t, U u)  | 消费者，接收两个参数                 |
-| BiPredicate<T, U>   | boolean test(T t, U u) | 谓词，接受两个参数                   |
+| 函数接口              | 方法定义               | 说明                                 |
+| --------------------- | ---------------------- | ------------------------------------ |
+| `Predicate<T>`        | boolean test(T t)      | 谓词，测试输入是否满足条件           |
+| `Function<T, R>`      | R apply(T t)           | 函数转换，输入类型为T，输出类型为R   |
+| `Consumer<T>`         | void accept(T t)       | 消费者，输入类型为T                  |
+| `Supplier<T>`         | T get()                |                                      |
+| `UnaryOperator<T>`    | T apply(T t)           | 函数转换的特例，输入和输出的类型一样 |
+| `BiFUnction<T, U, R>` | R apply(T t, U u)      | 函数转换，接受两个参数，输出R        |
+| `BinaryOperator<T>`   | T apply(T t, T u)      | 输入和输出都一样                     |
+| `BiConsumer<T, U>`    | void accept(T t, U u)  | 消费者，接收两个参数                 |
+| `BiPredicate<T, U>`   | boolean test(T t, U u) | 谓词，接受两个参数                   |
 
 上面的函数式接口传递的参数都是对象类型的。对于基本的数据类型，为了避免装箱拆箱，Java 8 提供了一些专门的函数。这些函数式接口被大量使用于Java 8的函数式数据处理Stream类中。
 
@@ -835,7 +835,7 @@ skip表示跳过流中的n个元素，如果流中的元素不足n个名，就�
 
 ##### max min
 
-他们返回流中的最大值或者最小值。返回类型是Optional<T>这个类是一个泛型容器类，内部只有一个类型为T的单一变量value，可能为null，也可能不为null，这个类用于准确的传递程序的语义，它清楚地表明。其代表的值可能为空。程序员应该适当的处理
+他们返回流中的最大值或者最小值。返回类型是`Optional<T>`这个类是一个泛型容器类，内部只有一个类型为T的单一变量value，可能为null，也可能不为null，这个类用于准确的传递程序的语义，它清楚地表明。其代表的值可能为空。程序员应该适当的处理
 
 Optional中定义了一些方法
 
@@ -939,7 +939,7 @@ public static <T> Collector<T, ?, List<T>> toList(){
 
 反射是在运行时动态的获取类型的信息，比如接口、成员、方法、构造方法这些类的信息，根据运行时动态获取到的信息创建对象，访问修改成员，调用方法。
 
-针对反射特性，Java中有一个名字为Class的类，我们可以通过该类获取对象信息。每个已加载的类在内存中都有一份类信息，每个对象都有只想它所属类信息的引用。所有类的根父类Object有一个方法getClass可以获取对象的Class对象。Class是一个泛型类，有一个类型参数，返回的时Class<?>。获取Class对象不一定需要实例对象，我们可以使用<类名>.class获取Class对象。接口也有Class对象，我们可以通过这种方式获取接口的信息，基本类型、void也都有对应的class信息。对于数组，每种类型都有对应的数组类型的Class对象，每个维度都有一个。枚举类型也有对应的Class。
+针对反射特性，Java中有一个名字为Class的类，我们可以通过该类获取对象信息。每个已加载的类在内存中都有一份类信息，每个对象都有只想它所属类信息的引用。所有类的根父类Object有一个方法getClass可以获取对象的Class对象。Class是一个泛型类，有一个类型参数，返回的时`Class<?>`。获取Class对象不一定需要实例对象，我们可以使用`<类名>.class`获取Class对象。接口也有Class对象，我们可以通过这种方式获取接口的信息，基本类型、void也都有对应的class信息。对于数组，每种类型都有对应的数组类型的Class对象，每个维度都有一个。枚举类型也有对应的Class。
 
 Class还有一个静态方法forName可以直接根据类名加载Class，有了Class对象之后，我们就可以了解到关于类型的很多信息，并且基于这些信息采取行动。
 
@@ -961,25 +961,25 @@ Class还有一个静态方法forName可以直接根据类名加载Class，有了
 
 针对Filed字段也有很多信息可以获取
 
-| Field字段                               | 说明                   |
-| --------------------------------------- | ---------------------- |
-| getName()                               |                        |
-| isAccessible()                          |                        |
-| setAccessible()                         | 设置访问权限           |
-| get(Object obj)                         | 获取指定对象中该字段值 |
-| set(Object obj, Object value)           | 设置指定对象中该字段值 |
-| getModifiers()                          | 返回字段修饰符         |
-| getType()                               | 返回字段的类型         |
-| getAnnotation(Class<T> annotationClass) | 获取字段的注解信息     |
+| Field字段                                 | 说明                   |
+| ----------------------------------------- | ---------------------- |
+| getName()                                 |                        |
+| isAccessible()                            |                        |
+| setAccessible()                           | 设置访问权限           |
+| get(Object obj)                           | 获取指定对象中该字段值 |
+| set(Object obj, Object value)             | 设置指定对象中该字段值 |
+| getModifiers()                            | 返回字段修饰符         |
+| getType()                                 | 返回字段的类型         |
+| `getAnnotation(Class<T> annotationClass)` | 获取字段的注解信息     |
 
 Class的实例变量获取方法信息，会返回一个Method类，里面存放了与方法有关的信息。
 
-| 获取方法                                           | 说明                                             |
-| -------------------------------------------------- | ------------------------------------------------ |
-| getMethods()                                       | 返回所有公共方法，包括其父类的                   |
-| getDeclaredMethods()                               | 返回本类声明的所有方法，包括非公共的             |
-| getMethod(String name, Class<?> ...parameterTypes) | 返回本类或者父类中指定名称或者参数类型的公共方法 |
-| getDeclaredMethod()                                | 返回本类中声明的指定名称或类型的方法             |
+| 获取方法                                             | 说明                                             |
+| ---------------------------------------------------- | ------------------------------------------------ |
+| getMethods()                                         | 返回所有公共方法，包括其父类的                   |
+| getDeclaredMethods()                                 | 返回本类声明的所有方法，包括非公共的             |
+| `getMethod(String name, Class<?> ...parameterTypes)` | 返回本类或者父类中指定名称或者参数类型的公共方法 |
+| getDeclaredMethod()                                  | 返回本类中声明的指定名称或类型的方法             |
 
 方法类中可以调用的方法
 
@@ -996,9 +996,9 @@ Method类中还有很多的方法，可以获得方法的各种信息
 | 方法                                     | 说明                     |
 | ---------------------------------------- | ------------------------ |
 | int getModifiers()                       | 获取方法的修饰符         |
-| Class<?>[ ] getParameterTypes()          | 获取方法的参数类型       |
-| Class<?>getReturnTypes()                 | 获取方法的返回值         |
-| Class<?>[] getExceptionTypes()           | 获取方法声明抛出的异常   |
+| `Class<?>[ ] getParameterTypes()`        | 获取方法的参数类型       |
+| `Class<?>getReturnTypes()`               | 获取方法的返回值         |
+| `Class<?>[] getExceptionTypes()`         | 获取方法声明抛出的异常   |
 | getDeclaredAnnotations()                 | 获取注解信息             |
 | Annotation [][] getParamterAnnotations() | 获取方法参数上的注解信息 |
 |                                          |                          |
@@ -1007,12 +1007,12 @@ Method类中还有很多的方法，可以获得方法的各种信息
 
 可以通过Class实例对象的newInstance()方法创建对象。他会第哦啊用类的默认构造方法。Class类中获取构造方法的方法有以下几种
 
-| 方法                                       | 说明                       |
-| ------------------------------------------ | -------------------------- |
-| Constructor<?>[] getConstructors()         | 获取所有公有的构造方法     |
-| getDeclaredConstructors()                  | 获取所有的构造方法         |
-| getConstructor(Class<?>... parameterTypes) | 获取指定参数类型的构造方法 |
-|                                            |                            |
+| 方法                                         | 说明                       |
+| -------------------------------------------- | -------------------------- |
+| `Constructor<?>[] getConstructors()`         | 获取所有公有的构造方法     |
+| getDeclaredConstructors()                    | 获取所有的构造方法         |
+| `getConstructor(Class<?>... parameterTypes)` | 获取指定参数类型的构造方法 |
+|                                              |                            |
 
 Class类通过这些方法获取的Constructor类表示构造方法，我们可以通过它创建对象。他有一个newInstance()方法创建对象。除了创建对象，他还有其他的方法，可以获取关于构造方法的很多信息。总体来说，也就是获取参数类型、获取构造方法的修饰符，获取构造方法的注解信息，获取构造方法中参数上的注解信息。
 
@@ -1049,13 +1049,13 @@ ClassLoader是类加载器，Initialize表示类加载后，是否执行类的�
 
 对于数组类型，有一个专门的方法getComponentType()可以获取它的元素类型，在java.lang.reflect包中有一个针对数组的专门的类Array可以通过类名获取
 
-| 方法                                                  | 说明                             |
-| ----------------------------------------------------- | -------------------------------- |
-| Array.newInstance(Class<?> componentType, int length) | 创建指定长度、指定元素类型的数组 |
-| Array.get(Object array,int index)                     | 获取数组指定索引位置index处的值  |
-| Array.set(Object array, int index, Object value)      | 修改数组指定索引位置处的值       |
-| Array.getLength(Object array)                         | 返回数组的长度                   |
-|                                                       |                                  |
+| 方法                                                    | 说明                             |
+| ------------------------------------------------------- | -------------------------------- |
+| `Array.newInstance(Class<?> componentType, int length)` | 创建指定长度、指定元素类型的数组 |
+| Array.get(Object array,int index)                       | 获取数组指定索引位置index处的值  |
+| Array.set(Object array, int index, Object value)        | 修改数组指定索引位置处的值       |
+| Array.getLength(Object array)                           | 返回数组的长度                   |
+|                                                         |                                  |
 
 在Array类中，数组使用Object来表示。
 
@@ -1209,23 +1209,22 @@ Java标准库自带的`java.util`包提供了集合类`collection`，他是除�
 
 ### 1）List
 
-* List<E>接口有以下几种方法：
-
+* `List<E>`接口有以下几种方法：
 	* 在末尾添加一个元素
-
+	
 	* 在指定的索引后添加一种元素
-
+	
 	* 删除指定索引的元素
-
+	
 	* 删除某个元素
-
+	
 	* 获取指定索引的元素
-
+	
 	* 获取列表的大小
 	* 返回某个元素的索引
 	* 判断List是否存在某个元素
-
-* List<E>接口常用的主要有两种实现：LinkedList 链表，但不仅可以用所链表，还可以用作栈、队列、双向队列。ArrayList 是动态数组
+	
+* `List<E>`接口常用的主要有两种实现：LinkedList 链表，但不仅可以用所链表，还可以用作栈、队列、双向队列。ArrayList 是动态数组
 
 * 遍历访问 List 最好使用迭代器 Iterator 访问
 
@@ -1254,7 +1253,7 @@ Java标准库自带的`java.util`包提供了集合类`collection`，他是除�
 
 ### 3）Map
 
-* Map<E>接口主要有三种实现：EnumMap TreeMap HashMap
+* `Map<E>`接口主要有三种实现：EnumMap TreeMap HashMap
 * Map有键值的概念，一个键映射到一个值，Map按照键存储和访问值，键不能重复，即一个键只会存储一份，给同一个键重复设值会覆盖原来的值，
 
 ## 十二、多线程
