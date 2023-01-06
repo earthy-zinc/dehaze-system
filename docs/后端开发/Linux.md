@@ -434,11 +434,11 @@ yum [options] [command] [package]
 * command：
 	* check-update：列出所有可更新的软件
 	* update：更新所有软件
-	* install <package_name>：安装指定的软件包
-	* update <package_name>：更新指定的软件包
+	* `install <package_name>`：安装指定的软件包
+	* `update <package_name>`：更新指定的软件包
 	* list：列出所有可安装的软件
-	* remove <package_name>：移除软件包
-	* search <keyword>：按关键字查找软件包
+	* `remove <package_name>`：移除软件包
+	* `search <keyword>`：按关键字查找软件包
 	* clean：清除缓存目录下的软件包
 
 

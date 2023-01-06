@@ -16,11 +16,11 @@ selector					/*选择器的名称*/
 
 插入方法有三种：
 
-| 插入方法(Insert method)         | 使用范围                         | 使用方法                             | 应用优先级 |
-| ------------------------------- | -------------------------------- | ------------------------------------ | :--------: |
-| 外部样式表 External style sheet | 样式需要应用于很多个页面的时候。 | 使用<link>标签将样式表引入HTML文件中 |     低     |
-| 内部样式表 Internal style sheet | 样式应用于单个页面的时候         | 使用<style>标签定义在HTML文件头部    |     中     |
-| 内联样式 inline style           | 样式只应用于单个元素的时候       | 在元素中使用 style 属性              |     高     |
+| 插入方法(Insert method)         | 使用范围                         | 使用方法                               | 应用优先级 |
+| ------------------------------- | -------------------------------- | -------------------------------------- | :--------: |
+| 外部样式表 External style sheet | 样式需要应用于很多个页面的时候。 | 使用`<link>`标签将样式表引入HTML文件中 |     低     |
+| 内部样式表 Internal style sheet | 样式应用于单个页面的时候         | 使用`<style>`标签定义在HTML文件头部    |     中     |
+| 内联样式 inline style           | 样式只应用于单个元素的时候       | 在元素中使用 style 属性                |     高     |
 
 ## 二、CSS选择器
 
@@ -88,10 +88,10 @@ id选择器
 | .class            | .intro          | 选择所有class="intro"的元素                 |
 | #id               | #name           | 选择所有id="name"的元素                     |
 | *                 |                 | 选择所有元素                                |
-| element           | p               | 选择所有标签为p的元素，即<p>                |
-| element,element   | div,p           | 选择所有<div>元素和<p>元素                  |
-| element element   | div p           | 选择所有<div>元素内的所有<p>元素            |
-| element>element   | div>p           | 选择所有父级元素是<div>的<p>元素            |
+| element           | p               | 选择所有标签为p的元素，即`<p>`              |
+| element,element   | div,p           | 选择所有`<div>`元素和`<p>`元素              |
+| element element   | div p           | 选择所有`<div>`元素内的所有`<p>`元素        |
+| element>element   | div>p           | 选择所有父级元素是`<div>`的`<p>`元素        |
 | [attribute]       | [target]        | 选择所有带有target属性的元素                |
 | [attribute=value] | [target=blankl] | 选择所有带有target属性且其值等于blank的元素 |
 

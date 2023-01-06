@@ -4,7 +4,7 @@ heroImage:
 heroText: 土味锌的阅读笔记
 tagline: 全栈开发学习笔记
 actionText: 快速上手 →
-actionLink: /后端开发
+actionLink: /前言/说明
 features:
 - title: 简洁至上
   details: 以 Markdown 为中心的项目结构，以最少的配置帮助你专注于写作。
