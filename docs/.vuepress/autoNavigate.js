@@ -45,7 +45,6 @@ module.exports = function filterNav(){
     return nav.filter((item) => {
         if(item.text === '.vuepress') return false;
         if(item.text === 'README') return false;
-        if(item.items == []) return false;
         return true;
     });
 }

@@ -253,11 +253,16 @@ docker cp redis:/etc/redis/ /opt/docker/redis/
 
 ### nginx
 
-```
+```shell
 mkdir -p /opt/docker/nginx/html
 mkdir -p /opt/docker/nginx/conf
 
-docker run --name nginx -p 88:80 -v /opt/docker/nginx/html:/usr/share/nginx/html -v /opt/docker/nginx/conf/nginx:/etc/nginx -d nginx
+docker run --name nginx \
+-p 7788:80 \
+-p 8911:81 \
+-v /opt/docker/nginx/html:/usr/share/nginx/html \
+-v /opt/docker/nginx/conf/nginx:/etc/nginx \
+-d nginx
 
 docker cp nginx:/etc/nginx /opt/docker/nginx/conf
 ```
