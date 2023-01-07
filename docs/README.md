@@ -1,6 +1,6 @@
 ---
 home: true
-heroImage: ./tou.png
+heroImage: ./tou.jpg
 heroText: 土味锌的阅读笔记
 tagline: 全栈开发学习笔记
 actionText: 快速上手 →
