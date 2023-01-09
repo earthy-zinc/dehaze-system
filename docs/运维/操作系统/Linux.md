@@ -605,3 +605,29 @@ break和continue用于跳出循环
 . filename		 #方法1
 source filename   #方法2
 ```
+
+
+
+## **土味商城流水线指令**
+
+```sh
+mkdir -p mall-order/target && \
+mkdir -p mall-member/target && \
+touch mall-order/target/mall-order.jar && \
+touch mall-order/Dockerfile && \
+touch mall-member/target/mall-member.jar && \
+touch mall-member/Dockerfile
+
+#将Dockerfile文件复制到target文件夹
+cp -p mall-coupon/Dockerfile mall-coupon/target/
+cp -p mall-gateway/Dockerfile mall-gateway/target/
+cp -p mall-member/Dockerfile mall-member/target/
+cp -p mall-order/Dockerfile mall-order/target/
+cp -p mall-product/Dockerfile mall-product/target/
+cp -p mall-search/Dockerfile mall-search/target/
+cp -p mall-third-party/Dockerfile mall-third-party/target/
+cp -p mall-ware/Dockerfile mall-ware/target/
+#将jar和Dockerfile文件打包
+tar -cvf tuwei-mall.tar **/target/*.jar **/target/Dockerfile
+```
+
