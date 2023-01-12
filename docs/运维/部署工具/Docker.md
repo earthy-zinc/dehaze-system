@@ -260,6 +260,8 @@ mkdir -p /opt/docker/nginx/conf
 docker run --name nginx \
 -p 7788:80 \
 -p 8911:81 \
+-p 8912:82 \
+-p 8913:83 \
 -v /opt/docker/nginx/html:/usr/share/nginx/html \
 -v /opt/docker/nginx/conf/nginx:/etc/nginx \
 -d nginx
