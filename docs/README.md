@@ -14,3 +14,13 @@ features:
   details: 土味锌将在这一年中不断更新内容，本地机器和公网同步时差不超过1天。真正做到持续更新，每篇文章最后都有更新时间戳，能够实时观察。
 footer: Apache License | Copyright © 2023-present Earthy Zinc
 ---
+
+关于本文档
+
+------
+
+本文档采用vuepress编写，[点击此处](https://vuepress.cn/)查看如何搭建一个vuepress网页文档。
+
+本文档采用华为云DevCloud进行流水线部署，[点击此处](https://devcloud.cn-southwest-2.huaweicloud.com/home#/locale=zh-cn)查看如何部署。
+
+本文档采用Gitee进行源代码管理。[点击此处](https://gitee.com/earthy-zinc/reading-note)获取源代码。
