@@ -4,7 +4,7 @@ heroImage: ./tou.jpg
 heroText: 土味锌的阅读笔记
 tagline: 全栈开发学习笔记
 actionText: 快速上手 →
-actionLink: /后端开发/编程语言/Java
+actionLink: /后端开发/编程语言/Java基础
 features:
 - title: 内容丰富
   details: 内容详实全面。不仅有前端、后端、运维、算法、编程工具的相关知识，涵盖软件开发的方方面面。还有一些关于机器学习的内容，深入计算机前沿。
