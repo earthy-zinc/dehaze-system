@@ -253,3 +253,17 @@ class child(parent1, parent2, ..., parentN):
 * **私有变量**：变量名称前方带有单下划线或者双下划线的是非公开变量。最好不要直接引用。
 
 对于一些私有函数，也是同样的道理。因此如果看到变量名称前面有下划线，一般都是私有变量或者特殊变量。
+
+## 9. pip
+
+`pip install`命令可以从网上安装python依赖包。语法格式如下：
+
+```python
+pip install [option] [package]..
+```
+
+* `-c, --constraint <file>`使用给定的约束文件约束版本
+* `-r, --requirement <file>`从给定需求文件中安装
+* `--no-deps`不安装包的依赖项
+* `-e, --editable <path/url>`在可编辑模式下从一个本地路径或者从一个版本控制系统下的URL安装一个项目
+* `-t, --target <dir>`将包安装到指定目录。
