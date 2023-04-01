@@ -650,7 +650,13 @@ AQS使用了一种虚拟的双向队列，每条请求共享资源的线程会�
 
 ### 16、ReentrantLock
 
+Reentrant意为可重入的，即可重入锁。
+
 ### 17、ReentrantReadWriteLock
+
+### 18、fork join
+
+Fork Join 框架是Java并发工具包中一种可以将一个大任务拆分成多个小任务来异步执行的工具
 
 ## 二、集合
 
@@ -710,7 +716,176 @@ Java标准库自带的`java.util`包提供了集合类`collection`，他是除�
 | 插入元素           | void add(int index, E element) |
 | 修改元素           | E set(int index, E element)    |
 
+ArrayList实现了List接口，是顺序容器，元素存放的数据与放进去的顺序相同，允许放入null元素，底层通过数组实现，除了该类未实现同步以外，其余都和Vector相同。每个ArrayList都有一个容量，表示底层数组的实际大小。容器内存储的元素个数不能多余当前容量。当向容器中添加元素时，如果容量不足，容器会自动增大底层数组的大小。Java中的泛型只是编译器提供的语法糖，实际上数组中存放的都是Object类型。以便能够容纳任何对象。为了追求效率，Array List没有实现同步。
 
+自动扩容机制：每当向数组中添加元素时，都要去检查添加之后元素的个数是否会超出当前数组的长度，如果超出长度，数组将会进行扩容，以满足添加数据的需求，数组扩容通过一个公开的房吗来实现，在实际添加大量元素之前，我们也可以使用ensureCapacity方法来手动增加ArrayList的容量。数组扩容时，会将老数据中的元素重新拷贝一份到新的数据中，每次数组容量的增长大约是其原容量的1.5倍，这种操作的代价时很高的，因此在实际使用时，我们应该尽量避免数组容量的扩张，如果能偶与之保存的数据是多少，我们在构造Array List实例时，就指定其容量，或者通过调用ensureCapacity方法来手动增加容量。
+
+```java
+public void ensureCapacity(int minCapacity){
+    int minExpand = (elementData != DEFAULTCAPACITY_EMPTY_ELEMENTDATA) ? 0 : DEFAULT_CAPACITY;
+    if(minCapacity > minExpand){
+        ensureExplicitCapacity(minCapacity);
+    }
+}
+
+private void ensureCapacityInternal(int minCapacity){
+    if(elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA){
+        minCapacity = Math.max(DEFAULT_CAPACITY, minCapacity);
+    }
+    ensureExplicitCapacity(minCapacity);
+}
+private void ensureExplicitCapacity(int minCapacity){
+    modCount++;
+    if(minCapacity- elementData.length > 0){
+        grow(minCapacity);
+    }
+}
+private void grow(int minCapacity){
+    int oldCapacity = elementData.length;
+    int newCapacity = oldCapacity + (oldCapacity >> 1);
+    if (newCapacity - minCapacity > 0) newCapacity = minCapacity;
+    if (newCapacity - MAX_ARRAY_SIZE > 0) newCapacity = hugecapacity(minCapacity);
+    elementData = Arrays.copyOf(elementData, newCapacity);
+}
+```
+
+add, addAll方法：添加元素可以是在数组最后面添加，也可以是在指定位置添加。这两种添加元素的方式，都有可能导致数组剩余空间不足，因此在添加元素之前都需要进行剩余空间检查。如有需要就进行自动扩容，扩容的操作最终是通过grow方法实现的。在指定位置添加的话，需要先对后面的元素将进行移动，然后才能完成插入操作。
+
+#### LinkedList
+
+LinkedList同时实现了List接口和Deque接口，也就是说它既可以看作一个顺序容器，又可以看作一个队列，同时也可以看作是一个栈。当我们需要使用栈或者队列时，我们就可以考虑使用LinkedList，不过也可以使用ArrayDeque，这个在当作栈或者队列使用时性能更好。
+
+底层主要通过双向链表实现，双向链表的每个结点用内部类Node来表示，LinkedList通过first、last引用分别指向链表的第一个和最后一个元素，当链表为空的时候first、last指针都指向null；
+
+```java
+// 查看队头元素
+public E peek(){
+    final Node<E> f = first;
+    return (f == null) ? null : f.item;
+}
+// 查看队头元素，没有会抛出异常
+public E element(){
+    return getFirst();
+}
+// 获取队头元素，会将队头元素弹出队列
+public E poll(){
+    final Node<E> f = first;
+    return (f == null) ? null : unlinkFirst(f);
+}
+// 双端队列方法
+public boolean offerFirst(E e){
+    addFirst(e);
+    return true;
+}
+public boolean offerLast(E e){
+    addLast(e);
+    return true;
+}
+public E peekFirst(){
+    final Node<E> f = first;
+    return (f == null) ? null: f.item;
+}
+```
+
+#### Stack & Queue
+
+Queue接口继承自Collection，除了最基本的Collection方法之外，他还额外支持insertion，extraction和inspection操作，每种类型有两个不同的方法，一种抛出异常的实现，另外一组没有就返回null。
+
+| 类型    | 抛出异常的方法 | 返回特定值方法 |
+| ------- | -------------- | -------------- |
+| insert  | add(e)         | offer(e)       |
+| remove  | remove()       | poll()         |
+| examine | element()      | peek()         |
+
+Deque时double ended queue 表示双向的队列，Deque继承自Queue接口，除了支持Queue的方法之外，还支持双向的insert、remove、examine操作。由于Deque是双向的，所以可以对队列的头和尾部都进行操作，他同时还支持两组格式，一组是抛出异常的实现，另外一组是返回值的实现。
+
+从名字我们可以看出ArrayDeque底层通过数组来实现，为了满足可以同时在数组两段插入或者删除元素的需求，该数组还必须是循环的，即循环数组，也就是说数组的任何一点都可能被看作起点或者重点，ArrayDeque是非线程安全的，当多个线程同时使用的时候，需要程序员手动同步。
+
+在Deque中head指向首段第一个有效的元素，而tail指向尾端第一个可以插入元素的空位。因为是循环数组，所以head不一定总等于0，tail也不一定总是比head大。
+
+addFirst方法，作用是在Deque的首端插入元素，也就是在head指针的前面插入一个元素，在空间足够且下标没有越界的情况下，只需要将elements[--head] = e，在实际中，需要考虑空间是否够用，下标是否越界，而空间问题是在插入之后解决的，因为tail总是执行下一个可以插入的空位，也就意味着elements数组至少有一个空位，所以插入元素的时候不用考虑空间问题。针对下标越界的问题，head = (head - 1) & (elements.length - 1)相当于取余，同时解决了head为复制的情况，因为elements.length必须是2的指数倍，elements - 1就是二进制低位全1，跟head - 1 相与之后就起到了驱魔的作用。对于扩容函数，逻辑是申请一个原数组容量两倍的新数组，然后将原数组复制过去。
+
+addLast方法，作用是在Deque的尾端插入元素，也就是在tail的位置插入元素，由于tail总是指向下一个可以插入的空位，因此只需要elements[tail] = e; 插入完成后再次检查空间，如果空间已经用光，则会调用doubleCapacity方法进行扩容。
+
+```java
+public void addLast(E e){
+    if(e == null) throw new NullPointerException();
+    elements[tail] = e;
+    if( (tail = (tail + 1) & (element.length -1)) == head)
+        doubleCapacity();
+}
+```
+
+pollFrist()方法，这个方法的作用是删除并返回Deque首段的元素，也就是head位置上的元素，如果容器不空，只需要直接返回elements[head] 即可，然后处理下标的问题。由于ArrayDeque中不允许放入null，当elements[head] == null 的时候，也就意味着容器为空。
+
+```java
+public E pollFirst(){
+    int h = head;
+    E result = elements[head];
+    if(result == null) return null;
+    elements[h] = null;
+    head = (head + 1) & (elements.length -1);
+    return result;
+}
+```
+
+pollLast()方法是删除并返回Deque尾端的元素，也就是tail位置前面的哪一个元素。
+
+peekFirst，peekLast方法是返回但不删除首端、尾端的元素。
+
+#### PriorityQueue
+
+优先队列的作用是能够保证每次去除的元素都是队列中权值最小的，这里涉及到了大小关系，元素之间的大小可以通过元素本身的自然顺序，也可以通过构造时传入的比较器来判别。PriorityQueue也实现了Queue接口，不允许放入null元素。通过堆这个数据结构来实现。具体说是通过完全二叉树实现的小顶堆，任意一个非叶子节点的权值都不大于其左右子节点的权值。也就意味着可以通过数组来作为PriorityQueue的底层实现。在堆中父子结点的编号之间有一定的数学关系。在优先队列中，查看某个元素获取某个元素都是常数级的时间，而添加删除元素的时间复杂度为log(N)
+
+add, offer方法，都是向优先队列中插入元素，只是两者在插入失败时的处理方法不同，add方法在插入失败后会抛出异常，offer方法在插入失败时会返回false。
+
+每当添加一个元素，都有可能破坏小顶堆的性质，使得小顶堆不满足任意一个非叶子节点的权值都不大于其左右子节点。因此需要一定的调整。
+
+```java
+public boolean offer(E e){
+    if(e == null) throw new NullPointerException();
+    modCount++;
+    int i = size;//size为当前小顶堆中存放元素的个数
+    if(i >= queue.length) grow(i+1);//如果当前存放元素个数大于等于队列的长度了，就自动扩容
+    size = i + 1;//添加一个元素 ，size增加1
+    if(i == 0) queue[0] = e; //队列本身为空时，就在第一个位置处添加元素
+    else siftUp(i, e); //否则就需要添加，然后调整堆操作
+}
+
+// 从k指定的位置开始，将x 逐层与当前点的父节点值比较并交换，知道满足x>=queue[parent]为止
+private void siftUp(int k, E x){
+    while(k > 0){
+        int parent = (k - 1) >>> 1;//parentNo = (nodeNo - 1)/2
+        Object e = queue[parent];
+        if(comparator.compare(x, (E) e) >= 0) 
+            break;
+        queue[k] = e;
+        k = parent;
+    }
+    queue[k] = x;
+}
+```
+
+element, peek方法，获取但是不删除队首元素，也就是队列中权值最小的那个元素，前者会抛出异常，后者会返回null，根据小顶堆的性质，堆顶那个元素就是全局最小的元素，由于堆用数组表示，因此0下标处的元素就是对顶的元素。
+
+remove，poll方法，获取并删除堆顶的元素，由于删除操作会改变队列的结构，因此删除需要对堆做出调整。
+
+```java
+public E poll(){
+    if(size == 0) return null;
+    int s = --size; // s是最后一个元素的下标
+    modCount++;
+    E result = (E) queue[0];
+    E x = (E) queue[s]; // 先取出最后一个元素
+    queue[s] = null; // 将最后一个位置置空
+    if (s!= 0)//如果不是首个元素，那就需要对堆进行调整
+        siftDown(0, x)
+    return result;
+}
+// 首先记录0下标处的元素，并用最后一个元素替换0下标位置的元素，之后调用siftDown方法堆堆进行调整，最后返回原来0下标处的那个元素，这个方法作用是从k指定的位置开始将x逐层向下与当前点的左右孩子中较小的那个交换，知道x小于等于左右孩子中的任意一个为止。
+```
+
+remove方法用于删除队列中跟传入元素相等的某一个元素，由于删除操作会改变队列结构，因此需要进行调整，而删除元素的位置可能是任意的，所以调整过程比其他函数稍微繁琐。如果删除的是最后一个元素，直接删除。如果删除的不是最后一个元素，从删除点开始以最后一个元素为参照调用一次siftDown方法
 
 ### 2、Set
 
@@ -721,7 +896,87 @@ Java标准库自带的`java.util`包提供了集合类`collection`，他是除�
 * `Map<E>`接口主要有三种实现：EnumMap TreeMap HashMap
 * Map有键值的概念，一个键映射到一个值，Map按照键存储和访问值，键不能重复，即一个键只会存储一份，给同一个键重复设值会覆盖原来的值，
 
+#### HashMap
 
+HashMap实现了Map接口，即允许放入key为null的元素，也允许插入value为空的元素，除了该类尚未实现同步以外，其他的和Hashtable大致相同。和TreeMap不同，该容器不保证元素的顺序，根据需要该容器可能会对元素重新哈希，元素的顺序也会倍重新打散，因此不同时间迭代同一个HashMap的顺序可能会不同，根据对冲突的处理方式不同，哈希表有两种实现方式，一种是开放地址方式，另一种是冲突链表方式。
+
+如果选择合适的哈希函数，往Map中放数据和取数据都可以在常数时间内完成，但是对HashMap进行迭代时，需要遍历整个table以及后面跟的冲突链表，因此对于迭代比较频繁的场景。不宜将HashMap的初始大小设置的过大。有两个参数可以影响HashMap的性能：初始容量和负载系数。初始容量制定了初始table的大小，负载系数用来指定自动扩容的临界值。当entry的数量超过了capacity*load_factor时，容器将自动扩容并且重新计算哈希函数。对于插入元素较多的场景。将初始容量设置大点可以减少重新哈希的次数。
+
+将对象放入到HashMap或者时HashSet中，有两个方法需要特别关心。hashCode方法决定了对象会被放到哪一个桶中，当多个对象的哈希值冲突时，equals方法决定了这些对象是不是同一个对象。所以如果将自定义对象放入到HashMap或者HashSet中，需要复写这两个方法。
+
+get方法根据指定的key返回对应的value，该方法调用了getEntry(Object key)得到相应的entry，然后返回entry.getValue，因此getEntry是算法的核心。首先要通过hash函数得到对应的bucket下标，然后依次遍历冲突列表。通过key.equals(k)方法来判断是否是要找的那个entry
+
+```java
+final Entry<K, V> getEntry(Object key){
+    int hash = (key == null) ? 0 : hash(key);
+    for (Entry<K, V> e = table[hash&(table.length-1)]); e!=null; e = e.next){
+        Object k;
+        if(e.hash == hash && ((k = e.key) == key || (key != null && key.equals(k))))
+            return e;
+    }
+    return null;
+}
+```
+
+put方法，将指定的key，value添加到map中，该方法首先会对map做一次查找，看是否包含该元组，如果已经包含则直接返回，查找过程类似于getEntry方法。如果没有找到，则会通过addEntry方法插入新的entry，插入方式为头插法。
+
+remove方法，作用是删除key值对应的entry，该方法的具体逻辑是在removeEntryForKey中实现的，这个方法会首先找到key值对应的entry，然后删除该entry。
+
+```java
+final Entry<K, V> removeEntryForKey(Object key){
+    int hash = (key == null) ? 0 : hash(key);// 计算哈希值
+    int i = indexFor(hash, table.length); //计算引用数组的下标
+    Entry<K, V> prev = table[i];//得到下标对应的引用的冲突链表
+    Entry<K, V> e = prev;
+    while (e != null){
+        Entry<K, V> next = e.next;
+        Object k;
+        if(e.hash == hash && ((k = e.key) == key || (key!=null && key.equals(k)))){
+            modCount++; size--;
+            if(prev==e) table[i] = next; //如果要删除的是冲突链表中的第一个元素
+            else prev.next = next;
+            return e;
+        }
+        prev = e;
+        e = next;
+    }
+    return e;
+}
+```
+
+在java8中，HashMap有了一些修改，最大的不同就是利用了红黑树，所以这是由数组+链表+红黑树组成。HashMap在查找的时候，根据hash值我们能够迅速的定位到数组的具体下标，但是在之后需要顺着链表一个个对比才能找到我们需要的元素。时间复杂度取决于链表的长度。为O(n)，为了降低这些开销，在Java8中当链表中的元素达到了8个时，会将链表转换为红黑树，在这些位置进行查找的时候可以降低时间复杂度为O(logN)
+
+#### LinkedHashMap
+
+LinkedHashSet和LinkedHashMap在java中由相同的实现。前者仅仅时对后者做了一层包赚，也就是说LinkedHashSet里面有个LinkedHashMap，适配器模式。LinkedHashMap实现了Map接口，即允许放入key为null的元素，也允许插入value为null的元素，从名字上可以看出该容器是LinkedList和HashMap的混合题。也即是说它同时满足HashMap和LinkedList的一些特性，可以将LinkedHashMap看作LinkedList增强的HashMap
+
+事实上，LinkedHashMap是HashMap的直接子类，二者唯一的区别就是LinkedHashMap在HashMap的基础上采用了双向链表的形式将所有的entry连接起来，这样是为了保证元素的迭代顺序和插入顺序相同。LinkedHashMap在形式上和HashMap大致类似，多了个header指向双向链表的头部。该双向链表的迭代顺序是entry的插入顺序。
+
+除了可以保存迭代顺序，这种结构还有一种好处。迭代LinkedHashMap时不需要像HashMap那么遍历整个table，而只需要遍历header指向的双向链表即可。也就是说LinkedHashMap的迭代时间就只跟entry的个数相关。而和table的大小无关。
+
+有两个参数可以影响LinkedHashMap的性能，初始容量和负载系数，初始容量指定了初始table的大小，负载系数用来指定自动扩容的临界值。当entry数量超过capacity*load_factor时，容器将自动扩容并且重新Hash，对于插入较多的场景可以将初始容量设置大些。
+
+get方法，根据指定的key获取对应的value，
+
+put方法，将指定的key，value对添加到map中，该方法首先会对map做出一次查找，看是否包含该元组，如果包含就直接返回，查找过程类似于get方法。如果没有找到，则会通过addEntry方法插入新的Entry。这里的插入有两层含义。从table角度来看，新的entry需要插入到对应的bucket中，当有哈希冲突时，采用头插法将新的entry插入到冲突链表的头部。从header的加澳督来看，新的entry需要插入到双向链表的尾部。
+
+```java
+void addEntry(int hash, K key, V value, int bucketIndex){
+    if((size >= threshold) && (table[bucketIndex] != null)){
+        resize(2*tabke.length);
+        hash = (null != key) ? hash(key) : 0;
+        bucketIndex = hash & (table.length -1);
+    }
+    HashMap.Entry<K, V> old = table[bucketIndex];
+    Entry<K, V> e = new Entry<>(hash, key, value, old);
+    e.addBefore(header);
+    size++;
+}
+```
+
+在添加entry时，使用addBefore方法将新的entry插入到双向链表表头引用header的前面，这样e就成为了双向链表中最后一个元素。
+
+remove方法。作用是删除key值对应的entry，该方法的具体逻辑是在removeEntryForKey中实现的，这个方法会首先找到key值对应的entry，然后删除该entry，修改链表相应的引用。查找过程和get方法类似。
 
 ## 三、IO
 
@@ -768,6 +1023,85 @@ Java中对流的操作有加密、压缩、计算信息摘要、计算检验和�
 ### NIO
 
 NIO （new input and output）是一种看待输入输出不同的方式，他有缓冲区和通道的概念，更接近操作系统。
+
+StandardIO是对字节流的读写，在进行IO之前，首先创建一个流对象，流对象进行读写操作都是按照字节，一个字节一个字节的来读或这些，而NIO把IO抽象成块，类似于磁盘的读写，每次IO操作的单维都是一个块，块被读入内存之后就是一个byte数组，NIO一次可以读或者写多个字节。
+
+#### 流和块
+
+IO和NIO最重要的区别是数据打包和传输的方式，IO以流的方式处理数据，而NIO以块的方式处理数据，面向流的IO一次处理一个字节数据，一个输入流产生一个字节数据，一个输出流消费一个字节数据。为流式数据创建过滤器很容易，连接几个过滤器，以便每个过滤器只负责复杂处理机制的一部分，但是面向流的IO通常非常的慢。
+
+面向块的IO一次处理一个数据块，按块处理数据比按流处理数据要快得多，但是面向块的io缺少一些面向流的简单性。
+
+#### 通道和缓冲区
+
+**通道**是对原IO包中流的模拟，可以通过它读取和写入数据。通道与流的不同之处在于，流只能在一个方向上移动，而通道是双向的，可以用于读写或者同时读写。通道有以下几种类型：
+
+* FileChannel： 从文件中读写数据
+* DatagramChannel： 通过UDP读写网络中的数据
+* SocketChannel：通过TCP读写网络中的数据
+* ServerSocketChannel：可以监听新进来的TCP连接，对每一个新来的连接都会创建一个SocketChannel
+
+#### 缓冲区
+
+发送给一个通道中的所有数据都必须首先放到缓冲区中，同样地，从通道中读取的任何数据都要先读到缓冲区中。也就是说，不会直接对通道进行读写数据而是要先经过缓冲区。
+
+缓冲区实质上是一个数组，但是它不仅仅是一个数据，缓冲区提供了对数据的结构化访问，而且还可以跟踪系统的读写进程
+
+缓冲区包括：
+
+* ByteBuffer
+* CharBuffer
+* ShortBuffer
+* IntBuffer
+* LongBuffer
+* FloatBuffer
+* DoubleBuffer
+
+#### 缓冲区状态变量
+
+在缓冲区中，这几个变量描述了缓冲区当前的状态：capacity最大容量。position当前已经读写的字节数limit还可以读写的字节数
+
+状态变量改变：新建一个大小为8字节的缓冲区，此时位置position为0，而limit=capacity=8，从输入通道中读取5个字节数据写入缓冲区，此时position移动设置为5，limit保持不变。在将缓冲区数据写到输出通道之前，需要先调用flip方法，这个方法将limit设置为当前position并且将position设置为0。然后从缓冲区取4个字节。最后调用clear方法清空缓冲区，此时position和limit都被设置为初始位置。
+
+#### 选择器
+
+NIO常常被叫做非阻塞IO，主要是因为NIO在网络通信中的非阻塞性质而被广泛使用。NIO实现了IO多路复用中的Reactor模型，一个线程Thread使用一个选择器，通过轮询的方式去监听多个通道CHannel上的事件，从而让一个线程就可以处理多个事件。通过配置监听的通道为非阻塞，那么当通道上的IO事件还没到达时，就不会进入阻塞状态一直等待，而是继续轮询其他Channel，找到IO事件已经到达的通道执行。因为创建和切换线程的开销很大，因此，使用一个线程处理多个事件而不是使用一个线程处理一个事件具有更好的性能。
+
+#### IO多路复用——Reactor模型
+
+对于传统的IO模型，其主要是一个Server对接N个客户端，在客户端连接之后，为每个客户端都分配一个执行线程。
+
+传统IO每个客户端连接到达之后，服务端会分配一个线程给该客户端，该线程会处理包括读取数据，解码，业务计算，编码，以及发送数据整个过程。同一时刻，服务器的吞吐量和服务器能提供的线程数是呈线性关系的。
+
+但是这个设计模式有些问题，服务器的并发量对于服务端能够创建的线程数有很大的依赖关系，但是服务器线程却是不能无限增长的。服务端的每个线程不仅需要进行IO读写操作，还需要进行业务计算。服务端在互殴去客户端连接，读取数据以及写入数据的过程都是阻塞类型的，在网络情况不好的时候，会极大降低服务器每个线程的利用率，从而降低服务器吞吐量。
+
+在传统IO模型中，线程在等待连接以及进行IO操作时都会阻塞当前线程，这部分损耗很大，而jdk1.4中提供了非阻塞IO的API。本质上是以事件驱动来处理网络事件的，而Reactor是基于该API提出的一套IO模型。
+
+在Reactor模型中，有4个角色，客户端连接Reactor（响应者）Acceptor（接收者）handler（处理者），Acceptor会不断地接受客户端的连接，然后将接收到的连接交由Reactor响应者进行分发，最后由具体的处理者处理。这种模型如果仅仅使用一个线程池来处理客户端连接的网络读写和业务计算，那么效率上没有什么提升，但是这个模型以事件驱动，能够接受客户端连接和网络读写，以及业务计算进行拆分。从而极大地提升处理效率。因为该模型是异步非阻塞模型，工作线程在没有网络事件时就可以处理其他任务，而不用像传统IO一样阻塞等待
+
+Reactor模型中，由于网络读写和业务操作都在同一个线程中，在高并发情况下，系统瓶颈主要是高频率的网络读写事件处理，大量的业务操作处理。
+
+在多线程进行业务操作的模型下，主要有这样的特点：使用一个线程进行客户端连接的接受以及网络读写事件的处理。在接收到客户端连接后，将该连接交由线程池进行数据的编解码以及业务计算。
+
+这种业务模式相较于前面的模式性能有了很大的提升，主要在于及逆行网络读写的同时，也进行了业务计算从而大大提升了系统的吞吐量，但是，网络读写是一个比较消耗CPU的操作，在高并发的情况下，将会有大量的客户端数据需要进行网络读写，此时，一个线程不足以处理这么多的请求。
+
+对于使用线程池处理业务操作的模型，由于网络读写在高并发的情况下会成为系统的瓶颈。因而提出了一种改进的模型，使用线程池进行网络读写，仅仅使用一个线程专门接受客户端连接。
+
+改进后的Reactor模型将Reactor拆分成为了mainReactor subReactor。第一个及逆行客户端连接的处理，处理完成之后将该连接交由subReactor用来处理客户端的网络读写。这里的subReactor则是使用一个线程池来支撑的，其读写能力将会随着线程数的增多而增加。对于业务操作，也是使用一个线程池，而每个业务请求都只需要进行编解码和业务计算。
+
+#### channel
+
+通道是被建立的一个应用程序和操作系统交互事件、传递内容的渠道。一个通道会有一个专属的文件状态描述符。那么既然是和操作系统进行内容的传递，那么说明应用程序可以通过通道读取数据，也可以通过通道像操作系统写数据。
+
+所有被Selector选择器注册的通道只能是继承了SelectableChannel类的子类。
+
+* ServerSocketChannel：应用服务器程序的监听通道，只有通过这个通道，应用程序才能向操作系统注册支持多路复用IO的端口监听，同时支持UDP和TCP协议。
+* SocketChannel：TCP Socket套接字的监听通道，一个Socket套接字对应了一个客户端IP。端口到服务器IP
+* DatagramChannel：UDP数据报文的监听通道
+
+#### Buffer
+
+数据缓冲区。
 
 ### 序列化和反序列化
 
@@ -895,6 +1229,58 @@ Java中主要的字符流有这几种：
 * StringReader / StringWriter 输入和输出目标都是字符串的字符流
 * BufferedReader / BufferedWriter
 * PrintWriter 装饰类，将基本类型和对象转会为其字符串形式输出的
+
+### Unix IO模型
+
+一个输入操作通常包括两个阶段：等待数据准备好，从内核向进程复制数据
+
+对于一个套接字上的输入操作，第一步通常涉及等待数据从网络中到达，当锁等待分组到达时，它被复制到内核中的某个缓冲区，第二步就是把数据从内核缓冲区复制到应用进程缓冲区。
+
+Unix下有五种IO模型。阻塞式IO，非阻塞式IO，IO复用，信号驱动式，异步IO，
+
+#### 阻塞式IO
+
+应用程序被阻塞，直到数据复制到应用进程缓冲区中才返回。应该注意到，在阻塞的过程中，其他程序还可以执行，因此阻塞不意味着整个操作系统都被阻塞。其他程序还可以执行，因此不消耗CPU时间，这种模型的执行效率较高、
+
+#### 非阻塞式IO
+
+应用进程在执行系统调用之后，内核返回一个错误码，应用程序可以继续执行，但是需要不断的执行系统调用来获知IO是否已经完成。这种方式称为轮询。由于CPU要处理更多的系统调用。因此这种模型是比较低效的。
+
+#### IO复用
+
+使用select或者poll等待数据，并且可以等待多个套接字中的任何一个变为可读，这一过程会被阻塞，当某一个套接字可读时返回。之后在使用recvfrom把数据从内核复制到进程中。它可以让单个进程具有处理多个IO时间的能力，又被称为Event Driven IO即事件驱动IO，如果一个WEB服务器没有IO复用，那么每个Socket连接都需要创建一个线程去处理。如果同时有几万个连接，那么就需要创建相同数量的线程。并且相比于多进程和多线程技术，IO复用不需要进程线程创建和切换开销。系统开销更小。
+
+#### 信号驱动IO
+
+应用进程使用sigaction系统调用，内核立即返回，应用程序可以继续执行，也就是说等待数据阶段，应用进程式非阻塞的，内核在数据到达时，向应用进程发送sigio信号。应用进程在收到信号后在信号处理程序中调用recvfrom将数据从内核复制到应用进程中。相比于非阻塞式IO的轮询方式，信号驱动的IOCPU利用效率更高。
+
+#### 异步IO
+
+进行aio_read系统调用会立即返回，应用程序继续执行，不会被阻塞，内核会在所有操作完成之后向应用进程发送信号。异步IO与信号驱动IO的区别在于，异步IO的信号是通知应用进程IO完成，而信号驱动IO的信号是通知应用进程可以开始IO
+
+#### IO模型的比较
+
+同步IO应用程序在调用recvfrom操作时会被阻塞，而异步IO不会。阻塞式IO、非阻塞式IO、IO复用、信号驱动IO都是同步IO，虽然非阻塞式IO和信号驱动IO在等待数据阶段不会被阻塞，但是在之后将数据从内核复制到应用进程这个操作会被阻塞
+
+#### IO多路复用
+
+阻塞式IO和非阻塞式IO：程序级别的概念，主要描述的式程序请求操作系统IO操作后，如果IO资源没有准备好，那么程序该如何处理的问题。阻塞式IO会等待，而非阻塞式IO会继续执行。并且使用线程轮询
+
+同步IO和非同步IO：操作系统级别的，主要描述的式操作系统在收到程序请求IO操作后，如果IO资源没有准备好，应该如何相应程序的问题，前者不响应，直到IO资源准备好以后，后者返回一个标记，当IO资源准备好以后，后者返回一个标记，好让程序和自己知道以后的数据往哪里通知。当IO资源准备好以后，再用事件机制返回给程序。
+
+然而传统的IO通信大多是阻塞模式的。客户端向服务器发送出请求以后，客户端会一直等待，直到服务器端返回结果或者网络出现问题，服务器端同样的，当在处理某个客户端发来的请求时，另一个客户端发来的请求会等待，直到服务器端的这个处理线程完成上一个处理。
+
+那么这样就会存在这样的问题，同一时间，服务器只能接受来自于客户端A的请求信息，虽然客户端A和客户端B的请求时同时进行的，但是客户端B发送的请求信息只能等到服务器接受完A的请求数据后，才能被接受。由于服务器一次只能处理一个客户端请求，当处理完成并返回后，才能进行第二次请求的处理，很显然，这样的处理方式在高并发的情况下，是不能采用的。
+
+#### 多线程伪异步方式
+
+当服务器收到客户端的请求后，读取到所有请求数据后，将这个请求送入一个独立线程进行处理，然后主线程继续接受客户端Y的请求。客户端一侧，也可以使用一个子线程和服务器端进行通信，这样客户端主线程的其他工作就不受影响了，当服务器端有响应信息的时候再由这个子线程通过监听模式、观察模式等通知主线程。
+
+但是使用线程来解决这个问题还是有局限性的。虽然在服务端请求的处理交给了一个独立的线程进行，但是操作系统通知accept的方式还是单个的，也就是说服务器接收到数据报文后的业务处理过程可以多线程，但是数据报文的接受还是需要一个一个来的。
+
+在linux系统中，可以创建的线程是有限的。我们通过cat proc sys等命令可以查看能创建的最大线程数，线程数越多，CPU切换所需的时间也就越长，用来处理真正业务的需求也就越少。
+
+创建一个线程是有较大的资源消耗的，JVM创建一个线程的时候，即使这个线程不做任何的工作，JVM都会分配一个堆栈空间。如果应用程序中大量使用长连接的话，线程是不会关闭的，这样系统资源的消耗更容易失控。如果真的向单纯使用线程解决阻塞问题。自己就可以算出来一个服务器可以一次接受多大的并发了。单纯用线程解决这个问题不是最好的方法。
 
 ## 四、Maven
 
