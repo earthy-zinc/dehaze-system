@@ -1,10 +1,8 @@
 # Nginx学习
 
-## 一、Nginx配置
+本文主要讲解关于Nginx的配置，主要是以下五个方面：初始配置、基本语法、http服务配置、tcp/udp、反向代理
 
-关于Nginx的配置，主要是以下五个方面：初始配置、基本语法、http服务配置、tcp/udp、反向代理
-
-### 1、初始配置
+## 一、初始配置
 
 ```nginx configuration
 # 启动的工作进程数
@@ -52,7 +50,7 @@ http {
 路径匹配：nginx对请求的客户端的返回是通过location来定义的，在之后的代码块中的return指令会直接返回响应状态码。之后的配置都是无效的。
 
 
-### 2、基本语法
+## 二、基本语法
 
 1. 配置文件由指令和指令块构成
 2. 每个指令块以分号结尾
@@ -81,8 +79,17 @@ http {
 | $time_local	         | 服务器时间                                         |
 | $uri	                | 请求中的当前 URI, 不带请求参数，且不包含主机名                    |
 
-### 3、http服务配置
-#### 3. 1 listen指令
+## 三、http服务配置
+### 3. 1 http请求处理
+Nginx将一个Http请求分成了多个阶段，以模块为单位进行处理。总共11个阶段
+#### POST_READ
+#### SERVER_REWRITE REWRITE
+#### FIND_CONFIG
+#### PREACCESS ACCESS POST_ACCESS
+#### TRY_FILES
+#### CONTENT
+#### LOG
+### 3. 1 listen指令
 listen指令的上下文环境为server指令，作用为监听、拦截上层端口，处理该端口发来的请求
 
 ```nginx configuration
@@ -95,7 +102,7 @@ Default:
 Context:  server;
 ```
 
-#### 3. 2 server指令
+### 3. 2 server指令
 ```nginx configuration
 server {
     # 监听端口
@@ -112,10 +119,10 @@ server {
 
 ```
 
-### 4、tcp和udp
+## 四、tcp和udp
 
 
-### 5、反向代理
+## 五、反向代理
 反向代理指的是nginx将客户端的针对某个端口、某个url的请求转发给内部网络的指定服务器，并且将结果返回给客户端。
 又叫做七层反向代理
 这样做可以隐藏内部服务器的部署情况，通过统一入口控制流量。还可以设置负载均衡，将用户请求均分给多个服务器。反向代理指令为`proxy_pass`，其上下文环境
