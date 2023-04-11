@@ -1,8 +1,10 @@
 const getNav = require('./autoNavigate');
+const manualNav = require('./navigate');
 
 module.exports = {
     title: '土味锌的阅读笔记',
     description: 'Learning Notes for Full Stack Development 全栈开发学习笔记',
+    // 开发版本的服务器端口
     port: 8911,
     head: [
         ['link', { rel: 'icon', href: '/tou.jpg' }]
