@@ -167,17 +167,20 @@ DockerHub是Docker官方维护的公共仓库。
 ### 1、MySql
 
 ```bash
-docker run
--d
--p 3306:3306
---privileged=true
--v /opt/docker_volume/mysql/log:/var/log/mysql
--v /opt/docker_volume/mysql/data:/var/lib/mysql
--v /opt/docker_volume/mysql/conf:/etc/mysql/conf.d
--e MYSQL_ROOT_PASSWORD=123456
---name mysql
+docker run  \
+-d \
+-p 3306:3306 \
+--privileged=true \
+-v /opt/docker_volume/mysql/log:/var/log/mysql \
+-v /opt/docker_volume/mysql/data:/var/lib/mysql \
+-v /opt/docker_volume/mysql/conf:/etc/mysql/conf.d \
+-e MYSQL_ROOT_PASSWORD=123456 \
+--name mysql \
 mysql
 
+mkdir -p /opt/docker_volume/mysql/log  && chown -R 200 /opt/docker_volume/mysql/log
+mkdir -p /opt/docker_volume/mysql/data  && chown -R 200 /opt/docker_volume/mysql/data
+mkdir -p /opt/docker_volume/mysql/conf  && chown -R 200 /opt/docker_volume/mysql/conf
 
 docker run -d -p 3306:3306 --privileged=true -v /opt/docker_volume/mysql/log:/var/log/mysql -v /opt/docker_volume/mysql/data:/var/lib/mysql -v /opt/docker_volume/mysql/conf:/etc/mysql/conf.d -e MYSQL_ROOT_PASSWORD=123456 --name mysql mysql
 ```
@@ -185,27 +188,27 @@ docker run -d -p 3306:3306 --privileged=true -v /opt/docker_volume/mysql/log:/va
 ### 2、redis
 
 ```bash
-docker run
--d
--p 6379:6379
---name redis
---privilege=true
--v /opt/docker_volume/redis/redis.conf:/etc/redis/redis.conf
--v /opt/docker_volume/redis/data:/data
-redis
+docker run \
+-d \
+-p 6379:6379 \
+--name redis \
+--privilege=true \
+-v /opt/docker_volume/redis/redis.conf:/etc/redis/redis.conf \
+-v /opt/docker_volume/redis/data:/data \
+redis \
 redis-server /etc/redis/redis.
 
 ```
 
 ### 3、jenkins
 
-```
-docker run -di --name=jenkins -p 8008:8080 -v /opt/docker_volume/jenkins:/var/jenkins_home jenkins/jenkins:lts
+```bash
+docker run -di --name=jenkins -p 8000:8080 -v /opt/docker_volume/jenkins:/var/jenkins_home jenkins/jenkins:lts
 ```
 
 ### 4、nacos
 
-```
+```bash
 # 创建 nacos 配置存放目录
 mkdir -p /opt/docker/nacos/conf  && chown -R 200 /opt/docker/nacos/conf
 
@@ -233,7 +236,7 @@ docker cp -a nacos:/home/nacos /opt/docker/
 ### redis
 
 ```shell
-mkdir -p /opt/docker/redis/redis.conf
+mkdir -p /opt/docker/redis
 
 mkdir -p /opt/docker/redis/data
 
@@ -271,7 +274,7 @@ docker cp nginx:/etc/nginx /opt/docker/nginx/conf
 
 ### elasticsearch
 
-```
+```bash
 mkdir -p /opt/docker/elasticsearch/config
 mkdir -p /opt/docker/elasticsearch/data
 echo "http.host: 0.0.0.0">>/opt/docker/elasticsearch/config/elasticsearch.yml
