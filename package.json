@@ -4,7 +4,6 @@
   "description": "Learning Notes for Full Stack Development 全栈开发学习笔记",
   "main": "index.js",
   "scripts": {
-    "serve" : "vuepress dev docs",
     "docs:dev": "vuepress dev docs",
     "docs:build": "vuepress build docs"
   },
