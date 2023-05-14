@@ -608,7 +608,60 @@ source filename   #方法2
 
 
 
-## **土味商城流水线指令**
+## 九、vmware中虚拟机扩容磁盘（centos7.9）
+
+1. 关闭虚拟机, 点击扩展磁盘容量，此次容量增加20g（虚拟机原来是20g）
+
+2. 查看扩容前的磁盘容量`df -h`
+
+3. 查看磁盘分区情况`fdisk -l`
+
+4. 对扩容的20g磁盘分区
+   1. 磁盘分区命令`fdisk /dev/sda`
+   2. 输入n新增分区，直接回车，默认为主分区（primary）；
+   3. 接下来，我们需要为分区设置分区格式，在Fdisk命令处输入：`t`分区号用默认 3（或回车），Hex代码输入：`8e `（代表适用Linux LVM分区类型）
+   4. 最后写入分区表，在Fdisk命令位置输入：`w`
+   5. 可能会有磁盘正在被使用的错误提示，先不理会就好。到此，磁盘分区已完成。
+   6. 此时输入`fdisk -l`，就可以看到我们新创建的dev/sda3分区了，分区格式为Linux LVM类型。
+
+5. 格式化新增磁盘并分区
+
+```bash
+partprobe
+# 格式化分区
+mkfs.ext3 /dev/sda3
+```
+
+6. 进入lvm中合并磁盘
+
+```bash
+#进入lvm
+lvm
+#初始化/dev/sda3
+pvcreate /dev/sda3
+#将新分区添加进系统默认的Volume group，centOS的默认Volume group为centos
+vgextend centos /dev/sda3
+#查看一下当前的Volume卷详情
+vgdisplay -v
+#将系统盘/dev/mapper/centos-root与sda3的5119空余容量合并，输入如下命令：
+lvextend -l +5119 /dev/mapper/centos-root
+quit
+```
+
+7. 最后查看扩容及磁盘状态
+
+> 文件系统进行扩容，以让系统识别，输入如下命令（只适用于CentOS7）
+
+```bash
+xfs_growfs /dev/mapper/centos-root
+fdisk -l
+# 查看系统容量
+df -h
+```
+
+
+
+## 土味商城流水线指令
 
 ```sh
 mkdir -p mall-order/target && \
