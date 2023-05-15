@@ -314,10 +314,10 @@ hostnamectl set-hostname Pei-Liunx-103
 
 ```bash
 cat >> /etc/hosts << EOF
-192.168.210.100 Pei-Liunx-100
-192.168.210.101 Pei-Liunx-101
-192.168.210.102 Pei-Liunx-102
-192.168.210.103 Pei-Liunx-103
+192.168.210.100 pei-liunx-100
+192.168.210.101 pei-liunx-101
+192.168.210.102 pei-liunx-102
+192.168.210.103 pei-liunx-103
 EOF
 ```
 
@@ -365,7 +365,8 @@ vim /etc/docker/daemon.json
                       "https://o65lma2s.mirror.aliyuncs.com",
                       "http://hub-mirror.c.163.com"
                      ],
-  "insecure-registries" :  ["192.168.210.100:5000"]
+  "insecure-registries" :  ["192.168.210.100:5000"],
+  "exec-opts": ["native.cgroupdriver=systemd"]
 }
 
 ```
@@ -385,7 +386,7 @@ gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors
 EOF
 
 #安装kubeadm、kubelet、kubectl：
-yum install -y kubelet-1.23.0 kubeadm-1.23.0 kubectl-1.23.0
+yum install -y kubelet-1.27.1-0 kubeadm-1.27.1-0 kubectl-1.27.1-0
 systemctl enable kubelet
 ````
 
@@ -401,9 +402,10 @@ systemctl enable kubelet
 kubeadm init \
   --apiserver-advertise-address=192.168.210.100 \
   --image-repository registry.aliyuncs.com/google_containers \
-  --kubernetes-version v1.23.0 \
+  --kubernetes-version v1.27.1 \
   --service-cidr=10.96.0.0/12 \
   --pod-network-cidr=10.244.0.0/16 \
+  --cri-socket unix:///var/run/cri-dockerd.sock \
   --ignore-preflight-errors=all
 ```
 
@@ -415,7 +417,10 @@ kubeadm init \
 
 初始化之后，会输出一个join命令，先复制出来，node节点加入master会使用。
 
+```bash
+// join命令
 
+```
 
 #### 拷贝k8s认证文件
 
