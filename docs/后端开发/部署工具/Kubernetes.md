@@ -186,7 +186,7 @@ ReplicaSet（副本集）。在传统的集群工作模式中为了保证高可�
 
 Label 定义了像 Pod、Service、Node 等对象的可识别属性，主要用于对他们进行管理和选择，比如用于对Pod进行分类，同一类POD会拥有相同的标签。或者附加到某个资源上，可用于关联对象、查询和筛选。Label 用的是键值对（Key/Value）的形式附加到这些对象上的，Label 既可以在创建对象的时候附加到对象上，如附加到Node、Pod、Serivce、RC，也可以在对象创建之后通过 API 进行管理；一个资源对象可以定义任意数量的Label，同一个Label也可以被添加到任意数量的资源对象上。
 
-```json
+```
 "labels":{
     "key1":"value1",
     "key2":"value2"
@@ -297,6 +297,8 @@ setenforce 0
 swapoff -a  
 # 永久
 sed -ri 's/.*swap.*/#&/' /etc/fstab    
+# 查看是否禁用成功
+free -mh
 ```
 
 
@@ -365,15 +367,32 @@ vim /etc/docker/daemon.json
                       "https://o65lma2s.mirror.aliyuncs.com",
                       "http://hub-mirror.c.163.com"
                      ],
-  "insecure-registries" :  ["192.168.210.100:5000"],
-  "exec-opts": ["native.cgroupdriver=systemd"]
+  "insecure-registries" :  ["192.168.210.100:5000"]
 }
 
 ```
 systemctl restart docker
 #查看docker信息，进行确认
-docker info                                                        
+docker info 
+````
 
+安装cri-dockerd：
+
+K8s的1.24版本以后移除了docker-shim，而Docker Engine默认又不支持CRI规范，因而二者将无法直接完成整合，为此，Mirantis和Docker联合创建了cri-dockerd项目，用于为Docker Engine提供一个能够支持到CRI规范的垫片，从而能够让Kubernetes基于CRI控制Docker ，所以想在K8s的1.24版本及以后的版本中使用docker，需要安装cri-dockerd，然后K8s集群通过[cri-dockerd](https://github.com/Mirantis/cri-dockerd)联系到docker（注意每个节点都要安装）
+1. 查看主机的系统内核版本。 `uname -r`
+
+2. 根据主机的系统内核版本来选择相应的包。
+
+* rpm二进制包：已经使用GCC编译后的（二进制已经可以被操作系统直接执行了）
+* tar源码包：需要编译（源码包就是你能看懂的，基于字符的，还需要进行编译）
+
+3. 根据自己主机的系统内核版本下载相应的包。例：`wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.2.6/cri-dockerd-0.2.6-3.el7.x86_64.rpm `
+
+4. 安装cri-dockerd。例：`yum install -y cri-dockerd-0.2.6-3.el7.x86_64.rpm`
+
+5. 查看cri-dockerd.sock。`cd /var/run/`
+
+```bash
 #添加阿里云软件源：
 cat > /etc/yum.repos.d/kubernetes.repo << EOF
 [kubernetes]
@@ -386,9 +405,16 @@ gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors
 EOF
 
 #安装kubeadm、kubelet、kubectl：
-yum install -y kubelet-1.27.1-0 kubeadm-1.27.1-0 kubectl-1.27.1-0
+yum install -y kubelet kubeadm kubectl
+# 查看安装的kubeadm的版本
+kubeadm version
+kubeadm config images list
+# 所有节点上设置开机自启动
 systemctl enable kubelet
-````
+```
+
+
+
 
 ### 部署k8s-master
 
@@ -400,7 +426,7 @@ systemctl enable kubelet
 
 ```bash
 kubeadm init \
-  --apiserver-advertise-address=192.168.210.100 \
+  --apiserver-advertise-address=192.168.210.101 \
   --image-repository registry.aliyuncs.com/google_containers \
   --kubernetes-version v1.27.1 \
   --service-cidr=10.96.0.0/12 \
@@ -565,11 +591,11 @@ kubernetes集群中对资源管理和资源对象编排部署都可以通过声�
 # 对象类型
 name: Tom
 # 数组类型1
-people
-- Tom
-- Jack
+people:
+  - Tom
+  - Jack
 # 数组类型2
-people: [Tom, Jack]
+# people: [Tom, Jack]
 # 数值以字面量形式表示
 # 布尔值用true或false表示
 # null用~表示
