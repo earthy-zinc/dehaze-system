@@ -306,10 +306,10 @@ free -mh
 ##### 根据规划设置主机名
 
 ```bash
-hostnamectl set-hostname Pei-Liunx-100
-hostnamectl set-hostname Pei-Liunx-101
-hostnamectl set-hostname Pei-Liunx-102
-hostnamectl set-hostname Pei-Liunx-103
+hostnamectl set-hostname pei-liunx-100
+hostnamectl set-hostname pei-liunx-101
+hostnamectl set-hostname pei-liunx-102
+hostnamectl set-hostname pei-liunx-103
 ```
 
 ##### 在master添加hosts
@@ -383,12 +383,14 @@ K8s的1.24版本以后移除了docker-shim，而Docker Engine默认又不支持C
 
 2. 根据主机的系统内核版本来选择相应的包。
 
-* rpm二进制包：已经使用GCC编译后的（二进制已经可以被操作系统直接执行了）
-* tar源码包：需要编译（源码包就是你能看懂的，基于字符的，还需要进行编译）
+   * rpm二进制包：已经使用GCC编译后的（二进制已经可以被操作系统直接执行了）
+
+   * tar源码包：需要编译（源码包就是你能看懂的，基于字符的，还需要进行编译）
+
 
 3. 根据自己主机的系统内核版本下载相应的包。例：`wget https://github.com/Mirantis/cri-dockerd/releases/download/v0.2.6/cri-dockerd-0.2.6-3.el7.x86_64.rpm `
 
-4. 安装cri-dockerd。例：`yum install -y cri-dockerd-0.2.6-3.el7.x86_64.rpm`
+4. 安装cri-dockerd。例：`yum install -y cri-dockerd-0.3.2-3.el7.x86_64.rpm`
 
 5. 查看cri-dockerd.sock。`cd /var/run/`
 
