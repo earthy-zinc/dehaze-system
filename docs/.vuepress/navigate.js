@@ -1,38 +1,28 @@
 let frontEndNav = [
-    [
-        { text: '', link: ''},
-        { text: '', link: ''},
-    ]
+    { text: '前端基础', items: [
+        { text: 'CSS', link: '/前端开发/前端基础/CSS.md' },
+    ]},
+    { text: '', link: ''},
 ];
 let backEndNav = [
-    [
-        { text: '', link: ''},
-        { text: '', link: ''},
-    ]
+    { text: '', link: ''},
+    { text: '', link: ''},
 ];
 let workEfficiency= [
-    [
-        { text: '', link: ''},
-        { text: '', link: ''},
-    ]
+    { text: '', link: ''},
+    { text: '', link: ''},
 ];
 let academicCourse= [
-    [
-        { text: '', link: ''},
-        { text: '', link: ''},
-    ]
+    { text: '', link: ''},
+    { text: '', link: ''},
 ];
 let projectDoc= [
-    [
-        { text: '', link: ''},
-        { text: '', link: ''},
-    ]
+    { text: '', link: ''},
+    { text: '', link: ''},
 ];
 let projectPresentation= [
-    [
-        { text: '', link: ''},
-        { text: '', link: ''},
-    ]
+    { text: '', link: ''},
+    { text: '', link: ''},
 ];
 
 module.exports = [

@@ -306,20 +306,20 @@ free -mh
 ##### 根据规划设置主机名
 
 ```bash
-hostnamectl set-hostname pei-liunx-100
-hostnamectl set-hostname pei-liunx-101
-hostnamectl set-hostname pei-liunx-102
-hostnamectl set-hostname pei-liunx-103
+hostnamectl set-hostname pei-linux-100
+hostnamectl set-hostname pei-linux-101
+hostnamectl set-hostname pei-linux-102
+hostnamectl set-hostname pei-linux-103
 ```
 
 ##### 在master添加hosts
 
 ```bash
 cat >> /etc/hosts << EOF
-192.168.210.100 pei-liunx-100
-192.168.210.101 pei-liunx-101
-192.168.210.102 pei-liunx-102
-192.168.210.103 pei-liunx-103
+192.168.210.100 pei-linux-100
+192.168.210.101 pei-linux-101
+192.168.210.102 pei-linux-102
+192.168.210.103 pei-linux-103
 EOF
 ```
 

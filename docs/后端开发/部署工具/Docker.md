@@ -362,6 +362,17 @@ docker run -d -p 50001:8080 -p 50000:50000 \
 jenkins/jenkins:lts
 ```
 
+### 土味送餐
+
+```bash
+docker run -d \
+-p 80:80 \
+-v /opt/earthy/photo:/opt/earthy/photo \
+--restart=always \
+--name earthy-delivery \
+earthy-delivery:1.0 --server.port=80
+```
+
 
 
 ## 五、Dockerfile
