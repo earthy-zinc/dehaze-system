@@ -337,10 +337,21 @@ sysctl --system  # 生效
 
 ```bash
 yum install ntpdate -y
-ntpdate time.windows.com
+ntpdate ntp1.aliyun.com
+# 加入crontab ,5分钟一次
+crontab -l
+crontab -e
+*/5 * * * * ntpdate ntp1.aliyun.com
 ```
 
 注意：虚拟机不管关机还是挂起，每次重新操作都需要更新时间进行同步。 
+
+##### 安装必要软件
+
+```sh
+yum -y install vim-enhanced wget curl net-tools conntrack-tools bind-utils socat ipvsadm ipset
+yum -y update
+```
 
 
 
@@ -352,7 +363,7 @@ ntpdate time.windows.com
 
 ```bash
 wget https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -O /etc/yum.repos.d/docker-ce.repo
-yum -y install docker-ce
+yum -y install docker-ce-20.10.17
 systemctl enable docker && systemctl start docker
 ```
 
@@ -363,11 +374,8 @@ systemctl enable docker && systemctl start docker
 vim /etc/docker/daemon.json
 ```
 {
-  "registry-mirrors":[
-                      "https://o65lma2s.mirror.aliyuncs.com",
-                      "http://hub-mirror.c.163.com"
-                     ],
-  "insecure-registries" :  ["192.168.210.100:5000"]
+  "registry-mirrors":["https://o65lma2s.mirror.aliyuncs.com"],
+  "exec-opts": ["native.cgroupdriver=systemd"]
 }
 
 ```
@@ -407,7 +415,7 @@ gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors
 EOF
 
 #安装kubeadm、kubelet、kubectl：
-yum install -y kubelet kubeadm kubectl
+yum install -y kubelet-1.25.4 kubeadm-1.25.4 kubectl-1.25.4
 # 查看安装的kubeadm的版本
 kubeadm version
 kubeadm config images list
@@ -428,9 +436,9 @@ systemctl enable kubelet
 
 ```bash
 kubeadm init \
-  --apiserver-advertise-address=192.168.210.101 \
+  --apiserver-advertise-address=192.168.210.100 \
   --image-repository registry.aliyuncs.com/google_containers \
-  --kubernetes-version v1.27.1 \
+  --kubernetes-version v1.25.4 \
   --service-cidr=10.96.0.0/12 \
   --pod-network-cidr=10.244.0.0/16 \
   --cri-socket unix:///var/run/cri-dockerd.sock \
@@ -447,7 +455,8 @@ kubeadm init \
 
 ```bash
 // join命令
-
+kubeadm join 192.168.210.100:6443 --token g5tx5l.jxcd5eap91l2rr5n \
+	--discovery-token-ca-cert-hash sha256:993697b306ec40075a82cc8ef43c89a1e3dc346d4a004a5cf244f03a789f3d72 --cri-socket unix:///var/run/cri-dockerd.sock --ignore-preflight-errors=all
 ```
 
 #### 拷贝k8s认证文件
