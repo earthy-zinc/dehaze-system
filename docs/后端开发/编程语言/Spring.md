@@ -224,7 +224,6 @@ SpringMVC封装HTTP响应需要的条件：1、设置响应头的Content-Type属
 
 
 
-![image-20220426221837696](E:\StudyDoc\同步空间\4.阅读笔记\图片\image-20220426221837696.png)
 
 
 
@@ -311,7 +310,6 @@ public class MyControllerAdvice {
 
 ## 1、介绍
 
-![mybatis架构](E:\StudyDoc\同步空间\4.阅读笔记\图片\mybatis-1.png)
 
 我们把mybatis的功能架构分为了三层：
 
@@ -353,7 +351,6 @@ public class MyControllerAdvice {
 3. 其次是语句处理器对象，由于Java程序在底层与数据库的交互是通过JDBC实现的，mybatis是在JDBC的基础上做出了进一步的封装。因此语句处理器对象StatementHandler主要负责与JDBC语句之间的交互。设置语句参数，将返回的结果映射到Java对象。
 4. 接下来就是JDBC层，是真正负责查询数据库的东西。
 
-![实现功能而层次结构](E:\StudyDoc\同步空间\4.阅读笔记\图片\mybatis-2.png)
 
 ### 4、mybatis初始化
 

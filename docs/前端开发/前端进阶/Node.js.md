@@ -214,16 +214,16 @@ event.emit('a_event')
 
 EventEmitter对象提供了多个属性方法，介绍如下：
 
-| 方法                            | 说明                                                         |
-| ------------------------------- | ------------------------------------------------------------ |
-| addListener(event, listener)    | 为指定的事件添加一个监听器到监听器数组的尾部                 |
+| 方法                              | 说明                              |
+|---------------------------------|---------------------------------|
+| addListener(event, listener)    | 为指定的事件添加一个监听器到监听器数组的尾部          |
 | on(event, listener)             | 为指定事件注册一个监听器，接收一个字符串的事件名和一个回调函数 |
-| once(event, listener)           | 为指定事件注册一个单次的监听器                               |
-| removeListener(event, listener) | 移除指定事件的一个监听器，必须是已经注册过的监听器           |
-| removeAllLIstener([event])      | 移除所有事件的监听器，也可以只移除单个事件的所有监听器       |
-| setMaxListeners(n)              | 设置最大监听器数量                                           |
-| listeners(event)                | 返回指定事件的监听器数组                                     |
-| emit(event,[arg1],[arg2]...)    | 按监听器的顺序执行每个监听器                                 |
+| once(event, listener)           | 为指定事件注册一个单次的监听器                 |
+| removeListener(event, listener) | 移除指定事件的一个监听器，必须是已经注册过的监听器       |
+| removeAllLIstener([event])      | 移除所有事件的监听器，也可以只移除单个事件的所有监听器     |
+| setMaxListeners(n)              | 设置最大监听器数量                       |
+| listeners(event)                | 返回指定事件的监听器数组                    |
+| emit(event,[arg1],[arg2]...)    | 按监听器的顺序执行每个监听器                  |
 
 ## 六、IO操作
 
@@ -233,22 +233,22 @@ EventEmitter对象提供了多个属性方法，介绍如下：
 
 创建及使用Buffer类对象的方法如下
 
-| 方法                                                         | 说明                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| alloc(size[, fill], encoding]])                              | 返回一个指定大小的缓冲区实例，默认缓冲区内填满0              |
-| allocUnsafe(size)                                            | 同上，但是不会初始化                                         |
-| from(array)                                                  | 返回一个用数组中的值初始化的一个新的缓冲区实例，缓冲区的大小为数组的大小 |
-| from(arrayBuffer[, byteOffset], length]])                    | 返回一个新的缓冲区实例，但是它与给定的用数组建的缓冲区实例共享同一片内存 |
-| from(buffer)                                                 | 从传入的缓冲区实例中复制一个新的缓冲区实例                   |
-| from(string[, encoding])                                     | 返回一个用字符串值初始化的缓冲区实例，可以指定字符在缓冲区中的编码方式。 |
-| write(string[, offset[, length]] [, encoding])               | 根据字符的编码将字符串的内容写入到缓冲区的指定位置，可以规定写入的字节数，如果缓冲区内没有足够的空间，则只会写入一部分，返回实际写入的大小 |
-| toString([encoding[, start[, end]]])                         | 从缓冲区中读取数据，可以指定开始读取和结束读取的位置，使用的编码默认为utf-8 |
-| toJSON()                                                     | 将缓冲区的内容转换会JSON对象                                 |
-| concat(list[, totalLength])                                  | 合并缓冲区，需要一个数组，该数组的元素是由缓冲区组成，那么该方法将这些缓冲区合并为一个。返回这个新的合并后的缓冲区对象。还可以指定合并后的缓冲区总长度。 |
-| compare(otherBuffer)                                         | 比较两个缓冲区的相对位置                                     |
-| copy(targetBuffer[, targetStart[, sourceStart[, sourceEnd]]]) | 拷贝数据到一个缓冲区的特定位置                               |
-| slice([start[, end]])                                        | 裁剪一个缓冲区                                               |
-| length                                                       | 返回缓冲区的长度                                             |
+| 方法                                                              | 说明                                                                           |
+|-----------------------------------------------------------------|------------------------------------------------------------------------------|
+| `alloc(size[, fill], encoding]])`                               | 返回一个指定大小的缓冲区实例，默认缓冲区内填满0                                                     |
+| `allocUnsafe(size)`                                             | 同上，但是不会初始化                                                                   |
+| `from(array)`                                                   | 返回一个用数组中的值初始化的一个新的缓冲区实例，缓冲区的大小为数组的大小                                         |
+| `from(arrayBuffer[, byteOffset], length]])`                     | 返回一个新的缓冲区实例，但是它与给定的用数组建的缓冲区实例共享同一片内存                                         |
+| `from(buffer)`                                                  | 从传入的缓冲区实例中复制一个新的缓冲区实例                                                        |
+| `from(string[, encoding])`                                      | 返回一个用字符串值初始化的缓冲区实例，可以指定字符在缓冲区中的编码方式。                                         |
+| `write(string[, offset[, length]] [, encoding])`                | 根据字符的编码将字符串的内容写入到缓冲区的指定位置，可以规定写入的字节数，如果缓冲区内没有足够的空间，则只会写入一部分，返回实际写入的大小        |
+| `toString([encoding[, start[, end]]])`                          | 从缓冲区中读取数据，可以指定开始读取和结束读取的位置，使用的编码默认为utf-8                                     |
+| `toJSON()`                                                      | 将缓冲区的内容转换会JSON对象                                                             |
+| `concat(list[, totalLength])`                                   | 合并缓冲区，需要一个数组，该数组的元素是由缓冲区组成，那么该方法将这些缓冲区合并为一个。返回这个新的合并后的缓冲区对象。还可以指定合并后的缓冲区总长度。 |
+| `compare(otherBuffer)`                                          | 比较两个缓冲区的相对位置                                                                 |
+| `copy(targetBuffer[, targetStart[, sourceStart[, sourceEnd]]])` | 拷贝数据到一个缓冲区的特定位置                                                              |
+| `slice([start[, end]])`                                         | 裁剪一个缓冲区                                                                      |
+| `length`                                                        | 返回缓冲区的长度                                                                     |
 
 ### 2、stream
 
@@ -430,14 +430,14 @@ http模块是node.js的网络核心模块。
 
 | 方法                                                  | 描述 |
 | ----------------------------------------------------- | ---- |
-| createServer([options] [, connectionListener])        |      |
-| createConnection(options[, connectionListener])       |      |
-| createConnection(port[, host] [, connectionListener]) |      |
-| createConnection(path[, connectionListener])          |      |
-| connect(options[, connectionListener])                |      |
-| connect(port[, host] [, connectionListener])          |      |
-| connect(path[, connectionListener])                   |      |
-| isIP(input) / isIPv4(input) / isIPv6(input)           |      |
+| `createServer([options] [, connectionListener])`        |      |
+| `createConnection(options[, connectionListener])`       |      |
+| `createConnection(port[, host] [, connectionListener])` |      |
+| `createConnection(path[, connectionListener])`          |      |
+| `connect(options[, connectionListener]) `               |      |
+| `connect(port[, host] [, connectionListener])`          |      |
+| `connect(path[, connectionListener])`                   |      |
+| `isIP(input) / isIPv4(input) / isIPv6(input)`           |      |
 
 创建完服务器之后，会生成一个Server对象，有如下几个方法
 
