@@ -94,15 +94,15 @@ docker system df
 
 1. 运行容器：`docker run [options] image [command] [arg..]`
 
-    | 命令简称 | 命令全称      | 参数类型 | 参数模板                               | 说明                                                         |
-    | -------- | ------------- | -------- | -------------------------------------- | ------------------------------------------------------------ |
-    | -d       | --detach      |          |                                        | 后台运行容器，并打印容器ID                                   |
-    | -e       | --env         | list     |                                        | 设置环境变量                                                 |
-    | -i       | --interactive |          |                                        | 允许交互式地运行容器（如果没有设为后台运行）                 |
-    | -t       | --tty         |          |                                        | 打开一个伪终端(teletypewriter)，通常后面带有打开命令`/bin/bash` |
-    | -p       | --publish     | list     | [outer_host]:[inner_host]              | 将容器的端口号映射到主机端口号                               |
-    |          | --name        | string   | [container_name]                       | 为容器命名，名字是字符串类型                                 |
-    | -v       | --volume      | list     | [host_directory]:[container_directory] | 为容器创建数据卷，同步容器内特定目录的数据到宿主机指定目录   |
+    | 命令简称 | 命令全称          | 参数类型   | 参数模板                                     | 说明                                            |
+    |------|---------------|--------|------------------------------------------|-----------------------------------------------|
+    | -d   | --detach      |        |                                          | 后台运行容器，并打印容器ID                                |
+    | -e   | --env         | list   |                                          | 设置环境变量                                        |
+    | -i   | --interactive |        |                                          | 允许交互式地运行容器（如果没有设为后台运行）                        |
+    | -t   | --tty         |        |                                          | 打开一个伪终端(teletypewriter)，通常后面带有打开命令`/bin/bash` |
+    | -p   | --publish     | list   | `[outer_host]:[inner_host]`              | 将容器的端口号映射到主机端口号                               |
+    |      | --name        | string | `[container_name]`                       | 为容器命名，名字是字符串类型                                |
+    | -v   | --volume      | list   | `[host_directory]:[container_directory]` | 为容器创建数据卷，同步容器内特定目录的数据到宿主机指定目录                 |
 
     * **注：**我们可以通过`exit`命令或者使用`CTRL+D`退出容器
     * 当使用run命令创建容器时，docker在后台会进行检查

@@ -126,7 +126,6 @@
 
 ### 1、色相
 
-![img](E:\StudyDoc\同步空间\4.阅读笔记\图片\src=http%3A%2F%2Fhbimg.huabanimg.com%2Fa6dd5518b5e25fb5c2f39d6fee2cf6d826b534e41150f-oKoc8N_fw658&refer=http%3A%2F%2Fhbimg.huabanimg.com&app=2002&size=f9999,10000&q=a80&n=0&g=0n&fmt=auto)
 
 根据色彩理论，红绿蓝三种颜色是光的三原色，我们可以通过这三种颜色的组合显示出种种不同的颜色，如上图的色环所示，所有的颜色围成了一个圈，形成了色环，这就是色相环。
 

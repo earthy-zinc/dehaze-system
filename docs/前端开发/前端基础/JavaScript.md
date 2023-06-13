@@ -623,7 +623,8 @@ promise.finally(function(){
 * await：在函数体内部，我们可以使用await 操作符，用于等待一个Promise对象的处理结果，在等待期间函数会停留在该语句上，直到Promise对象返回结果。
 
 ```js
-Promise p = async function p(params){
+Promise 
+promise = async function p(params){
 	result = await Promise对象
     return "p"
 }
