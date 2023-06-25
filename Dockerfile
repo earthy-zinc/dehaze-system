@@ -7,8 +7,7 @@ RUN npm config set registry http://registry.npmmirror.org && \
     npm install
 
 COPY . .
-ARG NODE_ENV=""
-RUN env ${NODE_ENV} npm docs:build
+RUN npm run docs:build
 
 ## -- stage: dist => nginx --
 FROM nginx:alpine
