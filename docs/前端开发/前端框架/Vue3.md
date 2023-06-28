@@ -103,9 +103,112 @@ const book: Book = reactive({title: 'vue'})
 
 但是reactive()仅仅对对象类型是有效的，而对原始类型如string、number、boolean无效。因为Vue响应式是通过属性访问来追踪的，因此必须始终保持对该响应式对象的相同引用。这意味着当我们将响应式对象属性赋值到本地变量、或者通过结构赋值的方式赋值到本地变量，或者将该属性传给一个函数中，会失去响应性。
 
+reactive()的限制是因为JavaScript没有可以作用于所有值类型的引用机制，因此，Vue提供了一个ref()方法允许我们创建可以使用任何值类型的响应式代理ref。ref()会将传入参数的值包装为一个带.value属性的ref对象。一个包含对象类型值的ref可以响应式地替换整个对象。ref被传递给函数或者从一般对象上被结构的时候，不会丢失响应性。
+
+当ref响应式对象作为顶层属性，也就是再模板中使用时，他们会自动解包，不需要再带有.value。
+
+当ref被嵌套在一个响应式对象中，作为属性被访问或者被更改时，他会自动捷豹，因此会表现的和一般属性一样/
+
 ## 计算属性
 
+定义计算属性，用于对对象进行计算处理。
+
+```javascript
+const bookMessage = computed(() => {
+	return author.book.length > 0 ? "Yes":"No";
+})
+```
+
+定义计算属性，只需要采用computed()方法，方法接受一个getter函数，返回值为一个计算属性响应式对象ref。我们可以通过.value访问计算结果，计算属性在模板中也会自动解包，无需添加.value。计算属性可以自动追踪响应式依赖，当他检测到原始所依赖的对象发生改变时，他自身也会变化。
+
+当然我们通过方法也可以返回一个和计算属性同样的结果，不同的是，计算属性会基于其响应式的依赖被缓存，一个计算属性只有在其依赖的原始对象被更改时才会重新计算，也就是说只要原始对象不改变，无论访问多少次计算属性，都会立即返回先前计算的结果。相比之下方法调用总是会在重新渲染时再次执行函数。
+
+计算属性默认是只读的，只有在特殊场景中，才会需要可写这种属性，我们可以给computed方法提供一个对象，对象中带有get和set方法来创建可写的计算属性
+
 ## 类与样式绑定
+
+数据绑定的常见需求是操纵元素的CSS类列表和内联样式，因为class类和style样式都是HTML元素的属性，我们可以向其他属性一样使用v-bind将他们和动态的字符串绑定，但是在处理较为复杂的绑定时，通过拼接生成字符串是麻烦还容易出错的，因此，针对class和style这两种属性，vue提供了特殊增强，除了字符串以外，表达式的值也可以是对象或者数组。
+
+### 绑定HTML元素的class属性
+#### 给class属性绑定一个对象
+
+```vue
+<template>
+<div :class="{active: isActive}"></div>
+</template>
+```
+
+上述语法表示html中该div元素的class属性中的active子属性存在与否取决于布尔值变量isActive的的真假。
+
+注意`:class(v-bind:class)`指令可以和普通的`class`属性共存。在虚拟DoM渲染后，会将两个属性合并为一个。当class属性中的子属性变化时，class属性列表也会随之更新。
+
+当然绑定的对象不一定需要写成内联的字面量形式，也可以直接给class属性绑定一个响应式对象，响应式对象的格式应和上述的相同，其中对象的属性名应该是css类class的名字，值是一个布尔值，表示该css类是否应该加到当前html元素class属性上。当然绑定的响应式对象可以是计算属性。
+
+#### 绑定数组
+
+我们也可以给class绑定一个数组来渲染多个css的class
+
+```vue
+<template>
+<div :class="[activeClass, errorClass]"></div>
+</template>
+<script>
+const activeClass = ref("active");
+const errorClass = ref("text-danger");
+</script>
+```
+
+渲染的结果是：
+
+```html
+<div class="active text-danger"></div>
+```
+
+如果想要在数组中有条件的渲染某个CSS class，我们可以使用三元表达式。
+
+### 组件上绑定class
+
+如果有一个父组件，想要给其子组件传递一些HTML元素上的属性，则需要属性继承
+
+对于只有一个根元素的组件，当我们使用了class属性是，这些属性会被添加到根元素上，并且与该根元素已经存在的class属性合并。
+
+如果组件中存在多个根元素，你需要指定哪一个元素来接受来自父组件传来的class属性，我们可以通过组件上内置的`$attrs`属性来实现指定
+
+子组件MyComponent：
+
+```vue
+<template>
+  <p :class="$attrs.class">Hi!</p>
+  <span>This is a child component</span>
+</template>
+<script>
+  export default {
+    name: MyComponent
+  }
+</script>
+```
+
+父组件
+
+```vue
+<template>
+<MyComponent class="baz"/>
+</template>
+```
+
+该子组件将被渲染为：
+
+```html
+<p class="baz">Hi!</p>
+<span>This is a child component</span>
+```
+
+### 绑定内联样式
+
+
+
+
+
 
 ## 条件渲染
 
@@ -117,35 +220,81 @@ const book: Book = reactive({title: 'vue'})
 
 ## 生命周期
 
+ 每个Vue组件实例在创建时都需要经历一系列初始化步骤，比如设置好数据侦听，编译模板，挂载实例到DOM，以及在数据改变时更新DOM文档，在这个过程中，他也会运行被称为生命周期钩子的函数，让开发者有机会能够在特定阶段运行自己的代码。
+
+### 注册生命周期钩子
+
+比如，onMounted钩子可以用来在组件完成初始渲染，并且创建DOM结点之后运行代码。当调用onMounted时，Vue会自动将回调函数注册到当前正在被初始化的组件实例上，这意味着这些钩子应该会在组件初始化时被同步注册。
+
 ## 侦听器
+
+计算属性允许我们声明性地计算一些衍生的值，然是在有些情况下，我们需要在某些状态发生变化时，执行一些事情，如更改DOM，或者根据异步操作的结果修改另一处的状态。
+
+在组合式API中，我们可以使用watch函数在每次响应式状态发生变化时，触发一个回调函数，执行一些事情。
+
+```vue
+<script>
+	const question = ref("");
+  const	answer = ref("question");
+  watch(question, async (newQuestion, oldQuestion)=>{
+    if(newQuestion.indexOf('?')>-1){
+      answer.value = 'Thinking';
+    }
+  })
+</script>
+```
+
+### 侦听器侦听数据源的类型
+
+watch侦听器是一个方法，用于侦听他的第一个参数发生的变化，然后调用给定第二个参数传入的方法执行做一些事情。
+
+第一个参数可以是不同类型的数据源，如ref、计算属性、响应式对象、getter函数，多个数据源组成的数组。
+
+但是不能直接侦听响应式对象的属性值，而是需要用一个返回该属性的getter函数
+
+```vue
+<script>
+	const obj = reactive({ count: 0 });
+  watch(
+    () => obj.count,
+    (count) => {
+      console.log(`count is: ${count}`)
+    }
+)
+</script>
+```
+
+直接给侦听器watch()传入一个响应式对象，会隐式地创建一个深层侦听器，该回调函数在所有嵌套值变更时都会被出发。相比之下，一个返回响应式对象的getter函数，只有getter函数的返回值返回不同的对象时，才会触发回调。
+
+watch侦听器默认是懒执行的，仅当数据源变化时，才会执行回调。但是在某些场景中，我们希望在创建侦听器后，立即执行一遍回调，
 
 ## 模板引用
 
-## 组件基础
+## 组件
 
-## 组件注册
+### 组件注册
 
-## props
+### props
 
-## 事件
+### 事件
 
-## 组件 v-model
+### 组件 v-model
 
-## Attributes
+### Attributes
 
-## 插槽
+### 插槽
 
-## 依赖注入
+### 依赖注入
 
-## 异步组件
+### 异步组件
+
+### 内置组件
 
 ## 组合式函数
 
 ## 自定义指令
 
 ## 插件
-
-## 内置组件
 
 ## 应用规模化
 
