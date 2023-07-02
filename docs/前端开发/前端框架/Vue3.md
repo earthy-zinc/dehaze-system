@@ -270,33 +270,489 @@ watch侦听器默认是懒执行的，仅当数据源变化时，才会执行回
 
 ## 模板引用
 
+虽然Vue声明性渲染模型抽象了大部分对DOM的直接操作，但是在某些情况下，仍然需要直接访问底层DOM元素，我们可以使用ref属性，它允许我们在一个特定的DOM元素或者子组件实例被挂载后，获得对他的直接引用，比如说能够在组件挂载时将焦点设置到一个input元素上，或者在一个元素上初始化一个第三方库。
+
+### 通过组合式API访问对模板对象的引用
+
+为了获得在HTML模板DOM文件中对应元素的引用，我们需要在script脚本中声明一个同名的ref。只有在组件挂载之后才能够访问模板应用，在Vue对HTML页面的初次渲染之前该元素还不存在。
+
+当在v-for中使用模板的引用时，对应的ref值为一个数组。
+
+```vue
+<script setup>
+	import { ref, onMounted } from 'vue'
+  
+  const itemRefs = ref([])
+  onMounted(() => console.log(itemRefs.value))
+</script>
+<template>
+  <ul>
+    <li v-for="item in list" ref="itemRefs">
+      {{ item }}
+    </li>
+  </ul>
+</template>
+```
+
+### 使用函数值作为引用元素的名字
+
+ref绑定的元素对象，除了 使用字符串作为这个DOM对象的名字，ref属性还可以通过v-bind绑定为一个函数，会在每次组件更新时都被调用。该函数会收到元素引用作为其第一个参数。也就是说绑定的那个函数的第一个参数就是该dom元素对象。当绑定的dom元素被卸载时，函数也会被调用一次，这是传入的参数就为null。
+
+### 绑定组件
+
+模板引用也可以被用在一个子组件上，这种情况下引用中获得的值不再是DOM对象而是组件实例。
+
 ## 组件
+
+### 组件基础
+
+组件允许我们将UI划分为独立的、可重用的部分，并且可以对每一部分进行单独的思考，Vue实现了自己的组件模型，使我们可以在每个组件内封装自定义内容和逻辑，Vue也能够配合原生的网页组件。
+
+每当使用一个组件，就创建了一个新的实例，在单位见组件中，我们为子组件使用首字母大写的标签名，以此和原生HTML元素做区分，虽然原生HTML标签名是不区分大小写的，但是Vue单文件组件是可以在编译中区分大小写的。
+
+#### 动态组件
+
+如果想要在多个组件之间来回切换，需要用到动态组件。这里是通过Vue的`<component>`元素和特殊的is属性实现的
+
+ ```vue
+ <template>
+   <!-- currentTab 变量值改变时组件也改变 -->
+   <component :is="tabs[currentTab]"></component>
+ </template>
+ ```
+
+可以传递给:is的有以下几种：
+
+* 被注册的组件名
+* 导入的组件对象
+
+
 
 ### 组件注册
 
+一个组件在使用之前需要先注册，然后再渲染模板时才能找到其对应的实现，组件注册有两种方式：全局注册和局部注册
+
+#### 全局注册
+
+使用Vue应用实例的app.component()方法，让组件再当前Vue全局可用
+
+```js
+import { createApp } from 'vue'
+import MyComponent from './App.vue'
+const app = createApp({})
+
+app.component('MyComponent', MyComponent)
+```
+
+全局注册的组件可以在此应用的任意组件模板中使用。
+
+#### 局部注册
+
+全局注册但是并没有被使用的组件无法再生产打包时被自动移除，如果注册了一个全局组件，即使没有用，仍然会出现在打包后的JS文件中。
+
+在使用 `<script setup>` 的单文件组件中，导入的组件可以直接在模板中使用，无需注册
+
+```vue
+<script setup>
+import ComponentA from './ComponentA.vue'
+</script>
+
+<template>
+  <ComponentA />
+</template>
+```
+
+#### 组件名称规范
+
+组件名称需要使用首字母大写的格式，这是合法的JavaScript标识符，使得在JavaScript中导入和注册组件都变得很容易，这种形式的名称可以和原生的HTML元素区分开，将Vue组件和自定义元素区分开。
+
 ### props
+
+一个组件需要显式的声明它所接受的props，props通常是父组件传递给子组件的一些数据，如果不显式的声明，Vue就不太明白外部组件传入的究竟是props还是透传attribute
+
+#### 向组件中传递对象数据
+
+props是一种特殊的虚拟HTML元素属性，我们可以在子组件内部生命注册一个props，使用defineProps进行声明。defineProps是仅仅在`<script setup>`中可用的命令，不需要显式导入，声明的props会自动暴露给模板，他会返回一个对象，包含了父组件中传递给该子组件的所有信息。
+
+子组件*BlogPost.vue*
+
+```vue
+<script setup>
+const props = defineProps(['title'])
+</script>
+
+<template>
+  <h4>{{ props.title }}</h4>
+</template>
+```
+
+父组件：
+
+```vue
+<template>
+  <BlogPost title="My journey with Vue" />
+  <BlogPost title="Blogging with Vue" />
+  <BlogPost title="Why Vue is so fun" />
+</template>
+```
+
+
+
+
 
 ### 事件
 
+子组件如果需要和父组件进行交互，比如一个控制按钮在某个子组件中，这个按钮可以实现让父组件中所有的字体都放大。那么子组件在自身应该定义一个事件，并且在用户点击该按钮时，将事件传递给父组件。组件实例提供了一个自定义事件系统，父组件可以通过v-on 或@来选择性的监听子组件上抛的事件，就像监听原生DOM事件那样。
+
+#### 子组件抛出事件
+
+子组件通过调用内置的`$emit`方法，传入事件名称(字符串)抛出一个事件（$emit方法无法在`<script setup>` 中调用，可以使用defineEmits代替）
+
+```vue
+<!-- BlogPost.vue, 省略了 <script> -->
+<template>
+  <button @click="$emit('enlarge-text')">
+    Enlarge text
+  </button>
+</template>
+```
+
+子组件也可以通过defineEmits宏来声明子组件需要抛出的事件，声明了需要抛出的事件后，就可以对事件的参数进行验证，同时还可以让避免将他们作为原生事件监听器应用于子组件根元素。defineEmits会返回一个等同于$emit方法的emit函数，我们可以调用它来触发事件。
+
+#### 父组件监听事件
+
+父组件的虚拟HTML元素的属性上，需要填写子组件中定义的事件名称（字符串）来监听子组件抛出的对应事件信息。这个事件名称是子组件中通过`$emit()`定义的事件名。父组件对应的属性值则填写JavaScript表达式，触发的事件会执行这段代码。父组件通过v-on缩写为@来监听事件，组件事件监听器也支持修饰符。
+
+```vue
+<template>
+<BlogPost 
+  @enlarge-text="postFontSize += 0.1"/>
+</template>
+```
+
+#### 事件参数
+
+有时我们需要在触发事件时附带一个特定的值，宅这种场景下，我们可以给子组件`$emit` 提供一个额外的参数。然后我们在父组件中监听事件，父组件定义的函数就能够收到子组件`$emit`方法提供的参数。所有传入`$emit()`的额外参数都会被直接传向监听器。
+
+#### 声明触发的事件
+
+我们在模板HTML中使用的`$emit`方法不能再组件的`<script setup>`中使用，但是defineEmits()能够返回一个相同作用的函数使用，但是defineEmits不能再子函数中使用，必须直接放置在`<script setup>`的顶级作用域下。
+
+emit选项支持对象语法，允许我们对触发事件的参数进行验证。
+
+```vue
+<script setup>
+	const emit = defineEmits({
+    submit(payload){
+      // 通过验证返回值为true false来判断是否通过
+    }
+  })
+</script>
+```
+
+#### 事件校验
+
+所有触发的事件也可以用对象的形式进行描述。要为事件添加校验，那么事件可以被赋值为一个函数，接收的参数就是抛出事件时传入emit的内容，返回一个布尔值来表明事件是否合法。
+
+ ```vue
+ <script setup>
+ 	const emit = defineEmits({
+     // null 表示不进行参数校验
+     click: null,
+     // 校验submit事件传入的email和password参数
+     submit: ({email, password}) => {
+       // && 短路操作，表示这两个参数都不为null或undefined
+       if (email && password){
+         return true;
+       }else {
+         console.warn("不能为空");
+         return false;
+       }
+     }
+   })
+   
+   function submitForm(email, password){
+     emit('submit', {email, password})
+   }
+ </script>
+ ```
+
 ### 组件 v-model
 
-### Attributes
+v-model可以在组件上使用以实现双向绑定。首先v-model在原生组件中，模板编译器会对v-model进行等价展开。实际上等价于
+
+```html
+<input v-model='searchText'/>
+<input :value='searchText'
+       @input="searchText = $event.target.value"
+```
+
+也就是说，v-model绑定了一个value单项绑定，又绑定了一个input事件将事件中的该对象的value值绑定到了searchText变量中。而在应用到一个组件中，v-model会被展开为以下形式：
+
+```html
+<CustonInput :modelValue="searchText"
+             @update:modelValue="newValue => searchText = newValue"/>
+```
+
+这里这个组件将内部原生的input元素的value属性绑定到了modelValue的prop值中，当原生的input事件触发后，触发了一个携带了新值的事件
+
+#### v-model参数
+
+默认情况下，v-model在组件上都是使用modelValue作为prop，并且以modelValue作为对应的事件。我们可以通过给v-model指定一个参数来更改这些名字。利用这种特性，我们可以在单个组件实例上创造多个v-model双向绑定。
+
+父组件中：
+
+```vue
+<UserName v-model:first-name='first'
+          v-model:last-name='last'/>
+```
+
+子组件中：
+
+```vue
+<script setup>
+	defineProps({
+    firstName: String,
+    lastName: String
+  })
+  
+  defineEmits(['update:firstName, update:lastName'])
+</script>
+<template>
+	<input type='text'
+         :value='firstName'
+         @input="$emit('update:first', $event.target.value)"/>
+
+</template>
+```
+
+####  处理修饰符
+
+v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下，可能想要自定义组件的v-model支持自定义的修饰符。组件的v-model上所添加的修饰符，可以通过modelModifiers 这个prop在组件内访问到。在下面的组件中，声明了这个prop，默认值是一个空对象。有了这一个prop，我们就可以检查modelModifiers对象上的键，并编写一个处理函数来改变抛出的值。
+
+```vue
+<script setup>
+	const props = defineProps({
+    modelValue: String, 
+    modelModifiers: { default: ()=> ({})}
+  })
+  const emit = defineEmits(['update:modelValue'])
+  
+  function emitValue(e){
+    let value = e.target.value
+    if(props.modelModifiers.captialize){
+      value = value.charAt(0).toUpperCase() + value.slice(1)
+    }
+  }
+</script>
+```
+
+### 透传Attributes
+
+透传属性指的是传递给一个组件，却没有被该组件声明为props或者emits的属性或者v-on事件监听器，常见的例子是class、style、id。简单来说，透传意味着父组件或者外部组件传递给当前组件的属性，这些是一般而言的属性，而没有没vue做其他特殊处理。
+
+当一个组件以单个元素为根做渲染时，透传的属性会被自动添加到该组件的根元素上。
+
+#### 对于class、style属性
+
+对于父组件或者外部组件传递给当前组件的style或者class属性。这些属性会和当前组件已有的style和class属性合并。
+
+#### 对于v-on绑定的监听器
+
+如果父组件给子组件绑定了一个监听器属性，那么这个监听器就会被添加到子组件的根元素，当子组件中当前事件被触发，就会触发父组件中的对应事件方法。
+
+#### 深层继承属性
+
+如果子组件只是在根元素结点上渲染另一个组件，而没有其他操作，那么父组件传递来的属性就会直接再次传递给子子组件。
+
+如果不需要组件自动的从父组件继承属性，可以在组件选项中设置`inheritAttrs: false`，我们在 `<script setup> `中使用 defineOptions来设置这个值。
+
+最常见的需要禁用属性继承的场景是，属性需要应用在根节点意外的其他元素上，通过这样设置，我们可以控制传递进来的属性应该被如何使用，这些传递进来的属性可以在模板表达式中直接用`$attrs`访问到。这里面包含了除了组件所声明的props和emits之外的所有其他属性。
+
+比如我们想把属性应用到内部button结点上，这样使用`v-bind="$attrs"`实现。没有参数的v-bind会将对象的所有属性都作为html元素属性应用到html元素结点上。
+
+#### 多个根节点的属性继承
+
+和单根节点的组件有所不同，有多根节点的组件没有自动的继承传递属性的行为，如果$attrs没有被某个元素显式的绑定将会抛出一个运行时警告。
+
+#### JavaScript中获取继承传递的属性
+
+在 `<script setup> `中使用 `useAttrs()` API 来访问一个组件的所有透传 attribute：
 
 ### 插槽
 
+向子组件传递大量内容
+
+之前我们介绍了可以通过子组件元素属性向子组件传递一些对象数据，有时我们希望传递的信息量大，或者向子组件传递HTML元素，等大量的信息，那通过HTML属性传递就比较麻烦，这是我们可以通过插槽来传递大量内容。
+
+#### 父组件传递内容
+
+父组件在子组件元素的text域内填写想要传递的内容
+
+```vue
+<template>
+  <AlertBox>
+    Something bad happened.
+  </AlertBox>
+</template>
+```
+
+#### 子组件接受内容
+
+子组件可以在HTML模板的某个位置添加自定义的`<slot>`元素来接收父组件传递的内容
+
+```vue
+<template>
+  <div>
+    <strong>This is an Error for Demo Purposes</strong>
+    <slot />
+  </div>
+</template>
+```
+
+
+
+
+
 ### 依赖注入
 
+通常情况下，当我们需要从父组件向子组件传递数据时，会使用props。如果根组件需要给某个子子子子组件传递数据，如果仅仅使用props则必须沿着组件链逐级传递下去，这回非常麻烦，并且中间的组件并不关心这些数据，但是为了让数据传递，他们仍然需要定义这些props并向下传递，我们需要避免这种情况。
+
+provide和inject可以帮助我们解决这一问题，一个父组件相对于其所有的后代组件，会作为依赖提供者，任何后代组件树，无论层级有多深，都可以注入由父组件提供给整条链路的依赖。
+
+#### provide
+
+要为组件后代提供数据，需要用到provide函数。provide函数接收两个参数，第一个参数被称为注入名，可以是一个字符串或者是一个symbol。后代组件会用注入名来查找期望注入的值。一个组件可以多次调用provide()使用不同的注入名，注入不同的依赖值。第二个参数是提供的值，可以是任意类型，包括响应式状态。
+
+ ```vue
+ <script setup>
+ 	import {provide} from 'vue'
+   provide('message', 'hello!')
+ 
+ </script>
+ ```
+
+除了在一个组件中提供依赖，我们还可以在整个应用层面提供依赖，在应用级别提供的数据在该应用内的所有组件中都可以注入。
+
+#### inject
+
+要注入上层组件提供的数据，需要使用inject()函数。如果提供的值是一个响应式对象，注入进来的会是该响应式对象，不会自动解包为其内部的值，这使得注入方组件能够通过ref对象保持和供给方的响应式链接。
+
+```vue
+<script setup>
+	import { inject } from 'vue'
+  const message = inject('message')
+</script>
+```
+
+默认情况下，inject假设传入的注入名会被某个祖先链上的组件提供，如果该注入名的数据没有任何组件提供，则会抛出一个警告，如果在注入一个值的时候不要求必须有提供者，那么我们应该声明一个默认值，在一些情况下，默认值可能需要通过调用一个函数或者初始化一个类来却，为了避免在用不到默认值的情况下进行不必要的计算，我们可以使用工厂函数来创建默认值。
+
+当提供或者注入响应式数据时，我们尽可能将任何对响应式状态的变更都保持在供给方组件中，这样可以确保所提供的状态声明和变更操作都内聚在一个组件中，使其更加容易维护。
+
+但有时候，我们可能需要在注入方组件中更改数据，在这种情况下，推荐在供给方组件内声明并提供一个更改数据的方法函数。
+
+供给方组件
+
+```vue
+<script setup>
+	import {provide, ref} from 'vue'
+  const location = ref("pole");
+  function updateLocation(){
+    location.value = "south pole"
+  }
+  
+  // 提供一个响应式数据location，并提供他的更新方法
+  provide('location', {
+    location, 
+    updateLocation
+  })
+</script>
+```
+
+接收方（注入方）
+
+```vue
+<script setup>
+	import {inject} from 'vue'
+  const {location, updateLocation} = inject('location')
+</script>
+<template>
+	<button @click='updateLocation'>
+    {{ location }}
+  </button>
+</template>
+```
+
+如果想要确保提供的数据不被接收方更改，可以使用readonly来包装提供的值
+
+#### 使用symbol作为注入的名
+
+如果包含非常多的依赖注入，普通的字符串当注入名就不够用了，这是可以使用Symbol来作为注入以避免潜在的注入冲突。在单独的文件中导出这些注入名Symbol
+
+```js
+export const injectionKey = Symbol()
+```
+
+供给方组件
+
+```js
+import { provide } from 'vue'
+import { injectionKey} from './key.js'
+provide(injectionKey, {
+  
+})
+```
+
+注入方
+
+```js
+import { inject } from 'vue'
+import { injectionKey } from './key.js'
+
+const injected = inject(injectionKey)
+```
+
+
+
+
+
 ### 异步组件
+
+在大型项目中，我们可能需要拆分应用为更小的块，并且仅在需要的时候再从服务器加载相关组件。Vue提供了`defineAsyncComponent`方法来实现此功能。
+
+```js
+import { defineAsyncComponent } from 'vue'
+const AsyncComponent = defineAsyncComponent(() => {
+  return new Promise((resolve, reject) => {
+    // 从服务器获取组件
+    resolve(/*返回处理获取的组件*/)
+  })
+})
+```
+
+ES模块动态导入也会返回一个Promise，多数情况下将它和defineAsyncComponent搭配使用，最后得到的值就是一个外层包装过的组件，仅仅再页面需要它渲染时才会调用加载内部实际组件的函数，他会将接收到的props和插槽传给内部组件。
+
+与普通组件一样，异步组件可以使用app.component()全局注册，也可以直接再父组件中定义。
+
+异步操作不可避免会涉及到加载和错误状态，因此defineAsyncComponent()也可以处理这些状态。
 
 ### 内置组件
 
 ## 组合式函数
 
+组合式函数是利用Vue的组合式API来封装和复用有状态逻辑的函数，当构建前端应用时，我们常常需要复用公共任务的逻辑，如为了在不同地方格式化时间，我们可能会抽取一个可以复用的日期格式化函数，这个函数封装了无状态逻辑，他在接收输入后会立刻返回所期望的输出。相比之下有状态逻辑会管理随着时间变化的状态。
+
 ## 自定义指令
+
+
 
 ## 插件
 
+
+
 ## 应用规模化
+
+
 
 ## 服务端渲染
 

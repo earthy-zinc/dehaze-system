@@ -1,0 +1,94 @@
+# Pinia 学习
+
+## 定义store
+
+store是vue数据的仓库，在setup中是通过`defineStore()`定义的，他的第一个参数要求是一个独一无二的名字。这个名字也被用作id，是必须传入的，我们将defineStore()返回的一个函数命名为`use...`是一个符合组合式函数风格的约定。第二个参数可接受两个值，setup函数或者option对象。
+
+option对象，可以带有state、actions、getters属性。state是数据仓库中的数据，而getters是数据仓库中的计算属性，actions则是方法。
+
+```js
+const useCounterStore = defineStore('counter', {
+  state: () => ({count:0}),
+  getter: { 
+  	double: (state) => state.count * 2.
+  },
+  actions: {
+    increment() {
+      this.count++
+    }
+  }
+})
+```
+
+
+
+当然也存在另一种定义store的方法，我们可以在第二个参数传入一个函数，该函数定义了一些响应式属性和方法，并且返回一个带有我们想暴露出去的属性和方法的对象。
+
+```js
+const useCounterStore = defineStore('counter', ()=>{
+  const count = ref(0);
+  function increment() {
+    count.value++
+  }
+  return {count, increment}
+})
+```
+
+在setup store中。
+
+* ref()相当于state属性
+* computed()相当于getter属性
+* function()相当于actions属性
+
+像这样的setup数据仓库比option数据仓库带来了更多的灵活性，可以在数据仓库中创建侦听器，并且自由地使用任何组合式函数，但是会让服务端渲染更加复杂。
+
+## 使用store
+
+我们要在使用数据仓库的组件中调用该use...Store()来获取数据仓库变量，在调用之前，store实例是不会被创建的。我们可以定义任意多的store，但是最好在不同的文件中定义store。一旦store实例被创建，我们就可以直接访问在store中定义的state、getters、actions等属性。为了从store中提取属性时保持其响应性，我们应该使用storeToRefs()。它将为每一个响应式属性创建引用，当我们只是用状态而不调用action函数时，会很有用。
+
+```vue
+<script setup>
+	import { storeToRefs } from 'pinia'
+  const store = useCounterStore();
+  const {name, doubleCount} = storeToRefs(store);
+  const {increment} = store;
+</script>
+```
+
+## State
+
+state即数据，state被定义为返回初始状态的函数。
+
+```typescript
+const useStore = defineStore('storeId', {
+  state: () => {
+    return {
+      count: 0,
+      name: 'jack',
+      isAdmin: true,
+      items: [] as UserInfo[],
+      user: null as UserInfo | null
+    }
+  }
+})
+
+interface UserInfo {
+  name: string, 
+  age: number
+}
+```
+
+ 当然我们也可以用接口来定义state的返回值，并且定义state函数返回值的类型。
+
+在默认情况下，我们可以通过store实例来访问state数据，直接对其进行读写。也可以调用store的$reset() 方法将state重置为初始值。
+
+### 侦听state
+
+我们可以通过store的`$subscribe()`方法侦听state及其变化，使用这个方法的好处时订阅方法在patch分发后只触发一次。
+
+
+
+## Getter
+
+## Action
+
