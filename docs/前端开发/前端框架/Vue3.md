@@ -547,6 +547,9 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 </script>
 ```
 
+
+
+
 ### 透传Attributes
 
 透传属性指的是传递给一个组件，却没有被该组件声明为props或者emits的属性或者v-on事件监听器，常见的例子是class、style、id。简单来说，透传意味着父组件或者外部组件传递给当前组件的属性，这些是一般而言的属性，而没有没vue做其他特殊处理。
@@ -610,9 +613,106 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 </template>
 ```
 
+`<slot>`元素是一个插槽出口，表示了父元素提供的插槽内容将会在哪里被渲染。通过使用插槽，子组件仅负责渲染外层的html组件以及相应的样式，而内部的内容则有父组件提供。插槽的内容可以是任何合法的模板内容，不局限于文本，比如我们可以传入多个元素，甚至是组件。通过使用插槽，子组件就更加灵活和具有可复用性，现在组件也可以用在不同的地方用来渲染各异的内容，同时还保证都具有相同的样式。
 
+#### 渲染的作用域
 
+插槽内容可以访问到父组件的数据作用域，因为插槽内容本身就是在父组件模板中定义的，插槽内容无法访问子组件的数据，Vue模板中的表达式只能访问其定义时所处的作用域，这和JavaScript的词法作用域规则是一致的
 
+#### 默认内容
+
+在外部没有提供任何内容的情况下，可以为插槽指定一个默认内容。也就是说父组件未向子组件传递内容，那么子组件`<slot>`标签之间的内容就会被当作默认内容渲染。
+
+#### 有名插槽
+
+有时候一个子组件中需要有多个插槽出口，如果我们想要分别不同的插槽，就需要名字来对他们进行区分。对于这种场景，`<slot>`元素有一个特殊属性name，用于给每个插槽分配一个唯一的ID，这类带有name的插槽被称为有名插槽，没有提供name属性的插槽会被默认命名为default。在父组件中使用带有插槽的子组件时，我们就需要一种方式将多个插槽内容传入到各自目标插槽的出口，此时需要用到具名插槽。
+
+要为有名插槽传入内容，我们需要一个含有`v-slot`指令的`<template>`元素，并且将目标插槽的名字传给该指令。`v-slot`有对应的简写为`#`。因此`<template v-slot:header>`可以简写为`<template #header>`，其意思就是将这部分模板片段传入子组件的header插槽中。
+
+当一个组件同时接收默认插槽和具名插槽时，所有位于顶级的非`<template>`节点都会被隐式的是为默认插槽的内容。
+
+因此这两段代码是等同的。
+
+```vue
+<template>
+    <BaseLayout>
+      <template #header>
+        <h1>Here might be a page title</h1>
+      </template>
+
+      <template #default>
+        <p>A paragraph for the main content.</p>
+        <p>And another one.</p>
+      </template>
+
+      <template #footer>
+        <p>Here's some contact info</p>
+      </template>
+    </BaseLayout>
+</template>
+```
+
+```vue
+<template>
+    <BaseLayout>
+      <template #header>
+        <h1>Here might be a page title</h1>
+      </template>
+
+      <!-- 隐式的默认插槽 -->
+      <p>A paragraph for the main content.</p>
+      <p>And another one.</p>
+
+      <template #footer>
+        <p>Here's some contact info</p>
+      </template>
+    </BaseLayout>
+</template>
+```
+
+#### 动态插槽名称
+
+动态指令参数在`v-slot`上也是有效的，也就是说可以定义下面这样动态插槽名。
+
+```vue
+<template>
+	<BaseLayout>
+    	<template v-slot:[dynamicSlotName]>		
+		</template>
+
+        <template #[dynamicSlotName]>		
+		</template>
+    </BaseLayout>
+</template>
+```
+
+#### 作用域插槽
+
+插槽作为父组件传递给子组件的内容，插槽是无法访问到子组件的状态的，然而在某些场景中，插槽的内容可能想要同时使用父组件领域内和子组件领域内的数据，要做到这一点，我们需要让子组件在渲染时，将一部分数据提供给插槽。
+
+我们可以向对组件传递属性、props、事件那样，向一个插槽出口上绑定属性。
+
+在子组件中，我们绑定了text、count属性，text属性的值由变量greetingMessage确定。
+
+```vue
+<template>
+	<div>
+        <slot :text="greetingMessage"
+              :count="1"></slot>
+    </div>
+</template>
+```
+
+在父组件中，当需要接受子组件从插槽内传递出来的数据时，我们先看看默认插槽如何接受数据。首先通过子组件标签上的`v-slot`指令，直接接收到了一个插槽props对象。
+
+```vue
+<template>
+	<MyComponent v-slot="slotProps">
+    	{{ slotProps.text }}
+        {{ slotProps.count }}
+    </MyComponent>
+</template>
+```
 
 ### 依赖注入
 
