@@ -326,6 +326,84 @@ public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveT
 
 当线程队列满了，新任务到来就会触发线程的任务拒绝策略。在任务量非常大的场景中，拒绝策略是非常重要的。
 
+#### FutureTask
+
+FutureTask为Future提供了基础的实现，如获取任务执行的结果和取消任务，如果任务尚未完成，则获取任务执行结果时将会阻塞，一旦任务执行结束，任务就不能被重启或者取消，除非这时使用runAndReset重置后执行计算，FutureTask常常用来封装Callable和Runnable线程类，也可以作为一个任务提交到线程池中运行。除了作为独立的类之外，此类也提供了一些功能性函数供我们创建自定义task类使用，FutureTask的线程安全由CAS保证。
+
+* Callable接口：是一个泛型接口，反省是Callable接口中方法需要返回的类型
+* Future接口，代表异步计算的结果，通过FUture接口提供的方法可以查看异步计算是否执行完成，或者等待执行结果并获取执行结果，同时还可以取消执行。
+
+FutureTask
+```java
+// 构造函数
+public FutureTask(Callable<V> callable){
+  if(callable == null)
+    throw new NullPointerException();
+  this.callable = callable;
+  this.state = NEW;
+}
+```
+
+构造函数会把传入的Callable变量保存在类实例变量自身的callable变量中，在被执行完成后整个变量会指向null。
+
+在新建了一个FutureTask对象之后，接下来就是在另一个线程中去执行Task，无论是直接创建一个线程或者通过线程池获取线程，执行的都是run方法。
+
+```java
+public void run(){
+  if(state != NEW || !UNSAFE.compareAndSwapObject(this, runnerOffset, null, Thread.currentThread()))
+    return;
+  try {
+    Callable<V> c = callable;
+    if(c != null && state == NEW){
+      V result;
+      boolean ran;
+      try {
+        result = c.call();
+        ran = true;
+      } catch (Throwable ex){
+        result = null;
+        ran = false;
+        setException(ex);
+      }
+      if(ran)
+        set(result); //设置执行任务后的结果
+    } finally {
+      runner = null;
+      int s = state;
+      if (s>=INTERRUPTING)
+        handlePossibleCancellationInterrunption(s);
+    }
+  }
+}
+protexted void set(V v){
+  if (UNSAFE.compareAndSwapInt(this, stateOffset, NEW, COMPLETING)) {
+    outcome = v;
+    UNSAFE.putOrderedInt(this, stateOffset, NORMAL);
+    finishCompletion(); 
+  }
+}
+private void finishCompletion(){
+  for (WaitNode q; (q = waiters) != null;){
+    if(UNSAFE.compareAndSwapObject(this, waitersOffset, q, null)){
+      for (;;){
+        Thread t = q.thread;
+        if (t != null){
+          q.thread = null;
+          LockSupport.unpark(t);
+        }
+        WaitNode next = q.next;
+        if(next == null) break;
+        q.next = null;
+        q = next;
+      }
+      break;
+    }
+  }
+  done();
+  callable= null;
+}
+```
+
 
 
 ### 8、组合式异步编程
@@ -333,6 +411,10 @@ public ThreadPoolExecutor(int corePoolSize, int maximumPoolSize, long keepAliveT
 一个软件系统的很多功能可能会被切分为小的服务，在对外展示具体页面时，可能会调用多个服务。为了提高性能充分利用系统资源，这些对外部服务的调用一般是异步的，尽量使并发的。
 
 CompleteableFuture是一个具体的类，实现了两个接口，一个使Future，另一个使CompletionStage，Future表示异步任务的结果，而CompletionStage字面意思就是完成任务的阶段。多个阶段可以用用流水线的方式组合起来，对于其中一个阶段，有一个计算任务，但是可能要等待其他一个或者多个阶段完成才能开始，等待它完成后，可能会触发其他阶段开始运行。
+
+
+
+
 
 ### 9、锁
 
