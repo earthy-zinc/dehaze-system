@@ -159,7 +159,7 @@ synchronized除了保证原子操作外，他还能保证内存可见性，在�
 
 #### 1）线程状态的分类
 
-![](E:\StudyDoc\6.阅读笔记\图片\java_thread_condition.png)
+
 
 * New 新建状态：指的是一个线程被创建出来，但没有启动。
 * Runnable 可运行的状态：指的是线程可能在运行，也可能在等待时间片轮转。
@@ -749,7 +749,7 @@ Java标准库自带的`java.util`包提供了集合类`collection`，他是除�
 * Set 没有重复元素的集合
 * Map 键值对
 
-<img src="D:\StudyDoc\4.阅读笔记\图片\java_collections_overview.png" alt="img" style="zoom:150%;" />
+
 
 * Collection接口：List接口、Queue接口、Set接口继承了Collection接口，他们之间是泛化的关系。
   * List接口：ArrayList类、LinkedList类实现了List接口，他们之间是接口与类的实现关系

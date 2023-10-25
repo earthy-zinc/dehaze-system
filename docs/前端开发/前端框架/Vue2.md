@@ -780,8 +780,8 @@ const app = new Vue({
 
 * 动态路由匹配：有时候我们需要将某种模式匹配到的所有路由都映射到同一种组件，这时候就需要动态路由匹配来达到这个效果。如在一个路径后面使用 `/:`标记，当匹配到对应路径是，之后的路径就会当做参数被设置到`this.$route.params`，可以在每个组件内使用。这些匹配到的参数叫做路径参数。
 
-| 模式                          | 匹配路径            | $route.params                   |
-| ----------------------------- | ------------------- | ------------------------------- |
+| 模式                            | 匹配路径                | $route.params                   |
+|-------------------------------|---------------------|---------------------------------|
 | /user/:username               | /user/evan          | {username:'evan'}               |
 | /user/:username/post/:post_id | /user/evan/post/123 | {username:'evan',post_id='123'} |
 
@@ -1260,20 +1260,20 @@ rules: {
 
 每个字段验证规则对象中允许的值有以下参数：
 
-| 参数名         | 值                                                           | 说明               |
-| -------------- | ------------------------------------------------------------ | ------------------ |
-| type           | string\|number\|boolean\|method\|regexp\|integer\|float\|array\|object\|enum\|date\|url\|hex\|email |                    |
-| required       | boolean类型                                                  | 是否为必填项       |
-| pattern        | 正则表达式                                                   |                    |
-| range(min,max) | min,max定义范围，字符串数组类型用于比较长度，数字类型比较大小 |                    |
-| len            | integer类型，length优先级高于range                           | 验证字段确切长度   |
-| enumerable     | 对于枚举类型，列出枚举的有效值                               |                    |
-| fields         | 对于嵌套对象的属性值的验证，则需要在fields中为对象对应的属性定义规则 |                    |
-| defaultField   | 值为对象或者数组，用来验证所有的值，是否满足defaultField规定的条件 |                    |
-| transform      |                                                              |                    |
-| messages       |                                                              |                    |
-| asyncValidator | function(rule, value, callback)                              | 自定义异步验证函数 |
-| validator      | function(rule, value, callback)                              | 自定义验证函数     |
+| 参数名            | 值                                                                                                   | 说明        |
+|----------------|-----------------------------------------------------------------------------------------------------|-----------|
+| type           | string\|number\|boolean\|method\|regexp\|integer\|float\|array\|object\|enum\|date\|url\|hex\|email |           |
+| required       | boolean类型                                                                                           | 是否为必填项    |
+| pattern        | 正则表达式                                                                                               |           |
+| range(min,max) | min,max定义范围，字符串数组类型用于比较长度，数字类型比较大小                                                                  |           |
+| len            | integer类型，length优先级高于range                                                                          | 验证字段确切长度  |
+| enumerable     | 对于枚举类型，列出枚举的有效值                                                                                     |           |
+| fields         | 对于嵌套对象的属性值的验证，则需要在fields中为对象对应的属性定义规则                                                               |           |
+| defaultField   | 值为对象或者数组，用来验证所有的值，是否满足defaultField规定的条件                                                             |           |
+| transform      |                                                                                                     |           |
+| messages       |                                                                                                     |           |
+| asyncValidator | function(rule, value, callback)                                                                     | 自定义异步验证函数 |
+| validator      | function(rule, value, callback)                                                                     | 自定义验证函数   |
 
 ## 附录1：Vue API
 
