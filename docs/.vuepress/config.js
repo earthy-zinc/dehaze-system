@@ -2,6 +2,7 @@ const getNav = require('./autoNavigate');
 const manualNav = require('./navigate');
 
 module.exports = {
+    theme: 'reco',
     title: '土味锌的阅读笔记',
     description: 'Learning Notes for Full Stack Development 全栈开发学习笔记',
     // 开发版本的服务器端口
