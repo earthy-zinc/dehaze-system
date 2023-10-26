@@ -1,4 +1,3 @@
-const getNav = require('./autoNavigate');
 const manualNav = require('./navigate');
 
 module.exports = {
@@ -18,7 +17,7 @@ module.exports = {
         }
     },
     themeConfig: {
-        nav: getNav(),
+        nav: manualNav,
         sidebar: 'auto',
         lastUpdated: '文章最后更新日期',
         smoothScroll: true,
