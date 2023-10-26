@@ -99,15 +99,15 @@ Web 应用中 Controller 负责接收 HTTP 请求，那么 Controller 层就需�
 
 @RequestMapping 注解参数说明
 
-| 参数         | 值       | 说明                                                                                                                   |
-| ------------ | -------- | ---------------------------------------------------------------------------------------------------------------------- |
-| name         | String   | 为该 RequestMapping 设置一个名字                                                                                       |
-| value / path | String[] | 指定接收的 URI 路径。支持 Ant 样式路径匹配方法，yml 占位符如.`${path}`                                               |
-| method       | emum[]   | 指定接收的请求方法。`public enum RequestMethod {GET,HEAD,POST,PATCH,DELETE,OPTIONS,TRACE}`                           |
-| params       | String[] | 指定接受的请求参数。只有 HTTP 请求带有对应的参数时，才会被该 Controller 处理，使用 `!`表示不能具有该类请求。         |
+| 参数         | 值       | 说明                                                         |
+| ------------ | -------- | ------------------------------------------------------------ |
+| name         | String   | 为该 RequestMapping 设置一个名字                             |
+| value / path | String[] | 指定接收的 URI 路径。支持 Ant 样式路径匹配方法，yml 占位符如.`${path}` |
+| method       | emum[]   | 指定接收的请求方法。`public enum RequestMethod {GET,HEAD,POST,PATCH,DELETE,OPTIONS,TRACE}` |
+| params       | String[] | 指定接受的请求参数。只有 HTTP 请求带有对应的参数时，才会被该 Controller 处理，使用 `!`表示不能具有该类请求。 |
 | header       | String[] | 指定接收的请求头。具有某些请求头或者某些请求头有特定的值，才会被该 Controller 处理，使用 `!`表示不能具有该类请求头。 |
-| consumes     | String[] | 指定接收的请求内容类型 Content-Type                                                                                    |
-| produces     | String[] | 指定从 HTTP 请求中发来的可接受响应的 Content-Type                                                                      |
+| consumes     | String[] | 指定接收的请求内容类型 Content-Type                          |
+| produces     | String[] | 指定从 HTTP 请求中发来的可接受响应的 Content-Type            |
 
 注：
 
@@ -115,11 +115,11 @@ Web 应用中 Controller 负责接收 HTTP 请求，那么 Controller 层就需�
 
 2、Ant 样式路径匹配方法
 
-| 路径 | 说明                           | 实例                                                             |
-| ---- | ------------------------------ | ---------------------------------------------------------------- |
+| 路径 | 说明                         | 实例                                                         |
+| ---- | ---------------------------- | ------------------------------------------------------------ |
 | ?    | 匹配任意单个字符，不包含 `/` | `/p?ttern`匹配该文件夹下符合该规则的的文件夹（不包含子文件夹） |
-| \*   | 匹配 0 或者任意数量的字符      | `/*.jsp`匹配当前文件夹下任何 JSP 文件（不包含子文件夹）        |
-| \*\* | 匹配 0 或者更多的目录          | `/**/*.jsp`匹配该文件夹及其子文件夹任何 JSP 文件               |
+| \*   | 匹配 0 或者任意数量的字符    | `/*.jsp`匹配当前文件夹下任何 JSP 文件（不包含子文件夹）      |
+| \*\* | 匹配 0 或者更多的目录        | `/**/*.jsp`匹配该文件夹及其子文件夹任何 JSP 文件             |
 
 ### 2）获取请求参数
 
@@ -541,6 +541,173 @@ void testCustomJoinWrapper() {
 List<User> queryUserByWrapper(@Param("ew")QueryWrapper<User> wrapper);
 ```
 
+#### 2.2.3 练习
+
+用户表结构:
+
+```sql
+CREATE TABLE `t_user`  (
+  `uid` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_name` varchar(30) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '姓名',
+  `age` int(11) NULL DEFAULT NULL COMMENT '年龄',
+  `email` varchar(50) CHARACTER SET utf8 COLLATE utf8_general_ci NULL DEFAULT NULL COMMENT '邮箱',
+  `is_deleted` int(255) NULL DEFAULT 0,
+  `sex` int(255) UNSIGNED ZEROFILL NULL DEFAULT NULL,
+  PRIMARY KEY (`uid`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 41 CHARACTER SET = utf8 COLLATE = utf8_general_ci ROW_FORMAT = Dynamic;
+```
+
+练习:
+
+```java
+//查询用户名包含a，年龄在20到30之间，邮箱不为空的用户信息
+//SELECT uid AS id,user_name AS name,age,email,is_deleted FROM t_user WHERE is_deleted=0 AND (user_name LIKE ? AND age BETWEEN ? AND ? AND email IS NOT NULL)
+@Test
+public void test01(){
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper.like("user_name", "a").between("age", 20, 30).isNotNull("email");
+    List<User> list = userMapper.selectList(queryWrapper);
+    list.forEach(System.out::println);
+}
+
+//查询用户信息，按照年龄的降序排序，若年龄相同，则按照id升序排序
+//SELECT uid AS id,user_name AS name,age,email,is_deleted FROM t_user WHERE is_deleted=0 ORDER BY age DESC,uid ASC
+@Test
+public void test02(){
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper.orderByDesc("age").orderByAsc("uid");
+    List<User> list = userMapper.selectList(queryWrapper);
+    list.forEach(System.out::println);
+}
+
+//删除邮箱地址为null的用户信息
+@Test
+public void test03(){
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper.isNull("email");
+    int result = userMapper.delete(queryWrapper);
+    System.out.println("result="+result);
+}
+
+//将（年龄大于20并且用户名中包含有a）或邮箱为null的用户信息修改
+//UPDATE t_user SET age=?, email=? WHERE is_deleted=0 AND (user_name LIKE ? AND age > ? OR email IS NULL)
+@Test
+public void test04(){
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper
+            .like("user_name", "a")
+            .gt("age", 20)
+            .or()
+            .isNull("email");
+    User user = new User();
+    user.setAge(18);
+    user.setEmail("user@atguigu.com");
+    int result = userMapper.update(user, queryWrapper);
+    System.out.println("result="+result);
+}
+
+//将用户名中包含有a并且（年龄大于20或邮箱为null）的用户信息修改
+//lambda表达式内的逻辑优先运算
+//UPDATE t_user SET age=?, email=? WHERE is_deleted=0 AND (user_name LIKE ? AND (age > ? OR email IS NULL))
+@Test
+public void test05(){
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper
+            .like("user_name", "a")
+            .and(i->i.gt("age", 20).or().isNull("email"));
+    User user = new User();
+    user.setAge(21);
+    user.setEmail("user@wl.com");
+    int result = userMapper.update(user,queryWrapper);
+    System.out.println("result="+result);
+}
+
+//查询用户信息的username、age和email字段
+//SELECT user_name,age,email FROM t_user WHERE is_deleted=0
+@Test
+public void test06(){
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper.select("user_name","age","email");
+    //selectMaps()返回Map集合列表，通常配合select()使用，避免User对象中没有被查询到的列值为null
+    List<Map<String, Object>> maps= userMapper.selectMaps(queryWrapper);
+    maps.forEach(System.out::println);
+}
+
+//子查询案例
+//查询id小于等于30的用户信息
+@Test
+public void test07(){
+    QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+    queryWrapper.inSql("uid", "select uid from t_user where uid <= 30")
+    .select("uid","user_name","email");
+//        List<User> list = userMapper.selectList(queryWrapper);
+//        list.forEach(System.out::println);
+    List<Map<String,Object>> maps = userMapper.selectMaps(queryWrapper);
+    maps.forEach(System.out::println);
+}
+
+//将用户名中包含有a并且（年龄大于20或邮箱为null）的用户信息修改
+@Test
+public void test08(){
+    UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+    updateWrapper
+            .like("user_name", "a")
+            .and(i -> i.gt("age", 20).or().isNull("email"));
+    updateWrapper.set("user_name", "小黑").set("email", "xiaohei@atguigu.com");
+    int result = userMapper.update(null, updateWrapper);
+    System.out.println("result="+result);
+}
+
+//定义查询条件，有可能为null（用户未输入或未选择）
+@Test
+public void test08Condition(){
+    String username = null;
+    Integer ageBegin = 10;
+    Integer ageEnd = 24;
+    QueryWrapper<User> queryWrapper = new QueryWrapper();
+    //SELECT uid AS id,user_name AS name,age,email,is_deleted FROM t_user WHERE is_deleted=0 AND (age >= ? AND age <= ?)
+    queryWrapper.like(StringUtils.isNotBlank(username),"user_name", "a")
+            .ge(ageBegin != null,"age",ageBegin)
+            .le(ageBegin != null,"age", ageEnd);
+    List<User> list = userMapper.selectList(queryWrapper);
+    list.forEach(System.out::println);
+}
+
+//LambdaQueryWrapper
+//定义查询条件，有可能为null（用户未输入或未选择）
+@Test
+public void test09(){
+    String username = "a";
+    Integer ageBegin = null;
+    Integer ageEnd = 24;
+    LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+    queryWrapper
+            .like(StringUtils.isNotBlank(username), User::getName,username)
+            .ge(ageBegin != null, User::getAge,ageBegin)
+            .le(ageEnd != null, User::getAge,ageEnd);
+    List<User> list = userMapper.selectList(queryWrapper);
+    list.forEach(System.out::println);
+}
+
+//LambdaUpdateWrapper
+//将用户名中包含有a并且（年龄大于20或邮箱为null）的用户信息修改
+@Test
+public void test10(){
+    LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
+    updateWrapper
+            .set(User::getName, "小黑")
+            .set(User::getEmail, "xiaohei@atguigu.com")
+            .like(User::getName, "a")
+            .and(i -> i.gt(User::getAge, 20).or().isNull(User::getEmail));//Lambda
+    int result = userMapper.update(null, updateWrapper);
+    System.out.println("result="+result);
+}
+```
+
+
+
+
+
 ## 3、扩展功能
 
 ### 3.1. 静态工具(Db 类)
@@ -885,22 +1052,22 @@ ZsetOperations valueOperations = redisTemplate.opsForZset();
 
 # 八、Lombok
 
-| 注解                     | 说明                                                                                      |
-| ------------------------ | ----------------------------------------------------------------------------------------- |
-| @Slf4j                   | 自动生成该类的 log 静态常量                                                               |
-| @Log4j2                  | 注解在类上。为类提供一个 属性名为 log 的 log4j 日志对象，和@Log4j 注解类似。              |
-| @Setter                  | 注解在属性上，为属性提供 setter 方法。注解在类上，为所有属性添加 setter 方法              |
-| @Getter                  | 注解在属性上，为属性提供 getter 方法。注解在类上，为所有属性添加 getter 方法              |
-| @EqualsAndHashCode       |                                                                                           |
-| @RequiredArgsConstructor |                                                                                           |
-| @NoArgsConstructor       |                                                                                           |
-| @AllArgsConstructor      |                                                                                           |
-| @NotNull                 |                                                                                           |
-| @NullAble                |                                                                                           |
-| @ToString                |                                                                                           |
+| 注解                     | 说明                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| @Slf4j                   | 自动生成该类的 log 静态常量                                  |
+| @Log4j2                  | 注解在类上。为类提供一个 属性名为 log 的 log4j 日志对象，和@Log4j 注解类似。 |
+| @Setter                  | 注解在属性上，为属性提供 setter 方法。注解在类上，为所有属性添加 setter 方法 |
+| @Getter                  | 注解在属性上，为属性提供 getter 方法。注解在类上，为所有属性添加 getter 方法 |
+| @EqualsAndHashCode       |                                                              |
+| @RequiredArgsConstructor |                                                              |
+| @NoArgsConstructor       |                                                              |
+| @AllArgsConstructor      |                                                              |
+| @NotNull                 |                                                              |
+| @NullAble                |                                                              |
+| @ToString                |                                                              |
 | @Value                   | 所有变量为 final，等同于添加@Getter @ToString @EqualsAndHashCode @RequiredArgsConstructor |
-| @Data                    | 等同于添加@Getter/@Setter @ToString @EqualsAndHashCode @RequiredArgsConstructor           |
-| @Builder                 | 自动生成流式 set 值写法                                                                   |
+| @Data                    | 等同于添加@Getter/@Setter @ToString @EqualsAndHashCode @RequiredArgsConstructor |
+| @Builder                 | 自动生成流式 set 值写法                                      |
 
 注：@EqualsAndHashCode 默认情况下，会使用所有非瞬态(non-transient)和非静态(non-static)字段来生成 equals 和 hascode 方法，也可以指定具体使用哪些属性。如果某些变量不想加入判断通过 exclude 排除，或者使用 of 指定使用某些字段
 
@@ -983,14 +1150,14 @@ public Class Swagger2Config{
 
 ### 1）配置类注解
 
-| 注解                     | 说明                                                                                                                                                                                                                                                                                |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| @SpringBootApplication   | 声明让 Spring Boot 自动给程序进行必要的配置，等同于@Configuration ，@EnableAutoConfiguration 和 @ComponentScan 三个配置。                                                                                                                                                           |
-| @Configuration           | 说明这是一个配置类                                                                                                                                                                                                                                                                  |
-| @EnableAutoConfiguration | Spring Boot 自动配置，尝试根据你添加的 jar 依赖自动配置你的 Spring 应用。                                                                                                                                                                                                           |
+| 注解                     | 说明                                                         |
+| ------------------------ | ------------------------------------------------------------ |
+| @SpringBootApplication   | 声明让 Spring Boot 自动给程序进行必要的配置，等同于@Configuration ，@EnableAutoConfiguration 和 @ComponentScan 三个配置。 |
+| @Configuration           | 说明这是一个配置类                                           |
+| @EnableAutoConfiguration | Spring Boot 自动配置，尝试根据你添加的 jar 依赖自动配置你的 Spring 应用。 |
 | @ComponentScan           | 自动搜索当前类所在的包以及子包，把所有标注为需要装配的的 Bean 自动创建出来。默认会装配标识了@Controller，@Service，@Repository，@Component 注解的类到 spring 容器中。如果通过注解实现装配组件，这个配置类需要位于项目的根目录，让 Spring 明白在哪里扫描。以便扫描到整个项目的组件类 |
-| @Import                  | 引入带有@Configuration 的 java 类。                                                                                                                                                                                                                                                 |
-| @ImportResourse          | 引入 spring 配置文件 applicationContext.xml                                                                                                                                                                                                                                         |
+| @Import                  | 引入带有@Configuration 的 java 类。                          |
+| @ImportResourse          | 引入 spring 配置文件 applicationContext.xml                  |
 
 注：@Configuration 注解的配置类有如下要求：
 
@@ -1000,14 +1167,14 @@ public Class Swagger2Config{
 
 ### 2）组件注解
 
-| 注解           | 说明                                                                   |
-| -------------- | ---------------------------------------------------------------------- |
-| @Component     | 说明这是一个交给 Spring 保管的 JAVA Bean。泛指各种组件。               |
-| @Bean          | 产生一个 Bean 对象，将它交给 spring 管理，产生方法只会调用一次。       |
+| 注解           | 说明                                                         |
+| -------------- | ------------------------------------------------------------ |
+| @Component     | 说明这是一个交给 Spring 保管的 JAVA Bean。泛指各种组件。     |
+| @Bean          | 产生一个 Bean 对象，将它交给 spring 管理，产生方法只会调用一次。 |
 | @Scope         | 声明一个原型（Prototype）的 Bean 时，需要添加一个额外的 `@Scope`注解 |
-| @Order         | 指明注入的 Bean 的顺序                                                 |
-| @PostConstruct | 定义组件初始化时运行的方法                                             |
-| @PreDestroy    | 定义组件销毁前运行的方法                                               |
+| @Order         | 指明注入的 Bean 的顺序                                       |
+| @PostConstruct | 定义组件初始化时运行的方法                                   |
+| @PreDestroy    | 定义组件销毁前运行的方法                                     |
 
 注：@Bean 属性说明
 
@@ -1049,19 +1216,19 @@ public Class Swagger2Config{
 
 ### 4）MVC 注解
 
-| 注解               | 说明                                                                                                                                                                                                                                                                 |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 注解               | 说明                                                         |
+| ------------------ | ------------------------------------------------------------ |
 | @Controller        | 负责处理由 DispatcherServlet 分发的请求，把用户请求的数据经过处理封装成一个模型，然后再把这个模型返回给对应的视图进行展示。Controller 不会直接依赖于 HttpServletRequest 和 HttpServletResponse 等 HttpServlet 对象，它们可以通过 Controller 的方法参数灵活的获取到。 |
-| @Service           | 修饰 MVC 中 Service 层的组件                                                                                                                                                                                                                                         |
-| @Repository        | 注解 DAO 层（Mapper 层）                                                                                                                                                                                                                                             |
-| @RequestBody       | 修饰返回的数据，当返回的数据不是 html 标签的页面，而是其他某种格式的数据时（如 json、xml 等）使用。                                                                                                                                                                  |
-| @RestController    | 相当于@Controller 和@ResponseBody                                                                                                                                                                                                                                    |
-| @RequestMapping    | 是用来处理请求地址映射的注解，可以用于类或者方法上。用在类上表示类中所有响应请求的方法都是以该地址作为父路径。一共有六个属性。                                                                                                                                       |
-| @RequestParam      | 获取前端请求传来的参数，有三个属性：defaultValue 表示设置默认值，required 通过 boolean 设置是否是必须要传入的参数，value 值表示接受的传入的参数类型。                                                                                                                |
-|                    |                                                                                                                                                                                                                                                                      |
-| @ModelAttribute    |                                                                                                                                                                                                                                                                      |
-| @SessionAttributes |                                                                                                                                                                                                                                                                      |
-| @PathVarible       |                                                                                                                                                                                                                                                                      |
+| @Service           | 修饰 MVC 中 Service 层的组件                                 |
+| @Repository        | 注解 DAO 层（Mapper 层）                                     |
+| @RequestBody       | 修饰返回的数据，当返回的数据不是 html 标签的页面，而是其他某种格式的数据时（如 json、xml 等）使用。 |
+| @RestController    | 相当于@Controller 和@ResponseBody                            |
+| @RequestMapping    | 是用来处理请求地址映射的注解，可以用于类或者方法上。用在类上表示类中所有响应请求的方法都是以该地址作为父路径。一共有六个属性。 |
+| @RequestParam      | 获取前端请求传来的参数，有三个属性：defaultValue 表示设置默认值，required 通过 boolean 设置是否是必须要传入的参数，value 值表示接受的传入的参数类型。 |
+|                    |                                                              |
+| @ModelAttribute    |                                                              |
+| @SessionAttributes |                                                              |
+| @PathVarible       |                                                              |
 
 注：@RequestMapping 的六个属性
 
@@ -1076,13 +1243,13 @@ public Class Swagger2Config{
 
 Spring 支持 AspectJ 的注解式 aop 编程，需要在 java 的配置类中使用@EnableAspectJAutoProxy 注解开启 Spring 对 AspectJ 代理的支持。
 
-| 注解                   | 说明                                                                                     |
-| ---------------------- | ---------------------------------------------------------------------------------------- |
-| @EnableAspectAutoProxy | 开启 Aspect 代理，使用 AOP 注解必备                                                      |
+| 注解                   | 说明                                                         |
+| ---------------------- | ------------------------------------------------------------ |
+| @EnableAspectAutoProxy | 开启 Aspect 代理，使用 AOP 注解必备                          |
 | @Aspect                | 声明一个切面类，该类中的方法都会在合适的时机中插入到需要该方法的地方，方法也需要注解标识 |
-| @Before                | 在指定方法执行前执行此方法，需要在注解参数中传入指定方法全名                             |
-| @After                 | 在指定方法执行后执行此方法                                                               |
-| @AfterRunning          | 在方法返回结果后执行此方法                                                               |
-| @AfterThrowing         | 在方法抛出异常后执行此方法                                                               |
-| @Around                | 围绕着方法执行                                                                           |
-| @PointCut              |                                                                                          |
+| @Before                | 在指定方法执行前执行此方法，需要在注解参数中传入指定方法全名 |
+| @After                 | 在指定方法执行后执行此方法                                   |
+| @AfterRunning          | 在方法返回结果后执行此方法                                   |
+| @AfterThrowing         | 在方法抛出异常后执行此方法                                   |
+| @Around                | 围绕着方法执行                                               |
+| @PointCut              |                                                              |
