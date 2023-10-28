@@ -1,4 +1,4 @@
-# Linux 练习
+# Linux
 
 ## 一、Linux目录结构
 

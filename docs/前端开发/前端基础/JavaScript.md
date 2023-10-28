@@ -1,4 +1,4 @@
-# JavaScript 练习
+# JavaScript
 
 ## 一、JavaScript语法
 

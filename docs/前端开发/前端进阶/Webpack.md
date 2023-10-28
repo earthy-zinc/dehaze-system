@@ -1,4 +1,4 @@
-# Webpack 练习
+# Webpack
 
 ## 一、概念
 

@@ -1,4 +1,4 @@
-# ElasticSearch 练习
+# ElasticSearch
 
 ## 基础概念
 

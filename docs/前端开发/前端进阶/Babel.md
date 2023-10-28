@@ -1,4 +1,4 @@
-# Babel 练习
+# Babel
 
 ## 一、Babel介绍
 
