@@ -4,26 +4,16 @@ import sidebar from "./sidebar";
 
 export default hopeTheme({
   hostname: "http://192.168.31.2",
-
   author: {
     name: "earthy zinc",
     url: "https://gitee.com/earthy-zinc",
   },
-
   iconAssets: "fontawesome-with-brands",
-
   logo: "/tou.jpg",
-
   repo: "earthy-zinc/reading-note",
-
   docsDir: "docs",
-
-  // navbar
   navbar,
-
-  // sidebar
   sidebar,
-
   plugins: {
     autoCatalog: true,
     mdEnhance: {
