@@ -19,7 +19,7 @@ export default hopeTheme({
   plugins: {
     autoCatalog: {
       index: true,
-      titleGetter: (page) => " " + page.title
+      titleGetter: (page) => "  " + page.title
     },
     mdEnhance: {
       align: true,
