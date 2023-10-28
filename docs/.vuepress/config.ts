@@ -11,10 +11,10 @@ export default defineUserConfig({
   description: "全栈开发学习笔记",
 
   theme,
-  plugins: [
-    autoCatalogPlugin({
-      //插件选项
-    }),
-    // fullTextSearchPlugin
-  ],
+  // plugins: [
+  //   autoCatalogPlugin({
+  //     //插件选项
+  //   }),
+  //   // fullTextSearchPlugin
+  // ],
 });
