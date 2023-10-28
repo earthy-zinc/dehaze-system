@@ -1,4 +1,4 @@
-# Pinia 学习
+# Pinia
 
 ## 定义store
 

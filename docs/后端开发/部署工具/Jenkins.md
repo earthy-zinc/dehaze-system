@@ -1,4 +1,4 @@
-# Jenkins 练习
+# Jenkins
 
 持续交付流水线，这种流水线定义被写在了一个文本文件jenkinsfile。被提交到项目的源代码中。
 

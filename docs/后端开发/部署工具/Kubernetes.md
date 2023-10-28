@@ -1,4 +1,4 @@
-# Kubernetes 练习
+# Kubernetes
 
 ## 简介
 
