@@ -1,6 +1,5 @@
 import { defineUserConfig } from "vuepress";
-import {autoCatalogPlugin} from "vuepress-plugin-auto-catalog";
-// import fullTextSearchPlugin from "vuepress-plugin-full-text-search2";
+import fullTextSearchPlugin from "vuepress-plugin-full-text-search2";
 import theme from "./theme";
 
 export default defineUserConfig({
@@ -11,10 +10,7 @@ export default defineUserConfig({
   description: "全栈开发学习笔记",
 
   theme,
-  // plugins: [
-  //   autoCatalogPlugin({
-  //     //插件选项
-  //   }),
-  //   // fullTextSearchPlugin
-  // ],
+  plugins: [
+    fullTextSearchPlugin
+  ],
 });
