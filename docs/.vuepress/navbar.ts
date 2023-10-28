@@ -1,7 +1,6 @@
 import { navbar } from "vuepress-theme-hope";
 
 export default navbar([
-  "/",
   {
     text: "前端开发",
     prefix: "/前端开发/",

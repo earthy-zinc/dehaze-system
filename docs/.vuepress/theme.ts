@@ -15,7 +15,10 @@ export default hopeTheme({
   navbar,
   sidebar,
   plugins: {
-    autoCatalog: true,
+    autoCatalog: {
+      index: true,
+      titleGetter: (page) => " " + page.title
+    },
     mdEnhance: {
       align: true,
       attrs: true,

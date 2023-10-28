@@ -5,9 +5,12 @@ heroImage: tou.jpg
 heroText: 土味锌的阅读笔记
 tagline: 全栈开发学习笔记
 actions:
-  - text: 开始阅读 →
-    link: ./后端开发/编程语言/Java基础.md
+  - text: 👉前端开发
+    link: ./前端开发
     type: primary
+  - text: 后端开发👈
+    link: ./后端开发
+    type: default
 
 highlights:
   - header: 内容丰富
