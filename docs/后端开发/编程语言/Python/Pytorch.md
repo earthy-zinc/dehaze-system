@@ -1,109 +1,6 @@
-# 深度学习框架
-
-## Anaconda
-
-### 虚拟环境的操作
-
-#### 创建虚拟环境
-
-* 指定环境名称：`conda  create  --name  env_name`
-* 创建指定python版本：`conda  create  --name  env_name python=3.5` 
-* 创建指定python版本下包含某些包：`conda  create  --name  env_name python=3.5 numpy scipy` 
-
-#### 激活/使用/进入/退出某个虚拟环境
-
-* `conda activate  env_name`
-* `conda deactivate `
-
-#### 复制某个虚拟环境
-`conda  create  --name  new_env_name  --clone  old_env_name`
-
-#### 删除某个环境
-`conda  remove  --name  env_name  --all`
-
-#### 查看当前所有环境
-* `conda  info  --envs`   
-* `conda  env  list`
-
-#### 查看当前虚拟环境下的所有安装包
-
-* `conda  list ` (需进入该虚拟环境)
-* conda  list  -n  env_name
-
-#### 安装或卸载包(进入虚拟环境之后）
-* conda  install  xxx
-* conda  install  xxx=版本号  # 指定版本号
-* conda  install  xxx -i 源名称或链接 # 指定下载源
-* conda  uninstall  xxx
-
-#### 分享虚拟环境
-
-conda env export > environment.yml  # 导出当前虚拟环境
-
-conda env create -f environment.yml  # 创建保存的虚拟环境
-
-#### 导出虚拟环境中所安装的包
-
-* conda list -e > requirements.txt  # 导出
-* conda install --yes --file requirements.txt  # 安装
-
-### 虚拟环境镜像源
-
-conda当前的源设置在$HOME/.condarc中，可通过文本查看器查看或者使用命令``conda config --show-sources`查看。
-
-* conda config --show-sources #查看当前使用源
-* conda config --remove channels 源名称或链接 #删除指定源
-* conda config --add channels 源名称或链接 #添加指定源
-
-#### 国内conda源
-
-```shell
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/free/
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main/
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/conda-forge 
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/msys2/
-
-```
-
-
-
-### 升级和卸载
-
-升级Anaconda需先升级conda
-
-* `conda  update  conda`
-* `conda  update  anaconda`
-* `rm  -rf  anaconda`
-
-
-
-
-
-## PIP
-
-### pip导出环境
-
-pip freeze > requirements.txt
-
-pip install -r requirements.txt
-
-### pip镜像源
-
-`pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple/ `
-
-#### 国内pip源
-
-* 阿里云                    http://mirrors.aliyun.com/pypi/simple/
-* 中国科技大学         https://pypi.mirrors.ustc.edu.cn/simple/ 
-* 豆瓣(douban)         http://pypi.douban.com/simple/ 
-* 清华大学                https://pypi.tuna.tsinghua.edu.cn/simple/
-* 中国科学技术大学  http://pypi.mirrors.ustc.edu.cn/simple/
-
-## NumPy
-
-## Pandas
-
-## OpenCV
+---
+order: 3
+---
 
 ## Pytorch
 
@@ -224,10 +121,6 @@ Variational AutoEncoder，VAE使用了两个神经网络。编码器，用于将
 Generative Adversarial Network，GAN对应的网络是生成网络Generator和判别网络Discriminator，生成网络的作用是输入服从一定分布的隐含变量，输出对应的图像。判别网络的作用是给定未知来源的图像，判断这个图像是属于神经网络生成的还是来源于训练数据集的，对应的损失函数也分为两个。第一个是生成网络生成的图像通过判别网络的损失函数，对于生成网络来说，对应的损失函数要使得判别网络难以判别出生成网络生成的图像是生成图像；对于判别网络来说，对应的损失函数要尽可能的判断出训练数据的图像，而且需要尽可能判断出生成的图像。生成网络和判别网络是一个对抗的过程，通过生成网络和判别网络的交替训练，最后达到模型的平衡状态，即判别网络无法判断出图像的真假，这样得到的生成网络就能够通过输入隐含变量输出对应的生成图像
 
 对于VAE来说，优点是可以知道输入图像具体对应的隐含变量，但是缺点是生成的图像比较模糊。对于GAN来说，优点是生成的图像比较清晰，但是无法得到某一个输出图像对应的隐含变量，而且模型训练容易遇到不收敛和模式塌陷的问题。
-
-## Matplotlib
-
-## MMdetection
 
 ## torchvision
 
