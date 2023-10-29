@@ -14,7 +14,7 @@ export default navbar([
                 children: [
                     {
                         text: "贪吃蛇",
-                        link: "/greedy_snake"
+                        link: "http://10.16.36.157/greedy_snake"
                     }
                 ]
             },
@@ -23,7 +23,7 @@ export default navbar([
                 children: [
                     {
                         text: "去雾系统",
-                        link: "/dehaze_tool"
+                        link: "/error"
                     }
                 ]
             },
@@ -32,7 +32,7 @@ export default navbar([
                 children: [
                     {
                         text: "小沛博客",
-                        link: "/blog"
+                        link: "/error"
                     }
                 ]
             },
@@ -41,11 +41,11 @@ export default navbar([
                 children: [
                     {
                         text: "餐厅管理",
-                        link: "/deliver_shoper"
+                        link: "/error"
                     },
                     {
                         text: "点单消费",
-                        link: "/deliver_customer"
+                        link: "/error"
                     }
                 ]
             },
@@ -54,11 +54,11 @@ export default navbar([
                 children: [
                     {
                         text: "卖家管理",
-                        link: "/shop_shoper"
+                        link: "/error"
                     },
                     {
                         text: "下单购物",
-                        link: "/shop_customer"
+                        link: "/error"
                     }
                 ]
             }
