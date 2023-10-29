@@ -41,11 +41,11 @@ export default navbar([
                 children: [
                     {
                         text: "餐厅管理",
-                        link: "/error"
+                        link: "http://10.16.36.157:8081/backend/index.html"
                     },
                     {
-                        text: "点单消费",
-                        link: "/error"
+                        text: "点单消费(手机访问)",
+                        link: "http://10.16.36.157:8081/front/index.html"
                     }
                 ]
             },
