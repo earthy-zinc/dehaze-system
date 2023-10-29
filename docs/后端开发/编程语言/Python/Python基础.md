@@ -1,4 +1,8 @@
-# Python
+---
+order: 1
+---
+
+# Python 基础
 
 ## 1. 数据类型
 

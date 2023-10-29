@@ -11,13 +11,15 @@ export default hopeTheme({
   iconAssets: "fontawesome-with-brands",
   logo: "/tou.jpg",
   repo: "earthy-zinc/reading-note",
+  repoLabel: "Gitee",
+  repoDisplay: false,
   docsDir: "docs",
   navbar,
   sidebar,
   plugins: {
     autoCatalog: {
       index: true,
-      titleGetter: (page) => " " + page.title
+      titleGetter: (page) => "  " + page.title
     },
     mdEnhance: {
       align: true,
