@@ -1,28 +1,67 @@
-import { navbar } from "vuepress-theme-hope";
+import {navbar} from "vuepress-theme-hope";
 
 export default navbar([
-  {
-    text: "前端开发",
-    prefix: "/前端开发/",
-    children: ["前端基础","前端进阶","前端框架"],
-  },
-  {
-    text: "后端开发",
-    prefix: "/后端开发/",
-    children: ["中间件","大数据","开发知识","操作系统","数据库","算法","编程语言","部署工具"]
-  },
-  {
-    text: "学术课程",
-    prefix: "/学术课程/",
-    children: ["学术经验","学术论文","深度学习","研究生课程","研究生面试"]
-  },
-  {
-    text: "工作效率",
-    link: "/工作效率/",
-  },
-  {
-    text: "项目文档",
-    prefix: "/项目文档/",
-    children: ["API网关","中间件设计","土味商城","抽奖系统","沛信","贪吃蛇"],
-  },
+    "/前端开发",
+    "/后端开发",
+    "/学术课程",
+    "/工作效率",
+    "/项目文档",
+    {
+        text: "项目展示",
+        children: [
+            {
+                text: "游戏开发",
+                children: [
+                    {
+                        text: "贪吃蛇",
+                        link: "http://10.16.36.157/greedy_snake"
+                    }
+                ]
+            },
+            {
+                text: "学术应用",
+                children: [
+                    {
+                        text: "去雾系统",
+                        link: "/error"
+                    }
+                ]
+            },
+            {
+                text: "土味博客",
+                children: [
+                    {
+                        text: "小沛博客",
+                        link: "/error"
+                    }
+                ]
+            },
+            {
+                text: "土味外卖",
+                children: [
+                    {
+                        text: "餐厅管理",
+                        link: "/error"
+                    },
+                    {
+                        text: "点单消费",
+                        link: "/error"
+                    }
+                ]
+            },
+            {
+                text: "土味商城",
+                children: [
+                    {
+                        text: "卖家管理",
+                        link: "/error"
+                    },
+                    {
+                        text: "下单购物",
+                        link: "/error"
+                    }
+                ]
+            }
+        ]
+    }
 ]);

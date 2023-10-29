@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "docs:dev": "vuepress dev docs",
-    "docs:clean-dev": "vuepress dev docs --clean-cache",
     "docs:build": "vuepress build docs"
   },
   "devDependencies": {
