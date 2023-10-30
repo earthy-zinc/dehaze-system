@@ -32,7 +32,7 @@ export default navbar([
                 children: [
                     {
                         text: "小沛の个人博客",
-                        link: "/error"
+                        link: "http://10.16.36.157/pei_blog"
                     }
                 ]
             },
