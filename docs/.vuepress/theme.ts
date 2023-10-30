@@ -17,6 +17,13 @@ export default hopeTheme({
   docsDir: "docs",
   navbar,
   sidebar,
+  encrypt: {
+    config: {
+      "/学术课程/学术经验/" : "142536",
+      "/学术课程/学术经验/实用命令.html" : "20230914",
+      "/学术课程/研究日常/": "20230914",
+    },
+  },
   plugins: {
     autoCatalog: {
       index: true,
