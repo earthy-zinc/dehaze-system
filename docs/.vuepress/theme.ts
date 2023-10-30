@@ -1,3 +1,4 @@
+import {Page, PageFrontmatter} from "vuepress";
 import { hopeTheme } from "vuepress-theme-hope";
 import navbar from "./navbar";
 import sidebar from "./sidebar";
@@ -19,7 +20,8 @@ export default hopeTheme({
   plugins: {
     autoCatalog: {
       index: true,
-      titleGetter: (page) => "  " + page.title
+      titleGetter: (page) => "  " + page.title,
+      orderGetter: (page: Page) => page.frontmatter.order as number || -9999
     },
     mdEnhance: {
       align: true,
