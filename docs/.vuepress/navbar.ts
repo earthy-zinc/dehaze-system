@@ -54,11 +54,11 @@ export default navbar([
                 children: [
                     {
                         text: "卖家订单管理系统",
-                        link: "/error"
+                        link: "http://10.16.36.157/youlai_mall"
                     },
                     {
                         text: "下单购物",
-                        link: "/error"
+                        link: "http://10.16.36.157/youlai_app"
                     }
                 ]
             }
