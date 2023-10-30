@@ -13,7 +13,7 @@ export default navbar([
                 text: "游戏开发",
                 children: [
                     {
-                        text: "贪吃蛇",
+                        text: "一起来玩贪吃蛇",
                         link: "http://10.16.36.157/greedy_snake"
                     }
                 ]
@@ -22,7 +22,7 @@ export default navbar([
                 text: "学术应用",
                 children: [
                     {
-                        text: "去雾系统",
+                        text: "图像去雾系统",
                         link: "/error"
                     }
                 ]
@@ -31,7 +31,7 @@ export default navbar([
                 text: "土味博客",
                 children: [
                     {
-                        text: "小沛博客",
+                        text: "小沛の个人博客",
                         link: "/error"
                     }
                 ]
@@ -40,12 +40,12 @@ export default navbar([
                 text: "土味外卖",
                 children: [
                     {
-                        text: "餐厅管理",
-                        link: "/error"
+                        text: "餐厅后台管理系统",
+                        link: "http://10.16.36.157:8081/backend/index.html"
                     },
                     {
-                        text: "点单消费",
-                        link: "/error"
+                        text: "点单消费(手机访问)",
+                        link: "http://10.16.36.157:8081/front/index.html"
                     }
                 ]
             },
@@ -53,7 +53,7 @@ export default navbar([
                 text: "土味商城",
                 children: [
                     {
-                        text: "卖家管理",
+                        text: "卖家订单管理系统",
                         link: "/error"
                     },
                     {
