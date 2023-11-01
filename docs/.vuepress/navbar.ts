@@ -63,5 +63,9 @@ export default navbar([
                 ]
             }
         ]
+    },
+    {
+        text: '资源下载',
+        link: 'http://10.16.36.157:5244'
     }
 ]);
