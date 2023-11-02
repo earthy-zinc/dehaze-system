@@ -63,15 +63,20 @@ export default navbar([
                         link: host + "/youlai_app"
                     }
                 ]
-            }
+            },
+            {
+                text: "其他",
+                children: [
+                    {
+                        text: '资源下载',
+                        link: host + '/pei_drive'
+                    },
+                    {
+                        text: '在线编程',
+                        link: host + '/code_ide'
+                    },
+                ]
+            },
         ]
-    },
-    {
-        text: '资源下载',
-        link: host + '/pei_drive'
-    },
-    {
-        text: '在线编程',
-        link: host + '/code_ide'
     },
 ]);

@@ -3,7 +3,7 @@ tags: []
 parent: 'Refusion: Enabling Large-Size Realistic Image Restoration with Latent-Space Diffusion Models'
 collections:
     - 图像去雾
-version: 4391
+version: 4497
 libraryID: 1
 itemKey: MXE8UUCS
 
@@ -47,5 +47,3 @@ itemKey: MXE8UUCS
 > 生成对抗模型
 >
 > 生成对抗网络（Generative Adversarial Networks），是一种利用两个神经网络模型进行对抗训练的方法，能够生成高质量、逼真的图像。GAN由生成器（Generator）和判别器（Discriminator）两个模型组成，生成器负责从随机噪声中生成图像，判别器负责判断生成的图像是否为真实的图像。生成器和判别器不断地互相竞争，使得生成器能够产生越来越接近真实分布的图像。GAN在图像合成、图像转换、图像修复等任务中有广泛的应用
-
-

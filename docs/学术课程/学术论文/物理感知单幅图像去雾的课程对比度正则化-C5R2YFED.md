@@ -3,7 +3,7 @@ tags: []
 parent: 'Curricular Contrastive Regularization for Physics-Aware Single Image Dehazing'
 collections:
     - 图像去雾
-version: 4494
+version: 4497
 libraryID: 1
 itemKey: C5R2YFED
 
@@ -73,4 +73,3 @@ Sq是非简单难度负样本，t表示训练第t轮的时候。Wt(Sq)表示该�
 ![\<img alt="" data-attachment-key="4CZ8XE4U" src="attachments/4CZ8XE4U.png" ztype="zimage">](attachments/4CZ8XE4U.png)
 
 那么最终正则化L就是由L1正则化加上课程学习正则化构成
-
