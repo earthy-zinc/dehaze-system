@@ -9,7 +9,7 @@ actions:
     link: ./前端开发
     type: primary
   - text: 资源下载📥
-    link: /pei_drive/
+    link: http://10.16.90.26/pei_drive
     type: default
 
 highlights:

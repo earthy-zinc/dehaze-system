@@ -293,4 +293,3 @@ QCNN - H在OTS和ITS数据集上表现一致，表明我们的方法具有很好
 
 首先，四元数用于神经网络，属于改动了神经网络中较为底层的东西，在其上面每一个网络层，乃至激活函数、损失函数等都需要改动，工作量很大。不仅在理论层面是一个创新，在代码实现层面现有的pytorch框架也没有太多相关的支持，相对于对网络层进行排列组合这种创新，难度要大很多，工作量也很多。后续的实验都不好开展。
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
