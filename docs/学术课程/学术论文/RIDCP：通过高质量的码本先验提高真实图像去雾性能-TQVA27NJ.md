@@ -3,7 +3,7 @@ tags: []
 parent: 'RIDCP: Revitalizing Real Image Dehazing via High-Quality Codebook Priors'
 collections:
     - 图像去雾
-version: 4494
+version: 4497
 libraryID: 1
 itemKey: TQVA27NJ
 
@@ -60,4 +60,3 @@ VQGAN：给定一个高质量的图像块作为VQGAN的编码器的输入，对�
 ![\<img alt="" data-attachment-key="SJC7ZF3X" src="attachments/SJC7ZF3X.png" ztype="zimage">](attachments/SJC7ZF3X.png)
 
 为了了解码本中的高质量先验的潜力。作者对预训练后的VQGAN重建的图像结果进行了观察。实验证明该模型能够去除薄雾并且恢复图像颜色。作者认为以匹配的方式使用高质量先验能够替换退化的特征，从而帮助其跳转到高质量的域中。但是该去雾能力难以匹配到正确的代码，由于矢量量化阶段信息缺失，会产生一些失真纹理。下一步工作是训练一个能够帮助先验匹配的编码器E和一个能够利用HQPs重建特征的解码器G。
-

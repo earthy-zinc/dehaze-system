@@ -3,7 +3,7 @@ tags: []
 parent: 'Frequency Compensated Diffusion Model for Real-scene Dehazing'
 collections:
     - 图像去雾
-version: 4494
+version: 4497
 libraryID: 1
 itemKey: 8WYAUYQQ
 
@@ -39,5 +39,3 @@ itemKey: 8WYAUYQQ
 因此作者提出频率补偿块，强调中高频，类似于信号处理中的滤波器设计，这样的频率补偿块是由一组卷积滤波器组成，仅允许浅层的中高频通过，并且通过跳跃连接将其传输到深层。滤波器选择应该遵循两个原则。1. 滤波器应该是径向对称的，避免偏向图像边缘和角落的高频特征。2. 滤波器的带宽应该覆盖网络难以捕获的频率范围。
 
 ### HazeAug
-
-
