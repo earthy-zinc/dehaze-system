@@ -3,7 +3,7 @@ tags: []
 parent: 'Effective Meta-Attention Dehazing Networks for Vision-Based Outdoor Industrial Systems'
 collections:
     - 图像去雾
-version: 4493
+version: 4496
 libraryID: 1
 itemKey: Y7IZ2N2X
 
@@ -79,5 +79,3 @@ MADN的损失函数
 首先，使用室内合成数据集，以随机裁剪大小为400 × 400的区域作为输入图像，预训练元注意力网络80个历元的FEP。整个网络用大小为256 × 256的随机裁剪区域的输入图像训练了20个历元。
 
 对于加速训练，在整个训练过程中，采用批大小为1的Adam优化器，学习率设置为0.001。指数衰减率β 1和β 2分别设置为默认值0.9和0.999。将( 5 )式表示的损失函数中的超参数设定为λ 1 = 1，λ2 = 0.04，λ3 = 0.04。
-
-

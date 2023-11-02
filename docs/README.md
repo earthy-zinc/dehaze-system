@@ -11,6 +11,9 @@ actions:
   - text: 资源下载📥
     link: http://10.16.90.26/pei_drive
     type: default
+  - text: 在线编程⌨️
+    link: http://10.16.90.26/code_ide
+    type: default
 
 highlights:
   - header: 内容丰富

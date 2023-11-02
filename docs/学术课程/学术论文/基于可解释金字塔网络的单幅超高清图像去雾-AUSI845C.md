@@ -3,7 +3,7 @@ tags: []
 parent: 'Single UHD Image Dehazing via Interpretable Pyramid Network'
 collections:
     - 图像去雾
-version: 4493
+version: 4496
 libraryID: 1
 itemKey: AUSI845C
 
@@ -19,5 +19,3 @@ itemKey: AUSI845C
 <!---->
 
 *   提出了一种正则化项：基于一个论文Tucker重构，作用于金字塔模型的每个分支网络。进一步约束了特征空间中异常信号的产生。
-
-
