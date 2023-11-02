@@ -74,4 +74,3 @@ Sq是非简单难度负样本，t表示训练第t轮的时候。Wt(Sq)表示该�
 
 那么最终正则化L就是由L1正则化加上课程学习正则化构成
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
