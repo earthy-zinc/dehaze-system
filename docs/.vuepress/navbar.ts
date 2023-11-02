@@ -1,5 +1,7 @@
 import {navbar} from "vuepress-theme-hope";
 
+let host = "http://10.16.90.26";
+
 export default navbar([
     "/前端开发",
     "/后端开发",
@@ -14,7 +16,7 @@ export default navbar([
                 children: [
                     {
                         text: "一起来玩贪吃蛇",
-                        link: "http://10.16.36.157/greedy_snake"
+                        link: host + "/greedy_snake"
                     }
                 ]
             },
@@ -32,7 +34,7 @@ export default navbar([
                 children: [
                     {
                         text: "小沛の个人博客",
-                        link: "http://10.16.36.157/pei_blog"
+                        link: host + "/pei_blog"
                     }
                 ]
             },
@@ -41,11 +43,11 @@ export default navbar([
                 children: [
                     {
                         text: "餐厅后台管理系统",
-                        link: "http://10.16.36.157:8081/backend/index.html"
+                        link: host + "/deliver_manager"
                     },
                     {
                         text: "点单消费(手机访问)",
-                        link: "http://10.16.36.157:8081/front/index.html"
+                        link: host + "/deliver_customer"
                     }
                 ]
             },
@@ -54,11 +56,11 @@ export default navbar([
                 children: [
                     {
                         text: "卖家订单管理系统",
-                        link: "http://10.16.36.157/youlai_mall"
+                        link: host + "/youlai_mall"
                     },
                     {
                         text: "下单购物",
-                        link: "http://10.16.36.157/youlai_app"
+                        link: host + "/youlai_app"
                     }
                 ]
             }
@@ -66,6 +68,10 @@ export default navbar([
     },
     {
         text: '资源下载',
-        link: 'http://10.16.36.157:5244'
-    }
+        link: host + '/pei_drive'
+    },
+    {
+        text: '在线编程',
+        link: host + '/code_ide'
+    },
 ]);
