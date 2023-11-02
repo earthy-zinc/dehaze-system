@@ -3,7 +3,7 @@ tags: []
 parent: 'MB-TaylorFormer: Multi-branch Efficient Transformer Expanded by Taylor Formula for Image Dehazing'
 collections:
     - 图像去雾
-version: 4106
+version: 4494
 libraryID: 1
 itemKey: 5CMT45KA
 

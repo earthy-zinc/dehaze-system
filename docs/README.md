@@ -5,11 +5,11 @@ heroImage: tou.jpg
 heroText: 土味锌的阅读笔记
 tagline: 全栈开发学习笔记
 actions:
-  - text: 👉前端开发
+  - text: 开始阅读📖
     link: ./前端开发
     type: primary
-  - text: 后端开发👈
-    link: ./后端开发
+  - text: 资源下载📥
+    link: /pei_drive/
     type: default
 
 highlights:

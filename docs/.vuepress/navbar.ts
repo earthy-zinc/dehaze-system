@@ -16,7 +16,7 @@ export default navbar([
                 children: [
                     {
                         text: "一起来玩贪吃蛇",
-                        link: host + "/greedy_snake"
+                        link: "/greedy_snake/"
                     }
                 ]
             },
