@@ -3,7 +3,7 @@ tags: []
 parent: 'Rethinking Performance Gains in Image Dehazing Networks'
 collections:
     - 图像去雾
-version: 4493
+version: 4496
 libraryID: 1
 itemKey: CLKBCLZ7
 
@@ -114,5 +114,3 @@ Frozen BN（固定批归一化）是一个常数仿射变换，因为它使用�
 *   Haze4K 共计4000个图像对，其中3 000个用于训练，剩余1 000个用于测试。
 
 *   RS-Haze 共计54000张图像对，其中51300张用于训练，其余2700张用于测试。
-
-
