@@ -10,7 +10,7 @@ itemKey: CLKBCLZ7
 ---
 # 反思图像去雾网络中的性能增益（CVPR2022）
 
-![\<img alt="" data-attachment-key="DYBIKDLN" width="1535" height="827" src="attachments/DYBIKDLN.png" ztype="zimage">](attachments/DYBIKDLN.png)
+![\<img alt="" data-attachment-key="DYBIKDLN" src="attachments/DYBIKDLN.png" ztype="zimage">](attachments/DYBIKDLN.png)
 
 ## 摘要
 
@@ -37,7 +37,7 @@ itemKey: CLKBCLZ7
 
 ## gUNet
 
-![\<img alt="" data-attachment-key="I2WBKW8K" width="383" height="1891" src="attachments/I2WBKW8K.png" ztype="zimage">](attachments/I2WBKW8K.png)
+![\<img alt="" data-attachment-key="I2WBKW8K" src="attachments/I2WBKW8K.png" ztype="zimage">](attachments/I2WBKW8K.png)
 
 gUNet可以看作由7个阶段的UNet变体。它的每一个阶段都由一些gConv模块组成。gUNet没有采用U - Net中利用卷积层后级联的策略来融合跳跃连接和主路径。而是提出使用SK Fusion模块对来自不同路径的特征图进行动态融合。给定有雾图像和无雾图像，gUNet用来预测两者之间的差别（全局残差），然后通过L1损失逐步减小有雾图像和无雾图像的差别。
 
@@ -54,7 +54,7 @@ gUNet可以看作由7个阶段的UNet变体。它的每一个阶段都由一些g
 
 ### gConv块
 
-![\<img alt="" data-attachment-key="QUHWCVPK" width="432" height="703" src="attachments/QUHWCVPK.png" ztype="zimage">](attachments/QUHWCVPK.png)
+![\<img alt="" data-attachment-key="QUHWCVPK" src="attachments/QUHWCVPK.png" ztype="zimage">](attachments/QUHWCVPK.png)
 
 gConv主要基于gMLP和GLU，对于输入，首先经过批归一化处理，这种归一化方法使用在训练集上跟踪的统计量的指数移动平均值。它可以与相邻的线性层合并，更符合轻量级网络的要求。此外，批归一化没有层归一化的缺点，它打破了DehazeFormer中提到的空间相关性。产生的输出分别经过
 
@@ -67,7 +67,7 @@ gConv主要基于gMLP和GLU，对于输入，首先经过批归一化处理，�
 
 ### SK融合层
 
-![\<img alt="" data-attachment-key="4VF8X65T" width="436" height="645" src="attachments/4VF8X65T.png" ztype="zimage">](attachments/4VF8X65T.png)
+![\<img alt="" data-attachment-key="4VF8X65T" src="attachments/4VF8X65T.png" ztype="zimage">](attachments/4VF8X65T.png)
 
 SK融合模块接受两个输入，一个输入来自其主路径，另一个输入来自于先前gConv块跳跃连接的输出。两个输入先经过通道叠加输入的全局池化层中，随后输入到多层感知机MLP中，经过softmax激活函数分裂为两个输出，分别与最初的输入相乘，最后结果进行通道叠加算出SK融合模块最终的输出。
 
@@ -85,19 +85,19 @@ Frozen BN（固定批归一化）是一个常数仿射变换，因为它使用�
 
 ### 实现细节
 
-**模型规模：**作者提出了4个 gUNet 变体(Tiny、 Small、 Basic、Deep)。从前往后模型规模逐渐增大，为了较简便的实现这种扩展性。作者将每级gConv块数设为{ M，M，M，2M，M，M }，通道数设为{ N，2N，4N，8N，4N，2N，N }，其中M为基块数，N为基通道数。所有变体的DWConv的宽度和卷积核大小k设置为相同，即N = 24和k = 5。gUNet的4个变体仅在网络深度上有所区别，我们将它们的基块编号M设置为{ 2，4，8，16 }。
+\*\*模型规模：\*\*作者提出了4个 gUNet 变体(Tiny、 Small、 Basic、Deep)。从前往后模型规模逐渐增大，为了较简便的实现这种扩展性。作者将每级gConv块数设为{ M，M，M，2M，M，M }，通道数设为{ N，2N，4N，8N，4N，2N，N }，其中M为基块数，N为基通道数。所有变体的DWConv的宽度和卷积核大小k设置为相同，即N = 24和k = 5。gUNet的4个变体仅在网络深度上有所区别，我们将它们的基块编号M设置为{ 2，4，8，16 }。
 
-**设备：**4卡 3090
+\*\*设备：\*\*4卡 3090
 
-**图像预处理：**随机裁剪为256\*256
+\*\*图像预处理：\*\*随机裁剪为256\*256
 
-**训练轮数：**考虑到不同的数据集具有不同的样本数，因此每轮训练样本数取一个中间值16384，总训练轮数设置为1000。刚开始的50轮训练为慢启动阶段，最后200轮训练为FrozenBN阶段。
+\*\*训练轮数：\*\*考虑到不同的数据集具有不同的样本数，因此每轮训练样本数取一个中间值16384，总训练轮数设置为1000。刚开始的50轮训练为慢启动阶段，最后200轮训练为FrozenBN阶段。
 
-**mini批次数：**受限于GPU内存，对于gUNet 的4个变体(Tiny、 Small、 Basic、Deep)，mini - batch大小分别设置为{ 128，128，64，32 }。对于gUNet - D，它的归一化批大小<16，因此启用了SyncBN。
+\*\*mini批次数：\*\*受限于GPU内存，对于gUNet 的4个变体(Tiny、 Small、 Basic、Deep)，mini - batch大小分别设置为{ 128，128，64，32 }。对于gUNet - D，它的归一化批大小<16，因此启用了SyncBN。
 
-**学习率：**基于线性缩放规则，对于gUNet 的4个变体(Tiny、 Small、 Basic、Deep)，设定初始学习率分别为{ 16，16，8，4 } × 10 <sup>-4</sup>。随后采用余弦退火策略，学习率从初始学习率逐渐降低到{ 16，16，8，4 } × 10 <sup>-6</sup>。
+\*\*学习率：\*\*基于线性缩放规则，对于gUNet 的4个变体(Tiny、 Small、 Basic、Deep)，设定初始学习率分别为{ 16，16，8，4 } × 10 <sup>-4</sup>。随后采用余弦退火策略，学习率从初始学习率逐渐降低到{ 16，16，8，4 } × 10 <sup>-6</sup>。
 
-**优化器：**使用Adam W优化器( β1 = 0.9 , β2 = 0.999)
+\*\*优化器：\*\*使用Adam W优化器( β1 = 0.9 , β2 = 0.999)
 
 ### 数据集
 
@@ -115,4 +115,4 @@ Frozen BN（固定批归一化）是一个常数仿射变换，因为它使用�
 
 *   RS-Haze 共计54000张图像对，其中51300张用于训练，其余2700张用于测试。
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" rel="noopener noreferrer nofollow" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>

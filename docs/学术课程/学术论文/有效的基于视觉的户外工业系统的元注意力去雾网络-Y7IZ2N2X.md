@@ -40,7 +40,7 @@ itemKey: Y7IZ2N2X
 
 其中FEP由预训练的全卷积神经去雾网络实现，该网络由6层3 × 3卷积组成。每一层的输出特征图F\~i\~( i = 1,2,3,4,5,6)是基于输入的雾天图像，在元网络的前馈传播中得到的。X在输出特征图F\~i\~( i = 1,2,3,4,5,6)的通道维度上是串联的
 
-![\<img alt="" data-attachment-key="LEFDDWMN" width="638" height="481" src="attachments/LEFDDWMN.png" ztype="zimage">](attachments/LEFDDWMN.png)
+![\<img alt="" data-attachment-key="LEFDDWMN" src="attachments/LEFDDWMN.png" ztype="zimage">](attachments/LEFDDWMN.png)
 
 **权重生成部分**
 
@@ -80,4 +80,4 @@ MADN的损失函数
 
 对于加速训练，在整个训练过程中，采用批大小为1的Adam优化器，学习率设置为0.001。指数衰减率β 1和β 2分别设置为默认值0.9和0.999。将( 5 )式表示的损失函数中的超参数设定为λ 1 = 1，λ2 = 0.04，λ3 = 0.04。
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" rel="noopener noreferrer nofollow" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>

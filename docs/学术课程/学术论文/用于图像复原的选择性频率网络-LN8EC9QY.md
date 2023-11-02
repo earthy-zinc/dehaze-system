@@ -14,4 +14,4 @@ itemKey: LN8EC9QY
 
 考虑到清晰/退化图像对的光谱之间的巨大差异，一些方法在频率域寻求解决方案。然而，这些工作通常使用变换工具，例如小波变换，将特征拆分为几个频率部分，这不足以灵活地选择最具有信息的频率成分进行恢复。在本文中，我们利用多分支和内容感知模块将特征动态和局部地分解成独立的频率带，然后通过通道注意力权重来强调有用的特征。此外，为了处理大尺度退化模糊，我们提出了一个非常简单的解耦和调制模块，通过全局和基于窗口的平均池化来扩大感受野。将两个开发的模块集成到一个U - Net主干网络中，所提出的选择性频率网络( SFNet )在五个图像复原任务上表现优异，包括单幅图像散焦去模糊、图像去雾、图像运动去模糊、图像去雪和图像去雨
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" rel="noopener noreferrer nofollow" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>

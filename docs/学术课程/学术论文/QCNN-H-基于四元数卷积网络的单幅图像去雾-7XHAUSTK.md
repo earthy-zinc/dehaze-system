@@ -14,14 +14,19 @@ itemKey: 7XHAUSTK
 
 ## 当前去雾方法存在的问题：
 
-1.  输出图像质量低。可见度差、模糊、对比度低、颜色失真、**几何伪影**
+1.  输出图像质量低。可见度差、模糊、对比度低、颜色失真、
+
+    **几何伪影**
+
 2.  泛化能力差。现有的很多方法都是在合成的数据集上进行训练的，比如RESIDE、ITS、OTS等。在真实环境下表现不好。最近有一个基于真实雾霾的数据集，但是数据量太少。因此训练出来的网络泛化能力不好。（我们可以通过一些巧妙的设计来削弱数据量少这个不利影响，但是不能完全消除）
+
 3.  计算资源要求过高。以往的方法着重于关注模型的视觉效果（和一些定量指标）而对时间复杂度关注较少，模型设计的越来越复杂，网络的深度广度也越来越高。这限制了模型在硬件条件有限的场景中使用。
+
 4.  处理浓雾和不均匀雾效果不佳。大多数模型假定图像中的雾气是均匀分布的，但是在真实世界中，不同地方雾气浓度可能并不相同
 
 ## 基于四元数的神经网络
 
-超复数(<span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FIKU3IW98%22%2C%22pageLabel%22%3A%222%22%2C%22position%22%3A%7B%22pageIndex%22%3A1%2C%22rects%22%3A%5B%5B166.093%2C497.537%2C261.496%2C506.663%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F6ELGGPS7%22%5D%2C%22locator%22%3A%222%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/IKU3IW98?page=2">“hypercomplex numbers”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F6ELGGPS7%22%5D%2C%22locator%22%3A%222%22%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/6ELGGPS7">Frants 等, 2023, p. 2</a></span>)</span>)如复数、四元数、八元数。
+超复数(<span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FIKU3IW98%22%2C%22pageLabel%22%3A%222%22%2C%22position%22%3A%7B%22pageIndex%22%3A1%2C%22rects%22%3A%5B%5B166.093%2C497.537%2C261.496%2C506.663%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F6ELGGPS7%22%5D%2C%22locator%22%3A%222%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/IKU3IW98?page=2">“hypercomplex numbers”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F6ELGGPS7%22%5D%2C%22itemData%22%3A%7B%22id%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F6ELGGPS7%22%2C%22type%22%3A%22article-journal%22%2C%22abstract%22%3A%22Single-image%20haze%20removal%20is%20challenging%20due%20to%20its%20ill-posed%20nature.%20The%20breadth%20of%20real-world%20scenarios%20makes%20it%20dif%EF%AC%81cult%20to%20%EF%AC%81nd%20an%20optimal%20dehazing%20approach%20that%20works%20well%20for%20various%20applications.%20This%20article%20addresses%20this%20challenge%20by%20utilizing%20a%20novel%20robust%20quaternion%20neural%20network%20architecture%20for%20single-image%20dehazing%20applications.%20The%20architecture%E2%80%99s%20performance%20to%20dehaze%20images%20and%20its%20impact%20on%20real%20applications%2C%20such%20as%20object%20detection%2C%20is%20presented.%20The%20proposed%20single-image%20dehazing%20network%20is%20based%20on%20an%20encoder-decoder%20architecture%20capable%20of%20taking%20advantage%20of%20quaternion%20image%20representation%20without%20interrupting%20the%20quaternion%20data%EF%AC%82ow%20end-to-end.%20We%20achieve%20this%20by%20introducing%20a%20novel%20quaternion%20pixel-wise%20loss%20function%20and%20quaternion%20instance%20normalization%20layer.%20The%20performance%20of%20the%20proposed%20QCNN-H%20quaternion%20framework%20is%20evaluated%20on%20two%20synthetic%20datasets%2C%20two%20real-world%20datasets%2C%20and%20one%20real-world%20task-oriented%20benchmark.%20Extensive%20experiments%20con%EF%AC%81rm%20that%20the%20QCNN-H%20outperforms%20state-of-the-art%20haze%20removal%20procedures%20in%20visual%20quality%20and%20quantitative%20metrics.%20Furthermore%2C%20the%20evaluation%20shows%20increased%20accuracy%20and%20recall%20of%20state-of-the-art%20object%20detection%20in%20hazy%20scenes%20using%20the%20presented%20QCNN-H%20method.%20This%20is%20the%20%EF%AC%81rst%20time%20the%20quaternion%20convolutional%20network%20has%20been%20applied%20to%20the%20haze%20removal%20task.%22%2C%22container-title%22%3A%22IEEE%20Transactions%20on%20Cybernetics%22%2C%22DOI%22%3A%2210.1109%2FTCYB.2023.3238640%22%2C%22ISSN%22%3A%222168-2267%2C%202168-2275%22%2C%22journalAbbreviation%22%3A%22IEEE%20Trans.%20Cybern.%22%2C%22language%22%3A%22en%22%2C%22page%22%3A%221-11%22%2C%22source%22%3A%22DOI.org%20(Crossref)%22%2C%22title%22%3A%22QCNN-H%3A%20Single-Image%20Dehazing%20Using%20Quaternion%20Neural%20Networks%22%2C%22title-short%22%3A%22QCNN-H%22%2C%22URL%22%3A%22https%3A%2F%2Fieeexplore.ieee.org%2Fdocument%2F10040717%2F%22%2C%22author%22%3A%5B%7B%22family%22%3A%22Frants%22%2C%22given%22%3A%22Vladimir%22%7D%2C%7B%22family%22%3A%22Agaian%22%2C%22given%22%3A%22Sos%22%7D%2C%7B%22family%22%3A%22Panetta%22%2C%22given%22%3A%22Karen%22%7D%5D%2C%22accessed%22%3A%7B%22date-parts%22%3A%5B%5B%222023%22%2C3%2C13%5D%5D%7D%2C%22issued%22%3A%7B%22date-parts%22%3A%5B%5B%222023%22%5D%5D%7D%7D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/6ELGGPS7">Frants 等, 2023</a></span>)</span>)如复数、四元数、八元数。
 
 近年来，基于超复数的神经网络在图像、视频、语音等领域效果优于其他神经网络。
 
@@ -35,7 +40,7 @@ itemKey: 7XHAUSTK
 >
 > 这是我们在高中课本中所学的知识。因此我们对实数集进行扩展，把虚数集+实数集统称为复数集，如下图所示
 
-![\<img alt="" data-attachment-key="4LPNGYZN" width="276" height="200" src="attachments/4LPNGYZN.png" ztype="zimage">](attachments/4LPNGYZN.png)
+![\<img alt="" data-attachment-key="4LPNGYZN" src="attachments/4LPNGYZN.png" ztype="zimage">](attachments/4LPNGYZN.png)
 
 我们可以把实数放在数轴上，那么实数和数轴上的点一一对应。对应的复数，我们可以用平面直角坐标系来表示，复数的实部在x轴上，虚部在y轴上。那么复数就具有了这样的几何意义。也就是说复数可以表示一个二维的空间。
 
@@ -50,7 +55,7 @@ itemKey: 7XHAUSTK
 1.  现有的卷积神经网络在处理彩色图像时，是忽略了不同颜色通道（RGB）之间的相互关系，简单的对卷积结果求和来处理的，这样可能会失去关键的结构信息和颜色信息，会对图像的颜色处理这一块产生不利影响。
 2.  在卷积过程中给学习到的卷积核过高的自由度，也会降低模型的泛化能力、增加过拟合的风险。
 
-> ![\<img alt="" data-attachment-key="RMUV2C38" width="740" height="312" src="attachments/RMUV2C38.png" ztype="zimage">](attachments/RMUV2C38.png)
+> ![\<img alt="" data-attachment-key="RMUV2C38" src="attachments/RMUV2C38.png" ztype="zimage">](attachments/RMUV2C38.png)
 >
 > 现有卷积神经网络中对不同的（颜色）通道进行卷积，随后对卷积的结果进行求和。输出单通道的特征图。其中不同通道的卷积核是不一定相同的，是模型在迭代过程中学习到的，因此不同通道的卷积核可能有较大的差异，也就是说卷积核“自由度”过高。
 
@@ -72,7 +77,7 @@ itemKey: 7XHAUSTK
 >
 > 现有的卷积神经网络他没有在基本的数据结构上对RGB颜色通道进行区分，我们如果去除了图像中的颜色信息，那么就只剩下图像的灰度信息。
 >
-> ![\<img alt="" data-attachment-key="L6TLR4JZ" width="401" height="445" src="attachments/L6TLR4JZ.png" ztype="zimage">](attachments/L6TLR4JZ.png)
+> ![\<img alt="" data-attachment-key="L6TLR4JZ" src="attachments/L6TLR4JZ.png" ztype="zimage">](attachments/L6TLR4JZ.png)
 
 作者同时指出，“四元数”这个数学工具在卷积神经网络中不仅仅具有上述的一系列优点，而且还具有改善网络内部结构、转换数据、和学习颜色通道之间关系的能力。并且最重要的是这种基于四元数的神经网络在图像去雾中还没有的到很好的探索，拥有进一步研究的潜力。因此我们可以基于四元数这个工具，再结合其他被验证有效方法，在去雾领域做出更好的效果。
 
@@ -126,9 +131,9 @@ $$
 
 ### QCNN-H——四元数卷积神经网络
 
-**基于实数卷积神经网络：**略
+\*\*基于实数卷积神经网络：\*\*略
 
-**纯四元数卷积网络：**将普通卷积层改造成了适用于四元数输入的四元数卷积层，这样就保留了不同颜色通道之间的相关性。将图像封装成四元数。输入 x = 0 + Ri+ Gj + Bk ，其中实部部分设置为0
+\*\*纯四元数卷积网络：\*\*将普通卷积层改造成了适用于四元数输入的四元数卷积层，这样就保留了不同颜色通道之间的相关性。将图像封装成四元数。输入 x = 0 + Ri+ Gj + Bk ，其中实部部分设置为0
 
 **四元数卷积层：**
 
@@ -253,7 +258,7 @@ QSD(四元数平滑扩张卷积模块）每一个QSD都是由两个四元数卷�
 
 SSIM、PSNR、VI、RI值越高表示视觉效果越好
 
-能见度指数（Visibility In⁃ dex，VI）和真实度指数（Realness Index，RI），专门用于 去雾图像的质量评价 . 其中，VI 利用图像与其清晰参考 之间的相似性来评估图像质量，RI 利用去雾后的图像 与清晰参考图在特征空间的相似性来评估去去雾图像 的真实性 .” <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%229%22%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/SW4N67ZU">贾童瑶 等, 2023, p. 9</a></span>)</span>
+能见度指数（Visibility In⁃ dex，VI）和真实度指数（Realness Index，RI），专门用于 去雾图像的质量评价 . 其中，VI 利用图像与其清晰参考 之间的相似性来评估图像质量，RI 利用去雾后的图像 与清晰参考图在特征空间的相似性来评估去去雾图像 的真实性 .” <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22itemData%22%3A%7B%22id%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%2C%22type%22%3A%22article-journal%22%2C%22abstract%22%3A%22%E6%88%B7%E5%A4%96%E8%A7%86%E8%A7%89%E7%B3%BB%E7%BB%9F%E6%9E%81%E6%98%93%E5%8F%97%E5%88%B0%E9%9B%BE%E9%9C%BE%E7%AD%89%E6%81%B6%E5%8A%A3%E5%A4%A9%E6%B0%94%E5%BD%B1%E5%93%8D%EF%BC%8C%E9%87%87%E9%9B%86%E5%88%B0%E7%9A%84%E5%9B%BE%E5%83%8F%2F%E8%A7%86%E9%A2%91%E8%B4%A8%E9%87%8F%E4%B8%A5%E9%87%8D%E4%B8%8B%E9%99%8D%EF%BC%8C%E8%BF%99%E4%B8%8D%E4%BB%85%E5%BD%B1%E5%93%8D%E4%BA%BA%E7%9C%BC%E7%9A%84%E4%B8%BB%E8%A7%82%E6%84%9F%E5%8F%97%EF%BC%8C%E4%B9%9F%E7%BB%99%E5%90%8E%E7%BB%AD%E7%9A%84%E6%99%BA%E8%83%BD%E5%8C%96%E5%88%86%E6%9E%90%E5%B8%A6%E6%9D%A5%E4%B8%A5%E5%B3%BB%E6%8C%91%E6%88%98.%E8%BF%91%E5%B9%B4%E6%9D%A5%EF%BC%8C%E5%AD%A6%E8%80%85%E4%BB%AC%E5%B0%86%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E5%BA%94%E7%94%A8%E4%BA%8E%E5%9B%BE%E5%83%8F%E5%8E%BB%E9%9B%BE%E9%A2%86%E5%9F%9F%EF%BC%8C%E5%8F%96%E5%BE%97%E4%BA%86%E8%AF%B8%E5%A4%9A%E7%9A%84%E7%A0%94%E7%A9%B6%E6%88%90%E6%9E%9C.%E4%BD%86%E6%98%AF%E9%9B%BE%E9%9C%BE%E5%9B%BE%E5%83%8F%E5%9C%BA%E6%99%AF%E5%A4%8D%E6%9D%82%E5%A4%9A%E5%8F%98%E3%80%81%E9%99%8D%E8%B4%A8%E5%9B%A0%E7%B4%A0%E4%BC%97%E5%A4%9A%EF%BC%8C%E8%BF%99%E5%AF%B9%E5%8E%BB%E9%9B%BE%E7%AE%97%E6%B3%95%E7%9A%84%E6%B3%9B%E5%8C%96%E8%83%BD%E5%8A%9B%E6%8F%90%E5%87%BA%E4%BA%86%E5%BE%88%E9%AB%98%E7%9A%84%E8%A6%81%E6%B1%82.%E6%9C%AC%E6%96%87%E4%B8%BB%E8%A6%81%E6%80%BB%E7%BB%93%E4%BA%86%E8%BF%91%E5%B9%B4%E6%9D%A5%E5%9F%BA%E4%BA%8E%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E7%9A%84%E5%8D%95%E5%B9%85%E5%9B%BE%E5%83%8F%E5%8E%BB%E9%9B%BE%E6%8A%80%E6%9C%AF%E7%A0%94%E7%A9%B6%E8%BF%9B%E5%B1%95.%E4%BB%8E%E5%85%88%E9%AA%8C%E7%9F%A5%E8%AF%86%E5%92%8C%E7%89%A9%E7%90%86%E6%A8%A1%E5%9E%8B%E3%80%81%E6%98%A0%E5%B0%84%E5%85%B3%E7%B3%BB%E5%BB%BA%E6%A8%A1%E3%80%81%E6%95%B0%E6%8D%AE%E6%A0%B7%E6%9C%AC%E3%80%81%E7%9F%A5%E8%AF%86%E8%BF%81%E7%A7%BB%E5%AD%A6%E4%B9%A0%E7%AD%89%E8%A7%92%E5%BA%A6%E5%87%BA%E5%8F%91%EF%BC%8C%E4%BB%8B%E7%BB%8D%E4%BA%86%E7%8E%B0%E6%9C%89%E7%AE%97%E6%B3%95%E7%9A%84%E7%A0%94%E7%A9%B6%E6%80%9D%E8%B7%AF%E3%80%81%E5%85%B7%E4%BD%93%E7%89%B9%E7%82%B9%E3%80%81%E4%BC%98%E5%8A%BF%E4%B8%8E%E4%B8%8D%E8%B6%B3.%E5%B0%A4%E5%85%B6%E4%BE%A7%E9%87%8D%E4%BA%8E%E8%BF%91%E4%B8%A4%E5%B9%B4%E6%9D%A5%E6%96%B0%E5%87%BA%E7%8E%B0%E7%9A%84%E8%AE%AD%E7%BB%83%E7%AD%96%E7%95%A5%E5%92%8C%E7%BD%91%E7%BB%9C%E7%BB%93%E6%9E%84%EF%BC%8C%E5%A6%82%E5%85%83%E5%AD%A6%E4%B9%A0%E3%80%81%E5%B0%8F%E6%A0%B7%E6%9C%AC%E5%AD%A6%E4%B9%A0%E3%80%81%E5%9F%9F%E8%87%AA%E9%80%82%E5%BA%94%E3%80%81Transformer%E7%AD%89.%E5%8F%A6%E5%A4%96%EF%BC%8C%E6%9C%AC%E6%96%87%E5%9C%A8%E5%85%AC%E5%85%B1%E6%95%B0%E6%8D%AE%E9%9B%86%E4%B8%8A%E5%AF%B9%E6%AF%94%E4%BA%86%E5%90%84%E7%A7%8D%E4%BB%A3%E8%A1%A8%E6%80%A7%E5%8E%BB%E9%9B%BE%E7%AE%97%E6%B3%95%E7%9A%84%E4%B8%BB%E5%AE%A2%E8%A7%82%E6%80%A7%E8%83%BD%E3%80%81%E6%A8%A1%E5%9E%8B%E5%A4%8D%E6%9D%82%E5%BA%A6%E7%AD%89%EF%BC%8C%E5%B0%A4%E5%85%B6%E6%98%AF%E5%88%86%E6%9E%90%E4%BA%86%E5%8E%BB%E9%9B%BE%E5%90%8E%E7%9A%84%E5%9B%BE%E5%83%8F%E5%AF%B9%E4%BA%8E%E5%90%8E%E7%BB%AD%E7%9B%AE%E6%A0%87%E6%A3%80%E6%B5%8B%E4%BB%BB%E5%8A%A1%E7%9A%84%E5%BD%B1%E5%93%8D%EF%BC%8C%E6%9B%B4%E5%85%A8%E9%9D%A2%E5%9C%B0%E8%AF%84%E4%BB%B7%E4%BA%86%E7%8E%B0%E6%9C%89%E7%AE%97%E6%B3%95%E6%80%A7%E8%83%BD%E7%9A%84%E4%BC%98%E5%8A%A3%EF%BC%8C%E5%B9%B6%E6%8E%A2%E8%AE%A8%E4%BA%86%E6%9C%AA%E6%9D%A5%E5%8F%AF%E8%83%BD%E7%9A%84%E7%A0%94%E7%A9%B6%E6%96%B9%E5%90%91.%22%2C%22container-title%22%3A%22%E7%94%B5%E5%AD%90%E5%AD%A6%E6%8A%A5%22%2C%22ISSN%22%3A%220372-2112%22%2C%22issue%22%3A%221%22%2C%22language%22%3A%22zh_CN%22%2C%22note%22%3A%22%3C%E5%8C%97%E5%A4%A7%E6%A0%B8%E5%BF%83%2C%20EI%2C%20CSCD%3E%22%2C%22page%22%3A%22231-245%22%2C%22source%22%3A%22CNKI%22%2C%22title%22%3A%22%E5%9F%BA%E4%BA%8E%E6%B7%B1%E5%BA%A6%E5%AD%A6%E4%B9%A0%E7%9A%84%E5%8D%95%E5%B9%85%E5%9B%BE%E5%83%8F%E5%8E%BB%E9%9B%BE%E7%A0%94%E7%A9%B6%E8%BF%9B%E5%B1%95%22%2C%22URL%22%3A%22https%3A%2F%2Fkns.cnki.net%2FKCMS%2Fdetail%2Fdetail.aspx%3Fdbcode%3DCJFD%26dbname%3DCJFDAUTO%26filename%3DDZXU202301025%26v%3D%22%2C%22volume%22%3A%2251%22%2C%22author%22%3A%5B%7B%22literal%22%3A%22%E8%B4%BE%E7%AB%A5%E7%91%B6%22%7D%2C%7B%22literal%22%3A%22%E5%8D%93%E5%8A%9B%22%7D%2C%7B%22literal%22%3A%22%E6%9D%8E%E5%98%89%E9%94%8B%22%7D%2C%7B%22literal%22%3A%22%E5%BC%A0%E8%8F%81%22%7D%5D%2C%22issued%22%3A%7B%22date-parts%22%3A%5B%5B%222023%22%5D%5D%7D%7D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/SW4N67ZU">贾童瑶 等, 2023</a></span>)</span>
 
 NIQE
 
@@ -288,4 +293,4 @@ QCNN - H在OTS和ITS数据集上表现一致，表明我们的方法具有很好
 
 首先，四元数用于神经网络，属于改动了神经网络中较为底层的东西，在其上面每一个网络层，乃至激活函数、损失函数等都需要改动，工作量很大。不仅在理论层面是一个创新，在代码实现层面现有的pytorch框架也没有太多相关的支持，相对于对网络层进行排列组合这种创新，难度要大很多，工作量也很多。后续的实验都不好开展。
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" rel="noopener noreferrer nofollow" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
