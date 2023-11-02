@@ -27,7 +27,7 @@ itemKey: PUAHI7C7
 
 ### 整体架构
 
-![\<img alt="" data-attachment-key="6L6X572S" width="2123" height="484" src="attachments/6L6X572S.png" ztype="zimage">](attachments/6L6X572S.png)
+![\<img alt="" data-attachment-key="6L6X572S" src="attachments/6L6X572S.png" ztype="zimage">](attachments/6L6X572S.png)
 
 整体网络采用流行的编码器解码器架构，分为三段。作为子网络的第一段处理高分辨率特征，MRes块就是第一段的主要组成部分。另外两段主要由多个残差块组成，
 
@@ -39,12 +39,12 @@ itemKey: PUAHI7C7
 
 ### MResBlock
 
-![\<img alt="" data-attachment-key="7LA3H76Q" width="403" height="436" src="attachments/7LA3H76Q.png" ztype="zimage">](attachments/7LA3H76Q.png)
+![\<img alt="" data-attachment-key="7LA3H76Q" src="attachments/7LA3H76Q.png" ztype="zimage">](attachments/7LA3H76Q.png)
 
 ### DSM
 
-![\<img alt="" data-attachment-key="TLZXQSHW" width="2140" height="390" src="attachments/TLZXQSHW.png" ztype="zimage">](attachments/TLZXQSHW.png)
+![\<img alt="" data-attachment-key="TLZXQSHW" src="attachments/TLZXQSHW.png" ztype="zimage">](attachments/TLZXQSHW.png)
 
 ### 损失函数
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" rel="noopener noreferrer nofollow" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>

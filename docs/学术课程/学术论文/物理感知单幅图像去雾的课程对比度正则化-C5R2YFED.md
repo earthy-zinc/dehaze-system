@@ -46,13 +46,13 @@ itemKey: C5R2YFED
 
 在大气光散射模型中，传输图和大气光两个变量都是未知的，因此去雾是一个高度不确定的问题。基于原始空间的方法直接估计两个未知因子，容易导致累积误差。相比之下，直接在特征空间中进行物理先验可以帮助预测，与雾霾生成过程一致，而不依赖于T和A的真值。
 
-![\<img alt="" data-attachment-key="VQP37SVR" width="820" height="530" src="attachments/VQP37SVR.png" ztype="zimage">](attachments/VQP37SVR.png)
+![\<img alt="" data-attachment-key="VQP37SVR" src="attachments/VQP37SVR.png" ztype="zimage">](attachments/VQP37SVR.png)
 
 ### 课程对比正则化
 
 我们给定一个锚点作为去雾网络输出的结果，正样本是真实的无雾图像，而负样本包含输入的有雾样本和多个和正样本不一致的有雾图像。该正则化的目标就是最小化锚点于正样本之间的L1距离，同时最大化锚点于负样本之间的距离。
 
-![\<img alt="" data-attachment-key="6WL4CCBT" width="816" height="146" src="attachments/6WL4CCBT.png" ztype="zimage">](attachments/6WL4CCBT.png)
+![\<img alt="" data-attachment-key="6WL4CCBT" src="attachments/6WL4CCBT.png" ztype="zimage">](attachments/6WL4CCBT.png)
 
 E<sub>i</sub> = || V<sub>i</sub>(I) − V<sub>i</sub>( f(I, θ) ) ||<sub>1</sub>  ，f (·,θ) 表示带有参数θ的去雾网络，Vi(·)表示从预训练的VGG19中的第i隐藏层提取的。非合意负样本{ Uq }为r，{ ξi }为超参数集合。
 
@@ -62,7 +62,7 @@ E<sub>i</sub> = || V<sub>i</sub>(I) − V<sub>i</sub>( f(I, θ) ) ||<sub>1</sub>
 
 为了合理规划训练流程，得到更好的效果。作者规定简单负样本的权重固定且最大，这是因为更难的样本虽然能带来更为紧凑的解空间，但是也会产生学习上的歧义。在实践中简单样本的权重为一个非负数z，其他负样本的权重定义如下：
 
-![\<img alt="" data-attachment-key="E5E5YZG3" width="913" height="135" src="attachments/E5E5YZG3.png" ztype="zimage">](attachments/E5E5YZG3.png)
+![\<img alt="" data-attachment-key="E5E5YZG3" src="attachments/E5E5YZG3.png" ztype="zimage">](attachments/E5E5YZG3.png)
 
 Sq是非简单难度负样本，t表示训练第t轮的时候。Wt(Sq)表示该非简单负样本的权重。{ Ig }表示有雾输入数据集，q = 1，2，· · ·，z为非简单难度负样本的下标，γ为超参数。当前非简单样本的PSNR小于上轮网络输出样本的平均PSNR值时，该样本的权重就为1 + γ， 否则为1 - γ。也就是说困难和超难负样本的权重分别设置为1 + γ和1 - γ。
 
@@ -70,8 +70,8 @@ Sq是非简单难度负样本，t表示训练第t轮的时候。Wt(Sq)表示该�
 
 最后得出对比正则化公式最终结果
 
-![\<img alt="" data-attachment-key="4CZ8XE4U" width="887" height="164" src="attachments/4CZ8XE4U.png" ztype="zimage">](attachments/4CZ8XE4U.png)
+![\<img alt="" data-attachment-key="4CZ8XE4U" src="attachments/4CZ8XE4U.png" ztype="zimage">](attachments/4CZ8XE4U.png)
 
 那么最终正则化L就是由L1正则化加上课程学习正则化构成
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" rel="noopener noreferrer nofollow" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
