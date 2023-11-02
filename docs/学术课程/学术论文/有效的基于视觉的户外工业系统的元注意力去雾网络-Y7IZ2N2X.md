@@ -80,4 +80,4 @@ MADN的损失函数
 
 对于加速训练，在整个训练过程中，采用批大小为1的Adam优化器，学习率设置为0.001。指数衰减率β 1和β 2分别设置为默认值0.9和0.999。将( 5 )式表示的损失函数中的超参数设定为λ 1 = 1，λ2 = 0.04，λ3 = 0.04。
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+

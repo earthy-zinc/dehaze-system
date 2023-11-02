@@ -20,4 +20,4 @@ itemKey: AUSI845C
 
 *   提出了一种正则化项：基于一个论文Tucker重构，作用于金字塔模型的每个分支网络。进一步约束了特征空间中异常信号的产生。
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" class="internal-link" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">Workspace Note</a>
+

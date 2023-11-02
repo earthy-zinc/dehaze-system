@@ -85,4 +85,4 @@ Swin Tranformer Block本身采用带MSA模块的循环移位实现高效的移�
 > 2.  模型结构
 > 3.  损失函数等训练方法
 
-Referred in <a href="./学术论文笔记汇总-RYZ5DF37.md" rel="noopener noreferrer nofollow" zhref="zotero://note/u/RYZ5DF37/?ignore=1&#x26;line=-1" ztype="znotelink" class="internal-link">学术论文笔记汇总</a>
+
