@@ -1,9 +1,13 @@
 ---
-tags: []
-parent: 'RIDCP: Revitalizing Real Image Dehazing via High-Quality Codebook Priors'
-collections:
+tag:
+    - 有代码
+    - 待阅
+    - ⭐⭐⭐
+    - CVPR2023
+title: 'RIDCP: Revitalizing Real Image Dehazing via High-Quality Codebook Priors'
+category:
     - 图像去雾
-version: 4497
+version: 4772
 libraryID: 1
 itemKey: TQVA27NJ
 

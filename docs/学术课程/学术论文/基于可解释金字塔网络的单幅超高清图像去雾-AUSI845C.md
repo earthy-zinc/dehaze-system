@@ -6,7 +6,7 @@ tag:
 title: 'Single UHD Image Dehazing via Interpretable Pyramid Network'
 category:
     - 图像去雾
-version: 4496
+version: 4770
 libraryID: 1
 itemKey: AUSI845C
 

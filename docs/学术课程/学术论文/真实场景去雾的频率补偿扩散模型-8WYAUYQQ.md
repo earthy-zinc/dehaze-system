@@ -1,9 +1,11 @@
 ---
-tags: []
-parent: 'Frequency Compensated Diffusion Model for Real-scene Dehazing'
-collections:
+tag:
+    - 有代码
+    - 已阅
+title: 'Frequency Compensated Diffusion Model for Real-scene Dehazing'
+category:
     - 图像去雾
-version: 4497
+version: 4771
 libraryID: 1
 itemKey: 8WYAUYQQ
 
