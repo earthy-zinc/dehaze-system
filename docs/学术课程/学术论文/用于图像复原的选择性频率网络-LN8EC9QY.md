@@ -1,7 +1,12 @@
 ---
-tags: []
-parent: 'SELECTIVE FREQUENCY NETWORK FOR IMAGE RESTORATION'
-collections:
+tag:
+    - 有代码
+    - SFNet
+    - 待阅
+    - ⭐⭐⭐
+    - ICLR2023
+title: 'SELECTIVE FREQUENCY NETWORK FOR IMAGE RESTORATION'
+category:
     - 图像去雾
 version: 4496
 libraryID: 1

@@ -1,7 +1,8 @@
 ---
-tags: []
-parent: 'QCNN-H: Single-Image Dehazing Using Quaternion Neural Networks'
-collections:
+tag:
+    - 已阅
+title: 'QCNN-H: Single-Image Dehazing Using Quaternion Neural Networks'
+category:
     - 图像去雾
 version: 4496
 libraryID: 1

@@ -1,7 +1,12 @@
 ---
-tags: []
-parent: 'Structure Representation Network and Uncertainty Feedback Learning for Dense Non-Uniform Fog Removal'
-collections:
+tag:
+    - 有代码
+    - FogRemoval
+    - 待阅
+    - ⭐⭐⭐⭐
+    - ACCV2022
+title: 'Structure Representation Network and Uncertainty Feedback Learning for Dense Non-Uniform Fog Removal'
+category:
     - 图像去雾
 version: 4573
 libraryID: 1

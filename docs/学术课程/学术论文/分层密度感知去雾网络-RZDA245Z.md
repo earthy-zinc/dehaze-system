@@ -1,7 +1,7 @@
 ---
-tags: []
-parent: 'Hierarchical Density-Aware Dehazing Network'
-collections:
+tag: []
+title: 'Hierarchical Density-Aware Dehazing Network'
+category:
     - 图像去雾
 version: 4483
 libraryID: 1

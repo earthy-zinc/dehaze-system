@@ -1,7 +1,10 @@
 ---
-tags: []
-parent: 'Effective Meta-Attention Dehazing Networks for Vision-Based Outdoor Industrial Systems'
-collections:
+tag:
+    - 有代码
+    - MADN
+    - 已阅
+title: 'Effective Meta-Attention Dehazing Networks for Vision-Based Outdoor Industrial Systems'
+category:
     - 图像去雾
 version: 4496
 libraryID: 1
