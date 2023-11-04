@@ -1,7 +1,11 @@
 ---
-tags: []
-parent: 'Vision Transformers for Single Image Dehazing'
-collections:
+tag:
+    - 有代码
+    - DehazeFormer
+    - 待阅
+    - ⭐⭐⭐⭐
+title: 'Vision Transformers for Single Image Dehazing'
+category:
     - 图像去雾
 version: 4568
 libraryID: 1
@@ -28,17 +32,17 @@ DehazeFormer网络架构基于流行的Swin Transformer。介绍一下：
 
 给定一个输入特征图，使用线性层将特征图投影到Query、key、Value上，并且使用窗口划分类将token分组。Swin Transformer在窗口内使用掩码多头自注意力，并且相邻块窗口的划分也不相同。
 
-![\<img alt="" data-attachment-key="E4TMXQ3S" width="944" height="90" src="attachments/E4TMXQ3S.png" ztype="zimage">](attachments/E4TMXQ3S.png)
+![\<img alt="" data-attachment-key="E4TMXQ3S" src="attachments/E4TMXQ3S.png" ztype="zimage">](attachments/E4TMXQ3S.png)
 
 B为相对位置偏差项，在注意力输出的投影后面紧接着跟随了一个线性层Softmax
 
 SK fusion层被设计为使用通道注意力融合多个分支。给定两个特征图，我们首先使用一个线性层将第一个特征图进行投影，再和第二个特征图相加。然后使用全局平均池化、MLP、softmax函数和分割操作获得融合权重，如下公式
 
-![\<img alt="" data-attachment-key="LJF2I3NY" width="933" height="77" src="attachments/LJF2I3NY.png" ztype="zimage">](attachments/LJF2I3NY.png)
+![\<img alt="" data-attachment-key="LJF2I3NY" src="attachments/LJF2I3NY.png" ztype="zimage">](attachments/LJF2I3NY.png)
 
 现有的图像去雾网络的工作一般是预测重构后的无雾图像，或者是有雾和无雾图像之间的残差。作者认为在没有强约束的条件下向网络中加入先验知识是有益的。因为网络预测的重构图像或者残差只是一个近似。
 
-![\<img alt="" data-attachment-key="PBZMJDNR" width="567" height="78" src="attachments/PBZMJDNR.png" ztype="zimage">](attachments/PBZMJDNR.png)
+![\<img alt="" data-attachment-key="PBZMJDNR" src="attachments/PBZMJDNR.png" ztype="zimage">](attachments/PBZMJDNR.png)
 
 J(x)是预测的无雾图像，I(X)是输入的有雾图像。（大气散射模型）我们用网络架构对K、B进行了一定的约束，也就是在网络中给定了先验知识，这种弱约束条件的先验允许网络退化到预测全局残差。
 

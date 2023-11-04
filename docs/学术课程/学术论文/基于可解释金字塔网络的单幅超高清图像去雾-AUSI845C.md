@@ -1,7 +1,10 @@
 ---
-tags: []
-parent: 'Single UHD Image Dehazing via Interpretable Pyramid Network'
-collections:
+tag:
+    - 有代码
+    - 待阅
+    - 4KDehazing
+title: 'Single UHD Image Dehazing via Interpretable Pyramid Network'
+category:
     - 图像去雾
 version: 4496
 libraryID: 1

@@ -1,7 +1,11 @@
 ---
-tags: []
-parent: 'Focal Network for Image Restoration'
-collections:
+tag:
+    - 有代码
+    - FocalNet
+    - ⭐⭐⭐
+    - ICCV2023
+title: 'Focal Network for Image Restoration'
+category:
     - 图像去雾
 version: 4497
 libraryID: 1

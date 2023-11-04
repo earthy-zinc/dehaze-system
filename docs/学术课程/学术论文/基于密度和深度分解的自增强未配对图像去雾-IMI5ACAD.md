@@ -1,7 +1,11 @@
 ---
-tags: []
-parent: 'Self-augmented Unpaired Image Dehazing via Density and Depth Decomposition'
-collections:
+tag:
+    - 有代码
+    - ⭐⭐⭐
+    - D4
+    - CVPR2022
+title: 'Self-augmented Unpaired Image Dehazing via Density and Depth Decomposition'
+category:
     - 图像去雾
 version: 4644
 libraryID: 1
@@ -32,28 +36,37 @@ D4框架主要有三个网络构成，去雾网络、深度估计网络、精练
 
 *   去雾网络：用于从雾天图像中估计透射图和散射系数。
 
-![\<img alt="" data-attachment-key="C4PVMICB" width="319" height="87" src="attachments/C4PVMICB.png" ztype="zimage">](attachments/C4PVMICB.png)
+![\<img alt="" data-attachment-key="C4PVMICB" src="attachments/C4PVMICB.png" ztype="zimage">](attachments/C4PVMICB.png)
 
 雾天图像得到的深度图可以用估计的透射率t和散射系数β得到。
 
-![\<img alt="" data-attachment-key="7G2GMT3T" width="292" height="101" src="attachments/7G2GMT3T.png" ztype="zimage">](attachments/7G2GMT3T.png)
+![\<img alt="" data-attachment-key="7G2GMT3T" src="attachments/7G2GMT3T.png" ztype="zimage">](attachments/7G2GMT3T.png)
 
 *   深度估计网络：用于从干净图像C中估计深度d
 
-![\<img alt="" data-attachment-key="C3B249AG" width="260" height="100" src="attachments/C3B249AG.png" ztype="zimage">](attachments/C3B249AG.png)
+![\<img alt="" data-attachment-key="C3B249AG" src="attachments/C3B249AG.png" ztype="zimage">](attachments/C3B249AG.png)
 
 训练过程中不使用来自现有深度估计器中的预训练权重，或者使用真实深度图进行监督。而是使用来自上述去雾网络的伪监督进行训练。
 
 *   精炼网络：首先通过结合无雾图像、估计的场景深度和散射系数得到一个粗略的伪有雾图像，然后精炼网络作为图像到图像的转换网络，将粗略的伪有雾图像转换到遵循真实有雾图像分布的有雾图像。可以看作是执行一个有条件的有雾图像生成，在给定了深度和散射信息后，能够生成更加逼真的雾天图像。
 
-    ![\<img alt="" data-attachment-key="6C3E6LDB" width="409" height="145" src="attachments/6C3E6LDB.png" ztype="zimage">](attachments/6C3E6LDB.png)
+    ![\<img alt="" data-attachment-key="6C3E6LDB" src="attachments/6C3E6LDB.png" ztype="zimage">](attachments/6C3E6LDB.png)
 
 ## 训练过程
 
 训练过程中包含两个分支
 
-1.  无雾-添雾分支，通过将有雾图像送入到去雾网络，我们可以得到估计的透射图、估计的散射系数、场景深度。同时去雾的结果也可以在这个过程中计算得到。![\<img alt="" data-attachment-key="3Q6SIC7F" width="410" height="132" src="attachments/3Q6SIC7F.png" ztype="zimage">](attachments/3Q6SIC7F.png)然后利用去雾的图像，深度估计网络预测场景深度，随后再用先前估计的散射系数和深度进行去雾。就推导出了带有雾霾形成过程的粗有雾图像。![]()在该方程中，我们使用最亮的像素作为大气光来产生雾霾，然后将粗糙雾霾图像经过精炼网络处理获取最终的有雾图像
-2.  有雾-去雾分支，首先采样一个干净的图像，使用深度估计网络来估计其深度图。然后从预先定义的均匀分布中随机采样散射系数。就得到了具有可变雾气密度的粗糙有雾图像。![\<img alt="" data-attachment-key="E7MX8JAF" width="816" height="79" src="attachments/E7MX8JAF.png" ztype="zimage">](attachments/E7MX8JAF.png)该粗糙有雾图像由精炼网络合成，并且由去雾网络进一步处理来预测透射率和散射系数。最后，我们可以使用相同的计算公式来重建无雾图像。由于这个散射系数是从预定义的范围内采样的。因此整个去雾过程就可以看作是一个数据增强操作。可以用于接下来去雾网络的训练。
+1.  无雾-添雾分支，通过将有雾图像送入到去雾网络，我们可以得到估计的透射图、估计的散射系数、场景深度。同时去雾的结果也可以在这个过程中计算得到。
+
+    ![\<img alt="" data-attachment-key="3Q6SIC7F" src="attachments/3Q6SIC7F.png" ztype="zimage">](attachments/3Q6SIC7F.png)
+
+    %E7%84%B6%E5%90%8E%E5%88%A9%E7%94%A8%E5%8E%BB%E9%9B%BE%E7%9A%84%E5%9B%BE%E5%83%8F%EF%BC%8C%E6%B7%B1%E5%BA%A6%E4%BC%B0%E8%AE%A1%E7%BD%91%E7%BB%9C%E9%A2%84%E6%B5%8B%E5%9C%BA%E6%99%AF%E6%B7%B1%E5%BA%A6%EF%BC%8C%E9%9A%8F%E5%90%8E%E5%86%8D%E7%94%A8%E5%85%88%E5%89%8D%E4%BC%B0%E8%AE%A1%E7%9A%84%E6%95%A3%E5%B0%84%E7%B3%BB%E6%95%B0%E5%92%8C%E6%B7%B1%E5%BA%A6%E8%BF%9B%E8%A1%8C%E5%8E%BB%E9%9B%BE%E3%80%82%E5%B0%B1%E6%8E%A8%E5%AF%BC%E5%87%BA%E4%BA%86%E5%B8%A6%E6%9C%89%E9%9B%BE%E9%9C%BE%E5%BD%A2%E6%88%90%E8%BF%87%E7%A8%8B%E7%9A%84%E7%B2%97%E6%9C%89%E9%9B%BE%E5%9B%BE%E5%83%8F%E3%80%82!%5B%5D()在该方程中，我们使用最亮的像素作为大气光来产生雾霾，然后将粗糙雾霾图像经过精炼网络处理获取最终的有雾图像
+
+2.  有雾-去雾分支，首先采样一个干净的图像，使用深度估计网络来估计其深度图。然后从预先定义的均匀分布中随机采样散射系数。就得到了具有可变雾气密度的粗糙有雾图像。
+
+    ![\<img alt="" data-attachment-key="E7MX8JAF" src="attachments/E7MX8JAF.png" ztype="zimage">](attachments/E7MX8JAF.png)
+
+    该粗糙有雾图像由精炼网络合成，并且由去雾网络进一步处理来预测透射率和散射系数。最后，我们可以使用相同的计算公式来重建无雾图像。由于这个散射系数是从预定义的范围内采样的。因此整个去雾过程就可以看作是一个数据增强操作。可以用于接下来去雾网络的训练。
 
 ## 训练目标
 
