@@ -4,7 +4,7 @@ tag:
 title: 'QCNN-H: Single-Image Dehazing Using Quaternion Neural Networks'
 category:
     - 图像去雾
-version: 4496
+version: 4770
 libraryID: 1
 itemKey: 7XHAUSTK
 

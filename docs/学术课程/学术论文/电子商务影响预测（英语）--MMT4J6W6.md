@@ -3,7 +3,7 @@ tag: []
 title: 'Influence prediction model for marketing campaigns on e-commerce platforms'
 category:
     - 其他
-version: 4480
+version: 4770
 libraryID: 1
 itemKey: MMT4J6W6
 

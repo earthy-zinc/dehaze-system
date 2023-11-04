@@ -1,9 +1,13 @@
 ---
-tags: []
-parent: 'A Data-Centric Solution to NonHomogeneous Dehazing via Vision Transformer'
-collections:
+tag:
+    - 有代码
+    - ⭐⭐⭐
+    - ITBdehaze
+    - CVPR2023
+title: 'A Data-Centric Solution to NonHomogeneous Dehazing via Vision Transformer'
+category:
     - 图像去雾
-version: 4497
+version: 4772
 libraryID: 1
 itemKey: ZNGVNFBU
 
