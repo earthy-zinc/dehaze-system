@@ -1,10 +1,9 @@
 ---
-order: 1
 tag: []
 title: ""
 category:
     - 图像去雾
-version: 4804
+version: 4964
 libraryID: 1
 itemKey: RYZ5DF37
 
@@ -68,6 +67,119 @@ DehazeNet 是基于深度学习的图像去雾方法前驱，网络架构较浅�
 
 这一类去雾算法一是借鉴图像分割领域常用的编码器到解码器结构对图像中的信息进行挖掘，结合注意力机制、特征融合等策略，提升特征的表达能力。从而帮助图像去雾。二是从自然语言领域的Transformer获得灵感，进而构建了适用于图像领域的Vision Transformer用于图像去雾，也取得了不错的性能。
 
+#### 编码器-解码器架构
+
+编码器用于对输入图像进行特征提取，而解码器则利用编码器得到的特征重构目标图像。图像不同层级之间提取的特征种类、特征图的感受野，特征的细腻程度往往不同，为了充分利用图像各层级之间的特征，该类网络常常再编码器和解码器之间添加跳跃连接。在网络内部，通常会结合注意力机制、特征融合等策略来提升特征的表达能力。与普通的CNN网络不同，编码器解码器架构能够更好的进行特征提取和表达，有效提升网络利用率，在图像去雾领域得到了广泛应用。
+
+生成对抗网络（Generative Adversarial Network， GAN）是 2014 年 Goodfellow 等人提出的一种网络结构，包含生成器和判别器，生成器用于获得真实数据样本的特征分布，并且据此生成新的数据样本。判别器是一个二分类器，用于判别输入的是真实数据还是生成的样本。生成对抗网络主要是用于解决图像分类和识别任务中的数据集样本扩充、图像风格迁移和图像增强等问题。在图像去雾领域中，生成器主要用来获取有雾图像的雾霾特征，除去雾霾并生成干净无雾的图像。判别器则将生成的无雾图像和真实无雾图像进行比较，判断生成图像的质量并指导生成器迭代优化。两者通过循环交替达到纳什均衡，从而训练出最优的网络模型。很多去雾方法都是根据生成对抗网络的原理来指导模型训练。
+
+近些年来有很多学者在这方面做了不少工作。Qu提出将图像去雾问题简化为图像到图像的转换问题，在不依赖于大气散射模型的情况下生成无雾图像。<span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F9SIX2C8F%22%2C%22pageLabel%22%3A%225%22%2C%22position%22%3A%7B%22pageIndex%22%3A4%2C%22rects%22%3A%5B%5B189.548%2C483.161%2C296.116%2C494.416%5D%2C%5B62.462%2C468.704%2C296.117%2C479.958%5D%2C%5B62.462%2C454.246%2C296.117%2C465.5%5D%2C%5B62.462%2C439.788%2C296.116%2C451.043%5D%2C%5B62.462%2C425.331%2C296.116%2C436.585%5D%2C%5B62.462%2C410.873%2C296.116%2C422.128%5D%2C%5B62.462%2C396.416%2C191.16%2C407.67%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/9SIX2C8F?page=5">“EPDN 由多分辨率生成器模块、增强器模块和多尺度判别器模块组成。多分辨率生成器对雾霾图像在两个尺度上进行特征提取；增强模块用于恢复去雾图像的颜色和细节信息；多尺度判别器用于对生成的去雾结果进行鉴别。虽然算法在主客观结果上都有了一定提升，但是对真实雾霾图像进行处理时，会存在过增强现象。”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/SW4N67ZU">贾童瑶 等, 2023, p. 5</a></span>)</span><span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F9SIX2C8F%22%2C%22pageLabel%22%3A%225%22%2C%22position%22%3A%7B%22pageIndex%22%3A4%2C%22rects%22%3A%5B%5B136.938%2C324.128%2C296.285%2C336.082%5D%2C%5B62.462%2C309.67%2C296.116%2C320.925%5D%2C%5B62.462%2C295.213%2C296.116%2C306.467%5D%2C%5B62.462%2C280.755%2C211.16%2C292.01%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/9SIX2C8F?page=5">“Liu 等人提出了 GridDehazeNet 网络结构，通过独特的网格式结构，并利用网络注意力机制进行多尺度特征融合，充分融合底层和高层特征，网络取得了较好的映射能力。”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/SW4N67ZU">贾童瑶 等, 2023, p. 5</a></span>)</span><span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F9SIX2C8F%22%2C%22pageLabel%22%3A%225%22%2C%22position%22%3A%7B%22pageIndex%22%3A4%2C%22rects%22%3A%5B%5B82.462%2C266.298%2C296.117%2C278.252%5D%2C%5B62.462%2C251.84%2C296.195%2C263.368%5D%2C%5B62.462%2C237.383%2C296.116%2C248.637%5D%2C%5B62.462%2C222.925%2C296.117%2C234.452%5D%2C%5B62.462%2C208.468%2C296.116%2C219.722%5D%2C%5B62.462%2C194.01%2C296.116%2C205.265%5D%2C%5B62.462%2C179.553%2C301.136%2C190.807%5D%2C%5B62.462%2C165.095%2C301.136%2C176.35%5D%2C%5B62.462%2C150.638%2C236.159%2C161.892%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/9SIX2C8F?page=5">“Dong 等人提出了一种基于 U-Net 架构的具有密集特征融合的多尺度特征增强（Multi-Scale Boosted Dehazing Network，MSBDN），通过一个增强解码器来逐步恢复无雾霾图像 . 为了解决在 U-Net 架构中保留空间信息的问题，他们设计了一个使用反投影反馈方案的密集特征融合模块。结果表明，密集特征融合模块可以同时弥补高分辨率特征中缺失的空间信息， 并利用非相邻特征。但是算法的模型复杂、参数量大，而且在下采样过程中容易丢失细节信息。”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/SW4N67ZU">贾童瑶 等, 2023, p. 5</a></span>)</span><span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F9SIX2C8F%22%2C%22pageLabel%22%3A%225%22%2C%22position%22%3A%7B%22pageIndex%22%3A4%2C%22rects%22%3A%5B%5B82.462%2C136.18%2C296.116%2C148.135%5D%2C%5B62.462%2C121.723%2C301.136%2C132.977%5D%2C%5B62.462%2C107.265%2C296.116%2C118.792%5D%2C%5B62.462%2C92.808%2C296.116%2C104.062%5D%2C%5B62.462%2C78.35%2C296.116%2C89.605%5D%2C%5B62.462%2C63.893%2C282.458%2C75.147%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/9SIX2C8F?page=5">“Qin 等人去除了上下采样操作，提出了一种端到端特征融合注意网络（Feature Fusion Attention Network， FFA-Net）来直接恢复无雾霾图像 . 该方法的主要思想是自适应地学习特征权重，给重要特征赋予更多的权重 . 在每一个残差块后加入特征注意力，并且对各个组的特征进行加权自适应选择，提升网络的映射能力 .”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FSW4N67ZU%22%5D%2C%22locator%22%3A%225%22%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/SW4N67ZU">贾童瑶 等, 2023, p. 5</a></span>)</span>
+
+在图像复原领域，有学者将生成对抗网络进行扩展，提出了扩散模型，在图像去雾、去噪、去雨等任务表现出色。其工作原理主要是通过前向扩散过程和反向采样过程实现的。具体来说，扩散模型在前向扩散过程中对图像逐步施加噪声，直至图像被破坏变成完全的高斯噪声，这种噪声通常是可逆的，同时图像中还保留有图像原本的特征。然后，在反向采样过程中，模型学习如何从高斯噪声还原出真实图像。但是这类模型往往有这样几个缺点。一是<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">依赖对数据集的规划，二是要求图像退化参数已知。</span></span>
+
+#### Transformer架构
+
+Transformer最初是针对自然语言处理任务提出的，通过多头自注意力机制和前馈层的堆叠，捕获单词之间的非局部交互。“Doso⁃vitski 等人提出了用于图像领域的Vision Transformer 模型（Vision Transformer，ViT），展示了其在图像处理领域应用的潜力。
+
 ### 基于非成对低质量到高质量样本对的图像去雾
 
 ### 域知识迁移学习
+
+## 数据集
+
+## 评价指标
+
+## 思考和展望
+
+目前图像去雾领域存在的困难主要有以下几点。
+
+1.  网络的训练需要大量的无雾-有雾图像对作为支撑，但是实际中这样的数据集获取困难。目前的做法是通过一些物理模型如大气散射模型，将高质量无雾图像处理得到低质量的有雾图像，形成合成数据集。但是这一类模型往往无法很好地模拟真实图像降质的过程。
+2.  网络的泛化能力差，主要表现在一个数据集上训练的模型应用到另一个数据集上效果往往不佳。这是因为样本分布不一致，根本原因在于雾霾变化多样，在某些场景中得到的雾霾特征往往不适用于另一个场景。
+
+为了解决以上两大难题，我们可以从这些角度出发。
+
+## <span style="background-color: rgb(255, 255, 255)">创新方向</span>
+
+### <span style="background-color: rgb(255, 255, 255)">数据预处理</span>
+
+针对网络的训练需要大量数据作为支撑，但是目前数据集数据量有限，我们就需要考虑数据预处理。
+
+1.  **组合多个数据集并降低差异**，
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">由于每个数据集之间有一些细微的差异，例如颜色差异、物体复杂性、拍摄所用的相机差别等。直接组合会降低去雾结果指标，因此我们设计一种数据预处理技术，来减少数据集之间的分布差距。</span></span>
+
+    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FKA6CRQKY%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/KA6CRQKY">Liu 等, 2023</a></span>)</span>
+
+    提出了一种新的预处理技术，对数据集之间明显的颜色差异进行校正，
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">并且将增强后的数据分布转移到目标数据分布。显著的降低了数据集之间的差异，增加了数据量，从而提高了去雾效果。</span></span>
+
+2.  **缓解合成数据集和真实数据集之间的差距。**
+
+    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>
+
+    重新设计了合成数据集的生成过程，
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">考虑到了图像退化的各种因素。由此得到的数据集缓解合成数据和真实数据之间的差距。</span></span>
+
+3.  应用图像增强的方法，如直方图均衡化、对比度提升初步处理数据。
+
+### <span style="background-color: rgb(255, 255, 255)">模型结构</span>
+
+**引入多分支及分类。**针对雾霾变化多样，在某些场景中得到的雾霾特征往往不适用于另一个场景这一特点。我们可以针对不同的雾霾具体使用不同的网络进行去雾。对当前去雾数据集分析可以得知，均匀雾霾、非均匀雾霾有一定的区别。<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">非均匀雾霾并不完全由图像场景深度决定，不同区域的雾霾浓度往往不一。因此通常的去雾方法在去除非均匀雾霾上效果不佳。我们可以根据不同种类的雾霾，引入不同的编码器，提取不同类别雾霾之间特异的特征，形成一种多分支结构。随后再接上普通编码器，提取雾霾大类之间的相同特征。随后送去解码器输出去雾图像。</span></span>
+
+**引入高质量先验。**从去雾网络发展历程可以得知，高质量先验知识对去雾网络的设计有很大的帮助，以往的网络模型都是人工通过经验总结得到的先验知识，然后据此设计网络，如暗通道先验和颜色衰减先验，由于先验知识本身具有一定的局限性，从而导致设计出来的网络泛化能力不佳。因此<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>通过预训练一个网络来得到高质量的先验知识，然后将高质量先验与网络进行融合训练，再通过解码器输出无雾图像。
+
+**引入选择机制。**图像中并不是所有区域都是同等重要的，比如天空、雪地等区域去雾重要性不高，而其他雾霾浓度高，距离近的区域则相比于雾霾少距离远的物体去雾重要性更强。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F4SHMI7H5%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/4SHMI7H5">Cui 等, 2023</a></span>)</span>提出了双域选择机制，双域主要表现在<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">空间选择模块和频率选择模块。空间选择模块通过深度卷积层来确定每个通道中图像退化区域的大致位置。然后利用频率选择模块对高频信号或硬区域进行放大，去除特征中的低频成分。通过这种机制，模型会更专注于雾霾更重的关键区域。</span></span>
+
+学习雾霾和图像背景之间交互的特征。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>通过注意力生成和场景重建网络<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">专注于学习非均匀雾霾和场景之间的复杂交互特征。</span></span>
+
+提取多尺度特征。使用不同大小的卷积核、多尺度、并行地提取特征。
+
+### <span style="background-color: rgb(255, 255, 255)">损失函数</span>
+
+1.  采用多个损失函数结合来辅助模型训练，如感知损失、对抗损失、结构相似性损失
+
+### <span style="background-color: rgb(255, 255, 255)">正则化方法</span>
+
+1.  对比正则化方法
+
+### 训练策略
+
+1.  **对比学习。**2023年的CVPR中
+
+    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FYMAP3M6X%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/YMAP3M6X">Zheng 等, 2023</a></span>)</span>
+
+    提出了这一观点，在训练的过程中不断和其他模型训练得到的去雾图像做对比，一开始和效果较差的比较并进行自我矫正，逐步和效果好的比较直到接近真实无雾图像。在学习的过程中会逐步结合各种去雾方法的优点、不断地调整来达到更好的结果。因此我们可以精挑细选近些年去雾效果较好的、去雾方法差别较大的作为比较对象进行对比学习。
+
+2.  采用
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">YCbCr颜色空间，</span></span>
+
+    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>
+
+    、
+
+    ()
+
+3.  课程学习。
+
+    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>
+
+    在其论文中
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">为了增强亮度差异大的区域去雾效果，引入了自组织半课程学习的注意力图生成策略，该方法加快了模型参数收敛。减少了训练早期多目标预测引起的学习歧义。</span></span>
+
+### 轻量化
+
+随着深度学习的发展，模型逐渐往复杂化、巨大化发展，所需的计算量更是水涨船高，这对去雾系统的实时应用不利，因此，有必要对模型进行效果和运行速度的权衡，节约计算开销。
+
+1.  采用四元数网络。
+
+    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F6ELGGPS7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/6ELGGPS7">Frants 等, 2023</a></span>)</span>
+
+    在其设计的网络QCNN-H中指出采用四元数的卷积神经网络
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">更好的保留了颜色信息，同时减小了网络参数、节约了内存资源</span></span>
+
+## 常用模块
