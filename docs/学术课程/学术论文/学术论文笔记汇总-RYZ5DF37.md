@@ -3,7 +3,7 @@ tag: []
 title: ""
 category:
     - 图像去雾
-version: 4964
+version: 5060
 libraryID: 1
 itemKey: RYZ5DF37
 
@@ -83,11 +83,86 @@ Transformer最初是针对自然语言处理任务提出的，通过多头自注
 
 ### 基于非成对低质量到高质量样本对的图像去雾
 
-### 域知识迁移学习
+#### 无监督学习
+
+Zhu提出的循环一致对抗网络（Cycle-consistent Adversarial Networks，CycleGAN）是一种比较具有代表性的基于非成对样本的网络结构，该网络是面向图像风格迁移任务设计的。整体架构包含了两个生成器和两个判别器。一个生成器负责将 X 域图像映射到 Y 域，另一个生成器负责将 Y 域图像映射到 X 域；判别器用于判断输入图像是否属于 X 域。假设存在一对非成对样本{xi ,yi} ,xi ∈ X,yi ∈ Y，以正向训练为例，xi 用于训练 Dx，标签为真，G(xi )用于训练 Dy，标签为假，此时判别器 Dy 可以监督生成器 G 的训练； 通过优化输入 xi 与 F(G(xi ))之间进行 L1 范式损失，可以 同时监督生成器 G 和 F 的训练 . 这个损失称为循环一致性损失；反向训练时同理 . 通过正反向交替训练可以达到训练生成器 G 和 F 的目的。
+
+#### 自监督学习
+
+### 基于域知识迁移学习的图像去雾
 
 ## 数据集
 
+### RESIDE
+
+发布时间：2019
+
+网址：[RESIDE: V0 (google.com)](https://sites.google.com/view/reside-dehaze-datasets/reside-v0)
+
+论文地址：<https://arxiv.org/abs/1712.04143>
+
+该数据集使用由合成和真实世界有雾图像组成的新的大规模基准数据，称为真实单图像去雾 REalistic Single Image DEhazing (RESIDE)，用于训练、评估和比较单幅图像去雾算法。 RESIDE的一个显着特征在于其评估标准的多样性，从传统的完整参考指标到更实用的无参考指标，再到所需的人类主观评估和任务驱动评估。RESIDE 根据不同的数据源和图像内容，分为五个子集，每个子集有不同的目的（训练或评估）或来源（室内或室外）。
+
+各子集图片示例：
+
+*   ITS (Indoor Training Set) 室内训练集
+*   OTS (Outdoor Training Set) 室外训练集
+*   SOTS (Synthetic Objective Testing Set) 合成目标测试集
+*   RTTS (Real-world Task-Driven Testing Set)
+*   HSTS (Hybrid Subjective Testing Set)
+*   Unannotated Real-world Hazy Images（不包含在上述子集中）
+
+### RESIDE-Standard（RESIDE-IN）
+
+网址：[RESIDE-Standard (google.com)](https://sites.google.com/view/reside-dehaze-datasets/reside-standard)
+
+训练集包含13,990个合成有雾图像，使用来自现有室内深度数据集NYU2和米德尔伯里立体数据库的1,399个清晰图像生成。其中每个清晰无雾图像合成10个有雾图像，13,000个用于训练和990个用于验证。 图片每个通道大气光A在\[0.7，1.0]之间，均匀地随机选择β在\[0.6,1.8]。 因此，它包含成对的清晰和有雾的图像，其中清晰无雾图像对应多个有雾图像，这些有雾图像是在不同的参数A和β下生成的。
+
+测试集由综合目标测试集（SOTS）和混合主观测试集（HSTS）组成，旨在表现出多种评估观点。 SOTS从NYU2中选择500个室内图像（与训练图像不重叠），并按照与训练数据相同的过程来合成模糊图像。HSTS采用与SOTS相同的方式生成10个合成的户外有雾图像，以及10个真实世界的有雾图像，收集现实世界的室外场景 ，结合进行真人主观评审。
+
+### RESIDE-β（RESIDE-OUT）
+
+网址：[RESIDE-β (google.com)](https://sites.google.com/view/reside-dehaze-datasets/reside-%CE%B2)
+
+作者使用2061张来自北京实时天气的真实室外图，使用在Learning depth from single monocular images using deep convolutional neural fifields中提到的算法，对每幅图进行深度估计，最终用β在\[0.04、0.06、0.08、0.08、0.1、0.15、0.95、0.95、1]中合成了72,135张户外有雾图像。这套新的图像被称为户外训练集（OTS），由成对的干净无雾的户外图像和生成的有雾图像组成。
+
+### RESIDE-4K
+
+训练集包含3000张ITS图像对和3000张OTS图像对。
+
+测试集将室内和室外的图像对混合在一起，形成一个由1000张图像对组成的测试集。
+
+### D-HAZY
+
+D-HAZY，建立在Middelbury 和NYU深度数据集上，这些数据集提供各种场景的图像及其相应的深度图。包含1400多对图像的数据集，其中包括同一场景的地面真实参考图像和模糊图像。
+
+### DENSE-HAZE
+
+发布时间：2019
+
+以浓密均匀的朦胧场景为特征，包含33对真实的朦胧图像和各种室外场景的相应无霾图像。通过引入由专业雾霾机器生成的真实雾霾来记录雾霾场景。
+
+### HAZE-4K
+
+### I-HAZE
+
+发布时间：2018
+
+### O-HAZE
+
+发布时间：2018
+
+### RS-HAZE
+
+### NH-HAZE
+
+发布时间：2020
+
+这是一个非均匀的真实数据集，具有成对的真实雾霾和相应的无雾图像。这是第一个非均匀图像去雾数据集，包含55个室外场景。在场景中引入了非均匀雾，使用专业雾霾制造器模拟有雾场景。
+
 ## 评价指标
+
+![\<img alt="" data-attachment-key="VSJWAQPH" width="2282" height="888" src="attachments/VSJWAQPH.png" ztype="zimage">](attachments/VSJWAQPH.png)
 
 ## 思考和展望
 
@@ -98,9 +173,9 @@ Transformer最初是针对自然语言处理任务提出的，通过多头自注
 
 为了解决以上两大难题，我们可以从这些角度出发。
 
-## <span style="background-color: rgb(255, 255, 255)">创新方向</span>
+## 创新方向
 
-### <span style="background-color: rgb(255, 255, 255)">数据预处理</span>
+### 数据预处理
 
 针对网络的训练需要大量数据作为支撑，但是目前数据集数据量有限，我们就需要考虑数据预处理。
 
@@ -124,51 +199,59 @@ Transformer最初是针对自然语言处理任务提出的，通过多头自注
 
 3.  应用图像增强的方法，如直方图均衡化、对比度提升初步处理数据。
 
-### <span style="background-color: rgb(255, 255, 255)">模型结构</span>
+### 模型结构
 
-**引入多分支及分类。**针对雾霾变化多样，在某些场景中得到的雾霾特征往往不适用于另一个场景这一特点。我们可以针对不同的雾霾具体使用不同的网络进行去雾。对当前去雾数据集分析可以得知，均匀雾霾、非均匀雾霾有一定的区别。<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">非均匀雾霾并不完全由图像场景深度决定，不同区域的雾霾浓度往往不一。因此通常的去雾方法在去除非均匀雾霾上效果不佳。我们可以根据不同种类的雾霾，引入不同的编码器，提取不同类别雾霾之间特异的特征，形成一种多分支结构。随后再接上普通编码器，提取雾霾大类之间的相同特征。随后送去解码器输出去雾图像。</span></span>
+**引入多分支及分类。 **针对雾霾变化多样，在某些场景中得到的雾霾特征往往不适用于另一个场景这一特点。我们可以针对不同的雾霾具体使用不同的网络进行去雾。对当前去雾数据集分析可以得知，均匀雾霾、非均匀雾霾有一定的区别。<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">非均匀雾霾并不完全由图像场景深度决定，不同区域的雾霾浓度往往不一。因此通常的去雾方法在去除非均匀雾霾上效果不佳。我们可以根据不同种类的雾霾，引入不同的编码器，提取不同类别雾霾之间特异的特征，形成一种多分支结构。随后再接上普通编码器，提取雾霾大类之间的相同特征。随后送去解码器输出去雾图像。</span></span>
 
-**引入高质量先验。**从去雾网络发展历程可以得知，高质量先验知识对去雾网络的设计有很大的帮助，以往的网络模型都是人工通过经验总结得到的先验知识，然后据此设计网络，如暗通道先验和颜色衰减先验，由于先验知识本身具有一定的局限性，从而导致设计出来的网络泛化能力不佳。因此<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>通过预训练一个网络来得到高质量的先验知识，然后将高质量先验与网络进行融合训练，再通过解码器输出无雾图像。
+**引入高质量先验。 **从去雾网络发展历程可以得知，高质量先验知识对去雾网络的设计有很大的帮助，以往的网络模型都是人工通过经验总结得到的先验知识，然后据此设计网络，如暗通道先验和颜色衰减先验，由于先验知识本身具有一定的局限性，从而导致设计出来的网络泛化能力不佳。因此<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>通过预训练一个网络来得到高质量的先验知识，然后将高质量先验与网络进行融合训练，再通过解码器输出无雾图像。
 
-**引入选择机制。**图像中并不是所有区域都是同等重要的，比如天空、雪地等区域去雾重要性不高，而其他雾霾浓度高，距离近的区域则相比于雾霾少距离远的物体去雾重要性更强。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F4SHMI7H5%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/4SHMI7H5">Cui 等, 2023</a></span>)</span>提出了双域选择机制，双域主要表现在<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">空间选择模块和频率选择模块。空间选择模块通过深度卷积层来确定每个通道中图像退化区域的大致位置。然后利用频率选择模块对高频信号或硬区域进行放大，去除特征中的低频成分。通过这种机制，模型会更专注于雾霾更重的关键区域。</span></span>
+**引入选择机制。 **图像中并不是所有区域都是同等重要的，比如天空、雪地等区域去雾重要性不高，而其他雾霾浓度高，距离近的区域则相比于雾霾少距离远的物体去雾重要性更强。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F4SHMI7H5%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/4SHMI7H5">Cui 等, 2023</a></span>)</span>提出了双域选择机制，双域主要表现在<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">空间选择模块和频率选择模块。空间选择模块通过深度卷积层来确定每个通道中图像退化区域的大致位置。然后利用频率选择模块对高频信号或硬区域进行放大，去除特征中的低频成分。通过这种机制，模型会更专注于雾霾更重的关键区域。</span></span>
 
 学习雾霾和图像背景之间交互的特征。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>通过注意力生成和场景重建网络<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">专注于学习非均匀雾霾和场景之间的复杂交互特征。</span></span>
 
 提取多尺度特征。使用不同大小的卷积核、多尺度、并行地提取特征。
 
-### <span style="background-color: rgb(255, 255, 255)">损失函数</span>
+### 损失函数
 
-1.  采用多个损失函数结合来辅助模型训练，如感知损失、对抗损失、结构相似性损失
+采用多个损失函数结合来辅助模型训练，如感知损失、对抗损失、结构相似性损失
 
-### <span style="background-color: rgb(255, 255, 255)">正则化方法</span>
+### 正则化方法
 
-1.  对比正则化方法
+对比正则化方法
 
 ### 训练策略
 
-1.  **对比学习。**2023年的CVPR中
+1.  **对比学习。 **2023年的CVPR中
 
     <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FYMAP3M6X%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/YMAP3M6X">Zheng 等, 2023</a></span>)</span>
 
     提出了这一观点，在训练的过程中不断和其他模型训练得到的去雾图像做对比，一开始和效果较差的比较并进行自我矫正，逐步和效果好的比较直到接近真实无雾图像。在学习的过程中会逐步结合各种去雾方法的优点、不断地调整来达到更好的结果。因此我们可以精挑细选近些年去雾效果较好的、去雾方法差别较大的作为比较对象进行对比学习。
 
-2.  采用
-
-    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">YCbCr颜色空间，</span></span>
-
-    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>
-
-    、
-
-    ()
-
-3.  课程学习。
+2.  **课程学习。 **
 
     <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>
 
     在其论文中
 
     <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">为了增强亮度差异大的区域去雾效果，引入了自组织半课程学习的注意力图生成策略，该方法加快了模型参数收敛。减少了训练早期多目标预测引起的学习歧义。</span></span>
+
+    (Zheng 等, 2023)
+
+    也在其论文中采用了课程学习策略，其主要思想是根据学习的难度不同动态的调整学习参数。
+
+3.  采用
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">YCbCr颜色空间。</span></span>
+
+    <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>
+
+    、
+
+    (Singh 等, 2020)
+
+    在其论文中提出采用
+
+    <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">YCbCr 颜色空间，因为其相比于 RGB 多了一个能够表示图像的亮度的量，而雾霾浓度大的区域往往亮度更强。有助于模型学习到有关雾霾亮度的特征。（沛：大多数情况，也不是所有情况都行，有时候雾霾可能不太符合这种先验）</span></span>
 
 ### 轻量化
 
