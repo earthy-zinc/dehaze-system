@@ -25,7 +25,7 @@ export default navbar([
                 children: [
                     {
                         text: "图像去雾系统",
-                        link: "/error"
+                        link: "http://10.16.90.26/dehaze_front/#/component/demo/dehaze"
                     }
                 ]
             },
