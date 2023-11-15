@@ -3,7 +3,7 @@ tag: []
 title: ""
 category:
     - 图像去雾
-version: 5188
+version: 5228
 libraryID: 1
 itemKey: RYZ5DF37
 
@@ -227,11 +227,11 @@ D-HAZY，建立在Middelbury 和NYU深度数据集上，这些数据集提供各
 
 ### 模型结构
 
-\*\*引入多分支及分类。 \*\*针对雾霾变化多样，在某些场景中得到的雾霾特征往往不适用于另一个场景这一特点。我们可以针对不同的雾霾具体使用不同的网络进行去雾。对当前去雾数据集分析可以得知，均匀雾霾、非均匀雾霾有一定的区别。<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">非均匀雾霾并不完全由图像场景深度决定，不同区域的雾霾浓度往往不一。因此通常的去雾方法在去除非均匀雾霾上效果不佳。我们可以根据不同种类的雾霾，引入不同的编码器，提取不同类别雾霾之间特异的特征，形成一种多分支结构。随后再接上普通编码器，提取雾霾大类之间的相同特征。随后送去解码器输出去雾图像。</span></span>
+引入多分支及分类。针对雾霾变化多样，在某些场景中得到的雾霾特征往往不适用于另一个场景这一特点。我们可以针对不同的雾霾具体使用不同的网络进行去雾。对当前去雾数据集分析可以得知，均匀雾霾、非均匀雾霾有一定的区别。<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">非均匀雾霾并不完全由图像场景深度决定，不同区域的雾霾浓度往往不一。因此通常的去雾方法在去除非均匀雾霾上效果不佳。我们可以根据不同种类的雾霾，引入不同的编码器，提取不同类别雾霾之间特异的特征，形成一种多分支结构。随后再接上普通编码器，提取雾霾大类之间的相同特征。随后送去解码器输出去雾图像。</span></span>
 
-\*\*引入高质量先验。 \*\*从去雾网络发展历程可以得知，高质量先验知识对去雾网络的设计有很大的帮助，以往的网络模型都是人工通过经验总结得到的先验知识，然后据此设计网络，如暗通道先验和颜色衰减先验，由于先验知识本身具有一定的局限性，从而导致设计出来的网络泛化能力不佳。因此<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>通过预训练一个网络来得到高质量的先验知识，然后将高质量先验与网络进行融合训练，再通过解码器输出无雾图像。
+引入高质量先验。 从去雾网络发展历程可以得知，高质量先验知识对去雾网络的设计有很大的帮助，以往的网络模型都是人工通过经验总结得到的先验知识，然后据此设计网络，如暗通道先验和颜色衰减先验，由于先验知识本身具有一定的局限性，从而导致设计出来的网络泛化能力不佳。因此<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>通过预训练一个网络来得到高质量的先验知识，然后将高质量先验与网络进行融合训练，再通过解码器输出无雾图像。
 
-\*\*引入选择机制。 \*\*图像中并不是所有区域都是同等重要的，比如天空、雪地等区域去雾重要性不高，而其他雾霾浓度高，距离近的区域则相比于雾霾少距离远的物体去雾重要性更强。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F4SHMI7H5%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/4SHMI7H5">Cui 等, 2023</a></span>)</span>提出了双域选择机制，双域主要表现在<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">空间选择模块和频率选择模块。空间选择模块通过深度卷积层来确定每个通道中图像退化区域的大致位置。然后利用频率选择模块对高频信号或硬区域进行放大，去除特征中的低频成分。通过这种机制，模型会更专注于雾霾更重的关键区域。</span></span>
+引入选择机制。 图像中并不是所有区域都是同等重要的，比如天空、雪地等区域去雾重要性不高，而其他雾霾浓度高，距离近的区域则相比于雾霾少距离远的物体去雾重要性更强。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F4SHMI7H5%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/4SHMI7H5">Cui 等, 2023</a></span>)</span>提出了双域选择机制，双域主要表现在<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">空间选择模块和频率选择模块。空间选择模块通过深度卷积层来确定每个通道中图像退化区域的大致位置。然后利用频率选择模块对高频信号或硬区域进行放大，去除特征中的低频成分。通过这种机制，模型会更专注于雾霾更重的关键区域。</span></span>
 
 学习雾霾和图像背景之间交互的特征。<span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>通过注意力生成和场景重建网络<span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">专注于学习非均匀雾霾和场景之间的复杂交互特征。</span></span>
 
@@ -247,13 +247,13 @@ D-HAZY，建立在Middelbury 和NYU深度数据集上，这些数据集提供各
 
 ### 训练策略
 
-1.  \*\*对比学习。 \*\*2023年的CVPR中
+1.  对比学习。2023年的CVPR中
 
     <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FYMAP3M6X%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/YMAP3M6X">Zheng 等, 2023</a></span>)</span>
 
     提出了这一观点，在训练的过程中不断和其他模型训练得到的去雾图像做对比，一开始和效果较差的比较并进行自我矫正，逐步和效果好的比较直到接近真实无雾图像。在学习的过程中会逐步结合各种去雾方法的优点、不断地调整来达到更好的结果。因此我们可以精挑细选近些年去雾效果较好的、去雾方法差别较大的作为比较对象进行对比学习。
 
-2.  \*\*课程学习。 \*\*
+2.  课程学习。
 
     <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>
 
@@ -261,9 +261,7 @@ D-HAZY，建立在Middelbury 和NYU深度数据集上，这些数据集提供各
 
     <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">为了增强亮度差异大的区域去雾效果，引入了自组织半课程学习的注意力图生成策略，该方法加快了模型参数收敛。减少了训练早期多目标预测引起的学习歧义。</span></span>
 
-    (Zheng 等, 2023)
-
-    也在其论文中采用了课程学习策略，其主要思想是根据学习的难度不同动态的调整学习参数。
+    (Zheng 等, 2023)也在其论文中采用了课程学习策略，其主要思想是根据学习的难度不同动态的调整学习参数。
 
 3.  采用
 
@@ -271,11 +269,7 @@ D-HAZY，建立在Middelbury 和NYU深度数据集上，这些数据集提供各
 
     <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2F8GJPSKZ7%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/8GJPSKZ7">Guo 等, 2023</a></span>)</span>
 
-    、
-
-    (Singh 等, 2020)
-
-    在其论文中提出采用
+    、(Singh 等, 2020)在其论文中提出采用
 
     <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">YCbCr 颜色空间，因为其相比于 RGB 多了一个能够表示图像的亮度的量，而雾霾浓度大的区域往往亮度更强。有助于模型学习到有关雾霾亮度的特征。（沛：大多数情况，也不是所有情况都行，有时候雾霾可能不太符合这种先验）</span></span>
 
@@ -292,3 +286,7 @@ D-HAZY，建立在Middelbury 和NYU深度数据集上，这些数据集提供各
     <span style="color: rgb(44, 62, 80)"><span style="background-color: rgb(255, 255, 255)">更好的保留了颜色信息，同时减小了网络参数、节约了内存资源</span></span>
 
 ## 常用模块
+
+## 论文题目
+
+基于高质量先验的多分支对比学习去雾网络
