@@ -7,7 +7,7 @@ tag:
 title: 'A Data-Centric Solution to NonHomogeneous Dehazing via Vision Transformer'
 category:
     - 图像去雾
-version: 4772
+version: 6159
 libraryID: 1
 itemKey: ZNGVNFBU
 
@@ -24,7 +24,7 @@ itemKey: ZNGVNFBU
 
 比较了NH-HAZE20和21数据集后，作者发现两者之间有明显的颜色差异，这种差异会对训练造成干扰。因此作者目标就是尽量减少这个差异。并且将增强后的数据分布转移到目标数据分布。受到伽马校正的启发，本文对RGB三个通道分别进行校正。
 
-![\<img alt="" data-attachment-key="9QAJXNHG" src="attachments/9QAJXNHG.png" ztype="zimage">](attachments/9QAJXNHG.png)
+![\<img alt="" data-attachment-key="9QAJXNHG" width="432" height="114" src="attachments/9QAJXNHG.png" ztype="zimage">](attachments/9QAJXNHG.png)
 
 γ 是伽马因子。
 
@@ -59,27 +59,27 @@ Swin Tranformer Block本身采用带MSA模块的循环移位实现高效的移�
 
 **平滑L1损失**
 
-![\<img alt="" data-attachment-key="3S77GS97" src="attachments/3S77GS97.png" ztype="zimage">](attachments/3S77GS97.png)
+![\<img alt="" data-attachment-key="3S77GS97" width="642" height="282" src="attachments/3S77GS97.png" ztype="zimage">](attachments/3S77GS97.png)
 
 \*\*MS-SSIM损失。\*\*基于人眼获取图像结构信息的假设。能够在图像质量感知标准上提供参考。
 
-![\<img alt="" data-attachment-key="GD73BSQ7" src="attachments/GD73BSQ7.png" ztype="zimage">](attachments/GD73BSQ7.png)
+![\<img alt="" data-attachment-key="GD73BSQ7" width="796" height="139" src="attachments/GD73BSQ7.png" ztype="zimage">](attachments/GD73BSQ7.png)
 
 **感知损失**
 
 采用预训练的VGG16来衡量感知损失。
 
-![\<img alt="" data-attachment-key="MS9A34IQ" src="attachments/MS9A34IQ.png" ztype="zimage">](attachments/MS9A34IQ.png)
+![\<img alt="" data-attachment-key="MS9A34IQ" width="774" height="101" src="attachments/MS9A34IQ.png" ztype="zimage">](attachments/MS9A34IQ.png)
 
 **对抗损失**
 
 由于基于像素的损失函数在小数据集上无法提供足够的监督，为了弥补上述损失的缺点，添加了对抗损失
 
-![\<img alt="" data-attachment-key="U22G22M6" src="attachments/U22G22M6.png" ztype="zimage">](attachments/U22G22M6.png)
+![\<img alt="" data-attachment-key="U22G22M6" width="460" height="134" src="attachments/U22G22M6.png" ztype="zimage">](attachments/U22G22M6.png)
 
 **总损失**
 
-![\<img alt="" data-attachment-key="WSVE4W64" src="attachments/WSVE4W64.png" ztype="zimage">](attachments/WSVE4W64.png)
+![\<img alt="" data-attachment-key="WSVE4W64" width="712" height="88" src="attachments/WSVE4W64.png" ztype="zimage">](attachments/WSVE4W64.png)
 
 ## 实验结果
 

@@ -8,7 +8,7 @@ tag:
 title: 'Refusion: Enabling Large-Size Realistic Image Restoration with Latent-Space Diffusion Models'
 category:
     - 图像去雾
-version: 4772
+version: 6015
 libraryID: 1
 itemKey: MXE8UUCS
 

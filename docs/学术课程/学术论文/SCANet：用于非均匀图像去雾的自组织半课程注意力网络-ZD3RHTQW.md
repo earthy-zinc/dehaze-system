@@ -8,7 +8,7 @@ tag:
 title: 'SCANet: Self-Paced Semi-Curricular Attention Network for Non-Homogeneous Image Dehazing'
 category:
     - 图像去雾
-version: 5178
+version: 6110
 libraryID: 1
 itemKey: ZD3RHTQW
 
@@ -44,20 +44,20 @@ itemKey: ZD3RHTQW
 
 注意到多目标预测任务（这里的多目标指的是获得去雾后的图像和注意力图）往往会增加学习的模糊性，为了让模型更好收敛，作者采用自组织半课程学习册罗，由易到难。在训练时，将注意力生成网络生成的注意力图和真实无雾图像进行融合生成最终的注意力图。这里我们对融合的比例做出一些调整。
 
-![\<img alt="" data-attachment-key="IFLV73D3" src="attachments/IFLV73D3.png" ztype="zimage">](attachments/IFLV73D3.png)
+![\<img alt="" data-attachment-key="IFLV73D3" width="516" height="68" src="attachments/IFLV73D3.png" ztype="zimage">](attachments/IFLV73D3.png)
 
 该参数可以通过注意力图的损失函数进行动态调整
 
-![\<img alt="" data-attachment-key="34NFVDQ9" src="attachments/34NFVDQ9.png" ztype="zimage">](attachments/34NFVDQ9.png)
+![\<img alt="" data-attachment-key="34NFVDQ9" width="672" height="170" src="attachments/34NFVDQ9.png" ztype="zimage">](attachments/34NFVDQ9.png)
 
 在得到注意力图M后，我们通过一个可学习的参数α对特征图进行自适应加权。
 
-![\<img alt="" data-attachment-key="BDUIBHW5" src="attachments/BDUIBHW5.png" ztype="zimage">](attachments/BDUIBHW5.png)
+![\<img alt="" data-attachment-key="BDUIBHW5" width="593" height="77" src="attachments/BDUIBHW5.png" ztype="zimage">](attachments/BDUIBHW5.png)
 
 ## 损失函数
 
 主要由平滑L1损失(包括Lsl1和La sl1)、多尺度结构相似性( MS-SSIM )损失LMS - SSIM、感知损失Lp和对抗损失La组成
 
-![\<img alt="" data-attachment-key="26J9VZFM" src="attachments/26J9VZFM.png" ztype="zimage">](attachments/26J9VZFM.png)
+![\<img alt="" data-attachment-key="26J9VZFM" width="788" height="77" src="attachments/26J9VZFM.png" ztype="zimage">](attachments/26J9VZFM.png)
 
 作者在取值1，0.3，0.01，0.5和0.0005时性能最好

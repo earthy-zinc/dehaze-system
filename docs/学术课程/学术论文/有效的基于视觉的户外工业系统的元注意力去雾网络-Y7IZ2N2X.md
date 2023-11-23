@@ -7,7 +7,7 @@ tag:
 title: 'Effective Meta-Attention Dehazing Networks for Vision-Based Outdoor Industrial Systems'
 category:
     - 图像去雾
-version: 4770
+version: 6013
 libraryID: 1
 itemKey: Y7IZ2N2X
 

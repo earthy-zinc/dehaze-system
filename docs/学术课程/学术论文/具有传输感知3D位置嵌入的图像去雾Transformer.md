@@ -8,7 +8,7 @@ tag:
 title: 'Image Dehazing Transformer with Transmission-Aware 3D Position Embedding'
 category:
     - 图像去雾
-version: 4571
+version: 6015
 libraryID: 1
 itemKey: T3G5VQIL
 
