@@ -8,7 +8,7 @@ tag:
 title: 'Structure Representation Network and Uncertainty Feedback Learning for Dense Non-Uniform Fog Removal'
 category:
     - 图像去雾
-version: 4770
+version: 6013
 libraryID: 1
 itemKey: I2J9Q7HZ
 

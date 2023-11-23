@@ -7,7 +7,7 @@ tag:
 title: 'RIDCP: Revitalizing Real Image Dehazing via High-Quality Codebook Priors'
 category:
     - 图像去雾
-version: 5999
+version: 6062
 libraryID: 1
 itemKey: TQVA27NJ
 
@@ -42,7 +42,7 @@ itemKey: TQVA27NJ
 
 雾霾图像的形成可以转换为如下数学公式：
 
-![\<img alt="" data-attachment-key="ZGGWPS5V" src="attachments/ZGGWPS5V.png" ztype="zimage">](attachments/ZGGWPS5V.png)
+![\<img alt="" data-attachment-key="ZGGWPS5V" width="831" height="96" src="attachments/ZGGWPS5V.png" ztype="zimage">](attachments/ZGGWPS5V.png)
 
 *   γ∈\[ 1.5、3.0]为亮度调整因子，N为高斯噪声分布。这两个分量可以模拟出雾霾天气中频繁出现的恶劣光照条件。
 *   作为退化模型中的关键参数，我们采用深度估计算法来估计深度图d (x)，并使用β∈\[ 0.3、1.5]来控制雾霾密度。
@@ -61,7 +61,7 @@ itemKey: TQVA27NJ
 
 VQGAN：给定一个高质量的图像块作为VQGAN的编码器的输入，对应输出潜在特征，然后将潜在特征中的每个像素匹配到码本中最近的高质量先验上。从而的到了一个离散的数据表示。
 
-![\<img alt="" data-attachment-key="SJC7ZF3X" src="attachments/SJC7ZF3X.png" ztype="zimage">](attachments/SJC7ZF3X.png)
+![\<img alt="" data-attachment-key="SJC7ZF3X" width="670" height="99" src="attachments/SJC7ZF3X.png" ztype="zimage">](attachments/SJC7ZF3X.png)
 
 为了了解码本中的高质量先验的潜力。作者对预训练后的VQGAN重建的图像结果进行了观察。实验证明该模型能够去除薄雾并且恢复图像颜色。作者认为以匹配的方式使用高质量先验能够替换退化的特征，从而帮助其跳转到高质量的域中。但是该去雾能力难以匹配到正确的代码，由于矢量量化阶段信息缺失，会产生一些失真纹理。下一步工作是训练一个能够帮助先验匹配的编码器E和一个能够利用HQPs重建特征的解码器G。
 
@@ -73,9 +73,9 @@ VQGAN：给定一个高质量的图像块作为VQGAN的编码器的输入，对�
 
 借鉴SwinIR在图像复原领域的强大的特征提取能力来设计编码器。其中浅层特征是由残差层和四倍下采样特征组成。随后为用作特征提取的4个残差Swin Transformer块RSTB。
 
-> ![\<img alt="" data-attachment-key="CRESDNPA" src="attachments/CRESDNPA.png" ztype="zimage">](attachments/CRESDNPA.png)
+> ![\<img alt="" data-attachment-key="CRESDNPA" width="882" height="368" src="attachments/CRESDNPA.png" ztype="zimage">](attachments/CRESDNPA.png)
 >
-> ![\<img alt="" data-attachment-key="TUQ8M88V" src="attachments/TUQ8M88V.png" ztype="zimage">](attachments/TUQ8M88V.png)
+> ![\<img alt="" data-attachment-key="TUQ8M88V" width="808" height="335" src="attachments/TUQ8M88V.png" ztype="zimage">](attachments/TUQ8M88V.png)
 >
 > 其中残差Swin Transformer块（RSTB）如图所示，内部由Swin Transformer Layer（STL）组成。而Neighborhood Attention Transformer已经在图<span style="color: rgb(18, 18, 18)"><span style="background-color: rgb(255, 255, 255)">像分类和下游视觉任务(包括目标检测和语义分割)中被证明有效。注意到STL和NAT block之间只有一个区别，那就是NAT block将MSA</span></span> (Multi-head Self Attention) <span style="color: rgb(18, 18, 18)"><span style="background-color: rgb(255, 255, 255)">替换为了NA（Neighborhood Attention）那么我们直接将STL替换为NAT block，能否提高模型性能？</span></span>
 
@@ -83,7 +83,7 @@ VQGAN：给定一个高质量的图像块作为VQGAN的编码器的输入，对�
 
 提出了归一化特征对齐(Normalized Feature Alignment，NFA)来帮助解码器解码离散特征。首先由于离散的向量带来的信息损失会降低结果的精准度。本文解决方案就是在高质量先验匹配之前通过特征拟合来消除信息损失。具体的做法就是在特征的第i层使用可变形卷积将来自解码器Gvq的特征和解码器G的特征对齐。
 
-![\<img alt="" data-attachment-key="HKNYSEKE" src="attachments/HKNYSEKE.png" ztype="zimage">](attachments/HKNYSEKE.png)
+![\<img alt="" data-attachment-key="HKNYSEKE" width="812" height="81" src="attachments/HKNYSEKE.png" ztype="zimage">](attachments/HKNYSEKE.png)
 
 ### 可控的高质量先验匹配操作
 
@@ -105,7 +105,7 @@ VQGAN：给定一个高质量的图像块作为VQGAN的编码器的输入，对�
 >
 > 3.  如果码本中的编码在无雾图像中被激活了，但是在有雾图像中未被激活。则将该码本编码权重提高。使其在计算距离时得到的结果更小。将权重提高多少呢。我们计算有雾图像激活频率和无雾图像激活频率之差，差距越大，则说明越需要调整。也就意味着需要越少的激活，则该项权重需要降低。
 >
-> 4.  ![\<img alt="" data-attachment-key="KCF5MMDH" src="attachments/KCF5MMDH.png" ztype="zimage">](attachments/KCF5MMDH.png)最终我们选择该函数作为权重，接下来要解决的问题权重设置的大小问题。如果权重设置太小，会导致不必要的激活，而权重设置太大会无法激活该码本编码。因此我们需要一个超参数a来辅助控制权重的大小。
+> 4.  ![\<img alt="" data-attachment-key="KCF5MMDH" width="396" height="87" src="attachments/KCF5MMDH.png" ztype="zimage">](attachments/KCF5MMDH.png)最终我们选择该函数作为权重，接下来要解决的问题权重设置的大小问题。如果权重设置太小，会导致不必要的激活，而权重设置太大会无法激活该码本编码。因此我们需要一个超参数a来辅助控制权重的大小。
 >
 > 5.  超参数a的取值。将编码器所得到的编码和清晰无雾图像的编码之间的差距用两个概率分布之间的差异来表示。这样，两个不同的域，无雾图像所在的领域和有雾图像所在的领**域适应**问题就转化为秋姐一个最优参数a，使得P
 >
@@ -127,7 +127,7 @@ VQGAN：给定一个高质量的图像块作为VQGAN的编码器的输入，对�
 >
 > 6.  ~~（存疑）利用VQGAN的Transformer模型自回归地利用编码器输出的部分有雾图像的离散编码预测下一个离散编码。首先将得到的有雾图像的编码展平，随机将一些已有的离散编码替换为随机生成的相同维度的变量。然后送入Transformer学习，重构出被替换的那些离散编码。~~
 
-![\<img alt="" data-attachment-key="623YWD63" src="attachments/623YWD63.png" ztype="zimage">](attachments/623YWD63.png)
+![\<img alt="" data-attachment-key="623YWD63" width="683" height="99" src="attachments/623YWD63.png" ztype="zimage">](attachments/623YWD63.png)
 
 其中F函数是根据频率差生成的权重函数，通过参数α。
 
@@ -137,15 +137,15 @@ VQGAN：给定一个高质量的图像块作为VQGAN的编码器的输入，对�
 
 因此F这里我们选择使用指数函数：
 
-![\<img alt="" data-attachment-key="BV62YIKS" src="attachments/BV62YIKS.png" ztype="zimage">](attachments/BV62YIKS.png)
+![\<img alt="" data-attachment-key="BV62YIKS" width="380" height="91" src="attachments/BV62YIKS.png" ztype="zimage">](attachments/BV62YIKS.png)
 
 ### 推荐的值α
 
 最终的目标是找到一个合适的α使得网络适应真实的域，我们可以使用
 
-![\<img alt="" data-attachment-key="MU74T8FQ" src="attachments/MU74T8FQ.png" ztype="zimage">](attachments/MU74T8FQ.png)
+![\<img alt="" data-attachment-key="MU74T8FQ" width="770" height="473" src="attachments/MU74T8FQ.png" ztype="zimage">](attachments/MU74T8FQ.png)
 
-计算得到<span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FCZG79VXE%22%2C%22pageLabel%22%3A%2222286%22%2C%22position%22%3A%7B%22pageIndex%22%3A4%2C%22rects%22%3A%5B%5B323.84%2C86.723%2C368.924%2C96.586%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%2C%22locator%22%3A%2222286%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/CZG79VXE?page=5">“α =21.25”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%2C%22itemData%22%3A%7B%22id%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%2C%22type%22%3A%22paper-conference%22%2C%22abstract%22%3A%22Existing%20dehazing%20approaches%20struggle%20to%20process%20realworld%20hazy%20images%20owing%20to%20the%20lack%20of%20paired%20real%20data%20and%20robust%20priors.%20In%20this%20work%2C%20we%20present%20a%20new%20paradigm%20for%20real%20image%20dehazing%20from%20the%20perspectives%20of%20synthesizing%20more%20realistic%20hazy%20data%20and%20introducing%20more%20robust%20priors%20into%20the%20network.%20Speci%EF%AC%81cally%2C%20(1)%20instead%20of%20adopting%20the%20de%20facto%20physical%20scattering%20model%2C%20we%20rethink%20the%20degradation%20of%20real%20hazy%20images%20and%20propose%20a%20phenomenological%20pipeline%20considering%20diverse%20degradation%20types.%20(2)%20We%20propose%20a%20Real%20Image%20Dehazing%20network%20via%20high-quality%20Codebook%20Priors%20(RIDCP).%20Firstly%2C%20a%20VQGAN%20is%20pre-trained%20on%20a%20large-scale%20high-quality%20dataset%20to%20obtain%20the%20discrete%20codebook%2C%20encapsulating%20high-quality%20priors%20(HQPs).%20After%20replacing%20the%20negative%20effects%20brought%20by%20haze%20with%20HQPs%2C%20the%20decoder%20equipped%20with%20a%20novel%20normalized%20feature%20alignment%20module%20can%20effectively%20utilize%20high-quality%20features%20and%20produce%20clean%20results.%20However%2C%20although%20our%20degradation%20pipeline%20drastically%20mitigates%20the%20domain%20gap%20between%20synthetic%20and%20real%20data%2C%20it%20is%20still%20intractable%20to%20avoid%20it%2C%20which%20challenges%20HQPs%20matching%20in%20the%20wild.%20Thus%2C%20we%20re-calculate%20the%20distance%20when%20matching%20the%20features%20to%20the%20HQPs%20by%20a%20controllable%20matching%20operation%2C%20which%20facilitates%20%EF%AC%81nding%20better%20counterparts.%20We%20provide%20a%20recommendation%20to%20control%20the%20matching%20based%20on%20an%20explainable%20solution.%20Users%20can%20also%20%EF%AC%82exibly%20adjust%20the%20enhancement%20degree%20as%20per%20their%20preference.%20Extensive%20experiments%20verify%20the%20effectiveness%20of%20our%20data%20synthesis%20pipeline%20and%20the%20superior%20performance%20of%20RIDCP%20in%20real%20image%20dehazing.%20Code%20and%20data%20are%20released%20at%20https%3A%2F%2Frqwu.github.io%2Fprojects%2FRIDCP.%22%2C%22container-title%22%3A%222023%20IEEE%2FCVF%20Conference%20on%20Computer%20Vision%20and%20Pattern%20Recognition%20(CVPR)%22%2C%22DOI%22%3A%2210.1109%2FCVPR52729.2023.02134%22%2C%22event-place%22%3A%22Vancouver%2C%20BC%2C%20Canada%22%2C%22event-title%22%3A%222023%20IEEE%2FCVF%20Conference%20on%20Computer%20Vision%20and%20Pattern%20Recognition%20(CVPR)%22%2C%22ISBN%22%3A%229798350301298%22%2C%22language%22%3A%22en%22%2C%22page%22%3A%2222282-22291%22%2C%22publisher%22%3A%22IEEE%22%2C%22publisher-place%22%3A%22Vancouver%2C%20BC%2C%20Canada%22%2C%22source%22%3A%22DOI.org%20(Crossref)%22%2C%22title%22%3A%22RIDCP%3A%20Revitalizing%20Real%20Image%20Dehazing%20via%20High-Quality%20Codebook%20Priors%22%2C%22title-short%22%3A%22RIDCP%22%2C%22URL%22%3A%22https%3A%2F%2Fieeexplore.ieee.org%2Fdocument%2F10203847%2F%22%2C%22author%22%3A%5B%7B%22family%22%3A%22Wu%22%2C%22given%22%3A%22Rui-Qi%22%7D%2C%7B%22family%22%3A%22Duan%22%2C%22given%22%3A%22Zheng-Peng%22%7D%2C%7B%22family%22%3A%22Guo%22%2C%22given%22%3A%22Chun-Le%22%7D%2C%7B%22family%22%3A%22Chai%22%2C%22given%22%3A%22Zhi%22%7D%2C%7B%22family%22%3A%22Li%22%2C%22given%22%3A%22Chongyi%22%7D%5D%2C%22accessed%22%3A%7B%22date-parts%22%3A%5B%5B%222023%22%2C9%2C19%5D%5D%7D%2C%22issued%22%3A%7B%22date-parts%22%3A%5B%5B%222023%22%2C6%5D%5D%7D%7D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>
+计算得到<span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FCZG79VXE%22%2C%22pageLabel%22%3A%2222286%22%2C%22position%22%3A%7B%22pageIndex%22%3A4%2C%22rects%22%3A%5B%5B323.84%2C86.723%2C368.924%2C96.586%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%2C%22locator%22%3A%2222286%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/CZG79VXE?page=5">“α =21.25”</a></span> <span class="citation" data-citation="%7B%22citationItems%22%3A%5B%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FBJNHXL93%22%5D%7D%5D%2C%22properties%22%3A%7B%7D%7D" ztype="zcitation">(<span class="citation-item"><a href="zotero://select/library/items/BJNHXL93">Wu 等, 2023</a></span>)</span>
 
 ## 扩展：VQ-VAE——首个提出码本机制的生成模型
 
@@ -193,25 +193,25 @@ VQGAN特点是使用码本来离散编码模型的获取的特征，并且使用
 
 在VQVAE中的VQ（vector quatization，向量离散化），编码出来的每一维的特征都是离散的数值。这样做是符合自然界的一些模态的。因为自然界中的事物直接的差别是很大的。不是连续的变化的。一张输入的RGB三通道图片，通过编码器后会得到中间特征，普通的编码器会将这些特征直接送到解码器中重建，而自编码器VQVAE会将特征进一步离散化编码。具体的做法就是预先生成一个离散数值的码本，在中间特征中每一个编码位置中寻找距离离散码本最近的值，生成具有相同维度的变量。进一步离散编码的过程表示为：
 
-![\<img alt="" data-attachment-key="6TGPBDJC" src="attachments/6TGPBDJC.png" ztype="zimage">](attachments/6TGPBDJC.png)
+![\<img alt="" data-attachment-key="6TGPBDJC" width="535" height="96" src="attachments/6TGPBDJC.png" ztype="zimage">](attachments/6TGPBDJC.png)
 
 这样一来就可以将离散化的特征使用解码器进行解码。
 
 在训练过程中，模型会逐步训练将输入图像训练的和高质量图像尽可能接近。整个训练需要同时进行三个子模块，分别是编码器、解码器、码本。其中自监督损失可定义为：
 
-![\<img alt="" data-attachment-key="IUE92QCV" src="attachments/IUE92QCV.png" ztype="zimage">](attachments/IUE92QCV.png)
+![\<img alt="" data-attachment-key="IUE92QCV" width="756" height="69" src="attachments/IUE92QCV.png" ztype="zimage">](attachments/IUE92QCV.png)
 
-<span style="color: rgb(18, 18, 18)"><span style="background-color: rgb(255, 255, 255)">其中</span></span>![\<img alt="" data-attachment-key="K3B2SZEB" src="attachments/K3B2SZEB.png" ztype="zimage">](attachments/K3B2SZEB.png)%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%E4%B8%BA%E9%87%8D%E5%BB%BA%E6%8D%9F%E5%A4%B1%EF%BC%88reconstruction%20loss%EF%BC%89%EF%BC%8C%E8%80%8C%C2%A0%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Esg%E2%81%A1%5B%C2%B7%5D%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%C2%A0%E4%B8%BA%E6%A2%AF%E5%BA%A6%E7%BB%88%E6%AD%A2%E6%93%8D%E4%BD%9C%EF%BC%88stop-gradient%20operation%EF%BC%89%E3%80%82%E4%B9%8B%E6%89%80%E4%BB%A5%E8%A6%81%E5%9C%A8E(x)%E5%92%8C%20zq%20%E4%B9%8B%E9%97%B4%E5%8A%A0%E5%85%A5%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Esg%E2%81%A1%5B%C2%B7%5D%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%E6%93%8D%E4%BD%9C%EF%BC%8C%E6%98%AF%E5%9B%A0%E4%B8%BA%E6%88%91%E4%BB%AC%E5%9C%A8%E8%BF%99%E4%B8%A4%E4%B8%AA%E7%89%B9%E5%BE%81%E9%97%B4%E8%BF%9B%E8%A1%8C%E4%BA%86%E7%A6%BB%E6%95%A3%E5%8C%96%E8%BD%AC%E6%8D%A2%EF%BC%8C%E5%A6%82%E6%9E%9C%E7%9B%B4%E6%8E%A5%E8%BF%9B%E8%A1%8CL2%E6%8D%9F%E5%A4%B1%E8%AE%A1%E7%AE%97%E7%9A%84%E8%AF%9D%EF%BC%8C%E4%BC%9A%E5%AF%BC%E8%87%B4%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E6%A2%AF%E5%BA%A6%E4%B8%8D%E8%83%BD%E5%9B%9E%E4%BC%A0%E3%80%82%E5%9B%A0%E6%AD%A4%E5%88%86%E5%88%AB%E5%B0%86%E4%B8%A4%E4%B8%AA%E7%89%B9%E5%BE%81%E7%9A%84%E6%A2%AF%E5%BA%A6%E7%BB%88%E6%AD%A2%EF%BC%8C%E5%B0%86%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Ezq%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%E7%9A%84%E6%A2%AF%E5%BA%A6%E7%9B%B4%E6%8E%A5%E5%A4%8D%E5%88%B6%E5%88%B0%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Ez%5E%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)">上，这两项损失分别训练了编码器和码本。
+<span style="color: rgb(18, 18, 18)"><span style="background-color: rgb(255, 255, 255)">其中</span></span>![\<img alt="" data-attachment-key="K3B2SZEB" width="184" height="41" src="attachments/K3B2SZEB.png" ztype="zimage">](attachments/K3B2SZEB.png)%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%E4%B8%BA%E9%87%8D%E5%BB%BA%E6%8D%9F%E5%A4%B1%EF%BC%88reconstruction%20loss%EF%BC%89%EF%BC%8C%E8%80%8C%C2%A0%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Esg%E2%81%A1%5B%C2%B7%5D%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%C2%A0%E4%B8%BA%E6%A2%AF%E5%BA%A6%E7%BB%88%E6%AD%A2%E6%93%8D%E4%BD%9C%EF%BC%88stop-gradient%20operation%EF%BC%89%E3%80%82%E4%B9%8B%E6%89%80%E4%BB%A5%E8%A6%81%E5%9C%A8E(x)%E5%92%8C%20zq%20%E4%B9%8B%E9%97%B4%E5%8A%A0%E5%85%A5%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Esg%E2%81%A1%5B%C2%B7%5D%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%E6%93%8D%E4%BD%9C%EF%BC%8C%E6%98%AF%E5%9B%A0%E4%B8%BA%E6%88%91%E4%BB%AC%E5%9C%A8%E8%BF%99%E4%B8%A4%E4%B8%AA%E7%89%B9%E5%BE%81%E9%97%B4%E8%BF%9B%E8%A1%8C%E4%BA%86%E7%A6%BB%E6%95%A3%E5%8C%96%E8%BD%AC%E6%8D%A2%EF%BC%8C%E5%A6%82%E6%9E%9C%E7%9B%B4%E6%8E%A5%E8%BF%9B%E8%A1%8CL2%E6%8D%9F%E5%A4%B1%E8%AE%A1%E7%AE%97%E7%9A%84%E8%AF%9D%EF%BC%8C%E4%BC%9A%E5%AF%BC%E8%87%B4%E7%A5%9E%E7%BB%8F%E7%BD%91%E7%BB%9C%E6%A2%AF%E5%BA%A6%E4%B8%8D%E8%83%BD%E5%9B%9E%E4%BC%A0%E3%80%82%E5%9B%A0%E6%AD%A4%E5%88%86%E5%88%AB%E5%B0%86%E4%B8%A4%E4%B8%AA%E7%89%B9%E5%BE%81%E7%9A%84%E6%A2%AF%E5%BA%A6%E7%BB%88%E6%AD%A2%EF%BC%8C%E5%B0%86%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Ezq%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3E%E7%9A%84%E6%A2%AF%E5%BA%A6%E7%9B%B4%E6%8E%A5%E5%A4%8D%E5%88%B6%E5%88%B0%3C%2Fspan%3E%3C%2Fspan%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)%22%3Ez%5E%3C%2Fspan%3E%3Cspan%20style%3D%22color%3A%20rgb(18%2C%2018%2C%2018)%22%3E%3Cspan%20style%3D%22background-color%3A%20rgb(255%2C%20255%2C%20255)">上，这两项损失分别训练了编码器和码本。
 
 对于判别器来说，损失函数大致可以表示为
 
-![\<img alt="" data-attachment-key="IGQLPSRY" src="attachments/IGQLPSRY.png" ztype="zimage">](attachments/IGQLPSRY.png)
+![\<img alt="" data-attachment-key="IGQLPSRY" width="564" height="64" src="attachments/IGQLPSRY.png" ztype="zimage">](attachments/IGQLPSRY.png)
 
 在VQGAN中，Transformer主要是用作编码生成器使用用来生成高分辨率图像。迁移到VQGAN中，可以理解为先预测一个码本中的一个值，在一步步的通过预测好的值推断下一个值。
 
 具体的训练过程是先输入图片，经过编码器得到中间特征变量，在经过码本离散编码得到离散变量。之后为了训练Transformer，将离散变量平展，得到降低了维度的变量。随机将其中一部分的编码值替换为随机生成的相同维度的向量。也就是在特征中加入噪声。用来提高Transformer的泛化能力。
 
-![\<img alt="" data-attachment-key="VQNAX82T" src="attachments/VQNAX82T.png" ztype="zimage">](attachments/VQNAX82T.png)
+![\<img alt="" data-attachment-key="VQNAX82T" width="854" height="484" src="attachments/VQNAX82T.png" ztype="zimage">](attachments/VQNAX82T.png)
 
 [v2-0ff3d5ed6cdce24603c2e58091e3341c\_b.webp (854×484) (zhimg.com)](https://pic1.zhimg.com/v2-0ff3d5ed6cdce24603c2e58091e3341c_b.webp)
 
