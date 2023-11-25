@@ -5,7 +5,7 @@ tag:
 title: 'Taming Transformers for High-Resolution Image Synthesis'
 category:
     - 图像增强
-version: 5804
+version: 6177
 libraryID: 1
 itemKey: NYSYEZU2
 
@@ -16,37 +16,7 @@ Comment: Changelog can be found in the supplementary
 
 ## 介绍
 
-为了使用Transformer进行图像合成，需要将图像的每个部分用序列的形式表示出来。表示的形式不能是单个像素这样具体的值，而是图像之间更加抽象更加通用的特征，那么我们就可以使用一种离散的编码字典来表示，使任何的图像都可以由编码字典中的某些项来表示。进而我们用码本中的下标来表示。
-
-首先由编码器和解码器组成的卷积网络，他们共同学习如何用离散的编码来表示图像。
-
-离散的编码——也就是码本，数学表示为
-
-![\<img alt="" data-attachment-key="M5R7GQF3" width="325" height="51" src="attachments/M5R7GQF3.png" ztype="zimage">](attachments/M5R7GQF3.png)
-
-通过离散化的特征输入解码器获得处理后的图像![\<img alt="" data-attachment-key="MTHA84GR" width="168" height="59" src="attachments/MTHA84GR.png" ztype="zimage">](attachments/MTHA84GR.png)z<sub>q</sub>通过编码器和后续的逐元素离散的函数来逼近和他最接近的码本元素。
-
-其中第二步操作可以这样表示
-
-![\<img alt="" data-attachment-key="8TVJXK2H" width="736" height="108" src="attachments/8TVJXK2H.png" ztype="zimage">](attachments/8TVJXK2H.png)
-
-z<sub>k</sub>表示的是码本中的某个编码，z<sub>ij</sub>表示的是编码器输出的特征经过离散后的值。
-
-经过网络重建后的输出和初始的输入之间的关系就为
-
-![\<img alt="" data-attachment-key="HRQZ4M35" width="408" height="69" src="attachments/HRQZ4M35.png" ztype="zimage">](attachments/HRQZ4M35.png)
-
-先经过编码器E，在经过离散化q，最后经过解码器G输出重建图像。
-
-而离散操作，是无法通过梯度进行反向传播的，因为该操作不可微分。因此梯度在反向传播期间只是简单的从解码器复制到了编码器。这样模型就可以通过损失函数进行端到端的训练。
-
-模型整体损失函数如下
-
-![\<img alt="" data-attachment-key="NNMMXNL3" width="748" height="149" src="attachments/NNMMXNL3.png" ztype="zimage">](attachments/NNMMXNL3.png)
-
-其中图像的重建损失为（原图像和经过神经网络重建后图像的差）![\<img alt="" data-attachment-key="G8CUH7YU" width="229" height="60" src="attachments/G8CUH7YU.png" ztype="zimage">](attachments/G8CUH7YU.png)sg\[·]表示停止梯度stop-gradient。
-
-后两个是编码器输出E(x)和离散向量z<sub>q</sub>之间产生的离散化损失。
+为了使用Transformer进行图像合成，
 
 ## 通过模型学习来建立一个码本
 
