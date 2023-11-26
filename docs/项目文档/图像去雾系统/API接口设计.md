@@ -342,8 +342,6 @@ DELETE /api/v1/users/{ids}
 
 ## 角色接口
 
-<a id="opIdupdateRoleStatus"></a>
-
 ### PUT 修改角色状态
 
 PUT /api/v1/roles/{roleId}/status
