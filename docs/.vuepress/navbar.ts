@@ -1,6 +1,6 @@
 import {navbar} from "vuepress-theme-hope";
 
-let host = "http://10.16.90.26";
+let host = "http://10.16.76.135";
 
 export default navbar([
     "/前端开发",
@@ -62,19 +62,6 @@ export default navbar([
                         text: "下单购物",
                         link: host + "/youlai_app"
                     }
-                ]
-            },
-            {
-                text: "其他",
-                children: [
-                    {
-                        text: '资源下载',
-                        link: host + '/pei_drive'
-                    },
-                    {
-                        text: '在线编程',
-                        link: host + '/code_ide'
-                    },
                 ]
             },
         ]
