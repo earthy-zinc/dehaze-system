@@ -5,5 +5,6 @@ export default sidebar({
   "/后端开发": "structure",
   "/学术课程": "structure",
   "/工作效率": "structure",
+  "/艺术设计": "structure",
   "/项目文档": "structure",
 });
