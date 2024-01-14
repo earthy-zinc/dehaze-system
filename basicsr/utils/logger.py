@@ -86,9 +86,9 @@ class MessageLogger():
         current_iter = log_vars.pop('iter')
         lrs = log_vars.pop('lrs')
 
-        message = (f'[{self.exp_name[:5]}..][epoch:{epoch:3d}, iter:{current_iter:8,d}, lr:(')
+        message = f'[{self.exp_name[:5]}..][轮次:{epoch:3d}，迭代次数:{current_iter:8,d}, 学习率(优化器1,优化器2):('
         for v in lrs:
-            message += f'{v:.3e},'
+            message += f'{v:.2%},'
         message += ')] '
 
         # time and estimated time
@@ -101,17 +101,44 @@ class MessageLogger():
             eta_sec = time_sec_avg * (self.max_iters - current_iter - 1)
             eta_str = str(datetime.timedelta(seconds=int(eta_sec)))
             message += f'[eta: {eta_str}, '
-            message += f'time (data): {iter_time:.3f} ({data_time:.3f})] '
+            message += f'平均迭代时间(广义时间): {iter_time:.3f} ({data_time:.3f})] '
 
         # other items, especially losses
         for k, v in log_vars.items():
-            message += f'{k}: {v:.4e} '
+            if k == 'l_codebook':
+                translation = '码本损失'
+                message += f'{translation}: {v:.2%} '
+            elif k == 'l_pix':
+                translation = '像素损失'
+                message += f'{translation}: {v:.2%} '
+            elif k == 'l_percep':
+                translation = '感知损失'
+                message += f'{translation}: {v:.2%} '
+            elif k == 'l_g_gan':
+                translation = '生成器对抗损失'
+                message += f'{translation}: {v:.2%} '
+            elif k == 'l_d_real':
+                translation = '无雾图像离散真假判别'
+                message += f'{translation}: {v:.2f} '
+            elif k == 'l_d_fake':
+                translation = '去雾图像离散真假判别'
+                message += f'{translation}: {v:.2f} '
+            elif k == 'out_d_real':
+                translation = '无雾图像判别器自身损失'
+                message += f'{translation}: {v:.2%} '
+            elif k == 'out_d_fake':
+                translation = '有雾图像判别器自身损失'
+                message += f'{translation}: {v:.2%} '
+            else:
+                translation = k
+                message += f'{translation}: {v:.2%} '
+
             # tensorboard logger
             if self.use_tb_logger and 'debug' not in self.exp_name:
-                if k.startswith('l_'):
-                    self.tb_logger.add_scalar(f'losses/{k}', v, current_iter)
-                else:
+                if translation == k:
                     self.tb_logger.add_scalar(k, v, current_iter)
+                else:
+                    self.tb_logger.add_scalar(f'模型损失/{translation}', v, current_iter)
         self.logger.info(message)
 
 
@@ -206,7 +233,7 @@ def get_env_info():
   #  / /_/ // /_/ // /_/ // /_/ /  / /___/ /_/ // /__ / /<    /_/
   #  \____/ \____/ \____/ \____/  /_____/\____/ \___//_/|_|  (_)
     #  """
-    msg = ('\nVersion Information: '
+    msg = ('\n版本信息: '
             #  f'\n\tBasicSR: {__version__}'
             f'\n\tPyTorch: {torch.__version__}'
             f'\n\tTorchVision: {torchvision.__version__}')
