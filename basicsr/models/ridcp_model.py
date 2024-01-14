@@ -50,7 +50,7 @@ class RIDCPModel(BaseModel):
         load_path = self.opt['path'].get('pretrain_network_g', None)
         logger = get_root_logger()
         if load_path is not None:
-            logger.info(f'Loading net_g from {load_path}')
+            logger.info(f'从 {load_path} 中加载去雾网络（network generator）')
             self.load_network(self.net_g, load_path, self.opt['path']['strict_load'])
 
         # define metric functions
@@ -80,7 +80,7 @@ class RIDCPModel(BaseModel):
         # load pretrained d models
         load_path = self.opt['path'].get('pretrain_network_d', None)
         if load_path is not None:
-            logger.info(f'Loading net_d from {load_path}')
+            logger.info(f'从 {load_path} 中加载判别网络（network discriminator）')
             self.load_network(self.net_d, load_path, self.opt['path'].get('strict_load_d', True))
 
         self.net_d.train()
@@ -115,7 +115,7 @@ class RIDCPModel(BaseModel):
             optim_params.append(v)
             if not v.requires_grad:
                 logger = get_root_logger()
-                logger.warning(f'Params {k} will not be optimized.')
+                logger.info(f'神经网络参数 {k} 将不会被优化器调整。')
 
         # optimizer g
         optim_type = train_opt['optim_g'].pop('type')
@@ -223,14 +223,14 @@ class RIDCPModel(BaseModel):
         lq_input = self.lq
         _, _, h, w = lq_input.shape
         if h * w < min_size:
-            self.output = net_g.test(lq_input)
+            self.output, _ = net_g.test(lq_input)
         else:
             self.output = net_g.test_tile(lq_input)
         self.net_g.train()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
         logger = get_root_logger()
-        logger.info('Only support single GPU validation.')
+        logger.info('神经网络验证仅支持单个GPU')
         self.nondist_validation(dataloader, current_iter, tb_logger, save_img, save_as_dir)
 
     def nondist_validation(self, dataloader, current_iter, tb_logger,
@@ -332,11 +332,11 @@ class RIDCPModel(BaseModel):
             self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
 
     def _log_validation_metric_values(self, current_iter, dataset_name, tb_logger):
-        log_str = f'Validation {dataset_name}\n'
+        log_str = f'验证集 {dataset_name}\n'
         for metric, value in self.metric_results.items():
             log_str += f'\t # {metric}: {value:.4f}'
             if hasattr(self, 'best_metric_results'):
-                log_str += (f'\tBest: {self.best_metric_results[dataset_name][metric]["val"]:.4f} @ '
+                log_str += (f'\t最佳结果: {self.best_metric_results[dataset_name][metric]["val"]:.4f} @ '
                             f'{self.best_metric_results[dataset_name][metric]["iter"]} iter')
             log_str += '\n'
 
@@ -344,7 +344,7 @@ class RIDCPModel(BaseModel):
         logger.info(log_str)
         if tb_logger:
             for metric, value in self.metric_results.items():
-                tb_logger.add_scalar(f'metrics/{dataset_name}/{metric}', value, current_iter)
+                tb_logger.add_scalar(f'评估指标/{dataset_name}/{metric}', value, current_iter)
 
     def vis_single_code(self, up_factor=2):
         net_g = self.get_bare_model(self.net_g)

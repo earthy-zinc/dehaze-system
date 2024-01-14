@@ -61,7 +61,7 @@ class Registry():
 
     def get(self, name):
         ret = self._obj_map.get(name)
-        print(self._obj_map)
+        # print(self._obj_map)
         if ret is None:
             raise KeyError(f"No object named '{name}' found in '{self._name}' registry!")
         return ret
