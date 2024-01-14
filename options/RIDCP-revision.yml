@@ -47,7 +47,7 @@ datasets:
 
 # network structures
 network_g:
-  type: VQWeightDehazeNet
+  type: RIDCP
   gt_resolution: 256
   norm_type: 'gn'
   act_type: 'silu'
@@ -58,7 +58,7 @@ network_g:
   LQ_stage: true
   use_weight: false
   weight_alpha: -1.0
-  frozen_module_keywords: ['quantize', 'decoder_group', 'after_quant_group', 'out_conv']
+  frozen_module_keywords: ['quantize', 'decoder_group', 'after_quant', 'out_conv']
 
 network_d:
   type: UNetDiscriminatorSN

@@ -16,22 +16,13 @@ import pyiqa
 
 
 @MODEL_REGISTRY.register()
-class VQDehazeModel(BaseModel):
+class RIDCPModel(BaseModel):
     def __init__(self, opt):
         super().__init__(opt)
 
         # define network
         self.net_g = build_network(opt['network_g'])
         self.net_g = self.model_to_device(self.net_g)
-
-        # define metric functions
-        if self.opt['val'].get('metrics') is not None:
-            self.metric_funcs = {}
-            for _, opt in self.opt['val']['metrics'].items():
-                mopt = opt.copy()
-                name = mopt.pop('type', None)
-                mopt.pop('better', None)
-                self.metric_funcs[name] = pyiqa.create_metric(name, device=self.device, **mopt)
 
         # load pre-trained HQ ckpt, frozen decoder and codebook
         self.LQ_stage = self.opt['network_g'].get('LQ_stage', False)
@@ -41,8 +32,6 @@ class VQDehazeModel(BaseModel):
 
             hq_opt = self.opt['network_g'].copy()
             hq_opt['LQ_stage'] = False
-            # if hq_opt['only_residual']:
-            #     hq_opt['only_residual'] = False
             self.net_hq = build_network(hq_opt)
             self.net_hq = self.model_to_device(self.net_hq)
             self.load_network(self.net_hq, load_path, self.opt['path']['strict_load'])
@@ -64,14 +53,23 @@ class VQDehazeModel(BaseModel):
             logger.info(f'Loading net_g from {load_path}')
             self.load_network(self.net_g, load_path, self.opt['path']['strict_load'])
 
+        # define metric functions
+        if self.opt['val'].get('metrics') is not None:
+            self.metric_funcs = {}
+            for _, opt in self.opt['val']['metrics'].items():
+                mopt = opt.copy()
+                name = mopt.pop('type', None)
+                mopt.pop('better', None)
+                self.metric_funcs[name] = pyiqa.create_metric(name, device=self.device, **mopt)
+
         if self.is_train:
-            self.init_training_settings()
+            self._init_training_settings()
             self.use_dis = (self.opt['train']['gan_opt']['loss_weight'] != 0)
             self.net_d_best = copy.deepcopy(self.net_d)
 
         self.net_g_best = copy.deepcopy(self.net_g)
 
-    def init_training_settings(self):
+    def _init_training_settings(self):
         logger = get_root_logger()
         train_opt = self.opt['train']
         self.net_g.train()
@@ -81,14 +79,13 @@ class VQDehazeModel(BaseModel):
         self.net_d = self.model_to_device(self.net_d)
         # load pretrained d models
         load_path = self.opt['path'].get('pretrain_network_d', None)
-        # print(load_path)
         if load_path is not None:
             logger.info(f'Loading net_d from {load_path}')
             self.load_network(self.net_d, load_path, self.opt['path'].get('strict_load_d', True))
 
         self.net_d.train()
 
-        # define losses
+        # define losses (criterion)
         if train_opt.get('pixel_opt'):
             self.cri_pix = build_loss(train_opt['pixel_opt']).to(self.device)
         else:
@@ -103,6 +100,7 @@ class VQDehazeModel(BaseModel):
         if train_opt.get('gan_opt'):
             self.cri_gan = build_loss(train_opt['gan_opt']).to(self.device)
 
+        # Todo 这是用来干啥的？
         self.net_d_iters = train_opt.get('net_d_iters', 1)
         self.net_d_init_iters = train_opt.get('net_d_init_iters', 0)
 
@@ -145,14 +143,13 @@ class VQDehazeModel(BaseModel):
 
         if self.LQ_stage:
             with torch.no_grad():
-                self.gt_rec, _, _,  _, _, quant_gt, gt_indices = self.net_hq(self.gt)
+                self.gt_rec, _, _, _, _, quant_gt, gt_indices = self.net_hq(self.gt)
             self.lq.requires_grad = True
             self.output, self.output_residual, l_codebook, l_semantic, quant_g, _, _ = self.net_g(self.lq, gt_indices)
         else:
             self.output, self.output_residual, l_codebook, l_semantic, _ = self.net_g(self.gt)
 
-            # print(l_codebook.mean())
-        l_g_total = 0
+        l_g_total = torch.zeros((1,)).to(self.device)
         loss_dict = OrderedDict()
 
         # ===================================================
@@ -222,10 +219,10 @@ class VQDehazeModel(BaseModel):
     def test(self):
         self.net_g.eval()
         net_g = self.get_bare_model(self.net_g)
-        min_size = 8000 * 8000 # use smaller min_size with limited GPU memory
+        min_size = 8000 * 8000  # use smaller min_size with limited GPU memory
         lq_input = self.lq
         _, _, h, w = lq_input.shape
-        if h*w < min_size:
+        if h * w < min_size:
             self.output = net_g.test(lq_input)
         else:
             self.output = net_g.test_tile(lq_input)
@@ -308,7 +305,8 @@ class VQDehazeModel(BaseModel):
 
             if self.key_metric is not None:
                 # If the best metric is updated, update and save best model
-                to_update = self._update_best_metric_result(dataset_name, self.key_metric, self.metric_results[self.key_metric], current_iter)
+                to_update = self._update_best_metric_result(dataset_name, self.key_metric,
+                                                            self.metric_results[self.key_metric], current_iter)
 
                 if to_update:
                     for name, opt_ in self.opt['val']['metrics'].items():
@@ -321,7 +319,8 @@ class VQDehazeModel(BaseModel):
                 # update each metric separately
                 updated = []
                 for name, opt_ in self.opt['val']['metrics'].items():
-                    tmp_updated = self._update_best_metric_result(dataset_name, name, self.metric_results[name], current_iter)
+                    tmp_updated = self._update_best_metric_result(dataset_name, name, self.metric_results[name],
+                                                                  current_iter)
                     updated.append(tmp_updated)
                 # save best model if any metric is updated
                 if sum(updated):
