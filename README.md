@@ -125,7 +125,7 @@ pretrained_models
 ### Quick demo
 Run demos to process the images in dir `./examples/` by following commands:
 ```
-python inference_ridcp.py -i examples -w pretrained_models/pretrained_RIDCP.pth -o results --use weight --alpha -21.25
+python inference_ridcp.py -i examples -w pretrained_models/pretrained_RIDCP.pth -o results --use_weight --alpha -21.25
 ```
 
 ### Train RIDCP
