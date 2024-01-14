@@ -167,7 +167,7 @@ class BaseModel():
         net_params = sum(map(lambda x: x.numel(), net.parameters()))
 
         logger = get_root_logger()
-        logger.info(f'Network: {net_cls_str}, with parameters: {net_params:,d}')
+        logger.info(f'神经网络: {net_cls_str}, 参数: {net_params:,d}')
         logger.info(net_str)
 
     def _set_lr(self, lr_groups_l):
@@ -251,14 +251,14 @@ class BaseModel():
                 torch.save(save_dict, save_path)
             except Exception as e:
                 logger = get_root_logger()
-                logger.warning(f'Save model error: {e}, remaining retry times: {retry - 1}')
+                logger.warning(f'保存网络模型出错: {e}，剩余重试次数: {retry - 1}')
                 time.sleep(1)
             else:
                 break
             finally:
                 retry -= 1
         if retry == 0:
-            logger.warning(f'Still cannot save {save_path}. Just ignore it.')
+            logger.warning(f'仍然无法在路径 {save_path} 保存网络模型，请忽略。')
             # raise IOError(f'Cannot save {save_path}.')
 
     def _print_different_keys_loading(self, crt_net, load_net, strict=True):
@@ -280,10 +280,10 @@ class BaseModel():
 
         logger = get_root_logger()
         if crt_net_keys != load_net_keys:
-            logger.warning('Current net - loaded net:')
+            logger.warning('当前神经网络 相比 已加载的神经网络 多出的网络层:')
             for v in sorted(list(crt_net_keys - load_net_keys)):
                 logger.warning(f'  {v}')
-            logger.warning('Loaded net - current net:')
+            logger.warning('已加载的神经网络 相比 当前神经网络 多出的网络参数层:')
             for v in sorted(list(load_net_keys - crt_net_keys)):
                 logger.warning(f'  {v}')
 
@@ -292,8 +292,8 @@ class BaseModel():
             common_keys = crt_net_keys & load_net_keys
             for k in common_keys:
                 if crt_net[k].size() != load_net[k].size():
-                    logger.warning(f'Size different, ignore [{k}]: crt_net: '
-                                   f'{crt_net[k].shape}; load_net: {load_net[k].shape}')
+                    logger.warning(f'网络参数层[{k}]形状不同，以忽略: 当前网络参数层形状: '
+                                   f'{crt_net[k].shape}; 已加载网络参数层形状: {load_net[k].shape}')
                     load_net[k + '.ignore'] = load_net.pop(k)
 
     def load_network(self, net, load_path, strict=True, param_key='params'):
@@ -313,9 +313,9 @@ class BaseModel():
         if param_key is not None:
             if param_key not in load_net and 'params' in load_net:
                 param_key = 'params'
-                logger.info('Loading: params_ema does not exist, use params.')
+                logger.info('加载中: params_ema（指数滑动平均）不存在，将使用 params')
             load_net = load_net[param_key]
-        logger.info(f'Loading {net.__class__.__name__} model from {load_path}, with param key: [{param_key}].')
+        logger.info(f'从 {load_path} 加载模型 {net.__class__.__name__} 网络参数层为: [{param_key}].')
         # remove unnecessary 'module.'
         for k, v in deepcopy(load_net).items():
             if k.startswith('module.'):
@@ -349,14 +349,14 @@ class BaseModel():
                     torch.save(state, save_path)
                 except Exception as e:
                     logger = get_root_logger()
-                    logger.warning(f'Save training state error: {e}, remaining retry times: {retry - 1}')
+                    logger.warning(f'保存训练状态失败: {e}, 剩余重试次数: {retry - 1}')
                     time.sleep(1)
                 else:
                     break
                 finally:
                     retry -= 1
             if retry == 0:
-                logger.warning(f'Still cannot save {save_path}. Just ignore it.')
+                logger.warning(f'仍然无法将训练状态保存到 {save_path}，请忽略。')
                 # raise IOError(f'Cannot save {save_path}.')
 
     def resume_training(self, resume_state):

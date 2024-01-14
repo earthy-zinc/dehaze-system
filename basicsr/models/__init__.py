@@ -26,5 +26,5 @@ def build_model(opt):
     opt = deepcopy(opt)
     model = MODEL_REGISTRY.get(opt['model_type'])(opt)
     logger = get_root_logger()
-    logger.info(f'Model [{model.__class__.__name__}] is created.')
+    logger.info(f'模型 [{model.__class__.__name__}] 已被创建。')
     return model

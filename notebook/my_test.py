@@ -40,7 +40,7 @@ def img2tensor(imgs, bgr2rgb=True, float32=True):
         return _totensor(imgs, bgr2rgb, float32)
 
 
-with open("./options/RIDCP-win.yml", mode='r') as f:
+with open("../options/RIDCP-pei.yml", mode='r') as f:
     opt = yaml.load(f, Loader=ordered_yaml()[0])
 
 
@@ -48,7 +48,7 @@ net_g = build_network(opt['network_g']).to(DEVICE)
 print(net_g.state_dict().keys())
 
 print("-------load net-----------")
-load_net = torch.load("./pretrained_models/pretrained_RIDCP.pth")
+load_net = torch.load("../pretrained_models/pretrained_RIDCP.pth")
 param_key = 'params'
 load_net = load_net[param_key]
 for key, param in load_net.items():
@@ -68,7 +68,7 @@ for key, param in state_dict.items():
         key = key[7:]
     state_dict[key] = param.cpu()
 save_dict[param_key] = state_dict
-torch.save(save_dict, "./pretrained_models/pretrained_RIDCP_New.pth")
+torch.save(save_dict, "../pretrained_models/pretrained_RIDCP_New.pth")
 
 # net_hq.eval()
 # with torch.no_grad():
