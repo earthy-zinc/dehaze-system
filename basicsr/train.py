@@ -30,7 +30,7 @@ def mkdir_and_rename(path):
     if osp.exists(path):
         new_name = path + '_archived_' + get_time_str()
         new_name = new_name.replace('tb_logger', 'tb_logger_archived')
-        print(f'Path already exists. Rename it to {new_name}', flush=True)
+        print(f'当前文件夹已存在，将其改名为 {new_name}', flush=True)
         shutil.move(path, new_name)
     os.makedirs(path, exist_ok=True)
 
@@ -67,18 +67,18 @@ def create_train_val_dataloader(opt, logger):
                 len(train_set) * dataset_enlarge_ratio / (dataset_opt['batch_size_per_gpu'] * opt['world_size']))
             total_iters = int(opt['train']['total_iter'])
             total_epochs = math.ceil(total_iters / (num_iter_per_epoch))
-            logger.info('Training statistics:'
-                        f'\n\tNumber of train images: {len(train_set)}'
-                        f'\n\tDataset enlarge ratio: {dataset_enlarge_ratio}'
-                        f'\n\tBatch size per gpu: {dataset_opt["batch_size_per_gpu"]}'
-                        f'\n\tWorld size (gpu number): {opt["world_size"]}'
-                        f'\n\tRequire iter number per epoch: {num_iter_per_epoch}'
-                        f'\n\tTotal epochs: {total_epochs}; iters: {total_iters}.')
+            logger.info('训练集统计数据:'
+                        f'\n\t训练集图片数量: {len(train_set)}'
+                        f'\n\t训练集扩增比: {dataset_enlarge_ratio}'
+                        f'\n\t批数量(BatchSize): {dataset_opt["batch_size_per_gpu"]}'
+                        f'\n\t分布量(gpu number): {opt["world_size"]}'
+                        f'\n\t每轮(epoch)训练所需迭代量: {num_iter_per_epoch}'
+                        f'\n\t总轮数(Total Epoch): {total_epochs}; 迭代次数: {total_iters}.')
         elif phase.split('_')[0] == 'val':
             val_set = build_dataset(dataset_opt)
             val_loader = build_dataloader(
                 val_set, dataset_opt, num_gpu=opt['num_gpu'], dist=opt['dist'], sampler=None, seed=opt['manual_seed'])
-            logger.info(f'Number of val images/folders in {dataset_opt["name"]}: {len(val_set)}')
+            logger.info(f'验证集 {dataset_opt["name"]} 的图片数量: {len(val_set)}')
             val_loaders.append(val_loader)
         else:
             raise ValueError(f'Dataset phase {phase} is not recognized.')
@@ -134,7 +134,7 @@ def train_pipeline(root_path):
     log_file = osp.join(opt['path']['log'], f"train_{opt['name']}_{get_time_str()}.log")
     logger = get_root_logger(logger_name='basicsr', log_level=logging.INFO, log_file=log_file)
     logger.info(get_env_info())
-    logger.info(dict2str(opt))
+    # logger.info(dict2str(opt))
     # initialize wandb and tb loggers
     tb_logger = init_tb_loggers(opt)
 
@@ -146,7 +146,7 @@ def train_pipeline(root_path):
     model = build_model(opt)
     if resume_state:  # resume training
         model.resume_training(resume_state)  # handle optimizers and schedulers
-        logger.info(f"Resuming training from epoch: {resume_state['epoch']}, " f"iter: {resume_state['iter']}.")
+        logger.info(f"从第 {resume_state['epoch']} 轮(epoch)开始恢复训练, " f"当前迭代次数: {resume_state['iter']}.")
         start_epoch = resume_state['epoch']
         current_iter = resume_state['iter']
     else:
@@ -169,7 +169,7 @@ def train_pipeline(root_path):
         raise ValueError(f'Wrong prefetch_mode {prefetch_mode}.' "Supported ones are: None, 'cuda', 'cpu'.")
 
     # training
-    logger.info(f'Start training from epoch: {start_epoch}, iter: {current_iter}')
+    logger.info(f'从第 {start_epoch} 轮(epoch)开始训练, 迭代次数: {current_iter}')
     data_timer, iter_timer = AvgTimer(), AvgTimer()
     start_time = time.time()
 
@@ -207,21 +207,33 @@ def train_pipeline(root_path):
                 visual_imgs = model.get_current_visuals()
                 if tb_logger:
                     for k, v in visual_imgs.items():
-                        tb_logger.add_images(f'ckpt_imgs/{k}', v.clamp(0, 1), current_iter)
+                        if k == 'gt':
+                            translation = '无雾基准图像'
+                        elif k == 'gt_rec':
+                            translation = '无雾重建图像'
+                        elif k == 'lq':
+                            translation = '有雾图像'
+                        elif k == 'result_codebook':
+                            translation = '码本匹配图像'
+                        elif k == 'result_residual':
+                            translation = '去雾图像'
+                        else:
+                            translation = k
+                        tb_logger.add_images(f'示例图像/{translation}', v.clamp(0, 1), current_iter)
 
             # save models and training states
             if current_iter % opt['logger']['save_checkpoint_freq'] == 0:
-                logger.info('Saving models and training states.')
+                logger.info('保存当前模型和训练状态')
                 model.save(epoch, current_iter)
 
             if current_iter % opt['logger']['save_latest_freq'] == 0:
-                logger.info('Saving models and training states.')
+                logger.info('保存最新的模型和训练状态')
                 model.save(epoch, -1)
 
             # validation
             if opt.get('val') is not None and (current_iter % opt['val']['val_freq'] == 0):
                 if len(val_loaders) > 1:
-                    logger.warning('Multiple validation datasets are *only* supported by SRModel.')
+                    logger.warning('多个验证集目前仅支持 SRModel.')
                 for val_loader in val_loaders:
                     model.validation(val_loader, current_iter, tb_logger, opt['val']['save_img'])
 
@@ -233,8 +245,8 @@ def train_pipeline(root_path):
     # end of epoch
 
     consumed_time = str(datetime.timedelta(seconds=int(time.time() - start_time)))
-    logger.info(f'End of training. Time consumed: {consumed_time}')
-    logger.info('Save the latest model.')
+    logger.info(f'训练结束，花费总时间为: {consumed_time} 秒')
+    logger.info('保存最新模型')
     model.save(epoch=-1, current_iter=-1)  # -1 stands for the latest
     if opt.get('val') is not None:
         for val_loader in val_loaders:

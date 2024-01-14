@@ -7,10 +7,9 @@ import math
 from basicsr.utils.registry import ARCH_REGISTRY
 from basicsr.ops.dcn import ModulatedDeformConvPack, modulated_deform_conv
 
-from .network_swinir import RSTB
-from .ridcp_utils import ResBlock, CombineQuantBlock
-from .vgg_arch import VGGFeatureExtractor
-
+from .module.swin_ir import RSTB
+from .module.util_block import ResBlock, CombineQuantBlock
+from .module.vgg_arch import VGGFeatureExtractor
 
 
 class DCNv2Pack(ModulatedDeformConvPack):

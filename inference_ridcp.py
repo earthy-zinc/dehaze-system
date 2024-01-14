@@ -7,7 +7,6 @@ import torch
 from yaml import load
 
 from basicsr.archs.ridcp_arch import RIDCP
-from basicsr.archs.vq_weight_arch import VQWeightNet
 from basicsr.utils import img2tensor, tensor2img, imwrite
 from basicsr.archs.dehaze_vq_weight_arch import VQWeightDehazeNet
 from basicsr.utils.download_util import load_file_from_url

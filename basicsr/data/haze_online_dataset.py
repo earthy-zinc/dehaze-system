@@ -115,6 +115,8 @@ class HazeOnlineDataset(data.Dataset):
         return {
             'lq': img_lq,
             'gt': img_gt,
+            'lq_path': self.gt_paths[index],
+            'gt_path': self.gt_paths[index]
         }
 
     def get_img(self, index):
