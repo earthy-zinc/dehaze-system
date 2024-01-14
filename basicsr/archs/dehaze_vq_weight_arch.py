@@ -260,7 +260,7 @@ class MultiScaleDecoder(nn.Module):
         self.use_warp = use_warp
         self.upsampler = nn.ModuleList()
         self.warp = nn.ModuleList()
-        res =  input_res // (2 ** max_depth)
+        res = input_res // (2 ** max_depth)
         for i in range(max_depth):
             in_channel, out_channel = channel_query_dict[res], channel_query_dict[res * 2]
             self.upsampler.append(nn.Sequential(

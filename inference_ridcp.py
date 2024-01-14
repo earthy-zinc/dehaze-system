@@ -31,10 +31,9 @@ def main():
     weight_path = args.weight
 
     # set up the model
-    sr_model = VQWeightNet(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    #sr_model = VQWeightNet(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
     #sr_model = VQWeightDehazeNet(codebook_params=[[64, 1024, 512]], LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
-    #sr_model = RIDCP(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
-    print(sr_model)
+    sr_model = RIDCP(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
     sr_model.load_state_dict(torch.load(weight_path)['params'], strict=False)
     sr_model.eval()
 
