@@ -6,13 +6,15 @@ from tqdm import tqdm
 import torch
 from yaml import load
 
+from basicsr.archs.ridcp_arch import RIDCP
+from basicsr.archs.vq_weight_arch import VQWeightNet
 from basicsr.utils import img2tensor, tensor2img, imwrite
 from basicsr.archs.dehaze_vq_weight_arch import VQWeightDehazeNet
 from basicsr.utils.download_util import load_file_from_url
 
 
 def main():
-    """Inference demo for FeMaSR 
+    """Inference demo for FeMaSR
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--input', type=str, default='inputs', help='Input image or folder')
@@ -21,17 +23,21 @@ def main():
     parser.add_argument('--use_weight', action="store_true")
     parser.add_argument('--alpha', type=float, default=1.0, help='value of alpha')
     parser.add_argument('--suffix', type=str, default='', help='Suffix of the restored image')
-    parser.add_argument('--max_size', type=int, default=1500, help='Max image size for whole image inference, otherwise use tiled_test')
+    parser.add_argument('--max_size', type=int, default=1500, help='Max image size for whole image inference, '
+                                                                   'otherwise use tiled_test')
     args = parser.parse_args()
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     weight_path = args.weight
-    
+
     # set up the model
-    sr_model = VQWeightDehazeNet(codebook_params=[[64, 1024, 512]], LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    sr_model = VQWeightNet(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    #sr_model = VQWeightDehazeNet(codebook_params=[[64, 1024, 512]], LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    #sr_model = RIDCP(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    print(sr_model)
     sr_model.load_state_dict(torch.load(weight_path)['params'], strict=False)
     sr_model.eval()
-    
+
     os.makedirs(args.output, exist_ok=True)
     if os.path.isfile(args.input):
         paths = [args.input]
@@ -43,7 +49,7 @@ def main():
         img_name = os.path.basename(path)
         save_path = os.path.join(args.output, f'{img_name}')
         pbar.set_description(f'Test {img_name}')
-        
+
         img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
         if img.max() > 255.0:
             img = img / 255.0
@@ -52,9 +58,9 @@ def main():
         img_tensor = img2tensor(img).to(device) / 255.
         img_tensor = img_tensor.unsqueeze(0)
 
-        max_size = args.max_size ** 2 
+        max_size = args.max_size ** 2
         h, w = img_tensor.shape[2:]
-        if h * w < max_size: 
+        if h * w < max_size:
             output, _ = sr_model.test(img_tensor)
         else:
             down_img = torch.nn.UpsamplingBilinear2d((h//2, w//2))(img_tensor)

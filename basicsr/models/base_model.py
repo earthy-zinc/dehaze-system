@@ -23,7 +23,7 @@ class BaseModel():
     def feed_data(self, data):
         pass
 
-    def optimize_parameters(self):
+    def optimize_parameters(self, current_iter):
         pass
 
     def get_current_visuals(self):
@@ -46,6 +46,12 @@ class BaseModel():
             self.dist_validation(dataloader, current_iter, tb_logger, save_img, save_as_dir)
         else:
             self.nondist_validation(dataloader, current_iter, tb_logger, save_img, save_as_dir)
+
+    def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
+        pass
+
+    def nondist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir):
+        pass
 
     def _initialize_best_metric_results(self, dataset_name):
         """Initialize the best metric results dict for recording the best metric value and iteration."""
@@ -90,7 +96,7 @@ class BaseModel():
 
         for k in net_g_ema_params.keys():
             net_g_ema_params[k].data.mul_(decay).add_(net_g_params[k].data, alpha=1 - decay)
-    
+
     def copy_model(self, net_a, net_b):
         """copy model from net_a to net_b"""
         tmp_net_a = self.get_bare_model(net_a)
