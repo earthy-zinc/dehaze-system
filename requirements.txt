@@ -8,10 +8,10 @@ pyyaml
 requests
 scikit-image
 scipy
-tb-nightly
 torch>=1.7
 torchvision
 tqdm
 yapf
-pyiqa>=0.1.4
+pyiqa==0.1.4
 einops
+timm
