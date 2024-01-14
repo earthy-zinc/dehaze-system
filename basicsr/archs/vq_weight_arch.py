@@ -74,8 +74,8 @@ class VQWeightNet(nn.Module):
                 norm_type, act_type, only_residual, use_warp=self.use_warp
             )
 
-
         # build decoder
+        out_ch = 0
         self.decoder_group = nn.ModuleList()
         for i in range(self.max_depth):
             res = gt_resolution // 2**self.max_depth * 2**i
@@ -90,28 +90,17 @@ class VQWeightNet(nn.Module):
         self.before_quant_group = nn.ModuleList()
         self.after_quant_group = nn.ModuleList()
 
-        for scale in range(0, 1):
-            quantize = VectorQuantizer(
-                codebook_emb_num,
-                codebook_emb_dim,
-                LQ_stage=self.LQ_stage,
-                use_weight=self.use_weight,
-                weight_alpha=self.weight_alpha
-            )
-            self.quantize_group.append(quantize)
-
-            scale_in_ch = channel_query_dict[self.codebook_scale]
-            if scale == 0:
-                quant_conv_in_ch = scale_in_ch
-                comb_quant_in_ch1 = codebook_emb_dim
-                comb_quant_in_ch2 = 0
-            else:
-                quant_conv_in_ch = scale_in_ch * 2
-                comb_quant_in_ch1 = codebook_emb_dim
-                comb_quant_in_ch2 = codebook_emb_dim
-
-            self.before_quant_group.append(nn.Conv2d(quant_conv_in_ch, codebook_emb_dim, 1))
-            self.after_quant_group.append(CombineQuantBlock(comb_quant_in_ch1, comb_quant_in_ch2, scale_in_ch))
+        quantize = VectorQuantizer(
+            codebook_emb_num,
+            codebook_emb_dim,
+            LQ_stage=self.LQ_stage,
+            use_weight=self.use_weight,
+            weight_alpha=self.weight_alpha
+        )
+        self.quantize_group.append(quantize)
+        scale_in_ch = channel_query_dict[self.codebook_scale]
+        self.before_quant_group.append(nn.Conv2d(scale_in_ch, codebook_emb_dim, 1))
+        self.after_quant_group.append(CombineQuantBlock(codebook_emb_dim, 0, scale_in_ch))
 
         # semantic loss for HQ pretrain stage
         self.use_semantic_loss = use_semantic_loss
@@ -123,67 +112,23 @@ class VQWeightNet(nn.Module):
             self.vgg_feat_layer = 'relu4_4'
             self.vgg_feat_extractor = VGGFeatureExtractor([self.vgg_feat_layer])
 
-    def encode_and_decode(self, input, gt_indices=None, current_iter=None, weight_alpha=None):
-        # if self.training:
-        #     for p in self.multiscale_encoder.parameters():
-        #         p.requires_grad = True
-        enc_feats = self.multiscale_encoder(input)
-
-        if self.use_semantic_loss:
-            with torch.no_grad():
-                vgg_feat = self.vgg_feat_extractor(input)[self.vgg_feat_layer]
-
-        codebook_loss_list = []
-        indices_list = []
-        semantic_loss_list = []
+    def encode_and_decode(self, inputs, gt_indices=None, current_iter=None, weight_alpha=None):
+        # code_decoder_output: vq-gan解码后的输出集合，总共输出了两次，第一次是经过离散化的并解码一次的，第二次是解码两次的
         code_decoder_output = []
+        semantic_loss = 0
 
-        quant_idx = 0
-        prev_dec_feat = None
-        prev_quant_feat = None
-        out_img = None
-        out_img_residual = None
+        enc_feats = self.multiscale_encoder(inputs)
+        feat_to_quant = self.before_quant_group[0](enc_feats)
+        z_quant, codebook_loss, indices = self.quantize_group[0](feat_to_quant, gt_indices)
+        after_quant_feat = self.after_quant_group[0](z_quant)
 
-        x = enc_feats
+        x = after_quant_feat
         for i in range(self.max_depth):
-            cur_res = self.gt_res // 2**self.max_depth * 2**i
-            if cur_res == self.codebook_scale:  # needs to perform quantize
-                if prev_dec_feat is not None:
-                    before_quant_feat = torch.cat((x, prev_dec_feat), dim=1)
-                else:
-                    before_quant_feat = x
-                feat_to_quant = self.before_quant_group[quant_idx](before_quant_feat)
-
-                if weight_alpha is not None:
-                    self.weight_alpha = weight_alpha
-                if gt_indices is not None:
-                    z_quant, codebook_loss, indices = self.quantize_group[quant_idx](feat_to_quant, gt_indices[quant_idx])
-                else:
-                    z_quant, codebook_loss, indices = self.quantize_group[quant_idx](feat_to_quant)
-
-                if self.use_semantic_loss:
-                    semantic_z_quant = self.conv_semantic(z_quant)
-                    semantic_loss = F.mse_loss(semantic_z_quant, vgg_feat)
-                    semantic_loss_list.append(semantic_loss)
-
-                if not self.use_quantize:
-                    z_quant = feat_to_quant
-
-                after_quant_feat = self.after_quant_group[quant_idx](z_quant, prev_quant_feat)
-
-                codebook_loss_list.append(codebook_loss)
-                indices_list.append(indices)
-
-                quant_idx += 1
-                prev_quant_feat = z_quant
-                x = after_quant_feat
-
             x = self.decoder_group[i](x)
             code_decoder_output.append(x)
-            prev_dec_feat = x
 
         out_img = self.out_conv(x)
-
+        out_img_residual = None
         if self.LQ_stage and self.use_residual:
             if self.only_residual:
                 residual_feature = self.multiscale_decoder(enc_feats, code_decoder_output)
@@ -191,13 +136,14 @@ class VQWeightNet(nn.Module):
                 residual_feature = self.multiscale_decoder(enc_feats.detach(), code_decoder_output)
             out_img_residual = self.residual_conv(residual_feature)
 
-        if len(codebook_loss_list) > 0:
-            codebook_loss = sum(codebook_loss_list)
-        else:
-            codebook_loss = 0
-        semantic_loss = sum(semantic_loss_list) if len(semantic_loss_list) else codebook_loss * 0
-
-        return out_img, out_img_residual, codebook_loss, semantic_loss, feat_to_quant, z_quant, indices_list
+        if self.use_semantic_loss:
+            with torch.no_grad():
+                vgg_feat = self.vgg_feat_extractor(inputs)[self.vgg_feat_layer]
+            semantic_z_quant = self.conv_semantic(z_quant)
+            semantic_loss = F.mse_loss(semantic_z_quant, vgg_feat)
+        # out_img 图像生成的重建输出
+        # out_img_residual 图像去雾的结果输出
+        return out_img, out_img_residual, codebook_loss, semantic_loss, feat_to_quant, z_quant, indices
 
     def decode_indices(self, indices):
         assert len(indices.shape) == 4, f'shape of indices must be (b, 1, h, w), but got {indices.shape}'
@@ -295,13 +241,5 @@ class VQWeightNet(nn.Module):
         self.use_semantic_loss = org_use_semantic_loss
         return output, index
 
-    def forward(self, input, gt_indices=None, weight_alpha=None):
-
-        if gt_indices is not None:
-            # in LQ training stage, need to pass GT indices for supervise.
-            dec, dec_residual, codebook_loss, semantic_loss, quant_before_feature, quant_after_feature, indices = self.encode_and_decode(input, gt_indices, weight_alpha=weight_alpha)
-        else:
-            # in HQ stage, or LQ test stage, no GT indices needed.
-            dec, dec_residual, codebook_loss, semantic_loss, quant_before_feature, quant_after_feature, indices = self.encode_and_decode(input, weight_alpha=weight_alpha)
-
-        return dec, dec_residual, codebook_loss, semantic_loss, quant_before_feature, quant_after_feature, indices
+    def forward(self, inputs, gt_indices=None):
+        return self.encode_and_decode(inputs, gt_indices)
