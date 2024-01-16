@@ -62,3 +62,34 @@ class MultiScaleEncoder(nn.Module):
             with torch.backends.cudnn.flags(enabled=False):
                 x = m(x)
         return x
+
+class VQEncoder(nn.Module):
+    def __init__(self,
+                 in_channel,
+                 max_depth,
+                 input_res=256,
+                 channel_query_dict=None,
+                 norm_type='gn',
+                 act_type='leakyrelu',
+                 ):
+        super().__init__()
+        self.in_conv = nn.Conv2d(in_channel, channel_query_dict[input_res], 4, padding=1)
+
+        res = input_res
+        self.blocks = nn.ModuleList()
+        for i in range(max_depth):
+            in_ch, out_ch = channel_query_dict[res], channel_query_dict[res // 2]
+            down_sample_block = nn.Sequential(
+                nn.Conv2d(in_ch, out_ch, 3, stride=2, padding=1),
+                ResBlock(out_ch, out_ch, norm_type, act_type),
+                ResBlock(out_ch, out_ch, norm_type, act_type),
+            )
+            self.blocks.append(down_sample_block)
+            res = res // 2
+
+    def forward(self, inputs):
+        x = self.in_conv(inputs)
+        for i, m in enumerate(self.blocks):
+            with torch.backends.cudnn.flags(enabled=False):
+                x = m(x)
+        return x
