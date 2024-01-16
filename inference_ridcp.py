@@ -7,6 +7,7 @@ import torch
 from yaml import load
 
 from basicsr.archs.ridcp_arch import RIDCP
+from basicsr.archs.ridcp_new_arch import RIDCPNew
 from basicsr.utils import img2tensor, tensor2img, imwrite
 from basicsr.archs.dehaze_vq_weight_arch import VQWeightDehazeNet
 from basicsr.utils.download_util import load_file_from_url
@@ -32,7 +33,8 @@ def main():
     # set up the model
     #sr_model = VQWeightNet(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
     #sr_model = VQWeightDehazeNet(codebook_params=[[64, 1024, 512]], LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
-    sr_model = RIDCP(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    #sr_model = RIDCP(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    sr_model = RIDCPNew(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
     sr_model.load_state_dict(torch.load(weight_path)['params'], strict=False)
     sr_model.eval()
 

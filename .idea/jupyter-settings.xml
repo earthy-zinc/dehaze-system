@@ -6,7 +6,6 @@
         <entry key="$PROJECT_DIR$/.idea/RIDCP_dehazing.iml">
           <value>
             <JupyterConnectionParameters>
-              <option name="argv" value="notebook --allow-root --no-browser --NotebookApp.base_url=/ --LabApp.base_url=/" />
               <option name="managed" value="true" />
               <option name="sdkName" value="" />
             </JupyterConnectionParameters>

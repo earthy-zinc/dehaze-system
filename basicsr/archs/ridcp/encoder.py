@@ -63,6 +63,7 @@ class MultiScaleEncoder(nn.Module):
                 x = m(x)
         return x
 
+
 class VQEncoder(nn.Module):
     def __init__(self,
                  in_channel,
