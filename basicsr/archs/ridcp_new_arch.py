@@ -5,8 +5,8 @@ from torch import nn
 import torch.nn.functional as F
 
 from .ridcp.codebook import VectorQuantizer
-from .ridcp.decoder import MultiScaleDecoder, DecoderBlock
-from .ridcp.encoder import MultiScaleEncoder
+from .ridcp.decoder import MultiScaleDecoder, DecoderBlock, RIDCPDecoder
+from .ridcp.encoder import MultiScaleEncoder, VQEncoder, SwinLayers
 from .module import CombineQuantBlock
 from .module import VGGFeatureExtractor
 from ..utils.registry import ARCH_REGISTRY
@@ -56,15 +56,16 @@ class RIDCPNew(nn.Module):
 
         # build encoder
         self.max_depth = int(np.log2(gt_resolution // self.codebook_scale))
-        self.multiscale_encoder = MultiScaleEncoder(
+        self.vq_encoder = VQEncoder(
             in_channel,
             self.max_depth,
             self.gt_res,
             channel_query_dict,
-            norm_type, act_type, LQ_stage
+            norm_type, act_type
         )
         if self.LQ_stage and self.use_residual:
-            self.multiscale_decoder = MultiScaleDecoder(
+            self.ridcp_encoder = SwinLayers()
+            self.ridcp_decoder = RIDCPDecoder(
                 in_channel,
                 self.max_depth,
                 self.gt_res,
@@ -74,16 +75,16 @@ class RIDCPNew(nn.Module):
 
         # build decoder
         out_ch = 0
-        self.decoder_group = nn.ModuleList()
+        self.vq_decoder_group = nn.ModuleList()
         for i in range(self.max_depth):
             res = gt_resolution // 2 ** self.max_depth * 2 ** i
             in_ch, out_ch = channel_query_dict[res], channel_query_dict[res * 2]
-            self.decoder_group.append(DecoderBlock(in_ch, out_ch, norm_type, act_type))
+            self.vq_decoder_group.append(DecoderBlock(in_ch, out_ch, norm_type, act_type))
 
         self.out_conv = nn.Conv2d(out_ch, 3, 3, 1, 1)
         self.residual_conv = nn.Conv2d(out_ch, 3, 3, 1, 1)
 
-        # build multi-scale vector quantizers
+        # build vector quantizers
         self.quantizer = VectorQuantizer(
             codebook_emb_num,
             codebook_emb_dim,
@@ -99,46 +100,49 @@ class RIDCPNew(nn.Module):
         return self.encode_and_decode(inputs, gt_indices)
 
     def encode_and_decode(self, inputs, gt_indices=None):
-        # code_decoder_output: vq-gan解码后的输出集合，总共输出了两次，第一次是经过离散化的并解码一次的，第二次是解码两次的
-        code_decoder_output = []
+        enc_feats = self.vq_encoder(inputs)
+        if self.LQ_stage:
+            enc_feats = self.ridcp_encoder(enc_feats)
 
-        enc_feats = self.multiscale_encoder(inputs)
         feat_to_quant = self.before_quant(enc_feats)
         z_quant, codebook_loss, indices = self.quantizer(feat_to_quant, gt_indices)
         after_quant_feat = self.after_quant(z_quant)
 
+        # vq-gan解码后的输出集合，总共输出了两次，第一次是经过离散化的并解码一次的，第二次是解码两次的
+        code_decoder_output = []
         x = after_quant_feat
         for i in range(self.max_depth):
-            x = self.decoder_group[i](x)
+            x = self.vq_decoder_group[i](x)
             code_decoder_output.append(x)
 
-        out_img = self.out_conv(x)
-        out_img_residual = None
         if self.LQ_stage and self.use_residual:
             if self.only_residual:
-                residual_feature = self.multiscale_decoder(enc_feats, code_decoder_output)
+                residual_feature = self.ridcp_decoder(enc_feats, code_decoder_output)
             else:
-                residual_feature = self.multiscale_decoder(enc_feats.detach(), code_decoder_output)
+                residual_feature = self.ridcp_decoder(enc_feats.detach(), code_decoder_output)
             out_img_residual = self.residual_conv(residual_feature)
+        else:
+            out_img_residual = None
 
+        out_img = self.out_conv(x)
         # out_img 图像生成的重建输出
         # out_img_residual 图像去雾的结果输出
         return out_img, out_img_residual, codebook_loss, feat_to_quant, z_quant, indices
 
     @torch.no_grad()
-    def test_tile(self, input, tile_size=240, tile_pad=16):
+    def test_tile(self, inputs, tile_size=240, tile_pad=16):
         """
         It will first crop input images to tiles, and then process each tile.
         Finally, all the processed tiles are merged into one images.
         Modified from: https://github.com/xinntao/Real-ESRGAN/blob/master/realesrgan/utils.py
         """
-        batch, channel, height, width = input.shape
+        batch, channel, height, width = inputs.shape
         output_height = height
         output_width = width
         output_shape = (batch, channel, output_height, output_width)
 
         # start with black image
-        output = input.new_zeros(output_shape)
+        output = inputs.new_zeros(output_shape)
         tiles_x = math.ceil(width / tile_size)
         tiles_y = math.ceil(height / tile_size)
 
@@ -164,7 +168,7 @@ class RIDCPNew(nn.Module):
                 input_tile_width = input_end_x - input_start_x
                 input_tile_height = input_end_y - input_start_y
                 tile_idx = y * tiles_x + x + 1
-                input_tile = input[:, :, input_start_y_pad:input_end_y_pad, input_start_x_pad:input_end_x_pad]
+                input_tile = inputs[:, :, input_start_y_pad:input_end_y_pad, input_start_x_pad:input_end_x_pad]
 
                 # upscale tile
                 output_tile = self.test(input_tile)
@@ -188,16 +192,16 @@ class RIDCPNew(nn.Module):
         return output
 
     @torch.no_grad()
-    def test(self, input):
+    def test(self, inputs):
         # padding to multiple of window_size * 8
         wsz = 32
-        _, _, h_old, w_old = input.shape
+        _, _, h_old, w_old = inputs.shape
         h_pad = (h_old // wsz + 1) * wsz - h_old
         w_pad = (w_old // wsz + 1) * wsz - w_old
-        input = torch.cat([input, torch.flip(input, [2])], 2)[:, :, :h_old + h_pad, :]
-        input = torch.cat([input, torch.flip(input, [3])], 3)[:, :, :, :w_old + w_pad]
+        inputs = torch.cat([inputs, torch.flip(inputs, [2])], 2)[:, :, :h_old + h_pad, :]
+        inputs = torch.cat([inputs, torch.flip(inputs, [3])], 3)[:, :, :, :w_old + w_pad]
 
-        output_vq, output, _, _, after_quant, index = self.encode_and_decode(input, None)
+        output_vq, output, _, _, after_quant, index = self.encode_and_decode(inputs, None)
 
         if output is not None:
             output = output[..., :h_old, :w_old]
