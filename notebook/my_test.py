@@ -11,56 +11,26 @@ from basicsr.archs.dehaze_vq_weight_arch import VQWeightDehazeNet
 from basicsr.utils.options import ordered_yaml
 DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
-def img2tensor(imgs, bgr2rgb=True, float32=True):
-    """Numpy array to tensor.
-
-    Args:
-        imgs (list[ndarray] | ndarray): Input images.
-        bgr2rgb (bool): Whether to change bgr to rgb.
-        float32 (bool): Whether to change to float32.
-
-    Returns:
-        list[tensor] | tensor: Tensor images. If returned results only have
-            one element, just return tensor.
-    """
-
-    def _totensor(img, bgr2rgb, float32):
-        if img.shape[2] == 3 and bgr2rgb:
-            if img.dtype == 'float64':
-                img = img.astype('float32')
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = torch.from_numpy(img.transpose(2, 0, 1))
-        if float32:
-            img = img.float()
-        return img
-
-    if isinstance(imgs, list):
-        return [_totensor(img, bgr2rgb, float32) for img in imgs]
-    else:
-        return _totensor(imgs, bgr2rgb, float32)
-
-
-with open("../options/RIDCP-pei.yml", mode='r') as f:
-    opt = yaml.load(f, Loader=ordered_yaml()[0])
-
-
-net_g = build_network(opt['network_g']).to(DEVICE)
-print(net_g.state_dict().keys())
-
 print("-------load net-----------")
-load_net = torch.load("../pretrained_models/pretrained_RIDCP.pth")
+load_net = torch.load("E://DeepLearningCopies//2023//RIDCP//pretrained_models//pretrained_HQPs_New.pth")
 param_key = 'params'
 load_net = load_net[param_key]
+prefix = 'feature_extract.'
+# 使用字典推导式为每个键添加前缀
+load_net = {prefix + key: value for key, value in load_net.items()}
 for key, param in load_net.items():
     print(key)
-load_net.update({"quantizer.embedding.weight": load_net.pop("quantize_group.0.embedding.weight")})
-load_net.update({"before_quant.weight": load_net.pop("before_quant_group.0.weight")})
-load_net.update({"before_quant.bias": load_net.pop("before_quant_group.0.bias")})
-load_net.update({"after_quant.conv.weight": load_net.pop("after_quant_group.0.conv.weight")})
-load_net.update({"after_quant.conv.bias": load_net.pop("after_quant_group.0.conv.bias")})
 
-net_g.load_state_dict(load_net, strict=False)
+with open("E://DeepLearningCopies//2023//RIDCP//options//ITB-pei.yml", mode='r') as f:
+    opt = yaml.load(f, Loader=ordered_yaml()[0])
+net_g = build_network(opt['network_g']).to(DEVICE)
+model_dict = net_g.state_dict()
+state_dict = {k: v for k, v in load_net.items() if k in model_dict.keys()}
+model_dict.update(state_dict)
+net_g.load_state_dict(model_dict)
+print("---------loaded net-----------")
 
+# net_g.load_state_dict(load_net, strict=False)
 save_dict = {}
 state_dict = net_g.state_dict()
 for key, param in state_dict.items():
@@ -68,7 +38,7 @@ for key, param in state_dict.items():
         key = key[7:]
     state_dict[key] = param.cpu()
 save_dict[param_key] = state_dict
-torch.save(save_dict, "../pretrained_models/pretrained_RIDCP_New.pth")
+torch.save(save_dict, "E://DeepLearningCopies//2023//RIDCP//pretrained_models//ITB_init_weight.pth")
 
 # net_hq.eval()
 # with torch.no_grad():
