@@ -99,7 +99,13 @@ class CUDAPrefetcher():
         self.loader = iter(loader)
         self.opt = opt
         self.stream = torch.cuda.Stream()
-        self.device = torch.device('cuda' if opt['num_gpu'] != 0 else 'cpu')
+        if opt['num_gpu'] != 0:
+            device = "cuda"
+            if opt['gpu_id'] is not None:
+                device = "cuda:{}".format(opt['gpu_id'])
+        else:
+            device = "cpu"
+        self.device = torch.device(device)
         self.preload()
 
     def preload(self):

@@ -118,17 +118,17 @@ class MessageLogger():
                 translation = '生成器对抗损失'
                 message += f'{translation}: {v:.2%} '
             elif k == 'l_d_real':
-                translation = '无雾图像离散真假判别'
+                translation = '无雾图像离散真假损失'
                 message += f'{translation}: {v:.2f} '
             elif k == 'l_d_fake':
-                translation = '去雾图像离散真假判别'
+                translation = '去雾图像离散真假损失'
                 message += f'{translation}: {v:.2f} '
             elif k == 'out_d_real':
-                translation = '无雾图像判别器自身损失'
-                message += f'{translation}: {v:.2%} '
+                translation = '无雾图像判别器输出均值(real image discriminator output)'
+                message += f'{translation}: {v:.2f} '
             elif k == 'out_d_fake':
-                translation = '有雾图像判别器自身损失'
-                message += f'{translation}: {v:.2%} '
+                translation = '有雾图像判别器输出均值(fake image discriminator output)'
+                message += f'{translation}: {v:.2f} '
             else:
                 translation = k
                 message += f'{translation}: {v:.2%} '
