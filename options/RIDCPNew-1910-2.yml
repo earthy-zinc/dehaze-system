@@ -1,32 +1,23 @@
 # general settings
-name: ridcp_first_train
-model_type: RIDCPModel
+name: ridcp_o-haze-train
+model_type: RIDCPNewModel
 scale: &upscale 1
 num_gpu: 1 # set num_gpu: 0 for cpu mode
+gpu_id: 0
 manual_seed: 0
 
 # dataset and data loader settings
 datasets:
   train:
-    name: General_Image_Train
-    type: HazeOnlineDataset
-    dataroot_gt: E:\DeepLearningCopies\2023\RIDCP\datasets\rgb_500
-    dataroot_depth: E:\DeepLearningCopies\2023\RIDCP\datasets\depth_500
-    beta_range: [0.3, 1.5]
-    A_range: [0.25, 1.0]
-    color_p: 1.0
-    color_range: [-0.025, 0.025]
-    io_backend:
-      type: disk
-
-    gt_size: 256
-    use_resize_crop: true
-    use_flip: true
-    use_rot: false
+    name: O-HAZE-train
+    type: NtireH5Dataset
+    mode: train
+    data_path: datasets/O-HAZE.h5
+    shuffle: true
 
     # data loader
     use_shuffle: true
-    batch_size_per_gpu: &bsz 4
+    batch_size_per_gpu: &bsz 1
     num_worker_per_gpu: *bsz
     dataset_enlarge_ratio: 1
 
@@ -34,20 +25,15 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: General_Image_Train
-    type: HazeOnlineDataset
-    dataroot_gt: E:\DeepLearningCopies\2023\RIDCP\datasets\rgb_500
-    dataroot_depth: E:\DeepLearningCopies\2023\RIDCP\datasets\depth_500
-    beta_range: [0.3, 1.5]
-    A_range: [0.25, 1.0]
-    color_p: 1.0
-    color_range: [-0.025, 0.025]
-    io_backend:
-      type: disk
+    name: O-HAZE-val
+    type: NtireH5Dataset
+    mode: validation
+    data_path: datasets/O-HAZE.h5
+    shuffle: true
 
 # network structures
 network_g:
-  type: RIDCP
+  type: RIDCPNew
   gt_resolution: 256
   norm_type: 'gn'
   act_type: 'silu'
@@ -63,8 +49,8 @@ network_d:
 
 # path
 path:
-  pretrain_network_hq: E:\DeepLearningCopies\2023\RIDCP\pretrained_models\pretrained_HQPs_New.pth
-  pretrain_network_g:
+  pretrain_network_hq: pretrained_models/pretrained_HQPs_renamed.pth
+  pretrain_network_g: pretrained_models/pretrained_RIDCP_renamed.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
@@ -99,6 +85,7 @@ train:
   perceptual_opt:
     type: LPIPSLoss
     loss_weight: !!float 1.0
+    device: cuda:0
 
   gan_opt:
     type: GANLoss
@@ -140,6 +127,9 @@ val:
     brisque:
       type: brisque
       better: lower
+    nima:
+      type: nima
+      better: higher
 
 # logging settings
 logger:
