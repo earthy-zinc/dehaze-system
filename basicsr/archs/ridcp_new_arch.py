@@ -141,8 +141,9 @@ class RIDCPNew(nn.Module):
         output_width = width
         output_shape = (batch, channel, output_height, output_width)
 
-        # start with black image
+        # start with black image，构造一个全零张量
         output = inputs.new_zeros(output_shape)
+        # 根据分割大小 tile_size 确定图片宽度和高度处分别分割多少次
         tiles_x = math.ceil(width / tile_size)
         tiles_y = math.ceil(height / tile_size)
 
@@ -152,13 +153,13 @@ class RIDCPNew(nn.Module):
                 # extract tile from input image
                 ofs_x = x * tile_size
                 ofs_y = y * tile_size
-                # input tile area on total image
+                # input tile area on total image，获取分割区域在整个图片上的上下左右点的坐标
                 input_start_x = ofs_x
                 input_end_x = min(ofs_x + tile_size, width)
                 input_start_y = ofs_y
                 input_end_y = min(ofs_y + tile_size, height)
 
-                # input tile area on total image with padding
+                # input tile area on total image with padding，加上边框后分割区域在整个图片上的上下左右点的坐标
                 input_start_x_pad = max(input_start_x - tile_pad, 0)
                 input_end_x_pad = min(input_end_x + tile_pad, width)
                 input_start_y_pad = max(input_start_y - tile_pad, 0)
@@ -168,27 +169,27 @@ class RIDCPNew(nn.Module):
                 input_tile_width = input_end_x - input_start_x
                 input_tile_height = input_end_y - input_start_y
                 tile_idx = y * tiles_x + x + 1
+                # 在图片上获取被分割的区域
                 input_tile = inputs[:, :, input_start_y_pad:input_end_y_pad, input_start_x_pad:input_end_x_pad]
 
-                # upscale tile
-                output_tile = self.test(input_tile)
+                # upscale tile，处理该区域
+                output_tile, _ = self.test(input_tile)
 
                 # output tile area on total image
-                output_start_x = input_start_x
-                output_end_x = input_end_x
-                output_start_y = input_start_y
-                output_end_y = input_end_y
+                output_start_x = int(input_start_x)
+                output_end_x = int(input_end_x)
+                output_start_y = int(input_start_y)
+                output_end_y = int(input_end_y)
 
                 # output tile area without padding
-                output_start_x_tile = (input_start_x - input_start_x_pad)
-                output_end_x_tile = output_start_x_tile + input_tile_width
-                output_start_y_tile = (input_start_y - input_start_y_pad)
-                output_end_y_tile = output_start_y_tile + input_tile_height
+                output_start_x_tile = int(input_start_x - input_start_x_pad)
+                output_end_x_tile = int(output_start_x_tile + input_tile_width)
+                output_start_y_tile = int(input_start_y - input_start_y_pad)
+                output_end_y_tile = int(output_start_y_tile + input_tile_height)
 
                 # put tile into output image
-                output[:, :, output_start_y:output_end_y,
-                output_start_x:output_end_x] = output_tile[:, :, output_start_y_tile:output_end_y_tile,
-                                               output_start_x_tile:output_end_x_tile]
+                output[:, :, output_start_y:output_end_y, output_start_x:output_end_x] \
+                    = output_tile[:, :, output_start_y_tile:output_end_y_tile, output_start_x_tile:output_end_x_tile]
         return output
 
     @torch.no_grad()

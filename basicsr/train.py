@@ -1,7 +1,6 @@
 import datetime
 import logging
 import sys
-sys.path.append("/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP")
 import math
 import time
 import torch
@@ -9,6 +8,9 @@ import os
 import shutil
 from os import path as osp
 
+sys.path.append("/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP")
+sys.path.append("/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP")
+sys.path.append("E://DeepLearningCopies//2023//RIDCP")
 
 from basicsr.data import build_dataloader, build_dataset
 from basicsr.data.data_sampler import EnlargedSampler
@@ -243,7 +245,6 @@ def train_pipeline(root_path):
         # end of iter
 
     # end of epoch
-
     consumed_time = str(datetime.timedelta(seconds=int(time.time() - start_time)))
     logger.info(f'训练结束，花费总时间为: {consumed_time} 秒')
     logger.info('保存最新模型')

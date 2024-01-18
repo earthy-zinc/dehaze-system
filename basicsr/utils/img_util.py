@@ -170,3 +170,21 @@ def crop_border(imgs, crop_border):
             return [v[crop_border:-crop_border, crop_border:-crop_border, ...] for v in imgs]
         else:
             return imgs[crop_border:-crop_border, crop_border:-crop_border, ...]
+
+
+def resize_image(inputs: torch.Tensor) -> torch.Tensor:
+    """
+    这段代码的目的是将输入的图像inputs的高度和宽度扩展到可以被wsz整除的最小尺寸。
+    这是通过在图像的右侧和底部添加镜像的像素来实现的。
+    Args:
+        inputs: shape [batch, channels, height, width]
+    Returns:
+        inputs: shape [batch, channels, height2, width2]
+    """
+    wsz = 32
+    _, _, h_old, w_old = inputs.shape
+    h_pad = (h_old // wsz + 1) * wsz - h_old
+    w_pad = (w_old // wsz + 1) * wsz - w_old
+    inputs = torch.cat([inputs, torch.flip(inputs, [2])], 2)[:, :, :h_old + h_pad, :]
+    inputs = torch.cat([inputs, torch.flip(inputs, [3])], 3)[:, :, :, :w_old + w_pad]
+    return inputs

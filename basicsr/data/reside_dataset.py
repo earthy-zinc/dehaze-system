@@ -17,6 +17,7 @@ class ResideDataset(data.Dataset):
         self.opt = opt
         self.crop_size = opt['size']
         self.normalize = opt['normalize']
+        self.rotation = False
         self.haze_image_path = [os.path.join(opt['haze_path'], x) for x in
                                 natsort.natsorted(os.listdir(opt['haze_path']))]
         self.clear_image_path = [os.path.join(opt['clear_path'], x) for x in
@@ -25,18 +26,19 @@ class ResideDataset(data.Dataset):
 
     def __getitem__(self, index):
         haze = Image.open(self.haze_image_path[index]).convert("RGB")
-        clear = Image.open(self.haze_image_path[index]).convert("RGB")
+        clear = Image.open(self.clear_image_path[index]).convert("RGB")
         clear, haze = self.aug_data(clear, haze)
         return haze, clear
 
     def aug_data(self, clear, haze):
-        rand_hor = random.randint(0, 1)
-        rand_rot = random.randint(0, 3)
-        haze = torchvision.transforms.RandomHorizontalFlip(rand_hor)(haze)
-        clear = torchvision.transforms.RandomHorizontalFlip(rand_hor)(clear)
-        if rand_rot:
-            haze = FF.rotate(haze, 90 * rand_rot)
-            clear = FF.rotate(clear, 90 * rand_rot)
+        if self.rotation:
+            rand_hor = random.randint(0, 1)
+            rand_rot = random.randint(0, 3)
+            haze = torchvision.transforms.RandomHorizontalFlip(rand_hor)(haze)
+            clear = torchvision.transforms.RandomHorizontalFlip(rand_hor)(clear)
+            if rand_rot:
+                haze = FF.rotate(haze, 90 * rand_rot)
+                clear = FF.rotate(clear, 90 * rand_rot)
         haze = torchvision.transforms.ToTensor()(haze)
         if self.normalize is not None:
             haze = torchvision.transforms.Normalize(mean=[0.64, 0.6, 0.58], std=[0.14, 0.15, 0.152])(haze)

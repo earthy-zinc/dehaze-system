@@ -31,9 +31,9 @@ def charbonnier_loss(pred, target, eps=1e-12):
 class LPIPSLoss(nn.Module):
     """LPIPS loss with vgg backbone.
     """
-    def __init__(self, loss_weight = 1.0):
+    def __init__(self, loss_weight = 1.0, device = 'cuda:0'):
         super(LPIPSLoss, self).__init__()
-        self.model = pyiqa.create_metric('lpips-vgg', as_loss=True)
+        self.model = pyiqa.create_metric('lpips-vgg', device=torch.device(device), as_loss=True)
         self.loss_weight = loss_weight
 
     def forward(self, x, gt):
