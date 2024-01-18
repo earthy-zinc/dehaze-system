@@ -1,16 +1,16 @@
 import argparse
-import cv2
 import glob
 import os
+
+import torchvision
+from PIL import Image
+from torchvision.transforms import ToTensor
 from tqdm import tqdm
 import torch
-from yaml import load
 
 from basicsr.archs.ridcp_arch import RIDCP
 from basicsr.archs.ridcp_new_arch import RIDCPNew
-from basicsr.utils import img2tensor, tensor2img, imwrite
 from basicsr.archs.dehaze_vq_weight_arch import VQWeightDehazeNet
-from basicsr.utils.download_util import load_file_from_url
 
 
 def main():
@@ -48,27 +48,21 @@ def main():
     for idx, path in enumerate(paths):
         img_name = os.path.basename(path)
         save_path = os.path.join(args.output, f'{img_name}')
-        pbar.set_description(f'Test {img_name}')
+        pbar.set_description(f'测试 {img_name}')
 
-        img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
-        if img.max() > 255.0:
-            img = img / 255.0
-        if img.shape[-1] > 3:
-            img = img[:, :, :3]
-        img_tensor = img2tensor(img).to(device) / 255.
-        img_tensor = img_tensor.unsqueeze(0)
-
-        max_size = args.max_size ** 2
+        img_tensor = ToTensor()(Image.open(path).convert('RGB')).to(device)[None, ::]
         h, w = img_tensor.shape[2:]
-        if h * w < max_size:
+        if h * w < args.max_size ** 2:
             output, _ = sr_model.test(img_tensor)
+        elif h * w > (args.max_size * 2) ** 2:
+            down_img = torch.nn.UpsamplingBilinear2d((h//3, w//3))(img_tensor)
+            output = sr_model.test_tile(down_img, tile_size=960, tile_pad=64)
+            output = torch.nn.UpsamplingBilinear2d((h, w))(output)
         else:
             down_img = torch.nn.UpsamplingBilinear2d((h//2, w//2))(img_tensor)
             output, _ = sr_model.test(down_img)
             output = torch.nn.UpsamplingBilinear2d((h, w))(output)
-        output_img = tensor2img(output)
-
-        imwrite(output_img, save_path)
+        torchvision.utils.save_image(output, save_path)
         pbar.update(1)
     pbar.close()
 

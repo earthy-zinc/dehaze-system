@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from os import path as osp
 
+from thop import profile
 from torch import nn
 from tqdm import tqdm
 
@@ -17,16 +18,22 @@ import copy
 import pyiqa
 import torch.nn.functional as F
 from ..archs.module import VGGFeatureExtractor
+from ..utils.static_util import convert_size
 
 
 @MODEL_REGISTRY.register()
 class RIDCPNewModel(BaseModel):
     def __init__(self, opt):
         super().__init__(opt)
-
+        logger = get_root_logger()
         # define network
+        test_input = torch.randn(1, 3, 256, 256).to(self.device)
         self.net_g = build_network(opt['network_g'])
         self.net_g = self.model_to_device(self.net_g)
+
+        net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
+        logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
+                    .format(convert_size(net_g_flops), convert_size(net_g_params)))
 
         # load pre-trained HQ ckpt, frozen decoder and codebook
         self.LQ_stage = self.opt['network_g'].get('LQ_stage', False)
@@ -38,9 +45,21 @@ class RIDCPNewModel(BaseModel):
             hq_opt['LQ_stage'] = False
             self.net_hq = build_network(hq_opt)
             self.net_hq = self.model_to_device(self.net_hq)
+
+            net_hq_flops, net_hq_params = profile(self.net_hq, inputs=(test_input,))
+            logger.info("生成模型net_hq的FLOPS量为{}，参数量为{}。"
+                        .format(convert_size(net_hq_flops), convert_size(net_hq_params)))
+            logger.info("生成模型net_hq和去雾模型net_g的FLOPS量差距为{}，参数量差距为{}。".format(
+                convert_size(net_g_flops - net_hq_flops),
+                convert_size(net_g_params - net_hq_params)
+            ))
+
+            logger.info("加载预训练的HQP模型")
             self.load_network(self.net_hq, load_path, self.opt['path']['strict_load'])
 
+            logger.info("加载本次去雾模型")
             self.load_network(self.net_g, load_path, False)
+
             frozen_module_keywords = self.opt['network_g'].get('frozen_module_keywords', None)
             if frozen_module_keywords is not None:
                 for name, module in self.net_g.named_modules():
@@ -52,7 +71,7 @@ class RIDCPNewModel(BaseModel):
 
         # load pretrained models
         load_path = self.opt['path'].get('pretrain_network_g', None)
-        logger = get_root_logger()
+
         if load_path is not None:
             logger.info(f'从 {load_path} 中加载去雾网络（network generator）')
             self.load_network(self.net_g, load_path, self.opt['path']['strict_load'])
@@ -111,7 +130,6 @@ class RIDCPNewModel(BaseModel):
         if train_opt.get('gan_opt'):
             self.cri_gan = build_loss(train_opt['gan_opt']).to(self.device)
 
-        # Todo 这是用来干啥的？
         self.net_d_iters = train_opt.get('net_d_iters', 1)
         self.net_d_init_iters = train_opt.get('net_d_init_iters', 0)
 
@@ -147,6 +165,8 @@ class RIDCPNewModel(BaseModel):
             self.lq = None
         if 'gt' in data:
             self.gt = data['gt'].to(self.device)
+        else:
+            self.gt = None
 
     def optimize_parameters(self, current_iter):
         train_opt = self.opt['train']
@@ -163,13 +183,8 @@ class RIDCPNewModel(BaseModel):
         else:
             self.output, self.output_residual, l_codebook, quant_g, _, _ = self.net_g(self.gt)
 
-        l_g_total = torch.zeros((1,)).to(self.device)
         loss_dict = OrderedDict()
-
-        if self.output_residual is None:
-            self.output_residual = self.output
-            quant_gt = quant_g
-
+        l_g_total = torch.zeros((1,)).to(self.device)
         # ===================================================
         # codebook loss
         if train_opt.get('codebook_opt', None):
@@ -207,16 +222,13 @@ class RIDCPNewModel(BaseModel):
                 loss_dict['l_style'] = l_style
 
         # gan loss
-        if self.use_dis and current_iter > train_opt['net_d_init_iters']:
+        if self.use_dis and current_iter > train_opt['net_d_iters']:
             fake_g_pred = self.net_d(quant_g)
             l_g_gan = self.cri_gan(fake_g_pred, True, is_disc=False)
             l_g_total += l_g_gan
             loss_dict['l_g_gan'] = l_g_gan
 
-        # print(l_g_total.requires_grad)
-        # if l_g_total.requires_grad:
-        l_g_total.mean().backward(retain_graph=True)
-
+        l_g_total.mean().backward()
 
         # optimize net_d
         self.fixed_disc = self.opt['train'].get('fixed_disc', False)
@@ -224,8 +236,10 @@ class RIDCPNewModel(BaseModel):
             for p in self.net_d.parameters():
                 p.requires_grad = True
             self.optimizer_d.zero_grad()
-            # real
+            # real real_d_pred清晰图像经判别器处理应该为正值，越大越好，则gan损失会越小
             real_d_pred = self.net_d(quant_gt)
+            # 经gan损失函数处理的输入大于1，则损失为0，等于1，损失为0。等于0，损失为1。输入越小，损失越大
+            # 简单说，输入越大，损失越小
             l_d_real = self.cri_gan(real_d_pred, True, is_disc=True)
             loss_dict['l_d_real'] = l_d_real
             loss_dict['out_d_real'] = torch.mean(real_d_pred.detach())
@@ -235,6 +249,7 @@ class RIDCPNewModel(BaseModel):
             l_d_fake = self.cri_gan(fake_d_pred, False, is_disc=True)
             loss_dict['l_d_fake'] = l_d_fake
             loss_dict['out_d_fake'] = torch.mean(fake_d_pred.detach())
+
             l_d_fake.backward()
             self.optimizer_d.step()
         self.optimizer_g.step()
@@ -265,25 +280,17 @@ class RIDCPNewModel(BaseModel):
         dataset_name = dataloader.dataset.opt['name']
         with_metrics = self.opt['val'].get('metrics') is not None
         if with_metrics:
-            self.metric_results = {
-                metric: 0
-                for metric in self.opt['val']['metrics'].keys()
-            }
-
-        pbar = tqdm(total=len(dataloader), unit='image')
-
-        if with_metrics:
             if not hasattr(self, 'metric_results'):  # only execute in the first run
                 self.metric_results = {metric: 0 for metric in self.opt['val']['metrics'].keys()}
             # initialize the best metric results for each dataset_name (supporting multiple validation datasets)
             self._initialize_best_metric_results(dataset_name)
-
             # zero self.metric_results
             self.metric_results = {metric: 0 for metric in self.metric_results}
             self.key_metric = self.opt['val'].get('key_metric')
 
-        for idx, val_data in enumerate(dataloader):
+        pbar = tqdm(total=len(dataloader), unit='张')
 
+        for idx, val_data in enumerate(dataloader):
             img_name = osp.splitext(osp.basename(val_data['gt_path'][0]))[0]
             self.feed_data(val_data)
             self.test()
@@ -313,16 +320,19 @@ class RIDCPNewModel(BaseModel):
                 if save_as_dir:
                     save_as_img_path = osp.join(save_as_dir, f'{img_name}.png')
                     imwrite(sr_img, save_as_img_path)
-                imwrite(sr_img, save_img_path)
+                imwrite(sr_img, str(save_img_path))
 
             if with_metrics:
                 # calculate metrics
                 for name, opt_ in self.opt['val']['metrics'].items():
-                    tmp_result = self.metric_funcs[name](*metric_data)
+                    if name == "niqe" or name == "brisque" or name == "nima":
+                        tmp_result = self.metric_funcs[name](metric_data[0])
+                    else:
+                        tmp_result = self.metric_funcs[name](*metric_data)
                     self.metric_results[name] += tmp_result.item()
 
             pbar.update(1)
-            pbar.set_description(f'Test {img_name}')
+            pbar.set_description(f'测试图片 {img_name} 中')
 
         pbar.close()
 
@@ -341,8 +351,8 @@ class RIDCPNewModel(BaseModel):
                         self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
                     self.copy_model(self.net_g, self.net_g_best)
                     self.copy_model(self.net_d, self.net_d_best)
-                    self.save_network(self.net_g, 'net_g_best', '')
-                    self.save_network(self.net_d, 'net_d_best', '')
+                    self.save_network(self.net_g, 'net_g_best', current_iter)
+                    self.save_network(self.net_d, 'net_d_best', current_iter)
             else:
                 # update each metric separately
                 updated = []
@@ -354,8 +364,8 @@ class RIDCPNewModel(BaseModel):
                 if sum(updated):
                     self.copy_model(self.net_g, self.net_g_best)
                     self.copy_model(self.net_d, self.net_d_best)
-                    self.save_network(self.net_g, 'net_g_best', '')
-                    self.save_network(self.net_d, 'net_d_best', '')
+                    self.save_network(self.net_g, 'net_g_best', current_iter)
+                    self.save_network(self.net_d, 'net_d_best', current_iter)
 
             self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
 
