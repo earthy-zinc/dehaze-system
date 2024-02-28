@@ -120,7 +120,7 @@ train:
 
 # validation settings·
 val:
-  val_freq: !!float 2500
+  val_freq: !!float 1500
   save_img: true
 
   key_metric: psnr
@@ -148,7 +148,7 @@ val:
 
 # logging settings
 logger:
-  print_freq: 200
+  print_freq: 50
   save_checkpoint_freq: !!float 2e3
   save_latest_freq: !!float 5e2
   show_tf_imgs_freq: !!float 1e3
