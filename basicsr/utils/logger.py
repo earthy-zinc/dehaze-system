@@ -86,7 +86,7 @@ class MessageLogger():
         current_iter = log_vars.pop('iter')
         lrs = log_vars.pop('lrs')
 
-        message = f'[{self.exp_name[:5]}..][轮次:{epoch:3d}，迭代次数:{current_iter:8,d}, 学习率(优化器1,优化器2):('
+        message = f'[{self.exp_name}][轮次:{epoch:3d}，迭代次数:{current_iter:8,d}, 学习率(优化器1,优化器2):('
         for v in lrs:
             message += f'{v:.2%},'
         message += ')] '
@@ -107,16 +107,19 @@ class MessageLogger():
         for k, v in log_vars.items():
             if k == 'l_codebook':
                 translation = '码本损失'
-                message += f'{translation}: {v:.2%} '
+                message += f'{translation}: {v:.2f} '
             elif k == 'l_pix':
                 translation = '像素损失'
-                message += f'{translation}: {v:.2%} '
+                message += f'{translation}: {v:.2f} '
+            elif k == 'l_ms_ssim':
+                translation = '结构相似度损失'
+                message += f'{translation}: {v:.2f} '
             elif k == 'l_percep':
                 translation = '感知损失'
-                message += f'{translation}: {v:.2%} '
+                message += f'{translation}: {v:.2f} '
             elif k == 'l_g_gan':
                 translation = '生成器对抗损失'
-                message += f'{translation}: {v:.2%} '
+                message += f'{translation}: {v:.2f} '
             elif k == 'l_d_real':
                 translation = '无雾图像离散真假损失'
                 message += f'{translation}: {v:.2f} '
@@ -131,7 +134,7 @@ class MessageLogger():
                 message += f'{translation}: {v:.2f} '
             else:
                 translation = k
-                message += f'{translation}: {v:.2%} '
+                message += f'{translation}: {v:.2f} '
 
             # tensorboard logger
             if self.use_tb_logger and 'debug' not in self.exp_name:
