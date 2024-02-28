@@ -3,6 +3,7 @@ from torch import nn
 
 from basicsr.archs.module.rcan import RCAN
 from basicsr.archs.ridcp_arch import RIDCP
+from basicsr.archs.ridcp_new_arch import RIDCPNew
 from basicsr.utils.registry import ARCH_REGISTRY
 
 
@@ -13,7 +14,7 @@ class FusionRefine(nn.Module):
         print(opt)
         print(kwargs)
         # first branch
-        self.feature_extract = RIDCP(**opt)
+        self.feature_extract = RIDCPNew(**opt)
         # second branch
         self.pre_trained_rcan = RCAN()
         self.tail = nn.Sequential(
@@ -23,7 +24,7 @@ class FusionRefine(nn.Module):
         )
 
     def forward(self, inputs, gt_indices=None):
-        out_img, out_img_residual, codebook_loss, semantic_loss, feat_to_quant, z_quant, indices = self.feature_extract(inputs, gt_indices)
+        out_img, out_img_residual, codebook_loss, feat_to_quant, z_quant, indices = self.feature_extract(inputs, gt_indices)
         rcan_out = self.pre_trained_rcan(inputs)
         x = torch.cat([out_img_residual, rcan_out], 1)
         # print("out_img_residual.shape")
@@ -31,7 +32,7 @@ class FusionRefine(nn.Module):
         # print(out_img_residual.shape)
         # print(x.shape)
         feat_hazy = self.tail(x)
-        return out_img, feat_hazy, codebook_loss, semantic_loss, feat_to_quant, z_quant, indices
+        return out_img, feat_hazy, codebook_loss, feat_to_quant, z_quant, indices
 
     @torch.no_grad()
     def test_tile(self, inputs):
