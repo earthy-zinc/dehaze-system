@@ -260,7 +260,7 @@ class DiNAT_s(nn.Module):
                 qk_scale=qk_scale,
                 drop=drop_rate,
                 attn_drop=attn_drop_rate,
-                drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
+                drop_path=dpr[sum(depths[:i_layer]): sum(depths[: i_layer + 1])],
                 norm_layer=norm_layer,
                 downsample=None,
             )
@@ -298,3 +298,138 @@ class DiNAT_s(nn.Module):
         return x
 
 
+class BasicConv2d(nn.Module):
+    def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1):
+        super(BasicConv2d, self).__init__()
+
+        self.conv = nn.Conv2d(in_planes, out_planes,
+                              kernel_size=kernel_size, stride=stride,
+                              padding=padding, dilation=dilation, bias=False)
+        self.bn = nn.BatchNorm2d(out_planes)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
+        return x
+
+
+class DiNAT(nn.Module):
+    def __init__(
+            self,
+            patch_size=4,
+            in_chans=3,
+            embed_dim=[256, 256, 256, 512],
+            depths=[2, 2, 18, 2],
+            num_heads=[4, 8, 16, 32],
+            kernel_size=7,
+            dilations=None,
+            mlp_ratio=4.0,
+            qkv_bias=True,
+            qk_scale=None,
+            drop_rate=0.0,
+            attn_drop_rate=0.0,
+            drop_path_rate=0.5,
+            norm_layer=nn.LayerNorm,
+            patch_norm=True,
+            **kwargs
+    ):
+        super().__init__()
+
+        self.num_layers = len(depths)
+        self.patch_norm = patch_norm
+        self.num_features = embed_dim[0]
+        self.mlp_ratio = mlp_ratio
+
+        # split image into non-overlapping patches
+        self.patch_embed = PatchEmbed(
+            patch_size=patch_size,
+            in_chans=in_chans,
+            embed_dim=embed_dim[0],
+            norm_layer=norm_layer if self.patch_norm else None,
+        )
+
+        self.pos_drop = nn.Dropout(p=drop_rate)
+
+        # stochastic depth
+        dpr = [
+            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
+        ]  # stochastic depth decay rule
+
+        # build layers
+        self.layers = nn.ModuleList()
+        for i_layer in range(self.num_layers):
+            layer = BasicLayer(
+                dim=int(embed_dim[i_layer]),
+                depth=depths[i_layer],
+                num_heads=num_heads[i_layer],
+                kernel_size=kernel_size,
+                dilations=None if dilations is None else dilations[i_layer],
+                mlp_ratio=self.mlp_ratio,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                drop=drop_rate,
+                attn_drop=attn_drop_rate,
+                drop_path=dpr[sum(depths[:i_layer]): sum(depths[: i_layer + 1])],
+                norm_layer=norm_layer,
+                downsample=PatchMerging if 1 < i_layer else None,
+            )
+            self.layers.append(layer)
+
+        self.norm = norm_layer(self.num_features)
+        self.avgpool = nn.AdaptiveAvgPool1d(1)
+        self.apply(self._init_weights)
+
+        self.conv_256 = BasicConv2d(256, 256, 1)
+        self.conv_512_256 = BasicConv2d(512, 256, 1)
+        self.conv_1024_512 = BasicConv2d(1024, 512, 1)
+        self.conv_1024_256 = BasicConv2d(1024, 256, 1, stride=1, padding=0, dilation=1)
+        self.norm_256 = norm_layer([256, 64, 64])
+        self.upsample_2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.upsample_4 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
+
+    def _init_weights(self, m):
+        if isinstance(m, nn.Linear):
+            trunc_normal_(m.weight, std=0.02)
+            if isinstance(m, nn.Linear) and m.bias is not None:
+                nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.LayerNorm):
+            nn.init.constant_(m.bias, 0)
+            nn.init.constant_(m.weight, 1.0)
+
+    @torch.jit.ignore
+    def no_weight_decay_keywords(self):
+        return {"rpb"}
+
+    def forward_features(self, x):
+        x = self.patch_embed(x)
+        x = self.pos_drop(x)
+
+        x = self.layers[0](x)
+        x_2 = self.layers[1](x)
+        x_3 = self.layers[2](x_2)
+        x_4 = self.layers[3](x_3)
+
+        x = x.permute(0, 3, 1, 2)
+        x_2 = x_2.permute(0, 3, 1, 2)
+        x_3 = x_3.permute(0, 3, 1, 2)
+        x_4 = x_4.permute(0, 3, 1, 2)
+        # 从 16*16*1024 降低维度到 16*16*512
+        # 将第四层特征图上采样和第三层维度相加，32*32*512，再上采样到64*64*512，
+        # 再降低维度到64*64*256，并批归一化
+        x_2 = self.norm_256(
+            self.conv_512_256(
+                self.upsample_2(
+                    self.upsample_2(self.conv_1024_512(x_4)) + x_3
+                )) + x_2)
+        x_3 = self.conv_512_256(self.upsample_2(x_3))
+        x_4 = self.conv_1024_256(self.upsample_4(x_4))
+        x = torch.cat([x, x_2, x_3, x_4], 1)
+        x = self.conv_1024_256(x)
+        x = x.permute(0, 2, 3, 1)
+
+        x = self.norm(x)
+        return x
+
+    def forward(self, x):
+        x = self.forward_features(x)
+        return x

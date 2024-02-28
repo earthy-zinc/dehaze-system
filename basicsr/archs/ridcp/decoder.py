@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from basicsr.archs.module import ResBlock, WarpBlock
+from basicsr.archs.module.attention import DehazeBlock
 
 
 class DecoderBlock(nn.Module):
@@ -112,6 +113,8 @@ class RIDCPDecoder(nn.Module):
                     nn.Conv2d(in_channel, out_channel, 3, stride=1, padding=1),
                     ResBlock(out_channel, out_channel, norm_type, act_type),
                     ResBlock(out_channel, out_channel, norm_type, act_type),
+                    # 不知道有没有用
+                    DehazeBlock(nn.Conv2d, out_channel, kernel_size=1),
                 )
             )
             self.warp.append(WarpBlock(out_channel))
