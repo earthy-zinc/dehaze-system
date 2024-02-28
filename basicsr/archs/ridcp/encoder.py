@@ -3,7 +3,7 @@ from torch import nn
 
 from basicsr.archs.module import RSTB
 from basicsr.archs.module import ResBlock
-from basicsr.archs.module.dinats import DiNAT_s
+from basicsr.archs.module.dinats import DiNAT_s, DiNAT
 from basicsr.archs.module.nat_ir import NAT
 
 
@@ -58,10 +58,10 @@ class MultiScaleEncoder(nn.Module):
 
         if LQ_stage:
             if nat:
-                self.blocks.append(DiNAT_s(
+                self.blocks.append(DiNAT(
                     depths=[2, 2, 18, 2],
                     num_heads=[4, 8, 16, 32],
-                    embed_dim=256,
+                    embed_dim=[256, 256, 256, 512],
                     mlp_ratio=4,
                     drop_path_rate=0.5,
                     kernel_size=7,

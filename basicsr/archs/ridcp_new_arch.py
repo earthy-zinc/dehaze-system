@@ -4,6 +4,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from .module.attention import Enhancer
 from .ridcp.codebook import VectorQuantizer
 from .ridcp.decoder import MultiScaleDecoder, DecoderBlock, RIDCPDecoder
 from .ridcp.encoder import MultiScaleEncoder, VQEncoder, SwinLayers
@@ -83,6 +84,7 @@ class RIDCPNew(nn.Module):
             self.vq_decoder_group.append(DecoderBlock(in_ch, out_ch, norm_type, act_type))
 
         self.out_conv = nn.Conv2d(out_ch, 3, 3, 1, 1)
+        self.enhancer = Enhancer(3, 3)
         self.residual_conv = nn.Conv2d(out_ch, 3, 3, 1, 1)
 
         # build vector quantizers
@@ -126,6 +128,8 @@ class RIDCPNew(nn.Module):
             out_img_residual = None
 
         out_img = self.out_conv(x)
+        # TODO 不知道有没有用
+        out_img = self.enhancer(out_img)
         # out_img 图像生成的重建输出
         # out_img_residual 图像去雾的结果输出
         return out_img, out_img_residual, codebook_loss, feat_to_quant, z_quant, indices
