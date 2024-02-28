@@ -1,3 +1,4 @@
+import math
 from collections import OrderedDict
 from os import path as osp
 
@@ -121,6 +122,11 @@ class RIDCPNewModel(BaseModel):
         else:
             self.cri_pix = None
 
+        if train_opt.get('ms_ssim_opt'):
+            self.cri_ms_ssim = build_loss(train_opt['ms_ssim_opt']).to(self.device)
+        else:
+            self.cri_ms_ssim = None
+
         if train_opt.get('perceptual_opt'):
             self.cri_perceptual = build_loss(train_opt['perceptual_opt']).to(self.device)
             self.model_to_device(self.cri_perceptual)
@@ -211,6 +217,12 @@ class RIDCPNewModel(BaseModel):
             l_g_total += l_pix
             loss_dict['l_pix'] = l_pix
 
+        # ms ssim loss
+        if self.cri_ms_ssim:
+            l_ms_ssim = self.cri_ms_ssim(self.output_residual, self.gt)
+            l_g_total += l_ms_ssim
+            loss_dict["l_ms_ssim"] = l_ms_ssim
+
         # perceptual loss
         if self.cri_perceptual:
             l_percep, l_style = self.cri_perceptual(self.output_residual, self.gt)
@@ -249,8 +261,8 @@ class RIDCPNewModel(BaseModel):
             l_d_fake = self.cri_gan(fake_d_pred, False, is_disc=True)
             loss_dict['l_d_fake'] = l_d_fake
             loss_dict['out_d_fake'] = torch.mean(fake_d_pred.detach())
-
             l_d_fake.backward()
+
             self.optimizer_d.step()
         self.optimizer_g.step()
         self.log_dict = self.reduce_loss_dict(loss_dict)
@@ -258,7 +270,8 @@ class RIDCPNewModel(BaseModel):
     def test(self):
         self.net_g.eval()
         net_g = self.get_bare_model(self.net_g)
-        min_size = 8000 * 8000  # use smaller min_size with limited GPU memory
+        min_size = 512 * 512  # use smaller min_size with limited GPU memory
+        max_size = 1024 * 1024
         if self.lq is not None:
             inputs = self.lq
         else:
@@ -266,8 +279,15 @@ class RIDCPNewModel(BaseModel):
         _, _, h, w = inputs.shape
         if h * w < min_size:
             self.output, _ = net_g.test(inputs)
+        elif h * w > max_size:
+            num = math.floor(math.sqrt(h * w) / 1000)
+            down_img = torch.nn.UpsamplingBilinear2d((h//num, w//num))(inputs)
+            output, _ = net_g.test(down_img)
+            self.output = torch.nn.UpsamplingBilinear2d((h, w))(output)
         else:
-            self.output = net_g.test_tile(inputs)
+            down_img = torch.nn.UpsamplingBilinear2d((h//2, w//2))(inputs)
+            output, _ = net_g.test(down_img)
+            self.output = torch.nn.UpsamplingBilinear2d((h, w))(output)
         self.net_g.train()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
@@ -351,8 +371,8 @@ class RIDCPNewModel(BaseModel):
                         self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
                     self.copy_model(self.net_g, self.net_g_best)
                     self.copy_model(self.net_d, self.net_d_best)
-                    self.save_network(self.net_g, 'net_g_best', current_iter)
-                    self.save_network(self.net_d, 'net_d_best', current_iter)
+                    self.save_network(self.net_g, 'net_g_best', '')
+                    self.save_network(self.net_d, 'net_d_best', '')
             else:
                 # update each metric separately
                 updated = []
@@ -364,8 +384,8 @@ class RIDCPNewModel(BaseModel):
                 if sum(updated):
                     self.copy_model(self.net_g, self.net_g_best)
                     self.copy_model(self.net_d, self.net_d_best)
-                    self.save_network(self.net_g, 'net_g_best', current_iter)
-                    self.save_network(self.net_d, 'net_d_best', current_iter)
+                    self.save_network(self.net_g, 'net_g_best', '')
+                    self.save_network(self.net_d, 'net_d_best', '')
 
             self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
 

@@ -9,10 +9,10 @@ manual_seed: 0
 # dataset and data loader settings
 datasets:
   train:
-    name: O-HAZE-train
+    name: I-HAZE-train
     type: NtireH5Dataset
     mode: train
-    data_path: datasets/O-HAZE.h5
+    data_path: datasets/I-HAZE.h5
     shuffle: true
 
     # data loader
@@ -25,10 +25,11 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: O-HAZE-val
-    type: NtireH5Dataset
-    mode: validation
-    data_path: datasets/O-HAZE.h5
+    name: I-HAZE-val
+    type: NtireDataset
+    haze_path: /quzhong_fix/wpx/dataset/I-HAZE/hazy
+    clear_path: /quzhong_fix/wpx/dataset/I-HAZE/clean
+    size: 512
     shuffle: true
 
 # network structures
@@ -92,10 +93,15 @@ train:
     gan_type: hinge
     real_label_val: 1.0
     fake_label_val: 0.0
-    loss_weight: 0.1
+    loss_weight: 0.2
 
   codebook_opt:
     loss_weight: 1.0
+
+#  ms_ssim_opt:
+#    type: MSSSIMLoss
+#    loss_weight: !!float 1
+#    reduction: mean
 
   semantic_opt:
     loss_weight: 0.1
@@ -133,8 +139,8 @@ val:
 
 # logging settings
 logger:
-  print_freq: 10
-  save_checkpoint_freq: !!float 1e3
+  print_freq: 200
+  save_checkpoint_freq: !!float 2e3
   save_latest_freq: !!float 5e2
-  show_tf_imgs_freq: !!float 1e2
+  show_tf_imgs_freq: !!float 1e3
   use_tb_logger: true

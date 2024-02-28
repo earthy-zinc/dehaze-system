@@ -1,5 +1,8 @@
 from collections import OrderedDict
 from os import path as osp
+
+import math
+from thop import profile
 from tqdm import tqdm
 
 import torch
@@ -14,17 +17,24 @@ import copy
 
 import pyiqa
 
+from ..utils.static_util import convert_size
+
 
 @MODEL_REGISTRY.register()
 class ITBModel(BaseModel):
     def __init__(self, opt):
         super().__init__(opt)
-
+        logger = get_root_logger()
         # define network
+        test_input = torch.randn(1, 3, 256, 256).to(self.device)
         self.net_g = build_network(opt['network_g'])
         self.net_g = self.model_to_device(self.net_g)
 
-        # load pre-trained HQ ckpt, frozen decoder and codebook
+        net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
+        logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
+                    .format(convert_size(net_g_flops), convert_size(net_g_params)))
+
+    # load pre-trained HQ ckpt, frozen decoder and codebook
         self.LQ_stage = self.opt['network_g']["opt"].get('LQ_stage', False)
         if self.LQ_stage:
             load_path = self.opt['path'].get('pretrain_network_hq', None)
@@ -33,8 +43,19 @@ class ITBModel(BaseModel):
             hq_opt = self.opt['network_hq']
             self.net_hq = build_network(hq_opt)
             self.net_hq = self.model_to_device(self.net_hq)
+
+            net_hq_flops, net_hq_params = profile(self.net_hq, inputs=(test_input,))
+            logger.info("生成模型net_hq的FLOPS量为{}，参数量为{}。"
+                        .format(convert_size(net_hq_flops), convert_size(net_hq_params)))
+            logger.info("生成模型net_hq和去雾模型net_g的FLOPS量差距为{}，参数量差距为{}。".format(
+                convert_size(net_g_flops - net_hq_flops),
+                convert_size(net_g_params - net_hq_params)
+            ))
+
+            logger.info("加载预训练的HQP模型")
             self.load_network(self.net_hq, load_path, self.opt['path']['strict_load'])
 
+            logger.info("加载本次去雾模型")
             load_init_net_g_path = self.opt['path'].get('pretrain_network_init_g', None)
             self.load_network(self.net_g, load_init_net_g_path, False)
             frozen_module_keywords = self.opt['network_g'].get('frozen_module_keywords', None)
@@ -48,7 +69,6 @@ class ITBModel(BaseModel):
 
         # load pretrained models
         load_path = self.opt['path'].get('pretrain_network_g', None)
-        logger = get_root_logger()
         if load_path is not None:
             logger.info(f'从 {load_path} 中加载去雾网络（network generator）')
             self.load_network(self.net_g, load_path, self.opt['path']['strict_load'])
@@ -90,6 +110,11 @@ class ITBModel(BaseModel):
             self.cri_pix = build_loss(train_opt['pixel_opt']).to(self.device)
         else:
             self.cri_pix = None
+
+        if train_opt.get('ms_ssim_opt'):
+            self.cri_ms_ssim = build_loss(train_opt['ms_ssim_opt']).to(self.device)
+        else:
+            self.cri_ms_ssim = None
 
         if train_opt.get('perceptual_opt'):
             self.cri_perceptual = build_loss(train_opt['perceptual_opt']).to(self.device)
@@ -136,6 +161,8 @@ class ITBModel(BaseModel):
             self.lq = None
         if 'gt' in data:
             self.gt = data['gt'].to(self.device)
+        else:
+            self.gt = None
 
     def optimize_parameters(self, current_iter):
         train_opt = self.opt['train']
@@ -146,11 +173,11 @@ class ITBModel(BaseModel):
 
         if self.LQ_stage:
             with torch.no_grad():
-                self.gt_rec, _, _, _, _, quant_gt, gt_indices = self.net_hq(self.gt)
+                self.gt_rec, _, _, _, quant_gt, gt_indices = self.net_hq(self.gt)
             self.lq.requires_grad = True
-            self.output, self.output_residual, l_codebook, l_semantic, quant_g, _, _ = self.net_g(self.lq, gt_indices)
+            self.output, self.output_residual, l_codebook, quant_g, _, _ = self.net_g(self.lq, gt_indices)
         else:
-            self.output, self.output_residual, l_codebook, l_semantic, quant_g, _, _ = self.net_g(self.gt)
+            self.output, self.output_residual, l_codebook, quant_g, _, _ = self.net_g(self.gt)
 
         l_g_total = torch.zeros((1,)).to(self.device)
         loss_dict = OrderedDict()
@@ -166,7 +193,13 @@ class ITBModel(BaseModel):
             l_g_total += l_codebook.mean()
             loss_dict['l_codebook'] = l_codebook.mean()
 
-        # semantic cluster loss, only for LQ stage!
+        # semantic cluster loss, only for HQ stage!
+        l_semantic = None
+        if not self.LQ_stage:
+            with torch.no_grad():
+                vgg_feat = self.vgg_feat_extractor(self.gt)[self.vgg_feat_layer]
+            semantic_z_quant = self.conv_semantic(quant_g)
+            l_semantic = F.mse_loss(semantic_z_quant, vgg_feat)
         if train_opt.get('semantic_opt', None) and isinstance(l_semantic, torch.Tensor):
             l_semantic *= train_opt['semantic_opt']['loss_weight']
             l_semantic = l_semantic.mean()
@@ -179,6 +212,12 @@ class ITBModel(BaseModel):
             l_g_total += l_pix
             loss_dict['l_pix'] = l_pix
 
+        # ms ssim loss
+        if self.cri_ms_ssim:
+            l_ms_ssim = self.cri_ms_ssim(self.output_residual, self.gt)
+            l_g_total += l_ms_ssim
+            loss_dict["l_ms_ssim"] = l_ms_ssim
+
         # perceptual loss
         if self.cri_perceptual:
             l_percep, l_style = self.cri_perceptual(self.output_residual, self.gt)
@@ -190,16 +229,13 @@ class ITBModel(BaseModel):
                 loss_dict['l_style'] = l_style
 
         # gan loss
-        if self.use_dis and current_iter > train_opt['net_d_init_iters']:
+        if self.use_dis and current_iter > train_opt['net_d_iters']:
             fake_g_pred = self.net_d(quant_g)
             l_g_gan = self.cri_gan(fake_g_pred, True, is_disc=False)
             l_g_total += l_g_gan
             loss_dict['l_g_gan'] = l_g_gan
 
-        # print(l_g_total.requires_grad)
-        # if l_g_total.requires_grad:
         l_g_total.mean().backward()
-
 
         # optimize net_d
         self.fixed_disc = self.opt['train'].get('fixed_disc', False)
@@ -207,8 +243,10 @@ class ITBModel(BaseModel):
             for p in self.net_d.parameters():
                 p.requires_grad = True
             self.optimizer_d.zero_grad()
-            # real
+            # real real_d_pred清晰图像经判别器处理应该为正值，越大越好，则gan损失会越小
             real_d_pred = self.net_d(quant_gt)
+            # 经gan损失函数处理的输入大于1，则损失为0，等于1，损失为0。等于0，损失为1。输入越小，损失越大
+            # 简单说，输入越大，损失越小
             l_d_real = self.cri_gan(real_d_pred, True, is_disc=True)
             loss_dict['l_d_real'] = l_d_real
             loss_dict['out_d_real'] = torch.mean(real_d_pred.detach())
@@ -219,6 +257,7 @@ class ITBModel(BaseModel):
             loss_dict['l_d_fake'] = l_d_fake
             loss_dict['out_d_fake'] = torch.mean(fake_d_pred.detach())
             l_d_fake.backward()
+
             self.optimizer_d.step()
         self.optimizer_g.step()
         self.log_dict = self.reduce_loss_dict(loss_dict)
@@ -226,7 +265,8 @@ class ITBModel(BaseModel):
     def test(self):
         self.net_g.eval()
         net_g = self.get_bare_model(self.net_g)
-        min_size = 8000 * 8000  # use smaller min_size with limited GPU memory
+        min_size = 512 * 512  # use smaller min_size with limited GPU memory
+        max_size = 1024 * 1024
         if self.lq is not None:
             inputs = self.lq
         else:
@@ -234,8 +274,15 @@ class ITBModel(BaseModel):
         _, _, h, w = inputs.shape
         if h * w < min_size:
             self.output, _ = net_g.test(inputs)
+        elif h * w > max_size:
+            num = math.floor(math.sqrt(h * w) / 1000)
+            down_img = torch.nn.UpsamplingBilinear2d((h//num, w//num))(inputs)
+            output, _ = net_g.test(down_img)
+            self.output = torch.nn.UpsamplingBilinear2d((h, w))(output)
         else:
-            self.output = net_g.test_tile(inputs)
+            down_img = torch.nn.UpsamplingBilinear2d((h//2, w//2))(inputs)
+            output, _ = net_g.test(down_img)
+            self.output = torch.nn.UpsamplingBilinear2d((h, w))(output)
         self.net_g.train()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
@@ -248,25 +295,17 @@ class ITBModel(BaseModel):
         dataset_name = dataloader.dataset.opt['name']
         with_metrics = self.opt['val'].get('metrics') is not None
         if with_metrics:
-            self.metric_results = {
-                metric: 0
-                for metric in self.opt['val']['metrics'].keys()
-            }
-
-        pbar = tqdm(total=len(dataloader), unit='image')
-
-        if with_metrics:
             if not hasattr(self, 'metric_results'):  # only execute in the first run
                 self.metric_results = {metric: 0 for metric in self.opt['val']['metrics'].keys()}
             # initialize the best metric results for each dataset_name (supporting multiple validation datasets)
             self._initialize_best_metric_results(dataset_name)
-
             # zero self.metric_results
             self.metric_results = {metric: 0 for metric in self.metric_results}
             self.key_metric = self.opt['val'].get('key_metric')
 
-        for idx, val_data in enumerate(dataloader):
+        pbar = tqdm(total=len(dataloader), unit='张')
 
+        for idx, val_data in enumerate(dataloader):
             img_name = osp.splitext(osp.basename(val_data['gt_path'][0]))[0]
             self.feed_data(val_data)
             self.test()
@@ -296,16 +335,19 @@ class ITBModel(BaseModel):
                 if save_as_dir:
                     save_as_img_path = osp.join(save_as_dir, f'{img_name}.png')
                     imwrite(sr_img, save_as_img_path)
-                imwrite(sr_img, save_img_path)
+                imwrite(sr_img, str(save_img_path))
 
             if with_metrics:
                 # calculate metrics
                 for name, opt_ in self.opt['val']['metrics'].items():
-                    tmp_result = self.metric_funcs[name](*metric_data)
+                    if name == "niqe" or name == "brisque" or name == "nima":
+                        tmp_result = self.metric_funcs[name](metric_data[0])
+                    else:
+                        tmp_result = self.metric_funcs[name](*metric_data)
                     self.metric_results[name] += tmp_result.item()
 
             pbar.update(1)
-            pbar.set_description(f'Test {img_name}')
+            pbar.set_description(f'测试图片 {img_name} 中')
 
         pbar.close()
 

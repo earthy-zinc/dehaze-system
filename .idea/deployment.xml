@@ -1,27 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="root@172.20.5.56:30993 password (2)" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+  <component name="PublishConfigData" autoUpload="Always" serverName="172.20.5.56:30993" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
-      <paths name="1910-3">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP" local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="root@172.20.5.56:30993 password">
+      <paths name="172.20.5.56:30993">
         <serverdata>
           <mappings>
             <mapping deploy="/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP" local="$PROJECT_DIR$" />
           </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
+          </excludedPaths>
         </serverdata>
       </paths>
-      <paths name="root@172.20.5.56:30993 password (2)">
+      <paths name="172.20.5.92:52022">
         <serverdata>
           <mappings>
-            <mapping deploy="/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP" local="$PROJECT_DIR$" />
+            <mapping deploy="/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP" local="$PROJECT_DIR$" />
           </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

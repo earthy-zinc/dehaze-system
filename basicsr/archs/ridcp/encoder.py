@@ -3,6 +3,8 @@ from torch import nn
 
 from basicsr.archs.module import RSTB
 from basicsr.archs.module import ResBlock
+from basicsr.archs.module.dinats import DiNAT_s
+from basicsr.archs.module.nat_ir import NAT
 
 
 class SwinLayers(nn.Module):
@@ -35,6 +37,7 @@ class MultiScaleEncoder(nn.Module):
                  norm_type='gn',
                  act_type='leakyrelu',
                  LQ_stage=True,
+                 nat=True,
                  **swin_opts,
                  ):
         super().__init__()
@@ -54,7 +57,23 @@ class MultiScaleEncoder(nn.Module):
             res = res // 2
 
         if LQ_stage:
-            self.blocks.append(SwinLayers(**swin_opts))
+            if nat:
+                self.blocks.append(DiNAT_s(
+                    depths=[2, 2, 18, 2],
+                    num_heads=[4, 8, 16, 32],
+                    embed_dim=256,
+                    mlp_ratio=4,
+                    drop_path_rate=0.5,
+                    kernel_size=7,
+                    dilations=[
+                        [1, 8],
+                        [1, 4],
+                        [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2],
+                        [1, 1],
+                    ],
+                ))
+            else:
+                self.blocks.append(SwinLayers(**swin_opts))
 
     def forward(self, input):
         x = self.in_conv(input)
@@ -94,3 +113,6 @@ class VQEncoder(nn.Module):
             with torch.backends.cudnn.flags(enabled=False):
                 x = m(x)
         return x
+
+
+

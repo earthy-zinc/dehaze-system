@@ -32,6 +32,7 @@ class RIDCPNew(nn.Module):
                  weight_alpha=1.0,
                  **ignore_kwargs):
         super().__init__()
+
         self.codebook_scale = codebook_scale
 
         self.use_quantize = use_quantize
