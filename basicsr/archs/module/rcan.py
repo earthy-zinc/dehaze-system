@@ -71,8 +71,8 @@ class ResidualGroup(nn.Module):
 class RCAN(nn.Module):
     def __init__(self, conv=default_conv):
         super(RCAN, self).__init__()
-        n_resgroups = 5
-        n_resblocks = 10
+        n_resgroups = 4
+        n_resblocks = 8
         n_feats = 32
         kernel_size = 3
         reduction = 8
@@ -84,7 +84,8 @@ class RCAN(nn.Module):
         # define body module
         modules_body = [
             ResidualGroup(
-                conv, n_feats, kernel_size, reduction, act=act, res_scale=1, n_resblocks=n_resblocks) \
+                conv, n_feats, kernel_size,
+                reduction, act=act, res_scale=1, n_resblocks=n_resblocks) \
             for _ in range(n_resgroups)]
 
         modules_body.append(conv(n_feats, n_feats, kernel_size))
