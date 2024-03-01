@@ -1,18 +1,18 @@
 # general settings
-name: itb_second_train
+name: itb_nh_haze_train
 model_type: ITBModel
 scale: &upscale 1
 num_gpu: 1 # set num_gpu: 0 for cpu mode
-gpu_id: 7
+gpu_id: 0
 manual_seed: 0
 
 # dataset and data loader settings
 datasets:
   train:
-    name: O-HAZE-train
+    name: NH-HAZE-train
     type: NtireH5Dataset
     mode: train
-    data_path: datasets/O-HAZE.h5
+    data_path: /mnt/e/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-20-21-23.h5
     shuffle: true
 
     # data loader
@@ -25,10 +25,10 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: O-HAZE-val
+    name: NH-HAZE-val
     type: NtireDataset
-    haze_path: /var/lib/docker/user1/wpx/dataset/O-HAZE/hazy
-    clear_path: /var/lib/docker/user1/wpx/dataset/O-HAZE/clean
+    haze_path: /mnt/d/DeepLearning/dataset/NTIRE/hazy
+    clear_path: /mnt/d/DeepLearning/dataset/NTIRE/clean
     size: 512
     shuffle: true
 
@@ -62,9 +62,9 @@ network_d:
 
 # path
 path:
-  pretrain_network_init_g: pretrained_models/ITB_init_weight_renamed.pth
-  pretrain_network_hq: pretrained_models/pretrained_HQPs_renamed.pth
-  pretrain_network_g:
+  pretrain_network_init_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/ITB_init_weight.pth
+  pretrain_network_hq: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_HQPs_renamed.pth
+  pretrain_network_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_ITB_renamed.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
@@ -99,7 +99,7 @@ train:
   perceptual_opt:
     type: LPIPSLoss
     loss_weight: !!float 1.0
-    device: cuda:7
+    device: cuda:0
 
   gan_opt:
     type: GANLoss
@@ -148,7 +148,7 @@ val:
 
 # logging settings
 logger:
-  print_freq: 50
+  print_freq: 100
   save_checkpoint_freq: !!float 2e3
   save_latest_freq: !!float 5e2
   show_tf_imgs_freq: !!float 1e3
