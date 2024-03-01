@@ -3,30 +3,21 @@ name: itb_first_train
 model_type: ITBModel
 scale: &upscale 1
 num_gpu: 1 # set num_gpu: 0 for cpu mode
+gpu_id: 0
 manual_seed: 0
 
 # dataset and data loader settings
 datasets:
   train:
-    name: General_Image_Train
-    type: HazeOnlineDataset
-    dataroot_gt: E:\DeepLearningCopies\2023\RIDCP\datasets\rgb_500
-    dataroot_depth: E:\DeepLearningCopies\2023\RIDCP\datasets\depth_500
-    beta_range: [0.3, 1.5]
-    A_range: [0.25, 1.0]
-    color_p: 1.0
-    color_range: [-0.025, 0.025]
-    io_backend:
-      type: disk
-
-    gt_size: 256
-    use_resize_crop: true
-    use_flip: true
-    use_rot: false
+    name: O-HAZE-train
+    type: NtireH5Dataset
+    mode: train
+    data_path: /mnt/e/DeepLearningCopies/2023/RIDCP/datasets/O-HAZE.h5
+    shuffle: true
 
     # data loader
     use_shuffle: true
-    batch_size_per_gpu: &bsz 4
+    batch_size_per_gpu: &bsz 1
     num_worker_per_gpu: *bsz
     dataset_enlarge_ratio: 1
 
@@ -34,20 +25,16 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: General_Image_Train
-    type: HazeOnlineDataset
-    dataroot_gt: E:\DeepLearningCopies\2023\RIDCP\datasets\rgb_500
-    dataroot_depth: E:\DeepLearningCopies\2023\RIDCP\datasets\depth_500
-    beta_range: [0.3, 1.5]
-    A_range: [0.25, 1.0]
-    color_p: 1.0
-    color_range: [-0.025, 0.025]
-    io_backend:
-      type: disk
+    name: O-HAZE-val
+    type: NtireDataset
+    haze_path: /mnt/d/DeepLearning/dataset/O-HAZE/hazy
+    clear_path: /mnt/d/DeepLearning/dataset/O-HAZE/clean
+    size: 512
+    shuffle: true
 
 # network structures
 network_hq:
-  type: RIDCP
+  type: RIDCPNew
   gt_resolution: 256
   norm_type: 'gn'
   act_type: 'silu'
@@ -75,9 +62,9 @@ network_d:
 
 # path
 path:
-  pretrain_network_init_g: E:\DeepLearningCopies\2023\RIDCP\pretrained_models\ITB_init_weight.pth
-  pretrain_network_hq: E:\DeepLearningCopies\2023\RIDCP\pretrained_models\pretrained_HQPs_New.pth
-  pretrain_network_g:
+  pretrain_network_init_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/ITB_init_weight.pth
+  pretrain_network_hq: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_HQPs_renamed.pth
+  pretrain_network_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_ITB_renamed.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
@@ -100,7 +87,7 @@ train:
     milestones: [5000, 10000, 15000, 20000, 250000, 300000, 350000]
     gamma: 1
 
-  total_iter: 45000
+  total_iter: 100000
   warmup_iter: -1  # no warm up
 
   # losses
@@ -112,13 +99,14 @@ train:
   perceptual_opt:
     type: LPIPSLoss
     loss_weight: !!float 1.0
+    device: cuda:0
 
   gan_opt:
     type: GANLoss
     gan_type: hinge
     real_label_val: 1.0
     fake_label_val: 0.0
-    loss_weight: 0.1
+    loss_weight: 0.2
 
   codebook_opt:
     loss_weight: 1.0
@@ -127,12 +115,12 @@ train:
     loss_weight: 0.1
 
 
-  net_d_iters: 1
+  net_d_iters: !!float 5000
   net_d_init_iters: !!float 0
 
 # validation settings·
 val:
-  val_freq: !!float 2500
+  val_freq: !!float 1000
   save_img: true
 
   key_metric: psnr
@@ -148,11 +136,20 @@ val:
     lpips:
       type: lpips
       better: lower
+    niqe:
+      type: niqe
+      better: lower
+    brisque:
+      type: brisque
+      better: lower
+    nima:
+      type: nima
+      better: higher
 
 # logging settings
 logger:
-  print_freq: 10
-  save_checkpoint_freq: !!float 1e3
+  print_freq: 100
+  save_checkpoint_freq: !!float 2e3
   save_latest_freq: !!float 5e2
-  show_tf_imgs_freq: !!float 1e2
+  show_tf_imgs_freq: !!float 1e3
   use_tb_logger: true

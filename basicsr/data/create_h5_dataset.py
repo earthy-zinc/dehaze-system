@@ -151,8 +151,7 @@ def train_data(h5_file, size, stride, dataset_path):
 
 
 if __name__ == "__main__":
-    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-20-21-23.h5", 256, 250, "D:/DeepLearning/dataset/NTIRE/")
-    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/O-HAZE.h5", 256, 250, "D:/DeepLearning/dataset/O-HAZE/")
-    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/I-HAZE.h5", 256, 250, "D:/DeepLearning/dataset/I-HAZE/")
-    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/DENSE-HAZE.h5", 256, 250, "D:/DeepLearning/dataset/Dense-Haze/")
+    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-20.h5", 256, 250, "D:/DeepLearning/dataset/NH-HAZE-2020/")
+    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-21.h5", 256, 250, "D:/DeepLearning/dataset/NH-HAZE-2021/")
+    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-23.h5", 256, 250, "D:/DeepLearning/dataset/NH-HAZE-2023/")
     # pass

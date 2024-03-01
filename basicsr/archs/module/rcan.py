@@ -72,7 +72,7 @@ class RCAN(nn.Module):
     def __init__(self, conv=default_conv):
         super(RCAN, self).__init__()
         n_resgroups = 4
-        n_resblocks = 8
+        n_resblocks = 10
         n_feats = 32
         kernel_size = 3
         reduction = 8

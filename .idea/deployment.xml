@@ -27,6 +27,13 @@
           </excludedPaths>
         </serverdata>
       </paths>
+      <paths name="zhou@10.242.187.86:22 password">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/home/zhou/wpx/RIDCP" local="$PROJECT_DIR$" />
+          </mappings>
+        </serverdata>
+      </paths>
     </serverData>
     <option name="myAutoUpload" value="ALWAYS" />
   </component>
