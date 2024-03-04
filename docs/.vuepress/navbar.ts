@@ -7,6 +7,7 @@ export default navbar([
     "/后端开发",
     "/学术课程",
     "/工作效率",
+    "/艺术设计",
     "/项目文档",
     {
         text: "项目展示",
@@ -25,7 +26,7 @@ export default navbar([
                 children: [
                     {
                         text: "图像去雾系统",
-                        link: "http://10.16.90.26/dehaze_front/#/component/demo/dehaze"
+                        link: host + "/dehaze_front/#/component/demo/dehaze"
                     }
                 ]
             },
