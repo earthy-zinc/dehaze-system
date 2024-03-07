@@ -37,7 +37,7 @@ class MultiScaleEncoder(nn.Module):
                  norm_type='gn',
                  act_type='leakyrelu',
                  LQ_stage=True,
-                 nat=True,
+                 additional_encoder="RSTB",
                  **swin_opts,
                  ):
         super().__init__()
@@ -57,7 +57,7 @@ class MultiScaleEncoder(nn.Module):
             res = res // 2
 
         if LQ_stage:
-            if nat:
+            if additional_encoder == "DiNAT":
                 self.blocks.append(DiNAT(
                     depths=[2, 2, 18, 2],
                     num_heads=[4, 8, 16, 32],
@@ -72,8 +72,20 @@ class MultiScaleEncoder(nn.Module):
                         [1, 1],
                     ],
                 ))
-            else:
+            elif additional_encoder == "NAT":
+                self.blocks.append(NAT(
+                    depths=[3, 4, 18, 5],
+                    num_heads=[4, 8, 16, 32],
+                    embed_dim=256,
+                    mlp_ratio=2,
+                    drop_path_rate=0.3,
+                    layer_scale=1e-5,
+                    kernel_size=7
+                ))
+            elif additional_encoder == "RSTB":
                 self.blocks.append(SwinLayers(**swin_opts))
+            else:
+                pass
 
     def forward(self, input):
         x = self.in_conv(input)

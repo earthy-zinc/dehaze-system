@@ -105,7 +105,7 @@ def train_data(h5_file, size, stride, dataset_path):
     with h5py.File(h5_file, 'w') as h5f:
         count = 0
         count_bad = 0
-        scales = [0, 0.2]
+        scales = [0, 0.2, 0.4]
         for i in range(len(files2_clear)):
             hazy_0 = np.array(Image.open(dataset_path + 'hazy/' + files2_haze[i]).convert("RGB")) / 255
             clear_0 = np.array(Image.open(dataset_path + 'clean/' + files2_clear[i]).convert("RGB")) / 255
@@ -150,8 +150,31 @@ def train_data(h5_file, size, stride, dataset_path):
     h5f.close()
 
 
+def val_data(h5_file, dataset_path):
+    files2_clear = os.listdir(dataset_path + 'clean/')
+    files2_haze = os.listdir(dataset_path + 'hazy/')
+    scale = 0.25
+    with h5py.File(h5_file, 'w') as h5f:
+        count = 0
+        for i in range(len(files2_clear)):
+            hazy_0 = np.array(Image.open(dataset_path + 'hazy/' + files2_haze[i]).convert("RGB")) / 255
+            clear_0 = np.array(Image.open(dataset_path + 'clean/' + files2_clear[i]).convert("RGB")) / 255
+            hazy = cv2.resize(hazy_0, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            clear = cv2.resize(clear_0, (0, 0), fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+            clear = np.transpose(clear, (2, 0, 1))
+            hazy = np.transpose(hazy, (2, 0, 1))
+            print(hazy.shape)
+            dataset = np.stack((clear, hazy))
+            h5f.create_dataset(str(count), data=dataset)
+            count += 1
+    h5f.close()
+
+
 if __name__ == "__main__":
-    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-20.h5", 256, 250, "D:/DeepLearning/dataset/NH-HAZE-2020/")
-    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-21.h5", 256, 250, "D:/DeepLearning/dataset/NH-HAZE-2021/")
-    train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-23.h5", 256, 250, "D:/DeepLearning/dataset/NH-HAZE-2023/")
+    # train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/O-HAZE.h5", 256, 200, "D:/DeepLearning/dataset/O-HAZE/")
+    # train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/DENSE-HAZE.h5", 256, 200, "D:/DeepLearning/dataset/Dense-Haze/")
+    # train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-20.h5", 256, 200, "D:/DeepLearning/dataset/NH-HAZE-2020/")
+    # train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-21.h5", 256, 200, "D:/DeepLearning/dataset/NH-HAZE-2021/")
+    # train_data("E:/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-23.h5", 256, 250, "D:/DeepLearning/dataset/NH-HAZE-2023/")
+    val_data("E:/DeepLearningCopies/2023/RIDCP/datasets/O-HAZE-test.h5", "D:/DeepLearning/dataset/O-HAZE/")
     # pass
