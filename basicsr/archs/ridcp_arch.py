@@ -226,6 +226,7 @@ class RIDCP(nn.Module):
                  use_weight=False,
                  use_warp=True,
                  weight_alpha=1.0,
+                 additional_encoder="RSTB",
                  **ignore_kwargs):
         super().__init__()
         self.codebook_scale = codebook_scale
@@ -257,7 +258,8 @@ class RIDCP(nn.Module):
             self.max_depth,
             self.gt_res,
             channel_query_dict,
-            norm_type, act_type, LQ_stage
+            norm_type, act_type, LQ_stage,
+            additional_encoder
         )
         if self.LQ_stage and self.use_residual:
             self.multiscale_decoder = MultiScaleDecoder(
