@@ -8,6 +8,7 @@ from torchvision.transforms import ToTensor
 from tqdm import tqdm
 import torch
 
+from basicsr.archs.itb_arch import FusionRefine
 from basicsr.archs.ridcp_arch import RIDCP
 from basicsr.archs.ridcp_new_arch import RIDCPNew
 from basicsr.archs.dehaze_vq_weight_arch import VQWeightDehazeNet
@@ -34,7 +35,12 @@ def main():
     #sr_model = VQWeightNet(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
     #sr_model = VQWeightDehazeNet(codebook_params=[[64, 1024, 512]], LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
     #sr_model = RIDCP(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
-    sr_model = RIDCPNew(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    #sr_model = RIDCPNew(LQ_stage=True, use_weight=args.use_weight, weight_alpha=args.alpha).to(device)
+    sr_model = FusionRefine(opt={
+        "LQ_stage": True,
+        "use_weight": args.use_weight,
+        "weight_alpha": args.alpha
+    }).to(device)
     sr_model.load_state_dict(torch.load(weight_path)['params'], strict=False)
     sr_model.eval()
 

@@ -64,7 +64,7 @@ network_d:
 path:
   pretrain_network_init_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/ITB_init_weight.pth
   pretrain_network_hq: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_HQPs_renamed.pth
-  pretrain_network_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_ITB_renamed.pth
+  pretrain_network_g: /mnt/e/DeepLearningCopies/2023/RIDCP/experiments/itb_nh_haze_21_archived_20240304_141541/models/net_g_best_.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
@@ -115,7 +115,7 @@ train:
     loss_weight: 0.1
 
 
-  net_d_iters: !!float 5000
+  net_d_iters: !!float 1000
   net_d_init_iters: !!float 0
 
 # validation settings·
@@ -123,7 +123,7 @@ val:
   val_freq: !!float 1000
   save_img: true
 
-  key_metric: psnr
+  key_metric: ssim
   metrics:
     psnr: # metric name, can be arbitrary
       type: psnr
