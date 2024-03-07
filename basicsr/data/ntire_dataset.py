@@ -1,6 +1,7 @@
 import os
 import random
 
+import math
 import cv2
 import h5py
 import numpy as np
@@ -40,8 +41,6 @@ class NtireH5Dataset(data.Dataset):
         }
 
     def __len__(self):
-        if self.opt["mode"] == "validation":
-            return 500
         return len(self.keys)
 
 
@@ -50,6 +49,7 @@ class NtireDataset(data.Dataset):
     def __init__(self, opt):
         super(NtireDataset, self).__init__()
         self.opt = opt
+        self.max_size = 1024 * 1024
         self.haze_image_path = [os.path.join(opt['haze_path'], x) for x in
                                 natsort.natsorted(os.listdir(opt['haze_path']))]
         self.clear_image_path = [os.path.join(opt['clear_path'], x) for x in
@@ -58,8 +58,8 @@ class NtireDataset(data.Dataset):
     def __getitem__(self, index):
         haze = Image.open(self.haze_image_path[index]).convert("RGB")
         clear = Image.open(self.clear_image_path[index]).convert("RGB")
+
         transform = torchvision.transforms.Compose([
-            Resize((self.opt['size'], self.opt['size'])),
             ToTensor()
         ])
         return {
