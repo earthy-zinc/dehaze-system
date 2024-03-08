@@ -1,24 +1,28 @@
 import sys
 import torch
 from torch import nn
-
 sys.path.append("/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP")
 sys.path.append("/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP")
 from torchsummary import summary
-from basicsr.archs.module.rcan import RCAN
-from basicsr.archs.module import RSTB
-from basicsr.archs.module.dinats import DiNAT_s, BasicLayer, DiNAT, DiNAT_e
-from basicsr.archs.module.nat_ir import NAT
+# from basicsr.archs.module.rcan import RCAN
+from basicsr.archs.module.dinats import PyramidDiNAT
+from basicsr.archs.ridcp.encoder import SwinLayers
+from basicsr.archs.module.nat_ir import CascadeNAT
 
-# nat_layers = NATLayers()
-# nat_layers = nat_layers.cuda()
-# random_data = torch.randn(1, 3, 256, 256).cuda()
-#
-# data = nat_layers(random_data)
-# print(data.shape)
+random_data = torch.randn(1, 256, 64, 64).cuda()
+nat = CascadeNAT(
+    depths=[3, 4, 18, 5],
+    num_heads=[4, 8, 16, 32],
+    embed_dim=256,
+    mlp_ratio=2,
+    drop_path_rate=0.3,
+    layer_scale=1e-5,
+    kernel_size=7
+).cuda()
+# summary(nat, input_size=(256, 64, 64), batch_size=1, device="cuda")
+print(nat(random_data).shape)
 
-# nat = NAT(256, 2.0, [3, 4, 18, 5], [4, 8, 16, 32], 0.5)
-nat = DiNAT(
+dinat = PyramidDiNAT(
     depths=[2, 2, 18, 2],
     num_heads=[4, 8, 16, 32],
 
@@ -31,13 +35,12 @@ nat = DiNAT(
         [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2],
         [1, 1],
     ],
-)
+).cuda()
+# summary(dinat, input_size=(256, 64, 64), batch_size=1, device="cuda")
+print(dinat(random_data).shape)
+
+rstb = SwinLayers().cuda()
+# summary(rstb, input_size=(256, 64, 64), batch_size=1, device="cuda")
+print(rstb(random_data).shape)
 
 
-summary(nat, input_size=(3, 256, 256), batch_size=1, device="cpu")
-#
-#
-# random_data = torch.randn(1, 3, 256, 256)
-#
-# data = rcan(random_data)
-# print(data.shape)

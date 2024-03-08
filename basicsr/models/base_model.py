@@ -286,10 +286,10 @@ class BaseModel():
 
         logger = get_root_logger()
         if crt_net_keys != load_net_keys:
-            logger.warning('当前神经网络 相比 已加载的神经网络 多出的网络层:')
+            logger.warning('当前定义的神经网络 相比 已加载的神经网络 多出的网络层:')
             for v in sorted(list(crt_net_keys - load_net_keys)):
                 logger.warning(f'  {v}')
-            logger.warning('已加载的神经网络 相比 当前神经网络 多出的网络参数层:')
+            logger.warning('已加载的神经网络 相比 当前定义的神经网络 多出的网络参数层:')
             for v in sorted(list(load_net_keys - crt_net_keys)):
                 logger.warning(f'  {v}')
 
@@ -328,6 +328,37 @@ class BaseModel():
                 load_net[k[7:]] = v
                 load_net.pop(k)
         self._print_different_keys_loading(net, load_net, strict)
+        net.load_state_dict(load_net, strict=strict)
+
+    def load_network_use_prefix(self, net, load_path, prefix='feature_extract.', strict=True, param_key='params'):
+        """Load network.
+
+        Args:
+            prefix(str) : 将加载的神经网络参数层名称添加一个前缀
+            load_path (str): The path of networks to be loaded.
+            net (nn.Module): Network.
+            strict (bool): Whether strictly loaded.
+            param_key (str): The parameter key of loaded network. If set to
+                None, use the root 'path'.
+                Default: 'params'.
+        """
+        logger = get_root_logger()
+        net = self.get_bare_model(net)
+        load_net = torch.load(load_path, map_location=lambda storage, loc: storage)
+        if param_key is not None:
+            if param_key not in load_net and 'params' in load_net:
+                param_key = 'params'
+                logger.info('加载中: params_ema（指数滑动平均）不存在，将使用 params')
+            load_net = load_net[param_key]
+        # 使用字典推导式为每个键添加前缀
+        load_net = {prefix + key: value for key, value in load_net.items()}
+        logger.info(f'从 {load_path} 加载模型 {net.__class__.__name__} 网络参数层为: [{param_key}].')
+        # remove unnecessary 'module.'
+        for k, v in deepcopy(load_net).items():
+            if k.startswith('module.'):
+                load_net[k[7:]] = v
+                load_net.pop(k)
+        # self._print_different_keys_loading(net, load_net, strict)
         net.load_state_dict(load_net, strict=strict)
 
     @master_only
