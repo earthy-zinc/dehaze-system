@@ -5,9 +5,11 @@ from torch import nn
 import torch.nn.functional as F
 
 from .module.attention import Enhancer
+from .module.dinats import PyramidDiNAT
+from .module.nat_ir import CascadeNAT
 from .ridcp.codebook import VectorQuantizer
 from .ridcp.decoder import MultiScaleDecoder, DecoderBlock, RIDCPDecoder
-from .ridcp.encoder import MultiScaleEncoder, VQEncoder, SwinLayers
+from .ridcp.encoder import MultiScaleEncoder, VQEncoder, SwinLayers, NATLayers
 from .module import CombineQuantBlock
 from .module import VGGFeatureExtractor
 from ..utils.registry import ARCH_REGISTRY
@@ -31,7 +33,35 @@ class RIDCPNew(nn.Module):
                  use_weight=False,
                  use_warp=True,
                  weight_alpha=1.0,
+                 additional_encoder="NAT",
+                 additional_enhancer=True,
                  **ignore_kwargs):
+        """
+
+        Args:
+            in_channel:
+            codebook_scale:
+            codebook_emb_num:
+            codebook_emb_dim:
+            gt_resolution:
+            LQ_stage:
+            norm_type:
+            act_type:
+            use_quantize:
+            use_residual:
+            only_residual:
+            use_weight: True
+            use_warp:
+            weight_alpha: -21.25
+            additional_encoder:
+                DiNAT 使用金字塔型的邻域注意力特征提取器
+                NAT 使用级联型的邻域注意力特征提取器
+                RSTB 使用Swin Transformer的特征提取器RSTB
+                Many_NATs 使用多个级联型的邻域注意力特征提取器
+                其他 不使用额外的特征提取器
+            additional_enhancer: 是否启用额外的增强模块
+            **ignore_kwargs:
+        """
         super().__init__()
 
         self.codebook_scale = codebook_scale
@@ -45,6 +75,8 @@ class RIDCPNew(nn.Module):
         self.use_weight = use_weight
         self.use_warp = use_warp
         self.weight_alpha = weight_alpha
+        self.additional_encoder = additional_encoder
+        self.additional_enhancer = additional_enhancer
 
         channel_query_dict = {
             8: 256,
@@ -66,13 +98,45 @@ class RIDCPNew(nn.Module):
             norm_type, act_type
         )
         if self.LQ_stage and self.use_residual:
-            self.ridcp_encoder = SwinLayers()
+            if additional_encoder == "DiNAT":
+                self.ridcp_encoder = PyramidDiNAT(
+                    depths=[2, 2, 18, 2],
+                    num_heads=[4, 8, 16, 32],
+                    embed_dim=[256, 256, 256, 512],
+                    mlp_ratio=4,
+                    drop_path_rate=0.5,
+                    kernel_size=7,
+                    dilations=[
+                        [1, 8],
+                        [1, 4],
+                        [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2],
+                        [1, 1],
+                    ],
+                )
+            elif additional_encoder == "NAT":
+                self.ridcp_encoder = CascadeNAT(
+                    depths=[3, 4, 18, 5],
+                    num_heads=[4, 8, 16, 32],
+                    embed_dim=256,
+                    mlp_ratio=2,
+                    drop_path_rate=0.3,
+                    layer_scale=1e-5,
+                    kernel_size=7
+                )
+            elif additional_encoder == "RSTB":
+                self.ridcp_encoder = SwinLayers()
+            elif additional_encoder == "Many_NATs":
+                self.ridcp_encoder = NATLayers()
+            else:
+                self.ridcp_encoder = None
             self.ridcp_decoder = RIDCPDecoder(
                 in_channel,
                 self.max_depth,
                 self.gt_res,
                 channel_query_dict,
-                norm_type, act_type, only_residual, use_warp=self.use_warp
+                norm_type, act_type,
+                only_residual, use_warp=self.use_warp,
+                additional_enhancer=additional_enhancer,
             )
 
         # build decoder
@@ -84,8 +148,11 @@ class RIDCPNew(nn.Module):
             self.vq_decoder_group.append(DecoderBlock(in_ch, out_ch, norm_type, act_type))
 
         self.out_conv = nn.Conv2d(out_ch, 3, 3, 1, 1)
-        self.enhancer = Enhancer(3, 3)
-        self.residual_conv = nn.Conv2d(out_ch, 3, 3, 1, 1)
+        if additional_enhancer:
+            self.enhancer = Enhancer(3, 3)
+
+        if self.LQ_stage:
+            self.residual_conv = nn.Conv2d(out_ch, 3, 3, 1, 1)
 
         # build vector quantizers
         self.quantizer = VectorQuantizer(
@@ -104,11 +171,18 @@ class RIDCPNew(nn.Module):
 
     def encode_and_decode(self, inputs, gt_indices=None):
         enc_feats = self.vq_encoder(inputs)
-        if self.LQ_stage:
+        # 经过 vq_encoder 处理后的 enc_feats.shape [batch_size, 256, 64, 64]
+        if self.LQ_stage and self.additional_encoder is not None:
             enc_feats = self.ridcp_encoder(enc_feats)
-
+            # 经过 ridcp_encoder 处理后的 enc_feats.shape [batch_size, 256, 64, 64]
         feat_to_quant = self.before_quant(enc_feats)
-        z_quant, codebook_loss, indices = self.quantizer(feat_to_quant, gt_indices)
+        # feat_to_quant.shape [batch_size, 512, 64, 64]
+        print(feat_to_quant.shape)
+        # 消融实验5、去除码本和码本匹配操作
+        if self.use_quantize:
+            z_quant, codebook_loss, indices = self.quantizer(feat_to_quant, gt_indices)
+        else:
+            z_quant = feat_to_quant
         after_quant_feat = self.after_quant(z_quant)
 
         # vq-gan解码后的输出集合，总共输出了两次，第一次是经过离散化的并解码一次的，第二次是解码两次的
@@ -119,6 +193,7 @@ class RIDCPNew(nn.Module):
             code_decoder_output.append(x)
 
         if self.LQ_stage and self.use_residual:
+            # 消融实验5、去除码本和码本匹配操作
             if self.only_residual:
                 residual_feature = self.ridcp_decoder(enc_feats, code_decoder_output)
             else:
@@ -128,8 +203,9 @@ class RIDCPNew(nn.Module):
             out_img_residual = None
 
         out_img = self.out_conv(x)
-        # TODO 不知道有没有用
-        out_img = self.enhancer(out_img)
+        # 消融实验4、删除多余的增强模块
+        if self.additional_enhancer:
+            out_img = self.enhancer(out_img)
         # out_img 图像生成的重建输出
         # out_img_residual 图像去雾的结果输出
         return out_img, out_img_residual, codebook_loss, feat_to_quant, z_quant, indices

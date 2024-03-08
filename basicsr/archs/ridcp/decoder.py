@@ -97,7 +97,8 @@ class RIDCPDecoder(nn.Module):
                  norm_type='gn',
                  act_type='leakyrelu',
                  only_residual=False,
-                 use_warp=True
+                 use_warp=True,
+                 additional_enhancer=True,
                  ):
         super().__init__()
         self.only_residual = only_residual
@@ -107,16 +108,27 @@ class RIDCPDecoder(nn.Module):
         res = input_res // (2 ** max_depth)
         for i in range(max_depth):
             in_channel, out_channel = channel_query_dict[res], channel_query_dict[res * 2]
-            self.upsampler.append(
-                nn.Sequential(
-                    nn.Upsample(scale_factor=2),
-                    nn.Conv2d(in_channel, out_channel, 3, stride=1, padding=1),
-                    ResBlock(out_channel, out_channel, norm_type, act_type),
-                    ResBlock(out_channel, out_channel, norm_type, act_type),
-                    # 不知道有没有用
-                    DehazeBlock(nn.Conv2d, out_channel, kernel_size=1),
+            # 消融实验4、删除多余的增强模块
+            if additional_enhancer:
+                self.upsampler.append(
+                    nn.Sequential(
+                        nn.Upsample(scale_factor=2),
+                        nn.Conv2d(in_channel, out_channel, 3, stride=1, padding=1),
+                        ResBlock(out_channel, out_channel, norm_type, act_type),
+                        ResBlock(out_channel, out_channel, norm_type, act_type),
+                        # 不知道有没有用
+                        DehazeBlock(nn.Conv2d, out_channel, kernel_size=1),
+                    )
                 )
-            )
+            else:
+                self.upsampler.append(
+                    nn.Sequential(
+                        nn.Upsample(scale_factor=2),
+                        nn.Conv2d(in_channel, out_channel, 3, stride=1, padding=1),
+                        ResBlock(out_channel, out_channel, norm_type, act_type),
+                        ResBlock(out_channel, out_channel, norm_type, act_type),
+                    )
+                )
             self.warp.append(WarpBlock(out_channel))
             res = res * 2
 

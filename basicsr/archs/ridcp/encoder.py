@@ -3,8 +3,8 @@ from torch import nn
 
 from basicsr.archs.module import RSTB
 from basicsr.archs.module import ResBlock
-from basicsr.archs.module.dinats import DiNAT_s, DiNAT
-from basicsr.archs.module.nat_ir import NAT
+from basicsr.archs.module.dinats import PyramidDiNAT
+from basicsr.archs.module.nat_ir import CascadeNAT
 
 
 class SwinLayers(nn.Module):
@@ -25,6 +25,28 @@ class SwinLayers(nn.Module):
         for m in self.swin_blks:
             x = m(x, (h, w))
         x = x.transpose(1, 2).reshape(b, c, h, w)
+        return x
+
+class NATLayers(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.nat_blks = nn.ModuleList()
+        for i in range(4):
+            self.nat_blks.append(
+                CascadeNAT(
+                    depths=[3, 4, 18, 5],
+                    num_heads=[4, 8, 16, 32],
+                    embed_dim=256,
+                    mlp_ratio=2,
+                    drop_path_rate=0.3,
+                    layer_scale=1e-5,
+                    kernel_size=7
+                )
+            )
+
+    def forward(self, x):
+        for m in self.nat_blks:
+            x = m(x)
         return x
 
 
@@ -58,7 +80,7 @@ class MultiScaleEncoder(nn.Module):
 
         if LQ_stage:
             if additional_encoder == "DiNAT":
-                self.blocks.append(DiNAT(
+                self.blocks.append(PyramidDiNAT(
                     depths=[2, 2, 18, 2],
                     num_heads=[4, 8, 16, 32],
                     embed_dim=[256, 256, 256, 512],
@@ -73,7 +95,7 @@ class MultiScaleEncoder(nn.Module):
                     ],
                 ))
             elif additional_encoder == "NAT":
-                self.blocks.append(NAT(
+                self.blocks.append(CascadeNAT(
                     depths=[3, 4, 18, 5],
                     num_heads=[4, 8, 16, 32],
                     embed_dim=256,
@@ -84,6 +106,8 @@ class MultiScaleEncoder(nn.Module):
                 ))
             elif additional_encoder == "RSTB":
                 self.blocks.append(SwinLayers(**swin_opts))
+            elif additional_encoder == "many_nats":
+                self.blocks.append(NATLayers())
             else:
                 pass
 

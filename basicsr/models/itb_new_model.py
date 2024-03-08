@@ -21,7 +21,7 @@ from ..utils.static_util import convert_size
 import torch.nn.functional as F
 
 @MODEL_REGISTRY.register()
-class ITBModel(BaseModel):
+class ITBNewModel(BaseModel):
     def __init__(self, opt):
         super().__init__(opt)
         logger = get_root_logger()
@@ -34,13 +34,14 @@ class ITBModel(BaseModel):
         logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
                     .format(convert_size(net_g_flops), convert_size(net_g_params)))
 
-    # load pre-trained HQ ckpt, frozen decoder and codebook
+        # load pre-trained HQ ckpt, frozen decoder and codebook
         self.LQ_stage = self.opt['network_g']["opt"].get('LQ_stage', False)
         if self.LQ_stage:
             load_path = self.opt['path'].get('pretrain_network_hq', None)
             assert load_path is not None, 'Need to specify hq prior model path in LQ stage'
 
-            hq_opt = self.opt['network_hq']
+            hq_opt = self.opt['hq_options']
+            hq_opt["additional_encoder"] = None
             self.net_hq = build_network(hq_opt)
             self.net_hq = self.model_to_device(self.net_hq)
 
@@ -56,8 +57,9 @@ class ITBModel(BaseModel):
             self.load_network(self.net_hq, load_path, self.opt['path']['strict_load'])
 
             logger.info("加载本次去雾模型")
-            load_init_net_g_path = self.opt['path'].get('pretrain_network_init_g', None)
-            self.load_network(self.net_g, load_init_net_g_path, False)
+            # load_init_net_g_path = self.opt['path'].get('pretrain_network_init_g', None)
+            # TODO 不采用其原本的load_network，而是自己写一个加上前缀 feature_extract.
+            self.load_network_use_prefix(self.net_g,  load_path, 'feature_extract.', False)
             frozen_module_keywords = self.opt['network_g'].get('frozen_module_keywords', None)
             if frozen_module_keywords is not None:
                 for name, module in self.net_g.named_modules():

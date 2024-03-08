@@ -1,5 +1,5 @@
 # general settings
-name: itb_o_haze_many_nats
+name: itb_NH_haze_rstb
 model_type: ITBModel
 scale: &upscale 1
 num_gpu: 1 # set num_gpu: 0 for cpu mode
@@ -9,10 +9,10 @@ manual_seed: 0
 # dataset and data loader settings
 datasets:
   train:
-    name: O-HAZE-train
+    name: NH-HAZE-train
     type: NtireH5Dataset
     mode: train
-    data_path: /mnt/e/DeepLearningCopies/2023/RIDCP/datasets/O-HAZE.h5
+    data_path: datasets/NH-HAZE-21.h5
     shuffle: true
 
     # data loader
@@ -25,10 +25,10 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: O-HAZE-val
+    name: NH-HAZE-val
     type: NtireH5Dataset
     mode: train
-    data_path: /mnt/e/DeepLearningCopies/2023/RIDCP/datasets/O-HAZE-test.h5
+    data_path: datasets/NH-HAZE-21-test.h5
     shuffle: true
 
 # network structures
@@ -53,7 +53,7 @@ network_g:
     LQ_stage: true
     use_weight: false
     weight_alpha: -1.0
-    additional_encoder: "many_nats"
+    additional_encoder: "RSTB"
   frozen_module_keywords: ['quantizer', 'decoder_group', 'after_quant', 'out_conv']
 
 network_d:
@@ -62,9 +62,9 @@ network_d:
 
 # path
 path:
-  pretrain_network_init_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/ITB_init_weight.pth
-  pretrain_network_hq: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_HQPs_renamed.pth
-  pretrain_network_g: /mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/pretrained_ITB_renamed.pth
+  pretrain_network_init_g:
+  pretrain_network_hq:
+  pretrain_network_g:
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
@@ -115,12 +115,12 @@ train:
     loss_weight: 0.1
 
 
-  net_d_iters: !!float 2500
+  net_d_iters: !!float 2000
   net_d_init_iters: !!float 0
 
 # validation settings·
 val:
-  val_freq: !!float 2500
+  val_freq: !!float 2000
   save_img: true
 
   key_metric: psnr
