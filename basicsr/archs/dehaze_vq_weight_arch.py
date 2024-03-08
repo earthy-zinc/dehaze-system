@@ -29,8 +29,8 @@ class DCNv2Pack(ModulatedDeformConvPack):
 
         offset_absmean = torch.mean(torch.abs(offset))
         if offset_absmean > 50:
-            logger = get_root_logger()
-            logger.warning(f'Offset abs mean is {offset_absmean}, larger than 50.')
+            # logger = get_root_logger()
+            print(f'Offset abs mean is {offset_absmean}, larger than 50.')
 
         return modulated_deform_conv(x, offset, mask, self.weight, self.bias, self.stride, self.padding,
                                      self.dilation, self.groups, self.deformable_groups)
@@ -44,6 +44,7 @@ class VectorQuantizer(nn.Module):
     - n_e : number of embeddings
     - e_dim : dimension of embedding
     - beta : commitment cost used in loss term, beta * ||z_e(x)-sg[e]||^2
+    /mnt/e/DeepLearningCopies/2023/RIDCP/
     _____________________________________________
     """
 

@@ -1,3 +1,4 @@
+from basicsr.archs.dehaze_vq_weight_arch import VQWeightDehazeNet
 from basicsr.archs.itb_arch import FusionRefine
 import torch
 import os
@@ -13,10 +14,10 @@ import math
 # 指定模型运算设备
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # 指定预训练模型存放位置
-pretrained_net_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/ITB-Train-Best/NH-HAZE-23-2169-06996.pth"
+pretrained_net_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/ridcp_o_haze.pth"
 # 指定待评估图片路径
-haze_img_path = "/mnt/d/DeepLearning/dataset/NH-HAZE-2023/hazy"
-clean_img_path = "/mnt/d/DeepLearning/dataset/NH-HAZE-2023/clean"
+haze_img_path = "/mnt/d/DeepLearning/dataset/test/hazy"
+clean_img_path = "/mnt/d/DeepLearning/dataset/test/clean"
 # 指定输出图像保存路径
 output_img_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/ohaze_results/NH-HAZE-23"
 compare_img_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/ohaze_results/NH-HAZE-23/compare_results"
@@ -25,12 +26,14 @@ compare_img_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/ohaze_results/NH-HAZE-2
 max_size = 1024 * 1024
 
 # 构建模型，加载预训练权重
-opt = {
-    "LQ_stage": True,
-    "use_weight": True,
-    "weight_alpha": -21.25
-}
-sr_model = FusionRefine(opt=opt).to(device)
+# opt = {
+#     "LQ_stage": True,
+#     "use_weight": True,
+#     "weight_alpha": -21.25,
+#     "additional_encoder": "DiNAT"
+# }
+# sr_model = FusionRefine(opt=opt).to(device)
+sr_model = VQWeightDehazeNet(LQ_stage=True, use_weight=True, weight_alpha=-21.25, codebook_params=[[64, 1024, 512]]).to(device)
 sr_model.load_state_dict(torch.load(pretrained_net_path)['params'], strict=False)
 sr_model.eval()
 

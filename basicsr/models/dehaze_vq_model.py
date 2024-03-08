@@ -226,7 +226,7 @@ class VQDehazeModel(BaseModel):
         lq_input = self.lq
         _, _, h, w = lq_input.shape
         if h*w < min_size:
-            self.output = net_g.test(lq_input)
+            self.output, _ = net_g.test(lq_input)
         else:
             self.output = net_g.test_tile(lq_input)
         self.net_g.train()
