@@ -27,11 +27,41 @@
           </excludedPaths>
         </serverdata>
       </paths>
+      <paths name="root@dsw-1a594742a2e4f0a3:22 agent">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/mnt/workspace/ridcp" local="$PROJECT_DIR$" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
+            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
+            <excludedPath local="true" path="$PROJECT_DIR$/pretrained_models" />
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/datasets" />
+            <excludedPath local="true" path="$PROJECT_DIR$/examples" />
+            <excludedPath local="true" path="$PROJECT_DIR$/figs" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ohaze_results" />
+            <excludedPath local="true" path="$PROJECT_DIR$/results" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
       <paths name="zhou@10.242.187.86:22 password">
         <serverdata>
           <mappings>
             <mapping deploy="/home/zhou/wpx/RIDCP" local="$PROJECT_DIR$" />
           </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
+            <excludedPath local="true" path="$PROJECT_DIR$/datasets" />
+            <excludedPath local="true" path="$PROJECT_DIR$/examples" />
+            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
+            <excludedPath local="true" path="$PROJECT_DIR$/figs" />
+            <excludedPath local="true" path="$PROJECT_DIR$/ohaze_results" />
+            <excludedPath local="true" path="$PROJECT_DIR$/results" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

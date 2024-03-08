@@ -193,108 +193,10 @@ class PatchEmbed(nn.Module):
             x = pad(x, (0, self.patch_size[1] - W % self.patch_size[1]))
         if H % self.patch_size[0] != 0:
             x = pad(x, (0, 0, 0, self.patch_size[0] - H % self.patch_size[0]))
-
         x = self.proj(x)
         x = x.permute(0, 2, 3, 1)
         if self.norm is not None:
             x = self.norm(x)
-        return x
-
-
-class DiNAT_s(nn.Module):
-    def __init__(
-            self,
-            patch_size=4,
-            in_chans=3,
-            num_classes=1000,
-            embed_dim=96,
-            depths=[2, 2, 6, 2],
-            num_heads=[3, 6, 12, 24],
-            kernel_size=7,
-            dilations=None,
-            mlp_ratio=4.0,
-            qkv_bias=True,
-            qk_scale=None,
-            drop_rate=0.0,
-            attn_drop_rate=0.0,
-            drop_path_rate=0.2,
-            norm_layer=nn.LayerNorm,
-            patch_norm=True,
-            **kwargs
-    ):
-        super().__init__()
-
-        self.num_classes = num_classes
-        self.num_layers = len(depths)
-        self.embed_dim = embed_dim
-        self.patch_norm = patch_norm
-        self.num_features = int(embed_dim)
-        self.mlp_ratio = mlp_ratio
-
-        # split image into non-overlapping patches
-        self.patch_embed = PatchEmbed(
-            patch_size=patch_size,
-            in_chans=in_chans,
-            embed_dim=embed_dim,
-            norm_layer=norm_layer if self.patch_norm else None,
-        )
-
-        self.pos_drop = nn.Dropout(p=drop_rate)
-
-        # stochastic depth
-        dpr = [
-            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
-        ]  # stochastic depth decay rule
-
-        # build layers
-        self.layers = nn.ModuleList()
-        for i_layer in range(self.num_layers):
-            layer = BasicLayer(
-                dim=int(embed_dim),
-                depth=depths[i_layer],
-                num_heads=num_heads[i_layer],
-                kernel_size=kernel_size,
-                dilations=None if dilations is None else dilations[i_layer],
-                mlp_ratio=self.mlp_ratio,
-                qkv_bias=qkv_bias,
-                qk_scale=qk_scale,
-                drop=drop_rate,
-                attn_drop=attn_drop_rate,
-                drop_path=dpr[sum(depths[:i_layer]): sum(depths[: i_layer + 1])],
-                norm_layer=norm_layer,
-                downsample=None,
-            )
-            self.layers.append(layer)
-
-        self.norm = norm_layer(self.num_features)
-        self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=0.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-
-    @torch.jit.ignore
-    def no_weight_decay_keywords(self):
-        return {"rpb"}
-
-    def forward_features(self, x):
-        x = self.patch_embed(x)
-        x = self.pos_drop(x)
-
-        for layer in self.layers:
-            x = layer(x)
-
-        x = self.norm(x)
-        return x
-
-    def forward(self, x):
-        x = self.forward_features(x)
         return x
 
 
@@ -313,7 +215,7 @@ class BasicConv2d(nn.Module):
         return x
 
 
-class DiNAT(nn.Module):
+class PyramidDiNAT(nn.Module):
     def __init__(
             self,
             patch_size=4,
@@ -341,12 +243,12 @@ class DiNAT(nn.Module):
         self.mlp_ratio = mlp_ratio
 
         # split image into non-overlapping patches
-        self.patch_embed = PatchEmbed(
-            patch_size=patch_size,
-            in_chans=in_chans,
-            embed_dim=embed_dim[0],
-            norm_layer=norm_layer if self.patch_norm else None,
-        )
+        # self.patch_embed = PatchEmbed(
+        #     patch_size=patch_size,
+        #     in_chans=in_chans,
+        #     embed_dim=embed_dim[0],
+        #     norm_layer=norm_layer if self.patch_norm else None,
+        # )
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
@@ -401,7 +303,8 @@ class DiNAT(nn.Module):
         return {"rpb"}
 
     def forward_features(self, x):
-        x = self.patch_embed(x)
+        # x = self.patch_embed(x)
+        x = x.permute(0, 2, 3, 1)
         x = self.pos_drop(x)
 
         x = self.layers[0](x)
@@ -425,11 +328,11 @@ class DiNAT(nn.Module):
         x_4 = self.conv_1024_256(self.upsample_4(x_4))
         x = torch.cat([x, x_2, x_3, x_4], 1)
         x = self.conv_1024_256(x)
-        x = x.permute(0, 2, 3, 1)
-
-        x = self.norm(x)
         return x
 
     def forward(self, x):
         x = self.forward_features(x)
         return x
+
+class CascadeDiNAT(nn.Module):
+    pass

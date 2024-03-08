@@ -205,7 +205,7 @@ class NATBlock(nn.Module):
         return x
 
 
-class NAT(nn.Module):
+class CascadeNAT(nn.Module):
     def __init__(
             self,
             embed_dim,
@@ -233,9 +233,9 @@ class NAT(nn.Module):
         self.num_features = [int(embed_dim) for i in range(self.num_levels)]
         self.mlp_ratio = mlp_ratio
 
-        self.patch_embed = ConvTokenizer(
-            in_chans=in_chans, embed_dim=embed_dim, norm_layer=norm_layer
-        )
+        # self.patch_embed = ConvTokenizer(
+        #     in_chans=in_chans, embed_dim=embed_dim, norm_layer=norm_layer
+        # )
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
@@ -285,7 +285,7 @@ class NAT(nn.Module):
                     param.requires_grad = False
 
     def train(self, mode=True):
-        super(NAT, self).train(mode)
+        super(CascadeNAT, self).train(mode)
         self._freeze_stages()
 
     def forward_embeddings(self, x):
@@ -295,10 +295,117 @@ class NAT(nn.Module):
     def forward_tokens(self, x):
         for idx, level in enumerate(self.levels):
             x = level(x)
-            # TODO
             norm_layer = getattr(self, f"norm{idx}")
             x = norm_layer(x)
         return x
+
+    def forward(self, x):
+        # x = self.forward_embeddings(x)
+        x = x.permute(0, 2, 3, 1)
+        self.forward_tokens(x)
+        return x.permute(0, 3, 1, 2)
+
+    def forward_features(self, x):
+        x = self.forward_embeddings(x)
+        return self.forward_tokens(x)
+
+
+class PyramidNAT(nn.Module):
+    def __init__(
+            self,
+            embed_dim,
+            mlp_ratio,
+            depths,
+            num_heads,
+            drop_path_rate=0.2,
+            in_chans=3,
+            kernel_size=7,
+            dilations=None,
+            out_indices=(0, 1, 2, 3),
+            qkv_bias=True,
+            qk_scale=None,
+            drop_rate=0.0,
+            attn_drop_rate=0.0,
+            norm_layer=nn.LayerNorm,
+            frozen_stages=-1,
+            pretrained=None,
+            layer_scale=None,
+            **kwargs,
+    ):
+        super().__init__()
+        self.num_levels = len(depths)
+        self.embed_dim = embed_dim
+        self.num_features = [int(embed_dim * 2**i) for i in range(self.num_levels)]
+        self.mlp_ratio = mlp_ratio
+
+        self.patch_embed = ConvTokenizer(
+            in_chans=in_chans, embed_dim=embed_dim, norm_layer=norm_layer
+        )
+
+        self.pos_drop = nn.Dropout(p=drop_rate)
+
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))]
+        self.levels = nn.ModuleList()
+        for i in range(self.num_levels):
+            level = NATBlock(
+                dim=int(embed_dim * 2**i),
+                depth=depths[i],
+                num_heads=num_heads[i],
+                kernel_size=kernel_size,
+                dilations=None if dilations is None else dilations[i],
+                mlp_ratio=self.mlp_ratio,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                drop=drop_rate,
+                attn_drop=attn_drop_rate,
+                drop_path=dpr[sum(depths[:i]) : sum(depths[: i + 1])],
+                norm_layer=norm_layer,
+                downsample=(i < self.num_levels - 1),
+                layer_scale=layer_scale,
+            )
+            self.levels.append(level)
+
+        # add a norm layer for each output
+        self.out_indices = out_indices
+        for i_layer in self.out_indices:
+            layer = norm_layer(self.num_features[i_layer])
+            layer_name = f"norm{i_layer}"
+            self.add_module(layer_name, layer)
+
+        self.frozen_stages = frozen_stages
+        if pretrained is not None:
+            self.init_weights(pretrained)
+
+    def _freeze_stages(self):
+        if self.frozen_stages >= 0:
+            self.patch_embed.eval()
+            for param in self.patch_embed.parameters():
+                param.requires_grad = False
+
+        if self.frozen_stages >= 2:
+            for i in range(0, self.frozen_stages - 1):
+                m = self.network[i]
+                m.eval()
+                for param in m.parameters():
+                    param.requires_grad = False
+
+    def train(self, mode=True):
+        super().train(mode)
+        self._freeze_stages()
+
+    def forward_embeddings(self, x):
+        x = self.patch_embed(x)
+        return x
+
+    def forward_tokens(self, x):
+        outs = []
+        for idx, level in enumerate(self.levels):
+            x, xo = level(x)
+            if idx in self.out_indices:
+                norm_layer = getattr(self, f"norm{idx}")
+                x_out = norm_layer(xo)
+                outs.append(x_out.permute(0, 3, 1, 2).contiguous())
+        return outs
 
     def forward(self, x):
         x = self.forward_embeddings(x)
