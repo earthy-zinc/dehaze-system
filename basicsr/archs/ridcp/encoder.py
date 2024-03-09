@@ -3,7 +3,7 @@ from torch import nn
 
 from basicsr.archs.module import RSTB
 from basicsr.archs.module import ResBlock
-from basicsr.archs.module.dinats import PyramidDiNAT
+from basicsr.archs.module.dinats import PyramidDiNAT_s
 from basicsr.archs.module.nat_ir import CascadeNAT
 
 
@@ -80,7 +80,7 @@ class MultiScaleEncoder(nn.Module):
 
         if LQ_stage:
             if additional_encoder == "DiNAT":
-                self.blocks.append(PyramidDiNAT(
+                self.blocks.append(PyramidDiNAT_s(
                     depths=[2, 2, 18, 2],
                     num_heads=[4, 8, 16, 32],
                     embed_dim=[256, 256, 256, 512],

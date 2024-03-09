@@ -215,12 +215,11 @@ class BasicConv2d(nn.Module):
         return x
 
 
-class PyramidDiNAT(nn.Module):
+class PyramidDiNAT_s(nn.Module):
     def __init__(
             self,
-            patch_size=4,
-            in_chans=3,
             embed_dim=[256, 256, 256, 512],
+            output_dim=[256, 256, 512, 1024],
             depths=[2, 2, 18, 2],
             num_heads=[4, 8, 16, 32],
             kernel_size=7,
@@ -233,13 +232,17 @@ class PyramidDiNAT(nn.Module):
             drop_path_rate=0.5,
             norm_layer=nn.LayerNorm,
             patch_norm=True,
-            **kwargs
+            out_indices=(0, 1, 2, 3),
+            frozen_stages=-1,
     ):
         super().__init__()
-
         self.num_layers = len(depths)
+        self.embed_dim = embed_dim
         self.patch_norm = patch_norm
-        self.num_features = embed_dim[0]
+        self.out_indices = out_indices
+        self.frozen_stages = frozen_stages
+
+        self.num_features = [output_dim[i] for i in range(self.num_layers)]
         self.mlp_ratio = mlp_ratio
 
         # split image into non-overlapping patches
@@ -277,62 +280,163 @@ class PyramidDiNAT(nn.Module):
             )
             self.layers.append(layer)
 
-        self.norm = norm_layer(self.num_features)
-        self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.apply(self._init_weights)
+        # add a norm layer for each output
+        for i_layer in out_indices:
+            layer = norm_layer(self.num_features[i_layer])
+            layer_name = f"norm{i_layer}"
+            self.add_module(layer_name, layer)
 
-        self.conv_256 = BasicConv2d(256, 256, 1)
+        self._freeze_stages()
+
         self.conv_512_256 = BasicConv2d(512, 256, 1)
         self.conv_1024_512 = BasicConv2d(1024, 512, 1)
         self.conv_1024_256 = BasicConv2d(1024, 256, 1, stride=1, padding=0, dilation=1)
         self.norm_256 = norm_layer([256, 64, 64])
-        self.upsample_2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-        self.upsample_4 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
+        self.upsample2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.upsample4 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
 
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=0.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
+    def _freeze_stages(self):
+        if self.frozen_stages >= 0:
+            self.patch_embed.eval()
+            for param in self.patch_embed.parameters():
+                param.requires_grad = False
 
-    @torch.jit.ignore
-    def no_weight_decay_keywords(self):
-        return {"rpb"}
+        if self.frozen_stages >= 1 and self.ape:
+            self.absolute_pos_embed.requires_grad = False
 
-    def forward_features(self, x):
+        if self.frozen_stages >= 2:
+            self.pos_drop.eval()
+            for i in range(0, self.frozen_stages - 1):
+                m = self.layers[i]
+                m.eval()
+                for param in m.parameters():
+                    param.requires_grad = False
+
+    def forward_tokens(self, x):
+        outs = []
+        for i in range(self.num_layers):
+            layer = self.layers[i]
+            x = layer(x)
+            if i in self.out_indices:
+                norm_layer = getattr(self, f"norm{i}")
+                x_out = norm_layer(x)
+                out = x_out.permute(0, 3, 1, 2).contiguous()
+                outs.append(out)
+        return outs
+
+    def forward(self, x):
+        """Forward function."""
+        # x = self.patch_embed(x)
+        x = x.permute(0, 2, 3, 1)
+        x = self.pos_drop(x)
+        outs = self.forward_tokens(x)
+        assert len(outs) == 4
+        x1, x2, x3, x4 = outs[0], outs[1], outs[2], outs[3]
+        # 从 16*16*1024 降低维度到 16*16*512
+        # 将第四层特征图上采样和第三层维度相加，32*32*512，再上采样到64*64*512，
+        # 再降低维度到64*64*256，并批归一化
+        x2 = self.norm_256(
+            self.conv_512_256(
+                self.upsample2(
+                    self.upsample2(self.conv_1024_512(x4)) + x3
+                )) + x2)
+        x3 = self.conv_512_256(self.upsample2(x3))
+        x4 = self.conv_1024_256(self.upsample4(x4))
+        x = torch.cat([x1, x2, x3, x4], 1)
+        x = self.conv_1024_256(x)
+        return x
+
+
+class CascadeDiNAT_s(nn.Module):
+    def __init__(
+            self,
+            embed_dim=96,
+            depths=[2, 2, 6, 2],
+            num_heads=[3, 6, 12, 24],
+            kernel_size=7,
+            dilations=None,
+            mlp_ratio=4.0,
+            qkv_bias=True,
+            qk_scale=None,
+            drop_rate=0.0,
+            attn_drop_rate=0.0,
+            drop_path_rate=0.2,
+            norm_layer=nn.LayerNorm,
+            patch_norm=True,
+            out_indices=(0, 1, 2, 3),
+            frozen_stages=-1,
+    ):
+        super().__init__()
+        self.num_layers = len(depths)
+        self.embed_dim = embed_dim
+        self.patch_norm = patch_norm
+        self.out_indices = out_indices
+        self.frozen_stages = frozen_stages
+
+        self.pos_drop = nn.Dropout(p=drop_rate)
+
+        # stochastic depth
+        dpr = [
+            x.item() for x in torch.linspace(0, drop_path_rate, sum(depths))
+        ]  # stochastic depth decay rule
+
+        # build layers
+        self.layers = nn.ModuleList()
+        for i_layer in range(self.num_layers):
+            layer = BasicLayer(
+                dim=int(embed_dim),
+                depth=depths[i_layer],
+                num_heads=num_heads[i_layer],
+                kernel_size=kernel_size,
+                dilations=None if dilations is None else dilations[i_layer],
+                mlp_ratio=mlp_ratio,
+                qkv_bias=qkv_bias,
+                qk_scale=qk_scale,
+                drop=drop_rate,
+                attn_drop=attn_drop_rate,
+                drop_path=dpr[sum(depths[:i_layer]) : sum(depths[: i_layer + 1])],
+                norm_layer=norm_layer,
+                downsample=None,
+            )
+            self.layers.append(layer)
+
+        num_features = [int(embed_dim) for _ in range(self.num_layers)]
+        self.num_features = num_features
+
+        # add a norm layer for each output
+        for i_layer in out_indices:
+            layer = norm_layer(num_features[i_layer])
+            layer_name = f"norm{i_layer}"
+            self.add_module(layer_name, layer)
+
+        self._freeze_stages()
+
+    def _freeze_stages(self):
+        if self.frozen_stages >= 0:
+            self.patch_embed.eval()
+            for param in self.patch_embed.parameters():
+                param.requires_grad = False
+
+        if self.frozen_stages >= 1 and self.ape:
+            self.absolute_pos_embed.requires_grad = False
+
+        if self.frozen_stages >= 2:
+            self.pos_drop.eval()
+            for i in range(0, self.frozen_stages - 1):
+                m = self.layers[i]
+                m.eval()
+                for param in m.parameters():
+                    param.requires_grad = False
+
+    def forward(self, x):
+        """Forward function."""
         # x = self.patch_embed(x)
         x = x.permute(0, 2, 3, 1)
         x = self.pos_drop(x)
 
-        x = self.layers[0](x)
-        x_2 = self.layers[1](x)
-        x_3 = self.layers[2](x_2)
-        x_4 = self.layers[3](x_3)
-
-        x = x.permute(0, 3, 1, 2)
-        x_2 = x_2.permute(0, 3, 1, 2)
-        x_3 = x_3.permute(0, 3, 1, 2)
-        x_4 = x_4.permute(0, 3, 1, 2)
-        # 从 16*16*1024 降低维度到 16*16*512
-        # 将第四层特征图上采样和第三层维度相加，32*32*512，再上采样到64*64*512，
-        # 再降低维度到64*64*256，并批归一化
-        x_2 = self.norm_256(
-            self.conv_512_256(
-                self.upsample_2(
-                    self.upsample_2(self.conv_1024_512(x_4)) + x_3
-                )) + x_2)
-        x_3 = self.conv_512_256(self.upsample_2(x_3))
-        x_4 = self.conv_1024_256(self.upsample_4(x_4))
-        x = torch.cat([x, x_2, x_3, x_4], 1)
-        x = self.conv_1024_256(x)
-        return x
-
-    def forward(self, x):
-        x = self.forward_features(x)
-        return x
-
-class CascadeDiNAT(nn.Module):
-    pass
+        for i in range(self.num_layers):
+            layer = self.layers[i]
+            x = layer(x)
+            norm_layer = getattr(self, f"norm{i}")
+            x = norm_layer(x)
+        return x.permute(0, 3, 1, 2).contiguous()
