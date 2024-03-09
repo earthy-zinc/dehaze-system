@@ -33,7 +33,7 @@ def build_dataset(dataset_opt):
     dataset_opt = deepcopy(dataset_opt)
     dataset = DATASET_REGISTRY.get(dataset_opt['type'])(dataset_opt)
     logger = get_root_logger()
-    logger.info(f'数据集 [{dataset.__class__.__name__}] - {dataset_opt["name"]} ' '已构建完成')
+    logger.debug(f'数据集 [{dataset.__class__.__name__}] - {dataset_opt["name"]} ' '已构建完成')
     return dataset
 
 
@@ -86,7 +86,7 @@ def build_dataloader(dataset, dataset_opt, num_gpu=1, dist=False, sampler=None, 
     if prefetch_mode == 'cpu':  # CPUPrefetcher
         num_prefetch_queue = dataset_opt.get('num_prefetch_queue', 1)
         logger = get_root_logger()
-        logger.info(f'使用 {prefetch_mode} 预获取数据加载器(prefetch dataloader): num_prefetch_queue = {num_prefetch_queue}')
+        logger.debug(f'使用 {prefetch_mode} 预获取数据加载器(prefetch dataloader): num_prefetch_queue = {num_prefetch_queue}')
         return PrefetchDataLoader(num_prefetch_queue=num_prefetch_queue, **dataloader_args)
     else:
         # prefetch_mode=None: Normal dataloader

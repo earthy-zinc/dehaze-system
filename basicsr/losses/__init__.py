@@ -22,5 +22,5 @@ def build_loss(opt):
     loss_type = opt.pop('type')
     loss = LOSS_REGISTRY.get(loss_type)(**opt)
     logger = get_root_logger()
-    logger.info(f'损失函数 [{loss.__class__.__name__}] 已被创建。')
+    logger.debug(f'损失函数 [{loss.__class__.__name__}] 已被创建。')
     return loss
