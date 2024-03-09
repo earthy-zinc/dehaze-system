@@ -26,7 +26,14 @@ datasets:
   val:
     name: DENSE-HAZE-val
     type: NtireH5Dataset
-    mode: train
+    mode: val
+    data_path: datasets/DENSE-HAZE-val.h5
+    shuffle: true
+
+  test:
+    name: DENSE-HAZE-test
+    type: NtireH5Dataset
+    mode: test
     data_path: datasets/DENSE-HAZE-test.h5
     shuffle: true
 

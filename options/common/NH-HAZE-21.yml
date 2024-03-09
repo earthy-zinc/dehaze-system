@@ -26,10 +26,16 @@ datasets:
   val:
     name: NH-HAZE-21-val
     type: NtireH5Dataset
-    mode: train
-    data_path: datasets/NH-HAZE-21-test.h5
+    mode: val
+    data_path: datasets/NH-HAZE-21-val.h5
     shuffle: true
 
+  test:
+    name: NH-HAZE-21-test
+    type: NtireH5Dataset
+    mode: test
+    data_path: datasets/NH-HAZE-21-test.h5
+    shuffle: true
 # network structures
 network_g:
   type: FusionRefine
