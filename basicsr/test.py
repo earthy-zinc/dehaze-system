@@ -48,7 +48,7 @@ def test_pipeline(root_path):
         test_net_g_opt['opt']["weight_alpha"] = -21.25
         test_net_g = build_network(test_net_g_opt)
         model.model_to_device(test_net_g)
-
+        # opt['name'] = ''
         latest_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_latest.pth')
         best_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_best_.pth')
         if osp.isfile(best_net_g_path):
