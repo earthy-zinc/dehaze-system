@@ -1,5 +1,5 @@
 # general settings
-name: NH-HAZE-21
+name: Ablation-NoRSTB-NH-HAZE-20
 model_type: ITBNewModel
 num_gpu: 1 # set num_gpu: 0 for cpu mode
 gpu_id: 0
@@ -8,10 +8,10 @@ manual_seed: 0
 # dataset and data loader settings
 datasets:
   train:
-    name: NH-HAZE-21-train
+    name: NH-HAZE-20-train
     type: NtireH5Dataset
     mode: train
-    data_path: datasets/NH-HAZE-21.h5
+    data_path: datasets/NH-HAZE-20.h5
     shuffle: true
 
     # data loader
@@ -24,10 +24,10 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: NH-HAZE-21-val
+    name: NH-HAZE-20-val
     type: NtireH5Dataset
     mode: train
-    data_path: datasets/NH-HAZE-21-test.h5
+    data_path: datasets/NH-HAZE-20-test.h5
     shuffle: true
 
 # network structures
@@ -36,6 +36,8 @@ network_g:
   opt:
     LQ_stage: true
     additional_encoder: PyramidDiNAT
+    additional_enhancer: false
+  one_branch: true
   frozen_module_keywords: ['quantizer', 'decoder_group', 'after_quant', 'out_conv']
 
 network_d:

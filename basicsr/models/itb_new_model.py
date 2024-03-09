@@ -29,7 +29,6 @@ class ITBNewModel(BaseModel):
         test_input = torch.randn(1, 3, 256, 256).to(self.device)
         self.net_g = build_network(opt['network_g'])
         self.net_g = self.model_to_device(self.net_g)
-
         net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
         logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
                     .format(convert_size(net_g_flops), convert_size(net_g_params)))
@@ -53,10 +52,10 @@ class ITBNewModel(BaseModel):
                 convert_size(net_g_params - net_hq_params)
             ))
 
-            logger.info("加载预训练的HQP模型")
+            logger.debug("加载预训练的HQP模型")
             self.load_network(self.net_hq, load_path, self.opt['path']['strict_load'])
 
-            logger.info("加载本次去雾模型")
+            logger.debug("加载本次去雾模型")
             # load_init_net_g_path = self.opt['path'].get('pretrain_network_init_g', None)
             # TODO 不采用其原本的load_network，而是自己写一个加上前缀 feature_extract.
             self.load_network_use_prefix(self.net_g,  load_path, 'feature_extract.', False)
@@ -142,7 +141,7 @@ class ITBNewModel(BaseModel):
             optim_params.append(v)
             if not v.requires_grad:
                 logger = get_root_logger()
-                logger.info(f'神经网络参数 {k} 将不会被优化器调整。')
+                logger.debug(f'神经网络参数 {k} 将不会被优化器调整。')
 
         # optimizer g
         optim_type = train_opt['optim_g'].pop('type')

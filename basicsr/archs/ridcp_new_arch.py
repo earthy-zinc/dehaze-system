@@ -5,8 +5,8 @@ from torch import nn
 import torch.nn.functional as F
 
 from .module.attention import Enhancer
-from .module.dinats import PyramidDiNAT
-from .module.nat_ir import CascadeNAT
+from .module.dinats import PyramidDiNAT_s, CascadeDiNAT_s
+from .module.nat_ir import CascadeNAT, PyramidNAT
 from .ridcp.codebook import VectorQuantizer
 from .ridcp.decoder import MultiScaleDecoder, DecoderBlock, RIDCPDecoder
 from .ridcp.encoder import MultiScaleEncoder, VQEncoder, SwinLayers, NATLayers
@@ -33,7 +33,7 @@ class RIDCPNew(nn.Module):
                  use_weight=False,
                  use_warp=True,
                  weight_alpha=1.0,
-                 additional_encoder="NAT",
+                 additional_encoder="RSTB",
                  additional_enhancer=True,
                  **ignore_kwargs):
         """
@@ -54,10 +54,9 @@ class RIDCPNew(nn.Module):
             use_warp:
             weight_alpha: -21.25
             additional_encoder:
-                DiNAT 使用金字塔型的邻域注意力特征提取器
-                NAT 使用级联型的邻域注意力特征提取器
+                PyramidDiNAT/PyramidNAT 使用金字塔型的(空洞)邻域注意力特征提取器
+                CascadeDiNAT/CascadeNAT 使用级联型的邻域注意力特征提取器
                 RSTB 使用Swin Transformer的特征提取器RSTB
-                Many_NATs 使用多个级联型的邻域注意力特征提取器
                 其他 不使用额外的特征提取器
             additional_enhancer: 是否启用额外的增强模块
             **ignore_kwargs:
@@ -98,35 +97,61 @@ class RIDCPNew(nn.Module):
             norm_type, act_type
         )
         if self.LQ_stage and self.use_residual:
-            if additional_encoder == "DiNAT":
-                self.ridcp_encoder = PyramidDiNAT(
-                    depths=[2, 2, 18, 2],
-                    num_heads=[4, 8, 16, 32],
+            if additional_encoder == "PyramidNAT":
+                self.ridcp_encoder = PyramidNAT(
                     embed_dim=[256, 256, 256, 512],
-                    mlp_ratio=4,
-                    drop_path_rate=0.5,
-                    kernel_size=7,
-                    dilations=[
-                        [1, 8],
-                        [1, 4],
-                        [1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2],
-                        [1, 1],
-                    ],
-                )
-            elif additional_encoder == "NAT":
-                self.ridcp_encoder = CascadeNAT(
+                    output_dim=[256, 256, 512, 1024],
+                    mlp_ratio=2.0,
                     depths=[3, 4, 18, 5],
                     num_heads=[4, 8, 16, 32],
+                    drop_path_rate=0.5,
+                    kernel_size=7,
+                    layer_scale=1e-5,
+                )
+            elif additional_encoder == "PyramidDiNAT":
+                self.ridcp_encoder = PyramidNAT(
+                    embed_dim=[256, 256, 256, 512],
+                    output_dim=[256, 256, 512, 1024],
+                    mlp_ratio=2.0,
+                    depths=[3, 4, 18, 5],
+                    num_heads=[4, 8, 16, 32],
+                    drop_path_rate=0.5,
+                    kernel_size=7,
+                    layer_scale=1e-5,
+                    dilations=[[1, 16, 1], [1, 4, 1, 8], [1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4], [1, 2, 1, 2, 1]],
+                )
+            elif additional_encoder == "CascadeDiNAT":
+                self.ridcp_encoder = CascadeNAT(
                     embed_dim=256,
                     mlp_ratio=2,
+                    depths=[3, 4, 18, 5],
+                    num_heads=[4, 8, 16, 32],
                     drop_path_rate=0.3,
+                    kernel_size=7,
                     layer_scale=1e-5,
-                    kernel_size=7
+                    dilations=[[1, 16, 1], [1, 4, 1, 8], [1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4], [1, 2, 1, 2, 1]],
+                )
+            elif additional_encoder == "PyramidDiNAT_s":
+                self.ridcp_encoder = PyramidDiNAT_s(
+                    embed_dim=[256, 256, 256, 512],
+                    output_dim=[256, 256, 512, 1024],
+                    depths=[2, 2, 18, 2],
+                    num_heads=[4, 8, 16, 32],
+                    drop_path_rate=0.3,
+                    kernel_size=7,
+                    dilations=[[1, 16], [1, 8], [1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4], [1, 2]],
+                )
+            elif additional_encoder == "CascadeDiNAT_s":
+                self.ridcp_encoder = CascadeDiNAT_s(
+                    embed_dim=256,
+                    depths=[2, 2, 18, 2],
+                    num_heads=[4, 8, 16, 32],
+                    drop_path_rate=0.3,
+                    kernel_size=7,
+                    dilations=[[1, 16], [1, 8], [1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4], [1, 2]],
                 )
             elif additional_encoder == "RSTB":
                 self.ridcp_encoder = SwinLayers()
-            elif additional_encoder == "Many_NATs":
-                self.ridcp_encoder = NATLayers()
             else:
                 self.ridcp_encoder = None
             self.ridcp_decoder = RIDCPDecoder(
@@ -177,7 +202,6 @@ class RIDCPNew(nn.Module):
             # 经过 ridcp_encoder 处理后的 enc_feats.shape [batch_size, 256, 64, 64]
         feat_to_quant = self.before_quant(enc_feats)
         # feat_to_quant.shape [batch_size, 512, 64, 64]
-        print(feat_to_quant.shape)
         # 消融实验5、去除码本和码本匹配操作
         if self.use_quantize:
             z_quant, codebook_loss, indices = self.quantizer(feat_to_quant, gt_indices)

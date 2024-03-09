@@ -29,7 +29,7 @@ def mkdir_and_rename(path):
     """
     if osp.exists(path):
         new_name = path + '_archived_' + get_time_str()
-        print(f'Path already exists. Rename it to {new_name}', flush=True)
+        print(f'当前文件夹已存在，将其改名为  {new_name}', flush=True)
         os.rename(path, new_name)
     os.makedirs(path, exist_ok=True)
 

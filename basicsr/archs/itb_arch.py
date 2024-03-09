@@ -21,25 +21,22 @@ class FusionRefine(nn.Module):
                 LQ_stage:
                 norm_type:
                 act_type:
-                use_quantize: 消融实验5、True 去除码本和码本匹配操作 False 不去除
-                use_residual: 消融实验5、True 去除码本和码本匹配操作 False 不去除
+                use_quantize: 消融实验5、False 去除码本和码本匹配操作
+                use_residual: 消融实验5、False 去除码本和码本匹配操作
                 only_residual:
                 use_weight: True
                 use_warp:
                 weight_alpha: -21.25
                 additional_encoder: 消融实验2、3
-                    DiNAT 使用金字塔型的邻域注意力特征提取器
-                    NAT 使用级联型的邻域注意力特征提取器
+                    PyramidDiNAT/PyramidNAT 使用金字塔型的(空洞)邻域注意力特征提取器
+                    CascadeDiNAT/CascadeNAT 使用级联型的邻域注意力特征提取器
                     RSTB 使用Swin Transformer的特征提取器RSTB
-                    Many_NATs 使用多个级联型的邻域注意力特征提取器
                     其他 不使用额外的特征提取器
                 additional_enhancer: 消融实验4 是否启用额外的增强模块
             one_branch: 消融实验1、去掉残差通道注意力分支
             **kwargs:
         """
         super(FusionRefine, self).__init__()
-        print(opt)
-        print(kwargs)
         self.one_branch = one_branch
         # first branch
         self.feature_extract = RIDCPNew(**opt)

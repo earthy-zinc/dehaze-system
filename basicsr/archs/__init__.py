@@ -21,5 +21,5 @@ def build_network(opt):
     network_type = opt.pop('type')
     net = ARCH_REGISTRY.get(network_type)(**opt)
     logger = get_root_logger()
-    logger.info(f'神经网络 [{net.__class__.__name__}] 已被创建。')
+    logger.debug(f'神经网络 [{net.__class__.__name__}] 已被创建。')
     return net

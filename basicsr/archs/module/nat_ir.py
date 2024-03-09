@@ -202,6 +202,23 @@ class NATBlock(nn.Module):
     def forward(self, x):
         for blk in self.blocks:
             x = blk(x)
+        if self.downsample is None:
+            return x
+        return self.downsample(x)
+
+
+class BasicConv2d(nn.Module):
+    def __init__(self, in_planes, out_planes, kernel_size, stride=1, padding=0, dilation=1):
+        super(BasicConv2d, self).__init__()
+
+        self.conv = nn.Conv2d(in_planes, out_planes,
+                              kernel_size=kernel_size, stride=stride,
+                              padding=padding, dilation=dilation, bias=False)
+        self.bn = nn.BatchNorm2d(out_planes)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.bn(x)
         return x
 
 
@@ -230,7 +247,7 @@ class CascadeNAT(nn.Module):
         super().__init__()
         self.num_levels = len(depths)
         self.embed_dim = embed_dim
-        self.num_features = [int(embed_dim) for i in range(self.num_levels)]
+        self.num_features = [int(embed_dim) for _ in range(self.num_levels)]
         self.mlp_ratio = mlp_ratio
 
         # self.patch_embed = ConvTokenizer(
@@ -268,8 +285,6 @@ class CascadeNAT(nn.Module):
             self.add_module(layer_name, layer)
 
         self.frozen_stages = frozen_stages
-        if pretrained is not None:
-            self.init_weights(pretrained)
 
     def _freeze_stages(self):
         if self.frozen_stages >= 0:
@@ -297,28 +312,24 @@ class CascadeNAT(nn.Module):
             x = level(x)
             norm_layer = getattr(self, f"norm{idx}")
             x = norm_layer(x)
-        return x
+        return x.permute(0, 3, 1, 2).contiguous()
 
     def forward(self, x):
         # x = self.forward_embeddings(x)
         x = x.permute(0, 2, 3, 1)
-        self.forward_tokens(x)
-        return x.permute(0, 3, 1, 2)
-
-    def forward_features(self, x):
-        x = self.forward_embeddings(x)
-        return self.forward_tokens(x)
+        x = self.forward_tokens(x)
+        return x.contiguous()
 
 
 class PyramidNAT(nn.Module):
     def __init__(
             self,
-            embed_dim,
-            mlp_ratio,
-            depths,
-            num_heads,
-            drop_path_rate=0.2,
-            in_chans=3,
+            embed_dim=[256, 256, 256, 512],
+            output_dim=[256, 256, 512, 1024],
+            mlp_ratio=2.0,
+            depths=[3, 4, 18, 5],
+            num_heads=[4, 8, 16, 32],
+            drop_path_rate=0.5,
             kernel_size=7,
             dilations=None,
             out_indices=(0, 1, 2, 3),
@@ -328,19 +339,18 @@ class PyramidNAT(nn.Module):
             attn_drop_rate=0.0,
             norm_layer=nn.LayerNorm,
             frozen_stages=-1,
-            pretrained=None,
             layer_scale=None,
             **kwargs,
     ):
         super().__init__()
         self.num_levels = len(depths)
         self.embed_dim = embed_dim
-        self.num_features = [int(embed_dim * 2**i) for i in range(self.num_levels)]
+        self.num_features = [output_dim[i] for i in range(self.num_levels)]
         self.mlp_ratio = mlp_ratio
 
-        self.patch_embed = ConvTokenizer(
-            in_chans=in_chans, embed_dim=embed_dim, norm_layer=norm_layer
-        )
+        # self.patch_embed = ConvTokenizer(
+        #     in_chans=in_chans, embed_dim=embed_dim, norm_layer=norm_layer
+        # )
 
         self.pos_drop = nn.Dropout(p=drop_rate)
 
@@ -348,7 +358,7 @@ class PyramidNAT(nn.Module):
         self.levels = nn.ModuleList()
         for i in range(self.num_levels):
             level = NATBlock(
-                dim=int(embed_dim * 2**i),
+                dim=int(embed_dim[i]),
                 depth=depths[i],
                 num_heads=num_heads[i],
                 kernel_size=kernel_size,
@@ -360,7 +370,7 @@ class PyramidNAT(nn.Module):
                 attn_drop=attn_drop_rate,
                 drop_path=dpr[sum(depths[:i]) : sum(depths[: i + 1])],
                 norm_layer=norm_layer,
-                downsample=(i < self.num_levels - 1),
+                downsample=i > 1,
                 layer_scale=layer_scale,
             )
             self.levels.append(level)
@@ -373,8 +383,13 @@ class PyramidNAT(nn.Module):
             self.add_module(layer_name, layer)
 
         self.frozen_stages = frozen_stages
-        if pretrained is not None:
-            self.init_weights(pretrained)
+
+        self.norm_256 = norm_layer([256, 64, 64])
+        self.conv_512_256 = BasicConv2d(512, 256, 1)
+        self.conv_1024_512 = BasicConv2d(1024, 512, 1)
+        self.conv_1024_256 = BasicConv2d(1024, 256, 1, stride=1, padding=0, dilation=1)
+        self.upsample2 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.upsample4 = nn.Upsample(scale_factor=4, mode='bilinear', align_corners=True)
 
     def _freeze_stages(self):
         if self.frozen_stages >= 0:
@@ -400,17 +415,29 @@ class PyramidNAT(nn.Module):
     def forward_tokens(self, x):
         outs = []
         for idx, level in enumerate(self.levels):
-            x, xo = level(x)
+            x = level(x)
             if idx in self.out_indices:
                 norm_layer = getattr(self, f"norm{idx}")
-                x_out = norm_layer(xo)
+                x_out = norm_layer(x)
                 outs.append(x_out.permute(0, 3, 1, 2).contiguous())
         return outs
 
     def forward(self, x):
-        x = self.forward_embeddings(x)
-        return self.forward_tokens(x)
+        x = x.permute(0, 2, 3, 1)
+        outs = self.forward_tokens(x)
+        assert len(outs) == 4
+        x1, x2, x3, x4 = outs[0], outs[1], outs[2], outs[3]
+        # 从 16*16*1024 降低维度到 16*16*512
+        # 将第四层特征图上采样和第三层维度相加，32*32*512，再上采样到64*64*512，
+        # 再降低维度到64*64*256，并批归一化
+        x2 = self.norm_256(
+            self.conv_512_256(
+                self.upsample2(
+                    self.upsample2(self.conv_1024_512(x4)) + x3
+                )) + x2)
+        x3 = self.conv_512_256(self.upsample2(x3))
+        x4 = self.conv_1024_256(self.upsample4(x4))
+        x = torch.cat([x1, x2, x3, x4], 1)
+        x = self.conv_1024_256(x)
+        return x
 
-    def forward_features(self, x):
-        x = self.forward_embeddings(x)
-        return self.forward_tokens(x)

@@ -284,6 +284,11 @@ class BaseModel():
         crt_net_keys = set(crt_net.keys())
         load_net_keys = set(load_net.keys())
 
+        crt_net_keys = {element for element in crt_net_keys
+                        if "total_ops" not in element and "total_params" not in element}
+        load_net_keys = {element for element in load_net_keys
+                         if "total_ops" not in element and "total_params" not in element}
+
         logger = get_root_logger()
         if crt_net_keys != load_net_keys:
             logger.warning('当前定义的神经网络 相比 已加载的神经网络 多出的网络层:')
