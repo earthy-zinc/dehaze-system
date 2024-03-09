@@ -1,7 +1,16 @@
+import sys
+
+sys.path.append("/mnt/workspace/ridcp")
+sys.path.append("/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP")
+sys.path.append("/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP")
+sys.path.append("E://DeepLearningCopies//2023//RIDCP")
+sys.path.append("/mnt/e/DeepLearningCopies/2023/RIDCP")
+sys.path.append("/home/zhou/wpx/RIDCP")
+
 import logging
 import torch
 from os import path as osp
-
+from basicsr import build_network
 from basicsr.data import build_dataloader, build_dataset
 from basicsr.models import build_model
 from basicsr.utils import get_env_info, get_root_logger, get_time_str, make_exp_dirs
@@ -19,25 +28,35 @@ def test_pipeline(root_path):
     make_exp_dirs(opt)
     log_file = osp.join(opt['path']['log'], f"test_{opt['name']}_{get_time_str()}.log")
     logger = get_root_logger(logger_name='basicsr', log_level=logging.INFO, log_file=log_file)
-    logger.info(get_env_info())
-    logger.info(dict2str(opt))
+    # logger.info(get_env_info())
+    # logger.info(dict2str(opt))
 
     # create test dataset and dataloader
-    test_loaders = []
-    for _, dataset_opt in sorted(opt['datasets'].items()):
-        test_set = build_dataset(dataset_opt)
-        test_loader = build_dataloader(
-            test_set, dataset_opt, num_gpu=opt['num_gpu'], dist=opt['dist'], sampler=None, seed=opt['manual_seed'])
-        logger.info(f"Number of test images in {dataset_opt['name']}: {len(test_set)}")
-        test_loaders.append(test_loader)
+    test_loader = None
+    for phase, dataset_opt in sorted(opt['datasets'].items()):
+        if phase == 'test':
+            test_set = build_dataset(dataset_opt)
+            test_loader = build_dataloader(
+                test_set, dataset_opt, num_gpu=opt['num_gpu'], dist=opt['dist'], sampler=None, seed=opt['manual_seed'])
+            logger.info(f'测试集 {dataset_opt["name"]} 的图片数量: {len(test_set)}')
 
     # create model
     model = build_model(opt)
+    if opt.get('val') is not None and test_loader is not None:
+        test_net_g_opt = opt['network_g'].copy()
+        test_net_g_opt['opt']["use_weight"] = None
+        test_net_g_opt['opt']["weight_alpha"] = -21.25
+        test_net_g = build_network(test_net_g_opt)
+        model.model_to_device(test_net_g)
 
-    for test_loader in test_loaders:
-        test_set_name = test_loader.dataset.opt['name']
-        logger.info(f'Testing {test_set_name}...')
-        model.validation(test_loader, current_iter=opt['name'], tb_logger=None, save_img=opt['val']['save_img'])
+        latest_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_latest.pth')
+        best_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_best_.pth')
+        if osp.isfile(best_net_g_path):
+            model.load_network(test_net_g, best_net_g_path, False)
+            model.nondist_test(test_net_g, test_loader, "best", None, opt['val']['save_img'])
+        if osp.isfile(latest_net_g_path):
+            model.load_network(test_net_g, latest_net_g_path, False)
+            model.nondist_test(test_net_g, test_loader, "latest", None, opt['val']['save_img'])
 
 
 if __name__ == '__main__':
