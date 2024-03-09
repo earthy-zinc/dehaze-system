@@ -70,13 +70,10 @@ def create_train_val_dataloader(opt, logger):
                 len(train_set) * dataset_enlarge_ratio / (dataset_opt['batch_size_per_gpu'] * opt['world_size']))
             total_iters = int(opt['train']['total_iter'])
             total_epochs = math.ceil(total_iters / (num_iter_per_epoch))
-            logger.info('训练集统计数据:'
-                        f'\n\t训练集图片数量: {len(train_set)}'
-                        f'\n\t训练集扩增比: {dataset_enlarge_ratio}'
-                        f'\n\t批数量(BatchSize): {dataset_opt["batch_size_per_gpu"]}'
-                        f'\n\t分布量(gpu number): {opt["world_size"]}'
-                        f'\n\t每轮(epoch)训练所需迭代量: {num_iter_per_epoch}'
-                        f'\n\t总轮数(Total Epoch): {total_epochs}; 迭代次数: {total_iters}.')
+            logger.info('训练集图片数量: {len(train_set)}; '
+                        f'批数量(BatchSize): {dataset_opt["batch_size_per_gpu"]}'
+                        f'\n\t每轮(epoch)训练所需迭代量: {num_iter_per_epoch}; '
+                        f'总轮数(Total Epoch): {total_epochs}; 迭代次数: {total_iters}.')
         elif phase.split('_')[0] == 'val':
             val_set = build_dataset(dataset_opt)
             val_loader = build_dataloader(
@@ -136,7 +133,7 @@ def train_pipeline(root_path):
     # Otherwise the logger will not be properly initialized
     log_file = osp.join(opt['path']['log'], f"train_{opt['name']}_{get_time_str()}.log")
     logger = get_root_logger(logger_name='basicsr', log_level=logging.INFO, log_file=log_file)
-    logger.info(get_env_info())
+    logger.debug(get_env_info())
     # logger.info(dict2str(opt))
     # initialize wandb and tb loggers
     tb_logger = init_tb_loggers(opt)
@@ -149,7 +146,7 @@ def train_pipeline(root_path):
     model = build_model(opt)
     if resume_state:  # resume training
         model.resume_training(resume_state)  # handle optimizers and schedulers
-        logger.info(f"从第 {resume_state['epoch']} 轮(epoch)开始恢复训练, " f"当前迭代次数: {resume_state['iter']}.")
+        logger.warning(f"从第 {resume_state['epoch']} 轮(epoch)开始恢复训练, " f"当前迭代次数: {resume_state['iter']}.")
         start_epoch = resume_state['epoch']
         current_iter = resume_state['iter']
     else:
@@ -165,7 +162,7 @@ def train_pipeline(root_path):
         prefetcher = CPUPrefetcher(train_loader)
     elif prefetch_mode == 'cuda':
         prefetcher = CUDAPrefetcher(train_loader, opt)
-        logger.info(f'Use {prefetch_mode} prefetch dataloader')
+        logger.debug(f'Use {prefetch_mode} prefetch dataloader')
         if opt['datasets']['train'].get('pin_memory') is not True:
             raise ValueError('Please set pin_memory=True for CUDAPrefetcher.')
     else:
