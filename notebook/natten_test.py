@@ -9,19 +9,19 @@ from basicsr.archs.module.dinats import PyramidDiNAT_s, CascadeDiNAT_s
 from basicsr.archs.ridcp.encoder import SwinLayers
 from basicsr.archs.module.nat_ir import CascadeNAT, PyramidNAT
 
-random_data = torch.randn(1, 256, 64, 64).cuda()
+random_data = torch.randn(1, 256, 64, 88).cuda()
 # ---------------------NAT------------------
-pyramid_nat = PyramidNAT(
-    embed_dim=[256, 256, 256, 512],
-    output_dim=[256, 256, 512, 1024],
-    mlp_ratio=2.0,
-    depths=[3, 4, 18, 5],
-    num_heads=[4, 8, 16, 32],
-    drop_path_rate=0.5,
-    kernel_size=7,
-    layer_scale=1e-5,
-).cuda()
-print(pyramid_nat(random_data).shape)
+# pyramid_nat = PyramidNAT(
+#     embed_dim=[256, 256, 256, 512],
+#     output_dim=[256, 256, 512, 1024],
+#     mlp_ratio=2.0,
+#     depths=[3, 4, 18, 5],
+#     num_heads=[4, 8, 16, 32],
+#     drop_path_rate=0.5,
+#     kernel_size=7,
+#     layer_scale=1e-5,
+# ).cuda()
+# print(pyramid_nat(random_data).shape)
 
 nat = CascadeNAT(
     embed_dim=256,
@@ -47,6 +47,8 @@ pyramid_dinat = PyramidNAT(
     layer_scale=1e-5,
     dilations=[[1, 16, 1], [1, 4, 1, 8], [1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4], [1, 2, 1, 2, 1]],
 ).cuda()
+
+summary(pyramid_dinat, input_size=(256, 64, 88), batch_size=1, device="cuda")
 print(pyramid_dinat(random_data).shape)
 
 cascade_dinat = CascadeNAT(
@@ -71,7 +73,7 @@ pyramid_dinat_s = PyramidDiNAT_s(
     kernel_size=7,
     dilations=[[1, 16], [1, 8], [1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4, 1, 2, 1, 3, 1, 4], [1, 2]],
 ).cuda()
-# summary(dinat, input_size=(256, 64, 64), batch_size=1, device="cuda")
+summary(pyramid_dinat_s, input_size=(256, 64, 64), batch_size=1, device="cuda")
 print(pyramid_dinat_s(random_data).shape)
 
 cascade_dinat_s = CascadeDiNAT_s(
@@ -86,7 +88,7 @@ print(cascade_dinat_s(random_data).shape)
 
 # ---------------------rstb------------------
 rstb = SwinLayers().cuda()
-# summary(rstb, input_size=(256, 64, 64), batch_size=1, device="cuda")
+summary(rstb, input_size=(256, 64, 64), batch_size=1, device="cuda")
 print(rstb(random_data).shape)
 
 
