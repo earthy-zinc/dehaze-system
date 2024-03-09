@@ -1,5 +1,6 @@
 import datetime
 import logging
+import re
 import sys
 import math
 import time
@@ -7,6 +8,9 @@ import torch
 import os
 import shutil
 from os import path as osp
+
+from basicsr import build_network
+
 sys.path.append("/mnt/workspace/ridcp")
 sys.path.append("/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP")
 sys.path.append("/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP")
@@ -50,9 +54,9 @@ def init_tb_loggers(opt):
     return tb_logger
 
 
-def create_train_val_dataloader(opt, logger):
+def create_train_val_test_dataloader(opt, logger):
     # create train and val dataloaders
-    train_loader, val_loaders = None, []
+    train_loader, val_loaders, test_loader = None, [], None
     for phase, dataset_opt in opt['datasets'].items():
         if phase == 'train':
             dataset_enlarge_ratio = dataset_opt.get('dataset_enlarge_ratio', 1)
@@ -80,10 +84,16 @@ def create_train_val_dataloader(opt, logger):
                 val_set, dataset_opt, num_gpu=opt['num_gpu'], dist=opt['dist'], sampler=None, seed=opt['manual_seed'])
             logger.info(f'验证集 {dataset_opt["name"]} 的图片数量: {len(val_set)}')
             val_loaders.append(val_loader)
+        elif phase == 'test':
+            test_set = build_dataset(dataset_opt)
+            test_loader = build_dataloader(
+                test_set, dataset_opt, num_gpu=opt['num_gpu'], dist=opt['dist'], sampler=None, seed=opt['manual_seed']
+            )
+            logger.info(f'测试集 {dataset_opt["name"]} 的图片数量: {len(test_set)}')
         else:
             raise ValueError(f'Dataset phase {phase} is not recognized.')
 
-    return train_loader, train_sampler, val_loaders, total_epochs, total_iters
+    return train_loader, train_sampler, val_loaders, test_loader, total_epochs, total_iters
 
 
 def load_resume_state(opt):
@@ -139,8 +149,8 @@ def train_pipeline(root_path):
     tb_logger = init_tb_loggers(opt)
 
     # create train and validation dataloaders
-    result = create_train_val_dataloader(opt, logger)
-    train_loader, train_sampler, val_loaders, total_epochs, total_iters = result
+    result = create_train_val_test_dataloader(opt, logger)
+    train_loader, train_sampler, val_loaders, test_loader, total_epochs, total_iters = result
 
     # create model
     model = build_model(opt)
@@ -247,9 +257,23 @@ def train_pipeline(root_path):
     logger.info(f'训练结束，花费总时间为: {consumed_time} 秒')
     logger.info('保存最新模型')
     model.save(epoch=-1, current_iter=-1)  # -1 stands for the latest
-    if opt.get('val') is not None:
-        for val_loader in val_loaders:
-            model.validation(val_loader, current_iter, tb_logger, opt['val']['save_img'])
+    # 开始测试最好的那个
+    if opt.get('val') is not None and test_loader is not None:
+        test_net_g_opt = opt['network_g'].copy()
+        test_net_g_opt['opt']["use_weight"] = None
+        test_net_g_opt['opt']["weight_alpha"] = -21.25
+        test_net_g = build_network(test_net_g_opt)
+        model.model_to_device(test_net_g)
+
+        latest_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_latest.pth')
+        best_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_best_.pth')
+        if osp.isfile(best_net_g_path):
+            model.load_network(test_net_g, best_net_g_path, False)
+            model.nondist_test(test_net_g, test_loader, "best", tb_logger, opt['val']['save_img'])
+        if osp.isfile(latest_net_g_path):
+            model.load_network(test_net_g, latest_net_g_path, False)
+            model.nondist_test(test_net_g, test_loader, "latest", tb_logger, opt['val']['save_img'])
+
     if tb_logger:
         tb_logger.close()
 

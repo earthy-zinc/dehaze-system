@@ -26,7 +26,14 @@ datasets:
   val:
     name: NH-HAZE-20-val
     type: NtireH5Dataset
-    mode: train
+    mode: val
+    data_path: datasets/NH-HAZE-20-val.h5
+    shuffle: true
+
+  test:
+    name: NH-HAZE-20-test
+    type: NtireH5Dataset
+    mode: test
     data_path: datasets/NH-HAZE-20-test.h5
     shuffle: true
 
