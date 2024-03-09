@@ -384,7 +384,6 @@ class PyramidNAT(nn.Module):
 
         self.frozen_stages = frozen_stages
 
-        self.norm_256 = norm_layer([256, 64, 64])
         self.conv_512_256 = BasicConv2d(512, 256, 1)
         self.conv_1024_512 = BasicConv2d(1024, 512, 1)
         self.conv_1024_256 = BasicConv2d(1024, 256, 1, stride=1, padding=0, dilation=1)
@@ -430,11 +429,10 @@ class PyramidNAT(nn.Module):
         # 从 16*16*1024 降低维度到 16*16*512
         # 将第四层特征图上采样和第三层维度相加，32*32*512，再上采样到64*64*512，
         # 再降低维度到64*64*256，并批归一化
-        x2 = self.norm_256(
-            self.conv_512_256(
+        x2 = self.conv_512_256(
                 self.upsample2(
                     self.upsample2(self.conv_1024_512(x4)) + x3
-                )) + x2)
+                )) + x2
         x3 = self.conv_512_256(self.upsample2(x3))
         x4 = self.conv_1024_256(self.upsample4(x4))
         x = torch.cat([x1, x2, x3, x4], 1)
