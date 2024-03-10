@@ -108,6 +108,16 @@ class RIDCPNew(nn.Module):
                     kernel_size=7,
                     layer_scale=1e-5,
                 )
+            elif additional_encoder == "CascadeNAT":
+                self.ridcp_encoder = CascadeNAT(
+                    embed_dim=256,
+                    mlp_ratio=2,
+                    depths=[3, 4, 18, 5],
+                    num_heads=[4, 8, 16, 32],
+                    drop_path_rate=0.3,
+                    kernel_size=7,
+                    layer_scale=1e-5,
+                )
             elif additional_encoder == "PyramidDiNAT":
                 self.ridcp_encoder = PyramidNAT(
                     embed_dim=[256, 256, 256, 512],
@@ -197,12 +207,13 @@ class RIDCPNew(nn.Module):
     def encode_and_decode(self, inputs, gt_indices=None):
         enc_feats = self.vq_encoder(inputs)
         # 经过 vq_encoder 处理后的 enc_feats.shape [batch_size, 256, 64, 64]
-        if self.LQ_stage and self.additional_encoder is not None:
+        if self.LQ_stage and hasattr(self, 'ridcp_encoder'):
             enc_feats = self.ridcp_encoder(enc_feats)
             # 经过 ridcp_encoder 处理后的 enc_feats.shape [batch_size, 256, 64, 64]
         feat_to_quant = self.before_quant(enc_feats)
         # feat_to_quant.shape [batch_size, 512, 64, 64]
         # 消融实验5、去除码本和码本匹配操作
+        codebook_loss, indices = None, None
         if self.use_quantize:
             z_quant, codebook_loss, indices = self.quantizer(feat_to_quant, gt_indices)
         else:
