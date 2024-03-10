@@ -1,5 +1,5 @@
 # general settings
-name: Ablation-Codebook-NH-HAZE-20
+name: Ablation-CascadeDiNAT-NH-HAZE-20
 model_type: ITBNewModel
 num_gpu: 1 # set num_gpu: 0 for cpu mode
 gpu_id: 0
@@ -42,11 +42,7 @@ network_g:
   type: FusionRefine
   opt:
     LQ_stage: true
-    additional_encoder: PyramidDiNAT
-    additional_enhancer: false
-    use_quantize: False
-    use_residual: False
-  one_branch: true
+    additional_encoder: CascadeDiNAT
   frozen_module_keywords: ['quantizer', 'decoder_group', 'after_quant', 'out_conv']
 
 network_d:
@@ -105,6 +101,9 @@ train:
     real_label_val: 1.0
     fake_label_val: 0.0
     loss_weight: 0.2
+
+  codebook_opt:
+    loss_weight: 1.0
 
   semantic_opt:
     loss_weight: 0.1

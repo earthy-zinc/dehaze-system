@@ -267,10 +267,10 @@ def train_pipeline(root_path):
         best_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_best_.pth')
         if osp.isfile(best_net_g_path):
             model.load_network(test_net_g, best_net_g_path, False)
-            model.nondist_test(test_net_g, test_loader, "best", tb_logger, opt['val']['save_img'])
+            model.nondist_test(test_net_g, test_loader, 999999, tb_logger, opt['val']['save_img'])
         if osp.isfile(latest_net_g_path):
             model.load_network(test_net_g, latest_net_g_path, False)
-            model.nondist_test(test_net_g, test_loader, "latest", tb_logger, opt['val']['save_img'])
+            model.nondist_test(test_net_g, test_loader, opt['train']['total_iter'], tb_logger, opt['val']['save_img'])
 
     if tb_logger:
         tb_logger.close()
