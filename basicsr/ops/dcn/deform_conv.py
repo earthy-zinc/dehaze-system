@@ -8,6 +8,7 @@ from torch.nn import functional as F
 from torch.nn.modules.utils import _pair, _single
 
 BASICSR_JIT = os.getenv('BASICSR_JIT')
+BASICSR_JIT = 'True'
 if BASICSR_JIT == 'True':
     from torch.utils.cpp_extension import load
     module_path = os.path.dirname(__file__)
