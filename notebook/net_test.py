@@ -2,12 +2,12 @@ from copy import deepcopy
 import torch
 import platform
 
-from basicsr import get_root_logger
+from basicsr.utils import get_root_logger
 from collections import OrderedDict
 from basicsr.utils.registry import ARCH_REGISTRY
 from basicsr.utils.options import ordered_yaml
 import yaml
-from basicsr import build_network
+from basicsr.archs import build_network
 from basicsr.archs.ridcp_new_arch import RIDCPNew
 
 def print_different_keys_loading(crt_net, load_net, strict=True):
@@ -77,7 +77,7 @@ pretrained_new_hqp_path = "../pretrained_models/pretrained_HQPs_renamed.pth"
 pretrained_new_net_path = "../pretrained_models/pretrained_RIDCP_renamed.pth"
 param_key = 'params'
 
-with open("../options/RIDCPNew-pei-NH-HAZE.yml", mode='r') as f:
+with open("../options/others/RIDCPNew-pei-NH-HAZE.yml", mode='r') as f:
     opt = yaml.load(f, Loader=ordered_yaml()[0])
 hq_opt = opt['network_g'].copy()
 hq_opt['LQ_stage'] = False

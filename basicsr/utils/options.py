@@ -1,4 +1,5 @@
 import argparse
+import os.path
 import random
 import torch
 import yaml
@@ -90,8 +91,14 @@ def parse_options(root_path, is_train=True):
         '--force_yml', nargs='+', default=None, help='Force to update yml files. Examples: train:ema_decay=0.999')
     args = parser.parse_args()
 
+    if os.path.isabs(args.opt):
+        config = args.opt
+    else:
+        config = os.path.join(root_path, args.opt)
+
+    assert os.path.isfile(config)
     # parse yml to dict
-    with open(args.opt, mode='r') as f:
+    with open(config, mode='r') as f:
         opt = yaml.load(f, Loader=ordered_yaml()[0])
 
     # distributed settings
