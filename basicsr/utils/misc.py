@@ -47,6 +47,8 @@ def make_exp_dirs(opt):
             continue
         else:
             os.makedirs(path, exist_ok=True)
+    if opt['logger'].get('use_tb_logger') and 'debug' not in opt['name'] and opt['rank'] == 0:
+        mkdir_and_rename(osp.join(opt['root_path'], 'tb_logger', opt['name']))
 
 
 def scandir(dir_path, suffix=None, recursive=False, full_path=False):
