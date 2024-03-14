@@ -159,12 +159,13 @@ class FFAModel(BaseModel):
 
             if with_metrics:
                 # calculate metrics
-                for name, opt_ in self.opt['val']['metrics'].items():
-                    if name == "niqe" or name == "brisque" or name == "nima":
-                        tmp_result = self.metric_funcs[name](metric_data[0])
-                    else:
-                        tmp_result = self.metric_funcs[name](*metric_data)
-                    self.metric_results[name] += tmp_result.item()
+                with torch.no_grad():
+                    for name, opt_ in self.opt['val']['metrics'].items():
+                        if name == "niqe" or name == "brisque" or name == "nima":
+                            tmp_result = self.metric_funcs[name](metric_data[0])
+                        else:
+                            tmp_result = self.metric_funcs[name](*metric_data)
+                        self.metric_results[name] += tmp_result.item()
 
             pbar.update(1)
             pbar.set_description(f'测试图片 {img_name} 中')
@@ -214,3 +215,22 @@ class FFAModel(BaseModel):
         if tb_logger:
             for metric, value in self.metric_results.items():
                 tb_logger.add_scalar(f'评估指标/{dataset_name}/{metric}', value, current_iter)
+
+    def nondist_test(self, net, dataloader, current_iter, tb_logger, save_img):
+        self.net_g = net
+        self.nondist_validation(dataloader, current_iter, tb_logger,
+                                save_img, None)
+
+    def get_current_visuals(self):
+        out_dict = OrderedDict()
+        if hasattr(self, 'gt'):
+            out_dict['gt'] = self.gt.detach().cpu()
+        if hasattr(self, 'output'):
+            out_dict['output'] = self.output.detach().cpu()
+        if hasattr(self, 'lq'):
+            out_dict['lq'] = self.gt.detach().cpu()
+        return out_dict
+
+    def save(self, epoch, current_iter):
+        self.save_network(self.net_g, 'net_g', current_iter)
+        self.save_training_state(epoch, current_iter)

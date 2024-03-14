@@ -17,3 +17,13 @@ BASICSR_JIT=True python basicsr/train.py -opt options/ablation/a/RSTB-NH-HAZE-20
 cd /var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP && \
 CUDA_VISIBLE_DEVICES=7 BASICSR_JIT=True python basicsr/train.py -opt options/ablation/a/Enhancer-NH-HAZE-20.yml --auto_resume
 ```
+
+```shell
+python basicsr/train.py -opt options/compare/AOD/DENSE-HAZE.yml && \
+python basicsr/train.py -opt options/compare/AOD/I-HAZE.yml && \
+python basicsr/train.py -opt options/compare/AOD/O-HAZE.yml && \
+python basicsr/train.py -opt options/compare/AOD/NH-HAZE-20.yml && \
+python basicsr/train.py -opt options/compare/AOD/NH-HAZE-21.yml && \
+python basicsr/train.py -opt options/compare/AOD/NH-HAZE-23.yml
+
+```
