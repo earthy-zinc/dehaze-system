@@ -17,8 +17,8 @@ class AOD(nn.Module):
         self.e_conv5 = nn.Conv2d(12,3,3,1,1,bias=True)
 
     def forward(self, x):
-        source = []
-        source.append(x)
+        # source = []
+        # source.append(x)
 
         x1 = self.relu(self.e_conv1(x))
         x2 = self.relu(self.e_conv2(x1))
