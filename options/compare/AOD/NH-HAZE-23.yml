@@ -55,14 +55,14 @@ train:
     lr: !!float 1e-4
     weight_decay: !!float 1e-4
   grad_clip_norm: !!float 0.1
-  total_iter: 80000
+  total_iter: 50000
   warmup_iter: -1  # no warm up
 
 
 
 # validation settings·
 val:
-  val_freq: !!float 1000
+  val_freq: !!float 5000
   save_img: true
 
   key_metric: psnr
@@ -90,8 +90,8 @@ val:
 
 # logging settings
 logger:
-  print_freq: 100
-  save_checkpoint_freq: !!float 2e3
-  save_latest_freq: !!float 1e3
-  show_tf_imgs_freq: !!float 2e3
+  print_freq: 500
+  save_checkpoint_freq: !!float 5e3
+  save_latest_freq: !!float 5e3
+  show_tf_imgs_freq: !!float 5e3
   use_tb_logger: true

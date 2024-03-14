@@ -107,7 +107,7 @@ class BaseModel():
         """copy model from net_a to net_b"""
         tmp_net_a = self.get_bare_model(net_a)
         tmp_net_b = self.get_bare_model(net_b)
-        tmp_net_b.load_state_dict(tmp_net_a.state_dict())
+        tmp_net_b.load_state_dict(tmp_net_a.state_dict(), strict=False)
 
     def get_current_log(self):
         return self.log_dict
