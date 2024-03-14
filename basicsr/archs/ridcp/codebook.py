@@ -14,7 +14,7 @@ class VectorQuantizer(nn.Module):
     _____________________________________________
     """
 
-    def __init__(self, n_e, e_dim, weight_path='/mnt/e/DeepLearningCopies/2023/RIDCP/pretrained_models/weight_for_matching_dehazing_Flickr.pth', beta=0.25,
+    def __init__(self, n_e, e_dim, weight_path='pretrained_models/weight_for_matching_dehazing_Flickr.pth', beta=0.25,
                  LQ_stage=False, use_weight=True, weight_alpha=1.0):
         super().__init__()
         self.n_e = int(n_e)

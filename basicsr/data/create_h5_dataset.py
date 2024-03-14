@@ -310,6 +310,8 @@ if __name__ == "__main__":
         base_path = "/mnt/data/"
     elif os.path.exists("/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP"):
         base_path = "/var/lib/docker/user1/wpx/dataset/"
+    elif os.path.exists("/Crack_detection/wpx"):
+        base_path = "/Crack_detection/wpx/dataset/"
     else:
         base_path = "D:/DeepLearning/dataset/"
 
