@@ -15,6 +15,7 @@ sys.path.append("E://DeepLearningCopies//2023//RIDCP")
 sys.path.append("/mnt/e/DeepLearningCopies/2023/RIDCP")
 sys.path.append("/Crack_detection/wpx/DeepLearningCopies/2023/RIDCP")
 sys.path.append("/home/zhou/wpx/RIDCP")
+sys.path.append("/home/earthyzinc/DeepLearningCopies/2023/RIDCP")
 from basicsr.archs import build_network
 from basicsr.data import build_dataloader, build_dataset
 from basicsr.data.data_sampler import EnlargedSampler

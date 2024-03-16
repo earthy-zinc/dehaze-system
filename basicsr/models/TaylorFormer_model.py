@@ -1,23 +1,24 @@
 import copy
-import math
-from collections import OrderedDict
 import os
+from collections import OrderedDict
+
 import pyiqa
 import torch
+import math
 from thop import profile
 from torch import nn
+from torchvision.models import vgg16
 from tqdm import tqdm
 
 from basicsr.archs import build_network
 from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, tensor2img, img2tensor, imwrite
-from basicsr.utils.img_util import resize_image
 from basicsr.utils.registry import MODEL_REGISTRY
 from basicsr.utils.static_util import convert_size
 
 
 @MODEL_REGISTRY.register()
-class DehamerModel(BaseModel):
+class TaylorFormerModel(BaseModel):
     def __init__(self, opt):
         super().__init__(opt)
         logger = get_root_logger()
@@ -25,10 +26,10 @@ class DehamerModel(BaseModel):
         # gt => ground truth => clean image
         self.net_g = build_network(opt['network_g'])
         self.net_g = self.model_to_device(self.net_g)
-        # test_input = torch.randn(1, 3, 256, 256).to(self.device)
-        # net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
-        # logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
-        #             .format(convert_size(net_g_flops), convert_size(net_g_params)))
+        test_input = torch.randn(1, 3, 256, 256).to(self.device)
+        net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
+        logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
+                    .format(convert_size(net_g_flops), convert_size(net_g_params)))
 
         self.lq = None
         self.gt = None
@@ -45,34 +46,28 @@ class DehamerModel(BaseModel):
         self.net_g_best = copy.deepcopy(self.net_g)
 
     def _init_training_settings(self):
+        logger = get_root_logger()
+        train_opt = self.opt['train']
+        self.net_g.train()
+
+        self.setup_optimizers()
+
+    def setup_optimizers(self):
         train_opt = self.opt['train']
         optim_type = train_opt['optim_g'].pop('type')
-        self.optimizer = self.get_optimizer(optim_type, self.net_g.parameters(),
-                                            **train_opt['optim_g'])
-        # TODO
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=self.opt, factor=0.5, verbose=True)
-        self.cri_loss = nn.MSELoss().to(self.device)
-
 
     def feed_data(self, data):
         if 'lq' in data:
-            self.lq = resize_image(data['lq'].to(self.device))
+            self.lq = data['lq'].to(self.device)
         else:
             self.lq = None
         if 'gt' in data:
-            self.gt = resize_image(data['gt'].to(self.device))
+            self.gt = data['gt'].to(self.device)
         else:
             self.gt = None
 
     def optimize_parameters(self, current_iter):
-        self.output = self.net_g(self.lq)
-        loss_dict = OrderedDict()
-
-        loss = self.cri_loss(self.output, self.gt)
-        loss_dict['loss'] = loss
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        train_opt = self.opt['train']
 
     def test(self):
         self.net_g.eval()
@@ -83,7 +78,7 @@ class DehamerModel(BaseModel):
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
         self.nondist_validation(dataloader, current_iter, tb_logger, save_img, save_as_dir)
 
-    def nondist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None, update_net=True):
+    def nondist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
         dataset_name = dataloader.dataset.opt['name']
         with_metrics = self.opt['val'].get('metrics') is not None
         if with_metrics:
@@ -146,28 +141,28 @@ class DehamerModel(BaseModel):
             # calculate average metric
             for metric in self.metric_results.keys():
                 self.metric_results[metric] /= (idx + 1)
-            if update_net:
-                if self.key_metric is not None:
-                    # If the best metric is updated, update and save best model
-                    to_update = self._update_best_metric_result(dataset_name, self.key_metric,
-                                                                self.metric_results[self.key_metric], current_iter)
 
-                    if to_update:
-                        for name, opt_ in self.opt['val']['metrics'].items():
-                            self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
-                        self.copy_model(self.net_g, self.net_g_best)
-                        self.save_network(self.net_g, 'net_g_best', '')
-                else:
-                    # update each metric separately
-                    updated = []
+            if self.key_metric is not None:
+                # If the best metric is updated, update and save best model
+                to_update = self._update_best_metric_result(dataset_name, self.key_metric,
+                                                            self.metric_results[self.key_metric], current_iter)
+
+                if to_update:
                     for name, opt_ in self.opt['val']['metrics'].items():
-                        tmp_updated = self._update_best_metric_result(dataset_name, name, self.metric_results[name],
-                                                                      current_iter)
-                        updated.append(tmp_updated)
-                    # save best model if any metric is updated
-                    if sum(updated):
-                        self.copy_model(self.net_g, self.net_g_best)
-                        self.save_network(self.net_g, 'net_g_best', '')
+                        self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
+                    self.copy_model(self.net_g, self.net_g_best)
+                    self.save_network(self.net_g, 'net_g_best', '')
+            else:
+                # update each metric separately
+                updated = []
+                for name, opt_ in self.opt['val']['metrics'].items():
+                    tmp_updated = self._update_best_metric_result(dataset_name, name, self.metric_results[name],
+                                                                  current_iter)
+                    updated.append(tmp_updated)
+                # save best model if any metric is updated
+                if sum(updated):
+                    self.copy_model(self.net_g, self.net_g_best)
+                    self.save_network(self.net_g, 'net_g_best', '')
 
             self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
 
@@ -189,7 +184,7 @@ class DehamerModel(BaseModel):
     def nondist_test(self, net, dataloader, current_iter, tb_logger, save_img):
         self.net_g = net
         self.nondist_validation(dataloader, current_iter, tb_logger,
-                                save_img, None, False)
+                                save_img, None)
 
     def get_current_visuals(self):
         out_dict = OrderedDict()
@@ -200,7 +195,3 @@ class DehamerModel(BaseModel):
         if hasattr(self, 'lq'):
             out_dict['lq'] = self.gt.detach().cpu()
         return out_dict
-
-    def save(self, epoch, current_iter):
-        self.save_network(self.net_g, 'net_g', current_iter)
-        self.save_training_state(epoch, current_iter)

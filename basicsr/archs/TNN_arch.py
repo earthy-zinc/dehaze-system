@@ -83,11 +83,6 @@ class Pre_Res2Net(nn.Module):
 
         return x
 
-def default_conv(in_channels, out_channels, kernel_size, bias=True):
-    return nn.Conv2d(
-        in_channels, out_channels, kernel_size,
-        padding=(kernel_size//2), bias=bias)
-
 
 class sub_pixel(nn.Module):
     def __init__(self, scale, act=False):
@@ -156,6 +151,8 @@ class ResidualGroup(nn.Module):
         res = res+ x
         return res
 
+def default_conv(in_channels, out_channels, kernel_size, bias=True):
+    return nn.Conv2d(in_channels, out_channels, kernel_size, padding=(kernel_size // 2), bias=bias)
 
 class rcan(nn.Module):
     def __init__(self, conv=default_conv):
@@ -332,8 +329,6 @@ class Res2Net(nn.Module):
 ######################
 # decoder
 ######################
-def default_conv(in_channels, out_channels, kernel_size, bias=True):
-    return nn.Conv2d(in_channels, out_channels, kernel_size, padding=(kernel_size // 2), bias=bias)
 
 
 class PALayer(nn.Module):

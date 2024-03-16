@@ -48,17 +48,30 @@ class NtireH5Dataset(data.Dataset):
 class NtireDataset(data.Dataset):
     def __init__(self, opt):
         super(NtireDataset, self).__init__()
+        if os.path.exists("/mnt/e/DeepLearningCopies/2023/RIDCP"):
+            base_path = "/mnt/d/DeepLearning/dataset/"
+        elif os.path.exists("/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP"):
+            base_path = "/quzhong_fix/wpx/dataset/"
+        elif os.path.exists("/mnt/workspace/ridcp"):
+            base_path = "/mnt/data/"
+        elif os.path.exists("/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP"):
+            base_path = "/var/lib/docker/user1/wpx/dataset/"
+        elif os.path.exists("/Crack_detection/wpx"):
+            base_path = "/Crack_detection/wpx/dataset/"
+        else:
+            base_path = "D:/DeepLearning/dataset/"
         self.opt = opt
-        self.max_size = 1024 * 1024
-        self.haze_image_path = [os.path.join(opt['haze_path'], x) for x in
-                                natsort.natsorted(os.listdir(opt['haze_path']))]
-        self.clear_image_path = [os.path.join(opt['clear_path'], x) for x in
-                                 natsort.natsorted(os.listdir(opt['clear_path']))]
+        self.max_size = 2000 * 2000
+        self.haze_image_path = [os.path.join(base_path, opt['haze_path'], x) for x in
+                                natsort.natsorted(os.listdir(
+                                    os.path.join(base_path, opt['haze_path'])))]
+        self.clear_image_path = [os.path.join(base_path, opt['clear_path'], x) for x in
+                                 natsort.natsorted(os.listdir(
+                                     os.path.join(base_path, opt['clear_path'])))]
 
     def __getitem__(self, index):
         haze = Image.open(self.haze_image_path[index]).convert("RGB")
         clear = Image.open(self.clear_image_path[index]).convert("RGB")
-
         transform = torchvision.transforms.Compose([
             ToTensor()
         ])
