@@ -1,23 +1,24 @@
 import copy
-import math
-from collections import OrderedDict
 import os
+from collections import OrderedDict
+
 import pyiqa
 import torch
+import math
 from thop import profile
 from torch import nn
+from torchvision.models import vgg16
 from tqdm import tqdm
 
 from basicsr.archs import build_network
 from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, tensor2img, img2tensor, imwrite
-from basicsr.utils.img_util import resize_image
 from basicsr.utils.registry import MODEL_REGISTRY
 from basicsr.utils.static_util import convert_size
 
 
 @MODEL_REGISTRY.register()
-class DehamerModel(BaseModel):
+class SCAModel(BaseModel):
     def __init__(self, opt):
         super().__init__(opt)
         logger = get_root_logger()
@@ -25,10 +26,10 @@ class DehamerModel(BaseModel):
         # gt => ground truth => clean image
         self.net_g = build_network(opt['network_g'])
         self.net_g = self.model_to_device(self.net_g)
-        # test_input = torch.randn(1, 3, 256, 256).to(self.device)
-        # net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
-        # logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
-        #             .format(convert_size(net_g_flops), convert_size(net_g_params)))
+        test_input = torch.randn(1, 3, 256, 256).to(self.device)
+        net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
+        logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
+                    .format(convert_size(net_g_flops), convert_size(net_g_params)))
 
         self.lq = None
         self.gt = None
@@ -42,42 +43,53 @@ class DehamerModel(BaseModel):
                 self.metric_funcs[name] = pyiqa.create_metric(name, device=self.device, **mopt)
         if self.is_train:
             self._init_training_settings()
+        self.norm = lambda x: (x - 0.5) / 0.5
+        self.denorm = lambda x: (x + 1) / 2
         self.net_g_best = copy.deepcopy(self.net_g)
 
     def _init_training_settings(self):
+        logger = get_root_logger()
+        train_opt = self.opt['train']
+        self.net_g.train()
+
+        vgg_model = vgg16(pretrained=True)
+        vgg_model = vgg_model.features[:16].cuda()
+        for param in vgg_model.parameters():
+            param.requires_grad = False
+        #loss_network = LossNetwork(vgg_model)
+        #loss_network.eval()
+
+        ### ms-ssim
+        #msssim_loss = msssim
+
+        ### GAN
+        adversarial_loss = nn.BCEWithLogitsLoss().cuda()
+
+
+        self.setup_optimizers()
+
+    def setup_optimizers(self):
         train_opt = self.opt['train']
         optim_type = train_opt['optim_g'].pop('type')
-        self.optimizer = self.get_optimizer(optim_type, self.net_g.parameters(),
-                                            **train_opt['optim_g'])
-        # TODO
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, patience=self.opt, factor=0.5, verbose=True)
-        self.cri_loss = nn.MSELoss().to(self.device)
-
 
     def feed_data(self, data):
         if 'lq' in data:
-            self.lq = resize_image(data['lq'].to(self.device))
+            self.lq = data['lq'].to(self.device)
         else:
             self.lq = None
         if 'gt' in data:
-            self.gt = resize_image(data['gt'].to(self.device))
+            self.gt = data['gt'].to(self.device)
         else:
             self.gt = None
 
     def optimize_parameters(self, current_iter):
-        self.output = self.net_g(self.lq)
-        loss_dict = OrderedDict()
-
-        loss = self.cri_loss(self.output, self.gt)
-        loss_dict['loss'] = loss
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        train_opt = self.opt['train']
 
     def test(self):
         self.net_g.eval()
         with torch.no_grad():
-            self.output = self.net_g(self.lq)
+            output, _ = self.net_g(self.norm(self.lq))
+            self.output = self.denorm(output)
         self.net_g.train()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):

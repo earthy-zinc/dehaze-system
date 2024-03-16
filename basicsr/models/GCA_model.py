@@ -103,7 +103,8 @@ class GCAModel(BaseModel):
             self.feed_data(val_data)
             self.test()
             sr_img = tensor2img(self.output)
-            metric_data = [img2tensor(sr_img).unsqueeze(0) / 255, self.gt]
+            B, C, W, H = self.gt.shape
+            metric_data = [img2tensor(sr_img).unsqueeze(0).resize_(B, C, W, H) / 255, self.gt]
 
             # tentative for out of GPU memory
             del self.lq

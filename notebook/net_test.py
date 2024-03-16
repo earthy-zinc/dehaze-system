@@ -73,8 +73,8 @@ def load_network(net, load_path, strict=True, param_key='params'):
 
 
 
-pretrained_new_hqp_path = "../pretrained_models/pretrained_HQPs_renamed.pth"
-pretrained_new_net_path = "../pretrained_models/pretrained_RIDCP_renamed.pth"
+pretrained_new_hqp_path = "../pretrained_models/others/pretrained/pretrained_HQPs_renamed.pth"
+pretrained_new_net_path = "../pretrained_models/others/pretrained/pretrained_RIDCP_renamed.pth"
 param_key = 'params'
 
 with open("../options/others/RIDCPNew-pei-NH-HAZE.yml", mode='r') as f:
