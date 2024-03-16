@@ -9,10 +9,9 @@ no_need_load: true
 datasets:
   train:
     name: DENSE-HAZE-train
-    type: NtireH5Dataset
-    mode: train
-    data_path: datasets/DENSE-HAZE.h5
-    shuffle: true
+    type: NtireDataset
+    haze_path: Dense-Haze/hazy
+    clear_path: Dense-Haze/clean
 
     # data loader
     use_shuffle: true
@@ -25,17 +24,15 @@ datasets:
 
   val:
     name: DENSE-HAZE-val
-    type: NtireH5Dataset
-    mode: val
-    data_path: datasets/DENSE-HAZE-val.h5
-    shuffle: true
+    type: NtireDataset
+    haze_path: Dense-Haze/hazy
+    clear_path: Dense-Haze/clean
 
   test:
     name: DENSE-HAZE-test
-    type: NtireH5Dataset
-    mode: test
-    data_path: datasets/DENSE-HAZE-test.h5
-    shuffle: true
+    type: NtireDataset
+    haze_path: Dense-Haze/hazy
+    clear_path: Dense-Haze/clean
 
 # network structures
 network_g:

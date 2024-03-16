@@ -112,8 +112,7 @@ if __name__ == '__main__':
     img_save_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/experiments/DCP/visualization/{}/".format(dataset)
     mkdir_and_rename(img_save_path)
 
-    psnr = pyiqa.create_metric("psnr")
-    ssim = pyiqa.create_metric("ssim")
+    c
     lpips = pyiqa.create_metric("lpips")
     niqe = pyiqa.create_metric("niqe")
     nima = pyiqa.create_metric("nima")
