@@ -422,7 +422,7 @@ class Mix(nn.Module):
 
 @ARCH_REGISTRY.register()
 class AECR(nn.Module):
-    def __init__(self, input_nc, output_nc, ngf=64, use_dropout=False, padding_type='reflect'):
+    def __init__(self, input_nc=3, output_nc=3, ngf=64, use_dropout=False, padding_type='reflect'):
         super(AECR, self).__init__()
 
         ###### downsample

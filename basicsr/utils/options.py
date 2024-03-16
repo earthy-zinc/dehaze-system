@@ -101,6 +101,7 @@ def parse_options(root_path, is_train=True):
     with open(config, mode='r') as f:
         opt = yaml.load(f, Loader=ordered_yaml()[0])
 
+    opt['root_path'] = root_path
     # distributed settings
     if args.launcher == 'none':
         opt['dist'] = False

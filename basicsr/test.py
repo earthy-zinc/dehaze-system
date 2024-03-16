@@ -59,6 +59,10 @@ def test_pipeline(root_path):
             model.nondist_test(test_net_g, test_loader, opt['train']['total_iter'], None, opt['val']['save_img'])
         if opt.get("no_need_load") is not None:
             model.validation(test_loader, 0, None, opt['val']['save_img'])
+        if opt.get("path").get("pretrain_network_g") is not None:
+            model.load_network(test_net_g, opt['path']["pretrain_network_g"], False)
+            model.nondist_test(test_net_g, test_loader, 999999, None, opt['val']['save_img'])
+
 
 
 if __name__ == '__main__':

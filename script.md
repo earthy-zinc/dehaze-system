@@ -19,11 +19,11 @@ CUDA_VISIBLE_DEVICES=7 BASICSR_JIT=True python basicsr/train.py -opt options/abl
 ```
 
 ```shell
-python basicsr/train.py -opt options/compare/AOD/DENSE-HAZE.yml && \
-python basicsr/train.py -opt options/compare/AOD/I-HAZE.yml && \
-python basicsr/train.py -opt options/compare/AOD/O-HAZE.yml && \
-python basicsr/train.py -opt options/compare/AOD/NH-HAZE-20.yml && \
-python basicsr/train.py -opt options/compare/AOD/NH-HAZE-21.yml && \
-python basicsr/train.py -opt options/compare/AOD/NH-HAZE-23.yml
+python basicsr/train.py -opt options/compare/FFA/DENSE-HAZE.yml && \
+python basicsr/train.py -opt options/compare/FFA/I-HAZE.yml && \
+python basicsr/train.py -opt options/compare/FFA/O-HAZE.yml && \
+python basicsr/train.py -opt options/compare/FFA/NH-HAZE-20.yml && \
+python basicsr/train.py -opt options/compare/FFA/NH-HAZE-21.yml && \
+python basicsr/train.py -opt options/compare/FFA/NH-HAZE-23.yml
 
 ```
