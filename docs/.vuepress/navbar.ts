@@ -1,6 +1,6 @@
 import {navbar} from "vuepress-theme-hope";
 
-let host = "http://10.16.76.135";
+let host = "http://47.120.48.158";
 
 export default navbar([
     "/前端开发",
@@ -17,7 +17,7 @@ export default navbar([
                 children: [
                     {
                         text: "一起来玩贪吃蛇",
-                        link: host + "/greedy_snake/"
+                        link: host + ":82/"
                     }
                 ]
             },
@@ -26,7 +26,7 @@ export default navbar([
                 children: [
                     {
                         text: "图像去雾系统",
-                        link: host + "/dehaze_front/#/component/demo/dehaze"
+                        link: host + ":83/"
                     }
                 ]
             },
@@ -35,7 +35,7 @@ export default navbar([
                 children: [
                     {
                         text: "小沛の个人博客",
-                        link: host + "/pei_blog"
+                        link: host + ":84/"
                     }
                 ]
             },
@@ -44,11 +44,11 @@ export default navbar([
                 children: [
                     {
                         text: "餐厅后台管理系统",
-                        link: host + "/deliver_manager"
+                        link: host + ":85/"
                     },
                     {
                         text: "点单消费(手机访问)",
-                        link: host + "/deliver_customer"
+                        link: host + ":85/"
                     }
                 ]
             },
@@ -57,11 +57,11 @@ export default navbar([
                 children: [
                     {
                         text: "卖家订单管理系统",
-                        link: host + "/youlai_mall"
+                        link: host + ":86/"
                     },
                     {
                         text: "下单购物",
-                        link: host + "/youlai_app"
+                        link: host + ":87/"
                     }
                 ]
             },
