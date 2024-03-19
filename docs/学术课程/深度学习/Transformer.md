@@ -71,7 +71,7 @@ Transformer由编码器和解码器组成。
 
 Vision Transformer将最初针对自然语言处理的Transformer技术应用到了计算机视觉领域。
 
-![vit](./watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM3NTQxMDk3,size_16,color_FFFFFF,t_70#pic_center.png)
+
 
 ### 模型结构
 
@@ -85,7 +85,6 @@ Vision Transformer将最初针对自然语言处理的Transformer技术应用到
 
 Transfomer要求输入的是一段序列，序列中每个元素都是一个向量。即二维矩阵[num_token, token_dim]。如下图，输入一段序列，我们用0-9来表示序列中不同的元素(token)，假定每个token长度为768，则我们可以用二维矩阵[10, 768]来表示展平图块的线性投影层的输入。
 
-![encoder](./watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM3NTQxMDk3,size_16,color_FFFFFF,t_70#pic_center-1701672405164-17.png)
 
 但是图像的数据格式为三维矩阵[H, W, C]，由长度、宽度、通道数组成，所以我们需要一个嵌入层将原始的图像进行矩阵变换，使其符合Transformer的输入。
 
@@ -97,7 +96,7 @@ Transfomer要求输入的是一段序列，序列中每个元素都是一个向�
 
 #### Transformer 编码器
 
-![encoder](./watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM3NTQxMDk3,size_16,color_FFFFFF,t_70#pic_center-1701674303652-20.png)
+
 
 * Layer Norm，这种归一化方法主要是针对自然语言处理领域提出的，这里是对每个token进行归一化处理，
 * Multi-Head Attention，与Transformer相同
@@ -129,11 +128,11 @@ Transfomer要求输入的是一段序列，序列中每个元素都是一个向�
 由于局部注意机制，它具有CNN处理大尺寸图像的优势。（相比于transformer，CNN的计算量小很多，所以可以处理大尺寸图像）
 又具有Transformer的优点，可以用移位窗口方案来建模长期依赖关系。
 
-![Swin和ViT对比](./watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5aSq6Ziz6Iqx55qE5bCP57u_6LGG,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center-1701696865299-26.png)
+
 
 ### 网络结构
 
-![Swin Transformer网络架构](./watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5aSq6Ziz6Iqx55qE5bCP57u_6LGG,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center.png)
+
 
 * 首先将图片输入到块分割模块中进行分块，然后将图块在通道方向上展平。图像矩阵的形状从[H, W, 3]，变成了[H/4, W/4, 48]
 * 通过线性嵌入层对每个像素的通道维度做线性变换，形状改为[H/4, W/4, C]
@@ -142,7 +141,7 @@ Transfomer要求输入的是一段序列，序列中每个元素都是一个向�
 
 ### 块合并层
 
-![在这里插入图片描述](./watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5aSq6Ziz6Iqx55qE5bCP57u_6LGG,size_20,color_FFFFFF,t_70,g_se,x_16#pic_center-1701696970461-29.png)
+
 
 块合并层会对输入到该层的图块进行下采样，经过处理之后图块（矩阵）的宽和高会减半，而深度会翻倍。
 
