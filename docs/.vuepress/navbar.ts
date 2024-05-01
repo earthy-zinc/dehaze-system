@@ -1,13 +1,10 @@
 import {navbar} from "vuepress-theme-hope";
 
-let host = "http://47.120.48.158";
-
 export default navbar([
     "/前端开发",
     "/后端开发",
     "/学术课程",
-    "/工作效率",
-    "/艺术设计",
+    "/通用工具",
     "/项目文档",
     {
         text: "项目展示",
@@ -17,7 +14,8 @@ export default navbar([
                 children: [
                     {
                         text: "一起来玩贪吃蛇",
-                        link: host + ":82/"
+                        // 90
+                        link: "/kob"
                     }
                 ]
             },
@@ -26,7 +24,8 @@ export default navbar([
                 children: [
                     {
                         text: "图像去雾系统",
-                        link: host + ":83/"
+                        // 91,92
+                        link: "/dehaze-front"
                     }
                 ]
             },
@@ -34,8 +33,17 @@ export default navbar([
                 text: "土味博客",
                 children: [
                     {
-                        text: "小沛の个人博客",
-                        link: host + ":84/"
+                        text: "小沛博客v1",
+                        // 93
+                        link: "/pei-blog"
+                    },
+                    {
+                        text: "小沛博客v2",
+                        link: "/wpx-blog"
+                    },
+                    {
+                        text: "小沛博客管理后台",
+                        link: "/wpx-blog-admin"
                     }
                 ]
             },
@@ -44,11 +52,11 @@ export default navbar([
                 children: [
                     {
                         text: "餐厅后台管理系统",
-                        link: host + ":85/"
+                        link: "/earthy-delivery/backend"
                     },
                     {
                         text: "点单消费(手机访问)",
-                        link: host + ":85/"
+                        link: "/earthy-delivery/front"
                     }
                 ]
             },
@@ -57,11 +65,12 @@ export default navbar([
                 children: [
                     {
                         text: "卖家订单管理系统",
-                        link: host + ":86/"
+                        // 94
+                        link: "/tuwei-mall/backend"
                     },
                     {
                         text: "下单购物",
-                        link: host + ":87/"
+                        link: "/tuwei-mall/front"
                     }
                 ]
             },
