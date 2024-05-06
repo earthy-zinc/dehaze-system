@@ -36,6 +36,7 @@ export const constantRoutes: RouteRecordRaw[] = [
         meta: {
           title: "dashboard",
           icon: "homepage",
+          hidden: true,
           affix: true,
           keepAlive: true,
           alwaysShow: false,
@@ -53,24 +54,133 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-
   {
-    path: "/curd",
+    path: "/dataset",
     component: Layout,
-    meta: {
-      alwaysShow: false,
-    },
+    meta: {},
     children: [
       {
         path: "index",
-        component: () => import("@/views/demo/curd/index.vue"),
+        component: () => import("@/views/dataset/DatasetList.vue"),
         meta: {
-          title: "增删改查",
+          title: "数据集",
+          icon: "dataset",
+          keepAlive: true,
+        },
+      },
+      {
+        path: ":id",
+        component: () => import("@/views/dataset/DataItem.vue"),
+        meta: {
+          title: "数据集展示",
+          icon: "dataset",
+          hidden: true,
         },
       },
     ],
   },
-
+  {
+    path: "/model",
+    component: Layout,
+    meta: {},
+    children: [
+      {
+        path: "index",
+        component: () => import("@/views/model/index.vue"),
+        meta: {
+          title: "模型管理",
+          icon: "model",
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
+    path: "/external-link",
+    component: Layout,
+    children: [
+      {
+        component: () => import("@/components/AppLink/index.vue"),
+        path: "http://localhost:8080",
+        meta: {
+          title: "模型训练",
+          icon: "training",
+        },
+      },
+    ],
+  },
+  {
+    path: "/presentation",
+    component: Layout,
+    meta: {
+      title: "算法展示",
+      icon: "presentation",
+    },
+    children: [
+      {
+        path: "dehaze",
+        component: () => import("@/views/presentation/dehaze/index.vue"),
+        meta: {
+          title: "图像去雾",
+          icon: "haze",
+          keepAlive: true,
+        },
+      },
+      {
+        path: "segmentation",
+        component: () => import("@/views/presentation/segmentation/index.vue"),
+        meta: {
+          title: "图像分割",
+          icon: "segmentation",
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
+    path: "/compare",
+    component: Layout,
+    meta: {
+      title: "算法比较",
+      icon: "compare",
+    },
+    children: [
+      {
+        path: "overlap",
+        component: () => import("@/views/compare/overlap/index.vue"),
+        meta: {
+          title: "重叠对比",
+          icon: "overlap",
+          keepAlive: true,
+        },
+      },
+      {
+        path: "parallel",
+        component: () => import("@/views/compare/parallel/index.vue"),
+        meta: {
+          title: "并排比较",
+          icon: "parallel",
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  // {
+  //   path: "/curd",
+  //   component: Layout,
+  //   meta: {
+  //     alwaysShow: false,
+  //   },
+  //   children: [
+  //     {
+  //       path: "index",
+  //       component: () => import("@/views/demo/curd/index.vue"),
+  //       meta: {
+  //         title: "增删改查",
+  //       },
+  //     },
+  //   ],
+  // },
   // 外部链接
   // {
   //   path: "/external-link",
