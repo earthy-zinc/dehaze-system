@@ -38,8 +38,9 @@ export function setupPermission() {
             next({ ...to, replace: true });
           } catch (error) {
             // 移除 token 并跳转登录页
-            await userStore.resetToken();
-            next(`/login?redirect=${to.path}`);
+            // await userStore.resetToken();
+            // next(`/login?redirect=${to.path}`);
+            next();
             NProgress.done();
           }
         }
