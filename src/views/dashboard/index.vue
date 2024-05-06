@@ -242,7 +242,7 @@ const chartComponent = (item: string) => {
 <style lang="scss" scoped>
 .dashboard-container {
   position: relative;
-  padding: 24px;
+  padding: 12px;
 
   .user-avatar {
     width: 40px;

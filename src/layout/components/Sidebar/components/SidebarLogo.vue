@@ -36,16 +36,15 @@ const logo = ref(new URL(`../../../../assets/logo.png`, import.meta.url).href);
   background-color: $sidebar-logo-background;
 
   .logo-image {
-    width: 20px;
-    height: 20px;
+    width: 32px;
+    height: 32px;
   }
 
   .logo-title {
     flex-shrink: 0; /* 防止容器在空间不足时缩小 */
     margin-left: 10px;
-    font-size: 14px;
+    font-size: 17px;
     font-weight: bold;
-    color: white;
   }
 }
 

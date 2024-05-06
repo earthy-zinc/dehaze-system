@@ -1,25 +1,25 @@
 <template>
   <div class="flex">
-    <template v-if="!isMobile">
-      <!--全屏 -->
-      <div class="setting-item" @click="toggle">
-        <svg-icon
-          :icon-class="isFullscreen ? 'fullscreen-exit' : 'fullscreen'"
-        />
-      </div>
+    <!--    <template v-if="!isMobile">-->
+    <!--      &lt;!&ndash;全屏 &ndash;&gt;-->
+    <!--      <div class="setting-item" @click="toggle">-->
+    <!--        <svg-icon-->
+    <!--          :icon-class="isFullscreen ? 'fullscreen-exit' : 'fullscreen'"-->
+    <!--        />-->
+    <!--      </div>-->
 
-      <!-- 布局大小 -->
-      <el-tooltip
-        :content="$t('sizeSelect.tooltip')"
-        effect="dark"
-        placement="bottom"
-      >
-        <size-select class="setting-item" />
-      </el-tooltip>
+    <!--      &lt;!&ndash; 布局大小 &ndash;&gt;-->
+    <!--      <el-tooltip-->
+    <!--        :content="$t('sizeSelect.tooltip')"-->
+    <!--        effect="dark"-->
+    <!--        placement="bottom"-->
+    <!--      >-->
+    <!--        <size-select class="setting-item" />-->
+    <!--      </el-tooltip>-->
 
-      <!-- 语言选择 -->
-      <lang-select class="setting-item" />
-    </template>
+    <!--      &lt;!&ndash; 语言选择 &ndash;&gt;-->
+    <!--      <lang-select class="setting-item" />-->
+    <!--    </template>-->
 
     <!-- 用户头像 -->
     <el-dropdown class="setting-item" trigger="click">
@@ -118,7 +118,7 @@ function logout() {
 .layout-mix {
   .setting-item,
   .el-icon {
-    color: var(--el-color-white);
+    color: var(--el-text-color);
   }
 }
 
