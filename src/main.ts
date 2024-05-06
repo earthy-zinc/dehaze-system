@@ -4,6 +4,7 @@ import router from "@/router";
 import { setupStore } from "@/store";
 import { setupDirective } from "@/directive";
 import { setupElIcons, setupI18n, setupPermission } from "@/plugins";
+import VueLazyLoad from "vue3-lazyload";
 
 // 本地SVG图标
 import "virtual:svg-icons-register";
@@ -25,4 +26,9 @@ setupElIcons(app);
 setupI18n(app);
 // 注册动态路由
 setupPermission();
-app.use(router).mount("#app");
+app
+  .use(router)
+  .use(VueLazyLoad, {
+    // options...
+  })
+  .mount("#app");
