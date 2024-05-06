@@ -36,3 +36,47 @@ const layout = computed(() => settingsStore.layout);
   }
 }
 </style>
+
+<style lang="scss">
+:root {
+  --el-menu-base-level-padding: 18px;
+  --el-menu-icon-width: 18px;
+}
+$el-menu-base-level-padding: var(--el-menu-base-level-padding);
+$el-menu-icon-width: var(--el-menu-icon-width);
+
+.el-sub-menu {
+  &__title {
+    &:hover {
+      background: $menu-hover;
+    }
+
+    padding: 0 0 0 $el-menu-base-level-padding;
+  }
+
+  &__icon-arrow {
+    margin-right: -6px;
+  }
+}
+
+.el-menu {
+  &--horizontal {
+    justify-content: center;
+
+    .el-menu-item:not(.is-disabled) {
+      &:focus,
+      &:hover {
+        background: $menu-hover;
+      }
+    }
+  }
+
+  &:not(.el-menu--collapse) {
+    .el-sub-menu__title {
+      padding-right: calc(
+        #{$el-menu-base-level-padding} + #{$el-menu-icon-width} - 8px
+      );
+    }
+  }
+}
+</style>
