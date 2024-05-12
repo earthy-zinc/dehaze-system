@@ -6,32 +6,37 @@ import pyiqa
 import torch
 import math
 from thop import profile
+from timm.scheduler import CosineLRScheduler
 from torch import nn
+from torch.optim import lr_scheduler
 from torchvision.models import vgg16
 from tqdm import tqdm
-
+from pytorch_msssim import ms_ssim
 from basicsr.archs import build_network
 from basicsr.losses.FAA_loss import FAALossNetwork
 from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, tensor2img, img2tensor, imwrite
 from basicsr.utils.registry import MODEL_REGISTRY
 from basicsr.utils.static_util import convert_size
-
+import torch.nn.functional as F
 
 @MODEL_REGISTRY.register()
-class FFAModel(BaseModel):
+class ITBDehazeModel(BaseModel):
     def __init__(self, opt):
         super().__init__(opt)
         logger = get_root_logger()
         # lq => low quality image => hazy image
         # gt => ground truth => clean image
-        self.net_g = build_network(opt['network_g'])
+        net_g_opt = opt['network_g']
+        net_g_opt["imagenet_model"] = os.path.join(opt['pretrained_model_path'], "compare/ITBDehaze")
+        self.net_g = build_network(net_g_opt)
         self.net_g = self.model_to_device(self.net_g)
         test_input = torch.randn(1, 3, 256, 256).to(self.device)
         net_g_flops, net_g_params = profile(self.net_g, inputs=(test_input,))
         logger.info("去雾模型net_g的FLOPS量为{}，参数量为{}。"
                     .format(convert_size(net_g_flops), convert_size(net_g_params)))
-
+        self.net_d = build_network(opt['network_d'])
+        self.net_d = self.model_to_device(self.net_d)
         self.lq = None
         self.gt = None
         self.output = None
@@ -50,29 +55,40 @@ class FFAModel(BaseModel):
         logger = get_root_logger()
         train_opt = self.opt['train']
         self.net_g.train()
-        self.cri_l1 = nn.L1Loss().to(self.device)
-        # yml => perceptual_opt = True
-        if train_opt.get('perceptual_opt'):
-            vgg_model = vgg16(pretrained=True).features[:16]
-            vgg_model = vgg_model.to(self.device)
-            for param in vgg_model.parameters():
-                param.requires_grad = False
-            self.cri_perceptual = FAALossNetwork(vgg_model).to(self.device)
-        # set up optimizers and schedulers
+        self.net_d.train()
+        vgg_model = vgg16(pretrained=True)
+        # vgg_model.load_state_dict(torch.load(os.path.join(args.vgg_model , 'vgg16.pth')))
+        vgg_model = vgg_model.features[:16].to(self.device)
+        for param in vgg_model.parameters():
+            param.requires_grad = False
+
+        self.cri_perceptual = FAALossNetwork(vgg_model)
+        self.cri_perceptual.eval()
+        self.cri_ms_ssim = ms_ssim
         self.setup_optimizers()
+        self.setup_schedulers()
 
     def setup_optimizers(self):
         train_opt = self.opt['train']
-        optim_type = train_opt['optim_g'].pop('type')
-        # lr=opt.lr, betas=(0.9, 0.999), eps=1e-08
-        self.optimizer = self.get_optimizer(optim_type,
-                                            filter(lambda x: x.requires_grad, self.net_g.parameters()),
-                                            **train_opt['optim_g'])
-        self.optimizers.append(self.optimizer)
+        optim_g_type = train_opt['optim_g'].pop('type')
+        self.optimizer_G = self.get_optimizer(optim_g_type,
+                                              filter(lambda x: x.requires_grad, self.net_g.parameters()),
+                                              **train_opt['optim_g'])
+        optim_d_type = train_opt['optim_d'].pop('type')
+        self.optimizer_D = self.get_optimizer(optim_d_type,
+                                              filter(lambda x: x.requires_grad, self.net_d.parameters()),
+                                              **train_opt['optim_d'])
+        self.optimizers.append(self.optimizer_G)
+        self.optimizers.append(self.optimizer_D)
 
-    def lr_schedule_cosdecay(self, t, T, init_lr):
-        lr = 0.5 * (1 + math.cos(t * math.pi / T)) * init_lr
-        return lr
+    def setup_schedulers(self):
+        train_opt = self.opt['train']
+        scheduler_g_type = train_opt['scheduler_g'].pop('type')
+        scheduler_d_type = train_opt['scheduler_d'].pop('type')
+        if scheduler_g_type in ['CosineLRScheduler']:
+            self.schedulers.append(CosineLRScheduler(self.optimizer_G, **train_opt['scheduler_g']))
+        elif scheduler_d_type == 'MultiStepLR':
+            self.schedulers.append(lr_scheduler.MultiStepLR(self.optimizer_D, **train_opt['scheduler_d']))
 
     def feed_data(self, data):
         if 'lq' in data:
@@ -86,23 +102,25 @@ class FFAModel(BaseModel):
 
     def optimize_parameters(self, current_iter):
         train_opt = self.opt['train']
-
-        lr = self.lr_schedule_cosdecay(current_iter, train_opt['total_iter'], train_opt['optim_g']['lr'])
-        for param_group in self.optimizer.param_groups:
-            param_group['lr'] = lr
-
-        self.output = self.net_g(self.lq)
         loss_dict = OrderedDict()
-
-        loss = self.cri_l1(self.output, self.gt)
-
-        if train_opt.get('perceptual_opt'):
-            loss = loss + 0.04 * self.cri_perceptual(self.output, self.gt)
-        loss.backward()
-        self.optimizer.step()
-        self.optimizer.zero_grad()
-        loss_dict['loss'] = loss
+        self.output = self.net_g(self.lq)
+        self.net_d.zero_grad()
+        real_out = self.net_d(self.gt).mean()
+        fake_out = self.net_d(self.output).mean()
+        d_loss = 1 - real_out + fake_out
+        loss_dict['d_loss'] = d_loss
+        d_loss.backward(retain_graph=True)
+        self.net_g.zero_grad()
+        g_adversarial_loss = torch.mean(1 - fake_out)
+        g_smooth_loss = F.smooth_l1_loss(self.output, self.gt)
+        g_perceptual_loss = self.cri_perceptual(self.output, self.gt)
+        g_ms_ssim_loss = - ms_ssim(self.output, self.gt)
+        total_loss = g_smooth_loss + 0.01 * g_perceptual_loss + 0.0005 * g_adversarial_loss + 0.5 * g_ms_ssim_loss
+        loss_dict['g_loss'] = total_loss
         self.log_dict = self.reduce_loss_dict(loss_dict)
+        total_loss.backward()
+        self.optimizer_D.step()
+        self.optimizer_G.step()
 
     def test(self):
         self.net_g.eval()
@@ -113,7 +131,7 @@ class FFAModel(BaseModel):
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
         self.nondist_validation(dataloader, current_iter, tb_logger, save_img, save_as_dir)
 
-    def nondist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None, update_net=True):
+    def nondist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
         dataset_name = dataloader.dataset.opt['name']
         with_metrics = self.opt['val'].get('metrics') is not None
         if with_metrics:
@@ -177,28 +195,27 @@ class FFAModel(BaseModel):
             for metric in self.metric_results.keys():
                 self.metric_results[metric] /= (idx + 1)
 
-            if update_net:
-                if self.key_metric is not None:
-                    # If the best metric is updated, update and save best model
-                    to_update = self._update_best_metric_result(dataset_name, self.key_metric,
-                                                                self.metric_results[self.key_metric], current_iter)
+            if self.key_metric is not None:
+                # If the best metric is updated, update and save best model
+                to_update = self._update_best_metric_result(dataset_name, self.key_metric,
+                                                            self.metric_results[self.key_metric], current_iter)
 
-                    if to_update:
-                        for name, opt_ in self.opt['val']['metrics'].items():
-                            self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
-                        self.copy_model(self.net_g, self.net_g_best)
-                        self.save_network(self.net_g, 'net_g_best', '')
-                else:
-                    # update each metric separately
-                    updated = []
+                if to_update:
                     for name, opt_ in self.opt['val']['metrics'].items():
-                        tmp_updated = self._update_best_metric_result(dataset_name, name, self.metric_results[name],
-                                                                      current_iter)
-                        updated.append(tmp_updated)
-                    # save best model if any metric is updated
-                    if sum(updated):
-                        self.copy_model(self.net_g, self.net_g_best)
-                        self.save_network(self.net_g, 'net_g_best', '')
+                        self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
+                    self.copy_model(self.net_g, self.net_g_best)
+                    self.save_network(self.net_g, 'net_g_best', '')
+            else:
+                # update each metric separately
+                updated = []
+                for name, opt_ in self.opt['val']['metrics'].items():
+                    tmp_updated = self._update_best_metric_result(dataset_name, name, self.metric_results[name],
+                                                                  current_iter)
+                    updated.append(tmp_updated)
+                # save best model if any metric is updated
+                if sum(updated):
+                    self.copy_model(self.net_g, self.net_g_best)
+                    self.save_network(self.net_g, 'net_g_best', '')
 
             self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
 
@@ -220,7 +237,7 @@ class FFAModel(BaseModel):
     def nondist_test(self, net, dataloader, current_iter, tb_logger, save_img):
         self.net_g = net
         self.nondist_validation(dataloader, current_iter, tb_logger,
-                                save_img, None, False)
+                                save_img, None)
 
     def get_current_visuals(self):
         out_dict = OrderedDict()
@@ -231,7 +248,3 @@ class FFAModel(BaseModel):
         if hasattr(self, 'lq'):
             out_dict['lq'] = self.gt.detach().cpu()
         return out_dict
-
-    def save(self, epoch, current_iter):
-        self.save_network(self.net_g, 'net_g', current_iter)
-        self.save_training_state(epoch, current_iter)

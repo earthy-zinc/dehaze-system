@@ -3,6 +3,8 @@ import time
 import torch
 from collections import OrderedDict
 from copy import deepcopy
+
+from timm.scheduler import CosineLRScheduler
 from torch.nn.parallel import DataParallel, DistributedDataParallel
 
 from basicsr.models import lr_scheduler as lr_scheduler
@@ -194,7 +196,7 @@ class BaseModel():
             init_lr_groups_l.append([v['initial_lr'] for v in optimizer.param_groups])
         return init_lr_groups_l
 
-    def update_learning_rate(self, current_iter, warmup_iter=-1):
+    def update_learning_rate(self, current_iter, warmup_iter=-1, epoch=None):
         """Update learning rate.
 
         Args:
@@ -204,7 +206,10 @@ class BaseModel():
         """
         if current_iter > 1:
             for scheduler in self.schedulers:
-                scheduler.step()
+                if isinstance(scheduler, CosineLRScheduler):
+                    scheduler.step(epoch)
+                else:
+                    scheduler.step()
         # set up warm-up learning rate
         if current_iter < warmup_iter:
             # get initial lr for each group

@@ -4,10 +4,9 @@ import torch.utils.model_zoo as model_zoo
 import torch
 import torch.nn.functional as F
 import os
+import numpy as np
 
 from basicsr.utils.registry import ARCH_REGISTRY
-
-
 class Pre_Res2Net(nn.Module):
     def __init__(self, block, layers, baseWidth=26, scale=4, num_classes=1000):
         self.inplanes = 64
@@ -332,6 +331,8 @@ class Res2Net(nn.Module):
 ######################
 # decoder
 ######################
+def default_conv(in_channels, out_channels, kernel_size, bias=True):
+    return nn.Conv2d(in_channels, out_channels, kernel_size, padding=(kernel_size // 2), bias=bias)
 
 
 class PALayer(nn.Module):
@@ -439,13 +440,13 @@ class Dehaze(nn.Module):
         super(Dehaze, self).__init__()
 
         self.encoder = Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
-        res2net101 = Pre_Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
-        res2net101.load_state_dict(torch.load(os.path.join(imagenet_model, 'res2net101_v1b_26w_4s-0812c246.pth')))
+        res2net101 = Pre_Res2Net.Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
+        res2net101.load_state_dict(torch.load(os.path.join(imagenet_model,'res2net101_v1b_26w_4s-0812c246.pth')))
         pretrained_dict = res2net101.state_dict()
         model_dict = self.encoder.state_dict()
         key_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
         model_dict.update(key_dict)
-        self.encoder.load_state_dict(model_dict)
+        self.encoder.load_state_dict(model_dict)                # encoder=Res2Net has pretrained weight
 
         self.mid_conv = DehazeBlock(default_conv, 1024, 3)
 
@@ -456,58 +457,113 @@ class Dehaze(nn.Module):
 
 
     def forward(self, input):
-        x, x_layer1, x_layer2 = self.encoder(input)
+        x, x_layer1, x_layer2 = self.encoder(input)     # [8 1024 16 16], [8 256 64 64], [8 512 32 32] = [8 3 256 256]
 
         x_mid = self.mid_conv(x)
 
-        x = self.up_block1(x_mid)
+        x = self.up_block1(x_mid)                       # [8 1024 16 16] -> [8 256 32 32]
         x = self.attention1(x)
 
-        x = torch.cat((x, x_layer2), 1)
-        x = self.up_block1(x)
+        x = torch.cat((x, x_layer2), 1)                 # [8, 768, 32, 32] = 256+512
+        x = self.up_block1(x)                           # [8, 192, 64, 64]
         x = self.attention2(x)
 
-        x = torch.cat((x, x_layer1), 1)
-        x = self.up_block1(x)
-        x = self.up_block1(x)
+        x = torch.cat((x, x_layer1), 1)                 # [8, 448, 64, 64] = 192+256
+        x = self.up_block1(x)                           # [8, 112, 128, 128]
+        x = self.up_block1(x)                           # [8, 28, 256, 256]
 
         dout2 = self.enhancer(x)
         #torch.Size([2, 28, 256, 256])
 
         return dout2
 
-@ARCH_REGISTRY.register()
-class TNN(nn.Module):
-    def __init__(self, imagenet_model="pretrained_models/compare/TNN/", rcan_model=None):
-        super(TNN, self).__init__()
-        #         self.densemap=DenseHazy()
-        self.feature_extract=Dehaze(imagenet_model)
-        #         self.tail = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(63, 3, kernel_size=7, padding=0), nn.Tanh())
-        self.pre_trained_rcan=rcan()
-        self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(60, 3, kernel_size=7, padding=0), nn.Tanh())
-    #         self.tail2 = nn.Sequential(nn.Conv2d(16, 3, kernel_size=3, padding=(3//2), bias=True), nn.ReLU(inplace=True))
-    #         self.tail = nn.Sequential(nn.Conv2d(34, 3, kernel_size=5, padding=(5//2), bias=True), nn.ReLU(inplace=True))
-    #         self.recon1 = nn.Sequential(nn.Conv2d(60, 21, kernel_size=3, padding=(3//2), bias=True), nn.ReLU(inplace=True))
-    #         self.recon2 = nn.Sequential(nn.Conv2d(24, 3, kernel_size=3, padding=(3//2), bias=True), nn.ReLU(inplace=True))
+
+
+class DehazeSwinT(nn.Module):
+    def __init__(self, imagenet_model):
+        super(DehazeSwinT, self).__init__()
+
+        checkpoint = torch.load('pretrained/swinv2_base_patch4_window8_256.pth', map_location='cpu')
+        imagenet_model.load_state_dict(checkpoint['model'])
+        self.encoder = imagenet_model
+
+        # Incorporate with SwinTransformerV2
+        self.mid_conv = DehazeBlock(default_conv, 1024, 3)
+
+        self.up_block1 = nn.PixelShuffle(2)
+        self.attention1 = DehazeBlock(default_conv, 256, 3)
+        self.attention2 = DehazeBlock(default_conv, 192, 3)
+        self.attention3 = DehazeBlock(default_conv, 112, 3)
+        self.enhancer = Enhancer(15, 15)
 
 
     def forward(self, input):
-        #         densemap=self.densemap(input)
-        feature=self.feature_extract(input)
+        x, layer_feature = self.encoder(input)      # [0-2]: [4096,128] [1024,256] [256,512]  [3]=x: [64,1024]
+
+        # change dimension
+        x, feature1, feature2, feature3 = x.transpose(1,2), layer_feature[0].transpose(1,2), layer_feature[1].transpose(1,2), layer_feature[2].transpose(1,2)
+        x = torch.reshape(x, (x.shape[0], x.shape[1], int(np.sqrt(x.shape[2])), int(np.sqrt(x.shape[2]))))
+        feature1 = torch.reshape(feature1, (feature1.shape[0], feature1.shape[1], int(np.sqrt(feature1.shape[2])), int(np.sqrt(feature1.shape[2]))))
+        feature2 = torch.reshape(feature2, (feature2.shape[0], feature2.shape[1], int(np.sqrt(feature2.shape[2])), int(np.sqrt(feature2.shape[2]))))
+        feature3 = torch.reshape(feature3, (feature3.shape[0], feature3.shape[1], int(np.sqrt(feature3.shape[2])), int(np.sqrt(feature3.shape[2]))))
+
+        x_mid = self.mid_conv(x)                    # [8, 1024, 8, 8] = [8, 1024, 8, 8]
+
+        x = self.up_block1(x_mid)                   # [8, 256, 16, 16] = [8, 1024, 8, 8]
+        x = self.attention1(x)
+
+        x = torch.cat((x, feature3), 1)             # [8, 768, 16, 16]
+        x = self.up_block1(x)                       # [8, 192, 32, 32]
+        x = self.attention2(x)
+
+        x = torch.cat((x, feature2), 1)             # [8, 448, 32, 32] = 192+256
+        x = self.up_block1(x)                       # [8, 112, 64, 64]
+        x = self.attention3(x)
+
+        x = torch.cat((x, feature1), 1)             # [8, 240, 64, 64] = 112+128
+        x = self.up_block1(x)
+        x = self.up_block1(x)
+
+        dout2 = self.enhancer(x)
+
+        return dout2
+
+
+@ARCH_REGISTRY.register()
+class ITBDehaze(nn.Module):
+    def __init__(self, imagenet_model, rcan_model=None):
+        super(ITBDehaze, self).__init__()
+
+        # first branch
+        if imagenet_model.__class__.__name__ == 'SwinTransformerV2':
+            self.feature_extract=DehazeSwinT(imagenet_model)    # parameters: 109313725
+        else:
+            self.feature_extract=Dehaze(imagenet_model)  # parameters: 49347811
+
+        # second branch
+        self.pre_trained_rcan=rcan()                     # parameters: 996651
+
+        # tail
+        if imagenet_model.__class__.__name__ == 'SwinTransformerV2':
+            self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(47, 3, kernel_size=7, padding=0), nn.Tanh())
+        else:
+            self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(60, 3, kernel_size=7, padding=0), nn.Tanh())
+
+
+
+    def forward(self, input):
+
+        feature=self.feature_extract(input)                     # input:[8,3,256,256]   -> feature:[8,28,256,256]
         rcan_out = self.pre_trained_rcan(input)
-        x = torch.cat([feature, rcan_out], 1)
-        #         x = self.tail(x)
+        x = torch.cat([feature, rcan_out], 1)                   # swin 15+32=47
         feat_hazy = self.tail1(x)
-        #         feat_clear = torch.cat([self.recon1(x), feat_hazy], dim=1)
-        #         out_hazy = self.recon2(feat_clear)
-        #         out_clear = feat_hazy + input
+
         return feat_hazy
 #         return x
 
-@ARCH_REGISTRY.register()
-class TNNDiscriminator(nn.Module):
+class Discriminator(nn.Module):
     def __init__(self):
-        super(TNNDiscriminator, self).__init__()
+        super(Discriminator, self).__init__()
         self.net = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=3, padding=1),
             nn.LeakyReLU(0.2),

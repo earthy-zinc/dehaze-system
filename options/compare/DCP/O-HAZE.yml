@@ -9,10 +9,9 @@ no_need_load: true
 datasets:
   train:
     name: O-HAZE-train
-    type: NtireH5Dataset
-    mode: train
-    data_path: datasets/O-HAZE.h5
-    shuffle: true
+    type: NtireDataset
+    haze_path: O-HAZE/hazy
+    clear_path: O-HAZE/clean
 
     # data loader
     use_shuffle: true
@@ -25,17 +24,15 @@ datasets:
 
   val:
     name: O-HAZE-val
-    type: NtireH5Dataset
-    mode: val
-    data_path: datasets/O-HAZE-val.h5
-    shuffle: true
+    type: NtireDataset
+    haze_path: O-HAZE/hazy
+    clear_path: O-HAZE/clean
 
   test:
     name: O-HAZE-test
-    type: NtireH5Dataset
-    mode: test
-    data_path: datasets/O-HAZE-test.h5
-    shuffle: true
+    type: NtireDataset
+    haze_path: O-HAZE/hazy
+    clear_path: O-HAZE/clean
 
 # network structures
 network_g:

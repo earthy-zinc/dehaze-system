@@ -102,6 +102,7 @@ def parse_options(root_path, is_train=True):
         opt = yaml.load(f, Loader=ordered_yaml()[0])
 
     opt['root_path'] = root_path
+    opt['pretrained_model_path'] = os.path.join(root_path, 'pretrained_models')
     # distributed settings
     if args.launcher == 'none':
         opt['dist'] = False
