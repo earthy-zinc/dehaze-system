@@ -69,7 +69,7 @@ train:
 val:
   val_freq: !!float 5000
   save_img: true
-
+  suffix: NH-HAZE-21
   key_metric: psnr
   metrics:
     psnr: # metric name, can be arbitrary

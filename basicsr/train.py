@@ -183,7 +183,7 @@ def train_pipeline(root_path):
             if current_iter > total_iters:
                 break
             # 更新学习率
-            model.update_learning_rate(current_iter, warmup_iter=opt['train'].get('warmup_iter', -1))
+            model.update_learning_rate(current_iter, warmup_iter=opt['train'].get('warmup_iter', -1), epoch=epoch)
             # 开始本次迭代的训练
             model.feed_data(train_data)
             if model_type == 'GCAModel':

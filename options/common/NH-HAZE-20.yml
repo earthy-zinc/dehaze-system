@@ -1,5 +1,5 @@
 # general settings
-name: NH-HAZE-20
+name: NH-HAZE-20-2
 model_type: ITBNewModel
 num_gpu: 1 # set num_gpu: 0 for cpu mode
 gpu_id: 0
@@ -25,17 +25,17 @@ datasets:
 
   val:
     name: NH-HAZE-20-val
-    type: NtireH5Dataset
+    type: NtireDataset
     mode: val
-    data_path: datasets/NH-HAZE-20-val.h5
-    shuffle: true
+    haze_path: NH-HAZE-2020/hazy
+    clear_path: NH-HAZE-2020/clean
 
   test:
     name: NH-HAZE-20-test
-    type: NtireH5Dataset
+    type: NtireDataset
     mode: test
-    data_path: datasets/NH-HAZE-20-test.h5
-    shuffle: true
+    haze_path: NH-HAZE-2020/hazy
+    clear_path: NH-HAZE-2020/clean
 
 # network structures
 network_g:
@@ -116,7 +116,7 @@ train:
 val:
   val_freq: !!float 1000
   save_img: true
-
+  suffix: NH-HAZE-20
   key_metric: psnr
   metrics:
     psnr: # metric name, can be arbitrary
