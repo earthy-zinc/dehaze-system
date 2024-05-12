@@ -11,6 +11,8 @@ from torchvision.models import vgg16
 from tqdm import tqdm
 
 from basicsr.archs import build_network
+from basicsr.losses import build_loss
+from basicsr.losses.AECR_loss import AECRContrastLoss
 from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, tensor2img, img2tensor, imwrite
 from basicsr.utils.registry import MODEL_REGISTRY
@@ -45,16 +47,24 @@ class AECRModel(BaseModel):
             self._init_training_settings()
         self.net_g_best = copy.deepcopy(self.net_g)
 
+    def lr_schedule_cosdecay(self, t, T, init_lr):
+        lr = 0.5 * (1 + math.cos(t * math.pi / T)) * init_lr
+        return lr
+
     def _init_training_settings(self):
         logger = get_root_logger()
         train_opt = self.opt['train']
         self.net_g.train()
-
+        self.cri_l1 = nn.L1Loss().to(self.device)
+        self.cri_contrast = AECRContrastLoss(train_opt['contrast_opt']["ablation"]).to(self.device)
         self.setup_optimizers()
 
     def setup_optimizers(self):
         train_opt = self.opt['train']
         optim_type = train_opt['optim_g'].pop('type')
+        self.optimizer = self.get_optimizer(optim_type,
+                                            filter(lambda x: x.requires_grad, self.net_g.parameters()),
+                                            **train_opt['optim_g'])
 
     def feed_data(self, data):
         if 'lq' in data:
@@ -68,6 +78,25 @@ class AECRModel(BaseModel):
 
     def optimize_parameters(self, current_iter):
         train_opt = self.opt['train']
+
+        lr = self.lr_schedule_cosdecay(current_iter, train_opt['total_iter'], train_opt['optim_g']['lr'])
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
+        self.output = self.net_g(self.lq)
+
+        loss_dict = OrderedDict()
+        loss_vgg7, all_ap, all_an, loss_rec = 0, 0, 0, 0
+        if train_opt['w_loss_l1'] > 0:
+            loss_rec = self.cri_l1(self.output, self.gt)
+        if train_opt["w_loss_vgg7"] > 0:
+            loss_vgg7, all_ap, all_an = self.cri_contrast(self.output, self.gt, self.lq)
+        loss = train_opt['w_loss_l1'] * loss_rec + train_opt["w_loss_vgg7"] * loss_vgg7
+        loss.backward()
+        loss_dict['loss'] = loss
+        self.log_dict = self.reduce_loss_dict(loss_dict)
+
+        self.optimizer.step()
+        self.optimizer.zero_grad()
 
     def test(self):
         self.net_g.eval()

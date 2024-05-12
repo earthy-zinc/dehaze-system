@@ -1,6 +1,6 @@
 # general settings
-name: AOD-NH-HAZE-23
-model_type: AODModel
+name: TNN-NH-HAZE-21
+model_type: TNNModel
 num_gpu: 1 # set num_gpu: 0 for cpu mode
 gpu_id: 0
 manual_seed: 0
@@ -8,10 +8,10 @@ manual_seed: 0
 # dataset and data loader settings
 datasets:
   train:
-    name: NH-HAZE-23-train
+    name: NH-HAZE-21-train
     type: NtireH5Dataset
     mode: train
-    data_path: datasets/NH-HAZE-23.h5
+    data_path: datasets/NH-HAZE-21.h5
     shuffle: true
 
     # data loader
@@ -24,26 +24,29 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: NH-HAZE-23-val
+    name: NH-HAZE-21-val
     type: NtireH5Dataset
     mode: val
-    data_path: datasets/NH-HAZE-23-val.h5
+    data_path: datasets/NH-HAZE-21-val.h5
     shuffle: true
 
   test:
-    name: NH-HAZE-23-test
-    type: NtireH5Dataset
-    mode: test
-    data_path: datasets/NH-HAZE-23-test.h5
-    shuffle: true
+    name: NH-HAZE-21-test
+    type: NtireDataset
+    haze_path: NH-HAZE-2021/hazy
+    clear_path: NH-HAZE-2021/clean
 
 # network structures
 network_g:
-  type: AOD
+  type: TNN
+
+network_d:
+  type: TNNDiscriminator
+
 
 # path
 path:
-  pretrain_network_g:
+  pretrain_network_g: pretrained_models/compare/TNN/TNN.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
@@ -53,18 +56,23 @@ train:
   optim_g:
     type: Adam
     lr: !!float 1e-4
-    weight_decay: !!float 1e-4
-  grad_clip_norm: !!float 0.1
-  total_iter: 50000
-  warmup_iter: -1  # no warm up
+  optim_d:
+    type: Adam
+    lr: !!float 1e-4
 
+  scheduler:
+    type: MultiStepLR
+    milestones: [5000,7000,8000]
+    gamma: 0.5
+
+  total_iter: 100000
 
 
 # validation settings·
 val:
-  val_freq: !!float 5000
+  val_freq: !!float 1000
   save_img: true
-  suffix: NH-HAZE-23
+  suffix: NH-HAZE-21
   key_metric: psnr
   metrics:
     psnr: # metric name, can be arbitrary
@@ -90,8 +98,8 @@ val:
 
 # logging settings
 logger:
-  print_freq: 500
-  save_checkpoint_freq: !!float 5e3
-  save_latest_freq: !!float 5e3
-  show_tf_imgs_freq: !!float 5e3
+  print_freq: 100
+  save_checkpoint_freq: !!float 2e3
+  save_latest_freq: !!float 1e3
+  show_tf_imgs_freq: !!float 2e3
   use_tb_logger: true

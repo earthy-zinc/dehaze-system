@@ -62,12 +62,19 @@ class NtireDataset(data.Dataset):
             base_path = "D:/DeepLearning/dataset/"
         self.opt = opt
         self.max_size = 2000 * 2000
-        self.haze_image_path = [os.path.join(base_path, opt['haze_path'], x) for x in
+
+        haze_image_path = [os.path.join(base_path, opt['haze_path'], x) for x in
                                 natsort.natsorted(os.listdir(
                                     os.path.join(base_path, opt['haze_path'])))]
-        self.clear_image_path = [os.path.join(base_path, opt['clear_path'], x) for x in
+        clear_image_path = [os.path.join(base_path, opt['clear_path'], x) for x in
                                  natsort.natsorted(os.listdir(
                                      os.path.join(base_path, opt['clear_path'])))]
+        if self.opt['mode'] == 'val':
+            self.haze_image_path = haze_image_path[-5:]
+            self.clear_image_path = clear_image_path[-5:]
+        else:
+            self.haze_image_path = haze_image_path
+            self.clear_image_path = clear_image_path
 
     def __getitem__(self, index):
         haze = Image.open(self.haze_image_path[index]).convert("RGB")

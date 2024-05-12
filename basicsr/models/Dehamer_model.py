@@ -72,7 +72,9 @@ class DehamerModel(BaseModel):
         loss_dict['loss'] = loss
         self.optimizer.zero_grad()
         loss.backward()
+        self.log_dict = self.reduce_loss_dict(loss_dict)
         self.optimizer.step()
+        self.scheduler.step(loss)
 
     def test(self):
         self.net_g.eval()

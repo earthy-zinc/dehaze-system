@@ -49,14 +49,15 @@ def test_pipeline(root_path):
         test_net_g = build_network(test_net_g_opt)
         model.model_to_device(test_net_g)
         # opt['name'] = ''
-        latest_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_latest.pth')
-        best_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_best_.pth')
+        # latest_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_latest.pth')
+        # best_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_best_.pth')
+        best_net_g_path = osp.join('experiments', opt['name'], 'models/net_g_14000.pth')
         if osp.isfile(best_net_g_path):
             model.load_network(test_net_g, best_net_g_path, False)
             model.nondist_test(test_net_g, test_loader, 999999, None, opt['val']['save_img'])
-        if osp.isfile(latest_net_g_path):
-            model.load_network(test_net_g, latest_net_g_path, False)
-            model.nondist_test(test_net_g, test_loader, opt['train']['total_iter'], None, opt['val']['save_img'])
+        # if osp.isfile(latest_net_g_path):
+        #     model.load_network(test_net_g, latest_net_g_path, False)
+        #     model.nondist_test(test_net_g, test_loader, opt['train']['total_iter'], None, opt['val']['save_img'])
         if opt.get("no_need_load") is not None:
             model.validation(test_loader, 0, None, opt['val']['save_img'])
         if opt.get("path").get("pretrain_network_g") is not None:
