@@ -6,13 +6,13 @@
 -- ----------------------------
 -- 1. 创建数据库
 -- ----------------------------
-CREATE DATABASE IF NOT EXISTS youlai_boot DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS dehaze DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
 
 
 -- ----------------------------
 -- 2. 创建表 && 数据初始化
 -- ----------------------------
-use youlai_boot;
+use dehaze;
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -327,6 +327,64 @@ INSERT INTO `sys_user_role` VALUES (1, 1);
 INSERT INTO `sys_user_role` VALUES (2, 2);
 INSERT INTO `sys_user_role` VALUES (3, 3);
 INSERT INTO `sys_user_role` VALUES (287, 2);
+
+
+DROP TABLE IF EXISTS `sys_dataset`;
+CREATE TABLE `sys_dataset`  (
+                             `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+                             `type` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '数据集类型',
+                             `name` varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '数据集名称',
+                             `description` varchar(2048)  CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '详细描述',
+                             `path` varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT '' COMMENT '存储位置',
+                             `parent_id` bigint NOT NULL DEFAULT 0 COMMENT '父节点id',
+                             `tree_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '父节点id路径',
+                             `sort` int NULL DEFAULT 0 COMMENT '显示顺序',
+                             `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态(1:正常;0:禁用)',
+                             `deleted` tinyint NULL DEFAULT 0 COMMENT '逻辑删除标识(1:已删除;0:未删除)',
+                             `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+                             `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+                             `create_by` bigint NULL DEFAULT NULL COMMENT '创建人ID',
+                             `update_by` bigint NULL DEFAULT NULL COMMENT '修改人ID',
+                             PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '数据集表' ROW_FORMAT = DYNAMIC;
+
+DROP TABLE IF EXISTS `sys_dataset_image`;
+CREATE TABLE `sys_dataset_image`  (
+                                      `dataset_id` bigint NOT NULL COMMENT '用户ID',
+                                      `image_id` bigint NOT NULL COMMENT '角色ID',
+                                      PRIMARY KEY (`dataset_id`, `image_id`) USING BTREE
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '数据集和图片关联表' ROW_FORMAT = DYNAMIC;
+
+
+DROP TABLE IF EXISTS `sys_image`;
+CREATE TABLE `sys_image` (
+                            `id` int NOT NULL AUTO_INCREMENT COMMENT '文件id',
+                            `type` varchar(100)  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图片类型',
+                            `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图片url',
+                            `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片名',
+                            `resolution` varchar(100)  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片分辨率',
+                            `size` int NOT NULL DEFAULT '0' COMMENT '图片大小',
+                            `extend_name` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '' COMMENT '图片类型',
+                            `path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片路径',
+                            `md5` char(32) unique NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
+                            `create_time` datetime NOT NULL COMMENT '创建时间',
+                            `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+                            PRIMARY KEY (`id`) USING BTREE,
+                            UNIQUE INDEX `md5_key`(`md5` ASC) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='图片表';
+
+DROP TABLE IF EXISTS `sys_model`;
+CREATE TABLE `sys_model` (
+                             `id` bigint NOT NULL AUTO_INCREMENT COMMENT '模型id',
+                             `parent_id` bigint DEFAULT 0 COMMENT '模型的父id',
+                             `type` varchar(100) DEFAULT '' COMMENT '模型类型，0为图像去雾',
+                             `name` varchar(64) DEFAULT NULL COMMENT '模型名称',
+                             `path` varchar(255) DEFAULT NULL COMMENT '模型的存放路径',
+                             `description` varchar(2048) DEFAULT NULL COMMENT '针对该模型的详细描述',
+                             `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+                             `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+                             PRIMARY KEY (`id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='模型表';
 
 SET FOREIGN_KEY_CHECKS = 1;
 
