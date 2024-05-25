@@ -6,6 +6,7 @@ import torch.nn.functional as F
 import os
 import numpy as np
 
+from basicsr.archs.swin_transformer_v2 import SwinTransformerV2
 from basicsr.utils.registry import ARCH_REGISTRY
 class Pre_Res2Net(nn.Module):
     def __init__(self, block, layers, baseWidth=26, scale=4, num_classes=1000):
@@ -440,7 +441,7 @@ class Dehaze(nn.Module):
         super(Dehaze, self).__init__()
 
         self.encoder = Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
-        res2net101 = Pre_Res2Net.Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
+        res2net101 = Pre_Res2Net(Bottle2neck, [3, 4, 23, 3], baseWidth=26, scale=4)
         res2net101.load_state_dict(torch.load(os.path.join(imagenet_model,'res2net101_v1b_26w_4s-0812c246.pth')))
         pretrained_dict = res2net101.state_dict()
         model_dict = self.encoder.state_dict()
@@ -482,8 +483,11 @@ class Dehaze(nn.Module):
 class DehazeSwinT(nn.Module):
     def __init__(self, imagenet_model):
         super(DehazeSwinT, self).__init__()
-
-        checkpoint = torch.load('pretrained/swinv2_base_patch4_window8_256.pth', map_location='cpu')
+        if os.path.exists("/mnt/e/DeepLearningCopies/2023/RIDCP"):
+            base_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/"
+        else:
+            base_path = ""
+        checkpoint = torch.load(base_path + 'pretrained_models/compare/ITBDehaze/swinv2_base_patch4_window8_256.pth', map_location='cpu')
         imagenet_model.load_state_dict(checkpoint['model'])
         self.encoder = imagenet_model
 
@@ -531,23 +535,37 @@ class DehazeSwinT(nn.Module):
 
 @ARCH_REGISTRY.register()
 class ITBDehaze(nn.Module):
-    def __init__(self, imagenet_model, rcan_model=None):
+    def __init__(self, imagenet_model=None, rcan_model=None):
         super(ITBDehaze, self).__init__()
-
-        # first branch
-        if imagenet_model.__class__.__name__ == 'SwinTransformerV2':
-            self.feature_extract=DehazeSwinT(imagenet_model)    # parameters: 109313725
-        else:
-            self.feature_extract=Dehaze(imagenet_model)  # parameters: 49347811
+        swin_model = SwinTransformerV2(img_size=256,
+                                       patch_size=4,
+                                       in_chans=3,
+                                       embed_dim=128,
+                                       depths=[ 2, 2, 18, 2 ],
+                                       num_heads=[ 4, 8, 16, 32 ],
+                                       window_size=8,
+                                       mlp_ratio=4.,
+                                       qkv_bias=True,
+                                       drop_rate=0.0,
+                                       drop_path_rate=0.5,
+                                       ape=False,
+                                       patch_norm=True,
+                                       pretrained_window_sizes=[0, 0, 0, 0])
+        self.feature_extract=DehazeSwinT(swin_model)
+        # # first branch
+        # if imagenet_model.__class__.__name__ == 'SwinTransformerV2':
+        #        # parameters: 109313725
+        # else:
+        #     self.feature_extract=Dehaze(imagenet_model)  # parameters: 49347811
 
         # second branch
         self.pre_trained_rcan=rcan()                     # parameters: 996651
-
+        self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(47, 3, kernel_size=7, padding=0), nn.Tanh())
         # tail
-        if imagenet_model.__class__.__name__ == 'SwinTransformerV2':
-            self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(47, 3, kernel_size=7, padding=0), nn.Tanh())
-        else:
-            self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(60, 3, kernel_size=7, padding=0), nn.Tanh())
+        # if imagenet_model.__class__.__name__ == 'SwinTransformerV2':
+        #     self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(47, 3, kernel_size=7, padding=0), nn.Tanh())
+        # else:
+        #     self.tail1 = nn.Sequential(nn.ReflectionPad2d(3), nn.Conv2d(60, 3, kernel_size=7, padding=0), nn.Tanh())
 
 
 
