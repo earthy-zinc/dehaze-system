@@ -13,6 +13,7 @@ from torchvision.models import vgg16
 from tqdm import tqdm
 from pytorch_msssim import ms_ssim
 from basicsr.archs import build_network
+from basicsr.archs.swin_transformer_v2 import SwinTransformerV2
 from basicsr.losses.FAA_loss import FAALossNetwork
 from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, tensor2img, img2tensor, imwrite
@@ -28,7 +29,6 @@ class ITBDehazeModel(BaseModel):
         # lq => low quality image => hazy image
         # gt => ground truth => clean image
         net_g_opt = opt['network_g']
-        net_g_opt["imagenet_model"] = os.path.join(opt['pretrained_model_path'], "compare/ITBDehaze")
         self.net_g = build_network(net_g_opt)
         self.net_g = self.model_to_device(self.net_g)
         test_input = torch.randn(1, 3, 256, 256).to(self.device)
