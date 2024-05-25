@@ -32,14 +32,16 @@ datasets:
 
   test:
     name: DENSE-HAZE-test
-    type: NtireH5Dataset
+    type: NtireDataset
     mode: test
-    data_path: datasets/DENSE-HAZE-test.h5
+    haze_path: Dense-Haze/hazy
+    clear_path: Dense-Haze/clean
     shuffle: true
 
 # network structures
 network_g:
   type: ITBDehaze
+  imagenet_model: SwinTransformerV2
 
 network_d:
   type: TNNDiscriminator
@@ -47,7 +49,7 @@ network_d:
 
 # path
 path:
-  pretrain_network_g:
+  pretrain_network_g: pretrained_models/compare/ITBDehaze/best.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~

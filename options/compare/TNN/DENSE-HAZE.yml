@@ -33,6 +33,7 @@ datasets:
   test:
     name: DENSE-HAZE-test
     type: NtireDataset
+    mode: test
     haze_path: Dense-Haze/hazy
     clear_path: Dense-Haze/clean
 
