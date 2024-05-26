@@ -1,16 +1,12 @@
-import React from "react";
-import { useRoutes, useNavigate, Navigate } from "react-router-dom";
-import routes, { routeType } from "./routes";
+import { createBrowserRouter } from "react-router-dom";
+import { Layout } from "antd";
 
-export default function Routes() {
-  // return useRoutes(renderRoutes(routes));
-}
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Layout />,
+    children: [],
+  },
+]);
 
-function renderRoutes(routes: routeType[]) {
-  return routes.map((route) => {
-    const res = { ...route };
-    if (!route.path) return;
-    const { path, children, ...rest } = route;
-    return res;
-  });
-}
+export default router;

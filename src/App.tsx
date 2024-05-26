@@ -1,31 +1,41 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import "./App.css";
-import { Button } from "antd";
+import { useSelector } from "react-redux";
+import { useMemo } from "react";
+
+import { ConfigProvider, Watermark } from "antd";
+import { SizeType } from "antd/es/config-provider/SizeContext";
+import zhCN from "antd/locale/zh_CN";
+import enUS from "antd/locale/en_US";
+
+import defaultSettings from "@/settings";
+import { RootState } from "@/store";
+
 function App() {
-  const [count, setCount] = useState(0);
+  const appStore = useSelector((state: RootState) => state.app);
+  const settingsStore = useSelector((state: RootState) => state.settings);
+
+  const locale = useMemo(() => {
+    switch (appStore.language) {
+      case "zh-CN":
+        return zhCN;
+      case "en-US":
+        return enUS;
+      default:
+        return zhCN;
+    }
+  }, [appStore.language]);
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank" rel="noreferrer"></a>
-        <a href="https://react.dev" target="_blank" rel="noreferrer">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <Button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </Button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <ConfigProvider locale={locale} componentSize={appStore.size as SizeType}>
+      <Watermark
+        content={
+          settingsStore.watermarkEnabled
+            ? defaultSettings.watermarkContent
+            : undefined
+        }
+      >
+        <span>aa</span>
+      </Watermark>
+    </ConfigProvider>
   );
 }
 

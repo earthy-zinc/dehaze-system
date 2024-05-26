@@ -5,7 +5,7 @@ export const enum SizeEnum {
   /**
    * 默认
    */
-  DEFAULT = "default",
+  MIDDLE = "middle",
 
   /**
    * 大型
