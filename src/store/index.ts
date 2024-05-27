@@ -8,6 +8,10 @@ const store = configureStore({
     app: appReducer,
     settings: settingsReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }),
 });
 
 // 导出整个store的类型

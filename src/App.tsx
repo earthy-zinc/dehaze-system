@@ -1,5 +1,6 @@
 import { useSelector } from "react-redux";
 import { useMemo } from "react";
+import { RouterProvider } from "react-router-dom";
 
 import { ConfigProvider, Watermark } from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
@@ -8,6 +9,7 @@ import enUS from "antd/locale/en_US";
 
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
+import router from "@/router";
 
 function App() {
   const appStore = useSelector((state: RootState) => state.app);
@@ -33,7 +35,7 @@ function App() {
             : undefined
         }
       >
-        <span>aa</span>
+        <RouterProvider router={router} />
       </Watermark>
     </ConfigProvider>
   );
