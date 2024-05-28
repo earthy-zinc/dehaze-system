@@ -1,6 +1,6 @@
 import axios, { InternalAxiosRequestConfig, AxiosResponse } from "axios";
-import { ResultEnum } from "@/enums/ResultEnum";
 import { TOKEN_KEY } from "@/enums/CacheEnum";
+import { ResultEnum } from "@/enums/ResultEnum";
 
 // 创建 axios 实例
 const service = axios.create({

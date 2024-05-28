@@ -8,7 +8,12 @@ export const enum SidebarStatusEnum {
   OPENED = "opened",
 
   /**
-   * 关闭
+   * 折叠
    */
-  CLOSED = "closed",
+  COLLAPSED = "collapsed",
+
+  /**
+   * 隐藏
+   */
+  HIDDEN = "hidden",
 }

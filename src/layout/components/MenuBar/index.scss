@@ -1,0 +1,6 @@
+@import "@/styles/variables";
+
+.menu-container {
+  max-height: calc(100vh - $navbar-height);
+  overflow: hidden auto;
+}

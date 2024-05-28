@@ -1,15 +1,14 @@
-import { useSelector } from "react-redux";
-import { useMemo } from "react";
-import { RouterProvider } from "react-router-dom";
-
 import { ConfigProvider, Watermark } from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
-import zhCN from "antd/locale/zh_CN";
 import enUS from "antd/locale/en_US";
+import zhCN from "antd/locale/zh_CN";
+import { useMemo } from "react";
+import { useSelector } from "react-redux";
+import { RouterProvider } from "react-router-dom";
 
+import router from "@/router";
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
-import router from "@/router";
 
 function App() {
   const appStore = useSelector((state: RootState) => state.app);
@@ -27,7 +26,20 @@ function App() {
   }, [appStore.language]);
 
   return (
-    <ConfigProvider locale={locale} componentSize={appStore.size as SizeType}>
+    <ConfigProvider
+      locale={locale}
+      componentSize={appStore.size as SizeType}
+      theme={{
+        components: {
+          Layout: {
+            headerBg: "#fff",
+            headerHeight: 50,
+            headerPadding: 0,
+            siderBg: "#fff",
+          },
+        },
+      }}
+    >
       <Watermark
         content={
           settingsStore.watermarkEnabled

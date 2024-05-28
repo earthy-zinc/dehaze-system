@@ -1,6 +1,6 @@
-import { defineConfig, UserConfig, ConfigEnv, loadEnv } from "vite";
-import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import react from "@vitejs/plugin-react";
+import { defineConfig, UserConfig, ConfigEnv, loadEnv } from "vite";
 import {
   name,
   version,

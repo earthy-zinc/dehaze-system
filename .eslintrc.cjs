@@ -4,9 +4,9 @@ module.exports = {
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
-    "plugin:@typescript-eslint/recommended",
     "plugin:react-hooks/recommended",
     "plugin:prettier/recommended",
+    "plugin:@typescript-eslint/recommended",
     "plugin:react/jsx-runtime",
   ],
   ignorePatterns: ["dist", ".eslintrc.cjs"],
@@ -18,7 +18,13 @@ module.exports = {
     ecmaVersion: "latest",
     sourceType: "module",
   },
-  plugins: ["react", "@typescript-eslint", "react-refresh", "prettier"],
+  plugins: [
+    "react",
+    "react-hooks",
+    "@typescript-eslint",
+    "react-refresh",
+    "prettier",
+  ],
   rules: {
     "prettier/prettier": "error",
     "arrow-body-style": "off",

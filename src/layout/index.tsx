@@ -1,34 +1,34 @@
-import Layout, { Header, Footer, Content } from "antd/lib/layout/layout";
-import classNames from "classnames";
-import styles from "./index.module.scss";
-import { RootState } from "@/store";
+import { Layout } from "antd";
+import { Header, Content } from "antd/es/layout/layout";
+import Sider from "antd/es/layout/Sider";
 import { useSelector } from "react-redux";
+
+import { LayoutEnum } from "@/enums/LayoutEnum";
+import { RootState } from "@/store";
+import "./index.scss";
+import { SideMenu } from "./components/MenuBar/SideMenu";
+import { NavBar } from "./components/NavBar";
 import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
-import { DeviceEnum } from "@/enums/DeviceEnum";
 
 const BasicLayout: React.FC = (props: any) => {
-  const appStore = useSelector((state: RootState) => state.app);
   const settingsStore = useSelector((state: RootState) => state.settings);
-
-  const classObj = classNames({
-    [styles.hideSidebar]: appStore.sidebarStatus !== SidebarStatusEnum.OPENED,
-    [styles.openSidebar]: appStore.sidebarStatus === SidebarStatusEnum.OPENED,
-    [styles.mobile]: appStore.device === DeviceEnum.MOBILE,
-    [styles.layoutLeft]: settingsStore.layout === "left",
-    [styles.layoutTop]: settingsStore.layout === "top",
-    [styles.layoutMix]: settingsStore.layout === "mix",
-  });
+  const appStore = useSelector((state: RootState) => state.app);
+  const collapsed = appStore.sidebarStatus === SidebarStatusEnum.COLLAPSED;
 
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-      }}
-      className={classObj}
-    >
-      lala
-    </div>
+    <Layout className="main-container">
+      {settingsStore.layout === LayoutEnum.TOP && (
+        <Sider collapsible collapsed={collapsed} className="side-bar">
+          <SideMenu />
+        </Sider>
+      )}
+      <Layout className="layout-left">
+        <Header className="header">
+          <NavBar />
+        </Header>
+        <Content>内容区</Content>
+      </Layout>
+    </Layout>
   );
 };
 

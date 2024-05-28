@@ -1,6 +1,6 @@
 import { configureStore } from "@reduxjs/toolkit";
-import appReducer from "@/store/modules/appSlice";
 import { persistStore } from "redux-persist";
+import appReducer from "@/store/modules/appSlice";
 import settingsReducer from "@/store/modules/settingsSlice";
 
 const store = configureStore({

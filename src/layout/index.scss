@@ -1,0 +1,24 @@
+@import "@/styles/variables";
+
+.main-container {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100vh;
+}
+
+.side-bar {
+  width: $sidebar-width;
+  height: 100vh;
+}
+
+.layout-left {
+  display: flex;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: $navbar-height;
+}
