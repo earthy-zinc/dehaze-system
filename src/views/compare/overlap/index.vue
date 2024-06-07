@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import DraggableLine from "@/components/DraggableLine.vue";
+import DraggableLine from "@/components/DraggableLine/index.vue";
 
 const image1 = ref("https://picsum.photos/id/1/800/800");
 const image2 = ref("https://picsum.photos/id/2/800/800");
