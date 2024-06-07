@@ -1,26 +1,5 @@
 <template>
   <div class="flex">
-    <!--    <template v-if="!isMobile">-->
-    <!--      &lt;!&ndash;全屏 &ndash;&gt;-->
-    <!--      <div class="setting-item" @click="toggle">-->
-    <!--        <svg-icon-->
-    <!--          :icon-class="isFullscreen ? 'fullscreen-exit' : 'fullscreen'"-->
-    <!--        />-->
-    <!--      </div>-->
-
-    <!--      &lt;!&ndash; 布局大小 &ndash;&gt;-->
-    <!--      <el-tooltip-->
-    <!--        :content="$t('sizeSelect.tooltip')"-->
-    <!--        effect="dark"-->
-    <!--        placement="bottom"-->
-    <!--      >-->
-    <!--        <size-select class="setting-item" />-->
-    <!--      </el-tooltip>-->
-
-    <!--      &lt;!&ndash; 语言选择 &ndash;&gt;-->
-    <!--      <lang-select class="setting-item" />-->
-    <!--    </template>-->
-
     <!-- 用户头像 -->
     <el-dropdown class="setting-item" trigger="click">
       <div class="flex-center h100% p10px">
@@ -55,19 +34,13 @@ import {
   useSettingsStore,
 } from "@/store";
 import defaultSettings from "@/settings";
-import { DeviceEnum } from "@/enums/DeviceEnum";
 
-const appStore = useAppStore();
 const tagsViewStore = useTagsViewStore();
 const userStore = useUserStore();
 const settingStore = useSettingsStore();
 
 const route = useRoute();
 const router = useRouter();
-
-const isMobile = computed(() => appStore.device === DeviceEnum.MOBILE);
-
-const { isFullscreen, toggle } = useFullscreen();
 
 /**
  * 注销
