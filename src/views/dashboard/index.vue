@@ -1,8 +1,5 @@
 <template>
   <div class="dashboard-container">
-    <!-- github角标 -->
-    <github-corner class="github-corner" />
-
     <el-card shadow="never">
       <el-row justify="space-between">
         <el-col :span="18" :xs="24">
@@ -248,14 +245,6 @@ const chartComponent = (item: string) => {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-  }
-
-  .github-corner {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 1;
-    border: 0;
   }
 
   .data-box {
