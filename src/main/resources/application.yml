@@ -1,5 +1,5 @@
 spring:
   application:
-    name: youlai-boot
+    name: dehaze-java
   profiles:
     active: dev
