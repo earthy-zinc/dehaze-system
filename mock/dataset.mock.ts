@@ -13,7 +13,7 @@ export default defineMock([
     },
   },
   {
-    url: "dataset/:id/form",
+    url: "dataset/:id/images",
     method: ["GET"],
     body: {
       code: "00000",

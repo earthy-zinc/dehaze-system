@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import DatasetAPI from "@/api/dataset";
-import { DatasetVO } from "@/api/dataset/model";
+import { Dataset } from "@/api/dataset/model";
 
 defineOptions({
   name: "EditDialog",
@@ -27,7 +27,7 @@ const props = defineProps({
 
 const title = ref<string>();
 
-const formData = reactive<DatasetVO>({
+const formData = reactive<Dataset>({
   id: 0,
   parentId: 0,
   type: "",

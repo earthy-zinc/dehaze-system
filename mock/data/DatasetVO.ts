@@ -1,4 +1,4 @@
-import { DatasetVO } from "@/api/dataset/model";
+import { Dataset } from "@/api/dataset/model";
 
 export default [
   {
@@ -169,4 +169,4 @@ export default [
     updateTime: new Date(),
     status: 1,
   },
-] as DatasetVO[];
+] as Dataset[];

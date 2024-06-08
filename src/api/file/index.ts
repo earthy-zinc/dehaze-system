@@ -3,6 +3,19 @@ import { FileInfo } from "./model";
 
 class FileAPI {
   /**
+   * 文件上传检查
+   *
+   * @param md5 文件md5
+   */
+  static uploadCheck(md5: string) {
+    return request({
+      url: "/api/v1/files/check",
+      method: "get",
+      params: { md5 },
+    });
+  }
+
+  /**
    * 上传文件
    *
    * @param file

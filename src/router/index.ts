@@ -80,13 +80,13 @@ export const constantRoutes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: "/model",
+    path: "/algorithm",
     component: Layout,
     meta: {},
     children: [
       {
         path: "index",
-        component: () => import("@/views/model/index.vue"),
+        component: () => import("@/views/algorithm/index.vue"),
         meta: {
           title: "模型管理",
           icon: "model",
