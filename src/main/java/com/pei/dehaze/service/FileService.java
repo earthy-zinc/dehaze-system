@@ -10,6 +10,13 @@ import org.springframework.web.multipart.MultipartFile;
  * @since 2022/11/19
  */
 public interface FileService {
+    /**
+     * 文件上传检查
+     *
+     * @param md5
+     * @return true 表示文件已存在
+     */
+    boolean uploadCheck(String md5);
 
     /**
      * 上传文件

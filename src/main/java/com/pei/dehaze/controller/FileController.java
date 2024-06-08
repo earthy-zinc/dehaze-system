@@ -1,8 +1,10 @@
 package com.pei.dehaze.controller;
 
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.service.FileService;
+import com.pei.dehaze.service.impl.file.LocalFileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,10 +33,31 @@ public class FileController {
     @DeleteMapping
     @Operation(summary = "文件删除")
     @SneakyThrows
-    public Result deleteFile(
+    public Result<Void> deleteFile(
             @Parameter(description ="文件路径") @RequestParam String filePath
     ) {
         boolean result = fileService.deleteFile(filePath);
         return Result.judge(result);
     }
+
+    @GetMapping("/check")
+    @Operation(summary = "文件校验")
+    public Result<Boolean> checkFile(
+            @Parameter(description = "文件md5") @RequestParam String md5
+    ) {
+        boolean result = fileService.uploadCheck(md5);
+        return Result.success(result);
+    }
+
+    @GetMapping("/{filePath}")
+    @Operation(summary = "文件下载")
+    public Result<Void> download(@Parameter(description = "文件路径") @PathVariable String filePath) {
+        if (fileService instanceof LocalFileService localFileService) {
+            localFileService.download(filePath);
+            return Result.success();
+        } else {
+            throw new BusinessException("未开启本地文件存储服务，请检查application.yml文件");
+        }
+    }
+
 }
