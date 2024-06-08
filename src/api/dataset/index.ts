@@ -1,4 +1,4 @@
-import { DatasetItem, DatasetQuery, DatasetVO } from "@/api/dataset/model";
+import { DatasetQuery, Dataset, ImageItem } from "@/api/dataset/model";
 import request from "@/utils/request";
 
 class DatasetAPI {
@@ -7,20 +7,10 @@ class DatasetAPI {
    * @param queryParams
    */
   static getList(queryParams?: DatasetQuery) {
-    return request<any, DatasetVO[]>({
+    return request<any, Dataset[]>({
       url: "/api/v1/dataset",
       method: "get",
       params: queryParams,
-    });
-  }
-
-  /**
-   * 数据集下拉列表
-   */
-  static getOptions() {
-    return request<any, OptionType[]>({
-      url: "/api/v1/dataset/options",
-      method: "get",
     });
   }
 
@@ -29,9 +19,9 @@ class DatasetAPI {
    *
    * @param id
    */
-  static getFormData(id: number) {
-    return request<any, DatasetItem[]>({
-      url: "/api/v1/dataset/" + id + "/form",
+  static getImageItem(id: number) {
+    return request<any, ImageItem[]>({
+      url: "/api/v1/dataset/" + id + "/images",
       method: "get",
     });
   }
@@ -41,7 +31,7 @@ class DatasetAPI {
    *
    * @param data
    */
-  static add(data: DatasetVO) {
+  static add(data: Dataset) {
     return request({
       url: "/api/v1/dataset",
       method: "post",
@@ -50,12 +40,12 @@ class DatasetAPI {
   }
 
   /**
-   *  修改部门
+   *  修改数据集
    *
    * @param id
    * @param data
    */
-  static update(id: number, data: DatasetVO) {
+  static update(id: number, data: Dataset) {
     return request({
       url: "/api/v1/dataset/" + id,
       method: "put",
@@ -68,7 +58,7 @@ class DatasetAPI {
    *
    * @param ids
    */
-  static deleteByIds(ids: string) {
+  static deleteByIds(ids: string[]) {
     return request({
       url: "/api/v1/dataset/" + ids,
       method: "delete",

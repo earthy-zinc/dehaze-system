@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import DatasetAPI from "@/api/dataset";
-import { DatasetQuery, DatasetVO } from "@/api/dataset/model";
+import { DatasetQuery, Dataset } from "@/api/dataset/model";
 
 defineOptions({
   name: "DatasetList",
@@ -10,7 +10,7 @@ defineOptions({
 const queryFormRef = ref(ElForm);
 const loading = ref(false);
 const queryParams = reactive<DatasetQuery>({});
-const datasetList = ref<DatasetVO[]>([]);
+const datasetList = ref<Dataset[]>([]);
 const selectedDatasetId = ref<number>();
 function handleQuery() {
   loading.value = true;
@@ -27,12 +27,12 @@ function resetQuery() {
   handleQuery();
 }
 
-function onRowClick(row: DatasetVO) {
+function onRowClick(row: Dataset) {
   selectedDatasetId.value = row.id;
 }
 
 const router = useRouter();
-function handleShow(row: DatasetVO) {
+function handleShow(row: Dataset) {
   selectedDatasetId.value = row.id;
   router.push(`/dataset/${selectedDatasetId.value}`);
 }

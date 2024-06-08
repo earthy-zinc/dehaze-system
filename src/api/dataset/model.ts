@@ -8,23 +8,23 @@ export interface DatasetQuery {
 /**
  * 数据集
  */
-export interface DatasetVO {
+export interface Dataset {
   /**
    * 数据集ID
    */
-  id?: number;
+  id: number;
   /**
    * 父数据集ID
    */
-  parentId?: number;
+  parentId: number;
   /**
    * 数据集类型
    */
-  type?: string;
+  type: string;
   /**
    * 数据集名称
    */
-  name?: string;
+  name: string;
   /**
    * 数据集描述
    */
@@ -44,7 +44,7 @@ export interface DatasetVO {
   /**
    * 子数据集
    */
-  children?: DatasetVO[];
+  children?: Dataset[];
   /**
    * 创建时间
    */
@@ -59,43 +59,27 @@ export interface DatasetVO {
   status?: number;
 }
 
-/**
- * 数据项
- */
-export interface DatasetItem {
-  /**
-   * 数据项ID
-   */
+export interface ImageItem {
   id: number;
-  /**
-   * 所属数据集ID
-   */
-  datasetId: number;
-  /**
-   * 详细数据
-   */
-  data: ImageData[];
+  imgUrl: ImageUrl[];
 }
 
-export interface ImageData {
+export interface ImageUrl {
+  id: number;
   /**
-   * 图片类型
+   * 图片类型（有雾图像、无雾图像）
    */
-  type?: string;
+  type: string;
   /**
    * 图片URL
    */
-  url?: string;
+  url: string;
   /**
-   * 图片分辨率
+   * 高清图片URL
    */
-  resolution?: string;
+  originUrl?: string;
   /**
-   * 图片大小
+   * 描述
    */
-  size?: string;
-  /**
-   * 存储位置
-   */
-  path?: string;
+  description?: string;
 }
