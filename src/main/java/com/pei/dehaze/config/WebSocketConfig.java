@@ -21,7 +21,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 /**
  * WebSocket 配置
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2.4.0
  */
 @Configuration

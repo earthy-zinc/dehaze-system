@@ -73,7 +73,7 @@ security:
     - /api/v1/auth/captcha
 
 # 文件上传配置
-oss:
+file:
   # OSS 类型 (目前支持aliyun、minio)
   type: minio
   # MinIO 对象存储服务
@@ -91,7 +91,7 @@ oss:
   # 阿里云OSS对象存储服务
   aliyun:
     # 服务Endpoint
-    endpoint: oss-cn-hangzhou.aliyuncs.com
+    endpoint: file-cn-hangzhou.aliyuncs.com
     # 访问凭据
     access-key-id: your-access-key-id
     # 凭据密钥

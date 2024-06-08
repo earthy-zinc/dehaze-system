@@ -3,7 +3,7 @@ package com.pei.dehaze.common.constant;
 /**
  * 缓存常量
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2023/11/24
  */
 public interface SecurityConstants {

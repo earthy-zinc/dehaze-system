@@ -1,7 +1,7 @@
 package com.pei.dehaze.common.result;
 
 /**
- * @author haoxr
+ * @author earthyzinc
  **/
 public interface IResultCode {
 

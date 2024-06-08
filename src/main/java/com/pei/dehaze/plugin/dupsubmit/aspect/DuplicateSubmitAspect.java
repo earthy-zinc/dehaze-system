@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * 处理重复提交的切面
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2.3.0
  */
 @Aspect

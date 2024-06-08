@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * 部门业务接口
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2021/8/22
  */
 public interface SysDeptService extends IService<SysDept> {

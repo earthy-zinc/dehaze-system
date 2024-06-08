@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * user表单持久化对象
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2022/6/10
  */
 @Data

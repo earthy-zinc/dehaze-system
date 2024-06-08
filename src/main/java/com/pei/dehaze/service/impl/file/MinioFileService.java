@@ -1,4 +1,4 @@
-package com.pei.dehaze.service.impl.oss;
+package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
@@ -6,7 +6,7 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.pei.dehaze.model.dto.FileInfo;
-import com.pei.dehaze.service.OssService;
+import com.pei.dehaze.service.FileService;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
@@ -28,15 +28,15 @@ import java.time.LocalDateTime;
 /**
  * MinIO 文件上传服务类
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2023/6/2
  */
 @Component
-@ConditionalOnProperty(value = "oss.type", havingValue = "minio")
-@ConfigurationProperties(prefix = "oss.minio")
+@ConditionalOnProperty(value = "file.type", havingValue = "minio")
+@ConfigurationProperties(prefix = "file.minio")
 @RequiredArgsConstructor
 @Data
-public class MinioOssService implements OssService {
+public class MinioFileService implements FileService {
 
     /**
      * 服务Endpoint(http://localhost:9000)

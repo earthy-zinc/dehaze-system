@@ -7,7 +7,7 @@ import lombok.Data;
 /**
  * 角色分页查询实体
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2022/6/3
  *
  */
