@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * Spring Security 用户对象
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 3.0.0
  */
 @Data

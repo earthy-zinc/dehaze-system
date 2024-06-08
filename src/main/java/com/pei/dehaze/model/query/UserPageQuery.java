@@ -8,7 +8,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 /**
  * 用户分页查询对象
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2022/1/14
  */
 @Schema(description ="用户分页查询对象")

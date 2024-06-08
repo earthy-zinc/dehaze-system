@@ -3,7 +3,7 @@ package com.pei.dehaze.common.constant;
 /**
  * 系统常量
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 1.0.0
  */
 public interface SystemConstants {

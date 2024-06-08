@@ -13,7 +13,7 @@ import java.awt.*;
 /**
  * 验证码自动装配配置
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2023/11/24
  */
 @Configuration

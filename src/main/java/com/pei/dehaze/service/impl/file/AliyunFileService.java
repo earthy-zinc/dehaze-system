@@ -1,4 +1,4 @@
-package com.pei.dehaze.service.impl.oss;
+package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
@@ -9,7 +9,7 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.pei.dehaze.model.dto.FileInfo;
-import com.pei.dehaze.service.OssService;
+import com.pei.dehaze.service.FileService;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -25,15 +25,15 @@ import java.time.LocalDateTime;
 /**
  * Aliyun 对象存储服务类
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2.3.0
  */
 @Component
-@ConditionalOnProperty(value = "oss.type", havingValue = "aliyun")
-@ConfigurationProperties(prefix = "oss.aliyun")
+@ConditionalOnProperty(value = "file.type", havingValue = "aliyun")
+@ConfigurationProperties(prefix = "file.aliyun")
 @RequiredArgsConstructor
 @Data
-public class AliyunOssService implements OssService {
+public class AliyunFileService implements FileService {
     /**
      * 服务Endpoint
      */

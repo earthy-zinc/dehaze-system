@@ -8,7 +8,7 @@ import java.io.Serializable;
 /**
  * 响应码枚举
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2020-06-23
  **/
 @AllArgsConstructor

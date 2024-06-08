@@ -2,7 +2,7 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.dto.FileInfo;
-import com.pei.dehaze.service.OssService;
+import com.pei.dehaze.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,14 +17,14 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class FileController {
 
-    private final OssService ossService;
+    private final FileService fileService;
 
     @PostMapping
     @Operation(summary = "文件上传")
     public Result<FileInfo> uploadFile(
             @Parameter(description ="表单文件对象") @RequestParam(value = "file") MultipartFile file
     ) {
-        FileInfo fileInfo = ossService.uploadFile(file);
+        FileInfo fileInfo = fileService.uploadFile(file);
         return Result.success(fileInfo);
     }
 
@@ -34,7 +34,7 @@ public class FileController {
     public Result deleteFile(
             @Parameter(description ="文件路径") @RequestParam String filePath
     ) {
-        boolean result = ossService.deleteFile(filePath);
+        boolean result = fileService.deleteFile(filePath);
         return Result.judge(result);
     }
 }

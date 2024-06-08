@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 /**
  * 验证码配置
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2023/11/24
  */
 @Component
