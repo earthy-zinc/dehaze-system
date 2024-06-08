@@ -29,7 +29,8 @@ module.exports = {
     "prettier/prettier": "error",
     "arrow-body-style": "off",
     "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": "off", // 关闭规则
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/ban-types": "off",
     "prefer-arrow-callback": "off",
     "react-refresh/only-export-components": [
       "warn",

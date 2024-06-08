@@ -1,6 +1,7 @@
 import { resolve } from "path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, UserConfig, ConfigEnv, loadEnv } from "vite";
+import mockDevServerPlugin from "vite-plugin-mock-dev-server";
 import {
   name,
   version,
@@ -44,7 +45,11 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         },
       },
     },
-    plugins: [react()],
+    plugins: [
+      react(),
+      // MOCK 服务
+      env.VITE_MOCK_DEV_SERVER === "true" ? mockDevServerPlugin() : null,
+    ],
     define: {
       __APP_INFO__: JSON.stringify(__APP_INFO__),
     },
