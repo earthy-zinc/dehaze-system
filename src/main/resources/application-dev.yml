@@ -10,13 +10,13 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
+    url: jdbc:mysql://10.16.108.141:3307/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
     username: root
-    password: 123456
+    password: 142536aA
   data:
     redis:
       database: 0
-      host: localhost
+      host: 10.16.108.141
       port: 6379
       password: 142536aA
       timeout: 10s
@@ -74,8 +74,12 @@ security:
 
 
 file:
-  # OSS 类型 (目前支持aliyun、minio)
-  type: minio
+  # 上传类型 (目前支持aliyun OSS、minio OSS、local 本地存储)
+  type: local
+  local:
+    uploadPath: /Users/pei/Desktop/dehaze/upload
+    datasetPath: /Users/pei/Desktop/dehaze/dataset
+    predictPath: /Users/pei/Desktop/dehaze/predict
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint

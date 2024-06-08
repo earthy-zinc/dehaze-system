@@ -351,12 +351,10 @@ CREATE TABLE `sys_dataset`  (
 DROP TABLE IF EXISTS `sys_image`;
 CREATE TABLE `sys_image` (
                             `id` int NOT NULL AUTO_INCREMENT COMMENT '文件id',
-                            `type` varchar(100)  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图片类型',
+                            `type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图片类型，数据集图片/上传图片/算法处理图片/',
                             `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图片url',
                             `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片名',
-                            `resolution` varchar(100)  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片分辨率',
-                            `size` int NOT NULL DEFAULT '0' COMMENT '图片大小',
-                            `extend_name` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL DEFAULT '' COMMENT '图片类型',
+                            `size` varchar(100) NOT NULL                                         DEFAULT '0' COMMENT '图片大小',
                             `path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片路径',
                             `md5` char(32) unique NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
                             `create_time` datetime NOT NULL COMMENT '创建时间',

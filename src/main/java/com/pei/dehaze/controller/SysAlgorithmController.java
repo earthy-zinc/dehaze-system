@@ -17,7 +17,7 @@ import java.util.List;
  * @author earthy-zinc
  * @since 2024-06-08 19:05:51
  */
-@Tag(name = "05.算法接口")
+@Tag(name = "09.算法接口")
 @RestController
 @RequestMapping("/api/v1/algorithm")
 @RequiredArgsConstructor

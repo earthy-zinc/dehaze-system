@@ -72,6 +72,17 @@ public class MinioFileService implements FileService {
 
 
     /**
+     * 文件上传检查
+     *
+     * @param md5
+     * @return true 表示文件已存在
+     */
+    @Override
+    public boolean uploadCheck(String md5) {
+        return false;
+    }
+
+    /**
      * 上传文件
      *
      * @param file 表单文件对象

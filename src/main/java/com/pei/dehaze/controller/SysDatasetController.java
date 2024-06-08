@@ -19,7 +19,7 @@ import java.util.List;
  * @author earthyzinc
  * @since 2020/11/6
  */
-@Tag(name = "05.数据集接口")
+@Tag(name = "08.数据集接口")
 @RestController
 @RequestMapping("/api/v1/dataset")
 @RequiredArgsConstructor
@@ -46,6 +46,7 @@ public class SysDatasetController {
      * @param id 数据集ID
      * @return 图片列表
      */
+    @Operation(summary = "获取数据集详细图片")
     @GetMapping("/{id}/images")
     public Result<List<ImageItemVO>> getImageItem(@PathVariable Long id) {
         List<ImageItemVO> imageItems = datasetService.getImageItem(id);
@@ -58,6 +59,7 @@ public class SysDatasetController {
      * @param dataset 数据集信息
      * @return 操作结果
      */
+    @Operation(summary = "新增数据集")
     @PostMapping
     public Result<Void> add(@RequestBody DatasetVO dataset) {
 //        datasetService.save(dataset);
@@ -71,6 +73,7 @@ public class SysDatasetController {
      * @param dataset 更新后的数据集信息
      * @return 操作结果
      */
+    @Operation(summary = "修改数据集")
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @RequestBody DatasetVO dataset) {
         dataset.setId(id); // 确保ID与路径变量一致
@@ -84,6 +87,7 @@ public class SysDatasetController {
      * @param ids 数据集ID数组，字符串形式，例如 "1,2,3"
      * @return 操作结果
      */
+    @Operation(summary = "删除数据集")
     @DeleteMapping
     public Result<Void> deleteByIds(@RequestParam List<Long> ids) {
         datasetService.deleteDatasets(ids);

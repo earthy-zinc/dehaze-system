@@ -58,6 +58,17 @@ public class AliyunFileService implements FileService {
         aliyunOssClient = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
     }
 
+    /**
+     * 文件上传检查
+     *
+     * @param md5
+     * @return true 表示文件已存在
+     */
+    @Override
+    public boolean uploadCheck(String md5) {
+        return false;
+    }
+
     @Override
     @SneakyThrows
     public FileInfo uploadFile(MultipartFile file) {
