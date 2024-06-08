@@ -16,11 +16,7 @@ public class SysImage extends BaseEntity {
 
     private String name;
 
-    private String resolution;
-
-    private Integer size;
-
-    private String extendName;
+    private String size;
 
     private String path;
 
