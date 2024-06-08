@@ -6,7 +6,7 @@ class ModelAPI {
    * 获取模型下拉选项列表
    */
   static getOption() {
-    return request({
+    return request<any, OptionType[]>({
       url: "/model/options",
       method: "get",
     });
