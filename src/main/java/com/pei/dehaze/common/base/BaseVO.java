@@ -9,7 +9,7 @@ import java.io.Serializable;
 /**
  * 视图对象基类
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2022/10/22
  */
 @Data

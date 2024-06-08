@@ -3,7 +3,7 @@ package com.pei.dehaze.mapper;
 /**
  * 菜单持久接口层
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2022/1/24
  */
 

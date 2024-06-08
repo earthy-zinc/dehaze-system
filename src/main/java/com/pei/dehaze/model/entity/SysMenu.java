@@ -10,7 +10,7 @@ import lombok.Data;
 /**
  * 菜单实体对象
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2023/3/6
  */
 @TableName(value ="sys_menu")

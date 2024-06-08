@@ -10,7 +10,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 /**
  * Redis 单元测试
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2023/02/17
  */
 @SpringBootTest

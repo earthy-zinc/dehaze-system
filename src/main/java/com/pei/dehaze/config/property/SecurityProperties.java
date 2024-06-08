@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.util.List;
 
 /**
- * @author haoxr
+ * @author earthyzinc
  * @since 2024/4/18
  */
 @Data

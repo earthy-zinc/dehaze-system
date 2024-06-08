@@ -3,7 +3,7 @@ package com.pei.dehaze.common.enums;
 /**
  * EasyCaptcha 验证码类型枚举
  *
- * @author haoxr
+ * @author earthyzinc
  * @since 2.5.1
  */
 public enum CaptchaTypeEnum {
