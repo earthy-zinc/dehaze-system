@@ -6,7 +6,7 @@ defineOptions({
 const props = defineProps({
   src: {
     type: String,
-    default: "",
+    required: true,
   },
   highSrc: {
     type: String,

@@ -163,7 +163,7 @@ const getKey = (item: ViewCard, index: number): string => {
   <div
     ref="waterfallWrapper"
     class="waterfall-list"
-    :style="{ height: `${wrapperHeight}px` }"
+    :style="{ height: `${wrapperHeight}px`, backgroundColor }"
   >
     <div
       v-for="(item, index) in list"
@@ -187,7 +187,6 @@ const getKey = (item: ViewCard, index: number): string => {
   position: relative;
   width: 100%;
   overflow: hidden;
-  background-color: v-bind(backgroundcolor);
 }
 
 .waterfall-item {
@@ -222,7 +221,6 @@ const getKey = (item: ViewCard, index: number): string => {
 }
 
 .fadeIn {
-  animation-name: fadeIn;
   animation-name: fadeIn;
 }
 </style>
