@@ -15,5 +15,5 @@ import java.util.List;
 public interface SysAlgorithmService extends IService<SysAlgorithm> {
     List<AlgorithmVO> getList(AlgorithmQuery queryParams);
 
-    List<Option<?>> getOption();
+    List<Option> getOption();
 }

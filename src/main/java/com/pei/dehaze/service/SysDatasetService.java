@@ -13,5 +13,5 @@ public interface SysDatasetService extends IService<SysDataset> {
 
     List<ImageItemVO> getImageItem(Long id);
 
-    void deleteDatasets(List<Long> ids);
+    boolean deleteDatasets(List<Long> ids);
 }
