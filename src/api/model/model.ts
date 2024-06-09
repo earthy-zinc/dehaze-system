@@ -8,14 +8,14 @@
  */
 export interface PredParam {
   modelId: number;
-  input: string;
+  input: string | string[];
   modelParam?: Object;
 }
 
 export interface EvalParam {
   modelId: number;
-  input: string;
-  output?: string;
+  input: string | string[];
+  output?: string | string[];
 }
 
 export interface EvalResult {
