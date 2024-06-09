@@ -4,7 +4,7 @@ import navbar from "./navbar";
 import sidebar from "./sidebar";
 
 export default hopeTheme({
-  hostname: "http://192.168.31.2",
+  hostname: "",
   author: {
     name: "earthy zinc",
     url: "https://gitee.com/earthy-zinc",
@@ -19,9 +19,8 @@ export default hopeTheme({
   sidebar,
   encrypt: {
     config: {
-      "/学术课程/学术经验/" : "20230914",
-      "/学术课程/研究日常/": "20230914",
-      "/项目文档/": "20230914"
+      "/学术课程/学术经验/实用命令" : "20230914",
+      "/学术课程/研究日常/服务器教程" : "20230914",
     },
   },
   plugins: {
