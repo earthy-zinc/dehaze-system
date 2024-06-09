@@ -10,6 +10,7 @@
 .side-bar {
   width: $sidebar-width;
   height: 100vh;
+  background-color: var(--ant-layout-light-sider-bg) !important;
 }
 
 .layout-left {
@@ -21,4 +22,5 @@
   align-items: center;
   justify-content: space-between;
   height: $navbar-height;
+  background-color: var(--ant-layout-light-sider-bg);
 }

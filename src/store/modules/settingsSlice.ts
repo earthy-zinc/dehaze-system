@@ -38,6 +38,21 @@ const settingsSlice = createSlice({
     toggleSettingsVisiable: (state) => {
       state.settingsVisiable = !state.settingsVisiable;
     },
+    toggleWatermark: (state) => {
+      state.watermarkEnabled = !state.watermarkEnabled;
+    },
+    toggleSidebarLogo: (state) => {
+      state.sidebarLogo = !state.sidebarLogo;
+    },
+    changeTheme: (state, action: PayloadAction<string>) => {
+      state.theme = action.payload;
+    },
+    changeThemeColor: (state, action: PayloadAction<string>) => {
+      state.themeColor = action.payload;
+    },
+    changeLayout: (state, action: PayloadAction<string>) => {
+      state.layout = action.payload;
+    },
     changeSetting: (
       state,
       action: PayloadAction<{
@@ -50,15 +65,6 @@ const settingsSlice = createSlice({
         // @ts-expect-error 暂时忽略类型检查
         state[key] = value as SettingsValue;
       }
-    },
-    changeTheme: (state, action: PayloadAction<string>) => {
-      state.theme = action.payload;
-    },
-    changeThemeColor: (state, action: PayloadAction<string>) => {
-      state.themeColor = action.payload;
-    },
-    changeLayout: (state, action: PayloadAction<string>) => {
-      state.layout = action.payload;
     },
   },
 });

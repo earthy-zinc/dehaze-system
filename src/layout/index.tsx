@@ -9,16 +9,28 @@ import "./index.scss";
 import { SideMenu } from "./components/MenuBar/SideMenu";
 import { NavBar } from "./components/NavBar";
 import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
+import { Outlet } from "react-router-dom";
 
 const BasicLayout: React.FC = (props: any) => {
   const settingsStore = useSelector((state: RootState) => state.settings);
   const appStore = useSelector((state: RootState) => state.app);
   const collapsed = appStore.sidebarStatus === SidebarStatusEnum.COLLAPSED;
-
+  const sidebarWidthCollapsed = Number(
+    window
+      .getComputedStyle(document.documentElement)
+      .getPropertyValue("--sidebar-width-collapsed")
+      .replace("px", "")
+  );
   return (
     <Layout className="main-container">
-      {settingsStore.layout === LayoutEnum.TOP && (
-        <Sider collapsible collapsed={collapsed} className="side-bar">
+      {settingsStore.layout !== LayoutEnum.TOP && (
+        <Sider
+          collapsible
+          collapsed={collapsed}
+          collapsedWidth={sidebarWidthCollapsed}
+          className="side-bar"
+          trigger={null}
+        >
           <SideMenu />
         </Sider>
       )}
@@ -26,7 +38,9 @@ const BasicLayout: React.FC = (props: any) => {
         <Header className="header">
           <NavBar />
         </Header>
-        <Content>内容区</Content>
+        <Content>
+          <Outlet />
+        </Content>
       </Layout>
     </Layout>
   );

@@ -34,6 +34,7 @@ export const NavBar: React.FC = () => {
       type: "settings/toggleSettingsVisiable",
     });
   };
+
   return (
     <>
       <div className="navbar-left">

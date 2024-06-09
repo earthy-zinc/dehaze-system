@@ -1,19 +1,21 @@
-import { ConfigProvider, Watermark } from "antd";
+import { ConfigProvider, Watermark, theme } from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
-import { useMemo } from "react";
-import { useSelector } from "react-redux";
+import { useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { RouterProvider } from "react-router-dom";
 
 import router from "@/router";
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
+import { ThemeEnum } from "./enums/ThemeEnum";
+import useSystemTheme from "./hooks/useSystemTheme";
 
 function App() {
   const appStore = useSelector((state: RootState) => state.app);
   const settingsStore = useSelector((state: RootState) => state.settings);
-
+  const systemTheme = useSystemTheme();
   const locale = useMemo(() => {
     switch (appStore.language) {
       case "zh-CN":
@@ -25,11 +27,28 @@ function App() {
     }
   }, [appStore.language]);
 
+  const algorithm = useMemo(() => {
+    const customTheme =
+      settingsStore.theme === ThemeEnum.AUTO
+        ? systemTheme
+        : settingsStore.theme;
+    const customAlgorithm =
+      customTheme === ThemeEnum.LIGHT
+        ? [theme.defaultAlgorithm]
+        : [theme.darkAlgorithm];
+    if (appStore.size === "small") {
+      customAlgorithm.push(theme.compactAlgorithm);
+    }
+    return customAlgorithm;
+  }, [appStore.size, settingsStore.theme, systemTheme]);
+
   return (
     <ConfigProvider
       locale={locale}
       componentSize={appStore.size as SizeType}
       theme={{
+        algorithm,
+        cssVar: true,
         components: {
           Layout: {
             headerBg: "#fff",
