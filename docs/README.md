@@ -8,6 +8,9 @@ actions:
   - text: 开始阅读📖
     link: ./前端开发
     type: primary
+  - text: 项目展示🧩
+    link: ./项目展示.html
+    type: secondary
 
 highlights:
   - header: 内容丰富
