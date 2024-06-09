@@ -44,8 +44,8 @@ public class SysAlgorithmController {
      */
     @Operation(summary = "获取模型下拉选项列表")
     @GetMapping("/options")
-    public Result<List<Option<?>>> getOption() {
-        List<Option<?>> options = algorithmService.getOption();
+    public Result<List<Option>> getOption() {
+        List<Option> options = algorithmService.getOption();
         return Result.success(options);
     }
 

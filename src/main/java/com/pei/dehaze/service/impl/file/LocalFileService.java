@@ -44,7 +44,7 @@ public class LocalFileService implements FileService {
     private SysImageService imageService;
 
     private HttpServletResponse response;
-
+    private String baseUrl;
     private String uploadPath;
     private String datasetPath;
     private String predictPath;
@@ -74,10 +74,8 @@ public class LocalFileService implements FileService {
                     String fileName = md5 + "." + fileExtension;
                     String filePath = uploadPath + fileName;
                     file.transferTo(new File(filePath));
-
-                    String url = "/upload/" + fileName;
                     image = new SysImage();
-                    image.setUrl(url);
+                    image.setUrl(baseUrl + "/upload/" + fileName);
                     image.setType(ImageTypeEnum.UPLOAD.getLabel());
                     image.setSize(FileUtil.readableFileSize(file.getSize()));
                     image.setName(fileName);
