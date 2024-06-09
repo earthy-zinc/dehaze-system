@@ -4,12 +4,11 @@ import traceback
 from flask import Flask
 from config import config
 from common import error
-
+from model import db
 def create_app(config_name):
     app = Flask(__name__)
-    
     app.config.from_object(config[config_name])
-
+    db.init_app(app)
     from base import base as base_blueprint
     app.register_blueprint(base_blueprint)
     return app
