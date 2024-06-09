@@ -31,3 +31,9 @@
 * 被依赖的类A向主类B发送消息从而影响B类发生变化。
 
 用一条虚线和箭头组成，其中箭头指向被依赖的类。
+
+weight parameter sharing strategy in multi task branches
+
+(6) 提出多任务分支中权重参数共享策略和图像特征融合策略的分割方法，提升细节感知捕获能力和检测精确度；
+
+(6) proposes a segmentation method using weight parameter sharing strategy in multi-task branches and image feature fusion strategies to improve the detail perception capture ability and detection accuracy.
