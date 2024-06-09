@@ -15,6 +15,16 @@ class AlgorithmAPI {
   }
 
   /**
+   * 获取模型下拉选项列表
+   */
+  static getOption() {
+    return request<any, OptionType[]>({
+      url: "/api/v1/algorithm/options",
+      method: "get",
+    });
+  }
+
+  /**
    * 新增算法
    *
    * @param data
