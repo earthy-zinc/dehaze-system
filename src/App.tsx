@@ -59,7 +59,7 @@ function App() {
       }}
     >
       <Watermark
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", overflow: "auto" }}
         content={
           settingsStore.watermarkEnabled
             ? defaultSettings.watermarkContent
