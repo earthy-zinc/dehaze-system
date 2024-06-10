@@ -1,9 +1,9 @@
+import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
+import { RootState } from "@/store";
 import React from "react";
 import "./index.scss";
-import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { RootState } from "@/store";
-import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
+import { Link } from "react-router-dom";
 
 export const Logo: React.FC = () => {
   const appStore = useSelector((state: RootState) => state.app);
@@ -12,13 +12,10 @@ export const Logo: React.FC = () => {
   return (
     <div className="logo-container">
       <Link className="logo" to={"/"}>
-        <img
-          src="https://gw.alipayobjects.com/zos/antfincdn/PmY%24TNNDBI/logo.svg"
-          alt="logo"
-        />
+        <img src="/logo/logo.png" alt="logo" />
       </Link>
 
-      {!collapsed && <h1>Ant Design Pro</h1>}
+      {!collapsed && <h1>图像去雾系统</h1>}
     </div>
   );
 };

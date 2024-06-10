@@ -4,3 +4,7 @@
   max-height: calc(100vh - $navbar-height);
   overflow: hidden auto;
 }
+
+.ant-menu-horizontal {
+  border-bottom: none;
+}

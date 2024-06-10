@@ -2,9 +2,11 @@
 
 .logo-container {
   display: flex;
+  align-items: center;
   width: 100%;
   height: $navbar-height;
   padding: 0 10px;
+  margin: 0 5px;
 
   .logo {
     display: flex;
@@ -22,6 +24,7 @@
 
   h1 {
     flex-shrink: 0; /* 防止容器在空间不足时缩小 */
+    margin-left: 10px;
     font-size: 17px;
     font-weight: bold;
     color: var(--ant-color-text);

@@ -1,7 +1,8 @@
-import React, { Suspense } from "react";
 import { LoadingOutlined } from "@ant-design/icons";
-const antIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 import { Spin } from "antd";
+import React, { Suspense } from "react";
+
+const antIcon = <LoadingOutlined style={{ fontSize: 24 }} spin />;
 
 const lazyLoad = (
   Component: React.LazyExoticComponent<any>
@@ -10,7 +11,6 @@ const lazyLoad = (
     fallback={
       <Spin
         indicator={antIcon}
-        tip="Loading"
         style={{
           position: "absolute",
           left: "50%",

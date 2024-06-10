@@ -1,14 +1,13 @@
-import { ConfigProvider, Watermark, theme } from "antd";
-import { SizeType } from "antd/es/config-provider/SizeContext";
-import enUS from "antd/locale/en_US";
-import zhCN from "antd/locale/zh_CN";
-import { useEffect, useMemo } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { RouterProvider } from "react-router-dom";
-
 import router from "@/router";
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
+import { ConfigProvider, theme, Watermark } from "antd";
+import { SizeType } from "antd/es/config-provider/SizeContext";
+import enUS from "antd/locale/en_US";
+import zhCN from "antd/locale/zh_CN";
+import { useMemo } from "react";
+import { useSelector } from "react-redux";
+import { RouterProvider } from "react-router-dom";
 import { ThemeEnum } from "./enums/ThemeEnum";
 import useSystemTheme from "./hooks/useSystemTheme";
 
@@ -60,6 +59,7 @@ function App() {
       }}
     >
       <Watermark
+        style={{ width: "100%", height: "100%" }}
         content={
           settingsStore.watermarkEnabled
             ? defaultSettings.watermarkContent

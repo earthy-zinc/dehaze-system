@@ -1,15 +1,15 @@
-import { Layout } from "antd";
-import { Header, Content } from "antd/es/layout/layout";
-import Sider from "antd/es/layout/Sider";
-import { useSelector } from "react-redux";
-
 import { LayoutEnum } from "@/enums/LayoutEnum";
+import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
+import { TopMenu } from "@/layout/components/MenuBar/TopMenu";
 import { RootState } from "@/store";
 import "./index.scss";
+import { Layout } from "antd";
+import { Content, Header } from "antd/es/layout/layout";
+import Sider from "antd/es/layout/Sider";
+import { useSelector } from "react-redux";
+import { Outlet } from "react-router-dom";
 import { SideMenu } from "./components/MenuBar/SideMenu";
 import { NavBar } from "./components/NavBar";
-import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
-import { Outlet } from "react-router-dom";
 
 const BasicLayout: React.FC = (props: any) => {
   const settingsStore = useSelector((state: RootState) => state.settings);
@@ -36,7 +36,7 @@ const BasicLayout: React.FC = (props: any) => {
       )}
       <Layout className="layout-left">
         <Header className="header">
-          <NavBar />
+          {settingsStore.layout === LayoutEnum.TOP ? <TopMenu /> : <NavBar />}
         </Header>
         <Content>
           <Outlet />
