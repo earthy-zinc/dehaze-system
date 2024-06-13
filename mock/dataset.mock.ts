@@ -13,6 +13,17 @@ export default defineMock([
     },
   },
   {
+    url: "dataset/:id",
+    method: ["PUT"],
+    body({ body }) {
+      return {
+        code: "00000",
+        data: null,
+        msg: "修改数据集" + body.name + "成功",
+      };
+    },
+  },
+  {
     url: "dataset/:id/images",
     method: ["GET"],
     body: {

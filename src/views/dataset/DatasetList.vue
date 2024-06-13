@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import DatasetAPI from "@/api/dataset";
 import { Dataset, DatasetQuery } from "@/api/dataset/model";
+import EditDialog from "./components/EditDialog.vue";
 
 defineOptions({
   name: "DatasetList",
@@ -73,9 +74,20 @@ function handleDelete(datasetId: number) {
     }
   )
     .then(() => {
+      console.log([...datasetId.toString()]);
+      DatasetAPI.deleteByIds([...datasetId.toString()]);
       ElMessage.success("删除成功");
     })
     .catch(() => ElMessage.info("已取消删除"));
+}
+
+const dialogRef = ref();
+function onEdit(type: String, row: Dataset) {
+  dialogRef.value.open(type, row);
+}
+
+function openDialog(type: String, dataset: Dataset) {
+  onEdit(type, dataset);
 }
 
 function handleSettings() {}
@@ -195,12 +207,22 @@ onMounted(() => {
               查看
             </el-button>
 
-            <el-button link size="small" type="primary">
+            <el-button
+              link
+              size="small"
+              type="primary"
+              @click="openDialog('新增', scope.row)"
+            >
               <i-ep-plus />
               新增
             </el-button>
 
-            <el-button link size="small" type="primary">
+            <el-button
+              link
+              size="small"
+              type="primary"
+              @click="openDialog('编辑', scope.row)"
+            >
               <i-ep-edit />
               编辑
             </el-button>
@@ -218,6 +240,8 @@ onMounted(() => {
       </el-table>
     </el-card>
   </div>
+  <!-- 新增/编辑对话框 -->
+  <EditDialog ref="dialogRef" @on-update="handleQuery" @on-add="handleQuery" />
 </template>
 
 <style lang="scss" scoped></style>
