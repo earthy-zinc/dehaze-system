@@ -167,3 +167,4 @@ instance/*
 .env
 
 .idea/
+/dehaze-python.iml

@@ -1,10 +1,13 @@
-from http.client import HTTPException
 import os
 import traceback
+
 from flask import Flask
-from config import config
+
 from common import error
+from config import config
 from model import db
+
+
 def create_app(config_name):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
@@ -20,6 +23,7 @@ app = create_app(os.getenv('FLASK_CONFIG') or 'default')
 @app.errorhandler(AssertionError)
 def handle_service_error(e):
     return error(str(e))
+
 
 @app.errorhandler(Exception)
 def handle_exception(e):

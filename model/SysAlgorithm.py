@@ -1,8 +1,9 @@
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, String, BigInteger, Text, DateTime, SmallInteger, ForeignKey
-from sqlalchemy.orm import relationship
 from datetime import datetime
+
+from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger
+
 from . import db
+
 
 class SysAlgorithm(db.Model):
     __tablename__ = 'sys_algorithm'
@@ -20,5 +21,3 @@ class SysAlgorithm(db.Model):
     update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')
     create_by = Column(BigInteger, nullable=True, comment='创建人ID')
     update_by = Column(BigInteger, nullable=True, comment='修改人ID')
-
- 
