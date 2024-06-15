@@ -20,7 +20,7 @@ const selectedColumns = ref([
   "size",
   "total",
   "path",
-  "visible",
+  "status",
 ]);
 const columns = [
   { label: "名称", value: "name" },
@@ -29,7 +29,7 @@ const columns = [
   { label: "大小", value: "size" },
   { label: "图片数量", value: "total" },
   { label: "存储位置", value: "path" },
-  { label: "状态", value: "visible" },
+  { label: "状态", value: "status" },
 ];
 
 function handleQuery() {
@@ -185,13 +185,13 @@ onMounted(() => {
           prop="path"
         />
         <el-table-column
-          v-if="selectedColumns.includes('visible')"
+          v-if="selectedColumns.includes('status')"
           align="center"
           label="状态"
           width="80"
         >
           <template #default="scope">
-            <el-tag v-if="scope.row.visible === 1" type="success">显示</el-tag>
+            <el-tag v-if="scope.row.status === 1" type="success">显示</el-tag>
             <el-tag v-else type="info">隐藏</el-tag>
           </template>
         </el-table-column>
