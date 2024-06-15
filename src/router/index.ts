@@ -57,6 +57,7 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/dataset",
     component: Layout,
+    redirect: "/dataset/index",
     meta: {},
     children: [
       {
@@ -82,6 +83,7 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/algorithm",
     component: Layout,
+    redirect: "/algorithm/index",
     meta: {},
     children: [
       {
@@ -112,6 +114,7 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/presentation",
     component: Layout,
+    redirect: "/presentation/dehaze",
     meta: {
       title: "算法展示",
       icon: "presentation",
@@ -140,6 +143,7 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/compare",
     component: Layout,
+    redirect: "/compare/overlap",
     meta: {
       title: "算法比较",
       icon: "compare",
