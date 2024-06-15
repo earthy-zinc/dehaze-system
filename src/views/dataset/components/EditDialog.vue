@@ -21,6 +21,7 @@ const formData = reactive<Dataset>({
   size: "",
   total: 0,
   children: [],
+  status: 0,
 });
 
 const formRef = ref(ElForm);
@@ -86,6 +87,7 @@ function closeDialog() {
     size: "",
     total: 0,
     children: [],
+    status: 0,
   });
   dialogVisible.value = false;
   select.value = "";
@@ -158,6 +160,17 @@ async function submitForm() {
       </el-form-item>
       <el-form-item label="存 储 位 置" prop="path">
         <el-input v-model="formData.path" clearable />
+      </el-form-item>
+      <el-form-item label="&nbsp;&nbsp;数据集状态">
+        <el-switch
+          size="large"
+          v-model="formData.status"
+          inline-prompt
+          active-text="显示"
+          inactive-text="隐藏"
+          active-value="1"
+          inactive-value="0"
+        />
       </el-form-item>
     </el-form>
     <template #footer>
