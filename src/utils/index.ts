@@ -236,7 +236,7 @@ export function hexToRGBA(hex: string, alpha: number) {
 
 export function loadImage(
   url: string,
-  crossOrigin: Boolean
+  crossOrigin: boolean = true
 ): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();

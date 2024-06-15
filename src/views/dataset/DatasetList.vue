@@ -82,11 +82,12 @@ function handleDelete(datasetId: number) {
 }
 
 const dialogRef = ref();
-function onEdit(type: String, row: Dataset) {
+
+function onEdit(type: string, row: Dataset) {
   dialogRef.value.open(type, row);
 }
 
-function openDialog(type: String, dataset: Dataset) {
+function openDialog(type: string, dataset: Dataset) {
   onEdit(type, dataset);
 }
 
@@ -239,9 +240,14 @@ onMounted(() => {
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 新增/编辑对话框 -->
+    <EditDialog
+      ref="dialogRef"
+      @on-update="handleQuery"
+      @on-add="handleQuery"
+    />
   </div>
-  <!-- 新增/编辑对话框 -->
-  <EditDialog ref="dialogRef" @on-update="handleQuery" @on-add="handleQuery" />
 </template>
 
 <style lang="scss" scoped></style>
