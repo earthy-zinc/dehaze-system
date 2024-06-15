@@ -38,6 +38,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.3.7",
     "@reduxjs/toolkit": "^2.2.5",
+    "ahooks": "^3.8.0",
     "antd": "^5.18.0",
     "axios": "^1.7.2",
     "classnames": "^2.5.1",

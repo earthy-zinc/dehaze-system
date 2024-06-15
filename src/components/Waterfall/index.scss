@@ -1,0 +1,40 @@
+.waterfall-list {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.waterfall-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+
+  /* 初始位置设置到屏幕以外，避免懒加载失败 */
+  transform: translate3d(0, 3000px, 0);
+}
+
+/* 初始的入场效果 */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.fadeIn {
+  animation-name: fadeIn;
+}
