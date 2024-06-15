@@ -69,7 +69,8 @@ async function initImage() {
   const { src, bigImgSrc, scale, originScale } = props;
   let originImg = await loadImage(src, true);
   swidth.value = originImg.width / scale;
-  sheight.value = originImg.height;
+  sheight.value = swidth.value;
+
   if (bigImgSrc) {
     let bigImg = await loadImage(bigImgSrc, true);
     let enlargeScale = bigImg.width / originImg.width;

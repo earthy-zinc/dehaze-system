@@ -123,7 +123,7 @@ onMounted(() => {
             </template>
             重置
           </el-button>
-          <el-dropdown>
+          <el-dropdown class="setting-button">
             <el-button>
               <template #icon>
                 <i-ep-setting />
@@ -131,7 +131,12 @@ onMounted(() => {
               设置
             </el-button>
             <template #dropdown>
-              <el-checkbox-group v-model="selectedColumns">
+              <div class="setting-title">列选项</div>
+              <el-divider class="p-0" />
+              <el-checkbox-group
+                v-model="selectedColumns"
+                class="setting-checkbox"
+              >
                 <el-checkbox
                   v-for="column in columns"
                   :key="column.value"
@@ -250,4 +255,28 @@ onMounted(() => {
   </div>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.setting-button {
+  margin-left: 12px;
+}
+
+.setting-title {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.setting-checkbox {
+  display: flex;
+  flex-direction: column;
+  margin: 0 15px;
+}
+</style>
+
+<style lang="scss">
+.el-divider--horizontal {
+  margin: 5px 0;
+}
+</style>

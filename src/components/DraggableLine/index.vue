@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { useSettingsStore } from "@/store";
 import { hexToRGBA } from "@/utils";
 
@@ -10,6 +10,7 @@ const parentOffsetLeft = ref(0);
 const offsetLeft = ref(0);
 const dragContainer = ref<HTMLElement>();
 
+const { width, height } = useWindowSize();
 const settingStore = useSettingsStore();
 
 const props = defineProps({
@@ -26,6 +27,7 @@ const props = defineProps({
  */
 function drag(event: MouseEvent) {
   if (isDragging.value) {
+    offsetLeft.value = dragContainer.value!.getBoundingClientRect().left;
     parentOffsetLeft.value = event.clientX - offsetLeft.value;
   }
 }
@@ -49,45 +51,45 @@ onMounted(() => {
     @mouseup="isDragging = false"
   >
     <div
-      class="line"
       :style="{
         left: `${parentOffsetLeft}px`,
         backgroundColor: settingStore.themeColor,
       }"
+      class="line"
     >
       <svg-icon
+        :color="settingStore.themeColor"
         class="icon-location"
         icon-class="hollow-slide"
         size="2em"
-        :color="settingStore.themeColor"
       />
     </div>
     <div
       v-show="leftLabel"
-      class="drag-label"
       :style="{
         left: `${parentOffsetLeft - 80}px`,
         backgroundColor: 'rgba(162,162,162,0.5)',
         color: 'var(--el-border-color)',
       }"
+      class="drag-label"
     >
       <span>{{ leftLabel }}</span>
     </div>
     <div
       v-show="rightLabel"
-      class="drag-label"
       :style="{
         left: `${parentOffsetLeft}px`,
         backgroundColor: hexToRGBA(settingStore.themeColor, 0.5),
         color: 'var(--el-border-color)',
       }"
+      class="drag-label"
     >
       <span>{{ rightLabel }}</span>
     </div>
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .container {
   position: relative;
   height: 100%;
