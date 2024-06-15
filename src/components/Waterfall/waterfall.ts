@@ -1,13 +1,11 @@
-import { computed, ref } from "vue";
-import { useResizeObserver } from "@vueuse/core";
-import { ItemWidthProps, WaterfallProps } from "./types";
-import { CssStyleObject, Nullable } from "../LazyImg/types";
 import { addClass, hasClass, prefixStyle } from "@/utils";
+import { CssStyleObject, Nullable } from "@/utils/types";
+import { useResizeObserver } from "@vueuse/core";
+import { computed, ref } from "vue";
+import { ItemWidthProps, WaterfallProps } from "./types";
 
 /**
  * @description: 获取当前窗口尺寸下格子的宽度
- * @param {ItemWidthProps} param1
- * @return {*}
  */
 const getItemWidth = ({
   breakpoints,
@@ -150,8 +148,8 @@ export function useLayout(
       if (items.length === 0) return false;
 
       // 遍历节点
-      for (let i = 0; i < items.length; i++) {
-        const curItem = items[i] as HTMLElement;
+      for (const element of items) {
+        const curItem = element as HTMLElement;
         // 最小的y值
         const minY = Math.min.apply(null, posY.value);
         // 最小y的下标
