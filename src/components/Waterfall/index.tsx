@@ -7,6 +7,10 @@ import "./index.scss";
 import { Nullable } from "@/utils/types.ts";
 import React, { useEffect, useState } from "react";
 import { getValue } from "@/utils";
+import useLayout from "./useLayout";
+import useCalculateCols from "./useCalculateCols";
+import { useDebounceFn } from "ahooks";
+import LazyImg from "../LazyImg";
 
 interface ExtendedWaterfallProps extends WaterfallProps {
   rowKey?: string;
@@ -18,54 +22,84 @@ interface ExtendedWaterfallProps extends WaterfallProps {
   children: React.ReactNode;
 }
 
-const Waterfall: React.FC<ExtendedWaterfallProps> = (props) => {
-  const {
-    list = [],
-    rowKey = "id",
-    imgSelector = "src",
-    width = 200,
-    breakpoints = {
-      1200: {
-        // when wrapper width < 1200
-        rowPerView: 3,
-      },
-      800: {
-        // when wrapper width < 800
-        rowPerView: 2,
-      },
-      500: {
-        // when wrapper width < 500
-        rowPerView: 1,
-      },
+const Waterfall: React.FC<ExtendedWaterfallProps> = ({
+  list = [],
+  rowKey = "id",
+  imgSelector = "src",
+  width = 200,
+  breakpoints = {
+    1200: {
+      // when wrapper width < 1200
+      rowPerView: 3,
     },
-    gutter = 10,
-    hasAroundGutter = true,
-    posDuration = 300,
-    animationPrefix = "animate__animated",
-    animationEffect = "fadeIn",
-    animationDuration = 1000,
-    animationDelay = 300,
-    lazyload = true,
-    loadProps = {},
-    crossOrigin = true,
-    delay = 300,
-    align = "center",
-  } = props;
-
+    800: {
+      // when wrapper width < 800
+      rowPerView: 2,
+    },
+    500: {
+      // when wrapper width < 500
+      rowPerView: 1,
+    },
+  },
+  gutter = 10,
+  hasAroundGutter = true,
+  posDuration = 300,
+  animationPrefix = "animate__animated",
+  animationEffect = "fadeIn",
+  animationDelay = 300,
+  animationDuration = 1000,
+  lazyload = true,
+  loadProps = {},
+  crossOrigin = true,
+  delay = 300,
+  align = "center",
+}) => {
   const waterfallWrapper = React.useRef<Nullable<HTMLDivElement>>(null);
-  const [wrapperHeight, setWrapperHeight] = useState<number>(0);
-  const [wrapperWidth, setWrapperWidth] = useState<number>(0);
-  const [cols, setCols] = useState<number[]>([]);
-  const [colWidth, setColWidth] = useState<number>(0);
-  const [offsetX, setOffsetX] = useState<number>(0);
+
+  const { wrapperWidth, colWidth, cols, offsetX } = useCalculateCols(
+    breakpoints,
+    hasAroundGutter,
+    gutter,
+    width,
+    align,
+    waterfallWrapper
+  );
+
+  const { wrapperHeight, layoutHandle } = useLayout(
+    hasAroundGutter,
+    gutter,
+    posDuration,
+    animationPrefix,
+    animationEffect,
+    animationDelay,
+    animationDuration,
+    colWidth,
+    cols,
+    offsetX,
+    waterfallWrapper
+  );
+
+  const renderer = useDebounceFn(
+    () => {
+      layoutHandle();
+    },
+    {
+      wait: delay,
+    }
+  );
+
+  useEffect(() => {
+    if (wrapperWidth > 0) renderer.run();
+  }, [wrapperWidth, colWidth, list, renderer]);
 
   const getRenderURL = (item: ViewCard): string => {
-    return getValue(item, props.imgSelector ?? "src")[0];
+    return getValue(item, imgSelector ?? "src")[0];
   };
 
   const getKey = (item: ViewCard, index: number): string => {
-    return item[props.rowKey ?? "id"] || index.toString();
+    return item[rowKey ?? "id"] || index.toString();
   };
+
   return (
     <div
       ref={waterfallWrapper}
@@ -74,7 +108,9 @@ const Waterfall: React.FC<ExtendedWaterfallProps> = (props) => {
     >
       {list.map((item, index) => (
         <div key={getKey(item, index)} className="waterfall-item">
-          <div className="waterfall-card"></div>
+          <div className="waterfall-card">
+            <LazyImg />
+          </div>
         </div>
       ))}
     </div>

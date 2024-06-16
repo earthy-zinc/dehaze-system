@@ -1,6 +1,6 @@
 import { WaterfallProps } from "@/components/Waterfall/types.ts";
 import { addClass, hasClass, prefixStyle } from "@/utils";
-import { CssStyleObject } from "@/utils/types.ts";
+import { CssStyleObject, Nullable } from "@/utils/types.ts";
 import React, { useCallback, useEffect, useState } from "react";
 
 const transform = prefixStyle("transform");
@@ -10,15 +10,20 @@ const transition = prefixStyle("transition");
 const fillMode = prefixStyle("animation-fill-mode");
 
 // 动画
-function addAnimation(props: WaterfallProps) {
+function addAnimation(
+  animationPrefix: string,
+  animationEffect: string,
+  animationDelay: number,
+  animationDuration: number
+) {
   return (item: HTMLElement, callback?: () => void) => {
     const content = item!.firstChild as HTMLElement;
-    if (content && !hasClass(content, props.animationPrefix)) {
-      const durationSec = `${props.animationDuration / 1000}s`;
-      const delaySec = `${props.animationDelay / 1000}s`;
+    if (content && !hasClass(content, animationPrefix)) {
+      const durationSec = `${animationDuration / 1000}s`;
+      const delaySec = `${animationDelay / 1000}s`;
       const style = content.style as CssStyleObject;
-      addClass(content, props.animationPrefix);
-      addClass(content, props.animationEffect);
+      addClass(content, animationPrefix);
+      addClass(content, animationEffect);
 
       if (duration) style[duration] = durationSec;
 
@@ -29,34 +34,45 @@ function addAnimation(props: WaterfallProps) {
       if (callback) {
         setTimeout(() => {
           callback();
-        }, props.animationDuration + props.animationDelay);
+        }, animationDuration + animationDelay);
       }
     }
   };
 }
 
 const useLayout = (
-  props: WaterfallProps,
+  hasAroundGutter: boolean,
+  gutter: number,
+  posDuration: number,
+  animationPrefix: string,
+  animationEffect: string,
+  animationDelay: number,
+  animationDuration: number,
   colWidth: number,
   cols: number,
   offsetX: number,
-  waterfallWrapper: React.MutableRefObject<HTMLElement>
+  waterfallWrapper: React.MutableRefObject<Nullable<HTMLDivElement>>
 ) => {
   const [posY, setPosY] = useState(
-    Array(cols).fill(props.hasAroundGutter ? props.gutter : 0)
+    Array(cols).fill(hasAroundGutter ? gutter : 0)
   );
-  const [wrapperHeight, setWrapperHeight] = useState(0);
+  const [wrapperHeight, setWrapperHeight] = useState<number>(0);
 
   const getX = (index: number) => {
-    const count = props.hasAroundGutter ? index + 1 : index;
-    return props.gutter * count + colWidth * index + offsetX;
+    const count = hasAroundGutter ? index + 1 : index;
+    return gutter * count + colWidth * index + offsetX;
   };
 
   const initY = useCallback(() => {
-    setPosY(new Array(cols).fill(props.hasAroundGutter ? props.gutter : 0));
-  }, [cols, props.gutter, props.hasAroundGutter]);
+    setPosY(new Array(cols).fill(hasAroundGutter ? gutter : 0));
+  }, [cols, gutter, hasAroundGutter]);
 
-  const animation = addAnimation(props);
+  const animation = addAnimation(
+    animationPrefix,
+    animationEffect,
+    animationDelay,
+    animationDuration
+  );
 
   // 排版
   const layoutHandle = async (): Promise<boolean> => {
@@ -66,7 +82,7 @@ const useLayout = (
 
       // 构造列表
       const items: HTMLElement[] = [];
-      if (waterfallWrapper) {
+      if (waterfallWrapper.current) {
         waterfallWrapper.current.childNodes.forEach((el: any) => {
           if (el!.className === "waterfall-item") items.push(el);
         });
@@ -96,12 +112,12 @@ const useLayout = (
 
         // 更新当前index的y值
         const { height } = curItem.getBoundingClientRect();
-        posY[minYIndex] += height + props.gutter;
+        posY[minYIndex] += height + gutter;
 
         // 添加入场动画
         animation(curItem, () => {
           // 添加动画时间
-          const time = props.posDuration / 1000;
+          const time = posDuration / 1000;
           if (transition) style[transition] = `transform ${time}s`;
         });
       }
@@ -110,7 +126,7 @@ const useLayout = (
 
       setTimeout(() => {
         resolve(true);
-      }, props.posDuration);
+      }, posDuration);
     });
   };
 
@@ -123,3 +139,5 @@ const useLayout = (
     layoutHandle,
   };
 };
+
+export default useLayout;

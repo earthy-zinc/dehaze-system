@@ -1,8 +1,10 @@
 import {
+  Breakpoints,
   ItemWidthProps,
   WaterfallProps,
 } from "@/components/Waterfall/types.ts";
 import { useResizeObserver } from "@/hooks/useResizeObserver.ts";
+import { Nullable } from "@/utils/types";
 import React, { useState } from "react";
 
 const getItemWidth = ({
@@ -34,10 +36,15 @@ const getItemWidth = ({
     : (wrapperWidth - (col - 1) * gutter) / col;
 };
 
-const useCalculateCols = (props: WaterfallProps) => {
-  const [wrapperWidth, setWrapperWidth] = useState(0);
-  const waterfallWrapper = React.useRef(null);
-
+const useCalculateCols = (
+  breakpoints: Breakpoints,
+  hasAroundGutter: boolean,
+  gutter: number,
+  width: number,
+  align: string,
+  waterfallWrapper: React.MutableRefObject<Nullable<HTMLDivElement>>
+) => {
+  const [wrapperWidth, setWrapperWidth] = useState<number>(0);
   const handleResize = (entries: ResizeObserverEntry[]) => {
     const { width } = entries[0].contentRect;
     setWrapperWidth(width);
@@ -47,47 +54,32 @@ const useCalculateCols = (props: WaterfallProps) => {
 
   const colWidth = React.useMemo(() => {
     return getItemWidth({
-      breakpoints: props.breakpoints,
+      breakpoints: breakpoints,
       wrapperWidth,
-      gutter: props.gutter,
-      hasAroundGutter: props.hasAroundGutter,
-      initWidth: props.width,
+      gutter: gutter,
+      hasAroundGutter: hasAroundGutter,
+      initWidth: width,
     });
-  }, [
-    wrapperWidth,
-    props.breakpoints,
-    props.gutter,
-    props.hasAroundGutter,
-    props.width,
-  ]);
+  }, [wrapperWidth, breakpoints, gutter, hasAroundGutter, width]);
 
   const cols = React.useMemo(() => {
-    const offset = props.hasAroundGutter ? -props.gutter : props.gutter;
-    return Math.floor((wrapperWidth + offset) / (colWidth + props.gutter));
-  }, [wrapperWidth, colWidth, props.hasAroundGutter, props.gutter]);
+    const offset = hasAroundGutter ? -gutter : gutter;
+    return Math.floor((wrapperWidth + offset) / (colWidth + gutter));
+  }, [wrapperWidth, colWidth, hasAroundGutter, gutter]);
 
   const offsetX = React.useMemo(() => {
-    if (props.align === "left") return 0;
-    if (props.align === "center") {
-      const offset = props.hasAroundGutter ? props.gutter : -props.gutter;
-      const contextWidth = cols * (colWidth + props.gutter) + offset;
+    const offset = hasAroundGutter ? gutter : -gutter;
+    if (align === "left") return 0;
+    if (align === "center") {
+      const contextWidth = cols * (colWidth + gutter) + offset;
       return (wrapperWidth - contextWidth) / 2;
     }
     // align === 'right'
-    const offset = props.hasAroundGutter ? props.gutter : -props.gutter;
-    const contextWidth = cols * (colWidth + props.gutter) + offset;
+    const contextWidth = cols * (colWidth + gutter) + offset;
     return wrapperWidth - contextWidth;
-  }, [
-    wrapperWidth,
-    colWidth,
-    cols,
-    props.align,
-    props.gutter,
-    props.hasAroundGutter,
-  ]);
+  }, [wrapperWidth, colWidth, cols, align, gutter, hasAroundGutter]);
 
   return {
-    waterfallWrapper,
     wrapperWidth,
     colWidth,
     cols,
