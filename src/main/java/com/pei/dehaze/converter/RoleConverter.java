@@ -19,18 +19,31 @@ import java.util.List;
  */
 @Mapper(componentModel = "spring")
 public interface RoleConverter {
-
+    @Mappings({
+        @Mapping(ignore = true, target = "countId"),
+        @Mapping(ignore = true, target = "maxLimit"),
+        @Mapping(ignore = true, target = "optimizeCountSql"),
+        @Mapping(ignore = true, target = "optimizeJoinOfCountSql"),
+        @Mapping(ignore = true, target = "orders"),
+        @Mapping(ignore = true, target = "searchCount"),
+    })
     Page<RolePageVO> entity2Page(Page<SysRole> page);
 
     @Mappings({
             @Mapping(target = "value", source = "id"),
-            @Mapping(target = "label", source = "name")
+            @Mapping(target = "label", source = "name"),
+            @Mapping(ignore = true, target = "children")
     })
-    Option entity2Option(SysRole role);
+    Option<Long> entity2Option(SysRole role);
 
 
-    List<Option> entities2Options(List<SysRole> roles);
+    List<Option<Long>> entities2Options(List<SysRole> roles);
 
+    @Mappings({
+            @Mapping(target = "createTime", ignore = true),
+            @Mapping(target = "updateTime", ignore = true),
+            @Mapping(target = "deleted", ignore = true),
+    })
     SysRole form2Entity(RoleForm roleForm);
 
     RoleForm entity2Form(SysRole entity);

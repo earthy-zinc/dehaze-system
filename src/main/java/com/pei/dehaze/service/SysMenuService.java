@@ -32,7 +32,7 @@ public interface SysMenuService extends IService<SysMenu> {
      *
      * @return
      */
-    List<Option> listMenuOptions();
+    List<Option<Long>> listMenuOptions();
 
     /**
      * 新增菜单

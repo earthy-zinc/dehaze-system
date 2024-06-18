@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class SysImage extends BaseEntity {
     @TableId(type = IdType.AUTO)
     private Long id;

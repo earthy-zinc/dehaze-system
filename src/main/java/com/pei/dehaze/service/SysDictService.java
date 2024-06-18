@@ -64,6 +64,6 @@ public interface SysDictService extends IService<SysDict> {
      * @param typeCode
      * @return
      */
-    List<Option> listDictOptions(String typeCode);
+    List<Option<String>> listDictOptions(String typeCode);
 
 }

@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +28,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/menus")
 @RequiredArgsConstructor
-@Slf4j
 public class SysMenuController {
 
     private final SysMenuService menuService;
@@ -43,8 +41,8 @@ public class SysMenuController {
 
     @Operation(summary = "菜单下拉列表")
     @GetMapping("/options")
-    public Result listMenuOptions() {
-        List<Option> menus = menuService.listMenuOptions();
+    public Result<List<Option<Long>>> listMenuOptions() {
+        List<Option<Long>> menus = menuService.listMenuOptions();
         return Result.success(menus);
     }
 
@@ -68,7 +66,7 @@ public class SysMenuController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:menu:add')")
     @PreventDuplicateSubmit
-    public Result addMenu(@RequestBody MenuForm menuForm) {
+    public Result<Void> addMenu(@RequestBody MenuForm menuForm) {
         boolean result = menuService.saveMenu(menuForm);
         return Result.judge(result);
     }
@@ -76,7 +74,7 @@ public class SysMenuController {
     @Operation(summary = "修改菜单")
     @PutMapping(value = "/{id}")
     @PreAuthorize("@ss.hasPerm('sys:menu:edit')")
-    public Result updateMenu(
+    public Result<Void> updateMenu(
             @RequestBody MenuForm menuForm
     ) {
         boolean result = menuService.saveMenu(menuForm);
@@ -86,7 +84,7 @@ public class SysMenuController {
     @Operation(summary = "删除菜单")
     @DeleteMapping("/{id}")
     @PreAuthorize("@ss.hasPerm('sys:menu:delete')")
-    public Result deleteMenu(
+    public Result<Void> deleteMenu(
             @Parameter(description ="菜单ID，多个以英文(,)分割") @PathVariable("id") Long id
     ) {
         boolean result = menuService.deleteMenu(id);
@@ -95,7 +93,7 @@ public class SysMenuController {
 
     @Operation(summary = "修改菜单显示状态")
     @PatchMapping("/{menuId}")
-    public Result updateMenuVisible(
+    public Result<Void> updateMenuVisible(
             @Parameter(description =  "菜单ID") @PathVariable Long menuId,
             @Parameter(description =  "显示状态(1:显示;0:隐藏)") Integer visible
 

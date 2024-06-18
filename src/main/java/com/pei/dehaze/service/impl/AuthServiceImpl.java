@@ -17,7 +17,6 @@ import com.pei.dehaze.security.util.JwtUtils;
 import com.pei.dehaze.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -39,7 +38,6 @@ import java.util.concurrent.TimeUnit;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;

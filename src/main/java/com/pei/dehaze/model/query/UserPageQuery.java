@@ -3,6 +3,8 @@ package com.pei.dehaze.model.query;
 import com.pei.dehaze.common.base.BasePageQuery;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
 import org.springframework.format.annotation.DateTimeFormat;
 
 /**
@@ -13,6 +15,7 @@ import org.springframework.format.annotation.DateTimeFormat;
  */
 @Schema(description ="用户分页查询对象")
 @Data
+@EqualsAndHashCode(callSuper = true)
 public class UserPageQuery extends BasePageQuery {
 
     @Schema(description="关键字(用户名/昵称/手机号)")

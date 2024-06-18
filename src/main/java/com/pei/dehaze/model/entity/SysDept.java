@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 部门表
  */
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class SysDept extends BaseEntity {
     /**
      * 主键

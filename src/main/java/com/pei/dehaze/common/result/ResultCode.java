@@ -3,8 +3,6 @@ package com.pei.dehaze.common.result;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 
-import java.io.Serializable;
-
 /**
  * 响应码枚举
  *
@@ -13,7 +11,7 @@ import java.io.Serializable;
  **/
 @AllArgsConstructor
 @NoArgsConstructor
-public enum ResultCode implements IResultCode, Serializable {
+public enum ResultCode implements IResultCode {
 
     SUCCESS("00000", "一切ok"),
 
