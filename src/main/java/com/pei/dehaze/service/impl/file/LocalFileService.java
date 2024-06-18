@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.FileUploadUtils;
+import com.pei.dehaze.common.util.ImageUtils;
 import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.model.entity.SysImage;
 import com.pei.dehaze.service.FileService;
@@ -15,10 +16,13 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -39,14 +43,15 @@ import java.nio.file.Paths;
 @ConfigurationProperties(prefix = "file.local")
 @RequiredArgsConstructor
 @Data
+@Slf4j
 public class LocalFileService implements FileService {
 
     private SysImageService imageService;
 
-    private HttpServletResponse response;
     private String baseUrl;
     private String uploadPath;
-    private String datasetPath;
+    private String datasetOriginPath;
+    private String datasetThumbnailPath;
     private String predictPath;
 
     @Override
@@ -104,22 +109,40 @@ public class LocalFileService implements FileService {
         return false;
     }
 
-    public void download(String filePath) {
+    public void download(String filePath, HttpServletResponse response) {
         String prefix = filePath.split("/")[0];
         Path path;
         if (prefix.equals(ImageTypeEnum.UPLOAD.getValue())) {
             path = Paths.get(uploadPath, filePath.replaceFirst("upload/", ""));
         } else if (prefix.equals(ImageTypeEnum.DATASET.getValue())) {
-            path = Paths.get(datasetPath, filePath.replaceFirst("dataset/", ""));
+            if (filePath.contains("dataset/origin")) {
+                filePath = filePath.replaceFirst("dataset/origin/", "");
+                path = Paths.get(datasetOriginPath, filePath);
+            } else if (filePath.contains("dataset/thumbnail")){
+                filePath = filePath.replaceFirst("dataset/thumbnail/", "");
+                Path originPath = Paths.get(datasetOriginPath, filePath);
+                Path thumbnailPath = Paths.get(datasetThumbnailPath, filePath);
+                if (!Files.exists(originPath)) {
+                    throw new BusinessException("图片不存在");
+                }
+                if (!Files.exists(thumbnailPath)) {
+                    ImageUtils.generateThumbnail(originPath.toString(), thumbnailPath.toString(), 400, 400);
+                    log.info("生成缩略图" + originPath + "->" + thumbnailPath);
+                }
+                path = thumbnailPath;
+            } else {
+                throw new BusinessException("未知的数据集分类");
+            }
         } else if (prefix.equals(ImageTypeEnum.PREDICT.getValue())) {
             path = Paths.get(predictPath, filePath.replaceFirst("predict/", ""));
         } else {
             throw new IllegalArgumentException("未找到图片" + filePath);
         }
-        downloadFile(path);
+        log.info(path.toString());
+        downloadFile(path, response);
     }
 
-    private void downloadFile(Path filePath) {
+    private void downloadFile(Path filePath, HttpServletResponse response) {
         // 验证文件路径的安全性，避免路径遍历攻击
         if (!filePath.isAbsolute() || !Files.exists(filePath)) {
             throw new IllegalArgumentException("无效的文件路径");
