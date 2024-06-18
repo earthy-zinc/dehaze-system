@@ -243,7 +243,7 @@ export function loadImage(
     image.onload = () => {
       resolve(image);
     };
-    image.onerror = () => {
+    image.onerror = (err) => {
       reject(new Error("Image load error"));
     };
     if (crossOrigin) image.crossOrigin = "Anonymous"; // 支持跨域图片

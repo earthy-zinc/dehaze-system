@@ -1,13 +1,3 @@
-export interface ViewCard {
-  src: any;
-  id?: string;
-  name?: string;
-  star?: boolean;
-  backgroundColor?: string;
-
-  [attr: string]: any;
-}
-
 interface Point {
   rowPerView: number;
 }
@@ -15,17 +5,18 @@ interface Point {
 export type Breakpoints = Record<number, Point>;
 
 export interface WaterfallProps {
-  breakpoints: Breakpoints;
-  width: number;
-  posDuration: number;
-  animationDuration: number;
-  animationDelay: number;
-  animationEffect: string;
-  hasAroundGutter: boolean;
-  gutter: number;
-  list: ViewCard[];
-  animationPrefix: string;
-  align: string;
+  breakpoints?: Breakpoints;
+  width?: number;
+  posDuration?: number;
+  animationDuration?: number;
+  animationDelay?: number;
+  animationEffect?: string;
+  hasAroundGutter?: boolean;
+  gutter?: number;
+  list: string[];
+  animationPrefix?: string;
+  align?: string;
+  delay?: number;
 }
 
 export interface ItemWidthProps {
