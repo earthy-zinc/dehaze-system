@@ -41,8 +41,8 @@ public class SysDeptController {
 
     @Operation(summary = "获取部门下拉选项")
     @GetMapping("/options")
-    public Result<List<Option>> listDeptOptions() {
-        List<Option> list = deptService.listDeptOptions();
+    public Result<List<Option<Long>>> listDeptOptions() {
+        List<Option<Long>> list = deptService.listDeptOptions();
         return Result.success(list);
     }
 
@@ -59,7 +59,7 @@ public class SysDeptController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:dept:add')")
     @PreventDuplicateSubmit
-    public Result saveDept(
+    public Result<Long> saveDept(
             @Valid @RequestBody DeptForm formData
     ) {
         Long id = deptService.saveDept(formData);
@@ -69,7 +69,7 @@ public class SysDeptController {
     @Operation(summary = "修改部门")
     @PutMapping(value = "/{deptId}")
     @PreAuthorize("@ss.hasPerm('sys:dept:edit')")
-    public Result updateDept(
+    public Result<Long> updateDept(
             @PathVariable Long deptId,
             @Valid @RequestBody DeptForm formData
     ) {
@@ -80,7 +80,7 @@ public class SysDeptController {
     @Operation(summary = "删除部门")
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:dept:delete')")
-    public Result deleteDepartments(
+    public Result<Void> deleteDepartments(
             @Parameter(description ="部门ID，多个以英文逗号(,)分割") @PathVariable("ids") String ids
     ) {
         boolean result = deptService.deleteByIds(ids);

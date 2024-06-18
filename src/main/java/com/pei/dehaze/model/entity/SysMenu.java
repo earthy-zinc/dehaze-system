@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.common.base.BaseEntity;
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 菜单实体对象
@@ -15,6 +16,7 @@ import lombok.Data;
  */
 @TableName(value ="sys_menu")
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class SysMenu extends BaseEntity {
     /**
      * 菜单ID

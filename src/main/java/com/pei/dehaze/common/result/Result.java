@@ -55,6 +55,7 @@ public class Result<T> implements Serializable {
         return result(resultCode.getCode(), msg, null);
     }
 
+    @SuppressWarnings("unused")
     private static <T> Result<T> result(IResultCode resultCode, T data) {
         return result(resultCode.getCode(), resultCode.getMsg(), data);
     }

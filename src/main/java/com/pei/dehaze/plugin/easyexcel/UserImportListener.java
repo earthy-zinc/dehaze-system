@@ -125,7 +125,8 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             if (StrUtil.isNotBlank(roleCodes)) {
                 roleIds = roleService.list(
                                 new LambdaQueryWrapper<SysRole>()
-                                        .in(SysRole::getCode, roleCodes.split(","))
+                                        .in(SysRole::getCode, 
+                                        (Object[]) roleCodes.split(","))
                                         .eq(SysRole::getStatus, StatusEnum.ENABLE.getValue())
                                         .select(SysRole::getId)
                         ).stream()
@@ -138,7 +139,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             if (saveResult) {
                 validCount++;
                 // 保存用户角色关联
-                if (CollectionUtil.isNotEmpty(roleIds)) {
+                if (roleIds != null && CollectionUtil.isNotEmpty(roleIds)) {
                     List<SysUserRole> userRoles = roleIds.stream()
                             .map(roleId -> new SysUserRole(entity.getId(), roleId))
                             .collect(Collectors.toList());

@@ -54,7 +54,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         );
 
         if (CollectionUtil.isEmpty(deptList)) {
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
 
         // 获取所有部门ID
@@ -98,7 +98,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
      * @return 部门下拉List集合
      */
     @Override
-    public List<Option> listDeptOptions() {
+    public List<Option<Long>> listDeptOptions() {
 
         List<SysDept> deptList = this.list(new LambdaQueryWrapper<SysDept>()
                 .eq(SysDept::getStatus, StatusEnum.ENABLE.getValue())
@@ -106,7 +106,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
                 .orderByAsc(SysDept::getSort)
         );
         if (CollectionUtil.isEmpty(deptList)) {
-            return Collections.EMPTY_LIST;
+            return Collections.emptyList();
         }
 
         Set<Long> deptIds = deptList.stream()
@@ -193,12 +193,12 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
      * @param deptList 部门列表
      * @return 部门表格层级列表
      */
-    public static List<Option> recurDeptTreeOptions(long parentId, List<SysDept> deptList) {
-        List<Option> list = CollectionUtil.emptyIfNull(deptList).stream()
+    public static List<Option<Long>> recurDeptTreeOptions(long parentId, List<SysDept> deptList) {
+        List<Option<Long>> list = CollectionUtil.emptyIfNull(deptList).stream()
                 .filter(dept -> dept.getParentId().equals(parentId))
                 .map(dept -> {
-                    Option option = new Option(dept.getId(), dept.getName());
-                    List<Option> children = recurDeptTreeOptions(dept.getId(), deptList);
+                    Option<Long> option = new Option<>(dept.getId(), dept.getName());
+                    List<Option<Long>> children = recurDeptTreeOptions(dept.getId(), deptList);
                     if (CollectionUtil.isNotEmpty(children)) {
                         option.setChildren(children);
                     }

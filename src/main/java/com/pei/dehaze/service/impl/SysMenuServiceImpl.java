@@ -101,7 +101,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * 菜单下拉数据
      */
     @Override
-    public List<Option> listMenuOptions() {
+    public List<Option<Long>> listMenuOptions() {
         List<SysMenu> menuList = this.list(new LambdaQueryWrapper<SysMenu>()
                 .orderByAsc(SysMenu::getSort));
         return buildMenuOptions(SystemConstants.ROOT_NODE_ID, menuList);
@@ -114,13 +114,13 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @param menuList 菜单列表
      * @return 菜单下拉列表
      */
-    private List<Option> buildMenuOptions(Long parentId, List<SysMenu> menuList) {
-        List<Option> menuOptions = new ArrayList<>();
+    private List<Option<Long>> buildMenuOptions(Long parentId, List<SysMenu> menuList) {
+        List<Option<Long>> menuOptions = new ArrayList<>();
 
         for (SysMenu menu : menuList) {
             if (menu.getParentId().equals(parentId)) {
-                Option option = new Option(menu.getId(), menu.getName());
-                List<Option> subMenuOptions = buildMenuOptions(menu.getId(), menuList);
+                Option<Long> option = new Option<>(menu.getId(), menu.getName());
+                List<Option<Long>> subMenuOptions = buildMenuOptions(menu.getId(), menuList);
                 if (!subMenuOptions.isEmpty()) {
                     option.setChildren(subMenuOptions);
                 }

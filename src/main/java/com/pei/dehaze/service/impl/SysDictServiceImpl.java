@@ -144,7 +144,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
      * @return
      */
     @Override
-    public List<Option> listDictOptions(String typeCode) {
+    public List<Option<String>> listDictOptions(String typeCode) {
         // 数据字典项
         List<SysDict> dictList = this.list(new LambdaQueryWrapper<SysDict>()
                 .eq(SysDict::getTypeCode, typeCode)
@@ -152,9 +152,9 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         );
 
         // 转换下拉数据
-        List<Option> options = CollectionUtil.emptyIfNull(dictList)
+        List<Option<String>> options = CollectionUtil.emptyIfNull(dictList)
                 .stream()
-                .map(dictItem -> new Option(dictItem.getValue(), dictItem.getName()))
+                .map(dictItem -> new Option<>(dictItem.getValue(), dictItem.getName()))
                 .collect(Collectors.toList());
         return options;
     }

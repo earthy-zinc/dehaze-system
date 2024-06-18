@@ -28,7 +28,7 @@ public interface SysDeptService extends IService<SysDept> {
      *
      * @return
      */
-    List<Option> listDeptOptions();
+    List<Option<Long>> listDeptOptions();
 
     /**
      * 新增部门

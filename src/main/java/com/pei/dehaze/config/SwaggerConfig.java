@@ -6,7 +6,6 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +21,6 @@ import org.springframework.http.HttpHeaders;
  * @since 2023/2/17
  */
 @Configuration
-@Slf4j
 @RequiredArgsConstructor
 public class SwaggerConfig {
 

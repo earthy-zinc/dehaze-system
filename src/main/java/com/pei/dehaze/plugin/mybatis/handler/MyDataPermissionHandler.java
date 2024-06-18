@@ -8,7 +8,6 @@ import com.pei.dehaze.common.enums.DataScopeEnum;
 import com.pei.dehaze.plugin.mybatis.annotation.DataPermission;
 import com.pei.dehaze.security.util.SecurityUtils;
 import lombok.SneakyThrows;
-import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
@@ -21,7 +20,6 @@ import java.lang.reflect.Method;
  * @author zc
  * @since 2021-12-10 13:28
  */
-@Slf4j
 public class MyDataPermissionHandler implements DataPermissionHandler {
 
     @Override

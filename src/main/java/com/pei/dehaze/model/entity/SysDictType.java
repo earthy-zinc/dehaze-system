@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 字典类型实体
@@ -12,6 +13,7 @@ import lombok.Data;
  * @since 2022/12/17
  */
 @Data
+@EqualsAndHashCode(callSuper = false)
 public class SysDictType extends BaseEntity {
     /**
      * 主键

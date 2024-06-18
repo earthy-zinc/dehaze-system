@@ -76,7 +76,7 @@ public class SecurityUtils {
                         .collect(Collectors.toSet());
             }
         }
-        return Collections.EMPTY_SET;
+        return Collections.emptySet();
     }
 
     /**

@@ -78,7 +78,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return {@link List<Option>} – 角色下拉列表
      */
     @Override
-    public List<Option> listRoleOptions() {
+    public List<Option<Long>> listRoleOptions() {
         // 查询数据
         List<SysRole> roleList = this.list(new LambdaQueryWrapper<SysRole>()
                 .ne(!SecurityUtils.isRoot(), SysRole::getCode, SystemConstants.ROOT_ROLE_CODE)
@@ -157,6 +157,8 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
         SysRole role = this.getById(roleId);
         Assert.isTrue(role != null, "角色不存在");
+        
+        if (role == null) return false;
 
         role.setStatus(status);
         boolean result = this.updateById(role);
@@ -183,7 +185,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         for (Long roleId : roleIds) {
             SysRole role = this.getById(roleId);
             Assert.isTrue(role != null, "角色不存在");
-
+            if (role == null) return false;
             // 判断角色是否被用户关联
             boolean isRoleAssigned = userRoleService.hasAssignedUsers(roleId);
             Assert.isTrue(!isRoleAssigned, "角色【{}】已分配用户，请先解除关联后删除", role.getName());
@@ -221,7 +223,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     public boolean assignMenusToRole(Long roleId, List<Long> menuIds) {
         SysRole role = this.getById(roleId);
         Assert.isTrue(role != null, "角色不存在");
-
+        if (role == null) return false;
         // 删除角色菜单
         roleMenuService.remove(
                 new LambdaQueryWrapper<SysRoleMenu>()
