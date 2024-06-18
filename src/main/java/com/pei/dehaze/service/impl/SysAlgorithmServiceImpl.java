@@ -53,7 +53,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
-    public List<Option> getOption() {
+    public List<Option<Long>> getOption() {
         List<SysAlgorithm> algorithms = this.list(new LambdaQueryWrapper<>());
         return buildAlgorithmOptions(SystemConstants.ROOT_NODE_ID, algorithms);
     }
@@ -69,12 +69,12 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
                 }).toList();
     }
 
-    private List<Option> buildAlgorithmOptions(Long parentId, List<SysAlgorithm> algorithms) {
-        List<Option> algorithmOptions = new ArrayList<>();
+    private List<Option<Long>> buildAlgorithmOptions(Long parentId, List<SysAlgorithm> algorithms) {
+        List<Option<Long>> algorithmOptions = new ArrayList<>();
         for (SysAlgorithm algorithm : algorithms) {
             if (algorithm.getParentId().equals(parentId)) {
-                Option option = new Option<>(algorithm.getId(), algorithm.getName());
-                List<Option> subAlgorithms = buildAlgorithmOptions(algorithm.getId(), algorithms);
+                Option<Long> option = new Option<Long>(algorithm.getId(), algorithm.getName());
+                List<Option<Long>> subAlgorithms = buildAlgorithmOptions(algorithm.getId(), algorithms);
                 if (CollUtil.isNotEmpty(subAlgorithms)) {
                     option.setChildren(subAlgorithms);
                 }

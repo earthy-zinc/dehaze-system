@@ -8,14 +8,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "01.认证中心")
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Slf4j
 public class AuthController {
 
     private final AuthService authService;
@@ -32,7 +30,7 @@ public class AuthController {
 
     @Operation(summary = "注销")
     @DeleteMapping("/logout")
-    public Result logout() {
+    public Result<Void> logout() {
         authService.logout();
         return Result.success();
     }

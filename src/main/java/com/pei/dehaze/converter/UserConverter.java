@@ -26,18 +26,42 @@ public interface UserConverter {
     })
     UserPageVO bo2PageVo(UserBO bo);
 
+    @Mappings({
+        @Mapping(ignore = true, target = "countId"),
+        @Mapping(ignore = true, target = "maxLimit"),
+        @Mapping(ignore = true, target = "optimizeCountSql"),
+        @Mapping(ignore = true, target = "optimizeJoinOfCountSql"),
+        @Mapping(ignore = true, target = "orders"),
+        @Mapping(ignore = true, target = "searchCount"),
+    })
     Page<UserPageVO> bo2PageVo(Page<UserBO> bo);
 
-    UserForm entity2Form(SysUser entity);
-
     @InheritInverseConfiguration(name = "entity2Form")
+    @Mappings({
+                    @Mapping(target = "createTime", ignore = true),
+                    @Mapping(target = "updateTime", ignore = true),
+                    @Mapping(target = "deleted", ignore = true),
+                    @Mapping(target = "password", ignore = true),
+    })
     SysUser form2Entity(UserForm entity);
 
     @Mappings({
-            @Mapping(target = "userId", source = "id")
+            @Mapping(target = "userId", source = "id"),
+            @Mapping(target = "roles", ignore = true),
+            @Mapping(target = "perms", ignore = true),
     })
     UserInfoVO toUserInfoVo(SysUser entity);
-
+    
+    @Mappings({
+            @Mapping(target = "createTime", ignore = true),
+            @Mapping(target = "updateTime", ignore = true),
+            @Mapping(target = "avatar", ignore = true),
+            @Mapping(target = "deleted", ignore = true),
+            @Mapping(target = "deptId", ignore = true),
+            @Mapping(target = "gender", ignore = true),
+            @Mapping(target = "id", ignore = true),
+            @Mapping(target = "password", ignore = true),
+            @Mapping(target = "status", ignore = true),
+    })
     SysUser importVo2Entity(UserImportVO vo);
-
 }

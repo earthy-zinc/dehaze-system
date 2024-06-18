@@ -129,7 +129,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
         boolean result = this.updateById(entity);
-        if (result) {
+        if (sysDictType != null && result) {
             // 字典类型code变化，同步修改字典项的类型code
             String oldCode = sysDictType.getCode();
             String newCode = dictTypeForm.getCode();
@@ -155,7 +155,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
         Assert.isTrue(StrUtil.isNotBlank(idsStr), "删除数据为空");
 
-        List ids = Arrays.asList(idsStr.split(","))
+        List<String> ids = Arrays.asList(idsStr.split(","))
                 .stream()
                 .collect(Collectors.toList());
 
@@ -183,7 +183,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      * @return
      */
     @Override
-    public List<Option> listDictItemsByTypeCode(String typeCode) {
+    public List<Option<String>> listDictItemsByTypeCode(String typeCode) {
         // 数据字典项
         List<SysDict> dictItems = dictItemService.list(new LambdaQueryWrapper<SysDict>()
                 .eq(SysDict::getTypeCode, typeCode)
@@ -191,9 +191,9 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         );
 
         // 转换下拉数据
-        List<Option> options = CollectionUtil.emptyIfNull(dictItems)
+        List<Option<String>> options = CollectionUtil.emptyIfNull(dictItems)
                 .stream()
-                .map(dictItem -> new Option(dictItem.getValue(), dictItem.getName()))
+                .map(dictItem -> new Option<>(dictItem.getValue(), dictItem.getName()))
                 .collect(Collectors.toList());
         return options;
     }

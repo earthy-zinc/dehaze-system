@@ -13,7 +13,7 @@ import java.io.InputStream;
  */
 public class ExcelUtils {
 
-    public static <T> String importExcel(InputStream is, Class clazz, MyAnalysisEventListener<T> listener) {
+    public static <T> String importExcel(InputStream is, Class<T> clazz, MyAnalysisEventListener<T> listener) {
         EasyExcel.read(is, clazz, listener).sheet().doRead();
         return listener.getMsg();
     }

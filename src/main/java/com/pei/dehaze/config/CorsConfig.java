@@ -19,7 +19,7 @@ import java.util.Collections;
 public class CorsConfig {
 
     @Bean
-    public FilterRegistrationBean filterRegistrationBean() {
+    public FilterRegistrationBean<CorsFilter> filterRegistrationBean() {
         CorsConfiguration corsConfiguration = new CorsConfiguration();
         //1.允许任何来源
         corsConfiguration.setAllowedOriginPatterns(Collections.singletonList("*"));

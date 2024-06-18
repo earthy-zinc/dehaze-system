@@ -39,8 +39,8 @@ public class SysRoleController {
 
     @Operation(summary = "角色下拉列表")
     @GetMapping("/options")
-    public Result<List<Option>> listRoleOptions() {
-        List<Option> list = roleService.listRoleOptions();
+    public Result<List<Option<Long>>> listRoleOptions() {
+        List<Option<Long>> list = roleService.listRoleOptions();
         return Result.success(list);
     }
 
@@ -48,7 +48,7 @@ public class SysRoleController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:role:add')")
     @PreventDuplicateSubmit
-    public Result addRole(@Valid @RequestBody RoleForm roleForm) {
+    public Result<Void> addRole(@Valid @RequestBody RoleForm roleForm) {
         boolean result = roleService.saveRole(roleForm);
         return Result.judge(result);
     }
@@ -65,7 +65,7 @@ public class SysRoleController {
     @Operation(summary = "修改角色")
     @PutMapping(value = "/{id}")
     @PreAuthorize("@ss.hasPerm('sys:role:edit')")
-    public Result updateRole(@Valid @RequestBody RoleForm roleForm) {
+    public Result<Void> updateRole(@Valid @RequestBody RoleForm roleForm) {
         boolean result = roleService.saveRole(roleForm);
         return Result.judge(result);
     }
@@ -73,7 +73,7 @@ public class SysRoleController {
     @Operation(summary = "删除角色")
     @DeleteMapping("/{ids}")
     @PreAuthorize("@ss.hasPerm('sys:role:delete')")
-    public Result deleteRoles(
+    public Result<Void> deleteRoles(
             @Parameter(description = "删除角色，多个以英文逗号(,)拼接") @PathVariable String ids
     ) {
         boolean result = roleService.deleteRoles(ids);
@@ -82,7 +82,7 @@ public class SysRoleController {
 
     @Operation(summary = "修改角色状态")
     @PutMapping(value = "/{roleId}/status")
-    public Result updateRoleStatus(
+    public Result<Void> updateRoleStatus(
             @Parameter(description = "角色ID") @PathVariable Long roleId,
             @Parameter(description = "状态(1:启用;0:禁用)") @RequestParam Integer status
     ) {
@@ -101,7 +101,7 @@ public class SysRoleController {
 
     @Operation(summary = "分配菜单(包括按钮权限)给角色")
     @PutMapping("/{roleId}/menus")
-    public Result assignMenusToRole(
+    public Result<Void> assignMenusToRole(
             @PathVariable Long roleId,
             @RequestBody List<Long> menuIds
     ) {
