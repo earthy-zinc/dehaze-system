@@ -10,6 +10,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
+@Slf4j
 public class FileController {
 
     private final FileService fileService;
@@ -49,12 +52,15 @@ public class FileController {
         return Result.success(result);
     }
 
+    /**
+     * @see com.pei.dehaze.filter.FileDownloadFilter
+     */
     @GetMapping("/{filePath}")
     @Operation(summary = "文件下载")
-    public Result<Void> download(@Parameter(description = "文件路径") @PathVariable String filePath) {
-        if (fileService instanceof LocalFileService localFileService) {
-            localFileService.download(filePath);
-            return Result.success();
+    public Void download(@Parameter(description = "文件路径") @PathVariable String filePath) {
+        if (fileService instanceof LocalFileService) {
+            // 实际的实现逻辑在FileDownloadFilter拦截器中
+            return null;
         } else {
             throw new BusinessException("未开启本地文件存储服务，请检查application.yml文件");
         }

@@ -47,9 +47,18 @@
         <!-- 自动代码生成 -->
         <mybatis-plus-generator.version>3.5.6</mybatis-plus-generator.version>
         <velocity.version>2.3</velocity.version>
+
+        <!-- 图片压缩 -->
+        <thumbnailator.version>0.4.20</thumbnailator.version>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>${thumbnailator.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

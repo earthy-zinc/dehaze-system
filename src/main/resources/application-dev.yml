@@ -7,6 +7,7 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     ## 默认序列化时区
     time-zone: GMT+8
+    default-property-inclusion: non_null
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -78,9 +79,10 @@ file:
   type: local
   local:
     baseUrl: http://localhost:8989/api/v1/files
-    uploadPath: /Users/pei/Desktop/dehaze/upload
-    datasetPath: /Users/pei/Desktop/dehaze/dataset
-    predictPath: /Users/pei/Desktop/dehaze/predict
+    uploadPath: E:/logs
+    datasetOriginPath: D:/DeepLearning/dataset
+    datasetThumbnailPath: D:/DeepLearning/thumbnail
+    predictPath: E:/logs
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
