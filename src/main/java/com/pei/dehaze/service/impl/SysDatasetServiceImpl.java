@@ -6,6 +6,7 @@ import cn.hutool.core.io.file.PathUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.base.BasePageQuery;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.converter.DatasetConverter;
 import com.pei.dehaze.mapper.SysDatasetMapper;
@@ -14,11 +15,15 @@ import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
 import com.pei.dehaze.model.vo.ImageItemVO;
 import com.pei.dehaze.model.vo.ImageUrlVO;
+import com.pei.dehaze.repository.ImageItemRepository;
 import com.pei.dehaze.service.SysDatasetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
@@ -38,6 +43,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysDataset> implements SysDatasetService {
     private final DatasetConverter datasetConverter;
+
+    private final ImageItemRepository imageItemRepository;
 
     @Value("${file.local.baseUrl}")
     private String baseUrl;
@@ -70,18 +77,54 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
      * @param id 数据集ID
      */
     @Override
-    public List<ImageItemVO> getImageItem(Long id) {
+    public Page<ImageItemVO> getImageItem(Long id, BasePageQuery pageQuery) {
+        Pageable pageable = PageRequest.of(pageQuery.getPageNum(), pageQuery.getPageSize());
+        Page<ImageItemVO> pageResult;
+
+        // 获取当前数据集的所有子数据集，从而判断当前数据集是否是叶子数据集
+        List<SysDataset> childrenDatasets = this.list(new LambdaQueryWrapper<SysDataset>()
+                .eq(SysDataset::getParentId, id));
+
+        if (CollUtil.isEmpty(childrenDatasets)) {
+            // 当前为叶子数据集
+            pageResult = imageItemRepository.findByDatasetId(id, pageable);
+            if (pageResult.getTotalElements() == 0) {
+                List<ImageItemVO> imageItemVOS = getImageItemsFromMySQL(id);
+                imageItemRepository.saveAll(imageItemVOS);
+                return imageItemRepository.findByDatasetId(id, pageable);
+            }
+            return pageResult;
+        } else {
+            // 当前为非叶子数据集，则获取其子数据集id列表，从其所有子数据集中查询
+            List<Long> childrenDatasetIds = childrenDatasets.stream()
+                    .map(SysDataset::getId)
+                    .toList();
+            childrenDatasetIds.forEach(childDatasetId -> {
+                boolean isExist = imageItemRepository.existsByDatasetId(childDatasetId);
+                if (!isExist) {
+                    imageItemRepository.saveAll(getImageItemsFromMySQL(childDatasetId));
+                }
+            });
+            return imageItemRepository.findByDatasetIdIn(childrenDatasetIds, pageable);
+        }
+    }
+
+    @NotNull
+    private List<ImageItemVO> getImageItemsFromMySQL(Long id) {
+        List<ImageItemVO> imageItemVOS;
         SysDataset dataset = this.getById(id);
         String datasetType = dataset.getType();
         if (CharSequenceUtil.isNotBlank(datasetType) && datasetType.equals("图像去雾")) {
             String filePath = dataset.getPath();
             String datasetName = dataset.getName();
-            return getImageList(filePath, datasetName);
+            imageItemVOS = getImageList(filePath, datasetName, id);
+        } else {
+            imageItemVOS = Collections.emptyList();
         }
-        return Collections.emptyList();
+        return imageItemVOS;
     }
 
-    private List<ImageItemVO> getImageList(String filePath, String datasetName) {
+    private List<ImageItemVO> getImageList(String filePath, String datasetName, Long datasetId) {
         // 判断当前目录是否存在，然后列出当前目录下所有文件名
         Path datasetBasePath = Paths.get(filePath);
 
@@ -134,6 +177,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
                 ImageItemVO imageItemVO = new ImageItemVO();
                 imageItemVO.setId((long) i);
+                imageItemVO.setDatasetId(datasetId);
                 imageItemVO.setImgUrl(imageUrls);
 
                 imageItemVOs.add(imageItemVO);
