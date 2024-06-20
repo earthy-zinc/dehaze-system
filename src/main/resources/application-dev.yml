@@ -31,6 +31,8 @@ spring:
           max-idle: 8
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
+    mongodb:
+      uri: mongodb://root:123456@localhost:27017/dehaze?authSource=admin
   cache:
     enabled: false
     # 缓存类型 redis、none(不使用缓存)

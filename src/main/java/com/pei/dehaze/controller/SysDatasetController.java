@@ -1,5 +1,7 @@
 package com.pei.dehaze.controller;
 
+import com.pei.dehaze.common.base.BasePageQuery;
+import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
@@ -9,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -48,9 +51,9 @@ public class SysDatasetController {
      */
     @Operation(summary = "获取数据集详细图片")
     @GetMapping("/{id}/images")
-    public Result<List<ImageItemVO>> getImageItem(@PathVariable Long id) {
-        List<ImageItemVO> imageItems = datasetService.getImageItem(id);
-        return Result.success(imageItems);
+    public PageResult<ImageItemVO> getImageItem(@PathVariable Long id, BasePageQuery pageQuery) {
+        Page<ImageItemVO> imageItemsPage = datasetService.getImageItem(id, pageQuery);
+        return PageResult.success(imageItemsPage);
     }
 
     /**
