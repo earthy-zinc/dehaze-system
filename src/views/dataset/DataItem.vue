@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { DatasetQuery } from "@/api/dataset/model";
+import Waterfall from "@/components/Waterfall/index.vue";
+import { ViewCard } from "@/components/Waterfall/types";
 
 defineOptions({
   name: "DataItem",
@@ -8,24 +10,51 @@ defineOptions({
 
 const queryParams = reactive<DatasetQuery>({});
 
-const images = ref([
-  { src: "https://picsum.photos/id/1/200/300", alt: "Image 1" },
-  { src: "https://picsum.photos/id/2/200/300", alt: "Image 2" },
-  { src: "https://picsum.photos/id/3/200/300", alt: "Image 3" },
-  { src: "https://picsum.photos/id/4/200/300", alt: "Image 4" },
-  { src: "https://picsum.photos/id/5/200/300", alt: "Image 5" },
-  { src: "https://picsum.photos/id/6/200/300", alt: "Image 6" },
-  { src: "https://picsum.photos/id/7/200/300", alt: "Image 7" },
-  { src: "https://picsum.photos/id/8/200/300", alt: "Image 8" },
-  { src: "https://picsum.photos/id/9/200/300", alt: "Image 9" },
-  { src: "https://picsum.photos/id/10/200/300", alt: "Image 10" },
-  { src: "https://picsum.photos/id/11/200/300", alt: "Image 11" },
-  { src: "https://picsum.photos/id/12/200/300", alt: "Image 12" },
-  { src: "https://picsum.photos/id/13/200/300", alt: "Image 13" },
+const images = ref<ViewCard[]>([
+  {
+    src: "https://fastly.picsum.photos/id/2/200/300.jpg?hmac=HiDjvfge5yCzj935PIMj1qOf4KtvrfqWX3j4z1huDaU",
+    alt: "Image 1",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/1/200/300.jpg?hmac=jH5bDkLr6Tgy3oAg5khKCHeunZMHq0ehBZr6vGifPLY",
+    alt: "Image 2",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/6/200/300.jpg?hmac=a4Gfsl7hyAvOnmQtzoEkQmbiLJFl7otISIdoYQWqJCo",
+    alt: "Image 3",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/7/200/300.jpg?hmac=_vgE8dZdzp3B8T1C9VrGrIMBkDOkFYbJNWqzJD47xNg",
+    alt: "Image 4",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/8/200/300.jpg?hmac=t2Camsbqc4OfjWMxFDwB32A8N4eu7Ido7ZV1elq4o5M",
+    alt: "Image 5",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/9/200/300.jpg?hmac=BguC5kAGl-YR4FEjhjm0b2XWbynYsk3s3QQZUie5aBo",
+    alt: "Image 6",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/10/200/300.jpg?hmac=94QiqvBcKJMHpneU69KYg2pky8aZ6iBzKrAuhSUBB9s",
+    alt: "Image 7",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/11/200/300.jpg?hmac=n9AzdbWCOaV1wXkmrRfw5OulrzXJc0PgSFj4st8d6ys",
+    alt: "Image 8",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/12/200/300.jpg?hmac=H975kfBbjoaBk4vHQpqpz-uxYLeRtC67xb6WSe_wPkk",
+    alt: "Image 9",
+  },
+  {
+    src: "https://fastly.picsum.photos/id/13/200/300.jpg?hmac=UHtWCvsKxIfcA_gIse7Rc6MH6nI3OGl0dzaCSSsYqas",
+    alt: "Image 10",
+  },
 ]);
 
 // 容器ref
-const container = ref(ElForm);
+const container = ref();
 
 function handleQuery() {}
 function resetQuery() {}
@@ -57,15 +86,8 @@ function resetQuery() {}
 
     <el-card shadow="never">
       <div ref="container" class="waterfall-container">
-        <div
-          v-for="(image, index) in images"
-          :key="index"
-          class="waterfall-item"
-        >
-          <img
-            v-lazy="{ src: image.src, loading: '', error: '' }"
-            :alt="image.alt"
-          />
+        <div class="waterfall-tiem" v-for="(item, index) in 8" :key="index">
+          <Waterfall :list="images" :speed="item % 2 ? 1 : -1" />
         </div>
       </div>
     </el-card>
@@ -84,15 +106,11 @@ function resetQuery() {}
   grid-auto-rows: minmax(0, auto);
   grid-gap: 10px;
   padding-bottom: 10px;
+  overflow: hidden;
 }
 
 .waterfall-item {
   position: relative;
   overflow: hidden;
-}
-
-.waterfall-item img {
-  width: 100%;
-  height: auto;
 }
 </style>

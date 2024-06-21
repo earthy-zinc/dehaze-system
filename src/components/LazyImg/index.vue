@@ -88,6 +88,11 @@ function imageLoad() {
 
 .lazy__img {
   display: block;
+  transition: all 0.5s;
+}
+
+.lazy__img:hover {
+  transform: scale(1.2);
 }
 
 .lazy__img[lazy="loading"] {

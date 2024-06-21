@@ -113,6 +113,8 @@ export function useLayout(
 ) {
   const posY = ref<number[]>([]);
   const wrapperHeight = ref(0);
+  // 单个图片高度
+  const itemHeight = ref(0);
 
   // 获取对应y下标的x的值
   const getX = (index: number): number => {
@@ -168,6 +170,7 @@ export function useLayout(
 
         // 更新当前index的y值
         const { height } = curItem.getBoundingClientRect();
+        itemHeight.value = height;
         posY.value[minYIndex] += height + props.gutter;
 
         // 添加入场动画
@@ -188,6 +191,7 @@ export function useLayout(
 
   return {
     wrapperHeight,
+    itemHeight,
     layoutHandle,
   };
 }
