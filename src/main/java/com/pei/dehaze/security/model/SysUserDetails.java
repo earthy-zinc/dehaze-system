@@ -1,6 +1,6 @@
 package com.pei.dehaze.security.model;
 
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.pei.dehaze.model.dto.UserAuthInfo;
 import lombok.Data;
@@ -46,7 +46,7 @@ public class SysUserDetails implements UserDetails {
         this.userId = user.getUserId();
         Set<String> roles = user.getRoles();
         Set<SimpleGrantedAuthority> authorities;
-        if (CollectionUtil.isNotEmpty(roles)) {
+        if (CollUtil.isNotEmpty(roles)) {
             authorities = roles.stream()
                     .map(role -> new SimpleGrantedAuthority("ROLE_" + role)) // 标识角色
                     .collect(Collectors.toSet());

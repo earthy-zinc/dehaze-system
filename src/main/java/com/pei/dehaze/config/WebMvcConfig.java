@@ -43,12 +43,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Bean
     public Validator validator(final AutowireCapableBeanFactory autowireCapableBeanFactory) {
-        ValidatorFactory validatorFactory = Validation.byProvider(HibernateValidator.class)
+        try (ValidatorFactory validatorFactory = Validation.byProvider(HibernateValidator.class)
                 .configure()
                 .failFast(true) // failFast=true 不校验所有参数，只要出现校验失败情况直接返回，不再进行后续参数校验
                 .constraintValidatorFactory(new SpringConstraintValidatorFactory(autowireCapableBeanFactory))
-                .buildValidatorFactory();
+                .buildValidatorFactory()) {
 
-        return validatorFactory.getValidator();
+            return validatorFactory.getValidator();
+        }
     }
 }

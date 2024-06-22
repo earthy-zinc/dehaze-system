@@ -1,5 +1,6 @@
 package com.pei.dehaze.model.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -30,9 +31,9 @@ public class SysAlgorithm extends BaseEntity {
 
     private Integer status;
 
-    @TableField("create_by")
+    @TableField(fill = FieldFill.INSERT)
     private Long createBy;
 
-    @TableField("update_by")
+    @TableField(fill = FieldFill.INSERT_UPDATE)
     private Long updateBy;
 }

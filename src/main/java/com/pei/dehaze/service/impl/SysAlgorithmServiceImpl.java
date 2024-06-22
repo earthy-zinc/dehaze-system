@@ -73,7 +73,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         List<Option<Long>> algorithmOptions = new ArrayList<>();
         for (SysAlgorithm algorithm : algorithms) {
             if (algorithm.getParentId().equals(parentId)) {
-                Option<Long> option = new Option<Long>(algorithm.getId(), algorithm.getName());
+                Option<Long> option = new Option<>(algorithm.getId(), algorithm.getName());
                 List<Option<Long>> subAlgorithms = buildAlgorithmOptions(algorithm.getId(), algorithms);
                 if (CollUtil.isNotEmpty(subAlgorithms)) {
                     option.setChildren(subAlgorithms);

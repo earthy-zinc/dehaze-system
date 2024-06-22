@@ -1,11 +1,13 @@
 package com.pei.dehaze.common.util;
 
 import com.pei.dehaze.common.exception.BusinessException;
+import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 
 import java.io.File;
 import java.io.IOException;
 
+@Slf4j
 public class ImageUtils {
     public static void generateThumbnail(String srcPath, String destPath, int width, int height) {
        try {
@@ -22,7 +24,7 @@ public class ImageUtils {
                    .outputQuality(0.5f)
                    .toFile(new File(destPath));
        } catch (IOException e) {
-           e.printStackTrace();
+           log.error("生成缩略图失败", e);
            throw new BusinessException("生成缩略图失败");
        }
     }
