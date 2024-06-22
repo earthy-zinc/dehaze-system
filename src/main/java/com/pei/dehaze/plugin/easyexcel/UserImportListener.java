@@ -20,6 +20,7 @@ import com.pei.dehaze.service.SysRoleService;
 import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -78,32 +79,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     @Override
     public void invoke(UserImportVO userImportVO, AnalysisContext analysisContext) {
         log.info("解析到一条用户数据:{}", JSONUtil.toJsonStr(userImportVO));
-        // 校验数据
-        StringBuilder validationMsg = new StringBuilder();
-
-        String username = userImportVO.getUsername();
-        if (CharSequenceUtil.isBlank(username)) {
-            validationMsg.append("用户名为空；");
-        } else {
-            long count = userService.count(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username));
-            if (count > 0) {
-                validationMsg.append("用户名已存在；");
-            }
-        }
-
-        String nickname = userImportVO.getNickname();
-        if (CharSequenceUtil.isBlank(nickname)) {
-            validationMsg.append("用户昵称为空；");
-        }
-
-        String mobile = userImportVO.getMobile();
-        if (CharSequenceUtil.isBlank(mobile)) {
-            validationMsg.append("手机号码为空；");
-        } else {
-            if (!Validator.isMobile(mobile)) {
-                validationMsg.append("手机号码不正确；");
-            }
-        }
+        StringBuilder validationMsg = validateUser(userImportVO);
 
         if (validationMsg.isEmpty()) {
             // 校验通过，持久化至数据库
@@ -158,6 +134,37 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         }
     }
 
+    @NotNull
+    private StringBuilder validateUser(UserImportVO userImportVO) {
+        // 校验数据
+        StringBuilder validationMsg = new StringBuilder();
+
+        String username = userImportVO.getUsername();
+        if (CharSequenceUtil.isBlank(username)) {
+            validationMsg.append("用户名为空；");
+        } else {
+            long count = userService.count(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username));
+            if (count > 0) {
+                validationMsg.append("用户名已存在；");
+            }
+        }
+
+        String nickname = userImportVO.getNickname();
+        if (CharSequenceUtil.isBlank(nickname)) {
+            validationMsg.append("用户昵称为空；");
+        }
+
+        String mobile = userImportVO.getMobile();
+        if (CharSequenceUtil.isBlank(mobile)) {
+            validationMsg.append("手机号码为空；");
+        } else {
+            if (!Validator.isMobile(mobile)) {
+                validationMsg.append("手机号码不正确；");
+            }
+        }
+        return validationMsg;
+    }
+
 
     /**
      * 所有数据解析完成会来调用
@@ -166,7 +173,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
      */
     @Override
     public void doAfterAllAnalysed(AnalysisContext analysisContext) {
-
+        // 暂时不需要
     }
 
 

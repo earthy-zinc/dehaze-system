@@ -172,7 +172,6 @@ public class GlobalExceptionHandler {
             throw e;
         }
         log.error("unknown exception: {}", e.getMessage());
-        e.printStackTrace();
         return Result.failed(e.getLocalizedMessage());
     }
 
