@@ -197,7 +197,7 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
      * @return 部门表格层级列表
      */
     public static List<Option<Long>> recurDeptTreeOptions(long parentId, List<SysDept> deptList) {
-        List<Option<Long>> list = CollectionUtil.emptyIfNull(deptList).stream()
+        return CollectionUtil.emptyIfNull(deptList).stream()
                 .filter(dept -> dept.getParentId().equals(parentId))
                 .map(dept -> {
                     Option<Long> option = new Option<>(dept.getId(), dept.getName());
@@ -208,7 +208,6 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
                     return option;
                 })
                 .collect(Collectors.toList());
-        return list;
     }
 
 

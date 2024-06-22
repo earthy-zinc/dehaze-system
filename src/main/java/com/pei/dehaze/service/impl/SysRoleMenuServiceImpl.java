@@ -104,8 +104,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
      */
     @Override
     public List<Long> listMenuIdsByRoleId(Long roleId) {
-        List<Long> menuIds = this.baseMapper.listMenuIdsByRoleId(roleId);
-        return menuIds;
+        return this.baseMapper.listMenuIdsByRoleId(roleId);
     }
 
 }

@@ -10,6 +10,7 @@ import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.RegisteredPayload;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.enums.CaptchaTypeEnum;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.dto.LoginResult;
 import com.pei.dehaze.plugin.captcha.CaptchaProperties;
@@ -17,6 +18,7 @@ import com.pei.dehaze.security.util.JwtUtils;
 import com.pei.dehaze.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -73,7 +75,9 @@ public class AuthServiceImpl implements AuthService {
      */
     @Override
     public void logout() {
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes == null) throw new BusinessException("请求上下文为空");
+        HttpServletRequest request = requestAttributes.getRequest();
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (CharSequenceUtil.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
             token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
@@ -91,10 +95,12 @@ public class AuthServiceImpl implements AuthService {
                 }
                 // 将Token的jti加入黑名单，并设置剩余有效时间，使其在过期后自动从黑名单移除
                 long ttl = expiration - currentTimeSeconds;
-                redisTemplate.opsForValue().set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, null, ttl, TimeUnit.SECONDS);
+                redisTemplate.opsForValue()
+                        .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, null, ttl, TimeUnit.SECONDS);
             } else {
                 // 如果exp不存在，说明Token永不过期，则永久加入黑名单
-                redisTemplate.opsForValue().set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, null);
+                redisTemplate.opsForValue()
+                        .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, null);
             }
         }
         // 清空Spring Security上下文
@@ -110,6 +116,27 @@ public class AuthServiceImpl implements AuthService {
     public CaptchaResult getCaptcha() {
 
         String captchaType = captchaProperties.getType();
+        AbstractCaptcha captcha = getAbstractCaptcha(captchaType);
+        captcha.setGenerator(codeGenerator);
+        captcha.setTextAlpha(captchaProperties.getTextAlpha());
+        captcha.setFont(captchaFont);
+
+        String captchaCode = captcha.getCode();
+        String imageBase64Data = captcha.getImageBase64Data();
+
+        // 验证码文本缓存至Redis，用于登录校验
+        String captchaKey = IdUtil.fastSimpleUUID();
+        redisTemplate.opsForValue().set(SecurityConstants.CAPTCHA_CODE_PREFIX + captchaKey, captchaCode,
+                captchaProperties.getExpireSeconds(), TimeUnit.SECONDS);
+
+        return CaptchaResult.builder()
+                .captchaKey(captchaKey)
+                .captchaBase64(imageBase64Data)
+                .build();
+    }
+
+    @NotNull
+    private AbstractCaptcha getAbstractCaptcha(String captchaType) {
         int width = captchaProperties.getWidth();
         int height = captchaProperties.getHeight();
         int interfereCount = captchaProperties.getInterfereCount();
@@ -127,22 +154,7 @@ public class AuthServiceImpl implements AuthService {
         } else {
             throw new IllegalArgumentException("Invalid captcha type: " + captchaType);
         }
-        captcha.setGenerator(codeGenerator);
-        captcha.setTextAlpha(captchaProperties.getTextAlpha());
-        captcha.setFont(captchaFont);
-
-        String captchaCode = captcha.getCode();
-        String imageBase64Data = captcha.getImageBase64Data();
-
-        // 验证码文本缓存至Redis，用于登录校验
-        String captchaKey = IdUtil.fastSimpleUUID();
-        redisTemplate.opsForValue().set(SecurityConstants.CAPTCHA_CODE_PREFIX + captchaKey, captchaCode,
-                captchaProperties.getExpireSeconds(), TimeUnit.SECONDS);
-
-        return CaptchaResult.builder()
-                .captchaKey(captchaKey)
-                .captchaBase64(imageBase64Data)
-                .build();
+        return captcha;
     }
 
 }

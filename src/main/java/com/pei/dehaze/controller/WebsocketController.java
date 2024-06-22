@@ -51,11 +51,10 @@ public class WebsocketController {
     public void sendToUser(Principal principal, @DestinationVariable String username, String message) {
 
         String sender = principal.getName(); // 发送人
-        String receiver = username; // 接收人
 
-        log.info("发送人:{}; 接收人:{}", sender, receiver);
+        log.info("发送人:{}; 接收人:{}", sender, username);
         // 发送消息给指定用户，拼接后路径 /user/{receiver}/queue/greeting
-        messagingTemplate.convertAndSendToUser(receiver, "/queue/greeting", new ChatMessage(sender, message));
+        messagingTemplate.convertAndSendToUser(username, "/queue/greeting", new ChatMessage(sender, message));
     }
 
 }
