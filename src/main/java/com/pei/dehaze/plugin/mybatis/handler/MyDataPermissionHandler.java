@@ -1,6 +1,6 @@
 package com.pei.dehaze.plugin.mybatis.handler;
 
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import com.baomidou.mybatisplus.extension.plugins.handler.DataPermissionHandler;
 import com.pei.dehaze.common.base.IBaseEnum;
@@ -52,8 +52,8 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
     public static Expression dataScopeFilter(String deptAlias, String deptIdColumnName, String userAlias, String userIdColumnName, Expression where) {
 
 
-        String deptColumnName = StrUtil.isNotBlank(deptAlias) ? (deptAlias + StringPool.DOT + deptIdColumnName) : deptIdColumnName;
-        String userColumnName = StrUtil.isNotBlank(userAlias) ? (userAlias + StringPool.DOT + userIdColumnName) : userIdColumnName;
+        String deptColumnName = CharSequenceUtil.isNotBlank(deptAlias) ? (deptAlias + StringPool.DOT + deptIdColumnName) : deptIdColumnName;
+        String userColumnName = CharSequenceUtil.isNotBlank(userAlias) ? (userAlias + StringPool.DOT + userIdColumnName) : userIdColumnName;
 
         // 获取当前用户的数据权限
         Integer dataScope = SecurityUtils.getDataScope();
@@ -80,7 +80,7 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
                 break;
         }
 
-        if (StrUtil.isBlank(appendSqlStr)) {
+        if (CharSequenceUtil.isBlank(appendSqlStr)) {
             return where;
         }
 

@@ -8,6 +8,7 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.PutObjectRequest;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.service.FileService;
 import jakarta.annotation.PostConstruct;
@@ -19,6 +20,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.InputStream;
 import java.time.LocalDateTime;
 
@@ -76,7 +78,7 @@ public class AliyunFileService implements FileService {
         // 生成文件名(日期文件夹)
         String suffix = FileUtil.getSuffix(file.getOriginalFilename());
         String uuid = IdUtil.simpleUUID();
-        String fileName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + "/" + uuid + "." + suffix;
+        String fileName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + File.separator + uuid + "." + suffix;
         //  try-with-resource 语法糖自动释放流
         try (InputStream inputStream = file.getInputStream()) {
 
@@ -88,7 +90,7 @@ public class AliyunFileService implements FileService {
             // 上传文件
             aliyunOssClient.putObject(putObjectRequest);
         } catch (Exception e) {
-            throw new RuntimeException("文件上传失败");
+            throw new BusinessException("文件上传失败");
         }
         // 获取文件访问路径
         String fileUrl = "https://" + bucketName + "." + endpoint + "/" + fileName;

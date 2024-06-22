@@ -8,9 +8,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.base.BasePageQuery;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.DatasetConverter;
 import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.model.entity.SysDataset;
+import com.pei.dehaze.model.form.DatasetForm;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
 import com.pei.dehaze.model.vo.ImageItemVO;
@@ -31,8 +33,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author earthy-zinc
@@ -58,21 +58,11 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 .like(CharSequenceUtil.isNotBlank(queryParams.getKeywords()),
                         SysDataset::getName, queryParams.getKeywords()));
 
-        Set<Long> datasetIds = datasets.stream()
-                .map(SysDataset::getId)
-                .collect(Collectors.toSet());
-
-        Set<Long> parentIds = datasets.stream()
-                .map(SysDataset::getParentId)
-                .collect(Collectors.toSet());
-
-        List<Long> rootIds = parentIds.stream()
-                .filter(id -> !datasetIds.contains(id))
-                .toList();
+        List<Long> rootIds = TreeDataUtils.findRootIds(datasets, SysDataset::getId, SysDataset::getParentId);
 
         return rootIds.stream()
                 .flatMap(rootId -> buildDatasetTree(rootId, datasets).stream())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
@@ -113,6 +103,16 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         }
     }
 
+    @Override
+    public boolean addDataset(DatasetForm dataset) {
+        return false;
+    }
+
+    @Override
+    public boolean updateDataset(DatasetForm dataset) {
+        return false;
+    }
+
     @NotNull
     private List<ImageItemVO> getImageItemsFromMySQL(Long id) {
         List<ImageItemVO> imageItemVOS;
@@ -148,46 +148,52 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             List<String> hazeImages = FileUtil.listFileNames(hazePath.toAbsolutePath().toString());
             List<String> cleanImages = FileUtil.listFileNames(cleanPath.toAbsolutePath().toString());
             // 排序和去重
-            hazeImages = hazeImages.stream().sorted().distinct().collect(Collectors.toList());
+            hazeImages = hazeImages.stream().sorted().distinct().toList();
             cleanImages = cleanImages.stream().sorted().distinct().toList();
 
-            List<ImageItemVO> imageItemVOs = new ArrayList<>();
-            for (int i = 0; i < cleanImages.size(); i++) {
-                String cleanImage = cleanImages.get(i);
-                List<String> matchedHazeImages = new ArrayList<>();
-
-                if (cleanImages.size() == hazeImages.size()) {
-                    matchedHazeImages.add(hazeImages.get(i));
-                } else {
-                    String cleanImageNamePrefix;
-                    String cleanImageName = cleanImage.substring(0, cleanImage.lastIndexOf("."));
-                    if (cleanImageName.contains("_")) {
-                        cleanImageNamePrefix = cleanImage.split("_")[0];
-                    } else {
-                        cleanImageNamePrefix = cleanImageName;
-                    }
-                    hazeImages.removeIf(image -> {
-                        if (image.startsWith(cleanImageNamePrefix)) {
-                            matchedHazeImages.add(image);
-                            return true;
-                        }
-                        // 当遇到第一个不匹配的元素时停止遍历，因为列表是排序的，后续也不会匹配
-                        return image.compareTo(cleanImageNamePrefix) > 0;
-                    });
-                }
-
-                List<ImageUrlVO> imageUrls = getImageUrlVOS(dataset, cleanImage, matchedHazeImages, cleanFlag, hazeFlag);
-
-                ImageItemVO imageItemVO = new ImageItemVO();
-                imageItemVO.setId((long) i);
-                imageItemVO.setDatasetId(dataset.getId());
-                imageItemVO.setImgUrl(imageUrls);
-
-                imageItemVOs.add(imageItemVO);
-            }
-            return imageItemVOs;
+            return getImageItemVOS(dataset, cleanImages, hazeImages, cleanFlag, hazeFlag);
         }
         throw new BusinessException("数据集目录" + filePath + "下未找到清晰图像或雾霾图像文件夹");
+    }
+
+    @NotNull
+    private List<ImageItemVO> getImageItemVOS(SysDataset dataset, List<String> cleanImages, List<String> hazeImages,
+                                              String cleanFlag, String hazeFlag) {
+        List<ImageItemVO> imageItemVOs = new ArrayList<>();
+        for (int i = 0; i < cleanImages.size(); i++) {
+            String cleanImage = cleanImages.get(i);
+            List<String> matchedHazeImages = new ArrayList<>();
+
+            if (cleanImages.size() == hazeImages.size()) {
+                matchedHazeImages.add(hazeImages.get(i));
+            } else {
+                String cleanImageNamePrefix;
+                String cleanImageName = cleanImage.substring(0, cleanImage.lastIndexOf("."));
+                if (cleanImageName.contains("_")) {
+                    cleanImageNamePrefix = cleanImage.split("_")[0];
+                } else {
+                    cleanImageNamePrefix = cleanImageName;
+                }
+                hazeImages.removeIf(image -> {
+                    if (image.startsWith(cleanImageNamePrefix)) {
+                        matchedHazeImages.add(image);
+                        return true;
+                    }
+                    // 当遇到第一个不匹配的元素时停止遍历，因为列表是排序的，后续也不会匹配
+                    return image.compareTo(cleanImageNamePrefix) > 0;
+                });
+            }
+
+            List<ImageUrlVO> imageUrls = getImageUrlVOS(dataset, cleanImage, matchedHazeImages, cleanFlag, hazeFlag);
+
+            ImageItemVO imageItemVO = new ImageItemVO();
+            imageItemVO.setId((long) i);
+            imageItemVO.setDatasetId(dataset.getId());
+            imageItemVO.setImgUrl(imageUrls);
+
+            imageItemVOs.add(imageItemVO);
+        }
+        return imageItemVOs;
     }
 
     @NotNull
