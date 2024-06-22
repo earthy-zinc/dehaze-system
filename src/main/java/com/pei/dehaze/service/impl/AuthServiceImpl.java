@@ -3,11 +3,11 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.captcha.AbstractCaptcha;
 import cn.hutool.captcha.CaptchaUtil;
 import cn.hutool.captcha.generator.CodeGenerator;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
-import cn.hutool.jwt.JWTPayload;
 import cn.hutool.jwt.JWTUtil;
+import cn.hutool.jwt.RegisteredPayload;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.enums.CaptchaTypeEnum;
 import com.pei.dehaze.model.dto.CaptchaResult;
@@ -75,13 +75,13 @@ public class AuthServiceImpl implements AuthService {
     public void logout() {
         HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StrUtil.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
+        if (CharSequenceUtil.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
             token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
             // 解析Token以获取有效载荷（payload）
             JSONObject payloads = JWTUtil.parseToken(token).getPayloads();
             // 解析 Token 获取 jti(JWT ID) 和 exp(过期时间)
-            String jti = payloads.getStr(JWTPayload.JWT_ID);
-            Long expiration = payloads.getLong(JWTPayload.EXPIRES_AT); // 过期时间(秒)
+            String jti = payloads.getStr(RegisteredPayload.JWT_ID);
+            Long expiration = payloads.getLong(RegisteredPayload.EXPIRES_AT); // 过期时间(秒)
             // 如果exp存在，则计算Token剩余有效时间
             if (expiration != null) {
                 long currentTimeSeconds = System.currentTimeMillis() / 1000;

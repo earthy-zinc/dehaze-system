@@ -1,7 +1,7 @@
 package com.pei.dehaze.config;
 
 import cn.hutool.captcha.generator.CodeGenerator;
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.config.property.SecurityProperties;
 import com.pei.dehaze.filter.CaptchaValidationFilter;
@@ -49,7 +49,6 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-
                 .authorizeHttpRequests(requestMatcherRegistry ->
                         requestMatcherRegistry.requestMatchers(SecurityConstants.LOGIN_PATH).permitAll()
                                 .anyRequest().authenticated()
@@ -62,7 +61,6 @@ public class SecurityConfig {
                 .sessionManagement(configurer -> configurer.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(AbstractHttpConfigurer::disable)
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
-
         ;
 
         // 验证码校验过滤器
@@ -78,8 +76,8 @@ public class SecurityConfig {
      */
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> {
-            if (CollectionUtil.isNotEmpty(securityProperties.getIgnoreUrls())) {
+        return web -> {
+            if (CollUtil.isNotEmpty(securityProperties.getIgnoreUrls())) {
                 web.ignoring().requestMatchers(securityProperties.getIgnoreUrls().toArray(new String[0]));
             }
         };

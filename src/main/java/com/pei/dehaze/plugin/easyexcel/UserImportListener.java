@@ -1,8 +1,8 @@
 package com.pei.dehaze.plugin.easyexcel;
 
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Validator;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.excel.context.AnalysisContext;
@@ -23,7 +23,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 用户导入监听器
@@ -75,7 +74,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
      * 2. 数据持久化；
      *
      * @param userImportVO    一行数据，类似于 {@link AnalysisContext#readRowHolder()}
-     * @param analysisContext
      */
     @Override
     public void invoke(UserImportVO userImportVO, AnalysisContext analysisContext) {
@@ -84,7 +82,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         StringBuilder validationMsg = new StringBuilder();
 
         String username = userImportVO.getUsername();
-        if (StrUtil.isBlank(username)) {
+        if (CharSequenceUtil.isBlank(username)) {
             validationMsg.append("用户名为空；");
         } else {
             long count = userService.count(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username));
@@ -94,12 +92,12 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         }
 
         String nickname = userImportVO.getNickname();
-        if (StrUtil.isBlank(nickname)) {
+        if (CharSequenceUtil.isBlank(nickname)) {
             validationMsg.append("用户昵称为空；");
         }
 
         String mobile = userImportVO.getMobile();
-        if (StrUtil.isBlank(mobile)) {
+        if (CharSequenceUtil.isBlank(mobile)) {
             validationMsg.append("手机号码为空；");
         } else {
             if (!Validator.isMobile(mobile)) {
@@ -114,7 +112,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             entity.setPassword(passwordEncoder.encode(SystemConstants.DEFAULT_PASSWORD));   // 默认密码
             // 性别翻译
             String genderLabel = userImportVO.getGenderLabel();
-            if (StrUtil.isNotBlank(genderLabel)) {
+            if (CharSequenceUtil.isNotBlank(genderLabel)) {
                 Integer genderValue = (Integer) IBaseEnum.getValueByLabel(genderLabel, GenderEnum.class);
                 entity.setGender(genderValue);
             }
@@ -122,16 +120,16 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             // 角色解析
             String roleCodes = userImportVO.getRoleCodes();
             List<Long> roleIds = null;
-            if (StrUtil.isNotBlank(roleCodes)) {
+            if (CharSequenceUtil.isNotBlank(roleCodes)) {
                 roleIds = roleService.list(
                                 new LambdaQueryWrapper<SysRole>()
-                                        .in(SysRole::getCode, 
+                                        .in(SysRole::getCode,
                                         (Object[]) roleCodes.split(","))
                                         .eq(SysRole::getStatus, StatusEnum.ENABLE.getValue())
                                         .select(SysRole::getId)
                         ).stream()
                         .map(SysRole::getId)
-                        .collect(Collectors.toList());
+                        .toList();
             }
 
 
@@ -139,10 +137,10 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             if (saveResult) {
                 validCount++;
                 // 保存用户角色关联
-                if (roleIds != null && CollectionUtil.isNotEmpty(roleIds)) {
+                if (CollUtil.isNotEmpty(roleIds)) {
                     List<SysUserRole> userRoles = roleIds.stream()
                             .map(roleId -> new SysUserRole(entity.getId(), roleId))
-                            .collect(Collectors.toList());
+                            .toList();
                     userRoleService.saveBatch(userRoles);
                 }
             } else {
@@ -151,7 +149,12 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
             }
         } else {
             invalidCount++;
-            msg.append("第" + (validCount + invalidCount) + "行数据校验失败：").append(validationMsg + "<br/>");
+            msg
+                    .append("第")
+                    .append(validCount + invalidCount)
+                    .append("行数据校验失败：")
+                    .append(validationMsg)
+                    .append("<br/>");
         }
     }
 
@@ -170,7 +173,8 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     @Override
     public String getMsg() {
         // 总结信息
-        String summaryMsg = StrUtil.format("导入用户结束：成功{}条，失败{}条；<br/>{}", validCount, invalidCount, msg);
-        return summaryMsg;
+        return CharSequenceUtil.format(
+                "导入用户结束：成功{}条，失败{}条；<br/>{}",
+                validCount, invalidCount, msg);
     }
 }

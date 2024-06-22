@@ -49,7 +49,7 @@ public class PageResult<T> implements Serializable {
     }
 
     @lombok.Data
-    public static class Data<T> {
+    public static class Data<T> implements Serializable {
 
         private List<T> list;
 

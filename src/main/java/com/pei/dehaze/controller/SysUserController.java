@@ -1,6 +1,6 @@
 package com.pei.dehaze.controller;
 
-import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.EasyExcelFactory;
 import com.alibaba.excel.ExcelWriter;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -141,9 +141,9 @@ public class SysUserController {
         InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(fileClassPath);
 
         ServletOutputStream outputStream = response.getOutputStream();
-        ExcelWriter excelWriter = EasyExcel.write(outputStream).withTemplate(inputStream).build();
-
-        excelWriter.finish();
+        try (ExcelWriter excelWriter = EasyExcelFactory.write(outputStream).withTemplate(inputStream).build()) {
+            excelWriter.finish();
+        }
     }
 
     @Operation(summary = "导入用户")
@@ -162,7 +162,7 @@ public class SysUserController {
         response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(fileName, "UTF-8"));
 
         List<UserExportVO> exportUserList = userService.listExportUsers(queryParams);
-        EasyExcel.write(response.getOutputStream(), UserExportVO.class).sheet("用户列表")
+        EasyExcelFactory.write(response.getOutputStream(), UserExportVO.class).sheet("用户列表")
                 .doWrite(exportUserList);
     }
 }

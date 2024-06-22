@@ -1,8 +1,8 @@
 package com.pei.dehaze.service.impl;
 
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * 数据字典类型业务实现类
@@ -43,7 +42,6 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      * 字典分页列表
      *
      * @param queryParams 分页查询对象
-     * @return
      */
     @Override
     public Page<DictTypePageVO> getDictTypePage(DictTypePageQuery queryParams) {
@@ -56,9 +54,9 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         Page<SysDictType> dictTypePage = this.page(
                 new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<SysDictType>()
-                        .like(StrUtil.isNotBlank(keywords), SysDictType::getName, keywords)
+                        .like(CharSequenceUtil.isNotBlank(keywords), SysDictType::getName, keywords)
                         .or()
-                        .like(StrUtil.isNotBlank(keywords), SysDictType::getCode, keywords)
+                        .like(CharSequenceUtil.isNotBlank(keywords), SysDictType::getCode, keywords)
                         .select(
                                 SysDictType::getId,
                                 SysDictType::getName,
@@ -69,15 +67,13 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         );
 
         // 实体转换
-        Page<DictTypePageVO> pageResult = dictTypeConverter.entity2Page(dictTypePage);
-        return pageResult;
+        return dictTypeConverter.entity2Page(dictTypePage);
     }
 
     /**
      * 获取字典类型表单详情
      *
      * @param id 字典类型ID
-     * @return
      */
     @Override
     public DictTypeForm getDictTypeForm(Long id) {
@@ -94,23 +90,18 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         Assert.isTrue(entity != null, "字典类型不存在");
 
         // 实体转换
-        DictTypeForm dictTypeForm = dictTypeConverter.entity2Form(entity);
-        return dictTypeForm;
+        return dictTypeConverter.entity2Form(entity);
     }
 
     /**
      * 新增字典类型
-     *
-     * @param dictTypeForm
-     * @return
      */
     @Override
     public boolean saveDictType(DictTypeForm dictTypeForm) {
         // 实体对象转换 form->entity
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
         // 持久化
-        boolean result = this.save(entity);
-        return result;
+        return this.save(entity);
     }
 
 
@@ -119,7 +110,6 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      *
      * @param id           字典类型ID
      * @param dictTypeForm 字典类型表单
-     * @return
      */
     @Override
     public boolean updateDictType(Long id, DictTypeForm dictTypeForm) {
@@ -133,7 +123,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             // 字典类型code变化，同步修改字典项的类型code
             String oldCode = sysDictType.getCode();
             String newCode = dictTypeForm.getCode();
-            if (!StrUtil.equals(oldCode, newCode)) {
+            if (!CharSequenceUtil.equals(oldCode, newCode)) {
                 dictItemService.update(new LambdaUpdateWrapper<SysDict>()
                         .eq(SysDict::getTypeCode, oldCode)
                         .set(SysDict::getTypeCode, newCode)
@@ -147,40 +137,32 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      * 删除字典类型
      *
      * @param idsStr 字典类型ID，多个以英文逗号(,)分割
-     * @return
      */
     @Override
     @Transactional
     public boolean deleteDictTypes(String idsStr) {
 
-        Assert.isTrue(StrUtil.isNotBlank(idsStr), "删除数据为空");
+        Assert.isTrue(CharSequenceUtil.isNotBlank(idsStr), "删除数据为空");
 
-        List<String> ids = Arrays.asList(idsStr.split(","))
-                .stream()
-                .collect(Collectors.toList());
+        List<String> ids = Arrays.stream(idsStr.split(",")).toList();
 
         // 删除字典数据项
         List<String> dictTypeCodes = this.list(new LambdaQueryWrapper<SysDictType>()
                         .in(SysDictType::getId, ids)
                         .select(SysDictType::getCode))
                 .stream()
-                .map(dictType -> dictType.getCode())
-                .collect(Collectors.toList()
-                );
-        if (CollectionUtil.isNotEmpty(dictTypeCodes)) {
+                .map(SysDictType::getCode)
+                .toList();
+        if (CollUtil.isNotEmpty(dictTypeCodes)) {
             dictItemService.remove(new LambdaQueryWrapper<SysDict>()
                     .in(SysDict::getTypeCode, dictTypeCodes));
         }
         // 删除字典类型
-        boolean result = this.removeByIds(ids);
-        return result;
+        return this.removeByIds(ids);
     }
 
     /**
      * 获取字典类型的数据项
-     *
-     * @param typeCode
-     * @return
      */
     @Override
     public List<Option<String>> listDictItemsByTypeCode(String typeCode) {
@@ -191,11 +173,10 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         );
 
         // 转换下拉数据
-        List<Option<String>> options = CollectionUtil.emptyIfNull(dictItems)
+        return CollUtil.emptyIfNull(dictItems)
                 .stream()
                 .map(dictItem -> new Option<>(dictItem.getValue(), dictItem.getName()))
-                .collect(Collectors.toList());
-        return options;
+                .toList();
     }
 
 

@@ -1,6 +1,6 @@
 package com.pei.dehaze.common.exception;
 
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.common.result.ResultCode;
@@ -51,10 +51,6 @@ public class GlobalExceptionHandler {
 
     /**
      * RequestParam参数的校验
-     *
-     * @param e
-     * @param <T>
-     * @return
      */
     @ExceptionHandler(ConstraintViolationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -66,10 +62,6 @@ public class GlobalExceptionHandler {
 
     /**
      * RequestBody参数的校验
-     *
-     * @param e
-     * @param <T>
-     * @return
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -86,9 +78,6 @@ public class GlobalExceptionHandler {
         return Result.failed(ResultCode.RESOURCE_NOT_FOUND);
     }
 
-    /**
-     * MissingServletRequestParameterException
-     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(MissingServletRequestParameterException e) {
@@ -96,9 +85,7 @@ public class GlobalExceptionHandler {
         return Result.failed(ResultCode.PARAM_IS_NULL);
     }
 
-    /**
-     * MethodArgumentTypeMismatchException
-     */
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(MethodArgumentTypeMismatchException e) {
@@ -106,9 +93,6 @@ public class GlobalExceptionHandler {
         return Result.failed(ResultCode.PARAM_ERROR, "类型错误");
     }
 
-    /**
-     * ServletException
-     */
     @ExceptionHandler(ServletException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(ServletException e) {
@@ -130,9 +114,6 @@ public class GlobalExceptionHandler {
         return Result.failed(e.getMessage());
     }
 
-    /**
-     * HttpMessageNotReadableException
-     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> processException(HttpMessageNotReadableException e) {
@@ -157,7 +138,7 @@ public class GlobalExceptionHandler {
     public <T> Result<T> handleBadSqlGrammarException(BadSqlGrammarException e) {
         log.error(e.getMessage(), e);
         String errorMsg = e.getMessage();
-        if (StrUtil.isNotBlank(errorMsg) && errorMsg.contains("denied to user")) {
+        if (CharSequenceUtil.isNotBlank(errorMsg) && errorMsg.contains("denied to user")) {
             return Result.failed(ResultCode.FORBIDDEN_OPERATION);
         } else {
             return Result.failed(e.getMessage());

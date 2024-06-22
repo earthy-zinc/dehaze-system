@@ -1,7 +1,7 @@
 package com.pei.dehaze.security.service;
 
-import cn.hutool.core.collection.CollectionUtil;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.security.util.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +33,7 @@ public class PermissionService {
      */
     public boolean hasPerm(String requiredPerm) {
 
-        if (StrUtil.isBlank(requiredPerm)) {
+        if (CharSequenceUtil.isBlank(requiredPerm)) {
             return false;
         }
         // 超级管理员放行
@@ -43,13 +43,13 @@ public class PermissionService {
 
         // 获取当前登录用户的角色编码集合
         Set<String> roleCodes = SecurityUtils.getRoles();
-        if (CollectionUtil.isEmpty(roleCodes)) {
+        if (CollUtil.isEmpty(roleCodes)) {
             return false;
         }
 
         // 获取当前登录用户的所有角色的权限列表
         Set<String> rolePerms = this.getRolePermsFormCache(roleCodes);
-        if (CollectionUtil.isEmpty(rolePerms)) {
+        if (CollUtil.isEmpty(rolePerms)) {
             return false;
         }
         // 判断当前登录用户的所有角色的权限列表中是否包含所需权限
@@ -74,7 +74,7 @@ public class PermissionService {
      */
     public Set<String> getRolePermsFormCache(Set<String> roleCodes) {
         // 检查输入是否为空
-        if (CollectionUtil.isEmpty(roleCodes)) {
+        if (CollUtil.isEmpty(roleCodes)) {
             return Collections.emptySet();
         }
 

@@ -1,5 +1,6 @@
 package com.pei.dehaze.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
@@ -33,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -231,7 +233,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public UserInfoVO getCurrentUserInfo() {
 
-        String username = SecurityUtils.getUser().getUsername(); // 登录用户名
+        String username = Objects.requireNonNull(SecurityUtils.getUser()).getUsername(); // 登录用户名
 
         // 获取登录用户基础信息
         SysUser user = this.getOne(new LambdaQueryWrapper<SysUser>()
@@ -251,7 +253,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         userInfoVO.setRoles(roles);
 
         // 用户权限集合
-        if (CollectionUtil.isNotEmpty(roles)) {
+        if (CollUtil.isNotEmpty(roles)) {
             Set<String> perms = permissionService.getRolePermsFormCache(roles);
             userInfoVO.setPerms(perms);
         }
