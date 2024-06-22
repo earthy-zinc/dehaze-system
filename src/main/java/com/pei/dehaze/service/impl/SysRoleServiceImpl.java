@@ -157,7 +157,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
         SysRole role = this.getById(roleId);
         Assert.isTrue(role != null, "角色不存在");
-        
+
         if (role == null) return false;
 
         role.setStatus(status);
@@ -252,8 +252,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     public Integer getMaximumDataScope(Set<String> roles) {
-        Integer dataScope = this.baseMapper.getMaximumDataScope(roles);
-        return dataScope;
+        return this.baseMapper.getMaximumDataScope(roles);
     }
 
 }

@@ -34,6 +34,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -135,7 +136,8 @@ public class SysUserController {
     public void downloadTemplate(HttpServletResponse response) throws IOException {
         String fileName = "用户导入模板.xlsx";
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(fileName, "UTF-8"));
+        response.setHeader("Content-Disposition",
+                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
 
         String fileClassPath = "excel-templates" + File.separator + fileName;
         InputStream inputStream = this.getClass().getClassLoader().getResourceAsStream(fileClassPath);
@@ -159,7 +161,8 @@ public class SysUserController {
     public void exportUsers(UserPageQuery queryParams, HttpServletResponse response) throws IOException {
         String fileName = "用户列表.xlsx";
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-        response.setHeader("Content-Disposition", "attachment; filename=" + URLEncoder.encode(fileName, "UTF-8"));
+        response.setHeader("Content-Disposition",
+                "attachment; filename=" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
 
         List<UserExportVO> exportUserList = userService.listExportUsers(queryParams);
         EasyExcelFactory.write(response.getOutputStream(), UserExportVO.class).sheet("用户列表")

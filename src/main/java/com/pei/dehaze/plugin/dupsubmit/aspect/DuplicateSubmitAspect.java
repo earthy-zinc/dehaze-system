@@ -1,6 +1,6 @@
 package com.pei.dehaze.plugin.dupsubmit.aspect;
 
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.RegisteredPayload;
 import com.pei.dehaze.common.constant.SecurityConstants;
@@ -43,34 +43,55 @@ public class DuplicateSubmitAspect {
      */
     @Pointcut("@annotation(preventDuplicateSubmit)")
     public void preventDuplicateSubmitPointCut(PreventDuplicateSubmit preventDuplicateSubmit) {
-        log.info("定义防重复提交切点");
     }
 
-    @Around("preventDuplicateSubmitPointCut(preventDuplicateSubmit)")
+    @Around(value = "preventDuplicateSubmitPointCut(preventDuplicateSubmit)", argNames = "pjp,preventDuplicateSubmit")
     public Object doAround(ProceedingJoinPoint pjp, PreventDuplicateSubmit preventDuplicateSubmit) throws Throwable {
 
         String resubmitLockKey = generateResubmitLockKey();
         if (resubmitLockKey != null) {
             int expire = preventDuplicateSubmit.expire(); // 防重提交锁过期时间
             RLock lock = redissonClient.getLock(resubmitLockKey);
-            boolean lockResult = lock.tryLock(0, expire, TimeUnit.SECONDS); // 获取锁失败，直接返回 false
+            boolean lockResult = false;
+            int retryTimes = 3; // 重试次数
+            for (int i = 0; i < retryTimes; i++) {
+                lockResult = lock.tryLock(0, expire, TimeUnit.SECONDS);
+                if (lockResult) {
+                    break;
+                }
+                // 等待一段时间后重试，减少立即重试带来的系统压力
+                Thread.sleep(100);
+            }
+
             if (!lockResult) {
-                throw new BusinessException(ResultCode.REPEAT_SUBMIT_ERROR); // 抛出重复提交提示信息
+                log.error("多次尝试获取锁失败，lock key: {}", resubmitLockKey);
+                throw new BusinessException(ResultCode.REPEAT_SUBMIT_ERROR);
+            }
+            try {
+                return pjp.proceed();
+            } catch (Throwable t) {
+                log.error("方法执行异常, lock key: {}", resubmitLockKey, t);
+                throw t;
+            } finally {
+                lock.unlock();
             }
         }
         return pjp.proceed();
     }
 
-
     /**
      * 获取重复提交锁的 key
      */
     private String generateResubmitLockKey() {
+        ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         String resubmitLockKey = null;
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        if (requestAttributes == null) {
+            return resubmitLockKey;
+        }
+        HttpServletRequest request = (requestAttributes).getRequest();
 
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (StrUtil.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
+        if (CharSequenceUtil.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
             token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
             // 从 JWT Token 中获取 jti
             String jti = (String) JWTUtil.parseToken(token).getPayload(RegisteredPayload.JWT_ID);
