@@ -86,7 +86,7 @@ public class DuplicateSubmitAspect {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         String resubmitLockKey = null;
         if (requestAttributes == null) {
-            return resubmitLockKey;
+            return null;
         }
         HttpServletRequest request = (requestAttributes).getRequest();
 

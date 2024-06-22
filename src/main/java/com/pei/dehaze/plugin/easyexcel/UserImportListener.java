@@ -168,8 +168,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
 
     /**
      * 所有数据解析完成会来调用
-     *
-     * @param analysisContext
      */
     @Override
     public void doAfterAllAnalysed(AnalysisContext analysisContext) {

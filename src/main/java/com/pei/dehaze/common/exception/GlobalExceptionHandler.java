@@ -190,7 +190,7 @@ public class GlobalExceptionHandler {
         if (matcher.find()) {
             String matchString = matcher.group();
             matchString = matchString.replace("[", "").replace("]", "");
-            matchString = "%s字段类型错误".formatted(matchString.replaceAll("\"", ""));
+            matchString = "%s字段类型错误".formatted(matchString.replace("\"", ""));
             group += matchString;
         }
         return group;

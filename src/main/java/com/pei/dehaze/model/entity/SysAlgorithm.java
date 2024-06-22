@@ -29,6 +29,9 @@ public class SysAlgorithm extends BaseEntity {
 
     private String description;
 
+    /**
+     * 状态(1:正常;0:禁用)
+     */
     private Integer status;
 
     @TableField(fill = FieldFill.INSERT)

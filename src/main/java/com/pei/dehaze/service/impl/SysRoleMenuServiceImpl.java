@@ -1,6 +1,6 @@
 package com.pei.dehaze.service.impl;
 
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.mapper.SysRoleMenuMapper;
@@ -45,7 +45,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
         redisTemplate.opsForHash().delete(SecurityConstants.ROLE_PERMS_PREFIX, "*");
 
         List<RolePermsBO> list = this.baseMapper.getRolePermsList(null);
-        if (CollectionUtil.isNotEmpty(list)) {
+        if (CollUtil.isNotEmpty(list)) {
             list.forEach(item -> {
                 String roleCode = item.getRoleCode();
                 Set<String> perms = item.getPerms();
@@ -63,7 +63,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
         redisTemplate.opsForHash().delete(SecurityConstants.ROLE_PERMS_PREFIX, roleCode);
 
         List<RolePermsBO> list = this.baseMapper.getRolePermsList(roleCode);
-        if (CollectionUtil.isNotEmpty(list)) {
+        if (CollUtil.isNotEmpty(list)) {
             RolePermsBO rolePerms = list.get(0);
             if (rolePerms == null) {
                 return;
@@ -84,7 +84,7 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
 
         // 添加新角色权限缓存
         List<RolePermsBO> list =this.baseMapper.getRolePermsList(newRoleCode);
-        if (CollectionUtil.isNotEmpty(list)) {
+        if (CollUtil.isNotEmpty(list)) {
             RolePermsBO rolePerms = list.get(0);
             if (rolePerms == null) {
                 return;

@@ -3,6 +3,7 @@ package com.pei.dehaze.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.model.entity.SysAlgorithm;
+import com.pei.dehaze.model.form.AlgorithmForm;
 import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 
@@ -16,4 +17,10 @@ public interface SysAlgorithmService extends IService<SysAlgorithm> {
     List<AlgorithmVO> getList(AlgorithmQuery queryParams);
 
     List<Option<Long>> getOption();
+
+    boolean addAlgorithm(AlgorithmForm algorithm);
+
+    boolean updateAlgorithm(AlgorithmForm algorithm);
+
+    boolean deleteAlgorithms(List<Long> ids);
 }

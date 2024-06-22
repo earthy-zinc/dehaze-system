@@ -1,8 +1,8 @@
 package com.pei.dehaze.service.impl;
 
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
-import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,6 +10,7 @@ import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.MenuConverter;
 import com.pei.dehaze.mapper.SysMenuMapper;
 import com.pei.dehaze.model.bo.RouteBO;
@@ -29,7 +30,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 菜单业务实现类
@@ -54,47 +54,46 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     public List<MenuVO> listMenus(MenuQuery queryParams) {
         List<SysMenu> menus = this.list(new LambdaQueryWrapper<SysMenu>()
-                .like(StrUtil.isNotBlank(queryParams.getKeywords()), SysMenu::getName, queryParams.getKeywords())
+                .like(CharSequenceUtil.isNotBlank(queryParams.getKeywords()), SysMenu::getName, queryParams.getKeywords())
                 .orderByAsc(SysMenu::getSort)
         );
-        // 获取所有菜单ID
-        Set<Long> menuIds = menus.stream()
-                .map(SysMenu::getId)
-                .collect(Collectors.toSet());
-
-        // 获取所有父级ID
-        Set<Long> parentIds = menus.stream()
-                .map(SysMenu::getParentId)
-                .collect(Collectors.toSet());
-
-        // 获取根节点ID（递归的起点），即父节点ID中不包含在部门ID中的节点，注意这里不能拿顶级菜单 O 作为根节点，因为菜单筛选的时候 O 会被过滤掉
-        List<Long> rootIds = parentIds.stream()
-                .filter(id -> !menuIds.contains(id))
-                .toList();
+        List<Long> rootIds = TreeDataUtils.findRootIds(menus, SysMenu::getId, SysMenu::getParentId);
 
         // 使用递归函数来构建菜单树
         return rootIds.stream()
                 .flatMap(rootId -> buildMenuTree(rootId, menus).stream())
-                .collect(Collectors.toList());
+                .toList();
     }
 
     /**
-     * 递归生成菜单列表
-     *
-     * @param parentId 父级ID
-     * @param menuList 菜单列表
-     * @return 菜单列表
+     * 新增/修改菜单
      */
-    private List<MenuVO> buildMenuTree(Long parentId, List<SysMenu> menuList) {
-        return CollectionUtil.emptyIfNull(menuList)
-                .stream()
-                .filter(menu -> menu.getParentId().equals(parentId))
-                .map(entity -> {
-                    MenuVO menuVO = menuConverter.entity2Vo(entity);
-                    List<MenuVO> children = buildMenuTree(entity.getId(), menuList);
-                    menuVO.setChildren(children);
-                    return menuVO;
-                }).toList();
+    @Override
+    @CacheEvict(cacheNames = "menu", key = "'routes'")
+    public boolean saveMenu(MenuForm menuForm) {
+
+        MenuTypeEnum menuType = menuForm.getType();
+
+        if (menuType == MenuTypeEnum.CATALOG) {  // 如果是外链
+            String path = menuForm.getPath();
+            if (menuForm.getParentId() == 0 && !path.startsWith("/")) {
+                menuForm.setPath("/" + path); // 一级目录需以 / 开头
+            }
+            menuForm.setComponent("Layout");
+        } else if (menuType == MenuTypeEnum.EXTLINK) {   // 如果是目录
+
+            menuForm.setComponent(null);
+        }
+
+        SysMenu entity = menuConverter.form2Entity(menuForm);
+        String treePath = generateMenuTreePath(menuForm.getParentId());
+        entity.setTreePath(treePath);
+
+        boolean result = this.saveOrUpdate(entity);
+        if (result && menuForm.getId() != null) {
+            roleMenuService.refreshRolePermsCache();
+        }
+        return result;
     }
 
     /**
@@ -166,11 +165,30 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     }
 
     /**
+     * 递归生成菜单列表
+     *
+     * @param parentId 父级ID
+     * @param menuList 菜单列表
+     * @return 菜单列表
+     */
+    private List<MenuVO> buildMenuTree(Long parentId, List<SysMenu> menuList) {
+        return CollUtil.emptyIfNull(menuList)
+                .stream()
+                .filter(menu -> menu.getParentId().equals(parentId))
+                .map(entity -> {
+                    MenuVO menuVO = menuConverter.entity2Vo(entity);
+                    List<MenuVO> children = buildMenuTree(entity.getId(), menuList);
+                    menuVO.setChildren(children);
+                    return menuVO;
+                }).toList();
+    }
+
+    /**
      * 根据RouteBO创建RouteVO
      */
     private RouteVO toRouteVo(RouteBO routeBO) {
         RouteVO routeVO = new RouteVO();
-        String routeName = StringUtils.capitalize(StrUtil.toCamelCase(routeBO.getPath(), '-'));  // 路由 name 需要驼峰，首字母大写
+        String routeName = StringUtils.capitalize(CharSequenceUtil.toCamelCase(routeBO.getPath(), '-'));  // 路由 name 需要驼峰，首字母大写
         routeVO.setName(routeName); // 根据name路由跳转 this.$router.push({name:xxx})
         routeVO.setPath(routeBO.getPath()); // 根据path路由跳转 this.$router.push({path:xxx})
         routeVO.setRedirect(routeBO.getRedirect());
@@ -194,40 +212,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
         routeVO.setMeta(meta);
         return routeVO;
-    }
-
-    /**
-     * 新增/修改菜单
-     */
-    @Override
-    @CacheEvict(cacheNames = "menu", key = "'routes'")
-    public boolean saveMenu(MenuForm menuForm) {
-
-        MenuTypeEnum menuType = menuForm.getType();
-
-        if (menuType == MenuTypeEnum.CATALOG) {  // 如果是外链
-            String path = menuForm.getPath();
-            if (menuForm.getParentId() == 0 && !path.startsWith("/")) {
-                menuForm.setPath("/" + path); // 一级目录需以 / 开头
-            }
-            menuForm.setComponent("Layout");
-        } else if (menuType == MenuTypeEnum.EXTLINK) {   // 如果是目录
-
-            menuForm.setComponent(null);
-        }
-
-        SysMenu entity = menuConverter.form2Entity(menuForm);
-        String treePath = generateMenuTreePath(menuForm.getParentId());
-        entity.setTreePath(treePath);
-
-        boolean result = this.saveOrUpdate(entity);
-        if (result) {
-            // 编辑刷新角色权限缓存
-            if (menuForm.getId() != null) {
-                roleMenuService.refreshRolePermsCache();
-            }
-        }
-        return result;
     }
 
     /**

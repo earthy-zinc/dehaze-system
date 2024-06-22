@@ -169,12 +169,7 @@ public class LocalFileService implements FileService {
         }
     }
 
-    public void updateUrl() {
-
-    }
-
     @PostConstruct
     public void init() {
-        System.out.println("初始化本地文件服务");
     }
 }
