@@ -17,12 +17,10 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.tomcat.util.http.fileupload.IOUtils;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
@@ -92,7 +90,7 @@ public class LocalFileService implements FileService {
                 fileInfo.setUrl(image.getUrl());
                 return fileInfo;
             } catch (IOException e) {
-                new BusinessException("文件上传失败");
+                throw new BusinessException("文件上传失败");
             }
         }
         return null;

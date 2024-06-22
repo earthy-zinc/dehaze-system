@@ -10,17 +10,16 @@ import lombok.Getter;
  * @author earthyzinc
  * @since 2022/10/14
  */
+@Getter
 @Schema(enumAsRef = true)
 public enum GenderEnum implements IBaseEnum<Integer> {
 
     MALE(1, "男"),
     FEMALE (2, "女");
 
-    @Getter
-    private Integer value;
+    private final Integer value;
 
-    @Getter
-    private String label;
+    private final String label;
 
     GenderEnum(Integer value, String label) {
         this.value = value;

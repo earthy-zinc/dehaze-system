@@ -1,5 +1,7 @@
 package com.pei.dehaze.filter;
 
+import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.common.util.ResponseUtils;
 import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.impl.file.LocalFileService;
 import jakarta.annotation.Resource;
@@ -30,7 +32,7 @@ public class FileDownloadFilter implements Filter {
             if (fileService instanceof LocalFileService localFileService) {
                 localFileService.download(filePath, httpResponse);
             } else {
-                filterChain.doFilter(servletRequest, servletResponse);
+                ResponseUtils.writeErrMsg(httpResponse, ResultCode.RESOURCE_NOT_FOUND);
             }
         } else {
             filterChain.doFilter(servletRequest, servletResponse); // 非目标路径，直接传递给下一个过滤器

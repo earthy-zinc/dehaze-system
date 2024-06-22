@@ -2,11 +2,13 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.lang.Assert;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.StatusEnum;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.converter.DeptConverter;
 import com.pei.dehaze.mapper.SysDeptMapper;
@@ -17,6 +19,7 @@ import com.pei.dehaze.model.vo.DeptVO;
 import com.pei.dehaze.service.SysDeptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collections;
 import java.util.List;
@@ -216,15 +219,19 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
      * @return 是否删除成功
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteByIds(String ids) {
         // 删除部门及子部门
-        if (StrUtil.isNotBlank(ids)) {
+        if (CharSequenceUtil.isNotBlank(ids)) {
             String[] menuIds = ids.split(",");
             for (String deptId : menuIds) {
-                this.remove(new LambdaQueryWrapper<SysDept>()
+                boolean removed = this.remove(new LambdaQueryWrapper<SysDept>()
                         .eq(SysDept::getId, deptId)
                         .or()
                         .apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", deptId));
+                if (!removed) {
+                    throw new BusinessException("部门删除失败");
+                }
             }
         }
         return true;

@@ -1,9 +1,10 @@
 package com.pei.dehaze.config;
 
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.jwt.JWTPayload;
 import cn.hutool.jwt.JWTUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.messaging.Message;
@@ -69,7 +70,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(new ChannelInterceptor() {
             @Override
-            public Message<?> preSend(Message<?> message, MessageChannel channel) {
+            public Message<?> preSend(@NotNull Message<?> message, @NotNull MessageChannel channel) {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
                 // 如果是连接请求（CONNECT 命令），从请求头中取出 token 并设置到认证信息中
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
@@ -77,7 +78,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     String bearerToken = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
 
                     // 验证令牌格式并提取用户信息
-                    if (StrUtil.isNotBlank(bearerToken) && bearerToken.startsWith("Bearer ")) {
+                    if (CharSequenceUtil.isNotBlank(bearerToken) && bearerToken.startsWith("Bearer ")) {
                         try {
                             // 移除 "Bearer " 前缀，从令牌中提取用户信息(username), 并设置到认证信息中
 
@@ -85,7 +86,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                             // String username = JwtUtils.parseToken(bearerToken).get("name").toString();
                             String username = JWTUtil.parseToken(bearerToken).getPayloads().getStr(JWTPayload.SUBJECT);
 
-                            if (StrUtil.isNotBlank(username)) {
+                            if (CharSequenceUtil.isNotBlank(username)) {
                                 accessor.setUser(() -> username);
                                 return message;
                             }

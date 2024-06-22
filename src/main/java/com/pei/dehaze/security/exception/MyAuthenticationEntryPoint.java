@@ -2,15 +2,12 @@ package com.pei.dehaze.security.exception;
 
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.ResponseUtils;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
 
 /**
  * 认证异常处理
@@ -21,7 +18,8 @@ import java.io.IOException;
 @Component
 public class MyAuthenticationEntryPoint implements AuthenticationEntryPoint {
         @Override
-    public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
+        public void commence(HttpServletRequest request, HttpServletResponse response,
+                             AuthenticationException authException) {
         int status = response.getStatus();
         if (status == HttpServletResponse.SC_NOT_FOUND) {
             // 资源不存在

@@ -1,8 +1,8 @@
 package com.pei.dehaze.security.util;
 
-import cn.hutool.core.collection.CollectionUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.security.model.SysUserDetails;
 import org.springframework.security.core.Authentication;
@@ -38,17 +38,22 @@ public class SecurityUtils {
      * @return Long
      */
     public static Long getUserId() {
-        Long userId = Convert.toLong(getUser().getUserId());
-        return userId;
+        SysUserDetails user = getUser();
+        if (user != null) {
+            return Convert.toLong(user.getUserId());
+        }
+        return null;
     }
 
     /**
      * 获取部门ID
-     *
-     * @return
      */
     public static Long getDeptId() {
-        return Convert.toLong(getUser().getDeptId());
+        SysUserDetails user = getUser();
+        if (user != null) {
+            return Convert.toLong(user.getDeptId());
+        }
+        return null;
     }
 
     /**
@@ -57,7 +62,11 @@ public class SecurityUtils {
      * @return DataScope
      */
     public static Integer getDataScope() {
-        return Convert.toInt(getUser().getDataScope());
+        SysUserDetails user = getUser();
+        if (user != null) {
+            return Convert.toInt(user.getDataScope());
+        }
+        return null;
     }
 
 
@@ -70,9 +79,9 @@ public class SecurityUtils {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null) {
             Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-            if (CollectionUtil.isNotEmpty(authorities)) {
+            if (CollUtil.isNotEmpty(authorities)) {
                 return authorities.stream().filter(item -> item.getAuthority().startsWith("ROLE_"))
-                        .map(item -> StrUtil.removePrefix(item.getAuthority(), "ROLE_"))
+                        .map(item -> CharSequenceUtil.removePrefix(item.getAuthority(), "ROLE_"))
                         .collect(Collectors.toSet());
             }
         }
@@ -83,12 +92,9 @@ public class SecurityUtils {
      * 是否超级管理员
      * <p>
      * 超级管理员忽视任何权限判断
-     *
-     * @return
      */
     public static boolean isRoot() {
         Set<String> roles = getRoles();
         return roles.contains(SystemConstants.ROOT_ROLE_CODE);
     }
-
 }

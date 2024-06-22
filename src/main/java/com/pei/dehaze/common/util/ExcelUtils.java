@@ -1,6 +1,6 @@
 package com.pei.dehaze.common.util;
 
-import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.EasyExcelFactory;
 import com.pei.dehaze.plugin.easyexcel.MyAnalysisEventListener;
 
 import java.io.InputStream;
@@ -14,7 +14,7 @@ import java.io.InputStream;
 public class ExcelUtils {
 
     public static <T> String importExcel(InputStream is, Class<T> clazz, MyAnalysisEventListener<T> listener) {
-        EasyExcel.read(is, clazz, listener).sheet().doRead();
+        EasyExcelFactory.read(is, clazz, listener).sheet().doRead();
         return listener.getMsg();
     }
 }

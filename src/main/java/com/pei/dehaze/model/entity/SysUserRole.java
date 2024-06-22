@@ -5,6 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 
 /**
  * 用户和角色关联表
@@ -15,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class SysUserRole {
+public class SysUserRole implements Serializable {
     /**
      * 用户ID
      */
@@ -26,6 +29,7 @@ public class SysUserRole {
      */
     private Long roleId;
 
+    @Serial
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
 }
