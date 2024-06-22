@@ -3,12 +3,14 @@ package com.pei.dehaze.controller;
 import com.pei.dehaze.common.base.BasePageQuery;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.model.form.DatasetForm;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
 import com.pei.dehaze.model.vo.ImageItemVO;
 import com.pei.dehaze.service.SysDatasetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
@@ -64,9 +66,9 @@ public class SysDatasetController {
      */
     @Operation(summary = "新增数据集")
     @PostMapping
-    public Result<Void> add(@RequestBody DatasetVO dataset) {
-//        datasetService.save(dataset);
-        return Result.success();
+    public Result<Void> add(@RequestBody @Valid DatasetForm dataset) {
+        boolean result = datasetService.addDataset(dataset);
+        return Result.judge(result);
     }
 
     /**
@@ -78,10 +80,10 @@ public class SysDatasetController {
      */
     @Operation(summary = "修改数据集")
     @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Long id, @RequestBody DatasetVO dataset) {
+    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody DatasetForm dataset) {
         dataset.setId(id); // 确保ID与路径变量一致
-//        datasetService.update(dataset);
-        return Result.success();
+        boolean result = datasetService.updateDataset(dataset);
+        return Result.judge(result);
     }
 
     /**
@@ -93,7 +95,7 @@ public class SysDatasetController {
     @Operation(summary = "删除数据集")
     @DeleteMapping
     public Result<Void> deleteByIds(@RequestParam List<Long> ids) {
-        datasetService.deleteDatasets(ids);
-        return Result.success();
+        boolean result = datasetService.deleteDatasets(ids);
+        return Result.judge(result);
     }
 }

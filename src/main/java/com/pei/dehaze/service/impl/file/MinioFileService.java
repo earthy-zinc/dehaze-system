@@ -3,8 +3,9 @@ package com.pei.dehaze.service.impl.file;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Assert;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.StrUtil;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.service.FileService;
 import io.minio.*;
@@ -19,6 +20,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
@@ -94,7 +96,7 @@ public class MinioFileService implements FileService {
         // 生成文件名(日期文件夹)
         String suffix = FileUtil.getSuffix(file.getOriginalFilename());
         String uuid = IdUtil.simpleUUID();
-        String fileName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + "/" + uuid + "." + suffix;
+        String fileName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + File.separator + uuid + "." + suffix;
         //  try-with-resource 语法糖自动释放流
         try (InputStream inputStream = file.getInputStream()) {
             // 文件上传
@@ -108,7 +110,7 @@ public class MinioFileService implements FileService {
 
             // 返回文件路径
             String fileUrl;
-            if (StrUtil.isBlank(customDomain)) { // 未配置自定义域名
+            if (CharSequenceUtil.isBlank(customDomain)) { // 未配置自定义域名
                 GetPresignedObjectUrlArgs getPresignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
                         .bucket(bucketName).object(fileName)
                         .method(Method.GET)
@@ -125,7 +127,7 @@ public class MinioFileService implements FileService {
             fileInfo.setUrl(fileUrl);
             return fileInfo;
         } catch (Exception e) {
-            throw new RuntimeException("文件上传失败");
+            throw new BusinessException("文件上传失败");
         }
     }
 
@@ -142,7 +144,7 @@ public class MinioFileService implements FileService {
         Assert.notBlank(filePath, "删除文件路径不能为空");
         try {
             String fileName;
-            if (StrUtil.isNotBlank(customDomain)) {
+            if (CharSequenceUtil.isNotBlank(customDomain)) {
                 // https://oss.youlai.tech/default/20221120/test.jpg → 20221120/test.jpg
                 fileName = filePath.substring(customDomain.length() + 1 + bucketName.length() + 1); // 两个/占了2个字符长度
             } else {

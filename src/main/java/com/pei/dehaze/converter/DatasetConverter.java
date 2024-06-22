@@ -1,6 +1,7 @@
 package com.pei.dehaze.converter;
 
 import com.pei.dehaze.model.entity.SysDataset;
+import com.pei.dehaze.model.form.DatasetForm;
 import com.pei.dehaze.model.vo.DatasetVO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -13,4 +14,6 @@ import org.mapstruct.Mapping;
 public interface DatasetConverter {
     @Mapping(ignore = true, target = "children")
     DatasetVO entity2Vo(SysDataset entity);
+
+    SysDataset form2Entity(DatasetForm form);
 }

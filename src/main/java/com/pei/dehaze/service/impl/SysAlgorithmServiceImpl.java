@@ -6,9 +6,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.AlgorithmConverter;
 import com.pei.dehaze.mapper.SysAlgorithmMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
+import com.pei.dehaze.model.form.AlgorithmForm;
 import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.service.SysAlgorithmService;
@@ -17,8 +19,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * @author earthy-zinc
@@ -35,17 +35,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         List<SysAlgorithm> algorithms = this.list(new LambdaQueryWrapper<SysAlgorithm>()
                 .like(CharSequenceUtil.isNotBlank(queryParams.getKeywords()), SysAlgorithm::getName, queryParams.getKeywords()));
 
-        Set<Long> algorithmIds = algorithms.stream()
-                .map(SysAlgorithm::getId)
-                .collect(Collectors.toSet());
-
-        Set<Long> parentIds = algorithms.stream()
-                .map(SysAlgorithm::getParentId)
-                .collect(Collectors.toSet());
-
-        List<Long> rootIds = parentIds.stream()
-                .filter(id -> !algorithmIds.contains(id))
-                .toList();
+        List<Long> rootIds = TreeDataUtils.findRootIds(algorithms, SysAlgorithm::getId, SysAlgorithm::getParentId);
 
         return rootIds.stream()
                 .flatMap(rootId -> buildAlgorithmTree(rootId, algorithms).stream())
@@ -56,6 +46,21 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public List<Option<Long>> getOption() {
         List<SysAlgorithm> algorithms = this.list(new LambdaQueryWrapper<>());
         return buildAlgorithmOptions(SystemConstants.ROOT_NODE_ID, algorithms);
+    }
+
+    @Override
+    public boolean addAlgorithm(AlgorithmForm algorithm) {
+        return false;
+    }
+
+    @Override
+    public boolean updateAlgorithm(AlgorithmForm algorithm) {
+        return false;
+    }
+
+    @Override
+    public boolean deleteAlgorithms(List<Long> ids) {
+        return false;
     }
 
     private List<AlgorithmVO> buildAlgorithmTree(Long rootId, List<SysAlgorithm> algorithms) {

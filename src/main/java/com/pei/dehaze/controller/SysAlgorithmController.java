@@ -2,11 +2,13 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.model.form.AlgorithmForm;
 import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.web.bind.annotation.*;
@@ -57,9 +59,9 @@ public class SysAlgorithmController {
      */
     @Operation(summary = "新增算法")
     @PostMapping
-    public Result<Void> add(@RequestBody AlgorithmVO data) {
-//        algorithmService.add(data);
-        return Result.success(null);
+    public Result<Void> add(@RequestBody @Valid AlgorithmForm algorithm) {
+        boolean result = algorithmService.addAlgorithm(algorithm);
+        return Result.judge(result);
     }
 
     /**
@@ -71,10 +73,10 @@ public class SysAlgorithmController {
      */
     @Operation(summary = "修改算法")
     @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Long id, @RequestBody AlgorithmVO data) {
-        data.setId(id); // 确保ID与路径变量一致
-//        algorithmService.update(data);
-        return Result.success(null);
+    public Result<Void> update(@PathVariable Long id, @RequestBody @Valid AlgorithmForm algorithm) {
+        algorithm.setId(id); // 确保ID与路径变量一致
+        boolean result = algorithmService.updateAlgorithm(algorithm);
+        return Result.judge(result);
     }
 
     /**
@@ -85,8 +87,8 @@ public class SysAlgorithmController {
      */
     @Operation(summary = "删除算法")
     @DeleteMapping
-    public Result<Void> deleteByIds(@RequestParam String ids) {
-//        algorithmService.deleteByIds(ids.split(","));
-        return Result.success(null);
+    public Result<Void> deleteByIds(@RequestParam List<Long> ids) {
+        boolean result = algorithmService.deleteAlgorithms(ids);
+        return Result.judge(result);
     }
 }

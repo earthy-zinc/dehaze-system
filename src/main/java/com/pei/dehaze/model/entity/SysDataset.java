@@ -29,8 +29,14 @@ public class SysDataset  extends BaseEntity {
 
     private Integer total;
 
+    /**
+     * 状态(1:正常;0:禁用)
+     */
     private Integer status;
 
+    /**
+     * 逻辑删除标识(1:已删除;0:未删除)
+     */
     private Integer deleted;
 
     @TableField(fill = FieldFill.INSERT)
