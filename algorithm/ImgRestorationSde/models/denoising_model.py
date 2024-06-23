@@ -8,10 +8,10 @@ import torchvision.utils as tvutils
 from ema_pytorch import EMA
 from torch.nn.parallel import DistributedDataParallel
 
-import benchmark.ImgRestorationSde.models.lr_scheduler as lr_scheduler
-import benchmark.ImgRestorationSde.models.networks as networks
-from benchmark.ImgRestorationSde.models.modules.loss import MatchingLoss
-from benchmark.ImgRestorationSde.models.optimizer import Lion
+import lr_scheduler as lr_scheduler
+import networks as networks
+from modules.loss import MatchingLoss
+from optimizer import Lion
 from .base_model import BaseModel
 
 logger = logging.getLogger("base")

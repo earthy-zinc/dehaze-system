@@ -7,36 +7,34 @@ from PIL import Image
 from torch import nn
 from torchvision.transforms import Compose, ToTensor, Normalize
 
-from benchmark.PSD.FFA import FFANet
-from benchmark.PSD.GCA import GCANet
-from benchmark.PSD.MSBDN import MSBDNNet
+from FFA import FFANet
+from GCA import GCANet
+from MSBDN import MSBDNNet
 from global_variable import MODEL_PATH, DEVICE, DEVICE_ID
 
 
-def get_model(model_name: str):
-    if model_name.find("MSBDN") != -1:
-        print(model_name, '加载模型MSBDN')
+def get_model(model_path: str):
+    if model_path.find("MSBDN") != -1:
+        print(model_path, '加载模型MSBDN')
         net = MSBDNNet()
         name = 'MSBDN'
-    elif model_name.find("FFANET") != -1:
-        print(model_name, '加载FFANET')
+    elif model_path.find("FFANET") != -1:
+        print(model_path, '加载FFANET')
         net = FFANet(3, 19)
         name = 'FFANET'
     else:
-        print(model_name, '加载GCANET')
+        print(model_path, '加载GCANET')
         net = GCANet(in_c=4, out_c=3, only_residual=True)
         name = 'GCANET'
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
     net = net.to(DEVICE)
     net = nn.DataParallel(net, device_ids=DEVICE_ID)
-    net.load_state_dict(torch.load(model_dir))
+    net.load_state_dict(torch.load(model_path))
     net.eval()
     return net, name
 
 # TODO 不知道为何，在神经网络中间层有张量形状不一致的问题，等待进一步处理
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'C2PNet/OTS.pkl'):
-    net, name = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net, name = get_model(model_path)
 
     haze_img = Image.open(haze_image_path).convert('RGB')
     haze_reshaped = haze_img.resize((256, 256), Image.LANCZOS)

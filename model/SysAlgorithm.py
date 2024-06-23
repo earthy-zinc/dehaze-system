@@ -2,7 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger
 
-from . import db
+from base import db
 
 
 class SysAlgorithm(db.Model):
@@ -13,7 +13,7 @@ class SysAlgorithm(db.Model):
     type = Column(String(100), default='', comment='模型类型')
     name = Column(String(64), nullable=False, comment='模型名称')
     path = Column(String(255), default='', comment='模型存储路径')
-    size = Column(BigInteger, default=None, comment='模型大小')
+    size = Column(String(100), default=None, comment='模型大小')
     import_path = Column(String(255), default='', comment='模型代码导入路径')
     description = Column(Text, default=None, comment='针对该模型的详细描述')
     status = Column(SmallInteger, default=1, comment='状态(1:启用；0:禁用)')

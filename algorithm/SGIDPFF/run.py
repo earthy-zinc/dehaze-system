@@ -4,15 +4,13 @@ import imageio.v2 as imageio
 import numpy as np
 import torch
 
-from benchmark.SGIDPFF.model.dehaze_sgid_pff import DEHAZE_SGID_PFF
+from .model.dehaze_sgid_pff import DEHAZE_SGID_PFF
 from global_variable import MODEL_PATH, DEVICE
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     net = DEHAZE_SGID_PFF(img_channels=3, t_channels=1, n_resblock=3, n_feat=32, device=DEVICE)
-    net.load_state_dict(torch.load(model_dir), strict=False)
+    net.load_state_dict(torch.load(model_path), strict=False)
     net = net.to(DEVICE)
     net.eval()
     return net
@@ -35,8 +33,8 @@ def tensor2numpy(tensor, rgb_range=1.):
     return img
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'DehazeFormer/indoor/dehazeformer-b.pth'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
 
     inputs = imageio.imread(haze_image_path)
     h, w, _ = inputs.shape

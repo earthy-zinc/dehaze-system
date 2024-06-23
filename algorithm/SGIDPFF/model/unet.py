@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-import benchmark.SGIDPFF.model.blocks as blocks
+import blocks as blocks
 
 
 def make_model(args):

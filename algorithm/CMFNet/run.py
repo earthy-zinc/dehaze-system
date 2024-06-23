@@ -3,19 +3,18 @@ from collections import OrderedDict
 
 import torch
 from PIL import Image
-from torchvision.transforms import Compose, ToPILImage, CenterCrop, ToTensor
+from torchvision.transforms import Compose, CenterCrop, ToTensor
 
-from benchmark.CMFNet.model.CMFNet import CMFNet
+from .model.CMFNet import CMFNet
 from global_variable import MODEL_PATH, DEVICE
 import torchvision.utils as torch_utils
 
 
-def get_model(model_name: str):
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     net = CMFNet()
     net = net.to(DEVICE)
 
-    checkpoint = torch.load(model_dir)
+    checkpoint = torch.load(model_path)
     try:
         net.load_state_dict(checkpoint["state_dict"])
     except RuntimeError:
@@ -29,8 +28,8 @@ def get_model(model_name: str):
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'CMFNet/dehaze_I_OHaze_CMFNet.pth'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
     haze = Image.open(haze_image_path).convert('RGB')
     width, height = haze.width, haze.height
     min_size = min(width, height)

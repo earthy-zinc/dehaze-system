@@ -9,31 +9,29 @@ from PIL import Image
 from torch.autograd import Variable
 from torchvision.transforms import transforms
 
-from benchmark.MADN.model200314 import TransformNet
-from benchmark.MADN.modelmeta import Meta
-from benchmark.MADN.pregrocess import pre
+from model200314 import TransformNet
+from modelmeta import Meta
+from pregrocess import pre
 from global_variable import MODEL_PATH, DEVICE
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
-    meta_dir = os.path.join(MODEL_PATH, model_name.split("/")[0] + "/dehaze_80_state_dict.pth")
+def get_model(model_path: str):
+    meta_path = os.path.join(os.path.dirname(model_path), "dehaze_80_state_dict.pth")
 
     meta = Meta(8)
     meta.to(DEVICE)
-    meta.load_state_dict(torch.load(meta_dir, map_location=DEVICE))
+    meta.load_state_dict(torch.load(meta_path, map_location=DEVICE))
     meta.eval()
 
     net = TransformNet(32)
     net.to(DEVICE)
-    net.load_state_dict(torch.load(model_dir))
+    net.load_state_dict(torch.load(model_path))
     net.eval()
     return net, meta
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'DehazeFormer/indoor/dehazeformer-b.pth'):
-    net, meta = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net, meta = get_model(model_path)
     prepro = pre(0.5, 0)
 
     haze = Image.open(haze_image_path)

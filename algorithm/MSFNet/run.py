@@ -5,23 +5,21 @@ import torchvision.transforms as tfs
 from PIL import Image
 from torch.autograd import Variable
 
-from benchmark.MSFNet.net import final_Net
+from .net import final_Net
 from global_variable import MODEL_PATH, DEVICE
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     net = final_Net()
     net.to(DEVICE)
     # Load pretrained models
-    net.load_state_dict(torch.load(model_dir)["state_dict"])
+    net.load_state_dict(torch.load(model_path)["state_dict"])
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = ''):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
     haze = Image.open(haze_image_path).convert('RGB')
     transform = tfs.Compose([
         tfs.ToTensor(),

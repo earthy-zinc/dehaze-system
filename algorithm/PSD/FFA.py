@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from benchmark.FFANet.FFA import FFA
 
 
 class BlockUNet1(nn.Module):
@@ -211,6 +210,3 @@ class FFANet(nn.Module):
         #x=self.post(out)
         return out, out_J, out_T, out_A, out_I
 
-if __name__ == "__main__":
-    net=FFA(gps=3,blocks=19)
-    print(net)

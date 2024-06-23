@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from benchmark.SGIDPFF.loss import smooth_loss
-from benchmark.SGIDPFF.model import trans
+from ..loss import smooth_loss
+from . import trans
 
 
 def make_model(args):

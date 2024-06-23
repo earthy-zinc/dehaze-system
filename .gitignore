@@ -163,8 +163,9 @@ cython_debug/
 ### Flask template
 instance/*
 !instance/.gitignore
-.webassets-cache
-.env
 
 .idea/
 /dehaze-python.iml
+data
+cache
+trained_model

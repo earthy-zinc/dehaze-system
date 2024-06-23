@@ -1,11 +1,10 @@
 import torch
 from torch import nn
 
-from benchmark.Dehamer.MIRNet import MSRB
-from benchmark.Dehamer.swin import SwinTransformer
+from .MIRNet import MSRB
 import torch.nn.functional as F
 
-from benchmark.Dehamer.swin import SwinTransformer
+from .swin import SwinTransformer
 
 
 class UNet_emb(nn.Module):

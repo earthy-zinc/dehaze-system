@@ -10,13 +10,11 @@ from .model import dehazeformer_t, dehazeformer_s, dehazeformer_b, dehazeformer_
     dehazeformer_m, dehazeformer_l
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
-    net = eval(model_name.split("/")[2].replace('-', '_').replace('.pth', ''))()
+def get_model(model_path: str):
+    net = eval(os.path.basename(model_path).replace('-', '_').replace('.pth', ''))()
     net = net.to(DEVICE)
 
-    state_dict = torch.load(model_dir)['state_dict']
+    state_dict = torch.load(model_path)['state_dict']
     new_state_dict = OrderedDict()
     for k, v in state_dict.items():
         name = k[7:]
@@ -27,8 +25,8 @@ def get_model(model_name: str):
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'DehazeFormer/indoor/dehazeformer-b.pth'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
     haze = Image.open(haze_image_path).convert('RGB')
     haze = tfs.ToTensor()(haze)[None, ::]
     haze = haze.to(DEVICE)

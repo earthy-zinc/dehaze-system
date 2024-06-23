@@ -4,19 +4,16 @@ import cv2
 import torch
 import torchvision.utils
 
-from benchmark.RIDCP.dehaze_vq_weight_arch import VQWeightDehazeNet
+from dehaze_vq_weight_arch import VQWeightDehazeNet
 from global_variable import MODEL_PATH, DEVICE
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
-
+def get_model(model_path: str):
     net = VQWeightDehazeNet(codebook_params=[[64, 1024, 512]],
                             LQ_stage=True, use_weight=True,
                             weight_alpha=-21.25)
     net.to(DEVICE)
-    net.load_state_dict(torch.load(model_dir)['params'], strict=False)
+    net.load_state_dict(torch.load(model_path)['params'], strict=False)
     net.eval()
     return net
 
@@ -50,8 +47,8 @@ def img2tensor(imgs, bgr2rgb=True, float32=True):
         return _totensor(imgs, bgr2rgb, float32)
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = ''):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
     img = cv2.imread(haze_image_path, cv2.IMREAD_UNCHANGED)
     if img.max() > 255.0:
         img = img / 255.0

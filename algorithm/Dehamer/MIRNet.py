@@ -11,7 +11,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-from benchmark.Dehamer.antialias import Downsample as downsamp
+from antialias import Downsample as downsamp
 
 
 # from pdb import set_trace as stx

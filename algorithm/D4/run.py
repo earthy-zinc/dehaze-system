@@ -8,19 +8,16 @@ import torchvision
 import torchvision.transforms.functional
 from PIL import Image
 
-from benchmark.D4.config import Config
-from benchmark.D4.models import Model
-from global_variable import MODEL_PATH, DEVICE
+from .config import Config
+from models import Model
+from global_variable import DEVICE
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
-
+def get_model(model_path: str):
     # load config file
     # mode (int): 1: train, 2: test, 3: eval, reads from config file if not specified
     # model (int): 1: reconstruct
-    config_path = os.path.join(model_dir, 'config.yml')
+    config_path = os.path.join(os.path.dirname(model_path), 'config.yml')
     config = Config(config_path)
     config.MODE = 3
     config.MODEL = 1
@@ -107,8 +104,8 @@ def postprocess(img, size=None):
     return img.int()
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'C2PNet/OTS.pkl'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
 
     haze = Image.open(haze_image_path).convert('RGB')
     haze = get_square_img(haze)

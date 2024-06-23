@@ -1,13 +1,37 @@
+import uuid
 from datetime import time
 import os
-from flask import current_app
+import time
+import requests
+from flask import current_app, request
+
+from global_variable import DATA_PATH, CACHE_PATH
+
 
 def generate_predict_img(id):
-    name = "pred_" + id + "_" + str(int(round(time.time() * 1000))) + ".jpg"
-    path = os.path.join(current_app.config['PREDICT_IMAGE_PATH'], name)
-    url = current_app.config['BASE_URL'] + "/predict/" + name
+    name = "pred_" + id + "_" + str(uuid.uuid4()) + ".jpg"
+    path = os.path.join(DATA_PATH, name)
+    url = request.host_url + "/predict/" + name
     return {
         "name": name,
         "path": path,
         "url": url
     }
+
+
+def generate_input_img(url, id):
+    response = requests.get(url, stream=True)
+    name = "input_" + id + "_" + str(uuid.uuid4()) + ".jpg"
+    path = os.path.join(CACHE_PATH, name)
+    if response.status_code == 200:
+        with open(path, 'wb') as file:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    file.write(chunk)
+        return {
+            "name": name,
+            "path": path,
+            "url": url
+        }
+    else:
+        raise Exception("图片下载失败")

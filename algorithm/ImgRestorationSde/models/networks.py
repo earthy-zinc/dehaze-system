@@ -2,7 +2,7 @@ import logging
 
 import torch
 
-from benchmark.ImgRestorationSde.models import modules as M
+from . import modules as M
 
 logger = logging.getLogger("base")
 

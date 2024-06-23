@@ -5,22 +5,20 @@ import torch
 import torchvision.utils as torch_utils
 from PIL import Image
 
-from benchmark.LightDehazeNet.lightdehazeNet import LightDehaze_Net
+from .lightdehazeNet import LightDehaze_Net
 from global_variable import MODEL_PATH, DEVICE
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     net = LightDehaze_Net()
     net = net.to(DEVICE)
-    net.load_state_dict(torch.load(model_dir))
+    net.load_state_dict(torch.load(model_path))
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'C2PNet/OTS.pkl'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
 
     haze = Image.open(haze_image_path).convert('RGB')
     hazy_image = (np.asarray(haze) / 255.0)

@@ -6,27 +6,25 @@ import torchvision.utils
 from PIL import Image
 from torch.autograd import Variable
 
-from benchmark.SCANet.models import Generator
+from .models import Generator
 from global_variable import MODEL_PATH, DEVICE, DEVICE_ID
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     net = Generator()
     net.to(DEVICE)
 
     net = torch.nn.DataParallel(net, device_ids=DEVICE_ID).cuda()
 
-    model_info = torch.load(model_dir)
+    model_info = torch.load(model_path)
 
     net.load_state_dict(model_info['state_dict'])
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = ''):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
 
     norm = lambda x: (x - 0.5) / 0.5
     denorm = lambda x: (x + 1) / 2

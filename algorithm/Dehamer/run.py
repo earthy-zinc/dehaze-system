@@ -6,23 +6,21 @@ import torchvision.utils
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
 
-from benchmark.Dehamer.swin_unet import UNet_emb
+from .swin_unet import UNet_emb
 from global_variable import MODEL_PATH, DEVICE
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     net = UNet_emb()
     net = net.to(DEVICE)
-    net.load_state_dict(torch.load(model_dir), strict=False)
+    net.load_state_dict(torch.load(model_path), strict=False)
     net.eval()
     return net
 
 
 # TODO 有点问题
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = ''):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
 
     haze = Image.open(haze_image_path).convert('RGB')
     a = haze.size

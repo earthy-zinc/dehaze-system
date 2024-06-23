@@ -22,19 +22,17 @@ def single(save_dir):
     return new_state_dict
 
 
-def get_model(model_name: str):
-    # 构造模型文件的绝对路径
-    model_dir = os.path.join(MODEL_PATH, model_name)
-    net = eval(model_name.split("/")[3].replace('-', '_').replace('.pth', ''))()
+def get_model(model_path: str):
+    net = eval(os.path.basename(model_path).replace('-', '_').replace('.pth', ''))()
     net = net.to(DEVICE)
-    net.load_state_dict(single(model_dir), strict=False)
+    net.load_state_dict(single(model_path), strict=False)
     torch.cuda.empty_cache()
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'DehazeFormer/indoor/dehazeformer-b.pth'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
     haze = Image.open(haze_image_path).convert('RGB')
     haze = tfs.ToTensor()(haze)[None, ::]
     haze = haze.to(DEVICE)

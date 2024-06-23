@@ -10,10 +10,9 @@ from global_variable import MODEL_PATH, DEVICE
 from .model.backbone import Backbone
 
 
-def get_model(model_name: str):
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     net = Backbone().to(DEVICE)
-    ckpt = torch.load(model_dir, map_location='cpu')
+    ckpt = torch.load(model_path, map_location='cpu')
     net.load_state_dict(ckpt)
     net.eval()
     return net
@@ -27,8 +26,8 @@ def pad_img(x, patch_size):
     return x
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'DEA-Net/HAZE4K/PSNR3426_SSIM9885.pth'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
     haze = Image.open(haze_image_path).convert('RGB')
     haze = tfs.ToTensor()(haze)[None, ::]
     haze = haze.to(DEVICE)

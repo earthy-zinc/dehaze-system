@@ -12,19 +12,18 @@ from global_variable import DEVICE, MODEL_PATH
 from .models import build_model
 
 
-def get_model(model_name: str):
-    model_dir = os.path.join(MODEL_PATH, model_name)
+def get_model(model_path: str):
     config = get_config()
     swv2_model = build_model(config)
     net = fusion_refine(swv2_model, '')
     net = net.to(DEVICE)
-    net.load_state_dict(torch.load(model_dir))
+    net.load_state_dict(torch.load(model_path))
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_name: str = 'ITBdehaze/best.pkl'):
-    net = get_model(model_name)
+def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+    net = get_model(model_path)
     haze = Image.open(haze_image_path).convert('RGB')
     haze = tfs.ToTensor()(haze)[None, ::]
     haze = haze.to(DEVICE)

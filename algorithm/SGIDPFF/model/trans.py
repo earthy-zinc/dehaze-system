@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-import benchmark.SGIDPFF.model.unet as unet
+import unet as unet
 
 
 def make_model(args):
