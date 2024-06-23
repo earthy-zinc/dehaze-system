@@ -5,7 +5,9 @@ import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.AlgorithmConverter;
 import com.pei.dehaze.mapper.SysAlgorithmMapper;
@@ -50,17 +52,25 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
 
     @Override
     public boolean addAlgorithm(AlgorithmForm algorithm) {
-        return false;
+        SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
+        sysAlgorithm.setStatus(StatusEnum.ENABLE.getValue());
+        sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        return this.save(sysAlgorithm);
     }
 
     @Override
     public boolean updateAlgorithm(AlgorithmForm algorithm) {
-        return false;
+        SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
+        sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        return this.updateById(sysAlgorithm);
     }
 
     @Override
     public boolean deleteAlgorithms(List<Long> ids) {
-        return false;
+        List<SysAlgorithm> children = this.list(new LambdaQueryWrapper<SysAlgorithm>()
+                .in(SysAlgorithm::getParentId, ids));
+        List<Long> childrenIds = children.stream().map(SysAlgorithm::getId).toList();
+        return this.removeByIds(CollUtil.addAll(ids, childrenIds));
     }
 
     private List<AlgorithmVO> buildAlgorithmTree(Long rootId, List<SysAlgorithm> algorithms) {
