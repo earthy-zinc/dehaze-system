@@ -1,6 +1,6 @@
 package com.pei.dehaze.model.form;
 
-import com.pei.dehaze.common.validator.PathExists;
+import com.pei.dehaze.common.validator.DirExists;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -25,7 +25,7 @@ public class DatasetForm {
     private String description;
 
     @Schema(description = "数据集存储路径")
-    @PathExists
+    @DirExists
     private String path;
 
     @Schema(description = "状态(1:正常;0:禁用)")

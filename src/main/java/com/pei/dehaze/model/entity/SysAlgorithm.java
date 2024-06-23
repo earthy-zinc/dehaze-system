@@ -23,7 +23,7 @@ public class SysAlgorithm extends BaseEntity {
 
     private String path;
 
-    private Long size;
+    private String size;
 
     private String importPath;
 

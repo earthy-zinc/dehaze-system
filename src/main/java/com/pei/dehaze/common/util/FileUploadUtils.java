@@ -5,13 +5,16 @@ package com.pei.dehaze.common.util;
  * @since 2024-06-08 22:17:57
  */
 
+import cn.hutool.core.io.FileUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.velocity.shaded.commons.io.FilenameUtils;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -45,5 +48,30 @@ public class FileUploadUtils {
             extension = MimeTypeUtils.getExtension(Objects.requireNonNull(file.getContentType()));
         }
         return extension;
+    }
+
+    public static int dirFileCount(String dir) {
+
+        File directory = FileUtil.file(dir);
+        if (FileUtil.isDirectory(directory)) {
+            List<File> files = FileUtil.loopFiles(directory);
+            return files.size();
+        } else {
+            return 0;
+        }
+    }
+
+    public static String dirSize(String dir) {
+        File directory = FileUtil.file(dir);
+        if (FileUtil.isDirectory(directory)) {
+            long size = FileUtil.size(directory);
+            return FileUtil.readableFileSize(size);
+        } else {
+            return "0";
+        }
+    }
+
+    public static String fileSize(String filePath) {
+        return FileUtil.readableFileSize(FileUtil.size(new File(filePath)));
     }
 }
