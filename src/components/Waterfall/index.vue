@@ -152,7 +152,7 @@ watchDebounced(
   { debounce: props.delay }
 );
 
-provide("sizeChangeTime", sizeChangeTime);
+// provide("sizeChangeTime", sizeChangeTime);
 
 // 图片加载完成
 provide("imgLoaded", renderer);

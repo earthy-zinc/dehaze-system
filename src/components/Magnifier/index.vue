@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { loadImage } from "@/utils";
 import { PropType } from "vue";
+import { transform } from "../AlgorithmToolBar/utils";
 
 defineOptions({
   name: "Magnifier",
@@ -34,14 +35,30 @@ const props = defineProps({
     type: String,
     required: false,
   },
+  brightness: {
+    type: Number,
+    default: 0,
+  },
+  contrast: {
+    type: Number,
+    default: 0,
+  },
   point: {
     type: Object as PropType<{ x: number; y: number }>,
     required: true,
   },
+  label: {
+    type: Object as PropType<{
+      text: string;
+      color: string;
+      backgroundColor: string;
+    }>,
+    required: false,
+  },
 });
 
 const canvasRef = ref<HTMLCanvasElement>();
-const ctx = ref<CanvasRenderingContext2D>();
+const ctxRef = ref<CanvasRenderingContext2D>();
 const img = ref<HTMLImageElement>();
 const trueScale = ref(1);
 const width = ref(0);
@@ -84,8 +101,26 @@ async function initImage() {
   }
 }
 
+function drawLabel() {
+  if (!props.label) return;
+  const { text, color, backgroundColor } = props.label;
+  const ctx = ctxRef.value!;
+  ctx.font = "15px sans-serif";
+  ctx.fillStyle = backgroundColor;
+  ctx.globalAlpha = 0.2;
+
+  let metrics = ctx.measureText(text);
+  let textWidth = metrics.width + 10;
+  ctx.fillRect(0, 0, textWidth, 20);
+
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.fillText(text, 3, 15);
+}
+
 function drawImageOnMouseMove() {
-  if (ctx.value && img.value) {
+  if (ctxRef.value && img.value) {
+    const ctx = ctxRef.value;
     const { point } = props;
     let sx = Math.max(
       0,
@@ -102,8 +137,8 @@ function drawImageOnMouseMove() {
       )
     );
 
-    ctx.value.clearRect(0, 0, width.value, height.value);
-    ctx.value.drawImage(
+    ctx.clearRect(0, 0, width.value, height.value);
+    ctx.drawImage(
       img.value,
       sx,
       sy,
@@ -114,6 +149,8 @@ function drawImageOnMouseMove() {
       width.value,
       height.value
     );
+
+    drawLabel();
   }
 }
 
@@ -142,8 +179,15 @@ watch(
   { deep: true }
 );
 
+watch([() => props.brightness, () => props.contrast], () => {
+  if (ctxRef.value) {
+    ctxRef.value.filter = `brightness(${transform(props.brightness)}%) contrast(${transform(props.contrast)}%)`;
+    drawImageOnMouseMove();
+  }
+});
+
 onMounted(async () => {
-  ctx.value = canvasRef.value!.getContext("2d")!;
+  ctxRef.value = canvasRef.value!.getContext("2d")!;
   initCanvas();
   await initImage();
   drawImageOnMouseMove();
