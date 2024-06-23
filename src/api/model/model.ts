@@ -14,14 +14,16 @@ export interface PredParam {
 
 export interface EvalParam {
   modelId: number;
+  // 在服务器上的路径
   input: string;
+  // 在服务器上的路径
   output?: string;
 }
 
 export interface EvalResult {
   id: number;
   // 评价指标的名称
-  laebl: string;
+  label: string;
   // 评价指标的值
   value: string;
   // 基准值
