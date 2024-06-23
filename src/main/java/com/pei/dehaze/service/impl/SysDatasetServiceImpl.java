@@ -7,7 +7,9 @@ import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.base.BasePageQuery;
+import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.DatasetConverter;
 import com.pei.dehaze.mapper.SysDatasetMapper;
@@ -42,6 +44,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysDataset> implements SysDatasetService {
+
     private final DatasetConverter datasetConverter;
 
     private final ImageItemRepository imageItemRepository;
@@ -105,12 +108,25 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
     @Override
     public boolean addDataset(DatasetForm dataset) {
-        return false;
+        SysDataset sysDataset = datasetConverter.form2Entity(dataset);
+        sysDataset.setStatus(StatusEnum.ENABLE.getValue());
+        sysDataset.setSize(FileUploadUtils.dirSize(sysDataset.getPath()));
+        sysDataset.setTotal(FileUploadUtils.dirFileCount(sysDataset.getPath()));
+        return this.save(sysDataset);
     }
 
     @Override
     public boolean updateDataset(DatasetForm dataset) {
-        return false;
+        SysDataset sysDataset = datasetConverter.form2Entity(dataset);
+
+        SysDataset old = this.getById(dataset.getId());
+        if (!sysDataset.getPath().equals(old.getPath())) {
+            sysDataset.setSize(FileUploadUtils.dirSize(sysDataset.getPath()));
+            sysDataset.setTotal(FileUploadUtils.dirFileCount(sysDataset.getPath()));
+        }
+
+        sysDataset.setStatus(StatusEnum.ENABLE.getValue());
+        return this.updateById(sysDataset);
     }
 
     @NotNull
@@ -237,7 +253,11 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
     @Override
     public boolean deleteDatasets(List<Long> ids) {
-        return this.removeByIds(ids);
+        // 获取其子数据集id
+        List<SysDataset> childDatasets = this.list(new LambdaQueryWrapper<SysDataset>()
+                .in(SysDataset::getParentId, ids));
+        List<Long> childrenIds = childDatasets.stream().map(SysDataset::getId).toList();
+        return this.removeBatchByIds(CollUtil.addAll(ids, childrenIds));
     }
 
     private List<DatasetVO> buildDatasetTree(Long rootId, List<SysDataset> datasets) {

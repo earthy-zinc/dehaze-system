@@ -1,6 +1,6 @@
 package com.pei.dehaze.model.form;
 
-import com.pei.dehaze.common.validator.PathExists;
+import com.pei.dehaze.common.validator.FileExists;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -22,7 +22,7 @@ public class AlgorithmForm {
     private String name;
 
     @Schema(description = "算法模型文件存储路径")
-    @PathExists
+    @FileExists
     private String path;
 
     @Schema(description = "算法代码Python导入路径")

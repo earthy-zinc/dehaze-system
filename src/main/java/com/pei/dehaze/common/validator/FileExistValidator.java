@@ -5,11 +5,11 @@ import jakarta.validation.ConstraintValidatorContext;
 
 import java.io.File;
 
-public class PathExistValidator implements ConstraintValidator<PathExists, String> {
+public class FileExistValidator implements ConstraintValidator<FileExists, String> {
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
-        File directory = new File(value);
-        return directory.exists() && directory.isDirectory(); // 路径存在且为目录
+        File file = new File(value);
+        return file.exists() && file.isFile(); // 路径存在且为目录
     }
 }
