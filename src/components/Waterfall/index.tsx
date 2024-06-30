@@ -1,10 +1,10 @@
-import { WaterfallProps } from "@/components/Waterfall/types.ts";
+import { WaterfallProps } from "@/components/Waterfall/types";
 import "./index.scss";
-import React, { useEffect, useState } from "react";
-import useLayout from "./useLayout";
-import useCalculateCols from "./useCalculateCols";
 import { useDebounceFn } from "ahooks";
+import React, { useEffect } from "react";
 import LazyImg from "../LazyImg";
+import useCalculateCols from "./useCalculateCols";
+import useLayout from "./useLayout";
 
 const Waterfall: React.FC<WaterfallProps> = (props) => {
   const {
@@ -73,7 +73,7 @@ const Waterfall: React.FC<WaterfallProps> = (props) => {
       className="waterfall-list"
       style={{ height: `${wrapperHeight}px` }}
     >
-      {list.map((url) => (
+      {list.map((url: string) => (
         <div key={url} className="waterfall-item">
           <div className="waterfall-card">
             <LazyImg url={url} renderer={renderer.run} />

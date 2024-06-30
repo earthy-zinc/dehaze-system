@@ -1,9 +1,5 @@
-import {
-  Breakpoints,
-  ItemWidthProps,
-  WaterfallProps,
-} from "@/components/Waterfall/types.ts";
-import { useResizeObserver } from "@/hooks/useResizeObserver.ts";
+import { Breakpoints, ItemWidthProps } from "@/components/Waterfall/types";
+import { useResizeObserver } from "@/hooks/useResizeObserver";
 import { Nullable } from "@/utils/types";
 import React, { useState } from "react";
 

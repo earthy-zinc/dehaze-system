@@ -8,7 +8,6 @@ import { Link } from "react-router-dom";
 export const Logo: React.FC = () => {
   const appStore = useSelector((state: RootState) => state.app);
   const collapsed = appStore.sidebarStatus === SidebarStatusEnum.COLLAPSED;
-
   return (
     <div className="logo-container">
       <Link className="logo" to={"/"}>

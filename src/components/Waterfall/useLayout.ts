@@ -1,6 +1,5 @@
-import { WaterfallProps } from "@/components/Waterfall/types.ts";
 import { addClass, hasClass, prefixStyle } from "@/utils";
-import { CssStyleObject, Nullable } from "@/utils/types.ts";
+import { CssStyleObject, Nullable } from "@/utils/types";
 import React, { useCallback, useEffect, useState } from "react";
 
 const transform = prefixStyle("transform");

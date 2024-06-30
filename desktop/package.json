@@ -1,0 +1,32 @@
+{
+  "name": "dehaze-front-desktop",
+  "version": "1.0.0",
+  "main": "src/main.js",
+  "license": "MIT",
+  "scripts": {
+    "dev": "tsc --watch && cross-env NODE_ENV=development electron .",
+    "build:win64": "electron-builder -w --x64",
+    "build:linux64": "electron-builder -l --x64"
+  },
+  "build": {
+    "appId": "com.pei.dehaze-front-desktop",
+    "productName": "图像去雾系统",
+    "files": [
+      "../dist/*",
+      "src/*"
+    ],
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    }
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^31.1.0",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.5.2"
+  }
+}
