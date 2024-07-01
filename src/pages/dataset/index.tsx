@@ -7,21 +7,25 @@ import {
   Checkbox,
   Form,
   Input,
-  Modal,
   Popconfirm,
   Popover,
   Table,
   TableColumnsType,
 } from "antd";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useNavigate } from "react-router-dom";
+import EditModal from "./components/EditModal";
 
 export default function DatasetList() {
   const [datasetList, setDatasetList] = useState<Dataset[]>();
   const [loading, setLoading] = useState(false);
   const [queryParams, setQueryParams] = useState<DatasetQuery>({});
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [currentRecord, setCurrentRecord] = useState<Dataset>();
 
   const navigate = useNavigate();
   const handleShow = useCallback(
@@ -32,13 +36,6 @@ export default function DatasetList() {
     },
     [navigate]
   );
-
-  const handleEdit = (record: Dataset) => {
-    return () => {
-      setCurrentRecord(record);
-      setEditModalVisible(true);
-    };
-  };
 
   const handleDelete = useCallback(
     (id: number) => {
@@ -111,7 +108,15 @@ export default function DatasetList() {
               type="text"
               size="small"
               icon={<EditOutlined />}
-              onClick={handleEdit(record)}
+              onClick={() => openModal("新增", record)}
+            >
+              新增
+            </Button>
+            <Button
+              type="text"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => openModal("编辑", record)}
             >
               编辑
             </Button>
@@ -185,7 +190,13 @@ export default function DatasetList() {
     setQueryParams({});
   };
 
-  const submitEdit = (values: Dataset) => {};
+  // 获取对话框实例
+  const editRef = useRef(null);
+
+  // 打开对话框
+  const openModal = (type: string, row: Dataset) => {
+    (editRef.current as any)?.open(type, row);
+  };
 
   return (
     <div className="app-container">
@@ -211,6 +222,7 @@ export default function DatasetList() {
           </Form.Item>
         </Form>
       </Card>
+
       <Card style={{ overflowX: "hidden" }}>
         <Table
           columns={visibleColumns}
@@ -223,28 +235,8 @@ export default function DatasetList() {
           pagination={false}
         />
       </Card>
-      <Modal
-        title={"编辑数据集信息"}
-        open={editModalVisible}
-        okText="保存"
-        cancelText="取消"
-        okButtonProps={{ autoFocus: true, htmlType: "submit" }}
-        onCancel={() => setEditModalVisible(false)}
-        destroyOnClose
-        modalRender={(dom) => (
-          <Form
-            layout="vertical"
-            name="编辑数据集信息"
-            onFinish={(values) => submitEdit(values)}
-          >
-            {dom}
-          </Form>
-        )}
-      >
-        <Form.Item>
-          <Input></Input>
-        </Form.Item>
-      </Modal>
+
+      <EditModal ref={editRef} />
     </div>
   );
 }
