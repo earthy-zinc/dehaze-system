@@ -5,6 +5,8 @@ from collections import OrderedDict
 import pyiqa
 import torch
 import math
+
+import torchvision.transforms
 from thop import profile
 from timm.scheduler import CosineLRScheduler
 from torch import nn
@@ -17,6 +19,7 @@ from basicsr.archs.swin_transformer_v2 import SwinTransformerV2
 from basicsr.losses.FAA_loss import FAALossNetwork
 from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, tensor2img, img2tensor, imwrite
+from basicsr.utils.img_util import resize_image
 from basicsr.utils.registry import MODEL_REGISTRY
 from basicsr.utils.static_util import convert_size
 import torch.nn.functional as F
@@ -122,10 +125,88 @@ class ITBDehazeModel(BaseModel):
         self.optimizer_D.step()
         self.optimizer_G.step()
 
+
+    def test_tile(self, input, tile_size=240, tile_pad=16):
+        # return self.test(input)
+        """It will first crop input images to tiles, and then process each tile.
+        Finally, all the processed tiles are merged into one images.
+        Modified from: https://github.com/xinntao/Real-ESRGAN/blob/master/realesrgan/utils.py
+        """
+        batch, channel, height, width = input.shape
+        output_height = height
+        output_width = width
+        output_shape = (batch, channel, output_height, output_width)
+
+        # start with black image
+        output = input.new_zeros(output_shape)
+        tiles_x = math.ceil(width / tile_size)
+        tiles_y = math.ceil(height / tile_size)
+
+        # loop over all tiles
+        for y in range(tiles_y):
+            for x in range(tiles_x):
+                # extract tile from input image
+                ofs_x = x * tile_size
+                ofs_y = y * tile_size
+                # input tile area on total image
+                input_start_x = ofs_x
+                input_end_x = min(ofs_x + tile_size, width)
+                input_start_y = ofs_y
+                input_end_y = min(ofs_y + tile_size, height)
+
+                # input tile area on total image with padding
+                input_start_x_pad = max(input_start_x - tile_pad, 0)
+                input_end_x_pad = min(input_end_x + tile_pad, width)
+                input_start_y_pad = max(input_start_y - tile_pad, 0)
+                input_end_y_pad = min(input_end_y + tile_pad, height)
+
+                # input tile dimensions
+                input_tile_width = input_end_x - input_start_x
+                input_tile_height = input_end_y - input_start_y
+                tile_idx = y * tiles_x + x + 1
+                input_tile = input[:, :, input_start_y_pad:input_end_y_pad, input_start_x_pad:input_end_x_pad]
+                # upscale tile
+                output_tile = self.resize(input_tile)
+
+                # output tile area on total image
+                output_start_x = input_start_x
+                output_end_x = input_end_x
+                output_start_y = input_start_y
+                output_end_y = input_end_y
+
+                # output tile area without padding
+                output_start_x_tile = (input_start_x - input_start_x_pad)
+                output_end_x_tile = output_start_x_tile + input_tile_width
+                output_start_y_tile = (input_start_y - input_start_y_pad)
+                output_end_y_tile = output_start_y_tile + input_tile_height
+
+                # put tile into output image
+                output[:, :, output_start_y:output_end_y,
+                output_start_x:output_end_x] = output_tile[:, :, output_start_y_tile:output_end_y_tile,
+                                               output_start_x_tile:output_end_x_tile]
+        # print(output.shape)
+        return output
+
+    def resize(self, input):
+        _, _, h_old, w_old = input.shape
+        h_pad = 1024 - h_old
+        w_pad = 1024 - w_old
+        while input.shape[2] != 1024:
+            input = torch.cat([input, torch.flip(input, [2])], 2)[:, :, :h_old + h_pad, :]
+        while input.shape[3] != 1024:
+            input = torch.cat([input, torch.flip(input, [3])], 3)[:, :, :, :w_old + w_pad]
+        # print(input.shape)
+        output = self.net_g(input)
+        output = output[..., :h_old, :w_old]
+        return output
+
+
     def test(self):
         self.net_g.eval()
         with torch.no_grad():
-            self.output = self.net_g(self.lq)
+            # print(self.lq.shape)
+            self.output = self.test_tile(self.lq, 900, 124)
+            # self.output = self.net_g(self.lq)
         self.net_g.train()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
@@ -203,8 +284,8 @@ class ITBDehazeModel(BaseModel):
                 if to_update:
                     for name, opt_ in self.opt['val']['metrics'].items():
                         self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
-                    self.copy_model(self.net_g, self.net_g_best)
-                    self.save_network(self.net_g, 'net_g_best', '')
+                    # self.copy_model(self.net_g, self.net_g_best)
+                    # self.save_network(self.net_g, 'net_g_best', '')
             else:
                 # update each metric separately
                 updated = []
@@ -213,9 +294,9 @@ class ITBDehazeModel(BaseModel):
                                                                   current_iter)
                     updated.append(tmp_updated)
                 # save best model if any metric is updated
-                if sum(updated):
-                    self.copy_model(self.net_g, self.net_g_best)
-                    self.save_network(self.net_g, 'net_g_best', '')
+                # if sum(updated):
+                #     self.copy_model(self.net_g, self.net_g_best)
+                #     self.save_network(self.net_g, 'net_g_best', '')
 
             self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
 

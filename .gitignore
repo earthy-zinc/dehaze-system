@@ -2,6 +2,7 @@
 datasets/*
 experiments*
 experiments/*
+compare
 # results/*
 tb_logger*
 pretrained_models
@@ -12,7 +13,7 @@ tmp*/*
 .github
 # ignored files
 version.py
-
+.idea/sonarlint/*
 # ignored files with suffix
 *.html
 *.pth
