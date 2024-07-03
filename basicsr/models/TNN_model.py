@@ -14,6 +14,7 @@ from basicsr.archs import build_network
 from basicsr.losses.FAA_loss import FAALossNetwork
 from basicsr.models.base_model import BaseModel
 from basicsr.utils import get_root_logger, tensor2img, img2tensor, imwrite
+from basicsr.utils.img_util import resize_image
 from basicsr.utils.registry import MODEL_REGISTRY
 from basicsr.utils.static_util import convert_size
 import torch.nn.functional as F
@@ -81,11 +82,11 @@ class TNNModel(BaseModel):
 
     def feed_data(self, data):
         if 'lq' in data:
-            self.lq = data['lq'].to(self.device)
+            self.lq = resize_image(data['lq'].to(self.device))
         else:
             self.lq = None
         if 'gt' in data:
-            self.gt = data['gt'].to(self.device)
+            self.gt = resize_image(data['gt'].to(self.device))
         else:
             self.gt = None
 

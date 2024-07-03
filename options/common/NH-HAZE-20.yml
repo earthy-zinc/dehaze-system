@@ -32,10 +32,10 @@ datasets:
 
   test:
     name: NH-HAZE-20-test
-    type: NtireDataset
+    type: NtireH5Dataset
     mode: test
-    haze_path: NH-HAZE-2020/hazy
-    clear_path: NH-HAZE-2020/clean
+    data_path: datasets/NH-HAZE-20-test.h5
+    shuffle: false
 
 # network structures
 network_g:
@@ -58,7 +58,7 @@ hq_options:
 # path
 path:
   pretrain_network_hq: pretrained_models/pretrained_HQPs_ITB.pth
-  pretrain_network_g:
+  pretrain_network_g: experiments/NH-HAZE-20/models/net_g_latest.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~

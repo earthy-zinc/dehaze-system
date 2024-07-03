@@ -1,6 +1,7 @@
 # general settings
-name: O-HAZE
-model_type: ITBNewModel
+# 由于
+name: ITBDehaze-O-HAZE
+model_type: ITBDehazeModel
 num_gpu: 1 # set num_gpu: 0 for cpu mode
 gpu_id: 0
 manual_seed: 0
@@ -24,41 +25,32 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: DENSE-HAZE-val
+    name: O-HAZE-val
     type: NtireH5Dataset
     mode: val
     data_path: datasets/O-HAZE-val.h5
     shuffle: true
 
   test:
-    name: DENSE-HAZE-test
-    type: NtireH5Dataset
+    name: O-HAZE-test
+    type: NtireDataset
     mode: test
-    data_path: datasets/O-HAZE-test.h5
+    haze_path: O-HAZE/hazy
+    clear_path: O-HAZE/clean
     shuffle: true
 
 # network structures
 network_g:
-  type: FusionRefine
-  opt:
-    LQ_stage: true
-    additional_encoder: PyramidDiNAT
-  frozen_module_keywords: ['quantizer', 'decoder_group', 'after_quant', 'out_conv']
+  type: ITBDehaze
+  imagenet_model: SwinTransformerV2
 
 network_d:
-  type: UNetDiscriminatorSN
-  num_in_ch: 512
+  type: TNNDiscriminator
 
-hq_options:
-  type: RIDCPNew
-  LQ_stage: False
-  additional_encoder: None
-  additional_enhancer: False
 
 # path
 path:
-  pretrain_network_hq: pretrained_models/pretrained_HQPs_ITB.pth
-  pretrain_network_g: experiments/O-HAZE/models/net_g_best_.pth
+  pretrain_network_g: pretrained_models/compare/ITBDehaze/best.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
@@ -67,56 +59,27 @@ path:
 train:
   optim_g:
     type: Adam
-    lr: !!float 1e-4
-    weight_decay: 0
-    betas: [0.9, 0.99]
+    lr: !!float 4e-5
+    weight_decay: !!float 1e-8
   optim_d:
     type: Adam
-    lr: !!float 4e-4
-    weight_decay: 0
-    betas: [0.9, 0.99]
+    lr: !!float 1e-4
 
-  scheduler:
-    type: MultiStepLR
-    milestones: [5000, 10000, 15000, 20000, 250000, 300000, 350000]
-    gamma: 1
+  total_iter: 100000
 
-  total_iter: 150000
-  warmup_iter: -1  # no warm up
-
-  # losses
-  pixel_opt:
-    type: L1Loss
-    loss_weight: 1.0
-    reduction: mean
-
-  perceptual_opt:
-    type: LPIPSLoss
-    loss_weight: !!float 1.0
-    device: cuda:0
-
-  gan_opt:
-    type: GANLoss
-    gan_type: hinge
-    real_label_val: 1.0
-    fake_label_val: 0.0
-    loss_weight: 0.2
-
-  codebook_opt:
-    loss_weight: 1.0
-
-  semantic_opt:
-    loss_weight: 0.1
-
-
-  net_d_iters: !!float 1000
-  net_d_init_iters: !!float 0
+  scheduler_g:
+    t_initial: 10000
+    lr_min: !!float 2.5e-6
+  scheduler_d:
+    milestones: [5000, 7000, 8000]
+    gamma: 0.5
 
 # validation settings·
 val:
   val_freq: !!float 1000
   save_img: true
   suffix: O-HAZE
+
   key_metric: psnr
   metrics:
     psnr: # metric name, can be arbitrary
