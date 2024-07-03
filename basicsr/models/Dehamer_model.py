@@ -4,6 +4,7 @@ from collections import OrderedDict
 import os
 import pyiqa
 import torch
+import torchvision.transforms
 from thop import profile
 from torch import nn
 from tqdm import tqdm
@@ -43,6 +44,8 @@ class DehamerModel(BaseModel):
         if self.is_train:
             self._init_training_settings()
         self.net_g_best = copy.deepcopy(self.net_g)
+        self.normalize = torchvision.transforms.Normalize((0.64, 0.6, 0.58), (0.14,0.15, 0.152))
+
 
     def _init_training_settings(self):
         train_opt = self.opt['train']
@@ -57,6 +60,7 @@ class DehamerModel(BaseModel):
     def feed_data(self, data):
         if 'lq' in data:
             self.lq = resize_image(data['lq'].to(self.device))
+            self.lq = self.normalize(self.lq)
         else:
             self.lq = None
         if 'gt' in data:

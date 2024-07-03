@@ -7,6 +7,7 @@ import torch
 import math
 from thop import profile
 from torch import nn
+from torchvision import transforms
 from torchvision.models import vgg16
 from tqdm import tqdm
 
@@ -44,6 +45,9 @@ class FogRemovalModel(BaseModel):
         if self.is_train:
             self._init_training_settings()
         self.net_g_best = copy.deepcopy(self.net_g)
+        self.transform = transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+
+
 
     def _init_training_settings(self):
         logger = get_root_logger()
@@ -57,12 +61,19 @@ class FogRemovalModel(BaseModel):
         optim_type = train_opt['optim_g'].pop('type')
 
     def feed_data(self, data):
-        if 'lq' in data:
-            self.lq = data['lq'].to(self.device)
-        else:
-            self.lq = None
+        self.lq = data['lq'].to(self.device)
+        _, _, w, h = self.lq.shape
+        shortest = min([w, h])
+        new_w = int(math.ceil(float(w) / shortest * 512))
+        new_h = int(math.ceil(float(h) / shortest * 512))
+
+        new_w = round(new_w / 4) * 4
+        new_h = round(new_h / 4) * 4
+        resize = transforms.Resize((new_w, new_h))
+        self.lq = resize(self.lq)
         if 'gt' in data:
             self.gt = data['gt'].to(self.device)
+            self.gt = resize(self.gt)
         else:
             self.gt = None
 
@@ -72,7 +83,9 @@ class FogRemovalModel(BaseModel):
     def test(self):
         self.net_g.eval()
         with torch.no_grad():
-            self.output = self.net_g(self.lq)
+            lq = self.transform(self.lq)
+            output, _, _ = self.net_g(lq)
+            self.output = (output + 1.) / 2.
         self.net_g.train()
 
     def dist_validation(self, dataloader, current_iter, tb_logger, save_img, save_as_dir=None):
@@ -150,8 +163,8 @@ class FogRemovalModel(BaseModel):
                 if to_update:
                     for name, opt_ in self.opt['val']['metrics'].items():
                         self._update_metric_result(dataset_name, name, self.metric_results[name], current_iter)
-                    self.copy_model(self.net_g, self.net_g_best)
-                    self.save_network(self.net_g, 'net_g_best', '')
+                    # self.copy_model(self.net_g, self.net_g_best)
+                    # self.save_network(self.net_g, 'net_g_best', '')
             else:
                 # update each metric separately
                 updated = []
@@ -160,9 +173,9 @@ class FogRemovalModel(BaseModel):
                                                                   current_iter)
                     updated.append(tmp_updated)
                 # save best model if any metric is updated
-                if sum(updated):
-                    self.copy_model(self.net_g, self.net_g_best)
-                    self.save_network(self.net_g, 'net_g_best', '')
+                # if sum(updated):
+                #     self.copy_model(self.net_g, self.net_g_best)
+                #     self.save_network(self.net_g, 'net_g_best', '')
 
             self._log_validation_metric_values(current_iter, dataset_name, tb_logger)
 

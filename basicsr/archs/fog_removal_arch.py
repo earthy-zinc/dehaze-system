@@ -9,6 +9,9 @@ from basicsr.archs.fogremoval.modules import SimpleGray, GaussianBlur, RGB2Satur
 from basicsr.archs.fogremoval.losses import GANLoss
 import torch.nn.functional as F
 
+from basicsr.utils.registry import ARCH_REGISTRY
+
+
 ###############################################################################
 # Helper Functions
 ###############################################################################
@@ -1238,8 +1241,9 @@ class GlobalGenerator(nn.Module):
     def forward(self, input):
         return self.model(input)
 
+@ARCH_REGISTRY.register()
 class ResnetGenerator(nn.Module):
-    def __init__(self, input_nc, output_nc, ngf=64, n_blocks=6, img_size=256, light=False):
+    def __init__(self, input_nc=3, output_nc=3, ngf=64, n_blocks=4, img_size=512, light=True):
         assert(n_blocks >= 0)
         super(ResnetGenerator, self).__init__()
         self.input_nc = input_nc
