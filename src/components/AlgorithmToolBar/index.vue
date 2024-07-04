@@ -72,9 +72,21 @@ const emit = defineEmits([
 
 <style lang="scss" scoped>
 .sidebar-card {
-  width: 30vw;
+  width: 35vw;
   height: 100%;
   padding: 0 15px;
   overflow-y: auto;
+}
+
+@media screen and (width <= 992px) {
+  .sidebar-card {
+    width: 96vw;
+  }
+}
+
+@media screen and (width <= 767px) {
+  .sidebar-card {
+    width: 94vw;
+  }
 }
 </style>
