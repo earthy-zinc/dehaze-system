@@ -6,6 +6,7 @@ import Camera from "@/components/Camera/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import Loading from "@/components/Loading/index.vue";
+import Evaluation from "@/components/Evaluation/index.vue";
 
 const image1 = ref("");
 const image2 = ref("");
@@ -83,6 +84,7 @@ function handleMouseover(p: Point) {
 
 <template>
   <div class="app-container">
+    <!-- 左侧工具栏 -->
     <AlgorithmToolBar
       :disable-more="disableMore"
       :magnifier="magnifier"
@@ -94,19 +96,36 @@ function handleMouseover(p: Point) {
       @on-brightness-change="(value: number) => (brightness = value)"
       @on-contrast-change="(value: number) => (contrast = value)"
     />
-    <el-card class="flex-center" style="width: 69vw">
+    <!-- 右侧功能栏 -->
+    <el-card class="flex-center">
+      <!-- 样例图片显示 -->
       <ExampleImageSelect
         v-if="show.example"
         :urls="exampleImageUrls"
         @on-example-select="handleExampleImageClick"
       />
+      <!-- 拍照上传 -->
       <Camera
         v-if="show.camera"
         @on-cancel="activePage('example')"
         @on-save="handleImageUpload"
       />
+      <!-- 单图展示 -->
       <SingleImageShow v-if="show.singleImage" :src="image1" />
       <Loading v-if="show.loading" />
+      <!-- 评价指标 -->
+      <div class="ev-all-wrap">
+        <div class="ev-wrap">
+          <Evaluation />
+        </div>
+        <div class="ev-wrap">
+          <Evaluation />
+        </div>
+        <div class="ev-wrap">
+          <Evaluation />
+        </div>
+      </div>
+      <!-- 重叠展示 -->
       <OverlapImageShow
         v-if="show.overlap"
         :brightness="brightness"
@@ -125,5 +144,46 @@ function handleMouseover(p: Point) {
 .app-container {
   display: flex;
   height: calc(100vh - $navbar-height);
+}
+
+.flex-center {
+  width: 64vw;
+  padding-top: 200px;
+  overflow-y: scroll;
+
+  .ev-all-wrap {
+    display: flex;
+    justify-content: space-between;
+    width: 60vw;
+
+    .ev-wrap {
+      width: 30%;
+    }
+  }
+}
+
+@media screen and (width <= 992px) {
+  .app-container {
+    display: flex;
+    flex-wrap: wrap;
+    height: auto;
+  }
+
+  .flex-center {
+    width: 100vw;
+    padding-top: 0;
+    margin-top: 10px;
+
+    .ev-all-wrap {
+      display: flex;
+      flex-direction: column;
+      width: 82vw;
+
+      .ev-wrap {
+        width: 100%;
+        margin: 10px 0;
+      }
+    }
+  }
 }
 </style>

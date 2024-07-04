@@ -5,13 +5,18 @@ defineOptions({
 </script>
 
 <template>
-  <div>
+  <div class="wrap">
     <div class="loading"><span v-for="i in 5" :key="i"></span></div>
     <span class="ml-2">正在生成图片中，请耐心等候</span>
   </div>
 </template>
 
 <style lang="scss" scoped>
+.wrap {
+  width: 100%;
+  text-align: center;
+}
+
 .loading {
   display: inline-block;
   width: 50px;
