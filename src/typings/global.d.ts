@@ -67,7 +67,7 @@ declare global {
     /** 导航栏布局(left|top|mix) */
     layout: string;
     /** 主题颜色 */
-    themeColor: string;
+    themeColor;
     /** 主题模式(dark|light) */
     theme: string;
     /** 布局大小(middle |large |small) */

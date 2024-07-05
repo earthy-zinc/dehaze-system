@@ -139,12 +139,13 @@ const EditModal = forwardRef((props, ref) => {
         <Form.Item label="&nbsp;&nbsp;&nbsp;数据集大小">
           <Space.Compact>
             <Form.Item
+              noStyle
               name={["sizeNumber"]}
               rules={[{ required: true, message: "数据集大小不能为0" }]}
             >
               <InputNumber style={{ width: 120 }} min={0.01} />
             </Form.Item>
-            <Form.Item name={["select"]}>
+            <Form.Item name={["select"]} noStyle>
               <Select placeholder="Select">
                 <Option value="MB">MB</Option>
                 <Option value="DB">DB</Option>

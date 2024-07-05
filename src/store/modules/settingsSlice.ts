@@ -47,7 +47,7 @@ const settingsSlice = createSlice({
     changeTheme: (state, action: PayloadAction<string>) => {
       state.theme = action.payload;
     },
-    changeThemeColor: (state, action: PayloadAction<string>) => {
+    changeThemeColor: (state, action) => {
       state.themeColor = action.payload;
     },
     changeLayout: (state, action: PayloadAction<string>) => {

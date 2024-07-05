@@ -1,12 +1,4 @@
-import {
-  Breadcrumb,
-  ColorPicker,
-  Divider,
-  Drawer,
-  Select,
-  Switch,
-  Tooltip,
-} from "antd";
+import { ColorPicker, Divider, Drawer, Select, Switch, Tooltip } from "antd";
 import "./index.scss";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/store";
@@ -14,6 +6,7 @@ import { MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { ThemeEnum } from "@/enums/ThemeEnum";
 import { LayoutEnum } from "@/enums/LayoutEnum";
 import { Color } from "antd/es/color-picker";
+import { useMemo } from "react";
 
 export const Settings: React.FC = () => {
   const settingsVisiable = useSelector(
@@ -48,7 +41,6 @@ export const Settings: React.FC = () => {
     (item) => item.value === language
   )?.label;
   const handleLanguageChange = (language: string) => {
-    console.log(language);
     dispatch({ type: "app/changeLanguage", payload: language });
   };
 
@@ -92,6 +84,15 @@ export const Settings: React.FC = () => {
   const themeColor = useSelector(
     (state: RootState) => state.settings.themeColor
   );
+
+  // 获取色值
+  const { r, g, b } = useMemo(() => {
+    return {
+      r: themeColor.metaColor.r,
+      g: themeColor.metaColor.g,
+      b: themeColor.metaColor.b,
+    };
+  }, [themeColor]);
   const handleThemeColorChange = (color: Color) => {
     dispatch({ type: "settings/changeThemeColor", payload: color });
   };
@@ -119,7 +120,7 @@ export const Settings: React.FC = () => {
       <div className="settings-option">
         <span className="text-xs">主题颜色</span>
         <ColorPicker
-          defaultValue={themeColor}
+          defaultValue={`rgb(${r}, ${g}, ${b})`}
           onChangeComplete={handleThemeColorChange}
         />
       </div>
@@ -157,6 +158,7 @@ export const Settings: React.FC = () => {
           defaultValue={defaultSize}
           style={{ width: 100 }}
           options={sizeOptions}
+          onChange={handleSizeChange}
         />
       </div>
 
