@@ -68,7 +68,7 @@ const sheight = ref(0);
 
 function initCanvas() {
   const { radius, shape } = props;
-  width.value = radius * 2;
+  width.value = radius >= 100 ? radius * 2 : 100 + radius;
   height.value = width.value;
 
   const canvas = canvasRef.value!;
@@ -122,6 +122,7 @@ function drawImageOnMouseMove() {
   if (ctxRef.value && img.value) {
     const ctx = ctxRef.value;
     const { point } = props;
+
     let sx = Math.max(
       0,
       Math.min(

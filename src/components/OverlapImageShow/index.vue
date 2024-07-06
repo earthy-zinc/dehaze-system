@@ -53,13 +53,13 @@ const {
 } = useMouseInElement(image1Ref);
 
 const originScale = computed(() => {
-  if (image1Ref.value) return imgHeight.value / image1Ref.value.naturalHeight;
+  if (image1Ref.value) return imgHeight.value / image1Ref.value.height;
   return 1;
 });
 
 const sliderPosition = ref(0);
 const sliderValue = computed(() => {
-  return (1 - sliderPosition.value / imgHeight.value) * 100;
+  return (1 - sliderPosition.value / imgWidth.value) * 100;
 });
 
 function updateImageStyle() {
@@ -109,6 +109,7 @@ function mouseleave() {
 onMounted(() => {
   watch([contrast, brightness], () => updateImageStyle());
   watch([originScale], () => emit("onOriginScaleChange", originScale.value));
+
   watch([isOutside, elementX, elementY], () => {
     if (!isOutside.value)
       emit("onMouseover", { x: elementX.value, y: elementY.value });
@@ -144,7 +145,7 @@ onMounted(() => {
     <DraggableLine
       left-label="原图"
       right-label="对比图"
-      @update:offset="(value: number) => (sliderPosition = value)"
+      @update:offset="(value) => (sliderPosition = value)"
     />
   </div>
 </template>
@@ -152,13 +153,13 @@ onMounted(() => {
 <style lang="scss" scoped>
 .image-container {
   position: relative;
-  height: calc(100vh - $navbar-height - 22px - 2 * var(--el-card-padding));
+  // height: calc(100vh - $navbar-height - 22px - 2 * var(--el-card-padding));
+  height: 500px;
   overflow: hidden;
 }
 
 .image-container img {
   position: absolute;
-  width: auto;
   height: 100%;
   object-fit: cover;
 }

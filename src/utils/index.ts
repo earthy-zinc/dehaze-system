@@ -240,14 +240,14 @@ export function loadImage(
 ): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
+    /* TODO: */
+    // if (crossOrigin) image.crossOrigin = "anonymous"; // 支持跨域图片
+    image.src = url;
     image.onload = () => {
       resolve(image);
     };
     image.onerror = () => {
       reject(new Error("Image load error"));
     };
-    if (crossOrigin) image.crossOrigin = "Anonymous"; // 支持跨域图片
-
-    image.src = url;
   });
 }
