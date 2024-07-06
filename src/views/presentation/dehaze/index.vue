@@ -7,9 +7,10 @@ import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import Loading from "@/components/Loading/index.vue";
 import Evaluation from "@/components/Evaluation/index.vue";
+import FileAPI from "@/api/file";
 
-const image1 = ref("");
-const image2 = ref("");
+const image1 = ref();
+const image2 = ref();
 const showMask = ref(false);
 const contrast = ref(0);
 const brightness = ref(0);
@@ -51,10 +52,21 @@ function activePage(
 
 function handleCameraSave(file: File) {
   // 上传文件
+  activePage("camera");
 }
 
 function handleImageUpload(file: File) {
   // 上传文件
+  FileAPI.upload(file)
+    .then((res) => {
+      // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
+      console.log(res);
+    })
+    .catch((err) => {
+      ElMessage.error(err);
+    });
+  // 将文件显示到 SingleImageShow 组件中
+  activePage("singleImage");
 }
 
 function handleReset() {
@@ -64,8 +76,11 @@ function handleReset() {
   activePage("example");
 }
 
+// 选择模型后生成对比图（原图 | 去雾图）
 function handleGenerateImage() {
   activePage("loading");
+  image1.value = `https://ai-resource.ailabtools.com/resource/166-before.webp`;
+  image2.value = `https://ai-resource.ailabtools.com/resource/166-after.webp`;
   setTimeout(() => {
     activePage("overlap");
   }, 1000);
@@ -92,14 +107,15 @@ function handleMouseover(p: Point) {
       @on-take-photo="activePage('camera')"
       @on-reset="handleReset"
       @on-generate="handleGenerateImage"
-      @on-magnifier-change="(flag: boolean) => (showMask = flag)"
-      @on-brightness-change="(value: number) => (brightness = value)"
-      @on-contrast-change="(value: number) => (contrast = value)"
+      @on-magnifier-change="(flag) => (showMask = flag)"
+      @on-brightness-change="(value) => (brightness = value)"
+      @on-contrast-change="(value) => (contrast = value)"
     />
     <!-- 右侧功能栏 -->
     <el-card class="flex-center">
       <!-- 样例图片显示 -->
       <ExampleImageSelect
+        class="example"
         v-if="show.example"
         :urls="exampleImageUrls"
         @on-example-select="handleExampleImageClick"
@@ -108,13 +124,17 @@ function handleMouseover(p: Point) {
       <Camera
         v-if="show.camera"
         @on-cancel="activePage('example')"
-        @on-save="handleImageUpload"
+        @on-save="handleCameraSave"
       />
       <!-- 单图展示 -->
-      <SingleImageShow v-if="show.singleImage" :src="image1" />
+      <SingleImageShow
+        class="single-image"
+        v-if="show.singleImage"
+        :src="image1"
+      />
       <Loading v-if="show.loading" />
       <!-- 评价指标 -->
-      <div class="ev-all-wrap">
+      <div class="ev-all-wrap" ref="evRef">
         <div class="ev-wrap">
           <Evaluation />
         </div>
@@ -127,13 +147,14 @@ function handleMouseover(p: Point) {
       </div>
       <!-- 重叠展示 -->
       <OverlapImageShow
+        class="overlap"
         v-if="show.overlap"
         :brightness="brightness"
         :contrast="contrast"
         :image1="image1"
         :image2="image2"
         :show-mask="showMask"
-        @on-origin-scale-change="(value: number) => (originScale = value)"
+        @on-origin-scale-change="(value) => (originScale = value)"
         @on-mouseover="handleMouseover"
       />
     </el-card>
@@ -148,16 +169,29 @@ function handleMouseover(p: Point) {
 
 .flex-center {
   width: 64vw;
-  padding-top: 200px;
   overflow-y: scroll;
+
+  .example {
+    padding-top: 100px;
+  }
+
+  .single-image {
+    height: 500px;
+  }
+
+  .overlap {
+    margin: 0 auto;
+  }
 
   .ev-all-wrap {
     display: flex;
     justify-content: space-between;
     width: 60vw;
+    margin-bottom: 20px;
 
     .ev-wrap {
       width: 30%;
+      min-width: 250px;
     }
   }
 }
@@ -174,10 +208,15 @@ function handleMouseover(p: Point) {
     padding-top: 0;
     margin-top: 10px;
 
+    .overlap {
+      width: 100%;
+    }
+
     .ev-all-wrap {
       display: flex;
       flex-direction: column;
       width: 82vw;
+      margin: 0 auto;
 
       .ev-wrap {
         width: 100%;

@@ -49,7 +49,7 @@ const emit = defineEmits([
     <el-card class="sidebar-card">
       <AlgorithmHeader :description="description" :title="title" />
       <ImageUploadButton
-        @on-upload="(file: File) => emit('onUpload', file)"
+        @on-upload="(file) => emit('onUpload', file)"
         @on-take-photo="() => emit('onTakePhoto')"
         @on-reset="() => emit('onReset')"
       />
@@ -58,13 +58,9 @@ const emit = defineEmits([
         :disable-more="disableMore"
         :magnifier="magnifier"
         @on-generate="() => emit('onGenerate')"
-        @on-magnifier-change="
-          (flag: boolean) => emit('onMagnifierChange', flag)
-        "
-        @on-brightness-change="
-          (value: number) => emit('onBrightnessChange', value)
-        "
-        @on-contrast-change="(value: number) => emit('onContrastChange', value)"
+        @on-magnifier-change="(flag) => emit('onMagnifierChange', flag)"
+        @on-brightness-change="(value) => emit('onBrightnessChange', value)"
+        @on-contrast-change="(value) => emit('onContrastChange', value)"
       />
     </el-card>
   </div>

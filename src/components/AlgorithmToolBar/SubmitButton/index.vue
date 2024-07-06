@@ -2,6 +2,7 @@
 import { useSettingsStore } from "@/store";
 import Magnifier from "@/components/Magnifier/index.vue";
 import { MagnifierInfo } from "../types";
+import { useWindowSize } from "@vueuse/core";
 
 defineOptions({
   name: "SubmitButton",
@@ -37,6 +38,20 @@ const { disableMore, magnifier } = toRefs(props);
 
 const { themeColor } = useSettingsStore();
 
+const { width } = useWindowSize();
+
+const labelPosition = ref("left");
+watch(
+  () => width.value,
+  (newValue) => {
+    if (newValue >= 992) {
+      labelPosition.value = "left";
+    } else {
+      labelPosition.value = "top";
+    }
+  }
+);
+
 const showMagnifier = ref(false);
 const showContrast = ref(false);
 const showBrightness = ref(false);
@@ -51,7 +66,7 @@ const magnifierLabels = ref([
 
 function handleMagnifierChange() {
   showMagnifier.value = !showMagnifier.value;
-  emit("onMagnifierChange");
+  emit("onMagnifierChange", showMagnifier.value);
 }
 </script>
 
@@ -69,13 +84,13 @@ function handleMagnifierChange() {
       <template #dropdown>
         <el-dropdown-menu>
           <el-dropdown-item @click="handleMagnifierChange">
-            {{ showMagnifier ? "开启" : "关闭" }}放大镜
+            {{ showMagnifier ? "关闭" : "开启" }}放大镜
           </el-dropdown-item>
           <el-dropdown-item @click="showBrightness = !showBrightness">
-            {{ showBrightness ? "开启" : "关闭" }}亮度调整
+            {{ showBrightness ? "关闭" : "开启" }}亮度调整
           </el-dropdown-item>
           <el-dropdown-item @click="showContrast = !showContrast">
-            {{ showBrightness ? "开启" : "关闭" }}对比度调整
+            {{ showContrast ? "关闭" : "开启" }}对比度调整
           </el-dropdown-item>
         </el-dropdown-menu>
       </template>
@@ -100,7 +115,7 @@ function handleMagnifierChange() {
     </div>
   </template>
 
-  <el-form label-width="7.2vw" label-position="left">
+  <el-form label-width="7.2vw" :label-position="labelPosition">
     <template v-if="showMagnifier">
       <el-form-item label="放大镜形状" class="more-operations">
         <el-radio-group v-model="magnifierShape">
