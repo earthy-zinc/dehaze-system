@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { MagnifierInfo, Point } from "@/components/AlgorithmToolBar/types";
 import AlgorithmToolBar from "@/components/AlgorithmToolBar/index.vue";
+import EffectDisplay from "@/components/EffectDisplay/index.vue";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import Camera from "@/components/Camera/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
@@ -9,8 +10,12 @@ import Loading from "@/components/Loading/index.vue";
 import Evaluation from "@/components/Evaluation/index.vue";
 import FileAPI from "@/api/file";
 
-const image1 = ref();
-const image2 = ref();
+const image1 = ref(
+  "https://ai-resource.ailabtools.com/resource/166-before.webp"
+);
+const image2 = ref(
+  "https://ai-resource.ailabtools.com/resource/166-after.webp"
+);
 const showMask = ref(false);
 const contrast = ref(0);
 const brightness = ref(0);
@@ -24,9 +29,10 @@ const exampleImageUrls = ref<String[]>([]);
 const show = reactive({
   camera: false,
   singleImage: false,
-  example: true,
+  example: false,
   loading: false,
   overlap: false,
+  effect: true,
 });
 
 const { width, height } = useWindowSize();
@@ -41,13 +47,14 @@ const magnifier = computed(() => {
 });
 
 function activePage(
-  page: "camera" | "singleImage" | "example" | "overlap" | "loading"
+  page: "camera" | "singleImage" | "example" | "overlap" | "loading" | "effect"
 ) {
   show.camera = page === "camera";
   show.singleImage = page === "singleImage";
   show.example = page === "example";
   show.overlap = page === "overlap";
   show.loading = page === "loading";
+  show.effect = page === "effect";
 }
 
 function handleCameraSave(file: File) {
@@ -73,7 +80,8 @@ function handleReset() {
   image1.value = "";
   image2.value = "";
   showMask.value = false;
-  activePage("example");
+  // activePage("example");
+  activePage("effect");
 }
 
 // 选择模型后生成对比图（原图 | 去雾图）
@@ -113,13 +121,18 @@ function handleMouseover(p: Point) {
     />
     <!-- 右侧功能栏 -->
     <el-card class="flex-center">
+      <EffectDisplay
+        v-show="show.effect"
+        class="effect-wrap"
+        :urls="[image1, image2]"
+      />
       <!-- 样例图片显示 -->
-      <ExampleImageSelect
+      <!-- <ExampleImageSelect
         class="example"
         v-if="show.example"
         :urls="exampleImageUrls"
         @on-example-select="handleExampleImageClick"
-      />
+      /> -->
       <!-- 拍照上传 -->
       <Camera
         v-if="show.camera"
@@ -134,7 +147,7 @@ function handleMouseover(p: Point) {
       />
       <Loading v-if="show.loading" />
       <!-- 评价指标 -->
-      <div class="ev-all-wrap" ref="evRef">
+      <div class="ev-all-wrap" ref="evRef" v-if="show.overlap">
         <div class="ev-wrap">
           <Evaluation />
         </div>
@@ -181,6 +194,10 @@ function handleMouseover(p: Point) {
 
   .overlap {
     margin: 0 auto;
+  }
+
+  .effect-wrap {
+    width: 60vw;
   }
 
   .ev-all-wrap {
