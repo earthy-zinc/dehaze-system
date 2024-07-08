@@ -28,6 +28,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  height: {
+    type: Number,
+    default: 500,
+  },
 });
 
 const emit = defineEmits(["onOriginScaleChange", "onMouseover"]);
@@ -119,7 +123,10 @@ onMounted(() => {
 
 <template>
   <div
-    :style="{ width: image1Ref ? image1Ref.width + 'px' : 'auto' }"
+    :style="{
+      width: image1Ref ? image1Ref.width + 'px' : 'auto',
+      height: height + 'px',
+    }"
     class="image-container"
     @mouseleave="mouseleave"
     @mousemove="mousemove"
@@ -153,8 +160,6 @@ onMounted(() => {
 <style lang="scss" scoped>
 .image-container {
   position: relative;
-  // height: calc(100vh - $navbar-height - 22px - 2 * var(--el-card-padding));
-  height: 500px;
   overflow: hidden;
 }
 

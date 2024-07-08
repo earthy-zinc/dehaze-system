@@ -97,7 +97,7 @@ function handleMagnifierChange() {
     </el-dropdown>
   </div>
 
-  <template v-if="showMagnifier">
+  <template v-if="showMagnifier && !disableMore">
     <div class="flex justify-between mb-3">
       <Magnifier
         v-for="(url, index) in magnifier.imgUrls"
@@ -116,7 +116,7 @@ function handleMagnifierChange() {
   </template>
 
   <el-form label-width="7.2vw" :label-position="labelPosition">
-    <template v-if="showMagnifier">
+    <template v-if="showMagnifier && !disableMore">
       <el-form-item label="放大镜形状" class="more-operations">
         <el-radio-group v-model="magnifierShape">
           <el-radio label="square">正方形</el-radio>
@@ -129,7 +129,7 @@ function handleMagnifierChange() {
       </el-form-item>
     </template>
 
-    <template v-if="showBrightness">
+    <template v-if="showBrightness && !disableMore">
       <el-form-item label="亮度" class="more-operations">
         <el-slider
           v-model="brightness"
@@ -140,7 +140,7 @@ function handleMagnifierChange() {
       </el-form-item>
     </template>
 
-    <template v-if="showContrast">
+    <template v-if="showContrast && !disableMore">
       <el-form-item label="对比度" class="more-operations">
         <el-slider
           v-model="contrast"
