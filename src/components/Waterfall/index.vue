@@ -167,8 +167,8 @@ const getKey = (item: ViewCard, index: number): string => {
   return item[props.rowKey] || index;
 };
 
-// 定时器
-let timer: number;
+// RAF
+let globalID: number;
 
 // 垂直方向移动距离
 const translateY = ref(0);
@@ -192,23 +192,26 @@ const scroll = (): void => {
       translateY.value = 0;
     }
   }
+  globalID = requestAnimationFrame(scroll);
 };
 
 // 鼠标移入图片区域暂停滚动
 const stop = () => {
-  timer && clearInterval(timer);
+  // 结束动画
+  cancelAnimationFrame(globalID);
 };
-// 鼠标移出图片区域开始滚动
+// // 鼠标移出图片区域开始滚动
 const start = () => {
-  timer = +setInterval(scroll, 1000 / 120);
+  // 开始动画
+  globalID = requestAnimationFrame(scroll);
 };
 
 onMounted(() => {
-  timer = +setInterval(scroll, 1000 / 120);
+  start();
 });
 
 onUnmounted(() => {
-  timer && clearInterval(timer);
+  stop();
 });
 </script>
 
