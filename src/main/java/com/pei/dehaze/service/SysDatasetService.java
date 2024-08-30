@@ -14,7 +14,7 @@ import java.util.List;
 public interface SysDatasetService extends IService<SysDataset> {
     List<DatasetVO> getList(DatasetQuery queryParams);
 
-    Page<ImageItemVO> getImageItem(Long id, BasePageQuery pageQuery);
+    Page<ImageItemVO> getImageItem(Long id, BasePageQuery pageQuery, String hostUrl);
 
     boolean addDataset(DatasetForm dataset);
 

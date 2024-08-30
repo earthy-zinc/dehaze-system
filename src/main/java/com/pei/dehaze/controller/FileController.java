@@ -11,7 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-
+import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -57,7 +58,7 @@ public class FileController {
      */
     @GetMapping("/{filePath}")
     @Operation(summary = "文件下载")
-    public Void download(@Parameter(description = "文件路径") @PathVariable String filePath) {
+    public ResponseEntity<Resource> download(@Parameter(description = "文件路径") @PathVariable String filePath) {
         if (fileService instanceof LocalFileService) {
             // 实际的实现逻辑在FileDownloadFilter拦截器中
             return null;

@@ -28,13 +28,13 @@ public class AlgorithmVO {
     private String path;
 
     @Schema(description = "导入路径")
-    private int importPath;
+    private String importPath;
 
     @Schema(description = "开启关闭状态")
-    private int status;
+    private Integer status;
 
     @Schema(description = "算法大小")
-    private long size;
+    private String size;
 
     @Schema(description = "子算法")
     private List<AlgorithmVO> children;
