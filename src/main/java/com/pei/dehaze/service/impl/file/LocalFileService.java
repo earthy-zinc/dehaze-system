@@ -12,6 +12,7 @@ import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysImageService;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.ServletOutputStream;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -107,7 +108,7 @@ public class LocalFileService implements FileService {
         return false;
     }
 
-    public void download(String filePath, HttpServletResponse response) {
+    public void download(String filePath, HttpServletRequest request, HttpServletResponse response) {
         String prefix = filePath.split("/")[0];
         Path path;
         if (prefix.equals(ImageTypeEnum.UPLOAD.getValue())) {

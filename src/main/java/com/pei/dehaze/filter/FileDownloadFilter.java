@@ -30,7 +30,7 @@ public class FileDownloadFilter implements Filter {
         } else if (path.startsWith("/api/v1/files/")) {
             String filePath = path.substring("/api/v1/files/".length());
             if (fileService instanceof LocalFileService localFileService) {
-                localFileService.download(filePath, httpResponse);
+                localFileService.download(filePath, httpRequest, httpResponse);
             } else {
                 ResponseUtils.writeErrMsg(httpResponse, ResultCode.RESOURCE_NOT_FOUND);
             }

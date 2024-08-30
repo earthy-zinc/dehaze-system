@@ -10,6 +10,7 @@ import com.pei.dehaze.model.vo.ImageItemVO;
 import com.pei.dehaze.service.SysDatasetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
@@ -53,8 +54,11 @@ public class SysDatasetController {
      */
     @Operation(summary = "获取数据集详细图片")
     @GetMapping("/{id}/images")
-    public PageResult<ImageItemVO> getImageItem(@PathVariable Long id, BasePageQuery pageQuery) {
-        Page<ImageItemVO> imageItemsPage = datasetService.getImageItem(id, pageQuery);
+    public PageResult<ImageItemVO> getImageItem(@PathVariable Long id, BasePageQuery pageQuery, HttpServletRequest request) {
+        String scheme = request.getScheme();
+        String host = request.getHeader("Host");
+        String hostUrl = scheme + "://" + host;
+        Page<ImageItemVO> imageItemsPage = datasetService.getImageItem(id, pageQuery, hostUrl);
         return PageResult.success(imageItemsPage);
     }
 
