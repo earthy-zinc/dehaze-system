@@ -74,7 +74,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
      * @param id 数据集ID
      */
     @Override
-    public Page<ImageItemVO> getImageItem(Long id, BasePageQuery pageQuery) {
+    public Page<ImageItemVO> getImageItem(Long id, BasePageQuery pageQuery, String hostUrl) {
         Pageable pageable = PageRequest.of(pageQuery.getPageNum(), pageQuery.getPageSize());
         Page<ImageItemVO> pageResult;
 
@@ -86,7 +86,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             // 当前为叶子数据集
             pageResult = imageItemRepository.findByDatasetId(id, pageable);
             if (pageResult.getTotalElements() == 0) {
-                List<ImageItemVO> imageItemVOS = getImageItemsFromMySQL(id);
+                List<ImageItemVO> imageItemVOS = getImageItemsFromMySQL(id, hostUrl);
                 imageItemRepository.saveAll(imageItemVOS);
                 return imageItemRepository.findByDatasetId(id, pageable);
             }
@@ -99,7 +99,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             childrenDatasetIds.forEach(childDatasetId -> {
                 boolean isExist = imageItemRepository.existsByDatasetId(childDatasetId);
                 if (!isExist) {
-                    imageItemRepository.saveAll(getImageItemsFromMySQL(childDatasetId));
+                    imageItemRepository.saveAll(getImageItemsFromMySQL(childDatasetId, hostUrl));
                 }
             });
             return imageItemRepository.findByDatasetIdIn(childrenDatasetIds, pageable);
@@ -130,19 +130,19 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     }
 
     @NotNull
-    private List<ImageItemVO> getImageItemsFromMySQL(Long id) {
+    private List<ImageItemVO> getImageItemsFromMySQL(Long id, String hostUrl) {
         List<ImageItemVO> imageItemVOS;
         SysDataset dataset = this.getById(id);
         String datasetType = dataset.getType();
         if (CharSequenceUtil.isNotBlank(datasetType) && datasetType.equals("图像去雾")) {
-            imageItemVOS = getImageList(dataset);
+            imageItemVOS = getImageList(dataset, hostUrl);
         } else {
             imageItemVOS = Collections.emptyList();
         }
         return imageItemVOS;
     }
 
-    private List<ImageItemVO> getImageList(SysDataset dataset) {
+    private List<ImageItemVO> getImageList(SysDataset dataset, String hostUrl) {
         // 判断当前目录是否存在，然后列出当前目录下所有文件名
         String filePath = dataset.getPath();
         Path datasetBasePath = Paths.get(filePath);
@@ -167,14 +167,14 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             hazeImages = hazeImages.stream().sorted().distinct().toList();
             cleanImages = cleanImages.stream().sorted().distinct().toList();
 
-            return getImageItemVOS(dataset, cleanImages, hazeImages, cleanFlag, hazeFlag);
+            return getImageItemVOS(dataset, cleanImages, hazeImages, cleanFlag, hazeFlag, hostUrl);
         }
         throw new BusinessException("数据集目录" + filePath + "下未找到清晰图像或雾霾图像文件夹");
     }
 
     @NotNull
     private List<ImageItemVO> getImageItemVOS(SysDataset dataset, List<String> cleanImages, List<String> hazeImages,
-                                              String cleanFlag, String hazeFlag) {
+                                              String cleanFlag, String hazeFlag, String hostUrl) {
         List<ImageItemVO> imageItemVOs = new ArrayList<>();
         for (int i = 0; i < cleanImages.size(); i++) {
             String cleanImage = cleanImages.get(i);
@@ -200,7 +200,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 });
             }
 
-            List<ImageUrlVO> imageUrls = getImageUrlVOS(dataset, cleanImage, matchedHazeImages, cleanFlag, hazeFlag);
+            List<ImageUrlVO> imageUrls = getImageUrlVOS(dataset, cleanImage, matchedHazeImages, cleanFlag, hazeFlag, hostUrl);
 
             ImageItemVO imageItemVO = new ImageItemVO();
             imageItemVO.setId((long) i);
@@ -214,7 +214,8 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
     @NotNull
     private List<ImageUrlVO> getImageUrlVOS(SysDataset dataset, String cleanImage, List<String> matchedHazeImages,
-                                            String cleanFlag, String hazeFlag) {
+                                            String cleanFlag, String hazeFlag, String hostUrl) {
+        hostUrl = hostUrl + "/api/v1/files";
         Path baseDirPath = Paths.get(datasetOriginPath);
         Path datasetPath = Paths.get(dataset.getPath());
         if (!PathUtil.isSub(baseDirPath, datasetPath)) {
@@ -227,8 +228,8 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         long id = 1L;
         ImageUrlVO cleanImageUrl = new ImageUrlVO();
         cleanImageUrl.setId(id);
-        cleanImageUrl.setUrl(baseUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
-        cleanImageUrl.setOriginUrl(baseUrl + "/dataset/origin/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
+        cleanImageUrl.setUrl(hostUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
+        cleanImageUrl.setOriginUrl(hostUrl + "/dataset/origin/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
         cleanImageUrl.setType("clean");
         imageUrls.add(cleanImageUrl);
         id++;
@@ -237,8 +238,8 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         for (String hazeImage : matchedHazeImages) {
             ImageUrlVO hazeImageUrl = new ImageUrlVO();
             hazeImageUrl.setId(id);
-            hazeImageUrl.setUrl(baseUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
-            hazeImageUrl.setOriginUrl(baseUrl + "/dataset/origin/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
+            hazeImageUrl.setUrl(hostUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
+            hazeImageUrl.setOriginUrl(hostUrl + "/dataset/origin/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
             hazeImageUrl.setType("haze");
             if (hazeImage.startsWith(cleanImageName)) {
                 int prefixLength = cleanImageName.length();
