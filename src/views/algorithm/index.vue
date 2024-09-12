@@ -1,7 +1,13 @@
-<script setup lang="ts"></script>
+<script lang="ts" setup>
+import DataList from "@/components/DataList/index.vue";
+defineOptions({
+  name: "AlgorithmList",
+  inheritAttrs: false,
+});
+</script>
 
 <template>
-  <div>敬请期待</div>
+  <DataList listType="algorithm" />
 </template>
 
-<style scoped lang="scss"></style>
+<style lang="scss" scoped></style>
