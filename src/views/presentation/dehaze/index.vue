@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { MagnifierInfo, Point } from "@/components/AlgorithmToolBar/types";
 import AlgorithmToolBar from "@/components/AlgorithmToolBar/index.vue";
+import { useAlgorithmStore } from "@/store";
 import EffectDisplay from "@/components/EffectDisplay/index.vue";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import Camera from "@/components/Camera/index.vue";
@@ -9,6 +10,8 @@ import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import Loading from "@/components/Loading/index.vue";
 import Evaluation from "@/components/Evaluation/index.vue";
 import FileAPI from "@/api/file";
+
+const algorithmStore = useAlgorithmStore();
 
 const image1 = ref(
   "https://ai-resource.ailabtools.com/resource/166-before.webp"
@@ -25,6 +28,8 @@ const point = ref<Point>({
   y: 0,
 });
 const exampleImageUrls = ref<String[]>([]);
+const modelOptions = ref<OptionType[]>([]);
+const selectedModel = ref<OptionType>();
 
 const show = reactive({
   camera: false,
@@ -35,7 +40,7 @@ const show = reactive({
   effect: true,
 });
 
-const { width, height } = useWindowSize();
+const { width } = useWindowSize();
 const disableMore = computed(() => !show.overlap);
 const magnifier = computed(() => {
   return {
@@ -103,6 +108,16 @@ function handleMouseover(p: Point) {
   point.value.x = p.x;
   point.value.y = p.y;
 }
+
+// 获取模型选项列表
+const getAlgorithmList = async () => {
+  await algorithmStore.getAlgorithmOptions();
+  modelOptions.value = algorithmStore.algorithmOptions;
+};
+
+onMounted(() => {
+  getAlgorithmList();
+});
 </script>
 
 <template>
@@ -118,7 +133,33 @@ function handleMouseover(p: Point) {
       @on-magnifier-change="(flag) => (showMask = flag)"
       @on-brightness-change="(value) => (brightness = value)"
       @on-contrast-change="(value) => (contrast = value)"
-    />
+    >
+      <!-- 选择模型区域 -->
+      <template #default>
+        <div class="select-wrap">
+          <span>选择去雾模型</span>
+          <el-select
+            v-model="selectedModel"
+            filterable
+            placeholder="请选择去雾模型算法"
+            style="width: 240px"
+          >
+            <el-option-group
+              v-for="group in modelOptions"
+              :key="group.label"
+              :label="group.label"
+            >
+              <el-option
+                v-for="item in group.children"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-option-group>
+          </el-select>
+        </div>
+      </template>
+    </AlgorithmToolBar>
     <!-- 右侧功能栏 -->
     <el-card class="flex-center">
       <EffectDisplay
@@ -178,6 +219,14 @@ function handleMouseover(p: Point) {
 .app-container {
   display: flex;
   height: calc(100vh - $navbar-height);
+}
+
+.select-wrap {
+  span {
+    margin-right: 20px;
+    font-size: 18px;
+    font-weight: 700;
+  }
 }
 
 .flex-center {

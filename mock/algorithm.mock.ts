@@ -1,5 +1,6 @@
 import { defineMock } from "./base";
 import modelVO from "./data/ModelVO";
+import modelOptionsVO from "./data/ModelOptionsVO";
 export default defineMock([
   {
     url: "algorithm",
@@ -8,6 +9,28 @@ export default defineMock([
       return {
         code: "00000",
         data: modelVO,
+        msg: "一切ok",
+      };
+    },
+  },
+  {
+    url: "algorithm",
+    method: ["POST"],
+    body: (request) => {
+      return {
+        code: "00000",
+        data: null,
+        msg: "一切ok",
+      };
+    },
+  },
+  {
+    url: "algorithm/options",
+    method: ["GET"],
+    body: (request) => {
+      return {
+        code: "00000",
+        data: modelOptionsVO,
         msg: "一切ok",
       };
     },

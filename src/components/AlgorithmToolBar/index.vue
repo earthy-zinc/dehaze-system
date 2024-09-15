@@ -72,6 +72,7 @@ const emit = defineEmits([
   height: 100%;
   padding: 0 15px;
   overflow-y: auto;
+  text-align: center;
 }
 
 @media screen and (width <= 992px) {
