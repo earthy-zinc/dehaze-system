@@ -51,7 +51,7 @@ onMounted(() => {
         </div>
         <div class="user-info-wrap">
           <img
-            src="https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif?imageView2/1/w/80/h/80"
+            src="https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80"
             alt="avatar"
           />
           <div class="right-wrap">
