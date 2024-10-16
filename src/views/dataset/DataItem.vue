@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { DatasetQuery } from "@/api/dataset/model";
-import Waterfall from "@/components/Waterfall/index.vue";
+import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
 
 defineOptions({
@@ -51,10 +51,70 @@ const images = ref<ViewCard[]>([
     src: "https://fastly.picsum.photos/id/13/200/300.jpg?hmac=UHtWCvsKxIfcA_gIse7Rc6MH6nI3OGl0dzaCSSsYqas",
     alt: "Image 10",
   },
-]);
+  {
+    src: "https://picsum.photos/400/500",
+    alt: "Image 11",
+  },
+  {
+    src: "https://picsum.photos/400/500",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/400/600",
+    alt: "Image 11",
+  },
+  {
+    src: "https://picsum.photos/400/700",
+    alt: "Image 12",
+  },
 
-// 容器ref
-const container = ref();
+  {
+    src: "https://picsum.photos/400/700",
+    alt: "Image 12",
+  },
+
+  {
+    src: "https://picsum.photos/id/106/400/300",
+    alt: "Image 12",
+  },
+
+  {
+    src: "https://picsum.photos/200/800",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/400/800",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/200/700",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/200/400",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/200/500",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/400/700",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/400/700",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/400/700",
+    alt: "Image 12",
+  },
+  {
+    src: "https://picsum.photos/400/700",
+    alt: "Image 12",
+  },
+]);
 
 function handleQuery() {}
 function resetQuery() {}
@@ -85,30 +145,13 @@ function resetQuery() {}
     </div>
 
     <el-card shadow="never">
-      <div ref="container" class="waterfall-container">
-        <div class="waterfall-tiem" v-for="(item, index) in 8" :key="index">
-          <Waterfall :list="images" :speed="item % 2 ? 1 : -1" />
-        </div>
-      </div>
+      <!-- 纵向瀑布流布局 -->
+      <LongitudinalWaterfall :list="images" />
     </el-card>
   </div>
 </template>
 
 <style scoped lang="scss">
-.waterfall-container {
-  position: relative;
-  display: grid;
-
-  /* 自动创建多列，每列最小宽度200px，最大宽度为1fr（占据可用空间的一份） */
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-
-  /* 自动行高，最小为0，根据内容自适应 */
-  grid-auto-rows: minmax(0, auto);
-  grid-gap: 10px;
-  padding-bottom: 10px;
-  overflow: hidden;
-}
-
 .waterfall-item {
   position: relative;
   overflow: hidden;

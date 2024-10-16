@@ -18,6 +18,11 @@ export interface Algorithm {
   children?: Algorithm[];
 }
 
+// 使得 T 中的 K 属性可选
+type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+export type CreateAlgorithmOptional = Optional<Algorithm, "id" | "description">;
+
 // interface ModelWithPath {
 //   id: number;
 //   name: string;

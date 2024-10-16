@@ -6,7 +6,7 @@ defineOptions({
   name: "LazyImg",
 });
 
-const emit = defineEmits(["load", "success", "error"]);
+const emit = defineEmits(["load", "success", "error", "showBigPicture"]);
 const props = defineProps({
   url: {
     type: String,

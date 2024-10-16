@@ -11,7 +11,7 @@ export default defineMock([
         nickname: "系统管理员",
         username: "admin",
         avatar:
-          "https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif",
+          "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80",
         roles: ["ROOT"],
         perms: [
           "sys:menu:delete",
@@ -55,7 +55,7 @@ export default defineMock([
             mobile: "17621210366",
             gender: 1,
             avatar:
-              "https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif",
+              "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80",
             email: "",
             status: 1,
             deptId: 1,
@@ -68,7 +68,7 @@ export default defineMock([
             mobile: "17621210366",
             gender: 1,
             avatar:
-              "https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif",
+              "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80",
             email: "youlaitech@163.com",
             status: 1,
             deptId: 3,
@@ -167,7 +167,7 @@ const userMap: Record<string, any> = {
     mobile: "17621210366",
     gender: 1,
     avatar:
-      "https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif",
+      "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80",
     email: "",
     status: 1,
     deptId: 1,
@@ -180,7 +180,7 @@ const userMap: Record<string, any> = {
     mobile: "17621210366",
     gender: 1,
     avatar:
-      "https://oss.youlai.tech/youlai-boot/2023/05/16/811270ef31f548af9cffc026dfc3777b.gif",
+      "https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80",
     email: "youlaitech@163.com",
     status: 1,
     deptId: 3,

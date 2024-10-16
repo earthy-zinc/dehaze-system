@@ -45,6 +45,7 @@ export function useCalculateCols(props: WaterfallProps) {
   const wrapperWidth = ref<number>(0);
   const waterfallWrapper = ref<Nullable<any>>(null);
 
+  // 监听窗口尺寸变化
   useResizeObserver(waterfallWrapper, (entries) => {
     const entry = entries[0];
     const { width } = entry.contentRect;
@@ -145,7 +146,6 @@ export function useLayout(
           if (el!.className === "waterfall-item") items.push(el);
         });
       }
-
       // 获取节点
       if (items.length === 0) return false;
 
@@ -163,14 +163,15 @@ export function useLayout(
         const style = curItem.style as CssStyleObject;
 
         // 设置偏移
-        if (transform) style[transform] = `translate3d(${curX}px,${minY}px, 0)`;
+        if (transform) style[transform] = `translate(${curX}px,${minY}px)`;
         style.width = `${colWidth.value}px`;
 
         style.visibility = "visible";
 
-        // 更新当前index的y值
+        // 更新当前index的y值 获取当前元素的高度
         const { height } = curItem.getBoundingClientRect();
         itemHeight.value = height;
+
         posY.value[minYIndex] += height + props.gutter;
 
         // 添加入场动画
