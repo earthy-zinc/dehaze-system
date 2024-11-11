@@ -27,3 +27,38 @@ python basicsr/train.py -opt options/compare/FFA/NH-HAZE-21.yml && \
 python basicsr/train.py -opt options/compare/FFA/NH-HAZE-23.yml
 
 ```
+
+# 测试方法
+## 预备工作
+```shell
+# 切换到工作目录
+cd /var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP
+conda activate ridcp
+```
+
+## DCP
+```shell
+python basicsr/test.py -opt options/compare/DCP/RESIDE-IN.yml
+python basicsr/test.py -opt options/compare/DCP/RESIDE-OUT.yml
+python basicsr/test.py -opt options/compare/DCP/RESIDE-6K.yml
+```
+
+## AOD
+```shell
+python basicsr/test.py -opt options/compare/AOD/RESIDE-IN.yml
+python basicsr/test.py -opt options/compare/AOD/RESIDE-OUT.yml
+python basicsr/test.py -opt options/compare/AOD/RESIDE-6K.yml
+```
+
+## FFA
+```shell
+python basicsr/test.py -opt options/compare/FFA/RESIDE-IN.yml
+python basicsr/test.py -opt options/compare/FFA/RESIDE-OUT.yml
+python basicsr/test.py -opt options/compare/FFA/RESIDE-6K.yml
+```
+
+## 查看结果
+结果保存在以 方法名-数据集名称 命名的文件夹中
+```shell
+cd /var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP/results
+```

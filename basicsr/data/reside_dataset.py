@@ -15,20 +15,38 @@ class ResideDataset(data.Dataset):
     def __init__(self, opt):
         super(ResideDataset, self).__init__()
         self.opt = opt
-        self.crop_size = opt['size']
-        self.normalize = opt['normalize']
+        self.crop_size = None
+        self.normalize = None
         self.rotation = False
-        self.haze_image_path = [os.path.join(opt['haze_path'], x) for x in
-                                natsort.natsorted(os.listdir(opt['haze_path']))]
-        self.clear_image_path = [os.path.join(opt['clear_path'], x) for x in
-                                 natsort.natsorted(os.listdir(opt['clear_path']))
-                                 for _ in range(35)]
+        if os.path.exists("/mnt/e/DeepLearningCopies/2023/RIDCP"):
+            base_path = "/mnt/d/DeepLearning/dataset/"
+        elif os.path.exists("/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP"):
+            base_path = "/quzhong_fix/wpx/dataset/"
+        elif os.path.exists("/mnt/workspace/ridcp"):
+            base_path = "/mnt/data/"
+        elif os.path.exists("/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP"):
+            base_path = "/var/lib/docker/user1/wpx/dataset/"
+        elif os.path.exists("/Crack_detection/wpx"):
+            base_path = "/Crack_detection/wpx/dataset/"
+        else:
+            base_path = "D:/DeepLearning/dataset/"
+        haze_path = base_path + opt['haze_path']
+        clear_path = base_path + opt['clear_path']
+        self.haze_image_path = [os.path.join(haze_path, x) for x in
+                                natsort.natsorted(os.listdir(haze_path))]
+        self.clear_image_path = [os.path.join(clear_path, x) for x in
+                                 natsort.natsorted(os.listdir(clear_path))]
 
     def __getitem__(self, index):
         haze = Image.open(self.haze_image_path[index]).convert("RGB")
         clear = Image.open(self.clear_image_path[index]).convert("RGB")
         clear, haze = self.aug_data(clear, haze)
-        return haze, clear
+        return {
+            "gt": clear,
+            "lq": haze,
+            "gt_path": self.clear_image_path[index],
+            "lq_path": self.haze_image_path[index],
+        }
 
     def aug_data(self, clear, haze):
         if self.rotation:
