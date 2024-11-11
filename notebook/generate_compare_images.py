@@ -135,19 +135,19 @@ if __name__ == '__main__':
     #                            "NH-HAZE-20",
     #                            "/mnt/d/DeepLearning/dataset/NH-HAZE-2020/clean",
     #                            "/mnt/d/DeepLearning/dataset/NH-HAZE-2020/hazy")
-    # generate_comparison_images("/mnt/e/DeepLearningCopies/2023/RIDCP/results",
-    #                            "NH-HAZE-21",
-    #                            "/mnt/d/DeepLearning/dataset/NH-HAZE-2021/clean",
-    #                            "/mnt/d/DeepLearning/dataset/NH-HAZE-2021/hazy")
+    generate_comparison_images("/mnt/e/DeepLearningCopies/2023/RIDCP/results",
+                               "NH-HAZE-21",
+                               "/mnt/d/DeepLearning/dataset/NH-HAZE-2021/clean",
+                               "/mnt/d/DeepLearning/dataset/NH-HAZE-2021/hazy")
     # generate_comparison_images("/mnt/e/DeepLearningCopies/2023/RIDCP/results",
     #                            "NH-HAZE-23",
     #                            "/mnt/d/DeepLearning/dataset/NH-HAZE-2023/clean",
     #                            "/mnt/d/DeepLearning/dataset/NH-HAZE-2023/hazy")
-    generate_comparison_images("/mnt/e/DeepLearningCopies/2023/RIDCP/results",
-                               "O-HAZE",
-                               "/mnt/d/DeepLearning/dataset/O-HAZE/clean",
-                               "/mnt/d/DeepLearning/dataset/O-HAZE/hazy")
-    generate_comparison_images("/mnt/e/DeepLearningCopies/2023/RIDCP/results",
-                               "I-HAZE",
-                               "/mnt/d/DeepLearning/dataset/I-HAZE/clean",
-                               "/mnt/d/DeepLearning/dataset/I-HAZE/hazy")
+    # generate_comparison_images("/mnt/e/DeepLearningCopies/2023/RIDCP/results",
+    #                            "O-HAZE",
+    #                            "/mnt/d/DeepLearning/dataset/O-HAZE/clean",
+    #                            "/mnt/d/DeepLearning/dataset/O-HAZE/hazy")
+    # generate_comparison_images("/mnt/e/DeepLearningCopies/2023/RIDCP/results",
+    #                            "I-HAZE",
+    #                            "/mnt/d/DeepLearning/dataset/I-HAZE/clean",
+    #                            "/mnt/d/DeepLearning/dataset/I-HAZE/hazy")
