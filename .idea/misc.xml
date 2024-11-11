@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="sdkName" value="Remote Python 3.8.17 (sftp://root@172.20.2.27:30992/Crack_detection/wpx/envs/ridcp/bin/python)" />
+    <option name="executionMode" value="BINARY" />
+    <option name="sdkName" value="/home/earthyzinc/miniconda3" />
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="/home/earthyzinc/miniconda3" project-jdk-type="Python SDK" />
   <component name="PythonCompatibilityInspectionAdvertiser">
