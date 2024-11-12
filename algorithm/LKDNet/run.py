@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torchvision.transforms as tfs
 from PIL import Image
-
+from .models.LKD import LKD_b, LKD_l, LKD_s, LKD_t
 from global_variable import MODEL_PATH, DEVICE
 
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-import blocks as blocks
+from .blocks import *
 from ..loss import smooth_loss
 from . import trans
 
@@ -16,8 +16,8 @@ class FusionModule(nn.Module):
     def __init__(self, n_feat, kernel_size=5):
         super(FusionModule, self).__init__()
         print("Creating BRB-Fusion-Module")
-        self.block1 = blocks.BinResBlock(n_feat, kernel_size=kernel_size)
-        self.block2 = blocks.BinResBlock(n_feat, kernel_size=kernel_size)
+        self.block1 = BinResBlock(n_feat, kernel_size=kernel_size)
+        self.block2 = BinResBlock(n_feat, kernel_size=kernel_size)
 
     def forward(self, x, y):
         H_0 = x + y
@@ -38,7 +38,7 @@ class DEHAZE_T(nn.Module):
         self.extra_feat = nn.Sequential(
             nn.Conv2d(img_channels, n_feat, kernel_size=5, stride=1, padding=2),
             nn.ReLU(inplace=True),
-            blocks.ResBlock(n_feat, n_feat, kernel_size=5, stride=1)
+            ResBlock(n_feat, n_feat, kernel_size=5, stride=1)
         )
         self.fusion_feat = FusionModule(n_feat=n_feat, kernel_size=5)
         self.trans_net = trans.TRANS(in_channels=1, out_channels=t_channels,

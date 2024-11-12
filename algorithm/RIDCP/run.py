@@ -4,7 +4,7 @@ import cv2
 import torch
 import torchvision.utils
 
-from dehaze_vq_weight_arch import VQWeightDehazeNet
+from .dehaze_vq_weight_arch import VQWeightDehazeNet
 from global_variable import MODEL_PATH, DEVICE
 
 

@@ -9,9 +9,9 @@ from PIL import Image
 from torch.autograd import Variable
 from torchvision.transforms import transforms
 
-from model200314 import TransformNet
-from modelmeta import Meta
-from pregrocess import pre
+from .model200314 import TransformNet
+from .modelmeta import Meta
+from .pregrocess import pre
 from global_variable import MODEL_PATH, DEVICE
 
 

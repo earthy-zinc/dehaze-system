@@ -5,7 +5,7 @@ import torch
 import torchvision.utils
 from PIL import Image
 
-from net import dehaze_net
+from .net import dehaze_net
 from global_variable import DEVICE
 
 

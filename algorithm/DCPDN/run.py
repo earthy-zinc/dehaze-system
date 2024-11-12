@@ -4,7 +4,7 @@ import torch
 import torchvision.utils
 from PIL import Image
 
-from dehaze22 import dehaze as DCPDN
+from .dehaze22 import dehaze as DCPDN
 from global_variable import MODEL_PATH, DEVICE
 
 

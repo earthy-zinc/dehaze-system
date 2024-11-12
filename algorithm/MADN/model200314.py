@@ -6,7 +6,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn, cat
 
-from enhance0314 import Dehaze, Dehaze1
+from .enhance0314 import Dehaze, Dehaze1
 from global_variable import DEVICE
 
 

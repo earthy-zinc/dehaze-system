@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-import unet as unet
+from .unet import *
 
 
 def make_model(args):
@@ -14,7 +14,7 @@ class TRANS(nn.Module):
         super(TRANS, self).__init__()
         print("Creating Trans Net")
 
-        self.unet_body = unet.UNet(in_channels=in_channels, out_channels=out_channels,
+        self.unet_body = UNet(in_channels=in_channels, out_channels=out_channels,
                                    n_resblock=n_resblock, n_feat=n_feat, feat_in=feat_in)
         self.sigmoid = nn.Sigmoid()
 

@@ -9,7 +9,7 @@ import torchvision.transforms.functional
 from PIL import Image
 
 from .config import Config
-from models import Model
+from .models import Model
 from global_variable import DEVICE
 
 

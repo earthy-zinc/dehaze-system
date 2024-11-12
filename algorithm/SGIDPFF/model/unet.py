@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-import blocks as blocks
+from .blocks import *
 
 
 def make_model(args):
@@ -19,39 +19,39 @@ class UNet(nn.Module):
                 nn.Conv2d(in_channels, n_feat, kernel_size=kernel_size, stride=1, padding=kernel_size // 2),
                 nn.ReLU(inplace=True)
             )])
-        InBlock.extend([blocks.ResBlock(n_feat, n_feat, kernel_size=kernel_size, stride=1) for _ in range(n_resblock)])
+        InBlock.extend([ResBlock(n_feat, n_feat, kernel_size=kernel_size, stride=1) for _ in range(n_resblock)])
 
         # encoder1
         Encoder_1 = [nn.Sequential(
             nn.Conv2d(n_feat, n_feat * 2, kernel_size=kernel_size, stride=2, padding=kernel_size // 2),
             nn.ReLU(inplace=True)
         )]
-        Encoder_1.extend([blocks.ResBlock(n_feat * 2, n_feat * 2, kernel_size=kernel_size, stride=1)
+        Encoder_1.extend([ResBlock(n_feat * 2, n_feat * 2, kernel_size=kernel_size, stride=1)
                           for _ in range(n_resblock)])
         # encoder2
         Encoder_2 = [nn.Sequential(
             nn.Conv2d(n_feat * 2, n_feat * 4, kernel_size=kernel_size, stride=2, padding=kernel_size // 2),
             nn.ReLU(inplace=True)
         )]
-        Encoder_2.extend([blocks.ResBlock(n_feat * 4, n_feat * 4, kernel_size=kernel_size, stride=1)
+        Encoder_2.extend([ResBlock(n_feat * 4, n_feat * 4, kernel_size=kernel_size, stride=1)
                           for _ in range(n_resblock)])
 
         # decoder2
-        Decoder_2 = [blocks.ResBlock(n_feat * 4, n_feat * 4, kernel_size=kernel_size, stride=1)
+        Decoder_2 = [ResBlock(n_feat * 4, n_feat * 4, kernel_size=kernel_size, stride=1)
                      for _ in range(n_resblock)]
         Decoder_2.append(nn.Sequential(
             nn.ConvTranspose2d(n_feat * 4, n_feat * 2, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(inplace=True)
         ))
         # decoder1
-        Decoder_1 = [blocks.ResBlock(n_feat * 2, n_feat * 2, kernel_size=kernel_size, stride=1)
+        Decoder_1 = [ResBlock(n_feat * 2, n_feat * 2, kernel_size=kernel_size, stride=1)
                      for _ in range(n_resblock)]
         Decoder_1.append(nn.Sequential(
             nn.ConvTranspose2d(n_feat * 2, n_feat, kernel_size=3, stride=2, padding=1, output_padding=1),
             nn.ReLU(inplace=True)
         ))
 
-        OutBlock = [blocks.ResBlock(n_feat, n_feat, kernel_size=kernel_size, stride=1) for _ in range(n_resblock)]
+        OutBlock = [ResBlock(n_feat, n_feat, kernel_size=kernel_size, stride=1) for _ in range(n_resblock)]
         OutBlock.extend([
             nn.Conv2d(n_feat, out_channels, kernel_size=kernel_size, stride=1, padding=kernel_size // 2)
         ])

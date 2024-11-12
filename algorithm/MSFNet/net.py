@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from residual_dense_block import RDB
+from .residual_dense_block import RDB
 
 
 def conv3x3(in_planes, out_planes, stride=1):

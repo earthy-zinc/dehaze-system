@@ -38,7 +38,6 @@ from algorithm.metrics import calculate
 def predict():
     id = request.args.get("modelId")
     inputs: list = request.args.getlist("input")
-
     algorithm = SysAlgorithm.query.get(id)
     assert algorithm is not None, "模型不存在"
 
@@ -48,7 +47,7 @@ def predict():
         for input in inputs:
             input_img = generate_input_img(input, id)
             pred_img = generate_predict_img(id)
-            model.dehaze(input_img.path, pred_img.path, algorithm.path)
+            model.dehaze(input_img.get("path"), pred_img.get("path"), algorithm.path)
             result.append({
                 "model": algorithm.name,
                 "input": input_img,
@@ -60,7 +59,7 @@ def predict():
         return error("无法从" + algorithm.import_path + "中导入算法代码，错误信息：" + e.msg)
     except AttributeError as e:
         traceback.print_exc()
-        return error("模块未定义" + algorithm.import_path + "dehaze函数，错误信息：" + e.name)
+        return error("模块未定义" + algorithm.import_path + ".dehaze函数，错误信息：不存在属性 " + e.name)
 
 
 @app.route('/model/evaluation', methods=['GET'])

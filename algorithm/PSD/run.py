@@ -7,9 +7,9 @@ from PIL import Image
 from torch import nn
 from torchvision.transforms import Compose, ToTensor, Normalize
 
-from FFA import FFANet
-from GCA import GCANet
-from MSBDN import MSBDNNet
+from .FFA import FFANet
+from .GCA import GCANet
+from .MSBDN import MSBDNNet
 from global_variable import MODEL_PATH, DEVICE, DEVICE_ID
 
 

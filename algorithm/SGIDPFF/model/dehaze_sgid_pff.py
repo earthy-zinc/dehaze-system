@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from dehaze_t import DEHAZE_T
-from pre_dehaze_t import PRE_DEHAZE_T
+from .dehaze_t import DEHAZE_T
+from .pre_dehaze_t import PRE_DEHAZE_T
 
 
 def make_model(args):
