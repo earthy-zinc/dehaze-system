@@ -2,6 +2,9 @@ server:
   port: 8989
 
 spring:
+  devtools:
+    restart:
+      enabled: true
   jackson:
     ## 默认序列化时间格式
     date-format: yyyy-MM-dd HH:mm:ss
@@ -73,6 +76,7 @@ security:
     - /doc.html
     - /swagger-ui/**
     - /swagger-ui.html
+    - /api/v1/files/**
     - /api/v1/auth/captcha
 
 
