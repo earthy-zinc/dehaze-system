@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -54,7 +55,9 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public boolean addAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         sysAlgorithm.setStatus(StatusEnum.ENABLE.getValue());
-        sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        if (FileUtil.isFile(sysAlgorithm.getPath())) {
+            sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        }
         return this.save(sysAlgorithm);
     }
 

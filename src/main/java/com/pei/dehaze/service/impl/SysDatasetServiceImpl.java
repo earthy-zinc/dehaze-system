@@ -33,6 +33,7 @@ import org.springframework.stereotype.Service;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -75,7 +76,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
      */
     @Override
     public Page<ImageItemVO> getImageItem(Long id, BasePageQuery pageQuery, String hostUrl) {
-        Pageable pageable = PageRequest.of(pageQuery.getPageNum(), pageQuery.getPageSize());
+        Pageable pageable = PageRequest.of(pageQuery.getPageNum() - 1, pageQuery.getPageSize());
         Page<ImageItemVO> pageResult;
 
         // 获取当前数据集的所有子数据集，从而判断当前数据集是否是叶子数据集
@@ -146,19 +147,18 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         // 判断当前目录是否存在，然后列出当前目录下所有文件名
         String filePath = dataset.getPath();
         Path datasetBasePath = Paths.get(filePath);
+        List<String> hazeFlags = Arrays.asList("haze", "hazy");
+        List<String> cleanFlags = Arrays.asList("clean", "clear", "gt", "GT");
 
-        String hazeFlag = "haze";
+        String hazeFlag = getValidPath(hazeFlags, datasetBasePath);
+        String cleanFlag = getValidPath(cleanFlags, datasetBasePath);
+
+        if (hazeFlag == null || cleanFlag == null) {
+            throw new BusinessException("数据集目录" + filePath + "下未找到清晰图像或雾霾图像文件夹");
+        }
+
         Path hazePath = datasetBasePath.resolve(hazeFlag);
-        if (!PathUtil.isDirectory(hazePath)) {
-            hazeFlag = "hazy";
-            hazePath = datasetBasePath.resolve(hazeFlag);
-        }
-        String cleanFlag = "clean";
         Path cleanPath = datasetBasePath.resolve(cleanFlag);
-        if (!PathUtil.isDirectory(cleanPath)) {
-            cleanFlag = "gt";
-            cleanPath = datasetBasePath.resolve(cleanFlag);
-        }
 
         if (PathUtil.isDirectory(hazePath) && PathUtil.isDirectory(cleanPath)) {
             List<String> hazeImages = FileUtil.listFileNames(hazePath.toAbsolutePath().toString());
@@ -166,7 +166,14 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             // 排序和去重
             hazeImages = hazeImages.stream().sorted().distinct().toList();
             cleanImages = cleanImages.stream().sorted().distinct().toList();
-
+            // 相除为大于1的整数
+            if (hazeImages.size() % cleanImages.size() == 0) {
+                int cleanRepeat = hazeImages.size() / cleanImages.size();
+                cleanImages = cleanImages
+                        .stream()
+                        .flatMap(image -> Collections.nCopies(cleanRepeat, image).stream())
+                        .toList();
+            }
             return getImageItemVOS(dataset, cleanImages, hazeImages, cleanFlag, hazeFlag, hostUrl);
         }
         throw new BusinessException("数据集目录" + filePath + "下未找到清晰图像或雾霾图像文件夹");
@@ -270,5 +277,15 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                     datasetVO.setChildren(buildDatasetTree(entity.getId(), datasets));
                     return datasetVO;
                 }).toList();
+    }
+
+    private static String getValidPath(List<String> flags, Path basePath) {
+        for (String flag : flags) {
+            Path path = basePath.resolve(flag);
+            if (PathUtil.isDirectory(path)) {
+                return flag;
+            }
+        }
+        return null;
     }
 }
