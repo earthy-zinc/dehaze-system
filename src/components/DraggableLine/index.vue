@@ -38,6 +38,7 @@ watch(parentOffsetLeft, (newValue) => {
 
 onMounted(() => {
   const { left } = dragContainer.value!.getBoundingClientRect();
+  parentOffsetLeft.value = dragContainer.value!.offsetWidth;
   offsetLeft.value = left;
 });
 </script>

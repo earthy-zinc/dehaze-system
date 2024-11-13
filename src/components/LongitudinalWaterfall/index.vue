@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from "vue";
 import { ViewCard } from "../Waterfall/types";
 import { useCalculateCols, useLayout } from "../Waterfall/waterfall";
@@ -27,7 +27,7 @@ const props = defineProps({
   // 宽度固定为 200
   width: {
     type: Number,
-    default: 200,
+    default: 300,
   },
   breakpoints: {
     type: Object,
@@ -183,21 +183,21 @@ const showBigPicture = (index: number) => {
 <template>
   <div ref="waterfallWrapper" class="waterfall-container" style="height: 700px">
     <div
-      class="waterfall-item"
+      v-for="(item, index) in list"
+      :key="getKey(item, index)"
       :style="{
         backgroundColor,
       }"
-      v-for="(item, index) in list"
-      :key="getKey(item, index)"
+      class="waterfall-item"
     >
-      <div class="waterfall-card" @click="showBigPicture(index)" ref="imageRef">
+      <div ref="imageRef" class="waterfall-card" @click="showBigPicture(index)">
         <LazyImg :url="getRenderURL(item)" />
       </div>
     </div>
   </div>
 </template>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .waterfall-container {
   position: relative;
   display: grid;

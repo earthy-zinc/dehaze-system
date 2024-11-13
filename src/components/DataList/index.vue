@@ -111,8 +111,8 @@ onMounted(() => {
         <el-form-item label="关键字" prop="keywords">
           <el-input
             v-model="queryParams.keywords"
-            clearable
             :placeholder="isDatasetList ? '数据集名称' : '模型名称'"
+            clearable
             @keyup.enter="handleQuery"
           />
         </el-form-item>
@@ -173,42 +173,49 @@ onMounted(() => {
           v-if="selectedColumns.includes('name')"
           label="名称"
           prop="name"
+          width="200"
         />
         <el-table-column
           v-if="selectedColumns.includes('type')"
           label="类型"
           prop="type"
+          width="100"
         />
         <el-table-column
           v-if="selectedColumns.includes('description')"
           label="描述"
+          min-width="500"
           prop="description"
         />
         <el-table-column
           v-if="selectedColumns.includes('size')"
           label="大小"
           prop="size"
+          width="120"
         />
         <el-table-column
           v-if="isDatasetList && selectedColumns.includes('total')"
           label="图片数量"
           prop="total"
+          width="100"
         />
         <el-table-column
           v-if="!isDatasetList && selectedColumns.includes('importPath')"
           label="代码导入路径"
+          min-width="180"
           prop="importPath"
         />
         <el-table-column
           v-if="selectedColumns.includes('path')"
           label="存储位置"
           prop="path"
+          width="300"
         />
         <el-table-column
           v-if="selectedColumns.includes('status')"
           align="center"
           label="状态"
-          width="80"
+          min-width="65"
         >
           <template #default="scope">
             <el-tag
@@ -218,8 +225,8 @@ onMounted(() => {
                 ) && scope.row.status === 1
               "
               type="success"
-              >启用</el-tag
-            >
+              >启用
+            </el-tag>
             <el-tag
               v-else-if="
                 !(
@@ -227,15 +234,15 @@ onMounted(() => {
                 ) && scope.row.status === 0
               "
               type="info"
-              >禁用</el-tag
-            >
+              >禁用
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column align="center" fixed="right" label="操作" width="260">
           <template #default="scope">
             <el-button
-              link
               v-if="isDatasetList"
+              link
               size="small"
               type="primary"
               @click="handleShow(scope.row)"
