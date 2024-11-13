@@ -59,6 +59,10 @@ export interface Dataset {
   status?: number;
 }
 
+export interface ImageItemQuery extends PageQuery {
+  keywords?: string;
+}
+
 export interface ImageItem {
   id: number;
   imgUrl: ImageUrl[];

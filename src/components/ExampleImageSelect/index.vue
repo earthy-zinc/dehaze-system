@@ -24,7 +24,7 @@ const emit = defineEmits(["onExampleSelect"]);
         :src="url"
         alt="样张"
         @click="emit('onExampleSelect', url)"
-      />"
+      />
     </div>
     <div class="example-logo">
       <img src="@/assets/logo.png" alt="logo" />
