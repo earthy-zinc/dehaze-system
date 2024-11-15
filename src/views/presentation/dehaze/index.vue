@@ -3,7 +3,6 @@ import { MagnifierInfo, Point } from "@/components/AlgorithmToolBar/types";
 import AlgorithmToolBar from "@/components/AlgorithmToolBar/index.vue";
 import { useAlgorithmStore } from "@/store";
 import EffectDisplay from "@/components/EffectDisplay/index.vue";
-import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import Camera from "@/components/Camera/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
@@ -117,6 +116,7 @@ const getAlgorithmList = async () => {
 
 onMounted(() => {
   getAlgorithmList();
+  activePage("example");
 });
 </script>
 
@@ -164,8 +164,8 @@ onMounted(() => {
     <el-card class="flex-center">
       <EffectDisplay
         v-show="show.effect"
-        class="effect-wrap"
         :urls="[image1, image2]"
+        class="effect-wrap"
       />
       <!-- 样例图片显示 -->
       <!-- <ExampleImageSelect
@@ -182,13 +182,13 @@ onMounted(() => {
       />
       <!-- 单图展示 -->
       <SingleImageShow
-        class="single-image"
         v-if="show.singleImage"
         :src="image1"
+        class="single-image"
       />
       <Loading v-if="show.loading" />
       <!-- 评价指标 -->
-      <div class="ev-all-wrap" ref="evRef" v-if="show.overlap">
+      <div v-if="show.overlap" ref="evRef" class="ev-all-wrap">
         <div class="ev-wrap">
           <Evaluation />
         </div>
@@ -201,13 +201,13 @@ onMounted(() => {
       </div>
       <!-- 重叠展示 -->
       <OverlapImageShow
-        class="overlap"
         v-if="show.overlap"
         :brightness="brightness"
         :contrast="contrast"
         :image1="image1"
         :image2="image2"
         :show-mask="showMask"
+        class="overlap"
         @on-origin-scale-change="(value) => (originScale = value)"
         @on-mouseover="handleMouseover"
       />

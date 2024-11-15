@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { Nullable } from "@/utils/types";
 import { LazyType } from "./types";
 
@@ -25,6 +25,14 @@ const props = defineProps({
 const imgLoaded = inject("imgLoaded") as () => void;
 const lazy = inject("lazy") as LazyType;
 const lazyRef = ref<Nullable<any>>(null);
+
+watch(
+  () => props.url,
+  (newValue, oldValue) => {
+    unRender();
+    render();
+  }
+);
 
 onMounted(() => {
   render();
@@ -60,9 +68,9 @@ function imageLoad() {
     <div class="lazy__resource">
       <img
         ref="lazyRef"
-        class="lazy__img"
-        :title="title"
         :alt="alt"
+        :title="title"
+        class="lazy__img"
         @load="imageLoad"
       />
     </div>

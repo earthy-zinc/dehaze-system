@@ -32,6 +32,9 @@ const props = defineProps({
   breakpoints: {
     type: Object,
     default: () => ({
+      1800: {
+        rowPerView: 4,
+      },
       1200: {
         // when wrapper width < 1200
         rowPerView: 3,
@@ -52,7 +55,7 @@ const props = defineProps({
   },
   hasAroundGutter: {
     type: Boolean,
-    default: true,
+    default: false,
   },
   posDuration: {
     type: Number,
@@ -120,7 +123,7 @@ const { waterfallWrapper, wrapperWidth, colWidth, cols, offsetX } =
   useCalculateCols(props);
 
 // 容器高度，块定位
-const { layoutHandle } = useLayout(
+const { wrapperHeight, layoutHandle } = useLayout(
   props,
   colWidth,
   cols,
@@ -172,7 +175,13 @@ const getKey = (item: ViewCard, index: number): string => {
 // 点击图片展示高清大图
 const showBigPicture = (index: number) => {
   viewerApi({
-    images: props.list.map((item) => getRenderURL(item)),
+    images: props.list.map((item) => {
+      let originSrc = getValue(item, "originSrc")[0];
+      if (!originSrc) {
+        return getRenderURL(item);
+      }
+      return originSrc;
+    }),
   })
     .show()
     .update()
@@ -181,7 +190,11 @@ const showBigPicture = (index: number) => {
 </script>
 
 <template>
-  <div ref="waterfallWrapper" class="waterfall-container" style="height: 700px">
+  <div
+    ref="waterfallWrapper"
+    :style="{ height: `${wrapperHeight}px` }"
+    class="waterfall-container"
+  >
     <div
       v-for="(item, index) in list"
       :key="getKey(item, index)"
@@ -200,23 +213,47 @@ const showBigPicture = (index: number) => {
 <style lang="scss" scoped>
 .waterfall-container {
   position: relative;
-  display: grid;
-
-  /* 自动创建多列，每列最小宽度200px，最大宽度为1fr（占据可用空间的一份） */
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-
-  /* 自动行高，最小为0，根据内容自适应 */
-  grid-auto-rows: minmax(0, auto);
-  grid-gap: 10px;
-  padding-bottom: 10px;
-  overflow: auto;
+  width: 100%;
+  overflow: hidden;
 
   .waterfall-item {
     position: absolute;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    visibility: hidden;
+
+    /* 初始位置设置到屏幕以外，避免懒加载失败 */
+    transform: translate3d(0, 3000px, 0);
   }
 
   .waterfall-card {
     cursor: pointer;
   }
+}
+
+/* 初始的入场效果 */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.fadeIn {
+  animation-name: fadeIn;
 }
 </style>
