@@ -18,3 +18,20 @@ children:
 
 
 ```
+
+以下去雾模型由于一些原因无法运行
+AECRNet no
+CFENViTDehazing no
+DaclipUir no
+DCPDN no
+FCD no
+PSD no
+
+以下模型准备调试
+TNN todo
+ImgRestorationSde todo
+MB-TaylorFormer todo
+
+以下模型需要在linux系统中运行
+RIDCP 需要BASICSR_JIT = True
+WPXNet 需要natten

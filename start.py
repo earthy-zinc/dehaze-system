@@ -12,10 +12,12 @@ def create_app(config_name):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     from base import base as base_blueprint
+    from base.minio import init_minio
     from base import db
 
     db.init_app(app)
     app.register_blueprint(base_blueprint)
+    app.minio_client = init_minio(app)
     swagger = Swagger(app)
     return app, swagger
 

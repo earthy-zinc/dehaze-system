@@ -8,25 +8,35 @@ from base import base as app
 from model import SysAlgorithm
 from algorithm.metrics import calculate
 
-
 @app.route('/model/prediction', methods=['GET'])
 @swag_from({
     'tags': ['10.模型接口'],
     'summary': '模型预测',
+    'description': '''
+    1. 从请求参数中获取模型ID和输入图片路径。
+    2. 根据模型ID从数据库中查询模型信息。
+    3. 使用`import_module`动态导入模型的算法模块。
+    4. 对每个输入图片路径进行处理：
+        - 生成输入图片对象。
+        - 生成预测图片对象。
+        - 调用模型的`dehaze`函数进行去雾处理。
+        - 将去雾结果添加到结果列表中。
+    5. 返回去雾预测结果。
+    ''',
     'parameters': [
         {
             'name': 'modelId',
             'in': 'query',
             'type': 'integer',
             'required': True,
-            'description': '模型id'
+            'description': '模型id，用于查询数据库中的模型信息。'
         },
         {
             'name': 'input',
             'in': 'query',
             'type': 'string',
             'required': True,
-            'description': '输入图片路径'
+            'description': '输入图片路径，可以传入多个图片路径。'
         }
     ],
     'responses': {
@@ -66,6 +76,11 @@ def predict():
 @swag_from({
     'tags': ['10.模型接口'],
     'summary': '模型评估',
+    'description': '''
+    1. 从请求参数中获取预测图片路径和真实图片路径。
+    2. 默认的评估算法`calculate`。
+    3. 返回评估结果。
+    ''',
     'parameters': [
         {
             'name': 'input',
@@ -91,5 +106,10 @@ def predict():
 def evaluate():
     pred = request.args.get("input")
     gt = request.args.get("output")
+
+    if request.args.get("flag"):
+        from algorithm.WPXNet.calculate import calculate as calculate_wpxnet
+        return calculate_wpxnet(pred, gt)
+
     result = calculate(pred, gt)
     return success(result)

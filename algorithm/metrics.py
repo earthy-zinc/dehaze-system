@@ -16,6 +16,7 @@ def calculate(haze_image_path: str, clear_image_path: str = None):
         clear = ToTensor()(Image.open(clear_image_path).convert('RGB'))[None, ::]
     else:
         clear = haze
+
     result = [
         get_niqe(haze, clear),
         get_nima(haze, clear),

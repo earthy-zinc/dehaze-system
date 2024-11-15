@@ -168,10 +168,9 @@ if __name__ == '__main__':
     for module in modules_to_test:
         import_path = module['import_path']
         model_paths = module['model_path']
-        if import_path != "algorithm.CFENViTDehazing.run":
+        if import_path != "algorithm.TSDNet.run":
             continue
         for model_path in model_paths:
             model = import_module(import_path)
             model.dehaze(hazy_img, clean_img, model_path)
-    print(torch.load(
-        'E://ProgramProject//new-dehaze//dehaze-python//trained_model\\CFEN-ViT-Dehazing\\iid_hlgvit_crs_gd4_cfs_v3_daytime_realworld\\latest_net_G.pth').keys())
+            print("------{}------ok".format(model_path))

@@ -1,9 +1,7 @@
 import uuid
-from datetime import time
 import os
-import time
 import requests
-from flask import current_app, request
+from flask import request
 
 from global_variable import DATA_PATH, CACHE_PATH
 
