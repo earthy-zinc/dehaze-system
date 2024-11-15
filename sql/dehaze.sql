@@ -430,20 +430,21 @@ values (1, 0, '图像去雾', 'DENSE-HAZE',
        (25, 23, '图像去雾', 'RSHAZE-test', 'REHAZE', 'D://DeepLearning//dataset//RSHAZE//test', '2.02 GB', 5400, 1, 0,
         '2024-11-12 22:28:54', '2024-11-12 22:28:54', 2, 2);
 
-DROP TABLE IF EXISTS `sys_image`;
-CREATE TABLE `sys_image` (
+DROP TABLE IF EXISTS `sys_file`;
+CREATE TABLE `sys_file` (
                             `id` int NOT NULL AUTO_INCREMENT COMMENT '文件id',
-                            `type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图片类型，数据集图片/上传图片/算法处理图片/',
-                            `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '图片url',
-                            `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片名',
-                            `size` varchar(100) NOT NULL                                         DEFAULT '0' COMMENT '图片大小',
-                            `path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '图片路径',
+                            `type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '文件类型',
+                            `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '文件url',
+                            `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件原始名',
+                            `object_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件存储名',
+                            `size` varchar(100) NOT NULL                                         DEFAULT '0' COMMENT '文件大小',
+                            `path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件路径',
                             `md5` char(32) unique NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
                             `create_time` datetime NOT NULL COMMENT '创建时间',
                             `update_time` datetime DEFAULT NULL COMMENT '更新时间',
                             PRIMARY KEY (`id`) USING BTREE,
                             UNIQUE INDEX `md5_key`(`md5` ASC) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='图片表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci ROW_FORMAT=DYNAMIC COMMENT='文件表';
 
 DROP TABLE IF EXISTS `sys_algorithm`;
 CREATE TABLE `sys_algorithm`
@@ -994,6 +995,21 @@ values (1, 0, '图像去雾', 'AECR-NET',
         '13.94 MB', 'algorithm.TSDNet.run',
         'TSDNet (Temporal-Spatial-Depth Network): TSDNet 是一种时间-空间-深度联合建模的图像去雾模型，通过优化视频序列的去雾效果，提高视频去雾的连贯性和自然度。该模型在处理视频序列时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的视频去雾任务。',
         1, '2024-11-13 14:29:43', '2024-11-13 14:29:43', 2, 2);
+
+DROP TABLE IF EXISTS `sys_dataset_file`;
+CREATE TABLE `sys_dataset_file`
+(
+    `id` bigint NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `dataset_id` bigint NOT NULL COMMENT '所属数据集id',
+    `image_item_id` bigint NOT NULL COMMENT '所属数据项id',
+    `file_id`    bigint NOT NULL COMMENT '文件id',
+    `type`       varchar(64) NOT NULL COMMENT '图片类型（清晰图、雾霾图、分割图等）',
+    `thumbnail` boolean NOT NULL DEFAULT FALSE COMMENT '是否为缩略图',
+    PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='数据集图片关联表';
 
 SET FOREIGN_KEY_CHECKS = 1;
 

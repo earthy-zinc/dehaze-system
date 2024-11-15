@@ -7,9 +7,11 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.ImageUtils;
 import com.pei.dehaze.model.dto.FileInfo;
-import com.pei.dehaze.model.entity.SysImage;
+import com.pei.dehaze.model.dto.ImageFileInfo;
+import com.pei.dehaze.model.entity.SysFile;
+import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.service.FileService;
-import com.pei.dehaze.service.SysImageService;
+import com.pei.dehaze.service.SysFileService;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,7 +47,7 @@ import java.nio.file.Paths;
 @Slf4j
 public class LocalFileService implements FileService {
 
-    private SysImageService imageService;
+    private SysFileService imageService;
 
     private String baseUrl;
     private String uploadPath;
@@ -55,7 +57,7 @@ public class LocalFileService implements FileService {
 
     @Override
     public boolean uploadCheck(String md5) {
-        SysImage image = imageService.getOne(new LambdaQueryWrapper<SysImage>().eq(SysImage::getMd5, md5));
+        SysFile image = imageService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
         return image == null;
     }
 
@@ -67,33 +69,36 @@ public class LocalFileService implements FileService {
      */
     @Override
     @SneakyThrows
-    public FileInfo uploadFile(MultipartFile file) {
+    public SysFile uploadFile(MultipartFile file) {
         if (file != null) {
             try {
                 String md5 = FileUploadUtils.getMd5(file.getInputStream());
-                SysImage image = imageService.getOne(new LambdaQueryWrapper<SysImage>().eq(SysImage::getMd5, md5));
-                FileInfo fileInfo = new FileInfo();
+                SysFile image = imageService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
                 if (image == null) {
-                    String fileExtension = FileUploadUtils.getExtension(file);
+                    String fileExtension = FileUtil.getSuffix(file.getName());
                     String fileName = md5 + "." + fileExtension;
                     String filePath = uploadPath + fileName;
                     file.transferTo(new File(filePath));
-                    image = new SysImage();
-                    image.setUrl(baseUrl + "/upload/" + fileName);
-                    image.setType(ImageTypeEnum.UPLOAD.getLabel());
-                    image.setSize(FileUtil.readableFileSize(file.getSize()));
-                    image.setName(fileName);
-                    image.setPath(filePath);
-                    image.setMd5(md5);
+                    image = SysFile.builder()
+                            .type(ImageTypeEnum.UPLOAD.getLabel())
+                            .size(FileUtil.readableFileSize(file.getSize()))
+                            .name(fileName)
+                            .path(filePath)
+                            .md5(md5)
+                            .url(baseUrl + "/upload/" + fileName)
+                            .build();
                     imageService.save(image);
                 }
-                fileInfo.setName(image.getName());
-                fileInfo.setUrl(image.getUrl());
-                return fileInfo;
+                return image;
             } catch (IOException e) {
                 throw new BusinessException("文件上传失败");
             }
         }
+        return null;
+    }
+
+    @Override
+    public ImageFileInfo uploadImage(MultipartFile file, ImageForm imageForm) {
         return null;
     }
 
@@ -105,6 +110,11 @@ public class LocalFileService implements FileService {
      */
     @Override
     public boolean deleteFile(String filePath) {
+        return false;
+    }
+
+    @Override
+    public boolean deleteImage(String filePath) {
         return false;
     }
 

@@ -9,7 +9,11 @@ import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.model.dto.FileInfo;
+import com.pei.dehaze.model.dto.ImageFileInfo;
+import com.pei.dehaze.model.entity.SysFile;
+import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.service.FileService;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
@@ -73,31 +77,44 @@ public class AliyunFileService implements FileService {
 
     @Override
     @SneakyThrows
-    public FileInfo uploadFile(MultipartFile file) {
+    public SysFile uploadFile(MultipartFile file) {
 
         // 生成文件名(日期文件夹)
-        String suffix = FileUtil.getSuffix(file.getOriginalFilename());
+        String filename = file.getOriginalFilename();
+        String suffix = FileUtil.getSuffix(filename);
         String uuid = IdUtil.simpleUUID();
-        String fileName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + File.separator + uuid + "." + suffix;
+        String objectName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + File.separator + uuid + "." + suffix;
         //  try-with-resource 语法糖自动释放流
         try (InputStream inputStream = file.getInputStream()) {
-
+            String md5 = FileUploadUtils.getMd5(file.getInputStream());
             // 设置上传文件的元信息，例如Content-Type
             ObjectMetadata metadata = new ObjectMetadata();
             metadata.setContentType(file.getContentType());
             // 创建PutObjectRequest对象，指定Bucket名称、对象名称和输入流
-            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, fileName, inputStream, metadata);
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, objectName, inputStream, metadata);
             // 上传文件
             aliyunOssClient.putObject(putObjectRequest);
+
+            // 获取文件访问路径
+            String fileUrl = "https://" + bucketName + "." + endpoint + "/" + objectName;
+            // TODO
+            return SysFile.builder()
+                    .name(filename)
+                    .type(suffix)
+                    .size(FileUtil.readableFileSize(file.getSize()))
+                    .md5(md5)
+                    .url(fileUrl)
+                    .path("")
+                    .build();
         } catch (Exception e) {
             throw new BusinessException("文件上传失败");
         }
-        // 获取文件访问路径
-        String fileUrl = "https://" + bucketName + "." + endpoint + "/" + fileName;
-        FileInfo fileInfo = new FileInfo();
-        fileInfo.setName(fileName);
-        fileInfo.setUrl(fileUrl);
-        return fileInfo;
+
+    }
+
+    @Override
+    public ImageFileInfo uploadImage(MultipartFile file, ImageForm imageForm) {
+        return null;
     }
 
     @Override
@@ -107,5 +124,10 @@ public class AliyunFileService implements FileService {
         String fileName = filePath.substring(fileHost.length() + 1); // +1 是/占一个字符，截断左闭右开
         aliyunOssClient.deleteObject(bucketName, fileName);
         return true;
+    }
+
+    @Override
+    public boolean deleteImage(String filePath) {
+        return false;
     }
 }

@@ -237,7 +237,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         cleanImageUrl.setId(id);
         cleanImageUrl.setUrl(hostUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
         cleanImageUrl.setOriginUrl(hostUrl + "/dataset/origin/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
-        cleanImageUrl.setType("clean");
+        cleanImageUrl.setType("清晰图像");
         imageUrls.add(cleanImageUrl);
         id++;
 
@@ -247,7 +247,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             hazeImageUrl.setId(id);
             hazeImageUrl.setUrl(hostUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
             hazeImageUrl.setOriginUrl(hostUrl + "/dataset/origin/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
-            hazeImageUrl.setType("haze");
+            hazeImageUrl.setType("有雾图像");
             if (hazeImage.startsWith(cleanImageName)) {
                 int prefixLength = cleanImageName.length();
                 String description = hazeImage.substring(prefixLength);
