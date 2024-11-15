@@ -6,7 +6,6 @@ import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.ImageUtils;
-import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.model.dto.ImageFileInfo;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.form.ImageForm;

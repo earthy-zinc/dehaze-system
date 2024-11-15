@@ -7,7 +7,7 @@ import com.pei.dehaze.model.entity.SysDatasetFile;
 import com.pei.dehaze.service.SysDatasetFileService;
 
 public class SysDatasetFileServiceImpl extends ServiceImpl<SysDatasetFileMapper, SysDatasetFile>
-        implements SysDatasetFileService  {
+        implements SysDatasetFileService {
     @Override
     public Long getMaxImageItemId() {
         QueryWrapper<SysDatasetFile> queryWrapper = new QueryWrapper<>();

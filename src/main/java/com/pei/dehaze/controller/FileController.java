@@ -2,7 +2,6 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.Result;
-import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.impl.file.LocalFileService;

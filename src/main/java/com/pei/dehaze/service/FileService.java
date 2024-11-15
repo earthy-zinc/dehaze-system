@@ -1,6 +1,5 @@
 package com.pei.dehaze.service;
 
-import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.model.dto.ImageFileInfo;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.form.ImageForm;
@@ -31,7 +30,7 @@ public interface FileService {
     /**
      * 上传图片
      *
-     * @param file 表单文件对象
+     * @param file      表单文件对象
      * @param imageForm 图片表单
      * @return 文件信息
      */
@@ -47,6 +46,7 @@ public interface FileService {
 
     /**
      * 删除图片
+     *
      * @param filePath 当前图片在数据库 SysFile 数据表中的存储 URL
      * @return
      */
