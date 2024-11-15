@@ -6,7 +6,6 @@ import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.converter.DatasetConverter;
 import com.pei.dehaze.model.dto.ImageFileInfo;
 import com.pei.dehaze.model.entity.SysDataset;
-import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.form.DatasetForm;
 import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.model.query.DatasetQuery;
@@ -14,7 +13,6 @@ import com.pei.dehaze.model.vo.DatasetVO;
 import com.pei.dehaze.model.vo.ImageItemVO;
 import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysDatasetService;
-import com.pei.dehaze.service.SysFileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +24,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,14 +73,15 @@ public class SysDatasetController {
 
     /**
      * 上传数据集图片
-     * @param file 图片文件
+     *
+     * @param file      图片文件
      * @param imageForm 图片信息
      * @return 文件信息
      */
     @PostMapping("/image")
     @Operation(summary = "数据集图片上传")
     public Result<ImageFileInfo> uploadFile(
-            @Parameter(description ="表单文件对象") @RequestParam(value = "file") MultipartFile file,
+            @Parameter(description = "表单文件对象") @RequestParam(value = "file") MultipartFile file,
             @Parameter(description = "图片元信息") @RequestParam(value = "imageForm") ImageForm imageForm
     ) {
         ImageFileInfo fileInfo = fileService.uploadImage(file, imageForm);
