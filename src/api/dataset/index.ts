@@ -20,6 +20,17 @@ class DatasetAPI {
   }
 
   /**
+   * 根据Id获取数据集信息
+   * @param id 数据集id
+   */
+  static getDatasetInfoById(id: number) {
+    return request<any, Dataset>({
+      url: "/api/v1/dataset/" + id,
+      method: "get",
+    });
+  }
+
+  /**
    * 获取数据集详细图片
    *
    * @param id

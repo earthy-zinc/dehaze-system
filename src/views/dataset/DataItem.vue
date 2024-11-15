@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ImageItem, ImageItemQuery } from "@/api/dataset/model";
+import { Dataset, ImageItem, ImageItemQuery } from "@/api/dataset/model";
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
@@ -10,78 +10,150 @@ defineOptions({
 });
 
 const datasetId = ref<number>(1);
+const totalPages = ref<number>(1);
 const queryParams = reactive<ImageItemQuery>({ pageNum: 1, pageSize: 50 });
 
-const images = ref<ViewCard[]>([]);
+let datasetInfo = ref<Dataset>({
+  id: 0,
+  parentId: 0,
+  name: "",
+  type: "",
+  description: "",
+  createTime: new Date(),
+  updateTime: new Date(),
+  path: "",
+  size: "",
+  total: 0,
+});
+let images = ref<ViewCard[]>([]);
 const imageData = ref<ImageItem[]>([]);
-
+type ImageType = { id: number; type: string; enabled: boolean };
+const imageTypes = ref<ImageType[]>([
+  { id: 0, type: "清晰图像", enabled: true },
+  { id: 1, type: "有雾图像", enabled: false },
+]);
 const route = useRoute();
+const { width } = useWindowSize();
 
-function handleQuery() {
+const itemWidth = computed(() => {
+  const breakpoints = [
+    { minWidth: 0, columns: 1 },
+    { minWidth: 768, columns: 2 },
+    { minWidth: 1024, columns: 3 },
+    { minWidth: 1280, columns: 4 },
+  ];
+  breakpoints.forEach((breakpoint) => {
+    if (width.value >= breakpoint.minWidth)
+      return Math.floor((width.value - 60) / breakpoint.columns);
+  });
+  return 400;
+});
+
+async function handleQuery() {
   DatasetAPI.getImageItem(datasetId.value, queryParams)
     .then((data) => {
       imageData.value = data.list;
-      let curImages = [] as ViewCard[];
-      imageData.value.map((item) =>
-        curImages.push({
-          src: item.imgUrl[0].originUrl,
-          alt: item.id,
-        })
-      );
-      images.value = curImages;
+      switchImageUrl(0);
+    })
+    .then(() => {
+      if (imageData.value.length > 0) {
+        let tempImageTypes = [] as ImageType[];
+        imageData.value[0].imgUrl.forEach((item, index) => {
+          tempImageTypes.push({
+            id: index,
+            type: item.type,
+            enabled: index === 0,
+          });
+        });
+        imageTypes.value = tempImageTypes;
+      }
     })
     .catch((err) => {
       console.log(err);
     });
 }
 
+function switchImageUrl(id: number) {
+  images.value = imageData.value.map((item) => ({
+    src: item.imgUrl[id].url,
+    originSrc: item.imgUrl[id].originUrl,
+    alt: item.id,
+  }));
+}
+
 function resetQuery() {}
 
-onMounted(() => {
+function handleImageTypeChange(typeId: number) {
+  imageTypes.value.forEach((item) => {
+    item.enabled = item.id === typeId;
+  });
+  switchImageUrl(typeId);
+}
+
+onMounted(async () => {
   datasetId.value = Number(route.params.id);
-  handleQuery();
+  DatasetAPI.getDatasetInfoById(datasetId.value).then((data) => {
+    datasetInfo.value = data;
+  });
+  await handleQuery();
 });
 </script>
 
 <template>
   <div class="app-container">
-    <div class="search-container">
-      <el-form ref="queryFormRef" :inline="true" :model="queryParams">
-        <el-form-item label="关键字" prop="keywords">
-          <el-input
-            v-model="queryParams.keywords"
-            clearable
-            placeholder="图片名称"
-            @keyup.enter="handleQuery"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleQuery">
-            <template #icon>
-              <i-ep-search />
-            </template>
-            搜索
-          </el-button>
-          <el-button @click="resetQuery">
-            <template #icon>
-              <i-ep-refresh />
-            </template>
-            重置
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </div>
-
     <el-card shadow="never">
       <!-- 纵向瀑布流布局 -->
-      <LongitudinalWaterfall :list="images" />
+      <h1 class="mt-2 mb-3" style="text-align: center">
+        {{ datasetInfo.name }} {{ datasetInfo.type }}数据集
+      </h1>
+      <p class="mr-3 ml-3 mb-6" style="text-indent: 2em">
+        {{ datasetInfo.description }}
+      </p>
+      <div class="mb-1" style="display: flex; justify-content: space-between">
+        <el-button-group>
+          <el-button
+            v-for="imageType in imageTypes"
+            :key="imageType.id"
+            :type="imageType.enabled ? 'primary' : ''"
+            plain
+            @click="handleImageTypeChange(imageType.id)"
+          >
+            {{ imageType.type }}
+          </el-button>
+        </el-button-group>
+
+        <el-form ref="queryFormRef" :inline="true" :model="queryParams">
+          <el-form-item label="关键字" prop="keywords">
+            <el-input
+              v-model="queryParams.keywords"
+              clearable
+              placeholder="图片名称"
+              @keyup.enter="handleQuery"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery">
+              <template #icon>
+                <i-ep-search />
+              </template>
+              搜索
+            </el-button>
+            <el-button @click="resetQuery">
+              <template #icon>
+                <i-ep-refresh />
+              </template>
+              重置
+            </el-button>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <LongitudinalWaterfall :list="images" :width="itemWidth" />
+      <el-divider v-if="queryParams.pageNum < totalPages"
+        >正在加载，请稍后</el-divider
+      >
     </el-card>
   </div>
 </template>
 
-<style lang="scss" scoped>
-.waterfall-item {
-  position: relative;
-  overflow: hidden;
-}
-</style>
+<style lang="scss" scoped></style>
