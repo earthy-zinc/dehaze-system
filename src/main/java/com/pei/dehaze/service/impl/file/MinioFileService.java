@@ -7,8 +7,6 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.IdUtil;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.FileUploadUtils;
-import com.pei.dehaze.mapper.SysFileMapper;
-import com.pei.dehaze.model.dto.FileInfo;
 import com.pei.dehaze.model.dto.ImageFileInfo;
 import com.pei.dehaze.model.entity.SysDatasetFile;
 import com.pei.dehaze.model.entity.SysFile;
@@ -36,7 +34,6 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Stream;
 
 /**
  * MinIO 文件上传服务类
@@ -172,14 +169,14 @@ public class MinioFileService implements FileService {
         sysDatasetFileService.save(sysDatasetFile);
 
         return ImageFileInfo.builder()
-                    .id(sysDatasetFile.getId())
-                    .datasetId(sysDatasetFile.getDatasetId())
-                    .imageItemId(sysDatasetFile.getImageItemId())
-                    .fileId(sysDatasetFile.getFileId())
-                    .type(sysDatasetFile.getType())
-                    .name(sysFile.getName())
-                    .url(sysFile.getUrl())
-                    .build();
+                .id(sysDatasetFile.getId())
+                .datasetId(sysDatasetFile.getDatasetId())
+                .imageItemId(sysDatasetFile.getImageItemId())
+                .fileId(sysDatasetFile.getFileId())
+                .type(sysDatasetFile.getType())
+                .name(sysFile.getName())
+                .url(sysFile.getUrl())
+                .build();
     }
 
     @NotNull
@@ -232,6 +229,7 @@ public class MinioFileService implements FileService {
 
     /**
      * 删除图片时，会将连带的数据项下对应的所有图片都删除
+     *
      * @param filePath 当前图片在数据库 SysFile 数据表中的 URL
      * @return
      */
@@ -259,8 +257,8 @@ public class MinioFileService implements FileService {
             sysDatasetFileService.removeBatchByIds(sysDatasetFileList);
             return true;
         } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
-                InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
-                XmlParserException e) {
+                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
+                 XmlParserException e) {
             throw new RuntimeException(e);
         }
     }
