@@ -1,4 +1,10 @@
 <script lang="ts" setup>
+defineProps({
+  loadingText: {
+    type: String,
+    default: "正在生成图片中，请耐心等候",
+  },
+});
 defineOptions({
   name: "Loading",
 });
@@ -7,7 +13,7 @@ defineOptions({
 <template>
   <div class="wrap">
     <div class="loading"><span v-for="i in 5" :key="i"></span></div>
-    <span class="ml-2">正在生成图片中，请耐心等候</span>
+    <span class="ml-2">{{ loadingText }}</span>
   </div>
 </template>
 

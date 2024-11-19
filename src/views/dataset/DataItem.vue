@@ -3,6 +3,7 @@ import { Dataset, ImageItem, ImageItemQuery } from "@/api/dataset/model";
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
+import { api as viewerApi } from "v-viewer";
 
 defineOptions({
   name: "DataItem",
@@ -11,8 +12,8 @@ defineOptions({
 
 const datasetId = ref<number>(1);
 const totalPages = ref<number>(1);
-const queryParams = reactive<ImageItemQuery>({ pageNum: 1, pageSize: 50 });
-
+const queryParams = reactive<ImageItemQuery>({ pageNum: 1, pageSize: 10 });
+const renderCount = ref<number>(0);
 let datasetInfo = ref<Dataset>({
   id: 0,
   parentId: 0,
@@ -26,12 +27,15 @@ let datasetInfo = ref<Dataset>({
   total: 0,
 });
 let images = ref<ViewCard[]>([]);
-const imageData = ref<ImageItem[]>([]);
+let imageData = reactive<ImageItem[]>([]);
 type ImageType = { id: number; type: string; enabled: boolean };
 const imageTypes = ref<ImageType[]>([
   { id: 0, type: "清晰图像", enabled: true },
   { id: 1, type: "有雾图像", enabled: false },
 ]);
+let loadingBarRef = ref();
+const loadingObserver = ref();
+
 const route = useRoute();
 const { width } = useWindowSize();
 
@@ -52,13 +56,14 @@ const itemWidth = computed(() => {
 async function handleQuery() {
   DatasetAPI.getImageItem(datasetId.value, queryParams)
     .then((data) => {
-      imageData.value = data.list;
+      imageData = data.list;
+      totalPages.value = Math.ceil(data.total / queryParams.pageSize);
       switchImageUrl(0);
     })
     .then(() => {
-      if (imageData.value.length > 0) {
+      if (imageData.length > 0) {
         let tempImageTypes = [] as ImageType[];
-        imageData.value[0].imgUrl.forEach((item, index) => {
+        imageData[0].imgUrl.forEach((item, index) => {
           tempImageTypes.push({
             id: index,
             type: item.type,
@@ -74,10 +79,14 @@ async function handleQuery() {
 }
 
 function switchImageUrl(id: number) {
-  images.value = imageData.value.map((item) => ({
-    src: item.imgUrl[id].url,
-    originSrc: item.imgUrl[id].originUrl,
-    alt: item.id,
+  images.value = imageData.map((item) => ({
+    id: item.id,
+    src: item.imgUrl[id].url.replace(new RegExp("localhost"), "172.16.3.113"),
+    originSrc: item.imgUrl[id].originUrl!.replace(
+      new RegExp("localhost"),
+      "172.16.3.113"
+    ),
+    alt: item.imgUrl[id].description,
   }));
 }
 
@@ -90,13 +99,58 @@ function handleImageTypeChange(typeId: number) {
   switchImageUrl(typeId);
 }
 
+function showBigPicture(itemId: number) {
+  let curSelectedImages = () => {
+    let curImageItem = imageData.find((item) => item.id === itemId);
+    let result = [] as string[];
+    if (curImageItem) {
+      curImageItem.imgUrl.map((item) => {
+        item.originUrl
+          ? result.push(
+              item.originUrl.replace(new RegExp("localhost"), "172.16.3.113")
+            )
+          : result.push(
+              item.url.replace(new RegExp("localhost"), "172.16.3.113")
+            );
+      });
+    }
+    return result;
+  };
+  viewerApi({
+    images: curSelectedImages(),
+  })
+    .show()
+    .update()
+    .view(0);
+}
+
 onMounted(async () => {
   datasetId.value = Number(route.params.id);
-  DatasetAPI.getDatasetInfoById(datasetId.value).then((data) => {
+  await DatasetAPI.getDatasetInfoById(datasetId.value).then((data) => {
     datasetInfo.value = data;
   });
   await handleQuery();
+  loadingObserver.value = new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        queryParams.pageNum++;
+        DatasetAPI.getImageItem(datasetId.value, queryParams).then((data) => {
+          imageData.push(...data.list);
+          switchImageUrl(imageTypes.value[0].id);
+        });
+      }
+    });
+  });
+
+  if (loadingBarRef.value) {
+    let loadingBarEl = loadingBarRef.value.$el as HTMLElement;
+    loadingBarEl.style.transform = "translate3d(0, 3000px, 0)";
+    loadingObserver.value.observe(loadingBarEl);
+    setTimeout(() => (loadingBarEl.style.transform = "none"), 1000);
+  }
 });
+
+onUnmounted(() => loadingObserver.value?.disconnect());
 </script>
 
 <template>
@@ -148,8 +202,19 @@ onMounted(async () => {
         </el-form>
       </div>
 
-      <LongitudinalWaterfall :list="images" :width="itemWidth" />
-      <el-divider v-if="queryParams.pageNum < totalPages"
+      <LongitudinalWaterfall
+        :list="images"
+        :width="itemWidth"
+        @click-item="showBigPicture"
+        @after-render="() => renderCount++"
+      />
+      <el-divider
+        ref="loadingBarRef"
+        v-show="
+          totalPages > 1 &&
+          renderCount >= queryParams.pageNum - 1 &&
+          queryParams.pageNum < totalPages
+        "
         >正在加载，请稍后</el-divider
       >
     </el-card>
