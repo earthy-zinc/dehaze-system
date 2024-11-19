@@ -36,10 +36,27 @@ watch(parentOffsetLeft, (newValue) => {
   emit("update:offset", newValue);
 });
 
+const animateOffsetLeft = (from: number, to: number, duration: number) => {
+  const startTime = performance.now();
+  const changeInValue = to - from;
+
+  const animate = (currentTime: number) => {
+    const elapsedTime = currentTime - startTime;
+    const progress = Math.min(elapsedTime / duration, 1);
+    parentOffsetLeft.value = from + changeInValue * progress;
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  };
+  requestAnimationFrame(animate);
+};
+
 onMounted(() => {
-  const { left } = dragContainer.value!.getBoundingClientRect();
+  const { left, right } = dragContainer.value!.getBoundingClientRect();
   parentOffsetLeft.value = dragContainer.value!.offsetWidth;
   offsetLeft.value = left;
+  animateOffsetLeft(right - left, 0, 3000);
 });
 </script>
 

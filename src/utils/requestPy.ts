@@ -5,7 +5,7 @@ import { TOKEN_KEY } from "@/enums/CacheEnum";
 
 // 创建 axios 实例
 const service = axios.create({
-  baseURL: import.meta.env.VITE_JAVA_BASE_API,
+  baseURL: import.meta.env.VITE_PYTHON_BASE_API,
   timeout: 50000,
   headers: { "Content-Type": "application/json;charset=utf-8" },
 });
@@ -54,9 +54,9 @@ service.interceptors.response.use(
           type: "warning",
         }).then(() => {
           const userStore = useUserStoreHook();
-          userStore.resetToken().then(() => {
-            location.reload();
-          });
+          // userStore.resetToken().then(() => {
+          //   location.reload();
+          // });
         });
       } else {
         ElMessage.error(msg || "系统出错");

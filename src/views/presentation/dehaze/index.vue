@@ -9,6 +9,7 @@ import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import Loading from "@/components/Loading/index.vue";
 import Evaluation from "@/components/Evaluation/index.vue";
 import FileAPI from "@/api/file";
+import ModelAPI from "@/api/model";
 
 const algorithmStore = useAlgorithmStore();
 
@@ -26,9 +27,11 @@ const point = ref<Point>({
   x: 0,
   y: 0,
 });
-const exampleImageUrls = ref<String[]>([]);
+const exampleImageUrls = ref<String[]>([
+  "http://172.16.3.113:8989/api/v1/files/dataset/thumbnail/Dense-Haze/hazy/01_hazy.png",
+]);
 const modelOptions = ref<OptionType[]>([]);
-const selectedModel = ref<OptionType>();
+const selectedModel = ref<number>();
 
 const show = reactive({
   camera: false,
@@ -71,31 +74,43 @@ function handleImageUpload(file: File) {
   FileAPI.upload(file)
     .then((res) => {
       // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
-      console.log(res);
+      activePage("loading");
+      image1.value = res.url;
+    })
+    .then(() => {
+      // 将文件显示到 SingleImageShow 组件中
+      activePage("singleImage");
     })
     .catch((err) => {
       ElMessage.error(err);
     });
-  // 将文件显示到 SingleImageShow 组件中
-  activePage("singleImage");
 }
 
 function handleReset() {
   image1.value = "";
   image2.value = "";
   showMask.value = false;
-  // activePage("example");
-  activePage("effect");
+  activePage("example");
+  // activePage("effect");
 }
 
 // 选择模型后生成对比图（原图 | 去雾图）
 function handleGenerateImage() {
   activePage("loading");
-  image1.value = `https://ai-resource.ailabtools.com/resource/166-before.webp`;
-  image2.value = `https://ai-resource.ailabtools.com/resource/166-after.webp`;
-  setTimeout(() => {
-    activePage("overlap");
-  }, 1000);
+  console.log(selectedModel.value);
+  ModelAPI.prediction({
+    modelId: Number(selectedModel.value) || 1,
+    input: image1.value,
+  })
+    .then((res) => {
+      // 获取生成后的图片url
+      image2.value = res[0].output.url;
+    })
+    .then(() => activePage("overlap"))
+    .catch((err) => {
+      ElMessage.error(err);
+      activePage("singleImage");
+    });
 }
 
 function handleExampleImageClick(url: string) {
@@ -168,12 +183,12 @@ onMounted(() => {
         class="effect-wrap"
       />
       <!-- 样例图片显示 -->
-      <!-- <ExampleImageSelect
+      <ExampleImageSelect
         class="example"
         v-if="show.example"
         :urls="exampleImageUrls"
         @on-example-select="handleExampleImageClick"
-      /> -->
+      />
       <!-- 拍照上传 -->
       <Camera
         v-if="show.camera"
@@ -188,7 +203,7 @@ onMounted(() => {
       />
       <Loading v-if="show.loading" />
       <!-- 评价指标 -->
-      <div v-if="show.overlap" ref="evRef" class="ev-all-wrap">
+      <!-- <div v-if="show.overlap" ref="evRef" class="ev-all-wrap">
         <div class="ev-wrap">
           <Evaluation />
         </div>
@@ -198,7 +213,7 @@ onMounted(() => {
         <div class="ev-wrap">
           <Evaluation />
         </div>
-      </div>
+      </div> -->
       <!-- 重叠展示 -->
       <OverlapImageShow
         v-if="show.overlap"
@@ -262,7 +277,7 @@ onMounted(() => {
   }
 }
 
-@media screen and (width <= 992px) {
+@media screen and (width <=992px) {
   .app-container {
     display: flex;
     flex-wrap: wrap;

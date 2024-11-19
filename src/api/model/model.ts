@@ -31,3 +31,15 @@ export interface EvalResult {
   // 评价指标的描述
   description?: string;
 }
+
+export interface PredResult {
+  model: string;
+  input: PredImageInfo;
+  output: PredImageInfo;
+}
+
+export interface PredImageInfo {
+  name: string;
+  path: string;
+  url: string;
+}

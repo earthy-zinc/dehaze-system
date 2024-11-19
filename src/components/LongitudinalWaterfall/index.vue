@@ -5,7 +5,6 @@ import { useCalculateCols, useLayout } from "../Waterfall/waterfall";
 import { LazyType } from "../LazyImg/types";
 import Lazy from "../LazyImg/lazy";
 import { getValue } from "@/utils";
-import { api as viewerApi } from "v-viewer";
 
 defineOptions({
   name: "LongitudinalWaterfall",
@@ -107,7 +106,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["afterRender"]);
+const emit = defineEmits(["afterRender", "clickItem"]);
 
 const imageRef = ref<HTMLImageElement>();
 
@@ -171,22 +170,6 @@ const getRenderURL = (item: ViewCard): string => {
 const getKey = (item: ViewCard, index: number): string => {
   return item[props.rowKey] || index;
 };
-
-// 点击图片展示高清大图
-const showBigPicture = (index: number) => {
-  viewerApi({
-    images: props.list.map((item) => {
-      let originSrc = getValue(item, "originSrc")[0];
-      if (!originSrc) {
-        return getRenderURL(item);
-      }
-      return originSrc;
-    }),
-  })
-    .show()
-    .update()
-    .view(index);
-};
 </script>
 
 <template>
@@ -203,7 +186,11 @@ const showBigPicture = (index: number) => {
       }"
       class="waterfall-item"
     >
-      <div ref="imageRef" class="waterfall-card" @click="showBigPicture(index)">
+      <div
+        ref="imageRef"
+        class="waterfall-card"
+        @click="emit('clickItem', item.id)"
+      >
         <LazyImg :url="getRenderURL(item)" />
       </div>
     </div>

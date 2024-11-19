@@ -1,6 +1,6 @@
 export interface ViewCard {
   src: any;
-  id?: string;
+  id?: string | number;
   name?: string;
   star?: boolean;
   backgroundColor?: string;
