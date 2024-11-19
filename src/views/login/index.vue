@@ -105,10 +105,9 @@
     <!-- ICP备案 -->
     <div class="absolute bottom-1 text-[10px] text-center" v-show="icpVisible">
       <p>
-        Copyright © 2021 - 2024 youlai.tech All Rights Reserved. 有来技术
-        版权所有
+        Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫 版权所有
       </p>
-      <p>皖ICP备20006496号-3</p>
+      <p>渝ICP备2024111923号-2</p>
     </div>
   </div>
 </template>
