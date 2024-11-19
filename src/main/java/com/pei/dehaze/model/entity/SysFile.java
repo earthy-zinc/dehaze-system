@@ -3,12 +3,14 @@ package com.pei.dehaze.model.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
-public class SysImage extends BaseEntity {
+@Builder
+public class SysFile extends BaseEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
 
@@ -17,6 +19,8 @@ public class SysImage extends BaseEntity {
     private String url;
 
     private String name;
+
+    private String objectName;
 
     private String size;
 

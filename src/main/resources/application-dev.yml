@@ -2,6 +2,9 @@ server:
   port: 8989
 
 spring:
+  devtools:
+    restart:
+      enabled: true
   jackson:
     ## 默认序列化时间格式
     date-format: yyyy-MM-dd HH:mm:ss
@@ -73,6 +76,7 @@ security:
     - /doc.html
     - /swagger-ui/**
     - /swagger-ui.html
+    - /api/v1/files/**
     - /api/v1/auth/captcha
 
 
@@ -80,7 +84,7 @@ file:
   # 上传类型 (目前支持aliyun OSS、minio OSS、local 本地存储)
   type: local
   local:
-    baseUrl: http://localhost:8989/api/v1/files
+    baseUrl: http://10.16.12.65:8989/api/v1/files
     uploadPath: E:/logs
     datasetOriginPath: D:/DeepLearning/dataset
     datasetThumbnailPath: D:/DeepLearning/thumbnail

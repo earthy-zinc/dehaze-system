@@ -6,8 +6,14 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.IdUtil;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.dto.FileInfo;
+import com.pei.dehaze.common.util.FileUploadUtils;
+import com.pei.dehaze.model.dto.ImageFileInfo;
+import com.pei.dehaze.model.entity.SysDatasetFile;
+import com.pei.dehaze.model.entity.SysFile;
+import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.service.FileService;
+import com.pei.dehaze.service.SysDatasetFileService;
+import com.pei.dehaze.service.SysFileService;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
@@ -15,6 +21,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -26,6 +33,7 @@ import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * MinIO 文件上传服务类
@@ -63,6 +71,10 @@ public class MinioFileService implements FileService {
 
     private MinioClient minioClient;
 
+    private SysFileService sysFileService;
+
+    private SysDatasetFileService sysDatasetFileService;
+
     // 依赖注入完成之后执行初始化
     @PostConstruct
     public void init() {
@@ -81,7 +93,7 @@ public class MinioFileService implements FileService {
      */
     @Override
     public boolean uploadCheck(String md5) {
-        return false;
+        return sysFileService.lambdaQuery().eq(SysFile::getMd5, md5).getEntity() != null;
     }
 
     /**
@@ -91,18 +103,26 @@ public class MinioFileService implements FileService {
      * @return
      */
     @Override
-    public FileInfo uploadFile(MultipartFile file) {
-
+    public SysFile uploadFile(MultipartFile file) {
         // 生成文件名(日期文件夹)
-        String suffix = FileUtil.getSuffix(file.getOriginalFilename());
+        String fileName = file.getOriginalFilename();
+        String fileSize = FileUtil.readableFileSize(file.getSize());
+        String suffix = FileUtil.getSuffix(fileName);
         String uuid = IdUtil.simpleUUID();
-        String fileName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + File.separator + uuid + "." + suffix;
+        String objectName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + File.separator + uuid + "." + suffix;
         //  try-with-resource 语法糖自动释放流
         try (InputStream inputStream = file.getInputStream()) {
+            // 检查文件md5
+            String md5 = FileUploadUtils.getMd5(inputStream);
+            // 从SysFile中查询是否存在md5相同的数据
+            SysFile foundFile = sysFileService.lambdaQuery().eq(SysFile::getMd5, md5).getEntity();
+
+            if (foundFile != null) return foundFile;
+
             // 文件上传
             PutObjectArgs putObjectArgs = PutObjectArgs.builder()
                     .bucket(bucketName)
-                    .object(fileName)
+                    .object(objectName)
                     .contentType(file.getContentType())
                     .stream(inputStream, inputStream.available(), -1)
                     .build();
@@ -112,7 +132,7 @@ public class MinioFileService implements FileService {
             String fileUrl;
             if (CharSequenceUtil.isBlank(customDomain)) { // 未配置自定义域名
                 GetPresignedObjectUrlArgs getPresignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
-                        .bucket(bucketName).object(fileName)
+                        .bucket(bucketName).object(objectName)
                         .method(Method.GET)
                         .build();
 
@@ -122,41 +142,119 @@ public class MinioFileService implements FileService {
                 fileUrl = customDomain + '/' + bucketName + "/" + fileName;
             }
 
-            FileInfo fileInfo = new FileInfo();
-            fileInfo.setName(fileName);
-            fileInfo.setUrl(fileUrl);
-            return fileInfo;
+            // 保存文件信息到数据库
+            SysFile sysFile = SysFile.builder()
+                    .name(fileName)
+                    .objectName(objectName)
+                    .size(fileSize)
+                    .type(suffix)
+                    .url(fileUrl)
+                    .md5(md5)
+                    .path("")
+                    .build();
+            sysFileService.save(sysFile);
+
+            return sysFile;
         } catch (Exception e) {
             throw new BusinessException("文件上传失败");
         }
     }
 
+    @Override
+    public ImageFileInfo uploadImage(MultipartFile file, ImageForm imageForm) {
+        SysFile sysFile = uploadFile(file);
+
+        // 保存文件信息到数据库DatasetFile表中
+        SysDatasetFile sysDatasetFile = getSysDatasetFile(imageForm, sysFile);
+        sysDatasetFileService.save(sysDatasetFile);
+
+        return ImageFileInfo.builder()
+                .id(sysDatasetFile.getId())
+                .datasetId(sysDatasetFile.getDatasetId())
+                .imageItemId(sysDatasetFile.getImageItemId())
+                .fileId(sysDatasetFile.getFileId())
+                .type(sysDatasetFile.getType())
+                .name(sysFile.getName())
+                .url(sysFile.getUrl())
+                .build();
+    }
+
+    @NotNull
+    private SysDatasetFile getSysDatasetFile(ImageForm imageForm, SysFile sysFile) {
+        SysDatasetFile sysDatasetFile = new SysDatasetFile();
+        sysDatasetFile.setDatasetId(imageForm.getDatasetId());
+        Long imageItemId = imageForm.getImageItemId();
+        if (imageItemId != null) {
+            sysDatasetFile.setImageItemId(imageItemId);
+        } else {
+            Long maxImageItemId = sysDatasetFileService.getMaxImageItemId();
+            sysDatasetFile.setImageItemId(maxImageItemId == null ? 1L : maxImageItemId + 1);
+        }
+        sysDatasetFile.setFileId(sysFile.getId());
+        sysDatasetFile.setType(imageForm.getType());
+        sysDatasetFile.setThumbnail(false);
+        return sysDatasetFile;
+    }
 
     /**
      * 删除文件
      *
-     * @param filePath 文件路径
-     *                 https://oss.youlai.tech/default/20221120/test.jpg
-     * @return
+     * @param filePath 文件路径（文件URL）
+     * @return 是否删除成功
      */
     @Override
     public boolean deleteFile(String filePath) {
         Assert.notBlank(filePath, "删除文件路径不能为空");
         try {
-            String fileName;
-            if (CharSequenceUtil.isNotBlank(customDomain)) {
-                // https://oss.youlai.tech/default/20221120/test.jpg → 20221120/test.jpg
-                fileName = filePath.substring(customDomain.length() + 1 + bucketName.length() + 1); // 两个/占了2个字符长度
-            } else {
-                // http://localhost:9000/default/20221120/test.jpg → 20221120/test.jpg
-                fileName = filePath.substring(endpoint.length() + 1 + bucketName.length() + 1);
-            }
+            // 获取数据库 sysFile 中文件信息
+            SysFile sysFile = sysFileService.lambdaQuery().eq(SysFile::getUrl, filePath).getEntity();
+
+            // 删除文件
+            String objectName = sysFile.getObjectName();
             RemoveObjectArgs removeObjectArgs = RemoveObjectArgs.builder()
                     .bucket(bucketName)
-                    .object(fileName)
+                    .object(objectName)
                     .build();
-
             minioClient.removeObject(removeObjectArgs);
+
+            // 删除数据库中对应的数据
+            sysFileService.removeById(sysFile);
+            return true;
+        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
+                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
+                 XmlParserException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * 删除图片时，会将连带的数据项下对应的所有图片都删除
+     *
+     * @param filePath 当前图片在数据库 SysFile 数据表中的 URL
+     * @return
+     */
+    @Override
+    public boolean deleteImage(String filePath) {
+        // 获取当前图片链接对应的FileId
+        Long id = sysFileService.lambdaQuery().eq(SysFile::getUrl, filePath).getEntity().getId();
+        // 获取fileId对应的imageItemId，然后从DatasetFile关联数据表找到所有匹配项
+        Long imageItemId = sysDatasetFileService.lambdaQuery().eq(SysDatasetFile::getFileId, id).getEntity().getImageItemId();
+        List<SysDatasetFile> sysDatasetFileList = sysDatasetFileService.lambdaQuery().eq(SysDatasetFile::getImageItemId, imageItemId).list();
+        // 删除所有匹配项
+        try {
+            for (SysDatasetFile sysDatasetFile : sysDatasetFileList) {
+                Long fileId = sysDatasetFile.getFileId();
+                SysFile sysFile = sysFileService.getById(fileId);
+                String objectName = sysFile.getObjectName();
+                RemoveObjectArgs removeObjectArgs = RemoveObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .build();
+
+                minioClient.removeObject(removeObjectArgs);
+                sysFileService.removeById(sysFile);
+            }
+            sysDatasetFileService.removeBatchByIds(sysDatasetFileList);
             return true;
         } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
                  InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |

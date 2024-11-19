@@ -10,6 +10,6 @@ public class FileExistValidator implements ConstraintValidator<FileExists, Strin
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
         File file = new File(value);
-        return file.exists() && file.isFile(); // 路径存在且为目录
+        return file.exists(); // 路径存在
     }
 }
