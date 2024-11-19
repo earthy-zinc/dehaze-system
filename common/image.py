@@ -33,3 +33,17 @@ def generate_input_img(url, id):
         }
     else:
         raise Exception("图片下载失败")
+
+
+def get_image_bytes_from_url(url) -> BytesIO:
+    try:
+        urlparse(url)
+        # 使用requests库获取图片
+        response = requests.get(image_url, stream=True)
+        response.raise_for_status()  # 确保请求成功
+
+        # 将图片转换为BytesIO对象
+        image_bytes = BytesIO(response.content)
+        return image_bytes
+    except ValueError:
+    return none
