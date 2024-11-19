@@ -1,7 +1,7 @@
 package com.pei.dehaze.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.pei.dehaze.model.entity.SysImage;
+import com.pei.dehaze.model.entity.SysFile;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
@@ -9,5 +9,5 @@ import org.apache.ibatis.annotations.Mapper;
  * @since 2024-06-08 18:27:53
  */
 @Mapper
-public interface SysImageMapper extends BaseMapper<SysImage> {
+public interface SysFileMapper extends BaseMapper<SysFile> {
 }
