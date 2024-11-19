@@ -33,9 +33,13 @@ python start.py
 
 ## 项目部署
 
-```bash
+在安装好项目依赖，启动项目成功之后。可以进行项目的部署操作。Gunicorn是一个流行的Python WSGI HTTP服务器，适用于生产环境。我们通过使用Gunicorn部署Flask应用。
 
+```bash
+gunicorn -w 4 start:app
 ```
+* -w 4表示使用4个工作进程。
+* start:app中的 start 是启动Flask应用所在的文件名（不包括.py扩展名），app是Flask实例的名称。
 
 ## 模型
 
