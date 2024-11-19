@@ -11,6 +11,4 @@ public interface ImageItemRepository extends MongoRepository<ImageItemVO, Long> 
     boolean existsByDatasetId(Long datasetId);
     Page<ImageItemVO> findByDatasetId(Long datasetId, Pageable pageable);
     Page<ImageItemVO> findByDatasetIdIn(List<Long> datasetId, Pageable pageable);
-
-
 }

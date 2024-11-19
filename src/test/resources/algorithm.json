@@ -1,0 +1,920 @@
+[
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "D4",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\D4\\weights_reconstruct.pth",
+    "importPath": "algorithm.D4.run",
+    "description": "",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "DaclipUir",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\daclip-uir\\daclip_ViT-B-32.pt",
+    "importPath": "algorithm.DaclipUir.run",
+    "description": "DaclipUir 是一种先进的图像去雾模型，它结合了深度学习与物理模型，通过优化图像的对比度和色彩，有效去除雾霾，提高图像的清晰度。该模型特别注重保留图像的细节和自然度，适用于多种场景下的图像去雾任务",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "DCPDN",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DCPDN\\netG_epoch_8.pth",
+    "importPath": "algorithm.DCPDN.run",
+    "description": "DCPDN 是一种基于深度学习的图像去雾方法，通过大气散射模型和密集连接的编码器-解码器结构，估计透射率图并进行去雾。该模型利用多级金字塔池化模块，提高了透射率估计的准确性，从而改善了去雾效果",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "DCP",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model",
+    "importPath": "algorithm.DCP.run",
+    "description": "DCP 是由何凯明等人在2009年提出的经典去雾算法，基于暗原色先验理论。该算法假设无雾图像的局部区域中至少有一个颜色通道的亮度值非常低。通过估计大气光和透射率，DCP 能够有效地去除图像中的雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "DEANet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DEA-Net",
+    "importPath": "algorithm.DEANet.run",
+    "description": " DEANet 是一种用于单幅图像去雾的深度学习网络，结合了细节增强卷积（DEConv）和内容引导注意力（CGA）机制。DEConv 通过并行的普通卷积和差异卷积增强特征表示，CGA 则通过生成粗略的空间注意力图并进行细化，提高模型对图像细节的保留能力",
+    "status": 1
+  },
+  {
+    "parentId": 14,
+    "type": "图像去雾",
+    "name": "HAZE4k模型",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DEA-Net\\HAZE4K\\PSNR3426_SSIM9885.pth",
+    "importPath": "algorithm.DEANet.run",
+    "description": " DEANet 是一种用于单幅图像去雾的深度学习网络，结合了细节增强卷积（DEConv）和内容引导注意力（CGA）机制。DEConv 通过并行的普通卷积和差异卷积增强特征表示，CGA 则通过生成粗略的空间注意力图并进行细化，提高模型对图像细节的保留能力",
+    "status": 1
+  },
+  {
+    "parentId": 14,
+    "type": "图像去雾",
+    "name": "ITS模型",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DEA-Net\\ITS\\PSNR4131_SSIM9945.pth",
+    "importPath": "algorithm.DEANet.run",
+    "description": " DEANet 是一种用于单幅图像去雾的深度学习网络，结合了细节增强卷积（DEConv）和内容引导注意力（CGA）机制。DEConv 通过并行的普通卷积和差异卷积增强特征表示，CGA 则通过生成粗略的空间注意力图并进行细化，提高模型对图像细节的保留能力",
+    "status": 1
+  },
+  {
+    "parentId": 14,
+    "type": "图像去雾",
+    "name": "OTS模型",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DEA-Net\\OTS\\PSNR3659_SSIM9897.pth",
+    "importPath": "algorithm.DEANet.run",
+    "description": " DEANet 是一种用于单幅图像去雾的深度学习网络，结合了细节增强卷积（DEConv）和内容引导注意力（CGA）机制。DEConv 通过并行的普通卷积和差异卷积增强特征表示，CGA 则通过生成粗略的空间注意力图并进行细化，提高模型对图像细节的保留能力",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "Dehamer",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\Dehamer",
+    "importPath": "algorithm.Dehamer.run",
+    "description": "Dehamer 是一种高效的图像去雾模型，通过多尺度特征融合技术和深度卷积网络，增强图像的结构信息。该模型能够在保持图像细节的同时，实现高质量的去雾效果，适用于多种场景下的图像去雾任务",
+    "status": 1
+  },
+  {
+    "parentId": 18,
+    "type": "图像去雾",
+    "name": "dense-haze模型",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\Dehamer\\dense\\PSNR1662_SSIM05602.pt",
+    "importPath": "algorithm.Dehamer.run",
+    "description": "Dehamer 是一种高效的图像去雾模型，通过多尺度特征融合技术和深度卷积网络，增强图像的结构信息。该模型能够在保持图像细节的同时，实现高质量的去雾效果，适用于多种场景下的图像去雾任务",
+    "status": 1
+  },
+  {
+    "parentId": 18,
+    "type": "图像去雾",
+    "name": "indoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\Dehamer\\indoor\\PSNR3663_ssim09881.pt",
+    "importPath": "algorithm.Dehamer.run",
+    "description": "Dehamer 是一种高效的图像去雾模型，通过多尺度特征融合技术和深度卷积网络，增强图像的结构信息。该模型能够在保持图像细节的同时，实现高质量的去雾效果，适用于多种场景下的图像去雾任务",
+    "status": 1
+  },
+  {
+    "parentId": 18,
+    "type": "图像去雾",
+    "name": "NH-HAZE-模型",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\Dehamer\\NH\\PSNR2066_SSIM06844.pt",
+    "importPath": "algorithm.Dehamer.run",
+    "description": "Dehamer 是一种高效的图像去雾模型，通过多尺度特征融合技术和深度卷积网络，增强图像的结构信息。该模型能够在保持图像细节的同时，实现高质量的去雾效果，适用于多种场景下的图像去雾任务",
+    "status": 1
+  },
+  {
+    "parentId": 18,
+    "type": "图像去雾",
+    "name": "outdoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\Dehamer\\outdoor\\PSNR3518_SSIM09860.pt",
+    "importPath": "algorithm.Dehamer.run",
+    "description": "Dehamer 是一种高效的图像去雾模型，通过多尺度特征融合技术和深度卷积网络，增强图像的结构信息。该模型能够在保持图像细节的同时，实现高质量的去雾效果，适用于多种场景下的图像去雾任务",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "DehazeFormer",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 23,
+    "type": "图像去雾",
+    "name": "indoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 24,
+    "type": "图像去雾",
+    "name": "indoor-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor\\dehazeformer-b.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 24,
+    "type": "图像去雾",
+    "name": "indoor-d",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor\\dehazeformer-d.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 24,
+    "type": "图像去雾",
+    "name": "indoor-l",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor\\dehazeformer-l.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 24,
+    "type": "图像去雾",
+    "name": "indoor-m",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor\\dehazeformer-m.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 24,
+    "type": "图像去雾",
+    "name": "indoor-s",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor\\dehazeformer-s.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 24,
+    "type": "图像去雾",
+    "name": "indoor-t",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor\\dehazeformer-t.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 24,
+    "type": "图像去雾",
+    "name": "indoor-w",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\indoor\\dehazeformer-w.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 23,
+    "type": "图像去雾",
+    "name": "outdoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\outdoor",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 32,
+    "type": "图像去雾",
+    "name": "outdoor-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\outdoor\\dehazeformer-b.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 32,
+    "type": "图像去雾",
+    "name": "outdoor-m",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\outdoor\\dehazeformer-m.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 32,
+    "type": "图像去雾",
+    "name": "outdoor-s",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\outdoor\\dehazeformer-s.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 32,
+    "type": "图像去雾",
+    "name": "outdoor-t",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\outdoor\\dehazeformer-t.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 23,
+    "type": "图像去雾",
+    "name": "reside6k",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\reside6k",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 37,
+    "type": "图像去雾",
+    "name": "reside6k-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\reside6k\\dehazeformer-b.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 37,
+    "type": "图像去雾",
+    "name": "reside6k-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\reside6k\\dehazeformer-b.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 37,
+    "type": "图像去雾",
+    "name": "reside6k-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\reside6k\\dehazeformer-b.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 37,
+    "type": "图像去雾",
+    "name": "reside6k-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\reside6k\\dehazeformer-b.pth",
+    "importPath": "algorithm.DehazeFormer.run",
+    "description": "DehazeFormer 是一种基于 Transformer 架构的图像去雾模型，通过长距离依赖建模，提高了去雾模型的泛化能力和细节保留。该模型在多个去雾数据集上表现出色，尤其是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度21",
+    "status": 1
+  },
+  {
+    "parentId": 23,
+    "type": "图像去雾",
+    "name": "rshaze",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\rshaze",
+    "importPath": "algorithm.DehazeNet.run",
+    "description": "DehazeNet 是早期基于卷积神经网络的图像去雾方法，通过多尺度映射层和非线性回归层，直接从输入图像预测透射率图。该模型结构简单，计算复杂度低，但在去雾效果上仍有提升空间",
+    "status": 1
+  },
+  {
+    "parentId": 42,
+    "type": "图像去雾",
+    "name": "rshaze-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\rshaze\\dehazeformer-b.pth",
+    "importPath": "algorithm.DehazeNet.run",
+    "description": "DehazeNet 是早期基于卷积神经网络的图像去雾方法，通过多尺度映射层和非线性回归层，直接从输入图像预测透射率图。该模型结构简单，计算复杂度低，但在去雾效果上仍有提升空间",
+    "status": 1
+  },
+  {
+    "parentId": 42,
+    "type": "图像去雾",
+    "name": "rshaze-m",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\rshaze\\dehazeformer-m.pth",
+    "importPath": "algorithm.DehazeNet.run",
+    "description": "DehazeNet 是早期基于卷积神经网络的图像去雾方法，通过多尺度映射层和非线性回归层，直接从输入图像预测透射率图。该模型结构简单，计算复杂度低，但在去雾效果上仍有提升空间",
+    "status": 1
+  },
+  {
+    "parentId": 42,
+    "type": "图像去雾",
+    "name": "rshaze-s",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\rshaze\\dehazeformer-s.pth",
+    "importPath": "algorithm.DehazeNet.run",
+    "description": "DehazeNet 是早期基于卷积神经网络的图像去雾方法，通过多尺度映射层和非线性回归层，直接从输入图像预测透射率图。该模型结构简单，计算复杂度低，但在去雾效果上仍有提升空间",
+    "status": 1
+  },
+  {
+    "parentId": 42,
+    "type": "图像去雾",
+    "name": "rshaze-t",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\DehazeFormer\\rshaze\\dehazeformer-t.pth",
+    "importPath": "algorithm.DehazeNet.run",
+    "description": "DehazeNet 是早期基于卷积神经网络的图像去雾方法，通过多尺度映射层和非线性回归层，直接从输入图像预测透射率图。该模型结构简单，计算复杂度低，但在去雾效果上仍有提升空间",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "FCD",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\FCD\\framework_da_230221_121802_gen.pth",
+    "importPath": "algorithm.FCD.run",
+    "description": "FCD 是一种基于全卷积网络的图像去雾方法，通过密集连接的卷积层进行端到端的去雾处理。该模型简化了模型结构，提高了计算效率，适用于实时去雾应用",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "FFANet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\FFA-Net",
+    "importPath": "algorithm.FFANet.run",
+    "description": "FFANet 是一种端到端的图像去雾模型，通过特征融合和注意力机制，提高了模型对复杂场景的适应能力。该模型在多个数据集上表现出色，特别是在处理薄雾和厚雾区域时，能够有效保留图像细节",
+    "status": 1
+  },
+  {
+    "parentId": 48,
+    "type": "图像去雾",
+    "name": "its",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\FFA-Net\\its_train_ffa_3_19.pk",
+    "importPath": "algorithm.FFANet.run",
+    "description": "FFANet 是一种端到端的图像去雾模型，通过特征融合和注意力机制，提高了模型对复杂场景的适应能力。该模型在多个数据集上表现出色，特别是在处理薄雾和厚雾区域时，能够有效保留图像细节",
+    "status": 1
+  },
+  {
+    "parentId": 48,
+    "type": "图像去雾",
+    "name": "ots",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\FFA-Net\\ots_train_ffa_3_19.pk",
+    "importPath": "algorithm.FFANet.run",
+    "description": "FFANet 是一种端到端的图像去雾模型，通过特征融合和注意力机制，提高了模型对复杂场景的适应能力。该模型在多个数据集上表现出色，特别是在处理薄雾和厚雾区域时，能够有效保留图像细节",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "FogRemoval",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\FogRemoval\\NH-HAZE_params_0100000.pt",
+    "importPath": "algorithm.FogRemoval.run",
+    "description": "FogRemoval 是一种多阶段的图像去雾方法，通过逐步优化图像质量，实现自然的去雾效果。该模型结合了物理模型和深度学习，能够在不同光照条件下有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "GCANet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\GCANet\\wacv_gcanet_dehaze.pth",
+    "importPath": "algorithm.GCANet.run",
+    "description": "GCANet 是一种利用全局上下文模块的图像去雾模型，通过增强模型对全局信息的理解，改善去雾结果。该模型在处理复杂场景时，能够有效保留图像的结构和细节，提高去雾效果",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "GridDehazeNet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\GridDehazeNet",
+    "importPath": "algorithm.GridDehazeNet.run",
+    "description": "GridDehazeNet 是一种基于网格结构的图像去雾模型，通过引导透射率估计，提高了去雾的精确度。该模型在处理不同尺度的雾霾时，能够有效保持图像的自然度和清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 53,
+    "type": "图像去雾",
+    "name": "indoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\GridDehazeNet\\indoor_haze_best_3_6",
+    "importPath": "algorithm.GridDehazeNet.run",
+    "description": "GridDehazeNet 是一种基于网格结构的图像去雾模型，通过引导透射率估计，提高了去雾的精确度。该模型在处理不同尺度的雾霾时，能够有效保持图像的自然度和清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 53,
+    "type": "图像去雾",
+    "name": "outdoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\GridDehazeNet\\outdoor_haze_best_3_6",
+    "importPath": "algorithm.GridDehazeNet.run",
+    "description": "GridDehazeNet 是一种基于网格结构的图像去雾模型，通过引导透射率估计，提高了去雾的精确度。该模型在处理不同尺度的雾霾时，能够有效保持图像的自然度和清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "ImgRestorationSde",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\image-restoration-sde",
+    "importPath": "algorithm.ImgRestorationSde.run",
+    "description": "ImageRestorationSDE (Image Restoration with Stochastic Differential Equations)是一种将图像去雾视为随机微分方程求解过程的模型，通过优化图像的恢复过程，实现高质量的去雾效果。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 56,
+    "type": "图像去模糊",
+    "name": "deblurring",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\image-restoration-sde\\deblurring\\ir-sde-deblurring.pth",
+    "importPath": "algorithm.ImgRestorationSde.run",
+    "description": "ImageRestorationSDE (Image Restoration with Stochastic Differential Equations)是一种将图像去雾视为随机微分方程求解过程的模型，通过优化图像的恢复过程，实现高质量的去雾效果。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 56,
+    "type": "图像去噪",
+    "name": "denoising",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\image-restoration-sde\\denoising\\ir-sde-denoising.pth",
+    "importPath": "algorithm.ImgRestorationSde.run",
+    "description": "ImageRestorationSDE (Image Restoration with Stochastic Differential Equations)是一种将图像去雾视为随机微分方程求解过程的模型，通过优化图像的恢复过程，实现高质量的去雾效果。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 56,
+    "type": "图像去雨",
+    "name": "deraining",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\image-restoration-sde\\deraining",
+    "importPath": "algorithm.ImgRestorationSde.run",
+    "description": "ImageRestorationSDE (Image Restoration with Stochastic Differential Equations)是一种将图像去雾视为随机微分方程求解过程的模型，通过优化图像的恢复过程，实现高质量的去雾效果。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 59,
+    "type": "图像去雨",
+    "name": "deraining-H100",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\image-restoration-sde\\deraining\\ir-sde-derainH100.pth",
+    "importPath": "algorithm.ImgRestorationSde.run",
+    "description": "ImageRestorationSDE (Image Restoration with Stochastic Differential Equations)是一种将图像去雾视为随机微分方程求解过程的模型，通过优化图像的恢复过程，实现高质量的去雾效果。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 59,
+    "type": "图像去雨",
+    "name": "deraining-L100",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\image-restoration-sde\\deraining\\ir-sde-derainL100.pth",
+    "importPath": "algorithm.ImgRestorationSde.run",
+    "description": "ImageRestorationSDE (Image Restoration with Stochastic Differential Equations)是一种将图像去雾视为随机微分方程求解过程的模型，通过优化图像的恢复过程，实现高质量的去雾效果。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "ITBDehaze",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\ITBdehaze\\best.pkl",
+    "importPath": "algorithm.ITBDehaze.run",
+    "description": "ITBDehaze (Image Texture and Boundary Dehazing)是一种利用图像的纹理和边界信息的图像去雾模型，通过多尺度处理增强去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度24",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "LightDehazeNet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LightDehazeNet\\trained_LDNet.pth",
+    "importPath": "algorithm.LightDehazeNet.run",
+    "description": "LightDehazeNet 是一种轻量级的图像去雾模型，适用于移动设备上的实时去雾应用。该模型通过优化网络结构，减少了计算复杂度，同时保持了较高的去雾效果",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "LKDNet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 64,
+    "type": "图像去雾",
+    "name": "ITS",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\ITS",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 65,
+    "type": "图像去雾",
+    "name": "ITS-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\ITS\\LKD-b\\LKD-b.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 65,
+    "type": "图像去雾",
+    "name": "ITS-l",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\ITS\\LKD-l\\LKD-l.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 65,
+    "type": "图像去雾",
+    "name": "ITS-s",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\ITS\\LKD-s\\LKD-s.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 65,
+    "type": "图像去雾",
+    "name": "ITS-t",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\ITS\\LKD-t\\LKD-t.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 64,
+    "type": "图像去雾",
+    "name": "OTS",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\OTS",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 70,
+    "type": "图像去雾",
+    "name": "OTS-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\OTS\\LKD-b\\LKD-b.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 70,
+    "type": "图像去雾",
+    "name": "OTS-l",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\OTS\\LKD-l\\LKD-l.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 70,
+    "type": "图像去雾",
+    "name": "OTS-s",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\OTS\\LKD-s\\LKD-s.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 70,
+    "type": "图像去雾",
+    "name": "OTS-t",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\LKDNet\\OTS\\LKD-t\\LKD-t.pth",
+    "importPath": "algorithm.LKDNet.run",
+    "description": "LKDNet (Local and Global Knowledge Distillation Network): LKDNet 是一种通过局部和全局特征的结合，提高模型鲁棒性和泛化能力的图像去雾模型。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度。",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "MADN",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MADN\\model.pth",
+    "importPath": "algorithm.MADN.run",
+    "description": "MADN (Multi-Adversarial Domain Network): MADN 是一种基于多对抗域网络的图像去雾模型，通过域适应技术，提高了模型对不同场景的适应能力。该模型在处理真实世界中的雾霾图像时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "MB-TaylorFormer",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 76,
+    "type": "图像去雾",
+    "name": "dense-haze",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 77,
+    "type": "图像去雾",
+    "name": "dense-haze-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer\\densehaze-MB-TaylorFormer-B.pth",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 77,
+    "type": "图像去雾",
+    "name": "dense-haze-l",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer\\densehaze-MB-TaylorFormer-L.pth",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 76,
+    "type": "图像去雾",
+    "name": "its",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer\\ITS-MB-TaylorFormer-L.pth",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 76,
+    "type": "图像去雾",
+    "name": "ohaze",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer\\ohaze-MB-TaylorFormer-B.pth",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 76,
+    "type": "图像去雾",
+    "name": "ots",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 82,
+    "type": "图像去雾",
+    "name": "ots-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer\\OTS-MB-TaylorFormer-B.pth",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 82,
+    "type": "图像去雾",
+    "name": "ots-l",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MB-TaylorFormer\\OTS-MB-TaylorFormer-L.pth",
+    "importPath": "algorithm.MB-TaylorFormer.run",
+    "description": "MB-TaylorFormer 是一种基于泰勒展开和 Transformer 的图像去雾模型，通过精确建模大气散射过程，实现高质量的去雾效果。该模型在多个数据集上表现出色，特别是在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "MixDehazeNet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 85,
+    "type": "图像去雾",
+    "name": "haze4k",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\haze4k",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 86,
+    "type": "图像去雾",
+    "name": "haze4k-l",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\haze4k\\MixDehazeNet-l.pth",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 85,
+    "type": "图像去雾",
+    "name": "indoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\indoor",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 88,
+    "type": "图像去雾",
+    "name": "indoor-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\indoor\\MixDehazeNet-b.pth",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 88,
+    "type": "图像去雾",
+    "name": "indoor-l",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\indoor\\MixDehazeNet-l.pth",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 85,
+    "type": "图像去雾",
+    "name": "outdoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\outdoor",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 91,
+    "type": "图像去雾",
+    "name": "outdoor-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\outdoor\\MixDehazeNet-b.pth",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 91,
+    "type": "图像去雾",
+    "name": "outdoor-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\outdoor\\MixDehazeNet-l.pth",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 91,
+    "type": "图像去雾",
+    "name": "outdoor-b",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MixDehazeNet\\outdoor\\MixDehazeNet-s.pth",
+    "importPath": "algorithm.MixDehazeNet.run",
+    "description": "MixDehazeNet 是一种融合多个去雾模型优点的图像去雾模型，通过集成学习提高去雾效果。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "MSFNet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MSFNet",
+    "importPath": "algorithm.MSFNet.run",
+    "description": "MSFNet 是一种多尺度特征融合网络，通过跨尺度信息交换，增强图像细节。该模型在处理不同尺度的雾霾时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 95,
+    "type": "图像去雾",
+    "name": "indoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MSFNet\\indoor.pth",
+    "importPath": "algorithm.MSFNet.run",
+    "description": "MSFNet 是一种多尺度特征融合网络，通过跨尺度信息交换，增强图像细节。该模型在处理不同尺度的雾霾时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 95,
+    "type": "图像去雾",
+    "name": "outdoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\MSFNet\\outdoor.pth",
+    "importPath": "algorithm.MSFNet.run",
+    "description": "MSFNet 是一种多尺度特征融合网络，通过跨尺度信息交换，增强图像细节。该模型在处理不同尺度的雾霾时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "PSD",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\PSD",
+    "importPath": "algorithm.PSD.run",
+    "description": "PSD (Physics-Driven Deep Learning): PSD 是一种物理驱动的深度学习方法，结合物理模型和深度学习，提高去雾精度。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 98,
+    "type": "图像去雾",
+    "name": "PSD-MSBDN",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\PSD\\PSB-MSBDN",
+    "importPath": "algorithm.PSD.run",
+    "description": "PSD (Physics-Driven Deep Learning): PSD 是一种物理驱动的深度学习方法，结合物理模型和深度学习，提高去雾精度。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 98,
+    "type": "图像去雾",
+    "name": "PSD-FFANET",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\PSD\\PSD-FFANET",
+    "importPath": "algorithm.PSD.run",
+    "description": "PSD (Physics-Driven Deep Learning): PSD 是一种物理驱动的深度学习方法，结合物理模型和深度学习，提高去雾精度。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 98,
+    "type": "图像去雾",
+    "name": "PSD-GCANET",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\PSD\\PSD-GCANET",
+    "importPath": "algorithm.PSD.run",
+    "description": "PSD (Physics-Driven Deep Learning): PSD 是一种物理驱动的深度学习方法，结合物理模型和深度学习，提高去雾精度。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "RIDCP",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\RIDCP\\pretrained_RIDCP.pth",
+    "importPath": "algorithm.RIDCP.run",
+    "description": "",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "SCANet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\SCANet",
+    "importPath": "algorithm.SCANet.run",
+    "description": "SCANet (Spatial Context Attention Network): SCANet 是一种空间注意网络，通过空间注意力机制优化特征提取，提高去雾质量。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 103,
+    "type": "图像去雾",
+    "name": "SCANet-40",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\SCANet\\Gmodel_40.tar",
+    "importPath": "algorithm.SCANet.run",
+    "description": "SCANet (Spatial Context Attention Network): SCANet 是一种空间注意网络，通过空间注意力机制优化特征提取，提高去雾质量。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 103,
+    "type": "图像去雾",
+    "name": "SCANet-105",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\SCANet\\Gmodel_105.tar",
+    "importPath": "algorithm.SCANet.run",
+    "description": "SCANet (Spatial Context Attention Network): SCANet 是一种空间注意网络，通过空间注意力机制优化特征提取，提高去雾质量。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 103,
+    "type": "图像去雾",
+    "name": "SCANet-120",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\SCANet\\Gmodel_120.tar",
+    "importPath": "algorithm.SCANet.run",
+    "description": "SCANet (Spatial Context Attention Network): SCANet 是一种空间注意网络，通过空间注意力机制优化特征提取，提高去雾质量。该模型在处理复杂场景时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "SGIDPFF",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\SGID-PFF",
+    "importPath": "algorithm.SGIDPFF.run",
+    "description": "SGIDPFF (Single Image Dehazing with Heterogeneous Task Imitation): SGIDPFF 是一种通过异构任务模仿技术，提高去雾效果的图像去雾模型。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 107,
+    "type": "图像去雾",
+    "name": "indoor",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\SGID-PFF\\SOTS_indoor.pt",
+    "importPath": "algorithm.SGIDPFF.run",
+    "description": "SGIDPFF (Single Image Dehazing with Heterogeneous Task Imitation): SGIDPFF 是一种通过异构任务模仿技术，提高去雾效果的图像去雾模型。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 107,
+    "type": "图像去雾",
+    "name": "SGIDPFF",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\SGID-PFF\\SOTS_outdoor.pt",
+    "importPath": "algorithm.SGIDPFF.run",
+    "description": "SGIDPFF (Single Image Dehazing with Heterogeneous Task Imitation): SGIDPFF 是一种通过异构任务模仿技术，提高去雾效果的图像去雾模型。该模型在处理不同类型的雾霾时，能够有效保留图像的细节和自然度，适用于多种场景下的图像去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "TSDNet",
+    "path": "E:\\ProgramProject\\new-dehaze\\dehaze-python\\trained_model\\TSDNet\\GNet.tar",
+    "importPath": "algorithm.TSDNet.run",
+    "description": "TSDNet (Temporal-Spatial-Depth Network): TSDNet 是一种时间-空间-深度联合建模的图像去雾模型，通过优化视频序列的去雾效果，提高视频去雾的连贯性和自然度。该模型在处理视频序列时，能够有效去除雾霾，恢复图像的清晰度，适用于多种场景下的视频去雾任务。",
+    "status": 1
+  },
+  {
+    "parentId": 0,
+    "type": "图像去雾",
+    "name": "TNN",
+    "path": "",
+    "importPath": "algorithm.TNN.run",
+    "description": "",
+    "status": 1
+  }
+]

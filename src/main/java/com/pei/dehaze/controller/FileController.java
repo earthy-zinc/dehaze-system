@@ -2,7 +2,7 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.Result;
-import com.pei.dehaze.model.dto.FileInfo;
+import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.impl.file.LocalFileService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,10 +27,10 @@ public class FileController {
 
     @PostMapping
     @Operation(summary = "文件上传")
-    public Result<FileInfo> uploadFile(
+    public Result<SysFile> uploadFile(
             @Parameter(description ="表单文件对象") @RequestParam(value = "file") MultipartFile file
     ) {
-        FileInfo fileInfo = fileService.uploadFile(file);
+        SysFile fileInfo = fileService.uploadFile(file);
         return Result.success(fileInfo);
     }
 
