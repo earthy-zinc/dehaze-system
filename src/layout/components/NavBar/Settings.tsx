@@ -85,14 +85,6 @@ export const Settings: React.FC = () => {
     (state: RootState) => state.settings.themeColor
   );
 
-  // 获取色值
-  const { r, g, b } = useMemo(() => {
-    return {
-      r: themeColor.metaColor.r,
-      g: themeColor.metaColor.g,
-      b: themeColor.metaColor.b,
-    };
-  }, [themeColor]);
   const handleThemeColorChange = (color: Color) => {
     dispatch({ type: "settings/changeThemeColor", payload: color });
   };
@@ -119,10 +111,7 @@ export const Settings: React.FC = () => {
 
       <div className="settings-option">
         <span className="text-xs">主题颜色</span>
-        <ColorPicker
-          defaultValue={`rgb(${r}, ${g}, ${b})`}
-          onChangeComplete={handleThemeColorChange}
-        />
+        <ColorPicker onChangeComplete={handleThemeColorChange} />
       </div>
 
       <div className="settings-option">

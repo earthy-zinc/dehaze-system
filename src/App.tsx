@@ -42,15 +42,6 @@ function App() {
     return customAlgorithm;
   }, [appStore.size, settingsStore.theme, systemTheme]);
 
-  // 获取色值
-  const { r, g, b } = useMemo(() => {
-    return {
-      r: settingsStore.themeColor.metaColor.r,
-      g: settingsStore.themeColor.metaColor.g,
-      b: settingsStore.themeColor.metaColor.b,
-    };
-  }, [settingsStore.themeColor]);
-
   return (
     <ConfigProvider
       locale={locale}
@@ -58,9 +49,6 @@ function App() {
       theme={{
         algorithm,
         cssVar: true,
-        token: {
-          colorPrimary: `rgb(${r}, ${g}, ${b})`,
-        },
         components: {
           Layout: {
             headerBg: "#fff",
