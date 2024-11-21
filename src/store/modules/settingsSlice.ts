@@ -1,10 +1,10 @@
-import { PayloadAction, createSlice } from "@reduxjs/toolkit";
+import defaultSettings from "@/settings";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
-import defaultSettings from "@/settings";
 
 const initialState = {
-  settingsVisiable: false,
+  settingsVisible: false,
   tagsView: defaultSettings.tagsView,
   sidebarLogo: defaultSettings.sidebarLogo,
   fixedHeader: defaultSettings.fixedHeader,
@@ -35,14 +35,17 @@ const settingsSlice = createSlice({
   name: "settings",
   initialState,
   reducers: {
-    toggleSettingsVisiable: (state) => {
-      state.settingsVisiable = !state.settingsVisiable;
+    toggleSettingsVisible: (state) => {
+      state.settingsVisible = !state.settingsVisible;
     },
     toggleWatermark: (state) => {
       state.watermarkEnabled = !state.watermarkEnabled;
     },
     toggleSidebarLogo: (state) => {
       state.sidebarLogo = !state.sidebarLogo;
+    },
+    toggleTagsView: (state) => {
+      state.tagsView = !state.tagsView;
     },
     changeTheme: (state, action: PayloadAction<string>) => {
       state.theme = action.payload;
@@ -69,4 +72,14 @@ const settingsSlice = createSlice({
   },
 });
 
+export const {
+  toggleSettingsVisible,
+  toggleWatermark,
+  toggleSidebarLogo,
+  toggleTagsView,
+  changeTheme,
+  changeThemeColor,
+  changeLayout,
+  changeSetting,
+} = settingsSlice.actions;
 export default persistReducer(settingsPersistConfig, settingsSlice.reducer);

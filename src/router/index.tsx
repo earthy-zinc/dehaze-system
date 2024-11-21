@@ -77,6 +77,10 @@ const router = createBrowserRouter([
         element: <Navigate to="home" replace />,
       },
       {
+        path: "login",
+        element: lazyLoad(lazy(() => import("@/pages/login"))),
+      },
+      {
         path: "home",
         element: lazyLoad(lazy(() => import("@/pages/home"))),
       },

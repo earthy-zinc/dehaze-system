@@ -1,9 +1,9 @@
-import { PayloadAction, createSlice } from "@reduxjs/toolkit";
-import { persistReducer } from "redux-persist";
-import storage from "redux-persist/lib/storage";
 import { DeviceEnum } from "@/enums/DeviceEnum";
 import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
 import defaultSettings from "@/settings";
+import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { persistReducer } from "redux-persist";
+import storage from "redux-persist/lib/storage";
 
 const initialState = {
   device: DeviceEnum.DESKTOP,
@@ -41,4 +41,11 @@ const appPersistConfig = {
   blackList: ["activeTopMenuPath"],
 };
 
+export const {
+  toggleSidebar,
+  toggleDevice,
+  changeSize,
+  changeLanguage,
+  activeTopMenu,
+} = appSlice.actions;
 export default persistReducer(appPersistConfig, appSlice.reducer);

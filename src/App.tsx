@@ -1,7 +1,7 @@
 import router from "@/router";
 import defaultSettings from "@/settings";
 import { RootState } from "@/store";
-import { ConfigProvider, theme, Watermark } from "antd";
+import { ConfigProvider, message, theme, Watermark } from "antd";
 import { SizeType } from "antd/es/config-provider/SizeContext";
 import enUS from "antd/locale/en_US";
 import zhCN from "antd/locale/zh_CN";
@@ -12,6 +12,7 @@ import { ThemeEnum } from "./enums/ThemeEnum";
 import useSystemTheme from "./hooks/useSystemTheme";
 
 function App() {
+  const [messageApi, contextHolder] = message.useMessage();
   const appStore = useSelector((state: RootState) => state.app);
   const settingsStore = useSelector((state: RootState) => state.settings);
   const systemTheme = useSystemTheme();
@@ -43,33 +44,36 @@ function App() {
   }, [appStore.size, settingsStore.theme, systemTheme]);
 
   return (
-    <ConfigProvider
-      locale={locale}
-      componentSize={appStore.size as SizeType}
-      theme={{
-        algorithm,
-        cssVar: true,
-        components: {
-          Layout: {
-            headerBg: "#fff",
-            headerHeight: 50,
-            headerPadding: 0,
-            siderBg: "#fff",
+    <>
+      {contextHolder}
+      <ConfigProvider
+        locale={locale}
+        componentSize={appStore.size as SizeType}
+        theme={{
+          algorithm,
+          cssVar: true,
+          components: {
+            Layout: {
+              headerBg: "#fff",
+              headerHeight: 50,
+              headerPadding: 0,
+              siderBg: "#fff",
+            },
           },
-        },
-      }}
-    >
-      <Watermark
-        style={{ width: "100%", height: "100%", overflow: "auto" }}
-        content={
-          settingsStore.watermarkEnabled
-            ? defaultSettings.watermarkContent
-            : undefined
-        }
+        }}
       >
-        <RouterProvider router={router} />
-      </Watermark>
-    </ConfigProvider>
+        <Watermark
+          style={{ width: "100%", height: "100%", overflow: "auto" }}
+          content={
+            settingsStore.watermarkEnabled
+              ? defaultSettings.watermarkContent
+              : undefined
+          }
+        >
+          <RouterProvider router={router} />
+        </Watermark>
+      </ConfigProvider>
+    </>
   );
 }
 

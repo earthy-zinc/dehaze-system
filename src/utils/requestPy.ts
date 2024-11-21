@@ -1,14 +1,11 @@
 import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { ResultEnum } from "@/enums/ResultEnum";
-import store from "@/store";
-import { resetToken } from "@/store/modules/userSlice";
-
 import { message, Modal } from "antd";
 import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 
 // 创建 axios 实例
 const service = axios.create({
-  baseURL: import.meta.env.VITE_JAVA_BASE_API,
+  baseURL: import.meta.env.VITE_PYTHON_BASE_API,
   timeout: 50000,
   headers: { "Content-Type": "application/json;charset=utf-8" },
 });
@@ -54,13 +51,8 @@ service.interceptors.response.use(
         Modal.confirm({
           title: "提示",
           content: "登录已失效，请重新登录",
-          onOk() {
-            store.dispatch(resetToken());
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.href)}`;
-          },
-          onCancel() {
-            store.dispatch(resetToken());
-          },
+          onOk() {},
+          onCancel() {},
         });
       } else {
         message.error(msg || "系统出错");

@@ -1,12 +1,16 @@
-import { configureStore } from "@reduxjs/toolkit";
-import { persistStore } from "redux-persist";
 import appReducer from "@/store/modules/appSlice";
 import settingsReducer from "@/store/modules/settingsSlice";
+import userReducer from "@/store/modules/userSlice";
+import { configureStore } from "@reduxjs/toolkit";
+import { persistStore } from "redux-persist";
+import permissionReducer from "./modules/permissionSlice";
 
 const store = configureStore({
   reducer: {
     app: appReducer,
     settings: settingsReducer,
+    user: userReducer,
+    permission: permissionReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -16,6 +20,7 @@ const store = configureStore({
 
 // 导出整个store的类型
 export type RootState = ReturnType<typeof store.getState>;
+export type DisPatchType = typeof store.dispatch;
 
 export const persistor = persistStore(store);
 

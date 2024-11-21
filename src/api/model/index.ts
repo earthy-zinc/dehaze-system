@@ -1,19 +1,9 @@
-import request from "@/utils/request";
-import { EvalParam, EvalResult, PredParam } from "./model";
+import request from "@/utils/requestPy";
+import { EvalParam, EvalResult, PredParam, PredResult } from "./model";
 
 class ModelAPI {
-  /**
-   * 获取模型下拉选项列表
-   */
-  static getOption() {
-    return request({
-      url: "/model/options",
-      method: "get",
-    });
-  }
-
   static prediction(params: PredParam) {
-    return request({
+    return request<any, PredResult[]>({
       url: "/model/prediction",
       method: "get",
       params,

@@ -1,26 +1,35 @@
+import { LayoutEnum } from "@/enums/LayoutEnum";
+import { ThemeEnum } from "@/enums/ThemeEnum";
+import { DisPatchType, RootState } from "@/store";
+import { changeLanguage, changeSize } from "@/store/modules/appSlice";
+import {
+  changeLayout,
+  changeTheme,
+  changeThemeColor,
+  toggleSidebarLogo,
+  toggleTagsView,
+  toggleWatermark,
+} from "@/store/modules/settingsSlice";
+import { MoonOutlined, SunOutlined } from "@ant-design/icons";
 import { ColorPicker, Divider, Drawer, Select, Switch, Tooltip } from "antd";
 import "./index.scss";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/store";
-import { MoonOutlined, SunOutlined } from "@ant-design/icons";
-import { ThemeEnum } from "@/enums/ThemeEnum";
-import { LayoutEnum } from "@/enums/LayoutEnum";
 import { Color } from "antd/es/color-picker";
-import { useMemo } from "react";
+import React from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 export const Settings: React.FC = () => {
-  const settingsVisiable = useSelector(
-    (state: RootState) => state.settings.settingsVisiable
+  const settingsVisible = useSelector(
+    (state: RootState) => state.settings.settingsVisible
   );
 
-  const dispatch = useDispatch();
+  const dispatch: DisPatchType = useDispatch();
 
   // 主题
   const theme = useSelector((state: RootState) => state.settings.theme);
   const isLightTheme = theme === ThemeEnum.LIGHT;
   const handleThemeChange = (checked: boolean) => {
     const theme = checked ? ThemeEnum.LIGHT : ThemeEnum.DARK;
-    dispatch({ type: "settings/changeTheme", payload: theme });
+    dispatch(changeTheme(theme));
   };
 
   // 布局
@@ -28,7 +37,7 @@ export const Settings: React.FC = () => {
     (state: RootState) => state.settings.layout
   );
   const handleLayoutChange = (layout: LayoutEnum) => {
-    dispatch({ type: "settings/changeLayout", payload: layout });
+    dispatch(changeLayout(layout));
   };
 
   // 界面语言
@@ -41,7 +50,7 @@ export const Settings: React.FC = () => {
     (item) => item.value === language
   )?.label;
   const handleLanguageChange = (language: string) => {
-    dispatch({ type: "app/changeLanguage", payload: language });
+    dispatch(changeLanguage(language));
   };
 
   // 字体大小
@@ -52,7 +61,7 @@ export const Settings: React.FC = () => {
   const size = useSelector((state: RootState) => state.app.size);
   const defaultSize = sizeOptions.find((item) => item.value === size)?.label;
   const handleSizeChange = (size: string) => {
-    dispatch({ type: "app/changeSize", payload: size });
+    dispatch(changeSize(size));
   };
 
   // 水印
@@ -60,10 +69,7 @@ export const Settings: React.FC = () => {
     (state: RootState) => state.settings.watermarkEnabled
   );
   const handleWatermarkChange = (checked: boolean) => {
-    dispatch({
-      type: "settings/toggleWatermark",
-      payload: checked,
-    });
+    dispatch(toggleWatermark());
   };
 
   // 侧边栏图标
@@ -71,13 +77,13 @@ export const Settings: React.FC = () => {
     (state: RootState) => state.settings.sidebarLogo
   );
   const handleSidebarLogoChange = (checked: boolean) => {
-    dispatch({ type: "settings/toggleSidebarLogo", payload: checked });
+    dispatch(toggleSidebarLogo());
   };
 
   // 页面标签
   const tagsView = useSelector((state: RootState) => state.settings.tagsView);
   const handleTagsViewChange = (checked: boolean) => {
-    dispatch({ type: "settings/toggleTagsView", payload: checked });
+    dispatch(toggleTagsView());
   };
 
   // 主题颜色
@@ -86,13 +92,13 @@ export const Settings: React.FC = () => {
   );
 
   const handleThemeColorChange = (color: Color) => {
-    dispatch({ type: "settings/changeThemeColor", payload: color });
+    dispatch(changeThemeColor(color.toHex()));
   };
   return (
     <Drawer
       title="系统设置"
-      onClose={() => dispatch({ type: "settings/toggleSettingsVisiable" })}
-      open={settingsVisiable}
+      onClose={() => dispatch({ type: "settings/toggleSettingsVisible" })}
+      open={settingsVisible}
     >
       <Divider plain>主题设置</Divider>
       <div className="settings-option" style={{ justifyContent: "center" }}>

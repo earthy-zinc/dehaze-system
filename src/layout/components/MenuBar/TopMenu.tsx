@@ -1,6 +1,8 @@
 import { Logo } from "@/layout/components/Logo";
 import { Settings } from "@/layout/components/NavBar/Settings";
 import { menuItems } from "@/router";
+import { DisPatchType } from "@/store";
+import { toggleSettingsVisible } from "@/store/modules/settingsSlice";
 import { SettingOutlined } from "@ant-design/icons";
 import { Menu } from "antd";
 import React from "react";
@@ -9,16 +11,10 @@ import { useNavigate } from "react-router-dom";
 
 export const TopMenu: React.FC = () => {
   const navigate = useNavigate();
-  const handleMenuSelect = ({ item }: { item: any }) => {
+  const handleMenuSelect = ({ item }: { item: any }) =>
     navigate(item.props.path);
-  };
 
-  const dispatch = useDispatch();
-  const handleSettingClick = () => {
-    dispatch({
-      type: "settings/toggleSettingsVisiable",
-    });
-  };
+  const dispatch: DisPatchType = useDispatch();
 
   return (
     <>
@@ -32,9 +28,12 @@ export const TopMenu: React.FC = () => {
         onSelect={handleMenuSelect}
       />
       <div className="navbar-right">
-        <div className="menu-status-icon" onClick={handleSettingClick}>
+        <button
+          className="menu-status-icon"
+          onClick={() => dispatch(toggleSettingsVisible())}
+        >
           <SettingOutlined />
-        </div>
+        </button>
       </div>
       <Settings />
     </>

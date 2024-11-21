@@ -6,6 +6,7 @@ import "./index.scss";
 import { Layout } from "antd";
 import { Content, Header } from "antd/es/layout/layout";
 import Sider from "antd/es/layout/Sider";
+import React from "react";
 import { useSelector } from "react-redux";
 import { Outlet } from "react-router-dom";
 import { SideMenu } from "./components/MenuBar/SideMenu";

@@ -1,5 +1,5 @@
 import request from "@/utils/request";
-import { FileInfo } from "./model";
+import { FileInfo, ImageFileInfo } from "./model";
 
 class FileAPI {
   /**
@@ -23,7 +23,7 @@ class FileAPI {
   static upload(file: File) {
     const formData = new FormData();
     formData.append("file", file);
-    return request<any, FileInfo>({
+    return request<any, FileInfo | ImageFileInfo>({
       url: "/api/v1/files",
       method: "post",
       data: formData,

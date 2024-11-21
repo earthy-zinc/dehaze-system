@@ -1,4 +1,9 @@
-import { DatasetQuery, Dataset, ImageItem } from "@/api/dataset/model";
+import {
+  Dataset,
+  DatasetQuery,
+  ImageItem,
+  ImageItemQuery,
+} from "@/api/dataset/model";
 import request from "@/utils/request";
 
 class DatasetAPI {
@@ -15,14 +20,27 @@ class DatasetAPI {
   }
 
   /**
+   * 根据Id获取数据集信息
+   * @param id 数据集id
+   */
+  static getDatasetInfoById(id: number) {
+    return request<any, Dataset>({
+      url: "/api/v1/dataset/" + id,
+      method: "get",
+    });
+  }
+
+  /**
    * 获取数据集详细图片
    *
    * @param id
+   * @param queryParams
    */
-  static getImageItem(id: number) {
-    return request<any, ImageItem[]>({
+  static getImageItem(id: number, queryParams: ImageItemQuery) {
+    return request<any, PageResult<ImageItem[]>>({
       url: "/api/v1/dataset/" + id + "/images",
       method: "get",
+      params: queryParams,
     });
   }
 
