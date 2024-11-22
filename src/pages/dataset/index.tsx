@@ -22,6 +22,26 @@ import React, {
 import { useNavigate } from "react-router-dom";
 import EditModal from "./components/EditModal";
 
+/**
+ * 递归函数，用于遍历和清理 Dataset 结构
+ * @param datasets - 当前遍历的 Dataset 数组
+ */
+function cleanDatasets(datasets: Dataset[]): void {
+  for (let i = 0; i < datasets.length; i++) {
+    const dataset = datasets[i];
+
+    if (dataset.children && dataset.children.length > 0) {
+      // 递归遍历每个子数据集
+      cleanDatasets(dataset.children);
+    } else {
+      // 如果 children 是空对象，删除它
+      if (dataset.children && Object.keys(dataset.children).length === 0) {
+        delete dataset.children;
+      }
+    }
+  }
+}
+
 export default function DatasetList() {
   const [datasetList, setDatasetList] = useState<Dataset[]>();
   const [loading, setLoading] = useState(false);
@@ -57,11 +77,15 @@ export default function DatasetList() {
         title: "名称",
         dataIndex: "name",
         key: "name",
+        width: 160,
+        align: "center",
       },
       {
         title: "类型",
         dataIndex: "type",
         key: "type",
+        width: 80,
+        align: "center",
       },
       {
         title: "描述",
@@ -72,11 +96,15 @@ export default function DatasetList() {
         title: "大小",
         dataIndex: "size",
         key: "size",
+        width: 90,
+        align: "center",
       },
       {
         title: "图片数量",
         dataIndex: "total",
         key: "total",
+        width: 80,
+        align: "center",
       },
       {
         title: "存储位置",
@@ -87,6 +115,8 @@ export default function DatasetList() {
         title: "状态",
         dataIndex: "status",
         key: "status",
+        width: 50,
+        align: "center",
         render: (status: number) => {
           return status === 1 ? "正常" : "异常";
         },
@@ -94,6 +124,9 @@ export default function DatasetList() {
       {
         title: "操作",
         key: "action",
+        width: 180,
+        align: "center",
+        fixed: "right",
         render: (text: string, record: any) => (
           <>
             <Button
@@ -175,6 +208,7 @@ export default function DatasetList() {
     const getDatasetList = () => {
       setLoading(true);
       DatasetAPI.getList(queryParams).then((data) => {
+        cleanDatasets(data);
         setDatasetList(data);
         setLoading(false);
       });
@@ -228,7 +262,9 @@ export default function DatasetList() {
           columns={visibleColumns}
           expandable={{
             defaultExpandAllRows: true,
+            indentSize: 10,
           }}
+          scroll={{ x: true }}
           rowKey={(record: Dataset) => record.id}
           dataSource={datasetList}
           loading={loading}

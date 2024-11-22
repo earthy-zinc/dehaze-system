@@ -1,5 +1,6 @@
 import BasicLayout from "@/layout";
 import ErrorPage404 from "@/pages/error/404";
+import Login from "@/pages/login";
 import lazyLoad from "@/router/LazyLoad";
 import { HomeOutlined } from "@ant-design/icons";
 import { lazy } from "react";
@@ -77,10 +78,6 @@ const router = createBrowserRouter([
         element: <Navigate to="home" replace />,
       },
       {
-        path: "login",
-        element: lazyLoad(lazy(() => import("@/pages/login"))),
-      },
-      {
         path: "home",
         element: lazyLoad(lazy(() => import("@/pages/home"))),
       },
@@ -147,6 +144,11 @@ const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  {
+    path: "login",
+    element: <Login />,
+    errorElement: <ErrorPage404 />,
   },
   {
     path: "*",

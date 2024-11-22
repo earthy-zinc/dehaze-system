@@ -2,6 +2,16 @@ interface Point {
   rowPerView: number;
 }
 
+export interface ViewCard {
+  src: any;
+  id?: number;
+  name?: string;
+  star?: boolean;
+  backgroundColor?: string;
+
+  [attr: string]: any;
+}
+
 export type Breakpoints = Record<number, Point>;
 
 export interface WaterfallProps {
@@ -13,10 +23,12 @@ export interface WaterfallProps {
   animationEffect?: string;
   hasAroundGutter?: boolean;
   gutter?: number;
-  list: string[];
+  list: ViewCard[];
   animationPrefix?: string;
   align?: string;
   delay?: number;
+  onClickItem?: (item: number) => void;
+  onAfterRender?: () => void;
 }
 
 export interface ItemWidthProps {

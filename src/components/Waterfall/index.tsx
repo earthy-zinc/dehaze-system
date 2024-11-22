@@ -9,20 +9,12 @@ import useLayout from "./useLayout";
 const Waterfall: React.FC<WaterfallProps> = (props) => {
   const {
     list = [],
-    width = 200,
+    width = 300,
     breakpoints = {
-      1200: {
-        // when wrapper width < 1200
-        rowPerView: 3,
-      },
-      800: {
-        // when wrapper width < 800
-        rowPerView: 2,
-      },
-      500: {
-        // when wrapper width < 500
-        rowPerView: 1,
-      },
+      1800: { rowPerView: 4 },
+      1200: { rowPerView: 3 },
+      800: { rowPerView: 2 },
+      500: { rowPerView: 1 },
     },
     gutter = 10,
     hasAroundGutter = true,
@@ -73,13 +65,20 @@ const Waterfall: React.FC<WaterfallProps> = (props) => {
       className="waterfall-list"
       style={{ height: `${wrapperHeight}px` }}
     >
-      {list.map((url: string) => (
-        <div key={url} className="waterfall-item">
-          <div className="waterfall-card">
-            <LazyImg url={url} renderer={renderer.run} />
+      {list.map((item) => {
+        console.log(item);
+        return (
+          <div
+            key={item.id}
+            className="waterfall-item"
+            onClick={() => props.onClickItem && props.onClickItem(item.id || 0)}
+          >
+            <div className="waterfall-card">
+              <LazyImg url={item.src} renderer={renderer.run} />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

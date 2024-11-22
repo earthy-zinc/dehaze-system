@@ -1,6 +1,7 @@
 import AuthAPI from "@/api/auth";
 import { LoginData } from "@/api/auth/model";
 import { ThemeEnum } from "@/enums/ThemeEnum";
+import defaultSettings from "@/settings";
 import { DisPatchType } from "@/store";
 import { login } from "@/store/modules/userSlice";
 import {
@@ -10,10 +11,11 @@ import {
   SunOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Form, Image, Input, Switch, Tooltip } from "antd";
+import { Button, Card, Form, Input, Switch, Tag, Tooltip } from "antd";
 import React, { useCallback, useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
+import "./index.scss";
 
 export default function Login() {
   const [loginData, setLoginData] = useState<LoginData>({
@@ -81,16 +83,18 @@ export default function Login() {
           onChange={toggleTheme}
         />
       </div>
-      <Card className="login-card">
+      <Card className="!border-none !bg-transparent !rounded-4% w-100 <sm:w-85">
         <div className="text-center relative">
-          <h2>登录</h2>
-          <span className="version-tag">v1.0</span>
+          <h2>{defaultSettings.title}</h2>
+          <Tag className="ml-2 absolute-rt">{defaultSettings.version}</Tag>
         </div>
-        <Form>
+
+        <Form className="login-form">
           <Form.Item>
             <Input
               prefix={<UserOutlined />}
               placeholder="用户名"
+              size="large"
               value={loginData.username}
               onChange={(e) =>
                 setLoginData({ ...loginData, username: e.target.value })
@@ -98,11 +102,12 @@ export default function Login() {
             />
           </Form.Item>
           <Form.Item>
-            <Tooltip title="大写锁定已开启" visible={isCapslock}>
+            <Tooltip title="大写锁定已开启" open={isCapslock}>
               <Input
                 prefix={<LockOutlined />}
                 type="password"
                 placeholder="密码"
+                size="large"
                 value={loginData.password}
                 onChange={(e) =>
                   setLoginData({ ...loginData, password: e.target.value })
@@ -112,28 +117,49 @@ export default function Login() {
             </Tooltip>
           </Form.Item>
           <Form.Item>
-            <Input
-              prefix={<SafetyOutlined />}
-              placeholder="验证码"
-              value={loginData.captchaCode}
-              onChange={(e) =>
-                setLoginData({ ...loginData, captchaCode: e.target.value })
-              }
-            />
-            <Image
-              src={captchaBase64}
-              onClick={() => {
-                getCaptcha();
-              }}
-            />
+            <div className="flex-y-center w-full">
+              <Input
+                className="flex-1 absolute-lt"
+                prefix={<SafetyOutlined />}
+                placeholder="验证码"
+                size="large"
+                value={loginData.captchaCode}
+                onChange={(e) =>
+                  setLoginData({ ...loginData, captchaCode: e.target.value })
+                }
+              />
+              <img
+                className="rounded-tr-md rounded-br-md cursor-pointer relative h-[34px] top-1 left-55 z-36"
+                src={captchaBase64}
+                onClick={() => {
+                  getCaptcha();
+                }}
+                alt="加载失败"
+              />
+            </div>
           </Form.Item>
-          <Form.Item>
-            <Button type="primary" loading={loading} onClick={handleLogin}>
-              登录
-            </Button>
-          </Form.Item>
+          <Button
+            className="w-full"
+            size="large"
+            type="primary"
+            loading={loading}
+            onClick={handleLogin}
+          >
+            登录
+          </Button>
+          <div className="mt-10 text-sm">
+            <span>用户名: admin</span>
+            <span className="ml-4"> 密码: 123456</span>
+          </div>
         </Form>
       </Card>
+      <div className="absolute bottom-1 text-[10px] text-center">
+        <p>
+          Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫
+          版权所有
+        </p>
+        <p>渝ICP备2024111923号-2</p>
+      </div>
     </div>
   );
 }
