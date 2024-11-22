@@ -1,5 +1,8 @@
 import uuid
 import os
+from io import BytesIO
+from urllib.parse import urlparse
+
 import requests
 from flask import request
 
@@ -39,11 +42,11 @@ def get_image_bytes_from_url(url) -> BytesIO:
     try:
         urlparse(url)
         # 使用requests库获取图片
-        response = requests.get(image_url, stream=True)
+        response = requests.get(url, stream=True)
         response.raise_for_status()  # 确保请求成功
 
         # 将图片转换为BytesIO对象
         image_bytes = BytesIO(response.content)
         return image_bytes
-    except ValueError:
-    return none
+    except ValueError as e:
+        print("URL格式错误", e)
