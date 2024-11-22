@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { onMounted } from "vue";
 import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import { Point } from "@/components/AlgorithmToolBar/types";
@@ -20,6 +20,7 @@ const point = ref<Point>({
   x: 0,
   y: 0,
 });
+const originScale = ref(1);
 
 function handleMouseover(p: Point) {
   point.value.x = p.x;
@@ -37,22 +38,22 @@ onMounted(() => {
     <h2>效果展示</h2>
     <p>去雾前后对比</p>
     <div class="display-wrap">
-      <div class="display-container" v-for="index in 3" :key="index">
+      <div v-for="index in 3" :key="index" class="display-container">
         <div class="overlap-wrap">
           <!-- 重叠展示 -->
           <OverlapImageShow
-            class="overlap"
+            :height="200"
             :image1="image1"
             :image2="image2"
-            :height="200"
+            class="overlap"
             @on-origin-scale-change="(value) => (originScale = value)"
             @on-mouseover="handleMouseover"
           />
         </div>
         <div class="user-info-wrap">
           <img
-            src="https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80"
             alt="avatar"
+            src="https://wpimg.wallstcn.com/f778738c-e4f8-4870-b634-56703b4acafe.gif?imageView2/1/w/80/h/80"
           />
           <div class="right-wrap">
             <p>admin</p>

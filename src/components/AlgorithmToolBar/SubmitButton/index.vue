@@ -40,7 +40,7 @@ const { themeColor } = useSettingsStore();
 
 const { width } = useWindowSize();
 
-const labelPosition = ref("left");
+const labelPosition = ref<"top" | "left" | "right">("left");
 watch(
   () => width.value,
   (newValue) => {
@@ -101,52 +101,52 @@ function handleMagnifierChange() {
     <div class="flex justify-between mb-3">
       <Magnifier
         v-for="(url, index) in magnifier.imgUrls"
-        :src="url"
         :key="url"
-        :label="magnifierLabels[index]"
         :brightness="brightness"
         :contrast="contrast"
-        :shape="magnifierShape"
-        :scale="magnifierScale"
+        :label="magnifierLabels[index]"
+        :origin-scale="magnifier.originScale"
         :point="magnifier.point"
         :radius="magnifier.radius"
-        :origin-scale="magnifier.originScale"
+        :scale="magnifierScale"
+        :shape="magnifierShape"
+        :src="url"
       />
     </div>
   </template>
 
-  <el-form label-width="7.2vw" :label-position="labelPosition">
+  <el-form :label-position="labelPosition" label-width="7.2vw">
     <template v-if="showMagnifier && !disableMore">
-      <el-form-item label="放大镜形状" class="more-operations">
+      <el-form-item class="more-operations" label="放大镜形状">
         <el-radio-group v-model="magnifierShape">
           <el-radio label="square">正方形</el-radio>
           <el-radio label="circle">圆形</el-radio>
         </el-radio-group>
       </el-form-item>
 
-      <el-form-item label="放大倍数" class="more-operations">
-        <el-slider v-model="magnifierScale" :min="2" :max="20" />
+      <el-form-item class="more-operations" label="放大倍数">
+        <el-slider v-model="magnifierScale" :max="20" :min="2" />
       </el-form-item>
     </template>
 
     <template v-if="showBrightness && !disableMore">
-      <el-form-item label="亮度" class="more-operations">
+      <el-form-item class="more-operations" label="亮度">
         <el-slider
           v-model="brightness"
-          :min="-100"
           :max="100"
-          @change="(value: number) => emit('onBrightnessChange', value)"
+          :min="-100"
+          @change="(value) => emit('onBrightnessChange', value)"
         />
       </el-form-item>
     </template>
 
     <template v-if="showContrast && !disableMore">
-      <el-form-item label="对比度" class="more-operations">
+      <el-form-item class="more-operations" label="对比度">
         <el-slider
           v-model="contrast"
-          :min="-100"
           :max="100"
-          @change="(value: number) => emit('onContrastChange', value)"
+          :min="-100"
+          @change="(value) => emit('onContrastChange', value)"
         />
       </el-form-item>
     </template>
