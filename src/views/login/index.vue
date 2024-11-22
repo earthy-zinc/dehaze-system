@@ -4,9 +4,9 @@
     <div class="absolute-lt flex-x-end p-3 w-full">
       <el-switch
         v-model="isDark"
-        inline-prompt
         :active-icon="Moon"
         :inactive-icon="Sunny"
+        inline-prompt
         @change="toggleTheme"
       />
       <lang-select class="ml-2 cursor-pointer" />
@@ -27,37 +27,37 @@
         <!-- 用户名 -->
         <el-form-item prop="username">
           <div class="flex-y-center w-full">
-            <svg-icon icon-class="user" class="mx-2" />
+            <svg-icon class="mx-2" icon-class="user" />
             <el-input
               ref="username"
               v-model="loginData.username"
               :placeholder="$t('login.username')"
+              class="h-[48px]"
               name="username"
               size="large"
-              class="h-[48px]"
             />
           </div>
         </el-form-item>
 
         <!-- 密码 -->
         <el-tooltip
-          :visible="isCapslock"
           :content="$t('login.capsLock')"
+          :visible="isCapslock"
           placement="right"
         >
           <el-form-item prop="password">
             <div class="flex-y-center w-full">
-              <svg-icon icon-class="lock" class="mx-2" />
+              <svg-icon class="mx-2" icon-class="lock" />
               <el-input
                 v-model="loginData.password"
                 :placeholder="$t('login.password')"
-                type="password"
+                class="h-[48px] pr-2"
                 name="password"
+                show-password
+                size="large"
+                type="password"
                 @keyup="checkCapslock"
                 @keyup.enter="handleLogin"
-                size="large"
-                class="h-[48px] pr-2"
-                show-password
               />
             </div>
           </el-form-item>
@@ -66,20 +66,20 @@
         <!-- 验证码 -->
         <el-form-item prop="captchaCode">
           <div class="flex-y-center w-full">
-            <svg-icon icon-class="captcha" class="mx-2" />
+            <svg-icon class="mx-2" icon-class="captcha" />
             <el-input
               v-model="loginData.captchaCode"
-              auto-complete="off"
-              size="large"
-              class="flex-1"
               :placeholder="$t('login.captchaCode')"
+              auto-complete="off"
+              class="flex-1"
+              size="large"
               @keyup.enter="handleLogin"
             />
 
             <el-image
-              @click="getCaptcha"
               :src="captchaBase64"
               class="rounded-tr-md rounded-br-md cursor-pointer h-[48px]"
+              @click="getCaptcha"
             />
           </div>
         </el-form-item>
@@ -87,9 +87,9 @@
         <!-- 登录按钮 -->
         <el-button
           :loading="loading"
-          type="primary"
-          size="large"
           class="w-full"
+          size="large"
+          type="primary"
           @click.prevent="handleLogin"
           >{{ $t("login.login") }}
         </el-button>
@@ -103,7 +103,7 @@
     </el-card>
 
     <!-- ICP备案 -->
-    <div class="absolute bottom-1 text-[10px] text-center" v-show="icpVisible">
+    <div v-show="icpVisible" class="absolute bottom-1 text-[10px] text-center">
       <p>
         Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫 版权所有
       </p>
@@ -112,11 +112,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { useSettingsStore, useUserStore } from "@/store";
 import AuthAPI from "@/api/auth";
 import { LoginData } from "@/api/auth/model";
-import { Sunny, Moon } from "@element-plus/icons-vue";
+import { Moon, Sunny } from "@element-plus/icons-vue";
 import { LocationQuery, LocationQueryValue, useRoute } from "vue-router";
 import router from "@/router";
 import defaultSettings from "@/settings";
@@ -184,6 +184,7 @@ function getCaptcha() {
 
 /** 登录 */
 const route = useRoute();
+
 function handleLogin() {
   loginFormRef.value.validate((valid: boolean) => {
     if (valid) {
@@ -284,4 +285,3 @@ html.dark .login-container {
   }
 }
 </style>
-@/api/auth/model
