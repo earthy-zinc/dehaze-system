@@ -43,17 +43,15 @@ RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \
 # -f https://shi-labs.com/natten/wheels/
 
 # 创建挂载点
-VOLUME /app/cache
-VOLUME /app/data
 VOLUME /app/trained_model
 
 # 设置环境变量
-ENV FLASK_APP=start.py
+ENV FLASK_APP=run.py
 ENV FLASK_ENV=production
 ENV BASICSR_JIT=True
 
 # 暴露应用的端口
 EXPOSE 80
 
-# 启动Flask应用gunicorn -w 4 start:app
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:80", "start:app"]
+# 启动Flask应用gunicorn -w 4 run:app
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:80", "run:app"]

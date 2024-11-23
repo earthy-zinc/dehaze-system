@@ -1,10 +1,11 @@
+import os
 import traceback
 from importlib import import_module
 from io import BytesIO
 from uuid import uuid4
 
 from flasgger import swag_from
-from flask import Blueprint, request
+from flask import Blueprint, request, current_app
 
 from app.models import SysAlgorithm, SysFile
 from app.service.file import read_file_from_url, upload_file
@@ -97,7 +98,8 @@ def predict():
             return error(f"加载算法模块失败：{str(e)}", 404)
 
         input_img: BytesIO = read_file_from_url(url)
-        pred_img: BytesIO = model.dehaze(input_img, algorithm.path)
+        model_path = os.path.join(current_app.config.get("MODEL_PATH", ""), algorithm.path)
+        pred_img: BytesIO = model.dehaze(input_img, model_path)
         pred_img_info: SysFile = upload_file("pred_" + uuid4().hex +".png", "image/png", pred_img)
 
         return success(pred_img_info.url)
