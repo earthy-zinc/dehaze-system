@@ -1,20 +1,20 @@
 import request from "@/utils/requestPy";
-import { EvalParam, EvalResult, PredParam, PredResult } from "./model";
+import { EvalParam, EvalResult, PredParam } from "src/api/model/model";
 
 class ModelAPI {
-  static prediction(params: PredParam) {
-    return request<any, PredResult[]>({
+  static prediction(data: PredParam) {
+    return request<any, string>({
       url: "/model/prediction",
-      method: "get",
-      params,
+      method: "post",
+      data,
     });
   }
 
-  static evaluation(params: EvalParam) {
+  static evaluation(data: EvalParam) {
     return request<any, EvalResult[]>({
       url: "/model/evaluation",
-      method: "get",
-      params,
+      method: "post",
+      data,
     });
   }
 }
