@@ -152,25 +152,12 @@ onMounted(() => {
       <template #default>
         <div class="select-wrap">
           <span>选择去雾模型</span>
-          <el-select
+          <el-tree-select
             v-model="selectedModel"
-            filterable
+            :data="modelOptions"
             placeholder="请选择去雾模型算法"
             style="width: 240px"
-          >
-            <el-option-group
-              v-for="group in modelOptions"
-              :key="group.label"
-              :label="group.label"
-            >
-              <el-option
-                v-for="item in group.children"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-option-group>
-          </el-select>
+          />
         </div>
       </template>
     </AlgorithmToolBar>
