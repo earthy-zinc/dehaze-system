@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
@@ -51,8 +52,11 @@ public class FileUploadUtils {
     }
 
     public static int dirFileCount(String dir) {
-
         File directory = FileUtil.file(dir);
+        return dirFileCount(directory);
+    }
+
+    public static int dirFileCount(File directory) {
         if (FileUtil.isDirectory(directory)) {
             List<File> files = FileUtil.loopFiles(directory);
             return files.size();
@@ -61,14 +65,28 @@ public class FileUploadUtils {
         }
     }
 
+    public static int dirFileCount(Path path) {
+        File directory = path.toFile();
+        return dirFileCount(directory);
+    }
+
     public static String dirSize(String dir) {
         File directory = FileUtil.file(dir);
+        return dirSize(directory);
+    }
+
+    public static String dirSize(File directory) {
         if (FileUtil.isDirectory(directory)) {
             long size = FileUtil.size(directory);
             return FileUtil.readableFileSize(size);
         } else {
             return "0";
         }
+    }
+
+    public static String dirSize(Path path) {
+        File directory = path.toFile();
+        return dirSize(directory);
     }
 
     public static String fileSize(String filePath) {

@@ -31,7 +31,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -111,19 +110,28 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     public boolean addDataset(DatasetForm dataset) {
         SysDataset sysDataset = datasetConverter.form2Entity(dataset);
         sysDataset.setStatus(StatusEnum.ENABLE.getValue());
-        sysDataset.setSize(FileUploadUtils.dirSize(sysDataset.getPath()));
-        sysDataset.setTotal(FileUploadUtils.dirFileCount(sysDataset.getPath()));
+        Path datasetPath = Path.of(datasetOriginPath, sysDataset.getPath());
+        sysDataset.setSize(FileUploadUtils.dirSize(datasetPath));
+        sysDataset.setTotal(FileUploadUtils.dirFileCount(datasetPath));
         return this.save(sysDataset);
     }
 
     @Override
     public boolean updateDataset(DatasetForm dataset) {
         SysDataset sysDataset = datasetConverter.form2Entity(dataset);
-
         SysDataset old = this.getById(dataset.getId());
+
+        // 获取其绝对路径
+        Path datasetPath;
+        if (CharSequenceUtil.isNotBlank(sysDataset.getPath())) {
+            datasetPath = Path.of(datasetOriginPath, sysDataset.getPath());
+        } else {
+            datasetPath = Path.of(datasetOriginPath, old.getPath());
+        }
+        // 更新文件夹大小及文件数量
         if (!sysDataset.getPath().equals(old.getPath())) {
-            sysDataset.setSize(FileUploadUtils.dirSize(sysDataset.getPath()));
-            sysDataset.setTotal(FileUploadUtils.dirFileCount(sysDataset.getPath()));
+            sysDataset.setSize(FileUploadUtils.dirSize(datasetPath));
+            sysDataset.setTotal(FileUploadUtils.dirFileCount(datasetPath));
         }
 
         sysDataset.setStatus(StatusEnum.ENABLE.getValue());
@@ -146,7 +154,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     private List<ImageItemVO> getImageList(SysDataset dataset, String hostUrl) {
         // 判断当前目录是否存在，然后列出当前目录下所有文件名
         String filePath = dataset.getPath();
-        Path datasetBasePath = Paths.get(filePath);
+        Path datasetBasePath = Path.of(datasetOriginPath, filePath);
         List<String> hazeFlags = Arrays.asList("haze", "hazy");
         List<String> cleanFlags = Arrays.asList("clean", "clear", "gt", "GT");
 
@@ -223,12 +231,12 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     private List<ImageUrlVO> getImageUrlVOS(SysDataset dataset, String cleanImage, List<String> matchedHazeImages,
                                             String cleanFlag, String hazeFlag, String hostUrl) {
         hostUrl = hostUrl + "/api/v1/files";
-        Path baseDirPath = Paths.get(datasetOriginPath);
-        Path datasetPath = Paths.get(dataset.getPath());
-        if (!PathUtil.isSub(baseDirPath, datasetPath)) {
-            throw new BusinessException("数据集目录" + datasetPath + "不在" + baseDirPath + "目录下");
+
+        Path datasetPath = Path.of(datasetOriginPath, dataset.getPath());
+        if (!PathUtil.isDirectory(datasetPath)) {
+            throw new BusinessException("数据集文件夹" + datasetPath + "不存在！");
         }
-        String relativeDatasetPath = baseDirPath.relativize(datasetPath).toString().replace("\\", "/");
+        String relativeDatasetPath = dataset.getPath().replace("\\", "/");
 
         List<ImageUrlVO> imageUrls = new ArrayList<>();
 
