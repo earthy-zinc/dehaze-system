@@ -29,10 +29,16 @@ let datasetInfo = ref<Dataset>({
 let images = ref<ViewCard[]>([]);
 let imageData = reactive<ImageItem[]>([]);
 type ImageType = { id: number; type: string; enabled: boolean };
+
 const imageTypes = ref<ImageType[]>([
   { id: 0, type: "清晰图像", enabled: true },
   { id: 1, type: "有雾图像", enabled: false },
 ]);
+
+const curImageType = computed(() => {
+  return imageTypes.value.find((item) => item.enabled);
+});
+
 let loadingBarRef = ref();
 const loadingObserver = ref();
 
@@ -58,7 +64,7 @@ async function handleQuery() {
     .then((data) => {
       imageData = data.list;
       totalPages.value = Math.ceil(data.total / queryParams.pageSize);
-      switchImageUrl(0);
+      switchImageUrl(curImageType.value?.id || 0);
     })
     .then(() => {
       if (imageData.length > 0) {
@@ -96,7 +102,7 @@ function handleImageTypeChange(typeId: number) {
   imageTypes.value.forEach((item) => {
     item.enabled = item.id === typeId;
   });
-  switchImageUrl(typeId);
+  switchImageUrl(curImageType.value?.id || typeId);
 }
 
 function showBigPicture(itemId: number) {
@@ -121,7 +127,7 @@ function showBigPicture(itemId: number) {
   })
     .show()
     .update()
-    .view(0);
+    .view(curImageType.value?.id || 0);
 }
 
 onMounted(async () => {
@@ -136,7 +142,7 @@ onMounted(async () => {
         queryParams.pageNum++;
         DatasetAPI.getImageItem(datasetId.value, queryParams).then((data) => {
           imageData.push(...data.list);
-          switchImageUrl(imageTypes.value[0].id);
+          switchImageUrl(curImageType.value?.id || 0);
         });
       }
     });
@@ -209,14 +215,14 @@ onUnmounted(() => loadingObserver.value?.disconnect());
         @after-render="() => renderCount++"
       />
       <el-divider
-        ref="loadingBarRef"
         v-show="
           totalPages > 1 &&
           renderCount >= queryParams.pageNum - 1 &&
           queryParams.pageNum < totalPages
         "
-        >正在加载，请稍后</el-divider
-      >
+        ref="loadingBarRef"
+        >正在加载，请稍后
+      </el-divider>
     </el-card>
   </div>
 </template>
