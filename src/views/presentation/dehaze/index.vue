@@ -7,7 +7,6 @@ import Camera from "@/components/Camera/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import Loading from "@/components/Loading/index.vue";
-import Evaluation from "@/components/Evaluation/index.vue";
 import FileAPI from "@/api/file";
 import ModelAPI from "@/api/model";
 
@@ -100,11 +99,11 @@ function handleGenerateImage() {
   console.log(selectedModel.value);
   ModelAPI.prediction({
     modelId: Number(selectedModel.value) || 1,
-    input: image1.value,
+    url: image1.value,
   })
     .then((res) => {
       // 获取生成后的图片url
-      image2.value = res[0].output.url;
+      image2.value = res;
     })
     .then(() => activePage("overlap"))
     .catch((err) => {
@@ -184,9 +183,9 @@ onMounted(() => {
       />
       <!-- 样例图片显示 -->
       <ExampleImageSelect
-        class="example"
         v-if="show.example"
         :urls="exampleImageUrls"
+        class="example"
         @on-example-select="handleExampleImageClick"
       />
       <!-- 拍照上传 -->
