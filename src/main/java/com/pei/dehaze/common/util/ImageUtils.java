@@ -13,10 +13,9 @@ public class ImageUtils {
        try {
            // 创建目标路径所需的全部目录
            File destDir = new File(destPath).getParentFile();
-           if (!destDir.exists()) {
-               boolean flag = destDir.mkdirs();
-               if (!flag) {
-                   throw new BusinessException("创建缩略图目录失败");
+           synchronized (destDir) {
+               if (!destDir.exists() && !destDir.mkdirs()) {
+                   throw new BusinessException("创建缩略图目录失败: " + destDir.getAbsolutePath());
                }
            }
            Thumbnails.of(new File(srcPath))
