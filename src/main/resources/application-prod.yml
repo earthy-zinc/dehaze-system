@@ -79,10 +79,10 @@ file:
   type: minio
   local:
     baseUrl: http://10.16.12.65:8989/api/v1/files
-    uploadPath: E:/logs
-    datasetOriginPath: D:/DeepLearning/dataset
-    datasetThumbnailPath: D:/DeepLearning/thumbnail
-    predictPath: E:/logs
+    uploadPath: /app/upload
+    datasetOriginPath: /app/dataset
+    datasetThumbnailPath: /app/thumbnail
+    predictPath: /app/predict
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint

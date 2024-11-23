@@ -9,8 +9,14 @@ RUN echo -e https://mirrors.ustc.edu.cn/alpine/v3.7/main/ \
     && echo "Asia/Shanghai" > /etc/timezone \
     && apk --no-cache add ttf-dejavu fontconfig
 
-# 在运行时自动挂载 /tmp 目录为匿名卷，提高可移植性
-VOLUME /tmp
+WORKDIR /app
+
+# 在运行时自动挂载目录为匿名卷，提高可移植性
+VOLUME /app/logs
+VOLUME /app/upload
+VOLUME /app/predict
+VOLUME /app/dataset
+VOLUME /app/thumbnail
 
 # 将构建的 Spring Boot 可执行 JAR 复制到容器中，重命名为 app.jar
 COPY target/dehaze-java.jar app.jar
