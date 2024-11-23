@@ -5,13 +5,16 @@ from flask_sqlalchemy import SQLAlchemy
 from minio import Minio
 from redis import Redis
 
+mysql = SQLAlchemy()
+swagger = Swagger()
+mongodb = PyMongo()
+
 def init_mysql(app: Flask):
     """
     Initialize MySQL with SQLAlchemy.
     """
-    mysql = SQLAlchemy()
+    global mysql
     mysql.init_app(app)
-    app.extensions["mysql"] = mysql
 
 
 def init_redis(app: Flask):
@@ -31,9 +34,8 @@ def init_mongodb(app: Flask):
     """
     Initialize MongoDB with Flask-PyMongo.
     """
-    mongodb = PyMongo()
+    global mongodb
     mongodb.init_app(app)
-    app.extensions["mongodb"] = mongodb
 
 
 def init_minio(app: Flask):
@@ -57,6 +59,5 @@ def init_swagger(app: Flask):
     """
     Initialize Swagger with Flasgger.
     """
-    swagger = Swagger(app)
+    global swagger
     swagger.init_app(app)
-    app.extensions["swagger"] = swagger

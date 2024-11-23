@@ -12,7 +12,7 @@ from werkzeug.datastructures import FileStorage
 from app.models import SysFile
 from app.utils.error import BusinessException
 from app.utils.file import calculate_bytes_md5, convert_size
-
+from app.extensions import mysql
 
 
 def upload_file_from_request(file: FileStorage) -> SysFile:
@@ -97,7 +97,6 @@ def _upload_to_storage(
     """
     bucket_name = current_app.config["MINIO_BUCKET_NAME"]
     minio_client = current_app.extensions["minio_client"]
-    mysql = current_app.extensions["mysql"]
     # 检查文件是否已存在
     file_md5 = calculate_bytes_md5(file_bytes)
     existing_file = SysFile.query.filter_by(md5=file_md5).first()

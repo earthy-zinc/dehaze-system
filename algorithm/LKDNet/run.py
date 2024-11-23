@@ -21,6 +21,7 @@ def single(save_dir):
 
 
 def get_model(model_path: str):
+
     from .models.LKD import LKD_b, LKD_l, LKD_s, LKD_t
     net = eval(os.path.basename(model_path).replace('-', '_').replace('.pth', ''))()
     net = net.to(Config.DEVICE)

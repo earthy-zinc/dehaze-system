@@ -1,10 +1,9 @@
 from datetime import datetime
 
 from flask import current_app
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger, Integer
 
-mysql: SQLAlchemy = current_app.extensions['mysql']
+from app.extensions import mysql
 
 class SysFile(mysql.Model):
     __tablename__ = 'sys_file'

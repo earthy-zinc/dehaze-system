@@ -25,7 +25,7 @@ def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     haze = Image.open(haze_image).convert('RGB')
     transform_haze = Compose([ToTensor(), Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     haze = transform_haze(haze)[None, ::]
-    haze = haze.to(DEVICE)
+    haze = haze.to(Config.DEVICE)
     with torch.no_grad():
         out = net(haze)
     return postprocess_image(out)
