@@ -22,7 +22,7 @@ VOLUME /app/thumbnail
 COPY target/dehaze-java.jar app.jar
 
 # 指定容器启动时执行的命令
-CMD ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app.jar", "--spring.profiles.active=prod"]
+CMD ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar", "--spring.profiles.active=prod"]
 
 # 暴露容器的端口
 EXPOSE 80
