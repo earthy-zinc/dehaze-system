@@ -8,20 +8,20 @@
  */
 export interface PredParam {
   modelId: number;
-  input: string | string[];
+  url: string;
   modelParam?: Object;
 }
 
 export interface EvalParam {
   modelId: number;
-  input: string | string[];
-  output?: string | string[];
+  predUrl: string;
+  gtUrl?: string;
 }
 
 export interface EvalResult {
   id: number;
   // 评价指标的名称
-  laebl: string;
+  label: string;
   // 评价指标的值
   value: string;
   // 基准值
@@ -30,12 +30,6 @@ export interface EvalResult {
   better?: "higer" | "lower";
   // 评价指标的描述
   description?: string;
-}
-
-export interface PredResult {
-  model: string;
-  input: PredImageInfo;
-  output: PredImageInfo;
 }
 
 export interface PredImageInfo {
