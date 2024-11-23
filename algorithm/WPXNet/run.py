@@ -1,25 +1,25 @@
-import cv2
-import numpy as np
-import torch
-import torchvision.utils
-from PIL import Image
+from io import BytesIO
 
-from .ridcp_new_arch import RIDCPNew
-from global_variable import MODEL_PATH, DEVICE
+import torch
+
+from app.utils.image import postprocess_image
+from config import Config
 from .calculate import imgOperation
+from .ridcp_new_arch import RIDCPNew
+
 
 def get_model(model_path: str):
     net = RIDCPNew()
-    net.to(DEVICE)
+    net.to(Config.DEVICE)
     net.load_state_dict(torch.load(model_path)['params'], strict=False)
     net.eval()
     return net
 
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
-    haze = imgOperation(haze_image_path)
-    _, output, _, _, _, _ = net(haze)
-    output = torch.squeeze(output.clamp(0, 1).cpu())
-    torchvision.utils.save_image(output, output_image_path)
+    haze = imgOperation(haze_image)
+    with torch.no_grad():
+        _, output, _, _, _, _ = net(haze)
+    return postprocess_image(output)
 
 

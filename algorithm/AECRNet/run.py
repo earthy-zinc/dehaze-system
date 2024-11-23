@@ -1,31 +1,35 @@
-import os
+from io import BytesIO
 
 import torch
-import torchvision.transforms as tfs
-import torchvision.utils as torch_utils
-from PIL import Image
 
+from app.utils.image import preprocess_image, postprocess_image
+from config import Config
 from .models.AECRNet import Dehaze
-from global_variable import MODEL_PATH, DEVICE, DEVICE_ID
 
 
-def get_model(model_path: str):
-    net = Dehaze(3, 3)
-    net = net.to(DEVICE)
-    net = torch.nn.DataParallel(net, device_ids=DEVICE_ID)
-    ckp = torch.load(model_path)
-    net.load_state_dict(ckp['model'])
-    net.eval()
+def load_model(model_path: str) -> torch.nn.Module:
+    """
+    加载预训练的去雾模型
+    :param model_path: 模型路径
+    :return: 加载并设置为评估模式的模型
+    """
+    net = Dehaze(3, 3).to(Config.DEVICE)  # 初始化网络
+    net = torch.nn.DataParallel(net, device_ids=Config.DEVICE_ID)  # 支持多GPU
+    checkpoint = torch.load(model_path)  # 加载模型权重
+    net.load_state_dict(checkpoint['model'])  # 恢复模型状态
+    net.eval()  # 设置为评估模式
     return net
 
 
-# TODO DCNv2 可变形卷积缺失 问题无法运行
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
-    net = get_model(model_path)
-    haze = Image.open(haze_image_path).convert('RGB')
-    haze = tfs.ToTensor()(haze)[None, ::]
-    haze = haze.to(DEVICE)
-    with torch.no_grad():
-        pred, _, _, _ = net(haze)
-    ts = torch.squeeze(pred.clamp(0, 1).cpu())
-    torch_utils.save_image(ts, output_image_path)
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
+    """
+    对雾化图像进行去雾处理
+    :param haze_image: 雾化图像数据
+    :param model_path: 模型路径
+    :return: 去雾后的图像数据
+    """
+    net = load_model(model_path)  # 加载模型
+    haze_tensor = preprocess_image(haze_image)  # 预处理图像
+    with torch.no_grad():  # 禁用梯度计算
+        pred, *_ = net(haze_tensor)  # 模型推理
+    return postprocess_image(pred)  # 后处理并返回结果

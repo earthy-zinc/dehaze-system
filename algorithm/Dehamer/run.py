@@ -1,28 +1,28 @@
-import os
+from io import BytesIO
 
 import numpy as np
 import torch
-import torchvision.utils
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
 
+from app.utils.image import postprocess_image
+from config import Config
 from .swin_unet import UNet_emb
-from global_variable import MODEL_PATH, DEVICE
 
 
 def get_model(model_path: str):
     net = UNet_emb()
-    net = net.to(DEVICE)
+    net = net.to(Config.DEVICE)
     net.load_state_dict(torch.load(model_path), strict=False)
     net.eval()
     return net
 
 
 # TODO 有点问题
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
 
-    haze = Image.open(haze_image_path).convert('RGB')
+    haze = Image.open(haze_image).convert('RGB')
     a = haze.size
     a_0 =a[1] - np.mod(a[1],16)
     a_1 =a[0] - np.mod(a[0],16)
@@ -32,9 +32,8 @@ def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
         Normalize((0.64, 0.6, 0.58), (0.14,0.15, 0.152))
     ])
     haze = transform_haze(haze_crop_img)[None, ::]
+    haze = haze.to(Config.DEVICE)
 
-    haze = haze.to(DEVICE)
     with torch.no_grad():
         out = net(haze)
-        out = torch.squeeze(out.clamp(0, 1).cpu())
-        torchvision.utils.save_image(out, output_image_path)
+    return postprocess_image(out)

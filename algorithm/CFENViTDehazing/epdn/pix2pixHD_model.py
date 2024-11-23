@@ -32,8 +32,8 @@ class Pix2PixHDModel(EPDNBaseModel):
         #if self.use_features:
         #    netG_input_nc += opt.feat_num
         self.netG = pre_epdn_networks.define_G(netG_input_nc, opt.output_nc, opt.pre_epdn_ngf, opt.pre_netG,
-                                      opt.pre_n_downsample_global, opt.pre_n_blocks_global, opt.pre_n_local_enhancers,
-                                      opt.pre_n_blocks_local, opt.norm, gpu_ids=self.gpu_ids)
+                                               opt.pre_n_downsample_global, opt.pre_n_blocks_global, opt.pre_n_local_enhancers,
+                                               opt.pre_n_blocks_local, opt.norm, gpu_ids=self.gpu_ids)
 
         # Discriminator network
         if self.isTrain:

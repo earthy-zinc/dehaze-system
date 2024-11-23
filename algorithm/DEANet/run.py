@@ -1,17 +1,15 @@
-import os
+from io import BytesIO
 
 import torch
 import torch.nn.functional as F
-from PIL import Image
-import torchvision.transforms as tfs
-import torchvision.utils as torch_utils
 
-from global_variable import MODEL_PATH, DEVICE
+from app.utils.image import preprocess_image, postprocess_image
+from config import Config
 from .model.backbone import Backbone
 
 
 def get_model(model_path: str):
-    net = Backbone().to(DEVICE)
+    net = Backbone().to(Config.DEVICE)
     ckpt = torch.load(model_path, map_location='cpu')
     net.load_state_dict(ckpt)
     net.eval()
@@ -26,16 +24,10 @@ def pad_img(x, patch_size):
     return x
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
-    haze = Image.open(haze_image_path).convert('RGB')
-    haze = tfs.ToTensor()(haze)[None, ::]
-    haze = haze.to(DEVICE)
-
+    haze = preprocess_image(haze_image)
     with torch.no_grad():
-        H, W = haze.shape[2:]
         hazy_img = pad_img(haze, 4)
         output = net(hazy_img)
-        output = output.clamp(0, 1)
-        output = output[:, :, :H, :W]
-        torch_utils.save_image(output, output_image_path)
+    return postprocess_image(output)

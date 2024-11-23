@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn.functional as F
 
-from global_variable import MODEL_PATH
+from config import Config
 import os
 from . import common
 from . import Res2Net as Pre_Res2Net
@@ -403,7 +403,7 @@ class Dehaze(nn.Module):
 class DehazeSwinT(nn.Module):
     def __init__(self, imagenet_model):
         super(DehazeSwinT, self).__init__()
-        swin_transformer_path = os.path.join(MODEL_PATH, "ITBdehaze/swinv2_base_patch4_window8_256.pth")
+        swin_transformer_path = os.path.join(Config.MODEL_PATH, "ITBdehaze/swinv2_base_patch4_window8_256.pth")
 
         checkpoint = torch.load(swin_transformer_path, map_location='cpu')
         imagenet_model.load_state_dict(checkpoint['model'])

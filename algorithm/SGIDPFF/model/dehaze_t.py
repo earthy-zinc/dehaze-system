@@ -1,6 +1,3 @@
-import torch
-import torch.nn as nn
-
 from .blocks import *
 from ..loss import smooth_loss
 from . import trans

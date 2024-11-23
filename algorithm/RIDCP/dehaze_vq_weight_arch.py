@@ -6,14 +6,15 @@ from torch import nn as nn
 import numpy as np
 import math
 
-from global_variable import MODEL_PATH
+from config import Config
+
 from .dcn import ModulatedDeformConvPack, modulated_deform_conv
 
 from .network_swinir import RSTB
 from .ridcp_utils import ResBlock, CombineQuantBlock
 from .vgg_arch import VGGFeatureExtractor
 
-WEIGHT_PATH = os.path.join(MODEL_PATH, 'RIDCP/weight_for_matching_dehazing_Flickr.pth')
+WEIGHT_PATH = os.path.join(Config.MODEL_PATH, 'RIDCP/weight_for_matching_dehazing_Flickr.pth')
 
 
 class DCNv2Pack(ModulatedDeformConvPack):

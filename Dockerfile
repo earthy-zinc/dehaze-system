@@ -49,7 +49,7 @@ VOLUME /app/trained_model
 
 # 设置环境变量
 ENV FLASK_APP=start.py
-ENV FLASK_CONFIG=production
+ENV FLASK_ENV=production
 ENV BASICSR_JIT=True
 
 # 暴露应用的端口

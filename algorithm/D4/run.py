@@ -10,7 +10,7 @@ from PIL import Image
 
 from .config import Config
 from .models import Model
-from global_variable import DEVICE
+from config import Config as GlobalConfig
 
 
 def get_model(model_path: str):
@@ -21,7 +21,7 @@ def get_model(model_path: str):
     config = Config(config_path)
     config.MODE = 3
     config.MODEL = 1
-    net = Model(config).to(DEVICE)
+    net = Model(config).to(GlobalConfig.DEVICE)
 
     # set cv2 running threads to 1 (prevents deadlocks with pytorch dataloader)
     cv2.setNumThreads(0)
@@ -104,7 +104,7 @@ def postprocess(img, size=None):
     return img.int()
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
 
     haze = Image.open(haze_image_path).convert('RGB')
@@ -121,6 +121,9 @@ def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
     noisy_images_input = pad_input(haze)
     clean_images_h2c, _ = net.forward_h2c(noisy_images_input)
     predicted_results = crop_result(clean_images_h2c, h, w)
+
+
+
     predicted_results = postprocess(predicted_results)[0]
     im = Image.fromarray(predicted_results.cpu().numpy().astype(np.uint8).squeeze())
     im.save(output_image_path)

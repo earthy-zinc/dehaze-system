@@ -1,5 +1,6 @@
 # 2021.05.07-Changed for IPT
 #            Huawei Technologies Co., Ltd. <foss@huawei.com>
+import functools
 
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
@@ -8,11 +9,14 @@ from . import common
 import math
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor
-from einops import rearrange
+from torch import nn
 import copy
 from torch.nn import init
 from torch.optim import lr_scheduler
+
+from .ipt import ipt
+
+
 def make_model(opt, parent=False):
     return ipt(opt)
 

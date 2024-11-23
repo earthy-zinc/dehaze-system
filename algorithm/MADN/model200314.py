@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn, cat
 
 from .enhance0314 import Dehaze, Dehaze1
-from global_variable import DEVICE
+from config import Config
 
 
 # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
@@ -61,8 +61,8 @@ class VGG(nn.Module):
 class MyConv2D(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1):
         super(MyConv2D, self).__init__()
-        self.weight = torch.zeros((out_channels, in_channels, kernel_size, kernel_size)).to(DEVICE)
-        self.bias = torch.zeros(out_channels).to(DEVICE)
+        self.weight = torch.zeros((out_channels, in_channels, kernel_size, kernel_size)).to(Config.DEVICE)
+        self.bias = torch.zeros(out_channels).to(Config.DEVICE)
 
         self.in_channels = in_channels
         self.out_channels = out_channels

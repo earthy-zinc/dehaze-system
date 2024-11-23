@@ -21,7 +21,7 @@ git clone https://gitee.com/earthy-zinc/dehaze_python.git
 cd dehaze_python
 
 # 安装 miniconda 并创建虚拟环境
-conda env create -n dehaze_backend python=3.8
+conda env create -n dehaze_backend python=3.10
 conda acticate dehaze_backend
 
 # 安装依赖
@@ -74,3 +74,4 @@ children:
 以下模型需要在linux系统中运行
 * RIDCP 需要BASICSR_JIT = True
 * WPXNet 需要natten
+

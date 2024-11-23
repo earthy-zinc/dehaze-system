@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - ${MYSQL_LOG_PATH}:/var/log/mysql
+      - ${MYSQL_DATA_PATH}:/var/lib/mysql
+      - ${MYSQL_CONFIG_PATH}:/etc/mysql/conf.d
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+    restart: always
+    privileged: true
+    networks:
+      - dehaze-net
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${REDIS_CONFIG_PATH}:/etc/redis/redis.conf
+      - ${REDIS_DATA_PATH}:/data
+    command: redis-server /etc/redis/redis.conf --appendonly yes --requirepass 123456
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "2"
+    networks:
+      - dehaze-net
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BROWSER_DEFAULT_LOCALE: zh_CN
+    volumes:
+      - ${MINIO_DATA_PATH}:/data
+      - ${MINIO_CONFIG_PATH}:/root/.minio
+    command: server /data --console-address ":9090" -address ":9000"
+    restart: always
+    networks:
+      - dehaze-net
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ${MONGO_DATA_PATH}:/data/db
+      - ${MONGO_CONFIG_PATH}:/data/configdb
+      - ${MONGO_LOG_PATH}:/var/log/mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+    restart: always
+    networks:
+      - dehaze-net
+
+networks:
+  dehaze-net:
+    driver: bridge

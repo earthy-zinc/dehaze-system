@@ -1,30 +1,23 @@
-import os
+from io import BytesIO
 
-import numpy as np
 import torch
-import torchvision.utils
-from PIL import Image
 
+from app.utils.image import postprocess_image, preprocess_image
+from config import Config
 from .net import dehaze_net
-from global_variable import DEVICE
 
 
 def get_model(model_path: str):
     # 构造模型文件的绝对路径
-    net = dehaze_net().to(DEVICE)
+    net = dehaze_net().to(Config.DEVICE)
     net.load_state_dict(torch.load(model_path))
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str = ''):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
-
-    haze = np.array(Image.open(haze_image_path).convert('RGB')) / 255.0
-    haze = torch.from_numpy(haze).float()
-    haze = haze.permute(2, 0, 1)
-    haze = haze.cuda().unsqueeze(0)
-
+    haze = preprocess_image(haze_image)
     with torch.no_grad():
         out = net(haze)
-        torchvision.utils.save_image(out, output_image_path)
+    return postprocess_image(out)

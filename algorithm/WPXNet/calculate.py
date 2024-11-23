@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from PIL import Image
 
-from ..metrics import get_niqe, get_brisque, get_nima, get_ssim, get_psnr, get_lpips
+from app.utils.metrics import get_niqe, get_brisque, get_nima, get_ssim, get_psnr, get_lpips
 
 
 def ntire_gamma_correction(filepath: str) -> np.ndarray:

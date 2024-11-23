@@ -1,5 +1,4 @@
 import torch
-import itertools
 from ..util.image_pool import ImagePool
 from .base_model import BaseModel
 from . import networks
@@ -47,7 +46,7 @@ class MGVIT(BaseModel):
         if self.isTrain:
             use_sigmoid = opt.no_lsgan
             #print('input_nc', opt.input_nc, 'ndf', opt.ndf, 'which_model_netD',opt.which_model_netD, 'n_layers_D',opt.n_layers_D, 'norm',opt.norm, 'use_sigmoid',use_sigmoid, 'gpu_ids', self.gpu_ids)
-            self.netD = networks.define_D(opt.input_nc*2, opt.ndf, opt.which_model_netD, opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
+            self.netD = networks.define_D(opt.input_nc * 2, opt.ndf, opt.which_model_netD, opt.n_layers_D, opt.norm, use_sigmoid, opt.init_type, self.gpu_ids)
 
 
         if self.isTrain:

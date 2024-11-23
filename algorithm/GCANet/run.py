@@ -1,17 +1,19 @@
 import os
+from io import BytesIO
 
 import numpy as np
 import torch
 from PIL import Image
 from torch.autograd import Variable
 
+from app.utils.image import postprocess_image
 from .GCANet import GCANet
-from global_variable import MODEL_PATH, DEVICE
+from config import Config
 
 
 def get_model(model_path: str):
     net = GCANet(in_c=4, out_c=3, only_residual=True)
-    net = net.to(DEVICE)
+    net = net.to(Config.DEVICE)
     net.load_state_dict(torch.load(model_path))
     net.eval()
     return net
@@ -32,21 +34,21 @@ def edge_compute(x):
     return y
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
 
-    with torch.no_grad():
-        img = Image.open(haze_image_path).convert('RGB')
-        im_w, im_h = img.size
-        if im_w % 4 != 0 or im_h % 4 != 0:
-            img = img.resize((int(im_w // 4 * 4), int(im_h // 4 * 4)))
-        img = np.array(img).astype('float')
-        img_data = torch.from_numpy(img.transpose((2, 0, 1))).float().to(DEVICE)
-        edge_data = edge_compute(img_data).to(DEVICE)
-        in_data = torch.cat((img_data, edge_data), dim=0).unsqueeze(0) - 128
-        in_data.to(DEVICE)
-        pred = net(Variable(in_data))
-        out_img_data = (pred.data[0].cpu().float() + img_data.cpu()).round().clamp(0, 255)
-        out_img = Image.fromarray(out_img_data.numpy().astype(np.uint8).transpose(1, 2, 0))
-        out_img.save(output_image_path)
+    img = Image.open(haze_image).convert('RGB')
+    im_w, im_h = img.size
+    if im_w % 4 != 0 or im_h % 4 != 0:
+        img = img.resize((int(im_w // 4 * 4), int(im_h // 4 * 4)))
+    img = np.array(img).astype('float')
+    img_data = torch.from_numpy(img.transpose((2, 0, 1))).float().to(Config.DEVICE)
+    edge_data = edge_compute(img_data).to(Config.DEVICE)
+    in_data = torch.cat((img_data, edge_data), dim=0).unsqueeze(0) - 128
+    in_data.to(Config.DEVICE)
 
+    with torch.no_grad():
+        pred = net(Variable(in_data))
+
+    out_img_data = (pred.data[0].cpu().float() + img_data.cpu()).round().clamp(0, 255)
+    return postprocess_image(out_img_data)

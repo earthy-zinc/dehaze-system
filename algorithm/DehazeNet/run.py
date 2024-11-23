@@ -1,24 +1,27 @@
 import os
+from io import BytesIO
 
 import torch
 import torchvision.transforms
 from PIL import Image
 
+from app.utils.image import postprocess_image
 from .model import DehazeNet
-from global_variable import MODEL_PATH, DEVICE
+from config import Config
 
 
 def get_model(model_path: str):
     net = DehazeNet()
-    net.to(DEVICE)
+    net.to(Config.DEVICE)
     net.load_state_dict(torch.load(model_path))
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str = ''):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
-    haze = Image.open(haze_image_path).convert('RGB')
+
+    haze = Image.open(haze_image).convert('RGB')
     loader = torchvision.transforms.Compose([
         torchvision.transforms.ToTensor(),
         torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
@@ -60,5 +63,5 @@ def dehaze(haze_image_path: str, output_image_path: str, model_path: str = ''):
                                      0] * patch_size] - a0 * (
                      1 - t_list[k][2])) / \
             t_list[k][2]
-    defog_img = torchvision.transforms.ToPILImage()(img2)
-    defog_img.save(output_image_path)
+
+    return postprocess_image(img2)

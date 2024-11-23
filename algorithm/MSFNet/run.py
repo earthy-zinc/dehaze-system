@@ -1,36 +1,33 @@
-import os
+from io import BytesIO
 
 import torch
 import torchvision.transforms as tfs
 from PIL import Image
 from torch.autograd import Variable
 
+from app.utils.image import postprocess_image
+from config import Config
 from .net import final_Net
-from global_variable import MODEL_PATH, DEVICE
 
 
 def get_model(model_path: str):
     net = final_Net()
-    net.to(DEVICE)
+    net.to(Config.DEVICE)
     # Load pretrained models
     net.load_state_dict(torch.load(model_path)["state_dict"])
     net.eval()
     return net
 
 
-def dehaze(haze_image_path: str, output_image_path: str, model_path: str):
+def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
-    haze = Image.open(haze_image_path).convert('RGB')
+    haze = Image.open(haze_image).convert('RGB')
     transform = tfs.Compose([
         tfs.ToTensor(),
         tfs.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
     ])
     haze = transform(haze).unsqueeze_(0)
-    haze = Variable(haze.to(DEVICE))
+    haze = Variable(haze.to(Config.DEVICE))
     with torch.no_grad():
         _, _, output = net(haze)
-    output = torch.clamp(output, 0., 1.)
-    prediction = output.data.cpu().numpy().squeeze().transpose((1, 2, 0))
-    prediction = (prediction*255.0).astype("uint8")
-    im = Image.fromarray(prediction)
-    im.save(output_image_path)
+    return postprocess_image(output)

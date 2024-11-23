@@ -9,8 +9,7 @@ from . import common
 import math
 import torch
 import torch.nn.functional as F
-from torch import nn, Tensor
-from einops import rearrange
+from torch import nn
 import copy
 from torch.nn import init
 from torch.optim import lr_scheduler
