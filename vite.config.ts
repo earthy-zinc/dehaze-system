@@ -4,6 +4,7 @@ import UnoCSS from "unocss/vite";
 
 import { ConfigEnv, defineConfig, loadEnv, UserConfig } from "vite";
 import mockDevServerPlugin from "vite-plugin-mock-dev-server";
+import svgr from "vite-plugin-svgr";
 import {
   dependencies,
   devDependencies,
@@ -60,6 +61,13 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       env.VITE_MOCK_DEV_SERVER === "true" ? mockDevServerPlugin() : null,
       UnoCSS({
         hmrTopLevelAwait: false,
+      }),
+      svgr({
+        svgrOptions: {
+          icon: true, // 将 SVG 转换为 React 组件时自动调整为图标尺寸
+          svgProps: { focusable: "false" }, // 为 SVG 添加默认属性
+        },
+        include: "src/assets/icons/*.svg",
       }),
     ],
     // 构建配置

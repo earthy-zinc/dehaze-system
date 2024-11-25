@@ -1,3 +1,11 @@
+import CompareIcon from "@/assets/icons/compare.svg";
+import DatasetIcon from "@/assets/icons/dataset.svg";
+import HazeIcon from "@/assets/icons/haze.svg";
+import ModelIcon from "@/assets/icons/model.svg";
+import OverlapIcon from "@/assets/icons/overlap.svg";
+import ParallelIcon from "@/assets/icons/parallel.svg";
+import PresentationIcon from "@/assets/icons/presentation.svg";
+import SegmentationIcon from "@/assets/icons/segmentation.svg";
 import BasicLayout from "@/layout";
 import ErrorPage404 from "@/pages/error/404";
 import Login from "@/pages/login";
@@ -16,31 +24,31 @@ export const menuItems = [
   {
     key: "Dataset",
     label: "数据集",
-    icon: <HomeOutlined />,
+    icon: <DatasetIcon />,
     path: "/dataset",
   },
   {
     key: "Algorithm",
     label: "模型管理",
-    icon: <HomeOutlined />,
+    icon: <ModelIcon />,
     path: "/algorithm",
   },
   {
     key: "Presentation",
     label: "算法展示",
-    icon: <HomeOutlined />,
+    icon: <PresentationIcon />,
     path: "/presentation",
     children: [
       {
         key: "Dehaze",
         label: "图像去雾",
-        icon: <HomeOutlined />,
+        icon: <HazeIcon />,
         path: "/presentation/dehaze",
       },
       {
         key: "Segmentation",
         label: "图像分割",
-        icon: <HomeOutlined />,
+        icon: <SegmentationIcon />,
         path: "/presentation/segmentation",
       },
     ],
@@ -48,19 +56,19 @@ export const menuItems = [
   {
     key: "Compare",
     label: "算法比较",
-    icon: <HomeOutlined />,
+    icon: <CompareIcon />,
     path: "/compare",
     children: [
       {
         key: "Overlap",
         label: "重叠对比",
-        icon: <HomeOutlined />,
+        icon: <OverlapIcon />,
         path: "/compare/overlap",
       },
       {
         key: "Parallel",
         label: "并行对比",
-        icon: <HomeOutlined />,
+        icon: <ParallelIcon />,
         path: "/compare/parallel",
       },
     ],

@@ -66,7 +66,6 @@ const Waterfall: React.FC<WaterfallProps> = (props) => {
       style={{ height: `${wrapperHeight}px` }}
     >
       {list.map((item) => {
-        console.log(item);
         return (
           <div
             key={item.id}

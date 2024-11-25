@@ -32,6 +32,7 @@ module.exports = {
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": "off",
     "@typescript-eslint/ban-types": "off",
+    "react-hooks/exhaustive-deps": "off",
     "prefer-arrow-callback": "off",
     "react-refresh/only-export-components": [
       "warn",

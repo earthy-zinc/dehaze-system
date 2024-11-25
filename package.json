@@ -41,7 +41,7 @@
     "@types/nprogress": "^0.2.3",
     "ahooks": "^3.8.0",
     "animate.css": "^4.1.1",
-    "antd": "^5.18.0",
+    "antd": "^5.22.2",
     "axios": "1.7.4",
     "classnames": "^2.5.1",
     "lodash": "^4.17.21",
@@ -95,7 +95,8 @@
     "typescript-eslint": "^7.12.0",
     "unocss": "^0.64.1",
     "vite": "5.4.6",
-    "vite-plugin-mock-dev-server": "^1.5.0"
+    "vite-plugin-mock-dev-server": "^1.5.0",
+    "vite-plugin-svgr": "^4.3.0"
   },
   "engines": {
     "node": ">=18.0.0"

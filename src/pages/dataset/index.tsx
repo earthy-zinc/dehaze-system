@@ -1,5 +1,6 @@
 import DatasetAPI from "@/api/dataset";
 import { Dataset, DatasetQuery } from "@/api/dataset/model";
+import EditModal from "@/pages/dataset/components/EditModal";
 import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
 import {
   Button,
@@ -20,24 +21,20 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import EditModal from "./components/EditModal";
 
 /**
  * 递归函数，用于遍历和清理 Dataset 结构
  * @param datasets - 当前遍历的 Dataset 数组
  */
 function cleanDatasets(datasets: Dataset[]): void {
-  for (let i = 0; i < datasets.length; i++) {
-    const dataset = datasets[i];
+  for (const element of datasets) {
+    const dataset = element;
 
     if (dataset.children && dataset.children.length > 0) {
       // 递归遍历每个子数据集
       cleanDatasets(dataset.children);
-    } else {
-      // 如果 children 是空对象，删除它
-      if (dataset.children && Object.keys(dataset.children).length === 0) {
-        delete dataset.children;
-      }
+    } else if (dataset.children && Object.keys(dataset.children).length === 0) {
+      delete dataset.children;
     }
   }
 }

@@ -31,7 +31,7 @@ const filterAsyncRoutes = (routes: RouteVO[], roles: string[]): RouteVO[] => {
       tmpRoute.component = React.lazy(() => import("@/layout/index"));
     } else {
       tmpRoute.component = React.lazy(
-        () => import(`../../pages/${tmpRoute.component}`)
+        () => import(`../../pages/${tmpRoute.component}.tsx`)
       );
     }
     if (tmpRoute.children) {
