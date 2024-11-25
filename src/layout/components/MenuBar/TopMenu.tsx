@@ -22,6 +22,7 @@ export const TopMenu: React.FC = () => {
         <Logo />
       </div>
       <Menu
+        className="justify-center"
         style={{ flexGrow: 1 }}
         mode="horizontal"
         items={menuItems}

@@ -9,6 +9,7 @@ import storage from "redux-persist/lib/storage";
 
 const initialState = {
   user: {
+    avatar: "",
     roles: [] as string[],
     perms: [] as string[],
   } as UserInfo,
