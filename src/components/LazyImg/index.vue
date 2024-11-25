@@ -104,7 +104,7 @@ function imageLoad() {
 }
 
 .lazy__img[lazy="loading"] {
-  width: 48px;
+  width: 100%;
   padding: 5em 0;
 }
 
