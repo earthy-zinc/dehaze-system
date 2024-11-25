@@ -207,7 +207,11 @@ onUnmounted(() => loadingObserver.value?.disconnect());
           </el-form-item>
         </el-form>
       </div>
-
+      <el-skeleton
+        v-if="renderCount === 0 && datasetInfo.total !== 0"
+        :rows="12"
+        animated
+      />
       <LongitudinalWaterfall
         :list="images"
         :width="itemWidth"

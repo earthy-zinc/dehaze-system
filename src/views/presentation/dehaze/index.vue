@@ -9,6 +9,7 @@ import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import Loading from "@/components/Loading/index.vue";
 import FileAPI from "@/api/file";
 import ModelAPI from "@/api/model";
+import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 
 const algorithmStore = useAlgorithmStore();
 
@@ -26,7 +27,7 @@ const point = ref<Point>({
   x: 0,
   y: 0,
 });
-const exampleImageUrls = ref<String[]>([
+const exampleImageUrls = ref<string[]>([
   "http://172.16.3.113:8989/api/v1/files/dataset/thumbnail/Dense-Haze/hazy/01_hazy.png",
 ]);
 const modelOptions = ref<OptionType[]>([]);
