@@ -8,8 +8,8 @@ import React from "react";
 import "./index.scss";
 
 interface AlgorithmToolBarProps {
-  title: string;
-  description: string;
+  title?: string;
+  description?: string;
   disableMore: boolean;
   magnifier: MagnifierInfo;
   onUpload: (file: File) => void;
@@ -23,8 +23,8 @@ interface AlgorithmToolBarProps {
 }
 
 const AlgorithmToolBar: React.FC<AlgorithmToolBarProps> = ({
-  title,
-  description,
+  title = "图像去雾",
+  description = "通过对遭受雾气影响的图像进行相应处理，恢复图像原本的纹理结构和细节信息，进而提升图像的能见度",
   disableMore,
   magnifier,
   onUpload,
@@ -37,7 +37,7 @@ const AlgorithmToolBar: React.FC<AlgorithmToolBarProps> = ({
   children,
 }) => {
   return (
-    <div>
+    <div className="mr-3">
       <Card className="sidebar-card">
         <AlgorithmHeader title={title} description={description} />
         <ImageUploadButton

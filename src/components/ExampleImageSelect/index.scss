@@ -2,25 +2,35 @@
   display: grid;
   grid-template-rows: 0.1fr 0.4fr 3.2fr;
   grid-template-columns: 1fr;
-  height: 100vh;
+  height: 100%;
 }
 
-#example-img-container {
+.example-logo {
+  text-align: center;
+
+  img {
+    width: auto;
+    height: 100px;
+    margin-top: 15vh;
+  }
+}
+
+#example-image-container {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   justify-content: center;
   margin-top: 20px;
   margin-bottom: 20px;
+}
 
-  img {
-    height: 100px;
-    width: auto;
-    cursor: pointer;
-  }
+.example-img {
+  width: auto;
+  height: 100px;
+  cursor: pointer;
 
-  img:hover {
+  &:hover {
+    border: 2px solid var(--ant-color-primary);
     transform: scale(1.1);
-    border: 2px solid var(--primary-color);
   }
 }

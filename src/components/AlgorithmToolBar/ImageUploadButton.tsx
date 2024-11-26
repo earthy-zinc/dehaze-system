@@ -1,7 +1,7 @@
-import React from "react";
-import { Button, Dropdown, Upload, UploadFile } from "antd";
 import { ClearOutlined, UploadOutlined, UserOutlined } from "@ant-design/icons";
+import { Button, Dropdown, Upload, UploadFile } from "antd";
 import { UploadChangeParam } from "antd/es/upload";
+import React from "react";
 
 interface ImageUploadButtonProps {
   onUpload: (file: File) => void;
@@ -41,8 +41,15 @@ const ImageUploadButton: React.FC<ImageUploadButtonProps> = ({
     >
       <Dropdown.Button type="primary" menu={menuProps}>
         <Upload onChange={handleUploadChange}>
-          <UploadOutlined style={{ marginRight: "6px" }} />
-          本地上传
+          <UploadOutlined
+            style={{
+              marginRight: "6px",
+              color: "var(--ant-button-primary-color)",
+            }}
+          />
+          <span style={{ color: "var(--ant-button-primary-color)" }}>
+            本地上传
+          </span>
         </Upload>
       </Dropdown.Button>
       <Button icon={<ClearOutlined />} onClick={onReset}>

@@ -14,6 +14,7 @@ const ExampleImageSelect: React.FC<ExampleImageSelectProps> = ({
     <img
       key={url}
       src={url}
+      className={"example-img"}
       alt={`example-${index}`}
       onClick={() => onSelect(url)}
     />
@@ -21,10 +22,14 @@ const ExampleImageSelect: React.FC<ExampleImageSelectProps> = ({
 
   return (
     <div className="example-container">
-      <div>选一张图片试一下吧</div>
+      <div className={"flex-center mt-15"}>选一张图片试一下吧</div>
       <div id="example-image-container">{ExampleImages}</div>
       <div className="example-logo">
-        <img src="" alt="logo" />
+        <img
+          src="/logo/logo.png"
+          alt="logo"
+          style={{ width: "auto", height: "100px" }}
+        />
       </div>
     </div>
   );
