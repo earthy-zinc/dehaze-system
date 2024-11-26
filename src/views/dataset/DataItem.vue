@@ -87,11 +87,8 @@ async function handleQuery() {
 function switchImageUrl(id: number) {
   images.value = imageData.map((item) => ({
     id: item.id,
-    src: item.imgUrl[id].url.replace(new RegExp("localhost"), "172.16.3.113"),
-    originSrc: item.imgUrl[id].originUrl!.replace(
-      new RegExp("localhost"),
-      "172.16.3.113"
-    ),
+    src: item.imgUrl[id].url,
+    originSrc: item.imgUrl[id].originUrl,
     alt: item.imgUrl[id].description,
   }));
 }
@@ -111,13 +108,7 @@ function showBigPicture(itemId: number) {
     let result = [] as string[];
     if (curImageItem) {
       curImageItem.imgUrl.map((item) => {
-        item.originUrl
-          ? result.push(
-              item.originUrl.replace(new RegExp("localhost"), "172.16.3.113")
-            )
-          : result.push(
-              item.url.replace(new RegExp("localhost"), "172.16.3.113")
-            );
+        item.originUrl ? result.push(item.originUrl) : result.push(item.url);
       });
     }
     return result;
