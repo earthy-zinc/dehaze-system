@@ -8,7 +8,7 @@ class Config:
 
     # 获取当前项目目录
     PROJECT_PATH = path.dirname(path.abspath(__file__))
-
+    DATASET_PATH = "D:/DeepLearning/dataset/"
     MODEL_PATH = path.join(PROJECT_PATH, "trained_model")
 
 
@@ -16,6 +16,9 @@ class DevelopmentConfig(Config):
     DEBUG = True
     FLASK_ENV = 'development'
     BASE_URL = "http://localhost:8989/api/v1/files"
+
+    DATASET_PATH = "D:/DeepLearning/dataset"
+    DATASET_THUMBNAIL_PATH = "D:/DeepLearning/thumbnail"
 
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:123456@localhost/dehaze?charset=utf8"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -42,6 +45,9 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     SECRET_KEY = "1234"
     BASE_URL = "http://dehaze-python/api/v1/files"
+
+    DATASET_PATH = "/app/dataset"
+    DATASET_THUMBNAIL_PATH = "/app/thumbnail"
 
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:123456@192.168.31.3/dehaze?charset=utf8"
     SQLALCHEMY_TRACK_MODIFICATIONS = False

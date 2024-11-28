@@ -1,31 +1,39 @@
+from io import BytesIO
+
 import cv2
 import numpy as np
 import torch
+import torchvision.utils
 from PIL import Image
 
-from app.utils.metrics import get_niqe, get_brisque, get_nima, get_ssim, get_psnr, get_lpips
+from algorithm.WPXNet.ridcp_new_arch import RIDCPNew, FusionRefine
+from app.utils.image import preprocess_image
 
 
-def ntire_gamma_correction(filepath: str) -> np.ndarray:
-    if filepath.find('NH-HAZE-2020/clean') != -1:
-        gamma_b = 1.05
-        gamma_g = 1.17
-        gamma_r = 1.07
-    elif filepath.find('NH-HAZE-2020/hazy') != -1:
-        gamma_b = 1.9
-        gamma_g = 1.6
-        gamma_r = 1.24
-    elif filepath.find('NH-HAZE-2021/clean') != -1:
-        gamma_b = 0.92
-        gamma_g = 0.79
-        gamma_r = 0.65
-    elif filepath.find('NH-HAZE-2021/hazy') != -1:
-        gamma_b = 1
-        gamma_g = 0.85
-        gamma_r = 0.72
-    else:
-        return np.array(Image.open(filepath).convert("RGB")) / 255
-    img = cv2.imread(filepath)
+def ntire_gamma_correction(file: BytesIO, filepath: str = None) -> np.ndarray:
+    gamma_b = 1.
+    gamma_g = 1.
+    gamma_r = 1.
+    if filepath is not None:
+        if filepath.find('NH-HAZE-2020/clean') != -1:
+            gamma_b = 1.05
+            gamma_g = 1.17
+            gamma_r = 1.07
+        elif filepath.find('NH-HAZE-2020/hazy') != -1:
+            gamma_b = 1.9
+            gamma_g = 1.6
+            gamma_r = 1.24
+        elif filepath.find('NH-HAZE-2021/clean') != -1:
+            gamma_b = 0.92
+            gamma_g = 0.79
+            gamma_r = 0.65
+        elif filepath.find('NH-HAZE-2021/hazy') != -1:
+            gamma_b = 1
+            gamma_g = 0.85
+            gamma_r = 0.72
+        else:
+            return np.array(Image.open(file).convert("RGB")) / 255
+    img = np.array(Image.open(file))[:,:, ::-1]
     img = do_gamma_correction(img, gamma_b=gamma_b, gamma_g=gamma_g, gamma_r=gamma_r)
     return np.array(Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))) / 255
 
@@ -79,19 +87,16 @@ def imgOperation(filepath):
     haze = img2tensor(haze)
     return haze
 
-def calculate(haze_image_path: str, clear_image_path: str = None):
-    haze = imgOperation(haze_image_path)
-    if clear_image_path is not None:
-        clear = imgOperation(clear_image_path)
-    else:
-        clear = haze
-
-    result = [
-        get_niqe(haze, clear),
-        get_nima(haze, clear),
-        get_brisque(haze, clear),
-        get_psnr(haze, clear),
-        get_ssim(haze, clear),
-        get_lpips(haze, clear)
-    ]
-    return result
+image_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-23/hazy/01_hazy.png"
+with open(image_path, 'rb') as f:
+    img_bytes = BytesIO(f.read())
+    img_bytes.seek(0)
+    haze = preprocess_image(img_bytes)
+    print(haze.shape)
+    net = FusionRefine()
+    net.cuda()
+    net.load_state_dict(torch.load("/mnt/e/ProgramProject/new-dehaze/dehaze-python/trained_model/WPXNet/nh-haze-23.pth")['params'], strict=False)
+    net.eval()
+    output, _ = net.test(haze)
+    torchvision.utils.save_image(output, "output.png")
+    print(output.shape)

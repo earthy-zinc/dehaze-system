@@ -2,6 +2,9 @@ import hashlib
 import math
 from io import BytesIO
 
+from debugpy.common.log import LogFile
+
+
 def convert_size(size_bytes) -> str:
     if size_bytes == 0:
         return "0B"
@@ -32,3 +35,9 @@ def calculate_bytes_md5(bytes_io: BytesIO) -> str:
     # 重置 BytesIO 对象的指针到开头
     bytes_io.seek(0)
     return hash_md5.hexdigest()
+
+def get_file_bytes(filepath: str) -> BytesIO:
+    with open(filepath, 'rb') as f:
+        img_bytes = BytesIO(f.read())
+        img_bytes.seek(0)
+        return img_bytes

@@ -1,7 +1,6 @@
 from datetime import datetime
 
-from flask import current_app
-from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger, Integer
+from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger, Integer, CHAR, VARCHAR
 
 from app.extensions import mysql
 
@@ -35,3 +34,15 @@ class SysAlgorithm(mysql.Model):
     update_time = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, comment='更新时间')
     create_by = Column(BigInteger, nullable=True, comment='创建人ID')
     update_by = Column(BigInteger, nullable=True, comment='修改人ID')
+
+class SysWpxFile(mysql.Model):
+    __tablename__ = 'sys_wpx_file'
+    __table_args__ = {'comment': 'WPX文件表'}
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True, comment='id')
+    origin_file_id = Column(BigInteger, nullable=False, comment='旧文件id')
+    origin_md5 = Column(CHAR(32), unique=True, nullable=False, comment='旧文件的MD5值')
+    origin_path = Column(VARCHAR(255), nullable=False, comment='旧文件路径')
+    new_path = Column(VARCHAR(255), nullable=False, comment='新文件路径')
+    new_md5 = Column(CHAR(32), unique=True, nullable=False, comment='新文件的MD5值')
+    new_file_id = Column(BigInteger, nullable=False, comment='新文件id')

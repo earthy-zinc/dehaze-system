@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from .module.attention import Enhancer
 from .module.dinats import PyramidDiNAT_s, CascadeDiNAT_s
 from .module.nat_ir import CascadeNAT, PyramidNAT
+from .module.rcan import RCAN
 from .ridcp.codebook import VectorQuantizer
 from .ridcp.decoder import MultiScaleDecoder, DecoderBlock, RIDCPDecoder
 from .ridcp.encoder import MultiScaleEncoder, VQEncoder, SwinLayers, NATLayers
@@ -21,7 +22,7 @@ class RIDCPNew(nn.Module):
                  codebook_emb_num=1024,
                  codebook_emb_dim=512,
                  gt_resolution=256,
-                 LQ_stage=False,
+                 LQ_stage=True,
                  norm_type='gn',
                  act_type='silu',
                  use_quantize=True,
@@ -30,7 +31,7 @@ class RIDCPNew(nn.Module):
                  use_weight=False,
                  use_warp=True,
                  weight_alpha=1.0,
-                 additional_encoder="RSTB",
+                 additional_encoder="PyramidDiNAT",
                  additional_enhancer=True,
                  **ignore_kwargs):
         """
@@ -334,3 +335,75 @@ class RIDCPNew(nn.Module):
         out_img = self.out_conv(x)
         return out_img
 
+
+class FusionRefine(nn.Module):
+    def __init__(self):
+        """
+        Args:
+            opt:
+                in_channel:
+                codebook_scale:
+                codebook_emb_num:
+                codebook_emb_dim:
+                gt_resolution:
+                LQ_stage:
+                norm_type:
+                act_type:
+                use_quantize: 消融实验5、False 去除码本和码本匹配操作
+                use_residual: 消融实验5、False 去除码本和码本匹配操作
+                only_residual:
+                use_weight: True
+                use_warp:
+                weight_alpha: -21.25
+                additional_encoder: 消融实验2、3
+                    PyramidDiNAT/PyramidNAT 使用金字塔型的(空洞)邻域注意力特征提取器
+                    CascadeDiNAT/CascadeNAT 使用级联型的邻域注意力特征提取器
+                    RSTB 使用Swin Transformer的特征提取器RSTB
+                    其他 不使用额外的特征提取器
+                additional_enhancer: 消融实验4 是否启用额外的增强模块
+            one_branch: 消融实验1、去掉残差通道注意力分支
+            **kwargs:
+        """
+        super(FusionRefine, self).__init__()
+        self.one_branch = False
+        # first branch
+        self.feature_extract = RIDCPNew()
+        # second branch
+        self.pre_trained_rcan = RCAN()
+        self.tail = nn.Sequential(
+            nn.ReflectionPad2d(3),
+            nn.Conv2d(35, 3, kernel_size=7, padding=0),
+            nn.Tanh()
+        )
+
+    def forward(self, inputs, gt_indices=None):
+        out_img, out_img_residual, codebook_loss, feat_to_quant, z_quant, indices = self.feature_extract(inputs, gt_indices)
+        # 消融实验1、去掉残差通道注意力分支
+        if self.one_branch:
+            return out_img, out_img_residual, codebook_loss, feat_to_quant, z_quant, indices
+        else:
+            rcan_out = self.pre_trained_rcan(inputs)
+            x = torch.cat([out_img_residual, rcan_out], 1)
+            feat_hazy = self.tail(x)
+            return out_img, feat_hazy, codebook_loss, feat_to_quant, z_quant, indices
+
+    @torch.no_grad()
+    def test_tile(self, inputs):
+        x = self.feature_extract.test_tile(inputs)
+        # 消融实验1、去掉残差通道注意力分支
+        if self.one_branch:
+            return x
+        else:
+            y = self.pre_trained_rcan(inputs)
+            out = torch.cat([x, y], 1)
+            return self.tail(out)
+
+    @torch.no_grad()
+    def test(self, inputs):
+        x, index = self.feature_extract.test(inputs)
+        if self.one_branch:
+            return x, index
+        else:
+            y = self.pre_trained_rcan(inputs)
+            out = torch.cat([x, y], 1)
+            return self.tail(out), index

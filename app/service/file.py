@@ -9,9 +9,9 @@ import requests
 from flask import current_app
 from werkzeug.datastructures import FileStorage
 
-from app.models import SysFile
+from app.models import SysFile, SysWpxFile
 from app.utils.error import BusinessException
-from app.utils.file import calculate_bytes_md5, convert_size
+from app.utils.file import calculate_bytes_md5, convert_size, get_file_bytes
 from app.extensions import mysql
 
 
@@ -42,10 +42,11 @@ def upload_file(filename: str, content_type: str, file_bytes: BytesIO) -> SysFil
     return _upload_to_storage(filename, content_type, file_bytes, file_size)
 
 
-def read_file_from_url(url: str) -> BytesIO:
+def read_file_from_url(url: str, flag: bool=False) -> BytesIO:
     """
     从 URL 中读取文件
     :param url: 文件的 URL
+    :param flag:
     :return: 文件内容 BytesIO 对象
     """
     bucket_name = current_app.config["MINIO_BUCKET_NAME"]
@@ -59,10 +60,43 @@ def read_file_from_url(url: str) -> BytesIO:
         file_info = _upload_to_storage(
             filename=filename, content_type=content_type, file_bytes=file_bytes, file_size=len(file_bytes.getvalue())
         )
-
+    # 判断当前文件是否应需要转换
+    if flag:
+        file_info = _get_new_file_info(file_info)
     # 从 MinIO 获取文件内容
     file_response = minio_client.get_object(bucket_name, file_info.object_name)
     return BytesIO(file_response.read())
+
+def _get_new_file_info(old_file_info: SysFile) -> SysFile:
+    """
+    根据旧文件的md5，从SysWpxFile数据库中获取新文件的md5, path
+    如果能找到新文件md5对应的SysFile，则返回SysFile
+    否则根据 path 中加载数据然后上传到 minio 中
+
+    :param old_file_info:
+    :return: new_file_info
+    """
+    old_md5 = old_file_info.md5
+    sys_wpx_file: SysWpxFile = SysWpxFile.query.filter_by(origin_md5=old_md5).first()
+
+    if not sys_wpx_file: raise BusinessException("未找到对应的转换文件")
+
+    new_md5 = sys_wpx_file.new_md5
+
+    new_file_info = SysFile.query.filter_by(md5=new_md5).first()
+
+    if new_file_info: return new_file_info
+
+    dataset_path = os.path.join(current_app.config.get("DATASET_PATH", ""), "WPX")
+    new_path = sys_wpx_file.new_path
+    file_path = os.path.join(dataset_path, new_path)
+
+    if not os.path.exists(file_path): raise BusinessException("文件不存在")
+
+    file_name = os.path.basename(file_path)
+    file_bytes = get_file_bytes(file_path)
+    new_file_info = upload_file(file_name, "image/png", file_bytes)
+    return new_file_info
 
 
 def _fetch_file_from_url(url: str) -> Tuple[str, str, BytesIO]:

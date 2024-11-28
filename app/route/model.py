@@ -9,6 +9,7 @@ from flask import Blueprint, request, current_app
 
 from app.models import SysAlgorithm, SysFile
 from app.service.file import read_file_from_url, upload_file
+from app.service.model import get_root_algorithm, get_flag
 from app.utils.metrics import calculate
 from app.utils.result import success, error
 
@@ -85,6 +86,7 @@ def predict():
         id = int(data.get("modelId"))
         url: str = data.get("url")
         algorithm = SysAlgorithm.query.get(id)
+
         if not algorithm:
             return error("模型不存在")
 
@@ -97,7 +99,7 @@ def predict():
             traceback.print_exc()
             return error(f"加载算法模块失败：{str(e)}", 404)
 
-        input_img: BytesIO = read_file_from_url(url)
+        input_img: BytesIO = read_file_from_url(url, flag=get_flag(algorithm))
         model_path = os.path.join(current_app.config.get("MODEL_PATH", ""), algorithm.path)
         pred_img: BytesIO = model.dehaze(input_img, model_path)
         pred_img_info: SysFile = upload_file("pred_" + uuid4().hex +".png", "image/png", pred_img)
@@ -195,15 +197,9 @@ def evaluate():
         id: int = int(data.get("modelId"))
         pred: str = data.get("predUrl")
         gt: str = data.get("gtUrl")
-
-        if id == 100:
-            from algorithm.WPXNet.calculate import calculate as calculate_wpxnet
-            result = calculate_wpxnet(pred, gt)
-        else:
-            result = calculate(pred, gt)
-
+        algorithm = SysAlgorithm.query.get(id)
+        result = calculate(pred, gt, flag=get_flag(algorithm))
         return success(result)
-
     except Exception as e:
         traceback.print_exc()
         return error(f"模型评估失败：{str(e)}")
