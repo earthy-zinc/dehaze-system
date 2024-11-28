@@ -87,7 +87,7 @@ def _get_new_file_info(old_file_info: SysFile) -> SysFile:
 
     if new_file_info: return new_file_info
 
-    dataset_path = os.path.join(current_app.config.get("DATASET_PATH", ""), "WPX")
+    dataset_path = current_app.config.get("DATASET_PATH", "")
     new_path = sys_wpx_file.new_path
     file_path = os.path.join(dataset_path, new_path)
 

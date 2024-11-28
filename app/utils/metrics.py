@@ -67,7 +67,7 @@ def calculate(haze_image_path: str, clear_image_path: str = None, flag: bool = F
     :param clear_image_path: 清晰图像路径（可选）
     :return: 计算结果列表
     """
-    haze = _load_image(haze_image_path, flag)
+    haze = _load_image(haze_image_path)
     clear = _load_image(clear_image_path, flag) if clear_image_path else None
 
     # 动态计算所有指标

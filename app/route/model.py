@@ -9,7 +9,7 @@ from flask import Blueprint, request, current_app
 
 from app.models import SysAlgorithm, SysFile
 from app.service.file import read_file_from_url, upload_file
-from app.service.model import get_root_algorithm, get_flag
+from app.service.model import get_flag
 from app.utils.metrics import calculate
 from app.utils.result import success, error
 
