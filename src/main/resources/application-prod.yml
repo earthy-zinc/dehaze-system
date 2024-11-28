@@ -78,7 +78,7 @@ security:
 # 文件上传配置
 file:
   # OSS 类型 (目前支持aliyun、minio)
-  type: minio
+  type: local
   local:
     baseUrl: http://10.16.12.65:8989/api/v1/files
     uploadPath: /app/upload
