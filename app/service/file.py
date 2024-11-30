@@ -42,7 +42,7 @@ def upload_file(filename: str, content_type: str, file_bytes: BytesIO) -> SysFil
     return _upload_to_storage(filename, content_type, file_bytes, file_size)
 
 
-def read_file_from_url(url: str, flag: bool=False) -> BytesIO:
+def read_file_from_url(url: str, flag: bool=False) -> tuple[BytesIO, str]:
     """
     从 URL 中读取文件
     :param url: 文件的 URL
@@ -65,7 +65,7 @@ def read_file_from_url(url: str, flag: bool=False) -> BytesIO:
         file_info = _get_new_file_info(file_info)
     # 从 MinIO 获取文件内容
     file_response = minio_client.get_object(bucket_name, file_info.object_name)
-    return BytesIO(file_response.read())
+    return BytesIO(file_response.read()), file_info.url
 
 def _get_new_file_info(old_file_info: SysFile) -> SysFile:
     """

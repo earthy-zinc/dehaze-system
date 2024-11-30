@@ -99,12 +99,15 @@ def predict():
             traceback.print_exc()
             return error(f"加载算法模块失败：{str(e)}", 404)
 
-        input_img: BytesIO = read_file_from_url(url, flag=get_flag(algorithm))
+        input_img, input_url = read_file_from_url(url, flag=get_flag(algorithm))
         model_path = os.path.join(current_app.config.get("MODEL_PATH", ""), algorithm.path)
         pred_img: BytesIO = model.dehaze(input_img, model_path)
         pred_img_info: SysFile = upload_file("pred_" + uuid4().hex +".png", "image/png", pred_img)
 
-        return success(pred_img_info.url)
+        return success({
+            "predUrl": pred_img_info.url,
+            "hazeUrl": input_url
+        })
 
     except Exception as e:
         traceback.print_exc()

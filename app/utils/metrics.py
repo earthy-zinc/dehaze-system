@@ -112,7 +112,7 @@ def _load_image(image_path: str, flag: bool = False):
     :return: 图像 Tensor
     """
     try:
-        file = read_file_from_url(image_path, flag)
+        file, _ = read_file_from_url(image_path, flag)
     except BusinessException:
         file = image_path
     return ToTensor()(Image.open(file).convert("RGB"))[None, ::]
