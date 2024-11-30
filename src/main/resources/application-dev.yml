@@ -84,11 +84,11 @@ file:
   # 上传类型 (目前支持aliyun OSS、minio OSS、local 本地存储)
   type: local
   local:
-    baseUrl: http://10.16.12.65:8989/api/v1/files
-    uploadPath: E:/logs
+    baseUrl: http://localhost:8989/api/v1/files
+    uploadPath: E:/ProgramProject/new-dehaze/dehaze-java/upload
+    predictPath: E:/ProgramProject/new-dehaze/dehaze-java/predict
     datasetOriginPath: D:/DeepLearning/dataset
     datasetThumbnailPath: D:/DeepLearning/thumbnail
-    predictPath: E:/logs
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
@@ -146,7 +146,7 @@ xxl:
       address:
       ip:
       port: 9999
-      logpath: /data/applogs/xxl-job/jobhandler
+      logpath: E:/ProgramProject/new-dehaze/dehaze-java/logs/xxl-job
       logretentiondays: 30
 
 # 验证码配置
