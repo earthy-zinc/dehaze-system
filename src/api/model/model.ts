@@ -12,6 +12,11 @@ export interface PredParam {
   modelParam?: Object;
 }
 
+export interface PredResult {
+  predUrl: string;
+  hazeUrl: string;
+}
+
 export interface EvalParam {
   modelId: number;
   predUrl: string;

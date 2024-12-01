@@ -1,34 +1,28 @@
 <script lang="ts" setup>
-import { MagnifierInfo, Point } from "@/components/AlgorithmToolBar/types";
 import AlgorithmToolBar from "@/components/AlgorithmToolBar/index.vue";
-import { useAlgorithmStore } from "@/store";
-import EffectDisplay from "@/components/EffectDisplay/index.vue";
+import { useAlgorithmStore, useSettingsStore } from "@/store";
 import Camera from "@/components/Camera/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
-import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
+import OverlapImageShow from "@/components/OverlapImageShow/newIndex.vue";
 import Loading from "@/components/Loading/index.vue";
 import FileAPI from "@/api/file";
 import ModelAPI from "@/api/model";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
+import { useImageShowStore } from "@/store/modules/imageShow";
 
 const algorithmStore = useAlgorithmStore();
+const imageShowStore = useImageShowStore();
+const { themeColor } = useSettingsStore();
 
-const image1 = ref(
-  "https://ai-resource.ailabtools.com/resource/166-before.webp"
-);
-const image2 = ref(
-  "https://ai-resource.ailabtools.com/resource/166-after.webp"
-);
-const showMask = ref(false);
-const contrast = ref(0);
-const brightness = ref(0);
-const originScale = ref(1);
-const point = ref<Point>({
-  x: 0,
-  y: 0,
-});
+const { imageInfo } = toRefs(imageShowStore);
+const { images } = toRefs(imageInfo.value);
+const { urls: imgUrls } = toRefs(images.value);
+
 const exampleImageUrls = ref<string[]>([
-  "http://172.16.3.113:8989/api/v1/files/dataset/thumbnail/Dense-Haze/hazy/01_hazy.png",
+  "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/001.JPG",
+  "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/040.JPG",
+  "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/hazy/045.png",
+  "http://10.16.39.192:8989/api/v1/files/dataset/origin/Dense-Haze/hazy/27_hazy.png",
 ]);
 const modelOptions = ref<OptionType[]>([]);
 const selectedModel = ref<number>();
@@ -42,16 +36,7 @@ const show = reactive({
   effect: true,
 });
 
-const { width } = useWindowSize();
 const disableMore = computed(() => !show.overlap);
-const magnifier = computed(() => {
-  return {
-    imgUrls: [image1.value, image2.value],
-    radius: Math.floor((width.value * 0.3 - 90) / 4),
-    originScale: originScale.value,
-    point: point.value,
-  } as MagnifierInfo;
-});
 
 function activePage(
   page: "camera" | "singleImage" | "example" | "overlap" | "loading" | "effect"
@@ -75,7 +60,12 @@ function handleImageUpload(file: File) {
     .then((res) => {
       // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
       activePage("loading");
-      image1.value = res.url;
+      const img1 = {
+        id: 0,
+        label: { text: "原图", color: "white", backgroundColor: "black" },
+        url: res.url,
+      };
+      imageShowStore.setImageUrls([img1]);
     })
     .then(() => {
       // 将文件显示到 SingleImageShow 组件中
@@ -87,24 +77,38 @@ function handleImageUpload(file: File) {
 }
 
 function handleReset() {
-  image1.value = "";
-  image2.value = "";
-  showMask.value = false;
+  imageShowStore.setImageUrls([]);
+  imageShowStore.toggleMagnifierShow();
   activePage("example");
-  // activePage("effect");
 }
 
 // 选择模型后生成对比图（原图 | 去雾图）
 function handleGenerateImage() {
   activePage("loading");
-  console.log(selectedModel.value);
+  const imgUrl = imgUrls.value[0].url;
   ModelAPI.prediction({
     modelId: Number(selectedModel.value) || 1,
-    url: image1.value,
+    url: imgUrl,
   })
     .then((res) => {
       // 获取生成后的图片url
-      image2.value = res;
+      const imgs = [
+        {
+          id: 0,
+          label: { text: "原图", color: "white", backgroundColor: "black" },
+          url: res.hazeUrl,
+        },
+        {
+          id: 1,
+          label: {
+            text: "去雾图",
+            color: "white",
+            backgroundColor: themeColor,
+          },
+          url: res.predUrl,
+        },
+      ];
+      imageShowStore.setImageUrls(imgs);
     })
     .then(() => activePage("overlap"))
     .catch((err) => {
@@ -114,13 +118,13 @@ function handleGenerateImage() {
 }
 
 function handleExampleImageClick(url: string) {
-  image1.value = url;
+  const img1 = {
+    id: 0,
+    label: { text: "原图", color: "white", backgroundColor: "black" },
+    url: url,
+  };
+  imageShowStore.setImageUrls([img1]);
   activePage("singleImage");
-}
-
-function handleMouseover(p: Point) {
-  point.value.x = p.x;
-  point.value.y = p.y;
 }
 
 // 获取模型选项列表
@@ -131,6 +135,7 @@ const getAlgorithmList = async () => {
 
 onMounted(() => {
   getAlgorithmList();
+  imageShowStore.setImageUrls([]);
   activePage("example");
 });
 </script>
@@ -140,14 +145,10 @@ onMounted(() => {
     <!-- 左侧工具栏 -->
     <AlgorithmToolBar
       :disable-more="disableMore"
-      :magnifier="magnifier"
       @on-upload="handleImageUpload"
       @on-take-photo="activePage('camera')"
       @on-reset="handleReset"
       @on-generate="handleGenerateImage"
-      @on-magnifier-change="(flag) => (showMask = flag)"
-      @on-brightness-change="(value) => (brightness = value)"
-      @on-contrast-change="(value) => (contrast = value)"
     >
       <!-- 选择模型区域 -->
       <template #default>
@@ -164,11 +165,6 @@ onMounted(() => {
     </AlgorithmToolBar>
     <!-- 右侧功能栏 -->
     <el-card class="flex-center">
-      <EffectDisplay
-        v-show="show.effect"
-        :urls="[image1, image2]"
-        class="effect-wrap"
-      />
       <!-- 样例图片显示 -->
       <ExampleImageSelect
         v-if="show.example"
@@ -185,34 +181,12 @@ onMounted(() => {
       <!-- 单图展示 -->
       <SingleImageShow
         v-if="show.singleImage"
-        :src="image1"
+        :src="imgUrls[0].url || ''"
         class="single-image"
       />
       <Loading v-if="show.loading" />
-      <!-- 评价指标 -->
-      <!-- <div v-if="show.overlap" ref="evRef" class="ev-all-wrap">
-        <div class="ev-wrap">
-          <Evaluation />
-        </div>
-        <div class="ev-wrap">
-          <Evaluation />
-        </div>
-        <div class="ev-wrap">
-          <Evaluation />
-        </div>
-      </div> -->
       <!-- 重叠展示 -->
-      <OverlapImageShow
-        v-if="show.overlap"
-        :brightness="brightness"
-        :contrast="contrast"
-        :image1="image1"
-        :image2="image2"
-        :show-mask="showMask"
-        class="overlap"
-        @on-origin-scale-change="(value) => (originScale = value)"
-        @on-mouseover="handleMouseover"
-      />
+      <OverlapImageShow v-if="show.overlap" class="overlap" />
     </el-card>
   </div>
 </template>
@@ -233,17 +207,23 @@ onMounted(() => {
 
 .flex-center {
   width: 64vw;
-  overflow-y: scroll;
+  overflow-y: hidden;
 
   .example {
     padding-top: 100px;
   }
 
   .single-image {
-    height: 500px;
+    max-width: calc(64vw - 6vw);
+    max-height: calc(100vh - $navbar-height - 40px - 20px - 10px);
   }
 
   .overlap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(64vw - 6vw);
+    height: calc(100vh - $navbar-height - 40px - 20px - 10px);
     margin: 0 auto;
   }
 
@@ -277,7 +257,8 @@ onMounted(() => {
     margin-top: 10px;
 
     .overlap {
-      width: 100%;
+      width: calc(100vw - 6vw);
+      height: calc(100vh - $navbar-height - 40px);
     }
 
     .ev-all-wrap {

@@ -16,9 +16,11 @@ const settingStore = useSettingsStore();
 const props = defineProps({
   leftLabel: {
     type: String,
+    default: "原图",
   },
   rightLabel: {
     type: String,
+    default: "对比图",
   },
 });
 
