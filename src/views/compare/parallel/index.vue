@@ -130,41 +130,47 @@ function handleMaskMove(e: MouseEvent | TouchEvent, index: number) {
 }
 
 const isMousedown = ref(false);
+const selectedWrapperRect = reactive({
+  left: 0,
+  top: 0,
+});
 
-function mousedown(e: MouseEvent | TouchEvent, key: number) {
+function mousedown(e: MouseEvent | TouchEvent) {
   isMousedown.value = true;
   magnifierStyle.value.display = "block";
   const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
   const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+  const containerRect = (e.target as HTMLElement).getBoundingClientRect();
+  selectedWrapperRect.left = containerRect.left;
+  selectedWrapperRect.top = containerRect.top;
   imageShowStore.setMouseXY(clientX, clientY);
-  handleMouseEvent(e, key);
+  handleMouseEvent();
 }
 
-function mouseup(e: MouseEvent | TouchEvent, key: number) {
+function mouseup(e: MouseEvent | TouchEvent) {
   isMousedown.value = false;
   magnifierStyle.value.display = "none";
 }
 
-function mousemove(e: MouseEvent | TouchEvent, key: number) {
+function mousemove(e: MouseEvent | TouchEvent) {
   if (isMousedown.value) {
     const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
     const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    const containerRect = (e.target as HTMLElement).getBoundingClientRect();
+    selectedWrapperRect.left = containerRect.left;
+    selectedWrapperRect.top = containerRect.top;
     imageShowStore.setMouseXY(clientX, clientY);
-    handleMouseEvent(e, key);
+    handleMouseEvent();
   }
 }
 
-function mousewheel(e: WheelEvent, key: number) {
+function mousewheel(e: WheelEvent) {
   if (isMousedown.value) {
     let zoomLevel = magnifierInfo.value.zoomLevel;
     zoomLevel += e.deltaY > 0 ? -0.1 : 0.1;
     zoomLevel = Math.min(Math.max(zoomLevel, 1), 10); // 保持放大倍率在1到10之间
     imageShowStore.setMagnifierZoomLevel(zoomLevel);
-    console.log(e.clientX, mouse.value.x, key);
-    const event = { clientX: mouse.value.x, clientY: mouse.value.y } as
-      | MouseEvent
-      | TouchEvent;
-    handleMouseEvent(event, key);
+    handleMouseEvent();
   }
 }
 
@@ -175,7 +181,7 @@ const maskHeight = computed(
   () => magnifierInfo.value.height / magnifierInfo.value.zoomLevel
 );
 
-function handleMouseEvent(e: MouseEvent | TouchEvent, key: number) {
+function handleMouseEvent() {
   if (
     wrapperRefs.value.length === 0 ||
     magnifierRefs.value.length === 0 ||
@@ -184,14 +190,8 @@ function handleMouseEvent(e: MouseEvent | TouchEvent, key: number) {
     return;
   }
 
-  const containerRect = wrapperRefs.value[key].getBoundingClientRect();
-
-  // 判断事件来源是触摸还是鼠标
-  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-  console.log("handle", clientX, key);
-  const relativeX = clientX - containerRect.left;
-  const relativeY = clientY - containerRect.top;
+  const relativeX = mouse.value.x - selectedWrapperRect.left;
+  const relativeY = mouse.value.y - selectedWrapperRect.top;
 
   const x = Math.max(
     0,
@@ -210,15 +210,15 @@ function handleMouseEvent(e: MouseEvent | TouchEvent, key: number) {
   const magnifierLeft = Math.max(
     0,
     Math.min(
-      x - magnifierInfo.value.width / 4,
-      imageInfo.value.width - magnifierInfo.value.width
+      relativeX - magnifierInfo.value.width / 2,
+      imageInfo.value.width - magnifierInfo.value.width - 4
     )
-  ); // 限制放大镜在容器范围内
+  );
   const magnifierTop = Math.max(
     0,
     Math.min(
-      y - magnifierInfo.value.height / 4,
-      imageInfo.value.height - magnifierInfo.value.height
+      relativeY - magnifierInfo.value.height / 2,
+      imageInfo.value.height - magnifierInfo.value.height - 4
     )
   );
   magnifierStyle.value.left = `${magnifierLeft}px`;
@@ -252,32 +252,30 @@ function updateMagnifier(x: number, y: number) {
 const { width, height } = useWindowSize();
 watch([width, height], () => adjustSizes());
 
-watch([maskWidth, maskHeight, scaleX, scaleY], () => {
-  for (let i = 0; i < imgRefs.value.length; i++) {
-    handleMouseEvent(new MouseEvent("mousemove"), i);
-  }
-});
-
 onMounted(() => {
   adjustSizes();
 });
 </script>
 
 <template>
-  <div ref="containerRef" :style="{ ...containerStyle }" class="container">
+  <div
+    ref="containerRef"
+    :style="{ ...containerStyle }"
+    class="container"
+    @mouseup="mouseup"
+    @touchend="mouseup"
+    @mousedown.prevent="mousedown"
+    @mousemove.prevent="mousemove"
+    @touchmove.prevent="mousemove"
+    @touchstart.prevent="mousedown"
+    @wheel.prevent="mousewheel"
+  >
     <div
       v-for="urls in imgUrls"
       :key="urls.id"
       :ref="setWrapperRef"
       :style="{ ...wrapperStyle }"
       class="image-wrapper"
-      @mouseup="(e) => mouseup(e, urls.id)"
-      @touchend="(e) => mouseup(e, urls.id)"
-      @mousedown.prevent="(e) => mousedown(e, urls.id)"
-      @mousemove.prevent="(e) => mousemove(e, urls.id)"
-      @touchmove.prevent="(e) => mousemove(e, urls.id)"
-      @touchstart.prevent="(e) => mousedown(e, urls.id)"
-      @wheel.prevent="(e) => mousewheel(e, urls.id)"
     >
       <img
         :ref="setImgRef"
