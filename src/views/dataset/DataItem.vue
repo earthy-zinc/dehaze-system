@@ -85,12 +85,16 @@ async function handleQuery() {
 }
 
 function switchImageUrl(id: number) {
-  images.value = imageData.map((item) => ({
-    id: item.id,
-    src: item.imgUrl[id].url,
-    originSrc: item.imgUrl[id].originUrl,
-    alt: item.imgUrl[id].description,
-  }));
+  let host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
+  let oldHost = new URL(imageData[0].imgUrl[id].url).host;
+  images.value = imageData.map((item) => {
+    return {
+      id: item.id,
+      src: item.imgUrl[id].url.replace(oldHost, host),
+      originSrc: item.imgUrl[id].originUrl?.replace(oldHost, host),
+      alt: item.imgUrl[id].description,
+    };
+  });
 }
 
 function resetQuery() {}

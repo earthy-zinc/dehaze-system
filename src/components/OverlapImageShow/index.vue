@@ -28,10 +28,6 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-  height: {
-    type: Number,
-    default: 500,
-  },
 });
 
 const emit = defineEmits(["onOriginScaleChange", "onMouseover"]);
@@ -48,13 +44,9 @@ const maskStyle = ref<CSSProperties>({
 });
 
 const image1Ref = ref<HTMLImageElement>();
-const {
-  elementX,
-  elementY,
-  elementWidth: imgWidth,
-  elementHeight: imgHeight,
-  isOutside,
-} = useMouseInElement(image1Ref);
+const { elementX, elementY, isOutside } = useMouseInElement(image1Ref);
+
+const { height: imgHeight, width: imgWidth } = useElementSize(image1Ref);
 
 const originScale = computed(() => {
   if (image1Ref.value) return imgHeight.value / image1Ref.value.height;
@@ -122,51 +114,52 @@ onMounted(() => {
 </script>
 
 <template>
-  <div
-    :style="{
-      width: image1Ref ? image1Ref.width + 'px' : 'auto',
-      height: height + 'px',
-    }"
-    class="image-container"
-    @mouseleave="mouseleave"
-    @mousemove="mousemove"
-    @mouseover="mouseover"
-  >
-    <img
-      ref="image1Ref"
-      :src="image1"
-      :style="{ clipPath: `inset(0 ${sliderValue}% 0 0)` }"
-      alt=""
-    />
-    <img
-      :src="image2"
-      :style="{ clipPath: `inset(0 0 0 ${100 - sliderValue}%)` }"
-      alt=""
-    />
+  <div>
     <div
-      v-show="showMask"
-      ref="maskRef"
-      :style="maskStyle"
-      class="mouse-mask"
-    ></div>
-    <DraggableLine
-      left-label="原图"
-      right-label="对比图"
-      @update:offset="(value) => (sliderPosition = value)"
-    />
+      class="image-container"
+      @mouseleave="mouseleave"
+      @mousemove="mousemove"
+      @mouseover="mouseover"
+    >
+      <img
+        ref="image1Ref"
+        :src="image1"
+        :style="{ clipPath: `inset(0 ${sliderValue}% 0 0)` }"
+        alt=""
+      />
+      <img
+        :src="image2"
+        :style="{ clipPath: `inset(0 0 0 ${100 - sliderValue}%)` }"
+        alt=""
+      />
+      <div
+        v-show="showMask"
+        ref="maskRef"
+        :style="maskStyle"
+        class="mouse-mask"
+      ></div>
+      <DraggableLine
+        left-label="原图"
+        right-label="对比图"
+        @update:offset="(value) => (sliderPosition = value)"
+      />
+    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .image-container {
   position: relative;
+  width: 100%; /* 容器宽度与父容器相同 */
+  height: 100%; /* 容器高度与父容器相同 */
   overflow: hidden;
 }
 
 .image-container img {
   position: absolute;
-  height: 100%;
-  object-fit: cover;
+  width: 100%; /* 让图片宽度填充容器 */
+  height: 100%; /* 让图片高度填充容器 */
+  object-fit: contain; /* 保持图片宽高比，缩放以适应容器 */
 }
 
 .mouse-mask {

@@ -1,122 +1,348 @@
-<script setup lang="ts">
-const glassRef = ref<HTMLElement>();
-const bigImgRef = ref<HTMLImageElement>();
-const glassWrapperRef = ref<HTMLElement>();
+<script lang="ts" setup>
+import { useImageShowStore } from "@/store/modules/imageShow";
+import { CSSProperties } from "vue";
 
-function handleMouseOverImage(event: MouseEvent) {
-  glassRef.value!.style.display = "block";
-  bigImgRef.value!.style.display = "block";
-}
-function handleMouseOutImage(event: MouseEvent) {
-  glassRef.value!.style.display = "none";
-  bigImgRef.value!.style.display = "none";
-}
-function handleMouseMove(event: MouseEvent) {
-  // 该操作让glassWrapper的左上角变成坐标原点, 因为glass是先相对于glassWrapper而移动的
-  const x = event.pageX - glassWrapperRef.value!.offsetLeft;
-  const y = event.pageY - glassWrapperRef.value!.offsetTop;
-  // 让鼠标在glass的中间位置
-  let width = x - glassRef.value!.offsetWidth / 2;
-  let height = y - glassRef.value!.offsetHeight / 2;
-  // 让glass不超出img内部
-  if (width <= 0) {
-    width = 0;
-  } else if (
-    width >=
-    glassWrapperRef.value!.offsetWidth - glassRef.value!.offsetWidth
-  ) {
-    width = glassWrapperRef.value!.offsetWidth - glassRef.value!.offsetWidth;
+const imageShowStore = useImageShowStore();
+const { mask, imageInfo, magnifierInfo, scaleX, scaleY, mouse } =
+  toRefs(imageShowStore);
+const { images, brightness, contrast, saturate } = toRefs(imageInfo.value);
+const { urls: imgUrls } = toRefs(images.value);
+const { enabled: isMagnifierEnabled } = toRefs(magnifierInfo.value);
+
+const loadedCount = ref(0);
+
+const containerStyle = ref<CSSProperties>({
+  flexDirection: "row",
+});
+
+const wrapperStyle = ref<CSSProperties>({
+  width: 0,
+  height: 0,
+});
+
+const maskStyle = computed<CSSProperties>(() => {
+  return {
+    left: mask.value.x + "px",
+    top: mask.value.y + "px",
+    width: maskWidth.value + "px",
+    height: maskHeight.value + "px",
+    display: isMagnifierEnabled.value ? "block" : "none",
+  };
+});
+
+const magnifierStyle = ref<CSSProperties>({
+  left: 0,
+  top: 0,
+  display: "none",
+});
+
+const containerRef = ref<HTMLDivElement>();
+const imgRefs = ref<HTMLImageElement[]>([]);
+const wrapperRefs = ref<HTMLDivElement[]>([]);
+const magnifierRefs = ref<HTMLCanvasElement[]>([]);
+
+function setWrapperRef(ref: Element | ComponentPublicInstance | null) {
+  if (ref instanceof HTMLDivElement && !wrapperRefs.value.includes(ref)) {
+    wrapperRefs.value.push(ref);
   }
-  if (height <= 0) {
-    height = 0;
-  } else if (
-    height >=
-    glassWrapperRef.value!.offsetHeight - glassRef.value!.offsetHeight
+}
+
+function setMagnifierRef(ref: Element | ComponentPublicInstance | null) {
+  if (ref instanceof HTMLCanvasElement && !magnifierRefs.value.includes(ref)) {
+    magnifierRefs.value.push(ref);
+  }
+}
+
+function setImgRef(ref: Element | ComponentPublicInstance | null) {
+  if (ref instanceof HTMLImageElement && !imgRefs.value.includes(ref)) {
+    imgRefs.value.push(ref);
+  }
+}
+
+function imageOnload() {
+  loadedCount.value++;
+  if (loadedCount.value === imgUrls.value.length) {
+    adjustSizes();
+  }
+}
+
+function adjustSizes() {
+  const length = imgUrls.value.length;
+  if (!containerRef.value || length === 0) return;
+  const container = containerRef.value;
+
+  const containerWidth = container.offsetWidth;
+  const containerHeight = container.offsetHeight;
+  const containerWidthAspectRatio = containerWidth / length / containerHeight;
+
+  const img = new Image();
+  img.src = imgUrls.value[0].url;
+  img.onload = function () {
+    const imgAspectRatio = img.naturalWidth / img.naturalHeight;
+    let width: number;
+    let height: number;
+    if (containerWidth < containerHeight) {
+      containerStyle.value.flexDirection = "column";
+      if (imgAspectRatio > containerWidthAspectRatio) {
+        width = (containerHeight / length) * imgAspectRatio;
+        height = containerHeight / length;
+      } else {
+        width = containerHeight;
+        height = containerHeight / imgAspectRatio;
+      }
+    } else {
+      containerStyle.value.flexDirection = "row";
+      if (imgAspectRatio > containerWidthAspectRatio) {
+        width = containerWidth / length;
+        height = containerWidth / length / imgAspectRatio;
+      } else {
+        width = containerHeight / length;
+        height = containerHeight / length / imgAspectRatio;
+      }
+    }
+    wrapperStyle.value.width = `${width}px`;
+    wrapperStyle.value.height = `${height}px`;
+
+    imageShowStore.setImageSize(width, height);
+    imageShowStore.setImageNaturalSize(img.naturalWidth, img.naturalHeight);
+  };
+}
+
+function handleMaskMove(e: MouseEvent | TouchEvent, index: number) {
+  if (wrapperRefs.value.length === 0) return;
+  e.preventDefault(); // 禁用默认行为
+
+  const containerRect = wrapperRefs.value[index].getBoundingClientRect();
+
+  // 判断事件来源是触摸还是鼠标
+  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+
+  const x = clientX - containerRect.left - maskWidth.value / 2;
+  const y = clientY - containerRect.top - maskHeight.value / 2;
+
+  const maskX = Math.max(0, Math.min(x, containerRect.width - maskWidth.value)); // 限制mask在容器范围内
+  const maskY = Math.max(
+    0,
+    Math.min(y, containerRect.height - maskHeight.value)
+  );
+  imageShowStore.setMaskXY(maskX, maskY);
+}
+
+const isMousedown = ref(false);
+
+function mousedown(e: MouseEvent | TouchEvent, key: number) {
+  isMousedown.value = true;
+  magnifierStyle.value.display = "block";
+  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+  imageShowStore.setMouseXY(clientX, clientY);
+  handleMouseEvent(e, key);
+}
+
+function mouseup(e: MouseEvent | TouchEvent, key: number) {
+  isMousedown.value = false;
+  magnifierStyle.value.display = "none";
+}
+
+function mousemove(e: MouseEvent | TouchEvent, key: number) {
+  if (isMousedown.value) {
+    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    imageShowStore.setMouseXY(clientX, clientY);
+    handleMouseEvent(e, key);
+  }
+}
+
+function mousewheel(e: WheelEvent, key: number) {
+  if (isMousedown.value) {
+    let zoomLevel = magnifierInfo.value.zoomLevel;
+    zoomLevel += e.deltaY > 0 ? -0.1 : 0.1;
+    zoomLevel = Math.min(Math.max(zoomLevel, 1), 10); // 保持放大倍率在1到10之间
+    imageShowStore.setMagnifierZoomLevel(zoomLevel);
+    console.log(e.clientX, mouse.value.x, key);
+    const event = { clientX: mouse.value.x, clientY: mouse.value.y } as
+      | MouseEvent
+      | TouchEvent;
+    handleMouseEvent(event, key);
+  }
+}
+
+const maskWidth = computed(
+  () => magnifierInfo.value.width / magnifierInfo.value.zoomLevel
+);
+const maskHeight = computed(
+  () => magnifierInfo.value.height / magnifierInfo.value.zoomLevel
+);
+
+function handleMouseEvent(e: MouseEvent | TouchEvent, key: number) {
+  if (
+    wrapperRefs.value.length === 0 ||
+    magnifierRefs.value.length === 0 ||
+    imgRefs.value.length === 0
   ) {
-    height = glassWrapperRef.value!.offsetHeight - glassRef.value!.offsetHeight;
+    return;
   }
 
-  // 改变放大镜的位置
-  glassRef.value!.style.left = width + "px";
-  glassRef.value!.style.top = height + "px";
+  const containerRect = wrapperRefs.value[key].getBoundingClientRect();
+
+  // 判断事件来源是触摸还是鼠标
+  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
+  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+  console.log("handle", clientX, key);
+  const relativeX = clientX - containerRect.left;
+  const relativeY = clientY - containerRect.top;
+
+  const x = Math.max(
+    0,
+    Math.min(
+      relativeX - maskWidth.value / 2,
+      imageInfo.value.width - maskWidth.value
+    )
+  );
+  const y = Math.max(
+    0,
+    Math.min(
+      relativeY - maskHeight.value / 2,
+      imageInfo.value.height - maskHeight.value
+    )
+  );
+  const magnifierLeft = Math.max(
+    0,
+    Math.min(
+      x - magnifierInfo.value.width / 4,
+      imageInfo.value.width - magnifierInfo.value.width
+    )
+  ); // 限制放大镜在容器范围内
+  const magnifierTop = Math.max(
+    0,
+    Math.min(
+      y - magnifierInfo.value.height / 4,
+      imageInfo.value.height - magnifierInfo.value.height
+    )
+  );
+  magnifierStyle.value.left = `${magnifierLeft}px`;
+  magnifierStyle.value.top = `${magnifierTop}px`;
+  updateMagnifier(x, y);
 }
+
+function updateMagnifier(x: number, y: number) {
+  magnifierRefs.value.forEach((magnifier, index) => {
+    const magnifierCtx = magnifier.getContext("2d")!;
+    magnifierCtx.clearRect(
+      0,
+      0,
+      magnifierInfo.value.width,
+      magnifierInfo.value.height
+    );
+    magnifierCtx.drawImage(
+      imgRefs.value[index],
+      x * scaleX.value,
+      y * scaleY.value,
+      maskWidth.value * scaleX.value,
+      maskHeight.value * scaleY.value,
+      0,
+      0,
+      magnifierInfo.value.width,
+      magnifierInfo.value.height
+    );
+  });
+}
+
+const { width, height } = useWindowSize();
+watch([width, height], () => adjustSizes());
+
+watch([maskWidth, maskHeight, scaleX, scaleY], () => {
+  for (let i = 0; i < imgRefs.value.length; i++) {
+    handleMouseEvent(new MouseEvent("mousemove"), i);
+  }
+});
+
+onMounted(() => {
+  adjustSizes();
+});
 </script>
 
 <template>
-  <div class="box" @mousemove="handleMouseMove">
+  <div ref="containerRef" :style="{ ...containerStyle }" class="container">
     <div
-      @mouseover="handleMouseOverImage"
-      @mouseout="handleMouseOutImage"
-      ref="glassWrapperRef"
-      class="glassWrapper"
+      v-for="urls in imgUrls"
+      :key="urls.id"
+      :ref="setWrapperRef"
+      :style="{ ...wrapperStyle }"
+      class="image-wrapper"
+      @mouseup="(e) => mouseup(e, urls.id)"
+      @touchend="(e) => mouseup(e, urls.id)"
+      @mousedown.prevent="(e) => mousedown(e, urls.id)"
+      @mousemove.prevent="(e) => mousemove(e, urls.id)"
+      @touchmove.prevent="(e) => mousemove(e, urls.id)"
+      @touchstart.prevent="(e) => mousedown(e, urls.id)"
+      @wheel.prevent="(e) => mousewheel(e, urls.id)"
     >
-      <img src="https://picsum.photos/id/1/800/800" class="img" />
-      <div ref="glassRef" class="glass" id="glass"></div>
-    </div>
-    <div class="bigWrapper">
       <img
-        ref="bigImgRef"
-        src="https://picsum.photos/id/1/800/800"
-        class="bigImg"
+        :ref="setImgRef"
+        :src="urls.url"
+        :style="{
+          ...wrapperStyle,
+          filter: `contrast(${contrast}%) brightness(${brightness}%) saturate(${saturate}%)`,
+        }"
+        alt=""
+        @load="imageOnload"
       />
+      <!--      <div :style="maskStyle" class="mask"></div>-->
+      <canvas
+        :ref="setMagnifierRef"
+        :height="magnifierInfo.height"
+        :style="magnifierStyle"
+        :width="magnifierInfo.width"
+        class="magnifier"
+      ></canvas>
     </div>
   </div>
 </template>
 
-<style scoped lang="scss">
-.glassTitle {
-  color: #89cff0;
-  text-align: center;
-}
-
-.box {
+<style lang="scss" scoped>
+.container {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-around;
+  justify-content: center;
   width: 80vw;
-  min-width: 800px;
-  height: 80vh;
-  min-height: 600px;
-  margin: 10px auto;
-  line-height: 80vh;
-  background-color: #f2f3f4;
-  border-radius: 10px;
-  box-shadow: 0 0 10px 1px #5d8aa8;
+  height: 90vh;
+  overflow: hidden;
+  border: 2px solid #ccc;
 }
 
-.glassWrapper {
+.image-wrapper {
   position: relative;
-  line-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
-.img {
-  display: block;
-  width: 250px;
-  height: auto;
+.image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 保证图片宽高比 */
 }
 
-.glass {
+.mask {
   position: absolute;
-  display: none;
-  width: 80px;
-  height: 80px;
-  background: #89cff0;
-  opacity: 0.5;
+  z-index: 5;
+  display: none; /* 初始隐藏 */
+  width: 100px;
+  height: 100px;
+  pointer-events: none;
+  background-color: rgb(255 255 255 / 20%);
+  border: 2px solid rgb(255 255 255 / 80%);
 }
 
-.bigWrapper {
-  position: relative;
-  width: 500px;
-  height: 500px;
-  background-color: #fff;
-  border: 1px dashed #89cff0;
-  border-radius: 10px;
-  //overflow: hidden;
-}
-
-.bigImg {
+.magnifier {
   position: absolute;
-  display: none;
-  width: 2500px;
+  z-index: 5;
+  display: none; /* 初始隐藏 */
+  pointer-events: none;
+  border: 2px solid rgb(255 255 255 / 80%);
 }
 </style>

@@ -140,35 +140,35 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-  // {
-  //   path: "/compare",
-  //   component: Layout,
-  //   redirect: "/compare/overlap",
-  //   meta: {
-  //     title: "算法比较",
-  //     icon: "compare",
-  //   },
-  //   children: [
-  //     {
-  //       path: "overlap",
-  //       component: () => import("@/views/compare/overlap/index.vue"),
-  //       meta: {
-  //         title: "重叠对比",
-  //         icon: "overlap",
-  //         keepAlive: true,
-  //       },
-  //     },
-  //     {
-  //       path: "parallel",
-  //       component: () => import("@/views/compare/parallel/index.vue"),
-  //       meta: {
-  //         title: "并排比较",
-  //         icon: "parallel",
-  //         keepAlive: true,
-  //       },
-  //     },
-  //   ],
-  // },
+  {
+    path: "/compare",
+    component: Layout,
+    redirect: "/compare/overlap",
+    meta: {
+      title: "算法比较",
+      icon: "compare",
+    },
+    children: [
+      {
+        path: "overlap",
+        component: () => import("@/views/compare/overlap/index.vue"),
+        meta: {
+          title: "重叠对比",
+          icon: "overlap",
+          keepAlive: true,
+        },
+      },
+      {
+        path: "parallel",
+        component: () => import("@/views/compare/parallel/index.vue"),
+        meta: {
+          title: "并排比较",
+          icon: "parallel",
+          keepAlive: true,
+        },
+      },
+    ],
+  },
   // {
   //   path: "/curd",
   //   component: Layout,
