@@ -3,7 +3,7 @@ import { useImageShowStore } from "@/store/modules/imageShow";
 import { CSSProperties } from "vue";
 
 const imageShowStore = useImageShowStore();
-const { mask, imageInfo, magnifierInfo, scaleX, scaleY, mouse } =
+const { imageInfo, magnifierInfo, scaleX, scaleY, mouse } =
   toRefs(imageShowStore);
 const { images, brightness, contrast, saturate } = toRefs(imageInfo.value);
 const { urls: imgUrls } = toRefs(images.value);
@@ -18,16 +18,6 @@ const containerStyle = ref<CSSProperties>({
 const wrapperStyle = ref<CSSProperties>({
   width: 0,
   height: 0,
-});
-
-const maskStyle = computed<CSSProperties>(() => {
-  return {
-    left: mask.value.x + "px",
-    top: mask.value.y + "px",
-    width: maskWidth.value + "px",
-    height: maskHeight.value + "px",
-    display: isMagnifierEnabled.value ? "block" : "none",
-  };
 });
 
 const magnifierStyle = ref<CSSProperties>({
@@ -108,27 +98,6 @@ function adjustSizes() {
   };
 }
 
-function handleMaskMove(e: MouseEvent | TouchEvent, index: number) {
-  if (wrapperRefs.value.length === 0) return;
-  e.preventDefault(); // 禁用默认行为
-
-  const containerRect = wrapperRefs.value[index].getBoundingClientRect();
-
-  // 判断事件来源是触摸还是鼠标
-  const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-  const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-
-  const x = clientX - containerRect.left - maskWidth.value / 2;
-  const y = clientY - containerRect.top - maskHeight.value / 2;
-
-  const maskX = Math.max(0, Math.min(x, containerRect.width - maskWidth.value)); // 限制mask在容器范围内
-  const maskY = Math.max(
-    0,
-    Math.min(y, containerRect.height - maskHeight.value)
-  );
-  imageShowStore.setMaskXY(maskX, maskY);
-}
-
 const isMousedown = ref(false);
 const selectedWrapperRect = reactive({
   left: 0,
@@ -164,10 +133,13 @@ function mousemove(e: MouseEvent | TouchEvent) {
   }
 }
 
+const zoomIn = ref(true);
+
 function mousewheel(e: WheelEvent) {
   if (isMousedown.value) {
     let zoomLevel = magnifierInfo.value.zoomLevel;
-    zoomLevel += e.deltaY > 0 ? -0.1 : 0.1;
+    zoomIn.value = e.deltaY < 0;
+    zoomLevel += e.deltaY > 0 ? -0.2 : 0.2;
     zoomLevel = Math.min(Math.max(zoomLevel, 1), 10); // 保持放大倍率在1到10之间
     imageShowStore.setMagnifierZoomLevel(zoomLevel);
     handleMouseEvent();
@@ -283,11 +255,20 @@ onMounted(() => {
         :style="{
           ...wrapperStyle,
           filter: `contrast(${contrast}%) brightness(${brightness}%) saturate(${saturate}%)`,
+          cursor: zoomIn ? 'zoom-in' : 'zoom-out',
         }"
         alt=""
         @load="imageOnload"
       />
-      <!--      <div :style="maskStyle" class="mask"></div>-->
+      <div
+        :style="{
+          backgroundColor: urls.label.backgroundColor,
+          color: urls.label.color,
+        }"
+        class="label left-label"
+      >
+        <span>{{ urls.label.text }}</span>
+      </div>
       <canvas
         :ref="setMagnifierRef"
         :height="magnifierInfo.height"
@@ -325,22 +306,27 @@ onMounted(() => {
   object-fit: contain; /* 保证图片宽高比 */
 }
 
-.mask {
-  position: absolute;
-  z-index: 5;
-  display: none; /* 初始隐藏 */
-  width: 100px;
-  height: 100px;
-  pointer-events: none;
-  background-color: rgb(255 255 255 / 20%);
-  border: 2px solid rgb(255 255 255 / 80%);
-}
-
 .magnifier {
   position: absolute;
   z-index: 5;
   display: none; /* 初始隐藏 */
   pointer-events: none;
   border: 2px solid rgb(255 255 255 / 80%);
+}
+
+.label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  height: 30px;
+  line-height: 30px;
+  color: var(--el-border-color);
+  text-align: center;
+}
+
+.left-label {
+  left: 0;
+  background-color: rgb(162 162 162 / 50%);
 }
 </style>

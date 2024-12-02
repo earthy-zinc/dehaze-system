@@ -117,6 +117,14 @@ export const useImageShowStore = defineStore("imageShow", () => {
     imageInfo.saturate = saturate;
   }
 
+  function setMagnifierShow(enabled: boolean) {
+    magnifierInfo.enabled = enabled;
+  }
+
+  function setDividerShow(enabled: boolean) {
+    dividerInfo.enabled = enabled;
+  }
+
   function toggleMagnifierShow() {
     magnifierInfo.enabled = !magnifierInfo.enabled;
   }
@@ -164,6 +172,8 @@ export const useImageShowStore = defineStore("imageShow", () => {
     setBrightness,
     setContrast,
     setSaturate,
+    setMagnifierShow,
+    setDividerShow,
     toggleMagnifierShow,
     toggleDividerShow,
     setMagnifierShape,
