@@ -236,7 +236,7 @@ class ITBNewModel(BaseModel):
             l_g_total += l_g_gan
             loss_dict['l_g_gan'] = l_g_gan
 
-        l_g_total.mean().backward()
+        l_g_total.mean().backward(retain_graph=True)
 
         # optimize net_d
         self.fixed_disc = self.opt['train'].get('fixed_disc', False)
