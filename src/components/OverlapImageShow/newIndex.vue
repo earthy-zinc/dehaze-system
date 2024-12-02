@@ -6,8 +6,15 @@ import { hexToRGBA } from "@/utils";
 
 const settingStore = useSettingsStore();
 const imageShowStore = useImageShowStore();
-const { mask, maskWidth, maskHeight, imageInfo, dividerInfo, magnifierInfo } =
-  toRefs(imageShowStore);
+const {
+  mask,
+  maskWidth,
+  maskHeight,
+  imageInfo,
+  dividerInfo,
+  magnifierInfo,
+  mouse,
+} = toRefs(imageShowStore);
 const { images, brightness, contrast, saturate } = toRefs(imageInfo.value);
 const { urls: imgUrls } = toRefs(images.value);
 const { enabled: isMagnifierEnabled } = toRefs(magnifierInfo.value);
@@ -30,7 +37,8 @@ const maskStyle = computed<CSSProperties>(() => {
     top: mask.value.y + "px",
     width: maskWidth.value + "px",
     height: maskHeight.value + "px",
-    display: isMagnifierEnabled.value ? "block" : "none",
+    display: isMagnifierEnabled.value && isDragMask.value ? "block" : "none",
+    borderRadius: magnifierInfo.value.shape === "circle" ? "50%" : "0",
   };
 });
 
@@ -215,17 +223,85 @@ function dividerMousedown(event: MouseEvent | TouchEvent) {
   }
 }
 
-function handleMaskMove(e: MouseEvent | TouchEvent) {
-  if (!isMagnifierEnabled.value) return;
-  if (!containerRef.value) return;
-  if (!maskRef.value) return;
-  e.preventDefault(); // 禁用默认行为
+const isDragMask = ref(false);
+const containerRect = reactive({
+  left: 0,
+  top: 0,
+  width: 0,
+  height: 0,
+});
 
-  const containerRect = containerRef.value.getBoundingClientRect();
-
-  // 判断事件来源是触摸还是鼠标
+function setContainerRect(e: MouseEvent | TouchEvent) {
   const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
   const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+  const rect = (e.target as HTMLElement).getBoundingClientRect();
+  containerRect.left = rect.left;
+  containerRect.top = rect.top;
+  containerRect.width = rect.width;
+  containerRect.height = rect.height;
+  imageShowStore.setMouseXY(clientX, clientY);
+}
+
+const initialPinchDistance = ref(0);
+
+function getDistance(touches: TouchList): number {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function mousedown(e: MouseEvent | TouchEvent) {
+  if (e instanceof TouchEvent && e.touches.length === 2) {
+    initialPinchDistance.value = getDistance(e.touches);
+  }
+  isDragMask.value = true;
+  imageShowStore.setMagnifierShow(true);
+  setContainerRect(e);
+  handleMaskMove();
+}
+
+function mousemove(e: MouseEvent | TouchEvent) {
+  if (!isDragMask.value) return;
+
+  setContainerRect(e);
+  // 处理双指缩放
+  if (e instanceof TouchEvent && e.touches.length === 2) {
+    const currentDistance = getDistance(e.touches);
+    const delta = currentDistance - initialPinchDistance.value;
+    const zoomFactor = 1 + delta / 100; // 调整缩放因子以适应需求
+    let newZoomLevel = magnifierInfo.value.zoomLevel * zoomFactor;
+    newZoomLevel = Math.min(Math.max(newZoomLevel, 1), 10); // 保持放大倍率在1到10之间
+    imageShowStore.setMagnifierZoomLevel(newZoomLevel);
+    handleMaskMove();
+    initialPinchDistance.value = currentDistance;
+  } else {
+    handleMaskMove();
+  }
+}
+
+function mouseup() {
+  isDragMask.value = false;
+  imageShowStore.setMagnifierShow(false);
+}
+
+const zoomIn = ref(false);
+
+function mousewheel(e: WheelEvent) {
+  if (isDragMask.value) {
+    let zoomLevel = magnifierInfo.value.zoomLevel;
+    zoomIn.value = e.deltaY < 0;
+    zoomLevel += e.deltaY > 0 ? -0.2 : 0.2;
+    zoomLevel = Math.min(Math.max(zoomLevel, 1), 10); // 保持放大倍率在1到10之间
+    imageShowStore.setMagnifierZoomLevel(zoomLevel);
+    handleMaskMove();
+  }
+}
+
+function handleMaskMove() {
+  if (!isMagnifierEnabled.value) return;
+
+  const clientX = mouse.value.x;
+  const clientY = mouse.value.y;
 
   const x = clientX - containerRect.left - maskWidth.value / 2;
   const y = clientY - containerRect.top - maskHeight.value / 2;
@@ -250,10 +326,15 @@ onMounted(() => {
   <div ref="cardRef">
     <div
       ref="containerRef"
-      :style="containerStyle"
+      :style="{ ...containerStyle, cursor: zoomIn ? 'zoom-in' : 'zoom-out' }"
       class="comparison-container"
-      @mousemove="handleMaskMove"
-      @touchmove="handleMaskMove"
+      @mouseup="mouseup"
+      @touchend="mouseup"
+      @mousedown.prevent="mousedown"
+      @touchstart.prevent="mousedown"
+      @mousemove.prevent="mousemove"
+      @touchmove.prevent="mousemove"
+      @wheel.prevent="mousewheel"
     >
       <canvas ref="particleCanvasRef" class="particle-canvas"></canvas>
       <img
@@ -282,8 +363,8 @@ onMounted(() => {
           display: dividerInfo.enabled ? 'block' : 'none',
         }"
         class="divider"
-        @mousedown="dividerMousedown"
-        @touchstart="dividerMousedown"
+        @mousedown.stop="dividerMousedown"
+        @touchstart.stop="dividerMousedown"
       >
         <div class="label left-label">
           <span>{{ imgUrls[0].label.text }}</span>
@@ -310,7 +391,6 @@ onMounted(() => {
 .comparison-container {
   position: relative;
   overflow: hidden;
-  user-select: none;
 
   /* 禁用全局文本选择 */
   user-select: none;

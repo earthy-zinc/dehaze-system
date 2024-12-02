@@ -26,7 +26,7 @@ const props = defineProps({
 
 const emit = defineEmits(["onUpload", "onTakePhoto", "onReset", "onGenerate"]);
 
-const overlapImageStore = useImageShowStore();
+const imageShowStore = useImageShowStore();
 
 const { width } = useWindowSize();
 
@@ -44,11 +44,11 @@ watch(
 
 const state = reactive({
   magnifier: {
-    enabled: false,
-    shape: "square",
-    width: 100,
-    height: 100,
-    zoomLevel: 1,
+    enabled: imageShowStore.magnifierInfo.enabled,
+    shape: imageShowStore.magnifierInfo.shape,
+    width: imageShowStore.magnifierInfo.width,
+    height: imageShowStore.magnifierInfo.height,
+    zoomLevel: imageShowStore.magnifierInfo.zoomLevel,
   },
   brightness: {
     enabled: true,
@@ -93,20 +93,20 @@ function handleMagnifierChange(
 ) {
   switch (type) {
     case "enable":
-      overlapImageStore.toggleMagnifierShow();
       state.magnifier.enabled = !state.magnifier.enabled;
+      imageShowStore.setMagnifierShow(state.magnifier.enabled);
       break;
     case "shape":
-      overlapImageStore.setMagnifierShape(value);
+      imageShowStore.setMagnifierShape(value);
       break;
     case "zoomLevel":
-      overlapImageStore.setMagnifierZoomLevel(value);
+      imageShowStore.setMagnifierZoomLevel(value);
       break;
     case "height":
-      overlapImageStore.setMagnifierSize(state.magnifier.width, value);
+      imageShowStore.setMagnifierSize(state.magnifier.width, value);
       break;
     case "width":
-      overlapImageStore.setMagnifierSize(value, state.magnifier.height);
+      imageShowStore.setMagnifierSize(value, state.magnifier.height);
       break;
     default:
       break;
@@ -120,13 +120,13 @@ function handleImageFilterChange(
   value = transform(value);
   switch (type) {
     case "brightness":
-      overlapImageStore.setBrightness(value);
+      imageShowStore.setBrightness(value);
       break;
     case "contrast":
-      overlapImageStore.setContrast(value);
+      imageShowStore.setContrast(value);
       break;
     case "saturate":
-      overlapImageStore.setSaturate(value);
+      imageShowStore.setSaturate(value);
       break;
     default:
       break;
@@ -135,7 +135,7 @@ function handleImageFilterChange(
 
 function handleDividerChange() {
   state.divider = !state.divider;
-  overlapImageStore.toggleDividerShow();
+  imageShowStore.toggleDividerShow();
 }
 
 function handleUploadChange(uploadFile: UploadFile) {
@@ -147,6 +147,11 @@ function handleUploadExceed(files: File[], uploadFiles: UploadUserFile[]) {
   uploadFiles.push(files[0]);
   handleUploadChange(uploadFiles[0] as UploadFile);
 }
+
+watch(
+  () => imageShowStore.magnifierInfo.zoomLevel,
+  (newValue) => (state.magnifier.zoomLevel = newValue)
+);
 </script>
 
 <template>
@@ -228,7 +233,7 @@ function handleUploadExceed(files: File[], uploadFiles: UploadUserFile[]) {
       <template v-if="state.magnifier.enabled && !disableMore">
         <div class="flex justify-between flex-wrap items-center mb-3">
           <Magnifier
-            v-for="url in overlapImageStore.imageInfo.images.urls"
+            v-for="url in imageShowStore.imageInfo.images.urls"
             :key="url.id"
             :label="url.label"
             :src="url.url"
