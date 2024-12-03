@@ -7,9 +7,11 @@ from uuid import uuid4
 from flasgger import swag_from
 from flask import Blueprint, request, current_app
 
+from app.extensions import mysql
 from app.models import SysAlgorithm, SysFile
 from app.service.file import read_file_from_url, upload_file
 from app.service.model import get_flag
+from app.utils.file import convert_size
 from app.utils.metrics import calculate
 from app.utils.result import success, error
 
@@ -206,3 +208,35 @@ def evaluate():
     except Exception as e:
         traceback.print_exc()
         return error(f"模型评估失败：{str(e)}")
+
+@model_blueprint.route("/init", methods=["GET"])
+@swag_from({
+    "tags": ["10.模型接口"],
+    "summary": "模型初始化",
+    "description": "计算每个模型的参数量和flops，存到数据库中。",
+})
+def init_algorithm():
+    import torch
+    from thop import profile
+    test_input = torch.randn(1, 3, 256, 256).cuda()
+    algorithms: list[SysAlgorithm] = SysAlgorithm.query.all()
+    MODEL_PATH = current_app.config.get("MODEL_PATH")
+    for algorithm in algorithms:
+        flops = algorithm.flops
+        params = algorithm.params
+        if flops is not None and params is not None:
+            continue
+        try:
+            run = import_module(algorithm.import_path)
+            model = run.get_model(os.path.join(MODEL_PATH, algorithm.path))
+            net_flops, net_params = profile(model, inputs=(test_input,))
+            algorithm.flops = convert_size(net_flops)
+            algorithm.params = convert_size(net_params)
+            mysql.session.commit()
+            del model
+            torch.cuda.empty_cache()
+        except Exception:
+            print("模型" + algorithm.name + "计算参数及浮点数失败")
+            traceback.print_exc()
+            continue
+    return success("模型初始化成功")

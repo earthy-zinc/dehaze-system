@@ -16,5 +16,5 @@ def dehaze(haze_image: BytesIO, *args, **kwargs) -> BytesIO:
     J = Recover(I, t, A, 0.1)
 
     _, buffer = cv2.imencode('.jpg', J * 255)
-    return BytesIO(buffer)
+    return BytesIO(buffer.tobytes())
 

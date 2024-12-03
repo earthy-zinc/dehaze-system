@@ -7,7 +7,7 @@ from config import Config
 from .models.AECRNet import Dehaze
 
 
-def load_model(model_path: str) -> torch.nn.Module:
+def get_model(model_path: str) -> torch.nn.Module:
     """
     加载预训练的去雾模型
     :param model_path: 模型路径
@@ -28,7 +28,7 @@ def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     :param model_path: 模型路径
     :return: 去雾后的图像数据
     """
-    net = load_model(model_path)  # 加载模型
+    net = get_model(model_path)  # 加载模型
     haze_tensor = preprocess_image(haze_image)  # 预处理图像
     with torch.no_grad():  # 禁用梯度计算
         pred, *_ = net(haze_tensor)  # 模型推理

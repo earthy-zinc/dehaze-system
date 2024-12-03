@@ -1,5 +1,6 @@
 import os
 import random
+from io import BytesIO
 
 import cv2
 import numpy as np
@@ -8,6 +9,7 @@ import torchvision
 import torchvision.transforms.functional
 from PIL import Image
 
+from app.utils.image import postprocess_image
 from .config import Config
 from .models import Model
 from config import Config as GlobalConfig
@@ -107,7 +109,7 @@ def postprocess(img, size=None):
 def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     net = get_model(model_path)
 
-    haze = Image.open(haze_image_path).convert('RGB')
+    haze = Image.open(haze_image).convert('RGB')
     haze = get_square_img(haze)
     haze = torchvision.transforms.functional.resize(haze, size=[256], interpolation=Image.BICUBIC)
     transforms = torchvision.transforms.Compose(
@@ -115,7 +117,7 @@ def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
         [torchvision.transforms.ToTensor()]
     )
     haze = transforms(haze)[None, ::]
-    haze = haze.to(DEVICE)
+    haze = haze.to(Config.DEVICE)
 
     h, w = haze.shape[2:4]
     noisy_images_input = pad_input(haze)
@@ -125,5 +127,4 @@ def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
 
 
     predicted_results = postprocess(predicted_results)[0]
-    im = Image.fromarray(predicted_results.cpu().numpy().astype(np.uint8).squeeze())
-    im.save(output_image_path)
+    return postprocess_image(predicted_results)

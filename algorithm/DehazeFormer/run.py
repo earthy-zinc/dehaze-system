@@ -8,7 +8,7 @@ from app.utils.image import preprocess_image, postprocess_image
 from config import Config
 
 
-def load_model(model_path: str) -> torch.nn.Module:
+def get_model(model_path: str) -> torch.nn.Module:
     """
     加载去雾模型并设置为评估模式。
     根据模型文件名动态选择模型结构并加载权重。
@@ -43,7 +43,7 @@ def dehaze(haze_image: BytesIO, model_path: str) -> BytesIO:
     :return: 去雾后的图像（BytesIO 格式）
     """
     # 加载模型
-    net = load_model(model_path)
+    net = get_model(model_path)
 
     # 预处理输入图像
     haze_tensor = preprocess_image(haze_image)
