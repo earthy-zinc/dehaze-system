@@ -1,14 +1,13 @@
 <script lang="ts" setup>
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { CSSProperties } from "vue";
+import { hexToRGBA } from "@/utils";
 
 const imageShowStore = useImageShowStore();
 const { imageInfo, magnifierInfo, scaleX, scaleY, mouse } =
   toRefs(imageShowStore);
 const { images, brightness, contrast, saturate } = toRefs(imageInfo.value);
 const { urls: imgUrls } = toRefs(images.value);
-const { enabled: isMagnifierEnabled } = toRefs(magnifierInfo.value);
-
 const loadedCount = ref(0);
 
 const containerStyle = ref<CSSProperties>({
@@ -72,7 +71,6 @@ function adjustSizes() {
     let width: number;
     let height: number;
     if (containerWidth < containerHeight) {
-      containerStyle.value.flexDirection = "column";
       if (imgAspectRatio > containerWidthAspectRatio) {
         width = (containerHeight / length) * imgAspectRatio;
         height = containerHeight / length;
@@ -80,8 +78,9 @@ function adjustSizes() {
         width = containerHeight;
         height = containerHeight / imgAspectRatio;
       }
+      containerStyle.value.flexDirection = "column";
+      containerStyle.value.height = `${height * length}px`;
     } else {
-      containerStyle.value.flexDirection = "row";
       if (imgAspectRatio > containerWidthAspectRatio) {
         width = containerWidth / length;
         height = containerWidth / length / imgAspectRatio;
@@ -89,6 +88,8 @@ function adjustSizes() {
         width = containerHeight / length;
         height = containerHeight / length / imgAspectRatio;
       }
+      containerStyle.value.flexDirection = "row";
+      containerStyle.value.height = `${height}px`;
     }
     wrapperStyle.value.width = `${width}px`;
     wrapperStyle.value.height = `${height}px`;
@@ -233,7 +234,7 @@ onMounted(() => {
   <div
     ref="containerRef"
     :style="{ ...containerStyle }"
-    class="container"
+    class="parallel-container"
     @mouseup="mouseup"
     @touchend="mouseup"
     @mousedown.prevent="mousedown"
@@ -262,7 +263,7 @@ onMounted(() => {
       />
       <div
         :style="{
-          backgroundColor: urls.label.backgroundColor,
+          backgroundColor: hexToRGBA(urls.label.backgroundColor, 0.5),
           color: urls.label.color,
         }"
         class="label left-label"
@@ -281,15 +282,14 @@ onMounted(() => {
 </template>
 
 <style lang="scss" scoped>
-.container {
+.parallel-container {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 80vw;
-  height: 90vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  border: 2px solid #ccc;
 }
 
 .image-wrapper {

@@ -3,12 +3,13 @@ import AlgorithmToolBar from "@/components/AlgorithmToolBar/index.vue";
 import { useAlgorithmStore, useSettingsStore } from "@/store";
 import Camera from "@/components/Camera/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
-import OverlapImageShow from "@/components/OverlapImageShow/newIndex.vue";
+import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import Loading from "@/components/Loading/index.vue";
 import FileAPI from "@/api/file";
 import ModelAPI from "@/api/model";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
-import { useImageShowStore } from "@/store/modules/imageShow";
+import { ImageUrlType, useImageShowStore } from "@/store/modules/imageShow";
+import DatasetImageSelect from "@/components/DatasetImageSelect/index.vue";
 
 const algorithmStore = useAlgorithmStore();
 const imageShowStore = useImageShowStore();
@@ -51,7 +52,7 @@ function activePage(
 
 function handleCameraSave(file: File) {
   // 上传文件
-  activePage("camera");
+  handleImageUpload(file);
 }
 
 function handleImageUpload(file: File) {
@@ -133,6 +134,14 @@ const getAlgorithmList = async () => {
   modelOptions.value = algorithmStore.algorithmOptions;
 };
 
+function handleDatasetImageSelect(urls: ImageUrlType[]) {
+  imageShowStore.setImageUrls(urls);
+  dialogVisible.value = false;
+  activePage("singleImage");
+}
+
+const dialogVisible = ref(false);
+
 onMounted(() => {
   getAlgorithmList();
   imageShowStore.setImageUrls([]);
@@ -149,6 +158,7 @@ onMounted(() => {
       @on-take-photo="activePage('camera')"
       @on-reset="handleReset"
       @on-generate="handleGenerateImage"
+      @on-select-from-dataset="() => (dialogVisible = true)"
     >
       <!-- 选择模型区域 -->
       <template #default>
@@ -175,6 +185,7 @@ onMounted(() => {
       <!-- 拍照上传 -->
       <Camera
         v-if="show.camera"
+        class="camera"
         @on-cancel="activePage('example')"
         @on-save="handleCameraSave"
       />
@@ -188,6 +199,15 @@ onMounted(() => {
       <!-- 重叠展示 -->
       <OverlapImageShow v-if="show.overlap" class="overlap" />
     </el-card>
+
+    <el-dialog
+      v-model="dialogVisible"
+      title="选择数据集图片"
+      top="8vh"
+      width="70%"
+    >
+      <DatasetImageSelect @on-selected="handleDatasetImageSelect" />
+    </el-dialog>
   </div>
 </template>
 
@@ -216,6 +236,11 @@ onMounted(() => {
   .single-image {
     max-width: calc(64vw - 6vw);
     max-height: calc(100vh - $navbar-height - 40px - 20px - 10px);
+  }
+
+  .camera {
+    width: calc(64vw - 6vw);
+    height: calc(100vh - $navbar-height - 40px - 20px - 10px);
   }
 
   .overlap {

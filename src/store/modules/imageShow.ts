@@ -1,4 +1,5 @@
 import { store } from "@/store";
+import { ImageTypeEnum } from "@/enums/ImageType";
 
 export interface ImageUrlType {
   id: number;
@@ -19,26 +20,30 @@ export const useImageShowStore = defineStore("imageShow", () => {
       urls: [
         {
           id: 0,
-          label: { text: "原图", color: "white", backgroundColor: "black" },
-          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/001.JPG",
+          label: {
+            text: ImageTypeEnum.HAZE,
+            color: "#000",
+            backgroundColor: "#fff",
+          },
+          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/hazy/041.png",
         },
         {
           id: 1,
           label: {
-            text: "对比图",
-            color: "white",
-            backgroundColor: "green",
+            text: ImageTypeEnum.CLEAN,
+            color: "#000",
+            backgroundColor: "#fff",
           },
-          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/clean/001.JPG",
+          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/clean/041.png",
         },
         {
           id: 2,
           label: {
-            text: "对比图",
-            color: "white",
-            backgroundColor: "green",
+            text: ImageTypeEnum.PRED,
+            color: "#fff",
+            backgroundColor: "#4a4",
           },
-          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/001.JPG",
+          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/hazy/041.png",
         },
       ] as ImageUrlType[],
       naturalWidth: 0,
