@@ -24,7 +24,13 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["onUpload", "onTakePhoto", "onReset", "onGenerate"]);
+const emit = defineEmits([
+  "onUpload",
+  "onTakePhoto",
+  "onReset",
+  "onGenerate",
+  "onSelectFromDataset",
+]);
 
 const imageShowStore = useImageShowStore();
 
@@ -143,9 +149,10 @@ function handleUploadChange(uploadFile: UploadFile) {
 }
 
 function handleUploadExceed(files: File[], uploadFiles: UploadUserFile[]) {
-  uploadFiles.shift();
-  uploadFiles.push(files[0]);
-  handleUploadChange(uploadFiles[0] as UploadFile);
+  if (files.length === 0) {
+    return;
+  }
+  emit("onUpload", files[0]);
 }
 
 watch(
@@ -180,7 +187,9 @@ watch(
               <el-dropdown-item @click="emit('onTakePhoto')">
                 拍照上传
               </el-dropdown-item>
-              <el-dropdown-item> 从现有数据集中选择</el-dropdown-item>
+              <el-dropdown-item @click="emit('onSelectFromDataset')">
+                从现有数据集中选择
+              </el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -246,7 +255,10 @@ watch(
           <el-form-item class="more-operations" label="放大镜形状">
             <el-radio-group
               v-model="state.magnifier.shape"
-              @change="(value) => handleMagnifierChange(value, 'shape')"
+              @change="
+                (value: string | number | boolean | undefined) =>
+                  handleMagnifierChange(value, 'shape')
+              "
             >
               <el-radio label="square" value="square">正方形</el-radio>
               <el-radio label="circle" value="circle">圆形</el-radio>
@@ -258,7 +270,9 @@ watch(
               v-model="state.magnifier.zoomLevel"
               :max="20"
               :min="2"
-              @change="(value) => handleMagnifierChange(value, 'zoomLevel')"
+              @change="
+                (value: number) => handleMagnifierChange(value, 'zoomLevel')
+              "
             />
           </el-form-item>
 
@@ -267,7 +281,7 @@ watch(
               v-model="state.magnifier.width"
               :max="1000"
               :min="100"
-              @change="(value) => handleMagnifierChange(value, 'width')"
+              @change="(value: number) => handleMagnifierChange(value, 'width')"
             />
           </el-form-item>
           <el-form-item class="more-operations" label="放大镜高度">
@@ -275,7 +289,9 @@ watch(
               v-model="state.magnifier.height"
               :max="1000"
               :min="100"
-              @change="(value) => handleMagnifierChange(value, 'height')"
+              @change="
+                (value: number) => handleMagnifierChange(value, 'height')
+              "
             />
           </el-form-item>
         </template>
@@ -287,7 +303,8 @@ watch(
               :max="100"
               :min="-100"
               @change="
-                (value) => handleImageFilterChange(Number(value), 'brightness')
+                (value: number) =>
+                  handleImageFilterChange(Number(value), 'brightness')
               "
             />
           </el-form-item>
@@ -300,7 +317,8 @@ watch(
               :max="100"
               :min="-100"
               @change="
-                (value) => handleImageFilterChange(Number(value), 'contrast')
+                (value: number) =>
+                  handleImageFilterChange(Number(value), 'contrast')
               "
             />
           </el-form-item>
@@ -313,7 +331,8 @@ watch(
               :max="100"
               :min="-100"
               @change="
-                (value) => handleImageFilterChange(Number(value), 'saturate')
+                (value: number) =>
+                  handleImageFilterChange(Number(value), 'saturate')
               "
             />
           </el-form-item>

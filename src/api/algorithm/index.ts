@@ -25,6 +25,16 @@ class AlgorithmAPI {
   }
 
   /**
+   * 获取算法详情
+   */
+  static getAlgorithmInfoById(id: number) {
+    return request<any, Algorithm>({
+      url: "/api/v1/algorithm/" + id,
+      method: "get",
+    });
+  }
+
+  /**
    * 新增算法
    *
    * @param data

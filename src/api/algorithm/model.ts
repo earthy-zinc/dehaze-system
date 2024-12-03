@@ -11,8 +11,11 @@ export interface Algorithm {
   name: string;
   type: string;
   description: string;
+  img?: string;
   path?: string;
   importPath?: string;
+  params?: string;
+  flops?: string;
   status?: number;
   size?: string;
   children?: Algorithm[];

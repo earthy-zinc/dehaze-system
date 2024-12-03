@@ -20,6 +20,16 @@ class DatasetAPI {
   }
 
   /**
+   * 获取数据集下拉列表
+   */
+  static getOptions() {
+    return request<any, OptionType[]>({
+      url: "/api/v1/dataset/options",
+      method: "get",
+    });
+  }
+
+  /**
    * 根据Id获取数据集信息
    * @param id 数据集id
    */

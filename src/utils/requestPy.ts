@@ -1,4 +1,4 @@
-import axios, { InternalAxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import { useUserStoreHook } from "@/store/modules/user";
 import { ResultEnum } from "@/enums/ResultEnum";
 import { TOKEN_KEY } from "@/enums/CacheEnum";
@@ -6,7 +6,7 @@ import { TOKEN_KEY } from "@/enums/CacheEnum";
 // 创建 axios 实例
 const service = axios.create({
   baseURL: import.meta.env.VITE_PYTHON_BASE_API,
-  timeout: 50000,
+  timeout: 120000,
   headers: { "Content-Type": "application/json;charset=utf-8" },
 });
 

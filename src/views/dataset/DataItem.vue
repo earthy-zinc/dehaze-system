@@ -4,6 +4,7 @@ import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue"
 import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
 import { api as viewerApi } from "v-viewer";
+import { ImageTypeEnum } from "@/enums/ImageType";
 
 defineOptions({
   name: "DataItem",
@@ -31,8 +32,8 @@ let imageData = reactive<ImageItem[]>([]);
 type ImageType = { id: number; type: string; enabled: boolean };
 
 const imageTypes = ref<ImageType[]>([
-  { id: 0, type: "清晰图像", enabled: true },
-  { id: 1, type: "有雾图像", enabled: false },
+  { id: 0, type: ImageTypeEnum.CLEAN, enabled: true },
+  { id: 1, type: ImageTypeEnum.HAZE, enabled: false },
 ]);
 
 const curImageType = computed(() => {
@@ -107,12 +108,17 @@ function handleImageTypeChange(typeId: number) {
 }
 
 function showBigPicture(itemId: number) {
+  let host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
+  let oldHost = new URL(imageData[0].imgUrl[curImageType.value?.id || 0].url)
+    .host;
   let curSelectedImages = () => {
     let curImageItem = imageData.find((item) => item.id === itemId);
     let result = [] as string[];
     if (curImageItem) {
       curImageItem.imgUrl.map((item) => {
-        item.originUrl ? result.push(item.originUrl) : result.push(item.url);
+        item.originUrl
+          ? result.push(item.originUrl.replace(oldHost, host))
+          : result.push(item.url.replace(oldHost, host));
       });
     }
     return result;
