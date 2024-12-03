@@ -7,8 +7,11 @@ import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.base.BasePageQuery;
+import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.DatasetConverter;
@@ -245,7 +248,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         cleanImageUrl.setId(id);
         cleanImageUrl.setUrl(hostUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
         cleanImageUrl.setOriginUrl(hostUrl + "/dataset/origin/" + relativeDatasetPath + "/" + cleanFlag + "/" + cleanImage);
-        cleanImageUrl.setType("清晰图像");
+        cleanImageUrl.setType(ImageTypeEnum.CLEAN.getValue());
         imageUrls.add(cleanImageUrl);
         id++;
 
@@ -255,7 +258,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             hazeImageUrl.setId(id);
             hazeImageUrl.setUrl(hostUrl + "/dataset/thumbnail/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
             hazeImageUrl.setOriginUrl(hostUrl + "/dataset/origin/" + relativeDatasetPath + "/" + hazeFlag + "/" + hazeImage);
-            hazeImageUrl.setType("有雾图像");
+            hazeImageUrl.setType(ImageTypeEnum.HAZE.getValue());
             if (hazeImage.startsWith(cleanImageName)) {
                 int prefixLength = cleanImageName.length();
                 String description = hazeImage.substring(prefixLength);
@@ -274,6 +277,27 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 .in(SysDataset::getParentId, ids));
         List<Long> childrenIds = childDatasets.stream().map(SysDataset::getId).toList();
         return this.removeBatchByIds(CollUtil.addAll(ids, childrenIds));
+    }
+
+    @Override
+    public List<Option<Long>> getOptions() {
+        List<SysDataset> datasets = this.list(new LambdaQueryWrapper<>());
+        return buildDatasetOptions(SystemConstants.ROOT_NODE_ID, datasets);
+    }
+
+    private List<Option<Long>> buildDatasetOptions(Long rootNodeId, List<SysDataset> datasets) {
+        List<Option<Long>> options = new ArrayList<>();
+        for (SysDataset dataset : datasets) {
+            if (dataset.getParentId().equals(rootNodeId)) {
+                Option<Long> option = new Option<>(dataset.getId(), dataset.getName());
+                List<Option<Long>> subDatasets = buildDatasetOptions(dataset.getId(), datasets);
+                if (CollUtil.isNotEmpty(subDatasets)) {
+                    option.setChildren(subDatasets);
+                }
+                options.add(option);
+            }
+        }
+        return options;
     }
 
     private List<DatasetVO> buildDatasetTree(Long rootId, List<SysDataset> datasets) {

@@ -21,6 +21,8 @@ public class SysDataset  extends BaseEntity {
 
     private String name;
 
+    private String img;
+
     private String description;
 
     private String path;

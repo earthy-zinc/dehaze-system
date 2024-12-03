@@ -21,11 +21,20 @@ public class AlgorithmVO {
     @Schema(description = "算法类型")
     private String type;
 
+    @Schema(description = "算法图片")
+    private String img;
+
     @Schema(description = "算法描述")
     private String description;
 
     @Schema(description = "算法路径")
     private String path;
+
+    @Schema(description = "算法浮点数")
+    private String flops;
+
+    @Schema(description = "算法参数量")
+    private String params;
 
     @Schema(description = "导入路径")
     private String importPath;
