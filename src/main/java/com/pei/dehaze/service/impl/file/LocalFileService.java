@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.file.PathUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
@@ -12,6 +13,7 @@ import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysFileService;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,8 +47,8 @@ import java.nio.file.Paths;
 @Data
 @Slf4j
 public class LocalFileService implements FileService {
-
-    private SysFileService imageService;
+    @Resource
+    private SysFileService sysFileService;
 
     private String baseUrl;
     private String uploadPath;
@@ -56,7 +58,7 @@ public class LocalFileService implements FileService {
 
     @Override
     public boolean uploadCheck(String md5) {
-        SysFile image = imageService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
+        SysFile image = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
         return image == null;
     }
 
@@ -72,21 +74,26 @@ public class LocalFileService implements FileService {
         if (file != null) {
             try {
                 String md5 = FileUploadUtils.getMd5(file.getInputStream());
-                SysFile image = imageService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
+                SysFile image = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
                 if (image == null) {
-                    String fileExtension = FileUtil.getSuffix(file.getName());
+                    String fileExtension = FileUtil.getSuffix(file.getOriginalFilename());
                     String fileName = md5 + "." + fileExtension;
-                    String filePath = uploadPath + fileName;
-                    file.transferTo(new File(filePath));
+                    Path filePath = Path.of(uploadPath, fileName);
+                    // 保存文件到本地路径
+                    if (!PathUtil.isDirectory(filePath.getParent())) {
+                        Files.createDirectories(filePath.getParent());
+                    }
+                    file.transferTo(new File(filePath.toAbsolutePath().toString()));
                     image = SysFile.builder()
                             .type(ImageTypeEnum.UPLOAD.getLabel())
                             .size(FileUtil.readableFileSize(file.getSize()))
+                            .objectName(fileName)
                             .name(fileName)
-                            .path(filePath)
+                            .path(filePath.toAbsolutePath().toString())
                             .md5(md5)
                             .url(baseUrl + "/upload/" + fileName)
                             .build();
-                    imageService.save(image);
+                    sysFileService.save(image);
                 }
                 return image;
             } catch (IOException e) {

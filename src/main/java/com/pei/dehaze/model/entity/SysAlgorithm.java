@@ -25,6 +25,12 @@ public class SysAlgorithm extends BaseEntity {
 
     private String size;
 
+    private String img;
+
+    private String params;
+
+    private String flops;
+
     private String importPath;
 
     private String description;
