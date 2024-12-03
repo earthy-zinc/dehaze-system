@@ -2,6 +2,8 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.converter.AlgorithmConverter;
+import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.form.AlgorithmForm;
 import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmVO;
@@ -25,7 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysAlgorithmController {
     private final SysAlgorithmService algorithmService;
-
+    private final AlgorithmConverter algorithmConverter;
     /**
      * 获取算法树形表格
      *
@@ -51,10 +53,17 @@ public class SysAlgorithmController {
         return Result.success(options);
     }
 
+    @Operation(summary = "根据ID获取算法信息")
+    @GetMapping("/{id}")
+    public Result<AlgorithmVO> getById(@PathVariable Long id) {
+        SysAlgorithm algorithm = algorithmService.getById(id);
+        return Result.success(algorithmConverter.entity2Vo(algorithm));
+    }
+
     /**
      * 新增算法
      *
-     * @param data 算法对象
+     * @param algorithm 算法对象
      * @return 操作结果
      */
     @Operation(summary = "新增算法")
@@ -68,7 +77,7 @@ public class SysAlgorithmController {
      * 修改算法
      *
      * @param id   算法ID
-     * @param data 算法对象
+     * @param algorithm 算法对象
      * @return 操作结果
      */
     @Operation(summary = "修改算法")

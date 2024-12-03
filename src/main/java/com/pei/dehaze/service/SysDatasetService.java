@@ -2,6 +2,7 @@ package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.common.base.BasePageQuery;
+import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.form.DatasetForm;
 import com.pei.dehaze.model.query.DatasetQuery;
@@ -21,4 +22,6 @@ public interface SysDatasetService extends IService<SysDataset> {
     boolean updateDataset(DatasetForm dataset);
 
     boolean deleteDatasets(List<Long> ids);
+
+    List<Option<Long>> getOptions();
 }

@@ -11,7 +11,11 @@ import lombok.Getter;
 public enum ImageTypeEnum implements IBaseEnum<String> {
     UPLOAD("upload", "上传图片"),
     DATASET("dataset", "数据集图片"),
-    PREDICT("predict", "预测图片");
+    PREDICT("predict", "预测图片"),
+
+    HAZE("有雾图像", "有雾图像"),
+    PRED("预测图像", "预测图像"),
+    CLEAN("清晰图像", "清晰图像");
 
     private final String value;
 

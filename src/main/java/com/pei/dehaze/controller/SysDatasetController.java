@@ -1,6 +1,7 @@
 package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.base.BasePageQuery;
+import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.converter.DatasetConverter;
@@ -56,6 +57,13 @@ public class SysDatasetController {
     public Result<List<DatasetVO>> listDatasets(@ParameterObject DatasetQuery queryParams) {
         List<DatasetVO> datasets = datasetService.getList(queryParams);
         return Result.success(datasets);
+    }
+
+    @Operation(summary = "获取数据集下拉选项列表")
+    @GetMapping("/options")
+    public Result<List<Option<Long>>> getOption() {
+        List<Option<Long>> options = datasetService.getOptions();
+        return Result.success(options);
     }
 
     /**

@@ -398,6 +398,7 @@ CREATE TABLE `sys_dataset`
     `parent_id`   bigint                                                         NOT NULL DEFAULT 0 COMMENT '父数据集ID',
     `type`        varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci   NOT NULL DEFAULT '' COMMENT '数据集类型',
     `name`        varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci   NOT NULL DEFAULT '' COMMENT '数据集名称',
+    `img`         TEXT  CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '数据集样例图片',
     `description` varchar(2048) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL     DEFAULT '' COMMENT '数据集描述',
     `path`        varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci  NOT NULL DEFAULT '' COMMENT '存储位置',
     `size`        varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci  NULL     DEFAULT '' COMMENT '占用空间大小',
@@ -541,16 +542,16 @@ values (25, 23, '图像去雾', 'RSHAZE-test', 'REHAZE 测试集 用于评估经
 DROP TABLE IF EXISTS `sys_file`;
 CREATE TABLE `sys_file`
 (
-    `id`          int                                                           NOT NULL AUTO_INCREMENT COMMENT '文件id',
-    `type`        varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci          DEFAULT NULL COMMENT '文件类型',
-    `url`         TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci                  DEFAULT NULL COMMENT '文件url',
-    `name`        varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件原始名',
-    `object_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件存储名',
-    `size`        varchar(100)                                                  NOT NULL DEFAULT '0' COMMENT '文件大小',
-    `path`        varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '文件路径',
-    `md5`         char(32) unique                                               NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
-    `create_time` datetime                                                      NOT NULL COMMENT '创建时间',
-    `update_time` datetime                                                               DEFAULT NULL COMMENT '更新时间',
+    `id`          int              NOT NULL AUTO_INCREMENT COMMENT '文件id',
+    `type`        varchar(100)     DEFAULT NULL COMMENT '文件类型',
+    `url`         TEXT             DEFAULT NULL COMMENT '文件url',
+    `name`        varchar(100)     NOT NULL COMMENT '文件原始名',
+    `object_name` varchar(100)     NOT NULL COMMENT '文件存储名',
+    `size`        varchar(100)     NOT NULL DEFAULT '0' COMMENT '文件大小',
+    `path`        varchar(255)     NOT NULL COMMENT '文件路径',
+    `md5`         char(32) unique  NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
+    `create_time` datetime         NOT NULL COMMENT '创建时间',
+    `update_time` datetime         DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `md5_key` (`md5` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -561,12 +562,15 @@ CREATE TABLE `sys_file`
 DROP TABLE IF EXISTS `sys_algorithm`;
 CREATE TABLE `sys_algorithm`
 (
-    `id`          bigint      NOT NULL AUTO_INCREMENT COMMENT '模型id',
+    `id`          bigint           NOT NULL AUTO_INCREMENT COMMENT '模型id',
     `parent_id`   bigint           DEFAULT 0 COMMENT '模型的父id',
     `type`        varchar(100)     DEFAULT '' COMMENT '模型类型',
-    `name`        varchar(64) NOT NULL COMMENT '模型名称',
+    `name`        varchar(64)      NOT NULL COMMENT '模型名称',
+    `img`         TEXT    DEFAULT NULL COMMENT '模型图片',
     `path`        varchar(255)     DEFAULT '' COMMENT '模型存储路径',
     `size`        varchar(100)     DEFAULT NULL COMMENT '模型大小',
+    `params`      varchar(255)     DEFAULT NULL COMMENT '模型参数',
+    `flops`       varchar(255)     DEFAULT NULL COMMENT '模型浮点运算次数',
     `import_path` varchar(255)     DEFAULT NULL COMMENT '模型代码导入路径',
     `description` varchar(2048)    DEFAULT NULL COMMENT '针对该模型的详细描述',
     `status`      tinyint(1)       DEFAULT 1 COMMENT '状态(1:启用；0:禁用)',
