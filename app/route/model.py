@@ -10,7 +10,7 @@ from flasgger import swag_from
 from flask import Blueprint, request, current_app
 
 from app.extensions import mysql
-from app.models import SysAlgorithm, SysFile, SysPredLog
+from app.models import SysAlgorithm, SysFile, SysPredLog, SysEvalLog
 from app.service.file import read_file_from_url, upload_file
 from app.service.model import get_flag
 from app.utils.file import convert_size
@@ -234,13 +234,48 @@ def predict():
 })
 def evaluate():
     """模型评估"""
+    # 获取请求中的模型ID和图像的URL
+    data = request.get_json()
+    id: int = int(data.get("modelId"))
+    pred: str = data.get("predUrl")
+    gt: str = data.get("gtUrl")
+
+    # 验证参数
+    algorithm = SysAlgorithm.query.get(id)
+    if not algorithm:
+        return error("模型不存在")
+    flag = get_flag(algorithm)
+
+    # 读取上传文件
+    pred_bytes, pred_info = read_file_from_url(pred, flag)
+    gt_bytes, gt_info = read_file_from_url(gt, flag)
+
+    # 检查SysEvalLog中是否有评估记录
+    sys_eval_log = SysEvalLog.query.filter_by(pred_md5=pred_info.md5, gt_md5=gt_info.md5).first()
+    if sys_eval_log:
+        return success(sys_eval_log.result)
+
+    # 评估预测效果
     try:
-        data = request.get_json()
-        id: int = int(data.get("modelId"))
-        pred: str = data.get("predUrl")
-        gt: str = data.get("gtUrl")
-        algorithm = SysAlgorithm.query.get(id)
-        result = calculate(pred, gt, flag=get_flag(algorithm))
+        start = time.time()
+        result = calculate(pred_bytes, gt_bytes)
+        end = time.time()
+
+        # 记录评估日志
+        sys_eval_log = SysEvalLog(
+            algorithm_id=id,
+            pred_file_id=pred_info.id,
+            pred_md5=pred_info.md5,
+            pred_url=pred_info.url,
+            gt_file_id=gt_info.id,
+            gt_md5=gt_info.md5,
+            gt_url=gt_info.url,
+            time=end - start,
+            result=result
+        )
+        mysql.session.add(sys_eval_log)
+        mysql.session.commit()
+
         return success(result)
     except Exception as e:
         traceback.print_exc()

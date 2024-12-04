@@ -1,10 +1,9 @@
+from io import BytesIO
+
 import pyiqa
 import torch
 from PIL import Image
 from torchvision.transforms import ToTensor
-
-from app.service.file import read_file_from_url
-from app.utils.error import BusinessException
 
 # 指标模型初始化（整合描述信息）
 METRICS = {
@@ -59,17 +58,16 @@ METRICS = {
 }
 
 
-def calculate(haze_image_path: str, clear_image_path: str = None, flag: bool = False):
+def calculate(haze_image: BytesIO, clear_image: BytesIO = None):
     """
     计算图像质量指标
     遍历所有指标，根据指标是否需要清晰图像，以及清晰图像是否已提供，决定是否调用 calculate_metric 进行计算。
-    :param flag:
-    :param haze_image_path: 雾化图像路径
-    :param clear_image_path: 清晰图像路径（可选）
+    :param haze_image: 雾化图像路径
+    :param clear_image: 清晰图像路径（可选）
     :return: 计算结果列表
     """
-    haze = _load_image(haze_image_path)
-    clear = _load_image(clear_image_path, flag) if clear_image_path else None
+    haze = _to_tensor(haze_image)
+    clear = _to_tensor(clear_image) if clear_image else None
 
     # 动态计算所有指标
     result = [
@@ -108,14 +106,5 @@ def calculate_metric(metric_name: str, haze, clear=None):
     }
 
 
-def _load_image(image_path: str, flag: bool = False):
-    """
-    加载并转换图像为 Tensor
-    :param image_path: 图像路径或 URL
-    :return: 图像 Tensor
-    """
-    try:
-        file, _ = read_file_from_url(image_path, flag)
-    except BusinessException:
-        file = image_path
-    return ToTensor()(Image.open(file).convert("RGB"))[None, ::]
+def _to_tensor(image_bytes: BytesIO) -> torch.Tensor:
+    return ToTensor()(Image.open(image_bytes).convert("RGB"))[None, ::]

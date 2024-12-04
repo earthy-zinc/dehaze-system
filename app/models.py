@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger, Integer, CHAR, VARCHAR, Float, func
+from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger, Integer, CHAR, VARCHAR, Float, func, \
+    JSON
 
 from app.extensions import mysql
 
@@ -71,9 +72,6 @@ class SysEvalLog(mysql.Model):
     __tablename__ = 'sys_eval_log'
     id = Column(BigInteger, primary_key=True, autoincrement=True, comment='id')
     algorithm_id = Column(BigInteger, nullable=False, comment='算法id')
-    origin_file_id = Column(BigInteger, nullable=True, comment='原始图像文件id（有雾图像）')
-    origin_md5 = Column(String(32), nullable=False, comment='原始图像md5值')
-    origin_url = Column(Text, nullable=False, comment='原始图像url')
     pred_file_id = Column(BigInteger, nullable=True, comment='预测图像文件id')
     pred_md5 = Column(String(32), nullable=False, comment='预测图像md5值')
     pred_url = Column(Text, nullable=False, comment='预测图像url')
@@ -81,11 +79,7 @@ class SysEvalLog(mysql.Model):
     gt_md5 = Column(String(32), nullable=False, comment='真值图像md5值')
     gt_url = Column(Text, nullable=False, comment='真值图像url')
     time = Column(Integer, default=0, comment='评估时间（秒）')
-    psnr = Column(Float, default=0, comment='PSNR')
-    ssim = Column(Float, default=0, comment='SSIM')
-    niqe = Column(Float, default=0, comment='NIQE')
-    nima = Column(Float, default=0, comment='NIMA')
-    brisque = Column(Float, default=0, comment='BRISQUE')
+    result = Column(JSON, comment='预测结果')
     create_time = Column(DateTime, nullable=False, default=datetime.now(timezone.utc), comment='创建时间')
     update_time = Column(DateTime, nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment='更新时间')
     create_by = Column(BigInteger, nullable=True, comment='创建人ID')

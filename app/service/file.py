@@ -156,8 +156,6 @@ def _upload_to_storage(
         size=convert_size(file_size),
         path="",
         md5=file_md5,
-        create_time=datetime.now(timezone.utc),
-        update_time=datetime.now(timezone.utc),
     )
     mysql.session.add(new_file)
     mysql.session.commit()
