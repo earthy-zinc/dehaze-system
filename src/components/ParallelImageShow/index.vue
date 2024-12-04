@@ -227,6 +227,19 @@ function updateMagnifier(x: number, y: number) {
 const { width, height } = useWindowSize();
 watch([width, height], () => adjustSizes());
 
+watch(
+  () => magnifierInfo.value.shape,
+  (newValue) => {
+    if (newValue === "circle") {
+      magnifierStyle.value.borderRadius = "50%";
+    } else {
+      magnifierStyle.value.borderRadius = 0;
+    }
+  }
+);
+watch([() => magnifierInfo.value.width, () => magnifierInfo.value.height], () =>
+  handleMouseEvent()
+);
 onMounted(() => {
   adjustSizes();
 });

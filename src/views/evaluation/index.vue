@@ -7,6 +7,10 @@ import AlgorithmAPI from "@/api/algorithm";
 import { Algorithm } from "@/api/algorithm/model";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 
+defineOptions({
+  name: "Evaluation",
+});
+
 const imageShowStore = useImageShowStore();
 const { modelId } = toRefs(imageShowStore);
 const loading = ref(false);

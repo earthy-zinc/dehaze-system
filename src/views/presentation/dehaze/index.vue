@@ -10,8 +10,10 @@ import ModelAPI from "@/api/model";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import { ImageUrlType, useImageShowStore } from "@/store/modules/imageShow";
 import DatasetImageSelect from "@/components/DatasetImageSelect/index.vue";
+import { ImageTypeEnum } from "@/enums/ImageType";
 
 const algorithmStore = useAlgorithmStore();
+const settingsStore = useSettingsStore();
 const imageShowStore = useImageShowStore();
 const { themeColor } = useSettingsStore();
 
@@ -19,6 +21,28 @@ const { imageInfo } = toRefs(imageShowStore);
 const { images } = toRefs(imageInfo.value);
 const { urls: imgUrls } = toRefs(images.value);
 
+const exampleImages = ref<ImageUrlType[][]>([
+  [
+    {
+      id: 0,
+      label: {
+        text: ImageTypeEnum.HAZE,
+        color: "#fff",
+        backgroundColor: "#000",
+      },
+      url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/001.JPG",
+    },
+    {
+      id: 3,
+      label: {
+        text: ImageTypeEnum.CLEAN,
+        color: "#fff",
+        backgroundColor: settingsStore.themeColor,
+      },
+      url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/clean/001.JPG",
+    },
+  ],
+]);
 const exampleImageUrls = ref<string[]>([
   "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/001.JPG",
   "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/040.JPG",
@@ -121,7 +145,7 @@ function handleGenerateImage() {
 function handleExampleImageClick(url: string) {
   const img1 = {
     id: 0,
-    label: { text: "原图", color: "white", backgroundColor: "black" },
+    label: { text: ImageTypeEnum.HAZE, color: "#fff", backgroundColor: "#000" },
     url: url,
   };
   imageShowStore.setImageUrls([img1]);
