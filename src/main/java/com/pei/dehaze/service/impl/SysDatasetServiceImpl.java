@@ -149,6 +149,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         if (CharSequenceUtil.isNotBlank(datasetType) && datasetType.equals("图像去雾")) {
             imageItemVOS = getImageList(dataset, hostUrl);
         } else {
+            // TODO 其他数据集类型
             imageItemVOS = Collections.emptyList();
         }
         return imageItemVOS;
@@ -172,12 +173,13 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         Path cleanPath = datasetBasePath.resolve(cleanFlag);
 
         if (PathUtil.isDirectory(hazePath) && PathUtil.isDirectory(cleanPath)) {
+            // 有雾和无雾图像的绝对路径列表
             List<String> hazeImages = FileUtil.listFileNames(hazePath.toAbsolutePath().toString());
             List<String> cleanImages = FileUtil.listFileNames(cleanPath.toAbsolutePath().toString());
             // 排序和去重
             hazeImages = hazeImages.stream().sorted().distinct().toList();
             cleanImages = cleanImages.stream().sorted().distinct().toList();
-            // 相除为大于1的整数
+            // 相除为大于1的整数，说明有雾图像是无雾图像的cleanRepeat倍数，则将无雾图像复制cleanRepeat倍
             if (hazeImages.size() % cleanImages.size() == 0) {
                 int cleanRepeat = hazeImages.size() / cleanImages.size();
                 cleanImages = cleanImages
