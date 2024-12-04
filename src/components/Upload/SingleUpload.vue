@@ -2,18 +2,28 @@
   <!-- 上传组件 -->
   <el-upload
     v-model="imgUrl"
-    class="single-uploader"
-    :show-file-list="false"
-    list-type="picture-card"
     :before-upload="handleBeforeUpload"
     :http-request="uploadFile"
+    :show-file-list="false"
+    class="single-uploader"
+    list-type="picture-card"
   >
-    <img v-if="imgUrl" :src="imgUrl" class="single-uploader__image" />
-    <el-icon v-else class="single-uploader__icon"><i-ep-plus /></el-icon>
+    <img
+      v-if="imgUrl"
+      :src="imgUrl"
+      alt="图片解析失败"
+      class="single-uploader__image"
+    />
+    <div v-else class="flex flex-col justify-center items-center">
+      <el-icon class="single-uploader__icon">
+        <i-ep-plus />
+      </el-icon>
+      <div class="mt-5 font-size-4">{{ tooltip }}</div>
+    </div>
   </el-upload>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { UploadRawFile, UploadRequestOptions } from "element-plus";
 import FileAPI from "@/api/file";
 
@@ -21,6 +31,10 @@ const props = defineProps({
   modelValue: {
     type: String,
     default: "",
+  },
+  tooltip: {
+    type: String,
+    default: "上传图片",
   },
 });
 
@@ -49,7 +63,7 @@ function handleBeforeUpload(file: UploadRawFile) {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .single-uploader {
   overflow: hidden;
   cursor: pointer;
@@ -62,16 +76,12 @@ function handleBeforeUpload(file: UploadRawFile) {
 
   &__image {
     display: block;
-    width: 178px;
-    height: 178px;
   }
+}
 
-  &___icon {
-    width: 178px;
-    height: 178px;
-    font-size: 28px;
-    color: #8c939d;
-    text-align: center;
-  }
+.single-uploader__icon {
+  font-size: 30px;
+  color: #8c939d;
+  text-align: center;
 }
 </style>

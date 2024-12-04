@@ -1,7 +1,9 @@
-<script setup lang="ts"></script>
+<script lang="ts" setup>
+import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
+</script>
 
 <template>
-  <div>敬请期待</div>
+  <ParallelImageUpload />
 </template>
 
-<style scoped lang="scss"></style>
+<style lang="scss" scoped></style>

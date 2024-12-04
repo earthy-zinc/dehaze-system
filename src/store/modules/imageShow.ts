@@ -14,6 +14,8 @@ export interface LabelType {
 }
 
 export const useImageShowStore = defineStore("imageShow", () => {
+  const modelId = ref(1);
+
   const imageInfo = reactive({
     // 缩略图
     images: {
@@ -96,6 +98,10 @@ export const useImageShowStore = defineStore("imageShow", () => {
     enabled: true,
   });
 
+  function setModelId(id: number) {
+    modelId.value = id;
+  }
+
   function setImageUrls(urls: ImageUrlType[]) {
     imageInfo.images.urls = urls;
   }
@@ -165,12 +171,14 @@ export const useImageShowStore = defineStore("imageShow", () => {
     scaleX,
     scaleY,
     imageInfo,
+    modelId,
     mouse,
     magnifierInfo,
     mask,
     maskWidth,
     maskHeight,
     dividerInfo,
+    setModelId,
     setImageUrls,
     setImageNaturalSize,
     setImageSize,
