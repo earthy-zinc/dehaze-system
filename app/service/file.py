@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from typing import Tuple
 from urllib.parse import urlparse
@@ -42,7 +42,7 @@ def upload_file(filename: str, content_type: str, file_bytes: BytesIO) -> SysFil
     return _upload_to_storage(filename, content_type, file_bytes, file_size)
 
 
-def read_file_from_url(url: str, flag: bool=False) -> tuple[BytesIO, str]:
+def read_file_from_url(url: str, flag: bool=False) -> tuple[BytesIO, SysFile]:
     """
     从 URL 中读取文件
     :param url: 文件的 URL
@@ -65,7 +65,7 @@ def read_file_from_url(url: str, flag: bool=False) -> tuple[BytesIO, str]:
         file_info = _get_new_file_info(file_info)
     # 从 MinIO 获取文件内容
     file_response = minio_client.get_object(bucket_name, file_info.object_name)
-    return BytesIO(file_response.read()), file_info.url
+    return BytesIO(file_response.read()), file_info
 
 def _get_new_file_info(old_file_info: SysFile) -> SysFile:
     """
@@ -156,8 +156,8 @@ def _upload_to_storage(
         size=convert_size(file_size),
         path="",
         md5=file_md5,
-        create_time=datetime.utcnow(),
-        update_time=datetime.utcnow(),
+        create_time=datetime.now(timezone.utc),
+        update_time=datetime.now(timezone.utc),
     )
     mysql.session.add(new_file)
     mysql.session.commit()

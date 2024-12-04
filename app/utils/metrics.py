@@ -1,4 +1,5 @@
 import pyiqa
+import torch
 from PIL import Image
 from torchvision.transforms import ToTensor
 
@@ -75,6 +76,8 @@ def calculate(haze_image_path: str, clear_image_path: str = None, flag: bool = F
         calculate_metric(name, haze, clear) for name, metric in METRICS.items()
         if metric["requires_clear"] and clear is not None or not metric["requires_clear"]
     ]
+    # 释放显存
+    torch.cuda.empty_cache()
     return result
 
 
