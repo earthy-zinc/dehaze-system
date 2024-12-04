@@ -2735,5 +2735,56 @@ INSERT INTO sys_wpx_file (origin_path, origin_md5, new_path, new_md5)
 VALUES ('NH-HAZE-2023/hazy/040.JPG', '1c607e508e9dd60251b2503916fa18d0', 'WPX/NH-HAZE-2023/hazy/40_hazy.png',
         'fad26d9292b2a1752d89bb384261b597');
 
+DROP TABLE IF EXISTS `sys_pred_log`;
+CREATE TABLE `sys_pred_log`
+(
+    `id`             bigint   NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `algorithm_id`   bigint   NOT NULL COMMENT '算法id',
+    `origin_file_id` bigint            DEFAULT NULL COMMENT '原始图像文件id（有雾图像）',
+    `origin_md5`     char(32) NOT NULL COMMENT '原始图像md5值',
+    `origin_url`     TEXT     NOT NULL COMMENT '原始图像url',
+    `pred_file_id`   bigint            DEFAULT NULL COMMENT '预测图像文件id',
+    `pred_md5`       char(32) NOT NULL COMMENT '预测图像md5值',
+    `pred_url`       TEXT     NOT NULL COMMENT '预测图像url',
+    `time`           int               DEFAULT 0 COMMENT '推理时间（秒）',
+    `create_time`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`    datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by`      bigint   NULL     DEFAULT NULL COMMENT '创建人ID',
+    `update_by`      bigint   NULL     DEFAULT NULL COMMENT '修改人ID',
+    PRIMARY KEY (`id`) USING BTREE,
+    KEY `idx_algorithm_id` (`algorithm_id`) USING BTREE,
+    KEY `idx_origin_md5` (`origin_md5`) USING BTREE,
+    KEY `idx_pred_md5` (`pred_md5`) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='模型预测日志表';
+
+DROP TABLE IF EXISTS `sys_eval_log`;
+CREATE TABLE `sys_eval_log`
+(
+    `id`           bigint   NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `algorithm_id` bigint   NOT NULL COMMENT '算法id',
+    `pred_file_id` bigint            DEFAULT NULL COMMENT '预测图像文件id',
+    `pred_md5`     char(32) NOT NULL COMMENT '预测图像md5值',
+    `pred_url`     TEXT     NOT NULL COMMENT '预测图像url',
+    `gt_file_id`   bigint            DEFAULT NULL COMMENT '真值图像文件id',
+    `gt_md5`       char(32) NOT NULL COMMENT '真值图像md5值',
+    `gt_url`       TEXT     NOT NULL COMMENT '真值图像url',
+    `time`         int               DEFAULT 0 COMMENT '评估时间（秒）',
+    `result`       json COMMENT '预测结果',
+    `create_time`  datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`  datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by`    bigint   NULL     DEFAULT NULL COMMENT '创建人ID',
+    `update_by`    bigint   NULL     DEFAULT NULL COMMENT '修改人ID',
+    PRIMARY KEY (`id`) USING BTREE,
+    KEY `idx_algorithm_id` (`algorithm_id`) USING BTREE,
+    KEY `idx_pred_md5` (`pred_md5`) USING BTREE,
+    KEY `idx_gt_md5` (`gt_md5`) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='模型预测日志表';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
