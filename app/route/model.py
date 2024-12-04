@@ -120,11 +120,10 @@ def predict():
         model_path = os.path.join(current_app.config.get("MODEL_PATH", ""), algorithm.path)
         pred_img: BytesIO = model.dehaze(input_img, model_path)
 
+        end = time.time()
+
         # 释放显存
         torch.cuda.empty_cache()
-
-        end = time.time()
-        pred_time = start - end
 
         # 保存预测图像
         pred_img_info: SysFile = upload_file("pred_" + uuid4().hex +".png", "image/png", pred_img)
@@ -138,7 +137,7 @@ def predict():
             pred_file_id=pred_img_info.id,
             pred_md5=pred_img_info.md5,
             pred_url=pred_img_info.url,
-            time=pred_time
+            time=start - end
         )
         mysql.session.add(sys_pred_log)
         mysql.session.commit()
@@ -260,7 +259,8 @@ def evaluate():
         start = time.time()
         result = calculate(pred_bytes, gt_bytes)
         end = time.time()
-
+        # 释放显存
+        torch.cuda.empty_cache()
         # 记录评估日志
         sys_eval_log = SysEvalLog(
             algorithm_id=id,

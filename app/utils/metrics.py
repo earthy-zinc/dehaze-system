@@ -74,8 +74,6 @@ def calculate(haze_image: BytesIO, clear_image: BytesIO = None):
         calculate_metric(name, haze, clear) for name, metric in METRICS.items()
         if metric["requires_clear"] and clear is not None or not metric["requires_clear"]
     ]
-    # 释放显存
-    torch.cuda.empty_cache()
     return result
 
 
