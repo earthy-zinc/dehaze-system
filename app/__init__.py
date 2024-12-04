@@ -20,7 +20,7 @@ def init_extensions(app: Flask):
     """
     Initialize all extensions in a centralized manner.
     """
-    from app.extensions import init_mysql, init_redis, init_mongodb, init_minio, init_swagger
+    from app.extensions import init_mysql, init_redis, init_mongodb, init_minio, init_swagger, init_jwt
 
     # 初始化每个依赖
     init_mysql(app)
@@ -28,3 +28,4 @@ def init_extensions(app: Flask):
     init_mongodb(app)
     init_minio(app)
     init_swagger(app)
+    init_jwt(app)

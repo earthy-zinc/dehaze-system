@@ -4,10 +4,12 @@ import traceback
 from importlib import import_module
 from io import BytesIO
 from uuid import uuid4
-
+from flask_jwt_extended import get_jwt, jwt_required, verify_jwt_in_request
 import torch
 from flasgger import swag_from
 from flask import Blueprint, request, current_app
+from flask_jwt_extended.exceptions import InvalidHeaderError, NoAuthorizationError
+from jwt import ExpiredSignatureError
 
 from app.extensions import mysql
 from app.models import SysAlgorithm, SysFile, SysPredLog, SysEvalLog
@@ -20,6 +22,7 @@ from app.utils.result import success, error
 model_blueprint = Blueprint("model", __name__, url_prefix="/model")
 
 
+@jwt_required
 @model_blueprint.route('/prediction', methods=['POST'])
 @swag_from({
     "tags": ["10.模型接口"],
@@ -90,6 +93,7 @@ def predict():
     url: str = data.get("url")
 
     # 参数校验
+    verify_jwt_in_request()
     algorithm = SysAlgorithm.query.get(id)
     if not algorithm:
         return error("模型不存在")
@@ -137,7 +141,9 @@ def predict():
             pred_file_id=pred_img_info.id,
             pred_md5=pred_img_info.md5,
             pred_url=pred_img_info.url,
-            time=start - end
+            time=start - end,
+            create_by=get_jwt().get("userId", None),
+            update_by=get_jwt().get("userId", None)
         )
         mysql.session.add(sys_pred_log)
         mysql.session.commit()
@@ -151,6 +157,7 @@ def predict():
         traceback.print_exc()
         return error(f"模型预测失败：{str(e)}")
 
+@jwt_required
 @model_blueprint.route('/evaluation', methods=['POST'])
 @swag_from({
     "tags": ["10.模型接口"],
@@ -240,6 +247,7 @@ def evaluate():
     gt: str = data.get("gtUrl")
 
     # 验证参数
+    verify_jwt_in_request()
     algorithm = SysAlgorithm.query.get(id)
     if not algorithm:
         return error("模型不存在")
@@ -271,7 +279,9 @@ def evaluate():
             gt_md5=gt_info.md5,
             gt_url=gt_info.url,
             time=end - start,
-            result=result
+            result=result,
+            create_by=get_jwt().get("userId", None),
+            update_by=get_jwt().get("userId", None),
         )
         mysql.session.add(sys_eval_log)
         mysql.session.commit()
@@ -312,3 +322,10 @@ def init_algorithm():
             traceback.print_exc()
             continue
     return success("模型初始化成功")
+
+
+@jwt_required
+@model_blueprint.route("/jwt", methods=["GET"])
+def test():
+    verify_jwt_in_request()
+    return success(get_jwt().get("userId"))

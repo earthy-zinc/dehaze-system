@@ -16,6 +16,9 @@ class DevelopmentConfig(Config):
     FLASK_ENV = 'development'
     BASE_URL = "http://localhost:8989/api/v1/files"
 
+    JWT_SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
+    JWT_ACCESS_TOKEN_EXPIRES = 7200
+
     DATASET_PATH = "/mnt/d/DeepLearning/dataset"
     DATASET_THUMBNAIL_PATH = "/mnt/d/DeepLearning/thumbnail"
 
@@ -44,6 +47,9 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     SECRET_KEY = "1234"
     BASE_URL = "http://dehaze-python/api/v1/files"
+
+    JWT_SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
+    JWT_ACCESS_TOKEN_EXPIRES = 7200
 
     DATASET_PATH = "/app/dataset"
     DATASET_THUMBNAIL_PATH = "/app/thumbnail"

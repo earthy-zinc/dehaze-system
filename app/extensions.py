@@ -1,5 +1,6 @@
 from flasgger import Swagger
 from flask import Flask
+from flask_jwt_extended import JWTManager
 from flask_pymongo import PyMongo
 from flask_sqlalchemy import SQLAlchemy
 from minio import Minio
@@ -8,6 +9,10 @@ from redis import Redis
 mysql = SQLAlchemy()
 swagger = Swagger()
 mongodb = PyMongo()
+
+def init_jwt(app: Flask):
+    jwt = JWTManager(app)
+    return jwt
 
 def init_mysql(app: Flask):
     """
