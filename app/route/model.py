@@ -326,6 +326,13 @@ def init_algorithm():
 
 @jwt_required
 @model_blueprint.route("/jwt", methods=["GET"])
+@swag_from({
+    "tags": ["10.模型接口"],
+    "summary": "测试接口",
+    "description": "测试接口。",
+    "consumes": ["application/json"],
+    "produces": ["application/json"],
+})
 def test():
     verify_jwt_in_request()
     return success(get_jwt().get("userId"))
