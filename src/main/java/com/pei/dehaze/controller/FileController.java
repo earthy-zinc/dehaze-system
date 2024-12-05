@@ -1,14 +1,9 @@
 package com.pei.dehaze.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.entity.SysFile;
-import com.pei.dehaze.model.entity.SysWpxFile;
 import com.pei.dehaze.service.FileService;
-import com.pei.dehaze.service.SysFileService;
-import com.pei.dehaze.service.SysWpxFileService;
 import com.pei.dehaze.service.impl.file.LocalFileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,8 +29,8 @@ public class FileController {
     @PostMapping
     @Operation(summary = "文件上传")
     public Result<SysFile> uploadFile(
-            @Parameter(description ="表单文件对象") @RequestParam(value = "file") MultipartFile file,
-            @Parameter(description ="模型id") @RequestParam(required = false) Long modelId
+            @Parameter(description = "表单文件对象") @RequestParam(value = "file") MultipartFile file,
+            @Parameter(description = "模型id") @RequestParam(required = false) Long modelId
     ) {
         SysFile fileInfo = fileService.uploadFile(file);
         if (modelId != null) {
