@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger, Integer, CHAR, VARCHAR, Float, func, \
-    JSON
+from sqlalchemy import Column, String, BigInteger, Text, DateTime, SmallInteger, Integer, CHAR, VARCHAR, JSON
 
 from app.extensions import mysql
 
@@ -41,7 +40,6 @@ class SysAlgorithm(mysql.Model):
 
 class SysWpxFile(mysql.Model):
     __tablename__ = 'sys_wpx_file'
-    __table_args__ = {'comment': 'WPX文件表'}
 
     id = Column(BigInteger, primary_key=True, autoincrement=True, comment='id')
     origin_file_id = Column(BigInteger, nullable=False, comment='旧文件id')

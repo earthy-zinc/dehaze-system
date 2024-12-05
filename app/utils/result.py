@@ -1,5 +1,7 @@
 from flask import jsonify
 
+from app.utils.code import ResultCode
+
 
 def success(data):
     return jsonify({
@@ -8,9 +10,16 @@ def success(data):
         "msg": "success"
     })
 
-def error(msg, response_code=500):
+def error(msg: str, response_code: int=500):
     return jsonify({
-        "code": "B00001",
+        "code": ResultCode.SYSTEM_EXECUTION_ERROR,
         "data": None,
         "msg": msg
     }), response_code
+
+def warning(code: ResultCode):
+    return jsonify({
+        "code": code.code,
+        "data": None,
+        "msg": code.msg
+    })

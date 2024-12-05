@@ -12,7 +12,7 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    DEBUG = True
+    DEBUG = False
     FLASK_ENV = 'development'
     BASE_URL = "http://localhost:8989/api/v1/files"
 

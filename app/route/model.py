@@ -134,14 +134,14 @@ def predict():
 
         # 记录预测日志
         sys_pred_log = SysPredLog(
-            algorithm_id=1,
+            algorithm_id=id,
             origin_file_id=input_file_info.id,
             origin_md5=input_file_info.md5,
             origin_url=input_file_info.url,
             pred_file_id=pred_img_info.id,
             pred_md5=pred_img_info.md5,
             pred_url=pred_img_info.url,
-            time=start - end,
+            time=end - start,
             create_by=get_jwt().get("userId", None),
             update_by=get_jwt().get("userId", None)
         )

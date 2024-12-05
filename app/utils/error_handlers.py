@@ -2,7 +2,8 @@ from flask import Flask
 from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError
 from jwt import ExpiredSignatureError, DecodeError
 
-from .result import error
+from .code import ResultCode
+from .result import error, warning
 
 
 def register_error_handlers(app: Flask):
@@ -12,18 +13,15 @@ def register_error_handlers(app: Flask):
     def handle_assertion_error(e):
         return error(f"业务逻辑错误：{str(e)}")
 
-    @app.errorhandler(DecodeError)
-    @app.errorhandler(InvalidHeaderError)
-    def handle_invalid_header_error(e):
-        return error(f"请求头错误：{str(e)}")
-
     @app.errorhandler(NoAuthorizationError)
     def handle_no_authorization_error(e):
-        return error(f"未登录：{str(e)}")
+        return warning(ResultCode.ACCESS_UNAUTHORIZED)
 
+    @app.errorhandler(DecodeError)
+    @app.errorhandler(InvalidHeaderError)
     @app.errorhandler(ExpiredSignatureError)
-    def handle_expired_signature_error(e):
-        return error(f"登录过期：{str(e)}")
+    def handle_jwt_error(e):
+        return warning(ResultCode.TOKEN_INVALID)
 
     @app.errorhandler(Exception)
     def handle_exception(e):
