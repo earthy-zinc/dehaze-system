@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.StatusEnum;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
@@ -43,6 +44,28 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         return rootIds.stream()
                 .flatMap(rootId -> buildAlgorithmTree(rootId, algorithms).stream())
                 .toList();
+    }
+
+    /**
+     * 根据 parentId，获取其根节点对应的SysAlgorithm
+     * @param id
+     * @return 根节点对应的SysAlgorithm
+     */
+    @Override
+    public SysAlgorithm getRootAlgorithm(Long id) {
+        SysAlgorithm algorithm = this.getById(id);
+
+        if (algorithm == null) {
+            throw new BusinessException("当前算法不存在");
+        }
+
+        while (!algorithm.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
+            algorithm = this.getById(algorithm.getParentId());
+            if (algorithm == null) {
+                throw new BusinessException("无法获取算法根节点");
+            }
+        }
+        return algorithm;
     }
 
     @Override

@@ -161,6 +161,11 @@ public class MinioFileService implements FileService {
     }
 
     @Override
+    public SysFile getWpxFile(SysFile oldFile, Long modelId) {
+        return null;
+    }
+
+    @Override
     public ImageFileInfo uploadImage(MultipartFile file, ImageForm imageForm) {
         SysFile sysFile = uploadFile(file);
 

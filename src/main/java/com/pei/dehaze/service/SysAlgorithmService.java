@@ -18,6 +18,8 @@ public interface SysAlgorithmService extends IService<SysAlgorithm> {
 
     List<Option<Long>> getOption();
 
+    SysAlgorithm getRootAlgorithm(Long id);
+
     boolean addAlgorithm(AlgorithmForm algorithm);
 
     boolean updateAlgorithm(AlgorithmForm algorithm);

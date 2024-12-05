@@ -41,6 +41,11 @@ spring:
       time-to-live: 3600000
       # 缓存null值，防止缓存穿透
       cache-null-values: true
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
 mybatis-plus:
   global-config:
     db-config:
