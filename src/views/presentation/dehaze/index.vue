@@ -8,12 +8,12 @@ import Loading from "@/components/Loading/index.vue";
 import FileAPI from "@/api/file";
 import ModelAPI from "@/api/model";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
-import { ImageUrlType, useImageShowStore } from "@/store/modules/imageShow";
+import { useImageShowStore } from "@/store/modules/imageShow";
 import DatasetImageSelect from "@/components/DatasetImageSelect/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageType";
+import examples from "@/views/presentation/dehaze/exampleImages";
 
 const algorithmStore = useAlgorithmStore();
-const settingsStore = useSettingsStore();
 const imageShowStore = useImageShowStore();
 const { themeColor } = useSettingsStore();
 
@@ -21,34 +21,11 @@ const { imageInfo } = toRefs(imageShowStore);
 const { images } = toRefs(imageInfo.value);
 const { urls: imgUrls } = toRefs(images.value);
 
-const exampleImages = ref<ImageUrlType[][]>([
-  [
-    {
-      id: 0,
-      label: {
-        text: ImageTypeEnum.HAZE,
-        color: "#fff",
-        backgroundColor: "#000",
-      },
-      url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/001.JPG",
-    },
-    {
-      id: 3,
-      label: {
-        text: ImageTypeEnum.CLEAN,
-        color: "#fff",
-        backgroundColor: settingsStore.themeColor,
-      },
-      url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/clean/001.JPG",
-    },
-  ],
-]);
-const exampleImageUrls = ref<string[]>([
-  "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/001.JPG",
-  "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2023/hazy/040.JPG",
-  "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/hazy/045.png",
-  "http://10.16.39.192:8989/api/v1/files/dataset/origin/Dense-Haze/hazy/27_hazy.png",
-]);
+const exampleImages = ref(examples);
+const exampleHazeUrls = computed(() =>
+  exampleImages.value.map((item) => item.haze)
+);
+const cleanUrl = ref("");
 const modelOptions = ref<OptionType[]>([]);
 const selectedModel = ref<number>();
 
@@ -81,16 +58,11 @@ function handleCameraSave(file: File) {
 
 function handleImageUpload(file: File) {
   // 上传文件
-  FileAPI.upload(file)
+  FileAPI.upload(file, imageShowStore.modelId)
     .then((res) => {
       // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
       activePage("loading");
-      const img1 = {
-        id: 0,
-        label: { text: "原图", color: "white", backgroundColor: "black" },
-        url: res.url,
-      };
-      imageShowStore.setImageUrls([img1]);
+      imageShowStore.setImageUrl(res.url, ImageTypeEnum.HAZE);
     })
     .then(() => {
       // 将文件显示到 SingleImageShow 组件中
@@ -117,23 +89,8 @@ function handleGenerateImage() {
   })
     .then((res) => {
       // 获取生成后的图片url
-      const imgs = [
-        {
-          id: 0,
-          label: { text: "原图", color: "white", backgroundColor: "black" },
-          url: res.hazeUrl,
-        },
-        {
-          id: 1,
-          label: {
-            text: "去雾图",
-            color: "white",
-            backgroundColor: themeColor,
-          },
-          url: res.predUrl,
-        },
-      ];
-      imageShowStore.setImageUrls(imgs);
+      imageShowStore.setImageUrl(res.hazeUrl, ImageTypeEnum.HAZE);
+      imageShowStore.setImageUrl(res.predUrl, ImageTypeEnum.PRED);
     })
     .then(() => activePage("overlap"))
     .catch((err) => {
@@ -143,12 +100,10 @@ function handleGenerateImage() {
 }
 
 function handleExampleImageClick(url: string) {
-  const img1 = {
-    id: 0,
-    label: { text: ImageTypeEnum.HAZE, color: "#fff", backgroundColor: "#000" },
-    url: url,
-  };
-  imageShowStore.setImageUrls([img1]);
+  imageShowStore.setImageUrl(url, ImageTypeEnum.HAZE);
+  const clear = exampleImages.value.filter((item) => item.haze === url)[0]
+    .clean;
+  handleCleanUrl(clear).then((res) => (cleanUrl.value = res));
   activePage("singleImage");
 }
 
@@ -158,10 +113,32 @@ const getAlgorithmList = async () => {
   modelOptions.value = algorithmStore.algorithmOptions;
 };
 
-function handleDatasetImageSelect(urls: ImageUrlType[]) {
-  imageShowStore.setImageUrls(urls);
+function handleDatasetImageSelect(haze: string, clear: string) {
+  imageShowStore.setImageUrl(haze, ImageTypeEnum.HAZE);
+  handleCleanUrl(clear).then((res) => (cleanUrl.value = res));
   dialogVisible.value = false;
   activePage("singleImage");
+}
+
+async function handleCleanUrl(url: string) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const cleanFile = new File([blob], "clean.jpg", { type: "image/jpeg" });
+  const cleanRes = await FileAPI.upload(cleanFile, imageShowStore.modelId);
+  return cleanRes.url;
+}
+
+const router = useRouter();
+
+function handleEval() {
+  router.push("/evaluation/index").then(async () => {
+    imageShowStore.setModelId(Number(selectedModel.value) || 1);
+    imageShowStore.setImageUrls(imgUrls.value);
+    console.log(cleanUrl.value);
+    if (cleanUrl.value !== "") {
+      imageShowStore.setImageUrl(cleanUrl.value, ImageTypeEnum.CLEAN);
+    }
+  });
 }
 
 const dialogVisible = ref(false);
@@ -179,6 +156,7 @@ onMounted(() => {
     <AlgorithmToolBar
       :disable-more="disableMore"
       @on-upload="handleImageUpload"
+      @on-eval="handleEval"
       @on-take-photo="activePage('camera')"
       @on-reset="handleReset"
       @on-generate="handleGenerateImage"
@@ -202,7 +180,7 @@ onMounted(() => {
       <!-- 样例图片显示 -->
       <ExampleImageSelect
         v-if="show.example"
-        :urls="exampleImageUrls"
+        :urls="exampleHazeUrls"
         class="example"
         @on-example-select="handleExampleImageClick"
       />

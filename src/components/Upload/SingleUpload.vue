@@ -26,6 +26,7 @@
 <script lang="ts" setup>
 import { UploadRawFile, UploadRequestOptions } from "element-plus";
 import FileAPI from "@/api/file";
+import { useImageShowStore } from "@/store/modules/imageShow";
 
 const props = defineProps({
   modelValue: {
@@ -38,8 +39,9 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(["update:modelValue"]);
+const emit = defineEmits(["update:modelValue", "onChange"]);
 const imgUrl = useVModel(props, "modelValue", emit);
+const imageShowStore = useImageShowStore();
 
 /**
  * 自定义图片上传
@@ -47,16 +49,17 @@ const imgUrl = useVModel(props, "modelValue", emit);
  * @param options
  */
 async function uploadFile(options: UploadRequestOptions): Promise<any> {
-  const data = await FileAPI.upload(options.file);
+  const data = await FileAPI.upload(options.file, imageShowStore.modelId);
   imgUrl.value = data.url;
+  emit("onChange", data.url);
 }
 
 /**
  * 限制用户上传文件的格式和大小
  */
 function handleBeforeUpload(file: UploadRawFile) {
-  if (file.size > 2 * 1048 * 1048) {
-    ElMessage.warning("上传图片不能大于2M");
+  if (file.size > 10 * 1048 * 1048) {
+    ElMessage.warning("上传图片不能大于10M");
     return false;
   }
   return true;

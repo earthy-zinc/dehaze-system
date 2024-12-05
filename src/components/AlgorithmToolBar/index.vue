@@ -28,6 +28,7 @@ const emit = defineEmits([
   "onUpload",
   "onTakePhoto",
   "onReset",
+  "onEval",
   "onGenerate",
   "onSelectFromDataset",
 ]);
@@ -155,6 +156,10 @@ function handleUploadExceed(files: File[], uploadFiles: UploadUserFile[]) {
   emit("onUpload", files[0]);
 }
 
+function handleEval() {
+  emit("onEval");
+}
+
 watch(
   () => imageShowStore.magnifierInfo.zoomLevel,
   (newValue) => (state.magnifier.zoomLevel = newValue)
@@ -233,7 +238,7 @@ watch(
               >
                 {{ state.saturate.enabled ? "关闭" : "开启" }}饱和度调整
               </el-dropdown-item>
-              <el-dropdown-item> 评估结果</el-dropdown-item>
+              <el-dropdown-item @click="handleEval"> 评估结果</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>

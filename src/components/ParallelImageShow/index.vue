@@ -9,7 +9,11 @@ const imageShowStore = useImageShowStore();
 const { imageInfo, magnifierInfo, scaleX, scaleY, mouse } =
   toRefs(imageShowStore);
 const { images, brightness, contrast, saturate } = toRefs(imageInfo.value);
-const { urls: imgUrls } = toRefs(images.value);
+const { urls: originUrls } = toRefs(images.value);
+const imgUrls = computed(() => {
+  let oUrls = [...originUrls.value];
+  return oUrls.sort((a, b) => a.id - b.id);
+});
 const loadedCount = ref(0);
 
 const containerStyle = ref<CSSProperties>({

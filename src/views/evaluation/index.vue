@@ -6,6 +6,7 @@ import { ImageTypeEnum } from "@/enums/ImageType";
 import AlgorithmAPI from "@/api/algorithm";
 import { Algorithm } from "@/api/algorithm/model";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
+import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
 
 defineOptions({
   name: "Evaluation",
@@ -14,6 +15,7 @@ defineOptions({
 const imageShowStore = useImageShowStore();
 const { modelId } = toRefs(imageShowStore);
 const loading = ref(false);
+const showResult = ref(false);
 const state = reactive({
   magnifier: {
     enabled: imageShowStore.magnifierInfo.enabled,
@@ -115,22 +117,41 @@ function handleImageFilterChange(
   }
 }
 
-onMounted(() => {
-  if (!pred.value || !gt.value) {
-    ElMessage.error("不存在图像");
-    return;
-  }
-  AlgorithmAPI.getAlgorithmInfoById(modelId.value).then((res) => {
-    algorithmInfo.value = res;
-  });
+function handleReset() {
+  // TODO 让图片全部重置
+}
 
-  ModelAPI.evaluation({
-    modelId: modelId.value,
-    predUrl: pred.value.url,
-    gtUrl: gt.value.url,
-  }).then((res) => {
-    metrics.value = res;
-  });
+const allUploaded = computed(() => {
+  return gt.value && pred.value && haze.value;
+});
+
+async function handleEvaluation() {
+  if (!allUploaded.value) {
+    ElMessage.error("请先上传图片");
+  }
+  loading.value = true;
+  try {
+    algorithmInfo.value = await AlgorithmAPI.getAlgorithmInfoById(
+      modelId.value
+    );
+
+    metrics.value = await ModelAPI.evaluation({
+      modelId: modelId.value,
+      predUrl: pred.value.url,
+      gtUrl: gt.value.url,
+    });
+    showResult.value = true;
+  } catch (e) {
+    console.log(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(async () => {
+  if (allUploaded.value) {
+    await handleEvaluation();
+  }
 });
 </script>
 
@@ -234,10 +255,36 @@ onMounted(() => {
         </el-popover>
       </div>
 
-      <ParallelImageShow />
+      <el-alert
+        v-if="!showResult"
+        description="全部图像上传完毕后开始评估"
+        show-icon
+        type="warning"
+      />
 
-      <div class="flex">
-        <div style="padding-right: 20px">
+      <ParallelImageShow v-if="showResult" />
+
+      <div v-else>
+        <ParallelImageUpload />
+        <div class="flex justify-center mt-6">
+          <el-button size="large" type="text" @click="handleReset"
+            >重新上传
+          </el-button>
+          <el-button
+            :disabled="!allUploaded"
+            :loading="loading"
+            size="large"
+            type="primary"
+            @click="handleEvaluation"
+            >开始评估
+          </el-button>
+        </div>
+      </div>
+
+      <el-skeleton v-if="loading" :rows="10" animated class="mt-10" />
+
+      <div v-if="showResult" class="flex">
+        <div style=" min-width: 42vw;padding-right: 20px">
           <h3 class="text-center">算法说明</h3>
           <el-descriptions :column="2" border>
             <el-descriptions-item :span="2" :width="120" label="算法名称">
@@ -284,6 +331,8 @@ onMounted(() => {
           </el-table>
         </div>
       </div>
+
+      <el-empty v-else description="暂无内容" />
     </el-card>
   </div>
 </template>
@@ -332,5 +381,11 @@ onMounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+</style>
+
+<style lang="scss">
+.el-alert {
+  margin-bottom: 16px;
 }
 </style>

@@ -19,9 +19,13 @@ class FileAPI {
    * 上传文件
    *
    * @param file
+   * @param modelId
    */
-  static upload(file: File) {
+  static upload(file: File, modelId: number | undefined = undefined) {
     const formData = new FormData();
+    if (modelId) {
+      formData.append("modelId", modelId.toString());
+    }
     formData.append("file", file);
     return request<any, FileInfo | ImageFileInfo>({
       url: "/api/v1/files",

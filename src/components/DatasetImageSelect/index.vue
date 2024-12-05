@@ -3,7 +3,6 @@ import { Dataset, ImageItem, ImageItemQuery } from "@/api/dataset/model";
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
-import { ImageUrlType } from "@/store/modules/imageShow";
 import { ImageTypeEnum } from "@/enums/ImageType";
 
 defineOptions({
@@ -111,34 +110,12 @@ function selectImage(itemId: number) {
   let host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
   let oldHost = new URL(imageData[0].imgUrl[curImageType.value?.id || 0].url)
     .host;
-  let curSelectedImages = () => {
-    let curImageItem = imageData.find((item) => item.id === itemId);
-    let result = [] as ImageUrlType[];
-    if (curImageItem) {
-      let hazyImg = {
-        id: 0,
-        label: {
-          text: "有雾图像",
-          color: "#000",
-          backgroundColor: "#fff",
-        },
-        url: curImageItem.imgUrl[1].originUrl!.replace(oldHost, host),
-      };
-      let clearImg = {
-        id: 3,
-        label: {
-          text: "清晰图像",
-          color: "#000",
-          backgroundColor: "#fff",
-        },
-        url: curImageItem.imgUrl[0].originUrl!.replace(oldHost, host),
-      };
-      result.push(hazyImg);
-      result.push(clearImg);
-    }
-    return result;
-  };
-  emit("onSelected", curSelectedImages());
+  let curImageItem = imageData.find((item) => item.id === itemId);
+  if (curImageItem) {
+    let haze = curImageItem.imgUrl[1].originUrl!.replace(oldHost, host);
+    let clear = curImageItem.imgUrl[0].originUrl!.replace(oldHost, host);
+    emit("onSelected", haze, clear);
+  }
 }
 
 async function handleSelectDataset() {
