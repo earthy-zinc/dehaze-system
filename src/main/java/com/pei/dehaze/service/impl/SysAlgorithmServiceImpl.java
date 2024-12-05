@@ -48,6 +48,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
 
     /**
      * 根据 parentId，获取其根节点对应的SysAlgorithm
+     *
      * @param id
      * @return 根节点对应的SysAlgorithm
      */
