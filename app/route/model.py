@@ -254,7 +254,7 @@ def evaluate():
     flag = get_flag(algorithm)
 
     # 读取上传文件
-    pred_bytes, pred_info = read_file_from_url(pred, flag)
+    pred_bytes, pred_info = read_file_from_url(pred)
     gt_bytes, gt_info = read_file_from_url(gt, flag)
 
     # 检查SysEvalLog中是否有评估记录

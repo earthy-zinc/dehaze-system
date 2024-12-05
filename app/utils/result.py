@@ -10,12 +10,12 @@ def success(data):
         "msg": "success"
     })
 
-def error(msg: str, response_code: int=500):
+def error(msg: str):
     return jsonify({
-        "code": ResultCode.SYSTEM_EXECUTION_ERROR,
+        "code": ResultCode.SYSTEM_EXECUTION_ERROR.code,
         "data": None,
         "msg": msg
-    }), response_code
+    })
 
 def warning(code: ResultCode):
     return jsonify({

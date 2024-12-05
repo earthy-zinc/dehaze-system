@@ -7,33 +7,9 @@ from torchvision.transforms import ToTensor
 
 # 指标模型初始化（整合描述信息）
 METRICS = {
-    "niqe": {
-        "model": pyiqa.create_metric("niqe"),
-        "id": 1,
-        "label": "NIQE",
-        "better": "lower",
-        "requires_clear": False,
-        "description": "NIQE是一种无参考图像空间质量评估指标，用于评估图像的失真程度。",
-    },
-    "nima": {
-        "model": pyiqa.create_metric("nima"),
-        "id": 2,
-        "label": "NIMA",
-        "better": "higher",
-        "requires_clear": False,
-        "description": "NIMA是一种无参考技术，它可以预测图像的质量，而不依赖于通常不可用的原始参考图像。",
-    },
-    "brisque": {
-        "model": pyiqa.create_metric("brisque"),
-        "id": 3,
-        "label": "BRISQUE",
-        "better": "lower",
-        "requires_clear": False,
-        "description": "BRISQUE是一种无参考图像质量评估指标，通过分析图像的统计特征来估计质量。",
-    },
     "psnr": {
         "model": pyiqa.create_metric("psnr"),
-        "id": 4,
+        "id": 1,
         "label": "PSNR",
         "better": "higher",
         "requires_clear": True,
@@ -41,7 +17,7 @@ METRICS = {
     },
     "ssim": {
         "model": pyiqa.create_metric("ssim"),
-        "id": 5,
+        "id": 2,
         "label": "SSIM",
         "better": "higher",
         "requires_clear": True,
@@ -49,12 +25,36 @@ METRICS = {
     },
     "lpips": {
         "model": pyiqa.create_metric("lpips"),
-        "id": 6,
+        "id": 3,
         "label": "LPIPS",
         "better": "lower",
         "requires_clear": True,
         "description": "LPIPS是一种基于深度学习技术的图像质量指标，值越低表示图像越相似。",
     },
+    "niqe": {
+        "model": pyiqa.create_metric("niqe"),
+        "id": 4,
+        "label": "NIQE",
+        "better": "lower",
+        "requires_clear": False,
+        "description": "NIQE是一种无参考图像空间质量评估指标，用于评估图像的失真程度。",
+    },
+    "nima": {
+        "model": pyiqa.create_metric("nima"),
+        "id": 5,
+        "label": "NIMA",
+        "better": "higher",
+        "requires_clear": False,
+        "description": "NIMA是一种无参考技术，它可以预测图像的质量，而不依赖于通常不可用的原始参考图像。",
+    },
+    "brisque": {
+        "model": pyiqa.create_metric("brisque"),
+        "id": 6,
+        "label": "BRISQUE",
+        "better": "lower",
+        "requires_clear": False,
+        "description": "BRISQUE是一种无参考图像质量评估指标，通过分析图像的统计特征来估计质量。",
+    }
 }
 
 
