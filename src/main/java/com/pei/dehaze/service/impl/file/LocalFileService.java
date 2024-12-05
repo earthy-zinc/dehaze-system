@@ -5,13 +5,18 @@ import cn.hutool.core.io.file.PathUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.ImageUtils;
 import com.pei.dehaze.model.dto.ImageFileInfo;
+import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysFile;
+import com.pei.dehaze.model.entity.SysWpxFile;
 import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.service.FileService;
+import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysFileService;
+import com.pei.dehaze.service.SysWpxFileService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import jakarta.servlet.ServletOutputStream;
@@ -47,8 +52,15 @@ import java.nio.file.Paths;
 @Data
 @Slf4j
 public class LocalFileService implements FileService {
+
     @Resource
     private SysFileService sysFileService;
+
+    @Resource
+    private SysWpxFileService sysWpxFileService;
+
+    @Resource
+    private SysAlgorithmService sysAlgorithmService;
 
     private String baseUrl;
     private String uploadPath;
@@ -101,6 +113,22 @@ public class LocalFileService implements FileService {
             }
         }
         return null;
+    }
+
+    @Override
+    public SysFile getWpxFile(SysFile oldFile, Long modelId) {
+        // 利用sysWpxFileService查询一条originMd5为fileInfo.getOriginMd5()的数据
+        SysAlgorithm algorithm = sysAlgorithmService.getRootAlgorithm(modelId);
+        if (!algorithm.getName().equals("WPXNet")) return oldFile;
+
+        LambdaQueryWrapper<SysWpxFile> queryWrapper = new LambdaQueryWrapper<SysWpxFile>().eq(SysWpxFile::getOriginMd5, oldFile.getMd5());
+        SysWpxFile sysWpxFile = sysWpxFileService.getOne(queryWrapper);
+        if (sysWpxFile == null) return oldFile;
+
+        SysFile newFile = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, sysWpxFile.getNewMd5()));
+
+        if (newFile == null) throw new BusinessException("无法从SysFile获取映射到的文件信息");
+        return newFile;
     }
 
     @Override
