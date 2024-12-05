@@ -28,6 +28,13 @@ public interface FileService {
     SysFile uploadFile(MultipartFile file);
 
     /**
+     *
+     * @param oldFile 源文件信息
+     * @param modelId 模型id
+     * @return file
+     */
+    SysFile getWpxFile(SysFile oldFile, Long modelId);
+    /**
      * 上传图片
      *
      * @param file      表单文件对象
