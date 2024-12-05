@@ -1,9 +1,7 @@
-<script lang="ts" setup>
-import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
-</script>
+<script lang="ts" setup></script>
 
 <template>
-  <ParallelImageUpload />
+  <div></div>
 </template>
 
 <style lang="scss" scoped></style>

@@ -1,7 +1,7 @@
 import defaultSettings from "@/settings";
 import { ThemeEnum } from "@/enums/ThemeEnum";
 import Color from "color";
-
+import { store } from "@/store";
 type SettingsValue = boolean | string;
 
 export const useSettingsStore = defineStore("setting", () => {
@@ -123,3 +123,7 @@ export const useSettingsStore = defineStore("setting", () => {
     changeLayout,
   };
 });
+
+export function useSettingsStoreHook() {
+  return useSettingsStore(store);
+}
