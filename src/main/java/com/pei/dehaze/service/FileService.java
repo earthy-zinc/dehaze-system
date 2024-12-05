@@ -34,6 +34,7 @@ public interface FileService {
      * @return file
      */
     SysFile getWpxFile(SysFile oldFile, Long modelId);
+
     /**
      * 上传图片
      *

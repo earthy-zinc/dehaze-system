@@ -5,7 +5,6 @@ import cn.hutool.core.io.file.PathUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.ImageUtils;
 import com.pei.dehaze.model.dto.ImageFileInfo;
