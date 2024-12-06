@@ -8,11 +8,9 @@ import cn.hutool.core.util.IdUtil;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.model.dto.ImageFileInfo;
-import com.pei.dehaze.model.entity.SysDatasetFile;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.service.FileService;
-import com.pei.dehaze.service.SysDatasetFileService;
 import com.pei.dehaze.service.SysFileService;
 import io.minio.*;
 import io.minio.errors.*;
@@ -21,7 +19,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
@@ -33,7 +30,6 @@ import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * MinIO 文件上传服务类
@@ -49,7 +45,7 @@ import java.util.List;
 public class MinioFileService implements FileService {
 
     /**
-     * 服务Endpoint(http://localhost:9000)
+     * 服务Endpoint
      */
     private String endpoint;
     /**
@@ -65,15 +61,13 @@ public class MinioFileService implements FileService {
      */
     private String bucketName;
     /**
-     * 自定义域名(https://oss.youlai.tech)
+     * 自定义域名
      */
     private String customDomain;
 
     private MinioClient minioClient;
 
     private SysFileService sysFileService;
-
-    private SysDatasetFileService sysDatasetFileService;
 
     // 依赖注入完成之后执行初始化
     @PostConstruct
@@ -88,7 +82,7 @@ public class MinioFileService implements FileService {
     /**
      * 文件上传检查
      *
-     * @param md5
+     * @param md5 文件md5
      * @return true 表示文件已存在
      */
     @Override
@@ -100,7 +94,7 @@ public class MinioFileService implements FileService {
      * 上传文件
      *
      * @param file 表单文件对象
-     * @return
+     * @return 文件信息
      */
     @Override
     public SysFile uploadFile(MultipartFile file) {
@@ -167,39 +161,9 @@ public class MinioFileService implements FileService {
 
     @Override
     public ImageFileInfo uploadImage(MultipartFile file, ImageForm imageForm) {
-        SysFile sysFile = uploadFile(file);
-
-        // 保存文件信息到数据库DatasetFile表中
-        SysDatasetFile sysDatasetFile = getSysDatasetFile(imageForm, sysFile);
-        sysDatasetFileService.save(sysDatasetFile);
-
-        return ImageFileInfo.builder()
-                .id(sysDatasetFile.getId())
-                .datasetId(sysDatasetFile.getDatasetId())
-                .imageItemId(sysDatasetFile.getImageItemId())
-                .fileId(sysDatasetFile.getFileId())
-                .type(sysDatasetFile.getType())
-                .name(sysFile.getName())
-                .url(sysFile.getUrl())
-                .build();
+        return null;
     }
 
-    @NotNull
-    private SysDatasetFile getSysDatasetFile(ImageForm imageForm, SysFile sysFile) {
-        SysDatasetFile sysDatasetFile = new SysDatasetFile();
-        sysDatasetFile.setDatasetId(imageForm.getDatasetId());
-        Long imageItemId = imageForm.getImageItemId();
-        if (imageItemId != null) {
-            sysDatasetFile.setImageItemId(imageItemId);
-        } else {
-            Long maxImageItemId = sysDatasetFileService.getMaxImageItemId();
-            sysDatasetFile.setImageItemId(maxImageItemId == null ? 1L : maxImageItemId + 1);
-        }
-        sysDatasetFile.setFileId(sysFile.getId());
-        sysDatasetFile.setType(imageForm.getType());
-        sysDatasetFile.setThumbnail(false);
-        return sysDatasetFile;
-    }
 
     /**
      * 删除文件
@@ -236,68 +200,16 @@ public class MinioFileService implements FileService {
      * 删除图片时，会将连带的数据项下对应的所有图片都删除
      *
      * @param filePath 当前图片在数据库 SysFile 数据表中的 URL
-     * @return
      */
     @Override
     public boolean deleteImage(String filePath) {
-        // 获取当前图片链接对应的FileId
-        Long id = sysFileService.lambdaQuery().eq(SysFile::getUrl, filePath).getEntity().getId();
-        // 获取fileId对应的imageItemId，然后从DatasetFile关联数据表找到所有匹配项
-        Long imageItemId = sysDatasetFileService.lambdaQuery().eq(SysDatasetFile::getFileId, id).getEntity().getImageItemId();
-        List<SysDatasetFile> sysDatasetFileList = sysDatasetFileService.lambdaQuery().eq(SysDatasetFile::getImageItemId, imageItemId).list();
-        // 删除所有匹配项
-        try {
-            for (SysDatasetFile sysDatasetFile : sysDatasetFileList) {
-                Long fileId = sysDatasetFile.getFileId();
-                SysFile sysFile = sysFileService.getById(fileId);
-                String objectName = sysFile.getObjectName();
-                RemoveObjectArgs removeObjectArgs = RemoveObjectArgs.builder()
-                        .bucket(bucketName)
-                        .object(objectName)
-                        .build();
-
-                minioClient.removeObject(removeObjectArgs);
-                sysFileService.removeById(sysFile);
-            }
-            sysDatasetFileService.removeBatchByIds(sysDatasetFileList);
-            return true;
-        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
-                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
-                 XmlParserException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-    /**
-     * PUBLIC桶策略
-     * 如果不配置，则新建的存储桶默认是PRIVATE，则存储桶文件会拒绝访问 Access Denied
-     *
-     * @param bucketName
-     * @return
-     */
-    private static String publicBucketPolicy(String bucketName) {
-        /**
-         * AWS的S3存储桶策略
-         * Principal: 生效用户对象
-         * Resource:  指定存储桶
-         * Action: 操作行为
-         */
-
-        return "{\"Version\":\"2012-10-17\","
-                + "\"Statement\":[{\"Effect\":\"Allow\","
-                + "\"Principal\":{\"AWS\":[\"*\"]},"
-                + "\"Action\":[\"s3:ListBucketMultipartUploads\",\"s3:GetBucketLocation\",\"s3:ListBucket\"],"
-                + "\"Resource\":[\"arn:aws:s3:::" + bucketName + "\"]},"
-                + "{\"Effect\":\"Allow\"," + "\"Principal\":{\"AWS\":[\"*\"]},"
-                + "\"Action\":[\"s3:ListMultipartUploadParts\",\"s3:PutObject\",\"s3:AbortMultipartUpload\",\"s3:DeleteObject\",\"s3:GetObject\"],"
-                + "\"Resource\":[\"arn:aws:s3:::" + bucketName + "/*\"]}]}";
+        return false;
     }
 
     /**
      * 创建存储桶(存储桶不存在)
      *
-     * @param bucketName
+     * @param bucketName 存储桶名称
      */
     @SneakyThrows
     private void createBucketIfAbsent(String bucketName) {
@@ -315,5 +227,28 @@ public class MinioFileService implements FileService {
                     .build();
             minioClient.setBucketPolicy(setBucketPolicyArgs);
         }
+    }
+
+    /**
+     * PUBLIC桶策略
+     * 如果不配置，则新建的存储桶默认是PRIVATE，则存储桶文件会拒绝访问 Access Denied
+     *
+     * @param bucketName 存储桶名称
+     */
+    private static String publicBucketPolicy(String bucketName) {
+        /*
+         * AWS的S3存储桶策略
+         * Principal: 生效用户对象
+         * Resource:  指定存储桶
+         * Action: 操作行为
+         */
+        return "{\"Version\":\"2012-10-17\","
+                + "\"Statement\":[{\"Effect\":\"Allow\","
+                + "\"Principal\":{\"AWS\":[\"*\"]},"
+                + "\"Action\":[\"s3:ListBucketMultipartUploads\",\"s3:GetBucketLocation\",\"s3:ListBucket\"],"
+                + "\"Resource\":[\"arn:aws:s3:::" + bucketName + "\"]},"
+                + "{\"Effect\":\"Allow\"," + "\"Principal\":{\"AWS\":[\"*\"]},"
+                + "\"Action\":[\"s3:ListMultipartUploadParts\",\"s3:PutObject\",\"s3:AbortMultipartUpload\",\"s3:DeleteObject\",\"s3:GetObject\"],"
+                + "\"Resource\":[\"arn:aws:s3:::" + bucketName + "/*\"]}]}";
     }
 }

@@ -551,7 +551,7 @@ CREATE TABLE `sys_file`
     `object_name` varchar(100)    NOT NULL COMMENT '文件存储名',
     `size`        varchar(100)    NOT NULL DEFAULT '0' COMMENT '文件大小',
     `path`        varchar(255)    NOT NULL COMMENT '文件路径',
-    `md5`         char(32) unique NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
+    `md5` char(32) UNIQUE NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
     `create_time` datetime        NOT NULL COMMENT '创建时间',
     `update_time` datetime                 DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE,
@@ -1240,20 +1240,34 @@ insert into dehaze.sys_algorithm (id, parent_id, type, name, img, path, size, pa
 values (117, 111, '图像去雾', 'NH-HAZE-23', null, 'WPXNet/nh-haze-23.pth', '151.75 MB', '36.99 MB', '211.24 GB',
         'algorithm.WPXNet.run', '用于浓雾数据集的权重模型', 1, '2024-11-28 14:05:23', '2024-12-03 21:23:26', 2, 2);
 
-DROP TABLE IF EXISTS `sys_dataset_file`;
-CREATE TABLE `sys_dataset_file`
+DROP TABLE IF EXISTS `sys_dataset_item`;
+CREATE TABLE `sys_dataset_item`
 (
-    `id`            bigint      NOT NULL AUTO_INCREMENT COMMENT 'id',
-    `dataset_id`    bigint      NOT NULL COMMENT '所属数据集id',
-    `image_item_id` bigint      NOT NULL COMMENT '所属数据项id',
-    `file_id`       bigint      NOT NULL COMMENT '文件id',
-    `type`          varchar(64) NOT NULL COMMENT '图片类型（清晰图、雾霾图、分割图等）',
-    `thumbnail`     boolean     NOT NULL DEFAULT FALSE COMMENT '是否为缩略图',
-    PRIMARY KEY (`id`) USING BTREE
+    `id`         bigint      NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `dataset_id` bigint      NOT NULL COMMENT '所属数据集id',
+    `name`       varchar(64) NULL COMMENT '数据项名称',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_dataset_id` (`dataset_id`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci
-  ROW_FORMAT = DYNAMIC COMMENT ='数据集图片关联表';
+  ROW_FORMAT = DYNAMIC COMMENT ='数据集与数据项关联表';
+
+DROP TABLE IF EXISTS `sys_item_file`;
+CREATE TABLE `sys_item_file`
+(
+    `id`                bigint      NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `item_id`           bigint      NOT NULL COMMENT '所属数据项id',
+    `file_id`           bigint      NOT NULL COMMENT '文件id',
+    `thumbnail_file_id` bigint       DEFAULT NULL COMMENT '缩略图文件id',
+    `type`              varchar(64) NOT NULL COMMENT '图片类型（清晰图、雾霾图、分割图等）',
+    `description`       varchar(255) DEFAULT NULL COMMENT '描述',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_item_id_file_id` (`item_id`, `file_id`) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='数据项图片关联表';
 
 DROP TABLE IF EXISTS `sys_wpx_file`;
 CREATE TABLE `sys_wpx_file`
