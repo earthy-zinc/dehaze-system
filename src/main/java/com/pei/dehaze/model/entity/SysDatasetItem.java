@@ -5,17 +5,11 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import lombok.Data;
 
 @Data
-public class SysDatasetFile {
+public class SysDatasetItem {
     @TableId(type = IdType.AUTO)
     private Long id;
 
     private Long datasetId;
 
-    private Long imageItemId;
-
-    private Long fileId;
-
-    private String type;
-
-    private Boolean thumbnail;
+    private String name;
 }
