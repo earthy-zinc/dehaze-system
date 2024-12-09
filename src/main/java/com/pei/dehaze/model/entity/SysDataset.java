@@ -29,8 +29,6 @@ public class SysDataset  extends BaseEntity {
 
     private String size;
 
-    private Integer total;
-
     /**
      * 状态(1:正常;0:禁用)
      */

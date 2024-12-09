@@ -49,6 +49,7 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
+
 mybatis-plus:
   global-config:
     db-config:
@@ -80,19 +81,22 @@ security:
     - /doc.html
     - /swagger-ui/**
     - /swagger-ui.html
-    - /api/v1/files/**
+    - /api/v1/files/download/**
     - /api/v1/auth/captcha
 
 
 file:
-  # 上传类型 (目前支持aliyun OSS、minio OSS、local 本地存储)
-  type: local
+  # 上传类型 (目前支持minio OSS、local 本地存储)
+  type: minio
+  # 是否基于 datasetPath 初始化数据集
+  init: false
+  # 上传文件基于url
+  baseUrl: http://localhost:8989/api/v1/files/download
+  # 初始化数据集所在文件夹
+  datasetPath: D:/DeepLearning/dataset
+  # 本地存储
   local:
-    baseUrl: http://localhost:8989/api/v1/files
     uploadPath: E:/ProgramProject/new-dehaze/dehaze-java/upload
-    predictPath: E:/ProgramProject/new-dehaze/dehaze-java/predict
-    datasetOriginPath: D:/DeepLearning/dataset
-    datasetThumbnailPath: D:/DeepLearning/thumbnail
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
@@ -103,18 +107,6 @@ file:
     secret-key: 12345678
     # 存储桶名称
     bucket-name: dehaze
-    # (可选)自定义域名，如果配置了域名，生成的文件URL是域名格式，未配置则URL则是IP格式 (eg: https://oss.youlai.tech)
-    custom-domain:
-  # 阿里云OSS对象存储服务
-  aliyun:
-    # 服务Endpoint
-    endpoint: file-cn-hangzhou.aliyuncs.com
-    # 访问凭据
-    access-key-id: your-access-key-id
-    # 凭据密钥
-    access-key-secret: your-access-key-secret
-    # 存储桶名称
-    bucket-name: default
 
 # springdoc配置： https://springdoc.org/properties.html
 springdoc:

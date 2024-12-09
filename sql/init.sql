@@ -37,7 +37,6 @@ CREATE TABLE `sys_dept`
     `update_by`   bigint                                                        NULL     DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 171
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '部门表'
   ROW_FORMAT = DYNAMIC;
@@ -69,7 +68,6 @@ CREATE TABLE `sys_dict`
     `update_time` datetime                                                      NULL DEFAULT NULL COMMENT '更新时间',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 69
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '字典数据表'
   ROW_FORMAT = DYNAMIC;
@@ -98,7 +96,6 @@ CREATE TABLE `sys_dict_type`
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `type_code` (`code` ASC) USING BTREE
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 89
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '字典类型表'
   ROW_FORMAT = DYNAMIC;
@@ -133,7 +130,6 @@ CREATE TABLE `sys_menu`
     `keep_alive`  tinyint                                                               DEFAULT NULL COMMENT '【菜单】是否开启页面缓存(1:是 0:否)',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 103
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_general_ci
   ROW_FORMAT = DYNAMIC COMMENT ='菜单管理';
@@ -222,7 +218,6 @@ CREATE TABLE `sys_role`
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `name` (`name` ASC) USING BTREE
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 128
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '角色表'
   ROW_FORMAT = DYNAMIC;
@@ -233,16 +228,7 @@ CREATE TABLE `sys_role`
 insert into sys_role (id, name, code, sort, status, data_scope, deleted, create_time, update_time)
 values (1, '超级管理员', 'ROOT', 1, 1, 0, 0, '2021-05-21 14:56:51', '2018-12-23 16:00:00'),
        (2, '系统管理员', 'ADMIN', 2, 1, 1, 0, '2021-03-25 12:39:54', null),
-       (3, '访问游客', 'GUEST', 3, 1, 2, 0, '2021-05-26 15:49:05', '2019-05-05 16:00:00'),
-       (4, '系统管理员1', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:28'),
-       (5, '系统管理员2', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36'),
-       (6, '系统管理员3', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36'),
-       (7, '系统管理员4', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36'),
-       (8, '系统管理员5', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36'),
-       (9, '系统管理员6', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36'),
-       (10, '系统管理员7', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36'),
-       (11, '系统管理员8', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36'),
-       (12, '系统管理员9', 'ADMIN1', 2, 1, 1, 1, '2021-03-25 12:39:54', '2024-11-13 14:40:36');
+       (3, '访问游客', 'GUEST', 3, 1, 2, 0, '2021-05-26 15:49:05', '2019-05-05 16:00:00');
 
 -- ----------------------------
 -- Table structure for sys_role_menu
@@ -261,11 +247,7 @@ CREATE TABLE `sys_role_menu`
 -- Records of sys_role_menu
 -- ----------------------------
 insert into dehaze.sys_role_menu (role_id, menu_id)
-values (9, 1),
-       (9, 3),
-       (9, 70),
-       (9, 72),
-       (3, 1),
+values (3, 1),
        (3, 2),
        (3, 31),
        (3, 32),
@@ -345,7 +327,6 @@ CREATE TABLE `sys_user`
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `login_name` (`username` ASC) USING BTREE
 ) ENGINE = InnoDB
-  AUTO_INCREMENT = 288
   CHARACTER SET = utf8mb4
   COLLATE = utf8mb4_general_ci COMMENT = '用户信息表'
   ROW_FORMAT = DYNAMIC;
@@ -364,9 +345,7 @@ values (1, 'root', '有来技术', 0, '$2a$10$xVWsNOhHrCxh5UbpCE7/HuJ.PAOKcYAqRx
         'w1066365803@163.com', 0, '2019-10-10 13:41:22', '2024-11-13 14:40:05'),
        (3, 'test', '测试小用户', 1, '$2a$10$xVWsNOhHrCxh5UbpCE7/HuJ.PAOKcYAqRxD2CO2nVnJS.IAXkr5aq', 3,
         '', '17621210366', 1,
-        'youlaitech@163.com', 0, '2021-06-05 01:31:29', '2021-06-05 01:31:29'),
-       (287, '123', '123', 1, '$2a$10$mVoBVqm1837huf7kcN0wS.GVYKEFv0arb7GvzfFXoTyqDlcRzT.6i', 1, '', null, 1, null, 1,
-        '2023-05-21 14:11:19', '2023-05-21 14:11:25');
+        'youlaitech@163.com', 0, '2021-06-05 01:31:29', '2021-06-05 01:31:29');
 
 -- ----------------------------
 -- Table structure for sys_user_role
@@ -388,8 +367,7 @@ CREATE TABLE `sys_user_role`
 insert into dehaze.sys_user_role (user_id, role_id)
 values (1, 1),
        (2, 2),
-       (3, 3),
-       (287, 2);
+       (3, 3);
 
 DROP TABLE IF EXISTS `sys_dataset`;
 CREATE TABLE `sys_dataset`
@@ -402,7 +380,6 @@ CREATE TABLE `sys_dataset`
     `description` varchar(2048) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL     DEFAULT '' COMMENT '数据集描述',
     `path`        varchar(512) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci  NOT NULL DEFAULT '' COMMENT '存储位置',
     `size`        varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci  NULL     DEFAULT '' COMMENT '占用空间大小',
-    `total`       int                                                            NULL     DEFAULT 0 COMMENT '数据项数量（简单理解为图片数量）',
     `status`      tinyint                                                        NOT NULL DEFAULT 1 COMMENT '状态(1:启用；0:禁用)',
     `deleted`     tinyint                                                        NULL     DEFAULT 0 COMMENT '逻辑删除标识(1:已删除;0:未删除)',
     `create_time` datetime                                                       NULL     DEFAULT NULL COMMENT '创建时间',
@@ -416,150 +393,130 @@ CREATE TABLE `sys_dataset`
   COLLATE = utf8mb4_general_ci COMMENT = '数据集表'
   ROW_FORMAT = DYNAMIC;
 
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (1, 0, '图像去雾', 'DENSE-HAZE', null,
         'DENSE-HAZE 引入了一种新的去雾数据集，以浓密均匀的雾霾场景为特征。该数据集包含 55对真实的浓雾图像和各种室外场景的相应无雾图像。这些朦胧图像是通过专业雾霾机器生成的真实雾霾记录的。生成的浓雾图像几乎难以辨别图像中原来存在的物体，与常规数据集相比去雾难度非常大。',
-        'Dense-Haze', '234.74 MB', 110, 1, 0, '2024-11-11 19:29:49', '2024-11-11 19:29:49', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'Dense-Haze', '234.74 MB', 1, 0, '2024-11-11 19:29:49', '2024-11-11 19:29:49', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (2, 0, '图像去雾', 'O-HAZE', null,
         'O-haze 数据集是由CVLab实验室在2016年发布的，主要用于评估和测试图像去雾算法的性能。该数据集包含了合成的有雾图像和相应的清晰图像对，这些图像都是基于真实的户外场景生成的。包含45对户外场景的有雾和清晰图像',
-        'O-HAZE', '547.85 MB', 90, 1, 0, '2024-11-11 19:36:32', '2024-11-11 19:36:32', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'O-HAZE', '547.85 MB', 1, 0, '2024-11-11 19:36:32', '2024-11-11 19:36:32', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (3, 0, '图像去雾', 'I-HAZE', null,
         'I-haze 数据集也是由CVLab实验室在2016年发布的，与O-haze数据集类似，它主要用于评估和测试图像去雾算法的性能。不过，I-haze数据集的特点在于其图像更接近实际的室内场景。包含35对有雾和相应的无雾室内图像。',
-        'I-HAZE', '312.99 MB', 60, 1, 0, '2024-11-11 19:37:12', '2024-11-11 19:37:12', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'I-HAZE', '312.99 MB', 1, 0, '2024-11-11 19:37:12', '2024-11-11 19:37:12', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (4, 0, '图像去雾', 'NH-HAZE', null,
         'NH-HAZE数据集旨在解决图像去雾领域中的一个重要问题：缺乏真实世界的非均匀雾度图像作为参考数据。许多现实场景中的雾并不均匀分布，因此 NH-HAZE 提供了一组真实的非均匀雾图像和相应的无雾图像对。NH-HAZE 数据集中的非均匀雾度是通过专业的雾发生器模拟真实雾天条件而引入的。是一个更具挑战性和现实性的去雾数据集。',
-        'NTIRE', '1.06 GB', 241, 1, 0, '2024-11-11 19:39:24', '2024-11-11 19:39:24', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'NTIRE', '1.06 GB', 1, 0, '2024-11-11 19:39:24', '2024-11-11 19:39:24', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (5, 4, '图像去雾', 'NH-HAZE-20', null,
         '在2020年，NH-HAZE数据集被用于CVPR NTIRE（New Trends in Image Restoration and Enhancement）研讨会下的图像去雾在线挑战赛中1。这是首个包含55对外部拍摄的真实有雾和对应的无雾图像的数据集，这些图像是使用专业雾生成器在高保真的条件下拍摄的，以模拟真实的非均匀雾霾环境。NH-HAZE 2020的数据集为研究人员提供了评估去雾算法性能的机会，并且由于其现实性，对于开发更加鲁棒的去雾解决方案具有重要意义',
-        'NH-HAZE-2020', '316.96 MB', 110, 1, 0, '2024-11-11 19:39:51', '2024-11-11 19:39:51', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'NH-HAZE-2020', '316.96 MB', 1, 0, '2024-11-11 19:39:51', '2024-11-11 19:39:51', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (6, 4, '图像去雾', 'NH-HAZE-21', null,
         '到了2021年，NTIRE挑战赛继续进行，这次的非均匀去雾挑战基于扩展后的NH-HAZE数据集，增加了额外35对真实户外拍摄的无雾和非均匀有雾图像。这个扩大的数据集被称为NH-Haze2，它进一步增强了数据集的多样性和复杂度，为参与者提供了更广泛的测试平台来验证他们的算法。此外，在这次挑战中还加入了其他小规模的真实世界数据集如DENSE-HAZE等，用以对比不同方法的效果。',
-        'NH-HAZE-2021', '151.36 MB', 50, 1, 0, '2024-11-11 19:40:08', '2024-11-11 19:40:08', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'NH-HAZE-2021', '151.36 MB', 1, 0, '2024-11-11 19:40:08', '2024-11-11 19:40:08', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (7, 4, '图像去雾', 'NH-HAZE-23', null,
         '至2023年，NTIRE举办了一次高清非均质去雾挑战赛，这次比赛采用了名为HD-NH-HAZE的新数据集。HD-NH-HAZE包含了50对高清分辨率的户外图像，其中一半是带有非均匀雾霾的图像，另一半则是同一场景的无雾霾图像。这个数据集的引入标志着单张图像去雾领域的一个重要进展，因为它不仅提高了图像的质量标准，而且也推动了去雾技术向着处理更高分辨率图像的方向发展。参赛者们提出的方法在此数据集上进行了客观评估，以便更好地衡量它们在处理实际场景中的表现',
-        'NH-HAZE-2023', '618.19 MB', 80, 1, 0, '2024-11-11 19:40:19', '2024-11-11 19:40:19', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'NH-HAZE-2023', '618.19 MB', 1, 0, '2024-11-11 19:40:19', '2024-11-11 19:40:19', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (8, 0, '图像去雾', 'RESIDE', null,
         'RESIDE（Realistic Synthetic and Indoor-Outdoor DEhazing）数据集是由北京大学和微软亚洲研究院在2017年联合发布的，旨在为图像去雾研究提供一个大规模、多样化的基准数据集。RESIDE 数据集不仅包含合成的有雾图像和对应的清晰图像，还包含了一些真实世界中的有雾图像，使其成为图像去雾领域最全面的数据集之一。',
-        'RESIDE', '19.01 GB', 117915, 1, 0, '2024-11-11 19:41:55', '2024-11-11 19:41:55', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE', '19.01 GB', 1, 0, '2024-11-11 19:41:55', '2024-11-11 19:41:55', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (9, 8, '图像去雾', 'ITS', null,
         '室内训练集(ITS) 是RESIDE数据集中的一部分，主要用于算法的训练阶段。ITS包含13,990张由清晰图像生成的合成模糊图像，这些清晰图像是从现有的室内深度数据集NYU2和米德尔伯里立体数据库中选取的1,399张图像。对于每一张清晰图像，通过在不同参数设置下（例如大气光A和散射系数β）生成10张模糊图像。这些参数的设定使得生成的模糊图像能够模拟多种不同的雾霾情况。具体来说，大气光A的值在[0.7, 1.0]之间均匀随机选择，而β则在[0.6, 1.8]之间均匀随机选择。最终，这13,990张图像中的13,000张被用于训练，剩下的990张作为验证集',
-        'RESIDE/ITS', '4.74 GB', 29379, 1, 0, '2024-11-11 19:42:34', '2024-11-11 19:42:34', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE/ITS', '4.74 GB', 1, 0, '2024-11-11 19:42:34', '2024-11-11 19:42:34', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (10, 8, '图像去雾', 'OTS', null,
         '室外训练集(OTS) 是RESIDE-beta部分的数据集，旨在提高对室外环境下的去雾性能。OTS使用了2061张来自北京实时天气的真实室外图像，通过估计每张图像的深度信息后，根据一系列指定的大气散射系数β值（如0.04, 0.06, 0.08, 0.1, 0.15, 0.95, 1等）来合成模糊图像。最终，总共合成了72,135张户外模糊图像。这套新的图像被称为户外训练集（OTS），由成对的干净的户外图像和生成的模糊图像组成，以供算法训练使用',
-        'RESIDE/OTS', '12.86 GB', 78318, 1, 0, '2024-11-11 19:42:54', '2024-11-11 19:42:54', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE/OTS', '12.86 GB', 1, 0, '2024-11-11 19:42:54', '2024-11-11 19:42:54', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (11, 8, '图像去雾', 'SOTS', null,
         '综合目标测试集(SOTS) 用于客观评价去雾算法的表现。SOTS包含了两种类型的图像：一种是从NYU2数据集中挑选出的500个室内场景图像（与ITS中的训练图像不重叠），并按照与ITS相同的流程来合成模糊图像；另一种则是从实际拍摄的室外场景中收集的图像。SOTS不仅包括了合成的模糊图像，还提供了对应的真实无雾图像，这样可以用来计算去雾后的图像质量指标，如PSNR、SSIM等',
-        'RESIDE/SOTS', '416.3 MB', 1542, 1, 0, '2024-11-12 22:21:07', '2024-11-12 22:21:07', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE/SOTS', '416.3 MB', 1, 0, '2024-11-12 22:21:07', '2024-11-12 22:21:07', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (12, 11, '图像去雾', 'indoor', null, 'SOTS Indoor (室内): 从NYU2中选择了500个室内图像，用以生成相应的模糊图像。',
-        'RESIDE/SOTS/indoor', '170 MB', 550, 1, 0, '2024-11-12 22:21:37', '2024-11-12 22:21:37', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE/SOTS/indoor', '170 MB', 1, 0, '2024-11-12 22:21:37', '2024-11-12 22:21:37', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (13, 11, '图像去雾', 'outdoor', null,
         'SOTS Outdoor (室外): 包括了真实的室外模糊图像及其对应的清晰图像，用于更接近实际应用的评估。',
-        'RESIDE/SOTS/outdoor', '246.3 MB', 992, 1, 0, '2024-11-12 22:21:57', '2024-11-12 22:21:57', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE/SOTS/outdoor', '246.3 MB', 1, 0, '2024-11-12 22:21:57', '2024-11-12 22:21:57', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (14, 0, '图像去雾', 'RESIDE-6k', null,
         '虽然没有直接提到名为RESIDE-6k的数据集，但我们可以假设这可能是一个包含大约6000张图像的RESIDE数据集的一个子集。如果这是对RESIDE数据集的特定版本，则它可能专注于一个特定的场景（室内或室外）或者用于特定目的（比如训练或测试）。然而，由于没有具体的信息，我们无法确定其确切组成。通常，这样的数据集会包含成对的清晰和模糊图像，以便于模型学习如何从模糊图像恢复清晰图像。',
-        'RESIDE-6k', '1.52 GB', 14000, 1, 0, '2024-11-12 22:22:42', '2024-11-12 22:22:42', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE-6k', '1.52 GB', 1, 0, '2024-11-12 22:22:42', '2024-11-12 22:22:42', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (15, 14, '图像去雾', 'RESIDE-6k-train', null,
         'RESIDE-6k 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RESIDE-6k/train', '1,021.78 MB',
-        12000, 1, 0, '2024-11-12 22:23:05', '2024-11-12 22:23:05', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        1, 0, '2024-11-12 22:23:05', '2024-11-12 22:23:05', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (16, 14, '图像去雾', 'RESIDE-6k-test', null,
         'RESIDE-6k  测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RESIDE-6k/test', '532.3 MB',
-        2000, 1, 0, '2024-11-12 22:23:16', '2024-11-12 22:23:16', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        1, 0, '2024-11-12 22:23:16', '2024-11-12 22:23:16', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (17, 0, '图像去雾', 'RESIDE-IN', null,
         '这个名称可能指的是RESIDE数据集中专注于室内场景的部分。结合RESIDE数据集的描述，我们可以合理推测RESIDE-IN可能主要包含了ITS（Indoor Training Set），即室内训练集。该集合包括了13,990个合成的模糊图像，这些图像是基于NYU2和米德尔伯里立体数据库中的1,399个清晰室内图像生成的1。此外，SOTS（Synthetic Objective Testing Set）中的部分室内图像也可能被包含在内，用于评估算法性能。',
-        'RESIDE-IN', '8.74 GB', 28980, 1, 0, '2024-11-12 22:23:48', '2024-11-12 22:23:48', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE-IN', '8.74 GB', 1, 0, '2024-11-12 22:23:48', '2024-11-12 22:23:48', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (18, 17, '图像去雾', 'RESIDE-IN-train', null,
-        'RESIDE-IN 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RESIDE-IN/train', '8.36 GB', 27980,
+        'RESIDE-IN 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RESIDE-IN/train', '8.36 GB',
         1, 0, '2024-11-12 22:24:10', '2024-11-12 22:24:10', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (19, 17, '图像去雾', 'RESIDE-IN-test', null,
         'RESIDE-IN 测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RESIDE-IN/test', '392.11 MB',
-        1000, 1, 0, '2024-11-12 22:25:09', '2024-11-12 22:25:09', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        1, 0, '2024-11-12 22:25:09', '2024-11-12 22:25:09', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (20, 0, '图像去雾', 'RESIDE-OUT', null,
         '同样，RESIDE-OUT可能是指RESIDE数据集中专注于室外场景的部分。这意味着它可能主要由OTS（Outdoor Training Set）构成，该集合包括72,135张合成的户外模糊图像，这些图像是基于北京实时天气的真实室外图像生成的2。SOTS中的一部分室外图像也可能会被纳入其中，用于测试目的。',
-        'RESIDE-OUT', '83.03 GB', 628480, 1, 0, '2024-11-12 22:26:09', '2024-11-12 22:26:09', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RESIDE-OUT', '83.03 GB', 1, 0, '2024-11-12 22:26:09', '2024-11-12 22:26:09', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (21, 20, '图像去雾', 'RESIDE-OUT-train', null,
         'RESIDE-OUT 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RESIDE-OUT/train', '82.89 GB',
-        627480, 1, 0, '2024-11-12 22:26:47', '2024-11-12 22:26:47', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        1, 0, '2024-11-12 22:26:47', '2024-11-12 22:26:47', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (22, 20, '图像去雾', 'RESIDE-OUT-test', null,
         'RESIDE-OUT 测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RESIDE-OUT/test',
-        '140.19 MB', 1000, 1, 0, '2024-11-12 22:27:08', '2024-11-12 22:27:08', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        '140.19 MB', 1, 0, '2024-11-12 22:27:08', '2024-11-12 22:27:08', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (23, 0, '图像去雾', 'RSHAZE', null,
         'REHAZE数据集是专为图像去雾研究设计的，旨在提供更真实的雾霾条件下的图像。它由苏黎世联邦理工大学等机构发布，包含有雾和无雾图像对，这些图像是在受控环境中使用专业设备拍摄的，以模拟不同的雾霾条件。不过，具体的细节（如图像数量、场景类型等）需要查阅原始论文或官方发布页面来获取准确信息。',
-        'RSHAZE', '40.41 GB', 108000, 1, 0, '2024-11-12 22:28:28', '2024-11-12 22:28:28', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+        'RSHAZE', '40.41 GB', 1, 0, '2024-11-12 22:28:28', '2024-11-12 22:28:28', 2, 2);
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (24, 23, '图像去雾', 'RSHAZE-train', null,
-        'REHAZE 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RSHAZE/train', '38.39 GB', 102600, 1,
+        'REHAZE 训练集 用于模型的学习阶段，让模型通过大量样本学习如何执行任务。', 'RSHAZE/train', '38.39 GB', 1,
         0, '2024-11-12 22:28:47', '2024-11-12 22:28:47', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, total, status, deleted,
+insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
 values (25, 23, '图像去雾', 'RSHAZE-test', null,
-        'REHAZE 测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RSHAZE/test', '2.02 GB', 5400, 1,
+        'REHAZE 测试集 用于评估经过训练后的模型性能，看其在未见过的数据上的表现如何。', 'RSHAZE/test', '2.02 GB', 1,
         0, '2024-11-12 22:28:54', '2024-11-12 22:28:54', 2, 2);
-
-DROP TABLE IF EXISTS `sys_file`;
-CREATE TABLE `sys_file`
-(
-    `id`          int             NOT NULL AUTO_INCREMENT COMMENT '文件id',
-    `type`        varchar(100)             DEFAULT NULL COMMENT '文件类型',
-    `url`         TEXT                     DEFAULT NULL COMMENT '文件url',
-    `name`        varchar(100)    NOT NULL COMMENT '文件原始名',
-    `object_name` varchar(100)    NOT NULL COMMENT '文件存储名',
-    `size`        varchar(100)    NOT NULL DEFAULT '0' COMMENT '文件大小',
-    `path`        varchar(255)    NOT NULL COMMENT '文件路径',
-    `md5` char(32) UNIQUE NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
-    `create_time` datetime        NOT NULL COMMENT '创建时间',
-    `update_time` datetime                 DEFAULT NULL COMMENT '更新时间',
-    PRIMARY KEY (`id`) USING BTREE,
-    UNIQUE INDEX `md5_key` (`md5` ASC) USING BTREE
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4
-  COLLATE = utf8mb4_0900_ai_ci
-  ROW_FORMAT = DYNAMIC COMMENT ='文件表';
 
 DROP TABLE IF EXISTS `sys_algorithm`;
 CREATE TABLE `sys_algorithm`
@@ -1240,6 +1197,26 @@ insert into dehaze.sys_algorithm (id, parent_id, type, name, img, path, size, pa
 values (117, 111, '图像去雾', 'NH-HAZE-23', null, 'WPXNet/nh-haze-23.pth', '151.75 MB', '36.99 MB', '211.24 GB',
         'algorithm.WPXNet.run', '用于浓雾数据集的权重模型', 1, '2024-11-28 14:05:23', '2024-12-03 21:23:26', 2, 2);
 
+DROP TABLE IF EXISTS `sys_file`;
+CREATE TABLE `sys_file`
+(
+    `id`          int             NOT NULL AUTO_INCREMENT COMMENT '文件id',
+    `type`        varchar(100)             DEFAULT NULL COMMENT '文件类型',
+    `url`         TEXT                     DEFAULT NULL COMMENT '文件url',
+    `name`        varchar(100)    NOT NULL COMMENT '文件原始名',
+    `object_name` varchar(100)    NOT NULL COMMENT '文件存储名',
+    `size`        varchar(100)    NOT NULL DEFAULT '0' COMMENT '文件大小',
+    `path`        varchar(255)    NOT NULL COMMENT '文件路径',
+    `md5` char(32) UNIQUE NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
+    `create_time` datetime        NOT NULL COMMENT '创建时间',
+    `update_time` datetime                 DEFAULT NULL COMMENT '更新时间',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `md5_key` (`md5` ASC) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='文件表';
+
 DROP TABLE IF EXISTS `sys_dataset_item`;
 CREATE TABLE `sys_dataset_item`
 (
@@ -1279,7 +1256,8 @@ CREATE TABLE `sys_wpx_file`
     `new_file_id`    bigint COMMENT '新文件id',
     `new_path`       varchar(255)    NOT NULL COMMENT '新文件路径',
     `new_md5`        char(32) unique NOT NULL COMMENT '新文件的MD5值',
-    PRIMARY KEY (`id`) USING BTREE
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_origin_md5` (`origin_md5`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci

@@ -1,17 +1,11 @@
 package com.pei.dehaze.service.impl.file;
 
-import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.core.util.IdUtil;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.util.FileUploadUtils;
-import com.pei.dehaze.model.dto.ImageFileInfo;
-import com.pei.dehaze.model.entity.SysFile;
-import com.pei.dehaze.model.form.ImageForm;
+import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.service.FileService;
-import com.pei.dehaze.service.SysFileService;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
@@ -19,17 +13,15 @@ import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDateTime;
 
 /**
  * MinIO 文件上传服务类
@@ -67,7 +59,8 @@ public class MinioFileService implements FileService {
 
     private MinioClient minioClient;
 
-    private SysFileService sysFileService;
+    @Value("${file.baseUrl}")
+    private String baseUrl;
 
     // 依赖注入完成之后执行初始化
     @PostConstruct
@@ -76,134 +69,87 @@ public class MinioFileService implements FileService {
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
                 .build();
+        createBucketIfAbsent(bucketName);
     }
 
-
-    /**
-     * 文件上传检查
-     *
-     * @param md5 文件md5
-     * @return true 表示文件已存在
-     */
     @Override
-    public boolean uploadCheck(String md5) {
-        return sysFileService.lambdaQuery().eq(SysFile::getMd5, md5).getEntity() != null;
-    }
+    public FileBO uploadFile(FileBO fileBO) {
+        String objectName = fileBO.getObjectName();
+        String mimeType = FileUtil.getMimeType(fileBO.getName());
+        Assert.notBlank(objectName);
+        Assert.notBlank(mimeType);
 
-    /**
-     * 上传文件
-     *
-     * @param file 表单文件对象
-     * @return 文件信息
-     */
-    @Override
-    public SysFile uploadFile(MultipartFile file) {
-        // 生成文件名(日期文件夹)
-        String fileName = file.getOriginalFilename();
-        String fileSize = FileUtil.readableFileSize(file.getSize());
-        String suffix = FileUtil.getSuffix(fileName);
-        String uuid = IdUtil.simpleUUID();
-        String objectName = DateUtil.format(LocalDateTime.now(), "yyyyMMdd") + File.separator + uuid + "." + suffix;
-        //  try-with-resource 语法糖自动释放流
-        try (InputStream inputStream = file.getInputStream()) {
-            // 检查文件md5
-            String md5 = FileUploadUtils.getMd5(inputStream);
-            // 从SysFile中查询是否存在md5相同的数据
-            SysFile foundFile = sysFileService.lambdaQuery().eq(SysFile::getMd5, md5).getEntity();
-
-            if (foundFile != null) return foundFile;
-
-            // 文件上传
+        File file = fileBO.getFile();
+        try (FileInputStream stream = new FileInputStream(file)){
             PutObjectArgs putObjectArgs = PutObjectArgs.builder()
                     .bucket(bucketName)
                     .object(objectName)
-                    .contentType(file.getContentType())
-                    .stream(inputStream, inputStream.available(), -1)
+                    .contentType(mimeType)
+                    .stream(stream, stream.available(), -1)
                     .build();
             minioClient.putObject(putObjectArgs);
-
-            // 返回文件路径
-            String fileUrl;
-            if (CharSequenceUtil.isBlank(customDomain)) { // 未配置自定义域名
-                GetPresignedObjectUrlArgs getPresignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
-                        .bucket(bucketName).object(objectName)
-                        .method(Method.GET)
-                        .build();
-
-                fileUrl = minioClient.getPresignedObjectUrl(getPresignedObjectUrlArgs);
-                fileUrl = fileUrl.substring(0, fileUrl.indexOf("?"));
-            } else { // 配置自定义文件路径域名
-                fileUrl = customDomain + '/' + bucketName + "/" + fileName;
-            }
-
-            // 保存文件信息到数据库
-            SysFile sysFile = SysFile.builder()
-                    .name(fileName)
-                    .objectName(objectName)
-                    .size(fileSize)
-                    .type(suffix)
-                    .url(fileUrl)
-                    .md5(md5)
-                    .path("")
-                    .build();
-            sysFileService.save(sysFile);
-
-            return sysFile;
+            String url = getUrl(objectName);
+            fileBO.setUrl(url);
+            return fileBO;
         } catch (Exception e) {
-            throw new BusinessException("文件上传失败");
+            throw new BusinessException("无法保存文件", e);
         }
     }
 
-    @Override
-    public SysFile getWpxFile(SysFile oldFile, Long modelId) {
-        return null;
-    }
+    @NotNull
+    private String getUrl(String objectName) throws ErrorResponseException, InsufficientDataException, InternalException, InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, XmlParserException, ServerException {
+        // 返回文件路径
+        String fileUrl;
+        if (CharSequenceUtil.isBlank(baseUrl)) { // 未配置自定义域名
+            GetPresignedObjectUrlArgs getPresignedObjectUrlArgs = GetPresignedObjectUrlArgs.builder()
+                    .bucket(bucketName).object(objectName)
+                    .method(Method.GET)
+                    .build();
 
-    @Override
-    public ImageFileInfo uploadImage(MultipartFile file, ImageForm imageForm) {
-        return null;
+            fileUrl = minioClient.getPresignedObjectUrl(getPresignedObjectUrlArgs);
+            fileUrl = fileUrl.substring(0, fileUrl.indexOf("?"));
+        } else { // 配置自定义文件路径域名
+            fileUrl = baseUrl + "/" + objectName;
+        }
+        return fileUrl;
     }
-
 
     /**
      * 删除文件
      *
-     * @param filePath 文件路径（文件URL）
+     * @param objectName 文件 objectName
      * @return 是否删除成功
      */
     @Override
-    public boolean deleteFile(String filePath) {
-        Assert.notBlank(filePath, "删除文件路径不能为空");
+    public boolean deleteFile(String objectName) {
+        Assert.notBlank(objectName, "删除文件objectName不能为空");
         try {
-            // 获取数据库 sysFile 中文件信息
-            SysFile sysFile = sysFileService.lambdaQuery().eq(SysFile::getUrl, filePath).getEntity();
-
-            // 删除文件
-            String objectName = sysFile.getObjectName();
             RemoveObjectArgs removeObjectArgs = RemoveObjectArgs.builder()
                     .bucket(bucketName)
                     .object(objectName)
                     .build();
             minioClient.removeObject(removeObjectArgs);
-
-            // 删除数据库中对应的数据
-            sysFileService.removeById(sysFile);
             return true;
         } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
                  InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
                  XmlParserException e) {
-            throw new RuntimeException(e);
+            throw new BusinessException("删除文件失败", e);
         }
     }
 
-    /**
-     * 删除图片时，会将连带的数据项下对应的所有图片都删除
-     *
-     * @param filePath 当前图片在数据库 SysFile 数据表中的 URL
-     */
     @Override
-    public boolean deleteImage(String filePath) {
-        return false;
+    public InputStream downLoadFile(String objectName) {
+        GetObjectArgs getObjectArgs = GetObjectArgs.builder()
+                .bucket(bucketName)
+                .object(objectName)
+                .build();
+        try (GetObjectResponse response = minioClient.getObject(getObjectArgs)) {
+            return new ByteArrayInputStream(response.readAllBytes());
+        } catch (IOException | ErrorResponseException | InsufficientDataException | InternalException |
+                 InvalidKeyException | InvalidResponseException | NoSuchAlgorithmException | ServerException |
+                 XmlParserException e) {
+            throw new BusinessException("下载文件失败", e);
+        }
     }
 
     /**

@@ -6,6 +6,7 @@ import net.coobird.thumbnailator.Thumbnails;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 
 @Slf4j
 public class ImageUtils {
@@ -26,5 +27,24 @@ public class ImageUtils {
            log.error("生成缩略图失败", e);
            throw new BusinessException("生成缩略图失败");
        }
+    }
+
+    public static File generateThumbnail(File file, int width, int height) {
+        try {
+            File output = Files.createTempFile("tempThumbnail", ".jpg").toFile();
+            Thumbnails.of(file)
+                    .size(width, height)      // 设置缩略图的宽度和高度
+                    .outputQuality(0.5f)     // 设置输出质量（0.0-1.0）
+                    .outputFormat("jpg")      // 设置输出格式（如 jpg）
+                    .toFile(output);
+            return output;
+        } catch (IOException e) {
+            log.error("生成缩略图失败", e);
+            throw new BusinessException("生成缩略图失败");
+        }
+    }
+
+    public static boolean isImage(String fileName) {
+        return fileName != null && (fileName.endsWith(".jpg") || fileName.endsWith(".png") || fileName.endsWith(".jpeg"));
     }
 }
