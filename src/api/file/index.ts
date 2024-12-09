@@ -21,7 +21,7 @@ class FileAPI {
    * @param file
    * @param modelId
    */
-  static upload(file: File, modelId: number | undefined = undefined) {
+  static upload(file: File, modelId?: number) {
     const formData = new FormData();
     if (modelId) {
       formData.append("modelId", modelId.toString());

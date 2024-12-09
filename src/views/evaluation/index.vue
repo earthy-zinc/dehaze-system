@@ -284,7 +284,7 @@ onMounted(async () => {
       <el-skeleton v-if="loading" :rows="10" animated class="mt-10" />
 
       <div v-if="showResult" class="flex">
-        <div style=" min-width: 42vw;padding-right: 20px">
+        <div style="min-width: 42vw; padding-right: 20px">
           <h3 class="text-center">算法说明</h3>
           <el-descriptions :column="2" border>
             <el-descriptions-item :span="2" :width="120" label="算法名称">
