@@ -9,6 +9,7 @@ import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.ImageItemVO;
 import com.pei.dehaze.model.vo.ImageUrlVO;
 import com.pei.dehaze.service.SysDatasetItemService;
+import com.pei.dehaze.service.SysDatasetService;
 import com.pei.dehaze.service.SysItemFileService;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,9 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
 
     @Resource
     private SysItemFileService sysItemFileService;
+
+    @Resource
+    private SysDatasetService sysDatasetService;
 
     @Override
     public SysDatasetItem createDatasetItem(Long datasetId) {
@@ -55,16 +59,19 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
 
     @Override
     public Page<ImageItemVO> getPagedImageItemVOs(Long datasetId, int pageNum, int pageSize) {
+        List<Long> leafIds = sysDatasetService.getLeafDatasetId(datasetId);
+
         Page<SysDatasetItem> page = this.page(
                 new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<SysDatasetItem>()
-                        .eq(SysDatasetItem::getDatasetId, datasetId));
+                        .in(SysDatasetItem::getDatasetId, leafIds));
+
         List<SysDatasetItem> list = page.getRecords();
         List<ImageItemVO> imageItemVOS = list.stream().map(item -> {
             List<ImageUrlVO> imageUrlVOs = sysItemFileService.getImageUrlVOs(item.getId());
             ImageItemVO imageItemVO = new ImageItemVO();
             imageItemVO.setId(item.getId());
-            imageItemVO.setDatasetId(datasetId);
+            imageItemVO.setDatasetId(item.getDatasetId());
             imageItemVO.setImgUrl(imageUrlVOs);
             return imageItemVO;
         }).toList();
