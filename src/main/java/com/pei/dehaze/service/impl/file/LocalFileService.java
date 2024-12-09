@@ -2,43 +2,26 @@ package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.file.PathUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.util.FileUploadUtils;
-import com.pei.dehaze.common.util.ImageUtils;
-import com.pei.dehaze.model.dto.ImageFileInfo;
-import com.pei.dehaze.model.entity.SysAlgorithm;
-import com.pei.dehaze.model.entity.SysFile;
-import com.pei.dehaze.model.entity.SysWpxFile;
-import com.pei.dehaze.model.form.ImageForm;
+import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.service.FileService;
-import com.pei.dehaze.service.SysAlgorithmService;
-import com.pei.dehaze.service.SysFileService;
-import com.pei.dehaze.service.SysWpxFileService;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
-import jakarta.servlet.ServletOutputStream;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tomcat.util.http.fileupload.IOUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 
 /**
  * @author earthy-zinc
@@ -51,140 +34,66 @@ import java.nio.file.Paths;
 @Data
 @Slf4j
 public class LocalFileService implements FileService {
-
-    @Resource
-    private SysFileService sysFileService;
-
-    @Resource
-    private SysWpxFileService sysWpxFileService;
-
-    @Resource
-    private SysAlgorithmService sysAlgorithmService;
-
+    @Value("${file.baseUrl}")
     private String baseUrl;
+
     private String uploadPath;
-    private String datasetOriginPath;
-    private String datasetThumbnailPath;
-    private String predictPath;
+
+    @Resource
+    private ApplicationContext applicationContext;
 
     @Override
-    public boolean uploadCheck(String md5) {
-        SysFile image = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
-        return image == null;
-    }
-
-    /**
-     * 上传文件
-     *
-     * @param file 表单文件对象
-     * @return 文件信息
-     */
-    @Override
-    @SneakyThrows
-    public SysFile uploadFile(MultipartFile file) {
-        if (file != null) {
+    public FileBO uploadFile(FileBO fileBO) {
+        Path filePath = Path.of(uploadPath, fileBO.getPath());
+        Path dirPath = filePath.getParent();
+        if (!PathUtil.isDirectory(dirPath) && !PathUtil.exists(dirPath, true)) {
             try {
-                String md5 = FileUploadUtils.getMd5(file.getInputStream());
-                SysFile image = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
-                if (image == null) {
-                    String fileExtension = FileUtil.getSuffix(file.getOriginalFilename());
-                    String fileName = md5 + "." + fileExtension;
-                    Path filePath = Path.of(uploadPath, fileName);
-                    // 保存文件到本地路径
-                    if (!PathUtil.isDirectory(filePath.getParent())) {
-                        Files.createDirectories(filePath.getParent());
-                    }
-                    file.transferTo(new File(filePath.toAbsolutePath().toString()));
-                    image = SysFile.builder()
-                            .type(ImageTypeEnum.UPLOAD.getLabel())
-                            .size(FileUtil.readableFileSize(file.getSize()))
-                            .objectName(fileName)
-                            .name(fileName)
-                            .path(filePath.toAbsolutePath().toString())
-                            .md5(md5)
-                            .url(baseUrl + "/upload/" + fileName)
-                            .build();
-                    sysFileService.save(image);
-                }
-                return image;
+                Files.createDirectories(dirPath);
             } catch (IOException e) {
-                throw new BusinessException("文件上传失败");
+                throw new BusinessException("无法为上传文件创建对应的文件夹", e);
             }
         }
-        return null;
+
+        String absolutePath = filePath.toAbsolutePath().toString();
+
+        File file = fileBO.getFile();
+        try (FileInputStream stream = new FileInputStream(file)) {
+            FileUtil.writeFromStream(stream, absolutePath);
+        } catch (IOException e) {
+            throw new BusinessException("无法保存文件", e);
+        }
+
+        fileBO.setPath(fileBO.getPath());
+
+        String url = baseUrl + "/" + fileBO.getObjectName();
+        fileBO.setUrl(url);
+        return fileBO;
     }
 
-    @Override
-    public SysFile getWpxFile(SysFile oldFile, Long modelId) {
-        // 利用sysWpxFileService查询一条originMd5为fileInfo.getOriginMd5()的数据
-        SysAlgorithm algorithm = sysAlgorithmService.getRootAlgorithm(modelId);
-        if (!algorithm.getName().equals("WPXNet")) return oldFile;
-
-        LambdaQueryWrapper<SysWpxFile> queryWrapper = new LambdaQueryWrapper<SysWpxFile>().eq(SysWpxFile::getOriginMd5, oldFile.getMd5());
-        SysWpxFile sysWpxFile = sysWpxFileService.getOne(queryWrapper);
-        if (sysWpxFile == null) return oldFile;
-
-        SysFile newFile = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, sysWpxFile.getNewMd5()));
-
-        if (newFile == null) throw new BusinessException("无法从SysFile获取映射到的文件信息");
-        return newFile;
-    }
-
-    @Override
-    public ImageFileInfo uploadImage(MultipartFile file, ImageForm imageForm) {
-        return null;
-    }
 
     /**
      * 删除文件
      *
-     * @param filePath 文件完整URL
+     * @param objectName objectName
      * @return 删除结果
      */
     @Override
-    public boolean deleteFile(String filePath) {
+    public boolean deleteFile(String objectName) {
+        Path filePath = Path.of(uploadPath, objectName);
+        // 验证文件路径的安全性，避免路径遍历攻击
+        if (!filePath.isAbsolute()) {
+            throw new IllegalArgumentException("无效的文件路径");
+        }
+        if (!Files.exists(filePath)) {
+            throw new BusinessException("文件不存在");
+        }
+        // 目前不让删除本地文件
         return false;
     }
 
     @Override
-    public boolean deleteImage(String filePath) {
-        return false;
-    }
-
-    public void download(String filePath, HttpServletRequest request, HttpServletResponse response) {
-        String prefix = filePath.split("/")[0];
-        Path path;
-        if (prefix.equals(ImageTypeEnum.UPLOAD.getValue())) {
-            path = Paths.get(uploadPath, filePath.replaceFirst("upload/", ""));
-        } else if (prefix.equals(ImageTypeEnum.DATASET.getValue())) {
-            if (filePath.contains("dataset/origin")) {
-                filePath = filePath.replaceFirst("dataset/origin/", "");
-                path = Paths.get(datasetOriginPath, filePath);
-            } else if (filePath.contains("dataset/thumbnail")){
-                filePath = filePath.replaceFirst("dataset/thumbnail/", "");
-                Path originPath = Paths.get(datasetOriginPath, filePath);
-                Path thumbnailPath = Paths.get(datasetThumbnailPath, filePath);
-                if (!Files.exists(originPath)) {
-                    throw new BusinessException("图片不存在");
-                }
-                if (!Files.exists(thumbnailPath)) {
-                    ImageUtils.generateThumbnail(originPath.toString(), thumbnailPath.toString(), 400, 400);
-                    log.info("生成缩略图" + originPath + "->" + thumbnailPath);
-                }
-                path = thumbnailPath;
-            } else {
-                throw new BusinessException("未知的数据集分类");
-            }
-        } else if (prefix.equals(ImageTypeEnum.PREDICT.getValue())) {
-            path = Paths.get(predictPath, filePath.replaceFirst("predict/", ""));
-        } else {
-            throw new IllegalArgumentException("未找到图片" + filePath);
-        }
-        log.info(path.toString());
-        downloadFile(path, response);
-    }
-
-    private void downloadFile(Path filePath, HttpServletResponse response) {
+    public InputStream downLoadFile(String objectName) {
+        Path filePath = Path.of(uploadPath, objectName);
         // 验证文件路径的安全性，避免路径遍历攻击
         if (!filePath.isAbsolute() || !Files.exists(filePath)) {
             throw new IllegalArgumentException("无效的文件路径");
@@ -196,20 +105,10 @@ public class LocalFileService implements FileService {
             throw new IllegalArgumentException("不支持的文件名");
         }
 
-        try {
-            // 设置文件名，确保编码正确且避免XSS攻击
-            String encodedFileName = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
-            response.addHeader("Content-Disposition", "attachment;fileName=" + encodedFileName);
-
-            // 使用try-with-resources语句自动管理资源
-            try (FileInputStream fileInputStream = new FileInputStream(filePath.toFile());
-                 ServletOutputStream outputStream = response.getOutputStream()) {
-                // 复制文件内容
-                IOUtils.copyLarge(fileInputStream, outputStream);
-            }
+        try (FileInputStream fileInputStream = new FileInputStream(filePath.toFile())) {
+            return fileInputStream;
         } catch (IOException e) {
-            // 记录具体异常信息，提供更详细的错误反馈
-            throw new BusinessException("文件下载失败，可能原因是：" + e.getMessage());
+            throw new BusinessException("文件下载失败，文件不存在", e);
         }
     }
 

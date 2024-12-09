@@ -35,9 +35,6 @@ public class DatasetVO {
     @Schema(description = "占用空间大小")
     private String size;
 
-    @Schema(description = "数据项数量（简单理解为图片数量）")
-    private Integer total;
-
     @Schema(description = "子数据集")
     private List<DatasetVO> children;
 

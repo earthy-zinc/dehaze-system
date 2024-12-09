@@ -15,5 +15,7 @@ public class SysItemFile {
 
     private Long thumbnailFileId;
 
+    private String type;
+
     private String description;
 }

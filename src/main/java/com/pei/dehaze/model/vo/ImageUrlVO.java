@@ -1,5 +1,6 @@
 package com.pei.dehaze.model.vo;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
@@ -8,6 +9,7 @@ import lombok.Data;
  */
 @Data
 public class ImageUrlVO {
+    @Schema(description = "ItemFileId")
     private Long id;
 
     private String type;

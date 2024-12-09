@@ -10,8 +10,11 @@ public class ImageForm {
     private Long datasetId;
 
     @Schema(description = "数据项id")
-    private Long imageItemId;
+    private Long itemId;
 
     @Schema(description = "图片类型（清晰图、雾霾图、分割图等）")
     private String type;
+
+    @Schema(description = "描述")
+    private String description;
 }
