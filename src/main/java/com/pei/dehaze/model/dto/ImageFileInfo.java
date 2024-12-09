@@ -11,11 +11,8 @@ public class ImageFileInfo {
     @Schema(description = "当前图片id")
     private Long id;
 
-    @Schema(description = "所属数据集id")
-    private Long datasetId;
-
     @Schema(description = "所属数据项id")
-    private Long imageItemId;
+    private Long datasetItemId;
 
     @Schema(description = "所属文件id")
     private Long fileId;
@@ -23,8 +20,8 @@ public class ImageFileInfo {
     @Schema(description = "图片类型")
     private String type;
 
-    @Schema(description = "文件名称")
-    private String name;
+    @Schema(description = "文件描述")
+    private String description;
 
     @Schema(description = "文件URL")
     private String url;

@@ -1,33 +1,26 @@
 package com.pei.dehaze.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.base.BasePageQuery;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.converter.DatasetConverter;
-import com.pei.dehaze.model.dto.ImageFileInfo;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.form.DatasetForm;
-import com.pei.dehaze.model.form.ImageForm;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
 import com.pei.dehaze.model.vo.ImageItemVO;
-import com.pei.dehaze.service.FileService;
+import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 数据集控制器
@@ -43,7 +36,7 @@ public class SysDatasetController {
 
     private final SysDatasetService datasetService;
 
-    private final FileService fileService;
+    private final SysDatasetItemService sysDatasetItemService;
 
     private final DatasetConverter datasetConverter;
     /**
@@ -75,57 +68,8 @@ public class SysDatasetController {
     @Operation(summary = "根据ID获取数据集信息")
     @GetMapping("/{id}")
     public Result<DatasetVO> getDatasetInfoById(@PathVariable Long id) {
-        SysDataset sysDataset = datasetService.getById(id);
+        SysDataset sysDataset = datasetService.getDatasetById(id);
         return Result.success(datasetConverter.entity2Vo(sysDataset));
-    }
-
-    /**
-     * 上传数据集图片
-     *
-     * @param file      图片文件
-     * @param imageForm 图片信息
-     * @return 文件信息
-     */
-    @PostMapping("/image")
-    @Operation(summary = "数据集图片上传")
-    public Result<ImageFileInfo> uploadFile(
-            @Parameter(description = "表单文件对象") @RequestParam(value = "file") MultipartFile file,
-            @Parameter(description = "图片元信息") @RequestParam(value = "imageForm") ImageForm imageForm
-    ) {
-        ImageFileInfo fileInfo = fileService.uploadImage(file, imageForm);
-        return Result.success(fileInfo);
-    }
-
-    /**
-     * 删除数据集图片 需要递归删除
-     *
-     * @param urls 数据图片url数组，字符串形式，例如 "1,2,3"
-     * @return 操作结果
-     */
-    @Operation(summary = "删除数据集图片")
-    @DeleteMapping("/image")
-    public Result<List<Map.Entry<String, Boolean>>> deleteImages(@RequestBody List<String> urls) {
-        Map<String, Boolean> result = new HashMap<>();
-        for (String url : urls) {
-            result.put(url, fileService.deleteImage(url));
-        }
-        return Result.success(result.entrySet().stream().toList());
-    }
-
-    /**
-     * 获取数据集详细图片
-     *
-     * @param id 数据集ID
-     * @return 图片列表
-     */
-    @Operation(summary = "获取数据集详细图片")
-    @GetMapping("/{id}/images")
-    public PageResult<ImageItemVO> getImageItem(@PathVariable Long id, BasePageQuery pageQuery, HttpServletRequest request) {
-        String scheme = request.getScheme();
-        String host = request.getHeader("Host");
-        String hostUrl = scheme + "://" + host;
-        Page<ImageItemVO> imageItemsPage = datasetService.getImageItem(id, pageQuery, hostUrl);
-        return PageResult.success(imageItemsPage);
     }
 
     /**
@@ -167,5 +111,18 @@ public class SysDatasetController {
     public Result<Void> deleteByIds(@RequestParam List<Long> ids) {
         boolean result = datasetService.deleteDatasets(ids);
         return Result.judge(result);
+    }
+
+    /**
+     * 获取数据集详细图片
+     *
+     * @param id 数据集ID
+     * @return 图片列表
+     */
+    @Operation(summary = "获取数据集详细图片")
+    @GetMapping("/{id}/images")
+    public PageResult<ImageItemVO> getImageItem(@PathVariable Long id, BasePageQuery pageQuery) {
+        Page<ImageItemVO> pagedImageItemVOs = sysDatasetItemService.getPagedImageItemVOs(id, pageQuery.getPageNum(), pageQuery.getPageSize());
+        return PageResult.success(pagedImageItemVOs);
     }
 }
