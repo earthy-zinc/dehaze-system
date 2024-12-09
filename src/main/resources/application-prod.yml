@@ -77,19 +77,22 @@ security:
     - /doc.html
     - /swagger-ui/**
     - /swagger-ui.html
-    - /api/v1/files/**
+    - /api/v1/files/download/**
     - /api/v1/auth/captcha
 
 # 文件上传配置
 file:
   # OSS 类型 (目前支持aliyun、minio)
-  type: local
+  type: minio
+  # 是否基于 datasetPath 初始化数据集
+  init: false
+  # 上传文件基于url
+  baseUrl: http://10.16.12.65:8989/api/v1/files/download
+  # 初始化数据集所在文件夹
+  datasetPath: /app/dataset
+  # 本地存储
   local:
-    baseUrl: http://10.16.12.65:8989/api/v1/files
     uploadPath: /app/upload
-    datasetOriginPath: /app/dataset
-    datasetThumbnailPath: /app/thumbnail
-    predictPath: /app/predict
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
@@ -99,9 +102,7 @@ file:
     # 凭据密钥
     secret-key: minioadmin
     # 存储桶名称
-    bucket-name: dehaze-java
-    # (可选)自定义域名，如果配置了域名，生成的文件URL是域名格式，未配置则URL则是IP格式 (eg: https://oss.youlai.tech)
-    custom-domain:
+    bucket-name: dehaze
 
 # springdoc配置： https://springdoc.org/properties.html
 springdoc:
