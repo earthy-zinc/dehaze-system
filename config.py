@@ -20,7 +20,6 @@ class DevelopmentConfig(Config):
     JWT_ACCESS_TOKEN_EXPIRES = 7200
 
     DATASET_PATH = "/mnt/d/DeepLearning/dataset"
-    DATASET_THUMBNAIL_PATH = "/mnt/d/DeepLearning/thumbnail"
 
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:123456@localhost/dehaze?charset=utf8"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -37,7 +36,7 @@ class DevelopmentConfig(Config):
     MINIO_ACCESS_KEY = "admin"
     MINIO_SECRET_KEY = "12345678"
     MINIO_SECURE = False
-    MINIO_BUCKET_NAME = "trained-models"
+    MINIO_BUCKET_NAME = "dehaze"
 
 
 class TestingConfig(Config):
@@ -52,7 +51,6 @@ class ProductionConfig(Config):
     JWT_ACCESS_TOKEN_EXPIRES = 7200
 
     DATASET_PATH = "/app/dataset"
-    DATASET_THUMBNAIL_PATH = "/app/thumbnail"
 
     SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:123456@192.168.31.3/dehaze?charset=utf8"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -69,8 +67,8 @@ class ProductionConfig(Config):
     MINIO_ACCESS_KEY = "admin"
     MINIO_SECRET_KEY = "12345678"
     MINIO_SECURE = False
-    MINIO_BUCKET_NAME = "trained-models"
-
+    MINIO_BUCKET_NAME = "dehaze"
+    MINIO_CUSTOM_DOMAIN = "http://192.168.31.3:9000"
 
 config = {
     'development': DevelopmentConfig,

@@ -1,6 +1,5 @@
 import os
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from io import BytesIO
 from typing import Tuple
 from urllib.parse import urlparse
@@ -131,6 +130,7 @@ def _upload_to_storage(
     """
     bucket_name = current_app.config["MINIO_BUCKET_NAME"]
     minio_client = current_app.extensions["minio_client"]
+    custom_domain = current_app.config.get("MINIO_CUSTOM_DOMAIN", None)
     # 检查文件是否已存在
     file_md5 = calculate_bytes_md5(file_bytes)
     existing_file = SysFile.query.filter_by(md5=file_md5).first()
@@ -139,13 +139,16 @@ def _upload_to_storage(
 
     # 上传文件到 MinIO
     file_extension = filename.rsplit(".", 1)[-1]
-    object_name = _generate_object_name(file_extension)
+    object_name = _generate_object_name(file_md5, file_extension)
     minio_client.put_object(bucket_name, object_name, file_bytes, file_size, content_type=content_type)
 
     # 生成文件访问 URL
-    file_url = minio_client.get_presigned_url(
-        "GET", bucket_name, object_name, expires=timedelta(days=7)
-    )
+    if custom_domain:
+        file_url = f"{custom_domain}/{bucket_name}/{object_name}"
+    else:
+        file_url = minio_client.get_presigned_url(
+            "GET", bucket_name, object_name, expires=timedelta(days=7)
+        ).split("?")[0]
 
     # 保存文件信息到数据库
     new_file = SysFile(
@@ -162,10 +165,14 @@ def _upload_to_storage(
     return new_file
 
 
-def _generate_object_name(extension: str) -> str:
+def _generate_object_name(md5: str, extension: str) -> str:
     """
     生成唯一的对象名
     :param extension: 文件扩展名
     :return: 对象名
     """
-    return f"{datetime.now().strftime('%Y%m%d')}/{uuid.uuid4().hex}.{extension}"
+    return f"/upload/{datetime.now().strftime('%Y%m%d')}/{md5}.{extension}"
+
+
+def _generate_object_name_by_path(path: str, md5: str, extension: str) -> str:
+    return f"{path}/{md5}.{extension}"

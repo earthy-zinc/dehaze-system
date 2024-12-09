@@ -57,6 +57,8 @@ def init_minio(app: Flask):
     bucket_name = app.config.get("MINIO_BUCKET_NAME")
     if not minio_client.bucket_exists(bucket_name):
         minio_client.make_bucket(bucket_name)
+        minio_client.set_bucket_policy(bucket_name, policy="public-read")
+
     app.extensions["minio_client"] = minio_client
 
 

@@ -2,8 +2,6 @@ import hashlib
 import math
 from io import BytesIO
 
-from debugpy.common.log import LogFile
-
 
 def convert_size(size_bytes) -> str:
     if size_bytes == 0:

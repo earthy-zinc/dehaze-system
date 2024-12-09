@@ -45,7 +45,6 @@ RUN pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple \
 # 创建挂载点
 VOLUME /app/trained_model
 VOLUME /app/dataset
-VOLUME /app/thumbnail
 
 # 设置环境变量
 ENV FLASK_APP=run.py
