@@ -2,7 +2,7 @@
 import { useImageShowStore } from "@/store/modules/imageShow";
 import ModelAPI from "@/api/model";
 import { EvalResult } from "@/api/model/model";
-import { ImageTypeEnum } from "@/enums/ImageType";
+import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import AlgorithmAPI from "@/api/algorithm";
 import { Algorithm } from "@/api/algorithm/model";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
