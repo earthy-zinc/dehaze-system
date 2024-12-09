@@ -55,6 +55,10 @@ public class InitFile {
     @Resource
     private SysFileService sysFileService;
 
+    /**
+     * 文件保存后下次仅需创建 datasetItem 和 itemFile 映射关系表即可
+     * 仅需删除这两张表
+     */
     @PostConstruct
     public void initDataset() {
         if (!init) return;
@@ -62,6 +66,7 @@ public class InitFile {
         List<Long> datasetIds = sysDatasetService.getLeafDatasetIds();
 
         for (Long datasetId : datasetIds) {
+            if (datasetId < 14) continue;
             // 获取当前数据集的所有数据项，整理为列表
             ArrayList<PairedImage> pairedImages = getPairedImages(datasetId);
             // 针对每一个数据项，进行上传
@@ -79,7 +84,6 @@ public class InitFile {
                     sysItemFileService.saveItemFile(itemId, hazeBO);
                 });
             });
-            break;
         }
         initWpxFile();
     }

@@ -96,11 +96,11 @@ public class AuthServiceImpl implements AuthService {
                 // 将Token的jti加入黑名单，并设置剩余有效时间，使其在过期后自动从黑名单移除
                 long ttl = expiration - currentTimeSeconds;
                 redisTemplate.opsForValue()
-                        .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, null, ttl, TimeUnit.SECONDS);
+                        .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, "", ttl, TimeUnit.SECONDS);
             } else {
                 // 如果exp不存在，说明Token永不过期，则永久加入黑名单
                 redisTemplate.opsForValue()
-                        .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, null);
+                        .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, "");
             }
         }
         // 清空Spring Security上下文

@@ -28,8 +28,6 @@ public interface FileService {
 
     /**
      * 根据 objectName 下载文件
-     * @param objectName
-     * @return
      */
     InputStream downLoadFile(String objectName);
 }

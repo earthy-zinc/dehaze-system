@@ -20,6 +20,7 @@ import com.pei.dehaze.service.SysDatasetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -113,6 +114,24 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 })
                 .map(SysDataset::getId)
                 .toList();
+    }
+
+    /**
+     * 获取当前节点的所有叶子节点id
+     */
+    @Override
+    public List<Long> getLeafDatasetId(Long id) {
+        List<Long> leafIds = new ArrayList<>();
+        List<SysDataset> children = this.lambdaQuery().eq(SysDataset::getParentId, id).list();
+        if (children == null || children.isEmpty()) {
+            leafIds.add(id);
+        } else {
+            for (SysDataset child : children) {
+                List<Long> childIds = this.getLeafDatasetId(child.getId());
+                leafIds.addAll(childIds);
+            }
+        }
+        return leafIds;
     }
 
     @Override

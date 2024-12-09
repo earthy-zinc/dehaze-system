@@ -89,7 +89,7 @@ file:
   # 上传类型 (目前支持minio OSS、local 本地存储)
   type: minio
   # 是否基于 datasetPath 初始化数据集
-  init: false
+  init: true
   # 上传文件基于url
   baseUrl: http://localhost:8989/api/v1/files/download
   # 初始化数据集所在文件夹
