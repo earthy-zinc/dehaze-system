@@ -33,11 +33,8 @@ const uniqueArray = (arr: ImageItem[]) => {
 const getImageList = (typeId: number, data: ImageItem[]) => {
   return data.map((item) => ({
     id: item.id,
-    src: item.imgUrl[typeId].url.replace(/localhost/, "172.16.3.113"),
-    originSrc: item.imgUrl[typeId].originUrl?.replace(
-      /localhost/,
-      "172.16.3.113"
-    ),
+    src: item.imgUrl[typeId].url,
+    originSrc: item.imgUrl[typeId].originUrl,
     alt: item.imgUrl[typeId].description,
   }));
 };

@@ -1,5 +1,4 @@
 import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
-import { FC, LazyExoticComponent } from "react";
 
 /**
  * 菜单查询参数类型
@@ -135,7 +134,7 @@ export interface RouteVO {
   /**
    * 组件路径
    */
-  component?: string | LazyExoticComponent<FC>;
+  component?: string;
   meta?: Meta;
   /**
    * 路由名称

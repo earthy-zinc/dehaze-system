@@ -1,9 +1,9 @@
 import request from "@/utils/requestPy";
-import { EvalParam, EvalResult, PredParam } from "src/api/model/model";
+import { EvalParam, EvalResult, PredParam, PredResult } from "./model";
 
 class ModelAPI {
   static prediction(data: PredParam) {
-    return request<any, string>({
+    return request<any, PredResult>({
       url: "/model/prediction",
       method: "post",
       data,

@@ -12,6 +12,11 @@ export interface PredParam {
   modelParam?: Object;
 }
 
+export interface PredResult {
+  predUrl: string;
+  hazeUrl: string;
+}
+
 export interface EvalParam {
   modelId: number;
   predUrl: string;
@@ -27,7 +32,7 @@ export interface EvalResult {
   // 基准值
   baseline?: string;
   // 评价指标是越高越好还是越低越好
-  better?: "higer" | "lower";
+  better?: "higher" | "lower";
   // 评价指标的描述
   description?: string;
 }

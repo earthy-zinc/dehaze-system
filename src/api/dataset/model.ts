@@ -87,3 +87,12 @@ export interface ImageUrl {
    */
   description?: string;
 }
+
+export interface ImageFileInfo {
+  id: number;
+  datasetItemId: number;
+  fileId: number;
+  type: string;
+  description: string;
+  url: string;
+}
