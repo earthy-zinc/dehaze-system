@@ -22,6 +22,8 @@ public interface SysDatasetService extends IService<SysDataset> {
 
     List<Long> getLeafDatasetIds();
 
+    List<Long> getLeafDatasetId(Long id);
+
     SysDataset getRootDataset(Long id);
 
     SysDataset getDatasetById(Long id);

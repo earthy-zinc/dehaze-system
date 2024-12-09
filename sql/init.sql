@@ -445,20 +445,6 @@ values (10, 8, '图像去雾', 'OTS', null,
         'RESIDE/OTS', '12.86 GB', 1, 0, '2024-11-11 19:42:54', '2024-11-11 19:42:54', 2, 2);
 insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
                                 create_time, update_time, create_by, update_by)
-values (11, 8, '图像去雾', 'SOTS', null,
-        '综合目标测试集(SOTS) 用于客观评价去雾算法的表现。SOTS包含了两种类型的图像：一种是从NYU2数据集中挑选出的500个室内场景图像（与ITS中的训练图像不重叠），并按照与ITS相同的流程来合成模糊图像；另一种则是从实际拍摄的室外场景中收集的图像。SOTS不仅包括了合成的模糊图像，还提供了对应的真实无雾图像，这样可以用来计算去雾后的图像质量指标，如PSNR、SSIM等',
-        'RESIDE/SOTS', '416.3 MB', 1, 0, '2024-11-12 22:21:07', '2024-11-12 22:21:07', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
-                                create_time, update_time, create_by, update_by)
-values (12, 11, '图像去雾', 'indoor', null, 'SOTS Indoor (室内): 从NYU2中选择了500个室内图像，用以生成相应的模糊图像。',
-        'RESIDE/SOTS/indoor', '170 MB', 1, 0, '2024-11-12 22:21:37', '2024-11-12 22:21:37', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
-                                create_time, update_time, create_by, update_by)
-values (13, 11, '图像去雾', 'outdoor', null,
-        'SOTS Outdoor (室外): 包括了真实的室外模糊图像及其对应的清晰图像，用于更接近实际应用的评估。',
-        'RESIDE/SOTS/outdoor', '246.3 MB', 1, 0, '2024-11-12 22:21:57', '2024-11-12 22:21:57', 2, 2);
-insert into dehaze.sys_dataset (id, parent_id, type, name, img, description, path, size, status, deleted,
-                                create_time, update_time, create_by, update_by)
 values (14, 0, '图像去雾', 'RESIDE-6k', null,
         '虽然没有直接提到名为RESIDE-6k的数据集，但我们可以假设这可能是一个包含大约6000张图像的RESIDE数据集的一个子集。如果这是对RESIDE数据集的特定版本，则它可能专注于一个特定的场景（室内或室外）或者用于特定目的（比如训练或测试）。然而，由于没有具体的信息，我们无法确定其确切组成。通常，这样的数据集会包含成对的清晰和模糊图像，以便于模型学习如何从模糊图像恢复清晰图像。',
         'RESIDE-6k', '1.52 GB', 1, 0, '2024-11-12 22:22:42', '2024-11-12 22:22:42', 2, 2);
