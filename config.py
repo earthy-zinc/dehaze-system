@@ -37,6 +37,7 @@ class DevelopmentConfig(Config):
     MINIO_SECRET_KEY = "12345678"
     MINIO_SECURE = False
     MINIO_BUCKET_NAME = "dehaze"
+    MINIO_CUSTOM_DOMAIN = "http://localhost:8989/api/v1/files/download"
 
 
 class TestingConfig(Config):

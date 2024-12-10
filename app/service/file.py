@@ -78,7 +78,11 @@ def _get_new_file_info(old_file_info: SysFile) -> SysFile:
     old_md5 = old_file_info.md5
     sys_wpx_file: SysWpxFile = SysWpxFile.query.filter_by(origin_md5=old_md5).first()
 
-    if not sys_wpx_file: raise BusinessException("未找到对应的转换文件")
+    if not sys_wpx_file:
+        sys_wpx_file = SysWpxFile.query.filter_by(new_md5=old_md5).first()
+
+    if not sys_wpx_file:
+        raise BusinessException("未找到对应的转换文件")
 
     new_md5 = sys_wpx_file.new_md5
 
@@ -144,7 +148,7 @@ def _upload_to_storage(
 
     # 生成文件访问 URL
     if custom_domain:
-        file_url = f"{custom_domain}/{bucket_name}/{object_name}"
+        file_url = f"{custom_domain}/{object_name}"
     else:
         file_url = minio_client.get_presigned_url(
             "GET", bucket_name, object_name, expires=timedelta(days=7)
