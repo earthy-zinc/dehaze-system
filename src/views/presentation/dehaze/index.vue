@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import AlgorithmToolBar from "@/components/AlgorithmToolBar/index.vue";
-import { useAlgorithmStore, useSettingsStore } from "@/store";
+import { useAlgorithmStore } from "@/store";
 import Camera from "@/components/Camera/index.vue";
 import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
@@ -10,12 +10,11 @@ import ModelAPI from "@/api/model";
 import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import DatasetImageSelect from "@/components/DatasetImageSelect/index.vue";
-import { ImageTypeEnum } from "@/enums/ImageType";
+import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import examples from "@/views/presentation/dehaze/exampleImages";
 
 const algorithmStore = useAlgorithmStore();
 const imageShowStore = useImageShowStore();
-const { themeColor } = useSettingsStore();
 
 const { imageInfo } = toRefs(imageShowStore);
 const { images } = toRefs(imageInfo.value);
@@ -92,6 +91,12 @@ function handleGenerateImage() {
       imageShowStore.setImageUrl(res.hazeUrl, ImageTypeEnum.HAZE);
       imageShowStore.setImageUrl(res.predUrl, ImageTypeEnum.PRED);
     })
+    .then(() => {
+      if (cleanUrl.value) {
+        const clean = cleanUrl.value;
+        handleCleanUrl(clean).then((res) => (cleanUrl.value = res));
+      }
+    })
     .then(() => activePage("overlap"))
     .catch((err) => {
       ElMessage.error(err);
@@ -101,9 +106,9 @@ function handleGenerateImage() {
 
 function handleExampleImageClick(url: string) {
   imageShowStore.setImageUrl(url, ImageTypeEnum.HAZE);
-  const clear = exampleImages.value.filter((item) => item.haze === url)[0]
-    .clean;
-  handleCleanUrl(clear).then((res) => (cleanUrl.value = res));
+  cleanUrl.value = exampleImages.value.filter(
+    (item) => item.haze === url
+  )[0].clean;
   activePage("singleImage");
 }
 
@@ -115,7 +120,7 @@ const getAlgorithmList = async () => {
 
 function handleDatasetImageSelect(haze: string, clear: string) {
   imageShowStore.setImageUrl(haze, ImageTypeEnum.HAZE);
-  handleCleanUrl(clear).then((res) => (cleanUrl.value = res));
+  cleanUrl.value = clear;
   dialogVisible.value = false;
   activePage("singleImage");
 }

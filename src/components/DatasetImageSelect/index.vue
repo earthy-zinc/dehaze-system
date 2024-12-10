@@ -3,7 +3,7 @@ import { Dataset, ImageItem, ImageItemQuery } from "@/api/dataset/model";
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
-import { ImageTypeEnum } from "@/enums/ImageType";
+import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 
 defineOptions({
   name: "DatasetImageSelect",
