@@ -7,6 +7,7 @@ import AlgorithmAPI from "@/api/algorithm";
 import { Algorithm } from "@/api/algorithm/model";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
+import { Arrayable } from "element-plus/es/utils";
 
 defineOptions({
   name: "Evaluation",
@@ -192,7 +193,8 @@ onMounted(async () => {
                   :max="20"
                   :min="2"
                   @change="
-                    (value: number) => handleMagnifierChange(value, 'zoomLevel')
+                    (value: Arrayable<number>) =>
+                      handleMagnifierChange(value, 'zoomLevel')
                   "
                 />
               </el-form-item>
@@ -203,7 +205,8 @@ onMounted(async () => {
                   :max="1000"
                   :min="100"
                   @change="
-                    (value: number) => handleMagnifierChange(value, 'width')
+                    (value: Arrayable<number>) =>
+                      handleMagnifierChange(value, 'width')
                   "
                 />
               </el-form-item>
@@ -213,7 +216,8 @@ onMounted(async () => {
                   :max="1000"
                   :min="100"
                   @change="
-                    (value: number) => handleMagnifierChange(value, 'height')
+                    (value: Arrayable<number>) =>
+                      handleMagnifierChange(value, 'height')
                   "
                 />
               </el-form-item>
@@ -223,7 +227,7 @@ onMounted(async () => {
                   :max="100"
                   :min="-100"
                   @change="
-                    (value: number) =>
+                    (value: Arrayable<number>) =>
                       handleImageFilterChange(Number(value), 'brightness')
                   "
                 />
@@ -234,7 +238,7 @@ onMounted(async () => {
                   :max="100"
                   :min="-100"
                   @change="
-                    (value: number) =>
+                    (value: Arrayable<number>) =>
                       handleImageFilterChange(Number(value), 'contrast')
                   "
                 />
@@ -245,7 +249,7 @@ onMounted(async () => {
                   :max="100"
                   :min="-100"
                   @change="
-                    (value: number) =>
+                    (value: Arrayable<number>) =>
                       handleImageFilterChange(Number(value), 'saturate')
                   "
                 />
@@ -267,7 +271,7 @@ onMounted(async () => {
       <div v-else>
         <ParallelImageUpload />
         <div class="flex justify-center mt-6">
-          <el-button size="large" @click="handleReset">重新上传 </el-button>
+          <el-button size="large" @click="handleReset">重新上传</el-button>
           <el-button
             :disabled="!allUploaded"
             :loading="loading"
