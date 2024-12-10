@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -107,7 +108,7 @@ public class FileUploadUtils {
             setFileBO(file, baseUrl, path, fileBO);
             return fileBO;
         } catch (IOException e) {
-            throw new BusinessException("Error creating fileBO from MultipartFile: " + e.getMessage());
+            throw new BusinessException("Error creating fileBO from MultipartFile: " + e.getMessage(), e);
         }
     }
 
@@ -120,7 +121,10 @@ public class FileUploadUtils {
         String objectName = path + "/" + md5 + "." + extension;
         String url = baseUrl + "/" + objectName;
 
-        fileBO.setFile(file.getResource().getFile());
+        File tempFile = Files.createTempFile(md5, "." + extension).toFile();
+        file.transferTo(tempFile);
+
+        fileBO.setFile(tempFile);
         fileBO.setName(filename);
         fileBO.setObjectName(objectName);
         fileBO.setExtension(extension);
@@ -164,7 +168,7 @@ public class FileUploadUtils {
             itemBO.setDescription(description);
             return itemBO;
         } catch (IOException e) {
-            throw new BusinessException("Error creating fileBO from MultipartFile: " + e.getMessage());
+            throw new BusinessException("Error creating DatasetItemBO from MultipartFile: " + e.getMessage(), e);
         }
     }
 }
