@@ -74,6 +74,28 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
+    public SysAlgorithm getAlgorithmById(Long id) {
+        List<SysAlgorithm> algorithms = new ArrayList<>();
+        SysAlgorithm cur = this.getById(id);
+        dfs(cur, algorithms);
+
+        if (!algorithms.isEmpty()) {
+            StringBuilder fullName = new StringBuilder();
+            StringBuilder fullDescription = new StringBuilder();
+            for (int i = algorithms.size() - 1; i >= 0; i--) { // 从根节点到当前节点
+                fullName.append(algorithms.get(i).getName()).append("/");
+                fullDescription.append(algorithms.get(i).getDescription()).append("\n");
+            }
+            if (fullName.length() > 4) {
+                fullName.setLength(fullName.length() - 1);
+            }
+            cur.setName(fullName.toString());
+            cur.setDescription(fullDescription.toString());
+        }
+        return cur;
+    }
+
+    @Override
     public boolean addAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         sysAlgorithm.setStatus(StatusEnum.ENABLE.getValue());
@@ -81,6 +103,17 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
             sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
         }
         return this.save(sysAlgorithm);
+    }
+
+    private void dfs(SysAlgorithm cur, List<SysAlgorithm> algorithms) {
+        algorithms.add(cur);
+        if (cur.getParentId() == null) {
+            throw new BusinessException("算法结构出现问题");
+        }
+        if (!cur.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
+            SysAlgorithm parent = this.getById(cur.getParentId());
+            dfs(parent, algorithms);
+        }
     }
 
     @Override

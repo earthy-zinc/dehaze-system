@@ -24,8 +24,7 @@ public class ImageUtils {
                    .outputQuality(0.5f)
                    .toFile(new File(destPath));
        } catch (IOException e) {
-           log.error("生成缩略图失败", e);
-           throw new BusinessException("生成缩略图失败");
+           throw new BusinessException("生成缩略图失败", e);
        }
     }
 
@@ -39,8 +38,7 @@ public class ImageUtils {
                     .toFile(output);
             return output;
         } catch (IOException e) {
-            log.error("生成缩略图失败", e);
-            throw new BusinessException("生成缩略图失败");
+            throw new BusinessException("生成缩略图失败", e);
         }
     }
 
