@@ -43,7 +43,7 @@ public class FileController {
             @Parameter(description = "表单文件对象") @RequestParam(value = "file") MultipartFile file,
             @Parameter(description = "模型id") @RequestParam(required = false) Long modelId
     ) {
-        String uploadPath = "upload" + File.separator + DateUtil.format(LocalDateTime.now(), "yyyyMMdd");
+        String uploadPath = "upload/" + DateUtil.format(LocalDateTime.now(), "yyyyMMdd");
         FileBO fileBO = FileUploadUtils.createFileBO(file, baseUrl, uploadPath);
         SysFile fileInfo = sysFileService.saveFile(fileBO);
         if (modelId != null) {
