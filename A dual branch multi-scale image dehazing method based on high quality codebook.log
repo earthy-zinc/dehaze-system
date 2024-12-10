@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.3.17)  10 NOV 2024 15:32
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.3.17)  6 DEC 2024 14:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -365,134 +365,121 @@ Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
 e
 ))
-Underfull \hbox (badness 1354) in paragraph at lines 26--26
-[][][]\OT1/ptm/m/n/8 This work was sup-ported in part by the Na-tional Nat-u-ra
-l Sci-ence
- []
+LaTeX Font Info:    Trying to load font information for U+msa on input line 43.
 
-
-Underfull \hbox (badness 2393) in paragraph at lines 26--26
-\OT1/ptm/m/n/8 Foun-da-tion of China un-der Grant 61701060, in part by the Sci-
-en-
- []
-
-LaTeX Font Info:    Trying to load font information for U+msa on input line 40.
 
 (c:/Programs/texlive/2024/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 40.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 43.
 
 
 (c:/Programs/texlive/2024/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-)
-<result_nh_haze_20.png, id=1, 383.18156pt x 390.70969pt>
-File: result_nh_haze_20.png Graphic file (type png)
-<use result_nh_haze_20.png>
-Package pdftex.def Info: result_nh_haze_20.png  used on input line 49.
-(pdftex.def)             Requested size: 252.94499pt x 257.91687pt.
-
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 49--50
- [][] 
- []
-
-[1{c:/Programs/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{c:/Pr
-ograms/texlive/2024/texmf-dist/fonts/enc/dvips/base/8r.enc}
+) [1{c:/Programs/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{c:/
+Programs/texlive/2024/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
 
- <./result_nh_haze_20.png>]
-<network_architecture.png, id=17, 1251.17438pt x 813.0375pt>
+]
+<network_architecture.png, id=15, 1251.17438pt x 813.0375pt>
 File: network_architecture.png Graphic file (type png)
 <use network_architecture.png>
-Package pdftex.def Info: network_architecture.png  used on input line 73.
+Package pdftex.def Info: network_architecture.png  used on input line 68.
 (pdftex.def)             Requested size: 505.89pt x 328.73253pt.
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
+Underfull \vbox (badness 6758) has occurred while \output is active []
 
  [2 <./network_architecture.png>]
-<discretization_operation.png, id=23, 609.40172pt x 208.90547pt>
+<discretization_operation.png, id=21, 609.40172pt x 208.90547pt>
 File: discretization_operation.png Graphic file (type png)
 <use discretization_operation.png>
-Package pdftex.def Info: discretization_operation.png  used on input line 93.
+Package pdftex.def Info: discretization_operation.png  used on input line 88.
 (pdftex.def)             Requested size: 252.94499pt x 86.71008pt.
 
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 93--94
+Overfull \hbox (0.94499pt too wide) in paragraph at lines 88--89
  [][] 
  []
 
-[3 <./discretization_operation.png>] [4]
-<enhanced_decoder.png, id=34, 730.22812pt x 561.97453pt>
+[3 <./discretization_operation.png>]
+<enhanced_decoder.png, id=29, 730.22812pt x 561.97453pt>
 File: enhanced_decoder.png Graphic file (type png)
 <use enhanced_decoder.png>
-Package pdftex.def Info: enhanced_decoder.png  used on input line 169.
+Package pdftex.def Info: enhanced_decoder.png  used on input line 164.
 (pdftex.def)             Requested size: 252.94499pt x 194.66174pt.
 
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 169--170
+Overfull \hbox (0.94499pt too wide) in paragraph at lines 164--165
  [][] 
  []
 
-<enhancer_block.png, id=35, 1167.23578pt x 535.6261pt>
+<enhancer_block.png, id=30, 1167.23578pt x 535.6261pt>
 File: enhancer_block.png Graphic file (type png)
 <use enhancer_block.png>
-Package pdftex.def Info: enhancer_block.png  used on input line 175.
+Package pdftex.def Info: enhancer_block.png  used on input line 170.
 (pdftex.def)             Requested size: 252.94499pt x 116.07274pt.
 
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 175--176
+Overfull \hbox (0.94499pt too wide) in paragraph at lines 170--171
  [][] 
  []
 
-<I-HAZE-compare.jpg, id=36, 1927.2pt x 922.44624pt>
-File: I-HAZE-compare.jpg Graphic file (type jpg)
-<use I-HAZE-compare.jpg>
-Package pdftex.def Info: I-HAZE-compare.jpg  used on input line 192.
-(pdftex.def)             Requested size: 505.89pt x 242.13872pt.
-<O-HAZE-compare.jpg, id=37, 1927.2pt x 858.20625pt>
+[4]
+<O-HAZE-compare.jpg, id=34, 1927.2pt x 858.20625pt>
 File: O-HAZE-compare.jpg Graphic file (type jpg)
 <use O-HAZE-compare.jpg>
-Package pdftex.def Info: O-HAZE-compare.jpg  used on input line 199.
+Package pdftex.def Info: O-HAZE-compare.jpg  used on input line 187.
 (pdftex.def)             Requested size: 505.89pt x 225.27597pt.
-<DENSE-HAZE-compare.jpg, id=38, 1927.2pt x 960.58875pt>
+<DENSE-HAZE-compare.jpg, id=35, 1927.2pt x 960.58875pt>
 File: DENSE-HAZE-compare.jpg Graphic file (type jpg)
 <use DENSE-HAZE-compare.jpg>
-Package pdftex.def Info: DENSE-HAZE-compare.jpg  used on input line 206.
+Package pdftex.def Info: DENSE-HAZE-compare.jpg  used on input line 194.
 (pdftex.def)             Requested size: 505.89pt x 252.15099pt.
-<NH-HAZE-20-compare.jpg, id=39, 1927.2pt x 959.585pt>
+<NH-HAZE-20-compare.jpg, id=36, 1927.2pt x 959.585pt>
 File: NH-HAZE-20-compare.jpg Graphic file (type jpg)
 <use NH-HAZE-20-compare.jpg>
-Package pdftex.def Info: NH-HAZE-20-compare.jpg  used on input line 213.
+Package pdftex.def Info: NH-HAZE-20-compare.jpg  used on input line 201.
 (pdftex.def)             Requested size: 505.89pt x 251.88751pt.
-<NH-HAZE-21-compare.jpg, id=40, 1927.2pt x 712.6625pt>
+<NH-HAZE-21-compare.jpg, id=37, 1927.2pt x 712.6625pt>
 File: NH-HAZE-21-compare.jpg Graphic file (type jpg)
 <use NH-HAZE-21-compare.jpg>
-Package pdftex.def Info: NH-HAZE-21-compare.jpg  used on input line 220.
+Package pdftex.def Info: NH-HAZE-21-compare.jpg  used on input line 208.
 (pdftex.def)             Requested size: 505.89pt x 187.07127pt.
-<NH-HAZE-23-compare.jpg, id=41, 1927.2pt x 876.27374pt>
+<NH-HAZE-23-compare.jpg, id=38, 1927.2pt x 876.27374pt>
 File: NH-HAZE-23-compare.jpg Graphic file (type jpg)
 <use NH-HAZE-23-compare.jpg>
-Package pdftex.def Info: NH-HAZE-23-compare.jpg  used on input line 227.
+Package pdftex.def Info: NH-HAZE-23-compare.jpg  used on input line 215.
 (pdftex.def)             Requested size: 505.89pt x 230.01862pt.
-[5 <./enhanced_decoder.png> <./enhancer_block.png>]
+ [5 <./enhanced_decoder.png> <./enhancer_block.png>] [6 <./O-HAZE-Compare.jpg> 
+<./DENSE-HAZE-Compare.jpg>]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [6 <./I-HAZE-Compare.jpg> <./O-HAZE-Compare.jpg>]
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [7 <./DENSE-HAZE-Compare.jpg> <./NH-HAZE-20-Compare.jpg>]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [8 <./NH-HAZE-21-Compare.jpg> <./NH-HAZE-23-Compare.jpg>]
+ [7 <./NH-HAZE-20-Compare.jpg> <./NH-HAZE-21-Compare.jpg>]
 LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 3
-84.
+61.
 
 (c:/Programs/texlive/2024/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-)
-Underfull \vbox (badness 2189) has occurred while \output is active []
+) [8 <./NH-HAZE-23-Compare.jpg>]
+Underfull \hbox (badness 1354) in paragraph at lines 392--393
+[]\OT1/ptm/m/n/10 1) Base: Con-sists of VQ En-coder, VQ De-coder and
+ []
 
- [9]
+<ablation_experiments.png, id=54, 577.7836pt x 430.98515pt>
+File: ablation_experiments.png Graphic file (type png)
+<use ablation_experiments.png>
+Package pdftex.def Info: ablation_experiments.png  used on input line 404.
+(pdftex.def)             Requested size: 252.94499pt x 188.6739pt.
+
+Overfull \hbox (0.94499pt too wide) in paragraph at lines 404--405
+ [][] 
+ []
+
+[9 <./ablation_experiments.png>]
 (./A dual branch multi-scale image dehazing method based on high quality codebo
-ok.bbl [10]) [11]
+ok.bbl [10]) [11
+
+]
 (./A dual branch multi-scale image dehazing method based on high quality codebo
 ok.aux)
  ***********
@@ -501,13 +488,13 @@ L3 programming layer <2024-02-20>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 4741 strings out of 474116
- 85051 string characters out of 5743190
- 1975190 words of memory out of 5000000
- 27036 multiletter control sequences out of 15000+600000
- 604004 words of font info for 118 fonts, out of 8000000 for 9000
+ 4726 strings out of 474116
+ 84765 string characters out of 5743190
+ 1960190 words of memory out of 5000000
+ 27021 multiletter control sequences out of 15000+600000
+ 604062 words of font info for 118 fonts, out of 8000000 for 9000
  1145 hyphenation exceptions out of 8191
- 57i,16n,65p,1858b,340s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 57i,16n,65p,1858b,332s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <c:/Programs/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pf
 b><c:/Programs/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pf
 b><c:/Programs/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb
@@ -521,10 +508,10 @@ texlive/2024/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb><c:/Programs/texlive/
 2024/texmf-dist/fonts/type1/urw/times/utmr8a.pfb><c:/Programs/texlive/2024/texm
 f-dist/fonts/type1/urw/times/utmri8a.pfb>
 Output written on "A dual branch multi-scale image dehazing method based on hig
-h quality codebook.pdf" (11 pages, 5473774 bytes).
+h quality codebook.pdf" (11 pages, 3299024 bytes).
 PDF statistics:
- 118 PDF objects out of 1000 (max. 8388607)
+ 117 PDF objects out of 1000 (max. 8388607)
  64 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 56 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 51 words of extra memory for PDF output out of 10000 (max. 10000000)
 
