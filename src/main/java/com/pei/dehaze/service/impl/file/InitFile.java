@@ -152,7 +152,7 @@ public class InitFile {
             itemBO.setType(type.getValue());
             return itemBO;
         } catch (IOException e) {
-            throw new BusinessException("转换BO失败");
+            throw new BusinessException("转换BO失败", e);
         }
     }
 

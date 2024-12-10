@@ -56,7 +56,7 @@ public class SysAlgorithmController {
     @Operation(summary = "根据ID获取算法信息")
     @GetMapping("/{id}")
     public Result<AlgorithmVO> getById(@PathVariable Long id) {
-        SysAlgorithm algorithm = algorithmService.getById(id);
+        SysAlgorithm algorithm = algorithmService.getAlgorithmById(id);
         return Result.success(algorithmConverter.entity2Vo(algorithm));
     }
 
