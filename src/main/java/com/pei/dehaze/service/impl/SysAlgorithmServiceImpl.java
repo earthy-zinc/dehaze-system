@@ -69,7 +69,9 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
 
     @Override
     public List<Option<Long>> getOption() {
-        List<SysAlgorithm> algorithms = this.list(new LambdaQueryWrapper<>());
+        List<SysAlgorithm> algorithms = this.list(
+                new LambdaQueryWrapper<SysAlgorithm>()
+                        .eq(SysAlgorithm::getStatus, StatusEnum.ENABLE.getValue()));
         return buildAlgorithmOptions(SystemConstants.ROOT_NODE_ID, algorithms);
     }
 
