@@ -4,6 +4,7 @@ import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue"
 import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
+import { changeUrl } from "@/utils";
 
 defineOptions({
   name: "DatasetImageSelect",
@@ -85,13 +86,11 @@ async function handleQuery() {
 }
 
 function switchImageUrl(id: number) {
-  let host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
-  let oldHost = new URL(imageData[0].imgUrl[id].url).host;
   images.value = imageData.map((item) => {
     return {
       id: item.id,
-      src: item.imgUrl[id].url.replace(oldHost, host),
-      originSrc: item.imgUrl[id].originUrl?.replace(oldHost, host),
+      src: changeUrl(item.imgUrl[id].url),
+      originSrc: changeUrl(item.imgUrl[id].originUrl!),
       alt: item.imgUrl[id].description,
     };
   });
@@ -107,13 +106,10 @@ function handleImageTypeChange(typeId: number) {
 }
 
 function selectImage(itemId: number) {
-  let host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
-  let oldHost = new URL(imageData[0].imgUrl[curImageType.value?.id || 0].url)
-    .host;
   let curImageItem = imageData.find((item) => item.id === itemId);
   if (curImageItem) {
-    let haze = curImageItem.imgUrl[1].originUrl!.replace(oldHost, host);
-    let clear = curImageItem.imgUrl[0].originUrl!.replace(oldHost, host);
+    let haze = changeUrl(curImageItem.imgUrl[1].originUrl!);
+    let clear = changeUrl(curImageItem.imgUrl[0].originUrl!);
     emit("onSelected", haze, clear);
   }
 }

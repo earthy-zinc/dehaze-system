@@ -5,6 +5,7 @@ import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
 import { api as viewerApi } from "v-viewer";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
+import { changeUrl } from "@/utils";
 
 defineOptions({
   name: "DataItem",
@@ -86,13 +87,11 @@ async function handleQuery() {
 }
 
 function switchImageUrl(id: number) {
-  let host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
-  let oldHost = new URL(imageData[0].imgUrl[id].url).host;
   images.value = imageData.map((item) => {
     return {
       id: item.id,
-      src: item.imgUrl[id].url.replace(oldHost, host),
-      originSrc: item.imgUrl[id].originUrl?.replace(oldHost, host),
+      src: changeUrl(item.imgUrl[id].url),
+      originSrc: changeUrl(item.imgUrl[id].originUrl!),
       alt: item.imgUrl[id].description,
     };
   });
@@ -108,17 +107,14 @@ function handleImageTypeChange(typeId: number) {
 }
 
 function showBigPicture(itemId: number) {
-  let host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
-  let oldHost = new URL(imageData[0].imgUrl[curImageType.value?.id || 0].url)
-    .host;
   let curSelectedImages = () => {
     let curImageItem = imageData.find((item) => item.id === itemId);
     let result = [] as string[];
     if (curImageItem) {
       curImageItem.imgUrl.map((item) => {
         item.originUrl
-          ? result.push(item.originUrl.replace(oldHost, host))
-          : result.push(item.url.replace(oldHost, host));
+          ? result.push(changeUrl(item.originUrl))
+          : result.push(changeUrl(item.url));
       });
     }
     return result;
