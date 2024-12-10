@@ -2,10 +2,11 @@
 import { useImageShowStore } from "@/store/modules/imageShow";
 import ModelAPI from "@/api/model";
 import { EvalResult } from "@/api/model/model";
-import { ImageTypeEnum } from "@/enums/ImageType";
+import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import AlgorithmAPI from "@/api/algorithm";
 import { Algorithm } from "@/api/algorithm/model";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
+import { Arrayable } from "element-plus/es/utils";
 
 const imageShowStore = useImageShowStore();
 const { modelId } = toRefs(imageShowStore);
@@ -167,7 +168,8 @@ onMounted(() => {
                   :max="20"
                   :min="2"
                   @change="
-                    (value: number) => handleMagnifierChange(value, 'zoomLevel')
+                    (value: Arrayable<number>) =>
+                      handleMagnifierChange(value, 'zoomLevel')
                   "
                 />
               </el-form-item>
@@ -178,7 +180,8 @@ onMounted(() => {
                   :max="1000"
                   :min="100"
                   @change="
-                    (value: number) => handleMagnifierChange(value, 'width')
+                    (value: Arrayable<number>) =>
+                      handleMagnifierChange(value, 'width')
                   "
                 />
               </el-form-item>
@@ -188,7 +191,8 @@ onMounted(() => {
                   :max="1000"
                   :min="100"
                   @change="
-                    (value: number) => handleMagnifierChange(value, 'height')
+                    (value: Arrayable<number>) =>
+                      handleMagnifierChange(value, 'height')
                   "
                 />
               </el-form-item>
@@ -198,7 +202,7 @@ onMounted(() => {
                   :max="100"
                   :min="-100"
                   @change="
-                    (value: number) =>
+                    (value: Arrayable<number>) =>
                       handleImageFilterChange(Number(value), 'brightness')
                   "
                 />
@@ -209,7 +213,7 @@ onMounted(() => {
                   :max="100"
                   :min="-100"
                   @change="
-                    (value: number) =>
+                    (value: Arrayable<number>) =>
                       handleImageFilterChange(Number(value), 'contrast')
                   "
                 />
@@ -220,7 +224,7 @@ onMounted(() => {
                   :max="100"
                   :min="-100"
                   @change="
-                    (value: number) =>
+                    (value: Arrayable<number>) =>
                       handleImageFilterChange(Number(value), 'saturate')
                   "
                 />

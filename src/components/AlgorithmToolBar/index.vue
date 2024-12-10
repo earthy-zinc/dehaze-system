@@ -3,6 +3,7 @@ import Magnifier from "@/components/Magnifier/newIndex.vue";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { useWindowSize } from "@vueuse/core";
 import { UploadFile, UploadUserFile } from "element-plus";
+import { Arrayable } from "element-plus/es/utils";
 
 defineOptions({
   name: "AlgorithmToolBar",
@@ -73,6 +74,12 @@ const state = reactive({
 });
 
 const cardRef = ref<HTMLDivElement>();
+
+const buttonText = computed(() => {
+  if (imageShowStore.loading) return "正在生成";
+  return "立即生成";
+});
+
 onMounted(() => {
   const { width: barWidth } = useElementBounding(cardRef.value);
   watch(
@@ -206,10 +213,12 @@ watch(
       <div class="flex justify-evenly m-4">
         <el-button
           id="algorithm-generate-button"
+          :disabled="imageShowStore.disableGenerate"
+          :loading="imageShowStore.loading"
           type="primary"
           @click="emit('onGenerate')"
         >
-          立即生成
+          {{ buttonText }}
         </el-button>
         <el-dropdown :disabled="disableMore">
           <el-button :disabled="disableMore">更多功能</el-button>
@@ -276,7 +285,8 @@ watch(
               :max="20"
               :min="2"
               @change="
-                (value: number) => handleMagnifierChange(value, 'zoomLevel')
+                (value: Arrayable<number>) =>
+                  handleMagnifierChange(value, 'zoomLevel')
               "
             />
           </el-form-item>
@@ -286,7 +296,10 @@ watch(
               v-model="state.magnifier.width"
               :max="1000"
               :min="100"
-              @change="(value: number) => handleMagnifierChange(value, 'width')"
+              @change="
+                (value: Arrayable<number>) =>
+                  handleMagnifierChange(value, 'width')
+              "
             />
           </el-form-item>
           <el-form-item class="more-operations" label="放大镜高度">
@@ -295,7 +308,8 @@ watch(
               :max="1000"
               :min="100"
               @change="
-                (value: number) => handleMagnifierChange(value, 'height')
+                (value: Arrayable<number>) =>
+                  handleMagnifierChange(value, 'height')
               "
             />
           </el-form-item>
@@ -308,7 +322,7 @@ watch(
               :max="100"
               :min="-100"
               @change="
-                (value: number) =>
+                (value: Arrayable<number>) =>
                   handleImageFilterChange(Number(value), 'brightness')
               "
             />
@@ -322,7 +336,7 @@ watch(
               :max="100"
               :min="-100"
               @change="
-                (value: number) =>
+                (value: Arrayable<number>) =>
                   handleImageFilterChange(Number(value), 'contrast')
               "
             />
@@ -336,7 +350,7 @@ watch(
               :max="100"
               :min="-100"
               @change="
-                (value: number) =>
+                (value: Arrayable<number>) =>
                   handleImageFilterChange(Number(value), 'saturate')
               "
             />

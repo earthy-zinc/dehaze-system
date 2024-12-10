@@ -16,7 +16,9 @@ export interface LabelType {
 const settingsStore = useSettingsStore();
 
 export const useImageShowStore = defineStore("imageShow", () => {
-  const modelId = ref(1);
+  const loading = ref(false);
+
+  const modelId = ref();
 
   const imageInfo = reactive({
     // 缩略图
@@ -99,6 +101,14 @@ export const useImageShowStore = defineStore("imageShow", () => {
   const dividerInfo = reactive({
     enabled: true,
   });
+
+  const disableGenerate = computed(() => {
+    return imageInfo.images.urls.length !== 1 || !modelId.value;
+  });
+
+  function setLoading(flag: boolean) {
+    loading.value = flag;
+  }
 
   function setModelId(id: number) {
     modelId.value = id;
@@ -211,6 +221,7 @@ export const useImageShowStore = defineStore("imageShow", () => {
   }
 
   return {
+    loading,
     scaleX,
     scaleY,
     imageInfo,
@@ -221,6 +232,8 @@ export const useImageShowStore = defineStore("imageShow", () => {
     maskWidth,
     maskHeight,
     dividerInfo,
+    disableGenerate,
+    setLoading,
     setModelId,
     setImageUrls,
     setImageUrl,

@@ -56,13 +56,18 @@ function handleCameraSave(file: File) {
   handleImageUpload(file);
 }
 
+function handleSelectModel(id: number) {
+  imageShowStore.setModelId(id);
+}
+
 function handleImageUpload(file: File) {
+  imageShowStore.setLoading(true);
   // 上传文件
   FileAPI.upload(file, imageShowStore.modelId)
     .then((res) => {
       // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
       activePage("loading");
-      imageShowStore.setImageUrl(res.url, ImageTypeEnum.HAZE);
+      imageShowStore.setImageUrl(changeUrl(res.url), ImageTypeEnum.HAZE);
     })
     .then(() => {
       // 将文件显示到 SingleImageShow 组件中
@@ -70,6 +75,9 @@ function handleImageUpload(file: File) {
     })
     .catch((err) => {
       ElMessage.error(err);
+    })
+    .finally(() => {
+      imageShowStore.setLoading(false);
     });
 }
 
@@ -81,6 +89,16 @@ function handleReset() {
 
 // 选择模型后生成对比图（原图 | 去雾图）
 function handleGenerateImage() {
+  if (!selectedModel.value) {
+    ElMessage.error("请选择去雾模型");
+    return;
+  }
+  if (!imgUrls.value[0]) {
+    ElMessage.error("请先上传图片");
+    return;
+  }
+  imageShowStore.setLoading(true);
+  imageShowStore.setModelId(Number(selectedModel.value) || 1);
   activePage("loading");
   const imgUrl = imgUrls.value[0].url;
   ModelAPI.prediction({
@@ -102,15 +120,20 @@ function handleGenerateImage() {
     .catch((err) => {
       ElMessage.error(err);
       activePage("singleImage");
+    })
+    .finally(() => {
+      imageShowStore.setLoading(false);
     });
 }
 
 function handleExampleImageClick(url: string) {
+  imageShowStore.setLoading(true);
   imageShowStore.setImageUrl(url, ImageTypeEnum.HAZE);
   cleanUrl.value = exampleImages.value.filter(
     (item) => item.haze === url
   )[0].clean;
   activePage("singleImage");
+  imageShowStore.setLoading(false);
 }
 
 // 获取模型选项列表
@@ -152,9 +175,11 @@ function handleEval() {
 const dialogVisible = ref(false);
 
 onMounted(() => {
+  imageShowStore.setLoading(true);
   getAlgorithmList();
   imageShowStore.setImageUrls([]);
   activePage("example");
+  imageShowStore.setLoading(false);
 });
 </script>
 
@@ -179,6 +204,7 @@ onMounted(() => {
             :data="modelOptions"
             placeholder="请选择去雾模型算法"
             style="width: 240px"
+            @change="handleSelectModel"
           />
         </div>
       </template>

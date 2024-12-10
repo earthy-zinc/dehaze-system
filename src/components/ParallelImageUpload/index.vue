@@ -48,19 +48,19 @@ onMounted(() => {
       v-model="urls.haze"
       class="upload-component"
       tooltip="上传有雾图像"
-      @on-change="(url) => handleChange(url, ImageTypeEnum.HAZE)"
+      @on-change="(url: string) => handleChange(url, ImageTypeEnum.HAZE)"
     />
     <SingleUpload
       v-model="urls.pred"
       class="upload-component"
       tooltip="上传预测图像"
-      @on-change="(url) => handleChange(url, ImageTypeEnum.PRED)"
+      @on-change="(url: string) => handleChange(url, ImageTypeEnum.PRED)"
     />
     <SingleUpload
       v-model="urls.gt"
       class="upload-component"
       tooltip="上传无雾图像"
-      @on-change="(url) => handleChange(url, ImageTypeEnum.CLEAN)"
+      @on-change="(url: string) => handleChange(url, ImageTypeEnum.CLEAN)"
     />
   </div>
 </template>
