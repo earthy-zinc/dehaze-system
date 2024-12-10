@@ -129,15 +129,15 @@ export const constantRoutes: RouteRecordRaw[] = [
           keepAlive: true,
         },
       },
-      {
-        path: "segmentation",
-        component: () => import("@/views/presentation/segmentation/index.vue"),
-        meta: {
-          title: "图像分割",
-          icon: "segmentation",
-          keepAlive: true,
-        },
-      },
+      // {
+      //   path: "segmentation",
+      //   component: () => import("@/views/presentation/segmentation/index.vue"),
+      //   meta: {
+      //     title: "图像分割",
+      //     icon: "segmentation",
+      //     keepAlive: true,
+      //   },
+      // },
     ],
   },
   {

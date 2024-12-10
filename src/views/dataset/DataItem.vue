@@ -4,7 +4,7 @@ import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue"
 import { ViewCard } from "@/components/Waterfall/types";
 import DatasetAPI from "@/api/dataset";
 import { api as viewerApi } from "v-viewer";
-import { ImageTypeEnum } from "@/enums/ImageType";
+import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 
 defineOptions({
   name: "DataItem",
