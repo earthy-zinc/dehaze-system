@@ -12,6 +12,7 @@ import { useImageShowStore } from "@/store/modules/imageShow";
 import DatasetImageSelect from "@/components/DatasetImageSelect/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import examples from "@/views/presentation/dehaze/exampleImages";
+import { changeUrl } from "@/utils";
 
 const algorithmStore = useAlgorithmStore();
 const imageShowStore = useImageShowStore();
@@ -88,13 +89,13 @@ function handleGenerateImage() {
   })
     .then((res) => {
       // 获取生成后的图片url
-      imageShowStore.setImageUrl(res.hazeUrl, ImageTypeEnum.HAZE);
-      imageShowStore.setImageUrl(res.predUrl, ImageTypeEnum.PRED);
+      imageShowStore.setImageUrl(changeUrl(res.hazeUrl), ImageTypeEnum.HAZE);
+      imageShowStore.setImageUrl(changeUrl(res.predUrl), ImageTypeEnum.PRED);
     })
     .then(() => {
       if (cleanUrl.value) {
         const clean = cleanUrl.value;
-        handleCleanUrl(clean).then((res) => (cleanUrl.value = res));
+        handleCleanUrl(clean).then((res) => (cleanUrl.value = changeUrl(res)));
       }
     })
     .then(() => activePage("overlap"))
@@ -129,7 +130,10 @@ async function handleCleanUrl(url: string) {
   const res = await fetch(url);
   const blob = await res.blob();
   const cleanFile = new File([blob], "clean.jpg", { type: "image/jpeg" });
-  const cleanRes = await FileAPI.upload(cleanFile, imageShowStore.modelId);
+  const cleanRes = await FileAPI.upload(
+    cleanFile,
+    Number(selectedModel.value) || 1
+  );
   return cleanRes.url;
 }
 
@@ -139,7 +143,6 @@ function handleEval() {
   router.push("/evaluation/index").then(async () => {
     imageShowStore.setModelId(Number(selectedModel.value) || 1);
     imageShowStore.setImageUrls(imgUrls.value);
-    console.log(cleanUrl.value);
     if (cleanUrl.value !== "") {
       imageShowStore.setImageUrl(cleanUrl.value, ImageTypeEnum.CLEAN);
     }

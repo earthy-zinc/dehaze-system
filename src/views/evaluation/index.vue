@@ -267,9 +267,7 @@ onMounted(async () => {
       <div v-else>
         <ParallelImageUpload />
         <div class="flex justify-center mt-6">
-          <el-button size="large" type="text" @click="handleReset"
-            >重新上传
-          </el-button>
+          <el-button size="large" @click="handleReset">重新上传 </el-button>
           <el-button
             :disabled="!allUploaded"
             :loading="loading"
