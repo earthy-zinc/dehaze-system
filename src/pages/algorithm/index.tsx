@@ -93,14 +93,14 @@ export default function AlgorithmList(): React.JSX.Element {
         title: "存储位置",
         dataIndex: "path",
         key: "path",
-        width: 50,
+        width: 100,
         align: "center",
       },
       {
         title: "代码导入路径",
         dataIndex: "importPath",
         key: "importPath",
-        width: 50,
+        width: 100,
         align: "center",
       },
       {
@@ -248,6 +248,7 @@ export default function AlgorithmList(): React.JSX.Element {
             defaultExpandAllRows: true,
             indentSize: 10,
           }}
+          tableLayout={"fixed"}
           rowKey={(record: Algorithm) => record.id}
           dataSource={algorithmList}
           loading={loading}

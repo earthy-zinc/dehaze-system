@@ -1,4 +1,5 @@
 import appReducer from "@/store/modules/appSlice";
+import imageShowReducer from "@/store/modules/imageShowSlice";
 import settingsReducer from "@/store/modules/settingsSlice";
 import userReducer from "@/store/modules/userSlice";
 import { configureStore } from "@reduxjs/toolkit";
@@ -11,6 +12,7 @@ const store = configureStore({
     settings: settingsReducer,
     user: userReducer,
     permission: permissionReducer,
+    imageShow: imageShowReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

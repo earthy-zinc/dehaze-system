@@ -97,16 +97,10 @@ export default function DatasetList() {
         align: "center",
       },
       {
-        title: "图片数量",
-        dataIndex: "total",
-        key: "total",
-        width: 80,
-        align: "center",
-      },
-      {
         title: "存储位置",
         dataIndex: "path",
         key: "path",
+        width: 100,
       },
       {
         title: "状态",
@@ -179,7 +173,6 @@ export default function DatasetList() {
     "type",
     "description",
     "size",
-    "total",
     "path",
     "status",
     "action",
@@ -261,7 +254,7 @@ export default function DatasetList() {
             defaultExpandAllRows: true,
             indentSize: 10,
           }}
-          scroll={{ x: true }}
+          tableLayout={"fixed"}
           rowKey={(record: Dataset) => record.id}
           dataSource={datasetList}
           loading={loading}
