@@ -202,11 +202,16 @@ D.~Chen, M.~He, Q.~Fan, J.~Liao, L.~Zhang, D.~Hou, L.~Yuan, and G.~Hua, ``Gated
   IEEE Winter Conference on Applications of Computer Vision}.\hskip 1em plus
   0.5em minus 0.4em\relax IEEE, 2019, pp. 1375--1383.
 
-\bibitem{ancuti2018ihaze}
-C.~Ancuti, C.~O. Ancuti, R.~Timofte, and C.~De~Vleeschouwer, ``I-haze: A
-  dehazing benchmark with real hazy and haze-free indoor images,'' in
-  \emph{Advanced Concepts for Intelligent Vision Systems}.\hskip 1em plus 0.5em
-  minus 0.4em\relax Springer, 2018, pp. 620--631.
+\bibitem{cui2024revitalizing}
+Y.~Cui, W.~Ren, X.~Cao, and A.~Knoll, ``Revitalizing convolutional network for
+  image restoration,'' \emph{IEEE Transactions on Pattern Analysis and Machine
+  Intelligence}, 2024.
+
+\bibitem{ancuti2018ohaze}
+C.~O. Ancuti, C.~Ancuti, R.~Timofte, and C.~De~Vleeschouwer, ``O-haze: A
+  dehazing benchmark with real hazy and haze-free outdoor images,'' in
+  \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern
+  Recognition Workshops}, 2018, pp. 754--762.
 
 \bibitem{ancuti2020ntire}
 C.~O. Ancuti, C.~Ancuti, F.-A. Vasluianu, and R.~Timofte, ``Ntire 2020

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.3.17)  6 DEC 2024 14:27
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2024.3.17)  8 JAN 2025 16:06
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -427,11 +427,11 @@ File: O-HAZE-compare.jpg Graphic file (type jpg)
 <use O-HAZE-compare.jpg>
 Package pdftex.def Info: O-HAZE-compare.jpg  used on input line 187.
 (pdftex.def)             Requested size: 505.89pt x 225.27597pt.
-<DENSE-HAZE-compare.jpg, id=35, 1927.2pt x 960.58875pt>
+<DENSE-HAZE-compare.jpg, id=35, 1927.2pt x 703.62875pt>
 File: DENSE-HAZE-compare.jpg Graphic file (type jpg)
 <use DENSE-HAZE-compare.jpg>
 Package pdftex.def Info: DENSE-HAZE-compare.jpg  used on input line 194.
-(pdftex.def)             Requested size: 505.89pt x 252.15099pt.
+(pdftex.def)             Requested size: 505.89pt x 184.69994pt.
 <NH-HAZE-20-compare.jpg, id=36, 1927.2pt x 959.585pt>
 File: NH-HAZE-20-compare.jpg Graphic file (type jpg)
 <use NH-HAZE-20-compare.jpg>
@@ -447,31 +447,42 @@ File: NH-HAZE-23-compare.jpg Graphic file (type jpg)
 <use NH-HAZE-23-compare.jpg>
 Package pdftex.def Info: NH-HAZE-23-compare.jpg  used on input line 215.
 (pdftex.def)             Requested size: 505.89pt x 230.01862pt.
- [5 <./enhanced_decoder.png> <./enhancer_block.png>] [6 <./O-HAZE-Compare.jpg> 
-<./DENSE-HAZE-Compare.jpg>]
+ [5 <./enhanced_decoder.png> <./enhancer_block.png>]
+Underfull \hbox (badness 1546) in paragraph at lines 345--346
+[]\OT1/ptm/m/n/10 To val-i-date the ef-fec-tive-ness of our pro-posed model,
+ []
+
+
+Underfull \hbox (badness 1377) in paragraph at lines 345--346
+\OT1/ptm/m/n/10 we con-ducted ex-per-i-ments on four datasets, namely O-
+ []
+
+[6 <./O-HAZE-Compare.jpg> <./DENSE-HAZE-Compare.jpg>]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [7 <./NH-HAZE-20-Compare.jpg> <./NH-HAZE-21-Compare.jpg>]
 LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 3
 61.
 
 (c:/Programs/texlive/2024/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-) [8 <./NH-HAZE-23-Compare.jpg>]
-Underfull \hbox (badness 1354) in paragraph at lines 392--393
+)
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [7 <./NH-HAZE-20-Compare.jpg> <./NH-HAZE-21-Compare.jpg>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [8 <./NH-HAZE-23-Compare.jpg>]
+Underfull \hbox (badness 1354) in paragraph at lines 389--390
 []\OT1/ptm/m/n/10 1) Base: Con-sists of VQ En-coder, VQ De-coder and
  []
 
 <ablation_experiments.png, id=54, 577.7836pt x 430.98515pt>
 File: ablation_experiments.png Graphic file (type png)
 <use ablation_experiments.png>
-Package pdftex.def Info: ablation_experiments.png  used on input line 404.
+Package pdftex.def Info: ablation_experiments.png  used on input line 401.
 (pdftex.def)             Requested size: 252.94499pt x 188.6739pt.
 
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 404--405
+Overfull \hbox (0.94499pt too wide) in paragraph at lines 401--402
  [][] 
  []
 
@@ -488,10 +499,10 @@ L3 programming layer <2024-02-20>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 4726 strings out of 474116
- 84765 string characters out of 5743190
- 1960190 words of memory out of 5000000
- 27021 multiletter control sequences out of 15000+600000
+ 4727 strings out of 474116
+ 84786 string characters out of 5743190
+ 1959190 words of memory out of 5000000
+ 27022 multiletter control sequences out of 15000+600000
  604062 words of font info for 118 fonts, out of 8000000 for 9000
  1145 hyphenation exceptions out of 8191
  57i,16n,65p,1858b,332s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -508,7 +519,7 @@ texlive/2024/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb><c:/Programs/texlive/
 2024/texmf-dist/fonts/type1/urw/times/utmr8a.pfb><c:/Programs/texlive/2024/texm
 f-dist/fonts/type1/urw/times/utmri8a.pfb>
 Output written on "A dual branch multi-scale image dehazing method based on hig
-h quality codebook.pdf" (11 pages, 3299024 bytes).
+h quality codebook.pdf" (11 pages, 3575902 bytes).
 PDF statistics:
  117 PDF objects out of 1000 (max. 8388607)
  64 compressed objects within 1 object stream
