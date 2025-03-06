@@ -117,7 +117,7 @@ def predict():
                 return error(f"算法模块 {algorithm.import_path} 缺少 dehaze 函数", 404)
         except Exception as e:
             traceback.print_exc()
-            return error(f"加载算法模块失败：{str(e)}", 404)
+            return error(f"加载算法模块失败：{str(e)}"), 404
 
         model_path = os.path.join(current_app.config.get("MODEL_PATH", ""), algorithm.path)
         pred_img: BytesIO = model.dehaze(input_img, model_path)

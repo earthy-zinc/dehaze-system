@@ -175,7 +175,7 @@ def _generate_object_name(md5: str, extension: str) -> str:
     :param extension: 文件扩展名
     :return: 对象名
     """
-    return f"/upload/{datetime.now().strftime('%Y%m%d')}/{md5}.{extension}"
+    return f"upload/{datetime.now().strftime('%Y%m%d')}/{md5}.{extension}"
 
 
 def _generate_object_name_by_path(path: str, md5: str, extension: str) -> str:
