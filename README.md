@@ -4,6 +4,44 @@
 
 详细介绍请见`./doc`文件夹。
 
+## 技术栈
+
+* 前端框架：Vue3 + Vite（快速构建） + TypeScript（类型安全）
+* UI库：Element-Plus（组件丰富）
+* 状态管理：Pinia（模块化状态管理）
+* 路由：Vue Router（动态路由+静态路由分离）
+* 构建工具：Vite5 + ESLint + Prettier（代码规范）
+* 其他：Unocss（原子化CSS）、WebSocket（实时状态同步）
+
+## 目录结构
+
+* 分层清晰：
+  * views - 存放页面组件
+  * components - 封装复用组件
+  * api - 统一接口管理
+* 模块化设计：
+  * store/modules - 划分用户、权限、设置等独立模块
+  * enums - 集中管理枚举类型
+  * typings - 定义类型声明文件
+* 功能模块化：
+  * compare - 目录实现图像对比功能
+  * dataset - 管理数据集
+  * evaluation - 展示算法评估指标
+* 组件复用：
+  * Waterfall - 实现瀑布流布局
+  * Magnifier - 封装画布缩放功能
+  * DraggableLine - 实现对比图层拖拽
+
+## 系统功能
+
+| 模块    | 功能描述                                        | 
+|-------|---------------------------------------------|
+| 用户系统  | 支持角色/权限管理、多级部门树、WebSocket保持登录状态             |
+| 数据集管理 | 瀑布流展示+懒加载、MD5校验、图片数量统计                      |
+| 算法处理  | 支持多种去雾算法、实时对比（CSS clip-path）、指标可视化（ECharts） |
+| 可视化对比 | 重叠对比（拖拽分隔线）、放大镜细节查看（Canvas）、亮度对比度调节         |
+| 系统配置  | 主题色切换、暗黑模式、布局模式（侧边/顶部/混合）、水印开关              |
+
 ## 系统亮点
 
 1. **⽤户登录与注册：** 通过 websocket 定时请求确保⽤户登录状态，利⽤ Pinia 和浏览器 localStorage 持久化保存⽤户 Token、⻆⾊权限以及其他个性化设置。
@@ -23,7 +61,6 @@
 | **开发工具**         | VSCode                                                                                          | [下载地址](https://code.visualstudio.com/Download)                                            |
 | **运行环境**         | Node 16+                                                                                        | [下载地址](http://nodejs.cn/download)                                                         |
 | **VSCode插件(必装)** | 1. `Vue Language Features (Volar) ` <br/> 2. `TypeScript Vue Plugin (Volar) `  <br/>3. 禁用 Vetur | ![vscode-plugin](https://foruda.gitee.com/images/1687755823108948048/d0198b2d_716974.png) |
-
 
 ## 项目启动
 
