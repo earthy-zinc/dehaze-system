@@ -163,6 +163,11 @@ public class GlobalExceptionHandler {
         return Result.failed(e.getMessage());
     }
 
+    @ExceptionHandler(RateLimitException.class)
+    public Result<Void> handleRateLimitException(RateLimitException ex) {
+        return Result.failed(ResultCode.RATE_LIMIT, ex.getMessage());
+    }
+
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleException(Exception e) throws Exception{

@@ -17,6 +17,29 @@ spring:
     url: jdbc:mysql://localhost:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
     username: root
     password: 123456
+    druid:
+      # 初始连接数（建议保持与最小空闲一致）
+      initial-size: 5
+      # 最小空闲连接（防止突发流量导致连接创建延迟）
+      min-idle: 5
+      # 最大活跃连接数（根据DB配置max_connections调整）
+      max-active: 50
+      # 获取连接最大等待时间（毫秒，避免线程长时间阻塞）
+      max-wait: 5000
+      # 空闲连接检查周期（60秒扫描一次空闲连接）
+      time-between-eviction-runs-millis: 60000
+      # 连接最小空闲时间（300秒后回收空闲连接）
+      min-evictable-idle-time-millis: 300000
+      # 验证查询语句（保持与数据库类型匹配）
+      validation-query: SELECT 1
+      # 空闲时验证连接有效性（推荐开启）
+      test-while-idle: true
+      # 获取连接时不验证（避免性能损耗）
+      test-on-borrow: false
+      # 归还连接时不验证（同上）
+      test-on-return: false
+      # 启用统计监控和防火墙（防御SQL注入）
+      filters: stat,wall
   data:
     redis:
       database: 0
@@ -67,7 +90,6 @@ mybatis-plus:
     # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-
 # 安全配置
 security:
   jwt:
@@ -93,10 +115,10 @@ file:
   # 上传文件基于url
   baseUrl: http://localhost:8989/api/v1/files/download
   # 初始化数据集所在文件夹
-  datasetPath: D:/DeepLearning/dataset
+  datasetPath: /mnt/d/DeepLearning/dataset
   # 本地存储
   local:
-    uploadPath: E:/ProgramProject/new-dehaze/dehaze-java/upload
+    uploadPath: /mnt/e/ProgramProject/new-dehaze/dehaze-java/upload
   # MinIO 对象存储服务
   minio:
     # 服务Endpoint
@@ -142,7 +164,7 @@ xxl:
       address:
       ip:
       port: 9999
-      logpath: E:/ProgramProject/new-dehaze/dehaze-java/logs/xxl-job
+      logpath: /mnt/e/ProgramProject/new-dehaze/dehaze-java/logs/xxl-job
       logretentiondays: 30
 
 # 验证码配置
