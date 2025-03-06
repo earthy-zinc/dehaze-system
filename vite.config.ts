@@ -1,6 +1,6 @@
 import vue from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
-import { UserConfig, ConfigEnv, loadEnv, defineConfig } from "vite";
+import { ConfigEnv, defineConfig, loadEnv, UserConfig } from "vite";
 
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
@@ -14,15 +14,14 @@ import mockDevServerPlugin from "vite-plugin-mock-dev-server";
 import UnoCSS from "unocss/vite";
 import { resolve } from "path";
 import {
-  name,
-  version,
-  engines,
   dependencies,
   devDependencies,
+  engines,
+  name,
+  version,
 } from "./package.json";
 
 // https://devtools-next.vuejs.org/
-import VueDevTools from "vite-plugin-vue-devtools";
 
 /** 平台的名称、版本、运行所需的`node`版本、依赖、构建时间的类型提示 */
 const __APP_INFO__ = {
@@ -135,9 +134,9 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
         // 指定symbolId格式
         symbolId: "icon-[dir]-[name]",
       }),
-      VueDevTools({
-        openInEditorHost: `http://localhost:${env.VITE_APP_PORT}`,
-      }),
+      // VueDevTools({
+      //   openInEditorHost: `http://localhost:${env.VITE_APP_PORT}`,
+      // }),
     ],
     // 预加载项目必需的组件
     optimizeDeps: {
