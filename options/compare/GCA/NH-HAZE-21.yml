@@ -46,7 +46,7 @@ network_g:
 
 # path
 path:
-  pretrain_network_g:
+  pretrain_network_g: experiments/GCA-NH-HAZE-21/models/net_g_best_.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~

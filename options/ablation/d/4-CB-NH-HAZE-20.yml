@@ -1,5 +1,5 @@
 # general settings
-name: NH-HAZE-21
+name: Ablation-4-CB-NH-HAZE-20
 model_type: ITBNewModel
 num_gpu: 1 # set num_gpu: 0 for cpu mode
 gpu_id: 0
@@ -8,10 +8,10 @@ manual_seed: 0
 # dataset and data loader settings
 datasets:
   train:
-    name: NH-HAZE-21-train
+    name: NH-HAZE-20-train
     type: NtireH5Dataset
     mode: train
-    data_path: datasets/NH-HAZE-21.h5
+    data_path: datasets/NH-HAZE-20.h5
     shuffle: true
 
     # data loader
@@ -24,24 +24,29 @@ datasets:
     num_prefetch_queue: *bsz
 
   val:
-    name: NH-HAZE-21-val
+    name: NH-HAZE-20-val
     type: NtireH5Dataset
     mode: val
-    data_path: datasets/NH-HAZE-21-val.h5
+    data_path: datasets/NH-HAZE-20-val.h5
     shuffle: true
 
   test:
-    name: NH-HAZE-21-test
+    name: NH-HAZE-20-test
     type: NtireH5Dataset
     mode: test
-    data_path: datasets/NH-HAZE-21-test.h5
+    data_path: datasets/NH-HAZE-20-test.h5
     shuffle: true
+
 # network structures
 network_g:
   type: FusionRefine
   opt:
     LQ_stage: true
     additional_encoder: PyramidDiNAT
+    additional_enhancer: false
+    use_quantize: True
+    use_residual: true
+  one_branch: false
   frozen_module_keywords: ['quantizer', 'decoder_group', 'after_quant', 'out_conv']
 
 network_d:
@@ -101,9 +106,6 @@ train:
     fake_label_val: 0.0
     loss_weight: 0.2
 
-  codebook_opt:
-    loss_weight: 1.0
-
   semantic_opt:
     loss_weight: 0.1
 
@@ -115,7 +117,6 @@ train:
 val:
   val_freq: !!float 1000
   save_img: true
-  suffix: NH-HAZE-21
 
   key_metric: psnr
   metrics:

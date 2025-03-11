@@ -1,5 +1,5 @@
 # general settings
-name: NH-HAZE-20-2
+name: NH-HAZE-20-3-chapter
 model_type: ITBNewModel
 num_gpu: 1 # set num_gpu: 0 for cpu mode
 gpu_id: 0
@@ -58,7 +58,7 @@ hq_options:
 # path
 path:
   pretrain_network_hq: pretrained_models/pretrained_HQPs_ITB.pth
-  pretrain_network_g: experiments/NH-HAZE-20/models/net_g_latest.pth
+  pretrain_network_g: experiments/NH-HAZE-20/models/net_g_64000.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
