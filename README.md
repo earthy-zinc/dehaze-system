@@ -32,22 +32,24 @@ graph TD
 
 ## 🛞 主要功能模块
 
-| 模块类型 | 核心实现类                                                    | 关键技术点                                                      |
-|------|----------------------------------------------------------|------------------------------------------------------------|
-| 安全认证 | JwtValidationFilter/SecurityConfig/SysUserDetailsService | JWT令牌签发校验、Spring Security鉴权                                |
-| 文件管理 | FileController/MinioFileService/FileUploadUtils          | 适配多存储方案，支持本地/MinIO/OSS存储，文件分片上传                            |
-| 系统管理 | SysController+SysServiceImpl+SysMapper                   | RBAC模型、部门树形结构管理                                            |
-| 算法管理 | SysAlgorithmController+算法配置JSON                          | 通过importPath字段实现算法模型动态加载、Python服务集成，支持MSFNet/FFANet等12+种算法 |
-| 图像处理 | ImageUtils/FileService                                   | 缩略图生成、EXIF信息提取                                             |
+| 模块类型 | 核心实现类                                                    | 关键技术点                                      |
+|------|----------------------------------------------------------|--------------------------------------------|
+| 安全认证 | JwtValidationFilter/SecurityConfig/SysUserDetailsService | JWT令牌签发校验、Spring Security鉴权                |
+| 文件管理 | FileController/MinioFileService/FileUploadUtils          | 适配多存储方案，支持本地/MinIO/OSS存储，文件分片上传            |
+| 系统管理 | SysController+SysServiceImpl+SysMapper                   | RBAC模型、部门树形结构管理                            |
+| 算法管理 | SysAlgorithmController                                   | 算法模型动态加载、Python服务集成，支持MSFNet/FFANet等12+种算法 |
+| 图像处理 | ImageUtils/FileService                                   | 缩略图生成、EXIF信息提取                             |
 
 ## 🚨 项目难点
 
-1. Java后端与Python算法服务的通信过程中可能导致任务阻塞，利用标准化 RESTful
+1. **不同系统间通信问题：** Java后端与Python算法服务的通信过程中可能导致任务阻塞，利用标准化 RESTful
    API协议实现服务间通信，异步调用机制（CompletableFuture）与超时控制（Hystrix）解决，避免服务阻塞导致超时
-2. 高并发场景下业务处理时间与锁过期时间不匹配导致死锁，通过 @PreventDuplicateSubmit 注解组合业务ID+接口标识生成唯一锁Key解决分布式锁竞争问题。
-3. 通过文件分片上传合并策略提高大文件（>1GB）上传成功率
-4. Python模型的内存泄漏问题，模型加载/卸载不及时导致内存和显存持续增长，最终会使服务器资源耗尽，不同算法模型的输出格式统一处理，避免算法输出格式不统一导致前端解析异常。
-5. 算法执行超时控制与熔断机制，单个模型故障可能导致整个服务不可用，通过进行熔断处理，避免服务雪崩
+2. **高并发场景分布式锁竞争问题：** 高并发场景下业务处理时间与锁过期时间不匹配导致死锁，通过 @PreventDuplicateSubmit
+   注解组合业务ID+接口标识生成唯一锁Key解决分布式锁竞争问题。
+3. **大文件上传难题：** 通过文件分片上传合并策略提高大文件（>1GB）上传成功率
+4. **Python模型的内存泄漏问题：** 模型加载/卸载不及时导致内存和显存持续增长，最终会使服务器资源耗尽
+5. **模型输入输出一致性问题：** 不同算法模型的输出格式统一处理，避免算法输出格式不统一导致前端解析异常。
+6. **算法执行超时控制与熔断机制：** 单个模型故障可能导致整个服务不可用，通过进行熔断处理，避免服务雪崩
 
 ## 💡 项目亮点
 
