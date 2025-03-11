@@ -50,7 +50,9 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(requestMatcherRegistry ->
-                        requestMatcherRegistry.requestMatchers(SecurityConstants.LOGIN_PATH).permitAll()
+                        requestMatcherRegistry
+                                .requestMatchers(SecurityConstants.LOGIN_PATH).permitAll()
+                                .requestMatchers("/actuator/**").permitAll()
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(httpSecurityExceptionHandlingConfigurer ->
