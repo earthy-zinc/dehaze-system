@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'springboot'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: [ 'localhost:8989' ] # 替换为实际服务端口（Windows用localhost，Linux/mac用host.docker.internal）
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: [ 'localhost:9091' ]
