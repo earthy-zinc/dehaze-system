@@ -58,7 +58,7 @@ hq_options:
 # path
 path:
   pretrain_network_hq: pretrained_models/pretrained_HQPs_ITB.pth
-  pretrain_network_g: experiments/NH-HAZE-23/models/net_g_best_.pth
+  pretrain_network_g: experiments/NH-HAZE-23/models/net_g_68000.pth
   pretrain_network_d: ~
   strict_load: false
   # resume_state: ~
