@@ -16,6 +16,11 @@
 \citation{vaswani2017attention}
 \citation{guo2022image}
 \citation{song2023vision}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces An overview of our network. This model consists of two branches: prior matching branch and channel attention branch. Hazy image is processed separately by two branches, each outputting a feature map. Then, a feature fusion tail is used to fuse the feature maps of the two branches, and finally generate a hazy-free image.}}{2}{}\protected@file@percent }
+\newlabel{fig0}{{1}{2}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {II}RELATED WORK}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Prior-Based Dehazing Methods}{2}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Learning-Based Dehazing Methods}{2}{}\protected@file@percent }
 \citation{yu2021two}
 \citation{deng2009imagenet}
 \citation{zhang2018image}
@@ -23,11 +28,6 @@
 \citation{dosovitskiy2020image}
 \citation{liu2023data}
 \citation{guo2023scanet}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces An overview of our network. This model consists of two branches: prior matching branch and channel attention branch. Hazy image is processed separately by two branches, each outputting a feature map. Then, a feature fusion tail is used to fuse the feature maps of the two branches, and finally generate a hazy-free image.}}{2}{}\protected@file@percent }
-\newlabel{fig0}{{1}{2}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {II}RELATED WORK}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Prior-Based Dehazing Methods}{2}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Learning-Based Dehazing Methods}{2}{}\protected@file@percent }
 \citation{kingma2013auto}
 \citation{van2017neural}
 \citation{esser2021taming}
@@ -43,11 +43,11 @@
 \citation{ronneberger2015u}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Detail network structure of the Enhancer Block.}}{4}{}\protected@file@percent }
 \newlabel{fig4}{{3}{4}{}{}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces The discretization operation of the codebook is shown in the figure. The feature map output by the encoder is discretized to form discrete encoded values, represented by gray rectangles. Each discrete encoded value corresponds to an embedding, and all embeddings are stored in an embedding space, which is the codebook. Using the nearest neighbor algorithm to obtain the true embedding in the codebook, represented as a colored rectangular prism, as input to the decoder.}}{4}{}\protected@file@percent }
-\newlabel{fig2}{{4}{4}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}High-quality Codebook}{4}{}\protected@file@percent }
 \newlabel{vq_equation_1}{{2}{4}{}{}{}}
 \newlabel{vq_equation_2}{{3}{4}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces The discretization operation of the codebook is shown in the figure. The feature map output by the encoder is discretized to form discrete encoded values, represented by gray rectangles. Each discrete encoded value corresponds to an embedding, and all embeddings are stored in an embedding space, which is the codebook. Using the nearest neighbor algorithm to obtain the true embedding in the codebook, represented as a colored rectangular prism, as input to the decoder.}}{4}{}\protected@file@percent }
+\newlabel{fig2}{{4}{4}{}{}{}}
 \newlabel{vq_equation_3}{{4}{4}{}{}{}}
 \newlabel{codebook_matching_equation_2}{{5}{4}{}{}{}}
 \newlabel{codebook_matching_equation_1}{{6}{4}{}{}{}}
@@ -58,23 +58,22 @@
 \citation{simonyan2014very}
 \citation{johnson2016perceptual}
 \citation{zhu2017unpaired}
-\citation{chen2022real}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Pyramid Neighborhood Attention Encoder}{5}{}\protected@file@percent }
 \newlabel{NA_operation}{{7}{5}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Loss Function}{5}{}\protected@file@percent }
 \newlabel{vq_loss}{{8}{5}{}{}{}}
 \newlabel{reconstruction_loss}{{9}{5}{}{}{}}
 \newlabel{perceptual_loss}{{10}{5}{}{}{}}
-\newlabel{adversarial_loss}{{11}{5}{}{}{}}
+\citation{chen2022real}
 \citation{simonyan2014very}
 \citation{gondal2019unreasonable}
-\citation{simonyan2014very}
 \@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Visual examples in dataset O-HAZE. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}}{6}{}\protected@file@percent }
 \newlabel{fig6}{{5}{6}{}{}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Visual examples in dataset DENSE-HAZE. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}}{6}{}\protected@file@percent }
 \newlabel{fig7}{{6}{6}{}{}{}}
+\newlabel{adversarial_loss}{{11}{6}{}{}{}}
 \newlabel{codebook_loss}{{12}{6}{}{}{}}
-\newlabel{encoder_loss}{{13}{6}{}{}{}}
+\citation{simonyan2014very}
 \citation{he2010single}
 \citation{li2017aod}
 \citation{chen2019gated}
@@ -93,6 +92,7 @@
 \newlabel{fig8}{{7}{7}{}{}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Visual examples in dataset NH-HAZE-21. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}}{7}{}\protected@file@percent }
 \newlabel{fig9}{{8}{7}{}{}{}}
+\newlabel{encoder_loss}{{13}{7}{}{}{}}
 \newlabel{rest_loss}{{14}{7}{}{}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {IV}EXPERIMENTS}{7}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Datasets}{7}{}\protected@file@percent }
@@ -101,8 +101,6 @@
 \newlabel{fig10}{{9}{8}{}{}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Quantitative Comparison Results of Various Dehazing Methods and Proposed Method on I-HAZE, O-HAZE, DENSE-HAZE, NH-HAZE-20, NH-HAZE-21 and NH-HAZE-23. \textbf  {Bold} Indicates the Best and \underline  {Underline} Indicates the Second Best.}}{8}{}\protected@file@percent }
 \newlabel{table_compare_with_benchmarks}{{I}{8}{}{}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces The details of the datasets used in our experiments}}{8}{}\protected@file@percent }
-\newlabel{table_dataset}{{II}{8}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Implementation Details}{8}{}\protected@file@percent }
 \citation{wang2004image}
 \citation{zhang2018unreasonable}
@@ -117,10 +115,12 @@
 \citation{cui2024revitalizing}
 \citation{liu2023data}
 \citation{liang2021swinir}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces The details of the datasets used in our experiments}}{9}{}\protected@file@percent }
+\newlabel{table_dataset}{{II}{9}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Evaluation Metrics and Competitors}{9}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Quantitative Evaluations on Benchmarks}{9}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Ablation study on the proposed network performance after gradually add modules. The scores are evaluated on NH-HAZE-20 dataset. \textbf  {Bold} indicates the best and \underline  {underline} indicates the second best.}}{9}{}\protected@file@percent }
-\newlabel{Ablation_study_1}{{III}{9}{}{}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces The ablation experiments on the NH-HAZE-20 dataset show the PSNR variation curves for different experimental configurations as the number of iterations increases.}}{9}{}\protected@file@percent }
+\newlabel{Ablation_study_2}{{10}{9}{}{}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Ablation Study}{9}{}\protected@file@percent }
 \bibstyle{IEEEtran}
 \bibdata{references}
@@ -148,13 +148,13 @@
 \bibcite{kingma2013auto}{22}
 \bibcite{van2017neural}{23}
 \bibcite{wu2023ridcp}{24}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Ablation study on the proposed network performance after gradually add modules. The scores are evaluated on NH-HAZE-20 dataset. \textbf  {Bold} indicates the best and \underline  {underline} indicates the second best.}}{10}{}\protected@file@percent }
+\newlabel{Ablation_study_1}{{III}{10}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}CONCLUSION}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{10}{}\protected@file@percent }
 \bibcite{qu2019enhanced}{25}
 \bibcite{ronneberger2015u}{26}
 \bibcite{hassani2023neighborhood}{27}
-\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces The ablation experiments on the NH-HAZE-20 dataset show the PSNR variation curves for different experimental configurations as the number of iterations increases.}}{10}{}\protected@file@percent }
-\newlabel{Ablation_study_2}{{10}{10}{}{}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {V}CONCLUSION}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{References}{10}{}\protected@file@percent }
 \bibcite{liu2021swin}{28}
 \bibcite{simonyan2014very}{29}
 \bibcite{johnson2016perceptual}{30}
