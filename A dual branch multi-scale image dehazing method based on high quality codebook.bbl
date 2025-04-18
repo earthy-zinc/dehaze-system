@@ -7,8 +7,7 @@
 \providecommand{\BIBentrySTDinterwordspacing}{\spaceskip=0pt\relax}
 \providecommand{\BIBentryALTinterwordstretchfactor}{4}
 \providecommand{\BIBentryALTinterwordspacing}{\spaceskip=\fontdimen2\font plus
-\BIBentryALTinterwordstretchfactor\fontdimen3\font minus
-  \fontdimen4\font\relax}
+\BIBentryALTinterwordstretchfactor\fontdimen3\font minus \fontdimen4\font\relax}
 \providecommand{\BIBforeignlanguage}[2]{{%
 \expandafter\ifx\csname l@#1\endcsname\relax
 \typeout{** WARNING: IEEEtran.bst: No hyphenation pattern has been}%
@@ -21,234 +20,130 @@
 \providecommand{\BIBdecl}{\relax}
 \BIBdecl
 
-\bibitem{mccartney1976optics}
-E.~McCartney, ``Optics of the atmosphere: scattering by molecules and
-  particles,'' pp. 76--77, 1976.
-
-\bibitem{narasimhan2002vision}
-S.~G. Narasimhan and S.~K. Nayar, ``Vision and the atmosphere,''
-  \emph{International Journal of Computer Vision}, vol.~48, pp. 233--254, 2002.
-
 \bibitem{he2010single}
-K.~He, J.~Sun, and X.~Tang, ``Single image haze removal using dark channel
-  prior,'' \emph{IEEE transactions on Pattern Analysis and Machine
-  Intelligence}, vol.~33, no.~12, pp. 2341--2353, 2010.
+K.~He, J.~Sun, and X.~Tang, ``Single image haze removal using dark channel prior,'' \emph{IEEE transactions on Pattern Analysis and Machine Intelligence}, vol.~33, no.~12, pp. 2341--2353, 2010.
 
 \bibitem{cai2016dehazenet}
-B.~Cai, X.~Xu, K.~Jia, C.~Qing, and D.~Tao, ``Dehazenet: An end-to-end system
-  for single image haze removal,'' \emph{IEEE transactions on Image
-  Processing}, vol.~25, no.~11, pp. 5187--5198, 2016.
+B.~Cai, X.~Xu, K.~Jia, C.~Qing, and D.~Tao, ``Dehazenet: An end-to-end system for single image haze removal,'' \emph{IEEE transactions on Image Processing}, vol.~25, no.~11, pp. 5187--5198, 2016.
 
 \bibitem{li2017aod}
-B.~Li, X.~Peng, Z.~Wang, J.~Xu, and D.~Feng, ``Aod-net: All-in-one dehazing
-  network,'' in \emph{Proceedings of the IEEE International Conference on
-  Computer Vision}, 2017, pp. 4770--4778.
+B.~Li, X.~Peng, Z.~Wang, J.~Xu, and D.~Feng, ``Aod-net: All-in-one dehazing network,'' in \emph{Proceedings of the IEEE International Conference on Computer Vision}, 2017, pp. 4770--4778.
 
 \bibitem{liu2019griddehazenet}
-X.~Liu, Y.~Ma, Z.~Shi, and J.~Chen, ``Griddehazenet: Attention-based
-  multi-scale network for image dehazing,'' in \emph{Proceedings of the IEEE
-  International Conference on Computer Vision}, 2019, pp. 7314--7323.
+X.~Liu, Y.~Ma, Z.~Shi, and J.~Chen, ``Griddehazenet: Attention-based multi-scale network for image dehazing,'' in \emph{Proceedings of the IEEE International Conference on Computer Vision}, 2019, pp. 7314--7323.
 
 \bibitem{qin2020ffa}
-X.~Qin, Z.~Wang, Y.~Bai, X.~Xie, and H.~Jia, ``Ffa-net: Feature fusion
-  attention network for single image dehazing,'' in \emph{Proceedings of the
-  AAAI conference on Artificial Intelligence}, vol.~34, no.~07, 2020, pp.
-  11\,908--11\,915.
+X.~Qin, Z.~Wang, Y.~Bai, X.~Xie, and H.~Jia, ``Ffa-net: Feature fusion attention network for single image dehazing,'' in \emph{Proceedings of the AAAI conference on Artificial Intelligence}, vol.~34, no.~07, 2020, pp. 11\,908--11\,915.
 
 \bibitem{guo2022image}
-C.-L. Guo, Q.~Yan, S.~Anwar, R.~Cong, W.~Ren, and C.~Li, ``Image dehazing
-  transformer with transmission-aware 3d position embedding,'' in
-  \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern
-  Recognition}, 2022, pp. 5812--5820.
+C.-L. Guo, Q.~Yan, S.~Anwar, R.~Cong, W.~Ren, and C.~Li, ``Image dehazing transformer with transmission-aware 3d position embedding,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2022, pp. 5812--5820.
 
 \bibitem{song2023vision}
-Y.~Song, Z.~He, H.~Qian, and X.~Du, ``Vision transformers for single image
-  dehazing,'' \emph{IEEE Transactions on Image Processing}, vol.~32, pp.
-  1927--1941, 2023.
+Y.~Song, Z.~He, H.~Qian, and X.~Du, ``Vision transformers for single image dehazing,'' \emph{IEEE Transactions on Image Processing}, vol.~32, pp. 1927--1941, 2023.
 
 \bibitem{yu2021two}
-Y.~Yu, H.~Liu, M.~Fu, J.~Chen, X.~Wang, and K.~Wang, ``A two-branch neural
-  network for non-homogeneous dehazing via ensemble learning,'' in
-  \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern
-  Recognition}, 2021, pp. 193--202.
+Y.~Yu, H.~Liu, M.~Fu, J.~Chen, X.~Wang, and K.~Wang, ``A two-branch neural network for non-homogeneous dehazing via ensemble learning,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2021, pp. 193--202.
 
 \bibitem{jin2022structure}
-Y.~Jin, W.~Yan, W.~Yang, and R.~T. Tan, ``Structure representation network and
-  uncertainty feedback learning for dense non-uniform fog removal,'' in
-  \emph{Asian Conference on Computer Vision}, 2022, pp. 155--172.
+Y.~Jin, W.~Yan, W.~Yang, and R.~T. Tan, ``Structure representation network and uncertainty feedback learning for dense non-uniform fog removal,'' in \emph{Asian Conference on Computer Vision}, 2022, pp. 155--172.
 
 \bibitem{liu2023data}
-Y.~Liu, H.~Liu, L.~Li, Z.~Wu, and J.~Chen, ``A data-centric solution to
-  nonhomogeneous dehazing via vision transformer,'' in \emph{Proceedings of the
-  IEEE Conference on Computer Vision and Pattern Recognition}, 2023, pp.
-  1406--1415.
+Y.~Liu, H.~Liu, L.~Li, Z.~Wu, and J.~Chen, ``A data-centric solution to nonhomogeneous dehazing via vision transformer,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2023, pp. 1406--1415.
 
 \bibitem{esser2021taming}
-P.~Esser, R.~Rombach, and B.~Ommer, ``Taming transformers for high-resolution
-  image synthesis,'' in \emph{Proceedings of the IEEE Conference on Computer
-  Vision and Pattern Recognition}, 2021, pp. 12\,873--12\,883.
+P.~Esser, R.~Rombach, and B.~Ommer, ``Taming transformers for high-resolution image synthesis,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2021, pp. 12\,873--12\,883.
 
 \bibitem{hassani2022dilated}
-A.~Hassani and H.~Shi, ``Dilated neighborhood attention transformer,''
-  \emph{arXiv preprint arXiv:2209.15001}, 2022.
+A.~Hassani and H.~Shi, ``Dilated neighborhood attention transformer,'' \emph{arXiv preprint arXiv:2209.15001}, 2022.
 
 \bibitem{zhu2015fast}
-Q.~Zhu, J.~Mai, and L.~Shao, ``A fast single image haze removal algorithm using
-  color attenuation prior,'' \emph{IEEE transactions on image processing},
-  vol.~24, no.~11, pp. 3522--3533, 2015.
+Q.~Zhu, J.~Mai, and L.~Shao, ``A fast single image haze removal algorithm using color attenuation prior,'' \emph{IEEE transactions on image processing}, vol.~24, no.~11, pp. 3522--3533, 2015.
 
 \bibitem{yin2023multiscale}
-X.~Yin, G.~Tu, and Q.~Chen, ``Multiscale depth fusion with contextual hybrid
-  enhancement network for image dehazing,'' \emph{IEEE Transactions on
-  Instrumentation and Measurement}, vol.~72, pp. 1--12, 2023.
+X.~Yin, G.~Tu, and Q.~Chen, ``Multiscale depth fusion with contextual hybrid enhancement network for image dehazing,'' \emph{IEEE Transactions on Instrumentation and Measurement}, vol.~72, pp. 1--12, 2023.
 
 \bibitem{vaswani2017attention}
-A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N. Gomez,
-  {\L}.~Kaiser, and I.~Polosukhin, ``Attention is all you need,''
-  \emph{Advances in Neural Information Processing Systems}, vol.~30, 2017.
+A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N. Gomez, {\L}.~Kaiser, and I.~Polosukhin, ``Attention is all you need,'' \emph{Advances in Neural Information Processing Systems}, vol.~30, 2017.
 
 \bibitem{deng2009imagenet}
-J.~Deng, W.~Dong, R.~Socher, L.-J. Li, K.~Li, and L.~Fei-Fei, ``Imagenet: A
-  large-scale hierarchical image database,'' in \emph{Proceedings of the IEEE
-  Conference on Computer Vision and Pattern Recognition}, 2009, pp. 248--255.
+J.~Deng, W.~Dong, R.~Socher, L.-J. Li, K.~Li, and L.~Fei-Fei, ``Imagenet: A large-scale hierarchical image database,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2009, pp. 248--255.
 
 \bibitem{zhang2018image}
-Y.~Zhang, K.~Li, K.~Li, L.~Wang, B.~Zhong, and Y.~Fu, ``Image super-resolution
-  using very deep residual channel attention networks,'' in \emph{Proceedings
-  of the European Conference on Computer Vision}, 2018, pp. 286--301.
+Y.~Zhang, K.~Li, K.~Li, L.~Wang, B.~Zhong, and Y.~Fu, ``Image super-resolution using very deep residual channel attention networks,'' in \emph{Proceedings of the European Conference on Computer Vision}, 2018, pp. 286--301.
 
 \bibitem{dosovitskiy2020image}
-A.~Dosovitskiy, L.~Beyer, A.~Kolesnikov, D.~Weissenborn, X.~Zhai,
-  T.~Unterthiner, M.~Dehghani, M.~Minderer, G.~Heigold, S.~Gelly \emph{et~al.},
-  ``An image is worth 16x16 words: Transformers for image recognition at
-  scale,'' in \emph{International Conference on Learning Representations},
-  2020.
+A.~Dosovitskiy, L.~Beyer, A.~Kolesnikov, D.~Weissenborn, X.~Zhai, T.~Unterthiner, M.~Dehghani, M.~Minderer, G.~Heigold, S.~Gelly \emph{et~al.}, ``An image is worth 16x16 words: Transformers for image recognition at scale,'' in \emph{International Conference on Learning Representations}, 2020.
 
 \bibitem{guo2023scanet}
-Y.~Guo, Y.~Gao, W.~Liu, Y.~Lu, J.~Qu, S.~He, and W.~Ren, ``Scanet: Self-paced
-  semi-curricular attention network for non-homogeneous image dehazing,'' in
-  \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern
-  Recognition}, 2023, pp. 1884--1893.
+Y.~Guo, Y.~Gao, W.~Liu, Y.~Lu, J.~Qu, S.~He, and W.~Ren, ``Scanet: Self-paced semi-curricular attention network for non-homogeneous image dehazing,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2023, pp. 1884--1893.
 
 \bibitem{kingma2013auto}
-D.~P. Kingma and M.~Welling, ``Auto-encoding variational bayes,'' \emph{arXiv
-  preprint arXiv:1312.6114}, 2013.
+D.~P. Kingma and M.~Welling, ``Auto-encoding variational bayes,'' \emph{arXiv preprint arXiv:1312.6114}, 2013.
 
 \bibitem{van2017neural}
-A.~Van Den~Oord, O.~Vinyals \emph{et~al.}, ``Neural discrete representation
-  learning,'' \emph{Advances in neural information processing systems},
-  vol.~30, 2017.
+A.~Van Den~Oord, O.~Vinyals \emph{et~al.}, ``Neural discrete representation learning,'' \emph{Advances in neural information processing systems}, vol.~30, 2017.
 
 \bibitem{wu2023ridcp}
-R.-Q. Wu, Z.-P. Duan, C.-L. Guo, Z.~Chai, and C.~Li, ``Ridcp: Revitalizing real
-  image dehazing via high-quality codebook priors,'' in \emph{Proceedings of
-  the IEEE Conference on Computer Vision and Pattern Recognition}, 2023, pp.
-  22\,282--22\,291.
-
-\bibitem{qu2019enhanced}
-Y.~Qu, Y.~Chen, J.~Huang, and Y.~Xie, ``Enhanced pix2pix dehazing network,'' in
-  \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern
-  Recognition}, 2019, pp. 8160--8168.
+R.-Q. Wu, Z.-P. Duan, C.-L. Guo, Z.~Chai, and C.~Li, ``Ridcp: Revitalizing real image dehazing via high-quality codebook priors,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2023, pp. 22\,282--22\,291.
 
 \bibitem{ronneberger2015u}
-O.~Ronneberger, P.~Fischer, and T.~Brox, ``U-net: Convolutional networks for
-  biomedical image segmentation,'' in \emph{Medical Image Computing and
-  Computer-Assisted Intervention}, 2015, pp. 234--241.
+O.~Ronneberger, P.~Fischer, and T.~Brox, ``U-net: Convolutional networks for biomedical image segmentation,'' in \emph{Medical Image Computing and Computer-Assisted Intervention}, 2015, pp. 234--241.
 
 \bibitem{hassani2023neighborhood}
-A.~Hassani, S.~Walton, J.~Li, S.~Li, and H.~Shi, ``Neighborhood attention
-  transformer,'' in \emph{Proceedings of the IEEE Conference on Computer Vision
-  and Pattern Recognition}, 2023, pp. 6185--6194.
+A.~Hassani, S.~Walton, J.~Li, S.~Li, and H.~Shi, ``Neighborhood attention transformer,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2023, pp. 6185--6194.
 
 \bibitem{liu2021swin}
-Z.~Liu, Y.~Lin, Y.~Cao, H.~Hu, Y.~Wei, Z.~Zhang, S.~Lin, and B.~Guo, ``Swin
-  transformer: Hierarchical vision transformer using shifted windows,'' in
-  \emph{Proceedings of the IEEE International Conference on Computer Vision},
-  2021, pp. 10\,012--10\,022.
+Z.~Liu, Y.~Lin, Y.~Cao, H.~Hu, Y.~Wei, Z.~Zhang, S.~Lin, and B.~Guo, ``Swin transformer: Hierarchical vision transformer using shifted windows,'' in \emph{Proceedings of the IEEE International Conference on Computer Vision}, 2021, pp. 10\,012--10\,022.
+
+\bibitem{qu2019enhanced}
+Y.~Qu, Y.~Chen, J.~Huang, and Y.~Xie, ``Enhanced pix2pix dehazing network,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2019, pp. 8160--8168.
 
 \bibitem{simonyan2014very}
-K.~Simonyan and A.~Zisserman, ``Very deep convolutional networks for
-  large-scale image recognition,'' \emph{arXiv preprint arXiv:1409.1556}, 2014.
+K.~Simonyan and A.~Zisserman, ``Very deep convolutional networks for large-scale image recognition,'' \emph{arXiv preprint arXiv:1409.1556}, 2014.
 
 \bibitem{johnson2016perceptual}
-J.~Johnson, A.~Alahi, and L.~Fei-Fei, ``Perceptual losses for real-time style
-  transfer and super-resolution,'' in \emph{Proceedings of the European
-  Conference on Computer Vision}, 2016, pp. 694--711.
+J.~Johnson, A.~Alahi, and L.~Fei-Fei, ``Perceptual losses for real-time style transfer and super-resolution,'' in \emph{Proceedings of the European Conference on Computer Vision}, 2016, pp. 694--711.
 
 \bibitem{zhu2017unpaired}
-J.-Y. Zhu, T.~Park, P.~Isola, and A.~A. Efros, ``Unpaired image-to-image
-  translation using cycle-consistent adversarial networks,'' in
-  \emph{Proceedings of the IEEE International Conference on Computer Vision},
-  2017, pp. 2223--2232.
+J.-Y. Zhu, T.~Park, P.~Isola, and A.~A. Efros, ``Unpaired image-to-image translation using cycle-consistent adversarial networks,'' in \emph{Proceedings of the IEEE International Conference on Computer Vision}, 2017, pp. 2223--2232.
 
 \bibitem{chen2022real}
-C.~Chen, X.~Shi, Y.~Qin, X.~Li, X.~Han, T.~Yang, and S.~Guo, ``Real-world blind
-  super-resolution via feature matching with implicit high-resolution priors,''
-  in \emph{Proceedings of the 30th ACM International Conference on Multimedia},
-  2022, pp. 1329--1338.
+C.~Chen, X.~Shi, Y.~Qin, X.~Li, X.~Han, T.~Yang, and S.~Guo, ``Real-world blind super-resolution via feature matching with implicit high-resolution priors,'' in \emph{Proceedings of the 30th ACM International Conference on Multimedia}, 2022, pp. 1329--1338.
 
 \bibitem{gondal2019unreasonable}
-M.~W. Gondal, B.~Sch{\"o}lkopf, and M.~Hirsch, ``The unreasonable effectiveness
-  of texture transfer for single image super-resolution,'' in \emph{Proceedings
-  of the European Conference on Computer Vision}, 2019, pp. 80--97.
+M.~W. Gondal, B.~Sch{\"o}lkopf, and M.~Hirsch, ``The unreasonable effectiveness of texture transfer for single image super-resolution,'' in \emph{Proceedings of the European Conference on Computer Vision}, 2019, pp. 80--97.
 
 \bibitem{chen2019gated}
-D.~Chen, M.~He, Q.~Fan, J.~Liao, L.~Zhang, D.~Hou, L.~Yuan, and G.~Hua, ``Gated
-  context aggregation network for image dehazing and deraining,'' in \emph{IEEE
-  Winter Conference on Applications of Computer Vision}, 2019, pp. 1375--1383.
+D.~Chen, M.~He, Q.~Fan, J.~Liao, L.~Zhang, D.~Hou, L.~Yuan, and G.~Hua, ``Gated context aggregation network for image dehazing and deraining,'' in \emph{IEEE Winter Conference on Applications of Computer Vision}, 2019, pp. 1375--1383.
 
 \bibitem{cui2024revitalizing}
-Y.~Cui, W.~Ren, X.~Cao, and A.~Knoll, ``Revitalizing convolutional network for
-  image restoration,'' \emph{IEEE Transactions on Pattern Analysis and Machine
-  Intelligence}, 2024.
+Y.~Cui, W.~Ren, X.~Cao, and A.~Knoll, ``Revitalizing convolutional network for image restoration,'' \emph{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 2024.
 
 \bibitem{ancuti2018ohaze}
-C.~O. Ancuti, C.~Ancuti, R.~Timofte, and C.~De~Vleeschouwer, ``O-haze: A
-  dehazing benchmark with real hazy and haze-free outdoor images,'' in
-  \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern
-  Recognition Workshops}, 2018, pp. 754--762.
+C.~O. Ancuti, C.~Ancuti, R.~Timofte, and C.~De~Vleeschouwer, ``O-haze: A dehazing benchmark with real hazy and haze-free outdoor images,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops}, 2018, pp. 754--762.
 
 \bibitem{ancuti2019dense}
-C.~O. Ancuti, C.~Ancuti, M.~Sbert, and R.~Timofte, ``Dense-haze: A benchmark
-  for image dehazing with dense-haze and haze-free images,'' in \emph{IEEE
-  international conference on image processing}.\hskip 1em plus 0.5em minus
-  0.4em\relax IEEE, 2019, pp. 1014--1018.
+C.~O. Ancuti, C.~Ancuti, M.~Sbert, and R.~Timofte, ``Dense-haze: A benchmark for image dehazing with dense-haze and haze-free images,'' in \emph{IEEE international conference on image processing}.\hskip 1em plus 0.5em minus 0.4em\relax IEEE, 2019, pp. 1014--1018.
 
 \bibitem{ancuti2020ntire}
-C.~O. Ancuti, C.~Ancuti, F.-A. Vasluianu, and R.~Timofte, ``Ntire 2020
-  challenge on nonhomogeneous dehazing,'' in \emph{Proceedings of the IEEE
-  Conference on Computer Vision and Pattern Recognition Workshops}, 2020, pp.
-  490--491.
+C.~O. Ancuti, C.~Ancuti, F.-A. Vasluianu, and R.~Timofte, ``Ntire 2020 challenge on nonhomogeneous dehazing,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops}, 2020, pp. 490--491.
 
 \bibitem{ancuti2021ntire}
-C.~O. Ancuti, C.~Ancuti, and F.-A. Vasluianu, ``Ntire 2021 nonhomogeneous
-  dehazing challenge report,'' in \emph{Proceedings of the IEEE Conference on
-  Computer Vision and Pattern Recognition}, 2021, pp. 627--646.
+C.~O. Ancuti, C.~Ancuti, and F.-A. Vasluianu, ``Ntire 2021 nonhomogeneous dehazing challenge report,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2021, pp. 627--646.
 
 \bibitem{ancuti2023ntire}
-C.~O. Ancuti, C.~Ancuti, F.-A. Vasluianu, and Timofte, ``Ntire 2023 hr
-  nonhomogeneous dehazing challenge report,'' in \emph{Proceedings of the IEEE
-  Conference on Computer Vision and Pattern Recognition Workshops}, 2023, pp.
-  1808--1825.
+C.~O. Ancuti, C.~Ancuti, F.-A. Vasluianu, and Timofte, ``Ntire 2023 hr nonhomogeneous dehazing challenge report,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition Workshops}, 2023, pp. 1808--1825.
 
 \bibitem{kingma2014adam}
-D.~P. Kingma, ``Adam: A method for stochastic optimization,'' \emph{arXiv
-  preprint arXiv:1412.6980}, 2014.
+D.~P. Kingma, ``Adam: A method for stochastic optimization,'' \emph{arXiv preprint arXiv:1412.6980}, 2014.
 
 \bibitem{wang2004image}
-Z.~Wang, A.~C. Bovik, H.~R. Sheikh, and E.~P. Simoncelli, ``Image quality
-  assessment: from error visibility to structural similarity,'' \emph{IEEE
-  transactions on Image Processing}, vol.~13, no.~4, pp. 600--612, 2004.
+Z.~Wang, A.~C. Bovik, H.~R. Sheikh, and E.~P. Simoncelli, ``Image quality assessment: from error visibility to structural similarity,'' \emph{IEEE transactions on Image Processing}, vol.~13, no.~4, pp. 600--612, 2004.
 
 \bibitem{zhang2018unreasonable}
-R.~Zhang, P.~Isola, A.~A. Efros, E.~Shechtman, and O.~Wang, ``The unreasonable
-  effectiveness of deep features as a perceptual metric,'' in \emph{Proceedings
-  of the IEEE Conference on Computer Vision and Pattern Recognition}, 2018, pp.
-  586--595.
+R.~Zhang, P.~Isola, A.~A. Efros, E.~Shechtman, and O.~Wang, ``The unreasonable effectiveness of deep features as a perceptual metric,'' in \emph{Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}, 2018, pp. 586--595.
 
 \bibitem{liang2021swinir}
-J.~Liang, J.~Cao, G.~Sun, K.~Zhang, L.~Van~Gool, and R.~Timofte, ``Swinir:
-  Image restoration using swin transformer,'' in \emph{Proceedings of the IEEE
-  International Conference on Computer Vision}, 2021, pp. 1833--1844.
+J.~Liang, J.~Cao, G.~Sun, K.~Zhang, L.~Van~Gool, and R.~Timofte, ``Swinir: Image restoration using swin transformer,'' in \emph{Proceedings of the IEEE International Conference on Computer Vision}, 2021, pp. 1833--1844.
 
 \end{thebibliography}

@@ -1,12 +1,10 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2025.2.12)  18 APR 2025 18:30
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2024) (preloaded format=pdflatex 2025.2.12)  19 APR 2025 00:58
 entering extended mode
  restricted \write18 enabled.
+ file:line:error style messages enabled.
  %&-line parsing enabled.
-**"A dual branch multi-scale image dehazing method based on high quality codebo
-ok.tex"
-
-(./A dual branch multi-scale image dehazing method based on high quality codebo
-ok.tex
+**"c:/StudyDoc/2.研究生事务/研究成果/学术论文/MyPaper-IEEE-trans/A dual branch multi-scale image dehazing method based on high quality codebook.tex"
+(c:/StudyDoc/2.研究生事务/研究成果/学术论文/MyPaper-IEEE-trans/A dual branch multi-scale image dehazing method based on high quality codebook.tex
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
 (c:/texlive/2024/texmf-dist/tex/latex/ieeetran/IEEEtran.cls
@@ -20,8 +18,7 @@ Document Class: IEEEtran 2015/08/26 V1.8b by Michael Shell
 \@IEEEtrantmpcountB=\count189
 \@IEEEtrantmpcountC=\count190
 \@IEEEtrantmptoksA=\toks17
-LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 5
-03.
+LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 503.
 (c:/texlive/2024/texmf-dist/tex/latex/psnfss/ot1ptm.fd
 File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
 )
@@ -36,52 +33,42 @@ LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <5> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <7> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <8> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <9> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <9> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <10> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <10> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <11> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <11> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <12> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <12> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <17> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <17> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <20> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <20> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <24> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <24> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-
 \IEEEquantizedlength=\dimen147
 \IEEEquantizedlengthdiff=\dimen148
 \IEEEquantizedtextheightdiff=\dimen149
@@ -123,17 +110,14 @@ Package: amsmath 2023/05/13 v2.17o AMS math features
 For additional information on amsmath, use the `?' option.
 (c:/texlive/2024/texmf-dist/tex/latex/amsmath/amstext.sty
 Package: amstext 2021/08/26 v2.01 AMS text
-
-(c:/texlive/2024/texmf-dist/tex/latex/amsmath/amsgen.sty
+ (c:/texlive/2024/texmf-dist/tex/latex/amsmath/amsgen.sty
 File: amsgen.sty 1999/11/30 v2.0 generic functions
 \@emptytoks=\toks18
 \ex@=\dimen164
-))
-(c:/texlive/2024/texmf-dist/tex/latex/amsmath/amsbsy.sty
+)) (c:/texlive/2024/texmf-dist/tex/latex/amsmath/amsbsy.sty
 Package: amsbsy 1999/11/29 v1.2d Bold Symbols
 \pmbraise@=\dimen165
-)
-(c:/texlive/2024/texmf-dist/tex/latex/amsmath/amsopn.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/amsmath/amsopn.sty
 Package: amsopn 2022/04/08 v2.04 operator names
 )
 \inf@bad=\count269
@@ -183,22 +167,18 @@ LaTeX Info: Redefining \Relbar on input line 971.
 \mathdisplay@stack=\toks22
 LaTeX Info: Redefining \[ on input line 2953.
 LaTeX Info: Redefining \] on input line 2954.
-)
-(c:/texlive/2024/texmf-dist/tex/latex/amsfonts/amsfonts.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/amsfonts/amsfonts.sty
 Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
 \symAMSa=\mathgroup4
 \symAMSb=\mathgroup5
 LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
 LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
 (Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
-)
-(c:/texlive/2024/texmf-dist/tex/latex/algorithms/algorithmic.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/algorithms/algorithmic.sty
 Package: algorithmic 2009/08/24 v0.1 Document Style `algorithmic'
-
-(c:/texlive/2024/texmf-dist/tex/latex/base/ifthen.sty
+ (c:/texlive/2024/texmf-dist/tex/latex/base/ifthen.sty
 Package: ifthen 2022/04/13 v1.1d Standard LaTeX ifthen package (DPC)
-)
-(c:/texlive/2024/texmf-dist/tex/latex/graphics/keyval.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/graphics/keyval.sty
 Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
 \KV@toks@=\toks23
 )
@@ -208,8 +188,7 @@ Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
 \c@ALC@depth=\count284
 \ALC@tlm=\skip54
 \algorithmicindent=\skip55
-)
-(c:/texlive/2024/texmf-dist/tex/latex/tools/array.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/tools/array.sty
 Package: array 2023/10/16 v2.5g Tabular extension package (FMi)
 \col@sep=\dimen173
 \ar@mcellbox=\box55
@@ -218,11 +197,9 @@ Package: array 2023/10/16 v2.5g Tabular extension package (FMi)
 \extratabsurround=\skip56
 \backup@length=\skip57
 \ar@cellbox=\box56
-)
-(c:/texlive/2024/texmf-dist/tex/latex/subfig/subfig.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/subfig/subfig.sty
 Package: subfig 2005/06/28 ver: 1.3 subfig package
-
-(c:/texlive/2024/texmf-dist/tex/latex/caption/caption3.sty
+ (c:/texlive/2024/texmf-dist/tex/latex/caption/caption3.sty
 Package: caption3 2023/07/31 v2.4d caption3 kernel (AR)
 \caption@tempdima=\dimen175
 \captionmargin=\dimen176
@@ -234,17 +211,7 @@ Package: caption3 2023/07/31 v2.4d caption3 kernel (AR)
 \caption@hangindent=\dimen182
 Package caption Info: Unknown document class (or package),
 (caption)             standard defaults will be used.
-Package caption Info: \@makecaption = \long macro:#1#2->\ifx \@captype \@IEEEta
-blestring \footnotesize \bgroup \par \centering \@IEEEtabletopskipstrut {\norma
-lfont \footnotesize #1}\\{\normalfont \footnotesize \scshape #2}\par \addvspace
- {0.5\baselineskip }\egroup \@IEEEtablecaptionsepspace \else \@IEEEfigurecaptio
-nsepspace \setbox \@tempboxa \hbox {\normalfont \footnotesize {#1.}\nobreakspac
-e \nobreakspace #2}\ifdim \wd \@tempboxa >\hsize \setbox \@tempboxa \hbox {\nor
-malfont \footnotesize {#1.}\nobreakspace \nobreakspace }\parbox [t]{\hsize }{\n
-ormalfont \footnotesize \noindent \unhbox \@tempboxa #2}\else \ifCLASSOPTIONcon
-ference \hbox to\hsize {\normalfont \footnotesize \hfil \box \@tempboxa \hfil }
-\else \hbox to\hsize {\normalfont \footnotesize \box \@tempboxa \hfil }\fi \fi 
-\fi  on input line 1175.
+Package caption Info: \@makecaption = \long macro:#1#2->\ifx \@captype \@IEEEtablestring \footnotesize \bgroup \par \centering \@IEEEtabletopskipstrut {\normalfont \footnotesize #1}\\{\normalfont \footnotesize \scshape #2}\par \addvspace {0.5\baselineskip }\egroup \@IEEEtablecaptionsepspace \else \@IEEEfigurecaptionsepspace \setbox \@tempboxa \hbox {\normalfont \footnotesize {#1.}\nobreakspace \nobreakspace #2}\ifdim \wd \@tempboxa >\hsize \setbox \@tempboxa \hbox {\normalfont \footnotesize {#1.}\nobreakspace \nobreakspace }\parbox [t]{\hsize }{\normalfont \footnotesize \noindent \unhbox \@tempboxa #2}\else \ifCLASSOPTIONconference \hbox to\hsize {\normalfont \footnotesize \hfil \box \@tempboxa \hfil }\else \hbox to\hsize {\normalfont \footnotesize \box \@tempboxa \hfil }\fi \fi \fi  on input line 1175.
 )
 \c@KVtest=\count285
 \sf@farskip=\skip58
@@ -259,76 +226,54 @@ ference \hbox to\hsize {\normalfont \footnotesize \hfil \box \@tempboxa \hfil }
 \c@lotdepth=\count291
 \sf@top=\skip61
 \sf@bottom=\skip62
-)
-(c:/texlive/2024/texmf-dist/tex/latex/base/textcomp.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/base/textcomp.sty
 Package: textcomp 2020/02/02 v2.0n Standard LaTeX package
-)
-(c:/texlive/2024/texmf-dist/tex/latex/sttools/stfloats.sty
-Package: stfloats 2017/03/27 v3.3 Improve float mechanism and baselineskip sett
-ings
+) (c:/texlive/2024/texmf-dist/tex/latex/sttools/stfloats.sty
+Package: stfloats 2017/03/27 v3.3 Improve float mechanism and baselineskip settings
 \@dblbotnum=\count292
 \c@dblbotnumber=\count293
-)
-(c:/texlive/2024/texmf-dist/tex/latex/url/url.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/url/url.sty
 \Urlmuskip=\muskip17
 Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
-)
-(c:/texlive/2024/texmf-dist/tex/latex/tools/verbatim.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/tools/verbatim.sty
 Package: verbatim 2023-11-06 v1.5v LaTeX2e package for verbatim enhancements
 \every@verbatim=\toks25
 \verbatim@line=\toks26
 \verbatim@in@stream=\read2
-)
-(c:/texlive/2024/texmf-dist/tex/latex/graphics/graphicx.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/graphics/graphicx.sty
 Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
-
-(c:/texlive/2024/texmf-dist/tex/latex/graphics/graphics.sty
+ (c:/texlive/2024/texmf-dist/tex/latex/graphics/graphics.sty
 Package: graphics 2022/03/10 v1.4e Standard LaTeX Graphics (DPC,SPQR)
-
-(c:/texlive/2024/texmf-dist/tex/latex/graphics/trig.sty
+ (c:/texlive/2024/texmf-dist/tex/latex/graphics/trig.sty
 Package: trig 2021/08/11 v1.11 sin cos tan (DPC)
-)
-(c:/texlive/2024/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+) (c:/texlive/2024/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
 File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
 )
 Package graphics Info: Driver file: pdftex.def on input line 107.
-
-(c:/texlive/2024/texmf-dist/tex/latex/graphics-def/pdftex.def
+ (c:/texlive/2024/texmf-dist/tex/latex/graphics-def/pdftex.def
 File: pdftex.def 2022/09/22 v1.2b Graphics/color driver for pdftex
 ))
 \Gin@req@height=\dimen184
 \Gin@req@width=\dimen185
-)
-(c:/texlive/2024/texmf-dist/tex/latex/cite/cite.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/cite/cite.sty
 LaTeX Info: Redefining \cite on input line 302.
 LaTeX Info: Redefining \nocite on input line 332.
 Package: cite 2015/02/27  v 5.5
-)
-(c:/texlive/2024/texmf-dist/tex/latex/multirow/multirow.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/multirow/multirow.sty
 Package: multirow 2021/03/15 v2.8 Span multiple rows of a table
 \multirow@colwidth=\skip63
 \multirow@cntb=\count294
 \multirow@dima=\skip64
 \bigstrutjot=\dimen186
-)
-(c:/texlive/2024/texmf-dist/tex/latex/preprint/balance.sty
+) (c:/texlive/2024/texmf-dist/tex/latex/preprint/balance.sty
 Package: balance 1999/02/23 4.3 (PWD)
 \oldvsize=\dimen187
-)
-(c:/texlive/2024/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+) (c:/texlive/2024/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
 File: l3backend-pdftex.def 2024-02-20 L3 backend support: PDF output (pdfTeX)
 \l__color_backend_stack_int=\count295
 \l__pdf_internal_box=\box57
-)
-
-LaTeX Warning: Unused global option(s):
-    [lettersize].
-
-
-(./A dual branch multi-scale image dehazing method based on high quality codebo
-ok.aux)
-\openout1 = `"A dual branch multi-scale image dehazing method based on high qua
-lity codebook.aux"'.
+) (./A dual branch multi-scale image dehazing method based on high quality codebook.aux)
+\openout1 = `"A dual branch multi-scale image dehazing method based on high quality codebook.aux"'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 17.
 LaTeX Font Info:    ... okay on input line 17.
@@ -364,129 +309,92 @@ Package caption Info: End \AtBeginDocument code.
 \everyMPtoPDFconversion=\toks28
 ) (c:/texlive/2024/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
-Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
-85.
-
-(c:/texlive/2024/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
-File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
-e
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+ (c:/texlive/2024/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-LaTeX Font Info:    Trying to load font information for U+msa on input line 44.
-
-
-(c:/texlive/2024/texmf-dist/tex/latex/amsfonts/umsa.fd
-File: umsa.fd 2013/01/14 v3.01 AMS symbols A
-)
-LaTeX Font Info:    Trying to load font information for U+msb on input line 44.
-
-
-(c:/texlive/2024/texmf-dist/tex/latex/amsfonts/umsb.fd
-File: umsb.fd 2013/01/14 v3.01 AMS symbols B
-)
-Underfull \vbox (badness 1024) has occurred while \output is active []
-
- [1{c:/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{c:/texlive/20
-24/texmf-dist/fonts/enc/dvips/base/8r.enc}
-
-
-]
-<network_architecture.png, id=15, 3360.555pt x 2142.0025pt>
+<network_architecture.png, id=1, 3360.555pt x 2142.0025pt>
 File: network_architecture.png Graphic file (type png)
 <use network_architecture.png>
-Package pdftex.def Info: network_architecture.png  used on input line 69.
+Package pdftex.def Info: network_architecture.png  used on input line 62.
 (pdftex.def)             Requested size: 505.89pt x 322.43047pt.
- [2 <./network_architecture.png>]
-<enhanced_decoder.png, id=21, 730.22812pt x 561.97453pt>
-File: enhanced_decoder.png Graphic file (type png)
-<use enhanced_decoder.png>
-Package pdftex.def Info: enhanced_decoder.png  used on input line 104.
-(pdftex.def)             Requested size: 252.94499pt x 194.66174pt.
 
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 104--105
- [][] 
- []
-
-<enhancer_block.png, id=22, 1167.23578pt x 535.6261pt>
-File: enhancer_block.png Graphic file (type png)
-<use enhancer_block.png>
-Package pdftex.def Info: enhancer_block.png  used on input line 110.
-(pdftex.def)             Requested size: 252.94499pt x 116.07274pt.
-
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 110--111
- [][] 
- []
-
-[3 <./enhanced_decoder.png>]
-<discretization_operation.png, id=27, 609.40172pt x 208.90547pt>
-File: discretization_operation.png Graphic file (type png)
-<use discretization_operation.png>
-Package pdftex.def Info: discretization_operation.png  used on input line 124.
-(pdftex.def)             Requested size: 252.94499pt x 86.71008pt.
-
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 124--125
- [][] 
- []
-
-[4 <./enhancer_block.png> <./discretization_operation.png>]
-<O-HAZE-compare.jpg, id=36, 1927.2pt x 858.20625pt>
-File: O-HAZE-compare.jpg Graphic file (type jpg)
-<use O-HAZE-compare.jpg>
-Package pdftex.def Info: O-HAZE-compare.jpg  used on input line 195.
-(pdftex.def)             Requested size: 505.89pt x 225.27597pt.
-<DENSE-HAZE-compare.jpg, id=37, 1927.2pt x 703.62875pt>
-File: DENSE-HAZE-compare.jpg Graphic file (type jpg)
-<use DENSE-HAZE-compare.jpg>
-Package pdftex.def Info: DENSE-HAZE-compare.jpg  used on input line 202.
-(pdftex.def)             Requested size: 505.89pt x 184.69994pt.
-<NH-HAZE-20-compare.jpg, id=38, 1927.2pt x 959.585pt>
-File: NH-HAZE-20-compare.jpg Graphic file (type jpg)
-<use NH-HAZE-20-compare.jpg>
-Package pdftex.def Info: NH-HAZE-20-compare.jpg  used on input line 209.
-(pdftex.def)             Requested size: 505.89pt x 251.88751pt.
-<NH-HAZE-21-compare.jpg, id=39, 1927.2pt x 712.6625pt>
-File: NH-HAZE-21-compare.jpg Graphic file (type jpg)
-<use NH-HAZE-21-compare.jpg>
-Package pdftex.def Info: NH-HAZE-21-compare.jpg  used on input line 216.
-(pdftex.def)             Requested size: 505.89pt x 187.07127pt.
-<NH-HAZE-23-compare.jpg, id=40, 1927.2pt x 876.27374pt>
-File: NH-HAZE-23-compare.jpg Graphic file (type jpg)
-<use NH-HAZE-23-compare.jpg>
-Package pdftex.def Info: NH-HAZE-23-compare.jpg  used on input line 223.
-(pdftex.def)             Requested size: 505.89pt x 230.01862pt.
- [5] [6 <./O-HAZE-Compare.jpg> <./DENSE-HAZE-Compare.jpg>]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [7 <./NH-HAZE-20-Compare.jpg> <./NH-HAZE-21-Compare.jpg>]
-Underfull \vbox (badness 2452) has occurred while \output is active []
+ [1{c:/texlive/2024/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{c:/texlive/2024/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 3
-69.
 
-(c:/texlive/2024/texmf-dist/tex/latex/psnfss/ts1ptm.fd
+] [2 <./network_architecture.png>]
+LaTeX Font Info:    Trying to load font information for U+msa on input line 91.
+ (c:/texlive/2024/texmf-dist/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 91.
+ (c:/texlive/2024/texmf-dist/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+) [3]
+<discretization_operation.png, id=22, 609.40172pt x 208.90547pt>
+File: discretization_operation.png Graphic file (type png)
+<use discretization_operation.png>
+Package pdftex.def Info: discretization_operation.png  used on input line 123.
+(pdftex.def)             Requested size: 252.22269pt x 86.46144pt.
+ [4 <./discretization_operation.png>]
+<enhanced_decoder.png, id=32, 730.22812pt x 561.97453pt>
+File: enhanced_decoder.png Graphic file (type png)
+<use enhanced_decoder.png>
+Package pdftex.def Info: enhanced_decoder.png  used on input line 192.
+(pdftex.def)             Requested size: 252.22269pt x 194.10437pt.
+<enhancer_block.png, id=33, 1167.23578pt x 535.6261pt>
+File: enhancer_block.png Graphic file (type png)
+<use enhancer_block.png>
+Package pdftex.def Info: enhancer_block.png  used on input line 198.
+(pdftex.def)             Requested size: 252.22269pt x 115.73764pt.
+<O-HAZE-compare.jpg, id=34, 1927.2pt x 858.20625pt>
+File: O-HAZE-compare.jpg Graphic file (type jpg)
+<use O-HAZE-compare.jpg>
+Package pdftex.def Info: O-HAZE-compare.jpg  used on input line 211.
+(pdftex.def)             Requested size: 505.89pt x 225.27597pt.
+<DENSE-HAZE-compare.jpg, id=35, 1927.2pt x 703.62875pt>
+File: DENSE-HAZE-compare.jpg Graphic file (type jpg)
+<use DENSE-HAZE-compare.jpg>
+Package pdftex.def Info: DENSE-HAZE-compare.jpg  used on input line 218.
+(pdftex.def)             Requested size: 505.89pt x 184.69994pt.
+<NH-HAZE-20-compare.jpg, id=36, 1927.2pt x 959.585pt>
+File: NH-HAZE-20-compare.jpg Graphic file (type jpg)
+<use NH-HAZE-20-compare.jpg>
+Package pdftex.def Info: NH-HAZE-20-compare.jpg  used on input line 225.
+(pdftex.def)             Requested size: 505.89pt x 251.88751pt.
+<NH-HAZE-21-compare.jpg, id=37, 1927.2pt x 712.6625pt>
+File: NH-HAZE-21-compare.jpg Graphic file (type jpg)
+<use NH-HAZE-21-compare.jpg>
+Package pdftex.def Info: NH-HAZE-21-compare.jpg  used on input line 232.
+(pdftex.def)             Requested size: 505.89pt x 187.07127pt.
+<NH-HAZE-23-compare.jpg, id=38, 1927.2pt x 876.27374pt>
+File: NH-HAZE-23-compare.jpg Graphic file (type jpg)
+<use NH-HAZE-23-compare.jpg>
+Package pdftex.def Info: NH-HAZE-23-compare.jpg  used on input line 239.
+(pdftex.def)             Requested size: 505.89pt x 230.01862pt.
+ [5 <./enhanced_decoder.png> <./enhancer_block.png>]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [6 <./O-HAZE-Compare.jpg> <./DENSE-HAZE-Compare.jpg>] [7 <./NH-HAZE-20-Compare.jpg> <./NH-HAZE-21-Compare.jpg>]
+Underfull \vbox (badness 3323) has occurred while \output is active []
+
+ [8 <./NH-HAZE-23-Compare.jpg>]
+LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 374.
+ (c:/texlive/2024/texmf-dist/tex/latex/psnfss/ts1ptm.fd
 File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-) [8 <./NH-HAZE-23-Compare.jpg>]
-Underfull \hbox (badness 1354) in paragraph at lines 397--398
+) [9]
+Underfull \hbox (badness 1354) in paragraph at lines 402--403
 []\OT1/ptm/m/n/10 1) Base: Con-sists of VQ En-coder, VQ De-coder and
  []
 
-[9]
 <ablation_experiments.png, id=57, 577.7836pt x 430.98515pt>
 File: ablation_experiments.png Graphic file (type png)
 <use ablation_experiments.png>
-Package pdftex.def Info: ablation_experiments.png  used on input line 437.
-(pdftex.def)             Requested size: 252.94499pt x 188.6739pt.
-
-Overfull \hbox (0.94499pt too wide) in paragraph at lines 437--438
- [][] 
- []
-
-
-(./A dual branch multi-scale image dehazing method based on high quality codebo
-ok.bbl [10 <./ablation_experiments.png>]) [11
-
-]
-(./A dual branch multi-scale image dehazing method based on high quality codebo
-ok.aux)
+Package pdftex.def Info: ablation_experiments.png  used on input line 442.
+(pdftex.def)             Requested size: 252.22269pt x 188.13464pt.
+(./A dual branch multi-scale image dehazing method based on high quality codebook.bbl [10 <./ablation_experiments.png>]) [11] (./A dual branch multi-scale image dehazing method based on high quality codebook.aux)
  ***********
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-02-20>
@@ -494,25 +402,14 @@ L3 programming layer <2024-02-20>
  ) 
 Here is how much of TeX's memory you used:
  4826 strings out of 474116
- 85473 string characters out of 5747717
- 1959190 words of memory out of 5000000
- 27118 multiletter control sequences out of 15000+600000
+ 85638 string characters out of 5747717
+ 1964190 words of memory out of 5000000
+ 27117 multiletter control sequences out of 15000+600000
  604062 words of font info for 118 fonts, out of 8000000 for 9000
  1145 hyphenation exceptions out of 8191
- 57i,16n,65p,1862b,332s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/tex
-live/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2024
-/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb><c:/texlive/2024/texmf-dis
-t/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/texlive/2024/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public
-/amsfonts/cm/cmr7.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/c
-m/cmsy10.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.p
-fb><c:/texlive/2024/texmf-dist/fonts/type1/urw/times/utmb8a.pfb><c:/texlive/202
-4/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb><c:/texlive/2024/texmf-dist/font
-s/type1/urw/times/utmr8a.pfb><c:/texlive/2024/texmf-dist/fonts/type1/urw/times/
-utmri8a.pfb>
-Output written on "A dual branch multi-scale image dehazing method based on hig
-h quality codebook.pdf" (11 pages, 3481958 bytes).
+ 57i,16n,65p,1990b,332s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/texlive/2024/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb><c:/texlive/2024/texmf-dist/fonts/type1/urw/times/utmb8a.pfb><c:/texlive/2024/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb><c:/texlive/2024/texmf-dist/fonts/type1/urw/times/utmr8a.pfb><c:/texlive/2024/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on "A dual branch multi-scale image dehazing method based on high quality codebook.pdf" (11 pages, 3483320 bytes).
 PDF statistics:
  117 PDF objects out of 1000 (max. 8388607)
  64 compressed objects within 1 object stream
