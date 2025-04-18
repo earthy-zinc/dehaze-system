@@ -59,7 +59,7 @@ The contributions of our work can be summarized as follows:
 
 \begin{figure*}[!t]
 	\centering
-	\includegraphics[width=7in]{network_architecture}
+	\includegraphics[width=7in]{images/network_architecture}
 	\caption{An overview of our CMFR-Net. This model consists of two branches: prior matching branch and channel attention branch. Hazy image is processed separately by two branches, each outputting a feature map. Then, a feature fusion tail is used to fuse the feature maps of the two branches, and finally generate a hazy-free image.}
 	\label{fig0}
 \end{figure*}
@@ -120,7 +120,7 @@ Our Prior Matching Branch tackles domain adaptation and detail recovery through 
 
 \begin{figure}[!t]
 	\centering
-	\includegraphics[width=3.49in]{discretization_operation}
+	\includegraphics[width=3.49in]{images/discretization_operation}
 	\caption{The discretization operation of the codebook is shown in the figure. The feature map output by the encoder is discretized to form discrete encoded values, represented by gray rectangles. Each discrete encoded value corresponds to an embedding, and all embeddings are stored in an embedding space, which is the codebook. Using the nearest neighbor algorithm to obtain the true embedding in the codebook, represented as a colored rectangular prism, as input to the decoder.}
 	\label{fig2}
 \end{figure}
@@ -156,14 +156,14 @@ Specifically, this involves calculating the distances between the discrete encod
 \noindent where $f_{k}$ represents the frequency difference between the activation of the hazy image and the clear image on the codebook. The parameter $ \alpha $ is used to adjust the degree of dehazing. $z$ denotes the discretized features of the hazy image, while $z_{k}$ represents the codebook encoding. The notation $||*||$ indicates the distance between the discretized features of the hazy image and the codebook encoding. The expression $arg \min(*)$ means to find the minimum value of the distance.
 
 
-To facilitate the adjustment of matching results through the parameter $\alpha$ for achieving better defogging effects, we design a weight function as $F(f_{k}, \alpha) = f_{k} \times e^{\alpha} $. Subsequently, we modify the computation method of the activation frequency difference $f_{k}$ in the codebook from statistical analysis to an iterative approach using network learning to obtain optimal values.
+To facilitate the adjustment of matching results through the parameter $\alpha$ for achieving better defogging effects, we design a weight function as $F(f_{k}, \alpha) = f_{k} \times e^{\alpha} $. Subsequently, we modify the computation method of the activation frequency difference $f_{k}$ in the codebook from statistical analysis to an iterative approach using network learning to obtain optimal values.
 
 \begin{equation}
 	\label{codebook_matching_equation_1}
 	M(z) = arg \min_{z_{k} \in Z} (f_{k} \times e^{a} \times || \widehat{z} - z_{k} ||)
 \end{equation}
 
-Regarding the solution for the parameter $\alpha$, we assume the probability distribution of codebook activations for clear images as $P_{c}$, and the corresponding probability distribution for hazy images as $P_{h}$. The domain gap between the domains of clear and hazy images is transformed into the problem of finding the optimal parameter $\alpha$ in $F(f_{k}, \alpha)$ that minimizes the KL divergence between the probability distributions $P_{c}(x) = z_{k}$ and $P_{h}(x = z_{k} | \alpha) $.
+Regarding the solution for the parameter $\alpha$, we assume the probability distribution of codebook activations for clear images as $P_{c}$, and the corresponding probability distribution for hazy images as $P_{h}$. The domain gap between the domains of clear and hazy images is transformed into the problem of finding the optimal parameter $\alpha$ in $F(f_{k}, \alpha)$ that minimizes the KL divergence between the probability distributions $P_{c}(x) = z_{k}$ and $P_{h}(x = z_{k} | \alpha) $.
 
 
 The $KL$ divergence measures the difference between two probability distributions and is commonly used in machine learning to assess the similarity of distributions. In our context, minimizing the $KL$ divergence between $P_{c}$ and $P_{h}$ ensures that the codebook activations for clear and hazy images are as similar as possible, thereby reducing the domain gap and improving the accuracy of the matching process.
@@ -189,13 +189,13 @@ where $A_{k}$ is the attention weight of the input with a neighborhood size of $
 
 \begin{figure}[!t]
 	\centering
-	\includegraphics[width=3.49in]{enhanced_decoder}
+	\includegraphics[width=3.49in]{images/enhanced_decoder}
 	\caption{Architecture of our Feature-Refined Decoder (FRD), which consists of upsampling layers, convolutions, residual blocks, channel attention and pixel attention blocks, as well as an enhancer block. }
 	\label{fig3}
 \end{figure}
 \begin{figure}[!t]
 	\centering
-	\includegraphics[width=3.49in]{enhancer_block}
+	\includegraphics[width=3.49in]{images/enhancer_block}
 	\caption{Detail network structure of the Enhancer Block.}
 	\label{fig4}
 \end{figure}
@@ -208,35 +208,35 @@ Attention mechanisms enable the network to flexibly focus on the characteristics
 
 \begin{figure*}[!t]
 	\centering
-	\includegraphics[width=7in]{O-HAZE-compare}
+	\includegraphics[width=7in]{images/O-HAZE-compare}
 	\caption{Visual examples in dataset O-HAZE. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}
 	\label{fig6}
 \end{figure*}
 
 \begin{figure*}[!t]
 	\centering
-	\includegraphics[width=7in]{DENSE-HAZE-compare}
+	\includegraphics[width=7in]{images/DENSE-HAZE-compare}
 	\caption{Visual examples in dataset DENSE-HAZE. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}
 	\label{fig7}
 \end{figure*}
 
 \begin{figure*}[!t]
 	\centering
-	\includegraphics[width=7in]{NH-HAZE-20-compare}
+	\includegraphics[width=7in]{images/NH-HAZE-20-compare}
 	\caption{Visual examples in dataset NH-HAZE-20. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}
 	\label{fig8}
 \end{figure*}
 
 \begin{figure*}[!t]
 	\centering
-	\includegraphics[width=7in]{NH-HAZE-21-compare}
+	\includegraphics[width=7in]{images/NH-HAZE-21-compare}
 	\caption{Visual examples in dataset NH-HAZE-21. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}
 	\label{fig9}
 \end{figure*}
 
 \begin{figure*}[!t]
 	\centering
-	\includegraphics[width=7in]{NH-HAZE-23-compare}
+	\includegraphics[width=7in]{images/NH-HAZE-23-compare}
 	\caption{Visual examples in dataset NH-HAZE-23. From left to right are hazy images, advanced methods for comparison and our method result, and Ground Truth.}
 	\label{fig10}
 \end{figure*}
@@ -439,7 +439,7 @@ As observed, the model's performance improves progressively as more components a
 
 \begin{figure}[!t]
 	\centering
-	\includegraphics[width=3.49in]{ablation_experiments}
+	\includegraphics[width=3.49in]{images/ablation_experiments}
 	\caption{The ablation experiments on the NH-HAZE-20 dataset show the PSNR variation curves for different experimental configurations as the number of iterations increases.}
 	\label{Ablation_study_2}
 \end{figure}
@@ -454,5 +454,3 @@ In this paper, we propose a two-branch neural network for non-homogeneous dehazi
 
 
 \end{document}
-
-
