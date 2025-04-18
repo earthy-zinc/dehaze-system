@@ -8,6 +8,7 @@
 \usepackage{url}
 \usepackage{verbatim}
 \usepackage{graphicx}
+\usepackage{cite}
 \usepackage{multirow}
 \hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
@@ -29,7 +30,7 @@ Zehong Li is with the State Key Laboratory of Electronic Thin Films and Integrat
 \maketitle
 
 \begin{abstract}
-The existence of non-homogeneous haze can lead to image scene blurring, color distortion, contrast reduction, and the loss of other texture details. Current methods for removing non-homogeneous haze fail to effectively address this form of haze. We have observed that the available non-homogeneous haze datasets generally suffer from a limited number of samples (for instance, NH-HAZE-23 only contains 55 training sample pairs), and existing neural networks cannot effectively learn relevant priors for haze removal from such limited data. Inspired by the field of image generation, we propose a dual-branch multi-scale image dehazing network based on a high-quality codebook. Firstly, we utilize VQGAN to pretrain a discrete codebook reflecting the general detailed texture features of clear images on a large-scale high-quality clear image datasets, serving as a dehazing prior. Subsequently, we design a pyramid-structured encoder using dilated neighborhood attention to enhance feature extraction. And we introduce another branch to better preserve the original fine detail features of the image at different scales. Finally, we conduct extensive experiments and ablation studies to demonstrate the effectiveness of our proposed method.
+Non-homogeneous haze removal has attracted enormous interest in computer vision owing to its critical impact on image quality degradation and downstream visual tasks. Existing methods often fail to address non-homogeneous haze due to limited prior knowledge and insufficient training data. While deep learning-based approaches have advanced image dehazing, their reliance on homogeneous haze assumptions and handcrafted priors leads to suboptimal performance in complex real-world scenes with spatially varying haze concentrations. The aim of this study is to investigate a codebook-driven dual-branch network for robust prior learning and detail-preserving non-homogeneous haze removal. We established a high-quality codebook to capture clear image textures as dehazing priors, coupled with a pyramid dilated neighborhood attention encoder for multi-scale haze feature extraction and an enhanced decoder with multi-attention mechanisms. A dual-branch architecture was designed to address dense haze regions through feature fusion. These findings open new avenues for image restoration under complex degradation scenarios by integrating generative priors with attention-aware feature learning, potentially benefiting autonomous driving and remote sensing systems.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -38,7 +39,7 @@ Image dehazing, codebook, a two-branch network, multi-scale, neighborhood attent
 
 
 \section{Introduction}
-\IEEEPARstart{H}{aze} is an aerosol system composed of numerous tiny water droplets suspended in the near-ground air, serving as one of the primary causes of image blurring, color distortion, and contrast reduction. The hazy image degradation model based on atmospheric light single scattering phenomenon\cite{mccartney1976optics} \cite{narasimhan2002vision} can be represented as:
+\IEEEPARstart{H}{aze} is an aerosol system composed of numerous tiny water droplets suspended in the near-ground air, serving as one of the primary causes of image blurring, color distortion, and contrast reduction. The hazy image degradation model based on atmospheric light single scattering phenomenon~\cite{mccartney1976optics}~\cite{narasimhan2002vision} can be represented as:
 
 \begin{equation}
 	\label{scattering_model}
@@ -49,18 +50,18 @@ Image dehazing, codebook, a two-branch network, multi-scale, neighborhood attent
 
 The outdoor visual systems such as autonomous driving, video surveillance, military reconnaissance, and remote sensing imagery are affected by hazy conditions, leading to a decrease in the accuracy of information acquisition from captured images. As the haze intensity increases and non-homogeneous haze emerges, the image quality deteriorates rapidly, resulting in color distortion, blurred features, reduced contrast, and other visual quality degradations. Consequently, it becomes challenging to identify objects and backgrounds within the image, significantly impacting the effectiveness of subsequent visual tasks such as semantic segmentation and object detection in computer vision. Therefore, it is necessary to preprocess the images to mitigate the impact of dense haze on image quality.
 
-Although existing dehazing methods have made significant progress based on deep learning, image dehazing  still remains a highly ill-posed problem that often requires the support of prior knowledge. Current dehazing methods have proposed priors such as dark channel\cite{he2010single} and color attenuation\cite{land1971lightness}, most of which are based on empirical observations and manually set priors\cite{cai2016dehazenet, li2017aod}. Due to their reliance on specific scenarios and assumptions, they often perform poorly in complex scenes, resulting in sub-optimal outcomes. Furthermore, most current image dehazing methods tend to fail when dealing with dense haze areas or non-homogeneous haze in hazy images, leading to residual haze and incomplete dehazing in areas with large depth of field. This is primarily because most models assume that the haze in images is uniformly distributed, whereas in the real world, the concentration of haze may vary significantly in different locations.
+Although existing dehazing methods based on deep learning have made significant progress, image dehazing remains a highly ill-posed problem that often requires prior knowledge to effectively tackle. Earlier dehazing methods, such as~\cite{he2010single, cai2016dehazenet, li2017aod} are largely based on empirical observations and manually set priors, which resulted in limitations when applied to complex or non-homogeneous haze scenarios. These methods often underperform in real-world applications where haze is not uniformly distributed, leading to residual haze in regions with large depth variation~\cite{liu2019griddehazenet, qin2020ffa}. Recently, more advanced techniques have incorporated deep learning strategies, such as~\cite{guo2022image, song2023vision, yu2021two, jin2022structure, liu2023data}, improving performance in handling dense haze and depth variations. However, many of these methods still struggle with preserving fine image details in regions affected by dense haze.
 
-To address these challenges, in this work, we propose a dual branch multi-scale image dehazing network based on a high-quality codebook. By leveraging codebook trained on high-quality clear datasets, we extract robust priors which preserve image textures and details. Through the proposed dilated neighborhood attention transformer encoder and the enhanced decoder, we accurately encode and decode the features of latent hazy images. Finally, a dual-branch network is utilized to integrate these methods, resulting in our proposed network.
+In contrast, our approach introduces a dual-branch multi-scale image dehazing network, leveraging a high-quality codebook~\cite{esser2021taming} to integrate robust prior knowledge for texture and detail preservation. Additionally, we propose a feature pyramid encoding module based on dilated neighborhood attention~\cite{hassani2022dilated} and a multi-scale channel attention mechanism to address the challenge of dehazing in regions with complex haze distributions. Finally, a dual-branch network is utilized to integrate these methods, resulting in our proposed network.
 
 The contributions of our work can be summarized as follows:
 
 \begin{list}{}{}
-\item{1) We employed the VQGAN generative model to train a high-quality codebook as a prior, thereby complementing robust prior knowledge and mitigating the impact of haze features in the dehazing network.}
+\item{1) We employ the VQGAN generative model to train a high-quality codebook as a prior, thereby complementing robust prior knowledge and mitigating the impact of haze features in the dehazing network.}
 
-\item{2) We designed a feature pyramid encoding module based on dilated neighborhood attention and an enhanced decoding module incorporating pixel-wise and channel-wise attention. By leveraging a dual-branch multi-scale network structure, we improved the feature extraction capability for regions with dense haze in images.}
+\item{2) We design a feature pyramid encoding module based on dilated neighborhood attention and an enhanced decoding module incorporating pixel-wise and channel-wise attention. By leveraging a dual-branch multi-scale network structure, we improved the feature extraction capability for regions with dense haze in images.}
 
-\item{3) We conducted extensive experiments to demonstrate the superiority of the proposed method compared to other existing methods.}
+\item{3) We propose a dual-branch multi-scale image dehazing network that integrates high-quality priors from a codebook. This method preserves texture details and mitigates haze effects. A feature pyramid encoder and multi-scale attention mechanisms enhance feature extraction, leading to superior performance in dense haze regions.}
 \end{list}
  
 \begin{figure*}[!t]
@@ -71,17 +72,52 @@ The contributions of our work can be summarized as follows:
 \end{figure*}
 
 \section{RELATED WORK}
-\subsection{Single Image Dehazing}
-In recent years, a significant amount of observations have been made on haze phenomena, and numerous prior knowledge has been proposed to assist in image dehazing. Among them, the dehazing method based on Dark Channel Prior (DCP), proposed by He et al.~\cite{he2010single} in 2010, is widely known. Liu et al.~\cite{liu2019griddehazenet} proposed the GridDehazeNet network structure, which through a unique grid-like structure and the use of attention mechanisms for multi-scale feature fusion, fully integrates low-level and high-level features. Qin et al.~\cite{qin2020ffa} eliminated the up-down sampling operation and proposed an end-to-end Feature Fusion Attention Network (FFA-Net) to directly restore haze-free images. The main idea of this method is to adaptively learn feature weights, giving more weight to important features. Feature attention is added after each residual block, and adaptive selection of features from each group is performed, enhancing the network's mapping capabilities. Yin et al.~\cite{yin2023multiscale} propose a novel multiscale depth information fusion enhancement network to improve dehazing ability in scenes with large depth changes. 
+\subsection{Prior-Based Dehazing Methods}
+Early prior-based dehazing methods relied on physical priors. The seminal work by He et al.~\cite{he2010single} pioneered the dark channel prior, which statistically observes that haze-free images contain pixels with near-zero intensity in at least one color channel. Subsequently, Zhu et al.~\cite{zhu2015fast} introduced the color attenuation prior, establishing a linear relationship between haze concentration and scene depth through brightness-saturation discrepancy analysis. This depth information is subsequently employed to recover the haze-free image through atmospheric scattering modeling.
 
-Transformer\cite{vaswani2017attention} was initially proposed for natural language processing tasks, capturing non-local interactions between words through the stacking of multi-head self-attention mechanisms and feed-forward layers. DeHamer~\cite{guo2022image} combined convolutional neural networks and Transformer for image dehazing, aggregating long-term attention in Transformer and local attention in convolutional neural network features. Dehazeformer~\cite{song2023vision} proposed an offset window partitioning scheme based on reflection padding and cropping, allowing the mask multi-head self-attention to discard part of the mask and achieve a constant window size.
+\subsection{Learning-Based Dehazing Methods}
+Recent learning-based approaches have advanced feature integration strategies. Liu et al.~\cite{liu2019griddehazenet} introduced a grid network with attention mechanisms for multi-scale processing, effectively combining hierarchical features. Qin et al.~\cite{qin2020ffa} developed an end-to-end network using channel attention to dynamically weight features, eliminating sampling operations while enhancing feature discriminability through residual attention blocks. Yin et al.~\cite{yin2023multiscale} propose a novel multiscale depth information fusion enhancement network to improve dehazing ability in scenes with large depth changes. 
+
+Transformer~\cite{vaswani2017attention} was initially proposed for natural language processing tasks, capturing non-local interactions between words through the stacking of multi-head self-attention mechanisms and feed-forward layers. DeHamer~\cite{guo2022image} combined convolutional neural networks and Transformer for image dehazing, aggregating long-term attention in Transformer and local attention in convolutional neural network features. Dehazeformer~\cite{song2023vision} proposed an offset window partitioning scheme based on reflection padding and cropping, allowing the mask multi-head self-attention to discard part of the mask and achieve a constant window size.
 
 However, there are currently two major challenges in applying Transformer to the image field. First is the large variation in visual entities, and the performance of Transformer may not be well in different scenes. Second is that the image resolution is high and there are many pixels, so the global self attention mechanism in Transformer leads to a large amount of computation.
 
-In recent years, people have made a lot of achievements in heavy haze and non-homogeneous haze. Among them, TNN~\cite{yu2021two} introduced a dual-branch neural network, using Res2Net pre-trained on ImageNet~\cite{deng2009imagenet} and Residual Channel Attention Network (RCAN)~\cite{zhang2018image}, and then through a learnable tail to fuse the features of the two branches, committed to solve non-homogeneous haze. FogRemoval~\cite{jin2022structure} combines the structural representation of ViT\cite{dosovitskiy2020image} and the features of CNN as feature regularization. It proposed a gray feature multiplier as a feature enhancement, guiding the network to learn to extract clear background information, and introduced uncertainty feedback learning, focusing on the area affected by haze. ITBDehaze~\cite{liu2023data} proposed a new network structure and a new data preprocessing method, applying RGB channel transformation on the enhanced datasets, and using Transformer as the backbone in the dual-branch network. Guo et al.~\cite{guo2023scanet} proposed SCANet, a network that adopts a mode of attention generation and scene reconstruction. It is an attention network capable of learning complex interactive features between non-homogeneous haze and image background.
+In recent years, people have made a lot of achievements in heavy haze and non-homogeneous haze. Among them, TNN~\cite{yu2021two} introduced a dual-branch neural network, using Res2Net pre-trained on ImageNet~\cite{deng2009imagenet} and residual channel attention network~\cite{zhang2018image}, and then through a learnable tail to fuse the features of the two branches, committed to solve non-homogeneous haze. FogRemoval~\cite{jin2022structure} combines the structural representation of ViT\cite{dosovitskiy2020image} and the features of CNN as feature regularization. It proposed a gray feature multiplier as a feature enhancement, guiding the network to learn to extract clear background information, and introduced uncertainty feedback learning, focusing on the area affected by haze. ITBDehaze~\cite{liu2023data} proposed a new network structure and a new data preprocessing method, applying RGB channel transformation on the enhanced datasets, and using Transformer as the backbone in the dual-branch network. Guo et al.~\cite{guo2023scanet} proposed SCANet, a network that adopts a mode of attention generation and scene reconstruction. It is an attention network capable of learning complex interactive features between non-homogeneous haze and image background.
 
 \subsection{Discrete Codebook}
-The concept of discrete codebooks can be traced back to Variational Auto Encoders (VAE)\cite{kingma2013auto}, which employ clever methods to constrain the encoding vector, making it conform to a standard normal distribution. Then the decoder in the trained encoder-decoder pair can recognize not only the vectors encoded by the encoder but also vectors from other standard normal distributions. However, VAE encode into continuous vectors, and Vector Quantized Variational AutoEncoders\cite{van2017neural} believe that the image quality generated by VAE is not well because the images are encoded into continuous vectors, which better match the feature distribution of different objects in nature. To solve this problem, scholars have drawn on natural language processing to add a word embedding layer, mapping each input word to a unique continuous vector. This embedding layer is called a codebook. Subsequently, VQGAN\cite{esser2021taming} further improved this type of model and added adversarial loss during the training process. Wu et al.\cite{wu2023ridcp} proposed RIDCP, which uses the high-quality codebook prior trained by VQGAN in real image dehazing, and proposed a controllable high-quality prior matching operation to overcome the gap between the synthetic domain and the real domain, producing adjustable dehazing results.
+The concept of discrete codebooks can be traced back to Variational Auto Encoders (VAE)~\cite{kingma2013auto}, which employ clever methods to constrain the encoding vector, making it conform to a standard normal distribution. Then the decoder in the trained encoder-decoder pair can recognize not only the vectors encoded by the encoder but also vectors from other standard normal distributions. However, VAE encode into continuous vectors, and Vector Quantized Variational Auto Encoders~\cite{van2017neural} believe that the image quality generated by VAE is not well because the images are encoded into continuous vectors, which better match the feature distribution of different objects in nature. To solve this problem, scholars have drawn on natural language processing to add a word embedding layer, mapping each input word to a unique continuous vector. This embedding layer is called a codebook. Subsequently, VQGAN~\cite{esser2021taming} further improved this type of model and added adversarial loss during the training process. Wu et al.~\cite{wu2023ridcp} proposed RIDCP, which uses the high-quality codebook prior trained by VQGAN in real image dehazing, and proposed a controllable high-quality prior matching operation to overcome the gap between the synthetic domain and the real domain, producing adjustable dehazing results. However, RIDCP does not perform well in non-uniform haze and dense haze scenes.
+
+
+
+\section{PROPOSED METHOD}
+
+In this section, we introduce the proposed dual-branch multi-scale image dehazing network, which integrates high-quality priors from a VQGAN-based codebook. The network consists of two main branches: the Prior Matching Branch for extracting features using the codebook and the Channel Attention Branch for focusing on dense haze regions. We also explain the pyramid neighborhood attention mechanism and the enhanced decoder. Finally, we detail the loss function used to optimize the model.
+
+\subsection{Overall Network Architecture}
+The overall network architecture of the method we propose is shown in Fig.~\ref{fig0}. Image data will be input into a dual-branch network, which has been successfully applied in the field of image dehazing by predecessors, demonstrating the good performance of this network. In our network structure, Branch One is called the Prior Matching Branch, the main structure of which includes a VQ encoder and decoder, discrete codebook, and the Pyramid Neighborhood Attention Encoder and Enhanced Decoder. Branch Two is called the Channel Attention Branch, which uses multiple residuals and channel convolutions to supplement Branch One. The outputs of the two branches are concatenated through a feature fusion tail composed of ReflectionPad, Conv and Tanh layer to output the final clean image.
+
+{\bf{Enhanced decoder:}}
+The output results obtained solely through the VQ decoder tend to lack detailed information in areas with deep haze, and the image structure and texture are relatively blurred. To enhance the decoding capability of the hazy image's detailed features, we designed an enhanced decoder based on multiple attention mechanisms within the prior matching branch. By combining channel and pixel attention (CA+PA)~\cite{qin2020ffa}, and finally passing through an enhancer block~\cite{qu2019enhanced} based on pyramid pooling, we ensure that the detailed features across different scales are embedded into the final result. The architecture of our Additional Enhanced Decoder (AED) is shown in Fig.~\ref{fig3}, and enhancer block is shown in Fig.~\ref{fig4}.
+
+\begin{figure}[!t]
+	\centering
+	\includegraphics[width=3.5in]{enhanced_decoder}
+	\caption{Architecture of our Additional Enhanced Decoder(AED), which consists of upsampling layers, convolutions, residual blocks, channel attention and pixel attention blocks, as well as an enhancer block. }
+	\label{fig3}
+\end{figure}
+\begin{figure}[!t]
+	\centering
+	\includegraphics[width=3.5in]{enhancer_block}
+	\caption{Detail network structure of the Enhancer Block.}
+	\label{fig4}
+\end{figure}
+
+{\bf{Dual-branch network structure:}}
+In addressing the issue of poor feature extraction in dense hazy regions, we proposes to employ a channel attention branch, using multiple residual and channel convolutions to focus on the dense haze areas to achieve differentiated dehazing effects.
+Attention mechanisms enable the network to flexibly focus on the characteristics of the haze, reconstructing high-quality haze-free images. Non-homogeneous and dense haze significantly increases the brightness of its occluded areas. Paying more attention to the restoration of areas with significant brightness variations, such as the sky and snowfields, can avoid over-enhancement issues, thus improving the overall reconstruction performance of the image.
+
+\subsection{High-quality Codebook}
+We are inspired by the latest research technology in image generation neighborhoods, VQGAN~\cite{esser2021taming}. While extracting features, we use the pre-trained VQGAN to add image generation capabilities to the dehazing network, thereby helping to restore the image structure and details in heavy haze areas. The overall training is divided into two stages. The first stage requires training the VQGAN network on a high-quality clear dataset to achieve the restoration of image detail textures. In this stage, the network consists of a VQ encoder, codebook, and VQ decoder. The training goal is to obtain a codebook that stores high-quality clear image features and its corresponding VQ decoder. The VQ encoder and decoder adopt a network architecture based on UNet~\cite{ronneberger2015u}. UNet first half is feature extraction, and the second half is upsampling. UNet has been proven to perform well in fields such as image classification and segmentation. Since the encoder's downsampling and feature refinement will lose some edge features, multiple residual structures are used. Through feature concatenation, the retrieval of edge features is achieved, discretization operation is shown in Fig.~\ref{fig2}.
 
 \begin{figure}[!t]
 	\centering
@@ -89,14 +125,6 @@ The concept of discrete codebooks can be traced back to Variational Auto Encoder
 	\caption{The discretization operation of the codebook is shown in the figure. The feature map output by the encoder is discretized to form discrete encoded values, represented by gray rectangles. Each discrete encoded value corresponds to an embedding, and all embeddings are stored in an embedding space, which is the codebook. Using the nearest neighbor algorithm to obtain the true embedding in the codebook, represented as a colored rectangular prism, as input to the decoder.}
 	\label{fig2}
 \end{figure}
-
-\section{PROPOSED METHOD}
-\subsection{Network Architecture}
-The overall network architecture of the method we propose is shown in Fig. \ref{fig0}. Image data will be input into a dual-branch network, which has been successfully applied in the field of image dehazing by predecessors, demonstrating the good performance of this network. In our network structure, Branch One is called the Prior Matching Branch, the main structure of which includes a VQ encoder and decoder, discrete codebook, and the Pyramid Neighborhood Attention Encoder and Enhanced Decoder. Branch Two is called the Channel Attention Branch, which uses multiple residuals and channel convolutions to supplement Branch One. The outputs of the two branches are concatenated through a feature fusion tail composed of ReflectionPad, Conv and Tanh layer to output the final clean image.
-
-
-{\bf{Discrete codebook for high-quality prior:}}
-We are inspired by the latest research technology in image generation neighborhoods, VQGAN\cite{esser2021taming}. While extracting features, we use the pre-trained VQGAN to add image generation capabilities to the dehazing network, thereby helping to restore the image structure and details in heavy haze areas. The overall training is divided into two stages. The first stage requires training the VQGAN network on a high-quality clear dataset to achieve the restoration of image detail textures. In this stage, the network consists of a VQ encoder, codebook, and VQ decoder. The training goal is to obtain a codebook that stores high-quality clear image features and its corresponding VQ decoder. The VQ encoder and decoder adopt a network architecture based on UNet\cite{ronneberger2015u}. UNet first half is feature extraction, and the second half is upsampling. UNet has been proven to perform well in fields such as image classification and segmentation. Since the encoder's downsampling and feature refinement will lose some edge features, multiple residual structures are used. Through feature concatenation, the retrieval of edge features is achieved.
 
 Given a high-quality image $x$ as the input to the VQ encoder, an underlying feature map $z$ is output. Then each pixel $z_{ij}$ in $Z$ is matched to the nearest element in the codebook, thereby obtaining the codebook discrete feature map $z^{q}_{ij}$. Subsequently, the discretized features are input into the decoder to obtain the processed image. The entire process can be represented as follows:
 
@@ -147,8 +175,8 @@ By iteratively updating $\alpha$ based on the gradients of the objective funct
 
 It is worth noting that the computation of $f_{k}$ and the optimization of $\alpha$ can be integrated into the overall training process of the network. By jointly optimizing the network parameters and the matching criteria, we can achieve better generalization and adaptability to various hazy scenes, leading to more robust and effective dehazing results.
 
-{\bf{Pyramid neighborhood attention encoder:}}
-The VQ encoder performs well when encoding clear images, but it proves insufficient when encoding images with dense haze or non-homogeneous haze. This is primarily because, in the task of dehazing, the encoder must not only extract the general structural texture features from the image but also distinguish the hazy areas within the image. Network architecture of the VQ encoder is relatively shallow, which does not allow it to adequately accomplish this task. In order to fully extract global features such as the texture and structure of hazy images, we designed an encoder based on Pyramid Neighborhood Attention in the prior matching branch. The Pyramid Neighborhood Attention is a variant of the self-attention mechanism found in the Vision Transformer\cite{dosovitskiy2020image}, serving as an effective and scalable visual sliding window attention mechanism. Neighborhood Attention (NA)\cite{hassani2023neighborhood, hassani2022dilated} is a per-pixel operation that directs the self-attention (SA)\cite{vaswani2017attention} towards the nearest neighboring pixels, thus, compared to the quadratic complexity of self-attention, neighborhood attention has linear time and space complexity. Moreover, it surpasses the Vision Transformer and Swin Transformer\cite{liu2021swin} in downstream visual performance. In our designed Pyramid Neighborhood Attention encoder, four feature maps of different resolution sizes are obtained through the serialization process and two down-sampling operations. By utilizing a pyramid structure and cascading operations, the feature information from each previous layer serves as the input for the next layer, aggregating features from different levels and achieving feature reuse across different scales.
+\subsection{Pyramid Neighborhood Attention Encoder}
+The VQ encoder performs well when encoding clear images, but it proves insufficient when encoding images with dense haze or non-homogeneous haze. This is primarily because, in the task of dehazing, the encoder must not only extract the general structural texture features from the image but also distinguish the hazy areas within the image. Network architecture of the VQ encoder is relatively shallow, which does not allow it to adequately accomplish this task. In order to fully extract global features such as the texture and structure of hazy images, we designed an encoder based on Pyramid Neighborhood Attention in the prior matching branch. The Pyramid Neighborhood Attention is a variant of the self-attention mechanism found in the Vision Transformer~\cite{dosovitskiy2020image}, serving as an effective and scalable visual sliding window attention mechanism. Neighborhood Attention (NA)~\cite{hassani2023neighborhood, hassani2022dilated} is a per-pixel operation that directs the self-attention (SA)~\cite{vaswani2017attention} towards the nearest neighboring pixels, thus, compared to the quadratic complexity of self-attention, neighborhood attention has linear time and space complexity. Moreover, it surpasses the Vision Transformer and Swin Transformer~\cite{liu2021swin} in downstream visual performance. In our designed Pyramid Neighborhood Attention encoder, four feature maps of different resolution sizes are obtained through the serialization process and two down-sampling operations. By utilizing a pyramid structure and cascading operations, the feature information from each previous layer serves as the input for the next layer, aggregating features from different levels and achieving feature reuse across different scales.
 
 The NA operation can be expressed as:
 
@@ -157,28 +185,8 @@ The NA operation can be expressed as:
 	NA_{k} = softmax (\frac{A_{k}}{\sqrt{d}}) V_{k}
 \end{equation}
 
-where $A_{k}$ is the attention weight of the input with a neighborhood size of $k$, which is the dot product of the input query projection and its k nearest neighbor key projections. The neighboring value $V_k$ is a matrix whose rows are projections of the $k$ nearest neighboring values of the input, and $\sqrt{d}$ is the scaling parameter.
+where $A_{k}$ is the attention weight of the input with a neighborhood size of $k$, which is the dot product of the input query projection and its $k$ nearest neighbor key projections. The neighboring value $V_k$ is a matrix whose rows are projections of the $k$ nearest neighboring values of the input, and $\sqrt{d}$ is the scaling parameter.
 
-\begin{figure}[!t]
-	\centering
-	\includegraphics[width=3.5in]{enhanced_decoder}
-	\caption{Architecture of our Additional Enhanced Decoder(AED), which consists of upsampling layers, convolutions, residual blocks, channel attention and pixel attention blocks, as well as an enhancer block. }
-	\label{fig3}
-\end{figure}
-\begin{figure}[!t]
-	\centering
-	\includegraphics[width=3.5in]{enhancer_block}
-	\caption{Detail network structure of the Enhancer Block.}
-	\label{fig4}
-\end{figure}
-
-{\bf{Enhanced decoder:}}
-The output results obtained solely through the VQ decoder tend to lack detailed information in areas with deep haze, and the image structure and texture are relatively blurred. To enhance the decoding capability of the hazy image's detailed features, we designed an enhanced decoder based on multiple attention mechanisms within the prior matching branch. By combining channel and pixel attention (CA+PA)\cite{qin2020ffa}, and finally passing through an enhancer block\cite{qu2019enhanced} based on pyramid pooling, we ensure that the detailed features across different scales are embedded into the final result.
-
-
-{\bf{Dual-branch network structure:}}
-In addressing the issue of poor feature extraction in dense hazy regions, we proposes to employ a channel attention branch, using multiple residual and channel convolutions to focus on the dense haze areas to achieve differentiated dehazing effects.
-Attention mechanisms enable the network to flexibly focus on the characteristics of the haze, reconstructing high-quality haze-free images. Non-homogeneous and dense haze significantly increases the brightness of its occluded areas. Paying more attention to the restoration of areas with significant brightness variations, such as the sky and snowfields, can avoid over-enhancement issues, thus improving the overall reconstruction performance of the image.
 
 \subsection{Loss Function}
 
@@ -228,7 +236,7 @@ The network training proposed in this paper is divided into two stages in total.
 
 Then, the remaining parts of the network are trained. Therefore, different loss functions are adopted for different stages of network training in this paper.
 
-{\bf{Stage 1: High Quality Codebook Training.}} For the initial stage of discrete codebook training, the total training loss $L_{vq}$ was divided into the image reconstruction loss $L_{rec}$ and the codebook loss $L_{codebook}$, the loss is defined as
+{\bf{Stage 1: High Quality Codebook Training.}} For the initial stage of discrete codebook training, the total training loss $L_{vq}$ is divided into the image reconstruction loss $L_{rec}$ and the codebook loss $L_{codebook}$, the loss is defined as
 
 \begin{equation}
 \label{vq_loss}
@@ -242,14 +250,14 @@ The image reconstruction loss can be further divided into the following formulas
 L_{rec} = || \hat{x} - x ||_{1} + L_{per} + L_{adv}
 \end{equation}
 
-Perceptual loss measures the perceptual similarity across the entire feature space. The function denotes the feature maps of the 3rd, 5th, and 8th convolutional layers in the pre-trained VGG16\cite{simonyan2014very} network (i.e., j=3,5,8). The purpose of using this function is to capture perceptual and semantic information within the images. Perceptual loss is defined as\cite{johnson2016perceptual}:
+Perceptual loss measures the perceptual similarity across the entire feature space. The function denotes the feature maps of the 3rd, 5th, and 8th convolutional layers in the pre-trained VGG16~\cite{simonyan2014very} network (i.e., j=3,5,8). The purpose of using this function is to capture perceptual and semantic information within the images. Perceptual loss is defined as~\cite{johnson2016perceptual}:
 
 \begin{equation}
 \label{perceptual_loss}
 L_ {perc} = \frac{1}{N} \sum_{j} \frac{1}{C_{j}H_{j}W_{j}} || \phi_(f_{\theta}(x)) - \phi_{j}(y)||_{2}^{2}
 \end{equation}
 
-Since pixel-based loss functions cannot provide sufficient supervision on small datasets, an adversarial loss is added to mitigate the shortcomings of the above losses\cite{zhu2017unpaired}. 
+Since pixel-based loss functions cannot provide sufficient supervision on small datasets, an adversarial loss is added to mitigate the shortcomings of the above losses~\cite{zhu2017unpaired}. 
 
 \begin{equation}
 \label{adversarial_loss}
@@ -259,7 +267,7 @@ L_{adv} = \sum_{n=1}^{N} - \log_{D} (f_{\theta}(x))
 \noindent where D represents the discriminator used during the training of the codebook. N indicates the number of sample data.
 
 
-The codebook loss can be further divided into the following formula\cite{chen2022real}
+The codebook loss can be further divided into the following formula~\cite{chen2022real}:
 
 \begin{equation}
 \label{codebook_loss}
@@ -269,11 +277,11 @@ The codebook loss can be further divided into the following formula\cite{chen202
 \end{split}
 \end{equation}
 
-\noindent where $sg[*]$ denotes stop-gradient, with $\beta = 0.25$, $\gamma = 0.1$. The last term is a semantically guided regularization item, where $CONV$ signifies a simple convolutional layer and $\phi$ is a pre-trained VGG19\cite{simonyan2014very}. This loss function primarily measures the quantization error between the output $z$ of the encoder and the discrete vector $z_{q}$.
+\noindent where $sg[*]$ denotes stop-gradient, with $\beta = 0.25$, $\gamma = 0.1$. The last term is a semantically guided regularization item, where $CONV$ signifies a simple convolutional layer and $\phi$ is a pre-trained VGG19~\cite{simonyan2014very}. This loss function primarily measures the quantization error between the output $z$ of the encoder and the discrete vector $z_{q}$.
 
 {\bf{Stage 2: Dehaze Training.}} 
 
-For the second stage of the dehazing task training. Assuming the hazy image input is denoted as $x_h$, and the fog-free ground truth image input as $x_{gt}$, with the dehazing network encoder represented by $E$, the training codebook's encoder by $E_{vq}$, and the training codebook's decoder by $G_{vq}$, and the enhancement decoder by $G$. We can obtain the intermediate features of the hazy image after processing by the encoder $E$, and the intermediate features of the haze-free image after processing by the encoder $E_{vq}$. To control the style difference between the generated images and the fog-free images during the image generation process, we use $\Psi(\cdot)$, which is the Gram matrix, to measure the style loss\cite{gondal2019unreasonable}. A discriminator $D$ is used to determine whether the generated features are realistic.
+For the second stage of the dehazing task training. Assuming the hazy image input is denoted as $x_h$, and the fog-free ground truth image input as $x_{gt}$, with the dehazing network encoder represented by $E$, the training codebook's encoder by $E_{vq}$, and the training codebook's decoder by $G_{vq}$, and the enhancement decoder by $G$. We can obtain the intermediate features of the hazy image after processing by the encoder $E$, and the intermediate features of the haze-free image after processing by the encoder $E_{vq}$. To control the style difference between the generated images and the fog-free images during the image generation process, we use $\Psi(\cdot)$, which is the Gram matrix, to measure the style loss~\cite{gondal2019unreasonable}. A discriminator $D$ is used to determine whether the generated features are realistic.
 
 Therefore, the loss function for the dehazing stage can be written in the following form:
 
@@ -285,7 +293,7 @@ L_{E} =||\widehat{z}_{h} - z^{q}_{t} ||_{2}^{2} + \lambda_{style} ||\Psi(\wideha
 \end{split}
 \end{equation}
 
-The loss function for the remaining part of the network is as follows, where $y$ represents the final output and $\phi$ denotes the pre-trained VGG16\cite{simonyan2014very}. The gradient of this decoder will not be backpropagated into the encoder.
+The loss function for the remaining part of the network is as follows, where $y$ represents the final output and $\phi$ denotes the pre-trained VGG16~\cite{simonyan2014very}. The gradient of this decoder will not be backpropagated into the encoder.
 
 \begin{equation}
 	\label{rest_loss}
@@ -342,13 +350,13 @@ The loss function for the remaining part of the network is as follows, where $y$
 \end{table*}
 
 \subsection{Datasets}
-To validate the effectiveness of our proposed model, we conducted experiments on four datasets, namely O-HAZE\cite{ancuti2018ohaze}, NH-HAZE-20\cite{ancuti2020ntire}, NH-HAZE-21\cite{ancuti2021ntire}, and NH-HAZE-23\cite{ancuti2023ntire}, for the purpose of training and evaluating our model. Specifically, we selected five pairs of images from each dataset for validation and testing, while the remaining images were used for training. More detailed information can be obtained from the accompanying table \ref{table_dataset}.
+To validate the effectiveness of our proposed model, we conducted experiments on four datasets, namely O-HAZE~\cite{ancuti2018ohaze}, DENSE-HAZE~\cite{ancuti2019dense}, NH-HAZE-20~\cite{ancuti2020ntire}, NH-HAZE-21~\cite{ancuti2021ntire}, and NH-HAZE-23~\cite{ancuti2023ntire}, for the purpose of training and evaluating our model. Specifically, we selected five pairs of images from each dataset for validation and testing, while the remaining images were used for training. More detailed information can be obtained from the accompanying table~\ref{table_dataset}.
 
 The O-HAZE dataset is authentic collection featuring uniform haze conditions, encompassing 45 pairs of outdoor images. These hazy images were captured under genuine atmospheric haze produced by specialized equipment, ensuring their realism and utility for benchmarking dehazing algorithms.
 
-The NH-HAZE dataset addresses a critical gap in the field of image dehazing: the scarcity of real-world images with non-uniform haze for reference. Unlike many synthetic datasets, NH-HAZE provides a collection of truly non-homogeneous hazy images paired with their corresponding clear counterparts. The non-homogeneous haze within the NH-HAZE dataset is introduced through the simulation of realistic hazy conditions using professional haze generators, making it a more challenging and practical dataset for evaluating dehazing methods. Its temporal evolution, marked by release dates, allows for further categorization into NH-HAZE-20, NH-HAZE-21, and NH-HAZE-23, containing 40, 25, and 55 image pairs respectively.
-
 The DENSE-HAZE dataset introduces a novel contribution to the field by focusing on dense, uniform haze scenarios. Comprising 55 pairs of heavily hazy and their corresponding clear images across various outdoor settings, DENSE-HAZE stands out for its portrayal of dense haze conditions recorded through specialized haze-producing machinery. The resultant images are so heavily veiled that the original objects within them are nearly indiscernible, presenting a significant challenge in dehazing tasks compared to conventional datasets. This characteristic makes DENSE-HAZE particularly demanding for testing the robustness and effectiveness of dehazing algorithms under extreme conditions.
+
+The NH-HAZE dataset addresses a critical gap in the field of image dehazing: the scarcity of real-world images with non-uniform haze for reference. Unlike many synthetic datasets, NH-HAZE provides a collection of truly non-homogeneous hazy images paired with their corresponding clear counterparts. The non-homogeneous haze within the NH-HAZE dataset is introduced through the simulation of realistic hazy conditions using professional haze generators, making it a more challenging and practical dataset for evaluating dehazing methods. Its temporal evolution, marked by release dates, allows for further categorization into NH-HAZE-20, NH-HAZE-21, and NH-HAZE-23, containing 40, 25, and 55 image pairs respectively.
 
 \begin{table}
 	\begin{center}
@@ -369,24 +377,24 @@ The DENSE-HAZE dataset introduces a novel contribution to the field by focusing 
 \end{table}
 
 \subsection{Implementation Details}
-During training, input images were randomly cropped to a size of 256×256 and augmented through scaling, random rotation, and flipping. The Adam optimizer\cite{kingma2014adam} was employed in this study, with default $\beta_{1}$ and $\beta_{2}$ values set to 0.9 and 0.99, respectively. The initial learning rate was set to 0.0001, and the batch size was set to 1. The model was implemented on an NVIDIA V100 Tensor Core using the Pytorch framework.
+During training, input images were randomly cropped to a size of 256×256 and augmented through scaling, random rotation, and flipping. The Adam optimizer~\cite{kingma2014adam} was employed in this study, with default $\beta_{1}$ and $\beta_{2}$ values set to 0.9 and 0.99, respectively. The initial learning rate was set to 0.0001, and the batch size was set to 1. The model was implemented on an NVIDIA V100 Tensor Core using the Pytorch framework.
 
 \subsection{Evaluation Metrics and Competitors}
-Quantitative analysis was conducted using Peak Signal-to-Noise Ratio (PSNR), Structural Similarity index (SSIM)\cite{wang2004image}, LPIPS\cite{zhang2018unreasonable} for evaluation. PSNR, measured in decibels (db), represents the ratio of the maximum power of a signal to the noise power that may affect its representation accuracy. A higher PSNR value indicates less distortion in dehazed image. SSIM evaluates image similarity from three aspects: brightness, contrast, and structure, with a value range of $[0,1]$. A higher SSIM value indicates greater similarity between the current image and the Ground Truth. Compared to PSNR, SSIM better aligns with human visual perception in assessing image quality. LPIPS measures the difference between two images by extracting features for each image using deep learning techniques and computing their similarity based on these features.
+Quantitative analysis was conducted using Peak Signal-to-Noise Ratio (PSNR), Structural Similarity index (SSIM)~\cite{wang2004image}, LPIPS~\cite{zhang2018unreasonable} for evaluation. PSNR, measured in decibels (db), represents the ratio of the maximum power of a signal to the noise power that may affect its representation accuracy. A higher PSNR value indicates less distortion in dehazed image. SSIM evaluates image similarity from three aspects: brightness, contrast, and structure, with a value range of $[0,1]$. A higher SSIM value indicates greater similarity between the current image and the Ground Truth. Compared to PSNR, SSIM better aligns with human visual perception in assessing image quality. LPIPS measures the difference between two images by extracting features for each image using deep learning techniques and computing their similarity based on these features.
  
 \subsection{Quantitative Evaluations on Benchmarks}
-To verify the effectiveness of the network and its generalization ability in difference scenarios, we conduct experiments for comparison. We compare our method with 9 state-of the art dehazing methods, including DCP\cite{he2010single}, AOD\cite{li2017aod}, GCA\cite{chen2019gated}, FFA\cite{qin2020ffa}, TNN\cite{yu2021two}, DeHamer\cite{guo2022image}, FogRemoval\cite{jin2022structure}, SCA\cite{guo2023scanet}, ConvIR\cite{cui2024revitalizing}. The results for the four different quantitative metrics are shown in Table \ref{table_compare_with_benchmarks}.
+To verify the effectiveness of the network and its generalization ability in difference scenarios, we conduct experiments for comparison. We compare our method with 9 state-of the art dehazing methods, including DCP~\cite{he2010single}, AOD~\cite{li2017aod}, GCA~\cite{chen2019gated}, FFA~\cite{qin2020ffa}, TNN~\cite{yu2021two}, DeHamer~\cite{guo2022image}, FogRemoval~\cite{jin2022structure}, SCA~\cite{guo2023scanet}, ConvIR~\cite{cui2024revitalizing}. The results for the four different quantitative metrics are shown in Table \ref{table_compare_with_benchmarks}.
 
-Fig. \ref{fig6}-\ref{fig10} present the visual comparison between our method and other state-of-the-art algorithms across six dehazing datasets. Visualization of NH-HAZE-21 and NH-HAZE-23 using ITB\cite{liu2023data} instead of ConvIR. Using NH-HAZE-20 as an example, which is characterized by non-homogeneous haze distribution with certain regions heavily obscured, making background objects barely discernible, our approach effectively mitigates this haze. It produces a color representation and clarity closely aligned with the ground truth, without noticeable chromatic aberrations, achieving a largely dehazed effect. However, in areas with extremely dense haze, the model faces challenges in accurately estimating haze-free conditions, resulting in less precise restoration of textural details in these regions. Despite this, the perceptual effect is significantly improved, with the haze substantially cleared.
+Fig. \ref{fig6}-\ref{fig10} present the visual comparison between our method and other state-of-the-art algorithms across six dehazing datasets. Visualization of NH-HAZE-21 and NH-HAZE-23 using ITB~\cite{liu2023data} instead of ConvIR. Using NH-HAZE-20 as an example, which is characterized by non-homogeneous haze distribution with certain regions heavily obscured, making background objects barely discernible, our approach effectively mitigates this haze. It produces a color representation and clarity closely aligned with the ground truth, without noticeable chromatic aberrations, achieving a largely dehazed effect. However, in areas with extremely dense haze, the model faces challenges in accurately estimating haze-free conditions, resulting in less precise restoration of textural details in these regions. Despite this, the perceptual effect is significantly improved, with the haze substantially cleared.
 
 In contrast, the DCP algorithm fails to significantly reduce the haze, leaving a pronounced blue cast and severe color distortion throughout the image. While the AOD algorithm avoids obvious color distortions, its dehazing performance is limited in the context of real-world, non-uniform haze scenarios. The GCA method shows some dehazing effect but suffers from severe detail loss in the post-dehazed images, particularly in areas with high haze concentration, where residual white haze remains. Although FFA, TNN, and Dehamer address uneven haze to some extent, they still struggle with detail preservation and color accuracy.
 
 FogRemoval produces superior results in comparison, but ITB processed images exhibit slight color distortions. SCA generally performs well in dehazing but tends to over-smooth regions with fine details, such as densely packed branches, leading to perceptual distortions. In contrast, our method consistently outperforms these alternatives, visually aligning more closely with haze-free images. Most of the haze is effectively removed, and critical textural details are preserved.
 
 \subsection{Ablation Study}
-To assess the contribution of each component in our proposed method, we conducted a series of ablation studies. The ablation experiments were conducted on the NH-HAZE-20 dataset, with results summarized in Table \ref{Ablation_study_1}. And experiments involved the following configurations:
+To assess the contribution of each component in our proposed method, we conducted a series of ablation studies. The ablation experiments were conducted on the NH-HAZE-20 dataset, with results summarized in Table~\ref{Ablation_study_1}. And experiments involved the following configurations:
 
-1) Base: Consists of VQ Encoder, VQ Decoder and RSTB\cite{liang2021swinir}.
+1) Base: Consists of VQ Encoder, VQ Decoder and RSTB~\cite{liang2021swinir}.
 
 2) Base+CB: Includes the codebook(CB).
 
@@ -395,24 +403,6 @@ To assess the contribution of each component in our proposed method, we conducte
 4) Base+PDiNAT+CB+CAB: Incorporates the channel attention branch(CAB).
 
 5) Base+PDiNAT+CB+CAB+AED: Adds the additional enhancement decoder(AED).
-
-\begin{figure}[!t]
-	\centering
-	\includegraphics[width=3.5in]{ablation_experiments}
-	\caption{The ablation experiments on the NH-HAZE-20 dataset show the PSNR variation curves for different experimental configurations as the number of iterations increases.}
-	\label{Ablation_study_2}
-\end{figure}
- 
-
-{\bf{Effectiveness of CodeBook.}} The high-quality codebook introduced in this paper effectively compresses the detailed texture features of the image by reconstructing the clear image, encapsulating high-quality prior knowledge. When the codebook is integrated into the Base model, the overall performance improves, with a PSNR increase of 0.8 dB, an SSIM enhancement of 0.01, and an LPIPS reduction of 0.06.
-
-{\bf{Effectiveness of PDiNAT.}} The proposed PDiNAT module enables the model to fully extract local texture and structural features from hazy images. By utilizing a pyramid structure, it aggregates features from different levels, facilitating multi-scale feature reuse. This approach effectively preserves the texture features of hazy images, thereby assisting the subsequent codebook feature matching operation. Experimental results demonstrate that the inclusion of PDiNAT leads to a further performance improvement: PSNR increases by 1.15 dB, SSIM improves by 0.07, and LPIPS decreases by 0.09, compared to the model with the Base configuration.
-
-{\bf{Effectiveness of CAB.}} The CAB module employs a classical channel attention branch commonly used in the dehazing domain, which emphasizes areas with significant brightness variation, such as non-homogeneous fog and dense haze regions. This focus helps mitigate over-enhancement issues and improves the overall image reconstruction performance.
-
-{\bf{Effectiveness of AED.}} The AED module introduces an enhanced decoder based on multiple attention mechanisms, which prioritizes the detailed features of hazy images. This enhancement strengthens the network’s decoding capability, contributing to more accurate and refined reconstruction of hazy scenes.
-
-As observed, the model's performance improves progressively as more components are integrated. Fig. \ref{Ablation_study_2} illustrates the PSNR performance of networks with different modules at various iterations. As shown, the application of the modules proposed in this paper leads to a significant improvement in PSNR, indirectly validating the effectiveness of the proposed components.
 
 \begin{table}
 	\begin{center}
@@ -432,6 +422,22 @@ As observed, the model's performance improves progressively as more components a
 	\end{center}
 \end{table}
 
+{\bf{Effectiveness of CodeBook.}} The high-quality codebook introduced in this paper effectively compresses the detailed texture features of the image by reconstructing the clear image, encapsulating high-quality prior knowledge. When the codebook is integrated into the Base model, the overall performance improves, with a PSNR increase of 0.8 dB, an SSIM enhancement of 0.01, and an LPIPS reduction of 0.06.
+
+{\bf{Effectiveness of PDiNAT.}} The proposed PDiNAT module enables the model to fully extract local texture and structural features from hazy images. By utilizing a pyramid structure, it aggregates features from different levels, facilitating multi-scale feature reuse. This approach effectively preserves the texture features of hazy images, thereby assisting the subsequent codebook feature matching operation. Experimental results demonstrate that the inclusion of PDiNAT leads to a further performance improvement: PSNR increases by 1.15 dB, SSIM improves by 0.07, and LPIPS decreases by 0.09, compared to the model with the Base configuration.
+
+{\bf{Effectiveness of CAB.}} The CAB module employs a classical channel attention branch commonly used in the dehazing domain, which emphasizes areas with significant brightness variation, such as non-homogeneous fog and dense haze regions. This focus helps mitigate over-enhancement issues and improves the overall image reconstruction performance.
+
+{\bf{Effectiveness of AED.}} The AED module introduces an enhanced decoder based on multiple attention mechanisms, which prioritizes the detailed features of hazy images. This enhancement strengthens the network’s decoding capability, contributing to more accurate and refined reconstruction of hazy scenes.
+
+As observed, the model's performance improves progressively as more components are integrated. Fig. \ref{Ablation_study_2} illustrates the PSNR performance of networks with different modules at various iterations. As shown, the application of the modules proposed in this paper leads to a significant improvement in PSNR, indirectly validating the effectiveness of the proposed components.
+
+\begin{figure}[!t]
+	\centering
+	\includegraphics[width=3.5in]{ablation_experiments}
+	\caption{The ablation experiments on the NH-HAZE-20 dataset show the PSNR variation curves for different experimental configurations as the number of iterations increases.}
+	\label{Ablation_study_2}
+\end{figure}
 
 
 \section{CONCLUSION}

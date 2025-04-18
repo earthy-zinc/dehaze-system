@@ -8,7 +8,7 @@ Reallocated singl_function (elt_size=4) to 100 items from 50.
 Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
 Reallocated singl_function (elt_size=4) to 100 items from 50.
 Database file #1: references.bib
-Repeated entry---line 719 of file references.bib
+Repeated entry---line 747 of file references.bib
  : @article{simonyan2014very
  :                          ,
 I'm skipping whatever remains of this entry
@@ -19,43 +19,43 @@ I'm skipping whatever remains of this entry
 Done.
 You've used 44 entries,
             4087 wiz_defined-function locations,
-            1427 strings with 25987 characters,
-and the built_in function-call counts, 39931 in all, are:
-= -- 3018
-> -- 1130
-< -- 364
-+ -- 651
-- -- 218
-* -- 1912
-:= -- 5397
-add.period$ -- 94
+            1427 strings with 26182 characters,
+and the built_in function-call counts, 40783 in all, are:
+= -- 3087
+> -- 1150
+< -- 381
++ -- 665
+- -- 219
+* -- 1949
+:= -- 5473
+add.period$ -- 89
 call.type$ -- 44
 change.case$ -- 44
-chr.to.int$ -- 942
+chr.to.int$ -- 990
 cite$ -- 44
-duplicate$ -- 2731
-empty$ -- 3306
-format.name$ -- 236
-if$ -- 9469
+duplicate$ -- 2769
+empty$ -- 3362
+format.name$ -- 237
+if$ -- 9683
 int.to.chr$ -- 0
 int.to.str$ -- 44
-missing$ -- 478
+missing$ -- 482
 newline$ -- 155
 num.names$ -- 44
-pop$ -- 1222
+pop$ -- 1232
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 2
-skip$ -- 3046
+skip$ -- 3125
 stack$ -- 0
-substring$ -- 2305
-swap$ -- 2287
-text.length$ -- 50
+substring$ -- 2417
+swap$ -- 2338
+text.length$ -- 51
 text.prefix$ -- 0
 top$ -- 5
 type$ -- 44
 warning$ -- 0
-while$ -- 179
+while$ -- 187
 width$ -- 46
-write$ -- 423
+write$ -- 424
 (There was 1 error message)
