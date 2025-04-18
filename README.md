@@ -10,7 +10,7 @@
 
 项目包含以下主要文件：
 
-- `A dual branch multi-scale image dehazing method based on high quality codebook.tex`: 主论文文件
+- `CMFR-Net.tex`: 主论文文件
 - `references.bib`: 参考文献数据库
 - 各种实验对比图片：`ablation_experiments.png`, `dehaze_results_1.png`, `dehaze_results_2.png`等
 
@@ -67,7 +67,7 @@ echo $PATH
 在项目根目录下运行以下命令：
 
 ```bash
-pdflatex "A dual branch multi-scale image dehazing method based on high quality codebook.tex"
+pdflatex "CMFR-Net.tex"
 ```
 
 #### 1.2 处理参考文献
@@ -75,7 +75,7 @@ pdflatex "A dual branch multi-scale image dehazing method based on high quality 
 运行以下命令处理参考文献：
 
 ```bash
-bibtex "A dual branch multi-scale image dehazing method based on high quality codebook"
+bibtex "CMFR-Net"
 ```
 
 #### 1.3 再次编译
@@ -83,13 +83,12 @@ bibtex "A dual branch multi-scale image dehazing method based on high quality co
 再次运行pdflatex命令两次以确保所有交叉引用正确：
 
 ```bash
-pdflatex "A dual branch multi-scale image dehazing method based on high quality codebook.tex"
-pdflatex "A dual branch multi-scale image dehazing method based on high quality codebook.tex"
+pdflatex "CMFR-Net.tex"
 ```
 
 #### 1.4 查看结果
 
-编译完成后，会在当前目录下生成`A dual branch multi-scale image dehazing method based on high quality codebook.pdf`文件，使用PDF阅读器打开即可查看最终结果。
+编译完成后，会在当前目录下生成`CMFR-Net.pdf`文件，使用PDF阅读器打开即可查看最终结果。
 
 ### 2. 使用VSCode LaTeX Workshop编译
 
@@ -114,6 +113,35 @@ pdflatex "A dual branch multi-scale image dehazing method based on high quality 
 2. 按下`Ctrl+Alt+B`（Windows/Linux）或`Cmd+Option+B`（macOS）开始编译
 3. 编译完成后，可以在右侧预览PDF文件
 
+### 3. 使用TexStudio编译
+
+#### 3.1 安装TexStudio
+
+1. 下载适合您操作系统的安装包：
+   - Windows: [TexStudio官网下载](https://texstudio.org/)
+   - macOS: 使用Homebrew安装
+
+      ```bash
+      brew install --cask texstudio
+      ```
+
+2. 安装完成后，打开TexStudio
+
+#### 3.2 配置TexStudio
+
+1. 打开TexStudio的设置界面
+2. 确认LaTeX编译器路径正确指向TeX Live安装位置
+3. 建议使用以下默认编译配置：
+   - 默认编译器：PdfLaTeX
+   - 快速构建：PdfLaTeX + Bib(la)tex + PdfLaTeX (x2) + View PDF
+
+#### 3.3 编译项目
+
+1. 打开主TeX文件
+2. 点击工具栏上的"构建并查看"按钮
+3. 或使用快捷键`F5`开始编译
+4. 编译完成后，右侧将显示PDF预览
+
 ## 注意事项
 
 1. 确保TeX Live安装完整，包含所有必要的包
@@ -124,3 +152,4 @@ pdflatex "A dual branch multi-scale image dehazing method based on high quality 
    ```
 
 3. 如果遇到编码问题，请确保使用UTF-8编码
+
