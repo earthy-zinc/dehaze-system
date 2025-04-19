@@ -152,4 +152,3 @@ pdflatex "CMFR-Net.tex"
    ```
 
 3. 如果遇到编码问题，请确保使用UTF-8编码
-
