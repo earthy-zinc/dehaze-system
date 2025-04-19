@@ -30,11 +30,11 @@
 \maketitle
 
 \begin{abstract}
-	Non-homogeneous haze removal has attracted enormous interest in computer vision owing to its critical impact on image quality degradation and downstream visual tasks. Existing methods often fail to address non-homogeneous haze due to limited prior knowledge and insufficient training data. While deep learning-based approaches have advanced image dehazing, their reliance on homogeneous haze assumptions and handcrafted priors leads to suboptimal performance in complex real-world scenes with spatially varying haze concentrations. The aim of this study is to investigate a codebook-driven dual-branch network for robust prior learning and detail-preserving non-homogeneous haze removal. We established a high-quality codebook to capture clear image textures as dehazing priors, coupled with a pyramid dilated neighborhood attention encoder for multi-scale haze feature extraction and an enhanced decoder with multi-attention mechanisms. A dual-branch architecture was designed to address dense haze regions through feature fusion. These findings open new avenues for image restoration under complex degradation scenarios by integrating generative priors with attention-aware feature learning, potentially benefiting autonomous driving and remote sensing systems.
+	Non-homogeneous haze removal has attracted enormous interest in computer vision owing to its critical impact on image quality degradation and downstream visual tasks. Existing methods often fail to address non-homogeneous haze due to limited prior knowledge and insufficient training data. While deep learning-based approaches have advanced image dehazing, their reliance on homogeneous haze assumptions and handcrafted priors leads to suboptimal performance in complex real-world scenes with spatially varying haze concentrations. The aim of this study is to investigate a codebook-driven multi-scale feature fusion dual-branch network (CMFD-Net) for robust prior learning and detail-preserving non-homogeneous haze removal. We established a high-quality codebook to capture clear image textures as dehazing priors, coupled with a pyramid dilated neighborhood attention encoder for multi-scale haze feature extraction and an enhanced decoder with multi-attention mechanisms. A dual-branch architecture was designed to address dense haze regions through feature fusion. These findings open new avenues for image restoration under complex degradation scenarios by integrating generative priors with attention-aware feature learning, potentially benefiting autonomous driving and remote sensing systems.
 \end{abstract}
 
 \begin{IEEEkeywords}
-	Image dehazing, codebook, a two-branch network, multi-scale, neighborhood attention.
+	Image dehazing, codebook, dual-branch network, multi-scale, neighborhood attention.
 \end{IEEEkeywords}
 
 
@@ -60,7 +60,7 @@ The contributions of our work can be summarized as follows:
 \begin{figure*}[!t]
 	\centering
 	\includegraphics[width=7in]{images/network_architecture}
-	\caption{An overview of our CMFR-Net. This model consists of two branches: prior matching branch and channel attention branch. Hazy image is processed separately by two branches, each outputting a feature map. Then, a feature fusion tail is used to fuse the feature maps of the two branches, and finally generate a hazy-free image.}
+	\caption{An overview of our CMFD-Net. This model consists of two branches: prior matching branch and channel attention branch. Hazy image is processed separately by two branches, each outputting a feature map. Then, a feature fusion tail is used to fuse the feature maps of the two branches, and finally generate a hazy-free image.}
 	\label{fig0}
 \end{figure*}
 
@@ -84,39 +84,41 @@ The concept of discrete codebooks can be traced back to Variational Auto Encoder
 
 \section{PROPOSED METHOD}
 
-In this section, we present the Codebook‑Driven Multiscale Feature Reconstruction Network (CMFR‑Net), a dual‑branch, multi‑scale image dehazing model that integrates high‑quality priors from a VQGAN‑based codebook. The network combines a Prior Matching Branch, which extracts features using the codebook, and a Channel Attention Branch, which enhances focus on dense haze regions through channel-wise attention. Additionally, we introduce a pyramid neighborhood attention mechanism and an improved decoder for better feature fusion and image reconstruction. Finally, we describe the loss function used to optimize the model’s performance.
+In this section, we present the codebook-driven multi-scale feature fusion dual-branch Network (CMFD-Net), an image dehazing model that integrates high-quality priors from a VQGAN-based codebook. Additionally, we introduce a pyramid neighborhood attention mechanism and an improved decoder for better feature fusion and image reconstruction. Finally, we describe the loss function used to optimize the model’s performance.
 
 \subsection{Overall Network Architecture}
-The overall network architecture of the method we propose is shown in Fig.~\ref{fig0}. Image data will be input into a dual-branch network, which has been successfully applied in the field of image dehazing by predecessors, demonstrating the good performance of this network. In our network structure, Branch One is called the Prior Matching Branch, the main structure of which includes a VQ encoder and decoder, Semantic Prior Codebook, and the Pyramid Neighborhood Attention Encoder and Feature-Refined Decoder. Branch Two is called the Channel Attention Branch, which utilizes multiple residuals and channel convolutions to enhance the performance of Branch One. The process of the Prior Matching Branch (PMB) can be represented as follows:
+The overall network architecture of the method we propose is shown in Fig.~\ref{fig0}. Image data will be input into a dual-branch network, which has been successfully applied in the field of image dehazing by predecessors, demonstrating the good performance of this network. In our network structure, Branch one is called the Prior Matching Branch (PMB), the main structure of which includes a VQ encoder and decoder, Semantic Prior Codebook, and the Pyramid Dilated Neighborhood Attention Encoder (PDiNATE) and Feature-Refined Decoder (FRD). Branch two is called the Channel Attention Branch (CAB), which utilizes multiple residuals and channel convolutions to enhance dense haze regions. The process of the PMB can be represented as follows:
 \begin{equation}
 	\label{PMB}
 	f_{p} = PMB(x)
 \end{equation}
 
-where $f_{p}$ denotes the output feature map from the Prior Matching Branch, and $x$ is the input image. The Prior Matching Branch focuses on adapting the input image to the target domain by leveraging semantic prior knowledge and multi-scale attention mechanisms.
+where $f_{p}$ denotes the output feature map from the prior matching branch, and $x$ is the input image. The PMB focuses on adapting the input image to the target domain by leveraging semantic prior knowledge and multi-scale attention mechanisms.
 
-Similarly, the Channel Attention Branch (CAB), which complements the first branch, can be expressed as:
+Similarly, the CAB can be expressed as:
 
 \begin{equation}
 	\label{CAB}
 	f_{c} = CAB(x)
 \end{equation}
 
-where $f_{c}$ represents the output feature map from the Channel Attention Branch. This branch enhances specific regions of the image, such as those with dense haze, by applying channel attention and convolutional operations.
+where $f_{c}$ represents the output feature map from the channel attention branch. This branch enhances specific regions of the image, such as those with dense haze, by applying channel attention and convolutional operations.
 
-The outputs from both branches are then concatenated and passed through a feature fusion tail, which is composed of a ReflectionPad layer, a Convolutional (Conv) layer, and a Tanh activation function. This fusion step combines the features from both branches and produces the final clean image, as described by the following equation:
+The outputs from both branches are then concatenated and passed through a feature fusion tail. This fusion step combines the features from both branches and produces the final clean image, as described by the following equation:
 
 \begin{equation}
 	\label{tail}
 	y = FusionTail(cat(f_{p}, f_{c}))
 \end{equation}
 
-where $y$ is the final dehazed image, and $cat(f_{p}, f_{c})$ denotes the concatenation of the feature maps $f_{p}$ and $f_{c}$. The ReflectionPad layer ensures proper padding of the image boundaries, the Conv layer helps in feature fusion, and the Tanh activation produces the final enhanced image with pixel values in the appropriate range.
+where $y$ is the final dehazed image, and $cat(f_{p}, f_{c})$ denotes the concatenation of the feature maps $f_{p}$ and $f_{c}$. $FusionTail(*)$ is composed of a
+ReflectionPad layer, a Convolutional layer, and a Tanh
+activation function. The ReflectionPad layer ensures proper padding of the image boundaries, the Conv layer helps in feature fusion, and the Tanh activation produces the final enhanced image with pixel values in the appropriate range.
 
 \subsection{Prior Matching Branch}
-Our Prior Matching Branch tackles domain adaptation and detail recovery through three key innovations: 1) A Semantic Prior Codebook for Domain Adaptation (SPC-DA) that dynamically aligns hazy features with clear image priors, 2) A Pyramid Neighborhood Attention Encoder capturing multi-scale haze patterns, and 3) A Feature-Refined Decoder with multi-attention detail enhancement. While VQ-based methods struggle with hazy feature matching and texture recovery, our triad of components synergistically addresses these limitations: SPC-DA bridges domain gaps through learnable distribution matching, the pyramid encoder extracts hierarchical contextual features, and the refined decoder recovers textures through attention-guided fusion. This coherent framework enables progressive transformation of hazy features while preserving structural integrity.
+Our prior matching branch tackles domain adaptation and detail recovery through three key innovations: 1) A Semantic Prior Codebook for Domain Adaptation (SPC-DA) that dynamically aligns hazy features with clear image priors, 2) A Pyramid Dilated Neighborhood Attention Encoder (PDiNATE) capturing multi-scale haze patterns, and 3) A Feature-Refined Decoder (FRD) with multi-attention detail enhancement. While VQ-based methods struggle with hazy feature matching and texture recovery, our triad of components synergistically addresses these limitations: SPC-DA bridges domain gaps through learnable distribution matching, the pyramid encoder extracts hierarchical contextual features, and the refined decoder recovers textures through attention-guided fusion. This coherent framework enables progressive transformation of hazy features while preserving structural integrity.
 
-	{\bf{1) Semantic Prior Codebook for Domain Adaptation:}} Inspired by the latest research technology in image generation neighborhoods, VQGAN~\cite{esser2021taming}, we propose the Semantic Prior Codebook for Domain Adaptation (SPC-DA). SPC-DA endows our dehazing network with a rich, semantically meaningful embedding space that bridges the domain gap between clear and hazy images. While extracting features, we use the pre-trained VQGAN to add image generation capabilities to the dehazing network, thereby helping to restore the image structure and details in heavy haze areas. The overall training is divided into two stages. The first stage requires training the VQGAN network on a high-quality clear dataset to achieve the restoration of image detail textures. In this stage, the network consists of a VQ encoder, codebook, and VQ decoder. The training goal is to obtain a codebook that stores high-quality clear image features and its corresponding VQ decoder. The VQ encoder and decoder adopt a network architecture based on UNet~\cite{ronneberger2015u}. UNet first half is feature extraction, and the second half is upsampling. UNet has been proven to perform well in fields such as image classification and segmentation. Since the encoder's downsampling and feature refinement will lose some edge features, multiple residual structures are used. Through feature concatenation, the retrieval of edge features is achieved, discretization operation is shown in Fig.~\ref{fig2}.
+	{\bf{1) Semantic Prior Codebook for Domain Adaptation:}} Inspired by the latest research technology in image generation neighborhoods, VQGAN~\cite{esser2021taming}, we propose the SPC-DA. SPC-DA endows our dehazing network with a rich, semantically meaningful embedding space that bridges the domain gap between clear and hazy images. While extracting features, we use the pre-trained VQGAN to add image generation capabilities to the dehazing network, thereby helping to restore the image structure and details in heavy haze areas. The overall training is divided into two stages. The first stage requires training the VQGAN network on a high-quality clear dataset to achieve the restoration of image detail textures. In this stage, the network consists of a VQ encoder, codebook, and VQ decoder. The training goal is to obtain a codebook that stores high-quality clear image features and its corresponding VQ decoder. The VQ encoder and decoder adopt a network architecture based on UNet~\cite{ronneberger2015u}. UNet first half is feature extraction, and the second half is upsampling. UNet has been proven to perform well in fields such as image classification and segmentation. Since the encoder's downsampling and feature refinement will lose some edge features, multiple residual structures are used. Through feature concatenation, the retrieval of edge features is achieved, discretization operation is shown in Fig.~\ref{fig2}.
 
 \begin{figure}[!t]
 	\centering
@@ -170,33 +172,33 @@ The $KL$ divergence measures the difference between two probability distribution
 
 To solve for the optimal $\alpha$, we can employ optimization techniques such as gradient descent or other numerical methods. The objective function to be minimized would be the KL divergence between $P_{c}(x) = z_{k}$ and $P_{h}(x = z_{k} | \alpha) $ weighted by  the function $F(f_{k}, \alpha)$.
 
-By iteratively updating $\alpha$ based on the gradients of the objective function, we can find the optimal value that minimizes the $KL$ divergence, thereby improving the matching accuracy and ultimately enhancing the defogging effect.
+By iteratively updating $\alpha$ based on the gradients of the objective function, we can find the optimal value that minimizes the $KL$ divergence, thereby improving the matching accuracy and ultimately enhancing the dehazing effect.
 
 It is worth noting that the computation of $f_{k}$ and the optimization of $\alpha$ can be integrated into the overall training process of the network. By jointly optimizing the network parameters and the matching criteria, we can achieve better generalization and adaptability to various hazy scenes, leading to more robust and effective dehazing results.
 
-	{\bf{2) Pyramid Neighborhood Attention Encoder:}} The VQ encoder performs well when encoding clear images, but it proves insufficient when encoding images with dense haze or non-homogeneous haze. This is primarily because, in the task of dehazing, the encoder must not only extract the general structural texture features from the image but also distinguish the hazy areas within the image. Network architecture of the VQ encoder is relatively shallow, which does not allow it to adequately accomplish this task. In order to fully extract global features such as the texture and structure of hazy images, we designed an encoder based on Pyramid Neighborhood Attention in the prior matching branch. The Pyramid Neighborhood Attention is a variant of the self-attention mechanism found in the Vision Transformer~\cite{dosovitskiy2020image}, serving as an effective and scalable visual sliding window attention mechanism. Neighborhood Attention (NA)~\cite{hassani2023neighborhood, hassani2022dilated} is a per-pixel operation that directs the self-attention (SA)~\cite{vaswani2017attention} towards the nearest neighboring pixels, thus, compared to the quadratic complexity of self-attention, neighborhood attention has linear time and space complexity. Moreover, it surpasses the Vision Transformer and Swin Transformer~\cite{liu2021swin} in downstream visual performance. In our designed Pyramid Neighborhood Attention encoder, four feature maps of different resolution sizes are obtained through the serialization process and two down-sampling operations. By utilizing a pyramid structure and cascading operations, the feature information from each previous layer serves as the input for the next layer, aggregating features from different levels and achieving feature reuse across different scales.
+	{\bf{2) Pyramid Dilated Neighborhood Attention Encoder:}} The VQ encoder performs well when encoding clear images, but it proves insufficient when encoding images with dense haze or non-homogeneous haze. This is primarily because, in the task of dehazing, the encoder must not only extract the general structural texture features from the image but also distinguish the hazy areas within the image. Network architecture of the VQ encoder is relatively shallow, which does not allow it to adequately accomplish this task. In order to fully extract global features such as the texture and structure of hazy images, we designed an encoder based on pyramid dilated neighborhood attention in the prior matching branch. The neighborhood attention~\cite{hassani2023neighborhood} is a variant of the self-attention mechanism~\cite{vaswani2017attention} found in the Vision Transformer~\cite{dosovitskiy2020image}, serving as an effective and scalable visual sliding window attention mechanism. Dilated Neighborhood Attention (DiNAT)~\cite{hassani2022dilated} extends standard neighborhood attention by incorporating dilated convolution principles. Instead of fixed-range neighbors, DiNAT employs dilation rates to skip pixels during feature sampling, creating sparse receptive fields. This expands the perceptual range while maintaining linear complexity. By controlling spacing between sampled pixels through dilation rates, DiNAT captures multi-scale contextual information crucial for image dehazing, where atmospheric artifacts span varying spatial scales. The approach balances computational efficiency with enhanced feature representation through adjustable dilation patterns. Moreover, it surpasses the Vision Transformer and Swin Transformer~\cite{liu2021swin} in downstream visual performance. In our designed PDiNAE, four feature maps of different resolution sizes are obtained through the serialization process and two down-sampling operations. By utilizing a pyramid structure and cascading operations, the feature information from each previous layer serves as the input for the next layer, aggregating features from different levels and achieving feature reuse across different scales.
 
-The NA operation can be expressed as:
+The DiNA operation can be expressed as:
 
 \begin{equation}
 	\label{NA_operation}
-	NA_{k} = softmax (\frac{A_{k}}{\sqrt{d}}) V_{k}
+	DiNA^{\zeta}_{k} = softmax (\frac{A^{(\zeta, k)}}{\sqrt{d}}) V^{(\zeta, k)}
 \end{equation}
 
-where $A_{k}$ is the attention weight of the input with a neighborhood size of $k$, which is the dot product of the input query projection and its $k$ nearest neighbor key projections. The neighboring value $V_k$ is a matrix whose rows are projections of the $k$ nearest neighboring values of the input, and $\sqrt{d}$ is the scaling parameter.
+where $A^{(\zeta, k)}$ is the attention weight of the input with a neighborhood size of $k$ and dilated factor of $\zeta$, which is the dot product of the input query projection and its $k$ nearest neighbor key projections. The neighboring value $V^{(\zeta, k)}$ is a matrix whose rows are projections of the $k$ nearest neighboring values of the input, and $\sqrt{d}$ is the scaling parameter.
 
-	{\bf{3) Feature-Refined Decoder:}} The output generated by the VQ decoder alone often lacks detailed information in regions with dense haze, leading to blurred image structures and textures. To address this issue and enhance the decoder's capability to recover fine-grained details in such areas, we propose a Feature-Refined Decoder that leverages a combination of multiple attention mechanisms, integrated within the Prior Matching Branch. By combining channel and pixel attention (CA+PA)~\cite{qin2020ffa}, and finally passing through an enhancer block~\cite{qu2019enhanced} based on pyramid pooling, we ensure that the detailed features across different scales are embedded into the final result. The architecture of our Feature-Refined Decoder (FRD) is shown in Fig.~\ref{fig3}, and Enhancer Block is shown in Fig.~\ref{fig4}.
+	{\bf{3) Feature-Refined Decoder:}} The output generated by the VQ decoder alone often lacks detailed information in regions with dense haze, leading to blurred image structures and textures. To address this issue and enhance the decoder's capability to recover fine-grained details in such areas, we propose a Feature-Refined Decoder (FRD) that leverages a combination of multiple attention mechanisms, integrated within the PMB. By combining channel and pixel attention~\cite{qin2020ffa}, and finally passing through an enhancer block~\cite{qu2019enhanced} based on pyramid pooling, we ensure that the detailed features across different scales are embedded into the final result. The architecture of our FRD is shown in Fig.~\ref{fig3}, and enhancer block is shown in Fig.~\ref{fig4}.
 
 \begin{figure}[!t]
 	\centering
 	\includegraphics[width=3.49in]{images/enhanced_decoder}
-	\caption{Architecture of our Feature-Refined Decoder (FRD), which consists of upsampling layers, convolutions, residual blocks, channel attention and pixel attention blocks, as well as an enhancer block. }
+	\caption{Architecture of our FRD, which consists of upsampling layers, convolutions, residual blocks, channel attention and pixel attention blocks, as well as an enhancer block. }
 	\label{fig3}
 \end{figure}
 \begin{figure}[!t]
 	\centering
 	\includegraphics[width=3.49in]{images/enhancer_block}
-	\caption{Detail network structure of the Enhancer Block.}
+	\caption{Detail network structure of the enhancer block.}
 	\label{fig4}
 \end{figure}
 
