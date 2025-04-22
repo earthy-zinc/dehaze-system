@@ -39,15 +39,13 @@
 
 
 \section{Introduction}
-\IEEEPARstart{H}{aze} is an aerosol system composed of numerous tiny water droplets suspended in the near-ground air, serving as one of the primary causes of image blurring, color distortion, and contrast reduction.
+\IEEEPARstart{H}{aze} is an aerosol system composed of numerous tiny water droplets suspended in the near-ground air, serving as one of the primary causes of image blurring, color distortion, and contrast reduction. The outdoor visual systems such as autonomous driving, video surveillance, military reconnaissance, and remote sensing imagery are affected by hazy conditions, leading to a decrease in the accuracy of information acquisition from captured images. As the haze intensity increases and non-homogeneous haze emerges, the image quality deteriorates rapidly, resulting in color distortion, blurred features, reduced contrast, and other visual quality degradations. Consequently, it becomes challenging to identify objects and backgrounds within the image, significantly impacting the effectiveness of subsequent visual tasks such as semantic segmentation and object detection in computer vision. Therefore, it is necessary to preprocess the images to mitigate the impact of dense haze on image quality.
 
-The outdoor visual systems such as autonomous driving, video surveillance, military reconnaissance, and remote sensing imagery are affected by hazy conditions, leading to a decrease in the accuracy of information acquisition from captured images. As the haze intensity increases and non-homogeneous haze emerges, the image quality deteriorates rapidly, resulting in color distortion, blurred features, reduced contrast, and other visual quality degradations. Consequently, it becomes challenging to identify objects and backgrounds within the image, significantly impacting the effectiveness of subsequent visual tasks such as semantic segmentation and object detection in computer vision. Therefore, it is necessary to preprocess the images to mitigate the impact of dense haze on image quality.
+Although existing dehazing methods based on deep learning have made significant progress, image dehazing remains a highly ill-posed problem that often requires prior knowledge to effectively tackle. Existing priors like dark channel~\cite{he2010single} fail to handle spatially varying haze density caused by depth discontinuity. While CNN-based approaches~\cite{cai2016dehazenet, li2017aod, yu2021two} demonstrate basic haze removal capabilities, their fixed convolutional kernels fundamentally limit adaptive response to varying haze concentrations, causing progressive detail degradation in dense haze regions.
 
-Although existing dehazing methods based on deep learning have made significant progress, image dehazing remains a highly ill-posed problem that often requires prior knowledge to effectively tackle. Earlier dehazing methods, such as~\cite{he2010single, cai2016dehazenet, li2017aod} are largely based on empirical observations and manually set priors, which resulted in limitations when applied to complex or non-homogeneous haze scenarios. These methods often underperform in real-world applications where haze is not uniformly distributed, leading to residual haze in regions with large depth variation~\cite{liu2019griddehazenet, qin2020ffa}. Recently, more advanced techniques have incorporated deep learning strategies, such as~\cite{guo2022image, song2023vision, yu2021two, jin2022structure, liu2023data}, improving performance in handling dense haze and depth variations. However, many of these methods still struggle with preserving fine image details in regions affected by dense haze.
+Recent transformer-based approaches in image dehazing exhibit three critical limitations that hinder practical deployment. Standard vision transformers struggle with spatially varying haze densities due to their fixed positional encoding schemes, often producing ambiguous texture details as identified by Guo et al.~\cite{guo2022image}. While advanced architectures like DehazeFormer~\cite{song2023vision} improve remote sensing dehazing, their purely data-driven learning paradigm fails to incorporate atmospheric scattering physics, leading to structural artifacts under complex illumination conditions. Furthermore, existing methods demand unrealistic amounts of non-homogeneous training pairs to handle real-world depth variations, creating significant data dependency challenges as demonstrated in~\cite{liu2023data}.
 
-In contrast, our approach introduces a dual-branch multi-scale image dehazing network, leveraging a high-quality codebook~\cite{esser2021taming} to integrate robust prior knowledge for texture and detail preservation. Additionally, we propose a feature pyramid encoding module based on dilated neighborhood attention~\cite{hassani2022dilated} and a multi-scale channel attention mechanism to address the challenge of dehazing in regions with complex haze distributions. Finally, a dual-branch network is utilized to integrate these methods, resulting in our proposed network.
-
-The contributions of our work can be summarized as follows:
+In contrast, our approach introduces a dual-branch multi-scale image dehazing network, leveraging a high-quality codebook~\cite{esser2021taming} to integrate robust prior knowledge for texture and detail preservation. Additionally, we propose a feature pyramid encoding module based on dilated neighborhood attention~\cite{hassani2022dilated} and a multi-scale channel attention mechanism to address the challenge of dehazing in regions with complex haze distributions. Finally, a dual-branch network is utilized to integrate these methods, resulting in our proposed network. This integrated approach enables precise haze density estimation while maintaining texture fidelity, effectively bridging the gap between data-driven learning and physical constraints without requiring excessive training samples. The contributions of our work can be summarized as follows:
 
 \begin{list}{}{}
 	\item{1) We employ the VQGAN generative model to train a high-quality codebook as a prior, thereby complementing robust prior knowledge and mitigating the impact of haze features in the dehazing network.}
@@ -84,36 +82,26 @@ The concept of discrete codebooks can be traced back to Variational Auto Encoder
 
 \section{PROPOSED METHOD}
 
-In this section, we present the codebook-driven multi-scale feature fusion dual-branch Network (CMFD-Net), an image dehazing model that integrates high-quality priors from a VQGAN-based codebook. Additionally, we introduce a pyramid neighborhood attention mechanism and an improved decoder for better feature fusion and image reconstruction. Finally, we describe the loss function used to optimize the model’s performance.
+In this section, we present the codebook-driven multi-scale feature fusion dual-branch network (CMFD-Net), an image dehazing model that integrates high-quality priors from a VQGAN-based codebook. Additionally, we introduce a pyramid neighborhood attention mechanism and an improved decoder for better feature fusion and image reconstruction. Finally, we describe the loss function used to optimize the model’s performance.
 
 \subsection{Overall Network Architecture}
-The overall network architecture of the method we propose is shown in Fig.~\ref{fig0}. Image data will be input into a dual-branch network, which has been successfully applied in the field of image dehazing by predecessors, demonstrating the good performance of this network. In our network structure, Branch one is called the Prior Matching Branch (PMB), the main structure of which includes a VQ encoder and decoder, Semantic Prior Codebook, and the Pyramid Dilated Neighborhood Attention Encoder (PDiNATE) and Feature-Refined Decoder (FRD). Branch two is called the Channel Attention Branch (CAB), which utilizes multiple residuals and channel convolutions to enhance dense haze regions. The process of the PMB can be represented as follows:
+The overall architecture of CMFD-Net is depicted in Fig.~\ref{fig0}. Motivated by the need to simultaneously address non-uniform haze distribution and texture preservation, we design a dual-branch structure that synergistically combines codebook-driven priors with adaptive feature enhancement. This architecture explicitly decouples two critical aspects of dehazing: 1) global prior-guided haze removal and 2) dense haze-aware refinement.
+
+The proposed network processes the input image $x$ through parallel pathways:
 \begin{equation}
-	\label{PMB}
-	f_{p} = PMB(x)
+	\begin{cases}
+		f_p = \mathcal{F}_{PMB}(x) & \text{(Prior Matching Branch)}    \\
+		f_c = \mathcal{F}_{CAB}(x) & \text{(Channel Attention Branch)}
+	\end{cases}
 \end{equation}
 
-where $f_{p}$ denotes the output feature map from the prior matching branch, and $x$ is the input image. The PMB focuses on adapting the input image to the target domain by leveraging semantic prior knowledge and multi-scale attention mechanisms.
-
-Similarly, the CAB can be expressed as:
+\noindent where $\mathcal{F}_{PMB}$ integrates a VQGAN-based codebook with our Pyramid Dilated Neighborhood Attention Encoder (PDiNATE) to establish physically-constrained feature representations. Concurrently, $\mathcal{F}_{CAB}$ employs residual channel attention blocks to amplify discriminative features in dense haze regions. The final reconstruction combines both pathways through:
 
 \begin{equation}
-	\label{CAB}
-	f_{c} = CAB(x)
+	y = \mathcal{F}_{fusion}(\text{concat}(f_p, f_c))
 \end{equation}
 
-where $f_{c}$ represents the output feature map from the channel attention branch. This branch enhances specific regions of the image, such as those with dense haze, by applying channel attention and convolutional operations.
-
-The outputs from both branches are then concatenated and passed through a feature fusion tail. This fusion step combines the features from both branches and produces the final clean image, as described by the following equation:
-
-\begin{equation}
-	\label{tail}
-	y = FusionTail(cat(f_{p}, f_{c}))
-\end{equation}
-
-where $y$ is the final dehazed image, and $cat(f_{p}, f_{c})$ denotes the concatenation of the feature maps $f_{p}$ and $f_{c}$. $FusionTail(*)$ is composed of a
-ReflectionPad layer, a Convolutional layer, and a Tanh
-activation function. The ReflectionPad layer ensures proper padding of the image boundaries, the Conv layer helps in feature fusion, and the Tanh activation produces the final enhanced image with pixel values in the appropriate range.
+\noindent Here, $\mathcal{F}_{fusion}$ implements boundary-preserving operations via reflection padding followed by convolutional feature aggregation, with Tanh activation ensuring normalized output. This dual-stream design enables complementary processing of semantic priors and localized texture features.
 
 \subsection{Prior Matching Branch}
 Our prior matching branch tackles domain adaptation and detail recovery through three key innovations: 1) A Semantic Prior Codebook for Domain Adaptation (SPC-DA) that dynamically aligns hazy features with clear image priors, 2) A Pyramid Dilated Neighborhood Attention Encoder (PDiNATE) capturing multi-scale haze patterns, and 3) A Feature-Refined Decoder (FRD) with multi-attention detail enhancement. While VQ-based methods struggle with hazy feature matching and texture recovery, our triad of components synergistically addresses these limitations: SPC-DA bridges domain gaps through learnable distribution matching, the pyramid encoder extracts hierarchical contextual features, and the refined decoder recovers textures through attention-guided fusion. This coherent framework enables progressive transformation of hazy features while preserving structural integrity.
@@ -185,7 +173,7 @@ The DiNA operation can be expressed as:
 	DiNA^{\zeta}_{k} = softmax (\frac{A^{(\zeta, k)}}{\sqrt{d}}) V^{(\zeta, k)}
 \end{equation}
 
-where $A^{(\zeta, k)}$ is the attention weight of the input with a neighborhood size of $k$ and dilated factor of $\zeta$, which is the dot product of the input query projection and its $k$ nearest neighbor key projections. The neighboring value $V^{(\zeta, k)}$ is a matrix whose rows are projections of the $k$ nearest neighboring values of the input, and $\sqrt{d}$ is the scaling parameter.
+\noindent where $A^{(\zeta, k)}$ is the attention weight of the input with a neighborhood size of $k$ and dilated factor of $\zeta$, which is the dot product of the input query projection and its $k$ nearest neighbor key projections. The neighboring value $V^{(\zeta, k)}$ is a matrix whose rows are projections of the $k$ nearest neighboring values of the input, and $\sqrt{d}$ is the scaling parameter.
 
 	{\bf{3) Feature-Refined Decoder:}} The output generated by the VQ decoder alone often lacks detailed information in regions with dense haze, leading to blurred image structures and textures. To address this issue and enhance the decoder's capability to recover fine-grained details in such areas, we propose a Feature-Refined Decoder (FRD) that leverages a combination of multiple attention mechanisms, integrated within the PMB. By combining channel and pixel attention~\cite{qin2020ffa}, and finally passing through an enhancer block~\cite{qu2019enhanced} based on pyramid pooling, we ensure that the detailed features across different scales are embedded into the final result. The architecture of our FRD is shown in Fig.~\ref{fig3}, and enhancer block is shown in Fig.~\ref{fig4}.
 
