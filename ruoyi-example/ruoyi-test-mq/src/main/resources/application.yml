@@ -13,10 +13,10 @@ spring:
 --- # rabbitmq 配置
 spring:
   rabbitmq:
-    host: localhost
+    host: 192.168.31.9
     port: 5672
-    username: guest
-    password: guest
+    username: root
+    password: 123456
     publisher-returns: true
     publisher-confirm-type: correlated
 

@@ -1,3 +1,5 @@
+create database if not exists `ry-seata`;
+use `ry-seata`;
 
 -- -------------------------------- The script used when storeMode is 'db' --------------------------------
 -- the table to store GlobalSession data

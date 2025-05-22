@@ -1,3 +1,6 @@
+create database if not exists `ry-job`;
+use `ry-job`;
+
 SET NAMES utf8mb4;
 
 CREATE TABLE `sj_namespace`
