@@ -1,3 +1,6 @@
+create database if not exists `ry-cloud`;
+use `ry-cloud`;
+
 -- ----------------------------
 -- 第三方平台授权表
 -- ----------------------------

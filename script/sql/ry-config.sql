@@ -1,3 +1,5 @@
+create database if not exists `ry-config`;
+use `ry-config`;
 
 /******************************************/
 /*   表名称 = config_info   */
