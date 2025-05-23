@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.pei</groupId>
+        <artifactId>pei-modules</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>pei-job</artifactId>
+
+    <description>
+        pei-job 任务调度模块
+    </description>
+
+    <dependencies>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-nacos</artifactId>
+        </dependency>
+
+        <!-- RuoYi Common Log -->
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-log</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-dict</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-dubbo</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-mybatis</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-job</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-tenant</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.pei</groupId>
+                    <artifactId>pei-common-mybatis</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-common-security</artifactId>
+        </dependency>
+
+        <!-- RuoYi Api System -->
+        <dependency>
+            <groupId>com.pei</groupId>
+            <artifactId>pei-api-system</artifactId>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${spring-boot.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

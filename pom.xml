@@ -4,13 +4,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.dromara</groupId>
-    <artifactId>ruoyi-cloud-plus</artifactId>
+    <groupId>com.pei</groupId>
+    <artifactId>dehaze-java-cloud</artifactId>
     <version>${revision}</version>
 
-    <name>RuoYi-Cloud-Plus</name>
-    <url>https://gitee.com/dromara/RuoYi-Cloud-Plus</url>
-    <description>Dromara RuoYi-Cloud-Plus微服务系统</description>
+    <name>dehaze-java-cloud</name>
+    <url>https://gitee.com/earthyzinc/dehaze-java</url>
+    <description>图像去雾系统 微服务版</description>
 
     <properties>
         <revision>2.3.0</revision>
@@ -114,8 +114,8 @@
 
             <!-- SpringCloud Alibaba 微服务 -->
             <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-common-alibaba-bom</artifactId>
+                <groupId>com.pei</groupId>
+                <artifactId>pei-common-alibaba-bom</artifactId>
                 <version>${revision}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -148,8 +148,8 @@
 
             <!-- common 的依赖配置-->
             <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-common-bom</artifactId>
+                <groupId>com.pei</groupId>
+                <artifactId>pei-common-bom</artifactId>
                 <version>${revision}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -157,8 +157,8 @@
 
             <!-- api 的依赖配置-->
             <dependency>
-                <groupId>org.dromara</groupId>
-                <artifactId>ruoyi-api-bom</artifactId>
+                <groupId>com.pei</groupId>
+                <artifactId>pei-api-bom</artifactId>
                 <version>${revision}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -375,13 +375,13 @@
     </dependencyManagement>
 
     <modules>
-        <module>ruoyi-auth</module>
-        <module>ruoyi-gateway</module>
-        <module>ruoyi-visual</module>
-        <module>ruoyi-modules</module>
-        <module>ruoyi-api</module>
-        <module>ruoyi-common</module>
-        <module>ruoyi-example</module>
+        <module>pei-auth</module>
+        <module>pei-gateway</module>
+        <module>pei-ops</module>
+        <module>pei-modules</module>
+        <module>pei-api</module>
+        <module>pei-common</module>
+        <module>pei-example</module>
     </modules>
     <packaging>pom</packaging>
 

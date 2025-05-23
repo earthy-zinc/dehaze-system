@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <groupId>com.pei</groupId>
+        <artifactId>dehaze-java-cloud</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <modules>
+        <module>pei-common-bom</module>
+        <module>pei-common-alibaba-bom</module>
+        <module>pei-common-log</module>
+        <module>pei-common-dict</module>
+        <module>pei-common-excel</module>
+        <module>pei-common-core</module>
+        <module>pei-common-redis</module>
+        <module>pei-common-doc</module>
+        <module>pei-common-security</module>
+        <module>pei-common-satoken</module>
+        <module>pei-common-web</module>
+        <module>pei-common-mybatis</module>
+        <module>pei-common-job</module>
+        <module>pei-common-dubbo</module>
+        <module>pei-common-seata</module>
+        <module>pei-common-loadbalancer</module>
+        <module>pei-common-oss</module>
+        <module>pei-common-ratelimiter</module>
+        <module>pei-common-idempotent</module>
+        <module>pei-common-mail</module>
+        <module>pei-common-sms</module>
+        <module>pei-common-logstash</module>
+        <module>pei-common-elasticsearch</module>
+        <module>pei-common-sentinel</module>
+        <module>pei-common-skylog</module>
+        <module>pei-common-prometheus</module>
+        <module>pei-common-translation</module>
+        <module>pei-common-sensitive</module>
+        <module>pei-common-json</module>
+        <module>pei-common-encrypt</module>
+        <module>pei-common-tenant</module>
+        <module>pei-common-websocket</module>
+        <module>pei-common-social</module>
+        <module>pei-common-nacos</module>
+        <module>pei-common-bus</module>
+        <module>pei-common-sse</module>
+    </modules>
+
+    <artifactId>pei-common</artifactId>
+    <packaging>pom</packaging>
+
+    <description>
+        pei-common通用模块
+    </description>
+
+</project>

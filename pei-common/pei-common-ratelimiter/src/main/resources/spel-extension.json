@@ -1,0 +1,7 @@
+{
+  "com.pei.common.ratelimiter.annotation.RateLimiter@key": {
+    "method": {
+      "parameters": true
+    }
+  }
+}

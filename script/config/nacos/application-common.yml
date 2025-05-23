@@ -76,7 +76,7 @@ spring:
       discovery:
         metadata:
           # admin 监控账号密码
-          username: ruoyi
+          username: root
           userpassword: 123456
     # sentinel 配置
     sentinel:
@@ -85,7 +85,7 @@ spring:
       transport:
         # dashboard控制台服务名 用于服务发现
         # 如无此配置将默认使用下方 dashboard 配置直接注册
-        server-name: ruoyi-sentinel-dashboard
+        server-name: pei-sentinel-dashboard
         # 客户端指定注册的ip 用于多网卡ip不稳点使用
         # client-ip:
         # 控制台地址 从1.3.0开始使用 server-name 注册
@@ -93,7 +93,7 @@ spring:
 
     bus:
       id: ${spring.application.name}
-      base-packages: org.dromara.**.event
+      base-packages: com.pei.**.event
   # 消息总线 也可以使用 kafka 参考 spring-cloud-bus 用法
   rabbitmq:
     host: 192.168.31.9
@@ -187,12 +187,12 @@ sa-token:
 mybatis-plus:
   # 自定义配置 是否全局开启逻辑删除 关闭后 所有逻辑删除功能将失效
   enableLogicDelete: true
-  # 多包名使用 例如 org.dromara.**.mapper,org.xxx.**.mapper
-  mapperPackage: org.dromara.**.mapper
+  # 多包名使用 例如 com.pei.**.mapper,org.xxx.**.mapper
+  mapperPackage: com.pei.**.mapper
   # 对应的 XML 文件位置
   mapperLocations: classpath*:mapper/**/*Mapper.xml
   # 实体扫描，多个package用逗号或者分号分隔
-  typeAliasesPackage: org.dromara.**.domain
+  typeAliasesPackage: com.pei.**.domain
   global-config:
     dbConfig:
       # 主键类型
@@ -238,21 +238,21 @@ springdoc:
   api-docs:
     # 是否开启接口文档
     enabled: true
-#  swagger-ui:
+  swagger-ui:
 #    # 持久化认证数据
-#    persistAuthorization: true
+    persistAuthorization: true
   info:
     # 标题
-    title: '标题：RuoYi-Cloud-Plus微服务权限管理系统_接口文档'
+    title: '标题：图像去雾系统 微服务版 接口文档'
     # 描述
-    description: '描述：微服务权限管理系统, 具体包括XXX,XXX模块...'
+    description: '描述：图像去雾系统 微服务版'
     # 版本
-    version: '版本号：系统版本...'
+    version: '版本号：2.3.0'
     # 作者信息
     contact:
-      name: Lion Li
-      email: crazylionli@163.com
-      url: https://gitee.com/dromara/RuoYi-Cloud-Plus
+      name: earthyzinc
+      email: 1066365803@qq.com
+      url: https://gitee.com/earthyzinc/dehaze-java
   components:
     # 鉴权方式配置
     security-schemes:
