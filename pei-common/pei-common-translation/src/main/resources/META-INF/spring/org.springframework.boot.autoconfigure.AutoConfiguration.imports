@@ -1,0 +1,6 @@
+com.pei.common.translation.config.TranslationConfig
+com.pei.common.translation.core.impl.DeptNameTranslationImpl
+com.pei.common.translation.core.impl.DictTypeTranslationImpl
+com.pei.common.translation.core.impl.OssUrlTranslationImpl
+com.pei.common.translation.core.impl.UserNameTranslationImpl
+com.pei.common.translation.core.impl.NicknameTranslationImpl
