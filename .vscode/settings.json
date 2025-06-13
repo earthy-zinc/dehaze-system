@@ -77,5 +77,4 @@
   "[vue]": {
     "editor.defaultFormatter": "Vue.volar"
   },
-  "Codegeex.RepoIndex": true,
 }
