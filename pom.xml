@@ -3,34 +3,34 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>cn.iocoder.cloud</groupId>
-    <artifactId>yudao</artifactId>
+    <groupId>com.pei</groupId>
+    <artifactId>dehaze-java-cloud-plus</artifactId>
     <version>${revision}</version>
     <packaging>pom</packaging>
     <modules>
-        <module>yudao-dependencies</module>
-        <module>yudao-gateway</module>
-        <module>yudao-framework</module>
+        <module>pei-dependencies</module>
+        <module>pei-gateway</module>
+        <module>pei-framework</module>
         <!-- Server 主项目 -->
-        <module>yudao-server</module>
+        <module>pei-server</module>
         <!--  各种 module 拓展 -->
-        <module>yudao-module-system</module>
-        <module>yudao-module-infra</module>
-        <module>yudao-module-member</module>
-        <module>yudao-module-bpm</module>
-        <module>yudao-module-pay</module>
-        <module>yudao-module-report</module>
-        <module>yudao-module-mp</module>
-        <module>yudao-module-mall</module>
-        <module>yudao-module-crm</module>
-        <module>yudao-module-erp</module>
-        <module>yudao-module-ai</module>
-        <module>yudao-module-iot</module>
+        <module>pei-module-system</module>
+        <module>pei-module-infra</module>
+        <module>pei-module-member</module>
+        <module>pei-module-bpm</module>
+        <module>pei-module-pay</module>
+        <module>pei-module-report</module>
+        <module>pei-module-mp</module>
+        <module>pei-module-mall</module>
+        <module>pei-module-crm</module>
+        <module>pei-module-erp</module>
+        <module>pei-module-ai</module>
+        <module>pei-module-iot</module>
     </modules>
 
     <name>${project.artifactId}</name>
     <description>芋道项目基础脚手架</description>
-    <url>https://github.com/YunaiV/ruoyi-vue-pro</url>
+    <url>https://gitee.com/earthy-zinc/dehaze-java</url>
 
     <properties>
         <revision>2.6.0-SNAPSHOT</revision>
@@ -45,14 +45,15 @@
         <lombok.version>1.18.36</lombok.version>
         <spring.boot.version>3.4.5</spring.boot.version>
         <mapstruct.version>1.6.3</mapstruct.version>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>cn.iocoder.cloud</groupId>
-                <artifactId>yudao-dependencies</artifactId>
+                <groupId>com.pei</groupId>
+                <artifactId>pei-dependencies</artifactId>
                 <version>${revision}</version>
                 <type>pom</type>
                 <scope>import</scope>
@@ -130,6 +131,10 @@
                         <phase>clean</phase>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

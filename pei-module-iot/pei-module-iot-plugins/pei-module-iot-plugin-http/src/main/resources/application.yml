@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: pei-module-iot-plugin-http
+
+pei:
+  iot:
+    plugin:
+      common:
+        upstream-url: http://127.0.0.1:48080
+        downstream-port: 8093
+        plugin-key: pei-module-iot-plugin-http
+      http:
+        server-port: 8092
