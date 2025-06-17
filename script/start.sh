@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 获取当前所在文件夹路径
-current_dir=$(cd "$(dirname "$0")" && pwd)
+current_dir="$(pwd)"
 
 # ANSI 颜色定义
 RED='\033[0;31m'
@@ -24,7 +24,7 @@ log_error() {
 
 # Step 1: 使用 Maven 清理并打包所有模块
 log_info "开始执行 Maven 打包..."
-if ! mvn clean install -DskipTests; then
+if ! mvn clean install -DskipTests -T 2C -q; then
     log_error "Maven 打包失败，请检查构建错误"
     exit 1
 fi
@@ -65,27 +65,26 @@ build_module() {
 }
 
 # 运行单个模块
-run_module() {
-    local image_name="$1"
+run_all_with_compose() {
+    log_info "使用 docker-compose 启动所有服务"
+    cd "$current_dir/script/docker" || exit
 
-    log_info "运行 Docker 容器: $image_name"
-    if ! docker run \
-        -d \
-        --name "$image_name" \
-        --network host \
-        "${image_name}:latest"; then
-        log_error "运行 Docker 容器 ${image_name} 失败"
+    if [ -f "docker-compose.yml" ]; then
+        docker compose down > /dev/null 2>&1
+        docker compose up -d
+        log_info "服务启动完成"
+    else
+        log_error "未找到 docker-compose.yml 文件"
         return 1
     fi
-    log_info "运行成功: $image_name"
 }
 
 # 主流程：构建 & 启动每个模块
 for dir in "${!MODULE_MAP[@]}"; do
     image_name="${MODULE_MAP[$dir]}"
-
     build_module "$dir" "$image_name" || exit 1
-    run_module "$image_name" || exit 1
 done
+
+run_all_with_compose || exit 1
 
 log_info "✅ 所有模块构建和运行成功！"
