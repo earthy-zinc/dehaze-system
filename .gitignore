@@ -52,7 +52,6 @@ npm-debug.log*
 yarn-error.log
 
 /coverage
-.idea
 yarn.lock
 package-lock.json
 *bak
@@ -73,3 +72,5 @@ functions/mock
 screenshot
 .firebase
 sessionStore
+
+pei-ui/

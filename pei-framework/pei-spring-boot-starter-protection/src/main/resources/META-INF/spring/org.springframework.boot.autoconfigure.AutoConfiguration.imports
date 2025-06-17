@@ -1,0 +1,4 @@
+com.pei.dehaze.framework.idempotent.config.PeiIdempotentConfiguration
+com.pei.dehaze.framework.lock4j.config.PeiLock4jConfiguration
+com.pei.dehaze.framework.ratelimiter.config.PeiRateLimiterConfiguration
+com.pei.dehaze.framework.signature.config.PeiApiSignatureAutoConfiguration
