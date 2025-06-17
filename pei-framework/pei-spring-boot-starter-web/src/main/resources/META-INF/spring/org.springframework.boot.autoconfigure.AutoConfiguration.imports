@@ -1,0 +1,6 @@
+com.pei.dehaze.framework.apilog.config.PeiApiLogAutoConfiguration
+com.pei.dehaze.framework.jackson.config.PeiJacksonAutoConfiguration
+com.pei.dehaze.framework.swagger.config.PeiSwaggerAutoConfiguration
+com.pei.dehaze.framework.web.config.PeiWebAutoConfiguration
+com.pei.dehaze.framework.apilog.config.PeiApiLogRpcAutoConfiguration
+com.pei.dehaze.framework.banner.config.PeiBannerAutoConfiguration

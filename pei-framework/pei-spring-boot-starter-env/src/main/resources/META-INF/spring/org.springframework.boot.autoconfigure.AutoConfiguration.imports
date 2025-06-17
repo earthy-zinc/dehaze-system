@@ -1,0 +1,2 @@
+com.pei.dehaze.framework.env.config.PeiEnvWebAutoConfiguration
+com.pei.dehaze.framework.env.config.PeiEnvRpcAutoConfiguration
