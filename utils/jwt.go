@@ -53,6 +53,7 @@ func (j *JWT) CreateClaims(authInfo model.UserAuthInfo) CustomClaims {
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(global.CONFIG.JWT.TTL))), // 过期时间 7天  配置文件
+			Subject:   authInfo.Username,
 			ID:        uuid.New().String(),
 		},
 	}
