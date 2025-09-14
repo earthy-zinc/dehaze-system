@@ -1,0 +1,35 @@
+# 测试环境配置文件
+db:
+  type: mysql
+  path: 127.0.0.1
+  port: 3306
+  config: charset=utf8mb4&parseTime=True&loc=Local
+  db-name: dehaze_test
+  username: root
+  password: root
+  max-idle-conns: 10
+  max-open-conns: 100
+  log-mode: 4
+  log-zap: false
+
+jwt:
+  signing-key: 'dehaze'
+  expires-time: 7d
+  buffer-time: 1d
+  issuer: 'dehaze'
+
+zap:
+  level: 'info'
+  format: 'console'
+  prefix: '[dehaze-go-test]'
+  director: 'log'
+  link-name: 'latest_log'
+  show-line: true
+  encode-level: 'LowercaseColorLevelEncoder'
+  stacktrace-key: 'stacktrace'
+  log-in-console: true
+
+redis:
+  addr: 127.0.0.1:6379
+  password: ''
+  db: 0

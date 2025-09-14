@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/earthyzinc/dehaze-go/common"
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/mojocn/base64Captcha"
 	"go.uber.org/zap"
@@ -31,7 +32,7 @@ func GetCaptchaStore() base64Captcha.Store {
 func NewDefaultRedisStore() *RedisStore {
 	return &RedisStore{
 		Expiration: time.Second * 180,
-		PreKey:     "captcha_code:",
+		PreKey:     common.CAPTCHA_CODE_PREFIX,
 		Context:    context.TODO(),
 	}
 }

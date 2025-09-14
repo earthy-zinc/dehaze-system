@@ -9,7 +9,7 @@ import (
 
 func LocalCache() {
 	ttl := time.Duration(global.CONFIG.JWT.TTL)
-	global.BlackCache = local_cache.NewCache(
+	global.LOCAL_CACHE = local_cache.NewCache(
 		local_cache.SetDefaultExpire(ttl),
 	)
 }
