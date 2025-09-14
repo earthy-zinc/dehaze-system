@@ -12,9 +12,6 @@ import (
 )
 
 func TestInitRolePermsCache(t *testing.T) {
-	if global.DB == nil {
-		return
-	}
 	// 创建测试数据
 	// 1. 创建测试角色
 	testRole1 := model.SysRole{

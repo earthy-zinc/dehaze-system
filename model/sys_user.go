@@ -20,10 +20,10 @@ type UserAuthInfo struct {
 	UserId    int64    `json:"userId"`
 	Username  string   `json:"username"`
 	Nickname  string   `json:"nickname"`
-	DeptId    int64    `json:"deptId"`
+	DeptId    int      `json:"deptId"`
 	Password  string   `json:"password"`
-	Status    int      `json:"status"`
+	Status    int8     `json:"status"`
 	Roles     []string `json:"roles"`
 	Perms     []string `json:"perms"`
-	DataScope int      `json:"dataScope"`
+	DataScope int8     `json:"dataScope"`
 }

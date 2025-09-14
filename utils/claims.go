@@ -13,8 +13,8 @@ import (
 // 自定义声明结构体
 type CustomClaims struct {
 	UserID      int64    `json:"userId"`
-	DeptID      int64    `json:"deptId"`
-	DataScope   int      `json:"dataScope"`
+	DeptID      int      `json:"deptId"`
+	DataScope   int8     `json:"dataScope"`
 	Authorities []string `json:"authorities"`
 	jwt.RegisteredClaims
 }
