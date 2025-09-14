@@ -2,9 +2,10 @@ package middleware
 
 import (
 	"context"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 // TimeoutMiddleware 创建超时中间件

@@ -32,7 +32,7 @@ func GetCaptchaStore() base64Captcha.Store {
 func NewDefaultRedisStore() *RedisStore {
 	return &RedisStore{
 		Expiration: time.Second * 180,
-		PreKey:     common.CAPTCHA_CODE_PREFIX,
+		PreKey:     common.CaptchaCodePrefix,
 		Context:    context.TODO(),
 	}
 }

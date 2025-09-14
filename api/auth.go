@@ -173,7 +173,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 			common.FailWithMessage("设置登录状态失败", c)
 		} else {
 			// 设置JWT黑名单
-			global.REDIS.Set(context.Background(), common.BLACKLIST_PREFIX+jwt, nil, time.Duration(global.CONFIG.JWT.TTL))
+			global.REDIS.Set(context.Background(), common.BlacklistPrefix+jwt, nil, time.Duration(global.CONFIG.JWT.TTL))
 
 			if err := utils.SetRedisJWT(token, user.Username); err != nil {
 				common.FailWithMessage("设置登录状态失败", c)

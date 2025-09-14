@@ -2,7 +2,7 @@ package model
 
 // SysRole 角色表
 type SysRole struct {
-	BASE_MODEL
+	BaseModel
 	Name      string    `gorm:"size:64;not null;uniqueIndex;comment:角色名称" json:"name"`
 	Code      string    `gorm:"size:32;comment:角色编码" json:"code"`
 	Sort      int       `gorm:"comment:显示顺序" json:"sort"`

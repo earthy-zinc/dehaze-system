@@ -59,7 +59,7 @@ func JWTAuth() gin.HandlerFunc {
 
 func isBlacklist(jwt string) bool {
 	if global.REDIS != nil {
-		exists, err := global.REDIS.Exists(context.Background(), common.BLACKLIST_PREFIX+jwt).Result()
+		exists, err := global.REDIS.Exists(context.Background(), common.BlacklistPrefix+jwt).Result()
 		if err != nil {
 			// Redis错误时记录日志但不中断流程
 			global.LOG.Error("Redis检查黑名单失败:" + err.Error())
@@ -68,7 +68,7 @@ func isBlacklist(jwt string) bool {
 		return exists == 1
 	}
 	// 降级使用本地缓存（单机环境备用方案）
-	if _, ok := global.LOCAL_CACHE.Get(common.BLACKLIST_PREFIX + jwt); ok {
+	if _, ok := global.LOCAL_CACHE.Get(common.BlacklistPrefix + jwt); ok {
 		// 本地缓存存在时返回true
 		return true
 	}

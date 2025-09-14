@@ -8,7 +8,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/global"
 )
 
-// 初始化角色权限缓存
+// InitRolePermsCache 初始化角色权限缓存
 func InitRolePermsCache() error {
 	// 清理旧缓存
 	if err := ClearRolePermsCache(); err != nil {
@@ -58,14 +58,14 @@ func InitRolePermsCache() error {
 			// 注意：根据实际使用情况判断是否需要本地缓存，对于频繁访问的权限数据，本地缓存可以提高性能
 			// 但在分布式环境中，本地缓存可能导致数据不一致问题
 			// 这里保留本地缓存以提高访问速度，但需要在更新权限时同步清理所有节点的本地缓存
-			global.LOCAL_CACHE.SetDefault(common.ROLE_PERMS_PREFIX+roleCode, perms)
+			global.LOCAL_CACHE.SetDefault(common.RolePermsPrefix+roleCode, perms)
 		}
 	}
 
 	return nil
 }
 
-// 清理旧权限缓存
+// ClearRolePermsCache 清理旧权限缓存
 func ClearRolePermsCache() error {
 	// 清理本地缓存
 	// 注意：local_cache.Cache没有提供直接的模式匹配删除方法，需要遍历所有key
@@ -83,7 +83,7 @@ func ClearRolePermsCache() error {
 	return nil
 }
 
-// 角色权限BO
+// RolePermsBO 角色权限BO
 type RolePermsBO struct {
 	RoleCode string `gorm:"column:role_code"`
 	Perm     string `gorm:"column:perm"`

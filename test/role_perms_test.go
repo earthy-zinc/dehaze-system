@@ -121,7 +121,7 @@ func TestInitRolePermsCache(t *testing.T) {
 	} else {
 		// 验证本地缓存中的数据
 		// 检查Role1的权限
-		cachedPerms1, found := global.LOCAL_CACHE.Get(common.ROLE_PERMS_PREFIX + testRole1.Code)
+		cachedPerms1, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRole1.Code)
 		assert.True(t, found)
 		perms1 := cachedPerms1.([]string)
 		assert.Contains(t, perms1, testMenu1.Perm)
@@ -129,7 +129,7 @@ func TestInitRolePermsCache(t *testing.T) {
 		assert.NotContains(t, perms1, testMenu3.Perm)
 
 		// 检查Role2的权限
-		cachedPerms2, found := global.LOCAL_CACHE.Get(common.ROLE_PERMS_PREFIX + testRole2.Code)
+		cachedPerms2, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRole2.Code)
 		assert.True(t, found)
 		perms2 := cachedPerms2.([]string)
 		assert.Contains(t, perms2, testMenu2.Perm)
@@ -148,7 +148,7 @@ func TestClearRolePermsCache(t *testing.T) {
 	testPerms := []string{"perm1", "perm2", "perm3"}
 
 	// 添加到本地缓存
-	global.LOCAL_CACHE.Set(common.ROLE_PERMS_PREFIX+testRoleCode, testPerms, 0)
+	global.LOCAL_CACHE.Set(common.RolePermsPrefix+testRoleCode, testPerms, 0)
 
 	// 如果Redis可用，也添加到Redis中
 	if global.REDIS != nil {
@@ -161,7 +161,7 @@ func TestClearRolePermsCache(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 验证本地缓存已清理
-	_, found := global.LOCAL_CACHE.Get(common.ROLE_PERMS_PREFIX + testRoleCode)
+	_, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRoleCode)
 	assert.False(t, found)
 
 	// 如果Redis可用，验证Redis已清理

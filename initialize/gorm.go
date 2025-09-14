@@ -26,8 +26,8 @@ func Gorm() {
 }
 
 func Migrate() {
-	db := global.DB
-	if db == nil {
+	database := global.DB
+	if database == nil {
 		return
 	}
 
@@ -37,7 +37,7 @@ func Migrate() {
 
 	global.LOG.Info("当前处于开发/测试环境，迁移数据库中")
 
-	err := db.AutoMigrate(
+	err := database.AutoMigrate(
 		model.SysMenu{},
 		model.SysRole{},
 		model.SysUser{},
