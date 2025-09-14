@@ -10,8 +10,8 @@ type Server struct {
 	Redis config.Redis `mapstructure:"redis" json:"redis" yaml:"redis"`
 	// Mongo     Mongo   `mapstructure:"mongo" json:"mongo" yaml:"mongo"`
 	// Email     Email   `mapstructure:"email" json:"email" yaml:"email"`
-	System config.System `mapstructure:"system" json:"system" yaml:"system"`
-	// Captcha   Captcha `mapstructure:"captcha" json:"captcha" yaml:"captcha"`
+	System  config.System  `mapstructure:"system" json:"system" yaml:"system"`
+	Captcha config.Captcha `mapstructure:"captcha" json:"captcha" yaml:"captcha"`
 
 	// gorm
 	Db config.DB `mapstructure:"db" json:"db" yaml:"db"`

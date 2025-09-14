@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"go.uber.org/zap"
-
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/initialize/internal"
 	"github.com/earthyzinc/dehaze-go/utils"
+	"github.com/fsnotify/fsnotify"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"github.com/spf13/viper"
+	"go.uber.org/zap"
 )
 
 // getConfigPath 获取配置文件路径, 优先级: 命令行 > 环境变量 > 默认值
@@ -54,6 +54,8 @@ func getConfigPath() (config string) {
 }
 
 func Viper() {
+	global.VALIDATE = validator.New()
+
 	config := getConfigPath()
 	v := viper.New()
 	v.SetConfigFile(config)
@@ -70,6 +72,15 @@ func Viper() {
 		if err = v.Unmarshal(&global.CONFIG); err != nil {
 			fmt.Println(err)
 		}
+
+		// 校验配置
+		if err := global.VALIDATE.Struct(global.CONFIG); err != nil {
+			// 校验失败时处理错误
+			fmt.Println("配置校验失败:", err)
+			global.LOG.Error("配置校验失败", zap.Error(err))
+			panic(err)
+		}
+
 		err := utils.GlobalSystemEvents.TriggerReload()
 		if err != nil {
 			global.LOG.Error("重载系统失败!", zap.Error(err))
@@ -78,6 +89,14 @@ func Viper() {
 	})
 	if err = v.Unmarshal(&global.CONFIG); err != nil {
 		panic(fmt.Errorf("反序列化配置时发生了错误: %w", err))
+	}
+
+	// 校验配置
+	if err := global.VALIDATE.Struct(global.CONFIG); err != nil {
+		// 校验失败时处理错误
+		fmt.Println("配置校验失败:", err)
+		global.LOG.Error("配置校验失败", zap.Error(err))
+		panic(err)
 	}
 
 	global.VIPER = v

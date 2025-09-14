@@ -11,7 +11,7 @@ import (
 )
 
 func initRedisClient(redisCfg config.Redis) (redis.UniversalClient, error) {
-	if redisCfg.Addr == "" || redisCfg.ClusterAddrs == nil {
+	if redisCfg.Addr == "" && len(redisCfg.ClusterAddrs) == 0 {
 		global.LOG.Info("未填写Redis配置，跳过Redis初始化")
 		return nil, nil
 	}

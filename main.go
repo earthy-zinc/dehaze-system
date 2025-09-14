@@ -14,6 +14,8 @@ func main() {
 	initialize.Viper()
 	// 初始化日志库
 	initialize.Zap()
+	// 初始化本地缓存
+	initialize.LocalCache()
 	// 初始化数据库
 	initialize.Gorm()
 	// 注册全局函数
@@ -23,6 +25,8 @@ func main() {
 	// 初始化Redis
 	initialize.Redis()
 	// 初始化MongoDB
+
+	// 初始化JWT黑名单和权限系统
 
 	// 初始化web服务器
 	initialize.Server()

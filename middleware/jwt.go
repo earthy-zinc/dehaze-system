@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/earthyzinc/dehaze-go/common"
+	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/utils"
 )
 
@@ -15,6 +16,13 @@ func JWTAuth() gin.HandlerFunc {
 		token := utils.GetToken(c)
 		if token == "" {
 			common.NoAuth("未登录或非法访问，请登录", c)
+			c.Abort()
+			return
+		}
+
+		if isBlacklist(token) {
+			common.NoAuth("您的帐户异地登陆或令牌失效", c)
+			utils.ClearToken(c)
 			c.Abort()
 			return
 		}
@@ -46,4 +54,9 @@ func JWTAuth() gin.HandlerFunc {
 		c.Set("claims", claims)
 		c.Next()
 	}
+}
+
+func isBlacklist(jwt string) bool {
+	_, ok := global.BlackCache.Get(jwt)
+	return ok
 }
