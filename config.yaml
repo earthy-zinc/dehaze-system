@@ -1,6 +1,3 @@
-app:
-  name: 'dehaze-go'
-
 zap:
   level: info
   format: console
@@ -42,15 +39,16 @@ jwt:
 
 db:
   type: mysql
-  path: "localhost"
-  port: "3306"
+  path: localhost
+  port: 3306
   config: ""
-  name: "dehaze"
-  username: "root"
-  password: "123456"
+  name: dehaze
+  username: root
+  password: 123456
   max-idle-conns: 10
   max-open-conns: 100
-  log-mode: "info"
+  singular: true
+  log-mode: info
   log-zap: true
 
 redis:
@@ -58,5 +56,5 @@ redis:
     useCluster: false
     #使用集群模式addr和db默认无效
     addr: 127.0.0.1:6379
-    password: "123456"
+    password: 123456
     db: 3

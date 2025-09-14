@@ -18,6 +18,9 @@ func main() {
 	initialize.LocalCache()
 	// 初始化数据库
 	initialize.Gorm()
+	// 迁移数据库表
+	initialize.Migrate()
+
 	// 注册全局函数
 	initialize.SetupHandlers()
 	// 初始化路由

@@ -11,7 +11,7 @@ type SysMenu struct {
 	Component  string    `gorm:"size:128;comment:组件路径(vue页面完整路径，省略.vue后缀)" json:"component"`
 	Perm       string    `gorm:"size:128;comment:权限标识" json:"perm"`
 	Visible    int8      `gorm:"not null;default:1;comment:显示状态(1-显示;0-隐藏)" json:"visible"`
-	Sort       int       `gorm:"default:0;comment:排序" json:"sort"`
+	Sort       int       `gorm:"type:int;default:0;comment:排序" json:"sort"`
 	Icon       string    `gorm:"size:64;default:'';comment:菜单图标" json:"icon"`
 	Redirect   string    `gorm:"size:128;comment:跳转路径" json:"redirect"`
 	AlwaysShow int8      `gorm:"comment:【目录】只有一个子路由是否始终显示(1:是 0:否)" json:"alwaysShow"`
