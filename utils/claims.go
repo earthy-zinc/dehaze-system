@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/global"
+	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -110,4 +111,13 @@ func GetUserInfo(c *gin.Context) *CustomClaims {
 		waitUse := claims.(*CustomClaims)
 		return waitUse
 	}
+}
+
+func LoginToken(user *model.SysUser) (token string, claims CustomClaims, err error) {
+	userAuthInfo := model.UserAuthInfo{}
+
+	j := NewJWT()
+	claims = j.CreateClaims(userAuthInfo)
+	token, err = j.CreateToken(claims)
+	return
 }

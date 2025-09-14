@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/global"
@@ -9,12 +10,22 @@ import (
 	"go.uber.org/zap"
 )
 
-func NewCaptchaStore() base64Captcha.Store {
-	if global.REDIS != nil {
-		return NewDefaultRedisStore()
-	} else {
-		return base64Captcha.DefaultMemStore
-	}
+var (
+	// 单例 Store 实例
+	singletonStore base64Captcha.Store
+	// 保证初始化只执行一次
+	once sync.Once
+)
+
+func GetCaptchaStore() base64Captcha.Store {
+	once.Do(func() {
+		if global.REDIS != nil {
+			singletonStore = NewDefaultRedisStore()
+		} else {
+			singletonStore = base64Captcha.DefaultMemStore
+		}
+	})
+	return singletonStore
 }
 
 func NewDefaultRedisStore() *RedisStore {
