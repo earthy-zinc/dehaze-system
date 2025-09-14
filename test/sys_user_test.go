@@ -4,26 +4,13 @@ import (
 	"testing"
 
 	"github.com/earthyzinc/dehaze-go/global"
-	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 )
 
-func setupTestDB() {
-	// 初始化测试环境
-	initialize.Viper()
-	initialize.Zap()
-
-	// 初始化数据库
-	initialize.Gorm()
-}
-
 func TestUserService_GetUserAuthInfo(t *testing.T) {
-	// 设置测试环境
-	setupTestDB()
-
 	userService := &service.UserService{}
 
 	// 测试用例1: 用户不存在
@@ -109,8 +96,8 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 
 		// 创建用户角色关联
 		type SysUserRole struct {
-			UserID uint `gorm:"column:user_id"`
-			RoleID uint `gorm:"column:role_id"`
+			UserID int64 `gorm:"column:user_id"`
+			RoleID int64 `gorm:"column:role_id"`
 		}
 
 		userRole := SysUserRole{
@@ -193,8 +180,8 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 
 		// 创建用户角色关联
 		type SysUserRole struct {
-			UserID uint `gorm:"column:user_id"`
-			RoleID uint `gorm:"column:role_id"`
+			UserID int64 `gorm:"column:user_id"`
+			RoleID int64 `gorm:"column:role_id"`
 		}
 
 		userRole := SysUserRole{
@@ -208,8 +195,8 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 
 		// 创建角色菜单关联
 		type SysRoleMenu struct {
-			RoleID uint `gorm:"column:role_id"`
-			MenuID uint `gorm:"column:menu_id"`
+			RoleID int64 `gorm:"column:role_id"`
+			MenuID int64 `gorm:"column:menu_id"`
 		}
 
 		roleMenu := SysRoleMenu{

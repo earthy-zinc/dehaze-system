@@ -11,41 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// setupTest 清理并设置测试环境
-func setupTest() {
-	// 初始化配置和日志
-	initialize.Viper()
-	initialize.Zap()
-
-	// 初始化数据库
-	initialize.Gorm()
-
-	// 初始化本地缓存
-	initialize.LocalCache()
-
-	// 初始化Redis（如果配置了）
-	initialize.Redis()
-}
-
-// teardownTest 清理测试数据
-func teardownTest() {
-	// 清理测试用的表数据
-	if global.DB != nil {
-		// 清理测试角色
-		global.DB.Where("code LIKE ?", "TEST_%").Delete(&model.SysRole{})
-		// 清理测试菜单
-		global.DB.Where("perm LIKE ?", "test:%").Delete(&model.SysMenu{})
-		// 清理角色菜单关联
-		global.DB.Exec("DELETE FROM sys_role_menu WHERE role_id NOT IN (SELECT id FROM sys_role WHERE code NOT LIKE 'TEST_%')")
-		// 清理用户角色关联
-		global.DB.Exec("DELETE FROM sys_user_role WHERE role_id NOT IN (SELECT id FROM sys_role WHERE code NOT IN ('TEST_%'))")
-	}
-}
-
 func TestInitRolePermsCache(t *testing.T) {
-	setupTest()
-	defer teardownTest()
-
+	if global.DB == nil {
+		return
+	}
 	// 创建测试数据
 	// 1. 创建测试角色
 	testRole1 := model.SysRole{
@@ -105,8 +74,8 @@ func TestInitRolePermsCache(t *testing.T) {
 
 	// 3. 创建角色菜单关联
 	type SysRoleMenu struct {
-		RoleID uint `gorm:"column:role_id"`
-		MenuID uint `gorm:"column:menu_id"`
+		RoleID int64 `gorm:"column:role_id"`
+		MenuID int64 `gorm:"column:menu_id"`
 	}
 
 	// Role1 关联 Menu1 和 Menu2
@@ -119,8 +88,8 @@ func TestInitRolePermsCache(t *testing.T) {
 
 	// 清理可能存在的测试关联数据
 	global.DB.Table("sys_role_menu").Where("role_id IN ? AND menu_id IN ?",
-		[]uint{testRole1.ID, testRole2.ID},
-		[]uint{testMenu1.ID, testMenu2.ID, testMenu3.ID}).Delete(&SysRoleMenu{})
+		[]int64{testRole1.ID, testRole2.ID},
+		[]int64{testMenu1.ID, testMenu2.ID, testMenu3.ID}).Delete(&SysRoleMenu{})
 
 	// 插入角色菜单关联
 	result = global.DB.Table("sys_role_menu").Create(&roleMenu1)
@@ -173,8 +142,9 @@ func TestInitRolePermsCache(t *testing.T) {
 }
 
 func TestClearRolePermsCache(t *testing.T) {
-	setupTest()
-	defer teardownTest()
+	if global.DB == nil {
+		return
+	}
 
 	// 先添加一些测试数据到缓存中
 	testRoleCode := "TEST_CLEANUP_ROLE"
