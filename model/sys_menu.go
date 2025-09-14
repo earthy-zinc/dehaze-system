@@ -2,7 +2,7 @@ package model
 
 // SysMenu 菜单管理
 type SysMenu struct {
-	BASE_MODEL
+	BaseModel
 	ParentID   int64     `gorm:"not null;comment:父菜单ID" json:"parentId"`
 	TreePath   string    `gorm:"size:255;comment:父节点ID路径" json:"treePath"`
 	Name       string    `gorm:"size:64;not null;default:'';comment:菜单名称" json:"name"`

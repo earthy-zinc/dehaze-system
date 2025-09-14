@@ -10,7 +10,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// 自定义声明结构体
+// CustomClaims 自定义声明结构体
 type CustomClaims struct {
 	UserID      int64    `json:"userId"`
 	DeptID      int      `json:"deptId"`

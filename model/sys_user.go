@@ -2,7 +2,7 @@ package model
 
 // SysUser 用户信息表
 type SysUser struct {
-	BASE_MODEL
+	BaseModel
 	Username string    `gorm:"size:64;uniqueIndex;comment:用户名" json:"username"`
 	Nickname string    `gorm:"size:64;comment:昵称" json:"nickname"`
 	Gender   int8      `gorm:"default:1;comment:性别((1:男;2:女))" json:"gender"`
