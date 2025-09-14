@@ -30,13 +30,19 @@ func (userService *UserService) Login(u *model.SysUser) (userAuthInfo *model.Use
 func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *model.UserAuthInfo, err error) {
 	userAuthInfo = &model.UserAuthInfo{}
 
+	user := model.SysUser{}
 	// 查询用户认证信息
-	err = global.DB.Table("sys_user t1").
-		Select("t1.id as user_id, t1.username, t1.nickname, t1.password, t1.status, t1.dept_id as dept_id, t3.code").
-		Joins("LEFT JOIN sys_user_role t2 ON t2.user_id = t1.id").
-		Joins("LEFT JOIN sys_role t3 ON t3.id = t2.role_id").
-		Where("t1.username = ? AND t1.deleted = 0", username).
-		Scan(userAuthInfo).Error
+	err = global.DB.Table("sys_user").
+		Select("id as user_id, username, nickname, password, status, dept_id").
+		Where("username = ? AND deleted = 0", username).
+		Scan(&user).Error
+
+	userAuthInfo.UserId = user.ID
+	userAuthInfo.Username = user.Username
+	userAuthInfo.Nickname = user.Nickname
+	userAuthInfo.Password = user.Password
+	userAuthInfo.Status = int(user.Status)
+	userAuthInfo.DeptId = int64(user.DeptID)
 
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err

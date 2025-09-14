@@ -16,5 +16,5 @@ type SysMenu struct {
 	Redirect   string    `gorm:"size:128;comment:跳转路径" json:"redirect"`
 	AlwaysShow int8      `gorm:"comment:【目录】只有一个子路由是否始终显示(1:是 0:否)" json:"alwaysShow"`
 	KeepAlive  int8      `gorm:"comment:【菜单】是否开启页面缓存(1:是 0:否)" json:"keepAlive"`
-	Roles      []SysRole `gorm:"many2many:sys_role_menu;"`
+	Roles      []SysRole `gorm:"many2many:sys_role_menu;joinForeignKey:menu_id;joinReferences:role_id"`
 }

@@ -13,7 +13,7 @@ type SysUser struct {
 	Status   int8      `gorm:"default:1;comment:用户状态((1:正常;0:禁用))" json:"status"`
 	Email    string    `gorm:"size:128;comment:用户邮箱" json:"email"`
 	Deleted  int8      `gorm:"default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
-	Roles    []SysRole `gorm:"many2many:sys_user_role;"`
+	Roles    []SysRole `gorm:"many2many:sys_user_role;joinForeignKey:user_id;joinReferences:role_id"`
 }
 
 type UserAuthInfo struct {
