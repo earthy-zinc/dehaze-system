@@ -113,11 +113,9 @@ func GetUserInfo(c *gin.Context) *CustomClaims {
 	}
 }
 
-func LoginToken(user *model.SysUser) (token string, claims CustomClaims, err error) {
-	userAuthInfo := model.UserAuthInfo{}
-
+func LoginToken(user *model.UserAuthInfo) (token string, claims CustomClaims, err error) {
 	j := NewJWT()
-	claims = j.CreateClaims(userAuthInfo)
+	claims = j.CreateClaims(user)
 	token, err = j.CreateToken(claims)
 	return
 }

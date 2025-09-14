@@ -30,7 +30,7 @@ func NewJWT() *JWT {
 	}
 }
 
-func (j *JWT) CreateClaims(authInfo model.UserAuthInfo) CustomClaims {
+func (j *JWT) CreateClaims(authInfo *model.UserAuthInfo) CustomClaims {
 	// 获取角色信息
 	roles := authInfo.Roles
 

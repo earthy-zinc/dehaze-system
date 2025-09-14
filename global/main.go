@@ -24,6 +24,6 @@ var (
 	DB             *gorm.DB
 	ACTIVE_DB_NAME *string
 
-	BlackCache local_cache.Cache
-	REDIS      redis.UniversalClient
+	LOCAL_CACHE local_cache.Cache
+	REDIS       redis.UniversalClient
 )

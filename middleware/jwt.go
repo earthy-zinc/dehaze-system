@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 
 	"github.com/gin-gonic/gin"
@@ -57,6 +58,21 @@ func JWTAuth() gin.HandlerFunc {
 }
 
 func isBlacklist(jwt string) bool {
-	_, ok := global.BlackCache.Get(jwt)
-	return ok
+	if global.REDIS != nil {
+		exists, err := global.REDIS.Exists(context.Background(), common.BLACKLIST_PREFIX+jwt).Result()
+		if err != nil {
+			// Redis错误时记录日志但不中断流程
+			global.LOG.Error("Redis检查黑名单失败:" + err.Error())
+			return false
+		}
+		return exists == 1
+	}
+	// 降级使用本地缓存（单机环境备用方案）
+	if _, ok := global.LOCAL_CACHE.Get(common.BLACKLIST_PREFIX + jwt); ok {
+		// 本地缓存存在时返回true
+		return true
+	}
+
+	// 未找到黑名单记录
+	return false
 }
