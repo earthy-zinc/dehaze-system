@@ -47,8 +47,8 @@ func interfaceToInt(v any) (i int) {
 
 func (a *AuthApi) Captcha(c *gin.Context) {
 	// 判断验证码是否开启
-	openCaptcha := global.CONFIG.Captcha.OpenCaptcha               // 是否开启防爆次数
-	openCaptchaTimeOut := global.CONFIG.Captcha.OpenCaptchaTimeOut // 缓存超时时间
+	openCaptcha := global.CONFIG.Captcha.RetryCount     // 是否开启防爆次数
+	openCaptchaTimeOut := global.CONFIG.Captcha.TimeOut // 缓存超时时间
 	key := c.ClientIP()
 	v, ok := global.LOCAL_CACHE.Get(key)
 	if !ok {
@@ -62,9 +62,9 @@ func (a *AuthApi) Captcha(c *gin.Context) {
 	// 字符,公式,验证码配置
 	// 生成默认数字的driver
 	driver := base64Captcha.NewDriverDigit(
-		global.CONFIG.Captcha.ImgHeight,
-		global.CONFIG.Captcha.ImgWidth,
-		global.CONFIG.Captcha.KeyLong,
+		global.CONFIG.Captcha.Height,
+		global.CONFIG.Captcha.Width,
+		global.CONFIG.Captcha.Length,
 		0.7, 80)
 	var cp *base64Captcha.Captcha
 	var store = utils.GetCaptchaStore()
@@ -109,8 +109,8 @@ func (a *AuthApi) Login(c *gin.Context) {
 
 	key := c.ClientIP()
 	// 判断验证码是否开启
-	openCaptcha := global.CONFIG.Captcha.OpenCaptcha               // 是否开启防爆次数
-	openCaptchaTimeOut := global.CONFIG.Captcha.OpenCaptchaTimeOut // 缓存超时时间
+	openCaptcha := global.CONFIG.Captcha.RetryCount     // 是否开启防爆次数
+	openCaptchaTimeOut := global.CONFIG.Captcha.TimeOut // 缓存超时时间
 	v, ok := global.LOCAL_CACHE.Get(key)
 	if !ok {
 		global.LOCAL_CACHE.Set(key, 1, time.Second*time.Duration(openCaptchaTimeOut))
@@ -146,7 +146,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 		common.FailWithMessage("获取token失败", c)
 		return
 	}
-	if !global.CONFIG.System.UseMultipoint {
+	if !global.CONFIG.System.UseMultiPoint {
 		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
 		common.OkWithDetailed(gin.H{
 			"accessToken": token,

@@ -1,38 +1,32 @@
 # 测试环境配置文件
 zap:
-  level: 'info'
-  format: 'console'
+  level: info
+  format: console
   prefix: '[dehaze-go-test]'
-  director: 'log'
-  link-name: 'latest_log'
+  directory: log
   show-line: true
-  encode-level: 'LowercaseColorLevelEncoder'
-  stacktrace-key: 'stacktrace'
+  encode-level: LowercaseColorLevelEncoder
+  stacktrace-key: stacktrace
   log-in-console: true
+  retention-day: -1
 
 # system configuration
 system:
-    env: local # 修改为public可以关闭路由日志输出
-    addr: 8989
-    oss-type: local # 控制oss选择走本地还是 七牛等其他仓 自行增加其他oss仓可以在 server/utils/upload/upload.go 中 NewOss函数配置
-    use-redis: false # 使用redis
-    use-mongo: false     # 使用mongo
-    use-multipoint: false
-    # IP限制次数 一个小时15000次
-    iplimit-count: 15000
-    #  IP限制一个小时
-    iplimit-time: 3600
-    #  路由全局前缀
-    router-prefix: ""
-    #  严格角色模式 打开后权限将会存在上下级关系
-    use-strict-auth: false
+  port: 8989
+  use-multi-point: false
+  # IP限制次数 一个小时15000次
+  ip-limit-count: 15000
+  #  IP限制一个小时
+  ip-limit-time: 3600
+  #  路由全局前缀
+  router-prefix: ""
 
 captcha:
-    key-long: 6
-    img-width: 240
-    img-height: 80
-    open-captcha: 0 # 0代表一直开启，大于0代表限制次数
-    open-captcha-timeout: 3600 # open-captcha大于0时才生效
+  length: 6
+  width: 240
+  height: 80
+  retry-count: 0 # 0代表无限制次数，大于0代表最多获取几次验证码
+  timeout: 3600 # retry-count大于0时才生效，表示解除验证码限制时间
 
 db:
   type: mysql
