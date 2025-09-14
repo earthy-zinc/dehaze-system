@@ -37,19 +37,12 @@ func InitRolePermsCache() error {
 	// 按角色分组权限
 	rolePermsMap := make(map[string][]string)
 	for rows.Next() {
-		var roleCode string
-		var perm string
-		if err := global.DB.ScanRows(rows, &struct {
-			RoleCode *string `gorm:"column:role_code"`
-			Perm     *string `gorm:"column:perm"`
-		}{
-			RoleCode: &roleCode,
-			Perm:     &perm,
-		}); err != nil {
+		rolePerms := &RolePermsBO{}
+		if err := global.DB.ScanRows(rows, rolePerms); err != nil {
 			return err
 		}
 
-		rolePermsMap[roleCode] = append(rolePermsMap[roleCode], perm)
+		rolePermsMap[rolePerms.RoleCode] = append(rolePermsMap[rolePerms.RoleCode], rolePerms.Perm)
 	}
 
 	// 缓存到本地和Redis

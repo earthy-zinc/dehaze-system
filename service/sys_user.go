@@ -4,7 +4,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/model"
 	"golang.org/x/crypto/bcrypt"
-	"gorm.io/gorm"
 )
 
 type UserService struct{}
@@ -33,20 +32,20 @@ func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *
 	user := model.SysUser{}
 	// 查询用户认证信息
 	err = global.DB.Table("sys_user").
-		Select("id as user_id, username, nickname, password, status, dept_id").
+		Select("id, username, nickname, password, status, dept_id").
 		Where("username = ? AND deleted = 0", username).
-		Scan(&user).Error
+		First(&user).Error
+
+	if err != nil {
+		return nil, err
+	}
 
 	userAuthInfo.UserId = user.ID
 	userAuthInfo.Username = user.Username
 	userAuthInfo.Nickname = user.Nickname
 	userAuthInfo.Password = user.Password
-	userAuthInfo.Status = int(user.Status)
-	userAuthInfo.DeptId = int64(user.DeptID)
-
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
-	}
+	userAuthInfo.Status = user.Status
+	userAuthInfo.DeptId = user.DeptID
 
 	// 如果查询到用户信息
 	if userAuthInfo.UserId != 0 {
@@ -96,7 +95,7 @@ func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *
 			}
 
 			if dataScope != nil {
-				userAuthInfo.DataScope = int(*dataScope)
+				userAuthInfo.DataScope = int8(*dataScope)
 			}
 		}
 	}

@@ -6,7 +6,6 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/initialize"
-	"github.com/earthyzinc/dehaze-go/model"
 )
 
 // TestMain 设置测试环境
@@ -40,13 +39,20 @@ func TestMain(m *testing.M) {
 func teardownTest() {
 	// 清理测试用的表数据
 	if global.DB != nil {
-		// 清理测试角色
-		global.DB.Where("code LIKE ?", "TEST_%").Delete(&model.SysRole{})
-		// 清理测试菜单
-		global.DB.Where("perm LIKE ?", "test:%").Delete(&model.SysMenu{})
-		// 清理角色菜单关联
-		global.DB.Exec("DELETE FROM sys_role_menu WHERE role_id NOT IN (SELECT id FROM sys_role WHERE code NOT LIKE 'TEST_%')")
-		// 清理用户角色关联
-		global.DB.Exec("DELETE FROM sys_user_role WHERE role_id NOT IN (SELECT id FROM sys_role WHERE code NOT IN ('TEST_%'))")
+		global.DB.Raw(
+			"drop table if exists dehaze_test.sys_menu",
+		)
+		global.DB.Raw(
+			"drop table if exists dehaze_test.sys_role",
+		)
+		global.DB.Raw(
+			"drop table if exists dehaze_test.sys_user",
+		)
+		global.DB.Raw(
+			"drop table if exists dehaze_test.sys_role_menu",
+		)
+		global.DB.Raw(
+			"drop table if exists dehaze_test.sys_user_role",
+		)
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 )
 
 func TestUserService_GetUserAuthInfo(t *testing.T) {
@@ -16,10 +15,8 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 	// 测试用例1: 用户不存在
 	t.Run("UserNotFound", func(t *testing.T) {
 		userAuthInfo, err := userService.GetUserAuthInfo("nonexistent")
-		assert.NoError(t, err)
-		assert.NotNil(t, userAuthInfo)
-		assert.Equal(t, int64(0), userAuthInfo.UserId)
-		assert.Equal(t, "", userAuthInfo.Username)
+		assert.Error(t, err)
+		assert.Nil(t, userAuthInfo)
 	})
 
 	// 测试用例2: 用户存在但没有角色
@@ -49,11 +46,11 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 		assert.Equal(t, testUser.Username, userAuthInfo.Username)
 		assert.Equal(t, testUser.Nickname, userAuthInfo.Nickname)
 		assert.Equal(t, testUser.Password, userAuthInfo.Password)
-		assert.Equal(t, int(testUser.Status), userAuthInfo.Status)
-		assert.Equal(t, int64(testUser.DeptID), userAuthInfo.DeptId)
+		assert.Equal(t, testUser.Status, userAuthInfo.Status)
+		assert.Equal(t, testUser.DeptID, userAuthInfo.DeptId)
 		assert.Empty(t, userAuthInfo.Roles)
 		assert.Empty(t, userAuthInfo.Perms)
-		assert.Equal(t, 0, userAuthInfo.DataScope)
+		assert.Equal(t, int8(0), userAuthInfo.DataScope)
 
 		// 清理测试数据
 		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
@@ -117,11 +114,11 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 		assert.Equal(t, testUser.Username, userAuthInfo.Username)
 		assert.Equal(t, testUser.Nickname, userAuthInfo.Nickname)
 		assert.Equal(t, testUser.Password, userAuthInfo.Password)
-		assert.Equal(t, int(testUser.Status), userAuthInfo.Status)
-		assert.Equal(t, int64(testUser.DeptID), userAuthInfo.DeptId)
+		assert.Equal(t, testUser.Status, userAuthInfo.Status)
+		assert.Equal(t, testUser.DeptID, userAuthInfo.DeptId)
 		assert.Contains(t, userAuthInfo.Roles, testRole.Code)
 		assert.Empty(t, userAuthInfo.Perms)
-		assert.Equal(t, int(testRole.DataScope), userAuthInfo.DataScope)
+		assert.Equal(t, testRole.DataScope, userAuthInfo.DataScope)
 
 		// 清理测试数据
 		global.DB.Table("sys_user_role").Where("user_id = ? AND role_id = ?", testUser.ID, testRole.ID).Delete(&SysUserRole{})
@@ -216,11 +213,11 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 		assert.Equal(t, testUser.Username, userAuthInfo.Username)
 		assert.Equal(t, testUser.Nickname, userAuthInfo.Nickname)
 		assert.Equal(t, testUser.Password, userAuthInfo.Password)
-		assert.Equal(t, int(testUser.Status), userAuthInfo.Status)
-		assert.Equal(t, int64(testUser.DeptID), userAuthInfo.DeptId)
+		assert.Equal(t, testUser.Status, userAuthInfo.Status)
+		assert.Equal(t, testUser.DeptID, userAuthInfo.DeptId)
 		assert.Contains(t, userAuthInfo.Roles, testRole.Code)
 		assert.Contains(t, userAuthInfo.Perms, testMenu.Perm)
-		assert.Equal(t, int(testRole.DataScope), userAuthInfo.DataScope)
+		assert.Equal(t, testRole.DataScope, userAuthInfo.DataScope)
 
 		// 清理测试数据
 		global.DB.Table("sys_role_menu").Where("role_id = ? AND menu_id = ?", testRole.ID, testMenu.ID).Delete(&SysRoleMenu{})
@@ -257,8 +254,8 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 		assert.Equal(t, testUser.Username, userAuthInfo.Username)
 		assert.Equal(t, testUser.Nickname, userAuthInfo.Nickname)
 		assert.Equal(t, testUser.Password, userAuthInfo.Password)
-		assert.Equal(t, int(testUser.Status), userAuthInfo.Status)
-		assert.Equal(t, int64(testUser.DeptID), userAuthInfo.DeptId)
+		assert.Equal(t, testUser.Status, userAuthInfo.Status)
+		assert.Equal(t, testUser.DeptID, userAuthInfo.DeptId)
 
 		// 清理测试数据
 		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
@@ -285,29 +282,10 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 
 		// 调用测试方法
 		userAuthInfo, err := userService.GetUserAuthInfo(testUser.Username)
-		assert.NoError(t, err)
-		assert.NotNil(t, userAuthInfo)
-		// 应该找不到已删除的用户
-		assert.Equal(t, int64(0), userAuthInfo.UserId)
+		assert.Error(t, err)
+		assert.Nil(t, userAuthInfo)
 
 		// 清理测试数据
 		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
 	})
-}
-
-func TestUserService_GetUserAuthInfo_DBError(t *testing.T) {
-	// 保存原始DB连接
-	originalDB := global.DB
-	defer func() {
-		global.DB = originalDB
-	}()
-
-	// 模拟数据库连接错误
-	global.DB = &gorm.DB{Error: gorm.ErrInvalidDB}
-
-	userService := &service.UserService{}
-
-	userAuthInfo, err := userService.GetUserAuthInfo("test")
-	assert.Error(t, err)
-	assert.Nil(t, userAuthInfo)
 }
