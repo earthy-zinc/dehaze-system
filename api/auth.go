@@ -1,7 +1,6 @@
 package api
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/common"
@@ -15,10 +14,8 @@ import (
 
 type AuthApi struct{}
 
-var store = utils.NewCaptchaStore()
-
 // 类型转换
-func interfaceToInt(v interface{}) (i int) {
+func interfaceToInt(v any) (i int) {
 	switch v := v.(type) {
 	case int:
 		i = v
@@ -50,6 +47,7 @@ func (a *AuthApi) Captcha(c *gin.Context) {
 		global.CONFIG.Captcha.KeyLong,
 		0.7, 80)
 	var cp *base64Captcha.Captcha
+	var store = utils.GetCaptchaStore()
 	if global.REDIS != nil {
 		cp = base64Captcha.NewCaptcha(driver, store.(*utils.RedisStore).UseWithCtx(c))
 	} else {
@@ -72,29 +70,92 @@ func (a *AuthApi) Captcha(c *gin.Context) {
 
 // Login User login structure
 type Login struct {
-	Username    string `json:"username"`    // 用户名
-	Password    string `json:"password"`    // 密码
-	CaptchaCode string `json:"captchaCode"` // 验证码
-	CaptchaKey  string `json:"captchaKey"`  // 验证码ID
+	Username    string `form:"username" json:"username" validate:"required,min=3"` // 用户名，至少3个字符
+	Password    string `form:"password" json:"password" validate:"required,min=6"` // 密码，至少6个字符
+	CaptchaCode string `form:"captchaCode" json:"captchaCode" validate:"required"` // 验证码，必须存在
+	CaptchaKey  string `form:"captchaKey" json:"captchaKey" validate:"required"`   // 验证码ID，必须存在
 }
 
 func (a *AuthApi) Login(c *gin.Context) {
 	var loginReq Login
-	if err := c.ShouldBindJSON(&loginReq); err != nil {
+	if err := c.ShouldBindQuery(&loginReq); err != nil {
 		common.FailWithMessage(err.Error(), c)
+		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"code": 0, "message": "ok", "data": gin.H{
-		"username":    loginReq.Username,
-		"password":    loginReq.Password,
-		"captchaCode": loginReq.CaptchaCode,
-	}})
+	key := c.ClientIP()
+	// 判断验证码是否开启
+	openCaptcha := global.CONFIG.Captcha.OpenCaptcha               // 是否开启防爆次数
+	openCaptchaTimeOut := global.CONFIG.Captcha.OpenCaptchaTimeOut // 缓存超时时间
+	v, ok := global.BlackCache.Get(key)
+	if !ok {
+		global.BlackCache.Set(key, 1, time.Second*time.Duration(openCaptchaTimeOut))
+	}
+
+	var oc bool = openCaptcha == 0 || openCaptcha < interfaceToInt(v)
+	var store = utils.GetCaptchaStore()
+	if oc && (loginReq.CaptchaCode == "" || loginReq.CaptchaKey == "" || !store.Verify(loginReq.CaptchaKey, loginReq.CaptchaCode, true)) {
+		// 验证码次数+1
+		global.BlackCache.Increment(key, 1)
+		common.FailWithMessage("验证码错误", c)
+		return
+	}
 
 	u := &model.SysUser{Username: loginReq.Username, Password: loginReq.Password}
 	user, err := userService.Login(u)
 	if err != nil {
-		common.FailWithMessage(err.Error(), c)
+		global.LOG.Error("登陆失败! 用户名不存在或者密码错误!", zap.Error(err))
+		// 验证码次数+1
+		global.BlackCache.Increment(key, 1)
+		common.FailWithMessage("用户名不存在或者密码错误", c)
 		return
 	}
+
+	token, claims, err := utils.LoginToken(user)
+	if err != nil {
+		global.LOG.Error("获取token失败!", zap.Error(err))
+		common.FailWithMessage("获取token失败", c)
+		return
+	}
+	if !global.CONFIG.System.UseMultipoint {
+		utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
+		common.OkWithDetailed(gin.H{
+			"accessToken": token,
+			"tokenType":   "Bearer",
+		}, "登录成功", c)
+		return
+	}
+
+	// if jwtStr, err := jwtService.GetRedisJWT(user.Username); err == redis.Nil {
+	// 	if err := utils.SetRedisJWT(token, user.Username); err != nil {
+	// 		global.LOG.Error("设置登录状态失败!", zap.Error(err))
+	// 		common.FailWithMessage("设置登录状态失败", c)
+	// 		return
+	// 	}
+	// 	utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
+	// 	common.OkWithDetailed(gin.H{
+	// 		"accessToken": token,
+	// 		"tokenType":   "Bearer",
+	// 	}, "登录成功", c)
+	// } else if err != nil {
+	// 	global.LOG.Error("设置登录状态失败!", zap.Error(err))
+	// 	common.FailWithMessage("设置登录状态失败", c)
+	// } else {
+	// 	var blackJWT system.JwtBlacklist
+	// 	blackJWT.Jwt = jwtStr
+	// 	if err := jwtService.JsonInBlacklist(blackJWT); err != nil {
+	// 		common.FailWithMessage("jwt作废失败", c)
+	// 		return
+	// 	}
+	// 	if err := utils.SetRedisJWT(token, user.Username); err != nil {
+	// 		common.FailWithMessage("设置登录状态失败", c)
+	// 		return
+	// 	}
+	// 	utils.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
+	// 	common.OkWithDetailed(gin.H{
+	// 		"accessToken": token,
+	// 		"tokenType":   "Bearer",
+	// 	}, "登录成功", c)
+	// }
 	global.LOG.Info(user.Username + "登录成功！")
 }

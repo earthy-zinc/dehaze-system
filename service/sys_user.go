@@ -7,5 +7,8 @@ import (
 type UserService struct{}
 
 func (userService *UserService) Login(u *model.SysUser) (userInter *model.SysUser, err error) {
-	return nil, nil
+
+	return &model.SysUser{
+		Username: "admin",
+	}, nil
 }
