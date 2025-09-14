@@ -14,7 +14,7 @@ import (
 )
 
 func Server() {
-	address := fmt.Sprintf(":%d", global.CONFIG.System.Addr)
+	address := fmt.Sprintf("%s:%d", global.CONFIG.System.Host, global.CONFIG.System.Port)
 	// 创建服务
 	srv := &http.Server{
 		Addr:           address,
