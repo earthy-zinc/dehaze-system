@@ -14,23 +14,20 @@ func TestMain(m *testing.M) {
 	// 初始化配置和日志
 	initialize.Viper()
 	initialize.Zap()
-
 	// 初始化数据库
 	initialize.Gorm()
-
+	// 确保在测试开始前清理一次
+	teardownTest()
 	// 初始化本地缓存
 	initialize.LocalCache()
-
 	// 初始化Redis（如果配置了）
 	initialize.Redis()
-
 	initialize.Migrate()
-
-	defer teardownTest()
 
 	// 运行测试
 	code := m.Run()
 
+	teardownTest()
 	// 退出
 	os.Exit(code)
 }
@@ -39,20 +36,10 @@ func TestMain(m *testing.M) {
 func teardownTest() {
 	// 清理测试用的表数据
 	if global.DB != nil {
-		global.DB.Raw(
-			"drop table if exists dehaze_test.sys_menu",
-		)
-		global.DB.Raw(
-			"drop table if exists dehaze_test.sys_role",
-		)
-		global.DB.Raw(
-			"drop table if exists dehaze_test.sys_user",
-		)
-		global.DB.Raw(
-			"drop table if exists dehaze_test.sys_role_menu",
-		)
-		global.DB.Raw(
-			"drop table if exists dehaze_test.sys_user_role",
-		)
+		global.DB.Exec("drop table if exists dehaze_test.sys_menu")
+		global.DB.Exec("drop table if exists dehaze_test.sys_role")
+		global.DB.Exec("drop table if exists dehaze_test.sys_user")
+		global.DB.Exec("drop table if exists dehaze_test.sys_role_menu")
+		global.DB.Exec("drop table if exists dehaze_test.sys_user_role")
 	}
 }
