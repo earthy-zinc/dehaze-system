@@ -33,6 +33,7 @@ func InitMysql(m config.DB) *gorm.DB {
 		sqlDB, _ := db.DB()
 		sqlDB.SetMaxIdleConns(m.MaxIdleConns)
 		sqlDB.SetMaxOpenConns(m.MaxOpenConns)
+		global.LOG.Info("成功连接MySQL数据库")
 		return db
 	}
 }

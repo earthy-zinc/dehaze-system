@@ -29,15 +29,34 @@ system:
     #  严格角色模式 打开后权限将会存在上下级关系
     use-strict-auth: false
 
+captcha:
+    key-long: 6
+    img-width: 240
+    img-height: 80
+    open-captcha: 0 # 0代表一直开启，大于0代表限制次数
+    open-captcha-timeout: 3600 # open-captcha大于0时才生效
+
+jwt:
+  key: SecretKey012345678901234567890123456789012345678901234567890123456789
+  ttl: 7200
+
 db:
   type: mysql
-  path: ""
-  port: "6379"
+  path: "localhost"
+  port: "3306"
   config: ""
-  db-name: ""
-  username: ""
-  password: ""
+  name: "dehaze"
+  username: "root"
+  password: "123456"
   max-idle-conns: 10
   max-open-conns: 100
-  log-mode: ""
-  log-zap: false
+  log-mode: "info"
+  log-zap: true
+
+redis:
+    #是否使用redis集群模式
+    useCluster: false
+    #使用集群模式addr和db默认无效
+    addr: 127.0.0.1:6379
+    password: "123456"
+    db: 0
