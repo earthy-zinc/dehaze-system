@@ -16,6 +16,10 @@ func Gorm() {
 	switch global.CONFIG.Db.Type {
 	case "mysql":
 		global.DB = db.InitMysql(global.CONFIG.Db)
+	case "sqlite":
+		global.DB = db.InitSQLite(global.CONFIG.Db)
+	case "postgresql":
+		global.DB = db.InitPostgreSQL(global.CONFIG.Db)
 	default:
 		global.DB = db.InitMysql(global.CONFIG.Db)
 	}
