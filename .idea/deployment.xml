@@ -1,47 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="172.20.5.92:52022" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
+  <component name="PublishConfigData" autoUpload="Always" remoteFilesAllowedToDisappearOnAutoupload="false" confirmBeforeUploading="false">
     <option name="confirmBeforeUploading" value="false" />
     <serverData>
-      <paths name="172.20.5.56:30993">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/quzhong_fix/wpx/DeepLearningCopies/2023/RIDCP" local="$PROJECT_DIR$" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
-          </excludedPaths>
-        </serverdata>
-      </paths>
-      <paths name="172.20.5.92:52022">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/var/lib/docker/user1/wpx/DeepLearningCopies/2023/RIDCP" local="$PROJECT_DIR$" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
-          </excludedPaths>
-        </serverdata>
-      </paths>
-      <paths name="ObjectDetection@172.20.5.92:52022 password">
+      <paths name="earthyzinc@192.168.1.2:22 password">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
           </mappings>
-        </serverdata>
-      </paths>
-      <paths name="earthyzinc@192.168.31.2:22 password">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/home/earthyzinc/DeepLearningCopies/2023/RIDCP" local="$PROJECT_DIR$" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
-          </excludedPaths>
         </serverdata>
       </paths>
       <paths name="root@172.20.2.27:30992 password">
@@ -53,61 +19,6 @@
             <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
             <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
             <excludedPath local="true" path="$PROJECT_DIR$/datasets" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
-          </excludedPaths>
-        </serverdata>
-      </paths>
-      <paths name="root@dsw-1a594742a2e4f0a3:22 agent">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/mnt/workspace/ridcp" local="$PROJECT_DIR$" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
-            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
-            <excludedPath local="true" path="$PROJECT_DIR$/pretrained_models" />
-            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
-            <excludedPath local="true" path="$PROJECT_DIR$/datasets" />
-            <excludedPath local="true" path="$PROJECT_DIR$/examples" />
-            <excludedPath local="true" path="$PROJECT_DIR$/figs" />
-            <excludedPath local="true" path="$PROJECT_DIR$/ohaze_results" />
-            <excludedPath local="true" path="$PROJECT_DIR$/results" />
-          </excludedPaths>
-        </serverdata>
-      </paths>
-      <paths name="root@dsw-fd646db88e484e43:22 agent">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/mnt/workspace/ridcp" local="$PROJECT_DIR$" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
-            <excludedPath local="true" path="$PROJECT_DIR$/datasets" />
-            <excludedPath local="true" path="$PROJECT_DIR$/examples" />
-            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
-            <excludedPath local="true" path="$PROJECT_DIR$/figs" />
-            <excludedPath local="true" path="$PROJECT_DIR$/pretrained_models" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
-            <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
-            <excludedPath local="true" path="$PROJECT_DIR$/results" />
-          </excludedPaths>
-        </serverdata>
-      </paths>
-      <paths name="zhou@10.242.187.86:22 password">
-        <serverdata>
-          <mappings>
-            <mapping deploy="/home/zhou/wpx/RIDCP" local="$PROJECT_DIR$" />
-          </mappings>
-          <excludedPaths>
-            <excludedPath local="true" path="$PROJECT_DIR$/.idea" />
-            <excludedPath local="true" path="$PROJECT_DIR$/datasets" />
-            <excludedPath local="true" path="$PROJECT_DIR$/examples" />
-            <excludedPath local="true" path="$PROJECT_DIR$/experiments" />
-            <excludedPath local="true" path="$PROJECT_DIR$/figs" />
-            <excludedPath local="true" path="$PROJECT_DIR$/ohaze_results" />
-            <excludedPath local="true" path="$PROJECT_DIR$/results" />
             <excludedPath local="true" path="$PROJECT_DIR$/tb_logger" />
             <excludedPath local="true" path="$PROJECT_DIR$/tb_logger_archived" />
           </excludedPaths>
