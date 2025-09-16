@@ -9,6 +9,7 @@ import (
 type UserService struct{}
 
 func (userService *UserService) Login(u *model.SysUser) (userAuthInfo *model.UserAuthInfo, err error) {
+	inputPassword := u.Password
 	// 先通过用户名查找用户
 	err = global.DB.Where("username = ? AND deleted = 0", u.Username).First(u).Error
 	if err != nil {
@@ -16,7 +17,7 @@ func (userService *UserService) Login(u *model.SysUser) (userAuthInfo *model.Use
 	}
 
 	// 验证密码
-	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(u.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(inputPassword))
 	if err != nil {
 		return nil, err
 	}
