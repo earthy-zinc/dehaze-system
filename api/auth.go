@@ -107,20 +107,20 @@ func (a *AuthApi) Login(c *gin.Context) {
 		return
 	}
 
-	key := c.ClientIP()
+	userIp := c.ClientIP()
 	// 判断验证码是否开启
-	openCaptcha := global.CONFIG.Captcha.RetryCount     // 是否开启防爆次数
-	openCaptchaTimeOut := global.CONFIG.Captcha.TimeOut // 缓存超时时间
-	v, ok := global.LOCAL_CACHE.Get(key)
+	retryCount := global.CONFIG.Captcha.RetryCount  // 是否开启防爆次数
+	captchaTimeOut := global.CONFIG.Captcha.TimeOut // 缓存超时时间
+	v, ok := global.LOCAL_CACHE.Get(userIp)
 	if !ok {
-		global.LOCAL_CACHE.Set(key, 1, time.Second*time.Duration(openCaptchaTimeOut))
+		global.LOCAL_CACHE.Set(userIp, 1, time.Second*time.Duration(captchaTimeOut))
 	}
 
-	var oc bool = openCaptcha == 0 || openCaptcha < interfaceToInt(v)
+	var oc bool = retryCount == 0 || retryCount < interfaceToInt(v)
 	var store = utils.GetCaptchaStore()
 	if !oc && (loginReq.CaptchaCode == "" || loginReq.CaptchaKey == "" || !store.Verify(loginReq.CaptchaKey, loginReq.CaptchaCode, true)) {
 		// 验证码次数+1
-		global.LOCAL_CACHE.Increment(key, 1)
+		global.LOCAL_CACHE.Increment(userIp, 1)
 		common.FailWithMessage("验证码错误", c)
 		return
 	}
@@ -130,7 +130,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 	if err != nil {
 		global.LOG.Error("登陆失败! 用户名不存在或者密码错误!", zap.Error(err))
 		// 验证码次数+1
-		global.LOCAL_CACHE.Increment(key, 1)
+		global.LOCAL_CACHE.Increment(userIp, 1)
 		common.FailWithMessage("用户名不存在或者密码错误", c)
 		return
 	}
