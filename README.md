@@ -97,30 +97,6 @@ graph TD
 
 4. **启动监控系统**
 
-```shell
-# 创建网络
-docker network create pei-network
-
-# 启动容器
-docker run -d --name prometheus \
-  -p 9091:9091 \
-  -v /mnt/e/ProgramProject/new-dehaze/dehaze-java/sql/prometheus.yml:/etc/prometheus/prometheus.yml \
-  -v /prometheus_data:/prometheus \
-  --network pei-network \
-  prom/prometheus:latest \
-  --config.file=/etc/prometheus/prometheus.yml \
-  --web.listen-address=:9091
-  
-
-docker run -d --name grafana \
--p 3000:3000 \
--e GF_SECURITY_ADMIN_USER=admin \
--e GF_SECURITY_ADMIN_PASSWORD=admin \
--v ./grafana_data:/var/lib/grafana \
---network pei-network \
-grafana/grafana:latest
-```
-
 ## 📥 后续优化方案
 
 1. 算法服务优化
