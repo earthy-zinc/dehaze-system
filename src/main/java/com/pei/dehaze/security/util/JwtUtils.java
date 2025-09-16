@@ -4,8 +4,8 @@ import cn.hutool.core.convert.Convert;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.json.JSONObject;
-import cn.hutool.jwt.JWTPayload;
 import cn.hutool.jwt.JWTUtil;
+import cn.hutool.jwt.RegisteredPayload;
 import com.pei.dehaze.common.constant.JwtClaimConstants;
 import com.pei.dehaze.security.model.SysUserDetails;
 import org.springframework.beans.factory.annotation.Value;
@@ -76,10 +76,10 @@ public class JwtUtils {
 
         Date now = new Date();
         Date expiration = DateUtil.offsetSecond(now, ttl);
-        payload.put(JWTPayload.ISSUED_AT, now);
-        payload.put(JWTPayload.EXPIRES_AT, expiration);
-        payload.put(JWTPayload.SUBJECT, authentication.getName());
-        payload.put(JWTPayload.JWT_ID, IdUtil.simpleUUID());
+        payload.put(RegisteredPayload.ISSUED_AT, now);
+        payload.put(RegisteredPayload.EXPIRES_AT, expiration);
+        payload.put(RegisteredPayload.SUBJECT, authentication.getName());
+        payload.put(RegisteredPayload.JWT_ID, IdUtil.simpleUUID());
 
         return JWTUtil.createToken(payload, key);
     }
@@ -97,7 +97,7 @@ public class JwtUtils {
         userDetails.setDeptId(payloads.getLong(JwtClaimConstants.DEPT_ID)); // 部门ID
         userDetails.setDataScope(payloads.getInt(JwtClaimConstants.DATA_SCOPE)); // 数据权限范围
 
-        userDetails.setUsername(payloads.getStr(JWTPayload.SUBJECT)); // 用户名
+        userDetails.setUsername(payloads.getStr(RegisteredPayload.SUBJECT)); // 用户名
         // 角色集合
         Set<SimpleGrantedAuthority> authorities = payloads.getJSONArray(JwtClaimConstants.AUTHORITIES)
                 .stream()
