@@ -15,7 +15,7 @@ interface MagnifierProps {
   label?: LabelType;
 }
 
-const drawLabel = (ctx: CanvasRenderingContext2D, label: LabelType) => {
+const drawLabel = (ctx: CanvasRenderingContext2D, label: LabelType): void => {
   const { text, color, backgroundColor } = label;
   ctx.font = "15px sans-serif";
   ctx.fillStyle = backgroundColor;
@@ -31,58 +31,53 @@ const drawLabel = (ctx: CanvasRenderingContext2D, label: LabelType) => {
 };
 
 const Magnifier: React.FC<MagnifierProps> = ({ src, label }) => {
-  const [img, setImg] = useState<HTMLImageElement>();
+  const [img, setImg] = useState<HTMLImageElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // 状态获取
   const scaleX = useSelector(selectScaleX);
   const scaleY = useSelector(selectScaleY);
-
   const mask = useSelector((state: RootState) => state.imageShow.mask);
   const maskWidth = useSelector(selectMaskWidth);
   const maskHeight = useSelector(selectMaskHeight);
-
-  const width = useSelector(
-    (state: RootState) => state.imageShow.magnifierInfo.width
+  const magnifierInfo = useSelector(
+    (state: RootState) => state.imageShow.magnifier
   );
-  const height = useSelector(
-    (state: RootState) => state.imageShow.magnifierInfo.height
-  );
-  const shape = useSelector(
-    (state: RootState) => state.imageShow.magnifierInfo.shape
-  );
-
   const brightness = useSelector(
-    (state: RootState) => state.imageShow.imageInfo.brightness
+    (state: RootState) => state.imageShow.brightness
   );
-  const contrast = useSelector(
-    (state: RootState) => state.imageShow.imageInfo.contrast
-  );
-  const saturate = useSelector(
-    (state: RootState) => state.imageShow.imageInfo.saturate
-  );
+  const contrast = useSelector((state: RootState) => state.imageShow.contrast);
+  const saturate = useSelector((state: RootState) => state.imageShow.saturate);
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // 从 state 中解构
+  const { width, height, shape } = magnifierInfo;
 
-  useEffect(() => {
+  // 初始化 Canvas 尺寸和样式
+  const initCanvas = useCallback(() => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
     canvas.width = width;
     canvas.height = height;
     canvas.style.borderRadius = shape === "circle" ? "50%" : "0";
-  }, [canvasRef, width, height, shape]);
+  }, [width, height, shape]);
 
+  // 图像加载
   useEffect(() => {
+    if (!src) return;
     loadImage(src, false).then((image) => setImg(image));
   }, [src]);
 
+  // 绘制逻辑
   const drawImage = useCallback(() => {
-    if (!img || !canvasRef.current) return;
-    const ctx = canvasRef.current.getContext("2d")!;
-    ctx.filter = `
-      brightness(${brightness}%)
-      contrast(${contrast}%)
-      saturate(${saturate}%)
-    `;
+    if (!canvasRef.current || !img) return;
+    const ctx = canvasRef.current.getContext("2d");
+    if (!ctx) return;
+
+    // 清除并应用滤镜
+    ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturate}%)`;
     ctx.clearRect(0, 0, width, height);
+
+    // 绘制放大区域
     ctx.drawImage(
       img,
       mask.x * scaleX,
@@ -94,6 +89,8 @@ const Magnifier: React.FC<MagnifierProps> = ({ src, label }) => {
       width,
       height
     );
+
+    // 绘制标签
     if (label) drawLabel(ctx, label);
   }, [
     img,
@@ -107,14 +104,33 @@ const Magnifier: React.FC<MagnifierProps> = ({ src, label }) => {
     scaleY,
     width,
     height,
+    shape,
     label,
   ]);
 
+  // 效果初始化
+  useEffect(() => {
+    initCanvas();
+    drawImage();
+  }, [initCanvas, drawImage]);
+
+  // 监听尺寸变化
+  useEffect(() => {
+    initCanvas();
+    drawImage();
+  }, [width, height, shape, initCanvas, drawImage]);
+
+  // 监听图像变化
+  useEffect(() => {
+    if (img) drawImage();
+  }, [img, drawImage]);
+
+  // 监听状态变化
   useEffect(() => {
     drawImage();
   }, [drawImage]);
 
-  return <canvas ref={canvasRef}></canvas>;
+  return <canvas ref={canvasRef} />;
 };
 
 export default Magnifier;

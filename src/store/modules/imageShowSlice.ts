@@ -15,58 +15,60 @@ export interface LabelType {
   backgroundColor: string;
 }
 
-const initialState = {
+export interface ImageShowState {
+  loading: boolean;
+  modelId: number;
+  urls: ImageUrlType[];
+  naturalWidth: number;
+  naturalHeight: number;
+  width: number;
+  height: number;
+  brightness: number;
+  contrast: number;
+  saturate: number;
+  magnifier: {
+    enabled: boolean;
+    zoomLevel: number;
+    shape: "circle" | "square";
+    width: number;
+    height: number;
+  };
+  mask: { x: number; y: number };
+  divider: { enabled: boolean };
+  mouse: { x: number; y: number };
+}
+
+const initialState: ImageShowState = {
   loading: false,
   modelId: 0,
-  imageInfo: {
-    images: {
-      urls: [
-        {
-          id: 1,
-          label: {
-            text: ImageTypeEnum.CLEAN,
-            color: "#000",
-            backgroundColor: "#fff",
-          },
-          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/clean/041.png",
-        },
-        {
-          id: 2,
-          label: {
-            text: ImageTypeEnum.PRED,
-            color: "#fff",
-            backgroundColor: "#4a4",
-          },
-          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/hazy/041.png",
-        },
-      ] as ImageUrlType[],
-      naturalWidth: 0,
-      naturalHeight: 0,
+  urls: [
+    {
+      id: 1,
+      label: {
+        text: ImageTypeEnum.CLEAN,
+        color: "#000",
+        backgroundColor: "#fff",
+      },
+      url: "http://...",
     },
-    width: 0,
-    height: 0,
-    brightness: 100,
-    contrast: 100,
-    saturate: 100,
-  },
-  mouse: {
-    x: 0,
-    y: 0,
-  },
-  magnifierInfo: {
+  ],
+  naturalWidth: 0,
+  naturalHeight: 0,
+  width: 0,
+  height: 0,
+  brightness: 100,
+  contrast: 100,
+  saturate: 100,
+  magnifier: {
     enabled: true,
     zoomLevel: 2,
     shape: "square",
     width: 100,
     height: 100,
   },
-  mask: {
-    x: 0,
-    y: 0,
-  },
-  dividerInfo: {
-    enabled: true,
-  },
+  mask: { x: 0, y: 0 },
+  divider: { enabled: true },
+  mouse: { x: 0, y: 0 },
 };
 
 export const imageShowSlice = createSlice({
@@ -79,19 +81,17 @@ export const imageShowSlice = createSlice({
     setModelId: (state, action: PayloadAction<number>) => {
       state.modelId = action.payload;
     },
+    // 图片 URL 相关
     setImageUrls: (state, action: PayloadAction<ImageUrlType[]>) => {
-      state.imageInfo.images.urls = action.payload;
+      state.urls = action.payload;
     },
     setImageUrl: (
       state,
       action: PayloadAction<{ url: string; type: ImageTypeEnum }>
     ) => {
       const { url, type } = action.payload;
-      const index = state.imageInfo.images.urls.findIndex(
-        (item) => item.label.text === type
-      );
-      let label;
-      let id;
+      let id: number;
+      let label: LabelType;
       if (type === ImageTypeEnum.HAZE) {
         id = 0;
         label = { text: type, color: "#fff", backgroundColor: "#000" };
@@ -100,89 +100,99 @@ export const imageShowSlice = createSlice({
         label = {
           text: type,
           color: "#fff",
-          backgroundColor: "#4a4", // Assuming themeColor is "#4a4"
+          backgroundColor: "#4a4",
         };
       } else {
         id = 2;
         label = { text: type, color: "#000", backgroundColor: "#00f" };
       }
-      if (index !== -1) {
-        state.imageInfo.images.urls[index] = { id, label, url };
+      const existing = state.urls.find((item) => item.label.text === type);
+      if (existing) {
+        existing.url = url;
+        existing.label = label;
+        existing.id = id;
       } else {
-        state.imageInfo.images.urls.push({ id, label, url });
+        state.urls.push({ id, label, url });
       }
     },
     updateImageUrls: (state, action: PayloadAction<ImageUrlType>) => {
       const { payload } = action;
-      const index = state.imageInfo.images.urls.findIndex(
+      const index = state.urls.findIndex(
         (item) => item.label.text === payload.label.text
       );
       if (index !== -1) {
-        state.imageInfo.images.urls[index] = payload;
+        state.urls[index] = payload;
       } else {
-        state.imageInfo.images.urls.push(payload);
+        state.urls.push(payload);
       }
     },
+
+    // 图片尺寸相关
     setImageNaturalSize: (
       state,
       action: PayloadAction<{ width: number; height: number }>
     ) => {
-      const { width, height } = action.payload;
-      state.imageInfo.images.naturalWidth = width;
-      state.imageInfo.images.naturalHeight = height;
+      state.naturalWidth = action.payload.width;
+      state.naturalHeight = action.payload.height;
     },
     setImageSize: (
       state,
       action: PayloadAction<{ width: number; height: number }>
     ) => {
-      const { width, height } = action.payload;
-      state.imageInfo.width = width;
-      state.imageInfo.height = height;
+      state.width = action.payload.width;
+      state.height = action.payload.height;
     },
+
+    // 调整参数
     setBrightness: (state, action: PayloadAction<number>) => {
-      state.imageInfo.brightness = action.payload;
+      state.brightness = action.payload;
     },
     setContrast: (state, action: PayloadAction<number>) => {
-      state.imageInfo.contrast = action.payload;
+      state.contrast = action.payload;
     },
     setSaturate: (state, action: PayloadAction<number>) => {
-      state.imageInfo.saturate = action.payload;
+      state.saturate = action.payload;
     },
+
+    // 放大镜相关
     setMagnifierShow: (state, action: PayloadAction<boolean>) => {
-      state.magnifierInfo.enabled = action.payload;
-    },
-    setDividerShow: (state, action: PayloadAction<boolean>) => {
-      state.dividerInfo.enabled = action.payload;
-    },
-    toggleMagnifierShow: (state) => {
-      state.magnifierInfo.enabled = !state.magnifierInfo.enabled;
-    },
-    toggleDividerShow: (state) => {
-      state.dividerInfo.enabled = !state.dividerInfo.enabled;
+      state.magnifier.enabled = action.payload;
     },
     setMagnifierShape: (state, action: PayloadAction<"circle" | "square">) => {
-      state.magnifierInfo.shape = action.payload;
+      state.magnifier.shape = action.payload;
     },
     setMagnifierSize: (
       state,
       action: PayloadAction<{ width: number; height: number }>
     ) => {
-      const { width, height } = action.payload;
-      state.magnifierInfo.width = width;
-      state.magnifierInfo.height = height;
+      state.magnifier.width = action.payload.width;
+      state.magnifier.height = action.payload.height;
     },
     setMagnifierZoomLevel: (state, action: PayloadAction<number>) => {
-      state.magnifierInfo.zoomLevel = action.payload;
+      state.magnifier.zoomLevel = action.payload;
     },
+
+    // 遮罩层
     setMaskXY: (state, action: PayloadAction<{ x: number; y: number }>) => {
-      const { x, y } = action.payload;
-      state.mask.x = x;
-      state.mask.y = y;
+      state.mask.x = action.payload.x;
+      state.mask.y = action.payload.y;
     },
+
+    // 鼠标坐标
     setMouseXY: (state, action: PayloadAction<{ x: number; y: number }>) => {
-      const { x, y } = action.payload;
-      state.mouse.x = x;
-      state.mouse.y = y;
+      state.mouse.x = action.payload.x;
+      state.mouse.y = action.payload.y;
+    },
+
+    // 分割线
+    setDividerShow: (state, action: PayloadAction<boolean>) => {
+      state.divider.enabled = action.payload;
+    },
+    toggleMagnifierShow: (state) => {
+      state.magnifier.enabled = !state.magnifier.enabled;
+    },
+    toggleDividerShow: (state) => {
+      state.divider.enabled = !state.divider.enabled;
     },
   },
 });
@@ -193,11 +203,15 @@ const imageShowPersistConfig = {
   whitelist: [
     "loading",
     "modelId",
-    "imageInfo",
-    "mouse",
-    "magnifierInfo",
+    "urls",
+    "naturalWidth",
+    "naturalHeight",
+    "width",
+    "height",
+    "magnifier",
     "mask",
-    "dividerInfo",
+    "divider",
+    "mouse",
   ],
 };
 
@@ -213,14 +227,14 @@ export const {
   setContrast,
   setSaturate,
   setMagnifierShow,
-  setDividerShow,
-  toggleMagnifierShow,
-  toggleDividerShow,
   setMagnifierShape,
   setMagnifierSize,
   setMagnifierZoomLevel,
   setMaskXY,
   setMouseXY,
+  toggleMagnifierShow,
+  toggleDividerShow,
+  setDividerShow,
 } = imageShowSlice.actions;
 
 export default persistReducer(imageShowPersistConfig, imageShowSlice.reducer);

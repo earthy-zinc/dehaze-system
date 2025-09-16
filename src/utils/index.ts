@@ -251,3 +251,11 @@ export function loadImage(
     image.src = url;
   });
 }
+
+const host = window.location.host + import.meta.env.VITE_JAVA_BASE_API;
+
+export function changeUrl(url: string) {
+  if (!url) return "";
+  const oldHost = new URL(url).host;
+  return url.replace(oldHost, host);
+}
