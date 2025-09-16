@@ -2,9 +2,10 @@ from flask import Flask
 from config import config
 from app.route.model import model_blueprint
 from app.utils.error_handlers import register_error_handlers
-
+from app.utils.logging import setup_logging
 
 def create_app(config_name: str):
+    setup_logging()
     app = Flask(__name__)
     app.config.from_object(config[config_name])
     # 初始化扩展
@@ -26,6 +27,6 @@ def init_extensions(app: Flask):
     init_mysql(app)
     init_redis(app)
     init_mongodb(app)
-    init_minio(app)
+    # init_minio(app)
     init_swagger(app)
     init_jwt(app)

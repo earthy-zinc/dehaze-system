@@ -1,3 +1,5 @@
+import logging
+
 from flasgger import Swagger
 from flask import Flask
 from flask_jwt_extended import JWTManager
@@ -10,6 +12,8 @@ mysql = SQLAlchemy()
 swagger = Swagger()
 mongodb = PyMongo()
 
+logger = logging.getLogger(__name__)
+
 def init_jwt(app: Flask):
     jwt = JWTManager(app)
     return jwt
@@ -20,6 +24,7 @@ def init_mysql(app: Flask):
     """
     global mysql
     mysql.init_app(app)
+    logger.info("Mysql 初始化成功")
 
 
 def init_redis(app: Flask):
@@ -33,7 +38,7 @@ def init_redis(app: Flask):
         db=app.config.get("REDIS_DB")
     )
     app.extensions["redis_client"] = redis_client
-
+    logger.info("Redis 初始化成功")
 
 def init_mongodb(app: Flask):
     """
@@ -41,7 +46,7 @@ def init_mongodb(app: Flask):
     """
     global mongodb
     mongodb.init_app(app)
-
+    logger.info("MongoDB 初始化成功")
 
 def init_minio(app: Flask):
     """
@@ -60,6 +65,7 @@ def init_minio(app: Flask):
         minio_client.set_bucket_policy(bucket_name, policy="public-read")
 
     app.extensions["minio_client"] = minio_client
+    logger.info("MinIO 初始化成功")
 
 
 def init_swagger(app: Flask):

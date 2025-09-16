@@ -1,3 +1,4 @@
+import logging
 from flask import Flask
 from flask_jwt_extended.exceptions import NoAuthorizationError, InvalidHeaderError
 from jwt import ExpiredSignatureError, DecodeError
@@ -5,12 +6,14 @@ from jwt import ExpiredSignatureError, DecodeError
 from .code import ResultCode
 from .result import error, warning
 
+logger = logging.getLogger(__name__)
 
 def register_error_handlers(app: Flask):
     """注册全局错误处理"""
 
     @app.errorhandler(AssertionError)
     def handle_assertion_error(e):
+        logger.error(f"业务逻辑错误：{str(e)}")
         return error(f"业务逻辑错误：{str(e)}"), 400
 
     @app.errorhandler(NoAuthorizationError)

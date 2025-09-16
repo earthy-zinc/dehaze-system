@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import traceback
@@ -17,6 +18,8 @@ from app.utils.file import convert_size
 from app.utils.metrics import calculate
 from app.utils.result import success, error
 
+
+logger = logging.getLogger(__name__)
 model_blueprint = Blueprint("model", __name__, url_prefix="/model")
 
 
@@ -332,5 +335,6 @@ def init_algorithm():
     "produces": ["application/json"],
 })
 def test():
+    logger.info("test")
     verify_jwt_in_request()
     return success(get_jwt().get("userId"))
