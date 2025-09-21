@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Nacos" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
+    <module name="pei-nacos" />
+    <option name="SHORTEN_COMMAND_LINE" value="MANIFEST" />
+    <option name="SPRING_BOOT_MAIN_CLASS" value="com.alibaba.nacos.Nacos" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

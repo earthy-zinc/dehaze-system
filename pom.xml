@@ -496,6 +496,14 @@
 
     <repositories>
         <repository>
+            <id>aliyun</id>
+            <name>aliyun nexus</name>
+            <url>https://maven.aliyun.com/repository/public</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+        </repository>
+        <repository>
             <id>public</id>
             <name>huawei nexus</name>
             <url>https://mirrors.huaweicloud.com/repository/maven/</url>
@@ -504,9 +512,9 @@
             </releases>
         </repository>
         <repository>
-            <id>aliyun</id>
-            <name>aliyun nexus</name>
-            <url>https://maven.aliyun.com/repository/public</url>
+            <id>central</id>
+            <name>central</name>
+            <url>https://repo1.maven.org/maven2/</url>
             <releases>
                 <enabled>true</enabled>
             </releases>
