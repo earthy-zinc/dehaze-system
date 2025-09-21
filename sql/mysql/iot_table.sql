@@ -62,6 +62,7 @@ CREATE TABLE `iot_device_group`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_create_time` (`create_time` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -91,6 +92,7 @@ CREATE TABLE `iot_ota_firmware`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -120,6 +122,7 @@ CREATE TABLE `iot_ota_upgrade_record`
     `updater`          varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`      datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -145,6 +148,7 @@ CREATE TABLE `iot_ota_upgrade_task`
     `updater`      varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`  datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -225,6 +229,7 @@ CREATE TABLE `iot_product_category`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -282,6 +287,7 @@ CREATE TABLE `iot_alert_config`
     `updater`          varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`      datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -307,6 +313,7 @@ CREATE TABLE `iot_alert_record`
     `updater`        varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -331,6 +338,7 @@ CREATE TABLE `iot_data_bridge`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -382,6 +390,7 @@ CREATE TABLE `iot_thing_model`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`   bigint        NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1

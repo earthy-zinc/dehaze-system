@@ -20,6 +20,7 @@ CREATE TABLE `member_address`
     `updater`        varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id`)
 ) ENGINE = InnoDB
@@ -43,6 +44,7 @@ CREATE TABLE `member_config`
     `updater`                       varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`                   datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                       bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -64,6 +66,7 @@ CREATE TABLE `member_group`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_create_time` (`create_time`)
 ) ENGINE = InnoDB
@@ -90,6 +93,7 @@ CREATE TABLE `member_level`
     `updater`          varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -115,6 +119,7 @@ CREATE TABLE `member_level_record`
     `updater`          varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`)
 ) ENGINE = InnoDB
@@ -140,6 +145,7 @@ CREATE TABLE `member_experience_record`
     `updater`          varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`)
 ) ENGINE = InnoDB
@@ -166,6 +172,7 @@ CREATE TABLE `member_point_record`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`)
 ) ENGINE = InnoDB
@@ -190,6 +197,7 @@ CREATE TABLE `member_sign_in_config`
     `updater`     varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -212,6 +220,7 @@ CREATE TABLE `member_sign_in_record`
     `updater`     varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`)
 ) ENGINE = InnoDB
@@ -232,6 +241,7 @@ CREATE TABLE `member_tag`
     `updater`     varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

@@ -18,7 +18,7 @@ CREATE TABLE `promotion_article_category`
     `updater`     VARCHAR(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     BIT(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
-
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -48,6 +48,7 @@ CREATE TABLE `promotion_article`
     `updater`          varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`      datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -73,6 +74,7 @@ CREATE TABLE `promotion_banner`
     `updater`      varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`  datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -105,6 +107,7 @@ CREATE TABLE `promotion_bargain_activity`
     `updater`             varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -127,6 +130,7 @@ CREATE TABLE `promotion_bargain_help`
     `updater`      varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`  datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -153,6 +157,7 @@ CREATE TABLE `promotion_bargain_record`
     `updater`             varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -180,6 +185,7 @@ CREATE TABLE `promotion_combination_activity`
     `updater`            varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`        datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`            bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -204,6 +210,7 @@ CREATE TABLE `promotion_combination_product`
     `updater`             varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -240,6 +247,7 @@ CREATE TABLE `promotion_combination_record`
     `updater`           varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`       datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -273,6 +281,7 @@ CREATE TABLE `promotion_coupon`
     `updater`              varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -310,6 +319,7 @@ CREATE TABLE `promotion_coupon_template`
     `updater`              varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`          datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -332,6 +342,7 @@ CREATE TABLE `promotion_discount_activity`
     `updater`     varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -359,6 +370,7 @@ CREATE TABLE `promotion_discount_product`
     `updater`             varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -381,6 +393,7 @@ CREATE TABLE `promotion_diy_page`
     `updater`          varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -404,6 +417,7 @@ CREATE TABLE `promotion_diy_template`
     `updater`          varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -429,6 +443,7 @@ CREATE TABLE `promotion_kefu_conversation`
     `updater`                    varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`                datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                    bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -454,6 +469,7 @@ CREATE TABLE `promotion_kefu_message`
     `updater`         varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`     datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -477,6 +493,7 @@ CREATE TABLE `promotion_point_activity`
     `updater`     varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -502,6 +519,7 @@ CREATE TABLE `promotion_point_product`
     `updater`         varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`     datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -528,6 +546,7 @@ CREATE TABLE `promotion_reward_activity`
     `updater`              varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -558,6 +577,7 @@ CREATE TABLE `promotion_seckill_activity`
     `updater`            varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`        datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`            bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -580,6 +600,7 @@ CREATE TABLE `promotion_seckill_config`
     `updater`         varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -606,6 +627,7 @@ CREATE TABLE `promotion_seckill_product`
     `updater`             varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

@@ -24,6 +24,7 @@ CREATE TABLE `ai_chat_conversation`
     `updater`        varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE,
     INDEX `idx_role_id` (`role_id` ASC) USING BTREE,
@@ -54,6 +55,7 @@ CREATE TABLE `ai_chat_message`
     `updater`         varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`     datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_conversation_id` (`conversation_id` ASC) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE,
@@ -90,6 +92,7 @@ CREATE TABLE `ai_image`
     `updater`       varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`       bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE,
     INDEX `idx_model_id` (`model_id` ASC) USING BTREE
@@ -116,6 +119,7 @@ CREATE TABLE `ai_knowledge`
     `updater`              varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`          datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_embedding_model_id` (`embedding_model_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -143,6 +147,7 @@ CREATE TABLE `ai_knowledge_document`
     `updater`            varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`        datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`            bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_knowledge_id` (`knowledge_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -169,6 +174,7 @@ CREATE TABLE `ai_knowledge_segment`
     `updater`         varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_knowledge_id` (`knowledge_id` ASC) USING BTREE,
     INDEX `idx_document_id` (`document_id` ASC) USING BTREE
@@ -195,6 +201,7 @@ CREATE TABLE `ai_mind_map`
     `updater`           varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`       datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE,
     INDEX `idx_model_id` (`model_id` ASC) USING BTREE
@@ -219,6 +226,7 @@ CREATE TABLE `ai_api_key`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -243,6 +251,12 @@ CREATE TABLE `ai_chat_role`
     `public_status`  bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否公开',
     `sort`           int          NOT NULL DEFAULT 0 COMMENT '排序值',
     `status`         int          NOT NULL DEFAULT 0 COMMENT '状态。0: 启用；1: 停用',
+    `creator`      varchar(64)   NULL     DEFAULT '' COMMENT '创建者',
+    `create_time`  datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updater`      varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
+    `update_time`  datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted`      bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE,
     INDEX `idx_model_id` (`model_id` ASC) USING BTREE
@@ -272,6 +286,7 @@ CREATE TABLE `ai_model`
     `updater`      varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`  datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_key_id` (`key_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -293,6 +308,7 @@ CREATE TABLE `ai_tool`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -326,6 +342,7 @@ CREATE TABLE `ai_music`
     `updater`       varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`   datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`       bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -349,6 +366,7 @@ CREATE TABLE `ai_workflow`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `idx_code` (`code` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -380,6 +398,7 @@ CREATE TABLE `ai_write`
     `updater`           varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`       datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE,
     INDEX `idx_model_id` (`model_id` ASC) USING BTREE

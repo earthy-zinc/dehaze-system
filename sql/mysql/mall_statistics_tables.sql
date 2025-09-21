@@ -25,6 +25,7 @@ CREATE TABLE `product_statistics`
     `updater`                 varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`             datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                 bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -54,6 +55,7 @@ CREATE TABLE `trade_statistics`
     `updater`                    varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`                datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                    bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
