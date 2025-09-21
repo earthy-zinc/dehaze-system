@@ -390,14 +390,14 @@ services:
     build:
       context: ./rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: ruoyi
-      RABBITMQ_DEFAULT_PASS: ruoyi123
+      RABBITMQ_DEFAULT_USER: root
+      RABBITMQ_DEFAULT_PASS: 123456
     ports:
       - "15672:15672" # 管理界面端口
       - "5672:5672"   # api 端口
     volumes:
-      - /docker/rabbitmq/log:/var/log/rabbitmq
-      - /docker/rabbitmq/data:/var/lib/rabbitmq
+      - rabbitmq-log:/var/log/rabbitmq
+      - rabbitmq-data:/var/lib/rabbitmq
     network_mode: "host"
 
   zookeeper:
@@ -428,11 +428,11 @@ services:
       # 监听端口
       KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
       # 实际访问ip 本地用 127 内网用 192 外网用 外网ip
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://192.168.31.165:9092
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://192.168.31.2:9092
       KAFKA_CFG_ZOOKEEPER_CONNECT: 127.0.0.1:2181
       ALLOW_PLAINTEXT_LISTENER: "yes"
     volumes:
-      - /docker/kafka/data:/bitnami/kafka/data
+      - kafka-data:/bitnami/kafka/data
     depends_on:
       - zookeeper
     network_mode: "host"
@@ -445,8 +445,8 @@ services:
     environment:
       ZK_HOSTS: 127.0.0.1:2181
       APPLICATION_SECRET: letmein
-      KAFKA_MANAGER_USERNAME: ruoyi
-      KAFKA_MANAGER_PASSWORD: ruoyi123
+      KAFKA_MANAGER_USERNAME: root
+      KAFKA_MANAGER_PASSWORD: 123456
       KM_ARGS: -Dhttp.port=19092
     depends_on:
       - kafka

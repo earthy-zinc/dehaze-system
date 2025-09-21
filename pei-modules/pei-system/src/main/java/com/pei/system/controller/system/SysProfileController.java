@@ -3,9 +3,6 @@ package com.pei.system.controller.system;
 import cn.dev33.satoken.secure.BCrypt;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.io.FileUtil;
-import io.seata.spring.annotation.GlobalTransactional;
-import lombok.RequiredArgsConstructor;
-import org.apache.dubbo.config.annotation.DubboReference;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.core.utils.file.MimeTypeUtils;
@@ -25,7 +22,10 @@ import com.pei.system.domain.vo.AvatarVo;
 import com.pei.system.domain.vo.ProfileVo;
 import com.pei.system.domain.vo.SysUserVo;
 import com.pei.system.service.ISysUserService;
+import lombok.RequiredArgsConstructor;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.http.MediaType;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -116,7 +116,7 @@ public class SysProfileController extends BaseController {
      * @param avatarfile 用户头像
      */
     @RepeatSubmit
-    @GlobalTransactional(rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class)
     @Log(title = "用户头像", businessType = BusinessType.UPDATE)
     @PostMapping(value = "/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public R<AvatarVo> avatar(@RequestPart("avatarfile") MultipartFile avatarfile) throws IOException {
