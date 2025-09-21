@@ -34,6 +34,7 @@ import org.springframework.context.annotation.FilterType;
  *
  * @author nacos
  */
+@SuppressWarnings("all")
 @SpringBootApplication
 @ComponentScan(basePackages = "com.alibaba.nacos", excludeFilters = {
     @Filter(type = FilterType.CUSTOM, classes = {NacosTypeExcludeFilter.class}),
