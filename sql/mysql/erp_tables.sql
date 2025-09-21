@@ -19,6 +19,7 @@ CREATE TABLE `erp_account`
     `updater`        varchar(64)           DEFAULT '' COMMENT '更新者',
     `update_time`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -47,6 +48,7 @@ CREATE TABLE `erp_finance_payment`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_supplier_id` (`supplier_id` ASC) USING BTREE,
     INDEX `idx_account_id` (`account_id` ASC) USING BTREE
@@ -75,6 +77,7 @@ CREATE TABLE `erp_finance_payment_item`
     `updater`       varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`   datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`       bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_payment_id` (`payment_id` ASC) USING BTREE,
     INDEX `idx_biz_type` (`biz_type` ASC) USING BTREE
@@ -106,6 +109,7 @@ CREATE TABLE `erp_finance_receipt`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_account_id` (`account_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -133,6 +137,7 @@ CREATE TABLE `erp_finance_receipt_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_receipt_id` (`receipt_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -157,6 +162,7 @@ CREATE TABLE `erp_product_category`
     `updater`     varchar(64)           DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_parent_id` (`parent_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -188,6 +194,7 @@ CREATE TABLE `erp_product`
     `updater`        varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`    datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_category_id` (`category_id` ASC) USING BTREE,
     INDEX `idx_unit_id` (`unit_id` ASC) USING BTREE
@@ -210,6 +217,7 @@ CREATE TABLE `erp_product_unit`
     `updater`     varchar(64)           DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -245,6 +253,7 @@ CREATE TABLE `erp_purchase_in`
     `updater`             varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_supplier_id` (`supplier_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -275,6 +284,7 @@ CREATE TABLE `erp_purchase_in_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_in_id` (`in_id` ASC) USING BTREE,
     INDEX `idx_order_item_id` (`order_item_id` ASC) USING BTREE,
@@ -313,6 +323,7 @@ CREATE TABLE `erp_purchase_order`
     `updater`             varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_supplier_id` (`supplier_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -343,6 +354,7 @@ CREATE TABLE `erp_purchase_order_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_order_id` (`order_id` ASC) USING BTREE,
     INDEX `idx_product_id` (`product_id` ASC) USING BTREE
@@ -380,6 +392,7 @@ CREATE TABLE `erp_purchase_return`
     `updater`             varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_supplier_id` (`supplier_id` ASC) USING BTREE,
     INDEX `idx_account_id` (`account_id` ASC) USING BTREE,
@@ -412,6 +425,7 @@ CREATE TABLE `erp_purchase_return_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_return_id` (`return_id` ASC) USING BTREE,
     INDEX `idx_order_item_id` (`order_item_id` ASC) USING BTREE,
@@ -451,6 +465,7 @@ CREATE TABLE `erp_supplier`
     `updater`      varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`  datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_status` (`status` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -486,6 +501,7 @@ CREATE TABLE `erp_customer`
     `updater`      varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`  datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_status` (`status` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -523,6 +539,7 @@ CREATE TABLE `erp_sale_order`
     `updater`             varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -553,6 +570,7 @@ CREATE TABLE `erp_sale_order_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_order_id` (`order_id` ASC) USING BTREE,
     INDEX `idx_product_id` (`product_id` ASC) USING BTREE
@@ -591,6 +609,7 @@ CREATE TABLE `erp_sale_out`
     `updater`             varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -621,6 +640,7 @@ CREATE TABLE `erp_sale_out_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_out_id` (`out_id` ASC) USING BTREE,
     INDEX `idx_warehouse_id` (`warehouse_id` ASC) USING BTREE,
@@ -660,6 +680,7 @@ CREATE TABLE `erp_sale_return`
     `updater`             varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -690,6 +711,7 @@ CREATE TABLE `erp_sale_return_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_return_id` (`return_id` ASC) USING BTREE,
     INDEX `idx_warehouse_id` (`warehouse_id` ASC) USING BTREE,
@@ -718,6 +740,7 @@ CREATE TABLE `erp_stock_check`
     `updater`     varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time` datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -746,6 +769,7 @@ CREATE TABLE `erp_stock_check_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_check_id` (`check_id` ASC) USING BTREE,
     INDEX `idx_product_id` (`product_id` ASC) USING BTREE
@@ -769,6 +793,7 @@ CREATE TABLE `erp_stock`
     `updater`      varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`  datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_warehouse_id` (`warehouse_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -795,6 +820,7 @@ CREATE TABLE `erp_stock_in`
     `updater`     varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time` datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -821,6 +847,7 @@ CREATE TABLE `erp_stock_in_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_in_id` (`in_id` ASC) USING BTREE,
     INDEX `idx_warehouse_id` (`warehouse_id` ASC) USING BTREE,
@@ -849,6 +876,7 @@ CREATE TABLE `erp_stock_move`
     `updater`     varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time` datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -876,6 +904,7 @@ CREATE TABLE `erp_stock_move_item`
     `updater`           varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`       datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_move_id` (`move_id` ASC) USING BTREE,
     INDEX `idx_from_warehouse_id` (`from_warehouse_id` ASC) USING BTREE,
@@ -906,6 +935,7 @@ CREATE TABLE `erp_stock_out`
     `updater`     varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time` datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -932,6 +962,7 @@ CREATE TABLE `erp_stock_out_item`
     `updater`         varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time`     datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_out_id` (`out_id` ASC) USING BTREE,
     INDEX `idx_warehouse_id` (`warehouse_id` ASC) USING BTREE,
@@ -961,6 +992,7 @@ CREATE TABLE `erp_stock_record`
     `updater`     varchar(64)             DEFAULT '' COMMENT '更新者',
     `update_time` datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -989,6 +1021,7 @@ CREATE TABLE `erp_warehouse`
     `updater`         varchar(64)           DEFAULT '' COMMENT '更新者',
     `update_time`     datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_status` (`status` ASC) USING BTREE
 ) ENGINE = InnoDB

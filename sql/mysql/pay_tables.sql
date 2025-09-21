@@ -20,6 +20,7 @@ CREATE TABLE `pay_app`
     `updater`             varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_app_key` (`app_key` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -73,6 +74,7 @@ CREATE TABLE `pay_demo_order`
     `updater`          varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`      datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`          bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -99,6 +101,7 @@ CREATE TABLE `pay_demo_withdraw`
     `updater`               varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`           datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`               bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -119,6 +122,7 @@ CREATE TABLE `pay_notify_log`
     `updater`      varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`  datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -184,6 +188,7 @@ CREATE TABLE `pay_order`
     `updater`           varchar(64)    NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`       datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -212,6 +217,7 @@ CREATE TABLE `pay_order_extension`
     `updater`             varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -248,6 +254,7 @@ CREATE TABLE `pay_refund`
     `updater`             varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`         datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -284,6 +291,7 @@ CREATE TABLE `pay_transfer`
     `updater`              varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`          datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -307,6 +315,7 @@ CREATE TABLE `pay_wallet`
     `updater`        varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`    datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -338,6 +347,7 @@ CREATE TABLE `pay_wallet_recharge`
     `updater`            varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`        datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`            bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -359,6 +369,7 @@ CREATE TABLE `pay_wallet_recharge_package`
     `updater`     varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -383,6 +394,7 @@ CREATE TABLE `pay_wallet_transaction`
     `updater`     varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

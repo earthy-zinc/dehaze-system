@@ -41,6 +41,7 @@ CREATE TABLE `trade_after_sale`
     `updater`           varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`       datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -65,6 +66,7 @@ CREATE TABLE `trade_after_sale_log`
     `updater`       varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`       bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (id) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -95,6 +97,7 @@ CREATE TABLE `trade_brokerage_record`
     `updater`           varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`       datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -118,6 +121,7 @@ CREATE TABLE `trade_brokerage_user`
     `updater`           varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`       datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -153,6 +157,7 @@ CREATE TABLE `trade_brokerage_withdraw`
     `updater`               varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`           datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`               bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -175,6 +180,7 @@ CREATE TABLE `trade_cart`
     `updater`     varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -207,6 +213,7 @@ CREATE TABLE `trade_config`
     `updater`                        varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`                    datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                        bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -229,6 +236,7 @@ CREATE TABLE `trade_delivery_express`
     `updater`     varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -253,6 +261,7 @@ CREATE TABLE `trade_delivery_express_template_charge`
     `updater`     varchar(64)    NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -273,6 +282,7 @@ CREATE TABLE `trade_delivery_express_template`
     `updater`     varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -294,6 +304,7 @@ CREATE TABLE `trade_delivery_express_template_free`
     `updater`     varchar(64) NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -324,6 +335,7 @@ CREATE TABLE `trade_delivery_pick_up_store`
     `updater`         varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`     datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`         bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -393,6 +405,7 @@ CREATE TABLE `trade_order`
     `updater`                     varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`                 datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -432,6 +445,7 @@ CREATE TABLE `trade_order_item`
     `updater`           varchar(64)   NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`       datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`           bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -456,6 +470,7 @@ CREATE TABLE `trade_order_log`
     `updater`       varchar(64)  NOT NULL DEFAULT '' COMMENT '更新者',
     `update_time`   datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`       bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4

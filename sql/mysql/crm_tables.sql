@@ -27,6 +27,7 @@ CREATE TABLE `crm_business`
     `updater`             varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE,
     INDEX `idx_owner_user_id` (`owner_user_id` ASC) USING BTREE,
@@ -54,6 +55,7 @@ CREATE TABLE `crm_business_product`
     `updater`        varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`    datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_business_id` (`business_id` ASC) USING BTREE,
     INDEX `idx_product_id` (`product_id` ASC) USING BTREE
@@ -77,6 +79,7 @@ CREATE TABLE `crm_business_status`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_update_time` (`update_time` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -97,6 +100,7 @@ CREATE TABLE `crm_business_status_type`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -133,6 +137,7 @@ CREATE TABLE `crm_clue`
     `updater`              varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_owner_user_id` (`owner_user_id` ASC) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE
@@ -154,6 +159,7 @@ CREATE TABLE `crm_contact_business`
     `updater`     varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_contact_id` (`contact_id` ASC) USING BTREE,
     INDEX `idx_business_id` (`business_id` ASC) USING BTREE
@@ -189,6 +195,7 @@ CREATE TABLE `crm_contact`
     `updater`              varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE,
     INDEX `idx_owner_user_id` (`owner_user_id` ASC) USING BTREE
@@ -210,6 +217,7 @@ CREATE TABLE `crm_contract_config`
     `updater`        varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`    datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -244,6 +252,7 @@ CREATE TABLE `crm_contract`
     `updater`             varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE,
     INDEX `idx_business_id` (`business_id` ASC) USING BTREE,
@@ -271,6 +280,7 @@ CREATE TABLE `crm_contract_product`
     `updater`        varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`    datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`        bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_contract_id` (`contract_id` ASC) USING BTREE,
     INDEX `idx_product_id` (`product_id` ASC) USING BTREE
@@ -310,6 +320,7 @@ CREATE TABLE `crm_customer`
     `updater`              varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`          datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_owner_user_id` (`owner_user_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -333,6 +344,7 @@ CREATE TABLE `crm_customer_limit_config`
     `updater`            varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`        datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`            bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -355,6 +367,7 @@ CREATE TABLE `crm_customer_pool_config`
     `updater`             varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`         datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -381,6 +394,7 @@ CREATE TABLE `crm_follow_up_record`
     `updater`      varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`  datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_biz_type` (`biz_type` ASC) USING BTREE,
     INDEX `idx_biz_id` (`biz_id` ASC) USING BTREE,
@@ -405,6 +419,7 @@ CREATE TABLE `crm_permission`
     `updater`     varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_biz_type` (`biz_type` ASC) USING BTREE,
     INDEX `idx_biz_id` (`biz_id` ASC) USING BTREE,
@@ -427,6 +442,7 @@ CREATE TABLE `crm_product_category`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_parent_id` (`parent_id` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -453,6 +469,7 @@ CREATE TABLE `crm_product`
     `updater`       varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`   datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`       bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_category_id` (`category_id` ASC) USING BTREE,
     INDEX `idx_owner_user_id` (`owner_user_id` ASC) USING BTREE
@@ -483,6 +500,7 @@ CREATE TABLE `crm_receivable`
     `updater`             varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`         datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE,
     INDEX `idx_contract_id` (`contract_id` ASC) USING BTREE,
@@ -515,6 +533,7 @@ CREATE TABLE `crm_receivable_plan`
     `updater`       varchar(64)    NULL     DEFAULT '' COMMENT '更新者',
     `update_time`   datetime       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`       bit(1)         NOT NULL DEFAULT b'0' COMMENT '是否删除',
+    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_customer_id` (`customer_id` ASC) USING BTREE,
     INDEX `idx_contract_id` (`contract_id` ASC) USING BTREE,

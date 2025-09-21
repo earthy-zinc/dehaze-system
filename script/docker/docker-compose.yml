@@ -104,6 +104,17 @@ services:
       pei-infra:
         condition: service_healthy
 
+  pei-erp:
+    image: pei-erp
+    container_name: pei-erp
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
   pei-crm:
     image: pei-crm
     container_name: pei-crm
