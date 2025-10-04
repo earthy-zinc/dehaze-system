@@ -17,7 +17,7 @@ function App() {
 function AppContent() {
   return (
     <View style={styles.container}>
-      <Text>Hello World</Text>
+      <Text style={styles.text}>Hello World</Text>
     </View>
   );
 }
@@ -26,6 +26,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  text: {
+    marginTop: 50
+  }
 });
 
 export default App;
