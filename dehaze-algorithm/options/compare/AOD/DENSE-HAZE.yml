@@ -1,0 +1,97 @@
+# general settings
+name: AOD-DENSE-HAZE
+model_type: AODModel
+num_gpu: 1 # set num_gpu: 0 for cpu mode
+gpu_id: 0
+manual_seed: 0
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: DENSE-HAZE-train
+    type: NtireH5Dataset
+    mode: train
+    data_path: datasets/DENSE-HAZE.h5
+    shuffle: true
+
+    # data loader
+    use_shuffle: true
+    batch_size_per_gpu: &bsz 1
+    num_worker_per_gpu: *bsz
+    dataset_enlarge_ratio: 1
+
+    prefetch_mode: cpu
+    num_prefetch_queue: *bsz
+
+  val:
+    name: DENSE-HAZE-val
+    type: NtireH5Dataset
+    mode: val
+    data_path: datasets/DENSE-HAZE-val.h5
+    shuffle: true
+
+  test:
+    name: DENSE-HAZE-test
+    type: NtireH5Dataset
+    mode: test
+    data_path: datasets/DENSE-HAZE-test.h5
+    shuffle: true
+
+# network structures
+network_g:
+  type: AOD
+
+# path
+path:
+  pretrain_network_g:
+  pretrain_network_d: ~
+  strict_load: false
+  # resume_state: ~
+
+# training settings
+train:
+  optim_g:
+    type: Adam
+    lr: !!float 1e-4
+    weight_decay: !!float 1e-4
+  grad_clip_norm: !!float 0.1
+  total_iter: 50000
+  warmup_iter: -1  # no warm up
+
+
+
+# validation settings·
+val:
+  val_freq: !!float 5000
+  save_img: true
+  suffix: DENSE-HAZE
+  key_metric: psnr
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: psnr
+      crop_border: 4
+      test_y_channel: true
+    ssim:
+      type: ssim
+      crop_border: 4
+      test_y_channel: true
+    lpips:
+      type: lpips
+      better: lower
+    niqe:
+      type: niqe
+      better: lower
+    brisque:
+      type: brisque
+      better: lower
+    nima:
+      type: nima
+      better: higher
+
+# logging settings
+logger:
+  print_freq: 500
+  save_checkpoint_freq: !!float 5e3
+  save_latest_freq: !!float 5e3
+  show_tf_imgs_freq: !!float 5e3
+  use_tb_logger: true
