@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - ${MYSQL_LOG_PATH}:/var/log/mysql
+      - ${MYSQL_DATA_PATH}:/var/lib/mysql
+      - ${MYSQL_CONFIG_PATH}:/etc/mysql/conf.d
+      - ${MYSQL_INIT_PATH}:/docker-entrypoint-initdb.d  # 挂载初始化SQL文件
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+    restart: always
+    privileged: true
+    networks:
+      - dehaze-net
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ${REDIS_CONFIG_PATH}:/etc/redis/redis.conf
+      - ${REDIS_DATA_PATH}:/data
+    command: redis-server /etc/redis/redis.conf --appendonly yes --requirepass 123456
+    restart: always
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "2"
+    networks:
+      - dehaze-net
+
+  minio:
+    image: minio/minio
+    container_name: minio
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BROWSER_DEFAULT_LOCALE: zh_CN
+    volumes:
+      - ${MINIO_DATA_PATH}:/data
+      - ${MINIO_CONFIG_PATH}:/root/.minio
+    command: server /data --console-address ":9090" -address ":9000"
+    restart: always
+    networks:
+      - dehaze-net
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - ${MONGO_DATA_PATH}:/data/db
+      - ${MONGO_CONFIG_PATH}:/data/configdb
+      - ${MONGO_LOG_PATH}:/var/log/mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: 123456
+    restart: always
+    networks:
+      - dehaze-net
+
+  elasticsearch:
+    image: elasticsearch:8.17.3
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS="-Xms256m -Xmx512m"  # 根据服务器内存调整
+    ports:
+      - "9200:9200"
+    volumes:
+      - ${ES_DATA_PATH}:/usr/share/elasticsearch/data
+    restart: always
+    networks:
+      - dehaze-net
+
+  logstash:
+    image: logstash:8.17.3
+    container_name: logstash
+    volumes:
+      - ${LOGSTASH_CONFIG_PATH}:/usr/share/logstash/pipeline
+      - ${LOGSTASH_DATA_PATH}:/usr/share/logstash/data
+      - ${LOGSTASH_LOG_PATH}:/app/logs
+    ports:
+      - "5044:5044"  # Beats输入端口
+    depends_on:
+      - elasticsearch
+    restart: always
+    networks:
+      - dehaze-net
+
+  kibana:
+    image: kibana:8.17.3
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    restart: always
+    networks:
+      - dehaze-net
+
+  prometheus:
+    image: ubuntu/prometheus:2.50-22.04_stable
+    container_name: prometheus
+    ports:
+      - "9091:9091"
+    volumes:
+      - ${PROMETHEUS_CONFIG_PATH}:/etc/prometheus/prometheus.yml
+      - ${PROMETHEUS_DATA_PATH}:/prometheus
+    restart: always
+    networks:
+      - pei-network
+    command: --config.file=/etc/prometheus/prometheus.yml --web.listen-address=:9091
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ${GRAFANA_DATA_PATH}:/var/lib/grafana
+    restart: always
+    networks:
+      - pei-network
+
+networks:
+  dehaze-net:
+    driver: bridge
