@@ -35,8 +35,10 @@ dependencyResolutionManagement {
     }
 }
 
-
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'DehazeReactNative'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
+
+// 显式包含 react-native-safe-area-context 模块
+include ':react-native-safe-area-context'
+project(':react-native-safe-area-context').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-safe-area-context/android')
