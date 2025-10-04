@@ -1,3 +1,17 @@
+allprojects {
+    repositories {
+        // 使用阿里云镜像替换默认的jcenter和mavenCentral
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        maven { url 'https://maven.aliyun.com/repository/central' }
+        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+        maven { url 'https://maven.aliyun.com/repository/spring' }
+        maven { url 'https://maven.aliyun.com/repository/spring-plugin' }
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
 buildscript {
     ext {
         buildToolsVersion = "36.0.0"

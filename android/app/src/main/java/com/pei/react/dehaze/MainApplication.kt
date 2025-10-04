@@ -1,4 +1,4 @@
-package com.dehazereactnative
+package com.pei.react.dehaze
 
 import android.app.Application
 import com.facebook.react.PackageList
@@ -12,6 +12,10 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 
 class MainApplication : Application(), ReactApplication {
 
+  @Deprecated(
+      "You should not use ReactNativeHost directly in the New Architecture. Use ReactHost instead.",
+      replaceWith = ReplaceWith("reactHost")
+  )
   override val reactNativeHost: ReactNativeHost =
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
@@ -24,8 +28,8 @@ class MainApplication : Application(), ReactApplication {
 
         override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
 
-        override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-        override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
+        override val isNewArchEnabled: Boolean = true
+        override val isHermesEnabled: Boolean = true
       }
 
   override val reactHost: ReactHost

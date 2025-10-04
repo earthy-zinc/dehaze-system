@@ -1,4 +1,4 @@
-package com.dehazereactnative
+package com.pei.react.dehaze
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
