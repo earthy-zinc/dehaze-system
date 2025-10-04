@@ -2,6 +2,7 @@
   "name": "dehaze-front-react",
   "type": "module",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.18.0",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
     "dev": "vite serve",
