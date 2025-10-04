@@ -1,0 +1,54 @@
+zap:
+  level: info
+  format: console
+  prefix: "[dehaze-go]"
+  directory: log
+  show-line: true
+  encode-level: LowercaseColorLevelEncoder
+  stacktrace-key: stacktrace
+  log-in-console: true
+  retention-day: -1
+
+# system configuration
+system:
+  port: 8989
+  use-multi-point: false
+  # IP限制次数 一个小时15000次
+  ip-limit-count: 15000
+  #  IP限制一个小时
+  ip-limit-time: 3600
+  #  路由全局前缀
+  router-prefix: ""
+
+captcha:
+  length: 6
+  width: 240
+  height: 80
+  retry-count: 0 # 0代表无限制次数，大于0代表最多获取几次验证码
+  timeout: 3600 # retry-count大于0时才生效，表示解除验证码限制时间
+
+jwt:
+  key: SecretKey012345678901234567890123456789012345678901234567890123456789
+  ttl: 7200
+
+db:
+  type: mysql
+  path: localhost
+  port: 3306
+  config: "charset=utf8mb4&parseTime=True&loc=Local"
+  name: dehaze
+  username: root
+  password: 123456
+  max-idle-conns: 10
+  max-open-conns: 100
+  singular: true
+  log-mode: info
+  log-zap: true
+
+redis:
+    #是否使用redis集群模式
+    useCluster: false
+    #使用集群模式addr和db默认无效
+    addr: 127.0.0.1:6379
+    password: 123456
+    db: 3
