@@ -4,6 +4,7 @@
   "description": "full stack learning about software engineer",
   "license": "MIT",
   "type": "module",
+  "packageManager": "pnpm",
   "scripts": {
     "docs:dev": "vuepress dev docs",
     "docs:build": "vuepress build docs"
