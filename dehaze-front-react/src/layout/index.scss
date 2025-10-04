@@ -1,0 +1,26 @@
+@import "@/styles/variables";
+
+.main-container {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.side-bar {
+  width: $sidebar-width;
+  height: 100vh;
+  background-color: var(--ant-layout-light-sider-bg) !important;
+}
+
+.layout-left {
+  display: flex;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: $navbar-height;
+  background-color: var(--ant-layout-light-sider-bg);
+}

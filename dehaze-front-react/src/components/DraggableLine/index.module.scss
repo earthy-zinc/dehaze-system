@@ -1,0 +1,30 @@
+.container {
+  position: relative;
+  height: 100%;
+}
+
+.drag-label {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 80px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+}
+
+.line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3px;
+}
+
+.line .icon-location {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}

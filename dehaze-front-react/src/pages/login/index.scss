@@ -1,0 +1,36 @@
+html.dark .login-container {
+  background: url("@/assets/images/login-bg-dark.jpg") no-repeat center right;
+}
+
+.login-container {
+  overflow-y: auto;
+  background: url("@/assets/images/login-bg.jpg") no-repeat center right;
+
+  @apply wh-full flex-center;
+
+  .login-form {
+    padding: 30px 10px;
+  }
+}
+
+.ant-form-item {
+  background: var(--ant-input-bg-color);
+  border: 1px solid var(--ant-border-color);
+  border-radius: 5px;
+}
+
+.ant-input__wrapper {
+  padding: 0;
+  background-color: transparent;
+  box-shadow: none;
+
+  &.is-focus,
+  &:hover {
+    box-shadow: none !important;
+  }
+
+  input:-webkit-autofill {
+    /* 通过延时渲染背景色变相去除背景颜色 */
+    transition: background-color 1000s ease-in-out 0s;
+  }
+}
