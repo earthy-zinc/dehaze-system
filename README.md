@@ -48,7 +48,7 @@
 
 ## 🏗️ 系统架构
 
-```mermaid
+```
 graph TD
     A[用户接口层] -->|HTTP/REST| B[Web/API网关]
     B --> C[后端服务层]
@@ -147,6 +147,7 @@ python start.py
 
 ```
 dehaze-system/
+├── dehaze-algorithm/        # 图像去雾算法实现（新增）
 ├── dehaze-android/          # Android客户端
 ├── dehaze-doc/              # 项目文档
 ├── dehaze-front-react/      # React前端实现
@@ -155,11 +156,75 @@ dehaze-system/
 ├── dehaze-java/             # Java后端实现
 ├── dehaze-java-cloud/       # Java微服务架构版本
 ├── dehaze-java-cloud-plus/  # Java微服务增强版
+├── dehaze-paper/            # 图像去雾相关论文文档（新增）
 ├── dehaze-python/           # Python算法服务
 ├── dehaze-react-native/     # React Native移动应用
 ├── dehaze-taro/             # Taro小程序
 └── README.md
 ```
+
+## 🧠 算法与论文
+
+本项目新增了两个重要组成部分：
+
+### dehaze-algorithm 图像去雾算法实现
+
+基于高质量码本的双分支多尺度图像去雾算法实现，主要特性包括：
+
+1. 使用VQGAN训练高质量码本作为先验知识，补充纹理细节信息
+2. 设计金字塔扩张邻域注意力编码器，实现多尺度特征提取
+3. 提出增强解码器，结合像素级和通道级注意力机制
+4. 采用双分支网络结构，通过特征融合处理浓雾区域
+
+#### 环境要求
+- Python 3.8+
+- PyTorch >= 1.7
+- CUDA (推荐，用于GPU加速)
+
+#### 依赖安装
+```bash
+cd dehaze-algorithm
+pip install -r requirements.txt
+```
+
+#### 算法使用
+```bash
+# 图像去雾推理示例
+python inference_ridcp.py -i inputs/ -w weights/model.pth -o results/
+```
+
+支持的去雾模型：
+- RIDCP (Recursive Inference for Dual-branch Dehazing)
+- WPXNet (Wavelet Pyramid Network)
+- FFA (Fast Fourier Attention)
+- AOD (All-in-One Dehazing Network)
+- DCP (Dark Channel Prior)
+
+### dehaze-paper 图像去雾相关论文文档
+
+包含完整的论文文档和实验结果：
+
+1. 论文主文件：`CMFR-Net.tex`
+2. 参考文献数据库：`references.bib`
+3. 实验结果图像：各种去雾效果对比图
+4. 消融实验结果：验证各模块有效性
+
+#### 编译环境配置
+
+- TeX Live 2025 或更高版本
+- 支持 Windows、Linux 和 macOS 系统
+
+#### 论文编译构建
+
+```bash
+# 编译论文
+pdflatex "CMFR-Net.tex"
+bibtex "CMFR-Net"
+pdflatex "CMFR-Net.tex"
+pdflatex "CMFR-Net.tex"
+```
+
+编译完成后将生成 `CMFR-Net.pdf` 文件。
 
 ## 🛠️ 部署方案
 
@@ -181,7 +246,7 @@ docker build -t dehaze-python .
 ```
 
 ### Nginx配置
-```nginx
+```
 server {
     listen     80;
     server_name  localhost;
