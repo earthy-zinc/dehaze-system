@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.pei</groupId>
+    <artifactId>pei-api-bom</artifactId>
+    <packaging>pom</packaging>
+    <version>${revision}</version>
+
+    <description>
+        pei-api-bom 是一个 Maven BOM（Bill of Materials）文件，
+        用于管理 dehaze-java 项目中的 pei-api 模块内部子模块的依赖版本。
+        子模块只需引入 BOM，而无需显式指定每个依赖的版本号，减少了重复配置。
+        并确保所有模块使用相同的依赖版本，避免因版本不一致导致的问题。
+    </description>
+
+    <properties>
+        <revision>2.3.0</revision>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- 系统接口 -->
+            <dependency>
+                <groupId>com.pei</groupId>
+                <artifactId>pei-api-system</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- 资源服务接口 -->
+            <dependency>
+                <groupId>com.pei</groupId>
+                <artifactId>pei-api-resource</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <!-- workflow接口 -->
+            <dependency>
+                <groupId>com.pei</groupId>
+                <artifactId>pei-api-workflow</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
+</project>

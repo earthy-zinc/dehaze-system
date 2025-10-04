@@ -1,0 +1,1 @@
+dubboRequestFilter=filter.com.pei.common.dubbo.DubboRequestFilter

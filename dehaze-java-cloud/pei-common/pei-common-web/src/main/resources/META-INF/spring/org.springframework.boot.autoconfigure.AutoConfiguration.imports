@@ -1,0 +1,4 @@
+com.pei.common.web.config.FilterConfig
+com.pei.common.web.config.I18nConfig
+com.pei.common.web.config.UndertowConfig
+com.pei.common.web.config.ResourcesConfig
