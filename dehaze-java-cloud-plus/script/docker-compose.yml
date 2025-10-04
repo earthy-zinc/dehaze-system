@@ -1,0 +1,401 @@
+services:
+  # MySQL
+  mysql:
+    image: docker.1ms.run/mysql:8.4.5
+    container_name: mysql
+    restart: on-failure
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+      - TZ=Asia/Shanghai
+    volumes:
+      - /opt/mysql/data:/var/lib/mysql
+      - /opt/mysql/logs:/var/log/mysql
+      - /opt/mysql/config:/etc/mysql/conf.d
+    command: --character-set-server=utf8mb4
+      --collation-server=utf8mb4_general_ci
+    privileged: true
+    network_mode: host
+
+  # Redis
+  redis:
+    image: docker.1ms.run/redis:latest
+    container_name: redis
+    restart: on-failure
+    ports:
+      - "6379:6379"
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - /opt/redis/data:/data
+      - /opt/redis/redis.conf:/etc/redis/redis.conf
+    command:
+      [
+        "redis-server",
+        "/etc/redis/redis.conf",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "123456",
+      ]
+    privileged: true
+    logging:
+      options:
+        max-size: "100m"
+        max-file: "2"
+    network_mode: host
+
+  # MongoDB
+  mongodb:
+    image: docker.1ms.run/bitnami/mongodb:latest
+    container_name: mongodb
+    restart: on-failure
+    ports:
+      - "27017:27017"
+    volumes:
+      - /opt/mongo/data:/data/db
+      - /opt/mongo/config:/data/configdb
+      - /opt/mongo/logs:/var/log/mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=123456
+    network_mode: host
+
+  # MinIO
+  minio:
+    image: docker.1ms.run/minio/minio:latest
+    container_name: minio
+    restart: on-failure
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BROWSER_DEFAULT_LOCALE=zh_CN
+    volumes:
+      - /opt/minio/data:/data
+      - /opt/minio/config:/root/.minio
+    command: server /data --console-address :9090 --address :9000
+    privileged: true
+    network_mode: host
+
+  # ElasticSearch (Single Node)
+  elasticsearch:
+    image: docker.1ms.run/elasticsearch:8.18.2
+    container_name: elasticsearch
+    restart: on-failure
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - node.name=elasticsearch
+      - ELASTIC_PASSWORD=123456
+      - bootstrap.memory_lock=false
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.http.ssl.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+      - cluster.routing.allocation.disk.watermark.low=5gb
+      - cluster.routing.allocation.disk.watermark.high=3gb
+      - cluster.routing.allocation.disk.watermark.flood_stage=2gb
+      - TZ=Asia/Shanghai
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - /opt/es/data:/usr/share/elasticsearch/data
+      - /opt/es/logs:/usr/share/elasticsearch/logs
+      - /opt/es/plugins:/usr/share/elasticsearch/plugins
+    network_mode: host
+
+  kibana:
+    image: docker.1ms.run/kibana:8.18.2
+    container_name: kibana
+    restart: on-failure
+    ports:
+      - "5601:5601"
+    depends_on:
+      # kibana在elasticsearch启动之后再启动
+      - elasticsearch
+    environment:
+      #设置系统语言文中文
+      I18N_LOCALE: zh-CN
+      # 访问域名
+      # SERVER_PUBLICBASEURL: https://kibana.cloud.com
+    volumes:
+      - /opt/kibana/config/kibana.yml:/usr/share/kibana/config/kibana.yml
+    network_mode: host
+
+  logstash:
+    image: docker.1ms.run/logstash:8.18.2
+    container_name: logstash
+    restart: on-failure
+    ports:
+      - "4560:4560"
+    volumes:
+      - /opt/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - /opt/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml
+    depends_on:
+      - elasticsearch
+    network_mode: host
+
+  # Nacos Server
+  nacos:
+    image: docker.1ms.run/nacos/nacos-server:latest
+    container_name: nacos
+    restart: on-failure
+    volumes:
+      - /opt/nacos/logs:/root/nacos/logs
+    environment:
+      - MODE=standalone
+      - NACOS_AUTH_IDENTITY_KEY=2222
+      - NACOS_AUTH_IDENTITY_VALUE=2xxx
+      - NACOS_AUTH_TOKEN=VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMTIzNDU2Nzg=
+      - NACOS_CONSOLE_PORT=10848
+      - JVM_XMS=128m
+      - JVM_XMX=256m
+      - SPRING_DATASOURCE_PLATFORM=mysql
+      - MYSQL_SERVICE_HOST=localhost
+      - MYSQL_SERVICE_PORT=3306
+      - MYSQL_SERVICE_DB_NAME=nacos
+      - MYSQL_SERVICE_USER=root
+      - MYSQL_SERVICE_PASSWORD=123456
+      - MYSQL_DATABASE_NUM=1
+      - MYSQL_SERVICE_DB_PARAM=characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useUnicode=true&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+      - "10848:10848"
+    network_mode: host
+    depends_on:
+      - mysql
+
+  # RabbitMQ
+  rabbitmq:
+    image: docker.1ms.run/rabbitmq:management
+    container_name: rabbitmq
+    restart: on-failure
+    volumes:
+      - /opt/rabbitmq/data:/var/lib/rabbitmq
+      - /opt/rabbitmq/logs:/var/log/rabbitmq
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=root
+      - RABBITMQ_DEFAULT_PASS=123456
+    network_mode: host
+
+  rocketmq-namesrv:
+    image: docker.1ms.run/apache/rocketmq:latest
+    container_name: rocketmq-namesrv
+    restart: on-failure
+    ports:
+      - "9876:9876"
+    environment:
+      JAVA_OPT: -server -Xms512m -Xmx512m
+    command: sh mqnamesrv
+    volumes:
+      - /opt/rocketmq-namesrv/logs:/home/rocketmq/logs/rocketmqlogs
+    network_mode: host
+
+
+  rocketmq-broker:
+    image: docker.1ms.run/apache/rocketmq:latest
+    container_name: rocketmq-broker
+    restart: on-failure
+    user: root
+    ports:
+      - "10911:10911"
+      - "10909:10909"
+      - "10912:10912"
+    environment:
+      JAVA_OPT: -server -Xms256M -Xmx256M
+      NAMESRV_ADDR: rocketmq-namesrv:9876
+    # --enable-proxy 开启broker与proxy共用模式 生产部署建议将proxy单独部署
+    command: sh mqbroker --enable-proxy -c /home/rocketmq/broker/config/broker.conf
+    depends_on:
+      - rocketmq-namesrv
+    volumes:
+      - /opt/rocketmq-broker/config/broker.conf:/home/rocketmq/broker/config/broker.conf
+      - /opt/rocketmq-broker/logs:/home/rocketmq/logs/rocketmqlogs
+      - /opt/rocketmq-broker/store:/home/rocketmq/store
+    privileged: true
+    network_mode: host
+
+  rocketmq-console:
+    image: docker.1ms.run/apacherocketmq/rocketmq-dashboard:latest
+    container_name: rocketmq-console
+    restart: on-failure
+    ports:
+      - "19876:19876"
+    environment:
+      JAVA_OPTS: -Xms128M -Xmx256M -Dserver.port=19876 -Drocketmq.namesrv.addr=rocketmq-namesrv:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false
+    volumes:
+      - /opt/rocketmq-console/data:/tmp
+    depends_on:
+      - rocketmq-namesrv
+    network_mode: host
+
+  zookeeper:
+    image: docker.1ms.run/bitnami/zookeeper:3.8.0
+    container_name: zookeeper
+    restart: on-failure
+    ports:
+      - "2181:2181"
+    environment:
+      TZ: Asia/Shanghai
+      ALLOW_ANONYMOUS_LOGIN: "yes"
+      ZOO_SERVER_ID: 1
+      ZOO_PORT_NUMBER: 2181
+      # 自带的控制台 一般用不上可自行开启
+      ZOO_ENABLE_ADMIN_SERVER: "no"
+      # 自带控制台的端口
+      ZOO_ADMIN_SERVER_PORT_NUMBER: 8080
+    network_mode: host
+
+  kafka:
+    image: docker.1ms.run/bitnami/kafka:3.6.2
+    container_name: kafka
+    restart: on-failure
+    ports:
+      - "9092:9092"
+    environment:
+      TZ: Asia/Shanghai
+      # 更多变量 查看文档 https://github.com/bitnami/bitnami-docker-kafka/blob/master/README.md
+      KAFKA_BROKER_ID: 1
+      # 监听端口
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092
+      # 实际访问ip 本地用 127 内网用 192 外网用 外网ip
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://10.242.150.100:9092
+      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+    volumes:
+      - /opt/kafka/data:/bitnami/kafka/data
+    depends_on:
+      - zookeeper
+    network_mode: host
+
+  kafka-manager:
+    image: docker.1ms.run/sheepkiller/kafka-manager:latest
+    container_name: kafka-manager
+    restart: on-failure
+    ports:
+      - "19092:19092"
+    environment:
+      ZK_HOSTS: zookeeper:2181
+      APPLICATION_SECRET: letmein
+      KAFKA_MANAGER_USERNAME: root
+      KAFKA_MANAGER_PASSWORD: 123456
+      KM_ARGS: -Dhttp.port=19092
+    command: -Dplay.server.pidfile.path=/dev/null
+    depends_on:
+      - kafka
+    network_mode: host
+
+  sky-oap:
+    image: docker.1ms.run/apache/skywalking-oap-server:9.7.0
+    container_name: sky-oap
+    restart: on-failure
+    ports:
+      - "11800:11800"
+      - "12800:12800"
+    environment:
+      - JAVA_OPTS=-Xms512m -Xmx512m
+      #记录数据的有效期，单位天
+      - SW_CORE_RECORD_DATA_TTL=7
+      #分析指标数据的有效期，单位天
+      - SW_CORE_METRICS_DATA_TTL=7
+      - SW_STORAGE=elasticsearch
+      - SW_STORAGE_ES_CLUSTER_NODES=elasticsearch:9200
+      - SW_STORAGE_ES_HTTP_PROTOCOL=HTTP
+      - SW_ES_USER=elastic
+      - SW_ES_PASSWORD="123456"
+      - TZ=Asia/Shanghai
+    depends_on:
+      - elasticsearch
+    network_mode: host
+
+  sky-ui:
+    image: docker.1ms.run/apache/skywalking-ui:9.7.0
+    container_name: sky-ui
+    restart: on-failure
+    ports:
+      - "18080:18080"
+    environment:
+      SW_SERVER_PORT: 18080
+      SW_OAP_ADDRESS: http://sky-oap:12800
+      TZ: Asia/Shanghai
+    depends_on:
+      - sky-oap
+    network_mode: host
+
+  xxl-job-admin:
+    image: docker.1ms.run/xuxueli/xxl-job-admin:3.1.0
+    container_name: xxl-job-admin
+    restart: on-failure
+    ports:
+      - "14980:8080"
+    environment:
+      - PARAMS=--spring.datasource.url=jdbc:mysql://mysql:3306/xxl_job?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&serverTimezone=Asia/Shanghai
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=123456
+      - JAVA_OPTS=-Xmx512m
+    volumes:
+      - /opt/xxl-job/logs:/data/applogs
+    network_mode: host
+
+  tdengine:
+    image: docker.1ms.run/tdengine/tdengine
+    container_name: tdengine
+    restart: on-failure
+    ports:
+      - "6030:6030"
+      - "6041:6041"
+      - "6043:6043"
+      - "6044-6049:6044-6049"
+      - "6044-6045:6044-6045/udp"
+      - "6060:6060"
+    volumes:
+      - /opt/tdengine/data:/var/lib/taos
+      - /opt/tdengine/logs:/var/log/taos
+    network_mode: host
+
+  postgres:
+    image: docker.1ms.run/postgres
+    container_name: postgres
+    restart: on-failure
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: sonarqube
+      ALLOW_IP_RANGE: 0:0:0:0/0
+    ports:
+      - "5432:5432"
+    volumes:
+      - /opt/postgres/data:/var/lib/postgresql/data
+    network_mode: host
+
+  sonarqube:
+    image: docker.1ms.run/sonarqube:lts-enterprise
+    container_name: sonarqube
+    restart: on-failure
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/sonarqube
+      SONAR_JDBC_USERNAME: root
+      SONAR_JDBC_PASSWORD: 123456
+    ports:
+      - "9100:9000"
+    volumes:
+      - /opt/sonarqube/data:/opt/sonarqube/data
+      - /opt/sonarqube/extensions:/opt/sonarqube/extensions
+      - /opt/sonarqube/logs:/opt/sonarqube/logs
+      - /opt/sonarqube/conf:/opt/sonarqube/conf
+    privileged: true
+    depends_on:
+      - postgres
+    network_mode: host

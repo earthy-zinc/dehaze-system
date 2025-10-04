@@ -1,0 +1,34 @@
+package com.pei.dehaze.module.infra.dal.mysql.demo;
+
+import java.util.*;
+
+import pojo.com.pei.dehaze.framework.common.PageResult;
+import query.core.mybatis.com.pei.dehaze.framework.LambdaQueryWrapperX;
+import mapper.core.mybatis.com.pei.dehaze.framework.BaseMapperX;
+import com.pei.dehaze.module.infra.dal.dataobject.demo.InfraCategoryDO;
+import org.apache.ibatis.annotations.Mapper;
+import com.pei.dehaze.module.infra.controller.admin.demo.vo.*;
+
+/**
+ * 分类 Mapper
+ *
+ * @author earthyzinc
+ */
+@Mapper
+public interface InfraCategoryMapper extends BaseMapperX<InfraCategoryDO> {
+
+    default List<InfraCategoryDO> selectList(InfraCategoryListReqVO reqVO) {
+        return selectList(new LambdaQueryWrapperX<InfraCategoryDO>()
+                .likeIfPresent(InfraCategoryDO::getName, reqVO.getName())
+                .orderByDesc(InfraCategoryDO::getId));
+    }
+
+	default InfraCategoryDO selectByParentIdAndName(Long parentId, String name) {
+	    return selectOne(InfraCategoryDO::getParentId, parentId, InfraCategoryDO::getName, name);
+	}
+
+    default Long selectCountByParentId(Long parentId) {
+        return selectCount(InfraCategoryDO::getParentId, parentId);
+    }
+
+}
