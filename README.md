@@ -147,7 +147,7 @@ python start.py
 
 ```
 dehaze-system/
-├── dehaze-algorithm/        # 图像去雾算法实现（新增）
+├── dehaze-algorithm/        # 图像去雾算法实现
 ├── dehaze-android/          # Android客户端
 ├── dehaze-doc/              # 项目文档
 ├── dehaze-front-react/      # React前端实现
@@ -156,7 +156,7 @@ dehaze-system/
 ├── dehaze-java/             # Java后端实现
 ├── dehaze-java-cloud/       # Java微服务架构版本
 ├── dehaze-java-cloud-plus/  # Java微服务增强版
-├── dehaze-paper/            # 图像去雾相关论文文档（新增）
+├── dehaze-paper/            # 图像去雾算法论文
 ├── dehaze-python/           # Python算法服务
 ├── dehaze-react-native/     # React Native移动应用
 ├── dehaze-taro/             # Taro小程序
@@ -164,8 +164,6 @@ dehaze-system/
 ```
 
 ## 🧠 算法与论文
-
-本项目新增了两个重要组成部分：
 
 ### dehaze-algorithm 图像去雾算法实现
 
@@ -194,9 +192,9 @@ python inference_ridcp.py -i inputs/ -w weights/model.pth -o results/
 ```
 
 支持的去雾模型：
-- RIDCP (Recursive Inference for Dual-branch Dehazing)
-- WPXNet (Wavelet Pyramid Network)
-- FFA (Fast Fourier Attention)
+- RIDCP
+- WPXNet 
+- FFA
 - AOD (All-in-One Dehazing Network)
 - DCP (Dark Channel Prior)
 
