@@ -1,0 +1,9 @@
+:root {
+  --navbar-height: 50px;
+  --sidebar-width-collapsed: 54px;
+}
+
+$sidebar-width: 180px; // 侧边栏宽度
+$sidebar-width-collapsed: var(--sidebar-width-collapsed); // 侧边栏收缩宽度
+$tags-view-height: 34px; // TagsView 高度
+$navbar-height: var(--navbar-height); // 顶部导航栏高度
