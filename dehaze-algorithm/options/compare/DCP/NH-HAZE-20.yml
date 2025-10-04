@@ -1,0 +1,76 @@
+# general settings
+name: DCP-NH-HAZE-20
+model_type: DCPModel
+num_gpu: 0 # set num_gpu: 0 for cpu mode
+manual_seed: 0
+no_need_load: true
+
+# dataset and data loader settings
+datasets:
+  train:
+    name: NH-HAZE-20-train
+    type: NtireH5Dataset
+    mode: train
+    data_path: datasets/NH-HAZE-20.h5
+    shuffle: true
+
+    # data loader
+    use_shuffle: true
+    batch_size_per_gpu: &bsz 1
+    num_worker_per_gpu: *bsz
+    dataset_enlarge_ratio: 1
+
+    prefetch_mode: cpu
+    num_prefetch_queue: *bsz
+
+  val:
+    name: NH-HAZE-20-val
+    type: NtireH5Dataset
+    mode: val
+    data_path: datasets/NH-HAZE-20-val.h5
+    shuffle: true
+
+  test:
+    name: NH-HAZE-20-test
+    type: NtireH5Dataset
+    mode: test
+    data_path: datasets/NH-HAZE-20-test.h5
+    shuffle: true
+
+# network structures
+network_g:
+  type: DCP
+
+path:
+  strict_load: false
+# validation settings·
+val:
+  val_freq: !!float 1000
+  suffix: DCP
+  save_img: true
+
+  key_metric: psnr
+  metrics:
+    psnr: # metric name, can be arbitrary
+      type: psnr
+      test_y_channel: true
+    ssim:
+      type: ssim
+      test_y_channel: true
+    lpips:
+      type: lpips
+      better: lower
+    niqe:
+      type: niqe
+      better: lower
+    brisque:
+      type: brisque
+      better: lower
+    nima:
+      type: nima
+      better: higher
+
+# logging settings
+logger:
+  print_freq: 100
+  use_tb_logger: false
