@@ -5,19 +5,18 @@ import traceback
 from importlib import import_module
 from io import BytesIO
 from uuid import uuid4
-from flask_jwt_extended import get_jwt, jwt_required, verify_jwt_in_request
-import torch
-from flasgger import swag_from
-from flask import Blueprint, request, current_app
 
+import torch
 from app.extensions import mysql
-from app.models import SysAlgorithm, SysFile, SysPredLog, SysEvalLog
+from app.models import SysAlgorithm, SysEvalLog, SysFile, SysPredLog
 from app.service.file import read_file_from_url, upload_file
 from app.service.model import get_flag
 from app.utils.file import convert_size
 from app.utils.metrics import calculate
-from app.utils.result import success, error
-
+from app.utils.result import error, success
+from flasgger import swag_from
+from flask import Blueprint, current_app, request
+from flask_jwt_extended import get_jwt, jwt_required, verify_jwt_in_request
 
 logger = logging.getLogger(__name__)
 model_blueprint = Blueprint("model", __name__, url_prefix="/model")
@@ -100,10 +99,12 @@ def predict():
         return error("模型不存在")
 
     # 读取上传文件
-    input_img, input_file_info = read_file_from_url(url, flag=get_flag(algorithm))
+    input_img, input_file_info = read_file_from_url(
+        url, flag=get_flag(algorithm))
 
     # 检查SysPredLog中是否有预测记录
-    sys_pred_log = SysPredLog.query.filter_by(algorithm_id=id, origin_md5=input_file_info.md5).first()
+    sys_pred_log = SysPredLog.query.filter_by(
+        algorithm_id=id, origin_md5=input_file_info.md5).first()
     if sys_pred_log:
         return success({
             "predUrl": sys_pred_log.pred_url,
@@ -122,7 +123,8 @@ def predict():
             traceback.print_exc()
             return error(f"加载算法模块失败：{str(e)}"), 404
 
-        model_path = os.path.join(current_app.config.get("MODEL_PATH", ""), algorithm.path)
+        model_path = os.path.join(current_app.config.get(
+            "MODEL_PATH", ""), algorithm.path)
         pred_img: BytesIO = model.dehaze(input_img, model_path)
 
         end = time.time()
@@ -131,7 +133,8 @@ def predict():
         torch.cuda.empty_cache()
 
         # 保存预测图像
-        pred_img_info: SysFile = upload_file("pred_" + uuid4().hex +".png", "image/png", pred_img)
+        pred_img_info: SysFile = upload_file(
+            "pred_" + uuid4().hex + ".png", "image/png", pred_img)
 
         # 记录预测日志
         sys_pred_log = SysPredLog(
@@ -157,6 +160,7 @@ def predict():
     except Exception as e:
         traceback.print_exc()
         return error(f"模型预测失败：{str(e)}")
+
 
 @jwt_required
 @model_blueprint.route('/evaluation', methods=['POST'])
@@ -259,7 +263,8 @@ def evaluate():
     gt_bytes, gt_info = read_file_from_url(gt, flag)
 
     # 检查SysEvalLog中是否有评估记录
-    sys_eval_log = SysEvalLog.query.filter_by(pred_md5=pred_info.md5, gt_md5=gt_info.md5).first()
+    sys_eval_log = SysEvalLog.query.filter_by(
+        pred_md5=pred_info.md5, gt_md5=gt_info.md5).first()
     if sys_eval_log:
         return success(sys_eval_log.result)
 
@@ -291,6 +296,7 @@ def evaluate():
     except Exception as e:
         traceback.print_exc()
         return error(f"模型评估失败：{str(e)}")
+
 
 @model_blueprint.route("/init", methods=["GET"])
 @swag_from({

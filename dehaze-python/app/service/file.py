@@ -5,13 +5,12 @@ from typing import Tuple
 from urllib.parse import urlparse
 
 import requests
-from flask import current_app
-from werkzeug.datastructures import FileStorage
-
+from app.extensions import mysql
 from app.models import SysFile, SysWpxFile
 from app.utils.error import BusinessException
 from app.utils.file import calculate_bytes_md5, convert_size, get_file_bytes
-from app.extensions import mysql
+from flask import current_app
+from werkzeug.datastructures import FileStorage
 
 
 def upload_file_from_request(file: FileStorage) -> SysFile:
@@ -41,7 +40,7 @@ def upload_file(filename: str, content_type: str, file_bytes: BytesIO) -> SysFil
     return _upload_to_storage(filename, content_type, file_bytes, file_size)
 
 
-def read_file_from_url(url: str, flag: bool=False) -> tuple[BytesIO, SysFile]:
+def read_file_from_url(url: str, flag: bool = False) -> tuple[BytesIO, SysFile]:
     """
     从 URL 中读取文件
     :param url: 文件的 URL
@@ -57,7 +56,8 @@ def read_file_from_url(url: str, flag: bool=False) -> tuple[BytesIO, SysFile]:
         # 文件未存储，下载后上传
         filename, content_type, file_bytes = _fetch_file_from_url(url)
         file_info = _upload_to_storage(
-            filename=filename, content_type=content_type, file_bytes=file_bytes, file_size=len(file_bytes.getvalue())
+            filename=filename, content_type=content_type, file_bytes=file_bytes, file_size=len(
+                file_bytes.getvalue())
         )
     # 判断当前文件是否应需要转换
     if flag:
@@ -65,6 +65,7 @@ def read_file_from_url(url: str, flag: bool=False) -> tuple[BytesIO, SysFile]:
     # 从 MinIO 获取文件内容
     file_response = minio_client.get_object(bucket_name, file_info.object_name)
     return BytesIO(file_response.read()), file_info
+
 
 def _get_new_file_info(old_file_info: SysFile) -> SysFile:
     """
@@ -76,7 +77,8 @@ def _get_new_file_info(old_file_info: SysFile) -> SysFile:
     :return: new_file_info
     """
     old_md5 = old_file_info.md5
-    sys_wpx_file: SysWpxFile = SysWpxFile.query.filter_by(origin_md5=old_md5).first()
+    sys_wpx_file: SysWpxFile = SysWpxFile.query.filter_by(
+        origin_md5=old_md5).first()
 
     if not sys_wpx_file:
         sys_wpx_file = SysWpxFile.query.filter_by(new_md5=old_md5).first()
@@ -88,13 +90,15 @@ def _get_new_file_info(old_file_info: SysFile) -> SysFile:
 
     new_file_info = SysFile.query.filter_by(md5=new_md5).first()
 
-    if new_file_info: return new_file_info
+    if new_file_info:
+        return new_file_info
 
     dataset_path = current_app.config.get("DATASET_PATH", "")
     new_path = sys_wpx_file.new_path
     file_path = os.path.join(dataset_path, new_path)
 
-    if not os.path.exists(file_path): raise BusinessException("文件不存在")
+    if not os.path.exists(file_path):
+        raise BusinessException("文件不存在")
 
     file_name = os.path.basename(file_path)
     file_bytes = get_file_bytes(file_path)
@@ -144,7 +148,8 @@ def _upload_to_storage(
     # 上传文件到 MinIO
     file_extension = filename.rsplit(".", 1)[-1]
     object_name = _generate_object_name(file_md5, file_extension)
-    minio_client.put_object(bucket_name, object_name, file_bytes, file_size, content_type=content_type)
+    minio_client.put_object(bucket_name, object_name,
+                            file_bytes, file_size, content_type=content_type)
 
     # 生成文件访问 URL
     if custom_domain:

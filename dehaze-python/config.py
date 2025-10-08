@@ -1,5 +1,6 @@
-import torch
 import os.path as path
+
+import torch
 
 
 class Config:
@@ -70,6 +71,7 @@ class ProductionConfig(Config):
     MINIO_SECURE = False
     MINIO_BUCKET_NAME = "dehaze"
     MINIO_CUSTOM_DOMAIN = "http://192.168.31.3:9000"
+
 
 config = {
     'development': DevelopmentConfig,
