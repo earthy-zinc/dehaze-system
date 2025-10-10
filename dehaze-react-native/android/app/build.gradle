@@ -124,7 +124,4 @@ dependencies {
     } else {
         implementation jscFlavor
     }
-    
-    // 显式添加 safe-area-context 依赖
-    implementation project(':react-native-safe-area-context')
 }

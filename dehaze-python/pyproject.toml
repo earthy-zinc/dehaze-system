@@ -2,8 +2,18 @@
 name = "dehaze-python"
 version = "0.1.0"
 description = "Add your description here"
-requires-python = "===3.11.12"
-dependencies = []
+requires-python = "~=3.10"
+dependencies = [
+    "flasgger>=0.9.7.1",
+    "flask>=3.1.2",
+    "flask-jwt-extended>=4.7.1",
+    "flask-pymongo>=3.0.1",
+    "flask-sqlalchemy>=3.1.1",
+    "minio>=7.2.18",
+    "pymysql>=1.1.2",
+    "redis>=6.4.0",
+    "requests>=2.32.5",
+]
 
 [tool.uv]
 index-url = "https://mirrors.aliyun.com/pypi/simple/"
