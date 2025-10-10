@@ -1,5 +1,6 @@
 {
   "java.compile.nullAnalysis.mode": "automatic",
-  "java.autobuild.enabled": true,
-  "java.configuration.updateBuildConfiguration": "interactive"
+  "java.autobuild.enabled": false,
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.configuration.annotationProcessing.enabled": true
 }
