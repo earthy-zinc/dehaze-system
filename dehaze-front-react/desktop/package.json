@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "src/main.js",
   "license": "MIT",
+  "packageManager": "pnpm@10.18.0",
   "scripts": {
     "dev": "tsc --watch && cross-env NODE_ENV=development electron .",
     "build:win64": "electron-builder -w --x64",
