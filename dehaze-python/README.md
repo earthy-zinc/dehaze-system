@@ -49,15 +49,20 @@ git clone https://gitee.com/earthy-zinc/dehaze_python.git
 # 切换目录
 cd dehaze_python
 
+# 选择1：使用conda
 # 安装 miniconda 并创建虚拟环境
-conda env create -n dehaze_backend python=3.10
-conda acticate dehaze_backend
+conda env create -n dehaze-python python=3.10
+conda acticate dehaze-python
 
 # 安装依赖
 conda install --yes --file requirements.txt
 
+# 选择2：使用uv
+uv venv dehaze-python --python 3.11
+
+
 # 启动运行
-python start.py
+python run.py
 ```
 
 ## 🌺 项目部署
