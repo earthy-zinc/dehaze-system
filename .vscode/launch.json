@@ -5,7 +5,93 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "dehaze-go-dev",
+      "name": "dehaze-front-vue",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-front-vue",
+      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "dehaze-front-react",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-front-react",
+      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "dehaze-doc",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-doc",
+      "runtimeArgs": ["run", "docs:dev"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "dehaze-front-desktop",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-front-react/desktop",
+      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "dehaze-react-native",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "runtimeArgs": ["run", "android"],
+      "runtimeExecutable": "yarn",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "dehaze-taro-weapp",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-taro",
+      "runtimeArgs": ["run", "dev:weapp"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "dehaze-uniapp",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-uniapp",
+      "runtimeArgs": ["run", "dev:mp-weixin"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
+    },
+    {
+      "name": "dehaze-java",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.pei.dehaze.SystemApplication",
+      "projectName": "com.pei-dehaze-java"
+    },
+    {
+      "name": "dehaze-python",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "flask",
+      "python": "${workspaceFolder}/dehaze-python/.venv/Scripts/python.exe",
+      "env": {
+        "FLASK_APP": "dehaze-python/run.py",
+        "FLASK_DEBUG": "1",
+        "PYTHONPATH": "${workspaceFolder}/dehaze-python",
+        "PATH": "${workspaceFolder}/dehaze-python/.venv/Scripts:${env:PATH}"
+      },
+      "args": ["run", "--no-debugger", "--no-reload"],
+      "jinja": true,
+      "autoStartBrowser": false
+    },
+    {
+      "name": "dehaze-go",
       "type": "go",
       "request": "launch",
       "mode": "auto",
