@@ -1,4 +1,4 @@
-import { Dataset } from "@/api/dataset/model";
+import { Dataset } from "../../src/api/dataset/model";
 
 export default [
   {
