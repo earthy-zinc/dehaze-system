@@ -62,9 +62,9 @@ const useLayout = (
     return gutter * count + colWidth * index + offsetX;
   };
 
-  const initY = useCallback(() => {
+  const initY = () => {
     setPosY(new Array(cols).fill(hasAroundGutter ? gutter : 0));
-  }, [cols, gutter, hasAroundGutter]);
+  };
 
   const animation = addAnimation(
     animationPrefix,
@@ -128,10 +128,6 @@ const useLayout = (
       }, posDuration);
     });
   };
-
-  useEffect(() => {
-    initY();
-  }, [cols, initY]);
 
   return {
     wrapperHeight,
