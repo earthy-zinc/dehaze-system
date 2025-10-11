@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import Magnifier from "@/components/Magnifier/newIndex.vue";
 import { useImageShowStore } from "@/store/modules/imageShow";
-import { useWindowSize } from "@vueuse/core";
+import { Arrayable, useWindowSize } from "@vueuse/core";
 import { UploadFile, UploadUserFile } from "element-plus";
-import { Arrayable } from "element-plus/es/utils";
 
 defineOptions({
   name: "AlgorithmToolBar",
