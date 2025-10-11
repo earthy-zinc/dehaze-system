@@ -165,7 +165,8 @@ const LoginScreen = () => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>© 2025 图像去雾系统</Text>
+          <Text style={styles.footerText}>Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫 版权所有</Text>
+          <Text style={styles.footerText}>渝ICP备2024111923号-2</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 10,
     color: '#999',
   },
 });
