@@ -7,7 +7,7 @@ import AlgorithmAPI from "@/api/algorithm";
 import { Algorithm } from "@/api/algorithm/model";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
-import { Arrayable } from "element-plus/es/utils";
+import { Arrayable } from "@vueuse/core";
 
 defineOptions({
   name: "Evaluation",
