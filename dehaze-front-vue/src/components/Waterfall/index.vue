@@ -261,8 +261,8 @@ onUnmounted(() => {
   position: absolute;
   top: 0;
   left: 0;
-  cursor: pointer;
   visibility: hidden;
+  cursor: pointer;
 
   /* 初始位置设置到屏幕以外，避免懒加载失败 */
   transform: translate3d(0, 3000px, 0);
