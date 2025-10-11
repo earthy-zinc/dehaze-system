@@ -299,8 +299,8 @@ watch(route, () => {
   &.mobile {
     .sidebar-container {
       pointer-events: none;
-      transition-duration: 0.3s;
       transform: translate3d(-210px, 0, 0);
+      transition-duration: 0.3s;
     }
 
     .main-container {
