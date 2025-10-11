@@ -93,7 +93,7 @@ export default function Overlap() {
     })
       .then((res) => {
         // 获取生成后的图片url
-        setImage2(res);
+        setImage2(res.predUrl);
       })
       .then(() => setActivePage("overlap"))
       .catch((err) => {
@@ -134,23 +134,13 @@ export default function Overlap() {
         return (
           <ExampleImageSelect
             urls={exampleImageUrls}
-            onSelect={(url) => handleExampleImageClick(url)}
+            onExampleSelect={(url: string) => handleExampleImageClick(url)}
           />
         );
       case "camera":
         return <div>相机</div>;
       case "overlap":
-        return (
-          <OverlapImageShow
-            brightness={brightness}
-            contrast={contrast}
-            image1={image1}
-            image2={image2}
-            showMask={showMask}
-            onOriginScaleChange={(value) => setOriginScale(value)}
-            onMouseover={handleMouseover}
-          />
-        );
+        return <OverlapImageShow />;
       case "effect":
         return <div>特效</div>;
       case "loading":
@@ -164,14 +154,12 @@ export default function Overlap() {
       {/* 左侧工具栏 */}
       <AlgorithmToolBar
         disableMore={disableMore}
-        magnifier={magnifier}
         onUpload={handleImageUpload}
         onTakePhoto={() => setActivePage("camera")}
         onReset={handleReset}
         onGenerate={handleGenerateImage}
-        onMagnifierChange={() => setShowMask((prev) => !prev)}
-        onBrightnessChange={(value) => setBrightness(value)}
-        onContrastChange={(value) => setContrast(value)}
+        onEval={() => {}}
+        onSelectFromDataset={() => {}}
       >
         {/* 选择模型区域 */}
         <div className={styles["select-wrap"]}>

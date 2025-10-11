@@ -11,7 +11,7 @@ import ErrorPage404 from "@/pages/error/404";
 import Login from "@/pages/login";
 import lazyLoad from "@/router/LazyLoad";
 import { HomeOutlined } from "@ant-design/icons";
-import { lazy } from "react";
+import React, { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
 export const menuItems = [

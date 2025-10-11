@@ -29,7 +29,7 @@ export const useResizeObserver: UseResizeObserver = (
   options: ResizeObserverOptions = {}
 ): (() => void) => {
   const savedCallback = useLatest(callback);
-  const observerRef = useRef<ResizeObserver>();
+  const observerRef = useRef<ResizeObserver | null>(null);
 
   const stop = useCallback(() => {
     if (observerRef.current) {

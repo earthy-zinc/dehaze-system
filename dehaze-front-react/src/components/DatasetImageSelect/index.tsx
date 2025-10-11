@@ -42,16 +42,6 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
   const loadingBarRef = useRef<HTMLDivElement>(null);
   const observer = useRef<IntersectionObserver | null>(null);
 
-  // 获取数据集可选项，并默认选择第一个数据集展示
-  useEffect(() => {
-    const fetchData = async () => {
-      const options = await DatasetAPI.getOptions();
-      setDatasetOptions(options);
-      await handleSelectDataset();
-    };
-    fetchData().then();
-  }, []);
-
   // 获取数据集信息并初始化数据
   const handleSelectDataset = async () => {
     const data = await DatasetAPI.getDatasetInfoById(selectedDatasetId);
@@ -79,6 +69,16 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
     setImages(newImages);
     // 更新分页状态
   };
+
+  // 获取数据集可选项，并默认选择第一个数据集展示
+  useEffect(() => {
+    const fetchData = async () => {
+      const options = await DatasetAPI.getOptions();
+      setDatasetOptions(options);
+      await handleSelectDataset();
+    };
+    fetchData().then();
+  }, []);
 
   const handleImageTypeChange = (typeId: number) => {
     const newTypes = imageTypes.map((type) => ({

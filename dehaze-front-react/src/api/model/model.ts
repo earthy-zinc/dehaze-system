@@ -9,7 +9,7 @@
 export interface PredParam {
   modelId: number;
   url: string;
-  modelParam?: Object;
+  modelParam?: object;
 }
 
 export interface PredResult {
