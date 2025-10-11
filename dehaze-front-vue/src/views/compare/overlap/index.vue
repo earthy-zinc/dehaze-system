@@ -6,7 +6,7 @@ import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import AlgorithmAPI from "@/api/algorithm";
 import { Algorithm } from "@/api/algorithm/model";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
-import { Arrayable } from "element-plus/es/utils";
+import { Arrayable } from "element-plus/es/utils/index.mjs";
 
 const imageShowStore = useImageShowStore();
 const { modelId } = toRefs(imageShowStore);

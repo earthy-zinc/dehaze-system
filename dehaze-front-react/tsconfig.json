@@ -17,7 +17,12 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "ignoreDeprecations": "6.0"
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts", "mock"]
 }

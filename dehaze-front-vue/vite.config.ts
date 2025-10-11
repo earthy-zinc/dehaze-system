@@ -9,7 +9,7 @@ import Icons from "unplugin-icons/vite";
 import IconsResolver from "unplugin-icons/resolver";
 
 import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
-import mockDevServerPlugin from "vite-plugin-mock-dev-server";
+import { mockDevServerPlugin } from "vite-plugin-mock-dev-server";
 
 import UnoCSS from "unocss/vite";
 import { resolve } from "path";
@@ -44,7 +44,6 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       preprocessorOptions: {
         // 定义全局 SCSS 变量
         scss: {
-          javascriptEnabled: true,
           additionalData: `
             @use "@/styles/variables.scss" as *;
           `,
