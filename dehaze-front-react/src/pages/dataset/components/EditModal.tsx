@@ -10,7 +10,7 @@ import {
   Space,
   message,
 } from "antd";
-import { forwardRef, useImperativeHandle, useState } from "react";
+import React, { forwardRef, useImperativeHandle, useState } from "react";
 
 const { Option } = Select;
 
@@ -20,7 +20,7 @@ const EditModal = forwardRef((props, ref) => {
   const [title, setTitle] = useState("");
   const [form] = Form.useForm();
   // 新增数据的父 id
-  let parentId = -1;
+  const [parentId, setParentId] = useState(-1);
   const [types, setTypes] = useState("");
 
   // 打开对话框
@@ -40,7 +40,7 @@ const EditModal = forwardRef((props, ref) => {
       console.log();
     } else {
       // 设置新增的数据集的父 id
-      parentId = row.id;
+      setParentId(row.id);
     }
     setEditModalVisible(true);
   };

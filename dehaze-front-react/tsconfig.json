@@ -11,18 +11,18 @@
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
     "allowJs": true,
-    "types": ["vite/client", "vite-plugin-svgr/client", "node"],
+    "typeRoots": ["./node_modules/@types", "./src/typings"],
+    "types": ["vite/client", "node"],
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
-    },
-    "ignoreDeprecations": "6.0"
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src", "vite.config.ts", "mock"]
+  "include": ["src", "vite.config.ts", "mock"],
+  "exclude": ["node_modules", "dist", "**/*.js", "eslint.config.js"]
 }
