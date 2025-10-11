@@ -2,6 +2,7 @@
 <div style="height: 10px; clear: both;"></div>
 
 - - -
+
 ## 平台简介
 
 [![码云Gitee](https://gitee.com/earthyzinc/dehaze-java/badge/star.svg?theme=blue)](https://gitee.com/earthyzinc/dehaze-java)
@@ -29,10 +30,10 @@
 
 ## 赞助商
 
-MaxKey 业界领先单点登录产品 - https://gitee.com/dromara/MaxKey <br>
-CCFlow 驰聘低代码-流程-表单 - https://gitee.com/opencc/RuoYi-JFlow <br>
-数舵科技 软件定制开发APP小程序等 - http://www.shuduokeji.com/ <br>
-引迈信息 软件开发平台 - https://www.jnpfsoft.com/index.html?from=plus-doc <br>
+MaxKey 业界领先单点登录产品 - <https://gitee.com/dromara/MaxKey> <br>
+CCFlow 驰聘低代码-流程-表单 - <https://gitee.com/opencc/RuoYi-JFlow> <br>
+数舵科技 软件定制开发APP小程序等 - <http://www.shuduokeji.com/> <br>
+引迈信息 软件开发平台 - <https://www.jnpfsoft.com/index.html?from=plus-doc> <br>
 <font color="red">**启山商城系统 多租户商城源码可免费商用可二次开发 - https://www.73app.cn/** </font><br>
 [如何成为赞助商 加群联系作者详谈](https://plus-doc.dromara.org/#/common/add_group)
 
@@ -40,15 +41,15 @@ CCFlow 驰聘低代码-流程-表单 - https://gitee.com/opencc/RuoYi-JFlow <br>
 
 | 功能          | 本框架                                                                                                               | RuoYi                                                                              |
 |-------------|-------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------|
-| 前端项目        | 采用 Vue3 + TS + ElementPlus 重写                                                                                     | 基于Vue2/Vue3 + JS                                                                   | 
-| 后端项目结构      | 采用插件化 + 扩展包形式 结构解耦 易于扩展                                                                                           | 模块相互注入耦合严重难以扩展                                                                     | 
+| 前端项目        | 采用 Vue3 + TS + ElementPlus 重写                                                                                     | 基于Vue2/Vue3 + JS                                                                   |
+| 后端项目结构      | 采用插件化 + 扩展包形式 结构解耦 易于扩展                                                                                           | 模块相互注入耦合严重难以扩展                                                                     |
 | 后端代码风格      | 严格遵守Alibaba规范与项目统一配置的代码格式化                                                                                        | 代码书写与常规结构不同阅读障碍大                                                                   |
-| 分布式注册中心     | 采用 Alibaba Nacos 源码集成便于调试扩展与二次开发 框架还为其增加了各种监控                                                                     | 采用 Alibaba Nacos 自行搭建纯官方版本不可靠                                                      | 
-| 分布式配置中心     | 采用 Alibaba Nacos 源码集成便于调试扩展与二次开发 框架还为其增加了各种监控                                                                     | 采用 Alibaba Nacos 自行搭建纯官方版本不可靠                                                      | 
-| 服务网关        | 采用 SpringCloud Gateway 框架扩展了多种功能<br/>例如:内网鉴权、请求体缓存、跨域配置、请求响应日志等                                                   | 采用 SpringCloud Gateway 功能单一                                                        | 
+| 分布式注册中心     | 采用 Alibaba Nacos 源码集成便于调试扩展与二次开发 框架还为其增加了各种监控                                                                     | 采用 Alibaba Nacos 自行搭建纯官方版本不可靠                                                      |
+| 分布式配置中心     | 采用 Alibaba Nacos 源码集成便于调试扩展与二次开发 框架还为其增加了各种监控                                                                     | 采用 Alibaba Nacos 自行搭建纯官方版本不可靠                                                      |
+| 服务网关        | 采用 SpringCloud Gateway 框架扩展了多种功能<br/>例如:内网鉴权、请求体缓存、跨域配置、请求响应日志等                                                   | 采用 SpringCloud Gateway 功能单一                                                        |
 | 负载均衡        | 采用 SpringCloud Loadbalancer 扩展支持了开发团队路由 便于多团队开发调试                                                                 | 采用 SpringCloud Loadbalancer 功能单一                                                   |
-| RPC远程调用     | 采用 全新 Apache Dubbo 3.X 历史悠远不用多说                                                                                   | 采用 feign 功能有限编写方式 网络波动大 不稳定                                                        | 
-| 分布式限流熔断     | 采用 Alibaba Sentinel 源码集成便于调试扩展与二次开发 框架还为其增加了各种监控                                                                  | 采用 Alibaba Sentinel 自行搭建纯官方版本不可靠                                                   | 
+| RPC远程调用     | 采用 全新 Apache Dubbo 3.X 历史悠远不用多说                                                                                   | 采用 feign 功能有限编写方式 网络波动大 不稳定                                                        |
+| 分布式限流熔断     | 采用 Alibaba Sentinel 源码集成便于调试扩展与二次开发 框架还为其增加了各种监控                                                                  | 采用 Alibaba Sentinel 自行搭建纯官方版本不可靠                                                   |
 | 分布式事务       | 采用 Alibaba Seata 源码集成对接了Nacos与各种监控 简化了搭建部署流程                                                                      | 采用 Alibaba Seata 自行搭建纯官方版本 搭建繁琐与Nacos不挂钩 代码内使用方式怪异等                                |
 | Web容器       | 采用 Undertow 基于 XNIO 的高性能容器                                                                                        | 采用 Tomcat                                                                          |
 | 权限认证        | 采用 Sa-Token、Jwt 静态使用功能齐全 低耦合 高扩展                                                                                  | Spring Security 配置繁琐扩展性极差                                                          |
@@ -70,28 +71,28 @@ CCFlow 驰聘低代码-流程-表单 - https://gitee.com/opencc/RuoYi-JFlow <br>
 | 数据库主键       | 采用 雪花ID 基于时间戳的 有序增长 唯一ID 再也不用为分库分表 数据合并主键冲突重复而发愁                                                                  | 采用 数据库自增ID 支持数据量有限 不支持多数据源主键唯一                                                     |
 | WebSocket协议 | 基于 Spring 封装的 WebSocket 协议 扩展了Token鉴权与分布式会话同步 不再只是基于单机的废物                                                         | 无                                                                                  |
 | SSE推送       | 采用 Spring SSE 实现 扩展了Token鉴权与分布式会话同步                                                                               | 无                                                                                  |
-| 序列化         | 采用 Jackson Spring官方内置序列化 靠谱!!!                                                                                    | 采用 fastjson bugjson 远近闻名                                                           | 
+| 序列化         | 采用 Jackson Spring官方内置序列化 靠谱!!!                                                                                    | 采用 fastjson bugjson 远近闻名                                                           |
 | 分布式幂等       | 参考美团GTIS防重系统简化实现(细节可看文档)                                                                                          | 手动编写注解基于aop实现                                                                      |
-| 分布式任务调度     | 采用 SnailJob 天生支持分布式 统一的管理中心 支持多种数据库 支持分片重试DAG任务流等                                                                 | 采用 Quartz 基于数据库锁性能差 集群需要做很多配置与改造                                                   | 
-| 分布式日志中心     | 采用 ELK 业界成熟解决方案 实时收集所有服务的运行日志 快速发现定位问题                                                                            | 无                                                                                  | 
-| 分布式搜索引擎     | 采用 ElasticSearch、Easy-Es 以 Mybatis-Plus 方式操作 ElasticSearch                                                        | 无                                                                                  | 
-| 分布式消息队列     | 采用 支持 Kafka、RocketMQ、RabbitMQ 各种 延迟消息 事务消息 流消息                                                                    | 无                                                                                  | 
+| 分布式任务调度     | 采用 SnailJob 天生支持分布式 统一的管理中心 支持多种数据库 支持分片重试DAG任务流等                                                                 | 采用 Quartz 基于数据库锁性能差 集群需要做很多配置与改造                                                   |
+| 分布式日志中心     | 采用 ELK 业界成熟解决方案 实时收集所有服务的运行日志 快速发现定位问题                                                                            | 无                                                                                  |
+| 分布式搜索引擎     | 采用 ElasticSearch、Easy-Es 以 Mybatis-Plus 方式操作 ElasticSearch                                                        | 无                                                                                  |
+| 分布式消息队列     | 采用 支持 Kafka、RocketMQ、RabbitMQ 各种 延迟消息 事务消息 流消息                                                                    | 无                                                                                  |
 | 分布式消息总线     | 采用 SpringCloud Bus 实现事件总线 跨服务通知 支持 Kafka、RocketMQ、RabbitMQ                                                        | 无                                                                                  |
 | 分库分表功能      | 采用 Apache Sharding-Proxy 代理服务无入侵支持分库分表 只需编写分库分表规则即可                                                               | 无                                                                                  |
 | 文件存储        | 采用 Minio 分布式文件存储 天生支持多机、多硬盘、多分片、多副本存储<br/>支持权限管理 安全可靠 文件可加密存储                                                     | 采用 本机文件存储 文件裸漏 易丢失泄漏 不支持集群有单点效应                                                    |
 | 云存储         | 采用 AWS S3 协议客户端 支持 七牛、阿里、腾讯 等一切支持S3协议的厂家                                                                          | 不支持                                                                                |
 | 短信          | 支持 阿里、腾讯 只需在yml配置好厂家密钥即可使用 接口化支持扩展其他厂家                                                                            | 不支持                                                                                |
 | 邮件          | 采用 mail-api 通用协议支持大部分邮件厂商                                                                                         | 不支持                                                                                |
-| 接口文档        | 采用 SpringDoc、javadoc 无注解零入侵基于java注释<br/>只需把注释写好 无需再写一大堆的文档注解了                                                     | 采用 Springfox 已停止维护 需要编写大量的注解来支持文档生成                                                | 
+| 接口文档        | 采用 SpringDoc、javadoc 无注解零入侵基于java注释<br/>只需把注释写好 无需再写一大堆的文档注解了                                                     | 采用 Springfox 已停止维护 需要编写大量的注解来支持文档生成                                                |
 | 校验框架        | 采用 Validation 支持注解与工具类校验 注解支持国际化                                                                                  | 仅支持注解 且注解不支持国际化                                                                    |
 | Excel框架     | 采用 Alibaba EasyExcel 基于插件化<br/>框架对其增加了很多功能 例如 自动合并相同内容 自动排列布局 字典翻译等                                               | 基于 POI 手写实现 功能有限 复杂 扩展性差                                                           |
 | 工作流支持       | 支持各种复杂审批 转办 委派 加减签 会签 或签 票签 等功能                                                                                   | 无                                                                                  |
-| 工具类框架       | 采用 Hutool、Lombok 上百种工具覆盖90%的使用需求 基于注解自动生成 get set 等简化框架大量代码                                                       | 手写工具稳定性差易出问题 工具数量有限 代码臃肿需自己手写 get set 等                                            | 
-| 服务监控框架      | 采用 SpringBoot-Admin 基于SpringBoot官方 actuator 探针机制<br/>实时监控服务状态 框架还为其扩展了在线日志查看监控                                    | 无                                                                                  | 
-| 全方位监控报警     | 采用 Prometheus、Grafana 多样化采集 多模板大屏展示 实时报警监控 提供详细的搭建文档                                                              | 无                                                                                  | 
+| 工具类框架       | 采用 Hutool、Lombok 上百种工具覆盖90%的使用需求 基于注解自动生成 get set 等简化框架大量代码                                                       | 手写工具稳定性差易出问题 工具数量有限 代码臃肿需自己手写 get set 等                                            |
+| 服务监控框架      | 采用 SpringBoot-Admin 基于SpringBoot官方 actuator 探针机制<br/>实时监控服务状态 框架还为其扩展了在线日志查看监控                                    | 无                                                                                  |
+| 全方位监控报警     | 采用 Prometheus、Grafana 多样化采集 多模板大屏展示 实时报警监控 提供详细的搭建文档                                                              | 无                                                                                  |
 | 链路追踪        | 采用 Apache SkyWalking 还在为请求不知道去哪了 到哪出了问题而烦恼吗<br/>用了它即可实时查看请求经过的每一处每一个节点                                            | 无                                                                                  |
 | 代码生成器       | 只需设计好表结构 一键生成所有crud代码与页面<br/>降低80%的开发量 把精力都投入到业务设计上<br/>框架为其适配MP、SpringDoc规范化代码 同时支持动态多数据源代码生成                    | 代码生成原生结构 只支持单数据源生成                                                                 |
-| 部署方式        | 支持 Docker 编排 一键搭建所有环境 让开发人员从此不再为搭建环境而烦恼                                                                           | 原生jar部署 其他环境需手动下载安装 自行搭建                                                           | 
+| 部署方式        | 支持 Docker 编排 一键搭建所有环境 让开发人员从此不再为搭建环境而烦恼                                                                           | 原生jar部署 其他环境需手动下载安装 自行搭建                                                           |
 | 项目路径修改      | 提供详细的修改方案文档 并为其做了一些改动 非常简单即可修改成自己想要的                                                                              | 需要做很多改造 文档说明有限                                                                     |
 | 国际化         | 基于请求头动态返回不同语种的文本内容 开发难度低 有对应的工具类 支持大部分注解内容国际化                                                                     | 只提供基础功能 其他需自行编写扩展                                                                  |
 | 代码单例测试      | 提供单例测试 使用方式编写方法与maven多环境单测插件                                                                                      | 只提供基础功能 其他需自行编写扩展                                                                  |
@@ -143,43 +144,13 @@ CCFlow 驰聘低代码-流程-表单 - https://gitee.com/opencc/RuoYi-JFlow <br>
 >[参考文档 Wiki](https://plus-doc.dromara.org)
 >>[https://plus-doc.dromara.org](https://plus-doc.dromara.org)
 
-
 ## 软件架构图
 
 ![Plus部署架构图](https://foruda.gitee.com/images/1678980131147747524/5c2d5a5c_1766278.png "Plus部署架构图.png")
 
-## 贡献代码
+## 服务启动顺序说明
 
-[参与贡献的方式 https://plus-doc.dromara.org/#/common/contribution](https://plus-doc.dromara.org/#/common/contribution)
-
-## 捐献作者
-
-作者为兼职做开源,平时还需要工作,如果帮到了您可以请作者吃个盒饭  
-<img src="https://foruda.gitee.com/images/1678975784848381069/d8661ed9_1766278.png" width="300px" height="450px" />
-<img src="https://foruda.gitee.com/images/1678975801230205215/6f96229d_1766278.png" width="300px" height="450px" />
-
-## 演示图例
-
-|                                                                                            |                                                                                            |
-|--------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| ![输入图片说明](https://foruda.gitee.com/images/1680077524361362822/270bb429_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680077619939771291/989bf9b6_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680077681751513929/1c27c5bd_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680077721559267315/74d63e23_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680077765638904515/1b75d4a6_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078026375951297/eded7a4b_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078237104531207/0eb1b6a7_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078254306078709/5931e22f_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078287971528493/0b9af60a_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078308138770249/8d3b6696_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078352553634393/db5ef880_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078378238393374/601e4357_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078414983206024/2aae27c1_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078446738419874/ecce7d59_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078475971341775/149e8634_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078491666717143/3fadece7_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078558863188826/fb8ced2a_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078574561685461/ae68a0b2_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078594932772013/9d8bfec6_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078626493093532/fcfe4ff6_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078643608812515/0295bd4f_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078685196286463/d7612c81_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078703877318597/56fce0bc_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078716586545643/b6dbd68f_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078734103217688/eb1e6aa6_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078759131415480/73c525d8_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078779416197879/75e3ed02_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078802329118061/77e10915_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078893627848351/34a1c342_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078928175016986/f126ec4a_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680078941718318363/b68a0f72_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680078963175518631/3bb769a1_1766278.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1735829153637063344/3c21fd4c_1419627.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1735829181303499815/4522cefa_1419627.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1735829377205259767/76a705d7_1419627.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1722959592856812900/e2d0d342_1419627.png "屏幕截图") |
-| ![输入图片说明](https://foruda.gitee.com/images/1680079274333484664/4dfdc7c0_1766278.png "屏幕截图") | ![输入图片说明](https://foruda.gitee.com/images/1680079290467458224/d6715fcf_1766278.png "屏幕截图") |
-
-
+必须启动基础建设: mysql redis nacos
+可选启动基础建设: minio(影响文件上传) seata(影响分布式事务 默认开启) sentinel(影响熔断限流) monitor(影响监控) snailjob(影响定时任务)
+必须启动应用服务: gateway auth system
+可选启动应用服务: resource(影响资源使用 websocket 文件上传 邮件 短信等) workflow(工作流) gen(代码生成) job(影响定时任务) demo(影响demo使用)

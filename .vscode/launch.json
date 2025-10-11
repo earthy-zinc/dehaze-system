@@ -5,6 +5,20 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "java",
+      "name": "Nacos",
+      "request": "launch",
+      "mainClass": "com.alibaba.nacos.Nacos",
+      "projectName": "com.pei-pei-nacos"
+    },
+    {
+      "type": "java",
+      "name": "PeiGatewayApplication",
+      "request": "launch",
+      "mainClass": "com.pei.gateway.PeiGatewayApplication",
+      "projectName": "com.pei-pei-gateway"
+    },
+    {
       "name": "dehaze-front-vue",
       "request": "launch",
       "cwd": "${workspaceFolder}/dehaze-front-vue",
