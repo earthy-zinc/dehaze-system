@@ -10,11 +10,9 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "lib": ["esnext", "dom"],
-    "baseUrl": ".",
-    "ignoreDeprecations": "6.0",
     "allowJs": true,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     },
     "types": ["vite/client", "unplugin-icons/types/vue", "element-plus/global"],
     "skipLibCheck": true /* Skip type checking all .d.ts files. */,

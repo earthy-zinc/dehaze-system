@@ -1,6 +1,6 @@
 import { useWindowSize } from "@/hooks/useWindowSize";
 import { Timeout } from "ahooks/lib/useRequest/src/types";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 
 interface InfiniteFlowListProps {

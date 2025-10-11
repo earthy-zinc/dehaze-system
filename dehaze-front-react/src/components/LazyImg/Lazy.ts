@@ -38,8 +38,9 @@ export default class Lazy {
 
   config(options = {} as LazyOptions) {
     assign(this.options, options);
-    options.ratioCalculator &&
-      (this.options.ratioCalculator = options.ratioCalculator);
+    if (options.ratioCalculator) {
+      this.options.ratioCalculator = options.ratioCalculator;
+    }
   }
 
   // mount
@@ -83,7 +84,9 @@ export default class Lazy {
   // unmount
   unmount(el: HTMLElement): void {
     const imgItem = this._realObserver(el);
-    imgItem && imgItem.unobserve(el);
+    if (imgItem) {
+      imgItem.unobserve(el);
+    }
     this._images.delete(el);
   }
 
@@ -92,7 +95,7 @@ export default class Lazy {
    * @param {*} el - img
    * @param {*} src - 原图
    * @param {*} error - 错误图片
-   * @param {*} callback - 完成的回调函数，通知组件刷新布局
+   * @param {*} callback - 完成的回调函数,通知组件刷新布局
    * @returns
    */
   _setImageSrc(
@@ -123,7 +126,9 @@ export default class Lazy {
       })
       .catch((error) => {
         const imgItem = this._realObserver(el);
-        imgItem && imgItem.disconnect();
+        if (imgItem) {
+          imgItem.disconnect();
+        }
         if (error) {
           el.setAttribute("lazy", LifecycleEnum.ERROR);
           el.setAttribute("src", error);
@@ -146,7 +151,7 @@ export default class Lazy {
    * @param {*} el - img
    * @param {*} src - 图片
    * @param {*} error - 错误图片
-   * @param {*} callback - 完成的回调函数，通知组件刷新布局
+   * @param {*} callback - 完成的回调函数,通知组件刷新布局
    */
   _initIntersectionObserver(
     el: HTMLImageElement,
@@ -161,14 +166,18 @@ export default class Lazy {
         Array.prototype.forEach.call(entries, (entry) => {
           if (entry.isIntersecting) {
             const imgItem = this._realObserver(el);
-            imgItem && imgItem.unobserve(entry.target);
+            if (imgItem) {
+              imgItem.unobserve(entry.target);
+            }
             this._setImageSrc(el, src, callback, error);
           }
         });
       }, observerOptions)
     );
     const imgItem = this._realObserver(el);
-    imgItem && imgItem.observe(el);
+    if (imgItem) {
+      imgItem.observe(el);
+    }
   }
 
   // 格式化参数

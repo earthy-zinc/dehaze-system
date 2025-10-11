@@ -86,15 +86,19 @@ export default function DatasetDetail() {
 
   // 获取数据集信息
   useEffect(() => {
-    setLoading(true);
-    DatasetAPI.getDatasetInfoById(datasetId)
-      .then((datasetInfo) => {
+    let isMounted = true;
+
+    if (isMounted) {
+      DatasetAPI.getDatasetInfoById(datasetId).then((datasetInfo) => {
         setDatasetInfo(datasetInfo);
-      })
-      .then(() => {
         setLoading(false);
       });
-  }, []);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [datasetId]);
 
   // 获取图片数据
   useEffect(() => {
@@ -127,19 +131,16 @@ export default function DatasetDetail() {
         }
       });
     });
+
     if (loadingBarRef.current) {
       const loadingBarEl = loadingBarRef.current;
       loadingBarEl.style.transform = "translate3d(0, 3000px, 0)";
       observerRef.current.observe(loadingBarEl);
       setTimeout(() => (loadingBarEl.style.transform = "none"), 2000);
     }
+
     return () => observerRef.current?.disconnect();
-  }, [
-    loadingBarRef.current,
-    observerRef.current,
-    queryParams.pageNum,
-    totalPages,
-  ]);
+  }, [queryParams.pageNum, totalPages]);
 
   // 重置查询
   const resetQuery = () => {

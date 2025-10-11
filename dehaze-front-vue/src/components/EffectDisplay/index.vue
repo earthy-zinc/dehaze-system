@@ -46,7 +46,7 @@ onMounted(() => {
             :image1="image1"
             :image2="image2"
             class="overlap"
-            @on-origin-scale-change="(value) => (originScale = value)"
+            @on-origin-scale-change="(value: number) => (originScale = value)"
             @on-mouseover="handleMouseover"
           />
         </div>

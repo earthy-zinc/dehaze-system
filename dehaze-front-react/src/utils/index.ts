@@ -82,7 +82,9 @@ export function getValue(form: any, ...selectors: string[]) {
 export function debounce(fn: (args?: any) => void, delay: number) {
   let timer: NodeJS.Timeout | null;
   return function (this: any, ...args: any) {
-    timer && clearTimeout(timer);
+    if (timer) {
+      clearTimeout(timer);
+    }
     timer = null;
     timer = setTimeout(() => {
       fn.apply(this, args);
@@ -236,7 +238,7 @@ export function hexToRGBA(hex: string, alpha: number) {
 
 export function loadImage(
   url: string,
-  crossOrigin: Boolean
+  crossOrigin: boolean
 ): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();

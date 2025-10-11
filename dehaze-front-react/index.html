@@ -1,65 +1,65 @@
 <!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8"/>
-    <link href="/favicon.ico" rel="icon"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <head>
+    <meta charset="UTF-8" />
+    <link href="/favicon.ico" rel="icon" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <meta
-            content="基于 Vue3 + Vite5 + TypeScript5 + Element-Plus 技术构建的图像去雾系统"
-            name="description"
+      content="基于 Vue3 + Vite5 + TypeScript5 + Element-Plus 技术构建的图像去雾系统"
+      name="description"
     />
     <meta
-            content="vue,element-plus,typescript,vue-element-admin,vue3-element-admin"
-            name="keywords"
+      content="vue,element-plus,typescript,vue-element-admin,vue3-element-admin"
+      name="keywords"
     />
     <title>图像去雾系统</title>
-</head>
-<body>
-<div id="root">
-    <div class="loader"></div>
-</div>
-<script src="/src/main.tsx" type="module"></script>
-</body>
+  </head>
+  <body>
+    <div id="root">
+      <div class="loader"></div>
+    </div>
+    <script src="/src/main.tsx" type="module"></script>
+  </body>
 
-<style>
+  <style>
     html,
     body,
     #root {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
     }
 
     .loader {
-        position: relative;
-        width: 40px;
-        aspect-ratio: 0.577;
-        overflow: hidden;
-        clip-path: polygon(0 0, 100% 100%, 0 100%, 100% 0);
-        animation: l19 2s infinite linear;
+      position: relative;
+      width: 40px;
+      aspect-ratio: 0.577;
+      overflow: hidden;
+      clip-path: polygon(0 0, 100% 100%, 0 100%, 100% 0);
+      animation: l19 2s infinite linear;
     }
 
     .loader::before {
-        position: absolute;
-        inset: -150%;
-        content: "";
-        background: repeating-conic-gradient(
-                from 30deg,
-                #ffabab 0 60deg,
-                #abe4ff 0 120deg,
-                #ff7373 0 180deg
-        );
-        animation: inherit;
-        animation-direction: reverse;
+      position: absolute;
+      inset: -150%;
+      content: "";
+      background: repeating-conic-gradient(
+        from 30deg,
+        #ffabab 0 60deg,
+        #abe4ff 0 120deg,
+        #ff7373 0 180deg
+      );
+      animation: inherit;
+      animation-direction: reverse;
     }
 
     @keyframes l19 {
-        100% {
-            transform: rotate(360deg);
-        }
+      100% {
+        transform: rotate(360deg);
+      }
     }
-</style>
+  </style>
 </html>
