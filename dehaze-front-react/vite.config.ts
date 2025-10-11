@@ -3,7 +3,7 @@ import { resolve } from "path";
 import UnoCSS from "unocss/vite";
 
 import { ConfigEnv, defineConfig, loadEnv, UserConfig } from "vite";
-import mockDevServerPlugin from "vite-plugin-mock-dev-server";
+import { mockDevServerPlugin } from "vite-plugin-mock-dev-server";
 import svgr from "vite-plugin-svgr";
 import {
   dependencies,
