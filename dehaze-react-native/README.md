@@ -33,7 +33,7 @@
 
 3. 安装依赖:
    ```
-   pnpm install
+   yarn
    ```
 
 ## 运行项目
@@ -41,33 +41,33 @@
 ### 运行在 Android 上
 
 ```
-pnpm android
+yarn run android
 ```
 
 或者
 
 ```
-pnpm start
+yarn run start
 ```
 然后在另一个终端执行:
 ```
-pnpm react-native run-android
+yarn react-native run-android
 ```
 
 ### 运行在 iOS 上
 
 ```
-pnpm ios
+yarn run ios
 ```
 
 或者
 
 ```
-pnpm start
+yarn run start
 ```
 然后在另一个终端执行:
 ```
-pnpm react-native run-ios
+yarn react-native run-ios
 ```
 
 ## 项目结构
