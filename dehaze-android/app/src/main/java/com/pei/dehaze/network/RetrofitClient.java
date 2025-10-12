@@ -1,7 +1,5 @@
 package com.pei.dehaze.network;
 
-import android.util.Log;
-
 import androidx.annotation.NonNull;
 
 import com.pei.dehaze.user.UserManager;
@@ -15,12 +13,12 @@ import okhttp3.Request;
 import okhttp3.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+import timber.log.Timber;
 
 /**
  * Retrofit客户端管理类
  */
 public class RetrofitClient {
-    private static final String TAG = "RetrofitClient";
     private static final String BASE_URL = "http://10.0.2.2:8989/api/v1/";
     private static RetrofitClient instance;
     private final Retrofit retrofit;
@@ -62,7 +60,7 @@ public class RetrofitClient {
         public Response intercept(@NonNull Chain chain) throws IOException {
             // 从UserManager获取Token
             String token = UserManager.getInstance().getToken();
-            Log.d(TAG, "Token: " + token);
+            Timber.d("Token: %s", token);
 
             // 创建新的请求，添加认证头
             Request.Builder builder = chain.request().newBuilder();

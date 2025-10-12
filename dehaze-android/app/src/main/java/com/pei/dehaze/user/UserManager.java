@@ -2,18 +2,17 @@ package com.pei.dehaze.user;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
 
 import com.pei.dehaze.model.response.LoginResponse;
 import com.pei.dehaze.common.Result;
 
 import lombok.Getter;
+import timber.log.Timber;
 
 /**
  * 用户管理类，负责管理用户登录状态、Token存储和获取
  */
 public class UserManager {
-    private static final String TAG = "UserManager";
     private static final String PREF_NAME = "user_prefs";
     private static final String KEY_TOKEN = "auth_token";
     private static final String KEY_USERNAME = "username";
@@ -64,7 +63,7 @@ public class UserManager {
         username = preferences.getString(KEY_USERNAME, null);
         userId = preferences.getString(KEY_USER_ID, null);
         isLoggedIn = preferences.getBoolean(KEY_IS_LOGGED_IN, false);
-        Log.d(TAG, "Loaded user info: username=" + username + ", isLoggedIn=" + isLoggedIn);
+        Timber.d("Loaded user info: username=" + username + ", isLoggedIn=" + isLoggedIn);
     }
 
     /**
@@ -89,7 +88,7 @@ public class UserManager {
             editor.putBoolean(KEY_IS_LOGGED_IN, true);
             editor.apply();
 
-            Log.d(TAG, "User login info saved: username=" + username);
+            Timber.d("User login info saved: username=" + username);
         }
     }
 
@@ -110,6 +109,6 @@ public class UserManager {
         editor.putBoolean(KEY_IS_LOGGED_IN, false);
         editor.apply();
 
-        Log.d(TAG, "User login info cleared");
+        Timber.d("User login info cleared");
     }
 }
