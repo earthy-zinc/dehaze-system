@@ -16,24 +16,6 @@ export default {
         .plugin("analyzer")
         .use(require("webpack-bundle-analyzer").BundleAnalyzerPlugin, []);
 
-      /**
-       * 如果 h5 端首屏加载时间过长，可以使用 prerender-spa-plugin 插件预加载首页。
-       * @docs https://github.com/chrisvfritz/prerender-spa-plugin
-       */
-      // const path = require("path");
-      // const Prerender = require("prerender-spa-plugin");
-      // const staticDir = path.join(__dirname, "..", "dist");
-      // chain.plugin("prerender").use(
-      //   new Prerender({
-      //     staticDir,
-      //     routes: ["/pages/index/index"],
-      //     postProcess: (context: any) => ({
-      //       ...context,
-      //       outputPath: path.join(staticDir, "index.html"),
-      //     }),
-      //   })
-      // );
-
       chain.plugin("compression").use(require("compression-webpack-plugin"), [
         {
           algorithm: "gzip",
