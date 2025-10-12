@@ -2,29 +2,33 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 100vh;
+  justify-content: space-between;
+  height: 100vh;
   background-color: #f5f7fa;
-  padding: 20px;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  .login-header {
+    margin-top: 32px;
+  }
 
   .login-card {
-    width: 100%;
-    max-width: 400px;
+    width: 80vw;
+    max-width: 680px;
     background: white;
-    border-radius: 16px;
+    border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     overflow: hidden;
-    padding: 30px;
+    padding: 30px 45px;
     transition: all 0.3s ease;
 
     .login-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
       text-align: center;
       margin-bottom: 30px;
 
       .app-title {
-        font-size: 24px;
+        font-size: 48px;
         font-weight: bold;
         color: #333;
         margin: 10px 0;
@@ -35,24 +39,21 @@
         color: #389e3c;
         padding: 4px 8px;
         border-radius: 4px;
-        font-size: 12px;
-        display: inline-block;
-        margin-left: 10px;
+        font-size: 24px;
+        margin-left: 20px;
       }
     }
 
     .form-container {
       .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 24px;
 
         .form-input {
-          width: 100%;
           padding: 12px 16px;
           border: 1px solid #d9d9d9;
           border-radius: 8px;
-          font-size: 14px;
+          font-size: 28px;
           transition: border-color 0.3s ease;
-          box-sizing: border-box;
 
           &:focus {
             border-color: #389e3c;
@@ -66,7 +67,7 @@
 
         .captcha-container {
           display: flex;
-          gap: 10px;
+          gap: 12px;
 
           .captcha-image {
             flex: 1;
@@ -83,7 +84,7 @@
           }
 
           .captcha-text {
-            font-size: 16px;
+            font-size: 36px;
             font-weight: bold;
             color: #333;
           }
@@ -92,15 +93,17 @@
 
       .form-button {
         width: 100%;
-        padding: 14px;
+        padding: 16px;
         background-color: #389e3c;
         color: white;
         border: none;
         border-radius: 8px;
-        font-size: 16px;
+        font-size: 32px;
         font-weight: bold;
+        line-height: 68px;
         cursor: pointer;
         transition: background-color 0.3s ease;
+        margin-top: 60px;
 
         &:active {
           background-color: #2e7d32;
@@ -113,11 +116,12 @@
       }
 
       .footer-info {
-        margin-top: 20px;
+        margin-top: 32px;
+        margin-bottom: 12px;
         text-align: center;
 
         .info-text {
-          font-size: 12px;
+          font-size: 22px;
           color: #666;
           margin: 4px 0;
         }
@@ -126,13 +130,17 @@
   }
 
   .login-footer {
-    margin-top: 30px;
+    padding-bottom: 48px;
     text-align: center;
     color: #666;
-    font-size: 12px;
+    font-size: 22px;
 
-    text {
-      margin: 4px 0;
+    .login-footer-text {
+      margin-top: 6px;
+
+      text {
+        margin: 4px 0;
+      }
     }
   }
 }

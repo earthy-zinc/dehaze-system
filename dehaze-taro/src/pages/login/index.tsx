@@ -86,6 +86,9 @@ const Login: React.FC = () => {
 
   return (
     <View className='login-container'>
+      <View className='login-header'>
+      </View>
+
       <View className='login-card'>
         <View className='login-header'>
           <Text className='app-title'>图像去雾系统</Text>
@@ -99,7 +102,6 @@ const Login: React.FC = () => {
               placeholder='请输入用户名'
               value={formData.username}
               onInput={(e) => handleInput('username', e.detail.value)}
-              icon='user'
             />
           </View>
 
@@ -110,7 +112,6 @@ const Login: React.FC = () => {
               password
               value={formData.password}
               onInput={(e) => handleInput('password', e.detail.value)}
-              icon='lock'
             />
           </View>
 
@@ -121,7 +122,6 @@ const Login: React.FC = () => {
                 placeholder='请输入验证码'
                 value={formData.captcha}
                 onInput={(e) => handleInput('captcha', e.detail.value)}
-                icon='shield'
               />
               <View className='captcha-image' onClick={refreshCaptcha}>
                 <Text className='captcha-text'>{captchaValue}</Text>
@@ -146,8 +146,15 @@ const Login: React.FC = () => {
       </View>
 
       <View className='login-footer'>
-        <Text>Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫 版权所有</Text>
-        <Text>渝ICP备2024111923号-2</Text>
+        <View className='login-footer-text'>
+          <Text>Copyright © 2022 - 2024 Peixin Wu All Rights Reserved.</Text>
+        </View>
+        <View className='login-footer-text'>
+          <Text>武沛鑫 版权所有</Text>
+        </View>
+        <View className='login-footer-text'>
+          <Text>渝ICP备2024111923号-2</Text>
+        </View>
       </View>
     </View>
   );
