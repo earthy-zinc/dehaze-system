@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../navigation/NavigationContainer';
+import { RootStackParamList } from '@/routes/navigator';
+
 
 // 定义导航属性类型
 type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
