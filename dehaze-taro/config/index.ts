@@ -42,12 +42,7 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
             "css-loader",
             {
               loader: "sass-loader",
-              options: {
-                sassOptions: {
-                  quietDeps: true, // 忽略依赖包的警告
-                  silenceDeprecations: ["import", "color-functions"], // 沉默特定弃用警告
-                },
-              },
+              options: {},
             },
           ],
         },
