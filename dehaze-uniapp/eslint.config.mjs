@@ -19,7 +19,7 @@ export default [
       "*.sh",
       "*.md",
       "src/assets/",
-      ".eslintrc.cjs",
+      "eslint.config.mjs",
       ".prettierrc.cjs",
       ".stylelintrc.cjs",
       "**/*.js",

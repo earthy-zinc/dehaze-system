@@ -17,8 +17,8 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
       828: 1.81 / 2,
     },
     sourceRoot: "src",
-    outputRoot: "dist",
-    plugins: [],
+    outputRoot: `dist/${process.env.TARO_ENV}`,
+    plugins: ["@tarojs/plugin-http"],
     defineConstants: {},
     copy: {
       patterns: [],
@@ -28,6 +28,15 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
     compiler: "webpack5",
     cache: {
       enable: true, // Webpack 持久化缓存配置，建议开启。默认配置请参考：https://docs.taro.zone/docs/config-detail#cache
+    },
+    module: {
+      rules: [
+        {
+          test: /\.js$/,
+          use: "babel-loader",
+          exclude: /node_modules/,
+        },
+      ],
     },
     mini: {
       postcss: {

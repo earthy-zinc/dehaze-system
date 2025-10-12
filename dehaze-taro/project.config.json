@@ -1,5 +1,5 @@
 {
-  "miniprogramRoot": "dist/",
+  "miniprogramRoot": "dist/weapp/",
   "projectname": "dehaze-taro",
   "description": "基于 React + TypeScript + Taro + Webpack 技术栈的深度学习图像去雾系统移动端，包含小程序和H5界面",
   "appid": "wx06a96fee477b4bf1",
