@@ -1,10 +1,8 @@
 package com.pei.dehaze.user;
 
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 
-import com.pei.dehaze.model.request.LoginRequest;
 import com.pei.dehaze.model.response.LoginResponse;
 import com.pei.dehaze.model.request.RegisterRequest;
 import com.pei.dehaze.model.response.RegisterResponse;
@@ -15,12 +13,12 @@ import com.pei.dehaze.network.RetrofitClient;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import timber.log.Timber;
 
 /**
  * 认证仓库类，负责处理用户登录、注册等认证相关的业务逻辑
  */
 public class AuthRepository {
-    private static final String TAG = "AuthRepository";
 
     private final ApiService apiService;
 
@@ -33,7 +31,7 @@ public class AuthRepository {
      * 用户登录方法
      */
     public void login(String username, String password, String captchaCode, String captchaKey, final AuthCallback<Result<LoginResponse>> callback) {
-        Log.d(TAG, "Login attempt with username: " + username);
+        Timber.d("Login attempt with username: %s", username);
 
         // 发送登录请求
         Call<Result<LoginResponse>> call = apiService.login(username, password, captchaCode, captchaKey);
@@ -44,13 +42,13 @@ public class AuthRepository {
                     Result<LoginResponse> res = response.body();
                     if ("00000".equals(res.getCode())) {
                         // 登录成功
-                        Log.d(TAG, "Login successful: " + res.getMsg());
+                        Timber.d("Login successful: %s", res.getMsg());
                         // 保存用户信息
                         UserManager.getInstance().saveLoginInfo(res);
                         callback.onSuccess(res);
                     } else {
                         // 登录失败，返回错误信息
-                        Log.e(TAG, "Login failed: " + res.getMsg());
+                        Timber.e("Login failed: %s", res.getMsg());
                         callback.onError(new Exception(res.getMsg()));
                     }
                 } else {
@@ -61,9 +59,9 @@ public class AuthRepository {
                             errorMessage = response.errorBody().string();
                         }
                     } catch (Exception e) {
-                        Log.e(TAG, "Error parsing error response", e);
+                        Timber.e(e, "Error parsing error response");
                     }
-                    Log.e(TAG, "Login error: " + errorMessage);
+                    Timber.e("Login error: %s", errorMessage);
                     callback.onError(new Exception(errorMessage));
                 }
             }
@@ -71,7 +69,7 @@ public class AuthRepository {
             @Override
             public void onFailure(Call<Result<LoginResponse>> call, Throwable t) {
                 // 网络请求失败
-                Log.e(TAG, "Login network error", t);
+                Timber.e(t, "Login network error");
                 callback.onError(new Exception("网络连接失败，请检查网络设置"));
             }
         });
@@ -81,7 +79,7 @@ public class AuthRepository {
      * 用户注册方法
      */
     public void register(String username, String password, String email, String nickname, final AuthCallback<Result<RegisterResponse>> callback) {
-        Log.d(TAG, "Register attempt with username: " + username);
+        Timber.d("Register attempt with username: %s", username);
         
         // 创建注册请求
         RegisterRequest registerRequest = new RegisterRequest(username, password, email, nickname);
@@ -95,11 +93,11 @@ public class AuthRepository {
                     Result<RegisterResponse> registerResponse = res.body();
                     if ("00000".equals(registerResponse.getCode())) {
                         // 注册成功
-                        Log.d(TAG, "Register successful: " + registerResponse.getMsg());
+                        Timber.d("Register successful: %s", registerResponse.getMsg());
                         callback.onSuccess(registerResponse);
                     } else {
                         // 注册失败，返回错误信息
-                        Log.e(TAG, "Register failed: " + registerResponse.getMsg());
+                        Timber.e("Register failed: %s", registerResponse.getMsg());
                         callback.onError(new Exception(registerResponse.getMsg()));
                     }
                 } else {
@@ -110,9 +108,9 @@ public class AuthRepository {
                             errorMessage = res.errorBody().string();
                         }
                     } catch (Exception e) {
-                        Log.e(TAG, "Error parsing error res", e);
+                        Timber.e(e, "Error parsing error res");
                     }
-                    Log.e(TAG, "Register error: " + errorMessage);
+                    Timber.e("Register error: %s", errorMessage);
                     callback.onError(new Exception(errorMessage));
                 }
             }
@@ -120,7 +118,7 @@ public class AuthRepository {
             @Override
             public void onFailure(Call<Result<RegisterResponse>> call, Throwable t) {
                 // 网络请求失败
-                Log.e(TAG, "Register network error", t);
+                Timber.e(t, "Register network error");
                 callback.onError(new Exception("网络连接失败，请检查网络设置"));
             }
         });

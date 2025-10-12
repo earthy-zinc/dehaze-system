@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -26,11 +25,14 @@ import com.pei.dehaze.utils.ToastUtils;
 import com.pei.dehaze.network.ApiService;
 import com.pei.dehaze.network.RetrofitClient;
 
+import java.util.Objects;
+
+import timber.log.Timber;
+
 /**
  * 登录界面Activity
  */
 public class LoginActivity extends AppCompatActivity {
-    private static final String TAG = "LoginActivity";
     private EditText etUsername;
     private EditText etPassword;
     private EditText etCaptchaCode;
@@ -56,7 +58,7 @@ public class LoginActivity extends AppCompatActivity {
 
         // 检查用户是否已登录，如果已登录则直接跳转到主界面
         if (UserManager.getInstance().isLoggedIn()) {
-            Log.d(TAG, "User is already logged in, redirecting to MainActivity");
+            Timber.d("User is already logged in, redirecting to MainActivity");
             startActivity(new Intent(this, MainActivity.class));
             finish();
             return;
@@ -228,7 +230,7 @@ public class LoginActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(retrofit2.Call<Result<CaptchaResponse>> call, Throwable t) {
-                Log.e(TAG, "获取验证码网络错误", t);
+                Timber.e(t, "获取验证码网络错误");
                 ToastUtils.showShort(LoginActivity.this, "网络连接失败，请检查网络设置");
             }
         });
@@ -251,7 +253,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onSuccess(Result<LoginResponse> res) {
                 // 登录成功
-                Log.d(TAG, "Login success: " + res.getMsg());
+                Timber.d("Login success: %s", res.getMsg());
                 ToastUtils.showShort(LoginActivity.this, "登录成功");
                 
                 // 跳转到主界面
@@ -262,7 +264,7 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onError(Exception e) {
                 // 登录失败
-                Log.e(TAG, "Login error: " + e.getMessage());
+                Timber.e("Login error: %s", e.getMessage());
                 ToastUtils.showShort(LoginActivity.this, e.getMessage());
                 
                 // 恢复按钮状态
@@ -270,7 +272,7 @@ public class LoginActivity extends AppCompatActivity {
                 btnLogin.setText("登录");
                 
                 // 如果是验证码错误，重新获取验证码
-                if (e.getMessage().contains("验证码")) {
+                if (Objects.requireNonNull(e.getMessage()).contains("验证码")) {
                     fetchCaptcha();
                     etCaptchaCode.setText("");
                 }

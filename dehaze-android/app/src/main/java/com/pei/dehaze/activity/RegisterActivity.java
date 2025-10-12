@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -19,11 +18,12 @@ import com.pei.dehaze.user.AuthRepository;
 import com.pei.dehaze.utils.InputValidator;
 import com.pei.dehaze.utils.ToastUtils;
 
+import timber.log.Timber;
+
 /**
  * 注册界面Activity
  */
 public class RegisterActivity extends AppCompatActivity {
-    private static final String TAG = "RegisterActivity";
     private EditText etUsername;
     private EditText etPassword;
     private EditText etConfirmPassword;
@@ -232,7 +232,7 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onSuccess(Result<RegisterResponse> response) {
                 // 注册成功
-                Log.d(TAG, "Register success: " + response.getMsg());
+                Timber.d("Register success: %s", response.getMsg());
                 ToastUtils.showShort(RegisterActivity.this, "注册成功，请登录");
                 
                 // 跳转到登录界面
@@ -243,7 +243,7 @@ public class RegisterActivity extends AppCompatActivity {
             @Override
             public void onError(Exception e) {
                 // 注册失败
-                Log.e(TAG, "Register error: " + e.getMessage());
+                Timber.e("Register error: %s", e.getMessage());
                 ToastUtils.showShort(RegisterActivity.this, e.getMessage());
                 
                 // 恢复按钮状态
