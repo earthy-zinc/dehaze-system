@@ -9,8 +9,13 @@ import {
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/NavigationContainer';
 
-const LoginScreen = () => {
+// 定义导航属性类型
+type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
+
+const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
@@ -44,8 +49,15 @@ const LoginScreen = () => {
     // 模拟登录请求
     setTimeout(() => {
       setLoading(false);
-      Alert.alert('成功', '登录成功');
-      // 这里应该跳转到主页面
+      Alert.alert('成功', '登录成功', [
+        {
+          text: '确定',
+          onPress: () => {
+            // 登录成功后跳转到主页
+            navigation.navigate('Home');
+          }
+        }
+      ]);
     }, 1000);
   };
 
