@@ -68,12 +68,11 @@
     },
     {
       "name": "dehaze-react-native-dev-server",
-      "request": "launch",
+      "command": "yarn run start",
       "cwd": "${workspaceFolder}/dehaze-react-native",
-      "runtimeArgs": ["run", "start"],
-      "runtimeExecutable": "yarn",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node",
+      "request": "launch",
+      "type": "node-terminal",
       "presentation": {
         "hidden": true,
         "group": "dehaze-react-native",
@@ -82,16 +81,15 @@
     },
     {
       "name": "dehaze-react-native",
-      "request": "launch",
+      "command": "yarn run android",
       "cwd": "${workspaceFolder}/dehaze-react-native",
-      "runtimeArgs": ["run", "android"],
-      "runtimeExecutable": "yarn",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node",
+      "request": "launch",
+      "type": "node-terminal",
       "presentation": {
         "hidden": true,
         "group": "dehaze-react-native",
-        "order": 1
+        "order": 2
       }
     },
     {
