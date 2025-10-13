@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -102,7 +103,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
           <View style={styles.form}>
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>用户名</Text>
               <TextInput
                 style={styles.input}
                 placeholder="请输入用户名"
@@ -115,7 +115,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>密码</Text>
               <TextInput
                 style={styles.input}
                 placeholder="请输入密码"
@@ -125,6 +124,23 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 returnKeyType={isRegister ? 'next' : 'done'}
               />
             </View>
+            <View style={styles.captcha}>
+              <TextInput
+                style={{...styles.input, ...styles.captchaInput}}
+                placeholder="请输入验证码"
+                value={formData.password}
+                onChangeText={(value) => handleInputChange('password', value)}
+                secureTextEntry
+                returnKeyType={isRegister ? 'next' : 'done'}
+              />
+              <View style={styles.captchaContainer}>
+                <Image
+                  style={styles.captchaImage}
+                  source={require('../../assets/logo.png')}
+                />
+              </View>
+            </View>
+
 
             {isRegister && (
               <View style={styles.inputGroup}>
@@ -178,7 +194,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫 版权所有</Text>
+          <Text style={styles.footerText}>Copyright © 2022 - 2024 Peixin Wu All Rights Reserved.</Text>
+          <Text style={styles.footerText}>武沛鑫 版权所有</Text>
           <Text style={styles.footerText}>渝ICP备2024111923号-2</Text>
         </View>
       </ScrollView>
@@ -189,7 +206,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f5f7fa',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -246,6 +263,26 @@ const styles = StyleSheet.create({
   inputGroup: {
     marginBottom: 16,
   },
+  captcha: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  captchaInput: {
+    flex: 1,
+  },
+  captchaContainer: { 
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 120,
+  },
+  captchaImage: {
+    width: 48,
+    height: 48,
+  },
   label: {
     fontSize: 16,
     fontWeight: '500',
@@ -291,7 +328,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 10,
+    marginTop: 6,
+    fontSize: 12,
     color: '#999',
   },
 });
