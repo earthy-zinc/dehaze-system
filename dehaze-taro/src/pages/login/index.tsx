@@ -139,7 +139,7 @@ const Login: React.FC = () => {
           </Button>
 
           <View className='footer-info'>
-            <Text className='info-text'>用户名: admin</Text>
+            <Text className='info-text mr-2'>用户名: admin</Text>
             <Text className='info-text'>密码: 123456</Text>
           </View>
         </Form>
