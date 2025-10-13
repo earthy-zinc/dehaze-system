@@ -1,3 +1,6 @@
+.vscode/.chrome
+.vscode/.msedge
+
 ### Java template
 # Compiled class file
 *.class
