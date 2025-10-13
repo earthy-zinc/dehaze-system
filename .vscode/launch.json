@@ -5,18 +5,39 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "type": "java",
-      "name": "Nacos",
+      "type": "msedge",
       "request": "launch",
-      "mainClass": "com.alibaba.nacos.Nacos",
-      "projectName": "com.pei-pei-nacos"
+      "name": "Edge",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "trace": true,
+      "userDataDir": "${workspaceFolder}/.vscode/.msedge",
+      "presentation": {
+        "hidden": false,
+        "group": "浏览器"
+      }
     },
     {
-      "type": "java",
-      "name": "PeiGatewayApplication",
+      "type": "chrome",
       "request": "launch",
-      "mainClass": "com.pei.gateway.PeiGatewayApplication",
-      "projectName": "com.pei-pei-gateway"
+      "name": "Chrome",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": true,
+      "trace": true,
+      "userDataDir": "${workspaceFolder}/.vscode/.chrome",
+      "presentation": {
+        "hidden": false,
+        "group": "浏览器"
+      }
+    },
+    {
+      "name": "dehaze-doc",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-doc",
+      "runtimeArgs": ["run", "docs:dev"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node"
     },
     {
       "name": "dehaze-front-vue",
@@ -37,22 +58,27 @@
       "type": "node"
     },
     {
-      "name": "dehaze-doc",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/dehaze-doc",
-      "runtimeArgs": ["run", "docs:dev"],
-      "runtimeExecutable": "pnpm",
-      "skipFiles": ["<node_internals>/**"],
-      "type": "node"
-    },
-    {
       "name": "dehaze-front-desktop",
       "request": "launch",
       "cwd": "${workspaceFolder}/dehaze-front-react/desktop",
       "runtimeArgs": ["run", "dev"],
-      "runtimeExecutable": "pnpm",
+      "runtimeExecutable": "yarn",
       "skipFiles": ["<node_internals>/**"],
       "type": "node"
+    },
+    {
+      "name": "dehaze-react-native-dev-server",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "runtimeArgs": ["run", "start"],
+      "runtimeExecutable": "yarn",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "presentation": {
+        "hidden": true,
+        "group": "dehaze-react-native",
+        "order": 1
+      }
     },
     {
       "name": "dehaze-react-native",
@@ -61,7 +87,25 @@
       "runtimeArgs": ["run", "android"],
       "runtimeExecutable": "yarn",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node"
+      "type": "node",
+      "presentation": {
+        "hidden": true,
+        "group": "dehaze-react-native",
+        "order": 1
+      }
+    },
+    {
+      "name": "dehaze-taro-h5",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-taro",
+      "runtimeArgs": ["run", "dev:h5"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "presentation": {
+        "hidden": false,
+        "group": "dehaze-taro"
+      }
     },
     {
       "name": "dehaze-taro-weapp",
@@ -70,16 +114,37 @@
       "runtimeArgs": ["run", "dev:weapp"],
       "runtimeExecutable": "pnpm",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node"
+      "type": "node",
+      "presentation": {
+        "hidden": false,
+        "group": "dehaze-taro"
+      }
     },
     {
-      "name": "dehaze-uniapp",
+      "name": "dehaze-uniapp-h5",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-uniapp",
+      "runtimeArgs": ["run", "dev:h5"],
+      "runtimeExecutable": "pnpm",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "presentation": {
+        "hidden": false,
+        "group": "dehaze-uniapp"
+      }
+    },
+    {
+      "name": "dehaze-uniapp-weixin",
       "request": "launch",
       "cwd": "${workspaceFolder}/dehaze-uniapp",
       "runtimeArgs": ["run", "dev:mp-weixin"],
       "runtimeExecutable": "pnpm",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node"
+      "type": "node",
+      "presentation": {
+        "hidden": false,
+        "group": "dehaze-uniapp"
+      }
     },
     {
       "name": "dehaze-java",
@@ -93,7 +158,12 @@
       "type": "debugpy",
       "request": "launch",
       "module": "flask",
-      "python": "${workspaceFolder}/dehaze-python/.venv/Scripts/python.exe",
+      "windows": {
+        "python": "${workspaceFolder}/dehaze-python/.venv/Scripts/python.exe"
+      },
+      "linux": {
+        "python": "${workspaceFolder}/dehaze-python/.venv/bin/python"
+      },
       "env": {
         "FLASK_APP": "dehaze-python/run.py",
         "FLASK_DEBUG": "1",
@@ -110,6 +180,41 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/dehaze-go/main.go"
+    },
+    {
+      "type": "java",
+      "name": "Nacos",
+      "request": "launch",
+      "mainClass": "com.alibaba.nacos.Nacos",
+      "projectName": "com.pei-pei-nacos",
+      "presentation": {
+        "hidden": true
+      }
+    },
+    {
+      "type": "java",
+      "name": "PeiGatewayApplication",
+      "request": "launch",
+      "mainClass": "com.pei.gateway.PeiGatewayApplication",
+      "projectName": "com.pei-pei-gateway",
+      "presentation": {
+        "hidden": true
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "dehaze-react-native-android",
+      "configurations": [
+        "dehaze-react-native-dev-server",
+        "dehaze-react-native"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "启动安卓模拟器",
+      "postDebugTask": "停止安卓模拟器",
+      "presentation": {
+        "hidden": false
+      }
     }
   ]
 }

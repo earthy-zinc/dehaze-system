@@ -10,6 +10,7 @@ export default defineUserConfig({
   title: "土味锌的阅读笔记",
   description: "全栈开发学习笔记",
   bundler: viteBundler(),
+  open: false,
   theme,
   plugins: [
     cachePlugin({
