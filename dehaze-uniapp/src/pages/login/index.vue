@@ -8,7 +8,7 @@
         <text class="version">1.10.1</text>
       </view>
 
-      <Form class="form-container">
+      <form class="form-container">
         <view class="form-group">
           <input
             class="form-input"
@@ -50,7 +50,7 @@
           <text class="info-text">用户名: admin</text>
           <text class="info-text">密码: 123456</text>
         </view>
-      </Form>
+      </form>
     </view>
 
     <view class="login-footer">

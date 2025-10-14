@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Input, Button, Text, Form } from '@tarojs/components';
+
 import { useDidShow } from '@tarojs/taro';
 import './index.less';
 
