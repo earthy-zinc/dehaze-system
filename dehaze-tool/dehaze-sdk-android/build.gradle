@@ -1,0 +1,50 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+dependencies {
+    // Retrofit for networking
+    api 'com.squareup.retrofit2:retrofit:2.9.0'
+    api 'com.squareup.retrofit2:converter-gson:2.9.0'
+    
+    // OkHttp for logging
+    api 'com.squareup.okhttp3:logging-interceptor:4.9.1'
+    
+    // Lombok for reducing boilerplate code
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+    
+    // JUnit for testing
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:3.11.2'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.pei.dehaze'
+            artifactId = 'sdk-android'
+            version = '1.0.0'
+            
+            afterEvaluate {
+                from components.java
+            }
+        }
+    }
+}
+
+// 添加测试配置
+test {
+    useJUnit()
+    
+    // 启用测试日志
+    testLogging {
+        events "passed", "skipped", "failed"
+    }
+}
