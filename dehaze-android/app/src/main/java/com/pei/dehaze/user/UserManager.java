@@ -88,7 +88,7 @@ public class UserManager {
             editor.putBoolean(KEY_IS_LOGGED_IN, true);
             editor.apply();
 
-            Timber.d("User login info saved: username=" + username);
+            Timber.d("User login info saved: username=%s", username);
         }
     }
 
