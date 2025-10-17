@@ -98,3 +98,42 @@ class SysEvalLog(mysql.Model):
         timezone.utc), onupdate=datetime.now(timezone.utc), comment='更新时间')
     create_by = Column(BigInteger, nullable=True, comment='创建人ID')
     update_by = Column(BigInteger, nullable=True, comment='修改人ID')
+
+
+class SysUser(mysql.Model):
+    __tablename__ = 'sys_user'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True, comment='用户ID')
+    username = Column(String(64), unique=True, nullable=False, comment='用户名')
+    nickname = Column(String(64), comment='昵称')
+    gender = Column(SmallInteger, default=1, comment='性别((1:男;2:女))')
+    password = Column(String(100), nullable=False, comment='密码')
+    dept_id = Column(BigInteger, comment='部门ID')
+    avatar = Column(Text, comment='用户头像')
+    mobile = Column(String(20), comment='联系方式')
+    status = Column(SmallInteger, default=1, comment='用户状态((1:正常;0:禁用))')
+    email = Column(String(128), comment='用户邮箱')
+    deleted = Column(SmallInteger, default=0, comment='逻辑删除标识(0:未删除;1:已删除)')
+    create_time = Column(DateTime, default=datetime.now(timezone.utc), comment='创建时间')
+    update_time = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment='更新时间')
+
+
+class SysRole(mysql.Model):
+    __tablename__ = 'sys_role'
+    
+    id = Column(BigInteger, primary_key=True, autoincrement=True, comment='角色ID')
+    name = Column(String(64), nullable=False, comment='角色名称')
+    code = Column(String(64), unique=True, nullable=False, comment='角色编码')
+    sort = Column(Integer, default=0, comment='显示顺序')
+    status = Column(SmallInteger, default=1, comment='角色状态(1-正常；0-停用)')
+    deleted = Column(SmallInteger, default=0, comment='逻辑删除标识(0-未删除；1-已删除)')
+    data_scope = Column(SmallInteger, default=1, comment='数据权限')
+    create_time = Column(DateTime, default=datetime.now(timezone.utc), comment='创建时间')
+    update_time = Column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment='更新时间')
+
+
+class SysUserRole(mysql.Model):
+    __tablename__ = 'sys_user_role'
+    
+    user_id = Column(BigInteger, primary_key=True, nullable=False, comment='用户ID')
+    role_id = Column(BigInteger, primary_key=True, nullable=False, comment='角色ID')
