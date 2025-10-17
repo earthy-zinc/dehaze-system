@@ -16,35 +16,6 @@ import (
 
 type AuthApi struct{}
 
-// 类型转换
-func interfaceToInt(v any) (i int) {
-	switch v := v.(type) {
-	case int:
-		i = v
-	case int8:
-		i = int(v)
-	case int16:
-		i = int(v)
-	case int32:
-		i = int(v)
-	case int64:
-		i = int(v)
-	case uint:
-		i = int(v)
-	case uint8:
-		i = int(v)
-	case uint16:
-		i = int(v)
-	case uint32:
-		i = int(v)
-	case uint64:
-		i = int(v)
-	default:
-		i = 0
-	}
-	return
-}
-
 func (a *AuthApi) Captcha(c *gin.Context) {
 	// 判断验证码是否开启
 	openCaptcha := global.CONFIG.Captcha.RetryCount     // 是否开启防爆次数
@@ -55,7 +26,7 @@ func (a *AuthApi) Captcha(c *gin.Context) {
 		global.LOCAL_CACHE.Set(key, 1, time.Second*time.Duration(openCaptchaTimeOut))
 	}
 
-	if openCaptcha != 0 && interfaceToInt(v) >= openCaptcha {
+	if openCaptcha != 0 && utils.InterfaceToInt(v) >= openCaptcha {
 		common.FailWithMessage("验证码获取失败，已经达到最大获取次数，请稍后重试", c)
 		return
 	}
@@ -116,7 +87,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 		global.LOCAL_CACHE.Set(userIp, 1, time.Second*time.Duration(captchaTimeOut))
 	}
 
-	var oc bool = retryCount == 0 || retryCount < interfaceToInt(v)
+	var oc bool = retryCount == 0 || retryCount < utils.InterfaceToInt(v)
 	var store = utils.GetCaptchaStore()
 	if !oc && (loginReq.CaptchaCode == "" || loginReq.CaptchaKey == "" || !store.Verify(loginReq.CaptchaKey, loginReq.CaptchaCode, true)) {
 		// 验证码次数+1
