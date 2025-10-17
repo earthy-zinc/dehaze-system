@@ -1,0 +1,10 @@
+{
+  "name": "dehaze-sdk-harmony",
+  "version": "1.0.0",
+  "description": "鸿蒙原生SDK，用于与去雾系统后端API进行交互",
+  "main": "index.ets",
+  "author": "Dehaze Team",
+  "license": "ISC",
+  "dependencies": {
+  }
+}
