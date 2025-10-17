@@ -10,15 +10,20 @@ class Config:
     # 获取当前项目目录
     PROJECT_PATH = path.dirname(path.abspath(__file__))
     MODEL_PATH = path.join(PROJECT_PATH, "trained_model")
+    
+    # JWT配置
+    SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
+    JWT_SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
+    JWT_ACCESS_TOKEN_EXPIRES = 7200
+    
+    # 默认用户密码
+    DEFAULT_PASSWORD = "123456"
 
 
 class DevelopmentConfig(Config):
     DEBUG = True
     FLASK_ENV = 'development'
     BASE_URL = "http://localhost:8989/api/v1/files"
-
-    JWT_SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
-    JWT_ACCESS_TOKEN_EXPIRES = 7200
 
     DATASET_PATH = "/mnt/d/DeepLearning/dataset"
 
@@ -48,9 +53,6 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     SECRET_KEY = "1234"
     BASE_URL = "http://dehaze-python/api/v1/files"
-
-    JWT_SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
-    JWT_ACCESS_TOKEN_EXPIRES = 7200
 
     DATASET_PATH = "/app/dataset"
 
