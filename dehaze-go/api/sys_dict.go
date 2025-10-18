@@ -188,7 +188,7 @@ func (api *SysDictApi) DeleteDict(c *gin.Context) {
 // @Router /api/v1/dict/{typeCode}/options [get]
 func (api *SysDictApi) ListDictOptions(c *gin.Context) {
 	// 获取路径参数
-	typeCode := c.Param("typeCode")
+	typeCode := c.Param("id")
 
 	// 调用服务获取字典下拉列表
 	options, err := api.dictService.ListDictOptions(typeCode)

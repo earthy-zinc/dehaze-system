@@ -13,6 +13,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
+	"github.com/earthyzinc/dehaze-go/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
 )
@@ -120,8 +121,8 @@ func (s *FileTestSuite) TestDeleteFile() {
 
 	// 先创建一个文件记录用于删除
 	file := &model.SysFile{
-		Type:       ".txt",
-		URL:        "http://localhost/test.txt",
+		Type:       utils.StringPtr(".txt"),
+		URL:        utils.StringPtr("http://localhost/test.txt"),
 		Name:       "test.txt",
 		ObjectName: "test/test.txt",
 		Size:       "18",

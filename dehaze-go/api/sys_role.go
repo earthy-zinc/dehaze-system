@@ -29,7 +29,7 @@ func (api *SysRoleApi) GetRolePage(c *gin.Context) {
 	// 解析查询参数
 	var queryParams query.RolePageQuery
 	queryParams.Keywords = c.Query("keywords")
-	
+
 	if pageNumStr := c.Query("pageNum"); pageNumStr != "" {
 		if pageNum, err := strconv.Atoi(pageNumStr); err == nil {
 			queryParams.PageNum = pageNum
@@ -39,7 +39,7 @@ func (api *SysRoleApi) GetRolePage(c *gin.Context) {
 	} else {
 		queryParams.PageNum = 1
 	}
-	
+
 	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
 		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
 			queryParams.PageSize = pageSize
@@ -146,7 +146,7 @@ func (api *SysRoleApi) GetRoleForm(c *gin.Context) {
 // @Router /api/v1/roles/{id} [put]
 func (api *SysRoleApi) UpdateRole(c *gin.Context) {
 	// 获取路径参数
-	idStr := c.Param("id")
+	idStr := c.Param("roleId")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		common.FailWithMessage("角色ID格式不正确", c)
