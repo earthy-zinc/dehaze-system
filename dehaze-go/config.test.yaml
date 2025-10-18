@@ -30,7 +30,7 @@ captcha:
 
 db:
   type: mysql
-  path: 127.0.0.1
+  path: 10.242.150.100
   port: 3306
   config: charset=utf8mb4&parseTime=True&loc=Local
   name: dehaze_test
@@ -49,6 +49,6 @@ jwt:
 redis:
   #是否使用redis集群模式
   useCluster: false
-  addr: 127.0.0.1:6379
+  addr: 10.242.150.100:6379
   password: "123456"
   db: 4

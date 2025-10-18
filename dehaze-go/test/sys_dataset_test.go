@@ -8,8 +8,10 @@ import (
 	"testing"
 
 	"github.com/earthyzinc/dehaze-go/api"
+	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/model/bo"
+	"github.com/earthyzinc/dehaze-go/model/query"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
@@ -218,6 +220,143 @@ func (s *DatasetServiceTestSuite) TestDatasetService_Delete() {
 	err = s.GetDB().Where("id = ? AND deleted = ?", testDataset.ID, 0).First(&deletedDataset).Error
 	s.AssertError(err) // 应该找不到未删除的记录
 
+}
+
+// TestGetDatasetList_DBError 测试数据库错误情况
+func (s *DatasetServiceTestSuite) TestGetDatasetList_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 执行查询
+	queryParams := query.DatasetQuery{
+		Keywords: "test",
+	}
+	datasetVOs, err := s.datasetService.GetDatasetList(queryParams)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.Assert().Nil(datasetVOs)
+}
+
+// TestGetDatasetOptions_DBError 测试数据库错误情况
+func (s *DatasetServiceTestSuite) TestGetDatasetOptions_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取下拉选项
+	options, err := s.datasetService.GetDatasetOptions()
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.Assert().Nil(options)
+}
+
+// TestGetDatasetForm_DBError 测试数据库错误情况
+func (s *DatasetServiceTestSuite) TestGetDatasetForm_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取表单数据
+	datasetFormBO, err := s.datasetService.GetDatasetForm(1)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.AssertEqual(bo.DatasetFormBO{}, datasetFormBO)
+}
+
+// TestSaveDataset_DBError 测试保存数据集时数据库错误
+func (s *DatasetServiceTestSuite) TestSaveDataset_DBError() {
+	// 准备数据集表单数据
+	datasetFormBO := bo.DatasetFormBO{
+		ParentID:    0,
+		Type:        "test_type_db_error",
+		Name:        "测试数据库错误数据集",
+		Description: "测试数据库错误数据集描述",
+		Path:        "/test/db/error",
+		Status:      1,
+	}
+
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 保存数据集
+	err := s.datasetService.SaveDataset(datasetFormBO)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestUpdateDataset_DBError 测试更新数据集时数据库错误
+func (s *DatasetServiceTestSuite) TestUpdateDataset_DBError() {
+	// 准备更新数据
+	datasetFormBO := bo.DatasetFormBO{
+		ParentID:    0,
+		Type:        "test_type_update_db_error",
+		Name:        "测试更新数据库错误数据集",
+		Description: "测试更新数据库错误数据集描述",
+		Path:        "/test/update/db/error",
+		Status:      1,
+	}
+
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 更新数据集
+	err := s.datasetService.UpdateDataset(1, datasetFormBO)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestDeleteDatasets_DBError 测试删除数据集时数据库错误
+func (s *DatasetServiceTestSuite) TestDeleteDatasets_DBError() {
+	// 准备删除数据
+	ids := []int64{1, 2, 3}
+
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 删除数据集
+	err := s.datasetService.DeleteDatasets(ids)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
 }
 
 // 运行测试套件
