@@ -20,6 +20,14 @@ func Routers() {
 	PublicGroup := Router.Group("/api/v1")
 	{
 		router.RouterGroupApp.InitAuthRouter(PublicGroup)
+		router.RouterGroupApp.InitSysUserRouter(PublicGroup)
+		router.RouterGroupApp.InitSysRoleRouter(PublicGroup)
+		router.RouterGroupApp.InitSysDeptRouter(PublicGroup)
+		router.RouterGroupApp.InitSysDictRouter(PublicGroup)
+		router.RouterGroupApp.InitDatasetRouter(PublicGroup)
+		router.RouterGroupApp.InitFileRouter(PublicGroup)
+		router.RouterGroupApp.InitDatasetItemRouter(PublicGroup)
+		router.RouterGroupApp.InitItemFileRouter(PublicGroup)
 	}
 
 	global.GIN = Router

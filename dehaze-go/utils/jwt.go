@@ -47,7 +47,7 @@ func (j *JWT) CreateClaims(authInfo *model.UserAuthInfo) CustomClaims {
 
 	claims := CustomClaims{
 		UserID:      authInfo.UserId,
-		DeptID:      authInfo.DeptId,
+		DeptID:      authInfo.DeptId, // 修复类型匹配
 		DataScope:   authInfo.DataScope,
 		Authorities: authorities,
 		RegisteredClaims: jwt.RegisteredClaims{

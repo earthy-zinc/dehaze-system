@@ -38,9 +38,27 @@ func Migrate() {
 	global.LOG.Info("当前处于开发/测试环境，迁移数据库中")
 
 	err := database.AutoMigrate(
-		model.SysMenu{},
-		model.SysRole{},
 		model.SysUser{},
+		model.SysRole{},
+
+		model.SysDept{},
+		model.SysMenu{},
+
+		model.SysDict{},
+		model.SysDictType{},
+
+		model.SysAlgorithm{},
+
+		model.SysDataset{},
+		model.SysDatasetItem{},
+
+		model.SysEvalLog{},
+		model.SysPredLog{},
+
+		model.SysFile{},
+		model.SysWpxFile{},
+
+		model.SysOperationRecord{},
 	)
 
 	if err != nil {
