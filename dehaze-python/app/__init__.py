@@ -1,8 +1,8 @@
 from flask import Flask
 from config import config
-from app.route.model import model_blueprint
 from app.utils.error_handlers import register_error_handlers
 from app.utils.logging import setup_logging
+
 
 def create_app(config_name: str):
     setup_logging()
@@ -12,8 +12,9 @@ def create_app(config_name: str):
     init_extensions(app)
     # 注册错误处理
     register_error_handlers(app)
-    # 注册蓝图
-    app.register_blueprint(model_blueprint)
+    # 注册路由
+    from app.route import init_routes
+    init_routes(app)
     return app
 
 
