@@ -376,6 +376,25 @@ class UserService:
         return False
 
     @staticmethod
+    def update_user_status(user_id: int, status: int) -> bool:
+        """
+        更新用户状态
+        
+        Args:
+            user_id (int): 用户ID
+            status (int): 状态（1-正常，0-禁用）
+            
+        Returns:
+            bool: 是否更新成功
+        """
+        user = UserService.get_user_by_id(user_id)
+        if user:
+            user.status = status
+            mysql.session.commit()
+            return True
+        return False
+
+    @staticmethod
     def delete_user(user_id: int) -> bool:
         """
         删除用户（逻辑删除）

@@ -35,12 +35,26 @@
           <set>
             <option value="$PROJECT_DIR$/dehaze-react-native/android" />
             <option value="$PROJECT_DIR$/dehaze-react-native/android/app" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-async-storage/async-storage/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-clipboard/clipboard/android" />
             <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin" />
             <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/react-native-gradle-plugin" />
             <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/settings-plugin" />
             <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/shared" />
             <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin/shared-testutil" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/lottie-react-native/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-geolocation-service/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-gesture-handler/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-image-picker/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-pager-view/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-reanimated/android" />
             <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-safe-area-context/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-screens/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-sqlite-storage/platforms/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-svg/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-vision-camera/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-webview/android" />
+            <option value="$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-worklets/android" />
           </set>
         </option>
       </GradleProjectSettings>
