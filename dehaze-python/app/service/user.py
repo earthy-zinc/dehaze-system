@@ -1,6 +1,6 @@
+import bcrypt
 from app.extensions import mysql
 from app.models import SysUser, SysRole, SysUserRole
-from werkzeug.security import check_password_hash, generate_password_hash
 from typing import Optional, List, Dict, Any
 import jwt
 from datetime import datetime, timedelta
@@ -9,6 +9,35 @@ from flask import current_app
 
 class UserService:
     """用户服务类，处理用户相关的业务逻辑"""
+
+    @staticmethod
+    def _hash_password(password: str) -> str:
+        """
+        使用BCrypt算法哈希密码，与Java版本保持一致
+        
+        Args:
+            password (str): 明文密码
+            
+        Returns:
+            str: 哈希后的密码
+        """
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
+
+    @staticmethod
+    def _check_password(password: str, hashed: str) -> bool:
+        """
+        验证密码是否匹配
+        
+        Args:
+            password (str): 明文密码
+            hashed (str): 哈希后的密码
+            
+        Returns:
+            bool: 是否匹配
+        """
+        return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
     @staticmethod
     def get_user_by_username(username: str) -> Optional[SysUser]:
@@ -49,7 +78,7 @@ class UserService:
             Optional[SysUser]: 验证成功的用户对象，失败返回None
         """
         user = UserService.get_user_by_username(username)
-        if user and check_password_hash(user.password, password):
+        if user and UserService._check_password(password, user.password):
             return user
         return None
 
@@ -127,7 +156,7 @@ class UserService:
         Returns:
             SysUser: 新创建的用户对象
         """
-        hashed_password = generate_password_hash(password)
+        hashed_password = UserService._hash_password(password)
         user = SysUser(
             username=username,
             password=hashed_password,
@@ -172,7 +201,7 @@ class UserService:
             dept_id=dept_id,
             mobile=mobile,
             email=email,
-            password=generate_password_hash(current_app.config.get('DEFAULT_PASSWORD', '123456'))
+            password=UserService._hash_password(current_app.config.get('DEFAULT_PASSWORD', '123456'))
         )
         mysql.session.add(user)
         mysql.session.flush()  # 获取用户ID但不提交事务
@@ -298,7 +327,7 @@ class UserService:
         """
         user = UserService.get_user_by_id(user_id)
         if user:
-            user.password = generate_password_hash(new_password)
+            user.password = UserService._hash_password(new_password)
             mysql.session.commit()
             return True
         return False
