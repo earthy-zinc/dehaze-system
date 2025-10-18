@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+	
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/model"
 	"golang.org/x/crypto/bcrypt"
@@ -9,6 +11,16 @@ import (
 type UserService struct{}
 
 func (userService *UserService) Login(u *model.SysUser) (userAuthInfo *model.UserAuthInfo, err error) {
+	// 检查输入参数
+	if u == nil {
+		return nil, fmt.Errorf("用户信息不能为空")
+	}
+	
+	// 检查数据库连接
+	if global.DB == nil {
+		return nil, fmt.Errorf("数据库连接未初始化")
+	}
+	
 	inputPassword := u.Password
 	// 先通过用户名查找用户
 	err = global.DB.Where("username = ? AND deleted = 0", u.Username).First(u).Error
@@ -28,6 +40,11 @@ func (userService *UserService) Login(u *model.SysUser) (userAuthInfo *model.Use
 
 // GetUserAuthInfo 根据用户名获取认证信息
 func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *model.UserAuthInfo, err error) {
+	// 检查数据库连接
+	if global.DB == nil {
+		return nil, fmt.Errorf("数据库连接未初始化")
+	}
+	
 	userAuthInfo = &model.UserAuthInfo{}
 
 	user := model.SysUser{}

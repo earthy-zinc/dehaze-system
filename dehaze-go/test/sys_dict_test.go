@@ -8,8 +8,11 @@ import (
 	"testing"
 
 	"github.com/earthyzinc/dehaze-go/api"
+	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model/bo"
+	"github.com/earthyzinc/dehaze-go/model/query"
+	"github.com/earthyzinc/dehaze-go/model/vo"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/suite"
@@ -338,6 +341,141 @@ func (s *DictServiceTestSuite) TestDictService_Delete() {
 	err = s.dictTypeService.DeleteDictTypes("1")
 	s.AssertNoError(err)
 
+}
+
+// TestGetDictPage_DBError 测试数据库错误情况
+func (s *DictServiceTestSuite) TestGetDictPage_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 执行查询
+	queryParams := query.DictPageQuery{
+		PageNum:  1,
+		PageSize: 10,
+	}
+	pageResult, err := s.dictService.GetDictPage(queryParams)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.AssertEqual(vo.PageResult[vo.DictPageVO]{}, pageResult)
+}
+
+// TestGetDictForm_DBError 测试数据库错误情况
+func (s *DictServiceTestSuite) TestGetDictForm_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取表单数据
+	dictFormBO, err := s.dictService.GetDictForm(1)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.AssertEqual(bo.DictFormBO{}, dictFormBO)
+}
+
+// TestSaveDict_DBError 测试保存字典时数据库错误
+func (s *DictServiceTestSuite) TestSaveDict_DBError() {
+	// 准备字典表单数据
+	dictFormBO := bo.DictFormBO{
+		TypeCode: "test_type_db_error",
+		Name:     "测试数据库错误字典",
+		Value:    "test_value_db_error",
+		Status:   1,
+		Sort:     1,
+		Remark:   "测试数据库错误字典备注",
+	}
+
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 保存字典
+	err := s.dictService.SaveDict(dictFormBO)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestUpdateDict_DBError 测试更新字典时数据库错误
+func (s *DictServiceTestSuite) TestUpdateDict_DBError() {
+	// 准备更新数据
+	dictFormBO := bo.DictFormBO{
+		TypeCode: "test_type_update_db_error",
+		Name:     "测试更新数据库错误字典",
+		Value:    "test_value_update_db_error",
+		Status:   1,
+		Sort:     1,
+		Remark:   "测试更新数据库错误字典备注",
+	}
+
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 更新字典
+	err := s.dictService.UpdateDict(1, dictFormBO)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestDeleteDict_DBError 测试删除字典时数据库错误
+func (s *DictServiceTestSuite) TestDeleteDict_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 删除字典
+	err := s.dictService.DeleteDict("1,2,3")
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestListDictOptions_DBError 测试获取字典下拉列表时数据库错误
+func (s *DictServiceTestSuite) TestListDictOptions_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取字典下拉列表
+	options, err := s.dictService.ListDictOptions("test_type")
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.Assert().Nil(options)
 }
 
 // 运行测试套件
