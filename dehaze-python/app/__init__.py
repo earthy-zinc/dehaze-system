@@ -1,7 +1,11 @@
 from flask import Flask
+from flask_socketio import SocketIO
 from config import config
 from app.utils.error_handlers import register_error_handlers
 from app.utils.logging import setup_logging
+
+# 初始化SocketIO
+socketio = SocketIO(cors_allowed_origins="*")
 
 
 def create_app(config_name: str):
@@ -10,6 +14,11 @@ def create_app(config_name: str):
     app.config.from_object(config[config_name])
     # 初始化扩展
     init_extensions(app)
+    # 初始化SocketIO
+    socketio.init_app(app)
+    # 初始化WebSocket服务
+    from app.service.websocket_service import WebSocketService
+    WebSocketService(socketio)
     # 注册错误处理
     register_error_handlers(app)
     # 注册路由

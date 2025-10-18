@@ -1,5 +1,6 @@
 import hashlib
 import math
+import os
 from io import BytesIO
 
 
@@ -39,3 +40,12 @@ def get_file_bytes(filepath: str) -> BytesIO:
         img_bytes = BytesIO(f.read())
         img_bytes.seek(0)
         return img_bytes
+
+
+def get_file_size(filepath: str) -> str:
+    """获取文件大小"""
+    try:
+        size = os.path.getsize(filepath)
+        return convert_size(size)
+    except:
+        return "0B"
