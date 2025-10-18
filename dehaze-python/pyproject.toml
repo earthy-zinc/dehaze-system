@@ -19,6 +19,7 @@ dependencies = [
     "torch>=2.9.0",
     "torchvision>=0.24.0",
     "bcrypt>=4.0.0",
+    "flask-socketio>=5.5.1",
 ]
 
 [project.optional-dependencies]
