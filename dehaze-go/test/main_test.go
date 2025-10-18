@@ -10,7 +10,10 @@ import (
 
 // TestMain 设置测试环境
 func TestMain(m *testing.M) {
-	os.Setenv("DEHAZE_CONFIG", "../config.test.yaml")
+	err := os.Setenv("DEHAZE_CONFIG", "../config.test.yaml")
+	if err != nil {
+		os.Exit(-1)
+	}
 	// 初始化配置和日志
 	initialize.Viper()
 	initialize.Zap()

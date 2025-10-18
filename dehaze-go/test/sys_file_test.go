@@ -14,24 +14,32 @@ import (
 	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestSysFile(t *testing.T) {
+// FileTestSuite 文件服务测试套件
+// 使用事务隔离，每个测试方法都在独立事务中运行
+type FileTestSuite struct {
+	TransactionTestSuite
+}
+
+// SetupSuite 在整个测试套件开始前运行一次
+func (s *FileTestSuite) SetupSuite() {
 	// 初始化配置和数据库
 	initialize.Viper()
 	initialize.Gorm()
 
 	// 检查数据库连接是否可用
 	if global.DB == nil {
-		t.Skip("数据库连接不可用，跳过测试")
+		s.T().Skip("数据库连接不可用，跳过测试")
 	}
+}
 
+// TestUploadFile 测试文件上传
+func (s *FileTestSuite) TestUploadFile() {
 	// 自动迁移SysFile表
-	err := global.DB.AutoMigrate(&model.SysFile{})
-	if err != nil {
-		t.Fatalf("自动迁移SysFile表失败: %v", err)
-	}
+	err := s.GetDB().AutoMigrate(&model.SysFile{})
+	s.Require().NoError(err, "自动迁移SysFile表失败")
 
 	// 创建测试路由
 	gin.SetMode(gin.TestMode)
@@ -39,87 +47,105 @@ func TestSysFile(t *testing.T) {
 	initialize.Routers()
 
 	// 创建临时测试文件
-	tempFile, err := createTempFile()
-	if err != nil {
-		t.Fatalf("创建临时文件失败: %v", err)
-	}
+	tempFile, err := s.createTempFile()
+	s.Require().NoError(err, "创建临时文件失败")
 	defer os.Remove(tempFile.Name())
 
-	t.Run("UploadFile", func(t *testing.T) {
-		// 准备multipart表单数据
-		var b bytes.Buffer
-		w := multipart.NewWriter(&b)
-		
-		// 添加文件字段
-		fw, err := w.CreateFormFile("file", "test.txt")
-		assert.NoError(t, err)
-		
-		// 写入文件内容
-		_, err = io.WriteString(fw, "This is a test file")
-		assert.NoError(t, err)
-		
-		// 添加其他字段
-		w.WriteField("modelId", "1")
-		w.Close()
+	// 准备multipart表单数据
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
 
-		// 创建请求
-		req, _ := http.NewRequest("POST", "/api/v1/files", &b)
-		req.Header.Set("Content-Type", w.FormDataContentType())
-		
-		// 创建响应记录器
-		resp := httptest.NewRecorder()
-		
-		// 执行请求
-		router.ServeHTTP(resp, req)
-		
-		// 验证响应
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
+	// 添加文件字段
+	fw, err := w.CreateFormFile("file", "test.txt")
+	s.Require().NoError(err)
 
-	t.Run("CheckFile", func(t *testing.T) {
-		// 创建请求
-		req, _ := http.NewRequest("GET", "/api/v1/files/check?md5=test_md5", nil)
-		
-		// 创建响应记录器
-		resp := httptest.NewRecorder()
-		
-		// 执行请求
-		router.ServeHTTP(resp, req)
-		
-		// 验证响应
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
+	// 写入文件内容
+	_, err = io.WriteString(fw, "This is a test file")
+	s.Require().NoError(err)
 
-	t.Run("DeleteFile", func(t *testing.T) {
-		// 先创建一个文件记录用于删除
-		file := model.SysFile{
-			Type:       ".txt",
-			URL:        "http://localhost/test.txt",
-			Name:       "test.txt",
-			ObjectName: "test/test.txt",
-			Size:       "18",
-			Path:       "/tmp/test.txt",
-			MD5:        "test_md5_delete",
-		}
-		result := global.DB.Create(&file)
-		assert.NoError(t, result.Error)
+	// 添加其他字段
+	w.WriteField("modelId", "1")
+	w.Close()
 
-		// 创建请求
-		req, _ := http.NewRequest("DELETE", fmt.Sprintf("/api/v1/files?fileId=%d", file.ID), nil)
-		
-		// 创建响应记录器
-		resp := httptest.NewRecorder()
-		
-		// 执行请求
-		router.ServeHTTP(resp, req)
-		
-		// 验证响应
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
+	// 创建请求
+	req, _ := http.NewRequest("POST", "/api/v1/files", &b)
+	req.Header.Set("Content-Type", w.FormDataContentType())
+
+	// 创建响应记录器
+	resp := httptest.NewRecorder()
+
+	// 执行请求
+	router.ServeHTTP(resp, req)
+
+	// 验证响应
+	s.Assert().Equal(http.StatusOK, resp.Code)
+
+}
+
+// TestCheckFile 测试文件检查
+func (s *FileTestSuite) TestCheckFile() {
+	// 自动迁移SysFile表
+	err := s.GetDB().AutoMigrate(&model.SysFile{})
+	s.Require().NoError(err, "自动迁移SysFile表失败")
+
+	// 创建测试路由
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	initialize.Routers()
+
+	// 创建请求
+	req, _ := http.NewRequest("GET", "/api/v1/files/check?md5=test_md5", nil)
+
+	// 创建响应记录器
+	resp := httptest.NewRecorder()
+
+	// 执行请求
+	router.ServeHTTP(resp, req)
+
+	// 验证响应
+	s.Assert().Equal(http.StatusOK, resp.Code)
+
+}
+
+// TestDeleteFile 测试文件删除
+func (s *FileTestSuite) TestDeleteFile() {
+	// 自动迁移SysFile表
+	err := s.GetDB().AutoMigrate(&model.SysFile{})
+	s.Require().NoError(err, "自动迁移SysFile表失败")
+
+	// 创建测试路由
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	initialize.Routers()
+
+	// 先创建一个文件记录用于删除
+	file := &model.SysFile{
+		Type:       ".txt",
+		URL:        "http://localhost/test.txt",
+		Name:       "test.txt",
+		ObjectName: "test/test.txt",
+		Size:       "18",
+		Path:       "/tmp/test.txt",
+		MD5:        "test_md5_delete",
+	}
+	s.Require().NoError(s.CreateTestData(file))
+
+	// 创建请求
+	req, _ := http.NewRequest("DELETE", fmt.Sprintf("/api/v1/files?fileId=%d", file.ID), nil)
+
+	// 创建响应记录器
+	resp := httptest.NewRecorder()
+
+	// 执行请求
+	router.ServeHTTP(resp, req)
+
+	// 验证响应
+	s.Assert().Equal(http.StatusOK, resp.Code)
+
 }
 
 // createTempFile 创建临时文件用于测试
-func createTempFile() (*os.File, error) {
+func (s *FileTestSuite) createTempFile() (*os.File, error) {
 	// 创建临时文件
 	tempFile, err := os.CreateTemp("", "test_*.txt")
 	if err != nil {
@@ -142,4 +168,9 @@ func createTempFile() (*os.File, error) {
 	}
 
 	return tempFile, nil
+}
+
+// 运行测试套件
+func TestFileService(t *testing.T) {
+	suite.Run(t, new(FileTestSuite))
 }

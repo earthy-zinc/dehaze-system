@@ -12,10 +12,24 @@ import (
 	"github.com/earthyzinc/dehaze-go/model/query"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestMenuAPI(t *testing.T) {
+// MenuTestSuite 菜单服务测试套件
+// 使用事务隔离，每个测试方法都在独立事务中运行
+type MenuTestSuite struct {
+	TransactionTestSuite
+	menuService *service.MenuService
+}
+
+// SetupSuite 在整个测试套件开始前运行一次
+func (s *MenuTestSuite) SetupSuite() {
+	// 初始化服务
+	s.menuService = &service.ServiceGroupApp.MenuService
+}
+
+// TestMenuCRUD 测试菜单的增删改查功能
+func (s *MenuTestSuite) TestMenuCRUD() {
 	// 创建测试路由器
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -34,447 +48,402 @@ func TestMenuAPI(t *testing.T) {
 		apiGroup.PATCH("/menus/:menuId", api.ApiGroupApp.SysMenuApi.UpdateMenuVisible)
 	}
 
-	t.Run("TestMenuCRUD", func(t *testing.T) {
-		// 创建菜单
-		menuForm := bo.MenuForm{
-			ParentID:  0,
-			Name:      "测试菜单",
-			Type:      1,
-			Path:      "/test",
-			Component: "test/index",
-			Visible:   1,
-			Sort:      1,
-			Icon:      "test-icon",
-		}
+	// 创建菜单
+	menuForm := bo.MenuForm{
+		ParentID:  0,
+		Name:      "测试菜单",
+		Type:      1,
+		Path:      "/test",
+		Component: "test/index",
+		Visible:   1,
+		Sort:      1,
+		Icon:      "test-icon",
+	}
 
-		jsonValue, _ := json.Marshal(menuForm)
-		req, _ := http.NewRequest("POST", "/api/v1/menus", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	jsonValue, _ := json.Marshal(menuForm)
+	req, _ := http.NewRequest("POST", "/api/v1/menus", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 查询菜单列表
-		req, _ = http.NewRequest("GET", "/api/v1/menus", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 查询菜单列表
+	req, _ = http.NewRequest("GET", "/api/v1/menus", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 获取菜单下拉选项
-		req, _ = http.NewRequest("GET", "/api/v1/menus/options", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 获取菜单下拉选项
+	req, _ = http.NewRequest("GET", "/api/v1/menus/options", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 获取路由列表
-		req, _ = http.NewRequest("GET", "/api/v1/menus/routes", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 获取路由列表
+	req, _ = http.NewRequest("GET", "/api/v1/menus/routes", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 获取菜单表单数据
-		req, _ = http.NewRequest("GET", "/api/v1/menus/1/form", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 获取菜单表单数据
+	req, _ = http.NewRequest("GET", "/api/v1/menus/1/form", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		// 更新菜单
-		updateMenuForm := bo.MenuForm{
-			ParentID:  0,
-			Name:      "更新后的测试菜单",
-			Type:      1,
-			Path:      "/test-update",
-			Component: "test/update",
-			Visible:   1,
-			Sort:      2,
-			Icon:      "test-icon-update",
-		}
+	// 更新菜单
+	updateMenuForm := bo.MenuForm{
+		ParentID:  0,
+		Name:      "更新后的测试菜单",
+		Type:      1,
+		Path:      "/test-update",
+		Component: "test/update",
+		Visible:   1,
+		Sort:      2,
+		Icon:      "test-icon-update",
+	}
 
-		jsonValue, _ = json.Marshal(updateMenuForm)
-		req, _ = http.NewRequest("PUT", "/api/v1/menus/1", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	jsonValue, _ = json.Marshal(updateMenuForm)
+	req, _ = http.NewRequest("PUT", "/api/v1/menus/1", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 修改菜单显示状态
-		req, _ = http.NewRequest("PATCH", "/api/v1/menus/1?visible=0", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 修改菜单显示状态
+	req, _ = http.NewRequest("PATCH", "/api/v1/menus/1?visible=0", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 删除菜单
-		req, _ = http.NewRequest("DELETE", "/api/v1/menus/1", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 删除菜单
+	req, _ = http.NewRequest("DELETE", "/api/v1/menus/1", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
+	s.Assert().Equal(http.StatusOK, resp.Code)
+
 }
 
-func TestMenuService(t *testing.T) {
-	menuService := service.ServiceGroupApp.MenuService
+// TestSaveMenu_Create 测试创建菜单
+func (s *MenuTestSuite) TestSaveMenu_Create() {
+	// 测试创建菜单
+	menuForm := bo.MenuForm{
+		ParentID:  0,
+		Name:      "服务测试菜单",
+		Type:      1,
+		Path:      "/service-test",
+		Component: "service/test/index",
+		Visible:   1,
+		Sort:      1,
+		Icon:      "service-test-icon",
+	}
 
-	t.Run("TestSaveMenu_Create", func(t *testing.T) {
-		// 测试创建菜单
-		menuForm := bo.MenuForm{
-			ParentID:  0,
-			Name:      "服务测试菜单",
-			Type:      1,
-			Path:      "/service-test",
-			Component: "service/test/index",
-			Visible:   1,
-			Sort:      1,
-			Icon:      "service-test-icon",
-		}
+	err := s.menuService.SaveMenu(menuForm)
+	s.AssertNoError(err)
+}
 
-		err := menuService.SaveMenu(menuForm)
-		assert.NoError(t, err)
-	})
+// TestSaveMenu_Update 测试更新菜单
+func (s *MenuTestSuite) TestSaveMenu_Update() {
+	// 测试更新菜单
+	id := int64(1)
+	menuForm := bo.MenuForm{
+		ID:        &id,
+		ParentID:  0,
+		Name:      "更新后的菜单",
+		Type:      1,
+		Path:      "/updated",
+		Component: "updated/index",
+		Visible:   1,
+		Sort:      2,
+		Icon:      "updated-icon",
+	}
 
-	t.Run("TestSaveMenu_Update", func(t *testing.T) {
-		// 测试更新菜单
-		id := int64(1)
-		menuForm := bo.MenuForm{
-			ID:        &id,
-			ParentID:  0,
-			Name:      "更新后的菜单",
-			Type:      1,
-			Path:      "/updated",
-			Component: "updated/index",
-			Visible:   1,
-			Sort:      2,
-			Icon:      "updated-icon",
-		}
+	err := s.menuService.SaveMenu(menuForm)
+	s.AssertNoError(err)
+}
 
-		err := menuService.SaveMenu(menuForm)
-		assert.NoError(t, err)
-	})
+// TestListMenus_Normal 测试正常查询菜单列表
+func (s *MenuTestSuite) TestListMenus_Normal() {
+	queryParams := query.MenuQuery{
+		Keywords: "",
+		Status:   nil,
+	}
 
-	t.Run("TestListMenus_Normal", func(t *testing.T) {
-		// 测试正常查询菜单列表
-		queryParams := query.MenuQuery{
-			Keywords: "",
-			Status:   nil,
-		}
+	menuList, err := s.menuService.ListMenus(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(menuList)
+}
 
-		menuList, err := menuService.ListMenus(queryParams)
-		assert.NoError(t, err)
-		assert.NotNil(t, menuList)
-	})
+// TestListMenus_WithKeywords 测试带关键词查询
+func (s *MenuTestSuite) TestListMenus_WithKeywords() {
+	queryParams := query.MenuQuery{
+		Keywords: "测试",
+		Status:   nil,
+	}
 
-	t.Run("TestListMenus_WithKeywords", func(t *testing.T) {
-		// 测试带关键词查询
-		queryParams := query.MenuQuery{
-			Keywords: "测试",
-			Status:   nil,
-		}
+	menuList, err := s.menuService.ListMenus(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(menuList)
+}
 
-		menuList, err := menuService.ListMenus(queryParams)
-		assert.NoError(t, err)
-		assert.NotNil(t, menuList)
-	})
+// TestListMenus_WithStatus 测试带状态查询
+func (s *MenuTestSuite) TestListMenus_WithStatus() {
+	status := 1
+	queryParams := query.MenuQuery{
+		Keywords: "",
+		Status:   &status,
+	}
 
-	t.Run("TestListMenus_WithStatus", func(t *testing.T) {
-		// 测试带状态查询
-		status := 1
-		queryParams := query.MenuQuery{
-			Keywords: "",
-			Status:   &status,
-		}
+	menuList, err := s.menuService.ListMenus(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(menuList)
+}
 
-		menuList, err := menuService.ListMenus(queryParams)
-		assert.NoError(t, err)
-		assert.NotNil(t, menuList)
-	})
+// TestListMenuOptions 测试获取菜单下拉选项
+func (s *MenuTestSuite) TestListMenuOptions() {
+	options, err := s.menuService.ListMenuOptions()
+	s.AssertNoError(err)
+	s.AssertNotNil(options)
+}
 
-	t.Run("TestListMenuOptions", func(t *testing.T) {
-		// 测试获取菜单下拉选项
-		options, err := menuService.ListMenuOptions()
-		assert.NoError(t, err)
-		assert.NotNil(t, options)
-	})
+// TestListRoutes 测试获取路由列表
+func (s *MenuTestSuite) TestListRoutes() {
+	routes, err := s.menuService.ListRoutes()
+	s.AssertNoError(err)
+	s.AssertNotNil(routes)
+}
 
-	t.Run("TestListRoutes", func(t *testing.T) {
-		// 测试获取路由列表
-		routes, err := menuService.ListRoutes()
-		assert.NoError(t, err)
-		assert.NotNil(t, routes)
-	})
+// TestGetMenuForm_Exists 测试获取存在的菜单表单
+func (s *MenuTestSuite) TestGetMenuForm_Exists() {
+	menuFormBO, err := s.menuService.GetMenuForm(1)
+	if err == nil {
+		s.AssertNotNil(menuFormBO)
+		s.AssertNotNil(menuFormBO.ID)
+	}
+}
 
-	t.Run("TestGetMenuForm_Exists", func(t *testing.T) {
-		// 测试获取存在的菜单表单
-		menuFormBO, err := menuService.GetMenuForm(1)
-		if err == nil {
-			assert.NotNil(t, menuFormBO)
-			assert.NotNil(t, menuFormBO.ID)
-		}
-	})
+// TestGetMenuForm_NotExists 测试获取不存在的菜单（边界条件）
+func (s *MenuTestSuite) TestGetMenuForm_NotExists() {
+	_, err := s.menuService.GetMenuForm(99999)
+	s.AssertError(err)
+	s.Assert().Contains(err.Error(), "菜单不存在")
+}
 
-	t.Run("TestGetMenuForm_NotExists", func(t *testing.T) {
-		// 测试获取不存在的菜单（边界条件）
-		_, err := menuService.GetMenuForm(99999)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "菜单不存在")
-	})
+// TestUpdateMenuVisible 测试更新菜单显示状态
+func (s *MenuTestSuite) TestUpdateMenuVisible() {
+	// 测试更新菜单显示状态
+	err := s.menuService.UpdateMenuVisible(1, 0)
+	// 如果菜单不存在，可能返回错误，这是正常的
+	if err != nil {
+		s.T().Logf("UpdateMenuVisible returned error: %v", err)
+	}
+}
 
-	t.Run("TestUpdateMenuVisible", func(t *testing.T) {
-		// 测试更新菜单显示状态
-		err := menuService.UpdateMenuVisible(1, 0)
-		// 如果菜单不存在，可能返回错误，这是正常的
-		if err != nil {
-			t.Logf("UpdateMenuVisible returned error: %v", err)
-		}
-	})
+// TestDeleteMenu_WithChildren 测试删除菜单及其子菜单
+func (s *MenuTestSuite) TestDeleteMenu_WithChildren() {
+	// 测试删除菜单及其子菜单
+	err := s.menuService.DeleteMenu(1)
+	// 如果菜单不存在，可能返回错误，这是正常的
+	if err != nil {
+		s.T().Logf("DeleteMenu returned error: %v", err)
+	}
+}
 
-	t.Run("TestDeleteMenu_WithChildren", func(t *testing.T) {
-		// 测试删除菜单及其子菜单
-		err := menuService.DeleteMenu(1)
-		// 如果菜单不存在，可能返回错误，这是正常的
-		if err != nil {
-			t.Logf("DeleteMenu returned error: %v", err)
-		}
-	})
+// TestListRolePerms_EmptyRoles 测试空角色列表（边界条件）
+func (s *MenuTestSuite) TestListRolePerms_EmptyRoles() {
+	perms, err := s.menuService.ListRolePerms([]string{})
+	s.AssertNoError(err)
+	s.Assert().Empty(perms)
+}
 
-	t.Run("TestListRolePerms_EmptyRoles", func(t *testing.T) {
-		// 测试空角色列表（边界条件）
-		perms, err := menuService.ListRolePerms([]string{})
-		assert.NoError(t, err)
-		assert.Empty(t, perms)
-	})
+// TestListRolePerms_WithRoles 测试带角色查询权限
+func (s *MenuTestSuite) TestListRolePerms_WithRoles() {
+	perms, err := s.menuService.ListRolePerms([]string{"ADMIN", "USER"})
+	s.AssertNoError(err)
+	s.AssertNotNil(perms)
+}
 
-	t.Run("TestListRolePerms_WithRoles", func(t *testing.T) {
-		// 测试带角色查询权限
-		perms, err := menuService.ListRolePerms([]string{"ADMIN", "USER"})
-		assert.NoError(t, err)
-		assert.NotNil(t, perms)
-	})
+// TestSaveMenu_Directory 测试创建目录类型菜单
+func (s *MenuTestSuite) TestSaveMenu_Directory() {
+	menuForm := bo.MenuForm{
+		ParentID: 0,
+		Name:     "测试目录",
+		Type:     2, // 目录
+		Path:     "test-dir",
+		Visible:  1,
+		Sort:     1,
+		Icon:     "folder",
+	}
 
-	t.Run("TestSaveMenu_Directory", func(t *testing.T) {
-		// 测试创建目录类型菜单
-		menuForm := bo.MenuForm{
-			ParentID: 0,
-			Name:     "测试目录",
-			Type:     2, // 目录
-			Path:     "test-dir",
-			Visible:  1,
-			Sort:     1,
-			Icon:     "folder",
-		}
+	err := s.menuService.SaveMenu(menuForm)
+	s.AssertNoError(err)
+}
 
-		err := menuService.SaveMenu(menuForm)
-		assert.NoError(t, err)
-	})
+// TestSaveMenu_ExternalLink 测试创建外链类型菜单
+func (s *MenuTestSuite) TestSaveMenu_ExternalLink() {
+	menuForm := bo.MenuForm{
+		ParentID: 0,
+		Name:     "外链测试",
+		Type:     3, // 外链
+		Path:     "https://example.com",
+		Visible:  1,
+		Sort:     1,
+		Icon:     "link",
+	}
 
-	t.Run("TestSaveMenu_ExternalLink", func(t *testing.T) {
-		// 测试创建外链类型菜单
-		menuForm := bo.MenuForm{
-			ParentID: 0,
-			Name:     "外链测试",
-			Type:     3, // 外链
-			Path:     "https://example.com",
-			Visible:  1,
-			Sort:     1,
-			Icon:     "link",
-		}
+	err := s.menuService.SaveMenu(menuForm)
+	s.AssertNoError(err)
+}
 
-		err := menuService.SaveMenu(menuForm)
-		assert.NoError(t, err)
-	})
+// TestSaveMenu_Button 测试创建按钮类型菜单
+func (s *MenuTestSuite) TestSaveMenu_Button() {
+	menuForm := bo.MenuForm{
+		ParentID: 1,
+		Name:     "测试按钮",
+		Type:     4, // 按钮
+		Path:     "",
+		Perm:     "test:button:add",
+		Visible:  1,
+		Sort:     1,
+	}
 
-	t.Run("TestSaveMenu_Button", func(t *testing.T) {
-		// 测试创建按钮类型菜单
-		menuForm := bo.MenuForm{
-			ParentID: 1,
-			Name:     "测试按钮",
-			Type:     4, // 按钮
-			Path:     "",
-			Perm:     "test:button:add",
-			Visible:  1,
-			Sort:     1,
-		}
-
-		err := menuService.SaveMenu(menuForm)
-		assert.NoError(t, err)
-	})
+	err := s.menuService.SaveMenu(menuForm)
+	s.AssertNoError(err)
 }
 
 // TestMenuTreePath 测试菜单树路径生成
-func TestMenuTreePath(t *testing.T) {
-	menuService := service.ServiceGroupApp.MenuService
+func (s *MenuTestSuite) TestMenuTreePath() {
+	// 创建父菜单
+	parentForm := bo.MenuForm{
+		ParentID: 0,
+		Name:     "父菜单",
+		Type:     2,
+		Path:     "/parent",
+		Visible:  1,
+		Sort:     1,
+	}
+	err := s.menuService.SaveMenu(parentForm)
+	s.AssertNoError(err)
 
-	t.Run("TestTreePathGeneration", func(t *testing.T) {
-		// 创建父菜单
-		parentForm := bo.MenuForm{
-			ParentID: 0,
-			Name:     "父菜单",
-			Type:     2,
-			Path:     "/parent",
-			Visible:  1,
-			Sort:     1,
-		}
-		err := menuService.SaveMenu(parentForm)
-		assert.NoError(t, err)
-
-		// 创建子菜单
-		childForm := bo.MenuForm{
-			ParentID:  1,
-			Name:      "子菜单",
-			Type:      1,
-			Path:      "/parent/child",
-			Component: "parent/child/index",
-			Visible:   1,
-			Sort:      1,
-		}
-		err = menuService.SaveMenu(childForm)
-		assert.NoError(t, err)
-	})
+	// 创建子菜单
+	childForm := bo.MenuForm{
+		ParentID:  1,
+		Name:      "子菜单",
+		Type:      1,
+		Path:      "/parent/child",
+		Component: "parent/child/index",
+		Visible:   1,
+		Sort:      1,
+	}
+	err = s.menuService.SaveMenu(childForm)
+	s.AssertNoError(err)
 }
 
 // TestCacheClear 测试权限缓存清理
-func TestCacheClear(t *testing.T) {
-	menuService := service.ServiceGroupApp.MenuService
+func (s *MenuTestSuite) TestCacheClear() {
+	// 创建菜单应触发缓存清理
+	menuForm := bo.MenuForm{
+		ParentID:  0,
+		Name:      "缓存测试菜单",
+		Type:      1,
+		Path:      "/cache-test",
+		Component: "cache/test",
+		Visible:   1,
+		Sort:      1,
+	}
 
-	t.Run("TestCacheClearOnSave", func(t *testing.T) {
-		// 创建菜单应触发缓存清理
-		menuForm := bo.MenuForm{
-			ParentID:  0,
-			Name:      "缓存测试菜单",
-			Type:      1,
-			Path:      "/cache-test",
-			Component: "cache/test",
-			Visible:   1,
-			Sort:      1,
-		}
-
-		err := menuService.SaveMenu(menuForm)
-		assert.NoError(t, err)
-		// 缓存清理是异步的，这里只验证没有错误
-	})
-
-	t.Run("TestCacheClearOnDelete", func(t *testing.T) {
-		// 删除菜单应触发缓存清理
-		err := menuService.DeleteMenu(1)
-		// 即使菜单不存在也应该正常处理
-		if err != nil {
-			t.Logf("Delete menu returned: %v", err)
-		}
-	})
+	err := s.menuService.SaveMenu(menuForm)
+	s.AssertNoError(err)
+	// 缓存清理是异步的，这里只验证没有错误
 }
 
-// TestToCamelCase 测试驼峰转换工具函数
-func TestToCamelCase(t *testing.T) {
-	t.Run("TestToCamelCase_HyphenSeparated", func(t *testing.T) {
-		// 这个测试需要导入utils包中的ToCamelCase函数
-		// 由于包可见性问题，这里暂时注释
-		// result := utils.ToCamelCase("user-management")
-		// assert.Equal(t, "UserManagement", result)
-	})
+// TestCacheClearOnDelete 测试删除菜单时的缓存清理
+func (s *MenuTestSuite) TestCacheClearOnDelete() {
+	// 删除菜单应触发缓存清理
+	err := s.menuService.DeleteMenu(1)
+	// 即使菜单不存在也应该正常处理
+	if err != nil {
+		s.T().Logf("Delete menu returned: %v", err)
+	}
 }
 
-// TestEdgeCases 测试边界条件
-func TestEdgeCases(t *testing.T) {
-	menuService := service.ServiceGroupApp.MenuService
-
-	t.Run("TestEmptyKeywordSearch", func(t *testing.T) {
-		// 空关键词搜索
-		queryParams := query.MenuQuery{
-			Keywords: "",
-		}
-		menuList, err := menuService.ListMenus(queryParams)
-		assert.NoError(t, err)
-		assert.NotNil(t, menuList)
-	})
-
-	t.Run("TestSpecialCharacters", func(t *testing.T) {
-		// 测试特殊字符处理
-		menuForm := bo.MenuForm{
-			ParentID:  0,
-			Name:      "测试菜单<>\"'&",
-			Type:      1,
-			Path:      "/test-special",
-			Component: "test/special",
-			Visible:   1,
-			Sort:      1,
-		}
-
-		err := menuService.SaveMenu(menuForm)
-		assert.NoError(t, err)
-	})
-
-	t.Run("TestMaxLengthPath", func(t *testing.T) {
-		// 测试超长路径
-		longPath := ""
-		for i := 0; i < 50; i++ {
-			longPath += "/very-long-path-segment"
-		}
-
-		menuForm := bo.MenuForm{
-			ParentID:  0,
-			Name:      "超长路径测试",
-			Type:      1,
-			Path:      longPath,
-			Component: "test/long",
-			Visible:   1,
-			Sort:      1,
-		}
-
-		err := menuService.SaveMenu(menuForm)
-		// 这可能会失败，取决于数据库字段长度限制
-		if err != nil {
-			t.Logf("Long path test returned expected error: %v", err)
-		}
-	})
-
-	t.Run("TestNegativeID", func(t *testing.T) {
-		// 测试负数ID
-		err := menuService.DeleteMenu(-1)
-		// 应该正常处理，即使没有匹配的记录
-		if err != nil {
-			t.Logf("Negative ID returned: %v", err)
-		}
-	})
-
-	t.Run("TestZeroID", func(t *testing.T) {
-		// 测试ID为0的情况
-		_, err := menuService.GetMenuForm(0)
-		assert.Error(t, err)
-	})
+// TestEdgeCases_EmptyKeywordSearch 测试空关键词搜索
+func (s *MenuTestSuite) TestEdgeCases_EmptyKeywordSearch() {
+	// 空关键词搜索
+	queryParams := query.MenuQuery{
+		Keywords: "",
+	}
+	menuList, err := s.menuService.ListMenus(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(menuList)
 }
 
-// TestConcurrentOperations 测试并发操作
-func TestConcurrentOperations(t *testing.T) {
-	menuService := service.ServiceGroupApp.MenuService
+// TestEdgeCases_SpecialCharacters 测试特殊字符处理
+func (s *MenuTestSuite) TestEdgeCases_SpecialCharacters() {
+	// 测试特殊字符处理
+	menuForm := bo.MenuForm{
+		ParentID:  0,
+		Name:      "测试菜单<>\"'&",
+		Type:      1,
+		Path:      "/test-special",
+		Component: "test/special",
+		Visible:   1,
+		Sort:      1,
+	}
 
-	t.Run("TestConcurrentReads", func(t *testing.T) {
-		// 并发读取测试
-		done := make(chan bool)
-		for i := 0; i < 10; i++ {
-			go func() {
-				queryParams := query.MenuQuery{}
-				_, err := menuService.ListMenus(queryParams)
-				assert.NoError(t, err)
-				done <- true
-			}()
-		}
+	err := s.menuService.SaveMenu(menuForm)
+	s.AssertNoError(err)
+}
 
-		for i := 0; i < 10; i++ {
-			<-done
-		}
-	})
+// TestEdgeCases_NegativeID 测试负数ID
+func (s *MenuTestSuite) TestEdgeCases_NegativeID() {
+	// 测试负数ID
+	err := s.menuService.DeleteMenu(-1)
+	// 应该正常处理，即使没有匹配的记录
+	if err != nil {
+		s.T().Logf("Negative ID returned: %v", err)
+	}
+}
+
+// TestEdgeCases_ZeroID 测试ID为0的情况
+func (s *MenuTestSuite) TestEdgeCases_ZeroID() {
+	// 测试ID为0的情况
+	_, err := s.menuService.GetMenuForm(0)
+	s.AssertError(err)
+}
+
+// TestConcurrentReads 测试并发读取
+func (s *MenuTestSuite) TestConcurrentReads() {
+	// 并发读取测试
+	done := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func() {
+			queryParams := query.MenuQuery{}
+			_, err := s.menuService.ListMenus(queryParams)
+			s.AssertNoError(err)
+			done <- true
+		}()
+	}
+
+	for i := 0; i < 10; i++ {
+		<-done
+	}
 }
 
 // TestDeleteMenuSQLInjectionFix 测试DeleteMenu的SQL注入修复
-func TestDeleteMenuSQLInjectionFix(t *testing.T) {
+func (s *MenuTestSuite) TestDeleteMenuSQLInjectionFix() {
 	// 这个测试用于验证DeleteMenu使用CONCAT函数，避免ID子串匹配
-	t.Run("TestDeleteMenuIDMatching", func(t *testing.T) {
-		// 此测试需要实际的数据库环境来验证
-		// ID=1 不应该匹配 ID=11, 21, 31 等
-		t.Log("SQL injection fix verified through code review")
-	})
+	// ID=1 不应该匹配 ID=11, 21, 31 等
+	s.T().Log("SQL injection fix verified through code review")
+}
+
+// 运行测试套件
+func TestMenuSuite(t *testing.T) {
+	suite.Run(t, new(MenuTestSuite))
 }
