@@ -9,6 +9,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/model/bo"
+	"github.com/earthyzinc/dehaze-go/utils"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +29,7 @@ func (fileService *FileService) UploadFile(file *multipart.FileHeader, baseUrl, 
 	fileBO.URL = baseUrl + "/" + uploadPath + "/" + file.Filename
 	fileBO.ObjectName = uploadPath + "/" + file.Filename
 	// MD5计算需要实际读取文件内容，这里暂时留空
-	// fileBO.MD5 = 
+	// fileBO.MD5 =
 
 	return fileBO, nil
 }
@@ -44,18 +45,15 @@ func (sysFileService *SysFileService) SaveFile(fileBO bo.FileBO) (sysFile model.
 
 	// 如果不存在，则保存文件信息到数据库
 	sysFile = model.SysFile{
-		Type:       fileBO.Extension,
-		URL:        fileBO.URL,
+		Type:       utils.StringPtr(fileBO.Extension),
+		URL:        utils.StringPtr(fileBO.URL),
 		Name:       fileBO.Name,
 		ObjectName: fileBO.ObjectName,
 		Size:       fmt.Sprintf("%d", fileBO.Size),
 		Path:       fileBO.Path,
 		MD5:        fileBO.MD5,
-		BaseModel: model.BaseModel{
-			ID:        0,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-		},
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
 	}
 
 	err = global.DB.Create(&sysFile).Error
@@ -97,6 +95,6 @@ func (sysFileService *SysFileService) DownloadFile(objectName string) (filePath 
 	if err != nil {
 		return "", err
 	}
-	
+
 	return sysFile.Path, nil
 }
