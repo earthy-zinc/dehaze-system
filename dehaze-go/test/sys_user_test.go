@@ -47,7 +47,7 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 		assert.Equal(t, testUser.Nickname, userAuthInfo.Nickname)
 		assert.Equal(t, testUser.Password, userAuthInfo.Password)
 		assert.Equal(t, testUser.Status, userAuthInfo.Status)
-		assert.Equal(t, testUser.DeptID, userAuthInfo.DeptId)
+		assert.Equal(t, testUser.DeptID, userAuthInfo.DeptId)  // 修复类型匹配
 		assert.Empty(t, userAuthInfo.Roles)
 		assert.Empty(t, userAuthInfo.Perms)
 		assert.Equal(t, int8(0), userAuthInfo.DataScope)
@@ -217,7 +217,7 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 		assert.Equal(t, testUser.DeptID, userAuthInfo.DeptId)
 		assert.Contains(t, userAuthInfo.Roles, testRole.Code)
 		assert.Contains(t, userAuthInfo.Perms, testMenu.Perm)
-		assert.Equal(t, testRole.DataScope, userAuthInfo.DataScope)
+		assert.Equal(t, int8(testRole.DataScope), userAuthInfo.DataScope)  // 修复类型转换
 
 		// 清理测试数据
 		global.DB.Table("sys_role_menu").Where("role_id = ? AND menu_id = ?", testRole.ID, testMenu.ID).Delete(&SysRoleMenu{})
@@ -289,3 +289,90 @@ func TestUserService_GetUserAuthInfo(t *testing.T) {
 		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
 	})
 }
+
+func TestUserService_Login(t *testing.T) {
+	// 检查数据库连接是否可用
+	if global.DB == nil {
+		t.Skip("数据库连接不可用，跳过测试")
+	}
+
+	userService := &service.UserService{}
+
+	// 测试用例1: 用户名或密码错误
+	t.Run("InvalidCredentials", func(t *testing.T) {
+		// 创建测试用户
+		testUser := model.SysUser{
+			Username: "test_login_user",
+			Nickname: "Test Login User",
+			// 使用bcrypt加密密码
+			Password: "$2a$10$N47IXmT8C.sKUFXs1EBS9uJf8JiKEGz4rY14M1SX3w2w1aW99Mj9K", // "password"的bcrypt hash
+			Status:   1,
+			DeptID:   1,
+			Deleted:  0,
+		}
+
+		// 清理可能存在的测试数据
+		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
+
+		// 插入测试用户
+		result := global.DB.Create(&testUser)
+		assert.NoError(t, result.Error)
+
+		// 尝试使用错误密码登录
+		loginUser := &model.SysUser{
+			Username: "test_login_user",
+			Password: "wrong_password",
+		}
+		userAuthInfo, err := userService.Login(loginUser)
+		
+		// 验证结果
+		assert.Error(t, err)
+		assert.Nil(t, userAuthInfo)
+
+		// 清理测试数据
+		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
+	})
+
+	// 测试用例2: 正常登录
+	t.Run("ValidLogin", func(t *testing.T) {
+		// 创建测试用户
+		testUser := model.SysUser{
+			Username: "test_valid_login",
+			Nickname: "Test Valid Login",
+			// 使用bcrypt加密密码
+			Password: "$2a$10$BQm8di9VTUfOlmr/VcFyB.BhurfGZVjCXYdgDPN1ZeI0yEMeByAQq", // "password"的bcrypt hash
+			Status:   1,
+			DeptID:   1,
+			Deleted:  0,
+		}
+
+		// 清理可能存在的测试数据
+		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
+
+		// 插入测试用户
+		result := global.DB.Create(&testUser)
+		assert.NoError(t, result.Error)
+
+		// 使用正确密码登录
+		loginUser := &model.SysUser{
+			Username: "test_valid_login",
+			Password: "password",
+		}
+		userAuthInfo, err := userService.Login(loginUser)
+		
+		// 验证结果
+		assert.NoError(t, err)
+		assert.NotNil(t, userAuthInfo)
+		assert.Equal(t, testUser.ID, userAuthInfo.UserId)
+		assert.Equal(t, testUser.Username, userAuthInfo.Username)
+
+		// 清理测试数据
+		global.DB.Where("username = ?", testUser.Username).Delete(&model.SysUser{})
+	})
+}
+
+
+
+
+
+

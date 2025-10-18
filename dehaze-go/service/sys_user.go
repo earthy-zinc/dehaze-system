@@ -46,7 +46,7 @@ func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *
 	userAuthInfo.Nickname = user.Nickname
 	userAuthInfo.Password = user.Password
 	userAuthInfo.Status = user.Status
-	userAuthInfo.DeptId = user.DeptID
+	userAuthInfo.DeptId = user.DeptID  // 修复类型转换
 
 	// 如果查询到用户信息
 	if userAuthInfo.UserId != 0 {
@@ -96,7 +96,7 @@ func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *
 			}
 
 			if dataScope != nil {
-				userAuthInfo.DataScope = int8(*dataScope)
+				userAuthInfo.DataScope = *dataScope
 			}
 		}
 	}
