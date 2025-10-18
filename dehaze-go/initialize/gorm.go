@@ -40,9 +40,11 @@ func Migrate() {
 	err := database.AutoMigrate(
 		model.SysUser{},
 		model.SysRole{},
+		model.SysUserRole{},
 
 		model.SysDept{},
 		model.SysMenu{},
+		model.SysRoleMenu{},
 
 		model.SysDict{},
 		model.SysDictType{},
@@ -51,6 +53,7 @@ func Migrate() {
 
 		model.SysDataset{},
 		model.SysDatasetItem{},
+		model.SysItemFile{},
 
 		model.SysEvalLog{},
 		model.SysPredLog{},
