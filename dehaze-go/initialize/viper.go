@@ -18,8 +18,17 @@ import (
 // getConfigPath 获取配置文件路径, 优先级: 命令行 > 环境变量 > 默认值
 func getConfigPath() (config string) {
 	// `-c` flag parse
-	flag.StringVar(&config, "c", "", "配置文件的路径")
+	// 检查标志是否已经定义，避免重复定义导致panic
+	if flag.Lookup("c") == nil {
+		flag.StringVar(&config, "c", "", "配置文件的路径")
+	}
 	flag.Parse()
+
+	// 获取标志的值
+	if configFlag := flag.Lookup("c"); configFlag != nil {
+		config = configFlag.Value.String()
+	}
+
 	if config != "" {
 		// 命令行参数不为空 将值赋值于config
 		fmt.Printf("您正在使用命令行的 '-c' 参数传递的值, config 的路径为 %s\n", config)
