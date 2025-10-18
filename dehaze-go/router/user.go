@@ -45,7 +45,7 @@ func (r *SysRoleRouter) InitSysRoleRouter(Router *gin.RouterGroup) (R gin.IRoute
 		sysRoleRouter.GET("options", sysRoleApi.ListRoleOptions)
 		sysRoleRouter.POST("", sysRoleApi.AddRole)
 		sysRoleRouter.GET(":roleId/form", sysRoleApi.GetRoleForm)
-		sysRoleRouter.PUT(":id", sysRoleApi.UpdateRole)
+		sysRoleRouter.PUT(":roleId", sysRoleApi.UpdateRole)
 		sysRoleRouter.DELETE(":ids", sysRoleApi.DeleteRoles)
 		sysRoleRouter.PUT(":roleId/status", sysRoleApi.UpdateRoleStatus)
 		sysRoleRouter.GET(":roleId/menuIds", sysRoleApi.GetRoleMenuIds)

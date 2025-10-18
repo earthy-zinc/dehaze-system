@@ -6,6 +6,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/model/bo"
 	"github.com/earthyzinc/dehaze-go/model/dto"
 	"github.com/earthyzinc/dehaze-go/model/vo"
+	"github.com/earthyzinc/dehaze-go/utils"
 	"gorm.io/gorm"
 )
 
@@ -15,7 +16,7 @@ type ItemFileService struct{}
 func (itemFileService *ItemFileService) SaveItemFile(itemId int64, itemBO bo.DatasetItemBO) (imageFileInfo dto.ImageFileInfo, err error) {
 	// 创建文件记录
 	sysFileService := SysFileService{}
-	
+
 	// TODO: 这里需要根据实际的文件上传逻辑来实现
 	// 暂时创建一个简单的文件对象
 	fileBO := bo.FileBO{
@@ -27,7 +28,7 @@ func (itemFileService *ItemFileService) SaveItemFile(itemId int64, itemBO bo.Dat
 		Size:       itemBO.Size,
 		URL:        "",
 	}
-	
+
 	sysFile, err := sysFileService.SaveFile(fileBO)
 	if err != nil {
 		return imageFileInfo, err
@@ -36,11 +37,11 @@ func (itemFileService *ItemFileService) SaveItemFile(itemId int64, itemBO bo.Dat
 	// 创建项文件关联记录
 	sysItemFile := model.SysItemFile{
 		ItemID:      itemId,
-		FileID:      sysFile.ID,
+		FileID:      int64(sysFile.ID),
 		Type:        itemBO.Type,
-		Description: itemBO.Description,
+		Description: utils.StringPtr(itemBO.Description),
 	}
-	
+
 	err = global.DB.Create(&sysItemFile).Error
 	if err != nil {
 		return imageFileInfo, err
@@ -50,10 +51,10 @@ func (itemFileService *ItemFileService) SaveItemFile(itemId int64, itemBO bo.Dat
 	imageFileInfo = dto.ImageFileInfo{
 		ID:            sysItemFile.ID,
 		DatasetItemID: itemId,
-		FileID:        sysFile.ID,
+		FileID:        int64(sysFile.ID),
 		Type:          sysItemFile.Type,
-		Description:   sysItemFile.Description,
-		URL:           sysFile.URL,
+		Description:   utils.StringVal(sysItemFile.Description),
+		URL:           utils.StringVal(sysFile.URL),
 	}
 
 	return imageFileInfo, nil
@@ -78,9 +79,9 @@ func (itemFileService *ItemFileService) GetImageUrlVOs(itemId int64) (imageUrlVO
 		imageUrlVO := vo.ImageUrlVO{
 			ID:          itemFile.ID,
 			Type:        itemFile.Type,
-			URL:         sysFile.URL,
-			OriginURL:   sysFile.URL, // TODO: 实际应根据缩略图文件ID获取缩略图URL
-			Description: itemFile.Description,
+			URL:         utils.StringVal(sysFile.URL),
+			OriginURL:   utils.StringVal(sysFile.URL), // TODO: 实际应根据缩略图文件ID获取缩略图URL
+			Description: utils.StringVal(itemFile.Description),
 		}
 		imageUrlVOs = append(imageUrlVOs, imageUrlVO)
 	}

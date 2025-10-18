@@ -13,11 +13,11 @@ func (r *SysDictRouter) InitSysDictRouter(Router *gin.RouterGroup) (R gin.IRoute
 	{
 		// 字典数据项相关路由
 		sysDictRouter.GET("page", sysDictApi.GetDictPage)
-		sysDictRouter.GET(":id/form", sysDictApi.GetDictForm)
 		sysDictRouter.POST("", sysDictApi.SaveDict)
 		sysDictRouter.PUT(":id", sysDictApi.UpdateDict)
 		sysDictRouter.DELETE(":ids", sysDictApi.DeleteDict)
-		sysDictRouter.GET(":typeCode/options", sysDictApi.ListDictOptions)
+		sysDictRouter.GET(":id/form", sysDictApi.GetDictForm)
+		sysDictRouter.GET(":id/options", sysDictApi.ListDictOptions)
 
 		// 字典类型相关路由
 		sysDictRouter.GET("types/page", sysDictApi.GetDictTypePage)
