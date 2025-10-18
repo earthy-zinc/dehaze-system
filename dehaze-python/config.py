@@ -1,3 +1,4 @@
+import os
 import os.path as path
 
 import torch
@@ -10,12 +11,12 @@ class Config:
     # 获取当前项目目录
     PROJECT_PATH = path.dirname(path.abspath(__file__))
     MODEL_PATH = path.join(PROJECT_PATH, "trained_model")
-    
+
     # JWT配置
     SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
     JWT_SECRET_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789"
     JWT_ACCESS_TOKEN_EXPIRES = 7200
-    
+
     # 默认用户密码
     DEFAULT_PASSWORD = "123456"
 
@@ -48,6 +49,29 @@ class DevelopmentConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
+    FLASK_ENV = 'testing'
+
+    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:123456@localhost/dehaze_test?charset=utf8"
+
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_COMMIT_ON_TEARDOWN = False
+
+    # 禁用 WTF CSRF 保护（测试环境）
+    WTF_CSRF_ENABLED = False
+
+    REDIS_HOST = 'localhost'
+    REDIS_PORT = 6379
+    REDIS_PASSWORD = '123456'
+    REDIS_DB = 0
+
+    MONGO_URI = "mongodb://localhost:27017/"
+
+    MINIO_ENDPOINT = "localhost:9000"
+    MINIO_ACCESS_KEY = "admin"
+    MINIO_SECRET_KEY = "12345678"
+    MINIO_SECURE = False
+    MINIO_BUCKET_NAME = "dehaze"
+    MINIO_CUSTOM_DOMAIN = "http://localhost:8989/api/v1/files/download"
 
 
 class ProductionConfig(Config):
