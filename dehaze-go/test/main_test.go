@@ -41,5 +41,6 @@ func teardownTest() {
 		global.DB.Exec("drop table if exists dehaze_test.sys_user")
 		global.DB.Exec("drop table if exists dehaze_test.sys_role_menu")
 		global.DB.Exec("drop table if exists dehaze_test.sys_user_role")
+		global.DB.Exec("drop table if exists dehaze_test.sys_dataset")
 	}
 }
