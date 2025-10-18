@@ -55,6 +55,7 @@ class SysDataset(mysql.Model):
     id = Column(BigInteger, primary_key=True,
                 autoincrement=True, comment='数据集ID')
     parent_id = Column(BigInteger, nullable=False, default=0, comment='父数据集ID')
+    tree_path = Column(String(255), default='', comment='父节点ID路径')
     type = Column(String(64), nullable=False, default='', comment='数据集类型')
     name = Column(String(64), nullable=False, default='', comment='数据集名称')
     img = Column(Text, comment='数据集样例图片')
