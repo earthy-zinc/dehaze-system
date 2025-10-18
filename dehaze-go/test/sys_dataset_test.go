@@ -8,20 +8,28 @@ import (
 	"testing"
 
 	"github.com/earthyzinc/dehaze-go/api"
-	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/model/bo"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestDatasetAPI(t *testing.T) {
-	// 检查数据库连接是否可用
-	if global.DB == nil {
-		t.Skip("数据库连接不可用，跳过测试")
-	}
+// DatasetServiceTestSuite 数据集服务测试套件
+// 使用事务隔离，每个测试方法都在独立事务中运行
+type DatasetServiceTestSuite struct {
+	TransactionTestSuite
+	datasetService *service.DatasetService
+}
 
+// SetupSuite 在整个测试套件开始前运行一次
+func (s *DatasetServiceTestSuite) SetupSuite() {
+	// 初始化服务
+	s.datasetService = &service.ServiceGroupApp.DatasetService
+}
+
+// TestDatasetAPI_CRUD 测试数据集API的增删改查功能
+func (s *DatasetServiceTestSuite) TestDatasetAPI_CRUD() {
 	// 创建测试路由器
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -38,156 +46,181 @@ func TestDatasetAPI(t *testing.T) {
 		apiGroup.DELETE("/dataset", api.ApiGroupApp.SysDatasetApi.DeleteDatasets)
 	}
 
-	t.Run("TestDatasetCRUD", func(t *testing.T) {
-		// 创建数据集
-		datasetForm := bo.DatasetFormBO{
-			ParentID:    0,
-			Type:        "test_type",
-			Name:        "测试数据集",
-			Description: "测试用数据集",
-			Path:        "/test/path",
-			Status:      1,
-		}
-
-		jsonValue, _ := json.Marshal(datasetForm)
-		req, _ := http.NewRequest("POST", "/api/v1/dataset", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		// 查询数据集列表
-		req, _ = http.NewRequest("GET", "/api/v1/dataset", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		// 获取数据集表单数据
-		req, _ = http.NewRequest("GET", "/api/v1/dataset/1/form", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		// 更新数据集
-		updateDatasetForm := bo.DatasetFormBO{
-			ParentID:    0,
-			Type:        "test_type_update",
-			Name:        "更新后的测试数据集",
-			Description: "更新后的测试用数据集",
-			Path:        "/test/path/update",
-			Status:      1,
-		}
-
-		jsonValue, _ = json.Marshal(updateDatasetForm)
-		req, _ = http.NewRequest("PUT", "/api/v1/dataset/1", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
-
-	t.Run("TestDatasetOptions", func(t *testing.T) {
-		// 获取数据集下拉选项
-		req, _ := http.NewRequest("GET", "/api/v1/dataset/options", nil)
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
-
-	t.Run("TestDatasetDelete", func(t *testing.T) {
-		// 删除数据集
-		req, _ := http.NewRequest("DELETE", "/api/v1/dataset?ids=1", nil)
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
-}
-
-func TestDatasetService(t *testing.T) {
-	// 检查数据库连接是否可用
-	if global.DB == nil {
-		t.Skip("数据库连接不可用，跳过测试")
+	// 创建数据集
+	datasetForm := bo.DatasetFormBO{
+		ParentID:    0,
+		Type:        "test_type",
+		Name:        "测试数据集",
+		Description: "测试用数据集",
+		Path:        "/test/path",
+		Status:      1,
 	}
 
-	datasetService := service.ServiceGroupApp.DatasetService
+	jsonValue, _ := json.Marshal(datasetForm)
+	req, _ := http.NewRequest("POST", "/api/v1/dataset", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-	// 清理可能存在的测试数据
-	global.DB.Where("name LIKE ?", "%测试%").Delete(&model.SysDataset{})
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-	t.Run("TestDatasetServiceCRUD", func(t *testing.T) {
-		// 创建数据集
-		datasetForm := bo.DatasetFormBO{
-			ParentID:    0,
-			Type:        "service_test_type",
-			Name:        "服务测试数据集",
-			Description: "服务测试用数据集",
-			Path:        "/service/test/path",
-			Status:      1,
-		}
+	// 查询数据集列表
+	req, _ = http.NewRequest("GET", "/api/v1/dataset", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		err := datasetService.SaveDataset(datasetForm)
-		assert.NoError(t, err)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 查询数据集列表
-		queryParams := struct {
-			Keywords string `json:"keywords"`
-		}{
-			Keywords: "服务测试",
-		}
+	// 获取数据集表单数据
+	req, _ = http.NewRequest("GET", "/api/v1/dataset/1/form", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		datasetVOs, err := datasetService.GetDatasetList(queryParams)
-		assert.NoError(t, err)
-		assert.Greater(t, len(datasetVOs), 0)
+	// 更新数据集
+	updateDatasetForm := bo.DatasetFormBO{
+		ParentID:    0,
+		Type:        "test_type_update",
+		Name:        "更新后的测试数据集",
+		Description: "更新后的测试用数据集",
+		Path:        "/test/path/update",
+		Status:      1,
+	}
 
-		// 获取刚创建的数据集的ID
-		var dataset model.SysDataset
-		global.DB.Where("name = ?", "服务测试数据集").First(&dataset)
-		datasetID := dataset.ID
+	jsonValue, _ = json.Marshal(updateDatasetForm)
+	req, _ = http.NewRequest("PUT", "/api/v1/dataset/1", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		// 获取数据集表单
-		datasetFormBO, err := datasetService.GetDatasetForm(datasetID)
-		assert.NoError(t, err)
-		assert.Equal(t, "服务测试数据集", datasetFormBO.Name)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 更新数据集
-		updateDatasetForm := bo.DatasetFormBO{
-			ParentID:    0,
-			Type:        "service_test_type_update",
-			Name:        "更新后的服务测试数据集",
-			Description: "更新后的服务测试用数据集",
-			Path:        "/service/test/path/update",
-			Status:      1,
-		}
+}
 
-		err = datasetService.UpdateDataset(datasetID, updateDatasetForm)
-		assert.NoError(t, err)
-	})
+// TestDatasetAPI_Options 测试数据集下拉选项API
+func (s *DatasetServiceTestSuite) TestDatasetAPI_Options() {
+	// 创建测试路由器
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
 
-	t.Run("TestDatasetOptionsService", func(t *testing.T) {
-		// 获取数据集下拉选项
-		options, err := datasetService.GetDatasetOptions()
-		assert.NoError(t, err)
-		assert.Greater(t, len(options), 0)
-	})
+	// 注册路由
+	router.GET("/api/v1/dataset/options", api.ApiGroupApp.SysDatasetApi.GetDatasetOptions)
 
-	t.Run("TestDatasetDeleteService", func(t *testing.T) {
-		// 获取刚创建的数据集的ID
-		var dataset model.SysDataset
-		global.DB.Where("name = ?", "更新后的服务测试数据集").First(&dataset)
-		datasetID := dataset.ID
+	// 获取数据集下拉选项
+	req, _ := http.NewRequest("GET", "/api/v1/dataset/options", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		// 删除数据集
-		ids := []int64{datasetID}
-		err := datasetService.DeleteDatasets(ids)
-		assert.NoError(t, err)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 验证数据集已被逻辑删除
-		var deletedDataset model.SysDataset
-		err = global.DB.Where("id = ? AND deleted = ?", datasetID, 0).First(&deletedDataset).Error
-		assert.Error(t, err) // 应该找不到未删除的记录
-	})
+}
+
+// TestDatasetAPI_Delete 测试数据集删除API
+func (s *DatasetServiceTestSuite) TestDatasetAPI_Delete() {
+	// 创建测试路由器
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
+
+	// 注册路由
+	router.DELETE("/api/v1/dataset", api.ApiGroupApp.SysDatasetApi.DeleteDatasets)
+
+	// 删除数据集
+	req, _ := http.NewRequest("DELETE", "/api/v1/dataset?ids=1", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	s.Assert().Equal(http.StatusOK, resp.Code)
+
+}
+
+// TestDatasetService_CRUD 测试数据集服务的增删改查功能
+func (s *DatasetServiceTestSuite) TestDatasetService_CRUD() {
+	// 创建数据集
+	datasetForm := bo.DatasetFormBO{
+		ParentID:    0,
+		Type:        "service_test_type",
+		Name:        "服务测试数据集",
+		Description: "服务测试用数据集",
+		Path:        "/service/test/path",
+		Status:      1,
+	}
+
+	err := s.datasetService.SaveDataset(datasetForm)
+	s.AssertNoError(err)
+
+	// 查询数据集列表
+	queryParams := struct {
+		Keywords string `json:"keywords"`
+	}{
+		Keywords: "服务测试",
+	}
+
+	datasetVOs, err := s.datasetService.GetDatasetList(queryParams)
+	s.AssertNoError(err)
+	s.Assert().Greater(len(datasetVOs), 0)
+
+	// 获取刚创建的数据集的ID
+	var dataset model.SysDataset
+	s.GetDB().Where("name = ?", "服务测试数据集").First(&dataset)
+	datasetID := dataset.ID
+
+	// 获取数据集表单
+	datasetFormBO, err := s.datasetService.GetDatasetForm(datasetID)
+	s.AssertNoError(err)
+	s.AssertEqual("服务测试数据集", datasetFormBO.Name)
+
+	// 更新数据集
+	updateDatasetForm := bo.DatasetFormBO{
+		ParentID:    0,
+		Type:        "service_test_type_update",
+		Name:        "更新后的服务测试数据集",
+		Description: "更新后的服务测试用数据集",
+		Path:        "/service/test/path/update",
+		Status:      1,
+	}
+
+	err = s.datasetService.UpdateDataset(datasetID, updateDatasetForm)
+	s.AssertNoError(err)
+
+}
+
+// TestDatasetService_Options 测试数据集下拉选项服务
+func (s *DatasetServiceTestSuite) TestDatasetService_Options() {
+	// 获取数据集下拉选项
+	options, err := s.datasetService.GetDatasetOptions()
+	s.AssertNoError(err)
+	s.Assert().Greater(len(options), 0)
+
+}
+
+// TestDatasetService_Delete 测试数据集删除服务
+func (s *DatasetServiceTestSuite) TestDatasetService_Delete() {
+	// 创建测试数据集用于删除
+	testDataset := &model.SysDataset{
+		ParentID:    0,
+		Type:        "service_test_type_delete",
+		Name:        "待删除的服务测试数据集",
+		Description: "待删除的服务测试用数据集",
+		Path:        "/service/test/path/delete",
+		Status:      1,
+		Deleted:     0,
+	}
+	s.AssertNoError(s.CreateTestData(testDataset))
+
+	// 删除数据集
+	ids := []int64{testDataset.ID}
+	err := s.datasetService.DeleteDatasets(ids)
+	s.AssertNoError(err)
+
+	// 验证数据集已被逻辑删除
+	var deletedDataset model.SysDataset
+	err = s.GetDB().Where("id = ? AND deleted = ?", testDataset.ID, 0).First(&deletedDataset).Error
+	s.AssertError(err) // 应该找不到未删除的记录
+
+}
+
+// 运行测试套件
+func TestDatasetService(t *testing.T) {
+	suite.Run(t, new(DatasetServiceTestSuite))
 }
