@@ -20,8 +20,15 @@ type TransactionTestSuite struct {
 // SetupTest 在每个测试方法运行前执行
 // 开启一个新的数据库事务
 func (s *TransactionTestSuite) SetupTest() {
+	// 确保数据库连接有效
+	if s.DB == nil {
+		s.T().Fatal("数据库连接未初始化")
+	}
+	
 	s.tx = s.DB.Begin()
-	s.Require().NoError(s.tx.Error, "开启事务失败")
+	if s.tx.Error != nil {
+		s.T().Fatal("开启事务失败: ", s.tx.Error)
+	}
 
 	// 临时替换全局数据库连接为事务连接
 	// 这样测试代码中使用的 global.DB 就是事务连接了

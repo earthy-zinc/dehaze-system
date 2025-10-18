@@ -2,6 +2,7 @@ package test
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/earthyzinc/dehaze-go/global"
@@ -9,6 +10,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/model/bo"
 	"github.com/earthyzinc/dehaze-go/model/query"
+	"github.com/earthyzinc/dehaze-go/model/vo"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/stretchr/testify/suite"
 )
@@ -22,8 +24,16 @@ type RoleServiceTestSuite struct {
 
 // SetupSuite 在整个测试套件开始前运行一次
 func (s *RoleServiceTestSuite) SetupSuite() {
-	// 初始化配置和数据库
+	// 设置测试环境变量
+	err := os.Setenv("DEHAZE_CONFIG", "../config.test.yaml")
+	if err != nil {
+		s.T().Fatal("设置环境变量失败: ", err)
+	}
+	
+	// 初始化配置和日志
 	initialize.Viper()
+	initialize.Zap()
+	// 初始化数据库
 	initialize.Gorm()
 	initialize.Redis()
 
@@ -1067,7 +1077,278 @@ func (s *RoleServiceTestSuite) TestSaveRole_SpecialCharacters_SpecialCharactersI
 
 }
 
+// TestGetRolePage_InvalidPageParams 测试无效的分页参数
+func (s *RoleServiceTestSuite) TestGetRolePage_InvalidPageParams() {
+	// 测试 pageNum 为负数
+	queryParams := query.RolePageQuery{
+		PageNum:  -1,
+		PageSize: 10,
+	}
+	pageResult, err := s.roleService.GetRolePage(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(pageResult)
+	s.AssertEqual(int64(1), pageResult.PageNum) // 应该被修正为默认值1
+
+	// 测试 pageSize 为负数
+	queryParams = query.RolePageQuery{
+		PageNum:  1,
+		PageSize: -1,
+	}
+	pageResult, err = s.roleService.GetRolePage(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(pageResult)
+	s.AssertEqual(int64(10), pageResult.PageSize) // 应该被修正为默认值10
+
+	// 测试 pageNum 和 pageSize 都为0
+	queryParams = query.RolePageQuery{
+		PageNum:  0,
+		PageSize: 0,
+	}
+	pageResult, err = s.roleService.GetRolePage(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(pageResult)
+	s.AssertEqual(int64(1), pageResult.PageNum)   // 应该被修正为默认值1
+	s.AssertEqual(int64(10), pageResult.PageSize) // 应该被修正为默认值10
+}
+
+// TestGetRolePage_VeryLargePageParams 测试超大的分页参数
+func (s *RoleServiceTestSuite) TestGetRolePage_VeryLargePageParams() {
+	// 测试 pageNum 非常大
+	queryParams := query.RolePageQuery{
+		PageNum:  9999999,
+		PageSize: 10,
+	}
+	pageResult, err := s.roleService.GetRolePage(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(pageResult)
+	s.AssertEqual(int64(9999999), pageResult.PageNum)
+	// 应该返回空列表，因为没有那么多数据
+	s.Assert().Empty(pageResult.List)
+
+	// 测试 pageSize 非常大
+	queryParams = query.RolePageQuery{
+		PageNum:  1,
+		PageSize: 9999999,
+	}
+	pageResult, err = s.roleService.GetRolePage(queryParams)
+	s.AssertNoError(err)
+	s.AssertNotNil(pageResult)
+	s.AssertEqual(int64(9999999), pageResult.PageSize)
+}
+
+// TestGetRolePage_DBError 测试数据库错误情况
+func (s *RoleServiceTestSuite) TestGetRolePage_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 执行查询
+	queryParams := query.RolePageQuery{
+		PageNum:  1,
+		PageSize: 10,
+	}
+	pageResult, err := s.roleService.GetRolePage(queryParams)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.AssertEqual(vo.PageResult[vo.RolePageVO]{}, pageResult)
+}
+
+// TestListRoleOptions_DBError 测试数据库错误情况
+func (s *RoleServiceTestSuite) TestListRoleOptions_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取下拉列表
+	options, err := s.roleService.ListRoleOptions()
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.Assert().Nil(options)
+}
+
+// TestSaveRole_DBError 测试保存角色时数据库错误
+func (s *RoleServiceTestSuite) TestSaveRole_DBError() {
+	// 准备角色表单数据
+	roleFormBO := bo.RoleFormBO{
+		Name:      "测试数据库错误角色",
+		Code:      "TEST_DB_ERROR_ROLE",
+		Sort:      1,
+		Status:    1,
+		DataScope: 1,
+	}
+
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 保存角色
+	err := s.roleService.SaveRole(roleFormBO)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.Assert().Contains(err.Error(), "数据库连接未初始化")
+}
+
+// TestUpdateRoleStatus_DBError 测试更新角色状态时数据库错误
+func (s *RoleServiceTestSuite) TestUpdateRoleStatus_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 更新角色状态
+	err := s.roleService.UpdateRoleStatus(1, 1)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestDeleteRoles_DBError 测试删除角色时数据库错误
+func (s *RoleServiceTestSuite) TestDeleteRoles_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 删除角色
+	err := s.roleService.DeleteRoles("1,2,3")
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestGetRoleForm_DBError 测试获取角色表单数据时数据库错误
+func (s *RoleServiceTestSuite) TestGetRoleForm_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取表单数据
+	roleFormBO, err := s.roleService.GetRoleForm(1)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.AssertEqual(bo.RoleFormBO{}, roleFormBO)
+}
+
+// TestGetRoleMenuIds_DBError 测试获取角色菜单ID列表时数据库错误
+func (s *RoleServiceTestSuite) TestGetRoleMenuIds_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取角色菜单ID列表
+	menuIds, err := s.roleService.GetRoleMenuIds(1)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.Assert().Nil(menuIds)
+}
+
+// TestAssignMenusToRole_DBError 测试分配菜单给角色时数据库错误
+func (s *RoleServiceTestSuite) TestAssignMenusToRole_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 分配菜单给角色
+	menuIds := []int64{1, 2, 3}
+	err := s.roleService.AssignMenusToRole(1, menuIds)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+}
+
+// TestGetMaximumDataScope_DBError 测试获取最大数据权限范围时数据库错误
+func (s *RoleServiceTestSuite) TestGetMaximumDataScope_DBError() {
+	// 模拟数据库连接断开的情况
+	originalDB := s.DB
+	s.DB = nil
+	global.DB = nil
+
+	// 获取最大数据权限范围
+	roles := []string{"ROLE1", "ROLE2"}
+	dataScope, err := s.roleService.GetMaximumDataScope(roles)
+
+	// 恢复原始数据库连接
+	s.DB = originalDB
+	global.DB = originalDB
+
+	// 验证结果
+	s.AssertError(err)
+	s.AssertEqual(int8(0), dataScope)
+}
+
+// TestSaveRole_Update_NonExistentRole 测试更新不存在的角色
+func (s *RoleServiceTestSuite) TestSaveRole_Update_NonExistentRole() {
+	// 准备更新数据，使用不存在的角色ID
+	id := int64(999999)
+	roleFormBO := bo.RoleFormBO{
+		ID:        &id,
+		Name:      "测试更新不存在角色",
+		Code:      "TEST_UPDATE_NONEXISTENT_ROLE",
+		Sort:      1,
+		Status:    1,
+		DataScope: 1,
+	}
+
+	// 更新角色
+	err := s.roleService.SaveRole(roleFormBO)
+	s.AssertError(err)
+	s.Assert().Contains(err.Error(), "角色不存在")
+}
+
 // 运行测试套件
 func TestRoleService(t *testing.T) {
 	suite.Run(t, new(RoleServiceTestSuite))
 }
+
+
+
+
+
+
+
+
+
+
