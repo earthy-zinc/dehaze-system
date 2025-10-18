@@ -12,19 +12,30 @@ import (
 	"github.com/earthyzinc/dehaze-go/model/bo"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/gin-gonic/gin"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func setupDictTest() {
+// DictServiceTestSuite 字典服务测试套件
+// 使用事务隔离，每个测试方法都在独立事务中运行
+type DictServiceTestSuite struct {
+	TransactionTestSuite
+	dictService     *service.DictService
+	dictTypeService *service.DictTypeService
+}
+
+// SetupSuite 在整个测试套件开始前运行一次
+func (s *DictServiceTestSuite) SetupSuite() {
 	// 初始化zap日志
 	initialize.Zap()
 	initialize.LocalCache()
-	//initialize.Gorm()
+
+	// 初始化服务
+	s.dictService = &service.ServiceGroupApp.DictService
+	s.dictTypeService = &service.ServiceGroupApp.DictTypeService
 }
 
-func TestDictAPI(t *testing.T) {
-	setupDictTest()
-
+// TestDictAPI_DictTypeCRUD 测试字典类型API的增删改查功能
+func (s *DictServiceTestSuite) TestDictAPI_DictTypeCRUD() {
 	// 创建测试路由器
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -47,239 +58,289 @@ func TestDictAPI(t *testing.T) {
 		apiGroup.DELETE("/dict/types/:ids", api.ApiGroupApp.SysDictApi.DeleteDictTypes)
 	}
 
-	t.Run("TestDictTypeCRUD", func(t *testing.T) {
-		// 创建字典类型
-		dictTypeForm := bo.DictTypeFormBO{
-			Name:   "测试字典类型",
-			Code:   "TEST_TYPE",
-			Status: 1,
-			Remark: "测试用字典类型",
-		}
+	// 创建字典类型
+	dictTypeForm := bo.DictTypeFormBO{
+		Name:   "测试字典类型",
+		Code:   "TEST_TYPE",
+		Status: 1,
+		Remark: "测试用字典类型",
+	}
 
-		jsonValue, _ := json.Marshal(dictTypeForm)
-		req, _ := http.NewRequest("POST", "/api/v1/dict/types", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	jsonValue, _ := json.Marshal(dictTypeForm)
+	req, _ := http.NewRequest("POST", "/api/v1/dict/types", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 查询字典类型列表
-		req, _ = http.NewRequest("GET", "/api/v1/dict/types/page", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 查询字典类型列表
+	req, _ = http.NewRequest("GET", "/api/v1/dict/types/page", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 获取字典类型表单数据
-		req, _ = http.NewRequest("GET", "/api/v1/dict/types/1/form", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	// 获取字典类型表单数据
+	req, _ = http.NewRequest("GET", "/api/v1/dict/types/1/form", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		// 更新字典类型
-		updateDictTypeForm := bo.DictTypeFormBO{
-			Name:   "更新后的字典类型",
-			Code:   "TEST_TYPE_UPDATE",
-			Status: 1,
-			Remark: "更新后的测试用字典类型",
-		}
+	// 更新字典类型
+	updateDictTypeForm := bo.DictTypeFormBO{
+		Name:   "更新后的字典类型",
+		Code:   "TEST_TYPE_UPDATE",
+		Status: 1,
+		Remark: "更新后的测试用字典类型",
+	}
 
-		jsonValue, _ = json.Marshal(updateDictTypeForm)
-		req, _ = http.NewRequest("PUT", "/api/v1/dict/types/1", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
+	jsonValue, _ = json.Marshal(updateDictTypeForm)
+	req, _ = http.NewRequest("PUT", "/api/v1/dict/types/1", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-	t.Run("TestDictCRUD", func(t *testing.T) {
-		// 创建字典项
-		dictForm := bo.DictFormBO{
-			TypeCode: "TEST_TYPE_UPDATE",
-			Name:     "测试字典项",
-			Value:    "TEST_VALUE",
-			Status:   1,
-			Sort:     1,
-			Remark:   "测试用字典项",
-		}
-
-		jsonValue, _ := json.Marshal(dictForm)
-		req, _ := http.NewRequest("POST", "/api/v1/dict", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		// 查询字典项列表
-		req, _ = http.NewRequest("GET", "/api/v1/dict/page", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		// 获取字典项表单数据
-		req, _ = http.NewRequest("GET", "/api/v1/dict/1/form", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		// 更新字典项
-		updateDictForm := bo.DictFormBO{
-			TypeCode: "TEST_TYPE_UPDATE",
-			Name:     "更新后的字典项",
-			Value:    "TEST_VALUE_UPDATE",
-			Status:   1,
-			Sort:     2,
-			Remark:   "更新后的测试用字典项",
-		}
-
-		jsonValue, _ = json.Marshal(updateDictForm)
-		req, _ = http.NewRequest("PUT", "/api/v1/dict/1", bytes.NewBuffer(jsonValue))
-		req.Header.Set("Content-Type", "application/json")
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		// 获取字典下拉选项
-		req, _ = http.NewRequest("GET", "/api/v1/dict/TEST_TYPE_UPDATE/options", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
-
-	t.Run("TestDictDelete", func(t *testing.T) {
-		// 删除字典项
-		req, _ := http.NewRequest("DELETE", "/api/v1/dict/1", nil)
-		resp := httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-
-		// 删除字典类型
-		req, _ = http.NewRequest("DELETE", "/api/v1/dict/types/1", nil)
-		resp = httptest.NewRecorder()
-		router.ServeHTTP(resp, req)
-
-		assert.Equal(t, http.StatusOK, resp.Code)
-	})
 }
 
-func TestDictService(t *testing.T) {
-	setupDictTest()
+// TestDictAPI_DictCRUD 测试字典项API的增删改查功能
+func (s *DictServiceTestSuite) TestDictAPI_DictCRUD() {
+	// 创建测试路由器
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
 
-	dictService := service.ServiceGroupApp.DictService
-	dictTypeService := service.ServiceGroupApp.DictTypeService
+	// 注册路由组
+	apiGroup := router.Group("/api/v1")
+	{
+		apiGroup.GET("/dict/page", api.ApiGroupApp.SysDictApi.GetDictPage)
+		apiGroup.GET("/dict/:id/form", api.ApiGroupApp.SysDictApi.GetDictForm)
+		apiGroup.POST("/dict", api.ApiGroupApp.SysDictApi.SaveDict)
+		apiGroup.PUT("/dict/:id", api.ApiGroupApp.SysDictApi.UpdateDict)
+		apiGroup.DELETE("/dict/:ids", api.ApiGroupApp.SysDictApi.DeleteDict)
+		apiGroup.GET("/dict/:typeCode/options", api.ApiGroupApp.SysDictApi.ListDictOptions)
 
-	t.Run("TestDictTypeService", func(t *testing.T) {
-		// 创建字典类型
-		dictTypeForm := bo.DictTypeFormBO{
-			Name:   "服务测试字典类型",
-			Code:   "SERVICE_TEST_TYPE",
-			Status: 1,
-			Remark: "服务测试用字典类型",
-		}
+		apiGroup.GET("/dict/types/page", api.ApiGroupApp.SysDictApi.GetDictTypePage)
+		apiGroup.GET("/dict/types/:id/form", api.ApiGroupApp.SysDictApi.GetDictTypeForm)
+		apiGroup.POST("/dict/types", api.ApiGroupApp.SysDictApi.SaveDictType)
+		apiGroup.PUT("/dict/types/:id", api.ApiGroupApp.SysDictApi.UpdateDictType)
+		apiGroup.DELETE("/dict/types/:ids", api.ApiGroupApp.SysDictApi.DeleteDictTypes)
+	}
 
-		err := dictTypeService.SaveDictType(dictTypeForm)
-		assert.NoError(t, err)
+	// 创建字典项
+	dictForm := bo.DictFormBO{
+		TypeCode: "TEST_TYPE_UPDATE",
+		Name:     "测试字典项",
+		Value:    "TEST_VALUE",
+		Status:   1,
+		Sort:     1,
+		Remark:   "测试用字典项",
+	}
 
-		// 查询字典类型分页
-		queryParams := struct {
-			Keywords string `json:"keywords"`
-			PageNum  int    `json:"pageNum"`
-			PageSize int    `json:"pageSize"`
-		}{
-			Keywords: "服务测试",
-			PageNum:  1,
-			PageSize: 10,
-		}
+	jsonValue, _ := json.Marshal(dictForm)
+	req, _ := http.NewRequest("POST", "/api/v1/dict", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		result, err := dictTypeService.GetDictTypePage(queryParams)
-		assert.NoError(t, err)
-		assert.Greater(t, result.Total, int64(0))
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 获取字典类型表单
-		dictTypeFormBO, err := dictTypeService.GetDictTypeForm(1)
-		assert.NoError(t, err)
-		assert.Equal(t, "服务测试字典类型", dictTypeFormBO.Name)
+	// 查询字典项列表
+	req, _ = http.NewRequest("GET", "/api/v1/dict/page", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		// 更新字典类型
-		updateDictTypeForm := bo.DictTypeFormBO{
-			Name:   "更新后的服务测试字典类型",
-			Code:   "SERVICE_TEST_TYPE_UPDATE",
-			Status: 1,
-			Remark: "更新后的服务测试用字典类型",
-		}
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		err = dictTypeService.UpdateDictType(1, updateDictTypeForm)
-		assert.NoError(t, err)
-	})
+	// 获取字典项表单数据
+	req, _ = http.NewRequest("GET", "/api/v1/dict/1/form", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-	t.Run("TestDictService", func(t *testing.T) {
-		// 创建字典项
-		dictForm := bo.DictFormBO{
-			TypeCode: "SERVICE_TEST_TYPE_UPDATE",
-			Name:     "服务测试字典项",
-			Value:    "SERVICE_TEST_VALUE",
-			Status:   1,
-			Sort:     1,
-			Remark:   "服务测试用字典项",
-		}
+	// 更新字典项
+	updateDictForm := bo.DictFormBO{
+		TypeCode: "TEST_TYPE_UPDATE",
+		Name:     "更新后的字典项",
+		Value:    "TEST_VALUE_UPDATE",
+		Status:   1,
+		Sort:     2,
+		Remark:   "更新后的测试用字典项",
+	}
 
-		dictService := service.ServiceGroupApp.DictService
-		err := dictService.SaveDict(dictForm)
-		assert.NoError(t, err)
+	jsonValue, _ = json.Marshal(updateDictForm)
+	req, _ = http.NewRequest("PUT", "/api/v1/dict/1", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		// 查询字典项分页
-		queryParams := struct {
-			Keywords string `json:"keywords"`
-			TypeCode string `json:"typeCode"`
-			PageNum  int    `json:"pageNum"`
-			PageSize int    `json:"pageSize"`
-		}{
-			Keywords: "服务测试",
-			TypeCode: "SERVICE_TEST_TYPE_UPDATE",
-			PageNum:  1,
-			PageSize: 10,
-		}
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		result, err := dictService.GetDictPage(queryParams)
-		assert.NoError(t, err)
-		assert.Greater(t, result.Total, int64(0))
+	// 获取字典下拉选项
+	req, _ = http.NewRequest("GET", "/api/v1/dict/TEST_TYPE_UPDATE/options", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
 
-		// 获取字典项表单
-		dictFormBO, err := dictService.GetDictForm(1)
-		assert.NoError(t, err)
-		assert.Equal(t, "服务测试字典项", dictFormBO.Name)
+	s.Assert().Equal(http.StatusOK, resp.Code)
 
-		// 更新字典项
-		updateDictForm := bo.DictFormBO{
-			TypeCode: "SERVICE_TEST_TYPE_UPDATE",
-			Name:     "更新后的服务测试字典项",
-			Value:    "SERVICE_TEST_VALUE_UPDATE",
-			Status:   1,
-			Sort:     2,
-			Remark:   "更新后的服务测试用字典项",
-		}
+}
 
-		err = dictService.UpdateDict(1, updateDictForm)
-		assert.NoError(t, err)
+// TestDictAPI_Delete 测试字典删除API
+func (s *DictServiceTestSuite) TestDictAPI_Delete() {
+	// 创建测试路由器
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(gin.Recovery())
 
-		// 获取字典下拉选项
-		options, err := dictService.ListDictOptions("SERVICE_TEST_TYPE_UPDATE")
-		assert.NoError(t, err)
-		assert.Greater(t, len(options), 0)
-	})
+	// 注册路由组
+	apiGroup := router.Group("/api/v1")
+	{
+		apiGroup.GET("/dict/page", api.ApiGroupApp.SysDictApi.GetDictPage)
+		apiGroup.GET("/dict/:id/form", api.ApiGroupApp.SysDictApi.GetDictForm)
+		apiGroup.POST("/dict", api.ApiGroupApp.SysDictApi.SaveDict)
+		apiGroup.PUT("/dict/:id", api.ApiGroupApp.SysDictApi.UpdateDict)
+		apiGroup.DELETE("/dict/:ids", api.ApiGroupApp.SysDictApi.DeleteDict)
+		apiGroup.GET("/dict/:typeCode/options", api.ApiGroupApp.SysDictApi.ListDictOptions)
 
-	t.Run("TestDictDeleteService", func(t *testing.T) {
-		// 删除字典项
-		err := dictService.DeleteDict("1")
-		assert.NoError(t, err)
+		apiGroup.GET("/dict/types/page", api.ApiGroupApp.SysDictApi.GetDictTypePage)
+		apiGroup.GET("/dict/types/:id/form", api.ApiGroupApp.SysDictApi.GetDictTypeForm)
+		apiGroup.POST("/dict/types", api.ApiGroupApp.SysDictApi.SaveDictType)
+		apiGroup.PUT("/dict/types/:id", api.ApiGroupApp.SysDictApi.UpdateDictType)
+		apiGroup.DELETE("/dict/types/:ids", api.ApiGroupApp.SysDictApi.DeleteDictTypes)
+	}
 
-		// 删除字典类型
-		err = dictTypeService.DeleteDictTypes("1")
-		assert.NoError(t, err)
-	})
+	// 删除字典项
+	req, _ := http.NewRequest("DELETE", "/api/v1/dict/1", nil)
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	s.Assert().Equal(http.StatusOK, resp.Code)
+
+	// 删除字典类型
+	req, _ = http.NewRequest("DELETE", "/api/v1/dict/types/1", nil)
+	resp = httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	s.Assert().Equal(http.StatusOK, resp.Code)
+
+}
+
+// TestDictService_DictType 测试字典类型服务功能
+func (s *DictServiceTestSuite) TestDictService_DictType() {
+	// 创建字典类型
+	dictTypeForm := bo.DictTypeFormBO{
+		Name:   "服务测试字典类型",
+		Code:   "SERVICE_TEST_TYPE",
+		Status: 1,
+		Remark: "服务测试用字典类型",
+	}
+
+	err := s.dictTypeService.SaveDictType(dictTypeForm)
+	s.AssertNoError(err)
+
+	// 查询字典类型分页
+	queryParams := struct {
+		Keywords string `json:"keywords"`
+		PageNum  int    `json:"pageNum"`
+		PageSize int    `json:"pageSize"`
+	}{
+		Keywords: "服务测试",
+		PageNum:  1,
+		PageSize: 10,
+	}
+
+	result, err := s.dictTypeService.GetDictTypePage(queryParams)
+	s.AssertNoError(err)
+	s.Assert().Greater(result.Total, int64(0))
+
+	// 获取字典类型表单
+	dictTypeFormBO, err := s.dictTypeService.GetDictTypeForm(1)
+	s.AssertNoError(err)
+	s.AssertEqual("服务测试字典类型", dictTypeFormBO.Name)
+
+	// 更新字典类型
+	updateDictTypeForm := bo.DictTypeFormBO{
+		Name:   "更新后的服务测试字典类型",
+		Code:   "SERVICE_TEST_TYPE_UPDATE",
+		Status: 1,
+		Remark: "更新后的服务测试用字典类型",
+	}
+
+	err = s.dictTypeService.UpdateDictType(1, updateDictTypeForm)
+	s.AssertNoError(err)
+
+}
+
+// TestDictService_Dict 测试字典项服务功能
+func (s *DictServiceTestSuite) TestDictService_Dict() {
+	// 创建字典项
+	dictForm := bo.DictFormBO{
+		TypeCode: "SERVICE_TEST_TYPE_UPDATE",
+		Name:     "服务测试字典项",
+		Value:    "SERVICE_TEST_VALUE",
+		Status:   1,
+		Sort:     1,
+		Remark:   "服务测试用字典项",
+	}
+
+	err := s.dictService.SaveDict(dictForm)
+	s.AssertNoError(err)
+
+	// 查询字典项分页
+	queryParams := struct {
+		Keywords string `json:"keywords"`
+		TypeCode string `json:"typeCode"`
+		PageNum  int    `json:"pageNum"`
+		PageSize int    `json:"pageSize"`
+	}{
+		Keywords: "服务测试",
+		TypeCode: "SERVICE_TEST_TYPE_UPDATE",
+		PageNum:  1,
+		PageSize: 10,
+	}
+
+	result, err := s.dictService.GetDictPage(queryParams)
+	s.AssertNoError(err)
+	s.Assert().Greater(result.Total, int64(0))
+
+	// 获取字典项表单
+	dictFormBO, err := s.dictService.GetDictForm(1)
+	s.AssertNoError(err)
+	s.AssertEqual("服务测试字典项", dictFormBO.Name)
+
+	// 更新字典项
+	updateDictForm := bo.DictFormBO{
+		TypeCode: "SERVICE_TEST_TYPE_UPDATE",
+		Name:     "更新后的服务测试字典项",
+		Value:    "SERVICE_TEST_VALUE_UPDATE",
+		Status:   1,
+		Sort:     2,
+		Remark:   "更新后的服务测试用字典项",
+	}
+
+	err = s.dictService.UpdateDict(1, updateDictForm)
+	s.AssertNoError(err)
+
+	// 获取字典下拉选项
+	options, err := s.dictService.ListDictOptions("SERVICE_TEST_TYPE_UPDATE")
+	s.AssertNoError(err)
+	s.Assert().Greater(len(options), 0)
+
+}
+
+// TestDictService_Delete 测试字典删除服务
+func (s *DictServiceTestSuite) TestDictService_Delete() {
+	// 删除字典项
+	err := s.dictService.DeleteDict("1")
+	s.AssertNoError(err)
+
+	// 删除字典类型
+	err = s.dictTypeService.DeleteDictTypes("1")
+	s.AssertNoError(err)
+
+}
+
+// 运行测试套件
+func TestDictServiceSuite(t *testing.T) {
+	suite.Run(t, new(DictServiceTestSuite))
 }
