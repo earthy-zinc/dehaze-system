@@ -1,8 +1,8 @@
 import axios from "axios";
-import type { CreateAxiosDefaults } from "axios";
+import type { AxiosInstance, CreateAxiosDefaults } from "axios";
 
 // 创建 axios 实例
-const createService = (config?: CreateAxiosDefaults) => {
+const createService = (config?: CreateAxiosDefaults): AxiosInstance => {
   const service = axios.create(
     config || {
       baseURL: "http://localhost:5000",
@@ -20,7 +20,9 @@ const createService = (config?: CreateAxiosDefaults) => {
 let pythonService = createService();
 
 // 提供重新初始化服务的方法
-export const initPythonService = (config?: CreateAxiosDefaults) => {
+export const initPythonService = (
+  config?: CreateAxiosDefaults
+): AxiosInstance => {
   pythonService = createService(config);
   return pythonService;
 };
