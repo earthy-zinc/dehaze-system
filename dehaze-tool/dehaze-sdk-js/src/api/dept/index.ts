@@ -1,5 +1,6 @@
 import request from "@/utils/request";
 import { DeptForm, DeptQuery, DeptVO } from "./model";
+import { OptionType } from "@/types";
 
 class DeptAPI {
   /**

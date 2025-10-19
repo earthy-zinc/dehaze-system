@@ -1,3 +1,5 @@
+import { PageQuery } from "@/types";
+
 /**
  * 登录用户信息
  */

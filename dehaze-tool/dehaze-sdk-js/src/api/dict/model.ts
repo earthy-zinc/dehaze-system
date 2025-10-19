@@ -1,3 +1,6 @@
+import { PageQuery } from "@/types";
+import { PageResult } from "@/types";
+
 /**
  * 字典类型查询参数
  */
