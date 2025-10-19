@@ -27,3 +27,6 @@ export * from "@/api/role/model";
 
 export * from "@/api/user";
 export * from "@/api/user/model";
+
+export { initService } from "@/utils/request";
+export { initPythonService } from "@/utils/requestPy";

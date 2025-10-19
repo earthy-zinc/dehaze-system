@@ -1,43 +1,27 @@
-import { TOKEN_KEY } from "@/enums/CacheEnum";
-import axios, { InternalAxiosRequestConfig, AxiosResponse } from "axios";
+import axios, { CreateAxiosDefaults } from "axios";
 
 // 创建 axios 实例
-const service = axios.create({
-  baseURL: "http://localhost:8989",
-  timeout: 50000,
-  headers: { "Content-Type": "application/json;charset=utf-8" },
-});
-
-// 请求拦截器
-service.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const accessToken = localStorage.getItem(TOKEN_KEY);
-    if (accessToken) {
-      config.headers.Authorization = accessToken;
+const createService = (config?: CreateAxiosDefaults) => {
+  const service = axios.create(
+    config || {
+      baseURL: "http://localhost:8989",
+      timeout: 5000,
+      headers: {
+        "Content-Type": "application/json;charset=utf-8",
+      },
     }
-    return config;
-  },
-  (error: any) => {
-    return Promise.reject(error);
-  }
-);
+  );
+  return service;
+};
 
-// 响应拦截器
-service.interceptors.response.use(
-  (response: AxiosResponse) => {
-    // 检查配置的响应类型是否为二进制类型（'blob' 或 'arraybuffer'）, 如果是，直接返回响应对象
-    if (
-      response.config.responseType === "blob" ||
-      response.config.responseType === "arraybuffer"
-    ) {
-      return response;
-    }
-    return Promise.resolve(response.data);
-  },
-  (error: any) => {
-    return Promise.reject(error.response.data || error.message);
-  }
-);
+// 初始化服务实例
+let service = createService();
+
+// 提供重新初始化服务的方法
+export const initService = (config?: CreateAxiosDefaults) => {
+  service = createService(config);
+  return service;
+};
 
 // 导出 axios 实例
 export default service;
