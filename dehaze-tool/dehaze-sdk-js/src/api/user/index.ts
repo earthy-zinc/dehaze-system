@@ -1,5 +1,6 @@
 import request from "@/utils/request";
 import { UserForm, UserInfo, UserPageVO, UserQuery } from "./model";
+import { PageResult } from "@/types";
 
 class UserAPI {
   /**

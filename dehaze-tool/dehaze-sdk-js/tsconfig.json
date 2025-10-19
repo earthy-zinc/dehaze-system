@@ -7,16 +7,21 @@
 
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
-    "module": "nodenext",
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
     "target": "esnext",
     "lib": ["esnext"],
     "types": ["node"],
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "forceConsistentCasingInFileNames": true,
     // and npm install -D @types/node
 
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
+    "declarationDir": "./dist",
     "declarationMap": true,
+    "emitDeclarationOnly": false,
 
     // Stricter Typechecking Options
     "noUncheckedIndexedAccess": true,
@@ -42,6 +47,6 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["./src/**/*.ts", "./index.ts"],
+  "include": ["./src/**/*.ts", "index.ts", "./src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "**/*.js"]
 }

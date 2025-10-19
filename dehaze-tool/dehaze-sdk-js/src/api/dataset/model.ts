@@ -1,3 +1,5 @@
+import { PageQuery } from "@/types";
+
 /**
  * 数据集查询参数类型
  */
