@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/utils"
@@ -20,19 +19,11 @@ import (
 // ItemFileTestSuite 项文件测试套件
 // 使用事务隔离，每个测试方法都在独立事务中运行
 type ItemFileTestSuite struct {
-	TransactionTestSuite
+	BaseTestSuite
 }
 
 // SetupSuite 在整个测试套件开始前运行一次
 func (s *ItemFileTestSuite) SetupSuite() {
-	// 初始化配置和数据库
-	initialize.Viper()
-	initialize.Gorm()
-
-	// 检查数据库连接是否可用
-	if global.DB == nil {
-		s.T().Skip("数据库连接不可用，跳过测试")
-	}
 }
 
 // TestAddImageById 测试通过ID添加图片

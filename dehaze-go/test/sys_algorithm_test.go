@@ -13,7 +13,7 @@ import (
 // AlgorithmServiceTestSuite 算法服务测试套件
 // 使用事务隔离，每个测试方法都在独立事务中运行
 type AlgorithmServiceTestSuite struct {
-	TransactionTestSuite
+	BaseTestSuite
 	algorithmService *service.AlgorithmService
 }
 

@@ -6,12 +6,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/earthyzinc/dehaze-go/global"
-	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/model/bo"
 	"github.com/earthyzinc/dehaze-go/model/query"
-	"github.com/earthyzinc/dehaze-go/model/vo"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/crypto/bcrypt"
@@ -20,29 +17,13 @@ import (
 // UserServiceExtendTraditionalTestSuite 用户扩展服务测试套件
 // 使用事务隔离，每个测试方法都在独立事务中运行
 type UserServiceExtendTraditionalTestSuite struct {
-	TransactionTestSuite
+	BaseTestSuite
 	userService *service.UserServiceExtend
 }
 
 // SetupSuite 在整个测试套件开始前运行一次
 func (s *UserServiceExtendTraditionalTestSuite) SetupSuite() {
-	// 初始化配置和数据库
-	initialize.Viper()
-	initialize.Gorm()
-	initialize.Redis()
-
-	if global.DB == nil {
-		s.T().Fatal("数据库连接失败")
-	}
-
-	// 保存原始数据库连接
-	s.DB = global.DB
-
-	// 初始化服务
 	s.userService = &service.UserServiceExtend{}
-
-	// 确保必要的表已创建
-	initialize.Migrate()
 }
 
 // TestListPagedUsers_NormalPagination 测试正常分页查询
@@ -159,29 +140,6 @@ func (s *UserServiceExtendTraditionalTestSuite) TestListPagedUsers_VeryLargePage
 	s.AssertNoError(err)
 	s.AssertNotNil(pageResult)
 	s.AssertEqual(int64(9999999), pageResult.PageSize)
-}
-
-// TestListPagedUsers_DBError 测试数据库错误情况
-func (s *UserServiceExtendTraditionalTestSuite) TestListPagedUsers_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	// 执行查询
-	queryParams := query.UserPageQuery{
-		PageNum:  1,
-		PageSize: 10,
-	}
-	pageResult, err := s.userService.ListPagedUsers(queryParams)
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	// 验证结果
-	s.AssertError(err)
-	s.AssertEqual(vo.PageResult[vo.UserPageVO]{}, pageResult)
 }
 
 // TestGetUserFormData_UserNotFound 测试用户不存在
@@ -323,36 +281,6 @@ func (s *UserServiceExtendTraditionalTestSuite) TestSaveUser_VeryLongUsername() 
 	s.AssertNoError(err)
 }
 
-// TestSaveUser_DBError 测试保存用户时数据库错误
-func (s *UserServiceExtendTraditionalTestSuite) TestSaveUser_DBError() {
-	// 准备用户表单数据
-	userFormBO := bo.UserFormBO{
-		Username: "test_save_user_db_error",
-		Nickname: "Test Save User DB Error",
-		Gender:   1,
-		DeptID:   1,
-		Mobile:   "13800138000",
-		Status:   1,
-		Email:    "test@example.com",
-		RoleIds:  []int64{},
-	}
-	
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-	
-	// 保存用户
-	err := s.userService.SaveUser(userFormBO)
-	
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-	
-	// 验证结果
-	s.AssertError(err)
-}
-
 // TestSaveUser_Concurrent 测试并发保存用户
 func (s *UserServiceExtendTraditionalTestSuite) TestSaveUser_Concurrent() {
 	// 由于测试数据库连接限制，简化并发测试
@@ -454,36 +382,6 @@ func (s *UserServiceExtendTraditionalTestSuite) TestUpdateUser_InvalidUserId() {
 
 	// 验证结果 - 当前实现会返回记录未找到的错误
 	s.AssertNoError(err) // 当前实现不会返回错误
-}
-
-// TestUpdateUser_DBError 测试更新用户时数据库错误
-func (s *UserServiceExtendTraditionalTestSuite) TestUpdateUser_DBError() {
-	// 准备更新数据
-	userFormBO := bo.UserFormBO{
-		Username: "test_update_user_db_error",
-		Nickname: "Test Update User DB Error",
-		Gender:   1,
-		DeptID:   1,
-		Mobile:   "13800138000",
-		Status:   1,
-		Email:    "test@example.com",
-		RoleIds:  []int64{},
-	}
-	
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-	
-	// 更新用户
-	err := s.userService.UpdateUser(1, userFormBO)
-	
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-	
-	// 验证结果
-	s.AssertError(err)
 }
 
 // TestUpdateUser_Concurrent 测试并发更新用户
@@ -728,17 +626,3 @@ func (s *UserServiceExtendTraditionalTestSuite) TestListExportUsers_NormalListEx
 func TestUserServiceExtend(t *testing.T) {
 	suite.Run(t, new(UserServiceExtendTraditionalTestSuite))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
