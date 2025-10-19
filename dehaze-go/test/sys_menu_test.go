@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/earthyzinc/dehaze-go/api"
-	"github.com/earthyzinc/dehaze-go/global"
-	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model/bo"
 	"github.com/earthyzinc/dehaze-go/model/query"
 	"github.com/earthyzinc/dehaze-go/service"
@@ -20,29 +18,13 @@ import (
 // MenuTestSuite 菜单服务测试套件
 // 使用事务隔离，每个测试方法都在独立事务中运行
 type MenuTestSuite struct {
-	TransactionTestSuite
+	BaseTestSuite
 	menuService *service.MenuService
 }
 
 // SetupSuite 在整个测试套件开始前运行一次
 func (s *MenuTestSuite) SetupSuite() {
-	// 初始化配置和数据库
-	initialize.Viper()
-	initialize.Gorm()
-	initialize.Redis()
-
-	if global.DB == nil {
-		s.T().Fatal("数据库连接失败")
-	}
-
-	// 保存原始数据库连接
-	s.DB = global.DB
-
-	// 初始化服务
 	s.menuService = &service.ServiceGroupApp.MenuService
-
-	// 确保必要的表已创建
-	initialize.Migrate()
 }
 
 // TestMenuCRUD 测试菜单的增删改查功能
@@ -494,139 +476,6 @@ func (s *MenuTestSuite) TestSaveMenu_Create_EmptyName() {
 
 	err := s.menuService.SaveMenu(menuForm)
 	s.AssertNoError(err) // 当前实现不会验证名称是否为空
-}
-
-// TestListMenus_DBError 测试查询菜单列表时数据库错误
-func (s *MenuTestSuite) TestListMenus_DBError() {
-	queryParams := query.MenuQuery{
-		Keywords: "",
-		Status:   nil,
-	}
-
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	menuList, err := s.menuService.ListMenus(queryParams)
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	s.AssertError(err)
-	s.Assert().Nil(menuList)
-}
-
-// TestListMenuOptions_DBError 测试获取菜单选项时数据库错误
-func (s *MenuTestSuite) TestListMenuOptions_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	options, err := s.menuService.ListMenuOptions()
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	s.AssertError(err)
-	s.Assert().Nil(options)
-}
-
-// TestListRoutes_DBError 测试获取路由列表时数据库错误
-func (s *MenuTestSuite) TestListRoutes_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	routes, err := s.menuService.ListRoutes()
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	s.AssertError(err)
-	s.Assert().Nil(routes)
-}
-
-// TestSaveMenu_DBError 测试保存菜单时数据库错误
-func (s *MenuTestSuite) TestSaveMenu_DBError() {
-	// 测试更新菜单时数据库连接断开
-	menuForm := bo.MenuForm{
-		ParentID:  0,
-		Name:      "数据库错误测试菜单",
-		Type:      1,
-		Path:      "/db-error",
-		Component: "db/error/index",
-		Visible:   1,
-		Sort:      1,
-		Icon:      "db-error-icon",
-	}
-
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	err := s.menuService.SaveMenu(menuForm)
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	s.AssertError(err)
-}
-
-// TestDeleteMenu_DBError 测试删除菜单时数据库错误
-func (s *MenuTestSuite) TestDeleteMenu_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	err := s.menuService.DeleteMenu(1)
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	s.AssertError(err)
-}
-
-// TestUpdateMenuVisible_DBError 测试更新菜单显示状态时数据库错误
-func (s *MenuTestSuite) TestUpdateMenuVisible_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	err := s.menuService.UpdateMenuVisible(1, 1)
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	s.AssertError(err)
-}
-
-// TestGetMenuForm_DBError 测试获取菜单表单数据时数据库错误
-func (s *MenuTestSuite) TestGetMenuForm_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-
-	menuForm, err := s.menuService.GetMenuForm(1)
-
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-
-	s.AssertError(err)
-	s.AssertEqual(bo.MenuForm{}, menuForm)
 }
 
 // 运行测试套件

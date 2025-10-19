@@ -4,7 +4,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/initialize"
 )
 
@@ -19,8 +18,7 @@ func TestMain(m *testing.M) {
 	initialize.Zap()
 	// 初始化数据库
 	initialize.Gorm()
-	// 确保在测试开始前清理一次
-	teardownTest()
+
 	// 初始化本地缓存
 	initialize.LocalCache()
 	// 初始化Redis（如果配置了）
@@ -29,21 +27,6 @@ func TestMain(m *testing.M) {
 
 	// 运行测试
 	code := m.Run()
-
-	teardownTest()
 	// 退出
 	os.Exit(code)
-}
-
-// teardownTest 清理测试数据
-func teardownTest() {
-	// 清理测试用的表数据
-	if global.DB != nil {
-		global.DB.Exec("drop table if exists dehaze_test.sys_menu")
-		global.DB.Exec("drop table if exists dehaze_test.sys_role")
-		global.DB.Exec("drop table if exists dehaze_test.sys_user")
-		global.DB.Exec("drop table if exists dehaze_test.sys_role_menu")
-		global.DB.Exec("drop table if exists dehaze_test.sys_user_role")
-		global.DB.Exec("drop table if exists dehaze_test.sys_dataset")
-	}
 }
