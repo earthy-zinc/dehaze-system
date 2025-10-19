@@ -6,5 +6,6 @@
   "author": "Dehaze Team",
   "license": "ISC",
   "dependencies": {
-  }
+  },
+  "modelVersion": "6.0.0"
 }
