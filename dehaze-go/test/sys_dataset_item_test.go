@@ -14,7 +14,7 @@ import (
 // DatasetItemTestSuite 数据集项测试套件
 // 使用事务隔离，每个测试方法都在独立事务中运行
 type DatasetItemTestSuite struct {
-	TransactionTestSuite
+	BaseTestSuite
 }
 
 // TestCreateDatasetItem 测试创建数据集项

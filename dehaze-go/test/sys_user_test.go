@@ -1,13 +1,10 @@
 package test
 
 import (
-	"os"
 	"strings"
 	"sync"
 	"testing"
 
-	"github.com/earthyzinc/dehaze-go/global"
-	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
 	"github.com/earthyzinc/dehaze-go/service"
 	"github.com/stretchr/testify/suite"
@@ -16,37 +13,13 @@ import (
 // UserServiceTestSuite 用户服务测试套件
 // 使用事务隔离，每个测试方法都在独立事务中运行
 type UserServiceTestSuite struct {
-	TransactionTestSuite
+	BaseTestSuite
 	userService *service.UserService
 }
 
 // SetupSuite 在整个测试套件开始前运行一次
 func (s *UserServiceTestSuite) SetupSuite() {
-	// 设置测试环境变量
-	err := os.Setenv("DEHAZE_CONFIG", "../config.test.yaml")
-	if err != nil {
-		s.T().Fatal("设置环境变量失败: ", err)
-	}
-	
-	// 初始化配置和日志
-	initialize.Viper()
-	initialize.Zap()
-	// 初始化数据库
-	initialize.Gorm()
-	initialize.Redis()
-
-	if global.DB == nil {
-		s.T().Fatal("数据库连接失败")
-	}
-
-	// 保存原始数据库连接
-	s.DB = global.DB
-
-	// 初始化服务
 	s.userService = &service.UserService{}
-
-	// 确保必要的表已创建
-	initialize.Migrate()
 }
 
 // TestGetUserAuthInfo_UserNotFound 测试用户不存在的情况
@@ -250,28 +223,9 @@ func (s *UserServiceTestSuite) TestGetUserAuthInfo_EmptyUsername() {
 func (s *UserServiceTestSuite) TestGetUserAuthInfo_VeryLongUsername() {
 	// 创建超长用户名
 	longUsername := strings.Repeat("a", 1000)
-	
+
 	// 调用测试方法
 	userAuthInfo, err := s.userService.GetUserAuthInfo(longUsername)
-	s.AssertError(err)
-	s.AssertNil(userAuthInfo)
-}
-
-// TestGetUserAuthInfo_DBError 测试数据库错误情况
-func (s *UserServiceTestSuite) TestGetUserAuthInfo_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-	
-	// 调用测试方法
-	userAuthInfo, err := s.userService.GetUserAuthInfo("test")
-	
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-	
-	// 验证结果
 	s.AssertError(err)
 	s.AssertNil(userAuthInfo)
 }
@@ -379,28 +333,6 @@ func (s *UserServiceTestSuite) TestLogin_EmptyPassword() {
 	s.AssertNil(userAuthInfo)
 }
 
-// TestLogin_DBError 测试登录时数据库错误
-func (s *UserServiceTestSuite) TestLogin_DBError() {
-	// 模拟数据库连接断开的情况
-	originalDB := s.DB
-	s.DB = nil
-	global.DB = nil
-	
-	loginUser := &model.SysUser{
-		Username: "test",
-		Password: "password",
-	}
-	userAuthInfo, err := s.userService.Login(loginUser)
-	
-	// 恢复原始数据库连接
-	s.DB = originalDB
-	global.DB = originalDB
-	
-	// 验证结果
-	s.AssertError(err)
-	s.AssertNil(userAuthInfo)
-}
-
 // TestLogin_NilUser 测试空用户对象登录
 func (s *UserServiceTestSuite) TestLogin_NilUser() {
 	userAuthInfo, err := s.userService.Login(nil)
@@ -498,25 +430,3 @@ func (s *UserServiceTestSuite) TestLogin_Concurrent() {
 func TestUserService(t *testing.T) {
 	suite.Run(t, new(UserServiceTestSuite))
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

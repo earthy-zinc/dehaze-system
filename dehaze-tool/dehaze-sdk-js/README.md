@@ -17,10 +17,6 @@ Dehaze SDK JS 是一个基于 TypeScript 开发的 JavaScript SDK，用于与去
 在项目根目录下，使用相对路径安装：
 
 ```bash
-# 在 Windows 系统中
-pnpm add file:../dehaze-tool/dehaze-sdk-js
-
-# 在 macOS/Linux 系统中
 pnpm add file:../dehaze-tool/dehaze-sdk-js
 ```
 

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/earthyzinc/dehaze-go/global"
-	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
 
 	"gorm.io/gorm"
@@ -13,10 +12,6 @@ import (
 
 // TestMigrateDryRun 使用DryRun模式查看AutoMigrate会生成什么SQL
 func TestMigrateDryRun(t *testing.T) {
-	// 初始化配置和数据库
-	initialize.Viper()
-	initialize.Gorm()
-
 	if global.DB == nil {
 		t.Fatal("数据库连接失败")
 	}

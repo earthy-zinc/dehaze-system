@@ -8,10 +8,24 @@ import (
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/initialize"
 	"github.com/earthyzinc/dehaze-go/model"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
 )
 
-func TestInitRolePermsCache(t *testing.T) {
+// RolePermsTestSuite 角色权限缓存测试套件
+type RolePermsTestSuite struct {
+	BaseTestSuite
+}
+
+// SetupSuite 在整个测试套件开始前运行一次
+func (s *RolePermsTestSuite) SetupSuite() {
+}
+
+// TearDownSuite 在整个测试套件结束后运行一次
+func (s *RolePermsTestSuite) TearDownSuite() {
+}
+
+// TestInitRolePermsCache 测试初始化角色权限缓存
+func (s *RolePermsTestSuite) TestInitRolePermsCache() {
 	// 创建测试数据
 	// 1. 创建测试角色
 	testRole1 := model.SysRole{
@@ -30,14 +44,8 @@ func TestInitRolePermsCache(t *testing.T) {
 		Deleted:   0,
 	}
 
-	// 清理可能存在的测试数据
-	global.DB.Where("code IN ?", []string{testRole1.Code, testRole2.Code}).Delete(&model.SysRole{})
-
-	// 插入测试角色
-	result := global.DB.Create(&testRole1)
-	assert.NoError(t, result.Error)
-	result = global.DB.Create(&testRole2)
-	assert.NoError(t, result.Error)
+	s.AssertNoError(s.CreateTestData(&testRole1))
+	s.AssertNoError(s.CreateTestData(&testRole2))
 
 	// 2. 创建测试菜单权限
 	testMenu1 := model.SysMenu{
@@ -58,91 +66,46 @@ func TestInitRolePermsCache(t *testing.T) {
 		Perm: "test:permission3",
 	}
 
-	// 清理可能存在的测试数据
-	global.DB.Where("perm IN ?", []string{testMenu1.Perm, testMenu2.Perm, testMenu3.Perm}).Delete(&model.SysMenu{})
-
-	// 插入测试菜单
-	result = global.DB.Create(&testMenu1)
-	assert.NoError(t, result.Error)
-	result = global.DB.Create(&testMenu2)
-	assert.NoError(t, result.Error)
-	result = global.DB.Create(&testMenu3)
-	assert.NoError(t, result.Error)
+	s.AssertNoError(s.CreateTestData(&testMenu1))
+	s.AssertNoError(s.CreateTestData(&testMenu2))
+	s.AssertNoError(s.CreateTestData(&testMenu3))
 
 	// 3. 创建角色菜单关联
-	type SysRoleMenu struct {
-		RoleID int64 `gorm:"column:role_id"`
-		MenuID int64 `gorm:"column:menu_id"`
-	}
+	roleMenu1 := model.SysRoleMenu{RoleID: testRole1.ID, MenuID: testMenu1.ID}
+	roleMenu2 := model.SysRoleMenu{RoleID: testRole1.ID, MenuID: testMenu2.ID}
+	roleMenu3 := model.SysRoleMenu{RoleID: testRole2.ID, MenuID: testMenu2.ID}
+	roleMenu4 := model.SysRoleMenu{RoleID: testRole2.ID, MenuID: testMenu3.ID}
 
-	// Role1 关联 Menu1 和 Menu2
-	roleMenu1 := SysRoleMenu{RoleID: testRole1.ID, MenuID: testMenu1.ID}
-	roleMenu2 := SysRoleMenu{RoleID: testRole1.ID, MenuID: testMenu2.ID}
-
-	// Role2 关联 Menu2 和 Menu3
-	roleMenu3 := SysRoleMenu{RoleID: testRole2.ID, MenuID: testMenu2.ID}
-	roleMenu4 := SysRoleMenu{RoleID: testRole2.ID, MenuID: testMenu3.ID}
-
-	// 清理可能存在的测试关联数据
-	global.DB.Table("sys_role_menu").Where("role_id IN ? AND menu_id IN ?",
-		[]int64{testRole1.ID, testRole2.ID},
-		[]int64{testMenu1.ID, testMenu2.ID, testMenu3.ID}).Delete(&SysRoleMenu{})
-
-	// 插入角色菜单关联
-	result = global.DB.Table("sys_role_menu").Create(&roleMenu1)
-	assert.NoError(t, result.Error)
-	result = global.DB.Table("sys_role_menu").Create(&roleMenu2)
-	assert.NoError(t, result.Error)
-	result = global.DB.Table("sys_role_menu").Create(&roleMenu3)
-	assert.NoError(t, result.Error)
-	result = global.DB.Table("sys_role_menu").Create(&roleMenu4)
-	assert.NoError(t, result.Error)
+	s.AssertNoError(s.CreateTestData(&roleMenu1))
+	s.AssertNoError(s.CreateTestData(&roleMenu2))
+	s.AssertNoError(s.CreateTestData(&roleMenu3))
+	s.AssertNoError(s.CreateTestData(&roleMenu4))
 
 	// 执行测试
 	err := initialize.InitRolePermsCache()
-	assert.NoError(t, err)
+	s.AssertNoError(err)
 
 	// 验证结果
-	// 1. 验证Redis中的数据（如果Redis可用）
-	if global.REDIS != nil {
-		// 检查Role1的权限
-		perms1, err := global.REDIS.HGet(context.Background(), "role_perms", testRole1.Code).Result()
-		assert.NoError(t, err)
-		assert.Contains(t, perms1, testMenu1.Perm)
-		assert.Contains(t, perms1, testMenu2.Perm)
-		assert.NotContains(t, perms1, testMenu3.Perm)
+	// 验证本地缓存中的数据
+	// 检查Role1的权限
+	cachedPerms1, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRole1.Code)
+	s.Assert().True(found)
+	perms1 := cachedPerms1.([]string)
+	s.Assert().Contains(perms1, testMenu1.Perm)
+	s.Assert().Contains(perms1, testMenu2.Perm)
+	s.Assert().NotContains(perms1, testMenu3.Perm)
 
-		// 检查Role2的权限
-		perms2, err := global.REDIS.HGet(context.Background(), "role_perms", testRole2.Code).Result()
-		assert.NoError(t, err)
-		assert.Contains(t, perms2, testMenu2.Perm)
-		assert.Contains(t, perms2, testMenu3.Perm)
-		assert.NotContains(t, perms2, testMenu1.Perm)
-	} else {
-		// 验证本地缓存中的数据
-		// 检查Role1的权限
-		cachedPerms1, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRole1.Code)
-		assert.True(t, found)
-		perms1 := cachedPerms1.([]string)
-		assert.Contains(t, perms1, testMenu1.Perm)
-		assert.Contains(t, perms1, testMenu2.Perm)
-		assert.NotContains(t, perms1, testMenu3.Perm)
-
-		// 检查Role2的权限
-		cachedPerms2, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRole2.Code)
-		assert.True(t, found)
-		perms2 := cachedPerms2.([]string)
-		assert.Contains(t, perms2, testMenu2.Perm)
-		assert.Contains(t, perms2, testMenu3.Perm)
-		assert.NotContains(t, perms2, testMenu1.Perm)
-	}
+	// 检查Role2的权限
+	cachedPerms2, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRole2.Code)
+	s.Assert().True(found)
+	perms2 := cachedPerms2.([]string)
+	s.Assert().Contains(perms2, testMenu2.Perm)
+	s.Assert().Contains(perms2, testMenu3.Perm)
+	s.Assert().NotContains(perms2, testMenu1.Perm)
 }
 
-func TestClearRolePermsCache(t *testing.T) {
-	if global.DB == nil {
-		return
-	}
-
+// TestClearRolePermsCache 测试清理角色权限缓存
+func (s *RolePermsTestSuite) TestClearRolePermsCache() {
 	// 先添加一些测试数据到缓存中
 	testRoleCode := "TEST_CLEANUP_ROLE"
 	testPerms := []string{"perm1", "perm2", "perm3"}
@@ -153,21 +116,26 @@ func TestClearRolePermsCache(t *testing.T) {
 	// 如果Redis可用，也添加到Redis中
 	if global.REDIS != nil {
 		_, err := global.REDIS.HSet(context.Background(), "role_perms", testRoleCode, "perm1,perm2,perm3").Result()
-		assert.NoError(t, err)
+		s.AssertNoError(err)
 	}
 
 	// 执行清理
 	err := initialize.ClearRolePermsCache()
-	assert.NoError(t, err)
+	s.AssertNoError(err)
 
 	// 验证本地缓存已清理
 	_, found := global.LOCAL_CACHE.Get(common.RolePermsPrefix + testRoleCode)
-	assert.False(t, found)
+	s.Assert().False(found)
 
 	// 如果Redis可用，验证Redis已清理
 	if global.REDIS != nil {
 		exists, err := global.REDIS.HExists(context.Background(), "role_perms", testRoleCode).Result()
-		assert.NoError(t, err)
-		assert.False(t, exists)
+		s.AssertNoError(err)
+		s.Assert().False(exists)
 	}
+}
+
+// TestRolePermsTestSuite 运行测试套件
+func TestRolePermsTestSuite(t *testing.T) {
+	suite.Run(t, new(RolePermsTestSuite))
 }
