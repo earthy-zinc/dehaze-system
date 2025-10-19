@@ -1,117 +1,92 @@
-# Dehaze SDK JS
+# Dehaze JavaScript SDK
 
-Dehaze SDK JS 是一个基于 TypeScript 开发的 JavaScript SDK，用于与去雾系统后端 API 进行交互。
-
-## 功能特点
-
-- 基于 TypeScript 开发，提供完整的类型定义
-- 封装了系统的各种 API 接口调用
-- 支持 Token 认证机制
-- 使用 Axios 作为 HTTP 客户端
-- 自动处理请求和响应拦截
+Dehaze 系统的 JavaScript SDK，用于简化前端项目与后端 API 的交互。
 
 ## 安装
 
-### 本地使用（推荐）
-
-在项目根目录下，使用相对路径安装：
-
 ```bash
+pnpm add dehaze-sdk-js
 pnpm add file:../dehaze-tool/dehaze-sdk-js
 ```
 
-### 构建项目
+## 基础用法
 
-如果需要重新构建 SDK：
+默认情况下，SDK 会使用默认开发环境的配置：
 
-```bash
-# 进入 SDK 目录
-cd ../dehaze-tool/dehaze-sdk-js
+```javascript
+import { getUserList } from 'dehaze-sdk-js';
 
-# 安装依赖
-pnpm install
-
-# 构建项目
-pnpm build
+const users = await getUserList();
 ```
 
-## 使用方法
+## API 列表
 
-### 基本用法
+### 用户管理
 
-```typescript
-import { UserAPI } from 'dehaze-sdk-js';
+- `getUserList` - 获取用户列表
+- `getUserInfo` - 获取用户信息
+- `createUser` - 创建用户
+- `updateUser` - 更新用户
+- `deleteUser` - 删除用户
 
-// 获取用户信息
-UserAPI.getInfo().then(userInfo => {
-  console.log(userInfo);
-});
+### 角色管理
 
-// 获取用户分页列表
-UserAPI.getPage({
-  pageNum: 1,
-  pageSize: 10
-}).then(pageData => {
-  console.log(pageData);
-});
-```
+- `getRoleList` - 获取角色列表
+- `getRoleInfo` - 获取角色信息
+- `createRole` - 创建角色
+- `updateRole` - 更新角色
+- `deleteRole` - 删除角色
 
-### 认证
+### 菜单管理
 
-SDK 使用 localStorage 存储认证 Token，默认键名为 `accessToken`。您只需确保在用户登录后将 Token 存储在正确的位置即可。
+- `getMenuList` - 获取菜单列表
+- `getMenuInfo` - 获取菜单信息
+- `createMenu` - 创建菜单
+- `updateMenu` - 更新菜单
+- `deleteMenu` - 删除菜单
 
-```typescript
-// 用户登录后设置 Token
-localStorage.setItem('accessToken', 'your-jwt-token');
-```
+### 字典管理
 
-### API 列表
+- `getDictList` - 获取字典列表
+- `getDictInfo` - 获取字典信息
+- `createDict` - 创建字典
+- `updateDict` - 更新字典
+- `deleteDict` - 删除字典
 
-SDK 当前包含以下 API 模块：
+### 部门管理
 
-- AlgorithmAPI - 算法相关接口
-- AuthAPI - 认证相关接口
-- DatasetAPI - 数据集相关接口
-- DeptAPI - 部门相关接口
-- DictAPI - 字典相关接口
-- FileAPI - 文件相关接口
-- MenuAPI - 菜单相关接口
-- ModelAPI - 模型相关接口
-- RoleAPI - 角色相关接口
-- UserAPI - 用户相关接口
+- `getDeptList` - 获取部门列表
+- `getDeptInfo` - 获取部门信息
+- `createDept` - 创建部门
+- `updateDept` - 更新部门
+- `deleteDept` - 删除部门
 
-## 开发指南
+### 文件管理
 
-### 项目结构
+- `uploadFile` - 上传文件
+- `downloadFile` - 下载文件
+- `deleteFile` - 删除文件
 
-```
-src/
-├── api/           # 各个模块的 API 封装
-├── enums/         # 枚举类型定义
-├── types/         # 全局类型定义
-└── utils/         # 工具函数
-```
+### 算法管理
 
-### 构建
+- `getAlgorithmList` - 获取算法列表
+- `getAlgorithmInfo` - 获取算法信息
+- `createAlgorithm` - 创建算法
+- `updateAlgorithm` - 更新算法
+- `deleteAlgorithm` - 删除算法
 
-```bash
-# 清理构建产物
-pnpm clean
+### 模型管理
 
-# 构建项目
-pnpm build
-```
+- `getModelList` - 获取模型列表
+- `getModelInfo` - 获取模型信息
+- `createModel` - 创建模型
+- `updateModel` - 更新模型
+- `deleteModel` - 删除模型
 
-构建后的文件将输出到 `dist` 目录。
+### 数据集管理
 
-## 类型定义
-
-所有接口都有完整的 TypeScript 类型定义，可以在开发过程中提供完整的类型检查和智能提示。
-
-## 浏览器兼容性
-
-由于使用了较新的 JavaScript 特性，建议在现代浏览器中使用。如需支持旧版浏览器，请配置相应的 polyfill。
-
-## 许可证
-
-ISC
+- `getDatasetList` - 获取数据集列表
+- `getDatasetInfo` - 获取数据集信息
+- `createDataset` - 创建数据集
+- `updateDataset` - 更新数据集
+- `deleteDataset` - 删除数据集
