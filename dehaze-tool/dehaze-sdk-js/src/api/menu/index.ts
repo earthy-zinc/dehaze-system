@@ -1,5 +1,6 @@
 import request from "@/utils/request";
 import { MenuQuery, MenuVO, MenuForm, RouteVO } from "./model";
+import { OptionType } from "@/types";
 
 class MenuAPI {
   /**

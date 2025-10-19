@@ -1,4 +1,5 @@
-import axios, { CreateAxiosDefaults } from "axios";
+import axios from "axios";
+import type { CreateAxiosDefaults } from "axios";
 
 // 创建 axios 实例
 const createService = (config?: CreateAxiosDefaults) => {

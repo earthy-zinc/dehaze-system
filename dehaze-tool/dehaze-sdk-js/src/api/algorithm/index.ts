@@ -1,5 +1,6 @@
 import request from "@/utils/request";
 import { Algorithm, AlgorithmQuery } from "./model";
+import { OptionType } from "@/types";
 
 class AlgorithmAPI {
   /**

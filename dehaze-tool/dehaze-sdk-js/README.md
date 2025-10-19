@@ -1,3 +1,103 @@
+# Dehaze SDK for JavaScript
+
+JavaScript SDK for Dehaze System API
+
+## 安装
+
+```bash
+npm install dehaze-sdk-js
+```
+
+## 构建
+
+```bash
+npm run build
+```
+
+## 使用方法
+
+```javascript
+import { UserAPI } from 'dehaze-sdk-js';
+
+UserAPI.getInfo().then(res => {
+  console.log(res);
+});
+```
+
+## 测试
+
+项目包含一个测试目录，用于验证SDK的功能。
+
+### 简单测试
+
+进入测试目录并安装依赖：
+
+```bash
+cd test
+npm install
+```
+
+### TypeScript 兼容性测试
+
+SDK 的 TypeScript 兼容性测试使用 TypeScript 编写的测试项目来验证 SDK 在 TypeScript 环境中的类型定义和功能是否正常。
+
+1. 构建测试项目：
+   ```bash
+   cd test
+   npm run build
+   ```
+
+2. 运行 TypeScript 测试：
+   ```bash
+   npm test
+   ```
+
+### 完整功能测试
+
+完整功能测试需要启动一个模拟服务器来响应SDK的API调用。
+
+1. 首先在一个终端窗口启动模拟服务器：
+
+```bash
+cd test
+npm run build
+npm run test-server
+```
+
+或者使用 ts-node 直接运行（无需预先构建）：
+
+```bash
+cd test
+npm run dev-server
+```
+
+2. 在另一个终端窗口运行测试：
+
+```bash
+cd test
+npm test
+```
+
+或者使用 ts-node 直接运行（无需预先构建）：
+
+```bash
+cd test
+npm run dev
+```
+
+测试将执行以下操作：
+- 获取当前用户信息
+- 获取用户分页列表
+- 获取用户表单详情
+- 添加新用户
+- 修改用户信息
+- 修改用户密码
+- 删除用户
+
+## 许可证
+
+ISC
+
 # Dehaze JavaScript SDK
 
 Dehaze 系统的 JavaScript SDK，用于简化前端项目与后端 API 的交互。

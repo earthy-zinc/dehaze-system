@@ -5,6 +5,7 @@ import {
   ImageItem,
   ImageItemQuery,
 } from "@/api/dataset/model";
+import { OptionType, PageResult } from "@/types";
 import request from "@/utils/request";
 
 class DatasetAPI {

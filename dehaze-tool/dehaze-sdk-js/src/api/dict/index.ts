@@ -7,6 +7,7 @@ import {
   DictForm,
   DictPageResult,
 } from "./model";
+import { OptionType, ResponseData } from "@/types";
 
 class DictAPI {
   /**

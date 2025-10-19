@@ -1,5 +1,6 @@
 import request from "@/utils/request";
 import { RoleQuery, RolePageResult, RoleForm } from "./model";
+import { OptionType } from "@/types";
 
 class RoleAPI {
   /**

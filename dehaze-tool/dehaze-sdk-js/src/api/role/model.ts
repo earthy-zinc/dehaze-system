@@ -1,3 +1,6 @@
+import { PageResult } from "@/types";
+import { PageQuery } from "@/types";
+
 /**
  * 角色查询参数
  */

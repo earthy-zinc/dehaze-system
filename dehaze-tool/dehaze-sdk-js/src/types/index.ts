@@ -1,7 +1,7 @@
 /**
  * 响应数据
  */
-interface ResponseData<T = any> {
+export interface ResponseData<T = any> {
   code: string;
   data: T;
   msg: string;
@@ -10,7 +10,7 @@ interface ResponseData<T = any> {
 /**
  * 分页查询参数
  */
-interface PageQuery {
+export interface PageQuery {
   pageNum: number;
   pageSize: number;
 }
@@ -18,7 +18,7 @@ interface PageQuery {
 /**
  * 分页响应对象
  */
-interface PageResult<T> {
+export interface PageResult<T> {
   /** 数据列表 */
   list: T;
   /** 总数 */
@@ -28,7 +28,7 @@ interface PageResult<T> {
 /**
  * 页签对象
  */
-interface TagView {
+export interface TagView {
   /** 页签名称 */
   name: string;
   /** 页签标题 */
@@ -50,7 +50,7 @@ interface TagView {
 /**
  * 组件数据源
  */
-interface OptionType {
+export interface OptionType {
   /** 值 */
   value: string | number;
   /** 文本 */
