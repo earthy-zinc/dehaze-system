@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Input, Button, Text, Form } from '@tarojs/components';
+import React, { useEffect, useState } from 'react';
+import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
+import { View, Input, Button, Text, Form, Image } from '@tarojs/components';
 import { useDidShow } from '@tarojs/taro';
 import './index.less';
 
@@ -11,13 +12,22 @@ const Login: React.FC = () => {
     captcha: ''
   });
   const [loading, setLoading] = useState(false);
-  const [captchaValue, setCaptchaValue] = useState('7 x 0 = ?');
-  const [captchaError, setCaptchaError] = useState('');
-
-  useDidShow(() => {
-    // 页面显示时的操作
+  const [captcha, setCaptcha] = useState<CaptchaResult>({
+    captchaBase64: '',
+    captchaKey: ''
   });
 
+  const [captchaError, setCaptchaError] = useState('');
+
+  useDidShow(async () => {
+
+  });
+
+  useEffect(() => {
+    AuthAPI
+      .getCaptcha()
+      .then((res) => setCaptcha(res));
+  }, []);
   const handleInput = (field: string, value: string) => {
     setFormData({
       ...formData,
@@ -35,9 +45,7 @@ const Login: React.FC = () => {
       return;
     }
 
-    // 验证验证码
-    const expectedCaptcha = calculateExpectedCaptcha();
-    if (parseInt(formData.captcha) !== expectedCaptcha) {
+    if (parseInt(formData.captcha) !== 0) {
       setCaptchaError('验证码错误');
       return;
     }
@@ -54,34 +62,14 @@ const Login: React.FC = () => {
     }, 800);
   };
 
-  const calculateExpectedCaptcha = (): number => {
-    // 简单的验证码计算逻辑
-    const parts = captchaValue.split(' ');
-    const num1 = parseInt(parts[0]);
-    const operator = parts[1];
-    const num2 = parseInt(parts[2]);
 
-    switch (operator) {
-      case 'x': return num1 * num2;
-      case '+': return num1 + num2;
-      case '-': return num1 - num2;
-      default: return 0;
-    }
-  };
-
-  const refreshCaptcha = () => {
-    // 生成新的验证码
-    const num1 = Math.floor(Math.random() * 10);
-    const num2 = Math.floor(Math.random() * 10);
-    const operators = ['x', '+', '-'];
-    const operator = operators[Math.floor(Math.random() * operators.length)];
-
-    setCaptchaValue(`${num1} ${operator} ${num2} = ?`);
+  const refreshCaptcha = async () => {
+    const res = await AuthAPI.getCaptcha();
+    setCaptcha(res);
     setFormData({
       ...formData,
       captcha: ''
     });
-    setCaptchaError('');
   };
 
   return (
@@ -118,14 +106,12 @@ const Login: React.FC = () => {
           <View className='form-group'>
             <View className='captcha-container'>
               <Input
-                className={`form-input ${captchaError ? 'error' : ''}`}
+                className={`form-input`}
                 placeholder='请输入验证码'
                 value={formData.captcha}
                 onInput={(e) => handleInput('captcha', e.detail.value)}
               />
-              <View className='captcha-image' onClick={refreshCaptcha}>
-                <Text className='captcha-text'>{captchaValue}</Text>
-              </View>
+              <Image className='captcha-image' src={captcha?.captchaBase64} onClick={refreshCaptcha}/>
             </View>
             {captchaError && <Text className='error-message'>{captchaError}</Text>}
           </View>

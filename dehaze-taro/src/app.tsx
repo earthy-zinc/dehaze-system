@@ -1,15 +1,16 @@
 import React from 'react'
 import { Provider } from 'react-redux'
-
 import configStore from './store'
 
 import './app.less'
-
-const store = configStore()
+import configRequest from './utils/request'
 
 interface AppProps {
   children: React.ReactNode
 }
+
+configRequest()
+const store = configStore()
 
 const App: React.FC<AppProps> = (props) => {
     return (
