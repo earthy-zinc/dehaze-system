@@ -22,6 +22,8 @@ export * from "@/api/model/model";
 export * from "@/api/role/model";
 export * from "@/api/user/model";
 export * from "@/types";
+export * from "@/enums";
+
 // 配置导出
 export { configJavaAxios, configPythonAxios } from "@/config";
 
