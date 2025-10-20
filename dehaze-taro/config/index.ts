@@ -16,6 +16,9 @@ export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
       375: 4,
       828: 1.81,
     },
+    alias: {
+      "@": path.resolve(__dirname, "..", "src"),
+    },
     sourceRoot: "src",
     outputRoot: `dist/${process.env.TARO_ENV}`,
     plugins: ["@tarojs/plugin-http"],

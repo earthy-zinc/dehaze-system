@@ -1,13 +1,13 @@
-import { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 
 export interface InterceptorCallbacks {
   onRequest?: (
     config: InternalAxiosRequestConfig
   ) => InternalAxiosRequestConfig;
-  onRequestError?: (error: any) => any;
+  onRequestError?: (error: AxiosError) => any;
 
-  onResponse?: (response: AxiosResponse["data"]) => any;
-  onResponseError?: (error: any) => any;
+  onResponse?: (response: AxiosResponse) => any;
+  onResponseError?: (error: AxiosError) => any;
 }
 
 class ConfigManager {
