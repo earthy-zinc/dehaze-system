@@ -1,9 +1,9 @@
 import React from 'react'
 import { Provider } from 'react-redux'
-import configStore from './store'
 
 import './app.less'
-import configRequest from './utils/request'
+import configRequest from '@/utils/request'
+import configStore from '@/store'
 
 interface AppProps {
   children: React.ReactNode

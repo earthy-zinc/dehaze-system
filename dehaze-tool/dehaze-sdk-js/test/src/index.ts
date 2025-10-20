@@ -1,19 +1,42 @@
-import { 
-  initService, 
-  UserQuery, 
+import { AxiosError } from "axios";
+import {
+  UserQuery,
   UserForm,
   UserInfo,
   UserPageVO,
   LoginData,
   CaptchaResult,
   UserAPI,
-  AuthAPI
+  AuthAPI,
+  configJavaAxios,
 } from "dehaze-sdk-js";
 
+(global as any).localStorage = {
+  store: {} as Record<string, string>,
+  getItem: function (key: string) {
+    return this.store[key] || null;
+  },
+  setItem: function (key: string, value: string) {
+    this.store[key] = value.toString();
+  },
+  removeItem: function (key: string) {
+    delete this.store[key];
+  },
+  clear: function () {
+    this.store = {};
+  },
+};
 // 初始化服务
-initService({
-  baseURL: "http://localhost:8080",
-  timeout: 10000,
+configJavaAxios({
+  onRequest: (config) => {
+    return {
+      ...config,
+      baseURL: "http://localhost:8080",
+    };
+  },
+  onResponseError: (error: AxiosError) => {
+    console.log("响应错误:\n", error.response?.data);
+  },
 });
 
 interface TestResult {
@@ -28,13 +51,20 @@ async function runUserAPITests(accessToken: string): Promise<TestResult[]> {
   const testResults: TestResult[] = [];
 
   try {
-    // 设置认证头
-    initService({
-      baseURL: "http://localhost:8080",
-      timeout: 10000,
-      headers: {
-        'Authorization': `Bearer ${accessToken}`
-      }
+    configJavaAxios({
+      onRequest: (config: any) => {
+        return {
+          ...config,
+          baseURL: "http://localhost:8080",
+          headers: {
+            ...config.headers,
+            Authorization: `Bearer ${accessToken}`,
+          },
+        };
+      },
+      onResponseError: (error) => {
+        console.error("响应错误:", error);
+      },
     });
 
     // 测试获取当前用户信息
@@ -96,7 +126,6 @@ async function runUserAPITests(accessToken: string): Promise<TestResult[]> {
     const deleteResult = await UserAPI.deleteByIds("1,2");
     console.log("   用户删除成功，结果:", deleteResult.status);
     testResults.push({ testName: "删除用户", success: true });
-
   } catch (error: any) {
     console.error("UserAPI测试过程中出现错误:", error.message);
     testResults.push({
@@ -109,7 +138,10 @@ async function runUserAPITests(accessToken: string): Promise<TestResult[]> {
   return testResults;
 }
 
-async function runAuthAPITests(): Promise<{results: TestResult[], accessToken?: string}> {
+async function runAuthAPITests(): Promise<{
+  results: TestResult[];
+  accessToken?: string;
+}> {
   console.log("\n开始测试 AuthAPI...\n");
   const testResults: TestResult[] = [];
   let accessToken: string | undefined;
@@ -125,7 +157,7 @@ async function runAuthAPITests(): Promise<{results: TestResult[], accessToken?: 
     console.log("\n2. 测试登录:");
     const loginData: LoginData = {
       username: "testuser",
-      password: "testpass"
+      password: "testpass",
     };
     const loginResult = await AuthAPI.login(loginData);
     console.log("   登录成功，token类型:", loginResult.tokenType);
@@ -137,7 +169,6 @@ async function runAuthAPITests(): Promise<{results: TestResult[], accessToken?: 
     const logoutResult = await AuthAPI.logout();
     console.log("   注销成功");
     testResults.push({ testName: "注销", success: true });
-
   } catch (error: any) {
     console.error("AuthAPI测试过程中出现错误:", error.message);
     testResults.push({
@@ -155,7 +186,7 @@ async function runTests(): Promise<void> {
 
   const authTestResults = await runAuthAPITests();
   let allTestResults = [...authTestResults.results];
-  
+
   if (authTestResults.accessToken) {
     const userTestResults = await runUserAPITests(authTestResults.accessToken);
     allTestResults = [...allTestResults, ...userTestResults];
@@ -171,7 +202,7 @@ async function runTests(): Promise<void> {
     }
   });
 
-  const passedTests = allTestResults.filter(r => r.success).length;
+  const passedTests = allTestResults.filter((r) => r.success).length;
   const totalTests = allTestResults.length;
   console.log(`\n总计: ${passedTests}/${totalTests} 个测试通过`);
 }

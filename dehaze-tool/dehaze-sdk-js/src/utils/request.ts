@@ -2,7 +2,11 @@ import { configManager } from "@/config";
 import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { ResultEnum } from "@/enums/ResultEnum";
 import axios from "axios";
-import type { AxiosResponse, InternalAxiosRequestConfig } from "axios";
+import type {
+  AxiosError,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
 
 const service = axios.create({
   baseURL: "http://localhost:8989",
@@ -22,7 +26,7 @@ service.interceptors.request.use(
     const otherConfig = interceptors.onRequest?.(config) || {};
     return { ...config, ...otherConfig };
   },
-  (error: any) => {
+  (error: AxiosError) => {
     const interceptors = configManager.getInterceptors();
     return Promise.reject(interceptors.onRequestError?.(error) || error);
   }
@@ -32,12 +36,16 @@ service.interceptors.response.use(
   async (response: AxiosResponse) => {
     try {
       const interceptors = configManager.getInterceptors();
-      return (await interceptors.onResponse?.(response.data)) || response.data;
+      const { code, data } = response.data;
+      if (code !== ResultEnum.SUCCESS) {
+        return Promise.reject(response.data);
+      }
+      return (await interceptors.onResponse?.(response)) || data;
     } catch (error) {
       return Promise.reject(error);
     }
   },
-  (error: any) => {
+  (error: AxiosError) => {
     const interceptors = configManager.getInterceptors();
     return Promise.reject(interceptors.onResponseError?.(error) || error);
   }
