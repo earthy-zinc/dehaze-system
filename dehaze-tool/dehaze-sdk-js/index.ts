@@ -21,7 +21,7 @@ export * from "@/api/menu/model";
 export * from "@/api/model/model";
 export * from "@/api/role/model";
 export * from "@/api/user/model";
-
+export * from "@/types";
 // 配置导出
 export { configJavaAxios, configPythonAxios } from "@/config";
 
