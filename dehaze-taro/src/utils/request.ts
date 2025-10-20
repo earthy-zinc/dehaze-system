@@ -7,6 +7,8 @@ import {
 
 import type { AxiosError } from "axios";
 import { Dialog, Notify } from "@taroify/core";
+import { resetToken } from "@/store/user";
+import Taro from "@tarojs/taro";
 
 export default function configRequest() {
   configJavaAxios({
@@ -19,11 +21,9 @@ export default function configRequest() {
             message: "当前页面已失效，请重新登录",
             confirm: "确定",
             cancel: "取消",
-            onConfirm: () => {
-              // const userStore = useUserStoreHook();
-              // userStore.resetToken().then(() => {
-              //   location.reload();
-              // });
+            onConfirm: async () => {
+              await resetToken();
+              Taro.redirectTo({ url: "/pages/login/login" });
             },
           });
         } else {
