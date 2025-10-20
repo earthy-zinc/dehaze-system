@@ -5,20 +5,82 @@ JavaScript SDK for Dehaze System API
 ## 安装
 
 ```bash
-npm install dehaze-sdk-js
+pnpm add dehaze-sdk-js
 ```
 
-或者使用 pnpm:
+或者使用 npm:
 
 ```bash
-pnpm add dehaze-sdk-js
+npm install dehaze-sdk-js
 ```
 
 ## 构建
 
 ```bash
-npm run build
+pnpm run build
 ```
+
+## 配置
+
+在使用 SDK 之前，您可能需要配置基础 URL 和其他 axios 设置。SDK 提供了四个拦截点：请求前、请求错误、响应和响应错误。
+
+```javascript
+import { configJavaAxios, configPythonAxios } from 'dehaze-sdk-js';
+
+// 配置 Java 后端 API
+configJavaAxios({
+  onRequest: (config) => {
+    // 修改请求配置
+    config.baseURL = 'http://localhost:8080';
+    config.timeout = 5000;
+    return config;
+  },
+  onRequestError: (error) => {
+    // 处理请求错误
+    console.error('Request error:', error);
+    return Promise.reject(error);
+  },
+  onResponse: (response) => {
+    // 处理响应数据
+    return response.data;
+  },
+  onResponseError: (error) => {
+    // 处理响应错误
+    console.error('Response error:', error);
+    return Promise.reject(error);
+  }
+});
+
+// 配置 Python 后端 API
+configPythonAxios({
+  onRequest: (config) => {
+    // 修改请求配置
+    config.baseURL = 'http://localhost:5000';
+    return config;
+  },
+  onRequestError: (error) => {
+    // 处理请求错误
+    console.error('Python API request error:', error);
+    return Promise.reject(error);
+  },
+  onResponse: (response) => {
+    // 处理响应数据
+    return response.data;
+  },
+  onResponseError: (error) => {
+    // 处理响应错误
+    console.error('Python API response error:', error);
+    return Promise.reject(error);
+  }
+});
+```
+
+四个配置项说明：
+
+- `onRequest`: 请求前拦截器，类型为 `(config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig`，可用于修改请求配置，如设置 baseURL、timeout 等
+- `onRequestError`: 请求错误拦截器，类型为 `(error: AxiosError) => any`，处理请求发送失败的情况
+- `onResponse`: 响应拦截器，类型为 `(response: AxiosResponse) => any`，处理正常响应的数据
+- `onResponseError`: 响应错误拦截器，类型为 `(error: AxiosError) => any`，处理响应异常的情况，如网络错误、HTTP 状态码错误等
 
 ## 使用方法
 
@@ -46,6 +108,7 @@ const menus = await MenuAPI.getList({});
 
 - `AuthAPI.login` - 用户登录
 - `AuthAPI.logout` - 用户登出
+- `AuthAPI.getCaptcha` - 获取验证码
 
 ### 用户管理
 
@@ -140,15 +203,27 @@ const menus = await MenuAPI.getList({});
 - `DatasetAPI.updateItemImage` - 更新数据项图片
 - `DatasetAPI.deleteItemImage` - 删除数据项图片
 
+## 枚举类型
+
+SDK 提供了常用的枚举类型供使用：
+
+- `ResultEnum` - 响应码枚举
+
 ## 开发
 
 ### 构建项目
 
 ```bash
-npm run build
+pnpm run build
 ```
 
 这将在 `dist/` 目录下生成编译后的文件。
+
+### 清理构建产物
+
+```bash
+pnpm run clean
+```
 
 ## 许可证
 
