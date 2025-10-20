@@ -1,13 +1,18 @@
-import { configJavaAxios, configPythonAxios } from "dehaze-sdk-js";
+import {
+  configJavaAxios,
+  configPythonAxios,
+  ResponseData,
+} from "dehaze-sdk-js";
 
 import type { AxiosError } from "axios";
 import { Dialog, Notify } from "@taroify/core";
 import { ResultEnum } from "@/enums/ResultEnum";
+
 export default function configRequest() {
   configJavaAxios({
     onResponseError: (error: AxiosError) => {
       if (error.response?.data) {
-        const { code, msg } = error.response.data as any;
+        const { code, msg } = error.response.data as ResponseData;
         if (code === ResultEnum.TOKEN_INVALID) {
           Dialog.confirm({
             title: "提示",
