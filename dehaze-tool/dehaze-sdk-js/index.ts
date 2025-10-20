@@ -22,9 +22,8 @@ export * from "@/api/model/model";
 export * from "@/api/role/model";
 export * from "@/api/user/model";
 
-// 工具函数导出
-export { initService } from "@/utils/request";
-export { initPythonService } from "@/utils/requestPy";
+// 配置导出
+export { configJavaAxios, configPythonAxios } from "@/config";
 
 // API 导出
 export {

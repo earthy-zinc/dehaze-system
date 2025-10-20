@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  dehaze-sdk-js: link:../dehaze-tool/dehaze-sdk-js
+
 importers:
 
   .:
@@ -62,6 +65,9 @@ importers:
       axios:
         specifier: ^1.12.2
         version: 1.12.2
+      dehaze-sdk-js:
+        specifier: link:../dehaze-tool/dehaze-sdk-js
+        version: link:../dehaze-tool/dehaze-sdk-js
       react:
         specifier: ^18.3.1
         version: 18.3.1

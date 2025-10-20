@@ -10,9 +10,8 @@
     "src/types"
   ],
   "scripts": {
-    "build": "tsc && tsc-alias",
     "clean": "rimraf dist",
-    "prebuild": "pnpm clean"
+    "build": "tsc && tsc-alias"
   },
   "keywords": [
     "dehaze",

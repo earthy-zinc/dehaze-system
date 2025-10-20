@@ -50,6 +50,7 @@
     "@tarojs/shared": "4.1.7",
     "@tarojs/taro": "4.1.7",
     "axios": "^1.12.2",
+    "dehaze-sdk-js": "link:../dehaze-tool/dehaze-sdk-js",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-redux": "^7.2.9",
