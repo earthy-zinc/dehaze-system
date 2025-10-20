@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
 import { View, Input, Button, Text, Form, Image } from '@tarojs/components';
-import { useDidShow } from '@tarojs/taro';
+import { useDidShow, useRouter } from '@tarojs/taro';
 import './index.less';
+import Taro from '@tarojs/taro';
 
 const Login: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    captcha: ''
+    username: 'admin',
+    password: '123456',
+    captchaCode: ''
   });
   const [loading, setLoading] = useState(false);
   const [captcha, setCaptcha] = useState<CaptchaResult>({
@@ -18,58 +19,72 @@ const Login: React.FC = () => {
   });
 
   const [captchaError, setCaptchaError] = useState('');
+  const router = useRouter();
 
   useDidShow(async () => {
 
   });
 
   useEffect(() => {
+    getCaptcha();
+  }, []);
+
+  const getCaptcha = () => {
     AuthAPI
       .getCaptcha()
-      .then((res) => setCaptcha(res));
-  }, []);
+      .then((res) => {
+        setCaptcha(res);
+        setFormData(prev => ({
+          ...prev,
+          captchaCode: ''
+        }));
+      });
+  };
+
   const handleInput = (field: string, value: string) => {
     setFormData({
       ...formData,
       [field]: value
     });
 
-    if (field === 'captcha') {
+    if (field === 'captchaCode') {
       setCaptchaError('');
     }
   };
 
   const handleSubmit = () => {
-    if (!formData.username || !formData.password || !formData.captcha) {
+    if (!formData.username || !formData.password || !formData.captchaCode) {
       console.log('请输入所有字段');
       return;
     }
 
-    if (parseInt(formData.captcha) !== 0) {
-      setCaptchaError('验证码错误');
-      return;
-    }
-
     setLoading(true);
-    // 模拟登录请求
-    setTimeout(() => {
-      console.log('登录:', {
-        username: formData.username,
-        password: formData.password
+
+    const loginData = {
+      username: formData.username,
+      password: formData.password,
+      captchaKey: captcha.captchaKey,
+      captchaCode: formData.captchaCode
+    };
+
+    AuthAPI
+      .login(loginData)
+      .then(() => {
+        // 登录成功后跳转到主页面
+        Taro.redirectTo({ url: '/pages/dashboard/index' }); // 假设有这样的页面
+      })
+      .catch(() => {
+        // 登录失败，刷新验证码
+        getCaptcha();
+      })
+      .finally(() => {
+        setLoading(false);
       });
-      setLoading(false);
-      // 登录成功后跳转到主页面
-    }, 800);
   };
 
 
-  const refreshCaptcha = async () => {
-    const res = await AuthAPI.getCaptcha();
-    setCaptcha(res);
-    setFormData({
-      ...formData,
-      captcha: ''
-    });
+  const refreshCaptcha = () => {
+    getCaptcha();
   };
 
   return (
@@ -108,8 +123,8 @@ const Login: React.FC = () => {
               <Input
                 className={`form-input`}
                 placeholder='请输入验证码'
-                value={formData.captcha}
-                onInput={(e) => handleInput('captcha', e.detail.value)}
+                value={formData.captchaCode}
+                onInput={(e) => handleInput('captchaCode', e.detail.value)}
               />
               <Image className='captcha-image' src={captcha?.captchaBase64} onClick={refreshCaptcha}/>
             </View>
