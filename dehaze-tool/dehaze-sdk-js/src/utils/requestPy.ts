@@ -1,31 +1,47 @@
+import { pythonConfigManager } from "@/config";
+import { TOKEN_KEY } from "@/enums/CacheEnum";
+import { ResultEnum } from "@/enums/ResultEnum";
 import axios from "axios";
-import type { AxiosInstance, CreateAxiosDefaults } from "axios";
+import type { AxiosResponse, InternalAxiosRequestConfig } from "axios";
 
-// 创建 axios 实例
-const createService = (config?: CreateAxiosDefaults): AxiosInstance => {
-  const service = axios.create(
-    config || {
-      baseURL: "http://localhost:5000",
-      timeout: 5000,
-      headers: {
-        "Content-Type": "application/json;charset=utf-8",
-      },
+const service = axios.create({
+  baseURL: "http://localhost:5000",
+  timeout: 5000,
+  headers: {
+    "Content-Type": "application/json;charset=utf-8",
+  },
+});
+
+service.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const accessToken = localStorage.getItem(TOKEN_KEY);
+    if (accessToken) {
+      config.headers.Authorization = accessToken;
     }
-  );
+    const interceptors = pythonConfigManager.getInterceptors();
+    const otherConfig = interceptors.onRequest?.(config) || {};
+    return { ...config, ...otherConfig };
+  },
+  (error: any) => {
+    const interceptors = pythonConfigManager.getInterceptors();
+    return Promise.reject(interceptors.onRequestError?.(error) || error);
+  }
+);
 
-  return service;
-};
-
-// 初始化服务实例
-let pythonService = createService();
-
-// 提供重新初始化服务的方法
-export const initPythonService = (
-  config?: CreateAxiosDefaults
-): AxiosInstance => {
-  pythonService = createService(config);
-  return pythonService;
-};
+service.interceptors.response.use(
+  async (response: AxiosResponse) => {
+    try {
+      const interceptors = pythonConfigManager.getInterceptors();
+      return (await interceptors.onResponse?.(response.data)) || response.data;
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  },
+  (error: any) => {
+    const interceptors = pythonConfigManager.getInterceptors();
+    return Promise.reject(interceptors.onResponseError?.(error) || error);
+  }
+);
 
 // 导出 axios 实例
-export default pythonService;
+export default service;

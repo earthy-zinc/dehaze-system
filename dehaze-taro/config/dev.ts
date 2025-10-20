@@ -26,10 +26,8 @@ export default {
     },
   },
   h5: {
-    webpack: {
-      devServer: {
-        open: false,
-      },
+    devServer: {
+      open: false,
     },
   },
 } satisfies UserConfigExport<"webpack5">;
