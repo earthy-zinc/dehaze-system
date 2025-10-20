@@ -2,11 +2,11 @@ import {
   configJavaAxios,
   configPythonAxios,
   ResponseData,
+  ResultEnum,
 } from "dehaze-sdk-js";
 
 import type { AxiosError } from "axios";
 import { Dialog, Notify } from "@taroify/core";
-import { ResultEnum } from "@/enums/ResultEnum";
 
 export default function configRequest() {
   configJavaAxios({
