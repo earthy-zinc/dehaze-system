@@ -6,7 +6,8 @@ import {
 } from "redux";
 import thunkMiddleware from "redux-thunk";
 import logger from "redux-logger";
-import rootReducer from "@/reducers";
+import { combineReducers } from "redux";
+import user from "@/store/user/reducer";
 
 const composeEnhancers =
   typeof window === "object" && window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
@@ -25,6 +26,10 @@ const enhancer = composeEnhancers(
   applyMiddleware(...middlewares)
   // other store enhancers if any
 );
+
+const rootReducer = combineReducers({
+  user,
+});
 
 export default function configStore() {
   const store = createStore(rootReducer, enhancer);
