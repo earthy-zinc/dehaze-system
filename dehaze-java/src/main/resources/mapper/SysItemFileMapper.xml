@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.pei.dehaze.mapper.SysItemFileMapper">
+    <resultMap id="ImageUrlMap" type="com.pei.dehaze.model.vo.ImageUrlVO">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="type" column="type" jdbcType="VARCHAR"/>
+        <result property="url" column="url" jdbcType="VARCHAR"/>
+        <result property="originUrl" column="origin_url" jdbcType="VARCHAR"/>
+        <result property="description" column="description" jdbcType="VARCHAR"/>
+    </resultMap>
+
+    <select id="listImageUrl" resultMap="ImageUrlMap">
+        SELECT sif.id          AS id,
+               sif.type        AS type,
+               sf_t.url        AS url,
+               sf.url          AS origin_url,
+               sif.description AS description
+        FROM sys_item_file sif
+                 JOIN
+             sys_file sf ON sif.file_id = sf.id
+                 LEFT JOIN
+             sys_file sf_t ON sif.thumbnail_file_id = sf_t.id
+        WHERE sif.item_id = #{itemId}
+        ORDER BY sif.type
+    </select>
+
+</mapper>
