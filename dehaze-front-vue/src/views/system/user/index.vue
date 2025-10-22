@@ -332,11 +332,15 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import UserAPI from "@/api/user";
-import DeptAPI from "@/api/dept";
-import RoleAPI from "@/api/role";
+import {
+  UserAPI,
+  DeptAPI,
+  RoleAPI,
+  UserForm,
+  UserQuery,
+  UserPageVO,
+} from "dehaze-sdk-js";
 
-import { UserForm, UserQuery, UserPageVO } from "@/api/user/model";
 import type { UploadInstance } from "element-plus";
 import { genFileId } from "element-plus";
 

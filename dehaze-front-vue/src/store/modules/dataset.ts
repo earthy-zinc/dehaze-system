@@ -1,7 +1,5 @@
 // 数据集小仓库
-import { Dataset } from "@/api/dataset/model";
-import DatasetAPI from "@/api/dataset";
-import { DatasetQuery } from "@/api/dataset/model";
+import { DatasetAPI, Dataset, DatasetQuery } from "dehaze-sdk-js";
 
 export const useDatasetStore = defineStore("dataset", () => {
   // 数据集列表

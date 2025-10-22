@@ -134,8 +134,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import DictAPI from "@/api/dict";
-import { DictPageVO, DictForm, DictQuery } from "@/api/dict/model";
+import { DictAPI, DictPageVO, DictForm, DictQuery } from "dehaze-sdk-js";
 
 const props = defineProps({
   typeCode: {
@@ -306,4 +305,3 @@ onMounted(() => {
   handleQuery();
 });
 </script>
-@/api/dict/model

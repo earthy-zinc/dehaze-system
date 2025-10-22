@@ -1,4 +1,4 @@
-import { Dataset } from "@/api/dataset/model";
+import { Dataset } from "dehaze-sdk-js";
 
 export default [
   {

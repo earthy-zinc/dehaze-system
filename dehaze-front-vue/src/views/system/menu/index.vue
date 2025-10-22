@@ -316,9 +316,13 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import MenuAPI from "@/api/menu";
-import { MenuQuery, MenuForm, MenuVO } from "@/api/menu/model";
-import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
+import {
+  MenuAPI,
+  MenuQuery,
+  MenuForm,
+  MenuVO,
+  MenuTypeEnum,
+} from "dehaze-sdk-js";
 
 const queryFormRef = ref(ElForm);
 const menuFormRef = ref(ElForm);

@@ -1,4 +1,4 @@
-import { Algorithm } from "@/api/algorithm/model";
+import { Algorithm } from "dehaze-sdk-js";
 
 export default [
   {
