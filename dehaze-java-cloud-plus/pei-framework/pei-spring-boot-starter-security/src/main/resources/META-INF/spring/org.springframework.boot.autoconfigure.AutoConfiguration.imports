@@ -1,0 +1,5 @@
+com.pei.dehaze.framework.security.config.PeiSecurityRpcAutoConfiguration
+com.pei.dehaze.framework.security.config.PeiSecurityAutoConfiguration
+com.pei.dehaze.framework.security.config.PeiWebSecurityConfigurerAdapter
+com.pei.dehaze.framework.operatelog.config.PeiOperateLogConfiguration
+com.pei.dehaze.framework.operatelog.config.PeiOperateLogRpcAutoConfiguration

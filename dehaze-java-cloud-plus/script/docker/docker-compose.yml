@@ -1,0 +1,172 @@
+services:
+  pei-gateway:
+    image: pei-gateway
+    container_name: pei-gateway
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host # 以主机网络环境运行
+
+  pei-system:
+    image: pei-system
+    container_name: pei-system
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:48081" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: always
+    network_mode: host
+
+  pei-infra:
+    image: pei-infra
+    container_name: pei-infra
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    healthcheck:
+      test: [ "CMD","curl","-f","http://localhost:48082" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      pei-system:
+        condition: service_healthy
+
+  pei-report:
+    image: pei-report
+    container_name: pei-report
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-bpm:
+    image: pei-bpm
+    container_name: pei-bpm
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-pay:
+    image: pei-pay
+    container_name: pei-pay
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-mp:
+    image: pei-mp
+    container_name: pei-mp
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-member:
+    image: pei-member
+    container_name: pei-member
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-ai:
+    image: pei-ai
+    container_name: pei-ai
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-erp:
+    image: pei-erp
+    container_name: pei-erp
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-crm:
+    image: pei-crm
+    container_name: pei-crm
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+
+  pei-mall-product:
+    image: pei-mall-product
+    container_name: pei-mall-product
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-mall-promotion:
+    image: pei-mall-promotion
+    container_name: pei-mall-promotion
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-mall-statistics:
+    image: pei-mall-statistics
+    container_name: pei-mall-statistics
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
+
+  pei-mall-trade:
+    image: pei-mall-trade
+    container_name: pei-mall-trade
+    volumes:
+      - /docker/pei-cloud/logs:/root/logs/
+    restart: always
+    network_mode: host
+    depends_on:
+      pei-infra:
+        condition: service_healthy
