@@ -1,10 +1,7 @@
-import AuthAPI from "@/api/auth";
-import UserAPI from "@/api/user";
 import { resetRouter } from "@/router";
 import { store } from "@/store";
 
-import { LoginData } from "@/api/auth/model";
-import { UserInfo } from "@/api/user/model";
+import { AuthAPI, UserAPI, LoginData, UserInfo } from "dehaze-sdk-js";
 import { TOKEN_KEY } from "@/enums/CacheEnum";
 
 export const useUserStore = defineStore("user", () => {

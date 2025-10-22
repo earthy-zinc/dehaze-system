@@ -1,8 +1,7 @@
 <script lang="ts" setup>
-import { Dataset, ImageItem, ImageItemQuery } from "@/api/dataset/model";
+import { DatasetAPI, Dataset, ImageItem, ImageItemQuery } from "dehaze-sdk-js";
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
-import DatasetAPI from "@/api/dataset";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { changeUrl } from "@/utils";
 

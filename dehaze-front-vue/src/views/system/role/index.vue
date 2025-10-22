@@ -181,10 +181,13 @@
 </template>
 
 <script setup lang="ts">
-import RoleAPI from "@/api/role";
-import MenuAPI from "@/api/menu";
-
-import { RolePageVO, RoleForm, RoleQuery } from "@/api/role/model";
+import {
+  RoleAPI,
+  MenuAPI,
+  RolePageVO,
+  RoleForm,
+  RoleQuery,
+} from "dehaze-sdk-js";
 
 defineOptions({
   name: "Role",
@@ -391,4 +394,3 @@ onMounted(() => {
   handleQuery();
 });
 </script>
-@/api/role/model

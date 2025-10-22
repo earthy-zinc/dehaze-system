@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import DeptAPI from "@/api/dept";
+import { DeptAPI } from "dehaze-sdk-js";
 const props = defineProps({
   modelValue: {
     type: [Number],

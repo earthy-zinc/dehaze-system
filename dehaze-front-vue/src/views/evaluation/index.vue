@@ -1,10 +1,8 @@
 <script lang="ts" setup>
 import { useImageShowStore } from "@/store/modules/imageShow";
-import ModelAPI from "@/api/model";
-import { EvalResult } from "@/api/model/model";
+
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
-import AlgorithmAPI from "@/api/algorithm";
-import { Algorithm } from "@/api/algorithm/model";
+import { ModelAPI, AlgorithmAPI, Algorithm, EvalResult } from "dehaze-sdk-js";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
 import { Arrayable } from "@vueuse/core";

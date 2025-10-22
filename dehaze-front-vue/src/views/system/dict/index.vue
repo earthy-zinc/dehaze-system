@@ -153,9 +153,12 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import DictAPI from "@/api/dict";
-
-import { DictTypePageVO, DictTypeQuery, DictTypeForm } from "@/api/dict/model";
+import {
+  DictAPI,
+  DictTypePageVO,
+  DictTypeQuery,
+  DictTypeForm,
+} from "dehaze-sdk-js";
 
 const queryFormRef = ref(ElForm);
 const dataFormRef = ref(ElForm);
@@ -316,4 +319,3 @@ onMounted(() => {
   handleQuery();
 });
 </script>
-@/api/dict/model

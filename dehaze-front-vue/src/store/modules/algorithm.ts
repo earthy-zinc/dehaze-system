@@ -1,7 +1,5 @@
 // 模型小仓库
-import { Algorithm } from "@/api/algorithm/model";
-import AlgorithmAPI from "@/api/algorithm";
-import { AlgorithmQuery } from "@/api/algorithm/model";
+import { AlgorithmAPI, Algorithm, AlgorithmQuery } from "dehaze-sdk-js";
 
 export const useAlgorithmStore = defineStore("algorithm", () => {
   // 模型列表

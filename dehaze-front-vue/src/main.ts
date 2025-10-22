@@ -4,6 +4,7 @@ import router from "@/router";
 import { setupStore } from "@/store";
 import { setupDirective } from "@/directive";
 import { setupElIcons, setupI18n, setupPermission } from "@/plugins";
+import setupRequest from "@/utils/request";
 import VueViewer from "v-viewer";
 import "viewerjs/dist/viewer.css";
 import VueLazyLoad from "vue3-lazyload";
@@ -18,6 +19,7 @@ import "uno.css";
 import "animate.css";
 
 const app = createApp(App);
+setupRequest();
 // 全局注册 自定义指令(directive)
 setupDirective(app);
 // 全局注册 状态管理(store)

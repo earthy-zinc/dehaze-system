@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import DictAPI from "@/api/dict";
+import { DictAPI } from "dehaze-sdk-js";
 
 const props = defineProps({
   /**

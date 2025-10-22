@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import AlgorithmAPI from "@/api/algorithm";
-import DatasetAPI from "@/api/dataset";
-import { Algorithm } from "@/api/algorithm/model";
-import { Dataset } from "@/api/dataset/model";
+import { AlgorithmAPI, DatasetAPI, Algorithm, Dataset } from "dehaze-sdk-js";
 
 defineOptions({
   name: "EditDialog",
