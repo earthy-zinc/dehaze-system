@@ -1,0 +1,106 @@
+{
+  "name": "dehaze-front-react",
+  "type": "module",
+  "version": "1.0.0",
+  "packageManager": "pnpm@10.18.0",
+  "scripts": {
+    "preinstall": "npx only-allow pnpm",
+    "dev": "vite serve",
+    "build": "tsc && vite build",
+    "lint:eslint": "eslint --fix ./src/**/*.{ts,tsx,js,jsx} ./mock/**/*.{ts,tsx,js,jsx}",
+    "lint:prettier": "prettier --write \"**/*.{js,cjs,json,jsx,ts,tsx,css,less,scss,vue,html,md}\"",
+    "lint:stylelint": "stylelint \"**/*.{css,less,scss}\" --fix",
+    "lint:lint-staged": "lint-staged",
+    "preview": "vite preview",
+    "prepare": "husky",
+    "commit": "git-cz"
+  },
+  "config": {
+    "commitizen": {
+      "path": "node_modules/cz-git"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{cjs,json}": [
+      "prettier --write"
+    ],
+    "*.{less,scss,css}": [
+      "stylelint --fix",
+      "prettier --write"
+    ],
+    "*.md": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "@reduxjs/toolkit": "^2.9.0",
+    "@types/nprogress": "^0.2.3",
+    "ahooks": "^3.9.5",
+    "animate.css": "^4.1.1",
+    "antd": "^5.27.4",
+    "axios": "1.12.2",
+    "classnames": "^2.5.1",
+    "dehaze-sdk-js": "link:../dehaze-tool/dehaze-sdk-js",
+    "lodash": "^4.17.21",
+    "nprogress": "^0.2.0",
+    "prop-types": "^15.8.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.9.4",
+    "redux": "^5.0.1",
+    "redux-persist": "^6.0.0",
+    "redux-thunk": "^3.1.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@eslint/js": "^9.37.0",
+    "@types/lodash": "^4.17.20",
+    "@types/node": "^24.7.1",
+    "@types/prop-types": "^15.7.15",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "commitizen": "^4.3.1",
+    "cz-git": "^1.12.0",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-vite": "^2.1.0",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "eslint-plugin-react-refresh": "^0.4.23",
+    "globals": "^16.4.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.4",
+    "postcss": "^8.5.6",
+    "postcss-html": "^1.8.0",
+    "postcss-scss": "^4.0.9",
+    "prettier": "^3.6.2",
+    "sass": "^1.93.2",
+    "stylelint": "^16.25.0",
+    "stylelint-config-recess-order": "^7.3.0",
+    "stylelint-config-recommended-scss": "^16.0.2",
+    "stylelint-config-standard": "^39.0.1",
+    "stylelint-prettier": "^5.0.3",
+    "terser": "^5.44.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "unocss": "^66.5.3",
+    "vite": "7.1.9",
+    "vite-plugin-mock-dev-server": "^2.0.1",
+    "vite-plugin-svgr": "^4.5.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
