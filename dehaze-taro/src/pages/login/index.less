@@ -1,0 +1,132 @@
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100vh;
+  background-color: #f5f7fa;
+
+  .login-header {
+    margin-top: 32px;
+  }
+
+  .login-card {
+    width: 80vw;
+    max-width: 340px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+
+    .login-header {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 12px;
+
+      .app-title {
+        font-size: 24px;
+        font-weight: bold;
+        color: #333;
+        margin: 10px 0;
+      }
+
+      .version {
+        background-color: #e6f7e6;
+        color: #389e3c;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        margin-left: 10px;
+      }
+    }
+
+    .form-container {
+      .form-group {
+        margin-bottom: 16px;
+
+        .form-input {
+          padding: 10px 12px;
+          border: 1px solid #d9d9d9;
+          border-radius: 8px;
+          font-size: 14px;
+          transition: border-color 0.3s ease;
+
+          &:focus {
+            border-color: #389e3c;
+            outline: none;
+          }
+
+          &::placeholder {
+            color: #aaa;
+          }
+        }
+
+        .captcha-container {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+
+          .captcha-image {
+            width: 40%;
+            height: 40px;
+          }
+        }
+      }
+
+      .form-button {
+        width: 100%;
+        padding: 16px;
+        background-color: #389e3c;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        line-height: 24px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        margin-top: 36px;
+
+        &:active {
+          background-color: #2e7d32;
+        }
+
+        &:disabled {
+          background-color: #cccccc;
+          cursor: not-allowed;
+        }
+      }
+
+      .footer-info {
+        margin-top: 16px;
+        margin-bottom: 12px;
+        text-align: center;
+
+        .info-text {
+          font-size: 14px;
+          color: #666;
+          margin: 4px 0;
+        }
+      }
+    }
+  }
+
+  .login-footer {
+    padding-bottom: 36px;
+    text-align: center;
+    color: #666;
+    font-size: 12px;
+
+    .login-footer-text {
+      margin-top: 6px;
+
+      text {
+        margin: 4px 0;
+      }
+    }
+  }
+}
