@@ -114,8 +114,8 @@
 
 <script lang="ts" setup>
 import { useSettingsStore, useUserStore } from "@/store";
-import AuthAPI from "@/api/auth";
-import { LoginData } from "@/api/auth/model";
+
+import { AuthAPI, LoginData } from "dehaze-sdk-js";
 import { Moon, Sunny } from "@element-plus/icons-vue";
 import { LocationQuery, LocationQueryValue, useRoute } from "vue-router";
 import router from "@/router";

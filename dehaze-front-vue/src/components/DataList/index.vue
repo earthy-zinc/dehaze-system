@@ -1,8 +1,12 @@
 <script lang="ts" setup>
-import AlgorithmAPI from "@/api/algorithm";
-import DatasetAPI from "@/api/dataset";
-import { Algorithm, AlgorithmQuery } from "@/api/algorithm/model";
-import { Dataset, DatasetQuery } from "@/api/dataset/model";
+import {
+  AlgorithmAPI,
+  DatasetAPI,
+  Algorithm,
+  AlgorithmQuery,
+  Dataset,
+  DatasetQuery,
+} from "dehaze-sdk-js";
 import EditDialog from "@/components/DataList/EditDialog/index.vue";
 
 const props = defineProps<{

@@ -25,7 +25,7 @@ import {
   UploadFile,
   UploadProps,
 } from "element-plus";
-import FileAPI from "@/api/file";
+import { FileAPI } from "dehaze-sdk-js";
 
 const emit = defineEmits(["update:modelValue"]);
 

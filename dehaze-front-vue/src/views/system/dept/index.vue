@@ -156,8 +156,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import DeptAPI from "@/api/dept";
-import { DeptVO, DeptForm, DeptQuery } from "@/api/dept/model";
+import { DeptAPI, DeptVO, DeptForm, DeptQuery } from "dehaze-sdk-js";
 
 const queryFormRef = ref(ElForm);
 const deptFormRef = ref(ElForm);
@@ -308,4 +307,3 @@ onMounted(() => {
   handleQuery();
 });
 </script>
-@/api/dept/model
