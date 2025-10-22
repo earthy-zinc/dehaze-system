@@ -1,4 +1,6 @@
 # ignored folders
+examples
+figs
 datasets/*
 experiments*
 experiments/*

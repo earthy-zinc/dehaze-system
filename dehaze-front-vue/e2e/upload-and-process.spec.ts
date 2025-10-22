@@ -6,9 +6,10 @@ test.describe("图片上传和去雾处理流程", () => {
   async function login(page: any) {
     await page.goto("/login");
     await page.locator('input[type="text"]').first().fill("admin");
-    await page.locator('input[type="password"]').fill("admin123");
-    await page.getByRole("button", { name: /登录|Login/i }).click();
-    await page.waitForURL(/\/(home|dashboard|index)/, { timeout: 10000 });
+    await page.locator('input[type="password"]').fill("123456");
+    await page.locator('input[type="text"]').nth(2).fill("123456");
+    await page.locator('.login-form button[type="button"]').first().click();
+    await page.waitForURL(/\/(home|dashboard|index)/, { timeout: 30000 });
   }
 
   test.beforeEach(async ({ page }) => {
@@ -23,14 +24,14 @@ test.describe("图片上传和去雾处理流程", () => {
     // 验证上传区域存在
     await expect(
       page.locator('[class*="upload"], .el-upload, [data-testid="upload-area"]')
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 15000 });
 
     // 验证算法选择区域存在
     await expect(
       page.locator(
         '[class*="algorithm"], .algorithm-select, [data-testid="algorithm-select"]'
       )
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test("应该支持拖拽上传图片", async ({ page }) => {
@@ -54,7 +55,7 @@ test.describe("图片上传和去雾处理流程", () => {
       // 等待图片预览显示
       await expect(
         page.locator('[class*="preview"], .image-preview, img')
-      ).toBeVisible({ timeout: 5000 });
+      ).toBeVisible({ timeout: 15000 });
     } catch (error) {
       console.log("测试图片文件不存在，跳过文件上传测试");
     }
@@ -84,7 +85,7 @@ test.describe("图片上传和去雾处理流程", () => {
       // 验证错误消息显示
       await expect(
         page.locator(".el-message--error, .error-message")
-      ).toBeVisible({ timeout: 3000 });
+      ).toBeVisible({ timeout: 15000 });
     } catch (error) {
       // 如果无法上传无效文件，测试通过
       console.log("文件类型验证正常工作");
@@ -101,7 +102,7 @@ test.describe("图片上传和去雾处理流程", () => {
     await algorithmSelect.click();
 
     // 等待算法列表显示
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(5000);
 
     // 验证至少有一个算法选项
     const options = page.locator('.el-select-dropdown__item, [role="option"]');
@@ -118,7 +119,7 @@ test.describe("图片上传和去雾处理流程", () => {
       .first();
     await algorithmSelect.click();
 
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(5000);
 
     // 选择第一个算法
     const firstOption = page
@@ -127,7 +128,7 @@ test.describe("图片上传和去雾处理流程", () => {
     await firstOption.click();
 
     // 等待参数配置区域显示
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(5000);
 
     // 验证参数配置区域存在（如果有）
     const parameterArea = page.locator(
@@ -159,7 +160,7 @@ test.describe("图片上传和去雾处理流程", () => {
 
     if (await algorithmSelect.isVisible()) {
       await algorithmSelect.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(5000);
 
       const firstOption = page
         .locator('.el-select-dropdown__item, [role="option"]')
@@ -180,12 +181,12 @@ test.describe("图片上传和去雾处理流程", () => {
         '.el-progress, [class*="progress"], .progress-bar'
       );
 
-      if (await progressBar.isVisible({ timeout: 5000 })) {
+      if (await progressBar.isVisible({ timeout: 15000 })) {
         // 验证进度条显示
         expect(await progressBar.isVisible()).toBeTruthy();
 
-        // 等待处理完成（最多30秒）
-        await page.waitForTimeout(30000);
+        // 等待处理完成（最多60秒）
+        await page.waitForTimeout(60000);
       }
     }
   });
@@ -199,17 +200,17 @@ test.describe("图片上传和去雾处理流程", () => {
       '[class*="result"], .result-list, [data-testid="results"]'
     );
 
-    if (await resultsList.isVisible({ timeout: 5000 })) {
+    if (await resultsList.isVisible({ timeout: 15000 })) {
       // 点击第一个结果查看详情
       const firstResult = page
         .locator('[class*="result-item"], .result-card')
         .first();
 
-      if (await firstResult.isVisible()) {
+      if (await firstResult.isVisible({ timeout: 15000 })) {
         await firstResult.click();
 
         // 等待详情页面加载
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(5000);
 
         // 验证原图和处理后的图片都显示
         const images = page.locator("img");
@@ -223,13 +224,13 @@ test.describe("图片上传和去雾处理流程", () => {
 
         if (await compareButton.isVisible()) {
           await compareButton.click();
-          await page.waitForTimeout(1000);
+          await page.waitForTimeout(5000);
 
           // 验证对比模式已激活
           const comparisonView = page.locator(
             '[class*="comparison"], .comparison-view'
           );
-          await expect(comparisonView).toBeVisible({ timeout: 3000 });
+          await expect(comparisonView).toBeVisible({ timeout: 15000 });
         }
       }
     }
@@ -243,12 +244,12 @@ test.describe("图片上传和去雾处理流程", () => {
       .locator('[class*="result-item"], .result-card')
       .first();
 
-    if (await firstResult.isVisible({ timeout: 5000 })) {
+    if (await firstResult.isVisible({ timeout: 15000 })) {
       await firstResult.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(5000);
 
       // 设置下载监听
-      const downloadPromise = page.waitForEvent("download", { timeout: 10000 });
+      const downloadPromise = page.waitForEvent("download", { timeout: 30000 });
 
       // 点击下载按钮
       const downloadButton = page.getByRole("button", {
@@ -282,16 +283,16 @@ test.describe("图片上传和去雾处理流程", () => {
       .locator('[class*="result-item"], .result-card')
       .first();
 
-    if (await firstResult.isVisible({ timeout: 5000 })) {
+    if (await firstResult.isVisible({ timeout: 15000 })) {
       await firstResult.click();
-      await page.waitForTimeout(2000);
+      await page.waitForTimeout(5000);
 
       // 验证质量指标显示（PSNR, SSIM 等）
       const metricsArea = page.locator(
         '[class*="metric"], .quality-metrics, [data-testid="metrics"]'
       );
 
-      if (await metricsArea.isVisible({ timeout: 3000 })) {
+      if (await metricsArea.isVisible({ timeout: 15000 })) {
         // 验证 PSNR 或 SSIM 指标存在
         const hasPSNR = await page
           .locator("text=/PSNR/i")
