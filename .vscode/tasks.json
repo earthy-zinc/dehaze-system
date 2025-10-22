@@ -1,0 +1,31 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "启动安卓模拟器",
+      "type": "shell",
+      "command": "emulator -avd $(emulator -list-avds | head -1)",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "android",
+        "pattern": {
+          "regexp": "^.*$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*"
+        }
+      },
+      "promptOnClose": true
+    },
+    {
+      "label": "停止安卓模拟器",
+      "type": "shell",
+      "command": "adb emu kill",
+      "group": "build"
+    }
+  ]
+}
