@@ -1,0 +1,35 @@
+{
+  "name": "dehaze-sdk-js",
+  "version": "1.0.0",
+  "description": "JavaScript SDK for Dehaze System API",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/",
+    "src/types"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsc && tsc-alias"
+  },
+  "keywords": [
+    "dehaze",
+    "sdk",
+    "api",
+    "typescript"
+  ],
+  "author": "Dehaze Team",
+  "license": "ISC",
+  "packageManager": "pnpm@10.14.0",
+  "devDependencies": {
+    "@types/node": "^24.8.0",
+    "rimraf": "^6.0.1",
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "axios": "^1.12.2"
+  }
+}
