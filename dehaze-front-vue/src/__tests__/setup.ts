@@ -37,19 +37,37 @@ Object.defineProperty(window, "matchMedia", {
 
 // Mock localStorage
 const localStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  getItem: vi.fn((key) => {
+    return localStorageMock.storage[key] || null;
+  }),
+  setItem: vi.fn((key, value) => {
+    localStorageMock.storage[key] = value;
+  }),
+  removeItem: vi.fn((key) => {
+    delete localStorageMock.storage[key];
+  }),
+  clear: vi.fn(() => {
+    localStorageMock.storage = {};
+  }),
+  storage: {} as Record<string, string>,
 };
 global.localStorage = localStorageMock as any;
 
 // Mock sessionStorage
 const sessionStorageMock = {
-  getItem: vi.fn(),
-  setItem: vi.fn(),
-  removeItem: vi.fn(),
-  clear: vi.fn(),
+  getItem: vi.fn((key) => {
+    return sessionStorageMock.storage[key] || null;
+  }),
+  setItem: vi.fn((key, value) => {
+    sessionStorageMock.storage[key] = value;
+  }),
+  removeItem: vi.fn((key) => {
+    delete sessionStorageMock.storage[key];
+  }),
+  clear: vi.fn(() => {
+    sessionStorageMock.storage = {};
+  }),
+  storage: {} as Record<string, string>,
 };
 global.sessionStorage = sessionStorageMock as any;
 
@@ -143,4 +161,5 @@ afterEach(() => {
   localStorageMock.setItem.mockClear();
   localStorageMock.removeItem.mockClear();
   localStorageMock.clear.mockClear();
+  localStorageMock.storage = {};
 });

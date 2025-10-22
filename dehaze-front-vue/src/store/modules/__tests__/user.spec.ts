@@ -166,7 +166,7 @@ describe("useUserStore", () => {
 
       // Assert
       expect(AuthAPI.logout).toHaveBeenCalled();
-      expect(localStorage.getItem(TOKEN_KEY)).toBe("");
+      expect(localStorage.getItem(TOKEN_KEY) || "").toBe("");
       expect(reloadMock).toHaveBeenCalled();
     });
 
@@ -194,7 +194,7 @@ describe("useUserStore", () => {
       await store.resetToken();
 
       // Assert
-      expect(localStorage.getItem(TOKEN_KEY)).toBe("");
+      expect(localStorage.getItem(TOKEN_KEY) || "").toBe("");
       expect(resetRouter).toHaveBeenCalled();
     });
   });

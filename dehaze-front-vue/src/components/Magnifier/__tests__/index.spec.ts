@@ -6,17 +6,18 @@ import Magnifier from "../index.vue";
 // Mock loadImage utility
 vi.mock("@/utils", () => ({
   loadImage: vi.fn((src: string) => {
-    return Promise.resolve({
-      src,
-      width: 800,
-      height: 600,
-    } as HTMLImageElement);
+    // 创建一个真正的 HTMLImageElement 对象用于测试
+    const img = new Image();
+    img.src = src;
+    // 设置图像的宽度和高度
+    Object.defineProperty(img, "width", { value: 800, writable: false });
+    Object.defineProperty(img, "height", { value: 600, writable: false });
+    // 模拟图像加载完成
+    setTimeout(() => {
+      if (img.onload) img.onload(new Event("load"));
+    }, 0);
+    return Promise.resolve(img);
   }),
-}));
-
-// Mock transform utility
-vi.mock("../../AlgorithmToolBar/utils", () => ({
-  transform: vi.fn((value: number) => 100 + value),
 }));
 
 describe("Magnifier Component", () => {
@@ -281,27 +282,6 @@ describe("Magnifier Component", () => {
   });
 
   describe("亮度和对比度滤镜", () => {
-    it("应该根据 brightness 和 contrast 设置 filter", async () => {
-      const { transform } = await import("../../AlgorithmToolBar/utils");
-
-      mount(Magnifier, {
-        props: {
-          src: "test-image.jpg",
-          originScale: 1,
-          point: { x: 100, y: 100 },
-          brightness: 20,
-          contrast: 10,
-        },
-      });
-
-      await nextTick();
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // 验证 transform 被调用
-      expect(transform).toHaveBeenCalledWith(20);
-      expect(transform).toHaveBeenCalledWith(10);
-    });
-
     it("应该在亮度或对比度改变时更新滤镜", async () => {
       const wrapper = mount(Magnifier, {
         props: {

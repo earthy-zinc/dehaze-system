@@ -1,2 +1,5 @@
+onlyBuiltDependencies:
+  - esbuild
+
 overrides:
   dehaze-sdk-js: link:../dehaze-tool/dehaze-sdk-js
