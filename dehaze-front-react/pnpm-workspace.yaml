@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+
+overrides:
+  dehaze-sdk-js: link:../dehaze-tool/dehaze-sdk-js
