@@ -28,16 +28,6 @@
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment"
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.vue",
-    "src/typings/**/*.d.ts",
-    "mock/**/*.ts",
-    "vite.config.ts",
-    "vitest.config.ts",
-    "vitest.setup.ts",
-    "playwright.config.ts",
-    "e2e/**/*.ts"
-  ],
+  "include": ["**/*.ts", "src/**/*.vue", "src/typings/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "**/*.js"]
 }

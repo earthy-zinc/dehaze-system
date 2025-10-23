@@ -1,5 +1,11 @@
 onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - bufferutil
+  - es5-ext
   - esbuild
+  - msw
+  - utf-8-validate
+  - vue-demi
 
 overrides:
   dehaze-sdk-js: link:../dehaze-tool/dehaze-sdk-js

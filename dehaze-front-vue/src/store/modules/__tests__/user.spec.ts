@@ -22,9 +22,6 @@ vi.mock("@/router", () => ({
 
 describe("useUserStore", () => {
   beforeEach(() => {
-    // 创建新的 pinia 实例
-    setActivePinia(createPinia());
-
     // 清除所有 mocks
     vi.clearAllMocks();
 
