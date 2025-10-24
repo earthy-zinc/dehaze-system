@@ -311,7 +311,7 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
       hookTimeout: 10000,
 
       // 启用 UI 界面
-      ui: true,
+      ui: false,
 
       // 并发运行测试（Canvas mock 需要单线程）
       pool: "threads",

@@ -21,8 +21,6 @@ vi.mock("@/utils", () => ({
 }));
 
 describe("Magnifier Component", () => {
-  // vitest-canvas-mock 会自动 mock Canvas API，无需手动创建
-
   describe("组件渲染", () => {
     it("应该成功渲染 canvas 元素", () => {
       const wrapper = mount(Magnifier, {
@@ -431,6 +429,207 @@ describe("Magnifier Component", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       // 应该限制在图片范围内
+      expect(ctx?.drawImage).toHaveBeenCalled();
+    });
+  });
+
+  describe("初始化和生命周期", () => {
+    it("应该正确初始化 canvas 上下文", async () => {
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "test-image.jpg",
+          originScale: 1,
+          point: { x: 100, y: 100 },
+        },
+      });
+
+      await nextTick();
+
+      // 检查组件内部引用是否正确设置
+      const vm = wrapper.vm as any;
+      expect(vm.canvasRef).toBeDefined();
+      expect(vm.ctxRef).toBeDefined();
+    });
+
+    it("应该正确处理图像加载失败", async () => {
+      const { loadImage } = await import("@/utils");
+
+      // 模拟图像加载失败
+      (loadImage as any).mockImplementationOnce(() => {
+        return Promise.reject(new Error("Image load error"));
+      });
+
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "invalid-image.jpg",
+          originScale: 1,
+          point: { x: 100, y: 100 },
+        },
+      });
+
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 确保组件能够处理加载错误而不崩溃
+      expect(loadImage).toHaveBeenCalledWith("invalid-image.jpg", true);
+    });
+  });
+
+  describe("图像裁剪边界处理", () => {
+    it("应该正确处理图像裁剪区域的边界情况", async () => {
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "test-image.jpg",
+          originScale: 1,
+          scale: 2,
+          point: { x: 799, y: 599 }, // 接近图像边界
+        },
+      });
+
+      const canvas = wrapper.find("canvas").element as HTMLCanvasElement;
+      const ctx = canvas.getContext("2d");
+
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 应该正确处理边界情况
+      expect(ctx?.drawImage).toHaveBeenCalled();
+    });
+
+    it("应该正确计算高清图像的缩放比例", async () => {
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "test-image.jpg",
+          bigImgSrc: "test-image-hd.jpg",
+          originScale: 2,
+          scale: 3,
+          point: { x: 400, y: 300 },
+        },
+      });
+
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 检查组件是否正确处理高清图像
+      const vm = wrapper.vm as any;
+      expect(vm.trueScale).toBeDefined();
+    });
+  });
+
+  describe("滤镜功能", () => {
+    it("应该正确应用亮度滤镜", async () => {
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "test-image.jpg",
+          originScale: 1,
+          point: { x: 100, y: 100 },
+          brightness: 50,
+        },
+      });
+
+      const canvas = wrapper.find("canvas").element as HTMLCanvasElement;
+      const ctx = canvas.getContext("2d");
+
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 强制触发 watch 以更新滤镜
+      await wrapper.setProps({ brightness: 60 });
+      await nextTick();
+
+      // 检查滤镜是否正确设置
+      expect(ctx?.filter).toContain("brightness");
+    });
+
+    it("应该正确应用对比度滤镜", async () => {
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "test-image.jpg",
+          originScale: 1,
+          point: { x: 100, y: 100 },
+          contrast: 50,
+        },
+      });
+
+      const canvas = wrapper.find("canvas").element as HTMLCanvasElement;
+      const ctx = canvas.getContext("2d");
+
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 强制触发 watch 以更新滤镜
+      await wrapper.setProps({ contrast: 60 });
+      await nextTick();
+
+      // 检查滤镜是否正确设置
+      expect(ctx?.filter).toContain("contrast");
+    });
+
+    it("应该同时应用亮度和对比度滤镜", async () => {
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "test-image.jpg",
+          originScale: 1,
+          point: { x: 100, y: 100 },
+          brightness: 30,
+          contrast: 40,
+        },
+      });
+
+      const canvas = wrapper.find("canvas").element as HTMLCanvasElement;
+      const ctx = canvas.getContext("2d");
+
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 强制触发 watch 以更新滤镜
+      await wrapper.setProps({ brightness: 35, contrast: 45 });
+      await nextTick();
+
+      // 检查滤镜是否正确设置
+      expect(ctx?.filter).toContain("brightness");
+      expect(ctx?.filter).toContain("contrast");
+    });
+  });
+
+  describe("组件属性验证", () => {
+    it("应该验证 shape 属性的有效值", () => {
+      // 测试有效的 shape 值
+      expect(Magnifier.props.shape.validator!("circle")).toBe(true);
+      expect(Magnifier.props.shape.validator!("square")).toBe(true);
+
+      // 测试无效的 shape 值
+      expect(Magnifier.props.shape.validator!("triangle")).toBe(false);
+    });
+
+    it("应该正确设置默认属性值", () => {
+      // 检查默认值
+      expect(Magnifier.props.shape.default).toBe("square");
+      expect(Magnifier.props.radius.default).toBe(100);
+      expect(Magnifier.props.scale.default).toBe(5);
+      expect(Magnifier.props.brightness.default).toBe(0);
+      expect(Magnifier.props.contrast.default).toBe(0);
+    });
+  });
+
+  describe("图像尺寸计算", () => {
+    it("应该正确计算小尺寸图像的裁剪区域", async () => {
+      const wrapper = mount(Magnifier, {
+        props: {
+          src: "test-image.jpg",
+          originScale: 0.5, // 小尺寸图像
+          scale: 2,
+          point: { x: 200, y: 150 },
+        },
+      });
+
+      const canvas = wrapper.find("canvas").element as HTMLCanvasElement;
+      const ctx = canvas.getContext("2d");
+
+      await nextTick();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // 应该能正确处理小尺寸图像
       expect(ctx?.drawImage).toHaveBeenCalled();
     });
   });
