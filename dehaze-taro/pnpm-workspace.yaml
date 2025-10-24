@@ -1,3 +1,6 @@
+onlyBuiltDependencies:
+  - unrs-resolver
+
 overrides:
   dehaze-sdk-js: link:../dehaze-tool/dehaze-sdk-js
   dehaze-tool: link:../dehaze-tool
