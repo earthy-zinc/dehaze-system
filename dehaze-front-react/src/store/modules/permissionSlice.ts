@@ -1,6 +1,4 @@
-// permissionSlice.ts
-import MenuAPI from "@/api/menu";
-import { RouteVO } from "@/api/menu/model";
+import { MenuAPI, RouteVO } from "dehaze-sdk-js";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import React from "react";
 import { persistReducer } from "redux-persist";

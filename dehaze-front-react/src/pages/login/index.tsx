@@ -1,5 +1,4 @@
-import AuthAPI from "@/api/auth";
-import { LoginData } from "@/api/auth/model";
+import { AuthAPI, LoginData } from "dehaze-sdk-js";
 import { ThemeEnum } from "@/enums/ThemeEnum";
 import defaultSettings from "@/settings";
 import { DisPatchType } from "@/store";

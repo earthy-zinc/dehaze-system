@@ -1,5 +1,4 @@
-import DatasetAPI from "@/api/dataset";
-import { Dataset, ImageItemQuery } from "@/api/dataset/model";
+import { DatasetAPI, Dataset, ImageItemQuery } from "dehaze-sdk-js";
 import Waterfall from "@/components/Waterfall";
 import { ViewCard } from "@/components/Waterfall/types";
 import { changeUrl } from "@/utils";

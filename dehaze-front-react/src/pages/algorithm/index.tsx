@@ -1,5 +1,4 @@
-import AlgorithmAPI from "@/api/algorithm";
-import { Algorithm, AlgorithmQuery } from "@/api/algorithm/model";
+import { AlgorithmAPI, Algorithm, AlgorithmQuery } from "dehaze-sdk-js";
 import EditModal from "@/pages/dataset/components/EditModal";
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons";
 import {

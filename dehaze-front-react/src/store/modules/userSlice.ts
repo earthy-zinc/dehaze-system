@@ -1,7 +1,5 @@
-import AuthAPI from "@/api/auth";
-import { LoginData } from "@/api/auth/model";
-import UserAPI from "@/api/user";
-import { UserInfo } from "@/api/user/model";
+import { AuthAPI, UserAPI, LoginData, UserInfo } from "dehaze-sdk-js";
+
 import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { persistReducer } from "redux-persist";

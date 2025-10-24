@@ -7,6 +7,9 @@ import { PersistGate } from "redux-persist/integration/react";
 import "@/styles/index.scss";
 import "uno.css";
 import "animate.css";
+import configRequest from "./utils/request";
+
+configRequest();
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 

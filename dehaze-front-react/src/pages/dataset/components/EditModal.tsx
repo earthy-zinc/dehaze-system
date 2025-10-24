@@ -1,5 +1,4 @@
-import DatasetAPI from "@/api/dataset";
-import { Dataset } from "@/api/dataset/model";
+import { DatasetAPI, Dataset } from "dehaze-sdk-js";
 import {
   Form,
   Input,

@@ -1,6 +1,4 @@
-import AlgorithmAPI from "@/api/algorithm";
-import FileAPI from "@/api/file";
-import ModelAPI from "@/api/model";
+import { AlgorithmAPI, FileAPI, ModelAPI } from "dehaze-sdk-js";
 
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
 import Camera from "@/components/Camera";

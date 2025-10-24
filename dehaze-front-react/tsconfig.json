@@ -16,13 +16,12 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.ts", "mock"],
+  "include": ["**/*.ts", "src", "mock"],
   "exclude": ["node_modules", "dist", "**/*.js", "eslint.config.js"]
 }

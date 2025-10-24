@@ -1,5 +1,4 @@
-import DatasetAPI from "@/api/dataset";
-import { Dataset, DatasetQuery } from "@/api/dataset/model";
+import { DatasetAPI, Dataset, DatasetQuery } from "dehaze-sdk-js";
 import EditModal from "@/pages/dataset/components/EditModal";
 import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
 import {

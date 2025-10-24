@@ -1,5 +1,4 @@
-import DatasetAPI from "@/api/dataset";
-import { Dataset, ImageItem } from "@/api/dataset/model";
+import { DatasetAPI, Dataset, ImageItem } from "dehaze-sdk-js";
 import Waterfall from "@/components/Waterfall";
 import { useWindowSize } from "@/hooks/useWindowSize";
 import { Button, Card, Divider, Form, Input } from "antd";
