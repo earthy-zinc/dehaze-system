@@ -57,6 +57,11 @@ public class MyDataPermissionHandler implements DataPermissionHandler {
 
         // 获取当前用户的数据权限
         Integer dataScope = SecurityUtils.getDataScope();
+        
+        // 如果数据权限为空，直接返回where条件
+        if (dataScope == null) {
+            return where;
+        }
 
         DataScopeEnum dataScopeEnum = IBaseEnum.getEnumByValue(dataScope, DataScopeEnum.class);
 
