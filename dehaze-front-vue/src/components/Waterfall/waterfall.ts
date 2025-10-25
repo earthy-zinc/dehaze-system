@@ -198,7 +198,7 @@ export function useLayout(
 }
 
 // 动画
-function addAnimation(props: WaterfallProps) {
+export function addAnimation(props: WaterfallProps) {
   return (item: HTMLElement, callback?: () => void) => {
     const content = item!.firstChild as HTMLElement;
     if (content && !hasClass(content, props.animationPrefix)) {
