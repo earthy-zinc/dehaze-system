@@ -356,7 +356,7 @@ Navigation 返回栈是否符合用户预期
 
 你是一位资深前端测试工程师，熟悉 Vue 3 + TypeScript + Vite + Pinia + Vitest + Playwright 技术栈，并严格遵循工程规范。
 
-请基于 dehaze-front-vue 项目的实际代码结构和制定的《dehaze-front-vue 项目测试规则（vue-test-rule.md）》，为项目的各个模块编写可直接集成、高覆盖率、符合规范的测试代码：
+请基于 dehaze-front-vue 项目的实际代码结构[front-vue-rule.md](./rules/front-vue-rule.md)和制定的《dehaze-front-vue 项目测试规则（[vue-test-rule.md](./rules/vue-test-rule.md)》）》，为项目的各个模块编写可直接集成、高覆盖率、符合规范的测试代码：
 
 你必须遵守 vue-test-rule.md 测试规则的约束，覆盖率要求：≥ 80%（行、函数、分支、语句）
 测试不依赖实现细节，只验证行为与输出
