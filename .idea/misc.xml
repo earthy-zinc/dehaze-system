@@ -6,6 +6,23 @@
   <component name="ExternalStorageConfigurationManager" enabled="true" />
   <component name="FrameworkDetectionExcludesConfiguration">
     <file type="web" url="file://$PROJECT_DIR$/dehaze-android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-async-storage/async-storage/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native-clipboard/clipboard/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/@react-native/gradle-plugin" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/lottie-react-native/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-geolocation-service/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-gesture-handler/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-image-picker/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-pager-view/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-reanimated/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-safe-area-context/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-screens/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-sqlite-storage/platforms/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-svg/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-vision-camera/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-webview/android" />
+    <file type="web" url="file://$PROJECT_DIR$/dehaze-react-native/node_modules/react-native-worklets/android" />
   </component>
   <component name="MavenProjectsManager">
     <option name="originalFiles">

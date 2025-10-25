@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  dehaze-sdk-js: link:../dehaze-tool/dehaze-sdk-js
-
 importers:
 
   .:

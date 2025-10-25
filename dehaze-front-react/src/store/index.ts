@@ -5,6 +5,7 @@ import userReducer from "@/store/modules/userSlice";
 import { configureStore } from "@reduxjs/toolkit";
 import { persistStore } from "redux-persist";
 import permissionReducer from "./modules/permissionSlice";
+import datasetReducer from "./modules/datasetSlice";
 
 const store = configureStore({
   reducer: {
@@ -13,6 +14,7 @@ const store = configureStore({
     user: userReducer,
     permission: permissionReducer,
     imageShow: imageShowReducer,
+    dataset: datasetReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

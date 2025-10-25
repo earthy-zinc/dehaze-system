@@ -4,7 +4,7 @@
 ### Java template
 # Compiled class file
 *.class
-
+**/.idea/misc.xml
 # Log file
 *.log
 

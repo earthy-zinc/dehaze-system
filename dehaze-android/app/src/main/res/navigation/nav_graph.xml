@@ -3,26 +3,85 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/FirstFragment">
+    app:startDestination="@id/loginFragment">
 
+    <!-- 登录模块 -->
     <fragment
-        android:id="@+id/FirstFragment"
-        android:name="com.pei.dehaze.activity.FirstFragment"
-        android:label="@string/first_fragment_label"
-        tools:layout="@layout/fragment_first">
-
+        android:id="@+id/loginFragment"
+        android:name="com.pei.dehaze.ui.login.LoginFragment"
+        android:label="登录"
+        tools:layout="@layout/fragment_login">
         <action
-            android:id="@+id/action_FirstFragment_to_SecondFragment"
-            app:destination="@id/SecondFragment" />
+            android:id="@+id/action_login_to_dashboard"
+            app:destination="@id/dashboardActivity" />
     </fragment>
+
+    <!-- 仪表盘模块 -->
+    <activity
+        android:id="@+id/dashboardActivity"
+        android:name="com.pei.dehaze.ui.dashboard.DashboardActivity"
+        android:label="仪表盘"
+        tools:layout="@layout/activity_dashboard">
+        <action
+            android:id="@+id/action_dashboard_to_dataset"
+            app:destination="@id/datasetFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_algorithm"
+            app:destination="@id/algorithmFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_compare"
+            app:destination="@id/compareActivity" />
+        <action
+            android:id="@+id/action_dashboard_to_evaluation"
+            app:destination="@id/evaluationActivity" />
+        <action
+            android:id="@+id/action_dashboard_to_presentation"
+            app:destination="@id/presentationActivity" />
+        <action
+            android:id="@+id/action_dashboard_to_system"
+            app:destination="@id/systemManagementFragment" />
+    </activity>
+
+    <!-- 数据集模块 -->
     <fragment
-        android:id="@+id/SecondFragment"
-        android:name="com.pei.dehaze.activity.SecondFragment"
-        android:label="@string/second_fragment_label"
-        tools:layout="@layout/fragment_second">
+        android:id="@+id/datasetFragment"
+        android:name="com.pei.dehaze.ui.dataset.DatasetFragment"
+        android:label="数据集"
+        tools:layout="@layout/fragment_dataset" />
 
-        <action
-            android:id="@+id/action_SecondFragment_to_FirstFragment"
-            app:destination="@id/FirstFragment" />
-    </fragment>
+    <!-- 算法模块 -->
+    <fragment
+        android:id="@+id/algorithmFragment"
+        android:name="com.pei.dehaze.ui.algorithm.AlgorithmFragment"
+        android:label="算法"
+        tools:layout="@layout/fragment_algorithm" />
+
+    <!-- 对比模块 -->
+    <activity
+        android:id="@+id/compareActivity"
+        android:name="com.pei.dehaze.ui.compare.CompareActivity"
+        android:label="图像对比"
+        tools:layout="@layout/activity_compare" />
+
+    <!-- 评估模块 -->
+    <activity
+        android:id="@+id/evaluationActivity"
+        android:name="com.pei.dehaze.ui.evaluation.EvaluationActivity"
+        android:label="图像评估"
+        tools:layout="@layout/activity_evaluation" />
+
+    <!-- 展示模块 -->
+    <activity
+        android:id="@+id/presentationActivity"
+        android:name="com.pei.dehaze.ui.presentation.PresentationActivity"
+        android:label="图像展示"
+        tools:layout="@layout/activity_presentation" />
+
+    <!-- 系统管理模块 -->
+    <fragment
+        android:id="@+id/systemManagementFragment"
+        android:name="com.pei.dehaze.ui.system.SystemManagementFragment"
+        android:label="系统管理"
+        tools:layout="@layout/fragment_system_management" />
+
 </navigation>

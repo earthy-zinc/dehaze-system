@@ -1,13 +1,7 @@
-import {
-  legacy_createStore as createStore,
-  applyMiddleware,
-  compose,
-  Middleware,
-} from "redux";
-import thunkMiddleware from "redux-thunk";
-import logger from "redux-logger";
-import { combineReducers } from "redux";
 import user from "@/store/user/reducer";
+import {applyMiddleware, combineReducers, compose, legacy_createStore as createStore, Middleware} from "redux";
+import logger from "redux-logger";
+import thunkMiddleware from "redux-thunk";
 
 const composeEnhancers =
   typeof window === "object" && window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
@@ -32,6 +26,5 @@ const rootReducer = combineReducers({
 });
 
 export default function configStore() {
-  const store = createStore(rootReducer, enhancer);
-  return store;
+  return createStore(rootReducer, enhancer);
 }

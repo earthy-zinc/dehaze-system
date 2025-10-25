@@ -1,8 +1,8 @@
 # dehaze-front-react
 
-我需要用 React + TypeScript 对 dehaze-front-vue 项目进行功能对齐式重构，目标是将 Vue 版本中已实现的全部业务功能、交互逻辑与用户体验完整迁移到 dehaze-front-react 项目中。
+我需要用 React + TypeScript 对 dehaze-front-vue 项目进行功能对齐式重构，目标是将 Vue 版本中已实现的全部业务功能、交互逻辑与用户体验完整迁移到 dehaze-front-react 项目中.
 
-虽然 dehaze-front-react 已初步搭建了基础架构并实现了部分功能，但可能存在以下问题：
+虽然 dehaze-front-react 已初步搭建了基础架构并实现了部分功能，具体请参阅 dehaze-front-vue 和 dehaze-front-react 的规则文件，但可能存在以下问题：
 
 功能缺失（如缺少大部分页面和组件）
 逻辑不一致（如权限校验、图片上传流程、对比交互行为）
@@ -289,7 +289,7 @@ Pages（路由、布局、交互流）
 Components（如 DraggableLine, Magnifier, Waterfall）
 Store（Pinia 状态逻辑）
 API 与 WebSocket 逻辑
-输出：
+输出（写入doc文件夹中）：
 ✅ 功能可实现性评估表
 ✅ Android 交互设计方案（含组件与系统能力选型）：
 
@@ -321,9 +321,8 @@ UI 组件：
 图片：Glide + PhotoView（建议新增）
 导航：Navigation Component（Fragment + NavGraph）
 输出：
-✅ 符合 Android 官方架构指南的 Java 代码
+✅ 直接新建/编辑代码，给出符合 Android 官方架构指南的 Java 代码，
 ✅ 架构分层说明（数据流：UI → ViewModel → Repository → Data Source）
-✅ 权限申请与生命周期处理方案（如相机、存储）
 
 第三步：Android 多版本兼容性验证
 验证重点：

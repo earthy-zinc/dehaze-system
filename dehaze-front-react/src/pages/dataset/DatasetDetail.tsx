@@ -4,11 +4,17 @@ import { useWindowSize } from "@/hooks/useWindowSize";
 import { Button, Card, Divider, Form, Input } from "antd";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import Viewer from "react-viewer";
 
 interface ImageType {
   id: number;
   type: string;
   enabled: boolean;
+}
+
+interface ViewerImage {
+  src: string;
+  alt: string;
 }
 
 const breakpoints = [
@@ -61,6 +67,8 @@ export default function DatasetDetail() {
   const [datasetInfo, setDatasetInfo] = useState<Dataset | null>(null);
   const [imageData, setImageData] = useState<ImageItem[]>([]);
   const [imageTypes, setImageTypes] = useState<ImageType[]>([]);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerImages, setViewerImages] = useState<ViewerImage[]>([]);
   const curImageType = useMemo(
     () => imageTypes.find((type) => type.enabled),
     [imageTypes]
@@ -151,9 +159,17 @@ export default function DatasetDetail() {
     setQueryParams((prev) => ({ ...prev, pageNum: 1 }));
   };
 
-  // 显示大图（根据需要实现）
+  // 显示大图
   const showBigPicture = (itemId: number) => {
-    // 实现图片放大功能
+    const item = imageData.find((item) => item.id === itemId);
+    if (item) {
+      const images = item.imgUrl.map((img) => ({
+        src: img.originUrl || img.url,
+        alt: img.description || "",
+      }));
+      setViewerImages(images);
+      setViewerVisible(true);
+    }
   };
 
   return (
@@ -213,6 +229,11 @@ export default function DatasetDetail() {
           )}
         </div>
       </Card>
+      <Viewer
+        visible={viewerVisible}
+        onClose={() => setViewerVisible(false)}
+        images={viewerImages}
+      />
     </div>
   );
 }
