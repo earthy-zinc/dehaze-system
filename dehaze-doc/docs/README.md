@@ -6,7 +6,7 @@ heroText: 土味锌的阅读笔记
 tagline: 全栈开发学习笔记
 actions:
   - text: 开始阅读📖
-    link: ./前端开发
+    link: ./前端开发/
     type: primary
   - text: 项目展示🧩
     link: ./项目展示.html
