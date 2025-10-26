@@ -2,6 +2,9 @@ package com.pei.dehaze.controller;
 
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.io.FileUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.model.bo.FileBO;
@@ -69,6 +72,33 @@ public class FileController {
     ) {
         boolean result = sysFileService.check(md5);
         return Result.judge(result);
+    }
+
+    @GetMapping("/{fileId}")
+    @Operation(summary = "获取文件详情")
+    public Result<SysFile> getFileDetail(
+            @Parameter(description = "文件ID") @PathVariable Long fileId
+    ) {
+        SysFile file = sysFileService.getById(fileId);
+        return Result.success(file);
+    }
+
+    @GetMapping("/page")
+    @Operation(summary = "分页查询文件")
+    public Result<PageResult<SysFile>> listPagedFiles(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "关键字") @RequestParam(required = false) String keywords
+    ) {
+        Page<SysFile> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<SysFile> queryWrapper = new LambdaQueryWrapper<>();
+        if (keywords != null && !keywords.isEmpty()) {
+            queryWrapper.like(SysFile::getName, keywords)
+                    .or()
+                    .like(SysFile::getType, keywords);
+        }
+        Page<SysFile> result = sysFileService.page(page, queryWrapper);
+        return Result.success(PageResult.success(result));
     }
 
 

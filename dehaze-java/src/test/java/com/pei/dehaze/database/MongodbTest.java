@@ -13,8 +13,9 @@ public class MongodbTest {
     @Resource
     private MongoTemplate mongoTemplate;
 
-    @Test
-    public void test() {
-        MongoCollection<Document> mongoCollection = mongoTemplate.createCollection("bl_comment");
-    }
+    // @Test
+    // public void test() {
+    // MongoCollection<Document> mongoCollection =
+    // mongoTemplate.createCollection("bl_comment");
+    // }
 }

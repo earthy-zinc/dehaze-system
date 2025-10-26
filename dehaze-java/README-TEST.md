@@ -8,7 +8,7 @@
 
 - **测试框架**: JUnit 5
 - **Spring 测试**: Spring Boot Test, Spring Security Test
-- **数据库**: H2 内存数据库（测试环境）
+- **数据库**: MySQL 数据库（测试环境）
 - **Mock 框架**: MockMvc, @MockBean
 - **断言库**: JUnit 5 Assertions, Hamcrest
 - **ORM**: MyBatis-Plus 3.5.5
@@ -53,26 +53,6 @@ src/test/
 ## 核心配置
 
 ### 1. 测试配置文件 (application-test.yml)
-
-```yaml
-spring:
-  datasource:
-    driver-class-name: org.h2.Driver
-    url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE
-    username: sa
-    password:
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:db/schema-test.sql
-      data-locations: classpath:db/data-test.sql
-```
-
-**关键配置说明**：
-
-- 使用 H2 内存数据库，模式兼容 MySQL
-- 自动执行 SQL 脚本初始化数据库结构和测试数据
-- 每次测试启动时重建数据库，确保测试隔离
 
 ### 2. 测试基类 (BaseTest.java)
 
@@ -296,88 +276,6 @@ void testSaveUser_DuplicateUsername() {
 
 - **单元测试**: 使用 `@MockBean` 模拟依赖
 - **集成测试**: 使用真实的 Spring Bean 和数据库
-
-## 常见问题
-
-### 1. H2 数据库 SQL 兼容性
-
-**问题**: MySQL 特定语法在 H2 中不支持
-
-**解决方案**:
-
-```yaml
-# H2 配置
-url: jdbc:h2:mem:testdb;MODE=MySQL;DATABASE_TO_LOWER=TRUE
-```
-
-### 2. 测试数据隔离
-
-**问题**: 测试之间数据相互影响
-
-**解决方案**:
-
-- 使用 `@Transactional` 自动回滚
-- 每次测试重建 H2 数据库
-
-### 3. Security 测试认证
-
-**问题**: 需要模拟不同角色用户
-
-**解决方案**:
-
-```java
-@WithMockUser(username = "admin", roles = { "ADMIN" })
-```
-
-### 4. 文件上传测试
-
-**问题**: 如何测试文件上传
-
-**解决方案**:
-
-```java
-MockMultipartFile file = new MockMultipartFile(
-    "file", "test.jpg", 
-    MediaType.IMAGE_JPEG_VALUE,
-    "content".getBytes());
-    
-mockMvc.perform(multipart("/api/upload")
-    .file(file));
-```
-
-## CI/CD 集成
-
-### GitHub Actions
-
-```yaml
-name: Run Tests
-
-on: [push, pull_request]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up JDK 17
-        uses: actions/setup-java@v2
-        with:
-          java-version: '17'
-      - name: Run tests
-        run: mvn clean test
-```
-
-### GitLab CI
-
-```yaml
-test:
-  stage: test
-  script:
-    - mvn clean test
-  artifacts:
-    reports:
-      junit: target/surefire-reports/TEST-*.xml
-```
 
 ## 测试覆盖率
 
