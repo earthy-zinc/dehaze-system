@@ -1,17 +1,18 @@
-
 # Swagger
 
-## 1、SpringBoot 集成 Swagger
+## SpringBoot 集成
+
+在 Spring Boot 项目中集成 Swagger 需要以下步骤：
 
 1. 添加对应的依赖
-2. 新建一个配置类，添加@EnableSwagger2 和@Configuration 注解，打开并自定义配置 Swagger
-3. 通过 `http://项目IP:端口/swagger-ui.html`访问 API 接口文档
+2. 新建一个配置类，添加 @EnableSwagger2 和 @Configuration 注解，打开并自定义配置 Swagger
+3. 通过 `http://项目IP:端口/swagger-ui.html` 访问 API 接口文档
 
 [附：SpringBoot 集成 Swagger 详细教程](http://www.imooc.com/wiki/swaggerlesson/springbootswagger.html)
 
-## 2、常用注解
+## 常用注解
 
-Swagger 是为了解决企业中接口（api）中定义统一标准规范的文档生成工具。可以通过在代码中添加 Swagger 的注解来生成统一的 API 接口文档。注解主要有以下几种：
+Swagger 是为了解决企业中接口（API）定义统一标准规范的文档生成工具。可以通过在代码中添加 Swagger 的注解来生成统一的 API 接口文档。主要注解包括：
 
 | 注解名称           | 使用地方         | 说明                            |
 | ------------------ | ---------------- | ------------------------------- |
@@ -19,7 +20,7 @@ Swagger 是为了解决企业中接口（api）中定义统一标准规范的文
 | @ApiOperation      | 方法             | 描述后端 API 接口的信息         |
 | @ApiParam          | 方法、参数、字段 | 对方法、参数添加元数据          |
 | @ApiModel          | 类               | 对类进行说明                    |
-| @ApiModelPropery   | 方法、字段       | 对类的属性说明                  |
+| @ApiModelProperty  | 方法、字段       | 对类的属性说明                  |
 | @ApiIgnore         | 类、方法、参数   | Swagger 将会忽略这些            |
 | @ApiImplicitParam  | 方法             | 单独请求的参数                  |
 | @ApiImplicitParams | 方法             |                                 |
@@ -28,38 +29,39 @@ Swagger 是为了解决企业中接口（api）中定义统一标准规范的文
 | ----------- | -------- | ------ | ------------- | -------------------- |
 | value       | String   |        |               | 描述接口用途         |
 | tags        | String[] |        |               | 接口分组             |
-| notes       | String   |        | @ApiOpreation | 对接口做出进一步描述 |
-| httpMethod  | String   |        | @ApiOpreation | 接口请求方法         |
-| nickname    | String   |        | @ApiOpreation | 接口别名             |
+| notes       | String   |        | @ApiOperation | 对接口做出进一步描述 |
+| httpMethod  | String   |        | @ApiOperation | 接口请求方法         |
+| nickname    | String   |        | @ApiOperation | 接口别名             |
 | protocols   | String   |        |               | 接口使用的网络协议   |
 | hidden      | Boolean  |        |               | 是否隐藏该接口       |
-| code        | int      |        | @ApiOpreation | 接口返回状态码       |
+| code        | int      |        | @ApiOperation | 接口返回状态码       |
 | description |          |        | @Api          |                      |
 | produces    |          |        | @Api          |                      |
 | consumes    |          |        | @Api          |                      |
 
-## 3、Swagger 配置
+## 配置
 
 创建 Swagger 的配置代码如下：
 
 ```java
 @EnableSwagger2
 @Configuration
-public Class Swagger2Config{
+public class Swagger2Config {
     @Bean
-    public Docket createApiDoc(){
+    public Docket createApiDoc() {
         return new Docket(DocumentationType.SWAGGER_2)
             .apiInfo(apiInfo())
             .select()
-            .apis(RequestHandlerSelector.basePackage("your_package_name"))
+            .apis(RequestHandlerSelectors.basePackage("your_package_name"))
             .paths(PathSelectors.any())
             .build();
     }
-    private ApiInfo apiInfo(){
+    
+    private ApiInfo apiInfo() {
         return new ApiInfoBuilder()
-            .title()
-            .description()
-            .version()
+            .title("API 文档标题")
+            .description("API 文档描述")
+            .version("1.0")
             .build();
     }
 }
@@ -70,5 +72,4 @@ public Class Swagger2Config{
 | title       | 填写 API 文档标题 |
 | description | 填写 API 文档描述 |
 | version     | 填写 API 文档版本 |
-| bulid       | 创建 ApiInfo 实例 |
-
+| build       | 创建 ApiInfo 实例 |

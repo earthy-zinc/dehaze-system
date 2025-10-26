@@ -1,47 +1,48 @@
-# VueRouter
+# Vue Router
 
 ## 组合式API
 
-### setup中访问路由
+### 路由访问
 
-在setup中不存在this，因此无法直接访问`this.$router`或者`this.$route`作为替代，使用useRouter和useRoute函数
+在setup中无法使用this访问`this.$router`或`this.$route`，应使用useRouter和useRoute函数：
 
 ```vue
 <script setup>
-	import {useRouter, useRoute} from 'vue-router'
-  const router = useRouter();
-  const route = useRoute();
+import { useRouter, useRoute } from 'vue-router'
+const router = useRouter();
+const route = useRoute();
 </script>
 ```
 
-`route`对象是一个响应式对象，因此它所有的属性都可以被监听，但是应该避免监听整个route对象，在大多数情况下，应该直接监听期望改变的参数。
+route对象是响应式的，所有属性都可被监听，但应避免监听整个route对象，建议直接监听期望改变的参数。
 
-在模板中仍然能够访问`$route`和`$router`
+在模板中仍可访问`$route`和`$router`。
 
 ### 导航守卫
 
-更新和离开当前页面时所采用的导航行为采用，
+组合式API提供导航守卫用于处理路由更新和离开页面的行为：
 
 ```vue
-<script>
-  import {onBeforeRouteLeave, 
-          onBeforeRouteUpdate} 
-  from 'vue-router'
-  onBeforeRouteLeave((to, from) => {
-    const answer = window.confirm("do you want it?");
-    if(!answer) return false;
-  })
-  onBeforeRouteUpdate(async (to, from) => {
-    // 操作
-  })
+<script setup>
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+
+onBeforeRouteLeave((to, from) => {
+  const answer = window.confirm("确认离开页面吗？");
+  if (!answer) return false;
+})
+
+onBeforeRouteUpdate(async (to, from) => {
+  // 路由更新时的操作
+})
 </script>
 ```
 
-组合式API守卫可以运用在任何由`<router-view>`渲染的组件中，不必向组件内守卫那样直接用在路由组件上。
+组合式API守卫可用于任何由`<router-view>`渲染的组件，不局限于路由组件。
 
-### useLink
+### useLink组合式函数
 
-Vue Router将RouterLink的内部行为作为一个组合式函数公开，它接收一个类似RouterLink所有prop响应式对象，并且暴露底层属性。
+Vue Router将RouterLink的内部行为作为组合式函数公开，接收类似RouterLink所有prop的响应式对象，并暴露底层属性。
 
-## 创建路由
+## 路由创建
 
+通过createRouter函数创建路由实例，配置路由映射关系。

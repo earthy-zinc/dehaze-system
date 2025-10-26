@@ -1,33 +1,56 @@
 # Vite
 
-## 介绍
+## 概述
 
-Vite是一个前端构建工具，它有开发服务器、构建指令的功能。默认的构建目标是能支持原生ESM语法的script标签、原生ESM动态导入和import.meta的浏览器。
+Vite是一个现代化的前端构建工具，包含开发服务器和构建指令功能。默认构建目标为支持以下特性的浏览器：
+- 原生ESM语法的script标签
+- 原生ESM动态导入
+- import.meta
 
-在开发期间Vite是一个服务器，而index.html是该Vite项目的入口文件。Vite将这个文件视为源码和模块图的一部分，Vite解析`<script type="module" src="...">`这个标签会指向JavaScript源码，甚至内联引入JavaScript的`<script type="module">`和引用Css的`<link herf>`也能利用Vite特有的功能被解析，index.html中的URL会被自动转换。
+### 开发服务器
 
-与静态HTTP服务器类似，Vite也需要根目录，即服务文件的位置，源码中的绝对URL路径都会是以项目的根作为基础解析。Vite还能够处理依赖关系，解析处于根目录外的文件位置。vite会以当前工作目录作为根目录启动开发服务器。同时解析项目根目录下的配置文件。
+在开发期间，Vite作为服务器运行，index.html作为项目入口文件。Vite将index.html视为源码和模块图的一部分，能够解析：
+- `<script type="module" src="...">`标签指向的JavaScript源码
+- 内联引入的JavaScript代码
+- 引用CSS的`<link href>`标签
 
-vite项目可以在npm脚本中使用vite命令，或者直接使用npx vite运行命令。运行`npx vite --help`能获得完整命令行选项。
+URL路径处理：
+- 以项目根目录为基础解析绝对路径
+- 自动转换index.html中的URL
+- 处理根目录外的依赖文件
 
-## 功能
+### 启动方式
 
-### npm依赖解析和与构建
+Vite项目可通过以下方式启动：
+1. npm脚本中的vite命令
+2. 直接使用npx vite运行
+3. 运行`npx vite --help`获取完整命令行选项
 
-对于裸模块导入，Vite会检测所有被加载的源文件中裸模块导入，会预构建他们，以提高页面加载速度，并且将CommonJS模块转换为ES模块格式。重写导入为合法的url，以便浏览器能够正确导入。
+## 核心功能
+
+### npm依赖解析与预构建
+
+Vite处理裸模块导入的流程：
+1. 检测源文件中的裸模块导入
+2. 预构建依赖以提高页面加载速度
+3. 将CommonJS模块转换为ES模块格式
+4. 重写导入为合法URL供浏览器正确导入
 
 ### 模块热替换
 
-### typescript支持
+Vite支持模块热替换(Hot Module Replacement, HMR)，在开发过程中实现局部更新，提升开发体验。
 
-### 处理静态资源
+### TypeScript支持
 
-导入一个静态资源会返回解析后的url，如
+Vite原生支持TypeScript，可直接导入和编译TypeScript文件。
+
+### 静态资源处理
+
+导入静态资源会返回解析后的URL：
 
 ```js
 import imgUrl from './img.png'
 console.log(imgUrl)
 ```
 
-JSON也可以为直接导入
-
+JSON文件也可直接导入使用。

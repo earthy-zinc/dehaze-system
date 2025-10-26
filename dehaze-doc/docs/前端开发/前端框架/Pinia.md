@@ -1,16 +1,21 @@
 # Pinia
 
-## 定义store
+## Store定义
 
-store是vue数据的仓库，在setup中是通过`defineStore()`定义的，他的第一个参数要求是一个独一无二的名字。这个名字也被用作id，是必须传入的，我们将defineStore()返回的一个函数命名为`use...`是一个符合组合式函数风格的约定。第二个参数可接受两个值，setup函数或者option对象。
+Store是Vue的数据存储仓库。在setup中通过`defineStore()`定义，第一个参数是唯一标识符，第二个参数可以是配置对象或函数。
 
-option对象，可以带有state、actions、getters属性。state是数据仓库中的数据，而getters是数据仓库中的计算属性，actions则是方法。
+### 配置对象方式
+
+配置对象可包含state、getters、actions属性：
+- state：存储数据
+- getters：计算属性
+- actions：方法
 
 ```js
 const useCounterStore = defineStore('counter', {
-  state: () => ({count:0}),
-  getter: { 
-  	double: (state) => state.count * 2.
+  state: () => ({ count: 0 }),
+  getters: { 
+    double: (state) => state.count * 2
   },
   actions: {
     increment() {
@@ -20,44 +25,43 @@ const useCounterStore = defineStore('counter', {
 })
 ```
 
+### 函数方式
 
-
-当然也存在另一种定义store的方法，我们可以在第二个参数传入一个函数，该函数定义了一些响应式属性和方法，并且返回一个带有我们想暴露出去的属性和方法的对象。
+通过函数定义响应式属性和方法：
 
 ```js
-const useCounterStore = defineStore('counter', ()=>{
+const useCounterStore = defineStore('counter', () => {
   const count = ref(0);
   function increment() {
     count.value++
   }
-  return {count, increment}
+  return { count, increment }
 })
 ```
 
-在setup store中。
+函数方式与配置对象方式的对应关系：
+- ref() 对应 state 属性
+- computed() 对应 getter 属性
+- function() 对应 action 属性
 
-* ref()相当于state属性
-* computed()相当于getter属性
-* function()相当于actions属性
+## Store使用
 
-像这样的setup数据仓库比option数据仓库带来了更多的灵活性，可以在数据仓库中创建侦听器，并且自由地使用任何组合式函数，但是会让服务端渲染更加复杂。
-
-## 使用store
-
-我们要在使用数据仓库的组件中调用该use...Store()来获取数据仓库变量，在调用之前，store实例是不会被创建的。我们可以定义任意多的store，但是最好在不同的文件中定义store。一旦store实例被创建，我们就可以直接访问在store中定义的state、getters、actions等属性。为了从store中提取属性时保持其响应性，我们应该使用storeToRefs()。它将为每一个响应式属性创建引用，当我们只是用状态而不调用action函数时，会很有用。
+在组件中调用use...Store()函数获取store实例：
 
 ```vue
 <script setup>
-	import { storeToRefs } from 'pinia'
-  const store = useCounterStore();
-  const {name, doubleCount} = storeToRefs(store);
-  const {increment} = store;
+import { storeToRefs } from 'pinia'
+const store = useCounterStore();
+const { name, doubleCount } = storeToRefs(store);
+const { increment } = store;
 </script>
 ```
 
-## State
+使用storeToRefs()可保持响应性，适用于仅使用状态而不调用action的场景。
 
-state即数据，state被定义为返回初始状态的函数。
+## State状态管理
+
+State是store的数据部分，定义为返回初始状态的函数：
 
 ```typescript
 const useStore = defineStore('storeId', {
@@ -78,27 +82,27 @@ interface UserInfo {
 }
 ```
 
- 当然我们也可以用接口来定义state的返回值，并且定义state函数返回值的类型。
+### State变更
 
-在默认情况下，我们可以通过store实例来访问state数据，直接对其进行读写。也可以调用store的$reset() 方法将state重置为初始值。
-
-### 变更state
-
-除了使用store.count++直接改变store，我们还可以调用$patch方法，使用一个state的补丁对象再同一时间修改多个属性。
+两种变更方式：
+1. 直接修改：`store.count++`
+2. 使用$patch方法批量修改：
 
 ```js
 store.$patch({
   count: store.count + 1,
   age: 120,
-  name: 'DIO',
+  name: 'DIO'
 })
 ```
 
+### State重置
 
+调用store的$reset()方法将state重置为初始值。
 
-### 侦听state
+### State侦听
 
-我们可以通过store的`$subscribe()`方法侦听state及其变化，使用这个方法的好处时订阅方法在patch分发后只触发一次。
+通过$subscribe()方法侦听state变化，订阅方法在patch分发后只触发一次：
 
 ```js
 cartStore.$subscribe((mutation, state) => {
@@ -109,56 +113,64 @@ cartStore.$subscribe((mutation, state) => {
 })
 ```
 
-默认情况下，state subscription会被绑定再添加他们的组件上，这意味着当该组件被卸载时，对这些数据变化的订阅消息会被自动删除，如果想要再组件卸载后依然保留，需要将detached: true作为第二个参数
+默认情况下，state subscription会绑定到添加它们的组件上，组件卸载时自动删除订阅。如需在组件卸载后保留订阅，需设置`{ detached: true }`参数。
 
-## Getter
+## Getter计算属性
 
-getter完全等同于store的state计算值，可以通过defineStore中的getters属性来定义，推荐使用箭头函数，它会接收state作为其中的第一个参数。大多数时候，getter仅仅依赖state，不过有时候他们也可能会使用其他getter，因此，即使在使用常规函数定义getter时，我们也可以通过this访问到整个store实例，在typescript中必须定义返回类型。
+Getter相当于store的计算属性，通过defineStore中的getters属性定义：
 
 ```js
 export const useStore = defineStore('main', {
   state: () => ({
-    count: 0,
+    count: 0
   }),
   getters: {
-    doubleCount(state){
+    doubleCount(state) {
       return state.count * 2
     },
     // 明确设置返回值类型为number
     doublePlusOne(): number {
-    	return this.doubleCount + 1
-  	},
+      return this.doubleCount + 1
+    }
   }
 })
 ```
 
-在使用store的组件中
+在组件中使用getter：
 
 ```vue
 <script setup>
-	import {useCounterStore} from './counterStore'
-  const store = useCounterStore()
+import { useCounterStore } from './counterStore'
+const store = useCounterStore()
 </script>
 <template>
-	<p>
-    Double count is {{ store.doubleCount }}
-  </p>
+  <p>Double count is {{ store.doubleCount }}</p>
 </template>
 ```
 
-### 访问其他getter
+### Getter组合
 
-与计算实行一样，我们也可以组合多个getter，通过this关键字，我们可以访问到当前定义的数据仓库中其他任何getter
+Getter可以像计算属性一样组合使用，通过this关键字访问其他getter。
 
-### 向getter传递参数
+### 参数化Getter
 
-getter只是计算属性，所以不能向他们传递任何参数，但是我们可以从getter返回一个函数，该函数能接收任意参数    
+Getter不能直接接收参数，但可以返回接收参数的函数：
 
-## Action
+```js
+export const useStore = defineStore('main', {
+  getters: {
+    getUserById: (state) => {
+      return (userId) => state.users.find(user => user.id === userId)
+    }
+  }
+})
+```
 
-action相当于组件的method，他们可以通过defineStore中的actions属性来定义，也是定义业务逻辑的一个选择。
+## Action动作
 
-类似于getter，action也可以通过this访问整个store实例，并且支持完整的类型标注，不同的是action可以时异步的，我们可以在里面使用await关键字调用任何api，以及其他的action。
+Action相当于组件的方法，通过defineStore中的actions属性定义，用于实现业务逻辑。
+
+Action可通过this访问整个store实例，支持完整的类型标注，可为异步操作：
 
 ```js
 export const useUsers = defineStore('users', {
@@ -168,9 +180,9 @@ export const useUsers = defineStore('users', {
   actions: {
     async registerUser(login, password) {
       try {
-        this.userData = await api.post({login, password});
+        this.userData = await api.post({ login, password });
         showTooltip(`welcome ${this.userData.name}`)
-      }catch(error){
+      } catch (error) {
         return error
       }
     }
@@ -178,19 +190,20 @@ export const useUsers = defineStore('users', {
 })
 ```
 
-action 可以像函数或者通常意义上的方法一样被调用
+调用action的方式：
+1. 函数调用：`store.randomizeCounter()`
+2. 事件绑定：`@click='store.randomizeCounter()'`
 
 ```vue
 <script setup>
 const store = useCounterStore()
-store.randomiszeCounter()
+store.randomizeCounter()
 </script>
 <template>
-	<button @click='store.randomizeCounter()'></button>
+  <button @click='store.randomizeCounter()'></button>
 </template>
 ```
 
+## 插件机制
 
-
-## 插件
-
+Pinia支持插件扩展功能，可通过插件添加全局属性、修改store行为等。

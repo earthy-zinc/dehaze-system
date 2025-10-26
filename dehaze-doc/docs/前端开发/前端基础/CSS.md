@@ -1,242 +1,223 @@
 # CSS
 
-## 一、CSS介绍
+## CSS简介
 
-### 1、语法
+### CSS语法
 
 ```css
-selector					/*选择器的名称*/
-{
-    "property1" : value1;		/*声明语句，每条声明语句以分号结束。*/
-    "property2" : value2;		/*总体声明用大括号括起来*/
+selector {
+    property1: value1;
+    property2: value2;
 }
 ```
 
-### 2、插入
+CSS语法由选择器和声明块组成：
+- 选择器(selector)：指定要应用样式的元素
+- 声明块：包含一个或多个声明，每个声明由属性和值组成
 
-插入方法有三种：
+### CSS插入方式
+
+CSS可以通过三种方式插入到HTML文档中：
+
+| 插入方式 | 使用场景 | 实现方法 | 优先级 |
+|---------|---------|---------|:-----:|
+| 外部样式表 | 样式需要应用于多个页面 | 使用`<link>`标签引入样式表 | 低 |
+| 内部样式表 | 样式仅应用于单个页面 | 使用`<style>`标签定义在HTML文件头部 | 中 |
+| 内联样式 | 样式仅应用于单个元素 | 在元素中使用style属性 | 高 |
+
+## CSS选择器
+
+### 基本选择器
+
+#### 元素选择器
+根据标签名选择指定的一组元素
+语法：`tag { }`
+
+#### ID选择器
+根据元素的id属性值选择指定的元素
+语法：`#id { }`
 
-| 插入方法(Insert method)        | 使用范围             | 使用方法                      | 应用优先级 |
-|----------------------------|------------------|---------------------------|:-----:|
-| 外部样式表 External style sheet | 样式需要应用于很多个页面的时候。 | 使用`<link>`标签将样式表引入HTML文件中 |   低   |
-| 内部样式表 Internal style sheet | 样式应用于单个页面的时候     | 使用`<style>`标签定义在HTML文件头部  |   中   |
-| 内联样式 inline style          | 样式只应用于单个元素的时候    | 在元素中使用 style 属性           |   高   |
+#### 类选择器
+根据元素的class属性值选择指定的一组元素
+语法：`.class { }`
 
-## 二、CSS选择器
+#### 通配选择器
+选中当前页面所有元素
+语法：`* { }`
 
-### 1、基本选择器
+### 复合选择器
 
-元素选择器
+#### 交集选择器
+选择同时满足多个条件的元素
+语法：`selector1selector2...selectorN { }`
+注意：如果包含元素选择器，必须让元素选择器在最前面
 
-* 作用：根据标签名选择指定的一组元素
-* 语法：`tag {  }`
+#### 并集选择器
+同时选择多个选择器对应的元素
+语法：`selector1,selector2,...,selectorN { }`
 
-id选择器
+### 关系选择器
 
-* 作用：根据元素的id属性值选择指定的元素
-* 语法：`#id {  }`
+#### 子元素选择器
+选中指定父元素的直接子元素
+语法：`element>element { }`
 
-类选择器
+#### 后代元素选择器
+选择指定元素内的所有指定后代元素（包括子元素及其子元素等）
+语法：`element element { }`
 
-* 作用：根据元素的class属性值选择指定的一组元素
-* 语法：`.class {  }`
+#### 兄弟元素选择器
+选择指定元素后面符合条件的兄弟元素
+语法：
+- `element+element { }`：选择紧邻的第一个符合条件的兄弟元素
+- `element~element { }`：选择所有符合条件的兄弟元素
 
-通配选择器
+### 伪类选择器
 
-* 作用：选中当前页面所有元素
-* 语法：`* {  }`
+针对超链接的不同状态可以使用以下伪类选择器：
 
-### 2、复合选择器
+| 选择器 | 说明 |
+|-------|------|
+| a:link | 未被访问过的链接 |
+| a:visited | 已访问过的链接 |
+| a:hover | 鼠标悬停在链接上时 |
+| a:active | 鼠标点击时 |
 
-交集选择器
-* 作用：选择同时满足多个条件的元素
-* 语法：`selector1selector2 ... selectorN { }`
-* 注意点：父条件在先，子条件在后。如果包含元素选择器，必须让元素选择器在头部。
+### 常用选择器汇总
 
-并集选择器
+| 选择器 | 示例 | 说明 |
+|-------|------|-----|
+| .class | .intro | 选择所有class="intro"的元素 |
+| #id | #name | 选择所有id="name"的元素 |
+| * |  | 选择所有元素 |
+| element | p | 选择所有`<p>`标签元素 |
+| element,element | div,p | 选择所有`<div>`元素和`<p>`元素 |
+| element element | div p | 选择所有`<div>`元素内的所有`<p>`元素 |
+| element>element | div>p | 选择所有父级元素是`<div>`的`<p>`元素 |
+| [attribute] | [target] | 选择所有带有target属性的元素 |
+| [attribute=value] | [target=_blank] | 选择所有带有target属性且其值等于_blank的元素 |
 
-* 作用：同时选择多个选择器对应的元素
-* 语法：`selectot1,selector2, ... ,selectorN {  }`
+## CSS属性
 
-### 3、关系选择器
+### 背景属性
 
-子元素选择器
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| background-color | 设置背景颜色 | background-color: red; |
+| background-image | 设置背景图像 | background-image: url('image.jpg'); |
+| background-repeat | 设置背景图像的重复方式 | background-repeat: repeat/no-repeat/repeat-x/repeat-y; |
+| background-attachment | 设置背景图像是否随页面滚动 | background-attachment: scroll/fixed; |
+| background-position | 设置背景图像的位置 | background-position: center top; |
 
-* 作用：选中指定父元素的指定子元素，子元素指的是直接被父元素包含的元素
-* 语法：`element>element {  }`
+### 文本属性
 
-后代元素选择器
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| text-align | 设置文本水平对齐方式 | text-align: left/center/right; |
+| text-decoration | 设置文本装饰线 | text-decoration: none/underline/overline/line-through; |
+| text-indent | 设置文本首行缩进 | text-indent: 2em; |
+| text-shadow | 设置文本阴影效果 | text-shadow: 2px 2px 5px gray; |
+| color | 设置文本颜色 | color: blue; |
+| line-height | 设置行高 | line-height: 1.5; |
+| letter-spacing | 设置字符间距 | letter-spacing: 2px; |
 
-* 作用：选择指定元素内的所有指定后代元素，包括子元素和子元素的元素一直递归。
-* 语法：`element element {  }`
+### 字体属性
 
-兄弟元素选择器
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| font-family | 设置字体类型 | font-family: Arial, sans-serif; |
+| font-style | 设置字体样式 | font-style: normal/italic; |
+| font-size | 设置字体大小 | font-size: 16px; |
 
-* 作用：选择指定元素的后面的指定兄弟元素。
-* 语法：
-	* `element+element {  }`注：只会选择第一个符合条件的元素
-	* `element~element {  }`注：会选择所有符合条件的元素
+### 列表属性
 
-### 4、伪类选择器
+可以对列表项的标记样式进行更改，默认情况下列表项会有项目符号。
 
+### 表格属性
 
+用于控制表格的外观样式，如边框、间距等。
 
-### 5、常用选择器一览
+### 边框属性
 
-| 选择器               | 实例              | 说明                          |
-|-------------------|-----------------|-----------------------------|
-| .class            | .intro          | 选择所有class="intro"的元素        |
-| #id               | #name           | 选择所有id="name"的元素            |
-| *                 |                 | 选择所有元素                      |
-| element           | p               | 选择所有标签为p的元素，即`<p>`          |
-| element,element   | div,p           | 选择所有`<div>`元素和`<p>`元素       |
-| element element   | div p           | 选择所有`<div>`元素内的所有`<p>`元素    |
-| element>element   | div>p           | 选择所有父级元素是`<div>`的`<p>`元素    |
-| [attribute]       | [target]        | 选择所有带有target属性的元素           |
-| [attribute=value] | [target=blankl] | 选择所有带有target属性且其值等于blank的元素 |
+可以分别为元素的四个边设置边框样式：
 
-对于网页中的不同情况的链接，我们可以分别应用不同的样式。
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| border-style | 设置边框样式 | border-style: solid/dashed/dotted; |
+| border-width | 设置边框宽度 | border-width: 1px; |
+| border-color | 设置边框颜色 | border-color: black; |
+| border-radius | 设置圆角边框 | border-radius: 5px; |
 
-| 选择器       | 实例 | 说明        |
-|-----------|----|-----------|
-| a:link    |    | 没有被访问过的链接 |
-| a:visited |    | 访问过的链接    |
-| a:hover   |    | 鼠标悬停在链接上时 |
-| a:active  |    | 鼠标点击时     |
+### 轮廓属性
 
-## 三、属性
+轮廓位于边框边缘的外围，主要用于突出显示元素：
 
-### 1、背景 background
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| outline-style | 设置轮廓样式 | outline-style: solid/dashed; |
+| outline-width | 设置轮廓宽度 | outline-width: 2px; |
+| outline-color | 设置轮廓颜色 | outline-color: red; |
 
-| 属性名称                  | 效果                  | 实例 |
-|-----------------------|---------------------|----|
-| background-color      | 定义了背景的颜色            |    |
-| background-image      | 定义了背景图像             |    |
-| background-repeat     | 定义了背景图像展现方法，水平、垂直平铺 |    |
-| background-attachment | 定义背景图像是否固定或者随页面滚动   |    |
-| background-position   | 定义背景图像的位置           |    |
+### 外边距属性
 
-### 2、文本 text
+用于控制元素与其他元素之间的距离。
 
-| 属性名称            | 效果             | 实例 |
-|-----------------|----------------|----|
-| text-align      | 设置文本水平对齐的方式    |    |
-| text-decoration | 设置文本的装饰，如文本下划线 |    |
-| text-indent     | 设置文本缩进距离       |    |
-| text-shadow     | 设置文本阴影         |    |
-| color           | 设置文本颜色         |    |
-| line-height     | 设置行高           |    |
-| letter-spacing  | 设置字符间距         |    |
+### 内边距属性
 
-### 3、字体font
+用于控制元素内容与其边框之间的距离。
 
-| 属性名称        | 效果            | 实例 |
-|-------------|---------------|----|
-| font-family | 设置选用何种字体      |    |
-| font-style  | 设置字体的样式，正常或斜体 |    |
-| font-size   | 设置字体的大小       |    |
+### 尺寸属性
 
-### 4、列表list
+用于控制元素的大小：
 
-我们可以对列表的样式做出改变，比如说列表项的标记。具体内容略。
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| height | 设置元素高度 | height: 100px; |
+| width | 设置元素宽度 | width: 200px; |
+| line-height | 设置行高 | line-height: 24px; |
+| max-height/min-height | 设置元素最大/最小高度 | max-height: 500px; |
+| max-width/min-width | 设置元素最大/最小宽度 | min-width: 300px; |
 
-### 5、表格table
+### 可见性属性
 
+| 属性 | 说明 |
+|-----|-----|
+| display: none | 隐藏元素，但仍占用原来的空间 |
+| visibility: hidden | 隐藏元素，且不占用空间 |
 
+### 定位属性
 
-### 6、边框border
+用于控制元素在页面中的位置。
 
-边框效果上下左右都可以分别设置，分别是border-bottom, border-top, border-left, border-right
+### 盒子模型属性
 
-| 属性名称          | 效果             | 实例 |
-|---------------|----------------|----|
-| border-style  | 用于设置元素所有边框的样式。 |    |
-| border-width  | 用于设置元素所有边框的宽度  |    |
-| border-color  | 用于设置元素所有边框的颜色  |    |
-| border-radius | 用于设置圆角边框的弧度    |    |
+控制内容溢出元素框时的表现：
 
-### 7、轮廓outline
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| overflow-x | 控制内容在水平方向溢出时的处理方式 | overflow-x: visible/hidden/scroll/auto; |
+| overflow-y | 控制内容在垂直方向溢出时的处理方式 | overflow-y: visible/hidden/scroll/auto; |
 
-轮廓位于边框边缘的外围，接近margin区域，可以起到突出元素的作用
+### 弹性盒子模型属性
 
-| 属性名称          | 效果      | 实例 |
-|---------------|---------|----|
-| outline-style | 设置轮廓的样式 |    |
-| outline-width | 设置轮廓的宽度 |    |
-| outline-color | 设置轮廓的颜色 |    |
+| 属性 | 说明 | 示例 |
+|-----|-----|-----|
+| flex | 复合属性，设置弹性盒子模型的子元素如何分配空间 | flex: 1; |
+| flex-grow | 设置扩展比率 | flex-grow: 1; |
+| flex-shrink | 设置收缩比率 | flex-shrink: 1; |
+| flex-basis | 设置伸缩基准值 | flex-basis: auto; |
+| flex-direction | 定义主轴方向 | flex-direction: row/column; |
+| flex-wrap | 控制换行行为 | flex-wrap: nowrap/wrap; |
+| justify-content | 设置主轴对齐方式 | justify-content: center; |
+| align-items | 设置交叉轴对齐方式 | align-items: center; |
 
-### 8、外边距margin
+## 盒子模型
 
-
-
-### 9、内边距padding
-
-
-
-### 10、尺寸Dimension
-
-我们可以通过尺寸来控制元素的高度和宽度，行间距等等
-
-| 属性                     | 效果          | 实例 |
-|------------------------|-------------|----|
-| height                 | 设置元素的高度     |    |
-| width                  | 设置元素的宽度     |    |
-| line-height            | 设置行高        |    |
-| max-height(min-height) | 设置元素的最大最小高度 |    |
-| max-width(min-width)   | 设置元素的最大最小宽度 |    |
-
-### 11、可见性
-
-* display : none 隐藏一个元素，但隐藏的元素仍会占用与未隐藏之前一样的空间
-* visibility : hidden 隐藏一个元素，且隐藏的元素不会占用任何空间
-
-### 12、定位
-
-
-
-### 13、盒子模型overflow
-
-overflow属性可以控制内容溢出元素框时所呈现的效果。
-
-| 属性              | 效果                        | 实例 |
-|-----------------|---------------------------|----|
-| overflow-x      | 如果内容溢出了元素区域，是否对内容左右边缘进行裁剪 |    |
-| overflow-y      | 如果内容溢出了元素区域，是否对内容在上下边缘处裁剪 |    |
-| over-flow-style | 规定溢出元素的滚动方法               |    |
-| rotation        | 围绕一个点对元素进行旋转              |    |
-| rotation-point  | 定义距离上左边框边缘的偏移点            |    |
-
-### 14、弹性盒子模型
-
-| 属性              | 效果                            | 实例 |
-|-----------------|-------------------------------|----|
-| flex            | 复合属性，设置弹性盒子模型的子元素如何分配页面的空间    |    |
-| flex-grow       | 设置扩展比率                        |    |
-| flex-shrink     | 设置收缩比率                        |    |
-| flex-basis      | 设置伸缩的基准值                      |    |
-| flex-flow       | 设置弹性盒子模型子元素的排列方式              |    |
-| flex-direction  | 定义主轴方向，确定子元素在盒子中的位置           |    |
-| flex-wrap       |                               |    |
-| align-content   | 设置元素在容器中纵轴的对齐方式               |    |
-| justify-content | 设置元素在容器中横轴的对齐方式               |    |
-| align-items     | 定义弹性盒子中的一个子元素本身在当前行横轴方向上的对齐方式 |    |
-| align-self      | 定义弹性盒子中的一个子元素本身在横轴方向上的对齐方式    |    |
-| order           | 设置子元素出现的顺序                    |    |
-
-## 四、特点
-
-### 1、盒子模型 Box Model
-
-盒子模型从外向内依次是：
+CSS盒子模型从外到内包含以下几个部分：
 
 ![CSS box-model](https://www.runoob.com/images/box-model.gif)
 
-* Margin 外边距 - 是在边框外的区域，外边距是透明的
-* Border 边框 - 围绕在内边距和内容之外的一个框架
-* Padding 内边距 - 是在内容周围的一片区域，内边距是透明的
-* Content 内容 - 盒子的内容，显示文本和图像
-
-## 规则
-
-
-
+1. **外边距(Margin)**：边框外的区域，外边距是透明的
+2. **边框(Border)**：围绕在内边距和内容外的框架
+3. **内边距(Padding)**：内容周围的区域，内边距是透明的
+4. **内容(Content)**：盒子的内容，显示文本和图像
