@@ -39,11 +39,20 @@ public abstract class ApiCallback<T> implements Callback<Result<T>> {
 
     @Override
     public void onResponse(Call<Result<T>> call, Response<Result<T>> response) {
-
+        if (response.isSuccessful() && response.body() != null) {
+            Result<T> result = response.body();
+            if (result.isSuccess()) {
+                onSuccess(result.getData());
+            } else {
+                onError(result.getCode(), result.getMessage());
+            }
+        } else {
+            onFailure(new ApiException(response.code(), "Response not successful or body is null"));
+        }
     }
 
     @Override
     public void onFailure(Call<Result<T>> call, Throwable t) {
-
+        onFailure(new ApiException(0, t.getMessage()));
     }
 }

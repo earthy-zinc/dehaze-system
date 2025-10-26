@@ -15,6 +15,8 @@ import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
 
+import timber.log.Timber;
+
 public class LoginViewModel extends ViewModel {
 
     private static final String TAG = "LoginViewModel";

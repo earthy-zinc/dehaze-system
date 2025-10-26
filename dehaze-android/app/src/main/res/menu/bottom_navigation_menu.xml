@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/dashboardFragment"
+        android:enabled="true"
+        android:icon="@drawable/ic_dashboard"
+        android:title="仪表盘" />
+
+    <item
+        android:id="@+id/datasetFragment"
+        android:enabled="true"
+        android:icon="@drawable/ic_dataset"
+        android:title="数据集" />
+
+    <item
+        android:id="@+id/algorithmFragment"
+        android:enabled="true"
+        android:icon="@drawable/ic_algorithm"
+        android:title="算法" />
+
+    <item
+        android:id="@+id/systemManagementFragment"
+        android:enabled="true"
+        android:icon="@drawable/ic_settings"
+        android:title="系统管理" />
+</menu>

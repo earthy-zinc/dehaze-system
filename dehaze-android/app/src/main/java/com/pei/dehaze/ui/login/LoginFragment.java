@@ -1,6 +1,8 @@
 package com.pei.dehaze.ui.login;
 
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -14,6 +16,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.Navigation;
 
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
@@ -21,6 +24,8 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentLoginBinding;
+
+import timber.log.Timber;
 
 public class LoginFragment extends Fragment {
 
@@ -59,6 +64,52 @@ public class LoginFragment extends Fragment {
         // 验证码图片点击事件（刷新验证码）
         binding.captchaImage.setOnClickListener(v -> loginViewModel.loadCaptcha());
         
+        // 添加文本变化监听器以更新ViewModel
+        binding.usernameEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                loginViewModel.setUsername(s.toString());
+            }
+        });
+        
+        binding.passwordEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                loginViewModel.setPassword(s.toString());
+            }
+        });
+        
+        binding.captchaEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                loginViewModel.setCaptchaCode(s.toString());
+            }
+        });
+        
         // 主题切换
         binding.themeSwitch.setChecked(AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES);
         binding.themeSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -81,18 +132,32 @@ public class LoginFragment extends Fragment {
             if (success) {
                 // 登录成功，跳转到主界面
                 Toast.makeText(getContext(), "登录成功", Toast.LENGTH_SHORT).show();
-                // TODO: 跳转到主界面
+                // 使用 popUpTo 和 inclusive 清除登录页面的回退栈
+                Navigation.findNavController(requireView()).navigate(
+                    R.id.action_login_to_dashboard,
+                    null,
+                    null,
+                    null
+                );
             }
         });
         
         // 观察验证码图片
         loginViewModel.getCaptchaImage().observe(getViewLifecycleOwner(), base64Image -> {
+            Timber.d("验证码图片: %s", base64Image);
             if (!base64Image.isEmpty()) {
-                // 解码Base64图片并显示
-                byte[] decodedString = Base64.decode(base64Image, Base64.DEFAULT);
+                // 处理带前缀的Base64图片数据
+                String base64String = base64Image;
+                // 如果包含前缀，则提取真正的Base64编码部分
+                if (base64Image.startsWith("data:image")) {
+                    base64String = base64Image.substring(base64Image.indexOf(",") + 1);
+                }
+                
+                // 使用Glide加载Base64图片
+                String base64ImageData = "data:image/png;base64," + base64String;
+                Timber.d("Base64图片数据: %s", base64ImageData);
                 Glide.with(this)
-                        .asBitmap()
-                        .load(decodedString)
+                        .load(base64ImageData)
                         .into(binding.captchaImage);
             }
         });

@@ -13,34 +13,17 @@
         tools:layout="@layout/fragment_login">
         <action
             android:id="@+id/action_login_to_dashboard"
-            app:destination="@id/dashboardActivity" />
+            app:destination="@id/dashboardFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="true" />
     </fragment>
 
     <!-- 仪表盘模块 -->
-    <activity
-        android:id="@+id/dashboardActivity"
-        android:name="com.pei.dehaze.ui.dashboard.DashboardActivity"
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.pei.dehaze.ui.dashboard.DashboardFragment"
         android:label="仪表盘"
-        tools:layout="@layout/activity_dashboard">
-        <action
-            android:id="@+id/action_dashboard_to_dataset"
-            app:destination="@id/datasetFragment" />
-        <action
-            android:id="@+id/action_dashboard_to_algorithm"
-            app:destination="@id/algorithmFragment" />
-        <action
-            android:id="@+id/action_dashboard_to_compare"
-            app:destination="@id/compareActivity" />
-        <action
-            android:id="@+id/action_dashboard_to_evaluation"
-            app:destination="@id/evaluationActivity" />
-        <action
-            android:id="@+id/action_dashboard_to_presentation"
-            app:destination="@id/presentationActivity" />
-        <action
-            android:id="@+id/action_dashboard_to_system"
-            app:destination="@id/systemManagementFragment" />
-    </activity>
+        tools:layout="@layout/activity_dashboard" />
 
     <!-- 数据集模块 -->
     <fragment
@@ -62,6 +45,10 @@
         android:name="com.pei.dehaze.ui.compare.CompareActivity"
         android:label="图像对比"
         tools:layout="@layout/activity_compare" />
+        
+    <action
+        android:id="@+id/action_global_compareActivity"
+        app:destination="@id/compareActivity" />
 
     <!-- 评估模块 -->
     <activity
@@ -69,6 +56,10 @@
         android:name="com.pei.dehaze.ui.evaluation.EvaluationActivity"
         android:label="图像评估"
         tools:layout="@layout/activity_evaluation" />
+        
+    <action
+        android:id="@+id/action_global_evaluationActivity"
+        app:destination="@id/evaluationActivity" />
 
     <!-- 展示模块 -->
     <activity
@@ -76,6 +67,10 @@
         android:name="com.pei.dehaze.ui.presentation.PresentationActivity"
         android:label="图像展示"
         tools:layout="@layout/activity_presentation" />
+        
+    <action
+        android:id="@+id/action_global_presentationActivity"
+        app:destination="@id/presentationActivity" />
 
     <!-- 系统管理模块 -->
     <fragment

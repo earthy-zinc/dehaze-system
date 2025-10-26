@@ -16,7 +16,7 @@ plugins {
 
 android {
     namespace 'com.pei.dehaze'
-    compileSdk 34
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.pei.dehaze"
@@ -65,7 +65,7 @@ dependencies {
     implementation libs.navigation.ui
     
     // 添加 SwipeRefreshLayout
-    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    implementation libs.swiperefreshlayout
     
     // Room数据库依赖
     implementation libs.room.runtime
@@ -76,39 +76,39 @@ dependencies {
     implementation libs.datastore.preferences
     
     // Retrofit依赖
-    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
-    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
-    implementation 'com.squareup.okhttp3:okhttp:4.9.1'
-    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.1'
+    implementation libs.retrofit
+    implementation libs.converter.gson
+    implementation libs.okhttp
+    implementation libs.logging.interceptor
     
     // Glide图片加载库依赖
-    implementation 'com.github.bumptech.glide:glide:4.12.0'
+    implementation libs.glide
     implementation libs.gridlayout
-    annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
+    annotationProcessor libs.compiler
     
     // Lombok依赖
-    implementation 'org.projectlombok:lombok:1.18.24'
-    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+    implementation libs.lombok
+    annotationProcessor libs.lombok
     
-    implementation "com.jakewharton.timber:timber:5.0.1"
+    implementation libs.timber
     
     // 添加对Dehaze SDK的依赖
-    implementation project(':dehaze-sdk-android')
+    implementation project(':sdk')
 
     // 测试依赖
     testImplementation libs.junit
-    testImplementation 'org.mockito:mockito-core:3.12.4'
-    testImplementation 'org.mockito:mockito-inline:3.12.4'
-    testImplementation 'org.robolectric:robolectric:4.10.3'
-    testImplementation 'androidx.arch.core:core-testing:2.1.0'
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.inline
+    testImplementation libs.robolectric
+    testImplementation libs.core.testing
     
     // Jacoco测试覆盖率
-    testImplementation 'org.jacoco:org.jacoco.core:0.8.7'
+    testImplementation libs.org.jacoco.core
     
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
-    androidTestImplementation 'androidx.test:runner:1.4.0'
-    androidTestImplementation 'androidx.test:rules:1.4.0'
+    androidTestImplementation libs.runner
+    androidTestImplementation libs.rules
 }
 
 allprojects {
@@ -123,12 +123,13 @@ allprojects {
     }
 }
 
-tasks.withType(Test) {
+tasks.withType(Test).configureEach {
     jacoco.includeNoLocationClasses = true
     jacoco.excludes = ['jdk.internal.*']
 }
 
-task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
+tasks.register('jacocoTestReport', JacocoReport) {
+    dependsOn['testDebugUnitTest']
     reports {
         xml.required = true
         html.required = true
@@ -152,13 +153,13 @@ task jacocoTestReport(type: JacocoReport, dependsOn: ['testDebugUnitTest']) {
             '**/*$ModuleAdapter.class',
             '**/*$ViewInjector*.class'
     ]
-    
-    def debugTree = fileTree(dir: "${buildDir}/intermediates/javac/debug/classes", excludes: fileFilter)
+
+    def debugTree = fileTree(dir: "${layout.buildDirectory.get()}/intermediates/javac/debug/classes", excludes: fileFilter)
     def mainSrc = "${project.projectDir}/src/main/java"
 
     sourceDirectories.setFrom(files([mainSrc]))
     classDirectories.setFrom(files([debugTree]))
-    executionData.setFrom(fileTree(dir: "$buildDir", includes: [
+    executionData.setFrom(fileTree(dir: layout.buildDirectory.get(), includes: [
             "jacoco/testDebugUnitTest.exec",
             "outputs/unit_test_code_coverage/debugUnitTest/testDebugUnitTest.exec"
     ]))

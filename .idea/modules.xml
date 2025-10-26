@@ -4,7 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/dehaze-python/.venv/dehaze-python.iml" filepath="$PROJECT_DIR$/dehaze-python/.venv/dehaze-python.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/dehaze-system.iml" filepath="$PROJECT_DIR$/.idea/dehaze-system.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dehaze-sdk-android/图像去雾系统.dehaze-sdk-android.main.iml" filepath="$PROJECT_DIR$/.idea/modules/dehaze-sdk-android/图像去雾系统.dehaze-sdk-android.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/sdk/图像去雾系统.sdk.main.iml" filepath="$PROJECT_DIR$/.idea/modules/sdk/图像去雾系统.sdk.main.iml" />
     </modules>
   </component>
 </project>

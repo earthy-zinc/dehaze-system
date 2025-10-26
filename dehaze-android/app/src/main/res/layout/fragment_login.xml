@@ -110,19 +110,21 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- 验证码图片 -->
-
-        <!-- 登录按钮 -->
         <ImageView
             android:id="@+id/captchaImage"
             android:layout_width="100dp"
             android:layout_height="48dp"
-            android:layout_marginTop="28dp"
+            android:layout_marginTop="16dp"
             android:background="@drawable/bg_captcha"
+            android:contentDescription="验证码图片"
             android:scaleType="fitXY"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/passwordLayout"
+            app:layout_constraintStart_toEndOf="@id/captchaLayout"
+            app:layout_constraintBottom_toBottomOf="@id/captchaLayout"
             tools:src="@drawable/ic_image" />
 
+        <!-- 登录按钮 -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/loginButton"
             android:layout_width="0dp"

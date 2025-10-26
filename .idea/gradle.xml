@@ -10,7 +10,7 @@
           <set>
             <option value="$PROJECT_DIR$/dehaze-android" />
             <option value="$PROJECT_DIR$/dehaze-android/app" />
-            <option value="$PROJECT_DIR$/dehaze-android/dehaze-sdk-android" />
+            <option value="$PROJECT_DIR$/dehaze-android/sdk" />
           </set>
         </option>
       </GradleProjectSettings>
