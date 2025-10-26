@@ -577,11 +577,8 @@ graph LR
 
 详细文档位于 `dehaze-doc` 目录:
 
-- [系统需求分析](dehaze-doc/docs/项目文档/图像去雾系统/系统需求分析.md)
-- [系统设计文档](dehaze-doc/docs/项目文档/图像去雾系统/系统设计.md)
-- [数据库设计](dehaze-doc/docs/项目文档/图像去雾系统/数据库设计.md)
-- [API接口设计](dehaze-doc/docs/项目文档/图像去雾系统/API接口设计.md)
-- [系统部署文档](dehaze-doc/docs/项目文档/图像去雾系统/系统部署.md)
+- [系统需求分析](dehaze-doc/docs/项目文档/图像去雾系统/需求分析/总体需求分析.md)
+- [系统设计文档](dehaze-doc/docs/项目文档/图像去雾系统/代码详细设计/总体系统架构.md)
 - [用户使用手册](dehaze-doc/docs/项目文档/图像去雾系统/用户手册.md)
 
 ### API接口文档

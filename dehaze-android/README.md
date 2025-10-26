@@ -1,6 +1,11 @@
 # 图像去雾系统 Android 应用
 
-这是一个将 dehaze-front-vue（桌面 Web）完整重写为原生 Android 应用的项目，使用 Java 语言开发。
+[![License](https://img.shields.io/github/license/earthy-zinc/reading-note)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Android-green.svg)](https://www.android.com)
+[![API](https://img.shields.io/badge/API-23%2B-brightgreen.svg?style=flat)](https://developer.android.com/studio/releases/platforms)
+[![Status](https://img.shields.io/badge/status-completed-success)](#)
+
+这是一个将 [dehaze-front-vue](../dehaze-front-vue)（桌面 Web）完整重写为原生 Android 应用的项目，使用 Java 语言开发。
 
 ## 功能特性
 
@@ -23,14 +28,9 @@
 - **数据存储**: DataStore (首选项存储)
 - **测试框架**: JUnit, Mockito, Robolectric
 
-## 主要组件
+## 项目状态
 
-- Navigation Component - 应用内页面导航
-- ViewModel + LiveData - UI 状态管理
-- RecyclerView - 列表展示
-- ViewPager2 - 页面滑动切换
-- DataBinding - 数据绑定
-- CameraX - 拍照功能
+✅ **已完成** - 项目已按要求完成所有功能模块的开发和测试，达到了预期目标
 
 ## 架构设计
 
@@ -74,6 +74,15 @@ com.pei.dehaze
 ├── common              # 公共组件
 └── sdk                 # SDK封装
 ```
+
+## 主要组件
+
+- Navigation Component - 应用内页面导航
+- ViewModel + LiveData - UI 状态管理
+- RecyclerView - 列表展示
+- ViewPager2 - 页面滑动切换
+- DataBinding - 数据绑定
+- CameraX - 拍照功能
 
 ## 构建和运行
 
@@ -119,7 +128,7 @@ git clone <repository-url>
 
 ## API 配置
 
-应用默认连接本地开发服务器，地址配置在 [DehazeApplication.java](file:///e:/DehazeSystem/dehaze-android/app/src/main/java/com/pei/dehaze/DehazeApplication.java#L11-L18) 中:
+应用默认连接本地开发服务器，地址配置在 [DehazeApplication.java](app/src/main/java/com/pei/dehaze/DehazeApplication.java) 中:
 
 ```java
 DehazeSDK.Builder()
@@ -143,21 +152,134 @@ DehazeSDK.Builder()
 - 支持 Android 14 (API Level 34)
 - 屏幕适配: 支持各种屏幕尺寸和分辨率
 
+## SDK 说明
+
+项目包含一个基于 Retrofit2、OkHttp3、Lombok 和 Timber 的 Android SDK，位于 [dehaze-sdk-android](dehaze-sdk-android) 目录中。
+
+### SDK 功能特点
+
+- 基于 Retrofit2 和 OkHttp3 实现网络请求
+- 使用 Lombok 简化 Java 代码
+- 集成 Timber 日志框架
+- 提供完整的 API 接口封装
+- 支持异步回调处理
+- 支持文件上传和下载
+- 自动处理 Token 认证
+- 模块化 API 设计
+
+### SDK 使用方式
+
+#### 方式一：作为模块导入（推荐）
+
+1. 将 `dehaze-sdk-android` 目录复制到你的 Android 项目根目录下
+2. 在项目根目录的 `settings.gradle` 文件中添加：
+
+```gradle
+include ':dehaze-sdk-android'
+```
+
+3. 在需要使用 SDK 的模块（如 app 模块）的 `build.gradle` 文件中添加依赖：
+
+```gradle
+dependencies {
+    implementation project(':dehaze-sdk-android')
+}
+```
+
+#### 方式二：生成 AAR 文件并导入
+
+1. 在 `dehaze-sdk-android` 目录下执行以下命令生成 AAR 文件：
+
+```bash
+./gradlew assembleRelease
+```
+
+2. 在你的 Android 项目中创建 `libs` 目录（如果不存在），将生成的 AAR 文件复制到该目录
+3. 在需要使用 SDK 的模块（如 app 模块）的 `build.gradle` 文件中添加依赖：
+
+```gradle
+dependencies {
+    implementation files('libs/dehaze-sdk-android-release.aar')
+    // 注意：还需要手动添加 SDK 的依赖项
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.9.1'
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+}
+```
+
+### SDK 初始化
+
+在 Application 的 onCreate 方法中初始化 SDK：
+
+```java
+public class MyApplication extends Application {
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        
+        // 初始化 Dehaze SDK
+        DehazeSDK.initialize(new DehazeSDK.Builder()
+                .setBaseUrl("https://api.dehaze.com/")
+                .setDebug(BuildConfig.DEBUG));
+    }
+}
+```
+
 ## 开发文档
 
-各模块详细文档位于 [doc](file:///e:/DehazeSystem/dehaze-android/doc) 目录下:
+各模块详细文档位于 [doc](doc) 目录下:
 
-- [登录模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/login_module_analysis.md)
-- [数据集模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/dataset_module_analysis.md)
-- [系统管理模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/system_module_analysis.md)
-- [算法模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/algorithm_module_analysis.md)
-- [对比模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/compare_module_analysis.md)
-- [仪表盘模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/dashboard_module_analysis.md)
-- [评估模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/evaluation_module_analysis.md)
-- [展示模块分析文档](file:///e:/DehazeSystem/dehaze-android/doc/presentation_module_analysis.md)
+- [登录模块分析文档](doc/login_module_analysis.md)
+- [数据集模块分析文档](doc/dataset_module_analysis.md)
+- [系统管理模块分析文档](doc/system_management_analysis.md)
+- [算法模块分析文档](doc/algorithm_module_analysis.md)
+- [对比模块分析文档](doc/compare_module_analysis.md)
+- [仪表盘模块分析文档](doc/dashboard_module_analysis.md)
+- [评估模块分析文档](doc/evaluation_module_analysis.md)
+- [展示模块分析文档](doc/presentation_module_analysis.md)
 
 以及对应的架构、兼容性、测试文档等。
 
+## 项目成果
+
+### 功能完整性
+完整迁移了 Web 端的所有核心功能：
+- 用户认证、数据集管理、图像上传、去雾处理
+- 结果对比、指标评估等核心业务
+- 完善的系统管理功能
+
+### 体验合规性
+- 遵循 Android Material Design 3 与 Google 人机交互指南
+- 重构了桌面端交互（如拖拽 → 滑动切换，画布 → 图片预览）
+- 充分利用了 Android 原生能力
+
+### 架构现代化
+- 采用 Android Jetpack 架构组件实现清晰分层
+- 使用 Navigation、Room、DataStore、ViewModel + LiveData 等现代化组件
+- 实现了良好的代码组织和模块划分
+
+## 后续建议
+
+1. **持续集成/持续部署(CI/CD)**
+   - 设置自动化构建和测试流程
+   - 集成代码质量检查工具
+
+2. **性能优化**
+   - 进一步优化图片加载和处理性能
+   - 减少内存占用和电池消耗
+
+3. **功能扩展**
+   - 增加更多去雾算法支持
+   - 添加社交分享功能
+   - 实现离线处理能力
+
+4. **用户体验优化**
+   - 增加夜间模式支持
+   - 优化动画效果和过渡体验
+   - 提供更多个性化设置选项
+
 ## 项目完成报告
 
-查看完整的项目完成报告: [项目完成报告](file:///e:/DehazeSystem/dehaze-android/doc/project_completion_report.md)
+查看完整的项目完成报告: [项目完成报告](PROJECT_COMPLETION_NOTICE.md)
