@@ -229,18 +229,24 @@ public class MyApplication extends Application {
 
 ## 开发文档
 
-各模块详细文档位于 [doc](doc) 目录下:
+各模块详细文档位于 [doc](doc) 目录下，现已按类别整理:
 
-- [登录模块分析文档](doc/login_module_analysis.md)
-- [数据集模块分析文档](doc/dataset_module_analysis.md)
-- [系统管理模块分析文档](doc/system_management_analysis.md)
-- [算法模块分析文档](doc/algorithm_module_analysis.md)
-- [对比模块分析文档](doc/compare_module_analysis.md)
-- [仪表盘模块分析文档](doc/dashboard_module_analysis.md)
-- [评估模块分析文档](doc/evaluation_module_analysis.md)
-- [展示模块分析文档](doc/presentation_module_analysis.md)
+### 需求分析文档
+- [登录模块分析文档](doc/需求分析/登录模块分析.md)
+- [数据集模块分析文档](doc/需求分析/数据集模块分析.md)
+- [系统管理模块分析文档](doc/需求分析/系统管理模块分析.md)
+- [算法模块分析文档](doc/需求分析/算法模块分析.md)
+- [对比模块分析文档](doc/需求分析/对比模块分析.md)
+- [仪表盘模块分析文档](doc/需求分析/仪表盘模块分析.md)
+- [评估模块分析文档](doc/需求分析/评估模块分析.md)
+- [展示模块分析文档](doc/需求分析/展示模块分析.md)
 
-以及对应的架构、兼容性、测试文档等。
+### 其他文档类别
+- 架构设计文档请查看 [架构设计](doc/架构设计) 目录
+- 兼容性测试文档请查看 [兼容性测试](doc/兼容性测试) 目录
+- 单元测试文档请查看 [单元测试](doc/单元测试) 目录
+
+详细文档结构请参考 [文档目录说明](doc/README.md)。
 
 ## 项目成果
 
