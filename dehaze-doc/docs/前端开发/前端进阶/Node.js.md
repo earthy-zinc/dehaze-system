@@ -1,64 +1,64 @@
 # Node.js
 
-## 一、Node.js 介绍
+## Node.js 介绍
 
-## 二、NPM
+## NPM
 
-### 1、介绍
+### NPM介绍
 
-NPM是随Node.js一起安装的包管理工具
+NPM是随Node.js一起安装的包管理工具，具有以下功能：
 
-* 允许用户从NPM服务器下载别人编写的第三方包到本地使用
-* 允许用户从NPM服务器下载并安装别人编写的命令行程序到本地使用
-* 允许用户将自己编写的包或者命令行程序上传到NPM服务器供别人使用
+- 允许用户从NPM服务器下载别人编写的第三方包到本地使用
+- 允许用户从NPM服务器下载并安装别人编写的命令行程序到本地使用
+- 允许用户将自己编写的包或者命令行程序上传到NPM服务器供别人使用
 
-### 2、NPM常用命令
+### NPM常用命令
 
-#### 1）安装模块
+#### 安装模块
 
 如果想要安装node.js的模块，需要使用以下命令：
 
 ```shell
-npm install <moduleName> 	#本地安装
-npm install <moduleName> -g #全局安装
+npm install <moduleName>     #本地安装
+npm install <moduleName> -g  #全局安装
 ```
 
-**本地安装**
+本地安装：
 
-* 会将安装包放在运行npm命令时所在的目录的 ./node_modules 目录下，如果没有该目录会自动创建一个
-* 通过 `require()` 在JavaScript代码中引入该包，如`var moduleName=require("moduleName");`
+- 会将安装包放在运行npm命令时所在的目录的 ./node_modules 目录下，如果没有该目录会自动创建一个
+- 通过 `require()` 在JavaScript代码中引入该包，如`var moduleName=require("moduleName");`
 
-**全局安装**
+全局安装：
 
-* 将安装包放在 user/local （用户文件夹）或者node.js的安装目录
-* 安装好后可以直接在命令行使用
+- 将安装包放在 user/local （用户文件夹）或者node.js的安装目录
+- 安装好后可以直接在命令行使用
 
-#### 2）卸载模块
+#### 卸载模块
 
 ```shell
 npm uninstall <moduleName>
 ```
 
-#### 3）查看模块
+#### 查看模块
 
 ```shell
-npm ls		 #查看当前目录下已安装的模块
-npm list -g  #查看全局安装的模块
+npm ls      #查看当前目录下已安装的模块
+npm list -g #查看全局安装的模块
 ```
 
-#### 4）更新模块
+#### 更新模块
 
 ```shell
-npm undate <moduleName>
+npm update <moduleName>
 ```
 
-#### 5）搜索模块
+#### 搜索模块
 
 ```shell
 npm search <moduleName>
 ```
 
-#### 6）创建模块
+#### 创建模块
 
 ```shell
 npm init
@@ -67,48 +67,48 @@ npm adduser # 在npm资源库中注册成为新用户
 npm publish # 发布你所创建的模块
 ```
 
-#### 7）其他常用命令
+#### 其他常用命令
 
 ```shell
-npm help 			#查看所有的命令
+npm help            #查看所有的命令
 npm help <command>  #查看某条命令的详细帮助
 ```
 
-### 3、package.json
+### package.json
 
 我们可以把自己写的JS文件做成一个软件包供别人使用，那么 package.json 就是用来识别不同的软件包的一个文件，package.json 位于模块的目录下，也会出现在使用node.js的项目的目录下，用于定义包的属性。常用的属性说明：
 
-* name - 包名
-* version - 包的版本号
-* description - 包的描述信息
-* homepage - 包的官网
-* author - 包的作者
-* contributors - 包的其他贡献者
-* dependencies - 包所依赖的其他包的列表
-* devDependencies -  开发时所依赖的软件包列表
-* repository - 包代码存放库
-* main - 指定程序主入口文件，通常为模块根目录下的 index.js
-* private - 说明这是一个私有的软件包，不对外开放，设置为true可以防止软件被意外发布到网上
-* keyword - 关键字
+- name - 包名
+- version - 包的版本号
+- description - 包的描述信息
+- homepage - 包的官网
+- author - 包的作者
+- contributors - 包的其他贡献者
+- dependencies - 包所依赖的其他包的列表
+- devDependencies - 开发时所依赖的软件包列表
+- repository - 包代码存放库
+- main - 指定程序主入口文件，通常为模块根目录下的 index.js
+- private - 说明这是一个私有的软件包，不对外开放，设置为true可以防止软件被意外发布到网上
+- keyword - 关键字
 
-### 4、package-lock.json
+### package-lock.json
 
-package-lock.json这个文件用来描述每个依赖的软件包的确切版本，以便最终生成的软件可以被完全的复制，而不受依赖的其他软件包版本更新造成的兼容型问题。
+package-lock.json这个文件用来描述每个依赖的软件包的确切版本，以便最终生成的软件可以被完全的复制，而不受依赖的其他软件包版本更新造成的兼容性问题。
 
 因此我们无需将我们项目所依赖的软件包提交到git上，如果我们运行了npm install初始化项目命令，那么npm会读取package.json和package-lock.json，安装项目依赖的软件包对应的确切版本。
 
-### 5、使用淘宝NPM镜像
+### 使用淘宝NPM镜像
 
-   ```shell
-   npm install -g cnpm --registry=https://registry.npm.taobao.org
-   cnpm install <moduleName> # 使用淘宝镜像安装模块
-   ```
+```shell
+npm install -g cnpm --registry=https://registry.npm.taobao.org
+cnpm install <moduleName> # 使用淘宝镜像安装模块
+```
 
-### 6、registry
+### Registry
 
 registry意为登记处、注册处，npm为了方便管理，使用登记处（**registry**）来统一管理各方发布的软件包，一般通过名称和版本号来识别不同的软件包，默认情况下我们可以通过npm公共登记处（ **npm public registry** ）上传分享自己的软件包和下载别人的软件包供自己使用，服务器网址在 https://registry.npmjs.org 。我们也可以配置自己的远程库服务器来统一管理软件包。淘宝npm镜像就是一个npm public registry。我们可以通过修改npm的配置来更改软件包从哪个远程库总下载。
 
-### 7、scope
+### Scope
 
 #### 作用域介绍
 
@@ -122,7 +122,7 @@ registry意为登记处、注册处，npm为了方便管理，使用登记处（
 
 作用域内的软件包实际上是在放在子文件夹中的，npm默认会引入node_modules文件夹下的软件包，语法是`require('package')`，我们要引入作用域内的软件包的话就需要在包名前面说明它的父文件夹名称，如`require('@scope/package')`。
 
-### 8、config
+### Config
 
 npm的配置信息是自定义npm运行方式的办法，我们可以通过配置registry来改变npm从哪个远程库中下载软件包等等。
 
@@ -140,33 +140,35 @@ npm的配置信息是自定义npm运行方式的办法，我们可以通过配�
 
 一般情况下，这些配置文件可能会在四个地方：
 
-## 三、交互式解析器
+## 交互式解析器
 
 node.js 交互式解析器 real evaluation print loop(REPL) 是一个类似windows控制台的一个界面，在该界面下输入命令，可以实时的获得响应。适合验证Node.js和JavaScript的相关API。
 
-**REPL命令**
+### REPL命令
 
-* node - 在控制台输入node进入REPL界面
-* CTRL+C / CTRL+D / .exit - 退出当前终端
-* 向上 向下键 - 查看输入的历史命令
-* TAB - 列出当前命令
-* .help - 帮助
-* .break / .clear - 退出多行表达式
-* .save filename - 保存当前会话到指定文件
-* .load filename - 从指定文件载入会话
+- node - 在控制台输入node进入REPL界面
+- CTRL+C / CTRL+D / .exit - 退出当前终端
+- 向上 向下键 - 查看输入的历史命令
+- TAB - 列出当前命令
+- .help - 帮助
+- .break / .clear - 退出多行表达式
+- .save filename - 保存当前会话到指定文件
+- .load filename - 从指定文件载入会话
 
-## 四、模块系统
+## 模块系统
 
 模块是Node.js的基本组成部分，文件和模块是一一对应的。
 
 Node.js提供了exports require 两个对象，exports是公开模块的接口，require是从外部获取模块的接口，即获取其他模块的exports对象。
 
-**情况1**：向外暴露exports对象，然后通过exports对象调用自己写的对象
+### 情况1：向外暴露exports对象
+
+向外暴露exports对象，然后通过exports对象调用自己写的对象：
 
 ```javascript
 //module1.js文件
 exports.world=function(){
-	console.log("nothing");
+    console.log("nothing");
 }
 ```
 
@@ -178,14 +180,14 @@ module_1.world();
 
 模块1向外暴露了名为exports的对象，里面有world方法。也就是说通过exports对象把world这个函数作为该模块的访问接口，那么在模块2中，我们只需要通过require方法加载模块1，就可以载入module1中的exports对象，然后使用exports对象中的方法（即模块1中的world函数）了。
 
-如果我们只想向外暴露我们自己写的对象，而不是名为exports的对象。那就需要使用module.exports，如
+### 情况2：向外暴露自定义对象
 
-**情况2**：向外暴露自己写的对象，直接调用自己写的对象。
+如果我们只想向外暴露我们自己写的对象，而不是名为exports的对象。那就需要使用module.exports：
 
 ```javascript
 //module1.js文件
 module.exports=function(){
-	console.log("nothing");
+    console.log("nothing");
 }
 ```
 
@@ -195,7 +197,7 @@ var world=require("./module1.js");
 world();
 ```
 
-## 五、事件触发与监听器
+## 事件触发与监听器
 
 node对于对于异步的回调函数，在执行该函数之后，node不会等待回调函数执行完毕之后才进行下一步操作，它会将这个回调函数移出它的消息队列，而这个回调函数会在一个新线程中执行任务，node就会继续执行代码的下一步操作，如果都已经处理完成的话，他就会查看消息队列中的东西，只有回调函数执行完成任务并返回后，该回调函数才会被放到消息队列中，然后node观察到了这个函数，就会继续执行这个函数。
 
@@ -207,7 +209,7 @@ node所有的异步操作在完成时都会发送一个事件到时间队列，�
 var EventEmitter = require('events').EventEmitter;
 var event = new EventEmitter();
 event.on('a_event',function(){
-	//事件a的监听器
+    //事件a的监听器
 })
 event.emit('a_event')
 ```
@@ -225,13 +227,13 @@ EventEmitter对象提供了多个属性方法，介绍如下：
 | listeners(event)                | 返回指定事件的监听器数组                    |
 | emit(event,[arg1],[arg2]...)    | 按监听器的顺序执行每个监听器                  |
 
-## 六、IO操作
+## IO操作
 
-### 1、Buffer
+### Buffer
 
 在处理TCP或者文件流的时候，必须要使用到二进制数据，这就需要一个缓冲区，来暂时存放二进制数据流，因此node.js定义了一个buffer类，可以创建一个专门存放二进制数据的缓冲区对象。创建buffer对象建议使用`Buffer.from()`接口。
 
-创建及使用Buffer类对象的方法如下
+创建及使用Buffer类对象的方法如下：
 
 | 方法                                                              | 说明                                                                           |
 |-----------------------------------------------------------------|------------------------------------------------------------------------------|
@@ -250,13 +252,13 @@ EventEmitter对象提供了多个属性方法，介绍如下：
 | `slice([start[, end]])`                                         | 裁剪一个缓冲区                                                                      |
 | `length`                                                        | 返回缓冲区的长度                                                                     |
 
-### 2、stream
+### Stream
 
-#### 1）流的概念
+#### 流的概念
 
 流这一词形象的表达了数据的传递方式，在数据结构的课程中我们知道，我们想要的数据被逻辑上分成了好几种结构，顺序表、链表、树、图等结构，而这些结构在通过底层计算机硬件传输的时候，并不能表现出来，也在那种情况下无需表现出来，因此我们暂时抛弃数据中隐含的结构，只把这些数据当做无结构的字节序列或者是字符序列，这些被看作是无结构的数据从一个地方传递到另一个地方，我们把他形象的表示成从一个地方流动到另一个地方，我们就可以说数据是以流的方式进行传输。
 
-#### 2）数据的表现形式
+#### 数据的表现形式
 
 数据在最底层一般是以比特为基本单位的，中层是以字节为基本单位，而在高层是以字符为基本单位的。
 
@@ -264,28 +266,28 @@ EventEmitter对象提供了多个属性方法，介绍如下：
 
 在输入输出流中，我们并不是以最底层的比特为基本单位，因为一字节等于八比特已经规定好了，不需要在进行复杂的转换，直接按照预订的逻辑进行操作。输入输出流需要处理的字节和字符之间的转换。输入输出流传递数据的过程，主要分为4个步骤：格式化和解析、缓冲、编码转换、传递
 
-#### 3）输入输出流传递数据的步骤
+#### 输入输出流传递数据的步骤
 
 [IOl流](https://baike.baidu.com/item/IO%E6%B5%81/18864794?fr=aladdin)
 
-#### 4）Node.js Stream
+#### Node.js Stream
 
 在Node.js中Stream是一个抽象的接口，它并不是一个实际的对象，但是很多对象实现了这个接口，能够让数据以流的形式传输。比如说对HTTP服务器发起请求的request对象、标准的输入输出，就是一个Stream。
 
 所有的实现Stream接口的对象也是EventEmitter实例，因此包含事件触发和监听器。我们把IO操作看做事件，因此可以在IO操作中绑定监听器，在IO操作触发时，实现监听器的功能。常见的事件类型有：
 
-* data - 当有数据可以读的时候
-* end - 当没有更多的数据可以读的时候
-* error - 接收和写入数据过程中发生错误时
-* finish - 当所有的数据已经被写入到底层系统中
+- data - 当有数据可以读的时候
+- end - 当没有更多的数据可以读的时候
+- error - 接收和写入数据过程中发生错误时
+- finish - 当所有的数据已经被写入到底层系统中
 
-## 七、全局对象
+## 全局对象
 
 JavaScript中有一个特殊对象，叫做全局对象，它的所有属性都可以在程序的任何地方访问，在浏览器中window是全局对象，在node.js中global是全局对象。我们可以直接访问到global的属性。满足以条件的变量就是全局变量：
 
-* 在最外层定义的变量
-* 全局对象的属性
-* 隐式定义未直接赋值的变量
+- 在最外层定义的变量
+- 全局对象的属性
+- 隐式定义未直接赋值的变量
 
 下面说明一下常用的全局变量：
 
@@ -309,9 +311,9 @@ process对象的属性：
 | uncaughtException |      |      |
 | Signal            |      |      |
 
-## 八、常用工具模块
+## 常用工具模块
 
-### 1、util
+### Util
 
 util (utilitation) 是node.js的一个常用工具模块，我们在使用他之前需要先引入它，通过`const util = requrie('util')`引入
 
@@ -324,7 +326,7 @@ util (utilitation) 是node.js的一个常用工具模块，我们在使用他之
 | isRegExp(object)                                             | 判断对象是否是正则表达式                                     |
 | isDate(object)                                               | 判断对象是否是日期                                           |
 
-### 2、fs
+### FS
 
 fs 是node.js中的文件系统模块。提供了用于文件操作的相关方法，这些方法有异步和同步的版本。异步方法在IO操作的时候不会阻塞程序的运行。
 
@@ -352,11 +354,11 @@ stats对象方法，通过获取文件信息回调中的stats获取stats对象�
 | isFIFO           |      |
 | isSocket()       |      |
 
-### 3、url
+### URL
 
 
 
-### 4、http
+### HTTP
 
 http模块是node.js的网络核心模块。
 
@@ -387,7 +389,7 @@ http模块是node.js的网络核心模块。
 
 
 
-### 5、os
+### OS
 
 提供了操作系统的相关信息。`var os =require('os')`
 
@@ -407,7 +409,7 @@ http模块是node.js的网络核心模块。
 | cpus()              | 每个CPU的信息            |
 | networkInterfaces() | 网络接口列表             |
 
-### 6、path
+### Path
 
 可以用于处理文件路径。` var path =require('path')`
 
@@ -424,7 +426,7 @@ http模块是node.js的网络核心模块。
 | parse(pathString)        |      |
 | format(pathObject)       |      |
 
-### 7、net
+### Net
 
 用于底层的网络通信，包含了创建服务器和客户端的方法。通过`var net = require('net')`引入，偏底层，平常使用http模块创建服务器更方便。
 
@@ -439,7 +441,7 @@ http模块是node.js的网络核心模块。
 | `connect(path[, connectionListener])`                   |      |
 | `isIP(input) / isIPv4(input) / isIPv6(input)`           |      |
 
-创建完服务器之后，会生成一个Server对象，有如下几个方法
+创建完服务器之后，会生成一个Server对象，有如下几个方法：
 
 | 方法 | 说明 |
 | ---- | ---- |
@@ -463,7 +465,7 @@ http模块是node.js的网络核心模块。
 | ---------- | ---- |
 |            |      |
 
-### 8、dns
+### DNS
 
 DNS用于解析域名，使用`var dns= require('dns')` 引入
 
@@ -471,19 +473,8 @@ DNS用于解析域名，使用`var dns= require('dns')` 引入
 | ---- | ---- |
 |      |      |
 
-### 9、domain
+### Domain
 
 
 
-### 10、express
-
-
-
-
-
-
-
-
-
-
-
+### Express

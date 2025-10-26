@@ -102,4 +102,3 @@ export default class ZipCodeValidator {}
 // 在导入时可以自定义默认导出的名称
 import validator from "./ZipCodeValidator"
 ```
-

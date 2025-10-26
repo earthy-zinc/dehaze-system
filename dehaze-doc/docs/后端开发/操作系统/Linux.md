@@ -170,7 +170,7 @@ find [path] [look_down]
 ```
 
 * -name filename 查找文件名为filename的文件
-* -size [+-]SIZE 查找比SIZE大或小的文件
+* `-size [+-]SIZE` 查找比SIZE大或小的文件
 * -type TYPE 查找指定类型的文件，TYPE值包括：一般文件(f)、设备文件(b/c)、目录(d)、连接文件(l)、socket(s)、管道文件(p)
 * -perm number 查找文件权限刚好等于某一特定值的文件
 

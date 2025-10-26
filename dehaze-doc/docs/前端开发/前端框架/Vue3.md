@@ -12,16 +12,16 @@
 
 通过组合式API，我们可以使用导入的API函数来描述组件逻辑。在单文件组件中，组合式API通常是会与`<script setup>`搭配使用，这个setup属性是一个标识，告诉vue在编译时进行一些处理，让我们可以更简洁的使用组合式API。这种API风格包含了以下方面的API。
 
-* 响应式API：如ref和reactive，是我们可以直接创建响应式状态、计算属性和侦听器
-* 生命周期钩子：让我们可以在组件各个生命周期阶段添加逻辑
-* 依赖注入：如provide和inject，是我们在使用响应式API时，利用Vue的依赖注入系统
+- 响应式API：如ref和reactive，是我们可以直接创建响应式状态、计算属性和侦听器
+- 生命周期钩子：让我们可以在组件各个生命周期阶段添加逻辑
+- 依赖注入：如provide和inject，是我们在使用响应式API时，利用Vue的依赖注入系统
 
 优点：
 
-* 更好的逻辑复用
-* 更灵活的代码组织
-* 更好的类型推导
-* 更小的生产包体积。`<script setup>`形式书写的组件模板被编译成了一个内联函数，和`<script setup>`中的代码位于统一作用于，就不需要像选项式API需要依赖this上下文对象访问属性，被编译的模板可以直接访问`<script setup>`中定义的变量，无需从实例中代理。这对代码的压缩更为友好。
+- 更好的逻辑复用
+- 更灵活的代码组织
+- 更好的类型推导
+- 更小的生产包体积。`<script setup>`形式书写的组件模板被编译成了一个内联函数，和`<script setup>`中的代码位于统一作用域，就不需要像选项式API需要依赖this上下文对象访问属性，被编译的模板可以直接访问`<script setup>`中定义的变量，无需从实例中代理。这对代码的压缩更为友好。
 
 ## 创建Vue应用
 
@@ -45,8 +45,8 @@ app.config.errorHandler = (err) => {
 
 ### 文本内容插入
 
-* 基本文本插入：最基本的数据绑定形式是文本插值，它使用的是Mustache双大括号语法。双大括号标签会被替换为相应组件实例中属性的值，同时，每次属性更改时他也会同步更新。
-* 插入JavaScript表达式：Vue实际上在所有的数据绑定上都支持完整的JavaScript表达式。在Vue模板内，JavaScript表达式可以被用在文本插值中和任何Vue指令属性的值中。每个绑定仅支持单一的表达式，可以在绑定的表达式中使用一个组件暴露的方法，也就是调用函数。模板中的表达式被沙盒化，仅仅能够访问到有限的全局对象列表，该列表会暴露常用的内置全局对象。没有显示包含在列表中的全局对象将不能在模板表达式中访问。
+- 基本文本插入：最基本的数据绑定形式是文本插值，它使用的是Mustache双大括号语法。双大括号标签会被替换为相应组件实例中属性的值，同时，每次属性更改时他也会同步更新。
+- 插入JavaScript表达式：Vue实际上在所有的数据绑定上都支持完整的JavaScript表达式。在Vue模板内，JavaScript表达式可以被用在文本插值中和任何Vue指令属性的值中。每个绑定仅支持单一的表达式，可以在绑定的表达式中使用一个组件暴露的方法，也就是调用函数。模板中的表达式被沙盒化，仅仅能够访问到有限的全局对象列表，该列表会暴露常用的内置全局对象。没有显示包含在列表中的全局对象将不能在模板表达式中访问。
 
 ### HTML文本插入
 
@@ -54,10 +54,10 @@ app.config.errorHandler = (err) => {
 
 ### 绑定HTML属性值
 
-* 常规HTML属性的绑定：双大括号不能再HTML属性中使用，如果想要响应式的绑定一个属性，应该使用v-bind指令。v-bind如果绑定的是null或者undefined，那么对应HTML标签上的该属性会从渲染的元素中移除。由于这个指令非常常用，因此有简写写法`:`开头为`:`的HTML属性是合法的属性名称。
+- 常规HTML属性的绑定：双大括号不能再HTML属性中使用，如果想要响应式的绑定一个属性，应该使用v-bind指令。v-bind如果绑定的是null或者undefined，那么对应HTML标签上的该属性会从渲染的元素中移除。由于这个指令非常常用，因此有简写写法`:`开头为`:`的HTML属性是合法的属性名称。
 
-* 对于布尔型的HTML属性，根据其值为true或者false来决定属性是否应该存在于该元素上，disabled属性就是最常见的例子。
-* 一次绑定多个HTML属性：通过不带参数的v-bind我们可以将多个属性使用一个`v-bind="objectAttrs"`绑定到单个HTML标签上。
+- 对于布尔型的HTML属性，根据其值为true或者false来决定属性是否应该存在于该元素上，disabled属性就是最常见的例子。
+- 一次绑定多个HTML属性：通过不带参数的v-bind我们可以将多个属性使用一个`v-bind="objectAttrs"`绑定到单个HTML标签上。
 
 ### 指令
 
@@ -75,11 +75,17 @@ app.config.errorHandler = (err) => {
 <a v-bind:[attrName]="url">...</a>
 ```
 
-这里的attrName会作为一个JavaScript表达式被动态执行，计算得到的值会被用作最终的参数。相似的，我们还可以将一个函数绑定到动态的事件名称上。动态参数中的表达式的值应当是一个字符串或者null，null表示移除该绑定。字符串中不应该有空格或引号。
+这里的attrName会作为一个JavaScript表达式被动态执行，计算得到的值会被用作最终的参数。相似的，我们还可以将一个函数绑定到动态的事件名称上。
+
+```vue
+<a v-on:[eventName]="handler">...</a>
+```
+
+动态参数中的表达式的值应当是一个字符串或者null，null表示移除该绑定。字符串中不应该有空格或引号。
 
 #### 指令修饰符
 
-修饰符是以点`.`开头的特殊后缀，表明指令需要以一些特殊的方式被绑定，例如`.prevent`修饰符会告知v-on指令对出发的事件调用某一函数。
+修饰符是以点`.`开头的特殊后缀，表明指令需要以一些特殊的方式被绑定，例如`.prevent`修饰符会告知v-on指令对触发的事件调用某一函数。
 
 ## 响应式编程
 
@@ -105,9 +111,9 @@ const book: Book = reactive({title: 'vue'})
 
 reactive()的限制是因为JavaScript没有可以作用于所有值类型的引用机制，因此，Vue提供了一个ref()方法允许我们创建可以使用任何值类型的响应式代理ref。ref()会将传入参数的值包装为一个带.value属性的ref对象。一个包含对象类型值的ref可以响应式地替换整个对象。ref被传递给函数或者从一般对象上被结构的时候，不会丢失响应性。
 
-当ref响应式对象作为顶层属性，也就是再模板中使用时，他们会自动解包，不需要再带有.value。
+当ref响应式对象作为顶层属性，也就是在模板中使用时，他们会自动解包，不需要再带有.value。
 
-当ref被嵌套在一个响应式对象中，作为属性被访问或者被更改时，他会自动捷豹，因此会表现的和一般属性一样/
+当ref被嵌套在一个响应式对象中，作为属性被访问或者被更改时，他会自动解包，因此会表现的和一般属性一样。
 
 ## 计算属性
 
@@ -115,21 +121,33 @@ reactive()的限制是因为JavaScript没有可以作用于所有值类型的引
 
 ```javascript
 const bookMessage = computed(() => {
-	return author.book.length > 0 ? "Yes":"No";
+    return author.book.length > 0 ? "Yes":"No";
 })
 ```
 
-定义计算属性，只需要采用computed()方法，方法接受一个getter函数，返回值为一个计算属性响应式对象ref。我们可以通过.value访问计算结果，计算属性在模板中也会自动解包，无需添加.value。计算属性可以自动追踪响应式依赖，当他检测到原始所依赖的对象发生改变时，他自身也会变化。
+定义计算属性，只需要采用computed()方法，方法接受一个getter函数，返回值为一个计算属性响应式对象ref。我们可以通过.value访问计算结果，计算属性在模板中也会自动解包，无需添加.value。计算属性可以自动追踪响应式的依赖，当他检测到原始所依赖的对象发生改变时，他自身也会变化。
 
 当然我们通过方法也可以返回一个和计算属性同样的结果，不同的是，计算属性会基于其响应式的依赖被缓存，一个计算属性只有在其依赖的原始对象被更改时才会重新计算，也就是说只要原始对象不改变，无论访问多少次计算属性，都会立即返回先前计算的结果。相比之下方法调用总是会在重新渲染时再次执行函数。
 
-计算属性默认是只读的，只有在特殊场景中，才会需要可写这种属性，我们可以给computed方法提供一个对象，对象中带有get和set方法来创建可写的计算属性
+计算属性默认是只读的，只有在特殊场景中，才会需要可写这种属性，我们可以给computed方法提供一个对象，对象中带有get和set方法来创建可写的计算属性：
+
+```javascript
+const fullName = computed({
+  get() {
+    return firstName.value + ' ' + lastName.value
+  },
+  set(newValue) {
+    [firstName.value, lastName.value] = newValue.split(' ')
+  }
+})
+```
 
 ## 类与样式绑定
 
 数据绑定的常见需求是操纵元素的CSS类列表和内联样式，因为class类和style样式都是HTML元素的属性，我们可以向其他属性一样使用v-bind将他们和动态的字符串绑定，但是在处理较为复杂的绑定时，通过拼接生成字符串是麻烦还容易出错的，因此，针对class和style这两种属性，vue提供了特殊增强，除了字符串以外，表达式的值也可以是对象或者数组。
 
 ### 绑定HTML元素的class属性
+
 #### 给class属性绑定一个对象
 
 ```vue
@@ -140,13 +158,13 @@ const bookMessage = computed(() => {
 
 上述语法表示html中该div元素的class属性中的active子属性存在与否取决于布尔值变量isActive的的真假。
 
-注意`:class(v-bind:class)`指令可以和普通的`class`属性共存。在虚拟DoM渲染后，会将两个属性合并为一个。当class属性中的子属性变化时，class属性列表也会随之更新。
+注意`:class(v-bind:class)`指令可以和普通的`class`属性共存。在虚拟DOM渲染后，会将两个属性合并为一个。当class属性中的子属性变化时，class属性列表也会随之更新。
 
 当然绑定的对象不一定需要写成内联的字面量形式，也可以直接给class属性绑定一个响应式对象，响应式对象的格式应和上述的相同，其中对象的属性名应该是css类class的名字，值是一个布尔值，表示该css类是否应该加到当前html元素class属性上。当然绑定的响应式对象可以是计算属性。
 
 #### 绑定数组
 
-我们也可以给class绑定一个数组来渲染多个css的class
+我们也可以给class绑定一个数组来渲染多个css的class：
 
 ```vue
 <template>
@@ -164,15 +182,21 @@ const errorClass = ref("text-danger");
 <div class="active text-danger"></div>
 ```
 
-如果想要在数组中有条件的渲染某个CSS class，我们可以使用三元表达式。
+如果想要在数组中有条件的渲染某个CSS class，我们可以使用三元表达式：
+
+```vue
+<template>
+<div :class="[isActive ? activeClass : '', errorClass]"></div>
+</template>
+```
 
 ### 组件上绑定class
 
-如果有一个父组件，想要给其子组件传递一些HTML元素上的属性，则需要属性继承
+如果有一个父组件，想要给其子组件传递一些HTML元素上的属性，则需要属性继承。
 
 对于只有一个根元素的组件，当我们使用了class属性是，这些属性会被添加到根元素上，并且与该根元素已经存在的class属性合并。
 
-如果组件中存在多个根元素，你需要指定哪一个元素来接受来自父组件传来的class属性，我们可以通过组件上内置的`$attrs`属性来实现指定
+如果组件中存在多个根元素，你需要指定哪一个元素来接受来自父组件传来的class属性，我们可以通过组件上内置的`$attrs`属性来实现指定：
 
 子组件MyComponent：
 
@@ -188,7 +212,7 @@ const errorClass = ref("text-danger");
 </script>
 ```
 
-父组件
+父组件：
 
 ```vue
 <template>
@@ -205,42 +229,346 @@ const errorClass = ref("text-danger");
 
 ### 绑定内联样式
 
+对于样式绑定，我们可以使用`v-bind:style`或简写形式`:style`来绑定内联样式。样式绑定可以使用对象或数组形式：
 
+```vue
+<template>
+  <!-- 对象语法 -->
+  <div :style="{ color: activeColor, fontSize: fontSize + 'px' }"></div>
+  
+  <!-- 直接绑定对象 -->
+  <div :style="styleObject"></div>
+  
+  <!-- 数组语法 -->
+  <div :style="[baseStyles, overridingStyles]"></div>
+</template>
 
+<script setup>
+const activeColor = ref('red')
+const fontSize = ref(30)
 
+const styleObject = reactive({
+  color: 'red',
+  fontSize: '13px'
+})
 
+const baseStyles = reactive({
+  color: 'blue'
+})
+
+const overridingStyles = reactive({
+  fontSize: '20px'
+})
+</script>
+```
 
 ## 条件渲染
 
+Vue提供了多种方式来条件性地渲染元素：
+
+### v-if
+
+`v-if`指令用于条件性地渲染一块内容。这块内容只会在指令的表达式返回真值时才被渲染：
+
+```vue
+<h1 v-if="awesome">Vue is awesome!</h1>
+```
+
+### v-else
+
+你可以使用`v-else`为`v-if`添加一个"else"块：
+
+```vue
+<div v-if="Math.random() > 0.5">
+  Now you see me
+</div>
+<div v-else>
+  Now you don't
+</div>
+```
+
+### v-else-if
+
+`v-else-if`顾名思义，充当`v-if`的"else-if"块，可以连续使用：
+
+```vue
+<div v-if="type === 'A'">
+  A
+</div>
+<div v-else-if="type === 'B'">
+  B
+</div>
+<div v-else-if="type === 'C'">
+  C
+</div>
+<div v-else>
+  Not A/B/C
+</div>
+```
+
+### v-show
+
+另一个可以用来根据条件展示元素的选项是`v-show`指令。用法大致一样：
+
+```vue
+<h1 v-show="ok">Hello!</h1>
+```
+
+不同的是带有`v-show`的元素始终会被渲染并保留在DOM中。`v-show`只是简单地切换元素的CSS属性`display`。
+
+### v-if vs v-show
+
+- `v-if`是"真正的"条件渲染，因为它会确保在切换过程中条件块内的事件监听器和子组件适当地被销毁和重建。
+- `v-if`也是惰性的：如果在初始渲染时条件为假，则什么也不做——直到条件第一次变为真时，才会开始渲染条件块。
+- 相比之下，`v-show`就简单得多——不管初始条件是什么，元素总是会被渲染，并且只是简单地基于CSS进行切换。
+- 一般来说，`v-if`有更高的切换开销，而`v-show`有更高的初始渲染开销。因此，如果需要非常频繁地切换，则使用`v-show`较好；如果在运行时条件很少改变，则使用`v-if`较好。
+
 ## 列表渲染
+
+我们可以用`v-for`指令基于一个数组来渲染一个列表。`v-for`指令需要使用`item in items`形式的特殊语法，其中`items`是源数据数组，而`item`则是被迭代的数组元素的别名：
+
+```vue
+<ul>
+  <li v-for="item in items" :key="item.id">
+    {{ item.message }}
+  </li>
+</ul>
+```
+
+在`v-for`块中，我们可以访问所有父作用域的属性。`v-for`还支持一个可选的第二个参数，即当前项的索引：
+
+```vue
+<li v-for="(item, index) in items" :key="item.id">
+  {{ index }} - {{ item.message }}
+</li>
+```
+
+你也可以用`of`替代`in`作为分隔符，因为它更接近JavaScript迭代器的语法：
+
+```vue
+<div v-for="item of items"></div>
+```
+
+### 在组件上使用v-for
+
+在自定义组件上，你可以像在任何普通元素上一样使用`v-for`：
+
+```vue
+<MyComponent v-for="item in items" :key="item.id" />
+```
+
+然而，任何数据都不会被自动传递到组件里，因为组件有自己独立的作用域。为了把迭代数据传递到组件里，我们要使用props：
+
+```vue
+<MyComponent
+  v-for="(item, index) in items"
+  :item="item"
+  :index="index"
+  :key="item.id"
+/>
+```
 
 ## 事件处理
 
+### 监听事件
+
+我们可以使用`v-on`指令来监听DOM事件，并在触发事件时执行一些JavaScript代码：
+
+```vue
+<div id="basic-event">
+  <button @click="counter += 1">Add 1</button>
+  <p>The button above has been clicked {{ counter }} times.</p>
+</div>
+```
+
+### 事件处理方法
+
+然而许多事件处理逻辑会更为复杂，所以直接把JavaScript代码写在`v-on`指令中是不可行的。因此`v-on`还可以接收一个需要调用的方法名称：
+
+```vue
+<div id="event-with-method">
+  <!-- `greet` 是在下面定义的方法名 -->
+  <button @click="greet">Greet</button>
+</div>
+```
+
+### 内联处理器中的方法
+
+除了直接绑定到一个方法，也可以在内联JavaScript语句中调用方法：
+
+```vue
+<div id="inline-handler">
+  <button @click="say('hello')">Say hello</button>
+  <button @click="say('bye')">Say bye</button>
+</div>
+```
+
+### 事件修饰符
+
+在处理事件时，经常需要阻止事件的默认行为或事件冒泡。Vue为`v-on`提供了事件修饰符：
+
+```vue
+<!-- 阻止单击事件继续传播 -->
+<a @click.stop="doThis"></a>
+
+<!-- 提交事件不再重载页面 -->
+<form @submit.prevent="onSubmit"></form>
+
+<!-- 修饰符可以串联 -->
+<a @click.stop.prevent="doThat"></a>
+
+<!-- 只有修饰符 -->
+<form @submit.prevent></form>
+
+<!-- 添加事件监听器时使用事件捕获模式 -->
+<div @click.capture="doThis">...</div>
+
+<!-- 只当在 event.target 是当前元素时触发处理函数 -->
+<div @click.self="doThat">...</div>
+
+<!-- 点击事件将只会触发一次 -->
+<a @click.once="doThis"></a>
+
+<!-- 滚动事件的默认行为 (即滚动行为) 将会立即触发 -->
+<div @scroll.passive="onScroll">...</div>
+```
+
 ## 表单输入绑定
+
+Vue提供了`v-model`指令在表单`<input>`、`<textarea>`及`<select>`元素上创建双向数据绑定。它会根据控件类型自动选取正确的方法来更新元素。
+
+### 文本
+
+```vue
+<input v-model="message" placeholder="edit me" />
+<p>Message is: {{ message }}</p>
+```
+
+### 多行文本
+
+```vue
+<span>Multiline message is:</span>
+<p style="white-space: pre-line;">{{ message }}</p>
+<br />
+<textarea v-model="message" placeholder="add multiple lines"></textarea>
+```
+
+### 复选框
+
+单个复选框，绑定到布尔值：
+
+```vue
+<input type="checkbox" id="checkbox" v-model="checked" />
+<label for="checkbox">{{ checked }}</label>
+```
+
+多个复选框，绑定到同一个数组：
+
+```vue
+<div id="checkbox-array">
+  <input type="checkbox" id="jack" value="Jack" v-model="checkedNames" />
+  <label for="jack">Jack</label>
+  <input type="checkbox" id="john" value="John" v-model="checkedNames" />
+  <label for="john">John</label>
+  <input type="checkbox" id="mike" value="Mike" v-model="checkedNames" />
+  <label for="mike">Mike</label>
+  <br />
+  <span>Checked names: {{ checkedNames }}</span>
+</div>
+```
+
+### 单选按钮
+
+```vue
+<div id="radio-buttons">
+  <input type="radio" id="one" value="One" v-model="picked" />
+  <label for="one">One</label>
+  <br />
+  <input type="radio" id="two" value="Two" v-model="picked" />
+  <label for="two">Two</label>
+  <br />
+  <span>Picked: {{ picked }}</span>
+</div>
+```
+
+### 选择框
+
+单选时：
+
+```vue
+<div id="select">
+  <select v-model="selected">
+    <option disabled value="">请选择</option>
+    <option>A</option>
+    <option>B</option>
+    <option>C</option>
+  </select>
+  <span>Selected: {{ selected }}</span>
+</div>
+```
+
+多选时（绑定到一个数组）：
+
+```vue
+<select v-model="selected" multiple>
+  <option>A</option>
+  <option>B</option>
+  <option>C</option>
+</select>
+<br />
+<span>Selected: {{ selected }}</span>
+```
 
 ## 生命周期
 
- 每个Vue组件实例在创建时都需要经历一系列初始化步骤，比如设置好数据侦听，编译模板，挂载实例到DOM，以及在数据改变时更新DOM文档，在这个过程中，他也会运行被称为生命周期钩子的函数，让开发者有机会能够在特定阶段运行自己的代码。
+每个Vue组件实例在创建时都需要经历一系列初始化步骤，比如设置好数据侦听，编译模板，挂载实例到DOM，以及在数据改变时更新DOM文档，在这个过程中，它也会运行被称为生命周期钩子的函数，让开发者有机会能够在特定阶段运行自己的代码。
 
 ### 注册生命周期钩子
 
 比如，onMounted钩子可以用来在组件完成初始渲染，并且创建DOM结点之后运行代码。当调用onMounted时，Vue会自动将回调函数注册到当前正在被初始化的组件实例上，这意味着这些钩子应该会在组件初始化时被同步注册。
 
+常用的生命周期钩子包括：
+
+- onMounted：组件挂载完成后执行
+- onUpdated：组件更新完成后执行
+- onUnmounted：组件卸载完成后执行
+- onBeforeMount：组件挂载前执行
+- onBeforeUpdate：组件更新前执行
+- onBeforeUnmount：组件卸载前执行
+
+```vue
+<script setup>
+import { onMounted, onUpdated, onUnmounted } from 'vue'
+
+onMounted(() => {
+  console.log('组件已挂载')
+})
+
+onUpdated(() => {
+  console.log('组件已更新')
+})
+
+onUnmounted(() => {
+  console.log('组件已卸载')
+})
+</script>
+```
+
 ## 侦听器
 
-计算属性允许我们声明性地计算一些衍生的值，然是在有些情况下，我们需要在某些状态发生变化时，执行一些事情，如更改DOM，或者根据异步操作的结果修改另一处的状态。
+计算属性允许我们声明性地计算一些衍生的值，但在有些情况下，我们需要在某些状态发生变化时，执行一些"副作用"，例如更改DOM，或者根据异步操作的结果修改另一处的状态。
 
 在组合式API中，我们可以使用watch函数在每次响应式状态发生变化时，触发一个回调函数，执行一些事情。
 
 ```vue
-<script>
-	const question = ref("");
-  const	answer = ref("question");
-  watch(question, async (newQuestion, oldQuestion)=>{
-    if(newQuestion.indexOf('?')>-1){
-      answer.value = 'Thinking';
-    }
-  })
+<script setup>
+const question = ref("");
+const answer = ref("question");
+watch(question, async (newQuestion, oldQuestion)=>{
+  if(newQuestion.indexOf('?')>-1){
+    answer.value = 'Thinking';
+  }
+})
 </script>
 ```
 
@@ -250,23 +578,28 @@ watch侦听器是一个方法，用于侦听他的第一个参数发生的变化
 
 第一个参数可以是不同类型的数据源，如ref、计算属性、响应式对象、getter函数，多个数据源组成的数组。
 
-但是不能直接侦听响应式对象的属性值，而是需要用一个返回该属性的getter函数
+但是不能直接侦听响应式对象的属性值，而是需要用一个返回该属性的getter函数：
 
 ```vue
-<script>
-	const obj = reactive({ count: 0 });
-  watch(
-    () => obj.count,
-    (count) => {
-      console.log(`count is: ${count}`)
-    }
+<script setup>
+const obj = reactive({ count: 0 });
+watch(
+  () => obj.count,
+  (count) => {
+    console.log(`count is: ${count}`)
+  }
 )
 </script>
 ```
 
-直接给侦听器watch()传入一个响应式对象，会隐式地创建一个深层侦听器，该回调函数在所有嵌套值变更时都会被出发。相比之下，一个返回响应式对象的getter函数，只有getter函数的返回值返回不同的对象时，才会触发回调。
+直接给侦听器watch()传入一个响应式对象，会隐式地创建一个深层侦听器，该回调函数在所有嵌套值变更时都会被触发。相比之下，一个返回响应式对象的getter函数，只有getter函数的返回值返回不同的对象时，才会触发回调。
 
-watch侦听器默认是懒执行的，仅当数据源变化时，才会执行回调。但是在某些场景中，我们希望在创建侦听器后，立即执行一遍回调，
+watch侦听器默认是懒执行的，仅当数据源变化时，才会执行回调。但是在某些场景中，我们希望在创建侦听器后，立即执行一遍回调：
+
+```vue
+// 立即执行的侦听器
+watch(source, callback, { immediate: true })
+```
 
 ## 模板引用
 
@@ -274,29 +607,46 @@ watch侦听器默认是懒执行的，仅当数据源变化时，才会执行回
 
 ### 通过组合式API访问对模板对象的引用
 
-为了获得在HTML模板DOM文件中对应元素的引用，我们需要在script脚本中声明一个同名的ref。只有在组件挂载之后才能够访问模板应用，在Vue对HTML页面的初次渲染之前该元素还不存在。
-
-当在v-for中使用模板的引用时，对应的ref值为一个数组。
+为了获得在HTML模板DOM文件中对应元素的引用，我们需要在script脚本中声明一个同名的ref。只有在组件挂载之后才能够访问模板引用，在Vue对HTML页面的初次渲染之前该元素还不存在。
 
 ```vue
 <script setup>
-	import { ref, onMounted } from 'vue'
-  
-  const itemRefs = ref([])
-  onMounted(() => console.log(itemRefs.value))
+import { ref, onMounted } from 'vue'
+
+// 声明一个ref来存放该元素的引用
+const input = ref(null)
+
+onMounted(() => {
+  input.value.focus()
+})
+</script>
+
+<template>
+  <input ref="input" />
+</template>
+```
+
+当在v-for中使用模板的引用时，对应的ref值为一个数组：
+
+```vue
+<script setup>
+import { ref, onMounted } from 'vue'
+
+const itemRefs = ref([])
+onMounted(() => console.log(itemRefs.value))
 </script>
 <template>
-  <ul>
-    <li v-for="item in list" ref="itemRefs">
-      {{ item }}
-    </li>
-  </ul>
+<ul>
+  <li v-for="item in list" ref="itemRefs">
+    {{ item }}
+  </li>
+</ul>
 </template>
 ```
 
 ### 使用函数值作为引用元素的名字
 
-ref绑定的元素对象，除了 使用字符串作为这个DOM对象的名字，ref属性还可以通过v-bind绑定为一个函数，会在每次组件更新时都被调用。该函数会收到元素引用作为其第一个参数。也就是说绑定的那个函数的第一个参数就是该dom元素对象。当绑定的dom元素被卸载时，函数也会被调用一次，这是传入的参数就为null。
+ref绑定的元素对象，除了使用字符串作为这个DOM对象的名字，ref属性还可以通过v-bind绑定为一个函数，会在每次组件更新时都被调用。该函数会收到元素引用作为其第一个参数。也就是说绑定的那个函数的第一个参数就是该dom元素对象。当绑定的dom元素被卸载时，函数也会被调用一次，这是传入的参数就为null。
 
 ### 绑定组件
 
@@ -312,21 +662,19 @@ ref绑定的元素对象，除了 使用字符串作为这个DOM对象的名字�
 
 #### 动态组件
 
-如果想要在多个组件之间来回切换，需要用到动态组件。这里是通过Vue的`<component>`元素和特殊的is属性实现的
+如果想要在多个组件之间来回切换，需要用到动态组件。这里是通过Vue的`<component>`元素和特殊的is属性实现的：
 
- ```vue
- <template>
-   <!-- currentTab 变量值改变时组件也改变 -->
-   <component :is="tabs[currentTab]"></component>
- </template>
- ```
+```vue
+<template>
+  <!-- currentTab 变量值改变时组件也改变 -->
+  <component :is="tabs[currentTab]"></component>
+</template>
+```
 
 可以传递给:is的有以下几种：
 
-* 被注册的组件名
-* 导入的组件对象
-
-
+- 被注册的组件名
+- 导入的组件对象
 
 ### 组件注册
 
@@ -334,7 +682,7 @@ ref绑定的元素对象，除了 使用字符串作为这个DOM对象的名字�
 
 #### 全局注册
 
-使用Vue应用实例的app.component()方法，让组件再当前Vue全局可用
+使用Vue应用实例的app.component()方法，让组件再当前Vue全局可用：
 
 ```js
 import { createApp } from 'vue'
@@ -350,7 +698,7 @@ app.component('MyComponent', MyComponent)
 
 全局注册但是并没有被使用的组件无法再生产打包时被自动移除，如果注册了一个全局组件，即使没有用，仍然会出现在打包后的JS文件中。
 
-在使用 `<script setup>` 的单文件组件中，导入的组件可以直接在模板中使用，无需注册
+在使用 `<script setup>` 的单文件组件中，导入的组件可以直接在模板中使用，无需注册：
 
 ```vue
 <script setup>
@@ -366,13 +714,13 @@ import ComponentA from './ComponentA.vue'
 
 组件名称需要使用首字母大写的格式，这是合法的JavaScript标识符，使得在JavaScript中导入和注册组件都变得很容易，这种形式的名称可以和原生的HTML元素区分开，将Vue组件和自定义元素区分开。
 
-### props
+### Props
 
 一个组件需要显式的声明它所接受的props，props通常是父组件传递给子组件的一些数据，如果不显式的声明，Vue就不太明白外部组件传入的究竟是props还是透传attribute
 
 #### 向组件中传递对象数据
 
-props是一种特殊的虚拟HTML元素属性，我们可以在子组件内部生命注册一个props，使用defineProps进行声明。defineProps是仅仅在`<script setup>`中可用的命令，不需要显式导入，声明的props会自动暴露给模板，他会返回一个对象，包含了父组件中传递给该子组件的所有信息。
+props是一种特殊的虚拟HTML元素属性，我们可以在子组件内部声明注册一个props，使用defineProps进行声明。defineProps是仅仅在`<script setup>`中可用的命令，不需要显式导入，声明的props会自动暴露给模板，他会返回一个对象，包含了父组件中传递给该子组件的所有信息。
 
 子组件*BlogPost.vue*
 
@@ -396,9 +744,33 @@ const props = defineProps(['title'])
 </template>
 ```
 
+#### Props声明
 
+除了使用字符串数组，我们还可以使用对象语法来声明props，这样可以为每个属性指定类型、默认值和其他选项：
 
-
+```vue
+<script setup>
+const props = defineProps({
+  title: String,
+  likes: {
+    type: Number,
+    default: 0
+  },
+  isPublished: {
+    type: Boolean,
+    default: false
+  },
+  commentIds: {
+    type: Array,
+    default: () => []
+  },
+  author: {
+    type: Object,
+    default: () => ({})
+  }
+})
+</script>
+```
 
 ### 事件
 
@@ -406,7 +778,7 @@ const props = defineProps(['title'])
 
 #### 子组件抛出事件
 
-子组件通过调用内置的`$emit`方法，传入事件名称(字符串)抛出一个事件（$emit方法无法在`<script setup>` 中调用，可以使用defineEmits代替）
+子组件通过调用内置的`$emit`方法，传入事件名称(字符串)抛出一个事件（$emit方法无法在`<script setup>` 中调用，可以使用defineEmits代替）：
 
 ```vue
 <!-- BlogPost.vue, 省略了 <script> -->
@@ -417,7 +789,9 @@ const props = defineProps(['title'])
 </template>
 ```
 
-子组件也可以通过defineEmits宏来声明子组件需要抛出的事件，声明了需要抛出的事件后，就可以对事件的参数进行验证，同时还可以让避免将他们作为原生事件监听器应用于子组件根元素。defineEmits会返回一个等同于$emit方法的emit函数，我们可以调用它来触发事件。
+子组件也可以通过defineEmits宏来声明子组件需要抛出的事件，声明了需要抛出的事件后，就可以对事件的参数进行验证，同时还可以让避免将他们作为原生事件监听器应用于子组件根元素。
+
+defineEmits会返回一个等同于$emit方法的emit函数，我们可以调用它来触发事件。
 
 #### 父组件监听事件
 
@@ -432,7 +806,7 @@ const props = defineProps(['title'])
 
 #### 事件参数
 
-有时我们需要在触发事件时附带一个特定的值，宅这种场景下，我们可以给子组件`$emit` 提供一个额外的参数。然后我们在父组件中监听事件，父组件定义的函数就能够收到子组件`$emit`方法提供的参数。所有传入`$emit()`的额外参数都会被直接传向监听器。
+有时我们需要在触发事件时附带一个特定的值，这种场景下，我们可以给子组件`$emit` 提供一个额外的参数。然后我们在父组件中监听事件，父组件定义的函数就能够收到子组件`$emit`方法提供的参数。所有传入`$emit()`的额外参数都会被直接传向监听器。
 
 #### 声明触发的事件
 
@@ -442,11 +816,11 @@ emit选项支持对象语法，允许我们对触发事件的参数进行验证�
 
 ```vue
 <script setup>
-	const emit = defineEmits({
-    submit(payload){
-      // 通过验证返回值为true false来判断是否通过
-    }
-  })
+const emit = defineEmits({
+  submit(payload){
+    // 通过验证返回值为true false来判断是否通过
+  }
+})
 </script>
 ```
 
@@ -454,32 +828,32 @@ emit选项支持对象语法，允许我们对触发事件的参数进行验证�
 
 所有触发的事件也可以用对象的形式进行描述。要为事件添加校验，那么事件可以被赋值为一个函数，接收的参数就是抛出事件时传入emit的内容，返回一个布尔值来表明事件是否合法。
 
- ```vue
- <script setup>
- 	const emit = defineEmits({
-     // null 表示不进行参数校验
-     click: null,
-     // 校验submit事件传入的email和password参数
-     submit: ({email, password}) => {
-       // && 短路操作，表示这两个参数都不为null或undefined
-       if (email && password){
-         return true;
-       }else {
-         console.warn("不能为空");
-         return false;
-       }
-     }
-   })
-   
-   function submitForm(email, password){
-     emit('submit', {email, password})
-   }
- </script>
- ```
+```vue
+<script setup>
+const emit = defineEmits({
+  // null 表示不进行参数校验
+  click: null,
+  // 校验submit事件传入的email和password参数
+  submit: ({email, password}) => {
+    // && 短路操作，表示这两个参数都不为null或undefined
+    if (email && password){
+      return true;
+    }else {
+      console.warn("不能为空");
+      return false;
+    }
+  }
+})
+
+function submitForm(email, password){
+  emit('submit', {email, password})
+}
+</script>
+```
 
 ### 组件 v-model
 
-v-model可以在组件上使用以实现双向绑定。首先v-model在原生组件中，模板编译器会对v-model进行等价展开。实际上等价于
+v-model可以在组件上使用以实现双向绑定。首先v-model在原生组件中，模板编译器会对v-model进行等价展开。实际上等价于：
 
 ```html
 <input v-model='searchText'/>
@@ -490,7 +864,7 @@ v-model可以在组件上使用以实现双向绑定。首先v-model在原生组
 也就是说，v-model绑定了一个value单项绑定，又绑定了一个input事件将事件中的该对象的value值绑定到了searchText变量中。而在应用到一个组件中，v-model会被展开为以下形式：
 
 ```html
-<CustonInput :modelValue="searchText"
+<CustomInput :modelValue="searchText"
              @update:modelValue="newValue => searchText = newValue"/>
 ```
 
@@ -511,48 +885,45 @@ v-model可以在组件上使用以实现双向绑定。首先v-model在原生组
 
 ```vue
 <script setup>
-	defineProps({
-    firstName: String,
-    lastName: String
-  })
-  
-  defineEmits(['update:firstName, update:lastName'])
+defineProps({
+  firstName: String,
+  lastName: String
+})
+
+const emit = defineEmits(['update:firstName', 'update:lastName'])
 </script>
 <template>
-	<input type='text'
+  <input type='text'
          :value='firstName'
-         @input="$emit('update:first', $event.target.value)"/>
-
+         @input="$emit('update:firstName', $event.target.value)"/>
 </template>
 ```
 
-####  处理修饰符
+#### 处理修饰符
 
 v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下，可能想要自定义组件的v-model支持自定义的修饰符。组件的v-model上所添加的修饰符，可以通过modelModifiers 这个prop在组件内访问到。在下面的组件中，声明了这个prop，默认值是一个空对象。有了这一个prop，我们就可以检查modelModifiers对象上的键，并编写一个处理函数来改变抛出的值。
 
 ```vue
 <script setup>
-	const props = defineProps({
-    modelValue: String, 
-    modelModifiers: { default: ()=> ({})}
-  })
-  const emit = defineEmits(['update:modelValue'])
-  
-  function emitValue(e){
-    let value = e.target.value
-    if(props.modelModifiers.captialize){
-      value = value.charAt(0).toUpperCase() + value.slice(1)
-    }
+const props = defineProps({
+  modelValue: String, 
+  modelModifiers: { default: ()=> ({})}
+})
+const emit = defineEmits(['update:modelValue'])
+
+function emitValue(e){
+  let value = e.target.value
+  if(props.modelModifiers.capitalize){
+    value = value.charAt(0).toUpperCase() + value.slice(1)
   }
+  emit('update:modelValue', value)
+}
 </script>
 ```
 
-
-
-
 ### 透传Attributes
 
-透传属性指的是传递给一个组件，却没有被该组件声明为props或者emits的属性或者v-on事件监听器，常见的例子是class、style、id。简单来说，透传意味着父组件或者外部组件传递给当前组件的属性，这些是一般而言的属性，而没有没vue做其他特殊处理。
+透传属性指的是传递给一个组件，却没有被该组件声明为props或者emits的属性或者v-on事件监听器，常见的例子是class、style、id。简单来说，透传意味着父组件或者外部组件传递给当前组件的属性，这些是一般而言的属性，而没有被Vue做其他特殊处理。
 
 当一个组件以单个元素为根做渲染时，透传的属性会被自动添加到该组件的根元素上。
 
@@ -566,13 +937,13 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 
 #### 深层继承属性
 
-如果子组件只是在根元素结点上渲染另一个组件，而没有其他操作，那么父组件传递来的属性就会直接再次传递给子子组件。
+如果子组件只是在根节点上渲染另一个组件，而没有其他操作，那么父组件传递来的属性就会直接再次传递给子子组件。
 
 如果不需要组件自动的从父组件继承属性，可以在组件选项中设置`inheritAttrs: false`，我们在 `<script setup> `中使用 defineOptions来设置这个值。
 
-最常见的需要禁用属性继承的场景是，属性需要应用在根节点意外的其他元素上，通过这样设置，我们可以控制传递进来的属性应该被如何使用，这些传递进来的属性可以在模板表达式中直接用`$attrs`访问到。这里面包含了除了组件所声明的props和emits之外的所有其他属性。
+最常见的需要禁用属性继承的场景是，属性需要应用在根节点以外的其他元素上，通过这样设置，我们可以控制传递进来的属性应该被如何使用，这些传递进来的属性可以在模板表达式中直接用`$attrs`访问到。这里面包含了除了组件所声明的props和emits之外的所有其他属性。
 
-比如我们想把属性应用到内部button结点上，这样使用`v-bind="$attrs"`实现。没有参数的v-bind会将对象的所有属性都作为html元素属性应用到html元素结点上。
+比如我们想把属性应用到内部button节点上，这样使用`v-bind="$attrs"`实现。没有参数的v-bind会将对象的所有属性都作为html元素属性应用到html元素节点上。
 
 #### 多个根节点的属性继承
 
@@ -582,15 +953,22 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 
 在 `<script setup> `中使用 `useAttrs()` API 来访问一个组件的所有透传 attribute：
 
+```vue
+<script setup>
+import { useAttrs } from 'vue'
+const attrs = useAttrs()
+</script>
+```
+
 ### 插槽
 
-向子组件传递大量内容
+向子组件传递大量内容。
 
 之前我们介绍了可以通过子组件元素属性向子组件传递一些对象数据，有时我们希望传递的信息量大，或者向子组件传递HTML元素，等大量的信息，那通过HTML属性传递就比较麻烦，这是我们可以通过插槽来传递大量内容。
 
 #### 父组件传递内容
 
-父组件在子组件元素的text域内填写想要传递的内容
+父组件在子组件元素的text域内填写想要传递的内容：
 
 ```vue
 <template>
@@ -602,7 +980,7 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 
 #### 子组件接受内容
 
-子组件可以在HTML模板的某个位置添加自定义的`<slot>`元素来接收父组件传递的内容
+子组件可以在HTML模板的某个位置添加自定义的`<slot>`元素来接收父组件传递的内容：
 
 ```vue
 <template>
@@ -635,38 +1013,38 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 
 ```vue
 <template>
-    <BaseLayout>
-      <template #header>
-        <h1>Here might be a page title</h1>
-      </template>
+  <BaseLayout>
+    <template #header>
+      <h1>Here might be a page title</h1>
+    </template>
 
-      <template #default>
-        <p>A paragraph for the main content.</p>
-        <p>And another one.</p>
-      </template>
+    <template #default>
+      <p>A paragraph for the main content.</p>
+      <p>And another one.</p>
+    </template>
 
-      <template #footer>
-        <p>Here's some contact info</p>
-      </template>
-    </BaseLayout>
+    <template #footer>
+      <p>Here's some contact info</p>
+    </template>
+  </BaseLayout>
 </template>
 ```
 
 ```vue
 <template>
-    <BaseLayout>
-      <template #header>
-        <h1>Here might be a page title</h1>
-      </template>
+  <BaseLayout>
+    <template #header>
+      <h1>Here might be a page title</h1>
+    </template>
 
-      <!-- 隐式的默认插槽 -->
-      <p>A paragraph for the main content.</p>
-      <p>And another one.</p>
+    <!-- 隐式的默认插槽 -->
+    <p>A paragraph for the main content.</p>
+    <p>And another one.</p>
 
-      <template #footer>
-        <p>Here's some contact info</p>
-      </template>
-    </BaseLayout>
+    <template #footer>
+      <p>Here's some contact info</p>
+    </template>
+  </BaseLayout>
 </template>
 ```
 
@@ -676,13 +1054,13 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 
 ```vue
 <template>
-	<BaseLayout>
-    	<template v-slot:[dynamicSlotName]>		
-		</template>
+  <BaseLayout>
+    <template v-slot:[dynamicSlotName]>        
+    </template>
 
-        <template #[dynamicSlotName]>		
-		</template>
-    </BaseLayout>
+    <template #[dynamicSlotName]>        
+    </template>
+  </BaseLayout>
 </template>
 ```
 
@@ -696,10 +1074,10 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 
 ```vue
 <template>
-	<div>
-        <slot :text="greetingMessage"
-              :count="1"></slot>
-    </div>
+  <div>
+    <slot :text="greetingMessage"
+          :count="1"></slot>
+  </div>
 </template>
 ```
 
@@ -707,16 +1085,26 @@ v-model有一些内置的修饰符，例如.trim .number .lazy在某些场景下
 
 ```vue
 <template>
-	<MyComponent v-slot="slotProps">
-    	{{ slotProps.text }}
-        {{ slotProps.count }}
-    </MyComponent>
+  <MyComponent v-slot="slotProps">
+    {{ slotProps.text }}
+    {{ slotProps.count }}
+  </MyComponent>
 </template>
 ```
 
 #### 具名作用域插槽
 
-上述的例子表明的是默认插槽的工作方式，接下来对于有名作用于插槽，插槽中子组件向父组件传递的内容可以作为`v-slot`指令的值被父组件访问到，对于一个名字为headerProps的插槽，子组件传递过来的数据都可以通过headerProps这个名字变量访问的到
+上述的例子表明的是默认插槽的工作方式，接下来对于有名作用域插槽，插槽中子组件向父组件传递的内容可以作为`v-slot`指令的值被父组件访问到，对于一个名字为headerProps的插槽，子组件传递过来的数据都可以通过headerProps这个名字变量访问的到：
+
+```vue
+<template>
+  <MyComponent>
+    <template #header="headerProps">
+      {{ headerProps }}
+    </template>
+  </MyComponent>
+</template>
+```
 
 ### 依赖注入
 
@@ -728,13 +1116,12 @@ provide和inject可以帮助我们解决这一问题，一个父组件相对于�
 
 要为组件后代提供数据，需要用到provide函数。provide函数接收两个参数，第一个参数被称为注入名，可以是一个字符串或者是一个symbol。后代组件会用注入名来查找期望注入的值。一个组件可以多次调用provide()使用不同的注入名，注入不同的依赖值。第二个参数是提供的值，可以是任意类型，包括响应式状态。
 
- ```vue
- <script setup>
- 	import {provide} from 'vue'
-   provide('message', 'hello!')
- 
- </script>
- ```
+```vue
+<script setup>
+import {provide} from 'vue'
+provide('message', 'hello!')
+</script>
+```
 
 除了在一个组件中提供依赖，我们还可以在整个应用层面提供依赖，在应用级别提供的数据在该应用内的所有组件中都可以注入。
 
@@ -744,8 +1131,8 @@ provide和inject可以帮助我们解决这一问题，一个父组件相对于�
 
 ```vue
 <script setup>
-	import { inject } from 'vue'
-  const message = inject('message')
+import { inject } from 'vue'
+const message = inject('message')
 </script>
 ```
 
@@ -755,49 +1142,57 @@ provide和inject可以帮助我们解决这一问题，一个父组件相对于�
 
 但有时候，我们可能需要在注入方组件中更改数据，在这种情况下，推荐在供给方组件内声明并提供一个更改数据的方法函数。
 
-供给方组件
+供给方组件：
 
 ```vue
 <script setup>
-	import {provide, ref} from 'vue'
-  const location = ref("pole");
-  function updateLocation(){
-    location.value = "south pole"
-  }
-  
-  // 提供一个响应式数据location，并提供他的更新方法
-  provide('location', {
-    location, 
-    updateLocation
-  })
+import {provide, ref} from 'vue'
+const location = ref("pole");
+function updateLocation(){
+  location.value = "south pole"
+}
+
+// 提供一个响应式数据location，并提供他的更新方法
+provide('location', {
+  location, 
+  updateLocation
+})
 </script>
 ```
 
-接收方（注入方）
+接收方（注入方）：
 
 ```vue
 <script setup>
-	import {inject} from 'vue'
-  const {location, updateLocation} = inject('location')
+import {inject} from 'vue'
+const {location, updateLocation} = inject('location')
 </script>
 <template>
-	<button @click='updateLocation'>
-    {{ location }}
-  </button>
+<button @click='updateLocation'>
+  {{ location }}
+</button>
 </template>
 ```
 
-如果想要确保提供的数据不被接收方更改，可以使用readonly来包装提供的值
+如果想要确保提供的数据不被接收方更改，可以使用readonly来包装提供的值：
+
+```vue
+<script setup>
+import { provide, readonly, ref } from 'vue'
+const count = ref(0)
+provide('read-only-count', readonly(count))
+</script>
+```
 
 #### 使用symbol作为注入的名
 
-如果包含非常多的依赖注入，普通的字符串当注入名就不够用了，这是可以使用Symbol来作为注入以避免潜在的注入冲突。在单独的文件中导出这些注入名Symbol
+如果包含非常多的依赖注入，普通的字符串当注入名就不够用了，这是可以使用Symbol来作为注入以避免潜在的注入冲突。在单独的文件中导出这些注入名Symbol：
 
 ```js
 export const injectionKey = Symbol()
 ```
 
-供给方组件
+供给方组件：
 
 ```js
 import { provide } from 'vue'
@@ -807,7 +1202,7 @@ provide(injectionKey, {
 })
 ```
 
-注入方
+注入方：
 
 ```js
 import { inject } from 'vue'
@@ -815,10 +1210,6 @@ import { injectionKey } from './key.js'
 
 const injected = inject(injectionKey)
 ```
-
-
-
-
 
 ### 异步组件
 
@@ -840,23 +1231,256 @@ ES模块动态导入也会返回一个Promise，多数情况下将它和defineAs
 
 异步操作不可避免会涉及到加载和错误状态，因此defineAsyncComponent()也可以处理这些状态。
 
-### 内置组件
+```js
+const AsyncComp = defineAsyncComponent({
+  // 加载函数
+  loader: () => import('./Foo.vue'),
+
+  // 加载异步组件时使用的组件
+  loadingComponent: LoadingComponent,
+  // 展示加载组件前的延迟时间，默认为 200ms
+  delay: 200,
+
+  // 加载失败后展示的组件
+  errorComponent: ErrorComponent,
+  // 如果提供了一个 timeout 时间限制，并超时了
+  // 也会显示这里配置的报错组件，默认值是：Infinity
+  timeout: 3000
+})
+```
 
 ## 组合式函数
 
 组合式函数是利用Vue的组合式API来封装和复用有状态逻辑的函数，当构建前端应用时，我们常常需要复用公共任务的逻辑，如为了在不同地方格式化时间，我们可能会抽取一个可以复用的日期格式化函数，这个函数封装了无状态逻辑，他在接收输入后会立刻返回所期望的输出。相比之下有状态逻辑会管理随着时间变化的状态。
 
+一个简单的组合式函数示例：
+
+```js
+// mouse.js
+import { ref, onMounted, onUnmounted } from 'vue'
+
+// 按照惯例，组合式函数名以“use”开头
+export function useMouse() {
+  // 被组合式函数封装和管理的状态
+  const x = ref(0)
+  const y = ref(0)
+
+  // 组合式函数可以随时更改其状态。
+  function update(event) {
+    x.value = event.pageX
+    y.value = event.pageY
+  }
+
+  // 一个组合式函数也可以挂靠在所属组件的生命周期上
+  // 来启动和卸载副作用
+  onMounted(() => window.addEventListener('mousemove', update))
+  onUnmounted(() => window.removeEventListener('mousemove', update))
+
+  // 通过返回值暴露所管理的状态
+  return { x, y }
+}
+```
+
+在组件中使用：
+
+```vue
+<script setup>
+import { useMouse } from './mouse.js'
+
+const { x, y } = useMouse()
+</script>
+
+<template>
+Mouse position is at: {{ x }}, {{ y }}
+</template>
+```
+
 ## 自定义指令
 
+除了Vue内置的核心指令（如v-model和v-show），Vue还允许我们注册自定义指令。
 
+当我们需要对普通HTML元素进行底层DOM操作时，自定义指令会非常有用。
+
+### 基本用法
+
+```js
+const myDirective = {
+  // 在绑定元素的 attribute 前
+  // 或事件监听器应用前调用
+  created(el, binding, vnode) {
+    // 在元素上做些操作
+  },
+  // 在元素被插入到 DOM 前调用
+  beforeMount(el, binding, vnode) {
+    // 在元素上做些操作
+  },
+  // 在绑定元素的父组件
+  // 及他自己的所有子节点都挂载完成后调用
+  mounted(el, binding, vnode) {
+    // 在元素上做些操作
+  },
+  // 绑定元素的父组件更新前调用
+  beforeUpdate(el, binding, vnode, prevVnode) {
+    // 在元素上做些操作
+  },
+  // 在绑定元素的父组件
+  // 及他自己的所有子节点都更新完成后调用
+  updated(el, binding, vnode, prevVnode) {
+    // 在元素上做些操作
+  },
+  // 绑定元素的父组件卸载前调用
+  beforeUnmount(el, binding, vnode) {
+    // 在元素上做些操作
+  },
+  // 绑定元素的父组件卸载后调用
+  unmounted(el, binding, vnode) {
+    // 在元素上做些操作
+  }
+}
+
+export default {
+  directives: {
+    // 在模板中启用 v-focus
+    focus: myDirective
+  }
+}
+```
+
+### 指令钩子参数
+
+指令钩子函数会传入以下参数：
+
+- `el`：指令绑定到的元素。这可以用于直接操作DOM。
+- `binding`：一个对象，包含以下属性：
+  - `value`：传递给指令的值。例如在`v-my-directive="1 + 1"`中，值是`2`。
+  - `oldValue`：之前的值，仅在`beforeUpdate`和`updated`中可用。无论值是否更改，它都可用。
+  - `arg`：传递给指令的参数（如果有的话）。例如在`v-my-directive:foo`中，参数是`"foo"`。
+  - `modifiers`：一个包含修饰符的对象（如果有的话）。例如在`v-my-directive.foo.bar`中，修饰符对象是`{ foo: true, bar: true }`。
+  - `instance`：使用该指令的组件实例。
+  - `dir`：指令的定义对象。
+- `vnode`：代表绑定元素的底层VNode。
+- `prevNode`：之前的渲染中代表指令所绑定元素的VNode。仅在`beforeUpdate`和`updated`钩子中可用。
+
+### 简单示例
+
+注册一个全局自定义指令`v-focus`，当页面加载时，该元素将获得焦点：
+
+```js
+// 在main.js中注册
+app.directive('focus', {
+  mounted(el) {
+    el.focus()
+  }
+})
+```
+
+在模板中使用：
+
+```vue
+<input v-focus />
+```
 
 ## 插件
 
+插件是自包含的代码，通常向Vue添加全局级功能。它可以是公开install()方法的对象，也可以是函数。
 
+插件的功能范围没有严格的限制，一般有以下几种：
+
+- 在Vue的原型上添加全局方法或属性
+- 添加全局资源：指令/过滤器/过渡等
+- 通过全局mixin来添加一些组件选项
+- 添加全局组件
+- 添加一些库的实例，同时传给它一些参数
+
+### 使用插件
+
+通过全局方法use()使用插件。它需要在调用createApp()创建应用实例之后，在挂载应用实例之前调用：
+
+```js
+import { createApp } from 'vue'
+import MyPlugin from './plugins/MyPlugin'
+
+const app = createApp({})
+
+app.use(MyPlugin)
+
+app.mount('#app')
+```
+
+### 开发插件
+
+Vue插件应该暴露一个install方法。这个方法的第一个参数是Vue构造器，第二个参数是一个可选的选项对象：
+
+```js
+// plugins/MyPlugin.js
+export default {
+  install: (app, options) => {
+    // 配置此应用
+    app.config.globalProperties.$translate = (key) => {
+      // 检索一个属性嵌套在对象中的值
+      return key.split('.').reduce((o, i) => {
+        if (o) return o[i]
+      }, options)
+    }
+    
+    // 注入一个全局可用的组件
+    app.component('MyComponent', MyComponent)
+    
+    // 注入一个全局可用的指令
+    app.directive('my-directive', myDirective)
+  }
+}
+```
 
 ## 应用规模化
 
+当应用规模增长时，我们需要考虑如何组织代码、管理状态、处理路由等。Vue提供了多种工具来帮助我们构建大型应用。
 
+### 路由
+
+Vue Router是Vue.js官方的路由管理器。它深度集成Vue.js核心，让构建单页应用变得易如反掌。
+
+基本用法：
+
+```js
+import { createRouter, createWebHistory } from 'vue-router'
+import Home from './views/Home.vue'
+import About from './views/About.vue'
+
+const routes = [
+  { path: '/', component: Home },
+  { path: '/about', component: About }
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes
+})
+
+export default router
+```
+
+在main.js中使用：
+
+```js
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
+
+createApp(App).use(router).mount('#app')
+```
+
+### 状态管理
+
+对于大型应用，Vuex是Vue.js官方的状态管理库。它采用集中式存储管理应用的所有组件的状态。
+
+Vuex的核心概念包括：
+
+- State：存储应用状态
+- Getters：从state中派生出一些状态
+- Mutations：更改state的唯一方法
+- Actions：提交mutations，可以包含异步操作
+- Modules：将store分割成模块
 
 ## 服务端渲染
 
@@ -866,5 +1490,5 @@ ES模块动态导入也会返回一个Promise，多数情况下将它和defineAs
 
 Server-Side Rendering（服务端渲染）的优势：
 
-* 更快的首屏加载：服务端渲染的HTML无需等到所有的JavaScript都下载并执行完成之后才显示，所以用户将会更快的看到完整渲染的页面。数据获取过程在首次访问时在服务端完成，相比于从客户端获取，会有更快的数据库连接。
-* 更快的搜索引擎优化（Search Engine Optimization, SEO）
+- 更快的首屏加载：服务端渲染的HTML无需等到所有的JavaScript都下载并执行完成之后才显示，所以用户将会更快的看到完整渲染的页面。数据获取过程在首次访问时在服务端完成，相比于从客户端获取，会有更快的数据库连接。
+- 更快的搜索引擎优化（Search Engine Optimization, SEO）
