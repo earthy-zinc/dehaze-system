@@ -197,6 +197,12 @@ graph TB
 
 ### 前端启动
 
+#### 快速安装JS项目的所有依赖
+
+```bash
+PNPM_APPROVE_BUILDS=1 pnpm install -r
+```
+
 #### Vue版本
 ```bash
 cd dehaze-front-vue
