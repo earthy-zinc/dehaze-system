@@ -34,7 +34,7 @@
 
 ## 🛞 系统功能
 
-| 模块    | 功能描述                                        | 
+| 模块    | 功能描述                                        |
 |-------|---------------------------------------------|
 | 用户系统  | 支持角色/权限管理、多级部门树、WebSocket保持登录状态             |
 | 数据集管理 | 瀑布流展示+懒加载、图片MD5校验、图片数量统计                    |
@@ -77,8 +77,8 @@ cd dehaze_front
 # 安装 pnpm
 npm install pnpm -g
 
-# 安装依赖
-pnpm install
+# 安装依赖（自动运行依赖包中的构建脚本）
+PNPM_APPROVE_BUILDS=1 pnpm install
 
 # 启动运行
 pnpm run dev
