@@ -1,5 +1,7 @@
 onlyBuiltDependencies:
   - '@parcel/watcher'
+  - electron
+  - electron-winstaller
   - esbuild
 
 overrides:

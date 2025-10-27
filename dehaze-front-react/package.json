@@ -3,10 +3,15 @@
   "type": "module",
   "version": "1.0.0",
   "packageManager": "pnpm@10.18.0",
+  "main": "out/main/index.js",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
+    "postinstall": "node ./node_modules/electron/install.js && electron-builder install-app-deps",
     "dev": "vite serve",
+    "dev:electron": "electron-vite dev",
     "build": "tsc && vite build",
+    "build:electron:win": "electron-vite build && electron-builder build --win --x64",
+    "build:electron:linux": "electron-vite build && electron-builder build --linux --x64",
     "test": "pnpm test:unit && pnpm test:e2e",
     "test:unit": "vitest run --open=false",
     "test:unit:ui": "vitest watch --coverage --ui",
@@ -42,6 +47,24 @@
     "*.md": [
       "prettier --write"
     ]
+  },
+  "build": {
+    "appId": "com.pei.dehaze-front-desktop-react",
+    "productName": "dehaze-front-desktop-vue-react",
+    "files": [
+      "out/**/*"
+    ],
+    "directories": {
+      "output": "target"
+    },
+    "nsis": {
+      "oneClick": false,
+      "uninstallDisplayName": "卸载",
+      "allowToChangeInstallationDirectory": true
+    },
+    "electronDownload": {
+      "mirror": "https://npmmirror.com/mirrors/electron/"
+    }
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
@@ -84,6 +107,9 @@
     "@vitest/ui": "^4.0.2",
     "commitizen": "^4.3.1",
     "cz-git": "^1.12.0",
+    "electron": "^38.4.0",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.1",
     "eslint": "^9.37.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-vite": "^2.1.0",

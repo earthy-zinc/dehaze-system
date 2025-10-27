@@ -77,7 +77,11 @@ cd dehaze_front
 # 安装 pnpm
 npm install pnpm -g
 
-# 安装依赖（自动运行依赖包中的构建脚本）
+# 设置环境变量
+set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+set ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+
+# 安装依赖
 PNPM_APPROVE_BUILDS=1 pnpm install
 
 # 启动运行
