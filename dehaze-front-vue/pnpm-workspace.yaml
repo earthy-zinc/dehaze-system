@@ -1,6 +1,7 @@
 onlyBuiltDependencies:
   - '@parcel/watcher'
   - bufferutil
+  - electron
   - electron-winstaller
   - es5-ext
   - esbuild

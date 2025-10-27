@@ -8,7 +8,7 @@
   "scripts": {
     "prepare": "husky",
     "preinstall": "npx only-allow pnpm",
-    "postinstall": "node ./node_modules/electron/install.js && electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps",
     "dev": "vite serve --mode development",
     "dev:electron": "electron-vite dev",
     "build": "vite build --mode production && vue-tsc --noEmit",
@@ -156,7 +156,7 @@
     "vite-plugin-mock-dev-server": "^2.0.1",
     "vite-plugin-svg-icons": "^2.0.1",
     "vite-plugin-vue-devtools": "^8.0.2",
-    "vitest": "^4.0.1",
+    "vitest": "^4.0.2",
     "vitest-canvas-mock": "^0.3.3",
     "vue-eslint-parser": "^10.2.0",
     "vue-tsc": "^3.1.1"

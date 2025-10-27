@@ -6,7 +6,7 @@
   "main": "out/main/index.js",
   "scripts": {
     "preinstall": "npx only-allow pnpm",
-    "postinstall": "node ./node_modules/electron/install.js && electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps",
     "dev": "vite serve",
     "dev:electron": "electron-vite dev",
     "build": "tsc && vite build",
