@@ -19,3 +19,6 @@ dist-ssr
 package-lock.json
 pnpm-lock.yaml
 stats.html
+
+*storybook.log
+storybook-static

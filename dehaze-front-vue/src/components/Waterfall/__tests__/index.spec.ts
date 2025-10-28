@@ -44,17 +44,17 @@ describe("Waterfall Component", () => {
 
     // Mock useCalculateCols 返回值
     vi.spyOn(waterfallModule, "useCalculateCols").mockReturnValue({
-      waterfallWrapper: { value: null },
-      wrapperWidth: { value: 800 },
-      colWidth: { value: 200 },
-      cols: { value: 3 },
-      offsetX: { value: 0 },
+      waterfallWrapper: ref(null),
+      wrapperWidth: ref(800),
+      colWidth: computed(() => 200),
+      cols: computed(() => 3),
+      offsetX: computed(() => 0),
     });
 
     // Mock useLayout 返回值
     vi.spyOn(waterfallModule, "useLayout").mockReturnValue({
-      wrapperHeight: { value: 600 },
-      itemHeight: { value: 200 },
+      wrapperHeight: ref(800),
+      itemHeight: ref(200),
       layoutHandle: vi.fn().mockResolvedValue(true),
     });
 
@@ -109,7 +109,9 @@ describe("Waterfall Component", () => {
       });
 
       const waterfallList = wrapper.find(".waterfall-list");
-      expect(waterfallList.element.style.backgroundColor).toBe("#ff0000");
+      expect(
+        (waterfallList.element as HTMLDivElement).style.backgroundColor
+      ).toBe("#ff0000");
     });
   });
 

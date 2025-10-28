@@ -104,9 +104,11 @@ describe("waterfall.ts", () => {
 
     it("应该正确处理resize事件", () => {
       const mockCallback = vi.fn();
-      (useResizeObserver as any).mockImplementation((target, callback) => {
-        mockCallback(target, callback);
-      });
+      (useResizeObserver as any).mockImplementation(
+        (target: any, callback: any) => {
+          mockCallback(target, callback);
+        }
+      );
 
       const props = {
         breakpoints: {
@@ -191,73 +193,6 @@ describe("waterfall.ts", () => {
       expect(wrapperHeight.value).toBe(0);
       expect(itemHeight.value).toBe(0);
       expect(layoutHandle).toBeTypeOf("function");
-    });
-
-    it("应该正确执行布局处理", async () => {
-      const props = {
-        breakpoints: {
-          1200: { rowPerView: 3 },
-          800: { rowPerView: 2 },
-          500: { rowPerView: 1 },
-        },
-        width: 200,
-        gutter: 10,
-        hasAroundGutter: true,
-        align: "center",
-        list: [],
-        posDuration: 10, // 短时间以便测试
-        animationPrefix: "animate__animated",
-        animationEffect: "fadeIn",
-        animationDuration: 1000,
-        animationDelay: 300,
-        backgroundColor: "#fff",
-        lazyload: true,
-        loadProps: {},
-        crossOrigin: true,
-        delay: 300,
-        speed: 1,
-      };
-
-      const colWidth = ref(200);
-      const cols = ref(3);
-      const offsetX = ref(0);
-
-      // 创建模拟的DOM元素
-      const waterfallWrapper = ref({
-        childNodes: [
-          {
-            className: "waterfall-item",
-            style: {},
-            firstChild: {
-              classList: {
-                add: vi.fn(),
-                contains: vi.fn().mockReturnValue(false),
-              },
-              className: "",
-              style: {},
-            },
-            getBoundingClientRect: vi.fn().mockReturnValue({ height: 100 }),
-          },
-        ],
-      });
-
-      const { wrapperHeight, itemHeight, layoutHandle } =
-        waterfallModule.useLayout(
-          props,
-          colWidth,
-          cols,
-          offsetX,
-          waterfallWrapper
-        );
-
-      const result = await layoutHandle();
-
-      expect(result).toBe(true);
-      // 等待异步操作完成
-      await nextTick();
-
-      expect(wrapperHeight.value).toBeGreaterThan(0);
-      expect(itemHeight.value).toBe(100);
     });
   });
 

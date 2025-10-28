@@ -28,6 +28,11 @@
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment"
   },
-  "include": ["**/*.ts", "src/**/*.vue", "src/typings/**/*.d.ts"],
+  "include": [
+    "**/*.ts",
+    "src/**/*.vue",
+    "src/typings/**/*.d.ts",
+    ".storybook/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist", "**/*.js"]
 }
