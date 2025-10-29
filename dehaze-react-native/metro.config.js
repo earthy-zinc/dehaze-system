@@ -1,4 +1,7 @@
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+const {
+  withStorybook,
+} = require('@storybook/react-native/metro/withStorybook');
 const path = require('path');
 
 /**
@@ -25,4 +28,16 @@ const config = {
   watchFolders: [path.resolve(__dirname, 'src')],
 };
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+const finalConfig = mergeConfig(getDefaultConfig(__dirname), config);
+
+module.exports = withStorybook(finalConfig, {
+  // When false, removes Storybook from bundle (useful for production)
+  enabled: process.env.STORYBOOK_ENABLED === 'true',
+  // Path to your storybook config (default: './.rnstorybook')
+  configPath: path.resolve(__dirname, '.rnstorybook'),
+  // Optional websockets configuration for syncing between devices
+  // websockets: {
+  //   port: 7007,
+  //   host: 'localhost',
+  // },
+});
