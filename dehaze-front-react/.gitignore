@@ -32,3 +32,5 @@ package-lock.json
 pnpm-lock.yaml
 stats.html
 src/assets/clean/*
+*storybook.log
+storybook-static

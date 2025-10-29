@@ -22,6 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["**/*.ts", "src", "mock"],
+  "include": ["**/*.ts", "src", "mock", ".storybook/**/*.ts"],
   "exclude": ["node_modules", "dist", "**/*.js", "eslint.config.js"]
 }

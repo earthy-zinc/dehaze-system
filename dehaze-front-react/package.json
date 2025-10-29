@@ -12,10 +12,10 @@
     "build": "tsc && vite build",
     "build:electron:win": "electron-vite build && electron-builder build --win --x64",
     "build:electron:linux": "electron-vite build && electron-builder build --linux --x64",
-    "test": "pnpm test:unit && pnpm test:e2e",
-    "test:unit": "vitest run --open=false",
-    "test:unit:ui": "vitest watch --coverage --ui",
-    "test:coverage": "vitest run --open=false --coverage",
+    "test:unit": "vitest run --open=false --project unit",
+    "test:unit:ui": "vitest watch --coverage --ui --project unit",
+    "test:coverage": "vitest run --open=false --coverage --project unit",
+    "test:storybook": "vitest run --project storybook",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "lint": "pnpm lint:eslint && pnpm lint:stylelint && pnpm lint:prettier",
@@ -25,7 +25,9 @@
     "lint:lint-staged": "lint-staged",
     "preview": "vite preview",
     "prepare": "husky",
-    "commit": "git-cz"
+    "commit": "git-cz",
+    "storybook": "storybook dev -p 3020 --host 0.0.0.0 --no-open",
+    "build-storybook": "storybook build"
   },
   "config": {
     "commitizen": {
@@ -89,10 +91,15 @@
     "redux-thunk": "^3.1.0"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "4.1.2",
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.37.0",
     "@playwright/test": "^1.56.1",
+    "@storybook/addon-a11y": "10.0.0",
+    "@storybook/addon-docs": "10.0.0",
+    "@storybook/addon-vitest": "10.0.0",
+    "@storybook/react-vite": "10.0.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/lodash": "^4.17.20",
@@ -103,6 +110,7 @@
     "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.46.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/browser-playwright": "4.0.3",
     "@vitest/coverage-v8": "^4.0.2",
     "@vitest/ui": "^4.0.2",
     "commitizen": "^4.3.1",
@@ -118,15 +126,20 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.0",
     "eslint-plugin-react-refresh": "^0.4.23",
+    "eslint-plugin-storybook": "10.0.0",
     "globals": "^16.4.0",
     "husky": "^9.1.7",
     "jsdom": "^27.0.1",
     "lint-staged": "^16.2.4",
+    "msw": "^2.11.6",
+    "msw-storybook-addon": "^2.0.6",
+    "playwright": "^1.56.1",
     "postcss": "^8.5.6",
     "postcss-html": "^1.8.0",
     "postcss-scss": "^4.0.9",
     "prettier": "^3.6.2",
     "sass": "^1.93.2",
+    "storybook": "10.0.0",
     "stylelint": "^16.25.0",
     "stylelint-config-recess-order": "^7.3.0",
     "stylelint-config-recommended-scss": "^16.0.2",
@@ -145,5 +158,10 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "mock"
+    ]
   }
 }

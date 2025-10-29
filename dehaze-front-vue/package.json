@@ -27,7 +27,7 @@
     "lint:stylelint": "stylelint  \"**/*.{css,scss,vue}\" --fix",
     "lint:lint-staged": "lint-staged",
     "commit": "git-cz",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 3021 --host 0.0.0.0 --no-open",
     "build-storybook": "storybook build"
   },
   "config": {
