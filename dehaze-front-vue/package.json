@@ -111,7 +111,6 @@
     "@playwright/test": "^1.56.1",
     "@storybook/addon-a11y": "10.0.0",
     "@storybook/addon-docs": "10.0.0",
-    "@storybook/addon-onboarding": "10.0.0",
     "@storybook/addon-vitest": "10.0.0",
     "@storybook/vue3-vite": "10.0.0",
     "@types/color": "^4.2.0",
@@ -147,6 +146,8 @@
     "jsdom": "^27.0.1",
     "lint-staged": "^16.2.4",
     "markdown-to-jsx": "^8.0.0",
+    "msw": "^2.11.6",
+    "msw-storybook-addon": "^2.0.6",
     "playwright": "^1.56.1",
     "postcss": "^8.5.6",
     "postcss-html": "^1.8.0",
@@ -181,5 +182,10 @@
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "mock"
+    ]
   }
 }
