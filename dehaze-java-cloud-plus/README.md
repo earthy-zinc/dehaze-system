@@ -1,23 +1,5 @@
 # 图像去雾系统（微服务增强版）
 
-<p align="center">
-  <img src="https://foruda.gitee.com/images/1679673780944866919/d908a86f_1766278.png" alt="项目Logo" width="200">
-</p>
-
-<p align="center">
-  <a href="https://gitee.com/earthy-zinc/dehaze-java-cloud-plus">
-    <img alt="License" src="https://img.shields.io/github/license/earthy-zinc/dehaze-java-cloud-plus">
-  </a>
-  <a href="https://gitee.com/earthy-zinc/dehaze-java-cloud-plus/stargazers">
-    <img alt="Stars" src="https://img.shields.io/github/stars/earthy-zinc/dehaze-java-cloud-plus">
-  </a>
-  <a href="https://gitee.com/earthy-zinc/dehaze-java-cloud-plus/network">
-    <img alt="Forks" src="https://img.shields.io/github/forks/earthy-zinc/dehaze-java-cloud-plus">
-  </a>
-</p>
-
----
-
 ## 📋 项目简介
 
 图像去雾系统（微服务增强版）是基于 Spring Cloud
@@ -35,42 +17,121 @@
 
 ## 💻 技术架构
 
-### 整体架构图
+### 微服务整体架构图
 
 ```mermaid
 graph TB
-    subgraph 客户端层
-        A1[Web前端-Vue] 
-        A2[Web前端-React]
-        A3[移动端-Android/RN]
-        A4[桌面端-Electron]
-    end
-    
+    A[客户端<br/>Web/APP<br/>小程序/桌面端]
+
     subgraph 网关层
-        B[API网关/Nginx]
+        B1[API网关<br/>Spring Cloud Gateway]
+        B2[灰度发布网关<br/>自定义灰度策略]
+    end
+
+    subgraph 微服务注册与配置中心
+        C1[Nacos<br/>注册中心]
+        C2[Nacos<br/>配置中心]
+    end
+
+    D[业务服务集群<br/>12个核心业务模块]
+
+    subgraph 基础支撑服务
+        E[数据存储层<br/>MySQL/Redis<br/>MinIO/Elasticsearch]
+        F[分布式支持组件<br/>Seata/Sentinel<br/>XXL-JOB/RocketMQ]
+        G[监控运维<br/>Prometheus/Grafana<br/>SkyWalking/ELK]
+    end
+
+    A -->|HTTP/REST| B1 & B2
+    B1 & B2 --> D
+    
+    C1 --- D
+    C2 --- D
+    
+    D --> E
+    D --> F
+    D --> G
+```
+
+### 监控运维详细架构图
+
+```mermaid
+graph TB
+    subgraph 监控运维
+        G1[Prometheus<br/>指标收集]
+        G2[Grafana<br/>数据可视化]
+        G3[SkyWalking<br/>链路追踪]
+        G4[ELK<br/>日志分析]
     end
     
-    subgraph 业务服务层
-        C1[Java后端<br/>Spring Boot 3]
-        C2[Go后端<br/>Gin Framework]
+    G1 ~~~ G2
+    G2 ~~~ G3
+    G3 ~~~ G4
+```
+
+### 分布式支持组件详细架构图
+
+```mermaid
+graph TB
+    subgraph 分布式支持组件
+        F1[Seata<br/>分布式事务]
+        F2[Sentinel<br/>熔断限流]
+        F3[XXL-JOB<br/>任务调度]
+        F4[RocketMQ<br/>消息队列]
     end
     
-    subgraph 算法服务层
-        D[Python算法服务<br/>PyTorch + Flask]
-    end
-    
+    F1 ~~~ F2
+    F2 ~~~ F3
+    F3 ~~~ F4
+```
+
+### 数据存储层详细架构图
+
+```mermaid
+graph TB
     subgraph 数据存储层
         E1[(MySQL<br/>主数据库)]
-        E2[(MongoDB<br/>非结构化数据)]
-        E3[(Redis<br/>缓存/分布式锁)]
-        E4[MinIO/OSS<br/>对象存储]
+        E2[(Redis<br/>缓存/分布式锁)]
+        E3[MinIO<br/>对象存储]
+        E4[(Elasticsearch<br/>搜索引擎)]
     end
     
-    A1 & A2 & A3 & A4 -->|HTTP/REST| B
-    B --> C1 & C2
-    C1 & C2 --> D
-    C1 & C2 --> E1 & E2 & E3 & E4
-    D --> E4
+    E1 ~~~ E2
+    E2 ~~~ E3
+    E3 ~~~ E4
+```
+
+### 业务服务详细架构图
+
+```mermaid
+graph TB
+    subgraph 核心业务服务
+        direction TB
+        
+        D1[系统管理服务<br/>pei-module-system]
+        D2[基础设施服务<br/>pei-module-infra]
+        D3[会员中心服务<br/>pei-module-member]
+        D4[AI大模型服务<br/>pei-module-ai]
+        D5[工作流程服务<br/>pei-module-bpm]
+        D6[支付服务<br/>pei-module-pay]
+        D7[报表服务<br/>pei-module-report]
+        D8[商城服务<br/>pei-module-mall]
+        D9[ERP服务<br/>pei-module-erp]
+        D10[CRM服务<br/>pei-module-crm]
+        D11[微信公众号<br/>pei-module-mp]
+        D12[物联网服务<br/>pei-module-iot]
+        
+        D1 ~~~ D4
+        D4 ~~~ D7
+        D7 ~~~ D10
+        D2 ~~~ D5
+        D5 ~~~ D8
+        D8 ~~~ D11
+        D3 ~~~ D6
+        D6 ~~~ D9
+        D9 ~~~ D12
+    end
+
+    class D1,D2,D3,D4,D5,D6,D7,D8,D9,D10,D11,D12 service;
 ```
 
 ### 技术栈详解
@@ -100,7 +161,7 @@ graph TB
 
 ## 🏗️ 项目结构
 
-```bash
+```
 dehaze-java-cloud-plus/
 ├── pei-dependencies/          # Maven依赖版本管理
 ├── pei-framework/             # Java框架拓展

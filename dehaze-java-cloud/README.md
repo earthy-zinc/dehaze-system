@@ -211,3 +211,81 @@
 - Sentinel控制台: [http://localhost:8718](http://localhost:8718)
 - Seata控制台: [http://localhost:7091](http://localhost:7091)
 - Minio控制台: [http://localhost:9001](http://localhost:9001)
+
+## 系统架构图
+
+```mermaid
+graph TB
+    A[客户端/前端] --> B[API网关 Gateway]
+    
+    subgraph 微服务注册与配置中心
+        direction TB
+        C[Nacos注册中心]
+        D[Nacos配置中心]
+    end
+    
+    E[业务服务集群<br/>6个核心业务模块]
+    
+    subgraph 基础支撑服务
+        direction TB
+        F[数据存储层<br/>MySQL/Redis<br/>MinIO/Elasticsearch]
+        G[分布式支持组件<br/>Seata/Sentinel<br/>SnailJob]
+        H[消息中间件<br/>Kafka/RabbitMQ<br/>RocketMQ]
+    end
+    
+    C --- E
+    D --- E
+    
+    B --> E
+    
+    E --> F
+    E --> G
+    E --> H
+    
+    class E service
+    
+```
+
+### 数据存储层详细架构图
+
+```mermaid
+graph TB
+    subgraph 数据存储层
+        direction TB
+        K[(MySQL<br/>数据库)]
+        L[(Redis<br/>缓存)]
+        M[(MinIO<br/>文件存储)]
+        N[(Elasticsearch<br/>搜索引擎)]
+    end
+```
+
+### 分布式支持组件详细架构图
+
+```mermaid
+graph TB
+    subgraph 分布式支持组件
+        direction TB
+        P[Seata<br/>分布式事务]
+        Q[Sentinel<br/>限流熔断]
+        R[SnailJob<br/>任务调度]
+    end
+```
+
+### 核心业务服务详细架构图
+
+```mermaid
+graph TB
+    subgraph 核心业务服务
+        direction TB
+        E[认证授权服务<br/>Auth]
+        F[系统管理服务<br/>System]
+        G[资源管理服务<br/>Resource]
+        H[工作流服务<br/>Workflow]
+        I[代码生成服务<br/>Gen]
+        J[任务调度服务<br/>Job]
+    end
+    
+    E ~~~ F
+    H ~~~ I
+    G ~~~ J
+```
