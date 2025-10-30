@@ -10,6 +10,8 @@ libraryID: 1
 itemKey: 94RE97HW
 
 ---
+
 # SwinIR：
 
-Comment: Sota results on classical/lightweight/real-world image SR, image denoising and JPEG compression artifact reduction. Code: https\://github.com/JingyunLiang/SwinIR
+Comment: Sota results on classical/lightweight/real-world image SR, image denoising and JPEG compression artifact
+reduction. Code: https\://github.com/JingyunLiang/SwinIR

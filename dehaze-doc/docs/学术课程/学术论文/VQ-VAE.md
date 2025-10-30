@@ -10,6 +10,7 @@ libraryID: 1
 itemKey: 37WDAMBD
 
 ---
+
 # VQ-VAE
 
 ## 介绍
@@ -18,7 +19,8 @@ itemKey: 37WDAMBD
 
 ## 离散的中间变量
 
-作者在模型中定义了一个潜在的嵌入空间![\<img alt="" data-attachment-key="CBFMGC8U" width="179" height="77" src="attachments/CBFMGC8U.png" ztype="zimage">](attachments/CBFMGC8U.png)k为离散变量的数量，比如说K种分类方式。D为每个离散变量的维度数。
+作者在模型中定义了一个潜在的嵌入空间![\<img alt="" data-attachment-key="CBFMGC8U" width="179" height="77" src="attachments/CBFMGC8U.png" ztype="zimage">](attachments/CBFMGC8U.png)
+k为离散变量的数量，比如说K种分类方式。D为每个离散变量的维度数。
 
 因此总共由K个离散变量![\<img alt="" data-attachment-key="S365C7VC" width="412" height="47" src="attachments/S365C7VC.png" ztype="zimage">](attachments/S365C7VC.png)
 
@@ -50,6 +52,7 @@ itemKey: 37WDAMBD
 
 第一项重构损失，完整的表示为
 
-![\<img alt="" data-attachment-key="PKMKXTRA" width="599" height="107" src="attachments/PKMKXTRA.png" ztype="zimage">](attachments/PKMKXTRA.png)由于![]()这一段看不懂的原因，作者将损失简化为
+![\<img alt="" data-attachment-key="PKMKXTRA" width="599" height="107" src="attachments/PKMKXTRA.png" ztype="zimage">](attachments/PKMKXTRA.png)
+由于![]()这一段看不懂的原因，作者将损失简化为
 
 ![\<img alt="" data-attachment-key="974FBWTH" width="590" height="73" src="attachments/974FBWTH.png" ztype="zimage">](attachments/974FBWTH.png)

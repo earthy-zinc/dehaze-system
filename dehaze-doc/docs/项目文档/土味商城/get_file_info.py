@@ -1,9 +1,9 @@
 import os
-import re
+from datetime import datetime
+
 import pymysql
 import tqdm
 from git import Repo
-from datetime import datetime
 
 conn = pymysql.connect(host='192.168.31.2', user='root', password='142536aA', db='blog')
 cursor = conn.cursor()
@@ -63,7 +63,6 @@ def get_article_info_v2(root_path: str, exclude_dirs: list):
     ]
 
     for file_path, folder_name, file_name_without_ext in articles:
-
         file_content = read_file_content(file_path)
         create_time = get_commit_time(['--all', '--reverse', '--format=%ai', '--', file_path])
         last_modified_time = get_commit_time(['--all', '--format=%ai', '--', file_path])
@@ -105,9 +104,9 @@ def execute_artile_category_sql(result_dirs: list):
         if cursor.fetchone()[0] == 0:
             # 如果不存在，则插入新记录
             insert_sql = """
-            INSERT INTO `t_category` (id, category_name, create_time) 
-            VALUES (%s, %s, %s)
-            """
+                         INSERT INTO `t_category` (id, category_name, create_time)
+                         VALUES (%s, %s, %s) \
+                         """
             values = (idx + 1, category, datetime.now().strftime('%Y-%m-%d %H:%M:%S'),)
             print(cursor.mogrify(insert_sql, values))
             cursor.execute(insert_sql, values)
@@ -119,17 +118,13 @@ def execute_artile_category_sql(result_dirs: list):
 
 
 def execute_article_sql(article_info: list):
-    insert_sql = """INSERT INTO `t_article` (
-        user_id, category_id, article_cover, 
-        article_title, article_content, 
-        create_time, update_time
-    )
-    VALUES (
-        %s, %s, %s,
-        %s, %s, 
-        %s, %s
-    )
-    """
+    insert_sql = """INSERT INTO `t_article` (user_id, category_id, article_cover,
+                                             article_title, article_content,
+                                             create_time, update_time)
+                    VALUES (%s, %s, %s,
+                            %s, %s,
+                            %s, %s) \
+                 """
     for article in article_info:
         category_id = get_category_id(article['category_name'])
         values = (article['user_id'], category_id, article['article_cover'],
@@ -143,19 +138,15 @@ def execute_article_sql(article_info: list):
 
 
 def execute_article_sql_one(article: dict):
-    insert_sql = """INSERT INTO `t_article` (
-        user_id, category_id, article_cover, 
-        article_title, article_content, 
-        create_time, update_time
-    )
-    VALUES (
-        %s, %s, %s,
-        %s, %s, 
-        %s, %s
-    )
-    ON DUPLICATE KEY UPDATE 
-        update_time = IF(update_time < VALUES(update_time), VALUES(update_time), update_time);
-    """
+    insert_sql = """INSERT INTO `t_article` (user_id, category_id, article_cover,
+                                             article_title, article_content,
+                                             create_time, update_time)
+                    VALUES (%s, %s, %s,
+                            %s, %s,
+                            %s, %s)
+                    ON DUPLICATE KEY UPDATE update_time = IF(update_time < VALUES(update_time), VALUES(update_time),
+                                                             update_time); \
+                 """
     category_id = get_category_id(article['category_name'])
     values = (article['user_id'], category_id, article['article_cover'],
               article['article_title'], article['article_content'],
@@ -196,6 +187,7 @@ def update_tag():
             continue
     # 提交事务
     conn.commit()
+
 
 if __name__ == '__main__':
     docs_path = '/mnt/e/ProgramProject/reading-note/docs/'

@@ -76,7 +76,8 @@ npm help <command>  #查看某条命令的详细帮助
 
 ### package.json
 
-我们可以把自己写的JS文件做成一个软件包供别人使用，那么 package.json 就是用来识别不同的软件包的一个文件，package.json 位于模块的目录下，也会出现在使用node.js的项目的目录下，用于定义包的属性。常用的属性说明：
+我们可以把自己写的JS文件做成一个软件包供别人使用，那么 package.json 就是用来识别不同的软件包的一个文件，package.json
+位于模块的目录下，也会出现在使用node.js的项目的目录下，用于定义包的属性。常用的属性说明：
 
 - name - 包名
 - version - 包的版本号
@@ -95,7 +96,8 @@ npm help <command>  #查看某条命令的详细帮助
 
 package-lock.json这个文件用来描述每个依赖的软件包的确切版本，以便最终生成的软件可以被完全的复制，而不受依赖的其他软件包版本更新造成的兼容性问题。
 
-因此我们无需将我们项目所依赖的软件包提交到git上，如果我们运行了npm install初始化项目命令，那么npm会读取package.json和package-lock.json，安装项目依赖的软件包对应的确切版本。
+因此我们无需将我们项目所依赖的软件包提交到git上，如果我们运行了npm
+install初始化项目命令，那么npm会读取package.json和package-lock.json，安装项目依赖的软件包对应的确切版本。
 
 ### 使用淘宝NPM镜像
 
@@ -106,31 +108,39 @@ cnpm install <moduleName> # 使用淘宝镜像安装模块
 
 ### Registry
 
-registry意为登记处、注册处，npm为了方便管理，使用登记处（**registry**）来统一管理各方发布的软件包，一般通过名称和版本号来识别不同的软件包，默认情况下我们可以通过npm公共登记处（ **npm public registry** ）上传分享自己的软件包和下载别人的软件包供自己使用，服务器网址在 https://registry.npmjs.org 。我们也可以配置自己的远程库服务器来统一管理软件包。淘宝npm镜像就是一个npm public registry。我们可以通过修改npm的配置来更改软件包从哪个远程库总下载。
+registry意为登记处、注册处，npm为了方便管理，使用登记处（**registry**）来统一管理各方发布的软件包，一般通过名称和版本号来识别不同的软件包，默认情况下我们可以通过npm公共登记处（
+**npm public registry** ）上传分享自己的软件包和下载别人的软件包供自己使用，服务器网址在 https://registry.npmjs.org
+。我们也可以配置自己的远程库服务器来统一管理软件包。淘宝npm镜像就是一个npm public registry。我们可以通过修改npm的配置来更改软件包从哪个远程库总下载。
 
 ### Scope
 
 #### 作用域介绍
 
-每个软件包都有名称，有些软件包有它自己的作用域（scope）。作用域通常在软件包名称的前面以@符号为开头，并以 / 符号结束。如 `@scope/packagename`。作用域是分组相关的软件包的一种方式。每一个用户或者公司都有他们自己的软件包作用域，只有他们自己能在作用域内添加软件包。目前npm服务器中存在有作用域的软件包，也存在没有作用域的软件包。这两种类型的软件包可以相互依赖。
+每个软件包都有名称，有些软件包有它自己的作用域（scope）。作用域通常在软件包名称的前面以@符号为开头，并以 / 符号结束。如
+`@scope/packagename`
+。作用域是分组相关的软件包的一种方式。每一个用户或者公司都有他们自己的软件包作用域，只有他们自己能在作用域内添加软件包。目前npm服务器中存在有作用域的软件包，也存在没有作用域的软件包。这两种类型的软件包可以相互依赖。
 
 #### 下载作用域内的软件包
 
-有作用域的软件包在node_modules中是放在以它的作用域为名称的文件夹里面放着的，如一个作用域名为scope的名为package的软件包在项目中的位置是 ./node_modules/@scope/package。我们可以通过文件夹名称首部的@符号来判断一个软件包在哪个作用域里面，因此如果我们想要下载在某个作用域中的软件包，我们需要以`npm install @scope/package`的形式下载。在package.json文件中，对某个软件包的依赖会以 @scope/package 这种名称的形式存在。
+有作用域的软件包在node_modules中是放在以它的作用域为名称的文件夹里面放着的，如一个作用域名为scope的名为package的软件包在项目中的位置是
+./node_modules/@scope/package。我们可以通过文件夹名称首部的@符号来判断一个软件包在哪个作用域里面，因此如果我们想要下载在某个作用域中的软件包，我们需要以
+`npm install @scope/package`的形式下载。在package.json文件中，对某个软件包的依赖会以 @scope/package 这种名称的形式存在。
 
 #### 项目文件中引入作用域内的软件包
 
-作用域内的软件包实际上是在放在子文件夹中的，npm默认会引入node_modules文件夹下的软件包，语法是`require('package')`，我们要引入作用域内的软件包的话就需要在包名前面说明它的父文件夹名称，如`require('@scope/package')`。
+作用域内的软件包实际上是在放在子文件夹中的，npm默认会引入node_modules文件夹下的软件包，语法是`require('package')`
+，我们要引入作用域内的软件包的话就需要在包名前面说明它的父文件夹名称，如`require('@scope/package')`。
 
 ### Config
 
 npm的配置信息是自定义npm运行方式的办法，我们可以通过配置registry来改变npm从哪个远程库中下载软件包等等。
 
-获取配置信息的优先级是以 命令行标志>环境变量>npmrc文件>默认配置 
+获取配置信息的优先级是以 命令行标志>环境变量>npmrc文件>默认配置
 
 #### 命令行标志
 
-在命令行中输入`--config description`意思是将名为 config 的变量的值改为description。两道横线`--`告诉命令行解析器停止阅读命令行标志，只输入`--config`而不输入任何值意思是设置值为true。
+在命令行中输入`--config description`意思是将名为 config 的变量的值改为description。两道横线`--`告诉命令行解析器停止阅读命令行标志，只输入
+`--config`而不输入任何值意思是设置值为true。
 
 #### 环境变量
 
@@ -142,7 +152,8 @@ npm的配置信息是自定义npm运行方式的办法，我们可以通过配�
 
 ## 交互式解析器
 
-node.js 交互式解析器 real evaluation print loop(REPL) 是一个类似windows控制台的一个界面，在该界面下输入命令，可以实时的获得响应。适合验证Node.js和JavaScript的相关API。
+node.js 交互式解析器 real evaluation print loop(REPL)
+是一个类似windows控制台的一个界面，在该界面下输入命令，可以实时的获得响应。适合验证Node.js和JavaScript的相关API。
 
 ### REPL命令
 
@@ -231,7 +242,8 @@ EventEmitter对象提供了多个属性方法，介绍如下：
 
 ### Buffer
 
-在处理TCP或者文件流的时候，必须要使用到二进制数据，这就需要一个缓冲区，来暂时存放二进制数据流，因此node.js定义了一个buffer类，可以创建一个专门存放二进制数据的缓冲区对象。创建buffer对象建议使用`Buffer.from()`接口。
+在处理TCP或者文件流的时候，必须要使用到二进制数据，这就需要一个缓冲区，来暂时存放二进制数据流，因此node.js定义了一个buffer类，可以创建一个专门存放二进制数据的缓冲区对象。创建buffer对象建议使用
+`Buffer.from()`接口。
 
 创建及使用Buffer类对象的方法如下：
 
@@ -262,7 +274,7 @@ EventEmitter对象提供了多个属性方法，介绍如下：
 
 数据在最底层一般是以比特为基本单位的，中层是以字节为基本单位，而在高层是以字符为基本单位的。
 
->  一字节等于八比特，一个比特就是计算机中的一个信号量。而一个字符根据编码方式的不同，可能占据一个字节或两个字节。比如说汉字占用两个字节/四个字节的大小，阿拉伯数字、英文字母占用一个字节的大小。
+> 一字节等于八比特，一个比特就是计算机中的一个信号量。而一个字符根据编码方式的不同，可能占据一个字节或两个字节。比如说汉字占用两个字节/四个字节的大小，阿拉伯数字、英文字母占用一个字节的大小。
 
 在输入输出流中，我们并不是以最底层的比特为基本单位，因为一字节等于八比特已经规定好了，不需要在进行复杂的转换，直接按照预订的逻辑进行操作。输入输出流需要处理的字节和字符之间的转换。输入输出流传递数据的过程，主要分为4个步骤：格式化和解析、缓冲、编码转换、传递
 
@@ -291,25 +303,25 @@ JavaScript中有一个特殊对象，叫做全局对象，它的所有属性都�
 
 下面说明一下常用的全局变量：
 
-| 全局变量                                 | 类型     | 说明                                                         |
-| ---------------------------------------- | -------- | ------------------------------------------------------------ |
-| __filename                               | string   | 当前正在执行的脚本代码的文件名，输出文件文件的绝对路径       |
-| __dirname                                | string   | 当前执行脚本代码文件所在的目录                               |
+| 全局变量                                     | 类型       | 说明                              |
+|------------------------------------------|----------|---------------------------------|
+| __filename                               | string   | 当前正在执行的脚本代码的文件名，输出文件文件的绝对路径     |
+| __dirname                                | string   | 当前执行脚本代码文件所在的目录                 |
 | setTimeout(callbackFunction,millisecond) | function | 在指定的毫秒后执行回调函数，只执行一次，返回该定时器的标识符。 |
-| clearTimeout(timer)                      | function | 需要传入一个定时器标识符，停止这个定时器                     |
+| clearTimeout(timer)                      | function | 需要传入一个定时器标识符，停止这个定时器            |
 | setInterval(callback, millisecond)       | function | 以指定的毫秒为间隔循环的执行回调函数，返回该定时器的标识符   |
-| clearInterval(timer)                     | function | 需要传入一个定时器标识符，停止这个定时器                     |
-| console                                  | object   | 用于提供控制台的标准输出                                     |
-| process                                  | object   | 用于描述当前进程状态，提供了与操作系统相关的属性和方法       |
+| clearInterval(timer)                     | function | 需要传入一个定时器标识符，停止这个定时器            |
+| console                                  | object   | 用于提供控制台的标准输出                    |
+| process                                  | object   | 用于描述当前进程状态，提供了与操作系统相关的属性和方法     |
 
 process对象的属性：
 
-| 属性              | 类型 | 说明 |
-| ----------------- | ---- | ---- |
-| exit([code])      |      |      |
-| beforeExit        |      |      |
-| uncaughtException |      |      |
-| Signal            |      |      |
+| 属性                | 类型 | 说明 |
+|-------------------|----|----|
+| exit([code])      |    |    |
+| beforeExit        |    |    |
+| uncaughtException |    |    |
+| Signal            |    |    |
 
 ## 常用工具模块
 
@@ -317,164 +329,158 @@ process对象的属性：
 
 util (utilitation) 是node.js的一个常用工具模块，我们在使用他之前需要先引入它，通过`const util = requrie('util')`引入
 
-| 方法                                                         | 说明                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| callbackify(original_function)                               | 将ES6中用async修饰的函数（或者是返回Promise的函数）转换为遵循异常优先的回调风格函数。 |
-| inherits(constructor, superConstructor)                      | 实现对象间原型继承的函数                                     |
+| 方法                                                              | 说明                                                                                                                            |
+|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|
+| callbackify(original_function)                                  | 将ES6中用async修饰的函数（或者是返回Promise的函数）转换为遵循异常优先的回调风格函数。                                                                            |
+| inherits(constructor, superConstructor)                         | 实现对象间原型继承的函数                                                                                                                  |
 | inspect(object, [bool showHidden],[number depth],[bool colors]) | 将一个任意对象转换为字符串的方法，用于调试和错误输出，接收一个要转换的对象object，showHidden能够输出更多隐藏信息，depth表示对象最大递归的层数，默认为两层，如果对象本身嵌套对象层数超过两层则不显示，Color用于更漂亮的输出效果。 |
-| isArray(Object)                                              | 判断对象是否是数组                                           |
-| isRegExp(object)                                             | 判断对象是否是正则表达式                                     |
-| isDate(object)                                               | 判断对象是否是日期                                           |
+| isArray(Object)                                                 | 判断对象是否是数组                                                                                                                     |
+| isRegExp(object)                                                | 判断对象是否是正则表达式                                                                                                                  |
+| isDate(object)                                                  | 判断对象是否是日期                                                                                                                     |
 
 ### FS
 
 fs 是node.js中的文件系统模块。提供了用于文件操作的相关方法，这些方法有异步和同步的版本。异步方法在IO操作的时候不会阻塞程序的运行。
 
-| 方法                                                | 参数                                                         | 返回值                                   |
-| --------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------- |
-| open(path, flags[, mode], callback)                 | flags指以何种方式打开文件，mode设置文件权限，回调函数有两个参数，error错误信息和fd文件描述符(file description) | 打开一个文件，但是并不是在此处读取文件。 |
-| stat(path, callback)                                | 回调函数有两个参数，error错误信息和stats是一个对象           | 获取文件信息                             |
-| writeFile(file, data[, options], callback)          | file文件名或者文件描述符，data为要写入的数据，可以是字符串或者缓冲区对象，可选参数option是一个对象，包含encoding mode flag三个属性，回调函数只有错误信息参数 | 将数据写入文件                           |
-| read(fd, buffer, offset, lenth, position, callback) | 与open方法配合使用，fd为文件描述符，buffer缓冲区对象，offset缓冲区写入数据的偏移量，length要从文件中读取的字节数，length文件读取的起始位置，回调函数有三个参数，err，bytesRead读取的字节数，buffer缓冲区对象。 | 读取文件信息到buffer中                   |
-| close(fd, callback)                                 | 与open方法配合使用                                           | 关闭文件                                 |
-| ftruncate(fd, len, callback)                        | len文件内容的截取长度，超过的部分会被逻辑上删除              | 截取文件                                 |
-| unlink(path, callback)                              |                                                              | 删除文件                                 |
-| mkdir(path[, option], callback)                     | option参数recursive递归的创建目录，mode设置目录权限          | 创建目录                                 |
-| readdir(path, callback)                             |                                                              | 读取目录信息                             |
-| rmdir(path, callback)                               | 回调函数中没有参数                                           | 删除目录                                 |
+| 方法                                                  | 参数                                                                                                                              | 返回值                  |
+|-----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------|----------------------|
+| open(path, flags[, mode], callback)                 | flags指以何种方式打开文件，mode设置文件权限，回调函数有两个参数，error错误信息和fd文件描述符(file description)                                                        | 打开一个文件，但是并不是在此处读取文件。 |
+| stat(path, callback)                                | 回调函数有两个参数，error错误信息和stats是一个对象                                                                                                  | 获取文件信息               |
+| writeFile(file, data[, options], callback)          | file文件名或者文件描述符，data为要写入的数据，可以是字符串或者缓冲区对象，可选参数option是一个对象，包含encoding mode flag三个属性，回调函数只有错误信息参数                                  | 将数据写入文件              |
+| read(fd, buffer, offset, lenth, position, callback) | 与open方法配合使用，fd为文件描述符，buffer缓冲区对象，offset缓冲区写入数据的偏移量，length要从文件中读取的字节数，length文件读取的起始位置，回调函数有三个参数，err，bytesRead读取的字节数，buffer缓冲区对象。 | 读取文件信息到buffer中       |
+| close(fd, callback)                                 | 与open方法配合使用                                                                                                                     | 关闭文件                 |
+| ftruncate(fd, len, callback)                        | len文件内容的截取长度，超过的部分会被逻辑上删除                                                                                                       | 截取文件                 |
+| unlink(path, callback)                              |                                                                                                                                 | 删除文件                 |
+| mkdir(path[, option], callback)                     | option参数recursive递归的创建目录，mode设置目录权限                                                                                             | 创建目录                 |
+| readdir(path, callback)                             |                                                                                                                                 | 读取目录信息               |
+| rmdir(path, callback)                               | 回调函数中没有参数                                                                                                                       | 删除目录                 |
 
 stats对象方法，通过获取文件信息回调中的stats获取stats对象：
 
-| 方法             | 说明 |
-| ---------------- | ---- |
-| isFile()         |      |
-| isDirectory      |      |
-| isBlockDevice()  |      |
-| isSymbolicLink() |      |
-| isFIFO           |      |
-| isSocket()       |      |
+| 方法               | 说明 |
+|------------------|----|
+| isFile()         |    |
+| isDirectory      |    |
+| isBlockDevice()  |    |
+| isSymbolicLink() |    |
+| isFIFO           |    |
+| isSocket()       |    |
 
 ### URL
-
-
 
 ### HTTP
 
 http模块是node.js的网络核心模块。
 
-| 属性         | 说明 |
-| ------------ | ---- |
-| METHODS      |      |
-| STATUS_CODES |      |
-| globalAgent  |      |
+| 属性           | 说明 |
+|--------------|----|
+| METHODS      |    |
+| STATUS_CODES |    |
+| globalAgent  |    |
 
-| 方法           | 说明 |
-| -------------- | ---- |
-| createServer() |      |
-| request()      |      |
-| get            |      |
-|                |      |
-|                |      |
-|                |      |
+| 方法             | 说明 |
+|----------------|----|
+| createServer() |    |
+| request()      |    |
+| get            |    |
+|                |    |
+|                |    |
+|                |    |
 
 同时http模块还提供了五个类。下面分别介绍这五个类。他们都是对象，
 
-| 类                   | 说明 |
-| -------------------- | ---- |
-| http.Agent           |      |
-| http.ClientRequest   |      |
-| http.Server          |      |
-| http.ServerResponse  |      |
-| http.IncomingMessage |      |
-
-
+| 类                    | 说明 |
+|----------------------|----|
+| http.Agent           |    |
+| http.ClientRequest   |    |
+| http.Server          |    |
+| http.ServerResponse  |    |
+| http.IncomingMessage |    |
 
 ### OS
 
 提供了操作系统的相关信息。`var os =require('os')`
 
-| 方法                | 描述                     |
-| ------------------- | ------------------------ |
+| 方法                  | 描述           |
+|---------------------|--------------|
 | tmpdir()            | 操作系统默认的临时文件夹 |
-| endianness()        | CPU的字节序              |
-| hostname()          | 主机名                   |
-| type()              | 操作系统名               |
-| platform()          | 编译时操作系统名称       |
-| arch()              | CPU架构                  |
-| release()           | 操作系统发行版本         |
-| uptime()            | 操作系统运行时间         |
-| loadavg()           | 操作系统平均负载         |
-| totalmem()          | 系统内存总量             |
-| freemem()           | 系统空闲可用内存         |
-| cpus()              | 每个CPU的信息            |
-| networkInterfaces() | 网络接口列表             |
+| endianness()        | CPU的字节序      |
+| hostname()          | 主机名          |
+| type()              | 操作系统名        |
+| platform()          | 编译时操作系统名称    |
+| arch()              | CPU架构        |
+| release()           | 操作系统发行版本     |
+| uptime()            | 操作系统运行时间     |
+| loadavg()           | 操作系统平均负载     |
+| totalmem()          | 系统内存总量       |
+| freemem()           | 系统空闲可用内存     |
+| cpus()              | 每个CPU的信息     |
+| networkInterfaces() | 网络接口列表       |
 
 ### Path
 
 可以用于处理文件路径。` var path =require('path')`
 
-| 方法                     | 说明 |
-| ------------------------ | ---- |
-| normalize(path)          |      |
-| join(path1, path2, ...)  |      |
-| resolve([from ... ,] to) |      |
-| isAbsolute(path)         |      |
-| relative(from, to)       |      |
-| dirname(path)            |      |
-| basenaem(p[, extetion])  |      |
-| extname(path)            |      |
-| parse(pathString)        |      |
-| format(pathObject)       |      |
+| 方法                       | 说明 |
+|--------------------------|----|
+| normalize(path)          |    |
+| join(path1, path2, ...)  |    |
+| resolve([from ... ,] to) |    |
+| isAbsolute(path)         |    |
+| relative(from, to)       |    |
+| dirname(path)            |    |
+| basenaem(p[, extetion])  |    |
+| extname(path)            |    |
+| parse(pathString)        |    |
+| format(pathObject)       |    |
 
 ### Net
 
 用于底层的网络通信，包含了创建服务器和客户端的方法。通过`var net = require('net')`引入，偏底层，平常使用http模块创建服务器更方便。
 
-| 方法                                                  | 描述 |
-| ----------------------------------------------------- | ---- |
-| `createServer([options] [, connectionListener])`        |      |
-| `createConnection(options[, connectionListener])`       |      |
-| `createConnection(port[, host] [, connectionListener])` |      |
-| `createConnection(path[, connectionListener])`          |      |
-| `connect(options[, connectionListener]) `               |      |
-| `connect(port[, host] [, connectionListener])`          |      |
-| `connect(path[, connectionListener])`                   |      |
-| `isIP(input) / isIPv4(input) / isIPv6(input)`           |      |
+| 方法                                                      | 描述 |
+|---------------------------------------------------------|----|
+| `createServer([options] [, connectionListener])`        |    |
+| `createConnection(options[, connectionListener])`       |    |
+| `createConnection(port[, host] [, connectionListener])` |    |
+| `createConnection(path[, connectionListener])`          |    |
+| `connect(options[, connectionListener]) `               |    |
+| `connect(port[, host] [, connectionListener])`          |    |
+| `connect(path[, connectionListener])`                   |    |
+| `isIP(input) / isIPv4(input) / isIPv6(input)`           |    |
 
 创建完服务器之后，会生成一个Server对象，有如下几个方法：
 
 | 方法 | 说明 |
-| ---- | ---- |
-|      |      |
+|----|----|
+|    |    |
 
 同时会产生以下事件：
 
 | 事件 | 说明 |
-| ---- | ---- |
-|      |      |
+|----|----|
+|    |    |
 
 创建TCP连接之后，会生成一个socket对象，有如下几个事件：
 
 | 事件 | 说明 |
-| ---- | ---- |
-|      |      |
+|----|----|
+|    |    |
 
 属性和方法：
 
 | 属性或方法 | 说明 |
-| ---------- | ---- |
-|            |      |
+|-------|----|
+|       |    |
 
 ### DNS
 
 DNS用于解析域名，使用`var dns= require('dns')` 引入
 
 | 方法 | 描述 |
-| ---- | ---- |
-|      |      |
+|----|----|
+|    |    |
 
 ### Domain
-
-
 
 ### Express

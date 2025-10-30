@@ -56,7 +56,8 @@
 - [50. new 操作符具体干了什么呢？如何实现？](#50-new-操作符具体干了什么呢如何实现)
 - [51. Javascript 中，有一个函数，执行时对象查找时，永远不会去查找原型，这个函数是？](#51-javascript中有一个函数执行时对象查找时永远不会去查找原型这个函数是)
 - [52. 对于 JSON 的了解？](#52-对于-json-的了解)
-- [53. `[].forEach.call($$("*"),function(a){a.style.outline="1px solid #"+(~~(Math.random()*(1<<24))).toString(16)})` 能解释一下这段代码的意思吗？](#53-foreachcallfunctionaastyleoutline1px-solid-mathrandom124tostring16-能解释一下这段代码的意思吗)
+- [53.
+  `[].forEach.call($$("*"),function(a){a.style.outline="1px solid #"+(~~(Math.random()*(1<<24))).toString(16)})` 能解释一下这段代码的意思吗？](#53-foreachcallfunctionaastyleoutline1px-solid-mathrandom124tostring16-能解释一下这段代码的意思吗)
 - [54. js 延迟加载的方式有哪些？](#54-js-延迟加载的方式有哪些)
 - [55. Ajax 是什么? 如何创建一个 Ajax？](#55-ajax-是什么-如何创建一个ajax)
 - [56. 谈一谈浏览器的缓存机制？](#56-谈一谈浏览器的缓存机制)
@@ -852,7 +853,10 @@ this 是执行上下文中的一个属性，它指向最后一次调用这个方
 
 - 3.第三种是构造器调用模式，如果一个函数用 new 调用时，函数执行前会新创建一个对象，this 指向这个新创建的对象。
 
-- 4.第四种是 apply 、 call 和 bind 调用模式，这三个方法都可以显示的指定调用函数的 this 指向。其中 apply 方法接收两个参数：一个是 this 绑定的对象，一个是参数数组。call 方法接收的参数，第一个是 this 绑定的对象，后面的其余参数是传入函数执行的参数。也就是说，在使用 call() 方法时，传递给函数的参数必须逐个列举出来。bind 方法通过传入一个对象，返回一个 this 绑定了传入对象的新函数。这个函数的 this 指向除了使用 new 时会被改变，其他情况下都不会改变。
+- 4.第四种是 apply 、 call 和 bind 调用模式，这三个方法都可以显示的指定调用函数的 this 指向。其中 apply 方法接收两个参数：一个是
+  this 绑定的对象，一个是参数数组。call 方法接收的参数，第一个是 this 绑定的对象，后面的其余参数是传入函数执行的参数。也就是说，在使用
+  call() 方法时，传递给函数的参数必须逐个列举出来。bind 方法通过传入一个对象，返回一个 this 绑定了传入对象的新函数。这个函数的
+  this 指向除了使用 new 时会被改变，其他情况下都不会改变。
 
 ```
 这四种方式，使用构造器调用模式的优先级最高，然后是 apply 、 call 和 bind 调用模式，然后是方法调用模式，然后
@@ -952,7 +956,8 @@ const EventUtils = {
 
 ### 42. 事件是什么？IE 与火狐的事件机制有什么区别？ 如何阻止冒泡？
 
-- 1.事件是用户操作网页时发生的交互动作，比如 click/move， 事件除了用户触发的动作外，还可以是文档加载，窗口滚动和大小调整。事件被封装成一个 event 对象，包含了该事件发生时的所有相关信息（ event 的属性）以及可以对事件进行的操作（ event 的方法）。
+- 1.事件是用户操作网页时发生的交互动作，比如 click/move， 事件除了用户触发的动作外，还可以是文档加载，窗口滚动和大小调整。事件被封装成一个
+  event 对象，包含了该事件发生时的所有相关信息（ event 的属性）以及可以对事件进行的操作（ event 的方法）。
 
 - 2.事件处理机制：IE 支持事件冒泡、Firefox 同时支持两种事件模型，也就是：事件冒泡和事件捕获。
 
@@ -1179,7 +1184,8 @@ JSON 是一种基于文本的轻量级的数据交换格式。它可以被任何
 详细资料可以参考：
 [《深入了解 JavaScript 中的 JSON 》](https://my.oschina.net/u/3284240/blog/874368)
 
-### 53. `[].forEach.call($$("*"),function(a){a.style.outline="1px solid #"+(~~(Math.random()*(1<<24))).toString(16)})` 能解释一下这段代码的意思吗？
+### 53.
+`[].forEach.call($$("*"),function(a){a.style.outline="1px solid #"+(~~(Math.random()*(1<<24))).toString(16)})` 能解释一下这段代码的意思吗？
 
 ```
 （1）选取页面所有 DOM 元素。在浏览器的控制台中可以使用$$()方法来获取页面中相应的元素，这是现代浏览器提供的一个命令行 API 相当于 document.querySelectorAll 方法。
@@ -1442,15 +1448,24 @@ script 脚本请求都不会有跨域的限制，这是因为这些操作都不�
 
 相关知识点：
 
-- 1. 通过 jsonp 跨域
-- 2. document.domain + iframe 跨域
-- 3. location.hash + iframe
-- 4. window.name + iframe 跨域
-- 5. postMessage 跨域
-- 6. 跨域资源共享（CORS)
-- 7. nginx 代理跨域
-- 8. nodejs 中间件代理跨域
-- 9. WebSocket 协议跨域
+-
+    1. 通过 jsonp 跨域
+-
+    2. document.domain + iframe 跨域
+-
+    3. location.hash + iframe
+-
+    4. window.name + iframe 跨域
+-
+    5. postMessage 跨域
+-
+    6. 跨域资源共享（CORS)
+-
+    7. nginx 代理跨域
+-
+    8. nodejs 中间件代理跨域
+-
+    9. WebSocket 协议跨域
 
 回答：
 
@@ -1584,9 +1599,13 @@ define(["./a", "./b"], function(a, b) {
 
 ### 66. ES6 模块与 CommonJS 模块、AMD、CMD 的差异。
 
-- 1.CommonJS 模块输出的是一个值的拷贝，ES6 模块输出的是值的引用。CommonJS 模块输出的是值的拷贝，也就是说，一旦输出一个值，模块内部的变化就影响不到这个值。ES6 模块的运行机制与 CommonJS 不一样。JS 引擎对脚本静态分析的时候，遇到模块加载命令 import，就会生成一个只读引用。等到脚本真正执行时，再根据这个只读引用，到被加载的那个模块里面去取值。
+- 1.CommonJS 模块输出的是一个值的拷贝，ES6 模块输出的是值的引用。CommonJS 模块输出的是值的拷贝，也就是说，一旦输出一个值，模块内部的变化就影响不到这个值。ES6
+  模块的运行机制与 CommonJS 不一样。JS 引擎对脚本静态分析的时候，遇到模块加载命令
+  import，就会生成一个只读引用。等到脚本真正执行时，再根据这个只读引用，到被加载的那个模块里面去取值。
 
-- 2.CommonJS 模块是运行时加载，ES6 模块是编译时输出接口。CommonJS 模块就是对象，即在输入时是先加载整个模块，生成一个对象，然后再从这个对象上面读取方法，这种加载称为“运行时加载”。而 ES6 模块不是对象，它的对外接口只是一种静态定义，在代码静态解析阶段就会生成。
+- 2.CommonJS 模块是运行时加载，ES6 模块是编译时输出接口。CommonJS
+  模块就是对象，即在输入时是先加载整个模块，生成一个对象，然后再从这个对象上面读取方法，这种加载称为“运行时加载”。而 ES6
+  模块不是对象，它的对外接口只是一种静态定义，在代码静态解析阶段就会生成。
 
 ### 67. requireJS 的核心原理是什么？（如何动态加载的？如何避免多次加载的？如何 缓存的？）
 
@@ -2287,7 +2306,8 @@ bind 函数的实现步骤：
 - 1.判断调用对象是否为函数，即使我们是定义在函数的原型上的，但是可能出现使用 call 等方式调用的情况。
 - 2.保存当前函数的引用，获取其余传入参数值。
 - 3.创建一个函数返回
-- 4.函数内部使用 apply 来绑定函数调用，需要判断函数作为构造函数的情况，这个时候需要传入当前函数的 this 给 apply 调用，其余情况都传入指定的上下文对象。
+- 4.函数内部使用 apply 来绑定函数调用，需要判断函数作为构造函数的情况，这个时候需要传入当前函数的 this 给 apply
+  调用，其余情况都传入指定的上下文对象。
 
 详细资料可以参考：
 [《手写 call、apply 及 bind 函数》](https://juejin.im/book/5bdc715fe51d454e755f75ef/section/5bdd0d8e6fb9a04a044073fe)
@@ -2881,20 +2901,24 @@ rest 参数（形式为...变量名），用于获取函数的多余参数。
 
 - 1.Symbol 函数前不能使用 new 命令，否则会报错。
 - 2.Symbol 函数可以接受一个字符串作为参数，表示对 Symbol 实例的描述，主要是为了在控制台显示，或者转为字符串时，比较容易区分。
-- 3.Symbol 作为属性名，该属性不会出现在 for...in、for...of 循环中，也不会被 Object.keys()、Object.getOwnPropertyNames()、JSON.stringify() 返回。
+- 3.Symbol 作为属性名，该属性不会出现在 for...in、for...of 循环中，也不会被 Object.keys()、Object.getOwnPropertyNames()
+  、JSON.stringify() 返回。
 - 4.Object.getOwnPropertySymbols 方法返回一个数组，成员是当前对象的所有用作属性名的 Symbol 值。
-- 5.Symbol.for 接受一个字符串作为参数，然后搜索有没有以该参数作为名称的 Symbol 值。如果有，就返回这个 Symbol 值，否则就新建并返回一个以该字符串为名称的 Symbol 值。
+- 5.Symbol.for 接受一个字符串作为参数，然后搜索有没有以该参数作为名称的 Symbol 值。如果有，就返回这个 Symbol
+  值，否则就新建并返回一个以该字符串为名称的 Symbol 值。
 - 6.Symbol.keyFor 方法返回一个已登记的 Symbol 类型值的 key。
 
 ### 131. Set 和 WeakSet 结构？
 
 - 1.ES6 提供了新的数据结构 Set。它类似于数组，但是成员的值都是唯一的，没有重复的值。
-- 2.WeakSet 结构与 Set 类似，也是不重复的值的集合。但是 WeakSet 的成员只能是对象，而不能是其他类型的值。WeakSet 中的对象都是弱引用，即垃圾回收机制不考虑 WeakSet 对该对象的引用，
+- 2.WeakSet 结构与 Set 类似，也是不重复的值的集合。但是 WeakSet 的成员只能是对象，而不能是其他类型的值。WeakSet
+  中的对象都是弱引用，即垃圾回收机制不考虑 WeakSet 对该对象的引用，
 
 ### 132. Map 和 WeakMap 结构？
 
 - 1.Map 数据结构。它类似于对象，也是键值对的集合，但是“键”的范围不限于字符串，各种类型的值（包括对象）都可以当作键。
-- 2.WeakMap 结构与 Map 结构类似，也是用于生成键值对的集合。但是 WeakMap 只接受对象作为键名（ null 除外），不接受其他类型的值作为键名。而且 WeakMap 的键名所指向的对象，不计入垃圾回收机制。
+- 2.WeakMap 结构与 Map 结构类似，也是用于生成键值对的集合。但是 WeakMap 只接受对象作为键名（ null 除外），不接受其他类型的值作为键名。而且
+  WeakMap 的键名所指向的对象，不计入垃圾回收机制。
 
 ### 133. 什么是 Proxy ？
 
@@ -2909,7 +2933,9 @@ Proxy 可以理解成，在目标对象之前架设一层“拦截”，外界�
 - 1.将 Object 对象的一些明显属于语言内部的方法（比如 Object.defineProperty，放到 Reflect 对象上。
 - 2.修改某些 Object 方法的返回结果，让其变得更合理。
 - 3.让 Object 操作都变成函数行为。
-- 4.Reflect 对象的方法与 Proxy 对象的方法一一对应，只要是 Proxy 对象的方法，就能在 Reflect 对象上找到对应的方法。这就让 Proxy 对象可以方便地调用对应的 Reflect 方法，完成默认行为，作为修改行为的基础。也就是说，不管 Proxy 怎么修改默认行为，你总可以在 Reflect 上获取默认行为。
+- 4.Reflect 对象的方法与 Proxy 对象的方法一一对应，只要是 Proxy 对象的方法，就能在 Reflect 对象上找到对应的方法。这就让
+  Proxy 对象可以方便地调用对应的 Reflect 方法，完成默认行为，作为修改行为的基础。也就是说，不管 Proxy 怎么修改默认行为，你总可以在
+  Reflect 上获取默认行为。
 
 ### 135. require 模块引入的查找方式？
 
@@ -3692,7 +3718,9 @@ function findMostWord(article) {
   return maxWord + "  " + maxNum;
 }
 ```
-### 175. ele.getElementsByClassName和ele.querySelectorAll的区别？ 
+
+### 175. ele.getElementsByClassName和ele.querySelectorAll的区别？
+
 ```
 element.getElementsByClassName 返回一个即时更新（动态的）HTMLCollection
 element.querySelectorAll 返回一个非即时更新（静态的） NodeList
@@ -3719,4 +3747,5 @@ console.log(list2.length1); // 3（非即时更新）
 EventTarget - Node - Element - HTMLElement - HTMLDivElement<br>
 EventTarget - Node - Element - SVGElement - SVGPathElement<br>
 ```
+
 [MDN 上元素 div 继承关系](https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLDivElement)

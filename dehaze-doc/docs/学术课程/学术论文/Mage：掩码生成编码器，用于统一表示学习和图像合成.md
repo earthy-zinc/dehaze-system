@@ -8,4 +8,5 @@ libraryID: 1
 itemKey: J3SW72BA
 
 ---
+
 # Mage：掩码生成编码器，用于统一表示学习和图像合成

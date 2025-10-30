@@ -3,6 +3,7 @@ order: -1
 ---
 
 # LeetCode
+
 ```java
 package org.pei;
 
@@ -997,7 +998,7 @@ public class Solution {
      * 4. 递归调用每个结点的邻接点，每个结点递归调用的次数等于邻接点的数量，每一次调用返回其对应邻接点的克隆结点，最终返回这些克隆邻接点的列表
      * 将其放入在对应克隆结点的邻接表中，这样就可以克隆给党的结点和邻接点
      */
-    private HashMap<Node, Node> visitedNode = new HashMap<>();
+    private final HashMap<Node, Node> visitedNode = new HashMap<>();
     public Node cloneGraph(Node node) {
         if(node == null) return null;
         // 如果访问过该节点，则返回对应的克隆节点

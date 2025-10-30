@@ -12,19 +12,19 @@
 
 MyBatis Plus 实体类默认具有以下映射关系：
 
-| 映射关系                       | 说明                                                      |
-| ------------------------------ | --------------------------------------------------------- |
-| 下划线映射为实体类的驼峰式命名 | 表名：st_user → stUser 类。字段名：real_name → realName   |
-| 数据表主键名为 id              | 插入数据时会自增，不需要手动指定                          |
-| 字段名与实体类属性一一对应     |                                                           |
+| 映射关系            | 说明                                             |
+|-----------------|------------------------------------------------|
+| 下划线映射为实体类的驼峰式命名 | 表名：st_user → stUser 类。字段名：real_name → realName |
+| 数据表主键名为 id      | 插入数据时会自增，不需要手动指定                               |
+| 字段名与实体类属性一一对应   |                                                |
 
 ### 常用注解
 
-| 注解        | 说明                         |
-| ----------- | ---------------------------- |
+| 注解          | 说明             |
+|-------------|----------------|
 | @TableName  | 表名注解，标识实体类对应的表 |
 | @TableId    | 主键注解，用于实体类主键字段 |
-| @TableField | 非主键的字段注解             |
+| @TableField | 非主键的字段注解       |
 
 ### 常见配置
 
@@ -108,7 +108,8 @@ void testUpdateWrapper() {
 
 QueryWrapper 和 UpdateWrapper 在构造条件时都需要写死字段名称，会出现字符串"魔法值"，这在编程规范中不推荐。
 
-可以基于变量的 getter 方法结合反射技术，将条件对应字段的 getter 方法传递给 MyBatis Plus，它就能计算出对应的变量名。传递方法可以使用 JDK8 中的方法引用和 Lambda 表达式。
+可以基于变量的 getter 方法结合反射技术，将条件对应字段的 getter 方法传递给 MyBatis Plus，它就能计算出对应的变量名。传递方法可以使用
+JDK8 中的方法引用和 Lambda 表达式。
 
 MyBatis Plus 提供了一套基于 Lambda 的 Wrapper，包含两个：
 
@@ -134,7 +135,8 @@ void testLambdaQueryWrapper() {
 
 ### 自定义 SQL
 
-SQL 语句最好都维护在持久层，而不是业务层。对于 UpdateWrapper 案例，由于条件是 in 语句，只能将 SQL 写在 Mapper.xml 文件，利用 foreach 来生成动态 SQL。MyBatis Plus 提供了自定义 SQL 功能，可以利用 Wrapper 生成查询条件，再结合 Mapper.xml 编写 SQL。
+SQL 语句最好都维护在持久层，而不是业务层。对于 UpdateWrapper 案例，由于条件是 in 语句，只能将 SQL 写在 Mapper.xml 文件，利用
+foreach 来生成动态 SQL。MyBatis Plus 提供了自定义 SQL 功能，可以利用 Wrapper 生成查询条件，再结合 Mapper.xml 编写 SQL。
 
 #### 基本用法
 
@@ -193,7 +195,8 @@ List<User> queryUserByWrapper(@Param("ew")QueryWrapper<User> wrapper);
 
 ### 静态工具(Db 类)
 
-有时 Service 之间会相互调用，为避免循环依赖问题，MyBatis Plus 提供了一个静态工具类 `Db`，其中的一些静态方法与 `IService` 中方法签名基本一致，也可以帮助实现 CRUD 功能。
+有时 Service 之间会相互调用，为避免循环依赖问题，MyBatis Plus 提供了一个静态工具类 `Db`，其中的一些静态方法与 `IService`
+中方法签名基本一致，也可以帮助实现 CRUD 功能。
 
 需求：根据 id 查询用户，同时返回用户收货地址列表：
 
@@ -229,7 +232,8 @@ User 类中有一个用户状态字段：
 private Integer status; // 表示使用状态，1 正常 2 冻结
 ```
 
-像这种字段一般会定义一个枚举，做业务判断时就可以直接基于枚举做比较。但数据库采用的是 `int` 类型，对应的 PO 也是 `Integer`。因此业务操作时必须手动把枚举与 Integer 转换，非常麻烦。
+像这种字段一般会定义一个枚举，做业务判断时就可以直接基于枚举做比较。但数据库采用的是 `int` 类型，对应的 PO 也是 `Integer`
+。因此业务操作时必须手动把枚举与 Integer 转换，非常麻烦。
 
 MyBatis Plus 提供了一个处理枚举的类型转换器，可以把枚举类型与数据库类型自动转换。
 
@@ -266,7 +270,8 @@ public enum UserStatus {
 private UserStatus status; // 表示使用状态，1 正常 2 冻结
 ```
 
-3. 要让 MyBatis Plus 处理枚举与数据库类型自动转换，必须告诉 MyBatis Plus 枚举中哪个字段的值作为数据库值。MyBatis Plus 提供了 @EnumValue 注解来标记枚举属性，因此要在 value 属性上添加 @EnumValue 注解。
+3. 要让 MyBatis Plus 处理枚举与数据库类型自动转换，必须告诉 MyBatis Plus 枚举中哪个字段的值作为数据库值。MyBatis Plus 提供了
+   @EnumValue 注解来标记枚举属性，因此要在 value 属性上添加 @EnumValue 注解。
 
 #### 配置枚举处理器
 
@@ -288,7 +293,8 @@ void testService() {
 }
 ```
 
-返回的结果中，status 字段值为：`status="NORMAL"`，但将该值返回给前端并不见名知意，因此为了保证格式的统一，需要在 UserStatus 枚举中通过 `@JsonValue` 注解标记 JSON 序列化时展示的字段。
+返回的结果中，status 字段值为：`status="NORMAL"`，但将该值返回给前端并不见名知意，因此为了保证格式的统一，需要在 UserStatus
+枚举中通过 `@JsonValue` 注解标记 JSON 序列化时展示的字段。
 
 此时再次测试会发现 `status="正常"`，达到了预期效果。
 

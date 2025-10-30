@@ -10,6 +10,7 @@ libraryID: 1
 itemKey: NYSYEZU2
 
 ---
+
 # VQ-GAN
 
 Comment: Changelog can be found in the supplementary
@@ -32,7 +33,8 @@ VQGAN在提高压缩率的同时仍然能够保持很好的感知质量。
 
 寻找最优的语义压缩模型的方法就是
 
-![\<img alt="" data-attachment-key="CFCHCAKV" width="747" height="176" src="attachments/CFCHCAKV.png" ztype="zimage">](attachments/CFCHCAKV.png)其中的权重为
+![\<img alt="" data-attachment-key="CFCHCAKV" width="747" height="176" src="attachments/CFCHCAKV.png" ztype="zimage">](attachments/CFCHCAKV.png)
+其中的权重为
 
 ![\<img alt="" data-attachment-key="W56WTHYJ" width="364" height="122" src="attachments/W56WTHYJ.png" ztype="zimage">](attachments/W56WTHYJ.png)
 
@@ -40,7 +42,8 @@ L<sub>rec</sub>为感知重建损失
 
 ∇GL \[·]为解码器最后一层输入的梯度。
 
-<span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FZ57D2RNH%22%2C%22pageLabel%22%3A%224%22%2C%22position%22%3A%7B%22pageIndex%22%3A3%2C%22rects%22%3A%5B%5B378.443%2C707.546%2C418.886%2C718.883%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FIL93Q527%22%5D%2C%22locator%22%3A%224%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/Z57D2RNH?page=4">“δ = 10−6”</a></span> 为了数值稳定。
+<span class="highlight" data-annotation="%7B%22attachmentURI%22%3A%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FZ57D2RNH%22%2C%22pageLabel%22%3A%224%22%2C%22position%22%3A%7B%22pageIndex%22%3A3%2C%22rects%22%3A%5B%5B378.443%2C707.546%2C418.886%2C718.883%5D%5D%7D%2C%22citationItem%22%3A%7B%22uris%22%3A%5B%22http%3A%2F%2Fzotero.org%2Fusers%2F10046823%2Fitems%2FIL93Q527%22%5D%2C%22locator%22%3A%224%22%7D%7D" ztype="zhighlight"><a href="zotero://open-pdf/library/items/Z57D2RNH?page=4">
+“δ = 10−6”</a></span> 为了数值稳定。
 
 为了聚合上下文信息。单个注意力层应用在最低分辨率上，减少了code编码展开时的序列长度。
 
@@ -74,7 +77,8 @@ Transformer用于下标的分布情况？什么鬼在已知一些下标的时候
 
 ![\<img alt="" data-attachment-key="NAJI3RND" width="412" height="74" src="attachments/NAJI3RND.png" ztype="zimage">](attachments/NAJI3RND.png)
 
-如果这个信息c具有空间范围。我们可以学习另一个VQGAN，用之前获得的码本来重新获得一个索引表示![\<img alt="" data-attachment-key="JN5QIYRB" width="393" height="41" src="attachments/JN5QIYRB.png" ztype="zimage">](attachments/JN5QIYRB.png)。由于Transformer自回归的结构，我们可以将r就看作s，并且计算r存在的概率。
+如果这个信息c具有空间范围。我们可以学习另一个VQGAN，用之前获得的码本来重新获得一个索引表示![\<img alt="" data-attachment-key="JN5QIYRB" width="393" height="41" src="attachments/JN5QIYRB.png" ztype="zimage">](attachments/JN5QIYRB.png)
+。由于Transformer自回归的结构，我们可以将r就看作s，并且计算r存在的概率。
 
 > 也就是说，我们在得到码本之后，之后进行图像重建获得的离散化特征就直接可以看作和码本内编码同等类型的东西。然后从码本中寻找匹配项。
 

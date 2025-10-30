@@ -1,21 +1,30 @@
 # CSS 面试知识点
+
 ## CSS 元素
+
 ### 什么是替换元素？
-通过修改某个属性值呈现的内容就可以被替换的元素就称为“替换元素”。因此，`<img>`、`<object>`、`<video>`、`<iframe>`或者表单元素`<textarea>`、`<input>`、`<select>`都是典型的替换元素。
+
+通过修改某个属性值呈现的内容就可以被替换的元素就称为“替换元素”。因此，`<img>`、`<object>`、`<video>`、`<iframe>`或者表单元素
+`<textarea>`、`<input>`、`<select>`都是典型的替换元素。
 
 替换元素除了内容可替换这一特性以外，还有以下一些特性。
 
 1. 内容的外观不受页面上的CSS的影响。用专业的话讲就是在样式表现在CSS作用域之外。如何更改替换元素本身的外观需要类似appearance属性，或者浏览器自身暴露的一些样式接口。
-2. 有自己的尺寸。在Web中，很多替换元素在没有明确尺寸设定的情况下，其默认的尺寸（不包括边框）是300像素×150像素，如`<video>`、`<iframe>`或者`<canvas>`等，也有少部分替换元素为0像素，如<img>图片，而表单元素的替换元素的尺寸则和浏览器有关，没有明显的规律。
-3. 在很多CSS属性上有自己的一套表现规则。比较具有代表性的就是vertical-align属性，对于替换元素和非替换元素，vertical-align属性值的解释是不一样的。比方说vertical-align的默认值的baseline，很简单的属性值，基线之意，被定义为字符x的下边缘，而替换元素的基线却被硬生生定义成了元素的下边缘。
+2. 有自己的尺寸。在Web中，很多替换元素在没有明确尺寸设定的情况下，其默认的尺寸（不包括边框）是300像素×150像素，如`<video>`、
+   `<iframe>`或者`<canvas>`等，也有少部分替换元素为0像素，如<img>图片，而表单元素的替换元素的尺寸则和浏览器有关，没有明显的规律。
+3.
+在很多CSS属性上有自己的一套表现规则。比较具有代表性的就是vertical-align属性，对于替换元素和非替换元素，vertical-align属性值的解释是不一样的。比方说vertical-align的默认值的baseline，很简单的属性值，基线之意，被定义为字符x的下边缘，而替换元素的基线却被硬生生定义成了元素的下边缘。
 4. 所有的替换元素都是内联水平元素，也就是替换元素和替换元素、替换元素和文字都是可以在一行显示的。但是，替换元素默认的display值却是不一样的，有的是inline，有的是inline-block。
 
 ### 替换元素的计算规则？
+
 替换元素的尺寸从内而外分为3类：固有尺寸、HTML尺寸和CSS尺寸。
 
 1. 固有尺寸指的是替换内容原本的尺寸。例如，图片、视频作为一个独立文件存在的时候，都是有着自己的宽度和高度的。
-2. HTML尺寸只能通过HTML原生属性改变，这些HTML原生属性包括`<img>`的width和height属性、`<input>`的size属性、`<textarea>`的cols和rows属性等。
-3. CSS尺寸特指可以通过CSS的width和height或者max-width/min-width和max-height/min-height设置的尺寸，对应盒尺寸中的content box。
+2. HTML尺寸只能通过HTML原生属性改变，这些HTML原生属性包括`<img>`的width和height属性、`<input>`的size属性、`<textarea>`
+   的cols和rows属性等。
+3. CSS尺寸特指可以通过CSS的width和height或者max-width/min-width和max-height/min-height设置的尺寸，对应盒尺寸中的content
+   box。
 
 这3层结构的计算规则具体如下：
 
@@ -30,7 +39,8 @@
 
 content属性生成的对象称为“匿名替换元素”。
 
-（1）我们使用content生成的文本是无法选中、无法复制的，好像设置了user select:none声明一般，但是普通元素的文本却可以被轻松选中。同时，content生成的文本无法被屏幕阅读设备读取，也无法被搜索引擎抓取，因此，千万不要自以为是地把重要的文本信息使用content属性生成，因为这对可访问性和SEO都很不友好。
+（1）我们使用content生成的文本是无法选中、无法复制的，好像设置了user select:
+none声明一般，但是普通元素的文本却可以被轻松选中。同时，content生成的文本无法被屏幕阅读设备读取，也无法被搜索引擎抓取，因此，千万不要自以为是地把重要的文本信息使用content属性生成，因为这对可访问性和SEO都很不友好。
 （2）content生成的内容不能左右:empty伪类。
 （3）content动态生成值无法获取。
 
@@ -81,6 +91,7 @@ content属性生成的对象称为“匿名替换元素”。
 
 clip剪裁被我称为“最佳可访问性隐藏”的另外一个原因就是，它具有更强的普遍适应性，任何元素、任何场景都可以无障碍使用。
 ```
+
 ### 20.什么是包含块，对于包含块的理解?
 
 ```
@@ -123,6 +134,7 @@ clip剪裁被我称为“最佳可访问性隐藏”的另外一个原因就是�
 
 详细资料可以参考：
 [《CSS 里的 visibility 属性有个鲜为人知的属性值：collapse》](http://www.webhek.com/post/visibility-collapse.html)
+
 ### 55.如何让去除 inline-block 元素间间距？
 
 ```
@@ -131,7 +143,6 @@ clip剪裁被我称为“最佳可访问性隐藏”的另外一个原因就是�
 
 详细资料可以参考：
 [《去除 inline-block 元素间间距的 N 种方法》](https://www.zhangxinxu.com/wordpress/2012/04/inline-block-space-remove-%E5%8E%BB%E9%99%A4%E9%97%B4%E8%B7%9D/)
-
 
 ## CSS 属性
 
@@ -256,6 +267,7 @@ CSS的优先级是根据样式声明的特殊性值来判断的。
 [《有趣：256 个 class 选择器可以干掉 1 个 id 选择器》](https://www.zhangxinxu.com/wordpress/2012/08/256-class-selector-beat-id-selector/)
 
 ## CSS 伪类
+
 ### 4.伪类与伪元素的区别
 
 ```
@@ -275,7 +287,6 @@ fore来在一个元素前增加一些文本，并为这些文本添加样式。�
 
 详细资料可以参考：
 [《总结伪类与伪元素》](http://www.alloyteam.com/2016/05/summary-of-pseudo-classes-and-pseudo-elements/)
-
 
 ### 7.关于伪类 LVHA 的解释?
 
@@ -358,6 +369,7 @@ a标签有四种状态：链接访问前、链接访问后、鼠标滑过、激�
 ```
 
 ## CSS 选择器
+
 ### 2.CSS 选择符有哪些？
 
 ```
@@ -383,7 +395,9 @@ a标签有四种状态：链接访问前、链接访问后、鼠标滑过、激�
 试想一下，如果采用从左至右的方式读取CSS规则，那么大多数规则读到最后（最右）才会发现是不匹配的，这样做会费时耗能，
 最后有很多都是无用的；而如果采取从右向左的方式，那么只要发现最右边选择器不匹配，就可以直接舍弃了，避免了许多无效匹配。
 ```
+
 ## CSS 预处理器
+
 ### 33.使用 CSS 预处理器吗？喜欢哪个？
 
 ```
@@ -412,6 +426,7 @@ CSS后处理器是对CSS进行处理，并最终生成CSS的预处理器，它�
 [《CSS 预处理器和后处理器》](https://blog.csdn.net/yushuangyushuang/article/details/79209752)
 
 ## CSS 盒子模型
+
 ### 1.介绍一下标准的 CSS 的盒子模型？低版本 IE 的盒子模型有什么不同的？
 
 相关知识点：
@@ -459,6 +474,7 @@ IE盒模型和W3C标准盒模型的区别：
 
 （4）包含块（containing box），由一行一行的“行框盒子”组成。
 ```
+
 ### 72.什么是幽灵空白节点？
 
 ```
@@ -466,6 +482,7 @@ IE盒模型和W3C标准盒模型的区别：
 每个行框盒子的前面有一个“空白节点”一样。这个“空白节点”永远透明，不占据任何宽度，看不见也无法通过脚本获取，就好像幽灵
 一样，但又确确实实地存在，表现如同文本节点一样，因此，我称之为“幽灵空白节点”。
 ```
+
 ### 13.请解释一下 CSS3 的 Flex box（弹性盒布局模型），以及适用场景？
 
 相关知识点：
@@ -533,6 +550,7 @@ flex布局是CSS3新增的一种布局方式，我们可以通过将一个元素
 [《Flex 布局教程：实例篇》](http://www.ruanyifeng.com/blog/2015/07/flex-examples.html)
 
 ## CSS 样式初始化
+
 ### 19.为什么要初始化 CSS 样式？
 
 ```
@@ -560,6 +578,7 @@ fieldset,img{border:0;}
 button,input,select,textarea{font-size:100%;}
 table{border-collapse:collapse;border-spacing:0;}
 ```
+
 ### 40.为什么不建议使用统配符初始化 css 样式。
 
 ```
@@ -572,6 +591,7 @@ table{border-collapse:collapse;border-spacing:0;}
 ```
 
 ## CSS 层叠
+
 ### 87.什么是层叠上下文？
 
 ```
@@ -620,6 +640,7 @@ table{border-collapse:collapse;border-spacing:0;}
 ```
 
 ## CSS 浮动
+
 ### 29.请解释一下为什么需要清除浮动？清除浮动的方式
 
 ```
@@ -687,7 +708,6 @@ zoom属性是IE浏览器的专有属性，火狐和老版本的webkit核心的�
 目前非ie由于不支持这个属性，它们又是通过什么属性来实现元素的缩放呢？可以通过css3里面的动画属性scale进行缩放。
 ```
 
-
 ### 25.'display'、'position'和'float'的相互关系？
 
 ```
@@ -712,8 +732,8 @@ zoom属性是IE浏览器的专有属性，火狐和老版本的webkit核心的�
 详细资料可以参考：
 [《position 跟 display、margincollapse、overflow、float 这些特性相互叠加后会怎么样？》](https://www.cnblogs.com/jackyWHJ/p/3756087.html)
 
-
 ## CSS 字体
+
 ### 50.font-style 属性中 italic 和 oblique 的区别？
 
 ```
@@ -780,6 +800,7 @@ white-space属性声明了如何处理元素内的空白字符，这类空白字
 •pre-wrap：空白字符不合并，并且内容只在有换行符的地方换行，同时允许文本环绕。
 •pre-line：合并空白字符，但只在有换行符的地方换行，允许文本环绕。
 ```
+
 ### 79.什么是基线和 x-height？
 
 ```
@@ -850,6 +871,7 @@ ze相乘后的值。为百分比值时，其最终的计算值是和当前font-s
 ```
 
 ## CSS 图片处理
+
 ### 24.简单介绍使用图片 base64 编码的优点和缺点。
 
 ```
@@ -963,16 +985,14 @@ url属性。
 [《toDataURL()》](https://developer.mozilla.org/zh-CN/docs/Web/API/HTMLCanvasElement/toDataURL)
 
 ## CSS 布局
+
 ### 65.几种常见的 CSS 布局
 
 详细的资料可以参考：
 [《几种常见的 CSS 布局》](https://juejin.im/post/5bbcd7ff5188255c80668028#heading-12)
 
-
-
 详细资料可以参考：
 [《怎么画一条 0.5px 的边（更新）》](https://juejin.im/post/5ab65f40f265da2384408a95)
-
 
 ### 99.css 实现上下固定中间自适应布局？
 
@@ -1045,6 +1065,7 @@ body {
 	下面的两个div分别宽50%，
 	然后用float或者inline使其不换行即可
 ```
+
 ### 100.css 两栏布局的实现？
 
 相关资料：
@@ -1156,13 +1177,17 @@ body {
 
 以左边宽度固定为 200px 为例
 
--（1）利用浮动，将左边元素宽度设置为 200px，并且设置向左浮动。将右边元素的 margin-left 设置为 200px，宽度设置为 auto（默认为 auto，撑满整个父元素）。
+-（1）利用浮动，将左边元素宽度设置为 200px，并且设置向左浮动。将右边元素的 margin-left 设置为 200px，宽度设置为 auto（默认为
+auto，撑满整个父元素）。
 
--（2）第二种是利用 flex 布局，将左边元素的放大和缩小比例设置为 0，基础大小设置为 200px。将右边的元素的放大比例设置为 1，缩小比例设置为 1，基础大小设置为 auto。
+-（2）第二种是利用 flex 布局，将左边元素的放大和缩小比例设置为 0，基础大小设置为 200px。将右边的元素的放大比例设置为
+1，缩小比例设置为 1，基础大小设置为 auto。
 
--（3）第三种是利用绝对定位布局的方式，将父级元素设置相对定位。左边元素设置为 absolute 定位，并且宽度设置为 200px。将右边元素的 margin-left 的值设置为 200px。
+-（3）第三种是利用绝对定位布局的方式，将父级元素设置相对定位。左边元素设置为 absolute 定位，并且宽度设置为 200px。将右边元素的
+margin-left 的值设置为 200px。
 
--（4）第四种还是利用绝对定位的方式，将父级元素设置为相对定位。左边元素宽度设置为 200px，右边元素设置为绝对定位，左边定位为 200px，其余方向定位为 0。
+-（4）第四种还是利用绝对定位的方式，将父级元素设置为相对定位。左边元素宽度设置为 200px，右边元素设置为绝对定位，左边定位为
+200px，其余方向定位为 0。
 
 ### 101.css 三栏布局的实现？
 
@@ -1365,6 +1390,7 @@ body {
 ```
 
 ## CSS3 新特性
+
 ### 12.CSS3 有哪些新特性？（根据项目回答）
 
 ```
@@ -1379,7 +1405,6 @@ body {
 缩放，定位，倾斜，动画，多背景
 例如：transform:\scale(0.85,0.90)\translate(0px,-30px)\skew(-9deg,0deg)\Animation:
 ```
-
 
 ## 边框、外边距及填充
 
@@ -1477,6 +1502,7 @@ padding用于元素与内容之间的间隔，让内容（文字）与（包裹�
 •空白处需要背景（色）时。
 •上下相连的两个盒子之间的空白，希望等于两者之和时。如15px+20px的padding，将得到35px的空白。
 ```
+
 ### 76.margin:auto 的填充规则？
 
 ```
@@ -1581,6 +1607,7 @@ absolute定位的元素，是相对于它的第一个position值不为static的�
 
 非绝对定位元素的宽高百分比则是相对于父元素的content box来计算的。
 ```
+
 ### 83.无依赖绝对定位是什么？
 
 ```
@@ -1611,8 +1638,6 @@ absolute定位的元素，是相对于它的第一个position值不为static的�
 详细资料可以参考：
 [《解决页面使用 overflow:scroll 在 iOS 上滑动卡顿的问题》](https://www.jianshu.com/p/1f4693d0ad2d)
 
-
-
 ### 82.overflow 的特殊性？
 
 ```
@@ -1626,11 +1651,8 @@ absolute定位的元素，是相对于它的第一个position值不为static的�
 （4）元素设置了overflow:hidden声明，里面内容高度溢出的时候，滚动依然存在，仅仅滚动条不存在！
 ```
 
-
-
-
-
 ## 宽高
+
 ### 22.width:auto 和 width:100%的区别
 
 ```
@@ -1640,6 +1662,7 @@ width:100%会使元素box的宽度等于父元素的content box的宽度。
 
 width:auto会使元素撑满整个父元素，margin、border、padding、content区域会自动分配水平空间。
 ```
+
 ### 68.什么是首选最小宽度？
 
 ```
@@ -1680,10 +1703,6 @@ width:auto会使元素撑满整个父元素，margin、border、padding、conten
 如果是padding或者margin竖直方向的属性则是相对于包含块的宽度。
 ```
 
-
-
-
-
 ## 响应式设计
 
 ### 45.什么是响应式设计？响应式设计的基本原理是什么？如何兼容低版本的 IE？（待深入了解）
@@ -1696,7 +1715,6 @@ width:auto会使元素撑满整个父元素，margin、border、padding、conten
 详细资料可以参考：
 [《响应式布局原理》](https://blog.csdn.net/dreamerframework/article/details/8994741)
 [《响应式布局的实现方法和原理》](http://www.mahaixiang.cn/wzsj/278.html)
-
 
 ### 32.移动端的布局用过媒体查询吗？
 
@@ -1770,8 +1788,8 @@ al viewport和layout viewport的关系，就像是我们通过窗户看外面的
 le=1.0,user-scalable=no"/>
 ```
 
-
 ## CSS 性能优化
+
 ### 34.CSS 优化、提高性能的方法有哪些？
 
 ```
@@ -1835,7 +1853,6 @@ tom;margin-left:left;执行的效率更高。
 [《CSS 优化、提高性能的方法有哪些？》](https://www.zhihu.com/question/19886806)
 [《CSS 优化，提高性能的方法》](https://www.jianshu.com/p/4e673bf24a3b)
 
-
 详细资料可以参考：
 [《探究 CSS 解析原理》](https://juejin.im/entry/5a123c55f265da432240cc90)
 
@@ -1851,8 +1868,6 @@ tom;margin-left:left;执行的效率更高。
 详细资料可以参考：
 [《谈谈网页中使用奇数字体和偶数字体》](https://blog.csdn.net/jian_xi/article/details/79346477)
 [《现在网页设计中的为什么少有人用 11px、13px、15px 等奇数的字体？》](https://www.zhihu.com/question/20440679)
-
-
 
 ### 38.抽离样式模块怎么写，说出思路，有无实践经验？[阿里航旅的面试题]
 
@@ -1883,7 +1898,6 @@ unset是取消设置的意思，也就是当前元素浏览器或用户设置的
 详细资料可以参考：
 [《简单了解 CSS3 的 all 属性》](https://www.zhangxinxu.com/wordpress/2016/03/know-about-css3-all/)
 
-
 ### 41.absolute 的 containingblock（包含块）计算方式跟正常流有什么不同？
 
 ```
@@ -1907,7 +1921,6 @@ hasLayout是IE特有的一个属性。很多的IE下的css bug都与其息息相
 [《CSS 基础篇--CSS 中 IE 浏览器的 hasLayout，IE 低版本的 bug 根源》](https://segmentfault.com/a/1190000010883974)
 [《CSS 魔法堂：hasLayout 原来是这样的！》](https://segmentfault.com/a/1190000004632071)
 
-
 ### 44.全屏滚动的原理是什么？用到了 CSS 的哪些属性？（待深入实践）
 
 ```
@@ -1923,6 +1936,7 @@ overflow：hidden；transition：all 1000 ms ease；
 [《用 ES6 写全屏滚动插件》](https://juejin.im/post/5aeef41cf265da0ba0630de0)
 
 ## CSS 动画
+
 ### 46.视差滚动效果，如何给每页做不同的动画？（回到顶部，向下滑动要再次出现，和只出现一次分别怎么做？）
 
 ```
@@ -1931,11 +1945,13 @@ overflow：hidden；transition：all 1000 ms ease；
 
 详细资料可以参考：
 [《如何实现视差滚动效果的网页？》](https://www.zhihu.com/question/20990029)
+
 ### 54.如果需要手动写动画，你认为最小时间间隔是多久，为什么？（阿里）
 
 ```
 多数显示器默认频率是60Hz，即1秒刷新60次，所以理论上最小间隔为1/60*1000ms＝16.7ms
 ```
+
 ### 67.transition 和 animation 的区别
 
 ```
@@ -1951,6 +1967,7 @@ animation作用于元素本身而不是样式属性，可以使用关键帧的�
 [《CSS 动画：animation、transition、transform、translate》](https://juejin.im/post/5b137e6e51882513ac201dfb)
 
 ## CSS 实操
+
 ### 102.实现一个宽高自适应的正方形
 
 ```css
@@ -2067,7 +2084,6 @@ p:after {
 详细资料可以参考：
 [《【CSS/JS】如何实现单行／多行文本溢出的省略》](https://zhuanlan.zhihu.com/p/30707916)
 [《CSS 多行文本溢出省略显示》](https://juejin.im/entry/587f453e1b69e60058555a5f)
-
 
 ### 66.画一条 0.5px 的线
 
@@ -2226,7 +2242,6 @@ div {
 对于宽高不定的元素，上面的后面两种方法，可以实现元素的垂直和水平的居中。
 ```
 
-
 ### 105.你知道 CSS 中不同属性设置为百分比%时对应的计算基准？
 
 ```
@@ -2245,6 +2260,7 @@ div {
 
 元素的 font-size，基准为父元素字体
 ```
+
 ### 47.如何修改 chrome 记住密码后自动填充表单的黄色背景？
 
 ```
@@ -2305,6 +2321,7 @@ webkit内核的私有属性：-webkit-font-smoothing，用于字体抗锯齿，�
 
 详细资料可以参考：
 [《让字体变的更清晰 CSS 中-webkit-font-smoothing》](https://blog.csdn.net/huo_bao/article/details/50251585)
+
 ### 57.有一个高度自适应的 div，里面有两个 div，一个高度 100px，希望另一个填满剩下的高度。
 
 ```
@@ -2316,6 +2333,7 @@ left:0;right:0;
 
 详细资料可以参考：
 [《有一个高度自适应的 div，里面有两个 div，一个高度 100px，希望另一个填满剩下的高度(三种方案)》](https://blog.csdn.net/xutongbao/article/details/79408522)
+
 ### 16.CSS 多列等高如何实现？
 
 ```
@@ -2329,7 +2347,9 @@ hidden），这样父容器的高度就还是它里面的列没有设定padding-
 的特性，来实现多列等高。
 
 ```
+
 ## 其他
+
 ### 27.对 BFC 规范（块级格式化上下文：block formatting context）的理解？
 
 相关知识点：
@@ -2380,9 +2400,6 @@ IFC指的是行级格式化上下文，它有这样的一些布局规则：
 详细资料可以参考：
 [《[译]:BFC 与 IFC》](https://segmentfault.com/a/1190000004466536#articleHeader5)
 [《BFC 和 IFC 的理解（布局）》](https://blog.csdn.net/paintandraw/article/details/80401741)
-
-
-
 
 详细资料可以参考：
 [《前端应该掌握的 CSS 实现多列等高布局》](https://juejin.im/post/5b0fb34151882515662238fd)
@@ -2461,9 +2478,6 @@ pageX、pageY属性，但是没有x、y属性。
 详细资料可以参考：
 [《li 与 li 之间有看不见的空白间隔是什么原因引起的？》](https://blog.csdn.net/sjinsa/article/details/70919546)
 
-
-
-
 ### 51.设备像素、css 像素、设备独立像素、dpr、ppi 之间的区别？
 
 ```
@@ -2483,10 +2497,6 @@ ppi指的是每英寸的物理像素的密度，ppi越大，屏幕的分辨率�
 [《前端工程师需要明白的「像素」》](https://www.jianshu.com/p/af6dad66e49a)
 [《CSS 像素、物理像素、逻辑像素、设备像素比、PPI、Viewport》](https://github.com/jawil/blog/issues/21)
 [《前端开发中像素的概念》](https://github.com/wujunchuan/wujunchuan.github.io/issues/15)
-
-
-
-
 
 ### 60.什么是 Cookie 隔离？（或者说：请求资源的时候不要让它带 cookie 怎么做）
 
@@ -2514,7 +2524,6 @@ http请求的解析速度。
 能会出现FOUC现象（即样式失效导致的页面闪烁问题）
 ```
 
-
 ### 63.阐述一下 CSSSprites
 
 ```
@@ -2533,8 +2542,6 @@ http请求的解析速度。
 图片合并麻烦
 维护麻烦，修改一个图片可能需要重新布局整个图片，样式
 ```
-
-
 
 详细资料可以参考：
 [《css3 的字体大小单位 rem 到底好在哪？》](https://www.zhihu.com/question/21504656)

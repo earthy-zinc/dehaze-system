@@ -2,11 +2,16 @@
 
 ## IO流
 
-IO流以`byte`（字节）为最小单位，因此也称为*字节流*。在Java中，`InputStream`代表输入字节流，`OuputStream`代表输出字节流，这是最基本的两种IO流。字节流传输的最小数据单位是字节byte。
+IO流以`byte`（字节）为最小单位，因此也称为*字节流*。在Java中，`InputStream`代表输入字节流，`OuputStream`
+代表输出字节流，这是最基本的两种IO流。字节流传输的最小数据单位是字节byte。
 
-如果我们要读写的是字符，并且字符不全是以单字节表示的ASCII字符，那么按照char读写更方便，这种流称为*字符流*。Java提供了`Reader`和`Writer`表示字符流，字符流传输的最小数据单位是char。使用`Reader`和`Writer`，读取的数据源虽然是字节，但是他们内部对若干字节做了编码和解码，然后将字节转换成了字符。本质上能够自动编码和解码的`InputStream`和`OuputStream`。
+如果我们要读写的是字符，并且字符不全是以单字节表示的ASCII字符，那么按照char读写更方便，这种流称为*字符流*。Java提供了
+`Reader`和`Writer`表示字符流，字符流传输的最小数据单位是char。使用`Reader`和`Writer`
+，读取的数据源虽然是字节，但是他们内部对若干字节做了编码和解码，然后将字节转换成了字符。本质上能够自动编码和解码的
+`InputStream`和`OuputStream`。
 
-因此实际上我们也能够自己编写逻辑，实现字节到字符的编码和解码，究竟使用`InputStream`和`OuputStream`还是`Reader`和`Writer`取决于数据源是文本还是其他文件。
+因此实际上我们也能够自己编写逻辑，实现字节到字符的编码和解码，究竟使用`InputStream`和`OuputStream`还是`Reader`和`Writer`
+取决于数据源是文本还是其他文件。
 
 Java提供一个FILE的类实现对文件的操作。FILE对象即可以表示文件，也可以表示目录。只有当我们调用FILE对象的某些方法时，才回真正执行磁盘操作。
 
@@ -108,7 +113,8 @@ Reactor模型中，由于网络读写和业务操作都在同一个线程中，�
 
 对于使用线程池处理业务操作的模型，由于网络读写在高并发的情况下会成为系统的瓶颈。因而提出了一种改进的模型，使用线程池进行网络读写，仅仅使用一个线程专门接受客户端连接。
 
-改进后的Reactor模型将Reactor拆分成为了mainReactor subReactor。第一个及逆行客户端连接的处理，处理完成之后将该连接交由subReactor用来处理客户端的网络读写。这里的subReactor则是使用一个线程池来支撑的，其读写能力将会随着线程数的增多而增加。对于业务操作，也是使用一个线程池，而每个业务请求都只需要进行编解码和业务计算。
+改进后的Reactor模型将Reactor拆分成为了mainReactor
+subReactor。第一个及逆行客户端连接的处理，处理完成之后将该连接交由subReactor用来处理客户端的网络读写。这里的subReactor则是使用一个线程池来支撑的，其读写能力将会随着线程数的增多而增加。对于业务操作，也是使用一个线程池，而每个业务请求都只需要进行编解码和业务计算。
 
 ### channel
 
@@ -144,37 +150,37 @@ File(File parent, String child)
 
 **方法**
 
-| 方法名称                                                     | 说明                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| String getName()                                             | 获取文件名称                                                 |
-| boolean isAbsolute()                                         | 是否是绝对路径                                               |
-| String getPath()                                             |                                                              |
-| String getAbsolutePath()                                     |                                                              |
-| String getCanonicalPath()                                    | 返回标准路径名，去掉冗余                                     |
-| String getParent()                                           | 返回父目录路径                                               |
-| File getParentFile()                                         | 返回父目录的file对象                                         |
-| exists()                                                     | 是否存在                                                     |
+| 方法名称                                                         | 说明                                                      |
+|--------------------------------------------------------------|---------------------------------------------------------|
+| String getName()                                             | 获取文件名称                                                  |
+| boolean isAbsolute()                                         | 是否是绝对路径                                                 |
+| String getPath()                                             |                                                         |
+| String getAbsolutePath()                                     |                                                         |
+| String getCanonicalPath()                                    | 返回标准路径名，去掉冗余                                            |
+| String getParent()                                           | 返回父目录路径                                                 |
+| File getParentFile()                                         | 返回父目录的file对象                                            |
+| exists()                                                     | 是否存在                                                    |
 | isDirectory()                                                | 是否是目录                                                   |
 | isFile()                                                     | 是否为文件                                                   |
-| long length()                                                | 文件长度，字节                                               |
-| long lasModified()                                           | 最后修改时间                                                 |
-| setLastModified(long timr)                                   | 设置最后修改时间                                             |
+| long length()                                                | 文件长度，字节                                                 |
+| long lasModified()                                           | 最后修改时间                                                  |
+| setLastModified(long timr)                                   | 设置最后修改时间                                                |
 | isHidden()                                                   | 是否是隐藏                                                   |
-| canExecute()                                                 | 是否可以执行                                                 |
-| canRead()                                                    | 是否可读                                                     |
-| canWrite()                                                   | 是否科协                                                     |
-| setReadOnly()                                                | 设置只读                                                     |
+| canExecute()                                                 | 是否可以执行                                                  |
+| canRead()                                                    | 是否可读                                                    |
+| canWrite()                                                   | 是否科协                                                    |
+| setReadOnly()                                                | 设置只读                                                    |
 | setReadable(boolean readable, boolean ownerOnly)             | 修改读权限                                                   |
 | setWriteable(boolean writable, boolean ownerOnly)            | 修改写权限                                                   |
-| setExecutable(boolean executable, boolean ownerOnly)         | 修改可执行权限                                               |
-| createNewFile()                                              | 创建一个新文件                                               |
-| createTempFile(String prefix, String suffix, File directory) | 创建临时文件，可以指定前缀后缀和目录                         |
-| delete() / deleteOnExit()                                    | 删除文件、程序退出时删除                                     |
+| setExecutable(boolean executable, boolean ownerOnly)         | 修改可执行权限                                                 |
+| createNewFile()                                              | 创建一个新文件                                                 |
+| createTempFile(String prefix, String suffix, File directory) | 创建临时文件，可以指定前缀后缀和目录                                      |
+| delete() / deleteOnExit()                                    | 删除文件、程序退出时删除                                            |
 | renameTo(File dest)                                          | 重命名文件                                                   |
-| mkdir() / mkdirs()                                           | 创建目录，第二个会创建必须的中间父目录，第一个不会           |
+| mkdir() / mkdirs()                                           | 创建目录，第二个会创建必须的中间父目录，第一个不会                               |
 | String[] list() File[] listFiles(FilenameFilter filter)      | 返回直接子目录或者文件，不会返回子目录下的文件。一个返回文件名数组，一个返回File对象数组，可以添加过滤参数 |
-|                                                              |                                                              |
-|                                                              |                                                              |
+|                                                              |                                                         |
+|                                                              |                                                         |
 
 ## 二进制文件
 
@@ -192,7 +198,7 @@ File(File parent, String child)
 
 ```java
 public abstract int read() throws IOException;
-public int read(byte b[]);
+public int read(byte[] b);
 public int read(byte b[], int off, int len);
 public void close();
 ```
@@ -269,7 +275,9 @@ Unix下有五种IO模型。阻塞式IO，非阻塞式IO，IO复用，信号驱�
 
 ### IO复用
 
-使用select或者poll等待数据，并且可以等待多个套接字中的任何一个变为可读，这一过程会被阻塞，当某一个套接字可读时返回。之后在使用recvfrom把数据从内核复制到进程中。它可以让单个进程具有处理多个IO时间的能力，又被称为Event Driven IO即事件驱动IO，如果一个WEB服务器没有IO复用，那么每个Socket连接都需要创建一个线程去处理。如果同时有几万个连接，那么就需要创建相同数量的线程。并且相比于多进程和多线程技术，IO复用不需要进程线程创建和切换开销。系统开销更小。
+使用select或者poll等待数据，并且可以等待多个套接字中的任何一个变为可读，这一过程会被阻塞，当某一个套接字可读时返回。之后在使用recvfrom把数据从内核复制到进程中。它可以让单个进程具有处理多个IO时间的能力，又被称为Event
+Driven
+IO即事件驱动IO，如果一个WEB服务器没有IO复用，那么每个Socket连接都需要创建一个线程去处理。如果同时有几万个连接，那么就需要创建相同数量的线程。并且相比于多进程和多线程技术，IO复用不需要进程线程创建和切换开销。系统开销更小。
 
 ### 信号驱动IO
 

@@ -7,6 +7,7 @@ Store是Vue的数据存储仓库。在setup中通过`defineStore()`定义，第�
 ### 配置对象方式
 
 配置对象可包含state、getters、actions属性：
+
 - state：存储数据
 - getters：计算属性
 - actions：方法
@@ -40,6 +41,7 @@ const useCounterStore = defineStore('counter', () => {
 ```
 
 函数方式与配置对象方式的对应关系：
+
 - ref() 对应 state 属性
 - computed() 对应 getter 属性
 - function() 对应 action 属性
@@ -85,6 +87,7 @@ interface UserInfo {
 ### State变更
 
 两种变更方式：
+
 1. 直接修改：`store.count++`
 2. 使用$patch方法批量修改：
 
@@ -113,7 +116,8 @@ cartStore.$subscribe((mutation, state) => {
 })
 ```
 
-默认情况下，state subscription会绑定到添加它们的组件上，组件卸载时自动删除订阅。如需在组件卸载后保留订阅，需设置`{ detached: true }`参数。
+默认情况下，state subscription会绑定到添加它们的组件上，组件卸载时自动删除订阅。如需在组件卸载后保留订阅，需设置
+`{ detached: true }`参数。
 
 ## Getter计算属性
 
@@ -191,6 +195,7 @@ export const useUsers = defineStore('users', {
 ```
 
 调用action的方式：
+
 1. 函数调用：`store.randomizeCounter()`
 2. 事件绑定：`@click='store.randomizeCounter()'`
 

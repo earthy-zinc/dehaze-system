@@ -36,11 +36,11 @@ pipeline {
 #### 申请 Kubernetes 凭据
 
 1. 登录 Jenkins，点击右上角「用户」 → 左下角「凭据」，选择全局凭据（Unrestricted），添加凭据，类型选择 X.509 Client Certificate：
-   - Client Key: .kube/config 文件中 client-key 对应的 key 文件
-   - Client Certificate: .kube/config 文件中 client-certificate 对应的 crt 或 pem 文件
-   - Server CA Certificate：.kube/config 文件中 certificate-authority 对应的 crt 或 pem 文件，K8S 的最高权限证书
-   - ID：可不填写，默认会自动生成一串字符串，也可以自行设置
-   - 描述：描述这个凭据的作用，例如"对接 Kubernetes 集群凭据"
+    - Client Key: .kube/config 文件中 client-key 对应的 key 文件
+    - Client Certificate: .kube/config 文件中 client-certificate 对应的 crt 或 pem 文件
+    - Server CA Certificate：.kube/config 文件中 certificate-authority 对应的 crt 或 pem 文件，K8S 的最高权限证书
+    - ID：可不填写，默认会自动生成一串字符串，也可以自行设置
+    - 描述：描述这个凭据的作用，例如"对接 Kubernetes 集群凭据"
 
 #### 配置 Kubernetes 集群对接
 
@@ -55,11 +55,21 @@ pipeline {
 
 ### Kubernetes Pod Template 配置
 
-Jenkins 的 kubernetes-plugin 在执行构建时会在 Kubernetes 集群中自动创建一个 Pod，并在 Pod 内部创建一个名为 jnlp 的容器，该容器会连接 Jenkins 并运行 Agent 程序，形成一个 Jenkins 的 Master 和 Slave 架构，然后 Slave 会执行构建脚本进行构建。但如果构建内容是要创建 Docker Image 就要实现 Docker In Docker 方案（在 Docker 里运行 Docker），如果要在集群内部进行部署操作可以使用 kubectl 执行命令，要解决 kubectl 的安装和权限分配问题。
+Jenkins 的 kubernetes-plugin 在执行构建时会在 Kubernetes 集群中自动创建一个 Pod，并在 Pod 内部创建一个名为 jnlp
+的容器，该容器会连接 Jenkins 并运行 Agent 程序，形成一个 Jenkins 的 Master 和 Slave 架构，然后 Slave
+会执行构建脚本进行构建。但如果构建内容是要创建 Docker Image 就要实现 Docker In Docker 方案（在 Docker 里运行
+Docker），如果要在集群内部进行部署操作可以使用 kubectl 执行命令，要解决 kubectl 的安装和权限分配问题。
 
-为了方便配置一个 Pod Templates，在配置 kubernetes 连接内容的下面，这里的模板只是模板（与类一样使用时还要实例化过程），名称和标签列表不要以为是 Pod 的 name 和 label，这里的名称和标签列表只是 Jenkins 查找选择模板时使用的，Jenkins 自动创建 Pod 的 name 是项目名称+随机字母的组合，所以我们填写 jenkins-slave，命名空间填写对应的 namespace。
+为了方便配置一个 Pod Templates，在配置 kubernetes 连接内容的下面，这里的模板只是模板（与类一样使用时还要实例化过程），名称和标签列表不要以为是
+Pod 的 name 和 label，这里的名称和标签列表只是 Jenkins 查找选择模板时使用的，Jenkins 自动创建 Pod 的 name
+是项目名称+随机字母的组合，所以我们填写 jenkins-slave，命名空间填写对应的 namespace。
 
-这边要注意，添加 2 个 container，第一个，Pod 内添加一个容器名称是 jnlp，Docker 镜像填写：jenkins/jnlp-slave:4.3-7，后面的使用默认的即可，然后在添加一个 container，容器名称是 jnlp-kubectl，是这个容器里面有 kubectl 的命令，镜像名称填写 harbor.edu.cn/library/centos-docker-kubectl:v1.0，下面增加了 Host Path Volume：/var/run/docker.sock、/root/.kube/、/etc/kubernetes/pki，这边便是为了 jenkins-slave 下有足够的权限可以执行 docker 及 kubectl 部署到 k8s 集群的权限，因为 jenkins-slave pod 有可能会被调度到任一 worker 节点，所以所有的 worker 节点上都必须有 /root/.kube/、/etc/kubernetes/pki，配置好之后点击保存。
+这边要注意，添加 2 个 container，第一个，Pod 内添加一个容器名称是 jnlp，Docker 镜像填写：jenkins/jnlp-slave:
+4.3-7，后面的使用默认的即可，然后在添加一个 container，容器名称是 jnlp-kubectl，是这个容器里面有 kubectl 的命令，镜像名称填写
+harbor.edu.cn/library/centos-docker-kubectl:v1.0，下面增加了 Host Path
+Volume：/var/run/docker.sock、/root/.kube/、/etc/kubernetes/pki，这边便是为了 jenkins-slave 下有足够的权限可以执行 docker 及
+kubectl 部署到 k8s 集群的权限，因为 jenkins-slave pod 有可能会被调度到任一 worker 节点，所以所有的 worker 节点上都必须有
+/root/.kube/、/etc/kubernetes/pki，配置好之后点击保存。
 
 ### Jenkins Pipeline 说明
 
@@ -67,16 +77,20 @@ Pipeline 简单来说就是一套运行在 Jenkins 上的工作流框架，将�
 
 Jenkins Pipeline 有几个核心概念：
 
-- Node（节点）：一个 Node 就是一个 Jenkins 节点，Master 或者 Agent，是执行 Step 的具体运行环境，比如我们之前动态运行的 Jenkins Slave 就是一个 Node 节点
-- Stage（阶段）：一个 Pipeline 可以划分为若干个 Stage，每个 Stage 代表一组操作，比如：Build、Test、Deploy，Stage 是一个逻辑分组的概念，可以跨多个 Node
-- Step（步骤）：Step 是最基本的操作单元，可以是打印一句话，也可以是构建一个 Docker 镜像，由各类 Jenkins 插件提供，比如命令：sh 'make'，就相当于我们平时 shell 终端中执行 make 命令一样。
+- Node（节点）：一个 Node 就是一个 Jenkins 节点，Master 或者 Agent，是执行 Step 的具体运行环境，比如我们之前动态运行的 Jenkins
+  Slave 就是一个 Node 节点
+- Stage（阶段）：一个 Pipeline 可以划分为若干个 Stage，每个 Stage 代表一组操作，比如：Build、Test、Deploy，Stage 是一个逻辑分组的概念，可以跨多个
+  Node
+- Step（步骤）：Step 是最基本的操作单元，可以是打印一句话，也可以是构建一个 Docker 镜像，由各类 Jenkins 插件提供，比如命令：sh '
+  make'，就相当于我们平时 shell 终端中执行 make 命令一样。
 
 Pipeline 的使用：
 
 - Pipeline 脚本是由 Groovy 语言实现的
 - Pipeline 支持两种语法：Declarative（声明式）和 Scripted Pipeline（脚本式）语法
 - Pipeline 也有两种创建方法：可以直接在 Jenkins 的 Web UI 界面中输入脚本；也可以通过创建一个 Jenkinsfile 脚本文件放入项目源码库中
-- 一般我们都推荐在 Jenkins 中直接从源代码控制（SCM）中直接载入 Jenkinsfile Pipeline 这种方法，但是本次为了更直观的展示，我们在 Web UI 界面中输入脚本
+- 一般我们都推荐在 Jenkins 中直接从源代码控制（SCM）中直接载入 Jenkinsfile Pipeline 这种方法，但是本次为了更直观的展示，我们在
+  Web UI 界面中输入脚本
 
 ### 完整 Pipeline 示例
 

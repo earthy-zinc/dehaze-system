@@ -1,5 +1,7 @@
 # RabbitMQ
+
 ## 介绍
+
 RabbitMQ即（Rabbit Message Queue)消息队列中间件，用于接收和转发消息。具体流程是接收消息-> 存储-> 转发二进制数据。
 
 相关概念：

@@ -1207,11 +1207,7 @@ Q 为 12，K 为 13。上面的 5 张牌就可以变成“1,2,3,4,5”（大小�
 - [《JS 版剑指 offer》](https://www.cnblogs.com/wuguanglin/p/code-interview.html)
 - [《剑指 Offer 学习心得》](https://wiki.jikexueyuan.com/project/for-offer/)
 
-
-
-
-## 相关算法题 
-
+## 相关算法题
 
 1. 明星问题
    ```

@@ -10,6 +10,7 @@ JavaScript中值分为字面量和变量两种：
 - **变量**：可变化的值
 
 JavaScript数据类型包括：
+
 - 数字：整数、小数、科学记数法
 - 字符串：单引号或双引号包裹的文本
 - 布尔值：true或false
@@ -19,11 +20,11 @@ JavaScript数据类型包括：
 
 ### 变量声明关键字
 
-| 关键字 | 特点 | 作用域 |
-|-------|------|--------|
-| var | 可重复声明，有变量提升 | 函数作用域 |
-| let | 不可重复声明，无变量提升 | 块级作用域 |
-| const | 声明常量，必须初始化 | 块级作用域 |
+| 关键字   | 特点           | 作用域   |
+|-------|--------------|-------|
+| var   | 可重复声明，有变量提升  | 函数作用域 |
+| let   | 不可重复声明，无变量提升 | 块级作用域 |
+| const | 声明常量，必须初始化   | 块级作用域 |
 
 ### 作用域
 
@@ -32,6 +33,7 @@ JavaScript数据类型包括：
 3. **块级作用域**：由{}包裹的代码块形成的作用域
 
 变量生命周期：
+
 - 局部变量：函数执行时创建，函数结束时销毁
 - 全局变量：页面加载时创建，页面关闭时销毁
 
@@ -86,6 +88,7 @@ JavaScript数据类型包括：
 对象是带有属性和方法的特殊数据类型。JavaScript中几乎所有对象都是Object类型的实例。
 
 访问方式：
+
 - 属性访问：`object.attribute`
 - 方法调用：`object.functionName()`
 
@@ -124,6 +127,7 @@ const person = {
 JavaScript数据类型分为基本类型和引用类型：
 
 **基本类型**：
+
 - string（字符串）
 - number（数字）
 - boolean（布尔值）
@@ -132,6 +136,7 @@ JavaScript数据类型分为基本类型和引用类型：
 - symbol（符号）
 
 **引用类型**：
+
 - Object（对象）
 - Array（数组）
 - Function（函数）
@@ -154,8 +159,10 @@ this表示当前对象的引用，其指向根据上下文环境而定：
 解构赋值是ES6特性，用于从数组或对象中提取值并赋给变量。
 
 #### 数组解构
+
 ``javascript
 let [a, b, c] = [1, 2, 3]; // a=1, b=2, c=3
+
 ```
 
 #### 对象解构
@@ -172,6 +179,7 @@ let {name, age} = {name: "Amy", age: 12};
 ES6模块系统分为导出(export)和导入(import)，自动开启严格模式。
 
 #### 导出模块
+
 ```javascript
 // 分别导出
 export let name = "tom";
@@ -189,6 +197,7 @@ export default {
 ```
 
 #### 导入模块
+
 ```javascript
 // 导入指定内容
 import {name} from "./module.js";
@@ -206,21 +215,21 @@ import * as newName from "./module.js";
 
 Window对象表示浏览器窗口，包含以下常用属性和方法：
 
-| 属性 | 说明 |
-|-----|-----|
-| closed | 窗口是否已关闭 |
-| document | 对Document对象的引用 |
-| innerHeight/innerWidth | 窗口文档显示区域尺寸 |
-| outerHeight/outerWidth | 窗口整体尺寸 |
+| 属性                     | 说明             |
+|------------------------|----------------|
+| closed                 | 窗口是否已关闭        |
+| document               | 对Document对象的引用 |
+| innerHeight/innerWidth | 窗口文档显示区域尺寸     |
+| outerHeight/outerWidth | 窗口整体尺寸         |
 
-| 方法 | 说明 |
-|-----|-----|
-| alert() | 显示警告框 |
-| confirm() | 显示确认框 |
-| prompt() | 显示输入框 |
-| setTimeout()/clearTimeout() | 延时执行/清除 |
+| 方法                            | 说明      |
+|-------------------------------|---------|
+| alert()                       | 显示警告框   |
+| confirm()                     | 显示确认框   |
+| prompt()                      | 显示输入框   |
+| setTimeout()/clearTimeout()   | 延时执行/清除 |
 | setInterval()/clearInterval() | 定时执行/清除 |
-| open()/close() | 打开/关闭窗口 |
+| open()/close()                | 打开/关闭窗口 |
 
 ### Navigator对象
 
@@ -266,44 +275,44 @@ Document对象是HTML文档的根节点，用于访问和操作页面元素。
 
 #### 鼠标事件
 
-| 事件 | 触发条件 |
-|-----|---------|
-| onclick | 鼠标点击 |
-| ondblclick | 鼠标双击 |
-| onmousedown | 鼠标按键按下 |
-| onmouseup | 鼠标按键释放 |
+| 事件           | 触发条件   |
+|--------------|--------|
+| onclick      | 鼠标点击   |
+| ondblclick   | 鼠标双击   |
+| onmousedown  | 鼠标按键按下 |
+| onmouseup    | 鼠标按键释放 |
 | onmouseenter | 鼠标进入元素 |
 | onmouseleave | 鼠标离开元素 |
 
 #### 键盘事件
 
-| 事件 | 触发条件 |
-|-----|---------|
-| onkeydown | 键盘按键按下 |
-| onkeyup | 键盘按键释放 |
+| 事件         | 触发条件      |
+|------------|-----------|
+| onkeydown  | 键盘按键按下    |
+| onkeyup    | 键盘按键释放    |
 | onkeypress | 键盘按键按下并释放 |
 
 #### 表单事件
 
-| 事件 | 触发条件 |
-|-----|---------|
-| onfocus | 元素获得焦点 |
-| onblur | 元素失去焦点 |
+| 事件       | 触发条件     |
+|----------|----------|
+| onfocus  | 元素获得焦点   |
+| onblur   | 元素失去焦点   |
 | onchange | 表单元素内容改变 |
-| onsubmit | 表单提交 |
+| onsubmit | 表单提交     |
 
 ### 控制台对象
 
 浏览器控制台用于调试，常用方法包括：
 
-| 方法 | 说明 |
-|-----|-----|
-| console.log() | 输出信息 |
-| console.warn() | 输出警告信息 |
-| console.error() | 输出错误信息 |
-| console.group() | 创建信息分组 |
-| console.time()/timeEnd() | 计时 |
-| console.clear() | 清除控制台 |
+| 方法                       | 说明     |
+|--------------------------|--------|
+| console.log()            | 输出信息   |
+| console.warn()           | 输出警告信息 |
+| console.error()          | 输出错误信息 |
+| console.group()          | 创建信息分组 |
+| console.time()/timeEnd() | 计时     |
+| console.clear()          | 清除控制台  |
 
 ## 异步编程
 

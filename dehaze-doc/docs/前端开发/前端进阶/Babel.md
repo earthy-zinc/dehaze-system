@@ -12,4 +12,6 @@ Babel软件包涉及到的模块：
 
 - 核心库 core lib：Babel的核心功能都包含在 [@babel/core](https://www.babeljs.cn/docs/babel-core) 模块中
 - 命令行工具 cli tool：[@babel/cli](https://www.babeljs.cn/docs/babel-cli) 模块可以让你从终端中通过命令行使用Babel的相关功能
-- 插件和预设 plugin and preset ：Babel中的代码转换功能是通过插件的形式出现的，我们可以通过引入多个插件将高版本的JavaScript代码转换为低版本的JavaScript代码。而@babel/preset-env 模块 整合了一组与代码转换相关的插件，我们可以通过安装它来引入所有的代码转换功能。
+- 插件和预设 plugin and preset
+  ：Babel中的代码转换功能是通过插件的形式出现的，我们可以通过引入多个插件将高版本的JavaScript代码转换为低版本的JavaScript代码。而@babel/preset-env
+  模块 整合了一组与代码转换相关的插件，我们可以通过安装它来引入所有的代码转换功能。
