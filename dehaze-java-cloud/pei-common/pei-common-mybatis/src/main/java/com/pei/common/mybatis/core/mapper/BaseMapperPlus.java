@@ -144,14 +144,14 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
     }
 
     /**
-     * 获取当前类的泛型类型 V 的 Class 对象
-     * <p>
-     * 该方法使用反射机制从当前类（继承自 BaseMapperPlus 类）的泛型参数中获取第一个泛型类型 V 的 Class 对象
+     * 根据条件查询单个VO对象，并根据需要决定是否抛出异常
      *
-     * @return 当前类的泛型类型 V 的 Class 对象
+     * @param wrapper 查询条件Wrapper
+     * @param throwEx 是否抛出异常的标志
+     * @return 查询到的单个VO对象
      */
-    default Class<V> currentVoClass() {
-        return (Class<V>) ReflectionKit.getSuperClassGenericType(this.getClass(), BaseMapperPlus.class, 1);
+    default V selectVoOne(Wrapper<T> wrapper, boolean throwEx) {
+        return selectVoOne(wrapper, this.currentVoClass(), throwEx);
     }
 
     /**
@@ -233,14 +233,14 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
     }
 
     /**
-     * 根据条件查询单个VO对象，并根据需要决定是否抛出异常
+     * 获取当前类的泛型类型 V 的 Class 对象
+     * <p>
+     * 该方法使用反射机制从当前类（继承自 BaseMapperPlus 类）的泛型参数中获取第一个泛型类型 V 的 Class 对象
      *
-     * @param wrapper 查询条件Wrapper
-     * @param throwEx 是否抛出异常的标志
-     * @return 查询到的单个VO对象
+     * @return 当前类的泛型类型 V 的 Class 对象
      */
-    default V selectVoOne(Wrapper<T> wrapper, boolean throwEx) {
-        return selectVoOne(wrapper, this.currentVoClass(), throwEx);
+    default Class<V> currentVoClass() {
+        return (Class<V>) ReflectionKit.getSuperClassGenericType(this.getClass(), BaseMapperPlus.class, 1);
     }
 
     /**

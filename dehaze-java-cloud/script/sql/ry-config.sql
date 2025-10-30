@@ -149,13 +149,13 @@ CREATE TABLE `config_info_gray`
 /******************************************/
 CREATE TABLE `config_tags_relation`
 (
-    `id`        bigint(20)   NOT NULL COMMENT 'id',
-    `tag_name`  varchar(128) NOT NULL COMMENT 'tag_name',
-    `tag_type`  varchar(64)  DEFAULT NULL COMMENT 'tag_type',
-    `data_id`   varchar(255) NOT NULL COMMENT 'data_id',
-    `group_id`  varchar(128) NOT NULL COMMENT 'group_id',
+    `id`       bigint(20)   NOT NULL COMMENT 'id',
+    `tag_name` varchar(128) NOT NULL COMMENT 'tag_name',
+    `tag_type` varchar(64) DEFAULT NULL COMMENT 'tag_type',
+    `data_id`  varchar(255) NOT NULL COMMENT 'data_id',
+    `group_id` varchar(128) NOT NULL COMMENT 'group_id',
     `tenant_id` varchar(128) DEFAULT '' COMMENT 'tenant_id',
-    `nid`       bigint(20)   NOT NULL AUTO_INCREMENT COMMENT 'nid, 自增长标识',
+    `nid`      bigint(20)   NOT NULL AUTO_INCREMENT COMMENT 'nid, 自增长标识',
     PRIMARY KEY (`nid`),
     UNIQUE KEY `uk_config_tag_relation_config_id_tag` (`id`, `tag_name`, `tag_type`),
     KEY `idx_tenant_id` (`tenant_id`)
@@ -260,23 +260,23 @@ values (1, '1', 'dev', 'dev', '开发环境', NULL, 1641741261189, 1641741261189
 
 CREATE TABLE `users`
 (
-    `username` varchar(50)  NOT NULL PRIMARY KEY COMMENT 'username',
+    `username` varchar(50) NOT NULL PRIMARY KEY COMMENT 'username',
     `password` varchar(500) NOT NULL COMMENT 'password',
-    `enabled`  boolean      NOT NULL COMMENT 'enabled'
+    `enabled`  boolean     NOT NULL COMMENT 'enabled'
 );
 
 CREATE TABLE `roles`
 (
     `username` varchar(50) NOT NULL COMMENT 'username',
-    `role`     varchar(50) NOT NULL COMMENT 'role',
+    `role` varchar(50) NOT NULL COMMENT 'role',
     UNIQUE INDEX `idx_user_role` (`username` ASC, `role` ASC) USING BTREE
 );
 
 CREATE TABLE `permissions`
 (
-    `role`     varchar(50)  NOT NULL COMMENT 'role',
+    `role`   varchar(50) NOT NULL COMMENT 'role',
     `resource` varchar(128) NOT NULL COMMENT 'resource',
-    `action`   varchar(8)   NOT NULL COMMENT 'action',
+    `action` varchar(8)  NOT NULL COMMENT 'action',
     UNIQUE INDEX `uk_role_permission` (`role`, `resource`, `action`) USING BTREE
 );
 

@@ -93,15 +93,6 @@ public class ExcelUtil {
     }
 
     /**
-     * 重置响应体
-     */
-    private static void resetResponse(String sheetName, HttpServletResponse response) throws UnsupportedEncodingException {
-        String filename = encodingFilename(sheetName);
-        FileUtils.setAttachmentResponseHeader(response, filename);
-        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8");
-    }
-
-    /**
      * 导出excel
      *
      * @param list      导出数据集合
@@ -130,10 +121,30 @@ public class ExcelUtil {
     }
 
     /**
-     * 编码文件名
+     * 单表多数据模板导出 模板格式为 {.属性}
+     *
+     * @param filename     文件名
+     * @param templatePath 模板路径 resource 目录下的路径包括模板文件名 例如: excel/temp.xlsx 重点: 模板文件必须放置到启动类对应的 resource 目录下
+     * @param data         模板需要的数据
+     * @param response     响应体
      */
-    public static String encodingFilename(String filename) {
-        return IdUtil.fastSimpleUUID() + "_" + filename + ".xlsx";
+    public static <T> void exportTemplate(List<T> data, String filename, String templatePath, HttpServletResponse response) {
+        try {
+            resetResponse(filename, response);
+            ServletOutputStream os = response.getOutputStream();
+            exportTemplate(data, templatePath, os);
+        } catch (IOException e) {
+            throw new RuntimeException("导出Excel异常");
+        }
+    }
+
+    /**
+     * 重置响应体
+     */
+    private static void resetResponse(String sheetName, HttpServletResponse response) throws UnsupportedEncodingException {
+        String filename = encodingFilename(sheetName);
+        FileUtils.setAttachmentResponseHeader(response, filename);
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8");
     }
 
     /**
@@ -222,24 +233,6 @@ public class ExcelUtil {
     /**
      * 单表多数据模板导出 模板格式为 {.属性}
      *
-     * @param filename     文件名
-     * @param templatePath 模板路径 resource 目录下的路径包括模板文件名 例如: excel/temp.xlsx 重点: 模板文件必须放置到启动类对应的 resource 目录下
-     * @param data         模板需要的数据
-     * @param response     响应体
-     */
-    public static <T> void exportTemplate(List<T> data, String filename, String templatePath, HttpServletResponse response) {
-        try {
-            resetResponse(filename, response);
-            ServletOutputStream os = response.getOutputStream();
-            exportTemplate(data, templatePath, os);
-        } catch (IOException e) {
-            throw new RuntimeException("导出Excel异常");
-        }
-    }
-
-    /**
-     * 单表多数据模板导出 模板格式为 {.属性}
-     *
      * @param templatePath 模板路径 resource 目录下的路径包括模板文件名 例如: excel/temp.xlsx 重点: 模板文件必须放置到启动类对应的 resource 目录下
      * @param data         模板需要的数据
      * @param os           输出流
@@ -263,6 +256,13 @@ public class ExcelUtil {
             excelWriter.fill(d, fillConfig, writeSheet);
         }
         excelWriter.finish();
+    }
+
+    /**
+     * 编码文件名
+     */
+    public static String encodingFilename(String filename) {
+        return IdUtil.fastSimpleUUID() + "_" + filename + ".xlsx";
     }
 
     /**

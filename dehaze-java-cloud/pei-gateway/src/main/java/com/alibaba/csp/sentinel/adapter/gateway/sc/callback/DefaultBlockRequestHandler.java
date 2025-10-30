@@ -76,21 +76,6 @@ public class DefaultBlockRequestHandler implements BlockRequestHandler {
             DEFAULT_BLOCK_MSG_PREFIX + ex.getClass().getSimpleName());
     }
 
-    private static class ErrorResult {
-        private final int code;
-        private final String message;
-
-        ErrorResult(int code, String message) {
-            this.code = code;
-            this.message = message;
-        }
-
-        public int getCode() {
-            return code;
-        }
-
-        public String getMessage() {
-            return message;
-        }
+    private record ErrorResult(int code, String message) {
     }
 }

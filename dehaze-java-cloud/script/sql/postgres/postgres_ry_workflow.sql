@@ -337,11 +337,11 @@ VALUES (109, '000000', 102, '0,100,102', '离职', 2, '0', 103, 1, now(), NULL, 
 CREATE TABLE test_leave
 (
     id          int8         NOT NULL,
-    tenant_id   VARCHAR(20) DEFAULT '000000'::varchar,
+    tenant_id  VARCHAR(20) DEFAULT '000000'::varchar,
     leave_type  VARCHAR(255) NOT NULL,
     start_date  TIMESTAMP    NOT NULL,
     end_date    TIMESTAMP    NOT NULL,
-    leave_days  int2         NOT NULL,
+    leave_days int2 NOT NULL,
     remark      VARCHAR(255),
     status      VARCHAR(255),
     create_dept int8,

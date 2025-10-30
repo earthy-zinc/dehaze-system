@@ -39,8 +39,11 @@ public class CaffeineCacheDecorator implements Cache {
         return (ValueWrapper) o;
     }
 
-    public String getUniqueKey(Object key) {
-        return name + ":" + key;
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T get(Object key, Callable<T> valueLoader) {
+        Object o = CAFFEINE.get(getUniqueKey(key), k -> cache.get(key, valueLoader));
+        return (T) o;
     }
 
     @SuppressWarnings("unchecked")
@@ -50,11 +53,8 @@ public class CaffeineCacheDecorator implements Cache {
         return (T) o;
     }
 
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T> T get(Object key, Callable<T> valueLoader) {
-        Object o = CAFFEINE.get(getUniqueKey(key), k -> cache.get(key, valueLoader));
-        return (T) o;
+    public String getUniqueKey(Object key) {
+        return name + ":" + key;
     }
 
     @Override

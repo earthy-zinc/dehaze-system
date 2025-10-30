@@ -50,6 +50,23 @@ public class GenUtils {
     }
 
     /**
+     * 批量替换前缀
+     *
+     * @param replacementm 替换值
+     * @param searchList   替换列表
+     */
+    public static String replaceFirst(String replacementm, String[] searchList) {
+        String text = replacementm;
+        for (String searchString : searchList) {
+            if (replacementm.startsWith(searchString)) {
+                text = replacementm.replaceFirst(searchString, StringUtils.EMPTY);
+                break;
+            }
+        }
+        return text;
+    }
+
+    /**
      * 获取模块名
      *
      * @param packageName 包名
@@ -83,23 +100,6 @@ public class GenUtils {
      */
     public static String replaceText(String text) {
         return RegExUtils.replaceAll(text, "(?:表|若依)", "");
-    }
-
-    /**
-     * 批量替换前缀
-     *
-     * @param replacementm 替换值
-     * @param searchList   替换列表
-     */
-    public static String replaceFirst(String replacementm, String[] searchList) {
-        String text = replacementm;
-        for (String searchString : searchList) {
-            if (replacementm.startsWith(searchString)) {
-                text = replacementm.replaceFirst(searchString, StringUtils.EMPTY);
-                break;
-            }
-        }
-        return text;
     }
 
     /**

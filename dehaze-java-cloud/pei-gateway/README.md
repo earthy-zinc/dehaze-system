@@ -11,9 +11,9 @@
 - **作用**：拦截所有请求，验证用户是否已登录，是否有权限访问目标资源。
 - **实现方式**：
     - 使用 [Sa-Token](https://github.com/dromara/sa-token) 进行权限控制。
-    -
-    在 [AuthFilter.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\AuthFilter.java)
-    中注册全局过滤器，拦截 [/](file://E:\ProgramProject\RuoYi-Cloud-Plus\LICENSE) 下的所有请求。
+  -
+  在 [AuthFilter.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\AuthFilter.java)
+  中注册全局过滤器，拦截 [/](file://E:\ProgramProject\RuoYi-Cloud-Plus\LICENSE) 下的所有请求。
     - 支持白名单配置（如 `/favicon.ico`, `/actuator` 等）。
 - **关键方法**：
     - `setAuth(...)`：执行登录校验和客户端ID一致性检查。
@@ -23,12 +23,12 @@
 
 - **作用**：阻止某些非法或恶意的URL访问。
 - **实现方式**：
+  -
+  在 [BlackListUrlFilter.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\BlackListUrlFilter.java)
+  中通过正则表达式匹配黑名单路径。
     -
-    在 [BlackListUrlFilter.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\BlackListUrlFilter.java)
-    中通过正则表达式匹配黑名单路径。
-    -
-    配置文件中定义 [blacklistUrl](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\BlackListUrlFilter.java#L36-L36)
-    列表。
+  配置文件中定义 [blacklistUrl](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\BlackListUrlFilter.java#L36-L36)
+  列表。
 - **关键方法**：
     - [matchBlacklist(String url)](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\BlackListUrlFilter.java#L40-L42)
       ：判断当前请求URL是否匹配黑名单。
@@ -37,9 +37,9 @@
 
 - **作用**：记录每个请求的详细信息，包括请求路径、参数、耗时等。
 - **实现方式**：
-    -
-    在 [GlobalLogFilter.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\GlobalLogFilter.java)
-    中实现 `GlobalFilter` 接口。
+  -
+  在 [GlobalLogFilter.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\GlobalLogFilter.java)
+  中实现 `GlobalFilter` 接口。
     - 根据配置项 `spring.cloud.gateway.requestLog` 决定是否开启日志记录。
 - **关键方法**：
     - [filter(...)](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\filter\GlobalLogFilter.java#L37-L73)
@@ -51,9 +51,9 @@
 
 - **作用**：统一处理网关层抛出的异常，并返回结构化的错误响应。
 - **实现方式**：
-    -
-    在 [GatewayExceptionHandler.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\handler\GatewayExceptionHandler.java)
-    中实现 `ErrorWebExceptionHandler` 接口。
+  -
+  在 [GatewayExceptionHandler.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\handler\GatewayExceptionHandler.java)
+  中实现 `ErrorWebExceptionHandler` 接口。
     - 处理常见异常类型（如 `NotFoundException`, `ResponseStatusException`）。
 - **关键方法**：
     - [handle(...)](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\handler\GatewayExceptionHandler.java#L23-L44)
@@ -64,9 +64,9 @@
 - **作用**：防止系统被高并发请求压垮，保障稳定性。
 - **实现方式**：
     - 使用阿里 Sentinel 实现限流。
-    -
-    在 [SentinelFallbackHandler.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\handler\SentinelFallbackHandler.java)
-    中处理限流降级逻辑。
+  -
+  在 [SentinelFallbackHandler.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\handler\SentinelFallbackHandler.java)
+  中处理限流降级逻辑。
 - **配置类**：
     - [GatewayConfig.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\config\GatewayConfig.java)
       注册了 Sentinel 的异常处理器。
@@ -75,9 +75,9 @@
 
 - **作用**：提供 WebFlux 相关的工具方法。
 - **实现方式**：
-    -
-    在 [WebFluxUtils.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\utils\WebFluxUtils.java)
-    中封装了请求路径解析、Body读取、响应构建等功能。
+  -
+  在 [WebFluxUtils.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\utils\WebFluxUtils.java)
+  中封装了请求路径解析、Body读取、响应构建等功能。
 - **关键方法**：
     - [getOriginalRequestUrl(...)](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-gateway\src\main\java\com\pei\gateway\utils\WebFluxUtils.java#L39-L44)
       ：获取原始请求路径。

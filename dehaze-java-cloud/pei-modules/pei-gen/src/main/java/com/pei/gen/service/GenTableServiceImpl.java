@@ -208,16 +208,18 @@ public class GenTableServiceImpl implements IGenTableService {
     }
 
     /**
-     * 查询业务信息
+     * 获取代码生成地址
      *
-     * @param id 业务ID
-     * @return 业务信息
+     * @param table    业务表信息
+     * @param template 模板文件路径
+     * @return 生成地址
      */
-    @Override
-    public GenTable selectGenTableById(Long id) {
-        GenTable genTable = baseMapper.selectGenTableById(id);
-        setTableFromOptions(genTable);
-        return genTable;
+    public static String getGenPath(GenTable table, String template) {
+        String genPath = table.getGenPath();
+        if (StringUtils.equals(genPath, "/")) {
+            return System.getProperty("user.dir") + File.separator + "src" + File.separator + VelocityUtils.getFileName(template, table);
+        }
+        return genPath + File.separator + VelocityUtils.getFileName(template, table);
     }
 
     /**
@@ -466,6 +468,19 @@ public class GenTableServiceImpl implements IGenTableService {
     }
 
     /**
+     * 查询业务信息
+     *
+     * @param id 业务ID
+     * @return 业务信息
+     */
+    @Override
+    public GenTable selectGenTableById(Long id) {
+        GenTable genTable = baseMapper.selectGenTableById(id);
+        setTableFromOptions(genTable);
+        return genTable;
+    }
+
+    /**
      * 修改保存参数校验
      *
      * @param genTable 业务信息
@@ -483,21 +498,6 @@ public class GenTableServiceImpl implements IGenTableService {
                 throw new ServiceException("树名称字段不能为空");
             }
         }
-    }
-
-    /**
-     * 获取代码生成地址
-     *
-     * @param table    业务表信息
-     * @param template 模板文件路径
-     * @return 生成地址
-     */
-    public static String getGenPath(GenTable table, String template) {
-        String genPath = table.getGenPath();
-        if (StringUtils.equals(genPath, "/")) {
-            return System.getProperty("user.dir") + File.separator + "src" + File.separator + VelocityUtils.getFileName(template, table);
-        }
-        return genPath + File.separator + VelocityUtils.getFileName(template, table);
     }
 
     /**

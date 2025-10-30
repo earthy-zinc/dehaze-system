@@ -166,23 +166,23 @@ comment on column  sys_tenant_package.update_time        is '更新时间';
 -- ----------------------------
 create table if not exists sys_dept
 (
-    dept_id       int8,
-    tenant_id     varchar(20)  default '000000'::varchar,
-    parent_id     int8         default 0,
-    ancestors     varchar(500) default ''::varchar,
-    dept_name     varchar(30)  default ''::varchar,
+    dept_id     int8,
+    tenant_id   varchar(20)  default '000000'::varchar,
+    parent_id   int8         default 0,
+    ancestors   varchar(500) default ''::varchar,
+    dept_name   varchar(30)  default ''::varchar,
     dept_category varchar(100) default null::varchar,
-    order_num     int4         default 0,
-    leader        int8         default null,
-    phone         varchar(11)  default null::varchar,
-    email         varchar(50)  default null::varchar,
-    status        char         default '0'::bpchar,
-    del_flag      char         default '0'::bpchar,
-    create_dept   int8,
-    create_by     int8,
-    create_time   timestamp,
-    update_by     int8,
-    update_time   timestamp,
+    order_num   int4         default 0,
+    leader      int8         default null,
+    phone       varchar(11)  default null::varchar,
+    email       varchar(50)  default null::varchar,
+    status      char         default '0'::bpchar,
+    del_flag    char         default '0'::bpchar,
+    create_dept int8,
+    create_by   int8,
+    create_time timestamp,
+    update_by   int8,
+    update_time timestamp,
     constraint "sys_dept_pk" primary key (dept_id)
 );
 
@@ -247,8 +247,8 @@ create table if not exists sys_user
     user_id     int8,
     tenant_id   varchar(20)  default '000000'::varchar,
     dept_id     int8,
-    user_name   varchar(30) not null,
-    nick_name   varchar(30) not null,
+    user_name varchar(30) not null,
+    nick_name varchar(30) not null,
     user_type   varchar(10)  default 'sys_user'::varchar,
     email       varchar(50)  default ''::varchar,
     phonenumber varchar(11)  default ''::varchar,
@@ -1522,8 +1522,8 @@ create table if not exists sys_notice
 (
     notice_id      int8,
     tenant_id      varchar(20)  default '000000'::varchar,
-    notice_title   varchar(50) not null,
-    notice_type    char        not null,
+    notice_title varchar(50) not null,
+    notice_type  char        not null,
     notice_content text,
     status         char         default '0'::bpchar,
     create_dept    int8,
@@ -1821,19 +1821,19 @@ values (2, '428a8310cd442757ae699df5d894f051', 'app', 'app123', 'password,sms,so
 create table if not exists test_demo
 (
     id          int8,
-    tenant_id   varchar(20) default '000000',
+    tenant_id varchar(20) default '000000',
     dept_id     int8,
     user_id     int8,
-    order_num   int4        default 0,
+    order_num int4        default 0,
     test_key    varchar(255),
     value       varchar(255),
-    version     int4        default 0,
+    version   int4        default 0,
     create_dept int8,
     create_time timestamp,
     create_by   int8,
     update_time timestamp,
     update_by   int8,
-    del_flag    int4        default 0
+    del_flag  int4        default 0
 );
 
 comment on table test_demo is '测试单表';
@@ -1855,18 +1855,18 @@ comment on column test_demo.del_flag is '删除标志';
 create table if not exists test_tree
 (
     id          int8,
-    tenant_id   varchar(20) default '000000',
-    parent_id   int8        default 0,
+    tenant_id varchar(20) default '000000',
+    parent_id int8        default 0,
     dept_id     int8,
     user_id     int8,
     tree_name   varchar(255),
-    version     int4        default 0,
+    version   int4        default 0,
     create_dept int8,
     create_time timestamp,
     create_by   int8,
     update_time timestamp,
     update_by   int8,
-    del_flag    integer     default 0
+    del_flag  integer     default 0
 );
 
 comment on table test_tree is '测试树表';

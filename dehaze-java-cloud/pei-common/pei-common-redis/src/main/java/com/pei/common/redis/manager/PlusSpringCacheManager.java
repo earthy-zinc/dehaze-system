@@ -85,7 +85,9 @@ public class PlusSpringCacheManager implements CacheManager {
      */
     public void setConfig(Map<String, ? extends CacheConfig> config) {
         this.configMap = (Map<String, CacheConfig>) config;
-    }    /**
+    }
+
+    /**
      * Defines 'fixed' cache names.
      * A new cache instance will not be created in dynamic for non-defined names.
      * <p>
@@ -103,7 +105,6 @@ public class PlusSpringCacheManager implements CacheManager {
             dynamic = true;
         }
     }
-
 
 
     protected CacheConfig createDefaultConfig() {

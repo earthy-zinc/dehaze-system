@@ -139,10 +139,7 @@ public class SysDictDataServiceImpl implements ISysDictDataService {
         Long dictCode = ObjectUtils.notNull(dict.getDictCode(), -1L);
         SysDictData entity = baseMapper.selectOne(new LambdaQueryWrapper<SysDictData>()
             .eq(SysDictData::getDictType, dict.getDictType()).eq(SysDictData::getDictValue, dict.getDictValue()));
-        if (ObjectUtil.isNotNull(entity) && !dictCode.equals(entity.getDictCode())) {
-            return false;
-        }
-        return true;
+        return !ObjectUtil.isNotNull(entity) || dictCode.equals(entity.getDictCode());
     }
 
     private LambdaQueryWrapper<SysDictData> buildQueryWrapper(SysDictDataBo bo) {

@@ -129,6 +129,15 @@ public class OssClient {
     }
 
     /**
+     * 获取是否使用 HTTPS 的配置，并返回相应的协议头部。
+     *
+     * @return 协议头部，根据是否使用 HTTPS 返回 "https://" 或 "http://"
+     */
+    public String getIsHttps() {
+        return OssConstant.IS_HTTPS.equals(properties.getIsHttps()) ? Constants.HTTPS : Constants.HTTP;
+    }
+
+    /**
      * 根据传入的 region 参数返回相应的 AWS 区域 如果 region 参数非空，使用 Region.of 方法创建并返回对应的 AWS 区域对象 如果 region 参数为空，返回一个默认的 AWS
      * 区域（例如，us-east-1），作为广泛支持的区域
      *
@@ -164,15 +173,6 @@ public class OssClient {
 
         // 返回终端点
         return header + endpoint;
-    }
-
-    /**
-     * 获取是否使用 HTTPS 的配置，并返回相应的协议头部。
-     *
-     * @return 协议头部，根据是否使用 HTTPS 返回 "https://" 或 "http://"
-     */
-    public String getIsHttps() {
-        return OssConstant.IS_HTTPS.equals(properties.getIsHttps()) ? Constants.HTTPS : Constants.HTTP;
     }
 
     /**
@@ -226,13 +226,52 @@ public class OssClient {
     }
 
     /**
-     * 移除路径中的基础URL部分，得到相对路径
+     * 上传 InputStream 到 Amazon S3
      *
-     * @param path 完整的路径，包括基础URL和相对路径
-     * @return 去除基础URL后的相对路径
+     * @param inputStream 要上传的输入流
+     * @param key         在 Amazon S3 中的对象键
+     * @param length      输入流的长度
+     * @param contentType 文件内容类型
+     * @return UploadResult 包含上传后的文件信息
+     * @throws OssException 如果上传失败，抛出自定义异常
      */
-    public String removeBaseUrl(String path) {
-        return path.replace(getUrl() + StringUtils.SLASH, "");
+    public UploadResult upload(InputStream inputStream, String key, Long length, String contentType) {
+        // 如果输入流不是 ByteArrayInputStream，则将其读取为字节数组再创建 ByteArrayInputStream
+        if (!(inputStream instanceof ByteArrayInputStream)) {
+            inputStream = new ByteArrayInputStream(IoUtil.readBytes(inputStream));
+        }
+        try {
+            // 创建异步请求体（length如果为空会报错）
+            BlockingInputStreamAsyncRequestBody body = BlockingInputStreamAsyncRequestBody.builder()
+                .contentLength(length)
+                .subscribeTimeout(Duration.ofSeconds(30))
+                .build();
+
+            // 使用 transferManager 进行上传
+            Upload upload = transferManager.upload(
+                x -> x.requestBody(body)
+                    .putObjectRequest(
+                        y -> y.bucket(properties.getBucketName())
+                            .key(key)
+                            .contentType(contentType)
+                            // 用于设置对象的访问控制列表（ACL）。不同云厂商对ACL的支持和实现方式有所不同，
+                            // 因此根据具体的云服务提供商，你可能需要进行不同的配置（自行开启，阿里云有acl权限配置，腾讯云没有acl权限配置）
+                            //.acl(getAccessPolicy().getObjectCannedACL())
+                            .build())
+                    .build());
+
+            // 将输入流写入请求体
+            body.writeInputStream(inputStream);
+
+            // 等待文件上传操作完成
+            CompletedUpload uploadResult = upload.completionFuture().join();
+            String eTag = uploadResult.response().eTag();
+
+            // 提取上传结果中的 ETag，并构建一个自定义的 UploadResult 对象
+            return UploadResult.builder().url(getUrl() + StringUtils.SLASH + key).filename(key).eTag(eTag).build();
+        } catch (Exception e) {
+            throw new OssException("上传文件失败，请检查配置信息:[" + e.getMessage() + "]");
+        }
     }
 
     /**
@@ -289,55 +328,6 @@ public class OssClient {
     }
 
     /**
-     * 上传 InputStream 到 Amazon S3
-     *
-     * @param inputStream 要上传的输入流
-     * @param key         在 Amazon S3 中的对象键
-     * @param length      输入流的长度
-     * @param contentType 文件内容类型
-     * @return UploadResult 包含上传后的文件信息
-     * @throws OssException 如果上传失败，抛出自定义异常
-     */
-    public UploadResult upload(InputStream inputStream, String key, Long length, String contentType) {
-        // 如果输入流不是 ByteArrayInputStream，则将其读取为字节数组再创建 ByteArrayInputStream
-        if (!(inputStream instanceof ByteArrayInputStream)) {
-            inputStream = new ByteArrayInputStream(IoUtil.readBytes(inputStream));
-        }
-        try {
-            // 创建异步请求体（length如果为空会报错）
-            BlockingInputStreamAsyncRequestBody body = BlockingInputStreamAsyncRequestBody.builder()
-                .contentLength(length)
-                .subscribeTimeout(Duration.ofSeconds(30))
-                .build();
-
-            // 使用 transferManager 进行上传
-            Upload upload = transferManager.upload(
-                x -> x.requestBody(body)
-                    .putObjectRequest(
-                        y -> y.bucket(properties.getBucketName())
-                            .key(key)
-                            .contentType(contentType)
-                            // 用于设置对象的访问控制列表（ACL）。不同云厂商对ACL的支持和实现方式有所不同，
-                            // 因此根据具体的云服务提供商，你可能需要进行不同的配置（自行开启，阿里云有acl权限配置，腾讯云没有acl权限配置）
-                            //.acl(getAccessPolicy().getObjectCannedACL())
-                            .build())
-                    .build());
-
-            // 将输入流写入请求体
-            body.writeInputStream(inputStream);
-
-            // 等待文件上传操作完成
-            CompletedUpload uploadResult = upload.completionFuture().join();
-            String eTag = uploadResult.response().eTag();
-
-            // 提取上传结果中的 ETag，并构建一个自定义的 UploadResult 对象
-            return UploadResult.builder().url(getUrl() + StringUtils.SLASH + key).filename(key).eTag(eTag).build();
-        } catch (Exception e) {
-            throw new OssException("上传文件失败，请检查配置信息:[" + e.getMessage() + "]");
-        }
-    }
-
-    /**
      * 生成一个符合特定规则的、唯一的文件路径。通过使用日期、UUID、前缀和后缀等元素的组合，确保了文件路径的独一无二性
      *
      * @param prefix 前缀
@@ -353,31 +343,6 @@ public class OssClient {
         String path = StringUtils.isNotEmpty(prefix) ?
             prefix + StringUtils.SLASH + datePath + StringUtils.SLASH + uuid : datePath + StringUtils.SLASH + uuid;
         return path + suffix;
-    }
-
-    /**
-     * 上传 InputStream 到 Amazon S3，使用指定的后缀构造对象键。
-     *
-     * @param inputStream 要上传的输入流
-     * @param suffix      对象键的后缀
-     * @param length      输入流的长度
-     * @return UploadResult 包含上传后的文件信息
-     * @throws OssException 如果上传失败，抛出自定义异常
-     */
-    public UploadResult uploadSuffix(InputStream inputStream, String suffix, Long length, String contentType) {
-        return upload(inputStream, getPath(properties.getPrefix(), suffix), length, contentType);
-    }
-
-    /**
-     * 上传文件到 Amazon S3，使用指定的后缀构造对象键
-     *
-     * @param file   要上传的文件
-     * @param suffix 对象键的后缀
-     * @return UploadResult 包含上传后的文件信息
-     * @throws OssException 如果上传失败，抛出自定义异常
-     */
-    public UploadResult uploadSuffix(File file, String suffix) {
-        return upload(file.toPath(), getPath(properties.getPrefix(), suffix), null, FileUtils.getMimeType(suffix));
     }
 
     /**
@@ -422,20 +387,28 @@ public class OssClient {
     }
 
     /**
-     * 获取文件输入流
+     * 上传 InputStream 到 Amazon S3，使用指定的后缀构造对象键。
      *
-     * @param path 完整文件路径
-     * @return 输入流
+     * @param inputStream 要上传的输入流
+     * @param suffix      对象键的后缀
+     * @param length      输入流的长度
+     * @return UploadResult 包含上传后的文件信息
+     * @throws OssException 如果上传失败，抛出自定义异常
      */
-    public InputStream getObjectContent(String path) throws IOException {
-        // 下载文件到临时目录
-        Path tempFilePath = fileDownload(path);
-        // 创建输入流
-        InputStream inputStream = Files.newInputStream(tempFilePath);
-        // 删除临时文件
-        FileUtils.del(tempFilePath);
-        // 返回对象内容的输入流
-        return inputStream;
+    public UploadResult uploadSuffix(InputStream inputStream, String suffix, Long length, String contentType) {
+        return upload(inputStream, getPath(properties.getPrefix(), suffix), length, contentType);
+    }
+
+    /**
+     * 上传文件到 Amazon S3，使用指定的后缀构造对象键
+     *
+     * @param file   要上传的文件
+     * @param suffix 对象键的后缀
+     * @return UploadResult 包含上传后的文件信息
+     * @throws OssException 如果上传失败，抛出自定义异常
+     */
+    public UploadResult uploadSuffix(File file, String suffix) {
+        return upload(file.toPath(), getPath(properties.getPrefix(), suffix), null, FileUtils.getMimeType(suffix));
     }
 
     /**
@@ -460,6 +433,33 @@ public class OssClient {
         // 等待文件下载操作完成
         downloadFile.completionFuture().join();
         return tempFilePath;
+    }
+
+    /**
+     * 获取文件输入流
+     *
+     * @param path 完整文件路径
+     * @return 输入流
+     */
+    public InputStream getObjectContent(String path) throws IOException {
+        // 下载文件到临时目录
+        Path tempFilePath = fileDownload(path);
+        // 创建输入流
+        InputStream inputStream = Files.newInputStream(tempFilePath);
+        // 删除临时文件
+        FileUtils.del(tempFilePath);
+        // 返回对象内容的输入流
+        return inputStream;
+    }
+
+    /**
+     * 移除路径中的基础URL部分，得到相对路径
+     *
+     * @param path 完整的路径，包括基础URL和相对路径
+     * @return 去除基础URL后的相对路径
+     */
+    public String removeBaseUrl(String path) {
+        return path.replace(getUrl() + StringUtils.SLASH, "");
     }
 
     /**

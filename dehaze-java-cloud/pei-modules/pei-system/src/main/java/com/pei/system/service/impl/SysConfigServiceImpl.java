@@ -184,10 +184,7 @@ public class SysConfigServiceImpl implements ISysConfigService {
     public boolean checkConfigKeyUnique(SysConfigBo config) {
         long configId = ObjectUtils.notNull(config.getConfigId(), -1L);
         SysConfig info = baseMapper.selectOne(new LambdaQueryWrapper<SysConfig>().eq(SysConfig::getConfigKey, config.getConfigKey()));
-        if (ObjectUtil.isNotNull(info) && info.getConfigId() != configId) {
-            return false;
-        }
-        return true;
+        return !ObjectUtil.isNotNull(info) || info.getConfigId() == configId;
     }
 
     private LambdaQueryWrapper<SysConfig> buildQueryWrapper(SysConfigBo bo) {

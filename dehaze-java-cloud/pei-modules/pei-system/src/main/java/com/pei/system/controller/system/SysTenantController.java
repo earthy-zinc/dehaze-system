@@ -76,7 +76,7 @@ public class SysTenantController extends BaseController {
     @SaCheckPermission("system:tenant:query")
     @GetMapping("/{id}")
     public R<SysTenantVo> getInfo(@NotNull(message = "主键不能为空")
-                                  @PathVariable Long id) {
+                                      @PathVariable Long id) {
         return R.ok(tenantService.queryById(id));
     }
 

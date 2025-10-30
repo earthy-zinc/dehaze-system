@@ -45,12 +45,15 @@ public class R<T> implements Serializable {
         return restResult(null, SUCCESS, "操作成功");
     }
 
-    private static <T> R<T> restResult(T data, int code, String msg) {
-        R<T> r = new R<>();
-        r.setCode(code);
-        r.setData(data);
-        r.setMsg(msg);
-        return r;
+    /**
+     * 返回警告消息
+     *
+     * @param msg  返回内容
+     * @param data 数据对象
+     * @return 警告消息
+     */
+    public static <T> R<T> warn(String msg, T data) {
+        return restResult(data, HttpStatus.WARN, msg);
     }
 
     public static <T> R<T> ok(T data) {
@@ -95,15 +98,12 @@ public class R<T> implements Serializable {
         return restResult(null, HttpStatus.WARN, msg);
     }
 
-    /**
-     * 返回警告消息
-     *
-     * @param msg  返回内容
-     * @param data 数据对象
-     * @return 警告消息
-     */
-    public static <T> R<T> warn(String msg, T data) {
-        return restResult(data, HttpStatus.WARN, msg);
+    private static <T> R<T> restResult(T data, int code, String msg) {
+        R<T> r = new R<>();
+        r.setCode(code);
+        r.setData(data);
+        r.setMsg(msg);
+        return r;
     }
 
     public static <T> Boolean isError(R<T> ret) {

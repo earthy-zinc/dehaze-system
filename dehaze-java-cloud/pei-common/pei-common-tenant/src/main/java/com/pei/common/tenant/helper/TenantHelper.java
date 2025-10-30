@@ -122,21 +122,8 @@ public class TenantHelper {
         }
     }
 
-    /**
-     * 清除动态租户
-     */
-    public static void clearDynamic() {
-        if (!isEnable()) {
-            return;
-        }
-        if (!LoginHelper.isLogin()) {
-            TEMP_DYNAMIC_TENANT.remove();
-            return;
-        }
-        TEMP_DYNAMIC_TENANT.remove();
-        String cacheKey = DYNAMIC_TENANT_KEY + ":" + LoginHelper.getUserId();
-        RedisUtils.deleteObject(cacheKey);
-        SaHolder.getStorage().delete(cacheKey);
+    public static void setDynamic(String tenantId) {
+        setDynamic(tenantId, false);
     }
 
     /**
@@ -161,6 +148,23 @@ public class TenantHelper {
     }
 
     /**
+     * 清除动态租户
+     */
+    public static void clearDynamic() {
+        if (!isEnable()) {
+            return;
+        }
+        if (!LoginHelper.isLogin()) {
+            TEMP_DYNAMIC_TENANT.remove();
+            return;
+        }
+        TEMP_DYNAMIC_TENANT.remove();
+        String cacheKey = DYNAMIC_TENANT_KEY + ":" + LoginHelper.getUserId();
+        RedisUtils.deleteObject(cacheKey);
+        SaHolder.getStorage().delete(cacheKey);
+    }
+
+    /**
      * 租户功能是否启用
      */
     public static boolean isEnable() {
@@ -179,20 +183,6 @@ public class TenantHelper {
         } finally {
             clearDynamic();
         }
-    }
-
-    /**
-     * 获取当前租户id(动态租户优先)
-     */
-    public static String getTenantId() {
-        if (!isEnable()) {
-            return null;
-        }
-        String tenantId = TenantHelper.getDynamic();
-        if (StringUtils.isBlank(tenantId)) {
-            tenantId = LoginHelper.getTenantId();
-        }
-        return tenantId;
     }
 
     /**
@@ -224,8 +214,18 @@ public class TenantHelper {
         return tenantId;
     }
 
-    public static void setDynamic(String tenantId) {
-        setDynamic(tenantId, false);
+    /**
+     * 获取当前租户id(动态租户优先)
+     */
+    public static String getTenantId() {
+        if (!isEnable()) {
+            return null;
+        }
+        String tenantId = TenantHelper.getDynamic();
+        if (StringUtils.isBlank(tenantId)) {
+            tenantId = LoginHelper.getTenantId();
+        }
+        return tenantId;
     }
 
 }

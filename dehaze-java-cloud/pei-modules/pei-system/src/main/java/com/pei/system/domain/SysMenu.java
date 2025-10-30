@@ -125,10 +125,11 @@ public class SysMenu extends BaseEntity {
     }
 
     /**
-     * 是否为菜单内部跳转
+     * 内链域名特殊字符替换
      */
-    public boolean isMenuFrame() {
-        return getParentId() == 0L && SystemConstants.TYPE_MENU.equals(menuType) && isFrame.equals(SystemConstants.NO_FRAME);
+    public static String innerLinkReplaceEach(String path) {
+        return StringUtils.replaceEach(path, new String[]{Constants.HTTP, Constants.HTTPS, Constants.WWW, ".", ":"},
+            new String[]{"", "", "", "/", "/"});
     }
 
     /**
@@ -153,18 +154,17 @@ public class SysMenu extends BaseEntity {
     }
 
     /**
+     * 是否为菜单内部跳转
+     */
+    public boolean isMenuFrame() {
+        return getParentId() == 0L && SystemConstants.TYPE_MENU.equals(menuType) && isFrame.equals(SystemConstants.NO_FRAME);
+    }
+
+    /**
      * 是否为内链组件
      */
     public boolean isInnerLink() {
         return isFrame.equals(SystemConstants.NO_FRAME) && StringUtils.ishttp(path);
-    }
-
-    /**
-     * 内链域名特殊字符替换
-     */
-    public static String innerLinkReplaceEach(String path) {
-        return StringUtils.replaceEach(path, new String[]{Constants.HTTP, Constants.HTTPS, Constants.WWW, ".", ":"},
-            new String[]{"", "", "", "/", "/"});
     }
 
     /**

@@ -100,9 +100,9 @@
 
 - **作用**：为所有接口返回统一格式的数据结构，便于前端解析和错误处理。
 - **实现方式**：
-    -
-    在 [R.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\domain\R.java)
-    中定义泛型类 `R<T>`，包含状态码、消息内容和数据对象。
+  -
+  在 [R.java](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\domain\R.java)
+  中定义泛型类 `R<T>`，包含状态码、消息内容和数据对象。
 - **关键方法**：
     - [ok(...)](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\domain\R.java#L46-L48)
       ：成功响应。
@@ -160,11 +160,11 @@
 
 - **作用**：统一处理系统级和服务级异常，提升系统的健壮性。
 - **实现方式**：
-    -
-    定义基础异常类 [BaseException](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\exception\base\BaseException.java#L16-L72)。
-    -
-    扩展具体异常类如 [ServiceException](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\exception\ServiceException.java#L14-L69), [SseException](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\exception\SseException.java#L14-L61)
-    等。
+  -
+  定义基础异常类 [BaseException](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\exception\base\BaseException.java#L16-L72)。
+  -
+  扩展具体异常类如 [ServiceException](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\exception\ServiceException.java#L14-L69), [SseException](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\exception\SseException.java#L14-L61)
+  等。
 - **关键类**：
     - [ServiceException](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\exception\ServiceException.java#L14-L69)
       ：服务层通用异常。
@@ -180,9 +180,9 @@
 
 - **作用**：集中管理项目中常用的常量值，避免硬编码。
 - **实现方式**：
-    -
-    多个常量类按功能划分，如 [Constants](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\Constants.java#L7-L74), [CacheConstants](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\CacheConstants.java#L7-L29), [HttpStatus](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\HttpStatus.java#L7-L92), [RegexConstants](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\RegexConstants.java#L11-L58)
-    等。
+  -
+  多个常量类按功能划分，如 [Constants](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\Constants.java#L7-L74), [CacheConstants](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\CacheConstants.java#L7-L29), [HttpStatus](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\HttpStatus.java#L7-L92), [RegexConstants](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\RegexConstants.java#L11-L58)
+  等。
 - **典型常量类**：
     - [HttpStatus](file://E:\ProgramProject\RuoYi-Cloud-Plus\pei-common\pei-common-core\src\main\java\com\pei\common\core\constant\HttpStatus.java#L7-L92)
       ：HTTP 状态码常量。

@@ -57,9 +57,9 @@ public class RedisMetadataReport extends AbstractMetadataReport {
     // protected , for test
     protected JedisPool pool;
     private Set<HostAndPort> jedisClusterNodes;
-    private int timeout;
-    private String password;
-    private SetParams jedisParams = SetParams.setParams();
+    private final int timeout;
+    private final String password;
+    private final SetParams jedisParams = SetParams.setParams();
 
     public RedisMetadataReport(URL url) {
         super(url);
@@ -108,7 +108,7 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         if (StringUtils.isEmpty(content)) {
             return Collections.emptyList();
         }
-        return new ArrayList<>(Arrays.asList(URL.decode(content)));
+        return new ArrayList<>(Collections.singletonList(URL.decode(content)));
     }
 
     @Override
@@ -121,6 +121,21 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         return this.getMetadata(subscriberMetadataIdentifier);
     }
 
+    private void deleteMetadataStandalone(BaseMetadataIdentifier metadataIdentifier) {
+        try (Jedis jedis = pool.getResource()) {
+            jedis.del(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
+        } catch (Throwable e) {
+            String msg = "Failed to delete " + metadataIdentifier + " from redis , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
+    }
+
+    @Override
+    public String getServiceDefinition(MetadataIdentifier metadataIdentifier) {
+        return this.getMetadata(metadataIdentifier);
+    }
+
     private String getMetadata(BaseMetadataIdentifier metadataIdentifier) {
         if (pool != null) {
             return getMetadataStandalone(metadataIdentifier);
@@ -129,11 +144,30 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         }
     }
 
+    private void deleteMetadata(BaseMetadataIdentifier metadataIdentifier) {
+        if (pool != null) {
+            deleteMetadataStandalone(metadataIdentifier);
+        } else {
+            deleteMetadataInCluster(metadataIdentifier);
+        }
+    }
+
     private String getMetadataStandalone(BaseMetadataIdentifier metadataIdentifier) {
         try (Jedis jedis = pool.getResource()) {
             return jedis.get(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
         } catch (Throwable e) {
             String msg = "Failed to get " + metadataIdentifier + " from redis , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
+    }
+
+    private void deleteMetadataInCluster(BaseMetadataIdentifier metadataIdentifier) {
+        try (JedisCluster jedisCluster =
+                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
+            jedisCluster.del(metadataIdentifier.getIdentifierKey() + META_DATA_STORE_TAG);
+        } catch (Throwable e) {
+            String msg = "Failed to delete " + metadataIdentifier + " from redis cluster , cause: " + e.getMessage();
             logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
             throw new RpcException(msg, e);
         }
@@ -150,33 +184,9 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         }
     }
 
-    private void deleteMetadata(BaseMetadataIdentifier metadataIdentifier) {
-        if (pool != null) {
-            deleteMetadataStandalone(metadataIdentifier);
-        } else {
-            deleteMetadataInCluster(metadataIdentifier);
-        }
-    }
-
-    private void deleteMetadataStandalone(BaseMetadataIdentifier metadataIdentifier) {
-        try (Jedis jedis = pool.getResource()) {
-            jedis.del(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
-        } catch (Throwable e) {
-            String msg = "Failed to delete " + metadataIdentifier + " from redis , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
-    }
-
-    private void deleteMetadataInCluster(BaseMetadataIdentifier metadataIdentifier) {
-        try (JedisCluster jedisCluster =
-                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
-            jedisCluster.del(metadataIdentifier.getIdentifierKey() + META_DATA_STORE_TAG);
-        } catch (Throwable e) {
-            String msg = "Failed to delete " + metadataIdentifier + " from redis cluster , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
+    @Override
+    public void publishAppMetadata(SubscriberMetadataIdentifier identifier, MetadataInfo metadataInfo) {
+        this.storeMetadata(identifier, metadataInfo.getContent());
     }
 
     private void storeMetadata(BaseMetadataIdentifier metadataIdentifier, String v) {
@@ -207,16 +217,6 @@ public class RedisMetadataReport extends AbstractMetadataReport {
             logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
             throw new RpcException(msg, e);
         }
-    }
-
-    @Override
-    public String getServiceDefinition(MetadataIdentifier metadataIdentifier) {
-        return this.getMetadata(metadataIdentifier);
-    }
-
-    @Override
-    public void publishAppMetadata(SubscriberMetadataIdentifier identifier, MetadataInfo metadataInfo) {
-        this.storeMetadata(identifier, metadataInfo.getContent());
     }
 
     @Override
@@ -480,7 +480,7 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         private final NotifySub notifySub = new NotifySub();
         // for test
         protected volatile boolean running = true;
-        private String path;
+        private final String path;
 
         public MappingDataListener(String path) {
             this.path = path;

@@ -55,10 +55,7 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
      * @return boolean
      */
     public boolean eval(Integer leaveDays) {
-        if (leaveDays < 2) {
-            return true;
-        }
-        return false;
+        return leaveDays < 2;
     }
 
     /**
@@ -144,7 +141,7 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
     @EventListener(condition = "#processEvent.flowCode.startsWith('leave')")
     public void processHandler(ProcessEvent processEvent) {
         TenantHelper.dynamic(processEvent.getTenantId(), () -> {
-            log.info("当前任务执行了{}", processEvent.toString());
+            log.info("当前任务执行了{}", processEvent);
             TestLeave testLeave = baseMapper.selectById(Long.valueOf(processEvent.getBusinessId()));
             testLeave.setStatus(processEvent.getStatus());
             // 用于例如审批附件 审批意见等 存储到业务表内 自行根据业务实现存储流程
@@ -173,7 +170,7 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
     @EventListener(condition = "#processCreateTaskEvent.flowCode.startsWith('leave')")
     public void processCreateTaskHandler(ProcessCreateTaskEvent processCreateTaskEvent) {
         TenantHelper.dynamic(processCreateTaskEvent.getTenantId(), () -> {
-            log.info("当前任务创建了{}", processCreateTaskEvent.toString());
+            log.info("当前任务创建了{}", processCreateTaskEvent);
             TestLeave testLeave = baseMapper.selectById(Long.valueOf(processCreateTaskEvent.getBusinessId()));
             testLeave.setStatus(BusinessStatusEnum.WAITING.getStatus());
             baseMapper.updateById(testLeave);
@@ -188,7 +185,7 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
     @EventListener(condition = "#processDeleteEvent.flowCode.startsWith('leave')")
     public void processDeleteHandler(ProcessDeleteEvent processDeleteEvent) {
         TenantHelper.dynamic(processDeleteEvent.getTenantId(), () -> {
-            log.info("监听删除流程事件，当前任务执行了{}", processDeleteEvent.toString());
+            log.info("监听删除流程事件，当前任务执行了{}", processDeleteEvent);
             TestLeave testLeave = baseMapper.selectById(Long.valueOf(processDeleteEvent.getBusinessId()));
             if (ObjectUtil.isNull(testLeave)) {
                 return;

@@ -75,18 +75,12 @@ public class LoginHelper {
     }
 
     /**
-     * 获取当前 Token 的扩展信息
+     * 是否为超级管理员
      *
-     * @param key 键值
-     * @return 对应的扩展数据
+     * @return 结果
      */
-    private static Object getExtra(String key) {
-        try {
-            return StpUtil.getExtra(key);
-        } catch (Exception e) {
-            return null;
-        }
-
+    public static boolean isSuperAdmin() {
+        return isSuperAdmin(getUserId());
     }
 
     /**
@@ -133,12 +127,10 @@ public class LoginHelper {
     }
 
     /**
-     * 是否为超级管理员
-     *
-     * @return 结果
+     * 获取用户id
      */
-    public static boolean isSuperAdmin() {
-        return isSuperAdmin(getUserId());
+    public static Long getUserId() {
+        return Convert.toLong(getExtra(USER_KEY));
     }
 
     /**
@@ -152,10 +144,18 @@ public class LoginHelper {
     }
 
     /**
-     * 获取用户id
+     * 获取当前 Token 的扩展信息
+     *
+     * @param key 键值
+     * @return 对应的扩展数据
      */
-    public static Long getUserId() {
-        return Convert.toLong(getExtra(USER_KEY));
+    private static Object getExtra(String key) {
+        try {
+            return StpUtil.getExtra(key);
+        } catch (Exception e) {
+            return null;
+        }
+
     }
 
     /**
