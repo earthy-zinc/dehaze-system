@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 
-from app.extensions import mysql
 from sqlalchemy import CHAR, JSON, VARCHAR, BigInteger, Column, DateTime, Index, Integer, String, Text
 from sqlalchemy.dialects import mysql as mysql_types
+
+from app.extensions import mysql
 
 
 class SysFile(mysql.Model):

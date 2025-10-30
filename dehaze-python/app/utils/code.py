@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ResultCode(Enum):
     SUCCESS = ("00000", "一切ok")
 

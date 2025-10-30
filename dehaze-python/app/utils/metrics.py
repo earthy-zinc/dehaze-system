@@ -56,6 +56,7 @@ METRICS_CONFIG = {
 # 存储已初始化的模型
 _initialized_models = {}
 
+
 def _get_metric_model(metric_name: str):
     """
     延迟初始化并获取指标模型
@@ -86,6 +87,7 @@ def _get_metric_model(metric_name: str):
         logger.error(f"初始化指标模型 {metric_name} 失败: {e}")
         raise
 
+
 def get_available_metrics():
     """
     获取所有可用的指标列表
@@ -103,6 +105,7 @@ def get_available_metrics():
         for name, config in METRICS_CONFIG.items()
     ]
 
+
 def is_metric_initialized(metric_name: str) -> bool:
     """
     检查指标模型是否已初始化
@@ -110,6 +113,7 @@ def is_metric_initialized(metric_name: str) -> bool:
     :return: 是否已初始化
     """
     return metric_name in _initialized_models
+
 
 def calculate(haze_image: BytesIO, clear_image: BytesIO = None):
     """

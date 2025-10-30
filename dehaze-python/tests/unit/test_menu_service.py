@@ -2,6 +2,7 @@
 菜单服务测试
 """
 import pytest
+
 from app.models import SysMenu
 from app.service.menu import MenuService
 
@@ -146,7 +147,7 @@ class TestMenuService:
         db_session.add(menu1)
         db_session.add(menu2)
         db_session.commit()  # 先提交以获取menu1.id
-        
+
         submenu1 = SysMenu(
             parent_id=menu1.id,  # 使用具体的parent_id而不是None
             name='子菜单1',
@@ -162,7 +163,7 @@ class TestMenuService:
         assert len(menu_list) == 2
         assert menu_list[0]['name'] == '顶级菜单1'
         assert menu_list[1]['name'] == '顶级菜单2'
-        
+
         # 验证子菜单
         assert 'children' in menu_list[0]
         assert len(menu_list[0]['children']) == 1
@@ -215,7 +216,7 @@ class TestMenuService:
         )
         db_session.add(menu1)
         db_session.commit()
-        
+
         menu2 = SysMenu(
             parent_id=menu1.id,
             name='子菜单',
@@ -258,7 +259,7 @@ class TestMenuService:
         )
         db_session.add(menu1)
         db_session.commit()
-        
+
         menu2 = SysMenu(
             parent_id=menu1.id,
             name='子菜单',
@@ -524,7 +525,7 @@ class TestMenuService:
         db_session.add(menu1)
         db_session.add(menu2)
         db_session.commit()  # 先提交以获取menu1.id
-        
+
         submenu1 = SysMenu(
             parent_id=menu1.id,  # 使用具体的parent_id而不是None
             name='子菜单1',
@@ -540,7 +541,7 @@ class TestMenuService:
         assert len(options) == 2
         assert options[0]['label'] == '顶级菜单1'
         assert options[1]['label'] == '顶级菜单2'
-        
+
         # 验证子菜单选项
         assert 'children' in options[0]
         assert len(options[0]['children']) == 1
@@ -576,7 +577,7 @@ class TestMenuService:
         # 获取路由列表
         routes = MenuService.list_routes()
         assert len(routes) == 2
-        
+
         # 验证首页路由
         home_route = None
         user_route = None
@@ -585,13 +586,13 @@ class TestMenuService:
                 home_route = route
             elif route['path'] == '/user':
                 user_route = route
-        
+
         assert home_route is not None
         assert home_route['path'] == '/home'
         assert home_route['component'] == 'Layout'
         assert 'meta' in home_route
         assert home_route['meta']['title'] == '首页'
-        
+
         # 验证用户路由
         assert user_route is not None
         assert user_route['path'] == '/user'
@@ -653,7 +654,7 @@ class TestMenuService:
         )
         db_session.add(menu)
         db_session.commit()
-        
+
         # 保存菜单ID用于后续验证
         menu_id = menu.id
 
@@ -707,7 +708,7 @@ class TestMenuService:
     def test_list_role_perms(self, db_session):
         """测试获取角色权限集合"""
         from app.models import SysRoleMenu
-        
+
         # 创建测试菜单和权限
         menu1 = SysMenu(
             parent_id=0,  # 明确指定parent_id

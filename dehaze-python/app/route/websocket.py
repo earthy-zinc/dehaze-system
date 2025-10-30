@@ -1,7 +1,5 @@
-from flask import Blueprint, current_app
-from flask_socketio import emit
-from app.utils.jwt_util import jwt_required, get_current_user_id
 from flasgger import swag_from
+from flask import Blueprint
 
 # 注意：WebSocket路由通常不使用Blueprint，这里仅用于文档说明
 # 实际的WebSocket事件处理在websocket_service.py中实现

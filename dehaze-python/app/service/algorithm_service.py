@@ -1,10 +1,12 @@
-from typing import List, Dict, Optional, Any
-from app.models import SysAlgorithm
-from app.extensions import mysql
-from app.utils.utils import format_time, result_util
-from sqlalchemy import or_, and_
 import os
+from typing import List, Dict, Optional, Any
+
+from sqlalchemy import or_
+
+from app.extensions import mysql
+from app.models import SysAlgorithm
 from app.utils.file import get_file_size
+from app.utils.utils import format_time
 
 
 class AlgorithmService:
@@ -16,12 +18,12 @@ class AlgorithmService:
         :return: 算法列表
         """
         query = SysAlgorithm.query
-        
+
         if keywords:
             query = query.filter(SysAlgorithm.name.like(f'%{keywords}%'))
-            
+
         algorithms = query.all()
-        
+
         # 构建树形结构
         algorithm_dict = {algorithm.id: {
             'id': algorithm.id,
@@ -40,7 +42,7 @@ class AlgorithmService:
             'update_time': format_time(algorithm.update_time),
             'children': []
         } for algorithm in algorithms}
-        
+
         # 构建父子关系
         root_algorithms = []
         for algorithm in algorithm_dict.values():
@@ -50,7 +52,7 @@ class AlgorithmService:
                 parent = algorithm_dict.get(algorithm['parent_id'])
                 if parent:
                     parent['children'].append(algorithm)
-                    
+
         return root_algorithms
 
     @staticmethod
@@ -60,14 +62,14 @@ class AlgorithmService:
         :return: 模型下拉选项列表
         """
         algorithms = SysAlgorithm.query.filter(SysAlgorithm.status == 1).all()
-        
+
         # 构建树形选项
         algorithm_dict = {algorithm.id: {
             'value': algorithm.id,
             'label': algorithm.name,
             'children': []
         } for algorithm in algorithms}
-        
+
         # 构建父子关系
         root_options = []
         for algorithm in algorithm_dict.values():
@@ -79,7 +81,7 @@ class AlgorithmService:
                     parent = algorithm_dict.get(alg_obj.parent_id)
                     if parent:
                         parent['children'].append(algorithm)
-                        
+
         return root_options
 
     @staticmethod
@@ -92,7 +94,7 @@ class AlgorithmService:
         algorithm = SysAlgorithm.query.get(algorithm_id)
         if not algorithm:
             return None
-            
+
         return {
             'id': algorithm.id,
             'parent_id': algorithm.parent_id,
@@ -125,11 +127,11 @@ class AlgorithmService:
         algorithm.import_path = data.get('import_path', '')
         algorithm.description = data.get('description', '')
         algorithm.status = data.get('status', 1)
-        
+
         # 如果路径是有效文件，获取文件大小
         if 'path' in data and os.path.isfile(data['path']):
             algorithm.size = get_file_size(data['path'])
-        
+
         try:
             mysql.session.add(algorithm)
             mysql.session.commit()
@@ -149,7 +151,7 @@ class AlgorithmService:
         algorithm = SysAlgorithm.query.get(algorithm_id)
         if not algorithm:
             return {'success': False, 'message': '算法不存在'}
-            
+
         algorithm.parent_id = data.get('parent_id', algorithm.parent_id)
         algorithm.type = data.get('type', algorithm.type)
         algorithm.name = data.get('name', algorithm.name)
@@ -157,11 +159,11 @@ class AlgorithmService:
         algorithm.import_path = data.get('import_path', algorithm.import_path)
         algorithm.description = data.get('description', algorithm.description)
         algorithm.status = data.get('status', algorithm.status)
-        
+
         # 如果路径是有效文件，获取文件大小
         if 'path' in data and os.path.isfile(data['path']):
             algorithm.size = get_file_size(data['path'])
-        
+
         try:
             mysql.session.commit()
             return {'success': True, 'message': '算法更新成功'}
@@ -184,12 +186,13 @@ class AlgorithmService:
                     SysAlgorithm.parent_id.in_(algorithm_ids)
                 )
             ).all()
-            
+
             algorithm_id_list = [alg.id for alg in algorithms]
-            
+
             # 删除算法
             if algorithm_id_list:
-                deleted_count = SysAlgorithm.query.filter(SysAlgorithm.id.in_(algorithm_id_list)).delete(synchronize_session=False)
+                deleted_count = SysAlgorithm.query.filter(SysAlgorithm.id.in_(algorithm_id_list)).delete(
+                    synchronize_session=False)
             mysql.session.commit()
             return {'success': True, 'message': '算法删除成功'}
         except Exception as e:

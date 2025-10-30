@@ -2,6 +2,7 @@
 字典服务测试
 """
 import pytest
+
 from app.models import SysDict, SysDictType
 from app.service.dict_service import DictService, DictTypeService
 
@@ -147,7 +148,7 @@ class TestDictService:
         db_session.add(dict_item1)
         db_session.add(dict_item2)
         db_session.commit()
-        
+
         # 记录ID
         id1, id2 = dict_item1.id, dict_item2.id
 
@@ -333,7 +334,7 @@ class TestDictTypeService:
         db_session.add(dict_type1)
         db_session.add(dict_type2)
         db_session.commit()
-        
+
         # 记录ID
         id1, id2 = dict_type1.id, dict_type2.id
 

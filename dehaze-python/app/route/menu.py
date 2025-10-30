@@ -1,8 +1,9 @@
-from flask import Blueprint, request
-from app.service.menu import MenuService
-from app.utils.result import success, error
-from app.utils.jwt_util import jwt_required
 from flasgger import swag_from
+from flask import Blueprint, request
+
+from app.service.menu import MenuService
+from app.utils.jwt_util import jwt_required
+from app.utils.result import success, error
 
 menu_blueprint = Blueprint('menu', __name__, url_prefix='/api/v1/menus')
 
@@ -32,7 +33,7 @@ menu_blueprint = Blueprint('menu', __name__, url_prefix='/api/v1/menus')
 def list_menus():
     """获取菜单列表"""
     keywords = request.args.get('keywords', type=str)
-    
+
     menu_list = MenuService.list_menus(keywords)
     return success(menu_list)
 
@@ -102,10 +103,10 @@ def list_routes():
 def get_menu_form(menu_id):
     """获取菜单表单数据"""
     menu_form = MenuService.get_menu_form(menu_id)
-    
+
     if menu_form is None:
         return error('菜单不存在', 404)
-        
+
     return success(menu_form)
 
 
@@ -152,10 +153,10 @@ def add_menu():
     """新增菜单"""
     data = request.get_json()
     result = MenuService.save_menu(data)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '保存成功')
 
 
@@ -211,10 +212,10 @@ def update_menu(menu_id):
     data = request.get_json()
     data['id'] = menu_id
     result = MenuService.save_menu(data)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '保存成功')
 
 
@@ -245,10 +246,10 @@ def update_menu(menu_id):
 def delete_menu(menu_id):
     """删除菜单"""
     result = MenuService.delete_menu(menu_id)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '删除成功')
 
 
@@ -286,10 +287,10 @@ def delete_menu(menu_id):
 def update_menu_visible(menu_id):
     """修改菜单显示状态"""
     visible = request.args.get('visible', type=int)
-    
+
     result = MenuService.update_menu_visible(menu_id, visible)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '更新成功')

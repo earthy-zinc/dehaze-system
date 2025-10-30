@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from app.service.algorithm_service import AlgorithmService
+
 from app.route.utils import login_required, request_params_verify
+from app.service.algorithm_service import AlgorithmService
 from app.utils.utils import result_util
 
 algorithm_blueprint = Blueprint('algorithm', __name__, url_prefix='/api/v1/algorithm')
@@ -82,7 +83,7 @@ def delete_algorithms():
     ids = request.args.get('ids')
     if not ids:
         return jsonify(result_util(400, '请选择要删除的算法', None)), 400
-    
+
     try:
         algorithm_ids = [int(i) for i in ids.split(',')]
         result = AlgorithmService.delete_algorithms(algorithm_ids)

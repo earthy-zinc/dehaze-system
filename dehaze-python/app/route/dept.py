@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
-from app.service.dept_service import DeptService
+
 from app.route.utils import login_required
+from app.service.dept_service import DeptService
 from app.utils.utils import result_util
 
 dept_blueprint = Blueprint('dept', __name__, url_prefix='/api/v1/dept')
@@ -16,7 +17,7 @@ def list_depts():
     status = request.args.get('status', None)
     if status is not None:
         status = int(status)
-    
+
     depts = DeptService.get_dept_list(keywords, status)
     return jsonify(result_util(200, 'success', depts))
 
@@ -53,10 +54,10 @@ def add_dept():
     data = request.get_json()
     if not data or 'name' not in data:
         return jsonify(result_util(400, '部门名称不能为空', None)), 400
-        
+
     if 'parent_id' not in data:
         return jsonify(result_util(400, '父部门ID不能为空', None)), 400
-    
+
     result = DeptService.create_dept(data)
     if result['success']:
         return jsonify(result_util(200, result['message'], result['data']))
@@ -73,7 +74,7 @@ def update_dept(dept_id):
     data = request.get_json()
     if not data or 'name' not in data:
         return jsonify(result_util(400, '部门名称不能为空', None)), 400
-    
+
     result = DeptService.update_dept(dept_id, data)
     if result['success']:
         return jsonify(result_util(200, result['message'], result['data']))

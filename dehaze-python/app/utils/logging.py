@@ -1,7 +1,7 @@
 import logging
 import logging.config
-import sys
 import os
+import sys
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Optional
 
@@ -12,20 +12,25 @@ DEFAULT_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
 DEFAULT_MAX_BYTES = 10 * 1024 * 1024  # 10MB
 DEFAULT_BACKUP_COUNT = 5
 
+
 class UTF8RotatingFileHandler(RotatingFileHandler):
     """支持 UTF-8 编码的轮转文件处理器"""
+
     def __init__(self, filename, mode='a', max_bytes=0, backup_count=0, encoding='utf-8', delay=False):
         # 确保日志目录存在
         os.makedirs(os.path.dirname(filename) if os.path.dirname(filename) else '.', exist_ok=True)
         super().__init__(filename, mode, max_bytes, backup_count, encoding, delay)
 
+
 class UTF8TimedRotatingFileHandler(TimedRotatingFileHandler):
     """支持 UTF-8 编码的定时轮转文件处理器"""
+
     def __init__(self, filename, when='midnight', interval=1, backup_count=0,
                  encoding='utf-8', delay=False, utc=False, at_time=None):
         # 确保日志目录存在
         os.makedirs(os.path.dirname(filename) if os.path.dirname(filename) else '.', exist_ok=True)
         super().__init__(filename, when, interval, backup_count, encoding, delay, utc, at_time)
+
 
 def setup_logging(
         log_level: int = DEFAULT_LOG_LEVEL,

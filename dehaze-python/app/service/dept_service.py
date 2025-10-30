@@ -1,7 +1,9 @@
 from typing import List, Dict, Optional, Any
-from app.models import SysDept
-from app.extensions import mysql
+
 from sqlalchemy import and_, or_
+
+from app.extensions import mysql
+from app.models import SysDept
 from app.utils.utils import format_time
 
 
@@ -16,20 +18,20 @@ class DeptService:
         """
         # 构建查询条件
         query = SysDept.query
-        
+
         if keywords:
             query = query.filter(SysDept.name.like(f'%{keywords}%'))
-            
+
         if status is not None:
             query = query.filter(SysDept.status == status)
-            
+
         query = query.order_by(SysDept.sort)
-        
+
         dept_list = query.all()
-        
+
         if not dept_list:
             return []
-            
+
         # 构建部门字典
         dept_dict = {dept.id: {
             'id': dept.id,
@@ -43,7 +45,7 @@ class DeptService:
             'update_time': format_time(dept.update_time),
             'children': []
         } for dept in dept_list}
-        
+
         # 构建父子关系
         root_depts = []
         for dept in dept_dict.values():
@@ -53,7 +55,7 @@ class DeptService:
                 parent = dept_dict.get(dept['parent_id'])
                 if parent:
                     parent['children'].append(dept)
-                    
+
         return root_depts
 
     @staticmethod
@@ -66,17 +68,17 @@ class DeptService:
         dept_list = SysDept.query.filter(
             SysDept.status == 1
         ).order_by(SysDept.sort).all()
-        
+
         if not dept_list:
             return []
-            
+
         # 构建部门字典
         dept_dict = {dept.id: {
             'value': dept.id,
             'label': dept.name,
             'children': []
         } for dept in dept_list}
-        
+
         # 构建父子关系
         root_options = []
         for dept in dept_dict.values():
@@ -88,7 +90,7 @@ class DeptService:
                     parent = dept_dict.get(dept_obj.parent_id)
                     if parent:
                         parent['children'].append(dept)
-                        
+
         return root_options
 
     @staticmethod
@@ -101,7 +103,7 @@ class DeptService:
         dept = SysDept.query.get(dept_id)
         if not dept:
             return None
-            
+
         return {
             'id': dept.id,
             'name': dept.name,
@@ -122,17 +124,17 @@ class DeptService:
         existing_count = SysDept.query.filter(SysDept.name == name).count()
         if existing_count > 0:
             return {'success': False, 'message': '部门名称已存在', 'data': None}
-            
+
         dept = SysDept()
         dept.name = data.get('name')
         dept.parent_id = data.get('parent_id', 0)
         dept.status = data.get('status', 1)
         dept.sort = data.get('sort', 0)
-        
+
         # 生成部门路径(tree_path)
         tree_path = DeptService._generate_dept_tree_path(dept.parent_id)
         dept.tree_path = tree_path
-        
+
         try:
             mysql.session.add(dept)
             mysql.session.commit()
@@ -152,7 +154,7 @@ class DeptService:
         dept = SysDept.query.get(dept_id)
         if not dept:
             return {'success': False, 'message': '部门不存在', 'data': None}
-            
+
         # 检查部门名称是否已存在（排除当前部门）
         name = data.get('name')
         existing_count = SysDept.query.filter(
@@ -163,16 +165,16 @@ class DeptService:
         ).count()
         if existing_count > 0:
             return {'success': False, 'message': '部门名称已存在', 'data': None}
-            
+
         dept.name = data.get('name', dept.name)
         dept.parent_id = data.get('parent_id', dept.parent_id)
         dept.status = data.get('status', dept.status)
         dept.sort = data.get('sort', dept.sort)
-        
+
         # 生成部门路径(tree_path)
         tree_path = DeptService._generate_dept_tree_path(dept.parent_id)
         dept.tree_path = tree_path
-        
+
         try:
             mysql.session.commit()
             return {'success': True, 'message': '部门更新成功', 'data': dept.id}
@@ -198,7 +200,7 @@ class DeptService:
                         SysDept.tree_path.like(f'%,{dept_id}')
                     )
                 ).delete(synchronize_session=False)
-                
+
             mysql.session.commit()
             return {'success': True, 'message': '部门删除成功', 'data': None}
         except Exception as e:

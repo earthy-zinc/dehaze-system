@@ -6,7 +6,7 @@ import torch
 import torchvision.utils
 from PIL import Image
 
-from algorithm.WPXNet.ridcp_new_arch import RIDCPNew, FusionRefine
+from algorithm.WPXNet.ridcp_new_arch import FusionRefine
 from app.utils.image import preprocess_image
 
 
@@ -33,9 +33,10 @@ def ntire_gamma_correction(file: BytesIO, filepath: str = None) -> np.ndarray:
             gamma_r = 0.72
         else:
             return np.array(Image.open(file).convert("RGB")) / 255
-    img = np.array(Image.open(file))[:,:, ::-1]
+    img = np.array(Image.open(file))[:, :, ::-1]
     img = do_gamma_correction(img, gamma_b=gamma_b, gamma_g=gamma_g, gamma_r=gamma_r)
     return np.array(Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))) / 255
+
 
 def do_gamma_correction(img, gamma_b: float, gamma_g: float, gamma_r: float):
     # do gamma correction
@@ -45,6 +46,7 @@ def do_gamma_correction(img, gamma_b: float, gamma_g: float, gamma_r: float):
     gamma_img = np.dstack((gamma_img_b, gamma_img_g, gamma_img_r))
     return gamma_img
 
+
 def gamma_correction(src, gamma):
     invGamma = 1 / gamma
 
@@ -52,6 +54,7 @@ def gamma_correction(src, gamma):
     table = np.array(table, np.uint8)
 
     return cv2.LUT(src, table)
+
 
 def img2tensor(imgs, bgr2rgb=True, float32=True):
     """Numpy array to tensor.
@@ -81,11 +84,13 @@ def img2tensor(imgs, bgr2rgb=True, float32=True):
     else:
         return _totensor(imgs, bgr2rgb, float32)
 
+
 def imgOperation(filepath):
     haze = ntire_gamma_correction(filepath)
     haze = cv2.resize(haze, (0, 0), fx=0.3, fy=0.3, interpolation=cv2.INTER_AREA)
     haze = img2tensor(haze)
     return haze
+
 
 image_path = "/mnt/e/DeepLearningCopies/2023/RIDCP/datasets/NH-HAZE-23/hazy/01_hazy.png"
 with open(image_path, 'rb') as f:
@@ -95,7 +100,9 @@ with open(image_path, 'rb') as f:
     print(haze.shape)
     net = FusionRefine()
     net.cuda()
-    net.load_state_dict(torch.load("/mnt/e/ProgramProject/new-dehaze/dehaze-python/trained_model/WPXNet/nh-haze-23.pth")['params'], strict=False)
+    net.load_state_dict(
+        torch.load("/mnt/e/ProgramProject/new-dehaze/dehaze-python/trained_model/WPXNet/nh-haze-23.pth")['params'],
+        strict=False)
     net.eval()
     output, _ = net.test(haze)
     torchvision.utils.save_image(output, "output.png")

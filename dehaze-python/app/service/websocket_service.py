@@ -1,7 +1,7 @@
-from flask import request
 from flask_socketio import SocketIO, emit, join_room, leave_room
-from app.utils.jwt_util import jwt_required, get_current_user_id
-import json
+from flask_socketio import SocketIO, emit, join_room, leave_room
+
+from app.utils.jwt_util import get_current_user_id
 
 
 class WebSocketService:
@@ -13,7 +13,7 @@ class WebSocketService:
 
     def register_events(self):
         """注册WebSocket事件处理函数"""
-        
+
         @self.socketio.on('connect')
         def handle_connect():
             # 用户连接时的处理
@@ -30,7 +30,7 @@ class WebSocketService:
             user_id = get_current_user_id()
             if user_id:
                 leave_room(f"user_{user_id}")
-                
+
         @self.socketio.on('send_to_all')
         def handle_send_to_all(data):
             # 广播消息给所有用户
@@ -40,7 +40,7 @@ class WebSocketService:
                 self.socketio.emit('broadcast', {'message': message}, room=None)
             else:
                 emit('error', {'message': 'Authentication required'})
-                
+
         @self.socketio.on('send_to_user')
         def handle_send_to_user(data):
             # 发送消息给特定用户

@@ -1,8 +1,9 @@
-from flask import Blueprint, request
-from app.service.dataset_service import DatasetService, DatasetItemService
-from app.utils.result import success, error
-from app.utils.jwt_util import jwt_required
 from flasgger import swag_from
+from flask import Blueprint, request
+
+from app.service.dataset_service import DatasetService, DatasetItemService
+from app.utils.jwt_util import jwt_required
+from app.utils.result import success, error
 
 dataset_blueprint = Blueprint('dataset', __name__, url_prefix='/api/v1/dataset')
 
@@ -32,7 +33,7 @@ dataset_blueprint = Blueprint('dataset', __name__, url_prefix='/api/v1/dataset')
 def list_datasets():
     """获取数据集列表"""
     keywords = request.args.get('keywords', type=str)
-    
+
     dataset_list = DatasetService.get_dataset_list(keywords)
     return success(dataset_list)
 
@@ -83,10 +84,10 @@ def list_dataset_options():
 def get_dataset_info(dataset_id):
     """获取数据集信息"""
     dataset = DatasetService.get_dataset_by_id(dataset_id)
-    
+
     if dataset is None:
         return error('数据集不存在', 404)
-        
+
     return success(dataset)
 
 
@@ -127,10 +128,10 @@ def add_dataset():
     """新增数据集"""
     data = request.get_json()
     result = DatasetService.create_dataset(data)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '保存成功')
 
 
@@ -179,10 +180,10 @@ def update_dataset(dataset_id):
     """修改数据集"""
     data = request.get_json()
     result = DatasetService.update_dataset(dataset_id, data)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '保存成功')
 
 
@@ -218,17 +219,17 @@ def delete_datasets():
     ids = request.args.get('ids', type=str)
     if not ids:
         return error('参数错误', 400)
-        
+
     try:
         dataset_ids = [int(id) for id in ids.split(',')]
     except ValueError:
         return error('参数格式错误', 400)
-        
+
     result = DatasetService.delete_datasets(dataset_ids)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '删除成功')
 
 
@@ -274,12 +275,12 @@ def get_dataset_images(dataset_id):
     """获取数据集图片项"""
     page_num = request.args.get('pageNum', 1, type=int)
     page_size = request.args.get('pageSize', 10, type=int)
-    
+
     result = DatasetService.get_image_items(dataset_id, page_num, page_size)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'])
 
 
@@ -320,15 +321,15 @@ def add_dataset_item():
     """新增数据项"""
     dataset_id = request.args.get('datasetId', type=int)
     name = request.args.get('name', type=str)
-    
+
     if not dataset_id:
         return error('缺少参数datasetId', 400)
-        
+
     result = DatasetItemService.create_dataset_item(dataset_id, name)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '创建成功')
 
 
@@ -368,18 +369,18 @@ def update_dataset_item():
     """修改数据项"""
     dataset_item_id = request.args.get('datasetItemId', type=int)
     name = request.args.get('name', type=str)
-    
+
     if not dataset_item_id:
         return error('缺少参数datasetItemId', 400)
-        
+
     if not name:
         return error('缺少参数name', 400)
-        
+
     result = DatasetItemService.update_dataset_item(dataset_item_id, name)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '更新成功')
 
 
@@ -411,13 +412,13 @@ def update_dataset_item():
 def delete_dataset_item():
     """删除数据项"""
     dataset_item_id = request.args.get('datasetItemId', type=int)
-    
+
     if not dataset_item_id:
         return error('缺少参数datasetItemId', 400)
-        
+
     result = DatasetItemService.delete_dataset_item(dataset_item_id)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-        
+
     return success(result['data'], '删除成功')

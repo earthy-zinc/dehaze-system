@@ -27,6 +27,7 @@ def postprocess_image(tensor: torch.Tensor) -> BytesIO:
     tensor = tensor.clamp(0, 1).cpu().squeeze(0)  # 限制范围并去掉批次维度
     return tensor_to_bytesio(tensor)
 
+
 def tensor_to_bytesio(tensor: Tensor, image_format="PNG") -> BytesIO:
     """
     将 PyTorch Tensor 转换为 BytesIO 对象。

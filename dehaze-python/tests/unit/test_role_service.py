@@ -2,6 +2,7 @@
 角色服务测试
 """
 import pytest
+
 from app.models import SysRole
 from app.service.role import RoleService
 
@@ -443,8 +444,7 @@ class TestRoleService:
 
     def test_assign_menus_to_role(self, db_session):
         """测试分配菜单给角色"""
-        from app.models import SysRoleMenu
-        
+
         # 创建测试角色
         role = SysRole(name='测试角色', code='TEST_ROLE')
         db_session.add(role)

@@ -1,8 +1,9 @@
-from flask import Blueprint, request
-from app.service.role import RoleService
-from app.utils.result import success, error
-from app.utils.jwt_util import jwt_required
 from flasgger import swag_from
+from flask import Blueprint, request
+
+from app.service.role import RoleService
+from app.utils.jwt_util import jwt_required
+from app.utils.result import success, error
 
 role_blueprint = Blueprint('role', __name__, url_prefix='/api/v1/roles')
 
@@ -45,9 +46,9 @@ def get_role_page():
     page = request.args.get('pageNum', 1, type=int)
     page_size = request.args.get('pageSize', 10, type=int)
     keywords = request.args.get('keywords', type=str)
-    
+
     roles, total = RoleService.get_role_list(page, page_size, keywords)
-    
+
     role_list = []
     for role in roles:
         role_list.append({
@@ -59,7 +60,7 @@ def get_role_page():
             'dataScope': role.data_scope,
             'createTime': role.create_time.isoformat() if role.create_time else None
         })
-    
+
     return success({
         'list': role_list,
         'total': total,
@@ -138,10 +139,10 @@ def add_role():
     """新增角色"""
     data = request.get_json()
     result = RoleService.create_role(data)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-    
+
     return success(result['data'], '新增成功')
 
 
@@ -172,10 +173,10 @@ def add_role():
 def get_role_form(role_id):
     """获取角色表单数据"""
     role = RoleService.get_role_by_id(role_id)
-    
+
     if not role:
         return error('角色不存在', 404)
-    
+
     return success({
         'id': role.id,
         'name': role.name,
@@ -245,10 +246,10 @@ def update_role(role_id):
     """修改角色"""
     data = request.get_json()
     result = RoleService.update_role(role_id, data)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-    
+
     return success(result['data'], '更新成功')
 
 
@@ -280,10 +281,10 @@ def update_role(role_id):
 def delete_roles(ids):
     """删除角色"""
     result = RoleService.delete_roles(ids)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-    
+
     return success(result['data'], '删除成功')
 
 
@@ -321,12 +322,12 @@ def delete_roles(ids):
 def update_role_status(role_id):
     """修改角色状态"""
     status = request.args.get('status', type=int)
-    
+
     result = RoleService.update_role_status(role_id, status)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-    
+
     return success(result['data'], '更新成功')
 
 
@@ -357,10 +358,10 @@ def update_role_status(role_id):
 def get_role_menu_ids(role_id):
     """获取角色的菜单ID集合"""
     role = RoleService.get_role_by_id(role_id)
-    
+
     if not role:
         return error('角色不存在', 404)
-    
+
     menu_ids = RoleService.get_role_menu_ids(role_id)
     return success(menu_ids)
 
@@ -402,10 +403,10 @@ def get_role_menu_ids(role_id):
 def assign_menus_to_role(role_id):
     """分配菜单给角色"""
     menu_ids = request.get_json()
-    
+
     result = RoleService.assign_menus_to_role(role_id, menu_ids)
-    
+
     if 'error' in result:
         return error(result['error'], 400)
-    
+
     return success(result['data'], '分配成功')

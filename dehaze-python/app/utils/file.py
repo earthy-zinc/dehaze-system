@@ -13,12 +13,14 @@ def convert_size(size_bytes) -> str:
     s = round(size_bytes / p, 2)
     return "%s %s" % (s, size_name[i])
 
+
 def calculate_file_md5(file_path: str) -> str:
     hash_md5 = hashlib.md5()
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return hash_md5.hexdigest()
+
 
 def calculate_bytes_md5(bytes_io: BytesIO) -> str:
     # 重置 BytesIO 对象的指针到开头
@@ -34,6 +36,7 @@ def calculate_bytes_md5(bytes_io: BytesIO) -> str:
     # 重置 BytesIO 对象的指针到开头
     bytes_io.seek(0)
     return hash_md5.hexdigest()
+
 
 def get_file_bytes(filepath: str) -> BytesIO:
     with open(filepath, 'rb') as f:

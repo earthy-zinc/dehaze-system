@@ -1,7 +1,8 @@
+from flasgger import swag_from
 from flask import Blueprint, request
+
 from app.service.auth_service import AuthService
 from app.utils.result import success, error
-from flasgger import swag_from
 
 auth_blueprint = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 
@@ -63,10 +64,10 @@ def login():
         data = request.get_json()
         username = data.get('username')
         password = data.get('password')
-        
+
         if not username or not password:
             return error('用户名和密码不能为空', 400)
-        
+
         result = AuthService.login(username, password)
         return success(result)
     except Exception as e:

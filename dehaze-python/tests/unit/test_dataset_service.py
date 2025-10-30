@@ -2,6 +2,7 @@
 数据集服务测试
 """
 import pytest
+
 from app.models import SysDataset, SysDatasetItem
 from app.service.dataset_service import DatasetService, DatasetItemService
 
@@ -133,7 +134,7 @@ class TestDatasetService:
         db_session.add(dataset1)
         db_session.add(dataset2)
         db_session.commit()
-        
+
         # 创建子数据集
         sub_dataset = SysDataset(
             parent_id=dataset1.id,
@@ -150,7 +151,7 @@ class TestDatasetService:
         assert len(dataset_list) == 2
         assert dataset_list[0]['name'] == '数据集1'
         assert dataset_list[1]['name'] == '数据集2'
-        
+
         # 验证子数据集
         assert 'children' in dataset_list[0]
         assert len(dataset_list[0]['children']) == 1
@@ -210,7 +211,7 @@ class TestDatasetService:
         db_session.add(dataset1)
         db_session.add(dataset2)
         db_session.commit()
-        
+
         # 创建子数据集
         sub_dataset = SysDataset(
             parent_id=dataset1.id,
@@ -227,7 +228,7 @@ class TestDatasetService:
         assert len(options) == 2
         assert options[0]['label'] == '数据集1'
         assert options[1]['label'] == '数据集2'
-        
+
         # 验证子数据集选项
         assert 'children' in options[0]
         assert len(options[0]['children']) == 1
@@ -245,7 +246,7 @@ class TestDatasetService:
         )
         db_session.add(parent_dataset)
         db_session.commit()
-        
+
         child_dataset = SysDataset(
             parent_id=parent_dataset.id,
             type='子类型',
@@ -255,7 +256,7 @@ class TestDatasetService:
         )
         db_session.add(child_dataset)
         db_session.commit()
-        
+
         # 保存数据集ID用于后续验证
         parent_id = parent_dataset.id
         child_id = child_dataset.id
@@ -318,7 +319,7 @@ class TestDatasetService:
         )
         db_session.add(root_dataset)
         db_session.commit()
-        
+
         # 创建中间节点
         middle_dataset = SysDataset(
             parent_id=root_dataset.id,
@@ -329,7 +330,7 @@ class TestDatasetService:
         )
         db_session.add(middle_dataset)
         db_session.commit()
-        
+
         # 创建叶子节点
         leaf_dataset1 = SysDataset(
             parent_id=middle_dataset.id,
@@ -457,7 +458,7 @@ class TestDatasetItemService:
         )
         db_session.add(dataset_item)
         db_session.commit()
-        
+
         # 保存数据项ID用于后续验证
         item_id = dataset_item.id
 

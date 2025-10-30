@@ -7,6 +7,10 @@ from io import BytesIO
 from uuid import uuid4
 
 import torch
+from flasgger import swag_from
+from flask import Blueprint, current_app, request
+from flask_jwt_extended import get_jwt, jwt_required, verify_jwt_in_request
+
 from app.extensions import mysql
 from app.models import SysAlgorithm, SysEvalLog, SysFile, SysPredLog
 from app.service.file import read_file_from_url, upload_file
@@ -14,9 +18,6 @@ from app.service.model import get_flag
 from app.utils.file import convert_size
 from app.utils.metrics import calculate
 from app.utils.result import error, success
-from flasgger import swag_from
-from flask import Blueprint, current_app, request
-from flask_jwt_extended import get_jwt, jwt_required, verify_jwt_in_request
 
 logger = logging.getLogger(__name__)
 model_blueprint = Blueprint("model", __name__, url_prefix="/model")

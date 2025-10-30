@@ -2,6 +2,7 @@
 用户服务测试
 """
 import pytest
+
 from app.models import SysRole
 from app.service.user import UserService
 
@@ -204,7 +205,7 @@ class TestUserService:
         # 创建测试用户
         for i in range(15):
             user = UserService.create_user(f'user{i}', 'password123', f'User {i}')
-        
+
         # 测试第一页
         users, total = UserService.get_user_list(page=1, page_size=10)
         assert len(users) == 10
@@ -225,7 +226,7 @@ class TestUserService:
         """测试获取用户角色（无角色）"""
         # 创建测试用户
         user = UserService.create_user('testuser', 'password123', 'Test User')
-        
+
         roles = UserService.get_user_roles(user.id)
         assert len(roles) == 0
 
@@ -233,7 +234,7 @@ class TestUserService:
         """测试获取用户权限（无角色）"""
         # 创建测试用户
         user = UserService.create_user('testuser', 'password123', 'Test User')
-        
+
         permissions = UserService.get_user_permissions(user.id)
         assert len(permissions) == 0
 
@@ -248,7 +249,7 @@ class TestUserService:
 
         # 创建测试用户
         user = UserService.create_user('testuser', 'password123', 'Test User')
-        
+
         # 关联角色
         from app.models import SysUserRole
         user_role1 = SysUserRole(user_id=user.id, role_id=role1.id)

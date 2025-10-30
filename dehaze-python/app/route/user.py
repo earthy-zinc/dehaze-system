@@ -1,9 +1,9 @@
-from flask import Blueprint, request, current_app
-from app.service.user import UserService
-from app.utils.result import success, error
-from app.utils.jwt_util import jwt_required, get_current_user_id
 from flasgger import swag_from
-import json
+from flask import Blueprint, request
+
+from app.service.user import UserService
+from app.utils.jwt_util import jwt_required, get_current_user_id
+from app.utils.result import success, error
 
 user_blueprint = Blueprint('user', __name__, url_prefix='/api/v1/users')
 
@@ -71,19 +71,19 @@ def login():
     data = request.get_json()
     username = data.get('username')
     password = data.get('password')
-    
+
     if not username or not password:
         return error('用户名和密码不能为空', 400)
-    
+
     user = UserService.authenticate_user(username, password)
     if not user:
         return error('用户名或密码错误', 401)
-    
+
     if user.status != 1:
         return error('用户已被禁用', 401)
-    
+
     token = UserService.generate_token(user.id)
-    
+
     return success({
         'token': token,
         'user': {
@@ -137,18 +137,18 @@ def register():
     username = data.get('username')
     password = data.get('password')
     nickname = data.get('nickname', username)
-    
+
     if not username or not password:
         return error('用户名和密码不能为空', 400)
-    
+
     # 检查用户名是否已存在
     existing_user = UserService.get_user_by_username(username)
     if existing_user:
         return error('用户名已存在', 400)
-    
+
     # 创建用户
     user = UserService.create_user(username, password, nickname)
-    
+
     return success({
         'id': user.id,
         'username': user.username,
@@ -205,15 +205,15 @@ def get_current_user():
     """获取当前用户信息"""
     user_id = get_current_user_id()
     user = UserService.get_user_by_id(user_id)
-    
+
     if not user:
         return error('用户不存在', 404)
-    
+
     roles = UserService.get_user_roles(user_id)
     permissions = UserService.get_user_permissions(user_id)
-    
+
     role_codes = [role.code for role in roles]
-    
+
     return success({
         'user': {
             'id': user.id,
@@ -263,9 +263,9 @@ def get_user_page():
     page = request.args.get('pageNum', 1, type=int)
     page_size = request.args.get('pageSize', 10, type=int)
     username = request.args.get('username', type=str)
-    
+
     users, total = UserService.get_user_list(page, page_size, username)
-    
+
     user_list = []
     for user in users:
         user_list.append({
@@ -278,7 +278,7 @@ def get_user_page():
             'status': user.status,
             'createTime': user.create_time.isoformat() if user.create_time else None
         })
-    
+
     return success({
         'list': user_list,
         'total': total,
@@ -347,10 +347,10 @@ def create_user():
     """新增用户"""
     data = request.get_json()
     result = UserService.create_user_with_roles(data)
-    
+
     if result.get('error'):
         return error(result['error'], 400)
-    
+
     return success(result['data'], '新增成功')
 
 
@@ -381,10 +381,10 @@ def create_user():
 def get_user_form(user_id):
     """获取用户表单数据"""
     user_data = UserService.get_user_form_data(user_id)
-    
+
     if not user_data:
         return error('用户不存在', 404)
-    
+
     return success(user_data)
 
 
@@ -435,10 +435,10 @@ def update_user(user_id):
     """更新用户信息"""
     data = request.get_json()
     result = UserService.update_user_with_roles(user_id, data)
-    
+
     if result.get('error'):
         return error(result['error'], 400)
-    
+
     return success(result.get('data'), '更新成功')
 
 
@@ -472,15 +472,15 @@ def update_user(user_id):
 def update_user_status(user_id):
     """更新用户状态"""
     status = request.args.get('status', type=int)
-    
+
     if status not in [0, 1]:
         return error('状态值只能为0或1', 400)
-    
+
     result = UserService.update_user_status(user_id, status)
-    
+
     if not result:
         return error('用户不存在', 404)
-    
+
     return success(None, '更新成功')
 
 
@@ -524,15 +524,15 @@ def update_password(user_id):
     """修改用户密码"""
     data = request.get_json()
     password = data.get('password')
-    
+
     if not password:
         return error('密码不能为空', 400)
-    
+
     result = UserService.update_password(user_id, password)
-    
+
     if not result:
         return error('用户不存在', 404)
-    
+
     return success(None, '修改成功')
 
 
@@ -560,8 +560,8 @@ def update_password(user_id):
 def delete_user(user_id):
     """删除用户"""
     result = UserService.delete_user(user_id)
-    
+
     if not result:
         return error('用户不存在', 404)
-    
+
     return success(None, '删除成功')

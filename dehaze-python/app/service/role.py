@@ -1,8 +1,9 @@
+from typing import Optional, List, Dict, Any
+
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.extensions import mysql
 from app.models import SysRole, SysRoleMenu, SysUserRole
-from typing import Optional, List, Dict, Any
-from sqlalchemy import and_
-from sqlalchemy.exc import SQLAlchemyError
 
 
 class RoleService:

@@ -1,5 +1,4 @@
 from datetime import datetime
-from flask import jsonify
 
 
 def format_time(dt):

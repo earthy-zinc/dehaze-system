@@ -1,11 +1,11 @@
+import os
+import sys
 import unittest
 from unittest.mock import patch, MagicMock
-import sys
-import os
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.service.auth_service import AuthService
-from app.models import SysUser
 from flask import Flask
 
 
@@ -22,11 +22,10 @@ class TestAuthService(unittest.TestCase):
         # 创建应用上下文
         app = Flask(__name__)
         app.config['SECRET_KEY'] = 'test_secret'
-        
+
         # 手动模拟对象
         with patch('app.service.auth_service.SysUser') as mock_sys_user, \
-             patch('app.service.auth_service.jwt') as mock_jwt:
-            
+                patch('app.service.auth_service.jwt') as mock_jwt:
             # 准备模拟数据
             mock_user = MagicMock()
             mock_user.id = self.user_id
@@ -54,7 +53,7 @@ class TestAuthService(unittest.TestCase):
         # 验证异常
         with self.assertRaises(Exception) as context:
             AuthService.login(self.username, self.password)
-        
+
         self.assertIn("用户名或密码错误", str(context.exception))
 
     @patch('app.service.auth_service.SysUser')
@@ -68,7 +67,7 @@ class TestAuthService(unittest.TestCase):
         # 验证异常
         with self.assertRaises(Exception) as context:
             AuthService.login(self.username, self.password)
-        
+
         self.assertIn("用户名或密码错误", str(context.exception))
 
     @patch('app.service.auth_service.SysUser')
@@ -83,7 +82,7 @@ class TestAuthService(unittest.TestCase):
         # 验证异常
         with self.assertRaises(Exception) as context:
             AuthService.login(self.username, self.password)
-        
+
         self.assertIn("用户已被禁用", str(context.exception))
 
     @patch('app.service.auth_service.get_current_user_id')
@@ -91,7 +90,7 @@ class TestAuthService(unittest.TestCase):
         """测试注销成功"""
         # 准备模拟数据
         mock_get_current_user_id.return_value = self.user_id
-        
+
         # 创建应用上下文
         app = Flask(__name__)
 
@@ -107,7 +106,7 @@ class TestAuthService(unittest.TestCase):
         """测试无有效会话时注销"""
         # 准备模拟数据
         mock_get_current_user_id.return_value = None
-        
+
         # 创建应用上下文
         app = Flask(__name__)
 
@@ -125,7 +124,7 @@ class TestAuthService(unittest.TestCase):
         app = Flask(__name__)
         mock_redis = MagicMock()
         app.extensions = {'redis_client': mock_redis}
-        
+
         # 在应用上下文中调用被测试方法
         with app.app_context():
             result = AuthService.get_captcha()

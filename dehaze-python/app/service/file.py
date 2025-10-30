@@ -5,12 +5,13 @@ from typing import Tuple
 from urllib.parse import urlparse
 
 import requests
+from flask import current_app
+from werkzeug.datastructures import FileStorage
+
 from app.extensions import mysql
 from app.models import SysFile, SysWpxFile
 from app.utils.error import BusinessException
 from app.utils.file import calculate_bytes_md5, convert_size, get_file_bytes
-from flask import current_app
-from werkzeug.datastructures import FileStorage
 
 
 def upload_file_from_request(file: FileStorage) -> SysFile:

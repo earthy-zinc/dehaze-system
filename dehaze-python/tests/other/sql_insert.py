@@ -1,10 +1,12 @@
 import os.path
+
 from app.utils.file import calculate_file_md5
 
 root_path = "/mnt/d/DeepLearning/dataset"
 
 clean_flag = "clean"
 hazy_flag = "hazy"
+
 
 def generate_sql(dataset_name):
     dataset_path = os.path.join(root_path, dataset_name)
@@ -33,6 +35,7 @@ def generate_sql(dataset_name):
     output_sql_file = dataset_name + ".sql"
     get_sql(clean_path, new_clean_path, output_sql_file)
     get_sql(hazy_path, new_hazy_path, output_sql_file)
+
 
 if __name__ == '__main__':
     generate_sql("O-HAZE")
