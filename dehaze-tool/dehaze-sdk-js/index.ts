@@ -25,18 +25,18 @@ export * from "@/types";
 export * from "@/enums";
 
 // 配置导出
-export { configJavaAxios, configPythonAxios } from "@/config";
+export {configJavaAxios, configPythonAxios} from "@/config";
 
 // API 导出
 export {
-  AlgorithmAPI,
-  AuthAPI,
-  DatasetAPI,
-  DeptAPI,
-  DictAPI,
-  FileAPI,
-  MenuAPI,
-  ModelAPI,
-  RoleAPI,
-  UserAPI,
+    AlgorithmAPI,
+    AuthAPI,
+    DatasetAPI,
+    DeptAPI,
+    DictAPI,
+    FileAPI,
+    MenuAPI,
+    ModelAPI,
+    RoleAPI,
+    UserAPI,
 };

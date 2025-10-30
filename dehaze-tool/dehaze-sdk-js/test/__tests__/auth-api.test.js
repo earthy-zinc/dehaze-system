@@ -1,5 +1,5 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
+Object.defineProperty(exports, "__esModule", {value: true});
 const dehaze_sdk_js_1 = require("dehaze-sdk-js");
 // Mock data
 const mockLoginData = {

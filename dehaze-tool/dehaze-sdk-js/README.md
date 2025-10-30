@@ -77,7 +77,8 @@ configPythonAxios({
 
 四个配置项说明：
 
-- `onRequest`: 请求前拦截器，类型为 `(config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig`，可用于修改请求配置，如设置 baseURL、timeout 等
+- `onRequest`: 请求前拦截器，类型为 `(config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig`，可用于修改请求配置，如设置
+  baseURL、timeout 等
 - `onRequestError`: 请求错误拦截器，类型为 `(error: AxiosError) => any`，处理请求发送失败的情况
 - `onResponse`: 响应拦截器，类型为 `(response: AxiosResponse) => any`，处理正常响应的数据
 - `onResponseError`: 响应错误拦截器，类型为 `(error: AxiosError) => any`，处理响应异常的情况，如网络错误、HTTP 状态码错误等
