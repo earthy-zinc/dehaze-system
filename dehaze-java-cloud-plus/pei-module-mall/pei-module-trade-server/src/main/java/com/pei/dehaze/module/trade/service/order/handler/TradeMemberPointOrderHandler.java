@@ -9,9 +9,9 @@ import com.pei.dehaze.module.trade.dal.dataobject.aftersale.AfterSaleDO;
 import com.pei.dehaze.module.trade.dal.dataobject.order.TradeOrderDO;
 import com.pei.dehaze.module.trade.dal.dataobject.order.TradeOrderItemDO;
 import com.pei.dehaze.module.trade.service.aftersale.AfterSaleService;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.getSumValue;
@@ -94,9 +94,7 @@ public class TradeMemberPointOrderHandler implements TradeOrderHandler {
      * <p>
      * 目前是支付成功后，就会创建积分记录。
      * <p>
-     * 业内还有两种做法，可以根据自己的业务调整：
-     * 1. 确认收货后，才创建积分记录
-     * 2. 支付 or 下单成功时，创建积分记录（冻结），确认收货解冻或者 n 天后解冻
+     * 业内还有两种做法，可以根据自己的业务调整： 1. 确认收货后，才创建积分记录 2. 支付 or 下单成功时，创建积分记录（冻结），确认收货解冻或者 n 天后解冻
      *
      * @param userId  用户编号
      * @param point   增加积分数量

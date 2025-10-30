@@ -1,4 +1,6 @@
-`pei-spring-boot-starter-mybatis` 是一个 **MyBatis Plus 拓展模块（MyBatis Extension Module）**，其核心作用是为企业级应用提供统一的数据库连接池管理、多数据源支持、事务控制以及 MyBatis 增强能力。该模块基于 `Spring Boot + MyBatis Plus + Druid + Dynamic Datasource` 实现灵活的数据访问层架构，并支持以下功能：
+`pei-spring-boot-starter-mybatis` 是一个 **MyBatis Plus 拓展模块（MyBatis Extension Module）**
+，其核心作用是为企业级应用提供统一的数据库连接池管理、多数据源支持、事务控制以及 MyBatis 增强能力。该模块基于
+`Spring Boot + MyBatis Plus + Druid + Dynamic Datasource` 实现灵活的数据访问层架构，并支持以下功能：
 
 - 数据库连接池配置与优化（Druid）
 - 多数据源自动切换（主从分离）
@@ -16,6 +18,7 @@
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：构建统一的 MyBatis 封装层，支持：
     - 主从数据库自动切换
     - 字段自动填充（create_time, update_time, creator, updater）
@@ -29,6 +32,7 @@
     - 大数据批量插入优化
 
 ### 🧩 技术栈依赖
+
 - **ORM 引擎**：`MyBatis Plus`
 - **联表查询**：`MyBatis Plus Join`
 - **分页插件**：MyBatis Plus PaginationInnerInterceptor
@@ -63,7 +67,6 @@ src/main/java/
         └── core/                // TranslateUtils 工具类
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -71,6 +74,7 @@ src/main/java/
 ### 1️⃣ `datasource.config` 包 —— 数据源配置类
 
 #### 示例：`PeiDataSourceAutoConfiguration.java`
+
 ```java
 @AutoConfiguration
 @EnableTransactionManagement(proxyTargetClass = true)
@@ -85,7 +89,6 @@ public class PeiDataSourceAutoConfiguration {
 }
 ```
 
-
 - **作用**：配置 Druid 数据源并注册广告过滤器。
 - **关键逻辑**：
     - 启用事务管理（`@EnableTransactionManagement`）
@@ -99,13 +102,13 @@ public class PeiDataSourceAutoConfiguration {
 ### 2️⃣ `datasource.core.enums` 包 —— 数据源枚举定义
 
 #### 示例：`DataSourceEnum.java`
+
 ```java
 public interface DataSourceEnum {
     String MASTER = "master";
     String SLAVE = "slave";
 }
 ```
-
 
 - **作用**：定义主从数据源名称。
 - **使用方式**：
@@ -114,12 +117,12 @@ public interface DataSourceEnum {
   public interface OrderMapper extends BaseMapper<OrderDO> {}
   ```
 
-
 ---
 
 ### 3️⃣ `datasource.core.filter` 包 —— 数据源过滤器
 
 #### 示例：`DruidAdRemoveFilter.java`
+
 ```java
 public class DruidAdRemoveFilter extends OncePerRequestFilter {
     private static final String COMMON_JS_ILE_PATH = "support/http/resources/js/common.js";
@@ -134,7 +137,6 @@ public class DruidAdRemoveFilter extends OncePerRequestFilter {
 }
 ```
 
-
 - **作用**：拦截 `/druid/*js/common.js` 请求并去除广告内容。
 - **关键逻辑**：
     - 使用正则替换广告标签
@@ -148,6 +150,7 @@ public class DruidAdRemoveFilter extends OncePerRequestFilter {
 ### 4️⃣ `mybatis.config` 包 —— MyBatis 自动配置类
 
 #### 示例：`PeiMybatisAutoConfiguration.java`
+
 ```java
 @AutoConfiguration(before = MybatisPlusAutoConfiguration.class)
 @MapperScan(value = "${pei.info.base-package}", annotationClass = Mapper.class)
@@ -167,7 +170,6 @@ public class PeiMybatisAutoConfiguration {
 }
 ```
 
-
 - **作用**：配置 MyBatis Plus 的基础行为。
 - **关键逻辑**：
     - 设置分页拦截器（PaginationInnerInterceptor）
@@ -182,6 +184,7 @@ public class PeiMybatisAutoConfiguration {
 ### 5️⃣ `mybatis.core.dataobject` 包 —— 基础实体对象
 
 #### 示例：`BaseDO.java`
+
 ```java
 @Data
 @JsonIgnoreProperties(value = "transMap")
@@ -211,7 +214,6 @@ public abstract class BaseDO implements Serializable, TransPojo {
 }
 ```
 
-
 - **作用**：所有实体类继承此类，实现通用字段自动填充。
 - **关键逻辑**：
     - 自动填充创建时间、更新时间
@@ -227,6 +229,7 @@ public abstract class BaseDO implements Serializable, TransPojo {
 ### 6️⃣ `mybatis.core.handler` 包 —— 自动填充字段处理器
 
 #### 示例：`DefaultDBFieldHandler.java`
+
 ```java
 public class DefaultDBFieldHandler implements MetaObjectHandler {
     @Override
@@ -245,7 +248,6 @@ public class DefaultDBFieldHandler implements MetaObjectHandler {
 }
 ```
 
-
 - **作用**：在插入和更新时自动填充字段。
 - **关键逻辑**：
     - 插入时设置 `create_time` 和 `creator`
@@ -259,6 +261,7 @@ public class DefaultDBFieldHandler implements MetaObjectHandler {
 ### 7️⃣ `mybatis.core.mapper` 包 —— Mapper 扩展接口
 
 #### 示例：`BaseMapperX.java`
+
 ```java
 public interface BaseMapperX<T> extends MPJBaseMapper<T> {
     default PageResult<T> selectPage(SortablePageParam pageParam, Wrapper<T> queryWrapper) {
@@ -273,7 +276,6 @@ public interface BaseMapperX<T> extends MPJBaseMapper<T> {
     }
 }
 ```
-
 
 - **作用**：对 `BaseMapper` 和 `MPJBaseMapper` 进行功能增强。
 - **关键逻辑**：
@@ -290,6 +292,7 @@ public interface BaseMapperX<T> extends MPJBaseMapper<T> {
 ### 8️⃣ `mybatis.core.query` 包 —— 查询条件封装
 
 #### 示例：`LambdaQueryWrapperX.java`
+
 ```java
 public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
     public LambdaQueryWrapperX<T> eqIfPresent(SFunction<T, ?> column, Object val) {
@@ -316,7 +319,6 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
 }
 ```
 
-
 - **作用**：增强 `LambdaQueryWrapper` 功能，支持条件判断拼接和跨数据库限制结果数。
 - **关键逻辑**：
     - `eqIfPresent(...)`：只有值存在才添加查询条件
@@ -330,6 +332,7 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
 ### 9️⃣ `mybatis.core.type` 包 —— 类型转换器
 
 #### 示例：`EncryptTypeHandler.java`
+
 ```java
 public class EncryptTypeHandler extends BaseTypeHandler<String> {
     private static AES aes;
@@ -345,7 +348,6 @@ public class EncryptTypeHandler extends BaseTypeHandler<String> {
     }
 }
 ```
-
 
 - **作用**：对数据库字段进行 AES 加密和解密。
 - **关键逻辑**：
@@ -364,6 +366,7 @@ public class EncryptTypeHandler extends BaseTypeHandler<String> {
 ---
 
 #### 示例：`IntegerListTypeHandler.java`
+
 ```java
 public class IntegerListTypeHandler implements TypeHandler<List<Integer>> {
     private static final String COMMA = ",";
@@ -379,7 +382,6 @@ public class IntegerListTypeHandler implements TypeHandler<List<Integer>> {
     }
 }
 ```
-
 
 - **作用**：将数据库中的逗号分隔字符串转换为 `List<Integer>`。
 - **使用方式**：
@@ -397,6 +399,7 @@ public class IntegerListTypeHandler implements TypeHandler<List<Integer>> {
 ### 🔟 `mybatis.core.util` 包 —— JDBC 工具类
 
 #### 示例：`JdbcUtils.java`
+
 ```java
 public class JdbcUtils {
     public static boolean isConnectionOK(String url, String username, String password) {
@@ -418,7 +421,6 @@ public class JdbcUtils {
 }
 ```
 
-
 - **作用**：提供数据库连接检查和 DB 类型识别。
 - **关键逻辑**：
     - 判断数据库连接是否可用
@@ -432,6 +434,7 @@ public class JdbcUtils {
 ### 1️⃣1️⃣ `translate.core` 包 —— VO 数据翻译工具
 
 #### 示例：`TranslateUtils.java`
+
 ```java
 public class TranslateUtils {
     private static TransService transService;
@@ -449,7 +452,6 @@ public class TranslateUtils {
 }
 ```
 
-
 - **作用**：对 VO 数据进行翻译（如字典标签、地区名称、金额单位等）。
 - **使用方式**：
   ```java
@@ -465,6 +467,7 @@ public class TranslateUtils {
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ 数据源初始化流程
+
 ```mermaid
 graph TD
     A[启动 Spring Boot] --> B[加载 PeiDataSourceAutoConfiguration]
@@ -474,8 +477,8 @@ graph TD
     E --> F[根据注解切换数据源]
 ```
 
-
 ### 2️⃣ 字段自动填充流程
+
 ```mermaid
 graph TD
     A[执行 insert 方法] --> B[进入 DefaultDBFieldHandler.insertFill()]
@@ -484,8 +487,8 @@ graph TD
     D --> E[保存到数据库]
 ```
 
-
 ### 3️⃣ 查询条件构建流程
+
 ```mermaid
 graph TD
     A[Controller 调用 LambdaQueryWrapperX] --> B[判断值是否存在]
@@ -493,7 +496,6 @@ graph TD
     B -- 不存在 --> D[跳过该条件]
     C --> E[构建 SQL 查询]
 ```
-
 
 ---
 
@@ -511,12 +513,12 @@ graph TD
     H --> I[返回业务数据]
 ```
 
-
 ---
 
 ## 🧾 模块实现原理详解
 
 ### 1️⃣ 多数据源实现流程
+
 - **步骤**：
     1. 在方法上添加 `@DS("master")` 或 `@DS("slave")`
     2. Dynamic Datasource 根据注解选择对应数据源
@@ -525,6 +527,7 @@ graph TD
     - 读写分离（主库写，从库读）
 
 ### 2️⃣ 自动填充字段实现流程
+
 - **步骤**：
     1. 实体类字段标注 `@TableField(fill = FieldFill.INSERT)`
     2. `DefaultDBFieldHandler` 拦截 insert 操作
@@ -534,6 +537,7 @@ graph TD
     - 提升开发效率
 
 ### 3️⃣ 类型转换器实现流程
+
 - **步骤**：
     1. 实体类字段标注 `typeHandler = EncryptTypeHandler.class`
     2. 插入时调用 `setNonNullParameter(...)` 加密
@@ -546,12 +550,12 @@ graph TD
 
 ## ✅ 建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 单元测试 | 当前缺少单元测试，建议补充覆盖率至 80%+ |
-| ✅ 分布式事务 | 建议集成 Seata 实现分布式事务一致性 |
-| ✅ 性能监控 | 建议记录慢 SQL 日志并推送至 ELK |
-| ✅ 数据库方言 | 建议增加更多数据库方言支持（如 SQLite） |
+| 改进点     | 描述                                |
+|---------|-----------------------------------|
+| ✅ 单元测试  | 当前缺少单元测试，建议补充覆盖率至 80%+            |
+| ✅ 分布式事务 | 建议集成 Seata 实现分布式事务一致性             |
+| ✅ 性能监控  | 建议记录慢 SQL 日志并推送至 ELK              |
+| ✅ 数据库方言 | 建议增加更多数据库方言支持（如 SQLite）           |
 | ✅ 多租户隔离 | 结合 TenantContextHolder 实现租户级别数据隔离 |
 
 ---

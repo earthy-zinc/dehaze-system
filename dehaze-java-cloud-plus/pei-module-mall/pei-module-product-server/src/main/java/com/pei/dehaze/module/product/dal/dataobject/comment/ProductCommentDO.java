@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.product.dal.dataobject.comment;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.product.dal.dataobject.sku.ProductSkuDO;
-import com.pei.dehaze.module.product.dal.dataobject.spu.ProductSpuDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.product.dal.dataobject.sku.ProductSkuDO;
+import com.pei.dehaze.module.product.dal.dataobject.spu.ProductSpuDO;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -41,7 +41,7 @@ public class ProductCommentDO extends BaseDO {
 
     /**
      * 评价人的用户编号
-     *
+     * <p>
      * 关联 MemberUserDO 的 id 编号
      */
     private Long userId;
@@ -60,44 +60,44 @@ public class ProductCommentDO extends BaseDO {
 
     /**
      * 交易订单编号
-     *
+     * <p>
      * 关联 TradeOrderDO 的 id 编号
      */
     private Long orderId;
     /**
      * 交易订单项编号
-     *
+     * <p>
      * 关联 TradeOrderItemDO 的 id 编号
      */
     private Long orderItemId;
 
     /**
      * 商品 SPU 编号
-     *
+     * <p>
      * 关联 {@link ProductSpuDO#getId()}
      */
     private Long spuId;
     /**
      * 商品 SPU 名称
-     *
+     * <p>
      * 关联 {@link ProductSpuDO#getName()}
      */
     private String spuName;
     /**
      * 商品 SKU 编号
-     *
+     * <p>
      * 关联 {@link ProductSkuDO#getId()}
      */
     private Long skuId;
     /**
      * 商品 SKU 图片地址
-     *
+     * <p>
      * 关联 {@link ProductSkuDO#getPicUrl()}
      */
     private String skuPicUrl;
     /**
      * 属性数组，JSON 格式
-     *
+     * <p>
      * 关联 {@link ProductSkuDO#getProperties()}
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
@@ -105,26 +105,25 @@ public class ProductCommentDO extends BaseDO {
 
     /**
      * 是否可见
-     *
-     * true:显示
-     * false:隐藏
+     * <p>
+     * true:显示 false:隐藏
      */
     private Boolean visible;
     /**
      * 评分星级
-     *
+     * <p>
      * 1-5 分
      */
     private Integer scores;
     /**
      * 描述星级
-     *
+     * <p>
      * 1-5 星
      */
     private Integer descriptionScores;
     /**
      * 服务星级
-     *
+     * <p>
      * 1-5 星
      */
     private Integer benefitScores;
@@ -143,8 +142,7 @@ public class ProductCommentDO extends BaseDO {
      */
     private Boolean replyStatus;
     /**
-     * 回复管理员编号
-     * 关联 AdminUserDO 的 id 编号
+     * 回复管理员编号 关联 AdminUserDO 的 id 编号
      */
     private Long replyUserId;
     /**

@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.erp.dal.dataobject.purchase;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.erp.dal.dataobject.finance.ErpAccountDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.erp.dal.dataobject.finance.ErpAccountDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -36,19 +36,19 @@ public class ErpPurchaseOrderDO extends BaseDO {
     private String no;
     /**
      * 采购状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.erp.enums.ErpAuditStatus}
      */
     private Integer status;
     /**
      * 供应商编号
-     *
+     * <p>
      * 关联 {@link ErpSupplierDO#getId()}
      */
     private Long supplierId;
     /**
      * 结算账户编号
-     *
+     * <p>
      * 关联 {@link ErpAccountDO#getId()}
      */
     private Long accountId;
@@ -63,7 +63,7 @@ public class ErpPurchaseOrderDO extends BaseDO {
     private BigDecimal totalCount;
     /**
      * 最终合计价格，单位：元
-     *
+     * <p>
      * totalPrice = totalProductPrice + totalTaxPrice - discountPrice
      */
     private BigDecimal totalPrice;
@@ -82,7 +82,7 @@ public class ErpPurchaseOrderDO extends BaseDO {
     private BigDecimal discountPercent;
     /**
      * 优惠金额，单位：元
-     *
+     * <p>
      * discountPrice = (totalProductPrice + totalTaxPrice) * discountPercent
      */
     private BigDecimal discountPrice;

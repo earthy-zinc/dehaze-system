@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.system.dal.dataobject.oauth2;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -40,13 +40,13 @@ public class OAuth2RefreshTokenDO extends TenantBaseDO {
     private Long userId;
     /**
      * 用户类型
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
     /**
      * 客户端编号
-     *
+     * <p>
      * 关联 {@link OAuth2ClientDO#getId()}
      */
     private String clientId;

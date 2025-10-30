@@ -2,9 +2,9 @@ package com.pei.dehaze.module.mp.service.menu;
 
 import com.pei.dehaze.module.mp.controller.admin.menu.vo.MpMenuSaveReqVO;
 import com.pei.dehaze.module.mp.dal.dataobject.menu.MpMenuDO;
+import jakarta.validation.Valid;
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutMessage;
 
-import jakarta.validation.Valid;
 import java.util.List;
 
 /**
@@ -31,8 +31,8 @@ public interface MpMenuService {
     /**
      * 粉丝点击菜单按钮时，回复对应的消息
      *
-     * @param appId 公众号 AppId
-     * @param key 菜单按钮的标识
+     * @param appId  公众号 AppId
+     * @param key    菜单按钮的标识
      * @param openid 粉丝的 openid
      * @return 消息
      */

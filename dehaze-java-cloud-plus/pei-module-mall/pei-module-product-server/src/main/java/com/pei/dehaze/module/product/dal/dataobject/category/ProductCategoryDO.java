@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.product.dal.dataobject.category;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
@@ -46,7 +46,7 @@ public class ProductCategoryDO extends BaseDO {
     private String name;
     /**
      * 移动端分类图
-     *
+     * <p>
      * 建议 180*180 分辨率
      */
     private String picUrl;
@@ -56,7 +56,7 @@ public class ProductCategoryDO extends BaseDO {
     private Integer sort;
     /**
      * 开启状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

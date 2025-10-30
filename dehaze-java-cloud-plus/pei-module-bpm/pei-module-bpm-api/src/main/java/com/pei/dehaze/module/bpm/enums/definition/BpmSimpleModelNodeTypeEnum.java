@@ -37,8 +37,7 @@ public enum BpmSimpleModelNodeTypeEnum implements ArrayValuable<Integer> {
     CONDITION_BRANCH_NODE(51, "条件分支", "exclusiveGateway"),
     PARALLEL_BRANCH_NODE(52, "并行分支", "parallelGateway"),
     INCLUSIVE_BRANCH_NODE(53, "包容分支", "inclusiveGateway"),
-    ROUTER_BRANCH_NODE(54, "路由分支", "exclusiveGateway")
-    ;
+    ROUTER_BRANCH_NODE(54, "路由分支", "exclusiveGateway");
 
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmSimpleModelNodeTypeEnum::getType).toArray(Integer[]::new);
 

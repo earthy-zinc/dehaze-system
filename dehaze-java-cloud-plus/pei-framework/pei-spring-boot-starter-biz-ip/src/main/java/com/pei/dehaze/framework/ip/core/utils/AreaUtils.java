@@ -66,16 +66,6 @@ public class AreaUtils {
     }
 
     /**
-     * 获得指定编号对应的区域
-     *
-     * @param id 区域编号
-     * @return 区域
-     */
-    public static Area getArea(Integer id) {
-        return areas.get(id);
-    }
-
-    /**
      * 获得指定区域对应的编号
      *
      * @param pathStr 区域路径，例如说：河南省/石家庄市/新华区
@@ -138,13 +128,8 @@ public class AreaUtils {
 
     /**
      * 格式化区域
-     *
-     * 例如说：
-     * 1. id = “静安区”时：上海 上海市 静安区
-     * 2. id = “上海市”时：上海 上海市
-     * 3. id = “上海”时：上海
-     * 4. id = “美国”时：美国
-     * 当区域在中国时，默认不显示中国
+     * <p>
+     * 例如说： 1. id = “静安区”时：上海 上海市 静安区 2. id = “上海市”时：上海 上海市 3. id = “上海”时：上海 4. id = “美国”时：美国 当区域在中国时，默认不显示中国
      *
      * @param id        区域编号
      * @param separator 分隔符
@@ -209,6 +194,16 @@ public class AreaUtils {
             id = area.getParent().getId();
         }
         return null;
+    }
+
+    /**
+     * 获得指定编号对应的区域
+     *
+     * @param id 区域编号
+     * @return 区域
+     */
+    public static Area getArea(Integer id) {
+        return areas.get(id);
     }
 
 }

@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.crm.service.product;
 
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.crm.controller.admin.product.vo.category.CrmProductCategoryCreateReqVO;
 import com.pei.dehaze.module.crm.controller.admin.product.vo.category.CrmProductCategoryListReqVO;
 import com.pei.dehaze.module.crm.dal.dataobject.product.CrmProductCategoryDO;
 import com.pei.dehaze.module.crm.dal.mysql.product.CrmProductCategoryMapper;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -77,31 +77,6 @@ public class CrmProductCategoryServiceImpl implements CrmProductCategoryService 
         }
     }
 
-    private void validateParentProductCategory(Long id) {
-        // 如果是根分类，无需验证
-        if (Objects.equals(id, PARENT_ID_NULL)) {
-            return;
-        }
-        // 父分类不存在
-        CrmProductCategoryDO category = productCategoryMapper.selectById(id);
-        if (category == null) {
-            throw exception(PRODUCT_CATEGORY_PARENT_NOT_EXISTS);
-        }
-        // 父分类不能是二级分类
-        if (!Objects.equals(category.getParentId(), PARENT_ID_NULL)) {
-            throw exception(PRODUCT_CATEGORY_PARENT_NOT_FIRST_LEVEL);
-        }
-    }
-
-    private void validateProductNameExists(Long id, Long parentId, String name) {
-        CrmProductCategoryDO category = productCategoryMapper.selectByParentIdAndName(parentId, name);
-        if (category == null
-            || category.getId().equals(id)) {
-            return;
-        }
-        throw exception(PRODUCT_CATEGORY_EXISTS);
-    }
-
     @Override
     @LogRecord(type = CRM_PRODUCT_CATEGORY_TYPE, subType = CRM_PRODUCT_CATEGORY_DELETE_SUB_TYPE, bizNo = "{{#id}}",
             success = CRM_PRODUCT_CATEGORY_DELETE_SUCCESS)
@@ -133,6 +108,31 @@ public class CrmProductCategoryServiceImpl implements CrmProductCategoryService 
     @Override
     public List<CrmProductCategoryDO> getProductCategoryList(Collection<Long> ids) {
         return productCategoryMapper.selectBatchIds(ids);
+    }
+
+    private void validateParentProductCategory(Long id) {
+        // 如果是根分类，无需验证
+        if (Objects.equals(id, PARENT_ID_NULL)) {
+            return;
+        }
+        // 父分类不存在
+        CrmProductCategoryDO category = productCategoryMapper.selectById(id);
+        if (category == null) {
+            throw exception(PRODUCT_CATEGORY_PARENT_NOT_EXISTS);
+        }
+        // 父分类不能是二级分类
+        if (!Objects.equals(category.getParentId(), PARENT_ID_NULL)) {
+            throw exception(PRODUCT_CATEGORY_PARENT_NOT_FIRST_LEVEL);
+        }
+    }
+
+    private void validateProductNameExists(Long id, Long parentId, String name) {
+        CrmProductCategoryDO category = productCategoryMapper.selectByParentIdAndName(parentId, name);
+        if (category == null
+                || category.getId().equals(id)) {
+            return;
+        }
+        throw exception(PRODUCT_CATEGORY_EXISTS);
     }
 
 }

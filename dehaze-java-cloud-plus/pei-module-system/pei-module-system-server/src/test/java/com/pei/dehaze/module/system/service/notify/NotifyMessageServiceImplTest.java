@@ -68,6 +68,11 @@ public class NotifyMessageServiceImplTest extends BaseDbUnitTest {
         assertNull(message.getReadTime());
     }
 
+    private static Map<String, Object> randomTemplateParams() {
+        return MapUtil.<String, Object>builder().put(randomString(), randomString())
+                .put(randomString(), randomString()).build();
+    }
+
     @Test
     public void testGetNotifyMessagePage() {
         // mock 数据
@@ -266,11 +271,6 @@ public class NotifyMessageServiceImplTest extends BaseDbUnitTest {
         NotifyMessageDO notifyMessage = notifyMessageMapper.selectById(dbNotifyMessage.getId());
         assertTrue(notifyMessage.getReadStatus());
         assertNotNull(notifyMessage.getReadTime());
-    }
-
-    private static Map<String, Object> randomTemplateParams() {
-        return MapUtil.<String, Object>builder().put(randomString(), randomString())
-                .put(randomString(), randomString()).build();
     }
 
 }

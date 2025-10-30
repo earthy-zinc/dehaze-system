@@ -35,11 +35,6 @@ public enum BrokerageWithdrawTypeEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     /**
      * 是否通过支付平台的 API 打款
      *
@@ -48,6 +43,11 @@ public enum BrokerageWithdrawTypeEnum implements ArrayValuable<Integer> {
      */
     public static boolean isApi(Integer type) {
         return ObjectUtils.equalsAny(type, WALLET.getType(), ALIPAY_API.getType(), WECHAT_API.getType());
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

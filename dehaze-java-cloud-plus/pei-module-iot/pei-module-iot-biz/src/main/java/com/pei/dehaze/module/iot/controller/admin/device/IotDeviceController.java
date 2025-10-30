@@ -98,25 +98,25 @@ public class IotDeviceController {
         return success(BeanUtils.toBean(device, IotDeviceRespVO.class));
     }
 
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出设备 Excel")
+    @PreAuthorize("@ss.hasPermission('iot:device:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportDeviceExcel(@Valid IotDevicePageReqVO exportReqVO,
+                                  HttpServletResponse response) throws IOException {
+        exportReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        CommonResult<PageResult<IotDeviceRespVO>> result = getDevicePage(exportReqVO);
+        // 导出 Excel
+        ExcelUtils.write(response, "设备.xls", "数据", IotDeviceRespVO.class,
+                result.getData().getList());
+    }
+
     @GetMapping("/page")
     @Operation(summary = "获得设备分页")
     @PreAuthorize("@ss.hasPermission('iot:device:query')")
     public CommonResult<PageResult<IotDeviceRespVO>> getDevicePage(@Valid IotDevicePageReqVO pageReqVO) {
         PageResult<IotDeviceDO> pageResult = deviceService.getDevicePage(pageReqVO);
         return success(BeanUtils.toBean(pageResult, IotDeviceRespVO.class));
-    }
-
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出设备 Excel")
-    @PreAuthorize("@ss.hasPermission('iot:device:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportDeviceExcel(@Valid IotDevicePageReqVO exportReqVO,
-            HttpServletResponse response) throws IOException {
-        exportReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        CommonResult<PageResult<IotDeviceRespVO>> result = getDevicePage(exportReqVO);
-        // 导出 Excel
-        ExcelUtils.write(response, "设备.xls", "数据", IotDeviceRespVO.class,
-                result.getData().getList());
     }
 
     @GetMapping("/count")

@@ -11,10 +11,9 @@ import java.time.LocalDateTime;
 /**
  * IoT 设备属性项 Redis DO
  *
+ * @author haohao
  * @see com.pei.dehaze.module.iot.dal.redis.RedisKeyConstants#DEVICE_PROPERTY
  * @see DevicePropertyRedisDAO
- *
- * @author haohao
  */
 @Data
 @Builder

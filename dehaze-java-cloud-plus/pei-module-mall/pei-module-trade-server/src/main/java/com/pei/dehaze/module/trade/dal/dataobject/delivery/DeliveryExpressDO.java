@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.trade.dal.dataobject.delivery;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.Data;
 
 /**
@@ -12,7 +12,7 @@ import lombok.Data;
  *
  * @author jason
  */
-@TableName(value ="trade_delivery_express")
+@TableName(value = "trade_delivery_express")
 @KeySequence("trade_delivery_express_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class DeliveryExpressDO extends BaseDO {
@@ -45,7 +45,7 @@ public class DeliveryExpressDO extends BaseDO {
 
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

@@ -127,25 +127,6 @@ public class KeFuMessageServiceImpl implements KeFuMessageService {
                 new KeFuMessageRespVO().setConversationId(keFuMessage.getConversationId()));
     }
 
-    private void validateReceiverExist(Long receiverId, Integer receiverType) {
-        if (UserTypeEnum.ADMIN.getValue().equals(receiverType)) {
-            adminUserApi.validateUser(receiverId);
-        }
-        if (UserTypeEnum.MEMBER.getValue().equals(receiverType)) {
-            memberUserApi.validateUser(receiverId);
-        }
-    }
-
-    @Async
-    public void sendAsyncMessageToMember(Long userId, String messageType, Object content) {
-        webSocketSenderApi.sendObject(UserTypeEnum.MEMBER.getValue(), userId, messageType, content);
-    }
-
-    @Async
-    public void sendAsyncMessageToAdmin(String messageType, Object content) {
-        webSocketSenderApi.sendObject(UserTypeEnum.ADMIN.getValue(), messageType, content);
-    }
-
     @Override
     public List<KeFuMessageDO> getKeFuMessageList(KeFuMessageListReqVO pageReqVO) {
         return keFuMessageMapper.selectList(pageReqVO);
@@ -163,8 +144,27 @@ public class KeFuMessageServiceImpl implements KeFuMessageService {
         return keFuMessageMapper.selectList(BeanUtils.toBean(pageReqVO, KeFuMessageListReqVO.class));
     }
 
+    private void validateReceiverExist(Long receiverId, Integer receiverType) {
+        if (UserTypeEnum.ADMIN.getValue().equals(receiverType)) {
+            adminUserApi.validateUser(receiverId);
+        }
+        if (UserTypeEnum.MEMBER.getValue().equals(receiverType)) {
+            memberUserApi.validateUser(receiverId);
+        }
+    }
+
+    @Async
+    public void sendAsyncMessageToMember(Long userId, String messageType, Object content) {
+        webSocketSenderApi.sendObject(UserTypeEnum.MEMBER.getValue(), userId, messageType, content);
+    }
+
     private KeFuMessageServiceImpl getSelf() {
         return SpringUtil.getBean(getClass());
+    }
+
+    @Async
+    public void sendAsyncMessageToAdmin(String messageType, Object content) {
+        webSocketSenderApi.sendObject(UserTypeEnum.ADMIN.getValue(), messageType, content);
     }
 
 }

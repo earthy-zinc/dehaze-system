@@ -2,12 +2,12 @@ package com.pei.dehaze.module.infra.framework.codegen.config;
 
 import com.pei.dehaze.module.infra.enums.codegen.CodegenFrontTypeEnum;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenVOTypeEnum;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import java.util.Collection;
 
 @ConfigurationProperties(prefix = "pei.codegen")
@@ -29,7 +29,7 @@ public class CodegenProperties {
 
     /**
      * 代码生成的前端类型（默认）
-     *
+     * <p>
      * 枚举 {@link CodegenFrontTypeEnum#getType()}
      */
     @NotNull(message = "代码生成的前端类型不能为空")
@@ -37,7 +37,7 @@ public class CodegenProperties {
 
     /**
      * 代码生成的 VO 类型
-     *
+     * <p>
      * 枚举 {@link CodegenVOTypeEnum#getType()}
      */
     @NotNull(message = "代码生成的 VO 类型不能为空")

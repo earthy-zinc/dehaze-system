@@ -6,11 +6,11 @@ import com.pei.dehaze.module.member.controller.app.address.vo.AppAddressUpdateRe
 import com.pei.dehaze.module.member.convert.address.AddressConvert;
 import com.pei.dehaze.module.member.dal.dataobject.address.MemberAddressDO;
 import com.pei.dehaze.module.member.dal.mysql.address.MemberAddressMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -71,13 +71,6 @@ public class AddressServiceImpl implements AddressService {
         memberAddressMapper.deleteById(id);
     }
 
-    private void validAddressExists(Long userId, Long id) {
-        MemberAddressDO addressDO = getAddress(userId, id);
-        if (addressDO == null) {
-            throw exception(ADDRESS_NOT_EXISTS);
-        }
-    }
-
     @Override
     public MemberAddressDO getAddress(Long userId, Long id) {
         return memberAddressMapper.selectByIdAndUserId(id, userId);
@@ -92,6 +85,13 @@ public class AddressServiceImpl implements AddressService {
     public MemberAddressDO getDefaultUserAddress(Long userId) {
         List<MemberAddressDO> addresses = memberAddressMapper.selectListByUserIdAndDefaulted(userId, true);
         return CollUtil.getFirst(addresses);
+    }
+
+    private void validAddressExists(Long userId, Long id) {
+        MemberAddressDO addressDO = getAddress(userId, id);
+        if (addressDO == null) {
+            throw exception(ADDRESS_NOT_EXISTS);
+        }
     }
 
 }

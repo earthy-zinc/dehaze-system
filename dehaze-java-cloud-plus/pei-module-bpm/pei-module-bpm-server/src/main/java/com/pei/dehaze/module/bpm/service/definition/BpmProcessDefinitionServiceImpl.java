@@ -34,8 +34,7 @@ import static com.pei.dehaze.module.bpm.enums.ErrorCodeConstants.*;
 import static java.util.Collections.emptyList;
 
 /**
- * 流程定义实现
- * 主要进行 Flowable {@link ProcessDefinition} 和 {@link Deployment} 的维护
+ * 流程定义实现 主要进行 Flowable {@link ProcessDefinition} 和 {@link Deployment} 的维护
  *
  * @author yunlongn
  * @author ZJQ
@@ -56,79 +55,34 @@ public class BpmProcessDefinitionServiceImpl implements BpmProcessDefinitionServ
     private AdminUserApi adminUserApi;
 
     @Override
-    public ProcessDefinition getProcessDefinition(String id) {
-        return repositoryService.getProcessDefinition(id);
+    public PageResult<ProcessDefinition> getProcessDefinitionPage(BpmProcessDefinitionPageReqVO pageVO) {
+        ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery();
+        query.processDefinitionTenantId(FlowableUtils.getTenantId());
+        if (StrUtil.isNotBlank(pageVO.getKey())) {
+            query.processDefinitionKey(pageVO.getKey());
+        }
+        // 执行查询
+        long count = query.count();
+        if (count == 0) {
+            return PageResult.empty(count);
+        }
+        List<ProcessDefinition> list = query.orderByProcessDefinitionVersion().desc()
+                .listPage(PageUtils.getStart(pageVO), pageVO.getPageSize());
+        return new PageResult<>(list, count);
     }
 
     @Override
-    public List<ProcessDefinition> getProcessDefinitionList(Set<String> ids) {
-        return repositoryService.createProcessDefinitionQuery().processDefinitionIds(ids).list();
-    }
-
-    @Override
-    public ProcessDefinition getProcessDefinitionByDeploymentId(String deploymentId) {
-        if (StrUtil.isEmpty(deploymentId)) {
-            return null;
+    public List<ProcessDefinition> getProcessDefinitionListBySuspensionState(Integer suspensionState) {
+        // 拼接查询条件
+        ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery();
+        if (Objects.equals(SuspensionState.SUSPENDED.getStateCode(), suspensionState)) {
+            query.suspended();
+        } else if (Objects.equals(SuspensionState.ACTIVE.getStateCode(), suspensionState)) {
+            query.active();
         }
-        return repositoryService.createProcessDefinitionQuery().deploymentId(deploymentId).singleResult();
-    }
-
-    @Override
-    public List<ProcessDefinition> getProcessDefinitionListByDeploymentIds(Set<String> deploymentIds) {
-        if (CollUtil.isEmpty(deploymentIds)) {
-            return emptyList();
-        }
-        return repositoryService.createProcessDefinitionQuery().deploymentIds(deploymentIds).list();
-    }
-
-    @Override
-    public ProcessDefinition getActiveProcessDefinition(String key) {
-        return repositoryService.createProcessDefinitionQuery()
-                .processDefinitionTenantId(FlowableUtils.getTenantId())
-                .processDefinitionKey(key).active().singleResult();
-    }
-
-    @Override
-    public boolean canUserStartProcessDefinition(BpmProcessDefinitionInfoDO processDefinition, Long userId) {
-        if (processDefinition == null) {
-            return false;
-        }
-
-        // 校验用户是否在允许发起的用户列表中
-        if (CollUtil.isNotEmpty(processDefinition.getStartUserIds())) {
-            return processDefinition.getStartUserIds().contains(userId);
-        }
-
-        // 校验用户是否在允许发起的部门列表中
-        if (CollUtil.isNotEmpty(processDefinition.getStartDeptIds())) {
-            AdminUserRespDTO user = adminUserApi.getUser(userId).getCheckedData();
-            return user != null
-                    && user.getDeptId() != null
-                    && processDefinition.getStartDeptIds().contains(user.getDeptId());
-        }
-
-        // 都为空，则所有人都可以发起
-        return true;
-    }
-
-    @Override
-    public List<Deployment> getDeploymentList(Set<String> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return emptyList();
-        }
-        List<Deployment> list = new ArrayList<>(ids.size());
-        for (String id : ids) {
-            addIfNotNull(list, getDeployment(id));
-        }
-        return list;
-    }
-
-    @Override
-    public Deployment getDeployment(String id) {
-        if (StrUtil.isEmpty(id)) {
-            return null;
-        }
-        return repositoryService.createDeploymentQuery().deploymentId(id).singleResult();
+        // 执行查询
+        query.processDefinitionTenantId(FlowableUtils.getTenantId());
+        return query.list();
     }
 
     @Override
@@ -214,34 +168,79 @@ public class BpmProcessDefinitionServiceImpl implements BpmProcessDefinitionServ
     }
 
     @Override
-    public PageResult<ProcessDefinition> getProcessDefinitionPage(BpmProcessDefinitionPageReqVO pageVO) {
-        ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery();
-        query.processDefinitionTenantId(FlowableUtils.getTenantId());
-        if (StrUtil.isNotBlank(pageVO.getKey())) {
-            query.processDefinitionKey(pageVO.getKey());
-        }
-        // 执行查询
-        long count = query.count();
-        if (count == 0) {
-            return PageResult.empty(count);
-        }
-        List<ProcessDefinition> list = query.orderByProcessDefinitionVersion().desc()
-                .listPage(PageUtils.getStart(pageVO), pageVO.getPageSize());
-        return new PageResult<>(list, count);
+    public ProcessDefinition getProcessDefinition(String id) {
+        return repositoryService.getProcessDefinition(id);
     }
 
     @Override
-    public List<ProcessDefinition> getProcessDefinitionListBySuspensionState(Integer suspensionState) {
-        // 拼接查询条件
-        ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery();
-        if (Objects.equals(SuspensionState.SUSPENDED.getStateCode(), suspensionState)) {
-            query.suspended();
-        } else if (Objects.equals(SuspensionState.ACTIVE.getStateCode(), suspensionState)) {
-            query.active();
+    public List<ProcessDefinition> getProcessDefinitionList(Set<String> ids) {
+        return repositoryService.createProcessDefinitionQuery().processDefinitionIds(ids).list();
+    }
+
+    @Override
+    public ProcessDefinition getProcessDefinitionByDeploymentId(String deploymentId) {
+        if (StrUtil.isEmpty(deploymentId)) {
+            return null;
         }
-        // 执行查询
-        query.processDefinitionTenantId(FlowableUtils.getTenantId());
-        return query.list();
+        return repositoryService.createProcessDefinitionQuery().deploymentId(deploymentId).singleResult();
+    }
+
+    @Override
+    public List<ProcessDefinition> getProcessDefinitionListByDeploymentIds(Set<String> deploymentIds) {
+        if (CollUtil.isEmpty(deploymentIds)) {
+            return emptyList();
+        }
+        return repositoryService.createProcessDefinitionQuery().deploymentIds(deploymentIds).list();
+    }
+
+    @Override
+    public ProcessDefinition getActiveProcessDefinition(String key) {
+        return repositoryService.createProcessDefinitionQuery()
+                .processDefinitionTenantId(FlowableUtils.getTenantId())
+                .processDefinitionKey(key).active().singleResult();
+    }
+
+    @Override
+    public boolean canUserStartProcessDefinition(BpmProcessDefinitionInfoDO processDefinition, Long userId) {
+        if (processDefinition == null) {
+            return false;
+        }
+
+        // 校验用户是否在允许发起的用户列表中
+        if (CollUtil.isNotEmpty(processDefinition.getStartUserIds())) {
+            return processDefinition.getStartUserIds().contains(userId);
+        }
+
+        // 校验用户是否在允许发起的部门列表中
+        if (CollUtil.isNotEmpty(processDefinition.getStartDeptIds())) {
+            AdminUserRespDTO user = adminUserApi.getUser(userId).getCheckedData();
+            return user != null
+                    && user.getDeptId() != null
+                    && processDefinition.getStartDeptIds().contains(user.getDeptId());
+        }
+
+        // 都为空，则所有人都可以发起
+        return true;
+    }
+
+    @Override
+    public List<Deployment> getDeploymentList(Set<String> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return emptyList();
+        }
+        List<Deployment> list = new ArrayList<>(ids.size());
+        for (String id : ids) {
+            addIfNotNull(list, getDeployment(id));
+        }
+        return list;
+    }
+
+    @Override
+    public Deployment getDeployment(String id) {
+        if (StrUtil.isEmpty(id)) {
+            return null;
+        }
+        return repositoryService.createDeploymentQuery().deploymentId(id).singleResult();
     }
 
 }

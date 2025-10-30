@@ -1,5 +1,10 @@
 package com.pei.dehaze.module.iot.dal.dataobject.rule;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
 import com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO;
@@ -9,12 +14,10 @@ import com.pei.dehaze.module.iot.enums.device.IotDeviceMessageTypeEnum;
 import com.pei.dehaze.module.iot.enums.rule.IotRuleSceneActionTypeEnum;
 import com.pei.dehaze.module.iot.enums.rule.IotRuleSceneTriggerConditionParameterOperatorEnum;
 import com.pei.dehaze.module.iot.enums.rule.IotRuleSceneTriggerTypeEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 import java.util.Map;
@@ -47,7 +50,7 @@ public class IotRuleSceneDO extends TenantBaseDO {
     private String description;
     /**
      * 场景状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;
@@ -72,35 +75,34 @@ public class IotRuleSceneDO extends TenantBaseDO {
 
         /**
          * 触发类型
-         *
+         * <p>
          * 枚举 {@link IotRuleSceneTriggerTypeEnum}
          */
         private Integer type;
 
         /**
          * 产品标识
-         *
+         * <p>
          * 关联 {@link IotProductDO#getProductKey()}
          */
         private String productKey;
         /**
          * 设备名称数组
-         *
+         * <p>
          * 关联 {@link IotDeviceDO#getDeviceName()}
          */
         private List<String> deviceNames;
 
         /**
          * 触发条件数组
-         *
-         * 必填：当 {@link #type} 为 {@link IotRuleSceneTriggerTypeEnum#DEVICE} 时
-         * 条件与条件之间，是“或”的关系
+         * <p>
+         * 必填：当 {@link #type} 为 {@link IotRuleSceneTriggerTypeEnum#DEVICE} 时 条件与条件之间，是“或”的关系
          */
         private List<TriggerCondition> conditions;
 
         /**
          * CRON 表达式
-         *
+         * <p>
          * 必填：当 {@link #type} 为 {@link IotRuleSceneTriggerTypeEnum#TIMER} 时
          */
         private String cronExpression;
@@ -115,20 +117,20 @@ public class IotRuleSceneDO extends TenantBaseDO {
 
         /**
          * 消息类型
-         *
+         * <p>
          * 枚举 {@link IotDeviceMessageTypeEnum}
          */
         private String type;
         /**
          * 消息标识符
-         *
+         * <p>
          * 枚举 {@link IotDeviceMessageIdentifierEnum}
          */
         private String identifier;
 
         /**
          * 参数数组
-         *
+         * <p>
          * 参数与参数之间，是“或”的关系
          */
         private List<TriggerConditionParameter> parameters;
@@ -143,23 +145,24 @@ public class IotRuleSceneDO extends TenantBaseDO {
 
         /**
          * 标识符（属性、事件、服务）
-         *
+         * <p>
          * 关联 {@link IotThingModelDO#getIdentifier()}
          */
         private String identifier;
 
         /**
          * 操作符
-         *
+         * <p>
          * 枚举 {@link IotRuleSceneTriggerConditionParameterOperatorEnum}
          */
         private String operator;
 
         /**
          * 比较值
-         *
+         * <p>
          * 如果有多个值，则使用 "," 分隔，类似 "1,2,3"。
-         * 例如说，{@link IotRuleSceneTriggerConditionParameterOperatorEnum#IN}、{@link IotRuleSceneTriggerConditionParameterOperatorEnum#BETWEEN}
+         * 例如说，{@link IotRuleSceneTriggerConditionParameterOperatorEnum#IN}、{@link
+         * IotRuleSceneTriggerConditionParameterOperatorEnum#BETWEEN}
          */
         private String value;
 
@@ -173,23 +176,22 @@ public class IotRuleSceneDO extends TenantBaseDO {
 
         /**
          * 执行类型
-         *
+         * <p>
          * 枚举 {@link IotRuleSceneActionTypeEnum}
          */
         private Integer type;
 
         /**
          * 设备控制
-         *
+         * <p>
          * 必填：当 {@link #type} 为 {@link IotRuleSceneActionTypeEnum#DEVICE_CONTROL} 时
          */
         private ActionDeviceControl deviceControl;
 
         /**
          * 数据桥接编号
-         *
-         * 必填：当 {@link #type} 为 {@link IotRuleSceneActionTypeEnum#DATA_BRIDGE} 时
-         * 关联：{@link IotDataBridgeDO#getId()}
+         * <p>
+         * 必填：当 {@link #type} 为 {@link IotRuleSceneActionTypeEnum#DATA_BRIDGE} 时 关联：{@link IotDataBridgeDO#getId()}
          */
         private Long dataBridgeId;
 
@@ -203,38 +205,38 @@ public class IotRuleSceneDO extends TenantBaseDO {
 
         /**
          * 产品标识
-         *
+         * <p>
          * 关联 {@link IotProductDO#getProductKey()}
          */
         private String productKey;
         /**
          * 设备名称数组
-         *
+         * <p>
          * 关联 {@link IotDeviceDO#getDeviceName()}
          */
         private List<String> deviceNames;
 
         /**
          * 消息类型
-         *
+         * <p>
          * 枚举 {@link IotDeviceMessageTypeEnum#PROPERTY}、{@link IotDeviceMessageTypeEnum#SERVICE}
          */
         private String type;
         /**
          * 消息标识符
-         *
+         * <p>
          * 枚举 {@link IotDeviceMessageIdentifierEnum}
-         *
-         * 1. 属性设置：对应 {@link IotDeviceMessageIdentifierEnum#PROPERTY_SET}
-         * 2. 服务调用：对应 {@link IotDeviceMessageIdentifierEnum#SERVICE_INVOKE}
+         * <p>
+         * 1. 属性设置：对应 {@link IotDeviceMessageIdentifierEnum#PROPERTY_SET} 2. 服务调用：对应
+         * {@link IotDeviceMessageIdentifierEnum#SERVICE_INVOKE}
          */
         private String identifier;
 
         /**
          * 具体数据
-         *
-         * 1. 属性设置：在 {@link #type} 是 {@link IotDeviceMessageTypeEnum#PROPERTY} 时，对应 properties
-         * 2. 服务调用：在 {@link #type} 是 {@link IotDeviceMessageTypeEnum#SERVICE} 时，对应 params
+         * <p>
+         * 1. 属性设置：在 {@link #type} 是 {@link IotDeviceMessageTypeEnum#PROPERTY} 时，对应 properties 2. 服务调用：在 {@link #type} 是
+         * {@link IotDeviceMessageTypeEnum#SERVICE} 时，对应 params
          */
         private Map<String, Object> data;
 

@@ -1,15 +1,15 @@
 package com.pei.dehaze.module.trade.dal.dataobject.cart;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 /**
  * 购物车的商品信息 DO
- *
+ * <p>
  * 每个商品，对应一条记录，通过 {@link #spuId} 和 {@link #skuId} 关联
  *
  * @author earthyzinc
@@ -30,7 +30,7 @@ public class CartDO extends BaseDO {
 
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 MemberUserDO 的 id 编号
      */
     private Long userId;
@@ -39,13 +39,13 @@ public class CartDO extends BaseDO {
 
     /**
      * 商品 SPU 编号
-     *
+     * <p>
      * 关联 ProductSpuDO 的 id 编号
      */
     private Long spuId;
     /**
      * 商品 SKU 编号
-     *
+     * <p>
      * 关联 ProductSkuDO 的 id 编号
      */
     private Long skuId;

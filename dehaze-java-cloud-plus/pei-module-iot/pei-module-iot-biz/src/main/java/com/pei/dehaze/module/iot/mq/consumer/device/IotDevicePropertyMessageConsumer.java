@@ -5,12 +5,11 @@ import com.pei.dehaze.module.iot.enums.device.IotDeviceMessageIdentifierEnum;
 import com.pei.dehaze.module.iot.enums.device.IotDeviceMessageTypeEnum;
 import com.pei.dehaze.module.iot.mq.message.IotDeviceMessage;
 import com.pei.dehaze.module.iot.service.device.data.IotDevicePropertyService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-
-import jakarta.annotation.Resource;
 
 /**
  * 针对 {@link IotDeviceMessage} 的消费者，记录设备属性

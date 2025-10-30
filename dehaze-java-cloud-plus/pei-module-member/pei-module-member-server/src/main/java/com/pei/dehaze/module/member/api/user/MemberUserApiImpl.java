@@ -5,10 +5,10 @@ import com.pei.dehaze.module.member.api.user.dto.MemberUserRespDTO;
 import com.pei.dehaze.module.member.convert.user.MemberUserConvert;
 import com.pei.dehaze.module.member.dal.dataobject.user.MemberUserDO;
 import com.pei.dehaze.module.member.service.user.MemberUserService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 

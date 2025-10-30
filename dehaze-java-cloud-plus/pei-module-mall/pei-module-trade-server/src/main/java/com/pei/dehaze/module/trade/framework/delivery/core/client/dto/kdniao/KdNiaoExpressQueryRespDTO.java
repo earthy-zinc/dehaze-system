@@ -14,7 +14,7 @@ import static com.pei.dehaze.framework.common.util.date.DateUtils.TIME_ZONE_DEFA
 
 /**
  * 快递鸟快递查询 Resp DTO
- *
+ * <p>
  * 参见 <a href="https://www.yuque.com/kdnjishuzhichi/dfcrg1/wugo6k">快递鸟接口文档</a>
  *
  * @author jason
@@ -48,14 +48,8 @@ public class KdNiaoExpressQueryRespDTO {
 
     /**
      * 普通物流状态
-     *
-     * 0 - 暂无轨迹信息
-     * 1 - 已揽收
-     * 2 - 在途中
-     * 3 - 签收
-     * 4 - 问题件
-     * 5 - 转寄
-     * 6 - 清关
+     * <p>
+     * 0 - 暂无轨迹信息 1 - 已揽收 2 - 在途中 3 - 签收 4 - 问题件 5 - 转寄 6 - 清关
      */
     @JsonProperty("State")
     private String state;

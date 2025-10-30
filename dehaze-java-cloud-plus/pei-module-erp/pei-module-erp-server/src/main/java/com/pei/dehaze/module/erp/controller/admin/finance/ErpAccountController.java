@@ -61,7 +61,7 @@ public class ErpAccountController {
             @Parameter(name = "status", description = "状态", required = true)
     })
     public CommonResult<Boolean> updateAccountDefaultStatus(@RequestParam("id") Long id,
-                                                              @RequestParam("defaultStatus") Boolean defaultStatus) {
+                                                            @RequestParam("defaultStatus") Boolean defaultStatus) {
         accountService.updateAccountDefaultStatus(id, defaultStatus);
         return success(true);
     }
@@ -105,12 +105,12 @@ public class ErpAccountController {
     @PreAuthorize("@ss.hasPermission('erp:account:export')")
     @ApiAccessLog(operateType = EXPORT)
     public void exportAccountExcel(@Valid ErpAccountPageReqVO pageReqVO,
-              HttpServletResponse response) throws IOException {
+                                   HttpServletResponse response) throws IOException {
         pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
         List<ErpAccountDO> list = accountService.getAccountPage(pageReqVO).getList();
         // 导出 Excel
         ExcelUtils.write(response, "结算账户.xls", "数据", ErpAccountRespVO.class,
-                        BeanUtils.toBean(list, ErpAccountRespVO.class));
+                BeanUtils.toBean(list, ErpAccountRespVO.class));
     }
 
 }

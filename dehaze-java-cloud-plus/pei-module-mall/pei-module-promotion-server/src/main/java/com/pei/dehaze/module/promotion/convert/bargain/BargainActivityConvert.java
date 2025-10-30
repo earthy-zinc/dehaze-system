@@ -37,8 +37,6 @@ public interface BargainActivityConvert {
 
     List<BargainActivityRespVO> convertList(List<BargainActivityDO> list);
 
-    PageResult<BargainActivityPageItemRespVO> convertPage(PageResult<BargainActivityDO> page);
-
     default PageResult<BargainActivityPageItemRespVO> convertPage(PageResult<BargainActivityDO> page, List<ProductSpuRespDTO> spuList,
                                                                   Map<Long, Integer> recordUserCountMap, Map<Long, Integer> recordSuccessUserCountMap,
                                                                   Map<Long, Integer> helpUserCountMap) {
@@ -57,7 +55,7 @@ public interface BargainActivityConvert {
         return result;
     }
 
-    AppBargainActivityDetailRespVO convert1(BargainActivityDO bean);
+    PageResult<BargainActivityPageItemRespVO> convertPage(PageResult<BargainActivityDO> page);
 
     default AppBargainActivityDetailRespVO convert(BargainActivityDO bean, Integer successUserCount, ProductSpuRespDTO spu) {
         AppBargainActivityDetailRespVO detail = convert1(bean).setSuccessUserCount(successUserCount);
@@ -67,7 +65,7 @@ public interface BargainActivityConvert {
         return detail;
     }
 
-    PageResult<AppBargainActivityRespVO> convertAppPage(PageResult<BargainActivityDO> page);
+    AppBargainActivityDetailRespVO convert1(BargainActivityDO bean);
 
     default PageResult<AppBargainActivityRespVO> convertAppPage(PageResult<BargainActivityDO> page, List<ProductSpuRespDTO> spuList) {
         PageResult<AppBargainActivityRespVO> result = convertAppPage(page);
@@ -81,7 +79,7 @@ public interface BargainActivityConvert {
         return result;
     }
 
-    List<AppBargainActivityRespVO> convertAppList(List<BargainActivityDO> list);
+    PageResult<AppBargainActivityRespVO> convertAppPage(PageResult<BargainActivityDO> page);
 
     default List<AppBargainActivityRespVO> convertAppList(List<BargainActivityDO> list, List<ProductSpuRespDTO> spuList) {
         List<AppBargainActivityRespVO> activityList = convertAppList(list);
@@ -91,5 +89,7 @@ public interface BargainActivityConvert {
             return item;
         });
     }
+
+    List<AppBargainActivityRespVO> convertAppList(List<BargainActivityDO> list);
 
 }

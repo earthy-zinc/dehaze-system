@@ -24,8 +24,7 @@ public enum PromotionTypeEnum implements ArrayValuable<Integer> {
 
     MEMBER_LEVEL(6, "会员折扣"),
     COUPON(7, "优惠劵"),
-    POINT(8, "积分")
-    ;
+    POINT(8, "积分");
 
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(PromotionTypeEnum::getType).toArray(Integer[]::new);
 

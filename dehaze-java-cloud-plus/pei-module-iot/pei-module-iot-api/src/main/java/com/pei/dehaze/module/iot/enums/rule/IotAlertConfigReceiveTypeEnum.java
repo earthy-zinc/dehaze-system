@@ -19,9 +19,8 @@ public enum IotAlertConfigReceiveTypeEnum implements ArrayValuable<Integer> {
     MAIL(2), // 邮箱
     NOTIFY(3); // 通知
 
-    private final Integer type;
-
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotAlertConfigReceiveTypeEnum::getType).toArray(Integer[]::new);
+    private final Integer type;
 
     @Override
     public Integer[] array() {

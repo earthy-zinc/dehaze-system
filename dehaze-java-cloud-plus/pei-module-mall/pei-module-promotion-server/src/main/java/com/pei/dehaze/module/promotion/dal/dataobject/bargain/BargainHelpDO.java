@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.bargain;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
@@ -29,13 +29,13 @@ public class BargainHelpDO extends BaseDO {
 
     /**
      * 砍价活动编号
-     *
+     * <p>
      * 关联 {@link BargainActivityDO#getId()} 字段
      */
     private Long activityId;
     /**
      * 砍价记录编号
-     *
+     * <p>
      * 关联 {@link BargainRecordDO#getId()} 字段
      */
     private Long recordId;

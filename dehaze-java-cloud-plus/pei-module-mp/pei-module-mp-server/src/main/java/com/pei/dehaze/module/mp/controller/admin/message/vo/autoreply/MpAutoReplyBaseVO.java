@@ -5,19 +5,18 @@ import com.pei.dehaze.module.mp.dal.dataobject.message.MpMessageDO;
 import com.pei.dehaze.module.mp.enums.message.MpAutoReplyTypeEnum;
 import com.pei.dehaze.module.mp.framework.mp.core.util.MpUtils.*;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-import me.chanjar.weixin.common.api.WxConsts;
-import org.hibernate.validator.constraints.URL;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import me.chanjar.weixin.common.api.WxConsts;
+import org.hibernate.validator.constraints.URL;
+
 import java.util.List;
 
 /**
- * 公众号自动回复  Base VO，提供给添加、修改、详细的子 VO 使用
- * 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
+ * 公众号自动回复  Base VO，提供给添加、修改、详细的子 VO 使用 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
  */
 @Data
 public class MpAutoReplyBaseVO {
@@ -58,7 +57,7 @@ public class MpAutoReplyBaseVO {
     @Schema(description = "缩略图的媒体 id", example = "123456")
     @NotEmpty(message = "回复的消息 thumbMediaId 不能为空", groups = {MusicMessageGroup.class})
     private String responseThumbMediaId;
-    @Schema(description = "缩略图的媒体 URL",example = "https://www.iocoder.cn/xxx.jpg")
+    @Schema(description = "缩略图的媒体 URL", example = "https://www.iocoder.cn/xxx.jpg")
     @NotEmpty(message = "回复的消息 thumbMedia 地址不能为空", groups = {MusicMessageGroup.class})
     private String responseThumbMediaUrl;
 
@@ -71,7 +70,7 @@ public class MpAutoReplyBaseVO {
 
     /**
      * 回复的图文消息
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 NEWS
      */
     @NotNull(message = "回复的图文消息不能为空", groups = {NewsMessageGroup.class, ViewLimitedButtonGroup.class})

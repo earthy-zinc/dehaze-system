@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.system.dal.dataobject.user;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
-import com.pei.dehaze.module.system.enums.common.SexEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
+import com.pei.dehaze.module.system.enums.common.SexEnum;
 import lombok.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
@@ -39,7 +39,7 @@ public class AdminUserDO extends TenantBaseDO {
     private String username;
     /**
      * 加密后的密码
-     *
+     * <p>
      * 因为目前使用 {@link BCryptPasswordEncoder} 加密器，所以无需自己处理 salt 盐
      */
     private String password;
@@ -70,7 +70,7 @@ public class AdminUserDO extends TenantBaseDO {
     private String mobile;
     /**
      * 用户性别
-     *
+     * <p>
      * 枚举类 {@link SexEnum}
      */
     private Integer sex;
@@ -80,7 +80,7 @@ public class AdminUserDO extends TenantBaseDO {
     private String avatar;
     /**
      * 帐号状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

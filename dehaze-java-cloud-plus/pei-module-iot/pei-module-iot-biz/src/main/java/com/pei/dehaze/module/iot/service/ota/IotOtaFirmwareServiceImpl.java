@@ -81,11 +81,11 @@ public class IotOtaFirmwareServiceImpl implements IotOtaFirmwareService {
     }
 
     // TODO @li：注释有点冗余
+
     /**
      * 验证产品和版本号是否重复
      * <p>
-     * 该方法用于确保在系统中不存在具有相同产品ID和版本号的固件条目
-     * 它通过调用otaFirmwareMapper的selectByProductIdAndVersion方法来查询数据库中是否存在匹配的产品ID和版本号的固件信息
+     * 该方法用于确保在系统中不存在具有相同产品ID和版本号的固件条目 它通过调用otaFirmwareMapper的selectByProductIdAndVersion方法来查询数据库中是否存在匹配的产品ID和版本号的固件信息
      * 如果查询结果非空且不为null，则抛出异常，提示固件信息已存在，从而避免数据重复
      *
      * @param productId 产品ID，用于数据库查询

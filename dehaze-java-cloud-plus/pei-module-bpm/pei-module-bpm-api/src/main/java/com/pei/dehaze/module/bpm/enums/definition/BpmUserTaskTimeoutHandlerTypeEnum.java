@@ -15,14 +15,13 @@ import java.util.Arrays;
 @AllArgsConstructor
 public enum BpmUserTaskTimeoutHandlerTypeEnum implements ArrayValuable<Integer> {
 
-    REMINDER(1,"自动提醒"),
+    REMINDER(1, "自动提醒"),
     APPROVE(2, "自动同意"),
     REJECT(3, "自动拒绝");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmUserTaskTimeoutHandlerTypeEnum::getType).toArray(Integer[]::new);
     private final Integer type;
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmUserTaskTimeoutHandlerTypeEnum::getType).toArray(Integer[]::new);
 
     @Override
     public Integer[] array() {

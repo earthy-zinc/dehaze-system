@@ -2,6 +2,8 @@ package com.pei.dehaze.module.report.framework.jmreport.core.service;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
+import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCheckRespDTO;
 import com.pei.dehaze.framework.common.biz.system.permission.PermissionCommonApi;
 import com.pei.dehaze.framework.common.exception.ServiceException;
 import com.pei.dehaze.framework.common.util.servlet.ServletUtils;
@@ -10,8 +12,6 @@ import com.pei.dehaze.framework.security.core.LoginUser;
 import com.pei.dehaze.framework.security.core.util.SecurityFrameworkUtils;
 import com.pei.dehaze.framework.tenant.core.context.TenantContextHolder;
 import com.pei.dehaze.framework.web.core.util.WebFrameworkUtils;
-import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
-import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCheckRespDTO;
 import com.pei.dehaze.module.system.enums.permission.RoleCodeEnum;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -43,21 +43,37 @@ public class JmReportTokenServiceImpl implements JmReportTokenServiceI {
     private final SecurityProperties securityProperties;
 
     /**
-     * 自定义 API 数据集appian自定义 Header，解决 Token 传递。
-     * 参考 <a href="http://report.jeecg.com/2222224">api数据集token机制详解</a> 文档
+     * 获得用户编号
+     * <p>
+     * 虽然方法名获得的是 username，实际对应到项目中是用户编号
      *
-     * @return 新 head
+     * @param token JmReport 前端传递的 token
+     * @return 用户编号
      */
     @Override
-    public HttpHeaders customApiHeader() {
-        // 读取积木标标系统的 token
-        HttpServletRequest request = ServletUtils.getRequest();
-        String token = request.getHeader(JM_TOKEN_HEADER);
+    public String getUsername(String token) {
+        Long userId = SecurityFrameworkUtils.getLoginUserId();
+        if (ObjectUtil.isNotNull(userId)) {
+            return String.valueOf(userId);
+        }
+        LoginUser user = buildLoginUserByToken(token);
+        return user == null ? null : String.valueOf(user.getId());
+    }
 
-        // 设置到 yudao 系统的 token
-        HttpHeaders headers = new HttpHeaders();
-        headers.add(securityProperties.getTokenHeader(), String.format(AUTHORIZATION_FORMAT, token));
-        return headers;
+    @Override
+    public String[] getRoles(String token) {
+        // 设置租户上下文。原因是：/jmreport/** 纯前端地址，不会走 buildLoginUserByToken 逻辑
+        LoginUser loginUser = SecurityFrameworkUtils.getLoginUser();
+        if (loginUser == null) {
+            return null;
+        }
+        TenantContextHolder.setTenantId(loginUser.getTenantId());
+
+        // 参见文档 https://help.jeecg.com/jimureport/prodSafe.html 文档
+        // 适配：如果是本系统的管理员，则转换成 jimu 报表的管理员
+        Long userId = SecurityFrameworkUtils.getLoginUserId();
+        return permissionApi.hasAnyRoles(userId, RoleCodeEnum.SUPER_ADMIN.getCode()).getCheckedData()
+                ? new String[]{"admin"} : null;
     }
 
     /**
@@ -76,21 +92,30 @@ public class JmReportTokenServiceImpl implements JmReportTokenServiceI {
     }
 
     /**
-     * 获得用户编号
-     * <p>
-     * 虽然方法名获得的是 username，实际对应到项目中是用户编号
+     * 自定义 API 数据集appian自定义 Header，解决 Token 传递。 参考 <a href="http://report.jeecg.com/2222224">api数据集token机制详解</a> 文档
      *
-     * @param token JmReport 前端传递的 token
-     * @return 用户编号
+     * @return 新 head
      */
     @Override
-    public String getUsername(String token) {
-        Long userId = SecurityFrameworkUtils.getLoginUserId();
-        if (ObjectUtil.isNotNull(userId)) {
-            return String.valueOf(userId);
+    public HttpHeaders customApiHeader() {
+        // 读取积木标标系统的 token
+        HttpServletRequest request = ServletUtils.getRequest();
+        String token = request.getHeader(JM_TOKEN_HEADER);
+
+        // 设置到 yudao 系统的 token
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(securityProperties.getTokenHeader(), String.format(AUTHORIZATION_FORMAT, token));
+        return headers;
+    }
+
+    @Override
+    public String getTenantId() {
+        // 补充说明：不能直接通过 TenantContext 获取，因为 jimu 报表前端请求时，没有带上 tenant-id Header
+        LoginUser loginUser = SecurityFrameworkUtils.getLoginUser();
+        if (loginUser == null) {
+            return null;
         }
-        LoginUser user = buildLoginUserByToken(token);
-        return user == null ? null : String.valueOf(user.getId());
+        return StrUtil.toStringOrNull(loginUser.getTenantId());
     }
 
     /**
@@ -129,32 +154,6 @@ public class JmReportTokenServiceImpl implements JmReportTokenServiceI {
         TenantContextHolder.setIgnore(false);
         TenantContextHolder.setTenantId(user.getTenantId());
         return user;
-    }
-
-    @Override
-    public String[] getRoles(String token) {
-        // 设置租户上下文。原因是：/jmreport/** 纯前端地址，不会走 buildLoginUserByToken 逻辑
-        LoginUser loginUser = SecurityFrameworkUtils.getLoginUser();
-        if (loginUser == null) {
-            return null;
-        }
-        TenantContextHolder.setTenantId(loginUser.getTenantId());
-
-        // 参见文档 https://help.jeecg.com/jimureport/prodSafe.html 文档
-        // 适配：如果是本系统的管理员，则转换成 jimu 报表的管理员
-        Long userId = SecurityFrameworkUtils.getLoginUserId();
-        return permissionApi.hasAnyRoles(userId, RoleCodeEnum.SUPER_ADMIN.getCode()).getCheckedData()
-                ? new String[]{"admin"} : null;
-    }
-
-    @Override
-    public String getTenantId() {
-        // 补充说明：不能直接通过 TenantContext 获取，因为 jimu 报表前端请求时，没有带上 tenant-id Header
-        LoginUser loginUser = SecurityFrameworkUtils.getLoginUser();
-        if (loginUser == null) {
-            return null;
-        }
-        return StrUtil.toStringOrNull(loginUser.getTenantId());
     }
 
 }

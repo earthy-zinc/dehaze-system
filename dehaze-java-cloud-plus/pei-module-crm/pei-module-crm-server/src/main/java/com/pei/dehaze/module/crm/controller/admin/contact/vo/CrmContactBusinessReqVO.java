@@ -12,11 +12,11 @@ import java.util.List;
 public class CrmContactBusinessReqVO {
 
     @Schema(description = "联系人编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "20878")
-    @NotNull(message="联系人不能为空")
+    @NotNull(message = "联系人不能为空")
     private Long contactId;
 
     @Schema(description = "商机编号数组", requiredMode = Schema.RequiredMode.REQUIRED, example = "7638")
-    @NotEmpty(message="商机不能为空")
+    @NotEmpty(message = "商机不能为空")
     private List<Long> businessIds;
 
 }

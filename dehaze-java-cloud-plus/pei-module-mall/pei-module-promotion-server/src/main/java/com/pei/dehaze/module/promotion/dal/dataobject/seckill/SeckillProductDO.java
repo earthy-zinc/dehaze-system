@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.seckill;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -34,13 +34,13 @@ public class SeckillProductDO extends BaseDO {
     private Long id;
     /**
      * 秒杀活动 id
-     *
+     * <p>
      * 关联 {@link SeckillActivityDO#getId()}
      */
     private Long activityId;
     /**
      * 秒杀时段 id
-     *
+     * <p>
      * 关联 {@link SeckillConfigDO#getId()}
      */
     @TableField(typeHandler = LongListTypeHandler.class)
@@ -64,7 +64,7 @@ public class SeckillProductDO extends BaseDO {
 
     /**
      * 秒杀商品状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum 对应的类}
      */
     private Integer activityStatus;

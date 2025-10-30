@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.system.framework.sms.core.client.impl;
 
+import com.google.common.collect.Lists;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.framework.common.util.http.HttpUtils;
 import com.pei.dehaze.framework.test.core.ut.BaseMockitoUnitTest;
@@ -8,7 +9,6 @@ import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsSendRespDTO
 import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
 import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.pei.dehaze.module.system.framework.sms.core.property.SmsChannelProperties;
-import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.MockedStatic;
@@ -50,21 +50,21 @@ public class TencentSmsClientTest extends BaseMockitoUnitTest {
             // mock 方法
             httpUtilsMockedStatic.when(() -> HttpUtils.post(anyString(), anyMap(), anyString()))
                     .thenReturn("{\n" +
-                                    "    \"Response\": {\n" +
-                                    "        \"SendStatusSet\": [\n" +
-                                    "            {\n" +
-                                    "                \"SerialNo\": \"5000:1045710669157053657849499619\",\n" +
-                                    "                \"PhoneNumber\": \"+8618511122233\",\n" +
-                                    "                \"Fee\": 1,\n" +
-                                    "                \"SessionContext\": \"test\",\n" +
-                                    "                \"Code\": \"Ok\",\n" +
-                                    "                \"Message\": \"send success\",\n" +
-                                    "                \"IsoCode\": \"CN\"\n" +
-                                    "            },\n" +
-                                    "        ],\n" +
-                                    "        \"RequestId\": \"a0aabda6-cf91-4f3e-a81f-9198114a2279\"\n" +
-                                    "    }\n" +
-                                    "}");
+                            "    \"Response\": {\n" +
+                            "        \"SendStatusSet\": [\n" +
+                            "            {\n" +
+                            "                \"SerialNo\": \"5000:1045710669157053657849499619\",\n" +
+                            "                \"PhoneNumber\": \"+8618511122233\",\n" +
+                            "                \"Fee\": 1,\n" +
+                            "                \"SessionContext\": \"test\",\n" +
+                            "                \"Code\": \"Ok\",\n" +
+                            "                \"Message\": \"send success\",\n" +
+                            "                \"IsoCode\": \"CN\"\n" +
+                            "            },\n" +
+                            "        ],\n" +
+                            "        \"RequestId\": \"a0aabda6-cf91-4f3e-a81f-9198114a2279\"\n" +
+                            "    }\n" +
+                            "}");
 
             // 调用
             SmsSendRespDTO result = smsClient.sendSms(sendLogId, mobile,
@@ -90,21 +90,21 @@ public class TencentSmsClientTest extends BaseMockitoUnitTest {
             // mock 方法
             httpUtilsMockedStatic.when(() -> HttpUtils.post(anyString(), anyMap(), anyString()))
                     .thenReturn("{\n" +
-                                    "    \"Response\": {\n" +
-                                    "        \"SendStatusSet\": [\n" +
-                                    "            {\n" +
-                                    "                \"SerialNo\": \"5000:1045710669157053657849499619\",\n" +
-                                    "                \"PhoneNumber\": \"+8618511122233\",\n" +
-                                    "                \"Fee\": 1,\n" +
-                                    "                \"SessionContext\": \"test\",\n" +
-                                    "                \"Code\": \"ERROR\",\n" +
-                                    "                \"Message\": \"send success\",\n" +
-                                    "                \"IsoCode\": \"CN\"\n" +
-                                    "            },\n" +
-                                    "        ],\n" +
-                                    "        \"RequestId\": \"a0aabda6-cf91-4f3e-a81f-9198114a2279\"\n" +
-                                    "    }\n" +
-                                    "}");
+                            "    \"Response\": {\n" +
+                            "        \"SendStatusSet\": [\n" +
+                            "            {\n" +
+                            "                \"SerialNo\": \"5000:1045710669157053657849499619\",\n" +
+                            "                \"PhoneNumber\": \"+8618511122233\",\n" +
+                            "                \"Fee\": 1,\n" +
+                            "                \"SessionContext\": \"test\",\n" +
+                            "                \"Code\": \"ERROR\",\n" +
+                            "                \"Message\": \"send success\",\n" +
+                            "                \"IsoCode\": \"CN\"\n" +
+                            "            },\n" +
+                            "        ],\n" +
+                            "        \"RequestId\": \"a0aabda6-cf91-4f3e-a81f-9198114a2279\"\n" +
+                            "    }\n" +
+                            "}");
 
             // 调用
             SmsSendRespDTO result = smsClient.sendSms(sendLogId, mobile,

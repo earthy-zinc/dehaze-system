@@ -16,21 +16,21 @@ public class PayRefundRespDTO {
 
     /**
      * 退款状态
-     *
+     * <p>
      * 枚举 {@link PayRefundStatusEnum}
      */
     private Integer status;
 
     /**
      * 外部退款号
-     *
+     * <p>
      * 对应 PayRefundDO 的 no 字段
      */
     private String outRefundNo;
 
     /**
      * 渠道退款单号
-     *
+     * <p>
      * 对应 PayRefundDO.channelRefundNo 字段
      */
     private String channelRefundNo;
@@ -47,9 +47,8 @@ public class PayRefundRespDTO {
 
     /**
      * 调用渠道的错误码
-     *
-     * 注意：这里返回的是业务异常，而是不系统异常。
-     * 如果是系统异常，则会抛出 {@link PayClientException}
+     * <p>
+     * 注意：这里返回的是业务异常，而是不系统异常。 如果是系统异常，则会抛出 {@link PayClientException}
      */
     private String channelErrorCode;
     /**

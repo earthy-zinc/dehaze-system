@@ -22,9 +22,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 自定义的【单个】流程任务的 assignee 负责人的分配
- * 第一步，基于分配规则，计算出分配任务的【单个】候选人。如果找不到，则直接报业务异常，不继续执行后续的流程；
- * 第二步，随机选择一个候选人，则选择作为 assignee 负责人。
+ * 自定义的【单个】流程任务的 assignee 负责人的分配 第一步，基于分配规则，计算出分配任务的【单个】候选人。如果找不到，则直接报业务异常，不继续执行后续的流程； 第二步，随机选择一个候选人，则选择作为 assignee
+ * 负责人。
  *
  * @author earthyzinc
  */
@@ -39,10 +38,21 @@ public class BpmUserTaskActivityBehavior extends UserTaskActivityBehavior {
     }
 
     @Override
+    protected void handleCategory(CreateUserTaskBeforeContext beforeContext, ExpressionManager expressionManager,
+                                  TaskEntity task, DelegateExecution execution) {
+        ProcessDefinitionEntity processDefinitionEntity = CommandContextUtil.getProcessDefinitionEntityManager().findById(execution.getProcessDefinitionId());
+        if (processDefinitionEntity == null) {
+            log.warn("[handleCategory][任务编号({}) 找不到流程定义({})]", task.getId(), execution.getProcessDefinitionId());
+            return;
+        }
+        task.setCategory(processDefinitionEntity.getCategory());
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     protected void handleAssignments(TaskService taskService, String assignee, String owner,
-        List<String> candidateUsers, List<String> candidateGroups, TaskEntity task, ExpressionManager expressionManager,
-        DelegateExecution execution, ProcessEngineConfigurationImpl processEngineConfiguration) {
+                                     List<String> candidateUsers, List<String> candidateGroups, TaskEntity task, ExpressionManager expressionManager,
+                                     DelegateExecution execution, ProcessEngineConfigurationImpl processEngineConfiguration) {
         // 第一步，获得任务的候选用户
         Long assigneeUserId = calculateTaskCandidateUsers(execution);
         // 第二步，设置作为负责人
@@ -70,17 +80,6 @@ public class BpmUserTaskActivityBehavior extends UserTaskActivityBehavior {
         //      如果希望一个任务可以同时被多个人处理，可以考虑使用 BpmParallelMultiInstanceBehavior 实现的会签 or 或签。
         int index = RandomUtil.randomInt(candidateUserIds.size());
         return CollUtil.get(candidateUserIds, index);
-    }
-
-    @Override
-    protected void handleCategory(CreateUserTaskBeforeContext beforeContext, ExpressionManager expressionManager,
-                                  TaskEntity task, DelegateExecution execution) {
-        ProcessDefinitionEntity processDefinitionEntity = CommandContextUtil.getProcessDefinitionEntityManager().findById(execution.getProcessDefinitionId());
-        if (processDefinitionEntity == null) {
-            log.warn("[handleCategory][任务编号({}) 找不到流程定义({})]", task.getId(), execution.getProcessDefinitionId());
-            return;
-        }
-        task.setCategory(processDefinitionEntity.getCategory());
     }
 
 }

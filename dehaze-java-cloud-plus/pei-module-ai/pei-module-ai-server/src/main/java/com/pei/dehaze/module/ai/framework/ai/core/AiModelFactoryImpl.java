@@ -8,9 +8,19 @@ import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.RuntimeUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAutoConfiguration;
+import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
+import com.alibaba.cloud.ai.dashscope.api.DashScopeImageApi;
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
+import com.alibaba.cloud.ai.dashscope.embedding.DashScopeEmbeddingModel;
+import com.alibaba.cloud.ai.dashscope.embedding.DashScopeEmbeddingOptions;
+import com.alibaba.cloud.ai.dashscope.image.DashScopeImageModel;
+import com.azure.ai.openai.OpenAIClientBuilder;
+import com.pei.dehaze.framework.common.util.spring.SpringUtils;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import com.pei.dehaze.module.ai.framework.ai.config.AiAutoConfiguration;
 import com.pei.dehaze.module.ai.framework.ai.config.PeiAiProperties;
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import com.pei.dehaze.module.ai.framework.ai.core.model.baichuan.BaiChuanChatModel;
 import com.pei.dehaze.module.ai.framework.ai.core.model.deepseek.DeepSeekChatModel;
 import com.pei.dehaze.module.ai.framework.ai.core.model.doubao.DouBaoChatModel;
@@ -22,16 +32,6 @@ import com.pei.dehaze.module.ai.framework.ai.core.model.siliconflow.SiliconFlowI
 import com.pei.dehaze.module.ai.framework.ai.core.model.siliconflow.SiliconFlowImageModel;
 import com.pei.dehaze.module.ai.framework.ai.core.model.suno.api.SunoApi;
 import com.pei.dehaze.module.ai.framework.ai.core.model.xinghuo.XingHuoChatModel;
-import com.pei.dehaze.framework.common.util.spring.SpringUtils;
-import com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeAutoConfiguration;
-import com.alibaba.cloud.ai.dashscope.api.DashScopeApi;
-import com.alibaba.cloud.ai.dashscope.api.DashScopeImageApi;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatModel;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
-import com.alibaba.cloud.ai.dashscope.embedding.DashScopeEmbeddingModel;
-import com.alibaba.cloud.ai.dashscope.embedding.DashScopeEmbeddingOptions;
-import com.alibaba.cloud.ai.dashscope.image.DashScopeImageModel;
-import com.azure.ai.openai.OpenAIClientBuilder;
 import io.micrometer.observation.ObservationRegistry;
 import io.milvus.client.MilvusServiceClient;
 import io.qdrant.client.QdrantClient;
@@ -223,25 +223,11 @@ public class AiModelFactoryImpl implements AiModelFactory {
         }
     }
 
-    @Override
-    public ImageModel getOrCreateImageModel(AiPlatformEnum platform, String apiKey, String url) {
-        // noinspection EnhancedSwitchMigration
-        switch (platform) {
-            case TONG_YI:
-                return buildTongYiImagesModel(apiKey);
-            case YI_YAN:
-                return buildQianFanImageModel(apiKey);
-            case ZHI_PU:
-                return buildZhiPuAiImageModel(apiKey, url);
-            case OPENAI:
-                return buildOpenAiImageModel(apiKey, url);
-            case SILICON_FLOW:
-                return buildSiliconFlowImageModel(apiKey,url);
-            case STABLE_DIFFUSION:
-                return buildStabilityAiImageModel(apiKey, url);
-            default:
-                throw new IllegalArgumentException(StrUtil.format("未知平台({})", platform));
+    private static String buildClientCacheKey(Class<?> clazz, Object... params) {
+        if (ArrayUtil.isEmpty(params)) {
+            return clazz.getName();
         }
+        return StrUtil.format("{}#{}", clazz.getName(), ArrayUtil.join(params, "_"));
     }
 
     @Override
@@ -309,292 +295,6 @@ public class AiModelFactoryImpl implements AiModelFactory {
         });
     }
 
-    private static String buildClientCacheKey(Class<?> clazz, Object... params) {
-        if (ArrayUtil.isEmpty(params)) {
-            return clazz.getName();
-        }
-        return StrUtil.format("{}#{}", clazz.getName(), ArrayUtil.join(params, "_"));
-    }
-
-    // ========== 各种创建 spring-ai 客户端的方法 ==========
-
-    /**
-     * 可参考 {@link DashScopeAutoConfiguration} 的 dashscopeChatModel 方法
-     */
-    private static DashScopeChatModel buildTongYiChatModel(String key) {
-        DashScopeApi dashScopeApi = new DashScopeApi(key);
-        DashScopeChatOptions options = DashScopeChatOptions.builder().withModel(DashScopeApi.DEFAULT_CHAT_MODEL)
-                .withTemperature(0.7).build();
-        return new DashScopeChatModel(dashScopeApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
-    }
-
-    /**
-     * 可参考 {@link DashScopeAutoConfiguration} 的 dashScopeImageModel 方法
-     */
-    private static DashScopeImageModel buildTongYiImagesModel(String key) {
-        DashScopeImageApi dashScopeImageApi = new DashScopeImageApi(key);
-        return new DashScopeImageModel(dashScopeImageApi);
-    }
-
-    /**
-     * 可参考 {@link QianFanAutoConfiguration} 的 qianFanChatModel 方法
-     */
-    private static QianFanChatModel buildYiYanChatModel(String key) {
-        List<String> keys = StrUtil.split(key, '|');
-        Assert.equals(keys.size(), 2, "YiYanChatClient 的密钥需要 (appKey|secretKey) 格式");
-        String appKey = keys.get(0);
-        String secretKey = keys.get(1);
-        QianFanApi qianFanApi = new QianFanApi(appKey, secretKey);
-        return new QianFanChatModel(qianFanApi);
-    }
-
-    /**
-     * 可参考 {@link QianFanAutoConfiguration} 的 qianFanImageModel 方法
-     */
-    private QianFanImageModel buildQianFanImageModel(String key) {
-        List<String> keys = StrUtil.split(key, '|');
-        Assert.equals(keys.size(), 2, "YiYanChatClient 的密钥需要 (appKey|secretKey) 格式");
-        String appKey = keys.get(0);
-        String secretKey = keys.get(1);
-        QianFanImageApi qianFanApi = new QianFanImageApi(appKey, secretKey);
-        return new QianFanImageModel(qianFanApi);
-    }
-
-    /**
-     * 可参考 {@link AiAutoConfiguration#deepSeekChatModel(PeiAiProperties)}
-     */
-    private static DeepSeekChatModel buildDeepSeekChatModel(String apiKey) {
-        PeiAiProperties.DeepSeekProperties properties = new PeiAiProperties.DeepSeekProperties()
-                .setApiKey(apiKey);
-        return new AiAutoConfiguration().buildDeepSeekChatModel(properties);
-    }
-
-    /**
-     * 可参考 {@link AiAutoConfiguration#douBaoChatClient(PeiAiProperties)}
-     */
-    private ChatModel buildDouBaoChatModel(String apiKey) {
-        PeiAiProperties.DouBaoProperties properties = new PeiAiProperties.DouBaoProperties()
-                .setApiKey(apiKey);
-        return new AiAutoConfiguration().buildDouBaoChatClient(properties);
-    }
-
-    /**
-     * 可参考 {@link AiAutoConfiguration#hunYuanChatClient(PeiAiProperties)}
-     */
-    private ChatModel buildHunYuanChatModel(String apiKey, String url) {
-        PeiAiProperties.HunYuanProperties properties = new PeiAiProperties.HunYuanProperties()
-                .setBaseUrl(url).setApiKey(apiKey);
-        return new AiAutoConfiguration().buildHunYuanChatClient(properties);
-    }
-
-    /**
-     * 可参考 {@link AiAutoConfiguration#siliconFlowChatClient(PeiAiProperties)}
-     */
-    private ChatModel buildSiliconFlowChatModel(String apiKey) {
-        PeiAiProperties.SiliconFlowProperties properties = new PeiAiProperties.SiliconFlowProperties()
-                .setApiKey(apiKey);
-        return new AiAutoConfiguration().buildSiliconFlowChatClient(properties);
-    }
-
-    /**
-     * 可参考 {@link ZhiPuAiAutoConfiguration} 的 zhiPuAiChatModel 方法
-     */
-    private ZhiPuAiChatModel buildZhiPuChatModel(String apiKey, String url) {
-        ZhiPuAiApi zhiPuAiApi = StrUtil.isEmpty(url) ? new ZhiPuAiApi(apiKey)
-                : new ZhiPuAiApi(url, apiKey);
-        ZhiPuAiChatOptions options = ZhiPuAiChatOptions.builder().model(ZhiPuAiApi.DEFAULT_CHAT_MODEL).temperature(0.7).build();
-        return new ZhiPuAiChatModel(zhiPuAiApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
-    }
-
-    /**
-     * 可参考 {@link ZhiPuAiAutoConfiguration} 的 zhiPuAiImageModel 方法
-     */
-    private ZhiPuAiImageModel buildZhiPuAiImageModel(String apiKey, String url) {
-        ZhiPuAiImageApi zhiPuAiApi = StrUtil.isEmpty(url) ? new ZhiPuAiImageApi(apiKey)
-                : new ZhiPuAiImageApi(url, apiKey, RestClient.builder());
-        return new ZhiPuAiImageModel(zhiPuAiApi);
-    }
-
-    /**
-     * 可参考 {@link MiniMaxAutoConfiguration} 的 miniMaxChatModel 方法
-     */
-    private MiniMaxChatModel buildMiniMaxChatModel(String apiKey, String url) {
-        MiniMaxApi miniMaxApi = StrUtil.isEmpty(url) ? new MiniMaxApi(apiKey)
-                : new MiniMaxApi(url, apiKey);
-        MiniMaxChatOptions options = MiniMaxChatOptions.builder().model(MiniMaxApi.DEFAULT_CHAT_MODEL).temperature(0.7).build();
-        return new MiniMaxChatModel(miniMaxApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
-    }
-
-    /**
-     * 可参考 {@link MoonshotAutoConfiguration} 的 moonshotChatModel 方法
-     */
-    private MoonshotChatModel buildMoonshotChatModel(String apiKey, String url) {
-        MoonshotApi moonshotApi = StrUtil.isEmpty(url)? new MoonshotApi(apiKey)
-                : new MoonshotApi(url, apiKey);
-        MoonshotChatOptions options = MoonshotChatOptions.builder().model(MoonshotApi.DEFAULT_CHAT_MODEL).build();
-        return new MoonshotChatModel(moonshotApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
-    }
-
-    /**
-     * 可参考 {@link AiAutoConfiguration#xingHuoChatClient(PeiAiProperties)}
-     */
-    private static XingHuoChatModel buildXingHuoChatModel(String key) {
-        List<String> keys = StrUtil.split(key, '|');
-        Assert.equals(keys.size(), 2, "XingHuoChatClient 的密钥需要 (appKey|secretKey) 格式");
-        PeiAiProperties.XingHuoProperties properties = new PeiAiProperties.XingHuoProperties()
-                .setAppKey(keys.get(0)).setSecretKey(keys.get(1));
-        return new AiAutoConfiguration().buildXingHuoChatClient(properties);
-    }
-
-    /**
-     * 可参考 {@link AiAutoConfiguration#baiChuanChatClient(PeiAiProperties)}
-     */
-    private BaiChuanChatModel buildBaiChuanChatModel(String apiKey) {
-        PeiAiProperties.BaiChuanProperties properties = new PeiAiProperties.BaiChuanProperties()
-                .setApiKey(apiKey);
-        return new AiAutoConfiguration().buildBaiChuanChatClient(properties);
-    }
-
-    /**
-     * 可参考 {@link OpenAiAutoConfiguration} 的 openAiChatModel 方法
-     */
-    private static OpenAiChatModel buildOpenAiChatModel(String openAiToken, String url) {
-        url = StrUtil.blankToDefault(url, OpenAiApiConstants.DEFAULT_BASE_URL);
-        OpenAiApi openAiApi = OpenAiApi.builder().baseUrl(url).apiKey(openAiToken).build();
-        return OpenAiChatModel.builder().openAiApi(openAiApi).toolCallingManager(getToolCallingManager()).build();
-    }
-
-    // TODO @芋艿：手头暂时没密钥，使用建议再测试下
-    /**
-     * 可参考 {@link AzureOpenAiAutoConfiguration}
-     */
-    private static AzureOpenAiChatModel buildAzureOpenAiChatModel(String apiKey, String url) {
-        AzureOpenAiAutoConfiguration azureOpenAiAutoConfiguration = new AzureOpenAiAutoConfiguration();
-        // 创建 OpenAIClient 对象
-        AzureOpenAiConnectionProperties connectionProperties = new AzureOpenAiConnectionProperties();
-        connectionProperties.setApiKey(apiKey);
-        connectionProperties.setEndpoint(url);
-        OpenAIClientBuilder openAIClient = azureOpenAiAutoConfiguration.openAIClientBuilder(connectionProperties, null);
-        // 获取 AzureOpenAiChatProperties 对象
-        AzureOpenAiChatProperties chatProperties = SpringUtil.getBean(AzureOpenAiChatProperties.class);
-        return azureOpenAiAutoConfiguration.azureOpenAiChatModel(openAIClient, chatProperties,
-                getToolCallingManager(), null, null);
-    }
-
-    /**
-     * 可参考 {@link OpenAiAutoConfiguration} 的 openAiImageModel 方法
-     */
-    private OpenAiImageModel buildOpenAiImageModel(String openAiToken, String url) {
-        url = StrUtil.blankToDefault(url, OpenAiApiConstants.DEFAULT_BASE_URL);
-        OpenAiImageApi openAiApi = OpenAiImageApi.builder().baseUrl(url).apiKey(openAiToken).build();
-        return new OpenAiImageModel(openAiApi);
-    }
-
-    /**
-     * 创建 SiliconFlowImageModel 对象
-     */
-    private SiliconFlowImageModel buildSiliconFlowImageModel(String apiToken, String url) {
-        url = StrUtil.blankToDefault(url, SiliconFlowApiConstants.DEFAULT_BASE_URL);
-        SiliconFlowImageApi openAiApi = new SiliconFlowImageApi(url, apiToken);
-        return new SiliconFlowImageModel(openAiApi);
-    }
-
-    /**
-     * 可参考 {@link OllamaAutoConfiguration} 的 ollamaApi 方法
-     */
-    private static OllamaChatModel buildOllamaChatModel(String url) {
-        OllamaApi ollamaApi = new OllamaApi(url);
-        return OllamaChatModel.builder().ollamaApi(ollamaApi).toolCallingManager(getToolCallingManager()).build();
-    }
-
-    /**
-     * 可参考 {@link StabilityAiImageAutoConfiguration} 的 stabilityAiImageModel 方法
-     */
-    private StabilityAiImageModel buildStabilityAiImageModel(String apiKey, String url) {
-        url = StrUtil.blankToDefault(url, StabilityAiApi.DEFAULT_BASE_URL);
-        StabilityAiApi stabilityAiApi = new StabilityAiApi(apiKey, StabilityAiApi.DEFAULT_IMAGE_MODEL, url);
-        return new StabilityAiImageModel(stabilityAiApi);
-    }
-
-    // ========== 各种创建 EmbeddingModel 的方法 ==========
-
-    /**
-     * 可参考 {@link DashScopeAutoConfiguration} 的 dashscopeEmbeddingModel 方法
-     */
-    private DashScopeEmbeddingModel buildTongYiEmbeddingModel(String apiKey, String model) {
-        DashScopeApi dashScopeApi = new DashScopeApi(apiKey);
-        DashScopeEmbeddingOptions dashScopeEmbeddingOptions = DashScopeEmbeddingOptions.builder().withModel(model).build();
-        return new DashScopeEmbeddingModel(dashScopeApi, MetadataMode.EMBED, dashScopeEmbeddingOptions);
-    }
-
-    /**
-     * 可参考 {@link ZhiPuAiAutoConfiguration} 的 zhiPuAiEmbeddingModel 方法
-     */
-    private ZhiPuAiEmbeddingModel buildZhiPuEmbeddingModel(String apiKey, String url, String model) {
-        ZhiPuAiApi zhiPuAiApi = StrUtil.isEmpty(url) ? new ZhiPuAiApi(apiKey)
-                : new ZhiPuAiApi(url, apiKey);
-        ZhiPuAiEmbeddingOptions zhiPuAiEmbeddingOptions = ZhiPuAiEmbeddingOptions.builder().model(model).build();
-        return new ZhiPuAiEmbeddingModel(zhiPuAiApi, MetadataMode.EMBED, zhiPuAiEmbeddingOptions);
-    }
-
-    /**
-     * 可参考 {@link MiniMaxAutoConfiguration} 的 miniMaxEmbeddingModel 方法
-     */
-    private EmbeddingModel buildMiniMaxEmbeddingModel(String apiKey, String url, String model) {
-        MiniMaxApi miniMaxApi = StrUtil.isEmpty(url)? new MiniMaxApi(apiKey)
-                : new MiniMaxApi(url, apiKey);
-        MiniMaxEmbeddingOptions miniMaxEmbeddingOptions = MiniMaxEmbeddingOptions.builder().model(model).build();
-        return new MiniMaxEmbeddingModel(miniMaxApi, MetadataMode.EMBED, miniMaxEmbeddingOptions);
-    }
-
-    /**
-     * 可参考 {@link QianFanAutoConfiguration} 的 qianFanEmbeddingModel 方法
-     */
-    private QianFanEmbeddingModel buildYiYanEmbeddingModel(String key, String model) {
-        List<String> keys = StrUtil.split(key, '|');
-        Assert.equals(keys.size(), 2, "YiYanChatClient 的密钥需要 (appKey|secretKey) 格式");
-        String appKey = keys.get(0);
-        String secretKey = keys.get(1);
-        QianFanApi qianFanApi = new QianFanApi(appKey, secretKey);
-        QianFanEmbeddingOptions qianFanEmbeddingOptions = QianFanEmbeddingOptions.builder().model(model).build();
-        return new QianFanEmbeddingModel(qianFanApi, MetadataMode.EMBED, qianFanEmbeddingOptions);
-    }
-
-    private OllamaEmbeddingModel buildOllamaEmbeddingModel(String url, String model) {
-        OllamaApi ollamaApi = new OllamaApi(url);
-        OllamaOptions ollamaOptions = OllamaOptions.builder().model(model).build();
-        return OllamaEmbeddingModel.builder().ollamaApi(ollamaApi).defaultOptions(ollamaOptions).build();
-    }
-
-    /**
-     * 可参考 {@link OpenAiAutoConfiguration} 的 openAiEmbeddingModel 方法
-     */
-    private OpenAiEmbeddingModel buildOpenAiEmbeddingModel(String openAiToken, String url, String model) {
-        url = StrUtil.blankToDefault(url, OpenAiApiConstants.DEFAULT_BASE_URL);
-        OpenAiApi openAiApi = OpenAiApi.builder().baseUrl(url).apiKey(openAiToken).build();
-        OpenAiEmbeddingOptions openAiEmbeddingProperties = OpenAiEmbeddingOptions.builder().model(model).build();
-        return new OpenAiEmbeddingModel(openAiApi, MetadataMode.EMBED, openAiEmbeddingProperties);
-    }
-
-    // TODO @芋艿：手头暂时没密钥，使用建议再测试下
-    /**
-     * 可参考 {@link AzureOpenAiAutoConfiguration} 的 azureOpenAiEmbeddingModel 方法
-     */
-    private AzureOpenAiEmbeddingModel buildAzureOpenAiEmbeddingModel(String apiKey, String url, String model) {
-        AzureOpenAiAutoConfiguration azureOpenAiAutoConfiguration = new AzureOpenAiAutoConfiguration();
-        // 创建 OpenAIClient 对象
-        AzureOpenAiConnectionProperties connectionProperties = new AzureOpenAiConnectionProperties();
-        connectionProperties.setApiKey(apiKey);
-        connectionProperties.setEndpoint(url);
-        OpenAIClientBuilder openAIClient = azureOpenAiAutoConfiguration.openAIClientBuilder(connectionProperties, null);
-        // 获取 AzureOpenAiChatProperties 对象
-        AzureOpenAiEmbeddingProperties embeddingProperties = SpringUtil.getBean(AzureOpenAiEmbeddingProperties.class);
-        return azureOpenAiAutoConfiguration.azureOpenAiEmbeddingModel(openAIClient, embeddingProperties,
-                null, null);
-    }
-
-    // ========== 各种创建 VectorStore 的方法 ==========
-
     /**
      * 注意：仅适合本地测试使用，生产建议还是使用 Qdrant、Milvus 等
      */
@@ -625,6 +325,8 @@ public class AiModelFactoryImpl implements AiModelFactory {
         RuntimeUtil.addShutdownHook(() -> vectorStore.save(file));
         return vectorStore;
     }
+
+    // ========== 各种创建 spring-ai 客户端的方法 ==========
 
     /**
      * 参考 {@link QdrantVectorStoreAutoConfiguration} 的 vectorStore 方法
@@ -741,12 +443,312 @@ public class AiModelFactoryImpl implements AiModelFactory {
         return SpringUtil.getBean(BatchingStrategy.class);
     }
 
+    /**
+     * 可参考 {@link DashScopeAutoConfiguration} 的 dashscopeChatModel 方法
+     */
+    private static DashScopeChatModel buildTongYiChatModel(String key) {
+        DashScopeApi dashScopeApi = new DashScopeApi(key);
+        DashScopeChatOptions options = DashScopeChatOptions.builder().withModel(DashScopeApi.DEFAULT_CHAT_MODEL)
+                .withTemperature(0.7).build();
+        return new DashScopeChatModel(dashScopeApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
+    }
+
+    /**
+     * 可参考 {@link QianFanAutoConfiguration} 的 qianFanChatModel 方法
+     */
+    private static QianFanChatModel buildYiYanChatModel(String key) {
+        List<String> keys = StrUtil.split(key, '|');
+        Assert.equals(keys.size(), 2, "YiYanChatClient 的密钥需要 (appKey|secretKey) 格式");
+        String appKey = keys.get(0);
+        String secretKey = keys.get(1);
+        QianFanApi qianFanApi = new QianFanApi(appKey, secretKey);
+        return new QianFanChatModel(qianFanApi);
+    }
+
+    /**
+     * 可参考 {@link AiAutoConfiguration#deepSeekChatModel(PeiAiProperties)}
+     */
+    private static DeepSeekChatModel buildDeepSeekChatModel(String apiKey) {
+        PeiAiProperties.DeepSeekProperties properties = new PeiAiProperties.DeepSeekProperties()
+                .setApiKey(apiKey);
+        return new AiAutoConfiguration().buildDeepSeekChatModel(properties);
+    }
+
+    /**
+     * 可参考 {@link AiAutoConfiguration#xingHuoChatClient(PeiAiProperties)}
+     */
+    private static XingHuoChatModel buildXingHuoChatModel(String key) {
+        List<String> keys = StrUtil.split(key, '|');
+        Assert.equals(keys.size(), 2, "XingHuoChatClient 的密钥需要 (appKey|secretKey) 格式");
+        PeiAiProperties.XingHuoProperties properties = new PeiAiProperties.XingHuoProperties()
+                .setAppKey(keys.get(0)).setSecretKey(keys.get(1));
+        return new AiAutoConfiguration().buildXingHuoChatClient(properties);
+    }
+
+    /**
+     * 可参考 {@link OpenAiAutoConfiguration} 的 openAiChatModel 方法
+     */
+    private static OpenAiChatModel buildOpenAiChatModel(String openAiToken, String url) {
+        url = StrUtil.blankToDefault(url, OpenAiApiConstants.DEFAULT_BASE_URL);
+        OpenAiApi openAiApi = OpenAiApi.builder().baseUrl(url).apiKey(openAiToken).build();
+        return OpenAiChatModel.builder().openAiApi(openAiApi).toolCallingManager(getToolCallingManager()).build();
+    }
+
     private static ToolCallingManager getToolCallingManager() {
         return SpringUtil.getBean(ToolCallingManager.class);
     }
 
+    /**
+     * 可参考 {@link AzureOpenAiAutoConfiguration}
+     */
+    private static AzureOpenAiChatModel buildAzureOpenAiChatModel(String apiKey, String url) {
+        AzureOpenAiAutoConfiguration azureOpenAiAutoConfiguration = new AzureOpenAiAutoConfiguration();
+        // 创建 OpenAIClient 对象
+        AzureOpenAiConnectionProperties connectionProperties = new AzureOpenAiConnectionProperties();
+        connectionProperties.setApiKey(apiKey);
+        connectionProperties.setEndpoint(url);
+        OpenAIClientBuilder openAIClient = azureOpenAiAutoConfiguration.openAIClientBuilder(connectionProperties, null);
+        // 获取 AzureOpenAiChatProperties 对象
+        AzureOpenAiChatProperties chatProperties = SpringUtil.getBean(AzureOpenAiChatProperties.class);
+        return azureOpenAiAutoConfiguration.azureOpenAiChatModel(openAIClient, chatProperties,
+                getToolCallingManager(), null, null);
+    }
+
+    /**
+     * 可参考 {@link OllamaAutoConfiguration} 的 ollamaApi 方法
+     */
+    private static OllamaChatModel buildOllamaChatModel(String url) {
+        OllamaApi ollamaApi = new OllamaApi(url);
+        return OllamaChatModel.builder().ollamaApi(ollamaApi).toolCallingManager(getToolCallingManager()).build();
+    }
+
+    @Override
+    public ImageModel getOrCreateImageModel(AiPlatformEnum platform, String apiKey, String url) {
+        // noinspection EnhancedSwitchMigration
+        switch (platform) {
+            case TONG_YI:
+                return buildTongYiImagesModel(apiKey);
+            case YI_YAN:
+                return buildQianFanImageModel(apiKey);
+            case ZHI_PU:
+                return buildZhiPuAiImageModel(apiKey, url);
+            case OPENAI:
+                return buildOpenAiImageModel(apiKey, url);
+            case SILICON_FLOW:
+                return buildSiliconFlowImageModel(apiKey, url);
+            case STABLE_DIFFUSION:
+                return buildStabilityAiImageModel(apiKey, url);
+            default:
+                throw new IllegalArgumentException(StrUtil.format("未知平台({})", platform));
+        }
+    }
+
+    // TODO @芋艿：手头暂时没密钥，使用建议再测试下
+
+    /**
+     * 可参考 {@link DashScopeAutoConfiguration} 的 dashScopeImageModel 方法
+     */
+    private static DashScopeImageModel buildTongYiImagesModel(String key) {
+        DashScopeImageApi dashScopeImageApi = new DashScopeImageApi(key);
+        return new DashScopeImageModel(dashScopeImageApi);
+    }
+
+    /**
+     * 可参考 {@link QianFanAutoConfiguration} 的 qianFanImageModel 方法
+     */
+    private QianFanImageModel buildQianFanImageModel(String key) {
+        List<String> keys = StrUtil.split(key, '|');
+        Assert.equals(keys.size(), 2, "YiYanChatClient 的密钥需要 (appKey|secretKey) 格式");
+        String appKey = keys.get(0);
+        String secretKey = keys.get(1);
+        QianFanImageApi qianFanApi = new QianFanImageApi(appKey, secretKey);
+        return new QianFanImageModel(qianFanApi);
+    }
+
+    /**
+     * 可参考 {@link ZhiPuAiAutoConfiguration} 的 zhiPuAiImageModel 方法
+     */
+    private ZhiPuAiImageModel buildZhiPuAiImageModel(String apiKey, String url) {
+        ZhiPuAiImageApi zhiPuAiApi = StrUtil.isEmpty(url) ? new ZhiPuAiImageApi(apiKey)
+                : new ZhiPuAiImageApi(url, apiKey, RestClient.builder());
+        return new ZhiPuAiImageModel(zhiPuAiApi);
+    }
+
+    /**
+     * 可参考 {@link OpenAiAutoConfiguration} 的 openAiImageModel 方法
+     */
+    private OpenAiImageModel buildOpenAiImageModel(String openAiToken, String url) {
+        url = StrUtil.blankToDefault(url, OpenAiApiConstants.DEFAULT_BASE_URL);
+        OpenAiImageApi openAiApi = OpenAiImageApi.builder().baseUrl(url).apiKey(openAiToken).build();
+        return new OpenAiImageModel(openAiApi);
+    }
+
+    /**
+     * 创建 SiliconFlowImageModel 对象
+     */
+    private SiliconFlowImageModel buildSiliconFlowImageModel(String apiToken, String url) {
+        url = StrUtil.blankToDefault(url, SiliconFlowApiConstants.DEFAULT_BASE_URL);
+        SiliconFlowImageApi openAiApi = new SiliconFlowImageApi(url, apiToken);
+        return new SiliconFlowImageModel(openAiApi);
+    }
+
+    // ========== 各种创建 EmbeddingModel 的方法 ==========
+
+    /**
+     * 可参考 {@link StabilityAiImageAutoConfiguration} 的 stabilityAiImageModel 方法
+     */
+    private StabilityAiImageModel buildStabilityAiImageModel(String apiKey, String url) {
+        url = StrUtil.blankToDefault(url, StabilityAiApi.DEFAULT_BASE_URL);
+        StabilityAiApi stabilityAiApi = new StabilityAiApi(apiKey, StabilityAiApi.DEFAULT_IMAGE_MODEL, url);
+        return new StabilityAiImageModel(stabilityAiApi);
+    }
+
+    /**
+     * 可参考 {@link DashScopeAutoConfiguration} 的 dashscopeEmbeddingModel 方法
+     */
+    private DashScopeEmbeddingModel buildTongYiEmbeddingModel(String apiKey, String model) {
+        DashScopeApi dashScopeApi = new DashScopeApi(apiKey);
+        DashScopeEmbeddingOptions dashScopeEmbeddingOptions = DashScopeEmbeddingOptions.builder().withModel(model).build();
+        return new DashScopeEmbeddingModel(dashScopeApi, MetadataMode.EMBED, dashScopeEmbeddingOptions);
+    }
+
+    /**
+     * 可参考 {@link QianFanAutoConfiguration} 的 qianFanEmbeddingModel 方法
+     */
+    private QianFanEmbeddingModel buildYiYanEmbeddingModel(String key, String model) {
+        List<String> keys = StrUtil.split(key, '|');
+        Assert.equals(keys.size(), 2, "YiYanChatClient 的密钥需要 (appKey|secretKey) 格式");
+        String appKey = keys.get(0);
+        String secretKey = keys.get(1);
+        QianFanApi qianFanApi = new QianFanApi(appKey, secretKey);
+        QianFanEmbeddingOptions qianFanEmbeddingOptions = QianFanEmbeddingOptions.builder().model(model).build();
+        return new QianFanEmbeddingModel(qianFanApi, MetadataMode.EMBED, qianFanEmbeddingOptions);
+    }
+
+    /**
+     * 可参考 {@link ZhiPuAiAutoConfiguration} 的 zhiPuAiEmbeddingModel 方法
+     */
+    private ZhiPuAiEmbeddingModel buildZhiPuEmbeddingModel(String apiKey, String url, String model) {
+        ZhiPuAiApi zhiPuAiApi = StrUtil.isEmpty(url) ? new ZhiPuAiApi(apiKey)
+                : new ZhiPuAiApi(url, apiKey);
+        ZhiPuAiEmbeddingOptions zhiPuAiEmbeddingOptions = ZhiPuAiEmbeddingOptions.builder().model(model).build();
+        return new ZhiPuAiEmbeddingModel(zhiPuAiApi, MetadataMode.EMBED, zhiPuAiEmbeddingOptions);
+    }
+
+    /**
+     * 可参考 {@link MiniMaxAutoConfiguration} 的 miniMaxEmbeddingModel 方法
+     */
+    private EmbeddingModel buildMiniMaxEmbeddingModel(String apiKey, String url, String model) {
+        MiniMaxApi miniMaxApi = StrUtil.isEmpty(url) ? new MiniMaxApi(apiKey)
+                : new MiniMaxApi(url, apiKey);
+        MiniMaxEmbeddingOptions miniMaxEmbeddingOptions = MiniMaxEmbeddingOptions.builder().model(model).build();
+        return new MiniMaxEmbeddingModel(miniMaxApi, MetadataMode.EMBED, miniMaxEmbeddingOptions);
+    }
+
+    /**
+     * 可参考 {@link OpenAiAutoConfiguration} 的 openAiEmbeddingModel 方法
+     */
+    private OpenAiEmbeddingModel buildOpenAiEmbeddingModel(String openAiToken, String url, String model) {
+        url = StrUtil.blankToDefault(url, OpenAiApiConstants.DEFAULT_BASE_URL);
+        OpenAiApi openAiApi = OpenAiApi.builder().baseUrl(url).apiKey(openAiToken).build();
+        OpenAiEmbeddingOptions openAiEmbeddingProperties = OpenAiEmbeddingOptions.builder().model(model).build();
+        return new OpenAiEmbeddingModel(openAiApi, MetadataMode.EMBED, openAiEmbeddingProperties);
+    }
+
+    // TODO @芋艿：手头暂时没密钥，使用建议再测试下
+
+    /**
+     * 可参考 {@link AzureOpenAiAutoConfiguration} 的 azureOpenAiEmbeddingModel 方法
+     */
+    private AzureOpenAiEmbeddingModel buildAzureOpenAiEmbeddingModel(String apiKey, String url, String model) {
+        AzureOpenAiAutoConfiguration azureOpenAiAutoConfiguration = new AzureOpenAiAutoConfiguration();
+        // 创建 OpenAIClient 对象
+        AzureOpenAiConnectionProperties connectionProperties = new AzureOpenAiConnectionProperties();
+        connectionProperties.setApiKey(apiKey);
+        connectionProperties.setEndpoint(url);
+        OpenAIClientBuilder openAIClient = azureOpenAiAutoConfiguration.openAIClientBuilder(connectionProperties, null);
+        // 获取 AzureOpenAiChatProperties 对象
+        AzureOpenAiEmbeddingProperties embeddingProperties = SpringUtil.getBean(AzureOpenAiEmbeddingProperties.class);
+        return azureOpenAiAutoConfiguration.azureOpenAiEmbeddingModel(openAIClient, embeddingProperties,
+                null, null);
+    }
+
+    // ========== 各种创建 VectorStore 的方法 ==========
+
+    private OllamaEmbeddingModel buildOllamaEmbeddingModel(String url, String model) {
+        OllamaApi ollamaApi = new OllamaApi(url);
+        OllamaOptions ollamaOptions = OllamaOptions.builder().model(model).build();
+        return OllamaEmbeddingModel.builder().ollamaApi(ollamaApi).defaultOptions(ollamaOptions).build();
+    }
+
+    /**
+     * 可参考 {@link AiAutoConfiguration#douBaoChatClient(PeiAiProperties)}
+     */
+    private ChatModel buildDouBaoChatModel(String apiKey) {
+        PeiAiProperties.DouBaoProperties properties = new PeiAiProperties.DouBaoProperties()
+                .setApiKey(apiKey);
+        return new AiAutoConfiguration().buildDouBaoChatClient(properties);
+    }
+
+    /**
+     * 可参考 {@link AiAutoConfiguration#hunYuanChatClient(PeiAiProperties)}
+     */
+    private ChatModel buildHunYuanChatModel(String apiKey, String url) {
+        PeiAiProperties.HunYuanProperties properties = new PeiAiProperties.HunYuanProperties()
+                .setBaseUrl(url).setApiKey(apiKey);
+        return new AiAutoConfiguration().buildHunYuanChatClient(properties);
+    }
+
+    /**
+     * 可参考 {@link AiAutoConfiguration#siliconFlowChatClient(PeiAiProperties)}
+     */
+    private ChatModel buildSiliconFlowChatModel(String apiKey) {
+        PeiAiProperties.SiliconFlowProperties properties = new PeiAiProperties.SiliconFlowProperties()
+                .setApiKey(apiKey);
+        return new AiAutoConfiguration().buildSiliconFlowChatClient(properties);
+    }
+
+    /**
+     * 可参考 {@link ZhiPuAiAutoConfiguration} 的 zhiPuAiChatModel 方法
+     */
+    private ZhiPuAiChatModel buildZhiPuChatModel(String apiKey, String url) {
+        ZhiPuAiApi zhiPuAiApi = StrUtil.isEmpty(url) ? new ZhiPuAiApi(apiKey)
+                : new ZhiPuAiApi(url, apiKey);
+        ZhiPuAiChatOptions options = ZhiPuAiChatOptions.builder().model(ZhiPuAiApi.DEFAULT_CHAT_MODEL).temperature(0.7).build();
+        return new ZhiPuAiChatModel(zhiPuAiApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
+    }
+
+    /**
+     * 可参考 {@link MiniMaxAutoConfiguration} 的 miniMaxChatModel 方法
+     */
+    private MiniMaxChatModel buildMiniMaxChatModel(String apiKey, String url) {
+        MiniMaxApi miniMaxApi = StrUtil.isEmpty(url) ? new MiniMaxApi(apiKey)
+                : new MiniMaxApi(url, apiKey);
+        MiniMaxChatOptions options = MiniMaxChatOptions.builder().model(MiniMaxApi.DEFAULT_CHAT_MODEL).temperature(0.7).build();
+        return new MiniMaxChatModel(miniMaxApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
+    }
+
+    /**
+     * 可参考 {@link MoonshotAutoConfiguration} 的 moonshotChatModel 方法
+     */
+    private MoonshotChatModel buildMoonshotChatModel(String apiKey, String url) {
+        MoonshotApi moonshotApi = StrUtil.isEmpty(url) ? new MoonshotApi(apiKey)
+                : new MoonshotApi(url, apiKey);
+        MoonshotChatOptions options = MoonshotChatOptions.builder().model(MoonshotApi.DEFAULT_CHAT_MODEL).build();
+        return new MoonshotChatModel(moonshotApi, options, getFunctionCallbackResolver(), DEFAULT_RETRY_TEMPLATE);
+    }
+
     private static FunctionCallbackResolver getFunctionCallbackResolver() {
         return SpringUtil.getBean(FunctionCallbackResolver.class);
+    }
+
+    /**
+     * 可参考 {@link AiAutoConfiguration#baiChuanChatClient(PeiAiProperties)}
+     */
+    private BaiChuanChatModel buildBaiChuanChatModel(String apiKey) {
+        PeiAiProperties.BaiChuanProperties properties = new PeiAiProperties.BaiChuanProperties()
+                .setApiKey(apiKey);
+        return new AiAutoConfiguration().buildBaiChuanChatClient(properties);
     }
 
 }

@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.product.dal.mysql.history;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.product.controller.admin.history.vo.ProductBrowseHistoryPageReqVO;
 import com.pei.dehaze.module.product.dal.dataobject.history.ProductBrowseHistoryDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;

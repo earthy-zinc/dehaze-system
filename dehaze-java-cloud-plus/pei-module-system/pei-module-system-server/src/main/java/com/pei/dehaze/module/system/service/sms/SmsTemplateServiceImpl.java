@@ -4,25 +4,25 @@ import cn.hutool.core.exceptions.ExceptionUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.StrUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
-import com.pei.dehaze.module.system.framework.sms.core.client.SmsClient;
-import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
-import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.template.SmsTemplatePageReqVO;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.template.SmsTemplateSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.sms.SmsChannelDO;
 import com.pei.dehaze.module.system.dal.dataobject.sms.SmsTemplateDO;
 import com.pei.dehaze.module.system.dal.mysql.sms.SmsTemplateMapper;
 import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
-import com.google.common.annotations.VisibleForTesting;
+import com.pei.dehaze.module.system.framework.sms.core.client.SmsClient;
+import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
+import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -100,12 +100,6 @@ public class SmsTemplateServiceImpl implements SmsTemplateService {
         smsTemplateMapper.deleteById(id);
     }
 
-    private void validateSmsTemplateExists(Long id) {
-        if (smsTemplateMapper.selectById(id) == null) {
-            throw exception(SMS_TEMPLATE_NOT_EXISTS);
-        }
-    }
-
     @Override
     public SmsTemplateDO getSmsTemplate(Long id) {
         return smsTemplateMapper.selectById(id);
@@ -126,6 +120,17 @@ public class SmsTemplateServiceImpl implements SmsTemplateService {
     @Override
     public Long getSmsTemplateCountByChannelId(Long channelId) {
         return smsTemplateMapper.selectCountByChannelId(channelId);
+    }
+
+    @Override
+    public String formatSmsTemplateContent(String content, Map<String, Object> params) {
+        return StrUtil.format(content, params);
+    }
+
+    private void validateSmsTemplateExists(Long id) {
+        if (smsTemplateMapper.selectById(id) == null) {
+            throw exception(SMS_TEMPLATE_NOT_EXISTS);
+        }
     }
 
     @VisibleForTesting
@@ -158,7 +163,7 @@ public class SmsTemplateServiceImpl implements SmsTemplateService {
     /**
      * 校验 API 短信平台的模板是否有效
      *
-     * @param channelId 渠道编号
+     * @param channelId     渠道编号
      * @param apiTemplateId API 模板编号
      */
     @VisibleForTesting
@@ -184,11 +189,6 @@ public class SmsTemplateServiceImpl implements SmsTemplateService {
         }
         Assert.equals(template.getAuditStatus(), SmsTemplateAuditStatusEnum.SUCCESS.getStatus(),
                 String.format("短信模板(%s) 审核状态(%d) 不正确", apiTemplateId, template.getAuditStatus()));
-    }
-
-    @Override
-    public String formatSmsTemplateContent(String content, Map<String, Object> params) {
-        return StrUtil.format(content, params);
     }
 
     @VisibleForTesting

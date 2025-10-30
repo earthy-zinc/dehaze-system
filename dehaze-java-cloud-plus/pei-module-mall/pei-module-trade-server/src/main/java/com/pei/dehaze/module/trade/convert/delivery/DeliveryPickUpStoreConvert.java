@@ -31,6 +31,7 @@ public interface DeliveryPickUpStoreConvert {
     PageResult<DeliveryPickUpStoreRespVO> convertPage(PageResult<DeliveryPickUpStoreDO> page);
 
     List<DeliveryPickUpStoreSimpleRespVO> convertList1(List<DeliveryPickUpStoreDO> list);
+
     @Mapping(source = "areaId", target = "areaName", qualifiedByName = "convertAreaIdToAreaName")
     DeliveryPickUpStoreSimpleRespVO convert02(DeliveryPickUpStoreDO bean);
 
@@ -49,6 +50,7 @@ public interface DeliveryPickUpStoreConvert {
             return storeVO;
         });
     }
+
     @Mapping(source = "areaId", target = "areaName", qualifiedByName = "convertAreaIdToAreaName")
     AppDeliveryPickUpStoreRespVO convert03(DeliveryPickUpStoreDO bean);
 

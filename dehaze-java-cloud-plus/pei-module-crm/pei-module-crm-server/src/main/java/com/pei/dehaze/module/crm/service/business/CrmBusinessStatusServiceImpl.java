@@ -88,6 +88,12 @@ public class CrmBusinessStatusServiceImpl implements CrmBusinessStatusService {
         updateBusinessStatus(updateReqVO.getId(), BeanUtils.toBean(updateReqVO.getStatuses(), CrmBusinessStatusDO.class));
     }
 
+    private void validateBusinessStatusTypeExists(Long id) {
+        if (businessStatusTypeMapper.selectById(id) == null) {
+            throw exception(BUSINESS_STATUS_TYPE_NOT_EXISTS);
+        }
+    }
+
     private void updateBusinessStatus(Long id, List<CrmBusinessStatusDO> newList) {
         List<CrmBusinessStatusDO> oldList = businessStatusMapper.selectListByTypeId(id);
         List<List<CrmBusinessStatusDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
@@ -102,21 +108,6 @@ public class CrmBusinessStatusServiceImpl implements CrmBusinessStatusService {
         if (CollUtil.isNotEmpty(diffList.get(2))) {
             businessStatusMapper.deleteBatchIds(convertSet(diffList.get(2), CrmBusinessStatusDO::getId));
         }
-    }
-
-    private void validateBusinessStatusTypeExists(Long id) {
-        if (businessStatusTypeMapper.selectById(id) == null) {
-            throw exception(BUSINESS_STATUS_TYPE_NOT_EXISTS);
-        }
-    }
-
-    private void validateBusinessStatusTypeNameUnique(String name, Long id) {
-        CrmBusinessStatusTypeDO statusType = businessStatusTypeMapper.selectByName(name);
-        if (statusType == null
-                || statusType.getId().equals(id)) {
-            return;
-        }
-        throw exception(BUSINESS_STATUS_TYPE_NAME_EXISTS);
     }
 
     @Override
@@ -190,6 +181,15 @@ public class CrmBusinessStatusServiceImpl implements CrmBusinessStatusService {
             throw exception(BUSINESS_STATUS_NOT_EXISTS);
         }
         return status;
+    }
+
+    private void validateBusinessStatusTypeNameUnique(String name, Long id) {
+        CrmBusinessStatusTypeDO statusType = businessStatusTypeMapper.selectByName(name);
+        if (statusType == null
+                || statusType.getId().equals(id)) {
+            return;
+        }
+        throw exception(BUSINESS_STATUS_TYPE_NAME_EXISTS);
     }
 
 }

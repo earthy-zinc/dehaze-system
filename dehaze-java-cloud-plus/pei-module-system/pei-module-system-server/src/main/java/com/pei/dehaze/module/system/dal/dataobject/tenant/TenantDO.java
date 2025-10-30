@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.system.dal.dataobject.tenant;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.pei.dehaze.module.system.dal.dataobject.user.AdminUserDO;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -41,7 +41,7 @@ public class TenantDO extends BaseDO {
     private String name;
     /**
      * 联系人的用户编号
-     *
+     * <p>
      * 关联 {@link AdminUserDO#getId()}
      */
     private Long contactUserId;
@@ -55,7 +55,7 @@ public class TenantDO extends BaseDO {
     private String contactMobile;
     /**
      * 租户状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;
@@ -65,9 +65,8 @@ public class TenantDO extends BaseDO {
     private String website;
     /**
      * 租户套餐编号
-     *
-     * 关联 {@link TenantPackageDO#getId()}
-     * 特殊逻辑：系统内置租户，不使用套餐，暂时使用 {@link #PACKAGE_ID_SYSTEM} 标识
+     * <p>
+     * 关联 {@link TenantPackageDO#getId()} 特殊逻辑：系统内置租户，不使用套餐，暂时使用 {@link #PACKAGE_ID_SYSTEM} 标识
      */
     private Long packageId;
     /**

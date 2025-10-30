@@ -1,11 +1,10 @@
 package com.pei.dehaze.module.member.controller.admin.group.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-
-import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "管理后台 - 用户分组更新 Request VO")
 @Data

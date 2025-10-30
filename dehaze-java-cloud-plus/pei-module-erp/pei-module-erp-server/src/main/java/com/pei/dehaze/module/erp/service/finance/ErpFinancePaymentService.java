@@ -35,7 +35,7 @@ public interface ErpFinancePaymentService {
     /**
      * 更新付款单的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updateFinancePaymentStatus(Long id, Integer status);

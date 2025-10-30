@@ -3,13 +3,12 @@ package com.pei.dehaze.module.system.api.sms;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.system.api.sms.dto.send.SmsSendSingleToUserReqDTO;
 import com.pei.dehaze.module.system.enums.ApiConstants;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import jakarta.validation.Valid;
 
 @FeignClient(name = ApiConstants.NAME) // TODO 芋艿：fallbackFactory =
 @Tag(name = "RPC 服务 - 短信发送")

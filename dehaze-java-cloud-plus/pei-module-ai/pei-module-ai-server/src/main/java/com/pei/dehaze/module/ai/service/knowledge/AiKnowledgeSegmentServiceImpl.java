@@ -69,6 +69,21 @@ public class AiKnowledgeSegmentServiceImpl implements AiKnowledgeSegmentService 
     @Resource
     private TokenCountEstimator tokenCountEstimator;
 
+    private static List<Document> splitContentByToken(String content, Integer segmentMaxTokens) {
+        TextSplitter textSplitter = buildTokenTextSplitter(segmentMaxTokens);
+        return textSplitter.apply(Collections.singletonList(new Document(content)));
+    }
+
+    private static TextSplitter buildTokenTextSplitter(Integer segmentMaxTokens) {
+        return TokenTextSplitter.builder()
+                .withChunkSize(segmentMaxTokens)
+                .withMinChunkSizeChars(Integer.MAX_VALUE) // 忽略字符的截断
+                .withMinChunkLengthToEmbed(1) // 允许的最小有效分段长度
+                .withMaxNumChunks(Integer.MAX_VALUE)
+                .withKeepSeparator(true) // 保留分隔符
+                .build();
+    }
+
     @Override
     public PageResult<AiKnowledgeSegmentDO> getKnowledgeSegmentPage(AiKnowledgeSegmentPageReqVO pageReqVO) {
         return segmentMapper.selectPage(pageReqVO);
@@ -105,6 +120,61 @@ public class AiKnowledgeSegmentServiceImpl implements AiKnowledgeSegmentService 
     }
 
     @Override
+    public AiKnowledgeSegmentDO getKnowledgeSegment(Long id) {
+        return segmentMapper.selectById(id);
+    }
+
+    @Override
+    public List<AiKnowledgeSegmentDO> getKnowledgeSegmentList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        return segmentMapper.selectBatchIds(ids);
+    }
+
+    @Override
+    public Long createKnowledgeSegment(AiKnowledgeSegmentSaveReqVO createReqVO) {
+        // 1.1 校验文档是否存在
+        AiKnowledgeDocumentDO document = knowledgeDocumentService
+                .validateKnowledgeDocumentExists(createReqVO.getDocumentId());
+        // 1.2 获取知识库信息
+        AiKnowledgeDO knowledge = knowledgeService.validateKnowledgeExists(document.getKnowledgeId());
+        // 1.3 校验 token 熟练
+        Integer tokens = tokenCountEstimator.estimate(createReqVO.getContent());
+        if (tokens > document.getSegmentMaxTokens()) {
+            throw exception(KNOWLEDGE_SEGMENT_CONTENT_TOO_LONG, tokens, document.getSegmentMaxTokens());
+        }
+
+        // 2. 保存段落
+        AiKnowledgeSegmentDO segment = BeanUtils.toBean(createReqVO, AiKnowledgeSegmentDO.class)
+                .setKnowledgeId(knowledge.getId()).setDocumentId(document.getId())
+                .setContentLength(createReqVO.getContent().length()).setTokens(tokens)
+                .setVectorId(AiKnowledgeSegmentDO.VECTOR_ID_EMPTY)
+                .setRetrievalCount(0).setStatus(CommonStatusEnum.ENABLE.getStatus());
+        segmentMapper.insert(segment);
+
+        // 3. 向量化
+        writeVectorStore(getVectorStoreById(knowledge), segment, new Document(segment.getContent()));
+        return segment.getId();
+    }
+
+    private void writeVectorStore(VectorStore vectorStore, AiKnowledgeSegmentDO segmentDO, Document segment) {
+        // 1. 向量存储
+        // 为什么要 toString 呢？因为部分 VectorStore 实现，不支持 Long 类型，例如说 QdrantVectorStore
+        segment.getMetadata().put(VECTOR_STORE_METADATA_KNOWLEDGE_ID, segmentDO.getKnowledgeId().toString());
+        segment.getMetadata().put(VECTOR_STORE_METADATA_DOCUMENT_ID, segmentDO.getDocumentId().toString());
+        segment.getMetadata().put(VECTOR_STORE_METADATA_SEGMENT_ID, segmentDO.getId().toString());
+        vectorStore.add(List.of(segment));
+
+        // 2. 更新向量 ID
+        segmentMapper.updateById(new AiKnowledgeSegmentDO().setId(segmentDO.getId()).setVectorId(segment.getId()));
+    }
+
+    private VectorStore getVectorStoreById(AiKnowledgeDO knowledge) {
+        return modelService.getOrCreateVectorStore(knowledge.getEmbeddingModelId(), VECTOR_STORE_METADATA_TYPES);
+    }
+
+    @Override
     public void updateKnowledgeSegment(AiKnowledgeSegmentSaveReqVO reqVO) {
         // 1. 校验
         AiKnowledgeSegmentDO oldSegment = validateKnowledgeSegmentExists(reqVO.getId());
@@ -121,22 +191,6 @@ public class AiKnowledgeSegmentServiceImpl implements AiKnowledgeSegmentService 
             newSegment.setKnowledgeId(oldSegment.getKnowledgeId()).setDocumentId(oldSegment.getDocumentId());
             writeVectorStore(vectorStore, newSegment, new Document(newSegment.getContent()));
         }
-    }
-
-    @Override
-    public void deleteKnowledgeSegmentByDocumentId(Long documentId) {
-        // 1. 查询需要删除的段落
-        List<AiKnowledgeSegmentDO> segments = segmentMapper.selectListByDocumentId(documentId);
-        if (CollUtil.isEmpty(segments)) {
-            return;
-        }
-
-        // 2. 批量删除段落记录
-        segmentMapper.deleteByIds(convertList(segments, AiKnowledgeSegmentDO::getId));
-
-        // 3. 删除向量存储中的段落
-        VectorStore vectorStore = getVectorStoreById(segments.get(0).getKnowledgeId());
-        vectorStore.delete(convertList(segments, AiKnowledgeSegmentDO::getVectorId));
     }
 
     @Override
@@ -182,28 +236,20 @@ public class AiKnowledgeSegmentServiceImpl implements AiKnowledgeSegmentService 
                 knowledgeId, segments.size());
     }
 
-    private void writeVectorStore(VectorStore vectorStore, AiKnowledgeSegmentDO segmentDO, Document segment) {
-        // 1. 向量存储
-        // 为什么要 toString 呢？因为部分 VectorStore 实现，不支持 Long 类型，例如说 QdrantVectorStore
-        segment.getMetadata().put(VECTOR_STORE_METADATA_KNOWLEDGE_ID, segmentDO.getKnowledgeId().toString());
-        segment.getMetadata().put(VECTOR_STORE_METADATA_DOCUMENT_ID, segmentDO.getDocumentId().toString());
-        segment.getMetadata().put(VECTOR_STORE_METADATA_SEGMENT_ID, segmentDO.getId().toString());
-        vectorStore.add(List.of(segment));
-
-        // 2. 更新向量 ID
-        segmentMapper.updateById(new AiKnowledgeSegmentDO().setId(segmentDO.getId()).setVectorId(segment.getId()));
-    }
-
-    private void deleteVectorStore(VectorStore vectorStore, AiKnowledgeSegmentDO segmentDO) {
-        // 1. 更新向量 ID
-        if (StrUtil.isEmpty(segmentDO.getVectorId())) {
+    @Override
+    public void deleteKnowledgeSegmentByDocumentId(Long documentId) {
+        // 1. 查询需要删除的段落
+        List<AiKnowledgeSegmentDO> segments = segmentMapper.selectListByDocumentId(documentId);
+        if (CollUtil.isEmpty(segments)) {
             return;
         }
-        segmentMapper.updateById(new AiKnowledgeSegmentDO().setId(segmentDO.getId())
-                .setVectorId(AiKnowledgeSegmentDO.VECTOR_ID_EMPTY));
 
-        // 2. 删除向量
-        vectorStore.delete(List.of(segmentDO.getVectorId()));
+        // 2. 批量删除段落记录
+        segmentMapper.deleteByIds(convertList(segments, AiKnowledgeSegmentDO::getId));
+
+        // 3. 删除向量存储中的段落
+        VectorStore vectorStore = getVectorStoreById(segments.get(0).getKnowledgeId());
+        vectorStore.delete(convertList(segments, AiKnowledgeSegmentDO::getVectorId));
     }
 
     @Override
@@ -269,6 +315,14 @@ public class AiKnowledgeSegmentServiceImpl implements AiKnowledgeSegmentService 
         });
     }
 
+    @Override
+    public List<AiKnowledgeSegmentProcessRespVO> getKnowledgeSegmentProcessList(List<Long> documentIds) {
+        if (CollUtil.isEmpty(documentIds)) {
+            return Collections.emptyList();
+        }
+        return segmentMapper.selectProcessList(documentIds);
+    }
+
     /**
      * 校验段落是否存在
      *
@@ -283,75 +337,21 @@ public class AiKnowledgeSegmentServiceImpl implements AiKnowledgeSegmentService 
         return knowledgeSegment;
     }
 
-    private VectorStore getVectorStoreById(AiKnowledgeDO knowledge) {
-        return modelService.getOrCreateVectorStore(knowledge.getEmbeddingModelId(), VECTOR_STORE_METADATA_TYPES);
-    }
-
     private VectorStore getVectorStoreById(Long knowledgeId) {
         AiKnowledgeDO knowledge = knowledgeService.validateKnowledgeExists(knowledgeId);
         return getVectorStoreById(knowledge);
     }
 
-    private static List<Document> splitContentByToken(String content, Integer segmentMaxTokens) {
-        TextSplitter textSplitter = buildTokenTextSplitter(segmentMaxTokens);
-        return textSplitter.apply(Collections.singletonList(new Document(content)));
-    }
-
-    private static TextSplitter buildTokenTextSplitter(Integer segmentMaxTokens) {
-        return TokenTextSplitter.builder()
-                .withChunkSize(segmentMaxTokens)
-                .withMinChunkSizeChars(Integer.MAX_VALUE) // 忽略字符的截断
-                .withMinChunkLengthToEmbed(1) // 允许的最小有效分段长度
-                .withMaxNumChunks(Integer.MAX_VALUE)
-                .withKeepSeparator(true) // 保留分隔符
-                .build();
-    }
-
-    @Override
-    public List<AiKnowledgeSegmentProcessRespVO> getKnowledgeSegmentProcessList(List<Long> documentIds) {
-        if (CollUtil.isEmpty(documentIds)) {
-            return Collections.emptyList();
+    private void deleteVectorStore(VectorStore vectorStore, AiKnowledgeSegmentDO segmentDO) {
+        // 1. 更新向量 ID
+        if (StrUtil.isEmpty(segmentDO.getVectorId())) {
+            return;
         }
-        return segmentMapper.selectProcessList(documentIds);
-    }
+        segmentMapper.updateById(new AiKnowledgeSegmentDO().setId(segmentDO.getId())
+                .setVectorId(AiKnowledgeSegmentDO.VECTOR_ID_EMPTY));
 
-    @Override
-    public Long createKnowledgeSegment(AiKnowledgeSegmentSaveReqVO createReqVO) {
-        // 1.1 校验文档是否存在
-        AiKnowledgeDocumentDO document = knowledgeDocumentService
-                .validateKnowledgeDocumentExists(createReqVO.getDocumentId());
-        // 1.2 获取知识库信息
-        AiKnowledgeDO knowledge = knowledgeService.validateKnowledgeExists(document.getKnowledgeId());
-        // 1.3 校验 token 熟练
-        Integer tokens = tokenCountEstimator.estimate(createReqVO.getContent());
-        if (tokens > document.getSegmentMaxTokens()) {
-            throw exception(KNOWLEDGE_SEGMENT_CONTENT_TOO_LONG, tokens, document.getSegmentMaxTokens());
-        }
-
-        // 2. 保存段落
-        AiKnowledgeSegmentDO segment = BeanUtils.toBean(createReqVO, AiKnowledgeSegmentDO.class)
-                .setKnowledgeId(knowledge.getId()).setDocumentId(document.getId())
-                .setContentLength(createReqVO.getContent().length()).setTokens(tokens)
-                .setVectorId(AiKnowledgeSegmentDO.VECTOR_ID_EMPTY)
-                .setRetrievalCount(0).setStatus(CommonStatusEnum.ENABLE.getStatus());
-        segmentMapper.insert(segment);
-
-        // 3. 向量化
-        writeVectorStore(getVectorStoreById(knowledge), segment, new Document(segment.getContent()));
-        return segment.getId();
-    }
-
-    @Override
-    public AiKnowledgeSegmentDO getKnowledgeSegment(Long id) {
-        return segmentMapper.selectById(id);
-    }
-
-    @Override
-    public List<AiKnowledgeSegmentDO> getKnowledgeSegmentList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return Collections.emptyList();
-        }
-        return segmentMapper.selectBatchIds(ids);
+        // 2. 删除向量
+        vectorStore.delete(List.of(segmentDO.getVectorId()));
     }
 
 }

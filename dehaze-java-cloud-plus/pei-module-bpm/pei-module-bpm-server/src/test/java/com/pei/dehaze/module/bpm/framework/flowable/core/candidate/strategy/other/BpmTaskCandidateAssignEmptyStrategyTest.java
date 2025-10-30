@@ -71,7 +71,7 @@ public class BpmTaskCandidateAssignEmptyStrategyTest extends BaseMockitoUnitTest
                     .thenReturn(flowElement);
             // mock 方法（parseAssignEmptyHandlerType）
             bpmnModelUtilsMockedStatic.when(() -> BpmnModelUtils.parseAssignEmptyHandlerType(same(flowElement)))
-                 .thenReturn(BpmUserTaskAssignEmptyHandlerTypeEnum.ASSIGN_ADMIN.getType());
+                    .thenReturn(BpmUserTaskAssignEmptyHandlerTypeEnum.ASSIGN_ADMIN.getType());
             // mock 方法（getProcessDefinitionInfo）
             BpmProcessDefinitionInfoDO processDefinition = randomPojo(BpmProcessDefinitionInfoDO.class,
                     o -> o.setManagerUserIds(ListUtil.of(1L, 2L)));

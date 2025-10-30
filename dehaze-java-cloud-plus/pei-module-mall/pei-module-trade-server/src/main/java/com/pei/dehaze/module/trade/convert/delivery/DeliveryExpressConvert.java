@@ -2,10 +2,6 @@ package com.pei.dehaze.module.trade.convert.delivery;
 
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.trade.controller.admin.delivery.vo.express.*;
-import com.pei.dehaze.module.trade.controller.admin.delivery.vo.express.DeliveryExpressCreateReqVO;
-import com.pei.dehaze.module.trade.controller.admin.delivery.vo.express.DeliveryExpressExcelVO;
-import com.pei.dehaze.module.trade.controller.admin.delivery.vo.express.DeliveryExpressRespVO;
-import com.pei.dehaze.module.trade.controller.admin.delivery.vo.express.DeliveryExpressUpdateReqVO;
 import com.pei.dehaze.module.trade.controller.app.delivery.vo.express.AppDeliveryExpressRespVO;
 import com.pei.dehaze.module.trade.dal.dataobject.delivery.DeliveryExpressDO;
 import org.mapstruct.Mapper;

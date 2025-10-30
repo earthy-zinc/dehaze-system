@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.bpm.dal.dataobject.definition;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,8 +14,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * BPM 工作流的表单定义
- * 用于工作流的申请表单，需要动态配置的场景
+ * BPM 工作流的表单定义 用于工作流的申请表单，需要动态配置的场景
  *
  * @author earthyzinc
  */
@@ -46,7 +45,7 @@ public class BpmFormDO extends BaseDO {
     private String conf;
     /**
      * 表单项的数组
-     *
+     * <p>
      * 目前直接将 https://github.com/JakHuang/form-generator 生成的 JSON 串，直接保存
      * 定义：https://github.com/JakHuang/form-generator/issues/46
      */

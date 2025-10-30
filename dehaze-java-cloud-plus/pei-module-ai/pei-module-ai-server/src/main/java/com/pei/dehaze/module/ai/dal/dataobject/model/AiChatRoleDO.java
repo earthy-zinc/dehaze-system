@@ -1,14 +1,17 @@
 package com.pei.dehaze.module.ai.dal.dataobject.model;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
-import com.pei.dehaze.module.ai.dal.dataobject.knowledge.AiKnowledgeDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
+import com.pei.dehaze.module.ai.dal.dataobject.knowledge.AiKnowledgeDO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -54,28 +57,28 @@ public class AiChatRoleDO extends BaseDO {
 
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 userId 字段
      */
     private Long userId;
 
     /**
      * 模型编号
-     *
+     * <p>
      * 关联 {@link AiModelDO#getId()} 字段
      */
     private Long modelId;
 
     /**
      * 引用的知识库编号列表
-     *
+     * <p>
      * 关联 {@link AiKnowledgeDO#getId()} 字段
      */
     @TableField(typeHandler = LongListTypeHandler.class)
     private List<Long> knowledgeIds;
     /**
      * 引用的工具编号列表
-     *
+     * <p>
      * 关联 {@link AiToolDO#getId()} 字段
      */
     @TableField(typeHandler = LongListTypeHandler.class)
@@ -83,9 +86,8 @@ public class AiChatRoleDO extends BaseDO {
 
     /**
      * 是否公开
-     *
-     * 1. true - 公开；由管理员在【角色管理】所创建
-     * 2. false - 私有；由个人在【我的角色】所创建
+     * <p>
+     * 1. true - 公开；由管理员在【角色管理】所创建 2. false - 私有；由个人在【我的角色】所创建
      */
     private Boolean publicStatus;
 
@@ -95,7 +97,7 @@ public class AiChatRoleDO extends BaseDO {
     private Integer sort;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

@@ -80,55 +80,6 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
         productCategoryMapper.deleteById(id);
     }
 
-    private void validateParentProductCategory(Long id) {
-        // 如果是根分类，无需验证
-        if (Objects.equals(id, PARENT_ID_NULL)) {
-            return;
-        }
-        // 父分类不存在
-        ProductCategoryDO category = productCategoryMapper.selectById(id);
-        if (category == null) {
-            throw exception(CATEGORY_PARENT_NOT_EXISTS);
-        }
-        // 父分类不能是二级分类
-        if (!Objects.equals(category.getParentId(), PARENT_ID_NULL)) {
-            throw exception(CATEGORY_PARENT_NOT_FIRST_LEVEL);
-        }
-    }
-
-    private void validateProductCategoryExists(Long id) {
-        ProductCategoryDO category = productCategoryMapper.selectById(id);
-        if (category == null) {
-            throw exception(CATEGORY_NOT_EXISTS);
-        }
-    }
-
-    @Override
-    public void validateCategoryList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return;
-        }
-        // 获得商品分类信息
-        List<ProductCategoryDO> list = productCategoryMapper.selectBatchIds(ids);
-        Map<Long, ProductCategoryDO> categoryMap = CollectionUtils.convertMap(list, ProductCategoryDO::getId);
-        // 校验
-        ids.forEach(id -> {
-            // 校验分类是否存在
-            ProductCategoryDO category = categoryMap.get(id);
-            if (category == null) {
-                throw exception(CATEGORY_NOT_EXISTS);
-            }
-            // 校验分类是否启用
-            if (!CommonStatusEnum.ENABLE.getStatus().equals(category.getStatus())) {
-                throw exception(CATEGORY_DISABLED, category.getName());
-            }
-            // 商品分类层级校验，必须使用第二级的商品分类
-            if (getCategoryLevel(id) < CATEGORY_LEVEL) {
-                throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
-            }
-        });
-    }
-
     @Override
     public ProductCategoryDO getCategory(Long id) {
         return productCategoryMapper.selectById(id);
@@ -179,6 +130,55 @@ public class ProductCategoryServiceImpl implements ProductCategoryService {
     @Override
     public List<ProductCategoryDO> getEnableCategoryList(List<Long> ids) {
         return productCategoryMapper.selectListByIdAndStatus(ids, CommonStatusEnum.ENABLE.getStatus());
+    }
+
+    @Override
+    public void validateCategoryList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return;
+        }
+        // 获得商品分类信息
+        List<ProductCategoryDO> list = productCategoryMapper.selectBatchIds(ids);
+        Map<Long, ProductCategoryDO> categoryMap = CollectionUtils.convertMap(list, ProductCategoryDO::getId);
+        // 校验
+        ids.forEach(id -> {
+            // 校验分类是否存在
+            ProductCategoryDO category = categoryMap.get(id);
+            if (category == null) {
+                throw exception(CATEGORY_NOT_EXISTS);
+            }
+            // 校验分类是否启用
+            if (!CommonStatusEnum.ENABLE.getStatus().equals(category.getStatus())) {
+                throw exception(CATEGORY_DISABLED, category.getName());
+            }
+            // 商品分类层级校验，必须使用第二级的商品分类
+            if (getCategoryLevel(id) < CATEGORY_LEVEL) {
+                throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
+            }
+        });
+    }
+
+    private void validateProductCategoryExists(Long id) {
+        ProductCategoryDO category = productCategoryMapper.selectById(id);
+        if (category == null) {
+            throw exception(CATEGORY_NOT_EXISTS);
+        }
+    }
+
+    private void validateParentProductCategory(Long id) {
+        // 如果是根分类，无需验证
+        if (Objects.equals(id, PARENT_ID_NULL)) {
+            return;
+        }
+        // 父分类不存在
+        ProductCategoryDO category = productCategoryMapper.selectById(id);
+        if (category == null) {
+            throw exception(CATEGORY_PARENT_NOT_EXISTS);
+        }
+        // 父分类不能是二级分类
+        if (!Objects.equals(category.getParentId(), PARENT_ID_NULL)) {
+            throw exception(CATEGORY_PARENT_NOT_FIRST_LEVEL);
+        }
     }
 
 }

@@ -11,8 +11,8 @@ import org.flowable.engine.impl.bpmn.behavior.UserTaskActivityBehavior;
 import org.flowable.engine.impl.bpmn.parser.factory.DefaultActivityBehaviorFactory;
 
 /**
- * 自定义的 ActivityBehaviorFactory 实现类，目的如下：
- * 1. 自定义 {@link #createUserTaskActivityBehavior(UserTask)}：实现自定义的流程任务的 assignee 负责人的分配
+ * 自定义的 ActivityBehaviorFactory 实现类，目的如下： 1. 自定义 {@link #createUserTaskActivityBehavior(UserTask)}：实现自定义的流程任务的 assignee
+ * 负责人的分配
  *
  * @author earthyzinc
  */
@@ -28,16 +28,16 @@ public class BpmActivityBehaviorFactory extends DefaultActivityBehaviorFactory {
     }
 
     @Override
-    public ParallelMultiInstanceBehavior createParallelMultiInstanceBehavior(Activity activity,
-                                                                             AbstractBpmnActivityBehavior behavior) {
-        return new BpmParallelMultiInstanceBehavior(activity, behavior)
+    public SequentialMultiInstanceBehavior createSequentialMultiInstanceBehavior(Activity activity,
+                                                                                 AbstractBpmnActivityBehavior behavior) {
+        return new BpmSequentialMultiInstanceBehavior(activity, behavior)
                 .setTaskCandidateInvoker(taskCandidateInvoker);
     }
 
     @Override
-    public SequentialMultiInstanceBehavior createSequentialMultiInstanceBehavior(Activity activity,
-                                                                                 AbstractBpmnActivityBehavior behavior) {
-        return new BpmSequentialMultiInstanceBehavior(activity, behavior)
+    public ParallelMultiInstanceBehavior createParallelMultiInstanceBehavior(Activity activity,
+                                                                             AbstractBpmnActivityBehavior behavior) {
+        return new BpmParallelMultiInstanceBehavior(activity, behavior)
                 .setTaskCandidateInvoker(taskCandidateInvoker);
     }
 

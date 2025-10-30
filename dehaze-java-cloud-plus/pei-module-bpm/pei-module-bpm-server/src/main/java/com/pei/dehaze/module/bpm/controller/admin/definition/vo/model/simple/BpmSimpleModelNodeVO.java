@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.bpm.controller.admin.definition.vo.model.simple;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.bpm.enums.definition.*;
 import com.pei.dehaze.module.bpm.framework.flowable.core.enums.BpmTaskCandidateStrategyEnum;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -383,8 +383,7 @@ public class BpmSimpleModelNodeVO {
             /**
              * 请求返回处理设置，用于修改流程表单值
              * <p>
-             * key：表示要修改的流程表单字段名(name)
-             * value：接口返回的字段名
+             * key：表示要修改的流程表单字段名(name) value：接口返回的字段名
              */
             @Schema(description = "请求返回处理设置", example = "[]")
             private List<KeyValue<String, String>> response;

@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.trade.dal.mysql.aftersale;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.module.trade.dal.dataobject.aftersale.AfterSaleLogDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;

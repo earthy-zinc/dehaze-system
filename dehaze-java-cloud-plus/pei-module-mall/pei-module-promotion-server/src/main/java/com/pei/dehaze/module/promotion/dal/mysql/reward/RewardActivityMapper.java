@@ -42,7 +42,7 @@ public interface RewardActivityMapper extends BaseMapperX<RewardActivityDO> {
                 .lt(RewardActivityDO::getStartTime, now)
                 .gt(RewardActivityDO::getEndTime, now)
                 .and(i -> i.eq(RewardActivityDO::getProductScope, PromotionProductScopeEnum.SPU.getScope())
-                            .and(i1 -> i1.apply(productScopeValuesFindInSetFunc.apply(spuIds)))
+                        .and(i1 -> i1.apply(productScopeValuesFindInSetFunc.apply(spuIds)))
                         .or(i1 -> i1.eq(RewardActivityDO::getProductScope, PromotionProductScopeEnum.ALL.getScope()))
                         .or(i1 -> i1.eq(RewardActivityDO::getProductScope, PromotionProductScopeEnum.CATEGORY.getScope())
                                 .and(i2 -> i2.apply(productScopeValuesFindInSetFunc.apply(categoryIds)))))

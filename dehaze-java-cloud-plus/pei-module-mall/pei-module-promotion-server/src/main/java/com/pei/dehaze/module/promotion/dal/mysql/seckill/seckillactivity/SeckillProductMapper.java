@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.promotion.dal.mysql.seckill.seckillactivity;
 
 import cn.hutool.core.lang.Assert;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.module.promotion.dal.dataobject.seckill.SeckillProductDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;

@@ -36,40 +36,35 @@ import java.util.Map;
 /**
  * 硅基流动 Image API
  *
- * @see <a href= "https://docs.siliconflow.cn/cn/api-reference/images/images-generations">Images</a>
- *
  * @author zzt
+ * @see <a href= "https://docs.siliconflow.cn/cn/api-reference/images/images-generations">Images</a>
  */
 public class SiliconFlowImageApi {
 
-	private final RestClient restClient;
+    private final RestClient restClient;
 
-	public SiliconFlowImageApi(String aiToken) {
-		this(SiliconFlowApiConstants.DEFAULT_BASE_URL, aiToken, RestClient.builder());
-	}
-
-    public SiliconFlowImageApi(String baseUrl, String openAiToken) {
-        this(baseUrl, openAiToken, RestClient.builder());
+    public SiliconFlowImageApi(String aiToken) {
+        this(SiliconFlowApiConstants.DEFAULT_BASE_URL, aiToken, RestClient.builder());
     }
 
-	public SiliconFlowImageApi(String baseUrl, String openAiToken, RestClient.Builder restClientBuilder) {
-		this(baseUrl, openAiToken, restClientBuilder, RetryUtils.DEFAULT_RESPONSE_ERROR_HANDLER);
-	}
+    public SiliconFlowImageApi(String baseUrl, String openAiToken, RestClient.Builder restClientBuilder) {
+        this(baseUrl, openAiToken, restClientBuilder, RetryUtils.DEFAULT_RESPONSE_ERROR_HANDLER);
+    }
 
-	public SiliconFlowImageApi(String baseUrl, String apiKey, RestClient.Builder restClientBuilder,
+    public SiliconFlowImageApi(String baseUrl, String apiKey, RestClient.Builder restClientBuilder,
                                ResponseErrorHandler responseErrorHandler) {
-		this(baseUrl, apiKey, CollectionUtils.toMultiValueMap(Map.of()), restClientBuilder, responseErrorHandler);
-	}
+        this(baseUrl, apiKey, CollectionUtils.toMultiValueMap(Map.of()), restClientBuilder, responseErrorHandler);
+    }
 
-	public SiliconFlowImageApi(String baseUrl, String apiKey, MultiValueMap<String, String> headers,
+    public SiliconFlowImageApi(String baseUrl, String apiKey, MultiValueMap<String, String> headers,
                                RestClient.Builder restClientBuilder, ResponseErrorHandler responseErrorHandler) {
-		this(baseUrl, new SimpleApiKey(apiKey), headers, restClientBuilder, responseErrorHandler);
-	}
+        this(baseUrl, new SimpleApiKey(apiKey), headers, restClientBuilder, responseErrorHandler);
+    }
 
-	public SiliconFlowImageApi(String baseUrl, ApiKey apiKey, MultiValueMap<String, String> headers,
+    public SiliconFlowImageApi(String baseUrl, ApiKey apiKey, MultiValueMap<String, String> headers,
                                RestClient.Builder restClientBuilder, ResponseErrorHandler responseErrorHandler) {
 
-		// @formatter:off
+        // @formatter:off
 		this.restClient = restClientBuilder.baseUrl(baseUrl)
 			.defaultHeaders(h -> {
 				if(!(apiKey instanceof NoopApiKey)) {
@@ -81,21 +76,25 @@ public class SiliconFlowImageApi {
 			.defaultStatusHandler(responseErrorHandler)
 			.build();
 		// @formatter:on
-	}
+    }
 
-	public ResponseEntity<OpenAiImageApi.OpenAiImageResponse> createImage(SiliconflowImageRequest siliconflowImageRequest) {
-		Assert.notNull(siliconflowImageRequest, "Image request cannot be null.");
-		Assert.hasLength(siliconflowImageRequest.prompt(), "Prompt cannot be empty.");
+    public SiliconFlowImageApi(String baseUrl, String openAiToken) {
+        this(baseUrl, openAiToken, RestClient.builder());
+    }
 
-		return this.restClient.post()
-			.uri("v1/images/generations")
-			.body(siliconflowImageRequest)
-			.retrieve()
-			.toEntity(OpenAiImageApi.OpenAiImageResponse.class);
-	}
+    public ResponseEntity<OpenAiImageApi.OpenAiImageResponse> createImage(SiliconflowImageRequest siliconflowImageRequest) {
+        Assert.notNull(siliconflowImageRequest, "Image request cannot be null.");
+        Assert.hasLength(siliconflowImageRequest.prompt(), "Prompt cannot be empty.");
+
+        return this.restClient.post()
+                .uri("v1/images/generations")
+                .body(siliconflowImageRequest)
+                .retrieve()
+                .toEntity(OpenAiImageApi.OpenAiImageResponse.class);
+    }
 
 
-	// @formatter:off
+    // @formatter:off
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public record SiliconflowImageRequest (
 			@JsonProperty("prompt") String prompt,

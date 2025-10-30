@@ -1,4 +1,5 @@
-`pei-module-ai` 是一个 **基于 Spring Boot 的 AI 模块（AI Module）**，其核心作用是为企业提供统一的 AI 服务集成能力。该模块支持多种大模型平台接入，包括但不限于：
+`pei-module-ai` 是一个 **基于 Spring Boot 的 AI 模块（AI Module）**，其核心作用是为企业提供统一的 AI
+服务集成能力。该模块支持多种大模型平台接入，包括但不限于：
 
 - 国内：通义千问、文心一言、讯飞星火、智谱 GLM、DeepSeek
 - 国外：OpenAI、Ollama、Midjourney、StableDiffusion、Suno
@@ -598,18 +599,18 @@ graph TD
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `api.enums` | 枚举定义 | `AiChatRoleEnum` |
-| `controller.admin.model` | 模型管理后台 | `AiModelController` |
-| `service.model` | 模型服务逻辑 | `AiModelServiceImpl` |
-| `dal.dataobject.model` | 模型数据 | `AiModelDO` |
-| `framework.ai.core` | AI 模型封装 | `AiModelFactoryImpl` |
-| `service.chat` | 聊天服务逻辑 | `AiChatMessageServiceImpl` |
-| `service.image` | 图像生成服务逻辑 | `AiImageServiceImpl` |
-| `service.write` | 写作辅助服务逻辑 | `AiWriteServiceImpl` |
-| `service.mindmap` | 思维导图服务逻辑 | `AiMindMapServiceImpl` |
-| `service.workflow` | 工作流服务逻辑 | `AiWorkflowServiceImpl` |
+| 包名                       | 功能       | 关键类                        |
+|--------------------------|----------|----------------------------|
+| `api.enums`              | 枚举定义     | `AiChatRoleEnum`           |
+| `controller.admin.model` | 模型管理后台   | `AiModelController`        |
+| `service.model`          | 模型服务逻辑   | `AiModelServiceImpl`       |
+| `dal.dataobject.model`   | 模型数据     | `AiModelDO`                |
+| `framework.ai.core`      | AI 模型封装  | `AiModelFactoryImpl`       |
+| `service.chat`           | 聊天服务逻辑   | `AiChatMessageServiceImpl` |
+| `service.image`          | 图像生成服务逻辑 | `AiImageServiceImpl`       |
+| `service.write`          | 写作辅助服务逻辑 | `AiWriteServiceImpl`       |
+| `service.mindmap`        | 思维导图服务逻辑 | `AiMindMapServiceImpl`     |
+| `service.workflow`       | 工作流服务逻辑  | `AiWorkflowServiceImpl`    |
 
 ---
 
@@ -651,13 +652,13 @@ graph TD
 
 ## ✅ 建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多租户增强 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 单元测试 | 当前代码未提供单元测试，建议补充测试用例 |
-| ✅ 流程监控 | 增加成功率统计、异常率、平均响应时间等指标 |
+| 改进点      | 描述                                                   |
+|----------|------------------------------------------------------|
+| ✅ 多租户增强  | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
+| ✅ 性能优化   | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 单元测试   | 当前代码未提供单元测试，建议补充测试用例                                 |
+| ✅ 流程监控   | 增加成功率统计、异常率、平均响应时间等指标                                |
 
 ---
 
@@ -665,16 +666,16 @@ graph TD
 
 `pei-module-ai` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 聊天服务 | AiChatMessageDO + AiChatMessageService | 实现自然语言对话 |
-| 图像生成 | AiImageDO + AiImageService | 生成图像、头像、海报 |
-| 音乐创作 | AiMusicDO + AiMusicService | 生成歌词、旋律、音轨 |
-| 思维导图 | AiMindMapDO + AiMindMapService | 自动生成 Markdown 导图 |
-| 写作辅助 | AiWriteDO + AiWriteService | 生成文章、文案、脚本 |
-| 工作流引擎 | AiWorkflowDO + AiWorkflowService | 编排多个 AI 模型组合执行 |
-| 知识库管理 | AiKnowledgeDO + AiKnowledgeService | 支持文档上传、向量检索 |
-| 工具管理 | AiToolDO + AiToolService | 支持工具调用、函数调用 |
+| 功能    | 技术实现                                   | 用途               |
+|-------|----------------------------------------|------------------|
+| 聊天服务  | AiChatMessageDO + AiChatMessageService | 实现自然语言对话         |
+| 图像生成  | AiImageDO + AiImageService             | 生成图像、头像、海报       |
+| 音乐创作  | AiMusicDO + AiMusicService             | 生成歌词、旋律、音轨       |
+| 思维导图  | AiMindMapDO + AiMindMapService         | 自动生成 Markdown 导图 |
+| 写作辅助  | AiWriteDO + AiWriteService             | 生成文章、文案、脚本       |
+| 工作流引擎 | AiWorkflowDO + AiWorkflowService       | 编排多个 AI 模型组合执行   |
+| 知识库管理 | AiKnowledgeDO + AiKnowledgeService     | 支持文档上传、向量检索      |
+| 工具管理  | AiToolDO + AiToolService               | 支持工具调用、函数调用      |
 
 它是一个轻量但功能完整的 AI 服务模块，适用于电商、社交、CRM、ERP、大屏报表等多个需要 AI 能力的场景。
 

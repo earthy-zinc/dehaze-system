@@ -1,23 +1,17 @@
 package com.pei.dehaze.framework.desensitize.core;
 
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
+import com.pei.dehaze.framework.desensitize.core.annotation.Address;
 import com.pei.dehaze.framework.desensitize.core.regex.annotation.EmailDesensitize;
 import com.pei.dehaze.framework.desensitize.core.regex.annotation.RegexDesensitize;
-import com.pei.dehaze.framework.desensitize.core.annotation.Address;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.BankCardDesensitize;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.CarLicenseDesensitize;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.ChineseNameDesensitize;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.FixedPhoneDesensitize;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.IdCardDesensitize;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.PasswordDesensitize;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.MobileDesensitize;
-import com.pei.dehaze.framework.desensitize.core.slider.annotation.SliderDesensitize;
+import com.pei.dehaze.framework.desensitize.core.slider.annotation.*;
 import lombok.Data;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * {@link DesensitizeTest} 的单元测试
@@ -48,7 +42,7 @@ public class DesensitizeTest {
         DesensitizeDemo d = JsonUtils.parseObject(JsonUtils.toJsonString(desensitizeDemo), DesensitizeDemo.class);
         // 断言
         assertNotNull(d);
-        assertEquals("芋***", d.getNickname());
+        assertEquals("e*********", d.getNickname());
         assertEquals("998800********31", d.getBankCard());
         assertEquals("粤A6***6", d.getCarLicense());
         assertEquals("0108*****22", d.getFixedPhone());

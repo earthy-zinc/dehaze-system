@@ -5,6 +5,7 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.util.object.ObjectUtils;
 import com.pei.dehaze.framework.datapermission.core.annotation.DataPermission;
@@ -16,7 +17,6 @@ import com.pei.dehaze.module.bpm.framework.flowable.core.util.FlowableUtils;
 import com.pei.dehaze.module.bpm.service.task.BpmProcessInstanceService;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
@@ -52,8 +52,7 @@ public class BpmTaskCandidateInvoker {
     }
 
     /**
-     * 校验流程模型的任务分配规则全部都配置了
-     * 目的：如果有规则未配置，会导致流程任务找不到负责人，进而流程无法进行下去！
+     * 校验流程模型的任务分配规则全部都配置了 目的：如果有规则未配置，会导致流程任务找不到负责人，进而流程无法进行下去！
      *
      * @param bpmnBytes BPMN XML
      */
@@ -83,6 +82,14 @@ public class BpmTaskCandidateInvoker {
             // 2. 具体策略校验
             getCandidateStrategy(strategy).validateParam(param);
         });
+    }
+
+    private BpmTaskCandidateStrategy getCandidateStrategy(Integer strategy) {
+        BpmTaskCandidateStrategyEnum strategyEnum = BpmTaskCandidateStrategyEnum.valueOf(strategy);
+        Assert.notNull(strategyEnum, "策略(%s) 不存在", strategy);
+        BpmTaskCandidateStrategy strategyObj = strategyMap.get(strategyEnum);
+        Assert.notNull(strategyObj, "策略(%s) 不存在", strategy);
+        return strategyObj;
     }
 
     /**
@@ -128,6 +135,39 @@ public class BpmTaskCandidateInvoker {
         });
     }
 
+    @VisibleForTesting
+    void removeDisableUsers(Set<Long> assigneeUserIds) {
+        if (CollUtil.isEmpty(assigneeUserIds)) {
+            return;
+        }
+        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(assigneeUserIds);
+        assigneeUserIds.removeIf(id -> {
+            AdminUserRespDTO user = userMap.get(id);
+            return user == null || CommonStatusEnum.isDisable(user.getStatus());
+        });
+    }
+
+    /**
+     * 如果“审批人与发起人相同时”，配置了 SKIP 跳过，则移除发起人
+     * <p>
+     * 注意：如果只有一个候选人，则不处理，避免无法审批
+     *
+     * @param assigneeUserIds 当前分配的候选人
+     * @param flowElement     当前节点
+     * @param startUserId     发起人
+     */
+    @VisibleForTesting
+    void removeStartUserIfSkip(Set<Long> assigneeUserIds, FlowElement flowElement, Long startUserId) {
+        if (CollUtil.size(assigneeUserIds) <= 1) {
+            return;
+        }
+        Integer assignStartUserHandlerType = BpmnModelUtils.parseAssignStartUserHandlerType(flowElement);
+        if (ObjectUtil.notEqual(assignStartUserHandlerType, BpmUserTaskAssignStartUserHandlerTypeEnum.SKIP.getType())) {
+            return;
+        }
+        assigneeUserIds.remove(startUserId);
+    }
+
     public Set<Long> calculateUsersByActivity(BpmnModel bpmnModel, String activityId,
                                               Long startUserId, String processDefinitionId, Map<String, Object> processVariables) {
         // 如果是 CallActivity 子流程，不进行计算候选人
@@ -161,47 +201,6 @@ public class BpmTaskCandidateInvoker {
         // 3. 移除发起人的用户
         removeStartUserIfSkip(userIds, flowElement, startUserId);
         return userIds;
-    }
-
-    @VisibleForTesting
-    void removeDisableUsers(Set<Long> assigneeUserIds) {
-        if (CollUtil.isEmpty(assigneeUserIds)) {
-            return;
-        }
-        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(assigneeUserIds);
-        assigneeUserIds.removeIf(id -> {
-            AdminUserRespDTO user = userMap.get(id);
-            return user == null || CommonStatusEnum.isDisable(user.getStatus());
-        });
-    }
-
-    /**
-     * 如果“审批人与发起人相同时”，配置了 SKIP 跳过，则移除发起人
-     *
-     * 注意：如果只有一个候选人，则不处理，避免无法审批
-     *
-     * @param assigneeUserIds 当前分配的候选人
-     * @param flowElement 当前节点
-     * @param startUserId 发起人
-     */
-    @VisibleForTesting
-    void removeStartUserIfSkip(Set<Long> assigneeUserIds, FlowElement flowElement, Long startUserId) {
-        if (CollUtil.size(assigneeUserIds) <= 1) {
-            return;
-        }
-        Integer assignStartUserHandlerType = BpmnModelUtils.parseAssignStartUserHandlerType(flowElement);
-        if (ObjectUtil.notEqual(assignStartUserHandlerType, BpmUserTaskAssignStartUserHandlerTypeEnum.SKIP.getType())) {
-            return;
-        }
-        assigneeUserIds.remove(startUserId);
-    }
-
-    private BpmTaskCandidateStrategy getCandidateStrategy(Integer strategy) {
-        BpmTaskCandidateStrategyEnum strategyEnum = BpmTaskCandidateStrategyEnum.valueOf(strategy);
-        Assert.notNull(strategyEnum, "策略(%s) 不存在", strategy);
-        BpmTaskCandidateStrategy strategyObj = strategyMap.get(strategyEnum);
-        Assert.notNull(strategyObj, "策略(%s) 不存在", strategy);
-        return strategyObj;
     }
 
 }

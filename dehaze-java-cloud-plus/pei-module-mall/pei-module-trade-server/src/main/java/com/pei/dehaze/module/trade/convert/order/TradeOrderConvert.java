@@ -132,9 +132,9 @@ public interface TradeOrderConvert {
         return new PageResult<>(orderVOs, pageResult.getTotal());
     }
 
-    MemberUserRespVO convertUser(MemberUserRespDTO memberUserRespDTO);
-
     TradeOrderPageItemRespVO convert(TradeOrderDO order, List<TradeOrderItemDO> items);
+
+    MemberUserRespVO convertUser(MemberUserRespDTO memberUserRespDTO);
 
     ProductPropertyValueDetailRespVO convert(ProductPropertyValueDetailRespDTO bean);
 
@@ -151,11 +151,12 @@ public interface TradeOrderConvert {
         orderVO.setLogs(convertList03(orderLogs));
         return orderVO;
     }
-    List<TradeOrderDetailRespVO.OrderLog> convertList03(List<TradeOrderLogDO> orderLogs);
 
     TradeOrderDetailRespVO convert2(TradeOrderDO order, List<TradeOrderItemDO> items);
 
     MemberUserRespVO convert(MemberUserRespDTO bean);
+
+    List<TradeOrderDetailRespVO.OrderLog> convertList03(List<TradeOrderLogDO> orderLogs);
 
     default PageResult<AppTradeOrderPageItemRespVO> convertPage02(PageResult<TradeOrderDO> pageResult,
                                                                   List<TradeOrderItemDO> orderItems) {

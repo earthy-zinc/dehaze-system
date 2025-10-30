@@ -1,7 +1,7 @@
 package com.pei.dehaze.framework.datasource.config;
 
-import com.pei.dehaze.framework.datasource.core.filter.DruidAdRemoveFilter;
 import com.alibaba.druid.spring.boot3.autoconfigure.properties.DruidStatProperties;
+import com.pei.dehaze.framework.datasource.core.filter.DruidAdRemoveFilter;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

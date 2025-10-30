@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.infra.dal.dataobject.logger;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.infra.enums.logger.ApiErrorLogProcessStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.infra.enums.logger.ApiErrorLogProcessStatusEnum;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -41,19 +41,19 @@ public class ApiErrorLogDO extends BaseDO {
     private Long userId;
     /**
      * 链路追踪编号
-     *
+     * <p>
      * 一般来说，通过链路追踪编号，可以将访问日志，错误日志，链路追踪日志，logger 打印日志等，结合在一起，从而进行排错。
      */
     private String traceId;
     /**
      * 用户类型
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
     /**
      * 应用名
-     *
+     * <p>
      * 目前读取 spring.application.name
      */
     private String applicationName;
@@ -70,9 +70,8 @@ public class ApiErrorLogDO extends BaseDO {
     private String requestUrl;
     /**
      * 请求参数
-     *
-     * query: Query String
-     * body: Quest Body
+     * <p>
+     * query: Query String body: Quest Body
      */
     private String requestParams;
     /**
@@ -92,49 +91,49 @@ public class ApiErrorLogDO extends BaseDO {
     private LocalDateTime exceptionTime;
     /**
      * 异常名
-     *
+     * <p>
      * {@link Throwable#getClass()} 的类全名
      */
     private String exceptionName;
     /**
      * 异常导致的消息
-     *
+     * <p>
      * {@link cn.hutool.core.exceptions.ExceptionUtil#getMessage(Throwable)}
      */
     private String exceptionMessage;
     /**
      * 异常导致的根消息
-     *
+     * <p>
      * {@link cn.hutool.core.exceptions.ExceptionUtil#getRootCauseMessage(Throwable)}
      */
     private String exceptionRootCauseMessage;
     /**
      * 异常的栈轨迹
-     *
+     * <p>
      * {@link org.apache.commons.lang3.exception.ExceptionUtils#getStackTrace(Throwable)}
      */
     private String exceptionStackTrace;
     /**
      * 异常发生的类全名
-     *
+     * <p>
      * {@link StackTraceElement#getClassName()}
      */
     private String exceptionClassName;
     /**
      * 异常发生的类文件
-     *
+     * <p>
      * {@link StackTraceElement#getFileName()}
      */
     private String exceptionFileName;
     /**
      * 异常发生的方法名
-     *
+     * <p>
      * {@link StackTraceElement#getMethodName()}
      */
     private String exceptionMethodName;
     /**
      * 异常发生的方法所在行
-     *
+     * <p>
      * {@link StackTraceElement#getLineNumber()}
      */
     private Integer exceptionLineNumber;
@@ -143,7 +142,7 @@ public class ApiErrorLogDO extends BaseDO {
 
     /**
      * 处理状态
-     *
+     * <p>
      * 枚举 {@link ApiErrorLogProcessStatusEnum}
      */
     private Integer processStatus;
@@ -153,7 +152,7 @@ public class ApiErrorLogDO extends BaseDO {
     private LocalDateTime processTime;
     /**
      * 处理用户编号
-     *
+     * <p>
      * 关联 com.pei.dehaze.adminserver.modules.system.dal.dataobject.user.SysUserDO.SysUserDO#getId()
      */
     private Long processUserId;

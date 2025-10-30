@@ -15,12 +15,11 @@ import com.pei.dehaze.module.pay.service.order.PayOrderService;
 import com.pei.dehaze.module.pay.service.wallet.PayWalletRechargeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import jakarta.annotation.Resource;
-import jakarta.validation.Valid;
 
 import java.util.List;
 
@@ -45,7 +44,7 @@ public class AppPayWalletRechargeController {
     @PostMapping("/create")
     @Operation(summary = "创建钱包充值记录（发起充值）")
     public CommonResult<AppPayWalletRechargeCreateRespVO> createWalletRecharge(
-            @Valid @RequestBody  AppPayWalletRechargeCreateReqVO reqVO) {
+            @Valid @RequestBody AppPayWalletRechargeCreateReqVO reqVO) {
         PayWalletRechargeDO walletRecharge = walletRechargeService.createWalletRecharge(
                 getLoginUserId(), getLoginUserType(), getClientIP(), reqVO);
         return success(PayWalletRechargeConvert.INSTANCE.convert(walletRecharge));

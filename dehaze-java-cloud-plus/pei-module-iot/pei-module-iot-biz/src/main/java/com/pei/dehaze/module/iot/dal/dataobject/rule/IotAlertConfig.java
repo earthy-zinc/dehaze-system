@@ -1,14 +1,17 @@
 package com.pei.dehaze.module.iot.dal.dataobject.rule;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.iot.enums.rule.IotAlertConfigReceiveTypeEnum;
-import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
-import lombok.*;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.iot.enums.rule.IotAlertConfigReceiveTypeEnum;
+import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -40,20 +43,20 @@ public class IotAlertConfig extends BaseDO {
     private String description;
     /**
      * 配置状态
-     *
+     * <p>
      * TODO 数据字典
      */
     private Integer level;
     /**
      * 配置状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;
 
     /**
      * 关联的规则场景编号数组
-     *
+     * <p>
      * 关联 {@link IotRuleSceneDO#getId()}
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
@@ -61,14 +64,14 @@ public class IotAlertConfig extends BaseDO {
 
     /**
      * 接收的用户编号数组
-     *
+     * <p>
      * 关联 {@link AdminUserRespDTO#getId()}
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<Long> receiveUserIds;
     /**
      * 接收的类型数组
-     *
+     * <p>
      * 枚举 {@link IotAlertConfigReceiveTypeEnum}
      */
     @TableField(typeHandler = JacksonTypeHandler.class)

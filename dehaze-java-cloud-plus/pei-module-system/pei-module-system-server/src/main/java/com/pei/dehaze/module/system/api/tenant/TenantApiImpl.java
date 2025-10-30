@@ -4,10 +4,10 @@ import com.pei.dehaze.framework.common.biz.system.tenant.TenantCommonApi;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.pei.dehaze.module.system.service.tenant.TenantService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;

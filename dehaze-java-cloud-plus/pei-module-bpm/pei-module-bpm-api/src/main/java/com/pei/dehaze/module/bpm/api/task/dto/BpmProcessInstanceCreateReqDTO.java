@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.bpm.api.task.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
 
 import java.util.List;
 import java.util.Map;
@@ -25,10 +24,8 @@ public class BpmProcessInstanceCreateReqDTO {
 
     /**
      * 发起人自选审批人 Map
-     *
-     * key：taskKey 任务编码
-     * value：审批人的数组
-     * 例如：{ taskKey1 :[1, 2] }，则表示 taskKey1 这个任务，提前设定了，由 userId 为 1,2 的用户进行审批
+     * <p>
+     * key：taskKey 任务编码 value：审批人的数组 例如：{ taskKey1 :[1, 2] }，则表示 taskKey1 这个任务，提前设定了，由 userId 为 1,2 的用户进行审批
      */
     @Schema(description = "发起人自选审批人 Map")
     private Map<String, List<Long>> startUserSelectAssignees;

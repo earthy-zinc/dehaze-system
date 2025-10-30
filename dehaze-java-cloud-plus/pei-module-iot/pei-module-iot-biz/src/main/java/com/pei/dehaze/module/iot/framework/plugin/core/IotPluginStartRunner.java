@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * IoT 插件启动 Runner
- *
+ * <p>
  * 用于 Spring Boot 启动时，启动 {@link IotPluginDeployTypeEnum#JAR} 部署类型的插件
  */
 @RequiredArgsConstructor

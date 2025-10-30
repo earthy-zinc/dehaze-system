@@ -19,7 +19,7 @@ public enum BpmMessageEnum {
 
     /**
      * 短信模板的标识
-     *
+     * <p>
      * 关联 SmsTemplateDO 的 code 属性
      */
     private final String smsTemplateCode;

@@ -12,11 +12,11 @@ public interface ErpPurchaseStatisticsService {
 
     /**
      * 获得采购金额
-     *
+     * <p>
      * 计算逻辑：采购出库的金额 - 采购退货的金额
      *
      * @param beginTime >= 开始时间
-     * @param endTime < 结束时间
+     * @param endTime   < 结束时间
      * @return 采购金额
      */
     BigDecimal getPurchasePrice(LocalDateTime beginTime, LocalDateTime endTime);

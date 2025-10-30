@@ -39,101 +39,73 @@ import java.util.List;
 
 /**
  * 硅基流动 {@link ImageModel} 实现类
- *
+ * <p>
  * 参考 {@link OpenAiImageModel} 实现
  *
  * @author zzt
  */
 public class SiliconFlowImageModel implements ImageModel {
 
-	private static final Logger logger = LoggerFactory.getLogger(SiliconFlowImageModel.class);
+    private static final Logger logger = LoggerFactory.getLogger(SiliconFlowImageModel.class);
 
-	private static final ImageModelObservationConvention DEFAULT_OBSERVATION_CONVENTION = new DefaultImageModelObservationConvention();
+    private static final ImageModelObservationConvention DEFAULT_OBSERVATION_CONVENTION = new DefaultImageModelObservationConvention();
 
-	private final SiliconFlowImageOptions defaultOptions;
+    private final SiliconFlowImageOptions defaultOptions;
 
-	private final RetryTemplate retryTemplate;
+    private final RetryTemplate retryTemplate;
 
-	private final SiliconFlowImageApi siliconFlowImageApi;
+    private final SiliconFlowImageApi siliconFlowImageApi;
 
-	private final ObservationRegistry observationRegistry;
+    private final ObservationRegistry observationRegistry;
 
     @Setter
-	private ImageModelObservationConvention observationConvention = DEFAULT_OBSERVATION_CONVENTION;
+    private ImageModelObservationConvention observationConvention = DEFAULT_OBSERVATION_CONVENTION;
 
-	public SiliconFlowImageModel(SiliconFlowImageApi siliconFlowImageApi) {
-		this(siliconFlowImageApi, SiliconFlowImageOptions.builder().build(), RetryUtils.DEFAULT_RETRY_TEMPLATE);
-	}
+    public SiliconFlowImageModel(SiliconFlowImageApi siliconFlowImageApi) {
+        this(siliconFlowImageApi, SiliconFlowImageOptions.builder().build(), RetryUtils.DEFAULT_RETRY_TEMPLATE);
+    }
 
-	public SiliconFlowImageModel(SiliconFlowImageApi siliconFlowImageApi, SiliconFlowImageOptions options, RetryTemplate retryTemplate) {
-		this(siliconFlowImageApi, options, retryTemplate, ObservationRegistry.NOOP);
-	}
+    public SiliconFlowImageModel(SiliconFlowImageApi siliconFlowImageApi, SiliconFlowImageOptions options, RetryTemplate retryTemplate) {
+        this(siliconFlowImageApi, options, retryTemplate, ObservationRegistry.NOOP);
+    }
 
-	public SiliconFlowImageModel(SiliconFlowImageApi siliconFlowImageApi, SiliconFlowImageOptions options, RetryTemplate retryTemplate,
+    public SiliconFlowImageModel(SiliconFlowImageApi siliconFlowImageApi, SiliconFlowImageOptions options, RetryTemplate retryTemplate,
                                  ObservationRegistry observationRegistry) {
-		Assert.notNull(siliconFlowImageApi, "OpenAiImageApi must not be null");
-		Assert.notNull(options, "options must not be null");
-		Assert.notNull(retryTemplate, "retryTemplate must not be null");
-		Assert.notNull(observationRegistry, "observationRegistry must not be null");
-		this.siliconFlowImageApi = siliconFlowImageApi;
-		this.defaultOptions = options;
-		this.retryTemplate = retryTemplate;
-		this.observationRegistry = observationRegistry;
-	}
+        Assert.notNull(siliconFlowImageApi, "OpenAiImageApi must not be null");
+        Assert.notNull(options, "options must not be null");
+        Assert.notNull(retryTemplate, "retryTemplate must not be null");
+        Assert.notNull(observationRegistry, "observationRegistry must not be null");
+        this.siliconFlowImageApi = siliconFlowImageApi;
+        this.defaultOptions = options;
+        this.retryTemplate = retryTemplate;
+        this.observationRegistry = observationRegistry;
+    }
 
-	@Override
-	public ImageResponse call(ImagePrompt imagePrompt) {
+    @Override
+    public ImageResponse call(ImagePrompt imagePrompt) {
         SiliconFlowImageOptions requestImageOptions = mergeOptions(imagePrompt.getOptions(), this.defaultOptions);
         SiliconFlowImageApi.SiliconflowImageRequest imageRequest = createRequest(imagePrompt, requestImageOptions);
 
-		var observationContext = ImageModelObservationContext.builder()
-			.imagePrompt(imagePrompt)
-			.provider(SiliconFlowApiConstants.PROVIDER_NAME)
-			.requestOptions(imagePrompt.getOptions())
-			.build();
+        var observationContext = ImageModelObservationContext.builder()
+                .imagePrompt(imagePrompt)
+                .provider(SiliconFlowApiConstants.PROVIDER_NAME)
+                .requestOptions(imagePrompt.getOptions())
+                .build();
 
-		return ImageModelObservationDocumentation.IMAGE_MODEL_OPERATION
-			.observation(this.observationConvention, DEFAULT_OBSERVATION_CONVENTION, () -> observationContext,
-					this.observationRegistry)
-			.observe(() -> {
-				ResponseEntity<OpenAiImageApi.OpenAiImageResponse> imageResponseEntity = this.retryTemplate
-					.execute(ctx -> this.siliconFlowImageApi.createImage(imageRequest));
+        return ImageModelObservationDocumentation.IMAGE_MODEL_OPERATION
+                .observation(this.observationConvention, DEFAULT_OBSERVATION_CONVENTION, () -> observationContext,
+                        this.observationRegistry)
+                .observe(() -> {
+                    ResponseEntity<OpenAiImageApi.OpenAiImageResponse> imageResponseEntity = this.retryTemplate
+                            .execute(ctx -> this.siliconFlowImageApi.createImage(imageRequest));
 
-				ImageResponse imageResponse = convertResponse(imageResponseEntity, imageRequest);
+                    ImageResponse imageResponse = convertResponse(imageResponseEntity, imageRequest);
 
-				observationContext.setResponse(imageResponse);
+                    observationContext.setResponse(imageResponse);
 
-				return imageResponse;
-			});
-	}
-
-	private SiliconFlowImageApi.SiliconflowImageRequest createRequest(ImagePrompt imagePrompt,
-                                                                      SiliconFlowImageOptions requestImageOptions) {
-		String instructions = imagePrompt.getInstructions().get(0).getText();
-
-		SiliconFlowImageApi.SiliconflowImageRequest imageRequest = new SiliconFlowImageApi.SiliconflowImageRequest(instructions,
-                SiliconFlowApiConstants.DEFAULT_IMAGE_MODEL);
-
-		return ModelOptionsUtils.merge(requestImageOptions, imageRequest, SiliconFlowImageApi.SiliconflowImageRequest.class);
-	}
-
-	private ImageResponse convertResponse(ResponseEntity<OpenAiImageApi.OpenAiImageResponse> imageResponseEntity,
-										  SiliconFlowImageApi.SiliconflowImageRequest siliconflowImageRequest) {
-		OpenAiImageApi.OpenAiImageResponse imageApiResponse = imageResponseEntity.getBody();
-		if (imageApiResponse == null) {
-			logger.warn("No image response returned for request: {}", siliconflowImageRequest);
-			return new ImageResponse(List.of());
-		}
-
-		List<ImageGeneration> imageGenerationList = imageApiResponse.data()
-			.stream()
-			.map(entry -> new ImageGeneration(new Image(entry.url(), entry.b64Json()),
-					new OpenAiImageGenerationMetadata(entry.revisedPrompt())))
-			.toList();
-
-		ImageResponseMetadata openAiImageResponseMetadata = new ImageResponseMetadata(imageApiResponse.created());
-		return new ImageResponse(imageGenerationList, openAiImageResponseMetadata);
-	}
+                    return imageResponse;
+                });
+    }
 
     private SiliconFlowImageOptions mergeOptions(@Nullable ImageOptions runtimeOptions, SiliconFlowImageOptions defaultOptions) {
         var runtimeOptionsForProvider = ModelOptionsUtils.copyToTarget(runtimeOptions, ImageOptions.class,
@@ -155,5 +127,33 @@ public class SiliconFlowImageModel implements ImageModel {
                 .guidanceScale(ModelOptionsUtils.mergeOption(runtimeOptionsForProvider.getGuidanceScale(), defaultOptions.getGuidanceScale()))
                 .seed(ModelOptionsUtils.mergeOption(runtimeOptionsForProvider.getSeed(), defaultOptions.getSeed()))
                 .build();
+    }
+
+    private SiliconFlowImageApi.SiliconflowImageRequest createRequest(ImagePrompt imagePrompt,
+                                                                      SiliconFlowImageOptions requestImageOptions) {
+        String instructions = imagePrompt.getInstructions().get(0).getText();
+
+        SiliconFlowImageApi.SiliconflowImageRequest imageRequest = new SiliconFlowImageApi.SiliconflowImageRequest(instructions,
+                SiliconFlowApiConstants.DEFAULT_IMAGE_MODEL);
+
+        return ModelOptionsUtils.merge(requestImageOptions, imageRequest, SiliconFlowImageApi.SiliconflowImageRequest.class);
+    }
+
+    private ImageResponse convertResponse(ResponseEntity<OpenAiImageApi.OpenAiImageResponse> imageResponseEntity,
+                                          SiliconFlowImageApi.SiliconflowImageRequest siliconflowImageRequest) {
+        OpenAiImageApi.OpenAiImageResponse imageApiResponse = imageResponseEntity.getBody();
+        if (imageApiResponse == null) {
+            logger.warn("No image response returned for request: {}", siliconflowImageRequest);
+            return new ImageResponse(List.of());
+        }
+
+        List<ImageGeneration> imageGenerationList = imageApiResponse.data()
+                .stream()
+                .map(entry -> new ImageGeneration(new Image(entry.url(), entry.b64Json()),
+                        new OpenAiImageGenerationMetadata(entry.revisedPrompt())))
+                .toList();
+
+        ImageResponseMetadata openAiImageResponseMetadata = new ImageResponseMetadata(imageApiResponse.created());
+        return new ImageResponse(imageGenerationList, openAiImageResponseMetadata);
     }
 }

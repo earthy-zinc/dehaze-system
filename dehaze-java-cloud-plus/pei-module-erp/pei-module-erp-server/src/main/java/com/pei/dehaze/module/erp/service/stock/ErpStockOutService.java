@@ -35,7 +35,7 @@ public interface ErpStockOutService {
     /**
      * 更新其它出库单的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updateStockOutStatus(Long id, Integer status);

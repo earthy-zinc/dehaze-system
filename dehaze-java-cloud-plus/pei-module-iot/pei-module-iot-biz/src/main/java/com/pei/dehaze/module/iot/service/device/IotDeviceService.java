@@ -41,15 +41,6 @@ public interface IotDeviceService {
                              Long gatewayId);
 
     /**
-     * 更新设备
-     *
-     * @param updateReqVO 更新信息
-     */
-    void updateDevice(@Valid IotDeviceSaveReqVO updateReqVO);
-
-    // TODO @芋艿：先这么实现。未来看情况，要不要自己实现
-
-    /**
      * 更新设备的所属网关
      *
      * @param id        编号
@@ -58,6 +49,15 @@ public interface IotDeviceService {
     default void updateDeviceGateway(Long id, Long gatewayId) {
         updateDevice(new IotDeviceSaveReqVO().setId(id).setGatewayId(gatewayId));
     }
+
+    // TODO @芋艿：先这么实现。未来看情况，要不要自己实现
+
+    /**
+     * 更新设备
+     *
+     * @param updateReqVO 更新信息
+     */
+    void updateDevice(@Valid IotDeviceSaveReqVO updateReqVO);
 
     /**
      * 更新设备状态
@@ -214,8 +214,7 @@ public interface IotDeviceService {
     /**
      * 获得各个状态下的设备数量 Map
      *
-     * @return key: 设备状态枚举 {@link IotDeviceStateEnum}
-     *         value: 设备数量
+     * @return key: 设备状态枚举 {@link IotDeviceStateEnum} value: 设备数量
      */
     Map<Integer, Long> getDeviceCountMapByState();
 

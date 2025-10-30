@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.erp.dal.dataobject.finance;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
@@ -40,7 +40,7 @@ public class ErpAccountDO extends BaseDO {
     private String remark;
     /**
      * 开启状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;

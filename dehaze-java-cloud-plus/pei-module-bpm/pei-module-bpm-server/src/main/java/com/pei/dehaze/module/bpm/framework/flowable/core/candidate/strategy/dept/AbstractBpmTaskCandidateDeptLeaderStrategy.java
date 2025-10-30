@@ -29,7 +29,7 @@ public abstract class AbstractBpmTaskCandidateDeptLeaderStrategy implements BpmT
     /**
      * 获得指定层级的部门负责人，只有第 level 的负责人
      *
-     * @param dept 指定部门
+     * @param dept  指定部门
      * @param level 第几级
      * @return 部门负责人的编号
      */
@@ -53,7 +53,7 @@ public abstract class AbstractBpmTaskCandidateDeptLeaderStrategy implements BpmT
      * 获得连续层级的部门负责人，包含 [1, level] 的负责人
      *
      * @param deptIds 指定部门编号数组
-     * @param level 最大层级
+     * @param level   最大层级
      * @return 连续部门负责人 Id
      */
     protected Set<Long> getMultiLevelDeptLeaderIds(List<Long> deptIds, Integer level) {

@@ -27,6 +27,7 @@ public class MiniMaxChatModelTests {
             MiniMaxChatOptions.builder()
                     .model(MiniMaxApi.ChatModel.ABAB_6_5_G_Chat.getValue()) // 模型
                     .build());
+
     @Test
     @Disabled
     public void testCall() {

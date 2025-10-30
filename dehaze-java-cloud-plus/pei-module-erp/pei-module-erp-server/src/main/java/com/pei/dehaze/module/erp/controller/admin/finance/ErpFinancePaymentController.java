@@ -75,7 +75,7 @@ public class ErpFinancePaymentController {
     @Operation(summary = "更新付款单的状态")
     @PreAuthorize("@ss.hasPermission('erp:finance-payment:update-status')")
     public CommonResult<Boolean> updateFinancePaymentStatus(@RequestParam("id") Long id,
-                                                           @RequestParam("status") Integer status) {
+                                                            @RequestParam("status") Integer status) {
         financePaymentService.updateFinancePaymentStatus(id, status);
         return success(true);
     }
@@ -111,18 +111,6 @@ public class ErpFinancePaymentController {
         return success(buildFinancePaymentVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出付款单 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:finance-payment:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportFinancePaymentExcel(@Valid ErpFinancePaymentPageReqVO pageReqVO,
-                                         HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpFinancePaymentRespVO> list = buildFinancePaymentVOPageResult(financePaymentService.getFinancePaymentPage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "付款单.xls", "数据", ErpFinancePaymentRespVO.class, list);
-    }
-
     private PageResult<ErpFinancePaymentRespVO> buildFinancePaymentVOPageResult(PageResult<ErpFinancePaymentDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -148,6 +136,18 @@ public class ErpFinancePaymentController {
             MapUtils.findAndThen(userMap, Long.parseLong(payment.getCreator()), user -> payment.setCreatorName(user.getNickname()));
             MapUtils.findAndThen(userMap, payment.getFinanceUserId(), user -> payment.setFinanceUserName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出付款单 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:finance-payment:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportFinancePaymentExcel(@Valid ErpFinancePaymentPageReqVO pageReqVO,
+                                          HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpFinancePaymentRespVO> list = buildFinancePaymentVOPageResult(financePaymentService.getFinancePaymentPage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "付款单.xls", "数据", ErpFinancePaymentRespVO.class, list);
     }
 
 }

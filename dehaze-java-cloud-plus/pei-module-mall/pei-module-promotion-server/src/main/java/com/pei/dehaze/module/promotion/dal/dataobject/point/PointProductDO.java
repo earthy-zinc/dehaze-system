@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.point;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
@@ -29,7 +29,7 @@ public class PointProductDO extends BaseDO {
     private Long id;
     /**
      * 积分商城活动 id
-     *
+     * <p>
      * 关联 {@link PointActivityDO#getId()}
      */
     private Long activityId;
@@ -59,7 +59,7 @@ public class PointProductDO extends BaseDO {
     private Integer stock;
     /**
      * 积分商城商品状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum 对应的类}
      */
     private Integer activityStatus;

@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.ai.service.model;
 
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.module.ai.framework.ai.core.AiModelFactory;
-import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
-import com.pei.dehaze.module.ai.framework.ai.core.model.suno.api.SunoApi;
+import com.agentsflex.llm.ollama.OllamaLlm;
+import com.agentsflex.llm.ollama.OllamaLlmConfig;
+import com.agentsflex.llm.qwen.QwenLlm;
+import com.agentsflex.llm.qwen.QwenLlmConfig;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -12,10 +12,10 @@ import com.pei.dehaze.module.ai.controller.admin.model.vo.model.AiModelSaveReqVO
 import com.pei.dehaze.module.ai.dal.dataobject.model.AiApiKeyDO;
 import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.pei.dehaze.module.ai.dal.mysql.model.AiChatMapper;
-import com.agentsflex.llm.ollama.OllamaLlm;
-import com.agentsflex.llm.ollama.OllamaLlmConfig;
-import com.agentsflex.llm.qwen.QwenLlm;
-import com.agentsflex.llm.qwen.QwenLlmConfig;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
+import com.pei.dehaze.module.ai.framework.ai.core.AiModelFactory;
+import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
+import com.pei.dehaze.module.ai.framework.ai.core.model.suno.api.SunoApi;
 import dev.tinyflow.core.Tinyflow;
 import jakarta.annotation.Resource;
 import org.springframework.ai.chat.model.ChatModel;
@@ -82,14 +82,6 @@ public class AiModelServiceImpl implements AiModelService {
         modelMapper.deleteById(id);
     }
 
-    private AiModelDO validateModelExists(Long id) {
-        AiModelDO model = modelMapper.selectById(id);
-        if (modelMapper.selectById(id) == null) {
-            throw exception(MODEL_NOT_EXISTS);
-        }
-        return model;
-    }
-
     @Override
     public AiModelDO getModel(Long id) {
         return modelMapper.selectById(id);
@@ -123,8 +115,6 @@ public class AiModelServiceImpl implements AiModelService {
         return modelMapper.selectListByStatusAndType(status, type, platform);
     }
 
-    // ========== 与 Spring AI 集成 ==========
-
     @Override
     public ChatModel getChatModel(Long id) {
         AiModelDO model = validateModel(id);
@@ -132,6 +122,8 @@ public class AiModelServiceImpl implements AiModelService {
         AiPlatformEnum platform = AiPlatformEnum.validatePlatform(apiKey.getPlatform());
         return modelFactory.getOrCreateChatModel(platform, apiKey.getApiKey(), apiKey.getUrl());
     }
+
+    // ========== 与 Spring AI 集成 ==========
 
     @Override
     public ImageModel getImageModel(Long id) {
@@ -167,7 +159,7 @@ public class AiModelServiceImpl implements AiModelService {
                 platform, apiKey.getApiKey(), apiKey.getUrl(), model.getModel());
 
         // 创建或获取 VectorStore 对象
-         return modelFactory.getOrCreateVectorStore(SimpleVectorStore.class, embeddingModel, metadataFields);
+        return modelFactory.getOrCreateVectorStore(SimpleVectorStore.class, embeddingModel, metadataFields);
 //         return modelFactory.getOrCreateVectorStore(QdrantVectorStore.class, embeddingModel, metadataFields);
 //         return modelFactory.getOrCreateVectorStore(RedisVectorStore.class, embeddingModel, metadataFields);
 //         return modelFactory.getOrCreateVectorStore(MilvusVectorStore.class, embeddingModel, metadataFields);
@@ -196,6 +188,14 @@ public class AiModelServiceImpl implements AiModelService {
                 tinyflow.setLlmProvider(id -> new OllamaLlm(ollamaLlmConfig));
                 break;
         }
+    }
+
+    private AiModelDO validateModelExists(Long id) {
+        AiModelDO model = modelMapper.selectById(id);
+        if (modelMapper.selectById(id) == null) {
+            throw exception(MODEL_NOT_EXISTS);
+        }
+        return model;
     }
 
 }

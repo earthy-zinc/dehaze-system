@@ -17,7 +17,6 @@ import java.util.List;
  * Redis Pub/Sub 监听器抽象类，用于实现广播消费
  *
  * @param <T> 消息类型。一定要填写噢，不然会报错
- *
  * @author earthyzinc
  */
 public abstract class AbstractRedisChannelMessageListener<T extends AbstractRedisChannelMessage> implements MessageListener {
@@ -43,6 +42,20 @@ public abstract class AbstractRedisChannelMessageListener<T extends AbstractRedi
     }
 
     /**
+     * 通过解析类上的泛型，获得消息类型
+     *
+     * @return 消息类型
+     */
+    @SuppressWarnings("unchecked")
+    private Class<T> getMessageClass() {
+        Type type = TypeUtil.getTypeArgument(getClass(), 0);
+        if (type == null) {
+            throw new IllegalStateException(String.format("类型(%s) 需要设置消息类型", getClass().getName()));
+        }
+        return (Class<T>) type;
+    }
+
+    /**
      * 获得 Sub 订阅的 Redis Channel 通道
      *
      * @return channel
@@ -63,33 +76,19 @@ public abstract class AbstractRedisChannelMessageListener<T extends AbstractRedi
         }
     }
 
-    /**
-     * 处理消息
-     *
-     * @param message 消息
-     */
-    public abstract void onMessage(T message);
-
-    /**
-     * 通过解析类上的泛型，获得消息类型
-     *
-     * @return 消息类型
-     */
-    @SuppressWarnings("unchecked")
-    private Class<T> getMessageClass() {
-        Type type = TypeUtil.getTypeArgument(getClass(), 0);
-        if (type == null) {
-            throw new IllegalStateException(String.format("类型(%s) 需要设置消息类型", getClass().getName()));
-        }
-        return (Class<T>) type;
-    }
-
     private void consumeMessageBefore(AbstractRedisMessage message) {
         assert redisMQTemplate != null;
         List<RedisMessageInterceptor> interceptors = redisMQTemplate.getInterceptors();
         // 正序
         interceptors.forEach(interceptor -> interceptor.consumeMessageBefore(message));
     }
+
+    /**
+     * 处理消息
+     *
+     * @param message 消息
+     */
+    public abstract void onMessage(T message);
 
     private void consumeMessageAfter(AbstractRedisMessage message) {
         assert redisMQTemplate != null;

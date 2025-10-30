@@ -79,7 +79,7 @@ public class ErpSaleReturnController {
     @Operation(summary = "更新销售退货的状态")
     @PreAuthorize("@ss.hasPermission('erp:sale-return:update-status')")
     public CommonResult<Boolean> updateSaleReturnStatus(@RequestParam("id") Long id,
-                                                      @RequestParam("status") Integer status) {
+                                                        @RequestParam("status") Integer status) {
         saleReturnService.updateSaleReturnStatus(id, status);
         return success(true);
     }
@@ -122,18 +122,6 @@ public class ErpSaleReturnController {
         return success(buildSaleReturnVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出销售退货 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:sale-return:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportSaleReturnExcel(@Valid ErpSaleReturnPageReqVO pageReqVO,
-                                    HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpSaleReturnRespVO> list = buildSaleReturnVOPageResult(saleReturnService.getSaleReturnPage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "销售退货.xls", "数据", ErpSaleReturnRespVO.class, list);
-    }
-
     private PageResult<ErpSaleReturnRespVO> buildSaleReturnVOPageResult(PageResult<ErpSaleReturnDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -160,6 +148,18 @@ public class ErpSaleReturnController {
             MapUtils.findAndThen(customerMap, saleReturn.getCustomerId(), supplier -> saleReturn.setCustomerName(supplier.getName()));
             MapUtils.findAndThen(userMap, Long.parseLong(saleReturn.getCreator()), user -> saleReturn.setCreatorName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出销售退货 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:sale-return:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportSaleReturnExcel(@Valid ErpSaleReturnPageReqVO pageReqVO,
+                                      HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpSaleReturnRespVO> list = buildSaleReturnVOPageResult(saleReturnService.getSaleReturnPage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "销售退货.xls", "数据", ErpSaleReturnRespVO.class, list);
     }
 
 }

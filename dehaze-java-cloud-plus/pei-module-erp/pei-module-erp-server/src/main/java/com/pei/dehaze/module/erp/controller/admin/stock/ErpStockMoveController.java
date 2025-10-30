@@ -75,7 +75,7 @@ public class ErpStockMoveController {
     @Operation(summary = "更新库存调拨单的状态")
     @PreAuthorize("@ss.hasPermission('erp:stock-move:update-status')")
     public CommonResult<Boolean> updateStockMoveStatus(@RequestParam("id") Long id,
-                                                     @RequestParam("status") Integer status) {
+                                                       @RequestParam("status") Integer status) {
         stockMoveService.updateStockMoveStatus(id, status);
         return success(true);
     }
@@ -118,18 +118,6 @@ public class ErpStockMoveController {
         return success(buildStockMoveVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出库存调拨单 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:stock-move:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportStockMoveExcel(@Valid ErpStockMovePageReqVO pageReqVO,
-              HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpStockMoveRespVO> list = buildStockMoveVOPageResult(stockMoveService.getStockMovePage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "库存调拨单.xls", "数据", ErpStockMoveRespVO.class, list);
-    }
-
     private PageResult<ErpStockMoveRespVO> buildStockMoveVOPageResult(PageResult<ErpStockMoveDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -155,6 +143,18 @@ public class ErpStockMoveController {
 //            MapUtils.findAndThen(customerMap, stockMove.getCustomerId(), supplier -> stockMove.setCustomerName(supplier.getName()));
             MapUtils.findAndThen(userMap, Long.parseLong(stockMove.getCreator()), user -> stockMove.setCreatorName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出库存调拨单 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:stock-move:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportStockMoveExcel(@Valid ErpStockMovePageReqVO pageReqVO,
+                                     HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpStockMoveRespVO> list = buildStockMoveVOPageResult(stockMoveService.getStockMovePage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "库存调拨单.xls", "数据", ErpStockMoveRespVO.class, list);
     }
 
 }

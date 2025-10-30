@@ -73,12 +73,6 @@ public class ProductPropertyValueServiceImpl implements ProductPropertyValueServ
         productPropertyValueMapper.deleteById(id);
     }
 
-    private void validatePropertyValueExists(Long id) {
-        if (productPropertyValueMapper.selectById(id) == null) {
-            throw exception(PROPERTY_VALUE_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ProductPropertyValueDO getPropertyValue(Long id) {
         return productPropertyValueMapper.selectById(id);
@@ -102,6 +96,12 @@ public class ProductPropertyValueServiceImpl implements ProductPropertyValueServ
     @Override
     public void deletePropertyValueByPropertyId(Long propertyId) {
         productPropertyValueMapper.deleteByPropertyId(propertyId);
+    }
+
+    private void validatePropertyValueExists(Long id) {
+        if (productPropertyValueMapper.selectById(id) == null) {
+            throw exception(PROPERTY_VALUE_NOT_EXISTS);
+        }
     }
 
 }

@@ -7,10 +7,10 @@ import com.pei.dehaze.module.system.controller.admin.mail.vo.template.MailTempla
 import com.pei.dehaze.module.system.controller.admin.mail.vo.template.MailTemplateSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.mail.MailTemplateDO;
 import com.pei.dehaze.module.system.dal.mysql.mail.MailTemplateMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

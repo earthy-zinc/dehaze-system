@@ -31,16 +31,16 @@ public interface DiscountActivityConvert {
 
     List<DiscountActivityRespVO> convertList(List<DiscountActivityDO> list);
 
-    List<DiscountActivityBaseVO.Product> convertList2(List<DiscountProductDO> list);
-
-    PageResult<DiscountActivityRespVO> convertPage(PageResult<DiscountActivityDO> page);
-
     default PageResult<DiscountActivityRespVO> convertPage(PageResult<DiscountActivityDO> page,
                                                            List<DiscountProductDO> discountProductDOList) {
         PageResult<DiscountActivityRespVO> pageResult = convertPage(page);
         pageResult.getList().forEach(item -> item.setProducts(convertList2(discountProductDOList)));
         return pageResult;
     }
+
+    PageResult<DiscountActivityRespVO> convertPage(PageResult<DiscountActivityDO> page);
+
+    List<DiscountActivityBaseVO.Product> convertList2(List<DiscountProductDO> list);
 
     DiscountProductDO convert(DiscountActivityBaseVO.Product bean);
 

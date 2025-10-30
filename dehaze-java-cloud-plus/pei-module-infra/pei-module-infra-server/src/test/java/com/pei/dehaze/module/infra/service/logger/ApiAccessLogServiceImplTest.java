@@ -8,10 +8,10 @@ import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
 import com.pei.dehaze.module.infra.controller.admin.logger.vo.apiaccesslog.ApiAccessLogPageReqVO;
 import com.pei.dehaze.module.infra.dal.dataobject.logger.ApiAccessLogDO;
 import com.pei.dehaze.module.infra.dal.mysql.logger.ApiAccessLogMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.time.Duration;
 import java.util.List;
 
@@ -39,7 +39,7 @@ public class ApiAccessLogServiceImplTest extends BaseDbUnitTest {
             o.setRequestUrl("foo");
             o.setBeginTime(buildTime(2021, 3, 13));
             o.setDuration(1000);
-            o.setResultCode(GlobalErrorCodeConstants.SUCCESS.getCode());
+            o.setResultCode(GlobalErrorCodeConstants.SUCCESS.code());
         });
         apiAccessLogMapper.insert(apiAccessLogDO);
         // 测试 userId 不匹配
@@ -64,7 +64,7 @@ public class ApiAccessLogServiceImplTest extends BaseDbUnitTest {
         reqVO.setRequestUrl("foo");
         reqVO.setBeginTime(buildBetweenTime(2021, 3, 13, 2021, 3, 13));
         reqVO.setDuration(1000);
-        reqVO.setResultCode(GlobalErrorCodeConstants.SUCCESS.getCode());
+        reqVO.setResultCode(GlobalErrorCodeConstants.SUCCESS.code());
 
         // 调用
         PageResult<ApiAccessLogDO> pageResult = apiAccessLogService.getApiAccessLogPage(reqVO);

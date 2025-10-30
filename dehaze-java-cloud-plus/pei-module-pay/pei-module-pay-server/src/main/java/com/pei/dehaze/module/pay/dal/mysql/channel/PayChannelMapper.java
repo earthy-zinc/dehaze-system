@@ -15,7 +15,7 @@ public interface PayChannelMapper extends BaseMapperX<PayChannelDO> {
         return selectOne(PayChannelDO::getAppId, appId, PayChannelDO::getCode, code);
     }
 
-    default List<PayChannelDO> selectListByAppIds(Collection<Long> appIds){
+    default List<PayChannelDO> selectListByAppIds(Collection<Long> appIds) {
         return selectList(PayChannelDO::getAppId, appIds);
     }
 

@@ -57,7 +57,7 @@ public interface IotThingModelService {
 
     /**
      * 【缓存】获得产品物模型列表
-     *
+     * <p>
      * 注意：该方法会忽略租户信息，所以调用时，需要确认会不会有跨租户访问的风险！！！
      *
      * @param productKey 产品标识
@@ -82,6 +82,7 @@ public interface IotThingModelService {
     List<IotThingModelDO> getThingModelList(IotThingModelListReqVO reqVO);
 
     // TODO @super：用不到，删除下哈。
+
     /**
      * 获得物模型数量
      *

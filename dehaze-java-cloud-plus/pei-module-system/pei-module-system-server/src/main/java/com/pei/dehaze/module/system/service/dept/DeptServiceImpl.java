@@ -2,6 +2,7 @@ package com.pei.dehaze.module.system.service.dept;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.framework.datapermission.core.annotation.DataPermission;
@@ -10,7 +11,6 @@ import com.pei.dehaze.module.system.controller.admin.dept.vo.dept.DeptSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.dept.DeptDO;
 import com.pei.dehaze.module.system.dal.mysql.dept.DeptMapper;
 import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -88,6 +88,77 @@ public class DeptServiceImpl implements DeptService {
         deptMapper.deleteById(id);
     }
 
+    @Override
+    public DeptDO getDept(Long id) {
+        return deptMapper.selectById(id);
+    }
+
+    @Override
+    public List<DeptDO> getDeptList(DeptListReqVO reqVO) {
+        List<DeptDO> list = deptMapper.selectList(reqVO);
+        list.sort(Comparator.comparing(DeptDO::getSort));
+        return list;
+    }
+
+    @Override
+    public List<DeptDO> getDeptList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        return deptMapper.selectBatchIds(ids);
+    }
+
+    @Override
+    public List<DeptDO> getChildDeptList(Collection<Long> ids) {
+        List<DeptDO> children = new LinkedList<>();
+        // 遍历每一层
+        Collection<Long> parentIds = ids;
+        for (int i = 0; i < Short.MAX_VALUE; i++) { // 使用 Short.MAX_VALUE 避免 bug 场景下，存在死循环
+            // 查询当前层，所有的子部门
+            List<DeptDO> depts = deptMapper.selectListByParentId(parentIds);
+            // 1. 如果没有子部门，则结束遍历
+            if (CollUtil.isEmpty(depts)) {
+                break;
+            }
+            // 2. 如果有子部门，继续遍历
+            children.addAll(depts);
+            parentIds = convertSet(depts, DeptDO::getId);
+        }
+        return children;
+    }
+
+    @Override
+    public List<DeptDO> getDeptListByLeaderUserId(Long id) {
+        return deptMapper.selectListByLeaderUserId(id);
+    }
+
+    @Override
+    @DataPermission(enable = false) // 禁用数据权限，避免建立不正确的缓存
+    @Cacheable(cacheNames = RedisKeyConstants.DEPT_CHILDREN_ID_LIST, key = "#id")
+    public Set<Long> getChildDeptIdListFromCache(Long id) {
+        List<DeptDO> children = getChildDeptList(id);
+        return convertSet(children, DeptDO::getId);
+    }
+
+    @Override
+    public void validateDeptList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return;
+        }
+        // 获得科室信息
+        Map<Long, DeptDO> deptMap = getDeptMap(ids);
+        // 校验
+        ids.forEach(id -> {
+            DeptDO dept = deptMap.get(id);
+            if (dept == null) {
+                throw exception(DEPT_NOT_FOUND);
+            }
+            if (!CommonStatusEnum.ENABLE.getStatus().equals(dept.getStatus())) {
+                throw exception(DEPT_NOT_ENABLE, dept.getName());
+            }
+        });
+    }
+
     @VisibleForTesting
     void validateDeptExists(Long id) {
         if (id == null) {
@@ -147,77 +218,6 @@ public class DeptServiceImpl implements DeptService {
         if (ObjectUtil.notEqual(dept.getId(), id)) {
             throw exception(DEPT_NAME_DUPLICATE);
         }
-    }
-
-    @Override
-    public DeptDO getDept(Long id) {
-        return deptMapper.selectById(id);
-    }
-
-    @Override
-    public List<DeptDO> getDeptList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return Collections.emptyList();
-        }
-        return deptMapper.selectBatchIds(ids);
-    }
-
-    @Override
-    public List<DeptDO> getDeptList(DeptListReqVO reqVO) {
-        List<DeptDO> list = deptMapper.selectList(reqVO);
-        list.sort(Comparator.comparing(DeptDO::getSort));
-        return list;
-    }
-
-    @Override
-    public List<DeptDO> getChildDeptList(Collection<Long> ids) {
-        List<DeptDO> children = new LinkedList<>();
-        // 遍历每一层
-        Collection<Long> parentIds = ids;
-        for (int i = 0; i < Short.MAX_VALUE; i++) { // 使用 Short.MAX_VALUE 避免 bug 场景下，存在死循环
-            // 查询当前层，所有的子部门
-            List<DeptDO> depts = deptMapper.selectListByParentId(parentIds);
-            // 1. 如果没有子部门，则结束遍历
-            if (CollUtil.isEmpty(depts)) {
-                break;
-            }
-            // 2. 如果有子部门，继续遍历
-            children.addAll(depts);
-            parentIds = convertSet(depts, DeptDO::getId);
-        }
-        return children;
-    }
-
-    @Override
-    public List<DeptDO> getDeptListByLeaderUserId(Long id) {
-        return deptMapper.selectListByLeaderUserId(id);
-    }
-
-    @Override
-    @DataPermission(enable = false) // 禁用数据权限，避免建立不正确的缓存
-    @Cacheable(cacheNames = RedisKeyConstants.DEPT_CHILDREN_ID_LIST, key = "#id")
-    public Set<Long> getChildDeptIdListFromCache(Long id) {
-        List<DeptDO> children = getChildDeptList(id);
-        return convertSet(children, DeptDO::getId);
-    }
-
-    @Override
-    public void validateDeptList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return;
-        }
-        // 获得科室信息
-        Map<Long, DeptDO> deptMap = getDeptMap(ids);
-        // 校验
-        ids.forEach(id -> {
-            DeptDO dept = deptMap.get(id);
-            if (dept == null) {
-                throw exception(DEPT_NOT_FOUND);
-            }
-            if (!CommonStatusEnum.ENABLE.getStatus().equals(dept.getStatus())) {
-                throw exception(DEPT_NOT_ENABLE, dept.getName());
-            }
-        });
     }
 
 }

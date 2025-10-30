@@ -23,7 +23,7 @@ public interface AiChatMessageService {
      * 发送消息
      *
      * @param sendReqVO 发送信息
-     * @param userId 用户编号
+     * @param userId    用户编号
      * @return 发送结果
      */
     AiChatMessageSendRespVO sendMessage(AiChatMessageSendReqVO sendReqVO, Long userId);
@@ -32,7 +32,7 @@ public interface AiChatMessageService {
      * 发送消息
      *
      * @param sendReqVO 发送信息
-     * @param userId 用户编号
+     * @param userId    用户编号
      * @return 发送结果
      */
     Flux<CommonResult<AiChatMessageSendRespVO>> sendChatMessageStream(AiChatMessageSendReqVO sendReqVO, Long userId);
@@ -48,7 +48,7 @@ public interface AiChatMessageService {
     /**
      * 删除消息
      *
-     * @param id 消息编号
+     * @param id     消息编号
      * @param userId 用户编号
      */
     void deleteChatMessage(Long id, Long userId);
@@ -57,7 +57,7 @@ public interface AiChatMessageService {
      * 删除指定对话的消息
      *
      * @param conversationId 对话编号
-     * @param userId 用户编号
+     * @param userId         用户编号
      */
     void deleteChatMessageByConversationId(Long conversationId, Long userId);
 

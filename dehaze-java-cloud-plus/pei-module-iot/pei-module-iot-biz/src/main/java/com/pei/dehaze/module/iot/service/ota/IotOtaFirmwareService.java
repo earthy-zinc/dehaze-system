@@ -8,6 +8,7 @@ import com.pei.dehaze.module.iot.dal.dataobject.ota.IotOtaFirmwareDO;
 import jakarta.validation.Valid;
 
 // TODO @li：注释写的有点冗余，可以看看别的模块哈。= = AI 生成的注释，有的时候太啰嗦了，需要处理下的哈
+
 /**
  * OTA 固件管理 Service
  *
@@ -49,9 +50,7 @@ public interface IotOtaFirmwareService {
     /**
      * 验证物联网 OTA 固件是否存在
      *
-     * @param id 固件的唯一标识符
-     *           该方法用于检查系统中是否存在与给定ID关联的物联网OTA固件信息
-     *           主要目的是在进行固件更新操作前，确保目标固件已经存在并可以被访问
+     * @param id 固件的唯一标识符 该方法用于检查系统中是否存在与给定ID关联的物联网OTA固件信息 主要目的是在进行固件更新操作前，确保目标固件已经存在并可以被访问
      *           如果固件不存在，该方法可能抛出异常或返回错误信息，具体行为未定义
      */
     IotOtaFirmwareDO validateFirmwareExists(Long id);

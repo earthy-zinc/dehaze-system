@@ -1,6 +1,7 @@
 package com.pei.dehaze.module.system.service.dict;
 
 import cn.hutool.core.util.StrUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -8,10 +9,9 @@ import com.pei.dehaze.module.system.controller.admin.dict.vo.type.DictTypePageRe
 import com.pei.dehaze.module.system.controller.admin.dict.vo.type.DictTypeSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.dict.DictTypeDO;
 import com.pei.dehaze.module.system.dal.mysql.dict.DictTypeMapper;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -31,21 +31,6 @@ public class DictTypeServiceImpl implements DictTypeService {
 
     @Resource
     private DictTypeMapper dictTypeMapper;
-
-    @Override
-    public PageResult<DictTypeDO> getDictTypePage(DictTypePageReqVO pageReqVO) {
-        return dictTypeMapper.selectPage(pageReqVO);
-    }
-
-    @Override
-    public DictTypeDO getDictType(Long id) {
-        return dictTypeMapper.selectById(id);
-    }
-
-    @Override
-    public DictTypeDO getDictType(String type) {
-        return dictTypeMapper.selectByType(type);
-    }
 
     @Override
     public Long createDictType(DictTypeSaveReqVO createReqVO) {
@@ -88,8 +73,35 @@ public class DictTypeServiceImpl implements DictTypeService {
     }
 
     @Override
+    public PageResult<DictTypeDO> getDictTypePage(DictTypePageReqVO pageReqVO) {
+        return dictTypeMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public DictTypeDO getDictType(Long id) {
+        return dictTypeMapper.selectById(id);
+    }
+
+    @Override
+    public DictTypeDO getDictType(String type) {
+        return dictTypeMapper.selectByType(type);
+    }
+
+    @Override
     public List<DictTypeDO> getDictTypeList() {
         return dictTypeMapper.selectList();
+    }
+
+    @VisibleForTesting
+    DictTypeDO validateDictTypeExists(Long id) {
+        if (id == null) {
+            return null;
+        }
+        DictTypeDO dictType = dictTypeMapper.selectById(id);
+        if (dictType == null) {
+            throw exception(DICT_TYPE_NOT_EXISTS);
+        }
+        return dictType;
     }
 
     @VisibleForTesting
@@ -123,18 +135,6 @@ public class DictTypeServiceImpl implements DictTypeService {
         if (!dictType.getId().equals(id)) {
             throw exception(DICT_TYPE_TYPE_DUPLICATE);
         }
-    }
-
-    @VisibleForTesting
-    DictTypeDO validateDictTypeExists(Long id) {
-        if (id == null) {
-            return null;
-        }
-        DictTypeDO dictType = dictTypeMapper.selectById(id);
-        if (dictType == null) {
-            throw exception(DICT_TYPE_NOT_EXISTS);
-        }
-        return dictType;
     }
 
 }

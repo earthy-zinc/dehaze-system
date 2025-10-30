@@ -22,6 +22,7 @@ public enum PayWalletBizTypeEnum implements ArrayValuable<Integer> {
     UPDATE_BALANCE(5, "更新余额"),
     TRANSFER(6, "转账");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(PayWalletBizTypeEnum::getType).toArray(Integer[]::new);
     /**
      * 业务分类
      */
@@ -31,15 +32,13 @@ public enum PayWalletBizTypeEnum implements ArrayValuable<Integer> {
      */
     private final String description;
 
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(PayWalletBizTypeEnum::getType).toArray(Integer[]::new);
+    public static PayWalletBizTypeEnum valueOf(Integer type) {
+        return Arrays.stream(values()).filter(item -> item.getType().equals(type)).findFirst().orElse(null);
+    }
 
     @Override
     public Integer[] array() {
-         return ARRAYS;
-    }
-
-    public static PayWalletBizTypeEnum valueOf(Integer type) {
-        return Arrays.stream(values()).filter(item -> item.getType().equals(type)).findFirst().orElse(null);
+        return ARRAYS;
     }
 
 }

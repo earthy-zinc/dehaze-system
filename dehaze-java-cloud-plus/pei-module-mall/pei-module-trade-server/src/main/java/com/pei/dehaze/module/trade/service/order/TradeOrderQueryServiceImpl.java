@@ -187,6 +187,31 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
         return tradeOrderItemMapper.selectProductSumByOrderId(convertSet(orders, TradeOrderDO::getId));
     }
 
+    @Override
+    public TradeOrderItemDO getOrderItem(Long userId, Long itemId) {
+        TradeOrderItemDO orderItem = tradeOrderItemMapper.selectById(itemId);
+        if (orderItem != null
+                && ObjectUtil.notEqual(orderItem.getUserId(), userId)) {
+            return null;
+        }
+        return orderItem;
+    }
+
+    @Override
+    public TradeOrderItemDO getOrderItem(Long id) {
+        return tradeOrderItemMapper.selectById(id);
+    }
+
+    // =================== Order Item ===================
+
+    @Override
+    public List<TradeOrderItemDO> getOrderItemListByOrderId(Collection<Long> orderIds) {
+        if (CollUtil.isEmpty(orderIds)) {
+            return Collections.emptyList();
+        }
+        return tradeOrderItemMapper.selectListByOrderId(orderIds);
+    }
+
     /**
      * 获得订单的物流轨迹
      *
@@ -221,31 +246,6 @@ public class TradeOrderQueryServiceImpl implements TradeOrderQueryService {
     public List<ExpressTrackRespDTO> getExpressTrackList(String code, String logisticsNo, String receiverMobile) {
         return expressClientFactory.getDefaultExpressClient().getExpressTrackList(new ExpressTrackQueryReqDTO()
                 .setExpressCode(code).setLogisticsNo(logisticsNo).setPhone(receiverMobile));
-    }
-
-    // =================== Order Item ===================
-
-    @Override
-    public TradeOrderItemDO getOrderItem(Long userId, Long itemId) {
-        TradeOrderItemDO orderItem = tradeOrderItemMapper.selectById(itemId);
-        if (orderItem != null
-                && ObjectUtil.notEqual(orderItem.getUserId(), userId)) {
-            return null;
-        }
-        return orderItem;
-    }
-
-    @Override
-    public TradeOrderItemDO getOrderItem(Long id) {
-        return tradeOrderItemMapper.selectById(id);
-    }
-
-    @Override
-    public List<TradeOrderItemDO> getOrderItemListByOrderId(Collection<Long> orderIds) {
-        if (CollUtil.isEmpty(orderIds)) {
-            return Collections.emptyList();
-        }
-        return tradeOrderItemMapper.selectListByOrderId(orderIds);
     }
 
     /**

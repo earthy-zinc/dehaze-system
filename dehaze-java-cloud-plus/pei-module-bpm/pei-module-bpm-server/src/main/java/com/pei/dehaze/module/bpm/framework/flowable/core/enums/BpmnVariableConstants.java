@@ -17,7 +17,7 @@ public class BpmnVariableConstants {
     public static final String PROCESS_INSTANCE_VARIABLE_STATUS = "PROCESS_STATUS";
     /**
      * 流程实例的变量 - 理由
-     *
+     * <p>
      * 例如说：审批不通过的理由（目前审核通过暂时不会记录）
      *
      * @see ProcessInstance#getProcessVariables()
@@ -45,7 +45,7 @@ public class BpmnVariableConstants {
     public static final String PROCESS_INSTANCE_VARIABLE_START_USER_ID = "PROCESS_START_USER_ID";
     /**
      * 流程实例的变量 - 用于判断流程实例变量节点是否驳回. 格式 RETURN_FLAG_{节点 id}
-     *
+     * <p>
      * 目的是：驳回到发起节点时，因为审批人与发起人相同，所以被自动通过。但是，此时还是希望不要自动通过
      *
      * @see ProcessInstance#getProcessVariables()
@@ -55,7 +55,8 @@ public class BpmnVariableConstants {
      * 流程实例的变量 - 是否跳过表达式
      *
      * @see ProcessInstance#getProcessVariables()
-     * @see <a href="https://blog.csdn.net/weixin_42065235/article/details/126039993">Flowable/Activiti之SkipExpression 完成自动审批</a>
+     * @see <a href="https://blog.csdn.net/weixin_42065235/article/details/126039993">Flowable/Activiti之SkipExpression
+     * 完成自动审批</a>
      */
     public static final String PROCESS_INSTANCE_SKIP_EXPRESSION_ENABLED = "_FLOWABLE_SKIP_EXPRESSION_ENABLED";
 
@@ -68,7 +69,7 @@ public class BpmnVariableConstants {
 
     /**
      * 流程实例的变量 - 流程开始时间
-     *
+     * <p>
      * 【非存储变量】用于部分需要 format 的场景，例如说：流程实例的自定义标题
      */
     public static final String PROCESS_START_TIME = "PROCESS_START_TIME";
@@ -85,7 +86,7 @@ public class BpmnVariableConstants {
     public static final String TASK_VARIABLE_STATUS = "TASK_STATUS";
     /**
      * 任务的变量 - 理由
-     *
+     * <p>
      * 例如说：审批通过、不通过的理由
      *
      * @see org.flowable.task.api.Task#getTaskLocalVariables()

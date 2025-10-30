@@ -51,12 +51,6 @@ public class BpmProcessExpressionServiceImpl implements BpmProcessExpressionServ
         processExpressionMapper.deleteById(id);
     }
 
-    private void validateProcessExpressionExists(Long id) {
-        if (processExpressionMapper.selectById(id) == null) {
-            throw exception(PROCESS_EXPRESSION_NOT_EXISTS);
-        }
-    }
-
     @Override
     public BpmProcessExpressionDO getProcessExpression(Long id) {
         return processExpressionMapper.selectById(id);
@@ -65,6 +59,12 @@ public class BpmProcessExpressionServiceImpl implements BpmProcessExpressionServ
     @Override
     public PageResult<BpmProcessExpressionDO> getProcessExpressionPage(BpmProcessExpressionPageReqVO pageReqVO) {
         return processExpressionMapper.selectPage(pageReqVO);
+    }
+
+    private void validateProcessExpressionExists(Long id) {
+        if (processExpressionMapper.selectById(id) == null) {
+            throw exception(PROCESS_EXPRESSION_NOT_EXISTS);
+        }
     }
 
 }

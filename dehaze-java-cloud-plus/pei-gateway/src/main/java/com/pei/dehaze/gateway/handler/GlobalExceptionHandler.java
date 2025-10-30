@@ -17,7 +17,7 @@ import static com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeCon
 
 /**
  * Gateway 的全局异常处理器，将 Exception 翻译成 CommonResult + 对应的异常编号
- *
+ * <p>
  * 在功能上，和 pei-spring-boot-starter-web 的 GlobalExceptionHandler 类是一致的
  *
  * @author earthyzinc
@@ -68,7 +68,7 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
         log.error("[defaultExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
         // TODO 芋艿：是否要插入异常日志呢？
         // 返回 ERROR CommonResult
-        return CommonResult.error(INTERNAL_SERVER_ERROR.getCode(), INTERNAL_SERVER_ERROR.getMsg());
+        return CommonResult.error(INTERNAL_SERVER_ERROR.code(), INTERNAL_SERVER_ERROR.msg());
     }
 
 }

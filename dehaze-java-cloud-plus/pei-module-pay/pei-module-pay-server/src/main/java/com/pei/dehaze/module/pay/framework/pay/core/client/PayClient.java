@@ -43,8 +43,8 @@ public interface PayClient<Config> {
     /**
      * 解析 order 回调数据
      *
-     * @param params HTTP 回调接口 content type 为 application/x-www-form-urlencoded 的所有参数
-     * @param body HTTP 回调接口的 request body
+     * @param params  HTTP 回调接口 content type 为 application/x-www-form-urlencoded 的所有参数
+     * @param body    HTTP 回调接口的 request body
      * @param headers HTTP 回调接口的 request headers
      * @return 支付订单信息
      */
@@ -63,7 +63,7 @@ public interface PayClient<Config> {
     /**
      * 调用支付渠道，进行退款
      *
-     * @param reqDTO  统一退款请求信息
+     * @param reqDTO 统一退款请求信息
      * @return 退款信息
      */
     PayRefundRespDTO unifiedRefund(PayRefundUnifiedReqDTO reqDTO);
@@ -71,8 +71,8 @@ public interface PayClient<Config> {
     /**
      * 解析 refund 回调数据
      *
-     * @param params HTTP 回调接口 content type 为 application/x-www-form-urlencoded 的所有参数
-     * @param body HTTP 回调接口的 request body
+     * @param params  HTTP 回调接口 content type 为 application/x-www-form-urlencoded 的所有参数
+     * @param body    HTTP 回调接口的 request body
      * @param headers HTTP 回调接口的 request headers
      * @return 支付订单信息
      */
@@ -81,7 +81,7 @@ public interface PayClient<Config> {
     /**
      * 获得退款订单信息
      *
-     * @param outTradeNo 外部订单号
+     * @param outTradeNo  外部订单号
      * @param outRefundNo 外部退款号
      * @return 退款订单信息
      */
@@ -108,8 +108,8 @@ public interface PayClient<Config> {
     /**
      * 解析 transfer 回调数据
      *
-     * @param params HTTP 回调接口 content type 为 application/x-www-form-urlencoded 的所有参数
-     * @param body HTTP 回调接口的 request body
+     * @param params  HTTP 回调接口 content type 为 application/x-www-form-urlencoded 的所有参数
+     * @param body    HTTP 回调接口的 request body
      * @param headers HTTP 回调接口的 request headers
      * @return 转账信息
      */

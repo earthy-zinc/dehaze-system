@@ -3,8 +3,8 @@ package com.pei.dehaze.module.member.service.address;
 import com.pei.dehaze.module.member.controller.app.address.vo.AppAddressCreateReqVO;
 import com.pei.dehaze.module.member.controller.app.address.vo.AppAddressUpdateReqVO;
 import com.pei.dehaze.module.member.dal.dataobject.address.MemberAddressDO;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**
@@ -17,8 +17,7 @@ public interface AddressService {
     /**
      * 创建用户收件地址
      *
-     *
-     * @param userId 用户编号
+     * @param userId      用户编号
      * @param createReqVO 创建信息
      * @return 编号
      */
@@ -27,7 +26,7 @@ public interface AddressService {
     /**
      * 更新用户收件地址
      *
-     * @param userId 用户编号
+     * @param userId      用户编号
      * @param updateReqVO 更新信息
      */
     void updateAddress(Long userId, @Valid AppAddressUpdateReqVO updateReqVO);
@@ -36,7 +35,7 @@ public interface AddressService {
      * 删除用户收件地址
      *
      * @param userId 用户编号
-     * @param id 编号
+     * @param id     编号
      */
     void deleteAddress(Long userId, Long id);
 

@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.ai.framework.ai.core.model.wenduoduo.api;
 
-import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpRequest;

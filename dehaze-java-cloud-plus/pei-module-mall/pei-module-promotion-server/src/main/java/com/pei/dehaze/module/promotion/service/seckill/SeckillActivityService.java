@@ -118,7 +118,7 @@ public interface SeckillActivityService {
 
     /**
      * 校验是否参与秒杀商品
-     *
+     * <p>
      * 如果校验失败，则抛出业务异常
      *
      * @param activityId 活动编号

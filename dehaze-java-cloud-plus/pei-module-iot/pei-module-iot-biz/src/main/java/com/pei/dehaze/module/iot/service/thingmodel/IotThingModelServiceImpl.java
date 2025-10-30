@@ -149,6 +149,12 @@ public class IotThingModelServiceImpl implements IotThingModelService {
         return thingModelMapper.selectList(reqVO);
     }
 
+    // TODO @super：用不到，删除下；
+    @Override
+    public Long getThingModelCount(LocalDateTime createTime) {
+        return thingModelMapper.selectCountByCreateTime(createTime);
+    }
+
     /**
      * 校验功能是否存在
      *
@@ -183,17 +189,17 @@ public class IotThingModelServiceImpl implements IotThingModelService {
         }
     }
 
-    private void validateProductStatus(Long createReqVO) {
-        IotProductDO product = productService.validateProductExists(createReqVO);
-        if (Objects.equals(product.getStatus(), IotProductStatusEnum.PUBLISHED.getStatus())) {
-            throw exception(PRODUCT_STATUS_NOT_ALLOW_THING_MODEL);
-        }
-    }
-
     private void validateNameUnique(Long productId, String name) {
         IotThingModelDO thingModel = thingModelMapper.selectByProductIdAndName(productId, name);
         if (thingModel != null) {
             throw exception(THING_MODEL_NAME_EXISTS);
+        }
+    }
+
+    private void validateProductStatus(Long createReqVO) {
+        IotProductDO product = productService.validateProductExists(createReqVO);
+        if (Objects.equals(product.getStatus(), IotProductStatusEnum.PUBLISHED.getStatus())) {
+            throw exception(PRODUCT_STATUS_NOT_ALLOW_THING_MODEL);
         }
     }
 
@@ -236,6 +242,93 @@ public class IotThingModelServiceImpl implements IotThingModelService {
         createDefaultEventsAndServices(oldThingModels, newThingModels);
     }
 
+    private void deleteThingModelListCache(String productKey) {
+        // 保证 Spring AOP 触发
+        getSelf().deleteThingModelListCache0(productKey);
+    }
+
+    /**
+     * 生成属性上报事件
+     */
+    private ThingModelEvent generatePropertyPostEvent(List<IotThingModelDO> thingModels) {
+        // 没有属性则不生成
+        if (CollUtil.isEmpty(thingModels)) {
+            return null;
+        }
+
+        // 生成属性上报事件
+        return new ThingModelEvent().setIdentifier("post").setName("属性上报").setMethod("thing.event.property.post")
+                .setType(IotThingModelServiceEventTypeEnum.INFO.getType())
+                .setOutputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.OUTPUT));
+    }
+
+    // TODO @haohao：是不是不用生成这个？目前属性上报，是个批量接口
+
+    @CacheEvict(value = RedisKeyConstants.THING_MODEL_LIST, key = "#productKey")
+    public void deleteThingModelListCache0(String productKey) {
+    }
+
+    // TODO @haohao：是不是不用生成这个？目前属性上报，是个批量接口
+
+    /**
+     * 生成属性设置服务
+     */
+    private ThingModelService generatePropertySetService(List<IotThingModelDO> thingModels) {
+        // 1.1 过滤出所有可写属性
+        thingModels = filterList(thingModels, thingModel ->
+                IotThingModelAccessModeEnum.READ_WRITE.getMode().equals(thingModel.getProperty().getAccessMode()));
+        // 1.2 没有可写属性则不生成
+        if (CollUtil.isEmpty(thingModels)) {
+            return null;
+        }
+
+        // 2. 生成属性设置服务
+        return new ThingModelService().setIdentifier("set").setName("属性设置").setMethod("thing.service.property.set")
+                .setCallType(IotThingModelServiceCallTypeEnum.ASYNC.getType())
+                .setInputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.INPUT))
+                .setOutputParams(Collections.emptyList()); // 属性设置服务一般不需要输出参数
+    }
+
+    private IotThingModelServiceImpl getSelf() {
+        return SpringUtil.getBean(getClass());
+    }
+
+    /**
+     * 生成属性获取服务
+     */
+    private ThingModelService generatePropertyGetService(List<IotThingModelDO> thingModels) {
+        // 1.1 没有属性则不生成
+        if (CollUtil.isEmpty(thingModels)) {
+            return null;
+        }
+
+        // 1.2 生成属性获取服务
+        return new ThingModelService().setIdentifier("get").setName("属性获取").setMethod("thing.service.property.get")
+                .setCallType(IotThingModelServiceCallTypeEnum.ASYNC.getType())
+                .setInputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.INPUT))
+                .setOutputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.OUTPUT));
+    }
+
+    /**
+     * 构建事件功能对象
+     */
+    private IotThingModelDO buildEventThingModel(Long productId, String productKey,
+                                                 ThingModelEvent event, String description) {
+        return new IotThingModelDO().setProductId(productId).setProductKey(productKey)
+                .setIdentifier(event.getIdentifier()).setName(event.getName()).setDescription(description)
+                .setType(IotThingModelTypeEnum.EVENT.getType()).setEvent(event);
+    }
+
+    /**
+     * 构建服务功能对象
+     */
+    private IotThingModelDO buildServiceThingModel(Long productId, String productKey,
+                                                   ThingModelService service, String description) {
+        return new IotThingModelDO().setProductId(productId).setProductKey(productKey)
+                .setIdentifier(service.getIdentifier()).setName(service.getName()).setDescription(description)
+                .setType(IotThingModelTypeEnum.SERVICE.getType()).setService(service);
+    }
+
     /**
      * 创建默认的事件和服务
      */
@@ -265,80 +358,6 @@ public class IotThingModelServiceImpl implements IotThingModelService {
     }
 
     /**
-     * 构建事件功能对象
-     */
-    private IotThingModelDO buildEventThingModel(Long productId, String productKey,
-                                                 ThingModelEvent event, String description) {
-        return new IotThingModelDO().setProductId(productId).setProductKey(productKey)
-                .setIdentifier(event.getIdentifier()).setName(event.getName()).setDescription(description)
-                .setType(IotThingModelTypeEnum.EVENT.getType()).setEvent(event);
-    }
-
-    /**
-     * 构建服务功能对象
-     */
-    private IotThingModelDO buildServiceThingModel(Long productId, String productKey,
-                                                   ThingModelService service, String description) {
-        return new IotThingModelDO().setProductId(productId).setProductKey(productKey)
-                .setIdentifier(service.getIdentifier()).setName(service.getName()).setDescription(description)
-                .setType(IotThingModelTypeEnum.SERVICE.getType()).setService(service);
-    }
-
-    // TODO @haohao：是不是不用生成这个？目前属性上报，是个批量接口
-
-    /**
-     * 生成属性上报事件
-     */
-    private ThingModelEvent generatePropertyPostEvent(List<IotThingModelDO> thingModels) {
-        // 没有属性则不生成
-        if (CollUtil.isEmpty(thingModels)) {
-            return null;
-        }
-
-        // 生成属性上报事件
-        return new ThingModelEvent().setIdentifier("post").setName("属性上报").setMethod("thing.event.property.post")
-                .setType(IotThingModelServiceEventTypeEnum.INFO.getType())
-                .setOutputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.OUTPUT));
-    }
-
-    // TODO @haohao：是不是不用生成这个？目前属性上报，是个批量接口
-
-    /**
-     * 生成属性设置服务
-     */
-    private ThingModelService generatePropertySetService(List<IotThingModelDO> thingModels) {
-        // 1.1 过滤出所有可写属性
-        thingModels = filterList(thingModels, thingModel ->
-                IotThingModelAccessModeEnum.READ_WRITE.getMode().equals(thingModel.getProperty().getAccessMode()));
-        // 1.2 没有可写属性则不生成
-        if (CollUtil.isEmpty(thingModels)) {
-            return null;
-        }
-
-        // 2. 生成属性设置服务
-        return new ThingModelService().setIdentifier("set").setName("属性设置").setMethod("thing.service.property.set")
-                .setCallType(IotThingModelServiceCallTypeEnum.ASYNC.getType())
-                .setInputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.INPUT))
-                .setOutputParams(Collections.emptyList()); // 属性设置服务一般不需要输出参数
-    }
-
-    /**
-     * 生成属性获取服务
-     */
-    private ThingModelService generatePropertyGetService(List<IotThingModelDO> thingModels) {
-        // 1.1 没有属性则不生成
-        if (CollUtil.isEmpty(thingModels)) {
-            return null;
-        }
-
-        // 1.2 生成属性获取服务
-        return new ThingModelService().setIdentifier("get").setName("属性获取").setMethod("thing.service.property.get")
-                .setCallType(IotThingModelServiceCallTypeEnum.ASYNC.getType())
-                .setInputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.INPUT))
-                .setOutputParams(buildInputOutputParam(thingModels, IotThingModelParamDirectionEnum.OUTPUT));
-    }
-
-    /**
      * 构建输入/输出参数列表
      *
      * @param thingModels 属性列表
@@ -349,25 +368,6 @@ public class IotThingModelServiceImpl implements IotThingModelService {
         return convertList(thingModels, thingModel ->
                 BeanUtils.toBean(thingModel.getProperty(), ThingModelParam.class).setParaOrder(0) // TODO @puhui999: 先搞个默认值看看怎么个事
                         .setDirection(direction.getDirection()));
-    }
-
-    private void deleteThingModelListCache(String productKey) {
-        // 保证 Spring AOP 触发
-        getSelf().deleteThingModelListCache0(productKey);
-    }
-
-    @CacheEvict(value = RedisKeyConstants.THING_MODEL_LIST, key = "#productKey")
-    public void deleteThingModelListCache0(String productKey) {
-    }
-
-    private IotThingModelServiceImpl getSelf() {
-        return SpringUtil.getBean(getClass());
-    }
-
-    // TODO @super：用不到，删除下；
-    @Override
-    public Long getThingModelCount(LocalDateTime createTime) {
-        return thingModelMapper.selectCountByCreateTime(createTime);
     }
 
 }

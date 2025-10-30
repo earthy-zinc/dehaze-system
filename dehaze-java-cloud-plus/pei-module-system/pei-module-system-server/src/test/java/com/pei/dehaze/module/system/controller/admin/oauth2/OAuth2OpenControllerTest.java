@@ -21,12 +21,12 @@ import com.pei.dehaze.module.system.service.oauth2.OAuth2ApproveService;
 import com.pei.dehaze.module.system.service.oauth2.OAuth2ClientService;
 import com.pei.dehaze.module.system.service.oauth2.OAuth2GrantService;
 import com.pei.dehaze.module.system.service.oauth2.OAuth2TokenService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.assertj.core.util.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -92,6 +92,13 @@ public class OAuth2OpenControllerTest extends BaseMockitoUnitTest {
         assertEquals(0, result.getCode());
         assertPojoEquals(accessTokenDO, result.getData());
         assertTrue(ObjectUtils.equalsAny(result.getData().getExpiresIn(), 29L, 30L));  // 执行过程会过去几毫秒
+    }
+
+    private HttpServletRequest mockRequest(String clientId, String secret) {
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getParameter(eq("client_id"))).thenReturn(clientId);
+        when(request.getParameter(eq("client_secret"))).thenReturn(secret);
+        return request;
     }
 
     @Test
@@ -325,13 +332,6 @@ public class OAuth2OpenControllerTest extends BaseMockitoUnitTest {
         // 断言
         assertEquals(0, result.getCode());
         assertEquals("https://www.iocoder.cn?code=test_code&state=test", result.getData());
-    }
-
-    private HttpServletRequest mockRequest(String clientId, String secret) {
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getParameter(eq("client_id"))).thenReturn(clientId);
-        when(request.getParameter(eq("client_secret"))).thenReturn(secret);
-        return request;
     }
 
 }

@@ -17,20 +17,11 @@ public class WebSocketFrameworkUtils {
     /**
      * 设置当前用户
      *
-     * @param loginUser 登录用户
+     * @param loginUser  登录用户
      * @param attributes Session
      */
     public static void setLoginUser(LoginUser loginUser, Map<String, Object> attributes) {
         attributes.put(ATTRIBUTE_LOGIN_USER, loginUser);
-    }
-
-    /**
-     * 获取当前用户
-     *
-     * @return 当前用户
-     */
-    public static LoginUser getLoginUser(WebSocketSession session) {
-        return (LoginUser) session.getAttributes().get(ATTRIBUTE_LOGIN_USER);
     }
 
     /**
@@ -41,6 +32,15 @@ public class WebSocketFrameworkUtils {
     public static Long getLoginUserId(WebSocketSession session) {
         LoginUser loginUser = getLoginUser(session);
         return loginUser != null ? loginUser.getId() : null;
+    }
+
+    /**
+     * 获取当前用户
+     *
+     * @return 当前用户
+     */
+    public static LoginUser getLoginUser(WebSocketSession session) {
+        return (LoginUser) session.getAttributes().get(ATTRIBUTE_LOGIN_USER);
     }
 
     /**

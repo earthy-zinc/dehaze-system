@@ -3,9 +3,9 @@ package com.pei.dehaze.gateway.filter.grey;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.cloud.nacos.balancer.NacosBalancer;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.gateway.util.EnvUtils;
-import com.alibaba.cloud.nacos.balancer.NacosBalancer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -21,13 +21,12 @@ import java.util.List;
 
 /**
  * 灰度 {@link GrayLoadBalancer} 实现类
- *
- * 根据请求的 header[version] 匹配，筛选满足 metadata[version] 相等的服务实例列表，然后随机 + 权重进行选择一个
- * 1. 假如请求的 header[version] 为空，则不进行筛选，所有服务实例都进行选择
- * 2. 如果 metadata[version] 都不相等，则不进行筛选，所有服务实例都进行选择
- *
- * 注意，考虑到实现的简易，它的权重是使用 Nacos 的 nacos.weight，所以随机 + 权重也是基于 {@link NacosBalancer} 筛选。
- * 也就是说，如果你不使用 Nacos 作为注册中心，需要微调一下筛选的实现逻辑
+ * <p>
+ * 根据请求的 header[version] 匹配，筛选满足 metadata[version] 相等的服务实例列表，然后随机 + 权重进行选择一个 1. 假如请求的 header[version]
+ * 为空，则不进行筛选，所有服务实例都进行选择 2. 如果 metadata[version] 都不相等，则不进行筛选，所有服务实例都进行选择
+ * <p>
+ * 注意，考虑到实现的简易，它的权重是使用 Nacos 的 nacos.weight，所以随机 + 权重也是基于 {@link NacosBalancer} 筛选。 也就是说，如果你不使用 Nacos
+ * 作为注册中心，需要微调一下筛选的实现逻辑
  *
  * @author earthyzinc
  */
@@ -43,7 +42,7 @@ public class GrayLoadBalancer implements ReactorServiceInstanceLoadBalancer {
     private final ObjectProvider<ServiceInstanceListSupplier> serviceInstanceListSupplierProvider;
     /**
      * 需要获取的服务实例名
-     *
+     * <p>
      * 暂时用于打印 logger 日志
      */
     private final String serviceId;
@@ -86,11 +85,11 @@ public class GrayLoadBalancer implements ReactorServiceInstanceLoadBalancer {
 
     /**
      * 基于 tag 请求头，过滤匹配 tag 的服务实例列表
-     *
+     * <p>
      * copy from EnvLoadBalancerClient
      *
      * @param instances 服务实例列表
-     * @param headers 请求头
+     * @param headers   请求头
      * @return 服务实例列表
      */
     private List<ServiceInstance> filterTagServiceInstances(List<ServiceInstance> instances, HttpHeaders headers) {

@@ -2,18 +2,21 @@ package com.pei.dehaze.module.system.service.oauth2;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.util.date.DateUtils;
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2ApproveDO;
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2ClientDO;
 import com.pei.dehaze.module.system.dal.mysql.oauth2.OAuth2ApproveMapper;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.convertSet;
 

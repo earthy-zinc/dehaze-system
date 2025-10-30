@@ -63,10 +63,11 @@ import static com.pei.dehaze.module.promotion.enums.MessageTemplateConstants.COM
 public class CombinationRecordServiceImpl implements CombinationRecordService {
 
     @Resource
+    public SocialClientApi socialClientApi;
+    @Resource
     private CombinationActivityService combinationActivityService;
     @Resource
     private CombinationRecordMapper combinationRecordMapper;
-
     @Resource
     private MemberUserApi memberUserApi;
     @Resource
@@ -76,8 +77,6 @@ public class CombinationRecordServiceImpl implements CombinationRecordService {
     @Resource
     @Lazy // 延迟加载，避免循环依赖
     private TradeOrderApi tradeOrderApi;
-    @Resource
-    public SocialClientApi socialClientApi;
 
     // TODO @芋艿：在详细预览下；
     @Override

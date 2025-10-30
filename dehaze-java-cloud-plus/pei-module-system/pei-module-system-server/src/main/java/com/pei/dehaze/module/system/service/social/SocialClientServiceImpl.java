@@ -16,6 +16,11 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.DesensitizedUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ReflectUtil;
+import com.binarywang.spring.starter.wxjava.miniapp.properties.WxMaProperties;
+import com.binarywang.spring.starter.wxjava.mp.properties.WxMpProperties;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
@@ -33,11 +38,6 @@ import com.pei.dehaze.module.system.dal.mysql.social.SocialClientMapper;
 import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
 import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
 import com.pei.dehaze.module.system.framework.justauth.core.AuthRequestFactory;
-import com.binarywang.spring.starter.wxjava.miniapp.properties.WxMaProperties;
-import com.binarywang.spring.starter.wxjava.mp.properties.WxMpProperties;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import jakarta.annotation.Resource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -82,39 +82,11 @@ import static java.util.Collections.singletonList;
 public class SocialClientServiceImpl implements SocialClientService {
 
     /**
-     * 小程序码要打开的小程序版本
-     *
-     * 1. release：正式版
-     * 2. trial：体验版
-     * 3. developer：开发版
-     */
-    @Value("${pei.wxa-code.env-version:release}")
-    public String envVersion;
-    /**
-     * 订阅消息跳转小程序类型
-     *
-     * 1. developer：开发版
-     * 2. trial：体验版
-     * 3. formal：正式版
-     */
-    @Value("${pei.wxa-subscribe-message.miniprogram-state:formal}")
-    public String miniprogramState;
-
-    @Resource
-    private AuthRequestFactory authRequestFactory;
-
-    @Resource
-    private WxMpService wxMpService;
-    @Resource
-    private WxMpProperties wxMpProperties;
-    @Resource
-    private StringRedisTemplate stringRedisTemplate; // WxMpService 需要使用到，所以在 Service 注入了它
-    /**
      * 缓存 WxMpService 对象
-     *
-     * key：使用微信公众号的 appId + secret 拼接，即 {@link SocialClientDO} 的 clientId 和 clientSecret 属性。
-     * 为什么 key 使用这种格式？因为 {@link SocialClientDO} 在管理后台可以变更，通过这个 key 存储它的单例。
-     *
+     * <p>
+     * key：使用微信公众号的 appId + secret 拼接，即 {@link SocialClientDO} 的 clientId 和 clientSecret 属性。 为什么 key 使用这种格式？因为
+     * {@link SocialClientDO} 在管理后台可以变更，通过这个 key 存储它的单例。
+     * <p>
      * 为什么要做 WxMpService 缓存？因为 WxMpService 构建成本比较大，所以尽量保证它是单例。
      */
     private final LoadingCache<String, WxMpService> wxMpServiceCache = CacheUtils.buildAsyncReloadingCache(
@@ -128,14 +100,9 @@ public class SocialClientServiceImpl implements SocialClientService {
                 }
 
             });
-
-    @Resource
-    private WxMaService wxMaService;
-    @Resource
-    private WxMaProperties wxMaProperties;
     /**
      * 缓存 WxMaService 对象
-     *
+     * <p>
      * 说明同 {@link #wxMpServiceCache} 变量
      */
     private final LoadingCache<String, WxMaService> wxMaServiceCache = CacheUtils.buildAsyncReloadingCache(
@@ -149,6 +116,35 @@ public class SocialClientServiceImpl implements SocialClientService {
                 }
 
             });
+
+    @Resource
+    private AuthRequestFactory authRequestFactory;
+
+    @Resource
+    private WxMpService wxMpService;
+    @Resource
+    private WxMpProperties wxMpProperties;
+    @Resource
+    private StringRedisTemplate stringRedisTemplate; // WxMpService 需要使用到，所以在 Service 注入了它
+    /**
+     * 小程序码要打开的小程序版本
+     * <p>
+     * 1. release：正式版 2. trial：体验版 3. developer：开发版
+     */
+    @Value("${pei.wxa-code.env-version:release}")
+    public String envVersion;
+
+    @Resource
+    private WxMaService wxMaService;
+    @Resource
+    private WxMaProperties wxMaProperties;
+    /**
+     * 订阅消息跳转小程序类型
+     * <p>
+     * 1. developer：开发版 2. trial：体验版 3. formal：正式版
+     */
+    @Value("${pei.wxa-subscribe-message.miniprogram-state:formal}")
+    public String miniprogramState;
 
     @Resource
     private SocialClientMapper socialClientMapper;
@@ -177,45 +173,14 @@ public class SocialClientServiceImpl implements SocialClientService {
         return (AuthUser) authResponse.getData();
     }
 
-    /**
-     * 构建 AuthRequest 对象，支持多租户配置
-     *
-     * @param socialType 社交类型
-     * @param userType   用户类型
-     * @return AuthRequest 对象
-     */
-    @VisibleForTesting
-    AuthRequest buildAuthRequest(Integer socialType, Integer userType) {
-        // 1. 先查找默认的配置项，从 application-*.yaml 中读取
-        AuthRequest request = authRequestFactory.get(SocialTypeEnum.valueOfType(socialType).getSource());
-        Assert.notNull(request, String.format("社交平台(%d) 不存在", socialType));
-        // 2. 查询 DB 的配置项，如果存在则进行覆盖
-        SocialClientDO client = socialClientMapper.selectBySocialTypeAndUserType(socialType, userType);
-        if (client != null && Objects.equals(client.getStatus(), CommonStatusEnum.ENABLE.getStatus())) {
-            // 2.1 构造新的 AuthConfig 对象
-            AuthConfig authConfig = (AuthConfig) ReflectUtil.getFieldValue(request, "config");
-            AuthConfig newAuthConfig = ReflectUtil.newInstance(authConfig.getClass());
-            BeanUtil.copyProperties(authConfig, newAuthConfig);
-            // 2.2 修改对应的 clientId + clientSecret 密钥
-            newAuthConfig.setClientId(client.getClientId());
-            newAuthConfig.setClientSecret(client.getClientSecret());
-            if (client.getAgentId() != null) { // 如果有 agentId 则修改 agentId
-                newAuthConfig.setAgentId(client.getAgentId());
-            }
-            // 2.3 设置会 request 里，进行后续使用
-            ReflectUtil.setFieldValue(request, "config", newAuthConfig);
-        }
-        return request;
-    }
-
-    // =================== 微信公众号独有 ===================
-
     @Override
     @SneakyThrows
     public WxJsapiSignature createWxMpJsapiSignature(Integer userType, String url) {
         WxMpService service = getWxMpService(userType);
         return service.createJsapiSignature(url);
     }
+
+    // =================== 微信公众号独有 ===================
 
     /**
      * 获得 clientId + clientSecret 对应的 WxMpService 对象
@@ -234,29 +199,6 @@ public class SocialClientServiceImpl implements SocialClientService {
         // 第二步，不存在 DB 配置项，则使用 application-*.yaml 对应的 WxMpService 对象
         return wxMpService;
     }
-
-    /**
-     * 创建 clientId + clientSecret 对应的 WxMpService 对象
-     *
-     * @param clientId     微信公众号 appId
-     * @param clientSecret 微信公众号 secret
-     * @return WxMpService 对象
-     */
-    public WxMpService buildWxMpService(String clientId, String clientSecret) {
-        // 第一步，创建 WxMpRedisConfigImpl 对象
-        WxMpRedisConfigImpl configStorage = new WxMpRedisConfigImpl(
-                new RedisTemplateWxRedisOps(stringRedisTemplate),
-                wxMpProperties.getConfigStorage().getKeyPrefix());
-        configStorage.setAppId(clientId);
-        configStorage.setSecret(clientSecret);
-
-        // 第二步，创建 WxMpService 对象
-        WxMpService service = new WxMpServiceImpl();
-        service.setWxMpConfigStorage(configStorage);
-        return service;
-    }
-
-    // =================== 微信小程序独有 ===================
 
     @Override
     public WxMaPhoneNumberInfo getWxMaPhoneNumberInfo(Integer userType, String phoneCode) {
@@ -287,6 +229,8 @@ public class SocialClientServiceImpl implements SocialClientService {
             throw exception(SOCIAL_CLIENT_WEIXIN_MINI_APP_QRCODE_ERROR);
         }
     }
+
+    // =================== 微信小程序独有 ===================
 
     @Override
     @Cacheable(cacheNames = RedisKeyConstants.WXA_SUBSCRIBE_TEMPLATE, key = "#userType",
@@ -394,47 +338,6 @@ public class SocialClientServiceImpl implements SocialClientService {
         }
     }
 
-    /**
-     * 获得 clientId + clientSecret 对应的 WxMpService 对象
-     *
-     * @param userType 用户类型
-     * @return WxMpService 对象
-     */
-    @VisibleForTesting
-    WxMaService getWxMaService(Integer userType) {
-        // 第一步，查询 DB 的配置项，获得对应的 WxMaService 对象
-        SocialClientDO client = socialClientMapper.selectBySocialTypeAndUserType(
-                SocialTypeEnum.WECHAT_MINI_PROGRAM.getType(), userType);
-        if (client != null && Objects.equals(client.getStatus(), CommonStatusEnum.ENABLE.getStatus())) {
-            return wxMaServiceCache.getUnchecked(client.getClientId() + ":" + client.getClientSecret());
-        }
-        // 第二步，不存在 DB 配置项，则使用 application-*.yaml 对应的 WxMaService 对象
-        return wxMaService;
-    }
-
-    /**
-     * 创建 clientId + clientSecret 对应的 WxMaService 对象
-     *
-     * @param clientId     微信小程序 appId
-     * @param clientSecret 微信小程序 secret
-     * @return WxMaService 对象
-     */
-    private WxMaService buildWxMaService(String clientId, String clientSecret) {
-        // 第一步，创建 WxMaRedisBetterConfigImpl 对象
-        WxMaRedisBetterConfigImpl configStorage = new WxMaRedisBetterConfigImpl(
-                new RedisTemplateWxRedisOps(stringRedisTemplate),
-                wxMaProperties.getConfigStorage().getKeyPrefix());
-        configStorage.setAppid(clientId);
-        configStorage.setSecret(clientSecret);
-
-        // 第二步，创建 WxMpService 对象
-        WxMaService service = new WxMaServiceImpl();
-        service.setWxMaConfig(configStorage);
-        return service;
-    }
-
-    // =================== 客户端管理 ===================
-
     @Override
     public Long createSocialClient(SocialClientSaveReqVO createReqVO) {
         // 校验重复
@@ -466,6 +369,18 @@ public class SocialClientServiceImpl implements SocialClientService {
         socialClientMapper.deleteById(id);
     }
 
+    @Override
+    public SocialClientDO getSocialClient(Long id) {
+        return socialClientMapper.selectById(id);
+    }
+
+    // =================== 客户端管理 ===================
+
+    @Override
+    public PageResult<SocialClientDO> getSocialClientPage(SocialClientPageReqVO pageReqVO) {
+        return socialClientMapper.selectPage(pageReqVO);
+    }
+
     private void validateSocialClientExists(Long id) {
         if (socialClientMapper.selectById(id) == null) {
             throw exception(SOCIAL_CLIENT_NOT_EXISTS);
@@ -474,7 +389,7 @@ public class SocialClientServiceImpl implements SocialClientService {
 
     /**
      * 校验社交应用是否重复，需要保证 userType + socialType 唯一
-     *
+     * <p>
      * 原因是，不同端（userType）选择某个社交登录（socialType）时，需要通过 {@link #buildAuthRequest(Integer, Integer)} 构建对应的请求
      *
      * @param id         编号
@@ -493,14 +408,95 @@ public class SocialClientServiceImpl implements SocialClientService {
         }
     }
 
-    @Override
-    public SocialClientDO getSocialClient(Long id) {
-        return socialClientMapper.selectById(id);
+    /**
+     * 获得 clientId + clientSecret 对应的 WxMpService 对象
+     *
+     * @param userType 用户类型
+     * @return WxMpService 对象
+     */
+    @VisibleForTesting
+    WxMaService getWxMaService(Integer userType) {
+        // 第一步，查询 DB 的配置项，获得对应的 WxMaService 对象
+        SocialClientDO client = socialClientMapper.selectBySocialTypeAndUserType(
+                SocialTypeEnum.WECHAT_MINI_PROGRAM.getType(), userType);
+        if (client != null && Objects.equals(client.getStatus(), CommonStatusEnum.ENABLE.getStatus())) {
+            return wxMaServiceCache.getUnchecked(client.getClientId() + ":" + client.getClientSecret());
+        }
+        // 第二步，不存在 DB 配置项，则使用 application-*.yaml 对应的 WxMaService 对象
+        return wxMaService;
     }
 
-    @Override
-    public PageResult<SocialClientDO> getSocialClientPage(SocialClientPageReqVO pageReqVO) {
-        return socialClientMapper.selectPage(pageReqVO);
+    /**
+     * 构建 AuthRequest 对象，支持多租户配置
+     *
+     * @param socialType 社交类型
+     * @param userType   用户类型
+     * @return AuthRequest 对象
+     */
+    @VisibleForTesting
+    AuthRequest buildAuthRequest(Integer socialType, Integer userType) {
+        // 1. 先查找默认的配置项，从 application-*.yaml 中读取
+        AuthRequest request = authRequestFactory.get(SocialTypeEnum.valueOfType(socialType).getSource());
+        Assert.notNull(request, String.format("社交平台(%d) 不存在", socialType));
+        // 2. 查询 DB 的配置项，如果存在则进行覆盖
+        SocialClientDO client = socialClientMapper.selectBySocialTypeAndUserType(socialType, userType);
+        if (client != null && Objects.equals(client.getStatus(), CommonStatusEnum.ENABLE.getStatus())) {
+            // 2.1 构造新的 AuthConfig 对象
+            AuthConfig authConfig = (AuthConfig) ReflectUtil.getFieldValue(request, "config");
+            AuthConfig newAuthConfig = ReflectUtil.newInstance(authConfig.getClass());
+            BeanUtil.copyProperties(authConfig, newAuthConfig);
+            // 2.2 修改对应的 clientId + clientSecret 密钥
+            newAuthConfig.setClientId(client.getClientId());
+            newAuthConfig.setClientSecret(client.getClientSecret());
+            if (client.getAgentId() != null) { // 如果有 agentId 则修改 agentId
+                newAuthConfig.setAgentId(client.getAgentId());
+            }
+            // 2.3 设置会 request 里，进行后续使用
+            ReflectUtil.setFieldValue(request, "config", newAuthConfig);
+        }
+        return request;
+    }
+
+    /**
+     * 创建 clientId + clientSecret 对应的 WxMpService 对象
+     *
+     * @param clientId     微信公众号 appId
+     * @param clientSecret 微信公众号 secret
+     * @return WxMpService 对象
+     */
+    public WxMpService buildWxMpService(String clientId, String clientSecret) {
+        // 第一步，创建 WxMpRedisConfigImpl 对象
+        WxMpRedisConfigImpl configStorage = new WxMpRedisConfigImpl(
+                new RedisTemplateWxRedisOps(stringRedisTemplate),
+                wxMpProperties.getConfigStorage().getKeyPrefix());
+        configStorage.setAppId(clientId);
+        configStorage.setSecret(clientSecret);
+
+        // 第二步，创建 WxMpService 对象
+        WxMpService service = new WxMpServiceImpl();
+        service.setWxMpConfigStorage(configStorage);
+        return service;
+    }
+
+    /**
+     * 创建 clientId + clientSecret 对应的 WxMaService 对象
+     *
+     * @param clientId     微信小程序 appId
+     * @param clientSecret 微信小程序 secret
+     * @return WxMaService 对象
+     */
+    private WxMaService buildWxMaService(String clientId, String clientSecret) {
+        // 第一步，创建 WxMaRedisBetterConfigImpl 对象
+        WxMaRedisBetterConfigImpl configStorage = new WxMaRedisBetterConfigImpl(
+                new RedisTemplateWxRedisOps(stringRedisTemplate),
+                wxMaProperties.getConfigStorage().getKeyPrefix());
+        configStorage.setAppid(clientId);
+        configStorage.setSecret(clientSecret);
+
+        // 第二步，创建 WxMpService 对象
+        WxMaService service = new WxMaServiceImpl();
+        service.setWxMaConfig(configStorage);
+        return service;
     }
 
 }

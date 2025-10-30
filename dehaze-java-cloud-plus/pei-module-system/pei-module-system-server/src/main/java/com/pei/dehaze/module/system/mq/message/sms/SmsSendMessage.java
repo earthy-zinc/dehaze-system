@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.system.mq.message.sms;
 
 import com.pei.dehaze.framework.common.core.KeyValue;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 /**

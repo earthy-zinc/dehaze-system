@@ -4,14 +4,15 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.pei.dehaze.module.iot.dal.tdengine.IotDevicePropertyMapper">
 
-    <select id="getProductPropertySTableFieldList" resultType="com.pei.dehaze.module.iot.framework.tdengine.core.TDengineTableField">
+    <select id="getProductPropertySTableFieldList"
+            resultType="com.pei.dehaze.module.iot.framework.tdengine.core.TDengineTableField">
         DESCRIBE product_property_${productKey}
     </select>
 
     <update id="createProductPropertySTable">
         CREATE STABLE product_property_${productKey} (
-            ts TIMESTAMP,
-            report_time TIMESTAMP,
+        ts TIMESTAMP,
+        report_time TIMESTAMP,
         <foreach item="field" collection="fields" separator=",">
             ${field.field} ${field.type}
             <if test="field.length != null and field.length > 0">
@@ -20,7 +21,7 @@
         </foreach>
         )
         TAGS (
-            device_key NCHAR(50)
+        device_key NCHAR(50)
         )
     </update>
 
@@ -41,8 +42,12 @@
     </update>
 
     <update id="alterProductPropertySTableDropField">
-        ALTER STABLE product_property_${productKey}
-        DROP COLUMN ${field.field}
+        ALTER
+        STABLE product_property_
+        ${productKey}
+        DROP
+        COLUMN
+        ${field.field}
     </update>
 
     <insert id="insert">
@@ -66,12 +71,13 @@
         DESCRIBE product_property_${productKey}
     </select>
 
-    <select id="selectPageByHistory" resultType="com.pei.dehaze.module.iot.controller.admin.device.vo.data.IotDevicePropertyRespVO">
+    <select id="selectPageByHistory"
+            resultType="com.pei.dehaze.module.iot.controller.admin.device.vo.data.IotDevicePropertyRespVO">
         SELECT ${@cn.hutool.core.util.StrUtil@toUnderlineCase(reqVO.identifier)} AS `value`, ts AS update_time
         FROM device_property_${reqVO.deviceKey}
         WHERE ${@cn.hutool.core.util.StrUtil@toUnderlineCase(reqVO.identifier)} IS NOT NULL
           AND ts BETWEEN ${@cn.hutool.core.date.LocalDateTimeUtil@toEpochMilli(reqVO.times[0])}
-              AND ${@cn.hutool.core.date.LocalDateTimeUtil@toEpochMilli(reqVO.times[1])}
+            AND ${@cn.hutool.core.date.LocalDateTimeUtil@toEpochMilli(reqVO.times[1])}
         ORDER BY ts DESC
     </select>
 

@@ -17,10 +17,6 @@ public interface ApiAccessLogCommonApi {
 
     String PREFIX = RpcConstants.INFRA_PREFIX + "/api-access-log";
 
-    @PostMapping(PREFIX + "/create")
-    @Operation(summary = "创建 API 访问日志")
-    CommonResult<Boolean> createApiAccessLog(@Valid @RequestBody ApiAccessLogCreateReqDTO createDTO);
-
     /**
      * 【异步】创建 API 访问日志
      *
@@ -30,5 +26,9 @@ public interface ApiAccessLogCommonApi {
     default void createApiAccessLogAsync(ApiAccessLogCreateReqDTO createDTO) {
         createApiAccessLog(createDTO).checkError();
     }
+
+    @PostMapping(PREFIX + "/create")
+    @Operation(summary = "创建 API 访问日志")
+    CommonResult<Boolean> createApiAccessLog(@Valid @RequestBody ApiAccessLogCreateReqDTO createDTO);
 
 }

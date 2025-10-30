@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 // TODO @芋艿：等官方发布 1.4.1！！！
+
 /**
  * <p>
  * AuthRequest工厂类
@@ -111,47 +112,6 @@ public class AuthRequestFactory {
 
         return authRequest;
     }
-
-    /**
-     * 获取自定义的 request
-     *
-     * @param clazz  枚举类 {@link AuthSource}
-     * @param source {@link AuthSource}
-     * @return {@link AuthRequest}
-     */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    private AuthRequest getExtendRequest(Class clazz, String source) {
-        String upperSource = source.toUpperCase();
-        try {
-            EnumUtil.fromString(clazz, upperSource);
-        } catch (IllegalArgumentException e) {
-            // 无自定义匹配
-            return null;
-        }
-
-        Map<String, ExtendProperties.ExtendRequestConfig> extendConfig = properties.getExtend().getConfig();
-
-        // key 转大写
-        Map<String, ExtendProperties.ExtendRequestConfig> upperConfig = new HashMap<>(6);
-        extendConfig.forEach((k, v) -> upperConfig.put(k.toUpperCase(), v));
-
-        ExtendProperties.ExtendRequestConfig extendRequestConfig = upperConfig.get(upperSource);
-        if (extendRequestConfig != null) {
-
-            // 配置 http config
-            configureHttpConfig(upperSource, extendRequestConfig, properties.getHttpConfig());
-
-            Class<? extends AuthRequest> requestClass = extendRequestConfig.getRequestClass();
-
-            if (requestClass != null) {
-                // 反射获取 Request 对象，所以必须实现 2 个参数的构造方法
-                return ReflectUtil.newInstance(requestClass, extendRequestConfig, authStateCache);
-            }
-        }
-
-        return null;
-    }
-
 
     /**
      * 获取默认的 Request
@@ -273,13 +233,13 @@ public class AuthRequestFactory {
             case OKTA:
                 return new AuthOktaRequest(config, authStateCache);
             case PROGINN:
-                return new AuthProginnRequest(config,authStateCache);
+                return new AuthProginnRequest(config, authStateCache);
             case AFDIAN:
-                return new AuthAfDianRequest(config,authStateCache);
+                return new AuthAfDianRequest(config, authStateCache);
             case APPLE:
-                return new AuthAppleRequest(config,authStateCache);
+                return new AuthAppleRequest(config, authStateCache);
             case FIGMA:
-                return new AuthFigmaRequest(config,authStateCache);
+                return new AuthFigmaRequest(config, authStateCache);
             case WECHAT_MINI_PROGRAM:
                 config.setIgnoreCheckRedirectUri(true);
                 config.setIgnoreCheckState(true);
@@ -291,6 +251,46 @@ public class AuthRequestFactory {
             default:
                 return null;
         }
+    }
+
+    /**
+     * 获取自定义的 request
+     *
+     * @param clazz  枚举类 {@link AuthSource}
+     * @param source {@link AuthSource}
+     * @return {@link AuthRequest}
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private AuthRequest getExtendRequest(Class clazz, String source) {
+        String upperSource = source.toUpperCase();
+        try {
+            EnumUtil.fromString(clazz, upperSource);
+        } catch (IllegalArgumentException e) {
+            // 无自定义匹配
+            return null;
+        }
+
+        Map<String, ExtendProperties.ExtendRequestConfig> extendConfig = properties.getExtend().getConfig();
+
+        // key 转大写
+        Map<String, ExtendProperties.ExtendRequestConfig> upperConfig = new HashMap<>(6);
+        extendConfig.forEach((k, v) -> upperConfig.put(k.toUpperCase(), v));
+
+        ExtendProperties.ExtendRequestConfig extendRequestConfig = upperConfig.get(upperSource);
+        if (extendRequestConfig != null) {
+
+            // 配置 http config
+            configureHttpConfig(upperSource, extendRequestConfig, properties.getHttpConfig());
+
+            Class<? extends AuthRequest> requestClass = extendRequestConfig.getRequestClass();
+
+            if (requestClass != null) {
+                // 反射获取 Request 对象，所以必须实现 2 个参数的构造方法
+                return ReflectUtil.newInstance(requestClass, extendRequestConfig, authStateCache);
+            }
+        }
+
+        return null;
     }
 
     /**

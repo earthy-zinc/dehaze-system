@@ -1,19 +1,15 @@
 package com.pei.dehaze.framework.desensitize.core.annotation;
 
+import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 import com.pei.dehaze.framework.desensitize.core.DesensitizeTest;
 import com.pei.dehaze.framework.desensitize.core.base.annotation.DesensitizeBy;
 import com.pei.dehaze.framework.desensitize.core.handler.AddressHandler;
-import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import java.lang.annotation.*;
 
 /**
  * 地址
- *
+ * <p>
  * 用于 {@link DesensitizeTest} 测试使用
  *
  * @author gaibu

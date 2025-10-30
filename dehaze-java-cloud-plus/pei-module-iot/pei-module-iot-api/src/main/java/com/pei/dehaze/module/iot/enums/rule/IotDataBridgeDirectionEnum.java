@@ -18,9 +18,8 @@ public enum IotDataBridgeDirectionEnum implements ArrayValuable<Integer> {
     INPUT(1), // 输入
     OUTPUT(2); // 输出
 
-    private final Integer type;
-
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotDataBridgeDirectionEnum::getType).toArray(Integer[]::new);
+    private final Integer type;
 
     @Override
     public Integer[] array() {

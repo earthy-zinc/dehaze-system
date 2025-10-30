@@ -2,9 +2,9 @@ package com.pei.dehaze.framework.mybatis.core.query;
 
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
-import com.pei.dehaze.framework.common.util.collection.ArrayUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+import com.pei.dehaze.framework.common.util.collection.ArrayUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.Collection;
@@ -81,6 +81,12 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
         return this;
     }
 
+    public LambdaQueryWrapperX<T> betweenIfPresent(SFunction<T, ?> column, Object[] values) {
+        Object val1 = ArrayUtils.get(values, 0);
+        Object val2 = ArrayUtils.get(values, 1);
+        return betweenIfPresent(column, val1, val2);
+    }
+
     public LambdaQueryWrapperX<T> betweenIfPresent(SFunction<T, ?> column, Object val1, Object val2) {
         if (val1 != null && val2 != null) {
             return (LambdaQueryWrapperX<T>) super.between(column, val1, val2);
@@ -92,12 +98,6 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
             return (LambdaQueryWrapperX<T>) le(column, val2);
         }
         return this;
-    }
-
-    public LambdaQueryWrapperX<T> betweenIfPresent(SFunction<T, ?> column, Object[] values) {
-        Object val1 = ArrayUtils.get(values, 0);
-        Object val2 = ArrayUtils.get(values, 1);
-        return betweenIfPresent(column, val1, val2);
     }
 
     // ========== 重写父类方法，方便链式调用 ==========
@@ -115,12 +115,6 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
     }
 
     @Override
-    public LambdaQueryWrapperX<T> orderByDesc(SFunction<T, ?> column) {
-        super.orderByDesc(true, column);
-        return this;
-    }
-
-    @Override
     public LambdaQueryWrapperX<T> last(String lastSql) {
         super.last(lastSql);
         return this;
@@ -129,6 +123,12 @@ public class LambdaQueryWrapperX<T> extends LambdaQueryWrapper<T> {
     @Override
     public LambdaQueryWrapperX<T> in(SFunction<T, ?> column, Collection<?> coll) {
         super.in(column, coll);
+        return this;
+    }
+
+    @Override
+    public LambdaQueryWrapperX<T> orderByDesc(SFunction<T, ?> column) {
+        super.orderByDesc(true, column);
         return this;
     }
 

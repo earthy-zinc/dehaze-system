@@ -7,6 +7,7 @@ import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.pei.dehaze.framework.apilog.core.annotation.ApiAccessLog;
 import com.pei.dehaze.framework.apilog.core.enums.OperateTypeEnum;
 import com.pei.dehaze.framework.common.biz.infra.logger.ApiAccessLogCommonApi;
@@ -19,7 +20,6 @@ import com.pei.dehaze.framework.common.util.servlet.ServletUtils;
 import com.pei.dehaze.framework.web.config.WebProperties;
 import com.pei.dehaze.framework.web.core.filter.ApiRequestFilter;
 import com.pei.dehaze.framework.web.core.util.WebFrameworkUtils;
-import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.FilterChain;
@@ -41,7 +41,7 @@ import static com.pei.dehaze.framework.common.util.json.JsonUtils.toJsonString;
 
 /**
  * API 访问日志 Filter
- *
+ * <p>
  * 目的：记录 API 访问日志到数据库中
  *
  * @author earthyzinc
@@ -59,6 +59,91 @@ public class ApiAccessLogFilter extends ApiRequestFilter {
         super(webProperties);
         this.applicationName = applicationName;
         this.apiAccessLogApi = apiAccessLogApi;
+    }
+
+    private static OperateTypeEnum parseOperateLogType(HttpServletRequest request) {
+        RequestMethod requestMethod = RequestMethod.resolve(request.getMethod());
+        if (requestMethod == null) {
+            return OperateTypeEnum.OTHER;
+        }
+        return switch (requestMethod) {
+            case GET -> OperateTypeEnum.GET;
+            case POST -> OperateTypeEnum.CREATE;
+            case PUT -> OperateTypeEnum.UPDATE;
+            case DELETE -> OperateTypeEnum.DELETE;
+            default -> OperateTypeEnum.OTHER;
+        };
+    }
+
+    private static String sanitizeMap(Map<String, ?> map, String[] sanitizeKeys) {
+        if (CollUtil.isEmpty(map)) {
+            return null;
+        }
+        if (sanitizeKeys != null) {
+            MapUtil.removeAny(map, sanitizeKeys);
+        }
+        MapUtil.removeAny(map, SANITIZE_KEYS);
+        return JsonUtils.toJsonString(map);
+    }
+
+    private static String sanitizeJson(String jsonString, String[] sanitizeKeys) {
+        if (StrUtil.isEmpty(jsonString)) {
+            return null;
+        }
+        try {
+            JsonNode rootNode = JsonUtils.parseTree(jsonString);
+            sanitizeJson(rootNode, sanitizeKeys);
+            return JsonUtils.toJsonString(rootNode);
+        } catch (Exception e) {
+            // 脱敏失败的情况下，直接忽略异常，避免影响用户请求
+            log.error("[sanitizeJson][脱敏({}) 发生异常]", jsonString, e);
+            return jsonString;
+        }
+    }
+
+    // ========== 解析 @ApiAccessLog、@Swagger 注解  ==========
+
+    private static String sanitizeJson(CommonResult<?> commonResult, String[] sanitizeKeys) {
+        if (commonResult == null) {
+            return null;
+        }
+        String jsonString = toJsonString(commonResult);
+        try {
+            JsonNode rootNode = JsonUtils.parseTree(jsonString);
+            sanitizeJson(rootNode.get("data"), sanitizeKeys); // 只处理 data 字段，不处理 code、msg 字段，避免错误被脱敏掉
+            return JsonUtils.toJsonString(rootNode);
+        } catch (Exception e) {
+            // 脱敏失败的情况下，直接忽略异常，避免影响用户请求
+            log.error("[sanitizeJson][脱敏({}) 发生异常]", jsonString, e);
+            return jsonString;
+        }
+    }
+
+    // ========== 请求和响应的脱敏逻辑，移除类似 password、token 等敏感字段 ==========
+
+    private static void sanitizeJson(JsonNode node, String[] sanitizeKeys) {
+        // 情况一：数组，遍历处理
+        if (node.isArray()) {
+            for (JsonNode childNode : node) {
+                sanitizeJson(childNode, sanitizeKeys);
+            }
+            return;
+        }
+        // 情况二：非 Object，只是某个值，直接返回
+        if (!node.isObject()) {
+            return;
+        }
+        //  情况三：Object，遍历处理
+        Iterator<Map.Entry<String, JsonNode>> iterator = node.properties().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, JsonNode> entry = iterator.next();
+            if (ArrayUtil.contains(sanitizeKeys, entry.getKey())
+                    || ArrayUtil.contains(SANITIZE_KEYS, entry.getKey())) {
+                iterator.remove();
+                continue;
+            }
+            sanitizeJson(entry.getValue(), sanitizeKeys);
+        }
     }
 
     @Override
@@ -117,10 +202,10 @@ public class ApiAccessLogFilter extends ApiRequestFilter {
         if (result != null) {
             accessLog.setResultCode(result.getCode()).setResultMsg(result.getMsg());
         } else if (ex != null) {
-            accessLog.setResultCode(GlobalErrorCodeConstants.INTERNAL_SERVER_ERROR.getCode())
+            accessLog.setResultCode(GlobalErrorCodeConstants.INTERNAL_SERVER_ERROR.code())
                     .setResultMsg(ExceptionUtil.getRootCauseMessage(ex));
         } else {
-            accessLog.setResultCode(GlobalErrorCodeConstants.SUCCESS.getCode()).setResultMsg("");
+            accessLog.setResultCode(GlobalErrorCodeConstants.SUCCESS.code()).setResultMsg("");
         }
         // 设置请求字段
         accessLog.setTraceId(TracerUtils.getTraceId()).setApplicationName(applicationName)
@@ -157,91 +242,6 @@ public class ApiAccessLogFilter extends ApiRequestFilter {
             accessLog.setOperateModule(operateModule).setOperateName(operateName).setOperateType(operateType.getType());
         }
         return true;
-    }
-
-    // ========== 解析 @ApiAccessLog、@Swagger 注解  ==========
-
-    private static OperateTypeEnum parseOperateLogType(HttpServletRequest request) {
-        RequestMethod requestMethod = RequestMethod.resolve(request.getMethod());
-        if (requestMethod == null) {
-            return OperateTypeEnum.OTHER;
-        }
-        return switch (requestMethod) {
-            case GET -> OperateTypeEnum.GET;
-            case POST -> OperateTypeEnum.CREATE;
-            case PUT -> OperateTypeEnum.UPDATE;
-            case DELETE -> OperateTypeEnum.DELETE;
-            default -> OperateTypeEnum.OTHER;
-        };
-    }
-
-    // ========== 请求和响应的脱敏逻辑，移除类似 password、token 等敏感字段 ==========
-
-    private static String sanitizeMap(Map<String, ?> map, String[] sanitizeKeys) {
-        if (CollUtil.isEmpty(map)) {
-            return null;
-        }
-        if (sanitizeKeys != null) {
-            MapUtil.removeAny(map, sanitizeKeys);
-        }
-        MapUtil.removeAny(map, SANITIZE_KEYS);
-        return JsonUtils.toJsonString(map);
-    }
-
-    private static String sanitizeJson(String jsonString, String[] sanitizeKeys) {
-        if (StrUtil.isEmpty(jsonString)) {
-            return null;
-        }
-        try {
-            JsonNode rootNode = JsonUtils.parseTree(jsonString);
-            sanitizeJson(rootNode, sanitizeKeys);
-            return JsonUtils.toJsonString(rootNode);
-        } catch (Exception e) {
-            // 脱敏失败的情况下，直接忽略异常，避免影响用户请求
-            log.error("[sanitizeJson][脱敏({}) 发生异常]", jsonString, e);
-            return jsonString;
-        }
-    }
-
-    private static String sanitizeJson(CommonResult<?> commonResult, String[] sanitizeKeys) {
-        if (commonResult == null) {
-            return null;
-        }
-        String jsonString = toJsonString(commonResult);
-        try {
-            JsonNode rootNode = JsonUtils.parseTree(jsonString);
-            sanitizeJson(rootNode.get("data"), sanitizeKeys); // 只处理 data 字段，不处理 code、msg 字段，避免错误被脱敏掉
-            return JsonUtils.toJsonString(rootNode);
-        } catch (Exception e) {
-            // 脱敏失败的情况下，直接忽略异常，避免影响用户请求
-            log.error("[sanitizeJson][脱敏({}) 发生异常]", jsonString, e);
-            return jsonString;
-        }
-    }
-
-    private static void sanitizeJson(JsonNode node, String[] sanitizeKeys) {
-        // 情况一：数组，遍历处理
-        if (node.isArray()) {
-            for (JsonNode childNode : node) {
-                sanitizeJson(childNode, sanitizeKeys);
-            }
-            return;
-        }
-        // 情况二：非 Object，只是某个值，直接返回
-        if (!node.isObject()) {
-            return;
-        }
-        //  情况三：Object，遍历处理
-        Iterator<Map.Entry<String, JsonNode>> iterator = node.properties().iterator();
-        while (iterator.hasNext()) {
-            Map.Entry<String, JsonNode> entry = iterator.next();
-            if (ArrayUtil.contains(sanitizeKeys, entry.getKey())
-                    || ArrayUtil.contains(SANITIZE_KEYS, entry.getKey())) {
-                iterator.remove();
-                continue;
-            }
-            sanitizeJson(entry.getValue(), sanitizeKeys);
-        }
     }
 
 }

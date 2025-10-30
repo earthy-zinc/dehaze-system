@@ -27,7 +27,7 @@ public interface SeckillActivityApi {
     })
     CommonResult<Boolean> updateSeckillStockDecr(@RequestParam("id") Long id,
                                                  @RequestParam("skuId") Long skuId,
-                                                 @RequestParam("count")Integer count);
+                                                 @RequestParam("count") Integer count);
 
     @PutMapping(PREFIX + "/update-stock-incr")
     @Operation(summary = "更新秒杀库存（增加）")
@@ -38,7 +38,7 @@ public interface SeckillActivityApi {
     })
     CommonResult<Boolean> updateSeckillStockIncr(@RequestParam("id") Long id,
                                                  @RequestParam("skuId") Long skuId,
-                                                 @RequestParam("count")Integer count);
+                                                 @RequestParam("count") Integer count);
 
     @GetMapping(PREFIX + "/validate-join")
     @Operation(summary = "【下单前】校验是否参与秒杀活动") // 如果校验失败，则抛出业务异常
@@ -49,6 +49,6 @@ public interface SeckillActivityApi {
     })
     CommonResult<SeckillValidateJoinRespDTO> validateJoinSeckill(@RequestParam("activityId") Long activityId,
                                                                  @RequestParam("skuId") Long skuId,
-                                                                 @RequestParam("count")Integer count);
+                                                                 @RequestParam("count") Integer count);
 
 }

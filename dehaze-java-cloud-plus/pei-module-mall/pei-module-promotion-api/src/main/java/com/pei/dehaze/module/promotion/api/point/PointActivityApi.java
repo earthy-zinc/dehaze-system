@@ -26,8 +26,8 @@ public interface PointActivityApi {
             @Parameter(name = "count", description = "数量", required = true, example = "3"),
     })
     CommonResult<PointValidateJoinRespDTO> validateJoinPointActivity(@RequestParam("activityId") Long activityId,
-                                                                    @RequestParam("skuId") Long skuId,
-                                                                    @RequestParam("count")Integer count);
+                                                                     @RequestParam("skuId") Long skuId,
+                                                                     @RequestParam("count") Integer count);
 
     @PutMapping(PREFIX + "/update-stock-decr")
     @Operation(summary = "更新积分商品库存（减少）")
@@ -38,7 +38,7 @@ public interface PointActivityApi {
     })
     CommonResult<Boolean> updatePointStockDecr(@RequestParam("id") Long id,
                                                @RequestParam("skuId") Long skuId,
-                                               @RequestParam("count")Integer count);
+                                               @RequestParam("count") Integer count);
 
     @PutMapping(PREFIX + "/update-stock-incr")
     @Operation(summary = "更新积分商城商品库存（增加）")
@@ -49,6 +49,6 @@ public interface PointActivityApi {
     })
     CommonResult<Boolean> updatePointStockIncr(@RequestParam("id") Long id,
                                                @RequestParam("skuId") Long skuId,
-                                               @RequestParam("count")Integer count);
+                                               @RequestParam("count") Integer count);
 
 }

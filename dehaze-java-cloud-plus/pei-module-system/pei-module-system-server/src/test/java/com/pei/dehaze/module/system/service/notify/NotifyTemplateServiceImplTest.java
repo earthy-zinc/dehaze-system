@@ -7,10 +7,10 @@ import com.pei.dehaze.module.system.controller.admin.notify.vo.template.NotifyTe
 import com.pei.dehaze.module.system.controller.admin.notify.vo.template.NotifyTemplateSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.notify.NotifyTemplateDO;
 import com.pei.dehaze.module.system.dal.mysql.notify.NotifyTemplateMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
 

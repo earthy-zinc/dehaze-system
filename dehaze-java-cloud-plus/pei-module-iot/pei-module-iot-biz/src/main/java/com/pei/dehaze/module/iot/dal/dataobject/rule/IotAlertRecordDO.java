@@ -1,14 +1,17 @@
 package com.pei.dehaze.module.iot.dal.dataobject.rule;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
-import com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO;
-import com.pei.dehaze.module.iot.mq.message.IotDeviceMessage;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
-import lombok.*;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
+import com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO;
+import com.pei.dehaze.module.iot.mq.message.IotDeviceMessage;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * IoT 告警记录 DO
@@ -30,26 +33,26 @@ public class IotAlertRecordDO extends BaseDO {
     private Long id;
     /**
      * 告警名称
-     *
+     * <p>
      * 冗余 {@link IotAlertConfig#getName()}
      */
     private Long configId;
     /**
      * 告警名称
-     *
+     * <p>
      * 冗余 {@link IotAlertConfig#getName()}
      */
     private String name;
 
     /**
      * 产品标识
-     *
+     * <p>
      * 关联 {@link IotProductDO#getProductKey()} ()}
      */
     private String productKey;
     /**
      * 设备名称
-     *
+     * <p>
      * 冗余 {@link IotDeviceDO#getDeviceName()}
      */
     private String deviceName;
@@ -64,9 +67,8 @@ public class IotAlertRecordDO extends BaseDO {
     // TODO @芋艿：换成枚举，枚举对应 ApiErrorLogProcessStatusEnum
     /**
      * 处理状态
-     *
-     * true - 已处理
-     * false - 未处理
+     * <p>
+     * true - 已处理 false - 未处理
      */
     private Boolean processStatus;
     /**

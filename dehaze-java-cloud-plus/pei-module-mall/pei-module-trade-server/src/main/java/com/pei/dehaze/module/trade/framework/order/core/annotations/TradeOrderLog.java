@@ -15,8 +15,8 @@ import static java.lang.annotation.ElementType.METHOD;
  * 交易订单的操作日志 AOP 注解
  *
  * @author 陈賝
- * @since 2023/7/6 15:37
  * @see TradeOrderLogAspect
+ * @since 2023/7/6 15:37
  */
 @Target({METHOD, ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)

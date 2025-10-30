@@ -24,7 +24,7 @@ public interface CombinationRecordService {
 
     /**
      * 【下单前】校验是否满足拼团活动条件
-     *
+     * <p>
      * 如果校验失败，则抛出业务异常
      *
      * @param userId     用户编号
@@ -56,7 +56,7 @@ public interface CombinationRecordService {
 
     /**
      * 【下单前】校验是否满足拼团活动条件
-     *
+     * <p>
      * 如果校验失败，则抛出业务异常
      *
      * @param userId     用户编号
@@ -149,7 +149,7 @@ public interface CombinationRecordService {
     /**
      * 获得拼团记录分页数据
      *
-     * @param userId 用户编号
+     * @param userId    用户编号
      * @param pageReqVO 分页请求
      * @return 拼团记录分页数据
      */

@@ -8,7 +8,9 @@ Authorization: {{token}}
   "generateMode": 2,
   "prompt": "创作一首带有轻松吉他旋律的流行歌曲，[verse] 描述夏日海滩的宁静，[chorus] 节奏加快，表达对自由的向往。",
   "model": "chirp-v3.5",
-  "tags": ["Happy"],
+  "tags": [
+    "Happy"
+  ],
   "title": "Happy Song"
 }
 

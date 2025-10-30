@@ -2,10 +2,6 @@ package com.pei.dehaze.module.pay.service.refund;
 
 import cn.hutool.extra.spring.SpringUtil;
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundUnifiedReqDTO;
 import com.pei.dehaze.framework.test.core.ut.BaseDbAndRedisUnitTest;
 import com.pei.dehaze.module.pay.api.refund.dto.PayRefundCreateReqDTO;
 import com.pei.dehaze.module.pay.controller.admin.refund.vo.PayRefundExportReqVO;
@@ -16,21 +12,25 @@ import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderDO;
 import com.pei.dehaze.module.pay.dal.dataobject.refund.PayRefundDO;
 import com.pei.dehaze.module.pay.dal.mysql.refund.PayRefundMapper;
 import com.pei.dehaze.module.pay.dal.redis.no.PayNoRedisDAO;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
 import com.pei.dehaze.module.pay.enums.notify.PayNotifyTypeEnum;
 import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
 import com.pei.dehaze.module.pay.enums.refund.PayRefundStatusEnum;
 import com.pei.dehaze.module.pay.framework.pay.config.PayProperties;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundUnifiedReqDTO;
 import com.pei.dehaze.module.pay.service.app.PayAppService;
 import com.pei.dehaze.module.pay.service.channel.PayChannelService;
 import com.pei.dehaze.module.pay.service.notify.PayNotifyService;
 import com.pei.dehaze.module.pay.service.order.PayOrderService;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils.buildBetweenTime;
@@ -223,11 +223,6 @@ public class PayRefundServiceTest extends BaseDbAndRedisUnitTest {
         testCreateRefund_orderWaitingOrClosed(PayOrderStatusEnum.WAITING.getStatus());
     }
 
-    @Test
-    public void testCreateRefund_orderClosed() {
-        testCreateRefund_orderWaitingOrClosed(PayOrderStatusEnum.CLOSED.getStatus());
-    }
-
     private void testCreateRefund_orderWaitingOrClosed(Integer status) {
         // 准备参数
         PayRefundCreateReqDTO reqDTO = randomPojo(PayRefundCreateReqDTO.class,
@@ -242,6 +237,11 @@ public class PayRefundServiceTest extends BaseDbAndRedisUnitTest {
         // 调用，并断言异常
         assertServiceException(() -> refundService.createRefund(reqDTO),
                 PAY_ORDER_REFUND_FAIL_STATUS_ERROR);
+    }
+
+    @Test
+    public void testCreateRefund_orderClosed() {
+        testCreateRefund_orderWaitingOrClosed(PayOrderStatusEnum.CLOSED.getStatus());
     }
 
     @Test
@@ -414,7 +414,7 @@ public class PayRefundServiceTest extends BaseDbAndRedisUnitTest {
                 assertNotNull(unifiedReqDTO.getOutRefundNo());
                 assertThat(unifiedReqDTO)
                         .extracting("payPrice", "refundPrice", "outTradeNo",
-                                 "notifyUrl", "reason")
+                                "notifyUrl", "reason")
                         .containsExactly(order.getPrice(), reqDTO.getPrice(), order.getNo(),
                                 "http://127.0.0.1/10", reqDTO.getReason());
                 return true;
@@ -641,16 +641,6 @@ public class PayRefundServiceTest extends BaseDbAndRedisUnitTest {
         assertEquals(testSyncRefund_waitingOrSuccessOrFailure(PayRefundStatusEnum.WAITING.getStatus()), 0);
     }
 
-    @Test
-    public void testSyncRefund_success() {
-        assertEquals(testSyncRefund_waitingOrSuccessOrFailure(PayRefundStatusEnum.SUCCESS.getStatus()), 1);
-    }
-
-    @Test
-    public void testSyncRefund_failure() {
-        assertEquals(testSyncRefund_waitingOrSuccessOrFailure(PayRefundStatusEnum.FAILURE.getStatus()), 1);
-    }
-
     private int testSyncRefund_waitingOrSuccessOrFailure(Integer status) {
         PayRefundServiceImpl payRefundServiceImpl = mock(PayRefundServiceImpl.class);
         try (MockedStatic<SpringUtil> springUtilMockedStatic = mockStatic(SpringUtil.class)) {
@@ -675,6 +665,16 @@ public class PayRefundServiceTest extends BaseDbAndRedisUnitTest {
             // 调用
             return refundService.syncRefund();
         }
+    }
+
+    @Test
+    public void testSyncRefund_success() {
+        assertEquals(testSyncRefund_waitingOrSuccessOrFailure(PayRefundStatusEnum.SUCCESS.getStatus()), 1);
+    }
+
+    @Test
+    public void testSyncRefund_failure() {
+        assertEquals(testSyncRefund_waitingOrSuccessOrFailure(PayRefundStatusEnum.FAILURE.getStatus()), 1);
     }
 
     @Test

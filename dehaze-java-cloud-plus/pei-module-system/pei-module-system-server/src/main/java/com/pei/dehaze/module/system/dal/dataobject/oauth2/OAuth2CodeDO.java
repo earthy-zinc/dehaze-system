@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.system.dal.dataobject.oauth2;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -37,13 +37,13 @@ public class OAuth2CodeDO extends BaseDO {
     private Long userId;
     /**
      * 用户类型
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
     /**
      * 客户端编号
-     *
+     * <p>
      * 关联 {@link OAuth2ClientDO#getClientId()}
      */
     private String clientId;

@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.statistics.dal.mysql.product;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.pojo.SortablePageParam;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
@@ -8,7 +9,6 @@ import com.pei.dehaze.framework.mybatis.core.query.MPJLambdaWrapperX;
 import com.pei.dehaze.module.statistics.controller.admin.product.vo.ProductStatisticsReqVO;
 import com.pei.dehaze.module.statistics.controller.admin.product.vo.ProductStatisticsRespVO;
 import com.pei.dehaze.module.statistics.dal.dataobject.product.ProductStatisticsDO;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -30,16 +30,6 @@ public interface ProductStatisticsMapper extends BaseMapperX<ProductStatisticsDO
         );
     }
 
-    default List<ProductStatisticsDO> selectListByTimeBetween(ProductStatisticsReqVO reqVO) {
-        return selectList(buildWrapper(reqVO)
-                .groupBy(ProductStatisticsDO::getTime)
-                .select(ProductStatisticsDO::getTime));
-    }
-
-    default ProductStatisticsRespVO selectVoByTimeBetween(ProductStatisticsReqVO reqVO) {
-        return selectJoinOne(ProductStatisticsRespVO.class, buildWrapper(reqVO));
-    }
-
     /**
      * 构建 LambdaWrapper
      *
@@ -59,6 +49,16 @@ public interface ProductStatisticsMapper extends BaseMapperX<ProductStatisticsDO
                 .selectSum(ProductStatisticsDO::getAfterSaleCount)
                 .selectSum(ProductStatisticsDO::getAfterSaleRefundPrice)
                 .selectAvg(ProductStatisticsDO::getBrowseConvertPercent);
+    }
+
+    default List<ProductStatisticsDO> selectListByTimeBetween(ProductStatisticsReqVO reqVO) {
+        return selectList(buildWrapper(reqVO)
+                .groupBy(ProductStatisticsDO::getTime)
+                .select(ProductStatisticsDO::getTime));
+    }
+
+    default ProductStatisticsRespVO selectVoByTimeBetween(ProductStatisticsReqVO reqVO) {
+        return selectJoinOne(ProductStatisticsRespVO.class, buildWrapper(reqVO));
     }
 
     /**

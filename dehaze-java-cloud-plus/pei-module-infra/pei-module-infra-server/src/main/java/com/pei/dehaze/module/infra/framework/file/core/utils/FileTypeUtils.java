@@ -44,19 +44,8 @@ public class FileTypeUtils {
     }
 
     /**
-     * 在拥有文件和数据的情况下，最好使用此方法，最为准确
-     *
-     * @param data 文件内容
-     * @param name 文件名
-     * @return mineType 无法识别时会返回“application/octet-stream”
-     */
-    public static String getMineType(byte[] data, String name) {
-        return TIKA.detect(data, name);
-    }
-
-    /**
      * 根据 mineType 获得文件后缀
-     *
+     * <p>
      * 注意：如果获取不到，或者发生异常，都返回 null
      *
      * @param mineType 类型
@@ -91,6 +80,17 @@ public class FileTypeUtils {
         }
         // 输出附件
         IoUtil.write(response.getOutputStream(), false, content);
+    }
+
+    /**
+     * 在拥有文件和数据的情况下，最好使用此方法，最为准确
+     *
+     * @param data 文件内容
+     * @param name 文件名
+     * @return mineType 无法识别时会返回“application/octet-stream”
+     */
+    public static String getMineType(byte[] data, String name) {
+        return TIKA.detect(data, name);
     }
 
 }

@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.erp.dal.dataobject.finance;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.erp.dal.dataobject.purchase.ErpSupplierDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.erp.dal.dataobject.purchase.ErpSupplierDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -36,7 +36,7 @@ public class ErpFinancePaymentDO extends BaseDO {
     private String no;
     /**
      * 付款状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.erp.enums.ErpAuditStatus}
      */
     private Integer status;
@@ -46,19 +46,19 @@ public class ErpFinancePaymentDO extends BaseDO {
     private LocalDateTime paymentTime;
     /**
      * 财务人员编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long financeUserId;
     /**
      * 供应商编号
-     *
+     * <p>
      * 关联 {@link ErpSupplierDO#getId()}
      */
     private Long supplierId;
     /**
      * 付款账户编号
-     *
+     * <p>
      * 关联 {@link ErpAccountDO#getId()}
      */
     private Long accountId;
@@ -73,7 +73,7 @@ public class ErpFinancePaymentDO extends BaseDO {
     private BigDecimal discountPrice;
     /**
      * 实付金额，单位：分
-     *
+     * <p>
      * paymentPrice = totalPrice - discountPrice
      */
     private BigDecimal paymentPrice;

@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.trade.dal.dataobject.delivery;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
-import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
+import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
 import lombok.Data;
 
 import java.time.LocalTime;
@@ -18,7 +18,7 @@ import java.util.List;
  *
  * @author jason
  */
-@TableName(value ="trade_delivery_pick_up_store", autoResultMap = true)
+@TableName(value = "trade_delivery_pick_up_store", autoResultMap = true)
 @KeySequence("trade_delivery_pick_up_store_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class DeliveryPickUpStoreDO extends BaseDO {
@@ -80,9 +80,9 @@ public class DeliveryPickUpStoreDO extends BaseDO {
 
     /**
      * 核销员工用户编号数组
-     *
+     * <p>
      * 订单自提核销时，只有对应门店的店员才能核销
-     *
+     * <p>
      * 关联 {@link AdminUserRespDTO#getId()} 管理员编号
      */
     @TableField(typeHandler = LongListTypeHandler.class)
@@ -90,7 +90,7 @@ public class DeliveryPickUpStoreDO extends BaseDO {
 
     /**
      * 门店状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

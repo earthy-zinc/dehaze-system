@@ -29,7 +29,7 @@ public class AppAuthLoginRespVO {
 
     /**
      * 仅社交登录、社交绑定时会返回
-     *
+     * <p>
      * 为什么需要返回？微信公众号、微信小程序支付需要传递 openid 给支付接口
      */
     @Schema(description = "社交用户 openid", example = "qq768")

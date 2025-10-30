@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.pay.dal.dataobject.order;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
 import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
 import com.pei.dehaze.module.pay.enums.PayChannelEnum;
 import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -32,19 +32,19 @@ public class PayOrderDO extends BaseDO {
     private Long id;
     /**
      * 应用编号
-     *
+     * <p>
      * 关联 {@link PayAppDO#getId()}
      */
     private Long appId;
     /**
      * 渠道编号
-     *
+     * <p>
      * 关联 {@link PayChannelDO#getId()}
      */
     private Long channelId;
     /**
      * 渠道编码
-     *
+     * <p>
      * 枚举 {@link PayChannelEnum}
      */
     private String channelCode;
@@ -53,7 +53,7 @@ public class PayOrderDO extends BaseDO {
 
     /**
      * 商户订单编号
-     *
+     * <p>
      * 例如说，内部系统 A 的订单号，需要保证每个 PayAppDO 唯一
      */
     private String merchantOrderId;
@@ -78,7 +78,7 @@ public class PayOrderDO extends BaseDO {
     private Integer price;
     /**
      * 渠道手续费，单位：百分比
-     *
+     * <p>
      * 冗余 {@link PayChannelDO#getFeeRate()}
      */
     private Double channelFeeRate;
@@ -88,7 +88,7 @@ public class PayOrderDO extends BaseDO {
     private Integer channelFeePrice;
     /**
      * 支付状态
-     *
+     * <p>
      * 枚举 {@link PayOrderStatusEnum}
      */
     private Integer status;
@@ -106,13 +106,13 @@ public class PayOrderDO extends BaseDO {
     private LocalDateTime successTime;
     /**
      * 支付成功的订单拓展单编号
-     *
+     * <p>
      * 关联 {@link PayOrderExtensionDO#getId()}
      */
     private Long extensionId;
     /**
      * 支付成功的外部订单号
-     *
+     * <p>
      * 关联 {@link PayOrderExtensionDO#getNo()}
      */
     private String no;
@@ -126,7 +126,7 @@ public class PayOrderDO extends BaseDO {
     // ========== 渠道相关字段 ==========
     /**
      * 渠道用户编号
-     *
+     * <p>
      * 例如说，微信 openid、支付宝账号
      */
     private String channelUserId;

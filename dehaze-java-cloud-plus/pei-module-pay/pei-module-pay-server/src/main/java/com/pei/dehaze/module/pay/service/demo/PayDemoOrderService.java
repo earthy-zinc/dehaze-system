@@ -4,7 +4,6 @@ import com.pei.dehaze.framework.common.pojo.PageParam;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.pay.controller.admin.demo.vo.order.PayDemoOrderCreateReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.demo.PayDemoOrderDO;
-
 import jakarta.validation.Valid;
 
 /**
@@ -42,7 +41,7 @@ public interface PayDemoOrderService {
     /**
      * 更新示例订单为已支付
      *
-     * @param id 编号
+     * @param id         编号
      * @param payOrderId 支付订单号
      */
     void updateDemoOrderPaid(Long id, Long payOrderId);
@@ -50,7 +49,7 @@ public interface PayDemoOrderService {
     /**
      * 发起示例订单的退款
      *
-     * @param id 编号
+     * @param id     编号
      * @param userIp 用户编号
      */
     void refundDemoOrder(Long id, String userIp);
@@ -58,8 +57,8 @@ public interface PayDemoOrderService {
     /**
      * 更新示例订单为已退款
      *
-     * @param id 编号
-     * @param refundId 退款编号
+     * @param id          编号
+     * @param refundId    退款编号
      * @param payRefundId 退款订单号
      */
     void updateDemoOrderRefunded(Long id, String refundId, Long payRefundId);

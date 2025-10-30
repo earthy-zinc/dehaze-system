@@ -18,5 +18,4 @@ public class AppBrokerageWithdrawPageReqVO extends PageParam {
     private LocalDateTime[] createTime;
 
 
-
 }

@@ -68,14 +68,6 @@ public interface CrmReceivableService {
     CrmReceivableDO getReceivable(Long id);
 
     /**
-     * 获得回款列表
-     *
-     * @param ids 编号
-     * @return 回款列表
-     */
-    List<CrmReceivableDO> getReceivableList(Collection<Long> ids);
-
-    /**
      * 获得回款 Map
      *
      * @param ids 编号
@@ -86,8 +78,16 @@ public interface CrmReceivableService {
     }
 
     /**
-     * 获得回款分页
+     * 获得回款列表
      *
+     * @param ids 编号
+     * @return 回款列表
+     */
+    List<CrmReceivableDO> getReceivableList(Collection<Long> ids);
+
+    /**
+     * 获得回款分页
+     * <p>
      * 数据权限：基于 {@link CrmReceivableDO} 读取
      *
      * @param pageReqVO 分页查询
@@ -98,7 +98,7 @@ public interface CrmReceivableService {
 
     /**
      * 获得回款分页，基于指定客户
-     *
+     * <p>
      * 数据权限：基于 {@link CrmCustomerDO} 读取
      *
      * @param pageReqVO 分页查询

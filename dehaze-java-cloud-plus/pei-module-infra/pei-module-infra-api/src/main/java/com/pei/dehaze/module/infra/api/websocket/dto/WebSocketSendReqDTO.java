@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.infra.api.websocket.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
 
 @Schema(description = "RPC 服务 - WebSocket 消息发送 Request DTO")
 @Data

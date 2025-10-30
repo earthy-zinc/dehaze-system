@@ -1,20 +1,20 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin;
 
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import com.github.binarywang.wxpay.bean.order.WxPayNativeOrderResult;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderRequest;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderV3Request;
 import com.github.binarywang.wxpay.bean.result.enums.TradeTypeEnum;
 import com.github.binarywang.wxpay.constant.WxPayConstants;
 import com.github.binarywang.wxpay.exception.WxPayException;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * 微信支付【Native 二维码】的 PayClient 实现类
- *
+ * <p>
  * 文档：<a href="https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_4_1.shtml">Native 下单</a>
  *
  * @author zwy

@@ -77,6 +77,21 @@ public class ErpProductCategoryServiceImpl implements ErpProductCategoryService 
         erpProductCategoryMapper.deleteById(id);
     }
 
+    @Override
+    public ErpProductCategoryDO getProductCategory(Long id) {
+        return erpProductCategoryMapper.selectById(id);
+    }
+
+    @Override
+    public List<ErpProductCategoryDO> getProductCategoryList(ErpProductCategoryListReqVO listReqVO) {
+        return erpProductCategoryMapper.selectList(listReqVO);
+    }
+
+    @Override
+    public List<ErpProductCategoryDO> getProductCategoryList(Collection<Long> ids) {
+        return erpProductCategoryMapper.selectBatchIds(ids);
+    }
+
     private void validateProductCategoryExists(Long id) {
         if (erpProductCategoryMapper.selectById(id) == null) {
             throw exception(PRODUCT_CATEGORY_NOT_EXISTS);
@@ -129,21 +144,6 @@ public class ErpProductCategoryServiceImpl implements ErpProductCategoryService 
         if (!Objects.equals(productCategory.getId(), id)) {
             throw exception(PRODUCT_CATEGORY_NAME_DUPLICATE);
         }
-    }
-
-    @Override
-    public ErpProductCategoryDO getProductCategory(Long id) {
-        return erpProductCategoryMapper.selectById(id);
-    }
-
-    @Override
-    public List<ErpProductCategoryDO> getProductCategoryList(ErpProductCategoryListReqVO listReqVO) {
-        return erpProductCategoryMapper.selectList(listReqVO);
-    }
-
-    @Override
-    public List<ErpProductCategoryDO> getProductCategoryList(Collection<Long> ids) {
-        return erpProductCategoryMapper.selectBatchIds(ids);
     }
 
 }

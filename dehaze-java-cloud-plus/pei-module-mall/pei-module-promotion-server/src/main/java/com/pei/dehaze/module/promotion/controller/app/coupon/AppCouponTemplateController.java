@@ -91,6 +91,27 @@ public class AppCouponTemplateController {
         return success(CouponTemplateConvert.INSTANCE.convertAppList(list, canCanTakeMap));
     }
 
+    /**
+     * 获得商品的使用范围编号
+     *
+     * @param productScope 商品范围
+     * @param spuId        商品 SPU 编号
+     * @return 商品范围编号
+     */
+    private Long getProductScopeValue(Integer productScope, Long spuId) {
+        // 通用券：没有商品范围
+        if (ObjectUtils.equalsAny(productScope, PromotionProductScopeEnum.ALL.getScope(), null)) {
+            return null;
+        }
+        // 品类券：查询商品的品类编号
+        if (Objects.equals(productScope, PromotionProductScopeEnum.CATEGORY.getScope()) && spuId != null) {
+            ProductSpuRespDTO spu = productSpuApi.getSpu(spuId).getCheckedData();
+            return spu != null ? spu.getCategoryId() : null;
+        }
+        // 商品劵：直接返回
+        return spuId;
+    }
+
     @GetMapping("/list-by-ids")
     @Operation(summary = "获得优惠劵模版列表")
     @Parameter(name = "ids", description = "优惠券模板编号列表")
@@ -123,27 +144,6 @@ public class AppCouponTemplateController {
         Map<Long, Boolean> canCanTakeMap = couponService.getUserCanCanTakeMap(getLoginUserId(), pageResult.getList());
         // 3.2 拼接返回
         return success(CouponTemplateConvert.INSTANCE.convertAppPage(pageResult, canCanTakeMap));
-    }
-
-    /**
-     * 获得商品的使用范围编号
-     *
-     * @param productScope 商品范围
-     * @param spuId        商品 SPU 编号
-     * @return 商品范围编号
-     */
-    private Long getProductScopeValue(Integer productScope, Long spuId) {
-        // 通用券：没有商品范围
-        if (ObjectUtils.equalsAny(productScope, PromotionProductScopeEnum.ALL.getScope(), null)) {
-            return null;
-        }
-        // 品类券：查询商品的品类编号
-        if (Objects.equals(productScope, PromotionProductScopeEnum.CATEGORY.getScope()) && spuId != null) {
-            ProductSpuRespDTO spu = productSpuApi.getSpu(spuId).getCheckedData();
-            return spu != null ? spu.getCategoryId() : null;
-        }
-        // 商品劵：直接返回
-        return spuId;
     }
 
 }

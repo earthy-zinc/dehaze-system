@@ -33,11 +33,6 @@ public enum BpmProcessInstanceStatusEnum implements ArrayValuable<Integer> {
      */
     private final String desc;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static boolean isRejectStatus(Integer status) {
         return REJECT.getStatus().equals(status);
     }
@@ -45,6 +40,11 @@ public enum BpmProcessInstanceStatusEnum implements ArrayValuable<Integer> {
     public static boolean isProcessEndStatus(Integer status) {
         return ObjectUtils.equalsAny(status,
                 APPROVE.getStatus(), REJECT.getStatus(), CANCEL.getStatus());
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

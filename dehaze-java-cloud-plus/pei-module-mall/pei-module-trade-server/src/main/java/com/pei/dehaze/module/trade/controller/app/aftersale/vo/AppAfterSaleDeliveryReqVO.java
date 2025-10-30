@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.trade.controller.app.aftersale.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "用户 App - 交易售后退回货物 Request VO")
 @Data

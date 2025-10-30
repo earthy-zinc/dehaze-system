@@ -27,7 +27,7 @@ public interface BrokerageWithdrawService {
      * @param id          佣金编号
      * @param status      审核状态
      * @param auditReason 驳回原因
-     * @param userIp 操作 IP
+     * @param userIp      操作 IP
      */
     void auditBrokerageWithdraw(Long id, BrokerageWithdrawStatusEnum status, String auditReason, String userIp);
 
@@ -58,23 +58,13 @@ public interface BrokerageWithdrawService {
 
     /**
      * 【API】更新佣金提现的转账结果
-     *
+     * <p>
      * 目前用于支付回调，标记提现转账结果
      *
-     * @param id 提现编号
+     * @param id            提现编号
      * @param payTransferId 转账订单编号
      */
     void updateBrokerageWithdrawTransferred(Long id, Long payTransferId);
-
-    /**
-     * 按照 userId，汇总每个用户的提现
-     *
-     * @param userIds 用户编号
-     * @param status  提现状态
-     * @return 用户提现汇总 List
-     */
-    List<BrokerageWithdrawSummaryRespBO> getWithdrawSummaryListByUserId(Collection<Long> userIds,
-                                                                        Collection<BrokerageWithdrawStatusEnum> status);
 
     /**
      * 按照 userId，汇总每个用户的提现
@@ -87,5 +77,15 @@ public interface BrokerageWithdrawService {
                                                                                     Collection<BrokerageWithdrawStatusEnum> status) {
         return convertMap(getWithdrawSummaryListByUserId(userIds, status), BrokerageWithdrawSummaryRespBO::getUserId);
     }
+
+    /**
+     * 按照 userId，汇总每个用户的提现
+     *
+     * @param userIds 用户编号
+     * @param status  提现状态
+     * @return 用户提现汇总 List
+     */
+    List<BrokerageWithdrawSummaryRespBO> getWithdrawSummaryListByUserId(Collection<Long> userIds,
+                                                                        Collection<BrokerageWithdrawStatusEnum> status);
 
 }

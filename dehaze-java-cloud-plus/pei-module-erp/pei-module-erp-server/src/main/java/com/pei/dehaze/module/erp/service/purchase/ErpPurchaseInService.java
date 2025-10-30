@@ -36,7 +36,7 @@ public interface ErpPurchaseInService {
     /**
      * 更新采购入库的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updatePurchaseInStatus(Long id, Integer status);
@@ -44,7 +44,7 @@ public interface ErpPurchaseInService {
     /**
      * 更新采购入库的付款金额
      *
-     * @param id 编号
+     * @param id           编号
      * @param paymentPrice 付款金额
      */
     void updatePurchaseInPaymentPrice(Long id, BigDecimal paymentPrice);

@@ -3,27 +3,25 @@ package com.pei.dehaze.module.mp.controller.admin.message.vo.message;
 import com.pei.dehaze.module.mp.dal.dataobject.message.MpMessageDO;
 import com.pei.dehaze.module.mp.framework.mp.core.util.MpUtils.*;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
 import java.util.List;
 
 @Schema(description = "管理后台 - 公众号消息发送 Request VO")
 @Data
 public class MpMessageSendReqVO {
 
-    @Schema(description = "公众号粉丝的编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
-    @NotNull(message = "公众号粉丝的编号不能为空")
-    private Long userId;
-
-    // ========== 消息内容 ==========
-
     @Schema(description = "消息类型 TEXT/IMAGE/VOICE/VIDEO/NEWS", requiredMode = Schema.RequiredMode.REQUIRED, example = "text")
     @NotEmpty(message = "消息类型不能为空")
     public String type;
 
+    // ========== 消息内容 ==========
+    @Schema(description = "公众号粉丝的编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
+    @NotNull(message = "公众号粉丝的编号不能为空")
+    private Long userId;
     @Schema(description = "消息内容", requiredMode = Schema.RequiredMode.REQUIRED, example = "你好呀")
     @NotEmpty(message = "消息内容不能为空", groups = TextMessageGroup.class)
     private String content;

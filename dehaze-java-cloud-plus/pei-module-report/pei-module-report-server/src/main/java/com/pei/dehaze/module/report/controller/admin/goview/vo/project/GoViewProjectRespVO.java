@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.report.controller.admin.goview.vo.project;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 

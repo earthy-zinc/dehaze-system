@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.infra.framework.file.core.client.s3;
 
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.module.infra.framework.file.core.client.FileClientConfig;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.pei.dehaze.module.infra.framework.file.core.client.FileClientConfig;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -22,24 +22,20 @@ public class S3FileClientConfig implements FileClientConfig {
     public static final String ENDPOINT_VOLCES = "volces.com"; // 火山云（字节）
 
     /**
-     * 节点地址
-     * 1. MinIO：https://www.iocoder.cn/Spring-Boot/MinIO 。例如说，http://127.0.0.1:9000
-     * 2. 阿里云：https://help.aliyun.com/document_detail/31837.html
-     * 3. 腾讯云：https://cloud.tencent.com/document/product/436/6224
-     * 4. 七牛云：https://developer.qiniu.com/kodo/4088/s3-access-domainname
-     * 5. 华为云：https://console.huaweicloud.com/apiexplorer/#/endpoint/OBS
-     * 6. 火山云：https://www.volcengine.com/docs/6349/107356
+     * 节点地址 1. MinIO：https://www.iocoder.cn/Spring-Boot/MinIO 。例如说，http://127.0.0.1:9000 2.
+     * 阿里云：https://help.aliyun.com/document_detail/31837.html 3. 腾讯云：https://cloud.tencent.com/document/product/436/6224
+     * 4. 七牛云：https://developer.qiniu.com/kodo/4088/s3-access-domainname 5.
+     * 华为云：https://console.huaweicloud.com/apiexplorer/#/endpoint/OBS 6.
+     * 火山云：https://www.volcengine.com/docs/6349/107356
      */
     @NotNull(message = "endpoint 不能为空")
     private String endpoint;
     /**
-     * 自定义域名
-     * 1. MinIO：通过 Nginx 配置
-     * 2. 阿里云：https://help.aliyun.com/document_detail/31836.html
-     * 3. 腾讯云：https://cloud.tencent.com/document/product/436/11142
-     * 4. 七牛云：https://developer.qiniu.com/kodo/8556/set-the-custom-source-domain-name
-     * 5. 华为云：https://support.huaweicloud.com/usermanual-obs/obs_03_0032.html
-     * 6. 火山云：https://www.volcengine.com/docs/6349/128983
+     * 自定义域名 1. MinIO：通过 Nginx 配置 2. 阿里云：https://help.aliyun.com/document_detail/31836.html 3.
+     * 腾讯云：https://cloud.tencent.com/document/product/436/11142 4.
+     * 七牛云：https://developer.qiniu.com/kodo/8556/set-the-custom-source-domain-name 5.
+     * 华为云：https://support.huaweicloud.com/usermanual-obs/obs_03_0032.html 6.
+     * 火山云：https://www.volcengine.com/docs/6349/128983
      */
     @URL(message = "domain 必须是 URL 格式")
     private String domain;
@@ -50,13 +46,9 @@ public class S3FileClientConfig implements FileClientConfig {
     private String bucket;
 
     /**
-     * 访问 Key
-     * 1. MinIO：https://www.iocoder.cn/Spring-Boot/MinIO
-     * 2. 阿里云：https://ram.console.aliyun.com/manage/ak
-     * 3. 腾讯云：https://console.cloud.tencent.com/cam/capi
-     * 4. 七牛云：https://portal.qiniu.com/user/key
-     * 5. 华为云：https://support.huaweicloud.com/qs-obs/obs_qs_0005.html
-     * 6. 火山云：https://console.volcengine.com/iam/keymanage/
+     * 访问 Key 1. MinIO：https://www.iocoder.cn/Spring-Boot/MinIO 2. 阿里云：https://ram.console.aliyun.com/manage/ak 3.
+     * 腾讯云：https://console.cloud.tencent.com/cam/capi 4. 七牛云：https://portal.qiniu.com/user/key 5.
+     * 华为云：https://support.huaweicloud.com/qs-obs/obs_qs_0005.html 6. 火山云：https://console.volcengine.com/iam/keymanage/
      */
     @NotNull(message = "accessKey 不能为空")
     private String accessKey;

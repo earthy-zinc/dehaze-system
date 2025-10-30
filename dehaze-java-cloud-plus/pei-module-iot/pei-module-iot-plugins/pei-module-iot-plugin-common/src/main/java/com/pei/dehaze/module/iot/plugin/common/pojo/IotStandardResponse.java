@@ -3,6 +3,7 @@ package com.pei.dehaze.module.iot.plugin.common.pojo;
 import lombok.Data;
 
 // TODO @芋艿：1）后续考虑，要不要叫 IoT 网关之类的 Response；2）包名 pojo
+
 /**
  * IoT 标准协议响应实体类
  * <p>

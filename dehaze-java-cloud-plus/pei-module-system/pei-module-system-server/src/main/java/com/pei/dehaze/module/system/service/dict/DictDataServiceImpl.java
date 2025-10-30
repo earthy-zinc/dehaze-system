@@ -1,6 +1,7 @@
 package com.pei.dehaze.module.system.service.dict;
 
 import cn.hutool.core.collection.CollUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
@@ -10,7 +11,6 @@ import com.pei.dehaze.module.system.controller.admin.dict.vo.data.DictDataSaveRe
 import com.pei.dehaze.module.system.dal.dataobject.dict.DictDataDO;
 import com.pei.dehaze.module.system.dal.dataobject.dict.DictTypeDO;
 import com.pei.dehaze.module.system.dal.mysql.dict.DictDataMapper;
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,23 +44,6 @@ public class DictDataServiceImpl implements DictDataService {
 
     @Resource
     private DictDataMapper dictDataMapper;
-
-    @Override
-    public List<DictDataDO> getDictDataList(Integer status, String dictType) {
-        List<DictDataDO> list = dictDataMapper.selectListByStatusAndDictType(status, dictType);
-        list.sort(COMPARATOR_TYPE_AND_SORT);
-        return list;
-    }
-
-    @Override
-    public PageResult<DictDataDO> getDictDataPage(DictDataPageReqVO pageReqVO) {
-        return dictDataMapper.selectPage(pageReqVO);
-    }
-
-    @Override
-    public DictDataDO getDictData(Long id) {
-        return dictDataMapper.selectById(id);
-    }
 
     @Override
     public Long createDictData(DictDataSaveReqVO createReqVO) {
@@ -99,45 +82,25 @@ public class DictDataServiceImpl implements DictDataService {
     }
 
     @Override
+    public List<DictDataDO> getDictDataList(Integer status, String dictType) {
+        List<DictDataDO> list = dictDataMapper.selectListByStatusAndDictType(status, dictType);
+        list.sort(COMPARATOR_TYPE_AND_SORT);
+        return list;
+    }
+
+    @Override
+    public PageResult<DictDataDO> getDictDataPage(DictDataPageReqVO pageReqVO) {
+        return dictDataMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public DictDataDO getDictData(Long id) {
+        return dictDataMapper.selectById(id);
+    }
+
+    @Override
     public long getDictDataCountByDictType(String dictType) {
         return dictDataMapper.selectCountByDictType(dictType);
-    }
-
-    @VisibleForTesting
-    public void validateDictDataValueUnique(Long id, String dictType, String value) {
-        DictDataDO dictData = dictDataMapper.selectByDictTypeAndValue(dictType, value);
-        if (dictData == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的字典数据
-        if (id == null) {
-            throw exception(DICT_DATA_VALUE_DUPLICATE);
-        }
-        if (!dictData.getId().equals(id)) {
-            throw exception(DICT_DATA_VALUE_DUPLICATE);
-        }
-    }
-
-    @VisibleForTesting
-    public void validateDictDataExists(Long id) {
-        if (id == null) {
-            return;
-        }
-        DictDataDO dictData = dictDataMapper.selectById(id);
-        if (dictData == null) {
-            throw exception(DICT_DATA_NOT_EXISTS);
-        }
-    }
-
-    @VisibleForTesting
-    public void validateDictTypeExists(String type) {
-        DictTypeDO dictType = dictTypeService.getDictType(type);
-        if (dictType == null) {
-            throw exception(DICT_TYPE_NOT_EXISTS);
-        }
-        if (!CommonStatusEnum.ENABLE.getStatus().equals(dictType.getStatus())) {
-            throw exception(DICT_TYPE_NOT_ENABLE);
-        }
     }
 
     @Override
@@ -174,6 +137,43 @@ public class DictDataServiceImpl implements DictDataService {
         List<DictDataDO> list = dictDataMapper.selectList(DictDataDO::getDictType, dictType);
         list.sort(Comparator.comparing(DictDataDO::getSort));
         return list;
+    }
+
+    @VisibleForTesting
+    public void validateDictDataExists(Long id) {
+        if (id == null) {
+            return;
+        }
+        DictDataDO dictData = dictDataMapper.selectById(id);
+        if (dictData == null) {
+            throw exception(DICT_DATA_NOT_EXISTS);
+        }
+    }
+
+    @VisibleForTesting
+    public void validateDictTypeExists(String type) {
+        DictTypeDO dictType = dictTypeService.getDictType(type);
+        if (dictType == null) {
+            throw exception(DICT_TYPE_NOT_EXISTS);
+        }
+        if (!CommonStatusEnum.ENABLE.getStatus().equals(dictType.getStatus())) {
+            throw exception(DICT_TYPE_NOT_ENABLE);
+        }
+    }
+
+    @VisibleForTesting
+    public void validateDictDataValueUnique(Long id, String dictType, String value) {
+        DictDataDO dictData = dictDataMapper.selectByDictTypeAndValue(dictType, value);
+        if (dictData == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的字典数据
+        if (id == null) {
+            throw exception(DICT_DATA_VALUE_DUPLICATE);
+        }
+        if (!dictData.getId().equals(id)) {
+            throw exception(DICT_DATA_VALUE_DUPLICATE);
+        }
     }
 
 }

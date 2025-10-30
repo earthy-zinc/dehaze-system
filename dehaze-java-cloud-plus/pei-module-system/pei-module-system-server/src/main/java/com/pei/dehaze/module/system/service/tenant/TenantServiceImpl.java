@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.dynamic.datasource.annotation.DSTransactional;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
@@ -30,14 +31,13 @@ import com.pei.dehaze.module.system.service.permission.RoleService;
 import com.pei.dehaze.module.system.service.tenant.handler.TenantInfoHandler;
 import com.pei.dehaze.module.system.service.tenant.handler.TenantMenuHandler;
 import com.pei.dehaze.module.system.service.user.AdminUserService;
-import com.baomidou.dynamic.datasource.annotation.DSTransactional;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -76,26 +76,6 @@ public class TenantServiceImpl implements TenantService {
     private PermissionService permissionService;
 
     @Override
-    public List<Long> getTenantIdList() {
-        List<TenantDO> tenants = tenantMapper.selectList();
-        return CollectionUtils.convertList(tenants, TenantDO::getId);
-    }
-
-    @Override
-    public void validTenant(Long id) {
-        TenantDO tenant = getTenant(id);
-        if (tenant == null) {
-            throw exception(TENANT_NOT_EXISTS);
-        }
-        if (tenant.getStatus().equals(CommonStatusEnum.DISABLE.getStatus())) {
-            throw exception(TENANT_DISABLE, tenant.getName());
-        }
-        if (DateUtils.isExpired(tenant.getExpireTime())) {
-            throw exception(TENANT_EXPIRE, tenant.getName());
-        }
-    }
-
-    @Override
     @DSTransactional // 多数据源，使用 @DSTransactional 保证本地事务，以及数据源的切换
     @DataPermission(enable = false) // 参见 https://gitee.com/zhijiantianya/ruoyi-vue-pro/pulls/1154 说明
     public Long createTenant(TenantSaveReqVO createReqVO) {
@@ -121,25 +101,6 @@ public class TenantServiceImpl implements TenantService {
         return tenant.getId();
     }
 
-    private Long createUser(Long roleId, TenantSaveReqVO createReqVO) {
-        // 创建用户
-        Long userId = userService.createUser(TenantConvert.INSTANCE.convert02(createReqVO));
-        // 分配角色
-        permissionService.assignUserRole(userId, singleton(roleId));
-        return userId;
-    }
-
-    private Long createRole(TenantPackageDO tenantPackage) {
-        // 创建角色
-        RoleSaveReqVO reqVO = new RoleSaveReqVO();
-        reqVO.setName(RoleCodeEnum.TENANT_ADMIN.getName()).setCode(RoleCodeEnum.TENANT_ADMIN.getCode())
-                .setSort(0).setRemark("系统自动生成");
-        Long roleId = roleService.createRole(reqVO, RoleTypeEnum.SYSTEM.getType());
-        // 分配权限
-        permissionService.assignRoleMenu(roleId, tenantPackage.getMenuIds());
-        return roleId;
-    }
-
     @Override
     @DSTransactional // 多数据源，使用 @DSTransactional 保证本地事务，以及数据源的切换
     public void updateTenant(TenantSaveReqVO updateReqVO) {
@@ -158,37 +119,6 @@ public class TenantServiceImpl implements TenantService {
         // 如果套餐发生变化，则修改其角色的权限
         if (ObjectUtil.notEqual(tenant.getPackageId(), updateReqVO.getPackageId())) {
             updateTenantRoleMenu(tenant.getId(), tenantPackage.getMenuIds());
-        }
-    }
-
-    private void validTenantNameDuplicate(String name, Long id) {
-        TenantDO tenant = tenantMapper.selectByName(name);
-        if (tenant == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同名字的租户
-        if (id == null) {
-            throw exception(TENANT_NAME_DUPLICATE, name);
-        }
-        if (!tenant.getId().equals(id)) {
-            throw exception(TENANT_NAME_DUPLICATE, name);
-        }
-    }
-
-    private void validTenantWebsiteDuplicate(String website, Long id) {
-        if (StrUtil.isEmpty(website)) {
-            return;
-        }
-        TenantDO tenant = tenantMapper.selectByWebsite(website);
-        if (tenant == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同名字的租户
-        if (id == null) {
-            throw exception(TENANT_WEBSITE_DUPLICATE, website);
-        }
-        if (!tenant.getId().equals(id)) {
-            throw exception(TENANT_WEBSITE_DUPLICATE, website);
         }
     }
 
@@ -223,18 +153,6 @@ public class TenantServiceImpl implements TenantService {
         validateUpdateTenant(id);
         // 删除
         tenantMapper.deleteById(id);
-    }
-
-    private TenantDO validateUpdateTenant(Long id) {
-        TenantDO tenant = tenantMapper.selectById(id);
-        if (tenant == null) {
-            throw exception(TENANT_NOT_EXISTS);
-        }
-        // 内置租户，不允许删除
-        if (isSystemTenant(tenant)) {
-            throw exception(TENANT_CAN_NOT_UPDATE_SYSTEM);
-        }
-        return tenant;
     }
 
     @Override
@@ -302,12 +220,94 @@ public class TenantServiceImpl implements TenantService {
         handler.handle(menuIds);
     }
 
-    private static boolean isSystemTenant(TenantDO tenant) {
-        return Objects.equals(tenant.getPackageId(), TenantDO.PACKAGE_ID_SYSTEM);
+    @Override
+    public List<Long> getTenantIdList() {
+        List<TenantDO> tenants = tenantMapper.selectList();
+        return CollectionUtils.convertList(tenants, TenantDO::getId);
+    }
+
+    @Override
+    public void validTenant(Long id) {
+        TenantDO tenant = getTenant(id);
+        if (tenant == null) {
+            throw exception(TENANT_NOT_EXISTS);
+        }
+        if (tenant.getStatus().equals(CommonStatusEnum.DISABLE.getStatus())) {
+            throw exception(TENANT_DISABLE, tenant.getName());
+        }
+        if (DateUtils.isExpired(tenant.getExpireTime())) {
+            throw exception(TENANT_EXPIRE, tenant.getName());
+        }
     }
 
     private boolean isTenantDisable() {
         return tenantProperties == null || Boolean.FALSE.equals(tenantProperties.getEnable());
+    }
+
+    private TenantDO validateUpdateTenant(Long id) {
+        TenantDO tenant = tenantMapper.selectById(id);
+        if (tenant == null) {
+            throw exception(TENANT_NOT_EXISTS);
+        }
+        // 内置租户，不允许删除
+        if (isSystemTenant(tenant)) {
+            throw exception(TENANT_CAN_NOT_UPDATE_SYSTEM);
+        }
+        return tenant;
+    }
+
+    private static boolean isSystemTenant(TenantDO tenant) {
+        return Objects.equals(tenant.getPackageId(), TenantDO.PACKAGE_ID_SYSTEM);
+    }
+
+    private void validTenantNameDuplicate(String name, Long id) {
+        TenantDO tenant = tenantMapper.selectByName(name);
+        if (tenant == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同名字的租户
+        if (id == null) {
+            throw exception(TENANT_NAME_DUPLICATE, name);
+        }
+        if (!tenant.getId().equals(id)) {
+            throw exception(TENANT_NAME_DUPLICATE, name);
+        }
+    }
+
+    private void validTenantWebsiteDuplicate(String website, Long id) {
+        if (StrUtil.isEmpty(website)) {
+            return;
+        }
+        TenantDO tenant = tenantMapper.selectByWebsite(website);
+        if (tenant == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同名字的租户
+        if (id == null) {
+            throw exception(TENANT_WEBSITE_DUPLICATE, website);
+        }
+        if (!tenant.getId().equals(id)) {
+            throw exception(TENANT_WEBSITE_DUPLICATE, website);
+        }
+    }
+
+    private Long createRole(TenantPackageDO tenantPackage) {
+        // 创建角色
+        RoleSaveReqVO reqVO = new RoleSaveReqVO();
+        reqVO.setName(RoleCodeEnum.TENANT_ADMIN.getName()).setCode(RoleCodeEnum.TENANT_ADMIN.getCode())
+                .setSort(0).setRemark("系统自动生成");
+        Long roleId = roleService.createRole(reqVO, RoleTypeEnum.SYSTEM.getType());
+        // 分配权限
+        permissionService.assignRoleMenu(roleId, tenantPackage.getMenuIds());
+        return roleId;
+    }
+
+    private Long createUser(Long roleId, TenantSaveReqVO createReqVO) {
+        // 创建用户
+        Long userId = userService.createUser(TenantConvert.INSTANCE.convert02(createReqVO));
+        // 分配角色
+        permissionService.assignUserRole(userId, singleton(roleId));
+        return userId;
     }
 
 }

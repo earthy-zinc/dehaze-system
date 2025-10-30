@@ -53,20 +53,18 @@ import static com.pei.dehaze.module.pay.enums.refund.PayRefundStatusEnum.*;
 public class PayWalletRechargeServiceImpl implements PayWalletRechargeService {
 
     private static final String WALLET_RECHARGE_ORDER_SUBJECT = "钱包余额充值";
-
+    @Resource
+    public SocialClientApi socialClientApi;
     @Resource
     private PayWalletRechargeMapper walletRechargeMapper;
     @Resource
     private PayWalletService payWalletService;
     @Resource
     private PayOrderService payOrderService;
-//    @Resource
+    //    @Resource
 //    private PayRefundService payRefundService;
     @Resource
     private PayWalletRechargePackageService payWalletRechargePackageService;
-
-    @Resource
-    public SocialClientApi socialClientApi;
     @Resource
     private PayRefundApi payRefundApi;
 
@@ -154,21 +152,6 @@ public class PayWalletRechargeServiceImpl implements PayWalletRechargeService {
         getSelf().sendWalletRechargerPaidMessage(payOrderId, recharge);
     }
 
-    @Async
-    public void sendWalletRechargerPaidMessage(Long payOrderId, PayWalletRechargeDO walletRecharge) {
-        // 1. 获得会员钱包信息
-        PayWalletDO wallet = payWalletService.getWallet(walletRecharge.getWalletId());
-        // 2. 构建并发送模版消息
-        socialClientApi.sendWxaSubscribeMessage(new SocialWxaSubscribeMessageSendReqDTO()
-                .setUserId(wallet.getUserId()).setUserType(wallet.getUserType())
-                .setTemplateTitle(WXA_WALLET_RECHARGER_PAID)
-                .setPage("pages/user/wallet/money") // 钱包详情界面
-                .addMessage("character_string1", String.valueOf(payOrderId)) // 支付单编号
-                .addMessage("amount2", fenToYuanStr(walletRecharge.getTotalPrice())) // 充值金额
-                .addMessage("time3", LocalDateTimeUtil.formatNormal(walletRecharge.getCreateTime())) // 充值时间
-                .addMessage("phrase4", "充值成功")); // 充值状态
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void refundWalletRecharge(Long id, String userIp) {
@@ -222,7 +205,7 @@ public class PayWalletRechargeServiceImpl implements PayWalletRechargeService {
             updateObj.setRefundStatus(SUCCESS.getStatus()).setRefundTime(payRefund.getSuccessTime())
                     .setRefundTotalPrice(walletRecharge.getTotalPrice()).setRefundPayPrice(walletRecharge.getPayPrice())
                     .setRefundBonusPrice(walletRecharge.getBonusPrice());
-        // 情况二：退款失败
+            // 情况二：退款失败
         } else if (PayRefundStatusEnum.isFailure(payRefund.getStatus())) {
             // 2.2 解冻余额
             payWalletService.unfreezePrice(walletRecharge.getWalletId(), walletRecharge.getTotalPrice());
@@ -285,7 +268,7 @@ public class PayWalletRechargeServiceImpl implements PayWalletRechargeService {
     /**
      * 校验支付订单的合法性
      *
-     * @param recharge 充值订单
+     * @param recharge   充值订单
      * @param payOrderId 支付订单编号
      * @return 支付订单
      */
@@ -317,6 +300,21 @@ public class PayWalletRechargeServiceImpl implements PayWalletRechargeService {
             throw exception(WALLET_RECHARGE_UPDATE_PAID_PAY_ORDER_ID_ERROR);
         }
         return payOrder;
+    }
+
+    @Async
+    public void sendWalletRechargerPaidMessage(Long payOrderId, PayWalletRechargeDO walletRecharge) {
+        // 1. 获得会员钱包信息
+        PayWalletDO wallet = payWalletService.getWallet(walletRecharge.getWalletId());
+        // 2. 构建并发送模版消息
+        socialClientApi.sendWxaSubscribeMessage(new SocialWxaSubscribeMessageSendReqDTO()
+                .setUserId(wallet.getUserId()).setUserType(wallet.getUserType())
+                .setTemplateTitle(WXA_WALLET_RECHARGER_PAID)
+                .setPage("pages/user/wallet/money") // 钱包详情界面
+                .addMessage("character_string1", String.valueOf(payOrderId)) // 支付单编号
+                .addMessage("amount2", fenToYuanStr(walletRecharge.getTotalPrice())) // 充值金额
+                .addMessage("time3", LocalDateTimeUtil.formatNormal(walletRecharge.getCreateTime())) // 充值时间
+                .addMessage("phrase4", "充值成功")); // 充值状态
     }
 
     /**

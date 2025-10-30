@@ -61,7 +61,8 @@ public class AppTradeProductSettlementRespVO {
     @Data
     public static class RewardActivityRule {
 
-        @Schema(description = "优惠门槛", requiredMode = Schema.RequiredMode.REQUIRED, example = "100") // 1. 满 N 元，单位：分; 2. 满 N 件
+        @Schema(description = "优惠门槛", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")
+        // 1. 满 N 元，单位：分; 2. 满 N 件
         private Integer limit;
 
         @Schema(description = "优惠价格", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")

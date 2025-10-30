@@ -4,7 +4,6 @@ import com.pei.dehaze.framework.common.pojo.PageParam;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.pay.controller.admin.demo.vo.withdraw.PayDemoWithdrawCreateReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.demo.PayDemoWithdrawDO;
-
 import jakarta.validation.Valid;
 
 /**
@@ -40,7 +39,7 @@ public interface PayDemoWithdrawService {
     /**
      * 更新示例提现单的状态
      *
-     * @param id 编号
+     * @param id            编号
      * @param payTransferId 转账单编号
      */
     void updateDemoWithdrawTransferred(Long id, Long payTransferId);

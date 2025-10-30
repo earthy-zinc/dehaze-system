@@ -2,11 +2,11 @@ package com.pei.dehaze.module.bpm.framework.flowable.core.candidate.strategy.dep
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
+import com.google.common.collect.Sets;
 import com.pei.dehaze.module.bpm.framework.flowable.core.candidate.strategy.user.BpmTaskCandidateUserStrategy;
 import com.pei.dehaze.module.bpm.framework.flowable.core.enums.BpmTaskCandidateStrategyEnum;
 import com.pei.dehaze.module.bpm.framework.flowable.core.util.FlowableUtils;
 import com.pei.dehaze.module.bpm.service.task.BpmProcessInstanceService;
-import com.google.common.collect.Sets;
 import jakarta.annotation.Resource;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -36,7 +36,8 @@ public class BpmTaskCandidateStartUserSelectStrategy extends AbstractBpmTaskCand
     }
 
     @Override
-    public void validateParam(String param) {}
+    public void validateParam(String param) {
+    }
 
     @Override
     public boolean isParamRequired() {

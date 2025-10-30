@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.system.api.permission;
 
-import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.biz.system.permission.dto.DeptDataPermissionRespDTO;
+import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.system.service.permission.PermissionService;
+import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Primary;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.Set;
 

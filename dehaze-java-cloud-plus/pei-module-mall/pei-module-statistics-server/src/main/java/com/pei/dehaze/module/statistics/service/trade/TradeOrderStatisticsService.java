@@ -1,7 +1,9 @@
 package com.pei.dehaze.module.statistics.service.trade;
 
 import com.pei.dehaze.module.statistics.controller.admin.common.vo.DataComparisonRespVO;
-import com.pei.dehaze.module.statistics.controller.admin.trade.vo.*;
+import com.pei.dehaze.module.statistics.controller.admin.trade.vo.TradeOrderSummaryRespVO;
+import com.pei.dehaze.module.statistics.controller.admin.trade.vo.TradeOrderTrendReqVO;
+import com.pei.dehaze.module.statistics.controller.admin.trade.vo.TradeOrderTrendRespVO;
 import com.pei.dehaze.module.statistics.service.member.bo.MemberAreaStatisticsRespBO;
 import com.pei.dehaze.module.statistics.service.trade.bo.TradeOrderSummaryRespBO;
 

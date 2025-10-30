@@ -19,7 +19,7 @@ public interface MpStatisticsService {
      * 获取粉丝增减数据
      *
      * @param accountId 公众号账号编号
-     * @param date 时间区间
+     * @param date      时间区间
      * @return 粉丝增减数据
      */
     List<WxDataCubeUserSummary> getUserSummary(Long accountId, LocalDateTime[] date);
@@ -28,7 +28,7 @@ public interface MpStatisticsService {
      * 获取粉丝累计数据
      *
      * @param accountId 公众号账号编号
-     * @param date 时间区间
+     * @param date      时间区间
      * @return 粉丝累计数据
      */
     List<WxDataCubeUserCumulate> getUserCumulate(Long accountId, LocalDateTime[] date);
@@ -37,7 +37,7 @@ public interface MpStatisticsService {
      * 获取消息发送概况数据
      *
      * @param accountId 公众号账号编号
-     * @param date 时间区间
+     * @param date      时间区间
      * @return 消息发送概况数据
      */
     List<WxDataCubeMsgResult> getUpstreamMessage(Long accountId, LocalDateTime[] date);
@@ -46,7 +46,7 @@ public interface MpStatisticsService {
      * 获取接口分析数据
      *
      * @param accountId 公众号账号编号
-     * @param date 时间区间
+     * @param date      时间区间
      * @return 接口分析数据
      */
     List<WxDataCubeInterfaceResult> getInterfaceSummary(Long accountId, LocalDateTime[] date);

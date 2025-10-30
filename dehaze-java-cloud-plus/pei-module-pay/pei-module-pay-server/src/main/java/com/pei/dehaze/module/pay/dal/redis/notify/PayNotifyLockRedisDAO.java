@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.pay.dal.redis.notify;
 
+import jakarta.annotation.Resource;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Repository;
 
-import jakarta.annotation.Resource;
 import java.util.concurrent.TimeUnit;
 
 import static com.pei.dehaze.module.pay.dal.redis.RedisKeyConstants.PAY_NOTIFY_LOCK;

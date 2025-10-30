@@ -31,9 +31,6 @@ import static com.pei.dehaze.module.crm.enums.LogRecordConstants.*;
 @Validated
 public class CrmOperateLogController {
 
-    @Resource
-    private OperateLogApi operateLogApi;
-
     /**
      * {@link CrmBizTypeEnum} 与 {@link LogRecordConstants} 的映射关系
      */
@@ -49,6 +46,9 @@ public class CrmOperateLogController {
         BIZ_TYPE_MAP.put(CrmBizTypeEnum.CRM_RECEIVABLE.getType(), CRM_RECEIVABLE_TYPE);
         BIZ_TYPE_MAP.put(CrmBizTypeEnum.CRM_RECEIVABLE_PLAN.getType(), CRM_RECEIVABLE_PLAN_TYPE);
     }
+
+    @Resource
+    private OperateLogApi operateLogApi;
 
     @GetMapping("/page")
     @Operation(summary = "获得操作日志")

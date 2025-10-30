@@ -4,10 +4,10 @@ import com.pei.dehaze.module.system.api.notify.NotifyMessageSendApi;
 import com.pei.dehaze.module.system.api.notify.dto.NotifySendSingleToUserReqDTO;
 import com.pei.dehaze.module.trade.enums.MessageTemplateConstants;
 import com.pei.dehaze.module.trade.service.message.bo.TradeOrderMessageWhenDeliveryOrderReqBO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
 

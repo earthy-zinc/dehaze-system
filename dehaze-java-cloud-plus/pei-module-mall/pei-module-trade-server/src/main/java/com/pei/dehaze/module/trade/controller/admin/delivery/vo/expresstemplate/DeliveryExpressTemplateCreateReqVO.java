@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.trade.controller.admin.delivery.vo.expresstemplate;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
-import jakarta.validation.Valid;
 import java.util.List;
 
 @Schema(description = "管理后台 - 快递运费模板创建 Request VO")

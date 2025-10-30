@@ -51,11 +51,11 @@ public interface TradeOrderUpdateService {
 
     /**
      * 同步订单的支付状态
+     * <p>
+     * 1. Quietly 表示，即使同步失败，也不会抛出异常 2. 什么时候回出现异常？因为是主动同步，可能和支付模块的回调通知 {@link #updateOrderPaid(Long, Long)}
+     * 存在并发冲突，导致抛出异常
      *
-     * 1. Quietly 表示，即使同步失败，也不会抛出异常
-     * 2. 什么时候回出现异常？因为是主动同步，可能和支付模块的回调通知 {@link #updateOrderPaid(Long, Long)} 存在并发冲突，导致抛出异常
-     *
-     * @param id 订单编号
+     * @param id         订单编号
      * @param payOrderId 支付订单编号
      */
     void syncOrderPayStatusQuietly(Long id, Long payOrderId);
@@ -130,14 +130,14 @@ public interface TradeOrderUpdateService {
      * 【管理员】核销订单
      *
      * @param userId 管理员编号
-     * @param id 订单编号
+     * @param id     订单编号
      */
     void pickUpOrderByAdmin(Long userId, Long id);
 
     /**
      * 【管理员】核销订单
      *
-     * @param userId 管理员编号
+     * @param userId           管理员编号
      * @param pickUpVerifyCode 自提核销码
      */
     void pickUpOrderByAdmin(Long userId, String pickUpVerifyCode);
@@ -203,17 +203,17 @@ public interface TradeOrderUpdateService {
     /**
      * 取消支付订单
      *
-     * @param userId           用户编号
-     * @param orderId          订单编号
-     * @param cancelType       取消类型
+     * @param userId     用户编号
+     * @param orderId    订单编号
+     * @param cancelType 取消类型
      */
     void cancelPaidOrder(Long userId, Long orderId, Integer cancelType);
 
     /**
      * 取消支付订单的退款回调
      *
-     * @param id               订单编号
-     * @param payRefundId      支付退款编号
+     * @param id          订单编号
+     * @param payRefundId 支付退款编号
      */
     void updatePaidOrderRefunded(Long id, Long payRefundId);
 

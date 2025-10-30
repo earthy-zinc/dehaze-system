@@ -38,7 +38,7 @@ public enum PayChannelEnum implements ArrayValuable<String> {
 
     /**
      * 编码
-     *
+     * <p>
      * 参考 <a href="https://www.pingxx.com/api/支付渠道属性值.html">支付渠道属性值</a>
      */
     private final String code;
@@ -46,11 +46,6 @@ public enum PayChannelEnum implements ArrayValuable<String> {
      * 名字
      */
     private final String name;
-
-    @Override
-    public String[] array() {
-        return ARRAYS;
-    }
 
     public static PayChannelEnum getByCode(String code) {
         return ArrayUtil.firstMatch(o -> o.getCode().equals(code), values());
@@ -62,6 +57,11 @@ public enum PayChannelEnum implements ArrayValuable<String> {
 
     public static boolean isWeixin(String channelCode) {
         return StrUtil.startWith(channelCode, "wx_");
+    }
+
+    @Override
+    public String[] array() {
+        return ARRAYS;
     }
 
 }

@@ -1,10 +1,12 @@
-`pei-spring-boot-starter-monitor` 是一个 **服务监控模块**，其核心作用是为微服务架构提供 **链路追踪、日志增强、指标收集** 等功能。它基于 SkyWalking 实现了全链路的 Trace 跟踪，并结合 Micrometer 收集服务运行时的性能指标。
+`pei-spring-boot-starter-monitor` 是一个 **服务监控模块**，其核心作用是为微服务架构提供 **链路追踪、日志增强、指标收集**
+等功能。它基于 SkyWalking 实现了全链路的 Trace 跟踪，并结合 Micrometer 收集服务运行时的性能指标。
 
 ---
 
 ## 一、模块概述
 
 ### ✅ 模块定位
+
 - **目标**：为整个系统提供统一的监控能力，包括：
     - 链路追踪（Trace）
     - 日志上下文（traceId）
@@ -41,7 +43,6 @@ src/main/java/
     │       └── TracerFrameworkUtils.java // 提供 Span 错误处理等工具方法
 ```
 
-
 ---
 
 ## 三、关键包详解
@@ -49,6 +50,7 @@ src/main/java/
 ### 1️⃣ `config` 包
 
 #### 🔹 `PeiTracerAutoConfiguration.java`
+
 ```java
 @Bean
 public FilterRegistrationBean<TraceFilter> traceFilter() {
@@ -63,6 +65,7 @@ public FilterRegistrationBean<TraceFilter> traceFilter() {
 - **原理**：通过 `WebFilterOrderEnum` 控制执行顺序，避免与其他 Filter 冲突。
 
 #### 🔹 `TracerProperties.java`
+
 ```java
 @ConfigurationProperties("pei.tracer")
 @Data
@@ -77,8 +80,8 @@ public class TracerProperties {}
       enable: true
   ```
 
-
 #### 🔹 `YudaoMetricsAutoConfiguration.java`
+
 ```java
 @Bean
 public MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(
@@ -95,6 +98,7 @@ public MeterRegistryCustomizer<MeterRegistry> metricsCommonTags(
 ### 2️⃣ `annotation` 包
 
 #### 🔹 `BizTrace.java`
+
 ```java
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
@@ -126,6 +130,7 @@ public @interface BizTrace {
 ### 3️⃣ `aop` 包
 
 #### 🔹 `BizTraceAspect.java`
+
 ```java
 @Around(value = "@annotation(trace)")
 public Object around(ProceedingJoinPoint joinPoint, BizTrace trace) throws Throwable {
@@ -156,6 +161,7 @@ public Object around(ProceedingJoinPoint joinPoint, BizTrace trace) throws Throw
 ### 4️⃣ `filter` 包
 
 #### 🔹 `TraceFilter.java`
+
 ```java
 @Override
 private void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -173,6 +179,7 @@ private void doFilterInternal(HttpServletRequest request, HttpServletResponse re
 ### 5️⃣ `util` 包
 
 #### 🔹 `TracerFrameworkUtils.java`
+
 ```java
 public static void onError(Throwable throwable, Span span) {
     Tags.ERROR.set(span, Boolean.TRUE);
@@ -221,18 +228,17 @@ graph TD
     L --> M[展示到 Grafana 或其他监控平台]
 ```
 
-
 ---
 
 ## 五、模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `config` | 自动配置 | `PeiTracerAutoConfiguration`, `YudaoMetricsAutoConfiguration` |
-| `annotation` | 注解定义 | `BizTrace.java` |
-| `aop` | 切面逻辑 | `BizTraceAspect.java` |
-| `filter` | Web 过滤器 | `TraceFilter.java` |
-| `util` | 工具类 | `TracerFrameworkUtils.java` |
+| 包名           | 功能      | 关键类                                                           |
+|--------------|---------|---------------------------------------------------------------|
+| `config`     | 自动配置    | `PeiTracerAutoConfiguration`, `YudaoMetricsAutoConfiguration` |
+| `annotation` | 注解定义    | `BizTrace.java`                                               |
+| `aop`        | 切面逻辑    | `BizTraceAspect.java`                                         |
+| `filter`     | Web 过滤器 | `TraceFilter.java`                                            |
+| `util`       | 工具类     | `TracerFrameworkUtils.java`                                   |
 
 ---
 
@@ -257,14 +263,15 @@ graph TD
 ## 七、典型使用方式
 
 ### 1️⃣ 启用 trace-id 返回
+
 ```yaml
 pei:
   tracer:
     enable: true
 ```
 
-
 ### 2️⃣ 在 Service 方法上添加业务标签
+
 ```java
 @BizTrace(type = "user", id = "#id")
 public UserDTO getUserById(Long id) {
@@ -272,30 +279,29 @@ public UserDTO getUserById(Long id) {
 }
 ```
 
-
 ### 3️⃣ 查看链路追踪日志
+
 ```log
 ERROR [Biz/user-service.getUserById] event=error, error.kind=com.example.UserNotFoundException, message="用户不存在", stack="..."
 ```
 
-
 ### 4️⃣ Prometheus 指标查询
+
 ```promql
 http_server_requests_seconds_count{uri="/api/user/getUserById"}
 ```
-
 
 ---
 
 ## 八、建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
+| 改进点               | 描述                                                       |
+|-------------------|----------------------------------------------------------|
 | ✅ SkyWalking 配置优化 | 可以通过 `application.yaml` 动态配置 SkyWalking Agent 参数，而不是硬编码。 |
-| ✅ 更丰富的注解支持 | 支持在 Controller 方法上使用 `@BizTrace`，更细粒度控制链路。 |
-| ✅ 自定义指标注册 | 提供 `MetricUtils` 类，支持手动上报自定义指标（如缓存命中率、数据库连接数）。 |
-| ✅ 日志打印 trace-id | 在日志模板中增加 `%X{tid}` 占位符，自动打印 trace-id，提升调试效率。 |
-| ✅ 集成 Zipkin | 当前仅支持 SkyWalking，未来可扩展支持 Zipkin，适配不同团队需求。 |
+| ✅ 更丰富的注解支持        | 支持在 Controller 方法上使用 `@BizTrace`，更细粒度控制链路。               |
+| ✅ 自定义指标注册         | 提供 `MetricUtils` 类，支持手动上报自定义指标（如缓存命中率、数据库连接数）。           |
+| ✅ 日志打印 trace-id   | 在日志模板中增加 `%X{tid}` 占位符，自动打印 trace-id，提升调试效率。             |
+| ✅ 集成 Zipkin       | 当前仅支持 SkyWalking，未来可扩展支持 Zipkin，适配不同团队需求。                |
 
 ---
 

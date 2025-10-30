@@ -32,12 +32,6 @@ public class AdminUserApiImpl implements AdminUserApi {
     private DeptService deptService;
 
     @Override
-    public CommonResult<AdminUserRespDTO> getUser(Long id) {
-        AdminUserDO user = userService.getUser(id);
-        return success(BeanUtils.toBean(user, AdminUserRespDTO.class));
-    }
-
-    @Override
     public CommonResult<List<AdminUserRespDTO>> getUserListBySubordinate(Long id) {
         // 1.1 获取用户负责的部门
         AdminUserDO user = userService.getUser(id);
@@ -66,14 +60,6 @@ public class AdminUserApiImpl implements AdminUserApi {
     }
 
     @Override
-    public CommonResult<List<AdminUserRespDTO>> getUserList(Collection<Long> ids) {
-        return DataPermissionUtils.executeIgnore(() -> { // 禁用数据权限。原因是，一般基于指定 id 的 API 查询，都是数据拼接为主
-            List<AdminUserDO> users = userService.getUserList(ids);
-            return success(BeanUtils.toBean(users, AdminUserRespDTO.class));
-        });
-    }
-
-    @Override
     public CommonResult<List<AdminUserRespDTO>> getUserListByDeptIds(Collection<Long> deptIds) {
         List<AdminUserDO> users = userService.getUserListByDeptIds(deptIds);
         return success(BeanUtils.toBean(users, AdminUserRespDTO.class));
@@ -86,9 +72,23 @@ public class AdminUserApiImpl implements AdminUserApi {
     }
 
     @Override
+    public CommonResult<List<AdminUserRespDTO>> getUserList(Collection<Long> ids) {
+        return DataPermissionUtils.executeIgnore(() -> { // 禁用数据权限。原因是，一般基于指定 id 的 API 查询，都是数据拼接为主
+            List<AdminUserDO> users = userService.getUserList(ids);
+            return success(BeanUtils.toBean(users, AdminUserRespDTO.class));
+        });
+    }
+
+    @Override
     public CommonResult<Boolean> validateUserList(Collection<Long> ids) {
         userService.validateUserList(ids);
         return success(true);
+    }
+
+    @Override
+    public CommonResult<AdminUserRespDTO> getUser(Long id) {
+        AdminUserDO user = userService.getUser(id);
+        return success(BeanUtils.toBean(user, AdminUserRespDTO.class));
     }
 
 }

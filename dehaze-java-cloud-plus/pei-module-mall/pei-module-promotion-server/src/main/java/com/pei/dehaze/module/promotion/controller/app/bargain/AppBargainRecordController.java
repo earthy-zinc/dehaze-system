@@ -122,13 +122,13 @@ public class AppBargainRecordController {
 
         // 1. 判断是否已经助力
         if (record != null
-            && bargainHelpService.getBargainHelp(record.getId(), userId) != null) {
+                && bargainHelpService.getBargainHelp(record.getId(), userId) != null) {
             return AppBargainRecordDetailRespVO.HELP_ACTION_SUCCESS;
         }
         // 2. 判断是否满助力
         BargainActivityDO activity = bargainActivityService.getBargainActivity(activityId);
         if (activity != null
-            && bargainHelpService.getBargainHelpCountByActivity(activityId, userId) >= activity.getBargainCount()) {
+                && bargainHelpService.getBargainHelpCountByActivity(activityId, userId) >= activity.getBargainCount()) {
             return AppBargainRecordDetailRespVO.HELP_ACTION_FULL;
         }
         // 3. 允许助力

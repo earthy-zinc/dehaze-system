@@ -3,6 +3,7 @@ package com.pei.dehaze.module.mp.service.handler.message;
 import com.pei.dehaze.module.mp.dal.dataobject.message.MpAutoReplyDO;
 import com.pei.dehaze.module.mp.framework.mp.core.context.MpContextHolder;
 import com.pei.dehaze.module.mp.service.message.MpAutoReplyService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.session.WxSessionManager;
 import me.chanjar.weixin.mp.api.WxMpMessageHandler;
@@ -11,7 +12,6 @@ import me.chanjar.weixin.mp.bean.message.WxMpXmlMessage;
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutMessage;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.Map;
 
 /**

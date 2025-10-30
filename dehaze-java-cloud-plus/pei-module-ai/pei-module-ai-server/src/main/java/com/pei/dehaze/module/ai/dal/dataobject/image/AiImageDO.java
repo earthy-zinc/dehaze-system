@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.ai.dal.dataobject.image;
 
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
-import com.pei.dehaze.module.ai.enums.image.AiImageStatusEnum;
-import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
+import com.pei.dehaze.module.ai.enums.image.AiImageStatusEnum;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
+import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
+import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
 import lombok.Data;
 import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.ai.stabilityai.api.StabilityAiImageOptions;
@@ -37,7 +37,7 @@ public class AiImageDO extends BaseDO {
 
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 {@link AdminUserRespDTO#getId()}
      */
     private Long userId;
@@ -49,19 +49,19 @@ public class AiImageDO extends BaseDO {
 
     /**
      * 平台
-     *
+     * <p>
      * 枚举 {@link AiPlatformEnum}
      */
     private String platform;
     /**
      * 模型编号
-     *
+     * <p>
      * 关联 {@link AiModelDO#getId()}
      */
     private Long modelId;
     /**
      * 模型标识
-     *
+     * <p>
      * 冗余 {@link AiModelDO#getModel()}
      */
     private String model;
@@ -77,7 +77,7 @@ public class AiImageDO extends BaseDO {
 
     /**
      * 生成状态
-     *
+     * <p>
      * 枚举 {@link AiImageStatusEnum}
      */
     private Integer status;
@@ -103,9 +103,8 @@ public class AiImageDO extends BaseDO {
 
     /**
      * 绘制参数，不同 platform 的不同参数
-     *
-     * 1. {@link OpenAiImageOptions}
-     * 2. {@link StabilityAiImageOptions}
+     * <p>
+     * 1. {@link OpenAiImageOptions} 2. {@link StabilityAiImageOptions}
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
     private Map<String, Object> options;
@@ -118,7 +117,7 @@ public class AiImageDO extends BaseDO {
 
     /**
      * 任务编号
-     *
+     * <p>
      * 1. midjourney proxy：关联的 task id
      */
     private String taskId;

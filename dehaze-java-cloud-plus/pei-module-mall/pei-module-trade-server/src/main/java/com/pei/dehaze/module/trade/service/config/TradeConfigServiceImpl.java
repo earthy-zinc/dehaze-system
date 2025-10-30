@@ -5,10 +5,10 @@ import com.pei.dehaze.module.trade.controller.admin.config.vo.TradeConfigSaveReq
 import com.pei.dehaze.module.trade.convert.config.TradeConfigConvert;
 import com.pei.dehaze.module.trade.dal.dataobject.config.TradeConfigDO;
 import com.pei.dehaze.module.trade.dal.mysql.config.TradeConfigMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 /**

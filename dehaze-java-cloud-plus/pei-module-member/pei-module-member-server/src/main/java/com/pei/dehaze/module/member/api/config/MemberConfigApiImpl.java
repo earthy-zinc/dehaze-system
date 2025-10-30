@@ -4,10 +4,9 @@ import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.member.api.config.dto.MemberConfigRespDTO;
 import com.pei.dehaze.module.member.convert.config.MemberConfigConvert;
 import com.pei.dehaze.module.member.service.config.MemberConfigService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 

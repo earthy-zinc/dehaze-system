@@ -1,11 +1,10 @@
 package com.pei.dehaze.module.pay.framework.pay.config;
 
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import org.hibernate.validator.constraints.URL;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
-
-import jakarta.validation.constraints.NotEmpty;
 
 @ConfigurationProperties(prefix = "pei.pay")
 @Validated
@@ -19,9 +18,9 @@ public class PayProperties {
 
     /**
      * 支付回调地址
-     *
+     * <p>
      * 实际上，对应的 PayNotifyController 的 notifyOrder 方法的 URL
-     *
+     * <p>
      * 回调顺序：支付渠道（支付宝支付、微信支付） => pei-module-pay 的 orderNotifyUrl 地址 => 业务的 PayAppDO.orderNotifyUrl 地址
      */
     @NotEmpty(message = "支付回调地址不能为空")
@@ -30,9 +29,9 @@ public class PayProperties {
 
     /**
      * 退款回调地址
-     *
+     * <p>
      * 实际上，对应的 PayNotifyController 的 notifyRefund 方法的 URL
-     *
+     * <p>
      * 回调顺序：支付渠道（支付宝支付、微信支付） => pei-module-pay 的 refundNotifyUrl 地址 => 业务的 PayAppDO.notifyRefundUrl 地址
      */
     @NotEmpty(message = "支付回调地址不能为空")
@@ -41,9 +40,9 @@ public class PayProperties {
 
     /**
      * 转账回调地址
-     *
+     * <p>
      * 实际上，对应的 PayNotifyController 的 notifyTransfer 方法的 URL
-     *
+     * <p>
      * 回调顺序：支付渠道（支付宝支付、微信支付） => pei-module-pay 的 transferNotifyUrl 地址 => 业务的 PayAppDO.transferNotifyUrl 地址
      */
     private String transferNotifyUrl;

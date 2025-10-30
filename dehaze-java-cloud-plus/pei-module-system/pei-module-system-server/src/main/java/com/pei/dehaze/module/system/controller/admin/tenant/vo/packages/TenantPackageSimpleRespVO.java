@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.system.controller.admin.tenant.vo.packages;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 租户套餐精简 Response VO")
 @Data

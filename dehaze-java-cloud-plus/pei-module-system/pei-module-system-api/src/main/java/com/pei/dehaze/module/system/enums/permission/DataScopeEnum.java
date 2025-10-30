@@ -8,7 +8,7 @@ import java.util.Arrays;
 
 /**
  * 数据范围枚举类
- *
+ * <p>
  * 用于实现数据级别的权限
  *
  * @author earthyzinc
@@ -25,12 +25,11 @@ public enum DataScopeEnum implements ArrayValuable<Integer> {
 
     SELF(5); // 仅本人数据权限
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(DataScopeEnum::getScope).toArray(Integer[]::new);
     /**
      * 范围
      */
     private final Integer scope;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(DataScopeEnum::getScope).toArray(Integer[]::new);
 
     @Override
     public Integer[] array() {

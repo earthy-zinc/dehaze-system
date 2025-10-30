@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.erp.dal.dataobject.stock;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -58,7 +58,7 @@ public class ErpWarehouseDO extends BaseDO {
     private BigDecimal truckagePrice;
     /**
      * 开启状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;

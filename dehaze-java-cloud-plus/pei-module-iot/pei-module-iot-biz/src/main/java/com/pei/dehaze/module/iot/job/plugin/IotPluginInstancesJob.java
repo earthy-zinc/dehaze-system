@@ -20,7 +20,7 @@ public class IotPluginInstancesJob {
 
     /**
      * 插件离线超时时间
-     *
+     * <p>
      * TODO 芋艿：暂定 10 分钟，后续看要不要做配置
      */
     public static final Duration OFFLINE_TIMEOUT = Duration.ofMinutes(10);

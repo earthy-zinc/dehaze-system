@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.diy;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.StringListTypeHandler;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.StringListTypeHandler;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -13,9 +13,8 @@ import java.util.List;
 
 /**
  * 装修模板 DO
- *
- * 1. 新建一个模版，下面可以包含多个 {@link DiyPageDO} 页面，例如说首页、我的
- * 2. 如果需要使用某个模版，则将 {@link #used} 设置为 true，表示已使用，有且仅有一个
+ * <p>
+ * 1. 新建一个模版，下面可以包含多个 {@link DiyPageDO} 页面，例如说首页、我的 2. 如果需要使用某个模版，则将 {@link #used} 设置为 true，表示已使用，有且仅有一个
  *
  * @author owen
  */

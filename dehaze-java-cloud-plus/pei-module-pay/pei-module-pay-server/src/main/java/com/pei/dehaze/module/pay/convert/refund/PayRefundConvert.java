@@ -29,7 +29,9 @@ public interface PayRefundConvert {
         }
         return respVO;
     }
+
     PayRefundDetailsRespVO convert(PayRefundDO bean);
+
     PayRefundDetailsRespVO.Order convert(PayOrderDO bean);
 
     default PageResult<PayRefundPageItemRespVO> convertPage(PageResult<PayRefundDO> page, Map<Long, PayAppDO> appMap) {
@@ -37,6 +39,7 @@ public interface PayRefundConvert {
         result.getList().forEach(order -> MapUtils.findAndThen(appMap, order.getAppId(), app -> order.setAppName(app.getName())));
         return result;
     }
+
     PageResult<PayRefundPageItemRespVO> convertPage(PageResult<PayRefundDO> page);
 
     PayRefundDO convert(PayRefundCreateReqDTO bean);
@@ -48,6 +51,7 @@ public interface PayRefundConvert {
             return excelVO;
         });
     }
+
     PayRefundExcelVO convertExcel(PayRefundDO bean);
 
 }

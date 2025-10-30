@@ -1,15 +1,15 @@
 package com.pei.dehaze.module.system.api.dict;
 
+import com.pei.dehaze.framework.common.biz.system.dict.dto.DictDataRespDTO;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
-import com.pei.dehaze.framework.common.biz.system.dict.dto.DictDataRespDTO;
 import com.pei.dehaze.module.system.dal.dataobject.dict.DictDataDO;
 import com.pei.dehaze.module.system.service.dict.DictDataService;
+import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Primary;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 

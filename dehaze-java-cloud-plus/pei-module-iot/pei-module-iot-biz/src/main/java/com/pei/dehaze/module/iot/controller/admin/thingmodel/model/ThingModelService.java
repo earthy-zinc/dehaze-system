@@ -34,7 +34,7 @@ public class ThingModelService {
     private Boolean required;
     /**
      * 调用类型
-     *
+     * <p>
      * 枚举 {@link IotThingModelServiceCallTypeEnum}
      */
     @NotEmpty(message = "调用类型不能为空")
@@ -42,14 +42,14 @@ public class ThingModelService {
     private String callType;
     /**
      * 服务的输入参数
-     *
+     * <p>
      * 输入参数定义服务调用时所需提供的信息，用于控制设备行为或执行特定任务
      */
     @Valid
     private List<ThingModelParam> inputParams;
     /**
      * 服务的输出参数
-     *
+     * <p>
      * 输出参数定义服务调用后返回的结果或反馈信息，用于确认操作结果或提供额外的信息。
      */
     @Valid

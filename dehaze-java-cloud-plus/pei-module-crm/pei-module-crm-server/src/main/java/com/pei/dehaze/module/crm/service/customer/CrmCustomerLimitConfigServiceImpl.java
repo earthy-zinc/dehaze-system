@@ -1,6 +1,9 @@
 package com.pei.dehaze.module.crm.service.customer;
 
 import cn.hutool.core.lang.Assert;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.crm.controller.admin.customer.vo.limitconfig.CrmCustomerLimitConfigPageReqVO;
@@ -11,9 +14,6 @@ import com.pei.dehaze.module.crm.enums.customer.CrmCustomerLimitConfigTypeEnum;
 import com.pei.dehaze.module.system.api.dept.DeptApi;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -95,6 +95,13 @@ public class CrmCustomerLimitConfigServiceImpl implements CrmCustomerLimitConfig
         return customerLimitConfigMapper.selectPage(pageReqVO);
     }
 
+    @Override
+    public List<CrmCustomerLimitConfigDO> getCustomerLimitConfigListByUserId(Integer type, Long userId) {
+        AdminUserRespDTO user = adminUserApi.getUser(userId).getCheckedData();
+        Assert.notNull(user, "用户({})不存在", userId);
+        return customerLimitConfigMapper.selectListByTypeAndUserIdAndDeptId(type, userId, user.getDeptId());
+    }
+
     private CrmCustomerLimitConfigDO validateCustomerLimitConfigExists(Long id) {
         CrmCustomerLimitConfigDO limitConfigDO = customerLimitConfigMapper.selectById(id);
         if (limitConfigDO == null) {
@@ -112,13 +119,6 @@ public class CrmCustomerLimitConfigServiceImpl implements CrmCustomerLimitConfig
     private void validateUserAndDept(Collection<Long> userIds, Collection<Long> deptIds) {
         deptApi.validateDeptList(deptIds).checkError();
         adminUserApi.validateUserList(userIds).checkError();
-    }
-
-    @Override
-    public List<CrmCustomerLimitConfigDO> getCustomerLimitConfigListByUserId(Integer type, Long userId) {
-        AdminUserRespDTO user = adminUserApi.getUser(userId).getCheckedData();
-        Assert.notNull(user, "用户({})不存在", userId);
-        return customerLimitConfigMapper.selectListByTypeAndUserIdAndDeptId(type, userId, user.getDeptId());
     }
 
 }

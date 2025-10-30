@@ -1,10 +1,10 @@
 package com.pei.dehaze.framework.mybatis.core.util;
 
+import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
+import com.baomidou.mybatisplus.annotation.DbType;
 import com.pei.dehaze.framework.common.util.object.ObjectUtils;
 import com.pei.dehaze.framework.common.util.spring.SpringUtils;
 import com.pei.dehaze.framework.mybatis.core.enums.DbTypeEnum;
-import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
-import com.baomidou.mybatisplus.annotation.DbType;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 
 import javax.sql.DataSource;
@@ -36,16 +36,6 @@ public class JdbcUtils {
     }
 
     /**
-     * 获得 URL 对应的 DB 类型
-     *
-     * @param url URL
-     * @return DB 类型
-     */
-    public static DbType getDbType(String url) {
-        return com.baomidou.mybatisplus.extension.toolkit.JdbcUtils.getDbType(url);
-    }
-
-    /**
      * 通过当前数据库连接获得对应的 DB 类型
      *
      * @return DB 类型
@@ -74,6 +64,16 @@ public class JdbcUtils {
     public static boolean isSQLServer(String url) {
         DbType dbType = getDbType(url);
         return isSQLServer(dbType);
+    }
+
+    /**
+     * 获得 URL 对应的 DB 类型
+     *
+     * @param url URL
+     * @return DB 类型
+     */
+    public static DbType getDbType(String url) {
+        return com.baomidou.mybatisplus.extension.toolkit.JdbcUtils.getDbType(url);
     }
 
     /**

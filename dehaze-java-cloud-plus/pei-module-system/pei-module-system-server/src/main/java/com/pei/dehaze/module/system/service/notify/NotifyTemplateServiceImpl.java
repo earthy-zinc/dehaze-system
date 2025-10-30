@@ -2,6 +2,7 @@ package com.pei.dehaze.module.system.service.notify;
 
 import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.StrUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.system.controller.admin.notify.vo.template.NotifyTemplatePageReqVO;
@@ -9,14 +10,13 @@ import com.pei.dehaze.module.system.controller.admin.notify.vo.template.NotifyTe
 import com.pei.dehaze.module.system.dal.dataobject.notify.NotifyTemplateDO;
 import com.pei.dehaze.module.system.dal.mysql.notify.NotifyTemplateMapper;
 import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -70,11 +70,6 @@ public class NotifyTemplateServiceImpl implements NotifyTemplateService {
         notifyTemplateMapper.updateById(updateObj);
     }
 
-    @VisibleForTesting
-    public List<String> parseTemplateContentParams(String content) {
-        return ReUtil.findAllGroup1(PATTERN_PARAMS, content);
-    }
-
     @Override
     @CacheEvict(cacheNames = RedisKeyConstants.NOTIFY_TEMPLATE,
             allEntries = true) // allEntries 清空所有缓存，因为 id 不是直接的缓存 code，不好清理
@@ -83,12 +78,6 @@ public class NotifyTemplateServiceImpl implements NotifyTemplateService {
         validateNotifyTemplateExists(id);
         // 删除
         notifyTemplateMapper.deleteById(id);
-    }
-
-    private void validateNotifyTemplateExists(Long id) {
-        if (notifyTemplateMapper.selectById(id) == null) {
-            throw exception(NOTIFY_TEMPLATE_NOT_EXISTS);
-        }
     }
 
     @Override
@@ -108,6 +97,24 @@ public class NotifyTemplateServiceImpl implements NotifyTemplateService {
         return notifyTemplateMapper.selectPage(pageReqVO);
     }
 
+    /**
+     * 格式化站内信内容
+     *
+     * @param content 站内信模板的内容
+     * @param params  站内信内容的参数
+     * @return 格式化后的内容
+     */
+    @Override
+    public String formatNotifyTemplateContent(String content, Map<String, Object> params) {
+        return StrUtil.format(content, params);
+    }
+
+    private void validateNotifyTemplateExists(Long id) {
+        if (notifyTemplateMapper.selectById(id) == null) {
+            throw exception(NOTIFY_TEMPLATE_NOT_EXISTS);
+        }
+    }
+
     @VisibleForTesting
     void validateNotifyTemplateCodeDuplicate(Long id, String code) {
         NotifyTemplateDO template = notifyTemplateMapper.selectByCode(code);
@@ -123,16 +130,9 @@ public class NotifyTemplateServiceImpl implements NotifyTemplateService {
         }
     }
 
-    /**
-     * 格式化站内信内容
-     *
-     * @param content 站内信模板的内容
-     * @param params  站内信内容的参数
-     * @return 格式化后的内容
-     */
-    @Override
-    public String formatNotifyTemplateContent(String content, Map<String, Object> params) {
-        return StrUtil.format(content, params);
+    @VisibleForTesting
+    public List<String> parseTemplateContentParams(String content) {
+        return ReUtil.findAllGroup1(PATTERN_PARAMS, content);
     }
 
 }

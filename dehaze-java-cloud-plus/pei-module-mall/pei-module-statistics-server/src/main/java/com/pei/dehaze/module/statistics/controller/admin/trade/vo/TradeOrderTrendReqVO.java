@@ -3,10 +3,10 @@ package com.pei.dehaze.module.statistics.controller.admin.trade.vo;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.statistics.enums.TimeRangeTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.format.annotation.DateTimeFormat;
 
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 
 import static com.pei.dehaze.framework.common.util.date.DateUtils.FORMAT_YEAR_MONTH_DAY_HOUR_MINUTE_SECOND;

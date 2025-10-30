@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.infra.service.db;
 
-import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
-import com.pei.dehaze.module.infra.dal.dataobject.db.DataSourceConfigDO;
 import com.baomidou.mybatisplus.generator.config.po.TableField;
 import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.baomidou.mybatisplus.generator.config.rules.DbColumnType;
+import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
+import com.pei.dehaze.module.infra.dal.dataobject.db.DataSourceConfigDO;
+import jakarta.annotation.Resource;
 import org.apache.ibatis.type.JdbcType;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.test.core.util.RandomUtils.randomLongId;
@@ -45,22 +45,6 @@ public class DatabaseTableServiceImplTest extends BaseDbUnitTest {
         assertTableInfo(tables.get(0));
     }
 
-    @Test
-    public void testGetTable() {
-        // 准备参数
-        Long dataSourceConfigId = randomLongId();
-        // mock 方法
-        DataSourceConfigDO dataSourceConfig = new DataSourceConfigDO().setUsername("sa").setPassword("")
-                .setUrl("jdbc:h2:mem:testdb");
-        when(dataSourceConfigService.getDataSourceConfig(eq(dataSourceConfigId)))
-                .thenReturn(dataSourceConfig);
-
-        // 调用
-        TableInfo tableInfo = databaseTableService.getTable(dataSourceConfigId, "infra_config");
-        // 断言
-        assertTableInfo(tableInfo);
-    }
-
     private void assertTableInfo(TableInfo tableInfo) {
         assertEquals("infra_config", tableInfo.getName());
         assertEquals("参数配置表", tableInfo.getComment());
@@ -85,5 +69,21 @@ public class DatabaseTableServiceImplTest extends BaseDbUnitTest {
         assertFalse(nameField.isKeyIdentityFlag());
         assertEquals(DbColumnType.STRING, nameField.getColumnType());
         assertEquals("name", nameField.getPropertyName());
+    }
+
+    @Test
+    public void testGetTable() {
+        // 准备参数
+        Long dataSourceConfigId = randomLongId();
+        // mock 方法
+        DataSourceConfigDO dataSourceConfig = new DataSourceConfigDO().setUsername("sa").setPassword("")
+                .setUrl("jdbc:h2:mem:testdb");
+        when(dataSourceConfigService.getDataSourceConfig(eq(dataSourceConfigId)))
+                .thenReturn(dataSourceConfig);
+
+        // 调用
+        TableInfo tableInfo = databaseTableService.getTable(dataSourceConfigId, "infra_config");
+        // 断言
+        assertTableInfo(tableInfo);
     }
 }

@@ -31,28 +31,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public abstract class CodegenEngineAbstractTest extends BaseMockitoUnitTest {
 
+    @InjectMocks
+    protected CodegenEngine codegenEngine;
+    @Spy
+    protected CodegenProperties codegenProperties = new CodegenProperties()
+            .setBasePackage("com.pei.dehaze");
     /**
      * 测试文件资源目录
      */
     private String resourcesPath = "";
-
-    @InjectMocks
-    protected CodegenEngine codegenEngine;
-
-    @Spy
-    protected CodegenProperties codegenProperties = new CodegenProperties()
-            .setBasePackage("com.pei.dehaze");
-
-    @BeforeEach
-    public void setUp() {
-        codegenEngine.setJakartaEnable(true); // 强制使用 jakarta，保证单测可以基于 jakarta 断言
-        codegenEngine.initGlobalBindingMap();
-        // 单测强制使用
-        // 获取测试文件 resources 路径
-        String absolutePath = FileUtil.getAbsolutePath("application-unit-test.yaml");
-        // 系统不一样生成的文件也有差异，那就各自生成各自的
-        resourcesPath = absolutePath.split("/target")[0] + "/src/test/resources/codegen/";
-    }
 
     protected static CodegenTableDO getTable(String name) {
         String content = ResourceUtil.readUtf8Str("codegen/table/" + name + ".json");
@@ -94,6 +81,17 @@ public abstract class CodegenEngineAbstractTest extends BaseMockitoUnitTest {
             String content = ResourceUtil.readUtf8Str("codegen/" + path + "/" + contentPath);
             assertEquals(content, result.get(filePath), filePath + "：不匹配");
         });
+    }
+
+    @BeforeEach
+    public void setUp() {
+        codegenEngine.setJakartaEnable(true); // 强制使用 jakarta，保证单测可以基于 jakarta 断言
+        codegenEngine.initGlobalBindingMap();
+        // 单测强制使用
+        // 获取测试文件 resources 路径
+        String absolutePath = FileUtil.getAbsolutePath("application-unit-test.yaml");
+        // 系统不一样生成的文件也有差异，那就各自生成各自的
+        resourcesPath = absolutePath.split("/target")[0] + "/src/test/resources/codegen/";
     }
 
     // ==================== 调试专用 ====================

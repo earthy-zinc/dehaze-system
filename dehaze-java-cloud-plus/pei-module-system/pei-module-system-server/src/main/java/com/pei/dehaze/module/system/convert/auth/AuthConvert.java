@@ -39,8 +39,6 @@ public interface AuthConvert {
                 .build();
     }
 
-    AuthPermissionInfoRespVO.MenuVO convertTreeNode(MenuDO menu);
-
     /**
      * 将菜单列表，构建成菜单树
      *
@@ -78,6 +76,8 @@ public interface AuthConvert {
         // 获得到所有的根节点
         return filterList(treeNodeMap.values(), node -> ID_ROOT.equals(node.getParentId()));
     }
+
+    AuthPermissionInfoRespVO.MenuVO convertTreeNode(MenuDO menu);
 
     SocialUserBindReqDTO convert(Long userId, Integer userType, AuthSocialLoginReqVO reqVO);
 

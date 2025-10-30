@@ -33,6 +33,7 @@ import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.*;
 import static com.pei.dehaze.module.erp.enums.ErrorCodeConstants.*;
 
 // TODO 芋艿：记录操作日志
+
 /**
  * ERP 其它入库单 Service 实现类
  *
@@ -136,39 +137,6 @@ public class ErpStockInServiceImpl implements ErpStockInService {
         });
     }
 
-    private List<ErpStockInItemDO> validateStockInItems(List<ErpStockInSaveReqVO.Item> list) {
-        // 1.1 校验产品存在
-        List<ErpProductDO> productList = productService.validProductList(
-                convertSet(list, ErpStockInSaveReqVO.Item::getProductId));
-        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
-        // 1.2 校验仓库存在
-        warehouseService.validWarehouseList(convertSet(
-                list, ErpStockInSaveReqVO.Item::getWarehouseId));
-        // 2. 转化为 ErpStockInItemDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, ErpStockInItemDO.class, item -> item
-                .setProductUnitId(productMap.get(item.getProductId()).getUnitId())
-                .setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()))));
-    }
-
-    private void updateStockInItemList(Long id, List<ErpStockInItemDO> newList) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<ErpStockInItemDO> oldList = stockInItemMapper.selectListByInId(id);
-        List<List<ErpStockInItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setInId(id));
-            stockInItemMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            stockInItemMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            stockInItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpStockInItemDO::getId));
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteStockIn(List<Long> ids) {
@@ -192,14 +160,6 @@ public class ErpStockInServiceImpl implements ErpStockInService {
         });
     }
 
-    private ErpStockInDO validateStockInExists(Long id) {
-        ErpStockInDO stockIn = stockInMapper.selectById(id);
-        if (stockIn == null) {
-            throw exception(STOCK_IN_NOT_EXISTS);
-        }
-        return stockIn;
-    }
-
     @Override
     public ErpStockInDO getStockIn(Long id) {
         return stockInMapper.selectById(id);
@@ -209,8 +169,6 @@ public class ErpStockInServiceImpl implements ErpStockInService {
     public PageResult<ErpStockInDO> getStockInPage(ErpStockInPageReqVO pageReqVO) {
         return stockInMapper.selectPage(pageReqVO);
     }
-
-    // ==================== 入库项 ====================
 
     @Override
     public List<ErpStockInItemDO> getStockInItemListByInId(Long inId) {
@@ -223,6 +181,49 @@ public class ErpStockInServiceImpl implements ErpStockInService {
             return Collections.emptyList();
         }
         return stockInItemMapper.selectListByInIds(inIds);
+    }
+
+    private ErpStockInDO validateStockInExists(Long id) {
+        ErpStockInDO stockIn = stockInMapper.selectById(id);
+        if (stockIn == null) {
+            throw exception(STOCK_IN_NOT_EXISTS);
+        }
+        return stockIn;
+    }
+
+    // ==================== 入库项 ====================
+
+    private void updateStockInItemList(Long id, List<ErpStockInItemDO> newList) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<ErpStockInItemDO> oldList = stockInItemMapper.selectListByInId(id);
+        List<List<ErpStockInItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setInId(id));
+            stockInItemMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            stockInItemMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            stockInItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpStockInItemDO::getId));
+        }
+    }
+
+    private List<ErpStockInItemDO> validateStockInItems(List<ErpStockInSaveReqVO.Item> list) {
+        // 1.1 校验产品存在
+        List<ErpProductDO> productList = productService.validProductList(
+                convertSet(list, ErpStockInSaveReqVO.Item::getProductId));
+        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
+        // 1.2 校验仓库存在
+        warehouseService.validWarehouseList(convertSet(
+                list, ErpStockInSaveReqVO.Item::getWarehouseId));
+        // 2. 转化为 ErpStockInItemDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, ErpStockInItemDO.class, item -> item
+                .setProductUnitId(productMap.get(item.getProductId()).getUnitId())
+                .setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()))));
     }
 
 }

@@ -127,6 +127,46 @@ public class CrmContractController {
         return contractVO;
     }
 
+    private List<CrmContractRespVO> buildContractDetailList(List<CrmContractDO> contractList) {
+        if (CollUtil.isEmpty(contractList)) {
+            return Collections.emptyList();
+        }
+        // 1.1 获取客户列表
+        Map<Long, CrmCustomerDO> customerMap = customerService.getCustomerMap(
+                convertSet(contractList, CrmContractDO::getCustomerId));
+        // 1.2 获取创建人、负责人列表
+        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(convertListByFlatMap(contractList,
+                contact -> Stream.of(NumberUtils.parseLong(contact.getCreator()), contact.getOwnerUserId())));
+        Map<Long, DeptRespDTO> deptMap = deptApi.getDeptMap(convertSet(userMap.values(), AdminUserRespDTO::getDeptId));
+        // 1.3 获取联系人
+        Map<Long, CrmContactDO> contactMap = convertMap(contactService.getContactList(convertSet(contractList,
+                CrmContractDO::getSignContactId)), CrmContactDO::getId);
+        // 1.4 获取商机
+        Map<Long, CrmBusinessDO> businessMap = businessService.getBusinessMap(
+                convertSet(contractList, CrmContractDO::getBusinessId));
+        // 1.5 获得已回款金额
+        Map<Long, BigDecimal> receivablePriceMap = receivableService.getReceivablePriceMapByContractId(
+                convertSet(contractList, CrmContractDO::getId));
+        // 2. 拼接数据
+        return BeanUtils.toBean(contractList, CrmContractRespVO.class, contractVO -> {
+            // 2.1 设置客户信息
+            findAndThen(customerMap, contractVO.getCustomerId(), customer -> contractVO.setCustomerName(customer.getName()));
+            // 2.2 设置用户信息
+            findAndThen(userMap, Long.parseLong(contractVO.getCreator()), user -> contractVO.setCreatorName(user.getNickname()));
+            MapUtils.findAndThen(userMap, contractVO.getOwnerUserId(), user -> {
+                contractVO.setOwnerUserName(user.getNickname());
+                MapUtils.findAndThen(deptMap, user.getDeptId(), dept -> contractVO.setOwnerUserDeptName(dept.getName()));
+            });
+            findAndThen(userMap, contractVO.getSignUserId(), user -> contractVO.setSignUserName(user.getNickname()));
+            // 2.3 设置联系人信息
+            findAndThen(contactMap, contractVO.getSignContactId(), contact -> contractVO.setSignContactName(contact.getName()));
+            // 2.4 设置商机信息
+            findAndThen(businessMap, contractVO.getBusinessId(), business -> contractVO.setBusinessName(business.getName()));
+            // 2.5 设置已回款金额
+            contractVO.setTotalReceivablePrice(receivablePriceMap.getOrDefault(contractVO.getId(), BigDecimal.ZERO));
+        });
+    }
+
     @GetMapping("/page")
     @Operation(summary = "获得合同分页")
     @PreAuthorize("@ss.hasPermission('crm:contract:query')")
@@ -177,46 +217,6 @@ public class CrmContractController {
     public CommonResult<Boolean> submitContract(@RequestParam("id") Long id) {
         contractService.submitContract(id, getLoginUserId());
         return success(true);
-    }
-
-    private List<CrmContractRespVO> buildContractDetailList(List<CrmContractDO> contractList) {
-        if (CollUtil.isEmpty(contractList)) {
-            return Collections.emptyList();
-        }
-        // 1.1 获取客户列表
-        Map<Long, CrmCustomerDO> customerMap = customerService.getCustomerMap(
-                convertSet(contractList, CrmContractDO::getCustomerId));
-        // 1.2 获取创建人、负责人列表
-        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(convertListByFlatMap(contractList,
-                contact -> Stream.of(NumberUtils.parseLong(contact.getCreator()), contact.getOwnerUserId())));
-        Map<Long, DeptRespDTO> deptMap = deptApi.getDeptMap(convertSet(userMap.values(), AdminUserRespDTO::getDeptId));
-        // 1.3 获取联系人
-        Map<Long, CrmContactDO> contactMap = convertMap(contactService.getContactList(convertSet(contractList,
-                CrmContractDO::getSignContactId)), CrmContactDO::getId);
-        // 1.4 获取商机
-        Map<Long, CrmBusinessDO> businessMap = businessService.getBusinessMap(
-                convertSet(contractList, CrmContractDO::getBusinessId));
-        // 1.5 获得已回款金额
-        Map<Long, BigDecimal> receivablePriceMap = receivableService.getReceivablePriceMapByContractId(
-                convertSet(contractList, CrmContractDO::getId));
-        // 2. 拼接数据
-        return BeanUtils.toBean(contractList, CrmContractRespVO.class, contractVO -> {
-            // 2.1 设置客户信息
-            findAndThen(customerMap, contractVO.getCustomerId(), customer -> contractVO.setCustomerName(customer.getName()));
-            // 2.2 设置用户信息
-            findAndThen(userMap, Long.parseLong(contractVO.getCreator()), user -> contractVO.setCreatorName(user.getNickname()));
-            MapUtils.findAndThen(userMap, contractVO.getOwnerUserId(), user -> {
-                contractVO.setOwnerUserName(user.getNickname());
-                MapUtils.findAndThen(deptMap, user.getDeptId(), dept -> contractVO.setOwnerUserDeptName(dept.getName()));
-            });
-            findAndThen(userMap, contractVO.getSignUserId(), user -> contractVO.setSignUserName(user.getNickname()));
-            // 2.3 设置联系人信息
-            findAndThen(contactMap, contractVO.getSignContactId(), contact -> contractVO.setSignContactName(contact.getName()));
-            // 2.4 设置商机信息
-            findAndThen(businessMap, contractVO.getBusinessId(), business -> contractVO.setBusinessName(business.getName()));
-            // 2.5 设置已回款金额
-            contractVO.setTotalReceivablePrice(receivablePriceMap.getOrDefault(contractVO.getId(), BigDecimal.ZERO));
-        });
     }
 
     @GetMapping("/audit-count")

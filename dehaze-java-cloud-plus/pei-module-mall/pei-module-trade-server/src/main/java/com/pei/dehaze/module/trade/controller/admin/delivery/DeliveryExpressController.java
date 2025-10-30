@@ -87,7 +87,7 @@ public class DeliveryExpressController {
     @PreAuthorize("@ss.hasPermission('trade:delivery:express:export')")
     @ApiAccessLog(operateType = EXPORT)
     public void exportDeliveryExpressExcel(@Valid DeliveryExpressExportReqVO exportReqVO,
-              HttpServletResponse response) throws IOException {
+                                           HttpServletResponse response) throws IOException {
         List<DeliveryExpressDO> list = deliveryExpressService.getDeliveryExpressList(exportReqVO);
         // 导出 Excel
         List<DeliveryExpressExcelVO> dataList = DeliveryExpressConvert.INSTANCE.convertList02(list);

@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.trade.dal.dataobject.aftersale;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.trade.enums.aftersale.AfterSaleOperateTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.trade.enums.aftersale.AfterSaleOperateTypeEnum;
 import lombok.*;
 
 /**
@@ -30,21 +30,20 @@ public class AfterSaleLogDO extends BaseDO {
     private Long id;
     /**
      * 用户编号
-     *
-     * 关联 1：AdminUserDO 的 id 字段
-     * 关联 2：MemberUserDO 的 id 字段
+     * <p>
+     * 关联 1：AdminUserDO 的 id 字段 关联 2：MemberUserDO 的 id 字段
      */
     private Long userId;
     /**
      * 用户类型
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
 
     /**
      * 售后编号
-     *
+     * <p>
      * 关联 {@link AfterSaleDO#getId()}
      */
     private Long afterSaleId;
@@ -59,7 +58,7 @@ public class AfterSaleLogDO extends BaseDO {
 
     /**
      * 操作类型
-     *
+     * <p>
      * 枚举 {@link AfterSaleOperateTypeEnum}
      */
     private Integer operateType;

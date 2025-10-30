@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.trade.dal.mysql.aftersale;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.trade.controller.admin.aftersale.vo.AfterSalePageReqVO;
 import com.pei.dehaze.module.trade.controller.app.aftersale.vo.AppAfterSalePageReqVO;
 import com.pei.dehaze.module.trade.dal.dataobject.aftersale.AfterSaleDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;

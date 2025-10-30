@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.crm.dal.dataobject.business;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
  * CRM 商机状态 DO
- *
+ * <p>
  * 注意，它是个配置表
  *
  * @author ljlleo
@@ -29,7 +29,7 @@ public class CrmBusinessStatusDO extends BaseDO {
     private Long id;
     /**
      * 状态类型编号
-     *
+     * <p>
      * 关联 {@link CrmBusinessStatusTypeDO#getId()}
      */
     private Long typeId;

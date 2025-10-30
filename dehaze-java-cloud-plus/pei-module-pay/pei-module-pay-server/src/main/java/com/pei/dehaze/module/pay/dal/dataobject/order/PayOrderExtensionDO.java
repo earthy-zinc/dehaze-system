@@ -1,25 +1,25 @@
 package com.pei.dehaze.module.pay.dal.dataobject.order;
 
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
-import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
-import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
+import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
 import lombok.*;
 
 import java.util.Map;
 
 /**
  * 支付订单拓展 DO
- *
+ * <p>
  * 每次调用支付渠道，都会生成一条对应记录
  *
  * @author earthyzinc
  */
-@TableName(value = "pay_order_extension",autoResultMap = true)
+@TableName(value = "pay_order_extension", autoResultMap = true)
 @KeySequence("pay_order_extension_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -35,23 +35,23 @@ public class PayOrderExtensionDO extends BaseDO {
     private Long id;
     /**
      * 外部订单号，根据规则生成
-     *
-     * 调用支付渠道时，使用该字段作为对接的订单号：
-     * 1. 微信支付：对应 <a href="https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_1.shtml">JSAPI 支付</a> 的 out_trade_no 字段
-     * 2. 支付宝支付：对应 <a href="https://opendocs.alipay.com/open/270/105898">电脑网站支付</a> 的 out_trade_no 字段
-     *
+     * <p>
+     * 调用支付渠道时，使用该字段作为对接的订单号： 1. 微信支付：对应 <a
+     * href="https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_1_1.shtml">JSAPI 支付</a> 的 out_trade_no 字段 2.
+     * 支付宝支付：对应 <a href="https://opendocs.alipay.com/open/270/105898">电脑网站支付</a> 的 out_trade_no 字段
+     * <p>
      * 例如说，P202110132239124200055
      */
     private String no;
     /**
      * 订单号
-     *
+     * <p>
      * 关联 {@link PayOrderDO#getId()}
      */
     private Long orderId;
     /**
      * 渠道编号
-     *
+     * <p>
      * 关联 {@link PayChannelDO#getId()}
      */
     private Long channelId;
@@ -65,13 +65,13 @@ public class PayOrderExtensionDO extends BaseDO {
     private String userIp;
     /**
      * 支付状态
-     *
+     * <p>
      * 枚举 {@link PayOrderStatusEnum}
      */
     private Integer status;
     /**
      * 支付渠道的额外参数
-     *
+     * <p>
      * 参见 <a href="https://www.pingxx.com/api/支付渠道%20extra%20参数说明.html">参数说明</>
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
@@ -88,7 +88,7 @@ public class PayOrderExtensionDO extends BaseDO {
 
     /**
      * 支付渠道的同步/异步通知的内容
-     *
+     * <p>
      * 对应 {@link PayOrderRespDTO#getRawData()}
      */
     private String channelNotifyData;

@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.report.dal.dataobject.goview;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
  * GoView 项目表
- *
+ * <p>
  * 每个大屏图标，对应一个项目
  *
  * @author earthyzinc
@@ -37,16 +37,15 @@ public class GoViewProjectDO extends BaseDO {
     private String picUrl;
     /**
      * 报表内容
-     *
+     * <p>
      * JSON 配置，使用字符串存储
      */
     private String content;
     /**
      * 发布状态
-     *
-     * 0 - 已发布
-     * 1 - 未发布
-     *
+     * <p>
+     * 0 - 已发布 1 - 未发布
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;

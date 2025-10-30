@@ -26,17 +26,6 @@ public class TenantRocketMQInitializer implements BeanPostProcessor {
         return bean;
     }
 
-    private void initTenantProducer(DefaultMQProducer producer) {
-        if (producer == null) {
-            return;
-        }
-        DefaultMQProducerImpl producerImpl = producer.getDefaultMQProducerImpl();
-        if (producerImpl == null) {
-            return;
-        }
-        producerImpl.registerSendMessageHook(new TenantRocketMQSendMessageHook());
-    }
-
     private void initTenantConsumer(DefaultMQPushConsumer consumer) {
         if (consumer == null) {
             return;
@@ -46,6 +35,17 @@ public class TenantRocketMQInitializer implements BeanPostProcessor {
             return;
         }
         consumerImpl.registerConsumeMessageHook(new TenantRocketMQConsumeMessageHook());
+    }
+
+    private void initTenantProducer(DefaultMQProducer producer) {
+        if (producer == null) {
+            return;
+        }
+        DefaultMQProducerImpl producerImpl = producer.getDefaultMQProducerImpl();
+        if (producerImpl == null) {
+            return;
+        }
+        producerImpl.registerSendMessageHook(new TenantRocketMQSendMessageHook());
     }
 
 }

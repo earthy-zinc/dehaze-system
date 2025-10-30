@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.pay.service.channel;
 
 import com.pei.dehaze.framework.common.exception.ServiceException;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
 import com.pei.dehaze.module.pay.controller.admin.channel.vo.PayChannelCreateReqVO;
 import com.pei.dehaze.module.pay.controller.admin.channel.vo.PayChannelUpdateReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
-
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
 import jakarta.validation.Valid;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -58,15 +58,15 @@ public interface PayChannelService {
     /**
      * 根据条件获取渠道
      *
-     * @param appId      应用编号
-     * @param code       渠道编码
+     * @param appId 应用编号
+     * @param code  渠道编码
      * @return 数量
      */
     PayChannelDO getChannelByAppIdAndCode(Long appId, String code);
 
     /**
      * 支付渠道的合法性
-     *
+     * <p>
      * 如果不合法，抛出 {@link ServiceException} 业务异常
      *
      * @param id 渠道编号
@@ -76,11 +76,11 @@ public interface PayChannelService {
 
     /**
      * 支付渠道的合法性
-     *
+     * <p>
      * 如果不合法，抛出 {@link ServiceException} 业务异常
      *
      * @param appId 应用编号
-     * @param code 支付渠道
+     * @param code  支付渠道
      * @return 渠道信息
      */
     PayChannelDO validPayChannel(Long appId, String code);

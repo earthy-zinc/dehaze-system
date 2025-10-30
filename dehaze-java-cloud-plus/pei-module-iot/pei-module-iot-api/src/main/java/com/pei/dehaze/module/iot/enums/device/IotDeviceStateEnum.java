@@ -30,13 +30,13 @@ public enum IotDeviceStateEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
+    public static boolean isOnline(Integer state) {
+        return ONLINE.getState().equals(state);
+    }
+
     @Override
     public Integer[] array() {
         return ARRAYS;
-    }
-
-    public static boolean isOnline(Integer state) {
-        return ONLINE.getState().equals(state);
     }
 
 }

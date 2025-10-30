@@ -215,17 +215,17 @@ public class IotDeviceUpstreamServer {
             // 关闭 MQTT 客户端
             if (client != null) {
                 client.disconnect()
-                       .toCompletionStage()
-                       .toCompletableFuture()
-                       .join();
+                        .toCompletionStage()
+                        .toCompletableFuture()
+                        .join();
             }
 
             // 关闭 Vertx 实例
-            if (vertx!= null) {
+            if (vertx != null) {
                 vertx.close()
-                      .toCompletionStage()
-                      .toCompletableFuture()
-                      .join();
+                        .toCompletionStage()
+                        .toCompletableFuture()
+                        .join();
             }
             log.info("[stop][关闭完成]");
         } catch (Exception e) {

@@ -106,12 +106,31 @@ public class IotOtaUpgradeTaskServiceImpl implements IotOtaUpgradeTaskService {
     }
 
     // TODO @li：注释有点冗余
+
+    /**
+     * 验证升级任务是否存在
+     * <p>
+     * 通过查询数据库来验证给定ID的升级任务是否存在此方法主要用于确保后续操作所针对的升级任务是有效的
+     *
+     * @param id 升级任务的唯一标识符如果为null或数据库中不存在对应的记录，则认为任务不存在
+     * @throws com.pei.dehaze.framework.common.exception.ServiceException 如果升级任务不存在，则抛出异常提示任务不存在
+     */
+    private IotOtaUpgradeTaskDO validateUpgradeTaskExists(Long id) {
+        // 查询数据库中是否有相同固件ID和任务名称的升级任务存在
+        IotOtaUpgradeTaskDO upgradeTask = upgradeTaskMapper.selectById(id);
+        // 如果查询结果不为空，说明存在重复的任务名称，抛出异常
+        if (Objects.isNull(upgradeTask)) {
+            throw exception(OTA_UPGRADE_TASK_NOT_EXISTS);
+        }
+        return upgradeTask;
+    }
+
+    // TODO @li：注释有点冗余
+
     /**
      * 校验固件升级任务是否重复
      * <p>
-     * 该方法用于检查给定固件ID和任务名称组合是否已存在于数据库中，如果存在则抛出异常，
-     * 表示任务名称对于该固件而言是重复的此检查确保用户不能创建具有相同名称的任务，
-     * 从而避免数据重复和混淆
+     * 该方法用于检查给定固件ID和任务名称组合是否已存在于数据库中，如果存在则抛出异常， 表示任务名称对于该固件而言是重复的此检查确保用户不能创建具有相同名称的任务， 从而避免数据重复和混淆
      *
      * @param firmwareId 固件的唯一标识符，用于区分不同的固件
      * @param taskName   升级任务的名称，用于与固件ID一起检查重复性
@@ -127,6 +146,7 @@ public class IotOtaUpgradeTaskServiceImpl implements IotOtaUpgradeTaskService {
     }
 
     // TODO @li：注释有点冗余
+
     /**
      * 验证升级任务的范围和设备列表的有效性。
      * <p>
@@ -155,31 +175,11 @@ public class IotOtaUpgradeTaskServiceImpl implements IotOtaUpgradeTaskService {
     }
 
     // TODO @li：注释有点冗余
-    /**
-     * 验证升级任务是否存在
-     * <p>
-     * 通过查询数据库来验证给定ID的升级任务是否存在此方法主要用于确保后续操作所针对的升级任务是有效的
-     *
-     * @param id 升级任务的唯一标识符如果为null或数据库中不存在对应的记录，则认为任务不存在
-     * @throws com.pei.dehaze.framework.common.exception.ServiceException 如果升级任务不存在，则抛出异常提示任务不存在
-     */
-    private IotOtaUpgradeTaskDO validateUpgradeTaskExists(Long id) {
-        // 查询数据库中是否有相同固件ID和任务名称的升级任务存在
-        IotOtaUpgradeTaskDO upgradeTask = upgradeTaskMapper.selectById(id);
-        // 如果查询结果不为空，说明存在重复的任务名称，抛出异常
-        if (Objects.isNull(upgradeTask)) {
-            throw exception(OTA_UPGRADE_TASK_NOT_EXISTS);
-        }
-        return upgradeTask;
-    }
 
-    // TODO @li：注释有点冗余
     /**
      * 初始化升级任务
      * <p>
-     * 根据请求参数创建升级任务对象，并根据选择的范围初始化设备数量
-     * 如果选择特定设备进行升级，则设备数量为所选设备的总数
-     * 如果选择全部设备进行升级，则设备数量为该固件对应产品下的所有设备总数
+     * 根据请求参数创建升级任务对象，并根据选择的范围初始化设备数量 如果选择特定设备进行升级，则设备数量为所选设备的总数 如果选择全部设备进行升级，则设备数量为该固件对应产品下的所有设备总数
      *
      * @param createReqVO 升级任务保存请求对象，包含创建升级任务所需的信息
      * @return 返回初始化后的升级任务对象

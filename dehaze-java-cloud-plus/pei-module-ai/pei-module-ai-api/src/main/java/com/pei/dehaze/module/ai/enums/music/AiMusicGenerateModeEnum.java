@@ -18,6 +18,7 @@ public enum AiMusicGenerateModeEnum implements ArrayValuable<Integer> {
     DESCRIPTION(1, "描述模式"),
     LYRIC(2, "歌词模式");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(AiMusicGenerateModeEnum::getMode).toArray(Integer[]::new);
     /**
      * 模式
      */
@@ -26,8 +27,6 @@ public enum AiMusicGenerateModeEnum implements ArrayValuable<Integer> {
      * 模式名
      */
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(AiMusicGenerateModeEnum::getMode).toArray(Integer[]::new);
 
     @Override
     public Integer[] array() {

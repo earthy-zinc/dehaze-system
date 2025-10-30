@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 /**
- * 多租户 Security Web 过滤器
- * 1. 如果是登陆的用户，校验是否有权限访问该租户，避免越权问题。
- * 2. 如果请求未带租户的编号，检查是否是忽略的 URL，否则也不允许访问。
- * 3. 校验租户是合法，例如说被禁用、到期
+ * 多租户 Security Web 过滤器 1. 如果是登陆的用户，校验是否有权限访问该租户，避免越权问题。 2. 如果请求未带租户的编号，检查是否是忽略的 URL，否则也不允许访问。 3. 校验租户是合法，例如说被禁用、到期
  *
  * @author earthyzinc
  */
@@ -62,12 +59,12 @@ public class TenantSecurityWebFilter extends ApiRequestFilter {
             if (tenantId == null) {
                 tenantId = user.getTenantId();
                 TenantContextHolder.setTenantId(tenantId);
-            // 如果传递了租户编号，则进行比对租户编号，避免越权问题
+                // 如果传递了租户编号，则进行比对租户编号，避免越权问题
             } else if (!Objects.equals(user.getTenantId(), TenantContextHolder.getTenantId())) {
                 log.error("[doFilterInternal][租户({}) User({}/{}) 越权访问租户({}) URL({}/{})]",
                         user.getTenantId(), user.getId(), user.getUserType(),
                         TenantContextHolder.getTenantId(), request.getRequestURI(), request.getMethod());
-                ServletUtils.writeJSON(response, CommonResult.error(GlobalErrorCodeConstants.FORBIDDEN.getCode(),
+                ServletUtils.writeJSON(response, CommonResult.error(GlobalErrorCodeConstants.FORBIDDEN.code(),
                         "您无权访问该租户的数据"));
                 return;
             }
@@ -78,7 +75,7 @@ public class TenantSecurityWebFilter extends ApiRequestFilter {
             // 2. 如果请求未带租户的编号，不允许访问。
             if (tenantId == null) {
                 log.error("[doFilterInternal][URL({}/{}) 未传递租户编号]", request.getRequestURI(), request.getMethod());
-                ServletUtils.writeJSON(response, CommonResult.error(GlobalErrorCodeConstants.BAD_REQUEST.getCode(),
+                ServletUtils.writeJSON(response, CommonResult.error(GlobalErrorCodeConstants.BAD_REQUEST.code(),
                         "请求的租户标识未传递，请进行排查"));
                 return;
             }

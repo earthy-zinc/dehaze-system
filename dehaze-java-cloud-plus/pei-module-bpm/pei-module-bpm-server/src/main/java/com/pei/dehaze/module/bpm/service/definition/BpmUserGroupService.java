@@ -71,9 +71,7 @@ public interface BpmUserGroupService {
     PageResult<BpmUserGroupDO> getUserGroupPage(BpmUserGroupPageReqVO pageReqVO);
 
     /**
-     * 校验用户组们是否有效。如下情况，视为无效：
-     * 1. 用户组编号不存在
-     * 2. 用户组被禁用
+     * 校验用户组们是否有效。如下情况，视为无效： 1. 用户组编号不存在 2. 用户组被禁用
      *
      * @param ids 用户组编号数组
      */

@@ -32,7 +32,7 @@ public interface MemberExperienceRecordService {
     /**
      * 【会员】获得会员经验记录分页
      *
-     * @param userId 用户编号
+     * @param userId    用户编号
      * @param pageParam 分页查询
      * @return 会员经验记录分页
      */

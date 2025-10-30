@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.mp.dal.dataobject.message;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
-import com.pei.dehaze.module.mp.dal.dataobject.user.MpUserDO;
-import com.pei.dehaze.module.mp.enums.message.MpMessageSendFromEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
+import com.pei.dehaze.module.mp.dal.dataobject.user.MpUserDO;
+import com.pei.dehaze.module.mp.enums.message.MpMessageSendFromEnum;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -42,38 +42,38 @@ public class MpMessageDO extends BaseDO {
     private Long msgId;
     /**
      * 公众号账号的 ID
-     *
+     * <p>
      * 关联 {@link MpAccountDO#getId()}
      */
     private Long accountId;
     /**
      * 公众号 appid
-     *
+     * <p>
      * 冗余 {@link MpAccountDO#getAppId()}
      */
     private String appId;
     /**
      * 公众号粉丝的编号
-     *
+     * <p>
      * 关联 {@link MpUserDO#getId()}
      */
     private Long userId;
     /**
      * 公众号粉丝标志
-     *
+     * <p>
      * 冗余 {@link MpUserDO#getOpenid()}
      */
     private String openid;
 
     /**
      * 消息类型
-     *
+     * <p>
      * 枚举 {@link WxConsts.XmlMsgType}
      */
     private String type;
     /**
      * 消息来源
-     *
+     * <p>
      * 枚举 {@link MpMessageSendFromEnum}
      */
     private Integer sendFrom;
@@ -82,14 +82,14 @@ public class MpMessageDO extends BaseDO {
 
     /**
      * 消息内容
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 TEXT
      */
     private String content;
 
     /**
      * 媒体文件的编号
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 IMAGE、VOICE、VIDEO
      */
     private String mediaId;
@@ -99,79 +99,79 @@ public class MpMessageDO extends BaseDO {
     private String mediaUrl;
     /**
      * 语音识别后文本
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VOICE
      */
     private String recognition;
     /**
      * 语音格式，如 amr，speex 等
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VOICE
      */
     private String format;
     /**
      * 标题
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VIDEO、MUSIC、LINK
      */
     private String title;
     /**
      * 描述
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VIDEO、MUSIC
      */
     private String description;
 
     /**
      * 缩略图的媒体 id，通过素材管理中的接口上传多媒体文件，得到的 id
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC、VIDEO
      */
     private String thumbMediaId;
     /**
      * 缩略图的媒体 URL
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC、VIDEO
      */
     private String thumbMediaUrl;
 
     /**
      * 点击图文消息跳转链接
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 LINK
      */
     private String url;
 
     /**
      * 地理位置维度
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 LOCATION
      */
     private Double locationX;
     /**
      * 地理位置经度
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 LOCATION
      */
     private Double locationY;
     /**
      * 地图缩放大小
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 LOCATION
      */
     private Double scale;
     /**
      * 详细地址
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 LOCATION
-     *
+     * <p>
      * 例如说杨浦区黄兴路 221-4 号临
      */
     private String label;
 
     /**
      * 图文消息数组
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 NEWS
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
@@ -179,15 +179,15 @@ public class MpMessageDO extends BaseDO {
 
     /**
      * 音乐链接
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC
      */
     private String musicUrl;
     /**
      * 高质量音乐链接
-     *
+     * <p>
      * WIFI 环境优先使用该链接播放音乐
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC
      */
     private String hqMusicUrl;
@@ -196,15 +196,15 @@ public class MpMessageDO extends BaseDO {
 
     /**
      * 事件类型
-     *
+     * <p>
      * 枚举 {@link WxConsts.EventType}
      */
     private String event;
     /**
      * 事件 Key
-     *
-     * 1. {@link WxConsts.EventType} 的 SCAN：qrscene_ 为前缀，后面为二维码的参数值
-     * 2. {@link WxConsts.EventType} 的 CLICK：与自定义菜单接口中 KEY 值对应
+     * <p>
+     * 1. {@link WxConsts.EventType} 的 SCAN：qrscene_ 为前缀，后面为二维码的参数值 2. {@link WxConsts.EventType} 的 CLICK：与自定义菜单接口中 KEY
+     * 值对应
      */
     private String eventKey;
 
@@ -226,7 +226,7 @@ public class MpMessageDO extends BaseDO {
         private String description;
         /**
          * 图片链接
-         *
+         * <p>
          * 支持 JPG、PNG 格式，较好的效果为大图 360*200，小图 200*200
          */
         @NotEmpty(message = "图片链接不能为空", groups = NewsBuilder.class)

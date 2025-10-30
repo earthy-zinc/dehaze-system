@@ -4,15 +4,15 @@ import cn.hutool.core.util.RandomUtil;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
-import com.pei.dehaze.module.bpm.controller.admin.definition.vo.form.BpmFormSaveReqVO;
 import com.pei.dehaze.module.bpm.controller.admin.definition.vo.form.BpmFormPageReqVO;
+import com.pei.dehaze.module.bpm.controller.admin.definition.vo.form.BpmFormSaveReqVO;
 import com.pei.dehaze.module.bpm.dal.dataobject.definition.BpmFormDO;
 import com.pei.dehaze.module.bpm.dal.mysql.definition.BpmFormMapper;
 import com.pei.dehaze.module.bpm.service.definition.dto.BpmFormFieldRespDTO;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -54,6 +54,13 @@ public class BpmFormServiceTest extends BaseDbUnitTest {
         // 校验记录的属性是否正确
         BpmFormDO form = formMapper.selectById(formId);
         assertPojoEquals(reqVO, form);
+    }
+
+    private List<String> randomFields() {
+        int size = RandomUtil.randomInt(1, 3);
+        return Stream.iterate(0, i -> i).limit(size)
+                .map(i -> JsonUtils.toJsonString(randomPojo(BpmFormFieldRespDTO.class)))
+                .collect(Collectors.toList());
     }
 
     @Test
@@ -132,13 +139,6 @@ public class BpmFormServiceTest extends BaseDbUnitTest {
         assertEquals(1, pageResult.getTotal());
         assertEquals(1, pageResult.getList().size());
         assertPojoEquals(dbForm, pageResult.getList().get(0));
-    }
-
-    private List<String> randomFields() {
-        int size = RandomUtil.randomInt(1, 3);
-        return Stream.iterate(0, i -> i).limit(size)
-                .map(i -> JsonUtils.toJsonString(randomPojo(BpmFormFieldRespDTO.class)))
-                .collect(Collectors.toList());
     }
 
 }

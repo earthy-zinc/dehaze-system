@@ -9,7 +9,7 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
 
 /**
  * EMQX 插件实现类
- *
+ * <p>
  * 基于 PF4J 插件框架，实现 EMQX 消息中间件的集成：负责插件的生命周期管理，包括启动、停止和应用上下文的创建
  *
  * @author haohao

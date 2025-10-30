@@ -19,7 +19,7 @@ public interface AiChatConversationService {
      * 创建【我的】聊天对话
      *
      * @param createReqVO 创建信息
-     * @param userId 用户编号
+     * @param userId      用户编号
      * @return 编号
      */
     Long createChatConversationMy(AiChatConversationCreateMyReqVO createReqVO, Long userId);
@@ -28,7 +28,7 @@ public interface AiChatConversationService {
      * 更新【我的】聊天对话
      *
      * @param updateReqVO 更新信息
-     * @param userId 用户编号
+     * @param userId      用户编号
      */
     void updateChatConversationMy(AiChatConversationUpdateMyReqVO updateReqVO, Long userId);
 
@@ -51,7 +51,7 @@ public interface AiChatConversationService {
     /**
      * 删除【我的】聊天对话
      *
-     * @param id 编号
+     * @param id     编号
      * @param userId 用户编号
      */
     void deleteChatConversationMy(Long id, Long userId);

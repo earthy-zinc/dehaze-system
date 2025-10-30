@@ -1,5 +1,9 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.coupon;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
@@ -7,10 +11,6 @@ import com.pei.dehaze.module.promotion.enums.common.PromotionDiscountTypeEnum;
 import com.pei.dehaze.module.promotion.enums.common.PromotionProductScopeEnum;
 import com.pei.dehaze.module.promotion.enums.coupon.CouponTakeTypeEnum;
 import com.pei.dehaze.module.promotion.enums.coupon.CouponTemplateValidityTypeEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -19,7 +19,7 @@ import java.util.List;
 
 /**
  * 优惠劵模板 DO
- *
+ * <p>
  * 当用户领取时，会生成 {@link CouponDO} 优惠劵
  *
  * @author earthyzinc
@@ -51,7 +51,7 @@ public class CouponTemplateDO extends BaseDO {
     private String description;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     // TODO 芋艿：要不要改成 3 个状态？？
@@ -62,19 +62,19 @@ public class CouponTemplateDO extends BaseDO {
     // ========== 领取规则 BEGIN ==========
     /**
      * 发放数量
-     *
+     * <p>
      * -1 - 则表示不限制发放数量
      */
     private Integer totalCount;
     /**
      * 每人限领个数
-     *
+     * <p>
      * -1 - 则表示不限制
      */
     private Integer takeLimitCount;
     /**
      * 领取方式
-     *
+     * <p>
      * 枚举 {@link CouponTakeTypeEnum}
      */
     private Integer takeType;
@@ -83,14 +83,13 @@ public class CouponTemplateDO extends BaseDO {
     // ========== 使用规则 BEGIN ==========
     /**
      * 是否设置满多少金额可用，单位：分
-     *
-     * 0 - 不限制
-     * 大于 0 - 多少金额可用
+     * <p>
+     * 0 - 不限制 大于 0 - 多少金额可用
      */
     private Integer usePrice;
     /**
      * 商品范围
-     *
+     * <p>
      * 枚举 {@link PromotionProductScopeEnum}
      */
     private Integer productScope;
@@ -101,31 +100,31 @@ public class CouponTemplateDO extends BaseDO {
     private List<Long> productScopeValues;
     /**
      * 生效日期类型
-     *
+     * <p>
      * 枚举 {@link CouponTemplateValidityTypeEnum}
      */
     private Integer validityType;
     /**
      * 固定日期 - 生效开始时间
-     *
+     * <p>
      * 当 {@link #validityType} 为 {@link CouponTemplateValidityTypeEnum#DATE}
      */
     private LocalDateTime validStartTime;
     /**
      * 固定日期 - 生效结束时间
-     *
+     * <p>
      * 当 {@link #validityType} 为 {@link CouponTemplateValidityTypeEnum#DATE}
      */
     private LocalDateTime validEndTime;
     /**
      * 领取日期 - 开始天数
-     *
+     * <p>
      * 当 {@link #validityType} 为 {@link CouponTemplateValidityTypeEnum#TERM}
      */
     private Integer fixedStartTerm;
     /**
      * 领取日期 - 结束天数
-     *
+     * <p>
      * 当 {@link #validityType} 为 {@link CouponTemplateValidityTypeEnum#TERM}
      */
     private Integer fixedEndTerm;
@@ -134,25 +133,25 @@ public class CouponTemplateDO extends BaseDO {
     // ========== 使用效果 BEGIN ==========
     /**
      * 折扣类型
-     *
+     * <p>
      * 枚举 {@link PromotionDiscountTypeEnum}
      */
     private Integer discountType;
     /**
      * 折扣百分比
-     *
+     * <p>
      * 例如，80% 为 80
      */
     private Integer discountPercent;
     /**
      * 优惠金额，单位：分
-     *
+     * <p>
      * 当 {@link #discountType} 为 {@link PromotionDiscountTypeEnum#PRICE} 生效
      */
     private Integer discountPrice;
     /**
      * 折扣上限，仅在 {@link #discountType} 等于 {@link PromotionDiscountTypeEnum#PERCENT} 时生效
-     *
+     * <p>
      * 例如，折扣上限为 20 元，当使用 8 折优惠券，订单金额为 1000 元时，最高只可折扣 20 元，而非 80  元。
      */
     private Integer discountLimitPrice;

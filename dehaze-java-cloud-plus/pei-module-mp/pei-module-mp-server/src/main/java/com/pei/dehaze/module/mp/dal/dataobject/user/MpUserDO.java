@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.mp.dal.dataobject.user;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
 import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
 import com.pei.dehaze.module.mp.dal.dataobject.tag.MpTagDO;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -44,10 +44,8 @@ public class MpUserDO extends BaseDO {
     private String unionId;
     /**
      * 关注状态
-     *
-     * 枚举 {@link CommonStatusEnum}
-     * 1. 开启 - 已关注
-     * 2. 禁用 - 取消关注
+     * <p>
+     * 枚举 {@link CommonStatusEnum} 1. 开启 - 已关注 2. 禁用 - 取消关注
      */
     private Integer subscribeStatus;
     /**
@@ -60,13 +58,13 @@ public class MpUserDO extends BaseDO {
     private LocalDateTime unsubscribeTime;
     /**
      * 昵称
-     *
+     * <p>
      * 注意，2021-12-27 公众号接口不再返回头像和昵称，只能通过微信公众号的网页登录获取
      */
     private String nickname;
     /**
      * 头像地址
-     *
+     * <p>
      * 注意，2021-12-27 公众号接口不再返回头像和昵称，只能通过微信公众号的网页登录获取
      */
     private String headImageUrl;
@@ -92,7 +90,7 @@ public class MpUserDO extends BaseDO {
     private String remark;
     /**
      * 标签编号数组
-     *
+     * <p>
      * 注意，对应的是 {@link MpTagDO#getTagId()} 字段
      */
     @TableField(typeHandler = LongListTypeHandler.class)
@@ -100,13 +98,13 @@ public class MpUserDO extends BaseDO {
 
     /**
      * 公众号账号的编号
-     *
+     * <p>
      * 关联 {@link MpAccountDO#getId()}
      */
     private Long accountId;
     /**
      * 公众号 appId
-     *
+     * <p>
      * 冗余 {@link MpAccountDO#getAppId()}
      */
     private String appId;

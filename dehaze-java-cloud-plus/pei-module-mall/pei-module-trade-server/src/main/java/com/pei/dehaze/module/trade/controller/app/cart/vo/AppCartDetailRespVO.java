@@ -99,7 +99,8 @@ public class AppCartDetailRespVO {
     @Data
     public static class Promotion {
 
-        @Schema(description = "营销编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024") // 营销活动的编号、优惠劵的编号
+        @Schema(description = "营销编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
+        // 营销活动的编号、优惠劵的编号
         private Long id;
         @Schema(description = "营销名字", requiredMode = Schema.RequiredMode.REQUIRED, example = "xx 活动")
         private String name;

@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.iot.service.product;
 
+import com.baomidou.dynamic.datasource.annotation.DSTransactional;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.framework.tenant.core.util.TenantUtils;
@@ -9,7 +10,6 @@ import com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO;
 import com.pei.dehaze.module.iot.dal.mysql.product.IotProductMapper;
 import com.pei.dehaze.module.iot.enums.product.IotProductStatusEnum;
 import com.pei.dehaze.module.iot.service.device.data.IotDevicePropertyService;
-import com.baomidou.dynamic.datasource.annotation.DSTransactional;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -78,6 +78,16 @@ public class IotProductServiceImpl implements IotProductService {
     }
 
     @Override
+    public IotProductDO getProduct(Long id) {
+        return productMapper.selectById(id);
+    }
+
+    @Override
+    public IotProductDO getProductByProductKey(String productKey) {
+        return productMapper.selectByProductKey(productKey);
+    }
+
+    @Override
     public IotProductDO validateProductExists(Long id) {
         IotProductDO product = productMapper.selectById(id);
         if (product == null) {
@@ -93,22 +103,6 @@ public class IotProductServiceImpl implements IotProductService {
             throw exception(PRODUCT_NOT_EXISTS);
         }
         return product;
-    }
-
-    private void validateProductStatus(IotProductDO product) {
-        if (Objects.equals(product.getStatus(), IotProductStatusEnum.PUBLISHED.getStatus())) {
-            throw exception(PRODUCT_STATUS_NOT_DELETE);
-        }
-    }
-
-    @Override
-    public IotProductDO getProduct(Long id) {
-        return productMapper.selectById(id);
-    }
-
-    @Override
-    public IotProductDO getProductByProductKey(String productKey) {
-        return productMapper.selectByProductKey(productKey);
     }
 
     @Override
@@ -141,6 +135,12 @@ public class IotProductServiceImpl implements IotProductService {
     @Override
     public Long getProductCount(LocalDateTime createTime) {
         return productMapper.selectCountByCreateTime(createTime);
+    }
+
+    private void validateProductStatus(IotProductDO product) {
+        if (Objects.equals(product.getStatus(), IotProductStatusEnum.PUBLISHED.getStatus())) {
+            throw exception(PRODUCT_STATUS_NOT_DELETE);
+        }
     }
 
 

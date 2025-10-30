@@ -17,7 +17,7 @@ CREATE TABLE `bpm_category`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_code` (`code` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -41,7 +41,7 @@ CREATE TABLE `bpm_form`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -86,7 +86,7 @@ CREATE TABLE `bpm_process_definition_info`
     `updater`                        varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time`                    datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                        bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_process_definition_id` (`process_definition_id` ASC) USING BTREE,
     INDEX `idx_model_id` (`model_id` ASC) USING BTREE
@@ -109,7 +109,7 @@ CREATE TABLE `bpm_process_expression`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -133,7 +133,7 @@ CREATE TABLE `bpm_process_listener`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_type` (`type` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -157,7 +157,7 @@ CREATE TABLE `bpm_user_group`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -183,7 +183,7 @@ CREATE TABLE `bpm_oa_leave`
     `updater`             varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`         datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`             bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE,
     INDEX `idx_process_instance_id` (`process_instance_id` ASC) USING BTREE
@@ -213,7 +213,7 @@ CREATE TABLE `bpm_process_instance_copy`
     `updater`               varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`           datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`               bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`     bigint       NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`) USING BTREE,
     INDEX `idx_process_instance_id` (`process_instance_id` ASC) USING BTREE,
     INDEX `idx_user_id` (`user_id` ASC) USING BTREE

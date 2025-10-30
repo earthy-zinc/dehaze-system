@@ -57,12 +57,6 @@ public class BpmUserGroupServiceImpl implements BpmUserGroupService {
         userGroupMapper.deleteById(id);
     }
 
-    private void validateUserGroupExists(Long id) {
-        if (userGroupMapper.selectById(id) == null) {
-            throw exception(USER_GROUP_NOT_EXISTS);
-        }
-    }
-
     @Override
     public BpmUserGroupDO getUserGroup(Long id) {
         return userGroupMapper.selectById(id);
@@ -72,7 +66,6 @@ public class BpmUserGroupServiceImpl implements BpmUserGroupService {
     public List<BpmUserGroupDO> getUserGroupList(Collection<Long> ids) {
         return userGroupMapper.selectBatchIds(ids);
     }
-
 
     @Override
     public List<BpmUserGroupDO> getUserGroupListByStatus(Integer status) {
@@ -102,6 +95,12 @@ public class BpmUserGroupServiceImpl implements BpmUserGroupService {
                 throw exception(USER_GROUP_IS_DISABLE, userGroup.getName());
             }
         });
+    }
+
+    private void validateUserGroupExists(Long id) {
+        if (userGroupMapper.selectById(id) == null) {
+            throw exception(USER_GROUP_NOT_EXISTS);
+        }
     }
 
 }

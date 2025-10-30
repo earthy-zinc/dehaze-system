@@ -1,10 +1,13 @@
 package com.pei.dehaze.module.iot.dal.dataobject.plugin;
 
-import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
@@ -34,7 +37,7 @@ public class IotPluginInstanceDO extends TenantBaseDO {
     private Long pluginId;
     /**
      * 插件进程编号
-     *
+     * <p>
      * 一般格式是：hostIp@processId@${uuid}
      */
     private String processId;
@@ -62,7 +65,7 @@ public class IotPluginInstanceDO extends TenantBaseDO {
     private LocalDateTime offlineTime;
     /**
      * 心跳时间
-     *
+     * <p>
      * 目的：心路时间超过一定时间后，会被进行下线处理
      */
     private LocalDateTime heartbeatTime;

@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.discount;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,9 +12,8 @@ import java.time.LocalDateTime;
 
 /**
  * 限时折扣活动 DO
- *
- * 一个活动下，可以有 {@link DiscountProductDO} 商品；
- * 一个商品，在指定时间段内，只能属于一个活动；
+ * <p>
+ * 一个活动下，可以有 {@link DiscountProductDO} 商品； 一个商品，在指定时间段内，只能属于一个活动；
  *
  * @author earthyzinc
  */
@@ -35,9 +34,9 @@ public class DiscountActivityDO extends BaseDO {
     private String name;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
-     *
+     * <p>
      * 活动被关闭后，不允许再次开启。
      */
     private Integer status;

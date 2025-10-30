@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.ai.controller.admin.chat.vo.conversation;
 
-import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
-import com.pei.dehaze.module.ai.dal.dataobject.model.AiChatRoleDO;
 import com.fhs.core.trans.anno.Trans;
 import com.fhs.core.trans.constant.TransType;
 import com.fhs.core.trans.vo.VO;
+import com.pei.dehaze.module.ai.dal.dataobject.model.AiChatRoleDO;
+import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

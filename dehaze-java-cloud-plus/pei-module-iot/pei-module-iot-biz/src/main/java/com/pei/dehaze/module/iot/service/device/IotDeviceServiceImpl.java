@@ -403,9 +403,9 @@ public class IotDeviceServiceImpl implements IotDeviceService {
         MqttSignResult mqttSignResult = MqttSignUtils.calculate(device.getProductKey(), device.getDeviceName(),
                 device.getDeviceSecret());
         return new IotDeviceMqttConnectionParamsRespVO()
-                .setMqttClientId(mqttSignResult.getClientId())
-                .setMqttUsername(mqttSignResult.getUsername())
-                .setMqttPassword(mqttSignResult.getPassword());
+                .setMqttClientId(mqttSignResult.clientId())
+                .setMqttUsername(mqttSignResult.username())
+                .setMqttPassword(mqttSignResult.password());
     }
 
     private void deleteDeviceCache(IotDeviceDO device) {
@@ -436,8 +436,8 @@ public class IotDeviceServiceImpl implements IotDeviceService {
         // 查询结果转换成Map
         List<Map<String, Object>> list = deviceMapper.selectDeviceCountMapByProductId();
         return list.stream().collect(Collectors.toMap(
-            map -> Long.valueOf(map.get("key").toString()),
-            map -> Integer.valueOf(map.get("value").toString())
+                map -> Long.valueOf(map.get("key").toString()),
+                map -> Integer.valueOf(map.get("value").toString())
         ));
     }
 
@@ -446,8 +446,8 @@ public class IotDeviceServiceImpl implements IotDeviceService {
         // 查询结果转换成Map
         List<Map<String, Object>> list = deviceMapper.selectDeviceCountGroupByState();
         return list.stream().collect(Collectors.toMap(
-            map -> Integer.valueOf(map.get("key").toString()),
-            map -> Long.valueOf(map.get("value").toString())
+                map -> Integer.valueOf(map.get("key").toString()),
+                map -> Long.valueOf(map.get("value").toString())
         ));
     }
 

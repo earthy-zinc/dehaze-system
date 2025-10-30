@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -13,14 +14,13 @@ import com.pei.dehaze.module.system.controller.admin.oauth2.vo.client.OAuth2Clie
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2ClientDO;
 import com.pei.dehaze.module.system.dal.mysql.oauth2.OAuth2ClientMapper;
 import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -70,27 +70,6 @@ public class OAuth2ClientServiceImpl implements OAuth2ClientService {
         validateOAuth2ClientExists(id);
         // 删除
         oauth2ClientMapper.deleteById(id);
-    }
-
-    private void validateOAuth2ClientExists(Long id) {
-        if (oauth2ClientMapper.selectById(id) == null) {
-            throw exception(OAUTH2_CLIENT_NOT_EXISTS);
-        }
-    }
-
-    @VisibleForTesting
-    void validateClientIdExists(Long id, String clientId) {
-        OAuth2ClientDO client = oauth2ClientMapper.selectByClientId(clientId);
-        if (client == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的客户端
-        if (id == null) {
-            throw exception(OAUTH2_CLIENT_EXISTS);
-        }
-        if (!client.getId().equals(id)) {
-            throw exception(OAUTH2_CLIENT_EXISTS);
-        }
     }
 
     @Override
@@ -148,6 +127,27 @@ public class OAuth2ClientServiceImpl implements OAuth2ClientService {
      */
     private OAuth2ClientServiceImpl getSelf() {
         return SpringUtil.getBean(getClass());
+    }
+
+    private void validateOAuth2ClientExists(Long id) {
+        if (oauth2ClientMapper.selectById(id) == null) {
+            throw exception(OAUTH2_CLIENT_NOT_EXISTS);
+        }
+    }
+
+    @VisibleForTesting
+    void validateClientIdExists(Long id, String clientId) {
+        OAuth2ClientDO client = oauth2ClientMapper.selectByClientId(clientId);
+        if (client == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的客户端
+        if (id == null) {
+            throw exception(OAUTH2_CLIENT_EXISTS);
+        }
+        if (!client.getId().equals(id)) {
+            throw exception(OAUTH2_CLIENT_EXISTS);
+        }
     }
 
 }

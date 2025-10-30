@@ -1,9 +1,9 @@
 package com.pei.dehaze.framework.xss.core.filter;
 
 import com.pei.dehaze.framework.xss.core.clean.XssCleaner;
-
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -19,6 +19,25 @@ public class XssRequestWrapper extends HttpServletRequestWrapper {
     public XssRequestWrapper(HttpServletRequest request, XssCleaner xssCleaner) {
         super(request);
         this.xssCleaner = xssCleaner;
+    }
+
+    // ============================ attribute ============================
+    @Override
+    public Object getAttribute(String name) {
+        Object value = super.getAttribute(name);
+        if (value instanceof String) {
+            return xssCleaner.clean((String) value);
+        }
+        return value;
+    }
+
+    @Override
+    public String getParameter(String name) {
+        String value = super.getParameter(name);
+        if (value == null) {
+            return null;
+        }
+        return xssCleaner.clean(value);
     }
 
     // ============================ parameter ============================
@@ -48,25 +67,6 @@ public class XssRequestWrapper extends HttpServletRequestWrapper {
             encodedValues[i] = xssCleaner.clean(values[i]);
         }
         return encodedValues;
-    }
-
-    @Override
-    public String getParameter(String name) {
-        String value = super.getParameter(name);
-        if (value == null) {
-            return null;
-        }
-        return xssCleaner.clean(value);
-    }
-
-    // ============================ attribute ============================
-    @Override
-    public Object getAttribute(String name) {
-        Object value = super.getAttribute(name);
-        if (value instanceof String) {
-            return xssCleaner.clean((String) value);
-        }
-        return value;
     }
 
     // ============================ header ============================

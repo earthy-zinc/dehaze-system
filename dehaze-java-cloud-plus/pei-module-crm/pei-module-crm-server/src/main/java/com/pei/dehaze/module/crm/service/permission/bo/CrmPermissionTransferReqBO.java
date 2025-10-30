@@ -44,7 +44,7 @@ public class CrmPermissionTransferReqBO {
 
     /**
      * 老负责人加入团队后的权限级别。如果 null 说明移除
-     *
+     * <p>
      * 关联 {@link CrmPermissionLevelEnum}
      */
     private Integer oldOwnerPermissionLevel;

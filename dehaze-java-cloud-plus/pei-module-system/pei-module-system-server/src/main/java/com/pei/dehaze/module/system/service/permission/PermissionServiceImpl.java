@@ -4,10 +4,14 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.baomidou.dynamic.datasource.annotation.DSTransactional;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Suppliers;
+import com.google.common.collect.Sets;
+import com.pei.dehaze.framework.common.biz.system.permission.dto.DeptDataPermissionRespDTO;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.datapermission.core.annotation.DataPermission;
-import com.pei.dehaze.framework.common.biz.system.permission.dto.DeptDataPermissionRespDTO;
 import com.pei.dehaze.module.system.dal.dataobject.permission.MenuDO;
 import com.pei.dehaze.module.system.dal.dataobject.permission.RoleDO;
 import com.pei.dehaze.module.system.dal.dataobject.permission.RoleMenuDO;
@@ -18,10 +22,7 @@ import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
 import com.pei.dehaze.module.system.enums.permission.DataScopeEnum;
 import com.pei.dehaze.module.system.service.dept.DeptService;
 import com.pei.dehaze.module.system.service.user.AdminUserService;
-import com.baomidou.dynamic.datasource.annotation.DSTransactional;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Suppliers;
-import com.google.common.collect.Sets;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
@@ -29,7 +30,6 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.annotation.Resource;
 import java.util.*;
 import java.util.function.Supplier;
 
@@ -83,33 +83,6 @@ public class PermissionServiceImpl implements PermissionService {
         return roleService.hasAnySuperAdmin(convertSet(roles, RoleDO::getId));
     }
 
-    /**
-     * 判断指定角色，是否拥有该 permission 权限
-     *
-     * @param roles 指定角色数组
-     * @param permission 权限标识
-     * @return 是否拥有
-     */
-    private boolean hasAnyPermission(List<RoleDO> roles, String permission) {
-        List<Long> menuIds = menuService.getMenuIdListByPermissionFromCache(permission);
-        // 采用严格模式，如果权限找不到对应的 Menu 的话，也认为没有权限
-        if (CollUtil.isEmpty(menuIds)) {
-            return false;
-        }
-
-        // 判断是否有权限
-        Set<Long> roleIds = convertSet(roles, RoleDO::getId);
-        for (Long menuId : menuIds) {
-            // 获得拥有该菜单的角色编号集合
-            Set<Long> menuRoleIds = getSelf().getMenuRoleIdListByMenuIdFromCache(menuId);
-            // 如果有交集，说明有权限
-            if (CollUtil.containsAny(menuRoleIds, roleIds)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     @Override
     public boolean hasAnyRoles(Long userId, String... roles) {
         // 如果为空，说明已经有权限
@@ -128,15 +101,13 @@ public class PermissionServiceImpl implements PermissionService {
         return CollUtil.containsAny(userRoles, Sets.newHashSet(roles));
     }
 
-    // ========== 角色-菜单的相关方法  ==========
-
     @Override
     @DSTransactional // 多数据源，使用 @DSTransactional 保证本地事务，以及数据源的切换
     @Caching(evict = {
             @CacheEvict(value = RedisKeyConstants.MENU_ROLE_ID_LIST,
-            allEntries = true),
+                    allEntries = true),
             @CacheEvict(value = RedisKeyConstants.PERMISSION_MENU_ID_LIST,
-            allEntries = true) // allEntries 清空所有缓存，主要一次更新涉及到的 menuIds 较多，反倒批量会更快
+                    allEntries = true) // allEntries 清空所有缓存，主要一次更新涉及到的 menuIds 较多，反倒批量会更快
     })
     public void assignRoleMenu(Long roleId, Set<Long> menuIds) {
         // 获得角色拥有菜单编号
@@ -158,6 +129,8 @@ public class PermissionServiceImpl implements PermissionService {
             roleMenuMapper.deleteListByRoleIdAndMenuIds(roleId, deleteMenuIds);
         }
     }
+
+    // ========== 角色-菜单的相关方法  ==========
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -200,8 +173,6 @@ public class PermissionServiceImpl implements PermissionService {
         return convertSet(roleMenuMapper.selectListByMenuId(menuId), RoleMenuDO::getRoleId);
     }
 
-    // ========== 用户-角色的相关方法  ==========
-
     @Override
     @DSTransactional // 多数据源，使用 @DSTransactional 保证本地事务，以及数据源的切换
     @CacheEvict(value = RedisKeyConstants.USER_ROLE_ID_LIST, key = "#userId")
@@ -227,10 +198,17 @@ public class PermissionServiceImpl implements PermissionService {
         }
     }
 
+    // ========== 用户-角色的相关方法  ==========
+
     @Override
     @CacheEvict(value = RedisKeyConstants.USER_ROLE_ID_LIST, key = "#userId")
     public void processUserDeleted(Long userId) {
         userRoleMapper.deleteListByUserId(userId);
+    }
+
+    @Override
+    public Set<Long> getUserRoleIdListByRoleId(Collection<Long> roleIds) {
+        return convertSet(userRoleMapper.selectListByRoleIds(roleIds), UserRoleDO::getUserId);
     }
 
     @Override
@@ -243,29 +221,6 @@ public class PermissionServiceImpl implements PermissionService {
     public Set<Long> getUserRoleIdListByUserIdFromCache(Long userId) {
         return getUserRoleIdListByUserId(userId);
     }
-
-    @Override
-    public Set<Long> getUserRoleIdListByRoleId(Collection<Long> roleIds) {
-        return convertSet(userRoleMapper.selectListByRoleIds(roleIds), UserRoleDO::getUserId);
-    }
-
-    /**
-     * 获得用户拥有的角色，并且这些角色是开启状态的
-     *
-     * @param userId 用户编号
-     * @return 用户拥有的角色
-     */
-    @VisibleForTesting
-    List<RoleDO> getEnableUserRoleListByUserIdFromCache(Long userId) {
-        // 获得用户拥有的角色编号
-        Set<Long> roleIds = getSelf().getUserRoleIdListByUserIdFromCache(userId);
-        // 获得角色数组，并移除被禁用的
-        List<RoleDO> roles = roleService.getRoleListFromCache(roleIds);
-        roles.removeIf(role -> !CommonStatusEnum.ENABLE.getStatus().equals(role.getStatus()));
-        return roles;
-    }
-
-    // ========== 用户-部门的相关方法  ==========
 
     @Override
     public void assignRoleDataScope(Long roleId, Integer dataScope, Set<Long> dataScopeDeptIds) {
@@ -327,6 +282,51 @@ public class PermissionServiceImpl implements PermissionService {
             log.error("[getDeptDataPermission][LoginUser({}) role({}) 无法处理]", userId, toJsonString(result));
         }
         return result;
+    }
+
+    // ========== 用户-部门的相关方法  ==========
+
+    /**
+     * 获得用户拥有的角色，并且这些角色是开启状态的
+     *
+     * @param userId 用户编号
+     * @return 用户拥有的角色
+     */
+    @VisibleForTesting
+    List<RoleDO> getEnableUserRoleListByUserIdFromCache(Long userId) {
+        // 获得用户拥有的角色编号
+        Set<Long> roleIds = getSelf().getUserRoleIdListByUserIdFromCache(userId);
+        // 获得角色数组，并移除被禁用的
+        List<RoleDO> roles = roleService.getRoleListFromCache(roleIds);
+        roles.removeIf(role -> !CommonStatusEnum.ENABLE.getStatus().equals(role.getStatus()));
+        return roles;
+    }
+
+    /**
+     * 判断指定角色，是否拥有该 permission 权限
+     *
+     * @param roles      指定角色数组
+     * @param permission 权限标识
+     * @return 是否拥有
+     */
+    private boolean hasAnyPermission(List<RoleDO> roles, String permission) {
+        List<Long> menuIds = menuService.getMenuIdListByPermissionFromCache(permission);
+        // 采用严格模式，如果权限找不到对应的 Menu 的话，也认为没有权限
+        if (CollUtil.isEmpty(menuIds)) {
+            return false;
+        }
+
+        // 判断是否有权限
+        Set<Long> roleIds = convertSet(roles, RoleDO::getId);
+        for (Long menuId : menuIds) {
+            // 获得拥有该菜单的角色编号集合
+            Set<Long> menuRoleIds = getSelf().getMenuRoleIdListByMenuIdFromCache(menuId);
+            // 如果有交集，说明有权限
+            if (CollUtil.containsAny(menuRoleIds, roleIds)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

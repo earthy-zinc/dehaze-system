@@ -1,9 +1,5 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin;
 
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import com.github.binarywang.wxpay.bean.order.WxPayAppOrderResult;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderRequest;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderV3Request;
@@ -11,15 +7,19 @@ import com.github.binarywang.wxpay.bean.result.WxPayUnifiedOrderV3Result;
 import com.github.binarywang.wxpay.bean.result.enums.TradeTypeEnum;
 import com.github.binarywang.wxpay.constant.WxPayConstants;
 import com.github.binarywang.wxpay.exception.WxPayException;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import lombok.extern.slf4j.Slf4j;
 
 import static com.pei.dehaze.framework.common.util.json.JsonUtils.toJsonString;
 
 /**
  * 微信支付【App 支付】的 PayClient 实现类
- *
+ * <p>
  * 文档：<a href="https://pay.weixin.qq.com/wiki/doc/apiv3/open/pay/chapter2_5_3.shtml">App 支付</a>
- *
+ * <p>
  * // TODO 芋艿：未详细测试，因为手头没 App
  *
  * @author earthyzinc

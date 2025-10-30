@@ -5,8 +5,8 @@ import com.pei.dehaze.module.mp.controller.admin.account.vo.MpAccountCreateReqVO
 import com.pei.dehaze.module.mp.controller.admin.account.vo.MpAccountPageReqVO;
 import com.pei.dehaze.module.mp.controller.admin.account.vo.MpAccountUpdateReqVO;
 import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -47,14 +47,6 @@ public interface MpAccountService {
     void deleteAccount(Long id);
 
     /**
-     * 获得公众号账号
-     *
-     * @param id 编号
-     * @return 公众号账号
-     */
-    MpAccountDO getAccount(Long id);
-
-    /**
      * 获得公众号账号。若不存在，则抛出业务异常
      *
      * @param id 编号
@@ -67,6 +59,14 @@ public interface MpAccountService {
         }
         return account;
     }
+
+    /**
+     * 获得公众号账号
+     *
+     * @param id 编号
+     * @return 公众号账号
+     */
+    MpAccountDO getAccount(Long id);
 
     /**
      * 从缓存中，获得公众号账号
@@ -100,8 +100,9 @@ public interface MpAccountService {
 
     /**
      * 清空公众号账号的 API 配额
-     *
-     * 参考文档：<a href="https://developers.weixin.qq.com/doc/offiaccount/Message_Management/API_Call_Limits.html">接口调用频次限制说明</a>
+     * <p>
+     * 参考文档：<a
+     * href="https://developers.weixin.qq.com/doc/offiaccount/Message_Management/API_Call_Limits.html">接口调用频次限制说明</a>
      *
      * @param id 编号
      */

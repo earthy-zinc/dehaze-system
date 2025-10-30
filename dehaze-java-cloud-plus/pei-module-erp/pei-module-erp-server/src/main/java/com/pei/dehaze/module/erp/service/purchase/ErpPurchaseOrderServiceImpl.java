@@ -110,19 +110,6 @@ public class ErpPurchaseOrderServiceImpl implements ErpPurchaseOrderService {
         updatePurchaseOrderItemList(updateReqVO.getId(), purchaseOrderItems);
     }
 
-    private void calculateTotalPrice(ErpPurchaseOrderDO purchaseOrder, List<ErpPurchaseOrderItemDO> purchaseOrderItems) {
-        purchaseOrder.setTotalCount(getSumValue(purchaseOrderItems, ErpPurchaseOrderItemDO::getCount, BigDecimal::add));
-        purchaseOrder.setTotalProductPrice(getSumValue(purchaseOrderItems, ErpPurchaseOrderItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
-        purchaseOrder.setTotalTaxPrice(getSumValue(purchaseOrderItems, ErpPurchaseOrderItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
-        purchaseOrder.setTotalPrice(purchaseOrder.getTotalProductPrice().add(purchaseOrder.getTotalTaxPrice()));
-        // 计算优惠价格
-        if (purchaseOrder.getDiscountPercent() == null) {
-            purchaseOrder.setDiscountPercent(BigDecimal.ZERO);
-        }
-        purchaseOrder.setDiscountPrice(MoneyUtils.priceMultiplyPercent(purchaseOrder.getTotalPrice(), purchaseOrder.getDiscountPercent()));
-        purchaseOrder.setTotalPrice(purchaseOrder.getTotalPrice().subtract(purchaseOrder.getDiscountPrice()));
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updatePurchaseOrderStatus(Long id, Integer status) {
@@ -147,43 +134,6 @@ public class ErpPurchaseOrderServiceImpl implements ErpPurchaseOrderService {
                 new ErpPurchaseOrderDO().setStatus(status));
         if (updateCount == 0) {
             throw exception(approve ? PURCHASE_ORDER_APPROVE_FAIL : PURCHASE_ORDER_PROCESS_FAIL);
-        }
-    }
-
-    private List<ErpPurchaseOrderItemDO> validatePurchaseOrderItems(List<ErpPurchaseOrderSaveReqVO.Item> list) {
-        // 1. 校验产品存在
-        List<ErpProductDO> productList = productService.validProductList(
-                convertSet(list, ErpPurchaseOrderSaveReqVO.Item::getProductId));
-        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
-        // 2. 转化为 ErpPurchaseOrderItemDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, ErpPurchaseOrderItemDO.class, item -> {
-            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
-            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
-            if (item.getTotalPrice() == null) {
-                return;
-            }
-            if (item.getTaxPercent() != null) {
-                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
-            }
-        }));
-    }
-
-    private void updatePurchaseOrderItemList(Long id, List<ErpPurchaseOrderItemDO> newList) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<ErpPurchaseOrderItemDO> oldList = purchaseOrderItemMapper.selectListByOrderId(id);
-        List<List<ErpPurchaseOrderItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setOrderId(id));
-            purchaseOrderItemMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            purchaseOrderItemMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            purchaseOrderItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpPurchaseOrderItemDO::getId));
         }
     }
 
@@ -250,14 +200,6 @@ public class ErpPurchaseOrderServiceImpl implements ErpPurchaseOrderService {
         });
     }
 
-    private ErpPurchaseOrderDO validatePurchaseOrderExists(Long id) {
-        ErpPurchaseOrderDO purchaseOrder = purchaseOrderMapper.selectById(id);
-        if (purchaseOrder == null) {
-            throw exception(PURCHASE_ORDER_NOT_EXISTS);
-        }
-        return purchaseOrder;
-    }
-
     @Override
     public ErpPurchaseOrderDO getPurchaseOrder(Long id) {
         return purchaseOrderMapper.selectById(id);
@@ -277,8 +219,6 @@ public class ErpPurchaseOrderServiceImpl implements ErpPurchaseOrderService {
         return purchaseOrderMapper.selectPage(pageReqVO);
     }
 
-    // ==================== 订单项 ====================
-
     @Override
     public List<ErpPurchaseOrderItemDO> getPurchaseOrderItemListByOrderId(Long orderId) {
         return purchaseOrderItemMapper.selectListByOrderId(orderId);
@@ -290,6 +230,66 @@ public class ErpPurchaseOrderServiceImpl implements ErpPurchaseOrderService {
             return Collections.emptyList();
         }
         return purchaseOrderItemMapper.selectListByOrderIds(orderIds);
+    }
+
+    private ErpPurchaseOrderDO validatePurchaseOrderExists(Long id) {
+        ErpPurchaseOrderDO purchaseOrder = purchaseOrderMapper.selectById(id);
+        if (purchaseOrder == null) {
+            throw exception(PURCHASE_ORDER_NOT_EXISTS);
+        }
+        return purchaseOrder;
+    }
+
+    private void updatePurchaseOrderItemList(Long id, List<ErpPurchaseOrderItemDO> newList) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<ErpPurchaseOrderItemDO> oldList = purchaseOrderItemMapper.selectListByOrderId(id);
+        List<List<ErpPurchaseOrderItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setOrderId(id));
+            purchaseOrderItemMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            purchaseOrderItemMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            purchaseOrderItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpPurchaseOrderItemDO::getId));
+        }
+    }
+
+    // ==================== 订单项 ====================
+
+    private List<ErpPurchaseOrderItemDO> validatePurchaseOrderItems(List<ErpPurchaseOrderSaveReqVO.Item> list) {
+        // 1. 校验产品存在
+        List<ErpProductDO> productList = productService.validProductList(
+                convertSet(list, ErpPurchaseOrderSaveReqVO.Item::getProductId));
+        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
+        // 2. 转化为 ErpPurchaseOrderItemDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, ErpPurchaseOrderItemDO.class, item -> {
+            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
+            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
+            if (item.getTotalPrice() == null) {
+                return;
+            }
+            if (item.getTaxPercent() != null) {
+                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
+            }
+        }));
+    }
+
+    private void calculateTotalPrice(ErpPurchaseOrderDO purchaseOrder, List<ErpPurchaseOrderItemDO> purchaseOrderItems) {
+        purchaseOrder.setTotalCount(getSumValue(purchaseOrderItems, ErpPurchaseOrderItemDO::getCount, BigDecimal::add));
+        purchaseOrder.setTotalProductPrice(getSumValue(purchaseOrderItems, ErpPurchaseOrderItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
+        purchaseOrder.setTotalTaxPrice(getSumValue(purchaseOrderItems, ErpPurchaseOrderItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
+        purchaseOrder.setTotalPrice(purchaseOrder.getTotalProductPrice().add(purchaseOrder.getTotalTaxPrice()));
+        // 计算优惠价格
+        if (purchaseOrder.getDiscountPercent() == null) {
+            purchaseOrder.setDiscountPercent(BigDecimal.ZERO);
+        }
+        purchaseOrder.setDiscountPrice(MoneyUtils.priceMultiplyPercent(purchaseOrder.getTotalPrice(), purchaseOrder.getDiscountPercent()));
+        purchaseOrder.setTotalPrice(purchaseOrder.getTotalPrice().subtract(purchaseOrder.getDiscountPrice()));
     }
 
 }

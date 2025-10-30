@@ -112,7 +112,7 @@ public class PayWalletServiceImpl implements PayWalletService {
     /**
      * 校验是否能退款
      *
-     * @param refundId 支付退款单 id
+     * @param refundId    支付退款单 id
      * @param walletPayNo 钱包支付 no
      */
     private Long validateWalletCanRefund(Long refundId, String walletPayNo) {

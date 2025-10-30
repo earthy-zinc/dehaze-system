@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.ai.controller.admin.model.vo.apikey;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.*;
+import lombok.Data;
 
 @Schema(description = "管理后台 - AI API 密钥 Response VO")
 @Data

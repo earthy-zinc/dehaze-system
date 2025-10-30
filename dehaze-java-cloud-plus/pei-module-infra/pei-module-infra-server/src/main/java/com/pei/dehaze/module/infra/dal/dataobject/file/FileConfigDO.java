@@ -1,6 +1,11 @@
 package com.pei.dehaze.module.infra.dal.dataobject.file;
 
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.AbstractJsonTypeHandler;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
@@ -11,11 +16,6 @@ import com.pei.dehaze.module.infra.framework.file.core.client.local.LocalFileCli
 import com.pei.dehaze.module.infra.framework.file.core.client.s3.S3FileClientConfig;
 import com.pei.dehaze.module.infra.framework.file.core.client.sftp.SftpFileClientConfig;
 import com.pei.dehaze.module.infra.framework.file.core.enums.FileStorageEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.AbstractJsonTypeHandler;
-import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.*;
 
 import java.lang.reflect.Field;
@@ -46,7 +46,7 @@ public class FileConfigDO extends BaseDO {
     private String name;
     /**
      * 存储器
-     *
+     * <p>
      * 枚举 {@link FileStorageEnum}
      */
     private Integer storage;
@@ -56,7 +56,7 @@ public class FileConfigDO extends BaseDO {
     private String remark;
     /**
      * 是否为主配置
-     *
+     * <p>
      * 由于我们可以配置多个文件配置，默认情况下，使用主配置进行文件的上传
      */
     private Boolean master;
@@ -79,7 +79,8 @@ public class FileConfigDO extends BaseDO {
 
         @Override
         public Object parse(String json) {
-            FileClientConfig config = JsonUtils.parseObjectQuietly(json, new TypeReference<>() {});
+            FileClientConfig config = JsonUtils.parseObjectQuietly(json, new TypeReference<>() {
+            });
             if (config != null) {
                 return config;
             }

@@ -93,6 +93,19 @@ public class IotProductController {
         }));
     }
 
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出产品 Excel")
+    @PreAuthorize("@ss.hasPermission('iot:product:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportProductExcel(@Valid IotProductPageReqVO exportReqVO,
+                                   HttpServletResponse response) throws IOException {
+        exportReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        CommonResult<PageResult<IotProductRespVO>> result = getProductPage(exportReqVO);
+        // 导出 Excel
+        ExcelUtils.write(response, "产品.xls", "数据", IotProductRespVO.class,
+                result.getData().getList());
+    }
+
     @GetMapping("/page")
     @Operation(summary = "获得产品分页")
     @PreAuthorize("@ss.hasPermission('iot:product:query')")
@@ -105,19 +118,6 @@ public class IotProductController {
             MapUtils.findAndThen(categoryMap, bean.getCategoryId(),
                     category -> bean.setCategoryName(category.getName()));
         }));
-    }
-
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出产品 Excel")
-    @PreAuthorize("@ss.hasPermission('iot:product:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportProductExcel(@Valid IotProductPageReqVO exportReqVO,
-                                   HttpServletResponse response) throws IOException {
-        exportReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        CommonResult<PageResult<IotProductRespVO>> result = getProductPage(exportReqVO);
-        // 导出 Excel
-        ExcelUtils.write(response, "产品.xls", "数据", IotProductRespVO.class,
-                result.getData().getList());
     }
 
     @GetMapping("/simple-list")

@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.promotion.controller.admin.coupon.vo.coupon;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.promotion.enums.common.PromotionDiscountTypeEnum;
 import com.pei.dehaze.module.promotion.enums.common.PromotionProductScopeEnum;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -17,9 +17,8 @@ import static com.pei.dehaze.framework.common.util.date.DateUtils.FORMAT_YEAR_MO
 import static com.pei.dehaze.framework.common.util.date.DateUtils.TIME_ZONE_DEFAULT;
 
 /**
-* 优惠劵 Base VO，提供给添加、修改、详细的子 VO 使用
-* 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
-*/
+ * 优惠劵 Base VO，提供给添加、修改、详细的子 VO 使用 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
+ */
 @Data
 public class CouponBaseVO {
 
@@ -48,7 +47,8 @@ public class CouponBaseVO {
     // ========== 领取情况 END ==========
 
     // ========== 使用规则 BEGIN ==========
-    @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100") // 单位：分；0 - 不限制
+    @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")
+    // 单位：分；0 - 不限制
     @NotNull(message = "是否设置满多少金额可用不能为空")
     private Integer usePrice;
 

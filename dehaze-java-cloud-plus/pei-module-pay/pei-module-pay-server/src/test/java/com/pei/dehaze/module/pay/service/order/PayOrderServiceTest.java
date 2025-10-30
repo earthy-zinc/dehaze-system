@@ -2,10 +2,6 @@ package com.pei.dehaze.module.pay.service.order;
 
 import cn.hutool.extra.spring.SpringUtil;
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import com.pei.dehaze.framework.test.core.ut.BaseDbAndRedisUnitTest;
 import com.pei.dehaze.module.pay.api.order.dto.PayOrderCreateReqDTO;
 import com.pei.dehaze.module.pay.controller.admin.order.vo.PayOrderExportReqVO;
@@ -19,9 +15,13 @@ import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderExtensionDO;
 import com.pei.dehaze.module.pay.dal.mysql.order.PayOrderExtensionMapper;
 import com.pei.dehaze.module.pay.dal.mysql.order.PayOrderMapper;
 import com.pei.dehaze.module.pay.dal.redis.no.PayNoRedisDAO;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
 import com.pei.dehaze.module.pay.enums.notify.PayNotifyTypeEnum;
 import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
 import com.pei.dehaze.module.pay.framework.pay.config.PayProperties;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import com.pei.dehaze.module.pay.service.app.PayAppService;
 import com.pei.dehaze.module.pay.service.channel.PayChannelService;
 import com.pei.dehaze.module.pay.service.notify.PayNotifyService;
@@ -240,7 +240,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         PayOrderCreateReqDTO reqDTO = randomPojo(PayOrderCreateReqDTO.class,
                 o -> o.setAppKey("demo").setMerchantOrderId("10"));
         // mock 数据
-        PayOrderDO dbOrder = randomPojo(PayOrderDO.class,  o -> o.setAppId(1L).setMerchantOrderId("10"));
+        PayOrderDO dbOrder = randomPojo(PayOrderDO.class, o -> o.setAppId(1L).setMerchantOrderId("10"));
         orderMapper.insert(dbOrder);
         // mock 方法
         PayAppDO app = randomPojo(PayAppDO.class, o -> o.setId(1L).setOrderNotifyUrl("http://127.0.0.1"));
@@ -371,7 +371,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
             assertNotNull(orderExtension);
             assertThat(orderExtension).extracting("no", "orderId").isNotNull();
             assertThat(orderExtension)
-                    .extracting("channelId", "channelCode","userIp" ,"status", "channelExtras",
+                    .extracting("channelId", "channelCode", "userIp", "status", "channelExtras",
                             "channelErrorCode", "channelErrorMsg", "channelNotifyData")
                     .containsExactly(10L, PayChannelEnum.ALIPAY_APP.getCode(), userIp,
                             PayOrderStatusEnum.WAITING.getStatus(), reqVO.getChannelExtras(),
@@ -424,7 +424,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
             assertNotNull(orderExtension);
             assertThat(orderExtension).extracting("no", "orderId").isNotNull();
             assertThat(orderExtension)
-                    .extracting("channelId", "channelCode","userIp" ,"status", "channelExtras",
+                    .extracting("channelId", "channelCode", "userIp", "status", "channelExtras",
                             "channelErrorCode", "channelErrorMsg", "channelNotifyData")
                     .containsExactly(10L, PayChannelEnum.ALIPAY_APP.getCode(), userIp,
                             PayOrderStatusEnum.WAITING.getStatus(), reqVO.getChannelExtras(),
@@ -564,11 +564,6 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         testNotifyOrderSuccess_order_closedOrRefund(PayOrderStatusEnum.CLOSED.getStatus());
     }
 
-    @Test
-    public void testNotifyOrderSuccess_order_refund() {
-        testNotifyOrderSuccess_order_closedOrRefund(PayOrderStatusEnum.REFUND.getStatus());
-    }
-
     private void testNotifyOrderSuccess_order_closedOrRefund(Integer status) {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class, o -> o.setStatus(status));
@@ -590,6 +585,11 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
                 PAY_ORDER_STATUS_IS_NOT_WAITING);
         // 断言 PayOrderExtensionDO ：数据未更新，因为它是 SUCCESS
         assertPojoEquals(orderExtension, orderExtensionMapper.selectOne(null));
+    }
+
+    @Test
+    public void testNotifyOrderSuccess_order_refund() {
+        testNotifyOrderSuccess_order_closedOrRefund(PayOrderStatusEnum.REFUND.getStatus());
     }
 
     @Test
@@ -660,7 +660,7 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
                 "updateTime", "updater");
         // 断言，调用
         verify(notifyService).createPayNotifyTask(eq(PayNotifyTypeEnum.ORDER.getType()),
-            eq(orderExtension.getOrderId()));
+                eq(orderExtension.getOrderId()));
     }
 
     @Test
@@ -769,11 +769,6 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         testUpdateOrderRefundPrice_waitingOrClosed(PayOrderStatusEnum.WAITING.getStatus());
     }
 
-    @Test
-    public void testUpdateOrderRefundPrice_closed() {
-        testUpdateOrderRefundPrice_waitingOrClosed(PayOrderStatusEnum.CLOSED.getStatus());
-    }
-
     private void testUpdateOrderRefundPrice_waitingOrClosed(Integer status) {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class,
@@ -786,6 +781,11 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         // 调用，并断言异常
         assertServiceException(() -> orderService.updateOrderRefundPrice(id, incrRefundPrice),
                 PAY_ORDER_REFUND_FAIL_STATUS_ERROR);
+    }
+
+    @Test
+    public void testUpdateOrderRefundPrice_closed() {
+        testUpdateOrderRefundPrice_waitingOrClosed(PayOrderStatusEnum.CLOSED.getStatus());
     }
 
     @Test
@@ -809,11 +809,6 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         testUpdateOrderRefundPrice_refundOrSuccess(PayOrderStatusEnum.REFUND.getStatus());
     }
 
-    @Test
-    public void testUpdateOrderRefundPrice_success() {
-        testUpdateOrderRefundPrice_refundOrSuccess(PayOrderStatusEnum.SUCCESS.getStatus());
-    }
-
     private void testUpdateOrderRefundPrice_refundOrSuccess(Integer status) {
         // mock 数据（PayOrderDO）
         PayOrderDO order = randomPojo(PayOrderDO.class,
@@ -829,6 +824,11 @@ public class PayOrderServiceTest extends BaseDbAndRedisUnitTest {
         order.setRefundPrice(9).setStatus(PayOrderStatusEnum.REFUND.getStatus());
         assertPojoEquals(order, orderMapper.selectOne(null),
                 "updateTime", "updater");
+    }
+
+    @Test
+    public void testUpdateOrderRefundPrice_success() {
+        testUpdateOrderRefundPrice_refundOrSuccess(PayOrderStatusEnum.SUCCESS.getStatus());
     }
 
     @Test

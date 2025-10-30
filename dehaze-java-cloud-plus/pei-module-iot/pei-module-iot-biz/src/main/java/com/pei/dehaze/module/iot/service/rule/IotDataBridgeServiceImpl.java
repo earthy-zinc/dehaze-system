@@ -51,12 +51,6 @@ public class IotDataBridgeServiceImpl implements IotDataBridgeService {
         dataBridgeMapper.deleteById(id);
     }
 
-    private void validateDataBridgeExists(Long id) {
-        if (dataBridgeMapper.selectById(id) == null) {
-            throw exception(DATA_BRIDGE_NOT_EXISTS);
-        }
-    }
-
     @Override
     public IotDataBridgeDO getDataBridge(Long id) {
         return dataBridgeMapper.selectById(id);
@@ -65,6 +59,12 @@ public class IotDataBridgeServiceImpl implements IotDataBridgeService {
     @Override
     public PageResult<IotDataBridgeDO> getDataBridgePage(IotDataBridgePageReqVO pageReqVO) {
         return dataBridgeMapper.selectPage(pageReqVO);
+    }
+
+    private void validateDataBridgeExists(Long id) {
+        if (dataBridgeMapper.selectById(id) == null) {
+            throw exception(DATA_BRIDGE_NOT_EXISTS);
+        }
     }
 
 }

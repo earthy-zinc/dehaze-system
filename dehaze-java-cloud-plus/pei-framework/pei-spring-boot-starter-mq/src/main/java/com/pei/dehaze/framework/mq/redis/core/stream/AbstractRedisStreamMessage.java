@@ -1,7 +1,7 @@
 package com.pei.dehaze.framework.mq.redis.core.stream;
 
-import com.pei.dehaze.framework.mq.redis.core.message.AbstractRedisMessage;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.pei.dehaze.framework.mq.redis.core.message.AbstractRedisMessage;
 
 /**
  * Redis Stream Message 抽象类

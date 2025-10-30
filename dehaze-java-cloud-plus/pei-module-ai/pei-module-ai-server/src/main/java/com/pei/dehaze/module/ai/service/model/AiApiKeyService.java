@@ -72,7 +72,7 @@ public interface AiApiKeyService {
      * 获得默认的 API 密钥
      *
      * @param platform 平台
-     * @param status 状态
+     * @param status   状态
      * @return API 密钥
      */
     AiApiKeyDO getRequiredDefaultApiKey(String platform, Integer status);

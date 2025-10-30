@@ -1,10 +1,12 @@
-`pei-module-system` 是一个 **系统管理模块**，其核心作用是为微服务架构下的权限、用户、部门、角色、短信、邮件等基础功能提供统一的管理能力。该模块基于 Spring Boot 3.4 + Java 17 实现，遵循分层架构设计，并与 `Spring Security`、`OAuth2`、`MyBatis Plus` 等技术栈深度集成。
+`pei-module-system` 是一个 **系统管理模块**，其核心作用是为微服务架构下的权限、用户、部门、角色、短信、邮件等基础功能提供统一的管理能力。该模块基于
+Spring Boot 3.4 + Java 17 实现，遵循分层架构设计，并与 `Spring Security`、`OAuth2`、`MyBatis Plus` 等技术栈深度集成。
 
 ---
 
 ## 一、模块概述
 
 ### ✅ 模块定位
+
 - **目标**：构建统一的系统管理后台，支持：
     - 用户管理（账号、权限、登录）
     - 部门管理（组织结构、权限隔离）
@@ -55,7 +57,6 @@ src/main/java/
     └── SystemServerApplication.java // 启动类
 ```
 
-
 ---
 
 ## 三、关键包详解
@@ -63,6 +64,7 @@ src/main/java/
 ### 1️⃣ `api.social` 包 —— 社交相关 API 接口
 
 #### 🔹 `SocialClientApiImpl.java`
+
 ```java
 @RestController
 @Validated
@@ -101,6 +103,7 @@ public class SocialClientApiImpl implements SocialClientApi {
 ### 2️⃣ `controller.admin` 包 —— 管理后台控制器
 
 #### 🔹 示例：`AdminController.java`
+
 ```java
 @Tag(name = "管理后台 - 文章分类")
 @RestController
@@ -131,6 +134,7 @@ public class ArticleCategoryController {
 ### 3️⃣ `convert` 包 —— VO/DO 转换
 
 #### 🔹 `GoViewProjectConvert.java`
+
 ```java
 @Mapper
 public interface GoViewProjectConvert {
@@ -153,6 +157,7 @@ public interface GoViewProjectConvert {
 ### 4️⃣ `dal.dataobject` 包 —— 数据库映射对象
 
 #### 🔹 `SocialClientDO.java`
+
 ```java
 @TableName("system_social_client")
 @KeySequence("system_social_client_seq")
@@ -186,6 +191,7 @@ public class SocialClientDO extends TenantBaseDO {
 ### 5️⃣ `service.permission` 包 —— 权限管理服务
 
 #### 🔹 `RoleServiceImpl.java`
+
 ```java
 @Service
 @Transactional(rollbackFor = Exception.class)
@@ -231,6 +237,7 @@ public class RoleServiceImpl implements RoleService {
 ### 6️⃣ `service.sms` 包 —— 短信服务
 
 #### 🔹 `SmsSendServiceImpl.java`
+
 ```java
 @Service
 @Slf4j
@@ -287,6 +294,7 @@ public class SmsSendServiceImpl implements SmsSendService {
 ### 7️⃣ `service.mail` 包 —— 邮件服务
 
 #### 🔹 `MailAccountServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -326,6 +334,7 @@ public class MailAccountServiceImpl implements MailAccountService {
 ### 8️⃣ `framework.sms.core.client.impl` 包 —— 短信客户端实现
 
 #### 🔹 `QiniuSmsClient.java`
+
 ```java
 @Slf4j
 public class QiniuSmsClient extends AbstractSmsClient {
@@ -372,6 +381,7 @@ public class QiniuSmsClient extends AbstractSmsClient {
 ### 9️⃣ `service.tenant` 包 —— 租户管理服务
 
 #### 🔹 `TenantPackageServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -414,6 +424,7 @@ public class TenantPackageServiceImpl implements TenantPackageService {
 ### 🔟 `service.notify` 包 —— 站内信服务
 
 #### 🔹 `NotifyMessageServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -450,23 +461,24 @@ public class NotifyMessageServiceImpl implements NotifyMessageService {
 
 ## 四、模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `api.social` | 社交接口定义 | `SocialClientApiImpl` |
-| `controller.admin` | 管理后台控制器 | `ArticleCategoryController` |
-| `convert` | VO/DO 转换 | `GoViewProjectConvert` |
-| `dal.dataobject` | 数据库实体 | `SocialClientDO` |
-| `service.permission` | 权限服务 | `RoleServiceImpl` |
-| `service.sms` | 短信服务 | `SmsSendServiceImpl` |
-| `service.mail` | 邮件服务 | `MailAccountServiceImpl` |
-| `service.tenant` | 租户服务 | `TenantPackageServiceImpl` |
-| `service.notify` | 站内信服务 | `NotifyMessageServiceImpl` |
+| 包名                   | 功能       | 关键类                         |
+|----------------------|----------|-----------------------------|
+| `api.social`         | 社交接口定义   | `SocialClientApiImpl`       |
+| `controller.admin`   | 管理后台控制器  | `ArticleCategoryController` |
+| `convert`            | VO/DO 转换 | `GoViewProjectConvert`      |
+| `dal.dataobject`     | 数据库实体    | `SocialClientDO`            |
+| `service.permission` | 权限服务     | `RoleServiceImpl`           |
+| `service.sms`        | 短信服务     | `SmsSendServiceImpl`        |
+| `service.mail`       | 邮件服务     | `MailAccountServiceImpl`    |
+| `service.tenant`     | 租户服务     | `TenantPackageServiceImpl`  |
+| `service.notify`     | 站内信服务    | `NotifyMessageServiceImpl`  |
 
 ---
 
 ## 五、模块工作流程图解
 
 ### 1️⃣ 系统角色创建流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -478,8 +490,8 @@ graph TD
     G --> H[响应客户端]
 ```
 
-
 ### 2️⃣ 短信发送流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -492,24 +504,27 @@ graph TD
     H --> I[解析响应并记录日志]
 ```
 
-
 ---
 
 ## 六、模块实现原理详解
 
 ### 1️⃣ RBAC 权限模型
+
 - **Role-Menu 关系**：
-    - 使用 `RoleMenuMapper` ://C:\Users\pei\ProgramProject\dehaze-java-cloud-plus\pei-module-system\pei-module-system-server\src\main\java\com\pei\dehaze\module\system\dal\mysql\permission\RoleMenuMapper.java#L13-L19)
+  - 使用 `RoleMenuMapper` ://C:
+    \Users\pei\ProgramProject\dehaze-java-cloud-plus\pei-module-system\pei-module-system-server\src\main\java\com\pei\dehaze\module\system\dal\mysql\permission\RoleMenuMapper.java#L13-L19)
 - **UserRole 映射**：
     - 使用 `UserRoleMapper` 实现用户与角色的绑定关系
 
 ### 2️⃣ 多租户支持
+
 - **TenantBaseDO**：
     - 所有实体类继承 `TenantBaseDO`，包含 `tenant_id` 字段
 - **TenantContextHolder**：
     - 使用 ThreadLocal 存储当前租户上下文
 
 ### 3️⃣ 短信服务适配
+
 - **SmsClient 接口**：
     - 定义标准短信接口方法
 - **SmsClientFactory**：
@@ -522,6 +537,7 @@ graph TD
 ## 七、模块使用示例
 
 ### 1️⃣ 创建角色
+
 ```java
 @PostMapping("/create")
 @Operation(summary = "创建角色")
@@ -548,8 +564,8 @@ public CommonResult<Long> createRole(@Valid @RequestBody RoleSaveReqVO createReq
   }
   ```
 
-
 ### 2️⃣ 发送短信验证码
+
 ```java
 @GetMapping("/send-code")
 @Operation(summary = "发送短信验证码")
@@ -575,18 +591,17 @@ public CommonResult<Boolean> sendCode(@Valid SmsCodeSendReqDTO reqDTO) {
   }
   ```
 
-
 ---
 
 ## 八、建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多租户增强 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 自研大屏设计器 | 当前依赖积木报表，未来应替换为自研方案，降低依赖风险 |
-| ✅ 多数据库适配 | 当前默认使用 MySQL，未来需支持 PostgreSQL、Oracle、ClickHouse 等 |
+| 改进点       | 描述                                                   |
+|-----------|------------------------------------------------------|
+| ✅ 多租户增强   | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 异常日志增强  | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
+| ✅ 性能优化    | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 自研大屏设计器 | 当前依赖积木报表，未来应替换为自研方案，降低依赖风险                           |
+| ✅ 多数据库适配  | 当前默认使用 MySQL，未来需支持 PostgreSQL、Oracle、ClickHouse 等    |
 
 ---
 
@@ -594,15 +609,16 @@ public CommonResult<Boolean> sendCode(@Valid SmsCodeSendReqDTO reqDTO) {
 
 `pei-module-system` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 用户管理 | AdminUserDO + UserService | 用户注册、登录、权限分配 |
-| 角色管理 | RoleDO + RoleService | 角色创建、权限绑定 |
-| 部门管理 | DeptDO + DeptService | 组织结构管理 |
-| 短信服务 | SmsClient + SmsSendService | 验证码、通知短信 |
-| 邮件服务 | MailAccountDO + MailSendService | 邮箱注册、找回密码 |
-| 租户管理 | TenantDO + TenantService | 支持 SaaS 多租户 |
-| 社交服务 | SocialClientDO + SocialUserService | 微信、QQ、微博登录 |
-| 站内信 | NotifyMessageDO + NotifyMessageService | 用户通知、系统提醒 |
+| 功能   | 技术实现                                   | 用途           |
+|------|----------------------------------------|--------------|
+| 用户管理 | AdminUserDO + UserService              | 用户注册、登录、权限分配 |
+| 角色管理 | RoleDO + RoleService                   | 角色创建、权限绑定    |
+| 部门管理 | DeptDO + DeptService                   | 组织结构管理       |
+| 短信服务 | SmsClient + SmsSendService             | 验证码、通知短信     |
+| 邮件服务 | MailAccountDO + MailSendService        | 邮箱注册、找回密码    |
+| 租户管理 | TenantDO + TenantService               | 支持 SaaS 多租户  |
+| 社交服务 | SocialClientDO + SocialUserService     | 微信、QQ、微博登录   |
+| 站内信  | NotifyMessageDO + NotifyMessageService | 用户通知、系统提醒    |
 
-它是一个轻量但功能完整的系统管理模块，适用于电商、金融、CRM、ERP 等场景。如果你有具体某个类（如 `RoleServiceImpl`、`SmsSendServiceImpl`）想要深入了解，欢迎继续提问！
+它是一个轻量但功能完整的系统管理模块，适用于电商、金融、CRM、ERP 等场景。如果你有具体某个类（如 `RoleServiceImpl`、
+`SmsSendServiceImpl`）想要深入了解，欢迎继续提问！

@@ -207,6 +207,16 @@ public class SocialUserServiceImplTest extends BaseDbUnitTest {
         assertEquals(state, result.getState());
     }
 
+    private void assertBindSocialUser(Integer type, SocialUserDO socialUser, AuthUser authUser) {
+        assertEquals(authUser.getToken().getAccessToken(), socialUser.getToken());
+        assertEquals(toJsonString(authUser.getToken()), socialUser.getRawTokenInfo());
+        assertEquals(authUser.getNickname(), socialUser.getNickname());
+        assertEquals(authUser.getAvatar(), socialUser.getAvatar());
+        assertEquals(toJsonString(authUser.getRawUserInfo()), socialUser.getRawUserInfo());
+        assertEquals(type, socialUser.getType());
+        assertEquals(authUser.getUuid(), socialUser.getOpenid());
+    }
+
     @Test
     public void testAuthSocialUser_update() {
         // 准备参数
@@ -226,16 +236,6 @@ public class SocialUserServiceImplTest extends BaseDbUnitTest {
         assertBindSocialUser(socialType, result, authUser);
         assertEquals(code, result.getCode());
         assertEquals(state, result.getState());
-    }
-
-    private void assertBindSocialUser(Integer type, SocialUserDO socialUser, AuthUser authUser) {
-        assertEquals(authUser.getToken().getAccessToken(), socialUser.getToken());
-        assertEquals(toJsonString(authUser.getToken()), socialUser.getRawTokenInfo());
-        assertEquals(authUser.getNickname(), socialUser.getNickname());
-        assertEquals(authUser.getAvatar(), socialUser.getAvatar());
-        assertEquals(toJsonString(authUser.getRawUserInfo()), socialUser.getRawUserInfo());
-        assertEquals(type, socialUser.getType());
-        assertEquals(authUser.getUuid(), socialUser.getOpenid());
     }
 
     @Test

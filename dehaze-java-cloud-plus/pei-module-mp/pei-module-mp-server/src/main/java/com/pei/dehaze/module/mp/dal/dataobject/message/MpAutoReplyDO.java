@@ -1,15 +1,15 @@
 package com.pei.dehaze.module.mp.dal.dataobject.message;
 
-import com.pei.dehaze.framework.common.util.collection.SetUtils;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
-import com.pei.dehaze.module.mp.enums.message.MpAutoReplyMatchEnum;
-import com.pei.dehaze.module.mp.enums.message.MpAutoReplyTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.common.util.collection.SetUtils;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
+import com.pei.dehaze.module.mp.enums.message.MpAutoReplyMatchEnum;
+import com.pei.dehaze.module.mp.enums.message.MpAutoReplyTypeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -42,20 +42,20 @@ public class MpAutoReplyDO extends BaseDO {
     private Long id;
     /**
      * 公众号账号的编号
-     *
+     * <p>
      * 关联 {@link MpAccountDO#getId()}
      */
     private Long accountId;
     /**
      * 公众号 appId
-     *
+     * <p>
      * 冗余 {@link MpAccountDO#getAppId()}
      */
     private String appId;
 
     /**
      * 回复类型
-     *
+     * <p>
      * 枚举 {@link MpAutoReplyTypeEnum}
      */
     private Integer type;
@@ -64,24 +64,24 @@ public class MpAutoReplyDO extends BaseDO {
 
     /**
      * 请求的关键字
-     *
+     * <p>
      * 当 {@link #type} 为 {@link MpAutoReplyTypeEnum#KEYWORD}
      */
     private String requestKeyword;
     /**
      * 请求的关键字的匹配
-     *
+     * <p>
      * 当 {@link #type} 为 {@link MpAutoReplyTypeEnum#KEYWORD}
-     *
+     * <p>
      * 枚举 {@link MpAutoReplyMatchEnum}
      */
     private Integer requestMatch;
 
     /**
      * 请求的消息类型
-     *
+     * <p>
      * 当 {@link #type} 为 {@link MpAutoReplyTypeEnum#MESSAGE}
-     *
+     * <p>
      * 枚举 {@link XmlMsgType} 中的 {@link #REQUEST_MESSAGE_TYPE}
      */
     private String requestMessageType;
@@ -90,21 +90,21 @@ public class MpAutoReplyDO extends BaseDO {
 
     /**
      * 回复的消息类型
-     *
+     * <p>
      * 枚举 {@link XmlMsgType} 中的 TEXT、IMAGE、VOICE、VIDEO、NEWS
      */
     private String responseMessageType;
 
     /**
      * 回复的消息内容
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 TEXT
      */
     private String responseContent;
 
     /**
      * 回复的媒体 id
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 IMAGE、VOICE、VIDEO
      */
     private String responseMediaId;
@@ -115,33 +115,33 @@ public class MpAutoReplyDO extends BaseDO {
 
     /**
      * 回复的标题
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VIDEO
      */
     private String responseTitle;
     /**
      * 回复的描述
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VIDEO
      */
     private String responseDescription;
 
     /**
      * 回复的缩略图的媒体 id，通过素材管理中的接口上传多媒体文件，得到的 id
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC、VIDEO
      */
     private String responseThumbMediaId;
     /**
      * 回复的缩略图的媒体 URL
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC、VIDEO
      */
     private String responseThumbMediaUrl;
 
     /**
      * 回复的图文消息
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 NEWS
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
@@ -149,15 +149,15 @@ public class MpAutoReplyDO extends BaseDO {
 
     /**
      * 回复的音乐链接
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC
      */
     private String responseMusicUrl;
     /**
      * 回复的高质量音乐链接
-     *
+     * <p>
      * WIFI 环境优先使用该链接播放音乐
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC
      */
     private String responseHqMusicUrl;

@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.system.dal.dataobject.oauth2;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -16,9 +16,8 @@ import java.util.Map;
 
 /**
  * OAuth2 访问令牌 DO
- *
- * 如下字段，暂时未使用，暂时不支持：
- * user_name、authentication（用户信息）
+ * <p>
+ * 如下字段，暂时未使用，暂时不支持： user_name、authentication（用户信息）
  *
  * @author earthyzinc
  */
@@ -47,7 +46,7 @@ public class OAuth2AccessTokenDO extends TenantBaseDO {
     private Long userId;
     /**
      * 用户类型
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
@@ -58,7 +57,7 @@ public class OAuth2AccessTokenDO extends TenantBaseDO {
     private Map<String, String> userInfo;
     /**
      * 客户端编号
-     *
+     * <p>
      * 关联 {@link OAuth2ClientDO#getId()}
      */
     private String clientId;

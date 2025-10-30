@@ -2,11 +2,10 @@ package com.pei.dehaze.module.mp.controller.admin.message.vo.autoreply;
 
 import com.pei.dehaze.framework.common.pojo.PageParam;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-
-import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "管理后台 - 公众号自动回复的分页 Request VO")
 @Data

@@ -61,14 +61,6 @@ public interface PayAppService {
     /**
      * 获得支付应用列表
      *
-     * @param ids 编号
-     * @return 支付应用列表
-     */
-    List<PayAppDO> getAppList(Collection<Long> ids);
-
-    /**
-     * 获得支付应用列表
-     *
      * @return 支付应用列表
      */
     List<PayAppDO> getAppList();
@@ -91,6 +83,14 @@ public interface PayAppService {
         List<PayAppDO> list = getAppList(ids);
         return CollectionUtils.convertMap(list, PayAppDO::getId);
     }
+
+    /**
+     * 获得支付应用列表
+     *
+     * @param ids 编号
+     * @return 支付应用列表
+     */
+    List<PayAppDO> getAppList(Collection<Long> ids);
 
     /**
      * 支付应用的合法性

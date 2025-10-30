@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.promotion.controller.admin.reward.vo;
 
 import cn.hutool.core.collection.CollUtil;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.promotion.enums.common.PromotionConditionTypeEnum;
 import com.pei.dehaze.module.promotion.enums.common.PromotionProductScopeEnum;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -19,8 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * 满减送活动 Base VO，提供给添加、修改、详细的子 VO 使用
- * 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
+ * 满减送活动 Base VO，提供给添加、修改、详细的子 VO 使用 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
  */
 @Data
 public class RewardActivityBaseVO {
@@ -60,11 +59,19 @@ public class RewardActivityBaseVO {
     @Valid // 校验下子对象
     private List<Rule> rules;
 
+    @AssertTrue(message = "商品范围编号的数组不能为空")
+    @JsonIgnore
+    public boolean isProductScopeValuesValid() {
+        return Objects.equals(productScope, PromotionProductScopeEnum.ALL.getScope()) // 全部范围时，可以为空
+                || CollUtil.isNotEmpty(productScopeValues);
+    }
+
     @Schema(description = "优惠规则")
     @Data
     public static class Rule {
 
-        @Schema(description = "优惠门槛", requiredMode = Schema.RequiredMode.REQUIRED, example = "100") // 1. 满 N 元，单位：分; 2. 满 N 件
+        @Schema(description = "优惠门槛", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")
+        // 1. 满 N 元，单位：分; 2. 满 N 件
         @Min(value = 1L, message = "优惠门槛必须大于等于 1")
         private Integer limit;
 
@@ -88,13 +95,6 @@ public class RewardActivityBaseVO {
             return point == null || point >= 0;
         }
 
-    }
-
-    @AssertTrue(message = "商品范围编号的数组不能为空")
-    @JsonIgnore
-    public boolean isProductScopeValuesValid() {
-        return Objects.equals(productScope, PromotionProductScopeEnum.ALL.getScope()) // 全部范围时，可以为空
-                || CollUtil.isNotEmpty(productScopeValues);
     }
 
 }

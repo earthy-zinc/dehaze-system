@@ -1,13 +1,13 @@
 package com.pei.dehaze.framework.datapermission.config;
 
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
 import com.pei.dehaze.framework.datapermission.core.aop.DataPermissionAnnotationAdvisor;
 import com.pei.dehaze.framework.datapermission.core.db.DataPermissionRuleHandler;
 import com.pei.dehaze.framework.datapermission.core.rule.DataPermissionRule;
 import com.pei.dehaze.framework.datapermission.core.rule.DataPermissionRuleFactory;
 import com.pei.dehaze.framework.datapermission.core.rule.DataPermissionRuleFactoryImpl;
 import com.pei.dehaze.framework.mybatis.core.util.MyBatisUtils;
-import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
 

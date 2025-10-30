@@ -9,11 +9,11 @@ import com.pei.dehaze.module.system.controller.admin.dict.vo.data.DictDataSaveRe
 import com.pei.dehaze.module.system.dal.dataobject.dict.DictDataDO;
 import com.pei.dehaze.module.system.dal.dataobject.dict.DictTypeDO;
 import com.pei.dehaze.module.system.dal.mysql.dict.DictDataMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -63,6 +63,14 @@ public class DictDataServiceImplTest extends BaseDbUnitTest {
         assertEquals(2, dictDataDOList.size());
         assertPojoEquals(dictDataDO02, dictDataDOList.get(0));
         assertPojoEquals(dictDataDO01, dictDataDOList.get(1));
+    }
+
+    @SafeVarargs
+    private static DictDataDO randomDictDataDO(Consumer<DictDataDO>... consumers) {
+        Consumer<DictDataDO> consumer = (o) -> {
+            o.setStatus(randomCommonStatus()); // 保证 status 的范围
+        };
+        return randomPojo(DictDataDO.class, ArrayUtils.append(consumer, consumers));
     }
 
     @Test
@@ -124,6 +132,19 @@ public class DictDataServiceImplTest extends BaseDbUnitTest {
         // 校验记录的属性是否正确
         DictDataDO dictData = dictDataMapper.selectById(dictDataId);
         assertPojoEquals(reqVO, dictData, "id");
+    }
+
+    /**
+     * 生成一个有效的字典类型
+     *
+     * @param type 字典类型
+     * @return DictTypeDO 对象
+     */
+    private static DictTypeDO randomDictTypeDO(String type) {
+        return randomPojo(DictTypeDO.class, o -> {
+            o.setType(type);
+            o.setStatus(CommonStatusEnum.ENABLE.getStatus()); // 保证 status 是开启
+        });
     }
 
     @Test
@@ -292,6 +313,8 @@ public class DictDataServiceImplTest extends BaseDbUnitTest {
                 DICT_DATA_NOT_ENABLE, dictDataDO.getLabel());
     }
 
+    // ========== 随机对象 ==========
+
     @Test
     public void testGetDictData_dictType() {
         // mock 数据
@@ -324,29 +347,6 @@ public class DictDataServiceImplTest extends BaseDbUnitTest {
         DictDataDO dbDictData = dictDataService.parseDictData(dictType, label);
         // 断言
         assertEquals(dictDataDO, dbDictData);
-    }
-
-    // ========== 随机对象 ==========
-
-    @SafeVarargs
-    private static DictDataDO randomDictDataDO(Consumer<DictDataDO>... consumers) {
-        Consumer<DictDataDO> consumer = (o) -> {
-            o.setStatus(randomCommonStatus()); // 保证 status 的范围
-        };
-        return randomPojo(DictDataDO.class, ArrayUtils.append(consumer, consumers));
-    }
-
-    /**
-     * 生成一个有效的字典类型
-     *
-     * @param type 字典类型
-     * @return DictTypeDO 对象
-     */
-    private static DictTypeDO randomDictTypeDO(String type) {
-        return randomPojo(DictTypeDO.class, o -> {
-            o.setType(type);
-            o.setStatus(CommonStatusEnum.ENABLE.getStatus()); // 保证 status 是开启
-        });
     }
 
 }

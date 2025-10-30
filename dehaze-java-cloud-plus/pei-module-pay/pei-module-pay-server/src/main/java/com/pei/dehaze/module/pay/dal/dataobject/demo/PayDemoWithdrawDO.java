@@ -1,22 +1,22 @@
 package com.pei.dehaze.module.pay.dal.dataobject.demo;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.pay.dal.dataobject.transfer.PayTransferDO;
 import com.pei.dehaze.module.pay.enums.demo.PayDemoWithdrawStatusEnum;
 import com.pei.dehaze.module.pay.enums.demo.PayDemoWithdrawTypeEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 /**
  * 示例提现订单
- *
+ * <p>
  * 演示业务系统的转账业务
  */
-@TableName(value ="pay_demo_withdraw", autoResultMap = true)
+@TableName(value = "pay_demo_withdraw", autoResultMap = true)
 @KeySequence("pay_demo_withdraw_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class PayDemoWithdrawDO extends BaseDO {
@@ -47,13 +47,13 @@ public class PayDemoWithdrawDO extends BaseDO {
 
     /**
      * 提现方式
-     *
+     * <p>
      * 枚举 {@link PayDemoWithdrawTypeEnum}
      */
     private Integer type;
     /**
      * 提现状态
-     *
+     * <p>
      * 枚举 {@link PayDemoWithdrawStatusEnum}
      */
     private Integer status;
@@ -62,13 +62,13 @@ public class PayDemoWithdrawDO extends BaseDO {
 
     /**
      * 转账单编号
-     *
+     * <p>
      * 关联 {@link PayTransferDO#getId()}
      */
     private Long payTransferId;
     /**
      * 转账渠道
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.pay.enums.PayChannelEnum}
      */
     private String transferChannelCode;

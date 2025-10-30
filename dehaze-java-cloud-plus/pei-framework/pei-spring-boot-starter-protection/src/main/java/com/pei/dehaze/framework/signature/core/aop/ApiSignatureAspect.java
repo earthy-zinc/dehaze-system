@@ -47,8 +47,8 @@ public class ApiSignatureAspect {
         // 2. 验证不通过，抛出异常
         log.error("[beforePointCut][方法{} 参数({}) 签名失败]", joinPoint.getSignature().toString(),
                 joinPoint.getArgs());
-        throw new ServiceException(BAD_REQUEST.getCode(),
-                StrUtil.blankToDefault(signature.message(), BAD_REQUEST.getMsg()));
+        throw new ServiceException(BAD_REQUEST.code(),
+                StrUtil.blankToDefault(signature.message(), BAD_REQUEST.msg()));
     }
 
     public boolean verifySignature(ApiSignature signature, HttpServletRequest request) {
@@ -74,18 +74,49 @@ public class ApiSignatureAspect {
         if (BooleanUtil.isFalse(signatureRedisDAO.setNonce(appId, nonce, signature.timeout() * 2, signature.timeUnit()))) {
             String timestamp = request.getHeader(signature.timestamp());
             log.info("[verifySignature][appId({}) timestamp({}) nonce({}) sign({}) 存在重复请求]", appId, timestamp, nonce, clientSignature);
-            throw new ServiceException(GlobalErrorCodeConstants.REPEATED_REQUESTS.getCode(), "存在重复请求");
+            throw new ServiceException(GlobalErrorCodeConstants.REPEATED_REQUESTS.code(), "存在重复请求");
         }
         return true;
     }
 
     /**
+     * 获取请求参数 Map
+     *
+     * @param request 请求
+     * @return queryParams
+     */
+    private static SortedMap<String, String> getRequestParameterMap(HttpServletRequest request) {
+        SortedMap<String, String> sortedMap = new TreeMap<>();
+        for (Map.Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
+            sortedMap.put(entry.getKey(), entry.getValue()[0]);
+        }
+        return sortedMap;
+    }
+
+    /**
+     * 构建签名字符串
+     * <p>
+     * 格式为 = 请求参数 + 请求体 + 请求头 + 密钥
+     *
+     * @param signature signature
+     * @param request   request
+     * @param appSecret appSecret
+     * @return 签名字符串
+     */
+    private String buildSignatureString(ApiSignature signature, HttpServletRequest request, String appSecret) {
+        SortedMap<String, String> parameterMap = getRequestParameterMap(request); // 请求头
+        SortedMap<String, String> headerMap = getRequestHeaderMap(signature, request); // 请求参数
+        String requestBody = StrUtil.nullToDefault(ServletUtils.getBody(request), ""); // 请求体
+        return MapUtil.join(parameterMap, "&", "=")
+                + requestBody
+                + MapUtil.join(headerMap, "&", "=")
+                + appSecret;
+    }
+
+    /**
      * 校验请求头加签参数
      * <p>
-     * 1. appId 是否为空
-     * 2. timestamp 是否为空，请求是否已经超时，默认 10 分钟
-     * 3. nonce 是否为空，随机数是否 10 位以上，是否在规定时间内已经访问过了
-     * 4. sign 是否为空
+     * 1. appId 是否为空 2. timestamp 是否为空，请求是否已经超时，默认 10 分钟 3. nonce 是否为空，随机数是否 10 位以上，是否在规定时间内已经访问过了 4. sign 是否为空
      *
      * @param signature signature
      * @param request   request
@@ -123,26 +154,6 @@ public class ApiSignatureAspect {
     }
 
     /**
-     * 构建签名字符串
-     * <p>
-     * 格式为 = 请求参数 + 请求体 + 请求头 + 密钥
-     *
-     * @param signature signature
-     * @param request   request
-     * @param appSecret appSecret
-     * @return 签名字符串
-     */
-    private String buildSignatureString(ApiSignature signature, HttpServletRequest request, String appSecret) {
-        SortedMap<String, String> parameterMap = getRequestParameterMap(request); // 请求头
-        SortedMap<String, String> headerMap = getRequestHeaderMap(signature, request); // 请求参数
-        String requestBody = StrUtil.nullToDefault(ServletUtils.getBody(request), ""); // 请求体
-        return MapUtil.join(parameterMap, "&", "=")
-                + requestBody
-                + MapUtil.join(headerMap, "&", "=")
-                + appSecret;
-    }
-
-    /**
      * 获取请求头加签参数 Map
      *
      * @param request   请求
@@ -154,20 +165,6 @@ public class ApiSignatureAspect {
         sortedMap.put(signature.appId(), request.getHeader(signature.appId()));
         sortedMap.put(signature.timestamp(), request.getHeader(signature.timestamp()));
         sortedMap.put(signature.nonce(), request.getHeader(signature.nonce()));
-        return sortedMap;
-    }
-
-    /**
-     * 获取请求参数 Map
-     *
-     * @param request 请求
-     * @return queryParams
-     */
-    private static SortedMap<String, String> getRequestParameterMap(HttpServletRequest request) {
-        SortedMap<String, String> sortedMap = new TreeMap<>();
-        for (Map.Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
-            sortedMap.put(entry.getKey(), entry.getValue()[0]);
-        }
         return sortedMap;
     }
 

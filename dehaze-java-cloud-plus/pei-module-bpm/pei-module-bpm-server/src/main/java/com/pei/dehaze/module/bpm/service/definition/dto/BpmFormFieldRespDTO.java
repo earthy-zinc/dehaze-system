@@ -4,8 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 /**
- * Bpm 表单的 Field 表单项 Response DTO
- * 字段的定义，可见 https://github.com/JakHuang/form-generator/issues/46 文档
+ * Bpm 表单的 Field 表单项 Response DTO 字段的定义，可见 https://github.com/JakHuang/form-generator/issues/46 文档
  *
  * @author earthyzinc
  */

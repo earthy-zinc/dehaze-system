@@ -301,6 +301,7 @@ graph TD
     F --> G[返回 Area 对象]
     G --> H[业务逻辑使用]
 ```
+
 - **步骤**：
   1. 用户发起 HTTP 请求
   2. 调用 `IPUtils.getClientIP(request)` 获取真实 IP
@@ -315,6 +316,7 @@ graph TD
     B -- true --> C[执行国内逻辑]
     B -- false --> D[执行海外逻辑]
 ```
+
 - **步骤**：
   1. 获取到 `Area` 对象
   2. 调用 `AreaUtils.isChina(area)` 判断是否是国内 IP

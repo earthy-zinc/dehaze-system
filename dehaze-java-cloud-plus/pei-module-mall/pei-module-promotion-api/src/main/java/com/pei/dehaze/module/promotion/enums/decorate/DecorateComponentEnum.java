@@ -14,36 +14,22 @@ import lombok.Getter;
 public enum DecorateComponentEnum {
 
     /**
-     * 格式：[{
-     *  "name": "标题"
-     *  "picUrl": "https://www.iocoder.cn/xxx.png",
-     *  "url": "/pages/users/index"
-     * }]
-     *
+     * 格式：[{ "name": "标题" "picUrl": "https://www.iocoder.cn/xxx.png", "url": "/pages/users/index" }]
+     * <p>
      * 最多 10 个
      */
     MENU("menu", "菜单"),
     /**
-     * 格式：[{
-     *  "name": "标题"
-     *  "url": "/pages/users/index"
-     * }]
+     * 格式：[{ "name": "标题" "url": "/pages/users/index" }]
      */
     ROLLING_NEWS("scrolling-news", "滚动新闻"),
     /**
-     * 格式：[{
-     *  "picUrl": "https://www.iocoder.cn/xxx.png",
-     *  "url": "/pages/users/index"
-     * }]
+     * 格式：[{ "picUrl": "https://www.iocoder.cn/xxx.png", "url": "/pages/users/index" }]
      */
     SLIDE_SHOW("slide-show", "轮播图"),
     /**
-     * 格式：[{
-     *  "name": "标题"
-     *  "type": "类型", // best、hot、new、benefit、good
-     *  "tag": "标签" // 例如说：多买多省
-     * }]
-     *
+     * 格式：[{ "name": "标题" "type": "类型", // best、hot、new、benefit、good "tag": "标签" // 例如说：多买多省 }]
+     * <p>
      * 最多 4 个
      */
     PRODUCT_RECOMMEND("product-recommend", "商品推荐");

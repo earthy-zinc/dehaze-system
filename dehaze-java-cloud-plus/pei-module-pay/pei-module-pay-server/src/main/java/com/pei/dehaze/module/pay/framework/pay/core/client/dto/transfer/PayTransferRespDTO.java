@@ -15,7 +15,7 @@ public class PayTransferRespDTO {
 
     /**
      * 转账状态
-     *
+     * <p>
      * 关联 {@link  PayTransferStatusEnum}
      */
     private Integer status;
@@ -51,8 +51,9 @@ public class PayTransferRespDTO {
 
     /**
      * 渠道 package 信息
-     *
+     * <p>
      * 特殊：目前只有微信转账有这个东西！！！
+     *
      * @see <a href="https://pay.weixin.qq.com/doc/v3/merchant/4012716430">JSAPI 调起用户确认收款</a>
      */
     private String channelPackageInfo;
@@ -102,7 +103,7 @@ public class PayTransferRespDTO {
      * 创建【SUCCESS】状态的转账返回
      */
     public static PayTransferRespDTO successOf(String channelTransferNo, LocalDateTime successTime,
-                                             String outTransferNo, Object rawData) {
+                                               String outTransferNo, Object rawData) {
         PayTransferRespDTO respDTO = new PayTransferRespDTO();
         respDTO.status = PayTransferStatusEnum.SUCCESS.getStatus();
         respDTO.channelTransferNo = channelTransferNo;

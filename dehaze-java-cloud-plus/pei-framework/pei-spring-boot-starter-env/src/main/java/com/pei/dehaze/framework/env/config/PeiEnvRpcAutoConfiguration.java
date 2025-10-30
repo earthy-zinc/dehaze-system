@@ -28,7 +28,8 @@ public class PeiEnvRpcAutoConfiguration {
     /**
      * 创建 {@link EnvLoadBalancerClientFactory} Bean
      * <p>
-     * 参考 {@link LoadBalancerAutoConfiguration#loadBalancerClientFactory(LoadBalancerClientsProperties, ObjectProvider)} 方法
+     * 参考 {@link LoadBalancerAutoConfiguration#loadBalancerClientFactory(LoadBalancerClientsProperties, ObjectProvider)}
+     * 方法
      */
     @Bean
     public LoadBalancerClientFactory loadBalancerClientFactory(LoadBalancerClientsProperties properties,

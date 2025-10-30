@@ -1,20 +1,20 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay;
 
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.domain.AlipayTradeAppPayModel;
 import com.alipay.api.request.AlipayTradeAppPayRequest;
 import com.alipay.api.response.AlipayTradeAppPayResponse;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * 支付宝【App 支付】的 PayClient 实现类
- *
+ * <p>
  * 文档：<a href="https://opendocs.alipay.com/open/02e7gq">App 支付</a>
- *
+ * <p>
  * // TODO 芋艿：未详细测试，因为手头没 App
  *
  * @author earthyzinc

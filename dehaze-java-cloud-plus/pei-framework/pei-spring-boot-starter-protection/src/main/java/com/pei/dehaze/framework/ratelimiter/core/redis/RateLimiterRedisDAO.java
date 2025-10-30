@@ -16,10 +16,8 @@ public class RateLimiterRedisDAO {
 
     /**
      * 限流操作
-     *
-     * KEY 格式：rate_limiter:%s // 参数为 uuid
-     * VALUE 格式：String
-     * 过期时间：不固定
+     * <p>
+     * KEY 格式：rate_limiter:%s // 参数为 uuid VALUE 格式：String 过期时间：不固定
      */
     private static final String RATE_LIMITER = "rate_limiter:%s";
 
@@ -30,10 +28,6 @@ public class RateLimiterRedisDAO {
         RRateLimiter rateLimiter = getRRateLimiter(key, count, time, timeUnit);
         // 2. 尝试获取 1 个
         return rateLimiter.tryAcquire();
-    }
-
-    private static String formatKey(String key) {
-        return String.format(RATE_LIMITER, key);
     }
 
     private RRateLimiter getRRateLimiter(String key, long count, int time, TimeUnit timeUnit) {
@@ -57,6 +51,10 @@ public class RateLimiterRedisDAO {
         rateLimiter.setRate(RateType.OVERALL, count, rateInterval, RateIntervalUnit.SECONDS);
         rateLimiter.expire(rateInterval, TimeUnit.SECONDS); // 原因参见 https://t.zsxq.com/lcR0W
         return rateLimiter;
+    }
+
+    private static String formatKey(String key) {
+        return String.format(RATE_LIMITER, key);
     }
 
 }

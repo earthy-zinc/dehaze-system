@@ -26,8 +26,7 @@ public class CrmStatisticsPortraitReqVO {
     private Long userId;
 
     /**
-     * userIds 目前不用前端传递，目前是方便后端通过 deptId 读取编号后，设置回来
-     * 后续，可能会支持选择部分用户进行查询
+     * userIds 目前不用前端传递，目前是方便后端通过 deptId 读取编号后，设置回来 后续，可能会支持选择部分用户进行查询
      */
     @Schema(description = "负责人用户 id 集合", hidden = true, example = "2")
     private List<Long> userIds;

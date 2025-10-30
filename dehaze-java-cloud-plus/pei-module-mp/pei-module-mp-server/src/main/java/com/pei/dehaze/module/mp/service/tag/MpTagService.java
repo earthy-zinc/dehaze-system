@@ -5,8 +5,8 @@ import com.pei.dehaze.module.mp.controller.admin.tag.vo.MpTagCreateReqVO;
 import com.pei.dehaze.module.mp.controller.admin.tag.vo.MpTagPageReqVO;
 import com.pei.dehaze.module.mp.controller.admin.tag.vo.MpTagUpdateReqVO;
 import com.pei.dehaze.module.mp.dal.dataobject.tag.MpTagDO;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**
@@ -34,7 +34,7 @@ public interface MpTagService {
     /**
      * 删除公众号标签
      *
-     * @param id    编号
+     * @param id 编号
      */
     void deleteTag(Long id);
 
@@ -48,6 +48,7 @@ public interface MpTagService {
 
     /**
      * 获得公众号标签详情
+     *
      * @param id id查询
      * @return 公众号标签详情
      */

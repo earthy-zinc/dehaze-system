@@ -8,11 +8,11 @@ import com.pei.dehaze.module.system.controller.admin.dict.vo.type.DictTypePageRe
 import com.pei.dehaze.module.system.controller.admin.dict.vo.type.DictTypeSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.dict.DictTypeDO;
 import com.pei.dehaze.module.system.dal.mysql.dict.DictTypeMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -39,37 +39,12 @@ public class DictTypeServiceImplTest extends BaseDbUnitTest {
     @MockBean
     private DictDataService dictDataService;
 
-    @Test
-    public void testGetDictTypePage() {
-       // mock 数据
-       DictTypeDO dbDictType = randomPojo(DictTypeDO.class, o -> { // 等会查询到
-           o.setName("yunai");
-           o.setType("芋艿");
-           o.setStatus(CommonStatusEnum.ENABLE.getStatus());
-           o.setCreateTime(buildTime(2021, 1, 15));
-       });
-       dictTypeMapper.insert(dbDictType);
-       // 测试 name 不匹配
-       dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setName("tudou")));
-       // 测试 type 不匹配
-       dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setType("土豆")));
-       // 测试 status 不匹配
-       dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setStatus(CommonStatusEnum.DISABLE.getStatus())));
-       // 测试 createTime 不匹配
-       dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setCreateTime(buildTime(2021, 1, 1))));
-       // 准备参数
-       DictTypePageReqVO reqVO = new DictTypePageReqVO();
-       reqVO.setName("nai");
-       reqVO.setType("艿");
-       reqVO.setStatus(CommonStatusEnum.ENABLE.getStatus());
-       reqVO.setCreateTime(buildBetweenTime(2021, 1, 10, 2021, 1, 20));
-
-       // 调用
-       PageResult<DictTypeDO> pageResult = dictTypeService.getDictTypePage(reqVO);
-       // 断言
-       assertEquals(1, pageResult.getTotal());
-       assertEquals(1, pageResult.getList().size());
-       assertPojoEquals(dbDictType, pageResult.getList().get(0));
+    @SafeVarargs
+    private static DictTypeDO randomDictTypeDO(Consumer<DictTypeDO>... consumers) {
+        Consumer<DictTypeDO> consumer = (o) -> {
+            o.setStatus(randomEle(CommonStatusEnum.values()).getStatus()); // 保证 status 的范围
+        };
+        return randomPojo(DictTypeDO.class, ArrayUtils.append(consumer, consumers));
     }
 
     @Test
@@ -85,6 +60,39 @@ public class DictTypeServiceImplTest extends BaseDbUnitTest {
         // 断言
         assertNotNull(dictType);
         assertPojoEquals(dbDictType, dictType);
+    }
+
+    @Test
+    public void testGetDictTypePage() {
+        // mock 数据
+        DictTypeDO dbDictType = randomPojo(DictTypeDO.class, o -> { // 等会查询到
+            o.setName("yunai");
+            o.setType("芋艿");
+            o.setStatus(CommonStatusEnum.ENABLE.getStatus());
+            o.setCreateTime(buildTime(2021, 1, 15));
+        });
+        dictTypeMapper.insert(dbDictType);
+        // 测试 name 不匹配
+        dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setName("tudou")));
+        // 测试 type 不匹配
+        dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setType("土豆")));
+        // 测试 status 不匹配
+        dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setStatus(CommonStatusEnum.DISABLE.getStatus())));
+        // 测试 createTime 不匹配
+        dictTypeMapper.insert(cloneIgnoreId(dbDictType, o -> o.setCreateTime(buildTime(2021, 1, 1))));
+        // 准备参数
+        DictTypePageReqVO reqVO = new DictTypePageReqVO();
+        reqVO.setName("nai");
+        reqVO.setType("艿");
+        reqVO.setStatus(CommonStatusEnum.ENABLE.getStatus());
+        reqVO.setCreateTime(buildBetweenTime(2021, 1, 10, 2021, 1, 20));
+
+        // 调用
+        PageResult<DictTypeDO> pageResult = dictTypeService.getDictTypePage(reqVO);
+        // 断言
+        assertEquals(1, pageResult.getTotal());
+        assertEquals(1, pageResult.getList().size());
+        assertPojoEquals(dbDictType, pageResult.getList().get(0));
     }
 
     @Test
@@ -245,6 +253,8 @@ public class DictTypeServiceImplTest extends BaseDbUnitTest {
                 DICT_TYPE_NAME_DUPLICATE);
     }
 
+    // ========== 随机对象 ==========
+
     @Test
     public void testValidateDictTypeNameUnique_nameDuplicateForUpdate() {
         // 准备参数
@@ -256,16 +266,6 @@ public class DictTypeServiceImplTest extends BaseDbUnitTest {
         // 调用，校验异常
         assertServiceException(() -> dictTypeService.validateDictTypeNameUnique(id, name),
                 DICT_TYPE_NAME_DUPLICATE);
-    }
-
-    // ========== 随机对象 ==========
-
-    @SafeVarargs
-    private static DictTypeDO randomDictTypeDO(Consumer<DictTypeDO>... consumers) {
-        Consumer<DictTypeDO> consumer = (o) -> {
-            o.setStatus(randomEle(CommonStatusEnum.values()).getStatus()); // 保证 status 的范围
-        };
-        return randomPojo(DictTypeDO.class, ArrayUtils.append(consumer, consumers));
     }
 
 }

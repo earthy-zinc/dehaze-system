@@ -26,15 +26,6 @@ public class IotRuleSceneJob extends QuartzJobBean {
     @Resource
     private IotRuleSceneService ruleSceneService;
 
-    @Override
-    protected void executeInternal(JobExecutionContext context) {
-        // 获得规则场景编号
-        Long ruleSceneId = context.getMergedJobDataMap().getLong(JOB_DATA_KEY_RULE_SCENE_ID);
-
-        // 执行规则场景
-        ruleSceneService.executeRuleSceneByTimer(ruleSceneId);
-    }
-
     /**
      * 创建 JobData Map
      *
@@ -53,6 +44,15 @@ public class IotRuleSceneJob extends QuartzJobBean {
      */
     public static String buildJobName(Long ruleSceneId) {
         return String.format("%s_%d", IotRuleSceneJob.class.getSimpleName(), ruleSceneId);
+    }
+
+    @Override
+    protected void executeInternal(JobExecutionContext context) {
+        // 获得规则场景编号
+        Long ruleSceneId = context.getMergedJobDataMap().getLong(JOB_DATA_KEY_RULE_SCENE_ID);
+
+        // 执行规则场景
+        ruleSceneService.executeRuleSceneByTimer(ruleSceneId);
     }
 
 }

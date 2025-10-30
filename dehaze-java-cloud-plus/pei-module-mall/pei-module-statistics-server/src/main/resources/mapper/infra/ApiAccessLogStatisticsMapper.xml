@@ -6,8 +6,8 @@
         SELECT COUNT(DISTINCT user_ip)
         FROM infra_api_access_log
         WHERE user_type = #{userType}
-        AND create_time BETWEEN #{beginTime} AND #{endTime}
-        AND deleted = FALSE
+          AND create_time BETWEEN #{beginTime} AND #{endTime}
+          AND deleted = FALSE
     </select>
 
     <select id="selectUserCountByUserTypeAndCreateTimeBetween" resultType="java.lang.Integer">

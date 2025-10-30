@@ -24,8 +24,7 @@ public class AiImageDrawReqVO {
     private String prompt;
 
     /**
-     * 1. dall-e-2 模型：256x256、512x512、1024x1024
-     * 2. dall-e-3 模型：1024x1024, 1792x1024, 或 1024x1792
+     * 1. dall-e-2 模型：256x256、512x512、1024x1024 2. dall-e-3 模型：1024x1024, 1792x1024, 或 1024x1792
      */
     @Schema(description = "图片高度")
     @NotNull(message = "图片高度不能为空")
@@ -39,9 +38,8 @@ public class AiImageDrawReqVO {
 
     /**
      * 绘制参数，不同 platform 的不同参数
-     *
-     * 1. {@link OpenAiImageOptions}
-     * 2. {@link StabilityAiImageOptions}
+     * <p>
+     * 1. {@link OpenAiImageOptions} 2. {@link StabilityAiImageOptions}
      */
     @Schema(description = "绘制参数")
     private Map<String, String> options;

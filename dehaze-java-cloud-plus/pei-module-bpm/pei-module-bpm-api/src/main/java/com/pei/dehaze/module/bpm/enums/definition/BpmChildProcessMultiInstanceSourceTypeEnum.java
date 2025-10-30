@@ -20,10 +20,9 @@ public enum BpmChildProcessMultiInstanceSourceTypeEnum implements ArrayValuable<
     NUMBER_FORM(2, "数字表单"),
     MULTIPLE_FORM(3, "多选表单");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmChildProcessMultiInstanceSourceTypeEnum::getType).toArray(Integer[]::new);
     private final Integer type;
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmChildProcessMultiInstanceSourceTypeEnum::getType).toArray(Integer[]::new);
 
     public static BpmChildProcessMultiInstanceSourceTypeEnum typeOf(Integer type) {
         return ArrayUtil.firstMatch(item -> item.getType().equals(type), values());

@@ -25,6 +25,19 @@ public class PageUtils {
     }
 
     /**
+     * 构建默认的排序字段 如果排序字段为空，则设置排序字段；否则忽略
+     *
+     * @param sortablePageParam 排序分页查询参数
+     * @param func              排序字段的 Lambda 表达式
+     * @param <T>               排序字段所属的类型
+     */
+    public static <T> void buildDefaultSortingField(SortablePageParam sortablePageParam, Func1<T, ?> func) {
+        if (sortablePageParam != null && CollUtil.isEmpty(sortablePageParam.getSortingFields())) {
+            sortablePageParam.setSortingFields(singletonList(buildSortingField(func)));
+        }
+    }
+
+    /**
      * 构建排序字段（默认倒序）
      *
      * @param func 排序字段的 Lambda 表达式
@@ -48,20 +61,6 @@ public class PageUtils {
 
         String fieldName = LambdaUtil.getFieldName(func);
         return new SortingField(fieldName, order);
-    }
-
-    /**
-     * 构建默认的排序字段
-     * 如果排序字段为空，则设置排序字段；否则忽略
-     *
-     * @param sortablePageParam 排序分页查询参数
-     * @param func              排序字段的 Lambda 表达式
-     * @param <T>               排序字段所属的类型
-     */
-    public static <T> void buildDefaultSortingField(SortablePageParam sortablePageParam, Func1<T, ?> func) {
-        if (sortablePageParam != null && CollUtil.isEmpty(sortablePageParam.getSortingFields())) {
-            sortablePageParam.setSortingFields(singletonList(buildSortingField(func)));
-        }
     }
 
 }

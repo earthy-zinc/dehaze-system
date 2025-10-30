@@ -5,10 +5,9 @@ import com.pei.dehaze.module.system.api.sms.dto.code.SmsCodeSendReqDTO;
 import com.pei.dehaze.module.system.api.sms.dto.code.SmsCodeUseReqDTO;
 import com.pei.dehaze.module.system.api.sms.dto.code.SmsCodeValidateReqDTO;
 import com.pei.dehaze.module.system.service.sms.SmsCodeService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 

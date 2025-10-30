@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.system.service.notify;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.module.system.dal.dataobject.notify.NotifyTemplateDO;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.Map;
 import java.util.Objects;
 
@@ -72,7 +72,7 @@ public class NotifySendServiceImpl implements NotifySendService {
     /**
      * 校验站内信模版参数是否确实
      *
-     * @param template 邮箱模板
+     * @param template       邮箱模板
      * @param templateParams 参数列表
      */
     @VisibleForTesting

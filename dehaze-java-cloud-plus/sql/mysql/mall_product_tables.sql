@@ -18,7 +18,7 @@ CREATE TABLE `product_brand`
     `updater`     varchar(64)   NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)        NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -43,7 +43,7 @@ CREATE TABLE `product_category`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_parent_id` (`parent_id`)
 ) ENGINE = InnoDB
@@ -84,7 +84,7 @@ CREATE TABLE `product_comment`
     `updater`            varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`        datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`            bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_spu_id` (`spu_id`),
     INDEX `idx_sku_id` (`sku_id`),
@@ -108,7 +108,7 @@ CREATE TABLE `product_favorite`
     `updater`     varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_spu_id` (`spu_id`)
@@ -132,7 +132,7 @@ CREATE TABLE `product_browse_history`
     `updater`      varchar(64) NULL     DEFAULT '' COMMENT '更新者',
     `update_time`  datetime    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`      bit(1)      NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_user_id` (`user_id`),
     INDEX `idx_spu_id` (`spu_id`)
@@ -155,7 +155,7 @@ CREATE TABLE `product_property`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 1
@@ -177,7 +177,7 @@ CREATE TABLE `product_property_value`
     `updater`     varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time` datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`     bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_property_id` (`property_id`)
 ) ENGINE = InnoDB
@@ -210,7 +210,7 @@ CREATE TABLE `product_sku`
     `updater`                varchar(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`            datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`                bit(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_spu_id` (`spu_id`)
 ) ENGINE = InnoDB
@@ -265,7 +265,7 @@ CREATE TABLE `product_spu`
     `updater`              VARCHAR(64)  NULL     DEFAULT '' COMMENT '更新者',
     `update_time`          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `deleted`              BIT(1)       NOT NULL DEFAULT b'0' COMMENT '是否删除',
-    `tenant_id`      bigint         NOT NULL DEFAULT 0 COMMENT '租户编号',
+    `tenant_id` bigint NOT NULL DEFAULT 0 COMMENT '租户编号',
     PRIMARY KEY (`id`),
     INDEX `idx_category_id` (`category_id`),
     INDEX `idx_brand_id` (`brand_id`)

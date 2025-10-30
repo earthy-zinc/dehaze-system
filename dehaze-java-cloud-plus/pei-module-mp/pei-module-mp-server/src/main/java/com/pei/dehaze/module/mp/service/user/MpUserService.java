@@ -20,17 +20,9 @@ import static com.pei.dehaze.module.mp.enums.ErrorCodeConstants.USER_NOT_EXISTS;
 public interface MpUserService {
 
     /**
-     * 获得公众号粉丝
-     *
-     * @param id 编号
-     * @return 公众号粉丝
-     */
-    MpUserDO getUser(Long id);
-
-    /**
      * 使用 appId + openId，获得公众号粉丝
      *
-     * @param appId 公众号 appId
+     * @param appId  公众号 appId
      * @param openId 公众号 openId
      * @return 公众号粉丝
      */
@@ -51,6 +43,14 @@ public interface MpUserService {
     }
 
     /**
+     * 获得公众号粉丝
+     *
+     * @param id 编号
+     * @return 公众号粉丝
+     */
+    MpUserDO getUser(Long id);
+
+    /**
      * 获得公众号粉丝列表
      *
      * @param ids 编号
@@ -68,10 +68,10 @@ public interface MpUserService {
 
     /**
      * 保存公众号粉丝
-     *
+     * <p>
      * 新增或更新，根据是否存在数据库中
      *
-     * @param appId 公众号 appId
+     * @param appId    公众号 appId
      * @param wxMpUser 公众号粉丝的信息
      * @return 公众号粉丝
      */
@@ -87,7 +87,7 @@ public interface MpUserService {
     /**
      * 更新公众号粉丝，取消关注
      *
-     * @param appId 公众号 appId
+     * @param appId  公众号 appId
      * @param openId 公众号粉丝的 openid
      */
     void updateUserUnsubscribe(String appId, String openId);

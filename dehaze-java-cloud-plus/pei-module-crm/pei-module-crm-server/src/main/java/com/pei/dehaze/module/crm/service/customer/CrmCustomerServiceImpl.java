@@ -5,6 +5,9 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.exception.ServiceException;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
@@ -33,9 +36,6 @@ import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionTransferReqBO;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -107,18 +107,6 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
         // 4. 记录操作日志上下文
         LogRecordContext.putVariable("customer", customer);
         return customer.getId();
-    }
-
-    /**
-     * 初始化客户的通用字段
-     *
-     * @param customer    客户信息
-     * @param ownerUserId 负责人编号
-     * @return 客户信息 DO
-     */
-    private static CrmCustomerDO initCustomer(Object customer, Long ownerUserId) {
-        return BeanUtils.toBean(customer, CrmCustomerDO.class).setOwnerUserId(ownerUserId)
-                .setOwnerTime(LocalDateTime.now());
     }
 
     @Override
@@ -195,6 +183,75 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
 
         // 4. 记录操作日志上下文
         LogRecordContext.putVariable("customerName", customer.getName());
+    }
+
+    /**
+     * 初始化客户的通用字段
+     *
+     * @param customer    客户信息
+     * @param ownerUserId 负责人编号
+     * @return 客户信息 DO
+     */
+    private static CrmCustomerDO initCustomer(Object customer, Long ownerUserId) {
+        return BeanUtils.toBean(customer, CrmCustomerDO.class).setOwnerUserId(ownerUserId)
+                .setOwnerTime(LocalDateTime.now());
+    }
+
+    @Override
+    @CrmPermission(bizType = CrmBizTypeEnum.CRM_CUSTOMER, bizId = "#id", level = CrmPermissionLevelEnum.READ)
+    public CrmCustomerDO getCustomer(Long id) {
+        return customerMapper.selectById(id);
+    }
+
+    @Override
+    public List<CrmCustomerDO> getCustomerList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        return customerMapper.selectBatchIds(ids);
+    }
+
+    @Override
+    public PageResult<CrmCustomerDO> getCustomerPage(CrmCustomerPageReqVO pageReqVO, Long userId) {
+        return customerMapper.selectPage(pageReqVO, userId);
+    }
+
+    @Override
+    public PageResult<CrmCustomerDO> getPutPoolRemindCustomerPage(CrmCustomerPageReqVO pageVO, Long userId) {
+        CrmCustomerPoolConfigDO poolConfig = customerPoolConfigService.getCustomerPoolConfig();
+        if (ObjUtil.isNull(poolConfig)
+                || Boolean.FALSE.equals(poolConfig.getEnabled())
+                || Boolean.FALSE.equals(poolConfig.getNotifyEnabled())) {
+            return PageResult.empty();
+        }
+        return customerMapper.selectPutPoolRemindCustomerPage(pageVO, poolConfig, userId);
+    }
+
+    @Override
+    public Long getPutPoolRemindCustomerCount(Long userId) {
+        CrmCustomerPoolConfigDO poolConfig = customerPoolConfigService.getCustomerPoolConfig();
+        if (ObjUtil.isNull(poolConfig)
+                || Boolean.FALSE.equals(poolConfig.getEnabled())
+                || Boolean.FALSE.equals(poolConfig.getNotifyEnabled())) {
+            return 0L;
+        }
+        CrmCustomerPageReqVO pageVO = new CrmCustomerPageReqVO()
+                .setPool(null)
+                .setContactStatus(CrmCustomerPageReqVO.CONTACT_TODAY)
+                .setSceneType(CrmSceneTypeEnum.OWNER.getType());
+        return customerMapper.selectPutPoolRemindCustomerCount(pageVO, poolConfig, userId);
+    }
+
+    @Override
+    public Long getTodayContactCustomerCount(Long userId) {
+        return customerMapper.selectCountByTodayContact(userId);
+    }
+
+    // ==================== 公海相关操作 ====================
+
+    @Override
+    public Long getFollowCustomerCount(Long userId) {
+        return customerMapper.selectCountByFollow(userId);
     }
 
     @Override
@@ -295,6 +352,8 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
         return customer.getId();
     }
 
+    //======================= 查询相关 =======================
+
     @Override
     public CrmCustomerImportRespVO importCustomerList(List<CrmCustomerImportExcelVO> importCustomers,
                                                       CrmCustomerImportReqVO importReqVO) {
@@ -335,7 +394,7 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
             // 情况二：如果存在，判断是否允许更新
             if (!importReqVO.getUpdateSupport()) {
                 respVO.getFailureCustomerNames().put(importCustomer.getName(),
-                        StrUtil.format(CUSTOMER_NAME_EXISTS.getMsg(), importCustomer.getName()));
+                        StrUtil.format(CUSTOMER_NAME_EXISTS.msg(), importCustomer.getName()));
                 return;
             }
             // 2.1 更新客户信息
@@ -348,21 +407,6 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
         });
         return respVO;
     }
-
-    /**
-     * 记录导入客户时的操作日志
-     *
-     * @param customer 客户信息
-     * @param isUpdate 是否更新；true - 更新，false - 新增
-     */
-    @LogRecord(type = CRM_CUSTOMER_TYPE, subType = CRM_CUSTOMER_IMPORT_SUB_TYPE, bizNo = "{{#customer.id}}",
-            success = CRM_CUSTOMER_IMPORT_SUCCESS)
-    public void importCustomerLog(CrmCustomerDO customer, boolean isUpdate) {
-        LogRecordContext.putVariable("customer", customer);
-        LogRecordContext.putVariable("isUpdate", isUpdate);
-    }
-
-    // ==================== 公海相关操作 ====================
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -457,6 +501,46 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
         return count;
     }
 
+    /**
+     * 校验客户是否存在
+     *
+     * @param id 客户 id
+     */
+    @Override
+    public void validateCustomer(Long id) {
+        validateCustomerExists(id);
+    }
+
+    private void validateCustomerDeal(CrmCustomerDO customer) {
+        if (customer.getDealStatus()) {
+            throw exception(CUSTOMER_ALREADY_DEAL);
+        }
+    }
+
+    @LogRecord(type = CRM_CUSTOMER_TYPE, subType = CRM_CUSTOMER_RECEIVE_SUB_TYPE, bizNo = "{{#customer.id}}",
+            success = CRM_CUSTOMER_RECEIVE_SUCCESS)
+    public void receiveCustomerLog(CrmCustomerDO customer, String ownerUserName) {
+        // 记录操作日志上下文
+        LogRecordContext.putVariable("customer", customer);
+        LogRecordContext.putVariable("ownerUserName", ownerUserName);
+    }
+
+    // ======================= 校验相关 =======================
+
+    private void validateCustomerOwnerExists(CrmCustomerDO customer, Boolean pool) {
+        if (customer == null) { // 防御一下
+            throw exception(CUSTOMER_NOT_EXISTS);
+        }
+        // 校验是否为公海数据
+        if (pool && customer.getOwnerUserId() == null) {
+            throw exception(CUSTOMER_IN_POOL, customer.getName());
+        }
+        // 负责人已存在
+        if (!pool && customer.getOwnerUserId() != null) {
+            throw exception(CUSTOMER_OWNER_EXISTS, customer.getName());
+        }
+    }
+
     @Transactional(rollbackFor = Exception.class) // 需要 protected 修饰，因为需要在事务中调用
     protected void putCustomerPool(CrmCustomerDO customer) {
         // 1. 设置负责人为 NULL
@@ -474,78 +558,39 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
                 CrmPermissionLevelEnum.OWNER.getLevel());
     }
 
-    @LogRecord(type = CRM_CUSTOMER_TYPE, subType = CRM_CUSTOMER_RECEIVE_SUB_TYPE, bizNo = "{{#customer.id}}",
-            success = CRM_CUSTOMER_RECEIVE_SUCCESS)
-    public void receiveCustomerLog(CrmCustomerDO customer, String ownerUserName) {
-        // 记录操作日志上下文
-        LogRecordContext.putVariable("customer", customer);
-        LogRecordContext.putVariable("ownerUserName", ownerUserName);
-    }
-
-    //======================= 查询相关 =======================
-
-    @Override
-    @CrmPermission(bizType = CrmBizTypeEnum.CRM_CUSTOMER, bizId = "#id", level = CrmPermissionLevelEnum.READ)
-    public CrmCustomerDO getCustomer(Long id) {
-        return customerMapper.selectById(id);
-    }
-
-    @Override
-    public List<CrmCustomerDO> getCustomerList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return Collections.emptyList();
-        }
-        return customerMapper.selectBatchIds(ids);
-    }
-
-    @Override
-    public PageResult<CrmCustomerDO> getCustomerPage(CrmCustomerPageReqVO pageReqVO, Long userId) {
-        return customerMapper.selectPage(pageReqVO, userId);
-    }
-
-    @Override
-    public PageResult<CrmCustomerDO> getPutPoolRemindCustomerPage(CrmCustomerPageReqVO pageVO, Long userId) {
-        CrmCustomerPoolConfigDO poolConfig = customerPoolConfigService.getCustomerPoolConfig();
-        if (ObjUtil.isNull(poolConfig)
-                || Boolean.FALSE.equals(poolConfig.getEnabled())
-                || Boolean.FALSE.equals(poolConfig.getNotifyEnabled())) {
-            return PageResult.empty();
-        }
-        return customerMapper.selectPutPoolRemindCustomerPage(pageVO, poolConfig, userId);
-    }
-
-    @Override
-    public Long getPutPoolRemindCustomerCount(Long userId) {
-        CrmCustomerPoolConfigDO poolConfig = customerPoolConfigService.getCustomerPoolConfig();
-        if (ObjUtil.isNull(poolConfig)
-                || Boolean.FALSE.equals(poolConfig.getEnabled())
-                || Boolean.FALSE.equals(poolConfig.getNotifyEnabled())) {
-            return 0L;
-        }
-        CrmCustomerPageReqVO pageVO = new CrmCustomerPageReqVO()
-                .setPool(null)
-                .setContactStatus(CrmCustomerPageReqVO.CONTACT_TODAY)
-                .setSceneType(CrmSceneTypeEnum.OWNER.getType());
-        return customerMapper.selectPutPoolRemindCustomerCount(pageVO, poolConfig, userId);
-    }
-
-    @Override
-    public Long getTodayContactCustomerCount(Long userId) {
-        return customerMapper.selectCountByTodayContact(userId);
-    }
-
-    @Override
-    public Long getFollowCustomerCount(Long userId) {
-        return customerMapper.selectCountByFollow(userId);
-    }
-
-    // ======================= 校验相关 =======================
-
     private void validateCustomerForCreate(CrmCustomerImportExcelVO importCustomer) {
         // 校验客户名称不能为空
         if (StrUtil.isEmptyIfStr(importCustomer.getName())) {
             throw exception(CUSTOMER_CREATE_NAME_NOT_NULL);
         }
+    }
+
+    private void validateCustomerIsLocked(CrmCustomerDO customer, Boolean pool) {
+        if (customer.getLockStatus()) {
+            throw exception(pool ? CUSTOMER_LOCKED_PUT_POOL_FAIL : CUSTOMER_LOCKED, customer.getName());
+        }
+    }
+
+    /**
+     * 记录导入客户时的操作日志
+     *
+     * @param customer 客户信息
+     * @param isUpdate 是否更新；true - 更新，false - 新增
+     */
+    @LogRecord(type = CRM_CUSTOMER_TYPE, subType = CRM_CUSTOMER_IMPORT_SUB_TYPE, bizNo = "{{#customer.id}}",
+            success = CRM_CUSTOMER_IMPORT_SUCCESS)
+    public void importCustomerLog(CrmCustomerDO customer, boolean isUpdate) {
+        LogRecordContext.putVariable("customer", customer);
+        LogRecordContext.putVariable("isUpdate", isUpdate);
+    }
+
+    /**
+     * 获得自身的代理对象，解决 AOP 生效问题
+     *
+     * @return 自己
+     */
+    private CrmCustomerServiceImpl getSelf() {
+        return SpringUtil.getBean(getClass());
     }
 
     /**
@@ -565,48 +610,12 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
         }
     }
 
-    /**
-     * 校验客户是否存在
-     *
-     * @param id 客户 id
-     */
-    @Override
-    public void validateCustomer(Long id) {
-        validateCustomerExists(id);
-    }
-
-    private void validateCustomerOwnerExists(CrmCustomerDO customer, Boolean pool) {
-        if (customer == null) { // 防御一下
-            throw exception(CUSTOMER_NOT_EXISTS);
-        }
-        // 校验是否为公海数据
-        if (pool && customer.getOwnerUserId() == null) {
-            throw exception(CUSTOMER_IN_POOL, customer.getName());
-        }
-        // 负责人已存在
-        if (!pool && customer.getOwnerUserId() != null) {
-            throw exception(CUSTOMER_OWNER_EXISTS, customer.getName());
-        }
-    }
-
     private CrmCustomerDO validateCustomerExists(Long id) {
         CrmCustomerDO customerDO = customerMapper.selectById(id);
         if (customerDO == null) {
             throw exception(CUSTOMER_NOT_EXISTS);
         }
         return customerDO;
-    }
-
-    private void validateCustomerIsLocked(CrmCustomerDO customer, Boolean pool) {
-        if (customer.getLockStatus()) {
-            throw exception(pool ? CUSTOMER_LOCKED_PUT_POOL_FAIL : CUSTOMER_LOCKED, customer.getName());
-        }
-    }
-
-    private void validateCustomerDeal(CrmCustomerDO customer) {
-        if (customer.getDealStatus()) {
-            throw exception(CUSTOMER_ALREADY_DEAL);
-        }
     }
 
     /**
@@ -648,15 +657,6 @@ public class CrmCustomerServiceImpl implements CrmCustomerService {
         if (lockCount >= maxCount) {
             throw exception(CUSTOMER_LOCK_EXCEED_LIMIT);
         }
-    }
-
-    /**
-     * 获得自身的代理对象，解决 AOP 生效问题
-     *
-     * @return 自己
-     */
-    private CrmCustomerServiceImpl getSelf() {
-        return SpringUtil.getBean(getClass());
     }
 
 }

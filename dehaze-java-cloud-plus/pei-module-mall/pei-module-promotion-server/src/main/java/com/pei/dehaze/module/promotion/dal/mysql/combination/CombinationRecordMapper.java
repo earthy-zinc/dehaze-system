@@ -2,6 +2,7 @@ package com.pei.dehaze.module.promotion.dal.mysql.combination;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.map.MapUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
@@ -9,7 +10,6 @@ import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.promotion.controller.admin.combination.vo.recrod.CombinationRecordReqPageVO;
 import com.pei.dehaze.module.promotion.controller.app.combination.vo.record.AppCombinationRecordPageReqVO;
 import com.pei.dehaze.module.promotion.dal.dataobject.combination.CombinationRecordDO;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.time.LocalDateTime;

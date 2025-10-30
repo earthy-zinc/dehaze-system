@@ -25,8 +25,7 @@ public class ThingModelArrayDataSpecs extends ThingModelDataSpecs {
      */
     private String childDataType;
     /**
-     * 数据类型（childDataType）为列表型 struct 的数据规范存储在 dataSpecsList 中
-     * 此时 struct 取值范围为：int、float、double、text、date、enum、bool
+     * 数据类型（childDataType）为列表型 struct 的数据规范存储在 dataSpecsList 中 此时 struct 取值范围为：int、float、double、text、date、enum、bool
      */
     private List<ThingModelDataSpecs> dataSpecsList;
 

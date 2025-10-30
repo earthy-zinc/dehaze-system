@@ -84,9 +84,8 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
 
     /**
      * 校验秒杀商品参与的活动是否存在冲突
-     *
-     * 1. 校验秒杀时段是否存在
-     * 2. 秒杀商品是否参加其它活动
+     * <p>
+     * 1. 校验秒杀时段是否存在 2. 秒杀商品是否参加其它活动
      *
      * @param configIds  秒杀时段数组
      * @param spuId      商品 SPU 编号
@@ -192,36 +191,6 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
         seckillActivityMapper.updateStockIncr(id, count);
     }
 
-    /**
-     * 更新秒杀商品
-     *
-     * @param activity 秒杀活动
-     * @param products 该活动的最新商品配置
-     */
-    private void updateSeckillProduct(SeckillActivityDO activity, List<SeckillProductBaseVO> products) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<SeckillProductDO> newList = SeckillActivityConvert.INSTANCE.convertList(products, activity);
-        List<SeckillProductDO> oldList = seckillProductMapper.selectListByActivityId(activity.getId());
-        List<List<SeckillProductDO>> diffList = diffList(oldList, newList, (oldVal, newVal) -> {
-            boolean same = ObjectUtil.equal(oldVal.getSkuId(), newVal.getSkuId());
-            if (same) {
-                newVal.setId(oldVal.getId());
-            }
-            return same;
-        });
-
-        // 第二步，批量添加、修改、删除
-        if (isNotEmpty(diffList.get(0))) {
-            seckillProductMapper.insertBatch(diffList.get(0));
-        }
-        if (isNotEmpty(diffList.get(1))) {
-            seckillProductMapper.updateBatch(diffList.get(1));
-        }
-        if (isNotEmpty(diffList.get(2))) {
-            seckillProductMapper.deleteByIds(convertList(diffList.get(2), SeckillProductDO::getId));
-        }
-    }
-
     @Override
     public void closeSeckillActivity(Long id) {
         // 校验存在
@@ -249,14 +218,6 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
         // 删除活动商品
         List<SeckillProductDO> products = seckillProductMapper.selectListByActivityId(id);
         seckillProductMapper.deleteByIds(convertSet(products, SeckillProductDO::getId));
-    }
-
-    private SeckillActivityDO validateSeckillActivityExists(Long id) {
-        SeckillActivityDO seckillActivity = seckillActivityMapper.selectById(id);
-        if (seckillActivity == null) {
-            throw exception(SECKILL_ACTIVITY_NOT_EXISTS);
-        }
-        return seckillActivity;
     }
 
     @Override
@@ -331,6 +292,44 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
     @Override
     public List<SeckillActivityDO> getSeckillActivityListByIds(Collection<Long> ids) {
         return seckillActivityMapper.selectList(SeckillActivityDO::getId, ids);
+    }
+
+    private SeckillActivityDO validateSeckillActivityExists(Long id) {
+        SeckillActivityDO seckillActivity = seckillActivityMapper.selectById(id);
+        if (seckillActivity == null) {
+            throw exception(SECKILL_ACTIVITY_NOT_EXISTS);
+        }
+        return seckillActivity;
+    }
+
+    /**
+     * 更新秒杀商品
+     *
+     * @param activity 秒杀活动
+     * @param products 该活动的最新商品配置
+     */
+    private void updateSeckillProduct(SeckillActivityDO activity, List<SeckillProductBaseVO> products) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<SeckillProductDO> newList = SeckillActivityConvert.INSTANCE.convertList(products, activity);
+        List<SeckillProductDO> oldList = seckillProductMapper.selectListByActivityId(activity.getId());
+        List<List<SeckillProductDO>> diffList = diffList(oldList, newList, (oldVal, newVal) -> {
+            boolean same = ObjectUtil.equal(oldVal.getSkuId(), newVal.getSkuId());
+            if (same) {
+                newVal.setId(oldVal.getId());
+            }
+            return same;
+        });
+
+        // 第二步，批量添加、修改、删除
+        if (isNotEmpty(diffList.get(0))) {
+            seckillProductMapper.insertBatch(diffList.get(0));
+        }
+        if (isNotEmpty(diffList.get(1))) {
+            seckillProductMapper.updateBatch(diffList.get(1));
+        }
+        if (isNotEmpty(diffList.get(2))) {
+            seckillProductMapper.deleteByIds(convertList(diffList.get(2), SeckillProductDO::getId));
+        }
     }
 
 }

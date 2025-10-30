@@ -14,13 +14,12 @@ import javax.annotation.Nullable;
 public interface IotRuleSceneAction {
 
     // TODO @芋艿：groovy 或者 javascript 实现数据的转换；可以考虑基于 hutool 的 ScriptUtil 做
+
     /**
      * 执行场景
      *
-     * @param message 消息，允许空
-     *                1. 空的情况：定时触发
-     *                2. 非空的情况：设备触发
-     * @param config 配置
+     * @param message 消息，允许空 1. 空的情况：定时触发 2. 非空的情况：设备触发
+     * @param config  配置
      */
     void execute(@Nullable IotDeviceMessage message, IotRuleSceneDO.ActionConfig config) throws Exception;
 

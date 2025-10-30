@@ -32,14 +32,6 @@ public interface BpmProcessInstanceService {
     ProcessInstance getProcessInstance(String id);
 
     /**
-     * 获得流程实例列表
-     *
-     * @param ids 流程实例的编号集合
-     * @return 流程实例列表
-     */
-    List<ProcessInstance> getProcessInstances(Set<String> ids);
-
-    /**
      * 获得流程实例 Map
      *
      * @param ids 流程实例的编号集合
@@ -50,20 +42,20 @@ public interface BpmProcessInstanceService {
     }
 
     /**
+     * 获得流程实例列表
+     *
+     * @param ids 流程实例的编号集合
+     * @return 流程实例列表
+     */
+    List<ProcessInstance> getProcessInstances(Set<String> ids);
+
+    /**
      * 获得历史的流程实例
      *
      * @param id 流程实例的编号
      * @return 历史的流程实例
      */
     HistoricProcessInstance getHistoricProcessInstance(String id);
-
-    /**
-     * 获得历史的流程实例列表
-     *
-     * @param ids 流程实例的编号集合
-     * @return 历史的流程实例列表
-     */
-    List<HistoricProcessInstance> getHistoricProcessInstances(Set<String> ids);
 
     /**
      * 获得历史的流程实例 Map
@@ -74,6 +66,14 @@ public interface BpmProcessInstanceService {
     default Map<String, HistoricProcessInstance> getHistoricProcessInstanceMap(Set<String> ids) {
         return convertMap(getHistoricProcessInstances(ids), HistoricProcessInstance::getId);
     }
+
+    /**
+     * 获得历史的流程实例列表
+     *
+     * @param ids 流程实例的编号集合
+     * @return 历史的流程实例列表
+     */
+    List<HistoricProcessInstance> getHistoricProcessInstances(Set<String> ids);
 
     /**
      * 获得流程实例的分页
@@ -90,8 +90,8 @@ public interface BpmProcessInstanceService {
      * <p>
      * 可以是准备发起的流程、进行中的流程、已经结束的流程
      *
-     * @param loginUserId  登录人的用户编号
-     * @param reqVO 请求信息
+     * @param loginUserId 登录人的用户编号
+     * @param reqVO       请求信息
      * @return 流程实例的进度
      */
     BpmApprovalDetailRespVO getApprovalDetail(Long loginUserId, @Valid BpmApprovalDetailReqVO reqVO);
@@ -100,7 +100,7 @@ public interface BpmProcessInstanceService {
      * 获取下一个执行节点信息
      *
      * @param loginUserId 登录人的用户编号
-     * @param reqVO 请求信息
+     * @param reqVO       请求信息
      * @return 下一个执行节点信息
      */
     List<BpmApprovalDetailRespVO.ActivityNode> getNextApprovalNodes(Long loginUserId, @Valid BpmApprovalDetailReqVO reqVO);
@@ -160,7 +160,7 @@ public interface BpmProcessInstanceService {
     /**
      * 更新 ProcessInstance 的变量
      *
-     * @param id 流程编号
+     * @param id        流程编号
      * @param variables 流程变量
      */
     void updateProcessInstanceVariables(String id, Map<String, Object> variables);
@@ -168,7 +168,7 @@ public interface BpmProcessInstanceService {
     /**
      * 删除 ProcessInstance 的变量
      *
-     * @param id  流程编号
+     * @param id            流程编号
      * @param variableNames 流程变量名
      */
     void removeProcessInstanceVariables(String id, Collection<String> variableNames);

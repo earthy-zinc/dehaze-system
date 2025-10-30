@@ -2,9 +2,9 @@ package com.pei.dehaze.module.system.service.permission;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.pei.dehaze.framework.common.biz.system.permission.dto.DeptDataPermissionRespDTO;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
-import com.pei.dehaze.framework.common.biz.system.permission.dto.DeptDataPermissionRespDTO;
 import com.pei.dehaze.module.system.dal.dataobject.dept.DeptDO;
 import com.pei.dehaze.module.system.dal.dataobject.permission.MenuDO;
 import com.pei.dehaze.module.system.dal.dataobject.permission.RoleDO;
@@ -16,12 +16,12 @@ import com.pei.dehaze.module.system.dal.mysql.permission.UserRoleMapper;
 import com.pei.dehaze.module.system.enums.permission.DataScopeEnum;
 import com.pei.dehaze.module.system.service.dept.DeptService;
 import com.pei.dehaze.module.system.service.user.AdminUserService;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

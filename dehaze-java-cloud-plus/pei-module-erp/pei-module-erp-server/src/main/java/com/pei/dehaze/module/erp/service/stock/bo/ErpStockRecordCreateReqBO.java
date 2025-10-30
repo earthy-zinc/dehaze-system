@@ -29,7 +29,7 @@ public class ErpStockRecordCreateReqBO {
     private Long warehouseId;
     /**
      * 出入库数量
-     *
+     * <p>
      * 正数，表示入库；负数，表示出库
      */
     @NotNull(message = "出入库数量不能为空")

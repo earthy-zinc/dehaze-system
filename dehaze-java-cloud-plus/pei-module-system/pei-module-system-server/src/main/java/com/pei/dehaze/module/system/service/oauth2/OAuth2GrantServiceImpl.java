@@ -9,9 +9,9 @@ import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2CodeDO;
 import com.pei.dehaze.module.system.dal.dataobject.user.AdminUserDO;
 import com.pei.dehaze.module.system.enums.ErrorCodeConstants;
 import com.pei.dehaze.module.system.service.auth.AdminAuthService;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;

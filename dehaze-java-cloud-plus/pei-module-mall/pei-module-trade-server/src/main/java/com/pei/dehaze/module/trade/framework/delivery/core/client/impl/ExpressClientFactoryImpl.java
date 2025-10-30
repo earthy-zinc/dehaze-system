@@ -40,7 +40,7 @@ public class ExpressClientFactoryImpl implements ExpressClientFactory {
     }
 
     private ExpressClient createExpressClient(ExpressClientEnum queryProviderEnum,
-                                                TradeExpressProperties tradeExpressProperties) {
+                                              TradeExpressProperties tradeExpressProperties) {
         switch (queryProviderEnum) {
             case NOT_PROVIDE:
                 return new NoProvideExpressClient();

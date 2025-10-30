@@ -33,7 +33,7 @@ public class RewardActivityMatchRespDTO {
     private String name;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;
@@ -51,13 +51,13 @@ public class RewardActivityMatchRespDTO {
     private String remark;
     /**
      * 条件类型
-     *
+     * <p>
      * 枚举 {@link PromotionConditionTypeEnum}
      */
     private Integer conditionType;
     /**
      * 商品范围
-     *
+     * <p>
      * 枚举 {@link PromotionProductScopeEnum}
      */
     private Integer productScope;
@@ -78,9 +78,8 @@ public class RewardActivityMatchRespDTO {
 
         /**
          * 优惠门槛
-         *
-         * 1. 满 N 元，单位：分
-         * 2. 满 N 件
+         * <p>
+         * 1. 满 N 元，单位：分 2. 满 N 件
          */
         private Integer limit;
         /**
@@ -97,17 +96,16 @@ public class RewardActivityMatchRespDTO {
         private Integer point;
         /**
          * 赠送的优惠劵
-         *
-         * key: 优惠劵模版编号
-         * value：对应的优惠券数量
-         *
+         * <p>
+         * key: 优惠劵模版编号 value：对应的优惠券数量
+         * <p>
          * 目的：用于订单支付后赠送优惠券
          */
         private Map<Long, Integer> giveCouponTemplateCounts;
 
         /**
          * 规则描述
-         *
+         * <p>
          * 通过 {@link #limit}、{@link #discountPrice} 等字段进行拼接
          */
         private String description;

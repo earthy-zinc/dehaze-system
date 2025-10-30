@@ -4,9 +4,15 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.pei.dehaze.framework.common.exception.ServiceException;
+import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderExtensionDO;
+import com.pei.dehaze.module.pay.dal.dataobject.refund.PayRefundDO;
+import com.pei.dehaze.module.pay.dal.dataobject.transfer.PayTransferDO;
+import com.pei.dehaze.module.pay.dal.dataobject.wallet.PayWalletTransactionDO;
 import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
 import com.pei.dehaze.module.pay.enums.refund.PayRefundStatusEnum;
 import com.pei.dehaze.module.pay.enums.transfer.PayTransferStatusEnum;
+import com.pei.dehaze.module.pay.enums.wallet.PayWalletBizTypeEnum;
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
@@ -15,12 +21,6 @@ import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTrans
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTransferUnifiedReqDTO;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.AbstractPayClient;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.NonePayClientConfig;
-import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderExtensionDO;
-import com.pei.dehaze.module.pay.dal.dataobject.refund.PayRefundDO;
-import com.pei.dehaze.module.pay.dal.dataobject.transfer.PayTransferDO;
-import com.pei.dehaze.module.pay.dal.dataobject.wallet.PayWalletTransactionDO;
-import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
-import com.pei.dehaze.module.pay.enums.wallet.PayWalletBizTypeEnum;
 import com.pei.dehaze.module.pay.service.order.PayOrderService;
 import com.pei.dehaze.module.pay.service.refund.PayRefundService;
 import com.pei.dehaze.module.pay.service.transfer.PayTransferService;
@@ -78,8 +78,8 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
                     reqDTO.getOutTradeNo(), transaction);
         } catch (Throwable ex) {
             log.error("[doUnifiedOrder][reqDTO({}) 异常]", reqDTO, ex);
-            Integer errorCode = INTERNAL_SERVER_ERROR.getCode();
-            String errorMsg = INTERNAL_SERVER_ERROR.getMsg();
+            Integer errorCode = INTERNAL_SERVER_ERROR.code();
+            String errorMsg = INTERNAL_SERVER_ERROR.msg();
             if (ex instanceof ServiceException) {
                 ServiceException serviceException = (ServiceException) ex;
                 errorCode = serviceException.getCode();
@@ -103,8 +103,8 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
         PayOrderExtensionDO orderExtension = orderService.getOrderExtensionByNo(outTradeNo);
         // 支付交易拓展单不存在， 返回关闭状态
         if (orderExtension == null) {
-            return PayOrderRespDTO.closedOf(String.valueOf(PAY_ORDER_EXTENSION_NOT_FOUND.getCode()),
-                    PAY_ORDER_EXTENSION_NOT_FOUND.getMsg(), outTradeNo, "");
+            return PayOrderRespDTO.closedOf(String.valueOf(PAY_ORDER_EXTENSION_NOT_FOUND.code()),
+                    PAY_ORDER_EXTENSION_NOT_FOUND.msg(), outTradeNo, "");
         }
         // 关闭状态
         if (PayOrderStatusEnum.isClosed(orderExtension.getStatus())) {
@@ -134,11 +134,11 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
                     reqDTO.getOutRefundNo(), payWalletTransaction);
         } catch (Throwable ex) {
             log.error("[doUnifiedRefund][reqDOT({}) 异常]", reqDTO, ex);
-            Integer errorCode = INTERNAL_SERVER_ERROR.getCode();
-            String errorMsg = INTERNAL_SERVER_ERROR.getMsg();
+            Integer errorCode = INTERNAL_SERVER_ERROR.code();
+            String errorMsg = INTERNAL_SERVER_ERROR.msg();
             if (ex instanceof ServiceException) {
                 ServiceException serviceException = (ServiceException) ex;
-                errorCode =  serviceException.getCode();
+                errorCode = serviceException.getCode();
                 errorMsg = serviceException.getMessage();
             }
             return PayRefundRespDTO.failureOf(String.valueOf(errorCode), errorMsg,
@@ -159,7 +159,7 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
         PayRefundDO payRefund = refundService.getRefundByNo(outRefundNo);
         // 支付退款单不存在， 返回退款失败状态
         if (payRefund == null) {
-            return PayRefundRespDTO.failureOf(String.valueOf(REFUND_NOT_FOUND), REFUND_NOT_FOUND.getMsg(),
+            return PayRefundRespDTO.failureOf(String.valueOf(REFUND_NOT_FOUND), REFUND_NOT_FOUND.msg(),
                     outRefundNo, "");
         }
         // 退款失败
@@ -181,6 +181,11 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
     }
 
     @Override
+    protected PayTransferRespDTO doParseTransferNotify(Map<String, String> params, String body, Map<String, String> headers) {
+        throw new UnsupportedOperationException("钱包支付无转账回调");
+    }
+
+    @Override
     @SuppressWarnings("PatternVariableCanBeUsed")
     public PayTransferRespDTO doUnifiedTransfer(PayTransferUnifiedReqDTO reqDTO) {
         try {
@@ -191,8 +196,8 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
                     reqDTO.getOutTransferNo(), transaction);
         } catch (Throwable ex) {
             log.error("[doUnifiedTransfer][reqDTO({}) 异常]", reqDTO, ex);
-            Integer errorCode = INTERNAL_SERVER_ERROR.getCode();
-            String errorMsg = INTERNAL_SERVER_ERROR.getMsg();
+            Integer errorCode = INTERNAL_SERVER_ERROR.code();
+            String errorMsg = INTERNAL_SERVER_ERROR.msg();
             if (ex instanceof ServiceException) {
                 ServiceException serviceException = (ServiceException) ex;
                 errorCode = serviceException.getCode();
@@ -204,11 +209,6 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
     }
 
     @Override
-    protected PayTransferRespDTO doParseTransferNotify(Map<String, String> params, String body, Map<String, String> headers) {
-        throw new UnsupportedOperationException("钱包支付无转账回调");
-    }
-
-    @Override
     protected PayTransferRespDTO doGetTransfer(String outTradeNo) {
         if (transferService == null) {
             transferService = SpringUtil.getBean(PayTransferService.class);
@@ -217,8 +217,8 @@ public class WalletPayClient extends AbstractPayClient<NonePayClientConfig> {
         PayTransferDO transfer = transferService.getTransferByNo(outTradeNo);
         // 转账单不存在，返回关闭状态
         if (transfer == null) {
-            return PayTransferRespDTO.closedOf(String.valueOf(PAY_ORDER_EXTENSION_NOT_FOUND.getCode()),
-                    PAY_ORDER_EXTENSION_NOT_FOUND.getMsg(), outTradeNo, "");
+            return PayTransferRespDTO.closedOf(String.valueOf(PAY_ORDER_EXTENSION_NOT_FOUND.code()),
+                    PAY_ORDER_EXTENSION_NOT_FOUND.msg(), outTradeNo, "");
         }
         // 关闭状态
         if (PayTransferStatusEnum.isClosed(transfer.getStatus())) {

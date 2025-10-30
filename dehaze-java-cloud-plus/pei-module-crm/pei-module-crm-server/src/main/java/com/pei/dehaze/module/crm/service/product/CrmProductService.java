@@ -50,14 +50,6 @@ public interface CrmProductService {
     CrmProductDO getProduct(Long id);
 
     /**
-     * 获得产品列表
-     *
-     * @param ids 编号
-     * @return 产品列表
-     */
-    List<CrmProductDO> getProductList(Collection<Long> ids);
-
-    /**
      * 获得产品 Map
      *
      * @param ids 编号
@@ -66,6 +58,14 @@ public interface CrmProductService {
     default Map<Long, CrmProductDO> getProductMap(Collection<Long> ids) {
         return convertMap(getProductList(ids), CrmProductDO::getId);
     }
+
+    /**
+     * 获得产品列表
+     *
+     * @param ids 编号
+     * @return 产品列表
+     */
+    List<CrmProductDO> getProductList(Collection<Long> ids);
 
     /**
      * 获得产品分页

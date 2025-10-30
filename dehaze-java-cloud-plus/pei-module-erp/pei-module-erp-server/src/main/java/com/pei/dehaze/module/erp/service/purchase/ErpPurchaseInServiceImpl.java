@@ -130,29 +130,6 @@ public class ErpPurchaseInServiceImpl implements ErpPurchaseInService {
         }
     }
 
-    private void calculateTotalPrice(ErpPurchaseInDO purchaseIn, List<ErpPurchaseInItemDO> purchaseInItems) {
-        purchaseIn.setTotalCount(getSumValue(purchaseInItems, ErpPurchaseInItemDO::getCount, BigDecimal::add));
-        purchaseIn.setTotalProductPrice(getSumValue(purchaseInItems, ErpPurchaseInItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
-        purchaseIn.setTotalTaxPrice(getSumValue(purchaseInItems, ErpPurchaseInItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
-        purchaseIn.setTotalPrice(purchaseIn.getTotalProductPrice().add(purchaseIn.getTotalTaxPrice()));
-        // 计算优惠价格
-        if (purchaseIn.getDiscountPercent() == null) {
-            purchaseIn.setDiscountPercent(BigDecimal.ZERO);
-        }
-        purchaseIn.setDiscountPrice(MoneyUtils.priceMultiplyPercent(purchaseIn.getTotalPrice(), purchaseIn.getDiscountPercent()));
-        purchaseIn.setTotalPrice(purchaseIn.getTotalPrice().subtract(purchaseIn.getDiscountPrice()).add(purchaseIn.getOtherPrice()));
-    }
-
-    private void updatePurchaseOrderInCount(Long orderId) {
-        // 1.1 查询采购订单对应的采购入库单列表
-        List<ErpPurchaseInDO> purchaseIns = purchaseInMapper.selectListByOrderId(orderId);
-        // 1.2 查询对应的采购订单项的入库数量
-        Map<Long, BigDecimal> returnCountMap = purchaseInItemMapper.selectOrderItemCountSumMapByInIds(
-                convertList(purchaseIns, ErpPurchaseInDO::getId));
-        // 2. 更新采购订单的入库数量
-        purchaseOrderService.updatePurchaseOrderInCount(orderId, returnCountMap);
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updatePurchaseInStatus(Long id, Integer status) {
@@ -199,43 +176,6 @@ public class ErpPurchaseInServiceImpl implements ErpPurchaseInService {
         purchaseInMapper.updateById(new ErpPurchaseInDO().setId(id).setPaymentPrice(paymentPrice));
     }
 
-    private List<ErpPurchaseInItemDO> validatePurchaseInItems(List<ErpPurchaseInSaveReqVO.Item> list) {
-        // 1. 校验产品存在
-        List<ErpProductDO> productList = productService.validProductList(
-                convertSet(list, ErpPurchaseInSaveReqVO.Item::getProductId));
-        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
-        // 2. 转化为 ErpPurchaseInItemDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, ErpPurchaseInItemDO.class, item -> {
-            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
-            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
-            if (item.getTotalPrice() == null) {
-                return;
-            }
-            if (item.getTaxPercent() != null) {
-                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
-            }
-        }));
-    }
-
-    private void updatePurchaseInItemList(Long id, List<ErpPurchaseInItemDO> newList) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<ErpPurchaseInItemDO> oldList = purchaseInItemMapper.selectListByInId(id);
-        List<List<ErpPurchaseInItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setInId(id));
-            purchaseInItemMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            purchaseInItemMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            purchaseInItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpPurchaseInItemDO::getId));
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deletePurchaseIn(List<Long> ids) {
@@ -263,14 +203,6 @@ public class ErpPurchaseInServiceImpl implements ErpPurchaseInService {
 
     }
 
-    private ErpPurchaseInDO validatePurchaseInExists(Long id) {
-        ErpPurchaseInDO purchaseIn = purchaseInMapper.selectById(id);
-        if (purchaseIn == null) {
-            throw exception(PURCHASE_IN_NOT_EXISTS);
-        }
-        return purchaseIn;
-    }
-
     @Override
     public ErpPurchaseInDO getPurchaseIn(Long id) {
         return purchaseInMapper.selectById(id);
@@ -290,8 +222,6 @@ public class ErpPurchaseInServiceImpl implements ErpPurchaseInService {
         return purchaseInMapper.selectPage(pageReqVO);
     }
 
-    // ==================== 采购入库项 ====================
-
     @Override
     public List<ErpPurchaseInItemDO> getPurchaseInItemListByInId(Long inId) {
         return purchaseInItemMapper.selectListByInId(inId);
@@ -303,6 +233,76 @@ public class ErpPurchaseInServiceImpl implements ErpPurchaseInService {
             return Collections.emptyList();
         }
         return purchaseInItemMapper.selectListByInIds(inIds);
+    }
+
+    private ErpPurchaseInDO validatePurchaseInExists(Long id) {
+        ErpPurchaseInDO purchaseIn = purchaseInMapper.selectById(id);
+        if (purchaseIn == null) {
+            throw exception(PURCHASE_IN_NOT_EXISTS);
+        }
+        return purchaseIn;
+    }
+
+    private void updatePurchaseInItemList(Long id, List<ErpPurchaseInItemDO> newList) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<ErpPurchaseInItemDO> oldList = purchaseInItemMapper.selectListByInId(id);
+        List<List<ErpPurchaseInItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setInId(id));
+            purchaseInItemMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            purchaseInItemMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            purchaseInItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpPurchaseInItemDO::getId));
+        }
+    }
+
+    private List<ErpPurchaseInItemDO> validatePurchaseInItems(List<ErpPurchaseInSaveReqVO.Item> list) {
+        // 1. 校验产品存在
+        List<ErpProductDO> productList = productService.validProductList(
+                convertSet(list, ErpPurchaseInSaveReqVO.Item::getProductId));
+        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
+        // 2. 转化为 ErpPurchaseInItemDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, ErpPurchaseInItemDO.class, item -> {
+            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
+            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
+            if (item.getTotalPrice() == null) {
+                return;
+            }
+            if (item.getTaxPercent() != null) {
+                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
+            }
+        }));
+    }
+
+    // ==================== 采购入库项 ====================
+
+    private void calculateTotalPrice(ErpPurchaseInDO purchaseIn, List<ErpPurchaseInItemDO> purchaseInItems) {
+        purchaseIn.setTotalCount(getSumValue(purchaseInItems, ErpPurchaseInItemDO::getCount, BigDecimal::add));
+        purchaseIn.setTotalProductPrice(getSumValue(purchaseInItems, ErpPurchaseInItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
+        purchaseIn.setTotalTaxPrice(getSumValue(purchaseInItems, ErpPurchaseInItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
+        purchaseIn.setTotalPrice(purchaseIn.getTotalProductPrice().add(purchaseIn.getTotalTaxPrice()));
+        // 计算优惠价格
+        if (purchaseIn.getDiscountPercent() == null) {
+            purchaseIn.setDiscountPercent(BigDecimal.ZERO);
+        }
+        purchaseIn.setDiscountPrice(MoneyUtils.priceMultiplyPercent(purchaseIn.getTotalPrice(), purchaseIn.getDiscountPercent()));
+        purchaseIn.setTotalPrice(purchaseIn.getTotalPrice().subtract(purchaseIn.getDiscountPrice()).add(purchaseIn.getOtherPrice()));
+    }
+
+    private void updatePurchaseOrderInCount(Long orderId) {
+        // 1.1 查询采购订单对应的采购入库单列表
+        List<ErpPurchaseInDO> purchaseIns = purchaseInMapper.selectListByOrderId(orderId);
+        // 1.2 查询对应的采购订单项的入库数量
+        Map<Long, BigDecimal> returnCountMap = purchaseInItemMapper.selectOrderItemCountSumMapByInIds(
+                convertList(purchaseIns, ErpPurchaseInDO::getId));
+        // 2. 更新采购订单的入库数量
+        purchaseOrderService.updatePurchaseOrderInCount(orderId, returnCountMap);
     }
 
 }

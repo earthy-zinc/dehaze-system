@@ -17,15 +17,16 @@ public interface PayNotifyService {
     /**
      * 创建回调通知任务
      *
-     * @param type 类型
+     * @param type   类型
      * @param dataId 数据编号
      */
     void createPayNotifyTask(Integer type, Long dataId);
 
     /**
      * 执行回调通知
-     *
+     * <p>
      * 注意，该方法提供给定时任务调用。目前是 pei-server 进行调用
+     *
      * @return 通知数量
      */
     int executeNotify() throws InterruptedException;

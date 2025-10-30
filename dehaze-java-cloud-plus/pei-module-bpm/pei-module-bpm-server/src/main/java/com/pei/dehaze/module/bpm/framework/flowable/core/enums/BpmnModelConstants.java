@@ -138,7 +138,7 @@ public interface BpmnModelConstants {
 
     /**
      * 节点类型
-     *
+     * <p>
      * 目前只有 {@link BpmModelTypeEnum#SIMPLE} 的 UserTask 节点会设置该属性，用于区分是审批节点、还是办理节点
      */
     String NODE_TYPE = "nodeType";

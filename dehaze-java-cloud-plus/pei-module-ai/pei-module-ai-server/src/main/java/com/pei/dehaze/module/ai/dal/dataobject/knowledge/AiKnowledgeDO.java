@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.ai.dal.dataobject.knowledge;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import lombok.Data;
 
 /**
@@ -34,13 +34,13 @@ public class AiKnowledgeDO extends BaseDO {
 
     /**
      * 向量模型编号
-     *
+     * <p>
      * 关联 {@link AiModelDO#getId()}
      */
     private Long embeddingModelId;
     /**
      * 模型标识
-     *
+     * <p>
      * 冗余 {@link AiModelDO#getModel()}
      */
     private String embeddingModel;

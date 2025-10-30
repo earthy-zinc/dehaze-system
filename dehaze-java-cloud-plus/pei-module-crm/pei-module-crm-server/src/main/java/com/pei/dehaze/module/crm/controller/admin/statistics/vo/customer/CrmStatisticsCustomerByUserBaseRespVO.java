@@ -5,7 +5,7 @@ import lombok.Data;
 
 /**
  * 用户客户统计响应 Base Response VO
- *
+ * <p>
  * 目的：可以统一拼接子 VO 的 ownerUserId、ownerUserName 属性
  */
 @Data

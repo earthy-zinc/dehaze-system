@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.product.service.history;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.product.controller.admin.history.vo.ProductBrowseHistoryPageReqVO;
 import com.pei.dehaze.module.product.dal.dataobject.history.ProductBrowseHistoryDO;
 import com.pei.dehaze.module.product.dal.mysql.history.ProductBrowseHistoryMapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;

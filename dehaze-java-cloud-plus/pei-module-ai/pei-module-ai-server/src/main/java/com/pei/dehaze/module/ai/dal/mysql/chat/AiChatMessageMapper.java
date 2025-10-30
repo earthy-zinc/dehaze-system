@@ -2,13 +2,13 @@ package com.pei.dehaze.module.ai.dal.mysql.chat;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.map.MapUtil;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.ai.controller.admin.chat.vo.message.AiChatMessagePageReqVO;
 import com.pei.dehaze.module.ai.dal.dataobject.chat.AiChatMessageDO;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;
@@ -42,7 +42,7 @@ public interface AiChatMessageMapper extends BaseMapperX<AiChatMessageDO> {
         // 转换数据
         return CollectionUtils.convertMap(result,
                 record -> MapUtil.getLong(record, "conversationId"),
-                record -> MapUtil.getInt(record, "count" ));
+                record -> MapUtil.getInt(record, "count"));
     }
 
     default PageResult<AiChatMessageDO> selectPage(AiChatMessagePageReqVO pageReqVO) {

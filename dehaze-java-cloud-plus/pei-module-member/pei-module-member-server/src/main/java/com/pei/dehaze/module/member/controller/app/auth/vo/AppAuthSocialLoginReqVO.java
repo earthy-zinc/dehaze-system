@@ -3,13 +3,12 @@ package com.pei.dehaze.module.member.controller.app.auth.vo;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "用户 APP - 社交快捷登录 Request VO，使用 code 授权码")
 @Data

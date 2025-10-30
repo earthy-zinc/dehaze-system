@@ -41,16 +41,6 @@ public interface CouponService {
     void deleteCoupon(Long id);
 
     /**
-     * 领取优惠券
-     *
-     * @param templateId 优惠券模板编号
-     * @param userIds    用户编号列表
-     * @param takeType   领取方式
-     * @return key: userId, value: 优惠券编号列表
-     */
-    Map<Long, List<Long>> takeCoupon(Long templateId, Set<Long> userIds, CouponTakeTypeEnum takeType);
-
-    /**
      * 【管理员】给用户发送优惠券
      *
      * @param templateId 优惠券模板编号
@@ -62,9 +52,19 @@ public interface CouponService {
     }
 
     /**
+     * 领取优惠券
+     *
+     * @param templateId 优惠券模板编号
+     * @param userIds    用户编号列表
+     * @param takeType   领取方式
+     * @return key: userId, value: 优惠券编号列表
+     */
+    Map<Long, List<Long>> takeCoupon(Long templateId, Set<Long> userIds, CouponTakeTypeEnum takeType);
+
+    /**
      * 【管理员】给指定用户批量发送优惠券
      *
-     * @param giveCoupons  key: 优惠劵模版编号，value：对应的数量
+     * @param giveCoupons key: 优惠劵模版编号，value：对应的数量
      * @param userId      用户编号
      * @return 优惠券编号列表
      */
@@ -73,8 +73,8 @@ public interface CouponService {
     /**
      * 【管理员】作废指定用户的指定优惠劵
      *
-     * @param giveCouponIds  赠送的优惠券编号
-     * @param userId         用户编号
+     * @param giveCouponIds 赠送的优惠券编号
+     * @param userId        用户编号
      */
     void invalidateCouponsByAdmin(List<Long> giveCouponIds, Long userId);
 
@@ -130,15 +130,6 @@ public interface CouponService {
     List<CouponDO> getCouponList(Long userId, Integer status);
 
     /**
-     * 统计会员领取优惠券的数量
-     *
-     * @param templateIds 优惠券模板编号列表
-     * @param userId      用户编号
-     * @return 领取优惠券的数量
-     */
-    Map<Long, Integer> getTakeCountMapByTemplateIds(Collection<Long> templateIds, Long userId);
-
-    /**
      * 获取会员领取指定优惠券的数量
      *
      * @param templateId 优惠券模板编号
@@ -149,6 +140,15 @@ public interface CouponService {
         Map<Long, Integer> map = getTakeCountMapByTemplateIds(Collections.singleton(templateId), userId);
         return MapUtil.getInt(map, templateId, 0);
     }
+
+    /**
+     * 统计会员领取优惠券的数量
+     *
+     * @param templateIds 优惠券模板编号列表
+     * @param userId      用户编号
+     * @return 领取优惠券的数量
+     */
+    Map<Long, Integer> getTakeCountMapByTemplateIds(Collection<Long> templateIds, Long userId);
 
     /**
      * 获取用户是否可以领取优惠券

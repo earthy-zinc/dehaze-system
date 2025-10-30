@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.product.service.brand;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.product.controller.admin.brand.vo.ProductBrandCreateReqVO;
@@ -9,7 +10,6 @@ import com.pei.dehaze.module.product.controller.admin.brand.vo.ProductBrandUpdat
 import com.pei.dehaze.module.product.convert.brand.ProductBrandConvert;
 import com.pei.dehaze.module.product.dal.dataobject.brand.ProductBrandDO;
 import com.pei.dehaze.module.product.dal.mysql.brand.ProductBrandMapper;
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
@@ -62,27 +62,6 @@ public class ProductBrandServiceImpl implements ProductBrandService {
         brandMapper.deleteById(id);
     }
 
-    private void validateBrandExists(Long id) {
-        if (brandMapper.selectById(id) == null) {
-            throw exception(BRAND_NOT_EXISTS);
-        }
-    }
-
-    @VisibleForTesting
-    public void validateBrandNameUnique(Long id, String name) {
-        ProductBrandDO brand = brandMapper.selectByName(name);
-        if (brand == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的字典类型
-        if (id == null) {
-            throw exception(BRAND_NAME_EXISTS);
-        }
-        if (!brand.getId().equals(id)) {
-            throw exception(BRAND_NAME_EXISTS);
-        }
-    }
-
     @Override
     public ProductBrandDO getBrand(Long id) {
         return brandMapper.selectById(id);
@@ -117,6 +96,27 @@ public class ProductBrandServiceImpl implements ProductBrandService {
     @Override
     public List<ProductBrandDO> getBrandListByStatus(Integer status) {
         return brandMapper.selectListByStatus(status);
+    }
+
+    private void validateBrandExists(Long id) {
+        if (brandMapper.selectById(id) == null) {
+            throw exception(BRAND_NOT_EXISTS);
+        }
+    }
+
+    @VisibleForTesting
+    public void validateBrandNameUnique(Long id, String name) {
+        ProductBrandDO brand = brandMapper.selectByName(name);
+        if (brand == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的字典类型
+        if (id == null) {
+            throw exception(BRAND_NAME_EXISTS);
+        }
+        if (!brand.getId().equals(id)) {
+            throw exception(BRAND_NAME_EXISTS);
+        }
     }
 
 }

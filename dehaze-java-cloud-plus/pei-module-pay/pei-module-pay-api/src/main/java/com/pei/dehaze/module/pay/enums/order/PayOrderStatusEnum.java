@@ -25,11 +25,6 @@ public enum PayOrderStatusEnum implements ArrayValuable<Integer> {
     private final Integer status;
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return new Integer[0];
-    }
-
     /**
      * 判断是否等待支付
      *
@@ -79,6 +74,11 @@ public enum PayOrderStatusEnum implements ArrayValuable<Integer> {
      */
     public static boolean isClosed(Integer status) {
         return Objects.equals(status, CLOSED.getStatus());
+    }
+
+    @Override
+    public Integer[] array() {
+        return new Integer[0];
     }
 
 }

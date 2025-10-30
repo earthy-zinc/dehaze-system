@@ -34,7 +34,7 @@ public class ThingModelEvent {
     private Boolean required;
     /**
      * 事件类型
-     *
+     * <p>
      * 枚举 {@link IotThingModelServiceEventTypeEnum}
      */
     @NotEmpty(message = "事件类型不能为空")
@@ -42,7 +42,7 @@ public class ThingModelEvent {
     private String type;
     /**
      * 事件的输出参数
-     *
+     * <p>
      * 输出参数定义事件调用后返回的结果或反馈信息，用于确认操作结果或提供额外的信息。
      */
     @Valid

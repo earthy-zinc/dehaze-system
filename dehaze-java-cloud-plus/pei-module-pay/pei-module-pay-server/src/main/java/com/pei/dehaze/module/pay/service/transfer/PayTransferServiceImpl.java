@@ -6,9 +6,6 @@ import cn.hutool.extra.spring.SpringUtil;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTransferRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTransferUnifiedReqDTO;
 import com.pei.dehaze.framework.tenant.core.util.TenantUtils;
 import com.pei.dehaze.module.pay.api.transfer.dto.PayTransferCreateReqDTO;
 import com.pei.dehaze.module.pay.api.transfer.dto.PayTransferCreateRespDTO;
@@ -21,6 +18,9 @@ import com.pei.dehaze.module.pay.dal.redis.no.PayNoRedisDAO;
 import com.pei.dehaze.module.pay.enums.notify.PayNotifyTypeEnum;
 import com.pei.dehaze.module.pay.enums.transfer.PayTransferStatusEnum;
 import com.pei.dehaze.module.pay.framework.pay.config.PayProperties;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTransferRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTransferUnifiedReqDTO;
 import com.pei.dehaze.module.pay.service.app.PayAppService;
 import com.pei.dehaze.module.pay.service.channel.PayChannelService;
 import com.pei.dehaze.module.pay.service.notify.PayNotifyService;
@@ -107,16 +107,6 @@ public class PayTransferServiceImpl implements PayTransferService {
                 .setChannelPackageInfo(unifiedTransferResp != null ? unifiedTransferResp.getChannelPackageInfo() : null);
     }
 
-    /**
-     * 根据支付渠道的编码，生成支付渠道的回调地址
-     *
-     * @param channel 支付渠道
-     * @return 支付渠道的回调地址  配置地址 + "/" + channel id
-     */
-    private String genChannelTransferNotifyUrl(PayChannelDO channel) {
-        return payProperties.getTransferNotifyUrl() + "/" + channel.getId();
-    }
-
     private PayTransferDO validateTransferCanCreate(PayTransferCreateReqDTO reqDTO, Long appId) {
         PayTransferDO transfer = transferMapper.selectByAppIdAndMerchantOrderId(appId, reqDTO.getMerchantTransferId());
         if (transfer != null) {
@@ -135,6 +125,16 @@ public class PayTransferServiceImpl implements PayTransferService {
         // 如果状态为等待状态：不知道渠道转账是否发起成功
         // 特殊：允许使用相同的 no 再次发起转账，渠道会保证幂等
         return transfer;
+    }
+
+    /**
+     * 根据支付渠道的编码，生成支付渠道的回调地址
+     *
+     * @param channel 支付渠道
+     * @return 支付渠道的回调地址  配置地址 + "/" + channel id
+     */
+    private String genChannelTransferNotifyUrl(PayChannelDO channel) {
+        return payProperties.getTransferNotifyUrl() + "/" + channel.getId();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -240,6 +240,13 @@ public class PayTransferServiceImpl implements PayTransferService {
         notifyService.createPayNotifyTask(PayNotifyTypeEnum.TRANSFER.getType(), transfer.getId());
     }
 
+    public void notifyTransfer(Long channelId, PayTransferRespDTO notify) {
+        // 校验渠道是否有效
+        PayChannelDO channel = channelService.validPayChannel(channelId);
+        // 通知转账结果给对应的业务
+        TenantUtils.execute(channel.getTenantId(), () -> getSelf().notifyTransfer(channel, notify));
+    }
+
     @Override
     public PayTransferDO getTransfer(Long id) {
         return transferMapper.selectById(id);
@@ -281,6 +288,15 @@ public class PayTransferServiceImpl implements PayTransferService {
         syncTransfer(transfer);
     }
 
+    /**
+     * 获得自身的代理对象，解决 AOP 生效问题
+     *
+     * @return 自己
+     */
+    private PayTransferServiceImpl getSelf() {
+        return SpringUtil.getBean(getClass());
+    }
+
     private boolean syncTransfer(PayTransferDO transfer) {
         try {
             // 1. 查询转账订单信息
@@ -298,22 +314,6 @@ public class PayTransferServiceImpl implements PayTransferService {
             log.error("[syncTransfer][transfer({}) 同步转账单状态异常]", transfer.getId(), ex);
             return false;
         }
-    }
-
-    public void notifyTransfer(Long channelId, PayTransferRespDTO notify) {
-        // 校验渠道是否有效
-        PayChannelDO channel = channelService.validPayChannel(channelId);
-        // 通知转账结果给对应的业务
-        TenantUtils.execute(channel.getTenantId(), () -> getSelf().notifyTransfer(channel, notify));
-    }
-
-    /**
-     * 获得自身的代理对象，解决 AOP 生效问题
-     *
-     * @return 自己
-     */
-    private PayTransferServiceImpl getSelf() {
-        return SpringUtil.getBean(getClass());
     }
 
 }

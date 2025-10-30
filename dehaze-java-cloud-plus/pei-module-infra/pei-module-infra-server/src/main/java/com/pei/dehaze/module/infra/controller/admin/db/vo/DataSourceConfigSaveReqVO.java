@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.infra.controller.admin.db.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 数据源配置创建/修改 Request VO")
 @Data

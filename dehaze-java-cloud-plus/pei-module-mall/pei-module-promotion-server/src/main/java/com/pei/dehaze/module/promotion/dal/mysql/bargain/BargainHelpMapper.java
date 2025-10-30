@@ -2,14 +2,14 @@ package com.pei.dehaze.module.promotion.dal.mysql.bargain;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.map.MapUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.promotion.controller.admin.bargain.vo.help.BargainHelpPageReqVO;
 import com.pei.dehaze.module.promotion.dal.dataobject.bargain.BargainHelpDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;
@@ -48,7 +48,7 @@ public interface BargainHelpMapper extends BaseMapperX<BargainHelpDO> {
         // 转换数据
         return CollectionUtils.convertMap(result,
                 record -> MapUtil.getLong(record, "activityId"),
-                record -> MapUtil.getInt(record, "userCount" ));
+                record -> MapUtil.getInt(record, "userCount"));
     }
 
     default Map<Long, Integer> selectUserCountMapByRecordId(Collection<Long> recordIds) {
@@ -63,7 +63,7 @@ public interface BargainHelpMapper extends BaseMapperX<BargainHelpDO> {
         // 转换数据
         return CollectionUtils.convertMap(result,
                 record -> MapUtil.getLong(record, "recordId"),
-                record -> MapUtil.getInt(record, "userCount" ));
+                record -> MapUtil.getInt(record, "userCount"));
     }
 
     default PageResult<BargainHelpDO> selectPage(BargainHelpPageReqVO reqVO) {

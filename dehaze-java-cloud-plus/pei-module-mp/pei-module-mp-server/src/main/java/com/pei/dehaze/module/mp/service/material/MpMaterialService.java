@@ -6,9 +6,9 @@ import com.pei.dehaze.module.mp.controller.admin.material.vo.MpMaterialUploadNew
 import com.pei.dehaze.module.mp.controller.admin.material.vo.MpMaterialUploadPermanentReqVO;
 import com.pei.dehaze.module.mp.controller.admin.material.vo.MpMaterialUploadTemporaryReqVO;
 import com.pei.dehaze.module.mp.dal.dataobject.material.MpMaterialDO;
+import jakarta.validation.Valid;
 import me.chanjar.weixin.common.api.WxConsts;
 
-import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -22,12 +22,12 @@ public interface MpMaterialService {
 
     /**
      * 获得素材的 URL
-     *
+     * <p>
      * 该 URL 来自我们自己的文件服务器存储的 URL，不是公众号存储的 URL
      *
      * @param accountId 公众号账号编号
-     * @param mediaId 公众号素材 id
-     * @param type 文件类型 {@link WxConsts.MediaFileType}
+     * @param mediaId   公众号素材 id
+     * @param type      文件类型 {@link WxConsts.MediaFileType}
      * @return 素材的 URL
      */
     String downloadMaterialUrl(Long accountId, String mediaId, String type);

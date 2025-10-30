@@ -13,15 +13,19 @@ import com.pei.dehaze.module.trade.dal.mysql.delivery.DeliveryExpressTemplateCha
 import com.pei.dehaze.module.trade.dal.mysql.delivery.DeliveryExpressTemplateFreeMapper;
 import com.pei.dehaze.module.trade.dal.mysql.delivery.DeliveryExpressTemplateMapper;
 import com.pei.dehaze.module.trade.service.delivery.bo.DeliveryExpressTemplateRespBO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
-import java.util.*;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
-import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.*;
+import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.convertList;
+import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.diffList;
 import static com.pei.dehaze.module.trade.convert.delivery.DeliveryExpressTemplateConvert.INSTANCE;
 import static com.pei.dehaze.module.trade.enums.ErrorCodeConstants.EXPRESS_TEMPLATE_NAME_DUPLICATE;
 import static com.pei.dehaze.module.trade.enums.ErrorCodeConstants.EXPRESS_TEMPLATE_NOT_EXISTS;
@@ -83,49 +87,6 @@ public class DeliveryExpressTemplateServiceImpl implements DeliveryExpressTempla
         expressTemplateMapper.updateById(updateObj);
     }
 
-    private void updateExpressTemplateFree(Long templateId, List<DeliveryExpressTemplateFreeBaseVO> frees) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<DeliveryExpressTemplateFreeDO> oldList = expressTemplateFreeMapper.selectListByTemplateId(templateId);
-        List<DeliveryExpressTemplateFreeDO> newList = INSTANCE.convertTemplateFreeList(templateId, frees);
-        List<List<DeliveryExpressTemplateFreeDO>> diffList = CollectionUtils.diffList(oldList, newList,
-                (oldVal, newVal) -> ObjectUtil.equal(oldVal.getId(), newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            expressTemplateFreeMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            expressTemplateFreeMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            expressTemplateFreeMapper.deleteBatchIds(convertList(diffList.get(2), DeliveryExpressTemplateFreeDO::getId));
-        }
-    }
-
-    private void updateExpressTemplateCharge(Long templateId, Integer chargeMode, List<DeliveryExpressTemplateChargeBaseVO> charges) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<DeliveryExpressTemplateChargeDO> oldList = expressTemplateChargeMapper.selectListByTemplateId(templateId);
-        List<DeliveryExpressTemplateChargeDO> newList = INSTANCE.convertTemplateChargeList(templateId, chargeMode, charges);
-        List<List<DeliveryExpressTemplateChargeDO>> diffList = diffList(oldList, newList, (oldVal, newVal) -> {
-            boolean same = ObjectUtil.equal(oldVal.getId(), newVal.getId());
-            if (same) {
-                newVal.setChargeMode(chargeMode); // 更新下收费模式
-            }
-            return same;
-        });
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            expressTemplateChargeMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            expressTemplateChargeMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            expressTemplateChargeMapper.deleteBatchIds(convertList(diffList.get(2), DeliveryExpressTemplateChargeDO::getId));
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteDeliveryExpressTemplate(Long id) {
@@ -138,32 +99,6 @@ public class DeliveryExpressTemplateServiceImpl implements DeliveryExpressTempla
         expressTemplateChargeMapper.deleteByTemplateId(id);
         // 删除包邮从表
         expressTemplateFreeMapper.deleteByTemplateId(id);
-    }
-
-    /**
-     * 校验运费模板名是否唯一
-     *
-     * @param name 模板名称
-     * @param id   运费模板编号,可以为 null
-     */
-    private void validateTemplateNameUnique(String name, Long id) {
-        DeliveryExpressTemplateDO template = expressTemplateMapper.selectByName(name);
-        if (template == null) {
-            return;
-        }
-        // 如果 id 为空
-        if (id == null) {
-            throw exception(EXPRESS_TEMPLATE_NAME_DUPLICATE);
-        }
-        if (!template.getId().equals(id)) {
-            throw exception(EXPRESS_TEMPLATE_NAME_DUPLICATE);
-        }
-    }
-
-    private void validateDeliveryExpressTemplateExists(Long id) {
-        if (expressTemplateMapper.selectById(id) == null) {
-            throw exception(EXPRESS_TEMPLATE_NOT_EXISTS);
-        }
     }
 
     @Override
@@ -213,6 +148,75 @@ public class DeliveryExpressTemplateServiceImpl implements DeliveryExpressTempla
 
         // 组合运费模板配置 RespBO
         return INSTANCE.convertMap(areaId, templateList, chargeList, freeList);
+    }
+
+    private void validateDeliveryExpressTemplateExists(Long id) {
+        if (expressTemplateMapper.selectById(id) == null) {
+            throw exception(EXPRESS_TEMPLATE_NOT_EXISTS);
+        }
+    }
+
+    private void updateExpressTemplateCharge(Long templateId, Integer chargeMode, List<DeliveryExpressTemplateChargeBaseVO> charges) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<DeliveryExpressTemplateChargeDO> oldList = expressTemplateChargeMapper.selectListByTemplateId(templateId);
+        List<DeliveryExpressTemplateChargeDO> newList = INSTANCE.convertTemplateChargeList(templateId, chargeMode, charges);
+        List<List<DeliveryExpressTemplateChargeDO>> diffList = diffList(oldList, newList, (oldVal, newVal) -> {
+            boolean same = ObjectUtil.equal(oldVal.getId(), newVal.getId());
+            if (same) {
+                newVal.setChargeMode(chargeMode); // 更新下收费模式
+            }
+            return same;
+        });
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            expressTemplateChargeMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            expressTemplateChargeMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            expressTemplateChargeMapper.deleteBatchIds(convertList(diffList.get(2), DeliveryExpressTemplateChargeDO::getId));
+        }
+    }
+
+    private void updateExpressTemplateFree(Long templateId, List<DeliveryExpressTemplateFreeBaseVO> frees) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<DeliveryExpressTemplateFreeDO> oldList = expressTemplateFreeMapper.selectListByTemplateId(templateId);
+        List<DeliveryExpressTemplateFreeDO> newList = INSTANCE.convertTemplateFreeList(templateId, frees);
+        List<List<DeliveryExpressTemplateFreeDO>> diffList = CollectionUtils.diffList(oldList, newList,
+                (oldVal, newVal) -> ObjectUtil.equal(oldVal.getId(), newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            expressTemplateFreeMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            expressTemplateFreeMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            expressTemplateFreeMapper.deleteBatchIds(convertList(diffList.get(2), DeliveryExpressTemplateFreeDO::getId));
+        }
+    }
+
+    /**
+     * 校验运费模板名是否唯一
+     *
+     * @param name 模板名称
+     * @param id   运费模板编号,可以为 null
+     */
+    private void validateTemplateNameUnique(String name, Long id) {
+        DeliveryExpressTemplateDO template = expressTemplateMapper.selectByName(name);
+        if (template == null) {
+            return;
+        }
+        // 如果 id 为空
+        if (id == null) {
+            throw exception(EXPRESS_TEMPLATE_NAME_DUPLICATE);
+        }
+        if (!template.getId().equals(id)) {
+            throw exception(EXPRESS_TEMPLATE_NAME_DUPLICATE);
+        }
     }
 
 }

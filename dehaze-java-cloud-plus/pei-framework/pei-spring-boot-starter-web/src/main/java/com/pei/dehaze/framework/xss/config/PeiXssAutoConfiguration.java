@@ -1,11 +1,11 @@
 package com.pei.dehaze.framework.xss.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pei.dehaze.framework.common.enums.WebFilterOrderEnum;
 import com.pei.dehaze.framework.xss.core.clean.JsoupXssCleaner;
 import com.pei.dehaze.framework.xss.core.clean.XssCleaner;
 import com.pei.dehaze.framework.xss.core.filter.XssFilter;
 import com.pei.dehaze.framework.xss.core.json.XssStringJsonDeserializer;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -21,7 +21,8 @@ import static com.pei.dehaze.framework.web.config.PeiWebAutoConfiguration.create
 
 @AutoConfiguration
 @EnableConfigurationProperties(XssProperties.class)
-@ConditionalOnProperty(prefix = "pei.xss", name = "enable", havingValue = "true", matchIfMissing = true) // 设置为 false 时，禁用
+@ConditionalOnProperty(prefix = "pei.xss", name = "enable", havingValue = "true", matchIfMissing = true)
+// 设置为 false 时，禁用
 public class PeiXssAutoConfiguration implements WebMvcConfigurer {
 
     /**

@@ -2,10 +2,9 @@ package com.pei.dehaze.framework.web.core.filter;
 
 import cn.hutool.core.util.StrUtil;
 import com.pei.dehaze.framework.web.config.WebProperties;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 过滤 /admin-api、/app-api 等 API 请求的过滤器

@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.crm.dal.mysql.business;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
@@ -9,7 +10,6 @@ import com.pei.dehaze.module.crm.controller.admin.statistics.vo.funnel.CrmStatis
 import com.pei.dehaze.module.crm.dal.dataobject.business.CrmBusinessDO;
 import com.pei.dehaze.module.crm.enums.common.CrmBizTypeEnum;
 import com.pei.dehaze.module.crm.util.CrmPermissionUtils;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;

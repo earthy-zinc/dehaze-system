@@ -1,10 +1,12 @@
-`pei-module-member` 是一个 **基于 Spring Boot 的会员中心模块（Member Center Module）**，其核心作用是为企业提供统一的用户管理、等级体系、积分系统、签到奖励等能力。该模块与商城、支付、微信公众号等多个业务系统深度集成，并支持多租户、分布式事务、异步处理等企业级功能。
+`pei-module-member` 是一个 **基于 Spring Boot 的会员中心模块（Member Center Module）**
+，其核心作用是为企业提供统一的用户管理、等级体系、积分系统、签到奖励等能力。该模块与商城、支付、微信公众号等多个业务系统深度集成，并支持多租户、分布式事务、异步处理等企业级功能。
 
 ---
 
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：构建统一的会员中心系统，支持：
     - 用户注册/登录/注销
     - 会员等级管理（升级规则、折扣设置）
@@ -14,6 +16,7 @@
     - 收货地址管理（用于商城下单）
 
 ### 🧩 技术栈依赖
+
 - **Spring Boot + Spring Cloud Gateway + Nacos**
 - **数据访问层**：
     - MyBatis Plus + MySQL + Redis
@@ -70,7 +73,6 @@ src/main/java/
     └── MemberServerApplication.java // 启动类
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -78,6 +80,7 @@ src/main/java/
 ### 1️⃣ `api.user` 包 —— 用户信息接口定义
 
 #### 示例：`MemberUserRespDTO.java`
+
 ```java
 @Schema(description = "RPC 服务 - 用户信息 Response DTO")
 @Data
@@ -111,7 +114,6 @@ public class MemberUserRespDTO {
 }
 ```
 
-
 - **作用**：对外暴露会员用户信息 DTO。
 - **用途**：
     - 供其它模块远程调用（如商城、订单模块）
@@ -122,6 +124,7 @@ public class MemberUserRespDTO {
 ### 2️⃣ `controller.admin.user` 包 —— 用户管理后台接口
 
 #### 示例：`MemberUserController.java`
+
 ```java
 @Tag(name = "管理后台 - 会员用户")
 @RestController
@@ -141,7 +144,6 @@ public class MemberUserController {
 }
 ```
 
-
 - **作用**：对外暴露 `/member/user/**` 接口，实现管理员相关的用户操作。
 - **权限控制**：
     - 使用 `@PreAuthorize` 校验用户是否有操作权限
@@ -153,6 +155,7 @@ public class MemberUserController {
 ### 3️⃣ `service.user` 包 —— 用户服务逻辑
 
 #### 示例：`MemberUserServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -182,7 +185,6 @@ public class MemberUserServiceImpl implements MemberUserService {
 }
 ```
 
-
 - **作用**：实现会员用户的创建、更新、删除、查询等操作。
 - **关键逻辑**：
     - 使用 `PasswordEncoder` 加密密码
@@ -195,6 +197,7 @@ public class MemberUserServiceImpl implements MemberUserService {
 ### 4️⃣ `dal.dataobject.user` 包 —— 用户数据库映射对象
 
 #### 示例：`MemberUserDO.java`
+
 ```java
 @TableName("member_user")
 @KeySequence("member_user_seq")
@@ -264,7 +267,6 @@ public class MemberUserDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `member_user` 表。
 - **字段说明**：
     - `mobile`: 用户手机号（唯一）
@@ -278,6 +280,7 @@ public class MemberUserDO extends BaseDO {
 ### 5️⃣ `service.level` 包 —— 会员等级服务逻辑
 
 #### 示例：`MemberLevelServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -306,7 +309,6 @@ public class MemberLevelServiceImpl implements MemberLevelService {
 }
 ```
 
-
 - **作用**：实现会员等级的创建、更新、删除、查询等操作。
 - **关键逻辑**：
     - 自动匹配用户当前等级
@@ -319,6 +321,7 @@ public class MemberLevelServiceImpl implements MemberLevelService {
 ### 6️⃣ `dal.dataobject.level` 包 —— 会员等级数据库映射对象
 
 #### 示例：`MemberLevelDO.java`
+
 ```java
 @TableName("member_level")
 @KeySequence("member_level_seq")
@@ -357,7 +360,6 @@ public class MemberLevelDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `member_level` 表。
 - **字段说明**：
     - `level`: 等级数值（数字越大等级越高）
@@ -370,6 +372,7 @@ public class MemberLevelDO extends BaseDO {
 ### 7️⃣ `service.point` 包 —— 积分服务逻辑
 
 #### 示例：`MemberPointRecordServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -404,7 +407,6 @@ public class MemberPointRecordServiceImpl implements MemberPointRecordService {
 }
 ```
 
-
 - **作用**：实现会员积分的增减、查询、记录等操作。
 - **关键逻辑**：
     - 支持多种积分来源（签到、邀请、下单）
@@ -417,6 +419,7 @@ public class MemberPointRecordServiceImpl implements MemberPointRecordService {
 ### 8️⃣ `dal.dataobject.point` 包 —— 积分记录数据库映射对象
 
 #### 示例：`MemberPointRecordDO.java`
+
 ```java
 @TableName("member_point_record")
 @KeySequence("member_point_record_seq")
@@ -460,7 +463,6 @@ public class MemberPointRecordDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `member_point_record` 表。
 - **字段说明**：
     - `userId`: 关联 `member_user.id`
@@ -473,6 +475,7 @@ public class MemberPointRecordDO extends BaseDO {
 ### 9️⃣ `service.signin` 包 —— 签到服务逻辑
 
 #### 示例：`MemberSignInRecordServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -513,7 +516,6 @@ public class MemberSignInRecordServiceImpl implements MemberSignInRecordService 
 }
 ```
 
-
 - **作用**：实现每日签到、签到统计、签到奖励等功能。
 - **流程说明**：
     - 每日只能签到一次
@@ -526,6 +528,7 @@ public class MemberSignInRecordServiceImpl implements MemberSignInRecordService 
 ### 🔟 `enums.point` 包 —— 积分类型枚举
 
 #### 示例：`MemberPointBizTypeEnum.java`
+
 ```java
 @Getter
 @AllArgsConstructor
@@ -543,7 +546,6 @@ public enum MemberPointBizTypeEnum implements ArrayValuable<Integer> {
 }
 ```
 
-
 - **作用**：统一管理积分业务类型。
 - **优势**：
     - 减少魔法数字
@@ -554,6 +556,7 @@ public enum MemberPointBizTypeEnum implements ArrayValuable<Integer> {
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ 用户注册流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -565,8 +568,8 @@ graph TD
     G --> H[响应客户端]
 ```
 
-
 ### 2️⃣ 签到奖励流程
+
 ```mermaid
 graph TD
     A[用户点击签到] --> B[进入 AppMemberSignInRecordController]
@@ -576,7 +579,6 @@ graph TD
     E --> F[更新用户总积分]
     F --> G[响应客户端]
 ```
-
 
 ---
 
@@ -597,29 +599,29 @@ graph TD
     K --> L[member_sign_in_record 表]
 ```
 
-
 ---
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `api.user` | 用户信息接口定义 | `MemberUserRespDTO` |
-| `controller.admin.user` | 用户管理后台 | `MemberUserController` |
-| `service.user` | 用户服务逻辑 | `MemberUserServiceImpl` |
-| `dal.dataobject.user` | 用户数据 | `MemberUserDO` |
-| `service.level` | 会员等级服务 | `MemberLevelServiceImpl` |
-| `dal.dataobject.level` | 会员等级数据 | `MemberLevelDO` |
-| `service.point` | 积分服务逻辑 | `MemberPointRecordServiceImpl` |
-| `dal.dataobject.point` | 积分记录数据 | `MemberPointRecordDO` |
-| `service.signin` | 签到服务逻辑 | `MemberSignInRecordServiceImpl` |
-| `dal.dataobject.signin` | 签到记录数据 | `MemberSignInRecordDO` |
+| 包名                      | 功能       | 关键类                             |
+|-------------------------|----------|---------------------------------|
+| `api.user`              | 用户信息接口定义 | `MemberUserRespDTO`             |
+| `controller.admin.user` | 用户管理后台   | `MemberUserController`          |
+| `service.user`          | 用户服务逻辑   | `MemberUserServiceImpl`         |
+| `dal.dataobject.user`   | 用户数据     | `MemberUserDO`                  |
+| `service.level`         | 会员等级服务   | `MemberLevelServiceImpl`        |
+| `dal.dataobject.level`  | 会员等级数据   | `MemberLevelDO`                 |
+| `service.point`         | 积分服务逻辑   | `MemberPointRecordServiceImpl`  |
+| `dal.dataobject.point`  | 积分记录数据   | `MemberPointRecordDO`           |
+| `service.signin`        | 签到服务逻辑   | `MemberSignInRecordServiceImpl` |
+| `dal.dataobject.signin` | 签到记录数据   | `MemberSignInRecordDO`          |
 
 ---
 
 ## 🧾 模块实现原理详解
 
 ### 1️⃣ 用户注册流程
+
 - **步骤**：
     1. 用户提交注册请求
     2. 进入 `MemberAuthController`
@@ -629,6 +631,7 @@ graph TD
     6. 返回 token 和用户信息
 
 ### 2️⃣ 签到奖励流程
+
 - **步骤**：
     1. 用户点击签到按钮
     2. 进入 `AppMemberSignInRecordController.create(...)`
@@ -638,6 +641,7 @@ graph TD
     6. 更新用户总积分并返回
 
 ### 3️⃣ 会员等级提升流程
+
 - **步骤**：
     1. 用户完成某项任务（如签到、邀请）
     2. 增加经验（通过 `MemberExperienceRecordService.create(...)`）
@@ -650,13 +654,13 @@ graph TD
 
 ## ✅ 建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多租户增强 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 单元测试 | 当前代码未提供单元测试，建议补充测试用例 |
-| ✅ 流程监控 | 增加签到率、等级转化率、积分兑换率等指标统计 |
+| 改进点      | 描述                                                   |
+|----------|------------------------------------------------------|
+| ✅ 多租户增强  | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
+| ✅ 性能优化   | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 单元测试   | 当前代码未提供单元测试，建议补充测试用例                                 |
+| ✅ 流程监控   | 增加签到率、等级转化率、积分兑换率等指标统计                               |
 
 ---
 
@@ -664,14 +668,15 @@ graph TD
 
 `pei-module-member` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 用户注册 | MemberUserDO + MemberUserService | 管理用户生命周期 |
-| 会员等级 | MemberLevelDO + MemberLevelService | 管理用户等级、折扣、经验 |
-| 积分管理 | MemberPointRecordDO + MemberPointRecordService | 算法计算、积分发放、兑换 |
-| 签到奖励 | MemberSignInRecordDO + MemberSignInRecordService | 每日签到送积分 |
-| 用户标签 | MemberTagDO + MemberTagService | 用户分组、精准营销 |
-| 用户分组 | MemberGroupDO + MemberGroupService | 用于会员分类运营 |
-| 地址管理 | MemberAddressDO + MemberAddressService | 用于商城下单、物流配送 |
+| 功能   | 技术实现                                             | 用途           |
+|------|--------------------------------------------------|--------------|
+| 用户注册 | MemberUserDO + MemberUserService                 | 管理用户生命周期     |
+| 会员等级 | MemberLevelDO + MemberLevelService               | 管理用户等级、折扣、经验 |
+| 积分管理 | MemberPointRecordDO + MemberPointRecordService   | 算法计算、积分发放、兑换 |
+| 签到奖励 | MemberSignInRecordDO + MemberSignInRecordService | 每日签到送积分      |
+| 用户标签 | MemberTagDO + MemberTagService                   | 用户分组、精准营销    |
+| 用户分组 | MemberGroupDO + MemberGroupService               | 用于会员分类运营     |
+| 地址管理 | MemberAddressDO + MemberAddressService           | 用于商城下单、物流配送  |
 
-它是一个轻量但功能完整的会员中心模块，适用于电商、社交、CRM、ERP 等需要用户体系的场景。如果你有具体某个类（如 `MemberUserServiceImpl`、`MemberSignInRecordServiceImpl`）想要深入了解，欢迎继续提问！
+它是一个轻量但功能完整的会员中心模块，适用于电商、社交、CRM、ERP 等需要用户体系的场景。如果你有具体某个类（如
+`MemberUserServiceImpl`、`MemberSignInRecordServiceImpl`）想要深入了解，欢迎继续提问！

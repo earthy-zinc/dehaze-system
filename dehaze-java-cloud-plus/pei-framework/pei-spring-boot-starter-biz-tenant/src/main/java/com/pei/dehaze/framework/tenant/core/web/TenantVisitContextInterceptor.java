@@ -44,7 +44,7 @@ public class TenantVisitContextInterceptor implements HandlerInterceptor {
 
         // 校验用户是否可切换租户
         if (!securityFrameworkService.hasAnyPermissions(PERMISSION)) {
-            throw exception0(GlobalErrorCodeConstants.FORBIDDEN.getCode(), "您无权切换租户");
+            throw exception0(GlobalErrorCodeConstants.FORBIDDEN.code(), "您无权切换租户");
         }
 
         // 【重点】切换租户编号

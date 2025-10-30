@@ -1,4 +1,5 @@
-`pei-spring-boot-starter-rpc` 是一个 **远程过程调用（RPC）模块**，其核心作用是为微服务架构提供统一的远程调用能力。它基于 Spring Cloud OpenFeign 构建，封装了常见的 **负载均衡、请求拦截、参数校验、异常处理** 等功能，确保各模块在进行跨服务通信时具备：
+`pei-spring-boot-starter-rpc` 是一个 **远程过程调用（RPC）模块**，其核心作用是为微服务架构提供统一的远程调用能力。它基于
+Spring Cloud OpenFeign 构建，封装了常见的 **负载均衡、请求拦截、参数校验、异常处理** 等功能，确保各模块在进行跨服务通信时具备：
 
 - 高可用性：集成 `LoadBalancer` 实现服务发现与容错。
 - 可观测性：支持请求头透传（如 tag、traceId）。
@@ -10,6 +11,7 @@
 ## 一、模块概述
 
 ### ✅ 模块定位
+
 - **目标**：为所有模块提供统一的 RPC 调用模板，简化 Feign 使用方式。
 - **应用场景**：
     - 微服务间通过 RESTful API 进行通信。
@@ -34,7 +36,6 @@ src/main/java/
     │   └── package-info.java
     └── package-info.java    // 模块描述
 ```
-
 
 目前该模块仅包含 **基础依赖和包结构**，尚未实现具体的功能类。但根据命名规范和模块职责，我们可以推断出后续可能的扩展方向。
 
@@ -68,7 +69,6 @@ src/main/java/
         └── FeignUtils.java       // Feign 相关工具方法
 ```
 
-
 ---
 
 ## 四、关键包详解（建议实现内容）
@@ -76,6 +76,7 @@ src/main/java/
 ### 1️⃣ `config` 包
 
 #### 🔹 `RpcProperties.java`
+
 ```java
 @ConfigurationProperties(prefix = "pei.rpc")
 @Data
@@ -94,8 +95,8 @@ public class RpcProperties {
       enableTagHeader: true
   ```
 
-
 #### 🔹 `RpcClientAutoConfiguration.java`
+
 ```java
 @AutoConfiguration
 @EnableConfigurationProperties(RpcProperties.class)
@@ -121,6 +122,7 @@ public class RpcClientAutoConfiguration {
 ### 2️⃣ `client` 包
 
 #### 🔹 `RpcApi.java`
+
 ```java
 @FeignClient(name = "${pei.rpc.service-name}", configuration = RpcConfig.class)
 public interface RpcApi<T> {
@@ -138,8 +140,8 @@ public interface RpcApi<T> {
   }
   ```
 
-
 #### 🔹 `RpcException.java`
+
 ```java
 public class RpcException extends RuntimeException {
     private final int code;
@@ -163,6 +165,7 @@ public class RpcException extends RuntimeException {
 ### 3️⃣ `context` 包
 
 #### 🔹 `RpcContextHolder.java`
+
 ```java
 public class RpcContextHolder {
     private static final ThreadLocal<String> TAG_CONTEXT = TransmittableThreadLocal.withInitial(() -> null);
@@ -204,6 +207,7 @@ public class RpcContextHolder {
 ### 4️⃣ `filter` 包
 
 #### 🔹 `RpcRequestInterceptor.java`
+
 ```java
 public class RpcRequestInterceptor implements RequestInterceptor {
     @Override
@@ -225,6 +229,7 @@ public class RpcRequestInterceptor implements RequestInterceptor {
 - **透传机制**：下游服务通过 `RpcWebFilter` 解析 header 并继续传递。
 
 #### 🔹 `RpcWebFilter.java`
+
 ```java
 public class RpcWebFilter extends OncePerRequestFilter {
     @Override
@@ -258,12 +263,12 @@ public class RpcWebFilter extends OncePerRequestFilter {
   Authorization: Bearer abcdef123456
   ```
 
-
 ---
 
 ### 5️⃣ `loadbalancer` 包
 
 #### 🔹 `RpcLoadBalancerFactory.java`
+
 ```java
 public class RpcLoadBalancerFactory extends LoadBalancerClientFactory {
     private final RpcProperties properties;
@@ -284,6 +289,7 @@ public class RpcLoadBalancerFactory extends LoadBalancerClientFactory {
 - **用途**：在服务发现时优先匹配 tag 相同的服务实例。
 
 #### 🔹 `RpcLoadBalancerClient.java`
+
 ```java
 public class RpcLoadBalancerClient implements ReactorServiceInstanceLoadBalancer {
     private final ReactiveLoadBalancer<ServiceInstance> reactiveLoadBalancer;
@@ -323,6 +329,7 @@ public class RpcLoadBalancerClient implements ReactorServiceInstanceLoadBalancer
 ### 6️⃣ `util` 包
 
 #### 🔹 `RpcUtils.java`
+
 ```java
 public class RpcUtils {
     public static <T> T execute(Callable<T> callable) {
@@ -349,7 +356,6 @@ public class RpcUtils {
   RpcUtils.setTag("dev");
   RpcUtils.setToken("abc123");
   ```
-
 
 ---
 
@@ -378,25 +384,25 @@ graph TD
     N --> O[调用底层服务]
 ```
 
-
 ---
 
 ## 六、模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `config` | 自动配置 | `RpcClientAutoConfiguration`, `RpcProperties` |
-| `client` | Feign 客户端抽象 | `RpcApi`, `RpcException` |
-| `context` | 上下文管理 | `RpcContextHolder` |
-| `filter` | Feign 调用增强 | `RpcRequestInterceptor`, `RpcWebFilter` |
-| `loadbalancer` | 负载均衡 | `RpcLoadBalancerClient`, `RpcLoadBalancerFactory` |
-| `util` | 工具类 | `RpcUtils` |
+| 包名             | 功能          | 关键类                                               |
+|----------------|-------------|---------------------------------------------------|
+| `config`       | 自动配置        | `RpcClientAutoConfiguration`, `RpcProperties`     |
+| `client`       | Feign 客户端抽象 | `RpcApi`, `RpcException`                          |
+| `context`      | 上下文管理       | `RpcContextHolder`                                |
+| `filter`       | Feign 调用增强  | `RpcRequestInterceptor`, `RpcWebFilter`           |
+| `loadbalancer` | 负载均衡        | `RpcLoadBalancerClient`, `RpcLoadBalancerFactory` |
+| `util`         | 工具类         | `RpcUtils`                                        |
 
 ---
 
 ## 七、使用方式（示例）
 
 ### 1️⃣ 应用配置
+
 ```yaml
 pei:
   rpc:
@@ -404,8 +410,8 @@ pei:
     enableTagHeader: true
 ```
 
-
 ### 2️⃣ Feign 调用定义
+
 ```java
 @FeignClient(name = "system-server", path = "/api/user")
 public interface UserServiceRpc extends RpcApi<UserDTO> {
@@ -414,8 +420,8 @@ public interface UserServiceRpc extends RpcApi<UserDTO> {
 }
 ```
 
-
 ### 3️⃣ 临时设置 tag & token
+
 ```java
 RpcUtils.setTag("dev");
 RpcUtils.setToken("abc123");
@@ -428,24 +434,24 @@ try {
 }
 ```
 
-
 ---
 
 ## 八、建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 补充完整代码 | 当前模块只有 pom.xml，缺少 Feign 客户端、拦截器、负载均衡器等核心类。 |
-| ✅ 异常转换 | 在 Feign 调用失败时，将 HTTP 错误码转为 `RpcException`，便于统一处理。 |
-| ✅ 日志打印 | 在拦截器中记录请求耗时、URL、tag、token 筃 信息，便于调试。 |
-| ✅ 单元测试覆盖 | 对 `RpcUtils`, `RpcRequestInterceptor`, `RpcLoadBalancerClient` 编写单元测试，确保稳定性。 |
-| ✅ 支持 fallback | 提供默认 fallback 实现，防止因下游服务不可用导致雪崩效应。 |
+| 改进点           | 描述                                                                           |
+|---------------|------------------------------------------------------------------------------|
+| ✅ 补充完整代码      | 当前模块只有 pom.xml，缺少 Feign 客户端、拦截器、负载均衡器等核心类。                                   |
+| ✅ 异常转换        | 在 Feign 调用失败时，将 HTTP 错误码转为 `RpcException`，便于统一处理。                            |
+| ✅ 日志打印        | 在拦截器中记录请求耗时、URL、tag、token 筃 信息，便于调试。                                         |
+| ✅ 单元测试覆盖      | 对 `RpcUtils`, `RpcRequestInterceptor`, `RpcLoadBalancerClient` 编写单元测试，确保稳定性。 |
+| ✅ 支持 fallback | 提供默认 fallback 实现，防止因下游服务不可用导致雪崩效应。                                           |
 
 ---
 
 ## 九、总结
 
-虽然 `pei-spring-boot-starter-rpc` 模块目前只有 pom.xml 文件，但从命名和结构来看，它的定位是 **封装远程调用的核心能力**，包括：
+虽然 `pei-spring-boot-starter-rpc` 模块目前只有 pom.xml 文件，但从命名和结构来看，它的定位是 **封装远程调用的核心能力**
+，包括：
 
 - **Feign 客户端标准接口**
 - **Token & tag 透传机制**

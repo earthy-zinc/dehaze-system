@@ -10,16 +10,15 @@ import java.util.Objects;
 
 /**
  * 环境 Utils
- *
+ * <p>
  * copy from pei-spring-boot-starter-env 的 EnvUtils 类
  *
  * @author earthyzinc
  */
 public class EnvUtils {
 
-    private static final String HEADER_TAG = "tag";
-
     public static final String HOST_NAME_VALUE = "${HOSTNAME}";
+    private static final String HEADER_TAG = "tag";
 
     public static String getTag(HttpHeaders headers) {
         String tag = headers.getFirst(HEADER_TAG);
@@ -28,12 +27,12 @@ public class EnvUtils {
         return Objects.equals(tag, HOST_NAME_VALUE) ? getHostName() : tag;
     }
 
-    public static String getTag(ServiceInstance instance) {
-        return instance.getMetadata().get(HEADER_TAG);
-    }
-
     public static String getHostName() {
         return StrUtil.blankToDefault(NetUtil.getLocalHostName(), IdUtil.fastSimpleUUID());
+    }
+
+    public static String getTag(ServiceInstance instance) {
+        return instance.getMetadata().get(HEADER_TAG);
     }
 
 }

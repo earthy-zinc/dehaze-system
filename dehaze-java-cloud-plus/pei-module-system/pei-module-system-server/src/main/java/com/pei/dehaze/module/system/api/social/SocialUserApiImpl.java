@@ -5,10 +5,9 @@ import com.pei.dehaze.module.system.api.social.dto.SocialUserBindReqDTO;
 import com.pei.dehaze.module.system.api.social.dto.SocialUserRespDTO;
 import com.pei.dehaze.module.system.api.social.dto.SocialUserUnbindReqDTO;
 import com.pei.dehaze.module.system.service.social.SocialUserService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 

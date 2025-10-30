@@ -119,14 +119,25 @@ public class SocialUserServiceImpl implements SocialUserService {
                 socialUserBind != null ? socialUserBind.getUserId() : null);
     }
 
+    @Override
+    public SocialUserDO getSocialUser(Long id) {
+        return socialUserMapper.selectById(id);
+    }
+
+    // ==================== 社交用户 CRUD ====================
+
+    @Override
+    public PageResult<SocialUserDO> getSocialUserPage(SocialUserPageReqVO pageReqVO) {
+        return socialUserMapper.selectPage(pageReqVO);
+    }
+
     /**
-     * 授权获得对应的社交用户
-     * 如果授权失败，则会抛出 {@link ServiceException} 异常
+     * 授权获得对应的社交用户 如果授权失败，则会抛出 {@link ServiceException} 异常
      *
      * @param socialType 社交平台的类型 {@link SocialTypeEnum}
-     * @param userType 用户类型
-     * @param code     授权码
-     * @param state    state
+     * @param userType   用户类型
+     * @param code       授权码
+     * @param state      state
      * @return 授权用户
      */
     @NotNull
@@ -156,18 +167,6 @@ public class SocialUserServiceImpl implements SocialUserService {
             socialUserMapper.updateById(socialUser);
         }
         return socialUser;
-    }
-
-    // ==================== 社交用户 CRUD ====================
-
-    @Override
-    public SocialUserDO getSocialUser(Long id) {
-        return socialUserMapper.selectById(id);
-    }
-
-    @Override
-    public PageResult<SocialUserDO> getSocialUserPage(SocialUserPageReqVO pageReqVO) {
-        return socialUserMapper.selectPage(pageReqVO);
     }
 
 }

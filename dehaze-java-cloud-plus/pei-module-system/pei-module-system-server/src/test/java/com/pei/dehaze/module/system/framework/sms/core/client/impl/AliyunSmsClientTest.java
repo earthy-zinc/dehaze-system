@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.system.framework.sms.core.client.impl;
 
+import com.google.common.collect.Lists;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.framework.common.util.http.HttpUtils;
 import com.pei.dehaze.framework.test.core.ut.BaseMockitoUnitTest;
@@ -8,7 +9,6 @@ import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsSendRespDTO
 import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
 import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.pei.dehaze.module.system.framework.sms.core.property.SmsChannelProperties;
-import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.MockedStatic;

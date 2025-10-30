@@ -12,9 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * {@link DataPermission} 注解的拦截器
- * 1. 在执行方法前，将 @DataPermission 注解入栈
- * 2. 在执行方法后，将 @DataPermission 注解出栈
+ * {@link DataPermission} 注解的拦截器 1. 在执行方法前，将 @DataPermission 注解入栈 2. 在执行方法后，将 @DataPermission 注解出栈
  *
  * @author earthyzinc
  */

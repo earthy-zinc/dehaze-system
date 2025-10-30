@@ -20,12 +20,12 @@ import com.pei.dehaze.module.system.service.permission.RoleService;
 import com.pei.dehaze.module.system.service.tenant.handler.TenantInfoHandler;
 import com.pei.dehaze.module.system.service.tenant.handler.TenantMenuHandler;
 import com.pei.dehaze.module.system.service.user.AdminUserService;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;

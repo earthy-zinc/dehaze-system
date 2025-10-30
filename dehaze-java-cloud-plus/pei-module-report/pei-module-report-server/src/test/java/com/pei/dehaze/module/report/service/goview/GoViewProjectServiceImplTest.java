@@ -7,10 +7,9 @@ import com.pei.dehaze.module.report.controller.admin.goview.vo.project.GoViewPro
 import com.pei.dehaze.module.report.controller.admin.goview.vo.project.GoViewProjectUpdateReqVO;
 import com.pei.dehaze.module.report.dal.dataobject.goview.GoViewProjectDO;
 import com.pei.dehaze.module.report.dal.mysql.goview.GoViewProjectMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.util.object.ObjectUtils.cloneIgnoreId;
 import static com.pei.dehaze.framework.test.core.util.AssertUtils.assertPojoEquals;

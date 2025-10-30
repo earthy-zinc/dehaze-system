@@ -1,6 +1,9 @@
 package com.pei.dehaze.module.crm.service.product;
 
 import cn.hutool.core.collection.CollUtil;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.crm.controller.admin.product.vo.product.CrmProductPageReqVO;
@@ -15,9 +18,6 @@ import com.pei.dehaze.module.crm.framework.permission.core.annotations.CrmPermis
 import com.pei.dehaze.module.crm.service.permission.CrmPermissionService;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,22 +105,6 @@ public class CrmProductServiceImpl implements CrmProductService {
         return product;
     }
 
-    private void validateProductNoDuplicate(Long id, String no) {
-        CrmProductDO product = productMapper.selectByNo(no);
-        if (product == null
-                || product.getId().equals(id)) {
-            return;
-        }
-        throw exception(PRODUCT_NO_EXISTS);
-    }
-
-    private void validateProductCategoryExists(Long categoryId) {
-        CrmProductCategoryDO category = productCategoryService.getProductCategory(categoryId);
-        if (category == null) {
-            throw exception(PRODUCT_CATEGORY_NOT_EXISTS);
-        }
-    }
-
     @Override
     @LogRecord(type = CRM_PRODUCT_TYPE, subType = CRM_PRODUCT_DELETE_SUB_TYPE, bizNo = "{{#id}}",
             success = CRM_PRODUCT_DELETE_SUCCESS)
@@ -136,6 +120,14 @@ public class CrmProductServiceImpl implements CrmProductService {
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_PRODUCT, bizId = "#id", level = CrmPermissionLevelEnum.READ)
     public CrmProductDO getProduct(Long id) {
         return productMapper.selectById(id);
+    }
+
+    @Override
+    public List<CrmProductDO> getProductList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        return productMapper.selectBatchIds(ids);
     }
 
     @Override
@@ -172,12 +164,20 @@ public class CrmProductServiceImpl implements CrmProductService {
         return list;
     }
 
-    @Override
-    public List<CrmProductDO> getProductList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return Collections.emptyList();
+    private void validateProductNoDuplicate(Long id, String no) {
+        CrmProductDO product = productMapper.selectByNo(no);
+        if (product == null
+                || product.getId().equals(id)) {
+            return;
         }
-        return productMapper.selectBatchIds(ids);
+        throw exception(PRODUCT_NO_EXISTS);
+    }
+
+    private void validateProductCategoryExists(Long categoryId) {
+        CrmProductCategoryDO category = productCategoryService.getProductCategory(categoryId);
+        if (category == null) {
+            throw exception(PRODUCT_CATEGORY_NOT_EXISTS);
+        }
     }
 
 }

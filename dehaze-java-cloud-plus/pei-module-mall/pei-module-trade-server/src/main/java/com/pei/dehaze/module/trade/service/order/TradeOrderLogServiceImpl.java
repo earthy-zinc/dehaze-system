@@ -4,9 +4,9 @@ import com.pei.dehaze.module.trade.convert.order.TradeOrderLogConvert;
 import com.pei.dehaze.module.trade.dal.dataobject.order.TradeOrderLogDO;
 import com.pei.dehaze.module.trade.dal.mysql.order.TradeOrderLogMapper;
 import com.pei.dehaze.module.trade.service.order.bo.TradeOrderLogCreateReqBO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 /**

@@ -1,6 +1,8 @@
 package com.pei.dehaze.module.promotion.dal.mysql.coupon;
 
 import cn.hutool.core.collection.CollUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
@@ -8,8 +10,6 @@ import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.promotion.controller.admin.coupon.vo.template.CouponTemplatePageReqVO;
 import com.pei.dehaze.module.promotion.dal.dataobject.coupon.CouponTemplateDO;
 import com.pei.dehaze.module.promotion.enums.coupon.CouponTemplateValidityTypeEnum;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.time.LocalDateTime;
@@ -40,6 +40,19 @@ public interface CouponTemplateMapper extends BaseMapperX<CouponTemplateDO> {
                 .orderByDesc(CouponTemplateDO::getId));
     }
 
+    static Consumer<LambdaQueryWrapper<CouponTemplateDO>> buildCanTakeQueryConsumer(List<Integer> canTakeTypes) {
+        Consumer<LambdaQueryWrapper<CouponTemplateDO>> canTakeConsumer = null;
+        if (CollUtil.isNotEmpty(canTakeTypes)) {
+            canTakeConsumer = w ->
+                    w.eq(CouponTemplateDO::getStatus, CommonStatusEnum.ENABLE.getStatus()) // 1. 状态为可用的
+                            .in(CouponTemplateDO::getTakeType, canTakeTypes) // 2. 领取方式一致
+                            .and(ww -> ww.gt(CouponTemplateDO::getValidEndTime, LocalDateTime.now())  // 3.1 未过期
+                                    .or().eq(CouponTemplateDO::getValidityType, CouponTemplateValidityTypeEnum.TERM.getType())) // 3.2 领取之后
+                            .apply(" (take_count < total_count OR total_count = -1)"); // 4. 剩余数量大于 0，或者无限领取
+        }
+        return canTakeConsumer;
+    }
+
     default void updateTakeCount(Long id, Integer incrCount) {
         update(null, new LambdaUpdateWrapper<CouponTemplateDO>()
                 .eq(CouponTemplateDO::getId, id)
@@ -60,19 +73,6 @@ public interface CouponTemplateMapper extends BaseMapperX<CouponTemplateDO> {
                 .and(canTakeConsumer != null, canTakeConsumer)
                 .last(" LIMIT " + count)
                 .orderByDesc(CouponTemplateDO::getId));
-    }
-
-    static Consumer<LambdaQueryWrapper<CouponTemplateDO>> buildCanTakeQueryConsumer(List<Integer> canTakeTypes) {
-        Consumer<LambdaQueryWrapper<CouponTemplateDO>> canTakeConsumer = null;
-        if (CollUtil.isNotEmpty(canTakeTypes)) {
-            canTakeConsumer = w ->
-                    w.eq(CouponTemplateDO::getStatus, CommonStatusEnum.ENABLE.getStatus()) // 1. 状态为可用的
-                            .in(CouponTemplateDO::getTakeType, canTakeTypes) // 2. 领取方式一致
-                            .and(ww -> ww.gt(CouponTemplateDO::getValidEndTime, LocalDateTime.now())  // 3.1 未过期
-                                    .or().eq(CouponTemplateDO::getValidityType, CouponTemplateValidityTypeEnum.TERM.getType())) // 3.2 领取之后
-                            .apply(" (take_count < total_count OR total_count = -1)"); // 4. 剩余数量大于 0，或者无限领取
-        }
-        return canTakeConsumer;
     }
 
 }

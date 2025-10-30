@@ -43,10 +43,9 @@ public class Kd100ExpressClient implements ExpressClient {
     /**
      * 查询快递轨迹
      *
-     * @see <a href="https://api.kuaidi100.com/debug-tool/query/">接口文档</a>
-     *
      * @param reqDTO 查询请求参数
      * @return 快递轨迹
+     * @see <a href="https://api.kuaidi100.com/debug-tool/query/">接口文档</a>
      */
     @Override
     public List<ExpressTrackRespDTO> getExpressTrackList(ExpressTrackQueryReqDTO reqDTO) {
@@ -69,11 +68,11 @@ public class Kd100ExpressClient implements ExpressClient {
     /**
      * 快递 100 API 请求
      *
-     * @param url 请求 url
-     * @param req 对应请求的请求参数
+     * @param url       请求 url
+     * @param req       对应请求的请求参数
      * @param respClass 对应请求的响应 class
-     * @param <Req> 每个请求的请求结构 Req DTO
-     * @param <Resp> 每个请求的响应结构 Resp DTO
+     * @param <Req>     每个请求的请求结构 Req DTO
+     * @param <Resp>    每个请求的响应结构 Resp DTO
      */
     private <Req, Resp> Resp httpRequest(String url, Req req, Class<Resp> respClass) {
         // 请求头

@@ -32,13 +32,13 @@ public enum CouponTakeTypeEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
+    public static boolean isUser(Integer type) {
+        return Objects.equals(USER.getType(), type);
+    }
+
     @Override
     public Integer[] array() {
         return ARRAYS;
-    }
-
-    public static boolean isUser(Integer type) {
-        return Objects.equals(USER.getType(), type);
     }
 
 }

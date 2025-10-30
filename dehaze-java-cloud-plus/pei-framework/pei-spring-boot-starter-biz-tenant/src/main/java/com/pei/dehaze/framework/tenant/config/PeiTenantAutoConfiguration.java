@@ -1,6 +1,9 @@
 package com.pei.dehaze.framework.tenant.config;
 
 import cn.hutool.extra.spring.SpringUtil;
+import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
+import com.pei.dehaze.framework.common.biz.system.tenant.TenantCommonApi;
 import com.pei.dehaze.framework.common.enums.WebFilterOrderEnum;
 import com.pei.dehaze.framework.mybatis.core.util.MyBatisUtils;
 import com.pei.dehaze.framework.redis.config.PeiCacheProperties;
@@ -20,9 +23,6 @@ import com.pei.dehaze.framework.tenant.core.web.TenantContextWebFilter;
 import com.pei.dehaze.framework.tenant.core.web.TenantVisitContextInterceptor;
 import com.pei.dehaze.framework.web.config.WebProperties;
 import com.pei.dehaze.framework.web.core.handler.GlobalExceptionHandler;
-import com.pei.dehaze.framework.common.biz.system.tenant.TenantCommonApi;
-import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
-import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import jakarta.annotation.Resource;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -52,7 +52,8 @@ import java.util.Objects;
 import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.convertList;
 
 @AutoConfiguration
-@ConditionalOnProperty(prefix = "pei.tenant", value = "enable", matchIfMissing = true) // 允许使用 pei.tenant.enable=false 禁用多租户
+@ConditionalOnProperty(prefix = "pei.tenant", value = "enable", matchIfMissing = true)
+// 允许使用 pei.tenant.enable=false 禁用多租户
 @EnableConfigurationProperties(TenantProperties.class)
 public class PeiTenantAutoConfiguration {
 
@@ -67,7 +68,8 @@ public class PeiTenantAutoConfiguration {
             if (tenantApiImpl != null) {
                 tenantApi = tenantApiImpl;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return new TenantFrameworkServiceImpl(tenantApi);
     }
 
@@ -171,22 +173,6 @@ public class PeiTenantAutoConfiguration {
 
     // ========== MQ ==========
 
-    /**
-     * 多租户 Redis 消息队列的配置类
-     *
-     * 为什么要单独一个配置类呢？如果直接把 TenantRedisMessageInterceptor Bean 的初始化放外面，会报 RedisMessageInterceptor 类不存在的错误
-     */
-    @Configuration
-    @ConditionalOnClass(name = "com.pei.dehaze.framework.mq.redis.core.RedisMQTemplate")
-    public static class TenantRedisMQAutoConfiguration {
-
-        @Bean
-        public TenantRedisMessageInterceptor tenantRedisMessageInterceptor() {
-            return new TenantRedisMessageInterceptor();
-        }
-
-    }
-
     @Bean
     @ConditionalOnClass(name = "org.springframework.amqp.rabbit.core.RabbitTemplate")
     public TenantRabbitMQInitializer tenantRabbitMQInitializer() {
@@ -198,8 +184,6 @@ public class PeiTenantAutoConfiguration {
     public TenantRocketMQInitializer tenantRocketMQInitializer() {
         return new TenantRocketMQInitializer();
     }
-
-    // ========== Redis ==========
 
     @Bean
     @Primary // 引入租户时，tenantRedisCacheManager 为主 Bean
@@ -213,6 +197,24 @@ public class PeiTenantAutoConfiguration {
                 BatchStrategies.scan(peiCacheProperties.getRedisScanBatchSize()));
         // 创建 TenantRedisCacheManager 对象
         return new TenantRedisCacheManager(cacheWriter, redisCacheConfiguration, tenantProperties.getIgnoreCaches());
+    }
+
+    // ========== Redis ==========
+
+    /**
+     * 多租户 Redis 消息队列的配置类
+     * <p>
+     * 为什么要单独一个配置类呢？如果直接把 TenantRedisMessageInterceptor Bean 的初始化放外面，会报 RedisMessageInterceptor 类不存在的错误
+     */
+    @Configuration
+    @ConditionalOnClass(name = "com.pei.dehaze.framework.mq.redis.core.RedisMQTemplate")
+    public static class TenantRedisMQAutoConfiguration {
+
+        @Bean
+        public TenantRedisMessageInterceptor tenantRedisMessageInterceptor() {
+            return new TenantRedisMessageInterceptor();
+        }
+
     }
 
 }

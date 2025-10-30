@@ -12,6 +12,8 @@ import com.pei.dehaze.module.mp.framework.mp.core.util.MpUtils;
 import com.pei.dehaze.module.mp.service.account.MpAccountService;
 import com.pei.dehaze.module.mp.service.message.MpMessageService;
 import com.pei.dehaze.module.mp.service.message.bo.MpMessageSendOutReqBO;
+import jakarta.annotation.Resource;
+import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.menu.WxMenu;
 import me.chanjar.weixin.common.error.WxErrorException;
@@ -22,8 +24,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
-import jakarta.validation.Validator;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -87,49 +87,6 @@ public class MpMenuServiceImpl implements MpMenuService {
         });
     }
 
-    /**
-     * 校验菜单的格式是否正确
-     *
-     * @param menu 菜单
-     */
-    private void validateMenu(MpMenuSaveReqVO.Menu menu) {
-        MpUtils.validateButton(validator, menu.getType(), menu.getReplyMessageType(), menu);
-        // 子菜单
-        if (CollUtil.isEmpty(menu.getChildren())) {
-            return;
-        }
-        menu.getChildren().forEach(this::validateMenu);
-    }
-
-    /**
-     * 创建菜单，并存储到数据库
-     *
-     * @param wxMenu 菜单信息
-     * @param parentMenu 父菜单
-     * @param account 公众号账号
-     * @return 创建后的菜单
-     */
-    private MpMenuDO createMenu(MpMenuSaveReqVO.Menu wxMenu, MpMenuDO parentMenu, MpAccountDO account) {
-        // 创建菜单
-        MpMenuDO menu = CollUtil.isNotEmpty(wxMenu.getChildren())
-                ? new MpMenuDO().setName(wxMenu.getName())
-                : MpMenuConvert.INSTANCE.convert02(wxMenu);
-        // 设置菜单的公众号账号信息
-        if (account != null) {
-            menu.setAccountId(account.getId()).setAppId(account.getAppId());
-        }
-        // 设置父编号
-        if (parentMenu != null) {
-            menu.setParentId(parentMenu.getId());
-        } else {
-            menu.setParentId(MpMenuDO.ID_ROOT);
-        }
-
-        // 插入到数据库
-        mpMenuMapper.insert(menu);
-        return menu;
-    }
-
     @Override
     public void deleteMenuByAccountId(Long accountId) {
         WxMpService mpService = mpServiceFactory.getRequiredMpService(accountId);
@@ -166,6 +123,49 @@ public class MpMenuServiceImpl implements MpMenuService {
     @Override
     public List<MpMenuDO> getMenuListByAccountId(Long accountId) {
         return mpMenuMapper.selectListByAccountId(accountId);
+    }
+
+    /**
+     * 校验菜单的格式是否正确
+     *
+     * @param menu 菜单
+     */
+    private void validateMenu(MpMenuSaveReqVO.Menu menu) {
+        MpUtils.validateButton(validator, menu.getType(), menu.getReplyMessageType(), menu);
+        // 子菜单
+        if (CollUtil.isEmpty(menu.getChildren())) {
+            return;
+        }
+        menu.getChildren().forEach(this::validateMenu);
+    }
+
+    /**
+     * 创建菜单，并存储到数据库
+     *
+     * @param wxMenu     菜单信息
+     * @param parentMenu 父菜单
+     * @param account    公众号账号
+     * @return 创建后的菜单
+     */
+    private MpMenuDO createMenu(MpMenuSaveReqVO.Menu wxMenu, MpMenuDO parentMenu, MpAccountDO account) {
+        // 创建菜单
+        MpMenuDO menu = CollUtil.isNotEmpty(wxMenu.getChildren())
+                ? new MpMenuDO().setName(wxMenu.getName())
+                : MpMenuConvert.INSTANCE.convert02(wxMenu);
+        // 设置菜单的公众号账号信息
+        if (account != null) {
+            menu.setAccountId(account.getId()).setAppId(account.getAppId());
+        }
+        // 设置父编号
+        if (parentMenu != null) {
+            menu.setParentId(parentMenu.getId());
+        } else {
+            menu.setParentId(MpMenuDO.ID_ROOT);
+        }
+
+        // 插入到数据库
+        mpMenuMapper.insert(menu);
+        return menu;
     }
 
 }

@@ -63,6 +63,33 @@ public class S3FileClient extends AbstractFileClient<S3FileClientConfig> {
                 .build();
     }
 
+    /**
+     * 基于 bucket + endpoint 构建访问的 Domain 地址
+     *
+     * @return Domain 地址
+     */
+    private String buildDomain() {
+        // 如果已经是 http 或者 https，则不进行拼接.主要适配 MinIO
+        if (HttpUtil.isHttp(config.getEndpoint()) || HttpUtil.isHttps(config.getEndpoint())) {
+            return StrUtil.format("{}/{}", config.getEndpoint(), config.getBucket());
+        }
+        // 阿里云、腾讯云、华为云都适合。七牛云比较特殊，必须有自定义域名
+        return StrUtil.format("https://{}.{}", config.getBucket(), config.getEndpoint());
+    }
+
+    /**
+     * 节点地址补全协议头
+     *
+     * @return 节点地址
+     */
+    private String buildEndpoint() {
+        // 如果已经是 http 或者 https，则不进行拼接
+        if (HttpUtil.isHttp(config.getEndpoint()) || HttpUtil.isHttps(config.getEndpoint())) {
+            return config.getEndpoint();
+        }
+        return StrUtil.format("https://{}", config.getEndpoint());
+    }
+
     @Override
     public String upload(byte[] content, String path, String type) {
         // 构造 PutObjectRequest
@@ -105,7 +132,7 @@ public class S3FileClient extends AbstractFileClient<S3FileClientConfig> {
     /**
      * 生成动态的预签名上传 URL
      *
-     * @param path     相对路径
+     * @param path       相对路径
      * @param expiration 过期时间
      * @return 生成的上传 URL
      */
@@ -114,33 +141,6 @@ public class S3FileClient extends AbstractFileClient<S3FileClientConfig> {
                 .signatureDuration(expiration)
                 .putObjectRequest(b -> b.bucket(config.getBucket()).key(path))
                 .build()).url().toString();
-    }
-
-    /**
-     * 基于 bucket + endpoint 构建访问的 Domain 地址
-     *
-     * @return Domain 地址
-     */
-    private String buildDomain() {
-        // 如果已经是 http 或者 https，则不进行拼接.主要适配 MinIO
-        if (HttpUtil.isHttp(config.getEndpoint()) || HttpUtil.isHttps(config.getEndpoint())) {
-            return StrUtil.format("{}/{}", config.getEndpoint(), config.getBucket());
-        }
-        // 阿里云、腾讯云、华为云都适合。七牛云比较特殊，必须有自定义域名
-        return StrUtil.format("https://{}.{}", config.getBucket(), config.getEndpoint());
-    }
-
-    /**
-     * 节点地址补全协议头
-     *
-     * @return 节点地址
-     */
-    private String buildEndpoint() {
-        // 如果已经是 http 或者 https，则不进行拼接
-        if (HttpUtil.isHttp(config.getEndpoint()) || HttpUtil.isHttps(config.getEndpoint())) {
-            return config.getEndpoint();
-        }
-        return StrUtil.format("https://{}", config.getEndpoint());
     }
 
 }

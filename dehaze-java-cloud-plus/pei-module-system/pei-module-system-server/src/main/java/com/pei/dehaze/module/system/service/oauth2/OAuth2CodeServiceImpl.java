@@ -4,10 +4,10 @@ import cn.hutool.core.util.IdUtil;
 import com.pei.dehaze.framework.common.util.date.DateUtils;
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2CodeDO;
 import com.pei.dehaze.module.system.dal.mysql.oauth2.OAuth2CodeMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.List;
 

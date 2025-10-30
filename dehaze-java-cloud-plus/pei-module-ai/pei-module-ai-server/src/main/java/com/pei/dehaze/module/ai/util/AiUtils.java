@@ -2,10 +2,10 @@ package com.pei.dehaze.module.ai.util;
 
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
+import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
 import com.pei.dehaze.framework.security.core.util.SecurityFrameworkUtils;
 import com.pei.dehaze.framework.tenant.core.context.TenantContextHolder;
-import com.alibaba.cloud.ai.dashscope.chat.DashScopeChatOptions;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import org.springframework.ai.azure.openai.AzureOpenAiChatOptions;
 import org.springframework.ai.chat.messages.*;
 import org.springframework.ai.chat.prompt.ChatOptions;

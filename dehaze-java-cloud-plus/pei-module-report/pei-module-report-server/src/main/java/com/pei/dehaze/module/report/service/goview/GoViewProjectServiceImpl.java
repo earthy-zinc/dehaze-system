@@ -8,10 +8,9 @@ import com.pei.dehaze.module.report.controller.admin.goview.vo.project.GoViewPro
 import com.pei.dehaze.module.report.convert.goview.GoViewProjectConvert;
 import com.pei.dehaze.module.report.dal.dataobject.goview.GoViewProjectDO;
 import com.pei.dehaze.module.report.dal.mysql.goview.GoViewProjectMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.pei.dehaze.module.report.enums.ErrorCodeConstants.GO_VIEW_PROJECT_NOT_EXISTS;
@@ -55,12 +54,6 @@ public class GoViewProjectServiceImpl implements GoViewProjectService {
         goViewProjectMapper.deleteById(id);
     }
 
-    private void validateProjectExists(Long id) {
-        if (goViewProjectMapper.selectById(id) == null) {
-            throw exception(GO_VIEW_PROJECT_NOT_EXISTS);
-        }
-    }
-
     @Override
     public GoViewProjectDO getProject(Long id) {
         return goViewProjectMapper.selectById(id);
@@ -69,6 +62,12 @@ public class GoViewProjectServiceImpl implements GoViewProjectService {
     @Override
     public PageResult<GoViewProjectDO> getMyProjectPage(PageParam pageReqVO, Long userId) {
         return goViewProjectMapper.selectPage(pageReqVO, userId);
+    }
+
+    private void validateProjectExists(Long id) {
+        if (goViewProjectMapper.selectById(id) == null) {
+            throw exception(GO_VIEW_PROJECT_NOT_EXISTS);
+        }
     }
 
 }

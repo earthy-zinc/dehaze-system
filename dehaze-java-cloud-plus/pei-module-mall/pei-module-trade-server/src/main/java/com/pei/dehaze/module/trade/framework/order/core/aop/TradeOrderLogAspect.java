@@ -8,13 +8,13 @@ import com.pei.dehaze.module.trade.dal.dataobject.order.TradeOrderLogDO;
 import com.pei.dehaze.module.trade.framework.order.core.annotations.TradeOrderLog;
 import com.pei.dehaze.module.trade.service.order.TradeOrderLogService;
 import com.pei.dehaze.module.trade.service.order.bo.TradeOrderLogCreateReqBO;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.Map;
 
 import static com.pei.dehaze.framework.common.util.json.JsonUtils.toJsonString;
@@ -33,7 +33,7 @@ public class TradeOrderLogAspect {
 
     /**
      * 用户编号
-     *
+     * <p>
      * 目前的使用场景：支付回调时，需要强制设置下用户编号
      */
     private static final ThreadLocal<Long> USER_ID = new ThreadLocal<>();
@@ -60,6 +60,18 @@ public class TradeOrderLogAspect {
 
     @Resource
     private TradeOrderLogService orderLogService;
+
+    public static void setOrderInfo(Long id, Integer beforeStatus, Integer afterStatus, Map<String, Object> exts) {
+        ORDER_ID.set(id);
+        BEFORE_STATUS.set(beforeStatus);
+        AFTER_STATUS.set(afterStatus);
+        EXTS.set(exts);
+    }
+
+    public static void setUserInfo(Long userId, Integer userType) {
+        USER_ID.set(userId);
+        USER_TYPE.set(userType);
+    }
 
     @AfterReturning("@annotation(orderLog)")
     public void doAfterReturning(JoinPoint joinPoint, TradeOrderLog orderLog) {
@@ -92,7 +104,7 @@ public class TradeOrderLogAspect {
 
     /**
      * 获得用户类型
-     *
+     * <p>
      * 如果没有，则约定为 {@link TradeOrderLogDO#getUserType()} 系统
      *
      * @return 用户类型
@@ -103,25 +115,13 @@ public class TradeOrderLogAspect {
 
     /**
      * 获得用户编号
-     *
+     * <p>
      * 如果没有，则约定为 {@link TradeOrderLogDO#getUserId()} 系统
      *
      * @return 用户类型
      */
     private static Long getUserId() {
         return ObjectUtil.defaultIfNull(WebFrameworkUtils.getLoginUserId(), TradeOrderLogDO.USER_ID_SYSTEM);
-    }
-
-    public static void setOrderInfo(Long id, Integer beforeStatus, Integer afterStatus, Map<String, Object> exts) {
-        ORDER_ID.set(id);
-        BEFORE_STATUS.set(beforeStatus);
-        AFTER_STATUS.set(afterStatus);
-        EXTS.set(exts);
-    }
-
-    public static void setUserInfo(Long userId, Integer userType) {
-        USER_ID.set(userId);
-        USER_TYPE.set(userType);
     }
 
     private static void clear() {

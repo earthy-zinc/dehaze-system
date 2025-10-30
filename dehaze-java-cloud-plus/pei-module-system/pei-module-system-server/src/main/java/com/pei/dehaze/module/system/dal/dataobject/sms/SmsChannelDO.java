@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.system.dal.dataobject.sms;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.pei.dehaze.module.system.framework.sms.core.enums.SmsChannelEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -34,13 +34,13 @@ public class SmsChannelDO extends BaseDO {
     private String signature;
     /**
      * 渠道编码
-     *
+     * <p>
      * 枚举 {@link SmsChannelEnum}
      */
     private String code;
     /**
      * 启用状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

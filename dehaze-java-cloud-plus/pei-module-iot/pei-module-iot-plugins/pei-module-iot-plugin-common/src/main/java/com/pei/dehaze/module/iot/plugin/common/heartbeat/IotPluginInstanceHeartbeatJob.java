@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * IoT 插件实例心跳 Job
- *
+ * <p>
  * 用于定时发送心跳给服务端
  */
 @RequiredArgsConstructor
@@ -31,6 +31,13 @@ public class IotPluginInstanceHeartbeatJob {
         log.info("[init][上线结果：{})]", result);
     }
 
+    private IotPluginInstanceHeartbeatReqDTO buildPluginInstanceHeartbeatReqDTO(Boolean online) {
+        return new IotPluginInstanceHeartbeatReqDTO()
+                .setPluginKey(commonProperties.getPluginKey()).setProcessId(IotPluginCommonUtils.getProcessId())
+                .setHostIp(SystemUtil.getHostInfo().getAddress()).setDownstreamPort(deviceDownstreamServer.getPort())
+                .setOnline(online);
+    }
+
     public void stop() {
         CommonResult<Boolean> result = deviceUpstreamApi.heartbeatPluginInstance(buildPluginInstanceHeartbeatReqDTO(false));
         log.info("[stop][下线结果：{})]", result);
@@ -40,13 +47,6 @@ public class IotPluginInstanceHeartbeatJob {
     public void execute() {
         CommonResult<Boolean> result = deviceUpstreamApi.heartbeatPluginInstance(buildPluginInstanceHeartbeatReqDTO(true));
         log.info("[execute][心跳结果：{})]", result);
-    }
-
-    private IotPluginInstanceHeartbeatReqDTO buildPluginInstanceHeartbeatReqDTO(Boolean online) {
-        return new IotPluginInstanceHeartbeatReqDTO()
-                .setPluginKey(commonProperties.getPluginKey()).setProcessId(IotPluginCommonUtils.getProcessId())
-                .setHostIp(SystemUtil.getHostInfo().getAddress()).setDownstreamPort(deviceDownstreamServer.getPort())
-                .setOnline(online);
     }
 
 }

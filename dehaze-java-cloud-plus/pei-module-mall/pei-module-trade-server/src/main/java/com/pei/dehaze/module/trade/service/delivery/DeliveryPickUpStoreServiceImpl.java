@@ -61,13 +61,6 @@ public class DeliveryPickUpStoreServiceImpl implements DeliveryPickUpStoreServic
         deliveryPickUpStoreMapper.deleteById(id);
     }
 
-    private void validateDeliveryPickUpStoreExists(Long id) {
-        DeliveryPickUpStoreDO deliveryPickUpStore = deliveryPickUpStoreMapper.selectById(id);
-        if (deliveryPickUpStore == null) {
-            throw exception(PICK_UP_STORE_NOT_EXISTS);
-        }
-    }
-
     @Override
     public DeliveryPickUpStoreDO getDeliveryPickUpStore(Long id) {
         return deliveryPickUpStoreMapper.selectById(id);
@@ -98,6 +91,13 @@ public class DeliveryPickUpStoreServiceImpl implements DeliveryPickUpStoreServic
         // 2. 更新
         DeliveryPickUpStoreDO updateObj = BeanUtils.toBean(bindReqVO, DeliveryPickUpStoreDO.class);
         deliveryPickUpStoreMapper.updateById(updateObj);
+    }
+
+    private void validateDeliveryPickUpStoreExists(Long id) {
+        DeliveryPickUpStoreDO deliveryPickUpStore = deliveryPickUpStoreMapper.selectById(id);
+        if (deliveryPickUpStore == null) {
+            throw exception(PICK_UP_STORE_NOT_EXISTS);
+        }
     }
 
 }

@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.system.service.oauth2;
 
+import com.google.common.collect.Lists;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.test.core.ut.BaseMockitoUnitTest;
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2AccessTokenDO;
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2CodeDO;
 import com.pei.dehaze.module.system.dal.dataobject.user.AdminUserDO;
 import com.pei.dehaze.module.system.service.auth.AdminAuthService;
-import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;

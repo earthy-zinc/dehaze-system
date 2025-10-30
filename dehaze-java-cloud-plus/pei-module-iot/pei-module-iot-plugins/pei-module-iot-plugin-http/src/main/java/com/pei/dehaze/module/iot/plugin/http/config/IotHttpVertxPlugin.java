@@ -9,6 +9,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 // TODO @芋艿：完善注释
+
 /**
  * 负责插件的启动和停止，与 Vert.x 的生命周期管理
  */

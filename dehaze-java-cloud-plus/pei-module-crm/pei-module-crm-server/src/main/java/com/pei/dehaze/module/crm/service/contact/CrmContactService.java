@@ -55,8 +55,7 @@ public interface CrmContactService {
     void transferContact(CrmContactTransferReqVO reqVO, Long userId);
 
     /**
-     * 更新指定客户的联系人的负责人
-     * 数据权限基于 【客户】
+     * 更新指定客户的联系人的负责人 数据权限基于 【客户】
      *
      * @param customerId  客户编号
      * @param ownerUserId 用户编号
@@ -96,14 +95,6 @@ public interface CrmContactService {
     void validateContact(Long id);
 
     /**
-     * 获得联系人列表
-     *
-     * @param ids 编号
-     * @return 联系人列表
-     */
-    List<CrmContactDO> getContactList(Collection<Long> ids);
-
-    /**
      * 获得联系人 Map
      *
      * @param ids 编号
@@ -112,6 +103,14 @@ public interface CrmContactService {
     default Map<Long, CrmContactDO> getContactMap(Collection<Long> ids) {
         return convertMap(getContactList(ids), CrmContactDO::getId);
     }
+
+    /**
+     * 获得联系人列表
+     *
+     * @param ids 编号
+     * @return 联系人列表
+     */
+    List<CrmContactDO> getContactList(Collection<Long> ids);
 
     /**
      * 获取联系人列表（校验权限）
@@ -123,7 +122,7 @@ public interface CrmContactService {
 
     /**
      * 获得联系人分页
-     *
+     * <p>
      * 数据权限：基于 {@link CrmContactDO}
      *
      * @param pageReqVO 分页查询
@@ -134,7 +133,7 @@ public interface CrmContactService {
 
     /**
      * 获得联系人分页
-     *
+     * <p>
      * 数据权限：基于 {@link CrmCustomerDO}
      *
      * @param pageVO 分页查询
@@ -144,7 +143,7 @@ public interface CrmContactService {
 
     /**
      * 获得联系人分页
-     *
+     * <p>
      * 数据权限：基于 {@link CrmBusinessDO}
      *
      * @param pageVO 分页查询

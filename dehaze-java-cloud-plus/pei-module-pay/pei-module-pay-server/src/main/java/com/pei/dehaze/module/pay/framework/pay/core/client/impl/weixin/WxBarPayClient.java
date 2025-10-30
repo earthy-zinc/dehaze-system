@@ -3,15 +3,15 @@ package com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.StrUtil;
+import com.github.binarywang.wxpay.bean.request.WxPayMicropayRequest;
+import com.github.binarywang.wxpay.bean.result.WxPayMicropayResult;
+import com.github.binarywang.wxpay.constant.WxPayConstants;
+import com.github.binarywang.wxpay.exception.WxPayException;
 import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
 import com.pei.dehaze.module.pay.enums.PayChannelEnum;
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
 import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
-import com.github.binarywang.wxpay.bean.request.WxPayMicropayRequest;
-import com.github.binarywang.wxpay.bean.result.WxPayMicropayResult;
-import com.github.binarywang.wxpay.constant.WxPayConstants;
-import com.github.binarywang.wxpay.exception.WxPayException;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Duration;
@@ -23,7 +23,7 @@ import static com.pei.dehaze.framework.common.util.json.JsonUtils.toJsonString;
 
 /**
  * 微信支付【付款码支付】的 PayClient 实现类
- *
+ * <p>
  * 文档：<a href="https://pay.weixin.qq.com/wiki/doc/api/micropay.php?chapter=9_10&index=1">付款码支付</a>
  *
  * @author earthyzinc
@@ -69,7 +69,7 @@ public class WxBarPayClient extends AbstractWxPayClient {
                 WxPayMicropayResult response = client.micropay(request);
                 // 支付成功，例如说：1）用户输入了密码；2）用户免密支付
                 return PayOrderRespDTO.successOf(response.getTransactionId(), response.getOpenid(), parseDateV2(response.getTimeEnd()),
-                        response.getOutTradeNo(), response)
+                                response.getOutTradeNo(), response)
                         .setDisplayMode(PayOrderDisplayModeEnum.BAR_CODE.getMode());
             } catch (WxPayException ex) {
                 lastWxPayException = ex;

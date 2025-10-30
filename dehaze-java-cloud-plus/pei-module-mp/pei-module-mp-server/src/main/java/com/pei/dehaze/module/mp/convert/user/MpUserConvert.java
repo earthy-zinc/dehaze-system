@@ -27,13 +27,9 @@ public interface MpUserConvert {
 
     PageResult<MpUserRespVO> convertPage(PageResult<MpUserDO> page);
 
-    @Mappings(value = {
-            @Mapping(source = "openId", target = "openid"),
-            @Mapping(source = "unionId", target = "unionId"),
-            @Mapping(source = "headImgUrl", target = "headImageUrl"),
-            @Mapping(target = "subscribeTime", ignore = true), // 单独转换
-    })
-    MpUserDO convert(WxMpUser wxMpUser);
+    default List<MpUserDO> convertList(MpAccountDO account, List<WxMpUser> wxUsers) {
+        return CollectionUtils.convertList(wxUsers, wxUser -> convert(account, wxUser));
+    }
 
     default MpUserDO convert(MpAccountDO account, WxMpUser wxMpUser) {
         MpUserDO user = convert(wxMpUser);
@@ -47,9 +43,13 @@ public interface MpUserConvert {
         return user;
     }
 
-    default List<MpUserDO> convertList(MpAccountDO account, List<WxMpUser> wxUsers) {
-        return CollectionUtils.convertList(wxUsers, wxUser -> convert(account, wxUser));
-    }
+    @Mappings(value = {
+            @Mapping(source = "openId", target = "openid"),
+            @Mapping(source = "unionId", target = "unionId"),
+            @Mapping(source = "headImgUrl", target = "headImageUrl"),
+            @Mapping(target = "subscribeTime", ignore = true), // 单独转换
+    })
+    MpUserDO convert(WxMpUser wxMpUser);
 
     MpUserDO convert(MpUserUpdateReqVO bean);
 

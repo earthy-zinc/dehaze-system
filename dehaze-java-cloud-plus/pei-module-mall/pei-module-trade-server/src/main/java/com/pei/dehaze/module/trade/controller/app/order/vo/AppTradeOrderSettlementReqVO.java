@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.trade.controller.app.order.vo;
 
 import cn.hutool.core.util.ObjUtil;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.framework.common.validation.Mobile;
 import com.pei.dehaze.module.trade.enums.delivery.DeliveryTypeEnum;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;

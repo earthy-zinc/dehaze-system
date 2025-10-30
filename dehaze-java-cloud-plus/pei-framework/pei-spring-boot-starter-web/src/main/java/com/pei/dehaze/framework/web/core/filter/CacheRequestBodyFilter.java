@@ -1,12 +1,12 @@
 package com.pei.dehaze.framework.web.core.filter;
 
 import com.pei.dehaze.framework.common.util.servlet.ServletUtils;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 
 /**
@@ -17,15 +17,15 @@ import java.io.IOException;
 public class CacheRequestBodyFilter extends OncePerRequestFilter {
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws IOException, ServletException {
-        filterChain.doFilter(new CacheRequestBodyWrapper(request), response);
-    }
-
-    @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         // 只处理 json 请求内容
         return !ServletUtils.isJsonRequest(request);
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws IOException, ServletException {
+        filterChain.doFilter(new CacheRequestBodyWrapper(request), response);
     }
 
 }

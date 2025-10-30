@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.erp.dal.dataobject.purchase;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.erp.dal.dataobject.product.ErpProductDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.erp.dal.dataobject.product.ErpProductDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -31,19 +31,19 @@ public class ErpPurchaseOrderItemDO extends BaseDO {
     private Long id;
     /**
      * 采购订单编号
-     *
+     * <p>
      * 关联 {@link ErpPurchaseOrderDO#getId()}
      */
     private Long orderId;
     /**
      * 产品编号
-     *
+     * <p>
      * 关联 {@link ErpProductDO#getId()}
      */
     private Long productId;
     /**
      * 产品单位单位
-     *
+     * <p>
      * 冗余 {@link ErpProductDO#getUnitId()}
      */
     private Long productUnitId;
@@ -58,7 +58,7 @@ public class ErpPurchaseOrderItemDO extends BaseDO {
     private BigDecimal count;
     /**
      * 总价，单位：元
-     *
+     * <p>
      * totalPrice = productPrice * count
      */
     private BigDecimal totalPrice;
@@ -68,7 +68,7 @@ public class ErpPurchaseOrderItemDO extends BaseDO {
     private BigDecimal taxPercent;
     /**
      * 税额，单位：元
-     *
+     * <p>
      * taxPrice = totalPrice * taxPercent
      */
     private BigDecimal taxPrice;

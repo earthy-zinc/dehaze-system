@@ -116,19 +116,6 @@ public class CrmCustomerController {
         return buildCustomerDetailList(singletonList(customer)).get(0);
     }
 
-    @GetMapping("/page")
-    @Operation(summary = "获得客户分页")
-    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
-    public CommonResult<PageResult<CrmCustomerRespVO>> getCustomerPage(@Valid CrmCustomerPageReqVO pageVO) {
-        // 1. 查询客户分页
-        PageResult<CrmCustomerDO> pageResult = customerService.getCustomerPage(pageVO, getLoginUserId());
-        if (CollUtil.isEmpty(pageResult.getList())) {
-            return success(PageResult.empty(pageResult.getTotal()));
-        }
-        // 2. 拼接数据
-        return success(new PageResult<>(buildCustomerDetailList(pageResult.getList()), pageResult.getTotal()));
-    }
-
     public List<CrmCustomerRespVO> buildCustomerDetailList(List<CrmCustomerDO> list) {
         if (CollUtil.isEmpty(list)) {
             return java.util.Collections.emptyList();
@@ -154,37 +141,6 @@ public class CrmCustomerController {
                 customerVO.setPoolDay(poolDayMap.get(customerVO.getId()));
             }
         });
-    }
-
-    @GetMapping("/put-pool-remind-page")
-    @Operation(summary = "获得待进入公海客户分页")
-    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
-    public CommonResult<PageResult<CrmCustomerRespVO>> getPutPoolRemindCustomerPage(@Valid CrmCustomerPageReqVO pageVO) {
-        // 1. 查询客户分页
-        PageResult<CrmCustomerDO> pageResult = customerService.getPutPoolRemindCustomerPage(pageVO, getLoginUserId());
-        // 2. 拼接数据
-        return success(new PageResult<>(buildCustomerDetailList(pageResult.getList()), pageResult.getTotal()));
-    }
-
-    @GetMapping("/put-pool-remind-count")
-    @Operation(summary = "获得待进入公海客户数量")
-    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
-    public CommonResult<Long> getPutPoolRemindCustomerCount() {
-        return success(customerService.getPutPoolRemindCustomerCount(getLoginUserId()));
-    }
-
-    @GetMapping("/today-contact-count")
-    @Operation(summary = "获得今日需联系客户数量")
-    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
-    public CommonResult<Long> getTodayContactCustomerCount() {
-        return success(customerService.getTodayContactCustomerCount(getLoginUserId()));
-    }
-
-    @GetMapping("/follow-count")
-    @Operation(summary = "获得分配给我、待跟进的线索数量的客户数量")
-    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
-    public CommonResult<Long> getFollowCustomerCount() {
-        return success(customerService.getFollowCustomerCount(getLoginUserId()));
     }
 
     /**
@@ -219,6 +175,50 @@ public class CrmCustomerController {
             long poolDay = Math.min(dealExpireDay, contactExpireDay);
             return poolDay > 0 ? poolDay : 0;
         });
+    }
+
+    @GetMapping("/page")
+    @Operation(summary = "获得客户分页")
+    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
+    public CommonResult<PageResult<CrmCustomerRespVO>> getCustomerPage(@Valid CrmCustomerPageReqVO pageVO) {
+        // 1. 查询客户分页
+        PageResult<CrmCustomerDO> pageResult = customerService.getCustomerPage(pageVO, getLoginUserId());
+        if (CollUtil.isEmpty(pageResult.getList())) {
+            return success(PageResult.empty(pageResult.getTotal()));
+        }
+        // 2. 拼接数据
+        return success(new PageResult<>(buildCustomerDetailList(pageResult.getList()), pageResult.getTotal()));
+    }
+
+    @GetMapping("/put-pool-remind-page")
+    @Operation(summary = "获得待进入公海客户分页")
+    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
+    public CommonResult<PageResult<CrmCustomerRespVO>> getPutPoolRemindCustomerPage(@Valid CrmCustomerPageReqVO pageVO) {
+        // 1. 查询客户分页
+        PageResult<CrmCustomerDO> pageResult = customerService.getPutPoolRemindCustomerPage(pageVO, getLoginUserId());
+        // 2. 拼接数据
+        return success(new PageResult<>(buildCustomerDetailList(pageResult.getList()), pageResult.getTotal()));
+    }
+
+    @GetMapping("/put-pool-remind-count")
+    @Operation(summary = "获得待进入公海客户数量")
+    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
+    public CommonResult<Long> getPutPoolRemindCustomerCount() {
+        return success(customerService.getPutPoolRemindCustomerCount(getLoginUserId()));
+    }
+
+    @GetMapping("/today-contact-count")
+    @Operation(summary = "获得今日需联系客户数量")
+    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
+    public CommonResult<Long> getTodayContactCustomerCount() {
+        return success(customerService.getTodayContactCustomerCount(getLoginUserId()));
+    }
+
+    @GetMapping("/follow-count")
+    @Operation(summary = "获得分配给我、待跟进的线索数量的客户数量")
+    @PreAuthorize("@ss.hasPermission('crm:customer:query')")
+    public CommonResult<Long> getFollowCustomerCount() {
+        return success(customerService.getFollowCustomerCount(getLoginUserId()));
     }
 
     @GetMapping(value = "/simple-list")

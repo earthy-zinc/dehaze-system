@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.iot.api.device.dto.control.upstream;
 
-import com.pei.dehaze.framework.common.util.json.databind.TimestampLocalDateTimeSerializer;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.pei.dehaze.framework.common.util.json.databind.TimestampLocalDateTimeSerializer;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 

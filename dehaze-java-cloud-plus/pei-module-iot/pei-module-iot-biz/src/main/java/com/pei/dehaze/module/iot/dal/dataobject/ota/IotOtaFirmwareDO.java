@@ -1,17 +1,19 @@
 package com.pei.dehaze.module.iot.dal.dataobject.ota;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * IoT OTA 固件 DO
  *
- * @see <a href="阿里云 IoT - OTA 升级">https://help.aliyun.com/zh/iot/user-guide/ota-upgrade-overview</a>
- *
  * @author earthyzinc
+ * @see <a href="阿里云 IoT - OTA 升级">https://help.aliyun.com/zh/iot/user-guide/ota-upgrade-overview</a>
  */
 @TableName(value = "iot_ota_firmware", autoResultMap = true)
 @KeySequence("iot_ota_firmware_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
@@ -41,20 +43,20 @@ public class IotOtaFirmwareDO extends BaseDO {
 
     /**
      * 产品编号
-     *
+     * <p>
      * 关联 {@link com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO#getId()}
      */
     private Long productId;
     /**
      * 产品标识
-     *
+     * <p>
      * 冗余 {@link com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO#getProductKey()}
      */
     private String productKey;
 
     /**
      * 签名方式
-     *
+     * <p>
      * 例如说：MD5、SHA256
      */
     private String signMethod;

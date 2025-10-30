@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.ai.dal.dataobject.music;
 
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.ai.enums.music.AiMusicGenerateModeEnum;
-import com.pei.dehaze.module.ai.enums.music.AiMusicStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
+import com.pei.dehaze.module.ai.enums.music.AiMusicGenerateModeEnum;
+import com.pei.dehaze.module.ai.enums.music.AiMusicStatusEnum;
 import lombok.Data;
 
 import java.util.List;

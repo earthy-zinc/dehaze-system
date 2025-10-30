@@ -62,6 +62,24 @@ public class AppPointActivityController {
         return success(new PageResult<>(resultList, pageResult.getTotal()));
     }
 
+    private List<AppPointActivityRespVO> buildAppPointActivityRespVOList(List<PointActivityDO> activityList) {
+        List<PointProductDO> products = pointActivityService.getPointProductListByActivityIds(
+                convertSet(activityList, PointActivityDO::getId));
+        Map<Long, List<PointProductDO>> productsMap = convertMultiMap(products, PointProductDO::getActivityId);
+        Map<Long, ProductSpuRespDTO> spuMap = productSpuApi.getSpuMap(
+                convertSet(activityList, PointActivityDO::getSpuId));
+        List<AppPointActivityRespVO> result = BeanUtils.toBean(activityList, AppPointActivityRespVO.class);
+        result.forEach(activity -> {
+            // 设置 product 信息
+            PointProductDO minProduct = getMinObject(productsMap.get(activity.getId()), PointProductDO::getPoint);
+            assert minProduct != null;
+            activity.setPoint(minProduct.getPoint()).setPrice(minProduct.getPrice());
+            findAndThen(spuMap, activity.getSpuId(),
+                    spu -> activity.setSpuName(spu.getName()).setPicUrl(spu.getPicUrl()).setMarketPrice(spu.getMarketPrice()));
+        });
+        return result;
+    }
+
     @GetMapping("/get-detail")
     @Operation(summary = "获得积分商城活动明细")
     @Parameter(name = "id", description = "活动编号", required = true, example = "1024")
@@ -98,24 +116,6 @@ public class AppPointActivityController {
         // 2. 拼接返回
         List<AppPointActivityRespVO> result = buildAppPointActivityRespVOList(activityList);
         return success(result);
-    }
-
-    private List<AppPointActivityRespVO> buildAppPointActivityRespVOList(List<PointActivityDO> activityList) {
-        List<PointProductDO> products = pointActivityService.getPointProductListByActivityIds(
-                convertSet(activityList, PointActivityDO::getId));
-        Map<Long, List<PointProductDO>> productsMap = convertMultiMap(products, PointProductDO::getActivityId);
-        Map<Long, ProductSpuRespDTO> spuMap = productSpuApi.getSpuMap(
-                convertSet(activityList, PointActivityDO::getSpuId));
-        List<AppPointActivityRespVO> result = BeanUtils.toBean(activityList, AppPointActivityRespVO.class);
-        result.forEach(activity -> {
-            // 设置 product 信息
-            PointProductDO minProduct = getMinObject(productsMap.get(activity.getId()), PointProductDO::getPoint);
-            assert minProduct != null;
-            activity.setPoint(minProduct.getPoint()).setPrice(minProduct.getPrice());
-            findAndThen(spuMap, activity.getSpuId(),
-                    spu -> activity.setSpuName(spu.getName()).setPicUrl(spu.getPicUrl()).setMarketPrice(spu.getMarketPrice()));
-        });
-        return result;
     }
 
 }

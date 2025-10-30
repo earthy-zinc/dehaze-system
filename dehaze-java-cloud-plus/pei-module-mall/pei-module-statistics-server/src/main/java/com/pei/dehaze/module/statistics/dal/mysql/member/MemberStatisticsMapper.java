@@ -33,7 +33,7 @@ public interface MemberStatisticsMapper extends BaseMapperX {
      * 获得用户的每天注册数量列表
      *
      * @param beginTime 开始时间
-     * @param endTime 结束时间
+     * @param endTime   结束时间
      * @return 每天注册数量列表
      */
     List<MemberRegisterCountRespVO> selectListByCreateTimeBetween(@Param("beginTime") LocalDateTime beginTime,

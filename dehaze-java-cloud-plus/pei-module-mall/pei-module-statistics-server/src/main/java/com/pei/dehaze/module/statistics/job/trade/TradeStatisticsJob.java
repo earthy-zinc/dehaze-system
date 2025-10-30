@@ -7,9 +7,8 @@ import cn.hutool.core.util.StrUtil;
 import com.pei.dehaze.framework.tenant.core.job.TenantJob;
 import com.pei.dehaze.module.statistics.service.trade.TradeStatisticsService;
 import com.xxl.job.core.handler.annotation.XxlJob;
-import org.springframework.stereotype.Component;
-
 import jakarta.annotation.Resource;
+import org.springframework.stereotype.Component;
 
 /**
  * 交易统计 Job

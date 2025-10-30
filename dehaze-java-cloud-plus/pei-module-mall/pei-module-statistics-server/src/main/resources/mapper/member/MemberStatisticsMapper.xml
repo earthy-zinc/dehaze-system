@@ -19,7 +19,7 @@
     </select>
 
     <select id="selectSummaryListByRegisterTerminal"
-                         resultType="com.pei.dehaze.module.statistics.controller.admin.member.vo.MemberTerminalStatisticsRespVO">
+            resultType="com.pei.dehaze.module.statistics.controller.admin.member.vo.MemberTerminalStatisticsRespVO">
         SELECT register_terminal as terminal, COUNT(1) AS userCount
         FROM member_user
         WHERE deleted = FALSE

@@ -1,5 +1,8 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay;
 
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.request.AlipayTradePrecreateRequest;
+import com.alipay.api.response.AlipayTradePrecreateResponse;
 import com.pei.dehaze.framework.common.exception.ServiceException;
 import com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeConstants;
 import com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil;
@@ -7,9 +10,6 @@ import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRes
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
 import com.pei.dehaze.module.pay.framework.pay.core.client.exception.PayClientException;
 import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
-import com.alipay.api.AlipayApiException;
-import com.alipay.api.request.AlipayTradePrecreateRequest;
-import com.alipay.api.response.AlipayTradePrecreateResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -120,7 +120,7 @@ public class AlipayQrPayClientTest extends AbstractAlipayClientTest {
             return true;
         }))).thenThrow(new RuntimeException("系统异常"));
         // 准备请求参数
-        PayOrderUnifiedReqDTO reqDTO = buildOrderUnifiedReqDTO(notifyUrl, outTradeNo,price);
+        PayOrderUnifiedReqDTO reqDTO = buildOrderUnifiedReqDTO(notifyUrl, outTradeNo, price);
 
         // 调用，并断言
         assertThrows(PayClientException.class, () -> client.unifiedOrder(reqDTO));

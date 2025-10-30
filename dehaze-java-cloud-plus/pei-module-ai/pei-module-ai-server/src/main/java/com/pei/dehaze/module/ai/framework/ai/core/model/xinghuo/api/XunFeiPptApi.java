@@ -3,8 +3,8 @@ package com.pei.dehaze.module.ai.framework.ai.core.model.xinghuo.api;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.crypto.SecureUtil;
 import cn.hutool.crypto.digest.HmacAlgorithm;
-import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -66,6 +66,30 @@ public class XunFeiPptApi {
     }
 
     /**
+     * 获取 PPT 模板列表
+     *
+     * @param style    风格，如"商务"
+     * @param pageSize 每页数量
+     * @return 模板列表
+     */
+    public TemplatePageResponse getTemplatePage(String style, Integer pageSize) {
+        SignatureInfo signInfo = getSignature();
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("style", style);
+        requestBody.put("pageSize", ObjUtil.defaultIfNull(pageSize, 20));
+        return this.webClient.post()
+                .uri("/template/list")
+                .header(HEADER_TIMESTAMP, signInfo.timestamp)
+                .header(HEADER_SIGNATURE, signInfo.signature)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(requestBody)
+                .retrieve()
+                .onStatus(STATUS_PREDICATE, EXCEPTION_FUNCTION.apply(requestBody))
+                .bodyToMono(TemplatePageResponse.class)
+                .block();
+    }
+
+    /**
      * 获取签名
      *
      * @return 签名信息
@@ -88,30 +112,6 @@ public class XunFeiPptApi {
     private String generateSignature(String appId, String apiSecret, long timestamp) {
         String auth = SecureUtil.md5(appId + timestamp);
         return SecureUtil.hmac(HmacAlgorithm.HmacSHA1, apiSecret).digestBase64(auth, false);
-    }
-
-    /**
-     * 获取 PPT 模板列表
-     *
-     * @param style    风格，如"商务"
-     * @param pageSize 每页数量
-     * @return 模板列表
-     */
-    public TemplatePageResponse getTemplatePage(String style, Integer pageSize) {
-        SignatureInfo signInfo = getSignature();
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("style", style);
-        requestBody.put("pageSize", ObjUtil.defaultIfNull(pageSize, 20));
-        return this.webClient.post()
-                .uri("/template/list")
-                .header(HEADER_TIMESTAMP, signInfo.timestamp)
-                .header(HEADER_SIGNATURE, signInfo.signature)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(requestBody)
-                .retrieve()
-                .onStatus(STATUS_PREDICATE, EXCEPTION_FUNCTION.apply(requestBody))
-                .bodyToMono(TemplatePageResponse.class)
-                .block();
     }
 
     /**
@@ -151,19 +151,6 @@ public class XunFeiPptApi {
     }
 
     /**
-     * 直接创建 PPT（简化版 - 通过文件）
-     *
-     * @param file     文件
-     * @param fileName 文件名
-     * @return 创建响应
-     */
-    public CreateResponse create(MultipartFile file, String fileName) {
-        CreatePptRequest request = CreatePptRequest.builder()
-                .file(file).fileName(fileName).build();
-        return create(request);
-    }
-
-    /**
      * 直接创建 PPT（完整版）
      *
      * @param request 请求参数
@@ -184,6 +171,75 @@ public class XunFeiPptApi {
                 .block();
     }
 
+    /**
+     * 构建创建 PPT 的表单数据
+     *
+     * @param request 请求参数
+     * @return 表单数据
+     */
+    private MultiValueMap<String, Object> buildCreatePptFormData(CreatePptRequest request) {
+        MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
+        if (request.file() != null) {
+            try {
+                formData.add("file", new ByteArrayResource(request.file().getBytes()) {
+                    @Override
+                    public String getFilename() {
+                        return request.file().getOriginalFilename();
+                    }
+                });
+            } catch (IOException e) {
+                log.error("[XunFeiPptApi] 文件处理失败", e);
+                throw new IllegalStateException("[XunFeiPptApi] 文件处理失败", e);
+            }
+        }
+        Map<String, Object> param = new HashMap<>();
+        addIfPresent(param, "query", request.query());
+        addIfPresent(param, "fileUrl", request.fileUrl());
+        addIfPresent(param, "fileName", request.fileName());
+        addIfPresent(param, "templateId", request.templateId());
+        addIfPresent(param, "businessId", request.businessId());
+        addIfPresent(param, "author", request.author());
+        addIfPresent(param, "isCardNote", request.isCardNote());
+        addIfPresent(param, "search", request.search());
+        addIfPresent(param, "language", request.language());
+        addIfPresent(param, "isFigure", request.isFigure());
+        addIfPresent(param, "aiImage", request.aiImage());
+        param.forEach(formData::add);
+        return formData;
+    }
+
+    public static <K, V> void addIfPresent(Map<K, V> map, K key, V value) {
+        if (ObjUtil.isNull(key) || ObjUtil.isNull(map)) {
+            return;
+        }
+
+        boolean isPresent = false;
+        if (ObjUtil.isNotNull(value)) {
+            if (value instanceof String) {
+                // 字符串：需要有实际内容
+                isPresent = StringUtils.hasText((String) value);
+            } else {
+                // 其他类型：非 null 即视为存在
+                isPresent = true;
+            }
+        }
+        if (isPresent) {
+            map.put(key, value);
+        }
+    }
+
+    /**
+     * 直接创建 PPT（简化版 - 通过文件）
+     *
+     * @param file     文件
+     * @param fileName 文件名
+     * @return 创建响应
+     */
+    public CreateResponse create(MultipartFile file, String fileName) {
+        CreatePptRequest request = CreatePptRequest.builder()
+                .file(file).fileName(fileName).build();
+        return create(request);
+    }
 
     /**
      * 通过大纲创建 PPT（简化版）
@@ -327,6 +383,15 @@ public class XunFeiPptApi {
     ) {
 
         /**
+         * 将大纲对象转换为JSON字符串
+         *
+         * @return 大纲JSON字符串
+         */
+        public String toJsonString() {
+            return JsonUtils.toJsonString(this);
+        }
+
+        /**
          * 章节结构
          */
         @JsonInclude(value = JsonInclude.Include.NON_NULL)
@@ -344,15 +409,6 @@ public class XunFeiPptApi {
             ) {
             }
 
-        }
-
-        /**
-         * 将大纲对象转换为JSON字符串
-         *
-         * @return 大纲JSON字符串
-         */
-        public String toJsonString() {
-            return JsonUtils.toJsonString(this);
         }
     }
 
@@ -437,64 +493,6 @@ public class XunFeiPptApi {
             Boolean isFigure,            // 是否自动配图
             String aiImage               // ai配图类型：normal、advanced
     ) {
-    }
-
-
-    /**
-     * 构建创建 PPT 的表单数据
-     *
-     * @param request 请求参数
-     * @return 表单数据
-     */
-    private MultiValueMap<String, Object> buildCreatePptFormData(CreatePptRequest request) {
-        MultiValueMap<String, Object> formData = new LinkedMultiValueMap<>();
-        if (request.file() != null) {
-            try {
-                formData.add("file", new ByteArrayResource(request.file().getBytes()) {
-                    @Override
-                    public String getFilename() {
-                        return request.file().getOriginalFilename();
-                    }
-                });
-            } catch (IOException e) {
-                log.error("[XunFeiPptApi] 文件处理失败", e);
-                throw new IllegalStateException("[XunFeiPptApi] 文件处理失败", e);
-            }
-        }
-        Map<String, Object> param = new HashMap<>();
-        addIfPresent(param, "query", request.query());
-        addIfPresent(param, "fileUrl", request.fileUrl());
-        addIfPresent(param, "fileName", request.fileName());
-        addIfPresent(param, "templateId", request.templateId());
-        addIfPresent(param, "businessId", request.businessId());
-        addIfPresent(param, "author", request.author());
-        addIfPresent(param, "isCardNote", request.isCardNote());
-        addIfPresent(param, "search", request.search());
-        addIfPresent(param, "language", request.language());
-        addIfPresent(param, "isFigure", request.isFigure());
-        addIfPresent(param, "aiImage", request.aiImage());
-        param.forEach(formData::add);
-        return formData;
-    }
-
-    public static <K, V> void addIfPresent(Map<K, V> map, K key, V value) {
-        if (ObjUtil.isNull(key) || ObjUtil.isNull(map)) {
-            return;
-        }
-
-        boolean isPresent = false;
-        if (ObjUtil.isNotNull(value)) {
-            if (value instanceof String) {
-                // 字符串：需要有实际内容
-                isPresent = StringUtils.hasText((String) value);
-            } else {
-                // 其他类型：非 null 即视为存在
-                isPresent = true;
-            }
-        }
-        if (isPresent) {
-            map.put(key, value);
-        }
     }
 
     /**

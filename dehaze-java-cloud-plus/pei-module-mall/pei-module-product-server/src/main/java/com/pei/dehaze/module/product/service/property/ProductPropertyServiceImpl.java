@@ -88,12 +88,6 @@ public class ProductPropertyServiceImpl implements ProductPropertyService {
         productPropertyValueService.deletePropertyValueByPropertyId(id);
     }
 
-    private void validatePropertyExists(Long id) {
-        if (productPropertyMapper.selectById(id) == null) {
-            throw exception(PROPERTY_NOT_EXISTS);
-        }
-    }
-
     @Override
     public PageResult<ProductPropertyDO> getPropertyPage(ProductPropertyPageReqVO pageReqVO) {
         return productPropertyMapper.selectPage(pageReqVO);
@@ -112,6 +106,12 @@ public class ProductPropertyServiceImpl implements ProductPropertyService {
     @Override
     public List<ProductPropertyDO> getPropertyList() {
         return productPropertyMapper.selectList();
+    }
+
+    private void validatePropertyExists(Long id) {
+        if (productPropertyMapper.selectById(id) == null) {
+            throw exception(PROPERTY_NOT_EXISTS);
+        }
     }
 
 }

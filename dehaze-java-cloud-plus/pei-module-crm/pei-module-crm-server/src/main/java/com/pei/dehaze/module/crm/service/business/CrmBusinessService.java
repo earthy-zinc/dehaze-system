@@ -100,14 +100,6 @@ public interface CrmBusinessService {
     CrmBusinessDO validateBusiness(Long id);
 
     /**
-     * 获得商机列表
-     *
-     * @param ids 编号
-     * @return 商机列表
-     */
-    List<CrmBusinessDO> getBusinessList(Collection<Long> ids);
-
-    /**
      * 获得商机 Map
      *
      * @param ids 编号
@@ -116,6 +108,14 @@ public interface CrmBusinessService {
     default Map<Long, CrmBusinessDO> getBusinessMap(Collection<Long> ids) {
         return convertMap(getBusinessList(ids), CrmBusinessDO::getId);
     }
+
+    /**
+     * 获得商机列表
+     *
+     * @param ids 编号
+     * @return 商机列表
+     */
+    List<CrmBusinessDO> getBusinessList(Collection<Long> ids);
 
     /**
      * 获得指定商机编号的产品列表
@@ -127,7 +127,7 @@ public interface CrmBusinessService {
 
     /**
      * 获得商机分页
-     *
+     * <p>
      * 数据权限：基于 {@link CrmBusinessDO}
      *
      * @param pageReqVO 分页查询
@@ -138,7 +138,7 @@ public interface CrmBusinessService {
 
     /**
      * 获得商机分页，基于指定客户
-     *
+     * <p>
      * 数据权限：基于 {@link CrmCustomerDO} 读取
      *
      * @param pageReqVO 分页查询
@@ -148,7 +148,7 @@ public interface CrmBusinessService {
 
     /**
      * 获得商机分页，基于指定联系人
-     *
+     * <p>
      * 数据权限：基于 {@link CrmContactDO} 读取
      *
      * @param pageReqVO 分页参数

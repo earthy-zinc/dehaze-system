@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.system.mq.message.mail;
 
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 /**
  * 邮箱发送消息

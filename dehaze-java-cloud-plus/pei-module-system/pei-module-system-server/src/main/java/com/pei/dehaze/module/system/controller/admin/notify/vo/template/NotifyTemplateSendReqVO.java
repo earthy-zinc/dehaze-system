@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.system.controller.admin.notify.vo.template;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
 import java.util.Map;
 
 @Schema(description = "管理后台 - 站内信模板的发送 Request VO")

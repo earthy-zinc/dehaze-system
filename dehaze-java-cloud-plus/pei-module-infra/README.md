@@ -8,6 +8,7 @@
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：为上层业务系统提供基础能力支撑，包括：
     - 文件存储与管理（支持本地、FTP、OSS 等）
     - 参数配置中心（Config Management）
@@ -19,6 +20,7 @@
     - 统一权限认证机制
 
 ### 🧩 技术栈依赖
+
 - **Spring Boot + Spring Cloud Gateway + Nacos**
 - **数据访问层**：
     - MyBatis Plus + MySQL + Redis
@@ -59,7 +61,6 @@ src/main/java/
     └── InfraServerApplication.java // 启动类
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -67,6 +68,7 @@ src/main/java/
 ### 1️⃣ `api.config` 包 —— 配置信息接口定义
 
 #### 示例：`ConfigRespDTO.java`
+
 ```java
 @Schema(description = "RPC 服务 - 配置 Response DTO")
 @Data
@@ -92,7 +94,6 @@ public class ConfigRespDTO {
 }
 ```
 
-
 - **作用**：对外暴露配置管理 DTO。
 - **用途**：
     - 供其它模块远程调用（如商城、订单模块）
@@ -103,6 +104,7 @@ public class ConfigRespDTO {
 ### 2️⃣ `controller.admin.config` 包 —— 配置管理后台接口
 
 #### 示例：`ConfigController.java`
+
 ```java
 @Tag(name = "管理后台 - 参数配置")
 @RestController
@@ -122,7 +124,6 @@ public class ConfigController {
 }
 ```
 
-
 - **作用**：对外暴露 `/infra/config/**` 接口，实现管理员相关的配置操作。
 - **权限控制**：
     - 使用 `@PreAuthorize` 校验用户是否有操作权限
@@ -134,6 +135,7 @@ public class ConfigController {
 ### 3️⃣ `service.config` 包 —— 配置服务逻辑
 
 #### 示例：`ConfigServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -155,7 +157,6 @@ public class ConfigServiceImpl implements ConfigService {
 }
 ```
 
-
 - **作用**：实现参数配置的创建、更新、删除、查询等操作。
 - **关键逻辑**：
     - 使用 `PasswordEncoder` 加密密码
@@ -168,6 +169,7 @@ public class ConfigServiceImpl implements ConfigService {
 ### 4️⃣ `dal.dataobject.config` 包 —— 配置数据库映射对象
 
 #### 示例：`ConfigDO.java`
+
 ```java
 @TableName("infra_config")
 @KeySequence("infra_config_seq")
@@ -220,7 +222,6 @@ public class ConfigDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `infra_config` 表。
 - **字段说明**：
     - `configKey`: 唯一键（如 `user.type.admin`）
@@ -233,6 +234,7 @@ public class ConfigDO extends BaseDO {
 ### 5️⃣ `service.codegen` 包 —— 代码生成服务逻辑
 
 #### 示例：`CodegenServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -270,7 +272,6 @@ public class CodegenServiceImpl implements CodegenService {
 }
 ```
 
-
 - **作用**：实现 Java + Vue 前后端代码自动生成。
 - **关键逻辑**：
     - 使用 Velocity 模板引擎生成代码
@@ -283,6 +284,7 @@ public class CodegenServiceImpl implements CodegenService {
 ### 6️⃣ `dal.dataobject.codegen` 包 —— 代码生成数据库映射对象
 
 #### 示例：`CodegenTableDO.java`
+
 ```java
 @TableName("infra_codegen_table")
 @KeySequence("infra_codegen_table_seq")
@@ -355,7 +357,6 @@ public class CodegenTableDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `infra_codegen_table` 表。
 - **字段说明**：
     - `dataSourceConfigId`: 关联的数据源配置
@@ -368,6 +369,7 @@ public class CodegenTableDO extends BaseDO {
 ### 7️⃣ `service.file` 包 —— 文件服务逻辑
 
 #### 示例：`FileServiceImpl.java`
+
 ```java
 @Service
 public class FileServiceImpl implements FileService {
@@ -391,7 +393,6 @@ public class FileServiceImpl implements FileService {
 }
 ```
 
-
 - **作用**：实现文件上传、下载、删除等操作。
 - **关键逻辑**：
     - 支持多种存储方式（本地、FTP、OSS）
@@ -404,6 +405,7 @@ public class FileServiceImpl implements FileService {
 ### 8️⃣ `dal.dataobject.file` 包 —— 文件记录数据库映射对象
 
 #### 示例：`FileDO.java`
+
 ```java
 @TableName("infra_file")
 @KeySequence("infra_file_seq")
@@ -466,7 +468,6 @@ public class FileDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `infra_file` 表。
 - **字段说明**：
     - `name`: 文件原始名称
@@ -479,6 +480,7 @@ public class FileDO extends BaseDO {
 ### 9️⃣ `enums.config` 包 —— 配置类型枚举
 
 #### 示例：`ConfigTypeEnum.java`
+
 ```java
 @Getter
 @AllArgsConstructor
@@ -492,7 +494,6 @@ public enum ConfigTypeEnum implements ArrayValuable<Integer> {
 }
 ```
 
-
 - **作用**：统一管理配置类型。
 - **优势**：
     - 减少魔法数字
@@ -503,6 +504,7 @@ public enum ConfigTypeEnum implements ArrayValuable<Integer> {
 ### 🔟 `service.datasource` 包 —— 数据源服务逻辑
 
 #### 示例：`DataSourceConfigServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -538,7 +540,6 @@ public class DataSourceConfigServiceImpl implements DataSourceConfigService {
 }
 ```
 
-
 - **作用**：实现数据源配置的创建、更新、删除、查询等操作。
 - **关键逻辑**：
     - 动态数据源配置
@@ -551,6 +552,7 @@ public class DataSourceConfigServiceImpl implements DataSourceConfigService {
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ 配置更新流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -561,8 +563,8 @@ graph TD
     F --> G[响应客户端]
 ```
 
-
 ### 2️⃣ 文件上传流程
+
 ```mermaid
 graph TD
     A[用户点击上传按钮] --> B[进入 FileController.uploadFile(...)]
@@ -573,8 +575,8 @@ graph TD
     F --> G[响应客户端]
 ```
 
-
 ### 3️⃣ 代码生成流程
+
 ```mermaid
 graph TD
     A[选择数据库表] --> B[进入 CodegenController.getTableList(...)]
@@ -584,7 +586,6 @@ graph TD
     E --> F[打包为 ZIP 并返回]
     F --> G[响应客户端]
 ```
-
 
 ---
 
@@ -605,33 +606,32 @@ graph TD
     K --> L[infra_codegen_table 表]
 ```
 
-
 ---
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `api.config` | 配置信息接口定义 | `ConfigRespDTO` |
-| `controller.admin.config` | 配置管理后台 | `ConfigController` |
-| `service.config` | 配置服务逻辑 | `ConfigServiceImpl` |
-| `dal.dataobject.config` | 配置数据 | `ConfigDO` |
-| `service.codegen` | 代码生成服务逻辑 | `CodegenServiceImpl` |
-| `dal.dataobject.codegen` | 代码生成数据 | `CodegenTableDO` |
-| `service.file` | 文件服务逻辑 | `FileServiceImpl` |
-| `dal.dataobject.file` | 文件记录数据 | `FileDO` |
+| 包名                        | 功能       | 关键类                  |
+|---------------------------|----------|----------------------|
+| `api.config`              | 配置信息接口定义 | `ConfigRespDTO`      |
+| `controller.admin.config` | 配置管理后台   | `ConfigController`   |
+| `service.config`          | 配置服务逻辑   | `ConfigServiceImpl`  |
+| `dal.dataobject.config`   | 配置数据     | `ConfigDO`           |
+| `service.codegen`         | 代码生成服务逻辑 | `CodegenServiceImpl` |
+| `dal.dataobject.codegen`  | 代码生成数据   | `CodegenTableDO`     |
+| `service.file`            | 文件服务逻辑   | `FileServiceImpl`    |
+| `dal.dataobject.file`     | 文件记录数据   | `FileDO`             |
 
 ---
 
 ## ✅ 建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多租户增强 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 单元测试 | 当前代码未提供单元测试，建议补充测试用例 |
-| ✅ 流程监控 | 增加配置变更统计、文件访问频率统计等指标 |
+| 改进点      | 描述                                                   |
+|----------|------------------------------------------------------|
+| ✅ 多租户增强  | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
+| ✅ 性能优化   | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 单元测试   | 当前代码未提供单元测试，建议补充测试用例                                 |
+| ✅ 流程监控   | 增加配置变更统计、文件访问频率统计等指标                                 |
 
 ---
 
@@ -639,13 +639,13 @@ graph TD
 
 `pei-module-infra` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 配置管理 | ConfigDO + ConfigService | 系统参数、用户参数统一管理 |
-| 文件管理 | FileDO + FileService | 文件上传、下载、删除等操作 |
-| 数据源管理 | DataSourceConfigDO + DataSourceConfigService | 多租户数据库配置管理 |
-| 代码生成 | CodegenTableDO + CodegenService | 自动生成 Java + Vue 前后端代码 |
-| 日志记录 | ApiAccessLogDO + ApiAccessLogService | 记录 API 请求日志用于分析 |
+| 功能    | 技术实现                                         | 用途                    |
+|-------|----------------------------------------------|-----------------------|
+| 配置管理  | ConfigDO + ConfigService                     | 系统参数、用户参数统一管理         |
+| 文件管理  | FileDO + FileService                         | 文件上传、下载、删除等操作         |
+| 数据源管理 | DataSourceConfigDO + DataSourceConfigService | 多租户数据库配置管理            |
+| 代码生成  | CodegenTableDO + CodegenService              | 自动生成 Java + Vue 前后端代码 |
+| 日志记录  | ApiAccessLogDO + ApiAccessLogService         | 记录 API 请求日志用于分析       |
 
 它是一个轻量但功能完整的基础设施模块，适用于电商、社交、CRM、ERP、AI 等需要统一配置、文件、数据源管理的场景。
 

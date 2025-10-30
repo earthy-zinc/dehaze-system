@@ -31,6 +31,7 @@ public interface MemberPointRecordConvert {
                 memberUserRespDTO -> record.setNickname(memberUserRespDTO.getNickname())));
         return voPageResult;
     }
+
     PageResult<MemberPointRecordRespVO> convertPage(PageResult<MemberPointRecordDO> pageResult);
 
 }

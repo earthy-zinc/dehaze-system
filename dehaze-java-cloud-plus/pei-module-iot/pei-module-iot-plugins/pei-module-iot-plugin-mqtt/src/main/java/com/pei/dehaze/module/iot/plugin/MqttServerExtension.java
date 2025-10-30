@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // TODO @芋艿：暂未实现
+
 /**
  * 根据官方示例，整合常见 MQTT 功能到 PF4J 的 Extension 类中
  */
@@ -33,8 +34,7 @@ public class MqttServerExtension {
     private MqttServer mqttServer;
 
     /**
-     * 启动 MQTT 服务端
-     * 可根据需要决定是否启用 SSL/TLS、WebSocket、多实例部署等
+     * 启动 MQTT 服务端 可根据需要决定是否启用 SSL/TLS、WebSocket、多实例部署等
      */
     public void startMqttServer() {
         // 初始化 Vert.x
@@ -80,28 +80,6 @@ public class MqttServerExtension {
     }
 
     /**
-     * 优雅关闭 MQTT 服务端
-     */
-    public Future<Void> stopMqttServer() {
-        if (mqttServer != null) {
-            return mqttServer.close().onComplete(ar -> {
-                if (ar.succeeded()) {
-                    log.info("MQTT server closed.");
-                    if (vertx != null) {
-                        vertx.close();
-                        log.info("Vert.x instance closed.");
-                    }
-                } else {
-                    log.error("Failed to close MQTT server: {}", ar.cause().getMessage());
-                }
-            });
-        }
-        return Future.succeededFuture();
-    }
-
-    // ==================== 以下为官方示例中常见事件的处理封装 ====================
-
-    /**
      * 处理客户端连接 (CONNECT)
      */
     private void handleClientConnect(MqttEndpoint endpoint) {
@@ -127,6 +105,8 @@ public class MqttServerExtension {
         // 接受远程客户端的连接
         endpoint.accept(false);
     }
+
+    // ==================== 以下为官方示例中常见事件的处理封装 ====================
 
     /**
      * 处理客户端主动断开 (DISCONNECT)
@@ -201,11 +181,30 @@ public class MqttServerExtension {
         });
     }
 
+    /**
+     * 优雅关闭 MQTT 服务端
+     */
+    public Future<Void> stopMqttServer() {
+        if (mqttServer != null) {
+            return mqttServer.close().onComplete(ar -> {
+                if (ar.succeeded()) {
+                    log.info("MQTT server closed.");
+                    if (vertx != null) {
+                        vertx.close();
+                        log.info("Vert.x instance closed.");
+                    }
+                } else {
+                    log.error("Failed to close MQTT server: {}", ar.cause().getMessage());
+                }
+            });
+        }
+        return Future.succeededFuture();
+    }
+
     // ==================== 如果需要服务端向客户端发布消息，可用以下示例 ====================
 
     /**
-     * 服务端主动向已连接的某个 endpoint 发布消息的示例
-     * 如果使用 MQTT 5.0，可以传递更多消息属性
+     * 服务端主动向已连接的某个 endpoint 发布消息的示例 如果使用 MQTT 5.0，可以传递更多消息属性
      */
     public void publishToClient(MqttEndpoint endpoint, String topic, String content) {
         endpoint.publish(topic,

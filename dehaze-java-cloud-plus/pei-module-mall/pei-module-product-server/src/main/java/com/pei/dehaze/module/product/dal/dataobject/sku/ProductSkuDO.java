@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.product.dal.dataobject.sku;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.product.dal.dataobject.property.ProductPropertyDO;
-import com.pei.dehaze.module.product.dal.dataobject.property.ProductPropertyValueDO;
-import com.pei.dehaze.module.product.dal.dataobject.spu.ProductSpuDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.product.dal.dataobject.property.ProductPropertyDO;
+import com.pei.dehaze.module.product.dal.dataobject.property.ProductPropertyValueDO;
+import com.pei.dehaze.module.product.dal.dataobject.spu.ProductSpuDO;
 import lombok.*;
 
 import java.util.List;
@@ -35,7 +35,7 @@ public class ProductSkuDO extends BaseDO {
     private Long id;
     /**
      * SPU 编号
-     *
+     * <p>
      * 关联 {@link ProductSpuDO#getId()}
      */
     private Long spuId;
@@ -103,27 +103,23 @@ public class ProductSkuDO extends BaseDO {
     public static class Property {
 
         /**
-         * 属性编号
-         * 关联 {@link ProductPropertyDO#getId()}
+         * 属性编号 关联 {@link ProductPropertyDO#getId()}
          */
         private Long propertyId;
         /**
-         * 属性名字
-         * 冗余 {@link ProductPropertyDO#getName()}
-         *
+         * 属性名字 冗余 {@link ProductPropertyDO#getName()}
+         * <p>
          * 注意：每次属性名字发生变化时，需要更新该冗余
          */
         private String propertyName;
 
         /**
-         * 属性值编号
-         * 关联 {@link ProductPropertyValueDO#getId()}
+         * 属性值编号 关联 {@link ProductPropertyValueDO#getId()}
          */
         private Long valueId;
         /**
-         * 属性值名字
-         * 冗余 {@link ProductPropertyValueDO#getName()}
-         *
+         * 属性值名字 冗余 {@link ProductPropertyValueDO#getName()}
+         * <p>
          * 注意：每次属性值名字发生变化时，需要更新该冗余
          */
         private String valueName;

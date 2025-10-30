@@ -17,37 +17,36 @@
 
 package com.pei.dehaze.module.mp.framework.mp.core.context;
 
-import com.pei.dehaze.module.mp.controller.admin.open.vo.MpOpenHandleMessageReqVO;
 import com.alibaba.ttl.TransmittableThreadLocal;
-import lombok.experimental.UtilityClass;
+import com.pei.dehaze.module.mp.controller.admin.open.vo.MpOpenHandleMessageReqVO;
 import me.chanjar.weixin.mp.api.WxMpMessageHandler;
 
 /**
  * 微信上下文 Context
- *
+ * <p>
  * 目的：解决微信多公众号的问题，在 {@link WxMpMessageHandler} 实现类中，可以通过 {@link #getAppId()} 获取到当前的 appId
  *
- * @see com.pei.dehaze.module.mp.controller.admin.open.MpOpenController#handleMessage(String, String, MpOpenHandleMessageReqVO)
- *
  * @author earthyzinc
+ * @see com.pei.dehaze.module.mp.controller.admin.open.MpOpenController#handleMessage(String, String,
+ * MpOpenHandleMessageReqVO)
  */
 public class MpContextHolder {
 
     /**
      * 微信公众号的 appId 上下文
      */
-	private static final ThreadLocal<String> APPID = new TransmittableThreadLocal<>();
+    private static final ThreadLocal<String> APPID = new TransmittableThreadLocal<>();
 
-	public static void setAppId(String appId) {
-		APPID.set(appId);
-	}
+    public static String getAppId() {
+        return APPID.get();
+    }
 
-	public static String getAppId() {
-		return APPID.get();
-	}
+    public static void setAppId(String appId) {
+        APPID.set(appId);
+    }
 
-	public static void clear() {
-		APPID.remove();
-	}
+    public static void clear() {
+        APPID.remove();
+    }
 
 }

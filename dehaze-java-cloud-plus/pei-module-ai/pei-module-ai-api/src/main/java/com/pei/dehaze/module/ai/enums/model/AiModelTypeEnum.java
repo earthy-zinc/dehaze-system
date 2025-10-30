@@ -22,6 +22,7 @@ public enum AiModelTypeEnum implements ArrayValuable<Integer> {
     EMBEDDING(5, "向量"),
     RERANK(6, "重排序");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(AiModelTypeEnum::getType).toArray(Integer[]::new);
     /**
      * 类型
      */
@@ -30,8 +31,6 @@ public enum AiModelTypeEnum implements ArrayValuable<Integer> {
      * 类型名
      */
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(AiModelTypeEnum::getType).toArray(Integer[]::new);
 
     @Override
     public Integer[] array() {

@@ -25,7 +25,7 @@ public interface PayAppConvert {
 
     PayAppConvert INSTANCE = Mappers.getMapper(PayAppConvert.class);
 
-    PayAppPageItemRespVO pageConvert (PayAppDO bean);
+    PayAppPageItemRespVO pageConvert(PayAppDO bean);
 
     PayAppDO convert(PayAppCreateReqVO bean);
 
@@ -35,8 +35,6 @@ public interface PayAppConvert {
 
     List<PayAppRespVO> convertList(List<PayAppDO> list);
 
-    PageResult<PayAppPageItemRespVO> convertPage(PageResult<PayAppDO> page);
-
     default PageResult<PayAppPageItemRespVO> convertPage(PageResult<PayAppDO> pageResult, List<PayChannelDO> channels) {
         PageResult<PayAppPageItemRespVO> voPageResult = convertPage(pageResult);
         // 处理 channel 关系
@@ -44,5 +42,7 @@ public interface PayAppConvert {
         voPageResult.getList().forEach(app -> app.setChannelCodes(appIdChannelMap.get(app.getId())));
         return voPageResult;
     }
+
+    PageResult<PayAppPageItemRespVO> convertPage(PageResult<PayAppDO> page);
 
 }

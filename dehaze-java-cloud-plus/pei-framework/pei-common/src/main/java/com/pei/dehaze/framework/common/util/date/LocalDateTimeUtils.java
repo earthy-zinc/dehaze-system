@@ -32,22 +32,6 @@ public class LocalDateTimeUtils {
 
     public static DateTimeFormatter UTC_MS_WITH_XXX_OFFSET_FORMATTER = createFormatter(UTC_MS_WITH_XXX_OFFSET_PATTERN);
 
-    /**
-     * 解析时间
-     *
-     * 相比 {@link LocalDateTimeUtil#parse(CharSequence)} 方法来说，会尽量去解析，直到成功
-     *
-     * @param time 时间
-     * @return 时间字符串
-     */
-    public static LocalDateTime parse(String time) {
-        try {
-            return LocalDateTimeUtil.parse(time, DatePattern.NORM_DATE_PATTERN);
-        } catch (DateTimeParseException e) {
-            return LocalDateTimeUtil.parse(time);
-        }
-    }
-
     public static LocalDateTime addTime(Duration duration) {
         return LocalDateTime.now().plus(duration);
     }
@@ -64,6 +48,11 @@ public class LocalDateTimeUtils {
         return date.isAfter(LocalDateTime.now());
     }
 
+    public static LocalDateTime[] buildBetweenTime(int year1, int mouth1, int day1,
+                                                   int year2, int mouth2, int day2) {
+        return new LocalDateTime[]{buildTime(year1, mouth1, day1), buildTime(year2, mouth2, day2)};
+    }
+
     /**
      * 创建指定时间
      *
@@ -76,17 +65,12 @@ public class LocalDateTimeUtils {
         return LocalDateTime.of(year, mouth, day, 0, 0, 0);
     }
 
-    public static LocalDateTime[] buildBetweenTime(int year1, int mouth1, int day1,
-                                                   int year2, int mouth2, int day2) {
-        return new LocalDateTime[]{buildTime(year1, mouth1, day1), buildTime(year2, mouth2, day2)};
-    }
-
     /**
      * 判指定断时间，是否在该时间范围内
      *
      * @param startTime 开始时间
-     * @param endTime 结束时间
-     * @param time 指定时间
+     * @param endTime   结束时间
+     * @param time      指定时间
      * @return 是否
      */
     public static boolean isBetween(LocalDateTime startTime, LocalDateTime endTime, String time) {
@@ -94,6 +78,22 @@ public class LocalDateTimeUtils {
             return false;
         }
         return LocalDateTimeUtil.isIn(parse(time), startTime, endTime);
+    }
+
+    /**
+     * 解析时间
+     * <p>
+     * 相比 {@link LocalDateTimeUtil#parse(CharSequence)} 方法来说，会尽量去解析，直到成功
+     *
+     * @param time 时间
+     * @return 时间字符串
+     */
+    public static LocalDateTime parse(String time) {
+        try {
+            return LocalDateTimeUtil.parse(time, DatePattern.NORM_DATE_PATTERN);
+        } catch (DateTimeParseException e) {
+            return LocalDateTimeUtil.parse(time);
+        }
     }
 
     /**
@@ -143,35 +143,13 @@ public class LocalDateTimeUtils {
     }
 
     /**
-     * 获取指定日期所在的月份的开始时间
-     * 例如：2023-09-30 00:00:00,000
-     *
-     * @param date 日期
-     * @return 月份的开始时间
-     */
-    public static LocalDateTime beginOfMonth(LocalDateTime date) {
-        return date.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN);
-    }
-
-    /**
-     * 获取指定日期所在的月份的最后时间
-     * 例如：2023-09-30 23:59:59,999
+     * 获取指定日期所在的月份的最后时间 例如：2023-09-30 23:59:59,999
      *
      * @param date 日期
      * @return 月份的结束时间
      */
     public static LocalDateTime endOfMonth(LocalDateTime date) {
         return date.with(TemporalAdjusters.lastDayOfMonth()).with(LocalTime.MAX);
-    }
-
-    /**
-     * 获得指定日期所在季度
-     *
-     * @param date 日期
-     * @return 所在季度
-     */
-    public static int getQuarterOfYear(LocalDateTime date) {
-        return (date.getMonthValue() - 1) / 3 + 1;
     }
 
     /**
@@ -209,6 +187,16 @@ public class LocalDateTimeUtils {
      */
     public static LocalDateTime getMonth() {
         return beginOfMonth(LocalDateTime.now());
+    }
+
+    /**
+     * 获取指定日期所在的月份的开始时间 例如：2023-09-30 00:00:00,000
+     *
+     * @param date 日期
+     * @return 月份的开始时间
+     */
+    public static LocalDateTime beginOfMonth(LocalDateTime date) {
+        return date.with(TemporalAdjusters.firstDayOfMonth()).with(LocalTime.MIN);
     }
 
     /**
@@ -279,6 +267,16 @@ public class LocalDateTimeUtils {
             lastTimeRange[1] = endTime;
         }
         return timeRanges;
+    }
+
+    /**
+     * 获得指定日期所在季度
+     *
+     * @param date 日期
+     * @return 所在季度
+     */
+    public static int getQuarterOfYear(LocalDateTime date) {
+        return (date.getMonthValue() - 1) / 3 + 1;
     }
 
     /**

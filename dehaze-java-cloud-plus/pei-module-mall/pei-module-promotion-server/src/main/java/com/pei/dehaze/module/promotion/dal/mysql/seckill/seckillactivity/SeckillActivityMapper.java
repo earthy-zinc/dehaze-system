@@ -2,13 +2,13 @@ package com.pei.dehaze.module.promotion.dal.mysql.seckill.seckillactivity;
 
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjectUtil;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.promotion.controller.admin.seckill.vo.activity.SeckillActivityPageReqVO;
 import com.pei.dehaze.module.promotion.controller.app.seckill.vo.activity.AppSeckillActivityPageReqVO;
 import com.pei.dehaze.module.promotion.dal.dataobject.seckill.SeckillActivityDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.time.LocalDateTime;

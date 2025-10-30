@@ -5,10 +5,10 @@ import com.pei.dehaze.module.member.controller.admin.config.vo.MemberConfigSaveR
 import com.pei.dehaze.module.member.convert.config.MemberConfigConvert;
 import com.pei.dehaze.module.member.dal.dataobject.config.MemberConfigDO;
 import com.pei.dehaze.module.member.dal.mysql.config.MemberConfigMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 /**

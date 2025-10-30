@@ -35,7 +35,7 @@ public interface BargainActivityService {
 
     /**
      * 更新砍价活动库存
-     *
+     * <p>
      * 如果更新失败（库存不足），则抛出业务异常
      *
      * @param id    砍价活动编号

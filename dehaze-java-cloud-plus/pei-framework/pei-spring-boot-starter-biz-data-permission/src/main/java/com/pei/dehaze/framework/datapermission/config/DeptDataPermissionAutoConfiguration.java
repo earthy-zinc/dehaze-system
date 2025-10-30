@@ -32,7 +32,8 @@ public class DeptDataPermissionAutoConfiguration {
             if (permissionApiImpl != null) {
                 permissionApi = permissionApiImpl;
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         // 创建 DeptDataPermissionRule 对象
         DeptDataPermissionRule rule = new DeptDataPermissionRule(permissionApi);

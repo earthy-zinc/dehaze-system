@@ -1,8 +1,8 @@
 package com.pei.dehaze.framework.ip.core;
 
-import com.pei.dehaze.framework.ip.core.enums.AreaTypeEnum;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.pei.dehaze.framework.ip.core.enums.AreaTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * 区域节点，包括国家、省份、城市、地区等信息
- *
+ * <p>
  * 数据可见 resources/area.csv 文件
  *
  * @author earthyzinc
@@ -42,7 +42,7 @@ public class Area {
     private String name;
     /**
      * 类型
-     *
+     * <p>
      * 枚举 {@link AreaTypeEnum}
      */
     private Integer type;

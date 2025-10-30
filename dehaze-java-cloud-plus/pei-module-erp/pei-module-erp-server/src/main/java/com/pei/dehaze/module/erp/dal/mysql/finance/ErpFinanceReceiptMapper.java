@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.erp.dal.mysql.finance;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.MPJLambdaWrapperX;
 import com.pei.dehaze.module.erp.controller.admin.finance.vo.receipt.ErpFinanceReceiptPageReqVO;
 import com.pei.dehaze.module.erp.dal.dataobject.finance.ErpFinanceReceiptDO;
 import com.pei.dehaze.module.erp.dal.dataobject.finance.ErpFinanceReceiptItemDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

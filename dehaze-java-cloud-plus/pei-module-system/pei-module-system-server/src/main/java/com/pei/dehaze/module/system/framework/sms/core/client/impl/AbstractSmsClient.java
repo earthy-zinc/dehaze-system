@@ -22,13 +22,6 @@ public abstract class AbstractSmsClient implements SmsClient {
         this.properties = properties;
     }
 
-    /**
-     * 初始化
-     */
-    public final void init() {
-        log.debug("[init][配置({}) 初始化完成]", properties);
-    }
-
     public final void refresh(SmsChannelProperties properties) {
         // 判断是否更新
         if (properties.equals(this.properties)) {
@@ -38,6 +31,13 @@ public abstract class AbstractSmsClient implements SmsClient {
         this.properties = properties;
         // 初始化
         this.init();
+    }
+
+    /**
+     * 初始化
+     */
+    public final void init() {
+        log.debug("[init][配置({}) 初始化完成]", properties);
     }
 
     @Override

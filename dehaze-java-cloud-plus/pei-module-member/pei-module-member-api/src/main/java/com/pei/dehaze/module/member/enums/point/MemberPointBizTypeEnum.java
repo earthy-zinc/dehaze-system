@@ -45,14 +45,14 @@ public enum MemberPointBizTypeEnum implements ArrayValuable<Integer> {
      */
     private final boolean add;
 
-    @Override
-    public Integer[] array() {
-        return new Integer[0];
-    }
-
     public static MemberPointBizTypeEnum getByType(Integer type) {
         return EnumUtil.getBy(MemberPointBizTypeEnum.class,
                 e -> Objects.equals(type, e.getType()));
+    }
+
+    @Override
+    public Integer[] array() {
+        return new Integer[0];
     }
 
 }

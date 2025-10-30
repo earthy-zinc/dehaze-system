@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Schema(description = "管理后台 - 某一天的粉丝增减数据 Response VO")
 @Data

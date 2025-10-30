@@ -45,6 +45,14 @@ public class DataPermissionAnnotationInterceptorTest extends BaseMockitoUnitTest
         assertTrue(CollUtil.getFirst(interceptor.getDataPermissionCache().values()).enable());
     }
 
+    private void mockMethodInvocation(Class<?> clazz) throws Throwable {
+        Object targetObject = clazz.newInstance();
+        Method method = targetObject.getClass().getMethod("echo");
+        when(methodInvocation.getThis()).thenReturn(targetObject);
+        when(methodInvocation.getMethod()).thenReturn(method);
+        when(methodInvocation.proceed()).then(invocationOnMock -> method.invoke(targetObject));
+    }
+
     @Test // 在 Method 上有 @DataPermission 注解
     public void testInvoke_method() throws Throwable {
         // 参数
@@ -69,14 +77,6 @@ public class DataPermissionAnnotationInterceptorTest extends BaseMockitoUnitTest
         assertEquals("class", result);
         assertEquals(1, interceptor.getDataPermissionCache().size());
         assertFalse(CollUtil.getFirst(interceptor.getDataPermissionCache().values()).enable());
-    }
-
-    private void mockMethodInvocation(Class<?> clazz) throws Throwable {
-        Object targetObject = clazz.newInstance();
-        Method method = targetObject.getClass().getMethod("echo");
-        when(methodInvocation.getThis()).thenReturn(targetObject);
-        when(methodInvocation.getMethod()).thenReturn(method);
-        when(methodInvocation.proceed()).then(invocationOnMock -> method.invoke(targetObject));
     }
 
     static class TestMethod {

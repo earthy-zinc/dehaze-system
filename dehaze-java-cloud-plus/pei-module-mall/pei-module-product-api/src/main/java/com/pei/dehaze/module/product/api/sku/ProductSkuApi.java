@@ -7,13 +7,13 @@ import com.pei.dehaze.module.product.enums.ApiConstants;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import jakarta.validation.Valid;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -31,11 +31,6 @@ public interface ProductSkuApi {
     @Parameter(name = "id", description = "SKU 编号", required = true, example = "1024")
     CommonResult<ProductSkuRespDTO> getSku(@RequestParam("id") Long id);
 
-    @GetMapping(PREFIX + "/list")
-    @Operation(summary = "批量查询 SKU 信息")
-    @Parameter(name = "ids", description = "SKU 编号列表", required = true, example = "1024,2048")
-    CommonResult<List<ProductSkuRespDTO>> getSkuList(@RequestParam("ids") Collection<Long> ids);
-
     /**
      * 批量查询 SKU MAP
      *
@@ -45,6 +40,11 @@ public interface ProductSkuApi {
     default Map<Long, ProductSkuRespDTO> getSkuMap(Collection<Long> ids) {
         return convertMap(getSkuList(ids).getCheckedData(), ProductSkuRespDTO::getId);
     }
+
+    @GetMapping(PREFIX + "/list")
+    @Operation(summary = "批量查询 SKU 信息")
+    @Parameter(name = "ids", description = "SKU 编号列表", required = true, example = "1024,2048")
+    CommonResult<List<ProductSkuRespDTO>> getSkuList(@RequestParam("ids") Collection<Long> ids);
 
     @GetMapping(PREFIX + "/list-by-spu-id")
     @Operation(summary = "批量查询 SKU 信息")

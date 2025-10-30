@@ -11,12 +11,12 @@ import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
 import com.pei.dehaze.module.pay.dal.mysql.app.PayAppMapper;
 import com.pei.dehaze.module.pay.service.order.PayOrderService;
 import com.pei.dehaze.module.pay.service.refund.PayRefundService;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.Map;
 
 import static com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils.buildBetweenTime;
@@ -200,7 +200,7 @@ public class PayAppServiceTest extends BaseDbUnitTest {
         PayAppDO dbApp = randomPojo(PayAppDO.class, o -> { // 等会查询到
             o.setName("灿灿姐的杂货铺");
             o.setStatus(CommonStatusEnum.ENABLE.getStatus());
-            o.setCreateTime(buildTime(2021,11,20));
+            o.setCreateTime(buildTime(2021, 11, 20));
         });
 
         appMapper.insert(dbApp);
@@ -209,7 +209,7 @@ public class PayAppServiceTest extends BaseDbUnitTest {
         // 测试 status 不匹配
         appMapper.insert(cloneIgnoreId(dbApp, o -> o.setStatus(CommonStatusEnum.DISABLE.getStatus())));
         // 测试 createTime 不匹配
-        appMapper.insert(cloneIgnoreId(dbApp, o -> o.setCreateTime(buildTime(2021,12,21))));
+        appMapper.insert(cloneIgnoreId(dbApp, o -> o.setCreateTime(buildTime(2021, 12, 21))));
         // 准备参数
         PayAppPageReqVO reqVO = new PayAppPageReqVO();
         reqVO.setName("灿灿姐的杂货铺");

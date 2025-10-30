@@ -1,8 +1,7 @@
 package com.pei.dehaze.module.member.api.message.user;
 
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 /**
  * 会员用户创建消息

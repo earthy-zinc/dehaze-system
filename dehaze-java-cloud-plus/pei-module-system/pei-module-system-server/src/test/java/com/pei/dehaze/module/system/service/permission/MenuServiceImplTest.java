@@ -8,11 +8,11 @@ import com.pei.dehaze.module.system.dal.dataobject.permission.MenuDO;
 import com.pei.dehaze.module.system.dal.mysql.permission.MenuMapper;
 import com.pei.dehaze.module.system.enums.permission.MenuTypeEnum;
 import com.pei.dehaze.module.system.service.tenant.TenantService;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -65,6 +65,26 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
         assertPojoEquals(reqVO, dbMenu, "id");
     }
 
+    /**
+     * 插入父子菜单，返回子菜单
+     *
+     * @return 子菜单
+     */
+    private MenuDO createParentAndSonMenu() {
+        // 构造父子菜单
+        MenuDO parentMenuDO = buildMenuDO(MenuTypeEnum.MENU, "parent", ID_ROOT);
+        menuMapper.insert(parentMenuDO);
+        // 构建子菜单
+        MenuDO sonMenuDO = buildMenuDO(MenuTypeEnum.MENU, "testSonName",
+                parentMenuDO.getParentId());
+        menuMapper.insert(sonMenuDO);
+        return sonMenuDO;
+    }
+
+    private MenuDO buildMenuDO(MenuTypeEnum type, String name, Long parentId) {
+        return buildMenuDO(type, name, parentId, randomCommonStatus());
+    }
+
     @Test
     public void testUpdateMenu_success() {
         // mock 数据（构造父子菜单）
@@ -83,6 +103,11 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
         // 校验记录的属性是否正确
         MenuDO dbMenu = menuMapper.selectById(sonId);
         assertPojoEquals(reqVO, dbMenu);
+    }
+
+    private MenuDO buildMenuDO(MenuTypeEnum type, String name, Long parentId, Integer status) {
+        return randomPojo(MenuDO.class, o -> o.setId(null).setName(name).setParentId(parentId)
+                .setType(type.getType()).setStatus(status));
     }
 
     @Test
@@ -261,6 +286,8 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
                 MENU_PARENT_NOT_EXISTS);
     }
 
+    // ====================== 初始化方法 ======================
+
     @Test
     public void testValidateParentMenu_parentTypeError() {
         // mock 数据
@@ -299,33 +326,6 @@ public class MenuServiceImplTest extends BaseDbUnitTest {
         // 调用，并断言异常
         assertServiceException(() -> menuService.validateMenuName(parentId, otherSonMenuName, otherSonMenuId),
                 MENU_NAME_DUPLICATE);
-    }
-
-    // ====================== 初始化方法 ======================
-
-    /**
-     * 插入父子菜单，返回子菜单
-     *
-     * @return 子菜单
-     */
-    private MenuDO createParentAndSonMenu() {
-        // 构造父子菜单
-        MenuDO parentMenuDO = buildMenuDO(MenuTypeEnum.MENU, "parent", ID_ROOT);
-        menuMapper.insert(parentMenuDO);
-        // 构建子菜单
-        MenuDO sonMenuDO = buildMenuDO(MenuTypeEnum.MENU, "testSonName",
-                parentMenuDO.getParentId());
-        menuMapper.insert(sonMenuDO);
-        return sonMenuDO;
-    }
-
-    private MenuDO buildMenuDO(MenuTypeEnum type, String name, Long parentId) {
-        return buildMenuDO(type, name, parentId, randomCommonStatus());
-    }
-
-    private MenuDO buildMenuDO(MenuTypeEnum type, String name, Long parentId, Integer status) {
-        return randomPojo(MenuDO.class, o -> o.setId(null).setName(name).setParentId(parentId)
-                .setType(type.getType()).setStatus(status));
     }
 
 }

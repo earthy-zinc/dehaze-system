@@ -58,11 +58,10 @@ public class CrmStatisticsPerformanceServiceImpl implements CrmStatisticsPerform
 
     /**
      * 获得员工业绩数据
+     * <p>
+     * 1. 获得今年 + 去年的数据 2. 遍历今年的月份，逐个拼接去年的月份数据
      *
-     * 1. 获得今年 + 去年的数据
-     * 2. 遍历今年的月份，逐个拼接去年的月份数据
-     *
-     * @param performanceReqVO  参数
+     * @param performanceReqVO    参数
      * @param performanceFunction 员工业绩统计方法
      * @return 员工业绩数据
      */

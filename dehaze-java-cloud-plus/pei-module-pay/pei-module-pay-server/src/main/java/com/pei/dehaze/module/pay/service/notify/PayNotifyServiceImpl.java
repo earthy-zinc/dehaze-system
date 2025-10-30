@@ -6,6 +6,7 @@ import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.date.DateUtils;
@@ -28,7 +29,8 @@ import com.pei.dehaze.module.pay.enums.notify.PayNotifyTypeEnum;
 import com.pei.dehaze.module.pay.service.order.PayOrderService;
 import com.pei.dehaze.module.pay.service.refund.PayRefundService;
 import com.pei.dehaze.module.pay.service.transfer.PayTransferService;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
@@ -38,8 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import jakarta.annotation.Resource;
-import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -152,8 +152,7 @@ public class PayNotifyServiceImpl implements PayNotifyService {
     }
 
     /**
-     * 等待全部支付通知的完成
-     * 每 1 秒会打印一次剩余任务数量
+     * 等待全部支付通知的完成 每 1 秒会打印一次剩余任务数量
      *
      * @param latch Latch
      * @throws InterruptedException 如果被打断
@@ -169,6 +168,21 @@ public class PayNotifyServiceImpl implements PayNotifyService {
         log.error("[awaitExecuteNotify][任务未处理完，总任务数({}) 剩余任务数({})]", size, latch.getCount());
     }
 
+    @Override
+    public PayNotifyTaskDO getNotifyTask(Long id) {
+        return notifyTaskMapper.selectById(id);
+    }
+
+    @Override
+    public PageResult<PayNotifyTaskDO> getNotifyTaskPage(PayNotifyTaskPageReqVO pageReqVO) {
+        return notifyTaskMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public List<PayNotifyLogDO> getNotifyLogList(Long taskId) {
+        return notifyLogMapper.selectListByTaskId(taskId);
+    }
+
     /**
      * 异步执行单个支付通知
      *
@@ -177,6 +191,15 @@ public class PayNotifyServiceImpl implements PayNotifyService {
     @Async
     public void executeNotifyAsync(PayNotifyTaskDO task) {
         executeNotify(task);
+    }
+
+    /**
+     * 获得自身的代理对象，解决 AOP 生效问题
+     *
+     * @return 自己
+     */
+    private PayNotifyServiceImpl getSelf() {
+        return SpringUtil.getBean(getClass());
     }
 
     /**
@@ -261,8 +284,8 @@ public class PayNotifyServiceImpl implements PayNotifyService {
     /**
      * 处理并更新通知结果
      *
-     * @param task 通知任务
-     * @param invokeResult 通知结果
+     * @param task            通知任务
+     * @param invokeResult    通知结果
      * @param invokeException 通知异常
      * @return 最终任务的状态
      */
@@ -294,30 +317,6 @@ public class PayNotifyServiceImpl implements PayNotifyService {
                 : PayNotifyStatusEnum.REQUEST_SUCCESS.getStatus());
         notifyTaskMapper.updateById(updateTask);
         return updateTask.getStatus();
-    }
-
-    @Override
-    public PayNotifyTaskDO getNotifyTask(Long id) {
-        return notifyTaskMapper.selectById(id);
-    }
-
-    @Override
-    public PageResult<PayNotifyTaskDO> getNotifyTaskPage(PayNotifyTaskPageReqVO pageReqVO) {
-        return notifyTaskMapper.selectPage(pageReqVO);
-    }
-
-    @Override
-    public List<PayNotifyLogDO> getNotifyLogList(Long taskId) {
-        return notifyLogMapper.selectListByTaskId(taskId);
-    }
-
-    /**
-     * 获得自身的代理对象，解决 AOP 生效问题
-     *
-     * @return 自己
-     */
-    private PayNotifyServiceImpl getSelf() {
-        return SpringUtil.getBean(getClass());
     }
 
 }

@@ -56,36 +56,12 @@ public class BpmCategoryServiceImpl implements BpmCategoryService {
         bpmCategoryMapper.updateById(updateObj);
     }
 
-    private void validateCategoryNameUnique(BpmCategorySaveReqVO updateReqVO) {
-        BpmCategoryDO category = bpmCategoryMapper.selectByName(updateReqVO.getName());
-        if (category == null
-                || ObjUtil.equal(category.getId(), updateReqVO.getId())) {
-            return;
-        }
-        throw exception(CATEGORY_NAME_DUPLICATE, updateReqVO.getName());
-    }
-
-    private void validateCategoryCodeUnique(BpmCategorySaveReqVO updateReqVO) {
-        BpmCategoryDO category = bpmCategoryMapper.selectByCode(updateReqVO.getCode());
-        if (category == null
-                || ObjUtil.equal(category.getId(), updateReqVO.getId())) {
-            return;
-        }
-        throw exception(CATEGORY_CODE_DUPLICATE, updateReqVO.getCode());
-    }
-
     @Override
     public void deleteCategory(Long id) {
         // 校验存在
         validateCategoryExists(id);
         // 删除
         bpmCategoryMapper.deleteById(id);
-    }
-
-    private void validateCategoryExists(Long id) {
-        if (bpmCategoryMapper.selectById(id) == null) {
-            throw exception(CATEGORY_NOT_EXISTS);
-        }
     }
 
     @Override
@@ -125,6 +101,30 @@ public class BpmCategoryServiceImpl implements BpmCategoryService {
                 .mapToObj(index -> new BpmCategoryDO().setId(ids.get(index)).setSort(index))
                 .collect(Collectors.toList());
         bpmCategoryMapper.updateBatch(updateList);
+    }
+
+    private void validateCategoryExists(Long id) {
+        if (bpmCategoryMapper.selectById(id) == null) {
+            throw exception(CATEGORY_NOT_EXISTS);
+        }
+    }
+
+    private void validateCategoryNameUnique(BpmCategorySaveReqVO updateReqVO) {
+        BpmCategoryDO category = bpmCategoryMapper.selectByName(updateReqVO.getName());
+        if (category == null
+                || ObjUtil.equal(category.getId(), updateReqVO.getId())) {
+            return;
+        }
+        throw exception(CATEGORY_NAME_DUPLICATE, updateReqVO.getName());
+    }
+
+    private void validateCategoryCodeUnique(BpmCategorySaveReqVO updateReqVO) {
+        BpmCategoryDO category = bpmCategoryMapper.selectByCode(updateReqVO.getCode());
+        if (category == null
+                || ObjUtil.equal(category.getId(), updateReqVO.getId())) {
+            return;
+        }
+        throw exception(CATEGORY_CODE_DUPLICATE, updateReqVO.getCode());
     }
 
 }

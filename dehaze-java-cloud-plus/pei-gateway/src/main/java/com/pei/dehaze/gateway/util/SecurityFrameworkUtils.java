@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * 安全服务工具类
- *
+ * <p>
  * copy from pei-spring-boot-starter-security 的 SecurityFrameworkUtils 类
  *
  * @author earthyzinc
@@ -30,7 +30,8 @@ public class SecurityFrameworkUtils {
     private static final String LOGIN_USER_ID_ATTR = "login-user-id";
     private static final String LOGIN_USER_TYPE_ATTR = "login-user-type";
 
-    private SecurityFrameworkUtils() {}
+    private SecurityFrameworkUtils() {
+    }
 
     /**
      * 从请求中，获得认证 Token
@@ -54,7 +55,7 @@ public class SecurityFrameworkUtils {
      * 设置登录用户
      *
      * @param exchange 请求
-     * @param user 用户
+     * @param user     用户
      */
     public static void setLoginUser(ServerWebExchange exchange, LoginUser user) {
         exchange.getAttributes().put(LOGIN_USER_ID_ATTR, user.getId());
@@ -102,7 +103,7 @@ public class SecurityFrameworkUtils {
      * 将 user 并设置到 login-user 的请求头，使用 json 存储值
      *
      * @param builder 请求
-     * @param user 用户
+     * @param user    用户
      */
     public static void setLoginUserHeader(ServerHttpRequest.Builder builder, LoginUser user) {
         try {

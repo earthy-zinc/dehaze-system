@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.iot.dal.tdengine;
 
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.module.iot.controller.admin.device.vo.data.IotDeviceLogPageReqVO;
 import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceLogDO;
 import com.pei.dehaze.module.iot.framework.tdengine.core.annotation.TDengineDS;
-import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -33,7 +33,7 @@ public interface IotDeviceLogMapper {
 
     /**
      * 插入设备日志数据
-     *
+     * <p>
      * 如果子表不存在，会自动创建子表
      *
      * @param log 设备日志数据
@@ -59,6 +59,7 @@ public interface IotDeviceLogMapper {
 
     // TODO @super：1）上行、下行，不写在 mapper 里，而是通过参数传递，这样，selectDeviceLogUpCountByHour、selectDeviceLogDownCountByHour 可以合并；
     //  TODO @super：2）不能只基于 identifier 来计算，而是要 type + identifier 成对
+
     /**
      * 查询每个小时设备上行消息数量
      */

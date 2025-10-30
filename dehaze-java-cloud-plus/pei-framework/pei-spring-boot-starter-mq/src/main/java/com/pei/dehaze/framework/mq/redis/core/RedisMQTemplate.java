@@ -45,6 +45,18 @@ public class RedisMQTemplate {
         }
     }
 
+    private void sendMessageBefore(AbstractRedisMessage message) {
+        // 正序
+        interceptors.forEach(interceptor -> interceptor.sendMessageBefore(message));
+    }
+
+    private void sendMessageAfter(AbstractRedisMessage message) {
+        // 倒序
+        for (int i = interceptors.size() - 1; i >= 0; i--) {
+            interceptors.get(i).sendMessageAfter(message);
+        }
+    }
+
     /**
      * 发送 Redis 消息，基于 Redis Stream 实现
      *
@@ -70,18 +82,6 @@ public class RedisMQTemplate {
      */
     public void addInterceptor(RedisMessageInterceptor interceptor) {
         interceptors.add(interceptor);
-    }
-
-    private void sendMessageBefore(AbstractRedisMessage message) {
-        // 正序
-        interceptors.forEach(interceptor -> interceptor.sendMessageBefore(message));
-    }
-
-    private void sendMessageAfter(AbstractRedisMessage message) {
-        // 倒序
-        for (int i = interceptors.size() - 1; i >= 0; i--) {
-            interceptors.get(i).sendMessageAfter(message);
-        }
     }
 
 }

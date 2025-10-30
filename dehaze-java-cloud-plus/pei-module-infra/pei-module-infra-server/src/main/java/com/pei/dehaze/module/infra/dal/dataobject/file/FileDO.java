@@ -1,14 +1,13 @@
 package com.pei.dehaze.module.infra.dal.dataobject.file;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import lombok.*;
 
 /**
- * 文件表
- * 每次文件上传，都会记录一条记录到该表中
+ * 文件表 每次文件上传，都会记录一条记录到该表中
  *
  * @author earthyzinc
  */
@@ -29,7 +28,7 @@ public class FileDO extends BaseDO {
     private Long id;
     /**
      * 配置编号
-     *
+     * <p>
      * 关联 {@link FileConfigDO#getId()}
      */
     private Long configId;

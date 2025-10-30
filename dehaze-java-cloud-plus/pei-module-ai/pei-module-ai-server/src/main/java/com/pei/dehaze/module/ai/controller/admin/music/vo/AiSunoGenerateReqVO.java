@@ -17,8 +17,7 @@ public class AiSunoGenerateReqVO {
     private String platform; // 参见 AiPlatformEnum 枚举
 
     /**
-     * 1. 描述模式：描述词 + 是否纯音乐 + 模型
-     * 2. 歌词模式：歌词 + 音乐风格 + 标题 + 模型
+     * 1. 描述模式：描述词 + 是否纯音乐 + 模型 2. 歌词模式：歌词 + 音乐风格 + 标题 + 模型
      */
     @Schema(description = "生成模式", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")
     @NotNull(message = "生成模式不能为空")

@@ -19,10 +19,9 @@ public enum BpmUserTaskRejectHandlerTypeEnum implements ArrayValuable<Integer> {
     FINISH_PROCESS_INSTANCE(1, "终止流程"),
     RETURN_USER_TASK(2, "驳回到指定任务节点");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmUserTaskRejectHandlerTypeEnum::getType).toArray(Integer[]::new);
     private final Integer type;
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmUserTaskRejectHandlerTypeEnum::getType).toArray(Integer[]::new);
 
     public static BpmUserTaskRejectHandlerTypeEnum typeOf(Integer type) {
         return ArrayUtil.firstMatch(item -> item.getType().equals(type), values());

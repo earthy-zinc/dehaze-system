@@ -40,17 +40,6 @@ public abstract class AbstractSliderDesensitizationHandler<T extends Annotation>
     }
 
     /**
-     * 根据长度循环构建替换符
-     *
-     * @param replacer 替换符
-     * @param length   长度
-     * @return 构建后的替换符
-     */
-    private String buildReplacerByLength(String replacer, int length) {
-        return replacer.repeat(length);
-    }
-
-    /**
      * 前缀保留长度
      *
      * @param annotation 注解信息
@@ -73,5 +62,16 @@ public abstract class AbstractSliderDesensitizationHandler<T extends Annotation>
      * @return 替换符
      */
     abstract String getReplacer(T annotation);
+
+    /**
+     * 根据长度循环构建替换符
+     *
+     * @param replacer 替换符
+     * @param length   长度
+     * @return 构建后的替换符
+     */
+    private String buildReplacerByLength(String replacer, int length) {
+        return replacer.repeat(length);
+    }
 
 }

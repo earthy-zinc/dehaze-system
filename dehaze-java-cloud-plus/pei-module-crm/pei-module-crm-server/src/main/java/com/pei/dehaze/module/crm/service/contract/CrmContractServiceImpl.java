@@ -4,6 +4,9 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjUtil;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.number.MoneyUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -32,9 +35,6 @@ import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionTransferReqB
 import com.pei.dehaze.module.crm.service.product.CrmProductService;
 import com.pei.dehaze.module.crm.service.receivable.CrmReceivableService;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -163,63 +163,6 @@ public class CrmContractServiceImpl implements CrmContractService {
         LogRecordContext.putVariable("contractName", contract.getName());
     }
 
-    private void updateContractProduct(Long id, List<CrmContractProductDO> newList) {
-        List<CrmContractProductDO> oldList = contractProductMapper.selectListByContractId(id);
-        List<List<CrmContractProductDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setContractId(id));
-            contractProductMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            contractProductMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            contractProductMapper.deleteBatchIds(convertSet(diffList.get(2), CrmContractProductDO::getId));
-        }
-    }
-
-    /**
-     * 校验关联数据是否存在
-     *
-     * @param reqVO 请求
-     */
-    private void validateRelationDataExists(CrmContractSaveReqVO reqVO) {
-        // 1. 校验客户
-        if (reqVO.getCustomerId() != null) {
-            customerService.validateCustomer(reqVO.getCustomerId());
-        }
-        // 2. 校验负责人
-        if (reqVO.getOwnerUserId() != null) {
-            adminUserApi.validateUser(reqVO.getOwnerUserId());
-        }
-        // 3. 如果有关联商机，则需要校验存在
-        if (reqVO.getBusinessId() != null) {
-            businessService.validateBusiness(reqVO.getBusinessId());
-        }
-        // 4. 校验签约相关字段
-        if (reqVO.getSignContactId() != null) {
-            contactService.validateContact(reqVO.getSignContactId());
-        }
-        if (reqVO.getSignUserId() != null) {
-            adminUserApi.validateUser(reqVO.getSignUserId());
-        }
-    }
-
-    private List<CrmContractProductDO> validateContractProducts(List<CrmContractSaveReqVO.Product> list) {
-        // 1. 校验产品存在
-        productService.validProductList(convertSet(list, CrmContractSaveReqVO.Product::getProductId));
-        // 2. 转化为 CrmContractProductDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, CrmContractProductDO.class,
-                item -> item.setTotalPrice(MoneyUtils.priceMultiply(item.getContractPrice(), item.getCount()))));
-    }
-
-    private void calculateTotalPrice(CrmContractDO contract, List<CrmContractProductDO> contractProducts) {
-        contract.setTotalProductPrice(getSumValue(contractProducts, CrmContractProductDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
-        BigDecimal discountPrice = MoneyUtils.priceMultiplyPercent(contract.getTotalProductPrice(), contract.getDiscountPercent());
-        contract.setTotalPrice(contract.getTotalProductPrice().subtract(discountPrice));
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     @LogRecord(type = CRM_CONTRACT_TYPE, subType = CRM_CONTRACT_DELETE_SUB_TYPE, bizNo = "{{#id}}",
@@ -240,14 +183,6 @@ public class CrmContractServiceImpl implements CrmContractService {
 
         // 3. 记录操作日志上下文
         LogRecordContext.putVariable("contractName", contract.getName());
-    }
-
-    private CrmContractDO validateContractExists(Long id) {
-        CrmContractDO contract = contractMapper.selectById(id);
-        if (contract == null) {
-            throw exception(CONTRACT_NOT_EXISTS);
-        }
-        return contract;
     }
 
     @Override
@@ -323,8 +258,6 @@ public class CrmContractServiceImpl implements CrmContractService {
         contractMapper.updateById(new CrmContractDO().setId(id).setAuditStatus(auditStatus));
     }
 
-    // ======================= 查询相关 =======================
-
     @Override
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_CONTRACT, bizId = "#id", level = CrmPermissionLevelEnum.READ)
     public CrmContractDO getContract(Long id) {
@@ -366,6 +299,8 @@ public class CrmContractServiceImpl implements CrmContractService {
     public PageResult<CrmContractDO> getContractPageByCustomerId(CrmContractPageReqVO pageReqVO) {
         return contractMapper.selectPageByCustomerId(pageReqVO);
     }
+
+    // ======================= 查询相关 =======================
 
     @Override
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_BUSINESS, bizId = "#pageReqVO.businessId", level = CrmPermissionLevelEnum.READ)
@@ -410,6 +345,71 @@ public class CrmContractServiceImpl implements CrmContractService {
     @Override
     public List<CrmContractDO> getContractListByCustomerIdOwnerUserId(Long customerId, Long ownerUserId) {
         return contractMapper.selectListByCustomerIdOwnerUserId(customerId, ownerUserId);
+    }
+
+    private CrmContractDO validateContractExists(Long id) {
+        CrmContractDO contract = contractMapper.selectById(id);
+        if (contract == null) {
+            throw exception(CONTRACT_NOT_EXISTS);
+        }
+        return contract;
+    }
+
+    private void updateContractProduct(Long id, List<CrmContractProductDO> newList) {
+        List<CrmContractProductDO> oldList = contractProductMapper.selectListByContractId(id);
+        List<List<CrmContractProductDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setContractId(id));
+            contractProductMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            contractProductMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            contractProductMapper.deleteBatchIds(convertSet(diffList.get(2), CrmContractProductDO::getId));
+        }
+    }
+
+    private List<CrmContractProductDO> validateContractProducts(List<CrmContractSaveReqVO.Product> list) {
+        // 1. 校验产品存在
+        productService.validProductList(convertSet(list, CrmContractSaveReqVO.Product::getProductId));
+        // 2. 转化为 CrmContractProductDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, CrmContractProductDO.class,
+                item -> item.setTotalPrice(MoneyUtils.priceMultiply(item.getContractPrice(), item.getCount()))));
+    }
+
+    /**
+     * 校验关联数据是否存在
+     *
+     * @param reqVO 请求
+     */
+    private void validateRelationDataExists(CrmContractSaveReqVO reqVO) {
+        // 1. 校验客户
+        if (reqVO.getCustomerId() != null) {
+            customerService.validateCustomer(reqVO.getCustomerId());
+        }
+        // 2. 校验负责人
+        if (reqVO.getOwnerUserId() != null) {
+            adminUserApi.validateUser(reqVO.getOwnerUserId());
+        }
+        // 3. 如果有关联商机，则需要校验存在
+        if (reqVO.getBusinessId() != null) {
+            businessService.validateBusiness(reqVO.getBusinessId());
+        }
+        // 4. 校验签约相关字段
+        if (reqVO.getSignContactId() != null) {
+            contactService.validateContact(reqVO.getSignContactId());
+        }
+        if (reqVO.getSignUserId() != null) {
+            adminUserApi.validateUser(reqVO.getSignUserId());
+        }
+    }
+
+    private void calculateTotalPrice(CrmContractDO contract, List<CrmContractProductDO> contractProducts) {
+        contract.setTotalProductPrice(getSumValue(contractProducts, CrmContractProductDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
+        BigDecimal discountPrice = MoneyUtils.priceMultiplyPercent(contract.getTotalProductPrice(), contract.getDiscountPercent());
+        contract.setTotalPrice(contract.getTotalProductPrice().subtract(discountPrice));
     }
 
 }

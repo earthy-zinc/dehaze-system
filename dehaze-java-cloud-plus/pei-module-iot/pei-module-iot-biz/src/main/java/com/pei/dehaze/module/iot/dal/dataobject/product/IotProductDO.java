@@ -1,10 +1,13 @@
 package com.pei.dehaze.module.iot.dal.dataobject.product;
 
-import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * IoT 产品 DO

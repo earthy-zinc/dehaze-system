@@ -1,11 +1,10 @@
 package com.pei.dehaze.module.trade.framework.order.config;
 
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
-
-import jakarta.validation.constraints.NotNull;
 
 import java.time.Duration;
 
@@ -24,7 +23,7 @@ public class TradeOrderProperties {
 
     /**
      * 支付应用标识
-     *
+     * <p>
      * 在 pay 模块的 [支付管理 -> 应用信息] 里添加
      */
     @NotEmpty(message = "Pay 应用标识不能为空")

@@ -22,7 +22,7 @@ import java.util.Map;
 
 /**
  * IoT 设备 MQTT 消息处理器
- *
+ * <p>
  * 参考：<a href="https://help.aliyun.com/zh/iot/user-guide/device-properties-events-and-services">设备属性、事件、服务</a>
  */
 @Slf4j
@@ -187,46 +187,6 @@ public class IotDeviceMqttMessageHandler {
     }
 
     /**
-     * 从主题部分中获取事件标识符
-     *
-     * @param topicParts 主题各部分
-     * @param topic      原始主题，用于日志
-     * @return 事件标识符，如果获取失败返回null
-     */
-    private String getEventIdentifier(String[] topicParts, String topic) {
-        try {
-            return topicParts[6];
-        } catch (ArrayIndexOutOfBoundsException e) {
-            log.warn("[getEventIdentifier][无法从主题中获取事件标识符][topic: {}][topicParts: {}]",
-                    topic, Arrays.toString(topicParts));
-            return null;
-        }
-    }
-
-    /**
-     * 发送响应消息
-     *
-     * @param topic      原始主题
-     * @param jsonObject 原始消息JSON对象
-     * @param method     响应方法
-     * @param customData 自定义数据，可为 null
-     */
-    private void sendResponse(String topic, JSONObject jsonObject, String method, Object customData) {
-        String replyTopic = topic + REPLY_SUFFIX;
-
-        // 响应结果
-        IotStandardResponse response = IotStandardResponse.success(
-                jsonObject.getStr("id"), method, customData);
-        try {
-            mqttClient.publish(replyTopic, Buffer.buffer(JsonUtils.toJsonString(response)),
-                    MqttQoS.AT_LEAST_ONCE, false, false);
-            log.info("[sendResponse][发送响应消息成功][topic: {}]", replyTopic);
-        } catch (Exception e) {
-            log.error("[sendResponse][发送响应消息失败][topic: {}][response: {}]", replyTopic, response, e);
-        }
-    }
-
-    /**
      * 构建设备属性上报请求对象
      *
      * @param jsonObject 消息内容
@@ -267,6 +227,29 @@ public class IotDeviceMqttMessageHandler {
     }
 
     /**
+     * 发送响应消息
+     *
+     * @param topic      原始主题
+     * @param jsonObject 原始消息JSON对象
+     * @param method     响应方法
+     * @param customData 自定义数据，可为 null
+     */
+    private void sendResponse(String topic, JSONObject jsonObject, String method, Object customData) {
+        String replyTopic = topic + REPLY_SUFFIX;
+
+        // 响应结果
+        IotStandardResponse response = IotStandardResponse.success(
+                jsonObject.getStr("id"), method, customData);
+        try {
+            mqttClient.publish(replyTopic, Buffer.buffer(JsonUtils.toJsonString(response)),
+                    MqttQoS.AT_LEAST_ONCE, false, false);
+            log.info("[sendResponse][发送响应消息成功][topic: {}]", replyTopic);
+        } catch (Exception e) {
+            log.error("[sendResponse][发送响应消息失败][topic: {}][response: {}]", replyTopic, response, e);
+        }
+    }
+
+    /**
      * 构建设备事件上报请求对象
      *
      * @param jsonObject 消息内容
@@ -291,6 +274,23 @@ public class IotDeviceMqttMessageHandler {
         reportReqDTO.setParams(params);
 
         return reportReqDTO;
+    }
+
+    /**
+     * 从主题部分中获取事件标识符
+     *
+     * @param topicParts 主题各部分
+     * @param topic      原始主题，用于日志
+     * @return 事件标识符，如果获取失败返回null
+     */
+    private String getEventIdentifier(String[] topicParts, String topic) {
+        try {
+            return topicParts[6];
+        } catch (ArrayIndexOutOfBoundsException e) {
+            log.warn("[getEventIdentifier][无法从主题中获取事件标识符][topic: {}][topicParts: {}]",
+                    topic, Arrays.toString(topicParts));
+            return null;
+        }
     }
 
 }

@@ -3,6 +3,7 @@ package com.pei.dehaze.module.iot.api.device.dto.control.upstream;
 import lombok.Data;
 
 // TODO @芋艿：待实现：/ota/${productKey}/${deviceName}/progress
+
 /**
  * IoT 设备【OTA】升级进度 Request DTO（上报更新固件进度）
  *
@@ -18,7 +19,7 @@ public class IotDeviceOtaProgressReqDTO extends IotDeviceUpstreamAbstractReqDTO 
 
     /**
      * 升级状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.iot.enums.ota.IotOtaUpgradeRecordStatusEnum}
      */
     private Integer status;

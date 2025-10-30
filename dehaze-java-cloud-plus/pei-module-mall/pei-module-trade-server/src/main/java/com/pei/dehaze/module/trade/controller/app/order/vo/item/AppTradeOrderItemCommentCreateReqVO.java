@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.trade.controller.app.order.vo.item;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
+
 import java.util.List;
 
 @Schema(description = "用户 App - 商品评价创建 Request VO")

@@ -16,8 +16,7 @@ import java.util.List;
 public interface ProductPropertyValueService {
 
     /**
-     * 创建属性值
-     * 注意，如果已经存在该属性值，直接返回它的编号即可
+     * 创建属性值 注意，如果已经存在该属性值，直接返回它的编号即可
      *
      * @param createReqVO 创建信息
      * @return 编号

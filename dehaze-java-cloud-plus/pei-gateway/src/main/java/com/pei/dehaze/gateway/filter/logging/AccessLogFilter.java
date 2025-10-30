@@ -3,10 +3,11 @@ package com.pei.dehaze.gateway.filter.logging;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.json.JSONUtil;
+import com.alibaba.nacos.common.utils.StringUtils;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.gateway.util.SecurityFrameworkUtils;
 import com.pei.dehaze.gateway.util.WebFrameworkUtils;
-import com.alibaba.nacos.common.utils.StringUtils;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -37,7 +38,6 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import jakarta.annotation.Resource;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,9 +47,9 @@ import static cn.hutool.core.date.DatePattern.NORM_DATETIME_MS_FORMATTER;
 
 /**
  * 网关的访问日志过滤器
- *
+ * <p>
  * 从功能上，它类似 pei-spring-boot-starter-web 的 ApiAccessLogFilter 过滤器
- *
+ * <p>
  * TODO 芋艿：如果网关执行异常，不会记录访问日志，后续研究下 https://github.com/Silvmike/webflux-demo/blob/master/tests/src/test/java/ru/hardcoders/demo/webflux/web_handler/filters/logging
  *
  * @author earthyzinc
@@ -134,7 +134,7 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
 
     /**
      * 参考 {@link ModifyRequestBodyGatewayFilterFactory} 实现
-     *
+     * <p>
      * 差别主要在于使用 modifiedBody 来读取 Request Body 数据
      */
     private Mono<Void> filterWithRequestBody(ServerWebExchange exchange, GatewayFilterChain chain, AccessLog gatewayLog) {
@@ -169,8 +169,42 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
     }
 
     /**
-     * 记录响应日志
-     * 通过 DataBufferFactory 解决响应体分段传输问题。
+     * 请求装饰器，支持重新计算 headers、body 缓存
+     *
+     * @param exchange      请求
+     * @param headers       请求头
+     * @param outputMessage body 缓存
+     * @return 请求装饰器
+     */
+    private ServerHttpRequestDecorator requestDecorate(ServerWebExchange exchange, HttpHeaders headers, CachedBodyOutputMessage outputMessage) {
+        return new ServerHttpRequestDecorator(exchange.getRequest()) {
+
+            @Override
+            public HttpHeaders getHeaders() {
+                long contentLength = headers.getContentLength();
+                HttpHeaders httpHeaders = new HttpHeaders();
+                httpHeaders.putAll(super.getHeaders());
+                if (contentLength > 0) {
+                    httpHeaders.setContentLength(contentLength);
+                } else {
+                    // TODO: this causes a 'HTTP/1.1 411 Length Required' // on
+                    // httpbin.org
+                    httpHeaders.set(HttpHeaders.TRANSFER_ENCODING, "chunked");
+                }
+                return httpHeaders;
+            }
+
+            @Override
+            public Flux<DataBuffer> getBody() {
+                return outputMessage.getBody();
+            }
+        };
+    }
+
+    // ========== 参考 ModifyRequestBodyGatewayFilterFactory 中的方法 ==========
+
+    /**
+     * 记录响应日志 通过 DataBufferFactory 解决响应体分段传输问题。
      */
     private ServerHttpResponseDecorator recordResponseLog(ServerWebExchange exchange, AccessLog gatewayLog) {
         ServerHttpResponse response = exchange.getResponse();
@@ -208,41 +242,6 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
                 }
                 // if body is not a flux. never got there.
                 return super.writeWith(body);
-            }
-        };
-    }
-
-    // ========== 参考 ModifyRequestBodyGatewayFilterFactory 中的方法 ==========
-
-    /**
-     * 请求装饰器，支持重新计算 headers、body 缓存
-     *
-     * @param exchange 请求
-     * @param headers 请求头
-     * @param outputMessage body 缓存
-     * @return 请求装饰器
-     */
-    private ServerHttpRequestDecorator requestDecorate(ServerWebExchange exchange, HttpHeaders headers, CachedBodyOutputMessage outputMessage) {
-        return new ServerHttpRequestDecorator(exchange.getRequest()) {
-
-            @Override
-            public HttpHeaders getHeaders() {
-                long contentLength = headers.getContentLength();
-                HttpHeaders httpHeaders = new HttpHeaders();
-                httpHeaders.putAll(super.getHeaders());
-                if (contentLength > 0) {
-                    httpHeaders.setContentLength(contentLength);
-                } else {
-                    // TODO: this causes a 'HTTP/1.1 411 Length Required' // on
-                    // httpbin.org
-                    httpHeaders.set(HttpHeaders.TRANSFER_ENCODING, "chunked");
-                }
-                return httpHeaders;
-            }
-
-            @Override
-            public Flux<DataBuffer> getBody() {
-                return outputMessage.getBody();
             }
         };
     }

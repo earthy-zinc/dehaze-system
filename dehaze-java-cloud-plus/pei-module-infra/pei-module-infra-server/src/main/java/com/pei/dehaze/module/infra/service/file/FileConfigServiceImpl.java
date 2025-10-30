@@ -2,6 +2,8 @@ package com.pei.dehaze.module.infra.service.file;
 
 import cn.hutool.core.io.resource.ResourceUtil;
 import cn.hutool.core.util.IdUtil;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.framework.common.util.validation.ValidationUtils;
@@ -14,8 +16,6 @@ import com.pei.dehaze.module.infra.framework.file.core.client.FileClient;
 import com.pei.dehaze.module.infra.framework.file.core.client.FileClientConfig;
 import com.pei.dehaze.module.infra.framework.file.core.client.FileClientFactory;
 import com.pei.dehaze.module.infra.framework.file.core.enums.FileStorageEnum;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import jakarta.annotation.Resource;
 import jakarta.validation.Validator;
 import lombok.Getter;
@@ -44,7 +44,10 @@ import static com.pei.dehaze.module.infra.enums.ErrorCodeConstants.FILE_CONFIG_N
 public class FileConfigServiceImpl implements FileConfigService {
 
     private static final Long CACHE_MASTER_ID = 0L;
-
+    @Resource
+    private FileClientFactory fileClientFactory;
+    @Resource
+    private FileConfigMapper fileConfigMapper;
     /**
      * {@link FileClient} 缓存，通过它异步刷新 fileClientFactory
      */
@@ -63,13 +66,6 @@ public class FileConfigServiceImpl implements FileConfigService {
                 }
 
             });
-
-    @Resource
-    private FileClientFactory fileClientFactory;
-
-    @Resource
-    private FileConfigMapper fileConfigMapper;
-
     @Resource
     private Validator validator;
 
@@ -109,17 +105,6 @@ public class FileConfigServiceImpl implements FileConfigService {
         clearCache(null, true);
     }
 
-    private FileClientConfig parseClientConfig(Integer storage, Map<String, Object> config) {
-        // 获取配置类
-        Class<? extends FileClientConfig> configClass = FileStorageEnum.getByStorage(storage)
-                .getConfigClass();
-        FileClientConfig clientConfig = JsonUtils.parseObject2(JsonUtils.toJsonString(config), configClass);
-        // 参数校验
-        ValidationUtils.validate(validator, clientConfig);
-        // 设置参数
-        return clientConfig;
-    }
-
     @Override
     public void deleteFileConfig(Long id) {
         // 校验存在
@@ -132,29 +117,6 @@ public class FileConfigServiceImpl implements FileConfigService {
 
         // 清空缓存
         clearCache(id, null);
-    }
-
-    /**
-     * 清空指定文件配置
-     *
-     * @param id     配置编号
-     * @param master 是否主配置
-     */
-    private void clearCache(Long id, Boolean master) {
-        if (id != null) {
-            clientCache.invalidate(id);
-        }
-        if (Boolean.TRUE.equals(master)) {
-            clientCache.invalidate(CACHE_MASTER_ID);
-        }
-    }
-
-    private FileConfigDO validateFileConfigExists(Long id) {
-        FileConfigDO config = fileConfigMapper.selectById(id);
-        if (config == null) {
-            throw exception(FILE_CONFIG_NOT_EXISTS);
-        }
-        return config;
     }
 
     @Override
@@ -184,6 +146,40 @@ public class FileConfigServiceImpl implements FileConfigService {
     @Override
     public FileClient getMasterFileClient() {
         return clientCache.getUnchecked(CACHE_MASTER_ID);
+    }
+
+    private FileConfigDO validateFileConfigExists(Long id) {
+        FileConfigDO config = fileConfigMapper.selectById(id);
+        if (config == null) {
+            throw exception(FILE_CONFIG_NOT_EXISTS);
+        }
+        return config;
+    }
+
+    /**
+     * 清空指定文件配置
+     *
+     * @param id     配置编号
+     * @param master 是否主配置
+     */
+    private void clearCache(Long id, Boolean master) {
+        if (id != null) {
+            clientCache.invalidate(id);
+        }
+        if (Boolean.TRUE.equals(master)) {
+            clientCache.invalidate(CACHE_MASTER_ID);
+        }
+    }
+
+    private FileClientConfig parseClientConfig(Integer storage, Map<String, Object> config) {
+        // 获取配置类
+        Class<? extends FileClientConfig> configClass = FileStorageEnum.getByStorage(storage)
+                .getConfigClass();
+        FileClientConfig clientConfig = JsonUtils.parseObject2(JsonUtils.toJsonString(config), configClass);
+        // 参数校验
+        ValidationUtils.validate(validator, clientConfig);
+        // 设置参数
+        return clientConfig;
     }
 
 }

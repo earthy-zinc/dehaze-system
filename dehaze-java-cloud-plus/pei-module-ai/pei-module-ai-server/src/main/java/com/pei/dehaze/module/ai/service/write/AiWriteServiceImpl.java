@@ -3,13 +3,10 @@ package com.pei.dehaze.module.ai.service.write;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.framework.dict.core.DictFrameworkUtils;
-import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.module.ai.util.AiUtils;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
+import com.pei.dehaze.framework.dict.core.DictFrameworkUtils;
 import com.pei.dehaze.framework.tenant.core.util.TenantUtils;
 import com.pei.dehaze.module.ai.controller.admin.write.vo.AiWriteGenerateReqVO;
 import com.pei.dehaze.module.ai.controller.admin.write.vo.AiWritePageReqVO;
@@ -20,9 +17,12 @@ import com.pei.dehaze.module.ai.dal.mysql.write.AiWriteMapper;
 import com.pei.dehaze.module.ai.enums.AiChatRoleEnum;
 import com.pei.dehaze.module.ai.enums.DictTypeConstants;
 import com.pei.dehaze.module.ai.enums.ErrorCodeConstants;
+import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import com.pei.dehaze.module.ai.enums.write.AiWriteTypeEnum;
 import com.pei.dehaze.module.ai.service.model.AiChatRoleService;
 import com.pei.dehaze.module.ai.service.model.AiModelService;
+import com.pei.dehaze.module.ai.util.AiUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.Message;
@@ -77,7 +77,7 @@ public class AiWriteServiceImpl implements AiWriteService {
 
         // 2. 插入写作信息
         AiWriteDO writeDO = BeanUtils.toBean(generateReqVO, AiWriteDO.class, write -> write.setUserId(userId)
-                        .setPlatform(platform.getPlatform()).setModelId(model.getId()).setModel(model.getModel()));
+                .setPlatform(platform.getPlatform()).setModelId(model.getId()).setModel(model.getModel()));
         writeMapper.insert(writeDO);
 
         // 3.1 构建 Prompt，并进行调用

@@ -1,18 +1,17 @@
 package com.pei.dehaze.framework.common.biz.system.oauth2;
 
-import com.pei.dehaze.framework.common.enums.RpcConstants;
-import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCheckRespDTO;
 import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCreateReqDTO;
 import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenRespDTO;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.pei.dehaze.framework.common.enums.RpcConstants;
+import com.pei.dehaze.framework.common.pojo.CommonResult;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
-
-import jakarta.validation.Valid;
 
 @FeignClient(name = RpcConstants.SYSTEM_NAME) // TODO 芋艿：fallbackFactory =
 @Tag(name = "RPC 服务 - OAuth2.0 令牌")
@@ -43,8 +42,8 @@ public interface OAuth2TokenCommonApi {
     @PutMapping(PREFIX + "/refresh")
     @Operation(summary = "刷新访问令牌")
     @Parameters({
-        @Parameter(name = "refreshToken", description = "刷新令牌", required = true, example = "haha"),
-        @Parameter(name = "clientId", description = "客户端编号", required = true, example = "example")
+            @Parameter(name = "refreshToken", description = "刷新令牌", required = true, example = "haha"),
+            @Parameter(name = "clientId", description = "客户端编号", required = true, example = "example")
     })
     CommonResult<OAuth2AccessTokenRespDTO> refreshAccessToken(@RequestParam("refreshToken") String refreshToken,
                                                               @RequestParam("clientId") String clientId);

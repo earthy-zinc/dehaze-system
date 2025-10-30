@@ -5,10 +5,10 @@ import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.system.api.dept.dto.DeptRespDTO;
 import com.pei.dehaze.module.system.dal.dataobject.dept.DeptDO;
 import com.pei.dehaze.module.system.service.dept.DeptService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 
@@ -28,15 +28,15 @@ public class DeptApiImpl implements DeptApi {
     }
 
     @Override
-    public CommonResult<List<DeptRespDTO>> getDeptList(Collection<Long> ids) {
-        List<DeptDO> depts = deptService.getDeptList(ids);
-        return success(BeanUtils.toBean(depts, DeptRespDTO.class));
-    }
-
-    @Override
     public CommonResult<Boolean> validateDeptList(Collection<Long> ids) {
         deptService.validateDeptList(ids);
         return success(true);
+    }
+
+    @Override
+    public CommonResult<List<DeptRespDTO>> getDeptList(Collection<Long> ids) {
+        List<DeptDO> depts = deptService.getDeptList(ids);
+        return success(BeanUtils.toBean(depts, DeptRespDTO.class));
     }
 
     @Override

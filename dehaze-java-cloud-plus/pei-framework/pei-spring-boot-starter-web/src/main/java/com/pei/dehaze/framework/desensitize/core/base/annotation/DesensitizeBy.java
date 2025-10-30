@@ -1,9 +1,9 @@
 package com.pei.dehaze.framework.desensitize.core.base.annotation;
 
-import com.pei.dehaze.framework.desensitize.core.base.handler.DesensitizationHandler;
-import com.pei.dehaze.framework.desensitize.core.base.serializer.StringDesensitizeSerializer;
 import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.pei.dehaze.framework.desensitize.core.base.handler.DesensitizationHandler;
+import com.pei.dehaze.framework.desensitize.core.base.serializer.StringDesensitizeSerializer;
 
 import java.lang.annotation.*;
 

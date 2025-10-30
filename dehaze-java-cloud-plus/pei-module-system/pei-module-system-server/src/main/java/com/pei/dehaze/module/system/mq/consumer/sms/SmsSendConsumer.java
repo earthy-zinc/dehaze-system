@@ -2,12 +2,11 @@ package com.pei.dehaze.module.system.mq.consumer.sms;
 
 import com.pei.dehaze.module.system.mq.message.sms.SmsSendMessage;
 import com.pei.dehaze.module.system.service.sms.SmsSendService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-
-import jakarta.annotation.Resource;
 
 /**
  * 针对 {@link SmsSendMessage} 的消费者

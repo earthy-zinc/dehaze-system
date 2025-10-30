@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.crm.framework.operatelog.core;
 
 import cn.hutool.core.util.StrUtil;
+import com.mzt.logapi.service.IParseFunction;
 import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import com.pei.dehaze.module.crm.service.customer.CrmCustomerService;
-import com.mzt.logapi.service.IParseFunction;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

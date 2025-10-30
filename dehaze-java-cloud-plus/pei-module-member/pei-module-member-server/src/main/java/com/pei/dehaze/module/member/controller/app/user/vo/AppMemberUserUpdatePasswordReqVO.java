@@ -1,14 +1,13 @@
 package com.pei.dehaze.module.member.controller.app.user.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.Length;
-
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.Pattern;
 
 @Schema(description = "用户 APP - 修改密码 Request VO")
 @Data

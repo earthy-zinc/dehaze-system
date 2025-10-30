@@ -32,14 +32,6 @@ public interface AiKnowledgeSegmentService {
     AiKnowledgeSegmentDO getKnowledgeSegment(Long id);
 
     /**
-     * 获取知识库段落列表
-     *
-     * @param ids 段落编号列表
-     * @return 段落列表
-     */
-    List<AiKnowledgeSegmentDO> getKnowledgeSegmentList(Collection<Long> ids);
-
-    /**
      * 获取知识库段落 Map
      *
      * @param ids 段落编号列表
@@ -50,20 +42,20 @@ public interface AiKnowledgeSegmentService {
     }
 
     /**
+     * 获取知识库段落列表
+     *
+     * @param ids 段落编号列表
+     * @return 段落列表
+     */
+    List<AiKnowledgeSegmentDO> getKnowledgeSegmentList(Collection<Long> ids);
+
+    /**
      * 获取段落分页
      *
      * @param pageReqVO 分页查询
      * @return 文档分页
      */
     PageResult<AiKnowledgeSegmentDO> getKnowledgeSegmentPage(AiKnowledgeSegmentPageReqVO pageReqVO);
-
-    /**
-     * 基于 content 内容，切片创建多个段落
-     *
-     * @param documentId 知识库文档编号
-     * @param content    文档内容
-     */
-    void createKnowledgeSegmentBySplitContent(Long documentId, String content);
 
     /**
      * 【异步】基于 content 内容，切片创建多个段落
@@ -75,6 +67,14 @@ public interface AiKnowledgeSegmentService {
     default void createKnowledgeSegmentBySplitContentAsync(Long documentId, String content) {
         createKnowledgeSegmentBySplitContent(documentId, content);
     }
+
+    /**
+     * 基于 content 内容，切片创建多个段落
+     *
+     * @param documentId 知识库文档编号
+     * @param content    文档内容
+     */
+    void createKnowledgeSegmentBySplitContent(Long documentId, String content);
 
     /**
      * 创建知识库段落
@@ -99,13 +99,6 @@ public interface AiKnowledgeSegmentService {
     void updateKnowledgeSegmentStatus(AiKnowledgeSegmentUpdateStatusReqVO reqVO);
 
     /**
-     * 重新索引知识库下的所有文档段落
-     *
-     * @param knowledgeId 知识库编号
-     */
-    void reindexKnowledgeSegmentByKnowledgeId(Long knowledgeId);
-
-    /**
      * 【异步】重新索引知识库下的所有文档段落
      *
      * @param knowledgeId 知识库编号
@@ -114,6 +107,13 @@ public interface AiKnowledgeSegmentService {
     default void reindexByKnowledgeIdAsync(Long knowledgeId) {
         reindexKnowledgeSegmentByKnowledgeId(knowledgeId);
     }
+
+    /**
+     * 重新索引知识库下的所有文档段落
+     *
+     * @param knowledgeId 知识库编号
+     */
+    void reindexKnowledgeSegmentByKnowledgeId(Long knowledgeId);
 
     /**
      * 根据文档编号删除段落

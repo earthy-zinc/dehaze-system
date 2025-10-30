@@ -15,13 +15,13 @@ import com.pei.dehaze.module.infra.framework.file.core.client.FileClientFactory;
 import com.pei.dehaze.module.infra.framework.file.core.client.local.LocalFileClient;
 import com.pei.dehaze.module.infra.framework.file.core.client.local.LocalFileClientConfig;
 import com.pei.dehaze.module.infra.framework.file.core.enums.FileStorageEnum;
+import jakarta.annotation.Resource;
+import jakarta.validation.Validator;
 import lombok.Data;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
-import jakarta.validation.Validator;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -131,6 +131,11 @@ public class FileConfigServiceImplTest extends BaseDbUnitTest {
         assertFalse(fileConfigMapper.selectById(masterFileConfig.getId()).getMaster());
         // 验证 cache
         assertNull(fileConfigService.getClientCache().getIfPresent(0L));
+    }
+
+    private FileConfigDO randomFileConfigDO() {
+        return randomPojo(FileConfigDO.class).setStorage(randomEle(FileStorageEnum.values()).getStorage())
+                .setConfig(new EmptyFileClientConfig());
     }
 
     @Test
@@ -266,11 +271,6 @@ public class FileConfigServiceImplTest extends BaseDbUnitTest {
         // 断言缓存
         verify(fileClientFactory).createOrUpdateFileClient(eq(fileConfig.getId()), eq(fileConfig.getStorage()),
                 eq(fileConfig.getConfig()));
-    }
-
-    private FileConfigDO randomFileConfigDO() {
-        return randomPojo(FileConfigDO.class).setStorage(randomEle(FileStorageEnum.values()).getStorage())
-                .setConfig(new EmptyFileClientConfig());
     }
 
     @Data

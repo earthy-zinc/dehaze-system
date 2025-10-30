@@ -6,7 +6,6 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HttpUtil;
-import com.pei.dehaze.module.ai.framework.ai.core.model.suno.api.SunoApi;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.ai.controller.admin.music.vo.AiMusicPageReqVO;
 import com.pei.dehaze.module.ai.controller.admin.music.vo.AiMusicUpdateMyReqVO;
@@ -16,6 +15,7 @@ import com.pei.dehaze.module.ai.dal.dataobject.music.AiMusicDO;
 import com.pei.dehaze.module.ai.dal.mysql.music.AiMusicMapper;
 import com.pei.dehaze.module.ai.enums.music.AiMusicGenerateModeEnum;
 import com.pei.dehaze.module.ai.enums.music.AiMusicStatusEnum;
+import com.pei.dehaze.module.ai.framework.ai.core.model.suno.api.SunoApi;
 import com.pei.dehaze.module.ai.service.model.AiModelService;
 import com.pei.dehaze.module.infra.api.file.FileApi;
 import jakarta.annotation.Resource;
@@ -158,6 +158,20 @@ public class AiMusicServiceImpl implements AiMusicService {
     }
 
     /**
+     * 校验音乐是否存在
+     *
+     * @param id 音乐编号
+     * @return 音乐信息
+     */
+    private AiMusicDO validateMusicExists(Long id) {
+        AiMusicDO music = musicMapper.selectById(id);
+        if (music == null) {
+            throw exception(MUSIC_NOT_EXISTS);
+        }
+        return music;
+    }
+
+    /**
      * 构建 AiMusicDO 集合
      *
      * @param musicList suno 音乐任务列表
@@ -199,20 +213,6 @@ public class AiMusicServiceImpl implements AiMusicService {
             log.error("[downloadFile][url({}) 下载失败]", url, e);
             return url;
         }
-    }
-
-    /**
-     * 校验音乐是否存在
-     *
-     * @param id 音乐编号
-     * @return 音乐信息
-     */
-    private AiMusicDO validateMusicExists(Long id) {
-        AiMusicDO music = musicMapper.selectById(id);
-        if (music == null) {
-            throw exception(MUSIC_NOT_EXISTS);
-        }
-        return music;
     }
 
 }

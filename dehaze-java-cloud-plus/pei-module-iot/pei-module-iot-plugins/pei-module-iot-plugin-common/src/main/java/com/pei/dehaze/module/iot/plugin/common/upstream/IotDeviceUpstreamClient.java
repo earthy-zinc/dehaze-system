@@ -12,7 +12,7 @@ import static com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeCon
 
 /**
  * 设备数据 Upstream 上行客户端
- *
+ * <p>
  * 通过 HTTP 调用远程的 IotDeviceUpstreamApi 接口
  *
  * @author haohao
@@ -31,6 +31,12 @@ public class IotDeviceUpstreamClient implements IotDeviceUpstreamApi {
     public CommonResult<Boolean> updateDeviceState(IotDeviceStateUpdateReqDTO updateReqDTO) {
         String url = properties.getUpstreamUrl() + URL_PREFIX + "/update-state";
         return doPost(url, updateReqDTO);
+    }
+
+    @Override
+    public CommonResult<Boolean> reportDeviceProperty(IotDevicePropertyReportReqDTO reportReqDTO) {
+        String url = properties.getUpstreamUrl() + URL_PREFIX + "/report-property";
+        return doPost(url, reportReqDTO);
     }
 
     @Override
@@ -61,12 +67,6 @@ public class IotDeviceUpstreamClient implements IotDeviceUpstreamApi {
     public CommonResult<Boolean> authenticateEmqxConnection(IotDeviceEmqxAuthReqDTO authReqDTO) {
         String url = properties.getUpstreamUrl() + URL_PREFIX + "/authenticate-emqx-connection";
         return doPost(url, authReqDTO);
-    }
-
-    @Override
-    public CommonResult<Boolean> reportDeviceProperty(IotDevicePropertyReportReqDTO reportReqDTO) {
-        String url = properties.getUpstreamUrl() + URL_PREFIX + "/report-property";
-        return doPost(url, reportReqDTO);
     }
 
     @Override

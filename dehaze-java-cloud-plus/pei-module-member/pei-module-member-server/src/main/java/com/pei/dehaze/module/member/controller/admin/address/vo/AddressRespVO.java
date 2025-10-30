@@ -1,7 +1,10 @@
 package com.pei.dehaze.module.member.controller.admin.address.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+
 import java.time.LocalDateTime;
 
 @Schema(description = "管理后台 - 用户收件地址 Response VO")

@@ -1,4 +1,5 @@
-`pei-spring-boot-starter-redis` 是一个 **Redis 封装拓展模块（Redis Extension Module）**，其核心作用是为企业级应用提供统一的 Redis 集成能力。该模块基于 `Spring Data Redis + Redisson` 实现高性能缓存管理，并支持以下功能：
+`pei-spring-boot-starter-redis` 是一个 **Redis 封装拓展模块（Redis Extension Module）**，其核心作用是为企业级应用提供统一的
+Redis 集成能力。该模块基于 `Spring Data Redis + Redisson` 实现高性能缓存管理，并支持以下功能：
 
 - Redis 缓存 Key 自定义前缀
 - Redis 缓存自动序列化/反序列化（Jackson JSON）
@@ -10,6 +11,7 @@
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：构建统一的 Redis 缓存封装层，支持：
     - 统一的缓存 Key 管理
     - 自动设置缓存过期时间
@@ -20,6 +22,7 @@
     - 数据字典、地区信息、菜单权限等高频读取数据
 
 ### 🧩 技术栈依赖
+
 - **Spring Boot + Spring Data Redis**
 - **客户端**：
     - 使用 Redisson 提供连接池和分布式锁
@@ -43,7 +46,6 @@ src/main/java/
         └── TimeoutRedisCacheManager.java   // 支持自定义过期时间的 CacheManager
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -51,6 +53,7 @@ src/main/java/
 ### 1️⃣ `config` 包 —— Redis 缓存配置加载
 
 #### 示例：`PeiCacheProperties.java`
+
 ```java
 @ConfigurationProperties("pei.cache")
 @Data
@@ -64,7 +67,6 @@ public class PeiCacheProperties {
 }
 ```
 
-
 - **作用**：从 `application.yaml` 中读取缓存相关配置。
 - **字段说明**：
     - `redisScanBatchSize`: Redis Scan 命令一次返回数量
@@ -77,6 +79,7 @@ public class PeiCacheProperties {
 ### 2️⃣ `PeiRedisAutoConfiguration` 类 —— RedisTemplate 配置
 
 #### 示例：`PeiRedisAutoConfiguration.java`
+
 ```java
 @Bean
 public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
@@ -97,7 +100,6 @@ public static RedisSerializer<?> buildRedisSerializer() {
 }
 ```
 
-
 - **作用**：配置 `RedisTemplate`，实现对 Redis 的基础访问。
 - **关键逻辑**：
     - 使用 `String` 序列化 KEY
@@ -111,6 +113,7 @@ public static RedisSerializer<?> buildRedisSerializer() {
 ### 3️⃣ `PeiCacheAutoConfiguration` 类 —— CacheManager 配置
 
 #### 示例：`PeiCacheAutoConfiguration.java`
+
 ```java
 @Bean
 @Primary
@@ -140,7 +143,6 @@ public RedisCacheManager redisCacheManager(RedisTemplate<String, Object> redisTe
 }
 ```
 
-
 - **作用**：配置 `RedisCacheManager`，实现缓存的统一管理。
 - **关键逻辑**：
     - 设置默认 Key 前缀格式为 `prefix:name:`
@@ -154,6 +156,7 @@ public RedisCacheManager redisCacheManager(RedisTemplate<String, Object> redisTe
 ### 4️⃣ `TimeoutRedisCacheManager` 类 —— 支持自定义过期时间的 CacheManager
 
 #### 示例：`TimeoutRedisCacheManager.java`
+
 ```java
 @Override
 private RedisCache createRedisCache(String name, RedisCacheConfiguration cacheConfig) {
@@ -185,7 +188,6 @@ private Duration parseDuration(String ttlStr) {
 }
 ```
 
-
 - **作用**：扩展 `RedisCacheManager`，支持 `@Cacheable("name#10s")` 语法。
 - **关键逻辑**：
     - 如果缓存名称中包含 `#`，则解析为过期时间
@@ -198,12 +200,12 @@ private Duration parseDuration(String ttlStr) {
   }
   ```
 
-
 ---
 
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ Redis 缓存初始化流程
+
 ```mermaid
 graph TD
     A[Spring Boot 启动] --> B[加载 PeiRedisAutoConfiguration]
@@ -212,8 +214,8 @@ graph TD
     D --> E[注册到 Spring 容器]
 ```
 
-
 ### 2️⃣ 自定义过期时间流程
+
 ```mermaid
 graph TD
     A[@Cacheable("user#60s")] --> B[调用 TimeoutRedisCacheManager.createRedisCache(...)]
@@ -221,7 +223,6 @@ graph TD
     C --> D[创建 RedisCache 对象并设置 TTL]
     D --> E[执行缓存读写操作]
 ```
-
 
 ---
 
@@ -236,23 +237,23 @@ graph TD
     E --> F[Redisson 连接池]
 ```
 
-
 ---
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `config` | 缓存配置加载 | `PeiCacheProperties` |
+| 包名       | 功能               | 关键类                         |
+|----------|------------------|-----------------------------|
+| `config` | 缓存配置加载           | `PeiCacheProperties`        |
 | `config` | RedisTemplate 配置 | `PeiRedisAutoConfiguration` |
-| `config` | CacheManager 配置 | `PeiCacheAutoConfiguration` |
-| `core` | 自定义过期时间 | `TimeoutRedisCacheManager` |
+| `config` | CacheManager 配置  | `PeiCacheAutoConfiguration` |
+| `core`   | 自定义过期时间          | `TimeoutRedisCacheManager`  |
 
 ---
 
 ## 🧾 模块实现原理详解
 
 ### 1️⃣ Redis 缓存初始化流程
+
 - **步骤**：
     1. Spring Boot 启动时加载 `PeiRedisAutoConfiguration`
     2. 创建 `RedisTemplate<String, Object>` Bean
@@ -261,6 +262,7 @@ graph TD
     5. 注册 `TimeoutRedisCacheManager` 作为主缓存管理器
 
 ### 2️⃣ 自定义过期时间实现流程
+
 - **步骤**：
     1. 使用 `@Cacheable("name#10s")` 注解标记缓存方法
     2. 调用 `TimeoutRedisCacheManager.createRedisCache(...)` 方法
@@ -272,13 +274,13 @@ graph TD
 
 ## ✅ 建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 异常日志增强 | 在序列化失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 Redis Pipeline 提升缓存批量操作效率 |
-| ✅ 单元测试 | 当前代码未提供单元测试，建议补充测试用例 |
-| ✅ 多租户增强 | 结合 `TenantContextHolder` 实现缓存 Key 拼接租户 ID |
-| ✅ 分布式锁支持 | 增加 `RedissonDistributedLock` 工具类封装 |
+| 改进点      | 描述                                        |
+|----------|-------------------------------------------|
+| ✅ 异常日志增强 | 在序列化失败时记录详细日志，便于排查问题                      |
+| ✅ 性能优化   | 使用 Redis Pipeline 提升缓存批量操作效率              |
+| ✅ 单元测试   | 当前代码未提供单元测试，建议补充测试用例                      |
+| ✅ 多租户增强  | 结合 `TenantContextHolder` 实现缓存 Key 拼接租户 ID |
+| ✅ 分布式锁支持 | 增加 `RedissonDistributedLock` 工具类封装        |
 
 ---
 
@@ -286,14 +288,14 @@ graph TD
 
 `pei-spring-boot-starter-redis` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| Redis 缓存配置 | PeiRedisAutoConfiguration | 统一 RedisTemplate 配置 |
-| JSON 序列化 | Jackson + JavaTimeModule | 支持 LocalDateTime 类型 |
-| 自定义过期时间 | TimeoutRedisCacheManager | 通过 `@Cacheable("key#10s")` 设置缓存时间 |
-| 缓存 Key 前缀 | PeiCacheAutoConfiguration | 设置 `prefix:key:` 形式的缓存 Key |
-| 批量扫描支持 | BatchStrategies.scan(...) | 提升 scan 命令性能 |
-| 多租户隔离 | TenantUtils.executeIgnore(...) | 忽略某些缓存的租户隔离 |
+| 功能         | 技术实现                           | 用途                                |
+|------------|--------------------------------|-----------------------------------|
+| Redis 缓存配置 | PeiRedisAutoConfiguration      | 统一 RedisTemplate 配置               |
+| JSON 序列化   | Jackson + JavaTimeModule       | 支持 LocalDateTime 类型               |
+| 自定义过期时间    | TimeoutRedisCacheManager       | 通过 `@Cacheable("key#10s")` 设置缓存时间 |
+| 缓存 Key 前缀  | PeiCacheAutoConfiguration      | 设置 `prefix:key:` 形式的缓存 Key        |
+| 批量扫描支持     | BatchStrategies.scan(...)      | 提升 scan 命令性能                      |
+| 多租户隔离      | TenantUtils.executeIgnore(...) | 忽略某些缓存的租户隔离                       |
 
 它是一个轻量但功能完整的 Redis 模块，适用于电商、社交、CRM、ERP、AI 等需要缓存能力的场景。
 

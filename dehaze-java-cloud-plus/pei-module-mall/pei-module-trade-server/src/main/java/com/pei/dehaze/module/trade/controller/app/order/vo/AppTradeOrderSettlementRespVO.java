@@ -14,7 +14,8 @@ import java.util.List;
 @Data
 public class AppTradeOrderSettlementRespVO {
 
-    @Schema(description = "交易类型", requiredMode = Schema.RequiredMode.REQUIRED, example = "1") // 对应 TradeOrderTypeEnum 枚举
+    @Schema(description = "交易类型", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
+    // 对应 TradeOrderTypeEnum 枚举
     private Integer type;
 
     @Schema(description = "购物项数组", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -37,7 +38,7 @@ public class AppTradeOrderSettlementRespVO {
 
     /**
      * 营销活动数组
-     *
+     * <p>
      * 只对应 {@link TradePriceCalculateRespBO.Price#items} 商品匹配的活动
      */
     private List<TradePriceCalculateRespBO.Promotion> promotions;
@@ -142,7 +143,8 @@ public class AppTradeOrderSettlementRespVO {
         @Schema(description = "优惠劵名", requiredMode = Schema.RequiredMode.REQUIRED, example = "春节送送送")
         private String name;
 
-        @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100") // 单位：分；0 - 不限制
+        @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")
+        // 单位：分；0 - 不限制
         private Integer usePrice;
 
         @Schema(description = "固定日期 - 生效开始时间")

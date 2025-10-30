@@ -41,6 +41,7 @@ public interface MpMessageConvert {
         }
         return message;
     }
+
     @Mappings(value = {
             @Mapping(source = "msgType", target = "type"),
             @Mapping(target = "createTime", ignore = true),
@@ -117,6 +118,7 @@ public interface MpMessageConvert {
         builder.toUser(message.getOpenid());
         return builder.build();
     }
+
     List<WxMpXmlOutNewsMessage.Item> convertList02(List<MpMessageDO.Article> list);
 
     default WxMpKefuMessage convert(MpMessageSendReqVO sendReqVO, MpUserDO user) {
@@ -151,6 +153,7 @@ public interface MpMessageConvert {
         builder.toUser(user.getOpenid());
         return builder.build();
     }
+
     List<WxMpKefuMessage.WxArticle> convertList03(List<MpMessageDO.Article> list);
 
     default MpMessageDO convert(WxMpKefuMessage wxMessage, MpAccountDO account, MpUserDO user) {
@@ -163,6 +166,7 @@ public interface MpMessageConvert {
         }
         return message;
     }
+
     @Mappings(value = {
             @Mapping(source = "msgType", target = "type"),
             @Mapping(target = "createTime", ignore = true),

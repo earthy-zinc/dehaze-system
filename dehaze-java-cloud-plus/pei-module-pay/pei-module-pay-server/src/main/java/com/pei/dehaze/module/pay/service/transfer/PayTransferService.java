@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.pay.service.transfer;
 
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTransferRespDTO;
 import com.pei.dehaze.module.pay.api.transfer.dto.PayTransferCreateReqDTO;
 import com.pei.dehaze.module.pay.api.transfer.dto.PayTransferCreateRespDTO;
 import com.pei.dehaze.module.pay.controller.admin.transfer.vo.PayTransferPageReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.transfer.PayTransferDO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.transfer.PayTransferRespDTO;
 import jakarta.validation.Valid;
 
 /**
@@ -25,6 +25,7 @@ public interface PayTransferService {
 
     /**
      * 获取转账单
+     *
      * @param id 转账单编号
      */
     PayTransferDO getTransfer(Long id);
@@ -62,8 +63,8 @@ public interface PayTransferService {
     /**
      * 渠道的转账通知
      *
-     * @param channelId  渠道编号
-     * @param notify     通知
+     * @param channelId 渠道编号
+     * @param notify    通知
      */
     void notifyTransfer(Long channelId, PayTransferRespDTO notify);
 

@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.pay.service.refund;
 
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
 import com.pei.dehaze.module.pay.api.refund.dto.PayRefundCreateReqDTO;
 import com.pei.dehaze.module.pay.controller.admin.refund.vo.PayRefundExportReqVO;
 import com.pei.dehaze.module.pay.controller.admin.refund.vo.PayRefundPageReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.refund.PayRefundDO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
 
 import java.util.List;
 
@@ -67,8 +67,8 @@ public interface PayRefundService {
     /**
      * 渠道的退款通知
      *
-     * @param channelId  渠道编号
-     * @param notify     通知
+     * @param channelId 渠道编号
+     * @param notify    通知
      */
     void notifyRefund(Long channelId, PayRefundRespDTO notify);
 

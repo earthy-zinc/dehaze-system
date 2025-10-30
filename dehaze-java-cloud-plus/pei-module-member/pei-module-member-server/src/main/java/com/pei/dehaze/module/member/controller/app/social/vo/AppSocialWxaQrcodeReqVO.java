@@ -16,8 +16,7 @@ public class AppSocialWxaQrcodeReqVO {
     private String scene;
 
     /**
-     * 默认是主页，页面 page，例如 pages/index/index，根路径前不要填加 /，不能携带参数（参数请放在scene字段里），
-     * 如果不填写这个字段，默认跳主页面。scancode_time为系统保留参数，不允许配置
+     * 默认是主页，页面 page，例如 pages/index/index，根路径前不要填加 /，不能携带参数（参数请放在scene字段里）， 如果不填写这个字段，默认跳主页面。scancode_time为系统保留参数，不允许配置
      */
     @Schema(description = "页面路径", requiredMode = Schema.RequiredMode.REQUIRED, example = "pages/goods/index")
     @NotEmpty(message = "页面路径不能为空")

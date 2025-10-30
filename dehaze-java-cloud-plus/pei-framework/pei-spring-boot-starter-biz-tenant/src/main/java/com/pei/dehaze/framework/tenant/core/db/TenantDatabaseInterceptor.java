@@ -1,12 +1,12 @@
 package com.pei.dehaze.framework.tenant.core.db;
 
-import com.pei.dehaze.framework.tenant.config.TenantProperties;
-import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
-import com.pei.dehaze.framework.tenant.core.context.TenantContextHolder;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
 import com.baomidou.mybatisplus.core.metadata.TableInfoHelper;
 import com.baomidou.mybatisplus.extension.plugins.handler.TenantLineHandler;
 import com.baomidou.mybatisplus.extension.toolkit.SqlParserUtils;
+import com.pei.dehaze.framework.tenant.config.TenantProperties;
+import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
+import com.pei.dehaze.framework.tenant.core.context.TenantContextHolder;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
 
@@ -22,9 +22,8 @@ public class TenantDatabaseInterceptor implements TenantLineHandler {
 
     /**
      * 忽略的表
-     *
-     * KEY：表名
-     * VALUE：是否忽略
+     * <p>
+     * KEY：表名 VALUE：是否忽略
      */
     private final Map<String, Boolean> ignoreTables = new HashMap<>();
 
@@ -35,6 +34,11 @@ public class TenantDatabaseInterceptor implements TenantLineHandler {
         });
         // 在 OracleKeyGenerator 中，生成主键时，会查询这个表，查询这个表后，会自动拼接 TENANT_ID 导致报错
         addIgnoreTable("DUAL", true);
+    }
+
+    private void addIgnoreTable(String tableName, boolean ignore) {
+        ignoreTables.put(tableName.toLowerCase(), ignore);
+        ignoreTables.put(tableName.toUpperCase(), ignore);
     }
 
     @Override
@@ -58,11 +62,6 @@ public class TenantDatabaseInterceptor implements TenantLineHandler {
             }
         }
         return ignore;
-    }
-
-    private void addIgnoreTable(String tableName, boolean ignore) {
-        ignoreTables.put(tableName.toLowerCase(), ignore);
-        ignoreTables.put(tableName.toUpperCase(), ignore);
     }
 
     private boolean computeIgnoreTable(String tableName) {

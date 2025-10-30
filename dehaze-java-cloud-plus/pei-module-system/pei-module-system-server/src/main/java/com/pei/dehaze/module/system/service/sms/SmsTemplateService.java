@@ -4,8 +4,8 @@ import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.template.SmsTemplatePageReqVO;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.template.SmsTemplateSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.sms.SmsTemplateDO;
-
 import jakarta.validation.Valid;
+
 import java.util.Map;
 
 /**
@@ -74,7 +74,7 @@ public interface SmsTemplateService {
      * 格式化短信内容
      *
      * @param content 短信模板的内容
-     * @param params 内容的参数
+     * @param params  内容的参数
      * @return 格式化后的内容
      */
     String formatSmsTemplateContent(String content, Map<String, Object> params);

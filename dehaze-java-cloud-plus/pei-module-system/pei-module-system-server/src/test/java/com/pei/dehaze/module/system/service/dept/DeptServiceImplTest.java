@@ -7,10 +7,10 @@ import com.pei.dehaze.module.system.controller.admin.dept.vo.dept.DeptListReqVO;
 import com.pei.dehaze.module.system.controller.admin.dept.vo.dept.DeptSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.dept.DeptDO;
 import com.pei.dehaze.module.system.dal.mysql.dept.DeptMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;

@@ -48,8 +48,6 @@ public interface SeckillActivityConvert {
 
     List<SeckillActivityRespVO> convertList(List<SeckillActivityDO> list);
 
-    PageResult<SeckillActivityRespVO> convertPage(PageResult<SeckillActivityDO> page);
-
     default PageResult<SeckillActivityRespVO> convertPage(PageResult<SeckillActivityDO> page,
                                                           List<SeckillProductDO> seckillProducts,
                                                           List<ProductSpuRespDTO> spuList) {
@@ -65,10 +63,18 @@ public interface SeckillActivityConvert {
         return pageResult;
     }
 
-    SeckillActivityDetailRespVO convert1(SeckillActivityDO activity);
+    PageResult<SeckillActivityRespVO> convertPage(PageResult<SeckillActivityDO> page);
+
+    List<SeckillProductRespVO> convertList2(List<SeckillProductDO> list);
 
     default SeckillActivityDetailRespVO convert(SeckillActivityDO activity, List<SeckillProductDO> products) {
         return convert1(activity).setProducts(convertList2(products));
+    }
+
+    SeckillActivityDetailRespVO convert1(SeckillActivityDO activity);
+
+    default List<SeckillProductDO> convertList(List<? extends SeckillProductBaseVO> products, SeckillActivityDO activity) {
+        return CollectionUtils.convertList(products, item -> convert(activity, item).setActivityStatus(activity.getStatus()));
     }
 
     @Mappings({
@@ -84,13 +90,9 @@ public interface SeckillActivityConvert {
     })
     SeckillProductDO convert(SeckillActivityDO activity, SeckillProductBaseVO product);
 
-    default List<SeckillProductDO> convertList(List<? extends SeckillProductBaseVO> products, SeckillActivityDO activity) {
-        return CollectionUtils.convertList(products, item -> convert(activity, item).setActivityStatus(activity.getStatus()));
-    }
-
     default List<SeckillActivityRespVO> convertList(List<SeckillActivityDO> list,
-                                                        List<SeckillProductDO> productList,
-                                                        List<ProductSpuRespDTO> spuList) {
+                                                    List<SeckillProductDO> productList,
+                                                    List<ProductSpuRespDTO> spuList) {
         List<SeckillActivityRespVO> activityList = BeanUtils.toBean(list, SeckillActivityRespVO.class);
         Map<Long, ProductSpuRespDTO> spuMap = convertMap(spuList, ProductSpuRespDTO::getId);
         Map<Long, List<SeckillProductDO>> productMap = convertMultiMap(productList, SeckillProductDO::getActivityId);
@@ -105,8 +107,8 @@ public interface SeckillActivityConvert {
     }
 
     default List<AppSeckillActivityRespVO> convertAppList(List<SeckillActivityDO> list,
-                                                              List<SeckillProductDO> productList,
-                                                              List<ProductSpuRespDTO> spuList) {
+                                                          List<SeckillProductDO> productList,
+                                                          List<ProductSpuRespDTO> spuList) {
         List<AppSeckillActivityRespVO> activityList = BeanUtils.toBean(list, AppSeckillActivityRespVO.class);
         Map<Long, ProductSpuRespDTO> spuMap = convertMap(spuList, ProductSpuRespDTO::getId);
         Map<Long, List<SeckillProductDO>> productMap = convertMultiMap(productList, SeckillProductDO::getActivityId);
@@ -119,10 +121,6 @@ public interface SeckillActivityConvert {
             return item;
         });
     }
-
-    List<SeckillProductRespVO> convertList2(List<SeckillProductDO> list);
-
-    List<AppSeckillActivityRespVO> convertList3(List<SeckillActivityDO> activityList);
 
     default AppSeckillActivityNowRespVO convert(SeckillConfigDO filteredConfig, List<SeckillActivityDO> activityList,
                                                 List<SeckillProductDO> productList, List<ProductSpuRespDTO> spuList) {
@@ -141,7 +139,7 @@ public interface SeckillActivityConvert {
         return respVO;
     }
 
-    PageResult<AppSeckillActivityRespVO> convertPage1(PageResult<SeckillActivityDO> pageResult);
+    List<AppSeckillActivityRespVO> convertList3(List<SeckillActivityDO> activityList);
 
     default PageResult<AppSeckillActivityRespVO> convertPage02(PageResult<SeckillActivityDO> pageResult, List<SeckillProductDO> productList, List<ProductSpuRespDTO> spuList) {
         PageResult<AppSeckillActivityRespVO> result = convertPage1(pageResult);
@@ -158,9 +156,7 @@ public interface SeckillActivityConvert {
         return result;
     }
 
-    AppSeckillActivityDetailRespVO convert2(SeckillActivityDO seckillActivity);
-
-    List<AppSeckillActivityDetailRespVO.Product> convertList1(List<SeckillProductDO> products);
+    PageResult<AppSeckillActivityRespVO> convertPage1(PageResult<SeckillActivityDO> pageResult);
 
     default AppSeckillActivityDetailRespVO convert3(SeckillActivityDO activity, List<SeckillProductDO> products,
                                                     LocalDateTime startTime, LocalDateTime endTime) {
@@ -168,6 +164,10 @@ public interface SeckillActivityConvert {
                 .setProducts(convertList1(products))
                 .setStartTime(startTime).setEndTime(endTime);
     }
+
+    AppSeckillActivityDetailRespVO convert2(SeckillActivityDO seckillActivity);
+
+    List<AppSeckillActivityDetailRespVO.Product> convertList1(List<SeckillProductDO> products);
 
     SeckillValidateJoinRespDTO convert02(SeckillActivityDO activity, SeckillProductDO product);
 

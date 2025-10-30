@@ -1,20 +1,20 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.combination;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.promotion.enums.combination.CombinationRecordStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.promotion.enums.combination.CombinationRecordStatusEnum;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 // TODO 芋艿：把字段的顺序，和 do 顺序对齐下
+
 /**
  * 拼团记录 DO
- *
- * 1. 用户参与拼团时，会创建一条记录
- * 2. 团长的拼团记录，和参团人的拼团记录，通过 {@link #headId} 关联
+ * <p>
+ * 1. 用户参与拼团时，会创建一条记录 2. 团长的拼团记录，和参团人的拼团记录，通过 {@link #headId} 关联
  *
  * @author HUIHUI
  */
@@ -41,13 +41,13 @@ public class CombinationRecordDO extends BaseDO {
 
     /**
      * 拼团活动编号
-     *
+     * <p>
      * 关联 {@link CombinationActivityDO#getId()}
      */
     private Long activityId;
     /**
      * 拼团商品单价
-     *
+     * <p>
      * 冗余 {@link CombinationProductDO#getCombinationPrice()}
      */
     private Integer combinationPrice;
@@ -88,15 +88,15 @@ public class CombinationRecordDO extends BaseDO {
 
     /**
      * 团长编号
-     *
+     * <p>
      * 关联 {@link CombinationRecordDO#getId()}
-     *
+     * <p>
      * 如果是团长，则它的值是 {@link #HEAD_ID_GROUP}
      */
     private Long headId;
     /**
      * 开团状态
-     *
+     * <p>
      * 关联 {@link CombinationRecordStatusEnum}
      */
     private Integer status;
@@ -106,7 +106,7 @@ public class CombinationRecordDO extends BaseDO {
     private Long orderId;
     /**
      * 开团需要人数
-     *
+     * <p>
      * 关联 {@link CombinationActivityDO#getUserSize()}
      */
     private Integer userSize;
@@ -116,15 +116,14 @@ public class CombinationRecordDO extends BaseDO {
     private Integer userCount;
     /**
      * 是否虚拟成团
-     *
-     * 默认为 false。
-     * 拼团过期都还没有成功，如果 {@link CombinationActivityDO#getVirtualGroup()} 为 true，则执行虚拟成团的逻辑，才会更新该字段为 true
+     * <p>
+     * 默认为 false。 拼团过期都还没有成功，如果 {@link CombinationActivityDO#getVirtualGroup()} 为 true，则执行虚拟成团的逻辑，才会更新该字段为 true
      */
     private Boolean virtualGroup;
 
     /**
      * 过期时间
-     *
+     * <p>
      * 基于 {@link CombinationRecordDO#getStartTime()} + {@link CombinationActivityDO#getLimitDuration()} 计算
      */
     private LocalDateTime expireTime;

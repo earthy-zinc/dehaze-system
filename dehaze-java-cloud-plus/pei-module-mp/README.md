@@ -1,4 +1,5 @@
-`pei-module-mp` 是一个 **基于 Spring Boot 的微信公众号模块（WeChat Official Account Module）**，其核心作用是为企业提供统一的微信公众平台接入能力。该模块实现了微信公众号的核心功能管理，包括：
+`pei-module-mp` 是一个 **基于 Spring Boot 的微信公众号模块（WeChat Official Account Module）**
+，其核心作用是为企业提供统一的微信公众平台接入能力。该模块实现了微信公众号的核心功能管理，包括：
 
 - 公众号账号管理
 - 粉丝关注与互动
@@ -14,6 +15,7 @@
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：构建统一的微信公众号管理后台系统，支持：
     - 微信公众号认证、菜单管理
     - 自动回复关键词匹配
@@ -28,6 +30,7 @@
     - 营销活动（如粉丝裂变、图文推送）
 
 ### 🧩 技术栈依赖
+
 - **Spring Boot + Spring Cloud Gateway + Nacos**
 - **微信 SDK**：
     - `WxJava`（官方开源库，支持多租户、Redis 缓存 token）
@@ -79,7 +82,6 @@ src/main/java/
     └── MpServerApplication.java // 启动类
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -87,6 +89,7 @@ src/main/java/
 ### 1️⃣ `api.message` 包 —— 消息回调接口定义
 
 #### 示例：`MpMessageNotifyReqDTO.java`
+
 ```java
 public class MpMessageNotifyReqDTO {
     private String appId;
@@ -95,7 +98,6 @@ public class MpMessageNotifyReqDTO {
     private String content;
 }
 ```
-
 
 - **作用**：对外暴露公众号消息回调接口 DTO。
 - **用途**：
@@ -107,6 +109,7 @@ public class MpMessageNotifyReqDTO {
 ### 2️⃣ `controller.admin.account` 包 —— 公众号账号管理
 
 #### 示例：`MpAccountController.java`
+
 ```java
 @Tag(name = "管理后台 - 公众号账号")
 @RestController
@@ -125,7 +128,6 @@ public class MpAccountController {
 }
 ```
 
-
 - **作用**：对外暴露 `/mp/account/**` 接口，实现管理员相关的公众号账号操作。
 - **权限控制**：
     - 使用 `@PreAuthorize` 校验用户是否有操作权限
@@ -137,6 +139,7 @@ public class MpAccountController {
 ### 3️⃣ `service.account` 包 —— 公众号账号服务逻辑
 
 #### 示例：`MpAccountServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -164,7 +167,6 @@ public class MpAccountServiceImpl implements MpAccountService {
 }
 ```
 
-
 - **作用**：实现公众号账号的创建、更新、删除、查询等操作。
 - **关键逻辑**：
     - 使用 `WxMpService` 初始化微信公众号 SDK
@@ -177,6 +179,7 @@ public class MpAccountServiceImpl implements MpAccountService {
 ### 4️⃣ `dal.dataobject.account` 包 —— 公众号账号数据库映射对象
 
 #### 示例：`MpAccountDO.java`
+
 ```java
 @TableName("mp_account")
 @KeySequence("mp_account_seq")
@@ -230,7 +233,6 @@ public class MpAccountDO extends TenantBaseDO {
 }
 ```
 
-
 - **作用**：映射 `mp_account` 表。
 - **字段说明**：
     - `appId`: 微信公众号唯一标识
@@ -244,6 +246,7 @@ public class MpAccountDO extends TenantBaseDO {
 ### 5️⃣ `framework.mp.core.MpServiceFactory` 包 —— 微信公众号客户端封装
 
 #### 示例：`DefaultMpServiceFactory.java`
+
 ```java
 @Slf4j
 @RequiredArgsConstructor
@@ -298,7 +301,6 @@ public class DefaultMpServiceFactory implements MpServiceFactory {
 }
 ```
 
-
 - **作用**：封装微信公众号 SDK，统一公众号服务初始化。
 - **优势**：
     - 支持多个公众号实例共享 Redis 缓存 token
@@ -312,6 +314,7 @@ public class DefaultMpServiceFactory implements MpServiceFactory {
 ### 6️⃣ `enums.message` 包 —— 消息类型枚举
 
 #### 示例：`MpAutoReplyMatchEnum.java`
+
 ```java
 @Getter
 @AllArgsConstructor
@@ -329,7 +332,6 @@ public enum MpAutoReplyMatchEnum implements ArrayValuable<Integer> {
 }
 ```
 
-
 - **作用**：统一管理自动回复匹配方式。
 - **优势**：
     - 减少魔法数字
@@ -340,6 +342,7 @@ public enum MpAutoReplyMatchEnum implements ArrayValuable<Integer> {
 ### 7️⃣ `service.user` 包 —— 粉丝管理服务逻辑
 
 #### 示例：`MpUserServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -398,7 +401,6 @@ public class MpUserServiceImpl implements MpUserService {
 }
 ```
 
-
 - **作用**：实现公众号粉丝的同步、查询、标签管理等操作。
 - **字段说明**：
     - `openid`: 微信粉丝唯一标识
@@ -412,6 +414,7 @@ public class MpUserServiceImpl implements MpUserService {
 ### 8️⃣ `controller.admin.open` 包 —— 微信公众号回调接口
 
 #### 示例：`MpOpenController.java`
+
 ```java
 @Tag(name = "管理后台 - 公众号回调")
 @RestController
@@ -451,7 +454,6 @@ public class MpOpenController {
 }
 ```
 
-
 - **作用**：处理来自微信公众号的消息回调（如用户关注、取消关注、消息发送）。
 - **设计模式**：
     - 使用 `WxMpMessageRouter` 实现消息路由
@@ -464,6 +466,7 @@ public class MpOpenController {
 ### 9️⃣ `service.material` 包 —— 素材上传服务逻辑
 
 #### 示例：`MpMaterialServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -499,7 +502,6 @@ public class MpMaterialServiceImpl implements MpMaterialService {
 }
 ```
 
-
 - **作用**：实现临时/永久素材的上传、删除、查询等操作。
 - **文件格式支持**：
     - 文本、图片、语音、视频、图文
@@ -512,6 +514,7 @@ public class MpMaterialServiceImpl implements MpMaterialService {
 ### 🔟 `service.tag` 包 —— 标签服务逻辑
 
 #### 示例：`MpTagServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -563,7 +566,6 @@ public class MpTagServiceImpl implements MpTagService {
 }
 ```
 
-
 - **作用**：实现公众号标签的创建、更新、删除、同步等操作。
 - **字段说明**：
     - `tagId`: 微信平台标签 ID
@@ -576,6 +578,7 @@ public class MpTagServiceImpl implements MpTagService {
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ 粉丝同步流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -587,8 +590,8 @@ graph TD
     G --> H[响应客户端]
 ```
 
-
 ### 2️⃣ 消息自动回复流程
+
 ```mermaid
 graph TD
     A[微信公众号回调] --> B[进入 MpOpenController]
@@ -598,7 +601,6 @@ graph TD
     E --> F[构造 XML 响应]
     F --> G[返回给微信公众号]
 ```
-
 
 ---
 
@@ -622,29 +624,29 @@ graph TD
     N --> O[mp_material 表]
 ```
 
-
 ---
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `api.message` | 消息回调接口定义 | `MpMessageNotifyReqDTO` |
-| `controller.admin.account` | 公众号账号管理 | `MpAccountController` |
-| `service.account` | 公众号账号服务 | `MpAccountServiceImpl` |
-| `dal.dataobject.account` | 公众号账号数据 | `MpAccountDO` |
-| `framework.mp.core.MpServiceFactory` | 微信公众号封装 | `DefaultMpServiceFactory` |
-| `enums.message` | 消息类型枚举 | `MpAutoReplyMatchEnum` |
-| `service.user` | 粉丝服务逻辑 | `MpUserServiceImpl` |
-| `controller.admin.open` | 回调接口处理 | `MpOpenController` |
-| `service.tag` | 标签服务逻辑 | `MpTagServiceImpl` |
-| `service.menu` | 菜单服务逻辑 | `MpMenuServiceImpl` |
+| 包名                                   | 功能       | 关键类                       |
+|--------------------------------------|----------|---------------------------|
+| `api.message`                        | 消息回调接口定义 | `MpMessageNotifyReqDTO`   |
+| `controller.admin.account`           | 公众号账号管理  | `MpAccountController`     |
+| `service.account`                    | 公众号账号服务  | `MpAccountServiceImpl`    |
+| `dal.dataobject.account`             | 公众号账号数据  | `MpAccountDO`             |
+| `framework.mp.core.MpServiceFactory` | 微信公众号封装  | `DefaultMpServiceFactory` |
+| `enums.message`                      | 消息类型枚举   | `MpAutoReplyMatchEnum`    |
+| `service.user`                       | 粉丝服务逻辑   | `MpUserServiceImpl`       |
+| `controller.admin.open`              | 回调接口处理   | `MpOpenController`        |
+| `service.tag`                        | 标签服务逻辑   | `MpTagServiceImpl`        |
+| `service.menu`                       | 菜单服务逻辑   | `MpMenuServiceImpl`       |
 
 ---
 
 ## 🧾 模块实现原理详解
 
 ### 1️⃣ 公众号账号初始化流程
+
 - **步骤**：
     1. 用户提交公众号账号信息（appid、secret）
     2. 插入 `mp_account` 表
@@ -653,6 +655,7 @@ graph TD
     5. 返回公众号服务实例
 
 ### 2️⃣ 消息自动回复流程
+
 - **步骤**：
     1. 微信公众号回调 `/mp/open/{appId}`
     2. 解析请求体并验证签名
@@ -661,6 +664,7 @@ graph TD
     5. 构造 XML 响应并返回
 
 ### 3️⃣ 粉丝同步流程
+
 - **步骤**：
     1. 用户点击【同步】按钮
     2. 调用 `wxMpService.getUserService().userListOpenidOnly(...)`
@@ -672,13 +676,13 @@ graph TD
 
 ## ✅ 延伸建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多租户增强 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 单元测试 | 当前代码未提供单元测试，建议补充测试用例 |
-| ✅ 流程监控 | 增加粉丝增减统计、菜单点击率等指标统计 |
+| 改进点      | 描述                                                   |
+|----------|------------------------------------------------------|
+| ✅ 多租户增强  | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
+| ✅ 性能优化   | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 单元测试   | 当前代码未提供单元测试，建议补充测试用例                                 |
+| ✅ 流程监控   | 增加粉丝增减统计、菜单点击率等指标统计                                  |
 
 ---
 
@@ -686,8 +690,8 @@ graph TD
 
 `pei-module-mp` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 公众号账号 | MpAccountDO + MpAccountService | :::noindex:
+| 功能    | 技术实现                           | 用途          |
+|-------|--------------------------------|-------------|
+| 公众号账号 | MpAccountDO + MpAccountService | :::noindex: 
 
 </file_content>

@@ -73,13 +73,13 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         // 查询访问令牌
         OAuth2RefreshTokenDO refreshTokenDO = oauth2RefreshTokenMapper.selectByRefreshToken(refreshToken);
         if (refreshTokenDO == null) {
-            throw exception0(GlobalErrorCodeConstants.BAD_REQUEST.getCode(), "无效的刷新令牌");
+            throw exception0(GlobalErrorCodeConstants.BAD_REQUEST.code(), "无效的刷新令牌");
         }
 
         // 校验 Client 匹配
         OAuth2ClientDO clientDO = oauth2ClientService.validOAuthClientFromCache(clientId);
         if (ObjectUtil.notEqual(clientId, refreshTokenDO.getClientId())) {
-            throw exception0(GlobalErrorCodeConstants.BAD_REQUEST.getCode(), "刷新令牌的客户端编号不正确");
+            throw exception0(GlobalErrorCodeConstants.BAD_REQUEST.code(), "刷新令牌的客户端编号不正确");
         }
 
         // 移除相关的访问令牌
@@ -92,7 +92,7 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         // 已过期的情况下，删除刷新令牌
         if (DateUtils.isExpired(refreshTokenDO.getExpiresTime())) {
             oauth2RefreshTokenMapper.deleteById(refreshTokenDO.getId());
-            throw exception0(GlobalErrorCodeConstants.UNAUTHORIZED.getCode(), "刷新令牌已过期");
+            throw exception0(GlobalErrorCodeConstants.UNAUTHORIZED.code(), "刷新令牌已过期");
         }
 
         // 创建访问令牌
@@ -130,10 +130,10 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
     public OAuth2AccessTokenDO checkAccessToken(String accessToken) {
         OAuth2AccessTokenDO accessTokenDO = getAccessToken(accessToken);
         if (accessTokenDO == null) {
-            throw exception0(GlobalErrorCodeConstants.UNAUTHORIZED.getCode(), "访问令牌不存在");
+            throw exception0(GlobalErrorCodeConstants.UNAUTHORIZED.code(), "访问令牌不存在");
         }
         if (DateUtils.isExpired(accessTokenDO.getExpiresTime())) {
-            throw exception0(GlobalErrorCodeConstants.UNAUTHORIZED.getCode(), "访问令牌已过期");
+            throw exception0(GlobalErrorCodeConstants.UNAUTHORIZED.code(), "访问令牌已过期");
         }
         return accessTokenDO;
     }
@@ -158,6 +158,18 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         return oauth2AccessTokenMapper.selectPage(reqVO);
     }
 
+    private static String generateAccessToken() {
+        return IdUtil.fastSimpleUUID();
+    }
+
+    private OAuth2AccessTokenDO convertToAccessToken(OAuth2RefreshTokenDO refreshTokenDO) {
+        OAuth2AccessTokenDO accessTokenDO = BeanUtils.toBean(refreshTokenDO, OAuth2AccessTokenDO.class)
+                .setAccessToken(refreshTokenDO.getRefreshToken());
+        TenantUtils.execute(refreshTokenDO.getTenantId(),
+                () -> accessTokenDO.setUserInfo(buildUserInfo(refreshTokenDO.getUserId(), refreshTokenDO.getUserType())));
+        return accessTokenDO;
+    }
+
     private OAuth2AccessTokenDO createOAuth2AccessToken(OAuth2RefreshTokenDO refreshTokenDO, OAuth2ClientDO clientDO) {
         OAuth2AccessTokenDO accessTokenDO = new OAuth2AccessTokenDO().setAccessToken(generateAccessToken())
                 .setUserId(refreshTokenDO.getUserId()).setUserType(refreshTokenDO.getUserType())
@@ -172,27 +184,10 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         return accessTokenDO;
     }
 
-    private OAuth2RefreshTokenDO createOAuth2RefreshToken(Long userId, Integer userType, OAuth2ClientDO clientDO, List<String> scopes) {
-        OAuth2RefreshTokenDO refreshToken = new OAuth2RefreshTokenDO().setRefreshToken(generateRefreshToken())
-                .setUserId(userId).setUserType(userType)
-                .setClientId(clientDO.getClientId()).setScopes(scopes)
-                .setExpiresTime(LocalDateTime.now().plusSeconds(clientDO.getRefreshTokenValiditySeconds()));
-        oauth2RefreshTokenMapper.insert(refreshToken);
-        return refreshToken;
-    }
-
-    private OAuth2AccessTokenDO convertToAccessToken(OAuth2RefreshTokenDO refreshTokenDO) {
-        OAuth2AccessTokenDO accessTokenDO = BeanUtils.toBean(refreshTokenDO, OAuth2AccessTokenDO.class)
-                .setAccessToken(refreshTokenDO.getRefreshToken());
-        TenantUtils.execute(refreshTokenDO.getTenantId(),
-                        () -> accessTokenDO.setUserInfo(buildUserInfo(refreshTokenDO.getUserId(), refreshTokenDO.getUserType())));
-        return accessTokenDO;
-    }
-
     /**
      * 加载用户信息，方便 {@link com.pei.dehaze.framework.security.core.LoginUser} 获取到昵称、部门等信息
      *
-     * @param userId 用户编号
+     * @param userId   用户编号
      * @param userType 用户类型
      * @return 用户信息
      */
@@ -208,8 +203,13 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         return null;
     }
 
-    private static String generateAccessToken() {
-        return IdUtil.fastSimpleUUID();
+    private OAuth2RefreshTokenDO createOAuth2RefreshToken(Long userId, Integer userType, OAuth2ClientDO clientDO, List<String> scopes) {
+        OAuth2RefreshTokenDO refreshToken = new OAuth2RefreshTokenDO().setRefreshToken(generateRefreshToken())
+                .setUserId(userId).setUserType(userType)
+                .setClientId(clientDO.getClientId()).setScopes(scopes)
+                .setExpiresTime(LocalDateTime.now().plusSeconds(clientDO.getRefreshTokenValiditySeconds()));
+        oauth2RefreshTokenMapper.insert(refreshToken);
+        return refreshToken;
     }
 
     private static String generateRefreshToken() {

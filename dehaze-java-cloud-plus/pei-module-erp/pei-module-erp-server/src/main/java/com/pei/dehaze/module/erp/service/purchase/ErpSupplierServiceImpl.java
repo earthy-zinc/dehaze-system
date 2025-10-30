@@ -54,12 +54,6 @@ public class ErpSupplierServiceImpl implements ErpSupplierService {
         supplierMapper.deleteById(id);
     }
 
-    private void validateSupplierExists(Long id) {
-        if (supplierMapper.selectById(id) == null) {
-            throw exception(SUPPLIER_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ErpSupplierDO getSupplier(Long id) {
         return supplierMapper.selectById(id);
@@ -90,6 +84,12 @@ public class ErpSupplierServiceImpl implements ErpSupplierService {
     @Override
     public List<ErpSupplierDO> getSupplierListByStatus(Integer status) {
         return supplierMapper.selectListByStatus(status);
+    }
+
+    private void validateSupplierExists(Long id) {
+        if (supplierMapper.selectById(id) == null) {
+            throw exception(SUPPLIER_NOT_EXISTS);
+        }
     }
 
 }

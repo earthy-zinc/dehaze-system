@@ -56,42 +56,12 @@ public class DiyPageServiceImpl implements DiyPageService {
         diyPageMapper.updateById(updateObj);
     }
 
-    /**
-     * 校验 Page 页面，在一个 template 模版下的名字是唯一的
-     *
-     * @param id Page 编号
-     * @param templateId 模版编号
-     * @param name Page 名字
-     */
-    void validateNameUnique(Long id, Long templateId, String name) {
-        if (templateId != null || StrUtil.isBlank(name)) {
-            return;
-        }
-        DiyPageDO page = diyPageMapper.selectByNameAndTemplateIdIsNull(name);
-        if (page == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的页面
-        if (id == null) {
-            throw exception(DIY_PAGE_NAME_USED, name);
-        }
-        if (!page.getId().equals(id)) {
-            throw exception(DIY_PAGE_NAME_USED, name);
-        }
-    }
-
     @Override
     public void deleteDiyPage(Long id) {
         // 校验存在
         validateDiyPageExists(id);
         // 删除
         diyPageMapper.deleteById(id);
-    }
-
-    private void validateDiyPageExists(Long id) {
-        if (diyPageMapper.selectById(id) == null) {
-            throw exception(DIY_PAGE_NOT_EXISTS);
-        }
     }
 
     @Override
@@ -113,17 +83,47 @@ public class DiyPageServiceImpl implements DiyPageService {
     }
 
     @Override
-    public List<DiyPageDO> getDiyPageByTemplateId(Long templateId) {
-        return diyPageMapper.selectListByTemplateId(templateId);
-    }
-
-    @Override
     public void updateDiyPageProperty(DiyPagePropertyUpdateRequestVO updateReqVO) {
         // 校验存在
         validateDiyPageExists(updateReqVO.getId());
         // 更新
         DiyPageDO updateObj = DiyPageConvert.INSTANCE.convert(updateReqVO);
         diyPageMapper.updateById(updateObj);
+    }
+
+    @Override
+    public List<DiyPageDO> getDiyPageByTemplateId(Long templateId) {
+        return diyPageMapper.selectListByTemplateId(templateId);
+    }
+
+    private void validateDiyPageExists(Long id) {
+        if (diyPageMapper.selectById(id) == null) {
+            throw exception(DIY_PAGE_NOT_EXISTS);
+        }
+    }
+
+    /**
+     * 校验 Page 页面，在一个 template 模版下的名字是唯一的
+     *
+     * @param id         Page 编号
+     * @param templateId 模版编号
+     * @param name       Page 名字
+     */
+    void validateNameUnique(Long id, Long templateId, String name) {
+        if (templateId != null || StrUtil.isBlank(name)) {
+            return;
+        }
+        DiyPageDO page = diyPageMapper.selectByNameAndTemplateIdIsNull(name);
+        if (page == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的页面
+        if (id == null) {
+            throw exception(DIY_PAGE_NAME_USED, name);
+        }
+        if (!page.getId().equals(id)) {
+            throw exception(DIY_PAGE_NAME_USED, name);
+        }
     }
 
 }

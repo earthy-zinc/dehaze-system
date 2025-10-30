@@ -91,12 +91,12 @@ public class ErpProductUnitController {
     @PreAuthorize("@ss.hasPermission('erp:product-unit:export')")
     @ApiAccessLog(operateType = EXPORT)
     public void exportProductUnitExcel(@Valid ErpProductUnitPageReqVO pageReqVO,
-              HttpServletResponse response) throws IOException {
+                                       HttpServletResponse response) throws IOException {
         pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
         List<ErpProductUnitDO> list = productUnitService.getProductUnitPage(pageReqVO).getList();
         // 导出 Excel
         ExcelUtils.write(response, "产品单位.xls", "数据", ErpProductUnitRespVO.class,
-                        BeanUtils.toBean(list, ErpProductUnitRespVO.class));
+                BeanUtils.toBean(list, ErpProductUnitRespVO.class));
     }
 
 }

@@ -3,8 +3,7 @@ package com.pei.dehaze.module.trade.enums;
 import com.pei.dehaze.framework.common.exception.ErrorCode;
 
 /**
- * Trade 错误码枚举类
- * trade 系统，使用 1-011-000-000 段
+ * Trade 错误码枚举类 trade 系统，使用 1-011-000-000 段
  *
  * @author LeeYan9
  * @since 2022-08-26

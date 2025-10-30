@@ -16,6 +16,8 @@ import com.pei.dehaze.module.mp.enums.message.MpAutoReplyTypeEnum;
 import com.pei.dehaze.module.mp.framework.mp.core.util.MpUtils;
 import com.pei.dehaze.module.mp.service.account.MpAccountService;
 import com.pei.dehaze.module.mp.service.message.bo.MpMessageSendOutReqBO;
+import jakarta.annotation.Resource;
+import jakarta.validation.Validator;
 import me.chanjar.weixin.common.api.WxConsts;
 import me.chanjar.weixin.mp.bean.message.WxMpXmlMessage;
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutMessage;
@@ -23,8 +25,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
-import jakarta.validation.Validator;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -94,46 +94,6 @@ public class MpAutoReplyServiceImpl implements MpAutoReplyService {
         mpAutoReplyMapper.updateById(updateObj);
     }
 
-    /**
-     * 校验自动回复是否冲突
-     *
-     * 不同的 type，会有不同的逻辑：
-     * 1. type = SUBSCRIBE 时，不允许有其他的自动回复
-     * 2. type = MESSAGE 时，校验 requestMessageType 已经存在自动回复
-     * 3. type = KEYWORD 时，校验 keyword 已经存在自动回复
-     *
-     * @param id 自动回复编号
-     * @param accountId 公众号账号的编号
-     * @param type 类型
-     * @param requestKeyword 请求关键词
-     * @param requestMessageType 请求消息类型
-     */
-    private void validateAutoReplyConflict(Long id, Long accountId, Integer type,
-                                           String requestKeyword, String requestMessageType) {
-        // 获得已经存在的自动回复
-        MpAutoReplyDO autoReply = null;
-        ErrorCode errorCode = null;
-        if (MpAutoReplyTypeEnum.SUBSCRIBE.getType().equals(type)) {
-            autoReply = mpAutoReplyMapper.selectByAccountIdAndSubscribe(accountId);
-            errorCode = AUTO_REPLY_ADD_SUBSCRIBE_FAIL_EXISTS;
-        } else if (MpAutoReplyTypeEnum.MESSAGE.getType().equals(type)) {
-            autoReply = mpAutoReplyMapper.selectByAccountIdAndMessage(accountId, requestMessageType);
-            errorCode = AUTO_REPLY_ADD_MESSAGE_FAIL_EXISTS;
-        } else if (MpAutoReplyTypeEnum.KEYWORD.getType().equals(type)) {
-            autoReply = mpAutoReplyMapper.selectByAccountIdAndKeyword(accountId, requestKeyword);
-            errorCode = AUTO_REPLY_ADD_KEYWORD_FAIL_EXISTS;
-        }
-        if (autoReply == null) {
-            return;
-        }
-
-        // 存在冲突，抛出业务异常
-        if (id == null // 情况一，新增（id == null），存在记录，说明冲突
-            || ObjUtil.notEqual(id, autoReply.getId())) { // 情况二，修改（id != null），id 不匹配，说明冲突
-            throw exception(errorCode);
-        }
-    }
-
     @Override
     public void deleteAutoReply(Long id) {
         // 校验粉丝存在
@@ -141,14 +101,6 @@ public class MpAutoReplyServiceImpl implements MpAutoReplyService {
 
         // 删除自动回复
         mpAutoReplyMapper.deleteById(id);
-    }
-
-    private MpAutoReplyDO validateAutoReplyExists(Long id) {
-        MpAutoReplyDO autoReply = mpAutoReplyMapper.selectById(id);
-        if (autoReply == null) {
-            throw exception(AUTO_REPLY_NOT_EXISTS);
-        }
-        return autoReply;
     }
 
     @Override
@@ -197,6 +149,52 @@ public class MpAutoReplyServiceImpl implements MpAutoReplyService {
         return new MpAutoReplyDO().setAppId(appId).setAccountId(account.getId())
                 .setType(MpAutoReplyTypeEnum.SUBSCRIBE.getType())
                 .setResponseMessageType(WxConsts.XmlMsgType.TEXT).setResponseContent("感谢关注");
+    }
+
+    private MpAutoReplyDO validateAutoReplyExists(Long id) {
+        MpAutoReplyDO autoReply = mpAutoReplyMapper.selectById(id);
+        if (autoReply == null) {
+            throw exception(AUTO_REPLY_NOT_EXISTS);
+        }
+        return autoReply;
+    }
+
+    /**
+     * 校验自动回复是否冲突
+     * <p>
+     * 不同的 type，会有不同的逻辑： 1. type = SUBSCRIBE 时，不允许有其他的自动回复 2. type = MESSAGE 时，校验 requestMessageType 已经存在自动回复 3. type =
+     * KEYWORD 时，校验 keyword 已经存在自动回复
+     *
+     * @param id                 自动回复编号
+     * @param accountId          公众号账号的编号
+     * @param type               类型
+     * @param requestKeyword     请求关键词
+     * @param requestMessageType 请求消息类型
+     */
+    private void validateAutoReplyConflict(Long id, Long accountId, Integer type,
+                                           String requestKeyword, String requestMessageType) {
+        // 获得已经存在的自动回复
+        MpAutoReplyDO autoReply = null;
+        ErrorCode errorCode = null;
+        if (MpAutoReplyTypeEnum.SUBSCRIBE.getType().equals(type)) {
+            autoReply = mpAutoReplyMapper.selectByAccountIdAndSubscribe(accountId);
+            errorCode = AUTO_REPLY_ADD_SUBSCRIBE_FAIL_EXISTS;
+        } else if (MpAutoReplyTypeEnum.MESSAGE.getType().equals(type)) {
+            autoReply = mpAutoReplyMapper.selectByAccountIdAndMessage(accountId, requestMessageType);
+            errorCode = AUTO_REPLY_ADD_MESSAGE_FAIL_EXISTS;
+        } else if (MpAutoReplyTypeEnum.KEYWORD.getType().equals(type)) {
+            autoReply = mpAutoReplyMapper.selectByAccountIdAndKeyword(accountId, requestKeyword);
+            errorCode = AUTO_REPLY_ADD_KEYWORD_FAIL_EXISTS;
+        }
+        if (autoReply == null) {
+            return;
+        }
+
+        // 存在冲突，抛出业务异常
+        if (id == null // 情况一，新增（id == null），存在记录，说明冲突
+                || ObjUtil.notEqual(id, autoReply.getId())) { // 情况二，修改（id != null），id 不匹配，说明冲突
+            throw exception(errorCode);
+        }
     }
 
 }

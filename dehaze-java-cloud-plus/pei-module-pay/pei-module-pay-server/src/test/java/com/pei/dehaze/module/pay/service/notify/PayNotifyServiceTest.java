@@ -18,6 +18,7 @@ import com.pei.dehaze.module.pay.framework.job.config.PayJobConfiguration;
 import com.pei.dehaze.module.pay.service.order.PayOrderService;
 import com.pei.dehaze.module.pay.service.refund.PayRefundService;
 import com.pei.dehaze.module.pay.service.refund.PayRefundServiceImpl;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -26,7 +27,6 @@ import org.redisson.api.RedissonClient;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.time.Duration;
 import java.util.List;
 
@@ -95,6 +95,17 @@ public class PayNotifyServiceTest extends BaseDbUnitTest {
                             order.getAppId(), order.getMerchantOrderId(), order.getNotifyUrl());
             // 断言，调用
             verify(payNotifyService).executeNotify0(eq(dbTask));
+        }
+    }
+
+    private void mockLock(Long id) {
+        RLock lock = mock(RLock.class);
+        if (id == null) {
+            when(redissonClient.getLock(anyString()))
+                    .thenReturn(lock);
+        } else {
+            when(redissonClient.getLock(eq("pay_notify:lock:" + id)))
+                    .thenReturn(lock);
         }
     }
 
@@ -337,17 +348,6 @@ public class PayNotifyServiceTest extends BaseDbUnitTest {
         // 断言
         assertEquals(logList.size(), 1);
         assertPojoEquals(dbLog, logList.get(0));
-    }
-
-    private void mockLock(Long id) {
-        RLock lock = mock(RLock.class);
-        if (id == null) {
-            when(redissonClient.getLock(anyString()))
-                    .thenReturn(lock);
-        } else {
-            when(redissonClient.getLock(eq("pay_notify:lock:" + id)))
-                    .thenReturn(lock);
-        }
     }
 
 }

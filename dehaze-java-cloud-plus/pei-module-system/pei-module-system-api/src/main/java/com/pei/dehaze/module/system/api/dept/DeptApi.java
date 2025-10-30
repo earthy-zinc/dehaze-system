@@ -26,11 +26,6 @@ public interface DeptApi {
     @Parameter(name = "id", description = "部门编号", example = "1024", required = true)
     CommonResult<DeptRespDTO> getDept(@RequestParam("id") Long id);
 
-    @GetMapping(PREFIX + "/list")
-    @Operation(summary = "获得部门信息数组")
-    @Parameter(name = "ids", description = "部门编号数组", example = "1,2", required = true)
-    CommonResult<List<DeptRespDTO>> getDeptList(@RequestParam("ids") Collection<Long> ids);
-
     @GetMapping(PREFIX + "/valid")
     @Operation(summary = "校验部门是否合法")
     @Parameter(name = "ids", description = "部门编号数组", example = "1,2", required = true)
@@ -46,6 +41,11 @@ public interface DeptApi {
         List<DeptRespDTO> list = getDeptList(ids).getCheckedData();
         return CollectionUtils.convertMap(list, DeptRespDTO::getId);
     }
+
+    @GetMapping(PREFIX + "/list")
+    @Operation(summary = "获得部门信息数组")
+    @Parameter(name = "ids", description = "部门编号数组", example = "1,2", required = true)
+    CommonResult<List<DeptRespDTO>> getDeptList(@RequestParam("ids") Collection<Long> ids);
 
     @GetMapping(PREFIX + "/list-child")
     @Operation(summary = "获得指定部门的所有子部门")

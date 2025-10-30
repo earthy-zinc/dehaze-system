@@ -149,6 +149,66 @@ public class ProductSkuServiceImpl implements ProductSkuService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSkuList(Long spuId, List<ProductSkuSaveReqVO> skus) {
+        // 构建属性与 SKU 的映射关系;
+        Map<String, Long> existsSkuMap = convertMap(productSkuMapper.selectListBySpuId(spuId),
+                ProductSkuConvert.INSTANCE::buildPropertyKey, ProductSkuDO::getId);
+
+        // 拆分三个集合，新插入的、需要更新的、需要删除的
+        List<ProductSkuDO> insertSkus = new ArrayList<>();
+        List<ProductSkuDO> updateSkus = new ArrayList<>();
+        List<ProductSkuDO> allUpdateSkus = BeanUtils.toBean(skus, ProductSkuDO.class, sku -> sku.setSpuId(spuId));
+        allUpdateSkus.forEach(sku -> {
+            String propertiesKey = ProductSkuConvert.INSTANCE.buildPropertyKey(sku);
+            // 1、找得到的，进行更新
+            Long existsSkuId = existsSkuMap.remove(propertiesKey);
+            if (existsSkuId != null) {
+                sku.setId(existsSkuId);
+                updateSkus.add(sku);
+                return;
+            }
+            // 2、找不到，进行插入
+            sku.setSpuId(spuId);
+            insertSkus.add(sku);
+        });
+
+        // 执行最终的批量操作
+        if (CollUtil.isNotEmpty(insertSkus)) {
+            productSkuMapper.insertBatch(insertSkus);
+        }
+        if (CollUtil.isNotEmpty(updateSkus)) {
+            updateSkus.forEach(sku -> productSkuMapper.updateById(sku));
+        }
+        if (CollUtil.isNotEmpty(existsSkuMap)) {
+            productSkuMapper.deleteBatchIds(existsSkuMap.values());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateSkuStock(ProductSkuUpdateStockReqDTO updateStockReqDTO) {
+        // 更新 SKU 库存
+        updateStockReqDTO.getItems().forEach(item -> {
+            if (item.getIncrCount() > 0) {
+                productSkuMapper.updateStockIncr(item.getId(), item.getIncrCount());
+            } else if (item.getIncrCount() < 0) {
+                int updateStockIncr = productSkuMapper.updateStockDecr(item.getId(), item.getIncrCount());
+                if (updateStockIncr == 0) {
+                    throw exception(SKU_STOCK_NOT_ENOUGH);
+                }
+            }
+        });
+
+        // 更新 SPU 库存
+        List<ProductSkuDO> skus = productSkuMapper.selectBatchIds(
+                convertSet(updateStockReqDTO.getItems(), ProductSkuUpdateStockReqDTO.Item::getId));
+        Map<Long, Integer> spuStockIncrCounts = ProductSkuConvert.INSTANCE.convertSpuStockMap(
+                updateStockReqDTO.getItems(), skus);
+        productSpuService.updateSpuStock(spuStockIncrCounts);
+    }
+
+    @Override
     public List<ProductSkuDO> getSkuListBySpuId(Long spuId) {
         return productSkuMapper.selectListBySpuId(spuId);
     }
@@ -213,66 +273,6 @@ public class ProductSkuServiceImpl implements ProductSkuService {
 
         productSkuMapper.updateBatch(updateSkus);
         return updateSkus.size();
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void updateSkuList(Long spuId, List<ProductSkuSaveReqVO> skus) {
-        // 构建属性与 SKU 的映射关系;
-        Map<String, Long> existsSkuMap = convertMap(productSkuMapper.selectListBySpuId(spuId),
-                ProductSkuConvert.INSTANCE::buildPropertyKey, ProductSkuDO::getId);
-
-        // 拆分三个集合，新插入的、需要更新的、需要删除的
-        List<ProductSkuDO> insertSkus = new ArrayList<>();
-        List<ProductSkuDO> updateSkus = new ArrayList<>();
-        List<ProductSkuDO> allUpdateSkus = BeanUtils.toBean(skus, ProductSkuDO.class, sku -> sku.setSpuId(spuId));
-        allUpdateSkus.forEach(sku -> {
-            String propertiesKey = ProductSkuConvert.INSTANCE.buildPropertyKey(sku);
-            // 1、找得到的，进行更新
-            Long existsSkuId = existsSkuMap.remove(propertiesKey);
-            if (existsSkuId != null) {
-                sku.setId(existsSkuId);
-                updateSkus.add(sku);
-                return;
-            }
-            // 2、找不到，进行插入
-            sku.setSpuId(spuId);
-            insertSkus.add(sku);
-        });
-
-        // 执行最终的批量操作
-        if (CollUtil.isNotEmpty(insertSkus)) {
-            productSkuMapper.insertBatch(insertSkus);
-        }
-        if (CollUtil.isNotEmpty(updateSkus)) {
-            updateSkus.forEach(sku -> productSkuMapper.updateById(sku));
-        }
-        if (CollUtil.isNotEmpty(existsSkuMap)) {
-            productSkuMapper.deleteBatchIds(existsSkuMap.values());
-        }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void updateSkuStock(ProductSkuUpdateStockReqDTO updateStockReqDTO) {
-        // 更新 SKU 库存
-        updateStockReqDTO.getItems().forEach(item -> {
-            if (item.getIncrCount() > 0) {
-                productSkuMapper.updateStockIncr(item.getId(), item.getIncrCount());
-            } else if (item.getIncrCount() < 0) {
-                int updateStockIncr = productSkuMapper.updateStockDecr(item.getId(), item.getIncrCount());
-                if (updateStockIncr == 0) {
-                    throw exception(SKU_STOCK_NOT_ENOUGH);
-                }
-            }
-        });
-
-        // 更新 SPU 库存
-        List<ProductSkuDO> skus = productSkuMapper.selectBatchIds(
-                convertSet(updateStockReqDTO.getItems(), ProductSkuUpdateStockReqDTO.Item::getId));
-        Map<Long, Integer> spuStockIncrCounts = ProductSkuConvert.INSTANCE.convertSpuStockMap(
-                updateStockReqDTO.getItems(), skus);
-        productSpuService.updateSpuStock(spuStockIncrCounts);
     }
 
 }

@@ -3,9 +3,9 @@ package com.pei.dehaze.framework.common.biz.system.oauth2.dto;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import jakarta.validation.constraints.NotNull;
 import java.io.Serializable;
 import java.util.List;
 

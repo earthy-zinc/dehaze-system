@@ -87,7 +87,7 @@ public interface SeckillConfigService {
 
     /**
      * 获得当前的秒杀时段
-     *
+     * <p>
      * 要求必须处于开启状态、且在当前时间段内
      *
      * @return 时段

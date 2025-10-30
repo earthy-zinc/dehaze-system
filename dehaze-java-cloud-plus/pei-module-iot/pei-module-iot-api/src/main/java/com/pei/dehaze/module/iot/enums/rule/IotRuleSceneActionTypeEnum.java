@@ -8,7 +8,7 @@ import java.util.Arrays;
 
 /**
  * IoT 规则场景的触发类型枚举
- *
+ * <p>
  * 设备触发，定时触发
  */
 @RequiredArgsConstructor
@@ -19,9 +19,8 @@ public enum IotRuleSceneActionTypeEnum implements ArrayValuable<Integer> {
     ALERT(2), // 告警执行
     DATA_BRIDGE(3); // 桥接执行
 
-    private final Integer type;
-
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotRuleSceneActionTypeEnum::getType).toArray(Integer[]::new);
+    private final Integer type;
 
     @Override
     public Integer[] array() {

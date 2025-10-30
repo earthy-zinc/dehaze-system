@@ -1,28 +1,27 @@
 package com.pei.dehaze.module.pay.dal.dataobject.channel;
 
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.common.util.json.JsonUtils;
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientConfig;
-import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
-import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.impl.NonePayClientConfig;
-import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayPayClientConfig;
-import com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin.WxPayClientConfig;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.AbstractJsonTypeHandler;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.common.util.json.JsonUtils;
+import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
+import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientConfig;
+import com.pei.dehaze.module.pay.framework.pay.core.client.impl.NonePayClientConfig;
+import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayPayClientConfig;
+import com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin.WxPayClientConfig;
 import lombok.*;
 
 import java.lang.reflect.Field;
 
 /**
- * 支付渠道 DO
- * 一个应用下，会有多种支付渠道，例如说微信支付、支付宝支付等等
- *
+ * 支付渠道 DO 一个应用下，会有多种支付渠道，例如说微信支付、支付宝支付等等
+ * <p>
  * 即 PayAppDO : PayChannelDO = 1 : n
  *
  * @author earthyzinc
@@ -43,13 +42,13 @@ public class PayChannelDO extends TenantBaseDO {
     private Long id;
     /**
      * 渠道编码
-     *
+     * <p>
      * 枚举 {@link PayChannelEnum}
      */
     private String code;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;
@@ -64,7 +63,7 @@ public class PayChannelDO extends TenantBaseDO {
 
     /**
      * 应用编号
-     *
+     * <p>
      * 关联 {@link PayAppDO#getId()}
      */
     private Long appId;
@@ -86,7 +85,8 @@ public class PayChannelDO extends TenantBaseDO {
 
         @Override
         public Object parse(String json) {
-            PayClientConfig config = JsonUtils.parseObjectQuietly(json, new TypeReference<>() {});
+            PayClientConfig config = JsonUtils.parseObjectQuietly(json, new TypeReference<>() {
+            });
             if (config != null) {
                 return config;
             }

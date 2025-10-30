@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.infra.dal.dataobject.db;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.EncryptTypeHandler;
-import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.EncryptTypeHandler;
+import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import lombok.Data;
 
 /**

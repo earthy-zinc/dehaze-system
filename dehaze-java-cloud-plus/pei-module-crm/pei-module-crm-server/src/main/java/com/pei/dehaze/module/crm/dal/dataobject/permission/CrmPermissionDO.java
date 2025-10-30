@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.crm.dal.dataobject.permission;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.crm.enums.common.CrmBizTypeEnum;
-import com.pei.dehaze.module.crm.enums.permission.CrmPermissionLevelEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.crm.enums.common.CrmBizTypeEnum;
+import com.pei.dehaze.module.crm.enums.permission.CrmPermissionLevelEnum;
 import lombok.*;
 
 /**
@@ -31,27 +31,27 @@ public class CrmPermissionDO extends BaseDO {
 
     /**
      * 数据类型
-     *
+     * <p>
      * 枚举 {@link CrmBizTypeEnum}
      */
     private Integer bizType;
     /**
      * 数据编号
-     *
+     * <p>
      * 关联 {@link CrmBizTypeEnum} 对应模块 DO 的 id 字段
      */
     private Long bizId;
 
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 AdminUser 的 id 字段
      */
     private Long userId;
 
     /**
      * 权限级别
-     *
+     * <p>
      * 关联 {@link CrmPermissionLevelEnum}
      */
     private Integer level;

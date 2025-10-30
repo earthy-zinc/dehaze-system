@@ -3,9 +3,9 @@ package com.pei.dehaze.module.system.controller.admin.permission.vo.permission;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.system.enums.permission.DataScopeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.Collections;
 import java.util.Set;
 

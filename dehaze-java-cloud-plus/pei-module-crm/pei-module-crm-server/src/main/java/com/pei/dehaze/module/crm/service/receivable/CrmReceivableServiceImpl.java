@@ -5,6 +5,9 @@ import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -26,9 +29,6 @@ import com.pei.dehaze.module.crm.service.contract.CrmContractService;
 import com.pei.dehaze.module.crm.service.permission.CrmPermissionService;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
@@ -153,6 +153,14 @@ public class CrmReceivableServiceImpl implements CrmReceivableService {
         }
     }
 
+    private Integer getReceivablePeriod(Long planId) {
+        if (Objects.isNull(planId)) {
+            return null;
+        }
+        CrmReceivablePlanDO receivablePlan = receivablePlanService.getReceivablePlan(planId);
+        return receivablePlan.getPeriod();
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     @LogRecord(type = CRM_RECEIVABLE_TYPE, subType = CRM_RECEIVABLE_UPDATE_SUB_TYPE, bizNo = "{{#updateReqVO.id}}",
@@ -182,14 +190,6 @@ public class CrmReceivableServiceImpl implements CrmReceivableService {
         LogRecordContext.putVariable("receivable", receivable);
         LogRecordContext.putVariable("period", getReceivablePeriod(receivable.getPlanId()));
         LogRecordContext.putVariable(DiffParseFunction.OLD_OBJECT, BeanUtils.toBean(receivable, CrmReceivableSaveReqVO.class));
-    }
-
-    private Integer getReceivablePeriod(Long planId) {
-        if (Objects.isNull(planId)) {
-            return null;
-        }
-        CrmReceivablePlanDO receivablePlan = receivablePlanService.getReceivablePlan(planId);
-        return receivablePlan.getPeriod();
     }
 
     @Override
@@ -258,14 +258,6 @@ public class CrmReceivableServiceImpl implements CrmReceivableService {
         LogRecordContext.putVariable("receivableNo", receivable.getNo());
     }
 
-    private CrmReceivableDO validateReceivableExists(Long id) {
-        CrmReceivableDO receivable = receivableMapper.selectById(id);
-        if (receivable == null) {
-            throw exception(RECEIVABLE_NOT_EXISTS);
-        }
-        return receivable;
-    }
-
     @Override
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_RECEIVABLE, bizId = "#id", level = CrmPermissionLevelEnum.READ)
     public CrmReceivableDO getReceivable(Long id) {
@@ -304,6 +296,14 @@ public class CrmReceivableServiceImpl implements CrmReceivableService {
     @Override
     public Long getReceivableCountByContractId(Long contractId) {
         return receivableMapper.selectCountByContractId(contractId);
+    }
+
+    private CrmReceivableDO validateReceivableExists(Long id) {
+        CrmReceivableDO receivable = receivableMapper.selectById(id);
+        if (receivable == null) {
+            throw exception(RECEIVABLE_NOT_EXISTS);
+        }
+        return receivable;
     }
 
 }

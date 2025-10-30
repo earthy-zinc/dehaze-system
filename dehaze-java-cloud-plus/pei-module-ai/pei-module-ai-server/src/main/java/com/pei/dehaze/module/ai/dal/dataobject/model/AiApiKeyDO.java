@@ -1,12 +1,15 @@
 package com.pei.dehaze.module.ai.dal.dataobject.model;
 
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * AI API 秘钥 DO
@@ -36,7 +39,7 @@ public class AiApiKeyDO extends BaseDO {
     private String apiKey;
     /**
      * 平台
-     *
+     * <p>
      * 枚举 {@link AiPlatformEnum}
      */
     private String platform;
@@ -46,7 +49,7 @@ public class AiApiKeyDO extends BaseDO {
     private String url;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

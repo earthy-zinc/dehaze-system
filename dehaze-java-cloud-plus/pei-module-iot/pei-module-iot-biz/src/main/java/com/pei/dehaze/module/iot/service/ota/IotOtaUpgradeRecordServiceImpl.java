@@ -74,9 +74,9 @@ public class IotOtaUpgradeRecordServiceImpl implements IotOtaUpgradeRecordServic
     }
 
     // TODO @li：1）方法注释，简单写；2）父类写了注释，子类就不用写了。。。
+
     /**
-     * 获取OTA升级记录的数量统计。
-     * 该方法根据传入的查询条件，统计不同状态的OTA升级记录数量，并返回一个包含各状态数量的映射。
+     * 获取OTA升级记录的数量统计。 该方法根据传入的查询条件，统计不同状态的OTA升级记录数量，并返回一个包含各状态数量的映射。
      *
      * @param pageReqVO 包含查询条件的请求对象，主要包括任务ID和设备名称等信息。
      * @return 返回一个Map，其中键为状态常量，值为对应状态的记录数量。
@@ -95,9 +95,9 @@ public class IotOtaUpgradeRecordServiceImpl implements IotOtaUpgradeRecordServic
     }
 
     // TODO @li：1）方法注释，简单写；2）父类写了注释，子类就不用写了。。。
+
     /**
-     * 获取指定固件ID的OTA升级记录统计信息。
-     * 该方法通过查询数据库，统计不同状态的OTA升级记录数量，并返回一个包含各状态数量的映射。
+     * 获取指定固件ID的OTA升级记录统计信息。 该方法通过查询数据库，统计不同状态的OTA升级记录数量，并返回一个包含各状态数量的映射。
      *
      * @param firmwareId 固件ID，用于指定需要统计的固件升级记录。
      * @return 返回一个Map，其中键为升级记录状态（如PENDING、PUSHED等），值为对应状态的记录数量。
@@ -180,11 +180,33 @@ public class IotOtaUpgradeRecordServiceImpl implements IotOtaUpgradeRecordServic
     }
 
     // TODO @li：注释有点冗余
+
+    /**
+     * 验证升级记录是否可以重试。
+     * <p>
+     * 该方法用于检查给定的升级记录是否处于允许重试的状态。如果升级记录的状态为 PENDING、PUSHED 或 UPGRADING，则抛出异常，表示不允许重试。
+     *
+     * @param upgradeRecord 需要验证的升级记录对象，类型为 IotOtaUpgradeRecordDO
+     * @throws com.pei.dehaze.framework.common.exception.ServiceException，则抛出 OTA_UPGRADE_RECORD_CANNOT_RETRY 异常
+     */
+    // TODO @li：这种一次性的方法（不复用的），其实一步一定要抽成小方法；
+    private void validateUpgradeRecordCanRetry(IotOtaUpgradeRecordDO upgradeRecord) {
+        // 检查升级记录的状态是否为 PENDING、PUSHED 或 UPGRADING
+        if (ObjectUtils.equalsAny(upgradeRecord.getStatus(),
+                IotOtaUpgradeRecordStatusEnum.PENDING.getStatus(),
+                IotOtaUpgradeRecordStatusEnum.PUSHED.getStatus(),
+                IotOtaUpgradeRecordStatusEnum.UPGRADING.getStatus())) {
+            // 如果升级记录处于上述状态之一，则抛出异常，表示不允许重试
+            throw exception(OTA_UPGRADE_RECORD_CANNOT_RETRY);
+        }
+    }
+
+    // TODO @li：注释有点冗余
+
     /**
      * 校验固件升级记录是否重复。
      * <p>
-     * 该函数用于检查给定的固件ID、任务ID和设备ID是否已经存在未取消的升级记录。
-     * 如果存在未取消的记录，则抛出异常，提示升级记录重复。
+     * 该函数用于检查给定的固件ID、任务ID和设备ID是否已经存在未取消的升级记录。 如果存在未取消的记录，则抛出异常，提示升级记录重复。
      *
      * @param firmwareId 固件ID，用于标识特定的固件版本
      * @param taskId     任务ID，用于标识特定的升级任务
@@ -201,28 +223,6 @@ public class IotOtaUpgradeRecordServiceImpl implements IotOtaUpgradeRecordServic
                 // TODO @li：提示的时候，需要把 deviceName 给提示出来，不然用户不知道哪个重复啦。
                 throw exception(OTA_UPGRADE_RECORD_DUPLICATE);
             }
-        }
-    }
-
-    // TODO @li：注释有点冗余
-    /**
-     * 验证升级记录是否可以重试。
-     * <p>
-     * 该方法用于检查给定的升级记录是否处于允许重试的状态。如果升级记录的状态为
-     * PENDING、PUSHED 或 UPGRADING，则抛出异常，表示不允许重试。
-     *
-     * @param upgradeRecord 需要验证的升级记录对象，类型为 IotOtaUpgradeRecordDO
-     * @throws com.pei.dehaze.framework.common.exception.ServiceException，则抛出 OTA_UPGRADE_RECORD_CANNOT_RETRY 异常
-     */
-    // TODO @li：这种一次性的方法（不复用的），其实一步一定要抽成小方法；
-    private void validateUpgradeRecordCanRetry(IotOtaUpgradeRecordDO upgradeRecord) {
-        // 检查升级记录的状态是否为 PENDING、PUSHED 或 UPGRADING
-        if (ObjectUtils.equalsAny(upgradeRecord.getStatus(),
-                IotOtaUpgradeRecordStatusEnum.PENDING.getStatus(),
-                IotOtaUpgradeRecordStatusEnum.PUSHED.getStatus(),
-                IotOtaUpgradeRecordStatusEnum.UPGRADING.getStatus())) {
-            // 如果升级记录处于上述状态之一，则抛出异常，表示不允许重试
-            throw exception(OTA_UPGRADE_RECORD_CANNOT_RETRY);
         }
     }
 

@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.pay.dal.mysql.notify;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.pay.controller.admin.notify.vo.PayNotifyTaskPageReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.notify.PayNotifyTaskDO;
 import com.pei.dehaze.module.pay.enums.notify.PayNotifyStatusEnum;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.time.LocalDateTime;
@@ -17,9 +17,8 @@ public interface PayNotifyTaskMapper extends BaseMapperX<PayNotifyTaskDO> {
 
     /**
      * 获得需要通知的 PayNotifyTaskDO 记录。需要满足如下条件：
-     *
-     * 1. status 非成功
-     * 2. nextNotifyTime 小于当前时间
+     * <p>
+     * 1. status 非成功 2. nextNotifyTime 小于当前时间
      *
      * @return PayTransactionNotifyTaskDO 数组
      */

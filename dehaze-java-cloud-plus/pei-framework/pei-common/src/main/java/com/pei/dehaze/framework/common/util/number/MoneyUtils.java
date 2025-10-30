@@ -14,14 +14,13 @@ import java.math.RoundingMode;
 public class MoneyUtils {
 
     /**
-     * 金额的小数位数
-     */
-    private static final int PRICE_SCALE = 2;
-
-    /**
      * 百分比对应的 BigDecimal 对象
      */
     public static final BigDecimal PERCENT_100 = BigDecimal.valueOf(100);
+    /**
+     * 金额的小数位数
+     */
+    private static final int PRICE_SCALE = 2;
 
     /**
      * 计算百分比金额，四舍五入
@@ -86,7 +85,7 @@ public class MoneyUtils {
 
     /**
      * 分转元（字符串）
-     *
+     * <p>
      * 例如说 fen 为 1 时，则结果为 0.01
      *
      * @param fen 分
@@ -98,7 +97,7 @@ public class MoneyUtils {
 
     /**
      * 金额相乘，默认进行四舍五入
-     *
+     * <p>
      * 位数：{@link #PRICE_SCALE}
      *
      * @param price 金额
@@ -114,10 +113,10 @@ public class MoneyUtils {
 
     /**
      * 金额相乘（百分比），默认进行四舍五入
-     *
+     * <p>
      * 位数：{@link #PRICE_SCALE}
      *
-     * @param price  金额
+     * @param price   金额
      * @param percent 百分比
      * @return 金额相乘结果
      */

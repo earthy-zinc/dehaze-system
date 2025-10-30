@@ -17,7 +17,8 @@ public enum ProductCommentAuditStatusEnum implements ArrayValuable<Integer> {
 
     NONE(0, "待审核"),
     APPROVE(1, "审批通过"),
-    REJECT(2, "审批不通过"),;
+    REJECT(2, "审批不通过"),
+    ;
 
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(ProductCommentAuditStatusEnum::getStatus).toArray(Integer[]::new);
 

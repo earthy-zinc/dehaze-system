@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.system.dal.dataobject.sms;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 /**
  * 手机验证码 DO
- *
+ * <p>
  * idx_mobile 索引：基于 {@link #mobile} 字段
  *
  * @author earthyzinc
@@ -39,7 +39,7 @@ public class SmsCodeDO extends BaseDO {
     private String code;
     /**
      * 发送场景
-     *
+     * <p>
      * 枚举 {@link SmsCodeDO}
      */
     private Integer scene;

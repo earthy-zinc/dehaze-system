@@ -3,10 +3,10 @@ package com.pei.dehaze.module.promotion.api.reward;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.promotion.api.reward.dto.RewardActivityMatchRespDTO;
 import com.pei.dehaze.module.promotion.service.reward.RewardActivityService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 

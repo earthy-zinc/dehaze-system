@@ -18,7 +18,7 @@ public interface BpmOALeaveService {
     /**
      * 创建请假申请
      *
-     * @param userId 用户编号
+     * @param userId      用户编号
      * @param createReqVO 创建信息
      * @return 编号
      */
@@ -27,7 +27,7 @@ public interface BpmOALeaveService {
     /**
      * 更新请假申请的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 结果
      */
     void updateLeaveStatus(Long id, Integer status);
@@ -43,7 +43,7 @@ public interface BpmOALeaveService {
     /**
      * 获得请假申请分页
      *
-     * @param userId 用户编号
+     * @param userId    用户编号
      * @param pageReqVO 分页查询
      * @return 请假申请分页
      */

@@ -21,7 +21,7 @@ import java.util.Set;
 
 /**
  * 自定义的【串行】的【多个】流程任务的 assignee 负责人的分配
- *
+ * <p>
  * 本质上，实现和 {@link BpmParallelMultiInstanceBehavior} 一样，只是继承的类不一样
  *
  * @author earthyzinc
@@ -37,7 +37,7 @@ public class BpmSequentialMultiInstanceBehavior extends SequentialMultiInstanceB
 
     /**
      * 逻辑和 {@link BpmParallelMultiInstanceBehavior#resolveNrOfInstances(DelegateExecution)} 类似
-     *
+     * <p>
      * 差异的点：是在【第二步】的时候，需要返回 LinkedHashSet 集合！因为它需要有序！
      */
     @Override

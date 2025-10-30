@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.crm.controller.admin.customer.vo.customer;
 
+import com.alibaba.excel.annotation.ExcelProperty;
 import com.pei.dehaze.framework.excel.core.annotations.DictFormat;
 import com.pei.dehaze.framework.excel.core.annotations.ExcelColumnSelect;
 import com.pei.dehaze.framework.excel.core.convert.AreaConvert;
 import com.pei.dehaze.framework.excel.core.convert.DictConvert;
 import com.pei.dehaze.module.crm.framework.excel.core.AreaExcelColumnSelectFunction;
-import com.alibaba.excel.annotation.ExcelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

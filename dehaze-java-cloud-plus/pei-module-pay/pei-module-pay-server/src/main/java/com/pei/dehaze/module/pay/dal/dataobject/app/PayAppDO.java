@@ -1,17 +1,15 @@
 package com.pei.dehaze.module.pay.dal.dataobject.app;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
- * 支付应用 DO
- * 一个商户下，可能会有多个支付应用。例如说，京东有京东商城、京东到家等等
- * 不过一般来说，一个商户，只有一个应用哈~
- *
+ * 支付应用 DO 一个商户下，可能会有多个支付应用。例如说，京东有京东商城、京东到家等等 不过一般来说，一个商户，只有一个应用哈~
+ * <p>
  * 即 PayMerchantDO : PayAppDO = 1 : n
  *
  * @author earthyzinc
@@ -41,7 +39,7 @@ public class PayAppDO extends BaseDO {
     private String name;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

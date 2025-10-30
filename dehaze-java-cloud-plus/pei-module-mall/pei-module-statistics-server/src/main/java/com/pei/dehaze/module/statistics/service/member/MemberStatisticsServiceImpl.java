@@ -59,6 +59,18 @@ public class MemberStatisticsServiceImpl implements MemberStatisticsService {
     }
 
     @Override
+    public DataComparisonRespVO<MemberAnalyseDataRespVO> getMemberAnalyseComparisonData(LocalDateTime beginTime, LocalDateTime endTime) {
+        // 当前数据
+        MemberAnalyseDataRespVO vo = getMemberAnalyseData(beginTime, endTime);
+        // 对照数据
+        LocalDateTime referenceEndDate = beginTime.minusDays(1); // 减少1天，防止出现时间重叠
+        LocalDateTime referenceBeginDate = referenceEndDate.minus(Duration.between(beginTime, endTime));
+        MemberAnalyseDataRespVO reference = getMemberAnalyseData(
+                LocalDateTimeUtil.beginOfDay(referenceBeginDate), LocalDateTimeUtil.endOfDay(referenceEndDate));
+        return new DataComparisonRespVO<>(vo, reference);
+    }
+
+    @Override
     public List<MemberAreaStatisticsRespVO> getMemberAreaStatisticsList() {
         // 统计用户
         // TODO @疯狂：可能得把每个省的用户，都查询出来，然后去 order 那边 in；因为要按照这些人为基础来计算；；用户规模量大可能不太好，但是暂时就先这样搞吧 = =
@@ -80,27 +92,6 @@ public class MemberStatisticsServiceImpl implements MemberStatisticsService {
         List<Area> areaList = AreaUtils.getByType(AreaTypeEnum.PROVINCE, area -> area);
         areaList.add(new Area().setId(null).setName("未知"));
         return MemberStatisticsConvert.INSTANCE.convertList(areaList, userCountMap, orderMap);
-    }
-
-    @Override
-    public DataComparisonRespVO<MemberAnalyseDataRespVO> getMemberAnalyseComparisonData(LocalDateTime beginTime, LocalDateTime endTime) {
-        // 当前数据
-        MemberAnalyseDataRespVO vo = getMemberAnalyseData(beginTime, endTime);
-        // 对照数据
-        LocalDateTime referenceEndDate = beginTime.minusDays(1); // 减少1天，防止出现时间重叠
-        LocalDateTime referenceBeginDate = referenceEndDate.minus(Duration.between(beginTime, endTime));
-        MemberAnalyseDataRespVO reference = getMemberAnalyseData(
-                LocalDateTimeUtil.beginOfDay(referenceBeginDate), LocalDateTimeUtil.endOfDay(referenceEndDate));
-        return new DataComparisonRespVO<>(vo, reference);
-    }
-
-    private MemberAnalyseDataRespVO getMemberAnalyseData(LocalDateTime beginTime, LocalDateTime endTime) {
-        Integer rechargeUserCount = Optional.ofNullable(payWalletStatisticsService.getUserRechargeSummary(beginTime, endTime))
-                .map(RechargeSummaryRespBO::getRechargeUserCount).orElse(0);
-        return new MemberAnalyseDataRespVO()
-                .setRegisterUserCount(memberStatisticsMapper.selectUserCount(beginTime, endTime))
-                .setVisitUserCount(apiAccessLogStatisticsService.getUserCount(UserTypeEnum.MEMBER.getValue(), beginTime, endTime))
-                .setRechargeUserCount(rechargeUserCount);
     }
 
     @Override
@@ -135,6 +126,15 @@ public class MemberStatisticsServiceImpl implements MemberStatisticsService {
         return new MemberCountRespVO()
                 .setRegisterUserCount(memberStatisticsMapper.selectUserCount(beginTime, endTime))
                 .setVisitUserCount(apiAccessLogStatisticsService.getIpCount(UserTypeEnum.MEMBER.getValue(), beginTime, endTime));
+    }
+
+    private MemberAnalyseDataRespVO getMemberAnalyseData(LocalDateTime beginTime, LocalDateTime endTime) {
+        Integer rechargeUserCount = Optional.ofNullable(payWalletStatisticsService.getUserRechargeSummary(beginTime, endTime))
+                .map(RechargeSummaryRespBO::getRechargeUserCount).orElse(0);
+        return new MemberAnalyseDataRespVO()
+                .setRegisterUserCount(memberStatisticsMapper.selectUserCount(beginTime, endTime))
+                .setVisitUserCount(apiAccessLogStatisticsService.getUserCount(UserTypeEnum.MEMBER.getValue(), beginTime, endTime))
+                .setRechargeUserCount(rechargeUserCount);
     }
 
 }

@@ -19,15 +19,14 @@ public class PayOrderRespDTO {
     private Long id;
     /**
      * 渠道编码
-     *
+     * <p>
      * 枚举 PayChannelEnum
      */
     private String channelCode;
 
     // ========== 商户相关字段 ==========
     /**
-     * 商户订单编号
-     * 例如说，内部系统 A 的订单号。需要保证每个 PayMerchantDO 唯一
+     * 商户订单编号 例如说，内部系统 A 的订单号。需要保证每个 PayMerchantDO 唯一
      */
     private String merchantOrderId;
 
@@ -42,7 +41,7 @@ public class PayOrderRespDTO {
     private Integer price;
     /**
      * 支付状态
-     *
+     * <p>
      * 枚举 {@link PayOrderStatusEnum}
      */
     private Integer status;
@@ -56,7 +55,7 @@ public class PayOrderRespDTO {
 
     /**
      * 渠道用户编号
-     *
+     * <p>
      * 例如说，微信 openid、支付宝账号
      */
     private String channelUserId;

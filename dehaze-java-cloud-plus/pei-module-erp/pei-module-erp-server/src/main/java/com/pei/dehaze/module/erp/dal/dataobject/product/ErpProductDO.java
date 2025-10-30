@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.erp.dal.dataobject.product;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -38,19 +38,19 @@ public class ErpProductDO extends BaseDO {
     private String barCode;
     /**
      * 产品分类编号
-     *
+     * <p>
      * 关联 {@link ErpProductCategoryDO#getId()}
      */
     private Long categoryId;
     /**
      * 单位编号
-     *
+     * <p>
      * 关联 {@link ErpProductUnitDO#getId()}
      */
     private Long unitId;
     /**
      * 产品状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;

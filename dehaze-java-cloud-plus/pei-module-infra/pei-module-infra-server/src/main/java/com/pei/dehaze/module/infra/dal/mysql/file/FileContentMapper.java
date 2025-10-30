@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.infra.dal.mysql.file;
 
-import com.pei.dehaze.module.infra.dal.dataobject.file.FileContentDO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.pei.dehaze.module.infra.dal.dataobject.file.FileContentDO;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;

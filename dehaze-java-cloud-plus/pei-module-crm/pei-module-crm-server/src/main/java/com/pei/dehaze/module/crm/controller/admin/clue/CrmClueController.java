@@ -101,25 +101,6 @@ public class CrmClueController {
         return buildClueDetailList(singletonList(clue)).get(0);
     }
 
-    @GetMapping("/page")
-    @Operation(summary = "获得线索分页")
-    @PreAuthorize("@ss.hasPermission('crm:clue:query')")
-    public CommonResult<PageResult<CrmClueRespVO>> getCluePage(@Valid CrmCluePageReqVO pageVO) {
-        PageResult<CrmClueDO> pageResult = clueService.getCluePage(pageVO, getLoginUserId());
-        return success(new PageResult<>(buildClueDetailList(pageResult.getList()), pageResult.getTotal()));
-    }
-
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出线索 Excel")
-    @PreAuthorize("@ss.hasPermission('crm:clue:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportClueExcel(@Valid CrmCluePageReqVO pageReqVO, HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PAGE_SIZE_NONE);
-        List<CrmClueDO> list = clueService.getCluePage(pageReqVO, getLoginUserId()).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "线索.xls", "数据", CrmClueRespVO.class, buildClueDetailList(list));
-    }
-
     private List<CrmClueRespVO> buildClueDetailList(List<CrmClueDO> list) {
         if (CollUtil.isEmpty(list)) {
             return Collections.emptyList();
@@ -144,6 +125,25 @@ public class CrmClueController {
                 MapUtils.findAndThen(deptMap, user.getDeptId(), dept -> clueVO.setOwnerUserDeptName(dept.getName()));
             });
         });
+    }
+
+    @GetMapping("/page")
+    @Operation(summary = "获得线索分页")
+    @PreAuthorize("@ss.hasPermission('crm:clue:query')")
+    public CommonResult<PageResult<CrmClueRespVO>> getCluePage(@Valid CrmCluePageReqVO pageVO) {
+        PageResult<CrmClueDO> pageResult = clueService.getCluePage(pageVO, getLoginUserId());
+        return success(new PageResult<>(buildClueDetailList(pageResult.getList()), pageResult.getTotal()));
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出线索 Excel")
+    @PreAuthorize("@ss.hasPermission('crm:clue:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportClueExcel(@Valid CrmCluePageReqVO pageReqVO, HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PAGE_SIZE_NONE);
+        List<CrmClueDO> list = clueService.getCluePage(pageReqVO, getLoginUserId()).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "线索.xls", "数据", CrmClueRespVO.class, buildClueDetailList(list));
     }
 
     @PutMapping("/transfer")

@@ -1,10 +1,10 @@
 package com.pei.dehaze.framework.datapermission.core.db;
 
+import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
 import com.pei.dehaze.framework.datapermission.core.rule.DataPermissionRule;
 import com.pei.dehaze.framework.datapermission.core.rule.DataPermissionRuleFactory;
 import com.pei.dehaze.framework.mybatis.core.util.MyBatisUtils;
 import com.pei.dehaze.framework.test.core.ut.BaseMockitoUnitTest;
-import com.baomidou.mybatisplus.extension.plugins.inner.DataPermissionInterceptor;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
@@ -27,8 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link DataPermissionRuleHandler} 的单元测试
- * 主要复用了 MyBatis Plus 的 TenantLineInnerInterceptorTest 的单元测试
+ * {@link DataPermissionRuleHandler} 的单元测试 主要复用了 MyBatis Plus 的 TenantLineInnerInterceptorTest 的单元测试
  * 不过它的单元测试不是很规范，考虑到是复用的，所以暂时不进行修改~
  *
  * @author earthyzinc
@@ -93,6 +92,31 @@ public class DataPermissionRuleHandlerTest extends BaseMockitoUnitTest {
     void delete() {
         assertSql("delete from entity where id = ?",
                 "DELETE FROM entity WHERE id = ? AND entity.tenant_id = 1");
+    }
+
+    @Test
+    public void testSelectInnerJoin() {
+        // inner join
+        assertSql("SELECT * FROM t_user e " +
+                        "inner join entity1 e1 on e1.id = e.id " +
+                        "WHERE e.id = ? OR e.name = ?",
+                "SELECT * FROM t_user e " +
+                        "INNER JOIN entity1 e1 ON e1.id = e.id AND e.tenant_id = 1 AND e.dept_id IN (10, 20) AND e1.tenant_id = 1 " +
+                        "WHERE e.id = ? OR e.name = ?");
+
+        // 条件 e.id = ? OR e.name = ? 带括号
+        assertSql("SELECT * FROM t_user e " +
+                        "inner join entity1 e1 on e1.id = e.id " +
+                        "WHERE (e.id = ? OR e.name = ?)",
+                "SELECT * FROM t_user e " +
+                        "INNER JOIN entity1 e1 ON e1.id = e.id AND e.tenant_id = 1 AND e.dept_id IN (10, 20) AND e1.tenant_id = 1 " +
+                        "WHERE (e.id = ? OR e.name = ?)");
+
+        // 没有 On 的 inner join
+        assertSql("SELECT * FROM entity,entity1 " +
+                        "WHERE entity.id = entity1.id",
+                "SELECT * FROM entity, entity1 " +
+                        "WHERE entity.id = entity1.id AND entity.tenant_id = 1 AND entity1.tenant_id = 1");
     }
 
     @Test
@@ -281,7 +305,6 @@ public class DataPermissionRuleHandlerTest extends BaseMockitoUnitTest {
                         "INNER JOIN entity2 e2 ON e1.id = e2.id AND e.tenant_id = 1 AND e2.tenant_id = 1");
     }
 
-
     @Test
     void selectJoinSubSelect() {
         assertSql("select * from (select * from entity) e1 " +
@@ -347,7 +370,6 @@ public class DataPermissionRuleHandlerTest extends BaseMockitoUnitTest {
                         "ON e.id = e2.id AND e.tenant_id = 1 " +
                         "WHERE e1.tenant_id = 1");
     }
-
 
     @Test
     void selectLeftJoinMultipleTrailingOn() {
@@ -437,22 +459,16 @@ public class DataPermissionRuleHandlerTest extends BaseMockitoUnitTest {
 
     }
 
-
     @Test
     void selectWithAs() {
         assertSql("with with_as_A as (select * from entity) select * from with_as_A",
                 "WITH with_as_A AS (SELECT * FROM entity WHERE entity.tenant_id = 1) SELECT * FROM with_as_A");
     }
 
-
     @Test
     void selectIgnoreTable() {
         assertSql(" SELECT dict.dict_code, item.item_text AS \"text\", item.item_value AS \"value\" FROM sys_dict_item item INNER JOIN sys_dict dict ON dict.id = item.dict_id WHERE dict.dict_code IN (1, 2, 3) AND item.item_value IN (1, 2, 3)",
                 "SELECT dict.dict_code, item.item_text AS \"text\", item.item_value AS \"value\" FROM sys_dict_item item INNER JOIN sys_dict dict ON dict.id = item.dict_id AND item.tenant_id = 1 WHERE dict.dict_code IN (1, 2, 3) AND item.item_value IN (1, 2, 3)");
-    }
-
-    private void assertSql(String sql, String targetSql) {
-        assertEquals(targetSql, interceptor.parserSingle(sql, null));
     }
 
     // ========== 额外的测试 ==========
@@ -512,29 +528,8 @@ public class DataPermissionRuleHandlerTest extends BaseMockitoUnitTest {
                         "WHERE (e.id = ? OR e.name = ?) AND e1.tenant_id = 1");
     }
 
-    @Test
-    public void testSelectInnerJoin() {
-        // inner join
-        assertSql("SELECT * FROM t_user e " +
-                        "inner join entity1 e1 on e1.id = e.id " +
-                        "WHERE e.id = ? OR e.name = ?",
-                "SELECT * FROM t_user e " +
-                        "INNER JOIN entity1 e1 ON e1.id = e.id AND e.tenant_id = 1 AND e.dept_id IN (10, 20) AND e1.tenant_id = 1 " +
-                        "WHERE e.id = ? OR e.name = ?");
-
-        // 条件 e.id = ? OR e.name = ? 带括号
-        assertSql("SELECT * FROM t_user e " +
-                        "inner join entity1 e1 on e1.id = e.id " +
-                        "WHERE (e.id = ? OR e.name = ?)",
-                "SELECT * FROM t_user e " +
-                        "INNER JOIN entity1 e1 ON e1.id = e.id AND e.tenant_id = 1 AND e.dept_id IN (10, 20) AND e1.tenant_id = 1 " +
-                        "WHERE (e.id = ? OR e.name = ?)");
-
-        // 没有 On 的 inner join
-        assertSql("SELECT * FROM entity,entity1 " +
-                "WHERE entity.id = entity1.id",
-            "SELECT * FROM entity, entity1 " +
-                    "WHERE entity.id = entity1.id AND entity.tenant_id = 1 AND entity1.tenant_id = 1");
+    private void assertSql(String sql, String targetSql) {
+        assertEquals(targetSql, interceptor.parserSingle(sql, null));
     }
 
 }

@@ -1,8 +1,8 @@
 package com.pei.dehaze.framework.desensitize.core.regex.annotation;
 
+import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 import com.pei.dehaze.framework.desensitize.core.base.annotation.DesensitizeBy;
 import com.pei.dehaze.framework.desensitize.core.regex.handler.DefaultRegexDesensitizationHandler;
-import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 
 import java.lang.annotation.*;
 
@@ -25,16 +25,14 @@ public @interface RegexDesensitize {
 
     /**
      * 替换规则，会将匹配到的字符串全部替换成 replacer
-     *
-     * 例如：regex=123; replacer=******
-     * 原始字符串 123456789
-     * 脱敏后字符串 ******456789
+     * <p>
+     * 例如：regex=123; replacer=****** 原始字符串 123456789 脱敏后字符串 ******456789
      */
     String replacer() default "******";
 
     /**
      * 是否禁用脱敏
-     *
+     * <p>
      * 支持 Spring EL 表达式，如果返回 true 则跳过脱敏
      */
     String disable() default "";

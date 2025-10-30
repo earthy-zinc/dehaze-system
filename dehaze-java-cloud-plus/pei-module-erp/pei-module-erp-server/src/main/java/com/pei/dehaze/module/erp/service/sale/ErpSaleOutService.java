@@ -36,7 +36,7 @@ public interface ErpSaleOutService {
     /**
      * 更新销售出库的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updateSaleOutStatus(Long id, Integer status);
@@ -44,7 +44,7 @@ public interface ErpSaleOutService {
     /**
      * 更新销售出库的收款金额
      *
-     * @param id 编号
+     * @param id           编号
      * @param receiptPrice 收款金额
      */
     void updateSaleInReceiptPrice(Long id, BigDecimal receiptPrice);

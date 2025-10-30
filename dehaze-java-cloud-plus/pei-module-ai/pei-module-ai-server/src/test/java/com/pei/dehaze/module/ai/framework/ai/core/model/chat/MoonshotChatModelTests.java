@@ -27,6 +27,7 @@ public class MoonshotChatModelTests {
             MoonshotChatOptions.builder()
                     .model("moonshot-v1-8k") // 模型
                     .build());
+
     @Test
     @Disabled
     public void testCall() {

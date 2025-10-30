@@ -18,7 +18,7 @@ import reactor.core.publisher.Mono;
 
 /**
  * Web 工具类
- *
+ * <p>
  * copy from pei-spring-boot-starter-web 的 WebFrameworkUtils 类
  *
  * @author earthyzinc
@@ -28,12 +28,13 @@ public class WebFrameworkUtils {
 
     private static final String HEADER_TENANT_ID = "tenant-id";
 
-    private WebFrameworkUtils() {}
+    private WebFrameworkUtils() {
+    }
 
     /**
      * 将 Gateway 请求中的 header，设置到 HttpHeaders 中
      *
-     * @param tenantId 租户编号
+     * @param tenantId    租户编号
      * @param httpHeaders WebClient 的请求
      */
     public static void setTenantIdHeader(Long tenantId, HttpHeaders httpHeaders) {
@@ -52,7 +53,7 @@ public class WebFrameworkUtils {
      * 返回 JSON 字符串
      *
      * @param exchange 响应
-     * @param object 对象，会序列化成 JSON 字符串
+     * @param object   对象，会序列化成 JSON 字符串
      */
     @SuppressWarnings("deprecation") // 必须使用 APPLICATION_JSON_UTF8_VALUE，否则会乱码
     public static Mono<Void> writeJSON(ServerWebExchange exchange, Object object) {
@@ -74,15 +75,15 @@ public class WebFrameworkUtils {
 
     /**
      * 获得客户端 IP
-     *
+     * <p>
      * 参考 {@link ServletUtil} 的 getClientIP 方法
      *
-     * @param exchange 请求
+     * @param exchange         请求
      * @param otherHeaderNames 其它 header 名字的数组
      * @return 客户端 IP
      */
     public static String getClientIP(ServerWebExchange exchange, String... otherHeaderNames) {
-        String[] headers = { "X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR" };
+        String[] headers = {"X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR"};
         if (ArrayUtil.isNotEmpty(otherHeaderNames)) {
             headers = ArrayUtil.addAll(headers, otherHeaderNames);
         }

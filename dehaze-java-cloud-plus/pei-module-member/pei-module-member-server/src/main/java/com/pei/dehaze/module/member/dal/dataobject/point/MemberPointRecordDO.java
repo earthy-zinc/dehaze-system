@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.member.dal.dataobject.point;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.member.enums.point.MemberPointBizTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.member.enums.point.MemberPointBizTypeEnum;
 import lombok.*;
 
 /**
@@ -29,7 +29,7 @@ public class MemberPointRecordDO extends BaseDO {
     private Long id;
     /**
      * 用户编号
-     *
+     * <p>
      * 对应 MemberUserDO 的 id 属性
      */
     private Long userId;
@@ -40,7 +40,7 @@ public class MemberPointRecordDO extends BaseDO {
     private String bizId;
     /**
      * 业务类型
-     *
+     * <p>
      * 枚举 {@link MemberPointBizTypeEnum}
      */
     private Integer bizType;
@@ -56,9 +56,8 @@ public class MemberPointRecordDO extends BaseDO {
 
     /**
      * 变动积分
-     *
-     * 1、正数表示获得积分
-     * 2、负数表示消耗积分
+     * <p>
+     * 1、正数表示获得积分 2、负数表示消耗积分
      */
     private Integer point;
     /**

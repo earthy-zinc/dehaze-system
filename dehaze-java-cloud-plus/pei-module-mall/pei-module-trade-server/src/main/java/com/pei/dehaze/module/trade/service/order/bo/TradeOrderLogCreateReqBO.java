@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.trade.service.order.bo;
 
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 /**
  * 订单日志的创建 Request BO

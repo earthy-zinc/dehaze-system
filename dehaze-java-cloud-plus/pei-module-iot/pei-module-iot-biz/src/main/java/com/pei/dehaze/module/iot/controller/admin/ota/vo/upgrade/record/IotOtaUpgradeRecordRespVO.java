@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.iot.controller.admin.ota.vo.upgrade.record;
 
+import com.fhs.core.trans.anno.Trans;
+import com.fhs.core.trans.constant.TransType;
 import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
 import com.pei.dehaze.module.iot.dal.dataobject.ota.IotOtaFirmwareDO;
 import com.pei.dehaze.module.iot.dal.dataobject.ota.IotOtaUpgradeTaskDO;
-import com.fhs.core.trans.anno.Trans;
-import com.fhs.core.trans.constant.TransType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -90,8 +90,7 @@ public class IotOtaUpgradeRecordRespVO {
     /**
      * 升级进度描述
      * <p>
-     * 注意，只记录设备最后一次的升级进度描述
-     * 如果想看历史记录，可以查看 {@link com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceLogDO} 设备日志
+     * 注意，只记录设备最后一次的升级进度描述 如果想看历史记录，可以查看 {@link com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceLogDO} 设备日志
      */
     @Schema(description = "升级进度描述", requiredMode = REQUIRED, example = "10")
     private String description;

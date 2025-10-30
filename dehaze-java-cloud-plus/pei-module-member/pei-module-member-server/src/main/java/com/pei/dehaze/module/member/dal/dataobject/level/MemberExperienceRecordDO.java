@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.member.dal.dataobject.level;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.member.dal.dataobject.user.MemberUserDO;
-import com.pei.dehaze.module.member.enums.MemberExperienceBizTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.member.dal.dataobject.user.MemberUserDO;
+import com.pei.dehaze.module.member.enums.MemberExperienceBizTypeEnum;
 import lombok.*;
 
 /**
@@ -30,7 +30,7 @@ public class MemberExperienceRecordDO extends BaseDO {
     private Long id;
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 {@link MemberUserDO#getId()} 字段
      */
     private Long userId;

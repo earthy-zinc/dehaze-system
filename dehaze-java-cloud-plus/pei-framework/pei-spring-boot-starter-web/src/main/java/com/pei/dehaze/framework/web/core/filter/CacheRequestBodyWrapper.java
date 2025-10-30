@@ -1,18 +1,18 @@
 package com.pei.dehaze.framework.web.core.filter;
 
 import com.pei.dehaze.framework.common.util.servlet.ServletUtils;
-
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
 /**
- *  Request Body 缓存 Wrapper
+ * Request Body 缓存 Wrapper
  *
  * @author earthyzinc
  */
@@ -45,6 +45,11 @@ public class CacheRequestBodyWrapper extends HttpServletRequestWrapper {
             }
 
             @Override
+            public int available() {
+                return body.length;
+            }
+
+            @Override
             public boolean isFinished() {
                 return false;
             }
@@ -55,11 +60,7 @@ public class CacheRequestBodyWrapper extends HttpServletRequestWrapper {
             }
 
             @Override
-            public void setReadListener(ReadListener readListener) {}
-
-            @Override
-            public int available() {
-                return body.length;
+            public void setReadListener(ReadListener readListener) {
             }
 
         };

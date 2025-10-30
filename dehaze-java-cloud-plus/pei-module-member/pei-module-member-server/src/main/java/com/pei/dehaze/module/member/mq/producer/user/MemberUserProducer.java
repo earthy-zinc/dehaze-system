@@ -1,11 +1,10 @@
 package com.pei.dehaze.module.member.mq.producer.user;
 
 import com.pei.dehaze.module.member.api.message.user.MemberUserCreateMessage;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-
-import jakarta.annotation.Resource;
 
 /**
  * 会员用户 Producer

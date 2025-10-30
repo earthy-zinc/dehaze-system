@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.bpm.controller.admin.task.vo.task;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.module.bpm.controller.admin.base.user.UserSimpleBaseVO;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

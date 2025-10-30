@@ -116,6 +116,16 @@ public interface CrmStatisticsCustomerMapper {
      */
     List<CrmStatisticsFollowUpSummaryByTypeRespVO> selectFollowUpRecordCountGroupByType(CrmStatisticsCustomerReqVO reqVO);
 
+    /**
+     * 公海领取客户数(按日期)
+     *
+     * @param reqVO 请求参数
+     * @return 统计数据
+     */
+    // TODO: @芋艿 模拟数据, 需要增加 crm_owner_record 表
+    default List<CrmStatisticsPoolSummaryByDateRespVO> selectPoolCustomerTakeCountByDate(CrmStatisticsCustomerReqVO reqVO) {
+        return selectPoolCustomerPutCountByDate(reqVO);
+    }
 
     /**
      * 进入公海客户数(按日期)
@@ -130,39 +140,13 @@ public interface CrmStatisticsCustomerMapper {
         List<CrmStatisticsPoolSummaryByDateRespVO> voList = new ArrayList<>();
         while (currrentDate.isBefore(endDate)) {
             voList.add(new CrmStatisticsPoolSummaryByDateRespVO()
-                .setTime(LocalDateTimeUtil.format(currrentDate, "yyyy-MM-dd"))
-                .setCustomerPutCount(RandomUtil.randomInt(0, 10))
-                .setCustomerTakeCount(RandomUtil.randomInt(0, 10)));
+                    .setTime(LocalDateTimeUtil.format(currrentDate, "yyyy-MM-dd"))
+                    .setCustomerPutCount(RandomUtil.randomInt(0, 10))
+                    .setCustomerTakeCount(RandomUtil.randomInt(0, 10)));
             currrentDate = currrentDate.plusDays(1);
         }
 
         return voList;
-    }
-
-    /**
-     * 公海领取客户数(按日期)
-     *
-     * @param reqVO 请求参数
-     * @return 统计数据
-     */
-    // TODO: @芋艿 模拟数据, 需要增加 crm_owner_record 表
-    default List<CrmStatisticsPoolSummaryByDateRespVO> selectPoolCustomerTakeCountByDate(CrmStatisticsCustomerReqVO reqVO) {
-        return selectPoolCustomerPutCountByDate(reqVO);
-    }
-
-    /**
-     * 进入公海客户数(按用户)
-     *
-     * @param reqVO 请求参数
-     * @return 统计数据
-     */
-    // TODO: @芋艿 模拟数据, 需要增加 crm_owner_record 表
-    default List<CrmStatisticsPoolSummaryByUserRespVO> selectPoolCustomerPutCountByUser(CrmStatisticsCustomerReqVO reqVO) {
-        return convertList(reqVO.getUserIds(), userId ->
-            (CrmStatisticsPoolSummaryByUserRespVO) new CrmStatisticsPoolSummaryByUserRespVO()
-                .setCustomerPutCount(RandomUtil.randomInt(0, 10))
-                .setCustomerTakeCount(RandomUtil.randomInt(0, 10))
-                .setOwnerUserId(userId));
     }
 
     /**
@@ -174,6 +158,21 @@ public interface CrmStatisticsCustomerMapper {
     // TODO: @芋艿 模拟数据, 需要增加 crm_owner_record 表
     default List<CrmStatisticsPoolSummaryByUserRespVO> selectPoolCustomerTakeCountByUser(CrmStatisticsCustomerReqVO reqVO) {
         return selectPoolCustomerPutCountByUser(reqVO);
+    }
+
+    /**
+     * 进入公海客户数(按用户)
+     *
+     * @param reqVO 请求参数
+     * @return 统计数据
+     */
+    // TODO: @芋艿 模拟数据, 需要增加 crm_owner_record 表
+    default List<CrmStatisticsPoolSummaryByUserRespVO> selectPoolCustomerPutCountByUser(CrmStatisticsCustomerReqVO reqVO) {
+        return convertList(reqVO.getUserIds(), userId ->
+                (CrmStatisticsPoolSummaryByUserRespVO) new CrmStatisticsPoolSummaryByUserRespVO()
+                        .setCustomerPutCount(RandomUtil.randomInt(0, 10))
+                        .setCustomerTakeCount(RandomUtil.randomInt(0, 10))
+                        .setOwnerUserId(userId));
     }
 
     /**

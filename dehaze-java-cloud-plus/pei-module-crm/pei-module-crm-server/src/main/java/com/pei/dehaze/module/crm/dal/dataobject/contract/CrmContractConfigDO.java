@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.crm.dal.dataobject.contract;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.*;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 @TableName("crm_contract_config")

@@ -18,7 +18,7 @@ public class PayDemoWithdrawRespVO {
     @Schema(description = "提现金额，单位：分", requiredMode = Schema.RequiredMode.REQUIRED, example = "22338")
     private Integer price;
 
-    @Schema(description = "收款人姓名",  example = "test")
+    @Schema(description = "收款人姓名", example = "test")
     private String userName;
 
     @Schema(description = "收款人账号", example = "32167")

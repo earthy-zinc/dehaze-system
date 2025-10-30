@@ -32,7 +32,7 @@ public interface ProductSkuService {
     /**
      * 获得商品 SKU 信息
      *
-     * @param id 编号
+     * @param id             编号
      * @param includeDeleted 是否包含已删除的
      * @return 商品 SKU 信息
      */

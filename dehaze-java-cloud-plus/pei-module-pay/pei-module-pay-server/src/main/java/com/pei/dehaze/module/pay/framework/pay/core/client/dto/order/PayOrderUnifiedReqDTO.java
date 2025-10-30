@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.dto.order;
 
 import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.validator.constraints.Length;
 import org.hibernate.validator.constraints.URL;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -29,7 +29,7 @@ public class PayOrderUnifiedReqDTO {
 
     /**
      * 外部订单号
-     *
+     * <p>
      * 对应 PayOrderExtensionDO 的 no 字段
      */
     @NotEmpty(message = "外部订单编号不能为空")
@@ -75,16 +75,16 @@ public class PayOrderUnifiedReqDTO {
     // ========== 拓展参数 ==========
     /**
      * 支付渠道的额外参数
-     *
+     * <p>
      * 例如说，微信公众号需要传递 openid 参数
      */
     private Map<String, String> channelExtras;
 
     /**
      * 展示模式
-     *
+     * <p>
      * 如果不传递，则每个支付渠道使用默认的方式
-     *
+     * <p>
      * 枚举 {@link PayOrderDisplayModeEnum}
      */
     private String displayMode;

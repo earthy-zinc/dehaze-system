@@ -70,7 +70,7 @@ public class ErpStockCheckController {
     @Operation(summary = "更新库存调拨单的状态")
     @PreAuthorize("@ss.hasPermission('erp:stock-check:update-status')")
     public CommonResult<Boolean> updateStockCheckStatus(@RequestParam("id") Long id,
-                                                     @RequestParam("status") Integer status) {
+                                                        @RequestParam("status") Integer status) {
         stockCheckService.updateStockCheckStatus(id, status);
         return success(true);
     }
@@ -110,18 +110,6 @@ public class ErpStockCheckController {
         return success(buildStockCheckVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出库存调拨单 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:stock-check:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportStockCheckExcel(@Valid ErpStockCheckPageReqVO pageReqVO,
-              HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpStockCheckRespVO> list = buildStockCheckVOPageResult(stockCheckService.getStockCheckPage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "库存调拨单.xls", "数据", ErpStockCheckRespVO.class, list);
-    }
-
     private PageResult<ErpStockCheckRespVO> buildStockCheckVOPageResult(PageResult<ErpStockCheckDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -144,6 +132,18 @@ public class ErpStockCheckController {
             stockCheck.setProductNames(CollUtil.join(stockCheck.getItems(), "，", ErpStockCheckRespVO.Item::getProductName));
             MapUtils.findAndThen(userMap, Long.parseLong(stockCheck.getCreator()), user -> stockCheck.setCreatorName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出库存调拨单 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:stock-check:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportStockCheckExcel(@Valid ErpStockCheckPageReqVO pageReqVO,
+                                      HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpStockCheckRespVO> list = buildStockCheckVOPageResult(stockCheckService.getStockCheckPage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "库存调拨单.xls", "数据", ErpStockCheckRespVO.class, list);
     }
 
 }

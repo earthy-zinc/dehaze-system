@@ -13,11 +13,11 @@ import com.pei.dehaze.module.statistics.service.trade.bo.AfterSaleSummaryRespBO;
 import com.pei.dehaze.module.statistics.service.trade.bo.TradeOrderSummaryRespBO;
 import com.pei.dehaze.module.statistics.service.trade.bo.TradeSummaryRespBO;
 import com.pei.dehaze.module.statistics.service.trade.bo.WalletSummaryRespBO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,22 +46,8 @@ public class TradeStatisticsServiceImpl implements TradeStatisticsService {
     private PayWalletStatisticsService payWalletStatisticsService;
 
     @Override
-    public TradeSummaryRespBO getTradeSummaryByDays(int days) {
-        LocalDateTime date = LocalDateTime.now().plusDays(days);
-        return tradeStatisticsMapper.selectOrderCreateCountSumAndOrderPayPriceSumByTimeBetween(
-                LocalDateTimeUtil.beginOfDay(date), LocalDateTimeUtil.endOfDay(date));
-    }
-
-    @Override
-    public TradeSummaryRespBO getTradeSummaryByMonths(int months) {
-        LocalDateTime monthDate = LocalDateTime.now().plusMonths(months);
-        return tradeStatisticsMapper.selectOrderCreateCountSumAndOrderPayPriceSumByTimeBetween(
-                LocalDateTimeUtils.beginOfMonth(monthDate), LocalDateTimeUtils.endOfMonth(monthDate));
-    }
-
-    @Override
     public DataComparisonRespVO<TradeTrendSummaryRespVO> getTradeStatisticsAnalyse(LocalDateTime beginTime,
-                                                                                        LocalDateTime endTime) {
+                                                                                   LocalDateTime endTime) {
         // 统计数据
         TradeTrendSummaryRespVO value = tradeStatisticsMapper.selectVoByTimeBetween(beginTime, endTime);
         // 对照数据
@@ -87,6 +73,20 @@ public class TradeStatisticsServiceImpl implements TradeStatisticsService {
                 .mapToObj(day -> statisticsTrade(today.minusDays(day)))
                 .sorted()
                 .collect(Collectors.joining("\n"));
+    }
+
+    @Override
+    public TradeSummaryRespBO getTradeSummaryByDays(int days) {
+        LocalDateTime date = LocalDateTime.now().plusDays(days);
+        return tradeStatisticsMapper.selectOrderCreateCountSumAndOrderPayPriceSumByTimeBetween(
+                LocalDateTimeUtil.beginOfDay(date), LocalDateTimeUtil.endOfDay(date));
+    }
+
+    @Override
+    public TradeSummaryRespBO getTradeSummaryByMonths(int months) {
+        LocalDateTime monthDate = LocalDateTime.now().plusMonths(months);
+        return tradeStatisticsMapper.selectOrderCreateCountSumAndOrderPayPriceSumByTimeBetween(
+                LocalDateTimeUtils.beginOfMonth(monthDate), LocalDateTimeUtils.endOfMonth(monthDate));
     }
 
     /**

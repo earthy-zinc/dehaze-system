@@ -3,8 +3,8 @@ package com.pei.dehaze.framework.common.util.collection;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ArrayUtil;
-import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.google.common.collect.ImmutableMap;
+import com.pei.dehaze.framework.common.pojo.PageResult;
 
 import java.util.*;
 import java.util.function.*;
@@ -52,6 +52,20 @@ public class CollectionUtils {
             return new ArrayList<>();
         }
         return new ArrayList<>(convertMap(from, keyMapper, Function.identity(), cover).values());
+    }
+
+    public static <T, K, V> Map<K, V> convertMap(Collection<T> from, Function<T, K> keyFunc, Function<T, V> valueFunc, BinaryOperator<V> mergeFunction) {
+        if (CollUtil.isEmpty(from)) {
+            return new HashMap<>();
+        }
+        return convertMap(from, keyFunc, valueFunc, mergeFunction, HashMap::new);
+    }
+
+    public static <T, K, V> Map<K, V> convertMap(Collection<T> from, Function<T, K> keyFunc, Function<T, V> valueFunc, BinaryOperator<V> mergeFunction, Supplier<? extends Map<K, V>> supplier) {
+        if (CollUtil.isEmpty(from)) {
+            return new HashMap<>();
+        }
+        return from.stream().collect(Collectors.toMap(keyFunc, valueFunc, mergeFunction, supplier));
     }
 
     public static <T, U> List<U> convertList(T[] from, Function<T, U> func) {
@@ -155,13 +169,6 @@ public class CollectionUtils {
         return convertMap(from, keyFunc, Function.identity());
     }
 
-    public static <T, K> Map<K, T> convertMap(Collection<T> from, Function<T, K> keyFunc, Supplier<? extends Map<K, T>> supplier) {
-        if (CollUtil.isEmpty(from)) {
-            return supplier.get();
-        }
-        return convertMap(from, keyFunc, Function.identity(), supplier);
-    }
-
     public static <T, K, V> Map<K, V> convertMap(Collection<T> from, Function<T, K> keyFunc, Function<T, V> valueFunc) {
         if (CollUtil.isEmpty(from)) {
             return new HashMap<>();
@@ -169,11 +176,11 @@ public class CollectionUtils {
         return convertMap(from, keyFunc, valueFunc, (v1, v2) -> v1);
     }
 
-    public static <T, K, V> Map<K, V> convertMap(Collection<T> from, Function<T, K> keyFunc, Function<T, V> valueFunc, BinaryOperator<V> mergeFunction) {
+    public static <T, K> Map<K, T> convertMap(Collection<T> from, Function<T, K> keyFunc, Supplier<? extends Map<K, T>> supplier) {
         if (CollUtil.isEmpty(from)) {
-            return new HashMap<>();
+            return supplier.get();
         }
-        return convertMap(from, keyFunc, valueFunc, mergeFunction, HashMap::new);
+        return convertMap(from, keyFunc, Function.identity(), supplier);
     }
 
     public static <T, K, V> Map<K, V> convertMap(Collection<T> from, Function<T, K> keyFunc, Function<T, V> valueFunc, Supplier<? extends Map<K, V>> supplier) {
@@ -181,13 +188,6 @@ public class CollectionUtils {
             return supplier.get();
         }
         return convertMap(from, keyFunc, valueFunc, (v1, v2) -> v1, supplier);
-    }
-
-    public static <T, K, V> Map<K, V> convertMap(Collection<T> from, Function<T, K> keyFunc, Function<T, V> valueFunc, BinaryOperator<V> mergeFunction, Supplier<? extends Map<K, V>> supplier) {
-        if (CollUtil.isEmpty(from)) {
-            return new HashMap<>();
-        }
-        return from.stream().collect(Collectors.toMap(keyFunc, valueFunc, mergeFunction, supplier));
     }
 
     public static <T, K> Map<K, List<T>> convertMultiMap(Collection<T> from, Function<T, K> keyFunc) {
@@ -227,8 +227,7 @@ public class CollectionUtils {
      *
      * @param oldList  老列表
      * @param newList  新列表
-     * @param sameFunc 对比函数，返回 true 表示相同，返回 false 表示不同
-     *                 注意，same 是通过每个元素的“标识”，判断它们是不是同一个数据
+     * @param sameFunc 对比函数，返回 true 表示相同，返回 false 表示不同 注意，same 是通过每个元素的“标识”，判断它们是不是同一个数据
      * @return [新增列表、修改列表、删除列表]
      */
     public static <T> List<List<T>> diffList(Collection<T> oldList, Collection<T> newList,

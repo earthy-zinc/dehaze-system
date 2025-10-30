@@ -18,7 +18,6 @@ public class AfterSaleDetailRespVO extends AfterSaleBaseVO {
     private Long id;
 
 
-
     /**
      * 订单基本信息
      */

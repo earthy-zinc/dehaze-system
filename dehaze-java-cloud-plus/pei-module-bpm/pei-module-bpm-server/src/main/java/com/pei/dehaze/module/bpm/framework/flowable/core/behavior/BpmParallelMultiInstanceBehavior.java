@@ -19,9 +19,8 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 自定义的【并行】的【多个】流程任务的 assignee 负责人的分配
- * 第一步，基于分配规则，计算出分配任务的【多个】候选人们。
- * 第二步，将【多个】任务候选人们，设置到 DelegateExecution 的 collectionVariable 变量中，以便 BpmUserTaskActivityBehavior 使用它
+ * 自定义的【并行】的【多个】流程任务的 assignee 负责人的分配 第一步，基于分配规则，计算出分配任务的【多个】候选人们。 第二步，将【多个】任务候选人们，设置到 DelegateExecution 的
+ * collectionVariable 变量中，以便 BpmUserTaskActivityBehavior 使用它
  *
  * @author kemengkai
  * @since 2022-04-21 16:57
@@ -37,10 +36,9 @@ public class BpmParallelMultiInstanceBehavior extends ParallelMultiInstanceBehav
     }
 
     /**
-     * 重写该方法，主要实现两个功能：
-     * 1. 忽略原有的 collectionVariable、collectionElementVariable 表达式，而是采用自己定义的
-     * 2. 获得任务的处理人，并设置到 collectionVariable 中，用于 BpmUserTaskActivityBehavior 从中可以获取任务的处理人
-     *
+     * 重写该方法，主要实现两个功能： 1. 忽略原有的 collectionVariable、collectionElementVariable 表达式，而是采用自己定义的 2. 获得任务的处理人，并设置到
+     * collectionVariable 中，用于 BpmUserTaskActivityBehavior 从中可以获取任务的处理人
+     * <p>
      * 注意，多个任务实例，每个任务实例对应一个处理人，所以返回的数量就是任务处理人的数量
      *
      * @param execution 执行任务

@@ -31,11 +31,6 @@ public enum PromotionProductScopeEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static boolean isAll(Integer scope) {
         return Objects.equals(scope, ALL.scope);
     }
@@ -46,6 +41,11 @@ public enum PromotionProductScopeEnum implements ArrayValuable<Integer> {
 
     public static boolean isCategory(Integer scope) {
         return Objects.equals(scope, CATEGORY.scope);
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

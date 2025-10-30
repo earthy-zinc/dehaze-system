@@ -1,9 +1,9 @@
 package com.pei.dehaze.framework.tenant.core.service;
 
-import com.pei.dehaze.framework.common.pojo.CommonResult;
-import com.pei.dehaze.framework.common.biz.system.tenant.TenantCommonApi;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import com.pei.dehaze.framework.common.biz.system.tenant.TenantCommonApi;
+import com.pei.dehaze.framework.common.pojo.CommonResult;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 

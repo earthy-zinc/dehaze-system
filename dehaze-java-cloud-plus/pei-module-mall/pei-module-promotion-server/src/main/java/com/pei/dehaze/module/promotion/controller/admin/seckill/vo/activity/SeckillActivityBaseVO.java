@@ -11,9 +11,7 @@ import java.util.List;
 import static com.pei.dehaze.framework.common.util.date.DateUtils.FORMAT_YEAR_MONTH_DAY_HOUR_MINUTE_SECOND;
 
 /**
- * 秒杀活动基地签证官
- * 秒杀活动 Base VO，提供给添加、修改、详细的子 VO 使用
- * 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
+ * 秒杀活动基地签证官 秒杀活动 Base VO，提供给添加、修改、详细的子 VO 使用 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
  *
  * @author HUIHUI
  */

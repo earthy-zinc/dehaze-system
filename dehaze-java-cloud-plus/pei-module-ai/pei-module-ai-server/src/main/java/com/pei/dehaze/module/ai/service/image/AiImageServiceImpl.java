@@ -9,9 +9,7 @@ import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.http.HttpUtil;
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
-import com.pei.dehaze.module.ai.framework.ai.core.model.siliconflow.SiliconFlowImageOptions;
+import com.alibaba.cloud.ai.dashscope.image.DashScopeImageOptions;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.ai.controller.admin.image.vo.AiImageDrawReqVO;
@@ -24,9 +22,11 @@ import com.pei.dehaze.module.ai.dal.dataobject.image.AiImageDO;
 import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.pei.dehaze.module.ai.dal.mysql.image.AiImageMapper;
 import com.pei.dehaze.module.ai.enums.image.AiImageStatusEnum;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
+import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
+import com.pei.dehaze.module.ai.framework.ai.core.model.siliconflow.SiliconFlowImageOptions;
 import com.pei.dehaze.module.ai.service.model.AiModelService;
 import com.pei.dehaze.module.infra.api.file.FileApi;
-import com.alibaba.cloud.ai.dashscope.image.DashScopeImageOptions;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.image.ImageModel;
@@ -150,7 +150,7 @@ public class AiImageServiceImpl implements AiImageService {
             return SiliconFlowImageOptions.builder().model(model.getModel())
                     .height(draw.getHeight()).width(draw.getWidth())
                     .build();
-        }  else if (ObjUtil.equal(model.getPlatform(), AiPlatformEnum.STABLE_DIFFUSION.getPlatform())) {
+        } else if (ObjUtil.equal(model.getPlatform(), AiPlatformEnum.STABLE_DIFFUSION.getPlatform())) {
             // https://platform.stability.ai/docs/api-reference#tag/SDXL-and-SD1.6/operation/textToImage
             // https://platform.stability.ai/docs/api-reference#tag/Text-to-Image/operation/textToImage
             return StabilityAiImageOptions.builder().model(model.getModel())
@@ -178,6 +178,15 @@ public class AiImageServiceImpl implements AiImageService {
                     .build();
         }
         throw new IllegalArgumentException("不支持的 AI 平台：" + model.getPlatform());
+    }
+
+    /**
+     * 获得自身的代理对象，解决 AOP 生效问题
+     *
+     * @return 自己
+     */
+    private AiImageServiceImpl getSelf() {
+        return SpringUtil.getBean(getClass());
     }
 
     @Override
@@ -212,14 +221,6 @@ public class AiImageServiceImpl implements AiImageService {
         imageMapper.deleteById(id);
     }
 
-    private AiImageDO validateImageExists(Long id) {
-        AiImageDO image = imageMapper.selectById(id);
-        if (image == null) {
-            throw exception(IMAGE_NOT_EXISTS);
-        }
-        return image;
-    }
-
     // ================ midjourney 专属 ================
 
     @Override
@@ -240,7 +241,7 @@ public class AiImageServiceImpl implements AiImageService {
         List<String> base64Array = StrUtil.isBlank(drawReqVO.getReferImageUrl()) ? null :
                 Collections.singletonList("data:image/jpeg;base64,".concat(Base64.encode(HttpUtil.downloadBytes(drawReqVO.getReferImageUrl()))));
         MidjourneyApi.ImagineRequest imagineRequest = new MidjourneyApi.ImagineRequest(
-                base64Array, drawReqVO.getPrompt(),null,
+                base64Array, drawReqVO.getPrompt(), null,
                 MidjourneyApi.ImagineRequest.buildState(drawReqVO.getWidth(),
                         drawReqVO.getHeight(), drawReqVO.getVersion(), model.getModel()));
         MidjourneyApi.SubmitResponse imagineResponse = midjourneyApi.imagine(imagineRequest);
@@ -297,38 +298,6 @@ public class AiImageServiceImpl implements AiImageService {
         updateMidjourneyStatus(image, notify);
     }
 
-    private void updateMidjourneyStatus(AiImageDO image, MidjourneyApi.Notify notify) {
-        // 1. 转换状态
-        Integer status = null;
-        LocalDateTime finishTime = null;
-        if (StrUtil.isNotBlank(notify.status())) {
-            MidjourneyApi.TaskStatusEnum taskStatusEnum = MidjourneyApi.TaskStatusEnum.valueOf(notify.status());
-            if (MidjourneyApi.TaskStatusEnum.SUCCESS == taskStatusEnum) {
-                status = AiImageStatusEnum.SUCCESS.getStatus();
-                finishTime = LocalDateTime.now();
-            } else if (MidjourneyApi.TaskStatusEnum.FAILURE == taskStatusEnum) {
-                status = AiImageStatusEnum.FAIL.getStatus();
-                finishTime = LocalDateTime.now();
-            }
-        }
-
-        // 2. 上传图片
-        String picUrl = null;
-        if (StrUtil.isNotBlank(notify.imageUrl())) {
-            try {
-                picUrl = fileApi.createFile(HttpUtil.downloadBytes(notify.imageUrl()));
-            } catch (Exception e) {
-                picUrl = notify.imageUrl();
-                log.warn("[updateMidjourneyStatus][图片({}) 地址({}) 上传失败]", image.getId(), notify.imageUrl(), e);
-            }
-        }
-
-        // 3. 更新 image 状态
-        imageMapper.updateById(new AiImageDO().setId(image.getId()).setStatus(status)
-                .setPicUrl(picUrl).setButtons(notify.buttons()).setErrorMessage(notify.failReason())
-                .setFinishTime(finishTime));
-    }
-
     @Override
     public Long midjourneyAction(Long userId, AiMidjourneyActionReqVO reqVO) {
         // 1.1 检查 image
@@ -363,13 +332,44 @@ public class AiImageServiceImpl implements AiImageService {
         return newImage.getId();
     }
 
-    /**
-     * 获得自身的代理对象，解决 AOP 生效问题
-     *
-     * @return 自己
-     */
-    private AiImageServiceImpl getSelf() {
-        return SpringUtil.getBean(getClass());
+    private void updateMidjourneyStatus(AiImageDO image, MidjourneyApi.Notify notify) {
+        // 1. 转换状态
+        Integer status = null;
+        LocalDateTime finishTime = null;
+        if (StrUtil.isNotBlank(notify.status())) {
+            MidjourneyApi.TaskStatusEnum taskStatusEnum = MidjourneyApi.TaskStatusEnum.valueOf(notify.status());
+            if (MidjourneyApi.TaskStatusEnum.SUCCESS == taskStatusEnum) {
+                status = AiImageStatusEnum.SUCCESS.getStatus();
+                finishTime = LocalDateTime.now();
+            } else if (MidjourneyApi.TaskStatusEnum.FAILURE == taskStatusEnum) {
+                status = AiImageStatusEnum.FAIL.getStatus();
+                finishTime = LocalDateTime.now();
+            }
+        }
+
+        // 2. 上传图片
+        String picUrl = null;
+        if (StrUtil.isNotBlank(notify.imageUrl())) {
+            try {
+                picUrl = fileApi.createFile(HttpUtil.downloadBytes(notify.imageUrl()));
+            } catch (Exception e) {
+                picUrl = notify.imageUrl();
+                log.warn("[updateMidjourneyStatus][图片({}) 地址({}) 上传失败]", image.getId(), notify.imageUrl(), e);
+            }
+        }
+
+        // 3. 更新 image 状态
+        imageMapper.updateById(new AiImageDO().setId(image.getId()).setStatus(status)
+                .setPicUrl(picUrl).setButtons(notify.buttons()).setErrorMessage(notify.failReason())
+                .setFinishTime(finishTime));
+    }
+
+    private AiImageDO validateImageExists(Long id) {
+        AiImageDO image = imageMapper.selectById(id);
+        if (image == null) {
+            throw exception(IMAGE_NOT_EXISTS);
+        }
+        return image;
     }
 
 }

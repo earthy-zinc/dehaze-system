@@ -39,7 +39,7 @@ public class PayDemoWithdrawServiceImpl implements PayDemoWithdrawService {
 
     /**
      * 接入的支付应用标识
-     *
+     * <p>
      * 从 [支付管理 -> 应用信息] 里添加
      */
     private static final String PAY_APP_KEY = "demo";
@@ -100,23 +100,10 @@ public class PayDemoWithdrawServiceImpl implements PayDemoWithdrawService {
         }
         // 校验状态，只有等待中或转账失败的订单，才能发起转账
         if (!PayDemoWithdrawStatusEnum.isWaiting(withdraw.getStatus())
-            && !PayDemoWithdrawStatusEnum.isClosed(withdraw.getStatus())) {
+                && !PayDemoWithdrawStatusEnum.isClosed(withdraw.getStatus())) {
             throw exception(DEMO_WITHDRAW_TRANSFER_FAIL_STATUS_NOT_WAITING_OR_CLOSED);
         }
         return withdraw;
-    }
-
-    private String getTransferChannelCode(Integer type) {
-        if (ObjectUtil.equal(type, PayDemoWithdrawTypeEnum.ALIPAY.getType())) {
-            return PayChannelEnum.ALIPAY_PC.getCode();
-        }
-        if (ObjectUtil.equal(type, PayDemoWithdrawTypeEnum.WECHAT.getType())) {
-            return PayChannelEnum.WX_LITE.getCode();
-        }
-        if (ObjectUtil.equal(type, PayDemoWithdrawTypeEnum.WALLET.getType())) {
-            return PayChannelEnum.WALLET.getCode();
-        }
-        throw new IllegalArgumentException("未知提现方式：" + type);
     }
 
     @Override
@@ -134,7 +121,7 @@ public class PayDemoWithdrawServiceImpl implements PayDemoWithdrawService {
         }
         // 1.2 校验转账单已成结束（成功或失败）
         if (PayDemoWithdrawStatusEnum.isSuccess(withdraw.getStatus())
-            || PayDemoWithdrawStatusEnum.isClosed(withdraw.getStatus())) {
+                || PayDemoWithdrawStatusEnum.isClosed(withdraw.getStatus())) {
             // 特殊：转账单编号相同，直接返回，说明重复回调
             if (ObjectUtil.equal(withdraw.getPayTransferId(), payTransferId)) {
                 log.warn("[updateDemoWithdrawStatus][withdraw({}) 已结束，且转账单编号相同({})，直接返回]", withdraw, payTransferId);
@@ -190,6 +177,19 @@ public class PayDemoWithdrawServiceImpl implements PayDemoWithdrawService {
             throw exception(DEMO_WITHDRAW_UPDATE_STATUS_FAIL_PAY_CHANNEL_NOT_MATCH);
         }
         return payTransfer;
+    }
+
+    private String getTransferChannelCode(Integer type) {
+        if (ObjectUtil.equal(type, PayDemoWithdrawTypeEnum.ALIPAY.getType())) {
+            return PayChannelEnum.ALIPAY_PC.getCode();
+        }
+        if (ObjectUtil.equal(type, PayDemoWithdrawTypeEnum.WECHAT.getType())) {
+            return PayChannelEnum.WX_LITE.getCode();
+        }
+        if (ObjectUtil.equal(type, PayDemoWithdrawTypeEnum.WALLET.getType())) {
+            return PayChannelEnum.WALLET.getCode();
+        }
+        throw new IllegalArgumentException("未知提现方式：" + type);
     }
 
 }

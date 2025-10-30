@@ -4,8 +4,8 @@ import com.pei.dehaze.framework.apilog.core.filter.ApiAccessLogFilter;
 import com.pei.dehaze.framework.apilog.core.interceptor.ApiAccessLogInterceptor;
 import com.pei.dehaze.framework.common.biz.infra.logger.ApiAccessLogCommonApi;
 import com.pei.dehaze.framework.common.enums.WebFilterOrderEnum;
-import com.pei.dehaze.framework.web.config.WebProperties;
 import com.pei.dehaze.framework.web.config.PeiWebAutoConfiguration;
+import com.pei.dehaze.framework.web.config.WebProperties;
 import jakarta.servlet.Filter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -22,7 +22,8 @@ public class PeiApiLogAutoConfiguration implements WebMvcConfigurer {
      * 创建 ApiAccessLogFilter Bean，记录 API 请求日志
      */
     @Bean
-    @ConditionalOnProperty(prefix = "pei.access-log", value = "enable", matchIfMissing = true) // 允许使用 pei.access-log.enable=false 禁用访问日志
+    @ConditionalOnProperty(prefix = "pei.access-log", value = "enable", matchIfMissing = true)
+    // 允许使用 pei.access-log.enable=false 禁用访问日志
     public FilterRegistrationBean<ApiAccessLogFilter> apiAccessLogFilter(WebProperties webProperties,
                                                                          @Value("${spring.application.name}") String applicationName,
                                                                          ApiAccessLogCommonApi apiAccessLogApi) {

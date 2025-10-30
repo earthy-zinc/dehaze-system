@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.crm.dal.dataobject.clue;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
-import com.pei.dehaze.module.crm.enums.DictTypeConstants;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
+import com.pei.dehaze.module.crm.enums.DictTypeConstants;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -54,20 +54,20 @@ public class CrmClueDO extends BaseDO {
 
     /**
      * 负责人的用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long ownerUserId;
 
     /**
      * 转化状态
-     *
+     * <p>
      * true 表示已转换，会更新 {@link #customerId} 字段
      */
     private Boolean transformStatus;
     /**
      * 客户编号
-     *
+     * <p>
      * 关联 {@link CrmCustomerDO#getId()}
      */
     private Long customerId;
@@ -94,7 +94,7 @@ public class CrmClueDO extends BaseDO {
     private String email;
     /**
      * 所在地
-     *
+     * <p>
      * 关联 {@link com.pei.dehaze.framework.ip.core.Area#getId()} 字段
      */
     private Integer areaId;
@@ -104,19 +104,19 @@ public class CrmClueDO extends BaseDO {
     private String detailAddress;
     /**
      * 所属行业
-     *
+     * <p>
      * 对应字典 {@link DictTypeConstants#CRM_CUSTOMER_INDUSTRY}
      */
     private Integer industryId;
     /**
      * 客户等级
-     *
+     * <p>
      * 对应字典 {@link DictTypeConstants#CRM_CUSTOMER_LEVEL}
      */
     private Integer level;
     /**
      * 客户来源
-     *
+     * <p>
      * 对应字典 {@link DictTypeConstants#CRM_CUSTOMER_SOURCE}
      */
     private Integer source;

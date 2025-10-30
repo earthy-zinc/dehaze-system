@@ -28,11 +28,9 @@ public enum IotDataBridgeTypeEnum implements ArrayValuable<Integer> {
     RABBITMQ(31, "RABBITMQ"),
     KAFKA(32, "KAFKA");
 
-    private final Integer type;
-
-    private final String name;
-
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotDataBridgeTypeEnum::getType).toArray(Integer[]::new);
+    private final Integer type;
+    private final String name;
 
     @Override
     public Integer[] array() {

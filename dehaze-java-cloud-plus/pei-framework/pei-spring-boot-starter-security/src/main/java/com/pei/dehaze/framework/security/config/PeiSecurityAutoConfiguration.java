@@ -1,5 +1,6 @@
 package com.pei.dehaze.framework.security.config;
 
+import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
 import com.pei.dehaze.framework.common.biz.system.permission.PermissionCommonApi;
 import com.pei.dehaze.framework.security.core.context.TransmittableThreadLocalSecurityContextHolderStrategy;
 import com.pei.dehaze.framework.security.core.filter.TokenAuthenticationFilter;
@@ -8,7 +9,6 @@ import com.pei.dehaze.framework.security.core.handler.AuthenticationEntryPointIm
 import com.pei.dehaze.framework.security.core.service.SecurityFrameworkService;
 import com.pei.dehaze.framework.security.core.service.SecurityFrameworkServiceImpl;
 import com.pei.dehaze.framework.web.core.handler.GlobalExceptionHandler;
-import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.config.MethodInvokingFactoryBean;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -23,9 +23,10 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 
 /**
  * Spring Security 自动配置类，主要用于相关组件的配置
- *
- * 注意，不能和 {@link PeiWebSecurityConfigurerAdapter} 用一个，原因是会导致初始化报错。
- * 参见 https://stackoverflow.com/questions/53847050/spring-boot-delegatebuilder-cannot-be-null-on-autowiring-authenticationmanager 文档。
+ * <p>
+ * 注意，不能和 {@link PeiWebSecurityConfigurerAdapter} 用一个，原因是会导致初始化报错。 参见
+ * https://stackoverflow.com/questions/53847050/spring-boot-delegatebuilder-cannot-be-null-on-autowiring-authenticationmanager
+ * 文档。
  *
  * @author earthyzinc
  */
@@ -54,10 +55,10 @@ public class PeiSecurityAutoConfiguration {
     }
 
     /**
-     * Spring Security 加密器
-     * 考虑到安全性，这里采用 BCryptPasswordEncoder 加密器
+     * Spring Security 加密器 考虑到安全性，这里采用 BCryptPasswordEncoder 加密器
      *
-     * @see <a href="http://stackabuse.com/password-encoding-with-spring-security/">Password Encoding with Spring Security</a>
+     * @see <a href="http://stackabuse.com/password-encoding-with-spring-security/">Password Encoding with Spring
+     * Security</a>
      */
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -79,8 +80,8 @@ public class PeiSecurityAutoConfiguration {
     }
 
     /**
-     * 声明调用 {@link SecurityContextHolder#setStrategyName(String)} 方法，
-     * 设置使用 {@link TransmittableThreadLocalSecurityContextHolderStrategy} 作为 Security 的上下文策略
+     * 声明调用 {@link SecurityContextHolder#setStrategyName(String)} 方法， 设置使用
+     * {@link TransmittableThreadLocalSecurityContextHolderStrategy} 作为 Security 的上下文策略
      */
     @Bean
     public MethodInvokingFactoryBean securityContextHolderMethodInvokingFactoryBean() {

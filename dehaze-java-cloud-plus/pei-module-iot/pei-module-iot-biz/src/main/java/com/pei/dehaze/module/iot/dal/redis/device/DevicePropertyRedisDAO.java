@@ -33,6 +33,10 @@ public class DevicePropertyRedisDAO {
                 entry -> JsonUtils.parseObject((String) entry.getValue(), IotDevicePropertyDO.class));
     }
 
+    private static String formatKey(String deviceKey) {
+        return String.format(DEVICE_PROPERTY, deviceKey);
+    }
+
     public void putAll(String deviceKey, Map<String, IotDevicePropertyDO> properties) {
         if (CollUtil.isEmpty(properties)) {
             return;
@@ -41,10 +45,6 @@ public class DevicePropertyRedisDAO {
         stringRedisTemplate.opsForHash().putAll(redisKey, convertMap(properties.entrySet(),
                 Map.Entry::getKey,
                 entry -> JsonUtils.toJsonString(entry.getValue())));
-    }
-
-    private static String formatKey(String deviceKey) {
-        return String.format(DEVICE_PROPERTY, deviceKey);
     }
 
 }

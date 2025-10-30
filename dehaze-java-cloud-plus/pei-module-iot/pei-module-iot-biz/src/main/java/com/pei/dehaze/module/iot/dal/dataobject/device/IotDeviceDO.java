@@ -1,15 +1,18 @@
 package com.pei.dehaze.module.iot.dal.dataobject.device;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.mybatis.core.type.LongSetTypeHandler;
 import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.pei.dehaze.module.iot.dal.dataobject.ota.IotOtaFirmwareDO;
 import com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO;
 import com.pei.dehaze.module.iot.enums.device.IotDeviceStateEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -35,8 +38,9 @@ public class IotDeviceDO extends TenantBaseDO {
     private Long id;
     /**
      * 设备唯一标识符，全局唯一，用于识别设备
-     *
-     * 类似阿里云 <a href="https://help.aliyun.com/zh/iot/developer-reference/api-querydeviceinfo">QueryDeviceInfo</a> 的 IotInstanceId
+     * <p>
+     * 类似阿里云 <a href="https://help.aliyun.com/zh/iot/developer-reference/api-querydeviceinfo">QueryDeviceInfo</a> 的
+     * IotInstanceId
      */
     private String deviceKey;
     /**
@@ -57,7 +61,7 @@ public class IotDeviceDO extends TenantBaseDO {
     private String picUrl;
     /**
      * 设备分组编号集合
-     *
+     * <p>
      * 关联 {@link IotDeviceGroupDO#getId()}
      */
     @TableField(typeHandler = LongSetTypeHandler.class)
@@ -115,7 +119,7 @@ public class IotDeviceDO extends TenantBaseDO {
     private String ip;
     /**
      * 固件编号
-     *
+     * <p>
      * 关联 {@link IotOtaFirmwareDO#getId()}
      */
     private String firmwareId;
@@ -165,7 +169,7 @@ public class IotDeviceDO extends TenantBaseDO {
 
     /**
      * 设备配置
-     *
+     * <p>
      * JSON 格式，可下发给 device 进行自定义配置
      */
     private String config;

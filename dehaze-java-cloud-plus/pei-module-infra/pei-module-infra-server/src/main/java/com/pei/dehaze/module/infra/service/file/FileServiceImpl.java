@@ -5,6 +5,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.infra.controller.admin.file.vo.file.FileCreateReqVO;
@@ -15,7 +16,6 @@ import com.pei.dehaze.module.infra.dal.mysql.file.FileMapper;
 import com.pei.dehaze.module.infra.framework.file.core.client.FileClient;
 import com.pei.dehaze.module.infra.framework.file.core.client.s3.FilePresignedUrlRespDTO;
 import com.pei.dehaze.module.infra.framework.file.core.utils.FileTypeUtils;
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import lombok.SneakyThrows;
 import org.springframework.stereotype.Service;
@@ -34,15 +34,14 @@ public class FileServiceImpl implements FileService {
 
     /**
      * 上传文件的前缀，是否包含日期（yyyyMMdd）
-     *
+     * <p>
      * 目的：按照日期，进行分目录
      */
     static boolean PATH_PREFIX_DATE_ENABLE = true;
     /**
      * 上传文件的后缀，是否包含时间戳
-     *
-     * 目的：保证文件的唯一性，避免覆盖
-     * 定制：可按需调整成 UUID、或者其他方式
+     * <p>
+     * 目的：保证文件的唯一性，避免覆盖 定制：可按需调整成 UUID、或者其他方式
      */
     static boolean PATH_SUFFIX_TIMESTAMP_ENABLE = true;
 

@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.trade.dal.dataobject.brokerage;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordBizTypeEnum;
-import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordBizTypeEnum;
+import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordStatusEnum;
 import lombok.*;
 
 import java.time.LocalDateTime;

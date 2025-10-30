@@ -45,19 +45,6 @@ public abstract class AbstractPayClient<Config extends PayClientConfig> implemen
         this.config = config;
     }
 
-    /**
-     * 初始化
-     */
-    public final void init() {
-        doInit();
-        log.debug("[init][客户端({}) 初始化完成]", getId());
-    }
-
-    /**
-     * 自定义初始化
-     */
-    protected abstract void doInit();
-
     public final void refresh(Config config) {
         // 判断是否更新
         if (config.equals(this.config)) {
@@ -73,6 +60,19 @@ public abstract class AbstractPayClient<Config extends PayClientConfig> implemen
     public Long getId() {
         return channelId;
     }
+
+    /**
+     * 初始化
+     */
+    public final void init() {
+        doInit();
+        log.debug("[init][客户端({}) 初始化完成]", getId());
+    }
+
+    /**
+     * 自定义初始化
+     */
+    protected abstract void doInit();
 
     @Override
     public Config getConfig() {
@@ -103,6 +103,19 @@ public abstract class AbstractPayClient<Config extends PayClientConfig> implemen
             throws Throwable;
 
     @Override
+    public final PayTransferRespDTO getTransfer(String outTradeNo) {
+        try {
+            return doGetTransfer(outTradeNo);
+        } catch (ServiceException ex) { // 业务异常，都是实现类已经翻译，所以直接抛出即可
+            throw ex;
+        } catch (Throwable ex) {
+            log.error("[getTransfer][客户端({}) outTradeNo({}) 查询转账单异常]",
+                    getId(), outTradeNo, ex);
+            throw buildPayException(ex);
+        }
+    }
+
+    @Override
     public final PayOrderRespDTO parseOrderNotify(Map<String, String> params, String body, Map<String, String> headers) {
         try {
             return doParseOrderNotify(params, body, headers);
@@ -131,10 +144,10 @@ public abstract class AbstractPayClient<Config extends PayClientConfig> implemen
         }
     }
 
+    // ============ 退款相关 ==========
+
     protected abstract PayOrderRespDTO doGetOrder(String outTradeNo)
             throws Throwable;
-
-    // ============ 退款相关 ==========
 
     @Override
     public final PayRefundRespDTO unifiedRefund(PayRefundUnifiedReqDTO reqDTO) {
@@ -204,6 +217,13 @@ public abstract class AbstractPayClient<Config extends PayClientConfig> implemen
         return resp;
     }
 
+    private PayClientException buildPayException(Throwable ex) {
+        if (ex instanceof PayClientException) {
+            return (PayClientException) ex;
+        }
+        throw new PayClientException(ex);
+    }
+
     @Override
     public final PayTransferRespDTO parseTransferNotify(Map<String, String> params, String body, Map<String, String> headers) {
         try {
@@ -220,32 +240,12 @@ public abstract class AbstractPayClient<Config extends PayClientConfig> implemen
     protected abstract PayTransferRespDTO doParseTransferNotify(Map<String, String> params, String body, Map<String, String> headers)
             throws Throwable;
 
-    @Override
-    public final PayTransferRespDTO getTransfer(String outTradeNo) {
-        try {
-            return doGetTransfer(outTradeNo);
-        } catch (ServiceException ex) { // 业务异常，都是实现类已经翻译，所以直接抛出即可
-            throw ex;
-        } catch (Throwable ex) {
-            log.error("[getTransfer][客户端({}) outTradeNo({}) 查询转账单异常]",
-                    getId(), outTradeNo, ex);
-            throw buildPayException(ex);
-        }
-    }
-
-    protected abstract PayTransferRespDTO doUnifiedTransfer(PayTransferUnifiedReqDTO reqDTO)
-            throws Throwable;
-
     protected abstract PayTransferRespDTO doGetTransfer(String outTradeNo)
             throws Throwable;
 
     // ========== 各种工具方法 ==========
 
-    private PayClientException buildPayException(Throwable ex) {
-        if (ex instanceof PayClientException) {
-            return (PayClientException) ex;
-        }
-        throw new PayClientException(ex);
-    }
+    protected abstract PayTransferRespDTO doUnifiedTransfer(PayTransferUnifiedReqDTO reqDTO)
+            throws Throwable;
 
 }

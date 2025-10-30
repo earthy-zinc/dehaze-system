@@ -4,10 +4,9 @@ import cn.hutool.core.lang.Assert;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.member.enums.point.MemberPointBizTypeEnum;
 import com.pei.dehaze.module.member.service.point.MemberPointRecordService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;

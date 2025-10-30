@@ -90,22 +90,6 @@ public class ProductCommentServiceImpl implements ProductCommentService {
         }
     }
 
-    private ProductSkuDO validateSku(Long skuId) {
-        ProductSkuDO sku = productSkuService.getSku(skuId, true);
-        if (sku == null) {
-            throw exception(SKU_NOT_EXISTS);
-        }
-        return sku;
-    }
-
-    private ProductSpuDO validateSpu(Long spuId) {
-        ProductSpuDO spu = productSpuService.getSpu(spuId, true);
-        if (null == spu) {
-            throw exception(SPU_NOT_EXISTS);
-        }
-        return spu;
-    }
-
     @Override
     public void updateCommentVisible(ProductCommentUpdateVisibleReqVO updateReqVO) {
         // 校验评论是否存在
@@ -126,6 +110,16 @@ public class ProductCommentServiceImpl implements ProductCommentService {
                 .setReplyStatus(Boolean.TRUE).setReplyContent(replyVO.getReplyContent()));
     }
 
+    @Override
+    public PageResult<ProductCommentDO> getCommentPage(ProductCommentPageReqVO pageReqVO) {
+        return productCommentMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public PageResult<ProductCommentDO> getCommentPage(AppCommentPageReqVO pageVO, Boolean visible) {
+        return productCommentMapper.selectPage(pageVO, visible);
+    }
+
     private ProductCommentDO validateCommentExists(Long id) {
         ProductCommentDO productComment = productCommentMapper.selectById(id);
         if (productComment == null) {
@@ -134,14 +128,20 @@ public class ProductCommentServiceImpl implements ProductCommentService {
         return productComment;
     }
 
-    @Override
-    public PageResult<ProductCommentDO> getCommentPage(AppCommentPageReqVO pageVO, Boolean visible) {
-        return productCommentMapper.selectPage(pageVO, visible);
+    private ProductSkuDO validateSku(Long skuId) {
+        ProductSkuDO sku = productSkuService.getSku(skuId, true);
+        if (sku == null) {
+            throw exception(SKU_NOT_EXISTS);
+        }
+        return sku;
     }
 
-    @Override
-    public PageResult<ProductCommentDO> getCommentPage(ProductCommentPageReqVO pageReqVO) {
-        return productCommentMapper.selectPage(pageReqVO);
+    private ProductSpuDO validateSpu(Long spuId) {
+        ProductSpuDO spu = productSpuService.getSpu(spuId, true);
+        if (null == spu) {
+            throw exception(SPU_NOT_EXISTS);
+        }
+        return spu;
     }
 
 }

@@ -125,22 +125,6 @@ public class CouponServiceImpl implements CouponService {
         return takeCoupon(template, userIds, takeType);
     }
 
-    private Map<Long, List<Long>> takeCoupon(CouponTemplateDO template, Set<Long> userIds, CouponTakeTypeEnum takeType) {
-        // 1. 过滤掉达到领取限制的用户
-        removeTakeLimitUser(userIds, template);
-        // 2. 校验优惠劵是否可以领取
-        validateCouponTemplateCanTake(template, userIds, takeType);
-
-        // 3. 批量保存优惠劵
-        List<CouponDO> couponList = convertList(userIds, userId -> CouponConvert.INSTANCE.convert(template, userId));
-        couponMapper.insertBatch(couponList);
-
-        // 4. 增加优惠劵模板的领取数量
-        couponTemplateService.updateCouponTemplateTakeCount(template.getId(), userIds.size());
-
-        return convertMultiMap(couponList, CouponDO::getUserId, CouponDO::getId);
-    }
-
     @Override
     public List<Long> takeCouponsByAdmin(Map<Long, Integer> giveCoupons, Long userId) {
         if (CollUtil.isEmpty(giveCoupons)) {
@@ -259,62 +243,6 @@ public class CouponServiceImpl implements CouponService {
         return true;
     }
 
-    /**
-     * 校验优惠券是否可以领取
-     *
-     * @param couponTemplate 优惠券模板
-     * @param userIds        领取人列表
-     * @param takeType       领取方式
-     */
-    private void validateCouponTemplateCanTake(CouponTemplateDO couponTemplate, Set<Long> userIds, CouponTakeTypeEnum takeType) {
-        // 如果所有用户都领取过，则抛出异常
-        if (CollUtil.isEmpty(userIds)) {
-            throw exception(COUPON_TEMPLATE_USER_ALREADY_TAKE);
-        }
-        // 校验模板
-        if (couponTemplate == null) {
-            throw exception(COUPON_TEMPLATE_NOT_EXISTS);
-        }
-        // 校验领取方式
-        if (ObjUtil.notEqual(couponTemplate.getTakeType(), takeType.getType())) {
-            throw exception(COUPON_TEMPLATE_CANNOT_TAKE);
-        }
-        // 校验发放数量不能过小（仅在 CouponTakeTypeEnum.USER 用户领取时）
-        if (CouponTakeTypeEnum.isUser(couponTemplate.getTakeType())
-                && ObjUtil.notEqual(couponTemplate.getTakeLimitCount(), CouponTemplateDO.TIME_LIMIT_COUNT_MAX) // 非不限制
-                && couponTemplate.getTakeCount() + userIds.size() > couponTemplate.getTotalCount()) {
-            throw exception(COUPON_TEMPLATE_NOT_ENOUGH);
-        }
-        // 校验"固定日期"的有效期类型是否过期
-        if (CouponTemplateValidityTypeEnum.DATE.getType().equals(couponTemplate.getValidityType())) {
-            if (LocalDateTimeUtils.beforeNow(couponTemplate.getValidEndTime())) {
-                throw exception(COUPON_TEMPLATE_EXPIRED);
-            }
-        }
-    }
-
-    /**
-     * 过滤掉达到领取上线的用户
-     *
-     * @param userIds        用户编号数组
-     * @param couponTemplate 优惠劵模版
-     */
-    private void removeTakeLimitUser(Set<Long> userIds, CouponTemplateDO couponTemplate) {
-        if (couponTemplate.getTakeLimitCount() <= 0) {
-            return;
-        }
-        // 查询已领过券的用户
-        List<CouponDO> alreadyTakeCoupons = couponMapper.selectListByTemplateIdAndUserId(couponTemplate.getId(), userIds);
-        if (CollUtil.isEmpty(alreadyTakeCoupons)) {
-            return;
-        }
-        // 移除达到领取限制的用户
-        Map<Long, Integer> userTakeCountMap = CollStreamUtil.groupBy(alreadyTakeCoupons, CouponDO::getUserId, Collectors.summingInt(c -> 1));
-        userIds.removeIf(userId -> MapUtil.getInt(userTakeCountMap, userId, 0) >= couponTemplate.getTakeLimitCount());
-    }
-
-    //======================= 查询相关 =======================
-
     @Override
     public Long getUnusedCouponCount(Long userId) {
         return couponMapper.selectCountByUserIdAndStatus(userId, CouponStatusEnum.UNUSED.getStatus());
@@ -338,6 +266,8 @@ public class CouponServiceImpl implements CouponService {
     public List<CouponDO> getCouponList(Long userId, Integer status) {
         return couponMapper.selectListByUserIdAndStatus(userId, status);
     }
+
+    //======================= 查询相关 =======================
 
     @Override
     public Map<Long, Integer> getTakeCountMapByTemplateIds(Collection<Long> templateIds, Long userId) {
@@ -373,14 +303,6 @@ public class CouponServiceImpl implements CouponService {
         return couponMapper.selectByIdAndUserId(id, userId);
     }
 
-    private CouponDO validateCouponExists(Long id) {
-        CouponDO coupon = couponMapper.selectById(id);
-        if (coupon == null) {
-            throw exception(COUPON_NOT_EXISTS);
-        }
-        return coupon;
-    }
-
     /**
      * 获得自身的代理对象，解决 AOP 生效问题
      *
@@ -388,6 +310,84 @@ public class CouponServiceImpl implements CouponService {
      */
     private CouponServiceImpl getSelf() {
         return SpringUtil.getBean(getClass());
+    }
+
+    private Map<Long, List<Long>> takeCoupon(CouponTemplateDO template, Set<Long> userIds, CouponTakeTypeEnum takeType) {
+        // 1. 过滤掉达到领取限制的用户
+        removeTakeLimitUser(userIds, template);
+        // 2. 校验优惠劵是否可以领取
+        validateCouponTemplateCanTake(template, userIds, takeType);
+
+        // 3. 批量保存优惠劵
+        List<CouponDO> couponList = convertList(userIds, userId -> CouponConvert.INSTANCE.convert(template, userId));
+        couponMapper.insertBatch(couponList);
+
+        // 4. 增加优惠劵模板的领取数量
+        couponTemplateService.updateCouponTemplateTakeCount(template.getId(), userIds.size());
+
+        return convertMultiMap(couponList, CouponDO::getUserId, CouponDO::getId);
+    }
+
+    /**
+     * 过滤掉达到领取上线的用户
+     *
+     * @param userIds        用户编号数组
+     * @param couponTemplate 优惠劵模版
+     */
+    private void removeTakeLimitUser(Set<Long> userIds, CouponTemplateDO couponTemplate) {
+        if (couponTemplate.getTakeLimitCount() <= 0) {
+            return;
+        }
+        // 查询已领过券的用户
+        List<CouponDO> alreadyTakeCoupons = couponMapper.selectListByTemplateIdAndUserId(couponTemplate.getId(), userIds);
+        if (CollUtil.isEmpty(alreadyTakeCoupons)) {
+            return;
+        }
+        // 移除达到领取限制的用户
+        Map<Long, Integer> userTakeCountMap = CollStreamUtil.groupBy(alreadyTakeCoupons, CouponDO::getUserId, Collectors.summingInt(c -> 1));
+        userIds.removeIf(userId -> MapUtil.getInt(userTakeCountMap, userId, 0) >= couponTemplate.getTakeLimitCount());
+    }
+
+    /**
+     * 校验优惠券是否可以领取
+     *
+     * @param couponTemplate 优惠券模板
+     * @param userIds        领取人列表
+     * @param takeType       领取方式
+     */
+    private void validateCouponTemplateCanTake(CouponTemplateDO couponTemplate, Set<Long> userIds, CouponTakeTypeEnum takeType) {
+        // 如果所有用户都领取过，则抛出异常
+        if (CollUtil.isEmpty(userIds)) {
+            throw exception(COUPON_TEMPLATE_USER_ALREADY_TAKE);
+        }
+        // 校验模板
+        if (couponTemplate == null) {
+            throw exception(COUPON_TEMPLATE_NOT_EXISTS);
+        }
+        // 校验领取方式
+        if (ObjUtil.notEqual(couponTemplate.getTakeType(), takeType.getType())) {
+            throw exception(COUPON_TEMPLATE_CANNOT_TAKE);
+        }
+        // 校验发放数量不能过小（仅在 CouponTakeTypeEnum.USER 用户领取时）
+        if (CouponTakeTypeEnum.isUser(couponTemplate.getTakeType())
+                && ObjUtil.notEqual(couponTemplate.getTakeLimitCount(), CouponTemplateDO.TIME_LIMIT_COUNT_MAX) // 非不限制
+                && couponTemplate.getTakeCount() + userIds.size() > couponTemplate.getTotalCount()) {
+            throw exception(COUPON_TEMPLATE_NOT_ENOUGH);
+        }
+        // 校验"固定日期"的有效期类型是否过期
+        if (CouponTemplateValidityTypeEnum.DATE.getType().equals(couponTemplate.getValidityType())) {
+            if (LocalDateTimeUtils.beforeNow(couponTemplate.getValidEndTime())) {
+                throw exception(COUPON_TEMPLATE_EXPIRED);
+            }
+        }
+    }
+
+    private CouponDO validateCouponExists(Long id) {
+        CouponDO coupon = couponMapper.selectById(id);
+        if (coupon == null) {
+            throw exception(COUPON_NOT_EXISTS);
+        }
+        return coupon;
     }
 
 }

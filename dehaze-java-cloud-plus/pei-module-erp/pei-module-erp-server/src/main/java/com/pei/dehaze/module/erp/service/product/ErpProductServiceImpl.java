@@ -91,12 +91,6 @@ public class ErpProductServiceImpl implements ErpProductService {
         return list;
     }
 
-    private void validateProductExists(Long id) {
-        if (productMapper.selectById(id) == null) {
-            throw exception(PRODUCT_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ErpProductDO getProduct(Long id) {
         return productMapper.selectById(id);
@@ -123,6 +117,16 @@ public class ErpProductServiceImpl implements ErpProductService {
         return new PageResult<>(buildProductVOList(pageResult.getList()), pageResult.getTotal());
     }
 
+    @Override
+    public Long getProductCountByCategoryId(Long categoryId) {
+        return productMapper.selectCountByCategoryId(categoryId);
+    }
+
+    @Override
+    public Long getProductCountByUnitId(Long unitId) {
+        return productMapper.selectCountByUnitId(unitId);
+    }
+
     private List<ErpProductRespVO> buildProductVOList(List<ErpProductDO> list) {
         if (CollUtil.isEmpty(list)) {
             return Collections.emptyList();
@@ -139,14 +143,10 @@ public class ErpProductServiceImpl implements ErpProductService {
         });
     }
 
-    @Override
-    public Long getProductCountByCategoryId(Long categoryId) {
-        return productMapper.selectCountByCategoryId(categoryId);
-    }
-
-    @Override
-    public Long getProductCountByUnitId(Long unitId) {
-        return productMapper.selectCountByUnitId(unitId);
+    private void validateProductExists(Long id) {
+        if (productMapper.selectById(id) == null) {
+            throw exception(PRODUCT_NOT_EXISTS);
+        }
     }
 
 }

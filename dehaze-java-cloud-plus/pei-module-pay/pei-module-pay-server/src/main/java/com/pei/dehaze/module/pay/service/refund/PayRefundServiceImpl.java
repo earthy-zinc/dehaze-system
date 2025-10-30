@@ -3,9 +3,6 @@ package com.pei.dehaze.module.pay.service.refund;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundUnifiedReqDTO;
 import com.pei.dehaze.framework.tenant.core.util.TenantUtils;
 import com.pei.dehaze.module.pay.api.refund.dto.PayRefundCreateReqDTO;
 import com.pei.dehaze.module.pay.controller.admin.refund.vo.PayRefundExportReqVO;
@@ -21,6 +18,9 @@ import com.pei.dehaze.module.pay.enums.notify.PayNotifyTypeEnum;
 import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
 import com.pei.dehaze.module.pay.enums.refund.PayRefundStatusEnum;
 import com.pei.dehaze.module.pay.framework.pay.config.PayProperties;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundUnifiedReqDTO;
 import com.pei.dehaze.module.pay.service.app.PayAppService;
 import com.pei.dehaze.module.pay.service.channel.PayChannelService;
 import com.pei.dehaze.module.pay.service.notify.PayNotifyService;
@@ -184,14 +184,6 @@ public class PayRefundServiceImpl implements PayRefundService {
         return payProperties.getRefundNotifyUrl() + "/" + channel.getId();
     }
 
-    @Override
-    public void notifyRefund(Long channelId, PayRefundRespDTO notify) {
-        // 校验支付渠道是否有效
-        PayChannelDO channel = channelService.validPayChannel(channelId);
-        // 更新退款订单
-        TenantUtils.execute(channel.getTenantId(), () -> getSelf().notifyRefund(channel, notify));
-    }
-
     /**
      * 通知并更新订单的退款结果
      *
@@ -210,6 +202,14 @@ public class PayRefundServiceImpl implements PayRefundService {
         if (PayRefundStatusEnum.isFailure(notify.getStatus())) {
             notifyRefundFailure(channel, notify);
         }
+    }
+
+    @Override
+    public void notifyRefund(Long channelId, PayRefundRespDTO notify) {
+        // 校验支付渠道是否有效
+        PayChannelDO channel = channelService.validPayChannel(channelId);
+        // 更新退款订单
+        TenantUtils.execute(channel.getTenantId(), () -> getSelf().notifyRefund(channel, notify));
     }
 
     private void notifyRefundSuccess(PayChannelDO channel, PayRefundRespDTO notify) {
@@ -277,6 +277,15 @@ public class PayRefundServiceImpl implements PayRefundService {
                 refund.getId());
     }
 
+    /**
+     * 获得自身的代理对象，解决 AOP 生效问题
+     *
+     * @return 自己
+     */
+    private PayRefundServiceImpl getSelf() {
+        return SpringUtil.getBean(getClass());
+    }
+
     @Override
     public int syncRefund() {
         // 1. 查询指定创建时间内的待退款订单
@@ -317,15 +326,6 @@ public class PayRefundServiceImpl implements PayRefundService {
             log.error("[syncRefund][refund({}) 同步退款状态异常]", refund.getId(), e);
             return false;
         }
-    }
-
-    /**
-     * 获得自身的代理对象，解决 AOP 生效问题
-     *
-     * @return 自己
-     */
-    private PayRefundServiceImpl getSelf() {
-        return SpringUtil.getBean(getClass());
     }
 
 }

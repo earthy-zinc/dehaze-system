@@ -8,6 +8,10 @@ import cn.hutool.extra.template.TemplateConfig;
 import cn.hutool.extra.template.TemplateEngine;
 import cn.hutool.extra.template.engine.velocity.VelocityEngine;
 import cn.hutool.system.SystemUtil;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableTable;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Table;
 import com.pei.dehaze.framework.apilog.core.annotation.ApiAccessLog;
 import com.pei.dehaze.framework.apilog.core.enums.OperateTypeEnum;
 import com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil;
@@ -33,10 +37,6 @@ import com.pei.dehaze.module.infra.enums.codegen.CodegenSceneEnum;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenTemplateTypeEnum;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenVOTypeEnum;
 import com.pei.dehaze.module.infra.framework.codegen.config.CodegenProperties;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableTable;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Table;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.Setter;
@@ -49,9 +49,8 @@ import static cn.hutool.core.map.MapUtil.getStr;
 import static cn.hutool.core.text.CharSequenceUtil.*;
 
 /**
- * 代码生成的引擎，用于具体生成代码
- * 目前基于 {@link org.apache.velocity.app.Velocity} 模板引擎实现
- *
+ * 代码生成的引擎，用于具体生成代码 目前基于 {@link org.apache.velocity.app.Velocity} 模板引擎实现
+ * <p>
  * 考虑到 Java 模板引擎的框架非常多，Freemarker、Velocity、Thymeleaf 等等，所以我们采用 hutool 封装的 {@link cn.hutool.extra.template.Template} 抽象
  *
  * @author earthyzinc
@@ -61,9 +60,8 @@ public class CodegenEngine {
 
     /**
      * 后端的模板配置
-     *
-     * key：模板在 resources 的地址
-     * value：生成的路径
+     * <p>
+     * key：模板在 resources 的地址 value：生成的路径
      */
     private static final Map<String, String> SERVER_TEMPLATES = MapUtil.<String, String>builder(new LinkedHashMap<>()) // 有序
             // Java module-biz(server) Main
@@ -97,10 +95,8 @@ public class CodegenEngine {
 
     /**
      * 后端的配置模版
-     *
-     * key1：UI 模版的类型 {@link CodegenFrontTypeEnum#getType()}
-     * key2：模板在 resources 的地址
-     * value：生成的路径
+     * <p>
+     * key1：UI 模版的类型 {@link CodegenFrontTypeEnum#getType()} key2：模板在 resources 的地址 value：生成的路径
      */
     private static final Table<Integer, String, String> FRONT_TEMPLATES = ImmutableTable.<Integer, String, String>builder()
             // VUE2_ELEMENT_UI
@@ -183,28 +179,6 @@ public class CodegenEngine {
             .put(CodegenFrontTypeEnum.VUE3_VBEN5_ANTD_GENERAL.getType(), vue3Vben5AntdGeneralTemplatePath("views/modules/list_sub_erp.vue"),  // 特殊：主子表专属逻辑
                     vue3FilePath("views/${table.moduleName}/${table.businessName}/modules/${subSimpleClassName_strikeCase}-list.vue"))
             .build();
-
-    @Resource
-    private CodegenProperties codegenProperties;
-
-    /**
-     * 是否使用 jakarta 包，用于解决 Spring Boot 2.X 和 3.X 的兼容性问题
-     *
-     * true  - 使用 jakarta.validation.constraints.*
-     * false - 使用 javax.validation.constraints.*
-     */
-    @Setter // 允许设置的原因，是因为单测需要手动改变
-    private Boolean jakartaEnable;
-
-    /**
-     * 是否为 pei-cloud 项目，用于解决 Boot 和 Cloud 的 api 模块兼容性问题
-     *
-     * true  - 需要有 pei-module-xxx-api 模块
-     * false - 不需要有，使用 api、enum 包即可
-     */
-    @Setter
-    private Boolean cloudEnable;
-
     /**
      * 模板引擎，由 hutool 实现
      */
@@ -213,6 +187,22 @@ public class CodegenEngine {
      * 全局通用变量映射
      */
     private final Map<String, Object> globalBindingMap = new HashMap<>();
+    @Resource
+    private CodegenProperties codegenProperties;
+    /**
+     * 是否使用 jakarta 包，用于解决 Spring Boot 2.X 和 3.X 的兼容性问题
+     * <p>
+     * true  - 使用 jakarta.validation.constraints.* false - 使用 javax.validation.constraints.*
+     */
+    @Setter // 允许设置的原因，是因为单测需要手动改变
+    private Boolean jakartaEnable;
+    /**
+     * 是否为 pei-cloud 项目，用于解决 Boot 和 Cloud 的 api 模块兼容性问题
+     * <p>
+     * true  - 需要有 pei-module-xxx-api 模块 false - 不需要有，使用 api、enum 包即可
+     */
+    @Setter
+    private Boolean cloudEnable;
 
     public CodegenEngine() {
         // 初始化 TemplateEngine 属性
@@ -225,6 +215,86 @@ public class CodegenEngine {
         // 设置 cloudEnable，按照是否使用 Spring Cloud 来判断
         this.cloudEnable = ClassUtils.isPresent("com.pei.dehaze.module.infra.framework.rpc.config.RpcConfiguration",
                 ClassUtils.getDefaultClassLoader());
+    }
+
+    private static String javaTemplatePath(String path) {
+        return "codegen/java/" + path + ".vm";
+    }
+
+    private static String javaModuleImplVOFilePath(String path) {
+        return javaModuleFilePath("controller/${sceneEnum.basePackage}/${table.businessName}/" +
+                "vo/${sceneEnum.prefixClass}${table.className}" + path, "server", "main");
+    }
+
+    private static String javaModuleFilePath(String path, String module, String src) {
+        return "pei-module-${table.moduleName}/" + // 顶级模块
+                "pei-module-${table.moduleName}-" + module + "/" + // 子模块
+                "src/" + src + "/java/${basePackage}/module/${table.moduleName}/" + path + ".java";
+    }
+
+    private static String javaModuleImplControllerFilePath() {
+        return javaModuleFilePath("controller/${sceneEnum.basePackage}/${table.businessName}/" +
+                "${sceneEnum.prefixClass}${table.className}Controller", "server", "main");
+    }
+
+    private static String javaModuleImplMainFilePath(String path) {
+        return javaModuleFilePath(path, "server", "main");
+    }
+
+    private static String javaModuleApiMainFilePath(String path) {
+        return javaModuleFilePath(path, "api", "main");
+    }
+
+    private static String javaModuleImplTestFilePath(String path) {
+        return javaModuleFilePath(path, "server", "test");
+    }
+
+    private static String mapperXmlFilePath() {
+        return "pei-module-${table.moduleName}/" + // 顶级模块
+                "pei-module-${table.moduleName}-server/" + // 子模块
+                "src/main/resources/mapper/${table.businessName}/${table.className}Mapper.xml";
+    }
+
+    private static String vueTemplatePath(String path) {
+        return "codegen/vue/" + path + ".vm";
+    }
+
+    private static String vueFilePath(String path) {
+        return "pei-ui-${sceneEnum.basePackage}-vue2/" + // 顶级目录
+                "src/" + path;
+    }
+
+    private static String vue3TemplatePath(String path) {
+        return "codegen/vue3/" + path + ".vm";
+    }
+
+    private static String vue3FilePath(String path) {
+        return "pei-ui-${sceneEnum.basePackage}-vue3/" + // 顶级目录
+                "src/" + path;
+    }
+
+    private static String vue3VbenTemplatePath(String path) {
+        return "codegen/vue3_vben/" + path + ".vm";
+    }
+
+    private static String vue3Vben5AntdSchemaTemplatePath(String path) {
+        return "codegen/vue3_vben5_antd/schema/" + path + ".vm";
+    }
+
+    private static String vue3Vben5AntdGeneralTemplatePath(String path) {
+        return "codegen/vue3_vben5_antd/general/" + path + ".vm";
+    }
+
+    private static boolean isSubTemplate(String path) {
+        return path.contains("_sub");
+    }
+
+    private static boolean isPageReqVOTemplate(String path) {
+        return path.contains("pageReqVO");
+    }
+
+    private static boolean isListReqVOTemplate(String path) {
+        return path.contains("listReqVO");
     }
 
     @PostConstruct
@@ -342,9 +412,8 @@ public class CodegenEngine {
 
     /**
      * 格式化生成后的代码
-     *
-     * 因为尽量让 vm 模版简单，所以统一的处理都在这个方法。
-     * 如果不处理，Vue 的 Pretty 格式校验可能会报错
+     * <p>
+     * 因为尽量让 vm 模版简单，所以统一的处理都在这个方法。 如果不处理，Vue 的 Pretty 格式校验可能会报错
      *
      * @param content 格式化前的代码
      * @return 格式化后的代码
@@ -520,86 +589,6 @@ public class CodegenEngine {
                     ((List<String>) bindingMap.get("subSimpleClassName_strikeCases")).get(subIndex));
         }
         return filePath;
-    }
-
-    private static String javaTemplatePath(String path) {
-        return "codegen/java/" + path + ".vm";
-    }
-
-    private static String javaModuleImplVOFilePath(String path) {
-        return javaModuleFilePath("controller/${sceneEnum.basePackage}/${table.businessName}/" +
-                "vo/${sceneEnum.prefixClass}${table.className}" + path, "server", "main");
-    }
-
-    private static String javaModuleImplControllerFilePath() {
-        return javaModuleFilePath("controller/${sceneEnum.basePackage}/${table.businessName}/" +
-                "${sceneEnum.prefixClass}${table.className}Controller", "server", "main");
-    }
-
-    private static String javaModuleImplMainFilePath(String path) {
-        return javaModuleFilePath(path, "server", "main");
-    }
-
-    private static String javaModuleApiMainFilePath(String path) {
-        return javaModuleFilePath(path, "api", "main");
-    }
-
-    private static String javaModuleImplTestFilePath(String path) {
-        return javaModuleFilePath(path, "server", "test");
-    }
-
-    private static String javaModuleFilePath(String path, String module, String src) {
-        return "pei-module-${table.moduleName}/" + // 顶级模块
-                "pei-module-${table.moduleName}-" + module + "/" + // 子模块
-                "src/" + src + "/java/${basePackage}/module/${table.moduleName}/" + path + ".java";
-    }
-
-    private static String mapperXmlFilePath() {
-        return "pei-module-${table.moduleName}/" + // 顶级模块
-                "pei-module-${table.moduleName}-server/" + // 子模块
-                "src/main/resources/mapper/${table.businessName}/${table.className}Mapper.xml";
-    }
-
-    private static String vueTemplatePath(String path) {
-        return "codegen/vue/" + path + ".vm";
-    }
-
-    private static String vueFilePath(String path) {
-        return "pei-ui-${sceneEnum.basePackage}-vue2/" + // 顶级目录
-                "src/" + path;
-    }
-
-    private static String vue3TemplatePath(String path) {
-        return "codegen/vue3/" + path + ".vm";
-    }
-
-    private static String vue3FilePath(String path) {
-        return "pei-ui-${sceneEnum.basePackage}-vue3/" + // 顶级目录
-                "src/" + path;
-    }
-
-    private static String vue3VbenTemplatePath(String path) {
-        return "codegen/vue3_vben/" + path + ".vm";
-    }
-
-    private static String vue3Vben5AntdSchemaTemplatePath(String path) {
-        return "codegen/vue3_vben5_antd/schema/" + path + ".vm";
-    }
-
-    private static String vue3Vben5AntdGeneralTemplatePath(String path) {
-        return "codegen/vue3_vben5_antd/general/" + path + ".vm";
-    }
-
-    private static boolean isSubTemplate(String path) {
-        return path.contains("_sub");
-    }
-
-    private static boolean isPageReqVOTemplate(String path) {
-        return path.contains("pageReqVO");
-    }
-
-    private static boolean isListReqVOTemplate(String path) {
-        return path.contains("listReqVO");
     }
 
 }

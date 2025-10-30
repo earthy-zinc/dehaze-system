@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.promotion.dal.mysql.discount;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.promotion.dal.dataobject.discount.DiscountProductDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.time.LocalDateTime;
@@ -39,7 +39,7 @@ public interface DiscountProductMapper extends BaseMapperX<DiscountProductDO> {
         LocalDateTime now = LocalDateTime.now();
         return selectList(new LambdaQueryWrapperX<DiscountProductDO>()
                 .in(DiscountProductDO::getSkuId, skuIds)
-                .eq(DiscountProductDO::getActivityStatus,status)
+                .eq(DiscountProductDO::getActivityStatus, status)
                 .lt(DiscountProductDO::getActivityStartTime, now)
                 .gt(DiscountProductDO::getActivityEndTime, now));
     }

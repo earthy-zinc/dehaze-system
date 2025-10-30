@@ -7,11 +7,11 @@ import com.pei.dehaze.module.promotion.controller.admin.article.vo.category.Arti
 import com.pei.dehaze.module.promotion.convert.article.ArticleCategoryConvert;
 import com.pei.dehaze.module.promotion.dal.dataobject.article.ArticleCategoryDO;
 import com.pei.dehaze.module.promotion.dal.mysql.article.ArticleCategoryMapper;
+import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -66,12 +66,6 @@ public class ArticleCategoryServiceImpl implements ArticleCategoryService {
         articleCategoryMapper.deleteById(id);
     }
 
-    private void validateArticleCategoryExists(Long id) {
-        if (articleCategoryMapper.selectById(id) == null) {
-            throw exception(ARTICLE_CATEGORY_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ArticleCategoryDO getArticleCategory(Long id) {
         return articleCategoryMapper.selectById(id);
@@ -85,6 +79,12 @@ public class ArticleCategoryServiceImpl implements ArticleCategoryService {
     @Override
     public List<ArticleCategoryDO> getArticleCategoryListByStatus(Integer status) {
         return articleCategoryMapper.selectListByStatus(status);
+    }
+
+    private void validateArticleCategoryExists(Long id) {
+        if (articleCategoryMapper.selectById(id) == null) {
+            throw exception(ARTICLE_CATEGORY_NOT_EXISTS);
+        }
     }
 
 }

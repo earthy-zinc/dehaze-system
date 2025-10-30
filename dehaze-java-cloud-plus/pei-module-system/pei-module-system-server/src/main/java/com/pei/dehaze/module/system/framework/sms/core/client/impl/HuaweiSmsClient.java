@@ -51,9 +51,9 @@ public class HuaweiSmsClient extends AbstractSmsClient {
 
     /**
      * 参数校验华为云的 sender 通道号
-     *
+     * <p>
      * 原因是：验华为云发放短信的时候，需要额外的参数 sender
-     *
+     * <p>
      * 解决方案：考虑到不破坏原有的 apiKey + apiSecret 的结构，所以将 secretId 拼接到 apiKey 字段中，格式为 "secretId sdkAppId"。
      *
      * @param properties 配置
@@ -63,14 +63,6 @@ public class HuaweiSmsClient extends AbstractSmsClient {
         Assert.notEmpty(combineKey, "apiKey 不能为空");
         String[] keys = combineKey.trim().split(" ");
         Assert.isTrue(keys.length == 2, "华为云短信 apiKey 配置格式错误，请配置 为[accessKeyId sender]");
-    }
-
-    private String getAccessKey() {
-        return StrUtil.subBefore(properties.getApiKey(), " ", true);
-    }
-
-    private String getSender() {
-        return StrUtil.subAfter(properties.getApiKey(), " ", true);
     }
 
     @Override
@@ -97,37 +89,10 @@ public class HuaweiSmsClient extends AbstractSmsClient {
                 .setSerialNo(sendResult.getStr("smsMsgId")).setApiCode(sendResult.getStr("status"));
     }
 
-    /**
-     * 请求华为云短信
-     *
-     * @see <a href="认证鉴权">https://support.huaweicloud.com/api-msgsms/sms_05_0046.html</a>
-     * @param uri 请求 URI
-     * @param method 请求 Method
-     * @param requestBody 请求 Body
-     * @return 请求结果
-     */
-    private JSONObject request(String uri, String method, String requestBody) {
-        // 1.1 请求 Header
-        TreeMap<String, String> headers = new TreeMap<>();
-        headers.put("Content-Type", "application/x-www-form-urlencoded");
-        String sdkDate = FastDateFormat.getInstance("yyyyMMdd'T'HHmmss'Z'", TimeZone.getTimeZone("UTC")).format(new Date());
-        headers.put("X-Sdk-Date", sdkDate);
-        headers.put("host", HOST);
-
-        // 1.2 构建签名 Header
-        String canonicalQueryString = ""; // 查询参数为空
-        String canonicalHeaders = "content-type:application/x-www-form-urlencoded\n"
-                + "host:"+ HOST +"\n" + "x-sdk-date:" + sdkDate + "\n";
-        String canonicalRequest = method + "\n" + uri + "\n" + canonicalQueryString + "\n"
-                + canonicalHeaders + "\n" + SIGNEDHEADERS + "\n" + sha256Hex(requestBody);
-        String stringToSign = "SDK-HMAC-SHA256" + "\n" + sdkDate + "\n" + sha256Hex(canonicalRequest);
-        String signature = SecureUtil.hmacSha256(properties.getApiSecret()).digestHex(stringToSign);  // 计算签名
-        headers.put("Authorization", "SDK-HMAC-SHA256" + " " + "Access=" + getAccessKey()
-                + ", " + "SignedHeaders=" + SIGNEDHEADERS + ", " + "Signature=" + signature);
-
-        // 2. 发起请求
-        String responseBody = HttpUtils.post(URL, headers, requestBody);
-        return JSONUtil.parseObj(responseBody);
+    private static void appendToBody(StringBuilder body, String key, String value) {
+        if (StrUtil.isNotEmpty(value)) {
+            body.append(key).append(HttpUtils.encodeUtf8(value));
+        }
     }
 
     @Override
@@ -153,10 +118,45 @@ public class HuaweiSmsClient extends AbstractSmsClient {
                 .setAuditStatus(SmsTemplateAuditStatusEnum.SUCCESS.getStatus()).setAuditReason(null);
     }
 
-    private static void appendToBody(StringBuilder body, String key, String value) {
-        if (StrUtil.isNotEmpty(value)) {
-            body.append(key).append(HttpUtils.encodeUtf8(value));
-        }
+    private String getSender() {
+        return StrUtil.subAfter(properties.getApiKey(), " ", true);
+    }
+
+    /**
+     * 请求华为云短信
+     *
+     * @param uri         请求 URI
+     * @param method      请求 Method
+     * @param requestBody 请求 Body
+     * @return 请求结果
+     * @see <a href="认证鉴权">https://support.huaweicloud.com/api-msgsms/sms_05_0046.html</a>
+     */
+    private JSONObject request(String uri, String method, String requestBody) {
+        // 1.1 请求 Header
+        TreeMap<String, String> headers = new TreeMap<>();
+        headers.put("Content-Type", "application/x-www-form-urlencoded");
+        String sdkDate = FastDateFormat.getInstance("yyyyMMdd'T'HHmmss'Z'", TimeZone.getTimeZone("UTC")).format(new Date());
+        headers.put("X-Sdk-Date", sdkDate);
+        headers.put("host", HOST);
+
+        // 1.2 构建签名 Header
+        String canonicalQueryString = ""; // 查询参数为空
+        String canonicalHeaders = "content-type:application/x-www-form-urlencoded\n"
+                + "host:" + HOST + "\n" + "x-sdk-date:" + sdkDate + "\n";
+        String canonicalRequest = method + "\n" + uri + "\n" + canonicalQueryString + "\n"
+                + canonicalHeaders + "\n" + SIGNEDHEADERS + "\n" + sha256Hex(requestBody);
+        String stringToSign = "SDK-HMAC-SHA256" + "\n" + sdkDate + "\n" + sha256Hex(canonicalRequest);
+        String signature = SecureUtil.hmacSha256(properties.getApiSecret()).digestHex(stringToSign);  // 计算签名
+        headers.put("Authorization", "SDK-HMAC-SHA256" + " " + "Access=" + getAccessKey()
+                + ", " + "SignedHeaders=" + SIGNEDHEADERS + ", " + "Signature=" + signature);
+
+        // 2. 发起请求
+        String responseBody = HttpUtils.post(URL, headers, requestBody);
+        return JSONUtil.parseObj(responseBody);
+    }
+
+    private String getAccessKey() {
+        return StrUtil.subBefore(properties.getApiKey(), " ", true);
     }
 
 }

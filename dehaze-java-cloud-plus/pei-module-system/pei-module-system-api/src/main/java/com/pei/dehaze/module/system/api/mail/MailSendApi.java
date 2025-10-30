@@ -3,12 +3,11 @@ package com.pei.dehaze.module.system.api.mail;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.system.api.mail.dto.MailSendSingleToUserReqDTO;
 import com.pei.dehaze.module.system.enums.ApiConstants;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
-
-import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(name = ApiConstants.NAME) // TODO 芋艿：fallbackFactory =

@@ -47,10 +47,6 @@ public interface AfterSaleConvert {
     })
     PayRefundCreateReqDTO convert(String userIp, AfterSaleDO afterSale, TradeOrderProperties orderProperties);
 
-    MemberUserRespVO convert(MemberUserRespDTO bean);
-
-    PageResult<AfterSaleRespPageItemVO> convertPage(PageResult<AfterSaleDO> page);
-
     default PageResult<AfterSaleRespPageItemVO> convertPage(PageResult<AfterSaleDO> pageResult,
                                                             Map<Long, MemberUserRespDTO> memberUsers) {
         PageResult<AfterSaleRespPageItemVO> voPageResult = convertPage(pageResult);
@@ -59,6 +55,10 @@ public interface AfterSaleConvert {
                 convert(memberUsers.get(afterSale.getUserId()))));
         return voPageResult;
     }
+
+    PageResult<AfterSaleRespPageItemVO> convertPage(PageResult<AfterSaleDO> page);
+
+    MemberUserRespVO convert(MemberUserRespDTO bean);
 
     ProductPropertyValueDetailRespVO convert(ProductPropertyValueDetailRespDTO bean);
 
@@ -75,9 +75,12 @@ public interface AfterSaleConvert {
         return respVO;
     }
 
-    List<AfterSaleLogRespVO> convertList1(List<AfterSaleLogDO> list);
     AfterSaleDetailRespVO convert02(AfterSaleDO bean);
-    AfterSaleDetailRespVO.OrderItem convert02(TradeOrderItemDO bean);
+
     TradeOrderBaseVO convert(TradeOrderDO bean);
+
+    AfterSaleDetailRespVO.OrderItem convert02(TradeOrderItemDO bean);
+
+    List<AfterSaleLogRespVO> convertList1(List<AfterSaleLogDO> list);
 
 }

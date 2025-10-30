@@ -60,6 +60,19 @@ public class PayTransferController {
         }));
     }
 
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出转账订单 Excel")
+    @PreAuthorize("@ss.hasPermission('pay:transfer:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportTransfer(PayTransferPageReqVO pageReqVO,
+                               HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PAGE_SIZE_NONE);
+        PageResult<PayTransferRespVO> pageResult = getTransferPage(pageReqVO).getData();
+
+        // 导出 Excel
+        ExcelUtils.write(response, "转账订单.xls", "数据", PayTransferRespVO.class, pageResult.getList());
+    }
+
     @GetMapping("/page")
     @Operation(summary = "获得转账订单分页")
     @PreAuthorize("@ss.hasPermission('pay:transfer:query')")
@@ -73,19 +86,6 @@ public class PayTransferController {
                 transferVO.setAppName(apps.get(transferVO.getAppId()).getName());
             }
         }));
-    }
-
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出转账订单 Excel")
-    @PreAuthorize("@ss.hasPermission('pay:transfer:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportTransfer(PayTransferPageReqVO pageReqVO,
-                               HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PAGE_SIZE_NONE);
-        PageResult<PayTransferRespVO> pageResult = getTransferPage(pageReqVO).getData();
-
-        // 导出 Excel
-        ExcelUtils.write(response, "转账订单.xls", "数据", PayTransferRespVO.class, pageResult.getList());
     }
 
 }

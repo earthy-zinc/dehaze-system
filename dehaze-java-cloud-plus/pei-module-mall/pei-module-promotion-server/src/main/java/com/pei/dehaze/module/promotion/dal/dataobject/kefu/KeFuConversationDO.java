@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.kefu;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.member.api.user.dto.MemberUserRespDTO;
-import com.pei.dehaze.module.promotion.enums.kefu.KeFuMessageContentTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.member.api.user.dto.MemberUserRespDTO;
+import com.pei.dehaze.module.promotion.enums.kefu.KeFuMessageContentTypeEnum;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -32,7 +32,7 @@ public class KeFuConversationDO extends BaseDO {
     private Long id;
     /**
      * 会话所属用户
-     *
+     * <p>
      * 关联 {@link MemberUserRespDTO#getId()}
      */
     private Long userId;
@@ -47,7 +47,7 @@ public class KeFuConversationDO extends BaseDO {
     private String lastMessageContent;
     /**
      * 最后发送的消息类型
-     *
+     * <p>
      * 枚举 {@link KeFuMessageContentTypeEnum}
      */
     private Integer lastMessageContentType;
@@ -60,22 +60,20 @@ public class KeFuConversationDO extends BaseDO {
     private Boolean adminPinned;
     /**
      * 用户是否可见
-     *
-     * false - 可见，默认值
-     * true - 不可见，用户删除时设置为 true
+     * <p>
+     * false - 可见，默认值 true - 不可见，用户删除时设置为 true
      */
     private Boolean userDeleted;
     /**
      * 管理员是否可见
-     *
-     * false - 可见，默认值
-     * true - 不可见，管理员删除时设置为 true
+     * <p>
+     * false - 可见，默认值 true - 不可见，管理员删除时设置为 true
      */
     private Boolean adminDeleted;
 
     /**
      * 管理员未读消息数
-     *
+     * <p>
      * 用户发送消息时增加，管理员查看后扣减
      */
     private Integer adminUnreadMessageCount;

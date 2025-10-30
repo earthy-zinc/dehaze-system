@@ -1,7 +1,5 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin;
 
-import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
-import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.github.binarywang.wxpay.bean.request.WxPayRefundV3Request;
 import com.github.binarywang.wxpay.bean.request.WxPayUnifiedOrderV3Request;
 import com.github.binarywang.wxpay.bean.result.WxPayRefundV3Result;
@@ -10,6 +8,8 @@ import com.github.binarywang.wxpay.config.WxPayConfig;
 import com.github.binarywang.wxpay.exception.WxPayException;
 import com.github.binarywang.wxpay.service.WxPayService;
 import com.github.binarywang.wxpay.service.impl.WxPayServiceImpl;
+import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
+import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +49,17 @@ public class WxNativePayClientIntegrationTest {
         System.out.println(JsonUtils.toJsonPrettyString(response));
     }
 
+    private WxPayConfig buildWxPayConfigV3() {
+        WxPayConfig config = new WxPayConfig();
+        config.setAppId("wx62056c0d5e8db250");
+        config.setMchId("1545083881");
+        config.setApiV3Key("459arNsYHl1mgkiO6H9ZH5KkhFXSxaA4");
+//        config.setCertSerialNo(serialNo);
+        config.setPrivateCertPath("/Users/yunai/Downloads/wx_pay/apiclient_cert.pem");
+        config.setPrivateKeyPath("/Users/yunai/Downloads/wx_pay/apiclient_key.pem");
+        return config;
+    }
+
     @Test
     public void testRefundV3() throws WxPayException {
         // 创建 config 配置
@@ -68,17 +79,6 @@ public class WxNativePayClientIntegrationTest {
         WxPayRefundV3Result response = client.refundV3(request);
         System.out.println("========= response ==========");
         System.out.println(JsonUtils.toJsonPrettyString(response));
-    }
-
-    private WxPayConfig buildWxPayConfigV3() {
-        WxPayConfig config = new WxPayConfig();
-        config.setAppId("wx62056c0d5e8db250");
-        config.setMchId("1545083881");
-        config.setApiV3Key("459arNsYHl1mgkiO6H9ZH5KkhFXSxaA4");
-//        config.setCertSerialNo(serialNo);
-        config.setPrivateCertPath("/Users/yunai/Downloads/wx_pay/apiclient_cert.pem");
-        config.setPrivateKeyPath("/Users/yunai/Downloads/wx_pay/apiclient_key.pem");
-        return config;
     }
 
 }

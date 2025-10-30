@@ -2,15 +2,13 @@ package com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay;
 
 import com.pei.dehaze.framework.common.util.validation.ValidationUtils;
 import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientConfig;
-import lombok.Data;
-
 import jakarta.validation.Validator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 /**
- * 支付宝的 PayClientConfig 实现类
- * 属性主要来自 {@link com.alipay.api.AlipayConfig} 的必要属性
+ * 支付宝的 PayClientConfig 实现类 属性主要来自 {@link com.alipay.api.AlipayConfig} 的必要属性
  *
  * @author earthyzinc
  */
@@ -38,9 +36,9 @@ public class AlipayPayClientConfig implements PayClientConfig {
 
     /**
      * 网关地址
-     *
-     * 1. <a href="https://openapi.alipay.com/gateway.do">生产环境</a>
-     * 2. <a href="https://openapi-sandbox.dl.alipaydev.com/gateway.do">沙箱环境</a>
+     * <p>
+     * 1. <a href="https://openapi.alipay.com/gateway.do">生产环境</a> 2. <a
+     * href="https://openapi-sandbox.dl.alipaydev.com/gateway.do">沙箱环境</a>
      */
     @NotBlank(message = "网关地址不能为空", groups = {ModePublicKey.class, ModeCertificate.class})
     private String serverUrl;
@@ -60,9 +58,8 @@ public class AlipayPayClientConfig implements PayClientConfig {
     private String signType;
 
     /**
-     * 公钥类型
-     * 1. {@link #MODE_PUBLIC_KEY} 情况，privateKey + alipayPublicKey
-     * 2. {@link #MODE_CERTIFICATE} 情况，appCertContent + alipayPublicCertContent + rootCertContent
+     * 公钥类型 1. {@link #MODE_PUBLIC_KEY} 情况，privateKey + alipayPublicKey 2. {@link #MODE_CERTIFICATE} 情况，appCertContent +
+     * alipayPublicCertContent + rootCertContent
      */
     @NotNull(message = "公钥类型不能为空", groups = {ModePublicKey.class, ModeCertificate.class})
     private Integer mode;
@@ -99,9 +96,8 @@ public class AlipayPayClientConfig implements PayClientConfig {
 
     /**
      * 接口内容加密方式
-     *
-     * 1. 如果为空，将使用无加密方式
-     * 2. 如果要加密，目前支付宝只有 AES 一种加密方式
+     * <p>
+     * 1. 如果为空，将使用无加密方式 2. 如果要加密，目前支付宝只有 AES 一种加密方式
      *
      * @see <a href="https://opendocs.alipay.com/common/02mse3">支付宝开放平台</a>
      * @see AlipayPayClientConfig#ENC_TYPE_AES
@@ -113,16 +109,16 @@ public class AlipayPayClientConfig implements PayClientConfig {
      */
     private String encryptKey;
 
-    public interface ModePublicKey {
-    }
-
-    public interface ModeCertificate {
-    }
-
     @Override
     public void validate(Validator validator) {
         ValidationUtils.validate(validator, this,
                 MODE_PUBLIC_KEY.equals(this.getMode()) ? ModePublicKey.class : ModeCertificate.class);
+    }
+
+    public interface ModePublicKey {
+    }
+
+    public interface ModeCertificate {
     }
 
 }

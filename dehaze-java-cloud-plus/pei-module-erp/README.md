@@ -1,10 +1,12 @@
-`pei-module-erp` 是一个 **企业资源计划（ERP）管理模块**，其核心作用是为企业的采购、销售、库存、财务等业务流程提供统一的管理能力。该模块基于 Spring Boot 3.4 + Java 17 实现，遵循分层架构设计，并与 `Spring Security`、`MyBatis Plus`、`Redis`、`Nacos` 等技术栈深度集成。
+`pei-module-erp` 是一个 **企业资源计划（ERP）管理模块**，其核心作用是为企业的采购、销售、库存、财务等业务流程提供统一的管理能力。该模块基于
+Spring Boot 3.4 + Java 17 实现，遵循分层架构设计，并与 `Spring Security`、`MyBatis Plus`、`Redis`、`Nacos` 等技术栈深度集成。
 
 ---
 
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：构建统一的企业资源管理系统，支持：
     - 采购订单、入库、退货
     - 销售订单、出库、退货
@@ -47,7 +49,6 @@ src/main/java/
     └── ErpServerApplication.java // 启动类
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -55,6 +56,7 @@ src/main/java/
 ### 1️⃣ `controller.admin.purchase` 包 —— 采购订单管理
 
 #### 🔹 示例：`ErpPurchaseOrderController.java`
+
 ```java
 @Tag(name = "管理后台 - ERP 采购订单")
 @RestController
@@ -74,7 +76,6 @@ public class ErpPurchaseOrderController {
 }
 ```
 
-
 - **作用**：对外暴露 `/erp/purchase-order/**` 接口，实现管理员相关的采购订单操作。
 - **权限控制**：
     - 使用 `@PreAuthorize` 校验用户是否有操作权限
@@ -88,6 +89,7 @@ public class ErpPurchaseOrderController {
 ### 2️⃣ `service.purchase` 包 —— 采购服务逻辑
 
 #### 🔹 示例：`ErpPurchaseInServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -110,7 +112,6 @@ public class ErpPurchaseInServiceImpl implements ErpPurchaseInService {
 }
 ```
 
-
 - **作用**：实现采购入库单的创建、更新、删除、查询等操作。
 - **关键逻辑**：
     - 自动生成唯一编号（前缀 `CGRK`）
@@ -123,6 +124,7 @@ public class ErpPurchaseInServiceImpl implements ErpPurchaseInService {
 ### 3️⃣ `dal.dataobject.purchase` 包 —— 采购数据模型
 
 #### 🔹 示例：`ErpPurchaseInDO.java`
+
 ```java
 @TableName("erp_purchase_in")
 @KeySequence("erp_purchase_in_seq")
@@ -210,7 +212,6 @@ public class ErpPurchaseInDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `erp_purchase_in` 表。
 - **字段说明**：
     - `no`: 采购入库单号（前缀 `CGRK`）
@@ -225,6 +226,7 @@ public class ErpPurchaseInDO extends BaseDO {
 ### 4️⃣ `dal.redis.no.ErpNoRedisDAO` 包 —— 单据编号生成
 
 #### 🔹 示例：`ErpNoRedisDAO.java`
+
 ```java
 @Repository
 public class ErpNoRedisDAO {
@@ -256,7 +258,6 @@ public class ErpNoRedisDAO {
 }
 ```
 
-
 - **作用**：使用 Redis 原子操作生成唯一单据编号。
 - **编号规则**：
     - `prefix` + `日期` + `6位自增`
@@ -270,6 +271,7 @@ public class ErpNoRedisDAO {
 ### 5️⃣ `service.finance` 包 —— 财务服务逻辑
 
 #### 🔹 示例：`ErpFinancePaymentServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -292,7 +294,6 @@ public class ErpFinancePaymentServiceImpl implements ErpFinancePaymentService {
 }
 ```
 
-
 - **作用**：实现付款单的创建、更新、审核等操作。
 - **流程**：
     1. 生成唯一编号（前缀 `FKDJ`）
@@ -306,6 +307,7 @@ public class ErpFinancePaymentServiceImpl implements ErpFinancePaymentService {
 ### 6️⃣ `enums` 包 —— 枚举常量管理
 
 #### 🔹 示例：`ErpAuditStatus.java`
+
 ```java
 public interface ErpAuditStatus {
 
@@ -319,7 +321,6 @@ public interface ErpAuditStatus {
 }
 ```
 
-
 - **作用**：统一管理所有状态码和业务类型。
 - **优势**：
     - 减少魔法数字
@@ -330,6 +331,7 @@ public interface ErpAuditStatus {
 ### 7️⃣ `service.sale` 包 —— 销售服务逻辑
 
 #### 🔹 示例：`ErpSaleOutServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -352,7 +354,6 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
 }
 ```
 
-
 - **作用**：实现销售出库单的创建、更新、查询等操作。
 - **关键逻辑**：
     - 自动生成唯一编号（前缀 `XSCK`）
@@ -365,6 +366,7 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
 ### 8️⃣ `dal.dataobject.sale` 包 —— 销售数据模型
 
 #### 🔹 示例：`ErpSaleOutDO.java`
+
 ```java
 @TableName("erp_sale_out")
 @KeySequence("erp_sale_out_seq")
@@ -452,7 +454,6 @@ public class ErpSaleOutDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `erp_sale_out` 表。
 - **字段说明**：
     - `no`: 销售出库单号（前缀 `XSCK`）
@@ -466,6 +467,7 @@ public class ErpSaleOutDO extends BaseDO {
 ### 9️⃣ `service.stock` 包 —— 库存服务逻辑
 
 #### 🔹 示例：`ErpStockMoveService.java`
+
 ```java
 public interface ErpStockMoveService {}
 
@@ -490,7 +492,6 @@ public class ErpStockMoveServiceImpl implements ErpStockMoveService {
 }
 ```
 
-
 - **作用**：实现库存调拨单的创建、更新、查询等操作。
 - **流程**：
     1. 生成唯一编号（前缀 `QCDB`）
@@ -504,6 +505,7 @@ public class ErpStockMoveServiceImpl implements ErpStockMoveService {
 ### 🔟 `dal.dataobject.stock` 包 —— 库存数据模型
 
 #### 🔹 示例：`ErpStockMoveDO.java`
+
 ```java
 @TableName("erp_stock_move")
 @KeySequence("erp_stock_move_seq")
@@ -551,7 +553,6 @@ public class ErpStockMoveDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `erp_stock_move` 表。
 - **字段说明**：
     - `no`: 调拨单号（前缀 `QCDB`）
@@ -565,6 +566,7 @@ public class ErpStockMoveDO extends BaseDO {
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ 创建采购入库单流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -576,8 +578,8 @@ graph TD
     G --> H[响应客户端]
 ```
 
-
 ### 2️⃣ 创建销售出库单流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -588,7 +590,6 @@ graph TD
     F --> G[返回单据编号]
     G --> H[响应客户端]
 ```
-
 
 ---
 
@@ -613,29 +614,29 @@ graph TD
     O --> P[erp_finance_payment 表]
 ```
 
-
 ---
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `controller.admin.purchase` | 采购订单管理 | `ErpPurchaseOrderController` |
-| `service.purchase` | 采购服务逻辑 | `ErpPurchaseInServiceImpl` |
-| `dal.dataobject.purchase` | 采购数据模型 | `ErpPurchaseInDO` |
-| `dal.redis.no` | 单据编号生成 | `ErpNoRedisDAO` |
-| `service.finance` | 财务服务逻辑 | `ErpFinancePaymentServiceImpl` |
-| `dal.dataobject.finance` | 财务数据模型 | `ErpFinancePaymentDO` |
-| `service.sale` | 销售服务逻辑 | `ErpSaleOutServiceImpl` |
-| `dal.dataobject.sale` | 销售数据模型 | `ErpSaleOutDO` |
-| `service.stock` | 库存服务逻辑 | `ErpStockMoveServiceImpl` |
-| `dal.dataobject.stock` | 库存数据模型 | `ErpStockMoveDO` |
+| 包名                          | 功能     | 关键类                            |
+|-----------------------------|--------|--------------------------------|
+| `controller.admin.purchase` | 采购订单管理 | `ErpPurchaseOrderController`   |
+| `service.purchase`          | 采购服务逻辑 | `ErpPurchaseInServiceImpl`     |
+| `dal.dataobject.purchase`   | 采购数据模型 | `ErpPurchaseInDO`              |
+| `dal.redis.no`              | 单据编号生成 | `ErpNoRedisDAO`                |
+| `service.finance`           | 财务服务逻辑 | `ErpFinancePaymentServiceImpl` |
+| `dal.dataobject.finance`    | 财务数据模型 | `ErpFinancePaymentDO`          |
+| `service.sale`              | 销售服务逻辑 | `ErpSaleOutServiceImpl`        |
+| `dal.dataobject.sale`       | 销售数据模型 | `ErpSaleOutDO`                 |
+| `service.stock`             | 库存服务逻辑 | `ErpStockMoveServiceImpl`      |
+| `dal.dataobject.stock`      | 库存数据模型 | `ErpStockMoveDO`               |
 
 ---
 
 ## 🧾 模块实现原理详解
 
 ### 1️⃣ 单据编号生成机制
+
 - **使用 Redis 自增**：
     - Key 格式：`erp:no:{prefix}`
     - Prefix 支持多种业务类型（采购、销售、调拨、付款、收款）
@@ -644,6 +645,7 @@ graph TD
     - `XSCK2025041000001` （销售出库单号）
 
 ### 2️⃣ 采购入库流程
+
 - **核心表**：`erp_purchase_in`
 - **流程**：
     1. 创建采购订单
@@ -652,6 +654,7 @@ graph TD
     4. 记录库存变化（调用 `ErpStockRecordService`）
 
 ### 3️⃣ 销售出库流程
+
 - **核心表**：`erp_sale_out`
 - **流程**：
     1. 创建销售订单
@@ -660,6 +663,7 @@ graph TD
     4. 记录库存减少
 
 ### 4️⃣ 库存调拨流程
+
 - **核心表**：`erp_stock_move`
 - **流程**：
     1. 创建调拨单
@@ -671,13 +675,13 @@ graph TD
 
 ## ✅ 建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多租户增强 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 操作日志 | 当前未记录详细操作日志，建议增加 `@LogRecord` 注解 |
-| ✅ 单元测试 | 当前代码未提供单元测试，建议补充测试用例 |
+| 改进点      | 描述                                                   |
+|----------|------------------------------------------------------|
+| ✅ 多租户增强  | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
+| ✅ 性能优化   | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 操作日志   | 当前未记录详细操作日志，建议增加 `@LogRecord` 注解                     |
+| ✅ 单元测试   | 当前代码未提供单元测试，建议补充测试用例                                 |
 
 ---
 
@@ -685,17 +689,18 @@ graph TD
 
 `pei-module-erp` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 采购订单 | PurchaseOrderDO + PurchaseOrderService | 采购流程管理 |
-| 采购入库 | PurchaseInDO + PurchaseInService | 采购收货管理 |
-| 采购退货 | PurchaseReturnDO + PurchaseReturnService | 采购退款管理 |
-| 销售订单 | SaleOrderDO + SaleOrderService | 销售流程管理 |
-| 销售出库 | SaleOutDO + SaleOutService | 商品出库管理 |
-| 销售退货 | SaleReturnDO + SaleReturnService | 商品退货管理 |
-| 库存调拨 | StockMoveDO + StockMoveService | 多仓库库存调度 |
-| 库存盘点 | StockCheckDO + StockCheckService | 库存差异核对 |
-| 付款单 | FinancePaymentDO + FinancePaymentService | 采购付款管理 |
-| 收款单 | FinanceReceiptDO + FinanceReceiptService | 销售收款管理 |
+| 功能   | 技术实现                                     | 用途      |
+|------|------------------------------------------|---------|
+| 采购订单 | PurchaseOrderDO + PurchaseOrderService   | 采购流程管理  |
+| 采购入库 | PurchaseInDO + PurchaseInService         | 采购收货管理  |
+| 采购退货 | PurchaseReturnDO + PurchaseReturnService | 采购退款管理  |
+| 销售订单 | SaleOrderDO + SaleOrderService           | 销售流程管理  |
+| 销售出库 | SaleOutDO + SaleOutService               | 商品出库管理  |
+| 销售退货 | SaleReturnDO + SaleReturnService         | 商品退货管理  |
+| 库存调拨 | StockMoveDO + StockMoveService           | 多仓库库存调度 |
+| 库存盘点 | StockCheckDO + StockCheckService         | 库存差异核对  |
+| 付款单  | FinancePaymentDO + FinancePaymentService | 采购付款管理  |
+| 收款单  | FinanceReceiptDO + FinanceReceiptService | 销售收款管理  |
 
-它是一个轻量但功能完整的 ERP 管理模块，适用于制造业、批发零售、物流等行业。如果你有具体某个类（如 `ErpPurchaseInServiceImpl`、`ErpSaleOutServiceImpl`）想要深入了解，欢迎继续提问！
+它是一个轻量但功能完整的 ERP 管理模块，适用于制造业、批发零售、物流等行业。如果你有具体某个类（如 `ErpPurchaseInServiceImpl`、
+`ErpSaleOutServiceImpl`）想要深入了解，欢迎继续提问！

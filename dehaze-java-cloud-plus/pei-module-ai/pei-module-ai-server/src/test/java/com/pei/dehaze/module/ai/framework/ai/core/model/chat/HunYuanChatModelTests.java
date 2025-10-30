@@ -35,6 +35,18 @@ public class HunYuanChatModelTests {
             .build();
 
     private final HunYuanChatModel chatModel = new HunYuanChatModel(openAiChatModel);
+    private final OpenAiChatModel deepSeekOpenAiChatModel = OpenAiChatModel.builder()
+            .openAiApi(OpenAiApi.builder()
+                    .baseUrl(HunYuanChatModel.DEEP_SEEK_BASE_URL)
+                    .apiKey("sk-abc") // apiKey
+                    .build())
+            .defaultOptions(OpenAiChatOptions.builder()
+//                    .model(HunYuanChatModel.DEEP_SEEK_MODEL_DEFAULT) // 模型（"deepseek-v3"）
+                    .model("deepseek-r1") // 模型（"deepseek-r1"）
+                    .temperature(0.7)
+                    .build())
+            .build();
+    private final HunYuanChatModel deepSeekChatModel = new HunYuanChatModel(deepSeekOpenAiChatModel);
 
     @Test
     @Disabled
@@ -63,20 +75,6 @@ public class HunYuanChatModelTests {
         // 打印结果
         flux.doOnNext(System.out::println).then().block();
     }
-
-    private final OpenAiChatModel deepSeekOpenAiChatModel = OpenAiChatModel.builder()
-            .openAiApi(OpenAiApi.builder()
-                    .baseUrl(HunYuanChatModel.DEEP_SEEK_BASE_URL)
-                    .apiKey("sk-abc") // apiKey
-                    .build())
-            .defaultOptions(OpenAiChatOptions.builder()
-//                    .model(HunYuanChatModel.DEEP_SEEK_MODEL_DEFAULT) // 模型（"deepseek-v3"）
-                    .model("deepseek-r1") // 模型（"deepseek-r1"）
-                    .temperature(0.7)
-                    .build())
-            .build();
-
-    private final HunYuanChatModel deepSeekChatModel = new HunYuanChatModel(deepSeekOpenAiChatModel);
 
     @Test
     @Disabled

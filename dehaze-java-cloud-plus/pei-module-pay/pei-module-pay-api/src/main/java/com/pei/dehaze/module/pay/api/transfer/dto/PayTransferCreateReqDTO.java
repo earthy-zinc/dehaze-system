@@ -64,9 +64,8 @@ public class PayTransferCreateReqDTO {
 
     /**
      * 收款人账号
-     *
-     * 微信场景下：openid
-     * 支付宝场景下：支付宝账号
+     * <p>
+     * 微信场景下：openid 支付宝场景下：支付宝账号
      */
     @NotEmpty(message = "收款人账号不能为空")
     private String userAccount;
@@ -78,7 +77,7 @@ public class PayTransferCreateReqDTO {
     /**
      * 【微信】现金营销场景
      *
-     * @param activityName 活动名称
+     * @param activityName      活动名称
      * @param rewardDescription 奖励说明
      * @return channelExtras
      */
@@ -86,19 +85,6 @@ public class PayTransferCreateReqDTO {
         return buildWeiXinChannelExtra(1000,
                 "活动名称", activityName,
                 "奖励说明", rewardDescription);
-    }
-
-    /**
-     * 【微信】企业报销场景
-     *
-     * @param expenseType 报销类型
-     * @param expenseDescription 报销说明
-     * @return channelExtras
-     */
-    public static Map<String, String> buildWeiXinChannelExtra1006(String expenseType, String expenseDescription) {
-        return buildWeiXinChannelExtra(1006,
-                "报销类型", expenseType,
-                "报销说明", expenseDescription);
     }
 
     private static Map<String, String> buildWeiXinChannelExtra(Integer sceneId, String... values) {
@@ -115,6 +101,19 @@ public class PayTransferCreateReqDTO {
         channelExtras.put("sceneId", StrUtil.toString(sceneId));
         channelExtras.put("sceneReportInfos", JsonUtils.toJsonString(sceneReportInfos));
         return channelExtras;
+    }
+
+    /**
+     * 【微信】企业报销场景
+     *
+     * @param expenseType        报销类型
+     * @param expenseDescription 报销说明
+     * @return channelExtras
+     */
+    public static Map<String, String> buildWeiXinChannelExtra1006(String expenseType, String expenseDescription) {
+        return buildWeiXinChannelExtra(1006,
+                "报销类型", expenseType,
+                "报销说明", expenseDescription);
     }
 
 }

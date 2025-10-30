@@ -1,9 +1,9 @@
 package com.pei.dehaze.framework.dict.core.util;
 
 import com.pei.dehaze.framework.common.biz.system.dict.DictDataCommonApi;
+import com.pei.dehaze.framework.common.biz.system.dict.dto.DictDataRespDTO;
 import com.pei.dehaze.framework.dict.core.DictFrameworkUtils;
 import com.pei.dehaze.framework.test.core.ut.BaseMockitoUnitTest;
-import com.pei.dehaze.framework.common.biz.system.dict.dto.DictDataRespDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;

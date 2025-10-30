@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.erp.service.product;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.erp.controller.admin.product.vo.unit.ErpProductUnitPageReqVO;
 import com.pei.dehaze.module.erp.controller.admin.product.vo.unit.ErpProductUnitSaveReqVO;
 import com.pei.dehaze.module.erp.dal.dataobject.product.ErpProductUnitDO;
 import com.pei.dehaze.module.erp.dal.mysql.product.ErpProductUnitMapper;
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -55,21 +55,6 @@ public class ErpProductUnitServiceImpl implements ErpProductUnitService {
         productUnitMapper.updateById(updateObj);
     }
 
-    @VisibleForTesting
-    void validateProductUnitNameUnique(Long id, String name) {
-        ErpProductUnitDO unit = productUnitMapper.selectByName(name);
-        if (unit == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的字典类型
-        if (id == null) {
-            throw exception(PRODUCT_UNIT_NAME_DUPLICATE);
-        }
-        if (!unit.getId().equals(id)) {
-            throw exception(PRODUCT_UNIT_NAME_DUPLICATE);
-        }
-    }
-
     @Override
     public void deleteProductUnit(Long id) {
         // 1.1 校验存在
@@ -80,12 +65,6 @@ public class ErpProductUnitServiceImpl implements ErpProductUnitService {
         }
         // 2. 删除
         productUnitMapper.deleteById(id);
-    }
-
-    private void validateProductUnitExists(Long id) {
-        if (productUnitMapper.selectById(id) == null) {
-            throw exception(PRODUCT_UNIT_NOT_EXISTS);
-        }
     }
 
     @Override
@@ -105,7 +84,28 @@ public class ErpProductUnitServiceImpl implements ErpProductUnitService {
 
     @Override
     public List<ErpProductUnitDO> getProductUnitList(Collection<Long> ids) {
-         return productUnitMapper.selectBatchIds(ids);
+        return productUnitMapper.selectBatchIds(ids);
+    }
+
+    private void validateProductUnitExists(Long id) {
+        if (productUnitMapper.selectById(id) == null) {
+            throw exception(PRODUCT_UNIT_NOT_EXISTS);
+        }
+    }
+
+    @VisibleForTesting
+    void validateProductUnitNameUnique(Long id, String name) {
+        ErpProductUnitDO unit = productUnitMapper.selectByName(name);
+        if (unit == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的字典类型
+        if (id == null) {
+            throw exception(PRODUCT_UNIT_NAME_DUPLICATE);
+        }
+        if (!unit.getId().equals(id)) {
+            throw exception(PRODUCT_UNIT_NAME_DUPLICATE);
+        }
     }
 
 }

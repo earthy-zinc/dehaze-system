@@ -1,8 +1,8 @@
 package com.pei.dehaze.framework.operatelog.config;
 
-import com.pei.dehaze.framework.operatelog.core.service.LogRecordServiceImpl;
 import com.mzt.logapi.service.ILogRecordService;
 import com.mzt.logapi.starter.annotation.EnableLogRecord;
+import com.pei.dehaze.framework.operatelog.core.service.LogRecordServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;

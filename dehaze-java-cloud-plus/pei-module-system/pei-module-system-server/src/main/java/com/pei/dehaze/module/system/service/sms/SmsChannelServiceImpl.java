@@ -65,14 +65,6 @@ public class SmsChannelServiceImpl implements SmsChannelService {
         smsChannelMapper.deleteById(id);
     }
 
-    private SmsChannelDO validateSmsChannelExists(Long id) {
-        SmsChannelDO channel = smsChannelMapper.selectById(id);
-        if (channel == null) {
-            throw exception(SMS_CHANNEL_NOT_EXISTS);
-        }
-        return channel;
-    }
-
     @Override
     public SmsChannelDO getSmsChannel(Long id) {
         return smsChannelMapper.selectById(id);
@@ -98,6 +90,14 @@ public class SmsChannelServiceImpl implements SmsChannelService {
     @Override
     public SmsClient getSmsClient(String code) {
         return smsClientFactory.getSmsClient(code);
+    }
+
+    private SmsChannelDO validateSmsChannelExists(Long id) {
+        SmsChannelDO channel = smsChannelMapper.selectById(id);
+        if (channel == null) {
+            throw exception(SMS_CHANNEL_NOT_EXISTS);
+        }
+        return channel;
     }
 
 }

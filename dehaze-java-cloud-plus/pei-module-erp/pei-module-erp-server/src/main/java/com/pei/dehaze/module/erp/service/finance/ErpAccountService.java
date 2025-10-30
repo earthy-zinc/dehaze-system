@@ -37,7 +37,7 @@ public interface ErpAccountService {
     /**
      * 更新结算账户默认状态
      *
-     * @param id 编号
+     * @param id            编号
      * @param defaultStatus 默认状态
      */
     void updateAccountDefaultStatus(Long id, Boolean defaultStatus);
@@ -74,14 +74,6 @@ public interface ErpAccountService {
     List<ErpAccountDO> getAccountListByStatus(Integer status);
 
     /**
-     * 获得结算账户列表
-     *
-     * @param ids 编号数组
-     * @return 结算账户列表
-     */
-    List<ErpAccountDO> getAccountList(Collection<Long> ids);
-
-    /**
      * 获得结算账户 Map
      *
      * @param ids 编号数组
@@ -90,6 +82,14 @@ public interface ErpAccountService {
     default Map<Long, ErpAccountDO> getAccountMap(Collection<Long> ids) {
         return convertMap(getAccountList(ids), ErpAccountDO::getId);
     }
+
+    /**
+     * 获得结算账户列表
+     *
+     * @param ids 编号数组
+     * @return 结算账户列表
+     */
+    List<ErpAccountDO> getAccountList(Collection<Long> ids);
 
     /**
      * 获得结算账户分页

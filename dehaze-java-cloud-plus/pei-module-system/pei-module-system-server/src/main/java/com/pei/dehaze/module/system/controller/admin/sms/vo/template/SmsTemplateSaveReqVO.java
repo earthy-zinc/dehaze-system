@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.system.controller.admin.sms.vo.template;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 短信模板创建/修改 Request VO")
 @Data

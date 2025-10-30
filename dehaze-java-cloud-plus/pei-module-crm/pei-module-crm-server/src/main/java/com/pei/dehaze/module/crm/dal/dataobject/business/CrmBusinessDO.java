@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.crm.dal.dataobject.business;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
-import com.pei.dehaze.module.crm.enums.business.CrmBusinessEndStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
+import com.pei.dehaze.module.crm.enums.business.CrmBusinessEndStatusEnum;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -37,7 +37,7 @@ public class CrmBusinessDO extends BaseDO {
     private String name;
     /**
      * 客户编号
-     *
+     * <p>
      * 关联 {@link CrmCustomerDO#getId()}
      */
     private Long customerId;
@@ -57,26 +57,26 @@ public class CrmBusinessDO extends BaseDO {
 
     /**
      * 负责人的用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long ownerUserId;
 
     /**
      * 商机状态组编号
-     *
-     *  关联 {@link CrmBusinessStatusTypeDO#getId()}
+     * <p>
+     * 关联 {@link CrmBusinessStatusTypeDO#getId()}
      */
     private Long statusTypeId;
     /**
      * 商机状态编号
-     *
+     * <p>
      * 关联 {@link CrmBusinessStatusDO#getId()}
      */
     private Long statusId;
     /**
      * 结束状态
-     *
+     * <p>
      * 枚举 {@link CrmBusinessEndStatusEnum}
      */
     private Integer endStatus;
@@ -91,7 +91,7 @@ public class CrmBusinessDO extends BaseDO {
     private LocalDateTime dealTime;
     /**
      * 产品总金额，单位：元
-     *
+     * <p>
      * productPrice = ∑({@link CrmBusinessProductDO#getTotalPrice()})
      */
     private BigDecimal totalProductPrice;

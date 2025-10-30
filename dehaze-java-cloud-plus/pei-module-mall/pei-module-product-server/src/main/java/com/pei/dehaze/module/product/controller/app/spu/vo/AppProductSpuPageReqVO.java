@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.product.controller.app.spu.vo;
 
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.framework.common.pojo.PageParam;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.pei.dehaze.framework.common.pojo.PageParam;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import lombok.Data;

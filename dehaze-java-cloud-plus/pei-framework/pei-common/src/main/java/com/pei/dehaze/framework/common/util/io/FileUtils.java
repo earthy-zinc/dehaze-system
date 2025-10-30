@@ -14,8 +14,7 @@ import java.io.File;
 public class FileUtils {
 
     /**
-     * 创建临时文件
-     * 该文件会在 JVM 退出时，进行删除
+     * 创建临时文件 该文件会在 JVM 退出时，进行删除
      *
      * @param data 文件内容
      * @return 文件
@@ -29,23 +28,7 @@ public class FileUtils {
     }
 
     /**
-     * 创建临时文件
-     * 该文件会在 JVM 退出时，进行删除
-     *
-     * @param data 文件内容
-     * @return 文件
-     */
-    @SneakyThrows
-    public static File createTempFile(byte[] data) {
-        File file = createTempFile();
-        // 写入内容
-        FileUtil.writeBytes(data, file);
-        return file;
-    }
-
-    /**
-     * 创建临时文件，无内容
-     * 该文件会在 JVM 退出时，进行删除
+     * 创建临时文件，无内容 该文件会在 JVM 退出时，进行删除
      *
      * @return 文件
      */
@@ -55,6 +38,20 @@ public class FileUtils {
         File file = File.createTempFile(IdUtil.simpleUUID(), null);
         // 标记 JVM 退出时，自动删除
         file.deleteOnExit();
+        return file;
+    }
+
+    /**
+     * 创建临时文件 该文件会在 JVM 退出时，进行删除
+     *
+     * @param data 文件内容
+     * @return 文件
+     */
+    @SneakyThrows
+    public static File createTempFile(byte[] data) {
+        File file = createTempFile();
+        // 写入内容
+        FileUtil.writeBytes(data, file);
         return file;
     }
 

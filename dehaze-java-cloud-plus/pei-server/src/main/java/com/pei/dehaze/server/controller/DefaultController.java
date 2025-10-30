@@ -11,8 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import static com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeConstants.NOT_IMPLEMENTED;
 
 /**
- * 默认 Controller，解决部分 module 未开启时的 404 提示。
- * 例如说，/bpm/** 路径，工作流
+ * 默认 Controller，解决部分 module 未开启时的 404 提示。 例如说，/bpm/** 路径，工作流
  *
  * @author earthyzinc
  */
@@ -22,64 +21,64 @@ public class DefaultController {
 
     @RequestMapping("/admin-api/bpm/**")
     public CommonResult<Boolean> bpm404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[工作流模块 pei-module-bpm - 暂未启动]");
     }
 
     @RequestMapping("/admin-api/mp/**")
     public CommonResult<Boolean> mp404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[微信公众号 pei-module-mp - 暂未启动]");
     }
 
-    @RequestMapping(value = { "/admin-api/product/**", // 商品中心
+    @RequestMapping(value = {"/admin-api/product/**", // 商品中心
             "/admin-api/trade/**", // 交易中心
-            "/admin-api/promotion/**" }) // 营销中心
+            "/admin-api/promotion/**"}) // 营销中心
     public CommonResult<Boolean> mall404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[商城系统 pei-module-mall - 暂未启动]");
     }
 
     @RequestMapping("/admin-api/erp/**")
     public CommonResult<Boolean> erp404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[ERP 模块 pei-module-erp - 暂未启动]");
     }
 
     @RequestMapping("/admin-api/crm/**")
     public CommonResult<Boolean> crm404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[CRM 模块 pei-module-crm - 暂未启动]");
     }
 
-    @RequestMapping(value = { "/admin-api/report/**"})
+    @RequestMapping(value = {"/admin-api/report/**"})
     public CommonResult<Boolean> report404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[报表模块 pei-module-report - 暂未启动]");
     }
 
-    @RequestMapping(value = { "/admin-api/pay/**"})
+    @RequestMapping(value = {"/admin-api/pay/**"})
     public CommonResult<Boolean> pay404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[支付模块 pei-module-pay - 暂未启动]");
     }
 
-    @RequestMapping(value = { "/admin-api/ai/**"})
+    @RequestMapping(value = {"/admin-api/ai/**"})
     public CommonResult<Boolean> ai404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[AI 大模型 pei-module-ai - 暂未启动]");
     }
 
-    @RequestMapping(value = { "/admin-api/iot/**"})
+    @RequestMapping(value = {"/admin-api/iot/**"})
     public CommonResult<Boolean> iot404() {
-        return CommonResult.error(NOT_IMPLEMENTED.getCode(),
+        return CommonResult.error(NOT_IMPLEMENTED.code(),
                 "[IoT 物联网 pei-module-iot - 暂未启动]");
     }
 
     /**
      * 测试接口：打印 query、header、body
      */
-    @RequestMapping(value = { "/test" })
+    @RequestMapping(value = {"/test"})
     @PermitAll
     public CommonResult<Boolean> test(HttpServletRequest request) {
         // 打印查询参数

@@ -45,16 +45,15 @@ public class PayDemoOrderServiceImpl implements PayDemoOrderService {
 
     /**
      * 接入的支付应用标识
-     *
+     * <p>
      * 从 [支付管理 -> 应用信息] 里添加
      */
     private static final String PAY_APP_KEY = "demo";
 
     /**
      * 商品信息 Map
-     *
-     * key：商品编号
-     * value：[商品名、商品价格]
+     * <p>
+     * key：商品编号 value：[商品名、商品价格]
      */
     private final Map<Long, Object[]> spuNames = new HashMap<>();
 
@@ -145,7 +144,7 @@ public class PayDemoOrderServiceImpl implements PayDemoOrderService {
     /**
      * 校验支付订单的合法性
      *
-     * @param order 交易订单
+     * @param order      交易订单
      * @param payOrderId 支付订单编号
      * @return 支付订单
      */

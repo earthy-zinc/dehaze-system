@@ -2,6 +2,8 @@ package com.pei.dehaze.module.system.service.tenant;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.dynamic.datasource.annotation.DSTransactional;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -10,18 +12,15 @@ import com.pei.dehaze.module.system.controller.admin.tenant.vo.packages.TenantPa
 import com.pei.dehaze.module.system.dal.dataobject.tenant.TenantDO;
 import com.pei.dehaze.module.system.dal.dataobject.tenant.TenantPackageDO;
 import com.pei.dehaze.module.system.dal.mysql.tenant.TenantPackageMapper;
-import com.baomidou.dynamic.datasource.annotation.DSTransactional;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.pei.dehaze.module.system.enums.ErrorCodeConstants.*;
-import static com.pei.dehaze.module.system.enums.ErrorCodeConstants.TENANT_PACKAGE_NAME_DUPLICATE;
 
 /**
  * 租户套餐 Service 实现类
@@ -77,14 +76,6 @@ public class TenantPackageServiceImpl implements TenantPackageService {
         tenantPackageMapper.deleteById(id);
     }
 
-    private TenantPackageDO validateTenantPackageExists(Long id) {
-        TenantPackageDO tenantPackage = tenantPackageMapper.selectById(id);
-        if (tenantPackage == null) {
-            throw exception(TENANT_PACKAGE_NOT_EXISTS);
-        }
-        return tenantPackage;
-    }
-
     private void validateTenantUsed(Long id) {
         if (tenantService.getTenantCountByPackageId(id) > 0) {
             throw exception(TENANT_PACKAGE_USED);
@@ -118,6 +109,13 @@ public class TenantPackageServiceImpl implements TenantPackageService {
         return tenantPackageMapper.selectListByStatus(status);
     }
 
+    private TenantPackageDO validateTenantPackageExists(Long id) {
+        TenantPackageDO tenantPackage = tenantPackageMapper.selectById(id);
+        if (tenantPackage == null) {
+            throw exception(TENANT_PACKAGE_NOT_EXISTS);
+        }
+        return tenantPackage;
+    }
 
     @VisibleForTesting
     void validateTenantPackageNameUnique(Long id, String name) {

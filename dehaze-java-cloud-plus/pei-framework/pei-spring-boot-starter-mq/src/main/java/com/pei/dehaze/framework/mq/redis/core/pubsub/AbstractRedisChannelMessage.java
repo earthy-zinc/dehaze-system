@@ -1,7 +1,7 @@
 package com.pei.dehaze.framework.mq.redis.core.pubsub;
 
-import com.pei.dehaze.framework.mq.redis.core.message.AbstractRedisMessage;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.pei.dehaze.framework.mq.redis.core.message.AbstractRedisMessage;
 
 /**
  * Redis Channel Message 抽象类

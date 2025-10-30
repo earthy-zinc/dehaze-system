@@ -42,8 +42,6 @@ public interface MemberUserConvert {
 
     MemberUserDO convert(MemberUserUpdateReqVO bean);
 
-    PageResult<MemberUserRespVO> convertPage(PageResult<MemberUserDO> page);
-
     @Mapping(source = "areaId", target = "areaName", qualifiedByName = "convertAreaIdToAreaName")
     MemberUserRespVO convert03(MemberUserDO bean);
 
@@ -64,5 +62,7 @@ public interface MemberUserConvert {
         });
         return result;
     }
+
+    PageResult<MemberUserRespVO> convertPage(PageResult<MemberUserDO> page);
 
 }

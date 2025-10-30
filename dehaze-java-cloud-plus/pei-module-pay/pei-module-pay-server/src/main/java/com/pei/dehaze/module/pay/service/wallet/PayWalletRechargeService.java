@@ -18,7 +18,7 @@ public interface PayWalletRechargeService {
      * @param userId      用户编号
      * @param userType    用户类型
      * @param createReqVO 钱包充值请求 VO
-     * @param userIp  用户Ip
+     * @param userIp      用户Ip
      * @return 钱包充值记录
      */
     PayWalletRechargeDO createWalletRecharge(Long userId, Integer userType, String userIp,
@@ -27,8 +27,8 @@ public interface PayWalletRechargeService {
     /**
      * 获得钱包充值记录分页
      *
-     * @param userId 用户编号
-     * @param userType 用户类型
+     * @param userId    用户编号
+     * @param userType  用户类型
      * @param pageReqVO 分页请求
      * @param payStatus 是否支付
      * @return 钱包充值记录分页

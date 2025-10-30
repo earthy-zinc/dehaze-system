@@ -9,7 +9,7 @@ import java.util.Arrays;
 
 /**
  * BPM 任务的候选人策略枚举
- *
+ * <p>
  * 例如说：分配给指定人审批
  *
  * @author earthyzinc

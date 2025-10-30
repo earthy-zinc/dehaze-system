@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.product.controller.app.favorite.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "用户 APP - 商品收藏的单个 Request VO") // 用于收藏、取消收藏、获取收藏
 @Data

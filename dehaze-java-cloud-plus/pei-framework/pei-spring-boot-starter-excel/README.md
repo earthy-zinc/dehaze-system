@@ -1,4 +1,5 @@
-`pei-spring-boot-starter-excel` 是一个 **Excel 拓展模块（Excel Extension Module）**，其核心作用是为企业级应用提供统一的 Excel 读写能力，并支持以下功能：
+`pei-spring-boot-starter-excel` 是一个 **Excel 拓展模块（Excel Extension Module）**，其核心作用是为企业级应用提供统一的
+Excel 读写能力，并支持以下功能：
 
 - 字典格式化与反向解析
 - 下拉选择列自动生成
@@ -6,13 +7,15 @@
 - JSON 序列化/反序列化支持
 - 高性能缓存字典数据以提升转换效率
 
-该模块基于 `EasyExcel + Apache POI` 实现高性能 Excel 处理，并结合系统字典模块实现数据自动映射，适用于电商、CRM、ERP、AI 等需要处理大量 Excel 数据导入导出的场景。
+该模块基于 `EasyExcel + Apache POI` 实现高性能 Excel 处理，并结合系统字典模块实现数据自动映射，适用于电商、CRM、ERP、AI
+等需要处理大量 Excel 数据导入导出的场景。
 
 ---
 
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：构建统一的 Excel 封装层，支持：
     - 自动将数据库中的字典值转换为前端可读标签（如 `1 -> "启用"`）
     - 支持下拉框列生成（方便用户选择固定选项）
@@ -23,6 +26,7 @@
     - 报表系统数据导出
 
 ### 🧩 技术栈依赖
+
 - **Excel 引擎**：`Alibaba EasyExcel`
 - **字典服务**：`DictFrameworkUtils` + `DictDataCommonApi`
 - **数据转换**：`Converter` 接口扩展
@@ -46,7 +50,6 @@ src/main/java/
         └── core/                // 字典工具类
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -54,6 +57,7 @@ src/main/java/
 ### 1️⃣ `annotations` 包 —— Excel 注解定义
 
 #### 示例：`DictFormat.java`
+
 ```java
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
@@ -63,7 +67,6 @@ public @interface DictFormat {
 }
 ```
 
-
 - **作用**：用于标记字段应使用哪个字典类型进行格式化。
 - **使用方式**：
   ```java
@@ -72,12 +75,12 @@ public @interface DictFormat {
   private Integer status;
   ```
 
-
 ---
 
 ### 2️⃣ `convert` 包 —— Excel 字段类型转换器
 
 #### 示例：`DictConvert.java`
+
 ```java
 @Override
 public Object convertToJavaData(ReadCellData readCellData, ExcelContentProperty contentProperty,
@@ -96,7 +99,6 @@ public WriteCellData<String> convertToExcelData(Object object, ExcelContentPrope
 }
 ```
 
-
 - **作用**：在读取和写入 Excel 时自动进行字典转换。
 - **关键逻辑**：
     - `convertToJavaData`: 将 Excel 中的中文标签（如“启用”）转为数字（如 `1`）
@@ -108,6 +110,7 @@ public WriteCellData<String> convertToExcelData(Object object, ExcelContentPrope
 ---
 
 #### 示例：`AreaConvert.java`
+
 ```java
 public class AreaConvert implements Converter<Object> {
     public Object convertToJavaData(...) {
@@ -117,7 +120,6 @@ public class AreaConvert implements Converter<Object> {
     }
 }
 ```
-
 
 - **作用**：地区字段的 Excel 转换器。
 - **关键逻辑**：
@@ -129,6 +131,7 @@ public class AreaConvert implements Converter<Object> {
 ---
 
 #### 示例：`MoneyConvert.java`
+
 ```java
 public class MoneyConvert implements Converter<Integer> {
     public WriteCellData<String> convertToExcelData(Integer value, ...) {
@@ -137,7 +140,6 @@ public class MoneyConvert implements Converter<Integer> {
     }
 }
 ```
-
 
 - **作用**：金额字段的 Excel 转换器（单位分 → 元）。
 - **关键逻辑**：
@@ -152,13 +154,13 @@ public class MoneyConvert implements Converter<Integer> {
 ### 3️⃣ `function` 包 —— Excel 列下拉数据源接口
 
 #### 示例：`ExcelColumnSelectFunction.java`
+
 ```java
 public interface ExcelColumnSelectFunction {
     String getName();
     List<String> getOptions();
 }
 ```
-
 
 - **作用**：为非字典类型的列提供下拉数据源。
 - **使用方式**：
@@ -179,12 +181,12 @@ public interface ExcelColumnSelectFunction {
   }
   ```
 
-
 ---
 
 ### 4️⃣ `handler` 包 —— Excel 写入处理器
 
 #### 示例：`SelectSheetWriteHandler.java`
+
 ```java
 private final Map<Integer, List<String>> selectMap = new HashMap<>();
 
@@ -203,7 +205,6 @@ private void setColumnSelect(...) {
 }
 ```
 
-
 - **作用**：为 Excel 添加下拉选择列。
 - **关键逻辑**：
     - 读取字段上的 `@ExcelColumnSelect` 注解
@@ -218,6 +219,7 @@ private void setColumnSelect(...) {
 ### 5️⃣ `util` 包 —— Excel 工具类封装
 
 #### 示例：`ExcelUtils.java`
+
 ```java
 public static <T> void write(HttpServletResponse response, String filename, String sheetName,
                              Class<T> head, List<T> data) throws IOException {
@@ -227,7 +229,6 @@ public static <T> void write(HttpServletResponse response, String filename, Stri
             .sheet(sheetName).doWrite(data);
 }
 ```
-
 
 - **作用**：封装 Excel 导出常用方法。
 - **关键逻辑**：
@@ -243,6 +244,7 @@ public static <T> void write(HttpServletResponse response, String filename, Stri
 ### 6️⃣ `dict.core` 包 —— 字典工具类
 
 #### 示例：`DictFrameworkUtils.java`
+
 ```java
 private static final LoadingCache<String, List<DictDataRespDTO>> GET_DICT_DATA_CACHE = CacheUtils.buildAsyncReloadingCache(
         Duration.ofMinutes(1L),
@@ -264,7 +266,6 @@ public static String parseDictDataLabel(String dictType, String value) {
 }
 ```
 
-
 - **作用**：缓存并转换字典数据。
 - **关键逻辑**：
     - 使用 Guava 缓存提升性能
@@ -279,6 +280,7 @@ public static String parseDictDataLabel(String dictType, String value) {
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ Excel 导出流程
+
 ```mermaid
 graph TD
     A[Controller 层调用 ExcelUtils.write(...)] --> B[创建 HttpServletResponse 输出流]
@@ -292,8 +294,8 @@ graph TD
     I --> J[输出 Excel 文件]
 ```
 
-
 ### 2️⃣ Excel 导入流程
+
 ```mermaid
 graph TD
     A[Controller 层调用 ExcelUtils.read(...)] --> B[解析 Excel 文件]
@@ -302,7 +304,6 @@ graph TD
     C -- 否 --> E[调用默认转换器]
     D --> F[返回实体对象列表]
 ```
-
 
 ---
 
@@ -321,25 +322,25 @@ graph TD
     I --> J[DictFrameworkUtils.parseDictDataLabel(...)]
 ```
 
-
 ---
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `annotations` | 注解定义 | `DictFormat` |
-| `convert` | 字段转换器 | `DictConvert` |
-| `function` | 下拉数据源接口 | `ExcelColumnSelectFunction` |
-| `handler` | 写入处理器 | `SelectSheetWriteHandler` |
-| `util` | 工具类封装 | `ExcelUtils` |
-| `dict.core` | 字典转换工具 | `DictFrameworkUtils` |
+| 包名            | 功能      | 关键类                         |
+|---------------|---------|-----------------------------|
+| `annotations` | 注解定义    | `DictFormat`                |
+| `convert`     | 字段转换器   | `DictConvert`               |
+| `function`    | 下拉数据源接口 | `ExcelColumnSelectFunction` |
+| `handler`     | 写入处理器   | `SelectSheetWriteHandler`   |
+| `util`        | 工具类封装   | `ExcelUtils`                |
+| `dict.core`   | 字典转换工具  | `DictFrameworkUtils`        |
 
 ---
 
 ## 🧾 模块实现原理详解
 
 ### 1️⃣ 字典字段转换实现流程
+
 - **步骤**：
     1. Controller 方法标注 `@DictFormat(SysDictTypeConstants.USER_STATUS)`
     2. 在 Excel 导出时，`DictConvert` 调用 `DictFrameworkUtils.parseDictDataLabel(...)` 将 `1` 转为 `"启用"`
@@ -347,6 +348,7 @@ graph TD
     4. 使用 Guava 缓存避免重复请求远程服务
 
 ### 2️⃣ 下拉列生成实现流程
+
 - **步骤**：
     1. DTO 字段添加 `@ExcelColumnSelect(dictType = "user.status")`
     2. 构造 `SelectSheetWriteHandler` 时解析字段
@@ -355,6 +357,7 @@ graph TD
     5. Excel 导出后，用户只能选择预设值
 
 ### 3️⃣ 金额字段转换实现流程
+
 - **步骤**：
     1. DTO 字段为 `Integer amount;`（单位：分）
     2. 添加 `@ExcelProperty` 和 `@Converter(MoneyConvert.class)`
@@ -366,6 +369,7 @@ graph TD
 ## 🧪 单元测试与异常处理
 
 ### 示例：`DictFrameworkUtilsTest.java`
+
 ```java
 @Test
 public void testParseDictDataLabel() {
@@ -379,7 +383,6 @@ public void testParseDictDataLabel() {
 }
 ```
 
-
 - **作用**：验证字典转换器的准确性。
 - **覆盖范围**：
     - 正常情况（含多字典类型）
@@ -390,13 +393,13 @@ public void testParseDictDataLabel() {
 
 ## ✅ 廁议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多语言支持 | 当前仅支持中文，未来可扩展英文、日文等 |
-| ✅ 性能优化 | 增加批量转换优化（减少单个字段转换开销） |
-| ✅ 单元测试增强 | 补充更多边界条件测试（如空值、非法输入） |
-| ✅ 分布式缓存 | 使用 Redis 替代 Guava Cache，避免集群不一致 |
-| ✅ 多租户增强 | 结合 TenantContextHolder 实现租户级别的字典隔离 |
+| 改进点      | 描述                                 |
+|----------|------------------------------------|
+| ✅ 多语言支持  | 当前仅支持中文，未来可扩展英文、日文等                |
+| ✅ 性能优化   | 增加批量转换优化（减少单个字段转换开销）               |
+| ✅ 单元测试增强 | 补充更多边界条件测试（如空值、非法输入）               |
+| ✅ 分布式缓存  | 使用 Redis 替代 Guava Cache，避免集群不一致    |
+| ✅ 多租户增强  | 结合 TenantContextHolder 实现租户级别的字典隔离 |
 
 ---
 
@@ -404,15 +407,15 @@ public void testParseDictDataLabel() {
 
 `pei-spring-boot-starter-excel` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 字典字段转换 | DictConvert + DictFrameworkUtils | 自动将字典值转为可读标签 |
-| 下拉列生成 | SelectSheetWriteHandler | 提供下拉选择框，提升用户体验 |
-| 金额字段转换 | MoneyConvert | 支持金额单位自动转换（分 → 元） |
-| 地区字段转换 | AreaConvert | 地区名称与编号自动互转 |
-| JSON 字段转换 | JsonConvert | 支持任意对象的 JSON 显示 |
-| 字典缓存 | DictFrameworkUtils + Guava | 提升 Excel 转换性能 |
-| 工具类封装 | ExcelUtils | 提供统一的 Excel 导入/导出入口 |
+| 功能        | 技术实现                             | 用途                  |
+|-----------|----------------------------------|---------------------|
+| 字典字段转换    | DictConvert + DictFrameworkUtils | 自动将字典值转为可读标签        |
+| 下拉列生成     | SelectSheetWriteHandler          | 提供下拉选择框，提升用户体验      |
+| 金额字段转换    | MoneyConvert                     | 支持金额单位自动转换（分 → 元）   |
+| 地区字段转换    | AreaConvert                      | 地区名称与编号自动互转         |
+| JSON 字段转换 | JsonConvert                      | 支持任意对象的 JSON 显示     |
+| 字典缓存      | DictFrameworkUtils + Guava       | 提升 Excel 转换性能       |
+| 工具类封装     | ExcelUtils                       | 提供统一的 Excel 导入/导出入口 |
 
 它是一个轻量但功能完整的 Excel 模块，适用于电商订单导出、会员信息管理、CRM 客户报表、ERP 物料清单等场景。
 

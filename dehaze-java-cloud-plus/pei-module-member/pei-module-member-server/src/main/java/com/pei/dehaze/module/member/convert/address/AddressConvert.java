@@ -28,7 +28,7 @@ public interface AddressConvert {
 
     MemberAddressDO convert(AppAddressUpdateReqVO bean);
 
-    @Mapping(source = "areaId", target = "areaName",  qualifiedByName = "convertAreaIdToAreaName")
+    @Mapping(source = "areaId", target = "areaName", qualifiedByName = "convertAreaIdToAreaName")
     AppAddressRespVO convert(MemberAddressDO bean);
 
     List<AppAddressRespVO> convertList(List<MemberAddressDO> list);

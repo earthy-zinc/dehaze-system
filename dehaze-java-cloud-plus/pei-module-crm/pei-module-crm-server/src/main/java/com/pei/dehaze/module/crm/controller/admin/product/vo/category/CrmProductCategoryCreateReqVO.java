@@ -7,7 +7,7 @@ import lombok.Data;
 
 @Schema(description = "管理后台 - CRM 产品分类创建/更新 Request VO")
 @Data
-public class CrmProductCategoryCreateReqVO{
+public class CrmProductCategoryCreateReqVO {
 
     @Schema(description = "分类编号", example = "23902")
     private Long id;

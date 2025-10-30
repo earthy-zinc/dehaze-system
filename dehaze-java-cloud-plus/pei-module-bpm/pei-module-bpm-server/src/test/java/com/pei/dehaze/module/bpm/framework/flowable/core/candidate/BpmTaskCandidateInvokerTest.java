@@ -110,6 +110,24 @@ public class BpmTaskCandidateInvokerTest extends BaseMockitoUnitTest {
         }
     }
 
+    private static void mockFlowElementExtensionElement(FlowElement element, String name, String value) {
+        if (value == null) {
+            return;
+        }
+        ExtensionElement extensionElement = new ExtensionElement();
+        extensionElement.setNamespace(FLOWABLE_EXTENSIONS_NAMESPACE);
+        extensionElement.setNamespacePrefix(FLOWABLE_EXTENSIONS_PREFIX);
+        extensionElement.setElementText(value);
+        extensionElement.setName(name);
+        // mock
+        Map<String, List<ExtensionElement>> extensionElements = element.getExtensionElements();
+        if (extensionElements == null) {
+            extensionElements = new LinkedHashMap<>();
+        }
+        extensionElements.put(name, Collections.singletonList(extensionElement));
+        when(element.getExtensionElements()).thenReturn(extensionElements);
+    }
+
     /**
      * 场景：没有计算到候选人，但是被禁用移除，最终通过 empty 进行分配
      */
@@ -232,24 +250,6 @@ public class BpmTaskCandidateInvokerTest extends BaseMockitoUnitTest {
             // 断言
             assertEquals(asSet(2L), results);
         }
-    }
-
-    private static void mockFlowElementExtensionElement(FlowElement element, String name, String value) {
-        if (value == null) {
-            return;
-        }
-        ExtensionElement extensionElement = new ExtensionElement();
-        extensionElement.setNamespace(FLOWABLE_EXTENSIONS_NAMESPACE);
-        extensionElement.setNamespacePrefix(FLOWABLE_EXTENSIONS_PREFIX);
-        extensionElement.setElementText(value);
-        extensionElement.setName(name);
-        // mock
-        Map<String, List<ExtensionElement>> extensionElements = element.getExtensionElements();
-        if (extensionElements == null) {
-            extensionElements = new LinkedHashMap<>();
-        }
-        extensionElements.put(name, Collections.singletonList(extensionElement));
-        when(element.getExtensionElements()).thenReturn(extensionElements);
     }
 
     @Test

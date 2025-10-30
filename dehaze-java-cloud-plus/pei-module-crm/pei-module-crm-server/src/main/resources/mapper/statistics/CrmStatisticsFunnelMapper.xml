@@ -4,7 +4,7 @@
 
     <select id="selectCustomerCountByDate" resultType="java.lang.Long">
         SELECT
-            COUNT(*)
+        COUNT(*)
         FROM crm_customer
         WHERE deleted = 0
         AND owner_user_id IN
@@ -19,7 +19,7 @@
 
     <select id="selectBusinessCountByDateAndEndStatus" resultType="java.lang.Long">
         SELECT
-            COUNT(*)
+        COUNT(*)
         FROM crm_business
         WHERE deleted = 0
         <if test="status != null">
@@ -36,9 +36,9 @@
     <select id="selectBusinessSummaryListGroupByEndStatus"
             resultType="com.pei.dehaze.module.crm.controller.admin.statistics.vo.funnel.CrmStatisticsBusinessSummaryByEndStatusRespVO">
         SELECT
-            end_status AS endStatus,
-            COUNT(*) AS businessCount,
-            SUM(total_price) AS totalPrice
+        end_status AS endStatus,
+        COUNT(*) AS businessCount,
+        SUM(total_price) AS totalPrice
         FROM crm_business
         WHERE deleted = 0 AND end_status IS NOT NULL
         AND owner_user_id IN
@@ -53,9 +53,9 @@
     <select id="selectBusinessSummaryGroupByDate"
             resultType="com.pei.dehaze.module.crm.controller.admin.statistics.vo.funnel.CrmStatisticsBusinessSummaryByDateRespVO">
         SELECT
-            DATE_FORMAT(create_time, '%Y-%m-%d') AS time,
-            COUNT(*) AS businessCreateCount,
-            SUM(total_price) AS totalPrice
+        DATE_FORMAT(create_time, '%Y-%m-%d') AS time,
+        COUNT(*) AS businessCreateCount,
+        SUM(total_price) AS totalPrice
         FROM crm_business
         WHERE deleted = 0
         AND owner_user_id IN
@@ -70,9 +70,9 @@
     <select id="selectBusinessInversionRateSummaryByDate"
             resultType="com.pei.dehaze.module.crm.controller.admin.statistics.vo.funnel.CrmStatisticsBusinessInversionRateSummaryByDateRespVO">
         SELECT
-            DATE_FORMAT(create_time, '%Y-%m-%d') AS time,
-            COUNT(*) AS businessCount,
-            SUM(IF(end_status = 1, 1, 0)) AS businessWinCount
+        DATE_FORMAT(create_time, '%Y-%m-%d') AS time,
+        COUNT(*) AS businessCount,
+        SUM(IF(end_status = 1, 1, 0)) AS businessWinCount
         FROM crm_business
         WHERE deleted = 0
         AND owner_user_id IN

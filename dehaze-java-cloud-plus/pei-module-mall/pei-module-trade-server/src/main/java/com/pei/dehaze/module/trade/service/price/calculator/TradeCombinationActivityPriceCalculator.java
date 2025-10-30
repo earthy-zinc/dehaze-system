@@ -7,10 +7,9 @@ import com.pei.dehaze.module.promotion.api.combination.dto.CombinationValidateJo
 import com.pei.dehaze.module.promotion.enums.common.PromotionTypeEnum;
 import com.pei.dehaze.module.trade.service.price.bo.TradePriceCalculateReqBO;
 import com.pei.dehaze.module.trade.service.price.bo.TradePriceCalculateRespBO;
+import jakarta.annotation.Resource;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-
-import jakarta.annotation.Resource;
 
 // TODO @puhui999：单测可以后补下
 

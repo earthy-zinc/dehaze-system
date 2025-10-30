@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.infra.api.file.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
 
 @Schema(description = "RPC 服务 - 文件创建 Request DTO")
 @Data

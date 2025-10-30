@@ -1,13 +1,11 @@
 package com.pei.dehaze.module.system.service.sms;
 
 import cn.hutool.core.map.MapUtil;
+import com.google.common.collect.Lists;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.ArrayUtils;
 import com.pei.dehaze.framework.common.util.object.ObjectUtils;
-import com.pei.dehaze.module.system.framework.sms.core.client.SmsClient;
-import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
-import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.template.SmsTemplatePageReqVO;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.template.SmsTemplateSaveReqVO;
@@ -15,12 +13,14 @@ import com.pei.dehaze.module.system.dal.dataobject.sms.SmsChannelDO;
 import com.pei.dehaze.module.system.dal.dataobject.sms.SmsTemplateDO;
 import com.pei.dehaze.module.system.dal.mysql.sms.SmsTemplateMapper;
 import com.pei.dehaze.module.system.enums.sms.SmsTemplateTypeEnum;
-import com.google.common.collect.Lists;
+import com.pei.dehaze.module.system.framework.sms.core.client.SmsClient;
+import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
+import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -137,6 +137,15 @@ public class SmsTemplateServiceImplTest extends BaseDbUnitTest {
         assertPojoEquals(reqVO, smsTemplate);
         assertEquals(Lists.newArrayList("operation", "code"), smsTemplate.getParams());
         assertEquals(channelDO.getCode(), smsTemplate.getChannelCode());
+    }
+
+    @SafeVarargs
+    private static SmsTemplateDO randomSmsTemplateDO(Consumer<SmsTemplateDO>... consumers) {
+        Consumer<SmsTemplateDO> consumer = (o) -> {
+            o.setStatus(randomEle(CommonStatusEnum.values()).getStatus()); // 保证 status 的范围
+            o.setType(randomEle(SmsTemplateTypeEnum.values()).getType()); // 保证 type 的 范围
+        };
+        return randomPojo(SmsTemplateDO.class, ArrayUtils.append(consumer, consumers));
     }
 
     @Test
@@ -321,6 +330,8 @@ public class SmsTemplateServiceImplTest extends BaseDbUnitTest {
                 SMS_TEMPLATE_CODE_DUPLICATE, code);
     }
 
+    // ========== 随机对象 ==========
+
     @Test
     public void testValidateDictDataValueUnique_valueDuplicateForUpdate() {
         // 准备参数
@@ -332,17 +343,6 @@ public class SmsTemplateServiceImplTest extends BaseDbUnitTest {
         // 调用，校验异常
         assertServiceException(() -> smsTemplateService.validateSmsTemplateCodeDuplicate(id, code),
                 SMS_TEMPLATE_CODE_DUPLICATE, code);
-    }
-
-    // ========== 随机对象 ==========
-
-    @SafeVarargs
-    private static SmsTemplateDO randomSmsTemplateDO(Consumer<SmsTemplateDO>... consumers) {
-        Consumer<SmsTemplateDO> consumer = (o) -> {
-            o.setStatus(randomEle(CommonStatusEnum.values()).getStatus()); // 保证 status 的范围
-            o.setType(randomEle(SmsTemplateTypeEnum.values()).getType()); // 保证 type 的 范围
-        };
-        return randomPojo(SmsTemplateDO.class, ArrayUtils.append(consumer, consumers));
     }
 
 }

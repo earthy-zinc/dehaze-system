@@ -5,14 +5,13 @@ import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.pay.enums.PayChannelEnum;
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Min;
-import lombok.Data;
-import org.hibernate.validator.constraints.URL;
-
 import jakarta.validation.Validator;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import lombok.Data;
+import org.hibernate.validator.constraints.URL;
 
 @Schema(description = "用户 App - 分销提现创建 Request VO")
 @Data
@@ -51,6 +50,22 @@ public class AppBrokerageWithdrawCreateReqVO {
     @InEnum(PayChannelEnum.class)
     private String transferChannelCode;
 
+    public void validate(Validator validator) {
+        if (BrokerageWithdrawTypeEnum.WALLET.getType().equals(type)) {
+            ValidationUtils.validate(validator, this, Wallet.class);
+        } else if (BrokerageWithdrawTypeEnum.BANK.getType().equals(type)) {
+            ValidationUtils.validate(validator, this, Bank.class);
+        } else if (BrokerageWithdrawTypeEnum.WECHAT_QR.getType().equals(type)) {
+            ValidationUtils.validate(validator, this, WechatQR.class);
+        } else if (BrokerageWithdrawTypeEnum.WECHAT_API.getType().equals(type)) {
+            ValidationUtils.validate(validator, this, WechatApi.class);
+        } else if (BrokerageWithdrawTypeEnum.ALIPAY_QR.getType().equals(type)) {
+            ValidationUtils.validate(validator, this, AlipayQR.class);
+        } else if (BrokerageWithdrawTypeEnum.ALIPAY_API.getType().equals(type)) {
+            ValidationUtils.validate(validator, this, AlipayApi.class);
+        }
+    }
+
     public interface Wallet {
     }
 
@@ -67,22 +82,6 @@ public class AppBrokerageWithdrawCreateReqVO {
     }
 
     public interface AlipayApi {
-    }
-
-    public void validate(Validator validator) {
-        if (BrokerageWithdrawTypeEnum.WALLET.getType().equals(type)) {
-            ValidationUtils.validate(validator, this, Wallet.class);
-        } else if (BrokerageWithdrawTypeEnum.BANK.getType().equals(type)) {
-            ValidationUtils.validate(validator, this, Bank.class);
-        } else if (BrokerageWithdrawTypeEnum.WECHAT_QR.getType().equals(type)) {
-            ValidationUtils.validate(validator, this, WechatQR.class);
-        } else if (BrokerageWithdrawTypeEnum.WECHAT_API.getType().equals(type)) {
-            ValidationUtils.validate(validator, this, WechatApi.class);
-        } else if (BrokerageWithdrawTypeEnum.ALIPAY_QR.getType().equals(type)) {
-            ValidationUtils.validate(validator, this, AlipayQR.class);
-        } else if (BrokerageWithdrawTypeEnum.ALIPAY_API.getType().equals(type)) {
-            ValidationUtils.validate(validator, this, AlipayApi.class);
-        }
     }
 
 }

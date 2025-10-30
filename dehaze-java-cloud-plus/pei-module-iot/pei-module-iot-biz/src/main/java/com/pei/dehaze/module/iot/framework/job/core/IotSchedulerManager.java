@@ -13,9 +13,8 @@ import java.util.Properties;
 
 /**
  * IoT 模块的 Scheduler 管理类，基于 Quartz 实现
- *
- * 疑问：为什么 IoT 模块不复用全局的 SchedulerManager 呢？
- * 回复：pei-cloud 项目，使用的是 XXL-Job 作为调度中心，无法动态添加任务。
+ * <p>
+ * 疑问：为什么 IoT 模块不复用全局的 SchedulerManager 呢？ 回复：pei-cloud 项目，使用的是 XXL-Job 作为调度中心，无法动态添加任务。
  *
  * @author earthyzinc
  */
@@ -80,13 +79,13 @@ public class IotSchedulerManager {
     /**
      * 添加或更新 Job 到 Quartz 中
      *
-     * @param jobClass 任务处理器的类
-     * @param jobName 任务名
+     * @param jobClass       任务处理器的类
+     * @param jobName        任务名
      * @param cronExpression CRON 表达式
-     * @param jobDataMap 任务数据
+     * @param jobDataMap     任务数据
      * @throws SchedulerException 添加异常
      */
-    public void addOrUpdateJob(Class <? extends Job> jobClass, String jobName,
+    public void addOrUpdateJob(Class<? extends Job> jobClass, String jobName,
                                String cronExpression, Map<String, Object> jobDataMap)
             throws SchedulerException {
         if (scheduler.checkExists(new JobKey(jobName))) {
@@ -97,15 +96,30 @@ public class IotSchedulerManager {
     }
 
     /**
+     * 更新 Job 到 Quartz
+     *
+     * @param jobName        任务名
+     * @param cronExpression CRON 表达式
+     * @throws SchedulerException 更新异常
+     */
+    public void updateJob(String jobName, String cronExpression)
+            throws SchedulerException {
+        // 创建新 Trigger 对象
+        Trigger newTrigger = this.buildTrigger(jobName, cronExpression);
+        // 修改调度
+        scheduler.rescheduleJob(new TriggerKey(jobName), newTrigger);
+    }
+
+    /**
      * 添加 Job 到 Quartz 中
      *
-     * @param jobClass 任务处理器的类
-     * @param jobName 任务名
+     * @param jobClass       任务处理器的类
+     * @param jobName        任务名
      * @param cronExpression CRON 表达式
-     * @param jobDataMap 任务数据
+     * @param jobDataMap     任务数据
      * @throws SchedulerException 添加异常
      */
-    public void addJob(Class <? extends Job> jobClass, String jobName,
+    public void addJob(Class<? extends Job> jobClass, String jobName,
                        String cronExpression, Map<String, Object> jobDataMap)
             throws SchedulerException {
         // 创建 JobDetail 对象
@@ -118,19 +132,11 @@ public class IotSchedulerManager {
         scheduler.scheduleJob(jobDetail, trigger);
     }
 
-    /**
-     * 更新 Job 到 Quartz
-     *
-     * @param jobName 任务名
-     * @param cronExpression CRON 表达式
-     * @throws SchedulerException 更新异常
-     */
-    public void updateJob(String jobName, String cronExpression)
-            throws SchedulerException {
-        // 创建新 Trigger 对象
-        Trigger newTrigger = this.buildTrigger(jobName, cronExpression);
-        // 修改调度
-        scheduler.rescheduleJob(new TriggerKey(jobName), newTrigger);
+    private Trigger buildTrigger(String jobName, String cronExpression) {
+        return TriggerBuilder.newTrigger()
+                .withIdentity(jobName)
+                .withSchedule(CronScheduleBuilder.cronSchedule(cronExpression))
+                .build();
     }
 
     /**
@@ -176,13 +182,6 @@ public class IotSchedulerManager {
      */
     public void triggerJob(String jobName) throws SchedulerException {
         scheduler.triggerJob(new JobKey(jobName));
-    }
-
-    private Trigger buildTrigger(String jobName, String cronExpression) {
-        return TriggerBuilder.newTrigger()
-                .withIdentity(jobName)
-                .withSchedule(CronScheduleBuilder.cronSchedule(cronExpression))
-                .build();
     }
 
 }

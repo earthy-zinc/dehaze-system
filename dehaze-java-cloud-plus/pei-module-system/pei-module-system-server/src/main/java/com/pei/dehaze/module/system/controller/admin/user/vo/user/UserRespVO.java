@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.system.controller.admin.user.vo.user;
 
+import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
+import com.alibaba.excel.annotation.ExcelProperty;
 import com.pei.dehaze.framework.excel.core.annotations.DictFormat;
 import com.pei.dehaze.framework.excel.core.convert.DictConvert;
 import com.pei.dehaze.module.system.enums.DictTypeConstants;
-import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
-import com.alibaba.excel.annotation.ExcelProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -14,7 +14,7 @@ import java.util.Set;
 @Schema(description = "管理后台 - 用户信息 Response VO")
 @Data
 @ExcelIgnoreUnannotated
-public class UserRespVO{
+public class UserRespVO {
 
     @Schema(description = "用户编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     @ExcelProperty("用户编号")

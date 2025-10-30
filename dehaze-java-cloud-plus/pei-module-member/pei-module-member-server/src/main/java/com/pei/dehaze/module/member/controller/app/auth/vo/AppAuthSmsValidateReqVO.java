@@ -4,13 +4,12 @@ import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.framework.common.validation.Mobile;
 import com.pei.dehaze.module.system.enums.sms.SmsSceneEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-import lombok.experimental.Accessors;
-import org.hibernate.validator.constraints.Length;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import lombok.Data;
+import lombok.experimental.Accessors;
+import org.hibernate.validator.constraints.Length;
 
 @Schema(description = "用户 APP - 校验手机验证码 Request VO")
 @Data

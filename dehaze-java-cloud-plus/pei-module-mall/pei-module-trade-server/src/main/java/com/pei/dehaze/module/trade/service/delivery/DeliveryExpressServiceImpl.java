@@ -9,10 +9,10 @@ import com.pei.dehaze.module.trade.controller.admin.delivery.vo.express.Delivery
 import com.pei.dehaze.module.trade.convert.delivery.DeliveryExpressConvert;
 import com.pei.dehaze.module.trade.dal.dataobject.delivery.DeliveryExpressDO;
 import com.pei.dehaze.module.trade.dal.mysql.delivery.DeliveryExpressMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -60,25 +60,6 @@ public class DeliveryExpressServiceImpl implements DeliveryExpressService {
         deliveryExpressMapper.deleteById(id);
     }
 
-    private void validateExpressCodeUnique(String code, Long id) {
-        DeliveryExpressDO express = deliveryExpressMapper.selectByCode(code);
-        if (express == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的快递公司
-        if (id == null) {
-            throw exception(EXPRESS_CODE_DUPLICATE);
-        }
-        if (!express.getId().equals(id)) {
-            throw exception(EXPRESS_CODE_DUPLICATE);
-        }
-    }
-    private void validateDeliveryExpressExists(Long id) {
-        if (deliveryExpressMapper.selectById(id) == null) {
-            throw exception(EXPRESS_NOT_EXISTS);
-        }
-    }
-
     @Override
     public DeliveryExpressDO getDeliveryExpress(Long id) {
         return deliveryExpressMapper.selectById(id);
@@ -109,6 +90,26 @@ public class DeliveryExpressServiceImpl implements DeliveryExpressService {
     @Override
     public List<DeliveryExpressDO> getDeliveryExpressListByStatus(Integer status) {
         return deliveryExpressMapper.selectListByStatus(status);
+    }
+
+    private void validateDeliveryExpressExists(Long id) {
+        if (deliveryExpressMapper.selectById(id) == null) {
+            throw exception(EXPRESS_NOT_EXISTS);
+        }
+    }
+
+    private void validateExpressCodeUnique(String code, Long id) {
+        DeliveryExpressDO express = deliveryExpressMapper.selectByCode(code);
+        if (express == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的快递公司
+        if (id == null) {
+            throw exception(EXPRESS_CODE_DUPLICATE);
+        }
+        if (!express.getId().equals(id)) {
+            throw exception(EXPRESS_CODE_DUPLICATE);
+        }
     }
 
 }

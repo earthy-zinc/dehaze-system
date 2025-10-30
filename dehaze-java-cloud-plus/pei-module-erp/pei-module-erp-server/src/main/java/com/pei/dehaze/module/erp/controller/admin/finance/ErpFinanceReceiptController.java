@@ -75,7 +75,7 @@ public class ErpFinanceReceiptController {
     @Operation(summary = "更新收款单的状态")
     @PreAuthorize("@ss.hasPermission('erp:finance-receipt:update-status')")
     public CommonResult<Boolean> updateFinanceReceiptStatus(@RequestParam("id") Long id,
-                                                           @RequestParam("status") Integer status) {
+                                                            @RequestParam("status") Integer status) {
         financeReceiptService.updateFinanceReceiptStatus(id, status);
         return success(true);
     }
@@ -111,18 +111,6 @@ public class ErpFinanceReceiptController {
         return success(buildFinanceReceiptVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出收款单 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:finance-receipt:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportFinanceReceiptExcel(@Valid ErpFinanceReceiptPageReqVO pageReqVO,
-                                         HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpFinanceReceiptRespVO> list = buildFinanceReceiptVOPageResult(financeReceiptService.getFinanceReceiptPage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "收款单.xls", "数据", ErpFinanceReceiptRespVO.class, list);
-    }
-
     private PageResult<ErpFinanceReceiptRespVO> buildFinanceReceiptVOPageResult(PageResult<ErpFinanceReceiptDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -148,6 +136,18 @@ public class ErpFinanceReceiptController {
             MapUtils.findAndThen(userMap, Long.parseLong(receipt.getCreator()), user -> receipt.setCreatorName(user.getNickname()));
             MapUtils.findAndThen(userMap, receipt.getFinanceUserId(), user -> receipt.setFinanceUserName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出收款单 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:finance-receipt:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportFinanceReceiptExcel(@Valid ErpFinanceReceiptPageReqVO pageReqVO,
+                                          HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpFinanceReceiptRespVO> list = buildFinanceReceiptVOPageResult(financeReceiptService.getFinanceReceiptPage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "收款单.xls", "数据", ErpFinanceReceiptRespVO.class, list);
     }
 
 }

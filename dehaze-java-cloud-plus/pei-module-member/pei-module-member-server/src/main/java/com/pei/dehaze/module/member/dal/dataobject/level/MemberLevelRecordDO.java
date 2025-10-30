@@ -1,15 +1,15 @@
 package com.pei.dehaze.module.member.dal.dataobject.level;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.member.dal.dataobject.user.MemberUserDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.member.dal.dataobject.user.MemberUserDO;
 import lombok.*;
 
 /**
  * 会员等级记录 DO
- *
+ * <p>
  * 用户每次等级发生变更时，记录一条日志
  *
  * @author owen
@@ -31,19 +31,19 @@ public class MemberLevelRecordDO extends BaseDO {
     private Long id;
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 {@link MemberUserDO#getId()} 字段
      */
     private Long userId;
     /**
      * 等级编号
-     *
+     * <p>
      * 关联 {@link MemberLevelDO#getId()} 字段
      */
     private Long levelId;
     /**
      * 会员等级
-     *
+     * <p>
      * 冗余 {@link MemberLevelDO#getLevel()} 字段
      */
     private Integer level;

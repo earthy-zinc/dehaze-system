@@ -2,6 +2,9 @@ package com.pei.dehaze.module.crm.service.contact;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.ListUtil;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.crm.controller.admin.contact.vo.CrmContactBusinessReqVO;
@@ -21,9 +24,6 @@ import com.pei.dehaze.module.crm.service.permission.CrmPermissionService;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionTransferReqBO;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -118,30 +118,6 @@ public class CrmContactServiceImpl implements CrmContactService {
         LogRecordContext.putVariable("contactName", oldContact.getName());
     }
 
-    /**
-     * 校验关联的数据都存在
-     *
-     * @param saveReqVO 新增/修改请求 VO
-     */
-    private void validateRelationDataExists(CrmContactSaveReqVO saveReqVO) {
-        // 1. 校验客户
-        if (saveReqVO.getCustomerId() != null && customerService.getCustomer(saveReqVO.getCustomerId()) == null) {
-            customerService.validateCustomer(saveReqVO.getCustomerId());
-        }
-        // 2. 校验负责人
-        if (saveReqVO.getOwnerUserId() != null) {
-            adminUserApi.validateUser(saveReqVO.getOwnerUserId());
-        }
-        // 3. 直属上级
-        if (saveReqVO.getParentId() != null) {
-            validateContactExists(saveReqVO.getParentId());
-        }
-        // 4. 如果有关联商机，则需要校验存在
-        if (saveReqVO.getBusinessId() != null && businessService.getBusiness(saveReqVO.getBusinessId()) == null) {
-            throw exception(BUSINESS_NOT_EXISTS);
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     @LogRecord(type = CRM_CONTACT_TYPE, subType = CRM_CONTACT_DELETE_SUB_TYPE, bizNo = "{{#id}}",
@@ -165,14 +141,6 @@ public class CrmContactServiceImpl implements CrmContactService {
 
         // 记录操作日志上下文
         LogRecordContext.putVariable("contactName", contact.getName());
-    }
-
-    private CrmContactDO validateContactExists(Long id) {
-        CrmContactDO contact = contactMapper.selectById(id);
-        if (contact == null) {
-            throw exception(CONTACT_NOT_EXISTS);
-        }
-        return contact;
     }
 
     @Override
@@ -244,8 +212,6 @@ public class CrmContactServiceImpl implements CrmContactService {
         contactMapper.updateBatch(convertList(ids, id -> new CrmContactDO().setId(id).setContactNextTime(contactNextTime)));
     }
 
-    //======================= 查询相关 =======================
-
     @Override
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_CONTACT, bizId = "#id", level = CrmPermissionLevelEnum.READ)
     public CrmContactDO getContact(Long id) {
@@ -256,6 +222,8 @@ public class CrmContactServiceImpl implements CrmContactService {
     public void validateContact(Long id) {
         validateContactExists(id);
     }
+
+    //======================= 查询相关 =======================
 
     @Override
     public List<CrmContactDO> getContactList(Collection<Long> ids) {
@@ -301,6 +269,38 @@ public class CrmContactServiceImpl implements CrmContactService {
     @Override
     public List<CrmContactDO> getContactListByCustomerIdOwnerUserId(Long customerId, Long ownerUserId) {
         return contactMapper.selectListByCustomerIdOwnerUserId(customerId, ownerUserId);
+    }
+
+    /**
+     * 校验关联的数据都存在
+     *
+     * @param saveReqVO 新增/修改请求 VO
+     */
+    private void validateRelationDataExists(CrmContactSaveReqVO saveReqVO) {
+        // 1. 校验客户
+        if (saveReqVO.getCustomerId() != null && customerService.getCustomer(saveReqVO.getCustomerId()) == null) {
+            customerService.validateCustomer(saveReqVO.getCustomerId());
+        }
+        // 2. 校验负责人
+        if (saveReqVO.getOwnerUserId() != null) {
+            adminUserApi.validateUser(saveReqVO.getOwnerUserId());
+        }
+        // 3. 直属上级
+        if (saveReqVO.getParentId() != null) {
+            validateContactExists(saveReqVO.getParentId());
+        }
+        // 4. 如果有关联商机，则需要校验存在
+        if (saveReqVO.getBusinessId() != null && businessService.getBusiness(saveReqVO.getBusinessId()) == null) {
+            throw exception(BUSINESS_NOT_EXISTS);
+        }
+    }
+
+    private CrmContactDO validateContactExists(Long id) {
+        CrmContactDO contact = contactMapper.selectById(id);
+        if (contact == null) {
+            throw exception(CONTACT_NOT_EXISTS);
+        }
+        return contact;
     }
 
 }

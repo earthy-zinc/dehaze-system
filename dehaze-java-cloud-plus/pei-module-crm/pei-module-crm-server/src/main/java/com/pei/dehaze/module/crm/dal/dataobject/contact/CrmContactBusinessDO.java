@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.crm.dal.dataobject.contact;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.crm.dal.dataobject.business.CrmBusinessDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.crm.dal.dataobject.business.CrmBusinessDO;
 import lombok.*;
 
 /**
@@ -29,13 +29,13 @@ public class CrmContactBusinessDO extends BaseDO {
     private Long id;
     /**
      * 联系人编号
-     *
+     * <p>
      * 关联 {@link CrmContactDO#getId()} 字段
      */
     private Long contactId;
     /**
      * 商机编号
-     *
+     * <p>
      * 关联 {@link CrmBusinessDO#getId()} 字段
      */
     private Long businessId;

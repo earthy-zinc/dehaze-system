@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.pay.dal.mysql.transfer;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.pay.controller.admin.transfer.vo.PayTransferPageReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.transfer.PayTransferDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;
@@ -28,7 +28,7 @@ public interface PayTransferMapper extends BaseMapperX<PayTransferDO> {
 
     default PayTransferDO selectByAppIdAndMerchantOrderId(Long appId, String merchantOrderId) {
         return selectOne(PayTransferDO::getAppId, appId,
-                    PayTransferDO::getMerchantTransferId, merchantOrderId);
+                PayTransferDO::getMerchantTransferId, merchantOrderId);
     }
 
     default PageResult<PayTransferDO> selectPage(PayTransferPageReqVO reqVO) {

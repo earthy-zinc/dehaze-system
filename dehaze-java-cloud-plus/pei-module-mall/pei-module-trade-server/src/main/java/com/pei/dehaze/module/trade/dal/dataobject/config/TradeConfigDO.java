@@ -1,15 +1,15 @@
 package com.pei.dehaze.module.trade.dal.dataobject.config;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.IntegerListTypeHandler;
-import com.pei.dehaze.module.trade.enums.brokerage.BrokerageBindModeEnum;
-import com.pei.dehaze.module.trade.enums.brokerage.BrokerageEnabledConditionEnum;
-import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.IntegerListTypeHandler;
+import com.pei.dehaze.module.trade.enums.brokerage.BrokerageBindModeEnum;
+import com.pei.dehaze.module.trade.enums.brokerage.BrokerageEnabledConditionEnum;
+import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawTypeEnum;
 import lombok.*;
 
 import java.util.List;

@@ -4,10 +4,9 @@ import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.framework.common.validation.Mobile;
 import com.pei.dehaze.module.system.enums.sms.SmsSceneEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.experimental.Accessors;
-
-import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "用户 APP - 发送手机验证码 Request VO")
 @Data

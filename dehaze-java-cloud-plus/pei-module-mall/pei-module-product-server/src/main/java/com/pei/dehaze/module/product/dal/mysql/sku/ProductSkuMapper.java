@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.product.dal.mysql.sku;
 
 import cn.hutool.core.lang.Assert;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.product.dal.dataobject.sku.ProductSkuDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -40,7 +40,7 @@ public interface ProductSkuMapper extends BaseMapperX<ProductSkuDO> {
         Assert.isTrue(incrCount > 0);
         LambdaUpdateWrapper<ProductSkuDO> lambdaUpdateWrapper = new LambdaUpdateWrapper<ProductSkuDO>()
                 .setSql(" stock = stock + " + incrCount
-                    + ", sales_count = sales_count - " + incrCount)
+                        + ", sales_count = sales_count - " + incrCount)
                 .eq(ProductSkuDO::getId, id);
         update(null, lambdaUpdateWrapper);
     }
@@ -54,10 +54,10 @@ public interface ProductSkuMapper extends BaseMapperX<ProductSkuDO> {
      */
     default int updateStockDecr(Long id, Integer incrCount) {
         Assert.isTrue(incrCount < 0);
-        incrCount = - incrCount; // 取正
+        incrCount = -incrCount; // 取正
         LambdaUpdateWrapper<ProductSkuDO> updateWrapper = new LambdaUpdateWrapper<ProductSkuDO>()
                 .setSql(" stock = stock - " + incrCount
-                    + ", sales_count = sales_count + " + incrCount)
+                        + ", sales_count = sales_count + " + incrCount)
                 .eq(ProductSkuDO::getId, id)
                 .ge(ProductSkuDO::getStock, incrCount);
         return update(null, updateWrapper);

@@ -16,10 +16,12 @@ public class AppCouponRespVO {
     @Schema(description = "优惠劵名", requiredMode = Schema.RequiredMode.REQUIRED, example = "春节送送送")
     private String name;
 
-    @Schema(description = "优惠劵状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "1") // 参见 CouponStatusEnum 枚举
+    @Schema(description = "优惠劵状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
+    // 参见 CouponStatusEnum 枚举
     private Integer status;
 
-    @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100") // 单位：分；0 - 不限制
+    @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")
+    // 单位：分；0 - 不限制
     private Integer usePrice;
 
     @Schema(description = "商品范围", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")

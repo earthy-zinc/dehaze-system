@@ -3,10 +3,10 @@ package com.pei.dehaze.module.statistics.service.trade;
 import com.pei.dehaze.module.statistics.dal.mysql.trade.AfterSaleStatisticsMapper;
 import com.pei.dehaze.module.statistics.service.trade.bo.AfterSaleSummaryRespBO;
 import com.pei.dehaze.module.trade.enums.aftersale.AfterSaleStatusEnum;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 
 /**

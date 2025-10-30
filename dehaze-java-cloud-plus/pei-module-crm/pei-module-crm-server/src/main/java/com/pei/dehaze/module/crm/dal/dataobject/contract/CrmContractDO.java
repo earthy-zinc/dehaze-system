@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.crm.dal.dataobject.contract;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.crm.dal.dataobject.business.CrmBusinessDO;
 import com.pei.dehaze.module.crm.dal.dataobject.contact.CrmContactDO;
 import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import com.pei.dehaze.module.crm.enums.common.CrmAuditStatusEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -43,13 +43,13 @@ public class CrmContractDO extends BaseDO {
     private String no;
     /**
      * 客户编号
-     *
+     * <p>
      * 关联 {@link CrmCustomerDO#getId()}
      */
     private Long customerId;
     /**
      * 商机编号，非必须
-     *
+     * <p>
      * 关联 {@link CrmBusinessDO#getId()}
      */
     private Long businessId;
@@ -61,20 +61,20 @@ public class CrmContractDO extends BaseDO {
 
     /**
      * 负责人的用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long ownerUserId;
 
     /**
      * 工作流编号
-     *
+     * <p>
      * 关联 ProcessInstance 的 id 属性
      */
     private String processInstanceId;
     /**
      * 审批状态
-     *
+     * <p>
      * 枚举 {@link CrmAuditStatusEnum}
      */
     private Integer auditStatus;
@@ -105,13 +105,13 @@ public class CrmContractDO extends BaseDO {
     private BigDecimal totalPrice;
     /**
      * 客户签约人，非必须
-     *
+     * <p>
      * 关联 {@link CrmContactDO#getId()}
      */
     private Long signContactId;
     /**
      * 公司签约人，非必须
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long signUserId;

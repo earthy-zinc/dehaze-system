@@ -1,6 +1,7 @@
 package com.pei.dehaze.module.system.service.mail;
 
 import cn.hutool.core.util.StrUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.module.system.dal.dataobject.mail.MailAccountDO;
@@ -10,10 +11,10 @@ import com.pei.dehaze.module.system.mq.message.mail.MailSendMessage;
 import com.pei.dehaze.module.system.mq.producer.mail.MailProducer;
 import com.pei.dehaze.module.system.service.member.MemberService;
 import com.pei.dehaze.module.system.service.user.AdminUserService;
-import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.dromara.hutool.extra.mail.*;
+import org.dromara.hutool.extra.mail.MailAccount;
+import org.dromara.hutool.extra.mail.MailUtil;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -103,7 +104,7 @@ public class MailSendServiceImpl implements MailSendService {
     public void doSendMail(MailSendMessage message) {
         // 1. 创建发送账号
         MailAccountDO account = validateMailAccount(message.getAccountId());
-        MailAccount mailAccount  = buildMailAccount(account, message.getNickname());
+        MailAccount mailAccount = buildMailAccount(account, message.getNickname());
         // 2. 发送邮件
         try {
             String messageId = MailUtil.send(mailAccount, message.getMail(),
@@ -157,7 +158,7 @@ public class MailSendServiceImpl implements MailSendService {
     /**
      * 校验邮件参数是否确实
      *
-     * @param template 邮箱模板
+     * @param template       邮箱模板
      * @param templateParams 参数列表
      */
     @VisibleForTesting

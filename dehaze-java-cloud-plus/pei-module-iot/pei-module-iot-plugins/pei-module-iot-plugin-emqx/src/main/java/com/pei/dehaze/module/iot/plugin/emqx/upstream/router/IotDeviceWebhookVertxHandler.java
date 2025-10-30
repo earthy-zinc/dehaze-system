@@ -17,11 +17,10 @@ import java.util.Collections;
 
 /**
  * IoT EMQX Webhook 事件处理的 Vert.x Handler
- *
+ * <p>
  * 参考：<a href="https://docs.emqx.com/zh/emqx/latest/data-integration/webhook.html">EMQX Webhook</a>
- *
- * 注意：该处理器需要返回特定格式：{"result": "success"} 或 {"result": "error"}，
- *      以符合 EMQX Webhook 插件的要求，因此不使用 IotStandardResponse 实体类。
+ * <p>
+ * 注意：该处理器需要返回特定格式：{"result": "success"} 或 {"result": "error"}， 以符合 EMQX Webhook 插件的要求，因此不使用 IotStandardResponse 实体类。
  *
  * @author haohao
  */

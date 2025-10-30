@@ -51,8 +51,8 @@ public class RateLimiterAspect {
         if (!success) {
             log.info("[beforePointCut][方法({}) 参数({}) 请求过于频繁]", joinPoint.getSignature().toString(), joinPoint.getArgs());
             String message = StrUtil.blankToDefault(rateLimiter.message(),
-                    GlobalErrorCodeConstants.TOO_MANY_REQUESTS.getMsg());
-            throw new ServiceException(GlobalErrorCodeConstants.TOO_MANY_REQUESTS.getCode(), message);
+                    GlobalErrorCodeConstants.TOO_MANY_REQUESTS.msg());
+            throw new ServiceException(GlobalErrorCodeConstants.TOO_MANY_REQUESTS.code(), message);
         }
     }
 

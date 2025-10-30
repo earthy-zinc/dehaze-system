@@ -95,7 +95,7 @@ public class TradeCouponPriceCalculator implements TradePriceCalculator {
      * 计算用户的优惠劵列表（可用 + 不可用）
      *
      * @param coupons 优惠劵
-     * @param result 计算结果
+     * @param result  计算结果
      * @return 优惠劵列表
      */
     private List<TradePriceCalculateRespBO.Coupon> calculateCoupons(List<CouponRespDTO> coupons,
@@ -128,17 +128,6 @@ public class TradeCouponPriceCalculator implements TradePriceCalculator {
         });
     }
 
-    private Integer getCouponPrice(CouponRespDTO coupon, Integer totalPayPrice) {
-        if (PromotionDiscountTypeEnum.PRICE.getType().equals(coupon.getDiscountType())) { // 减价
-            return coupon.getDiscountPrice();
-        } else if (PromotionDiscountTypeEnum.PERCENT.getType().equals(coupon.getDiscountType())) { // 打折
-            int couponPrice = totalPayPrice - (totalPayPrice * coupon.getDiscountPercent() / 100);
-            return coupon.getDiscountLimitPrice() == null ? couponPrice
-                    : Math.min(couponPrice, coupon.getDiscountLimitPrice()); // 优惠上限
-        }
-        throw new IllegalArgumentException(String.format("优惠劵(%s) 的优惠类型不正确", coupon));
-    }
-
     /**
      * 获得优惠劵可使用的订单项（商品）列表
      *
@@ -157,6 +146,17 @@ public class TradeCouponPriceCalculator implements TradePriceCalculator {
                     .and(orderItem -> coupon.getProductScopeValues().contains(orderItem.getCategoryId()));
         }
         return filterList(result.getItems(), matchPredicate);
+    }
+
+    private Integer getCouponPrice(CouponRespDTO coupon, Integer totalPayPrice) {
+        if (PromotionDiscountTypeEnum.PRICE.getType().equals(coupon.getDiscountType())) { // 减价
+            return coupon.getDiscountPrice();
+        } else if (PromotionDiscountTypeEnum.PERCENT.getType().equals(coupon.getDiscountType())) { // 打折
+            int couponPrice = totalPayPrice - (totalPayPrice * coupon.getDiscountPercent() / 100);
+            return coupon.getDiscountLimitPrice() == null ? couponPrice
+                    : Math.min(couponPrice, coupon.getDiscountLimitPrice()); // 优惠上限
+        }
+        throw new IllegalArgumentException(String.format("优惠劵(%s) 的优惠类型不正确", coupon));
     }
 
 }

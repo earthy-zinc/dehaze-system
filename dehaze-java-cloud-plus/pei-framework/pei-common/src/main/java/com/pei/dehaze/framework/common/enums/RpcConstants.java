@@ -2,7 +2,7 @@ package com.pei.dehaze.framework.common.enums;
 
 /**
  * RPC 相关的枚举
- *
+ * <p>
  * 虽然放在 pei-spring-boot-starter-rpc 会相对合适，但是每个 API 模块需要使用到，所以暂时只好放在此处
  *
  * @author earthyzinc
@@ -16,7 +16,7 @@ public interface RpcConstants {
 
     /**
      * system 服务名
-     *
+     * <p>
      * 注意，需要保证和 spring.application.name 保持一致
      */
     String SYSTEM_NAME = "system-server";
@@ -28,7 +28,7 @@ public interface RpcConstants {
 
     /**
      * infra 服务名
-     *
+     * <p>
      * 注意，需要保证和 spring.application.name 保持一致
      */
     String INFRA_NAME = "infra-server";

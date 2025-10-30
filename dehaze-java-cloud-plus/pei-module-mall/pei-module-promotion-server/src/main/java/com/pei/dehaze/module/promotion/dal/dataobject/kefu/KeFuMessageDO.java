@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.kefu;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.promotion.enums.kefu.KeFuMessageContentTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.promotion.enums.kefu.KeFuMessageContentTypeEnum;
 import lombok.*;
 
 /**
@@ -30,39 +30,39 @@ public class KeFuMessageDO extends BaseDO {
     private Long id;
     /**
      * 会话编号
-     *
+     * <p>
      * 关联 {@link KeFuConversationDO#getId()}
      */
     private Long conversationId;
 
     /**
      * 发送人编号
-     *
+     * <p>
      * 存储的是用户编号
      */
     private Long senderId;
     /**
      * 发送人类型
-     *
+     * <p>
      * 枚举，{@link UserTypeEnum}
      */
     private Integer senderType;
     /**
      * 接收人编号
-     *
+     * <p>
      * 存储的是用户编号
      */
     private Long receiverId;
     /**
      * 接收人类型
-     *
+     * <p>
      * 枚举，{@link UserTypeEnum}
      */
     private Integer receiverType;
 
     /**
      * 消息类型
-     *
+     * <p>
      * 枚举 {@link KeFuMessageContentTypeEnum}
      */
     private Integer contentType;

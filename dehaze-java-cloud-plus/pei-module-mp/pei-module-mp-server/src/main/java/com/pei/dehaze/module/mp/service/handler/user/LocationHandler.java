@@ -3,6 +3,7 @@ package com.pei.dehaze.module.mp.service.handler.user;
 import cn.hutool.core.util.ObjectUtil;
 import com.pei.dehaze.module.mp.framework.mp.core.context.MpContextHolder;
 import com.pei.dehaze.module.mp.service.message.MpAutoReplyService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.api.WxConsts;
 import me.chanjar.weixin.common.session.WxSessionManager;
@@ -12,14 +13,13 @@ import me.chanjar.weixin.mp.bean.message.WxMpXmlMessage;
 import me.chanjar.weixin.mp.bean.message.WxMpXmlOutMessage;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.Map;
 
 /**
  * 上报地理位置的事件处理器
- *
+ * <p>
  * 触发操作：打开微信公众号 -> 点击 + 号 -> 选择「语音」
- *
+ * <p>
  * 逻辑：粉丝上传地理位置时，也可以触发自动回复
  *
  * @author earthyzinc

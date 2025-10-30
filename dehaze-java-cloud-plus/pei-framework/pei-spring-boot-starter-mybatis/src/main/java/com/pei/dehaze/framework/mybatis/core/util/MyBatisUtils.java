@@ -2,15 +2,15 @@ package com.pei.dehaze.framework.mybatis.core.util;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.framework.common.pojo.PageParam;
-import com.pei.dehaze.framework.common.pojo.SortingField;
-import com.pei.dehaze.framework.mybatis.core.enums.DbTypeEnum;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
 import com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.dehaze.framework.common.pojo.PageParam;
+import com.pei.dehaze.framework.common.pojo.SortingField;
+import com.pei.dehaze.framework.mybatis.core.enums.DbTypeEnum;
 import net.sf.jsqlparser.expression.Alias;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -45,8 +45,7 @@ public class MyBatisUtils {
     }
 
     /**
-     * 将拦截器添加到链中
-     * 由于 MybatisPlusInterceptor 不支持添加拦截器，所以只能全量设置
+     * 将拦截器添加到链中 由于 MybatisPlusInterceptor 不支持添加拦截器，所以只能全量设置
      *
      * @param interceptor 链
      * @param inner       拦截器

@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.pay.dal.dataobject.wallet;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.pay.enums.wallet.PayWalletBizTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.pay.enums.wallet.PayWalletBizTypeEnum;
 import lombok.Data;
 
 /**
@@ -12,7 +12,7 @@ import lombok.Data;
  *
  * @author jason
  */
-@TableName(value ="pay_wallet_transaction")
+@TableName(value = "pay_wallet_transaction")
 @KeySequence("pay_wallet_transaction_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class PayWalletTransactionDO extends BaseDO {
@@ -30,14 +30,14 @@ public class PayWalletTransactionDO extends BaseDO {
 
     /**
      * 钱包编号
-     *
+     * <p>
      * 关联 {@link PayWalletDO#getId()}
      */
     private Long walletId;
 
     /**
      * 关联业务分类
-     *
+     * <p>
      * 枚举 {@link PayWalletBizTypeEnum#getType()}
      */
     private Integer bizType;
@@ -54,7 +54,7 @@ public class PayWalletTransactionDO extends BaseDO {
 
     /**
      * 交易金额，单位分
-     *
+     * <p>
      * 正值表示余额增加，负值表示余额减少
      */
     private Integer price;

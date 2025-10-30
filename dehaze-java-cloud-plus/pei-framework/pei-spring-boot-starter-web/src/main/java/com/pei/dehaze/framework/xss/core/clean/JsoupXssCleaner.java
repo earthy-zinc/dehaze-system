@@ -25,11 +25,8 @@ public class JsoupXssCleaner implements XssCleaner {
     }
 
     /**
-     * 构建一个 Xss 清理的 Safelist 规则。
-     * 基于 Safelist#relaxed() 的基础上:
-     * 1. 扩展支持了 style 和 class 属性
-     * 2. a 标签额外支持了 target 属性
-     * 3. img 标签额外支持了 data 协议，便于支持 base64
+     * 构建一个 Xss 清理的 Safelist 规则。 基于 Safelist#relaxed() 的基础上: 1. 扩展支持了 style 和 class 属性 2. a 标签额外支持了 target 属性 3. img
+     * 标签额外支持了 data 协议，便于支持 base64
      *
      * @return Safelist
      */

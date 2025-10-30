@@ -4,8 +4,8 @@ import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.system.controller.admin.mail.vo.account.MailAccountPageReqVO;
 import com.pei.dehaze.module.system.controller.admin.mail.vo.account.MailAccountSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.mail.MailAccountDO;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**

@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay;
 
 import cn.hutool.http.Method;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import com.alipay.api.AlipayApiException;
 import com.alipay.api.domain.AlipayTradeWapPayModel;
 import com.alipay.api.request.AlipayTradeWapPayRequest;
 import com.alipay.api.response.AlipayTradeWapPayResponse;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.enums.PayOrderDisplayModeEnum;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,7 +18,6 @@ import static com.pei.dehaze.framework.test.core.util.RandomUtils.*;
 import static com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum.CLOSED;
 import static com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum.WAITING;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;

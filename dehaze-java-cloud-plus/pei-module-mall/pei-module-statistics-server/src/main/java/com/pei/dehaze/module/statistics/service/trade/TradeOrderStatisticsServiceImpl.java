@@ -2,7 +2,6 @@ package com.pei.dehaze.module.statistics.service.trade;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.LocalDateTimeUtil;
-import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
 import com.pei.dehaze.module.statistics.controller.admin.common.vo.DataComparisonRespVO;
 import com.pei.dehaze.module.statistics.controller.admin.trade.vo.TradeOrderSummaryRespVO;
 import com.pei.dehaze.module.statistics.controller.admin.trade.vo.TradeOrderTrendReqVO;
@@ -11,10 +10,10 @@ import com.pei.dehaze.module.statistics.dal.mysql.trade.TradeOrderStatisticsMapp
 import com.pei.dehaze.module.statistics.enums.TimeRangeTypeEnum;
 import com.pei.dehaze.module.statistics.service.member.bo.MemberAreaStatisticsRespBO;
 import com.pei.dehaze.module.statistics.service.trade.bo.TradeOrderSummaryRespBO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;

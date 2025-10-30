@@ -1,7 +1,8 @@
 package com.pei.dehaze.module.pay.controller.admin.notify.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.*;
+import lombok.Data;
+
 import java.time.LocalDateTime;
 
 @Schema(description = "管理后台 - 回调通知 Response VO")
@@ -15,7 +16,7 @@ public class PayNotifyTaskRespVO {
     private Long appId;
 
     @Schema(description = "应用名称", example = "wx_pay")
-    private String  appName;
+    private String appName;
 
     @Schema(description = "通知类型", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")
     private Byte type;

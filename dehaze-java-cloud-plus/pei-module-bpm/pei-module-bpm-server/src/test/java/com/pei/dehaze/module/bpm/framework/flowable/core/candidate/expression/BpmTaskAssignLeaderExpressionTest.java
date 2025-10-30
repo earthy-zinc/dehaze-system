@@ -51,6 +51,18 @@ public class BpmTaskAssignLeaderExpressionTest extends BaseMockitoUnitTest {
         assertEquals(0, result.size());
     }
 
+    @SuppressWarnings("SameParameterValue")
+    private DelegateExecution mockDelegateExecution(Long startUserId) {
+        ExecutionEntityImpl execution = new ExecutionEntityImpl();
+        execution.setProcessInstanceId(randomString());
+        // mock 返回 startUserId
+        ExecutionEntityImpl processInstance = new ExecutionEntityImpl();
+        processInstance.setStartUserId(String.valueOf(startUserId));
+        when(processInstanceService.getProcessInstance(eq(execution.getProcessInstanceId())))
+                .thenReturn(processInstance);
+        return execution;
+    }
+
     @Test
     public void testCalculateUsers_noParentDept() {
         // 准备参数
@@ -89,18 +101,6 @@ public class BpmTaskAssignLeaderExpressionTest extends BaseMockitoUnitTest {
         Set<Long> result = expression.calculateUsers(execution, 2);
         // 断言
         assertEquals(asSet(200L), result);
-    }
-
-    @SuppressWarnings("SameParameterValue")
-    private DelegateExecution mockDelegateExecution(Long startUserId) {
-        ExecutionEntityImpl execution = new ExecutionEntityImpl();
-        execution.setProcessInstanceId(randomString());
-        // mock 返回 startUserId
-        ExecutionEntityImpl processInstance = new ExecutionEntityImpl();
-        processInstance.setStartUserId(String.valueOf(startUserId));
-        when(processInstanceService.getProcessInstance(eq(execution.getProcessInstanceId())))
-                .thenReturn(processInstance);
-        return execution;
     }
 
 }

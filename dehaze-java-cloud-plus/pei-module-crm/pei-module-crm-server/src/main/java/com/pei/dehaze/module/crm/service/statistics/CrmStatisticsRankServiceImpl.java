@@ -104,20 +104,6 @@ public class CrmStatisticsRankServiceImpl implements CrmStatisticsRankService {
     }
 
     /**
-     * 拼接用户信息（昵称、部门）
-     *
-     * @param ranks 排行榜数据
-     */
-    private void appendUserInfo(List<CrmStatisticsRankRespVO> ranks) {
-        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(convertSet(ranks, CrmStatisticsRankRespVO::getOwnerUserId));
-        Map<Long, DeptRespDTO> deptMap = deptApi.getDeptMap(convertSet(userMap.values(), AdminUserRespDTO::getDeptId));
-        ranks.forEach(rank -> MapUtils.findAndThen(userMap, rank.getOwnerUserId(), user -> {
-            rank.setNickname(user.getNickname());
-            MapUtils.findAndThen(deptMap, user.getDeptId(), dept -> rank.setDeptName(dept.getName()));
-        }));
-    }
-
-    /**
      * 获得部门下的用户编号数组，包括子部门的
      *
      * @param deptId 部门编号
@@ -129,6 +115,20 @@ public class CrmStatisticsRankServiceImpl implements CrmStatisticsRankService {
         deptIds.add(deptId);
         // 2. 获得用户编号
         return convertList(adminUserApi.getUserListByDeptIds(deptIds).getCheckedData(), AdminUserRespDTO::getId);
+    }
+
+    /**
+     * 拼接用户信息（昵称、部门）
+     *
+     * @param ranks 排行榜数据
+     */
+    private void appendUserInfo(List<CrmStatisticsRankRespVO> ranks) {
+        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(convertSet(ranks, CrmStatisticsRankRespVO::getOwnerUserId));
+        Map<Long, DeptRespDTO> deptMap = deptApi.getDeptMap(convertSet(userMap.values(), AdminUserRespDTO::getDeptId));
+        ranks.forEach(rank -> MapUtils.findAndThen(userMap, rank.getOwnerUserId(), user -> {
+            rank.setNickname(user.getNickname());
+            MapUtils.findAndThen(deptMap, user.getDeptId(), dept -> rank.setDeptName(dept.getName()));
+        }));
     }
 
 }

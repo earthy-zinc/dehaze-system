@@ -2,19 +2,19 @@ package com.pei.dehaze.module.promotion.controller.admin.coupon.vo.template;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.promotion.enums.common.PromotionDiscountTypeEnum;
 import com.pei.dehaze.module.promotion.enums.common.PromotionProductScopeEnum;
 import com.pei.dehaze.module.promotion.enums.coupon.CouponTemplateValidityTypeEnum;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-import org.springframework.format.annotation.DateTimeFormat;
-
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -23,8 +23,7 @@ import static com.pei.dehaze.framework.common.util.date.DateUtils.FORMAT_YEAR_MO
 import static com.pei.dehaze.framework.common.util.date.DateUtils.TIME_ZONE_DEFAULT;
 
 /**
- * 优惠劵模板 Base VO，提供给添加、修改、详细的子 VO 使用
- * 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
+ * 优惠劵模板 Base VO，提供给添加、修改、详细的子 VO 使用 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
  */
 @Data
 public class CouponTemplateBaseVO {
@@ -48,7 +47,8 @@ public class CouponTemplateBaseVO {
     @NotNull(message = "领取方式不能为空")
     private Integer takeType;
 
-    @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100") // 单位：分；0 - 不限制
+    @Schema(description = "是否设置满多少金额可用", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")
+    // 单位：分；0 - 不限制
     @NotNull(message = "是否设置满多少金额可用不能为空")
     private Integer usePrice;
 
@@ -137,7 +137,7 @@ public class CouponTemplateBaseVO {
     @JsonIgnore
     public boolean isDiscountPercentValid() {
         return ObjectUtil.notEqual(discountType, PromotionDiscountTypeEnum.PERCENT.getType())
-                || (discountPercent != null && discountPercent >= 1 && discountPercent<= 99);
+                || (discountPercent != null && discountPercent >= 1 && discountPercent <= 99);
     }
 
     @AssertTrue(message = "优惠金额不能为空")

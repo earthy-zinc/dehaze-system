@@ -2,7 +2,6 @@ package com.pei.dehaze.module.trade.service.config;
 
 import com.pei.dehaze.module.trade.controller.admin.config.vo.TradeConfigSaveReqVO;
 import com.pei.dehaze.module.trade.dal.dataobject.config.TradeConfigDO;
-
 import jakarta.validation.Valid;
 
 /**

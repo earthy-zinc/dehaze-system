@@ -1,13 +1,13 @@
 package com.pei.dehaze.framework.operatelog.core.service;
 
+import com.mzt.logapi.beans.LogRecord;
+import com.mzt.logapi.service.ILogRecordService;
 import com.pei.dehaze.framework.common.biz.system.logger.OperateLogCommonApi;
+import com.pei.dehaze.framework.common.biz.system.logger.dto.OperateLogCreateReqDTO;
 import com.pei.dehaze.framework.common.util.monitor.TracerUtils;
 import com.pei.dehaze.framework.common.util.servlet.ServletUtils;
 import com.pei.dehaze.framework.security.core.LoginUser;
 import com.pei.dehaze.framework.security.core.util.SecurityFrameworkUtils;
-import com.pei.dehaze.framework.common.biz.system.logger.dto.OperateLogCreateReqDTO;
-import com.mzt.logapi.beans.LogRecord;
-import com.mzt.logapi.service.ILogRecordService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import java.util.List;
 
 /**
  * 操作日志 ILogRecordService 实现类
- *
+ * <p>
  * 基于 {@link OperateLogCommonApi} 实现，记录操作日志
  *
  * @author HUIHUI

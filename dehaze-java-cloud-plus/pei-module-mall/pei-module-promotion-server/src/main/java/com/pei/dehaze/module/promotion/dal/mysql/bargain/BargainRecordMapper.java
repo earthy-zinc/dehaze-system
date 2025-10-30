@@ -2,6 +2,8 @@ package com.pei.dehaze.module.promotion.dal.mysql.bargain;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.map.MapUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageParam;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
@@ -9,8 +11,6 @@ import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.promotion.controller.admin.bargain.vo.recrod.BargainRecordPageReqVO;
 import com.pei.dehaze.module.promotion.dal.dataobject.bargain.BargainRecordDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -77,7 +77,7 @@ public interface BargainRecordMapper extends BaseMapperX<BargainRecordDO> {
         // 转换数据
         return CollectionUtils.convertMap(result,
                 record -> MapUtil.getLong(record, "activityId"),
-                record -> MapUtil.getInt(record, "userCount" ));
+                record -> MapUtil.getInt(record, "userCount"));
     }
 
     @Select("SELECT COUNT(DISTINCT(user_id)) FROM promotion_bargain_record " +
@@ -112,7 +112,7 @@ public interface BargainRecordMapper extends BaseMapperX<BargainRecordDO> {
     /**
      * 更新砍价的订单编号，前提是 orderId 原本是空的
      *
-     * @param id 砍价记录编号
+     * @param id      砍价记录编号
      * @param orderId 订单编号
      * @return 更新数量
      */

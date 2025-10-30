@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.system.dal.dataobject.mail;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -39,7 +39,7 @@ public class MailTemplateDO extends BaseDO {
     private String code;
     /**
      * 发送的邮箱账号编号
-     *
+     * <p>
      * 关联 {@link MailAccountDO#getId()}
      */
     private Long accountId;
@@ -63,7 +63,7 @@ public class MailTemplateDO extends BaseDO {
     private List<String> params;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

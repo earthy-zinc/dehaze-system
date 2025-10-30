@@ -43,14 +43,6 @@ public class FlowableUtils {
 
     // ========== User 相关的工具方法 ==========
 
-    public static void setAuthenticatedUserId(Long userId) {
-        Authentication.setAuthenticatedUserId(String.valueOf(userId));
-    }
-
-    public static void clearAuthenticatedUserId() {
-        Authentication.setAuthenticatedUserId(null);
-    }
-
     public static <V> V executeAuthenticatedUserId(Long userId, Callable<V> callable) {
         setAuthenticatedUserId(userId);
         try {
@@ -60,6 +52,14 @@ public class FlowableUtils {
         } finally {
             clearAuthenticatedUserId();
         }
+    }
+
+    public static void setAuthenticatedUserId(Long userId) {
+        Authentication.setAuthenticatedUserId(String.valueOf(userId));
+    }
+
+    public static void clearAuthenticatedUserId() {
+        Authentication.setAuthenticatedUserId(null);
     }
 
     public static String getTenantId() {
@@ -116,10 +116,6 @@ public class FlowableUtils {
         return getProcessInstanceStatus(processInstance.getProcessVariables());
     }
 
-    public static Integer getProcessInstanceStatus(HistoricProcessInstance processInstance) {
-        return getProcessInstanceStatus(processInstance.getProcessVariables());
-    }
-
     /**
      * 获得流程实例的状态
      *
@@ -128,6 +124,10 @@ public class FlowableUtils {
      */
     private static Integer getProcessInstanceStatus(Map<String, Object> processVariables) {
         return (Integer) processVariables.get(BpmnVariableConstants.PROCESS_INSTANCE_VARIABLE_STATUS);
+    }
+
+    public static Integer getProcessInstanceStatus(HistoricProcessInstance processInstance) {
+        return getProcessInstanceStatus(processInstance.getProcessVariables());
     }
 
     /**
@@ -164,7 +164,7 @@ public class FlowableUtils {
 
     /**
      * 过滤流程实例的表单
-     *
+     * <p>
      * 为什么要过滤？目前使用 processVariables 存储所有流程实例的拓展字段，需要过滤掉一部分的系统字段，从而实现表单的展示
      *
      * @param processVariables 流程实例的 variables
@@ -227,9 +227,8 @@ public class FlowableUtils {
 
     /**
      * 获得流程实例的摘要
-     *
-     * 仅有 {@link BpmModelFormTypeEnum#getType()} 表单，才有摘要。
-     * 原因是，只有它才有表单项的配置，从而可以根据配置，展示摘要。
+     * <p>
+     * 仅有 {@link BpmModelFormTypeEnum#getType()} 表单，才有摘要。 原因是，只有它才有表单项的配置，从而可以根据配置，展示摘要。
      *
      * @param processDefinitionInfo 流程定义
      * @param processVariables      流程实例的 variables
@@ -319,7 +318,7 @@ public class FlowableUtils {
 
     /**
      * 过滤任务的表单
-     *
+     * <p>
      * 为什么要过滤？目前使用 taskLocalVariables 存储所有任务的拓展字段，需要过滤掉一部分的系统字段，从而实现表单的展示
      *
      * @param taskLocalVariables 任务的 taskLocalVariables
@@ -333,13 +332,9 @@ public class FlowableUtils {
 
     // ========== Expression 相关的工具方法 ==========
 
-    private static Object getExpressionValue(VariableContainer variableContainer, String expressionString,
-                                             ProcessEngineConfigurationImpl processEngineConfiguration) {
-        assert processEngineConfiguration != null;
-        ExpressionManager expressionManager = processEngineConfiguration.getExpressionManager();
-        assert expressionManager != null;
-        Expression expression = expressionManager.createExpression(expressionString);
-        return expression.getValue(variableContainer);
+    public static Object getExpressionValue(Map<String, Object> variable, String expressionString) {
+        VariableContainer variableContainer = new MapDelegateVariableContainer(variable, VariableContainer.empty());
+        return getExpressionValue(variableContainer, expressionString);
     }
 
     public static Object getExpressionValue(VariableContainer variableContainer, String expressionString) {
@@ -354,9 +349,13 @@ public class FlowableUtils {
                 getExpressionValue(variableContainer, expressionString, CommandContextUtil.getProcessEngineConfiguration()));
     }
 
-    public static Object getExpressionValue(Map<String, Object> variable, String expressionString) {
-        VariableContainer variableContainer = new MapDelegateVariableContainer(variable, VariableContainer.empty());
-        return getExpressionValue(variableContainer, expressionString);
+    private static Object getExpressionValue(VariableContainer variableContainer, String expressionString,
+                                             ProcessEngineConfigurationImpl processEngineConfiguration) {
+        assert processEngineConfiguration != null;
+        ExpressionManager expressionManager = processEngineConfiguration.getExpressionManager();
+        assert expressionManager != null;
+        Expression expression = expressionManager.createExpression(expressionString);
+        return expression.getValue(variableContainer);
     }
 
 }

@@ -32,13 +32,12 @@ public class ServletUtils {
         JakartaServletUtil.write(response, content, MediaType.APPLICATION_JSON_UTF8_VALUE);
     }
 
-    /**
-     * @param request 请求
-     * @return ua
-     */
-    public static String getUserAgent(HttpServletRequest request) {
-        String ua = request.getHeader("User-Agent");
-        return ua != null ? ua : "";
+    public static String getUserAgent() {
+        HttpServletRequest request = getRequest();
+        if (request == null) {
+            return null;
+        }
+        return getUserAgent(request);
     }
 
     /**
@@ -54,12 +53,13 @@ public class ServletUtils {
         return ((ServletRequestAttributes) requestAttributes).getRequest();
     }
 
-    public static String getUserAgent() {
-        HttpServletRequest request = getRequest();
-        if (request == null) {
-            return null;
-        }
-        return getUserAgent(request);
+    /**
+     * @param request 请求
+     * @return ua
+     */
+    public static String getUserAgent(HttpServletRequest request) {
+        String ua = request.getHeader("User-Agent");
+        return ua != null ? ua : "";
     }
 
     public static String getClientIP() {
@@ -70,16 +70,16 @@ public class ServletUtils {
         return JakartaServletUtil.getClientIP(request);
     }
 
-    public static boolean isJsonRequest(ServletRequest request) {
-        return StrUtil.startWithIgnoreCase(request.getContentType(), MediaType.APPLICATION_JSON_VALUE);
-    }
-
     public static String getBody(HttpServletRequest request) {
         // 只有在 json 请求在读取，因为只有 CacheRequestBodyFilter 才会进行缓存，支持重复读取
         if (isJsonRequest(request)) {
             return JakartaServletUtil.getBody(request);
         }
         return null;
+    }
+
+    public static boolean isJsonRequest(ServletRequest request) {
+        return StrUtil.startWithIgnoreCase(request.getContentType(), MediaType.APPLICATION_JSON_VALUE);
     }
 
     public static byte[] getBodyBytes(HttpServletRequest request) {

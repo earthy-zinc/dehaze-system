@@ -1,5 +1,7 @@
 package com.pei.dehaze.module.infra.convert.codegen;
 
+import com.baomidou.mybatisplus.generator.config.po.TableField;
+import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.infra.controller.admin.codegen.vo.CodegenDetailRespVO;
@@ -8,8 +10,6 @@ import com.pei.dehaze.module.infra.controller.admin.codegen.vo.column.CodegenCol
 import com.pei.dehaze.module.infra.controller.admin.codegen.vo.table.CodegenTableRespVO;
 import com.pei.dehaze.module.infra.dal.dataobject.codegen.CodegenColumnDO;
 import com.pei.dehaze.module.infra.dal.dataobject.codegen.CodegenTableDO;
-import com.baomidou.mybatisplus.generator.config.po.TableField;
-import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import org.apache.ibatis.type.JdbcType;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

@@ -6,7 +6,7 @@ import lombok.EqualsAndHashCode;
 
 /**
  * IoT 物模型数据类型为时间型或文本型的 DataSpec 定义
- *
+ * <p>
  * 数据类型，取值为 date 或 text。
  *
  * @author HUIHUI
@@ -17,8 +17,7 @@ import lombok.EqualsAndHashCode;
 public class ThingModelDateOrTextDataSpecs extends ThingModelDataSpecs {
 
     /**
-     * 数据长度，单位为字节。取值不能超过 2048。
-     * 当 dataType 为 text 时，需传入该参数。
+     * 数据长度，单位为字节。取值不能超过 2048。 当 dataType 为 text 时，需传入该参数。
      */
     private Integer length;
     /**

@@ -90,7 +90,7 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
 
         // 2.1 插入出库
         ErpSaleOutDO saleOut = BeanUtils.toBean(createReqVO, ErpSaleOutDO.class, in -> in
-                .setNo(no).setStatus(ErpAuditStatus.PROCESS.getStatus()))
+                        .setNo(no).setStatus(ErpAuditStatus.PROCESS.getStatus()))
                 .setOrderNo(saleOrder.getNo()).setCustomerId(saleOrder.getCustomerId());
         calculateTotalPrice(saleOut, saleOutItems);
         saleOutMapper.insert(saleOut);
@@ -138,29 +138,6 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
         }
     }
 
-    private void calculateTotalPrice(ErpSaleOutDO saleOut, List<ErpSaleOutItemDO> saleOutItems) {
-        saleOut.setTotalCount(getSumValue(saleOutItems, ErpSaleOutItemDO::getCount, BigDecimal::add));
-        saleOut.setTotalProductPrice(getSumValue(saleOutItems, ErpSaleOutItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
-        saleOut.setTotalTaxPrice(getSumValue(saleOutItems, ErpSaleOutItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
-        saleOut.setTotalPrice(saleOut.getTotalProductPrice().add(saleOut.getTotalTaxPrice()));
-        // 计算优惠价格
-        if (saleOut.getDiscountPercent() == null) {
-            saleOut.setDiscountPercent(BigDecimal.ZERO);
-        }
-        saleOut.setDiscountPrice(MoneyUtils.priceMultiplyPercent(saleOut.getTotalPrice(), saleOut.getDiscountPercent()));
-        saleOut.setTotalPrice(saleOut.getTotalPrice().subtract(saleOut.getDiscountPrice().add(saleOut.getOtherPrice())));
-    }
-
-    private void updateSaleOrderOutCount(Long orderId) {
-        // 1.1 查询销售订单对应的销售出库单列表
-        List<ErpSaleOutDO> saleOuts = saleOutMapper.selectListByOrderId(orderId);
-        // 1.2 查询对应的销售订单项的出库数量
-        Map<Long, BigDecimal> returnCountMap = saleOutItemMapper.selectOrderItemCountSumMapByOutIds(
-                convertList(saleOuts, ErpSaleOutDO::getId));
-        // 2. 更新销售订单的出库数量
-        saleOrderService.updateSaleOrderOutCount(orderId, returnCountMap);
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateSaleOutStatus(Long id, Integer status) {
@@ -202,46 +179,9 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
             return;
         }
         if (receiptPrice.compareTo(saleOut.getTotalPrice()) > 0) {
-            throw exception(SALE_OUT_FAIL_RECEIPT_PRICE_EXCEED, receiptPrice,  saleOut.getTotalPrice());
+            throw exception(SALE_OUT_FAIL_RECEIPT_PRICE_EXCEED, receiptPrice, saleOut.getTotalPrice());
         }
         saleOutMapper.updateById(new ErpSaleOutDO().setId(id).setReceiptPrice(receiptPrice));
-    }
-
-    private List<ErpSaleOutItemDO> validateSaleOutItems(List<ErpSaleOutSaveReqVO.Item> list) {
-        // 1. 校验产品存在
-        List<ErpProductDO> productList = productService.validProductList(
-                convertSet(list, ErpSaleOutSaveReqVO.Item::getProductId));
-        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
-        // 2. 转化为 ErpSaleOutItemDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, ErpSaleOutItemDO.class, item -> {
-            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
-            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
-            if (item.getTotalPrice() == null) {
-                return;
-            }
-            if (item.getTaxPercent() != null) {
-                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
-            }
-        }));
-    }
-
-    private void updateSaleOutItemList(Long id, List<ErpSaleOutItemDO> newList) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<ErpSaleOutItemDO> oldList = saleOutItemMapper.selectListByOutId(id);
-        List<List<ErpSaleOutItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setOutId(id));
-            saleOutItemMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            saleOutItemMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            saleOutItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpSaleOutItemDO::getId));
-        }
     }
 
     @Override
@@ -271,14 +211,6 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
 
     }
 
-    private ErpSaleOutDO validateSaleOutExists(Long id) {
-        ErpSaleOutDO saleOut = saleOutMapper.selectById(id);
-        if (saleOut == null) {
-            throw exception(SALE_OUT_NOT_EXISTS);
-        }
-        return saleOut;
-    }
-
     @Override
     public ErpSaleOutDO getSaleOut(Long id) {
         return saleOutMapper.selectById(id);
@@ -298,8 +230,6 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
         return saleOutMapper.selectPage(pageReqVO);
     }
 
-    // ==================== 销售出库项 ====================
-
     @Override
     public List<ErpSaleOutItemDO> getSaleOutItemListByOutId(Long outId) {
         return saleOutItemMapper.selectListByOutId(outId);
@@ -311,6 +241,76 @@ public class ErpSaleOutServiceImpl implements ErpSaleOutService {
             return Collections.emptyList();
         }
         return saleOutItemMapper.selectListByOutIds(outIds);
+    }
+
+    private List<ErpSaleOutItemDO> validateSaleOutItems(List<ErpSaleOutSaveReqVO.Item> list) {
+        // 1. 校验产品存在
+        List<ErpProductDO> productList = productService.validProductList(
+                convertSet(list, ErpSaleOutSaveReqVO.Item::getProductId));
+        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
+        // 2. 转化为 ErpSaleOutItemDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, ErpSaleOutItemDO.class, item -> {
+            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
+            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
+            if (item.getTotalPrice() == null) {
+                return;
+            }
+            if (item.getTaxPercent() != null) {
+                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
+            }
+        }));
+    }
+
+    private void calculateTotalPrice(ErpSaleOutDO saleOut, List<ErpSaleOutItemDO> saleOutItems) {
+        saleOut.setTotalCount(getSumValue(saleOutItems, ErpSaleOutItemDO::getCount, BigDecimal::add));
+        saleOut.setTotalProductPrice(getSumValue(saleOutItems, ErpSaleOutItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
+        saleOut.setTotalTaxPrice(getSumValue(saleOutItems, ErpSaleOutItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
+        saleOut.setTotalPrice(saleOut.getTotalProductPrice().add(saleOut.getTotalTaxPrice()));
+        // 计算优惠价格
+        if (saleOut.getDiscountPercent() == null) {
+            saleOut.setDiscountPercent(BigDecimal.ZERO);
+        }
+        saleOut.setDiscountPrice(MoneyUtils.priceMultiplyPercent(saleOut.getTotalPrice(), saleOut.getDiscountPercent()));
+        saleOut.setTotalPrice(saleOut.getTotalPrice().subtract(saleOut.getDiscountPrice().add(saleOut.getOtherPrice())));
+    }
+
+    private void updateSaleOrderOutCount(Long orderId) {
+        // 1.1 查询销售订单对应的销售出库单列表
+        List<ErpSaleOutDO> saleOuts = saleOutMapper.selectListByOrderId(orderId);
+        // 1.2 查询对应的销售订单项的出库数量
+        Map<Long, BigDecimal> returnCountMap = saleOutItemMapper.selectOrderItemCountSumMapByOutIds(
+                convertList(saleOuts, ErpSaleOutDO::getId));
+        // 2. 更新销售订单的出库数量
+        saleOrderService.updateSaleOrderOutCount(orderId, returnCountMap);
+    }
+
+    // ==================== 销售出库项 ====================
+
+    private ErpSaleOutDO validateSaleOutExists(Long id) {
+        ErpSaleOutDO saleOut = saleOutMapper.selectById(id);
+        if (saleOut == null) {
+            throw exception(SALE_OUT_NOT_EXISTS);
+        }
+        return saleOut;
+    }
+
+    private void updateSaleOutItemList(Long id, List<ErpSaleOutItemDO> newList) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<ErpSaleOutItemDO> oldList = saleOutItemMapper.selectListByOutId(id);
+        List<List<ErpSaleOutItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setOutId(id));
+            saleOutItemMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            saleOutItemMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            saleOutItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpSaleOutItemDO::getId));
+        }
     }
 
 }

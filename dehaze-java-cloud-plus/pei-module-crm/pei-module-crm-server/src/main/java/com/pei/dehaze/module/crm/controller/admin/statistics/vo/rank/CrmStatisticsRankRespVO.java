@@ -21,10 +21,9 @@ public class CrmStatisticsRankRespVO {
 
     /**
      * 数量是个特别“抽象”的概念，在不同排行下，代表不同含义
-     *
-     * 1. 金额：合同金额排行、回款金额排行
-     * 2. 个数：签约合同排行、产品销量排行、产品销量排行、新增客户数排行、新增联系人排行、跟进次数排行、跟进客户数排行
-     *
+     * <p>
+     * 1. 金额：合同金额排行、回款金额排行 2. 个数：签约合同排行、产品销量排行、产品销量排行、新增客户数排行、新增联系人排行、跟进次数排行、跟进客户数排行
+     * <p>
      * 为什么使用 BigDecimal 的原因：
      */
     @Schema(description = "数量", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")

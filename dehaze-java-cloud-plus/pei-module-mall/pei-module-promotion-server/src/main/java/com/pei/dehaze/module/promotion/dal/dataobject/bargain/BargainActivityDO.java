@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.bargain;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -46,7 +46,7 @@ public class BargainActivityDO extends BaseDO {
 
     /**
      * 活动状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;
@@ -79,15 +79,14 @@ public class BargainActivityDO extends BaseDO {
 
     /**
      * 砍价人数
-     *
+     * <p>
      * 需要多少人，砍价才能成功，即 {@link BargainRecordDO#getStatus()} 更新为 {@link BargainRecordDO#getStatus()} 成功状态
      */
     private Integer helpMaxCount;
     /**
      * 帮砍次数
-     *
-     * 单个活动，用户可以帮砍的次数。
-     * 例如说：帮砍次数为 1 时，A 和 B 同时将该活动链接发给 C，C 只能帮其中一个人砍价。
+     * <p>
+     * 单个活动，用户可以帮砍的次数。 例如说：帮砍次数为 1 时，A 和 B 同时将该活动链接发给 C，C 只能帮其中一个人砍价。
      */
     private Integer bargainCount;
 

@@ -12,10 +12,10 @@ import com.pei.dehaze.module.trade.enums.order.TradeOrderStatusEnum;
 import com.pei.dehaze.module.trade.enums.order.TradeOrderTypeEnum;
 import com.pei.dehaze.module.trade.service.order.TradeOrderQueryService;
 import com.pei.dehaze.module.trade.service.order.TradeOrderUpdateService;
+import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;

@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.ai.framework.ai.core.model.ppt.wdd;
 
-import com.pei.dehaze.module.ai.framework.ai.core.model.wenduoduo.api.WenDuoDuoPptApi;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
+import com.pei.dehaze.module.ai.framework.ai.core.model.wenduoduo.api.WenDuoDuoPptApi;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
@@ -19,104 +19,6 @@ public class WenDuoDuoPptApiTests {
 
     private final String token = ""; // API Token
     private final WenDuoDuoPptApi wenDuoDuoPptApi = new WenDuoDuoPptApi(token);
-
-    @Test
-    @Disabled
-    public void testCreateApiToken() {
-        // 准备参数
-        String apiKey = "";
-        WenDuoDuoPptApi.CreateTokenRequest request = new WenDuoDuoPptApi.CreateTokenRequest(apiKey);
-        // 调用方法
-        String token = wenDuoDuoPptApi.createApiToken(request);
-        // 打印结果
-        System.out.println(token);
-    }
-
-    /**
-     * 创建任务
-     */
-    @Test
-    @Disabled
-    public void testCreateTask() {
-        WenDuoDuoPptApi.ApiResponse apiResponse = wenDuoDuoPptApi.createTask(1, "dify 介绍", null);
-        System.out.println(apiResponse);
-    }
-
-
-    @Test // 创建大纲
-    @Disabled
-    public void testGenerateOutlineRequest() {
-        WenDuoDuoPptApi.CreateOutlineRequest request = new WenDuoDuoPptApi.CreateOutlineRequest(
-                "1901539019628613632", "medium", null, null, null, null);
-        // 调用
-        Flux<Map<String, Object>> flux = wenDuoDuoPptApi.createOutline(request);
-        StringBuffer contentBuffer = new StringBuffer();
-        flux.doOnNext(chunk -> {
-            contentBuffer.append(chunk.get("text"));
-            if (Objects.equals(Integer.parseInt(String.valueOf(chunk.get("status"))), 4)) {
-                // status 为 4，最终 markdown 结构树
-                System.out.println(JsonUtils.toJsonString(chunk.get("result")));
-                System.out.println(" ########################################################################");
-            }
-        }).then().block();
-        // 打印结果
-        System.out.println(contentBuffer);
-    }
-
-    /**
-     * 修改大纲
-     */
-    @Test
-    @Disabled
-    public void testUpdateOutlineRequest() {
-        WenDuoDuoPptApi.UpdateOutlineRequest request = new WenDuoDuoPptApi.UpdateOutlineRequest(
-                "1901539019628613632", TEST_OUT_LINE_CONTENT, "精简一点，三个章节即可");
-        // 调用
-        Flux<Map<String, Object>> flux = wenDuoDuoPptApi.updateOutline(request);
-        StringBuffer contentBuffer = new StringBuffer();
-        flux.doOnNext(chunk -> {
-            contentBuffer.append(chunk.get("text"));
-            if (Objects.equals(Integer.parseInt(String.valueOf(chunk.get("status"))), 4)) {
-                // status 为 4，最终 markdown 结构树
-                System.out.println(JsonUtils.toJsonString(chunk.get("result")));
-                System.out.println(" ########################################################################");
-            }
-        }).then().block();
-        // 打印结果
-        System.out.println(contentBuffer);
-
-    }
-
-    /**
-     * 获取 PPT 模版分页
-     */
-    @Test
-    @Disabled
-    public void testGetPptTemplatePage() {
-        // 准备参数
-        WenDuoDuoPptApi.TemplateQueryRequest.Filter filter = new WenDuoDuoPptApi.TemplateQueryRequest.Filter(
-                1, null, null, null);
-        WenDuoDuoPptApi.TemplateQueryRequest request = new WenDuoDuoPptApi.TemplateQueryRequest(1, 10, filter);
-        // 调用
-        WenDuoDuoPptApi.PagePptTemplateInfo pptTemplatePage = wenDuoDuoPptApi.getTemplatePage(request);
-        // 打印结果
-        System.out.println(pptTemplatePage);
-    }
-
-    /**
-     * 生成 PPT
-     */
-    @Test
-    @Disabled
-    public void testGeneratePptx() {
-        // 准备参数
-        WenDuoDuoPptApi.PptCreateRequest request = new WenDuoDuoPptApi.PptCreateRequest("1901539019628613632", "1805081814809960448", TEST_OUT_LINE_CONTENT);
-        // 调用
-        WenDuoDuoPptApi.PptInfo pptInfo = wenDuoDuoPptApi.create(request);
-        // 打印结果
-        System.out.println(pptInfo);
-    }
-
     private final String TEST_OUT_LINE_CONTENT = """
             # Dify：新一代AI应用开发平台
             
@@ -311,5 +213,101 @@ public class WenDuoDuoPptApiTests {
             #### 7.2.3 共创未来
             让我们一起用AI技术改变世界，共创美好未来。
             """;
+
+    @Test
+    @Disabled
+    public void testCreateApiToken() {
+        // 准备参数
+        String apiKey = "";
+        WenDuoDuoPptApi.CreateTokenRequest request = new WenDuoDuoPptApi.CreateTokenRequest(apiKey);
+        // 调用方法
+        String token = wenDuoDuoPptApi.createApiToken(request);
+        // 打印结果
+        System.out.println(token);
+    }
+
+    /**
+     * 创建任务
+     */
+    @Test
+    @Disabled
+    public void testCreateTask() {
+        WenDuoDuoPptApi.ApiResponse apiResponse = wenDuoDuoPptApi.createTask(1, "dify 介绍", null);
+        System.out.println(apiResponse);
+    }
+
+    @Test // 创建大纲
+    @Disabled
+    public void testGenerateOutlineRequest() {
+        WenDuoDuoPptApi.CreateOutlineRequest request = new WenDuoDuoPptApi.CreateOutlineRequest(
+                "1901539019628613632", "medium", null, null, null, null);
+        // 调用
+        Flux<Map<String, Object>> flux = wenDuoDuoPptApi.createOutline(request);
+        StringBuffer contentBuffer = new StringBuffer();
+        flux.doOnNext(chunk -> {
+            contentBuffer.append(chunk.get("text"));
+            if (Objects.equals(Integer.parseInt(String.valueOf(chunk.get("status"))), 4)) {
+                // status 为 4，最终 markdown 结构树
+                System.out.println(JsonUtils.toJsonString(chunk.get("result")));
+                System.out.println(" ########################################################################");
+            }
+        }).then().block();
+        // 打印结果
+        System.out.println(contentBuffer);
+    }
+
+    /**
+     * 修改大纲
+     */
+    @Test
+    @Disabled
+    public void testUpdateOutlineRequest() {
+        WenDuoDuoPptApi.UpdateOutlineRequest request = new WenDuoDuoPptApi.UpdateOutlineRequest(
+                "1901539019628613632", TEST_OUT_LINE_CONTENT, "精简一点，三个章节即可");
+        // 调用
+        Flux<Map<String, Object>> flux = wenDuoDuoPptApi.updateOutline(request);
+        StringBuffer contentBuffer = new StringBuffer();
+        flux.doOnNext(chunk -> {
+            contentBuffer.append(chunk.get("text"));
+            if (Objects.equals(Integer.parseInt(String.valueOf(chunk.get("status"))), 4)) {
+                // status 为 4，最终 markdown 结构树
+                System.out.println(JsonUtils.toJsonString(chunk.get("result")));
+                System.out.println(" ########################################################################");
+            }
+        }).then().block();
+        // 打印结果
+        System.out.println(contentBuffer);
+
+    }
+
+    /**
+     * 获取 PPT 模版分页
+     */
+    @Test
+    @Disabled
+    public void testGetPptTemplatePage() {
+        // 准备参数
+        WenDuoDuoPptApi.TemplateQueryRequest.Filter filter = new WenDuoDuoPptApi.TemplateQueryRequest.Filter(
+                1, null, null, null);
+        WenDuoDuoPptApi.TemplateQueryRequest request = new WenDuoDuoPptApi.TemplateQueryRequest(1, 10, filter);
+        // 调用
+        WenDuoDuoPptApi.PagePptTemplateInfo pptTemplatePage = wenDuoDuoPptApi.getTemplatePage(request);
+        // 打印结果
+        System.out.println(pptTemplatePage);
+    }
+
+    /**
+     * 生成 PPT
+     */
+    @Test
+    @Disabled
+    public void testGeneratePptx() {
+        // 准备参数
+        WenDuoDuoPptApi.PptCreateRequest request = new WenDuoDuoPptApi.PptCreateRequest("1901539019628613632", "1805081814809960448", TEST_OUT_LINE_CONTENT);
+        // 调用
+        WenDuoDuoPptApi.PptInfo pptInfo = wenDuoDuoPptApi.create(request);
+        // 打印结果
+        System.out.println(pptInfo);
+    }
 
 }

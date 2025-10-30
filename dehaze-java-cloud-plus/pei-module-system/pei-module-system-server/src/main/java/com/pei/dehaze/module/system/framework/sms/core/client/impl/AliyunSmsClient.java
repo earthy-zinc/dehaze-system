@@ -9,6 +9,7 @@ import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.framework.common.util.collection.MapUtils;
 import com.pei.dehaze.framework.common.util.http.HttpUtils;
@@ -18,7 +19,6 @@ import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsSendRespDTO
 import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
 import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.pei.dehaze.module.system.framework.sms.core.property.SmsChannelProperties;
-import com.google.common.annotations.VisibleForTesting;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -113,20 +113,25 @@ public class AliyunSmsClient extends AbstractSmsClient {
     @VisibleForTesting
     Integer convertSmsTemplateAuditStatus(Integer templateStatus) {
         switch (templateStatus) {
-            case 0: return SmsTemplateAuditStatusEnum.CHECKING.getStatus();
-            case 1: return SmsTemplateAuditStatusEnum.SUCCESS.getStatus();
-            case 2: return SmsTemplateAuditStatusEnum.FAIL.getStatus();
-            default: throw new IllegalArgumentException(String.format("未知审核状态(%d)", templateStatus));
+            case 0:
+                return SmsTemplateAuditStatusEnum.CHECKING.getStatus();
+            case 1:
+                return SmsTemplateAuditStatusEnum.SUCCESS.getStatus();
+            case 2:
+                return SmsTemplateAuditStatusEnum.FAIL.getStatus();
+            default:
+                throw new IllegalArgumentException(String.format("未知审核状态(%d)", templateStatus));
         }
     }
 
     /**
      * 请求阿里云短信
      *
-     * @see <a href="https://help.aliyun.com/zh/sdk/product-overview/v3-request-structure-and-signature">V3 版本请求体&签名机制</>
-     * @param apiName 请求的 API 名称
+     * @param apiName     请求的 API 名称
      * @param queryParams 请求参数
      * @return 请求结果
+     * @see <a href="https://help.aliyun.com/zh/sdk/product-overview/v3-request-structure-and-signature">V3
+     * 版本请求体&签名机制</>
      */
     private JSONObject request(String apiName, TreeMap<String, Object> queryParams) {
         // 1. 请求参数

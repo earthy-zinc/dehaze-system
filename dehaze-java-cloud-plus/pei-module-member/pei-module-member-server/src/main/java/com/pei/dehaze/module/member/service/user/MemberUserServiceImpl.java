@@ -3,7 +3,11 @@ package com.pei.dehaze.module.member.service.user;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.lang.Assert;
-import cn.hutool.core.util.*;
+import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
@@ -21,7 +25,8 @@ import com.pei.dehaze.module.system.api.sms.dto.code.SmsCodeUseReqDTO;
 import com.pei.dehaze.module.system.api.social.SocialClientApi;
 import com.pei.dehaze.module.system.api.social.dto.SocialWxPhoneNumberInfoRespDTO;
 import com.pei.dehaze.module.system.enums.sms.SmsSceneEnum;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -29,8 +34,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-import jakarta.annotation.Resource;
-import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -90,35 +93,6 @@ public class MemberUserServiceImpl implements MemberUserService {
     @Transactional(rollbackFor = Exception.class)
     public MemberUserDO createUser(String nickname, String avtar, String registerIp, Integer terminal) {
         return createUser(null, nickname, avtar, registerIp, terminal);
-    }
-
-    private MemberUserDO createUser(String mobile, String nickname, String avtar,
-                                    String registerIp, Integer terminal) {
-        // 生成密码
-        String password = IdUtil.fastSimpleUUID();
-        // 插入用户
-        MemberUserDO user = new MemberUserDO();
-        user.setMobile(mobile);
-        user.setStatus(CommonStatusEnum.ENABLE.getStatus()); // 默认开启
-        user.setPassword(encodePassword(password)); // 加密密码
-        user.setRegisterIp(registerIp).setRegisterTerminal(terminal);
-        user.setNickname(nickname).setAvatar(avtar); // 基础信息
-        if (StrUtil.isEmpty(nickname)) {
-            // 昵称为空时，随机一个名字，避免一些依赖 nickname 的逻辑报错，或者有点丑。例如说，短信发送有昵称时~
-            user.setNickname("用户" + RandomUtil.randomNumbers(6));
-        }
-        memberUserMapper.insert(user);
-
-        // 发送 MQ 消息：用户创建
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-
-            @Override
-            public void afterCommit() {
-                memberUserProducer.sendUserCreateMessage(user.getId());
-            }
-
-        });
-        return user;
     }
 
     @Override
@@ -221,16 +195,6 @@ public class MemberUserServiceImpl implements MemberUserService {
         return passwordEncoder.matches(rawPassword, encodedPassword);
     }
 
-    /**
-     * 对密码进行加密
-     *
-     * @param password 密码
-     * @return 加密后的密码
-     */
-    private String encodePassword(String password) {
-        return passwordEncoder.encode(password);
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateUser(MemberUserUpdateReqVO updateReqVO) {
@@ -242,36 +206,6 @@ public class MemberUserServiceImpl implements MemberUserService {
         // 更新
         MemberUserDO updateObj = MemberUserConvert.INSTANCE.convert(updateReqVO);
         memberUserMapper.updateById(updateObj);
-    }
-
-    @VisibleForTesting
-    MemberUserDO validateUserExists(Long id) {
-        if (id == null) {
-            return null;
-        }
-        MemberUserDO user = memberUserMapper.selectById(id);
-        if (user == null) {
-            throw exception(USER_NOT_EXISTS);
-        }
-        return user;
-    }
-
-    @VisibleForTesting
-    void validateMobileUnique(Long id, String mobile) {
-        if (StrUtil.isBlank(mobile)) {
-            return;
-        }
-        MemberUserDO user = memberUserMapper.selectByMobile(mobile);
-        if (user == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的用户
-        if (id == null) {
-            throw exception(USER_MOBILE_USED, mobile);
-        }
-        if (!user.getId().equals(id)) {
-            throw exception(USER_MOBILE_USED, mobile);
-        }
     }
 
     @Override
@@ -312,6 +246,75 @@ public class MemberUserServiceImpl implements MemberUserService {
             return memberUserMapper.updatePointDecr(id, point) > 0;
         }
         return true;
+    }
+
+    @VisibleForTesting
+    MemberUserDO validateUserExists(Long id) {
+        if (id == null) {
+            return null;
+        }
+        MemberUserDO user = memberUserMapper.selectById(id);
+        if (user == null) {
+            throw exception(USER_NOT_EXISTS);
+        }
+        return user;
+    }
+
+    @VisibleForTesting
+    void validateMobileUnique(Long id, String mobile) {
+        if (StrUtil.isBlank(mobile)) {
+            return;
+        }
+        MemberUserDO user = memberUserMapper.selectByMobile(mobile);
+        if (user == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的用户
+        if (id == null) {
+            throw exception(USER_MOBILE_USED, mobile);
+        }
+        if (!user.getId().equals(id)) {
+            throw exception(USER_MOBILE_USED, mobile);
+        }
+    }
+
+    private MemberUserDO createUser(String mobile, String nickname, String avtar,
+                                    String registerIp, Integer terminal) {
+        // 生成密码
+        String password = IdUtil.fastSimpleUUID();
+        // 插入用户
+        MemberUserDO user = new MemberUserDO();
+        user.setMobile(mobile);
+        user.setStatus(CommonStatusEnum.ENABLE.getStatus()); // 默认开启
+        user.setPassword(encodePassword(password)); // 加密密码
+        user.setRegisterIp(registerIp).setRegisterTerminal(terminal);
+        user.setNickname(nickname).setAvatar(avtar); // 基础信息
+        if (StrUtil.isEmpty(nickname)) {
+            // 昵称为空时，随机一个名字，避免一些依赖 nickname 的逻辑报错，或者有点丑。例如说，短信发送有昵称时~
+            user.setNickname("用户" + RandomUtil.randomNumbers(6));
+        }
+        memberUserMapper.insert(user);
+
+        // 发送 MQ 消息：用户创建
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+
+            @Override
+            public void afterCommit() {
+                memberUserProducer.sendUserCreateMessage(user.getId());
+            }
+
+        });
+        return user;
+    }
+
+    /**
+     * 对密码进行加密
+     *
+     * @param password 密码
+     * @return 加密后的密码
+     */
+    private String encodePassword(String password) {
+        return passwordEncoder.encode(password);
     }
 
 }

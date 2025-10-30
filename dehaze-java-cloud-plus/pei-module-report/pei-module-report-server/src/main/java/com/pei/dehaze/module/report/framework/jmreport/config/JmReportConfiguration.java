@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.report.framework.jmreport.config;
 
+import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
 import com.pei.dehaze.framework.common.biz.system.permission.PermissionCommonApi;
 import com.pei.dehaze.framework.security.config.SecurityProperties;
 import com.pei.dehaze.module.report.framework.jmreport.core.service.JmOnlDragExternalServiceImpl;
 import com.pei.dehaze.module.report.framework.jmreport.core.service.JmReportTokenServiceImpl;
-import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
 import org.jeecg.modules.jmreport.api.JmReportTokenServiceI;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;

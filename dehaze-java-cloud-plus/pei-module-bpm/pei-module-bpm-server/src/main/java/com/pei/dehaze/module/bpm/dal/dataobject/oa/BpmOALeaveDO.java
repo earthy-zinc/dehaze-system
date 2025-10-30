@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.bpm.dal.dataobject.oa;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.bpm.enums.task.BpmTaskStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.bpm.enums.task.BpmTaskStatusEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 
 /**
  * OA 请假申请 DO
- *
+ * <p>
  * {@link #day} 请假天数，目前先简单做。一般是分成请假上午和下午，可以是 1 整天，可以是 0.5 半天
  *
  * @author jason
@@ -35,7 +35,7 @@ public class BpmOALeaveDO extends BaseDO {
     private Long id;
     /**
      * 申请人的用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 属性
      */
     private Long userId;
@@ -61,15 +61,14 @@ public class BpmOALeaveDO extends BaseDO {
     private Long day;
     /**
      * 审批结果
-     *
-     * 枚举 {@link BpmTaskStatusEnum}
-     * 考虑到简单，所以直接复用了 BpmProcessInstanceStatusEnum 枚举，也可以自己定义一个枚举哈
+     * <p>
+     * 枚举 {@link BpmTaskStatusEnum} 考虑到简单，所以直接复用了 BpmProcessInstanceStatusEnum 枚举，也可以自己定义一个枚举哈
      */
     private Integer status;
 
     /**
      * 对应的流程编号
-     *
+     * <p>
      * 关联 ProcessInstance 的 id 属性
      */
     private String processInstanceId;

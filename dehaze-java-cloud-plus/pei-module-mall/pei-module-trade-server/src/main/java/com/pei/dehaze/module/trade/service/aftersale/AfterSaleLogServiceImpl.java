@@ -4,10 +4,10 @@ import com.pei.dehaze.module.trade.convert.aftersale.AfterSaleLogConvert;
 import com.pei.dehaze.module.trade.dal.dataobject.aftersale.AfterSaleLogDO;
 import com.pei.dehaze.module.trade.dal.mysql.aftersale.AfterSaleLogMapper;
 import com.pei.dehaze.module.trade.service.aftersale.bo.AfterSaleLogCreateReqBO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 /**

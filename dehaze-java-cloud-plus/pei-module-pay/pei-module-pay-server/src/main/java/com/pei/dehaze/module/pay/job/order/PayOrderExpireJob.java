@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 支付订单的过期 Job
- *
+ * <p>
  * 支付超过过期时间时，支付渠道是不会通知进行过期，所以需要定时进行过期关闭。
  *
  * @author earthyzinc
@@ -27,7 +27,7 @@ public class PayOrderExpireJob {
     public String execute(String param) {
         int count = orderService.expireOrder();
         log.info("[execute][支付过期 ({}) 个]", count);
-        return StrUtil.format("支付过期 ({}) 个",count);
+        return StrUtil.format("支付过期 ({}) 个", count);
     }
 
 }

@@ -21,7 +21,7 @@ public class PayTransferRespDTO {
 
     /**
      * 转账渠道编码
-     *
+     * <p>
      * 枚举 {@link PayChannelEnum}
      */
     private String channelCode;
@@ -42,7 +42,7 @@ public class PayTransferRespDTO {
 
     /**
      * 转账状态
-     *
+     * <p>
      * 枚举 {@link PayTransferStatusEnum}
      */
     private Integer status;
@@ -65,15 +65,17 @@ public class PayTransferRespDTO {
 
     /**
      * 渠道 package 信息
-     *
+     * <p>
      * 特殊：目前只有微信转账有这个东西！！！
+     *
      * @see <a href="https://pay.weixin.qq.com/doc/v3/merchant/4012716430">JSAPI 调起用户确认收款</a>
      */
     private String channelPackageInfo;
     /**
      * 渠道商户号
-     *
+     * <p>
      * 特殊：目前只有微信转账有这个东西！！！
+     *
      * @see <a href="https://pay.weixin.qq.com/doc/v3/merchant/4012716430">JSAPI 调起用户确认收款</a>
      */
     private String channelMchId;

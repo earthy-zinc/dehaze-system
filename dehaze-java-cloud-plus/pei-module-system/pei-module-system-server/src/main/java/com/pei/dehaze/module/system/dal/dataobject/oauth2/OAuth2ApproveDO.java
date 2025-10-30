@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.system.dal.dataobject.oauth2;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 
 /**
  * OAuth2 批准 DO
- *
+ * <p>
  * 用户在 sso.vue 界面时，记录接受的 scope 列表
  *
  * @author earthyzinc
@@ -34,13 +34,13 @@ public class OAuth2ApproveDO extends BaseDO {
     private Long userId;
     /**
      * 用户类型
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
     /**
      * 客户端编号
-     *
+     * <p>
      * 关联 {@link OAuth2ClientDO#getId()}
      */
     private String clientId;
@@ -50,9 +50,8 @@ public class OAuth2ApproveDO extends BaseDO {
     private String scope;
     /**
      * 是否接受
-     *
-     * true - 接受
-     * false - 拒绝
+     * <p>
+     * true - 接受 false - 拒绝
      */
     private Boolean approved;
     /**

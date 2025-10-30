@@ -30,11 +30,6 @@ public enum ProductSpuStatusEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     /**
      * 判断是否处于【上架】状态
      *
@@ -43,6 +38,11 @@ public enum ProductSpuStatusEnum implements ArrayValuable<Integer> {
      */
     public static boolean isEnable(Integer status) {
         return ENABLE.getStatus().equals(status);
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

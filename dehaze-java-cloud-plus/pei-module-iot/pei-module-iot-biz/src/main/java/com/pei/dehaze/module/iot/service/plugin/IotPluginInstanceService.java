@@ -54,7 +54,7 @@ public interface IotPluginInstanceService {
      * 更新插件状态
      *
      * @param pluginConfigDO 插件配置
-     * @param status       新状态
+     * @param status         新状态
      */
     void updatePluginStatus(IotPluginConfigDO pluginConfigDO, Integer status);
 

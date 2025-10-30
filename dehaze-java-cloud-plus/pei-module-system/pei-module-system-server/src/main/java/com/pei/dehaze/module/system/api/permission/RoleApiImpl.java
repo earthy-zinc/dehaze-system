@@ -2,10 +2,10 @@ package com.pei.dehaze.module.system.api.permission;
 
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.system.service.permission.RoleService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;

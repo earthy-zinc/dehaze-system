@@ -59,7 +59,7 @@ public interface BpmModelService {
     /**
      * 修改流程模型
      *
-     * @param userId 用户编号
+     * @param userId      用户编号
      * @param updateReqVO 更新信息
      */
     void updateModel(Long userId, @Valid BpmModelSaveReqVO updateReqVO);
@@ -68,7 +68,7 @@ public interface BpmModelService {
      * 批量更新模型排序
      *
      * @param userId 用户编号
-     * @param ids 编号列表
+     * @param ids    编号列表
      */
     void updateModelSortBatch(Long userId, List<String> ids);
 
@@ -76,23 +76,23 @@ public interface BpmModelService {
      * 将流程模型，部署成一个流程定义
      *
      * @param userId 用户编号
-     * @param id 编号
+     * @param id     编号
      */
     void deployModel(Long userId, String id);
 
     /**
      * 删除模型
      *
-     * @param userId  用户编号
-     * @param id 编号
+     * @param userId 用户编号
+     * @param id     编号
      */
     void deleteModel(Long userId, String id);
 
     /**
      * 清理模型，包括流程实例
      *
-     * @param userId  用户编号
-     * @param id 编号
+     * @param userId 用户编号
+     * @param id     编号
      */
     void cleanModel(Long userId, String id);
 
@@ -100,8 +100,8 @@ public interface BpmModelService {
      * 修改模型的状态，实际更新的部署的流程定义的状态
      *
      * @param userId 用户编号
-     * @param id    编号
-     * @param state 状态
+     * @param id     编号
+     * @param state  状态
      */
     void updateModelState(Long userId, String id, Integer state);
 
@@ -127,7 +127,7 @@ public interface BpmModelService {
      * 更新仿钉钉流程设计模型
      *
      * @param userId 用户编号
-     * @param reqVO 请求信息
+     * @param reqVO  请求信息
      */
     void updateSimpleModel(Long userId, @Valid BpmSimpleModelUpdateReqVO reqVO);
 

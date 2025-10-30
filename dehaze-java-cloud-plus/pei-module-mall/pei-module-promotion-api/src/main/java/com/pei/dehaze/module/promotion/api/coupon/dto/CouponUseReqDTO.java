@@ -1,8 +1,7 @@
 package com.pei.dehaze.module.promotion.api.coupon.dto;
 
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 /**
  * 优惠劵使用 Request DTO

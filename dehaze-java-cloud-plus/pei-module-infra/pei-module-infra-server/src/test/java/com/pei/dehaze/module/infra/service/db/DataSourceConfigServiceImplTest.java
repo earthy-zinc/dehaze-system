@@ -3,14 +3,15 @@ package com.pei.dehaze.module.infra.service.db;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.crypto.symmetric.AES;
+import com.baomidou.dynamic.datasource.creator.DataSourceProperty;
+import com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceProperties;
 import com.pei.dehaze.framework.mybatis.core.type.EncryptTypeHandler;
 import com.pei.dehaze.framework.mybatis.core.util.JdbcUtils;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
 import com.pei.dehaze.module.infra.controller.admin.db.vo.DataSourceConfigSaveReqVO;
 import com.pei.dehaze.module.infra.dal.dataobject.db.DataSourceConfigDO;
 import com.pei.dehaze.module.infra.dal.mysql.db.DataSourceConfigMapper;
-import com.baomidou.dynamic.datasource.creator.DataSourceProperty;
-import com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceProperties;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -18,7 +19,6 @@ import org.mockito.stubbing.Answer;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.test.core.util.AssertUtils.assertPojoEquals;

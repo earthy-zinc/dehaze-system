@@ -21,6 +21,7 @@ public enum BpmUserTaskApproveMethodEnum implements ArrayValuable<Integer> {
     ANY(3, "多人或签(一人通过或拒绝)", "${ nrOfCompletedInstances > 0 }"), // 或签（通过只需一人，拒绝只需一人）
     SEQUENTIAL(4, "依次审批", "${ nrOfCompletedInstances >= nrOfInstances }"); // 依次审批
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmUserTaskApproveMethodEnum::getMethod).toArray(Integer[]::new);
     /**
      * 审批方式
      */
@@ -33,8 +34,6 @@ public enum BpmUserTaskApproveMethodEnum implements ArrayValuable<Integer> {
      * 完成表达式
      */
     private final String completionCondition;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmUserTaskApproveMethodEnum::getMethod).toArray(Integer[]::new);
 
     public static BpmUserTaskApproveMethodEnum valueOf(Integer method) {
         return ArrayUtil.firstMatch(item -> item.getMethod().equals(method), values());

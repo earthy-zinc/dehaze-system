@@ -1,23 +1,22 @@
 package com.pei.dehaze.module.pay.dal.dataobject.refund;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
-import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
-import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
-import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderDO;
-import com.pei.dehaze.module.pay.enums.refund.PayRefundStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
+import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
+import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderDO;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.enums.refund.PayRefundStatusEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund.PayRefundRespDTO;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 /**
- * 支付退款单 DO
- * 一个支付订单，可以拥有多个支付退款单
- *
+ * 支付退款单 DO 一个支付订单，可以拥有多个支付退款单
+ * <p>
  * 即 PayOrderDO : PayRefundDO = 1 : n
  *
  * @author earthyzinc
@@ -39,40 +38,40 @@ public class PayRefundDO extends BaseDO {
     private Long id;
     /**
      * 外部退款号，根据规则生成
-     *
-     * 调用支付渠道时，使用该字段作为对接的退款号：
-     * 1. 微信退款：对应 <a href="https://pay.weixin.qq.com/wiki/doc/api/micropay.php?chapter=9_4">申请退款</a> 的 out_refund_no 字段
-     * 2. 支付宝退款：对应 <a href="https://opendocs.alipay.com/open/02e7go"统一收单交易退款接口></a> 的 out_request_no 字段
+     * <p>
+     * 调用支付渠道时，使用该字段作为对接的退款号： 1. 微信退款：对应 <a
+     * href="https://pay.weixin.qq.com/wiki/doc/api/micropay.php?chapter=9_4">申请退款</a> 的 out_refund_no 字段 2. 支付宝退款：对应 <a
+     * href="https://opendocs.alipay.com/open/02e7go"统一收单交易退款接口></a> 的 out_request_no 字段
      */
     private String no;
 
     /**
      * 应用编号
-     *
+     * <p>
      * 关联 {@link PayAppDO#getId()}
      */
     private Long appId;
     /**
      * 渠道编号
-     *
+     * <p>
      * 关联 {@link PayChannelDO#getId()}
      */
     private Long channelId;
     /**
      * 渠道编码
-     *
+     * <p>
      * 枚举 {@link PayChannelEnum}
      */
     private String channelCode;
     /**
      * 订单编号
-     *
+     * <p>
      * 关联 {@link PayOrderDO#getId()}
      */
     private Long orderId;
     /**
      * 支付订单编号
-     *
+     * <p>
      * 冗余 {@link PayOrderDO#getNo()}
      */
     private String orderNo;
@@ -80,13 +79,13 @@ public class PayRefundDO extends BaseDO {
     // ========== 商户相关字段 ==========
     /**
      * 商户订单编号
-     *
+     * <p>
      * 例如说，内部系统 A 的订单号，需要保证每个 PayAppDO 唯一
      */
     private String merchantOrderId;
     /**
      * 商户退款订单号
-     *
+     * <p>
      * 例如说，内部系统 A 的订单号，需要保证每个 PayAppDO 唯一
      */
     private String merchantRefundId;
@@ -98,7 +97,7 @@ public class PayRefundDO extends BaseDO {
     // ========== 退款相关字段 ==========
     /**
      * 退款状态
-     *
+     * <p>
      * 枚举 {@link PayRefundStatusEnum}
      */
     private Integer status;
@@ -125,15 +124,15 @@ public class PayRefundDO extends BaseDO {
     // ========== 渠道相关字段 ==========
     /**
      * 渠道订单号
-     *
+     * <p>
      * 冗余 {@link PayOrderDO#getChannelOrderNo()}
      */
     private String channelOrderNo;
     /**
      * 渠道退款单号
-     *
-     * 1. 微信退款：对应 <a href="https://pay.weixin.qq.com/wiki/doc/api/micropay.php?chapter=9_4">申请退款</a> 的 refund_id 字段
-     * 2. 支付宝退款：没有字段
+     * <p>
+     * 1. 微信退款：对应 <a href="https://pay.weixin.qq.com/wiki/doc/api/micropay.php?chapter=9_4">申请退款</a> 的 refund_id 字段 2.
+     * 支付宝退款：没有字段
      */
     private String channelRefundNo;
     /**
@@ -152,7 +151,7 @@ public class PayRefundDO extends BaseDO {
 
     /**
      * 支付渠道的同步/异步通知的内容
-     *
+     * <p>
      * 对应 {@link PayRefundRespDTO#getRawData()}
      */
     private String channelNotifyData;

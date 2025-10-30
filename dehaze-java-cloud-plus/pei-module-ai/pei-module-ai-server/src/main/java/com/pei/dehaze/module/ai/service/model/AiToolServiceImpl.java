@@ -69,14 +69,6 @@ public class AiToolServiceImpl implements AiToolService {
         }
     }
 
-    private void validateToolNameExists(String name) {
-        try {
-            SpringUtil.getBean(name);
-        } catch (NoSuchBeanDefinitionException e) {
-            throw exception(TOOL_NAME_NOT_EXISTS, name);
-        }
-    }
-
     @Override
     public AiToolDO getTool(Long id) {
         return toolMapper.selectById(id);
@@ -95,6 +87,14 @@ public class AiToolServiceImpl implements AiToolService {
     @Override
     public List<AiToolDO> getToolListByStatus(Integer status) {
         return toolMapper.selectListByStatus(status);
+    }
+
+    private void validateToolNameExists(String name) {
+        try {
+            SpringUtil.getBean(name);
+        } catch (NoSuchBeanDefinitionException e) {
+            throw exception(TOOL_NAME_NOT_EXISTS, name);
+        }
     }
 
 }

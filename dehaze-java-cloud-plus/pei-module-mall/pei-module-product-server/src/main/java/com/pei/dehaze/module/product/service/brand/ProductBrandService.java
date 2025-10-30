@@ -83,7 +83,7 @@ public interface ProductBrandService {
      * 获取指定状态的品牌列表
      *
      * @param status 状态
-     * @return  返回品牌列表
+     * @return 返回品牌列表
      */
     List<ProductBrandDO> getBrandListByStatus(Integer status);
 }

@@ -4,19 +4,19 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
-import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.ai.controller.admin.chat.vo.conversation.AiChatConversationCreateMyReqVO;
 import com.pei.dehaze.module.ai.controller.admin.chat.vo.conversation.AiChatConversationPageReqVO;
 import com.pei.dehaze.module.ai.controller.admin.chat.vo.conversation.AiChatConversationUpdateMyReqVO;
 import com.pei.dehaze.module.ai.dal.dataobject.chat.AiChatConversationDO;
-import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.pei.dehaze.module.ai.dal.dataobject.model.AiChatRoleDO;
+import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.pei.dehaze.module.ai.dal.mysql.chat.AiChatConversationMapper;
+import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
 import com.pei.dehaze.module.ai.service.knowledge.AiKnowledgeService;
-import com.pei.dehaze.module.ai.service.model.AiModelService;
 import com.pei.dehaze.module.ai.service.model.AiChatRoleService;
+import com.pei.dehaze.module.ai.service.model.AiModelService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -140,14 +140,6 @@ public class AiChatConversationServiceImpl implements AiChatConversationService 
         chatConversationMapper.deleteById(id);
     }
 
-    private void validateChatModel(AiModelDO model) {
-        if (ObjectUtil.isAllNotEmpty(model.getTemperature(), model.getMaxTokens(), model.getMaxContexts())) {
-            return;
-        }
-        Assert.equals(model.getType(), AiModelTypeEnum.CHAT.getType(), "模型类型不正确：" + model);
-        throw exception(CHAT_CONVERSATION_MODEL_ERROR);
-    }
-
     public AiChatConversationDO validateChatConversationExists(Long id) {
         AiChatConversationDO conversation = chatConversationMapper.selectById(id);
         if (conversation == null) {
@@ -168,6 +160,14 @@ public class AiChatConversationServiceImpl implements AiChatConversationService 
     @Override
     public PageResult<AiChatConversationDO> getChatConversationPage(AiChatConversationPageReqVO pageReqVO) {
         return chatConversationMapper.selectChatConversationPage(pageReqVO);
+    }
+
+    private void validateChatModel(AiModelDO model) {
+        if (ObjectUtil.isAllNotEmpty(model.getTemperature(), model.getMaxTokens(), model.getMaxContexts())) {
+            return;
+        }
+        Assert.equals(model.getType(), AiModelTypeEnum.CHAT.getType(), "模型类型不正确：" + model);
+        throw exception(CHAT_CONVERSATION_MODEL_ERROR);
     }
 
 }

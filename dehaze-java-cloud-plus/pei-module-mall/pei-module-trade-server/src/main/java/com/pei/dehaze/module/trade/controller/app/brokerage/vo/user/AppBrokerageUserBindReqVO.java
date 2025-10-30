@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.trade.controller.app.brokerage.vo.user;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "应用 App - 绑定推广员 Request VO")
 @Data

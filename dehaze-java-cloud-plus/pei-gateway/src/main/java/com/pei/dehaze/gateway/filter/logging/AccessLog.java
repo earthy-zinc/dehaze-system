@@ -27,7 +27,7 @@ public class AccessLog {
     private Integer userType;
     /**
      * 路由
-     *
+     * <p>
      * 类似 ApiAccessLogCreateReqDTO 的 applicationName
      */
     private Route route;
@@ -63,7 +63,7 @@ public class AccessLog {
 
     /**
      * 响应体
-     *
+     * <p>
      * 类似 ApiAccessLogCreateReqDTO 的 resultCode + resultMsg
      */
     private String responseBody;

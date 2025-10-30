@@ -37,19 +37,19 @@ public class CrmCustomerCreateReqBO {
     private Boolean dealStatus;
     /**
      * 所属行业
-     *
+     * <p>
      * 对应字典 {@link DictTypeConstants#CRM_CUSTOMER_INDUSTRY}
      */
     private Integer industryId;
     /**
      * 客户等级
-     *
+     * <p>
      * 对应字典 {@link DictTypeConstants#CRM_CUSTOMER_LEVEL}
      */
     private Integer level;
     /**
      * 客户来源
-     *
+     * <p>
      * 对应字典 {@link DictTypeConstants#CRM_CUSTOMER_SOURCE}
      */
     private Integer source;
@@ -90,13 +90,13 @@ public class CrmCustomerCreateReqBO {
     private String remark;
     /**
      * 负责人的用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long ownerUserId;
     /**
      * 所在地
-     *
+     * <p>
      * 关联 {@link com.pei.dehaze.framework.ip.core.Area#getId()} 字段
      */
     private Integer areaId;

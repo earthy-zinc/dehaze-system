@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.trade.dal.dataobject.delivery;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.IntegerListTypeHandler;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.IntegerListTypeHandler;
 import lombok.Data;
 
 import java.util.List;
@@ -15,8 +15,9 @@ import java.util.List;
  *
  * @author jason
  */
-@TableName(value ="trade_delivery_express_template_charge", autoResultMap = true)
-@KeySequence("trade_delivery_express_template_charge_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
+@TableName(value = "trade_delivery_express_template_charge", autoResultMap = true)
+@KeySequence("trade_delivery_express_template_charge_seq")
+// 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class DeliveryExpressTemplateChargeDO extends BaseDO {
 
@@ -28,7 +29,7 @@ public class DeliveryExpressTemplateChargeDO extends BaseDO {
 
     /**
      * 配送模板编号
-     *
+     * <p>
      * 关联 {@link DeliveryExpressTemplateDO#getId()}
      */
     private Long templateId;
@@ -41,7 +42,7 @@ public class DeliveryExpressTemplateChargeDO extends BaseDO {
 
     /**
      * 配送计费方式
-     *
+     * <p>
      * 冗余 {@link DeliveryExpressTemplateDO#getChargeMode()}
      */
     private Integer chargeMode;

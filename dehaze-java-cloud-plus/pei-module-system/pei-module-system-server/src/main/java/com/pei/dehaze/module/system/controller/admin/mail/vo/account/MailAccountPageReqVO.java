@@ -15,7 +15,7 @@ public class MailAccountPageReqVO extends PageParam {
     @Schema(description = "邮箱", requiredMode = Schema.RequiredMode.REQUIRED, example = "example@123.com")
     private String mail;
 
-    @Schema(description = "用户名" , requiredMode = Schema.RequiredMode.REQUIRED , example = "pei")
+    @Schema(description = "用户名", requiredMode = Schema.RequiredMode.REQUIRED, example = "pei")
     private String username;
 
 }

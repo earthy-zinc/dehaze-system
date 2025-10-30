@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.pay.controller.admin.wallet.vo.wallet;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 用户钱包明细 Request VO")
 @Data

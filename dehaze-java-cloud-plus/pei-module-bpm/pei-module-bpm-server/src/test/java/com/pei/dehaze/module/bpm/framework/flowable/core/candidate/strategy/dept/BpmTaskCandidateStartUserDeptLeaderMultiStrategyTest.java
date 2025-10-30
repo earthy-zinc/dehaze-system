@@ -57,6 +57,15 @@ public class BpmTaskCandidateStartUserDeptLeaderMultiStrategyTest extends BaseMo
         assertEquals(Sets.newLinkedHashSet(11L, 1001L), userIds);
     }
 
+    private void mockGetStartUserDept(Long startUserId) {
+        when(adminUserApi.getUser(eq(startUserId))).thenReturn(
+                success(randomPojo(AdminUserRespDTO.class, o -> o.setId(startUserId).setDeptId(10L))));
+        when(deptApi.getDept(any())).thenAnswer((Answer<CommonResult<DeptRespDTO>>) invocationOnMock -> {
+            Long deptId = invocationOnMock.getArgument(0);
+            return success(randomPojo(DeptRespDTO.class, o -> o.setId(deptId).setParentId(deptId * 100).setLeaderUserId(deptId + 1)));
+        });
+    }
+
     @Test
     public void testCalculateUsersByActivity() {
         // 准备参数
@@ -70,15 +79,6 @@ public class BpmTaskCandidateStartUserDeptLeaderMultiStrategyTest extends BaseMo
                 startUserId, null, null);
         // 断言
         assertEquals(Sets.newLinkedHashSet(11L, 1001L), userIds);
-    }
-
-    private void mockGetStartUserDept(Long startUserId) {
-        when(adminUserApi.getUser(eq(startUserId))).thenReturn(
-                success(randomPojo(AdminUserRespDTO.class, o -> o.setId(startUserId).setDeptId(10L))));
-        when(deptApi.getDept(any())).thenAnswer((Answer< CommonResult<DeptRespDTO>>) invocationOnMock -> {
-            Long deptId = invocationOnMock.getArgument(0);
-            return success(randomPojo(DeptRespDTO.class, o -> o.setId(deptId).setParentId(deptId * 100).setLeaderUserId(deptId + 1)));
-        });
     }
 
 }

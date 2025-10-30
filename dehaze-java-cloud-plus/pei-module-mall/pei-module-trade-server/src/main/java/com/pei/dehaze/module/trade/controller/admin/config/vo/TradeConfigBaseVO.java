@@ -5,17 +5,16 @@ import com.pei.dehaze.module.trade.enums.brokerage.BrokerageBindModeEnum;
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageEnabledConditionEnum;
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-import org.hibernate.validator.constraints.Range;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import lombok.Data;
+import org.hibernate.validator.constraints.Range;
+
 import java.util.List;
 
 /**
- * 交易中心配置 Base VO，提供给添加、修改、详细的子 VO 使用
- * 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
+ * 交易中心配置 Base VO，提供给添加、修改、详细的子 VO 使用 如果子 VO 存在差异的字段，请不要添加到这里，影响 Swagger 文档生成
  */
 @Data
 public class TradeConfigBaseVO {

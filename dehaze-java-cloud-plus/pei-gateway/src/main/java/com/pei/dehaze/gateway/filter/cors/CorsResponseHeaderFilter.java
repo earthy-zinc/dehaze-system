@@ -12,11 +12,10 @@ import reactor.core.publisher.Mono;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 解决 Spring Cloud Gateway 2.x 跨域时，出现重复 Origin 的 BUG
- *
+ * <p>
  * 参考文档：<a href="https://blog.csdn.net/zimou5581/article/details/90043178" />
  *
  * @author earthyzinc
@@ -40,7 +39,7 @@ public class CorsResponseHeaderFilter implements GlobalFilter, Ordered {
                             || kv.getKey().equals(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS)))
                     .map(Map.Entry::getKey)
                     .toList();
-            keysToModify.forEach(key->{
+            keysToModify.forEach(key -> {
                 List<String> values = exchange.getResponse().getHeaders().get(key);
                 if (values != null && !values.isEmpty()) {
                     exchange.getResponse().getHeaders().put(key, Collections.singletonList(values.get(0)));

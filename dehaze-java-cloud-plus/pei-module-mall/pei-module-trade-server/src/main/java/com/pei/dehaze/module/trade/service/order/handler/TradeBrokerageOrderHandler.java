@@ -16,9 +16,9 @@ import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordBizTypeEnum;
 import com.pei.dehaze.module.trade.service.brokerage.BrokerageRecordService;
 import com.pei.dehaze.module.trade.service.brokerage.BrokerageUserService;
 import com.pei.dehaze.module.trade.service.brokerage.bo.BrokerageAddReqBO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 
@@ -92,11 +92,9 @@ public class TradeBrokerageOrderHandler implements TradeOrderHandler {
      * <p>
      * 目前是支付成功后，就会创建分销记录。
      * <p>
-     * 业内还有两种做法，可以根据自己的业务调整：
-     * 1. 确认收货后，才创建分销记录
-     * 2. 支付 or 下单成功时，创建分销记录（冻结），确认收货解冻或者 n 天后解冻
+     * 业内还有两种做法，可以根据自己的业务调整： 1. 确认收货后，才创建分销记录 2. 支付 or 下单成功时，创建分销记录（冻结），确认收货解冻或者 n 天后解冻
      *
-     * @param userId  用户编号
+     * @param userId     用户编号
      * @param orderItems 订单项
      */
     protected void addBrokerage(Long userId, List<TradeOrderItemDO> orderItems) {

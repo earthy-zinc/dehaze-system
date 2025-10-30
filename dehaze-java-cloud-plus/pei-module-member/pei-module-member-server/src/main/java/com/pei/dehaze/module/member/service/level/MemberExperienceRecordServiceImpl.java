@@ -8,10 +8,9 @@ import com.pei.dehaze.module.member.convert.level.MemberExperienceRecordConvert;
 import com.pei.dehaze.module.member.dal.dataobject.level.MemberExperienceRecordDO;
 import com.pei.dehaze.module.member.dal.mysql.level.MemberExperienceRecordMapper;
 import com.pei.dehaze.module.member.enums.MemberExperienceBizTypeEnum;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-
-import jakarta.annotation.Resource;
 
 /**
  * 会员经验记录 Service 实现类
@@ -37,7 +36,7 @@ public class MemberExperienceRecordServiceImpl implements MemberExperienceRecord
 
     @Override
     public PageResult<MemberExperienceRecordDO> getExperienceRecordPage(Long userId, PageParam pageParam) {
-         return experienceLogMapper.selectPage(userId, pageParam);
+        return experienceLogMapper.selectPage(userId, pageParam);
     }
 
     @Override

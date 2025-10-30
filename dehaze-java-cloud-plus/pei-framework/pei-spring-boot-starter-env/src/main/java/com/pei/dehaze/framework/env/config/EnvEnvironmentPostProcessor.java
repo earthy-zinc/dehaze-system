@@ -12,8 +12,7 @@ import java.util.Set;
 import static com.pei.dehaze.framework.env.core.util.EnvUtils.HOST_NAME_VALUE;
 
 /**
- * 多环境的 {@link EnvEnvironmentPostProcessor} 实现类
- * 将 pei.env.tag 设置到 nacos 等组件对应的 tag 配置项，当且仅当它们不存在时
+ * 多环境的 {@link EnvEnvironmentPostProcessor} 实现类 将 pei.env.tag 设置到 nacos 等组件对应的 tag 配置项，当且仅当它们不存在时
  *
  * @author earthyzinc
  */

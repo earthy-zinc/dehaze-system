@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.trade.dal.dataobject.delivery;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.trade.enums.delivery.DeliveryExpressChargeModeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.trade.enums.delivery.DeliveryExpressChargeModeEnum;
+import lombok.Data;
 
 /**
  * 快递运费模板 DO
@@ -30,7 +30,7 @@ public class DeliveryExpressTemplateDO extends BaseDO {
 
     /**
      * 配送计费方式
-     *
+     * <p>
      * 枚举 {@link DeliveryExpressChargeModeEnum}
      */
     private Integer chargeMode;

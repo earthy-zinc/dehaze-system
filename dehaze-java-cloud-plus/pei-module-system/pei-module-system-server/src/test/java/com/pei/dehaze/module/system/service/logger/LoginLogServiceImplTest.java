@@ -6,10 +6,9 @@ import com.pei.dehaze.module.system.api.logger.dto.LoginLogCreateReqDTO;
 import com.pei.dehaze.module.system.controller.admin.logger.vo.loginlog.LoginLogPageReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.logger.LoginLogDO;
 import com.pei.dehaze.module.system.dal.mysql.logger.LoginLogMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils.buildBetweenTime;
 import static com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils.buildTime;

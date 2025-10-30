@@ -31,7 +31,7 @@ public class ThingModelParam {
     private String name;
     /**
      * 用于区分输入或输出参数
-     *
+     * <p>
      * 枚举 {@link IotThingModelParamDirectionEnum}
      */
     @NotEmpty(message = "参数方向不能为空")
@@ -39,13 +39,13 @@ public class ThingModelParam {
     private String direction;
     /**
      * 参数的序号。从 0 开始排序，且不能重复。
-     *
+     * <p>
      * TODO 考虑要不要序号，感觉是要的, 先留一手看看
      */
     private Integer paraOrder;
     /**
      * 参数值的数据类型，与 dataSpecs 的 dataType 保持一致
-     *
+     * <p>
      * 枚举 {@link IotDataSpecsDataTypeEnum}
      */
     @NotEmpty(message = "数据类型不能为空")

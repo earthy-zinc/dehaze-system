@@ -67,6 +67,16 @@ public class Demo02CategoryServiceImpl implements Demo02CategoryService {
         demo02CategoryMapper.deleteById(id);
     }
 
+    @Override
+    public Demo02CategoryDO getDemo02Category(Long id) {
+        return demo02CategoryMapper.selectById(id);
+    }
+
+    @Override
+    public List<Demo02CategoryDO> getDemo02CategoryList(Demo02CategoryListReqVO listReqVO) {
+        return demo02CategoryMapper.selectList(listReqVO);
+    }
+
     private void validateDemo02CategoryExists(Long id) {
         if (demo02CategoryMapper.selectById(id) == null) {
             throw exception(DEMO02_CATEGORY_NOT_EXISTS);
@@ -119,16 +129,6 @@ public class Demo02CategoryServiceImpl implements Demo02CategoryService {
         if (!Objects.equals(demo02Category.getId(), id)) {
             throw exception(DEMO02_CATEGORY_NAME_DUPLICATE);
         }
-    }
-
-    @Override
-    public Demo02CategoryDO getDemo02Category(Long id) {
-        return demo02CategoryMapper.selectById(id);
-    }
-
-    @Override
-    public List<Demo02CategoryDO> getDemo02CategoryList(Demo02CategoryListReqVO listReqVO) {
-        return demo02CategoryMapper.selectList(listReqVO);
     }
 
 }

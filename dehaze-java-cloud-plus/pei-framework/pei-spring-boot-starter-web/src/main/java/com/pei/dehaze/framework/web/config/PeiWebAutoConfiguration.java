@@ -7,6 +7,8 @@ import com.pei.dehaze.framework.web.core.filter.DemoFilter;
 import com.pei.dehaze.framework.web.core.handler.GlobalExceptionHandler;
 import com.pei.dehaze.framework.web.core.handler.GlobalResponseBodyHandler;
 import com.pei.dehaze.framework.web.core.util.WebFrameworkUtils;
+import jakarta.annotation.Resource;
+import jakarta.servlet.Filter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -24,9 +26,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
-
-import jakarta.annotation.Resource;
-import jakarta.servlet.Filter;
 
 @AutoConfiguration
 @EnableConfigurationProperties(WebProperties.class)
@@ -94,6 +93,12 @@ public class PeiWebAutoConfiguration implements WebMvcConfigurer {
         return createFilterBean(new CorsFilter(source), WebFilterOrderEnum.CORS_FILTER);
     }
 
+    public static <T extends Filter> FilterRegistrationBean<T> createFilterBean(T filter, Integer order) {
+        FilterRegistrationBean<T> bean = new FilterRegistrationBean<>(filter);
+        bean.setOrder(order);
+        return bean;
+    }
+
     /**
      * 创建 RequestBodyCacheFilter Bean，可重复读取请求内容
      */
@@ -109,12 +114,6 @@ public class PeiWebAutoConfiguration implements WebMvcConfigurer {
     @ConditionalOnProperty(value = "pei.demo", havingValue = "true")
     public FilterRegistrationBean<DemoFilter> demoFilter() {
         return createFilterBean(new DemoFilter(), WebFilterOrderEnum.DEMO_FILTER);
-    }
-
-    public static <T extends Filter> FilterRegistrationBean<T> createFilterBean(T filter, Integer order) {
-        FilterRegistrationBean<T> bean = new FilterRegistrationBean<>(filter);
-        bean.setOrder(order);
-        return bean;
     }
 
     /**

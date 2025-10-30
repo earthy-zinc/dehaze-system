@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.erp.dal.dataobject.sale;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.erp.dal.dataobject.product.ErpProductDO;
-import com.pei.dehaze.module.erp.dal.dataobject.stock.ErpWarehouseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.erp.dal.dataobject.product.ErpProductDO;
+import com.pei.dehaze.module.erp.dal.dataobject.stock.ErpWarehouseDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -32,32 +32,31 @@ public class ErpSaleReturnItemDO extends BaseDO {
     private Long id;
     /**
      * 销售退货编号
-     *
+     * <p>
      * 关联 {@link ErpSaleReturnDO#getId()}
      */
     private Long returnId;
     /**
      * 销售订单项编号
-     *
-     * 关联 {@link ErpSaleOrderItemDO#getId()}
-     * 目的：方便更新关联的销售订单项的退货数量
+     * <p>
+     * 关联 {@link ErpSaleOrderItemDO#getId()} 目的：方便更新关联的销售订单项的退货数量
      */
     private Long orderItemId;
     /**
      * 仓库编号
-     *
+     * <p>
      * 关联 {@link ErpWarehouseDO#getId()}
      */
     private Long warehouseId;
     /**
      * 产品编号
-     *
+     * <p>
      * 关联 {@link ErpProductDO#getId()}
      */
     private Long productId;
     /**
      * 产品单位单位
-     *
+     * <p>
      * 冗余 {@link ErpProductDO#getUnitId()}
      */
     private Long productUnitId;
@@ -72,7 +71,7 @@ public class ErpSaleReturnItemDO extends BaseDO {
     private BigDecimal count;
     /**
      * 总价，单位：元
-     *
+     * <p>
      * totalPrice = productPrice * count
      */
     private BigDecimal totalPrice;
@@ -82,7 +81,7 @@ public class ErpSaleReturnItemDO extends BaseDO {
     private BigDecimal taxPercent;
     /**
      * 税额，单位：元
-     *
+     * <p>
      * taxPrice = totalPrice * taxPercent
      */
     private BigDecimal taxPrice;

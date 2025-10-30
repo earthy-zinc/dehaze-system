@@ -1,11 +1,11 @@
 package com.pei.dehaze.framework.common.pojo;
 
 import cn.hutool.core.lang.Assert;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pei.dehaze.framework.common.exception.ErrorCode;
 import com.pei.dehaze.framework.common.exception.ServiceException;
 import com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeConstants;
 import com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -24,7 +24,7 @@ public class CommonResult<T> implements Serializable {
     /**
      * 错误码
      *
-     * @see ErrorCode#getCode()
+     * @see ErrorCode#code()
      */
     @Schema(description = "错误码", requiredMode = Schema.RequiredMode.REQUIRED, example = "0")
     private Integer code;
@@ -35,18 +35,19 @@ public class CommonResult<T> implements Serializable {
     private T data;
     /**
      * 错误提示，用户可阅读
-     * @see ErrorCode#getMsg()
+     *
+     * @see ErrorCode#msg()
      */
     @Schema(description = "错误提示", requiredMode = Schema.RequiredMode.REQUIRED, example = "成功")
     private String msg;
 
     /**
      * 将传入的 result 对象，转换成另外一个泛型结果的对象
-     *
+     * <p>
      * 因为 A 方法返回的 CommonResult 对象，不满足调用其的 B 方法的返回，所以需要进行转换。
      *
      * @param result 传入的 result 对象
-     * @param <T> 返回的泛型
+     * @param <T>    返回的泛型
      * @return 新的 CommonResult 对象
      */
     public static <T> CommonResult<T> error(CommonResult<?> result) {
@@ -54,7 +55,7 @@ public class CommonResult<T> implements Serializable {
     }
 
     public static <T> CommonResult<T> error(Integer code, String message) {
-        Assert.notEquals(GlobalErrorCodeConstants.SUCCESS.getCode(), code, "code 必须是错误的！");
+        Assert.notEquals(GlobalErrorCodeConstants.SUCCESS.code(), code, "code 必须是错误的！");
         CommonResult<T> result = new CommonResult<>();
         result.code = code;
         result.msg = message;
@@ -62,27 +63,31 @@ public class CommonResult<T> implements Serializable {
     }
 
     public static <T> CommonResult<T> error(ErrorCode errorCode, Object... params) {
-        Assert.notEquals(GlobalErrorCodeConstants.SUCCESS.getCode(), errorCode.getCode(), "code 必须是错误的！");
+        Assert.notEquals(GlobalErrorCodeConstants.SUCCESS.code(), errorCode.code(), "code 必须是错误的！");
         CommonResult<T> result = new CommonResult<>();
-        result.code = errorCode.getCode();
-        result.msg = ServiceExceptionUtil.doFormat(errorCode.getCode(), errorCode.getMsg(), params);
+        result.code = errorCode.code();
+        result.msg = ServiceExceptionUtil.doFormat(errorCode.code(), errorCode.msg(), params);
         return result;
     }
 
     public static <T> CommonResult<T> error(ErrorCode errorCode) {
-        return error(errorCode.getCode(), errorCode.getMsg());
+        return error(errorCode.code(), errorCode.msg());
     }
 
     public static <T> CommonResult<T> success(T data) {
         CommonResult<T> result = new CommonResult<>();
-        result.code = GlobalErrorCodeConstants.SUCCESS.getCode();
+        result.code = GlobalErrorCodeConstants.SUCCESS.code();
         result.data = data;
         result.msg = "";
         return result;
     }
 
+    public static <T> CommonResult<T> error(ServiceException serviceException) {
+        return error(serviceException.getCode(), serviceException.getMessage());
+    }
+
     public static boolean isSuccess(Integer code) {
-        return Objects.equals(code, GlobalErrorCodeConstants.SUCCESS.getCode());
+        return Objects.equals(code, GlobalErrorCodeConstants.SUCCESS.code());
     }
 
     @JsonIgnore // 避免 jackson 序列化
@@ -90,12 +95,21 @@ public class CommonResult<T> implements Serializable {
         return isSuccess(code);
     }
 
+    // ========= 和 Exception 异常体系集成 =========
+
     @JsonIgnore // 避免 jackson 序列化
     public boolean isError() {
         return !isSuccess();
     }
 
-    // ========= 和 Exception 异常体系集成 =========
+    /**
+     * 判断是否有异常。如果有，则抛出 {@link ServiceException} 异常 如果没有，则返回 {@link #data} 数据
+     */
+    @JsonIgnore // 避免 jackson 序列化
+    public T getCheckedData() {
+        checkError();
+        return data;
+    }
 
     /**
      * 判断是否有异常。如果有，则抛出 {@link ServiceException} 异常
@@ -106,20 +120,6 @@ public class CommonResult<T> implements Serializable {
         }
         // 业务异常
         throw new ServiceException(code, msg);
-    }
-
-    /**
-     * 判断是否有异常。如果有，则抛出 {@link ServiceException} 异常
-     * 如果没有，则返回 {@link #data} 数据
-     */
-    @JsonIgnore // 避免 jackson 序列化
-    public T getCheckedData() {
-        checkError();
-        return data;
-    }
-
-    public static <T> CommonResult<T> error(ServiceException serviceException) {
-        return error(serviceException.getCode(), serviceException.getMessage());
     }
 
 }

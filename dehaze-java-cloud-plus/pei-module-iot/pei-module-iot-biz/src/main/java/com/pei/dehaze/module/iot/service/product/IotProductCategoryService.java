@@ -52,14 +52,6 @@ public interface IotProductCategoryService {
     IotProductCategoryDO getProductCategory(Long id);
 
     /**
-     * 获得产品分类列表
-     *
-     * @param ids 编号
-     * @return 产品分类列表
-     */
-    List<IotProductCategoryDO> getProductCategoryList(Collection<Long> ids);
-
-    /**
      * 获得产品分类 Map
      *
      * @param ids 编号
@@ -68,6 +60,14 @@ public interface IotProductCategoryService {
     default Map<Long, IotProductCategoryDO> getProductCategoryMap(Collection<Long> ids) {
         return convertMap(getProductCategoryList(ids), IotProductCategoryDO::getId);
     }
+
+    /**
+     * 获得产品分类列表
+     *
+     * @param ids 编号
+     * @return 产品分类列表
+     */
+    List<IotProductCategoryDO> getProductCategoryList(Collection<Long> ids);
 
     /**
      * 获得产品分类分页

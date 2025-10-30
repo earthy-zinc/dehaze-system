@@ -1,17 +1,17 @@
 package com.pei.dehaze.gateway.filter.security;
 
 import cn.hutool.core.util.StrUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
+import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCheckRespDTO;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.gateway.util.SecurityFrameworkUtils;
 import com.pei.dehaze.gateway.util.WebFrameworkUtils;
-import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
-import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCheckRespDTO;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import org.springframework.cloud.client.loadbalancer.reactive.ReactorLoadBalancerExchangeFilterFunction;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -29,9 +29,8 @@ import java.util.function.Function;
 import static com.pei.dehaze.framework.common.util.cache.CacheUtils.buildAsyncReloadingCache;
 
 /**
- * Token 过滤器，验证 token 的有效性
- * 1. 验证通过时，将 userId、userType、tenantId 通过 Header 转发给服务
- * 2. 验证不通过，还是会转发给服务。因为，接口是否需要登录的校验，还是交给服务自身处理
+ * Token 过滤器，验证 token 的有效性 1. 验证通过时，将 userId、userType、tenantId 通过 Header 转发给服务 2.
+ * 验证不通过，还是会转发给服务。因为，接口是否需要登录的校验，还是交给服务自身处理
  *
  * @author earthyzinc
  */
@@ -42,14 +41,14 @@ public class TokenAuthenticationFilter implements GlobalFilter, Ordered {
      * CommonResult<OAuth2AccessTokenCheckRespDTO> 对应的 TypeReference 结果，用于解析 checkToken 的结果
      */
     private static final TypeReference<CommonResult<OAuth2AccessTokenCheckRespDTO>> CHECK_RESULT_TYPE_REFERENCE
-            = new TypeReference<CommonResult<OAuth2AccessTokenCheckRespDTO>>() {};
+            = new TypeReference<CommonResult<OAuth2AccessTokenCheckRespDTO>>() {
+    };
 
     /**
      * 空的 LoginUser 的结果
-     *
-     * 用于解决如下问题：
-     * 1. {@link #getLoginUser(ServerWebExchange, String)} 返回 Mono.empty() 时，会导致后续的 flatMap 无法进行处理的问题。
-     * 2. {@link #buildUser(String)} 时，如果 Token 已经过期，返回 LOGIN_USER_EMPTY 对象，避免缓存无法刷新
+     * <p>
+     * 用于解决如下问题： 1. {@link #getLoginUser(ServerWebExchange, String)} 返回 Mono.empty() 时，会导致后续的 flatMap 无法进行处理的问题。 2.
+     * {@link #buildUser(String)} 时，如果 Token 已经过期，返回 LOGIN_USER_EMPTY 对象，避免缓存无法刷新
      */
     private static final LoginUser LOGIN_USER_EMPTY = new LoginUser();
 
@@ -57,9 +56,8 @@ public class TokenAuthenticationFilter implements GlobalFilter, Ordered {
 
     /**
      * 登录用户的本地缓存
-     *
-     * key1：多租户的编号
-     * key2：访问令牌
+     * <p>
+     * key1：多租户的编号 key2：访问令牌
      */
     private final LoadingCache<KeyValue<Long, String>, LoginUser> loginUserCache = buildAsyncReloadingCache(Duration.ofMinutes(1),
             new CacheLoader<KeyValue<Long, String>, LoginUser>() {

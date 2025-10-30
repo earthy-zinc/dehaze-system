@@ -3,6 +3,9 @@ package com.pei.dehaze.module.infra.service.codegen.inner;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.generator.config.po.TableField;
+import com.baomidou.mybatisplus.generator.config.po.TableInfo;
+import com.google.common.collect.Sets;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.infra.convert.codegen.CodegenConvert;
 import com.pei.dehaze.module.infra.dal.dataobject.codegen.CodegenColumnDO;
@@ -10,9 +13,6 @@ import com.pei.dehaze.module.infra.dal.dataobject.codegen.CodegenTableDO;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenColumnHtmlTypeEnum;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenColumnListConditionEnum;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenTemplateTypeEnum;
-import com.baomidou.mybatisplus.generator.config.po.TableField;
-import com.baomidou.mybatisplus.generator.config.po.TableInfo;
-import com.google.common.collect.Sets;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -23,16 +23,22 @@ import static cn.hutool.core.util.RandomUtil.randomEle;
 import static cn.hutool.core.util.RandomUtil.randomInt;
 
 /**
- * 代码生成器的 Builder，负责：
- * 1. 将数据库的表 {@link TableInfo} 定义，构建成 {@link CodegenTableDO}
- * 2. 将数据库的列 {@link TableField} 构定义，建成 {@link CodegenColumnDO}
+ * 代码生成器的 Builder，负责： 1. 将数据库的表 {@link TableInfo} 定义，构建成 {@link CodegenTableDO} 2. 将数据库的列 {@link TableField} 构定义，建成
+ * {@link CodegenColumnDO}
  */
 @Component
 public class CodegenBuilder {
 
     /**
-     * 字段名与 {@link CodegenColumnListConditionEnum} 的默认映射
-     * 注意，字段的匹配以后缀的方式
+     * 多租户编号的字段名
+     */
+    public static final String TENANT_ID_FIELD = "tenantId";
+    /**
+     * {@link com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO} 的字段
+     */
+    public static final Set<String> BASE_DO_FIELDS = new HashSet<>();
+    /**
+     * 字段名与 {@link CodegenColumnListConditionEnum} 的默认映射 注意，字段的匹配以后缀的方式
      */
     private static final Map<String, CodegenColumnListConditionEnum> COLUMN_LIST_OPERATION_CONDITION_MAPPINGS =
             MapUtil.<String, CodegenColumnListConditionEnum>builder()
@@ -40,10 +46,8 @@ public class CodegenBuilder {
                     .put("time", CodegenColumnListConditionEnum.BETWEEN)
                     .put("date", CodegenColumnListConditionEnum.BETWEEN)
                     .build();
-
     /**
-     * 字段名与 {@link CodegenColumnHtmlTypeEnum} 的默认映射
-     * 注意，字段的匹配以后缀的方式
+     * 字段名与 {@link CodegenColumnHtmlTypeEnum} 的默认映射 注意，字段的匹配以后缀的方式
      */
     private static final Map<String, CodegenColumnHtmlTypeEnum> COLUMN_HTML_TYPE_MAPPINGS =
             MapUtil.<String, CodegenColumnHtmlTypeEnum>builder()
@@ -58,15 +62,6 @@ public class CodegenBuilder {
                     .put("time", CodegenColumnHtmlTypeEnum.DATETIME)
                     .put("date", CodegenColumnHtmlTypeEnum.DATETIME)
                     .build();
-
-    /**
-     * 多租户编号的字段名
-     */
-    public static final String TENANT_ID_FIELD = "tenantId";
-    /**
-     * {@link com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO} 的字段
-     */
-    public static final Set<String> BASE_DO_FIELDS = new HashSet<>();
     /**
      * 新增操作，不需要传递的字段
      */

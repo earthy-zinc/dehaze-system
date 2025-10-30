@@ -9,6 +9,7 @@ import cn.hutool.crypto.SecureUtil;
 import cn.hutool.crypto.digest.HmacAlgorithm;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.framework.common.util.http.HttpUtils;
 import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsReceiveRespDTO;
@@ -16,7 +17,6 @@ import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsSendRespDTO
 import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
 import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.pei.dehaze.module.system.framework.sms.core.property.SmsChannelProperties;
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
@@ -67,11 +67,11 @@ public class QiniuSmsClient extends AbstractSmsClient {
     /**
      * 请求七牛云短信
      *
-     * @see <a href="https://developer.qiniu.com/sms/5842/sms-api-authentication"</>
      * @param httpMethod http请求方法
-     * @param body http请求消息体
-     * @param path URL path
+     * @param body       http请求消息体
+     * @param path       URL path
      * @return 请求结果
+     * @see <a href="https://developer.qiniu.com/sms/5842/sms-api-authentication"</>
      */
     private JSONObject request(String httpMethod, LinkedHashMap<String, Object> body, String path) {
         String signDate = DateUtil.date().setTimeZone(TimeZone.getTimeZone("UTC")).toString("yyyyMMdd'T'HHmmss'Z'");
@@ -84,7 +84,7 @@ public class QiniuSmsClient extends AbstractSmsClient {
 
         // 2. 发起请求
         String responseBody;
-        if (Objects.equals(httpMethod, "POST")){
+        if (Objects.equals(httpMethod, "POST")) {
             responseBody = HttpUtils.post("https://" + HOST + path, header, JSONUtil.toJsonStr(body));
         } else {
             responseBody = HttpUtils.get("https://" + HOST + path, header);
@@ -145,9 +145,12 @@ public class QiniuSmsClient extends AbstractSmsClient {
     @VisibleForTesting
     Integer convertSmsTemplateAuditStatus(String templateStatus) {
         switch (templateStatus) {
-            case "passed": return SmsTemplateAuditStatusEnum.SUCCESS.getStatus();
-            case "reviewing": return SmsTemplateAuditStatusEnum.CHECKING.getStatus();
-            case "rejected": return SmsTemplateAuditStatusEnum.FAIL.getStatus();
+            case "passed":
+                return SmsTemplateAuditStatusEnum.SUCCESS.getStatus();
+            case "reviewing":
+                return SmsTemplateAuditStatusEnum.CHECKING.getStatus();
+            case "rejected":
+                return SmsTemplateAuditStatusEnum.FAIL.getStatus();
             default:
                 throw new IllegalArgumentException(String.format("未知审核状态(%str)", templateStatus));
         }

@@ -7,6 +7,7 @@ import com.pei.dehaze.framework.common.util.collection.MapUtils;
 import com.pei.dehaze.framework.common.util.collection.SetUtils;
 import com.pei.dehaze.framework.common.util.number.NumberUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
+import com.pei.dehaze.module.bpm.api.event.BpmProcessInstanceStatusEvent;
 import com.pei.dehaze.module.bpm.controller.admin.base.user.UserSimpleBaseVO;
 import com.pei.dehaze.module.bpm.controller.admin.definition.vo.model.simple.BpmSimpleModelNodeVO;
 import com.pei.dehaze.module.bpm.controller.admin.definition.vo.process.BpmProcessDefinitionRespVO;
@@ -17,7 +18,6 @@ import com.pei.dehaze.module.bpm.controller.admin.task.vo.task.BpmTaskRespVO;
 import com.pei.dehaze.module.bpm.convert.definition.BpmProcessDefinitionConvert;
 import com.pei.dehaze.module.bpm.dal.dataobject.definition.BpmCategoryDO;
 import com.pei.dehaze.module.bpm.dal.dataobject.definition.BpmProcessDefinitionInfoDO;
-import com.pei.dehaze.module.bpm.api.event.BpmProcessInstanceStatusEvent;
 import com.pei.dehaze.module.bpm.framework.flowable.core.util.BpmnModelUtils;
 import com.pei.dehaze.module.bpm.framework.flowable.core.util.FlowableUtils;
 import com.pei.dehaze.module.bpm.service.message.dto.BpmMessageSendWhenProcessInstanceApproveReqDTO;
@@ -79,7 +79,7 @@ public interface BpmProcessInstanceConvert {
                 if (CollUtil.isNotEmpty(respVO.getTasks())) {
                     respVO.getTasks().forEach(task -> {
                         AdminUserRespDTO assigneeUser = userMap.get(task.getAssignee());
-                        if (assigneeUser!= null) {
+                        if (assigneeUser != null) {
                             task.setAssigneeUser(BeanUtils.toBean(assigneeUser, UserSimpleBaseVO.class));
                             MapUtils.findAndThen(deptMap, assigneeUser.getDeptId(), dept -> task.getAssigneeUser().setDeptName(dept.getName()));
                         }
@@ -95,30 +95,6 @@ public interface BpmProcessInstanceConvert {
         return vpPageResult;
     }
 
-    default BpmProcessInstanceRespVO buildProcessInstance(HistoricProcessInstance processInstance,
-                                                          ProcessDefinition processDefinition,
-                                                          BpmProcessDefinitionInfoDO processDefinitionInfo,
-                                                          AdminUserRespDTO startUser,
-                                                          DeptRespDTO dept) {
-        BpmProcessInstanceRespVO respVO = BeanUtils.toBean(processInstance, BpmProcessInstanceRespVO.class);
-        respVO.setStatus(FlowableUtils.getProcessInstanceStatus(processInstance))
-                .setFormVariables(FlowableUtils.getProcessInstanceFormVariable(processInstance));
-        // definition
-        respVO.setProcessDefinition(BeanUtils.toBean(processDefinition, BpmProcessDefinitionRespVO.class));
-        copyTo(processDefinitionInfo, respVO.getProcessDefinition());
-        // user
-        if (startUser != null) {
-            respVO.setStartUser(BeanUtils.toBean(startUser, UserSimpleBaseVO.class));
-            if (dept != null) {
-                respVO.getStartUser().setDeptName(dept.getName());
-            }
-        }
-        return respVO;
-    }
-
-    @Mapping(source = "from.id", target = "to.id", ignore = true)
-    void copyTo(BpmProcessDefinitionInfoDO from, @MappingTarget BpmProcessDefinitionRespVO to);
-
     default BpmProcessInstanceStatusEvent buildProcessInstanceStatusEvent(Object source, ProcessInstance instance, Integer status) {
         return new BpmProcessInstanceStatusEvent(source).setId(instance.getId()).setStatus(status)
                 .setProcessDefinitionKey(instance.getProcessDefinitionKey()).setBusinessKey(instance.getBusinessKey());
@@ -133,10 +109,10 @@ public interface BpmProcessInstanceConvert {
 
     default BpmMessageSendWhenProcessInstanceRejectReqDTO buildProcessInstanceRejectMessage(ProcessInstance instance, String reason) {
         return new BpmMessageSendWhenProcessInstanceRejectReqDTO()
-            .setProcessInstanceName(instance.getName())
-            .setProcessInstanceId(instance.getId())
-            .setReason(reason)
-            .setStartUserId(NumberUtils.parseLong(instance.getStartUserId()));
+                .setProcessInstanceName(instance.getName())
+                .setProcessInstanceId(instance.getId())
+                .setReason(reason)
+                .setStartUserId(NumberUtils.parseLong(instance.getStartUserId()));
     }
 
     default BpmProcessInstanceBpmnModelViewRespVO buildProcessInstanceBpmnModelView(HistoricProcessInstance processInstance,
@@ -153,7 +129,7 @@ public interface BpmProcessInstanceConvert {
         // 基本信息
         respVO.setProcessInstance(BeanUtils.toBean(processInstance, BpmProcessInstanceRespVO.class, o -> o
                         .setStatus(FlowableUtils.getProcessInstanceStatus(processInstance)))
-                        .setStartUser(buildUser(processInstance.getStartUserId(), userMap, deptMap)));
+                .setStartUser(buildUser(processInstance.getStartUserId(), userMap, deptMap)));
         respVO.setTasks(convertList(taskInstances, task -> BeanUtils.toBean(task, BpmTaskRespVO.class)
                 .setStatus(FlowableUtils.getTaskStatus(task)).setReason(FlowableUtils.getTaskReason(task))
                 .setAssigneeUser(buildUser(task.getAssignee(), userMap, deptMap))
@@ -179,8 +155,8 @@ public interface BpmProcessInstanceConvert {
     }
 
     default UserSimpleBaseVO buildUser(Long userId,
-                                                    Map<Long, AdminUserRespDTO> userMap,
-                                                    Map<Long, DeptRespDTO> deptMap) {
+                                       Map<Long, AdminUserRespDTO> userMap,
+                                       Map<Long, DeptRespDTO> deptMap) {
         if (userId == null) {
             return null;
         }
@@ -291,5 +267,29 @@ public interface BpmProcessInstanceConvert {
                 .setTodoTask(todoTask)
                 .setActivityNodes(activityNodes);
     }
+
+    default BpmProcessInstanceRespVO buildProcessInstance(HistoricProcessInstance processInstance,
+                                                          ProcessDefinition processDefinition,
+                                                          BpmProcessDefinitionInfoDO processDefinitionInfo,
+                                                          AdminUserRespDTO startUser,
+                                                          DeptRespDTO dept) {
+        BpmProcessInstanceRespVO respVO = BeanUtils.toBean(processInstance, BpmProcessInstanceRespVO.class);
+        respVO.setStatus(FlowableUtils.getProcessInstanceStatus(processInstance))
+                .setFormVariables(FlowableUtils.getProcessInstanceFormVariable(processInstance));
+        // definition
+        respVO.setProcessDefinition(BeanUtils.toBean(processDefinition, BpmProcessDefinitionRespVO.class));
+        copyTo(processDefinitionInfo, respVO.getProcessDefinition());
+        // user
+        if (startUser != null) {
+            respVO.setStartUser(BeanUtils.toBean(startUser, UserSimpleBaseVO.class));
+            if (dept != null) {
+                respVO.getStartUser().setDeptName(dept.getName());
+            }
+        }
+        return respVO;
+    }
+
+    @Mapping(source = "from.id", target = "to.id", ignore = true)
+    void copyTo(BpmProcessDefinitionInfoDO from, @MappingTarget BpmProcessDefinitionRespVO to);
 
 }

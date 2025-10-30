@@ -35,14 +35,13 @@ public interface TradeStatisticsConvert {
         return convert(convert(yesterdayData, monthData), convert(beforeYesterdayData, lastMonthData));
     }
 
+    DataComparisonRespVO<TradeSummaryRespVO> convert(TradeSummaryRespVO value, TradeSummaryRespVO reference);
 
     default TradeSummaryRespVO convert(TradeSummaryRespBO yesterdayData, TradeSummaryRespBO monthData) {
         return new TradeSummaryRespVO()
                 .setYesterdayOrderCount(yesterdayData.getCount()).setYesterdayPayPrice(yesterdayData.getSummary())
                 .setMonthOrderCount(monthData.getCount()).setMonthPayPrice(monthData.getSummary());
     }
-
-    DataComparisonRespVO<TradeSummaryRespVO> convert(TradeSummaryRespVO value, TradeSummaryRespVO reference);
 
     DataComparisonRespVO<TradeTrendSummaryRespVO> convert(TradeTrendSummaryRespVO value,
                                                           TradeTrendSummaryRespVO reference);
@@ -56,8 +55,6 @@ public interface TradeStatisticsConvert {
     @IterableMapping(qualifiedByName = "convert")
     List<TradeTrendSummaryRespVO> convertList(List<TradeStatisticsDO> list);
 
-    TradeTrendSummaryRespVO convertA(TradeStatisticsDO tradeStatistics);
-
     @Named("convert")
     default TradeTrendSummaryRespVO convert(TradeStatisticsDO tradeStatistics) {
         TradeTrendSummaryRespVO vo = convertA(tradeStatistics);
@@ -68,6 +65,8 @@ public interface TradeStatisticsConvert {
                 // 支出金额 = 余额支付金额 + 支付佣金金额 + 商品退款金额
                 .setExpensePrice(tradeStatistics.getWalletPayPrice() + tradeStatistics.getBrokerageSettlementPrice() + tradeStatistics.getAfterSaleRefundPrice());
     }
+
+    TradeTrendSummaryRespVO convertA(TradeStatisticsDO tradeStatistics);
 
     TradeOrderCountRespVO convert(Long undelivered, Long pickUp, Long afterSaleApply, Long auditingWithdraw);
 

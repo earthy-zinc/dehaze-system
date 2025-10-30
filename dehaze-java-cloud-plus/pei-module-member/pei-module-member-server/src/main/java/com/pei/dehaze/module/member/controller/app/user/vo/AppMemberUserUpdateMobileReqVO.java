@@ -2,12 +2,11 @@ package com.pei.dehaze.module.member.controller.app.user.vo;
 
 import com.pei.dehaze.framework.common.validation.Mobile;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-import org.hibernate.validator.constraints.Length;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+import lombok.Data;
+import org.hibernate.validator.constraints.Length;
 
 @Schema(description = "用户 APP - 修改手机 Request VO")
 @Data
@@ -19,7 +18,7 @@ public class AppMemberUserUpdateMobileReqVO {
     @Pattern(regexp = "^[0-9]+$", message = "手机验证码必须都是数字")
     private String code;
 
-    @Schema(description = "手机号",requiredMode = Schema.RequiredMode.REQUIRED, example = "15823654487")
+    @Schema(description = "手机号", requiredMode = Schema.RequiredMode.REQUIRED, example = "15823654487")
     @NotBlank(message = "手机号不能为空")
     @Length(min = 8, max = 11, message = "手机号码长度为 8-11 位")
     @Mobile

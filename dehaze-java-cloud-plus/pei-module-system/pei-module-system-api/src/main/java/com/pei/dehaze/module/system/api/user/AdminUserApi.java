@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.system.api.user;
 
 import cn.hutool.core.convert.Convert;
+import com.fhs.core.trans.anno.AutoTrans;
+import com.fhs.trans.service.AutoTransable;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
 import com.pei.dehaze.module.system.enums.ApiConstants;
-import com.fhs.core.trans.anno.AutoTrans;
-import com.fhs.trans.service.AutoTransable;
 import feign.FeignIgnore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,20 +29,10 @@ public interface AdminUserApi extends AutoTransable<AdminUserRespDTO> {
 
     String PREFIX = ApiConstants.PREFIX + "/user";
 
-    @GetMapping(PREFIX + "/get")
-    @Operation(summary = "通过用户 ID 查询用户")
-    @Parameter(name = "id", description = "用户编号", example = "1", required = true)
-    CommonResult<AdminUserRespDTO> getUser(@RequestParam("id") Long id);
-
     @GetMapping(PREFIX + "/list-by-subordinate")
     @Operation(summary = "通过用户 ID 查询用户下属")
     @Parameter(name = "id", description = "用户编号", example = "1", required = true)
     CommonResult<List<AdminUserRespDTO>> getUserListBySubordinate(@RequestParam("id") Long id);
-
-    @GetMapping(PREFIX + "/list")
-    @Operation(summary = "通过用户 ID 查询用户们")
-    @Parameter(name = "ids", description = "部门编号数组", example = "1,2", required = true)
-    CommonResult<List<AdminUserRespDTO>> getUserList(@RequestParam("ids") Collection<Long> ids);
 
     @GetMapping(PREFIX + "/list-by-dept-id")
     @Operation(summary = "获得指定部门的用户数组")
@@ -65,10 +55,13 @@ public interface AdminUserApi extends AutoTransable<AdminUserRespDTO> {
         return CollectionUtils.convertMap(users, AdminUserRespDTO::getId);
     }
 
+    @GetMapping(PREFIX + "/list")
+    @Operation(summary = "通过用户 ID 查询用户们")
+    @Parameter(name = "ids", description = "部门编号数组", example = "1,2", required = true)
+    CommonResult<List<AdminUserRespDTO>> getUserList(@RequestParam("ids") Collection<Long> ids);
+
     /**
-     * 校验用户是否有效。如下情况，视为无效：
-     * 1. 用户编号不存在
-     * 2. 用户被禁用
+     * 校验用户是否有效。如下情况，视为无效： 1. 用户编号不存在 2. 用户被禁用
      *
      * @param id 用户编号
      */
@@ -92,5 +85,10 @@ public interface AdminUserApi extends AutoTransable<AdminUserRespDTO> {
     default AdminUserRespDTO selectById(Object id) {
         return getUser(Convert.toLong(id)).getCheckedData();
     }
+
+    @GetMapping(PREFIX + "/get")
+    @Operation(summary = "通过用户 ID 查询用户")
+    @Parameter(name = "id", description = "用户编号", example = "1", required = true)
+    CommonResult<AdminUserRespDTO> getUser(@RequestParam("id") Long id);
 
 }

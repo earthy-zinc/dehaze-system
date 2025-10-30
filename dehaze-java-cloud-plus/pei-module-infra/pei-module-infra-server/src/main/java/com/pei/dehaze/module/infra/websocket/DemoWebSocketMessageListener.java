@@ -6,10 +6,9 @@ import com.pei.dehaze.framework.websocket.core.sender.WebSocketMessageSender;
 import com.pei.dehaze.framework.websocket.core.util.WebSocketFrameworkUtils;
 import com.pei.dehaze.module.infra.websocket.message.DemoReceiveMessage;
 import com.pei.dehaze.module.infra.websocket.message.DemoSendMessage;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
-
-import jakarta.annotation.Resource;
 
 /**
  * WebSocket 示例：单发消息

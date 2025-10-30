@@ -1,12 +1,11 @@
 package com.pei.dehaze.framework.quartz.config;
 
-import lombok.Data;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.validation.annotation.Validated;
-
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * XXL-Job 配置类
@@ -59,14 +58,14 @@ public class XxlJobProperties {
 
         /**
          * 默认端口
-         *
+         * <p>
          * 这里使用 -1 表示随机
          */
         private static final Integer PORT_DEFAULT = -1;
 
         /**
          * 默认日志保留天数
-         *
+         * <p>
          * 如果想永久保留，则设置为 -1
          */
         private static final Integer LOG_RETENTION_DAYS_DEFAULT = 30;

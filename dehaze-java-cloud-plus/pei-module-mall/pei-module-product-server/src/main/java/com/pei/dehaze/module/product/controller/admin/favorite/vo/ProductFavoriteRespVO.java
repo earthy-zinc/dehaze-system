@@ -8,7 +8,7 @@ import lombok.ToString;
 @Schema(description = "管理后台 - 商品收藏 Response VO")
 @Data
 @ToString(callSuper = true)
-public class ProductFavoriteRespVO  extends ProductSpuRespVO {
+public class ProductFavoriteRespVO extends ProductSpuRespVO {
 
     @Schema(description = "userId", requiredMode = Schema.RequiredMode.REQUIRED, example = "111")
     private Long userId;

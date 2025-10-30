@@ -1,15 +1,15 @@
 package com.pei.dehaze.module.pay.dal.dataobject.transfer;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
-import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
-import com.pei.dehaze.module.pay.enums.transfer.PayTransferStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
+import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.enums.transfer.PayTransferStatusEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -20,7 +20,7 @@ import java.util.Map;
  *
  * @author jason
  */
-@TableName(value ="pay_transfer", autoResultMap = true)
+@TableName(value = "pay_transfer", autoResultMap = true)
 @KeySequence("pay_transfer_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class PayTransferDO extends BaseDO {
@@ -38,21 +38,21 @@ public class PayTransferDO extends BaseDO {
 
     /**
      * 应用编号
-     *
+     * <p>
      * 关联 {@link PayAppDO#getId()}
      */
     private Long appId;
 
     /**
      * 转账渠道编号
-     *
+     * <p>
      * 关联 {@link PayChannelDO#getId()}
      */
     private Long channelId;
 
     /**
      * 转账渠道编码
-     *
+     * <p>
      * 枚举 {@link PayChannelEnum}
      */
     private String channelCode;
@@ -60,7 +60,7 @@ public class PayTransferDO extends BaseDO {
     // ========== 商户相关字段 ==========
     /**
      * 商户转账单编号
-     *
+     * <p>
      * 例如说，内部系统 A 的订单号，需要保证每个 PayAppDO 唯一
      */
     private String merchantTransferId;
@@ -88,7 +88,7 @@ public class PayTransferDO extends BaseDO {
 
     /**
      * 转账状态
-     *
+     * <p>
      * 枚举 {@link PayTransferStatusEnum}
      */
     private Integer status;
@@ -137,8 +137,9 @@ public class PayTransferDO extends BaseDO {
 
     /**
      * 渠道 package 信息
-     *
+     * <p>
      * 特殊：目前只有微信转账有这个东西！！！
+     *
      * @see <a href="https://pay.weixin.qq.com/doc/v3/merchant/4012716430">JSAPI 调起用户确认收款</a>
      */
     private String channelPackageInfo;

@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.system.dal.mysql.dept;
 
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.system.dal.dataobject.dept.UserPostDO;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;

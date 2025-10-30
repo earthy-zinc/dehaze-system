@@ -72,18 +72,6 @@ public class ErpStockRecordController {
         return success(buildStockRecrodVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出产品库存明细 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:stock-record:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportStockRecordExcel(@Valid ErpStockRecordPageReqVO pageReqVO,
-              HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpStockRecordRespVO> list = buildStockRecrodVOPageResult(stockRecordService.getStockRecordPage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "产品库存明细.xls", "数据", ErpStockRecordRespVO.class, list);
-    }
-
     private PageResult<ErpStockRecordRespVO> buildStockRecrodVOPageResult(PageResult<ErpStockRecordDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -100,6 +88,18 @@ public class ErpStockRecordController {
             MapUtils.findAndThen(warehouseMap, stock.getWarehouseId(), warehouse -> stock.setWarehouseName(warehouse.getName()));
             MapUtils.findAndThen(userMap, Long.parseLong(stock.getCreator()), user -> stock.setCreatorName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出产品库存明细 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:stock-record:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportStockRecordExcel(@Valid ErpStockRecordPageReqVO pageReqVO,
+                                       HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpStockRecordRespVO> list = buildStockRecrodVOPageResult(stockRecordService.getStockRecordPage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "产品库存明细.xls", "数据", ErpStockRecordRespVO.class, list);
     }
 
 }

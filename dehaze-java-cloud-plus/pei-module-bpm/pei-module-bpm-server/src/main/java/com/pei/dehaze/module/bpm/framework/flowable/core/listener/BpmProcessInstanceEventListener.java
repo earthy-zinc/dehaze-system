@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.bpm.framework.flowable.core.listener;
 
-import com.pei.dehaze.module.bpm.service.task.BpmProcessInstanceService;
 import com.google.common.collect.ImmutableSet;
+import com.pei.dehaze.module.bpm.service.task.BpmProcessInstanceService;
 import jakarta.annotation.Resource;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEventType;
@@ -31,18 +31,18 @@ public class BpmProcessInstanceEventListener extends AbstractFlowableEngineEvent
     @Lazy // 延迟加载，避免循环依赖
     private BpmProcessInstanceService processInstanceService;
 
-    public BpmProcessInstanceEventListener(){
+    public BpmProcessInstanceEventListener() {
         super(PROCESS_INSTANCE_EVENTS);
     }
 
     @Override
     protected void processCreated(FlowableEngineEntityEvent event) {
-        processInstanceService.processProcessInstanceCreated((ProcessInstance)event.getEntity());
+        processInstanceService.processProcessInstanceCreated((ProcessInstance) event.getEntity());
     }
 
     @Override
     protected void processCompleted(FlowableEngineEntityEvent event) {
-        processInstanceService.processProcessInstanceCompleted((ProcessInstance)event.getEntity());
+        processInstanceService.processProcessInstanceCompleted((ProcessInstance) event.getEntity());
     }
 
     @Override // 特殊情况：当跳转到 EndEvent 流程实例未结束, 会执行 deleteProcessInstance 方法

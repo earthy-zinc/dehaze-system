@@ -37,7 +37,7 @@ public interface ErpPurchaseOrderService {
     /**
      * 更新采购订单的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updatePurchaseOrderStatus(Long id, Integer status);
@@ -45,7 +45,7 @@ public interface ErpPurchaseOrderService {
     /**
      * 更新采购订单的入库数量
      *
-     * @param id 编号
+     * @param id         编号
      * @param inCountMap 入库数量 Map：key 采购订单项编号；value 入库数量
      */
     void updatePurchaseOrderInCount(Long id, Map<Long, BigDecimal> inCountMap);
@@ -53,7 +53,7 @@ public interface ErpPurchaseOrderService {
     /**
      * 更新采购订单的退货数量
      *
-     * @param orderId 编号
+     * @param orderId        编号
      * @param returnCountMap 退货数量 Map：key 采购订单项编号；value 退货数量
      */
     void updatePurchaseOrderReturnCount(Long orderId, Map<Long, BigDecimal> returnCountMap);

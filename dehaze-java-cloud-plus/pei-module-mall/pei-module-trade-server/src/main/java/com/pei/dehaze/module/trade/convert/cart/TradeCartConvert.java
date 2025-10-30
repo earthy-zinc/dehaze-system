@@ -38,8 +38,8 @@ public interface TradeCartConvert {
                     .setSku(BeanUtils.toBean(sku, AppProductSkuBaseRespVO.class));
             // 如果 SPU 不存在，或者下架，或者库存不足，说明是无效的
             if (spu == null
-                || !ProductSpuStatusEnum.isEnable(spu.getStatus())
-                || spu.getStock() <= 0) {
+                    || !ProductSpuStatusEnum.isEnable(spu.getStatus())
+                    || spu.getStock() <= 0) {
                 invalidList.add(cartVO);
             } else {
                 validList.add(cartVO);

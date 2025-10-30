@@ -49,7 +49,7 @@ public class IdempotentAspect {
         // 锁定失败，抛出异常
         if (!success) {
             log.info("[aroundPointCut][方法({}) 参数({}) 存在重复请求]", joinPoint.getSignature().toString(), joinPoint.getArgs());
-            throw new ServiceException(GlobalErrorCodeConstants.REPEATED_REQUESTS.getCode(), idempotent.message());
+            throw new ServiceException(GlobalErrorCodeConstants.REPEATED_REQUESTS.code(), idempotent.message());
         }
 
         // 2. 执行逻辑

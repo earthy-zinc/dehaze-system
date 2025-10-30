@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.system.api.mail.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
 import java.util.Map;
 
 @Schema(description = "RPC 服务 - 邮件发送给 Admin 或者 Member 用户 Request DTO")

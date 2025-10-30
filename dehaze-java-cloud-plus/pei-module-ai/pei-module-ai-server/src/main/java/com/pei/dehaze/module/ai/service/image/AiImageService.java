@@ -1,11 +1,14 @@
 package com.pei.dehaze.module.ai.service.image;
 
-import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.ai.controller.admin.image.vo.*;
+import com.pei.dehaze.module.ai.controller.admin.image.vo.AiImageDrawReqVO;
+import com.pei.dehaze.module.ai.controller.admin.image.vo.AiImagePageReqVO;
+import com.pei.dehaze.module.ai.controller.admin.image.vo.AiImagePublicPageReqVO;
+import com.pei.dehaze.module.ai.controller.admin.image.vo.AiImageUpdateReqVO;
 import com.pei.dehaze.module.ai.controller.admin.image.vo.midjourney.AiMidjourneyActionReqVO;
 import com.pei.dehaze.module.ai.controller.admin.image.vo.midjourney.AiMidjourneyImagineReqVO;
 import com.pei.dehaze.module.ai.dal.dataobject.image.AiImageDO;
+import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -20,7 +23,7 @@ public interface AiImageService {
     /**
      * 获取【我的】绘图分页
      *
-     * @param userId 用户编号
+     * @param userId    用户编号
      * @param pageReqVO 分页条件
      * @return 绘图分页
      */
@@ -53,7 +56,7 @@ public interface AiImageService {
     /**
      * 绘制图片
      *
-     * @param userId 用户编号
+     * @param userId    用户编号
      * @param drawReqVO 绘制请求
      * @return 绘画编号
      */
@@ -62,7 +65,7 @@ public interface AiImageService {
     /**
      * 删除【我的】绘画记录
      *
-     * @param id 绘画编号
+     * @param id     绘画编号
      * @param userId 用户编号
      */
     void deleteImageMy(Long id, Long userId);
@@ -95,7 +98,7 @@ public interface AiImageService {
      * 【Midjourney】生成图片
      *
      * @param userId 用户编号
-     * @param reqVO 绘制请求
+     * @param reqVO  绘制请求
      * @return 绘画编号
      */
     Long midjourneyImagine(Long userId, AiMidjourneyImagineReqVO reqVO);
@@ -118,7 +121,7 @@ public interface AiImageService {
      * 【Midjourney】Action 操作(放大、缩小、U1、U2...)
      *
      * @param userId 用户编号
-     * @param reqVO 绘制请求
+     * @param reqVO  绘制请求
      * @return 绘画编号
      */
     Long midjourneyAction(Long userId, AiMidjourneyActionReqVO reqVO);

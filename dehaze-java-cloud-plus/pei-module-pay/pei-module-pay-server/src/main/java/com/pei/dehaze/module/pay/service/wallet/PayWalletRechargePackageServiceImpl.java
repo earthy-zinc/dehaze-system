@@ -9,9 +9,8 @@ import com.pei.dehaze.module.pay.controller.admin.wallet.vo.rechargepackage.Wall
 import com.pei.dehaze.module.pay.convert.wallet.PayWalletRechargePackageConvert;
 import com.pei.dehaze.module.pay.dal.dataobject.wallet.PayWalletRechargePackageDO;
 import com.pei.dehaze.module.pay.dal.mysql.wallet.PayWalletRechargePackageMapper;
-import org.springframework.stereotype.Service;
-
 import jakarta.annotation.Resource;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
@@ -70,34 +69,12 @@ public class PayWalletRechargePackageServiceImpl implements PayWalletRechargePac
         walletRechargePackageMapper.updateById(updateObj);
     }
 
-    private void validateRechargePackageNameUnique(Long id, String name) {
-        if (StrUtil.isBlank(name)) {
-            return;
-        }
-        PayWalletRechargePackageDO rechargePackage = walletRechargePackageMapper.selectByName(name);
-        if (rechargePackage == null) {
-            return ;
-        }
-        if (id == null) {
-            throw exception(WALLET_RECHARGE_PACKAGE_NAME_EXISTS);
-        }
-        if (!id.equals(rechargePackage.getId())) {
-            throw exception(WALLET_RECHARGE_PACKAGE_NAME_EXISTS);
-        }
-    }
-
     @Override
     public void deleteWalletRechargePackage(Long id) {
         // 校验存在
         validateWalletRechargePackageExists(id);
         // 删除
         walletRechargePackageMapper.deleteById(id);
-    }
-
-    private void validateWalletRechargePackageExists(Long id) {
-        if (walletRechargePackageMapper.selectById(id) == null) {
-            throw exception(WALLET_RECHARGE_PACKAGE_NOT_FOUND);
-        }
     }
 
     @Override
@@ -108,6 +85,28 @@ public class PayWalletRechargePackageServiceImpl implements PayWalletRechargePac
     @Override
     public List<PayWalletRechargePackageDO> getWalletRechargePackageList(Integer status) {
         return walletRechargePackageMapper.selectListByStatus(status);
+    }
+
+    private void validateWalletRechargePackageExists(Long id) {
+        if (walletRechargePackageMapper.selectById(id) == null) {
+            throw exception(WALLET_RECHARGE_PACKAGE_NOT_FOUND);
+        }
+    }
+
+    private void validateRechargePackageNameUnique(Long id, String name) {
+        if (StrUtil.isBlank(name)) {
+            return;
+        }
+        PayWalletRechargePackageDO rechargePackage = walletRechargePackageMapper.selectByName(name);
+        if (rechargePackage == null) {
+            return;
+        }
+        if (id == null) {
+            throw exception(WALLET_RECHARGE_PACKAGE_NAME_EXISTS);
+        }
+        if (!id.equals(rechargePackage.getId())) {
+            throw exception(WALLET_RECHARGE_PACKAGE_NAME_EXISTS);
+        }
     }
 
 }

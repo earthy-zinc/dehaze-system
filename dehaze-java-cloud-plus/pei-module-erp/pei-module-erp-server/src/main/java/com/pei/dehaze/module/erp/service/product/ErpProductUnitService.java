@@ -66,14 +66,6 @@ public interface ErpProductUnitService {
     List<ErpProductUnitDO> getProductUnitListByStatus(Integer status);
 
     /**
-     * 获得产品单位列表
-     *
-     * @param ids 编号数组
-     * @return 产品单位列表
-     */
-    List<ErpProductUnitDO> getProductUnitList(Collection<Long> ids);
-
-    /**
      * 获得产品单位 Map
      *
      * @param ids 编号数组
@@ -82,5 +74,13 @@ public interface ErpProductUnitService {
     default Map<Long, ErpProductUnitDO> getProductUnitMap(Collection<Long> ids) {
         return convertMap(getProductUnitList(ids), ErpProductUnitDO::getId);
     }
+
+    /**
+     * 获得产品单位列表
+     *
+     * @param ids 编号数组
+     * @return 产品单位列表
+     */
+    List<ErpProductUnitDO> getProductUnitList(Collection<Long> ids);
 
 }

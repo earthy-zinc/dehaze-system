@@ -1,14 +1,14 @@
 package com.pei.dehaze.module.crm.dal.dataobject.receivable;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.crm.dal.dataobject.contract.CrmContractDO;
 import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import com.pei.dehaze.module.crm.enums.common.CrmAuditStatusEnum;
 import com.pei.dehaze.module.crm.enums.receivable.CrmReceivableReturnTypeEnum;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -40,19 +40,19 @@ public class CrmReceivableDO extends BaseDO {
     private String no;
     /**
      * 回款计划编号
-     *
+     * <p>
      * 关联 {@link CrmReceivablePlanDO#getId()}，非必须
      */
     private Long planId;
     /**
      * 客户编号
-     *
+     * <p>
      * 关联 {@link CrmCustomerDO#getId()}
      */
     private Long customerId;
     /**
      * 合同编号
-     *
+     * <p>
      * 关联 {@link CrmContractDO#getId()}
      */
     private Long contractId;
@@ -67,7 +67,7 @@ public class CrmReceivableDO extends BaseDO {
     private LocalDateTime returnTime;
     /**
      * 回款方式
-     *
+     * <p>
      * 枚举 {@link CrmReceivableReturnTypeEnum}
      */
     private Integer returnType;
@@ -82,13 +82,13 @@ public class CrmReceivableDO extends BaseDO {
 
     /**
      * 工作流编号
-     *
+     * <p>
      * 关联 ProcessInstance 的 id 属性
      */
     private String processInstanceId;
     /**
      * 审批状态
-     *
+     * <p>
      * 枚举 {@link CrmAuditStatusEnum}
      */
     private Integer auditStatus;

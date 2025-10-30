@@ -30,17 +30,17 @@ public enum CommonStatusEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static boolean isEnable(Integer status) {
         return ObjUtil.equal(ENABLE.status, status);
     }
 
     public static boolean isDisable(Integer status) {
         return ObjUtil.equal(DISABLE.status, status);
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

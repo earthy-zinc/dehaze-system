@@ -1,10 +1,11 @@
 package com.pei.dehaze.module.mp.framework.mp.config;
 
+import com.binarywang.spring.starter.wxjava.mp.properties.WxMpProperties;
 import com.pei.dehaze.module.mp.framework.mp.core.DefaultMpServiceFactory;
 import com.pei.dehaze.module.mp.framework.mp.core.MpServiceFactory;
 import com.pei.dehaze.module.mp.service.handler.menu.MenuHandler;
-import com.pei.dehaze.module.mp.service.handler.message.MessageReceiveHandler;
 import com.pei.dehaze.module.mp.service.handler.message.MessageAutoReplyHandler;
+import com.pei.dehaze.module.mp.service.handler.message.MessageReceiveHandler;
 import com.pei.dehaze.module.mp.service.handler.other.KfSessionHandler;
 import com.pei.dehaze.module.mp.service.handler.other.NullHandler;
 import com.pei.dehaze.module.mp.service.handler.other.ScanHandler;
@@ -12,7 +13,6 @@ import com.pei.dehaze.module.mp.service.handler.other.StoreCheckNotifyHandler;
 import com.pei.dehaze.module.mp.service.handler.user.LocationHandler;
 import com.pei.dehaze.module.mp.service.handler.user.SubscribeHandler;
 import com.pei.dehaze.module.mp.service.handler.user.UnsubscribeHandler;
-import com.binarywang.spring.starter.wxjava.mp.properties.WxMpProperties;
 import me.chanjar.weixin.common.redis.RedisTemplateWxRedisOps;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

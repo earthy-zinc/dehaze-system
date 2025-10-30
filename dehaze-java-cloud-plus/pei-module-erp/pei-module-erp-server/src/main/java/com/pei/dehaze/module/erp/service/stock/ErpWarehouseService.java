@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.erp.service.stock;
 
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.erp.controller.admin.stock.vo.warehouse.ErpWarehouseSaveReqVO;
 import com.pei.dehaze.module.erp.controller.admin.stock.vo.warehouse.ErpWarehousePageReqVO;
+import com.pei.dehaze.module.erp.controller.admin.stock.vo.warehouse.ErpWarehouseSaveReqVO;
 import com.pei.dehaze.module.erp.dal.dataobject.stock.ErpWarehouseDO;
 import jakarta.validation.Valid;
 
@@ -37,7 +37,7 @@ public interface ErpWarehouseService {
     /**
      * 更新仓库默认状态
      *
-     * @param id     编号
+     * @param id            编号
      * @param defaultStatus 默认状态
      */
     void updateWarehouseDefaultStatus(Long id, Boolean defaultStatus);
@@ -74,14 +74,6 @@ public interface ErpWarehouseService {
     List<ErpWarehouseDO> getWarehouseListByStatus(Integer status);
 
     /**
-     * 获得仓库列表
-     *
-     * @param ids 编号数组
-     * @return 仓库列表
-     */
-    List<ErpWarehouseDO> getWarehouseList(Collection<Long> ids);
-
-    /**
      * 获得仓库 Map
      *
      * @param ids 编号数组
@@ -90,6 +82,14 @@ public interface ErpWarehouseService {
     default Map<Long, ErpWarehouseDO> getWarehouseMap(Collection<Long> ids) {
         return convertMap(getWarehouseList(ids), ErpWarehouseDO::getId);
     }
+
+    /**
+     * 获得仓库列表
+     *
+     * @param ids 编号数组
+     * @return 仓库列表
+     */
+    List<ErpWarehouseDO> getWarehouseList(Collection<Long> ids);
 
     /**
      * 获得仓库分页

@@ -54,12 +54,6 @@ public class PointActivityServiceImpl implements PointActivityService {
     @Resource
     private ProductSkuApi productSkuApi;
 
-    private static List<PointProductDO> buildPointProductDO(PointActivityDO pointActivity, List<PointProductSaveReqVO> products) {
-        return BeanUtils.toBean(products, PointProductDO.class, product ->
-                product.setSpuId(pointActivity.getSpuId()).setActivityId(pointActivity.getId())
-                        .setActivityStatus(pointActivity.getStatus()));
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createPointActivity(PointActivitySaveReqVO createReqVO) {
@@ -156,6 +150,72 @@ public class PointActivityServiceImpl implements PointActivityService {
                 CommonStatusEnum.DISABLE.getStatus()));
     }
 
+    private static List<PointProductDO> buildPointProductDO(PointActivityDO pointActivity, List<PointProductSaveReqVO> products) {
+        return BeanUtils.toBean(products, PointProductDO.class, product ->
+                product.setSpuId(pointActivity.getSpuId()).setActivityId(pointActivity.getId())
+                        .setActivityStatus(pointActivity.getStatus()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deletePointActivity(Long id) {
+        // 校验存在
+        PointActivityDO pointActivity = validatePointActivityExists(id);
+        if (CommonStatusEnum.ENABLE.getStatus().equals(pointActivity.getStatus())) {
+            throw exception(POINT_ACTIVITY_DELETE_FAIL_STATUS_NOT_CLOSED_OR_END);
+        }
+
+        // 删除商城活动
+        pointActivityMapper.deleteById(id);
+        // 删除活动商品
+        List<PointProductDO> products = pointProductMapper.selectListByActivityId(id);
+        pointProductMapper.deleteByIds(convertSet(products, PointProductDO::getId));
+    }
+
+    @Override
+    public PointActivityDO getPointActivity(Long id) {
+        return pointActivityMapper.selectById(id);
+    }
+
+    @Override
+    public PageResult<PointActivityDO> getPointActivityPage(PointActivityPageReqVO pageReqVO) {
+        return pointActivityMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public List<PointActivityDO> getPointActivityListByIds(Collection<Long> ids) {
+        return pointActivityMapper.selectList(PointActivityDO::getId, ids);
+    }
+
+    @Override
+    public List<PointProductDO> getPointProductListByActivityIds(Collection<Long> activityIds) {
+        return pointProductMapper.selectListByActivityId(activityIds);
+    }
+
+    @Override
+    public PointValidateJoinRespDTO validateJoinPointActivity(Long activityId, Long skuId, Integer count) {
+        // 1. 校验积分商城活动是否存在
+        PointActivityDO activity = validatePointActivityExists(activityId);
+        if (CommonStatusEnum.isDisable(activity.getStatus())) {
+            throw exception(POINT_ACTIVITY_JOIN_ACTIVITY_STATUS_CLOSED);
+        }
+
+        // 2.1 校验积分商城商品是否存在
+        PointProductDO product = pointProductMapper.selectListByActivityIdAndSkuId(activityId, skuId);
+        if (product == null) {
+            throw exception(POINT_ACTIVITY_JOIN_ACTIVITY_PRODUCT_NOT_EXISTS);
+        }
+        // 2.2 超过单次购买限制
+        if (count > product.getCount()) {
+            throw exception(POINT_ACTIVITY_JOIN_ACTIVITY_SINGLE_LIMIT_COUNT_EXCEED);
+        }
+        // 2.2 校验库存是否充足
+        if (count > product.getStock()) {
+            throw exception(POINT_ACTIVITY_UPDATE_STOCK_FAIL);
+        }
+        return BeanUtils.toBean(product, PointValidateJoinRespDTO.class);
+    }
+
     /**
      * 更新积分商品
      *
@@ -184,30 +244,6 @@ public class PointActivityServiceImpl implements PointActivityService {
         if (isNotEmpty(diffList.get(2))) {
             pointProductMapper.deleteByIds(convertList(diffList.get(2), PointProductDO::getId));
         }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void deletePointActivity(Long id) {
-        // 校验存在
-        PointActivityDO pointActivity = validatePointActivityExists(id);
-        if (CommonStatusEnum.ENABLE.getStatus().equals(pointActivity.getStatus())) {
-            throw exception(POINT_ACTIVITY_DELETE_FAIL_STATUS_NOT_CLOSED_OR_END);
-        }
-
-        // 删除商城活动
-        pointActivityMapper.deleteById(id);
-        // 删除活动商品
-        List<PointProductDO> products = pointProductMapper.selectListByActivityId(id);
-        pointProductMapper.deleteByIds(convertSet(products, PointProductDO::getId));
-    }
-
-    private PointActivityDO validatePointActivityExists(Long id) {
-        PointActivityDO pointActivityDO = pointActivityMapper.selectById(id);
-        if (pointActivityDO == null) {
-            throw exception(POINT_ACTIVITY_NOT_EXISTS);
-        }
-        return pointActivityDO;
     }
 
     /**
@@ -262,48 +298,12 @@ public class PointActivityServiceImpl implements PointActivityService {
         });
     }
 
-    @Override
-    public PointActivityDO getPointActivity(Long id) {
-        return pointActivityMapper.selectById(id);
-    }
-
-    @Override
-    public PageResult<PointActivityDO> getPointActivityPage(PointActivityPageReqVO pageReqVO) {
-        return pointActivityMapper.selectPage(pageReqVO);
-    }
-
-    @Override
-    public List<PointActivityDO> getPointActivityListByIds(Collection<Long> ids) {
-        return pointActivityMapper.selectList(PointActivityDO::getId, ids);
-    }
-
-    @Override
-    public List<PointProductDO> getPointProductListByActivityIds(Collection<Long> activityIds) {
-        return pointProductMapper.selectListByActivityId(activityIds);
-    }
-
-    @Override
-    public PointValidateJoinRespDTO validateJoinPointActivity(Long activityId, Long skuId, Integer count) {
-        // 1. 校验积分商城活动是否存在
-        PointActivityDO activity = validatePointActivityExists(activityId);
-        if (CommonStatusEnum.isDisable(activity.getStatus())) {
-            throw exception(POINT_ACTIVITY_JOIN_ACTIVITY_STATUS_CLOSED);
+    private PointActivityDO validatePointActivityExists(Long id) {
+        PointActivityDO pointActivityDO = pointActivityMapper.selectById(id);
+        if (pointActivityDO == null) {
+            throw exception(POINT_ACTIVITY_NOT_EXISTS);
         }
-
-        // 2.1 校验积分商城商品是否存在
-        PointProductDO product = pointProductMapper.selectListByActivityIdAndSkuId(activityId, skuId);
-        if (product == null) {
-            throw exception(POINT_ACTIVITY_JOIN_ACTIVITY_PRODUCT_NOT_EXISTS);
-        }
-        // 2.2 超过单次购买限制
-        if (count > product.getCount()) {
-            throw exception(POINT_ACTIVITY_JOIN_ACTIVITY_SINGLE_LIMIT_COUNT_EXCEED);
-        }
-        // 2.2 校验库存是否充足
-        if (count > product.getStock()) {
-            throw exception(POINT_ACTIVITY_UPDATE_STOCK_FAIL);
-        }
-        return BeanUtils.toBean(product, PointValidateJoinRespDTO.class);
+        return pointActivityDO;
     }
 
 }

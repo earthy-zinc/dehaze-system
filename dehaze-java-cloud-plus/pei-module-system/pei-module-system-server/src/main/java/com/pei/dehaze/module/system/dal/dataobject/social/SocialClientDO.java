@@ -1,18 +1,18 @@
 package com.pei.dehaze.module.system.dal.dataobject.social;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 import me.zhyd.oauth.config.AuthConfig;
 
 /**
  * 社交客户端 DO
- *
+ * <p>
  * 对应 {@link AuthConfig} 配置，满足不同租户，有自己的客户端配置，实现社交（三方）登录
  *
  * @author earthyzinc
@@ -37,21 +37,21 @@ public class SocialClientDO extends TenantBaseDO {
     private String name;
     /**
      * 社交类型
-     *
+     * <p>
      * 枚举 {@link SocialTypeEnum}
      */
     private Integer socialType;
     /**
      * 用户类型
-     *
+     * <p>
      * 目的：不同用户类型，对应不同的小程序，需要自己的配置
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;
@@ -67,9 +67,8 @@ public class SocialClientDO extends TenantBaseDO {
 
     /**
      * 代理编号
-     *
-     * 目前只有部分“社交类型”在使用：
-     * 1. 企业微信：对应授权方的网页应用 ID
+     * <p>
+     * 目前只有部分“社交类型”在使用： 1. 企业微信：对应授权方的网页应用 ID
      */
     private String agentId;
 

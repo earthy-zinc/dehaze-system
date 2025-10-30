@@ -75,6 +75,10 @@ public interface AiChatRoleService {
      */
     AiChatRoleDO getChatRole(Long id);
 
+    default Map<Long, AiChatRoleDO> getChatRoleMap(Collection<Long> ids) {
+        return convertMap(getChatRoleList(ids), AiChatRoleDO::getId);
+    }
+
     /**
      * 获得聊天角色列表
      *
@@ -82,10 +86,6 @@ public interface AiChatRoleService {
      * @return 聊天角色列表
      */
     List<AiChatRoleDO> getChatRoleList(Collection<Long> ids);
-
-    default Map<Long, AiChatRoleDO> getChatRoleMap(Collection<Long> ids) {
-        return convertMap(getChatRoleList(ids), AiChatRoleDO::getId);
-    }
 
     /**
      * 校验聊天角色是否合法

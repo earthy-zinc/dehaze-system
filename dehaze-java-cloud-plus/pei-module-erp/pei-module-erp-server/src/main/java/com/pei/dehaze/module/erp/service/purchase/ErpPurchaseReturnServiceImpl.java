@@ -126,29 +126,6 @@ public class ErpPurchaseReturnServiceImpl implements ErpPurchaseReturnService {
         }
     }
 
-    private void calculateTotalPrice(ErpPurchaseReturnDO purchaseReturn, List<ErpPurchaseReturnItemDO> purchaseReturnItems) {
-        purchaseReturn.setTotalCount(getSumValue(purchaseReturnItems, ErpPurchaseReturnItemDO::getCount, BigDecimal::add));
-        purchaseReturn.setTotalProductPrice(getSumValue(purchaseReturnItems, ErpPurchaseReturnItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
-        purchaseReturn.setTotalTaxPrice(getSumValue(purchaseReturnItems, ErpPurchaseReturnItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
-        purchaseReturn.setTotalPrice(purchaseReturn.getTotalProductPrice().add(purchaseReturn.getTotalTaxPrice()));
-        // 计算优惠价格
-        if (purchaseReturn.getDiscountPercent() == null) {
-            purchaseReturn.setDiscountPercent(BigDecimal.ZERO);
-        }
-        purchaseReturn.setDiscountPrice(MoneyUtils.priceMultiplyPercent(purchaseReturn.getTotalPrice(), purchaseReturn.getDiscountPercent()));
-        purchaseReturn.setTotalPrice(purchaseReturn.getTotalPrice().subtract(purchaseReturn.getDiscountPrice()).add(purchaseReturn.getOtherPrice()));
-    }
-
-    private void updatePurchaseOrderReturnCount(Long orderId) {
-        // 1.1 查询采购订单对应的采购出库单列表
-        List<ErpPurchaseReturnDO> purchaseReturns = purchaseReturnMapper.selectListByOrderId(orderId);
-        // 1.2 查询对应的采购订单项的退货数量
-        Map<Long, BigDecimal> returnCountMap = purchaseReturnItemMapper.selectOrderItemCountSumMapByReturnIds(
-                convertList(purchaseReturns, ErpPurchaseReturnDO::getId));
-        // 2. 更新采购订单的出库数量
-        purchaseOrderService.updatePurchaseOrderReturnCount(orderId, returnCountMap);
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updatePurchaseReturnStatus(Long id, Integer status) {
@@ -195,43 +172,6 @@ public class ErpPurchaseReturnServiceImpl implements ErpPurchaseReturnService {
         purchaseReturnMapper.updateById(new ErpPurchaseReturnDO().setId(id).setRefundPrice(refundPrice));
     }
 
-    private List<ErpPurchaseReturnItemDO> validatePurchaseReturnItems(List<ErpPurchaseReturnSaveReqVO.Item> list) {
-        // 1. 校验产品存在
-        List<ErpProductDO> productList = productService.validProductList(
-                convertSet(list, ErpPurchaseReturnSaveReqVO.Item::getProductId));
-        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
-        // 2. 转化为 ErpPurchaseReturnItemDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, ErpPurchaseReturnItemDO.class, item -> {
-            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
-            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
-            if (item.getTotalPrice() == null) {
-                return;
-            }
-            if (item.getTaxPercent() != null) {
-                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
-            }
-        }));
-    }
-
-    private void updatePurchaseReturnItemList(Long id, List<ErpPurchaseReturnItemDO> newList) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<ErpPurchaseReturnItemDO> oldList = purchaseReturnItemMapper.selectListByReturnId(id);
-        List<List<ErpPurchaseReturnItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setReturnId(id));
-            purchaseReturnItemMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            purchaseReturnItemMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            purchaseReturnItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpPurchaseReturnItemDO::getId));
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deletePurchaseReturn(List<Long> ids) {
@@ -259,14 +199,6 @@ public class ErpPurchaseReturnServiceImpl implements ErpPurchaseReturnService {
 
     }
 
-    private ErpPurchaseReturnDO validatePurchaseReturnExists(Long id) {
-        ErpPurchaseReturnDO purchaseReturn = purchaseReturnMapper.selectById(id);
-        if (purchaseReturn == null) {
-            throw exception(PURCHASE_RETURN_NOT_EXISTS);
-        }
-        return purchaseReturn;
-    }
-
     @Override
     public ErpPurchaseReturnDO getPurchaseReturn(Long id) {
         return purchaseReturnMapper.selectById(id);
@@ -286,8 +218,6 @@ public class ErpPurchaseReturnServiceImpl implements ErpPurchaseReturnService {
         return purchaseReturnMapper.selectPage(pageReqVO);
     }
 
-    // ==================== 采购退货项 ====================
-
     @Override
     public List<ErpPurchaseReturnItemDO> getPurchaseReturnItemListByReturnId(Long returnId) {
         return purchaseReturnItemMapper.selectListByReturnId(returnId);
@@ -299,6 +229,76 @@ public class ErpPurchaseReturnServiceImpl implements ErpPurchaseReturnService {
             return Collections.emptyList();
         }
         return purchaseReturnItemMapper.selectListByReturnIds(returnIds);
+    }
+
+    private ErpPurchaseReturnDO validatePurchaseReturnExists(Long id) {
+        ErpPurchaseReturnDO purchaseReturn = purchaseReturnMapper.selectById(id);
+        if (purchaseReturn == null) {
+            throw exception(PURCHASE_RETURN_NOT_EXISTS);
+        }
+        return purchaseReturn;
+    }
+
+    private void updatePurchaseReturnItemList(Long id, List<ErpPurchaseReturnItemDO> newList) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<ErpPurchaseReturnItemDO> oldList = purchaseReturnItemMapper.selectListByReturnId(id);
+        List<List<ErpPurchaseReturnItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setReturnId(id));
+            purchaseReturnItemMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            purchaseReturnItemMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            purchaseReturnItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpPurchaseReturnItemDO::getId));
+        }
+    }
+
+    private List<ErpPurchaseReturnItemDO> validatePurchaseReturnItems(List<ErpPurchaseReturnSaveReqVO.Item> list) {
+        // 1. 校验产品存在
+        List<ErpProductDO> productList = productService.validProductList(
+                convertSet(list, ErpPurchaseReturnSaveReqVO.Item::getProductId));
+        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
+        // 2. 转化为 ErpPurchaseReturnItemDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, ErpPurchaseReturnItemDO.class, item -> {
+            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
+            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
+            if (item.getTotalPrice() == null) {
+                return;
+            }
+            if (item.getTaxPercent() != null) {
+                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
+            }
+        }));
+    }
+
+    // ==================== 采购退货项 ====================
+
+    private void calculateTotalPrice(ErpPurchaseReturnDO purchaseReturn, List<ErpPurchaseReturnItemDO> purchaseReturnItems) {
+        purchaseReturn.setTotalCount(getSumValue(purchaseReturnItems, ErpPurchaseReturnItemDO::getCount, BigDecimal::add));
+        purchaseReturn.setTotalProductPrice(getSumValue(purchaseReturnItems, ErpPurchaseReturnItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
+        purchaseReturn.setTotalTaxPrice(getSumValue(purchaseReturnItems, ErpPurchaseReturnItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
+        purchaseReturn.setTotalPrice(purchaseReturn.getTotalProductPrice().add(purchaseReturn.getTotalTaxPrice()));
+        // 计算优惠价格
+        if (purchaseReturn.getDiscountPercent() == null) {
+            purchaseReturn.setDiscountPercent(BigDecimal.ZERO);
+        }
+        purchaseReturn.setDiscountPrice(MoneyUtils.priceMultiplyPercent(purchaseReturn.getTotalPrice(), purchaseReturn.getDiscountPercent()));
+        purchaseReturn.setTotalPrice(purchaseReturn.getTotalPrice().subtract(purchaseReturn.getDiscountPrice()).add(purchaseReturn.getOtherPrice()));
+    }
+
+    private void updatePurchaseOrderReturnCount(Long orderId) {
+        // 1.1 查询采购订单对应的采购出库单列表
+        List<ErpPurchaseReturnDO> purchaseReturns = purchaseReturnMapper.selectListByOrderId(orderId);
+        // 1.2 查询对应的采购订单项的退货数量
+        Map<Long, BigDecimal> returnCountMap = purchaseReturnItemMapper.selectOrderItemCountSumMapByReturnIds(
+                convertList(purchaseReturns, ErpPurchaseReturnDO::getId));
+        // 2. 更新采购订单的出库数量
+        purchaseOrderService.updatePurchaseOrderReturnCount(orderId, returnCountMap);
     }
 
 }

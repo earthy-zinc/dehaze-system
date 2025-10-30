@@ -1,7 +1,8 @@
 CREATE DATABASE IF NOT EXISTS ruoyi_vue_pro;
 USE ruoyi_vue_pro;
 
-CREATE STABLE IF NOT EXISTS iot_device_log (
+CREATE
+STABLE IF NOT EXISTS iot_device_log (
     ts TIMESTAMP,
     id VARCHAR(36) PRIMARY KEY,
     request_id NCHAR(36),

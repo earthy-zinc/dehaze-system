@@ -4,10 +4,10 @@ import cn.hutool.core.date.LocalDateTimeUtil;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2AccessTokenDO;
+import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
@@ -32,6 +32,10 @@ public class OAuth2AccessTokenRedisDAO {
         return JsonUtils.parseObject(stringRedisTemplate.opsForValue().get(redisKey), OAuth2AccessTokenDO.class);
     }
 
+    private static String formatKey(String accessToken) {
+        return String.format(OAUTH2_ACCESS_TOKEN, accessToken);
+    }
+
     public void set(OAuth2AccessTokenDO accessTokenDO) {
         String redisKey = formatKey(accessTokenDO.getAccessToken());
         // 清理多余字段，避免缓存
@@ -50,10 +54,6 @@ public class OAuth2AccessTokenRedisDAO {
     public void deleteList(Collection<String> accessTokens) {
         List<String> redisKeys = CollectionUtils.convertList(accessTokens, OAuth2AccessTokenRedisDAO::formatKey);
         stringRedisTemplate.delete(redisKeys);
-    }
-
-    private static String formatKey(String accessToken) {
-        return String.format(OAUTH2_ACCESS_TOKEN, accessToken);
     }
 
 }

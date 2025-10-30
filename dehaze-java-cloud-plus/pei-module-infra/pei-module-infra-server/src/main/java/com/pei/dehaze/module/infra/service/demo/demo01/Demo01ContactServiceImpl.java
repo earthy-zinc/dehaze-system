@@ -69,12 +69,6 @@ public class Demo01ContactServiceImpl implements Demo01ContactService {
         }
     }
 
-    private void validateDemo01ContactExists(Long id) {
-        if (demo01ContactMapper.selectById(id) == null) {
-            throw exception(DEMO01_CONTACT_NOT_EXISTS);
-        }
-    }
-
     @Override
     public Demo01ContactDO getDemo01Contact(Long id) {
         return demo01ContactMapper.selectById(id);
@@ -83,6 +77,12 @@ public class Demo01ContactServiceImpl implements Demo01ContactService {
     @Override
     public PageResult<Demo01ContactDO> getDemo01ContactPage(Demo01ContactPageReqVO pageReqVO) {
         return demo01ContactMapper.selectPage(pageReqVO);
+    }
+
+    private void validateDemo01ContactExists(Long id) {
+        if (demo01ContactMapper.selectById(id) == null) {
+            throw exception(DEMO01_CONTACT_NOT_EXISTS);
+        }
     }
 
 }

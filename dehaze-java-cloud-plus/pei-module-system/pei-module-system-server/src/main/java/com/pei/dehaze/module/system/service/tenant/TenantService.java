@@ -7,8 +7,8 @@ import com.pei.dehaze.module.system.controller.admin.tenant.vo.tenant.TenantSave
 import com.pei.dehaze.module.system.dal.dataobject.tenant.TenantDO;
 import com.pei.dehaze.module.system.service.tenant.handler.TenantInfoHandler;
 import com.pei.dehaze.module.system.service.tenant.handler.TenantMenuHandler;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 import java.util.Set;
 
@@ -106,16 +106,14 @@ public interface TenantService {
     List<TenantDO> getTenantListByStatus(Integer status);
 
     /**
-     * 进行租户的信息处理逻辑
-     * 其中，租户编号从 {@link TenantContextHolder} 上下文中获取
+     * 进行租户的信息处理逻辑 其中，租户编号从 {@link TenantContextHolder} 上下文中获取
      *
      * @param handler 处理器
      */
     void handleTenantInfo(TenantInfoHandler handler);
 
     /**
-     * 进行租户的菜单处理逻辑
-     * 其中，租户编号从 {@link TenantContextHolder} 上下文中获取
+     * 进行租户的菜单处理逻辑 其中，租户编号从 {@link TenantContextHolder} 上下文中获取
      *
      * @param handler 处理器
      */

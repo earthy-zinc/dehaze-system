@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.iot.dal.mysql.ota;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.iot.controller.admin.ota.vo.upgrade.record.IotOtaUpgradeRecordPageReqVO;
 import com.pei.dehaze.module.iot.dal.dataobject.ota.IotOtaUpgradeRecordDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -17,6 +17,7 @@ import java.util.Map;
 public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeRecordDO> {
 
     // TODO @li：selectByFirmwareIdAndTaskIdAndDeviceId；让方法自解释
+
     /**
      * 根据条件查询单个OTA升级记录
      *
@@ -34,9 +35,9 @@ public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeReco
     }
 
     // TODO @li：这个是不是 groupby status 就 ok 拉？
+
     /**
-     * 根据任务ID和设备名称查询OTA升级记录的状态统计信息。
-     * 该函数通过SQL查询统计不同状态（0到5）的记录数量，并返回一个包含统计结果的Map列表。
+     * 根据任务ID和设备名称查询OTA升级记录的状态统计信息。 该函数通过SQL查询统计不同状态（0到5）的记录数量，并返回一个包含统计结果的Map列表。
      *
      * @param taskId     任务ID，用于筛选特定任务的OTA升级记录。
      * @param deviceName 设备名称，支持模糊查询，用于筛选特定设备的OTA升级记录。
@@ -56,8 +57,7 @@ public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeReco
                                                           @Param("deviceName") String deviceName);
 
     /**
-     * 根据固件ID查询OTA升级记录的状态统计信息。
-     * 该函数通过SQL查询统计不同状态（0到5）的记录数量，并返回一个包含统计结果的Map列表。
+     * 根据固件ID查询OTA升级记录的状态统计信息。 该函数通过SQL查询统计不同状态（0到5）的记录数量，并返回一个包含统计结果的Map列表。
      *
      * @param firmwareId 固件ID，用于筛选特定固件的OTA升级记录。
      * @return 返回一个Map列表，每个Map包含不同状态（0到5）的记录数量。
@@ -73,6 +73,7 @@ public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeReco
     List<Map<String, Object>> selectOtaUpgradeRecordStatistics(Long firmwareId);
 
     // TODO @li：这里的注释，可以去掉哈
+
     /**
      * 根据分页查询条件获取 OTA升级记录的分页结果
      *
@@ -89,6 +90,7 @@ public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeReco
     }
 
     // TODO @li：这里的注释，可以去掉哈
+
     /**
      * 根据任务ID和状态更新升级记录的状态
      * <p>
@@ -109,6 +111,7 @@ public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeReco
     }
 
     // TODO @li：参考上面的建议，调整下这个方法
+
     /**
      * 根据状态查询符合条件的升级记录列表
      * <p>
@@ -124,11 +127,11 @@ public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeReco
     }
 
     // TODO @li：参考上面的建议，调整下这个方法
+
     /**
      * 更新升级记录状态
      * <p>
-     * 该函数用于批量更新指定ID列表中的升级记录状态。通过传入的ID列表和状态值，使用LambdaUpdateWrapper构建更新条件，
-     * 并执行更新操作。
+     * 该函数用于批量更新指定ID列表中的升级记录状态。通过传入的ID列表和状态值，使用LambdaUpdateWrapper构建更新条件， 并执行更新操作。
      *
      * @param ids    需要更新的升级记录ID列表，类型为List<Long>。传入的ID列表中的记录将被更新。
      * @param status 要更新的状态值，类型为Integer。该值将被设置到符合条件的升级记录中。
@@ -142,6 +145,7 @@ public interface IotOtaUpgradeRecordMapper extends BaseMapperX<IotOtaUpgradeReco
     }
 
     // TODO @li：参考上面的建议，调整下这个方法
+
     /**
      * 根据任务ID查询升级记录列表
      * <p>

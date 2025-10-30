@@ -6,10 +6,10 @@ import com.pei.dehaze.module.product.api.sku.dto.ProductSkuRespDTO;
 import com.pei.dehaze.module.product.api.sku.dto.ProductSkuUpdateStockReqDTO;
 import com.pei.dehaze.module.product.dal.dataobject.sku.ProductSkuDO;
 import com.pei.dehaze.module.product.service.sku.ProductSkuService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 

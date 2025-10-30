@@ -11,6 +11,7 @@ import com.pei.dehaze.module.mp.dal.dataobject.tag.MpTagDO;
 import com.pei.dehaze.module.mp.dal.mysql.tag.MpTagMapper;
 import com.pei.dehaze.module.mp.framework.mp.core.MpServiceFactory;
 import com.pei.dehaze.module.mp.service.account.MpAccountService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.error.WxErrorException;
 import me.chanjar.weixin.mp.api.WxMpService;
@@ -20,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Map;
 
@@ -103,14 +103,6 @@ public class MpTagServiceImpl implements MpTagService {
         mpTagMapper.deleteById(tag.getId());
     }
 
-    private MpTagDO validateTagExists(Long id) {
-        MpTagDO tag = mpTagMapper.selectById(id);
-        if (tag == null) {
-            throw exception(TAG_NOT_EXISTS);
-        }
-        return tag;
-    }
-
     @Override
     public PageResult<MpTagDO> getTagPage(MpTagPageReqVO pageReqVO) {
         return mpTagMapper.selectPage(pageReqVO);
@@ -159,6 +151,14 @@ public class MpTagServiceImpl implements MpTagService {
         if (CollUtil.isNotEmpty(tagMap)) {
             mpTagMapper.deleteBatchIds(convertList(tagMap.values(), MpTagDO::getId));
         }
+    }
+
+    private MpTagDO validateTagExists(Long id) {
+        MpTagDO tag = mpTagMapper.selectById(id);
+        if (tag == null) {
+            throw exception(TAG_NOT_EXISTS);
+        }
+        return tag;
     }
 
 }

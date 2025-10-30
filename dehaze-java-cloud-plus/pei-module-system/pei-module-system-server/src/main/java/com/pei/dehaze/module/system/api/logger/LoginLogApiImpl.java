@@ -3,10 +3,9 @@ package com.pei.dehaze.module.system.api.logger;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.system.api.logger.dto.LoginLogCreateReqDTO;
 import com.pei.dehaze.module.system.service.logger.LoginLogService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 

@@ -5,10 +5,10 @@ import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.system.api.dept.dto.PostRespDTO;
 import com.pei.dehaze.module.system.dal.dataobject.dept.PostDO;
 import com.pei.dehaze.module.system.service.dept.PostService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 

@@ -47,18 +47,77 @@ public class HttpUtils {
         return builder.build();
     }
 
+    public static String[] obtainBasicAuthorization(HttpServletRequest request) {
+        String clientId;
+        String clientSecret;
+        // 先从 Header 中获取
+        String authorization = request.getHeader("Authorization");
+        authorization = StrUtil.subAfter(authorization, "Basic ", true);
+        if (StringUtils.hasText(authorization)) {
+            authorization = Base64.decodeStr(authorization);
+            clientId = StrUtil.subBefore(authorization, ":", false);
+            clientSecret = StrUtil.subAfter(authorization, ":", false);
+            // 再从 Param 中获取
+        } else {
+            clientId = request.getParameter("client_id");
+            clientSecret = request.getParameter("client_secret");
+        }
+
+        // 如果两者非空，则返回
+        if (StrUtil.isNotEmpty(clientId) && StrUtil.isNotEmpty(clientSecret)) {
+            return new String[]{clientId, clientSecret};
+        }
+        return null;
+    }
+
+    /**
+     * HTTP post 请求，基于 {@link cn.hutool.http.HttpUtil} 实现
+     * <p>
+     * 为什么要封装该方法，因为 HttpUtil 默认封装的方法，没有允许传递 headers 参数
+     *
+     * @param url         URL
+     * @param headers     请求头
+     * @param requestBody 请求体
+     * @return 请求结果
+     */
+    public static String post(String url, Map<String, String> headers, String requestBody) {
+        try (HttpResponse response = HttpRequest.post(url)
+                .addHeaders(headers)
+                .body(requestBody)
+                .execute()) {
+            return response.body();
+        }
+    }
+
+    /**
+     * HTTP get 请求，基于 {@link cn.hutool.http.HttpUtil} 实现
+     * <p>
+     * 为什么要封装该方法，因为 HttpUtil 默认封装的方法，没有允许传递 headers 参数
+     *
+     * @param url     URL
+     * @param headers 请求头
+     * @return 请求结果
+     */
+    public static String get(String url, Map<String, String> headers) {
+        try (HttpResponse response = HttpRequest.get(url)
+                .addHeaders(headers)
+                .execute()) {
+            return response.body();
+        }
+    }
+
     private String append(String base, Map<String, ?> query, boolean fragment) {
         return append(base, query, null, fragment);
     }
 
     /**
      * 拼接 URL
-     *
+     * <p>
      * copy from Spring Security OAuth2 的 AuthorizationEndpoint 类的 append 方法
      *
-     * @param base 基础 URL
-     * @param query 查询参数
-     * @param keys query 的 key，对应的原本的 key 的映射。例如说 query 里有个 key 是 xx，实际它的 key 是 extra_xx，则通过 keys 里添加这个映射
+     * @param base     基础 URL
+     * @param query    查询参数
+     * @param keys     query 的 key，对应的原本的 key 的映射。例如说 query 里有个 key 是 xx，实际它的 key 是 extra_xx，则通过 keys 里添加这个映射
      * @param fragment URL 的 fragment，即拼接到 # 中
      * @return 拼接后的 URL
      */
@@ -111,65 +170,6 @@ public class HttpUtils {
             builder.query(encoded.getQuery());
         }
         return builder.build().toUriString();
-    }
-
-    public static String[] obtainBasicAuthorization(HttpServletRequest request) {
-        String clientId;
-        String clientSecret;
-        // 先从 Header 中获取
-        String authorization = request.getHeader("Authorization");
-        authorization = StrUtil.subAfter(authorization, "Basic ", true);
-        if (StringUtils.hasText(authorization)) {
-            authorization = Base64.decodeStr(authorization);
-            clientId = StrUtil.subBefore(authorization, ":", false);
-            clientSecret = StrUtil.subAfter(authorization, ":", false);
-            // 再从 Param 中获取
-        } else {
-            clientId = request.getParameter("client_id");
-            clientSecret = request.getParameter("client_secret");
-        }
-
-        // 如果两者非空，则返回
-        if (StrUtil.isNotEmpty(clientId) && StrUtil.isNotEmpty(clientSecret)) {
-            return new String[]{clientId, clientSecret};
-        }
-        return null;
-    }
-
-    /**
-     * HTTP post 请求，基于 {@link cn.hutool.http.HttpUtil} 实现
-     *
-     * 为什么要封装该方法，因为 HttpUtil 默认封装的方法，没有允许传递 headers 参数
-     *
-     * @param url URL
-     * @param headers 请求头
-     * @param requestBody 请求体
-     * @return 请求结果
-     */
-    public static String post(String url, Map<String, String> headers, String requestBody) {
-        try (HttpResponse response = HttpRequest.post(url)
-                .addHeaders(headers)
-                .body(requestBody)
-                .execute()) {
-            return response.body();
-        }
-    }
-
-    /**
-     * HTTP get 请求，基于 {@link cn.hutool.http.HttpUtil} 实现
-     *
-     * 为什么要封装该方法，因为 HttpUtil 默认封装的方法，没有允许传递 headers 参数
-     *
-     * @param url URL
-     * @param headers 请求头
-     * @return 请求结果
-     */
-    public static String get(String url, Map<String, String> headers) {
-        try (HttpResponse response = HttpRequest.get(url)
-                .addHeaders(headers)
-                .execute()) {
-            return response.body();
-        }
     }
 
 }

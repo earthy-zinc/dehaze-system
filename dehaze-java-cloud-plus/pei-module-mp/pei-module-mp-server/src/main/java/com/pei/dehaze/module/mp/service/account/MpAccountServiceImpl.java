@@ -2,6 +2,7 @@ package com.pei.dehaze.module.mp.service.account;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.tenant.core.util.TenantUtils;
@@ -13,7 +14,8 @@ import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
 import com.pei.dehaze.module.mp.dal.mysql.account.MpAccountMapper;
 import com.pei.dehaze.module.mp.enums.ErrorCodeConstants;
 import com.pei.dehaze.module.mp.framework.mp.core.MpServiceFactory;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.error.WxErrorException;
@@ -24,8 +26,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -48,9 +48,8 @@ import static com.pei.dehaze.module.system.enums.ErrorCodeConstants.USER_USERNAM
 public class MpAccountServiceImpl implements MpAccountService {
 
     /**
-     * 账号缓存
-     * key：账号编号 {@link MpAccountDO#getAppId()}
-     *
+     * 账号缓存 key：账号编号 {@link MpAccountDO#getAppId()}
+     * <p>
      * 这里声明 volatile 修饰的原因是，每次刷新时，直接修改指向
      */
     @Getter
@@ -62,6 +61,29 @@ public class MpAccountServiceImpl implements MpAccountService {
     @Resource
     @Lazy // 延迟加载，解决循环依赖的问题
     private MpServiceFactory mpServiceFactory;
+
+    /**
+     * 通过定时任务轮询，刷新缓存
+     * <p>
+     * 目的：多节点部署时，通过轮询”通知“所有节点，进行刷新
+     */
+    @Scheduled(initialDelay = 60, fixedRate = 60, timeUnit = TimeUnit.SECONDS)
+    public void refreshLocalCache() {
+        // 注意：忽略自动多租户，因为要全局初始化缓存
+        TenantUtils.executeIgnore(() -> {
+            // 情况一：如果缓存里没有数据，则直接刷新缓存
+            if (CollUtil.isEmpty(accountCache)) {
+                initLocalCache();
+                return;
+            }
+
+            // 情况二，如果缓存里数据，则通过 updateTime 判断是否有数据变更，有变更则刷新缓存
+            LocalDateTime maxTime = getMaxValue(accountCache.values(), MpAccountDO::getUpdateTime);
+            if (mpAccountMapper.selectCountByUpdateTimeGt(maxTime) > 0) {
+                initLocalCache();
+            }
+        });
+    }
 
     @Override
     @PostConstruct
@@ -83,29 +105,6 @@ public class MpAccountServiceImpl implements MpAccountService {
             // 第二步：构建缓存。创建或更新支付 Client
             mpServiceFactory.init(accounts);
             accountCache = convertMap(accounts, MpAccountDO::getAppId);
-        });
-    }
-
-    /**
-     * 通过定时任务轮询，刷新缓存
-     *
-     * 目的：多节点部署时，通过轮询”通知“所有节点，进行刷新
-     */
-    @Scheduled(initialDelay = 60, fixedRate = 60, timeUnit = TimeUnit.SECONDS)
-    public void refreshLocalCache() {
-        // 注意：忽略自动多租户，因为要全局初始化缓存
-        TenantUtils.executeIgnore(() -> {
-            // 情况一：如果缓存里没有数据，则直接刷新缓存
-            if (CollUtil.isEmpty(accountCache)) {
-                initLocalCache();
-                return;
-            }
-
-            // 情况二，如果缓存里数据，则通过 updateTime 判断是否有数据变更，有变更则刷新缓存
-            LocalDateTime maxTime = getMaxValue(accountCache.values(), MpAccountDO::getUpdateTime);
-            if (mpAccountMapper.selectCountByUpdateTimeGt(maxTime) > 0) {
-                initLocalCache();
-            }
         });
     }
 
@@ -147,30 +146,6 @@ public class MpAccountServiceImpl implements MpAccountService {
 
         // 刷新缓存
         initLocalCache();
-    }
-
-    private MpAccountDO validateAccountExists(Long id) {
-        MpAccountDO account = mpAccountMapper.selectById(id);
-        if (account == null) {
-            throw ServiceExceptionUtil.exception(ErrorCodeConstants.ACCOUNT_NOT_EXISTS);
-        }
-        return account;
-    }
-
-    @VisibleForTesting
-    public void validateAppIdUnique(Long id, String appId) {
-        // 多个租户，appId 是不能重复，否则公众号回调会无法识别
-        TenantUtils.executeIgnore(() -> {
-            MpAccountDO account = mpAccountMapper.selectByAppId(appId);
-            if (account == null) {
-                return;
-            }
-            // 存在 account 记录的情况下
-            if (id == null // 新增时，说明重复
-                    || ObjUtil.notEqual(id, account.getId())) { // 更新时，如果 id 不一致，说明重复
-                throw exception(USER_USERNAME_EXISTS);
-            }
-        });
     }
 
     @Override
@@ -224,6 +199,30 @@ public class MpAccountServiceImpl implements MpAccountService {
         } catch (WxErrorException e) {
             throw exception(ErrorCodeConstants.ACCOUNT_CLEAR_QUOTA_FAIL, e.getError().getErrorMsg());
         }
+    }
+
+    private MpAccountDO validateAccountExists(Long id) {
+        MpAccountDO account = mpAccountMapper.selectById(id);
+        if (account == null) {
+            throw ServiceExceptionUtil.exception(ErrorCodeConstants.ACCOUNT_NOT_EXISTS);
+        }
+        return account;
+    }
+
+    @VisibleForTesting
+    public void validateAppIdUnique(Long id, String appId) {
+        // 多个租户，appId 是不能重复，否则公众号回调会无法识别
+        TenantUtils.executeIgnore(() -> {
+            MpAccountDO account = mpAccountMapper.selectByAppId(appId);
+            if (account == null) {
+                return;
+            }
+            // 存在 account 记录的情况下
+            if (id == null // 新增时，说明重复
+                    || ObjUtil.notEqual(id, account.getId())) { // 更新时，如果 id 不一致，说明重复
+                throw exception(USER_USERNAME_EXISTS);
+            }
+        });
     }
 
 }

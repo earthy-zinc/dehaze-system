@@ -51,18 +51,6 @@ public class DiyTemplateServiceImpl implements DiyTemplateService {
         return diyTemplate.getId();
     }
 
-    /**
-     * 创建模板下面的默认页面
-     * 默认创建两个页面：首页、我的
-     *
-     * @param diyTemplate 模板对象
-     */
-    private void createDefaultPage(DiyTemplateDO diyTemplate) {
-        String remark = String.format("模板【%s】自动创建", diyTemplate.getName());
-        diyPageService.createDiyPage(DiyPageConvert.INSTANCE.convertCreateVo(diyTemplate.getId(), "首页", remark));
-        diyPageService.createDiyPage(DiyPageConvert.INSTANCE.convertCreateVo(diyTemplate.getId(), "我的", remark));
-    }
-
     @Override
     public void updateDiyTemplate(DiyTemplateUpdateReqVO updateReqVO) {
         // 校验存在
@@ -72,23 +60,6 @@ public class DiyTemplateServiceImpl implements DiyTemplateService {
         // 更新
         DiyTemplateDO updateObj = DiyTemplateConvert.INSTANCE.convert(updateReqVO);
         diyTemplateMapper.updateById(updateObj);
-    }
-
-    void validateNameUnique(Long id, String name) {
-        if (StrUtil.isBlank(name)) {
-            return;
-        }
-        DiyTemplateDO template = diyTemplateMapper.selectByName(name);
-        if (template == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的模板
-        if (id == null) {
-            throw exception(DIY_TEMPLATE_NAME_USED, name);
-        }
-        if (!template.getId().equals(id)) {
-            throw exception(DIY_TEMPLATE_NAME_USED, name);
-        }
     }
 
     @Override
@@ -101,14 +72,6 @@ public class DiyTemplateServiceImpl implements DiyTemplateService {
         }
         // 删除
         diyTemplateMapper.deleteById(id);
-    }
-
-    private DiyTemplateDO validateDiyTemplateExists(Long id) {
-        DiyTemplateDO diyTemplateDO = diyTemplateMapper.selectById(id);
-        if (diyTemplateDO == null) {
-            throw exception(DIY_TEMPLATE_NOT_EXISTS);
-        }
-        return diyTemplateDO;
     }
 
     @Override
@@ -166,6 +129,42 @@ public class DiyTemplateServiceImpl implements DiyTemplateService {
     @Override
     public DiyTemplateDO getUsedDiyTemplate() {
         return diyTemplateMapper.selectByUsed(true);
+    }
+
+    private DiyTemplateDO validateDiyTemplateExists(Long id) {
+        DiyTemplateDO diyTemplateDO = diyTemplateMapper.selectById(id);
+        if (diyTemplateDO == null) {
+            throw exception(DIY_TEMPLATE_NOT_EXISTS);
+        }
+        return diyTemplateDO;
+    }
+
+    void validateNameUnique(Long id, String name) {
+        if (StrUtil.isBlank(name)) {
+            return;
+        }
+        DiyTemplateDO template = diyTemplateMapper.selectByName(name);
+        if (template == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的模板
+        if (id == null) {
+            throw exception(DIY_TEMPLATE_NAME_USED, name);
+        }
+        if (!template.getId().equals(id)) {
+            throw exception(DIY_TEMPLATE_NAME_USED, name);
+        }
+    }
+
+    /**
+     * 创建模板下面的默认页面 默认创建两个页面：首页、我的
+     *
+     * @param diyTemplate 模板对象
+     */
+    private void createDefaultPage(DiyTemplateDO diyTemplate) {
+        String remark = String.format("模板【%s】自动创建", diyTemplate.getName());
+        diyPageService.createDiyPage(DiyPageConvert.INSTANCE.convertCreateVo(diyTemplate.getId(), "首页", remark));
+        diyPageService.createDiyPage(DiyPageConvert.INSTANCE.convertCreateVo(diyTemplate.getId(), "我的", remark));
     }
 
 }

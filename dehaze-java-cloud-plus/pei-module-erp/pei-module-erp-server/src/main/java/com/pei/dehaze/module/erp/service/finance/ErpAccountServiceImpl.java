@@ -72,12 +72,6 @@ public class ErpAccountServiceImpl implements ErpAccountService {
         accountMapper.deleteById(id);
     }
 
-    private void validateAccountExists(Long id) {
-        if (accountMapper.selectById(id) == null) {
-            throw exception(ACCOUNT_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ErpAccountDO getAccount(Long id) {
         return accountMapper.selectById(id);
@@ -108,6 +102,12 @@ public class ErpAccountServiceImpl implements ErpAccountService {
     @Override
     public PageResult<ErpAccountDO> getAccountPage(ErpAccountPageReqVO pageReqVO) {
         return accountMapper.selectPage(pageReqVO);
+    }
+
+    private void validateAccountExists(Long id) {
+        if (accountMapper.selectById(id) == null) {
+            throw exception(ACCOUNT_NOT_EXISTS);
+        }
     }
 
 }

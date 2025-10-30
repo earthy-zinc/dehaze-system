@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.bpm.framework.flowable.core.candidate.strategy.other;
 
+import com.google.common.collect.Sets;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.module.bpm.framework.flowable.core.candidate.BpmTaskCandidateStrategy;
 import com.pei.dehaze.module.bpm.framework.flowable.core.enums.BpmTaskCandidateStrategyEnum;
 import com.pei.dehaze.module.bpm.framework.flowable.core.util.FlowableUtils;
-import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.common.engine.api.FlowableException;

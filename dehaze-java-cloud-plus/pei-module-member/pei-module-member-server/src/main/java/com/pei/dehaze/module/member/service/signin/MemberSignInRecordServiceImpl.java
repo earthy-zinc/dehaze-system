@@ -54,38 +54,6 @@ public class MemberSignInRecordServiceImpl implements MemberSignInRecordService 
     private MemberUserService memberUserService;
 
     @Override
-    public AppMemberSignInRecordSummaryRespVO getSignInRecordSummary(Long userId) {
-        // 1. 初始化默认返回信息
-        AppMemberSignInRecordSummaryRespVO summary = new AppMemberSignInRecordSummaryRespVO();
-        summary.setTotalDay(0);
-        summary.setContinuousDay(0);
-        summary.setTodaySignIn(false);
-
-        // 2. 获取用户签到的记录数
-        Long signCount = signInRecordMapper.selectCountByUserId(userId);
-        if (ObjUtil.equal(signCount, 0L)) {
-            return summary;
-        }
-        summary.setTotalDay(signCount.intValue()); // 设置总签到天数
-
-        // 3. 校验当天是否有签到
-        MemberSignInRecordDO lastRecord = signInRecordMapper.selectLastRecordByUserId(userId);
-        if (lastRecord == null) {
-            return summary;
-        }
-        summary.setTodaySignIn(DateUtils.isToday(lastRecord.getCreateTime()));
-
-        // 4.1 检查今天是否未签到且记录不是昨天创建的，如果是则直接返回
-        if (!summary.getTodaySignIn() && !DateUtils.isYesterday(lastRecord.getCreateTime())) {
-            return summary;
-        }
-
-        // 4.2 要么是今天签到了，要么是昨天的记录，设置连续签到天数
-        summary.setContinuousDay(lastRecord.getDay());
-        return summary;
-    }
-
-    @Override
     public PageResult<MemberSignInRecordDO> getSignInRecordPage(MemberSignInRecordPageReqVO pageReqVO) {
         // 根据用户昵称查询出用户ids
         Set<Long> userIds = null;
@@ -131,6 +99,38 @@ public class MemberSignInRecordServiceImpl implements MemberSignInRecordService 
             memberLevelService.addExperience(userId, record.getExperience(), MemberExperienceBizTypeEnum.SIGN_IN, String.valueOf(record.getId()));
         }
         return record;
+    }
+
+    @Override
+    public AppMemberSignInRecordSummaryRespVO getSignInRecordSummary(Long userId) {
+        // 1. 初始化默认返回信息
+        AppMemberSignInRecordSummaryRespVO summary = new AppMemberSignInRecordSummaryRespVO();
+        summary.setTotalDay(0);
+        summary.setContinuousDay(0);
+        summary.setTodaySignIn(false);
+
+        // 2. 获取用户签到的记录数
+        Long signCount = signInRecordMapper.selectCountByUserId(userId);
+        if (ObjUtil.equal(signCount, 0L)) {
+            return summary;
+        }
+        summary.setTotalDay(signCount.intValue()); // 设置总签到天数
+
+        // 3. 校验当天是否有签到
+        MemberSignInRecordDO lastRecord = signInRecordMapper.selectLastRecordByUserId(userId);
+        if (lastRecord == null) {
+            return summary;
+        }
+        summary.setTodaySignIn(DateUtils.isToday(lastRecord.getCreateTime()));
+
+        // 4.1 检查今天是否未签到且记录不是昨天创建的，如果是则直接返回
+        if (!summary.getTodaySignIn() && !DateUtils.isYesterday(lastRecord.getCreateTime())) {
+            return summary;
+        }
+
+        // 4.2 要么是今天签到了，要么是昨天的记录，设置连续签到天数
+        summary.setContinuousDay(lastRecord.getDay());
+        return summary;
     }
 
     private void validateSigned(MemberSignInRecordDO signInRecordDO) {

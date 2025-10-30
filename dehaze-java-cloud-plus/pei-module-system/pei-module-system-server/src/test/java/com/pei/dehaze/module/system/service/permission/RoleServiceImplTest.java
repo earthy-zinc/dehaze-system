@@ -10,12 +10,12 @@ import com.pei.dehaze.module.system.dal.dataobject.permission.RoleDO;
 import com.pei.dehaze.module.system.dal.mysql.permission.RoleMapper;
 import com.pei.dehaze.module.system.enums.permission.DataScopeEnum;
 import com.pei.dehaze.module.system.enums.permission.RoleTypeEnum;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -260,7 +260,8 @@ public class RoleServiceImplTest extends BaseDbUnitTest {
             RoleDO dbRole = randomPojo(RoleDO.class, o -> o.setStatus(CommonStatusEnum.ENABLE.getStatus()));
             roleMapper.insert(dbRole);
             // 测试 id 不匹配
-            roleMapper.insert(cloneIgnoreId(dbRole, o -> {}));
+            roleMapper.insert(cloneIgnoreId(dbRole, o -> {
+            }));
             // 准备参数
             Collection<Long> ids = singleton(dbRole.getId());
 

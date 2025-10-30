@@ -84,19 +84,6 @@ public class CrmStatisticsPortraitServiceImpl implements CrmStatisticsPortraitSe
     }
 
     @Override
-    public List<CrmStatisticCustomerSourceRespVO> getCustomerSummaryBySource(CrmStatisticsPortraitReqVO reqVO) {
-        // 1. 获得用户编号数组
-        List<Long> userIds = getUserIds(reqVO);
-        if (CollUtil.isEmpty(userIds)) {
-            return Collections.emptyList();
-        }
-        reqVO.setUserIds(userIds);
-
-        // 2. 获取客户行业统计数据
-        return portraitMapper.selectCustomerSourceListGroupBySource(reqVO);
-    }
-
-    @Override
     public List<CrmStatisticCustomerLevelRespVO> getCustomerSummaryByLevel(CrmStatisticsPortraitReqVO reqVO) {
         // 1. 获得用户编号数组
         List<Long> userIds = getUserIds(reqVO);
@@ -107,6 +94,19 @@ public class CrmStatisticsPortraitServiceImpl implements CrmStatisticsPortraitSe
 
         // 2. 获取客户级别统计数据
         return portraitMapper.selectCustomerLevelListGroupByLevel(reqVO);
+    }
+
+    @Override
+    public List<CrmStatisticCustomerSourceRespVO> getCustomerSummaryBySource(CrmStatisticsPortraitReqVO reqVO) {
+        // 1. 获得用户编号数组
+        List<Long> userIds = getUserIds(reqVO);
+        if (CollUtil.isEmpty(userIds)) {
+            return Collections.emptyList();
+        }
+        reqVO.setUserIds(userIds);
+
+        // 2. 获取客户行业统计数据
+        return portraitMapper.selectCustomerSourceListGroupBySource(reqVO);
     }
 
     /**

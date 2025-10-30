@@ -18,14 +18,13 @@ public class PayWalletRespDTO {
 
     /**
      * 用户 id
-     *
-     * 关联 MemberUserDO 的 id 编号
-     * 关联 AdminUserDO 的 id 编号
+     * <p>
+     * 关联 MemberUserDO 的 id 编号 关联 AdminUserDO 的 id 编号
      */
     private Long userId;
     /**
      * 用户类型, 预留 多商户转帐可能需要用到
-     *
+     * <p>
      * 关联 {@link UserTypeEnum}
      */
     private Integer userType;

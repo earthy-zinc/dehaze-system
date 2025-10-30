@@ -7,10 +7,9 @@ import com.pei.dehaze.module.system.controller.admin.notice.vo.NoticePageReqVO;
 import com.pei.dehaze.module.system.controller.admin.notice.vo.NoticeSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.notice.NoticeDO;
 import com.pei.dehaze.module.system.dal.mysql.notice.NoticeMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.util.object.ObjectUtils.cloneIgnoreId;
 import static com.pei.dehaze.framework.test.core.util.AssertUtils.assertPojoEquals;

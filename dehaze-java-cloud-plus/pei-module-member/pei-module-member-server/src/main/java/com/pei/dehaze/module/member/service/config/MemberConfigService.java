@@ -2,7 +2,6 @@ package com.pei.dehaze.module.member.service.config;
 
 import com.pei.dehaze.module.member.controller.admin.config.vo.MemberConfigSaveReqVO;
 import com.pei.dehaze.module.member.dal.dataobject.config.MemberConfigDO;
-
 import jakarta.validation.Valid;
 
 /**

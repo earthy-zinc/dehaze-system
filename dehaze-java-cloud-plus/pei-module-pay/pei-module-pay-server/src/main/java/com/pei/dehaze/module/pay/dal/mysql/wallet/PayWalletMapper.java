@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.pay.dal.mysql.wallet;
 
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.pay.controller.admin.wallet.vo.wallet.PayWalletPageReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.wallet.PayWalletDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
@@ -28,7 +28,7 @@ public interface PayWalletMapper extends BaseMapperX<PayWalletDO> {
     /**
      * 当消费退款时候， 更新钱包
      *
-     * @param id 钱包 id
+     * @param id    钱包 id
      * @param price 消费金额
      */
     default int updateWhenConsumptionRefund(Long id, Integer price) {
@@ -43,9 +43,9 @@ public interface PayWalletMapper extends BaseMapperX<PayWalletDO> {
      * 当消费时候， 更新钱包
      *
      * @param price 消费金额
-     * @param id 钱包 id
+     * @param id    钱包 id
      */
-    default int updateWhenConsumption(Long id, Integer price){
+    default int updateWhenConsumption(Long id, Integer price) {
         LambdaUpdateWrapper<PayWalletDO> lambdaUpdateWrapper = new LambdaUpdateWrapper<PayWalletDO>()
                 .setSql(" balance = balance - " + price
                         + ", total_expense = total_expense + " + price)
@@ -57,10 +57,10 @@ public interface PayWalletMapper extends BaseMapperX<PayWalletDO> {
     /**
      * 当充值的时候，更新钱包
      *
-     * @param id 钱包 id
+     * @param id    钱包 id
      * @param price 钱包金额
      */
-    default int updateWhenRecharge(Long id, Integer price){
+    default int updateWhenRecharge(Long id, Integer price) {
         LambdaUpdateWrapper<PayWalletDO> lambdaUpdateWrapper = new LambdaUpdateWrapper<PayWalletDO>()
                 .setSql(" balance = balance + " + price
                         + ", total_recharge = total_recharge + " + price)
@@ -71,23 +71,23 @@ public interface PayWalletMapper extends BaseMapperX<PayWalletDO> {
     /**
      * 增加余额的时候，更新钱包
      *
-     * @param id 钱包 id
+     * @param id    钱包 id
      * @param price 钱包金额
      */
     default void updateWhenAdd(Long id, Integer price) {
         LambdaUpdateWrapper<PayWalletDO> lambdaUpdateWrapper = new LambdaUpdateWrapper<PayWalletDO>()
-             .setSql(" balance = balance + " + price)
-             .eq(PayWalletDO::getId, id);
+                .setSql(" balance = balance + " + price)
+                .eq(PayWalletDO::getId, id);
         update(null, lambdaUpdateWrapper);
     }
 
     /**
      * 冻结钱包部分余额
      *
-     * @param id 钱包 id
+     * @param id    钱包 id
      * @param price 冻结金额
      */
-    default int freezePrice(Long id, Integer price){
+    default int freezePrice(Long id, Integer price) {
         LambdaUpdateWrapper<PayWalletDO> lambdaUpdateWrapper = new LambdaUpdateWrapper<PayWalletDO>()
                 .setSql(" balance = balance - " + price
                         + ", freeze_price = freeze_price + " + price)
@@ -99,10 +99,10 @@ public interface PayWalletMapper extends BaseMapperX<PayWalletDO> {
     /**
      * 解冻钱包余额
      *
-     * @param id 钱包 id
+     * @param id    钱包 id
      * @param price 解冻金额
      */
-    default int unFreezePrice(Long id, Integer price){
+    default int unFreezePrice(Long id, Integer price) {
         LambdaUpdateWrapper<PayWalletDO> lambdaUpdateWrapper = new LambdaUpdateWrapper<PayWalletDO>()
                 .setSql(" balance = balance + " + price
                         + ", freeze_price = freeze_price - " + price)
@@ -114,10 +114,10 @@ public interface PayWalletMapper extends BaseMapperX<PayWalletDO> {
     /**
      * 当充值退款时, 更新钱包
      *
-     * @param id 钱包 id
+     * @param id    钱包 id
      * @param price 退款金额
      */
-    default  int updateWhenRechargeRefund(Long id, Integer price){
+    default int updateWhenRechargeRefund(Long id, Integer price) {
         LambdaUpdateWrapper<PayWalletDO> lambdaUpdateWrapper = new LambdaUpdateWrapper<PayWalletDO>()
                 .setSql(" freeze_price = freeze_price - " + price
                         + ", total_recharge = total_recharge - " + price)

@@ -1,14 +1,13 @@
 package com.pei.dehaze.module.infra.controller.admin.codegen.vo.table;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenSceneEnum;
 import com.pei.dehaze.module.infra.enums.codegen.CodegenTemplateTypeEnum;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 代码生成表定义创建/修改 Response VO")
 @Data

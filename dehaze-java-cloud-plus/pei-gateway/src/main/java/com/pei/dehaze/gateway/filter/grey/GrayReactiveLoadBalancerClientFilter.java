@@ -25,13 +25,12 @@ import static org.springframework.cloud.gateway.support.ServerWebExchangeUtils.*
 
 /**
  * 支持灰度功能的 {@link ReactiveLoadBalancerClientFilter} 实现类
- *
- * 由于 {@link ReactiveLoadBalancerClientFilter#choose(Request, String, Set)} 是 private 方法，无法进行重写。
- * 因此，这里只好 copy 它所有的代码，手动重写 choose 方法
- *
- * 具体的使用与实现原理，可阅读如下两个文章：
- * 1. https://www.jianshu.com/p/6db15bc0be8f
- * 2. https://cloud.tencent.com/developer/article/1620795
+ * <p>
+ * 由于 {@link ReactiveLoadBalancerClientFilter#choose(Request, String, Set)} 是 private 方法，无法进行重写。 因此，这里只好 copy
+ * 它所有的代码，手动重写 choose 方法
+ * <p>
+ * 具体的使用与实现原理，可阅读如下两个文章： 1. https://www.jianshu.com/p/6db15bc0be8f 2.
+ * https://cloud.tencent.com/developer/article/1620795
  *
  * @author earthyzinc
  */
@@ -115,8 +114,12 @@ public class GrayReactiveLoadBalancerClientFilter implements GlobalFilter, Order
                                 new ResponseData(exchange.getResponse(), new RequestData(exchange.getRequest()))))));
     }
 
-    protected URI reconstructURI(ServiceInstance serviceInstance, URI original) {
-        return LoadBalancerUriTools.reconstructURI(serviceInstance, original);
+    private String getHint(String serviceId) {
+        LoadBalancerProperties loadBalancerProperties = clientFactory.getProperties(serviceId);
+        Map<String, String> hints = loadBalancerProperties.getHint();
+        String defaultHint = hints.getOrDefault("default", "default");
+        String hintPropertyValue = hints.get(serviceId);
+        return hintPropertyValue != null ? hintPropertyValue : defaultHint;
     }
 
     private Mono<Response<ServiceInstance>> choose(Request<RequestDataContext> lbRequest, String serviceId,
@@ -128,12 +131,8 @@ public class GrayReactiveLoadBalancerClientFilter implements GlobalFilter, Order
         return loadBalancer.choose(lbRequest);
     }
 
-    private String getHint(String serviceId) {
-        LoadBalancerProperties loadBalancerProperties = clientFactory.getProperties(serviceId);
-        Map<String, String> hints = loadBalancerProperties.getHint();
-        String defaultHint = hints.getOrDefault("default", "default");
-        String hintPropertyValue = hints.get(serviceId);
-        return hintPropertyValue != null ? hintPropertyValue : defaultHint;
+    protected URI reconstructURI(ServiceInstance serviceInstance, URI original) {
+        return LoadBalancerUriTools.reconstructURI(serviceInstance, original);
     }
 
 }

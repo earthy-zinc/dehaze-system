@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.iot.controller.admin.ota.vo.upgrade.task;
 
+import com.fhs.core.trans.vo.VO;
 import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
 import com.pei.dehaze.module.iot.dal.dataobject.ota.IotOtaFirmwareDO;
-import com.fhs.core.trans.vo.VO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

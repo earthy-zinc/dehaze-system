@@ -30,7 +30,7 @@ public class CrmBusinessRespVO {
     @ExcelProperty("客户名称")
     private String customerName;
 
-    @Schema(description = "跟进状态", requiredMode = Schema.RequiredMode.REQUIRED, example ="true")
+    @Schema(description = "跟进状态", requiredMode = Schema.RequiredMode.REQUIRED, example = "true")
     @ExcelProperty("跟进状态")
     private Boolean followUpStatus;
 

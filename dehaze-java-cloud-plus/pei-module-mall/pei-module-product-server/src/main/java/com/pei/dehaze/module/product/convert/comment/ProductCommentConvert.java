@@ -39,6 +39,13 @@ public interface ProductCommentConvert {
         return comment;
     }
 
+    default Integer convertScores(Integer descriptionScores, Integer benefitScores) {
+        // 计算评价最终综合评分 最终星数 = （商品评星 + 服务评星） / 2
+        BigDecimal sumScore = new BigDecimal(descriptionScores + benefitScores);
+        BigDecimal divide = sumScore.divide(BigDecimal.valueOf(2L), 0, RoundingMode.DOWN);
+        return divide.intValue();
+    }
+
     default ProductCommentDO convert(ProductCommentCreateReqVO createReq, ProductSpuDO spu, ProductSkuDO sku) {
         ProductCommentDO comment = BeanUtils.toBean(createReq, ProductCommentDO.class)
                 .setVisible(true).setUserId(0L).setAnonymous(false)
@@ -50,13 +57,6 @@ public interface ProductCommentConvert {
             comment.setSkuPicUrl(sku.getPicUrl()).setSkuProperties(sku.getProperties());
         }
         return comment;
-    }
-
-    default Integer convertScores(Integer descriptionScores, Integer benefitScores) {
-        // 计算评价最终综合评分 最终星数 = （商品评星 + 服务评星） / 2
-        BigDecimal sumScore = new BigDecimal(descriptionScores + benefitScores);
-        BigDecimal divide = sumScore.divide(BigDecimal.valueOf(2L), 0, RoundingMode.DOWN);
-        return divide.intValue();
     }
 
 }

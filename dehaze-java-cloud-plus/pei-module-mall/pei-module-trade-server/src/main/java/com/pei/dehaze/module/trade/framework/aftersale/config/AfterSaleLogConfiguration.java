@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 // TODO @chenchen：改成 aftersale 好点哈；
+
 /**
  * trade 模块的 afterSaleLog 组件的 Configuration
  *

@@ -5,10 +5,9 @@ import com.pei.dehaze.module.member.api.level.dto.MemberLevelRespDTO;
 import com.pei.dehaze.module.member.convert.level.MemberLevelConvert;
 import com.pei.dehaze.module.member.enums.MemberExperienceBizTypeEnum;
 import com.pei.dehaze.module.member.service.level.MemberLevelService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;

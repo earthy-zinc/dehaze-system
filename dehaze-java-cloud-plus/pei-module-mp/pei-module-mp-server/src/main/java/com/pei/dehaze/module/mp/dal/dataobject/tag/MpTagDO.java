@@ -1,10 +1,12 @@
 package com.pei.dehaze.module.mp.dal.dataobject.tag;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
 import lombok.*;
-
-import com.baomidou.mybatisplus.annotation.*;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import me.chanjar.weixin.mp.bean.tag.WxUserTag;
 
 /**
@@ -37,20 +39,20 @@ public class MpTagDO extends BaseDO {
     private String name;
     /**
      * 此标签下粉丝数
-     *
+     * <p>
      * 冗余：{@link WxUserTag#getCount()} 字段，需要管理员点击【同步】后，更新该字段
      */
     private Integer count;
 
     /**
      * 公众号账号的编号
-     *
+     * <p>
      * 关联 {@link MpAccountDO#getId()}
      */
     private Long accountId;
     /**
      * 公众号 appId
-     *
+     * <p>
      * 冗余 {@link MpAccountDO#getAppId()}
      */
     private String appId;

@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.combination;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -35,7 +35,7 @@ public class CombinationActivityDO extends BaseDO {
     private String name;
     /**
      * 商品 SPU 编号
-     *
+     * <p>
      * 关联 ProductSpuDO 的 id
      */
     private Long spuId;
@@ -65,7 +65,7 @@ public class CombinationActivityDO extends BaseDO {
     private Boolean virtualGroup;
     /**
      * 活动状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;

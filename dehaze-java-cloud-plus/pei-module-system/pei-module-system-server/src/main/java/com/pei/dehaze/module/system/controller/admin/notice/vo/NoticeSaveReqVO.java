@@ -1,11 +1,10 @@
 package com.pei.dehaze.module.system.controller.admin.notice.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 通知公告创建/修改 Request VO")
 @Data

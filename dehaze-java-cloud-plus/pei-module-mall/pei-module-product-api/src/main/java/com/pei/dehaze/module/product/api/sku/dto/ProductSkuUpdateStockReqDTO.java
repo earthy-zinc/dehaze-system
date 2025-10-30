@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.product.api.sku.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @Schema(description = "RPC 服务 - 商品 SKU 更新库存 Request DTO")

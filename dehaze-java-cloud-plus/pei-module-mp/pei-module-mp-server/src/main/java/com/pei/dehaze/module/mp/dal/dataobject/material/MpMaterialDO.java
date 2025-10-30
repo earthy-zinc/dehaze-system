@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.mp.dal.dataobject.material;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
 import lombok.*;
 import me.chanjar.weixin.common.api.WxConsts;
 
 /**
  * 公众号素材 DO
- *
+ * <p>
  * 1. <a href="https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/New_temporary_materials.html">临时素材</a>
  * 2. <a href="https://developers.weixin.qq.com/doc/offiaccount/Asset_Management/Adding_Permanent_Assets.html">永久素材</a>
  *
@@ -33,13 +33,13 @@ public class MpMaterialDO extends BaseDO {
     private Long id;
     /**
      * 公众号账号的编号
-     *
+     * <p>
      * 关联 {@link MpAccountDO#getId()}
      */
     private Long accountId;
     /**
      * 公众号 appId
-     *
+     * <p>
      * 冗余 {@link MpAccountDO#getAppId()}
      */
     private String appId;
@@ -50,15 +50,14 @@ public class MpMaterialDO extends BaseDO {
     private String mediaId;
     /**
      * 文件类型
-     *
+     * <p>
      * 枚举 {@link WxConsts.MediaFileType}
      */
     private String type;
     /**
      * 是否永久
-     *
-     * true - 永久素材
-     * false - 临时素材
+     * <p>
+     * true - 永久素材 false - 临时素材
      */
     private Boolean permanent;
     /**
@@ -68,30 +67,27 @@ public class MpMaterialDO extends BaseDO {
 
     /**
      * 名字
-     *
-     * 永久素材：非空
-     * 临时素材：可能为空。
-     *      1. 为空的情况：粉丝主动发送的图片、语音等
-     *      2. 非空的情况：主动发送给粉丝的图片、语音等
+     * <p>
+     * 永久素材：非空 临时素材：可能为空。 1. 为空的情况：粉丝主动发送的图片、语音等 2. 非空的情况：主动发送给粉丝的图片、语音等
      */
     private String name;
 
     /**
      * 公众号文件 URL
-     *
+     * <p>
      * 只有【永久素材】使用
      */
     private String mpUrl;
 
     /**
      * 视频素材的标题
-     *
+     * <p>
      * 只有【永久素材】使用
      */
     private String title;
     /**
      * 视频素材的描述
-     *
+     * <p>
      * 只有【永久素材】使用
      */
     private String introduction;

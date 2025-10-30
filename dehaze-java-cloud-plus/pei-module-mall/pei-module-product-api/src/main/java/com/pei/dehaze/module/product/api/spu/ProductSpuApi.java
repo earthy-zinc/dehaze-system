@@ -22,11 +22,6 @@ public interface ProductSpuApi {
 
     String PREFIX = ApiConstants.PREFIX + "/spu";
 
-    @GetMapping(PREFIX + "/list")
-    @Schema(description = "批量查询 SPU 数组")
-    @Parameter(name = "ids", description = "SPU 编号列表", required = true, example = "1,3,5")
-    CommonResult<List<ProductSpuRespDTO>> getSpuList(@RequestParam("ids") Collection<Long> ids);
-
     /**
      * 批量查询 SPU MAP
      *
@@ -36,6 +31,11 @@ public interface ProductSpuApi {
     default Map<Long, ProductSpuRespDTO> getSpuMap(Collection<Long> ids) {
         return convertMap(getSpuList(ids).getCheckedData(), ProductSpuRespDTO::getId);
     }
+
+    @GetMapping(PREFIX + "/list")
+    @Schema(description = "批量查询 SPU 数组")
+    @Parameter(name = "ids", description = "SPU 编号列表", required = true, example = "1,3,5")
+    CommonResult<List<ProductSpuRespDTO>> getSpuList(@RequestParam("ids") Collection<Long> ids);
 
     @GetMapping(PREFIX + "/valid")
     @Schema(description = "批量查询 SPU 数组，并且校验是否 SPU 是否有效")

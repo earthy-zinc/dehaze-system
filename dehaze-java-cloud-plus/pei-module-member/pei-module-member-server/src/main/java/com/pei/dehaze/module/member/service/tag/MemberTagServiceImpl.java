@@ -11,10 +11,10 @@ import com.pei.dehaze.module.member.convert.tag.MemberTagConvert;
 import com.pei.dehaze.module.member.dal.dataobject.tag.MemberTagDO;
 import com.pei.dehaze.module.member.dal.mysql.tag.MemberTagMapper;
 import com.pei.dehaze.module.member.service.user.MemberUserService;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 
@@ -68,30 +68,6 @@ public class MemberTagServiceImpl implements MemberTagService {
         memberTagMapper.deleteById(id);
     }
 
-    private void validateTagExists(Long id) {
-        if (memberTagMapper.selectById(id) == null) {
-            throw exception(TAG_NOT_EXISTS);
-        }
-    }
-
-    private void validateTagNameUnique(Long id, String name) {
-        if (StrUtil.isBlank(name)) {
-            return;
-        }
-        MemberTagDO tag = memberTagMapper.selelctByName(name);
-        if (tag == null) {
-            return;
-        }
-
-        // 如果 id 为空，说明不用比较是否为相同 id 的标签
-        if (id == null) {
-            throw exception(TAG_NAME_EXISTS);
-        }
-        if (!tag.getId().equals(id)) {
-            throw exception(TAG_NAME_EXISTS);
-        }
-    }
-
     void validateTagHasUser(Long id) {
         Long count = memberUserService.getUserCountByTagId(id);
         if (count > 0) {
@@ -120,6 +96,30 @@ public class MemberTagServiceImpl implements MemberTagService {
     @Override
     public List<MemberTagDO> getTagList() {
         return memberTagMapper.selectList();
+    }
+
+    private void validateTagExists(Long id) {
+        if (memberTagMapper.selectById(id) == null) {
+            throw exception(TAG_NOT_EXISTS);
+        }
+    }
+
+    private void validateTagNameUnique(Long id, String name) {
+        if (StrUtil.isBlank(name)) {
+            return;
+        }
+        MemberTagDO tag = memberTagMapper.selelctByName(name);
+        if (tag == null) {
+            return;
+        }
+
+        // 如果 id 为空，说明不用比较是否为相同 id 的标签
+        if (id == null) {
+            throw exception(TAG_NAME_EXISTS);
+        }
+        if (!tag.getId().equals(id)) {
+            throw exception(TAG_NAME_EXISTS);
+        }
     }
 
 }

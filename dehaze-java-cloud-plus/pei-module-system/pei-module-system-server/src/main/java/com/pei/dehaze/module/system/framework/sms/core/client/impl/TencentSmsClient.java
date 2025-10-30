@@ -9,6 +9,7 @@ import cn.hutool.crypto.digest.HmacAlgorithm;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.core.KeyValue;
 import com.pei.dehaze.framework.common.util.collection.ArrayUtils;
 import com.pei.dehaze.framework.common.util.http.HttpUtils;
@@ -17,7 +18,6 @@ import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsSendRespDTO
 import com.pei.dehaze.module.system.framework.sms.core.client.dto.SmsTemplateRespDTO;
 import com.pei.dehaze.module.system.framework.sms.core.enums.SmsTemplateAuditStatusEnum;
 import com.pei.dehaze.module.system.framework.sms.core.property.SmsChannelProperties;
-import com.google.common.annotations.VisibleForTesting;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -27,27 +27,24 @@ import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.co
 
 /**
  * 腾讯云短信功能实现
- *
+ * <p>
  * 参见 <a href="https://cloud.tencent.com/document/product/382/52077">文档</a>
  *
  * @author shiwp
  */
 public class TencentSmsClient extends AbstractSmsClient {
 
-    private static final String HOST = "sms.tencentcloudapi.com";
-    private static final String VERSION = "2021-01-11";
-    private static final String REGION = "ap-guangzhou";
-
     /**
      * 调用成功 code
      */
     public static final String API_CODE_SUCCESS = "Ok";
-
+    private static final String HOST = "sms.tencentcloudapi.com";
+    private static final String VERSION = "2021-01-11";
+    private static final String REGION = "ap-guangzhou";
     /**
      * 是否国际/港澳台短信：
-     *
-     * 0：表示国内短信。
-     * 1：表示国际/港澳台短信。
+     * <p>
+     * 0：表示国内短信。 1：表示国际/港澳台短信。
      */
     private static final long INTERNATIONAL_CHINA = 0L;
 
@@ -59,9 +56,9 @@ public class TencentSmsClient extends AbstractSmsClient {
 
     /**
      * 参数校验腾讯云的 SDK AppId
-     *
+     * <p>
      * 原因是：腾讯云发放短信的时候，需要额外的参数 sdkAppId
-     *
+     * <p>
      * 解决方案：考虑到不破坏原有的 apiKey + apiSecret 的结构，所以将 secretId 拼接到 apiKey 字段中，格式为 "secretId sdkAppId"。
      *
      * @param properties 配置
@@ -71,14 +68,6 @@ public class TencentSmsClient extends AbstractSmsClient {
         Assert.notEmpty(combineKey, "apiKey 不能为空");
         String[] keys = combineKey.trim().split(" ");
         Assert.isTrue(keys.length == 2, "腾讯云短信 apiKey 配置格式错误，请配置 为[secretId sdkAppId]");
-    }
-
-    private String getSdkAppId() {
-        return StrUtil.subAfter(properties.getApiKey(), " ", true);
-    }
-
-    private String getApiKey() {
-        return StrUtil.subBefore(properties.getApiKey(), " ", true);
     }
 
     @Override
@@ -110,6 +99,10 @@ public class TencentSmsClient extends AbstractSmsClient {
                 .setApiMsg(sendResult.getStr("Message"));
     }
 
+    private String getSdkAppId() {
+        return StrUtil.subAfter(properties.getApiKey(), " ", true);
+    }
+
     @Override
     public List<SmsReceiveRespDTO> parseSmsReceiveStatus(String text) {
         JSONArray statuses = JSONUtil.parseArray(text);
@@ -123,6 +116,10 @@ public class TencentSmsClient extends AbstractSmsClient {
                     .setReceiveTime(statusObj.getLocalDateTime("user_receive_time", null)) // 状态报告时间
                     .setSerialNo(statusObj.getStr("sid")); // 发送序列号
         });
+    }
+
+    private static byte[] hmac256(byte[] key, String msg) {
+        return DigestUtil.hmac(HmacAlgorithm.HmacSHA256, key).digest(msg);
     }
 
     @Override
@@ -143,24 +140,13 @@ public class TencentSmsClient extends AbstractSmsClient {
                 .setAuditReason(statusResult.get("ReviewReply").toString());
     }
 
-    @VisibleForTesting
-    Integer convertSmsTemplateAuditStatus(int templateStatus) {
-        switch (templateStatus) {
-            case 1: return SmsTemplateAuditStatusEnum.CHECKING.getStatus();
-            case 0: return SmsTemplateAuditStatusEnum.SUCCESS.getStatus();
-            case -1: return SmsTemplateAuditStatusEnum.FAIL.getStatus();
-            default: throw new IllegalArgumentException(String.format("未知审核状态(%d)", templateStatus));
-        }
-    }
-
     /**
      * 请求腾讯云短信
      *
-     * @see <a href="https://cloud.tencent.com/document/product/382/52072">签名方法 v3</a>
-     *
      * @param action 请求的 API 名称
-     * @param body 请求参数
+     * @param body   请求参数
      * @return 请求结果
+     * @see <a href="https://cloud.tencent.com/document/product/382/52072">签名方法 v3</a>
      */
     private JSONObject request(String action, TreeMap<String, Object> body) {
         // 1.1 请求 Header
@@ -194,8 +180,22 @@ public class TencentSmsClient extends AbstractSmsClient {
         return JSONUtil.parseObj(responseBody);
     }
 
-    private static byte[] hmac256(byte[] key, String msg) {
-        return DigestUtil.hmac(HmacAlgorithm.HmacSHA256, key).digest(msg);
+    @VisibleForTesting
+    Integer convertSmsTemplateAuditStatus(int templateStatus) {
+        switch (templateStatus) {
+            case 1:
+                return SmsTemplateAuditStatusEnum.CHECKING.getStatus();
+            case 0:
+                return SmsTemplateAuditStatusEnum.SUCCESS.getStatus();
+            case -1:
+                return SmsTemplateAuditStatusEnum.FAIL.getStatus();
+            default:
+                throw new IllegalArgumentException(String.format("未知审核状态(%d)", templateStatus));
+        }
+    }
+
+    private String getApiKey() {
+        return StrUtil.subBefore(properties.getApiKey(), " ", true);
     }
 
 }

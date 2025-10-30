@@ -7,8 +7,8 @@ import com.pei.dehaze.module.member.controller.admin.level.vo.level.MemberLevelU
 import com.pei.dehaze.module.member.controller.admin.user.vo.MemberUserUpdateLevelReqVO;
 import com.pei.dehaze.module.member.dal.dataobject.level.MemberLevelDO;
 import com.pei.dehaze.module.member.enums.MemberExperienceBizTypeEnum;
-
 import jakarta.validation.Valid;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -66,14 +66,6 @@ public interface MemberLevelService {
     List<MemberLevelDO> getLevelList(MemberLevelListReqVO listReqVO);
 
     /**
-     * 获得指定状态的会员等级列表
-     *
-     * @param status 状态
-     * @return 会员等级列表
-     */
-    List<MemberLevelDO> getLevelListByStatus(Integer status);
-
-    /**
      * 获得开启状态的会员等级列表
      *
      * @return 会员等级列表
@@ -81,6 +73,14 @@ public interface MemberLevelService {
     default List<MemberLevelDO> getEnableLevelList() {
         return getLevelListByStatus(CommonStatusEnum.ENABLE.getStatus());
     }
+
+    /**
+     * 获得指定状态的会员等级列表
+     *
+     * @param status 状态
+     * @return 会员等级列表
+     */
+    List<MemberLevelDO> getLevelListByStatus(Integer status);
 
     /**
      * 修改会员的等级

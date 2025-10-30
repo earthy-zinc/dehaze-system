@@ -17,8 +17,8 @@ import com.pei.dehaze.module.bpm.service.task.listener.BpmCallActivityListener;
 import com.pei.dehaze.module.bpm.service.task.listener.BpmUserTaskListener;
 import org.flowable.bpmn.BpmnAutoLayout;
 import org.flowable.bpmn.constants.BpmnXMLConstants;
-import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.*;
+import org.flowable.bpmn.model.Process;
 import org.flowable.engine.delegate.ExecutionListener;
 import org.flowable.engine.delegate.TaskListener;
 
@@ -31,8 +31,8 @@ import static java.util.Arrays.asList;
 /**
  * 仿钉钉/飞书的模型相关的工具方法
  * <p>
- * 1. 核心的逻辑实现，可见 {@link #buildBpmnModel(String, String, BpmSimpleModelNodeVO)} 方法
- * 2. 所有的 BpmSimpleModelNodeVO 转换成 BPMN FlowNode 元素，可见 {@link NodeConvert} 实现类
+ * 1. 核心的逻辑实现，可见 {@link #buildBpmnModel(String, String, BpmSimpleModelNodeVO)} 方法 2. 所有的 BpmSimpleModelNodeVO 转换成 BPMN
+ * FlowNode 元素，可见 {@link NodeConvert} 实现类
  *
  * @author jason
  */
@@ -52,10 +52,8 @@ public class SimpleModelUtils {
     /**
      * 仿钉钉流程设计模型数据结构（json）转换成 Bpmn Model
      * <p>
-     * 整体逻辑如下：
-     * 1. 创建：BpmnModel、Process 对象
-     * 2. 转换：将 BpmSimpleModelNodeVO 转换成 BPMN FlowNode 元素
-     * 3. 连接：构建并添加节点之间的连线 Sequence Flow
+     * 整体逻辑如下： 1. 创建：BpmnModel、Process 对象 2. 转换：将 BpmSimpleModelNodeVO 转换成 BPMN FlowNode 元素 3. 连接：构建并添加节点之间的连线 Sequence
+     * Flow
      *
      * @param processId       流程标识
      * @param processName     流程名称
@@ -303,6 +301,155 @@ public class SimpleModelUtils {
 
     // ========== 各种 convert 节点的方法: BpmSimpleModelNodeVO => BPMN FlowElement ==========
 
+    /**
+     * 构造条件表达式
+     */
+    public static String buildConditionExpression(BpmSimpleModelNodeVO.ConditionSetting conditionSetting) {
+        // 并行网关不需要设置条件
+        if (conditionSetting == null) {
+            return null;
+        }
+        return buildConditionExpression(conditionSetting.getConditionType(), conditionSetting.getConditionExpression(),
+                conditionSetting.getConditionGroups());
+    }
+
+    public static String buildConditionExpression(BpmSimpleModelNodeVO.RouterSetting routerSetting) {
+        return buildConditionExpression(routerSetting.getConditionType(), routerSetting.getConditionExpression(),
+                routerSetting.getConditionGroups());
+    }
+
+    public static String buildConditionExpression(Integer conditionType, String conditionExpression, ConditionGroups conditionGroups) {
+        BpmSimpleModeConditionTypeEnum conditionTypeEnum = BpmSimpleModeConditionTypeEnum.valueOf(conditionType);
+        if (conditionTypeEnum == BpmSimpleModeConditionTypeEnum.EXPRESSION) {
+            return conditionExpression;
+        }
+        if (conditionTypeEnum == BpmSimpleModeConditionTypeEnum.RULE) {
+            if (conditionGroups == null || CollUtil.isEmpty(conditionGroups.getConditions())) {
+                return null;
+            }
+            List<String> strConditionGroups = CollectionUtils.convertList(conditionGroups.getConditions(), item -> {
+                if (CollUtil.isEmpty(item.getRules())) {
+                    return "";
+                }
+                // 构造规则表达式
+                List<String> list = CollectionUtils.convertList(item.getRules(), (rule) -> {
+                    String rightSide = NumberUtil.isNumber(rule.getRightSide()) ? rule.getRightSide()
+                            : "\"" + rule.getRightSide() + "\""; // 如果非数值类型加引号
+                    return String.format(" %s %s var:convertByType(%s,%s)", rule.getLeftSide(), rule.getOpCode(), rule.getLeftSide(), rightSide);
+                });
+                // 构造条件组的表达式
+                Boolean and = item.getAnd();
+                return "(" + CollUtil.join(list, and ? " && " : " || ") + ")";
+            });
+            return String.format("${%s}", CollUtil.join(strConditionGroups, conditionGroups.getAnd() ? " && " : " || "));
+        }
+        return null;
+    }
+
+    private static String buildGatewayJoinId(String id) {
+        return id + "_join";
+    }
+
+    private static BoundaryEvent buildTimeoutBoundaryEvent(Activity attachedToRef, Integer type,
+                                                           String timeDuration, String timeCycle, String timeDate) {
+        // 1.1 定时器边界事件
+        BoundaryEvent boundaryEvent = new BoundaryEvent();
+        boundaryEvent.setId("Event-" + IdUtil.fastUUID());
+        boundaryEvent.setCancelActivity(false); // 设置关联的任务为不会被中断
+        boundaryEvent.setAttachedToRef(attachedToRef);
+        // 1.2 定义超时时间表达式
+        TimerEventDefinition eventDefinition = new TimerEventDefinition();
+        if (ObjUtil.isNotNull(timeDuration)) {
+            eventDefinition.setTimeDuration(timeDuration);
+        }
+        if (ObjUtil.isNotNull(timeDuration)) {
+            eventDefinition.setTimeCycle(timeCycle);
+        }
+        if (ObjUtil.isNotNull(timeDate)) {
+            eventDefinition.setTimeDate(timeDate);
+        }
+        boundaryEvent.addEventDefinition(eventDefinition);
+
+        // 2. 添加定时器边界事件类型
+        addExtensionElement(boundaryEvent, BOUNDARY_EVENT_TYPE, type);
+        return boundaryEvent;
+    }
+
+    public static List<BpmSimpleModelNodeVO> simulateProcess(BpmSimpleModelNodeVO rootNode, Map<String, Object> variables) {
+        List<BpmSimpleModelNodeVO> resultNodes = new ArrayList<>();
+
+        // 从头开始遍历
+        simulateNextNode(rootNode, variables, resultNodes);
+        return resultNodes;
+    }
+
+    private static void simulateNextNode(BpmSimpleModelNodeVO currentNode, Map<String, Object> variables,
+                                         List<BpmSimpleModelNodeVO> resultNodes) {
+        // 如果不合法（包括为空），则直接结束
+        if (!isValidNode(currentNode)) {
+            return;
+        }
+        BpmSimpleModelNodeTypeEnum nodeType = BpmSimpleModelNodeTypeEnum.valueOf(currentNode.getType());
+        Assert.notNull(nodeType, "模型节点类型不支持");
+
+        // 情况：START_NODE/START_USER_NODE/APPROVE_NODE/COPY_NODE/END_NODE/TRANSACTOR_NODE
+        if (nodeType == BpmSimpleModelNodeTypeEnum.START_NODE
+                || nodeType == BpmSimpleModelNodeTypeEnum.START_USER_NODE
+                || nodeType == BpmSimpleModelNodeTypeEnum.APPROVE_NODE
+                || nodeType == BpmSimpleModelNodeTypeEnum.TRANSACTOR_NODE
+                || nodeType == BpmSimpleModelNodeTypeEnum.COPY_NODE
+                || nodeType == BpmSimpleModelNodeTypeEnum.CHILD_PROCESS
+                || nodeType == BpmSimpleModelNodeTypeEnum.END_NODE) {
+            // 添加元素
+            resultNodes.add(currentNode);
+        }
+
+        // 情况：CONDITION_BRANCH_NODE 排它，只有一个满足条件的。如果没有，就走默认的
+        if (nodeType == BpmSimpleModelNodeTypeEnum.CONDITION_BRANCH_NODE) {
+            // 查找满足条件的 BpmSimpleModelNodeVO 节点
+            BpmSimpleModelNodeVO matchConditionNode = CollUtil.findOne(currentNode.getConditionNodes(),
+                    conditionNode -> !BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow())
+                            && evalConditionExpress(variables, conditionNode.getConditionSetting()));
+            if (matchConditionNode == null) {
+                matchConditionNode = CollUtil.findOne(currentNode.getConditionNodes(),
+                        conditionNode -> BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow()));
+            }
+            Assert.notNull(matchConditionNode, "找不到条件节点({})", currentNode);
+            // 遍历满足条件的 BpmSimpleModelNodeVO 节点
+            simulateNextNode(matchConditionNode.getChildNode(), variables, resultNodes);
+        }
+
+        // 情况：INCLUSIVE_BRANCH_NODE 包容，多个满足条件的。如果没有，就走默认的
+        if (nodeType == BpmSimpleModelNodeTypeEnum.INCLUSIVE_BRANCH_NODE) {
+            // 查找满足条件的 BpmSimpleModelNodeVO 节点
+            Collection<BpmSimpleModelNodeVO> matchConditionNodes = CollUtil.filterNew(currentNode.getConditionNodes(),
+                    conditionNode -> !BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow())
+                            && evalConditionExpress(variables, conditionNode.getConditionSetting()));
+            if (CollUtil.isEmpty(matchConditionNodes)) {
+                matchConditionNodes = CollUtil.filterNew(currentNode.getConditionNodes(),
+                        conditionNode -> BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow()));
+            }
+            Assert.isTrue(!matchConditionNodes.isEmpty(), "找不到条件节点({})", currentNode);
+            // 遍历满足条件的 BpmSimpleModelNodeVO 节点
+            matchConditionNodes.forEach(matchConditionNode ->
+                    simulateNextNode(matchConditionNode.getChildNode(), variables, resultNodes));
+        }
+
+        // 情况：PARALLEL_BRANCH_NODE 并行，都满足，都走
+        if (nodeType == BpmSimpleModelNodeTypeEnum.PARALLEL_BRANCH_NODE) {
+            // 遍历所有 BpmSimpleModelNodeVO 节点
+            currentNode.getConditionNodes().forEach(matchConditionNode ->
+                    simulateNextNode(matchConditionNode.getChildNode(), variables, resultNodes));
+        }
+
+        // 遍历子节点
+        simulateNextNode(currentNode.getChildNode(), variables, resultNodes);
+    }
+
+    public static boolean evalConditionExpress(Map<String, Object> variables, BpmSimpleModelNodeVO.ConditionSetting conditionSetting) {
+        return BpmnModelUtils.evalConditionExpress(variables, buildConditionExpression(conditionSetting));
+    }
+
     private interface NodeConvert {
 
         default List<? extends FlowElement> convertList(BpmSimpleModelNodeVO node) {
@@ -403,30 +550,6 @@ public class SimpleModelUtils {
             return BpmSimpleModelNodeTypeEnum.APPROVE_NODE;
         }
 
-        /**
-         * 添加 UserTask 用户的审批超时 BoundaryEvent 事件
-         *
-         * @param userTask       审批任务
-         * @param timeoutHandler 超时处理器
-         * @return BoundaryEvent 超时事件
-         */
-        private BoundaryEvent buildUserTaskTimeoutBoundaryEvent(UserTask userTask,
-                                                                BpmSimpleModelNodeVO.TimeoutHandler timeoutHandler) {
-            // 1. 创建 Timeout Boundary Event
-            String timeCycle = null;
-            if (Objects.equals(BpmUserTaskTimeoutHandlerTypeEnum.REMINDER.getType(), timeoutHandler.getType()) &&
-                    timeoutHandler.getMaxRemindCount() != null && timeoutHandler.getMaxRemindCount() > 1) {
-                timeCycle = String.format("R%d/%s",
-                        timeoutHandler.getMaxRemindCount(), timeoutHandler.getTimeDuration());
-            }
-            BoundaryEvent boundaryEvent = buildTimeoutBoundaryEvent(userTask, BpmBoundaryEventTypeEnum.USER_TASK_TIMEOUT.getType(),
-                    timeoutHandler.getTimeDuration(), timeCycle, null);
-
-            // 2 添加超时执行动作元素
-            addExtensionElement(boundaryEvent, USER_TASK_TIMEOUT_HANDLER_TYPE, timeoutHandler.getType());
-            return boundaryEvent;
-        }
-
         private UserTask buildBpmnUserTask(BpmSimpleModelNodeVO node) {
             UserTask userTask = new UserTask();
             userTask.setId(node.getId());
@@ -467,6 +590,60 @@ public class SimpleModelUtils {
             return userTask;
         }
 
+        /**
+         * 添加 UserTask 用户的审批超时 BoundaryEvent 事件
+         *
+         * @param userTask       审批任务
+         * @param timeoutHandler 超时处理器
+         * @return BoundaryEvent 超时事件
+         */
+        private BoundaryEvent buildUserTaskTimeoutBoundaryEvent(UserTask userTask,
+                                                                BpmSimpleModelNodeVO.TimeoutHandler timeoutHandler) {
+            // 1. 创建 Timeout Boundary Event
+            String timeCycle = null;
+            if (Objects.equals(BpmUserTaskTimeoutHandlerTypeEnum.REMINDER.getType(), timeoutHandler.getType()) &&
+                    timeoutHandler.getMaxRemindCount() != null && timeoutHandler.getMaxRemindCount() > 1) {
+                timeCycle = String.format("R%d/%s",
+                        timeoutHandler.getMaxRemindCount(), timeoutHandler.getTimeDuration());
+            }
+            BoundaryEvent boundaryEvent = buildTimeoutBoundaryEvent(userTask, BpmBoundaryEventTypeEnum.USER_TASK_TIMEOUT.getType(),
+                    timeoutHandler.getTimeDuration(), timeCycle, null);
+
+            // 2 添加超时执行动作元素
+            addExtensionElement(boundaryEvent, USER_TASK_TIMEOUT_HANDLER_TYPE, timeoutHandler.getType());
+            return boundaryEvent;
+        }
+
+        private void processMultiInstanceLoopCharacteristics(Integer approveMethod, Integer approveRatio, UserTask userTask) {
+            BpmUserTaskApproveMethodEnum approveMethodEnum = BpmUserTaskApproveMethodEnum.valueOf(approveMethod);
+            Assert.notNull(approveMethodEnum, "审批方式({})不能为空", approveMethodEnum);
+            // 添加审批方式的扩展属性
+            addExtensionElement(userTask, USER_TASK_APPROVE_METHOD, approveMethod);
+            if (approveMethodEnum == BpmUserTaskApproveMethodEnum.RANDOM) {
+                // 随机审批，不需要设置多实例属性
+                return;
+            }
+
+            // 处理多实例审批方式
+            MultiInstanceLoopCharacteristics multiInstanceCharacteristics = new MultiInstanceLoopCharacteristics();
+            // 设置 collectionVariable。本系统用不到，仅仅为了 Flowable 校验不报错
+            multiInstanceCharacteristics.setInputDataItem("${coll_userList}");
+            if (approveMethodEnum == BpmUserTaskApproveMethodEnum.ANY) {
+                multiInstanceCharacteristics.setCompletionCondition(approveMethodEnum.getCompletionCondition());
+                multiInstanceCharacteristics.setSequential(false);
+            } else if (approveMethodEnum == BpmUserTaskApproveMethodEnum.SEQUENTIAL) {
+                multiInstanceCharacteristics.setCompletionCondition(approveMethodEnum.getCompletionCondition());
+                multiInstanceCharacteristics.setSequential(true);
+                multiInstanceCharacteristics.setLoopCardinality("1");
+            } else if (approveMethodEnum == BpmUserTaskApproveMethodEnum.RATIO) {
+                Assert.notNull(approveRatio, "通过比例不能为空");
+                multiInstanceCharacteristics.setCompletionCondition(
+                        String.format(approveMethodEnum.getCompletionCondition(), String.format("%.2f", approveRatio / 100D)));
+                multiInstanceCharacteristics.setSequential(false);
+            }
+            userTask.setLoopCharacteristics(multiInstanceCharacteristics);
+        }
+
         private void addUserTaskListener(BpmSimpleModelNodeVO node, UserTask userTask) {
             List<FlowableListener> flowableListeners = new ArrayList<>(3);
             if (node.getTaskCreateListener() != null
@@ -499,36 +676,6 @@ public class SimpleModelUtils {
             if (CollUtil.isNotEmpty(flowableListeners)) {
                 userTask.setTaskListeners(flowableListeners);
             }
-        }
-
-        private void processMultiInstanceLoopCharacteristics(Integer approveMethod, Integer approveRatio, UserTask userTask) {
-            BpmUserTaskApproveMethodEnum approveMethodEnum = BpmUserTaskApproveMethodEnum.valueOf(approveMethod);
-            Assert.notNull(approveMethodEnum, "审批方式({})不能为空", approveMethodEnum);
-            // 添加审批方式的扩展属性
-            addExtensionElement(userTask, USER_TASK_APPROVE_METHOD, approveMethod);
-            if (approveMethodEnum == BpmUserTaskApproveMethodEnum.RANDOM) {
-                // 随机审批，不需要设置多实例属性
-                return;
-            }
-
-            // 处理多实例审批方式
-            MultiInstanceLoopCharacteristics multiInstanceCharacteristics = new MultiInstanceLoopCharacteristics();
-            // 设置 collectionVariable。本系统用不到，仅仅为了 Flowable 校验不报错
-            multiInstanceCharacteristics.setInputDataItem("${coll_userList}");
-            if (approveMethodEnum == BpmUserTaskApproveMethodEnum.ANY) {
-                multiInstanceCharacteristics.setCompletionCondition(approveMethodEnum.getCompletionCondition());
-                multiInstanceCharacteristics.setSequential(false);
-            } else if (approveMethodEnum == BpmUserTaskApproveMethodEnum.SEQUENTIAL) {
-                multiInstanceCharacteristics.setCompletionCondition(approveMethodEnum.getCompletionCondition());
-                multiInstanceCharacteristics.setSequential(true);
-                multiInstanceCharacteristics.setLoopCardinality("1");
-            } else if (approveMethodEnum == BpmUserTaskApproveMethodEnum.RATIO) {
-                Assert.notNull(approveRatio, "通过比例不能为空");
-                multiInstanceCharacteristics.setCompletionCondition(
-                        String.format(approveMethodEnum.getCompletionCondition(), String.format("%.2f", approveRatio / 100D)));
-                multiInstanceCharacteristics.setSequential(false);
-            }
-            userTask.setLoopCharacteristics(multiInstanceCharacteristics);
         }
 
     }
@@ -640,6 +787,12 @@ public class SimpleModelUtils {
 
     public static class ConditionNodeConvert implements NodeConvert {
 
+        public static SequenceFlow buildSequenceFlow(String sourceId, String targetId,
+                                                     BpmSimpleModelNodeVO node) {
+            String conditionExpression = buildConditionExpression(node.getConditionSetting());
+            return buildBpmnSequenceFlow(sourceId, targetId, node.getId(), node.getName(), conditionExpression);
+        }
+
         @Override
         public List<? extends FlowElement> convertList(BpmSimpleModelNodeVO node) {
             // 原因是：正常情况下，它不会被调用到
@@ -650,57 +803,6 @@ public class SimpleModelUtils {
         public BpmSimpleModelNodeTypeEnum getType() {
             return BpmSimpleModelNodeTypeEnum.CONDITION_NODE;
         }
-
-        public static SequenceFlow buildSequenceFlow(String sourceId, String targetId,
-                                                     BpmSimpleModelNodeVO node) {
-            String conditionExpression = buildConditionExpression(node.getConditionSetting());
-            return buildBpmnSequenceFlow(sourceId, targetId, node.getId(), node.getName(), conditionExpression);
-        }
-    }
-
-    /**
-     * 构造条件表达式
-     */
-    public static String buildConditionExpression(BpmSimpleModelNodeVO.ConditionSetting conditionSetting) {
-        // 并行网关不需要设置条件
-        if (conditionSetting == null) {
-            return null;
-        }
-        return buildConditionExpression(conditionSetting.getConditionType(), conditionSetting.getConditionExpression(),
-                conditionSetting.getConditionGroups());
-    }
-
-    public static String buildConditionExpression(BpmSimpleModelNodeVO.RouterSetting routerSetting) {
-        return buildConditionExpression(routerSetting.getConditionType(), routerSetting.getConditionExpression(),
-                routerSetting.getConditionGroups());
-    }
-
-    public static String buildConditionExpression(Integer conditionType, String conditionExpression, ConditionGroups conditionGroups) {
-        BpmSimpleModeConditionTypeEnum conditionTypeEnum = BpmSimpleModeConditionTypeEnum.valueOf(conditionType);
-        if (conditionTypeEnum == BpmSimpleModeConditionTypeEnum.EXPRESSION) {
-            return conditionExpression;
-        }
-        if (conditionTypeEnum == BpmSimpleModeConditionTypeEnum.RULE) {
-            if (conditionGroups == null || CollUtil.isEmpty(conditionGroups.getConditions())) {
-                return null;
-            }
-            List<String> strConditionGroups = CollectionUtils.convertList(conditionGroups.getConditions(), item -> {
-                if (CollUtil.isEmpty(item.getRules())) {
-                    return "";
-                }
-                // 构造规则表达式
-                List<String> list = CollectionUtils.convertList(item.getRules(), (rule) -> {
-                    String rightSide = NumberUtil.isNumber(rule.getRightSide()) ? rule.getRightSide()
-                            : "\"" + rule.getRightSide() + "\""; // 如果非数值类型加引号
-                    return String.format(" %s %s var:convertByType(%s,%s)", rule.getLeftSide(), rule.getOpCode(), rule.getLeftSide(), rightSide);
-                });
-                // 构造条件组的表达式
-                Boolean and = item.getAnd();
-                return "(" + CollUtil.join(list, and ? " && " : " || ") + ")";
-            });
-            return String.format("${%s}", CollUtil.join(strConditionGroups, conditionGroups.getAnd() ? " && " : " || "));
-        }
-        return null;
     }
 
     public static class DelayTimerNodeConvert implements NodeConvert {
@@ -736,6 +838,8 @@ public class SimpleModelUtils {
             return BpmSimpleModelNodeTypeEnum.DELAY_TIMER_NODE;
         }
     }
+
+    // ========== SIMPLE 流程预测相关的方法 ==========
 
     public static class TriggerNodeConvert implements NodeConvert {
 
@@ -780,6 +884,11 @@ public class SimpleModelUtils {
 
     public static class RouteBranchNodeConvert implements NodeConvert {
 
+        public static SequenceFlow buildSequenceFlow(String nodeId, BpmSimpleModelNodeVO.RouterSetting router) {
+            String conditionExpression = SimpleModelUtils.buildConditionExpression(router);
+            return buildBpmnSequenceFlow(nodeId, router.getNodeId(), null, null, conditionExpression);
+        }
+
         @Override
         public ExclusiveGateway convert(BpmSimpleModelNodeVO node) {
             ExclusiveGateway exclusiveGateway = new ExclusiveGateway();
@@ -794,11 +903,6 @@ public class SimpleModelUtils {
         @Override
         public BpmSimpleModelNodeTypeEnum getType() {
             return BpmSimpleModelNodeTypeEnum.ROUTER_BRANCH_NODE;
-        }
-
-        public static SequenceFlow buildSequenceFlow(String nodeId, BpmSimpleModelNodeVO.RouterSetting router) {
-            String conditionExpression = SimpleModelUtils.buildConditionExpression(router);
-            return buildBpmnSequenceFlow(nodeId, router.getNodeId(), null, null, conditionExpression);
         }
 
     }
@@ -896,112 +1000,6 @@ public class SimpleModelUtils {
             return BpmSimpleModelNodeTypeEnum.CHILD_PROCESS;
         }
 
-    }
-
-    private static String buildGatewayJoinId(String id) {
-        return id + "_join";
-    }
-
-    private static BoundaryEvent buildTimeoutBoundaryEvent(Activity attachedToRef, Integer type,
-                                                           String timeDuration, String timeCycle, String timeDate) {
-        // 1.1 定时器边界事件
-        BoundaryEvent boundaryEvent = new BoundaryEvent();
-        boundaryEvent.setId("Event-" + IdUtil.fastUUID());
-        boundaryEvent.setCancelActivity(false); // 设置关联的任务为不会被中断
-        boundaryEvent.setAttachedToRef(attachedToRef);
-        // 1.2 定义超时时间表达式
-        TimerEventDefinition eventDefinition = new TimerEventDefinition();
-        if (ObjUtil.isNotNull(timeDuration)) {
-            eventDefinition.setTimeDuration(timeDuration);
-        }
-        if (ObjUtil.isNotNull(timeDuration)) {
-            eventDefinition.setTimeCycle(timeCycle);
-        }
-        if (ObjUtil.isNotNull(timeDate)) {
-            eventDefinition.setTimeDate(timeDate);
-        }
-        boundaryEvent.addEventDefinition(eventDefinition);
-
-        // 2. 添加定时器边界事件类型
-        addExtensionElement(boundaryEvent, BOUNDARY_EVENT_TYPE, type);
-        return boundaryEvent;
-    }
-
-    // ========== SIMPLE 流程预测相关的方法 ==========
-
-    public static List<BpmSimpleModelNodeVO> simulateProcess(BpmSimpleModelNodeVO rootNode, Map<String, Object> variables) {
-        List<BpmSimpleModelNodeVO> resultNodes = new ArrayList<>();
-
-        // 从头开始遍历
-        simulateNextNode(rootNode, variables, resultNodes);
-        return resultNodes;
-    }
-
-    private static void simulateNextNode(BpmSimpleModelNodeVO currentNode, Map<String, Object> variables,
-                                         List<BpmSimpleModelNodeVO> resultNodes) {
-        // 如果不合法（包括为空），则直接结束
-        if (!isValidNode(currentNode)) {
-            return;
-        }
-        BpmSimpleModelNodeTypeEnum nodeType = BpmSimpleModelNodeTypeEnum.valueOf(currentNode.getType());
-        Assert.notNull(nodeType, "模型节点类型不支持");
-
-        // 情况：START_NODE/START_USER_NODE/APPROVE_NODE/COPY_NODE/END_NODE/TRANSACTOR_NODE
-        if (nodeType == BpmSimpleModelNodeTypeEnum.START_NODE
-                || nodeType == BpmSimpleModelNodeTypeEnum.START_USER_NODE
-                || nodeType == BpmSimpleModelNodeTypeEnum.APPROVE_NODE
-                || nodeType == BpmSimpleModelNodeTypeEnum.TRANSACTOR_NODE
-                || nodeType == BpmSimpleModelNodeTypeEnum.COPY_NODE
-                || nodeType == BpmSimpleModelNodeTypeEnum.CHILD_PROCESS
-                || nodeType == BpmSimpleModelNodeTypeEnum.END_NODE) {
-            // 添加元素
-            resultNodes.add(currentNode);
-        }
-
-        // 情况：CONDITION_BRANCH_NODE 排它，只有一个满足条件的。如果没有，就走默认的
-        if (nodeType == BpmSimpleModelNodeTypeEnum.CONDITION_BRANCH_NODE) {
-            // 查找满足条件的 BpmSimpleModelNodeVO 节点
-            BpmSimpleModelNodeVO matchConditionNode = CollUtil.findOne(currentNode.getConditionNodes(),
-                    conditionNode -> !BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow())
-                            && evalConditionExpress(variables, conditionNode.getConditionSetting()));
-            if (matchConditionNode == null) {
-                matchConditionNode = CollUtil.findOne(currentNode.getConditionNodes(),
-                        conditionNode -> BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow()));
-            }
-            Assert.notNull(matchConditionNode, "找不到条件节点({})", currentNode);
-            // 遍历满足条件的 BpmSimpleModelNodeVO 节点
-            simulateNextNode(matchConditionNode.getChildNode(), variables, resultNodes);
-        }
-
-        // 情况：INCLUSIVE_BRANCH_NODE 包容，多个满足条件的。如果没有，就走默认的
-        if (nodeType == BpmSimpleModelNodeTypeEnum.INCLUSIVE_BRANCH_NODE) {
-            // 查找满足条件的 BpmSimpleModelNodeVO 节点
-            Collection<BpmSimpleModelNodeVO> matchConditionNodes = CollUtil.filterNew(currentNode.getConditionNodes(),
-                    conditionNode -> !BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow())
-                            && evalConditionExpress(variables, conditionNode.getConditionSetting()));
-            if (CollUtil.isEmpty(matchConditionNodes)) {
-                matchConditionNodes = CollUtil.filterNew(currentNode.getConditionNodes(),
-                        conditionNode -> BooleanUtil.isTrue(conditionNode.getConditionSetting().getDefaultFlow()));
-            }
-            Assert.isTrue(!matchConditionNodes.isEmpty(), "找不到条件节点({})", currentNode);
-            // 遍历满足条件的 BpmSimpleModelNodeVO 节点
-            matchConditionNodes.forEach(matchConditionNode ->
-                    simulateNextNode(matchConditionNode.getChildNode(), variables, resultNodes));
-        }
-
-        // 情况：PARALLEL_BRANCH_NODE 并行，都满足，都走
-        if (nodeType == BpmSimpleModelNodeTypeEnum.PARALLEL_BRANCH_NODE) {
-            // 遍历所有 BpmSimpleModelNodeVO 节点
-            currentNode.getConditionNodes().forEach(matchConditionNode ->
-                    simulateNextNode(matchConditionNode.getChildNode(), variables, resultNodes));
-        }
-
-        // 遍历子节点
-        simulateNextNode(currentNode.getChildNode(), variables, resultNodes);
-    }
-
-    public static boolean evalConditionExpress(Map<String, Object> variables, BpmSimpleModelNodeVO.ConditionSetting conditionSetting) {
-        return BpmnModelUtils.evalConditionExpress(variables, buildConditionExpression(conditionSetting));
     }
 
 }

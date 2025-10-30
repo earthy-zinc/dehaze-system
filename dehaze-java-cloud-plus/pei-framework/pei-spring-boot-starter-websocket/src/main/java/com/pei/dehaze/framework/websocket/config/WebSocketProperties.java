@@ -1,11 +1,10 @@
 package com.pei.dehaze.framework.websocket.config;
 
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
-
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 /**
  * WebSocket 配置项
@@ -25,7 +24,7 @@ public class WebSocketProperties {
 
     /**
      * 消息发送器的类型
-     *
+     * <p>
      * 可选值：local、redis、rocketmq、kafka、rabbitmq
      */
     @NotNull(message = "WebSocket 的消息发送者不能为空")

@@ -21,7 +21,8 @@ public enum IotOtaUpgradeRecordStatusEnum implements ArrayValuable<Integer> {
     UPGRADING(20), // 升级中
     SUCCESS(30), // 升级成功
     FAILURE(40), // 升级失败
-    CANCELED(50),; // 已取消
+    CANCELED(50),
+    ; // 已取消
 
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotOtaUpgradeRecordStatusEnum::getStatus).toArray(Integer[]::new);
 

@@ -1,6 +1,7 @@
 package com.pei.dehaze.module.crm.controller.admin.permission;
 
 import cn.hutool.core.collection.CollUtil;
+import com.google.common.collect.Multimaps;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.common.util.collection.MapUtils;
@@ -18,7 +19,6 @@ import com.pei.dehaze.module.system.api.dept.dto.DeptRespDTO;
 import com.pei.dehaze.module.system.api.dept.dto.PostRespDTO;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
-import com.google.common.collect.Multimaps;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;

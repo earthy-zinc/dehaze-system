@@ -1,16 +1,19 @@
 package com.pei.dehaze.module.iot.dal.dataobject.rule;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.iot.controller.admin.rule.vo.databridge.config.IotDataBridgeAbstractConfig;
-import com.pei.dehaze.module.iot.enums.rule.IotDataBridgeDirectionEnum;
-import com.pei.dehaze.module.iot.enums.rule.IotDataBridgeTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
-import lombok.*;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.iot.controller.admin.rule.vo.databridge.config.IotDataBridgeAbstractConfig;
+import com.pei.dehaze.module.iot.enums.rule.IotDataBridgeDirectionEnum;
+import com.pei.dehaze.module.iot.enums.rule.IotDataBridgeTypeEnum;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * IoT 数据桥梁 DO
@@ -40,20 +43,20 @@ public class IotDataBridgeDO extends BaseDO {
     private String description;
     /**
      * 桥梁状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;
     /**
      * 桥梁方向
-     *
+     * <p>
      * 枚举 {@link IotDataBridgeDirectionEnum}
      */
     private Integer direction;
 
     /**
      * 桥梁类型
-     *
+     * <p>
      * 枚举 {@link IotDataBridgeTypeEnum}
      */
     private Integer type;

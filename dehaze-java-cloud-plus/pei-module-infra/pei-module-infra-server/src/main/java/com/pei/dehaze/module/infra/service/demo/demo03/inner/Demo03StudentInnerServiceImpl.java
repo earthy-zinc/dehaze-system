@@ -101,10 +101,12 @@ public class Demo03StudentInnerServiceImpl implements Demo03StudentInnerService 
         }
     }
 
-    private void validateDemo03StudentExists(Long id) {
-        if (demo03StudentInnerMapper.selectById(id) == null) {
-            throw exception(DEMO03_STUDENT_NOT_EXISTS);
-        }
+    private void deleteDemo03CourseByStudentIds(List<Long> studentIds) {
+        demo03CourseInnerMapper.deleteByStudentIds(studentIds);
+    }
+
+    private void deleteDemo03GradeByStudentIds(List<Long> studentIds) {
+        demo03GradeInnerMapper.deleteByStudentIds(studentIds);
     }
 
     @Override
@@ -112,21 +114,37 @@ public class Demo03StudentInnerServiceImpl implements Demo03StudentInnerService 
         return demo03StudentInnerMapper.selectById(id);
     }
 
+    // ==================== 子表（学生课程） ====================
+
     @Override
     public PageResult<Demo03StudentDO> getDemo03StudentPage(Demo03StudentInnerPageReqVO pageReqVO) {
         return demo03StudentInnerMapper.selectPage(pageReqVO);
     }
-
-    // ==================== 子表（学生课程） ====================
 
     @Override
     public List<Demo03CourseDO> getDemo03CourseListByStudentId(Long studentId) {
         return demo03CourseInnerMapper.selectListByStudentId(studentId);
     }
 
-    private void createDemo03CourseList(Long studentId, List<Demo03CourseDO> list) {
-        list.forEach(o -> o.setStudentId(studentId).clean());
-        demo03CourseInnerMapper.insertBatch(list);
+    @Override
+    public Demo03GradeDO getDemo03GradeByStudentId(Long studentId) {
+        return demo03GradeInnerMapper.selectByStudentId(studentId);
+    }
+
+    private void deleteDemo03CourseByStudentId(Long studentId) {
+        demo03CourseInnerMapper.deleteByStudentId(studentId);
+    }
+
+    private void deleteDemo03GradeByStudentId(Long studentId) {
+        demo03GradeInnerMapper.deleteByStudentId(studentId);
+    }
+
+    // ==================== 子表（学生班级） ====================
+
+    private void validateDemo03StudentExists(Long id) {
+        if (demo03StudentInnerMapper.selectById(id) == null) {
+            throw exception(DEMO03_STUDENT_NOT_EXISTS);
+        }
     }
 
     private void updateDemo03CourseList(Long studentId, List<Demo03CourseDO> list) {
@@ -152,29 +170,6 @@ public class Demo03StudentInnerServiceImpl implements Demo03StudentInnerService 
         }
     }
 
-    private void deleteDemo03CourseByStudentId(Long studentId) {
-        demo03CourseInnerMapper.deleteByStudentId(studentId);
-    }
-
-    private void deleteDemo03CourseByStudentIds(List<Long> studentIds) {
-        demo03CourseInnerMapper.deleteByStudentIds(studentIds);
-    }
-
-    // ==================== 子表（学生班级） ====================
-
-    @Override
-    public Demo03GradeDO getDemo03GradeByStudentId(Long studentId) {
-        return demo03GradeInnerMapper.selectByStudentId(studentId);
-    }
-
-    private void createDemo03Grade(Long studentId, Demo03GradeDO demo03Grade) {
-        if (demo03Grade == null) {
-            return;
-        }
-        demo03Grade.setStudentId(studentId);
-        demo03GradeInnerMapper.insert(demo03Grade);
-    }
-
     private void updateDemo03Grade(Long studentId, Demo03GradeDO demo03Grade) {
         if (demo03Grade == null) {
             return;
@@ -183,12 +178,17 @@ public class Demo03StudentInnerServiceImpl implements Demo03StudentInnerService 
         demo03GradeInnerMapper.insertOrUpdate(demo03Grade);
     }
 
-    private void deleteDemo03GradeByStudentId(Long studentId) {
-        demo03GradeInnerMapper.deleteByStudentId(studentId);
+    private void createDemo03CourseList(Long studentId, List<Demo03CourseDO> list) {
+        list.forEach(o -> o.setStudentId(studentId).clean());
+        demo03CourseInnerMapper.insertBatch(list);
     }
 
-    private void deleteDemo03GradeByStudentIds(List<Long> studentIds) {
-        demo03GradeInnerMapper.deleteByStudentIds(studentIds);
+    private void createDemo03Grade(Long studentId, Demo03GradeDO demo03Grade) {
+        if (demo03Grade == null) {
+            return;
+        }
+        demo03Grade.setStudentId(studentId);
+        demo03GradeInnerMapper.insert(demo03Grade);
     }
 
 }

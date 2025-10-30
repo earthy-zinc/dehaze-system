@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.crm.dal.dataobject.customer;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
-import com.pei.dehaze.module.crm.enums.customer.CrmCustomerLimitConfigTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
+import com.pei.dehaze.module.crm.enums.customer.CrmCustomerLimitConfigTypeEnum;
 import lombok.*;
 
 import java.util.List;
@@ -53,7 +53,7 @@ public class CrmCustomerLimitConfigDO extends BaseDO {
     private Integer maxCount;
     /**
      * 成交客户是否占有拥有客户数
-     *
+     * <p>
      * 当且仅当 {@link #type} 为 1 时，进行使用
      */
     private Boolean dealCountEnabled;

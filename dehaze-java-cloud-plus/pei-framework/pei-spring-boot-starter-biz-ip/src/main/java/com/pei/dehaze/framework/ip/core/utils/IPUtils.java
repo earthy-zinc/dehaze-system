@@ -10,7 +10,7 @@ import java.io.IOException;
 
 /**
  * IP 工具类
- *
+ * <p>
  * IP 数据源来自 ip2region.xdb 精简版，基于 <a href="https://gitee.com/zhijiantianya/ip2region"/> 项目
  *
  * @author wanglhup
@@ -44,6 +44,16 @@ public class IPUtils {
     }
 
     /**
+     * 查询 IP 对应的地区
+     *
+     * @param ip IP 地址，格式为 127.0.0.1
+     * @return 地区
+     */
+    public static Area getArea(String ip) {
+        return AreaUtils.getArea(getAreaId(ip));
+    }
+
+    /**
      * 查询 IP 对应的地区编号
      *
      * @param ip IP 地址，格式为 127.0.0.1
@@ -55,6 +65,16 @@ public class IPUtils {
     }
 
     /**
+     * 查询 IP 对应的地区
+     *
+     * @param ip IP 地址的时间戳，格式参考{@link Searcher#checkIP(String)} 的返回
+     * @return 地区
+     */
+    public static Area getArea(long ip) {
+        return AreaUtils.getArea(getAreaId(ip));
+    }
+
+    /**
      * 查询 IP 对应的地区编号
      *
      * @param ip IP 地址的时间戳，格式参考{@link Searcher#checkIP(String)} 的返回
@@ -63,25 +83,5 @@ public class IPUtils {
     @SneakyThrows
     public static Integer getAreaId(long ip) {
         return Integer.parseInt(SEARCHER.search(ip));
-    }
-
-    /**
-     * 查询 IP 对应的地区
-     *
-     * @param ip IP 地址，格式为 127.0.0.1
-     * @return 地区
-     */
-    public static Area getArea(String ip) {
-        return AreaUtils.getArea(getAreaId(ip));
-    }
-
-    /**
-     * 查询 IP 对应的地区
-     *
-     * @param ip IP 地址的时间戳，格式参考{@link Searcher#checkIP(String)} 的返回
-     * @return 地区
-     */
-    public static Area getArea(long ip) {
-        return AreaUtils.getArea(getAreaId(ip));
     }
 }

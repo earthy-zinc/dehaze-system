@@ -1,6 +1,7 @@
 package com.pei.dehaze.module.iot.api.device.dto.control.upstream;
 
 // TODO @芋艿：待实现：/ota/${productKey}/${deviceName}/pull
+
 /**
  * IoT 设备【OTA】升级下拉 Request DTO（拉取固件更新）
  *

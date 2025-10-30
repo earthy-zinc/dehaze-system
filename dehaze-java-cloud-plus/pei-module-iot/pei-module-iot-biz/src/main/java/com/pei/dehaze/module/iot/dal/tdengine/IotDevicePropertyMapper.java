@@ -3,13 +3,13 @@ package com.pei.dehaze.module.iot.dal.tdengine;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.module.iot.controller.admin.device.vo.data.IotDevicePropertyHistoryPageReqVO;
 import com.pei.dehaze.module.iot.controller.admin.device.vo.data.IotDevicePropertyRespVO;
 import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
 import com.pei.dehaze.module.iot.framework.tdengine.core.TDengineTableField;
 import com.pei.dehaze.module.iot.framework.tdengine.core.annotation.TDengineDS;
-import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -74,11 +74,11 @@ public interface IotDevicePropertyMapper {
     void alterProductPropertySTableAddField(@Param("productKey") String productKey,
                                             @Param("field") TDengineTableField field);
 
-    void alterProductPropertySTableModifyField(@Param("productKey") String productKey,
-                                               @Param("field") TDengineTableField field);
-
     void alterProductPropertySTableDropField(@Param("productKey") String productKey,
                                              @Param("field") TDengineTableField field);
+
+    void alterProductPropertySTableModifyField(@Param("productKey") String productKey,
+                                               @Param("field") TDengineTableField field);
 
     void insert(@Param("device") IotDeviceDO device,
                 @Param("properties") Map<String, Object> properties,

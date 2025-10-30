@@ -25,8 +25,6 @@ public interface BrokerageWithdrawConvert {
 
     List<BrokerageWithdrawRespVO> convertList(List<BrokerageWithdrawDO> list);
 
-    PageResult<BrokerageWithdrawRespVO> convertPage(PageResult<BrokerageWithdrawDO> page);
-
     default PageResult<BrokerageWithdrawRespVO> convertPage(PageResult<BrokerageWithdrawDO> pageResult, Map<Long, MemberUserRespDTO> userMap) {
         PageResult<BrokerageWithdrawRespVO> result = convertPage(pageResult);
         for (BrokerageWithdrawRespVO vo : result.getList()) {
@@ -34,5 +32,7 @@ public interface BrokerageWithdrawConvert {
         }
         return result;
     }
+
+    PageResult<BrokerageWithdrawRespVO> convertPage(PageResult<BrokerageWithdrawDO> page);
 
 }

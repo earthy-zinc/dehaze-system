@@ -1,10 +1,10 @@
 package com.pei.dehaze.framework.mybatis.config;
 
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.framework.common.util.collection.SetUtils;
-import com.pei.dehaze.framework.mybatis.core.util.JdbcUtils;
 import com.baomidou.mybatisplus.annotation.DbType;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.pei.dehaze.framework.common.util.collection.SetUtils;
+import com.pei.dehaze.framework.mybatis.core.util.JdbcUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.env.EnvironmentPostProcessor;
@@ -55,13 +55,16 @@ public class IdTypeEnvironmentPostProcessor implements EnvironmentPostProcessor 
         setIdType(environment, IdType.AUTO);
     }
 
-    public IdType getIdType(ConfigurableEnvironment environment) {
-        return environment.getProperty(ID_TYPE_KEY, IdType.class);
-    }
-
-    public void setIdType(ConfigurableEnvironment environment, IdType idType) {
-        environment.getSystemProperties().put(ID_TYPE_KEY, idType);
-        log.info("[setIdType][修改 MyBatis Plus 的 idType 为({})]", idType);
+    public static DbType getDbType(ConfigurableEnvironment environment) {
+        String primary = environment.getProperty(DATASOURCE_DYNAMIC_KEY + "." + "primary");
+        if (StrUtil.isEmpty(primary)) {
+            return null;
+        }
+        String url = environment.getProperty(DATASOURCE_DYNAMIC_KEY + ".datasource." + primary + ".url");
+        if (StrUtil.isEmpty(url)) {
+            return null;
+        }
+        return JdbcUtils.getDbType(url);
     }
 
     public void setJobStoreDriverIfPresent(ConfigurableEnvironment environment, DbType dbType) {
@@ -93,16 +96,13 @@ public class IdTypeEnvironmentPostProcessor implements EnvironmentPostProcessor 
         }
     }
 
-    public static DbType getDbType(ConfigurableEnvironment environment) {
-        String primary = environment.getProperty(DATASOURCE_DYNAMIC_KEY + "." + "primary");
-        if (StrUtil.isEmpty(primary)) {
-            return null;
-        }
-        String url = environment.getProperty(DATASOURCE_DYNAMIC_KEY + ".datasource." + primary + ".url");
-        if (StrUtil.isEmpty(url)) {
-            return null;
-        }
-        return JdbcUtils.getDbType(url);
+    public IdType getIdType(ConfigurableEnvironment environment) {
+        return environment.getProperty(ID_TYPE_KEY, IdType.class);
+    }
+
+    public void setIdType(ConfigurableEnvironment environment, IdType idType) {
+        environment.getSystemProperties().put(ID_TYPE_KEY, idType);
+        log.info("[setIdType][修改 MyBatis Plus 的 idType 为({})]", idType);
     }
 
 }

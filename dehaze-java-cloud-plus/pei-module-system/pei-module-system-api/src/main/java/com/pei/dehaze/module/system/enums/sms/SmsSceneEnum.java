@@ -40,14 +40,14 @@ public enum SmsSceneEnum implements ArrayValuable<Integer> {
      */
     private final String description;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static SmsSceneEnum getCodeByScene(Integer scene) {
         return ArrayUtil.firstMatch(sceneEnum -> sceneEnum.getScene().equals(scene),
                 values());
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

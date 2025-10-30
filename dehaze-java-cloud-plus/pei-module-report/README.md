@@ -1,10 +1,12 @@
-`pei-module-report` 是一个 **数据可视化报表模块**，其核心作用是为管理后台提供 **大屏设计、图表展示、报表分析** 等功能。该模块基于「积木报表」（JimuReport）实现，并结合自研的 GoView 项目，构建了一套完整的数据可视化解决方案。
+`pei-module-report` 是一个 **数据可视化报表模块**，其核心作用是为管理后台提供 **大屏设计、图表展示、报表分析**
+等功能。该模块基于「积木报表」（JimuReport）实现，并结合自研的 GoView 项目，构建了一套完整的数据可视化解决方案。
 
 ---
 
 ## 一、模块概述
 
 ### ✅ 模块定位
+
 - **目标**：提供一套灵活的数据可视化系统，支持：
     - 大屏设计器（GoView）
     - 报表拖拽式配置
@@ -40,7 +42,6 @@ src/main/java/
     └── ReportServerApplication.java // 启动类
 ```
 
-
 ---
 
 ## 三、关键包详解
@@ -48,6 +49,7 @@ src/main/java/
 ### 1️⃣ `controller.admin.goview` 包 —— GoView 控制器层
 
 #### 🔹 `GoViewDataController.java`
+
 ```java
 @RestController
 @RequestMapping("/report/go-view/data")
@@ -76,6 +78,7 @@ public class GoViewDataController {
 - **权限控制**：通过 `@PreAuthorize` 实现权限校验。
 
 #### 🔹 `GoViewProjectController.java`
+
 ```java
 @RestController
 @RequestMapping("/report/go-view/project")
@@ -123,6 +126,7 @@ public class GoViewProjectController {
 ### 2️⃣ `convert.goview` 包 —— GoView 数据转换
 
 #### 🔹 `GoViewProjectConvert.java`
+
 ```java
 @Mapper
 public interface GoViewProjectConvert {
@@ -144,12 +148,12 @@ public interface GoViewProjectConvert {
   GoViewProjectDO projectDO = GoViewProjectConvert.INSTANCE.convert(createReqVO);
   ```
 
-
 ---
 
 ### 3️⃣ `dal.dataobject.goview` 包 —— GoView 数据库映射对象
 
 #### 🔹 `GoViewProjectDO.java`
+
 ```java
 @TableName("report_go_view_project")
 @KeySequence("report_go_view_project_seq")
@@ -182,6 +186,7 @@ public class GoViewProjectDO extends BaseDO {
 ### 4️⃣ `dal.mysql.goview` 包 —— GoView 数据访问层
 
 #### 🔹 `GoViewProjectMapper.java`
+
 ```java
 @Mapper
 public interface GoViewProjectMapper extends BaseMapperX<GoViewProjectDO> {
@@ -204,6 +209,7 @@ public interface GoViewProjectMapper extends BaseMapperX<GoViewProjectDO> {
 ### 5️⃣ `service.goview` 包 —— GoView 服务层
 
 #### 🔹 `GoViewProjectService.java`
+
 ```java
 public interface GoViewProjectService {
     Long createProject(GoViewProjectCreateReqVO createReqVO);
@@ -223,6 +229,7 @@ public interface GoViewProjectService {
     - 分页查询用户项目
 
 #### 🔹 `GoViewProjectServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -279,6 +286,7 @@ public class GoViewProjectServiceImpl implements GoViewProjectService {
 ### 6️⃣ `framework.jmreport` 包 —— 积木报表集成
 
 #### 🔹 `JmReportConfiguration.java`
+
 ```java
 @Configuration(proxyBeanMethods = false)
 @ComponentScan(basePackages = "org.jeecg.modules.jmreport")
@@ -305,6 +313,7 @@ public class JmReportConfiguration {
     - 使用 `JmOnlDragExternalServiceImpl` 提供字典、日志等基础服务
 
 #### 🔹 `JmReportTokenServiceImpl.java`
+
 ```java
 @Service
 @RequiredArgsConstructor
@@ -357,6 +366,7 @@ public class JmReportTokenServiceImpl implements JmReportTokenServiceI {
     3. 设置登录用户上下文，完成认证
 
 #### 🔹 `JmOnlDragExternalServiceImpl.java`
+
 ```java
 @Service
 @RequiredArgsConstructor
@@ -376,6 +386,7 @@ public class JmOnlDragExternalServiceImpl implements IOnlDragExternalService {
 ### 7️⃣ `enums` 包 —— 错误码定义
 
 #### 🔹 `ErrorCodeConstants.java`
+
 ```java
 public interface ErrorCodeConstants {
     ErrorCode GO_VIEW_PROJECT_NOT_EXISTS = new ErrorCode(1_003_000_000, "GoView 项目不存在");
@@ -388,12 +399,12 @@ public interface ErrorCodeConstants {
   throw exception(GO_VIEW_PROJECT_NOT_EXISTS);
   ```
 
-
 ---
 
 ### 8️⃣ `package-info.java` 包 —— 模块注解说明
 
 #### 🔹 `report` 包说明
+
 ```java
 /**
  * report 模块，主要实现数据可视化报表等功能：
@@ -411,22 +422,23 @@ package com.pei.dehaze.module.report;
 
 ## 四、模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `controller.admin.goview` | GoView 控制器 | `GoViewDataController`, `GoViewProjectController` |
-| `convert.goview` | VO/DO 转换 | `GoViewProjectConvert` |
-| `dal.dataobject.goview` | 数据库实体 | `GoViewProjectDO` |
-| `dal.mysql.goview` | 数据库访问 | `GoViewProjectMapper` |
-| `service.goview` | 业务逻辑 | `GoViewProjectService`, `GoViewProjectServiceImpl` |
-| `framework.jmreport.config` | 积木报表配置 | `JmReportConfiguration` |
-| `framework.jmreport.core.service` | 积木报表服务 | `JmReportTokenServiceImpl`, `JmOnlDragExternalServiceImpl` |
-| `enums` | 错误码定义 | `ErrorCodeConstants.java` |
+| 包名                                | 功能         | 关键类                                                        |
+|-----------------------------------|------------|------------------------------------------------------------|
+| `controller.admin.goview`         | GoView 控制器 | `GoViewDataController`, `GoViewProjectController`          |
+| `convert.goview`                  | VO/DO 转换   | `GoViewProjectConvert`                                     |
+| `dal.dataobject.goview`           | 数据库实体      | `GoViewProjectDO`                                          |
+| `dal.mysql.goview`                | 数据库访问      | `GoViewProjectMapper`                                      |
+| `service.goview`                  | 业务逻辑       | `GoViewProjectService`, `GoViewProjectServiceImpl`         |
+| `framework.jmreport.config`       | 积木报表配置     | `JmReportConfiguration`                                    |
+| `framework.jmreport.core.service` | 积木报表服务     | `JmReportTokenServiceImpl`, `JmOnlDragExternalServiceImpl` |
+| `enums`                           | 错误码定义      | `ErrorCodeConstants.java`                                  |
 
 ---
 
 ## 五、模块工作流程图解
 
 ### 1️⃣ GoView 项目创建流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -437,8 +449,8 @@ graph TD
     F --> G[响应客户端]
 ```
 
-
 ### 2️⃣ GoView 数据查询流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -449,12 +461,12 @@ graph TD
     F --> G[返回数据给前端]
 ```
 
-
 ---
 
 ## 六、模块使用示例
 
 ### 1️⃣ 创建 GoView 项目
+
 ```java
 @PostMapping("/create")
 @Operation(summary = "创建项目")
@@ -480,8 +492,8 @@ public CommonResult<Long> createProject(@Valid @RequestBody GoViewProjectCreateR
   }
   ```
 
-
 ### 2️⃣ 查询 GoView 数据
+
 ```java
 @RequestMapping("/get-by-sql")
 public CommonResult<GoViewDataRespVO> getDataBySQL(@Valid @RequestBody GoViewDataGetBySqlReqVO reqVO) {
@@ -507,12 +519,12 @@ public CommonResult<GoViewDataRespVO> getDataBySQL(@Valid @RequestBody GoViewDat
   }
   ```
 
-
 ---
 
 ## 七、模块实现原理详解
 
 ### 1️⃣ GoView 项目管理
+
 - **创建流程**：
     - 使用 `GoViewProjectConvert.INSTANCE.convert()` 将 VO 转换为 DO
     - 调用 `insert()` 插入数据库
@@ -524,6 +536,7 @@ public CommonResult<GoViewDataRespVO> getDataBySQL(@Valid @RequestBody GoViewDat
     - 调用 `deleteById()` 删除项目
 
 ### 2️⃣ GoView 数据查询
+
 - **SQL 查询**：
     - 使用 `JdbcTemplate.queryForRowSet(sql)` 执行 SQL
     - 解析 `SqlRowSetMetaData` 获取字段名
@@ -533,6 +546,7 @@ public CommonResult<GoViewDataRespVO> getDataBySQL(@Valid @RequestBody GoViewDat
     - 使用 `Maps.newHashMapWithExpectedSize()` 构造数据 map，提高性能
 
 ### 3️⃣ 积木报表集成
+
 - **Token 校验**：
     - 使用 `buildLoginUserByToken()` 从 Nacos 获取 Token 信息
     - 设置 `SecurityFrameworkUtils.setLoginUser()` 登录上下文
@@ -546,6 +560,7 @@ public CommonResult<GoViewDataRespVO> getDataBySQL(@Valid @RequestBody GoViewDat
 ## 八、典型配置示例
 
 ### application-local.yaml
+
 ```yaml
 spring:
   datasource:
@@ -564,18 +579,17 @@ spring:
       password: 123456
 ```
 
-
 ---
 
 ## 九、建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 自研大屏设计器 | 当前依赖积木报表，未来应替换为自研方案，降低依赖风险 |
-| ✅ 数据源多租户支持 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 多数据库适配 | 当前默认使用 MySQL，未来需支持 PostgreSQL、Oracle、ClickHouse 等 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
+| 改进点        | 描述                                                   |
+|------------|------------------------------------------------------|
+| ✅ 自研大屏设计器  | 当前依赖积木报表，未来应替换为自研方案，降低依赖风险                           |
+| ✅ 数据源多租户支持 | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 多数据库适配   | 当前默认使用 MySQL，未来需支持 PostgreSQL、Oracle、ClickHouse 等    |
+| ✅ 性能优化     | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 异常日志增强   | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
 
 ---
 
@@ -590,4 +604,5 @@ spring:
 | 积木报表集成      | JmReportTokenServiceI + JmOnlDragExternalServiceImpl         | 支持积木仪表盘认证和数据源    |
 | 错误码管理       | ErrorCodeConstants + ServiceException                        | 统一异常提示           |
 
-它是一个轻量但功能完整的数据可视化模块，适用于电商、金融、BI 等场景。如果你有具体某个类（如 `GoViewProjectServiceImpl`、`JmReportTokenServiceImpl`）想要深入了解，欢迎继续提问！
+它是一个轻量但功能完整的数据可视化模块，适用于电商、金融、BI 等场景。如果你有具体某个类（如 `GoViewProjectServiceImpl`、
+`JmReportTokenServiceImpl`）想要深入了解，欢迎继续提问！

@@ -5,7 +5,8 @@
 <mapper namespace="com.pei.dehaze.module.iot.dal.tdengine.IotDeviceLogMapper">
 
     <update id="createDeviceLogSTable">
-        CREATE STABLE IF NOT EXISTS device_log (
+        CREATE
+        STABLE IF NOT EXISTS device_log (
                 ts TIMESTAMP,
                 id NCHAR(50),
                 product_key NCHAR(50),
@@ -25,20 +26,13 @@
     </select>
 
     <insert id="insert">
-        INSERT INTO device_log_${deviceKey} (ts, id, product_key, device_name, type, identifier, content, code, report_time)
-        USING device_log
-        TAGS ('${deviceKey}')
+        INSERT INTO device_log_${deviceKey} (ts, id, product_key, device_name, type, identifier, content, code,
+                                             report_time)
+            USING device_log
+            TAGS ('${deviceKey}')
         VALUES (
-            NOW,
-            #{id},
-            #{productKey},
-            #{deviceName},
-            #{type},
-            #{identifier},
-            #{content},
-            #{code},
-            #{reportTime}
-        )
+            NOW, #{id}, #{productKey}, #{deviceName}, #{type}, #{identifier}, #{content}, #{code}, #{reportTime}
+            )
     </insert>
 
     <select id="selectPage" resultType="com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceLogDO">
@@ -67,8 +61,8 @@
 
     <select id="selectDeviceLogUpCountByHour" resultType="java.util.Map">
         SELECT
-            TIMETRUNCATE(ts, 1h) as time,
-            COUNT(*) as data
+        TIMETRUNCATE(ts, 1h) as time,
+        COUNT(*) as data
         FROM
         <choose>
             <when test="deviceKey != null and deviceKey != ''">
@@ -86,7 +80,7 @@
                 AND ts &lt;= #{endTime}
             </if>
             AND (
-                 identifier IN ('online', 'offline', 'pull', 'progress', 'report', 'register', 'register_sub')
+            identifier IN ('online', 'offline', 'pull', 'progress', 'report', 'register', 'register_sub')
             )
         </where>
         GROUP BY TIMETRUNCATE(ts, 1h)
@@ -95,8 +89,8 @@
 
     <select id="selectDeviceLogDownCountByHour" resultType="java.util.Map">
         SELECT
-            TIMETRUNCATE(ts, 1h) as time,
-            COUNT(*) as data
+        TIMETRUNCATE(ts, 1h) as time,
+        COUNT(*) as data
         FROM
         <choose>
             <when test="deviceKey != null and deviceKey != ''">

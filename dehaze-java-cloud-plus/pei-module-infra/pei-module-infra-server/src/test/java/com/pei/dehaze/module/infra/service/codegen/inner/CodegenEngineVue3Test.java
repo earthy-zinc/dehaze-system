@@ -57,16 +57,6 @@ public class CodegenEngineVue3Test extends CodegenEngineAbstractTest {
         testExecute_vue3_master(CodegenTemplateTypeEnum.MASTER_NORMAL, "/vue3_master_normal");
     }
 
-    @Test
-    public void testExecute_vue3_master_erp() {
-        testExecute_vue3_master(CodegenTemplateTypeEnum.MASTER_ERP, "/vue3_master_erp");
-    }
-
-    @Test
-    public void testExecute_vue3_master_inner() {
-        testExecute_vue3_master(CodegenTemplateTypeEnum.MASTER_INNER, "/vue3_master_inner");
-    }
-
     private void testExecute_vue3_master(CodegenTemplateTypeEnum templateType,
                                          String path) {
         // 准备参数
@@ -95,6 +85,16 @@ public class CodegenEngineVue3Test extends CodegenEngineAbstractTest {
         // 断言
         assertResult(result, path);
         // writeFile(result, "/Users/yunai/test/demo11.zip");
+    }
+
+    @Test
+    public void testExecute_vue3_master_erp() {
+        testExecute_vue3_master(CodegenTemplateTypeEnum.MASTER_ERP, "/vue3_master_erp");
+    }
+
+    @Test
+    public void testExecute_vue3_master_inner() {
+        testExecute_vue3_master(CodegenTemplateTypeEnum.MASTER_INNER, "/vue3_master_inner");
     }
 
 }

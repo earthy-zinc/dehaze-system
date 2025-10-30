@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.crm.controller.admin.product.vo.product;
 
+import com.mzt.logapi.starter.annotation.DiffLogField;
 import com.pei.dehaze.module.crm.framework.operatelog.core.CrmProductStatusParseFunction;
 import com.pei.dehaze.module.crm.framework.operatelog.core.CrmProductUnitParseFunction;
-import com.mzt.logapi.starter.annotation.DiffLogField;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;

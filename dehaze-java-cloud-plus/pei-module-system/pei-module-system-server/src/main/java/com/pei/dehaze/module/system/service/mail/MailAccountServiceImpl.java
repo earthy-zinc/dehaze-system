@@ -7,13 +7,13 @@ import com.pei.dehaze.module.system.controller.admin.mail.vo.account.MailAccount
 import com.pei.dehaze.module.system.dal.dataobject.mail.MailAccountDO;
 import com.pei.dehaze.module.system.dal.mysql.mail.MailAccountMapper;
 import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -69,12 +69,6 @@ public class MailAccountServiceImpl implements MailAccountService {
         mailAccountMapper.deleteById(id);
     }
 
-    private void validateMailAccountExists(Long id) {
-        if (mailAccountMapper.selectById(id) == null) {
-            throw exception(MAIL_ACCOUNT_NOT_EXISTS);
-        }
-    }
-
     @Override
     public MailAccountDO getMailAccount(Long id) {
         return mailAccountMapper.selectById(id);
@@ -94,6 +88,12 @@ public class MailAccountServiceImpl implements MailAccountService {
     @Override
     public List<MailAccountDO> getMailAccountList() {
         return mailAccountMapper.selectList();
+    }
+
+    private void validateMailAccountExists(Long id) {
+        if (mailAccountMapper.selectById(id) == null) {
+            throw exception(MAIL_ACCOUNT_NOT_EXISTS);
+        }
     }
 
 }

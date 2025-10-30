@@ -10,7 +10,7 @@ import org.apache.ibatis.annotations.Mapper;
 @Mapper
 public interface PayDemoWithdrawMapper extends BaseMapperX<PayDemoWithdrawDO> {
 
-    default  PageResult<PayDemoWithdrawDO> selectPage(PageParam pageParam){
+    default PageResult<PayDemoWithdrawDO> selectPage(PageParam pageParam) {
         return selectPage(pageParam, new LambdaQueryWrapperX<PayDemoWithdrawDO>()
                 .orderByDesc(PayDemoWithdrawDO::getId));
     }

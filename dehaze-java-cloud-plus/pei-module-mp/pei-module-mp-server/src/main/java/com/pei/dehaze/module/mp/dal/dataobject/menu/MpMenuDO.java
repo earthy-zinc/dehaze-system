@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.mp.dal.dataobject.menu;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
-import com.pei.dehaze.module.mp.dal.dataobject.message.MpMessageDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
+import com.pei.dehaze.module.mp.dal.dataobject.message.MpMessageDO;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -40,13 +40,13 @@ public class MpMenuDO extends BaseDO {
     private Long id;
     /**
      * 公众号账号的编号
-     *
+     * <p>
      * 关联 {@link MpAccountDO#getId()}
      */
     private Long accountId;
     /**
      * 公众号 appId
-     *
+     * <p>
      * 冗余 {@link MpAccountDO#getAppId()}
      */
     private String appId;
@@ -57,7 +57,7 @@ public class MpMenuDO extends BaseDO {
     private String name;
     /**
      * 菜单标识
-     *
+     * <p>
      * 支持多 DB 类型时，无法直接使用 key + @TableField("menuKey") 来实现转换，原因是 "menuKey" AS key 而存在报错
      */
     private String menuKey;
@@ -70,29 +70,29 @@ public class MpMenuDO extends BaseDO {
 
     /**
      * 按钮类型
-     *
+     * <p>
      * 枚举 {@link MenuButtonType}
      */
     private String type;
 
     /**
      * 网页链接
-     *
+     * <p>
      * 粉丝点击菜单可打开链接，不超过 1024 字节
-     *
+     * <p>
      * 类型为 {@link WxConsts.XmlMsgType} 的 VIEW、MINIPROGRAM
      */
     private String url;
 
     /**
      * 小程序的 appId
-     *
+     * <p>
      * 类型为 {@link MenuButtonType} 的 MINIPROGRAM
      */
     private String miniProgramAppId;
     /**
      * 小程序的页面路径
-     *
+     * <p>
      * 类型为 {@link MenuButtonType} 的 MINIPROGRAM
      */
     private String miniProgramPagePath;
@@ -106,62 +106,62 @@ public class MpMenuDO extends BaseDO {
 
     /**
      * 消息类型
-     *
+     * <p>
      * 当 {@link #type} 为 CLICK、SCANCODE_WAITMSG
-     *
+     * <p>
      * 枚举 {@link WxConsts.XmlMsgType} 中的 TEXT、IMAGE、VOICE、VIDEO、NEWS、MUSIC
      */
     private String replyMessageType;
 
     /**
      * 回复的消息内容
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 TEXT
      */
     private String replyContent;
 
     /**
      * 回复的媒体 id
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 IMAGE、VOICE、VIDEO
      */
     private String replyMediaId;
     /**
      * 回复的媒体 URL
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 IMAGE、VOICE、VIDEO
      */
     private String replyMediaUrl;
 
     /**
      * 回复的标题
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VIDEO
      */
     private String replyTitle;
     /**
      * 回复的描述
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 VIDEO
      */
     private String replyDescription;
 
     /**
      * 回复的缩略图的媒体 id，通过素材管理中的接口上传多媒体文件，得到的 id
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC、VIDEO
      */
     private String replyThumbMediaId;
     /**
      * 回复的缩略图的媒体 URL
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC、VIDEO
      */
     private String replyThumbMediaUrl;
 
     /**
      * 回复的图文消息数组
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 NEWS
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
@@ -169,15 +169,15 @@ public class MpMenuDO extends BaseDO {
 
     /**
      * 回复的音乐链接
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC
      */
     private String replyMusicUrl;
     /**
      * 回复的高质量音乐链接
-     *
+     * <p>
      * WIFI 环境优先使用该链接播放音乐
-     *
+     * <p>
      * 消息类型为 {@link WxConsts.XmlMsgType} 的 MUSIC
      */
     private String replyHqMusicUrl;

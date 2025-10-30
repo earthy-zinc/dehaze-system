@@ -17,11 +17,6 @@ public class RedisCaptchaServiceImpl implements CaptchaCacheService {
     private StringRedisTemplate stringRedisTemplate;
 
     @Override
-    public String type() {
-        return "redis";
-    }
-
-    @Override
     public void set(String key, String value, long expiresInSeconds) {
         stringRedisTemplate.opsForValue().set(key, value, expiresInSeconds, TimeUnit.SECONDS);
     }
@@ -42,8 +37,13 @@ public class RedisCaptchaServiceImpl implements CaptchaCacheService {
     }
 
     @Override
+    public String type() {
+        return "redis";
+    }
+
+    @Override
     public Long increment(String key, long val) {
-        return stringRedisTemplate.opsForValue().increment(key,val);
+        return stringRedisTemplate.opsForValue().increment(key, val);
     }
 
 }

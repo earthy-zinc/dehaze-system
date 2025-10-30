@@ -5,10 +5,10 @@ import com.pei.dehaze.module.trade.api.order.dto.TradeOrderRespDTO;
 import com.pei.dehaze.module.trade.convert.order.TradeOrderConvert;
 import com.pei.dehaze.module.trade.service.order.TradeOrderQueryService;
 import com.pei.dehaze.module.trade.service.order.TradeOrderUpdateService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 

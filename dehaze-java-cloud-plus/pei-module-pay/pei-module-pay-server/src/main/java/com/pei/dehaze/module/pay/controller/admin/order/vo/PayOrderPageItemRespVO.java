@@ -20,6 +20,6 @@ public class PayOrderPageItemRespVO extends PayOrderBaseVO {
     private LocalDateTime createTime;
 
     @Schema(description = "应用名称", example = "wx_pay")
-    private String  appName;
+    private String appName;
 
 }

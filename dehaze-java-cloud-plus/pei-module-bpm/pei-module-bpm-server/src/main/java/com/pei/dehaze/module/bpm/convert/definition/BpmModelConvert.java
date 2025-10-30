@@ -104,13 +104,6 @@ public interface BpmModelConvert {
         return modelRespVO;
     }
 
-    default void copyToModel(Model model, BpmModelSaveReqVO reqVO) {
-        model.setName(reqVO.getName());
-        model.setKey(reqVO.getKey());
-        model.setCategory(reqVO.getCategory());
-        model.setMetaInfo(JsonUtils.toJsonString(BeanUtils.toBean(reqVO, BpmModelMetaInfoVO.class)));
-    }
-
     default BpmModelMetaInfoVO parseMetaInfo(Model model) {
         BpmModelMetaInfoVO vo = JsonUtils.parseObject(model.getMetaInfo(), BpmModelMetaInfoVO.class);
         if (vo == null) {
@@ -127,6 +120,13 @@ public interface BpmModelConvert {
             vo.setSort(model.getCreateTime().getTime());
         }
         return vo;
+    }
+
+    default void copyToModel(Model model, BpmModelSaveReqVO reqVO) {
+        model.setName(reqVO.getName());
+        model.setKey(reqVO.getKey());
+        model.setCategory(reqVO.getCategory());
+        model.setMetaInfo(JsonUtils.toJsonString(BeanUtils.toBean(reqVO, BpmModelMetaInfoVO.class)));
     }
 
 }

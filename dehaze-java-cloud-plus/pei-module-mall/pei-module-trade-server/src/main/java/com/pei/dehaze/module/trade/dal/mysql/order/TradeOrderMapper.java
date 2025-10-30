@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.trade.dal.mysql.order;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
@@ -8,7 +9,6 @@ import com.pei.dehaze.module.trade.controller.admin.order.vo.TradeOrderPageReqVO
 import com.pei.dehaze.module.trade.controller.app.order.vo.AppTradeOrderPageReqVO;
 import com.pei.dehaze.module.trade.dal.dataobject.order.TradeOrderDO;
 import com.pei.dehaze.module.trade.enums.order.TradeOrderTypeEnum;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.time.LocalDateTime;

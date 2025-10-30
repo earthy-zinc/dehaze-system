@@ -33,8 +33,6 @@ public interface BrokerageUserConvert {
 
     List<BrokerageUserRespVO> convertList(List<BrokerageUserDO> list);
 
-    PageResult<BrokerageUserRespVO> convertPage(PageResult<BrokerageUserDO> page, Map<Long, MemberUserRespDTO> userMap, Map<Long, Long> brokerageUserCountMap, Map<Long, UserBrokerageSummaryRespBO> userOrderSummaryMap);
-
     default PageResult<BrokerageUserRespVO> convertPage(PageResult<BrokerageUserDO> pageResult,
                                                         Map<Long, MemberUserRespDTO> userMap,
                                                         Map<Long, Long> brokerageUserCountMap,
@@ -57,6 +55,8 @@ public interface BrokerageUserConvert {
         }
         return result;
     }
+
+    PageResult<BrokerageUserRespVO> convertPage(PageResult<BrokerageUserDO> page, Map<Long, MemberUserRespDTO> userMap, Map<Long, Long> brokerageUserCountMap, Map<Long, UserBrokerageSummaryRespBO> userOrderSummaryMap);
 
     default BrokerageUserRespVO copyTo(MemberUserRespDTO source, BrokerageUserRespVO target) {
         if (target == null) {

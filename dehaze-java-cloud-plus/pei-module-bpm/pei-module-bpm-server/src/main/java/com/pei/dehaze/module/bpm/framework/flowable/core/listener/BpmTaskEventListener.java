@@ -3,13 +3,13 @@ package com.pei.dehaze.module.bpm.framework.flowable.core.listener;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import com.google.common.collect.ImmutableSet;
 import com.pei.dehaze.framework.common.util.number.NumberUtils;
 import com.pei.dehaze.module.bpm.enums.definition.BpmBoundaryEventTypeEnum;
 import com.pei.dehaze.module.bpm.framework.flowable.core.enums.BpmnModelConstants;
 import com.pei.dehaze.module.bpm.framework.flowable.core.util.BpmnModelUtils;
 import com.pei.dehaze.module.bpm.service.definition.BpmModelService;
 import com.pei.dehaze.module.bpm.service.task.BpmTaskService;
-import com.google.common.collect.ImmutableSet;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BoundaryEvent;
@@ -37,13 +37,6 @@ import java.util.Set;
 @Slf4j
 public class BpmTaskEventListener extends AbstractFlowableEngineEventListener {
 
-    @Resource
-    @Lazy // 延迟加载，避免循环依赖
-    private BpmModelService modelService;
-    @Resource
-    @Lazy // 解决循环依赖
-    private BpmTaskService taskService;
-
     public static final Set<FlowableEngineEventType> TASK_EVENTS = ImmutableSet.<FlowableEngineEventType>builder()
             .add(FlowableEngineEventType.TASK_CREATED)
             .add(FlowableEngineEventType.TASK_ASSIGNED)
@@ -51,40 +44,15 @@ public class BpmTaskEventListener extends AbstractFlowableEngineEventListener {
             .add(FlowableEngineEventType.ACTIVITY_CANCELLED)
             .add(FlowableEngineEventType.TIMER_FIRED) // 监听审批超时
             .build();
+    @Resource
+    @Lazy // 延迟加载，避免循环依赖
+    private BpmModelService modelService;
+    @Resource
+    @Lazy // 解决循环依赖
+    private BpmTaskService taskService;
 
     public BpmTaskEventListener() {
         super(TASK_EVENTS);
-    }
-
-    @Override
-    protected void taskCreated(FlowableEngineEntityEvent event) {
-        taskService.processTaskCreated((Task) event.getEntity());
-    }
-
-    @Override
-    protected void taskAssigned(FlowableEngineEntityEvent event) {
-        taskService.processTaskAssigned((Task) event.getEntity());
-    }
-
-    @Override
-    protected void taskCompleted(FlowableEngineEntityEvent event) {
-        taskService.processTaskCompleted((Task) event.getEntity());
-    }
-
-    @Override
-    protected void activityCancelled(FlowableActivityCancelledEvent event) {
-        List<HistoricActivityInstance> activityList = taskService.getHistoricActivityListByExecutionId(event.getExecutionId());
-        if (CollUtil.isEmpty(activityList)) {
-            log.error("[activityCancelled][使用 executionId({}) 查找不到对应的活动实例]", event.getExecutionId());
-            return;
-        }
-        // 遍历处理
-        activityList.forEach(activity -> {
-            if (StrUtil.isEmpty(activity.getTaskId())) {
-                return;
-            }
-            taskService.processTaskCanceled(activity.getTaskId());
-        });
     }
 
     @Override
@@ -120,6 +88,37 @@ public class BpmTaskEventListener extends AbstractFlowableEngineEventListener {
             String taskKey = boundaryEvent.getAttachedToRefId();
             taskService.processChildProcessTimeout(event.getProcessInstanceId(), taskKey);
         }
+    }
+
+    @Override
+    protected void activityCancelled(FlowableActivityCancelledEvent event) {
+        List<HistoricActivityInstance> activityList = taskService.getHistoricActivityListByExecutionId(event.getExecutionId());
+        if (CollUtil.isEmpty(activityList)) {
+            log.error("[activityCancelled][使用 executionId({}) 查找不到对应的活动实例]", event.getExecutionId());
+            return;
+        }
+        // 遍历处理
+        activityList.forEach(activity -> {
+            if (StrUtil.isEmpty(activity.getTaskId())) {
+                return;
+            }
+            taskService.processTaskCanceled(activity.getTaskId());
+        });
+    }
+
+    @Override
+    protected void taskCreated(FlowableEngineEntityEvent event) {
+        taskService.processTaskCreated((Task) event.getEntity());
+    }
+
+    @Override
+    protected void taskAssigned(FlowableEngineEntityEvent event) {
+        taskService.processTaskAssigned((Task) event.getEntity());
+    }
+
+    @Override
+    protected void taskCompleted(FlowableEngineEntityEvent event) {
+        taskService.processTaskCompleted((Task) event.getEntity());
     }
 
 }

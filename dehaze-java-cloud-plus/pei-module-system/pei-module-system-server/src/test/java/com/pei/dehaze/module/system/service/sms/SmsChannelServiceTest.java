@@ -3,19 +3,19 @@ package com.pei.dehaze.module.system.service.sms;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
-import com.pei.dehaze.module.system.framework.sms.core.client.SmsClient;
-import com.pei.dehaze.module.system.framework.sms.core.client.SmsClientFactory;
-import com.pei.dehaze.module.system.framework.sms.core.property.SmsChannelProperties;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.channel.SmsChannelPageReqVO;
 import com.pei.dehaze.module.system.controller.admin.sms.vo.channel.SmsChannelSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.sms.SmsChannelDO;
 import com.pei.dehaze.module.system.dal.mysql.sms.SmsChannelMapper;
+import com.pei.dehaze.module.system.framework.sms.core.client.SmsClient;
+import com.pei.dehaze.module.system.framework.sms.core.client.SmsClientFactory;
+import com.pei.dehaze.module.system.framework.sms.core.property.SmsChannelProperties;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils.buildBetweenTime;
@@ -28,7 +28,8 @@ import static com.pei.dehaze.module.system.enums.ErrorCodeConstants.SMS_CHANNEL_
 import static com.pei.dehaze.module.system.enums.ErrorCodeConstants.SMS_CHANNEL_NOT_EXISTS;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @Import(SmsChannelServiceImpl.class)
 public class SmsChannelServiceTest extends BaseDbUnitTest {

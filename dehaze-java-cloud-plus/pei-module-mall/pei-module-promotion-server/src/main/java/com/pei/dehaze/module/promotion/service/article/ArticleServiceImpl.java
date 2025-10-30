@@ -10,10 +10,10 @@ import com.pei.dehaze.module.promotion.convert.article.ArticleConvert;
 import com.pei.dehaze.module.promotion.dal.dataobject.article.ArticleCategoryDO;
 import com.pei.dehaze.module.promotion.dal.dataobject.article.ArticleDO;
 import com.pei.dehaze.module.promotion.dal.mysql.article.ArticleMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -68,19 +68,6 @@ public class ArticleServiceImpl implements ArticleService {
         articleMapper.deleteById(id);
     }
 
-    private void validateArticleExists(Long id) {
-        if (articleMapper.selectById(id) == null) {
-            throw exception(ARTICLE_NOT_EXISTS);
-        }
-    }
-
-    private void validateArticleCategoryExists(Long categoryId) {
-        ArticleCategoryDO articleCategory = articleCategoryService.getArticleCategory(categoryId);
-        if (articleCategory == null) {
-            throw exception(ARTICLE_CATEGORY_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ArticleDO getArticle(Long id) {
         return articleMapper.selectById(id);
@@ -118,6 +105,19 @@ public class ArticleServiceImpl implements ArticleService {
         validateArticleExists(id);
         // 增加浏览次数
         articleMapper.updateBrowseCount(id);
+    }
+
+    private void validateArticleExists(Long id) {
+        if (articleMapper.selectById(id) == null) {
+            throw exception(ARTICLE_NOT_EXISTS);
+        }
+    }
+
+    private void validateArticleCategoryExists(Long categoryId) {
+        ArticleCategoryDO articleCategory = articleCategoryService.getArticleCategory(categoryId);
+        if (articleCategory == null) {
+            throw exception(ARTICLE_CATEGORY_NOT_EXISTS);
+        }
     }
 
 }

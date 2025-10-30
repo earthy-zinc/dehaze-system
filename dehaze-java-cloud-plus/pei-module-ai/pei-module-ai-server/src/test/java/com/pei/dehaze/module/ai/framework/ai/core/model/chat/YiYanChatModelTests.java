@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 // TODO @芋艿：百度千帆 API 提供了 V2 版本，目前 Spring AI 不兼容，可关键 <https://github.com/spring-projects/spring-ai/issues/2179> 进展
+
 /**
  * {@link QianFanChatModel} 的集成测试
  *

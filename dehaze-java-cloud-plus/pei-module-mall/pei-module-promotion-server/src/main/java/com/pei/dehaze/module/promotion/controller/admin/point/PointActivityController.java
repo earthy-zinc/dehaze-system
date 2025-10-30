@@ -105,21 +105,6 @@ public class PointActivityController {
         return success(new PageResult<>(resultList, pageResult.getTotal()));
     }
 
-    @GetMapping("/list-by-ids")
-    @Operation(summary = "获得积分商城活动列表，基于活动编号数组")
-    @Parameter(name = "ids", description = "活动编号数组", required = true, example = "[1024, 1025]")
-    public CommonResult<List<PointActivityRespVO>> getPointActivityListByIds(@RequestParam("ids") List<Long> ids) {
-        // 1. 获得开启的活动列表
-        List<PointActivityDO> activityList = pointActivityService.getPointActivityListByIds(ids);
-        activityList.removeIf(activity -> CommonStatusEnum.isDisable(activity.getStatus()));
-        if (CollUtil.isEmpty(activityList)) {
-            return success(Collections.emptyList());
-        }
-        // 2. 拼接返回
-        List<PointActivityRespVO> result = buildPointActivityRespVOList(activityList);
-        return success(result);
-    }
-
     private List<PointActivityRespVO> buildPointActivityRespVOList(List<PointActivityDO> activityList) {
         List<PointProductDO> products = pointActivityService.getPointProductListByActivityIds(
                 convertSet(activityList, PointActivityDO::getId));
@@ -136,6 +121,21 @@ public class PointActivityController {
                     spu -> activity.setSpuName(spu.getName()).setPicUrl(spu.getPicUrl()).setMarketPrice(spu.getMarketPrice()));
         });
         return result;
+    }
+
+    @GetMapping("/list-by-ids")
+    @Operation(summary = "获得积分商城活动列表，基于活动编号数组")
+    @Parameter(name = "ids", description = "活动编号数组", required = true, example = "[1024, 1025]")
+    public CommonResult<List<PointActivityRespVO>> getPointActivityListByIds(@RequestParam("ids") List<Long> ids) {
+        // 1. 获得开启的活动列表
+        List<PointActivityDO> activityList = pointActivityService.getPointActivityListByIds(ids);
+        activityList.removeIf(activity -> CommonStatusEnum.isDisable(activity.getStatus()));
+        if (CollUtil.isEmpty(activityList)) {
+            return success(Collections.emptyList());
+        }
+        // 2. 拼接返回
+        List<PointActivityRespVO> result = buildPointActivityRespVOList(activityList);
+        return success(result);
     }
 
 }

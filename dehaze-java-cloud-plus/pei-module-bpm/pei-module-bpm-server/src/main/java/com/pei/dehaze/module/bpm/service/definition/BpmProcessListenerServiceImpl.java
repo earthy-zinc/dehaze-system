@@ -50,6 +50,30 @@ public class BpmProcessListenerServiceImpl implements BpmProcessListenerService 
         processListenerMapper.updateById(updateObj);
     }
 
+    @Override
+    public void deleteProcessListener(Long id) {
+        // 校验存在
+        validateProcessListenerExists(id);
+        // 删除
+        processListenerMapper.deleteById(id);
+    }
+
+    @Override
+    public BpmProcessListenerDO getProcessListener(Long id) {
+        return processListenerMapper.selectById(id);
+    }
+
+    @Override
+    public PageResult<BpmProcessListenerDO> getProcessListenerPage(BpmProcessListenerPageReqVO pageReqVO) {
+        return processListenerMapper.selectPage(pageReqVO);
+    }
+
+    private void validateProcessListenerExists(Long id) {
+        if (processListenerMapper.selectById(id) == null) {
+            throw exception(PROCESS_LISTENER_NOT_EXISTS);
+        }
+    }
+
     private void validateCreateProcessListenerValue(BpmProcessListenerSaveReqVO createReqVO) {
         // class 类型
         if (createReqVO.getValueType().equals(BpmProcessListenerValueTypeEnum.CLASS.getType())) {
@@ -73,30 +97,6 @@ public class BpmProcessListenerServiceImpl implements BpmProcessListenerService 
         if (!StrUtil.startWith(createReqVO.getValue(), "${") || !StrUtil.endWith(createReqVO.getValue(), "}")) {
             throw exception(PROCESS_LISTENER_EXPRESSION_INVALID, createReqVO.getValue());
         }
-    }
-
-    @Override
-    public void deleteProcessListener(Long id) {
-        // 校验存在
-        validateProcessListenerExists(id);
-        // 删除
-        processListenerMapper.deleteById(id);
-    }
-
-    private void validateProcessListenerExists(Long id) {
-        if (processListenerMapper.selectById(id) == null) {
-            throw exception(PROCESS_LISTENER_NOT_EXISTS);
-        }
-    }
-
-    @Override
-    public BpmProcessListenerDO getProcessListener(Long id) {
-        return processListenerMapper.selectById(id);
-    }
-
-    @Override
-    public PageResult<BpmProcessListenerDO> getProcessListenerPage(BpmProcessListenerPageReqVO pageReqVO) {
-        return processListenerMapper.selectPage(pageReqVO);
     }
 
 }

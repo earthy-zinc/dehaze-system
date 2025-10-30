@@ -23,10 +23,6 @@ public interface ProductFavoriteConvert {
 
     ProductFavoriteDO convert(Long userId, Long spuId);
 
-    @Mapping(target = "id", source = "favorite.id")
-    @Mapping(target = "spuName", source = "spu.name")
-    AppFavoriteRespVO convert(ProductSpuDO spu, ProductFavoriteDO favorite);
-
     default List<AppFavoriteRespVO> convertList(List<ProductFavoriteDO> favorites, List<ProductSpuDO> spus) {
         List<AppFavoriteRespVO> resultList = new ArrayList<>(favorites.size());
         Map<Long, ProductSpuDO> spuMap = convertMap(spus, ProductSpuDO::getId);
@@ -37,6 +33,10 @@ public interface ProductFavoriteConvert {
         return resultList;
     }
 
+    @Mapping(target = "id", source = "favorite.id")
+    @Mapping(target = "spuName", source = "spu.name")
+    AppFavoriteRespVO convert(ProductSpuDO spu, ProductFavoriteDO favorite);
+
     default PageResult<ProductFavoriteRespVO> convertPage(PageResult<ProductFavoriteDO> pageResult, List<ProductSpuDO> spuList) {
         Map<Long, ProductSpuDO> spuMap = convertMap(spuList, ProductSpuDO::getId);
         List<ProductFavoriteRespVO> voList = CollectionUtils.convertList(pageResult.getList(), favorite -> {
@@ -45,6 +45,7 @@ public interface ProductFavoriteConvert {
         });
         return new PageResult<>(voList, pageResult.getTotal());
     }
+
     @Mapping(target = "id", source = "favorite.id")
     @Mapping(target = "userId", source = "favorite.userId")
     @Mapping(target = "spuId", source = "favorite.spuId")

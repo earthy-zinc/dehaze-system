@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.member.dal.dataobject.address;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
@@ -48,7 +48,7 @@ public class MemberAddressDO extends BaseDO {
     private String detailAddress;
     /**
      * 是否默认
-     *
+     * <p>
      * true - 默认收件地址
      */
     private Boolean defaultStatus;

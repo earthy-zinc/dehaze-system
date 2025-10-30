@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.pay.dal.mysql.refund;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.pay.controller.admin.refund.vo.PayRefundExportReqVO;
 import com.pei.dehaze.module.pay.controller.admin.refund.vo.PayRefundPageReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.refund.PayRefundDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;
@@ -18,7 +18,7 @@ public interface PayRefundMapper extends BaseMapperX<PayRefundDO> {
         return selectCount(PayRefundDO::getAppId, appId);
     }
 
-    default  PayRefundDO selectByAppIdAndMerchantRefundId(Long appId, String merchantRefundId) {
+    default PayRefundDO selectByAppIdAndMerchantRefundId(Long appId, String merchantRefundId) {
         return selectOne(new LambdaQueryWrapperX<PayRefundDO>()
                 .eq(PayRefundDO::getAppId, appId)
                 .eq(PayRefundDO::getMerchantRefundId, merchantRefundId));
@@ -31,7 +31,7 @@ public interface PayRefundMapper extends BaseMapperX<PayRefundDO> {
                 .eq(PayRefundDO::getStatus, status));
     }
 
-    default  PayRefundDO selectByAppIdAndNo(Long appId, String no) {
+    default PayRefundDO selectByAppIdAndNo(Long appId, String no) {
         return selectOne(new LambdaQueryWrapperX<PayRefundDO>()
                 .eq(PayRefundDO::getAppId, appId)
                 .eq(PayRefundDO::getNo, no));

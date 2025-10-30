@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.module.member.controller.admin.level.vo.level.MemberLevelCreateReqVO;
 import com.pei.dehaze.module.member.controller.admin.level.vo.level.MemberLevelListReqVO;
 import com.pei.dehaze.module.member.controller.admin.level.vo.level.MemberLevelUpdateReqVO;
@@ -16,13 +17,12 @@ import com.pei.dehaze.module.member.dal.dataobject.user.MemberUserDO;
 import com.pei.dehaze.module.member.dal.mysql.level.MemberLevelMapper;
 import com.pei.dehaze.module.member.enums.MemberExperienceBizTypeEnum;
 import com.pei.dehaze.module.member.service.user.MemberUserService;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -83,72 +83,6 @@ public class MemberLevelServiceImpl implements MemberLevelService {
         validateLevelHasUser(id);
         // 删除
         memberLevelMapper.deleteById(id);
-    }
-
-    @VisibleForTesting
-    MemberLevelDO validateLevelExists(Long id) {
-        MemberLevelDO levelDO = memberLevelMapper.selectById(id);
-        if (levelDO == null) {
-            throw exception(LEVEL_NOT_EXISTS);
-        }
-        return levelDO;
-    }
-
-    @VisibleForTesting
-    void validateNameUnique(List<MemberLevelDO> list, Long id, String name) {
-        for (MemberLevelDO levelDO : list) {
-            if (ObjUtil.notEqual(levelDO.getName(), name)) {
-                continue;
-            }
-            if (id == null || !id.equals(levelDO.getId())) {
-                throw exception(LEVEL_NAME_EXISTS, levelDO.getName());
-            }
-        }
-    }
-
-    @VisibleForTesting
-    void validateLevelUnique(List<MemberLevelDO> list, Long id, Integer level) {
-        for (MemberLevelDO levelDO : list) {
-            if (ObjUtil.notEqual(levelDO.getLevel(), level)) {
-                continue;
-            }
-
-            if (id == null || !id.equals(levelDO.getId())) {
-                throw exception(LEVEL_VALUE_EXISTS, levelDO.getLevel(), levelDO.getName());
-            }
-        }
-    }
-
-    @VisibleForTesting
-    void validateExperienceOutRange(List<MemberLevelDO> list, Long id, Integer level, Integer experience) {
-        for (MemberLevelDO levelDO : list) {
-            if (levelDO.getId().equals(id)) {
-                continue;
-            }
-
-            if (levelDO.getLevel() < level) {
-                // 经验大于前一个等级
-                if (experience <= levelDO.getExperience()) {
-                    throw exception(LEVEL_EXPERIENCE_MIN, levelDO.getName(), levelDO.getExperience());
-                }
-            } else if (levelDO.getLevel() > level) {
-                //小于下一个级别
-                if (experience >= levelDO.getExperience()) {
-                    throw exception(LEVEL_EXPERIENCE_MAX, levelDO.getName(), levelDO.getExperience());
-                }
-            }
-        }
-    }
-
-    @VisibleForTesting
-    void validateConfigValid(Long id, String name, Integer level, Integer experience) {
-        List<MemberLevelDO> list = memberLevelMapper.selectList();
-        // 校验名称唯一
-        validateNameUnique(list, id, name);
-        // 校验等级唯一
-        validateLevelUnique(list, id, level);
-        // 校验升级所需经验是否有效: 大于前一个等级，小于下一个级别
-        validateExperienceOutRange(list, id, level, experience);
     }
 
     @VisibleForTesting
@@ -293,6 +227,72 @@ public class MemberLevelServiceImpl implements MemberLevelService {
 
     private void notifyMemberLevelChange(Long userId, MemberLevelDO level) {
         //todo: 给会员发消息
+    }
+
+    @VisibleForTesting
+    MemberLevelDO validateLevelExists(Long id) {
+        MemberLevelDO levelDO = memberLevelMapper.selectById(id);
+        if (levelDO == null) {
+            throw exception(LEVEL_NOT_EXISTS);
+        }
+        return levelDO;
+    }
+
+    @VisibleForTesting
+    void validateConfigValid(Long id, String name, Integer level, Integer experience) {
+        List<MemberLevelDO> list = memberLevelMapper.selectList();
+        // 校验名称唯一
+        validateNameUnique(list, id, name);
+        // 校验等级唯一
+        validateLevelUnique(list, id, level);
+        // 校验升级所需经验是否有效: 大于前一个等级，小于下一个级别
+        validateExperienceOutRange(list, id, level, experience);
+    }
+
+    @VisibleForTesting
+    void validateNameUnique(List<MemberLevelDO> list, Long id, String name) {
+        for (MemberLevelDO levelDO : list) {
+            if (ObjUtil.notEqual(levelDO.getName(), name)) {
+                continue;
+            }
+            if (id == null || !id.equals(levelDO.getId())) {
+                throw exception(LEVEL_NAME_EXISTS, levelDO.getName());
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void validateLevelUnique(List<MemberLevelDO> list, Long id, Integer level) {
+        for (MemberLevelDO levelDO : list) {
+            if (ObjUtil.notEqual(levelDO.getLevel(), level)) {
+                continue;
+            }
+
+            if (id == null || !id.equals(levelDO.getId())) {
+                throw exception(LEVEL_VALUE_EXISTS, levelDO.getLevel(), levelDO.getName());
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void validateExperienceOutRange(List<MemberLevelDO> list, Long id, Integer level, Integer experience) {
+        for (MemberLevelDO levelDO : list) {
+            if (levelDO.getId().equals(id)) {
+                continue;
+            }
+
+            if (levelDO.getLevel() < level) {
+                // 经验大于前一个等级
+                if (experience <= levelDO.getExperience()) {
+                    throw exception(LEVEL_EXPERIENCE_MIN, levelDO.getName(), levelDO.getExperience());
+                }
+            } else if (levelDO.getLevel() > level) {
+                //小于下一个级别
+                if (experience >= levelDO.getExperience()) {
+                    throw exception(LEVEL_EXPERIENCE_MAX, levelDO.getName(), levelDO.getExperience());
+                }
+            }
+        }
     }
 
 }

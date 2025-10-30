@@ -1,10 +1,12 @@
-`pei-module-pay` 是一个 **基于 Spring Boot 的支付模块（Payment Module）**，其核心作用是为企业提供统一的支付、退款、转账等能力。该模块与主流支付渠道（如微信、支付宝、钱包支付）深度集成，并支持多租户、分布式事务、回调通知、异步处理等企业级功能。
+`pei-module-pay` 是一个 **基于 Spring Boot 的支付模块（Payment Module）**
+，其核心作用是为企业提供统一的支付、退款、转账等能力。该模块与主流支付渠道（如微信、支付宝、钱包支付）深度集成，并支持多租户、分布式事务、回调通知、异步处理等企业级功能。
 
 ---
 
 ## ✅ 模块概述
 
 ### 🎯 模块定位
+
 - **目标**：构建统一的支付系统，支持：
     - 支付订单管理（创建、查询、状态变更）
     - 支付渠道管理（微信、支付宝、钱包）
@@ -18,6 +20,7 @@
     - 提现功能（用户提现、分销返佣）
 
 ### 🧩 技术栈依赖
+
 - **Spring Boot + Spring Cloud Gateway + Nacos**
 - **支付渠道 SDK**：
     - 微信支付 SDK（`com.github.binarywang.wxpay`）
@@ -60,7 +63,6 @@ src/main/java/
     └── PayServerApplication.java // 启动类
 ```
 
-
 ---
 
 ## 🔍 关键包详解
@@ -68,6 +70,7 @@ src/main/java/
 ### 1️⃣ `api.notify` 包 —— 回调通知接口定义
 
 #### 示例：`PayOrderNotifyReqDTO.java`
+
 ```java
 public class PayOrderNotifyReqDTO {
     private String merchantOrderId;
@@ -76,7 +79,6 @@ public class PayOrderNotifyReqDTO {
     private LocalDateTime successTime;
 }
 ```
-
 
 - **作用**：对外暴露支付回调接口 DTO。
 - **用途**：
@@ -88,6 +90,7 @@ public class PayOrderNotifyReqDTO {
 ### 2️⃣ `controller.admin.order` 包 —— 支付订单管理
 
 #### 示例：`PayOrderController.java`
+
 ```java
 @Tag(name = "管理后台 - 支付订单")
 @RestController
@@ -106,7 +109,6 @@ public class PayOrderController {
 }
 ```
 
-
 - **作用**：对外暴露 `/pay/order/**` 接口，实现管理员相关的支付订单操作。
 - **权限控制**：
     - 使用 `@PreAuthorize` 校验用户是否有操作权限
@@ -118,6 +120,7 @@ public class PayOrderController {
 ### 3️⃣ `service.order` 包 —— 支付订单服务逻辑
 
 #### 示例：`PayOrderServiceImpl.java`
+
 ```java
 @Service
 @Validated
@@ -145,7 +148,6 @@ public class PayOrderServiceImpl implements PayOrderService {
 }
 ```
 
-
 - **作用**：实现支付订单的创建、更新、查询等操作。
 - **关键逻辑**：
     - 使用 `PayClient` 调用第三方支付渠道
@@ -158,6 +160,7 @@ public class PayOrderServiceImpl implements PayOrderService {
 ### 4️⃣ `dal.dataobject.order` 包 —— 支付订单数据库映射对象
 
 #### 示例：`PayOrderDO.java`
+
 ```java
 @TableName("pay_order")
 @KeySequence("pay_order_seq")
@@ -206,7 +209,6 @@ public class PayOrderDO extends BaseDO {
 }
 ```
 
-
 - **作用**：映射 `pay_order` 表。
 - **字段说明**：
     - `appId`: 关联 `PayAppDO`，表示所属应用
@@ -220,6 +222,7 @@ public class PayOrderDO extends BaseDO {
 ### 5️⃣ `framework.pay.core.client.impl.weixin.AbstractWxPayClient` 包 —— 微信支付封装
 
 #### 示例：`AbstractWxPayClient.java`
+
 ```java
 @Slf4j
 public abstract class AbstractWxPayClient extends AbstractPayClient<WxPayClientConfig> {
@@ -259,7 +262,6 @@ public abstract class AbstractWxPayClient extends AbstractPayClient<WxPayClientC
 }
 ```
 
-
 - **作用**：封装微信支付 SDK，统一支付接口调用。
 - **优势**：
     - 支持 V2/V3 版本
@@ -273,6 +275,7 @@ public abstract class AbstractWxPayClient extends AbstractPayClient<WxPayClientC
 ### 6️⃣ `enums.order` 包 —— 支付订单枚举
 
 #### 示例：`PayOrderStatusEnum.java`
+
 ```java
 @Getter
 @AllArgsConstructor
@@ -291,7 +294,6 @@ public enum PayOrderStatusEnum implements ArrayValuable<Integer> {
 }
 ```
 
-
 - **作用**：统一管理支付订单状态。
 - **优势**：
     - 减少魔法数字
@@ -302,6 +304,7 @@ public enum PayOrderStatusEnum implements ArrayValuable<Integer> {
 ### 7️⃣ `service.refund` 包 —— 退款服务逻辑
 
 #### 示例：`PayRefundServiceImpl.java`
+
 ```java
 @Service
 @Slf4j
@@ -340,7 +343,6 @@ public class PayRefundServiceImpl implements PayRefundService {
 }
 ```
 
-
 - **作用**：实现支付订单的退款、暂停、终止、查询等操作。
 - **流程生命周期管理**：
     - 退款发起：`unifiedRefund(...)`
@@ -354,6 +356,7 @@ public class PayRefundServiceImpl implements PayRefundService {
 ### 8️⃣ `framework.pay.core.client.PayClient` 包 —— 支付客户端抽象
 
 #### 示例：`PayClient.java`
+
 ```java
 public interface PayClient<Config> {
 
@@ -381,7 +384,6 @@ public interface PayClient<Config> {
 }
 ```
 
-
 - **作用**：支付渠道通用接口，所有支付客户端必须实现。
 - **设计模式**：
     - 模板方法模式：定义统一支付接口
@@ -396,6 +398,7 @@ public interface PayClient<Config> {
 ### 9️⃣ `service.wallet` 包 —— 钱包服务逻辑
 
 #### 示例：`PayWalletRechargeServiceImpl.java`
+
 ```java
 @Service
 @Slf4j
@@ -432,7 +435,6 @@ public class PayWalletRechargeServiceImpl implements PayWalletRechargeService {
 }
 ```
 
-
 - **作用**：实现钱包余额充值、消费、提现等功能。
 - **字段说明**：
     - `balance`: 当前余额（单位：分）
@@ -445,6 +447,7 @@ public class PayWalletRechargeServiceImpl implements PayWalletRechargeService {
 ### 🔟 `job` 包 —— 定时任务处理
 
 #### 示例：`PayNotifyJob.java`
+
 ```java
 @Component
 @Slf4j
@@ -473,7 +476,6 @@ public class PayNotifyJob {
 }
 ```
 
-
 - **作用**：定时扫描未通知的支付订单，触发回调通知。
 - **执行策略**：
     - 每 5 分钟执行一次
@@ -486,6 +488,7 @@ public class PayNotifyJob {
 ## 🧠 模块工作流程图解
 
 ### 1️⃣ 支付订单创建流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否携带有效 Token?}
@@ -498,8 +501,8 @@ graph TD
     H --> I[响应客户端]
 ```
 
-
 ### 2️⃣ 支付回调处理流程
+
 ```mermaid
 graph TD
     A[微信/支付宝回调] --> B[进入 PayNotifyController]
@@ -509,7 +512,6 @@ graph TD
     E --> F[触发后续业务动作（如发送短信）]
     F --> G[响应 OK]
 ```
-
 
 ---
 
@@ -534,29 +536,29 @@ graph TD
     O --> P[PayWalletTransactionDO]
 ```
 
-
 ---
 
 ## 🧩 模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `api.notify` | 支付回调接口定义 | `PayOrderNotifyReqDTO` |
-| `controller.admin.order` | 支付订单管理 | `PayOrderController` |
-| `service.order` | 支付订单服务 | `PayOrderServiceImpl` |
-| `dal.dataobject.order` | 支付订单数据 | `PayOrderDO` |
-| `framework.pay.core.client.impl.weixin` | 微信支付封装 | `AbstractWxPayClient` |
-| `enums.order` | 支付订单枚举 | `PayOrderStatusEnum` |
-| `service.refund` | 退款服务逻辑 | `PayRefundServiceImpl` |
-| `framework.pay.core.client.PayClient` | 支付客户端接口 | `PayClient.java` |
-| `service.wallet` | 钱包服务逻辑 | `PayWalletRechargeServiceImpl` |
-| `job` | 定时任务处理 | `PayNotifyJob.java` |
+| 包名                                      | 功能       | 关键类                            |
+|-----------------------------------------|----------|--------------------------------|
+| `api.notify`                            | 支付回调接口定义 | `PayOrderNotifyReqDTO`         |
+| `controller.admin.order`                | 支付订单管理   | `PayOrderController`           |
+| `service.order`                         | 支付订单服务   | `PayOrderServiceImpl`          |
+| `dal.dataobject.order`                  | 支付订单数据   | `PayOrderDO`                   |
+| `framework.pay.core.client.impl.weixin` | 微信支付封装   | `AbstractWxPayClient`          |
+| `enums.order`                           | 支付订单枚举   | `PayOrderStatusEnum`           |
+| `service.refund`                        | 退款服务逻辑   | `PayRefundServiceImpl`         |
+| `framework.pay.core.client.PayClient`   | 支付客户端接口  | `PayClient.java`               |
+| `service.wallet`                        | 钱包服务逻辑   | `PayWalletRechargeServiceImpl` |
+| `job`                                   | 定时任务处理   | `PayNotifyJob.java`            |
 
 ---
 
 ## 🧾 模块实现原理详解
 
 ### 1️⃣ 支付订单创建流程
+
 - **步骤**：
     1. 用户提交支付请求
     2. 进入 `PayOrderController`
@@ -566,6 +568,7 @@ graph TD
     6. 返回前端支付链接或二维码
 
 ### 2️⃣ 支付回调处理流程
+
 - **步骤**：
     1. 第三方支付平台回调 `/pay/notify/order/{channelId}`
     2. 解析请求体并验证签名
@@ -574,6 +577,7 @@ graph TD
     5. 触发后续业务动作（如更新库存、发送短信）
 
 ### 3️⃣ 钱包余额充值流程
+
 - **步骤**：
     1. 用户提交钱包充值请求
     2. 创建支付订单（关联钱包业务类型）
@@ -585,13 +589,13 @@ graph TD
 
 ## ✅ 建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 多租户增强 | 当前仅支持单租户，未来需支持多租户数据隔离 |
-| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题 |
-| ✅ 性能优化 | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
-| ✅ 单元测试 | 当前代码未提供单元测试，建议补充测试用例 |
-| ✅ 流程监控 | 增加支付成功率、回调成功率等指标统计 |
+| 改进点      | 描述                                                   |
+|----------|------------------------------------------------------|
+| ✅ 多租户增强  | 当前仅支持单租户，未来需支持多租户数据隔离                                |
+| ✅ 异常日志增强 | 在 SQL 查询失败时记录详细日志，便于排查问题                             |
+| ✅ 性能优化   | 使用 `PreparedStatement` 替代 `queryForRowSet`，防止 SQL 注入 |
+| ✅ 单元测试   | 当前代码未提供单元测试，建议补充测试用例                                 |
+| ✅ 流程监控   | 增加支付成功率、回调成功率等指标统计                                   |
 
 ---
 
@@ -599,15 +603,16 @@ graph TD
 
 `pei-module-pay` 模块实现了以下核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 支付订单 | PayOrderDO + PayOrderService | 管理支付订单生命周期 |
-| 支付渠道 | PayClient + Alipay/WxPay 实现类 | 支持微信、支付宝、钱包等多种支付方式 |
-| 退款订单 | PayRefundDO + PayRefundService | 管理退款订单生命周期 |
-| 转账订单 | PayTransferDO + PayTransferService | 支持提现、红包、佣金等转账场景 |
-| 钱包余额 | PayWalletDO + PayWalletService | 支持余额充值、消费、提现 |
-| 异步回调 | PayNotifyTask + PayNotifyLog | 保证支付状态最终一致性 |
-| 支付渠道管理 | PayChannelDO + PayChannelService | 支持多个支付渠道配置 |
-| 支付订单展示 | PayOrderDisplayModeEnum | 支持 URL、二维码、表单等多种展示方式 |
+| 功能     | 技术实现                               | 用途                   |
+|--------|------------------------------------|----------------------|
+| 支付订单   | PayOrderDO + PayOrderService       | 管理支付订单生命周期           |
+| 支付渠道   | PayClient + Alipay/WxPay 实现类       | 支持微信、支付宝、钱包等多种支付方式   |
+| 退款订单   | PayRefundDO + PayRefundService     | 管理退款订单生命周期           |
+| 转账订单   | PayTransferDO + PayTransferService | 支持提现、红包、佣金等转账场景      |
+| 钱包余额   | PayWalletDO + PayWalletService     | 支持余额充值、消费、提现         |
+| 异步回调   | PayNotifyTask + PayNotifyLog       | 保证支付状态最终一致性          |
+| 支付渠道管理 | PayChannelDO + PayChannelService   | 支持多个支付渠道配置           |
+| 支付订单展示 | PayOrderDisplayModeEnum            | 支持 URL、二维码、表单等多种展示方式 |
 
-它是一个轻量但功能完整的支付模块，适用于电商、社交、CRM、ERP 等需要支付、退款、转账的场景。如果你有具体某个类（如 `PayOrderServiceImpl`、`PayWalletRechargeServiceImpl`）想要深入了解，欢迎继续提问！
+它是一个轻量但功能完整的支付模块，适用于电商、社交、CRM、ERP 等需要支付、退款、转账的场景。如果你有具体某个类（如
+`PayOrderServiceImpl`、`PayWalletRechargeServiceImpl`）想要深入了解，欢迎继续提问！

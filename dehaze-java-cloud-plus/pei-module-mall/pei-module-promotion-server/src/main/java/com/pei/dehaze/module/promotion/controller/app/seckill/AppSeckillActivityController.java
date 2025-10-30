@@ -2,6 +2,8 @@ package com.pei.dehaze.module.promotion.controller.app.seckill;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageResult;
@@ -18,8 +20,6 @@ import com.pei.dehaze.module.promotion.dal.dataobject.seckill.SeckillConfigDO;
 import com.pei.dehaze.module.promotion.dal.dataobject.seckill.SeckillProductDO;
 import com.pei.dehaze.module.promotion.service.seckill.SeckillActivityService;
 import com.pei.dehaze.module.promotion.service.seckill.SeckillConfigService;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,6 +51,13 @@ import static com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils.isBet
 @Validated
 public class AppSeckillActivityController {
 
+    @Resource
+    private SeckillActivityService activityService;
+    @Resource
+    @Lazy
+    private SeckillConfigService configService;
+    @Resource
+    private ProductSpuApi spuApi;
     /**
      * {@link AppSeckillActivityNowRespVO} 缓存，通过它异步刷新 {@link #getNowSeckillActivity()} 所要的首页数据
      */
@@ -59,19 +66,10 @@ public class AppSeckillActivityController {
 
                 @Override
                 public AppSeckillActivityNowRespVO load(String key) {
-                     return getNowSeckillActivity0();
+                    return getNowSeckillActivity0();
                 }
 
             });
-
-    @Resource
-    private SeckillActivityService activityService;
-    @Resource
-    @Lazy
-    private SeckillConfigService configService;
-
-    @Resource
-    private ProductSpuApi spuApi;
 
     @GetMapping("/get-now")
     @Operation(summary = "获得当前秒杀活动", description = "获取当前正在进行的活动，提供给首页使用")

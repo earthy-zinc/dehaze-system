@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.iot.mq.message;
 
-import com.pei.dehaze.module.iot.enums.device.IotDeviceMessageTypeEnum;
 import com.pei.dehaze.module.iot.enums.device.IotDeviceMessageIdentifierEnum;
+import com.pei.dehaze.module.iot.enums.device.IotDeviceMessageTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 // TODO @芋艿：参考阿里云的物模型，优化 IoT 上下行消息的设计，尽量保持一致（渐进式，不要一口气）！
+
 /**
  * IoT 设备消息
  */
@@ -39,26 +40,26 @@ public class IotDeviceMessage {
 
     /**
      * 消息类型
-     *
+     * <p>
      * 枚举 {@link IotDeviceMessageTypeEnum}
      */
     private String type;
     /**
      * 标识符
-     *
+     * <p>
      * 枚举 {@link IotDeviceMessageIdentifierEnum}
      */
     private String identifier;
 
     /**
      * 请求参数
-     *
+     * <p>
      * 例如说：属性上报的 properties、事件上报的 params
      */
     private Object data;
     /**
      * 响应码
-     *
+     * <p>
      * 目前只有 server 下行消息给 device 设备时，才会有响应码
      */
     private Integer code;

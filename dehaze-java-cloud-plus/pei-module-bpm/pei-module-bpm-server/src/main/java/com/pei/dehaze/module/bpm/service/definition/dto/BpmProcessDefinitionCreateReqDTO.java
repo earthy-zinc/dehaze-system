@@ -53,28 +53,23 @@ public class BpmProcessDefinitionCreateReqDTO {
     @NotNull(message = "表单类型不能为空")
     private Integer formType;
     /**
-     * 动态表单编号
-     * 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
+     * 动态表单编号 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
      */
     private Long formId;
     /**
-     * 表单的配置
-     * 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
+     * 表单的配置 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
      */
     private String formConf;
     /**
-     * 表单项的数组
-     * 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
+     * 表单项的数组 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
      */
     private List<String> formFields;
     /**
-     * 自定义表单的提交路径，使用 Vue 的路由地址
-     * 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
+     * 自定义表单的提交路径，使用 Vue 的路由地址 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
      */
     private String formCustomCreatePath;
     /**
-     * 自定义表单的查看路径，使用 Vue 的路由地址
-     * 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
+     * 自定义表单的查看路径，使用 Vue 的路由地址 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
      */
     private String formCustomViewPath;
 

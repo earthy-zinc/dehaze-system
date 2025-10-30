@@ -15,7 +15,8 @@ import org.springframework.context.annotation.Bean;
  */
 @AutoConfiguration
 @ConditionalOnClass({MeterRegistryCustomizer.class})
-@ConditionalOnProperty(prefix = "pei.metrics", value = "enable", matchIfMissing = true) // 允许使用 pei.metrics.enable=false 禁用 Metrics
+@ConditionalOnProperty(prefix = "pei.metrics", value = "enable", matchIfMissing = true)
+// 允许使用 pei.metrics.enable=false 禁用 Metrics
 public class PeiMetricsAutoConfiguration {
 
     @Bean

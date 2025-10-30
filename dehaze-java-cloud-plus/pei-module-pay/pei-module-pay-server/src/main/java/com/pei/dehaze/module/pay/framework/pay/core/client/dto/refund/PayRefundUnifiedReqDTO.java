@@ -1,15 +1,14 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.dto.refund;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import org.hibernate.validator.constraints.URL;
-
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 /**
  * 统一 退款 Request DTO
@@ -25,7 +24,7 @@ public class PayRefundUnifiedReqDTO {
 
     /**
      * 外部订单号
-     *
+     * <p>
      * 对应 PayOrderExtensionDO 的 no 字段
      */
     @NotEmpty(message = "外部订单编号不能为空")
@@ -33,7 +32,7 @@ public class PayRefundUnifiedReqDTO {
 
     /**
      * 外部退款号
-     *
+     * <p>
      * 对应 PayRefundDO 的 no 字段
      */
     @NotEmpty(message = "退款请求单号不能为空")
@@ -47,7 +46,7 @@ public class PayRefundUnifiedReqDTO {
 
     /**
      * 支付金额，单位：分
-     *
+     * <p>
      * 目前微信支付在退款的时候，必须传递该字段
      */
     @NotNull(message = "支付金额不能为空")

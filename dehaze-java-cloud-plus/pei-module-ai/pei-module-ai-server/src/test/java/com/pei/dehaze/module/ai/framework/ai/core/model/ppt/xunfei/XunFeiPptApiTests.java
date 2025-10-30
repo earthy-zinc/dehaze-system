@@ -1,8 +1,8 @@
 package com.pei.dehaze.module.ai.framework.ai.core.model.ppt.xunfei;
 
 import cn.hutool.core.io.FileUtil;
-import com.pei.dehaze.module.ai.framework.ai.core.model.xinghuo.api.XunFeiPptApi;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
+import com.pei.dehaze.module.ai.framework.ai.core.model.xinghuo.api.XunFeiPptApi;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -261,6 +261,13 @@ public class XunFeiPptApiTests {
     }
 
     /**
+     * 将 File 转换为 MultipartFile
+     */
+    private MultipartFile convertFileToMultipartFile(File file) {
+        return new MockMultipartFile("file", file.getName(), "text/plain", FileUtil.readBytes(file));
+    }
+
+    /**
      * 直接创建 PPT（完整参数）
      */
     @Test
@@ -307,13 +314,6 @@ public class XunFeiPptApiTests {
                 }
             }
         }
-    }
-
-    /**
-     * 将 File 转换为 MultipartFile
-     */
-    private MultipartFile convertFileToMultipartFile(File file) {
-        return new MockMultipartFile("file", file.getName(), "text/plain", FileUtil.readBytes(file));
     }
 
 }

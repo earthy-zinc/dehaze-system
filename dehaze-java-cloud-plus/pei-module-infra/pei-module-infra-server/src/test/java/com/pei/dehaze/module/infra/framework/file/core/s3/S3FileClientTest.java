@@ -27,6 +27,28 @@ public class S3FileClientTest {
         testExecuteUpload(config);
     }
 
+    private void testExecuteUpload(S3FileClientConfig config) throws Exception {
+        // 校验配置
+        ValidationUtils.validate(Validation.buildDefaultValidatorFactory().getValidator(), config);
+        // 创建 Client
+        S3FileClient client = new S3FileClient(0L, config);
+        client.init();
+        // 上传文件
+        String path = IdUtil.fastSimpleUUID() + ".jpg";
+        byte[] content = ResourceUtil.readBytes("file/erweima.jpg");
+        String fullPath = client.upload(content, path, "image/jpeg");
+        System.out.println("访问地址：" + fullPath);
+        // 读取文件
+        if (true) {
+            byte[] bytes = client.getContent(path);
+            System.out.println("文件内容：" + bytes.length);
+        }
+        // 删除文件
+        if (false) {
+            client.delete(path);
+        }
+    }
+
     @Test
     @Disabled // 阿里云 OSS，如果要集成测试，可以注释本行
     public void testAliyun() throws Exception {
@@ -91,28 +113,6 @@ public class S3FileClientTest {
 
         // 执行上传
         testExecuteUpload(config);
-    }
-
-    private void testExecuteUpload(S3FileClientConfig config) throws Exception {
-        // 校验配置
-        ValidationUtils.validate(Validation.buildDefaultValidatorFactory().getValidator(), config);
-        // 创建 Client
-        S3FileClient client = new S3FileClient(0L, config);
-        client.init();
-        // 上传文件
-        String path = IdUtil.fastSimpleUUID() + ".jpg";
-        byte[] content = ResourceUtil.readBytes("file/erweima.jpg");
-        String fullPath = client.upload(content, path, "image/jpeg");
-        System.out.println("访问地址：" + fullPath);
-        // 读取文件
-        if (true) {
-            byte[] bytes = client.getContent(path);
-            System.out.println("文件内容：" + bytes.length);
-        }
-        // 删除文件
-        if (false) {
-            client.delete(path);
-        }
     }
 
 }

@@ -18,10 +18,9 @@ public enum BpmHttpRequestParamTypeEnum implements ArrayValuable<Integer> {
     FIXED_VALUE(1, "固定值"),
     FROM_FORM(2, "表单");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmHttpRequestParamTypeEnum::getType).toArray(Integer[]::new);
     private final Integer type;
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmHttpRequestParamTypeEnum::getType).toArray(Integer[]::new);
 
     @Override
     public Integer[] array() {

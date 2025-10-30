@@ -36,7 +36,7 @@ public interface ErpSaleReturnService {
     /**
      * 更新销售退货的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updateSaleReturnStatus(Long id, Integer status);
@@ -44,7 +44,7 @@ public interface ErpSaleReturnService {
     /**
      * 更新销售退货的退款金额
      *
-     * @param id 编号
+     * @param id          编号
      * @param refundPrice 退款金额
      */
     void updateSaleReturnRefundPrice(Long id, BigDecimal refundPrice);

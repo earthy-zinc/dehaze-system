@@ -40,9 +40,11 @@ import java.util.List;
  *
  * @author xingyu4j
  */
-@AutoConfiguration(before = PeiRedisMQConsumerAutoConfiguration.class) // before PeiRedisMQConsumerAutoConfiguration 的原因是，需要保证 RedisWebSocketMessageConsumer 先创建，才能创建 RedisMessageListenerContainer
+@AutoConfiguration(before = PeiRedisMQConsumerAutoConfiguration.class)
+// before PeiRedisMQConsumerAutoConfiguration 的原因是，需要保证 RedisWebSocketMessageConsumer 先创建，才能创建 RedisMessageListenerContainer
 @EnableWebSocket // 开启 websocket
-@ConditionalOnProperty(prefix = "pei.websocket", value = "enable", matchIfMissing = true) // 允许使用 pei.websocket.enable=false 禁用 websocket
+@ConditionalOnProperty(prefix = "pei.websocket", value = "enable", matchIfMissing = true)
+// 允许使用 pei.websocket.enable=false 禁用 websocket
 @EnableConfigurationProperties(WebSocketProperties.class)
 public class PeiWebSocketAutoConfiguration {
 

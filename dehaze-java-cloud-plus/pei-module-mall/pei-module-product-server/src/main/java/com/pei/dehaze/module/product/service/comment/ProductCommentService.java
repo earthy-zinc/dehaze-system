@@ -21,16 +21,14 @@ import org.springframework.validation.annotation.Validated;
 public interface ProductCommentService {
 
     /**
-     * 创建商品评论
-     * 后台管理员创建评论使用
+     * 创建商品评论 后台管理员创建评论使用
      *
      * @param createReqVO 商品评价创建 Request VO 对象
      */
     void createComment(ProductCommentCreateReqVO createReqVO);
 
     /**
-     * 创建评论
-     * 创建商品评论 APP 端创建商品评论使用
+     * 创建评论 创建商品评论 APP 端创建商品评论使用
      *
      * @param createReqDTO 创建请求 dto
      * @return 返回评论 id
@@ -47,8 +45,8 @@ public interface ProductCommentService {
     /**
      * 商家回复
      *
-     * @param replyVO     商家回复
-     * @param userId 管理后台商家登陆人 ID
+     * @param replyVO 商家回复
+     * @param userId  管理后台商家登陆人 ID
      */
     void replyComment(ProductCommentReplyReqVO replyVO, Long userId);
 

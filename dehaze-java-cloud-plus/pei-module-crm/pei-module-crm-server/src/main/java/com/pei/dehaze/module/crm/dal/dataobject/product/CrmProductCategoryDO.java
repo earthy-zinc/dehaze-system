@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.crm.dal.dataobject.product;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
@@ -41,7 +41,7 @@ public class CrmProductCategoryDO extends BaseDO {
     private String name;
     /**
      * 父级编号
-     *
+     * <p>
      * 关联 {@link CrmProductCategoryDO#getId()}
      */
     private Long parentId;

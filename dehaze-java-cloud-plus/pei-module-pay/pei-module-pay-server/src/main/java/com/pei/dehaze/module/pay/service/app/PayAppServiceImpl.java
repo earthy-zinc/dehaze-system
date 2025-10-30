@@ -67,20 +67,6 @@ public class PayAppServiceImpl implements PayAppService {
         appMapper.updateById(updateObj);
     }
 
-    void validateAppKeyUnique(Long id, String appKey) {
-        PayAppDO app = appMapper.selectByAppKey(appKey);
-        if (app == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 appKey 的应用
-        if (id == null) {
-            throw exception(APP_KEY_EXISTS);
-        }
-        if (!app.getId().equals(id)) {
-            throw exception(APP_KEY_EXISTS);
-        }
-    }
-
     @Override
     public void updateAppStatus(Long id, Integer status) {
         // 校验商户存在
@@ -105,23 +91,9 @@ public class PayAppServiceImpl implements PayAppService {
         appMapper.deleteById(id);
     }
 
-    private void validateAppExists(Long id) {
-        if (appMapper.selectById(id) == null) {
-            throw exception(APP_NOT_FOUND);
-        }
-    }
-
     @Override
     public PayAppDO getApp(Long id) {
         return appMapper.selectById(id);
-    }
-
-    @Override
-    public List<PayAppDO> getAppList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return Collections.emptyList();
-        }
-        return appMapper.selectBatchIds(ids);
     }
 
     @Override
@@ -132,6 +104,14 @@ public class PayAppServiceImpl implements PayAppService {
     @Override
     public PageResult<PayAppDO> getAppPage(PayAppPageReqVO pageReqVO) {
         return appMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public List<PayAppDO> getAppList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        return appMapper.selectBatchIds(ids);
     }
 
     @Override
@@ -162,6 +142,26 @@ public class PayAppServiceImpl implements PayAppService {
             throw exception(ErrorCodeConstants.APP_IS_DISABLE);
         }
         return app;
+    }
+
+    private void validateAppExists(Long id) {
+        if (appMapper.selectById(id) == null) {
+            throw exception(APP_NOT_FOUND);
+        }
+    }
+
+    void validateAppKeyUnique(Long id, String appKey) {
+        PayAppDO app = appMapper.selectByAppKey(appKey);
+        if (app == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 appKey 的应用
+        if (id == null) {
+            throw exception(APP_KEY_EXISTS);
+        }
+        if (!app.getId().equals(id)) {
+            throw exception(APP_KEY_EXISTS);
+        }
     }
 
 }

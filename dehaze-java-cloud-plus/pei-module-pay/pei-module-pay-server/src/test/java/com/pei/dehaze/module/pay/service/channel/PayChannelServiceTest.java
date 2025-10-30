@@ -1,24 +1,24 @@
 package com.pei.dehaze.module.pay.service.channel;
 
+import com.alibaba.fastjson.JSON;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientFactory;
-import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayPayClientConfig;
-import com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin.WxPayClientConfig;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
 import com.pei.dehaze.module.pay.controller.admin.channel.vo.PayChannelCreateReqVO;
 import com.pei.dehaze.module.pay.controller.admin.channel.vo.PayChannelUpdateReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
 import com.pei.dehaze.module.pay.dal.mysql.channel.PayChannelMapper;
-import com.alibaba.fastjson.JSON;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientFactory;
+import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayPayClientConfig;
+import com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin.WxPayClientConfig;
+import jakarta.annotation.Resource;
+import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
-import jakarta.validation.Validator;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,7 +28,8 @@ import static com.pei.dehaze.framework.test.core.util.RandomUtils.*;
 import static com.pei.dehaze.module.pay.enums.ErrorCodeConstants.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @Import({PayChannelServiceImpl.class})
 public class PayChannelServiceTest extends BaseDbUnitTest {
@@ -60,6 +61,14 @@ public class PayChannelServiceTest extends BaseDbUnitTest {
         PayChannelDO channel = channelMapper.selectById(channelId);
         assertPojoEquals(reqVO, channel, "config");
         assertPojoEquals(config, channel.getConfig());
+    }
+
+    public WxPayClientConfig randomWxPayClientConfig() {
+        return new WxPayClientConfig()
+                .setAppId(randomString())
+                .setMchId(randomString())
+                .setApiVersion(WxPayClientConfig.API_VERSION_V2)
+                .setMchKey(randomString());
     }
 
     @Test
@@ -100,6 +109,16 @@ public class PayChannelServiceTest extends BaseDbUnitTest {
         PayChannelDO channel = channelMapper.selectById(reqVO.getId()); // 获取最新的
         assertPojoEquals(reqVO, channel, "config");
         assertPojoEquals(config, channel.getConfig());
+    }
+
+    public AlipayPayClientConfig randomAlipayPayClientConfig() {
+        return new AlipayPayClientConfig()
+                .setServerUrl(randomURL())
+                .setAppId(randomString())
+                .setSignType(AlipayPayClientConfig.SIGN_TYPE_DEFAULT)
+                .setMode(AlipayPayClientConfig.MODE_PUBLIC_KEY)
+                .setPrivateKey(randomString())
+                .setAlipayPublicKey(randomString());
     }
 
     @Test
@@ -314,24 +333,6 @@ public class PayChannelServiceTest extends BaseDbUnitTest {
         PayClient<?> client = channelService.getPayClient(id);
         // 断言
         assertSame(client, mockClient);
-    }
-
-    public WxPayClientConfig randomWxPayClientConfig() {
-        return new WxPayClientConfig()
-                .setAppId(randomString())
-                .setMchId(randomString())
-                .setApiVersion(WxPayClientConfig.API_VERSION_V2)
-                .setMchKey(randomString());
-    }
-
-    public AlipayPayClientConfig randomAlipayPayClientConfig() {
-        return new AlipayPayClientConfig()
-                .setServerUrl(randomURL())
-                .setAppId(randomString())
-                .setSignType(AlipayPayClientConfig.SIGN_TYPE_DEFAULT)
-                .setMode(AlipayPayClientConfig.MODE_PUBLIC_KEY)
-                .setPrivateKey(randomString())
-                .setAlipayPublicKey(randomString());
     }
 
 }

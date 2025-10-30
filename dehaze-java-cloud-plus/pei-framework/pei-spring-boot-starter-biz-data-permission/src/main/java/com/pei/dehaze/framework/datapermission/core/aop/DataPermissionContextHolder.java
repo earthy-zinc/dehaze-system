@@ -1,7 +1,7 @@
 package com.pei.dehaze.framework.datapermission.core.aop;
 
-import com.pei.dehaze.framework.datapermission.core.annotation.DataPermission;
 import com.alibaba.ttl.TransmittableThreadLocal;
+import com.pei.dehaze.framework.datapermission.core.annotation.DataPermission;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -62,7 +62,7 @@ public class DataPermissionContextHolder {
 
     /**
      * 清空上下文
-     *
+     * <p>
      * 目前仅仅用于单测
      */
     public static void clear() {

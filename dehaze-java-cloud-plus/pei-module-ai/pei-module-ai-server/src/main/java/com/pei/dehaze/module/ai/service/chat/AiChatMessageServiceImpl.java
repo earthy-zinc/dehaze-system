@@ -3,8 +3,6 @@ package com.pei.dehaze.module.ai.service.chat;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.module.ai.util.AiUtils;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -21,6 +19,7 @@ import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.pei.dehaze.module.ai.dal.dataobject.model.AiToolDO;
 import com.pei.dehaze.module.ai.dal.mysql.chat.AiChatMessageMapper;
 import com.pei.dehaze.module.ai.enums.ErrorCodeConstants;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import com.pei.dehaze.module.ai.service.knowledge.AiKnowledgeDocumentService;
 import com.pei.dehaze.module.ai.service.knowledge.AiKnowledgeSegmentService;
 import com.pei.dehaze.module.ai.service.knowledge.bo.AiKnowledgeSegmentSearchReqBO;
@@ -28,6 +27,7 @@ import com.pei.dehaze.module.ai.service.knowledge.bo.AiKnowledgeSegmentSearchRes
 import com.pei.dehaze.module.ai.service.model.AiChatRoleService;
 import com.pei.dehaze.module.ai.service.model.AiModelService;
 import com.pei.dehaze.module.ai.service.model.AiToolService;
+import com.pei.dehaze.module.ai.util.AiUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.Message;
@@ -136,7 +136,7 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
 
     @Override
     public Flux<CommonResult<AiChatMessageSendRespVO>> sendChatMessageStream(AiChatMessageSendReqVO sendReqVO,
-            Long userId) {
+                                                                             Long userId) {
         // 1.1 校验对话存在
         AiChatConversationDO conversation = chatConversationService
                 .validateChatConversationExists(sendReqVO.getConversationId());
@@ -175,7 +175,7 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
                 Map<Long, AiKnowledgeDocumentDO> documentMap = TenantUtils.executeIgnore(() ->
                         knowledgeDocumentService.getKnowledgeDocumentMap(
                                 convertSet(knowledgeSegments, AiKnowledgeSegmentSearchRespBO::getDocumentId)));
-                segments = BeanUtils.toBean(knowledgeSegments, AiChatMessageRespVO.KnowledgeSegment.class, segment ->  {
+                segments = BeanUtils.toBean(knowledgeSegments, AiChatMessageRespVO.KnowledgeSegment.class, segment -> {
                     AiKnowledgeDocumentDO document = documentMap.get(segment.getDocumentId());
                     segment.setDocumentName(document != null ? document.getName() : null);
                 });
@@ -198,121 +198,6 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
             TenantUtils.executeIgnore(() -> chatMessageMapper.updateById(
                     new AiChatMessageDO().setId(assistantMessage.getId()).setContent(throwable.getMessage())));
         }).onErrorResume(error -> Flux.just(error(ErrorCodeConstants.CHAT_STREAM_ERROR)));
-    }
-
-    private List<AiKnowledgeSegmentSearchRespBO> recallKnowledgeSegment(String content,
-            AiChatConversationDO conversation) {
-        // 1. 查询聊天角色
-        if (conversation == null || conversation.getRoleId() == null) {
-            return Collections.emptyList();
-        }
-        AiChatRoleDO role = chatRoleService.getChatRole(conversation.getRoleId());
-        if (role == null || CollUtil.isEmpty(role.getKnowledgeIds())) {
-            return Collections.emptyList();
-        }
-
-        // 2. 遍历找回
-        List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments = new ArrayList<>();
-        for (Long knowledgeId : role.getKnowledgeIds()) {
-            knowledgeSegments.addAll(knowledgeSegmentService.searchKnowledgeSegment(new AiKnowledgeSegmentSearchReqBO()
-                    .setKnowledgeId(knowledgeId).setContent(content)));
-        }
-        return knowledgeSegments;
-    }
-
-    private Prompt buildPrompt(AiChatConversationDO conversation, List<AiChatMessageDO> messages,
-                               List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments,
-                               AiModelDO model, AiChatMessageSendReqVO sendReqVO) {
-        List<Message> chatMessages = new ArrayList<>();
-        // 1.1 System Context 角色设定
-        if (StrUtil.isNotBlank(conversation.getSystemMessage())) {
-            chatMessages.add(new SystemMessage(conversation.getSystemMessage()));
-        }
-
-        // 1.2 历史 history message 历史消息
-        List<AiChatMessageDO> contextMessages = filterContextMessages(messages, conversation, sendReqVO);
-        contextMessages
-                .forEach(message -> chatMessages.add(AiUtils.buildMessage(message.getType(), message.getContent())));
-
-        // 1.3 当前 user message 新发送消息
-        chatMessages.add(new UserMessage(sendReqVO.getContent()));
-
-        // 1.4 知识库，通过 UserMessage 实现
-        if (CollUtil.isNotEmpty(knowledgeSegments)) {
-            String reference = knowledgeSegments.stream()
-                    .map(segment -> "<Reference>" + segment.getContent() + "</Reference>")
-                    .collect(Collectors.joining("\n\n"));
-            chatMessages.add(new UserMessage(String.format(KNOWLEDGE_USER_MESSAGE_TEMPLATE, reference)));
-        }
-
-        // 2.1 查询 tool 工具
-        Set<String> toolNames = null;
-        Map<String,Object> toolContext = Map.of();
-        if (conversation.getRoleId() != null) {
-            AiChatRoleDO chatRole = chatRoleService.getChatRole(conversation.getRoleId());
-            if (chatRole != null && CollUtil.isNotEmpty(chatRole.getToolIds())) {
-                toolNames = convertSet(toolService.getToolList(chatRole.getToolIds()), AiToolDO::getName);
-                toolContext = AiUtils.buildCommonToolContext();
-            }
-        }
-        // 2.2 构建 ChatOptions 对象
-        AiPlatformEnum platform = AiPlatformEnum.validatePlatform(model.getPlatform());
-        ChatOptions chatOptions = AiUtils.buildChatOptions(platform, model.getModel(),
-                conversation.getTemperature(), conversation.getMaxTokens(), toolNames, toolContext);
-        return new Prompt(chatMessages, chatOptions);
-    }
-
-    /**
-     * 从历史消息中，获得倒序的 n 组消息作为消息上下文
-     * <p>
-     * n 组：指的是 user + assistant 形成一组
-     *
-     * @param messages     消息列表
-     * @param conversation 对话
-     * @param sendReqVO    发送请求
-     * @return 消息上下文
-     */
-    private List<AiChatMessageDO> filterContextMessages(List<AiChatMessageDO> messages,
-            AiChatConversationDO conversation,
-            AiChatMessageSendReqVO sendReqVO) {
-        if (conversation.getMaxContexts() == null || ObjUtil.notEqual(sendReqVO.getUseContext(), Boolean.TRUE)) {
-            return Collections.emptyList();
-        }
-        List<AiChatMessageDO> contextMessages = new ArrayList<>(conversation.getMaxContexts() * 2);
-        for (int i = messages.size() - 1; i >= 0; i--) {
-            AiChatMessageDO assistantMessage = CollUtil.get(messages, i);
-            if (assistantMessage == null || assistantMessage.getReplyId() == null) {
-                continue;
-            }
-            AiChatMessageDO userMessage = CollUtil.get(messages, i - 1);
-            if (userMessage == null
-                    || ObjUtil.notEqual(assistantMessage.getReplyId(), userMessage.getId())
-                    || StrUtil.isEmpty(assistantMessage.getContent())) {
-                continue;
-            }
-            // 由于后续要 reverse 反转，所以先添加 assistantMessage
-            contextMessages.add(assistantMessage);
-            contextMessages.add(userMessage);
-            // 超过最大上下文，结束
-            if (contextMessages.size() >= conversation.getMaxContexts() * 2) {
-                break;
-            }
-        }
-        Collections.reverse(contextMessages);
-        return contextMessages;
-    }
-
-    private AiChatMessageDO createChatMessage(Long conversationId, Long replyId,
-            AiModelDO model, Long userId, Long roleId,
-            MessageType messageType, String content, Boolean useContext,
-            List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments) {
-        AiChatMessageDO message = new AiChatMessageDO().setConversationId(conversationId).setReplyId(replyId)
-                .setModel(model.getModel()).setModelId(model.getId()).setUserId(userId).setRoleId(roleId)
-                .setType(messageType.getValue()).setContent(content).setUseContext(useContext)
-                .setSegmentIds(convertList(knowledgeSegments, AiKnowledgeSegmentSearchRespBO::getId));
-        message.setCreateTime(LocalDateTime.now());
-        chatMessageMapper.insert(message);
-        return message;
     }
 
     @Override
@@ -361,6 +246,121 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
     @Override
     public PageResult<AiChatMessageDO> getChatMessagePage(AiChatMessagePageReqVO pageReqVO) {
         return chatMessageMapper.selectPage(pageReqVO);
+    }
+
+    private List<AiKnowledgeSegmentSearchRespBO> recallKnowledgeSegment(String content,
+                                                                        AiChatConversationDO conversation) {
+        // 1. 查询聊天角色
+        if (conversation == null || conversation.getRoleId() == null) {
+            return Collections.emptyList();
+        }
+        AiChatRoleDO role = chatRoleService.getChatRole(conversation.getRoleId());
+        if (role == null || CollUtil.isEmpty(role.getKnowledgeIds())) {
+            return Collections.emptyList();
+        }
+
+        // 2. 遍历找回
+        List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments = new ArrayList<>();
+        for (Long knowledgeId : role.getKnowledgeIds()) {
+            knowledgeSegments.addAll(knowledgeSegmentService.searchKnowledgeSegment(new AiKnowledgeSegmentSearchReqBO()
+                    .setKnowledgeId(knowledgeId).setContent(content)));
+        }
+        return knowledgeSegments;
+    }
+
+    private AiChatMessageDO createChatMessage(Long conversationId, Long replyId,
+                                              AiModelDO model, Long userId, Long roleId,
+                                              MessageType messageType, String content, Boolean useContext,
+                                              List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments) {
+        AiChatMessageDO message = new AiChatMessageDO().setConversationId(conversationId).setReplyId(replyId)
+                .setModel(model.getModel()).setModelId(model.getId()).setUserId(userId).setRoleId(roleId)
+                .setType(messageType.getValue()).setContent(content).setUseContext(useContext)
+                .setSegmentIds(convertList(knowledgeSegments, AiKnowledgeSegmentSearchRespBO::getId));
+        message.setCreateTime(LocalDateTime.now());
+        chatMessageMapper.insert(message);
+        return message;
+    }
+
+    private Prompt buildPrompt(AiChatConversationDO conversation, List<AiChatMessageDO> messages,
+                               List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments,
+                               AiModelDO model, AiChatMessageSendReqVO sendReqVO) {
+        List<Message> chatMessages = new ArrayList<>();
+        // 1.1 System Context 角色设定
+        if (StrUtil.isNotBlank(conversation.getSystemMessage())) {
+            chatMessages.add(new SystemMessage(conversation.getSystemMessage()));
+        }
+
+        // 1.2 历史 history message 历史消息
+        List<AiChatMessageDO> contextMessages = filterContextMessages(messages, conversation, sendReqVO);
+        contextMessages
+                .forEach(message -> chatMessages.add(AiUtils.buildMessage(message.getType(), message.getContent())));
+
+        // 1.3 当前 user message 新发送消息
+        chatMessages.add(new UserMessage(sendReqVO.getContent()));
+
+        // 1.4 知识库，通过 UserMessage 实现
+        if (CollUtil.isNotEmpty(knowledgeSegments)) {
+            String reference = knowledgeSegments.stream()
+                    .map(segment -> "<Reference>" + segment.getContent() + "</Reference>")
+                    .collect(Collectors.joining("\n\n"));
+            chatMessages.add(new UserMessage(String.format(KNOWLEDGE_USER_MESSAGE_TEMPLATE, reference)));
+        }
+
+        // 2.1 查询 tool 工具
+        Set<String> toolNames = null;
+        Map<String, Object> toolContext = Map.of();
+        if (conversation.getRoleId() != null) {
+            AiChatRoleDO chatRole = chatRoleService.getChatRole(conversation.getRoleId());
+            if (chatRole != null && CollUtil.isNotEmpty(chatRole.getToolIds())) {
+                toolNames = convertSet(toolService.getToolList(chatRole.getToolIds()), AiToolDO::getName);
+                toolContext = AiUtils.buildCommonToolContext();
+            }
+        }
+        // 2.2 构建 ChatOptions 对象
+        AiPlatformEnum platform = AiPlatformEnum.validatePlatform(model.getPlatform());
+        ChatOptions chatOptions = AiUtils.buildChatOptions(platform, model.getModel(),
+                conversation.getTemperature(), conversation.getMaxTokens(), toolNames, toolContext);
+        return new Prompt(chatMessages, chatOptions);
+    }
+
+    /**
+     * 从历史消息中，获得倒序的 n 组消息作为消息上下文
+     * <p>
+     * n 组：指的是 user + assistant 形成一组
+     *
+     * @param messages     消息列表
+     * @param conversation 对话
+     * @param sendReqVO    发送请求
+     * @return 消息上下文
+     */
+    private List<AiChatMessageDO> filterContextMessages(List<AiChatMessageDO> messages,
+                                                        AiChatConversationDO conversation,
+                                                        AiChatMessageSendReqVO sendReqVO) {
+        if (conversation.getMaxContexts() == null || ObjUtil.notEqual(sendReqVO.getUseContext(), Boolean.TRUE)) {
+            return Collections.emptyList();
+        }
+        List<AiChatMessageDO> contextMessages = new ArrayList<>(conversation.getMaxContexts() * 2);
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            AiChatMessageDO assistantMessage = CollUtil.get(messages, i);
+            if (assistantMessage == null || assistantMessage.getReplyId() == null) {
+                continue;
+            }
+            AiChatMessageDO userMessage = CollUtil.get(messages, i - 1);
+            if (userMessage == null
+                    || ObjUtil.notEqual(assistantMessage.getReplyId(), userMessage.getId())
+                    || StrUtil.isEmpty(assistantMessage.getContent())) {
+                continue;
+            }
+            // 由于后续要 reverse 反转，所以先添加 assistantMessage
+            contextMessages.add(assistantMessage);
+            contextMessages.add(userMessage);
+            // 超过最大上下文，结束
+            if (contextMessages.size() >= conversation.getMaxContexts() * 2) {
+                break;
+            }
+        }
+        Collections.reverse(contextMessages);
+        return contextMessages;
     }
 
 }

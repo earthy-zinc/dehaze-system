@@ -9,10 +9,10 @@ import com.pei.dehaze.module.infra.controller.admin.config.vo.ConfigSaveReqVO;
 import com.pei.dehaze.module.infra.dal.dataobject.config.ConfigDO;
 import com.pei.dehaze.module.infra.dal.mysql.config.ConfigMapper;
 import com.pei.dehaze.module.infra.enums.config.ConfigTypeEnum;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.function.Consumer;
 
 import static cn.hutool.core.util.RandomUtil.randomEle;
@@ -65,6 +65,14 @@ public class ConfigServiceImplTest extends BaseDbUnitTest {
         // 校验是否更新正确
         ConfigDO config = configMapper.selectById(reqVO.getId()); // 获取最新的
         assertPojoEquals(reqVO, config);
+    }
+
+    @SafeVarargs
+    private static ConfigDO randomConfigDO(Consumer<ConfigDO>... consumers) {
+        Consumer<ConfigDO> consumer = (o) -> {
+            o.setType(randomEle(ConfigTypeEnum.values()).getType()); // 保证 key 的范围
+        };
+        return RandomUtils.randomPojo(ConfigDO.class, ArrayUtils.append(consumer, consumers));
     }
 
     @Test
@@ -191,6 +199,8 @@ public class ConfigServiceImplTest extends BaseDbUnitTest {
         assertPojoEquals(dbConfig, config);
     }
 
+    // ========== 随机对象 ==========
+
     @Test
     public void testGetConfigByKey() {
         // mock 数据
@@ -204,16 +214,6 @@ public class ConfigServiceImplTest extends BaseDbUnitTest {
         // 断言
         assertNotNull(config);
         assertPojoEquals(dbConfig, config);
-    }
-
-    // ========== 随机对象 ==========
-
-    @SafeVarargs
-    private static ConfigDO randomConfigDO(Consumer<ConfigDO>... consumers) {
-        Consumer<ConfigDO> consumer = (o) -> {
-            o.setType(randomEle(ConfigTypeEnum.values()).getType()); // 保证 key 的范围
-        };
-        return RandomUtils.randomPojo(ConfigDO.class, ArrayUtils.append(consumer, consumers));
     }
 
 }

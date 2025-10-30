@@ -1,13 +1,16 @@
 package com.pei.dehaze.module.iot.dal.dataobject.plugin;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.pei.dehaze.module.iot.enums.plugin.IotPluginDeployTypeEnum;
 import com.pei.dehaze.module.iot.enums.plugin.IotPluginTypeEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * IoT 插件配置 DO

@@ -8,10 +8,10 @@ import com.pei.dehaze.module.infra.controller.admin.logger.vo.apierrorlog.ApiErr
 import com.pei.dehaze.module.infra.dal.dataobject.logger.ApiErrorLogDO;
 import com.pei.dehaze.module.infra.dal.mysql.logger.ApiErrorLogMapper;
 import com.pei.dehaze.module.infra.enums.logger.ApiErrorLogProcessStatusEnum;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.time.Duration;
 import java.util.List;
 

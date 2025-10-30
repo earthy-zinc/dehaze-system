@@ -27,11 +27,6 @@ public interface MemberUserApi {
     @Parameter(name = "id", description = "编号", required = true, example = "1024")
     CommonResult<MemberUserRespDTO> getUser(@RequestParam("id") Long id);
 
-    @GetMapping(PREFIX + "/list")
-    @Operation(summary = "获得会员用户信息们")
-    @Parameter(name = "ids", description = "用户编号的数组", example = "1,2", required = true)
-    CommonResult<List<MemberUserRespDTO>> getUserList(@RequestParam("ids") Collection<Long> ids);
-
     /**
      * 获得会员用户 Map
      *
@@ -42,6 +37,11 @@ public interface MemberUserApi {
         List<MemberUserRespDTO> list = getUserList(ids).getCheckedData();
         return convertMap(list, MemberUserRespDTO::getId);
     }
+
+    @GetMapping(PREFIX + "/list")
+    @Operation(summary = "获得会员用户信息们")
+    @Parameter(name = "ids", description = "用户编号的数组", example = "1,2", required = true)
+    CommonResult<List<MemberUserRespDTO>> getUserList(@RequestParam("ids") Collection<Long> ids);
 
     @GetMapping(PREFIX + "/list-by-nickname")
     @Operation(summary = "基于用户昵称，模糊匹配用户列表")

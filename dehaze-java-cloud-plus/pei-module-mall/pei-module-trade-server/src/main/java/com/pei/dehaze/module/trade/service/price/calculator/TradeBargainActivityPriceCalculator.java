@@ -9,12 +9,12 @@ import com.pei.dehaze.module.promotion.enums.common.PromotionTypeEnum;
 import com.pei.dehaze.module.trade.enums.order.TradeOrderTypeEnum;
 import com.pei.dehaze.module.trade.service.price.bo.TradePriceCalculateReqBO;
 import com.pei.dehaze.module.trade.service.price.bo.TradePriceCalculateRespBO;
+import jakarta.annotation.Resource;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
-
 // TODO huihui：单测需要补充
+
 /**
  * 砍价活动的 {@link TradePriceCalculator} 实现类
  *

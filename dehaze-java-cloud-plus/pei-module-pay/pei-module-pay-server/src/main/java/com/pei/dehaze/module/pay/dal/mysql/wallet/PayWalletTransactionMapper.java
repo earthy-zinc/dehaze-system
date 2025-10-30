@@ -16,7 +16,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.pei.dehaze.module.pay.controller.app.wallet.vo.transaction.AppPayWalletTransactionPageReqVO.*;
+import static com.pei.dehaze.module.pay.controller.app.wallet.vo.transaction.AppPayWalletTransactionPageReqVO.TYPE_EXPENSE;
+import static com.pei.dehaze.module.pay.controller.app.wallet.vo.transaction.AppPayWalletTransactionPageReqVO.TYPE_INCOME;
 
 @Mapper
 public interface PayWalletTransactionMapper extends BaseMapperX<PayWalletTransactionDO> {

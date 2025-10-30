@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.ai.service.model.tool;
 
-import com.pei.dehaze.module.ai.util.AiUtils;
+import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.framework.security.core.LoginUser;
 import com.pei.dehaze.framework.tenant.core.util.TenantUtils;
+import com.pei.dehaze.module.ai.util.AiUtils;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
-import com.fasterxml.jackson.annotation.JsonClassDescription;
 import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,7 +18,7 @@ import java.util.function.BiFunction;
 
 /**
  * 工具：当前用户信息查询
- *
+ * <p>
  * 同时，也是展示 ToolContext 上下文的使用
  *
  * @author Ren
@@ -30,9 +30,23 @@ public class UserProfileQueryToolFunction
     @Resource
     private AdminUserApi adminUserApi;
 
+    @Override
+    public Response apply(Request request, ToolContext toolContext) {
+        LoginUser loginUser = (LoginUser) toolContext.getContext().get(AiUtils.TOOL_CONTEXT_LOGIN_USER);
+        Long tenantId = (Long) toolContext.getContext().get(AiUtils.TOOL_CONTEXT_TENANT_ID);
+        if (loginUser == null | tenantId == null) {
+            return null;
+        }
+        return TenantUtils.execute(tenantId, () -> {
+            AdminUserRespDTO user = adminUserApi.getUser(loginUser.getId()).getCheckedData();
+            return BeanUtils.toBean(user, Response.class);
+        });
+    }
+
     @Data
     @JsonClassDescription("当前用户信息查询")
-    public static class Request { }
+    public static class Request {
+    }
 
     @Data
     @AllArgsConstructor
@@ -57,19 +71,6 @@ public class UserProfileQueryToolFunction
          */
         private String avatar;
 
-    }
-
-    @Override
-    public Response apply(Request request, ToolContext toolContext) {
-        LoginUser loginUser = (LoginUser) toolContext.getContext().get(AiUtils.TOOL_CONTEXT_LOGIN_USER);
-        Long tenantId = (Long) toolContext.getContext().get(AiUtils.TOOL_CONTEXT_TENANT_ID);
-        if (loginUser == null | tenantId == null) {
-            return null;
-        }
-        return TenantUtils.execute(tenantId, () -> {
-            AdminUserRespDTO user = adminUserApi.getUser(loginUser.getId()).getCheckedData();
-            return BeanUtils.toBean(user, Response.class);
-        });
     }
 
 }

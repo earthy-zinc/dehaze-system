@@ -55,14 +55,6 @@ public class AiApiKeyServiceImpl implements AiApiKeyService {
         apiKeyMapper.deleteById(id);
     }
 
-    private AiApiKeyDO validateApiKeyExists(Long id) {
-        AiApiKeyDO apiKey = apiKeyMapper.selectById(id);
-        if (apiKey == null) {
-            throw exception(API_KEY_NOT_EXISTS);
-        }
-        return apiKey;
-    }
-
     @Override
     public AiApiKeyDO getApiKey(Long id) {
         return apiKeyMapper.selectById(id);
@@ -90,6 +82,14 @@ public class AiApiKeyServiceImpl implements AiApiKeyService {
     @Override
     public AiApiKeyDO getRequiredDefaultApiKey(String platform, Integer status) {
         AiApiKeyDO apiKey = apiKeyMapper.selectFirstByPlatformAndStatus(platform, status);
+        if (apiKey == null) {
+            throw exception(API_KEY_NOT_EXISTS);
+        }
+        return apiKey;
+    }
+
+    private AiApiKeyDO validateApiKeyExists(Long id) {
+        AiApiKeyDO apiKey = apiKeyMapper.selectById(id);
         if (apiKey == null) {
             throw exception(API_KEY_NOT_EXISTS);
         }

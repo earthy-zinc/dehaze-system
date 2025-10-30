@@ -8,7 +8,7 @@ import lombok.Data;
 
 @Schema(description = "管理后台 - 商品 SPU Status 更新 Request VO")
 @Data
-public class ProductSpuUpdateStatusReqVO{
+public class ProductSpuUpdateStatusReqVO {
 
     @Schema(description = "商品编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     @NotNull(message = "商品编号不能为空")

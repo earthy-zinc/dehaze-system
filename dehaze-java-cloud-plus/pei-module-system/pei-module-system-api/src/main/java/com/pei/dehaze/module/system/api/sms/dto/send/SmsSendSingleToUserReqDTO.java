@@ -2,9 +2,9 @@ package com.pei.dehaze.module.system.api.sms.dto.send;
 
 import com.pei.dehaze.framework.common.validation.Mobile;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
-import jakarta.validation.constraints.NotEmpty;
 import java.util.Map;
 
 @Schema(description = "RPC 服务 - 短信发送给 Admin 或者 Member 用户 Request DTO")

@@ -29,11 +29,9 @@ import static com.pei.dehaze.module.bpm.framework.flowable.core.listener.BpmTrig
 public class BpmTriggerTaskDelegate implements JavaDelegate {
 
     public static final String BEAN_NAME = "bpmTriggerTaskDelegate";
-
+    private final EnumMap<BpmTriggerTypeEnum, BpmTrigger> triggerMap = new EnumMap<>(BpmTriggerTypeEnum.class);
     @Resource
     private List<BpmTrigger> triggers;
-
-    private final EnumMap<BpmTriggerTypeEnum, BpmTrigger> triggerMap = new EnumMap<>(BpmTriggerTypeEnum.class);
 
     @PostConstruct
     private void init() {

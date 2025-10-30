@@ -99,7 +99,7 @@ public interface PointActivityService {
 
     /**
      * 【下单前】校验是否参与积分商城活动
-     *
+     * <p>
      * 如果校验失败，则抛出业务异常
      *
      * @param activityId 活动编号

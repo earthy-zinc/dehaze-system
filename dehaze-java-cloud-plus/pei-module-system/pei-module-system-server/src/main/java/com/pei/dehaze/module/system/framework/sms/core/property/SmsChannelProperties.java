@@ -28,7 +28,7 @@ public class SmsChannelProperties {
     private String signature;
     /**
      * 渠道编码
-     *
+     * <p>
      * 枚举 {@link SmsChannelEnum}
      */
     @NotEmpty(message = "渠道编码不能为空")

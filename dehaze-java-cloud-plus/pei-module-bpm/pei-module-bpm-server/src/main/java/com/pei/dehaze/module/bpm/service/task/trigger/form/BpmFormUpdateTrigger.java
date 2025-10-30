@@ -1,6 +1,7 @@
 package com.pei.dehaze.module.bpm.service.task.trigger.form;
 
 import cn.hutool.core.collection.CollUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.module.bpm.controller.admin.definition.vo.model.simple.BpmSimpleModelNodeVO.TriggerSetting.FormTriggerSetting;
 import com.pei.dehaze.module.bpm.enums.definition.BpmTriggerTypeEnum;
@@ -8,7 +9,6 @@ import com.pei.dehaze.module.bpm.framework.flowable.core.util.BpmnModelUtils;
 import com.pei.dehaze.module.bpm.framework.flowable.core.util.SimpleModelUtils;
 import com.pei.dehaze.module.bpm.service.task.BpmProcessInstanceService;
 import com.pei.dehaze.module.bpm.service.task.trigger.BpmTrigger;
-import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -36,7 +36,8 @@ public class BpmFormUpdateTrigger implements BpmTrigger {
     @Override
     public void execute(String processInstanceId, String param) {
         // 1. 解析更新流程表单配置
-        List<FormTriggerSetting> settings = JsonUtils.parseObject(param, new TypeReference<>() {});
+        List<FormTriggerSetting> settings = JsonUtils.parseObject(param, new TypeReference<>() {
+        });
         if (CollUtil.isEmpty(settings)) {
             log.error("[execute][流程({}) 更新流程表单触发器配置为空]", processInstanceId);
             return;

@@ -5,10 +5,10 @@ import com.pei.dehaze.module.member.controller.admin.signin.vo.config.MemberSign
 import com.pei.dehaze.module.member.convert.signin.MemberSignInConfigConvert;
 import com.pei.dehaze.module.member.dal.dataobject.signin.MemberSignInConfigDO;
 import com.pei.dehaze.module.member.dal.mysql.signin.MemberSignInConfigMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.Comparator;
 import java.util.List;
 
@@ -60,6 +60,25 @@ public class MemberSignInConfigServiceImpl implements MemberSignInConfigService 
         memberSignInConfigMapper.deleteById(id);
     }
 
+    @Override
+    public MemberSignInConfigDO getSignInConfig(Long id) {
+        return memberSignInConfigMapper.selectById(id);
+    }
+
+    @Override
+    public List<MemberSignInConfigDO> getSignInConfigList() {
+        List<MemberSignInConfigDO> list = memberSignInConfigMapper.selectList();
+        list.sort(Comparator.comparing(MemberSignInConfigDO::getDay));
+        return list;
+    }
+
+    @Override
+    public List<MemberSignInConfigDO> getSignInConfigList(Integer status) {
+        List<MemberSignInConfigDO> list = memberSignInConfigMapper.selectListByStatus(status);
+        list.sort(Comparator.comparing(MemberSignInConfigDO::getDay));
+        return list;
+    }
+
     private void validateSignInConfigExists(Long id) {
         if (memberSignInConfigMapper.selectById(id) == null) {
             throw exception(SIGN_IN_CONFIG_NOT_EXISTS);
@@ -82,25 +101,6 @@ public class MemberSignInConfigServiceImpl implements MemberSignInConfigService 
         if (id != null && config != null && !config.getId().equals(id)) {
             throw exception(SIGN_IN_CONFIG_EXISTS);
         }
-    }
-
-    @Override
-    public MemberSignInConfigDO getSignInConfig(Long id) {
-        return memberSignInConfigMapper.selectById(id);
-    }
-
-    @Override
-    public List<MemberSignInConfigDO> getSignInConfigList() {
-        List<MemberSignInConfigDO> list = memberSignInConfigMapper.selectList();
-        list.sort(Comparator.comparing(MemberSignInConfigDO::getDay));
-        return list;
-    }
-
-    @Override
-    public List<MemberSignInConfigDO> getSignInConfigList(Integer status) {
-        List<MemberSignInConfigDO> list = memberSignInConfigMapper.selectListByStatus(status);
-        list.sort(Comparator.comparing(MemberSignInConfigDO::getDay));
-        return list;
     }
 
 }

@@ -35,7 +35,7 @@ public interface ErpStockCheckService {
     /**
      * 更新库存盘点单的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updateStockCheckStatus(Long id, Integer status);

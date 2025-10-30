@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.iot.dal.mysql.device;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.iot.controller.admin.device.vo.device.IotDevicePageReqVO;
 import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import javax.annotation.Nullable;
@@ -86,6 +86,7 @@ public interface IotDeviceMapper extends BaseMapperX<IotDeviceDO> {
     List<Map<String, Object>> selectDeviceCountMapByProductId();
 
     // TODO @super：通过 mybatis-plus 来写哈，然后返回 Map  貌似就行了？！
+
     /**
      * 查询各个状态下的设备数量
      *

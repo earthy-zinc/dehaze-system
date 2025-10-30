@@ -1,7 +1,7 @@
 package com.pei.dehaze.framework.tenant.core.context;
 
-import com.pei.dehaze.framework.common.enums.DocumentEnum;
 import com.alibaba.ttl.TransmittableThreadLocal;
+import com.pei.dehaze.framework.common.enums.DocumentEnum;
 
 /**
  * 多租户上下文 Holder
@@ -21,15 +21,6 @@ public class TenantContextHolder {
     private static final ThreadLocal<Boolean> IGNORE = new TransmittableThreadLocal<>();
 
     /**
-     * 获得租户编号
-     *
-     * @return 租户编号
-     */
-    public static Long getTenantId() {
-        return TENANT_ID.get();
-    }
-
-    /**
      * 获得租户编号。如果不存在，则抛出 NullPointerException 异常
      *
      * @return 租户编号
@@ -38,17 +29,22 @@ public class TenantContextHolder {
         Long tenantId = getTenantId();
         if (tenantId == null) {
             throw new NullPointerException("TenantContextHolder 不存在租户编号！可参考文档："
-                + DocumentEnum.TENANT.getUrl());
+                    + DocumentEnum.TENANT.getUrl());
         }
         return tenantId;
     }
 
-    public static void setTenantId(Long tenantId) {
-        TENANT_ID.set(tenantId);
+    /**
+     * 获得租户编号
+     *
+     * @return 租户编号
+     */
+    public static Long getTenantId() {
+        return TENANT_ID.get();
     }
 
-    public static void setIgnore(Boolean ignore) {
-        IGNORE.set(ignore);
+    public static void setTenantId(Long tenantId) {
+        TENANT_ID.set(tenantId);
     }
 
     /**
@@ -58,6 +54,10 @@ public class TenantContextHolder {
      */
     public static boolean isIgnore() {
         return Boolean.TRUE.equals(IGNORE.get());
+    }
+
+    public static void setIgnore(Boolean ignore) {
+        IGNORE.set(ignore);
     }
 
     public static void clear() {

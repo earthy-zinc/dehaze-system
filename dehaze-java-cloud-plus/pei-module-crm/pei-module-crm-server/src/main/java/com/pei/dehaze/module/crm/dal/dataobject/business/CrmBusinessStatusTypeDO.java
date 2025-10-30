@@ -1,18 +1,18 @@
 package com.pei.dehaze.module.crm.dal.dataobject.business;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.LongListTypeHandler;
 import lombok.*;
 
 import java.util.List;
 
 /**
  * CRM 商机状态组 DO
- *
+ * <p>
  * 注意，它是个配置表
  *
  * @author ljlleo

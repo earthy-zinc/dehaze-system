@@ -3,10 +3,9 @@ package com.pei.dehaze.module.trade.controller.app.brokerage.vo.user;
 import com.pei.dehaze.framework.common.pojo.PageParam;
 import com.pei.dehaze.framework.common.pojo.SortingField;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.validator.constraints.Range;
-
-import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "用户 App - 下级分销统计分页 Request VO")
 @Data

@@ -227,30 +227,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         tradeOrderUpdateService.updateOrderItemWhenAfterSaleCancel(afterSale.getOrderItemId());
     }
 
-    /**
-     * 校验售后单是否可审批（同意售后、拒绝售后）
-     *
-     * @param id 售后编号
-     * @return 售后单
-     */
-    private AfterSaleDO validateAfterSaleAuditable(Long id) {
-        AfterSaleDO afterSale = tradeAfterSaleMapper.selectById(id);
-        if (afterSale == null) {
-            throw exception(AFTER_SALE_NOT_FOUND);
-        }
-        if (ObjectUtil.notEqual(afterSale.getStatus(), AfterSaleStatusEnum.APPLY.getStatus())) {
-            throw exception(AFTER_SALE_AUDIT_FAIL_STATUS_NOT_APPLY);
-        }
-        return afterSale;
-    }
-
-    private void updateAfterSaleStatus(Long id, Integer status, AfterSaleDO updateObj) {
-        int updateCount = tradeAfterSaleMapper.updateByIdAndStatus(id, status, updateObj);
-        if (updateCount == 0) {
-            throw exception(AFTER_SALE_UPDATE_STATUS_FAIL);
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AfterSaleLog(operateType = AfterSaleOperateTypeEnum.MEMBER_DELIVERY)
@@ -321,23 +297,6 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         tradeOrderUpdateService.updateOrderItemWhenAfterSaleCancel(afterSale.getOrderItemId());
     }
 
-    /**
-     * 校验售后单是否可收货，即处于买家已发货
-     *
-     * @param id 售后编号
-     * @return 售后单
-     */
-    private AfterSaleDO validateAfterSaleReceivable(Long id) {
-        AfterSaleDO afterSale = tradeAfterSaleMapper.selectById(id);
-        if (afterSale == null) {
-            throw exception(AFTER_SALE_NOT_FOUND);
-        }
-        if (ObjectUtil.notEqual(afterSale.getStatus(), AfterSaleStatusEnum.BUYER_DELIVERY.getStatus())) {
-            throw exception(AFTER_SALE_CONFIRM_FAIL_STATUS_NOT_BUYER_DELIVERY);
-        }
-        return afterSale;
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     @AfterSaleLog(operateType = AfterSaleOperateTypeEnum.ADMIN_REFUND)
@@ -389,7 +348,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         if (PayRefundStatusEnum.isSuccess(payRefund.getStatus())) {
             // 【情况一：退款成功】
             updateAfterSaleStatus(afterSale.getId(), AfterSaleStatusEnum.WAIT_REFUND.getStatus(), new AfterSaleDO()
-                .setStatus(AfterSaleStatusEnum.COMPLETE.getStatus()).setRefundTime(LocalDateTime.now()));
+                    .setStatus(AfterSaleStatusEnum.COMPLETE.getStatus()).setRefundTime(LocalDateTime.now()));
 
             // 记录售后日志
             AfterSaleLogUtils.setAfterSaleInfo(afterSale.getId(), afterSale.getStatus(), AfterSaleStatusEnum.COMPLETE.getStatus());
@@ -407,7 +366,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     /**
      * 校验退款单的合法性
      *
-     * @param afterSale 售后单
+     * @param afterSale   售后单
      * @param payRefundId 退款单编号
      * @return 退款单
      */
@@ -420,7 +379,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
         // 2.1 校验退款单无退款结果（成功、失败）
         if (!PayRefundStatusEnum.isSuccess(payRefund.getStatus())
-            && !PayRefundStatusEnum.isFailure(payRefund.getStatus())) {
+                && !PayRefundStatusEnum.isFailure(payRefund.getStatus())) {
             log.error("[validatePayRefund][afterSale({}) payRefund({}) 无退款结果，请进行处理！payRefund 数据是：{}]",
                     afterSale.getId(), payRefundId, toJsonString(payRefund));
             throw exception(AFTER_SALE_REFUND_FAIL_REFUND_NOT_SUCCESS_OR_FAILURE);
@@ -470,6 +429,47 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     @Override
     public Long getApplyingAfterSaleCount(Long userId) {
         return tradeAfterSaleMapper.selectCountByUserIdAndStatus(userId, AfterSaleStatusEnum.APPLYING_STATUSES);
+    }
+
+    private void updateAfterSaleStatus(Long id, Integer status, AfterSaleDO updateObj) {
+        int updateCount = tradeAfterSaleMapper.updateByIdAndStatus(id, status, updateObj);
+        if (updateCount == 0) {
+            throw exception(AFTER_SALE_UPDATE_STATUS_FAIL);
+        }
+    }
+
+    /**
+     * 校验售后单是否可收货，即处于买家已发货
+     *
+     * @param id 售后编号
+     * @return 售后单
+     */
+    private AfterSaleDO validateAfterSaleReceivable(Long id) {
+        AfterSaleDO afterSale = tradeAfterSaleMapper.selectById(id);
+        if (afterSale == null) {
+            throw exception(AFTER_SALE_NOT_FOUND);
+        }
+        if (ObjectUtil.notEqual(afterSale.getStatus(), AfterSaleStatusEnum.BUYER_DELIVERY.getStatus())) {
+            throw exception(AFTER_SALE_CONFIRM_FAIL_STATUS_NOT_BUYER_DELIVERY);
+        }
+        return afterSale;
+    }
+
+    /**
+     * 校验售后单是否可审批（同意售后、拒绝售后）
+     *
+     * @param id 售后编号
+     * @return 售后单
+     */
+    private AfterSaleDO validateAfterSaleAuditable(Long id) {
+        AfterSaleDO afterSale = tradeAfterSaleMapper.selectById(id);
+        if (afterSale == null) {
+            throw exception(AFTER_SALE_NOT_FOUND);
+        }
+        if (ObjectUtil.notEqual(afterSale.getStatus(), AfterSaleStatusEnum.APPLY.getStatus())) {
+            throw exception(AFTER_SALE_AUDIT_FAIL_STATUS_NOT_APPLY);
+        }
+        return afterSale;
     }
 
 }

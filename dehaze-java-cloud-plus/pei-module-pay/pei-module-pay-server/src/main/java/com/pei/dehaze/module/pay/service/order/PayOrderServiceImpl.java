@@ -4,12 +4,10 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.google.common.annotations.VisibleForTesting;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
 import com.pei.dehaze.framework.common.util.number.MoneyUtils;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
 import com.pei.dehaze.framework.tenant.core.util.TenantUtils;
 import com.pei.dehaze.module.pay.api.order.dto.PayOrderCreateReqDTO;
 import com.pei.dehaze.module.pay.controller.admin.order.vo.PayOrderExportReqVO;
@@ -27,16 +25,18 @@ import com.pei.dehaze.module.pay.dal.redis.no.PayNoRedisDAO;
 import com.pei.dehaze.module.pay.enums.notify.PayNotifyTypeEnum;
 import com.pei.dehaze.module.pay.enums.order.PayOrderStatusEnum;
 import com.pei.dehaze.module.pay.framework.pay.config.PayProperties;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
 import com.pei.dehaze.module.pay.service.app.PayAppService;
 import com.pei.dehaze.module.pay.service.channel.PayChannelService;
 import com.pei.dehaze.module.pay.service.notify.PayNotifyService;
-import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Collections;
@@ -201,6 +201,51 @@ public class PayOrderServiceImpl implements PayOrderService {
         return order;
     }
 
+    private PayChannelDO validateChannelCanSubmit(Long appId, String channelCode) {
+        // 校验 App
+        appService.validPayApp(appId);
+        // 校验支付渠道是否有效
+        PayChannelDO channel = channelService.validPayChannel(appId, channelCode);
+        PayClient<?> client = channelService.getPayClient(channel.getId());
+        if (client == null) {
+            log.error("[validatePayChannelCanSubmit][渠道编号({}) 找不到对应的支付客户端]", channel.getId());
+            throw exception(CHANNEL_NOT_FOUND);
+        }
+        return channel;
+    }
+
+    /**
+     * 根据支付渠道的编码，生成支付渠道的回调地址
+     *
+     * @param channel 支付渠道
+     * @return 支付渠道的回调地址  配置地址 + "/" + channel id
+     */
+    private String genChannelOrderNotifyUrl(PayChannelDO channel) {
+        return payProperties.getOrderNotifyUrl() + "/" + channel.getId();
+    }
+
+    /**
+     * 通知并更新订单的支付结果
+     *
+     * @param channel 支付渠道
+     * @param notify  通知
+     */
+    @Transactional(rollbackFor = Exception.class)
+    // 注意，如果是方法内调用该方法，需要通过 getSelf().notifyPayOrder(channel, notify) 调用，否则事务不生效
+    public void notifyOrder(PayChannelDO channel, PayOrderRespDTO notify) {
+        // 情况一：支付成功的回调
+        if (PayOrderStatusEnum.isSuccess(notify.getStatus())) {
+            notifyOrderSuccess(channel, notify);
+            return;
+        }
+        // 情况二：支付失败的回调
+        if (PayOrderStatusEnum.isClosed(notify.getStatus())) {
+            notifyOrderClosed(channel, notify);
+        }
+        // 情况三：WAITING：无需处理
+        // 情况四：REFUND：通过退款回调处理
+    }
+
     /**
      * 校验支付订单实际已支付
      *
@@ -231,57 +276,8 @@ public class PayOrderServiceImpl implements PayOrderService {
         });
     }
 
-    private PayChannelDO validateChannelCanSubmit(Long appId, String channelCode) {
-        // 校验 App
-        appService.validPayApp(appId);
-        // 校验支付渠道是否有效
-        PayChannelDO channel = channelService.validPayChannel(appId, channelCode);
-        PayClient<?> client = channelService.getPayClient(channel.getId());
-        if (client == null) {
-            log.error("[validatePayChannelCanSubmit][渠道编号({}) 找不到对应的支付客户端]", channel.getId());
-            throw exception(CHANNEL_NOT_FOUND);
-        }
-        return channel;
-    }
-
-    /**
-     * 根据支付渠道的编码，生成支付渠道的回调地址
-     *
-     * @param channel 支付渠道
-     * @return 支付渠道的回调地址  配置地址 + "/" + channel id
-     */
-    private String genChannelOrderNotifyUrl(PayChannelDO channel) {
-        return payProperties.getOrderNotifyUrl() + "/" + channel.getId();
-    }
-
-    @Override
-    public void notifyOrder(Long channelId, PayOrderRespDTO notify) {
-        // 校验支付渠道是否有效
-        PayChannelDO channel = channelService.validPayChannel(channelId);
-        // 更新支付订单为已支付
-        TenantUtils.execute(channel.getTenantId(), () -> getSelf().notifyOrder(channel, notify));
-    }
-
-    /**
-     * 通知并更新订单的支付结果
-     *
-     * @param channel 支付渠道
-     * @param notify  通知
-     */
-    @Transactional(rollbackFor = Exception.class)
-    // 注意，如果是方法内调用该方法，需要通过 getSelf().notifyPayOrder(channel, notify) 调用，否则事务不生效
-    public void notifyOrder(PayChannelDO channel, PayOrderRespDTO notify) {
-        // 情况一：支付成功的回调
-        if (PayOrderStatusEnum.isSuccess(notify.getStatus())) {
-            notifyOrderSuccess(channel, notify);
-            return;
-        }
-        // 情况二：支付失败的回调
-        if (PayOrderStatusEnum.isClosed(notify.getStatus())) {
-            notifyOrderClosed(channel, notify);
-        }
-        // 情况三：WAITING：无需处理
-        // 情况四：REFUND：通过退款回调处理
+    private void notifyOrderClosed(PayChannelDO channel, PayOrderRespDTO notify) {
+        updateOrderExtensionClosed(channel, notify);
     }
 
     private void notifyOrderSuccess(PayChannelDO channel, PayOrderRespDTO notify) {
@@ -296,6 +292,40 @@ public class PayOrderServiceImpl implements PayOrderService {
         // 3. 插入支付通知记录
         notifyService.createPayNotifyTask(PayNotifyTypeEnum.ORDER.getType(),
                 orderExtension.getOrderId());
+    }
+
+    /**
+     * 同步单个支付拓展单
+     *
+     * @param orderExtension 支付拓展单
+     * @return 是否已支付
+     */
+    private boolean syncOrder(PayOrderExtensionDO orderExtension) {
+        try {
+            // 1.1 查询支付订单信息
+            PayClient<?> payClient = channelService.getPayClient(orderExtension.getChannelId());
+            if (payClient == null) {
+                log.error("[syncOrder][渠道编号({}) 找不到对应的支付客户端]", orderExtension.getChannelId());
+                return false;
+            }
+            PayOrderRespDTO respDTO = payClient.getOrder(orderExtension.getNo());
+            // 如果查询到订单不存在，PayClient 返回的状态为关闭。但此时不能关闭订单。存在以下一种场景：
+            //  拉起渠道支付后，短时间内用户未及时完成支付，但是该订单同步定时任务恰巧自动触发了，主动查询结果为订单不存在。
+            //  当用户支付成功之后，该订单状态在渠道的回调中无法从已关闭改为已支付，造成重大影响。
+            // 考虑此定时任务是异常场景的兜底操作，因此这里不做变更，优先以回调为准。
+            // 让订单自动随着支付渠道那边一起等到过期，确保渠道先过期关闭支付入口，而后通过订单过期定时任务关闭自己的订单。
+            if (PayOrderStatusEnum.isClosed(respDTO.getStatus())) {
+                return false;
+            }
+            // 1.2 回调支付结果
+            notifyOrder(orderExtension.getChannelId(), respDTO);
+
+            // 2. 如果是已支付，则返回 true
+            return PayOrderStatusEnum.isSuccess(respDTO.getStatus());
+        } catch (Throwable e) {
+            log.error("[syncOrder][orderExtension({}) 同步支付状态异常]", orderExtension.getId(), e);
+            return false;
+        }
     }
 
     /**
@@ -368,10 +398,6 @@ public class PayOrderServiceImpl implements PayOrderService {
         return false;
     }
 
-    private void notifyOrderClosed(PayChannelDO channel, PayOrderRespDTO notify) {
-        updateOrderExtensionClosed(channel, notify);
-    }
-
     @SuppressWarnings("unused")
     private void updateOrderExtensionClosed(PayChannelDO channel, PayOrderRespDTO notify) {
         // 1. 查询 PayOrderExtensionDO
@@ -400,6 +426,14 @@ public class PayOrderServiceImpl implements PayOrderService {
             throw exception(PAY_ORDER_EXTENSION_STATUS_IS_NOT_WAITING);
         }
         log.info("[updateOrderExtensionClosed][orderExtension({}) 更新为支付关闭]", orderExtension.getId());
+    }
+
+    @Override
+    public void notifyOrder(Long channelId, PayOrderRespDTO notify) {
+        // 校验支付渠道是否有效
+        PayChannelDO channel = channelService.validPayChannel(channelId);
+        // 更新支付订单为已支付
+        TenantUtils.execute(channel.getTenantId(), () -> getSelf().notifyOrder(channel, notify));
     }
 
     @Override
@@ -476,40 +510,6 @@ public class PayOrderServiceImpl implements PayOrderService {
         // 2. 遍历执行
         for (PayOrderExtensionDO orderExtension : orderExtensions) {
             syncOrder(orderExtension);
-        }
-    }
-
-    /**
-     * 同步单个支付拓展单
-     *
-     * @param orderExtension 支付拓展单
-     * @return 是否已支付
-     */
-    private boolean syncOrder(PayOrderExtensionDO orderExtension) {
-        try {
-            // 1.1 查询支付订单信息
-            PayClient<?> payClient = channelService.getPayClient(orderExtension.getChannelId());
-            if (payClient == null) {
-                log.error("[syncOrder][渠道编号({}) 找不到对应的支付客户端]", orderExtension.getChannelId());
-                return false;
-            }
-            PayOrderRespDTO respDTO = payClient.getOrder(orderExtension.getNo());
-            // 如果查询到订单不存在，PayClient 返回的状态为关闭。但此时不能关闭订单。存在以下一种场景：
-            //  拉起渠道支付后，短时间内用户未及时完成支付，但是该订单同步定时任务恰巧自动触发了，主动查询结果为订单不存在。
-            //  当用户支付成功之后，该订单状态在渠道的回调中无法从已关闭改为已支付，造成重大影响。
-            // 考虑此定时任务是异常场景的兜底操作，因此这里不做变更，优先以回调为准。
-            // 让订单自动随着支付渠道那边一起等到过期，确保渠道先过期关闭支付入口，而后通过订单过期定时任务关闭自己的订单。
-            if (PayOrderStatusEnum.isClosed(respDTO.getStatus())) {
-                return false;
-            }
-            // 1.2 回调支付结果
-            notifyOrder(orderExtension.getChannelId(), respDTO);
-
-            // 2. 如果是已支付，则返回 true
-            return PayOrderStatusEnum.isSuccess(respDTO.getStatus());
-        } catch (Throwable e) {
-            log.error("[syncOrder][orderExtension({}) 同步支付状态异常]", orderExtension.getId(), e);
-            return false;
         }
     }
 

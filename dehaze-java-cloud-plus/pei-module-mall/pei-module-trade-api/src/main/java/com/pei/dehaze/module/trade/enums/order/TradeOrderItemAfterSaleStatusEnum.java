@@ -31,11 +31,6 @@ public enum TradeOrderItemAfterSaleStatusEnum implements ArrayValuable<Integer> 
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     /**
      * 判断指定状态，是否正处于【未申请】状态
      *
@@ -44,6 +39,11 @@ public enum TradeOrderItemAfterSaleStatusEnum implements ArrayValuable<Integer> 
      */
     public static boolean isNone(Integer status) {
         return ObjectUtil.equals(status, NONE.getStatus());
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

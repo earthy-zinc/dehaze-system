@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 /**
  * 项目的启动类
  * <p>
+ *
  * @author earthyzinc
  */
 @SpringBootApplication

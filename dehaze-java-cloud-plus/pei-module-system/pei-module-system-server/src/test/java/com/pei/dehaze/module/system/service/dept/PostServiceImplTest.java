@@ -8,10 +8,10 @@ import com.pei.dehaze.module.system.controller.admin.dept.vo.post.PostPageReqVO;
 import com.pei.dehaze.module.system.controller.admin.dept.vo.post.PostSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.dept.PostDO;
 import com.pei.dehaze.module.system.dal.mysql.dept.PostMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -75,6 +75,18 @@ public class PostServiceImplTest extends BaseDbUnitTest {
     }
 
     @Test
+    public void testValidatePost_nameDuplicateForCreate() {
+        // mock 数据
+        PostDO postDO = randomPostDO();
+        postMapper.insert(postDO);// @Sql: 先插入出一条存在的数据
+        // 准备参数
+        PostSaveReqVO reqVO = randomPojo(PostSaveReqVO.class,
+                // 模拟 name 重复
+                o -> o.setName(postDO.getName()));
+        assertServiceException(() -> postService.createPost(reqVO), POST_NAME_DUPLICATE);
+    }
+
+    @Test
     public void testDeletePost_success() {
         // mock 数据
         PostDO postDO = randomPostDO();
@@ -96,16 +108,12 @@ public class PostServiceImplTest extends BaseDbUnitTest {
         assertServiceException(() -> postService.deletePost(id), POST_NOT_FOUND);
     }
 
-    @Test
-    public void testValidatePost_nameDuplicateForCreate() {
-        // mock 数据
-        PostDO postDO = randomPostDO();
-        postMapper.insert(postDO);// @Sql: 先插入出一条存在的数据
-        // 准备参数
-        PostSaveReqVO reqVO = randomPojo(PostSaveReqVO.class,
-            // 模拟 name 重复
-            o -> o.setName(postDO.getName()));
-        assertServiceException(() -> postService.createPost(reqVO), POST_NAME_DUPLICATE);
+    @SafeVarargs
+    private static PostDO randomPostDO(Consumer<PostDO>... consumers) {
+        Consumer<PostDO> consumer = (o) -> {
+            o.setStatus(randomCommonStatus()); // 保证 status 的范围
+        };
+        return randomPojo(PostDO.class, ArrayUtils.append(consumer, consumers));
     }
 
     @Test
@@ -235,14 +243,6 @@ public class PostServiceImplTest extends BaseDbUnitTest {
         // 调用, 并断言异常
         assertServiceException(() -> postService.validatePostList(ids), POST_NOT_ENABLE,
                 postDO.getName());
-    }
-
-    @SafeVarargs
-    private static PostDO randomPostDO(Consumer<PostDO>... consumers) {
-        Consumer<PostDO> consumer = (o) -> {
-            o.setStatus(randomCommonStatus()); // 保证 status 的范围
-        };
-        return randomPojo(PostDO.class, ArrayUtils.append(consumer, consumers));
     }
 
 }

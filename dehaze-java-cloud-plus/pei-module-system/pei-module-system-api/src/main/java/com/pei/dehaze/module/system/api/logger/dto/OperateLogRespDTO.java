@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.system.api.logger.dto;
 
-import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import com.fhs.core.trans.anno.Trans;
 import com.fhs.core.trans.constant.TransType;
 import com.fhs.core.trans.vo.VO;
+import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -23,7 +23,7 @@ public class OperateLogRespDTO implements VO {
     private Long userId;
     @Schema(description = "用户名称", requiredMode = Schema.RequiredMode.REQUIRED, example = "芋道")
     private String userName;
-    @Schema(description = "用户类型，参见 UserTypeEnum 枚举", requiredMode = Schema.RequiredMode.REQUIRED, example = "2" )
+    @Schema(description = "用户类型，参见 UserTypeEnum 枚举", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")
     private Integer userType;
     @Schema(description = "操作模块类型", requiredMode = Schema.RequiredMode.REQUIRED, example = "订单")
     private String type;

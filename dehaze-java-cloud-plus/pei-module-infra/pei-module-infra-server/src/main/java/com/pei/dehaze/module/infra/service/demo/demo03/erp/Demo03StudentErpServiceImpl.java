@@ -89,10 +89,12 @@ public class Demo03StudentErpServiceImpl implements Demo03StudentErpService {
         }
     }
 
-    private void validateDemo03StudentExists(Long id) {
-        if (demo03StudentErpMapper.selectById(id) == null) {
-            throw exception(DEMO03_STUDENT_NOT_EXISTS);
-        }
+    private void deleteDemo03CourseByStudentIds(List<Long> studentIds) {
+        demo03CourseErpMapper.deleteByStudentIds(studentIds);
+    }
+
+    private void deleteDemo03GradeByStudentIds(List<Long> studentIds) {
+        demo03GradeErpMapper.deleteByStudentIds(studentIds);
     }
 
     @Override
@@ -100,12 +102,12 @@ public class Demo03StudentErpServiceImpl implements Demo03StudentErpService {
         return demo03StudentErpMapper.selectById(id);
     }
 
+    // ==================== 子表（学生课程） ====================
+
     @Override
     public PageResult<Demo03StudentDO> getDemo03StudentPage(Demo03StudentErpPageReqVO pageReqVO) {
         return demo03StudentErpMapper.selectPage(pageReqVO);
     }
-
-    // ==================== 子表（学生课程） ====================
 
     @Override
     public PageResult<Demo03CourseDO> getDemo03CoursePage(PageParam pageReqVO, Long studentId) {
@@ -144,22 +146,6 @@ public class Demo03StudentErpServiceImpl implements Demo03StudentErpService {
         return demo03CourseErpMapper.selectById(id);
     }
 
-    private void validateDemo03CourseExists(Long id) {
-        if (demo03CourseErpMapper.selectById(id) == null) {
-            throw exception(DEMO03_COURSE_NOT_EXISTS);
-        }
-    }
-
-    private void deleteDemo03CourseByStudentId(Long studentId) {
-        demo03CourseErpMapper.deleteByStudentId(studentId);
-    }
-
-    private void deleteDemo03CourseByStudentIds(List<Long> studentIds) {
-        demo03CourseErpMapper.deleteByStudentIds(studentIds);
-    }
-
-    // ==================== 子表（学生班级） ====================
-
     @Override
     public PageResult<Demo03GradeDO> getDemo03GradePage(PageParam pageReqVO, Long studentId) {
         return demo03GradeErpMapper.selectPage(pageReqVO, studentId);
@@ -175,6 +161,8 @@ public class Demo03StudentErpServiceImpl implements Demo03StudentErpService {
         demo03GradeErpMapper.insert(demo03Grade);
         return demo03Grade.getId();
     }
+
+    // ==================== 子表（学生班级） ====================
 
     @Override
     public void updateDemo03Grade(Demo03GradeDO demo03Grade) {
@@ -208,12 +196,24 @@ public class Demo03StudentErpServiceImpl implements Demo03StudentErpService {
         }
     }
 
+    private void validateDemo03CourseExists(Long id) {
+        if (demo03CourseErpMapper.selectById(id) == null) {
+            throw exception(DEMO03_COURSE_NOT_EXISTS);
+        }
+    }
+
+    private void deleteDemo03CourseByStudentId(Long studentId) {
+        demo03CourseErpMapper.deleteByStudentId(studentId);
+    }
+
     private void deleteDemo03GradeByStudentId(Long studentId) {
         demo03GradeErpMapper.deleteByStudentId(studentId);
     }
 
-    private void deleteDemo03GradeByStudentIds(List<Long> studentIds) {
-        demo03GradeErpMapper.deleteByStudentIds(studentIds);
+    private void validateDemo03StudentExists(Long id) {
+        if (demo03StudentErpMapper.selectById(id) == null) {
+            throw exception(DEMO03_STUDENT_NOT_EXISTS);
+        }
     }
 
 }

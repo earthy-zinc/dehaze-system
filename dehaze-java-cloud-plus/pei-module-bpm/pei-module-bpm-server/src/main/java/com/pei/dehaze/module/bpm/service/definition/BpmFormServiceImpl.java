@@ -59,12 +59,6 @@ public class BpmFormServiceImpl implements BpmFormService {
         formMapper.deleteById(id);
     }
 
-    private void validateFormExists(Long id) {
-        if (formMapper.selectById(id) == null) {
-            throw exception(ErrorCodeConstants.FORM_NOT_EXISTS);
-        }
-    }
-
     @Override
     public BpmFormDO getForm(Long id) {
         return formMapper.selectById(id);
@@ -86,6 +80,12 @@ public class BpmFormServiceImpl implements BpmFormService {
     @Override
     public PageResult<BpmFormDO> getFormPage(BpmFormPageReqVO pageReqVO) {
         return formMapper.selectPage(pageReqVO);
+    }
+
+    private void validateFormExists(Long id) {
+        if (formMapper.selectById(id) == null) {
+            throw exception(ErrorCodeConstants.FORM_NOT_EXISTS);
+        }
     }
 
     /**

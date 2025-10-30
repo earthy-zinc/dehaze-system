@@ -8,10 +8,10 @@ import com.pei.dehaze.module.system.controller.admin.dept.vo.post.PostPageReqVO;
 import com.pei.dehaze.module.system.controller.admin.dept.vo.post.PostSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.dept.PostDO;
 import com.pei.dehaze.module.system.dal.mysql.dept.PostMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -62,52 +62,6 @@ public class PostServiceImpl implements PostService {
         postMapper.deleteById(id);
     }
 
-    private void validatePostForCreateOrUpdate(Long id, String name, String code) {
-        // 校验自己存在
-        validatePostExists(id);
-        // 校验岗位名的唯一性
-        validatePostNameUnique(id, name);
-        // 校验岗位编码的唯一性
-        validatePostCodeUnique(id, code);
-    }
-
-    private void validatePostNameUnique(Long id, String name) {
-        PostDO post = postMapper.selectByName(name);
-        if (post == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的岗位
-        if (id == null) {
-            throw exception(POST_NAME_DUPLICATE);
-        }
-        if (!post.getId().equals(id)) {
-            throw exception(POST_NAME_DUPLICATE);
-        }
-    }
-
-    private void validatePostCodeUnique(Long id, String code) {
-        PostDO post = postMapper.selectByCode(code);
-        if (post == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的岗位
-        if (id == null) {
-            throw exception(POST_CODE_DUPLICATE);
-        }
-        if (!post.getId().equals(id)) {
-            throw exception(POST_CODE_DUPLICATE);
-        }
-    }
-
-    private void validatePostExists(Long id) {
-        if (id == null) {
-            return;
-        }
-        if (postMapper.selectById(id) == null) {
-            throw exception(POST_NOT_FOUND);
-        }
-    }
-
     @Override
     public List<PostDO> getPostList(Collection<Long> ids) {
         if (CollUtil.isEmpty(ids)) {
@@ -149,5 +103,51 @@ public class PostServiceImpl implements PostService {
                 throw exception(POST_NOT_ENABLE, post.getName());
             }
         });
+    }
+
+    private void validatePostForCreateOrUpdate(Long id, String name, String code) {
+        // 校验自己存在
+        validatePostExists(id);
+        // 校验岗位名的唯一性
+        validatePostNameUnique(id, name);
+        // 校验岗位编码的唯一性
+        validatePostCodeUnique(id, code);
+    }
+
+    private void validatePostExists(Long id) {
+        if (id == null) {
+            return;
+        }
+        if (postMapper.selectById(id) == null) {
+            throw exception(POST_NOT_FOUND);
+        }
+    }
+
+    private void validatePostNameUnique(Long id, String name) {
+        PostDO post = postMapper.selectByName(name);
+        if (post == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的岗位
+        if (id == null) {
+            throw exception(POST_NAME_DUPLICATE);
+        }
+        if (!post.getId().equals(id)) {
+            throw exception(POST_NAME_DUPLICATE);
+        }
+    }
+
+    private void validatePostCodeUnique(Long id, String code) {
+        PostDO post = postMapper.selectByCode(code);
+        if (post == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的岗位
+        if (id == null) {
+            throw exception(POST_CODE_DUPLICATE);
+        }
+        if (!post.getId().equals(id)) {
+            throw exception(POST_CODE_DUPLICATE);
+        }
     }
 }

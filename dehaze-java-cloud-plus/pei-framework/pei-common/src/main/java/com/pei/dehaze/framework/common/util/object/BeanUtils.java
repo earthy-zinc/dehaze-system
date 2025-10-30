@@ -9,17 +9,13 @@ import java.util.function.Consumer;
 
 /**
  * Bean 工具类
- *
- * 1. 默认使用 {@link cn.hutool.core.bean.BeanUtil} 作为实现类，虽然不同 bean 工具的性能有差别，但是对绝大多数同学的项目，不用在意这点性能
- * 2. 针对复杂的对象转换，可以搜参考 AuthConvert 实现，通过 mapstruct + default 配合实现
+ * <p>
+ * 1. 默认使用 {@link cn.hutool.core.bean.BeanUtil} 作为实现类，虽然不同 bean 工具的性能有差别，但是对绝大多数同学的项目，不用在意这点性能 2. 针对复杂的对象转换，可以搜参考
+ * AuthConvert 实现，通过 mapstruct + default 配合实现
  *
  * @author earthyzinc
  */
 public class BeanUtils {
-
-    public static <T> T toBean(Object source, Class<T> targetClass) {
-        return BeanUtil.toBean(source, targetClass);
-    }
 
     public static <T> T toBean(Object source, Class<T> targetClass, Consumer<T> peek) {
         T target = toBean(source, targetClass);
@@ -42,6 +38,10 @@ public class BeanUtils {
             list.forEach(peek);
         }
         return list;
+    }
+
+    public static <T> T toBean(Object source, Class<T> targetClass) {
+        return BeanUtil.toBean(source, targetClass);
     }
 
     public static <S, T> PageResult<T> toBean(PageResult<S> source, Class<T> targetType) {

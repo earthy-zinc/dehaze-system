@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.combination;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -47,19 +47,19 @@ public class CombinationProductDO extends BaseDO {
 
     /**
      * 拼团商品状态
-     *
+     * <p>
      * 关联 {@link CombinationActivityDO#getStatus()}
      */
     private Integer activityStatus;
     /**
      * 活动开始时间点
-     *
+     * <p>
      * 冗余 {@link CombinationActivityDO#getStartTime()}
      */
     private LocalDateTime activityStartTime;
     /**
      * 活动结束时间点
-     *
+     * <p>
      * 冗余 {@link CombinationActivityDO#getEndTime()}
      */
     private LocalDateTime activityEndTime;

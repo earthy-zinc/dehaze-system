@@ -104,35 +104,6 @@ public class CrmReceivablePlanController {
         return buildReceivableDetailList(Collections.singletonList(receivablePlan)).get(0);
     }
 
-    @GetMapping("/page")
-    @Operation(summary = "获得回款计划分页")
-    @PreAuthorize("@ss.hasPermission('crm:receivable-plan:query')")
-    public CommonResult<PageResult<CrmReceivablePlanRespVO>> getReceivablePlanPage(@Valid CrmReceivablePlanPageReqVO pageReqVO) {
-        PageResult<CrmReceivablePlanDO> pageResult = receivablePlanService.getReceivablePlanPage(pageReqVO, getLoginUserId());
-        return success(new PageResult<>(buildReceivableDetailList(pageResult.getList()), pageResult.getTotal()));
-    }
-
-    @GetMapping("/page-by-customer")
-    @Operation(summary = "获得回款计划分页，基于指定客户")
-    public CommonResult<PageResult<CrmReceivablePlanRespVO>> getReceivablePlanPageByCustomer(@Valid CrmReceivablePlanPageReqVO pageReqVO) {
-        Assert.notNull(pageReqVO.getCustomerId(), "客户编号不能为空");
-        PageResult<CrmReceivablePlanDO> pageResult = receivablePlanService.getReceivablePlanPageByCustomerId(pageReqVO);
-        return success(new PageResult<>(buildReceivableDetailList(pageResult.getList()), pageResult.getTotal()));
-    }
-
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出回款计划 Excel")
-    @PreAuthorize("@ss.hasPermission('crm:receivable-plan:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportReceivablePlanExcel(@Valid CrmReceivablePlanPageReqVO exportReqVO,
-                                          HttpServletResponse response) throws IOException {
-        exportReqVO.setPageSize(PAGE_SIZE_NONE);
-        List<CrmReceivablePlanDO> list = receivablePlanService.getReceivablePlanPage(exportReqVO, getLoginUserId()).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "回款计划.xls", "数据", CrmReceivablePlanRespVO.class,
-                buildReceivableDetailList(list));
-    }
-
     private List<CrmReceivablePlanRespVO> buildReceivableDetailList(List<CrmReceivablePlanDO> receivablePlanList) {
         if (CollUtil.isEmpty(receivablePlanList)) {
             return Collections.emptyList();
@@ -161,6 +132,35 @@ public class CrmReceivablePlanController {
             // 2.4 拼接回款信息
             receivablePlanVO.setReceivable(BeanUtils.toBean(receivableMap.get(receivablePlanVO.getReceivableId()), CrmReceivableRespVO.class));
         });
+    }
+
+    @GetMapping("/page")
+    @Operation(summary = "获得回款计划分页")
+    @PreAuthorize("@ss.hasPermission('crm:receivable-plan:query')")
+    public CommonResult<PageResult<CrmReceivablePlanRespVO>> getReceivablePlanPage(@Valid CrmReceivablePlanPageReqVO pageReqVO) {
+        PageResult<CrmReceivablePlanDO> pageResult = receivablePlanService.getReceivablePlanPage(pageReqVO, getLoginUserId());
+        return success(new PageResult<>(buildReceivableDetailList(pageResult.getList()), pageResult.getTotal()));
+    }
+
+    @GetMapping("/page-by-customer")
+    @Operation(summary = "获得回款计划分页，基于指定客户")
+    public CommonResult<PageResult<CrmReceivablePlanRespVO>> getReceivablePlanPageByCustomer(@Valid CrmReceivablePlanPageReqVO pageReqVO) {
+        Assert.notNull(pageReqVO.getCustomerId(), "客户编号不能为空");
+        PageResult<CrmReceivablePlanDO> pageResult = receivablePlanService.getReceivablePlanPageByCustomerId(pageReqVO);
+        return success(new PageResult<>(buildReceivableDetailList(pageResult.getList()), pageResult.getTotal()));
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出回款计划 Excel")
+    @PreAuthorize("@ss.hasPermission('crm:receivable-plan:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportReceivablePlanExcel(@Valid CrmReceivablePlanPageReqVO exportReqVO,
+                                          HttpServletResponse response) throws IOException {
+        exportReqVO.setPageSize(PAGE_SIZE_NONE);
+        List<CrmReceivablePlanDO> list = receivablePlanService.getReceivablePlanPage(exportReqVO, getLoginUserId()).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "回款计划.xls", "数据", CrmReceivablePlanRespVO.class,
+                buildReceivableDetailList(list));
     }
 
     @GetMapping("/simple-list")

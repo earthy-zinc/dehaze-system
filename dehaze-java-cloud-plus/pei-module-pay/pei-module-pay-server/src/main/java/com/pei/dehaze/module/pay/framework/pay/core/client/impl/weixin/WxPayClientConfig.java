@@ -7,8 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 /**
- * 微信支付的 PayClientConfig 实现类
- * 属性主要来自 {@link com.github.binarywang.wxpay.config.WxPayConfig} 的必要属性
+ * 微信支付的 PayClientConfig 实现类 属性主要来自 {@link com.github.binarywang.wxpay.config.WxPayConfig} 的必要属性
  *
  * @author earthyzinc
  */
@@ -30,7 +29,7 @@ public class WxPayClientConfig implements PayClientConfig {
 
     /**
      * 公众号或者小程序的 appid
-     *
+     * <p>
      * 只有公众号或小程序需要该字段
      */
     @NotBlank(message = "APPID 不能为空", groups = {V2.class, V3.class})
@@ -55,7 +54,7 @@ public class WxPayClientConfig implements PayClientConfig {
     private String mchKey;
     /**
      * apiclient_cert.p12 证书文件的对应字符串【base64 格式】
-     *
+     * <p>
      * 为什么采用 base64 格式？因为 p12 读取后是二进制，需要转换成 base64 格式才好传输和存储
      */
     @NotBlank(message = "apiclient_cert.p12 不能为空", groups = V2.class)
@@ -86,6 +85,12 @@ public class WxPayClientConfig implements PayClientConfig {
     @NotBlank(message = "publicKeyId 不能为空", groups = V3.class)
     private String publicKeyId;
 
+    @Override
+    public void validate(Validator validator) {
+        ValidationUtils.validate(validator, this,
+                API_VERSION_V2.equals(this.getApiVersion()) ? V2.class : V3.class);
+    }
+
     /**
      * 分组校验 v2版本
      */
@@ -96,12 +101,6 @@ public class WxPayClientConfig implements PayClientConfig {
      * 分组校验 v3版本
      */
     public interface V3 {
-    }
-
-    @Override
-    public void validate(Validator validator) {
-        ValidationUtils.validate(validator, this,
-                API_VERSION_V2.equals(this.getApiVersion()) ? V2.class : V3.class);
     }
 
 }

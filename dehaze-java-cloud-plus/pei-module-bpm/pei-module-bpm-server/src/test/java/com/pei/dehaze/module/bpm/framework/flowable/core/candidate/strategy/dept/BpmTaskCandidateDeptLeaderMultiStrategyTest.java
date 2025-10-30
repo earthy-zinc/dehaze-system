@@ -31,7 +31,7 @@ public class BpmTaskCandidateDeptLeaderMultiStrategyTest extends BaseMockitoUnit
         // 准备参数
         String param = "10,20|2";
         // mock 方法
-        when(deptApi.getDept(any())).thenAnswer((Answer< CommonResult<DeptRespDTO>>) invocationOnMock -> {
+        when(deptApi.getDept(any())).thenAnswer((Answer<CommonResult<DeptRespDTO>>) invocationOnMock -> {
             Long deptId = invocationOnMock.getArgument(0);
             return success(randomPojo(DeptRespDTO.class, o -> o.setId(deptId).setParentId(deptId * 100).setLeaderUserId(deptId + 1)));
         });

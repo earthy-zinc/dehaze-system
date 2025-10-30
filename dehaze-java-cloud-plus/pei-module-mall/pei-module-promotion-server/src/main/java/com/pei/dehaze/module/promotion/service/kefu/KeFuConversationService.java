@@ -66,7 +66,7 @@ public interface KeFuConversationService {
 
     /**
      * 【会员】获得或创建会话
-     *
+     * <p>
      * 对于【会员】来说，有且仅有一个对话
      *
      * @param userId 用户编号

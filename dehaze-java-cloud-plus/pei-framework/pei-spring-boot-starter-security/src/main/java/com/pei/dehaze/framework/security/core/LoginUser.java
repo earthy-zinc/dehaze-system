@@ -1,8 +1,8 @@
 package com.pei.dehaze.framework.security.core;
 
 import cn.hutool.core.map.MapUtil;
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -27,7 +27,7 @@ public class LoginUser {
     private Long id;
     /**
      * 用户类型
-     *
+     * <p>
      * 关联 {@link UserTypeEnum}
      */
     private Integer userType;
@@ -51,7 +51,7 @@ public class LoginUser {
     // ========== 上下文 ==========
     /**
      * 上下文字段，不进行持久化
-     *
+     * <p>
      * 1. 用于基于 LoginUser 维度的临时缓存
      */
     @JsonIgnore

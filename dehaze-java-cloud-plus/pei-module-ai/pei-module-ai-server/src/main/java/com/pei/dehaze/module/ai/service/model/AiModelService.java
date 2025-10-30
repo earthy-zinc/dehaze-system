@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.ai.service.model;
 
-import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
-import com.pei.dehaze.module.ai.framework.ai.core.model.suno.api.SunoApi;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.ai.controller.admin.model.vo.model.AiModelPageReqVO;
 import com.pei.dehaze.module.ai.controller.admin.model.vo.model.AiModelSaveReqVO;
 import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
+import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
+import com.pei.dehaze.module.ai.framework.ai.core.model.suno.api.SunoApi;
 import dev.tinyflow.core.Tinyflow;
 import jakarta.validation.Valid;
 import org.springframework.ai.chat.model.ChatModel;
@@ -56,7 +56,7 @@ public interface AiModelService {
 
     /**
      * 获得默认的模型
-     *
+     * <p>
      * 如果获取不到，则抛出 {@link com.pei.dehaze.framework.common.exception.ServiceException} 业务异常
      *
      * @return 模型
@@ -82,8 +82,8 @@ public interface AiModelService {
     /**
      * 获得模型列表
      *
-     * @param status 状态
-     * @param type 类型
+     * @param status   状态
+     * @param type     类型
      * @param platform 平台，允许空
      * @return 模型列表
      */
@@ -126,7 +126,7 @@ public interface AiModelService {
     /**
      * 获得 VectorStore 对象
      *
-     * @param id 编号
+     * @param id             编号
      * @param metadataFields 元数据的定义
      * @return VectorStore 对象
      */
@@ -136,7 +136,7 @@ public interface AiModelService {
      * 获取 TinyFlow 所需 LLm Provider
      *
      * @param tinyflow tinyflow
-     * @param modelId AI 模型 ID
+     * @param modelId  AI 模型 ID
      */
     void getLLmProvider4Tinyflow(Tinyflow tinyflow, Long modelId);
 

@@ -4,6 +4,10 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import com.google.common.annotations.VisibleForTesting;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.exception.ServiceException;
 import com.pei.dehaze.framework.common.pojo.PageResult;
@@ -28,10 +32,6 @@ import com.pei.dehaze.module.system.service.dept.DeptService;
 import com.pei.dehaze.module.system.service.dept.PostService;
 import com.pei.dehaze.module.system.service.permission.PermissionService;
 import com.pei.dehaze.module.system.service.tenant.TenantService;
-import com.google.common.annotations.VisibleForTesting;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -294,14 +294,6 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    public List<AdminUserDO> getUserList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return Collections.emptyList();
-        }
-        return userMapper.selectBatchIds(ids);
-    }
-
-    @Override
     public void validateUserList(Collection<Long> ids) {
         if (CollUtil.isEmpty(ids)) {
             return;
@@ -322,8 +314,80 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
+    public List<AdminUserDO> getUserList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        return userMapper.selectBatchIds(ids);
+    }
+
+    @Override
     public List<AdminUserDO> getUserListByNickname(String nickname) {
         return userMapper.selectListByNickname(nickname);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class) // 添加事务，异常则回滚所有导入
+    public UserImportRespVO importUserList(List<UserImportExcelVO> importUsers, boolean isUpdateSupport) {
+        // 1.1 参数校验
+        if (CollUtil.isEmpty(importUsers)) {
+            throw exception(USER_IMPORT_LIST_IS_EMPTY);
+        }
+        // 1.2 初始化密码不能为空
+        String initPassword = configApi.getConfigValueByKey(USER_INIT_PASSWORD_KEY).getCheckedData();
+        if (StrUtil.isEmpty(initPassword)) {
+            throw exception(USER_IMPORT_INIT_PASSWORD);
+        }
+
+        // 2. 遍历，逐个创建 or 更新
+        UserImportRespVO respVO = UserImportRespVO.builder().createUsernames(new ArrayList<>())
+                .updateUsernames(new ArrayList<>()).failureUsernames(new LinkedHashMap<>()).build();
+        importUsers.forEach(importUser -> {
+            // 2.1.1 校验字段是否符合要求
+            try {
+                ValidationUtils.validate(BeanUtils.toBean(importUser, UserSaveReqVO.class).setPassword(initPassword));
+            } catch (ConstraintViolationException ex) {
+                respVO.getFailureUsernames().put(importUser.getUsername(), ex.getMessage());
+                return;
+            }
+            // 2.1.2 校验，判断是否有不符合的原因
+            try {
+                validateUserForCreateOrUpdate(null, null, importUser.getMobile(), importUser.getEmail(),
+                        importUser.getDeptId(), null);
+            } catch (ServiceException ex) {
+                respVO.getFailureUsernames().put(importUser.getUsername(), ex.getMessage());
+                return;
+            }
+
+            // 2.2.1 判断如果不存在，在进行插入
+            AdminUserDO existUser = userMapper.selectByUsername(importUser.getUsername());
+            if (existUser == null) {
+                userMapper.insert(BeanUtils.toBean(importUser, AdminUserDO.class)
+                        .setPassword(encodePassword(initPassword)).setPostIds(new HashSet<>())); // 设置默认密码及空岗位编号数组
+                respVO.getCreateUsernames().add(importUser.getUsername());
+                return;
+            }
+            // 2.2.2 如果存在，判断是否允许更新
+            if (!isUpdateSupport) {
+                respVO.getFailureUsernames().put(importUser.getUsername(), USER_USERNAME_EXISTS.msg());
+                return;
+            }
+            AdminUserDO updateUser = BeanUtils.toBean(importUser, AdminUserDO.class);
+            updateUser.setId(existUser.getId());
+            userMapper.updateById(updateUser);
+            respVO.getUpdateUsernames().add(importUser.getUsername());
+        });
+        return respVO;
+    }
+
+    @Override
+    public List<AdminUserDO> getUserListByStatus(Integer status) {
+        return userMapper.selectListByStatus(status);
+    }
+
+    @Override
+    public boolean isPasswordMatch(String rawPassword, String encodedPassword) {
+        return passwordEncoder.matches(rawPassword, encodedPassword);
     }
 
     /**
@@ -342,7 +406,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     private AdminUserDO validateUserForCreateOrUpdate(Long id, String username, String mobile, String email,
-                                               Long deptId, Set<Long> postIds) {
+                                                      Long deptId, Set<Long> postIds) {
         // 关闭数据权限，避免因为没有数据权限，查询不到数据，进而导致唯一校验不正确
         return DataPermissionUtils.executeIgnore(() -> {
             // 校验用户存在
@@ -359,6 +423,34 @@ public class AdminUserServiceImpl implements AdminUserService {
             postService.validatePostList(postIds);
             return user;
         });
+    }
+
+    /**
+     * 对密码进行加密
+     *
+     * @param password 密码
+     * @return 加密后的密码
+     */
+    private String encodePassword(String password) {
+        return passwordEncoder.encode(password);
+    }
+
+    @VisibleForTesting
+    void validateEmailUnique(Long id, String email) {
+        if (StrUtil.isBlank(email)) {
+            return;
+        }
+        AdminUserDO user = userMapper.selectByEmail(email);
+        if (user == null) {
+            return;
+        }
+        // 如果 id 为空，说明不用比较是否为相同 id 的用户
+        if (id == null) {
+            throw exception(USER_EMAIL_EXISTS);
+        }
+        if (!user.getId().equals(id)) {
+            throw exception(USER_EMAIL_EXISTS);
+        }
     }
 
     @VisibleForTesting
@@ -392,24 +484,6 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @VisibleForTesting
-    void validateEmailUnique(Long id, String email) {
-        if (StrUtil.isBlank(email)) {
-            return;
-        }
-        AdminUserDO user = userMapper.selectByEmail(email);
-        if (user == null) {
-            return;
-        }
-        // 如果 id 为空，说明不用比较是否为相同 id 的用户
-        if (id == null) {
-            throw exception(USER_EMAIL_EXISTS);
-        }
-        if (!user.getId().equals(id)) {
-            throw exception(USER_EMAIL_EXISTS);
-        }
-    }
-
-    @VisibleForTesting
     void validateMobileUnique(Long id, String mobile) {
         if (StrUtil.isBlank(mobile)) {
             return;
@@ -429,6 +503,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     /**
      * 校验旧密码
+     *
      * @param id          用户 id
      * @param oldPassword 旧密码
      */
@@ -441,80 +516,6 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (!isPasswordMatch(oldPassword, user.getPassword())) {
             throw exception(USER_PASSWORD_FAILED);
         }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class) // 添加事务，异常则回滚所有导入
-    public UserImportRespVO importUserList(List<UserImportExcelVO> importUsers, boolean isUpdateSupport) {
-        // 1.1 参数校验
-        if (CollUtil.isEmpty(importUsers)) {
-            throw exception(USER_IMPORT_LIST_IS_EMPTY);
-        }
-        // 1.2 初始化密码不能为空
-        String initPassword = configApi.getConfigValueByKey(USER_INIT_PASSWORD_KEY).getCheckedData();
-        if (StrUtil.isEmpty(initPassword)) {
-            throw exception(USER_IMPORT_INIT_PASSWORD);
-        }
-
-        // 2. 遍历，逐个创建 or 更新
-        UserImportRespVO respVO = UserImportRespVO.builder().createUsernames(new ArrayList<>())
-                .updateUsernames(new ArrayList<>()).failureUsernames(new LinkedHashMap<>()).build();
-        importUsers.forEach(importUser -> {
-            // 2.1.1 校验字段是否符合要求
-            try {
-                ValidationUtils.validate(BeanUtils.toBean(importUser, UserSaveReqVO.class).setPassword(initPassword));
-            } catch (ConstraintViolationException ex){
-                respVO.getFailureUsernames().put(importUser.getUsername(), ex.getMessage());
-                return;
-            }
-            // 2.1.2 校验，判断是否有不符合的原因
-            try {
-                validateUserForCreateOrUpdate(null, null, importUser.getMobile(), importUser.getEmail(),
-                        importUser.getDeptId(), null);
-            } catch (ServiceException ex) {
-                respVO.getFailureUsernames().put(importUser.getUsername(), ex.getMessage());
-                return;
-            }
-
-            // 2.2.1 判断如果不存在，在进行插入
-            AdminUserDO existUser = userMapper.selectByUsername(importUser.getUsername());
-            if (existUser == null) {
-                userMapper.insert(BeanUtils.toBean(importUser, AdminUserDO.class)
-                        .setPassword(encodePassword(initPassword)).setPostIds(new HashSet<>())); // 设置默认密码及空岗位编号数组
-                respVO.getCreateUsernames().add(importUser.getUsername());
-                return;
-            }
-            // 2.2.2 如果存在，判断是否允许更新
-            if (!isUpdateSupport) {
-                respVO.getFailureUsernames().put(importUser.getUsername(), USER_USERNAME_EXISTS.getMsg());
-                return;
-            }
-            AdminUserDO updateUser = BeanUtils.toBean(importUser, AdminUserDO.class);
-            updateUser.setId(existUser.getId());
-            userMapper.updateById(updateUser);
-            respVO.getUpdateUsernames().add(importUser.getUsername());
-        });
-        return respVO;
-    }
-
-    @Override
-    public List<AdminUserDO> getUserListByStatus(Integer status) {
-        return userMapper.selectListByStatus(status);
-    }
-
-    @Override
-    public boolean isPasswordMatch(String rawPassword, String encodedPassword) {
-        return passwordEncoder.matches(rawPassword, encodedPassword);
-    }
-
-    /**
-     * 对密码进行加密
-     *
-     * @param password 密码
-     * @return 加密后的密码
-     */
-    private String encodePassword(String password) {
-        return passwordEncoder.encode(password);
     }
 
 }

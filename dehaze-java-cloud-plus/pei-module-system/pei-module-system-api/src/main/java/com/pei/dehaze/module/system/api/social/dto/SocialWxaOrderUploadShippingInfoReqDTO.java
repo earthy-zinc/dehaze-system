@@ -7,8 +7,9 @@ import lombok.Data;
 /**
  * 小程序订单上传购物详情
  *
- * @see <a href="https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/shopping-order/normal-shopping-detail/uploadShoppingInfo.html">上传购物详情</a>
  * @author earthyzinc
+ * @see <a
+ * href="https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/shopping-order/normal-shopping-detail/uploadShoppingInfo.html">上传购物详情</a>
  */
 @Data
 public class SocialWxaOrderUploadShippingInfoReqDTO {
@@ -50,7 +51,8 @@ public class SocialWxaOrderUploadShippingInfoReqDTO {
     /**
      * 物流公司编号
      *
-     * @see <a href="https://developers.weixin.qq.com/miniprogram/dev/platform-capabilities/industry/express/business/express_search.html#%E8%8E%B7%E5%8F%96%E8%BF%90%E5%8A%9Bid%E5%88%97%E8%A1%A8get-delivery-list">物流查询插件简介</a>
+     * @see <a
+     * href="https://developers.weixin.qq.com/miniprogram/dev/platform-capabilities/industry/express/business/express_search.html#%E8%8E%B7%E5%8F%96%E8%BF%90%E5%8A%9Bid%E5%88%97%E8%A1%A8get-delivery-list">物流查询插件简介</a>
      */
     private String expressCompany;
     /**

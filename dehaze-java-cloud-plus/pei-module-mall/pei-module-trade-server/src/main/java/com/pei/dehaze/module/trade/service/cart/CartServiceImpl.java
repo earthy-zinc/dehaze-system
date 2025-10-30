@@ -9,11 +9,11 @@ import com.pei.dehaze.module.trade.controller.app.cart.vo.*;
 import com.pei.dehaze.module.trade.convert.cart.TradeCartConvert;
 import com.pei.dehaze.module.trade.dal.dataobject.cart.CartDO;
 import com.pei.dehaze.module.trade.dal.mysql.cart.CartMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.*;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
@@ -25,7 +25,7 @@ import static java.util.Collections.emptyList;
 
 /**
  * 购物车 Service 实现类
- *
+ * <p>
  * // TODO 芋艿：未来优化：购物车的价格计算，支持营销信息；目前不支持的原因，前端界面需要前端 pr 支持下；例如说：会员价格；
  *
  * @author earthyzinc
@@ -110,7 +110,7 @@ public class CartServiceImpl implements CartService {
      * 购物车删除商品
      *
      * @param userId 用户编号
-     * @param ids 商品 SKU 编号的数组
+     * @param ids    商品 SKU 编号的数组
      */
     @Override
     public void deleteCart(Long userId, Collection<Long> ids) {
@@ -173,10 +173,7 @@ public class CartServiceImpl implements CartService {
     }
 
     /**
-     * 校验商品 SKU 是否合法
-     * 1. 是否存在
-     * 2. 是否下架
-     * 3. 库存不足
+     * 校验商品 SKU 是否合法 1. 是否存在 2. 是否下架 3. 库存不足
      *
      * @param skuId 商品 SKU 编号
      * @param count 商品数量

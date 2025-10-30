@@ -10,13 +10,12 @@ import com.pei.dehaze.module.system.api.social.dto.*;
 import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
 import com.pei.dehaze.module.system.service.social.SocialClientService;
 import com.pei.dehaze.module.system.service.social.SocialUserService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.bean.WxJsapiSignature;
 import me.chanjar.weixin.common.bean.subscribemsg.TemplateInfo;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import java.util.List;
 

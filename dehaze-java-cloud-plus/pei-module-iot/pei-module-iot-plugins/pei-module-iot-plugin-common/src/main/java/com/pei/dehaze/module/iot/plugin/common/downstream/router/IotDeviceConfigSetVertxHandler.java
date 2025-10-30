@@ -18,7 +18,7 @@ import static com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeCon
 
 /**
  * IoT 设备配置设置 Vertx Handler
- *
+ * <p>
  * earthyzinc
  */
 @Slf4j
@@ -48,7 +48,7 @@ public class IotDeviceConfigSetVertxHandler implements Handler<RoutingContext> {
         } catch (Exception e) {
             log.error("[handle][路径参数({}) 解析参数失败]", routingContext.pathParams(), e);
             IotStandardResponse errorResponse = IotStandardResponse.error(
-                    null, METHOD, BAD_REQUEST.getCode(), BAD_REQUEST.getMsg());
+                    null, METHOD, BAD_REQUEST.code(), BAD_REQUEST.msg());
             IotPluginCommonUtils.writeJsonResponse(routingContext, errorResponse);
             return;
         }
@@ -65,7 +65,7 @@ public class IotDeviceConfigSetVertxHandler implements Handler<RoutingContext> {
         } catch (Exception e) {
             log.error("[handle][请求参数({}) 配置设置异常]", reqDTO, e);
             IotStandardResponse errorResponse = IotStandardResponse.error(
-                    reqDTO.getRequestId(), METHOD, INTERNAL_SERVER_ERROR.getCode(), INTERNAL_SERVER_ERROR.getMsg());
+                    reqDTO.getRequestId(), METHOD, INTERNAL_SERVER_ERROR.code(), INTERNAL_SERVER_ERROR.msg());
             IotPluginCommonUtils.writeJsonResponse(routingContext, errorResponse);
         }
     }

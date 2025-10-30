@@ -20,7 +20,7 @@ public class PayDemoWithdrawCreateReqVO {
     @Min(value = 1, message = "提现金额必须大于零")
     private Integer price;
 
-    @Schema(description = "收款人账号", requiredMode= Schema.RequiredMode.REQUIRED, example = "test1")
+    @Schema(description = "收款人账号", requiredMode = Schema.RequiredMode.REQUIRED, example = "test1")
     @NotBlank(message = "收款人账号不能为空")
     private String userAccount;
 

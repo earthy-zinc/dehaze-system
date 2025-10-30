@@ -4,9 +4,8 @@ import com.pei.dehaze.module.bpm.enums.definition.BpmModelFormTypeEnum;
 import lombok.Data;
 
 /**
- * BPM 流程 MetaInfo Response DTO
- * 主要用于 { Model#setMetaInfo(String)} 的存储
- *
+ * BPM 流程 MetaInfo Response DTO 主要用于 { Model#setMetaInfo(String)} 的存储
+ * <p>
  * 最终，它的字段和 {@link com.pei.dehaze.module.bpm.dal.dataobject.definition.BpmProcessDefinitionInfoDO} 是一致的
  *
  * @author earthyzinc
@@ -28,18 +27,15 @@ public class BpmModelMetaInfoRespDTO {
      */
     private Integer formType;
     /**
-     * 表单编号
-     * 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
+     * 表单编号 在表单类型为 {@link BpmModelFormTypeEnum#NORMAL} 时
      */
     private Long formId;
     /**
-     * 自定义表单的提交路径，使用 Vue 的路由地址
-     * 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
+     * 自定义表单的提交路径，使用 Vue 的路由地址 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
      */
     private String formCustomCreatePath;
     /**
-     * 自定义表单的查看路径，使用 Vue 的路由地址
-     * 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
+     * 自定义表单的查看路径，使用 Vue 的路由地址 在表单类型为 {@link BpmModelFormTypeEnum#CUSTOM} 时
      */
     private String formCustomViewPath;
 

@@ -1,17 +1,17 @@
 package com.pei.dehaze.module.crm.dal.dataobject.business;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.crm.dal.dataobject.product.CrmProductDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.crm.dal.dataobject.product.CrmProductDO;
 import lombok.*;
 
 import java.math.BigDecimal;
 
 /**
  * CRM 商机产品关联表 DO
- *
+ * <p>
  * CrmBusinessDO : CrmBusinessProductDO = 1 : N
  *
  * @author lzxhqs
@@ -33,19 +33,19 @@ public class CrmBusinessProductDO extends BaseDO {
     private Long id;
     /**
      * 商机编号
-     *
+     * <p>
      * 关联 {@link CrmBusinessDO#getId()}
      */
     private Long businessId;
     /**
      * 产品编号
-     *
+     * <p>
      * 关联 {@link CrmProductDO#getId()}
      */
     private Long productId;
     /**
      * 产品单价，单位：元
-     *
+     * <p>
      * 冗余 {@link CrmProductDO#getPrice()}
      */
     private BigDecimal productPrice;
@@ -59,7 +59,7 @@ public class CrmBusinessProductDO extends BaseDO {
     private BigDecimal count;
     /**
      * 总计价格，单位：元
-     *
+     * <p>
      * totalPrice = businessPrice * count
      */
     private BigDecimal totalPrice;

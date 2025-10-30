@@ -28,7 +28,7 @@ import static com.pei.dehaze.module.trade.service.price.calculator.TradePriceCal
 
 /**
  * 限时折扣的 {@link TradePriceCalculator} 实现类
- *
+ * <p>
  * 由于“会员折扣”和“限时折扣”是冲突，需要选择优惠金额多的，所以也放在这里计算
  *
  * @author earthyzinc
@@ -113,12 +113,12 @@ public class TradeDiscountActivityPriceCalculator implements TradePriceCalculato
     /**
      * 计算优惠活动的价格
      *
-     * @param discount 优惠活动
+     * @param discount  优惠活动
      * @param orderItem 交易项
      * @return 优惠价格
      */
     public Integer calculateActivityPrice(DiscountProductRespDTO discount,
-                                           TradePriceCalculateRespBO.OrderItem orderItem) {
+                                          TradePriceCalculateRespBO.OrderItem orderItem) {
         if (discount == null) {
             return 0;
         }
@@ -136,12 +136,12 @@ public class TradeDiscountActivityPriceCalculator implements TradePriceCalculato
     /**
      * 计算会员 VIP 的优惠价格
      *
-     * @param level 会员等级
+     * @param level     会员等级
      * @param orderItem 交易项
      * @return 优惠价格
      */
     public Integer calculateVipPrice(MemberLevelRespDTO level,
-                                      TradePriceCalculateRespBO.OrderItem orderItem) {
+                                     TradePriceCalculateRespBO.OrderItem orderItem) {
         if (level == null
                 || CommonStatusEnum.isDisable(level.getStatus())
                 || level.getDiscountPercent() == null) {

@@ -14,13 +14,13 @@ public interface PayChannelConvert {
 
     PayChannelConvert INSTANCE = Mappers.getMapper(PayChannelConvert.class);
 
-    @Mapping(target = "config",ignore = true)
+    @Mapping(target = "config", ignore = true)
     PayChannelDO convert(PayChannelCreateReqVO bean);
 
-    @Mapping(target = "config",ignore = true)
+    @Mapping(target = "config", ignore = true)
     PayChannelDO convert(PayChannelUpdateReqVO bean);
 
-    @Mapping(target = "config",expression = "java(com.pei.dehaze.framework.common.util.json.JsonUtils.toJsonString(bean.getConfig()))")
+    @Mapping(target = "config", expression = "java(com.pei.dehaze.framework.common.util.json.JsonUtils.toJsonString(bean.getConfig()))")
     PayChannelRespVO convert(PayChannelDO bean);
 
     PageResult<PayChannelRespVO> convertPage(PageResult<PayChannelDO> page);

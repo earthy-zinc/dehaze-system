@@ -204,7 +204,7 @@ public boolean hasAnyPermissions(String... permissions) {
     if (userId == null) {
         return false;
     }
-    return hasAnyPermissionsCache.get(new KeyValue<>(userId, Arrays.asList(permissions)));
+    return hasAnyPermissionsCache.get(new KeyValue<>(userId, Collections.singletonList(permissions)));
 }
 ```
 
@@ -414,7 +414,8 @@ Spring Security 使用标准的 `FilterChainProxy` 执行安全过滤流程。�
 | `UsernamePasswordAuthenticationFilter` | 表单登录处理（未启用）            |
 | `TokenAuthenticationFilter`            | 自定义 Token 认证过滤器        |
 
-其中在整个 FilterChainProxy 过滤器链条中添加了自定义的 `TokenAuthenticationFilter`，该类继承 `OncePerRequestFilter`，确保每个请求只被处理一次。 主要步骤如下：
+其中在整个 FilterChainProxy 过滤器链条中添加了自定义的 `TokenAuthenticationFilter`，该类继承 `OncePerRequestFilter`
+，确保每个请求只被处理一次。 主要步骤如下：
 
 ##### a. 尝试从 Header 获取 LoginUser（用于微服务间调用）
 
@@ -459,7 +460,6 @@ Spring Security 使用标准的 `FilterChainProxy` 执行安全过滤流程。�
 
 ---
 
-
 #### 附录：Spring Security 内部关键类与流程节点对应关系
 
 | Spring Security 组件                       | 对应类                                                     | 作用                    |
@@ -502,7 +502,6 @@ D --> E[写入数据库或日志中心]
 ```
 
 ---
-
 
 ## 🧩 模块功能总结
 

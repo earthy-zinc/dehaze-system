@@ -20,7 +20,7 @@ public class PayRefundRespDTO {
 
     /**
      * 渠道编码
-     *
+     * <p>
      * 枚举 PayChannelEnum
      */
     private String channelCode;
@@ -28,7 +28,7 @@ public class PayRefundRespDTO {
     // ========== 退款相关字段 ==========
     /**
      * 退款状态
-     *
+     * <p>
      * 枚举 {@link PayRefundStatusEnum}
      */
     private Integer status;

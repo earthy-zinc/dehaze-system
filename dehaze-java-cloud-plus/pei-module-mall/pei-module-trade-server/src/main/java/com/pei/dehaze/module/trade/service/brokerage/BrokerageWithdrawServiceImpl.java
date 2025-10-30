@@ -3,6 +3,7 @@ package com.pei.dehaze.module.trade.service.brokerage;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjectUtil;
+import com.google.common.base.Objects;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
@@ -28,7 +29,6 @@ import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawTypeEnum;
 import com.pei.dehaze.module.trade.framework.order.config.TradeOrderProperties;
 import com.pei.dehaze.module.trade.service.brokerage.bo.BrokerageWithdrawSummaryRespBO;
 import com.pei.dehaze.module.trade.service.config.TradeConfigService;
-import com.google.common.base.Objects;
 import jakarta.annotation.Resource;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
@@ -115,6 +115,14 @@ public class BrokerageWithdrawServiceImpl implements BrokerageWithdrawService {
         }
     }
 
+    private BrokerageWithdrawDO validateBrokerageWithdrawExists(Long id) {
+        BrokerageWithdrawDO withdraw = brokerageWithdrawMapper.selectById(id);
+        if (withdraw == null) {
+            throw exception(BROKERAGE_WITHDRAW_NOT_EXISTS);
+        }
+        return withdraw;
+    }
+
     private void auditBrokerageWithdrawSuccess(BrokerageWithdrawDO withdraw) {
         // 情况一：通过 API 转账
         if (BrokerageWithdrawTypeEnum.isApi(withdraw.getType())) {
@@ -160,14 +168,6 @@ public class BrokerageWithdrawServiceImpl implements BrokerageWithdrawService {
                 .setPayTransferId(transferRespDTO.getId()).setTransferChannelCode(channelCode));
     }
 
-    private BrokerageWithdrawDO validateBrokerageWithdrawExists(Long id) {
-        BrokerageWithdrawDO withdraw = brokerageWithdrawMapper.selectById(id);
-        if (withdraw == null) {
-            throw exception(BROKERAGE_WITHDRAW_NOT_EXISTS);
-        }
-        return withdraw;
-    }
-
     @Override
     public BrokerageWithdrawDO getBrokerageWithdraw(Long id) {
         return brokerageWithdrawMapper.selectById(id);
@@ -201,6 +201,20 @@ public class BrokerageWithdrawServiceImpl implements BrokerageWithdrawService {
     }
 
     /**
+     * 校验提现金额要求
+     *
+     * @param withdrawPrice 提现金额
+     * @return 分销配置
+     */
+    private TradeConfigDO validateWithdrawPrice(Integer withdrawPrice) {
+        TradeConfigDO tradeConfig = tradeConfigService.getTradeConfig();
+        if (tradeConfig.getBrokerageWithdrawMinPrice() != null && withdrawPrice < tradeConfig.getBrokerageWithdrawMinPrice()) {
+            throw exception(BROKERAGE_WITHDRAW_MIN_PRICE, MoneyUtils.fenToYuanStr(tradeConfig.getBrokerageWithdrawMinPrice()));
+        }
+        return tradeConfig;
+    }
+
+    /**
      * 计算提现手续费
      *
      * @param withdrawPrice 提现金额
@@ -213,20 +227,6 @@ public class BrokerageWithdrawServiceImpl implements BrokerageWithdrawService {
             feePrice = MoneyUtils.calculateRatePrice(withdrawPrice, Double.valueOf(percent));
         }
         return feePrice;
-    }
-
-    /**
-     * 校验提现金额要求
-     *
-     * @param withdrawPrice 提现金额
-     * @return 分销配置
-     */
-    private TradeConfigDO validateWithdrawPrice(Integer withdrawPrice) {
-        TradeConfigDO tradeConfig = tradeConfigService.getTradeConfig();
-        if (tradeConfig.getBrokerageWithdrawMinPrice() != null && withdrawPrice < tradeConfig.getBrokerageWithdrawMinPrice()) {
-            throw exception(BROKERAGE_WITHDRAW_MIN_PRICE, MoneyUtils.fenToYuanStr(tradeConfig.getBrokerageWithdrawMinPrice()));
-        }
-        return tradeConfig;
     }
 
     @Override

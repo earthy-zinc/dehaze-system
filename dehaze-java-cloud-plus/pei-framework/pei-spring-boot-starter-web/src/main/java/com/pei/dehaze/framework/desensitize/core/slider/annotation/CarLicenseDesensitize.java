@@ -1,8 +1,8 @@
 package com.pei.dehaze.framework.desensitize.core.slider.annotation;
 
+import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 import com.pei.dehaze.framework.desensitize.core.base.annotation.DesensitizeBy;
 import com.pei.dehaze.framework.desensitize.core.slider.handler.CarLicenseDesensitization;
-import com.fasterxml.jackson.annotation.JacksonAnnotationsInside;
 
 import java.lang.annotation.*;
 
@@ -35,7 +35,7 @@ public @interface CarLicenseDesensitize {
 
     /**
      * 是否禁用脱敏
-     *
+     * <p>
      * 支持 Spring EL 表达式，如果返回 true 则跳过脱敏
      */
     String disable() default "";

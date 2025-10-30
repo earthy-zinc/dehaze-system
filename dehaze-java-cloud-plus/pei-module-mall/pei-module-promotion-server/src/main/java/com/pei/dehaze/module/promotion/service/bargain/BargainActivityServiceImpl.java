@@ -106,25 +106,6 @@ public class BargainActivityServiceImpl implements BargainActivityService {
                 .setStatus(CommonStatusEnum.DISABLE.getStatus()));
     }
 
-    private void validateBargainConflict(Long spuId, Long activityId) {
-        // 查询所有开启的砍价活动
-        List<BargainActivityDO> activityList = bargainActivityMapper.selectListByStatus(CommonStatusEnum.ENABLE.getStatus());
-        if (activityId != null) { // 更新时排除自己
-            activityList.removeIf(item -> ObjectUtil.equal(item.getId(), activityId));
-        }
-        // 校验商品 spu 是否参加了其它活动
-        if (anyMatch(activityList, activity -> ObjectUtil.equal(activity.getSpuId(), spuId))) {
-            throw exception(BARGAIN_ACTIVITY_SPU_CONFLICTS);
-        }
-    }
-
-    private void validateSku(Long skuId) {
-        ProductSkuRespDTO sku = productSkuApi.getSku(skuId).getCheckedData();
-        if (sku == null) {
-            throw exception(SKU_NOT_EXISTS);
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteBargainActivity(Long id) {
@@ -137,14 +118,6 @@ public class BargainActivityServiceImpl implements BargainActivityService {
 
         // 删除
         bargainActivityMapper.deleteById(id);
-    }
-
-    private BargainActivityDO validateBargainActivityExists(Long id) {
-        BargainActivityDO activityDO = bargainActivityMapper.selectById(id);
-        if (activityDO == null) {
-            throw exception(BARGAIN_ACTIVITY_NOT_EXISTS);
-        }
-        return activityDO;
     }
 
     @Override
@@ -194,6 +167,33 @@ public class BargainActivityServiceImpl implements BargainActivityService {
     @Override
     public BargainActivityDO getMatchBargainActivityBySpuId(Long spuId) {
         return bargainActivityMapper.selectBySpuIdAndStatusAndNow(spuId, CommonStatusEnum.ENABLE.getStatus());
+    }
+
+    private BargainActivityDO validateBargainActivityExists(Long id) {
+        BargainActivityDO activityDO = bargainActivityMapper.selectById(id);
+        if (activityDO == null) {
+            throw exception(BARGAIN_ACTIVITY_NOT_EXISTS);
+        }
+        return activityDO;
+    }
+
+    private void validateBargainConflict(Long spuId, Long activityId) {
+        // 查询所有开启的砍价活动
+        List<BargainActivityDO> activityList = bargainActivityMapper.selectListByStatus(CommonStatusEnum.ENABLE.getStatus());
+        if (activityId != null) { // 更新时排除自己
+            activityList.removeIf(item -> ObjectUtil.equal(item.getId(), activityId));
+        }
+        // 校验商品 spu 是否参加了其它活动
+        if (anyMatch(activityList, activity -> ObjectUtil.equal(activity.getSpuId(), spuId))) {
+            throw exception(BARGAIN_ACTIVITY_SPU_CONFLICTS);
+        }
+    }
+
+    private void validateSku(Long skuId) {
+        ProductSkuRespDTO sku = productSkuApi.getSku(skuId).getCheckedData();
+        if (sku == null) {
+            throw exception(SKU_NOT_EXISTS);
+        }
     }
 
 }

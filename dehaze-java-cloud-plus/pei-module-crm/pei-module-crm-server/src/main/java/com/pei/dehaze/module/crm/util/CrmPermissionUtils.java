@@ -2,6 +2,9 @@ package com.pei.dehaze.module.crm.util;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
+import com.github.yulichang.autoconfigure.MybatisPlusJoinProperties;
+import com.github.yulichang.wrapper.MPJLambdaWrapper;
 import com.pei.dehaze.module.crm.dal.dataobject.permission.CrmPermissionDO;
 import com.pei.dehaze.module.crm.enums.common.CrmBizTypeEnum;
 import com.pei.dehaze.module.crm.enums.common.CrmSceneTypeEnum;
@@ -10,9 +13,6 @@ import com.pei.dehaze.module.system.api.permission.PermissionApi;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
 import com.pei.dehaze.module.system.api.user.dto.AdminUserRespDTO;
 import com.pei.dehaze.module.system.enums.permission.RoleCodeEnum;
-import com.baomidou.mybatisplus.core.toolkit.support.SFunction;
-import com.github.yulichang.autoconfigure.MybatisPlusJoinProperties;
-import com.github.yulichang.wrapper.MPJLambdaWrapper;
 
 import java.util.List;
 
@@ -25,16 +25,6 @@ import static com.pei.dehaze.framework.security.core.util.SecurityFrameworkUtils
  * @author HUIHUI
  */
 public class CrmPermissionUtils {
-
-    /**
-     * 校验用户是否是 CRM 管理员
-     *
-     * @return 是/否
-     */
-    public static boolean isCrmAdmin() {
-        PermissionApi permissionApi = SpringUtil.getBean(PermissionApi.class);
-        return permissionApi.hasAnyRoles(getLoginUserId(), RoleCodeEnum.CRM_ADMIN.getCode()).getCheckedData();
-    }
 
     /**
      * 构造 CRM 数据类型数据【分页】查询条件
@@ -61,7 +51,7 @@ public class CrmPermissionUtils {
             query.innerJoin(CrmPermissionDO.class, on -> on.eq(CrmPermissionDO::getBizType, bizType)
                     .eq(CrmPermissionDO::getBizId, bizId)
                     .in(CrmPermissionDO::getLevel, CrmPermissionLevelEnum.READ.getLevel(), CrmPermissionLevelEnum.WRITE.getLevel())
-                    .eq(CrmPermissionDO::getUserId,userId));
+                    .eq(CrmPermissionDO::getUserId, userId));
             query.ne(ownerUserIdField, userId);
         }
         // 场景三：下属负责的数据（下属是负责人）
@@ -74,6 +64,16 @@ public class CrmPermissionUtils {
                 query.in(ownerUserIdField, convertSet(subordinateUsers, AdminUserRespDTO::getId));
             }
         }
+    }
+
+    /**
+     * 校验用户是否是 CRM 管理员
+     *
+     * @return 是/否
+     */
+    public static boolean isCrmAdmin() {
+        PermissionApi permissionApi = SpringUtil.getBean(PermissionApi.class);
+        return permissionApi.hasAnyRoles(getLoginUserId(), RoleCodeEnum.CRM_ADMIN.getCode()).getCheckedData();
     }
 
 }

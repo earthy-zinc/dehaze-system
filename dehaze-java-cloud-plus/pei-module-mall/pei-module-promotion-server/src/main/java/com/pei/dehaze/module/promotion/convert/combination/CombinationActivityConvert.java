@@ -51,13 +51,15 @@ public interface CombinationActivityConvert {
 
     CombinationActivityDO convert(CombinationActivityUpdateReqVO bean);
 
-    CombinationActivityRespVO convert(CombinationActivityDO bean);
-
     CombinationProductRespVO convert(CombinationProductDO bean);
 
     default CombinationActivityRespVO convert(CombinationActivityDO activity, List<CombinationProductDO> products) {
         return convert(activity).setProducts(convertList2(products));
     }
+
+    CombinationActivityRespVO convert(CombinationActivityDO bean);
+
+    List<CombinationProductRespVO> convertList2(List<CombinationProductDO> productDOs);
 
     List<CombinationActivityRespVO> convertList(List<CombinationActivityDO> list);
 
@@ -84,7 +86,9 @@ public interface CombinationActivityConvert {
 
     PageResult<CombinationActivityPageItemRespVO> convertPage(PageResult<CombinationActivityDO> page);
 
-    List<CombinationProductRespVO> convertList2(List<CombinationProductDO> productDOs);
+    default List<CombinationProductDO> convertList(List<? extends CombinationProductBaseVO> products, CombinationActivityDO activity) {
+        return CollectionUtils.convertList(products, item -> convert(activity, item).setActivityStatus(activity.getStatus()));
+    }
 
     @Mappings({
             @Mapping(target = "id", ignore = true),
@@ -97,10 +101,6 @@ public interface CombinationActivityConvert {
     })
     CombinationProductDO convert(CombinationActivityDO activity, CombinationProductBaseVO product);
 
-    default List<CombinationProductDO> convertList(List<? extends CombinationProductBaseVO> products, CombinationActivityDO activity) {
-        return CollectionUtils.convertList(products, item -> convert(activity, item).setActivityStatus(activity.getStatus()));
-    }
-
     default List<CombinationProductDO> convertList(List<CombinationProductBaseVO> updateProductVOs,
                                                    List<CombinationProductDO> products, CombinationActivityDO activity) {
         Map<Long, Long> productMap = convertMap(products, CombinationProductDO::getSkuId, CombinationProductDO::getId);
@@ -108,8 +108,6 @@ public interface CombinationActivityConvert {
                 .setId(productMap.get(updateProductVO.getSkuId()))
                 .setActivityStatus(activity.getStatus()));
     }
-
-    CombinationRecordDO convert(CombinationRecordCreateReqDTO reqDTO);
 
     default CombinationRecordCreateRespDTO convert4(CombinationRecordDO combinationRecord) {
         return new CombinationRecordCreateRespDTO().setCombinationActivityId(combinationRecord.getActivityId())
@@ -128,26 +126,12 @@ public interface CombinationActivityConvert {
                 .setSpuName(spu.getName()).setPicUrl(sku.getPicUrl());
     }
 
+    CombinationRecordDO convert(CombinationRecordCreateReqDTO reqDTO);
+
     default List<CombinationActivityRespVO> convertList(List<CombinationActivityDO> list,
                                                         List<CombinationProductDO> productList,
                                                         List<ProductSpuRespDTO> spuList) {
         List<CombinationActivityRespVO> activityList = BeanUtils.toBean(list, CombinationActivityRespVO.class);
-        Map<Long, ProductSpuRespDTO> spuMap = convertMap(spuList, ProductSpuRespDTO::getId);
-        Map<Long, List<CombinationProductDO>> productMap = convertMultiMap(productList, CombinationProductDO::getActivityId);
-        return CollectionUtils.convertList(activityList, item -> {
-            // 设置 product 信息
-            item.setCombinationPrice(getMinValue(productMap.get(item.getId()), CombinationProductDO::getCombinationPrice));
-            // 设置 SPU 信息
-            findAndThen(spuMap, item.getSpuId(), spu -> item.setSpuName(spu.getName())
-                    .setPicUrl(spu.getPicUrl()).setMarketPrice(spu.getMarketPrice()));
-            return item;
-        });
-    }
-
-    default List<AppCombinationActivityRespVO> convertAppList(List<CombinationActivityDO> list,
-                                                              List<CombinationProductDO> productList,
-                                                              List<ProductSpuRespDTO> spuList) {
-        List<AppCombinationActivityRespVO> activityList = BeanUtils.toBean(list, AppCombinationActivityRespVO.class);
         Map<Long, ProductSpuRespDTO> spuMap = convertMap(spuList, ProductSpuRespDTO::getId);
         Map<Long, List<CombinationProductDO>> productMap = convertMultiMap(productList, CombinationProductDO::getActivityId);
         return CollectionUtils.convertList(activityList, item -> {
@@ -166,19 +150,29 @@ public interface CombinationActivityConvert {
         return new PageResult<>(convertAppList(result.getList(), productList, spuList), result.getTotal());
     }
 
-    AppCombinationActivityDetailRespVO convert2(CombinationActivityDO combinationActivity);
-
-    List<AppCombinationActivityDetailRespVO.Product> convertList1(List<CombinationProductDO> products);
+    default List<AppCombinationActivityRespVO> convertAppList(List<CombinationActivityDO> list,
+                                                              List<CombinationProductDO> productList,
+                                                              List<ProductSpuRespDTO> spuList) {
+        List<AppCombinationActivityRespVO> activityList = BeanUtils.toBean(list, AppCombinationActivityRespVO.class);
+        Map<Long, ProductSpuRespDTO> spuMap = convertMap(spuList, ProductSpuRespDTO::getId);
+        Map<Long, List<CombinationProductDO>> productMap = convertMultiMap(productList, CombinationProductDO::getActivityId);
+        return CollectionUtils.convertList(activityList, item -> {
+            // 设置 product 信息
+            item.setCombinationPrice(getMinValue(productMap.get(item.getId()), CombinationProductDO::getCombinationPrice));
+            // 设置 SPU 信息
+            findAndThen(spuMap, item.getSpuId(), spu -> item.setSpuName(spu.getName())
+                    .setPicUrl(spu.getPicUrl()).setMarketPrice(spu.getMarketPrice()));
+            return item;
+        });
+    }
 
     default AppCombinationActivityDetailRespVO convert3(CombinationActivityDO combinationActivity, List<CombinationProductDO> products) {
         return convert2(combinationActivity).setProducts(convertList1(products));
     }
 
-    List<AppCombinationRecordRespVO> convertList3(List<CombinationRecordDO> records);
+    AppCombinationActivityDetailRespVO convert2(CombinationActivityDO combinationActivity);
 
-    AppCombinationRecordRespVO convert(CombinationRecordDO record);
-
-    PageResult<CombinationRecordPageItemRespVO> convert(PageResult<CombinationRecordDO> result);
+    List<AppCombinationActivityDetailRespVO.Product> convertList1(List<CombinationProductDO> products);
 
     default PageResult<CombinationRecordPageItemRespVO> convert(PageResult<CombinationRecordDO> recordPage, List<CombinationActivityDO> activities, List<CombinationProductDO> products) {
         PageResult<CombinationRecordPageItemRespVO> result = convert(recordPage);
@@ -194,6 +188,8 @@ public interface CombinationActivityConvert {
         return result;
     }
 
+    PageResult<CombinationRecordPageItemRespVO> convert(PageResult<CombinationRecordDO> result);
+
     default AppCombinationRecordDetailRespVO convert(Long userId, CombinationRecordDO headRecord, List<CombinationRecordDO> memberRecords) {
         AppCombinationRecordDetailRespVO respVO = new AppCombinationRecordDetailRespVO()
                 .setHeadRecord(convert(headRecord)).setMemberRecords(convertList3(memberRecords));
@@ -205,6 +201,10 @@ public interface CombinationActivityConvert {
         respVO.setOrderId(userRecord == null ? null : userRecord.getOrderId());
         return respVO;
     }
+
+    AppCombinationRecordRespVO convert(CombinationRecordDO record);
+
+    List<AppCombinationRecordRespVO> convertList3(List<CombinationRecordDO> records);
 
     /**
      * 转换生成虚拟成团虚拟记录
@@ -225,6 +225,7 @@ public interface CombinationActivityConvert {
         }
         return createRecords;
     }
+
     @Mapping(target = "id", ignore = true)
     CombinationRecordDO convert5(CombinationRecordDO headRecord);
 

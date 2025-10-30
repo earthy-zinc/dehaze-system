@@ -24,7 +24,7 @@ public interface ErpStockService {
     /**
      * 基于产品 + 仓库，获得产品库存
      *
-     * @param productId 产品编号
+     * @param productId   产品编号
      * @param warehouseId 仓库编号
      * @return 产品库存
      */
@@ -32,7 +32,7 @@ public interface ErpStockService {
 
     /**
      * 获得产品库存数量
-     *
+     * <p>
      * 如果不存在库存记录，则返回 0
      *
      * @param productId 产品编号
@@ -51,9 +51,9 @@ public interface ErpStockService {
     /**
      * 增量更新产品库存数量
      *
-     * @param productId 产品编号
+     * @param productId   产品编号
      * @param warehouseId 仓库编号
-     * @param count 增量数量：正数，表示增加；负数，表示减少
+     * @param count       增量数量：正数，表示增加；负数，表示减少
      * @return 更新后的库存
      */
     BigDecimal updateStockCountIncrement(Long productId, Long warehouseId, BigDecimal count);

@@ -1,7 +1,5 @@
 package com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin;
 
-import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
-import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.github.binarywang.wxpay.bean.notify.WxPayRefundNotifyResult;
 import com.github.binarywang.wxpay.bean.request.WxPayMicropayRequest;
 import com.github.binarywang.wxpay.bean.request.WxPayRefundRequest;
@@ -13,6 +11,8 @@ import com.github.binarywang.wxpay.config.WxPayConfig;
 import com.github.binarywang.wxpay.exception.WxPayException;
 import com.github.binarywang.wxpay.service.WxPayService;
 import com.github.binarywang.wxpay.service.impl.WxPayServiceImpl;
+import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
+import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
@@ -51,6 +51,16 @@ public class WxBarPayClientIntegrationTest {
         WxPayMicropayResult response = client.micropay(request);
         System.out.println("========= response ==========");
         System.out.println(JsonUtils.toJsonPrettyString(response));
+    }
+
+    private WxPayConfig buildWxPayConfigV2() {
+        WxPayConfig config = new WxPayConfig();
+        config.setAppId("wx62056c0d5e8db250");
+        config.setMchId("1545083881");
+        config.setMchKey("dS1ngeN63JLr3NRbvPH9AJy3MyUxZdim");
+//        config.setSignType(WxPayConstants.SignType.MD5);
+        config.setKeyPath("/Users/yunai/Downloads/wx_pay/apiclient_cert.p12");
+        return config;
     }
 
     @Test
@@ -108,16 +118,6 @@ public class WxBarPayClientIntegrationTest {
         WxPayRefundV3Result response = client.refundV3(request);
         System.out.println("========= response ==========");
         System.out.println(JsonUtils.toJsonPrettyString(response));
-    }
-
-    private WxPayConfig buildWxPayConfigV2() {
-        WxPayConfig config = new WxPayConfig();
-        config.setAppId("wx62056c0d5e8db250");
-        config.setMchId("1545083881");
-        config.setMchKey("dS1ngeN63JLr3NRbvPH9AJy3MyUxZdim");
-//        config.setSignType(WxPayConstants.SignType.MD5);
-        config.setKeyPath("/Users/yunai/Downloads/wx_pay/apiclient_cert.p12");
-        return config;
     }
 
 }

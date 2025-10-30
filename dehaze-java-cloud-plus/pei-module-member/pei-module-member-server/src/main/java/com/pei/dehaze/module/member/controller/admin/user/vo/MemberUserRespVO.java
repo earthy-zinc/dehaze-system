@@ -31,7 +31,7 @@ public class MemberUserRespVO extends MemberUserBaseVO {
 
     // ========== 其它信息 ==========
 
-    @Schema(description = "积分", requiredMode  = Schema.RequiredMode.REQUIRED, example = "100")
+    @Schema(description = "积分", requiredMode = Schema.RequiredMode.REQUIRED, example = "100")
     private Integer point;
 
     @Schema(description = "总积分", requiredMode = Schema.RequiredMode.REQUIRED, example = "2000")
@@ -46,7 +46,7 @@ public class MemberUserRespVO extends MemberUserBaseVO {
     @Schema(description = "用户分组", example = "购物达人")
     private String groupName;
 
-    @Schema(description = "用户经验值", requiredMode  = Schema.RequiredMode.REQUIRED, example = "200")
+    @Schema(description = "用户经验值", requiredMode = Schema.RequiredMode.REQUIRED, example = "200")
     private Integer experience;
 
 }

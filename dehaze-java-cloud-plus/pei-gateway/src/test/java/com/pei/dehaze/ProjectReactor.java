@@ -102,6 +102,16 @@ public class ProjectReactor {
         return files;
     }
 
+    private static String getFileType(File file) {
+        return file.length() > 0 ? FileTypeUtil.getType(file) : "";
+    }
+
+    private static void copyFile(File file, String projectBaseDir,
+                                 String projectBaseDirNew, String packageNameNew, String artifactIdNew) {
+        String newPath = buildNewFilePath(file, projectBaseDir, projectBaseDirNew, packageNameNew, artifactIdNew);
+        FileUtil.copyFile(file, new File(newPath));
+    }
+
     private static String replaceFileContent(File file, String groupIdNew,
                                              String artifactIdNew, String packageNameNew,
                                              String titleNew) {
@@ -125,12 +135,6 @@ public class ProjectReactor {
         FileUtil.writeUtf8String(fileContent, newPath);
     }
 
-    private static void copyFile(File file, String projectBaseDir,
-                                 String projectBaseDirNew, String packageNameNew, String artifactIdNew) {
-        String newPath = buildNewFilePath(file, projectBaseDir, projectBaseDirNew, packageNameNew, artifactIdNew);
-        FileUtil.copyFile(file, new File(newPath));
-    }
-
     private static String buildNewFilePath(File file, String projectBaseDir,
                                            String projectBaseDirNew, String packageNameNew, String artifactIdNew) {
         return file.getPath().replace(projectBaseDir, projectBaseDirNew) // 新目录
@@ -138,9 +142,5 @@ public class ProjectReactor {
                         packageNameNew.replaceAll("\\.", Matcher.quoteReplacement(separator)))
                 .replace(ARTIFACT_ID, artifactIdNew) //
                 .replaceAll(StrUtil.upperFirst(ARTIFACT_ID), StrUtil.upperFirst(artifactIdNew));
-    }
-
-    private static String getFileType(File file) {
-        return file.length() > 0 ? FileTypeUtil.getType(file) : "";
     }
 }

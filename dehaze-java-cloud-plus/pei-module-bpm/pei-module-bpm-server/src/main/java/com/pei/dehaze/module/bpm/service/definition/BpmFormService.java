@@ -15,7 +15,7 @@ import java.util.Map;
 /**
  * 动态表单 Service 接口
  *
- * @author  @风里雾里
+ * @author @风里雾里
  */
 public interface BpmFormService {
 
@@ -57,14 +57,6 @@ public interface BpmFormService {
     List<BpmFormDO> getFormList();
 
     /**
-     * 获得动态表单列表
-     *
-     * @param ids 编号
-     * @return 动态表单列表
-     */
-    List<BpmFormDO> getFormList(Collection<Long> ids);
-
-    /**
      * 获得动态表单 Map
      *
      * @param ids 编号
@@ -73,6 +65,14 @@ public interface BpmFormService {
     default Map<Long, BpmFormDO> getFormMap(Collection<Long> ids) {
         return CollectionUtils.convertMap(this.getFormList(ids), BpmFormDO::getId);
     }
+
+    /**
+     * 获得动态表单列表
+     *
+     * @param ids 编号
+     * @return 动态表单列表
+     */
+    List<BpmFormDO> getFormList(Collection<Long> ids);
 
     /**
      * 获得动态表单分页

@@ -33,13 +33,13 @@ public class DeepSeekChatModel implements ChatModel {
     }
 
     @Override
-    public Flux<ChatResponse> stream(Prompt prompt) {
-        return openAiChatModel.stream(prompt);
+    public ChatOptions getDefaultOptions() {
+        return openAiChatModel.getDefaultOptions();
     }
 
     @Override
-    public ChatOptions getDefaultOptions() {
-        return openAiChatModel.getDefaultOptions();
+    public Flux<ChatResponse> stream(Prompt prompt) {
+        return openAiChatModel.stream(prompt);
     }
 
 }

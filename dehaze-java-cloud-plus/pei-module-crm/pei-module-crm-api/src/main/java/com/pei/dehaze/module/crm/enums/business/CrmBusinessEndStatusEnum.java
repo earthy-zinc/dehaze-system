@@ -30,16 +30,16 @@ public enum CrmBusinessEndStatusEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static CrmBusinessEndStatusEnum fromStatus(Integer status) {
         return Arrays.stream(values())
                 .filter(value -> value.getStatus().equals(status))
                 .findFirst()
                 .orElse(null);
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

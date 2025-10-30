@@ -33,7 +33,7 @@ public class AiKnowledgeSaveReqVO {
     @NotNull(message = "相似性阈值不能为空")
     private Double similarityThreshold;
 
-    @Schema(description = "是否启用",  requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
+    @Schema(description = "是否启用", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     @NotNull(message = "是否启用不能为空")
     @InEnum(CommonStatusEnum.class)
     private Integer status;

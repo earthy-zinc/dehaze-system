@@ -5,7 +5,8 @@ import jakarta.validation.constraints.NotEmpty;
 import lombok.Data;
 
 /**
- * @see <a href="https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/qr-code/getUnlimitedQRCode.html">获取不限制的小程序码</a>
+ * @see <a
+ * href="https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/qr-code/getUnlimitedQRCode.html">获取不限制的小程序码</a>
  */
 @Schema(description = "RPC 服务 - 获得获取小程序码 Request DTO")
 @Data
@@ -29,7 +30,7 @@ public class SocialWxQrcodeReqDTO {
     public static final Boolean CHECK_PATH = true;
     /**
      * 是否需要透明底色
-     *
+     * <p>
      * hyaline 为 true 时，生成透明底色的小程序码
      */
     public static final Boolean HYALINE = true;

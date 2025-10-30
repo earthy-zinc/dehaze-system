@@ -3,6 +3,8 @@ package com.pei.dehaze.module.system.service.permission;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Lists;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.system.controller.admin.permission.vo.menu.MenuListReqVO;
@@ -12,8 +14,6 @@ import com.pei.dehaze.module.system.dal.mysql.permission.MenuMapper;
 import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
 import com.pei.dehaze.module.system.enums.permission.MenuTypeEnum;
 import com.pei.dehaze.module.system.service.tenant.TenantService;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Lists;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -120,7 +120,7 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     public List<MenuDO> filterDisableMenus(List<MenuDO> menuList) {
-        if (CollUtil.isEmpty(menuList)){
+        if (CollUtil.isEmpty(menuList)) {
             return Collections.emptyList();
         }
         Map<Long, MenuDO> menuMap = convertMap(menuList, MenuDO::getId);
@@ -135,33 +135,6 @@ public class MenuServiceImpl implements MenuService {
             enabledMenus.add(menu);
         }
         return enabledMenus;
-    }
-
-    private boolean isMenuDisabled(MenuDO node, Map<Long, MenuDO> menuMap, Set<Long> disabledMenuCache) {
-        // 如果已经判定是禁用的节点，直接结束
-        if (disabledMenuCache.contains(node.getId())) {
-            return true;
-        }
-
-        // 1. 先判断自身是否禁用
-        if (CommonStatusEnum.isDisable(node.getStatus())) {
-            disabledMenuCache.add(node.getId());
-            return true;
-        }
-
-        // 2. 遍历到 parentId 为根节点，则无需判断
-        Long parentId = node.getParentId();
-        if (ObjUtil.equal(parentId, ID_ROOT)) {
-            return false;
-        }
-
-        // 3. 继续遍历 parent 节点
-        MenuDO parent = menuMap.get(parentId);
-        if (parent == null || isMenuDisabled(parent, menuMap, disabledMenuCache)) {
-            disabledMenuCache.add(node.getId());
-            return true;
-        }
-        return false;
     }
 
     @Override
@@ -193,9 +166,7 @@ public class MenuServiceImpl implements MenuService {
     /**
      * 校验父菜单是否合法
      * <p>
-     * 1. 不能设置自己为父菜单
-     * 2. 父菜单不存在
-     * 3. 父菜单必须是 {@link MenuTypeEnum#MENU} 菜单类型
+     * 1. 不能设置自己为父菜单 2. 父菜单不存在 3. 父菜单必须是 {@link MenuTypeEnum#MENU} 菜单类型
      *
      * @param parentId 父菜单编号
      * @param childId  当前菜单编号
@@ -284,6 +255,33 @@ public class MenuServiceImpl implements MenuService {
             menu.setIcon("");
             menu.setPath("");
         }
+    }
+
+    private boolean isMenuDisabled(MenuDO node, Map<Long, MenuDO> menuMap, Set<Long> disabledMenuCache) {
+        // 如果已经判定是禁用的节点，直接结束
+        if (disabledMenuCache.contains(node.getId())) {
+            return true;
+        }
+
+        // 1. 先判断自身是否禁用
+        if (CommonStatusEnum.isDisable(node.getStatus())) {
+            disabledMenuCache.add(node.getId());
+            return true;
+        }
+
+        // 2. 遍历到 parentId 为根节点，则无需判断
+        Long parentId = node.getParentId();
+        if (ObjUtil.equal(parentId, ID_ROOT)) {
+            return false;
+        }
+
+        // 3. 继续遍历 parent 节点
+        MenuDO parent = menuMap.get(parentId);
+        if (parent == null || isMenuDisabled(parent, menuMap, disabledMenuCache)) {
+            disabledMenuCache.add(node.getId());
+            return true;
+        }
+        return false;
     }
 
 }

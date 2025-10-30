@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.iot.controller.admin.thingmodel.model.dataType;
 
-import com.pei.dehaze.module.iot.enums.thingmodel.IotThingModelAccessModeEnum;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.pei.dehaze.module.iot.enums.thingmodel.IotThingModelAccessModeEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -27,7 +27,7 @@ public class ThingModelStructDataSpecs extends ThingModelDataSpecs {
     private String name;
     /**
      * 云端可以对该属性进行的操作类型
-     *
+     * <p>
      * 枚举 {@link IotThingModelAccessModeEnum}
      */
     private String accessMode;

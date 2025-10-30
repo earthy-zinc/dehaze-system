@@ -7,8 +7,7 @@ import com.pei.dehaze.module.trade.framework.aftersale.core.aop.AfterSaleLogAspe
 import java.util.Map;
 
 /**
- * 操作日志工具类
- * 目前主要的作用，是提供给业务代码，记录操作明细和拓展字段
+ * 操作日志工具类 目前主要的作用，是提供给业务代码，记录操作明细和拓展字段
  *
  * @author earthyzinc
  */

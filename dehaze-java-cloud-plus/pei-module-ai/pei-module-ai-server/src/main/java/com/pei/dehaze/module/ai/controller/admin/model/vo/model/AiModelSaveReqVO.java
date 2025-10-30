@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.ai.controller.admin.model.vo.model;
 
-import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.validation.InEnum;
+import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;

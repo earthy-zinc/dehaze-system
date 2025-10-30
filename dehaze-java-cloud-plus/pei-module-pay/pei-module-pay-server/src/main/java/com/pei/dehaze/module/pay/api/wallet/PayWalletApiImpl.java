@@ -12,7 +12,7 @@ import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import static com.pei.dehaze.framework.common.pojo.CommonResult.*;
+import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 
 /**
  * 钱包 API 实现类

@@ -44,15 +44,6 @@ public class AppDiyTemplateController {
         return success(buildVo(diyTemplate));
     }
 
-    @GetMapping("/get")
-    @Operation(summary = "获得装修模板")
-    @Parameter(name = "id", description = "编号", required = true, example = "1024")
-    @PermitAll
-    public CommonResult<AppDiyTemplatePropertyRespVO> getDiyTemplate(@RequestParam("id") Long id) {
-        DiyTemplateDO diyTemplate = diyTemplateService.getDiyTemplate(id);
-        return success(buildVo(diyTemplate));
-    }
-
     private AppDiyTemplatePropertyRespVO buildVo(DiyTemplateDO diyTemplate) {
         if (diyTemplate == null) {
             return null;
@@ -63,6 +54,15 @@ public class AppDiyTemplateController {
         String user = findFirst(pages, page -> DiyPageEnum.MY.getName().equals(page.getName()), DiyPageDO::getProperty);
         // 拼接返回
         return DiyTemplateConvert.INSTANCE.convertPropertyVo2(diyTemplate, home, user);
+    }
+
+    @GetMapping("/get")
+    @Operation(summary = "获得装修模板")
+    @Parameter(name = "id", description = "编号", required = true, example = "1024")
+    @PermitAll
+    public CommonResult<AppDiyTemplatePropertyRespVO> getDiyTemplate(@RequestParam("id") Long id) {
+        DiyTemplateDO diyTemplate = diyTemplateService.getDiyTemplate(id);
+        return success(buildVo(diyTemplate));
     }
 
 }

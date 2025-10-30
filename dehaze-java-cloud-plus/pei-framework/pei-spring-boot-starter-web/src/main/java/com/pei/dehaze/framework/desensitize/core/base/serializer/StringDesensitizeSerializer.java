@@ -5,14 +5,14 @@ import cn.hutool.core.lang.Singleton;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ReflectUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.framework.desensitize.core.base.annotation.DesensitizeBy;
-import com.pei.dehaze.framework.desensitize.core.base.handler.DesensitizationHandler;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.BeanProperty;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.ContextualSerializer;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
+import com.pei.dehaze.framework.desensitize.core.base.annotation.DesensitizeBy;
+import com.pei.dehaze.framework.desensitize.core.base.handler.DesensitizationHandler;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -22,7 +22,7 @@ import java.lang.reflect.Field;
 
 /**
  * 脱敏序列化器
- *
+ * <p>
  * 实现 JSON 返回数据时，使用 {@link DesensitizationHandler} 对声明脱敏注解的字段，进行脱敏处理。
  *
  * @author gaibu

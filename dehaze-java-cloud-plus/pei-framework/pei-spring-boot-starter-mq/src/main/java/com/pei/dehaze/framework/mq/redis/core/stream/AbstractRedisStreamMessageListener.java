@@ -19,7 +19,6 @@ import java.util.List;
  * Redis Stream 监听器抽象类，用于实现集群消费
  *
  * @param <T> 消息类型。一定要填写噢，不然会报错
- *
  * @author earthyzinc
  */
 public abstract class AbstractRedisStreamMessageListener<T extends AbstractRedisStreamMessage>
@@ -53,6 +52,20 @@ public abstract class AbstractRedisStreamMessageListener<T extends AbstractRedis
         this.streamKey = messageType.getDeclaredConstructor().newInstance().getStreamKey();
     }
 
+    /**
+     * 通过解析类上的泛型，获得消息类型
+     *
+     * @return 消息类型
+     */
+    @SuppressWarnings("unchecked")
+    private Class<T> getMessageClass() {
+        Type type = TypeUtil.getTypeArgument(getClass(), 0);
+        if (type == null) {
+            throw new IllegalStateException(String.format("类型(%s) 需要设置消息类型", getClass().getName()));
+        }
+        return (Class<T>) type;
+    }
+
     @Override
     public void onMessage(ObjectRecord<String, String> message) {
         // 消费消息
@@ -73,33 +86,19 @@ public abstract class AbstractRedisStreamMessageListener<T extends AbstractRedis
         }
     }
 
-    /**
-     * 处理消息
-     *
-     * @param message 消息
-     */
-    public abstract void onMessage(T message);
-
-    /**
-     * 通过解析类上的泛型，获得消息类型
-     *
-     * @return 消息类型
-     */
-    @SuppressWarnings("unchecked")
-    private Class<T> getMessageClass() {
-        Type type = TypeUtil.getTypeArgument(getClass(), 0);
-        if (type == null) {
-            throw new IllegalStateException(String.format("类型(%s) 需要设置消息类型", getClass().getName()));
-        }
-        return (Class<T>) type;
-    }
-
     private void consumeMessageBefore(AbstractRedisMessage message) {
         assert redisMQTemplate != null;
         List<RedisMessageInterceptor> interceptors = redisMQTemplate.getInterceptors();
         // 正序
         interceptors.forEach(interceptor -> interceptor.consumeMessageBefore(message));
     }
+
+    /**
+     * 处理消息
+     *
+     * @param message 消息
+     */
+    public abstract void onMessage(T message);
 
     private void consumeMessageAfter(AbstractRedisMessage message) {
         assert redisMQTemplate != null;

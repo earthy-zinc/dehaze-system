@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.erp.dal.dataobject.finance;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.erp.dal.dataobject.sale.ErpSaleOutDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.erp.dal.dataobject.sale.ErpSaleOutDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -31,26 +31,26 @@ public class ErpFinanceReceiptItemDO extends BaseDO {
     private Long id;
     /**
      * 收款单编号
-     *
+     * <p>
      * 关联 {@link ErpFinanceReceiptDO#getId()}
      */
     private Long receiptId;
 
     /**
      * 业务类型
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.erp.enums.common.ErpBizTypeEnum} 的销售出库、退货
      */
     private Integer bizType;
     /**
      * 业务编号
-     *
+     * <p>
      * 例如说：{@link ErpSaleOutDO#getId()}
      */
     private Long bizId;
     /**
      * 业务单号
-     *
+     * <p>
      * 例如说：{@link ErpSaleOutDO#getNo()}
      */
     private String bizNo;

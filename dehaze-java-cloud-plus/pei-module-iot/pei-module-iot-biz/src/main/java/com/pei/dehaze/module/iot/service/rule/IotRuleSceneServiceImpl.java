@@ -61,7 +61,18 @@ public class IotRuleSceneServiceImpl implements IotRuleSceneService {
     @Resource(name = "iotSchedulerManager")
     private IotSchedulerManager schedulerManager;
 
-    // TODO 芋艿，缓存待实现
+    public static void main2(String[] args) throws SchedulerException {
+//        System.out.println(QuartzJobBean.class);
+        Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
+        scheduler.start();
+
+        String jobHandlerName = "123";
+        // 暂停 Trigger 对象
+        scheduler.pauseTrigger(new TriggerKey(jobHandlerName));
+        // 取消并删除 Job 调度
+        scheduler.unscheduleJob(new TriggerKey(jobHandlerName));
+        scheduler.deleteJob(new JobKey(jobHandlerName));
+    }    // TODO 芋艿，缓存待实现
     @Override
     @TenantIgnore // 忽略租户隔离：因为 IotRuleSceneMessageHandler 调用时，一般未传递租户，所以需要忽略
     public List<IotRuleSceneDO> getRuleSceneListByProductKeyAndDeviceNameFromCache(String productKey, String deviceName) {
@@ -299,6 +310,7 @@ public class IotRuleSceneServiceImpl implements IotRuleSceneService {
     }
 
     // TODO @芋艿：【可优化】可以考虑增加下单测，边界太多了。
+
     /**
      * 判断触发器的条件参数是否匹配
      *
@@ -410,7 +422,7 @@ public class IotRuleSceneServiceImpl implements IotRuleSceneService {
             schedulerManager.addOrUpdateJob(IotRuleSceneJob.class,
                     IotRuleSceneJob.buildJobName(id),
                     "0/10 * * * * ?",
-                        jobDataMap);
+                    jobDataMap);
         }
         if (false) {
             Long id = 1L;
@@ -422,17 +434,6 @@ public class IotRuleSceneServiceImpl implements IotRuleSceneService {
         }
     }
 
-    public static void main2(String[] args) throws SchedulerException {
-//        System.out.println(QuartzJobBean.class);
-        Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
-        scheduler.start();
 
-        String jobHandlerName = "123";
-        // 暂停 Trigger 对象
-        scheduler.pauseTrigger(new TriggerKey(jobHandlerName));
-        // 取消并删除 Job 调度
-        scheduler.unscheduleJob(new TriggerKey(jobHandlerName));
-        scheduler.deleteJob(new JobKey(jobHandlerName));
-    }
 
 }

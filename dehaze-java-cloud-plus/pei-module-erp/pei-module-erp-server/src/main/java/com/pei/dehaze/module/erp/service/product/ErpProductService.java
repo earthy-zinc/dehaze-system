@@ -67,14 +67,6 @@ public interface ErpProductService {
     List<ErpProductRespVO> getProductVOListByStatus(Integer status);
 
     /**
-     * 获得产品 VO 列表
-     *
-     * @param ids 编号数组
-     * @return 产品 VO 列表
-     */
-    List<ErpProductRespVO> getProductVOList(Collection<Long> ids);
-
-    /**
      * 获得产品 VO Map
      *
      * @param ids 编号数组
@@ -83,6 +75,14 @@ public interface ErpProductService {
     default Map<Long, ErpProductRespVO> getProductVOMap(Collection<Long> ids) {
         return convertMap(getProductVOList(ids), ErpProductRespVO::getId);
     }
+
+    /**
+     * 获得产品 VO 列表
+     *
+     * @param ids 编号数组
+     * @return 产品 VO 列表
+     */
+    List<ErpProductRespVO> getProductVOList(Collection<Long> ids);
 
     /**
      * 获得产品 VO 分页

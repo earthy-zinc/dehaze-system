@@ -65,6 +65,17 @@ public class CrmPermissionAspect {
         bizIds.forEach(bizId -> validatePermission(bizType, multiMap.get(bizId), permissionLevel));
     }
 
+    private static Map<String, Object> parseExpressions(JoinPoint joinPoint, CrmPermission crmPermission) {
+        // 1. 需要解析的表达式
+        List<String> expressionStrings = new ArrayList<>(2);
+        expressionStrings.add(crmPermission.bizId());
+        if (StrUtil.isNotEmpty(crmPermission.bizTypeValue())) { // 为空则表示 bizType 有值
+            expressionStrings.add(crmPermission.bizTypeValue());
+        }
+        // 2. 执行解析
+        return SpringExpressionUtils.parseExpressions(joinPoint, expressionStrings);
+    }
+
     private void validatePermission(Integer bizType, List<CrmPermissionDO> bizPermissions, Integer permissionLevel) {
         // 1. 如果是超级管理员则直接通过
         if (CrmPermissionUtils.isCrmAdmin()) {
@@ -111,10 +122,19 @@ public class CrmPermissionAspect {
     }
 
     /**
+     * 获得用户编号
+     *
+     * @return 用户编号
+     */
+    private static Long getUserId() {
+        return WebFrameworkUtils.getLoginUserId();
+    }
+
+    /**
      * 校验用户权限是否有效
      *
-     * @param userPermission   用户拥有的权限
-     * @param permissionLevel  需要的权限级别
+     * @param userPermission  用户拥有的权限
+     * @param permissionLevel 需要的权限级别
      * @return 是否有效
      */
     @SuppressWarnings("RedundantIfStatement")
@@ -137,26 +157,6 @@ public class CrmPermissionAspect {
             }
         }
         return false;
-    }
-
-    /**
-     * 获得用户编号
-     *
-     * @return 用户编号
-     */
-    private static Long getUserId() {
-        return WebFrameworkUtils.getLoginUserId();
-    }
-
-    private static Map<String, Object> parseExpressions(JoinPoint joinPoint, CrmPermission crmPermission) {
-        // 1. 需要解析的表达式
-        List<String> expressionStrings = new ArrayList<>(2);
-        expressionStrings.add(crmPermission.bizId());
-        if (StrUtil.isNotEmpty(crmPermission.bizTypeValue())) { // 为空则表示 bizType 有值
-            expressionStrings.add(crmPermission.bizTypeValue());
-        }
-        // 2. 执行解析
-        return SpringExpressionUtils.parseExpressions(joinPoint, expressionStrings);
     }
 
 }

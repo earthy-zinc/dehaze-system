@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * IoT 物模型中的属性
- *
+ * <p>
  * dataSpecs 和 dataSpecsList 之中必须传入且只能传入一个
  *
  * @author HUIHUI
@@ -33,7 +33,7 @@ public class ThingModelProperty {
     private String name;
     /**
      * 云端可以对该属性进行的操作类型
-     *
+     * <p>
      * 枚举 {@link IotThingModelAccessModeEnum}
      */
     @NotEmpty(message = "操作类型不能为空")
@@ -45,7 +45,7 @@ public class ThingModelProperty {
     private Boolean required;
     /**
      * 参数值的数据类型，与 dataSpecs 的 dataType 保持一致
-     *
+     * <p>
      * 枚举 {@link IotDataSpecsDataTypeEnum}
      */
     @NotEmpty(message = "数据类型不能为空")

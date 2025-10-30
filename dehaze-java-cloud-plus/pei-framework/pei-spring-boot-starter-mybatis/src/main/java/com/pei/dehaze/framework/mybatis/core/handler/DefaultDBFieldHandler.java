@@ -1,8 +1,8 @@
 package com.pei.dehaze.framework.mybatis.core.handler;
 
+import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.framework.web.core.util.WebFrameworkUtils;
-import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import org.apache.ibatis.reflection.MetaObject;
 
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.util.Objects;
 
 /**
  * 通用参数填充实现类
- *
+ * <p>
  * 如果没有显式的对通用参数进行赋值，这里会对通用参数进行填充、赋值
  *
  * @author hexiaowu

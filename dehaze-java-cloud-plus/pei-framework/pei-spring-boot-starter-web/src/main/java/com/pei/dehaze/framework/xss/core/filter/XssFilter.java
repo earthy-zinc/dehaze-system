@@ -2,14 +2,14 @@ package com.pei.dehaze.framework.xss.core.filter;
 
 import com.pei.dehaze.framework.xss.config.XssProperties;
 import com.pei.dehaze.framework.xss.core.clean.XssCleaner;
-import lombok.AllArgsConstructor;
-import org.springframework.util.PathMatcher;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.AllArgsConstructor;
+import org.springframework.util.PathMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
 
 /**
@@ -32,12 +32,6 @@ public class XssFilter extends OncePerRequestFilter {
     private final XssCleaner xssCleaner;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-            throws IOException, ServletException {
-        filterChain.doFilter(new XssRequestWrapper(request, xssCleaner), response);
-    }
-
-    @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         // 如果关闭，则不过滤
         if (!properties.isEnable()) {
@@ -47,6 +41,12 @@ public class XssFilter extends OncePerRequestFilter {
         // 如果匹配到无需过滤，则不过滤
         String uri = request.getRequestURI();
         return properties.getExcludeUrls().stream().anyMatch(excludeUrl -> pathMatcher.match(excludeUrl, uri));
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws IOException, ServletException {
+        filterChain.doFilter(new XssRequestWrapper(request, xssCleaner), response);
     }
 
 }

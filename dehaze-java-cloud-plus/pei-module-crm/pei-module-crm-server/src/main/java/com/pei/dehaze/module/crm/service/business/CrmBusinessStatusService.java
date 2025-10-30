@@ -73,14 +73,6 @@ public interface CrmBusinessStatusService {
     PageResult<CrmBusinessStatusTypeDO> getBusinessStatusTypePage(PageParam pageReqVO);
 
     /**
-     * 获得商机状态组列表
-     *
-     * @param ids 编号数组
-     * @return 商机状态组列表
-     */
-    List<CrmBusinessStatusTypeDO> getBusinessStatusTypeList(Collection<Long> ids);
-
-    /**
      * 获得商机状态组 Map
      *
      * @param ids 编号数组
@@ -91,20 +83,20 @@ public interface CrmBusinessStatusService {
     }
 
     /**
+     * 获得商机状态组列表
+     *
+     * @param ids 编号数组
+     * @return 商机状态组列表
+     */
+    List<CrmBusinessStatusTypeDO> getBusinessStatusTypeList(Collection<Long> ids);
+
+    /**
      * 获得指定类型的商机状态列表
      *
      * @param typeId 商机状态组编号
      * @return 商机状态列表
      */
     List<CrmBusinessStatusDO> getBusinessStatusListByTypeId(Long typeId);
-
-    /**
-     * 获得商机状态列表
-     *
-     * @param ids 编号数组
-     * @return 商机状态列表
-     */
-    List<CrmBusinessStatusDO> getBusinessStatusList(Collection<Long> ids);
 
     /**
      * 获得商机状态 Map
@@ -115,6 +107,14 @@ public interface CrmBusinessStatusService {
     default Map<Long, CrmBusinessStatusDO> getBusinessStatusMap(Collection<Long> ids) {
         return convertMap(getBusinessStatusList(ids), CrmBusinessStatusDO::getId);
     }
+
+    /**
+     * 获得商机状态列表
+     *
+     * @param ids 编号数组
+     * @return 商机状态列表
+     */
+    List<CrmBusinessStatusDO> getBusinessStatusList(Collection<Long> ids);
 
     /**
      * 获得商机状态

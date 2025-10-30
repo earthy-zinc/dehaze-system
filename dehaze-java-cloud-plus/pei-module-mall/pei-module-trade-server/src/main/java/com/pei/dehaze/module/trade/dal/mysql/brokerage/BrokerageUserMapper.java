@@ -2,6 +2,9 @@ package com.pei.dehaze.module.trade.dal.mysql.brokerage;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Assert;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.pojo.SortingField;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
@@ -10,9 +13,6 @@ import com.pei.dehaze.module.trade.controller.admin.brokerage.vo.user.BrokerageU
 import com.pei.dehaze.module.trade.controller.app.brokerage.vo.user.AppBrokerageUserChildSummaryRespVO;
 import com.pei.dehaze.module.trade.controller.app.brokerage.vo.user.AppBrokerageUserRankByUserCountRespVO;
 import com.pei.dehaze.module.trade.dal.dataobject.brokerage.BrokerageUserDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -54,8 +54,7 @@ public interface BrokerageUserMapper extends BaseMapperX<BrokerageUserDO> {
     }
 
     /**
-     * 更新用户可用佣金（减少）
-     * 注意：理论上佣金可能已经提现，这时会扣出负数，确保平台不会造成损失
+     * 更新用户可用佣金（减少） 注意：理论上佣金可能已经提现，这时会扣出负数，确保平台不会造成损失
      *
      * @param id        用户编号
      * @param incrCount 增加佣金（负数）
@@ -84,8 +83,7 @@ public interface BrokerageUserMapper extends BaseMapperX<BrokerageUserDO> {
     }
 
     /**
-     * 更新用户冻结佣金（减少）
-     * 注意：理论上冻结佣金可能已经解冻，这时会扣出负数，确保平台不会造成损失
+     * 更新用户冻结佣金（减少） 注意：理论上冻结佣金可能已经解冻，这时会扣出负数，确保平台不会造成损失
      *
      * @param id        用户编号
      * @param incrCount 减少冻结佣金（负数）

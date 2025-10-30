@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.infra.service.db;
 
+import com.baomidou.dynamic.datasource.creator.DataSourceProperty;
+import com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceProperties;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.framework.mybatis.core.util.JdbcUtils;
 import com.pei.dehaze.module.infra.controller.admin.db.vo.DataSourceConfigSaveReqVO;
 import com.pei.dehaze.module.infra.dal.dataobject.db.DataSourceConfigDO;
 import com.pei.dehaze.module.infra.dal.mysql.db.DataSourceConfigMapper;
-import com.baomidou.dynamic.datasource.creator.DataSourceProperty;
-import com.baomidou.dynamic.datasource.spring.boot.autoconfigure.DynamicDataSourceProperties;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 import java.util.Objects;
 
@@ -63,12 +63,6 @@ public class DataSourceConfigServiceImpl implements DataSourceConfigService {
         dataSourceConfigMapper.deleteById(id);
     }
 
-    private void validateDataSourceConfigExists(Long id) {
-        if (dataSourceConfigMapper.selectById(id) == null) {
-            throw exception(DATA_SOURCE_CONFIG_NOT_EXISTS);
-        }
-    }
-
     @Override
     public DataSourceConfigDO getDataSourceConfig(Long id) {
         // 如果 id 为 0，默认为 master 的数据源
@@ -87,13 +81,6 @@ public class DataSourceConfigServiceImpl implements DataSourceConfigService {
         return result;
     }
 
-    private void validateConnectionOK(DataSourceConfigDO config) {
-        boolean success = JdbcUtils.isConnectionOK(config.getUrl(), config.getUsername(), config.getPassword());
-        if (!success) {
-            throw exception(DATA_SOURCE_CONFIG_NOT_OK);
-        }
-    }
-
     private DataSourceConfigDO buildMasterDataSourceConfig() {
         String primary = dynamicDataSourceProperties.getPrimary();
         DataSourceProperty dataSourceProperty = dynamicDataSourceProperties.getDatasource().get(primary);
@@ -101,6 +88,19 @@ public class DataSourceConfigServiceImpl implements DataSourceConfigService {
                 .setUrl(dataSourceProperty.getUrl())
                 .setUsername(dataSourceProperty.getUsername())
                 .setPassword(dataSourceProperty.getPassword());
+    }
+
+    private void validateDataSourceConfigExists(Long id) {
+        if (dataSourceConfigMapper.selectById(id) == null) {
+            throw exception(DATA_SOURCE_CONFIG_NOT_EXISTS);
+        }
+    }
+
+    private void validateConnectionOK(DataSourceConfigDO config) {
+        boolean success = JdbcUtils.isConnectionOK(config.getUrl(), config.getUsername(), config.getPassword());
+        if (!success) {
+            throw exception(DATA_SOURCE_CONFIG_NOT_OK);
+        }
     }
 
 }

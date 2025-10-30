@@ -184,7 +184,7 @@ public class BpmModelController {
     @GetMapping("/simple/get")
     @Operation(summary = "获得仿钉钉流程设计模型")
     @Parameter(name = "modelId", description = "流程模型编号", required = true, example = "a2c5eee0-eb6c-11ee-abf4-0c37967c420a")
-    public CommonResult<BpmSimpleModelNodeVO> getSimpleModel(@RequestParam("id") String modelId){
+    public CommonResult<BpmSimpleModelNodeVO> getSimpleModel(@RequestParam("id") String modelId) {
         return success(modelService.getSimpleModel(modelId));
     }
 

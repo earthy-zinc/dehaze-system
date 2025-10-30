@@ -16,16 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class CollectionUtilsTest {
 
-    @Data
-    @AllArgsConstructor
-    private static class Dog {
-
-        private Integer id;
-        private String name;
-        private String code;
-
-    }
-
     @Test
     public void testDiffList() {
         // 准备参数
@@ -59,6 +49,16 @@ public class CollectionUtilsTest {
         // 断言 delete
         assertEquals(result.get(2).size(), 1);
         assertEquals(result.get(2).get(0), new Dog(2, "旺财", "wc"));
+    }
+
+    @Data
+    @AllArgsConstructor
+    private static class Dog {
+
+        private Integer id;
+        private String name;
+        private String code;
+
     }
 
 }

@@ -2,6 +2,9 @@ package com.pei.dehaze.module.crm.service.receivable;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.ListUtil;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.crm.controller.admin.receivable.vo.plan.CrmReceivablePlanPageReqVO;
@@ -16,9 +19,6 @@ import com.pei.dehaze.module.crm.service.contract.CrmContractService;
 import com.pei.dehaze.module.crm.service.permission.CrmPermissionService;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -108,18 +108,6 @@ public class CrmReceivablePlanServiceImpl implements CrmReceivablePlanService {
         LogRecordContext.putVariable("receivablePlan", oldReceivablePlan);
     }
 
-    private void validateRelationDataExists(CrmReceivablePlanSaveReqVO reqVO) {
-        // 校验负责人存在
-        if (reqVO.getOwnerUserId() != null) {
-            adminUserApi.validateUser(reqVO.getOwnerUserId());
-        }
-        // 校验合同存在
-        if (reqVO.getContractId() != null) {
-            CrmContractDO contract = contractService.getContract(reqVO.getContractId());
-            reqVO.setCustomerId(contract.getCustomerId());
-        }
-    }
-
     @Override
     public void updateReceivablePlanReceivableId(Long id, Long receivableId) {
         // 校验存在
@@ -144,14 +132,6 @@ public class CrmReceivablePlanServiceImpl implements CrmReceivablePlanService {
 
         // 4. 记录操作日志上下文
         LogRecordContext.putVariable("receivablePlan", receivablePlan);
-    }
-
-    private CrmReceivablePlanDO validateReceivablePlanExists(Long id) {
-        CrmReceivablePlanDO receivablePlan = receivablePlanMapper.selectById(id);
-        if (receivablePlan == null) {
-            throw exception(RECEIVABLE_PLAN_NOT_EXISTS);
-        }
-        return receivablePlan;
     }
 
     @Override
@@ -182,6 +162,26 @@ public class CrmReceivablePlanServiceImpl implements CrmReceivablePlanService {
     @Override
     public Long getReceivablePlanRemindCount(Long userId) {
         return receivablePlanMapper.selectReceivablePlanCountByRemind(userId);
+    }
+
+    private CrmReceivablePlanDO validateReceivablePlanExists(Long id) {
+        CrmReceivablePlanDO receivablePlan = receivablePlanMapper.selectById(id);
+        if (receivablePlan == null) {
+            throw exception(RECEIVABLE_PLAN_NOT_EXISTS);
+        }
+        return receivablePlan;
+    }
+
+    private void validateRelationDataExists(CrmReceivablePlanSaveReqVO reqVO) {
+        // 校验负责人存在
+        if (reqVO.getOwnerUserId() != null) {
+            adminUserApi.validateUser(reqVO.getOwnerUserId());
+        }
+        // 校验合同存在
+        if (reqVO.getContractId() != null) {
+            CrmContractDO contract = contractService.getContract(reqVO.getContractId());
+            reqVO.setCustomerId(contract.getCustomerId());
+        }
     }
 
 }

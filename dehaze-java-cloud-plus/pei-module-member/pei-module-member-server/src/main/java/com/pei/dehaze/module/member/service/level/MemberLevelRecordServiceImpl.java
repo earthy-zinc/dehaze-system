@@ -4,10 +4,9 @@ import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.member.controller.admin.level.vo.record.MemberLevelRecordPageReqVO;
 import com.pei.dehaze.module.member.dal.dataobject.level.MemberLevelRecordDO;
 import com.pei.dehaze.module.member.dal.mysql.level.MemberLevelRecordMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-
-import jakarta.annotation.Resource;
 
 /**
  * 会员等级记录 Service 实现类

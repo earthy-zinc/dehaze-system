@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.member.dal.dataobject.config;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 /**
@@ -32,7 +32,7 @@ public class MemberConfigDO extends BaseDO {
     private Boolean pointTradeDeductEnable;
     /**
      * 积分抵扣，单位：分
-     *
+     * <p>
      * 1 积分抵扣多少分
      */
     private Integer pointTradeDeductUnitPrice;

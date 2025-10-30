@@ -9,8 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * 支付通知 Job
- * 通过不断扫描待通知的 PayNotifyTaskDO 记录，回调业务线的回调接口
+ * 支付通知 Job 通过不断扫描待通知的 PayNotifyTaskDO 记录，回调业务线的回调接口
  *
  * @author earthyzinc
  */
@@ -26,7 +25,7 @@ public class PayNotifyJob {
     public String execute() throws Exception {
         int notifyCount = payNotifyService.executeNotify();
         log.info("[execute][执行支付通知 ({}) 个]", notifyCount);
-        return StrUtil.format("执行支付通知 ({}) 个",notifyCount);
+        return StrUtil.format("执行支付通知 ({}) 个", notifyCount);
     }
 
 }

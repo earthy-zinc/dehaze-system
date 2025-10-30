@@ -24,6 +24,17 @@ public interface ProductCommentMapper extends BaseMapperX<ProductCommentDO> {
                 .orderByDesc(ProductCommentDO::getId));
     }
 
+    default PageResult<ProductCommentDO> selectPage(AppCommentPageReqVO reqVO, Boolean visible) {
+        LambdaQueryWrapperX<ProductCommentDO> queryWrapper = new LambdaQueryWrapperX<ProductCommentDO>()
+                .eqIfPresent(ProductCommentDO::getSpuId, reqVO.getSpuId())
+                .eqIfPresent(ProductCommentDO::getVisible, visible);
+        // 构建评价查询语句
+        appendTabQuery(queryWrapper, reqVO.getType());
+        // 按评价时间排序最新的显示在前面
+        queryWrapper.orderByDesc(ProductCommentDO::getCreateTime);
+        return selectPage(reqVO, queryWrapper);
+    }
+
     static void appendTabQuery(LambdaQueryWrapperX<ProductCommentDO> queryWrapper, Integer type) {
         // 构建好评查询语句：好评计算 总评 >= 4
         if (ObjectUtil.equal(type, AppCommentPageReqVO.GOOD_COMMENT)) {
@@ -38,17 +49,6 @@ public interface ProductCommentMapper extends BaseMapperX<ProductCommentDO> {
         if (ObjectUtil.equal(type, AppCommentPageReqVO.NEGATIVE_COMMENT)) {
             queryWrapper.lt(ProductCommentDO::getScores, 3);
         }
-    }
-
-    default PageResult<ProductCommentDO> selectPage(AppCommentPageReqVO reqVO, Boolean visible) {
-        LambdaQueryWrapperX<ProductCommentDO> queryWrapper = new LambdaQueryWrapperX<ProductCommentDO>()
-                .eqIfPresent(ProductCommentDO::getSpuId, reqVO.getSpuId())
-                .eqIfPresent(ProductCommentDO::getVisible, visible);
-        // 构建评价查询语句
-        appendTabQuery(queryWrapper, reqVO.getType());
-        // 按评价时间排序最新的显示在前面
-        queryWrapper.orderByDesc(ProductCommentDO::getCreateTime);
-        return selectPage(reqVO, queryWrapper);
     }
 
     default ProductCommentDO selectByUserIdAndOrderItemId(Long userId, Long orderItemId) {

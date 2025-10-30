@@ -29,6 +29,23 @@ import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.co
 @Component("directory_list")
 public class DirectoryListToolFunction implements Function<DirectoryListToolFunction.Request, DirectoryListToolFunction.Response> {
 
+    @Override
+    public Response apply(Request request) {
+        // 校验目录存在
+        String path = StrUtil.blankToDefault(request.getPath(), "/");
+        if (!FileUtil.exist(path) || !FileUtil.isDirectory(path)) {
+            return new Response(Collections.emptyList());
+        }
+        // 列出目录
+        File[] files = FileUtil.ls(path);
+        if (ArrayUtil.isEmpty(files)) {
+            return new Response(Collections.emptyList());
+        }
+        return new Response(convertList(Arrays.asList(files), file ->
+                new Response.File().setDirectory(file.isDirectory()).setName(file.getName())
+                        .setLastModified(LocalDateTimeUtil.format(LocalDateTimeUtil.of(file.lastModified()), NORM_DATETIME_PATTERN))));
+    }
+
     @Data
     @JsonClassDescription("列出指定目录的文件列表")
     public static class Request {
@@ -77,23 +94,6 @@ public class DirectoryListToolFunction implements Function<DirectoryListToolFunc
 
         }
 
-    }
-
-    @Override
-    public Response apply(Request request) {
-        // 校验目录存在
-        String path = StrUtil.blankToDefault(request.getPath(), "/");
-        if (!FileUtil.exist(path) || !FileUtil.isDirectory(path)) {
-            return new Response(Collections.emptyList());
-        }
-        // 列出目录
-        File[] files = FileUtil.ls(path);
-        if (ArrayUtil.isEmpty(files)) {
-            return new Response(Collections.emptyList());
-        }
-        return new Response(convertList(Arrays.asList(files), file ->
-                new Response.File().setDirectory(file.isDirectory()).setName(file.getName())
-                        .setLastModified(LocalDateTimeUtil.format(LocalDateTimeUtil.of(file.lastModified()), NORM_DATETIME_PATTERN))));
     }
 
 }

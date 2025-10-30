@@ -46,6 +46,7 @@ public interface BargainRecordConvert {
         });
         return pageResult;
     }
+
     PageResult<BargainRecordPageItemRespVO> convertPage(PageResult<BargainRecordDO> page);
 
     default PageResult<AppBargainRecordRespVO> convertPage02(PageResult<BargainRecordDO> page,
@@ -67,6 +68,7 @@ public interface BargainRecordConvert {
         });
         return pageResult;
     }
+
     PageResult<AppBargainRecordRespVO> convertPage02(PageResult<BargainRecordDO> page);
 
     default AppBargainRecordSummaryRespVO convert(Integer successUserCount, List<BargainRecordDO> successList,

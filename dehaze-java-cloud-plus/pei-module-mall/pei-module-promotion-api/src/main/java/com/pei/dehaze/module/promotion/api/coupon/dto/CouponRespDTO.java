@@ -31,7 +31,7 @@ public class CouponRespDTO {
     private String name;
     /**
      * 优惠码状态
-     *
+     * <p>
      * 枚举 {@link CouponStatusEnum}
      */
     private Integer status;
@@ -41,13 +41,13 @@ public class CouponRespDTO {
     // ========== 领取情况 BEGIN ==========
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 MemberUserDO 的 id 字段
      */
     private Long userId;
     /**
      * 领取类型
-     *
+     * <p>
      * 枚举 {@link CouponTakeTypeEnum}
      */
     private Integer takeType;

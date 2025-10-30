@@ -33,8 +33,7 @@ public class CrmNoRedisDAO {
     private StringRedisTemplate stringRedisTemplate;
 
     /**
-     * 生成序号，使用当前日期，格式为 {PREFIX} + yyyyMMdd + 6 位自增
-     * 例如说：QTRK 202109 000001 （没有中间空格）
+     * 生成序号，使用当前日期，格式为 {PREFIX} + yyyyMMdd + 6 位自增 例如说：QTRK 202109 000001 （没有中间空格）
      *
      * @param prefix 前缀
      * @return 序号

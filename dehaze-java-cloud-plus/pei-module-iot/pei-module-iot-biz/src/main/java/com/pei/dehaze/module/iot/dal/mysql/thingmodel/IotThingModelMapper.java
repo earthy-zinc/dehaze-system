@@ -74,6 +74,7 @@ public interface IotThingModelMapper extends BaseMapperX<IotThingModelDO> {
     }
 
     // TODO @super：用不到，删除下；
+
     /**
      * 统计物模型数量
      *

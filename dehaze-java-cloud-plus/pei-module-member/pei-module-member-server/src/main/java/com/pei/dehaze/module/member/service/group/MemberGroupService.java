@@ -6,8 +6,8 @@ import com.pei.dehaze.module.member.controller.admin.group.vo.MemberGroupCreateR
 import com.pei.dehaze.module.member.controller.admin.group.vo.MemberGroupPageReqVO;
 import com.pei.dehaze.module.member.controller.admin.group.vo.MemberGroupUpdateReqVO;
 import com.pei.dehaze.module.member.dal.dataobject.group.MemberGroupDO;
-
 import jakarta.validation.Valid;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -65,14 +65,6 @@ public interface MemberGroupService {
     PageResult<MemberGroupDO> getGroupPage(MemberGroupPageReqVO pageReqVO);
 
     /**
-     * 获得指定状态的用户分组列表
-     *
-     * @param status 状态
-     * @return 用户分组列表
-     */
-    List<MemberGroupDO> getGroupListByStatus(Integer status);
-
-    /**
      * 获得开启状态的用户分组列表
      *
      * @return 用户分组列表
@@ -80,5 +72,13 @@ public interface MemberGroupService {
     default List<MemberGroupDO> getEnableGroupList() {
         return getGroupListByStatus(CommonStatusEnum.ENABLE.getStatus());
     }
+
+    /**
+     * 获得指定状态的用户分组列表
+     *
+     * @param status 状态
+     * @return 用户分组列表
+     */
+    List<MemberGroupDO> getGroupListByStatus(Integer status);
 
 }

@@ -1,12 +1,12 @@
 package com.pei.dehaze.framework.xss.core.json;
 
-import com.pei.dehaze.framework.common.util.servlet.ServletUtils;
-import com.pei.dehaze.framework.xss.config.XssProperties;
-import com.pei.dehaze.framework.xss.core.clean.XssCleaner;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.deser.std.StringDeserializer;
+import com.pei.dehaze.framework.common.util.servlet.ServletUtils;
+import com.pei.dehaze.framework.xss.config.XssProperties;
+import com.pei.dehaze.framework.xss.core.clean.XssCleaner;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,8 +15,7 @@ import org.springframework.util.PathMatcher;
 import java.io.IOException;
 
 /**
- * XSS 过滤 jackson 反序列化器。
- * 在反序列化的过程中，会对字符串进行 XSS 过滤。
+ * XSS 过滤 jackson 反序列化器。 在反序列化的过程中，会对字符串进行 XSS 过滤。
  *
  * @author Hccake
  */

@@ -48,9 +48,9 @@ public class IotDeviceDownstreamServer {
     public void start() {
         log.info("[start][开始启动]");
         server.listen(properties.getDownstreamPort())
-              .toCompletionStage()
-              .toCompletableFuture()
-              .join();
+                .toCompletionStage()
+                .toCompletableFuture()
+                .join();
         log.info("[start][启动完成，端口({})]", this.server.actualPort());
     }
 
@@ -63,17 +63,17 @@ public class IotDeviceDownstreamServer {
             // 关闭 HTTP 服务器
             if (server != null) {
                 server.close()
-                      .toCompletionStage()
-                      .toCompletableFuture()
-                      .join();
+                        .toCompletionStage()
+                        .toCompletableFuture()
+                        .join();
             }
 
             // 关闭 Vertx 实例
             if (vertx != null) {
                 vertx.close()
-                     .toCompletionStage()
-                     .toCompletableFuture()
-                     .join();
+                        .toCompletionStage()
+                        .toCompletableFuture()
+                        .join();
             }
             log.info("[stop][关闭完成]");
         } catch (Exception e) {

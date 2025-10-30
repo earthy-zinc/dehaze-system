@@ -3,13 +3,12 @@ package com.pei.dehaze.module.iot.util;
 import cn.hutool.crypto.digest.HMac;
 import cn.hutool.crypto.digest.HmacAlgorithm;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 import java.nio.charset.StandardCharsets;
 
 /**
  * MQTT 签名工具类
- *
+ * <p>
  * 提供静态方法来计算 MQTT 连接参数
  */
 public class MqttSignUtils {
@@ -53,15 +52,10 @@ public class MqttSignUtils {
     }
 
     /**
-     * MQTT 签名结果类
-     */
-    @Getter
-    @AllArgsConstructor
-    public static class MqttSignResult {
-
-        private final String clientId;
-        private final String username;
-        private final String password;
+         * MQTT 签名结果类
+         */
+        @AllArgsConstructor
+        public record MqttSignResult(String clientId, String username, String password) {
 
     }
 

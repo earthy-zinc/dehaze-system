@@ -15,17 +15,17 @@ public class EnvContextHolder {
 
     /**
      * 标签的上下文
-     *
+     * <p>
      * 使用 {@link List} 的原因，可能存在多层设置或者清理
      */
     private static final ThreadLocal<List<String>> TAG_CONTEXT = TransmittableThreadLocal.withInitial(ArrayList::new);
 
-    public static void setTag(String tag) {
-        TAG_CONTEXT.get().add(tag);
-    }
-
     public static String getTag() {
         return CollUtil.getLast(TAG_CONTEXT.get());
+    }
+
+    public static void setTag(String tag) {
+        TAG_CONTEXT.get().add(tag);
     }
 
     public static void removeTag() {

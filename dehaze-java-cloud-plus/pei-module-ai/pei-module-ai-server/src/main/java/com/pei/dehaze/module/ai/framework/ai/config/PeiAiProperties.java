@@ -126,7 +126,7 @@ public class PeiAiProperties {
     }
 
     @Data
-    public static class  BaiChuanProperties {
+    public static class BaiChuanProperties {
 
         private String enable;
         private String apiKey;

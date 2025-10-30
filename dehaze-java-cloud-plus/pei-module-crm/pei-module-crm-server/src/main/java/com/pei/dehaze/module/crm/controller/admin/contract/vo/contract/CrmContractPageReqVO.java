@@ -22,7 +22,7 @@ public class CrmContractPageReqVO extends PageParam {
     /**
      * 过期类型 - 已过期
      */
-    public static  final Integer EXPIRY_TYPE_EXPIRED = 2;
+    public static final Integer EXPIRY_TYPE_EXPIRED = 2;
 
     @Schema(description = "合同编号", example = "XYZ008")
     private String no;

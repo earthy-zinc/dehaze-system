@@ -7,7 +7,6 @@ import com.pei.dehaze.module.pay.controller.app.wallet.vo.transaction.AppPayWall
 import com.pei.dehaze.module.pay.dal.dataobject.wallet.PayWalletTransactionDO;
 import com.pei.dehaze.module.pay.enums.wallet.PayWalletBizTypeEnum;
 import com.pei.dehaze.module.pay.service.wallet.bo.WalletTransactionCreateReqBO;
-
 import jakarta.validation.Valid;
 
 import java.time.LocalDateTime;
@@ -32,7 +31,7 @@ public interface PayWalletTransactionService {
     /**
      * 查询钱包余额流水分页
      *
-     * @param pageVO   分页查询参数
+     * @param pageVO 分页查询参数
      */
     PageResult<PayWalletTransactionDO> getWalletTransactionPage(PayWalletTransactionPageReqVO pageVO);
 
@@ -63,8 +62,8 @@ public interface PayWalletTransactionService {
     /**
      * 获得钱包流水统计
      *
-     * @param userId 用户编号
-     * @param userType 用户类型
+     * @param userId     用户编号
+     * @param userType   用户类型
      * @param createTime 时间段
      * @return 钱包流水统计
      */

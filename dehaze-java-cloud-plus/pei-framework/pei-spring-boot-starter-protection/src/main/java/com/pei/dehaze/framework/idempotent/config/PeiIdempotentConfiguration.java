@@ -1,13 +1,13 @@
 package com.pei.dehaze.framework.idempotent.config;
 
 import com.pei.dehaze.framework.idempotent.core.aop.IdempotentAspect;
+import com.pei.dehaze.framework.idempotent.core.keyresolver.IdempotentKeyResolver;
 import com.pei.dehaze.framework.idempotent.core.keyresolver.impl.DefaultIdempotentKeyResolver;
 import com.pei.dehaze.framework.idempotent.core.keyresolver.impl.ExpressionIdempotentKeyResolver;
-import com.pei.dehaze.framework.idempotent.core.keyresolver.IdempotentKeyResolver;
 import com.pei.dehaze.framework.idempotent.core.keyresolver.impl.UserIdempotentKeyResolver;
 import com.pei.dehaze.framework.idempotent.core.redis.IdempotentRedisDAO;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import com.pei.dehaze.framework.redis.config.PeiRedisAutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.StringRedisTemplate;
 

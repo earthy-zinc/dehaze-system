@@ -10,7 +10,8 @@ import org.springframework.stereotype.Repository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 
-import static cn.hutool.core.date.DatePattern.*;
+import static cn.hutool.core.date.DatePattern.PURE_DATETIME_PATTERN;
+import static cn.hutool.core.date.DatePattern.PURE_DATE_PATTERN;
 
 /**
  * BPM 流程 Id 编码的 Redis DAO

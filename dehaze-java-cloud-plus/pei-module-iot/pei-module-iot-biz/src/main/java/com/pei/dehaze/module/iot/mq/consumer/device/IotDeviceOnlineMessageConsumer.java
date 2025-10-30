@@ -21,7 +21,7 @@ import java.util.Objects;
 
 /**
  * 针对 {@link IotDeviceMessage} 的消费者，将离线的设备，自动标记为上线
- *
+ * <p>
  * 注意：只有设备上行消息，才会触发该逻辑
  *
  * @author earthyzinc
@@ -66,7 +66,7 @@ public class IotDeviceOnlineMessageConsumer {
     private boolean isUpstreamMessage(IotDeviceMessage message) {
         // 设备属性
         if (Objects.equals(message.getType(), IotDeviceMessageTypeEnum.PROPERTY.getType())
-            && Objects.equals(message.getIdentifier(), IotDeviceMessageIdentifierEnum.PROPERTY_REPORT.getIdentifier())) {
+                && Objects.equals(message.getIdentifier(), IotDeviceMessageIdentifierEnum.PROPERTY_REPORT.getIdentifier())) {
             return true;
         }
         // 设备事件
@@ -76,7 +76,7 @@ public class IotDeviceOnlineMessageConsumer {
         // 设备服务
         // noinspection RedundantIfStatement
         if (Objects.equals(message.getType(), IotDeviceMessageTypeEnum.SERVICE.getType())
-            && !StrUtil.endWith(message.getIdentifier(), IotDeviceMessageIdentifierEnum.SERVICE_REPLY_SUFFIX.getIdentifier())) {
+                && !StrUtil.endWith(message.getIdentifier(), IotDeviceMessageIdentifierEnum.SERVICE_REPLY_SUFFIX.getIdentifier())) {
             return true;
         }
         return false;

@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.bargain;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.promotion.enums.bargain.BargainRecordStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.promotion.enums.bargain.BargainRecordStatusEnum;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -36,7 +36,7 @@ public class BargainRecordDO extends BaseDO {
 
     /**
      * 砍价活动编号
-     *
+     * <p>
      * 关联 {@link BargainActivityDO#getId()} 字段
      */
     private Long activityId;
@@ -60,11 +60,10 @@ public class BargainRecordDO extends BaseDO {
 
     /**
      * 砍价状态
-     *
-     * 砍价成功的条件是：（2 选 1）
-     *  1. 砍价到 {@link BargainActivityDO#getBargainMinPrice()} 底价
-     *  2. 助力人数到达 {@link BargainActivityDO#getHelpMaxCount()} 人
-     *
+     * <p>
+     * 砍价成功的条件是：（2 选 1） 1. 砍价到 {@link BargainActivityDO#getBargainMinPrice()} 底价 2. 助力人数到达
+     * {@link BargainActivityDO#getHelpMaxCount()} 人
+     * <p>
      * 枚举 {@link BargainRecordStatusEnum}
      */
     private Integer status;

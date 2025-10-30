@@ -20,7 +20,7 @@ public interface BargainHelpService {
      * 创建砍价助力（帮人砍价）
      *
      * @param userId 用户编号
-     * @param reqVO 请求信息
+     * @param reqVO  请求信息
      * @return 砍价助力记录
      */
     BargainHelpDO createBargainHelp(Long userId, AppBargainHelpCreateReqVO reqVO);
@@ -45,7 +45,7 @@ public interface BargainHelpService {
      * 【砍价活动】获得用户的助力次数
      *
      * @param activityId 活动编号
-     * @param userId 用户编号
+     * @param userId     用户编号
      * @return 助力次数
      */
     Long getBargainHelpCountByActivity(Long activityId, Long userId);
@@ -70,7 +70,7 @@ public interface BargainHelpService {
      * 获得助力记录
      *
      * @param recordId 砍价记录编号
-     * @param userId 用户编号
+     * @param userId   用户编号
      * @return 助力记录
      */
     BargainHelpDO getBargainHelp(Long recordId, Long userId);

@@ -52,17 +52,6 @@ public interface BrokerageRecordService {
     void addBrokerage(Long userId, BrokerageRecordBizTypeEnum bizType, @Valid List<BrokerageAddReqBO> list);
 
     /**
-     * 增加佣金【只针对自己】
-     *
-     * @param userId         会员编号
-     * @param bizType        业务类型
-     * @param bizId          业务编号
-     * @param brokeragePrice 佣金
-     * @param title          标题
-     */
-    void addBrokerage(Long userId, BrokerageRecordBizTypeEnum bizType, String bizId, Integer brokeragePrice, String title);
-
-    /**
      * 减少佣金【只针对自己】
      *
      * @param userId         会员编号
@@ -74,6 +63,17 @@ public interface BrokerageRecordService {
     default void reduceBrokerage(Long userId, BrokerageRecordBizTypeEnum bizType, String bizId, Integer brokeragePrice, String title) {
         addBrokerage(userId, bizType, bizId, -brokeragePrice, title);
     }
+
+    /**
+     * 增加佣金【只针对自己】
+     *
+     * @param userId         会员编号
+     * @param bizType        业务类型
+     * @param bizId          业务编号
+     * @param brokeragePrice 佣金
+     * @param title          标题
+     */
+    void addBrokerage(Long userId, BrokerageRecordBizTypeEnum bizType, String bizId, Integer brokeragePrice, String title);
 
     /**
      * 取消佣金：将佣金记录，状态修改为已失效
@@ -96,17 +96,6 @@ public interface BrokerageRecordService {
      * @param userIds 用户编号
      * @param bizType 业务类型
      * @param status  佣金状态
-     * @return 用户佣金汇总 List
-     */
-    List<UserBrokerageSummaryRespBO> getUserBrokerageSummaryListByUserId(Collection<Long> userIds,
-                                                                         Integer bizType, Integer status);
-
-    /**
-     * 按照 userId，汇总每个用户的佣金
-     *
-     * @param userIds 用户编号
-     * @param bizType 业务类型
-     * @param status  佣金状态
      * @return 用户佣金汇总 Map
      */
     default Map<Long, UserBrokerageSummaryRespBO> getUserBrokerageSummaryMapByUserId(Collection<Long> userIds,
@@ -114,6 +103,17 @@ public interface BrokerageRecordService {
         return convertMap(getUserBrokerageSummaryListByUserId(userIds, bizType, status),
                 UserBrokerageSummaryRespBO::getUserId);
     }
+
+    /**
+     * 按照 userId，汇总每个用户的佣金
+     *
+     * @param userIds 用户编号
+     * @param bizType 业务类型
+     * @param status  佣金状态
+     * @return 用户佣金汇总 List
+     */
+    List<UserBrokerageSummaryRespBO> getUserBrokerageSummaryListByUserId(Collection<Long> userIds,
+                                                                         Integer bizType, Integer status);
 
     /**
      * 获得用户佣金合计

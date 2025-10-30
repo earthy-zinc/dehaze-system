@@ -11,10 +11,12 @@ import java.util.Map;
 
 /**
  * {@link IOnlDragExternalService} 实现类，提供积木仪表盘的查询等功能
- *
- * 实现可参考：
- * 1. <a href="https://github.com/jeecgboot/jimureport/blob/master/jimureport-example/src/main/java/com/jeecg/modules/jmreport/extend/JimuDragExternalServiceImpl.java">jimureport-example</a>
- * 2. <a href="https://gitee.com/jeecg/JeecgBoot/blob/master/jeecg-boot/jeecg-module-system/jeecg-system-biz/src/main/java/org/jeecg/config/jimureport/JimuDragExternalServiceImpl.java">JeecgBoot 集成</a>
+ * <p>
+ * 实现可参考： 1. <a
+ * href="https://github.com/jeecgboot/jimureport/blob/master/jimureport-example/src/main/java/com/jeecg/modules/jmreport/extend/JimuDragExternalServiceImpl.java">jimureport-example</a>
+ * 2. <a
+ * href="https://gitee.com/jeecg/JeecgBoot/blob/master/jeecg-boot/jeecg-module-system/jeecg-system-biz/src/main/java/org/jeecg/config/jimureport/JimuDragExternalServiceImpl.java">JeecgBoot
+ * 集成</a>
  *
  * @author earthyzinc
  */
@@ -34,6 +36,16 @@ public class JmOnlDragExternalServiceImpl implements IOnlDragExternalService {
     }
 
     @Override
+    public void addLog(DragLogDTO dto) {
+        IOnlDragExternalService.super.addLog(dto);
+    }
+
+    @Override
+    public void addLog(String logMsg, int logType, int operateType) {
+        IOnlDragExternalService.super.addLog(logMsg, logType, operateType);
+    }
+
+    @Override
     public List<DragDictModel> getTableDictItems(String dictTable, String dictText, String dictCode) {
         return IOnlDragExternalService.super.getTableDictItems(dictTable, dictText, dictCode);
     }
@@ -43,6 +55,8 @@ public class JmOnlDragExternalServiceImpl implements IOnlDragExternalService {
         return IOnlDragExternalService.super.getCategoryTreeDictItems(ids);
     }
 
+    // ========== Log 相关 ==========
+
     @Override
     public List<DragDictModel> getUserDictItems(List<String> ids) {
         return IOnlDragExternalService.super.getUserDictItems(ids);
@@ -51,18 +65,6 @@ public class JmOnlDragExternalServiceImpl implements IOnlDragExternalService {
     @Override
     public List<DragDictModel> getDeptsDictItems(List<String> ids) {
         return IOnlDragExternalService.super.getDeptsDictItems(ids);
-    }
-
-    // ========== Log 相关 ==========
-
-    @Override
-    public void addLog(DragLogDTO dto) {
-        IOnlDragExternalService.super.addLog(dto);
-    }
-
-    @Override
-    public void addLog(String logMsg, int logType, int operateType) {
-        IOnlDragExternalService.super.addLog(logMsg, logType, operateType);
     }
 
 }

@@ -7,8 +7,8 @@ import com.pei.dehaze.module.member.controller.admin.user.vo.MemberUserPageReqVO
 import com.pei.dehaze.module.member.controller.admin.user.vo.MemberUserUpdateReqVO;
 import com.pei.dehaze.module.member.controller.app.user.vo.*;
 import com.pei.dehaze.module.member.dal.dataobject.user.MemberUserDO;
-
 import jakarta.validation.Valid;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -36,8 +36,7 @@ public interface MemberUserService {
     List<MemberUserDO> getUserListByNickname(String nickname);
 
     /**
-     * 基于手机号创建用户。
-     * 如果用户已经存在，则直接进行返回
+     * 基于手机号创建用户。 如果用户已经存在，则直接进行返回
      *
      * @param mobile     手机号
      * @param registerIp 注册 IP
@@ -47,8 +46,7 @@ public interface MemberUserService {
     MemberUserDO createUserIfAbsent(@Mobile String mobile, String registerIp, Integer terminal);
 
     /**
-     * 创建用户
-     * 目的：三方登录时，如果未绑定用户时，自动创建对应用户
+     * 创建用户 目的：三方登录时，如果未绑定用户时，自动创建对应用户
      *
      * @param nickname   昵称
      * @param avtar      头像
@@ -102,7 +100,7 @@ public interface MemberUserService {
      * 【会员】修改手机，基于微信小程序的授权码
      *
      * @param userId 用户编号
-     * @param reqVO 请求信息
+     * @param reqVO  请求信息
      */
     void updateUserMobileByWeixin(Long userId, AppMemberUserUpdateMobileByWeixinReqVO reqVO);
 

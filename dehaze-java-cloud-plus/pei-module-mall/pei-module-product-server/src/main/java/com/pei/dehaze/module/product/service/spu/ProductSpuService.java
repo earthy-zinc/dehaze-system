@@ -54,19 +54,11 @@ public interface ProductSpuService {
     /**
      * 获得商品 SPU
      *
-     * @param id 编号
+     * @param id             编号
      * @param includeDeleted 是否包含已删除的
      * @return 商品 SPU
      */
     ProductSpuDO getSpu(Long id, boolean includeDeleted);
-
-    /**
-     * 获得商品 SPU 列表
-     *
-     * @param ids 编号数组
-     * @return 商品 SPU 列表
-     */
-    List<ProductSpuDO> getSpuList(Collection<Long> ids);
 
     /**
      * 获得商品 SPU Map
@@ -78,6 +70,14 @@ public interface ProductSpuService {
         List<ProductSpuDO> list = getSpuList(ids);
         return CollectionUtils.convertMap(list, ProductSpuDO::getId);
     }
+
+    /**
+     * 获得商品 SPU 列表
+     *
+     * @param ids 编号数组
+     * @return 商品 SPU 列表
+     */
+    List<ProductSpuDO> getSpuList(Collection<Long> ids);
 
     /**
      * 获得指定状态的商品 SPU 列表
@@ -134,9 +134,7 @@ public interface ProductSpuService {
 
 
     /**
-     * 校验商品是否有效。如下情况，视为无效：
-     * 1. 商品编号不存在
-     * 2. 商品被禁用
+     * 校验商品是否有效。如下情况，视为无效： 1. 商品编号不存在 2. 商品被禁用
      *
      * @param ids 商品编号数组
      * @return 商品 SPU 列表

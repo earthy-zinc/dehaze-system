@@ -17,14 +17,14 @@ public class PayOrderRespDTO {
 
     /**
      * 支付状态
-     *
+     * <p>
      * 枚举：{@link PayOrderStatusEnum}
      */
     private Integer status;
 
     /**
      * 外部订单号
-     *
+     * <p>
      * 对应 PayOrderExtensionDO 的 no 字段
      */
     private String outTradeNo;
@@ -52,7 +52,7 @@ public class PayOrderRespDTO {
 
     /**
      * 展示模式
-     *
+     * <p>
      * 枚举 {@link PayOrderDisplayModeEnum} 类
      */
     private String displayMode;
@@ -63,9 +63,8 @@ public class PayOrderRespDTO {
 
     /**
      * 调用渠道的错误码
-     *
-     * 注意：这里返回的是业务异常，而是不系统异常。
-     * 如果是系统异常，则会抛出 {@link PayClientException}
+     * <p>
+     * 注意：这里返回的是业务异常，而是不系统异常。 如果是系统异常，则会抛出 {@link PayClientException}
      */
     private String channelErrorCode;
     /**

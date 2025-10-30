@@ -6,9 +6,9 @@ import com.pei.dehaze.module.promotion.api.seckill.SeckillActivityApi;
 import com.pei.dehaze.module.trade.dal.dataobject.order.TradeOrderDO;
 import com.pei.dehaze.module.trade.dal.dataobject.order.TradeOrderItemDO;
 import com.pei.dehaze.module.trade.enums.order.TradeOrderTypeEnum;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 /**

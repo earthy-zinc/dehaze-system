@@ -68,7 +68,7 @@ public interface SocialClientApi {
      * 上传订单发货到微信小程序
      *
      * @param userType 用户类型
-     * @param reqDTO 请求
+     * @param reqDTO   请求
      */
     @PostMapping(PREFIX + "/upload-wxa-order-shipping-info")
     @Operation(summary = "上传订单发货到微信小程序")
@@ -77,7 +77,7 @@ public interface SocialClientApi {
 
     @PostMapping(PREFIX + "/notify-wxa-order-confirm-receive")
     @Operation(summary = "通知订单收货到微信小程序")
-    CommonResult<Boolean>  notifyWxaOrderConfirmReceive(@RequestParam("userType") Integer userType,
-                                                        @Valid @RequestBody SocialWxaOrderNotifyConfirmReceiveReqDTO reqDTO);
+    CommonResult<Boolean> notifyWxaOrderConfirmReceive(@RequestParam("userType") Integer userType,
+                                                       @Valid @RequestBody SocialWxaOrderNotifyConfirmReceiveReqDTO reqDTO);
 
 }

@@ -57,14 +57,6 @@ public interface CrmProductCategoryService {
     List<CrmProductCategoryDO> getProductCategoryList(CrmProductCategoryListReqVO listReqVO);
 
     /**
-     * 获得产品分类列表
-     *
-     * @param ids 编号数组
-     * @return 产品分类列表
-     */
-    List<CrmProductCategoryDO> getProductCategoryList(Collection<Long> ids);
-
-    /**
      * 获得产品分类 Map
      *
      * @param ids 编号数组
@@ -73,5 +65,13 @@ public interface CrmProductCategoryService {
     default Map<Long, CrmProductCategoryDO> getProductCategoryMap(Collection<Long> ids) {
         return convertMap(getProductCategoryList(ids), CrmProductCategoryDO::getId);
     }
+
+    /**
+     * 获得产品分类列表
+     *
+     * @param ids 编号数组
+     * @return 产品分类列表
+     */
+    List<CrmProductCategoryDO> getProductCategoryList(Collection<Long> ids);
 
 }

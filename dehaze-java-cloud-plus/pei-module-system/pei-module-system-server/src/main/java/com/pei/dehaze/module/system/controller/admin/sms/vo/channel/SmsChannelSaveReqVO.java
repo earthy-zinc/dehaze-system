@@ -1,10 +1,9 @@
 package com.pei.dehaze.module.system.controller.admin.sms.vo.channel;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.validator.constraints.URL;
-
-import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "管理后台 - 短信渠道创建/修改 Request VO")
 @Data

@@ -98,14 +98,6 @@ public interface AiKnowledgeDocumentService {
     String readUrl(String url);
 
     /**
-     * 获取文档列表
-     *
-     * @param ids 文档编号列表
-     * @return 文档列表
-     */
-    List<AiKnowledgeDocumentDO> getKnowledgeDocumentList(Collection<Long> ids);
-
-    /**
      * 根据知识库编号获取文档列表
      *
      * @param knowledgeId 知识库编号
@@ -122,5 +114,13 @@ public interface AiKnowledgeDocumentService {
     default Map<Long, AiKnowledgeDocumentDO> getKnowledgeDocumentMap(Collection<Long> ids) {
         return convertMap(getKnowledgeDocumentList(ids), AiKnowledgeDocumentDO::getId);
     }
+
+    /**
+     * 获取文档列表
+     *
+     * @param ids 文档编号列表
+     * @return 文档列表
+     */
+    List<AiKnowledgeDocumentDO> getKnowledgeDocumentList(Collection<Long> ids);
 
 }

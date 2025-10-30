@@ -5,7 +5,6 @@ import com.pei.dehaze.module.pay.controller.admin.wallet.vo.rechargepackage.Wall
 import com.pei.dehaze.module.pay.controller.admin.wallet.vo.rechargepackage.WalletRechargePackagePageReqVO;
 import com.pei.dehaze.module.pay.controller.admin.wallet.vo.rechargepackage.WalletRechargePackageUpdateReqVO;
 import com.pei.dehaze.module.pay.dal.dataobject.wallet.PayWalletRechargePackageDO;
-
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -19,6 +18,7 @@ public interface PayWalletRechargePackageService {
 
     /**
      * 获取钱包充值套餐
+     *
      * @param packageId 充值套餐编号
      */
     PayWalletRechargePackageDO getWalletRechargePackage(Long packageId);

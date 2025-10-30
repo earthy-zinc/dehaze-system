@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.system.dal.dataobject.social;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
 import lombok.*;
 
 /**
@@ -28,7 +28,7 @@ public class SocialUserDO extends BaseDO {
     private Long id;
     /**
      * 社交平台的类型
-     *
+     * <p>
      * 枚举 {@link SocialTypeEnum}
      */
     private Integer type;

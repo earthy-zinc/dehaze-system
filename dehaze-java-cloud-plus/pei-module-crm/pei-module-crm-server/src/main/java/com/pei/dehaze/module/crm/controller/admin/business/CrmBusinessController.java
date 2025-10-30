@@ -126,6 +126,40 @@ public class CrmBusinessController {
         return businessVO;
     }
 
+    public List<CrmBusinessRespVO> buildBusinessDetailList(List<CrmBusinessDO> list) {
+        if (CollUtil.isEmpty(list)) {
+            return Collections.emptyList();
+        }
+        // 1.1 获取客户列表
+        Map<Long, CrmCustomerDO> customerMap = customerService.getCustomerMap(
+                convertSet(list, CrmBusinessDO::getCustomerId));
+        // 1.2 获取创建人、负责人列表
+        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(convertListByFlatMap(list,
+                contact -> Stream.of(NumberUtils.parseLong(contact.getCreator()), contact.getOwnerUserId())));
+        Map<Long, DeptRespDTO> deptMap = deptApi.getDeptMap(convertSet(userMap.values(), AdminUserRespDTO::getDeptId));
+        // 1.3 获得商机状态组
+        Map<Long, CrmBusinessStatusTypeDO> statusTypeMap = businessStatusTypeService.getBusinessStatusTypeMap(
+                convertSet(list, CrmBusinessDO::getStatusTypeId));
+        Map<Long, CrmBusinessStatusDO> statusMap = businessStatusService.getBusinessStatusMap(
+                convertSet(list, CrmBusinessDO::getStatusId));
+        // 2. 拼接数据
+        return BeanUtils.toBean(list, CrmBusinessRespVO.class, businessVO -> {
+            // 2.1 设置客户名称
+            MapUtils.findAndThen(customerMap, businessVO.getCustomerId(), customer -> businessVO.setCustomerName(customer.getName()));
+            // 2.2 设置创建人、负责人名称
+            MapUtils.findAndThen(userMap, NumberUtils.parseLong(businessVO.getCreator()),
+                    user -> businessVO.setCreatorName(user.getNickname()));
+            MapUtils.findAndThen(userMap, businessVO.getOwnerUserId(), user -> {
+                businessVO.setOwnerUserName(user.getNickname());
+                MapUtils.findAndThen(deptMap, user.getDeptId(), dept -> businessVO.setOwnerUserDeptName(dept.getName()));
+            });
+            // 2.3 设置商机状态
+            MapUtils.findAndThen(statusTypeMap, businessVO.getStatusTypeId(), statusType -> businessVO.setStatusTypeName(statusType.getName()));
+            MapUtils.findAndThen(statusMap, businessVO.getStatusId(), status -> businessVO.setStatusName(
+                    businessService.getBusinessStatusName(businessVO.getEndStatus(), status)));
+        });
+    }
+
     @GetMapping("/simple-all-list")
     @Operation(summary = "获得商机的精简列表")
     @PreAuthorize("@ss.hasPermission('crm:business:query')")
@@ -175,40 +209,6 @@ public class CrmBusinessController {
         // 导出 Excel
         ExcelUtils.write(response, "商机.xls", "数据", CrmBusinessRespVO.class,
                 buildBusinessDetailList(list));
-    }
-
-    public List<CrmBusinessRespVO> buildBusinessDetailList(List<CrmBusinessDO> list) {
-        if (CollUtil.isEmpty(list)) {
-            return Collections.emptyList();
-        }
-        // 1.1 获取客户列表
-        Map<Long, CrmCustomerDO> customerMap = customerService.getCustomerMap(
-                convertSet(list, CrmBusinessDO::getCustomerId));
-        // 1.2 获取创建人、负责人列表
-        Map<Long, AdminUserRespDTO> userMap = adminUserApi.getUserMap(convertListByFlatMap(list,
-                contact -> Stream.of(NumberUtils.parseLong(contact.getCreator()), contact.getOwnerUserId())));
-        Map<Long, DeptRespDTO> deptMap = deptApi.getDeptMap(convertSet(userMap.values(), AdminUserRespDTO::getDeptId));
-        // 1.3 获得商机状态组
-        Map<Long, CrmBusinessStatusTypeDO> statusTypeMap = businessStatusTypeService.getBusinessStatusTypeMap(
-                convertSet(list, CrmBusinessDO::getStatusTypeId));
-        Map<Long, CrmBusinessStatusDO> statusMap = businessStatusService.getBusinessStatusMap(
-                convertSet(list, CrmBusinessDO::getStatusId));
-        // 2. 拼接数据
-        return BeanUtils.toBean(list, CrmBusinessRespVO.class, businessVO -> {
-            // 2.1 设置客户名称
-            MapUtils.findAndThen(customerMap, businessVO.getCustomerId(), customer -> businessVO.setCustomerName(customer.getName()));
-            // 2.2 设置创建人、负责人名称
-            MapUtils.findAndThen(userMap, NumberUtils.parseLong(businessVO.getCreator()),
-                    user -> businessVO.setCreatorName(user.getNickname()));
-            MapUtils.findAndThen(userMap, businessVO.getOwnerUserId(), user -> {
-                businessVO.setOwnerUserName(user.getNickname());
-                MapUtils.findAndThen(deptMap, user.getDeptId(), dept -> businessVO.setOwnerUserDeptName(dept.getName()));
-            });
-            // 2.3 设置商机状态
-            MapUtils.findAndThen(statusTypeMap, businessVO.getStatusTypeId(), statusType -> businessVO.setStatusTypeName(statusType.getName()));
-            MapUtils.findAndThen(statusMap, businessVO.getStatusId(), status -> businessVO.setStatusName(
-                    businessService.getBusinessStatusName(businessVO.getEndStatus(), status)));
-        });
     }
 
     @PutMapping("/transfer")

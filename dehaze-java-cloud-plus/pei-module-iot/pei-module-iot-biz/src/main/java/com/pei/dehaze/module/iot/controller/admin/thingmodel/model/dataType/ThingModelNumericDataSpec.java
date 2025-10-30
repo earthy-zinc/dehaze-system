@@ -6,7 +6,7 @@ import lombok.EqualsAndHashCode;
 
 /**
  * IoT 物模型数据类型为数值的 DataSpec 定义
- *
+ * <p>
  * 数据类型，取值为 int、float 或 double。
  *
  * @author HUIHUI
@@ -17,18 +17,15 @@ import lombok.EqualsAndHashCode;
 public class ThingModelNumericDataSpec extends ThingModelDataSpecs {
 
     /**
-     * 最大值，需转为字符串类型。值必须与 dataType 类型一致。
-     * 例如，当 dataType 为 int 时，取值为 "200"，而不是 200。
+     * 最大值，需转为字符串类型。值必须与 dataType 类型一致。 例如，当 dataType 为 int 时，取值为 "200"，而不是 200。
      */
     private String max;
     /**
-     * 最小值，需转为字符串类型。值必须与 dataType 类型一致。
-     * 例如，当 dataType 为 int 时，取值为 "0"，而不是 0。
+     * 最小值，需转为字符串类型。值必须与 dataType 类型一致。 例如，当 dataType 为 int 时，取值为 "0"，而不是 0。
      */
     private String min;
     /**
-     * 步长，需转为字符串类型。值必须与 dataType 类型一致。
-     * 例如，当 dataType 为 int 时，取值为 "10"，而不是 10。
+     * 步长，需转为字符串类型。值必须与 dataType 类型一致。 例如，当 dataType 为 int 时，取值为 "10"，而不是 10。
      */
     private String step;
     /**

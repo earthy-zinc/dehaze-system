@@ -26,7 +26,7 @@ public enum BpmCommentTypeEnum {
 
     /**
      * 操作类型
-     *
+     * <p>
      * 由于 BPM Comment 类型为 String，所以这里就不使用 Integer
      */
     private final String type;
@@ -40,7 +40,7 @@ public enum BpmCommentTypeEnum {
     private final String comment;
 
     public String formatComment(Object... params) {
-         return StrUtil.format(comment, params);
+        return StrUtil.format(comment, params);
     }
 
 }

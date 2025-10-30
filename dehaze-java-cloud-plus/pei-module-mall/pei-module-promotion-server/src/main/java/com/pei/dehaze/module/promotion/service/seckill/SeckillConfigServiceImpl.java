@@ -62,21 +62,6 @@ public class SeckillConfigServiceImpl implements SeckillConfigService {
     }
 
     @Override
-    public void updateSeckillConfigStatus(Long id, Integer status) {
-        // 校验秒杀时段是否存在
-        validateSeckillConfigExists(id);
-
-        // 更新状态
-        seckillConfigMapper.updateById(new SeckillConfigDO().setId(id).setStatus(status));
-    }
-
-    @Override
-    public SeckillConfigDO getCurrentSeckillConfig() {
-        List<SeckillConfigDO> list = seckillConfigMapper.selectList(SeckillConfigDO::getStatus, CommonStatusEnum.ENABLE.getStatus());
-        return findFirst(list, config -> isBetween(config.getStartTime(), config.getEndTime()));
-    }
-
-    @Override
     public void deleteSeckillConfig(Long id) {
         // 校验存在
         validateSeckillConfigExists(id);
@@ -84,37 +69,6 @@ public class SeckillConfigServiceImpl implements SeckillConfigService {
         // 删除
         seckillConfigMapper.deleteById(id);
     }
-
-    private void validateSeckillConfigExists(Long id) {
-        if (seckillConfigMapper.selectById(id) == null) {
-            throw exception(SECKILL_CONFIG_NOT_EXISTS);
-        }
-    }
-
-    /**
-     * 校验时间是否存在冲突
-     *
-     * @param startTimeStr 开始时间
-     * @param endTimeStr   结束时间
-     */
-    private void validateSeckillConfigConflict(String startTimeStr, String endTimeStr, Long id) {
-        // 1. 查询出所有的时段配置
-        LocalTime startTime = LocalTime.parse(startTimeStr);
-        LocalTime endTime = LocalTime.parse(endTimeStr);
-        List<SeckillConfigDO> configs = seckillConfigMapper.selectList();
-        // 更新时排除自己
-        if (id != null) {
-            configs.removeIf(item -> ObjectUtil.equal(item.getId(), id));
-        }
-
-        // 2. 判断是否有重叠的时间
-        boolean hasConflict = configs.stream().anyMatch(config -> LocalDateTimeUtils.isOverlap(startTime, endTime,
-                LocalTime.parse(config.getStartTime()), LocalTime.parse(config.getEndTime())));
-        if (hasConflict) {
-            throw exception(SECKILL_CONFIG_TIME_CONFLICTS);
-        }
-    }
-
 
     @Override
     public SeckillConfigDO getSeckillConfig(Long id) {
@@ -155,6 +109,51 @@ public class SeckillConfigServiceImpl implements SeckillConfigService {
         List<SeckillConfigDO> list = seckillConfigMapper.selectListByStatus(status);
         list.sort(Comparator.comparing(SeckillConfigDO::getStartTime));
         return list;
+    }
+
+    @Override
+    public void updateSeckillConfigStatus(Long id, Integer status) {
+        // 校验秒杀时段是否存在
+        validateSeckillConfigExists(id);
+
+        // 更新状态
+        seckillConfigMapper.updateById(new SeckillConfigDO().setId(id).setStatus(status));
+    }
+
+    @Override
+    public SeckillConfigDO getCurrentSeckillConfig() {
+        List<SeckillConfigDO> list = seckillConfigMapper.selectList(SeckillConfigDO::getStatus, CommonStatusEnum.ENABLE.getStatus());
+        return findFirst(list, config -> isBetween(config.getStartTime(), config.getEndTime()));
+    }
+
+    private void validateSeckillConfigExists(Long id) {
+        if (seckillConfigMapper.selectById(id) == null) {
+            throw exception(SECKILL_CONFIG_NOT_EXISTS);
+        }
+    }
+
+    /**
+     * 校验时间是否存在冲突
+     *
+     * @param startTimeStr 开始时间
+     * @param endTimeStr   结束时间
+     */
+    private void validateSeckillConfigConflict(String startTimeStr, String endTimeStr, Long id) {
+        // 1. 查询出所有的时段配置
+        LocalTime startTime = LocalTime.parse(startTimeStr);
+        LocalTime endTime = LocalTime.parse(endTimeStr);
+        List<SeckillConfigDO> configs = seckillConfigMapper.selectList();
+        // 更新时排除自己
+        if (id != null) {
+            configs.removeIf(item -> ObjectUtil.equal(item.getId(), id));
+        }
+
+        // 2. 判断是否有重叠的时间
+        boolean hasConflict = configs.stream().anyMatch(config -> LocalDateTimeUtils.isOverlap(startTime, endTime,
+                LocalTime.parse(config.getStartTime()), LocalTime.parse(config.getEndTime())));
+        if (hasConflict) {
+            throw exception(SECKILL_CONFIG_TIME_CONFLICTS);
+        }
     }
 
 }

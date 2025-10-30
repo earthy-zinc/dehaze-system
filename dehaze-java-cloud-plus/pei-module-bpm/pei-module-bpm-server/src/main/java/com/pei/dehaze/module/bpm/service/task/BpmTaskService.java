@@ -35,12 +35,10 @@ public interface BpmTaskService {
     PageResult<Task> getTaskTodoPage(Long userId, BpmTaskPageReqVO pageReqVO);
 
     /**
-     * 获得用户（待办）的任务：
-     * 1. 根据 taskId 查询待办任务
-     * 2. 如果任务不存在（或者已审核），获取指定流程下，首个需要处理任务
+     * 获得用户（待办）的任务： 1. 根据 taskId 查询待办任务 2. 如果任务不存在（或者已审核），获取指定流程下，首个需要处理任务
      *
-     * @param userId 用户编号
-     * @param taskId 任务编号
+     * @param userId            用户编号
+     * @param taskId            任务编号
      * @param processInstanceId 流程实例编号
      * @return 待办任务
      */
@@ -147,7 +145,7 @@ public interface BpmTaskService {
      * 获取指定任务的子任务列表（多层）
      *
      * @param parentTaskId 父任务 ID
-     * @param tasks 任务列表
+     * @param tasks        任务列表
      * @return 子任务列表
      */
     <T extends TaskInfo> List<T> getAllChildrenTaskListByParentTaskId(String parentTaskId, List<T> tasks);
@@ -206,7 +204,7 @@ public interface BpmTaskService {
      * 将指定流程实例的、进行中的流程任务，移动到结束节点
      *
      * @param processInstanceId 流程编号
-     * @param reason 原因
+     * @param reason            原因
      */
     void moveTaskToEnd(String processInstanceId, String reason);
 
@@ -255,8 +253,7 @@ public interface BpmTaskService {
     /**
      * 处理 Task 创建事件，目前是
      * <p>
-     * 1. 更新它的状态为审批中
-     * 2. 处理自动通过的情况，例如说：1）无审批人时，是否自动通过、不通过；2）非【人工审核】时，是否自动通过、不通过
+     * 1. 更新它的状态为审批中 2. 处理自动通过的情况，例如说：1）无审批人时，是否自动通过、不通过；2）非【人工审核】时，是否自动通过、不通过
      * <p>
      * 注意：它的触发时机，晚于 {@link #processTaskAssigned(Task)} 之后
      *
@@ -305,8 +302,7 @@ public interface BpmTaskService {
     /**
      * 触发流程任务 (ReceiveTask) 的执行
      * <p>
-     * 1. Simple 模型 HTTP 回调请求触发器节点的回调，触发流程继续执行
-     * 2. Simple 模型延迟器节点，到时触发流程继续执行
+     * 1. Simple 模型 HTTP 回调请求触发器节点的回调，触发流程继续执行 2. Simple 模型延迟器节点，到时触发流程继续执行
      *
      * @param processInstanceId 流程示例编号
      * @param taskDefineKey     任务 Key

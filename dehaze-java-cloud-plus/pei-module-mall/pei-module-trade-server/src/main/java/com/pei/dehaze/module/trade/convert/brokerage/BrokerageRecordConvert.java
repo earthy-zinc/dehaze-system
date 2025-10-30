@@ -34,8 +34,6 @@ public interface BrokerageRecordConvert {
 
     List<BrokerageRecordRespVO> convertList(List<BrokerageRecordDO> list);
 
-    PageResult<BrokerageRecordRespVO> convertPage(PageResult<BrokerageRecordDO> page);
-
     default BrokerageRecordDO convert(BrokerageUserDO user, BrokerageRecordBizTypeEnum bizType, String bizId,
                                       Integer brokerageFrozenDays, int brokeragePrice, LocalDateTime unfreezeTime,
                                       String title, Long sourceUserId, Integer sourceUserLevel) {
@@ -63,6 +61,8 @@ public interface BrokerageRecordConvert {
         }
         return result;
     }
+
+    PageResult<BrokerageRecordRespVO> convertPage(PageResult<BrokerageRecordDO> page);
 
     default PageResult<AppBrokerageUserRankByPriceRespVO> convertPage03(PageResult<AppBrokerageUserRankByPriceRespVO> pageResult, Map<Long, MemberUserRespDTO> userMap) {
         for (AppBrokerageUserRankByPriceRespVO vo : pageResult.getList()) {

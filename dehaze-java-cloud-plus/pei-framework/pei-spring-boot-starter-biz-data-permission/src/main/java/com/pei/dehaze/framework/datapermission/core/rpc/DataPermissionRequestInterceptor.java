@@ -7,7 +7,7 @@ import feign.RequestTemplate;
 
 /**
  * DataPermission 的 RequestInterceptor 实现类：Feign 请求时，将 {@link DataPermission} 设置到 header 中，继续透传给被调用的服务
- *
+ * <p>
  * 注意：由于 {@link DataPermission} 不支持序列化和反序列化，所以暂时只能传递它的 enable 属性
  *
  * @author earthyzinc

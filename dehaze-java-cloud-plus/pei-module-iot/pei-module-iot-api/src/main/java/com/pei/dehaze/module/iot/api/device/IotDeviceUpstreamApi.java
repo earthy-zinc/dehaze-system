@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 /**
  * 设备数据 Upstream 上行 API
- *
+ * <p>
  * 目的：设备 -> 插件 -> 服务端
  *
  * @author haohao
@@ -45,6 +45,7 @@ public interface IotDeviceUpstreamApi {
     CommonResult<Boolean> reportDeviceEvent(@Valid @RequestBody IotDeviceEventReportReqDTO reportReqDTO);
 
     // TODO @芋艿：这个需要 plugins 接入下
+
     /**
      * 注册设备
      *
@@ -54,6 +55,7 @@ public interface IotDeviceUpstreamApi {
     CommonResult<Boolean> registerDevice(@Valid @RequestBody IotDeviceRegisterReqDTO registerReqDTO);
 
     // TODO @芋艿：这个需要 plugins 接入下
+
     /**
      * 注册子设备
      *
@@ -63,6 +65,7 @@ public interface IotDeviceUpstreamApi {
     CommonResult<Boolean> registerSubDevice(@Valid @RequestBody IotDeviceRegisterSubReqDTO registerReqDTO);
 
     // TODO @芋艿：这个需要 plugins 接入下
+
     /**
      * 注册设备拓扑
      *
@@ -72,6 +75,7 @@ public interface IotDeviceUpstreamApi {
     CommonResult<Boolean> addDeviceTopology(@Valid @RequestBody IotDeviceTopologyAddReqDTO addReqDTO);
 
     // TODO @芋艿：考虑 http 认证
+
     /**
      * 认证 Emqx 连接
      *

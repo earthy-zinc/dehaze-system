@@ -8,8 +8,8 @@ import com.pei.dehaze.module.iot.api.device.dto.control.upstream.IotDeviceStateU
 import com.pei.dehaze.module.iot.dal.dataobject.device.IotDeviceDO;
 import com.pei.dehaze.module.iot.enums.device.IotDeviceStateEnum;
 import com.pei.dehaze.module.iot.service.device.IotDeviceService;
-import com.pei.dehaze.module.iot.service.device.data.IotDevicePropertyService;
 import com.pei.dehaze.module.iot.service.device.control.IotDeviceUpstreamService;
+import com.pei.dehaze.module.iot.service.device.data.IotDevicePropertyService;
 import com.xxl.job.core.handler.annotation.XxlJob;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Component;
@@ -22,7 +22,7 @@ import java.util.Set;
 
 /**
  * IoT 设备离线检查 Job
- *
+ * <p>
  * 检测逻辑：设备最后一条 {@link com.pei.dehaze.module.iot.mq.message.IotDeviceMessage} 消息超过一定时间，则认为设备离线
  *
  * @author earthyzinc
@@ -32,7 +32,7 @@ public class IotDeviceOfflineCheckJob {
 
     /**
      * 设备离线超时时间
-     *
+     * <p>
      * TODO 芋艿：暂定 10 分钟，后续看看要不要基于设备或者全局有配置文件
      */
     public static final Duration OFFLINE_TIMEOUT = Duration.ofMinutes(10);

@@ -8,7 +8,7 @@ import lombok.Data;
 
 @Schema(description = "管理后台 - 钱包流水分页 Request VO")
 @Data
-public class PayWalletTransactionPageReqVO extends PageParam  {
+public class PayWalletTransactionPageReqVO extends PageParam {
 
     @Schema(description = "钱包编号", example = "888")
     private Long walletId;

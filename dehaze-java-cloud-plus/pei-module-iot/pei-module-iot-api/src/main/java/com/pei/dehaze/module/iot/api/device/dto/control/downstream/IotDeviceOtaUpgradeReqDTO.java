@@ -24,7 +24,7 @@ public class IotDeviceOtaUpgradeReqDTO extends IotDeviceDownstreamAbstractReqDTO
 
     /**
      * 签名方式
-     *
+     * <p>
      * 例如说：MD5、SHA256
      */
     private String signMethod;

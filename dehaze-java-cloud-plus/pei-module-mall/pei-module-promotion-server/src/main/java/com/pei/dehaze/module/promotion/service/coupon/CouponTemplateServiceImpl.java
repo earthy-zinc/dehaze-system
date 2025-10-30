@@ -88,22 +88,6 @@ public class CouponTemplateServiceImpl implements CouponTemplateService {
         couponTemplateMapper.deleteById(id);
     }
 
-    private CouponTemplateDO validateCouponTemplateExists(Long id) {
-        CouponTemplateDO couponTemplate = couponTemplateMapper.selectById(id);
-        if (couponTemplate == null) {
-            throw exception(COUPON_TEMPLATE_NOT_EXISTS);
-        }
-        return couponTemplate;
-    }
-
-    private void validateProductScope(Integer productScope, List<Long> productScopeValues) {
-        if (Objects.equals(PromotionProductScopeEnum.SPU.getScope(), productScope)) {
-            productSpuApi.validateSpuList(productScopeValues).checkError();
-        } else if (Objects.equals(PromotionProductScopeEnum.CATEGORY.getScope(), productScope)) {
-            productCategoryApi.validateCategoryList(productScopeValues).checkError();
-        }
-    }
-
     @Override
     public CouponTemplateDO getCouponTemplate(Long id) {
         return couponTemplateMapper.selectById(id);
@@ -133,6 +117,22 @@ public class CouponTemplateServiceImpl implements CouponTemplateService {
     @Override
     public List<CouponTemplateDO> getCouponTemplateList(Collection<Long> ids) {
         return couponTemplateMapper.selectBatchIds(ids);
+    }
+
+    private CouponTemplateDO validateCouponTemplateExists(Long id) {
+        CouponTemplateDO couponTemplate = couponTemplateMapper.selectById(id);
+        if (couponTemplate == null) {
+            throw exception(COUPON_TEMPLATE_NOT_EXISTS);
+        }
+        return couponTemplate;
+    }
+
+    private void validateProductScope(Integer productScope, List<Long> productScopeValues) {
+        if (Objects.equals(PromotionProductScopeEnum.SPU.getScope(), productScope)) {
+            productSpuApi.validateSpuList(productScopeValues).checkError();
+        } else if (Objects.equals(PromotionProductScopeEnum.CATEGORY.getScope(), productScope)) {
+            productCategoryApi.validateCategoryList(productScopeValues).checkError();
+        }
     }
 
 }

@@ -103,16 +103,20 @@ class DataPermissionRuleFactoryImplTest extends BaseMockitoUnitTest {
     }
 
     @DataPermission(enable = false)
-    static class TestClass03 {}
+    static class TestClass03 {
+    }
 
     @DataPermission(includeRules = DataPermissionRule01.class)
-    static class TestClass04 {}
+    static class TestClass04 {
+    }
 
     @DataPermission(excludeRules = DataPermissionRule01.class)
-    static class TestClass05 {}
+    static class TestClass05 {
+    }
 
     @DataPermission
-    static class TestClass06 {}
+    static class TestClass06 {
+    }
 
     static class DataPermissionRule01 implements DataPermissionRule {
 

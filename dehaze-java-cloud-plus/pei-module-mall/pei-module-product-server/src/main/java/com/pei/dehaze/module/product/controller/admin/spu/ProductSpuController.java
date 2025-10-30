@@ -129,7 +129,7 @@ public class ProductSpuController {
     @PreAuthorize("@ss.hasPermission('product:spu:export')")
     @ApiAccessLog(operateType = EXPORT)
     public void exportSpuList(@Validated ProductSpuPageReqVO reqVO,
-                               HttpServletResponse response) throws IOException {
+                              HttpServletResponse response) throws IOException {
         reqVO.setPageSize(PAGE_SIZE_NONE);
         List<ProductSpuDO> list = productSpuService.getSpuPage(reqVO).getList();
         // 导出 Excel

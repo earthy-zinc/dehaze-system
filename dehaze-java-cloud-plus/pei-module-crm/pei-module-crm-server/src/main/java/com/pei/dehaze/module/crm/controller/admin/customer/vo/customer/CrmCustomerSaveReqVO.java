@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.crm.controller.admin.customer.vo.customer;
 
+import com.mzt.logapi.starter.annotation.DiffLogField;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.framework.common.validation.Mobile;
 import com.pei.dehaze.framework.common.validation.Telephone;
@@ -9,7 +10,6 @@ import com.pei.dehaze.module.crm.framework.operatelog.core.CrmCustomerIndustryPa
 import com.pei.dehaze.module.crm.framework.operatelog.core.CrmCustomerLevelParseFunction;
 import com.pei.dehaze.module.crm.framework.operatelog.core.CrmCustomerSourceParseFunction;
 import com.pei.dehaze.module.crm.framework.operatelog.core.SysAreaParseFunction;
-import com.mzt.logapi.starter.annotation.DiffLogField;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;

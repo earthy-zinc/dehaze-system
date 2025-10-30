@@ -4,7 +4,6 @@ import com.pei.dehaze.framework.common.exception.ServiceException;
 import com.pei.dehaze.module.system.api.sms.dto.code.SmsCodeSendReqDTO;
 import com.pei.dehaze.module.system.api.sms.dto.code.SmsCodeUseReqDTO;
 import com.pei.dehaze.module.system.api.sms.dto.code.SmsCodeValidateReqDTO;
-
 import jakarta.validation.Valid;
 
 /**
@@ -22,9 +21,7 @@ public interface SmsCodeService {
     void sendSmsCode(@Valid SmsCodeSendReqDTO reqDTO);
 
     /**
-     * 验证短信验证码，并进行使用
-     * 如果正确，则将验证码标记成已使用
-     * 如果错误，则抛出 {@link ServiceException} 异常
+     * 验证短信验证码，并进行使用 如果正确，则将验证码标记成已使用 如果错误，则抛出 {@link ServiceException} 异常
      *
      * @param reqDTO 使用请求
      */

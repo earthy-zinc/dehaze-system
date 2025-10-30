@@ -26,7 +26,7 @@ public class CrmBusinessTransferReqVO {
 
     /**
      * 老负责人加入团队后的权限级别。如果 null 说明移除
-     *
+     * <p>
      * 关联 {@link CrmPermissionLevelEnum}
      */
     @Schema(description = "老负责人加入团队后的权限级别", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")

@@ -77,7 +77,7 @@ public interface SocialClientService {
 
     /**
      * 获得微信小程订阅模板
-     *
+     * <p>
      * 缓存的目的：考虑到微信小程序订阅消息选择好模版后几乎不会变动，缓存增加查询效率
      *
      * @param userType 用户类型
@@ -98,7 +98,7 @@ public interface SocialClientService {
      * 上传订单发货到微信小程序
      *
      * @param userType 用户类型
-     * @param reqDTO 请求
+     * @param reqDTO   请求
      */
     void uploadWxaOrderShippingInfo(Integer userType, SocialWxaOrderUploadShippingInfoReqDTO reqDTO);
 
@@ -106,7 +106,7 @@ public interface SocialClientService {
      * 通知订单收货到微信小程序
      *
      * @param userType 用户类型
-     * @param reqDTO 请求
+     * @param reqDTO   请求
      */
     void notifyWxaOrderConfirmReceive(Integer userType, SocialWxaOrderNotifyConfirmReceiveReqDTO reqDTO);
 

@@ -122,14 +122,6 @@ public class CrmFollowUpRecordServiceImpl implements CrmFollowUpRecordService {
         crmFollowUpRecordMapper.deleteByBiz(bizType, bizId);
     }
 
-    private CrmFollowUpRecordDO validateFollowUpRecordExists(Long id) {
-        CrmFollowUpRecordDO followUpRecord = crmFollowUpRecordMapper.selectById(id);
-        if (followUpRecord == null) {
-            throw exception(FOLLOW_UP_RECORD_NOT_EXISTS);
-        }
-        return followUpRecord;
-    }
-
     @Override
     public CrmFollowUpRecordDO getFollowUpRecord(Long id) {
         return crmFollowUpRecordMapper.selectById(id);
@@ -144,6 +136,14 @@ public class CrmFollowUpRecordServiceImpl implements CrmFollowUpRecordService {
     @Override
     public List<CrmFollowUpRecordDO> getFollowUpRecordByBiz(Integer bizType, Collection<Long> bizIds) {
         return crmFollowUpRecordMapper.selectListByBiz(bizType, bizIds);
+    }
+
+    private CrmFollowUpRecordDO validateFollowUpRecordExists(Long id) {
+        CrmFollowUpRecordDO followUpRecord = crmFollowUpRecordMapper.selectById(id);
+        if (followUpRecord == null) {
+            throw exception(FOLLOW_UP_RECORD_NOT_EXISTS);
+        }
+        return followUpRecord;
     }
 
 }

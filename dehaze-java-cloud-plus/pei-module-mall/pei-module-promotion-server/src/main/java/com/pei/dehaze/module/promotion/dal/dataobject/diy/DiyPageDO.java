@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.diy;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.framework.mybatis.core.type.StringListTypeHandler;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.framework.mybatis.core.type.StringListTypeHandler;
 import lombok.*;
 
 import java.util.List;
@@ -32,7 +32,7 @@ public class DiyPageDO extends BaseDO {
     private Long id;
     /**
      * 装修模板编号
-     *
+     * <p>
      * 关联 {@link DiyTemplateDO#getId()}
      */
     private Long templateId;

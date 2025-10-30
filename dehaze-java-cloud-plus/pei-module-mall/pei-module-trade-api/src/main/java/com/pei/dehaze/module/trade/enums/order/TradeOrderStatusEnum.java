@@ -34,14 +34,6 @@ public enum TradeOrderStatusEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
-    // ========== 问：为什么写了很多 isXXX 和 haveXXX 的判断逻辑呢？ ==========
-    // ========== 答：方便找到某一类判断，哪些业务正在使用 ==========
-
     /**
      * 判断指定状态，是否正处于【未付款】状态
      *
@@ -51,6 +43,9 @@ public enum TradeOrderStatusEnum implements ArrayValuable<Integer> {
     public static boolean isUnpaid(Integer status) {
         return ObjectUtil.equal(UNPAID.getStatus(), status);
     }
+
+    // ========== 问：为什么写了很多 isXXX 和 haveXXX 的判断逻辑呢？ ==========
+    // ========== 答：方便找到某一类判断，哪些业务正在使用 ==========
 
     /**
      * 判断指定状态，是否正处于【待发货】状态
@@ -111,6 +106,11 @@ public enum TradeOrderStatusEnum implements ArrayValuable<Integer> {
      */
     public static boolean haveDelivered(Integer status) {
         return ObjectUtils.equalsAny(status, DELIVERED.getStatus(), COMPLETED.getStatus());
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

@@ -1,6 +1,5 @@
 package com.pei.dehaze.module.statistics.service.pay.bo;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**

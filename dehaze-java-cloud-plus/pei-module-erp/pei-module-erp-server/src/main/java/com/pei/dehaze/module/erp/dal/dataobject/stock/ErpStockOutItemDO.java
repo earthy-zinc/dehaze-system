@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.erp.dal.dataobject.stock;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.erp.dal.dataobject.product.ErpProductDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.erp.dal.dataobject.product.ErpProductDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -31,25 +31,25 @@ public class ErpStockOutItemDO extends BaseDO {
     private Long id;
     /**
      * 出库编号
-     *
+     * <p>
      * 关联 {@link ErpStockOutDO#getId()}
      */
     private Long outId;
     /**
      * 仓库编号
-     *
+     * <p>
      * 关联 {@link ErpWarehouseDO#getId()}
      */
     private Long warehouseId;
     /**
      * 产品编号
-     *
+     * <p>
      * 关联 {@link ErpProductDO#getId()}
      */
     private Long productId;
     /**
      * 产品单位编号
-     *
+     * <p>
      * 冗余 {@link ErpProductDO#getUnitId()}
      */
     private Long productUnitId;

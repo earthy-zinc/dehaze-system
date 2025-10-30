@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.system.controller.admin.user.vo.user;
 
+import com.alibaba.excel.annotation.ExcelProperty;
 import com.pei.dehaze.framework.excel.core.annotations.DictFormat;
 import com.pei.dehaze.framework.excel.core.convert.DictConvert;
 import com.pei.dehaze.module.system.enums.DictTypeConstants;
-import com.alibaba.excel.annotation.ExcelProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

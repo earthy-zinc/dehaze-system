@@ -19,22 +19,15 @@ public enum IotProductDeviceTypeEnum implements ArrayValuable<Integer> {
     GATEWAY_SUB(1, "网关子设备"),
     GATEWAY(2, "网关设备");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotProductDeviceTypeEnum::getType).toArray(Integer[]::new);
     /**
      * 类型
      */
     private final Integer type;
-
     /**
      * 描述
      */
     private final String description;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotProductDeviceTypeEnum::getType).toArray(Integer[]::new);
-
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
 
     /**
      * 判断是否是网关
@@ -54,6 +47,11 @@ public enum IotProductDeviceTypeEnum implements ArrayValuable<Integer> {
      */
     public static boolean isGatewaySub(Integer type) {
         return GATEWAY_SUB.getType().equals(type);
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

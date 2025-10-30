@@ -1,19 +1,19 @@
 package com.pei.dehaze.module.pay.dal.dataobject.wallet;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.Data;
 
 /**
  * 会员钱包充值套餐 DO
- *
+ * <p>
  * 通过充值套餐时，可以赠送一定金额；
  *
  * @author earthyzinc
  */
-@TableName(value ="pay_wallet_recharge_package")
+@TableName(value = "pay_wallet_recharge_package")
 @KeySequence("pay_wallet_recharge_package_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class PayWalletRechargePackageDO extends BaseDO {
@@ -39,7 +39,7 @@ public class PayWalletRechargePackageDO extends BaseDO {
 
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;

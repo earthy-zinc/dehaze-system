@@ -2,6 +2,8 @@ package com.pei.dehaze.module.infra.service.codegen;
 
 import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.map.MapUtil;
+import com.baomidou.mybatisplus.generator.config.po.TableField;
+import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
 import com.pei.dehaze.module.infra.controller.admin.codegen.vo.CodegenCreateListReqVO;
@@ -20,8 +22,6 @@ import com.pei.dehaze.module.infra.framework.codegen.config.CodegenProperties;
 import com.pei.dehaze.module.infra.service.codegen.inner.CodegenBuilder;
 import com.pei.dehaze.module.infra.service.codegen.inner.CodegenEngine;
 import com.pei.dehaze.module.infra.service.db.DatabaseTableService;
-import com.baomidou.mybatisplus.generator.config.po.TableField;
-import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;

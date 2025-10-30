@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Schema(description = "管理后台 - Banner Response VO")
 @Data
 @ToString(callSuper = true)
-public class BannerRespVO  extends BannerBaseVO {
+public class BannerRespVO extends BannerBaseVO {
 
     @Schema(description = "编号", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long id;

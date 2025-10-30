@@ -18,9 +18,8 @@ public enum IotRuleSceneTriggerTypeEnum implements ArrayValuable<Integer> {
     DEVICE(1), // 设备触发
     TIMER(2); // 定时触发
 
-    private final Integer type;
-
     public static final Integer[] ARRAYS = Arrays.stream(values()).map(IotRuleSceneTriggerTypeEnum::getType).toArray(Integer[]::new);
+    private final Integer type;
 
     @Override
     public Integer[] array() {

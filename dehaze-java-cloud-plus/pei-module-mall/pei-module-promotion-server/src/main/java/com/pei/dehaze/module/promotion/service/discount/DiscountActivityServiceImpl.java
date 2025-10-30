@@ -51,6 +51,14 @@ public class DiscountActivityServiceImpl implements DiscountActivityService {
     private ProductSkuApi productSkuApi;
 
     @Override
+    public List<DiscountProductDO> getMatchDiscountProductListBySkuIds(Collection<Long> skuIds) {
+        if (CollUtil.isEmpty(skuIds)) {
+            return CollUtil.newArrayList();
+        }
+        return discountProductMapper.selectListBySkuIdsAndStatusAndNow(skuIds, CommonStatusEnum.ENABLE.getStatus());
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createDiscountActivity(DiscountActivityCreateReqVO createReqVO) {
         // 校验商品是否冲突
@@ -90,6 +98,66 @@ public class DiscountActivityServiceImpl implements DiscountActivityService {
         discountActivityMapper.updateById(updateObj);
         // 更新商品
         updateDiscountProduct(updateObj, updateReqVO.getProducts());
+    }
+
+    @Override
+    public void closeDiscountActivity(Long id) {
+        // 校验存在
+        DiscountActivityDO activity = validateDiscountActivityExists(id);
+        if (activity.getStatus().equals(CommonStatusEnum.DISABLE.getStatus())) { // 已关闭的活动，不能关闭噢
+            throw exception(DISCOUNT_ACTIVITY_CLOSE_FAIL_STATUS_CLOSED);
+        }
+
+        // 更新活动状态
+        discountActivityMapper.updateById(new DiscountActivityDO().setId(id).setStatus(CommonStatusEnum.DISABLE.getStatus()));
+        // 更新活动商品状态
+        discountProductMapper.updateByActivityId(new DiscountProductDO().setActivityId(id).setActivityStatus(
+                CommonStatusEnum.DISABLE.getStatus()));
+    }
+
+    @Override
+    public void deleteDiscountActivity(Long id) {
+        // 校验存在
+        DiscountActivityDO activity = validateDiscountActivityExists(id);
+        if (CommonStatusEnum.isEnable(activity.getStatus())) { // 未关闭的活动，不能删除噢
+            throw exception(DISCOUNT_ACTIVITY_DELETE_FAIL_STATUS_NOT_CLOSED);
+        }
+
+        // 删除活动
+        discountActivityMapper.deleteById(id);
+        // 删除活动商品
+        discountProductMapper.deleteByActivityId(id);
+    }
+
+    @Override
+    public DiscountActivityDO getDiscountActivity(Long id) {
+        return discountActivityMapper.selectById(id);
+    }
+
+    @Override
+    public PageResult<DiscountActivityDO> getDiscountActivityPage(DiscountActivityPageReqVO pageReqVO) {
+        return discountActivityMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public List<DiscountProductDO> getDiscountProductsByActivityId(Long activityId) {
+        return discountProductMapper.selectListByActivityId(activityId);
+    }
+
+    @Override
+    public List<DiscountProductDO> getDiscountProductsByActivityId(Collection<Long> activityIds) {
+        if (CollUtil.isEmpty(activityIds)) {
+            return CollUtil.newArrayList();
+        }
+        return discountProductMapper.selectList(DiscountProductDO::getActivityId, activityIds);
+    }
+
+    private DiscountActivityDO validateDiscountActivityExists(Long id) {
+        DiscountActivityDO discountActivity = discountActivityMapper.selectById(id);
+        if (discountActivity == null) {
+            throw exception(DISCOUNT_ACTIVITY_NOT_EXISTS);
+        }
+        return discountActivity;
     }
 
     private void updateDiscountProduct(DiscountActivityDO activity, List<DiscountActivityCreateReqVO.Product> products) {
@@ -164,74 +232,6 @@ public class DiscountActivityServiceImpl implements DiscountActivityService {
                 throw exception(SKU_NOT_EXISTS);
             }
         });
-    }
-
-    @Override
-    public void closeDiscountActivity(Long id) {
-        // 校验存在
-        DiscountActivityDO activity = validateDiscountActivityExists(id);
-        if (activity.getStatus().equals(CommonStatusEnum.DISABLE.getStatus())) { // 已关闭的活动，不能关闭噢
-            throw exception(DISCOUNT_ACTIVITY_CLOSE_FAIL_STATUS_CLOSED);
-        }
-
-        // 更新活动状态
-        discountActivityMapper.updateById(new DiscountActivityDO().setId(id).setStatus(CommonStatusEnum.DISABLE.getStatus()));
-        // 更新活动商品状态
-        discountProductMapper.updateByActivityId(new DiscountProductDO().setActivityId(id).setActivityStatus(
-                CommonStatusEnum.DISABLE.getStatus()));
-    }
-
-    @Override
-    public void deleteDiscountActivity(Long id) {
-        // 校验存在
-        DiscountActivityDO activity = validateDiscountActivityExists(id);
-        if (CommonStatusEnum.isEnable(activity.getStatus())) { // 未关闭的活动，不能删除噢
-            throw exception(DISCOUNT_ACTIVITY_DELETE_FAIL_STATUS_NOT_CLOSED);
-        }
-
-        // 删除活动
-        discountActivityMapper.deleteById(id);
-        // 删除活动商品
-        discountProductMapper.deleteByActivityId(id);
-    }
-
-    private DiscountActivityDO validateDiscountActivityExists(Long id) {
-        DiscountActivityDO discountActivity = discountActivityMapper.selectById(id);
-        if (discountActivity == null) {
-            throw exception(DISCOUNT_ACTIVITY_NOT_EXISTS);
-        }
-        return discountActivity;
-    }
-
-    @Override
-    public DiscountActivityDO getDiscountActivity(Long id) {
-        return discountActivityMapper.selectById(id);
-    }
-
-    @Override
-    public PageResult<DiscountActivityDO> getDiscountActivityPage(DiscountActivityPageReqVO pageReqVO) {
-        return discountActivityMapper.selectPage(pageReqVO);
-    }
-
-    @Override
-    public List<DiscountProductDO> getDiscountProductsByActivityId(Long activityId) {
-        return discountProductMapper.selectListByActivityId(activityId);
-    }
-
-    @Override
-    public List<DiscountProductDO> getDiscountProductsByActivityId(Collection<Long> activityIds) {
-        if (CollUtil.isEmpty(activityIds)) {
-            return CollUtil.newArrayList();
-        }
-        return discountProductMapper.selectList(DiscountProductDO::getActivityId, activityIds);
-    }
-
-    @Override
-    public List<DiscountProductDO> getMatchDiscountProductListBySkuIds(Collection<Long> skuIds) {
-        if (CollUtil.isEmpty(skuIds)) {
-            return CollUtil.newArrayList();
-        }
-        return discountProductMapper.selectListBySkuIdsAndStatusAndNow(skuIds, CommonStatusEnum.ENABLE.getStatus());
     }
 
 }

@@ -45,11 +45,11 @@ public interface BpmProcessDefinitionService {
     /**
      * 基于流程模型，创建流程定义
      *
-     * @param model 流程模型
+     * @param model         流程模型
      * @param modelMetaInfo 流程模型元信息
-     * @param bpmnBytes BPMN XML 字节数组
-     * @param simpleJson SIMPLE Model JSON
-     * @param form 表单
+     * @param bpmnBytes     BPMN XML 字节数组
+     * @param simpleJson    SIMPLE Model JSON
+     * @param form          表单
      * @return 流程编号
      */
     String createProcessDefinition(Model model, BpmModelMetaInfoVO modelMetaInfo,
@@ -58,7 +58,7 @@ public interface BpmProcessDefinitionService {
     /**
      * 更新流程定义状态
      *
-     * @param id 流程定义的编号
+     * @param id    流程定义的编号
      * @param state 状态
      */
     void updateProcessDefinitionState(String id, Integer state);
@@ -67,7 +67,7 @@ public interface BpmProcessDefinitionService {
      * 更新模型编号
      *
      * @param modelId 流程定义编号
-     * @param sort 排序
+     * @param sort    排序
      */
     void updateProcessDefinitionSortByModelId(String modelId, Long sort);
 
@@ -87,6 +87,10 @@ public interface BpmProcessDefinitionService {
      */
     BpmProcessDefinitionInfoDO getProcessDefinitionInfo(String id);
 
+    default Map<String, BpmProcessDefinitionInfoDO> getProcessDefinitionInfoMap(Set<String> ids) {
+        return convertMap(getProcessDefinitionInfoList(ids), BpmProcessDefinitionInfoDO::getProcessDefinitionId);
+    }
+
     /**
      * 获得流程定义的信息 List
      *
@@ -94,10 +98,6 @@ public interface BpmProcessDefinitionService {
      * @return 流程额定义信息数组
      */
     List<BpmProcessDefinitionInfoDO> getProcessDefinitionInfoList(Collection<String> ids);
-
-    default Map<String, BpmProcessDefinitionInfoDO> getProcessDefinitionInfoMap(Set<String> ids) {
-        return convertMap(getProcessDefinitionInfoList(ids), BpmProcessDefinitionInfoDO::getProcessDefinitionId);
-    }
 
     /**
      * 获得流程定义编号对应的 ProcessDefinition
@@ -107,6 +107,10 @@ public interface BpmProcessDefinitionService {
      */
     ProcessDefinition getProcessDefinition(String id);
 
+    default Map<String, ProcessDefinition> getProcessDefinitionMap(Set<String> ids) {
+        return convertMap(getProcessDefinitionList(ids), ProcessDefinition::getId);
+    }
+
     /**
      * 获得 ids 对应的 ProcessDefinition 数组
      *
@@ -114,10 +118,6 @@ public interface BpmProcessDefinitionService {
      * @return 流程定义的数组
      */
     List<ProcessDefinition> getProcessDefinitionList(Set<String> ids);
-
-    default Map<String, ProcessDefinition> getProcessDefinitionMap(Set<String> ids) {
-        return convertMap(getProcessDefinitionList(ids), ProcessDefinition::getId);
-    }
 
     /**
      * 获得 deploymentId 对应的 ProcessDefinition
@@ -147,7 +147,7 @@ public interface BpmProcessDefinitionService {
      * 判断用户是否可以使用该流程定义，进行流程的发起
      *
      * @param processDefinition 流程定义
-     * @param userId 用户编号
+     * @param userId            用户编号
      * @return 是否可以发起流程
      */
     boolean canUserStartProcessDefinition(BpmProcessDefinitionInfoDO processDefinition, Long userId);

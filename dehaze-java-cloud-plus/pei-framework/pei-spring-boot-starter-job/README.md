@@ -1,10 +1,12 @@
-`pei-spring-boot-starter-job` 是一个 **任务调度模块**，其核心作用是为微服务架构提供统一的 **定时任务和异步任务执行能力**。该模块基于 `XXL-Job` 实现了分布式定时任务，并结合 Spring Async 提供了线程池级别的异步执行支持。
+`pei-spring-boot-starter-job` 是一个 **任务调度模块**，其核心作用是为微服务架构提供统一的 **定时任务和异步任务执行能力**
+。该模块基于 `XXL-Job` 实现了分布式定时任务，并结合 Spring Async 提供了线程池级别的异步执行支持。
 
 ---
 
 ## 一、模块概述
 
 ### ✅ 模块定位
+
 - **目标**：为所有微服务模块提供统一的定时任务与异步任务支持。
 - **应用场景**：
     - 分布式系统中定时任务统一调度（如日终统计、数据同步）
@@ -28,7 +30,6 @@ src/main/java/
         └── XxlJobProperties.java              // 配置属性类
 ```
 
-
 ---
 
 ## 三、关键包详解
@@ -36,6 +37,7 @@ src/main/java/
 ### 1️⃣ `config` 包
 
 #### 🔹 `XxlJobProperties.java`
+
 ```java
 @ConfigurationProperties("xxl.job")
 @Validated
@@ -77,6 +79,7 @@ public class XxlJobProperties {
     - 使用 `jakarta.validation` 校验必填字段。
 
 #### 🔹 `PeiXxlJobAutoConfiguration.java`
+
 ```java
 @AutoConfiguration
 @ConditionalOnClass(XxlJobSpringExecutor.class)
@@ -110,6 +113,7 @@ public class PeiXxlJobAutoConfiguration {
     - 设置执行器的基本信息（IP、端口、日志路径、调度中心地址等）。
 
 #### 🔹 `PeiAsyncAutoConfiguration.java`
+
 ```java
 @AutoConfiguration
 @EnableAsync
@@ -156,13 +160,12 @@ graph TD
     E/I --> J[启动 XXL-Job 定时任务与 Spring Async 异步任务]
 ```
 
-
 ---
 
 ## 五、模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
+| 包名              | 功能    | 关键类                                                                           |
+|-----------------|-------|-------------------------------------------------------------------------------|
 | `quartz.config` | 自动配置类 | `PeiXxlJobAutoConfiguration`, `PeiAsyncAutoConfiguration`, `XxlJobProperties` |
 
 ---
@@ -185,7 +188,6 @@ xxl:
       log-path: /data/applogs/xxl-job
       log-retention-days: 30
 ```
-
 
 ### 2️⃣ 创建定时任务类（继承 `IJobHandler`）
 
@@ -212,7 +214,6 @@ public class DemoJobHandler extends IJobHandler {
 }
 ```
 
-
 ### 3️⃣ 使用 Spring Async 异步执行任务
 
 ```java
@@ -226,18 +227,17 @@ public class AsyncService {
 }
 ```
 
-
 ---
 
 ## 七、建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 单元测试 | 对 `XxlJobProperties` 进行单元测试，验证配置绑定与校验是否生效。 |
-| ✅ 日志增强 | 在 `execute()` 方法中记录 `trace-id` 和 `job-id`，便于追踪问题。 |
-| ✅ 自定义线程池 | 当前使用默认线程池，未来可支持自定义大小、队列容量等。 |
-| ✅ 失败重试机制 | 可在 `execute()` 中加入失败重试逻辑或上报异常日志。 |
-| ✅ 配置中心集成 | 将 `xxl.job` 配置放入 Nacos 或 Apollo，实现动态配置更新。 |
+| 改进点      | 描述                                                |
+|----------|---------------------------------------------------|
+| ✅ 单元测试   | 对 `XxlJobProperties` 进行单元测试，验证配置绑定与校验是否生效。        |
+| ✅ 日志增强   | 在 `execute()` 方法中记录 `trace-id` 和 `job-id`，便于追踪问题。 |
+| ✅ 自定义线程池 | 当前使用默认线程池，未来可支持自定义大小、队列容量等。                       |
+| ✅ 失败重试机制 | 可在 `execute()` 中加入失败重试逻辑或上报异常日志。                  |
+| ✅ 配置中心集成 | 将 `xxl.job` 配置放入 Nacos 或 Apollo，实现动态配置更新。         |
 
 ---
 
@@ -249,4 +249,5 @@ public class AsyncService {
 - **Spring Async 异步任务执行支持**
 - **TransmittableThreadLocal 上下文透传**
 
-它是一个轻量级但功能完整的任务调度模块，适用于多环境下的定时任务管理和异步处理场景。如果你有具体某个类（如 `XxlJobProperties`、`PeiXxlJobAutoConfiguration`）想要深入了解，欢迎继续提问！
+它是一个轻量级但功能完整的任务调度模块，适用于多环境下的定时任务管理和异步处理场景。如果你有具体某个类（如
+`XxlJobProperties`、`PeiXxlJobAutoConfiguration`）想要深入了解，欢迎继续提问！

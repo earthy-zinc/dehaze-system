@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.crm.controller.admin.followup.vo;
 
-import com.pei.dehaze.framework.excel.core.annotations.DictFormat;
-import com.pei.dehaze.module.crm.controller.admin.business.vo.business.CrmBusinessRespVO;
 import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import com.alibaba.excel.annotation.ExcelProperty;
+import com.pei.dehaze.framework.excel.core.annotations.DictFormat;
+import com.pei.dehaze.module.crm.controller.admin.business.vo.business.CrmBusinessRespVO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

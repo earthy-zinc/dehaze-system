@@ -12,13 +12,6 @@ import com.pei.dehaze.module.iot.mq.message.IotDeviceMessage;
 public interface IotDataBridgeExecute<Config> {
 
     /**
-     * 获取数据桥梁类型
-     *
-     * @return 数据桥梁类型
-     */
-    Integer getType();
-
-    /**
      * 执行数据桥梁操作
      *
      * @param message    设备消息
@@ -34,6 +27,13 @@ public interface IotDataBridgeExecute<Config> {
         // 1.2 执行对应的数据桥梁发送消息
         execute0(message, (Config) dataBridge.getConfig());
     }
+
+    /**
+     * 获取数据桥梁类型
+     *
+     * @return 数据桥梁类型
+     */
+    Integer getType();
 
     /**
      * 【真正】执行数据桥梁操作

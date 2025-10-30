@@ -20,10 +20,9 @@ public enum BpmChildProcessStartUserEmptyTypeEnum implements ArrayValuable<Integ
     CHILD_PROCESS_ADMIN(2, "子流程管理员"),
     MAIN_PROCESS_ADMIN(3, "主流程管理员");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmChildProcessStartUserEmptyTypeEnum::getType).toArray(Integer[]::new);
     private final Integer type;
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmChildProcessStartUserEmptyTypeEnum::getType).toArray(Integer[]::new);
 
     public static BpmChildProcessStartUserEmptyTypeEnum typeOf(Integer type) {
         return ArrayUtil.firstMatch(item -> item.getType().equals(type), values());

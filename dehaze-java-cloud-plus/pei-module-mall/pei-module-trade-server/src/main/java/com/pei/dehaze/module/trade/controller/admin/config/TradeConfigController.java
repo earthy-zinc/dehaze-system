@@ -8,13 +8,12 @@ import com.pei.dehaze.module.trade.dal.dataobject.config.TradeConfigDO;
 import com.pei.dehaze.module.trade.service.config.TradeConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import jakarta.annotation.Resource;
-import jakarta.validation.Valid;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 

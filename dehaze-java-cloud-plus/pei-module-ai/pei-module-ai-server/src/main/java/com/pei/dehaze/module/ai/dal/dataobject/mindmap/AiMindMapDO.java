@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.ai.dal.dataobject.mindmap;
 
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import lombok.Data;
 
 /**
@@ -39,7 +39,7 @@ public class AiMindMapDO extends BaseDO {
     private String platform;
     /**
      * 模型编号
-     *
+     * <p>
      * 关联 {@link AiModelDO#getId()}
      */
     private Long modelId;

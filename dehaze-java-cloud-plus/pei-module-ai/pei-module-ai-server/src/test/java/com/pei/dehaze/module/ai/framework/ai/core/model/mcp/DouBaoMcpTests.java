@@ -25,13 +25,11 @@ public class DouBaoMcpTests {
             .build();
 
     private final DouBaoChatModel chatModel = new DouBaoChatModel(openAiChatModel);
-
-    private final MethodToolCallbackProvider provider = MethodToolCallbackProvider.builder()
-            .toolObjects(new UserService())
-            .build();
-
     private final ChatClient chatClient = ChatClient.builder(chatModel)
             .defaultTools(provider)
+            .build();
+    private final MethodToolCallbackProvider provider = MethodToolCallbackProvider.builder()
+            .toolObjects(new UserService())
             .build();
 
     @Test

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>com.pei</groupId>
@@ -98,10 +98,10 @@
         </dependency>
 
         <!-- 服务保障相关 TODO 芋艿：暂时去掉 -->
-<!--        <dependency>-->
-<!--            <groupId>com.pei</groupId>-->
-<!--            <artifactId>pei-spring-boot-starter-protection</artifactId>-->
-<!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>com.pei</groupId>-->
+        <!--            <artifactId>pei-spring-boot-starter-protection</artifactId>-->
+        <!--        </dependency>-->
 
         <!-- Test 测试相关 -->
         <dependency>

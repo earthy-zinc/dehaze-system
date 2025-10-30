@@ -1,13 +1,13 @@
 package com.pei.dehaze.module.ai.dal.dataobject.write;
 
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
-import com.pei.dehaze.module.ai.enums.DictTypeConstants;
-import com.pei.dehaze.module.ai.enums.write.AiWriteTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
+import com.pei.dehaze.module.ai.enums.DictTypeConstants;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
+import com.pei.dehaze.module.ai.enums.write.AiWriteTypeEnum;
 import lombok.Data;
 
 /**
@@ -28,7 +28,7 @@ public class AiWriteDO extends BaseDO {
 
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 userId 字段
      */
     private Long userId;
@@ -42,13 +42,13 @@ public class AiWriteDO extends BaseDO {
 
     /**
      * 平台
-     *
+     * <p>
      * 枚举 {@link AiPlatformEnum}
      */
     private String platform;
     /**
      * 模型编号
-     *
+     * <p>
      * 关联 {@link AiModelDO#getId()}
      */
     private Long modelId;
@@ -73,25 +73,25 @@ public class AiWriteDO extends BaseDO {
 
     /**
      * 长度提示词
-     *
+     * <p>
      * 字典：{@link DictTypeConstants#AI_WRITE_LENGTH}
      */
     private Integer length;
     /**
      * 格式提示词
-     *
+     * <p>
      * 字典：{@link DictTypeConstants#AI_WRITE_FORMAT}
      */
     private Integer format;
     /**
      * 语气提示词
-     *
+     * <p>
      * 字典：{@link DictTypeConstants#AI_WRITE_TONE}
      */
     private Integer tone;
     /**
      * 语言提示词
-     *
+     * <p>
      * 字典：{@link DictTypeConstants#AI_WRITE_LANGUAGE}
      */
     private Integer language;

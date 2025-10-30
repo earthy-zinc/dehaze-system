@@ -15,10 +15,8 @@ public class IdempotentRedisDAO {
 
     /**
      * 幂等操作
-     *
-     * KEY 格式：idempotent:%s // 参数为 uuid
-     * VALUE 格式：String
-     * 过期时间：不固定
+     * <p>
+     * KEY 格式：idempotent:%s // 参数为 uuid VALUE 格式：String 过期时间：不固定
      */
     private static final String IDEMPOTENT = "idempotent:%s";
 
@@ -29,13 +27,13 @@ public class IdempotentRedisDAO {
         return redisTemplate.opsForValue().setIfAbsent(redisKey, "", timeout, timeUnit);
     }
 
+    private static String formatKey(String key) {
+        return String.format(IDEMPOTENT, key);
+    }
+
     public void delete(String key) {
         String redisKey = formatKey(key);
         redisTemplate.delete(redisKey);
-    }
-
-    private static String formatKey(String key) {
-        return String.format(IDEMPOTENT, key);
     }
 
 }

@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.crm.dal.dataobject.contact;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.crm.dal.dataobject.customer.CrmCustomerDO;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -35,7 +35,7 @@ public class CrmContactDO extends BaseDO {
     private String name;
     /**
      * 客户编号
-     *
+     * <p>
      * 关联 {@link CrmCustomerDO#getId()}
      */
     private Long customerId;
@@ -55,7 +55,7 @@ public class CrmContactDO extends BaseDO {
 
     /**
      * 负责人用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long ownerUserId;
@@ -82,7 +82,7 @@ public class CrmContactDO extends BaseDO {
     private String wechat;
     /**
      * 所在地
-     *
+     * <p>
      * 关联 {@link com.pei.dehaze.framework.ip.core.Area#getId()} 字段
      */
     private Integer areaId;
@@ -92,7 +92,7 @@ public class CrmContactDO extends BaseDO {
     private String detailAddress;
     /**
      * 性别
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.system.enums.common.SexEnum}
      */
     private Integer sex;
@@ -106,7 +106,7 @@ public class CrmContactDO extends BaseDO {
     private String post;
     /**
      * 直属上级
-     *
+     * <p>
      * 关联 {@link CrmContactDO#id}
      */
     private Long parentId;

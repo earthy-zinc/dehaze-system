@@ -19,7 +19,7 @@ public interface IotDeviceLogService {
 
     /**
      * 初始化 TDengine 超级表
-     *
+     * <p>
      * 系统启动时，会自动初始化一次
      */
     void defineDeviceLog();
@@ -48,12 +48,13 @@ public interface IotDeviceLogService {
     Long getDeviceLogCount(@Nullable LocalDateTime createTime);
 
     // TODO @super：deviceKey 是不是用不上哈？
+
     /**
      * 获得每个小时设备上行消息数量统计
      *
      * @param deviceKey 设备标识
      * @param startTime 开始时间
-     * @param endTime 结束时间
+     * @param endTime   结束时间
      * @return key: 时间戳, value: 消息数量
      */
     List<Map<Long, Integer>> getDeviceLogUpCountByHour(@Nullable String deviceKey,
@@ -65,7 +66,7 @@ public interface IotDeviceLogService {
      *
      * @param deviceKey 设备标识
      * @param startTime 开始时间
-     * @param endTime 结束时间
+     * @param endTime   结束时间
      * @return key: 时间戳, value: 消息数量
      */
     List<Map<Long, Integer>> getDeviceLogDownCountByHour(@Nullable String deviceKey,

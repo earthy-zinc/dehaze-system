@@ -150,36 +150,6 @@ public class CombinationActivityServiceImpl implements CombinationActivityServic
                 .setStatus(CommonStatusEnum.DISABLE.getStatus()));
     }
 
-    /**
-     * 更新拼团商品
-     *
-     * @param activity 拼团活动
-     * @param products 该活动的最新商品配置
-     */
-    private void updateCombinationProduct(CombinationActivityDO activity, List<CombinationProductBaseVO> products) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<CombinationProductDO> newList = CombinationActivityConvert.INSTANCE.convertList(products, activity);
-        List<CombinationProductDO> oldList = combinationProductMapper.selectListByActivityIds(CollUtil.newArrayList(activity.getId()));
-        List<List<CombinationProductDO>> diffList = CollectionUtils.diffList(oldList, newList, (oldVal, newVal) -> {
-            boolean same = ObjectUtil.equal(oldVal.getSkuId(), newVal.getSkuId());
-            if (same) {
-                newVal.setId(oldVal.getId());
-            }
-            return same;
-        });
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            combinationProductMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            combinationProductMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            combinationProductMapper.deleteByIds(CollectionUtils.convertList(diffList.get(2), CombinationProductDO::getId));
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteCombinationActivity(Long id) {
@@ -238,6 +208,36 @@ public class CombinationActivityServiceImpl implements CombinationActivityServic
     @Override
     public CombinationActivityDO getMatchCombinationActivityBySpuId(Long spuId) {
         return combinationActivityMapper.selectBySpuIdAndStatusAndNow(spuId, CommonStatusEnum.ENABLE.getStatus());
+    }
+
+    /**
+     * 更新拼团商品
+     *
+     * @param activity 拼团活动
+     * @param products 该活动的最新商品配置
+     */
+    private void updateCombinationProduct(CombinationActivityDO activity, List<CombinationProductBaseVO> products) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<CombinationProductDO> newList = CombinationActivityConvert.INSTANCE.convertList(products, activity);
+        List<CombinationProductDO> oldList = combinationProductMapper.selectListByActivityIds(CollUtil.newArrayList(activity.getId()));
+        List<List<CombinationProductDO>> diffList = CollectionUtils.diffList(oldList, newList, (oldVal, newVal) -> {
+            boolean same = ObjectUtil.equal(oldVal.getSkuId(), newVal.getSkuId());
+            if (same) {
+                newVal.setId(oldVal.getId());
+            }
+            return same;
+        });
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            combinationProductMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            combinationProductMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            combinationProductMapper.deleteByIds(CollectionUtils.convertList(diffList.get(2), CombinationProductDO::getId));
+        }
     }
 
 }

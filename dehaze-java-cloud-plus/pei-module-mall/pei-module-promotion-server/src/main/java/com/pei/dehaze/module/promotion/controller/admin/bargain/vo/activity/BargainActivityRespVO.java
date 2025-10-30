@@ -6,6 +6,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 import java.time.LocalDateTime;
+
 @Schema(description = "管理后台 - 砍价活动 Response VO")
 @Data
 @EqualsAndHashCode(callSuper = true)

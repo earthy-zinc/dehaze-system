@@ -6,6 +6,7 @@ import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.date.LocalDateTimeUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -27,7 +28,6 @@ import com.pei.dehaze.module.trade.enums.brokerage.BrokerageEnabledConditionEnum
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordBizTypeEnum;
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordStatusEnum;
 import com.pei.dehaze.module.trade.service.config.TradeConfigService;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -307,8 +307,7 @@ public class BrokerageUserServiceImpl implements BrokerageUserService {
      * <p>
      * 标准：注册时间在 30 秒内的，都算新用户
      * <p>
-     * 疑问：为什么通过这样的方式实现？
-     * 回答：因为注册在 member 模块，希望它和 trade 模块解耦，所以只能用这种约定的逻辑。
+     * 疑问：为什么通过这样的方式实现？ 回答：因为注册在 member 模块，希望它和 trade 模块解耦，所以只能用这种约定的逻辑。
      *
      * @param userId 用户编号
      * @return 是否新用户
@@ -352,8 +351,7 @@ public class BrokerageUserServiceImpl implements BrokerageUserService {
      * 根据绑定用户编号，获得下级用户编号列表
      *
      * @param bindUserId 绑定用户编号
-     * @param level      下级用户的层级。
-     *                   如果 level 为空，则查询 1+2 两个层级
+     * @param level      下级用户的层级。 如果 level 为空，则查询 1+2 两个层级
      * @return 下级用户编号列表
      */
     private List<Long> getChildUserIdsByLevel(Long bindUserId, Integer level) {

@@ -69,15 +69,6 @@ public interface CrmCustomerService {
     CrmCustomerDO getCustomer(Long id);
 
     /**
-     * 获得客户列表
-     *
-     * @param ids 客户编号数组
-     * @return 客户列表
-     * @author ljlleo
-     */
-    List<CrmCustomerDO> getCustomerList(Collection<Long> ids);
-
-    /**
      * 获得客户 Map
      *
      * @param ids 客户编号数组
@@ -86,6 +77,15 @@ public interface CrmCustomerService {
     default Map<Long, CrmCustomerDO> getCustomerMap(Collection<Long> ids) {
         return convertMap(getCustomerList(ids), CrmCustomerDO::getId);
     }
+
+    /**
+     * 获得客户列表
+     *
+     * @param ids 客户编号数组
+     * @return 客户列表
+     * @author ljlleo
+     */
+    List<CrmCustomerDO> getCustomerList(Collection<Long> ids);
 
     /**
      * 获得客户分页

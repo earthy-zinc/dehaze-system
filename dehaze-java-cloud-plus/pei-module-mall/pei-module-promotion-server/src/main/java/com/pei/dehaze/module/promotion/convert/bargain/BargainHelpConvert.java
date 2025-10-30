@@ -31,6 +31,7 @@ public interface BargainHelpConvert {
                         user -> record.setNickname(user.getNickname()).setAvatar(user.getAvatar())));
         return pageResult;
     }
+
     PageResult<BargainHelpRespVO> convertPage(PageResult<BargainHelpDO> page);
 
     default List<AppBargainHelpRespVO> convertList(List<BargainHelpDO> helps,
@@ -41,6 +42,7 @@ public interface BargainHelpConvert {
                         user -> help.setNickname(user.getNickname()).setAvatar(user.getAvatar())));
         return helpVOs;
     }
+
     List<AppBargainHelpRespVO> convertList02(List<BargainHelpDO> helps);
 
 }

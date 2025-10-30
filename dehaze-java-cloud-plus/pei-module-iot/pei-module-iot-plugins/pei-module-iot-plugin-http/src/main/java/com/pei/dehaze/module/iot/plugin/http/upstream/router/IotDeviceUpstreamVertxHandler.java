@@ -89,7 +89,7 @@ public class IotDeviceUpstreamVertxHandler implements Handler<RoutingContext> {
                 method = EVENT_METHOD_PREFIX + identifier + EVENT_METHOD_SUFFIX;
             } else {
                 // 不支持的请求路径
-                IotStandardResponse errorResponse = IotStandardResponse.error(requestId, "unknown", BAD_REQUEST.getCode(), "不支持的请求路径");
+                IotStandardResponse errorResponse = IotStandardResponse.error(requestId, "unknown", BAD_REQUEST.code(), "不支持的请求路径");
                 IotPluginCommonUtils.writeJsonResponse(routingContext, errorResponse);
                 return;
             }
@@ -108,21 +108,9 @@ public class IotDeviceUpstreamVertxHandler implements Handler<RoutingContext> {
                     : EVENT_METHOD_PREFIX + (routingContext.pathParams().containsKey("identifier")
                     ? routingContext.pathParam("identifier")
                     : "unknown") + EVENT_METHOD_SUFFIX;
-            IotStandardResponse errorResponse = IotStandardResponse.error(requestId, method, INTERNAL_SERVER_ERROR.getCode(), INTERNAL_SERVER_ERROR.getMsg());
+            IotStandardResponse errorResponse = IotStandardResponse.error(requestId, method, INTERNAL_SERVER_ERROR.code(), INTERNAL_SERVER_ERROR.msg());
             IotPluginCommonUtils.writeJsonResponse(routingContext, errorResponse);
         }
-    }
-
-    /**
-     * 更新设备状态
-     *
-     * @param productKey 产品 Key
-     * @param deviceName 设备名称
-     */
-    private void updateDeviceState(String productKey, String deviceName) {
-        deviceUpstreamApi.updateDeviceState(((IotDeviceStateUpdateReqDTO) new IotDeviceStateUpdateReqDTO()
-                .setRequestId(IdUtil.fastSimpleUUID()).setProcessId(IotPluginCommonUtils.getProcessId()).setReportTime(LocalDateTime.now())
-                .setProductKey(productKey).setDeviceName(deviceName)).setState(IotDeviceStateEnum.ONLINE.getState()));
     }
 
     /**
@@ -158,6 +146,18 @@ public class IotDeviceUpstreamVertxHandler implements Handler<RoutingContext> {
         return ((IotDevicePropertyReportReqDTO) new IotDevicePropertyReportReqDTO().setRequestId(requestId)
                 .setProcessId(IotPluginCommonUtils.getProcessId()).setReportTime(LocalDateTime.now())
                 .setProductKey(productKey).setDeviceName(deviceName)).setProperties(properties);
+    }
+
+    /**
+     * 更新设备状态
+     *
+     * @param productKey 产品 Key
+     * @param deviceName 设备名称
+     */
+    private void updateDeviceState(String productKey, String deviceName) {
+        deviceUpstreamApi.updateDeviceState(((IotDeviceStateUpdateReqDTO) new IotDeviceStateUpdateReqDTO()
+                .setRequestId(IdUtil.fastSimpleUUID()).setProcessId(IotPluginCommonUtils.getProcessId()).setReportTime(LocalDateTime.now())
+                .setProductKey(productKey).setDeviceName(deviceName)).setState(IotDeviceStateEnum.ONLINE.getState()));
     }
 
     /**

@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.system.api.logger;
 
+import com.pei.dehaze.framework.common.biz.system.logger.dto.OperateLogCreateReqDTO;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
-import com.pei.dehaze.framework.common.biz.system.logger.dto.OperateLogCreateReqDTO;
 import com.pei.dehaze.module.system.api.logger.dto.OperateLogPageReqDTO;
 import com.pei.dehaze.module.system.api.logger.dto.OperateLogRespDTO;
 import com.pei.dehaze.module.system.dal.dataobject.logger.OperateLogDO;

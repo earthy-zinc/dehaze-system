@@ -10,7 +10,7 @@ import java.util.Arrays;
 
 /**
  * CRM 数据权限级别枚举
- *
+ * <p>
  * OWNER > WRITE > READ
  *
  * @author HUIHUI
@@ -34,11 +34,6 @@ public enum CrmPermissionLevelEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static boolean isOwner(Integer level) {
         return ObjUtil.equal(OWNER.level, level);
     }
@@ -55,6 +50,11 @@ public enum CrmPermissionLevelEnum implements ArrayValuable<Integer> {
         CrmPermissionLevelEnum typeEnum = CollUtil.findOne(CollUtil.newArrayList(CrmPermissionLevelEnum.values()),
                 item -> ObjUtil.equal(item.level, level));
         return typeEnum == null ? null : typeEnum.getName();
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

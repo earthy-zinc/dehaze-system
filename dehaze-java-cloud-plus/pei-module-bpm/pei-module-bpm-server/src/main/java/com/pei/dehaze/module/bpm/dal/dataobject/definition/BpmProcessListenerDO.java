@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.bpm.dal.dataobject.definition;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.bpm.enums.definition.BpmProcessListenerTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.bpm.enums.definition.BpmProcessListenerTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * BPM 流程监听器 DO
- *
+ * <p>
  * 目的：本质上它是流程监听器的模版，用于 BPMN 在设计时，直接选择这些模版
  *
  * @author earthyzinc
@@ -36,33 +36,33 @@ public class BpmProcessListenerDO extends BaseDO {
     private String name;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.framework.common.enums.CommonStatusEnum}
      */
     private Integer status;
     /**
      * 监听类型
-     *
+     * <p>
      * 枚举 {@link BpmProcessListenerTypeEnum}
-     *
-     * 1. execution：ExecutionListener <a href="https://tkjohn.github.io/flowable-userguide/#executionListeners">执行监听器</a>
-     * 2. task：TaskListener <a href="https://tkjohn.github.io/flowable-userguide/#taskListeners">任务监听器</a>
+     * <p>
+     * 1. execution：ExecutionListener <a
+     * href="https://tkjohn.github.io/flowable-userguide/#executionListeners">执行监听器</a> 2. task：TaskListener <a
+     * href="https://tkjohn.github.io/flowable-userguide/#taskListeners">任务监听器</a>
      */
     private String type;
     /**
      * 监听事件
-     *
-     * execution 时：start、end
-     * task 时：create 创建、assignment 指派、complete 完成、delete 删除、update 更新、timeout 超时
+     * <p>
+     * execution 时：start、end task 时：create 创建、assignment 指派、complete 完成、delete 删除、update 更新、timeout 超时
      */
     private String event;
 
     /**
      * 值类型
-     *
-     * 1. class：Java 类，ExecutionListener 需要 {@link org.flowable.engine.delegate.JavaDelegate}，TaskListener 需要 {@link org.flowable.engine.delegate.TaskListener}
-     * 2. delegateExpression：委托表达式，在 class 的基础上，需要注册到 Spring 容器里，后续表达式通过 Spring Bean 名称即可
-     * 3. expression：表达式，一个普通类的普通方法，将这个普通类注册到 Spring 容器中，然后表达式中还可以执行这个类中的方法
+     * <p>
+     * 1. class：Java 类，ExecutionListener 需要 {@link org.flowable.engine.delegate.JavaDelegate}，TaskListener 需要
+     * {@link org.flowable.engine.delegate.TaskListener} 2. delegateExpression：委托表达式，在 class 的基础上，需要注册到 Spring
+     * 容器里，后续表达式通过 Spring Bean 名称即可 3. expression：表达式，一个普通类的普通方法，将这个普通类注册到 Spring 容器中，然后表达式中还可以执行这个类中的方法
      */
     private String valueType;
     /**

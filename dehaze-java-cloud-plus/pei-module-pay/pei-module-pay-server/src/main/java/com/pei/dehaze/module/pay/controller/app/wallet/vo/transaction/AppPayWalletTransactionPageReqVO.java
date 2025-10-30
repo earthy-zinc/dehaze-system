@@ -21,7 +21,7 @@ public class AppPayWalletTransactionPageReqVO extends PageParam {
      */
     public static final Integer TYPE_EXPENSE = 2;
 
-    @Schema(description = "类型",  example = "1")
+    @Schema(description = "类型", example = "1")
     private Integer type;
 
     @Schema(description = "创建时间")

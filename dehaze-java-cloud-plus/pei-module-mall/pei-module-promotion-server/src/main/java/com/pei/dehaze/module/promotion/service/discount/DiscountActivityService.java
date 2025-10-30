@@ -20,7 +20,7 @@ public interface DiscountActivityService {
 
     /**
      * 基于指定 SKU 编号数组，获得匹配的限时折扣商品
-     *
+     * <p>
      * 注意，匹配的条件，仅仅是日期符合，并且处于开启状态
      *
      * @param skuIds SKU 编号数组

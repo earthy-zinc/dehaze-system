@@ -19,17 +19,15 @@ public enum AiMusicStatusEnum implements ArrayValuable<Integer> {
     SUCCESS(20, "已完成"),
     FAIL(30, "已失败");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(AiMusicStatusEnum::getStatus).toArray(Integer[]::new);
     /**
      * 状态
      */
     private final Integer status;
-
     /**
      * 状态名
      */
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(AiMusicStatusEnum::getStatus).toArray(Integer[]::new);
 
     @Override
     public Integer[] array() {

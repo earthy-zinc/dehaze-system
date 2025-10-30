@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.trade.dal.dataobject.order;
 
-import com.pei.dehaze.framework.common.enums.UserTypeEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.trade.enums.order.TradeOrderOperateTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.common.enums.UserTypeEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.trade.enums.order.TradeOrderOperateTypeEnum;
 import lombok.*;
 
 /**
@@ -25,7 +25,7 @@ public class TradeOrderLogDO extends BaseDO {
 
     /**
      * 用户类型 - 系统
-     *
+     * <p>
      * 例如说：Job 自动过期订单时，通过系统自动操作
      */
     public static final Integer USER_TYPE_SYSTEM = 0;
@@ -41,20 +41,20 @@ public class TradeOrderLogDO extends BaseDO {
     private Long id;
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段、或者 MemberUserDO 的 id 字段
      */
     private Long userId;
     /**
      * 用户类型
-     *
+     * <p>
      * 枚举 {@link UserTypeEnum}
      */
     private Integer userType;
 
     /**
      * 订单号
-     *
+     * <p>
      * 关联 {@link TradeOrderDO#getId()}
      */
     private Long orderId;
@@ -69,7 +69,7 @@ public class TradeOrderLogDO extends BaseDO {
 
     /**
      * 操作类型
-     *
+     * <p>
      * {@link TradeOrderOperateTypeEnum}
      */
     private Integer operateType;

@@ -43,8 +43,10 @@ public class SiliconFlowImageOptions implements ImageOptions {
     private Integer numInferenceSteps = 25;
 
     /**
-     * This value is used to control the degree of match between the generated image and the given prompt. The higher the value, the more the generated image will tend to strictly match the text prompt. The lower the value, the more creative and diverse the generated image will be, potentially containing more unexpected elements.
-     *
+     * This value is used to control the degree of match between the generated image and the given prompt. The higher
+     * the value, the more the generated image will tend to strictly match the text prompt. The lower the value, the
+     * more creative and diverse the generated image will be, potentially containing more unexpected elements.
+     * <p>
      * Required range: 0 <= x <= 20
      */
     @JsonProperty("guidance_scale")
@@ -55,7 +57,7 @@ public class SiliconFlowImageOptions implements ImageOptions {
      *
      */
     @JsonProperty("seed")
-    private Integer seed =  (int)(Math.random() * 1_000_000_000);
+    private Integer seed = (int) (Math.random() * 1_000_000_000);
 
     /**
      * The image that needs to be uploaded should be converted into base64 format.

@@ -4,8 +4,8 @@ import cn.hutool.core.collection.CollUtil;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
-import com.pei.dehaze.module.erp.controller.admin.stock.vo.warehouse.ErpWarehouseSaveReqVO;
 import com.pei.dehaze.module.erp.controller.admin.stock.vo.warehouse.ErpWarehousePageReqVO;
+import com.pei.dehaze.module.erp.controller.admin.stock.vo.warehouse.ErpWarehouseSaveReqVO;
 import com.pei.dehaze.module.erp.dal.dataobject.stock.ErpWarehouseDO;
 import com.pei.dehaze.module.erp.dal.mysql.stock.ErpWarehouseMapper;
 import jakarta.annotation.Resource;
@@ -78,12 +78,6 @@ public class ErpWarehouseServiceImpl implements ErpWarehouseService {
         warehouseMapper.deleteById(id);
     }
 
-    private void validateWarehouseExists(Long id) {
-        if (warehouseMapper.selectById(id) == null) {
-            throw exception(WAREHOUSE_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ErpWarehouseDO getWarehouse(Long id) {
         return warehouseMapper.selectById(id);
@@ -121,6 +115,12 @@ public class ErpWarehouseServiceImpl implements ErpWarehouseService {
     @Override
     public PageResult<ErpWarehouseDO> getWarehousePage(ErpWarehousePageReqVO pageReqVO) {
         return warehouseMapper.selectPage(pageReqVO);
+    }
+
+    private void validateWarehouseExists(Long id) {
+        if (warehouseMapper.selectById(id) == null) {
+            throw exception(WAREHOUSE_NOT_EXISTS);
+        }
     }
 
 }

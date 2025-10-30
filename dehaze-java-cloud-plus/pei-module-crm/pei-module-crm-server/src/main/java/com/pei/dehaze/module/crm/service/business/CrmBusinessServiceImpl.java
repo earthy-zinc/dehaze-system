@@ -2,6 +2,9 @@ package com.pei.dehaze.module.crm.service.business;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.ListUtil;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.number.MoneyUtils;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -29,9 +32,6 @@ import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionTransferReqBO;
 import com.pei.dehaze.module.crm.service.product.CrmProductService;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -168,55 +168,6 @@ public class CrmBusinessServiceImpl implements CrmBusinessService {
         businessMapper.updateBatch(convertList(ids, id -> new CrmBusinessDO().setId(id).setContactNextTime(contactNextTime)));
     }
 
-    private void updateBusinessProduct(Long id, List<CrmBusinessProductDO> newList) {
-        List<CrmBusinessProductDO> oldList = businessProductMapper.selectListByBusinessId(id);
-        List<List<CrmBusinessProductDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setBusinessId(id));
-            businessProductMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            businessProductMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            businessProductMapper.deleteBatchIds(convertSet(diffList.get(2), CrmBusinessProductDO::getId));
-        }
-    }
-
-    private void validateRelationDataExists(CrmBusinessSaveReqVO saveReqVO) {
-        // 校验商机状态
-        if (saveReqVO.getStatusTypeId() != null) {
-            businessStatusService.validateBusinessStatusType(saveReqVO.getStatusTypeId());
-        }
-        // 校验客户
-        if (saveReqVO.getCustomerId() != null) {
-            customerService.validateCustomer(saveReqVO.getCustomerId());
-        }
-        // 校验联系人
-        if (saveReqVO.getContactId() != null) {
-            contactService.validateContact(saveReqVO.getContactId());
-        }
-        // 校验负责人
-        if (saveReqVO.getOwnerUserId() != null) {
-            adminUserApi.validateUser(saveReqVO.getOwnerUserId());
-        }
-    }
-
-    private List<CrmBusinessProductDO> validateBusinessProducts(List<CrmBusinessSaveReqVO.BusinessProduct> list) {
-        // 1. 校验产品存在
-        productService.validProductList(convertSet(list, CrmBusinessSaveReqVO.BusinessProduct::getProductId));
-        // 2. 转化为 CrmBusinessProductDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, CrmBusinessProductDO.class,
-                item -> item.setTotalPrice(MoneyUtils.priceMultiply(item.getBusinessPrice(), item.getCount()))));
-    }
-
-    private void calculateTotalPrice(CrmBusinessDO business, List<CrmBusinessProductDO> businessProducts) {
-        business.setTotalProductPrice(getSumValue(businessProducts, CrmBusinessProductDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
-        BigDecimal discountPrice = MoneyUtils.priceMultiplyPercent(business.getTotalProductPrice(), business.getDiscountPercent());
-        business.setTotalPrice(business.getTotalProductPrice().subtract(discountPrice));
-    }
-
     @Override
     @LogRecord(type = CRM_BUSINESS_TYPE, subType = CRM_BUSINESS_UPDATE_STATUS_SUB_TYPE, bizNo = "{{#reqVO.id}}",
             success = CRM_BUSINESS_UPDATE_STATUS_SUCCESS)
@@ -282,15 +233,6 @@ public class CrmBusinessServiceImpl implements CrmBusinessService {
         }
     }
 
-    private CrmBusinessDO validateBusinessExists(Long id) {
-        CrmBusinessDO crmBusiness = businessMapper.selectById(id);
-        if (crmBusiness == null) {
-            throw exception(BUSINESS_NOT_EXISTS);
-        }
-        return crmBusiness;
-    }
-
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     @LogRecord(type = CRM_BUSINESS_TYPE, subType = CRM_BUSINESS_TRANSFER_SUB_TYPE, bizNo = "{{#reqVO.id}}",
@@ -309,8 +251,6 @@ public class CrmBusinessServiceImpl implements CrmBusinessService {
         // 记录操作日志上下文
         LogRecordContext.putVariable("business", business);
     }
-
-    //======================= 查询相关 =======================
 
     @Override
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_BUSINESS, bizId = "#id", level = CrmPermissionLevelEnum.READ)
@@ -340,6 +280,8 @@ public class CrmBusinessServiceImpl implements CrmBusinessService {
     public PageResult<CrmBusinessDO> getBusinessPage(CrmBusinessPageReqVO pageReqVO, Long userId) {
         return businessMapper.selectPage(pageReqVO, userId);
     }
+
+    //======================= 查询相关 =======================
 
     @Override
     @CrmPermission(bizType = CrmBizTypeEnum.CRM_CUSTOMER, bizId = "#pageReqVO.customerId", level = CrmPermissionLevelEnum.READ)
@@ -379,6 +321,63 @@ public class CrmBusinessServiceImpl implements CrmBusinessService {
     @Override
     public PageResult<CrmBusinessDO> getBusinessPageByDate(CrmStatisticsFunnelReqVO pageVO) {
         return businessMapper.selectPage(pageVO);
+    }
+
+    private CrmBusinessDO validateBusinessExists(Long id) {
+        CrmBusinessDO crmBusiness = businessMapper.selectById(id);
+        if (crmBusiness == null) {
+            throw exception(BUSINESS_NOT_EXISTS);
+        }
+        return crmBusiness;
+    }
+
+    private void updateBusinessProduct(Long id, List<CrmBusinessProductDO> newList) {
+        List<CrmBusinessProductDO> oldList = businessProductMapper.selectListByBusinessId(id);
+        List<List<CrmBusinessProductDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setBusinessId(id));
+            businessProductMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            businessProductMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            businessProductMapper.deleteBatchIds(convertSet(diffList.get(2), CrmBusinessProductDO::getId));
+        }
+    }
+
+    private List<CrmBusinessProductDO> validateBusinessProducts(List<CrmBusinessSaveReqVO.BusinessProduct> list) {
+        // 1. 校验产品存在
+        productService.validProductList(convertSet(list, CrmBusinessSaveReqVO.BusinessProduct::getProductId));
+        // 2. 转化为 CrmBusinessProductDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, CrmBusinessProductDO.class,
+                item -> item.setTotalPrice(MoneyUtils.priceMultiply(item.getBusinessPrice(), item.getCount()))));
+    }
+
+    private void validateRelationDataExists(CrmBusinessSaveReqVO saveReqVO) {
+        // 校验商机状态
+        if (saveReqVO.getStatusTypeId() != null) {
+            businessStatusService.validateBusinessStatusType(saveReqVO.getStatusTypeId());
+        }
+        // 校验客户
+        if (saveReqVO.getCustomerId() != null) {
+            customerService.validateCustomer(saveReqVO.getCustomerId());
+        }
+        // 校验联系人
+        if (saveReqVO.getContactId() != null) {
+            contactService.validateContact(saveReqVO.getContactId());
+        }
+        // 校验负责人
+        if (saveReqVO.getOwnerUserId() != null) {
+            adminUserApi.validateUser(saveReqVO.getOwnerUserId());
+        }
+    }
+
+    private void calculateTotalPrice(CrmBusinessDO business, List<CrmBusinessProductDO> businessProducts) {
+        business.setTotalProductPrice(getSumValue(businessProducts, CrmBusinessProductDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
+        BigDecimal discountPrice = MoneyUtils.priceMultiplyPercent(business.getTotalProductPrice(), business.getDiscountPercent());
+        business.setTotalPrice(business.getTotalProductPrice().subtract(discountPrice));
     }
 
 }

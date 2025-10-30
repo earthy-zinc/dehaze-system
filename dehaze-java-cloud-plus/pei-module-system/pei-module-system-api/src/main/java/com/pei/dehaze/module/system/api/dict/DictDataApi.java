@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.system.api.dict;
 
 import com.pei.dehaze.framework.common.biz.system.dict.DictDataCommonApi;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.Operation;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.system.enums.ApiConstants;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.Parameters;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -22,8 +22,8 @@ public interface DictDataApi extends DictDataCommonApi {
     @GetMapping(PREFIX + "/valid")
     @Operation(summary = "校验字典数据们是否有效")
     @Parameters({
-        @Parameter(name = "dictType", description = "字典类型", example = "SEX", required = true),
-        @Parameter(name = "descriptions", description = "字典数据值的数组", example = "1,2", required = true)
+            @Parameter(name = "dictType", description = "字典类型", example = "SEX", required = true),
+            @Parameter(name = "descriptions", description = "字典数据值的数组", example = "1,2", required = true)
     })
     CommonResult<Boolean> validateDictDataList(@RequestParam("dictType") String dictType,
                                                @RequestParam("values") Collection<String> values);

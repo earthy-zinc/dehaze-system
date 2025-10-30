@@ -100,12 +100,74 @@ public class RewardActivityServiceImpl implements RewardActivityService {
         rewardActivityMapper.deleteById(id);
     }
 
+    @Override
+    public RewardActivityDO getRewardActivity(Long id) {
+        return rewardActivityMapper.selectById(id);
+    }
+
+    @Override
+    public PageResult<RewardActivityDO> getRewardActivityPage(RewardActivityPageReqVO pageReqVO) {
+        return rewardActivityMapper.selectPage(pageReqVO);
+    }
+
+    @Override
+    public List<RewardActivityMatchRespDTO> getMatchRewardActivityListBySpuIds(Collection<Long> spuIds) {
+        // 1. 查询商品分类
+        List<ProductSpuRespDTO> spuList = productSpuApi.getSpuList(spuIds).getCheckedData();
+        if (CollUtil.isEmpty(spuList)) {
+            return Collections.emptyList();
+        }
+        Map<Long, ProductSpuRespDTO> spuMap = convertMap(spuList, ProductSpuRespDTO::getId);
+
+        // 2. 查询出指定 spuId 的 spu 参加的活动
+        List<RewardActivityDO> activityList = rewardActivityMapper.selectListBySpuIdAndStatusAndNow(
+                spuIds, convertSet(spuList, ProductSpuRespDTO::getCategoryId), CommonStatusEnum.ENABLE.getStatus());
+        if (CollUtil.isEmpty(activityList)) {
+            return Collections.emptyList();
+        }
+
+        // 3. 转换成 Response DTO
+        return convertList(activityList, activity -> {
+            RewardActivityMatchRespDTO activityDTO = BeanUtils.toBean(activity, RewardActivityMatchRespDTO.class);
+            // 3.1 设置对应匹配的 spuIds
+            activityDTO.setSpuIds(new ArrayList<>());
+            for (Long spuId : spuIds) {
+                if (PromotionProductScopeEnum.isAll(activityDTO.getProductScope())) {
+                    activityDTO.getSpuIds().add(spuId);
+                } else if (PromotionProductScopeEnum.isSpu(activityDTO.getProductScope())) {
+                    if (CollUtil.contains(activityDTO.getProductScopeValues(), spuId)) {
+                        activityDTO.getSpuIds().add(spuId);
+                    }
+                } else if (PromotionProductScopeEnum.isCategory(activityDTO.getProductScope())) {
+                    ProductSpuRespDTO spu = spuMap.get(spuId);
+                    if (spu != null && CollUtil.contains(activityDTO.getProductScopeValues(), spu.getCategoryId())) {
+                        activityDTO.getSpuIds().add(spuId);
+                    }
+                }
+            }
+
+            // 3.2 设置每个 Rule 的描述
+            activityDTO.setRules(convertList(activity.getRules(), rule ->
+                    BeanUtils.toBean(rule, RewardActivityMatchRespDTO.Rule.class)
+                            .setDescription(getRewardActivityRuleDescription(activityDTO.getConditionType(), rule))));
+            return activityDTO;
+        });
+    }
+
     private RewardActivityDO validateRewardActivityExists(Long id) {
         RewardActivityDO activity = rewardActivityMapper.selectById(id);
         if (activity == null) {
             throw exception(REWARD_ACTIVITY_NOT_EXISTS);
         }
         return activity;
+    }
+
+    private void validateProductScope(Integer productScope, List<Long> productScopeValues) {
+        if (Objects.equals(PromotionProductScopeEnum.SPU.getScope(), productScope)) {
+            productSpuApi.validateSpuList(productScopeValues).checkError();
+        } else if (Objects.equals(PromotionProductScopeEnum.CATEGORY.getScope(), productScope)) {
+            productCategoryApi.validateCategoryList(productScopeValues).checkError();
+        }
     }
 
     /**
@@ -172,68 +234,6 @@ public class RewardActivityServiceImpl implements RewardActivityService {
                 }
             }
         }
-    }
-
-    private void validateProductScope(Integer productScope, List<Long> productScopeValues) {
-        if (Objects.equals(PromotionProductScopeEnum.SPU.getScope(), productScope)) {
-            productSpuApi.validateSpuList(productScopeValues).checkError();
-        } else if (Objects.equals(PromotionProductScopeEnum.CATEGORY.getScope(), productScope)) {
-            productCategoryApi.validateCategoryList(productScopeValues).checkError();
-        }
-    }
-
-    @Override
-    public RewardActivityDO getRewardActivity(Long id) {
-        return rewardActivityMapper.selectById(id);
-    }
-
-    @Override
-    public PageResult<RewardActivityDO> getRewardActivityPage(RewardActivityPageReqVO pageReqVO) {
-        return rewardActivityMapper.selectPage(pageReqVO);
-    }
-
-    @Override
-    public List<RewardActivityMatchRespDTO> getMatchRewardActivityListBySpuIds(Collection<Long> spuIds) {
-        // 1. 查询商品分类
-        List<ProductSpuRespDTO> spuList = productSpuApi.getSpuList(spuIds).getCheckedData();
-        if (CollUtil.isEmpty(spuList)) {
-            return Collections.emptyList();
-        }
-        Map<Long, ProductSpuRespDTO> spuMap = convertMap(spuList, ProductSpuRespDTO::getId);
-
-        // 2. 查询出指定 spuId 的 spu 参加的活动
-        List<RewardActivityDO> activityList = rewardActivityMapper.selectListBySpuIdAndStatusAndNow(
-                spuIds, convertSet(spuList, ProductSpuRespDTO::getCategoryId), CommonStatusEnum.ENABLE.getStatus());
-        if (CollUtil.isEmpty(activityList)) {
-            return Collections.emptyList();
-        }
-
-        // 3. 转换成 Response DTO
-        return convertList(activityList, activity -> {
-            RewardActivityMatchRespDTO activityDTO = BeanUtils.toBean(activity, RewardActivityMatchRespDTO.class);
-            // 3.1 设置对应匹配的 spuIds
-            activityDTO.setSpuIds(new ArrayList<>());
-            for (Long spuId : spuIds) {
-                if (PromotionProductScopeEnum.isAll(activityDTO.getProductScope())) {
-                    activityDTO.getSpuIds().add(spuId);
-                } else if (PromotionProductScopeEnum.isSpu(activityDTO.getProductScope())) {
-                    if (CollUtil.contains(activityDTO.getProductScopeValues(), spuId)) {
-                        activityDTO.getSpuIds().add(spuId);
-                    }
-                } else if (PromotionProductScopeEnum.isCategory(activityDTO.getProductScope())) {
-                    ProductSpuRespDTO spu = spuMap.get(spuId);
-                    if (spu != null && CollUtil.contains(activityDTO.getProductScopeValues(), spu.getCategoryId())) {
-                        activityDTO.getSpuIds().add(spuId);
-                    }
-                }
-            }
-
-            // 3.2 设置每个 Rule 的描述
-            activityDTO.setRules(convertList(activity.getRules(), rule ->
-                    BeanUtils.toBean(rule, RewardActivityMatchRespDTO.Rule.class)
-                            .setDescription(getRewardActivityRuleDescription(activityDTO.getConditionType(), rule))));
-            return activityDTO;
-        });
     }
 
 }

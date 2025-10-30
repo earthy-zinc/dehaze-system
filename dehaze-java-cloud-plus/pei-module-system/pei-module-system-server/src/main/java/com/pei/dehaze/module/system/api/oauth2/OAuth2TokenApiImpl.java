@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.system.api.oauth2;
 
 import com.pei.dehaze.framework.common.biz.system.oauth2.OAuth2TokenCommonApi;
-import com.pei.dehaze.framework.common.pojo.CommonResult;
-import com.pei.dehaze.framework.common.util.object.BeanUtils;
-import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCheckRespDTO;
 import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenCreateReqDTO;
 import com.pei.dehaze.framework.common.biz.system.oauth2.dto.OAuth2AccessTokenRespDTO;
+import com.pei.dehaze.framework.common.pojo.CommonResult;
+import com.pei.dehaze.framework.common.util.object.BeanUtils;
+import com.pei.dehaze.framework.tenant.core.aop.TenantIgnore;
 import com.pei.dehaze.module.system.dal.dataobject.oauth2.OAuth2AccessTokenDO;
 import com.pei.dehaze.module.system.service.oauth2.OAuth2TokenService;
 import jakarta.annotation.Resource;

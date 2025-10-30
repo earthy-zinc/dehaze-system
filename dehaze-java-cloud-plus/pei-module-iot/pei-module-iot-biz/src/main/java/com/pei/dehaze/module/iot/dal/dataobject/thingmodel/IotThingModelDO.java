@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.iot.dal.dataobject.thingmodel;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.iot.controller.admin.thingmodel.model.ThingModelEvent;
 import com.pei.dehaze.module.iot.controller.admin.thingmodel.model.ThingModelProperty;
 import com.pei.dehaze.module.iot.controller.admin.thingmodel.model.ThingModelService;
 import com.pei.dehaze.module.iot.dal.dataobject.product.IotProductDO;
 import com.pei.dehaze.module.iot.enums.thingmodel.IotThingModelTypeEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -3,10 +3,9 @@ package com.pei.dehaze.module.infra.api.file;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.module.infra.api.file.dto.FileCreateReqDTO;
 import com.pei.dehaze.module.infra.service.file.FileService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.annotation.Resource;
 
 import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 

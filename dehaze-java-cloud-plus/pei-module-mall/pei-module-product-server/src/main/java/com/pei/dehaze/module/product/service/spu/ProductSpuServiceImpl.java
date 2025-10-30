@@ -2,6 +2,7 @@ package com.pei.dehaze.module.product.service.spu;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.google.common.collect.Maps;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
@@ -19,7 +20,6 @@ import com.pei.dehaze.module.product.enums.spu.ProductSpuStatusEnum;
 import com.pei.dehaze.module.product.service.brand.ProductBrandService;
 import com.pei.dehaze.module.product.service.category.ProductCategoryService;
 import com.pei.dehaze.module.product.service.sku.ProductSkuService;
-import com.google.common.collect.Maps;
 import jakarta.annotation.Resource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -94,69 +94,6 @@ public class ProductSpuServiceImpl implements ProductSpuService {
         productSkuService.updateSkuList(updateObj.getId(), updateReqVO.getSkus());
     }
 
-    /**
-     * 基于 SKU 的信息，初始化 SPU 的信息
-     * 主要是计数相关的字段，例如说市场价、最大最小价、库存等等
-     *
-     * @param spu  商品 SPU
-     * @param skus 商品 SKU 数组
-     */
-    private void initSpuFromSkus(ProductSpuDO spu, List<ProductSkuSaveReqVO> skus) {
-        // sku 单价最低的商品的价格
-        spu.setPrice(getMinValue(skus, ProductSkuSaveReqVO::getPrice));
-        // sku 单价最低的商品的市场价格
-        spu.setMarketPrice(getMinValue(skus, ProductSkuSaveReqVO::getMarketPrice));
-        // sku 单价最低的商品的成本价格
-        spu.setCostPrice(getMinValue(skus, ProductSkuSaveReqVO::getCostPrice));
-        // skus 库存总数
-        spu.setStock(getSumValue(skus, ProductSkuSaveReqVO::getStock, Integer::sum));
-        // 若是 spu 已有状态则不处理
-        if (spu.getStatus() == null) {
-            spu.setStatus(ProductSpuStatusEnum.ENABLE.getStatus()); // 默认状态为上架
-            spu.setSalesCount(0); // 默认商品销量
-            spu.setBrowseCount(0); // 默认商品浏览量
-        }
-    }
-
-    /**
-     * 校验商品分类是否合法
-     *
-     * @param id 商品分类编号
-     */
-    private void validateCategory(Long id) {
-        categoryService.validateCategory(id);
-        // 校验层级
-        if (categoryService.getCategoryLevel(id) < CATEGORY_LEVEL) {
-            throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
-        }
-    }
-
-    @Override
-    public List<ProductSpuDO> validateSpuList(Collection<Long> ids) {
-        if (CollUtil.isEmpty(ids)) {
-            return Collections.emptyList();
-        }
-        // 获得商品信息
-        List<ProductSpuDO> list = productSpuMapper.selectBatchIds(ids);
-        Map<Long, ProductSpuDO> spuMap = CollectionUtils.convertMap(list, ProductSpuDO::getId);
-        // 校验
-        ids.forEach(id -> {
-            ProductSpuDO spu = spuMap.get(id);
-            if (spu == null) {
-                throw exception(SPU_NOT_EXISTS);
-            }
-            if (!ProductSpuStatusEnum.isEnable(spu.getStatus())) {
-                throw exception(SPU_NOT_ENABLE, spu.getName());
-            }
-        });
-        return list;
-    }
-
-    @Override
-    public void updateBrowseCount(Long id, int incrCount) {
-        productSpuMapper.updateBrowseCount(id , incrCount);
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteSpu(Long id) {
@@ -174,14 +111,6 @@ public class ProductSpuServiceImpl implements ProductSpuService {
         productSpuMapper.deleteById(id);
         // 删除关联的 SKU
         productSkuService.deleteSkuBySpuId(id);
-    }
-
-    private ProductSpuDO validateSpuExists(Long id) {
-        ProductSpuDO spuDO = productSpuMapper.selectById(id);
-        if (spuDO == null) {
-            throw exception(SPU_NOT_EXISTS);
-        }
-        return spuDO;
     }
 
     @Override
@@ -279,6 +208,76 @@ public class ProductSpuServiceImpl implements ProductSpuService {
     @Override
     public Long getSpuCountByCategoryId(Long categoryId) {
         return productSpuMapper.selectCount(ProductSpuDO::getCategoryId, categoryId);
+    }
+
+    @Override
+    public List<ProductSpuDO> validateSpuList(Collection<Long> ids) {
+        if (CollUtil.isEmpty(ids)) {
+            return Collections.emptyList();
+        }
+        // 获得商品信息
+        List<ProductSpuDO> list = productSpuMapper.selectBatchIds(ids);
+        Map<Long, ProductSpuDO> spuMap = CollectionUtils.convertMap(list, ProductSpuDO::getId);
+        // 校验
+        ids.forEach(id -> {
+            ProductSpuDO spu = spuMap.get(id);
+            if (spu == null) {
+                throw exception(SPU_NOT_EXISTS);
+            }
+            if (!ProductSpuStatusEnum.isEnable(spu.getStatus())) {
+                throw exception(SPU_NOT_ENABLE, spu.getName());
+            }
+        });
+        return list;
+    }
+
+    @Override
+    public void updateBrowseCount(Long id, int incrCount) {
+        productSpuMapper.updateBrowseCount(id, incrCount);
+    }
+
+    private ProductSpuDO validateSpuExists(Long id) {
+        ProductSpuDO spuDO = productSpuMapper.selectById(id);
+        if (spuDO == null) {
+            throw exception(SPU_NOT_EXISTS);
+        }
+        return spuDO;
+    }
+
+    /**
+     * 校验商品分类是否合法
+     *
+     * @param id 商品分类编号
+     */
+    private void validateCategory(Long id) {
+        categoryService.validateCategory(id);
+        // 校验层级
+        if (categoryService.getCategoryLevel(id) < CATEGORY_LEVEL) {
+            throw exception(SPU_SAVE_FAIL_CATEGORY_LEVEL_ERROR);
+        }
+    }
+
+    /**
+     * 基于 SKU 的信息，初始化 SPU 的信息 主要是计数相关的字段，例如说市场价、最大最小价、库存等等
+     *
+     * @param spu  商品 SPU
+     * @param skus 商品 SKU 数组
+     */
+    private void initSpuFromSkus(ProductSpuDO spu, List<ProductSkuSaveReqVO> skus) {
+        // sku 单价最低的商品的价格
+        spu.setPrice(getMinValue(skus, ProductSkuSaveReqVO::getPrice));
+        // sku 单价最低的商品的市场价格
+        spu.setMarketPrice(getMinValue(skus, ProductSkuSaveReqVO::getMarketPrice));
+        // sku 单价最低的商品的成本价格
+        spu.setCostPrice(getMinValue(skus, ProductSkuSaveReqVO::getCostPrice));
+        // skus 库存总数
+        spu.setStock(getSumValue(skus, ProductSkuSaveReqVO::getStock, Integer::sum));
+        // 若是 spu 已有状态则不处理
+        if (spu.getStatus() == null) {
+            spu.setStatus(ProductSpuStatusEnum.ENABLE.getStatus()); // 默认状态为上架
+            spu.setSalesCount(0); // 默认商品销量
+            spu.setBrowseCount(0); // 默认商品浏览量
+        }
     }
 
 }

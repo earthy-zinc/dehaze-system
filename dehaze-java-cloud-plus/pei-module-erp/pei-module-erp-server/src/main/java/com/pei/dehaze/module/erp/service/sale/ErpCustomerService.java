@@ -58,14 +58,6 @@ public interface ErpCustomerService {
     ErpCustomerDO validateCustomer(Long id);
 
     /**
-     * 获得客户列表
-     *
-     * @param ids 编号列表
-     * @return 客户列表
-     */
-    List<ErpCustomerDO> getCustomerList(Collection<Long> ids);
-
-    /**
      * 获得客户 Map
      *
      * @param ids 编号列表
@@ -74,6 +66,14 @@ public interface ErpCustomerService {
     default Map<Long, ErpCustomerDO> getCustomerMap(Collection<Long> ids) {
         return convertMap(getCustomerList(ids), ErpCustomerDO::getId);
     }
+
+    /**
+     * 获得客户列表
+     *
+     * @param ids 编号列表
+     * @return 客户列表
+     */
+    List<ErpCustomerDO> getCustomerList(Collection<Long> ids);
 
     /**
      * 获得客户分页

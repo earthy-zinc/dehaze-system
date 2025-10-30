@@ -188,6 +188,22 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
     }
 
     @Test
+    public void testDeleteUser_success() {
+        // mock 数据
+        AdminUserDO dbUser = randomAdminUserDO();
+        userMapper.insert(dbUser);
+        // 准备参数
+        Long userId = dbUser.getId();
+
+        // 调用数据
+        userService.deleteUser(userId);
+        // 校验结果
+        assertNull(userMapper.selectById(userId));
+        // 校验调用次数
+        verify(permissionService, times(1)).processUserDeleted(eq(userId));
+    }
+
+    @Test
     public void testUpdateUserLogin() {
         // mock 数据
         AdminUserDO user = randomAdminUserDO(o -> o.setLoginDate(null));
@@ -282,20 +298,13 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         assertEquals(status, user.getStatus());
     }
 
-    @Test
-    public void testDeleteUser_success(){
-        // mock 数据
-        AdminUserDO dbUser = randomAdminUserDO();
-        userMapper.insert(dbUser);
-        // 准备参数
-        Long userId = dbUser.getId();
-
-        // 调用数据
-        userService.deleteUser(userId);
-        // 校验结果
-        assertNull(userMapper.selectById(userId));
-        // 校验调用次数
-        verify(permissionService, times(1)).processUserDeleted(eq(userId));
+    @SafeVarargs
+    private static AdminUserDO randomAdminUserDO(Consumer<AdminUserDO>... consumers) {
+        Consumer<AdminUserDO> consumer = (o) -> {
+            o.setStatus(randomEle(CommonStatusEnum.values()).getStatus()); // 保证 status 的范围
+            o.setSex(randomEle(SexEnum.values()).getSex()); // 保证 sex 的范围
+        };
+        return randomPojo(AdminUserDO.class, ArrayUtils.append(consumer, consumers));
     }
 
     @Test
@@ -425,7 +434,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         assertEquals(0, respVO.getCreateUsernames().size());
         assertEquals(0, respVO.getUpdateUsernames().size());
         assertEquals(1, respVO.getFailureUsernames().size());
-        assertEquals(DEPT_NOT_FOUND.getMsg(), respVO.getFailureUsernames().get(importUser.getUsername()));
+        assertEquals(DEPT_NOT_FOUND.msg(), respVO.getFailureUsernames().get(importUser.getUsername()));
     }
 
     /**
@@ -489,7 +498,7 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         assertEquals(0, respVO.getCreateUsernames().size());
         assertEquals(0, respVO.getUpdateUsernames().size());
         assertEquals(1, respVO.getFailureUsernames().size());
-        assertEquals(USER_USERNAME_EXISTS.getMsg(), respVO.getFailureUsernames().get(importUser.getUsername()));
+        assertEquals(USER_USERNAME_EXISTS.msg(), respVO.getFailureUsernames().get(importUser.getUsername()));
     }
 
     /**
@@ -737,6 +746,8 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         assertServiceException(() -> userService.validateUserList(ids), USER_NOT_EXISTS);
     }
 
+    // ========== 随机对象 ==========
+
     @Test
     public void testValidateUserList_notEnable() {
         // mock 数据
@@ -748,17 +759,6 @@ public class AdminUserServiceImplTest extends BaseDbUnitTest {
         // 调用, 并断言异常
         assertServiceException(() -> userService.validateUserList(ids), USER_IS_DISABLE,
                 userDO.getNickname());
-    }
-
-    // ========== 随机对象 ==========
-
-    @SafeVarargs
-    private static AdminUserDO randomAdminUserDO(Consumer<AdminUserDO>... consumers) {
-        Consumer<AdminUserDO> consumer = (o) -> {
-            o.setStatus(randomEle(CommonStatusEnum.values()).getStatus()); // 保证 status 的范围
-            o.setSex(randomEle(SexEnum.values()).getSex()); // 保证 sex 的范围
-        };
-        return randomPojo(AdminUserDO.class, ArrayUtils.append(consumer, consumers));
     }
 
 }

@@ -73,7 +73,7 @@ public interface RewardActivityService {
     /**
      * 获得 spuId 商品匹配的的满减送活动列表
      *
-     * @param spuIds   SPU 编号数组
+     * @param spuIds SPU 编号数组
      * @return 满减送活动列表
      */
     List<RewardActivityMatchRespDTO> getMatchRewardActivityListBySpuIds(Collection<Long> spuIds);

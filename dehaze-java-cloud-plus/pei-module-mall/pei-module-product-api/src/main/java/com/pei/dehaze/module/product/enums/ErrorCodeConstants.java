@@ -4,7 +4,7 @@ import com.pei.dehaze.framework.common.exception.ErrorCode;
 
 /**
  * Product 错误码枚举类
- *
+ * <p>
  * product 系统，使用 1-008-000-000 段
  */
 public interface ErrorCodeConstants {

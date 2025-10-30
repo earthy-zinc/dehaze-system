@@ -12,7 +12,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum ExpressClientEnum {
 
-    NOT_PROVIDE("not_provide","未提供"),
+    NOT_PROVIDE("not_provide", "未提供"),
     KD_NIAO("kd_niao", "快递鸟"),
     KD_100("kd_100", "快递100");
 

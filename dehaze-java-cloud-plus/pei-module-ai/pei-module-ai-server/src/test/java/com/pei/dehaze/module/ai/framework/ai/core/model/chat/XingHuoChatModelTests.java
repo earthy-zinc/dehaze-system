@@ -24,15 +24,15 @@ import java.util.List;
 public class XingHuoChatModelTests {
 
     private final OpenAiChatModel openAiChatModel = OpenAiChatModel.builder()
-        .openAiApi(OpenAiApi.builder()
-                .baseUrl(XingHuoChatModel.BASE_URL)
-                .apiKey("75b161ed2aef4719b275d6e7f2a4d4cd:YWYxYWI2MTA4ODI2NGZlYTQyNjAzZTcz") // appKey:secretKey
-                .build())
-        .defaultOptions(OpenAiChatOptions.builder()
-                .model("generalv3.5") // 模型
-                .temperature(0.7)
-                .build())
-        .build();
+            .openAiApi(OpenAiApi.builder()
+                    .baseUrl(XingHuoChatModel.BASE_URL)
+                    .apiKey("75b161ed2aef4719b275d6e7f2a4d4cd:YWYxYWI2MTA4ODI2NGZlYTQyNjAzZTcz") // appKey:secretKey
+                    .build())
+            .defaultOptions(OpenAiChatOptions.builder()
+                    .model("generalv3.5") // 模型
+                    .temperature(0.7)
+                    .build())
+            .build();
 
     private final XingHuoChatModel chatModel = new XingHuoChatModel(openAiChatModel);
 

@@ -20,7 +20,7 @@ public interface DeliveryExpressTemplateMapper extends BaseMapperX<DeliveryExpre
     }
 
     default DeliveryExpressTemplateDO selectByName(String name) {
-        return selectOne(DeliveryExpressTemplateDO::getName,name);
+        return selectOne(DeliveryExpressTemplateDO::getName, name);
     }
 
 }

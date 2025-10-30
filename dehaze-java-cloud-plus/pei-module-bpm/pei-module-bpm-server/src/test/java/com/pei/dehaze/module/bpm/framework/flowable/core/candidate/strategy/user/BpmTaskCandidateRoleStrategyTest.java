@@ -33,7 +33,7 @@ public class BpmTaskCandidateRoleStrategyTest extends BaseMockitoUnitTest {
         String param = "1,2";
         // mock 方法
         when(permissionApi.getUserRoleIdListByRoleIds(eq(asSet(1L, 2L))))
-            .thenReturn(success(asSet(11L, 22L)));
+                .thenReturn(success(asSet(11L, 22L)));
 
         // 调用
         Set<Long> userIds = strategy.calculateUsersByTask(null, param);

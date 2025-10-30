@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.crm.dal.dataobject.product;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.crm.enums.DictTypeConstants;
-import com.pei.dehaze.module.crm.enums.product.CrmProductStatusEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.crm.enums.DictTypeConstants;
+import com.pei.dehaze.module.crm.enums.product.CrmProductStatusEnum;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -40,7 +40,7 @@ public class CrmProductDO extends BaseDO {
     private String no;
     /**
      * 单位
-     *
+     * <p>
      * 字典 {@link DictTypeConstants#CRM_PRODUCT_UNIT}
      */
     private Integer unit;
@@ -50,13 +50,13 @@ public class CrmProductDO extends BaseDO {
     private BigDecimal price;
     /**
      * 状态
-     *
+     * <p>
      * 关联 {@link CrmProductStatusEnum}
      */
     private Integer status;
     /**
      * 产品分类 ID
-     *
+     * <p>
      * 关联 {@link CrmProductCategoryDO#getId()} 字段
      */
     private Long categoryId;
@@ -66,7 +66,7 @@ public class CrmProductDO extends BaseDO {
     private String description;
     /**
      * 负责人的用户编号
-     *
+     * <p>
      * 关联 AdminUserDO 的 id 字段
      */
     private Long ownerUserId;

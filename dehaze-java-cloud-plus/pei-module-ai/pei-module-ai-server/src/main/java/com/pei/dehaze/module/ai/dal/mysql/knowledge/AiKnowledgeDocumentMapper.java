@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.ai.dal.mysql.knowledge;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.ai.controller.admin.knowledge.vo.document.AiKnowledgeDocumentPageReqVO;
 import com.pei.dehaze.module.ai.dal.dataobject.knowledge.AiKnowledgeDocumentDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;

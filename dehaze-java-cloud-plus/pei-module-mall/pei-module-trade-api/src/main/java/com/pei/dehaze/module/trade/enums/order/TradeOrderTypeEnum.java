@@ -34,11 +34,6 @@ public enum TradeOrderTypeEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static boolean isNormal(Integer type) {
         return ObjectUtil.equal(type, NORMAL.getType());
     }
@@ -57,6 +52,11 @@ public enum TradeOrderTypeEnum implements ArrayValuable<Integer> {
 
     public static boolean isPoint(Integer type) {
         return ObjectUtil.equal(type, POINT.getType());
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

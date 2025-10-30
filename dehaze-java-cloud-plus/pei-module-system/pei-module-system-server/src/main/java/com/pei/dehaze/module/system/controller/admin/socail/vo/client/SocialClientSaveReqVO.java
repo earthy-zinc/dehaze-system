@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.system.controller.admin.socail.vo.client;
 
 import cn.hutool.core.util.StrUtil;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+
 import java.util.Objects;
 
 @Schema(description = "管理后台 - 社交客户端创建/修改 Request VO")

@@ -3,9 +3,6 @@ package com.pei.dehaze.module.ai.service.mindmap;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
-import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
-import com.pei.dehaze.module.ai.util.AiUtils;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -18,8 +15,11 @@ import com.pei.dehaze.module.ai.dal.dataobject.model.AiModelDO;
 import com.pei.dehaze.module.ai.dal.mysql.mindmap.AiMindMapMapper;
 import com.pei.dehaze.module.ai.enums.AiChatRoleEnum;
 import com.pei.dehaze.module.ai.enums.ErrorCodeConstants;
+import com.pei.dehaze.module.ai.enums.model.AiModelTypeEnum;
+import com.pei.dehaze.module.ai.enums.model.AiPlatformEnum;
 import com.pei.dehaze.module.ai.service.model.AiChatRoleService;
 import com.pei.dehaze.module.ai.service.model.AiModelService;
+import com.pei.dehaze.module.ai.util.AiUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.Message;
@@ -101,6 +101,24 @@ public class AiMindMapServiceImpl implements AiMindMapService {
 
     }
 
+    private AiModelDO getModel(AiChatRoleDO role) {
+        AiModelDO model = null;
+        if (role != null && role.getModelId() != null) {
+            model = modalService.getModel(role.getModelId());
+        }
+        if (model == null) {
+            model = modalService.getRequiredDefaultModel(AiModelTypeEnum.CHAT.getType());
+        }
+        // 校验模型存在、且合法
+        if (model == null) {
+            throw exception(MODEL_NOT_EXISTS);
+        }
+        if (ObjUtil.notEqual(model.getType(), AiModelTypeEnum.CHAT.getType())) {
+            throw exception(MODEL_USE_TYPE_ERROR);
+        }
+        return model;
+    }
+
     private Prompt buildPrompt(AiMindMapGenerateReqVO generateReqVO, AiModelDO model, String systemMessage) {
         // 1. 构建 message 列表
         List<Message> chatMessages = buildMessages(generateReqVO, systemMessage);
@@ -119,24 +137,6 @@ public class AiMindMapServiceImpl implements AiMindMapService {
         // 2. 用户输入
         chatMessages.add(new UserMessage(generateReqVO.getPrompt()));
         return chatMessages;
-    }
-
-    private AiModelDO getModel(AiChatRoleDO role) {
-        AiModelDO model = null;
-        if (role != null && role.getModelId() != null) {
-            model = modalService.getModel(role.getModelId());
-        }
-        if (model == null) {
-            model = modalService.getRequiredDefaultModel(AiModelTypeEnum.CHAT.getType());
-        }
-        // 校验模型存在、且合法
-        if (model == null) {
-            throw exception(MODEL_NOT_EXISTS);
-        }
-        if (ObjUtil.notEqual(model.getType(), AiModelTypeEnum.CHAT.getType())) {
-            throw exception(MODEL_USE_TYPE_ERROR);
-        }
-        return model;
     }
 
     @Override

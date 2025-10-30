@@ -21,7 +21,7 @@ import static java.util.Collections.singletonList;
 
 /**
  * {@link TradePriceCalculator} 的工具类
- *
+ * <p>
  * 主要实现对 {@link TradePriceCalculateRespBO} 计算结果的操作
  *
  * @author earthyzinc
@@ -131,23 +131,8 @@ public class TradePriceCalculatorHelper {
     }
 
     /**
-     * 重新计算单个订单项的支付金额
-     *
-     * @param orderItem 订单项
-     */
-    public static void recountPayPrice(TradePriceCalculateRespBO.OrderItem orderItem) {
-        orderItem.setPayPrice(orderItem.getPrice() * orderItem.getCount()
-                - orderItem.getDiscountPrice()
-                + orderItem.getDeliveryPrice()
-                - orderItem.getCouponPrice()
-                - orderItem.getPointPrice()
-                - orderItem.getVipPrice()
-        );
-    }
-
-    /**
      * 重新计算每个订单项的支付金额
-     *
+     * <p>
      * 【目前主要是单测使用】
      *
      * @param orderItems 订单项数组
@@ -180,15 +165,18 @@ public class TradePriceCalculatorHelper {
     }
 
     /**
-     * 计算已选中的订单项，总支付金额
+     * 重新计算单个订单项的支付金额
      *
-     * @param orderItems 订单项数组
-     * @return 总支付金额
+     * @param orderItem 订单项
      */
-    public static Integer calculateTotalPayPrice(List<TradePriceCalculateRespBO.OrderItem> orderItems) {
-        return getSumValue(orderItems,
-                orderItem -> orderItem.getSelected() ? orderItem.getPayPrice() : 0, // 未选中的情况下，不计算支付金额
-                Integer::sum);
+    public static void recountPayPrice(TradePriceCalculateRespBO.OrderItem orderItem) {
+        orderItem.setPayPrice(orderItem.getPrice() * orderItem.getCount()
+                - orderItem.getDiscountPrice()
+                + orderItem.getDeliveryPrice()
+                - orderItem.getCouponPrice()
+                - orderItem.getPointPrice()
+                - orderItem.getVipPrice()
+        );
     }
 
     /**
@@ -205,7 +193,7 @@ public class TradePriceCalculatorHelper {
 
     /**
      * 按照支付金额，返回每个订单项的分摊金额数组
-     *
+     * <p>
      * 实际上 price 不仅仅可以传递的是金额，也可以是积分。因为它的实现逻辑，就是根据 payPrice 做分摊而已
      *
      * @param orderItems 订单项数组
@@ -240,8 +228,20 @@ public class TradePriceCalculatorHelper {
     }
 
     /**
-     * 计算订单调价价格分摊
+     * 计算已选中的订单项，总支付金额
      *
+     * @param orderItems 订单项数组
+     * @return 总支付金额
+     */
+    public static Integer calculateTotalPayPrice(List<TradePriceCalculateRespBO.OrderItem> orderItems) {
+        return getSumValue(orderItems,
+                orderItem -> orderItem.getSelected() ? orderItem.getPayPrice() : 0, // 未选中的情况下，不计算支付金额
+                Integer::sum);
+    }
+
+    /**
+     * 计算订单调价价格分摊
+     * <p>
      * 和 {@link #dividePrice(List, Integer)} 逻辑一致，只是传入的是 TradeOrderItemDO 对象
      *
      * @param items 订单项

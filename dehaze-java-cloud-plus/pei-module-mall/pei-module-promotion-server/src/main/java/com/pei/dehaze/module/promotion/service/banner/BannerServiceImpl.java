@@ -54,12 +54,6 @@ public class BannerServiceImpl implements BannerService {
         bannerMapper.deleteById(id);
     }
 
-    private void validateBannerExists(Long id) {
-        if (bannerMapper.selectById(id) == null) {
-            throw exception(BANNER_NOT_EXISTS);
-        }
-    }
-
     @Override
     public BannerDO getBanner(Long id) {
         return bannerMapper.selectById(id);
@@ -81,6 +75,12 @@ public class BannerServiceImpl implements BannerService {
     @Override
     public List<BannerDO> getBannerListByPosition(Integer position) {
         return bannerMapper.selectBannerListByPosition(position);
+    }
+
+    private void validateBannerExists(Long id) {
+        if (bannerMapper.selectById(id) == null) {
+            throw exception(BANNER_NOT_EXISTS);
+        }
     }
 
 }

@@ -100,32 +100,6 @@ public class AiChatRoleServiceImpl implements AiChatRoleService {
         chatRoleMapper.updateById(updateObj);
     }
 
-    /**
-     * 校验知识库是否存在
-     *
-     * @param knowledgeIds 知识库编号列表
-     */
-    private void validateDocuments(List<Long> knowledgeIds) {
-        if (CollUtil.isEmpty(knowledgeIds)) {
-            return;
-        }
-        // 校验文档是否存在
-        knowledgeIds.forEach(knowledgeService::validateKnowledgeExists);
-    }
-
-    /**
-     * 校验工具是否存在
-     *
-     * @param toolIds 工具编号列表
-     */
-    private void validateTools(List<Long> toolIds) {
-        if (CollUtil.isEmpty(toolIds)) {
-            return;
-        }
-        // 遍历校验每个工具是否存在
-        toolIds.forEach(toolService::validateToolExists);
-    }
-
     @Override
     public void deleteChatRole(Long id) {
         // 校验存在
@@ -143,14 +117,6 @@ public class AiChatRoleServiceImpl implements AiChatRoleService {
         }
         // 删除
         chatRoleMapper.deleteById(id);
-    }
-
-    private AiChatRoleDO validateChatRoleExists(Long id) {
-        AiChatRoleDO chatRole = chatRoleMapper.selectById(id);
-        if (chatRole == null) {
-            throw exception(CHAT_ROLE_NOT_EXISTS);
-        }
-        return chatRole;
     }
 
     @Override
@@ -195,6 +161,40 @@ public class AiChatRoleServiceImpl implements AiChatRoleService {
     @Override
     public List<AiChatRoleDO> getChatRoleListByName(String name) {
         return chatRoleMapper.selectListByName(name);
+    }
+
+    private AiChatRoleDO validateChatRoleExists(Long id) {
+        AiChatRoleDO chatRole = chatRoleMapper.selectById(id);
+        if (chatRole == null) {
+            throw exception(CHAT_ROLE_NOT_EXISTS);
+        }
+        return chatRole;
+    }
+
+    /**
+     * 校验知识库是否存在
+     *
+     * @param knowledgeIds 知识库编号列表
+     */
+    private void validateDocuments(List<Long> knowledgeIds) {
+        if (CollUtil.isEmpty(knowledgeIds)) {
+            return;
+        }
+        // 校验文档是否存在
+        knowledgeIds.forEach(knowledgeService::validateKnowledgeExists);
+    }
+
+    /**
+     * 校验工具是否存在
+     *
+     * @param toolIds 工具编号列表
+     */
+    private void validateTools(List<Long> toolIds) {
+        if (CollUtil.isEmpty(toolIds)) {
+            return;
+        }
+        // 遍历校验每个工具是否存在
+        toolIds.forEach(toolService::validateToolExists);
     }
 
 }

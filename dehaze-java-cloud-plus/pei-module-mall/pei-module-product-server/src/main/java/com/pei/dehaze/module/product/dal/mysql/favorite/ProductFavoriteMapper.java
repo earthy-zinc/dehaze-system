@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.product.dal.mysql.favorite;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
 import com.pei.dehaze.module.product.controller.admin.favorite.vo.ProductFavoritePageReqVO;
 import com.pei.dehaze.module.product.controller.app.favorite.vo.AppFavoritePageReqVO;
 import com.pei.dehaze.module.product.dal.dataobject.favorite.ProductFavoriteDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper

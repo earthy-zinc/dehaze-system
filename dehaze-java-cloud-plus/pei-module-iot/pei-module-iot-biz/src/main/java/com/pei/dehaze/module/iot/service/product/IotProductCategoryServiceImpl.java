@@ -62,12 +62,6 @@ public class IotProductCategoryServiceImpl implements IotProductCategoryService 
         productCategoryMapper.deleteById(id);
     }
 
-    private void validateProductCategoryExists(Long id) {
-        if (productCategoryMapper.selectById(id) == null) {
-            throw exception(PRODUCT_CATEGORY_NOT_EXISTS);
-        }
-    }
-
     @Override
     public IotProductCategoryDO getProductCategory(Long id) {
         return productCategoryMapper.selectById(id);
@@ -118,6 +112,12 @@ public class IotProductCategoryServiceImpl implements IotProductCategoryService 
             }
         }
         return categoryDeviceCountMap;
+    }
+
+    private void validateProductCategoryExists(Long id) {
+        if (productCategoryMapper.selectById(id) == null) {
+            throw exception(PRODUCT_CATEGORY_NOT_EXISTS);
+        }
     }
 
 }

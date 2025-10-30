@@ -10,10 +10,10 @@ import com.pei.dehaze.module.member.convert.group.MemberGroupConvert;
 import com.pei.dehaze.module.member.dal.dataobject.group.MemberGroupDO;
 import com.pei.dehaze.module.member.dal.mysql.group.MemberGroupMapper;
 import com.pei.dehaze.module.member.service.user.MemberUserService;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 
@@ -64,12 +64,6 @@ public class MemberGroupServiceImpl implements MemberGroupService {
         memberGroupMapper.deleteById(id);
     }
 
-    void validateGroupExists(Long id) {
-        if (memberGroupMapper.selectById(id) == null) {
-            throw exception(GROUP_NOT_EXISTS);
-        }
-    }
-
     void validateGroupHasUser(Long id) {
         Long count = memberUserService.getUserCountByGroupId(id);
         if (count > 0) {
@@ -98,6 +92,12 @@ public class MemberGroupServiceImpl implements MemberGroupService {
     @Override
     public List<MemberGroupDO> getGroupListByStatus(Integer status) {
         return memberGroupMapper.selectListByStatus(status);
+    }
+
+    void validateGroupExists(Long id) {
+        if (memberGroupMapper.selectById(id) == null) {
+            throw exception(GROUP_NOT_EXISTS);
+        }
     }
 
 }

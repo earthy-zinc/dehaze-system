@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.promotion.dal.dataobject.seckill;
 
-import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import lombok.*;
 
 import java.util.List;
@@ -50,7 +50,7 @@ public class SeckillConfigDO extends BaseDO {
     private List<String> sliderPicUrls;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum 对应的类}
      */
     private Integer status;

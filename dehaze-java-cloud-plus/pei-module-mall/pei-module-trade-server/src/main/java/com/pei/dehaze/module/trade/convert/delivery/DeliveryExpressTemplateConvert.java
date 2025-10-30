@@ -1,5 +1,6 @@
 package com.pei.dehaze.module.trade.convert.delivery;
 
+import com.google.common.collect.Maps;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.module.trade.controller.admin.delivery.vo.expresstemplate.*;
@@ -7,7 +8,6 @@ import com.pei.dehaze.module.trade.dal.dataobject.delivery.DeliveryExpressTempla
 import com.pei.dehaze.module.trade.dal.dataobject.delivery.DeliveryExpressTemplateDO;
 import com.pei.dehaze.module.trade.dal.dataobject.delivery.DeliveryExpressTemplateFreeDO;
 import com.pei.dehaze.module.trade.service.delivery.bo.DeliveryExpressTemplateRespBO;
-import com.google.common.collect.Maps;
 import org.mapstruct.Mapper;
 import org.mapstruct.factory.Mappers;
 
@@ -30,8 +30,6 @@ public interface DeliveryExpressTemplateConvert {
 
     DeliveryExpressTemplateRespVO convert(DeliveryExpressTemplateDO bean);
 
-    DeliveryExpressTemplateDetailRespVO convert2(DeliveryExpressTemplateDO bean);
-
     List<DeliveryExpressTemplateRespVO> convertList(List<DeliveryExpressTemplateDO> list);
 
     List<DeliveryExpressTemplateSimpleRespVO> convertList1(List<DeliveryExpressTemplateDO> list);
@@ -47,11 +45,13 @@ public interface DeliveryExpressTemplateConvert {
         return respVO;
     }
 
+    DeliveryExpressTemplateDetailRespVO convert2(DeliveryExpressTemplateDO bean);
+
     // ========== Template Charge ==========
 
-    DeliveryExpressTemplateChargeDO convertTemplateCharge(Long templateId, Integer chargeMode, DeliveryExpressTemplateChargeBaseVO vo);
+    List<DeliveryExpressTemplateChargeBaseVO> convertTemplateChargeList(List<DeliveryExpressTemplateChargeDO> list);
 
-    DeliveryExpressTemplateRespBO.Charge convertTemplateCharge(DeliveryExpressTemplateChargeDO bean);
+    List<DeliveryExpressTemplateFreeBaseVO> convertTemplateFreeList(List<DeliveryExpressTemplateFreeDO> list);
 
     default List<DeliveryExpressTemplateChargeDO> convertTemplateChargeList(Long templateId, Integer chargeMode, List<DeliveryExpressTemplateChargeBaseVO> list) {
         return CollectionUtils.convertList(list, vo -> convertTemplateCharge(templateId, chargeMode, vo));
@@ -59,17 +59,13 @@ public interface DeliveryExpressTemplateConvert {
 
     // ========== Template Free ==========
 
-    DeliveryExpressTemplateFreeDO convertTemplateFree(Long templateId, DeliveryExpressTemplateFreeBaseVO vo);
-
-    DeliveryExpressTemplateRespBO.Free convertTemplateFree(DeliveryExpressTemplateFreeDO bean);
-
-    List<DeliveryExpressTemplateChargeBaseVO> convertTemplateChargeList(List<DeliveryExpressTemplateChargeDO> list);
-
-    List<DeliveryExpressTemplateFreeBaseVO> convertTemplateFreeList(List<DeliveryExpressTemplateFreeDO> list);
+    DeliveryExpressTemplateChargeDO convertTemplateCharge(Long templateId, Integer chargeMode, DeliveryExpressTemplateChargeBaseVO vo);
 
     default List<DeliveryExpressTemplateFreeDO> convertTemplateFreeList(Long templateId, List<DeliveryExpressTemplateFreeBaseVO> list) {
         return CollectionUtils.convertList(list, vo -> convertTemplateFree(templateId, vo));
     }
+
+    DeliveryExpressTemplateFreeDO convertTemplateFree(Long templateId, DeliveryExpressTemplateFreeBaseVO vo);
 
     default Map<Long, DeliveryExpressTemplateRespBO> convertMap(Integer areaId, List<DeliveryExpressTemplateDO> templateList,
                                                                 List<DeliveryExpressTemplateChargeDO> chargeList,
@@ -89,5 +85,9 @@ public interface DeliveryExpressTemplateConvert {
         });
         return result;
     }
+
+    DeliveryExpressTemplateRespBO.Charge convertTemplateCharge(DeliveryExpressTemplateChargeDO bean);
+
+    DeliveryExpressTemplateRespBO.Free convertTemplateFree(DeliveryExpressTemplateFreeDO bean);
 
 }

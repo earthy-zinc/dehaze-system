@@ -29,7 +29,7 @@ public class ProductSpuRespDTO {
     private String name;
     /**
      * 单位
-     *
+     * <p>
      * 对应 product_unit 数据字典
      */
     private Integer unit;
@@ -54,9 +54,8 @@ public class ProductSpuRespDTO {
 
     /**
      * 规格类型
-     *
-     * false - 单规格
-     * true - 多规格
+     * <p>
+     * false - 单规格 true - 多规格
      */
     private Boolean specType;
     /**
@@ -80,14 +79,14 @@ public class ProductSpuRespDTO {
 
     /**
      * 配送方式数组
-     *
+     * <p>
      * 对应 DeliveryTypeEnum 枚举
      */
     private List<Integer> deliveryTypes;
 
     /**
      * 物流配置模板编号
-     *
+     * <p>
      * 对应 TradeDeliveryExpressTemplateDO 的 id 编号
      */
     private Long deliveryTemplateId;
@@ -103,9 +102,8 @@ public class ProductSpuRespDTO {
 
     /**
      * 分销类型
-     *
-     * false - 默认
-     * true - 自行设置
+     * <p>
+     * false - 默认 true - 自行设置
      */
     private Boolean subCommissionType;
 

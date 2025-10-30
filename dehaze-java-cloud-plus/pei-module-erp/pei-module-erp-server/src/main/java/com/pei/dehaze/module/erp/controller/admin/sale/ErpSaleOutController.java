@@ -79,7 +79,7 @@ public class ErpSaleOutController {
     @Operation(summary = "更新销售出库的状态")
     @PreAuthorize("@ss.hasPermission('erp:sale-out:update-status')")
     public CommonResult<Boolean> updateSaleOutStatus(@RequestParam("id") Long id,
-                                                      @RequestParam("status") Integer status) {
+                                                     @RequestParam("status") Integer status) {
         saleOutService.updateSaleOutStatus(id, status);
         return success(true);
     }
@@ -122,18 +122,6 @@ public class ErpSaleOutController {
         return success(buildSaleOutVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出销售出库 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:sale-out:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportSaleOutExcel(@Valid ErpSaleOutPageReqVO pageReqVO,
-                                    HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpSaleOutRespVO> list = buildSaleOutVOPageResult(saleOutService.getSaleOutPage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "销售出库.xls", "数据", ErpSaleOutRespVO.class, list);
-    }
-
     private PageResult<ErpSaleOutRespVO> buildSaleOutVOPageResult(PageResult<ErpSaleOutDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -160,6 +148,18 @@ public class ErpSaleOutController {
             MapUtils.findAndThen(customerMap, saleOut.getCustomerId(), supplier -> saleOut.setCustomerName(supplier.getName()));
             MapUtils.findAndThen(userMap, Long.parseLong(saleOut.getCreator()), user -> saleOut.setCreatorName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出销售出库 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:sale-out:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportSaleOutExcel(@Valid ErpSaleOutPageReqVO pageReqVO,
+                                   HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpSaleOutRespVO> list = buildSaleOutVOPageResult(saleOutService.getSaleOutPage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "销售出库.xls", "数据", ErpSaleOutRespVO.class, list);
     }
 
 }

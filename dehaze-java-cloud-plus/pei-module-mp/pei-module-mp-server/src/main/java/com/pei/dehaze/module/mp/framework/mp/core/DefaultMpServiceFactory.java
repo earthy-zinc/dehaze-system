@@ -1,9 +1,11 @@
 package com.pei.dehaze.module.mp.framework.mp.core;
 
+import com.binarywang.spring.starter.wxjava.mp.properties.WxMpProperties;
+import com.google.common.collect.Maps;
 import com.pei.dehaze.module.mp.dal.dataobject.account.MpAccountDO;
 import com.pei.dehaze.module.mp.service.handler.menu.MenuHandler;
-import com.pei.dehaze.module.mp.service.handler.message.MessageReceiveHandler;
 import com.pei.dehaze.module.mp.service.handler.message.MessageAutoReplyHandler;
+import com.pei.dehaze.module.mp.service.handler.message.MessageReceiveHandler;
 import com.pei.dehaze.module.mp.service.handler.other.KfSessionHandler;
 import com.pei.dehaze.module.mp.service.handler.other.NullHandler;
 import com.pei.dehaze.module.mp.service.handler.other.ScanHandler;
@@ -11,8 +13,6 @@ import com.pei.dehaze.module.mp.service.handler.other.StoreCheckNotifyHandler;
 import com.pei.dehaze.module.mp.service.handler.user.LocationHandler;
 import com.pei.dehaze.module.mp.service.handler.user.SubscribeHandler;
 import com.pei.dehaze.module.mp.service.handler.user.UnsubscribeHandler;
-import com.binarywang.spring.starter.wxjava.mp.properties.WxMpProperties;
-import com.google.common.collect.Maps;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.chanjar.weixin.common.api.WxConsts;
@@ -35,6 +35,20 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DefaultMpServiceFactory implements MpServiceFactory {
 
+    private final RedisTemplateWxRedisOps redisTemplateWxRedisOps;
+    private final WxMpProperties mpProperties;
+    private final MessageReceiveHandler messageReceiveHandler;
+    private final KfSessionHandler kfSessionHandler;
+    private final StoreCheckNotifyHandler storeCheckNotifyHandler;
+
+    // ========== 各种 Handler ==========
+    private final MenuHandler menuHandler;
+    private final NullHandler nullHandler;
+    private final SubscribeHandler subscribeHandler;
+    private final UnsubscribeHandler unsubscribeHandler;
+    private final LocationHandler locationHandler;
+    private final ScanHandler scanHandler;
+    private final MessageAutoReplyHandler messageAutoReplyHandler;
     /**
      * 微信 appId 与 WxMpService 的映射
      */
@@ -47,22 +61,6 @@ public class DefaultMpServiceFactory implements MpServiceFactory {
      * 微信 appId 与 WxMpMessageRouter 的映射
      */
     private volatile Map<String, WxMpMessageRouter> mpMessageRouters;
-
-    private final RedisTemplateWxRedisOps redisTemplateWxRedisOps;
-    private final WxMpProperties mpProperties;
-
-    // ========== 各种 Handler ==========
-
-    private final MessageReceiveHandler messageReceiveHandler;
-    private final KfSessionHandler kfSessionHandler;
-    private final StoreCheckNotifyHandler storeCheckNotifyHandler;
-    private final MenuHandler menuHandler;
-    private final NullHandler nullHandler;
-    private final SubscribeHandler subscribeHandler;
-    private final UnsubscribeHandler unsubscribeHandler;
-    private final LocationHandler locationHandler;
-    private final ScanHandler scanHandler;
-    private final MessageAutoReplyHandler messageAutoReplyHandler;
 
     @Override
     public void init(List<MpAccountDO> list) {

@@ -57,14 +57,6 @@ public interface ErpProductCategoryService {
     List<ErpProductCategoryDO> getProductCategoryList(ErpProductCategoryListReqVO listReqVO);
 
     /**
-     * 获得产品分类列表
-     *
-     * @param ids 编号数组
-     * @return 产品分类列表
-     */
-    List<ErpProductCategoryDO> getProductCategoryList(Collection<Long> ids);
-
-    /**
      * 获得产品分类 Map
      *
      * @param ids 编号数组
@@ -73,5 +65,13 @@ public interface ErpProductCategoryService {
     default Map<Long, ErpProductCategoryDO> getProductCategoryMap(Collection<Long> ids) {
         return convertMap(getProductCategoryList(ids), ErpProductCategoryDO::getId);
     }
+
+    /**
+     * 获得产品分类列表
+     *
+     * @param ids 编号数组
+     * @return 产品分类列表
+     */
+    List<ErpProductCategoryDO> getProductCategoryList(Collection<Long> ids);
 
 }

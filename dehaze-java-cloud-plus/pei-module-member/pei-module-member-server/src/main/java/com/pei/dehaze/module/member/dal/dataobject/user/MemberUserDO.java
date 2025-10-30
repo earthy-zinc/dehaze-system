@@ -1,5 +1,9 @@
 package com.pei.dehaze.module.member.dal.dataobject.user;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.TerminalEnum;
 import com.pei.dehaze.framework.ip.core.Area;
@@ -8,10 +12,6 @@ import com.pei.dehaze.framework.tenant.core.db.TenantBaseDO;
 import com.pei.dehaze.module.member.dal.dataobject.group.MemberGroupDO;
 import com.pei.dehaze.module.member.dal.dataobject.level.MemberLevelDO;
 import com.pei.dehaze.module.system.enums.common.SexEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * 会员用户 DO
- *
+ * <p>
  * uk_mobile 索引：基于 {@link #mobile} 字段
  *
  * @author earthyzinc
@@ -47,13 +47,13 @@ public class MemberUserDO extends TenantBaseDO {
     private String mobile;
     /**
      * 加密后的密码
-     *
+     * <p>
      * 因为目前使用 {@link BCryptPasswordEncoder} 加密器，所以无需自己处理 salt 盐
      */
     private String password;
     /**
      * 帐号状态
-     *
+     * <p>
      * 枚举 {@link CommonStatusEnum}
      */
     private Integer status;
@@ -62,8 +62,7 @@ public class MemberUserDO extends TenantBaseDO {
      */
     private String registerIp;
     /**
-     * 注册终端
-     * 枚举 {@link TerminalEnum}
+     * 注册终端 枚举 {@link TerminalEnum}
      */
     private Integer registerTerminal;
     /**
@@ -92,7 +91,7 @@ public class MemberUserDO extends TenantBaseDO {
     private String name;
     /**
      * 性别
-     *
+     * <p>
      * 枚举 {@link SexEnum}
      */
     private Integer sex;
@@ -102,7 +101,7 @@ public class MemberUserDO extends TenantBaseDO {
     private LocalDateTime birthday;
     /**
      * 所在地
-     *
+     * <p>
      * 关联 {@link Area#getId()} 字段
      */
     private Integer areaId;
@@ -127,7 +126,7 @@ public class MemberUserDO extends TenantBaseDO {
 
     /**
      * 会员级别编号
-     *
+     * <p>
      * 关联 {@link MemberLevelDO#getId()} 字段
      */
     private Long levelId;
@@ -137,7 +136,7 @@ public class MemberUserDO extends TenantBaseDO {
     private Integer experience;
     /**
      * 用户分组编号
-     *
+     * <p>
      * 关联 {@link MemberGroupDO#getId()} 字段
      */
     private Long groupId;

@@ -78,11 +78,10 @@ import static org.flowable.bpmn.constants.BpmnXMLConstants.*;
 /**
  * 流程实例 Service 实现类
  * <p>
- * ProcessDefinition & ProcessInstance & Execution & Task 的关系：
- * 1. <a href="https://blog.csdn.net/bobozai86/article/details/105210414" />
+ * ProcessDefinition & ProcessInstance & Execution & Task 的关系： 1. <a
+ * href="https://blog.csdn.net/bobozai86/article/details/105210414" />
  * <p>
- * HistoricProcessInstance & ProcessInstance 的关系：
- * 1. <a href=" https://my.oschina.net/843294669/blog/71902" />
+ * HistoricProcessInstance & ProcessInstance 的关系： 1. <a href=" https://my.oschina.net/843294669/blog/71902" />
  * <p>
  * 简单来说，前者 = 历史 + 运行中的流程实例，后者仅是运行中的流程实例
  *
@@ -121,6 +120,22 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
     private BpmProcessIdRedisDAO processIdRedisDAO;
 
     // ========== Query 查询相关方法 ==========
+
+    private void updateProcessInstanceCancel(String id, String reason) {
+        // 1. 更新流程实例 status
+        runtimeService.setVariable(id, BpmnVariableConstants.PROCESS_INSTANCE_VARIABLE_STATUS,
+                BpmProcessInstanceStatusEnum.CANCEL.getStatus());
+        runtimeService.setVariable(id, BpmnVariableConstants.PROCESS_INSTANCE_VARIABLE_REASON, reason);
+
+        // 2. 取消所有子流程
+        List<ProcessInstance> childProcessInstances = runtimeService.createProcessInstanceQuery()
+                .superProcessInstanceId(id).list();
+        childProcessInstances.forEach(processInstance -> updateProcessInstanceCancel(
+                processInstance.getProcessInstanceId(), BpmReasonEnum.CANCEL_CHILD_PROCESS_INSTANCE_BY_MAIN_PROCESS.getReason()));
+
+        // 3. 结束流程
+        taskService.moveTaskToEnd(id, reason);
+    }
 
     @Override
     public ProcessInstance getProcessInstance(String id) {
@@ -860,21 +875,7 @@ public class BpmProcessInstanceServiceImpl implements BpmProcessInstanceService 
                 BpmReasonEnum.CANCEL_PROCESS_INSTANCE_BY_ADMIN.format(user.getNickname(), cancelReqVO.getReason()));
     }
 
-    private void updateProcessInstanceCancel(String id, String reason) {
-        // 1. 更新流程实例 status
-        runtimeService.setVariable(id, BpmnVariableConstants.PROCESS_INSTANCE_VARIABLE_STATUS,
-                BpmProcessInstanceStatusEnum.CANCEL.getStatus());
-        runtimeService.setVariable(id, BpmnVariableConstants.PROCESS_INSTANCE_VARIABLE_REASON, reason);
 
-        // 2. 取消所有子流程
-        List<ProcessInstance> childProcessInstances = runtimeService.createProcessInstanceQuery()
-                .superProcessInstanceId(id).list();
-        childProcessInstances.forEach(processInstance -> updateProcessInstanceCancel(
-                processInstance.getProcessInstanceId(), BpmReasonEnum.CANCEL_CHILD_PROCESS_INSTANCE_BY_MAIN_PROCESS.getReason()));
-
-        // 3. 结束流程
-        taskService.moveTaskToEnd(id, reason);
-    }
 
     @Override
     public void updateProcessInstanceReject(ProcessInstance processInstance, String reason) {

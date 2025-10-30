@@ -2,11 +2,11 @@ package com.pei.dehaze.module.bpm.framework.flowable.core.candidate.strategy.dep
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
+import com.google.common.collect.Sets;
 import com.pei.dehaze.module.bpm.framework.flowable.core.candidate.strategy.user.BpmTaskCandidateUserStrategy;
 import com.pei.dehaze.module.bpm.framework.flowable.core.enums.BpmTaskCandidateStrategyEnum;
 import com.pei.dehaze.module.bpm.framework.flowable.core.util.FlowableUtils;
 import com.pei.dehaze.module.bpm.service.task.BpmProcessInstanceService;
-import com.google.common.collect.Sets;
 import jakarta.annotation.Resource;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.engine.delegate.DelegateExecution;
@@ -19,8 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 审批人自选 {@link BpmTaskCandidateUserStrategy} 实现类
- * 审批人在审批时选择下一个节点的审批人
+ * 审批人自选 {@link BpmTaskCandidateUserStrategy} 实现类 审批人在审批时选择下一个节点的审批人
  *
  * @author smallNorthLee
  */
@@ -37,7 +36,8 @@ public class BpmTaskCandidateApproveUserSelectStrategy extends AbstractBpmTaskCa
     }
 
     @Override
-    public void validateParam(String param) {}
+    public void validateParam(String param) {
+    }
 
     @Override
     public boolean isParamRequired() {

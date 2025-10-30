@@ -1,10 +1,12 @@
-`pei-spring-boot-starter-protection` 是一个 **服务保障模块**，其核心作用是为微服务提供 **幂等、限流、分布式锁、API 签名验证** 等关键能力。该模块基于 Spring AOP + Redis 实现了对 HTTP 请求和业务方法的增强，确保系统在高并发、分布式环境下具备稳定性与安全性。
+`pei-spring-boot-starter-protection` 是一个 **服务保障模块**，其核心作用是为微服务提供 **幂等、限流、分布式锁、API 签名验证
+** 等关键能力。该模块基于 Spring AOP + Redis 实现了对 HTTP 请求和业务方法的增强，确保系统在高并发、分布式环境下具备稳定性与安全性。
 
 ---
 
 ## 一、模块概述
 
 ### ✅ 模块定位
+
 - **目标**：封装服务保障组件，包括：
     - 幂等（Idempotent）：防止重复请求
     - 限流（RateLimiter）：控制单位时间内的请求频率
@@ -58,7 +60,6 @@ src/main/java/
             └── redis/      // 使用 Redis 存储 appId 和 appSecret 映射
 ```
 
-
 ---
 
 ## 三、关键包详解
@@ -66,6 +67,7 @@ src/main/java/
 ### 1️⃣ `idempotent` 包 —— 幂等性保障
 
 #### 🔹 `@Idempotent` 注解
+
 ```java
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
@@ -88,8 +90,8 @@ public @interface Idempotent {
   }
   ```
 
-
 #### 🔹 `IdempotentAspect` 切面逻辑
+
 ```java
 @Around(value = "@annotation(idempotent)")
 public Object aroundPointCut(ProceedingJoinPoint joinPoint, Idempotent idempotent) throws Throwable {
@@ -117,6 +119,7 @@ public Object aroundPointCut(ProceedingJoinPoint joinPoint, Idempotent idempoten
     - 执行完成后自动删除 Key（可选）或异常时删除 Key。
 
 #### 🔹 `IdempotentKeyResolver` 接口及其实现类
+
 ```java
 public interface IdempotentKeyResolver {
     String resolver(JoinPoint joinPoint, Idempotent idempotent);
@@ -129,6 +132,7 @@ public interface IdempotentKeyResolver {
     - `ExpressionIdempotentKeyResolver`：通过 SpEL 表达式构造 Key。
 
 #### 🔹 `IdempotentRedisDAO` 类
+
 ```java
 public Boolean setIfAbsent(String key, long timeout, TimeUnit timeUnit) {
     String redisKey = formatKey(key);
@@ -146,6 +150,7 @@ public Boolean setIfAbsent(String key, long timeout, TimeUnit timeUnit) {
 ### 2️⃣ `lock4j` 包 —— 分布式锁支持
 
 #### 🔹 `PeiLock4jConfiguration` 自动配置类
+
 ```java
 @Bean
 public DefaultLockFailureStrategy lockFailureStrategy() {
@@ -157,6 +162,7 @@ public DefaultLockFailureStrategy lockFailureStrategy() {
 - **集成 Lock4j**：基于 Redisson 提供分布式锁支持。
 
 #### 🔹 `DefaultLockFailureStrategy` 获取锁失败策略
+
 ```java
 @Override
 public void onLockFailure(String key, Method method, Object[] arguments) {
@@ -169,6 +175,7 @@ public void onLockFailure(String key, Method method, Object[] arguments) {
 - **优势**：避免直接返回 LockTimeoutException，统一异常格式。
 
 #### 🔹 `Lock4jRedisKeyConstants` Redis Key 常量
+
 ```java
 String LOCK4J = "lock4j:%s";
 ```
@@ -180,6 +187,7 @@ String LOCK4J = "lock4j:%s";
 ### 3️⃣ `ratelimiter` 包 —— 请求限流支持
 
 #### 🔹 `@RateLimiter` 注解
+
 ```java
 @Target({ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
@@ -202,8 +210,8 @@ public @interface RateLimiter {
   }
   ```
 
-
 #### 🔹 `RateLimiterAspect` 切面逻辑
+
 ```java
 @Before("@annotation(rateLimiter)")
 public void beforePointCut(JoinPoint joinPoint, RateLimiter rateLimiter) {
@@ -223,6 +231,7 @@ public void beforePointCut(JoinPoint joinPoint, RateLimiter rateLimiter) {
     3. 超限时抛出 `TOO_MANY_REQUESTS` 异常
 
 #### 🔹 `RateLimiterRedisDAO` 类
+
 ```java
 public Boolean tryAcquire(String key, int count, int time, TimeUnit timeUnit) {
     RRateLimiter rateLimiter = getRRateLimiter(key, count, time, timeUnit);
@@ -238,6 +247,7 @@ public Boolean tryAcquire(String key, int count, int time, TimeUnit timeUnit) {
 ### 4️⃣ `signature` 包 —— API 签名验证
 
 #### 🔹 `@ApiSignature` 注解
+
 ```java
 @Inherited
 @Documented
@@ -264,8 +274,8 @@ public @interface ApiSignature {
   }
   ```
 
-
 #### 🔹 `ApiSignatureAspect` 切面逻辑
+
 ```java
 @Before("@annotation(signature)")
 public void beforePointCut(JoinPoint joinPoint, ApiSignature signature) {
@@ -284,6 +294,7 @@ public void beforePointCut(JoinPoint joinPoint, ApiSignature signature) {
     5. 如果一致，则继续执行；否则抛出 `BAD_REQUEST`
 
 #### 🔹 `ApiSignatureRedisDAO` 类
+
 ```java
 public String getAppSecret(String appId) {
     return (String) stringRedisTemplate.opsForHash().get(SIGNATURE_APPID, appId);
@@ -303,13 +314,13 @@ public Boolean setNonce(String appId, String nonce, int time, TimeUnit timeUnit)
 
 ## 四、模块功能总结
 
-| 包名 | 功能 | 关键类 |
-|------|------|--------|
-| `idempotent.config` | 幂等自动配置 | `PeiIdempotentConfiguration` |
-| `idempotent.core.annotation` | 幂等注解定义 | `Idempotent.java` |
-| `idempotent.core.aop` | 幂等切面逻辑 | `IdempotentAspect.java` |
-| `idempotent.core.keyresolver.impl` | Key 解析器实现 | `DefaultIdempotentKeyResolver`, `UserIdempotentKeyResolver` |
-| `idempotent.core.redis` | Redis 数据访问 | `IdempotentRedisDAO` |
+| 包名                                 | 功能         | 关键类                                                         |
+|------------------------------------|------------|-------------------------------------------------------------|
+| `idempotent.config`                | 幂等自动配置     | `PeiIdempotentConfiguration`                                |
+| `idempotent.core.annotation`       | 幂等注解定义     | `Idempotent.java`                                           |
+| `idempotent.core.aop`              | 幂等切面逻辑     | `IdempotentAspect.java`                                     |
+| `idempotent.core.keyresolver.impl` | Key 解析器实现  | `DefaultIdempotentKeyResolver`, `UserIdempotentKeyResolver` |
+| `idempotent.core.redis`            | Redis 数据访问 | `IdempotentRedisDAO`                                        |
 
 | `lock4j.config` | 分布式锁自动配置 | `PeiLock4jConfiguration` |
 | `lock4j.core` | 分布式锁逻辑 | `DefaultLockFailureStrategy`, `Lock4jRedisKeyConstants` |
@@ -317,7 +328,8 @@ public Boolean setNonce(String appId, String nonce, int time, TimeUnit timeUnit)
 | `ratelimiter.config` | 限流自动配置 | `PeiRateLimiterConfiguration` |
 | `ratelimiter.core.annotation` | 限流注解定义 | `RateLimiter.java` |
 | `ratelimiter.core.aop` | 限流切面逻辑 | `RateLimiterAspect.java` |
-| `ratelimiter.core.keyresolver.impl` | Key 解析器实现 | `UserRateLimiterKeyResolver`, `ClientIpRateLimiterKeyResolver` |
+| `ratelimiter.core.keyresolver.impl` | Key 解析器实现 | `UserRateLimiterKeyResolver`,
+`ClientIpRateLimiterKeyResolver` |
 | `ratelimiter.core.redis` | 限流 Redis DAO | `RateLimiterRedisDAO` |
 
 | `signature.config` | API 签名自动配置 | `PeiApiSignatureAutoConfiguration` |
@@ -330,6 +342,7 @@ public Boolean setNonce(String appId, String nonce, int time, TimeUnit timeUnit)
 ## 五、模块工作流程图解
 
 ### 1️⃣ 幂等机制流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否存在 @Idempotent?}
@@ -341,8 +354,8 @@ graph TD
     F/G --> H[返回结果]
 ```
 
-
 ### 2️⃣ 限流机制流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否存在 @RateLimiter?}
@@ -354,8 +367,8 @@ graph TD
     F/G --> H[返回结果]
 ```
 
-
 ### 3️⃣ API 签名验证流程
+
 ```mermaid
 graph TD
     A[HTTP 请求] --> B{是否存在 @ApiSignature?}
@@ -371,12 +384,12 @@ graph TD
     K --> L[将 nonce 写入 Redis，防复用]
 ```
 
-
 ---
 
 ## 六、模块使用示例
 
 ### 1️⃣ 幂等使用示例
+
 ```java
 @PostMapping("/submit")
 @Idempotent(message = "请勿重复提交", timeout = 5, timeUnit = TimeUnit.SECONDS)
@@ -385,8 +398,8 @@ public CommonResult<Void> submit(@RequestBody SubmitForm form) {
 }
 ```
 
-
 ### 2️⃣ 限流使用示例
+
 ```java
 @GetMapping("/login")
 @RateLimiter(count = 5, time = 1, keyResolver = ClientIpRateLimiterKeyResolver.class)
@@ -395,8 +408,8 @@ public CommonResult<UserDTO> login() {
 }
 ```
 
-
 ### 3️⃣ 分布式锁使用示例
+
 ```java
 @Lock4j(keys = "#userId", expire = 3, renewExpire = false)
 public void updateUserInfo(Long userId) {
@@ -404,8 +417,8 @@ public void updateUserInfo(Long userId) {
 }
 ```
 
-
 ### 4️⃣ API 签名使用示例
+
 ```java
 @PostMapping("/transfer")
 @ApiSignature(timeout = 60, appId = "x-app-id", timestamp = "x-timestamp", nonce = "x-nonce", sign = "x-sign")
@@ -414,12 +427,12 @@ public CommonResult<TransferResponse> transfer(@RequestBody TransferRequest req)
 }
 ```
 
-
 ---
 
 ## 七、模块实现原理详解
 
 ### 1️⃣ 幂等性实现
+
 - **原理**：使用 Redis 的 `setIfAbsent` 实现幂等 Key 控制。
 - **Key 生成策略**：
     - 默认：方法名 + 方法参数
@@ -428,6 +441,7 @@ public CommonResult<TransferResponse> transfer(@RequestBody TransferRequest req)
 - **Key 过期时间**：由注解指定，默认 1 秒，避免 Key 持久化。
 
 ### 2️⃣ 限流实现
+
 - **原理**：基于 Redisson 的 `RRateLimiter` 实现令牌桶限流。
 - **Key 生成策略**：
     - 全局级别：方法名 + 方法参数
@@ -436,11 +450,13 @@ public CommonResult<TransferResponse> transfer(@RequestBody TransferRequest req)
 - **限流策略**：每秒最多 N 次请求，超出则抛出 `TOO_MANY_REQUESTS` 异常。
 
 ### 3️⃣ 分布式锁实现
+
 - **原理**：基于 Lock4j + Redisson 实现分布式锁。
 - **锁类型**：支持 ReentrantLock、FairLock、MultiLock、RedLock、ReadLock、WriteLock。
 - **锁失效策略**：支持自动续租和手动释放。
 
 ### 4️⃣ API 签名验证实现
+
 - **签名算法**：SHA256Hex(请求参数 + 请求体 + 请求头 + appSecret)
 - **Header 必须字段**：`x-app-id`, `x-timestamp`, `x-nonce`, `x-sign`
 - **时间戳容忍范围**：±60 秒
@@ -451,6 +467,7 @@ public CommonResult<TransferResponse> transfer(@RequestBody TransferRequest req)
 ## 八、典型配置示例
 
 ### 1️⃣ application.yaml 示例
+
 ```yaml
 spring:
   redis:
@@ -458,36 +475,35 @@ spring:
     port: 6379
 ```
 
-
 ### 2️⃣ 幂等配置示例
+
 ```java
 @Idempotent(timeout = 3, timeUnit = TimeUnit.SECONDS, keyResolver = UserIdempotentKeyResolver.class)
 ```
 
-
 ### 3️⃣ 限流配置示例
+
 ```java
 @RateLimiter(count = 5, time = 1, keyResolver = ClientIpRateLimiterKeyResolver.class)
 ```
 
-
 ### 4️⃣ 签名配置示例
+
 ```java
 @ApiSignature(appId = "x-app-id", timestamp = "x-timestamp", nonce = "x-nonce", sign = "x-sign")
 ```
-
 
 ---
 
 ## 九、建议改进方向
 
-| 改进点 | 描述 |
-|--------|------|
-| ✅ 单元测试覆盖率 | 当前仅签名部分有单元测试，建议补充幂等、限流、锁的测试代码 |
-| ✅ 配置中心集成 | 将 `xxl.job`、`rate.limiter` 等配置放入 Nacos/Apollo，实现动态更新 |
-| ✅ 自定义 Key 生成策略 | 支持用户自定义 KeyResolver，提升扩展性 |
-| ✅ 限流熔断策略 | 当限流触发时，可跳转到 fallback 页面或返回统一限流响应 |
-| ✅ 限流日志记录 | 在限流拦截时记录日志，便于分析高频请求来源 |
+| 改进点            | 描述                                                   |
+|----------------|------------------------------------------------------|
+| ✅ 单元测试覆盖率      | 当前仅签名部分有单元测试，建议补充幂等、限流、锁的测试代码                        |
+| ✅ 配置中心集成       | 将 `xxl.job`、`rate.limiter` 等配置放入 Nacos/Apollo，实现动态更新 |
+| ✅ 自定义 Key 生成策略 | 支持用户自定义 KeyResolver，提升扩展性                            |
+| ✅ 限流熔断策略       | 当限流触发时，可跳转到 fallback 页面或返回统一限流响应                     |
+| ✅ 限流日志记录       | 在限流拦截时记录日志，便于分析高频请求来源                                |
 
 ---
 
@@ -495,11 +511,12 @@ spring:
 
 `pei-spring-boot-starter-protection` 模块实现了以下四大核心功能：
 
-| 功能 | 技术实现 | 用途 |
-|------|-----------|------|
-| 幂等 | Redis + AOP | 防止重复请求 |
-| 限流 | Redisson RRateLimiter | 控制接口请求频率 |
-| 分布式锁 | Lock4j + Redisson | 多节点同步访问资源 |
-| API 签名 | Redis + SHA256Hex + AOP | 防止接口篡改 |
+| 功能     | 技术实现                    | 用途        |
+|--------|-------------------------|-----------|
+| 幂等     | Redis + AOP             | 防止重复请求    |
+| 限流     | Redisson RRateLimiter   | 控制接口请求频率  |
+| 分布式锁   | Lock4j + Redisson       | 多节点同步访问资源 |
+| API 签名 | Redis + SHA256Hex + AOP | 防止接口篡改    |
 
-它是一个轻量但功能强大的服务保障模块，适用于电商、金融、API 网关等多种场景。如果你有具体某个类（如 `IdempotentAspect`、`ApiSignatureAspect`）想要深入了解，欢迎继续提问！
+它是一个轻量但功能强大的服务保障模块，适用于电商、金融、API 网关等多种场景。如果你有具体某个类（如 `IdempotentAspect`、
+`ApiSignatureAspect`）想要深入了解，欢迎继续提问！

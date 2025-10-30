@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.promotion.dal.mysql.kefu;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.QueryWrapperX;
 import com.pei.dehaze.module.promotion.controller.admin.kefu.vo.message.KeFuMessageListReqVO;
 import com.pei.dehaze.module.promotion.dal.dataobject.kefu.KeFuMessageDO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;
@@ -20,9 +20,7 @@ import java.util.List;
 public interface KeFuMessageMapper extends BaseMapperX<KeFuMessageDO> {
 
     /**
-     * 获得消息列表
-     * 1. 第一次查询时，不带时间，默认查询最新的十条消息
-     * 2. 第二次查询时，带时间，查询历史消息
+     * 获得消息列表 1. 第一次查询时，不带时间，默认查询最新的十条消息 2. 第二次查询时，带时间，查询历史消息
      *
      * @param reqVO 列表请求
      * @return 消息列表

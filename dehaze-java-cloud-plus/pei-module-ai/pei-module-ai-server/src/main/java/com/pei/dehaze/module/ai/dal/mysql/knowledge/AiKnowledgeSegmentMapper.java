@@ -1,5 +1,7 @@
 package com.pei.dehaze.module.ai.dal.mysql.knowledge;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.github.yulichang.wrapper.MPJLambdaWrapper;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
@@ -7,8 +9,6 @@ import com.pei.dehaze.framework.mybatis.core.query.MPJLambdaWrapperX;
 import com.pei.dehaze.module.ai.controller.admin.knowledge.vo.segment.AiKnowledgeSegmentPageReqVO;
 import com.pei.dehaze.module.ai.controller.admin.knowledge.vo.segment.AiKnowledgeSegmentProcessRespVO;
 import com.pei.dehaze.module.ai.dal.dataobject.knowledge.AiKnowledgeSegmentDO;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.github.yulichang.wrapper.MPJLambdaWrapper;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.Collection;

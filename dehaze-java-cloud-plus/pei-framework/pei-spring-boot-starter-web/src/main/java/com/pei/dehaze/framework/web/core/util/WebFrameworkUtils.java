@@ -6,12 +6,11 @@ import com.pei.dehaze.framework.common.enums.TerminalEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.web.config.WebProperties;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 专属于 web 包的工具类
@@ -20,21 +19,17 @@ import jakarta.servlet.http.HttpServletRequest;
  */
 public class WebFrameworkUtils {
 
-    private static final String REQUEST_ATTRIBUTE_LOGIN_USER_ID = "login_user_id";
-    private static final String REQUEST_ATTRIBUTE_LOGIN_USER_TYPE = "login_user_type";
-
-    private static final String REQUEST_ATTRIBUTE_COMMON_RESULT = "common_result";
-
     public static final String HEADER_TENANT_ID = "tenant-id";
     public static final String HEADER_VISIT_TENANT_ID = "visit-tenant-id";
-
     /**
      * 终端的 Header
      *
      * @see com.pei.dehaze.framework.common.enums.TerminalEnum
      */
     public static final String HEADER_TERMINAL = "terminal";
-
+    private static final String REQUEST_ATTRIBUTE_LOGIN_USER_ID = "login_user_id";
+    private static final String REQUEST_ATTRIBUTE_LOGIN_USER_TYPE = "login_user_type";
+    private static final String REQUEST_ATTRIBUTE_COMMON_RESULT = "common_result";
     private static WebProperties properties;
 
     public WebFrameworkUtils(WebProperties webProperties) {
@@ -42,8 +37,7 @@ public class WebFrameworkUtils {
     }
 
     /**
-     * 获得租户编号，从 header 中
-     * 考虑到其它 framework 组件也会使用到租户编号，所以不得不放在 WebFrameworkUtils 统一提供
+     * 获得租户编号，从 header 中 考虑到其它 framework 组件也会使用到租户编号，所以不得不放在 WebFrameworkUtils 统一提供
      *
      * @param request 请求
      * @return 租户编号
@@ -54,15 +48,14 @@ public class WebFrameworkUtils {
     }
 
     /**
-     * 获得访问的租户编号，从 header 中
-     * 考虑到其它 framework 组件也会使用到租户编号，所以不得不放在 WebFrameworkUtils 统一提供
+     * 获得访问的租户编号，从 header 中 考虑到其它 framework 组件也会使用到租户编号，所以不得不放在 WebFrameworkUtils 统一提供
      *
      * @param request 请求
      * @return 租户编号
      */
     public static Long getVisitTenantId(HttpServletRequest request) {
         String tenantId = request.getHeader(HEADER_VISIT_TENANT_ID);
-        return NumberUtil.isNumber(tenantId)? Long.valueOf(tenantId) : null;
+        return NumberUtil.isNumber(tenantId) ? Long.valueOf(tenantId) : null;
     }
 
     public static void setLoginUserId(ServletRequest request, Long userId) {
@@ -72,30 +65,28 @@ public class WebFrameworkUtils {
     /**
      * 设置用户类型
      *
-     * @param request 请求
+     * @param request  请求
      * @param userType 用户类型
      */
     public static void setLoginUserType(ServletRequest request, Integer userType) {
         request.setAttribute(REQUEST_ATTRIBUTE_LOGIN_USER_TYPE, userType);
     }
 
-    /**
-     * 获得当前用户的编号，从请求中
-     * 注意：该方法仅限于 framework 框架使用！！！
-     *
-     * @param request 请求
-     * @return 用户编号
-     */
-    public static Long getLoginUserId(HttpServletRequest request) {
-        if (request == null) {
+    public static Integer getLoginUserType() {
+        HttpServletRequest request = getRequest();
+        return getLoginUserType(request);
+    }
+
+    public static HttpServletRequest getRequest() {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (!(requestAttributes instanceof ServletRequestAttributes servletRequestAttributes)) {
             return null;
         }
-        return (Long) request.getAttribute(REQUEST_ATTRIBUTE_LOGIN_USER_ID);
+        return servletRequestAttributes.getRequest();
     }
 
     /**
-     * 获得当前用户的类型
-     * 注意：该方法仅限于 web 相关的 framework 组件使用！！！
+     * 获得当前用户的类型 注意：该方法仅限于 web 相关的 framework 组件使用！！！
      *
      * @param request 请求
      * @return 用户编号
@@ -119,14 +110,22 @@ public class WebFrameworkUtils {
         return null;
     }
 
-    public static Integer getLoginUserType() {
-        HttpServletRequest request = getRequest();
-        return getLoginUserType(request);
-    }
-
     public static Long getLoginUserId() {
         HttpServletRequest request = getRequest();
         return getLoginUserId(request);
+    }
+
+    /**
+     * 获得当前用户的编号，从请求中 注意：该方法仅限于 framework 框架使用！！！
+     *
+     * @param request 请求
+     * @return 用户编号
+     */
+    public static Long getLoginUserId(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return (Long) request.getAttribute(REQUEST_ATTRIBUTE_LOGIN_USER_ID);
     }
 
     public static Integer getTerminal() {
@@ -146,14 +145,6 @@ public class WebFrameworkUtils {
         return (CommonResult<?>) request.getAttribute(REQUEST_ATTRIBUTE_COMMON_RESULT);
     }
 
-    public static HttpServletRequest getRequest() {
-        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-        if (!(requestAttributes instanceof ServletRequestAttributes servletRequestAttributes)) {
-            return null;
-        }
-        return servletRequestAttributes.getRequest();
-    }
-
     /**
      * 判断是否为 RPC 请求
      *
@@ -166,7 +157,7 @@ public class WebFrameworkUtils {
 
     /**
      * 判断是否为 RPC 请求
-     *
+     * <p>
      * 约定大于配置，只要以 Api 结尾，都认为是 RPC 接口
      *
      * @param className 类名

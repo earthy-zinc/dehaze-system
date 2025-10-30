@@ -6,11 +6,11 @@ import com.pei.dehaze.module.system.controller.admin.mail.vo.account.MailAccount
 import com.pei.dehaze.module.system.controller.admin.mail.vo.account.MailAccountSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.mail.MailAccountDO;
 import com.pei.dehaze.module.system.dal.mysql.mail.MailAccountMapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
-import jakarta.annotation.Resource;
 import java.util.List;
 
 import static com.pei.dehaze.framework.common.util.object.ObjectUtils.cloneIgnoreId;

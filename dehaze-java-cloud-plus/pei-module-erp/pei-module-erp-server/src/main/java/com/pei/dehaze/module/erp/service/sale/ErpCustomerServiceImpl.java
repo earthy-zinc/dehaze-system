@@ -56,12 +56,6 @@ public class ErpCustomerServiceImpl implements ErpCustomerService {
         customerMapper.deleteById(id);
     }
 
-    private void validateCustomerExists(Long id) {
-        if (customerMapper.selectById(id) == null) {
-            throw exception(CUSTOMER_NOT_EXISTS);
-        }
-    }
-
     @Override
     public ErpCustomerDO getCustomer(Long id) {
         return customerMapper.selectById(id);
@@ -92,6 +86,12 @@ public class ErpCustomerServiceImpl implements ErpCustomerService {
     @Override
     public List<ErpCustomerDO> getCustomerListByStatus(Integer status) {
         return customerMapper.selectListByStatus(status);
+    }
+
+    private void validateCustomerExists(Long id) {
+        if (customerMapper.selectById(id) == null) {
+            throw exception(CUSTOMER_NOT_EXISTS);
+        }
     }
 
 }

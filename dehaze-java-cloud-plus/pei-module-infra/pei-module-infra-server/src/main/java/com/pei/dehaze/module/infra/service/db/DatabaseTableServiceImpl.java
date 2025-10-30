@@ -3,8 +3,6 @@ package com.pei.dehaze.module.infra.service.db;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
-import com.pei.dehaze.framework.mybatis.core.util.JdbcUtils;
-import com.pei.dehaze.module.infra.dal.dataobject.db.DataSourceConfigDO;
 import com.baomidou.mybatisplus.generator.config.DataSourceConfig;
 import com.baomidou.mybatisplus.generator.config.GlobalConfig;
 import com.baomidou.mybatisplus.generator.config.StrategyConfig;
@@ -12,6 +10,8 @@ import com.baomidou.mybatisplus.generator.config.builder.ConfigBuilder;
 import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.baomidou.mybatisplus.generator.config.rules.DateType;
 import com.baomidou.mybatisplus.generator.query.SQLQuery;
+import com.pei.dehaze.framework.mybatis.core.util.JdbcUtils;
+import com.pei.dehaze.module.infra.dal.dataobject.db.DataSourceConfigDO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 

@@ -1,6 +1,8 @@
 package com.pei.dehaze.module.promotion.controller.app.bargain;
 
 import cn.hutool.core.collection.CollUtil;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageParam;
 import com.pei.dehaze.framework.common.pojo.PageResult;
@@ -13,8 +15,6 @@ import com.pei.dehaze.module.promotion.dal.dataobject.bargain.BargainActivityDO;
 import com.pei.dehaze.module.promotion.enums.bargain.BargainRecordStatusEnum;
 import com.pei.dehaze.module.promotion.service.bargain.BargainActivityService;
 import com.pei.dehaze.module.promotion.service.bargain.BargainRecordService;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,6 +40,12 @@ import static com.pei.dehaze.framework.common.util.collection.CollectionUtils.co
 @Validated
 public class AppBargainActivityController {
 
+    @Resource
+    private BargainActivityService bargainActivityService;
+    @Resource
+    private BargainRecordService bargainRecordService;
+    @Resource
+    private ProductSpuApi spuApi;
     /**
      * {@link AppBargainActivityRespVO} 缓存，通过它异步刷新 {@link #getBargainActivityList0(Integer)} 所要的首页数据
      */
@@ -53,14 +59,6 @@ public class AppBargainActivityController {
 
             });
 
-    @Resource
-    private BargainActivityService bargainActivityService;
-    @Resource
-    private BargainRecordService bargainRecordService;
-
-    @Resource
-    private ProductSpuApi spuApi;
-
     @GetMapping("/list")
     @Operation(summary = "获得砍价活动列表", description = "用于小程序首页")
     @Parameter(name = "count", description = "需要展示的数量", example = "6")
@@ -70,7 +68,7 @@ public class AppBargainActivityController {
         return success(bargainActivityListCache.getUnchecked(count));
     }
 
-    private List<AppBargainActivityRespVO>getBargainActivityList0(Integer count) {
+    private List<AppBargainActivityRespVO> getBargainActivityList0(Integer count) {
         List<BargainActivityDO> list = bargainActivityService.getBargainActivityListByCount(count);
         if (CollUtil.isEmpty(list)) {
             return Collections.emptyList();

@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * IoT 设备日志数据 DO
- *
+ * <p>
  * 目前使用 TDengine 存储
  *
  * @author alwayssuper
@@ -25,14 +25,14 @@ public class IotDeviceLogDO {
 
     /**
      * 日志编号
-     *
+     * <p>
      * 通过 {@link IdUtil#fastSimpleUUID()} 生成
      */
     private String id;
 
     /**
      * 请求编号
-     *
+     * <p>
      * 对应 {@link IotDeviceMessage#getRequestId()} 字段
      */
     private String requestId;
@@ -45,7 +45,7 @@ public class IotDeviceLogDO {
     private String productKey;
     /**
      * 设备名称
-     *
+     * <p>
      * 关联 {@link IotDeviceDO#getDeviceName()}
      */
     private String deviceName;
@@ -58,26 +58,26 @@ public class IotDeviceLogDO {
 
     /**
      * 日志类型
-     *
+     * <p>
      * 枚举 {@link IotDeviceMessageTypeEnum}
      */
     private String type;
     /**
      * 标识符
-     *
+     * <p>
      * 枚举 {@link IotDeviceMessageIdentifierEnum}
      */
     private String identifier;
 
     /**
      * 数据内容
-     *
+     * <p>
      * 存储具体的消息数据内容，通常是 JSON 格式
      */
     private String content;
     /**
      * 响应码
-     *
+     * <p>
      * 目前只有 server 下行消息给 device 设备时，才会有响应码
      */
     private Integer code;

@@ -9,7 +9,7 @@ import lombok.Data;
 @Data
 public class AppCartAddReqVO {
 
-    @Schema(description = "商品 SKU 编号", requiredMode = Schema.RequiredMode.REQUIRED,example = "1024")
+    @Schema(description = "商品 SKU 编号", requiredMode = Schema.RequiredMode.REQUIRED, example = "1024")
     @NotNull(message = "商品 SKU 编号不能为空")
     private Long skuId;
 

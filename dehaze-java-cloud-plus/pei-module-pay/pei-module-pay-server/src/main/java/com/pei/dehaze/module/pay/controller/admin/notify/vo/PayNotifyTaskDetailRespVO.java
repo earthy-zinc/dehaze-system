@@ -1,4 +1,3 @@
-
 package com.pei.dehaze.module.pay.controller.admin.notify.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;

@@ -23,24 +23,22 @@ public enum BpmTriggerTypeEnum implements ArrayValuable<Integer> {
     FORM_DELETE(11, "删除流程表单数据"),
     ;
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmTriggerTypeEnum::getType).toArray(Integer[]::new);
     /**
      * 触发器执行动作类型
      */
     private final Integer type;
-
     /**
      * 触发器执行动作描述
      */
     private final String desc;
 
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmTriggerTypeEnum::getType).toArray(Integer[]::new);
+    public static BpmTriggerTypeEnum typeOf(Integer type) {
+        return ArrayUtil.firstMatch(item -> item.getType().equals(type), values());
+    }
 
     @Override
     public Integer[] array() {
         return ARRAYS;
-    }
-
-    public static BpmTriggerTypeEnum typeOf(Integer type) {
-        return ArrayUtil.firstMatch(item -> item.getType().equals(type), values());
     }
 }

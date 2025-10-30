@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.ListUtil;
 import cn.hutool.core.util.*;
 import cn.hutool.extra.spring.SpringUtil;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.number.MoneyUtils;
 import com.pei.dehaze.framework.mybatis.core.util.MyBatisUtils;
@@ -25,7 +26,6 @@ import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordStatusEnum;
 import com.pei.dehaze.module.trade.service.brokerage.bo.BrokerageAddReqBO;
 import com.pei.dehaze.module.trade.service.brokerage.bo.UserBrokerageSummaryRespBO;
 import com.pei.dehaze.module.trade.service.config.TradeConfigService;
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -105,53 +105,6 @@ public class BrokerageRecordServiceImpl implements BrokerageRecordService {
                 bizType, 2);
     }
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void cancelBrokerage(BrokerageRecordBizTypeEnum bizType, String bizId) {
-        List<BrokerageRecordDO> records = brokerageRecordMapper.selectListByBizTypeAndBizId(bizType.getType(), bizId);
-        if (CollUtil.isEmpty(records)) {
-            log.error("[cancelBrokerage][bizId({}) bizType({}) 更新为已失效失败：记录不存在]", bizId, bizType);
-            return;
-        }
-
-        records.forEach(record -> {
-            // 1. 更新佣金记录为已失效
-            BrokerageRecordDO updateObj = new BrokerageRecordDO().setStatus(BrokerageRecordStatusEnum.CANCEL.getStatus());
-            int updateRows = brokerageRecordMapper.updateByIdAndStatus(record.getId(), record.getStatus(), updateObj);
-            if (updateRows == 0) {
-                log.error("[cancelBrokerage][record({}) 更新为已失效失败]", record.getId());
-                return;
-            }
-
-            // 2. 更新用户的佣金
-            if (BrokerageRecordStatusEnum.WAIT_SETTLEMENT.getStatus().equals(record.getStatus())) {
-                brokerageUserService.updateUserFrozenPrice(record.getUserId(), -record.getPrice());
-            } else if (BrokerageRecordStatusEnum.SETTLEMENT.getStatus().equals(record.getStatus())) {
-                brokerageUserService.updateUserPrice(record.getUserId(), -record.getPrice());
-            }
-        });
-    }
-
-    /**
-     * 计算佣金
-     *
-     * @param basePrice  佣金基数
-     * @param percent    佣金比例
-     * @param fixedPrice 固定佣金
-     * @return 佣金
-     */
-    int calculatePrice(Integer basePrice, Integer percent, Integer fixedPrice) {
-        // 1. 优先使用固定佣金
-        if (fixedPrice != null && fixedPrice > 0) {
-            return ObjectUtil.defaultIfNull(fixedPrice, 0);
-        }
-        // 2. 根据比例计算佣金
-        if (basePrice != null && basePrice > 0 && percent != null && percent > 0) {
-            return MoneyUtils.calculateRatePriceFloor(basePrice, Double.valueOf(percent));
-        }
-        return 0;
-    }
-
     /**
      * 增加用户佣金
      *
@@ -206,6 +159,77 @@ public class BrokerageRecordServiceImpl implements BrokerageRecordService {
         }
     }
 
+    /**
+     * 计算佣金
+     *
+     * @param basePrice  佣金基数
+     * @param percent    佣金比例
+     * @param fixedPrice 固定佣金
+     * @return 佣金
+     */
+    int calculatePrice(Integer basePrice, Integer percent, Integer fixedPrice) {
+        // 1. 优先使用固定佣金
+        if (fixedPrice != null && fixedPrice > 0) {
+            return ObjectUtil.defaultIfNull(fixedPrice, 0);
+        }
+        // 2. 根据比例计算佣金
+        if (basePrice != null && basePrice > 0 && percent != null && percent > 0) {
+            return MoneyUtils.calculateRatePriceFloor(basePrice, Double.valueOf(percent));
+        }
+        return 0;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void addBrokerage(Long userId, BrokerageRecordBizTypeEnum bizType, String bizId, Integer brokeragePrice, String title) {
+        // 1. 校验佣金余额
+        BrokerageUserDO user = brokerageUserService.getBrokerageUser(userId);
+        int balance = Optional.of(user)
+                .map(BrokerageUserDO::getBrokeragePrice).orElse(0);
+        if (balance + brokeragePrice < 0) {
+            throw exception(BROKERAGE_WITHDRAW_USER_BALANCE_NOT_ENOUGH, MoneyUtils.fenToYuanStr(balance));
+        }
+
+        // 2. 更新佣金余额
+        boolean success = brokerageUserService.updateUserPrice(userId, brokeragePrice);
+        if (!success) {
+            // 失败时，则抛出异常。只会出现扣减佣金时，余额不足的情况
+            throw exception(BROKERAGE_WITHDRAW_USER_BALANCE_NOT_ENOUGH, MoneyUtils.fenToYuanStr(balance));
+        }
+
+        // 3. 新增记录
+        BrokerageRecordDO record = BrokerageRecordConvert.INSTANCE.convert(user, bizType, bizId, 0, brokeragePrice,
+                null, title, null, null);
+        brokerageRecordMapper.insert(record);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelBrokerage(BrokerageRecordBizTypeEnum bizType, String bizId) {
+        List<BrokerageRecordDO> records = brokerageRecordMapper.selectListByBizTypeAndBizId(bizType.getType(), bizId);
+        if (CollUtil.isEmpty(records)) {
+            log.error("[cancelBrokerage][bizId({}) bizType({}) 更新为已失效失败：记录不存在]", bizId, bizType);
+            return;
+        }
+
+        records.forEach(record -> {
+            // 1. 更新佣金记录为已失效
+            BrokerageRecordDO updateObj = new BrokerageRecordDO().setStatus(BrokerageRecordStatusEnum.CANCEL.getStatus());
+            int updateRows = brokerageRecordMapper.updateByIdAndStatus(record.getId(), record.getStatus(), updateObj);
+            if (updateRows == 0) {
+                log.error("[cancelBrokerage][record({}) 更新为已失效失败]", record.getId());
+                return;
+            }
+
+            // 2. 更新用户的佣金
+            if (BrokerageRecordStatusEnum.WAIT_SETTLEMENT.getStatus().equals(record.getStatus())) {
+                brokerageUserService.updateUserFrozenPrice(record.getUserId(), -record.getPrice());
+            } else if (BrokerageRecordStatusEnum.SETTLEMENT.getStatus().equals(record.getStatus())) {
+                brokerageUserService.updateUserPrice(record.getUserId(), -record.getPrice());
+            }
+        });
+    }
+
     @Override
     public int unfreezeRecord() {
         // 1. 查询待结算的佣金记录
@@ -254,6 +278,15 @@ public class BrokerageRecordServiceImpl implements BrokerageRecordService {
         return true;
     }
 
+    /**
+     * 获得自身的代理对象，解决 AOP 生效问题
+     *
+     * @return 自己
+     */
+    private BrokerageRecordServiceImpl getSelf() {
+        return SpringUtil.getBean(getClass());
+    }
+
     @Override
     public List<UserBrokerageSummaryRespBO> getUserBrokerageSummaryListByUserId(Collection<Long> userIds,
                                                                                 Integer bizType, Integer status) {
@@ -291,30 +324,6 @@ public class BrokerageRecordServiceImpl implements BrokerageRecordService {
                 ArrayUtil.get(times, 0), ArrayUtil.get(times, 1));
         // 获得排名
         return ObjUtil.defaultIfNull(greaterCount, 0) + 1;
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void addBrokerage(Long userId, BrokerageRecordBizTypeEnum bizType, String bizId, Integer brokeragePrice, String title) {
-        // 1. 校验佣金余额
-        BrokerageUserDO user = brokerageUserService.getBrokerageUser(userId);
-        int balance = Optional.of(user)
-                .map(BrokerageUserDO::getBrokeragePrice).orElse(0);
-        if (balance + brokeragePrice < 0) {
-            throw exception(BROKERAGE_WITHDRAW_USER_BALANCE_NOT_ENOUGH, MoneyUtils.fenToYuanStr(balance));
-        }
-
-        // 2. 更新佣金余额
-        boolean success = brokerageUserService.updateUserPrice(userId, brokeragePrice);
-        if (!success) {
-            // 失败时，则抛出异常。只会出现扣减佣金时，余额不足的情况
-            throw exception(BROKERAGE_WITHDRAW_USER_BALANCE_NOT_ENOUGH, MoneyUtils.fenToYuanStr(balance));
-        }
-
-        // 3. 新增记录
-        BrokerageRecordDO record = BrokerageRecordConvert.INSTANCE.convert(user, bizType, bizId, 0, brokeragePrice,
-                null, title, null, null);
-        brokerageRecordMapper.insert(record);
     }
 
     @Override
@@ -356,15 +365,6 @@ public class BrokerageRecordServiceImpl implements BrokerageRecordService {
         respVO.setBrokerageMinPrice(calculatePrice(spuMinPrice, tradeConfig.getBrokerageFirstPercent(), fixedMinPrice));
         respVO.setBrokerageMaxPrice(calculatePrice(spuMaxPrice, tradeConfig.getBrokerageFirstPercent(), fixedMaxPrice));
         return respVO;
-    }
-
-    /**
-     * 获得自身的代理对象，解决 AOP 生效问题
-     *
-     * @return 自己
-     */
-    private BrokerageRecordServiceImpl getSelf() {
-        return SpringUtil.getBean(getClass());
     }
 
 }

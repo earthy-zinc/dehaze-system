@@ -97,14 +97,6 @@ public interface CrmContractService {
     CrmContractDO validateContract(Long id);
 
     /**
-     * 获得合同列表
-     *
-     * @param ids 编号
-     * @return 合同列表
-     */
-    List<CrmContractDO> getContractList(Collection<Long> ids);
-
-    /**
      * 获得合同 Map
      *
      * @param ids 编号
@@ -115,8 +107,16 @@ public interface CrmContractService {
     }
 
     /**
-     * 获得合同分页
+     * 获得合同列表
      *
+     * @param ids 编号
+     * @return 合同列表
+     */
+    List<CrmContractDO> getContractList(Collection<Long> ids);
+
+    /**
+     * 获得合同分页
+     * <p>
      * 数据权限：基于 {@link CrmContractDO} 读取
      *
      * @param pageReqVO 分页查询
@@ -127,7 +127,7 @@ public interface CrmContractService {
 
     /**
      * 获得合同分页，基于指定客户
-     *
+     * <p>
      * 数据权限：基于 {@link CrmCustomerDO} 读取
      *
      * @param pageReqVO 分页查询
@@ -137,7 +137,7 @@ public interface CrmContractService {
 
     /**
      * 获得合同分页，基于指定商机
-     *
+     * <p>
      * 数据权限：基于 {@link CrmBusinessDO} 读取
      *
      * @param pageReqVO 分页查询

@@ -1,6 +1,9 @@
 package com.pei.dehaze.module.trade.dal.mysql.brokerage;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.github.yulichang.toolkit.MPJWrappers;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
 import com.pei.dehaze.framework.mybatis.core.query.LambdaQueryWrapperX;
@@ -8,9 +11,6 @@ import com.pei.dehaze.module.trade.controller.admin.brokerage.vo.record.Brokerag
 import com.pei.dehaze.module.trade.controller.app.brokerage.vo.user.AppBrokerageUserRankByPriceRespVO;
 import com.pei.dehaze.module.trade.dal.dataobject.brokerage.BrokerageRecordDO;
 import com.pei.dehaze.module.trade.service.brokerage.bo.UserBrokerageSummaryRespBO;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.github.yulichang.toolkit.MPJWrappers;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;

@@ -5,18 +5,16 @@
 <mapper namespace="com.pei.dehaze.module.iot.dal.mysql.device.IotDeviceMapper">
 
     <select id="selectDeviceCountGroupByState" resultType="java.util.Map">
-        SELECT
-            state AS `key`,
-            COUNT(1) AS `value`
+        SELECT state    AS `key`,
+               COUNT(1) AS `value`
         FROM iot_device
         WHERE deleted = 0
         GROUP BY state
     </select>
 
     <select id="selectDeviceCountMapByProductId" resultType="java.util.Map">
-        SELECT
-            product_id AS `key`,
-            COUNT(1) AS `value`
+        SELECT product_id AS `key`,
+               COUNT(1)   AS `value`
         FROM iot_device
         WHERE deleted = 0
         GROUP BY product_id

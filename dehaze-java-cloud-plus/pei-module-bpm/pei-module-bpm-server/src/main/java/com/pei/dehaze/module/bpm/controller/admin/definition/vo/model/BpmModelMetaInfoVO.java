@@ -16,12 +16,9 @@ import org.hibernate.validator.constraints.URL;
 import java.util.List;
 
 /**
- * BPM 流程 MetaInfo Response DTO
- * 主要用于 { Model#setMetaInfo(String)} 的存储
- *
- * 最终，它的字段和
- * {@link com.pei.dehaze.module.bpm.dal.dataobject.definition.BpmProcessDefinitionInfoDO}
- * 是一致的
+ * BPM 流程 MetaInfo Response DTO 主要用于 { Model#setMetaInfo(String)} 的存储
+ * <p>
+ * 最终，它的字段和 {@link com.pei.dehaze.module.bpm.dal.dataobject.definition.BpmProcessDefinitionInfoDO} 是一致的
  *
  * @author earthyzinc
  */
@@ -169,8 +166,7 @@ public class BpmModelMetaInfoVO {
         /**
          * 请求返回处理设置，用于修改流程表单值
          * <p>
-         * key：表示要修改的流程表单字段名(name)
-         * value：接口返回的字段名
+         * key：表示要修改的流程表单字段名(name) value：接口返回的字段名
          */
         @Schema(description = "请求返回处理设置", example = "[]")
         private List<KeyValue<String, String>> response;

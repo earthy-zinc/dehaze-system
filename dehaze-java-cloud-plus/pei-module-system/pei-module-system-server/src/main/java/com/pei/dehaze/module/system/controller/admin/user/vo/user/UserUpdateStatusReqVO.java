@@ -3,9 +3,8 @@ package com.pei.dehaze.module.system.controller.admin.user.vo.user;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 用户更新状态 Request VO")
 @Data

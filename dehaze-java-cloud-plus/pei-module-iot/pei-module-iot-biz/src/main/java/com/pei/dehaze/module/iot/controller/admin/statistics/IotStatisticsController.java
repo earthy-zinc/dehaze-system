@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-import static com.pei.dehaze.framework.common.pojo.CommonResult.*;
+import static com.pei.dehaze.framework.common.pojo.CommonResult.success;
 
 @Tag(name = "管理后台 - IoT 数据统计")
 @RestController
@@ -40,7 +40,7 @@ public class IotStatisticsController {
 
     @GetMapping("/get-summary")
     @Operation(summary = "获取 IoT 数据统计")
-    public CommonResult<IotStatisticsSummaryRespVO> getIotStatisticsSummary(){
+    public CommonResult<IotStatisticsSummaryRespVO> getIotStatisticsSummary() {
         IotStatisticsSummaryRespVO respVO = new IotStatisticsSummaryRespVO();
         // 1.1 获取总数
         respVO.setProductCategoryCount(productCategoryService.getProductCategoryCount(null));

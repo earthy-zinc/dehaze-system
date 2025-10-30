@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.pay.dal.mysql.notify;
 
-import com.pei.dehaze.module.pay.dal.dataobject.notify.PayNotifyLogDO;
 import com.pei.dehaze.framework.mybatis.core.mapper.BaseMapperX;
+import com.pei.dehaze.module.pay.dal.dataobject.notify.PayNotifyLogDO;
 import org.apache.ibatis.annotations.Mapper;
 
 import java.util.List;

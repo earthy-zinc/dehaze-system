@@ -137,38 +137,6 @@ public class ErpStockOutServiceImpl implements ErpStockOutService {
         });
     }
 
-    private List<ErpStockOutItemDO> validateStockOutItems(List<ErpStockOutSaveReqVO.Item> list) {
-        // 1.1 校验产品存在
-        List<ErpProductDO> productList = productService.validProductList(
-                convertSet(list, ErpStockOutSaveReqVO.Item::getProductId));
-        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
-        // 1.2 校验仓库存在
-        warehouseService.validWarehouseList(convertSet(list, ErpStockOutSaveReqVO.Item::getWarehouseId));
-        // 2. 转化为 ErpStockOutItemDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, ErpStockOutItemDO.class, item -> item
-                .setProductUnitId(productMap.get(item.getProductId()).getUnitId())
-                .setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()))));
-    }
-
-    private void updateStockOutItemList(Long id, List<ErpStockOutItemDO> newList) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<ErpStockOutItemDO> oldList = stockOutItemMapper.selectListByOutId(id);
-        List<List<ErpStockOutItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setOutId(id));
-            stockOutItemMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            stockOutItemMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            stockOutItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpStockOutItemDO::getId));
-        }
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteStockOut(List<Long> ids) {
@@ -192,14 +160,6 @@ public class ErpStockOutServiceImpl implements ErpStockOutService {
         });
     }
 
-    private ErpStockOutDO validateStockOutExists(Long id) {
-        ErpStockOutDO stockOut = stockOutMapper.selectById(id);
-        if (stockOut == null) {
-            throw exception(STOCK_OUT_NOT_EXISTS);
-        }
-        return stockOut;
-    }
-
     @Override
     public ErpStockOutDO getStockOut(Long id) {
         return stockOutMapper.selectById(id);
@@ -209,8 +169,6 @@ public class ErpStockOutServiceImpl implements ErpStockOutService {
     public PageResult<ErpStockOutDO> getStockOutPage(ErpStockOutPageReqVO pageReqVO) {
         return stockOutMapper.selectPage(pageReqVO);
     }
-
-    // ==================== 出库项 ====================
 
     @Override
     public List<ErpStockOutItemDO> getStockOutItemListByOutId(Long outId) {
@@ -223,6 +181,48 @@ public class ErpStockOutServiceImpl implements ErpStockOutService {
             return Collections.emptyList();
         }
         return stockOutItemMapper.selectListByOutIds(outIds);
+    }
+
+    private ErpStockOutDO validateStockOutExists(Long id) {
+        ErpStockOutDO stockOut = stockOutMapper.selectById(id);
+        if (stockOut == null) {
+            throw exception(STOCK_OUT_NOT_EXISTS);
+        }
+        return stockOut;
+    }
+
+    // ==================== 出库项 ====================
+
+    private void updateStockOutItemList(Long id, List<ErpStockOutItemDO> newList) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<ErpStockOutItemDO> oldList = stockOutItemMapper.selectListByOutId(id);
+        List<List<ErpStockOutItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setOutId(id));
+            stockOutItemMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            stockOutItemMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            stockOutItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpStockOutItemDO::getId));
+        }
+    }
+
+    private List<ErpStockOutItemDO> validateStockOutItems(List<ErpStockOutSaveReqVO.Item> list) {
+        // 1.1 校验产品存在
+        List<ErpProductDO> productList = productService.validProductList(
+                convertSet(list, ErpStockOutSaveReqVO.Item::getProductId));
+        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
+        // 1.2 校验仓库存在
+        warehouseService.validWarehouseList(convertSet(list, ErpStockOutSaveReqVO.Item::getWarehouseId));
+        // 2. 转化为 ErpStockOutItemDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, ErpStockOutItemDO.class, item -> item
+                .setProductUnitId(productMap.get(item.getProductId()).getUnitId())
+                .setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()))));
     }
 
 }

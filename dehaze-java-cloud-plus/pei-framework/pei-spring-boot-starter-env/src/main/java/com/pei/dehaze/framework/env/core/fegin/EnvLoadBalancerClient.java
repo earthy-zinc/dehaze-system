@@ -2,10 +2,10 @@ package com.pei.dehaze.framework.env.core.fegin;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.cloud.nacos.balancer.NacosBalancer;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.env.core.context.EnvContextHolder;
 import com.pei.dehaze.framework.env.core.util.EnvUtils;
-import com.alibaba.cloud.nacos.balancer.NacosBalancer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -23,8 +23,7 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 /**
- * 多环境的 {@link org.springframework.cloud.client.loadbalancer.LoadBalancerClient} 实现类
- * 在从服务实例列表选择时，优先选择 tag 匹配的服务实例
+ * 多环境的 {@link org.springframework.cloud.client.loadbalancer.LoadBalancerClient} 实现类 在从服务实例列表选择时，优先选择 tag 匹配的服务实例
  *
  * @author earthyzinc
  */
@@ -38,7 +37,7 @@ public class EnvLoadBalancerClient implements ReactorServiceInstanceLoadBalancer
     private final ObjectProvider<ServiceInstanceListSupplier> serviceInstanceListSupplierProvider;
     /**
      * 需要获取的服务实例名
-     *
+     * <p>
      * 暂时用于打印 logger 日志
      */
     private final String serviceId;

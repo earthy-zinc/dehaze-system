@@ -5,9 +5,8 @@ import com.pei.dehaze.module.trade.service.price.bo.TradePriceCalculateRespBO;
 
 /**
  * 价格计算的计算器接口
- *
- * 优惠计算顺序：
- * 1. <a href="https://help.youzan.com/displaylist/detail_4_4-1-53316">积分抵现、会员价、优惠券、粉丝专享价、满减送哪个优先计算？</>
+ * <p>
+ * 优惠计算顺序： 1. <a href="https://help.youzan.com/displaylist/detail_4_4-1-53316">积分抵现、会员价、优惠券、粉丝专享价、满减送哪个优先计算？</>
  *
  * @author earthyzinc
  */
@@ -24,13 +23,13 @@ public interface TradePriceCalculator {
     int ORDER_POINT_USE = 40;
     /**
      * 快递运费的计算
-     *
+     * <p>
      * 放在各种营销活动、优惠劵后面
      */
     int ORDER_DELIVERY = 50;
     /**
      * 赠送积分，放最后
-     *
+     * <p>
      * 放在 {@link #ORDER_DELIVERY} 后面的原因，是运费也会产生费用，需要赠送对应积分
      */
     int ORDER_POINT_GIVE = 999;

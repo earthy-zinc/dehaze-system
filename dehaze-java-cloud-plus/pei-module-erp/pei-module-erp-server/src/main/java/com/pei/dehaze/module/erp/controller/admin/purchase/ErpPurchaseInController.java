@@ -79,7 +79,7 @@ public class ErpPurchaseInController {
     @Operation(summary = "更新采购入库的状态")
     @PreAuthorize("@ss.hasPermission('erp:purchase-in:update-status')")
     public CommonResult<Boolean> updatePurchaseInStatus(@RequestParam("id") Long id,
-                                                      @RequestParam("status") Integer status) {
+                                                        @RequestParam("status") Integer status) {
         purchaseInService.updatePurchaseInStatus(id, status);
         return success(true);
     }
@@ -122,18 +122,6 @@ public class ErpPurchaseInController {
         return success(buildPurchaseInVOPageResult(pageResult));
     }
 
-    @GetMapping("/export-excel")
-    @Operation(summary = "导出采购入库 Excel")
-    @PreAuthorize("@ss.hasPermission('erp:purchase-in:export')")
-    @ApiAccessLog(operateType = EXPORT)
-    public void exportPurchaseInExcel(@Valid ErpPurchaseInPageReqVO pageReqVO,
-                                    HttpServletResponse response) throws IOException {
-        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
-        List<ErpPurchaseInRespVO> list = buildPurchaseInVOPageResult(purchaseInService.getPurchaseInPage(pageReqVO)).getList();
-        // 导出 Excel
-        ExcelUtils.write(response, "采购入库.xls", "数据", ErpPurchaseInRespVO.class, list);
-    }
-
     private PageResult<ErpPurchaseInRespVO> buildPurchaseInVOPageResult(PageResult<ErpPurchaseInDO> pageResult) {
         if (CollUtil.isEmpty(pageResult.getList())) {
             return PageResult.empty(pageResult.getTotal());
@@ -160,6 +148,18 @@ public class ErpPurchaseInController {
             MapUtils.findAndThen(supplierMap, purchaseIn.getSupplierId(), supplier -> purchaseIn.setSupplierName(supplier.getName()));
             MapUtils.findAndThen(userMap, Long.parseLong(purchaseIn.getCreator()), user -> purchaseIn.setCreatorName(user.getNickname()));
         });
+    }
+
+    @GetMapping("/export-excel")
+    @Operation(summary = "导出采购入库 Excel")
+    @PreAuthorize("@ss.hasPermission('erp:purchase-in:export')")
+    @ApiAccessLog(operateType = EXPORT)
+    public void exportPurchaseInExcel(@Valid ErpPurchaseInPageReqVO pageReqVO,
+                                      HttpServletResponse response) throws IOException {
+        pageReqVO.setPageSize(PageParam.PAGE_SIZE_NONE);
+        List<ErpPurchaseInRespVO> list = buildPurchaseInVOPageResult(purchaseInService.getPurchaseInPage(pageReqVO)).getList();
+        // 导出 Excel
+        ExcelUtils.write(response, "采购入库.xls", "数据", ErpPurchaseInRespVO.class, list);
     }
 
 }

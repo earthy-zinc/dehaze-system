@@ -1,7 +1,7 @@
 package com.pei.dehaze.module.promotion.controller.admin.seckill.vo.activity;
 
-import com.pei.dehaze.framework.common.pojo.PageParam;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.pei.dehaze.framework.common.pojo.PageParam;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;

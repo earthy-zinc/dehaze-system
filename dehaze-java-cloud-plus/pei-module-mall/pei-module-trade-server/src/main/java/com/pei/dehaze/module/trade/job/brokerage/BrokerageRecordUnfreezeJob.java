@@ -4,9 +4,8 @@ import cn.hutool.core.util.StrUtil;
 import com.pei.dehaze.framework.tenant.core.job.TenantJob;
 import com.pei.dehaze.module.trade.service.brokerage.BrokerageRecordService;
 import com.xxl.job.core.handler.annotation.XxlJob;
-import org.springframework.stereotype.Component;
-
 import jakarta.annotation.Resource;
+import org.springframework.stereotype.Component;
 
 /**
  * 佣金解冻 Job

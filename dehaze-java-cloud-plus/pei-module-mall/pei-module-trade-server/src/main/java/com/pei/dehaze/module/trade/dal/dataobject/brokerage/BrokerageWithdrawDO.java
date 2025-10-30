@@ -1,11 +1,11 @@
 package com.pei.dehaze.module.trade.dal.dataobject.brokerage;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawStatusEnum;
-import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawTypeEnum;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawStatusEnum;
+import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawTypeEnum;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -32,7 +32,7 @@ public class BrokerageWithdrawDO extends BaseDO {
     private Long id;
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 MemberUserDO 的 id 字段
      */
     private Long userId;
@@ -57,17 +57,13 @@ public class BrokerageWithdrawDO extends BaseDO {
     private Integer type;
 
     /**
-     * 提现姓名
-     * 1. {@link BrokerageWithdrawTypeEnum#BANK}：银行开户人
-     * 2. {@link BrokerageWithdrawTypeEnum#WECHAT_API}：微信真名
-     * 3. {@link BrokerageWithdrawTypeEnum#ALIPAY_API}：支付宝真名
+     * 提现姓名 1. {@link BrokerageWithdrawTypeEnum#BANK}：银行开户人 2. {@link BrokerageWithdrawTypeEnum#WECHAT_API}：微信真名 3.
+     * {@link BrokerageWithdrawTypeEnum#ALIPAY_API}：支付宝真名
      */
     private String userName;
     /**
-     * 提现账号
-     * 1. {@link BrokerageWithdrawTypeEnum#BANK}：银行账号
-     * 2. {@link BrokerageWithdrawTypeEnum#WECHAT_API}：微信 openid
-     * 3. {@link BrokerageWithdrawTypeEnum#ALIPAY_API}：支付宝账号
+     * 提现账号 1. {@link BrokerageWithdrawTypeEnum#BANK}：银行账号 2. {@link BrokerageWithdrawTypeEnum#WECHAT_API}：微信 openid 3.
+     * {@link BrokerageWithdrawTypeEnum#ALIPAY_API}：支付宝账号
      */
     private String userAccount;
 
@@ -108,13 +104,13 @@ public class BrokerageWithdrawDO extends BaseDO {
 
     /**
      * 转账单编号
-     *
+     * <p>
      * 关联 {@link com.pei.dehaze.module.pay.api.transfer.dto.PayTransferRespDTO#getId()}
      */
     private Long payTransferId;
     /**
      * 转账渠道
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.pay.enums.PayChannelEnum}
      */
     private String transferChannelCode;

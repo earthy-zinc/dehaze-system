@@ -26,7 +26,7 @@ public interface ProductSkuConvert {
      * 获得 SPU 的库存变化 Map
      *
      * @param items SKU 库存变化
-     * @param skus SKU 列表
+     * @param skus  SKU 列表
      * @return SPU 的库存变化 Map
      */
     default Map<Long, Integer> convertSpuStockMap(List<ProductSkuUpdateStockReqDTO.Item> items,

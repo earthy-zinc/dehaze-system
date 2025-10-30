@@ -1,7 +1,10 @@
 package com.pei.dehaze.module.ai.service.music;
 
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.ai.controller.admin.music.vo.*;
+import com.pei.dehaze.module.ai.controller.admin.music.vo.AiMusicPageReqVO;
+import com.pei.dehaze.module.ai.controller.admin.music.vo.AiMusicUpdateMyReqVO;
+import com.pei.dehaze.module.ai.controller.admin.music.vo.AiMusicUpdateReqVO;
+import com.pei.dehaze.module.ai.controller.admin.music.vo.AiSunoGenerateReqVO;
 import com.pei.dehaze.module.ai.dal.dataobject.music.AiMusicDO;
 import jakarta.validation.Valid;
 

@@ -35,7 +35,7 @@ public interface ErpStockMoveService {
     /**
      * 更新库存调拨单的状态
      *
-     * @param id 编号
+     * @param id     编号
      * @param status 状态
      */
     void updateStockMoveStatus(Long id, Integer status);

@@ -34,11 +34,7 @@ public enum IotRuleSceneTriggerConditionParameterOperatorEnum implements ArrayVa
     LIKE("like", "#source.contains(#value)"), // 字符串匹配
     NOT_NULL("not null", "#source != null && #source.length() > 0"); // 非空
 
-    private final String operator;
-    private final String springExpression;
-
     public static final String[] ARRAYS = Arrays.stream(values()).map(IotRuleSceneTriggerConditionParameterOperatorEnum::getOperator).toArray(String[]::new);
-
     /**
      * Spring 表达式 - 原始值
      */
@@ -51,6 +47,8 @@ public enum IotRuleSceneTriggerConditionParameterOperatorEnum implements ArrayVa
      * Spring 表达式 - 目标值数组
      */
     public static final String SPRING_EXPRESSION_VALUE_List = "values";
+    private final String operator;
+    private final String springExpression;
 
     public static IotRuleSceneTriggerConditionParameterOperatorEnum operatorOf(String operator) {
         return ArrayUtil.firstMatch(item -> item.getOperator().equals(operator), values());

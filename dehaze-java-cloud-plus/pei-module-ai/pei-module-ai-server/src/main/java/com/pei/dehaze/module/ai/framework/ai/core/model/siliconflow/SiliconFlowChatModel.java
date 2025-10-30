@@ -11,7 +11,7 @@ import reactor.core.publisher.Flux;
 
 /**
  * 硅基流动 {@link ChatModel} 实现类
- *
+ * <p>
  * 1. API 文档：<a href="https://docs.siliconflow.cn/cn/api-reference/chat-completions/chat-completions">API 文档</a>
  *
  * @author fansili
@@ -31,13 +31,13 @@ public class SiliconFlowChatModel implements ChatModel {
     }
 
     @Override
-    public Flux<ChatResponse> stream(Prompt prompt) {
-        return openAiChatModel.stream(prompt);
+    public ChatOptions getDefaultOptions() {
+        return openAiChatModel.getDefaultOptions();
     }
 
     @Override
-    public ChatOptions getDefaultOptions() {
-        return openAiChatModel.getDefaultOptions();
+    public Flux<ChatResponse> stream(Prompt prompt) {
+        return openAiChatModel.stream(prompt);
     }
 
 }

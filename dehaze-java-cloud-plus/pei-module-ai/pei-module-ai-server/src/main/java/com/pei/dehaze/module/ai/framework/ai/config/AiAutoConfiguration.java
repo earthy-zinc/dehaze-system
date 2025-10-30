@@ -37,7 +37,7 @@ import org.springframework.context.annotation.Configuration;
  * @author fansili
  */
 @Configuration
-@EnableConfigurationProperties({ PeiAiProperties.class,
+@EnableConfigurationProperties({PeiAiProperties.class,
         QdrantVectorStoreProperties.class, // 解析 Qdrant 配置
         RedisVectorStoreProperties.class, // 解析 Redis 配置
         MilvusVectorStoreProperties.class, MilvusServiceClientProperties.class // 解析 Milvus 配置
@@ -77,6 +77,10 @@ public class AiAutoConfiguration {
                 .toolCallingManager(getToolCallingManager())
                 .build();
         return new DeepSeekChatModel(openAiChatModel);
+    }
+
+    private static ToolCallingManager getToolCallingManager() {
+        return SpringUtil.getBean(ToolCallingManager.class);
     }
 
     @Bean
@@ -228,13 +232,13 @@ public class AiAutoConfiguration {
         return new MidjourneyApi(config.getBaseUrl(), config.getApiKey(), config.getNotifyUrl());
     }
 
+    // ========== RAG 相关 ==========
+
     @Bean
     @ConditionalOnProperty(value = "pei.ai.suno.enable", havingValue = "true")
     public SunoApi sunoApi(PeiAiProperties peiAiProperties) {
         return new SunoApi(peiAiProperties.getSuno().getBaseUrl());
     }
-
-    // ========== RAG 相关 ==========
 
     @Bean
     public TokenCountEstimator tokenCountEstimator() {
@@ -244,10 +248,6 @@ public class AiAutoConfiguration {
     @Bean
     public BatchingStrategy batchingStrategy() {
         return new TokenCountBatchingStrategy();
-    }
-
-    private static ToolCallingManager getToolCallingManager() {
-        return SpringUtil.getBean(ToolCallingManager.class);
     }
 
 }

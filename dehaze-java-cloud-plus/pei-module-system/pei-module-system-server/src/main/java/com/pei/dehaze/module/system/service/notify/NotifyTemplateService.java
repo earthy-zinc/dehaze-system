@@ -4,8 +4,8 @@ import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.module.system.controller.admin.notify.vo.template.NotifyTemplatePageReqVO;
 import com.pei.dehaze.module.system.controller.admin.notify.vo.template.NotifyTemplateSaveReqVO;
 import com.pei.dehaze.module.system.dal.dataobject.notify.NotifyTemplateDO;
-
 import jakarta.validation.Valid;
+
 import java.util.Map;
 
 /**
@@ -65,7 +65,7 @@ public interface NotifyTemplateService {
      * 格式化站内信内容
      *
      * @param content 站内信模板的内容
-     * @param params 站内信内容的参数
+     * @param params  站内信内容的参数
      * @return 格式化后的内容
      */
     String formatNotifyTemplateContent(String content, Map<String, Object> params);

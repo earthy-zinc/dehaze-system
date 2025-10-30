@@ -58,14 +58,6 @@ public interface ErpSupplierService {
     ErpSupplierDO validateSupplier(Long id);
 
     /**
-     * 获得供应商列表
-     *
-     * @param ids 编号列表
-     * @return 供应商列表
-     */
-    List<ErpSupplierDO> getSupplierList(Collection<Long> ids);
-
-    /**
      * 获得供应商 Map
      *
      * @param ids 编号列表
@@ -74,6 +66,14 @@ public interface ErpSupplierService {
     default Map<Long, ErpSupplierDO> getSupplierMap(Collection<Long> ids) {
         return convertMap(getSupplierList(ids), ErpSupplierDO::getId);
     }
+
+    /**
+     * 获得供应商列表
+     *
+     * @param ids 编号列表
+     * @return 供应商列表
+     */
+    List<ErpSupplierDO> getSupplierList(Collection<Long> ids);
 
     /**
      * 获得供应商分页

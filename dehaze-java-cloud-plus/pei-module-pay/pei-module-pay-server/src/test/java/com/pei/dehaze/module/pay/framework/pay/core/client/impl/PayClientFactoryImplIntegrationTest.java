@@ -5,7 +5,6 @@ import cn.hutool.core.util.RandomUtil;
 import com.pei.dehaze.module.pay.enums.PayChannelEnum;
 import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
 import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
-import com.pei.dehaze.module.pay.framework.pay.core.client.impl.PayClientFactoryImpl;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayPayClientConfig;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayQrPayClient;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayWapPayClient;
@@ -48,6 +47,17 @@ public class PayClientFactoryImplIntegrationTest {
         PayOrderUnifiedReqDTO reqDTO = buildPayOrderUnifiedReqDTO();
 //        CommonResult<?> result = client.unifiedOrder(reqDTO);
 //        System.out.println(result);
+    }
+
+    private static PayOrderUnifiedReqDTO buildPayOrderUnifiedReqDTO() {
+        PayOrderUnifiedReqDTO reqDTO = new PayOrderUnifiedReqDTO();
+        reqDTO.setPrice(123);
+        reqDTO.setSubject("IPhone 13");
+        reqDTO.setBody("biubiubiu");
+        reqDTO.setOutTradeNo(String.valueOf(System.currentTimeMillis()));
+        reqDTO.setUserIp("127.0.0.1");
+        reqDTO.setNotifyUrl("http://127.0.0.1:8080");
+        return reqDTO;
     }
 
     /**
@@ -118,17 +128,6 @@ public class PayClientFactoryImplIntegrationTest {
         PayOrderUnifiedReqDTO reqDTO = buildPayOrderUnifiedReqDTO();
 //        CommonResult<?> result = client.unifiedOrder(reqDTO);
 //        System.out.println(JsonUtils.toJsonString(result));
-    }
-
-    private static PayOrderUnifiedReqDTO buildPayOrderUnifiedReqDTO() {
-        PayOrderUnifiedReqDTO reqDTO = new PayOrderUnifiedReqDTO();
-        reqDTO.setPrice(123);
-        reqDTO.setSubject("IPhone 13");
-        reqDTO.setBody("biubiubiu");
-        reqDTO.setOutTradeNo(String.valueOf(System.currentTimeMillis()));
-        reqDTO.setUserIp("127.0.0.1");
-        reqDTO.setNotifyUrl("http://127.0.0.1:8080");
-        return reqDTO;
     }
 
 }

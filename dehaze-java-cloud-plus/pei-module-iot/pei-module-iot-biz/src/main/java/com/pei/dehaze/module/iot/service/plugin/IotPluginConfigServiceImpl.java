@@ -19,6 +19,7 @@ import java.util.List;
 
 import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static com.pei.dehaze.module.iot.enums.ErrorCodeConstants.*;
+
 /**
  * IoT 插件配置 Service 实现类
  *
@@ -59,21 +60,6 @@ public class IotPluginConfigServiceImpl implements IotPluginConfigService {
         pluginConfigMapper.updateById(updateObj);
     }
 
-    /**
-     * 校验插件标识唯一性
-     *
-     * @param id        当前插件配置的 ID（如果为 null 则说明为新建操作）
-     * @param pluginKey 待校验的插件标识
-     */
-    private void validatePluginKeyUnique(Long id, String pluginKey) {
-        // 1. 根据 pluginKey 从数据库中查询已有的插件配置
-        IotPluginConfigDO pluginConfig = pluginConfigMapper.selectByPluginKey(pluginKey);
-        // 2. 如果查询到记录且记录的 ID 与当前 ID 不相同，则认为存在重复，抛出异常
-        if (pluginConfig != null && !pluginConfig.getId().equals(id)) {
-            throw exception(PLUGIN_CONFIG_KEY_DUPLICATE);
-        }
-    }
-
     @Override
     public void deletePluginConfig(Long id) {
         // 1. 校验存在
@@ -90,20 +76,6 @@ public class IotPluginConfigServiceImpl implements IotPluginConfigService {
 
         // 5. 删除插件配置
         pluginConfigMapper.deleteById(id);
-    }
-
-    /**
-     * 校验插件配置是否存在
-     *
-     * @param id 插件配置编号
-     * @return 插件配置
-     */
-    private IotPluginConfigDO validatePluginConfigExists(Long id) {
-        IotPluginConfigDO pluginConfig = pluginConfigMapper.selectById(id);
-        if (pluginConfig == null) {
-            throw exception(PLUGIN_CONFIG_NOT_EXISTS);
-        }
-        return pluginConfig;
     }
 
     @Override
@@ -183,6 +155,35 @@ public class IotPluginConfigServiceImpl implements IotPluginConfigService {
     @Override
     public IotPluginConfigDO getPluginConfigByPluginKey(String pluginKey) {
         return pluginConfigMapper.selectByPluginKey(pluginKey);
+    }
+
+    /**
+     * 校验插件配置是否存在
+     *
+     * @param id 插件配置编号
+     * @return 插件配置
+     */
+    private IotPluginConfigDO validatePluginConfigExists(Long id) {
+        IotPluginConfigDO pluginConfig = pluginConfigMapper.selectById(id);
+        if (pluginConfig == null) {
+            throw exception(PLUGIN_CONFIG_NOT_EXISTS);
+        }
+        return pluginConfig;
+    }
+
+    /**
+     * 校验插件标识唯一性
+     *
+     * @param id        当前插件配置的 ID（如果为 null 则说明为新建操作）
+     * @param pluginKey 待校验的插件标识
+     */
+    private void validatePluginKeyUnique(Long id, String pluginKey) {
+        // 1. 根据 pluginKey 从数据库中查询已有的插件配置
+        IotPluginConfigDO pluginConfig = pluginConfigMapper.selectByPluginKey(pluginKey);
+        // 2. 如果查询到记录且记录的 ID 与当前 ID 不相同，则认为存在重复，抛出异常
+        if (pluginConfig != null && !pluginConfig.getId().equals(id)) {
+            throw exception(PLUGIN_CONFIG_KEY_DUPLICATE);
+        }
     }
 
 }

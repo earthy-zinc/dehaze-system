@@ -2,18 +2,16 @@ package com.pei.dehaze.module.pay.framework.pay.core.client.impl;
 
 import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ReflectUtil;
-import cn.hutool.core.util.TypeUtil;
 import com.pei.dehaze.module.pay.enums.PayChannelEnum;
 import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
 import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientConfig;
 import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientFactory;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.*;
+import com.pei.dehaze.module.pay.framework.pay.core.client.impl.mock.MockPayClient;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.wallet.WalletPayClient;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin.*;
-import com.pei.dehaze.module.pay.framework.pay.core.client.impl.mock.MockPayClient;
 import lombok.extern.slf4j.Slf4j;
 
-import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -30,7 +28,7 @@ public class PayClientFactoryImpl implements PayClientFactory {
 
     /**
      * 支付客户端 Map
-     *
+     * <p>
      * key：渠道编号
      */
     private final ConcurrentMap<Long, AbstractPayClient<?>> clients = new ConcurrentHashMap<>();

@@ -10,7 +10,7 @@ import lombok.Data;
 @Data
 public class LoginLogCreateReqDTO {
 
-    @Schema(description = "日志类型，参见 LoginLogTypeEnum 枚举类", requiredMode = Schema.RequiredMode.REQUIRED, example = "1" )
+    @Schema(description = "日志类型，参见 LoginLogTypeEnum 枚举类", requiredMode = Schema.RequiredMode.REQUIRED, example = "1")
     @NotNull(message = "日志类型不能为空")
     private Integer logType;
 
@@ -19,7 +19,7 @@ public class LoginLogCreateReqDTO {
 
     @Schema(description = "用户编号", example = "666")
     private Long userId;
-    @Schema(description = "用户类型，参见 UserTypeEnum 枚举", requiredMode = Schema.RequiredMode.REQUIRED, example = "2" )
+    @Schema(description = "用户类型，参见 UserTypeEnum 枚举", requiredMode = Schema.RequiredMode.REQUIRED, example = "2")
     @NotNull(message = "用户类型不能为空")
     private Integer userType;
     @Schema(description = "用户账号", example = "pei")

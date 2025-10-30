@@ -1,16 +1,16 @@
 package com.pei.dehaze.module.product.dal.dataobject.spu;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.framework.mybatis.core.type.IntegerListTypeHandler;
 import com.pei.dehaze.module.product.dal.dataobject.brand.ProductBrandDO;
 import com.pei.dehaze.module.product.dal.dataobject.category.ProductCategoryDO;
 import com.pei.dehaze.module.product.dal.dataobject.sku.ProductSkuDO;
 import com.pei.dehaze.module.product.enums.spu.ProductSpuStatusEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.*;
 
 import java.util.List;
@@ -57,13 +57,13 @@ public class ProductSpuDO extends BaseDO {
 
     /**
      * 商品分类编号
-     *
+     * <p>
      * 关联 {@link ProductCategoryDO#getId()}
      */
     private Long categoryId;
     /**
      * 商品品牌编号
-     *
+     * <p>
      * 关联 {@link ProductBrandDO#getId()}
      */
     private Long brandId;
@@ -83,7 +83,7 @@ public class ProductSpuDO extends BaseDO {
     private Integer sort;
     /**
      * 商品状态
-     *
+     * <p>
      * 枚举 {@link ProductSpuStatusEnum}
      */
     private Integer status;
@@ -92,32 +92,31 @@ public class ProductSpuDO extends BaseDO {
 
     /**
      * 规格类型
-     *
-     * false - 单规格
-     * true - 多规格
+     * <p>
+     * false - 单规格 true - 多规格
      */
     private Boolean specType;
     /**
      * 商品价格，单位使用：分
-     *
+     * <p>
      * 基于其对应的 {@link ProductSkuDO#getPrice()} sku单价最低的商品的
      */
     private Integer price;
     /**
      * 市场价，单位使用：分
-     *
+     * <p>
      * 基于其对应的 {@link ProductSkuDO#getMarketPrice()} sku单价最低的商品的
      */
     private Integer marketPrice;
     /**
      * 成本价，单位使用：分
-     *
+     * <p>
      * 基于其对应的 {@link ProductSkuDO#getCostPrice()} sku单价最低的商品的
      */
     private Integer costPrice;
     /**
      * 库存
-     *
+     * <p>
      * 基于其对应的 {@link ProductSkuDO#getStock()} 求和
      */
     private Integer stock;
@@ -126,14 +125,14 @@ public class ProductSpuDO extends BaseDO {
 
     /**
      * 配送方式数组
-     *
+     * <p>
      * 对应 DeliveryTypeEnum 枚举
      */
     @TableField(typeHandler = IntegerListTypeHandler.class)
     private List<Integer> deliveryTypes;
     /**
      * 物流配置模板编号
-     *
+     * <p>
      * 对应 TradeDeliveryExpressTemplateDO 的 id 编号
      */
     private Long deliveryTemplateId;
@@ -148,9 +147,8 @@ public class ProductSpuDO extends BaseDO {
     // TODO @puhui999：字段估计要改成 brokerageType
     /**
      * 分销类型
-     *
-     * false - 默认
-     * true - 自行设置
+     * <p>
+     * false - 默认 true - 自行设置
      */
     private Boolean subCommissionType;
 

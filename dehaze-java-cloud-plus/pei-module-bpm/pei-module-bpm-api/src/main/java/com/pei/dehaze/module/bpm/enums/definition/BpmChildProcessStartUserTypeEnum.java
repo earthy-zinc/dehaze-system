@@ -19,10 +19,9 @@ public enum BpmChildProcessStartUserTypeEnum implements ArrayValuable<Integer> {
     MAIN_PROCESS_START_USER(1, "同主流程发起人"),
     FROM_FORM(2, "表单");
 
+    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmChildProcessStartUserTypeEnum::getType).toArray(Integer[]::new);
     private final Integer type;
     private final String name;
-
-    public static final Integer[] ARRAYS = Arrays.stream(values()).map(BpmChildProcessStartUserTypeEnum::getType).toArray(Integer[]::new);
 
     public static BpmChildProcessStartUserTypeEnum typeOf(Integer type) {
         return ArrayUtil.firstMatch(item -> item.getType().equals(type), values());

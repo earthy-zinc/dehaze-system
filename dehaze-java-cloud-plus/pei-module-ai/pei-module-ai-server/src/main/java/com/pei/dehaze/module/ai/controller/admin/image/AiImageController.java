@@ -1,7 +1,6 @@
 package com.pei.dehaze.module.ai.controller.admin.image;
 
 import cn.hutool.core.util.ObjUtil;
-import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
 import com.pei.dehaze.framework.common.pojo.CommonResult;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
@@ -10,6 +9,7 @@ import com.pei.dehaze.module.ai.controller.admin.image.vo.*;
 import com.pei.dehaze.module.ai.controller.admin.image.vo.midjourney.AiMidjourneyActionReqVO;
 import com.pei.dehaze.module.ai.controller.admin.image.vo.midjourney.AiMidjourneyImagineReqVO;
 import com.pei.dehaze.module.ai.dal.dataobject.image.AiImageDO;
+import com.pei.dehaze.module.ai.framework.ai.core.model.midjourney.api.MidjourneyApi;
 import com.pei.dehaze.module.ai.service.image.AiImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

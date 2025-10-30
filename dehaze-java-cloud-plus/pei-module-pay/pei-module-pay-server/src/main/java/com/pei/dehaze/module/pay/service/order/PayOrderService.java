@@ -1,7 +1,6 @@
 package com.pei.dehaze.module.pay.service.order;
 
 import com.pei.dehaze.framework.common.pojo.PageResult;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
 import com.pei.dehaze.module.pay.api.order.dto.PayOrderCreateReqDTO;
 import com.pei.dehaze.module.pay.controller.admin.order.vo.PayOrderExportReqVO;
 import com.pei.dehaze.module.pay.controller.admin.order.vo.PayOrderPageReqVO;
@@ -9,9 +8,10 @@ import com.pei.dehaze.module.pay.controller.admin.order.vo.PayOrderSubmitReqVO;
 import com.pei.dehaze.module.pay.controller.admin.order.vo.PayOrderSubmitRespVO;
 import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderDO;
 import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderExtensionDO;
-
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderRespDTO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
+
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
@@ -81,8 +81,7 @@ public interface PayOrderService {
     Long createOrder(@Valid PayOrderCreateReqDTO reqDTO);
 
     /**
-     * 提交支付
-     * 此时，会发起支付渠道的调用
+     * 提交支付 此时，会发起支付渠道的调用
      *
      * @param reqVO  提交请求
      * @param userIp 提交 IP
@@ -110,8 +109,8 @@ public interface PayOrderService {
     /**
      * 更新支付订单价格
      *
-     * @param id 支付单编号
-     * @param payPrice   支付单价格
+     * @param id       支付单编号
+     * @param payPrice 支付单价格
      */
     void updatePayOrderPrice(Long id, Integer payPrice);
 
@@ -141,9 +140,8 @@ public interface PayOrderService {
 
     /**
      * 同步订单的支付状态
-     *
-     * 1. Quietly 表示，即使同步失败，也不会抛出异常
-     * 2. 什么时候回出现异常？因为是主动同步，可能和支付渠道的异步回调存在并发冲突，导致抛出异常
+     * <p>
+     * 1. Quietly 表示，即使同步失败，也不会抛出异常 2. 什么时候回出现异常？因为是主动同步，可能和支付渠道的异步回调存在并发冲突，导致抛出异常
      *
      * @param id 订单编号
      */

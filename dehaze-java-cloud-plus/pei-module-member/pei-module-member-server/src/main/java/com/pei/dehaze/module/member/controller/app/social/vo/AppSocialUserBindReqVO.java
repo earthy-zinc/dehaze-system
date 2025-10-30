@@ -3,10 +3,9 @@ package com.pei.dehaze.module.member.controller.app.social.vo;
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.system.enums.social.SocialTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "用户 APP - 社交绑定 Request VO，使用 code 授权码")
 @Data

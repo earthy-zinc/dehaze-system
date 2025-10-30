@@ -14,7 +14,7 @@ public class SeckillValidateJoinRespDTO {
     private String name;
     /**
      * 总限购数量
-     *
+     * <p>
      * 目的：目前只有 trade 有具体下单的数据，需要交给 trade 价格计算使用
      */
     private Integer totalLimitCount;

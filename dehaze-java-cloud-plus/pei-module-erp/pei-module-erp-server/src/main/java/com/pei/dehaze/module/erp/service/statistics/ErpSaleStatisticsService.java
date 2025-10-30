@@ -12,11 +12,11 @@ public interface ErpSaleStatisticsService {
 
     /**
      * 获得销售金额
-     *
+     * <p>
      * 计算逻辑：销售出库的金额 - 销售退货的金额
      *
      * @param beginTime >= 开始时间
-     * @param endTime < 结束时间
+     * @param endTime   < 结束时间
      * @return 销售金额
      */
     BigDecimal getSalePrice(LocalDateTime beginTime, LocalDateTime endTime);

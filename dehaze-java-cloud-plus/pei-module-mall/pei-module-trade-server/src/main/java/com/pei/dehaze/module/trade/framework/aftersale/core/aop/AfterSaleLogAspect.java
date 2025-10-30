@@ -32,7 +32,7 @@ public class AfterSaleLogAspect {
 
     /**
      * 用户编号
-     *
+     * <p>
      * 目前的使用场景：支付回调时，需要强制设置下用户编号
      */
     private static final ThreadLocal<Long> USER_ID = new ThreadLocal<>();
@@ -63,6 +63,22 @@ public class AfterSaleLogAspect {
 
     @Resource
     private AfterSaleLogService afterSaleLogService;
+
+    public static void setAfterSale(Long id, Integer beforeStatus, Integer afterStatus, Map<String, Object> exts) {
+        AFTER_SALE_ID.set(id);
+        BEFORE_STATUS.set(beforeStatus);
+        AFTER_STATUS.set(afterStatus);
+        EXTS.set(exts);
+    }
+
+    public static void setAfterSaleOperateType(AfterSaleOperateTypeEnum operateType) {
+        OPERATE_TYPE.set(operateType);
+    }
+
+    public static void setUserInfo(Long userId, Integer userType) {
+        USER_ID.set(userId);
+        USER_TYPE.set(userType);
+    }
 
     @AfterReturning(pointcut = "@annotation(afterSaleLog)")
     public void doAfterReturning(JoinPoint joinPoint, AfterSaleLog afterSaleLog) {
@@ -96,7 +112,7 @@ public class AfterSaleLogAspect {
 
     /**
      * 获得用户类型
-     *
+     * <p>
      * 如果没有，则约定为 {@link TradeOrderLogDO#getUserType()} 系统
      *
      * @return 用户类型
@@ -107,29 +123,13 @@ public class AfterSaleLogAspect {
 
     /**
      * 获得用户编号
-     *
+     * <p>
      * 如果没有，则约定为 {@link TradeOrderLogDO#getUserId()} 系统
      *
      * @return 用户类型
      */
     private static Long getUserId() {
         return ObjectUtil.defaultIfNull(WebFrameworkUtils.getLoginUserId(), TradeOrderLogDO.USER_ID_SYSTEM);
-    }
-
-    public static void setAfterSale(Long id, Integer beforeStatus, Integer afterStatus, Map<String, Object> exts) {
-        AFTER_SALE_ID.set(id);
-        BEFORE_STATUS.set(beforeStatus);
-        AFTER_STATUS.set(afterStatus);
-        EXTS.set(exts);
-    }
-
-    public static void setAfterSaleOperateType(AfterSaleOperateTypeEnum operateType) {
-        OPERATE_TYPE.set(operateType);
-    }
-
-    public static void setUserInfo(Long userId, Integer userType) {
-        USER_ID.set(userId);
-        USER_TYPE.set(userType);
     }
 
     private static void clear() {

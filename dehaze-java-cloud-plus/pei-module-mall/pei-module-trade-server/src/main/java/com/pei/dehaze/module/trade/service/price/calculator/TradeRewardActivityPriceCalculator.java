@@ -119,7 +119,7 @@ public class TradeRewardActivityPriceCalculator implements TradePriceCalculator 
     /**
      * 获得满减送的订单项（商品）列表
      *
-     * @param result 计算结果
+     * @param result         计算结果
      * @param rewardActivity 满减送活动
      * @return 订单项（商品）列表
      */

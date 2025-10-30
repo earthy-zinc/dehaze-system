@@ -28,11 +28,6 @@ public interface PostApi {
     @Parameter(name = "ids", description = "岗位编号数组", example = "1,2", required = true)
     CommonResult<Boolean> validPostList(@RequestParam("ids") Collection<Long> ids);
 
-    @GetMapping(PREFIX + "/list")
-    @Operation(summary = "获得岗位列表")
-    @Parameter(name = "ids", description = "岗位编号数组", example = "1,2", required = true)
-    CommonResult<List<PostRespDTO>> getPostList(@RequestParam("ids") Collection<Long> ids);
-
     default Map<Long, PostRespDTO> getPostMap(Collection<Long> ids) {
         if (CollUtil.isEmpty(ids)) {
             return MapUtil.empty();
@@ -41,5 +36,10 @@ public interface PostApi {
         List<PostRespDTO> list = getPostList(ids).getData();
         return CollectionUtils.convertMap(list, PostRespDTO::getId);
     }
+
+    @GetMapping(PREFIX + "/list")
+    @Operation(summary = "获得岗位列表")
+    @Parameter(name = "ids", description = "岗位编号数组", example = "1,2", required = true)
+    CommonResult<List<PostRespDTO>> getPostList(@RequestParam("ids") Collection<Long> ids);
 
 }

@@ -38,7 +38,10 @@ Authorization: Bearer {{token}}
   "id": 25,
   "type": "property",
   "identifier": "get",
-  "data": ["xx", "yy"]
+  "data": [
+    "xx",
+    "yy"
+  ]
 }
 
 ### 请求 /iot/device/downstream 接口（配置设置） => 成功

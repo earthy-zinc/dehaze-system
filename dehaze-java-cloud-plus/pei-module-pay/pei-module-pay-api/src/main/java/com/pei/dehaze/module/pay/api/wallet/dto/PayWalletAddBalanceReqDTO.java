@@ -14,14 +14,14 @@ public class PayWalletAddBalanceReqDTO {
 
     /**
      * 用户编号
-     *
+     * <p>
      * 关联 MemberUserDO 的 id 属性，或者 AdminUserDO 的 id 属性
      */
     @NotNull(message = "用户编号不能为空")
     private Long userId;
     /**
      * 用户类型
-     *
+     * <p>
      * 关联 {@link  UserTypeEnum}
      */
     @NotNull(message = "用户类型不能为空")
@@ -40,7 +40,7 @@ public class PayWalletAddBalanceReqDTO {
 
     /**
      * 交易金额，单位分
-     *
+     * <p>
      * 正值表示余额增加，负值表示余额减少
      */
     @NotNull(message = "交易金额不能为空")

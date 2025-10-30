@@ -45,14 +45,6 @@ public interface DeptService {
     DeptDO getDept(Long id);
 
     /**
-     * 获得部门信息数组
-     *
-     * @param ids 部门编号数组
-     * @return 部门信息数组
-     */
-    List<DeptDO> getDeptList(Collection<Long> ids);
-
-    /**
      * 筛选部门列表
      *
      * @param reqVO 筛选条件请求 VO
@@ -70,6 +62,14 @@ public interface DeptService {
         List<DeptDO> list = getDeptList(ids);
         return CollectionUtils.convertMap(list, DeptDO::getId);
     }
+
+    /**
+     * 获得部门信息数组
+     *
+     * @param ids 部门编号数组
+     * @return 部门信息数组
+     */
+    List<DeptDO> getDeptList(Collection<Long> ids);
 
     /**
      * 获得指定部门的所有子部门
@@ -106,9 +106,7 @@ public interface DeptService {
     Set<Long> getChildDeptIdListFromCache(Long id);
 
     /**
-     * 校验部门们是否有效。如下情况，视为无效：
-     * 1. 部门编号不存在
-     * 2. 部门被禁用
+     * 校验部门们是否有效。如下情况，视为无效： 1. 部门编号不存在 2. 部门被禁用
      *
      * @param ids 角色编号数组
      */

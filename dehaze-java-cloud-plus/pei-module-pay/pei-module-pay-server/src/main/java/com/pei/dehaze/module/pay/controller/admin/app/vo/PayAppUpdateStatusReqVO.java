@@ -1,9 +1,8 @@
 package com.pei.dehaze.module.pay.controller.admin.app.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 @Schema(description = "管理后台 - 应用更新状态 Request VO")
 @Data

@@ -11,9 +11,9 @@ import reactor.core.publisher.Flux;
 
 /**
  * 腾云混元 {@link ChatModel} 实现类
- *
- * 1. 混元大模型：基于 <a href="https://cloud.tencent.com/document/product/1729/111007">知识引擎原子能力</a> 实现
- * 2. 知识引擎原子能力：基于 <a href="https://cloud.tencent.com/document/product/1772/115969">知识引擎原子能力</a> 实现
+ * <p>
+ * 1. 混元大模型：基于 <a href="https://cloud.tencent.com/document/product/1729/111007">知识引擎原子能力</a> 实现 2. 知识引擎原子能力：基于 <a
+ * href="https://cloud.tencent.com/document/product/1772/115969">知识引擎原子能力</a> 实现
  *
  * @author fansili
  */
@@ -40,13 +40,13 @@ public class HunYuanChatModel implements ChatModel {
     }
 
     @Override
-    public Flux<ChatResponse> stream(Prompt prompt) {
-        return openAiChatModel.stream(prompt);
+    public ChatOptions getDefaultOptions() {
+        return openAiChatModel.getDefaultOptions();
     }
 
     @Override
-    public ChatOptions getDefaultOptions() {
-        return openAiChatModel.getDefaultOptions();
+    public Flux<ChatResponse> stream(Prompt prompt) {
+        return openAiChatModel.stream(prompt);
     }
 
 }

@@ -31,11 +31,6 @@ public enum CombinationRecordStatusEnum implements ArrayValuable<Integer> {
      */
     private final String name;
 
-    @Override
-    public Integer[] array() {
-        return ARRAYS;
-    }
-
     public static boolean isSuccess(Integer status) {
         return ObjectUtil.equal(status, SUCCESS.getStatus());
     }
@@ -46,6 +41,11 @@ public enum CombinationRecordStatusEnum implements ArrayValuable<Integer> {
 
     public static boolean isFailed(Integer status) {
         return ObjectUtil.equal(status, FAILED.getStatus());
+    }
+
+    @Override
+    public Integer[] array() {
+        return ARRAYS;
     }
 
 }

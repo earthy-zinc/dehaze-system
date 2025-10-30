@@ -2,6 +2,9 @@ package com.pei.dehaze.module.crm.service.clue;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Assert;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.crm.controller.admin.clue.vo.CrmCluePageReqVO;
@@ -22,9 +25,6 @@ import com.pei.dehaze.module.crm.service.permission.CrmPermissionService;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionCreateReqBO;
 import com.pei.dehaze.module.crm.service.permission.bo.CrmPermissionTransferReqBO;
 import com.pei.dehaze.module.system.api.user.AdminUserApi;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -109,14 +109,6 @@ public class CrmClueServiceImpl implements CrmClueService {
         LogRecordContext.putVariable("clueName", oldClue.getName());
     }
 
-    private void validateRelationDataExists(CrmClueSaveReqVO reqVO) {
-        // 校验负责人
-        if (Objects.nonNull(reqVO.getOwnerUserId()) &&
-                Objects.isNull(adminUserApi.getUser(reqVO.getOwnerUserId()).getCheckedData())) {
-            throw exception(USER_NOT_EXISTS);
-        }
-    }
-
     @Override
     @LogRecord(type = CRM_CLUE_TYPE, subType = CRM_CLUE_FOLLOW_UP_SUB_TYPE, bizNo = "{{#id}}",
             success = CRM_CLUE_FOLLOW_UP_SUCCESS)
@@ -156,6 +148,17 @@ public class CrmClueServiceImpl implements CrmClueService {
     }
 
     @Override
+    @CrmPermission(bizType = CrmBizTypeEnum.CRM_CLUE, bizId = "#id", level = CrmPermissionLevelEnum.READ)
+    public CrmClueDO getClue(Long id) {
+        return clueMapper.selectById(id);
+    }
+
+    @Override
+    public PageResult<CrmClueDO> getCluePage(CrmCluePageReqVO pageReqVO, Long userId) {
+        return clueMapper.selectPage(pageReqVO, userId);
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     @LogRecord(type = CRM_CLUE_TYPE, subType = CRM_CLUE_TRANSFER_SUB_TYPE, bizNo = "{{#reqVO.id}}",
             success = CRM_CLUE_TRANSFER_SUCCESS)
@@ -166,7 +169,7 @@ public class CrmClueServiceImpl implements CrmClueService {
 
         // 2.1 数据权限转移
         crmPermissionService.transferPermission(new CrmPermissionTransferReqBO(userId, CrmBizTypeEnum.CRM_CLUE.getType(),
-                        reqVO.getId(), reqVO.getNewOwnerUserId(), reqVO.getOldOwnerPermissionLevel()));
+                reqVO.getId(), reqVO.getNewOwnerUserId(), reqVO.getOldOwnerPermissionLevel()));
         // 2.2 设置新的负责人
         clueMapper.updateById(new CrmClueDO().setId(reqVO.getId()).setOwnerUserId(reqVO.getNewOwnerUserId()));
 
@@ -204,6 +207,11 @@ public class CrmClueServiceImpl implements CrmClueService {
         LogRecordContext.putVariable("clueName", clue.getName());
     }
 
+    @Override
+    public Long getFollowClueCount(Long userId) {
+        return clueMapper.selectCountByFollow(userId);
+    }
+
     private CrmClueDO validateClueExists(Long id) {
         CrmClueDO crmClueDO = clueMapper.selectById(id);
         if (crmClueDO == null) {
@@ -212,20 +220,12 @@ public class CrmClueServiceImpl implements CrmClueService {
         return crmClueDO;
     }
 
-    @Override
-    @CrmPermission(bizType = CrmBizTypeEnum.CRM_CLUE, bizId = "#id", level = CrmPermissionLevelEnum.READ)
-    public CrmClueDO getClue(Long id) {
-        return clueMapper.selectById(id);
-    }
-
-    @Override
-    public PageResult<CrmClueDO> getCluePage(CrmCluePageReqVO pageReqVO, Long userId) {
-        return clueMapper.selectPage(pageReqVO, userId);
-    }
-
-    @Override
-    public Long getFollowClueCount(Long userId) {
-        return clueMapper.selectCountByFollow(userId);
+    private void validateRelationDataExists(CrmClueSaveReqVO reqVO) {
+        // 校验负责人
+        if (Objects.nonNull(reqVO.getOwnerUserId()) &&
+                Objects.isNull(adminUserApi.getUser(reqVO.getOwnerUserId()).getCheckedData())) {
+            throw exception(USER_NOT_EXISTS);
+        }
     }
 
 }

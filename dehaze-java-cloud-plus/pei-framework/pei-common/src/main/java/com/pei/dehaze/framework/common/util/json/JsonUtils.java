@@ -100,11 +100,10 @@ public class JsonUtils {
     }
 
     /**
-     * 将字符串解析成指定类型的对象
-     * 使用 {@link #parseObject(String, Class)} 时，在@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS) 的场景下，
-     * 如果 text 没有 class 属性，则会报错。此时，使用这个方法，可以解决。
+     * 将字符串解析成指定类型的对象 使用 {@link #parseObject(String, Class)} 时，在@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS) 的场景下， 如果 text
+     * 没有 class 属性，则会报错。此时，使用这个方法，可以解决。
      *
-     * @param text 字符串
+     * @param text  字符串
      * @param clazz 类型
      * @return 对象
      */
@@ -139,7 +138,7 @@ public class JsonUtils {
     /**
      * 解析 JSON 字符串成指定类型的对象，如果解析失败，则返回 null
      *
-     * @param text 字符串
+     * @param text          字符串
      * @param typeReference 类型引用
      * @return 指定类型的对象
      */
@@ -201,6 +200,7 @@ public class JsonUtils {
 
     /**
      * 判断字符串是否为 JSON 类型的字符串
+     *
      * @param str 字符串
      */
     public static boolean isJsonObject(String str) {

@@ -4,15 +4,15 @@ import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjectUtil;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
-import com.pei.dehaze.module.pay.enums.PayChannelEnum;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientConfig;
-import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientFactory;
 import com.pei.dehaze.module.pay.controller.admin.channel.vo.PayChannelCreateReqVO;
 import com.pei.dehaze.module.pay.controller.admin.channel.vo.PayChannelUpdateReqVO;
 import com.pei.dehaze.module.pay.convert.channel.PayChannelConvert;
 import com.pei.dehaze.module.pay.dal.dataobject.channel.PayChannelDO;
 import com.pei.dehaze.module.pay.dal.mysql.channel.PayChannelMapper;
+import com.pei.dehaze.module.pay.enums.PayChannelEnum;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClient;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientConfig;
+import com.pei.dehaze.module.pay.framework.pay.core.client.PayClientFactory;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.NonePayClientConfig;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.alipay.AlipayPayClientConfig;
 import com.pei.dehaze.module.pay.framework.pay.core.client.impl.weixin.WxPayClientConfig;
@@ -73,29 +73,6 @@ public class PayChannelServiceImpl implements PayChannelService {
         payChannelMapper.updateById(channel);
     }
 
-    /**
-     * 解析并校验配置
-     *
-     * @param code      渠道编码
-     * @param configStr 配置
-     * @return 支付配置
-     */
-    private PayClientConfig parseConfig(String code, String configStr) {
-        // 解析配置
-        Class<? extends PayClientConfig> payClass = PayChannelEnum.isAlipay(code) ? AlipayPayClientConfig.class
-                : PayChannelEnum.isWeixin(code) ? WxPayClientConfig.class
-                : NonePayClientConfig.class;
-        if (ObjectUtil.isNull(payClass)) {
-            throw exception(CHANNEL_NOT_FOUND);
-        }
-        PayClientConfig config = JsonUtils.parseObject2(configStr, payClass);
-        Assert.notNull(config);
-
-        // 验证参数
-        config.validate(validator);
-        return config;
-    }
-
     @Override
     public void deleteChannel(Long id) {
         // 校验存在
@@ -103,14 +80,6 @@ public class PayChannelServiceImpl implements PayChannelService {
 
         // 删除
         payChannelMapper.deleteById(id);
-    }
-
-    private PayChannelDO validateChannelExists(Long id) {
-        PayChannelDO channel = payChannelMapper.selectById(id);
-        if (channel == null) {
-            throw exception(CHANNEL_NOT_FOUND);
-        }
-        return channel;
     }
 
     @Override
@@ -160,6 +129,37 @@ public class PayChannelServiceImpl implements PayChannelService {
     public PayClient getPayClient(Long id) {
         PayChannelDO channel = validPayChannel(id);
         return payClientFactory.createOrUpdatePayClient(id, channel.getCode(), channel.getConfig());
+    }
+
+    private PayChannelDO validateChannelExists(Long id) {
+        PayChannelDO channel = payChannelMapper.selectById(id);
+        if (channel == null) {
+            throw exception(CHANNEL_NOT_FOUND);
+        }
+        return channel;
+    }
+
+    /**
+     * 解析并校验配置
+     *
+     * @param code      渠道编码
+     * @param configStr 配置
+     * @return 支付配置
+     */
+    private PayClientConfig parseConfig(String code, String configStr) {
+        // 解析配置
+        Class<? extends PayClientConfig> payClass = PayChannelEnum.isAlipay(code) ? AlipayPayClientConfig.class
+                : PayChannelEnum.isWeixin(code) ? WxPayClientConfig.class
+                : NonePayClientConfig.class;
+        if (ObjectUtil.isNull(payClass)) {
+            throw exception(CHANNEL_NOT_FOUND);
+        }
+        PayClientConfig config = JsonUtils.parseObject2(configStr, payClass);
+        Assert.notNull(config);
+
+        // 验证参数
+        config.validate(validator);
+        return config;
     }
 
 }

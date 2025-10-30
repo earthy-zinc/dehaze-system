@@ -2,6 +2,8 @@ package com.pei.dehaze.module.ai.service.workflow;
 
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.ai.controller.admin.workflow.vo.AiWorkflowPageReqVO;
@@ -10,8 +12,6 @@ import com.pei.dehaze.module.ai.controller.admin.workflow.vo.AiWorkflowTestReqVO
 import com.pei.dehaze.module.ai.dal.dataobject.workflow.AiWorkflowDO;
 import com.pei.dehaze.module.ai.dal.mysql.workflow.AiWorkflowMapper;
 import com.pei.dehaze.module.ai.service.model.AiModelService;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 import dev.tinyflow.core.Tinyflow;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -69,33 +69,6 @@ public class AiWorkflowServiceImpl implements AiWorkflowService {
         workflowMapper.deleteById(id);
     }
 
-    private AiWorkflowDO validateWorkflowExists(Long id) {
-        if (ObjUtil.isNull(id)) {
-            throw exception(WORKFLOW_NOT_EXISTS);
-        }
-        AiWorkflowDO workflow = workflowMapper.selectById(id);
-        if (ObjUtil.isNull(workflow)) {
-            throw exception(WORKFLOW_NOT_EXISTS);
-        }
-        return workflow;
-    }
-
-    private void validateCodeUnique(Long id, String code) {
-        if (StrUtil.isBlank(code)) {
-            return;
-        }
-        AiWorkflowDO workflow = workflowMapper.selectByCode(code);
-        if (ObjUtil.isNull(workflow)) {
-            return;
-        }
-        if (ObjUtil.isNull(id)) {
-            throw exception(WORKFLOW_CODE_EXISTS);
-        }
-        if (ObjUtil.notEqual(workflow.getId(), id)) {
-            throw exception(WORKFLOW_CODE_EXISTS);
-        }
-    }
-
     @Override
     public AiWorkflowDO getWorkflow(Long id) {
         return workflowMapper.selectById(id);
@@ -139,6 +112,33 @@ public class AiWorkflowServiceImpl implements AiWorkflowService {
             }
         }
         return tinyflow;
+    }
+
+    private AiWorkflowDO validateWorkflowExists(Long id) {
+        if (ObjUtil.isNull(id)) {
+            throw exception(WORKFLOW_NOT_EXISTS);
+        }
+        AiWorkflowDO workflow = workflowMapper.selectById(id);
+        if (ObjUtil.isNull(workflow)) {
+            throw exception(WORKFLOW_NOT_EXISTS);
+        }
+        return workflow;
+    }
+
+    private void validateCodeUnique(Long id, String code) {
+        if (StrUtil.isBlank(code)) {
+            return;
+        }
+        AiWorkflowDO workflow = workflowMapper.selectByCode(code);
+        if (ObjUtil.isNull(workflow)) {
+            return;
+        }
+        if (ObjUtil.isNull(id)) {
+            throw exception(WORKFLOW_CODE_EXISTS);
+        }
+        if (ObjUtil.notEqual(workflow.getId(), id)) {
+            throw exception(WORKFLOW_CODE_EXISTS);
+        }
     }
 
 }

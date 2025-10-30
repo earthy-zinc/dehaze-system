@@ -1,12 +1,12 @@
 package com.pei.dehaze.module.pay.dal.dataobject.wallet;
 
+import com.baomidou.mybatisplus.annotation.KeySequence;
+import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
 import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderDO;
 import com.pei.dehaze.module.pay.dal.dataobject.refund.PayRefundDO;
 import com.pei.dehaze.module.pay.enums.refund.PayRefundStatusEnum;
-import com.baomidou.mybatisplus.annotation.KeySequence;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 /**
  * 会员钱包充值
  */
-@TableName(value ="pay_wallet_recharge")
+@TableName(value = "pay_wallet_recharge")
 @KeySequence("pay_wallet_recharge_seq") // 用于 Oracle、PostgreSQL、Kingbase、DB2、H2 数据库的主键自增。如果是 MySQL 等数据库，可不写。
 @Data
 public class PayWalletRechargeDO extends BaseDO {
@@ -27,14 +27,14 @@ public class PayWalletRechargeDO extends BaseDO {
 
     /**
      * 钱包编号
-     *
+     * <p>
      * 关联 {@link PayWalletDO#getId()}
      */
     private Long walletId;
 
     /**
      * 用户实际到账余额
-     *
+     * <p>
      * 例如充 100 送 20，则该值是 120
      */
     private Integer totalPrice;
@@ -49,29 +49,28 @@ public class PayWalletRechargeDO extends BaseDO {
 
     /**
      * 充值套餐编号
-     *
+     * <p>
      * 关联 {@link PayWalletRechargeDO#getPackageId()} 字段
      */
     private Long packageId;
 
     /**
      * 是否已支付
-     *
-     * true - 已支付
-     * false - 未支付
+     * <p>
+     * true - 已支付 false - 未支付
      */
     private Boolean payStatus;
 
     /**
      * 支付订单编号
-     *
+     * <p>
      * 关联 {@link PayOrderDO#getId()}
      */
     private Long payOrderId;
 
     /**
      * 支付成功的支付渠道
-     *
+     * <p>
      * 冗余 {@link PayOrderDO#getChannelCode()}
      */
     private String payChannelCode;
@@ -82,7 +81,7 @@ public class PayWalletRechargeDO extends BaseDO {
 
     /**
      * 支付退款单编号
-     *
+     * <p>
      * 关联 {@link PayRefundDO#getId()}
      */
     private Long payRefundId;
@@ -108,7 +107,7 @@ public class PayWalletRechargeDO extends BaseDO {
 
     /**
      * 退款状态
-     *
+     * <p>
      * 枚举 {@link PayRefundStatusEnum}
      */
     private Integer refundStatus;

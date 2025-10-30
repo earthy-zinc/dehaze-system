@@ -33,7 +33,7 @@
     <select id="selectRechargeSummaryGroupByWalletId"
             resultType="com.pei.dehaze.module.statistics.service.pay.bo.RechargeSummaryRespBO">
         SELECT COUNT(DISTINCT wallet_id) AS rechargeUserCount,
-               SUM(pay_price)            AS rechargePrice
+        SUM(pay_price) AS rechargePrice
         FROM pay_wallet_recharge
         WHERE pay_status = #{payStatus}
         <if test="beginTime != null">
@@ -42,7 +42,7 @@
         <if test="endTime != null">
             AND pay_time &lt;= #{endTime}
         </if>
-            AND deleted = FALSE
+        AND deleted = FALSE
     </select>
 
     <select id="selectRechargePriceSummary" resultType="java.lang.Integer">

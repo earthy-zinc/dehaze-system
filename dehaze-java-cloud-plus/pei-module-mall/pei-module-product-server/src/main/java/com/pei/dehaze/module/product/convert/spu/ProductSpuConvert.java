@@ -28,15 +28,15 @@ public interface ProductSpuConvert {
 
     ProductSpuPageReqVO convert(AppProductSpuPageReqVO bean);
 
+    default List<ProductSpuRespVO> convertForSpuDetailRespListVO(List<ProductSpuDO> spus, List<ProductSkuDO> skus) {
+        Map<Long, List<ProductSkuDO>> skuMultiMap = convertMultiMap(skus, ProductSkuDO::getSpuId);
+        return CollectionUtils.convertList(spus, spu -> convert(spu, skuMultiMap.get(spu.getId())));
+    }
+
     default ProductSpuRespVO convert(ProductSpuDO spu, List<ProductSkuDO> skus) {
         ProductSpuRespVO spuVO = BeanUtils.toBean(spu, ProductSpuRespVO.class);
         spuVO.setSkus(BeanUtils.toBean(skus, ProductSkuRespVO.class));
         return spuVO;
-    }
-
-    default List<ProductSpuRespVO> convertForSpuDetailRespListVO(List<ProductSpuDO> spus, List<ProductSkuDO> skus) {
-        Map<Long, List<ProductSkuDO>> skuMultiMap = convertMultiMap(skus, ProductSkuDO::getSpuId);
-        return CollectionUtils.convertList(spus, spu -> convert(spu, skuMultiMap.get(spu.getId())));
     }
 
 }

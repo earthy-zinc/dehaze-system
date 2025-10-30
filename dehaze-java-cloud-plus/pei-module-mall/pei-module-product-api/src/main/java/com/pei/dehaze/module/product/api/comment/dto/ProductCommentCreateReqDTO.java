@@ -1,9 +1,9 @@
 package com.pei.dehaze.module.product.api.comment.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @Schema(description = "RPC 服务 - 商品评论创建 Request DTO")

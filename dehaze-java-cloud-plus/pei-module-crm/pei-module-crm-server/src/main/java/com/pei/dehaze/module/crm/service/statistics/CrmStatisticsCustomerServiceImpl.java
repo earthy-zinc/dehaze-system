@@ -208,14 +208,14 @@ public class CrmStatisticsCustomerServiceImpl implements CrmStatisticsCustomerSe
         List<LocalDateTime[]> timeRanges = LocalDateTimeUtils.getDateRangeList(reqVO.getTimes()[0], reqVO.getTimes()[1], reqVO.getInterval());
         return convertList(timeRanges, times -> {
             Integer customerPutCount = customerPutCountList.stream()
-                .filter(vo -> LocalDateTimeUtils.isBetween(times[0], times[1], vo.getTime()))
-                .mapToInt(CrmStatisticsPoolSummaryByDateRespVO::getCustomerPutCount).sum();
+                    .filter(vo -> LocalDateTimeUtils.isBetween(times[0], times[1], vo.getTime()))
+                    .mapToInt(CrmStatisticsPoolSummaryByDateRespVO::getCustomerPutCount).sum();
             Integer customerTakeCount = customerTakeCountList.stream()
-                .filter(vo -> LocalDateTimeUtils.isBetween(times[0], times[1], vo.getTime()))
-                .mapToInt(CrmStatisticsPoolSummaryByDateRespVO::getCustomerTakeCount).sum();
+                    .filter(vo -> LocalDateTimeUtils.isBetween(times[0], times[1], vo.getTime()))
+                    .mapToInt(CrmStatisticsPoolSummaryByDateRespVO::getCustomerTakeCount).sum();
             return new CrmStatisticsPoolSummaryByDateRespVO()
-                .setTime(LocalDateTimeUtils.formatDateRange(times[0], times[1], reqVO.getInterval()))
-                .setCustomerPutCount(customerPutCount).setCustomerTakeCount(customerTakeCount);
+                    .setTime(LocalDateTimeUtils.formatDateRange(times[0], times[1], reqVO.getInterval()))
+                    .setCustomerPutCount(customerPutCount).setCustomerTakeCount(customerTakeCount);
         });
     }
 
@@ -234,12 +234,12 @@ public class CrmStatisticsCustomerServiceImpl implements CrmStatisticsCustomerSe
         // 3.1 按照用户，合并统计数据
         List<CrmStatisticsPoolSummaryByUserRespVO> summaryList = convertList(reqVO.getUserIds(), userId -> {
             Integer customerPutCount = customerPutCountList.stream().filter(vo -> userId.equals(vo.getOwnerUserId()))
-                .mapToInt(CrmStatisticsPoolSummaryByUserRespVO::getCustomerPutCount).sum();
+                    .mapToInt(CrmStatisticsPoolSummaryByUserRespVO::getCustomerPutCount).sum();
             Integer customerTakeCount = customerTakeCountList.stream().filter(vo -> userId.equals(vo.getOwnerUserId()))
-                .mapToInt(CrmStatisticsPoolSummaryByUserRespVO::getCustomerTakeCount).sum();
+                    .mapToInt(CrmStatisticsPoolSummaryByUserRespVO::getCustomerTakeCount).sum();
             return (CrmStatisticsPoolSummaryByUserRespVO) new CrmStatisticsPoolSummaryByUserRespVO()
-                .setCustomerPutCount(customerPutCount).setCustomerTakeCount(customerTakeCount)
-                .setOwnerUserId(userId);
+                    .setCustomerPutCount(customerPutCount).setCustomerTakeCount(customerTakeCount)
+                    .setOwnerUserId(userId);
         });
         // 3.2 拼接用户信息
         appendUserInfo(summaryList);

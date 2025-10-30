@@ -2,10 +2,9 @@ package com.pei.dehaze.module.pay.service.wallet.bo;
 
 import com.pei.dehaze.framework.common.validation.InEnum;
 import com.pei.dehaze.module.pay.enums.wallet.PayWalletBizTypeEnum;
-import lombok.Data;
-
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
 
 /**
  * 创建钱包流水 BO
@@ -24,7 +23,7 @@ public class WalletTransactionCreateReqBO {
 
     /**
      * 交易金额，单位分
-     *
+     * <p>
      * 正值表示余额增加，负值表示余额减少
      */
     @NotNull(message = "交易金额不能为空")
@@ -38,7 +37,7 @@ public class WalletTransactionCreateReqBO {
 
     /**
      * 关联业务分类
-     *
+     * <p>
      * 枚举 {@link PayWalletBizTypeEnum#getType()}
      */
     @NotNull(message = "关联业务分类不能为空")

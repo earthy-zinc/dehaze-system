@@ -5,10 +5,10 @@ import com.pei.dehaze.framework.common.util.object.BeanUtils;
 import com.pei.dehaze.module.product.api.spu.dto.ProductSpuRespDTO;
 import com.pei.dehaze.module.product.dal.dataobject.spu.ProductSpuDO;
 import com.pei.dehaze.module.product.service.spu.ProductSpuService;
+import jakarta.annotation.Resource;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.annotation.Resource;
 import java.util.Collection;
 import java.util.List;
 

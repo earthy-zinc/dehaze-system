@@ -1,10 +1,10 @@
 package com.pei.dehaze.module.erp.dal.dataobject.stock;
 
-import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
-import com.pei.dehaze.module.erp.dal.dataobject.purchase.ErpSupplierDO;
 import com.baomidou.mybatisplus.annotation.KeySequence;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.framework.mybatis.core.dataobject.BaseDO;
+import com.pei.dehaze.module.erp.dal.dataobject.purchase.ErpSupplierDO;
 import lombok.*;
 
 import java.math.BigDecimal;
@@ -36,7 +36,7 @@ public class ErpStockInDO extends BaseDO {
     private String no;
     /**
      * 供应商编号
-     *
+     * <p>
      * 关联 {@link ErpSupplierDO#getId()}
      */
     private Long supplierId;
@@ -54,7 +54,7 @@ public class ErpStockInDO extends BaseDO {
     private BigDecimal totalPrice;
     /**
      * 状态
-     *
+     * <p>
      * 枚举 {@link com.pei.dehaze.module.erp.enums.ErpAuditStatus}
      */
     private Integer status;

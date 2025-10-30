@@ -20,7 +20,7 @@ spring:
     init:
       schema-locations: classpath:/sql/create_tables.sql
 
-  # Redis 配置。Redisson 默认的配置足够使用，一般不需要进行调优
+    # Redis 配置。Redisson 默认的配置足够使用，一般不需要进行调优
     data:
       redis:
         host: 127.0.0.1 # 地址

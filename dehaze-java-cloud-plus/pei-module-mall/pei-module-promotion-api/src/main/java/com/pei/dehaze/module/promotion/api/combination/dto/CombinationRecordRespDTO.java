@@ -20,13 +20,13 @@ public class CombinationRecordRespDTO {
 
     /**
      * 拼团活动编号
-     *
+     * <p>
      * 关联 CombinationActivityDO 的 id 字段
      */
     private Long activityId;
     /**
      * 拼团商品单价
-     *
+     * <p>
      * 冗余 CombinationProductDO 的 combinationPrice 字段
      */
     private Integer combinationPrice;
@@ -71,7 +71,7 @@ public class CombinationRecordRespDTO {
     private Long headId;
     /**
      * 开团状态
-     *
+     * <p>
      * 关联 {@link CombinationRecordStatusEnum}
      */
     private Integer status;
@@ -81,7 +81,7 @@ public class CombinationRecordRespDTO {
     private Long orderId;
     /**
      * 开团需要人数
-     *
+     * <p>
      * 关联 CombinationActivityDO 的 userSize 字段
      */
     private Integer userSize;

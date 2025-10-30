@@ -55,7 +55,7 @@ public class IotDeviceDownstreamHandlerImpl implements IotDeviceDownstreamHandle
         // 验证参数
         if (reqDTO.getProductKey() == null || reqDTO.getDeviceName() == null || reqDTO.getIdentifier() == null) {
             log.error("[invokeService][参数不完整][reqDTO: {}]", JSONUtil.toJsonStr(reqDTO));
-            return CommonResult.error(MQTT_TOPIC_ILLEGAL.getCode(), MQTT_TOPIC_ILLEGAL.getMsg());
+            return CommonResult.error(MQTT_TOPIC_ILLEGAL.code(), MQTT_TOPIC_ILLEGAL.msg());
         }
 
         try {
@@ -71,7 +71,7 @@ public class IotDeviceDownstreamHandlerImpl implements IotDeviceDownstreamHandle
             return CommonResult.success(true);
         } catch (Exception e) {
             log.error("[invokeService][调用设备服务异常][reqDTO: {}]", JSONUtil.toJsonStr(reqDTO), e);
-            return CommonResult.error(MQTT_TOPIC_ILLEGAL.getCode(), MQTT_TOPIC_ILLEGAL.getMsg());
+            return CommonResult.error(MQTT_TOPIC_ILLEGAL.code(), MQTT_TOPIC_ILLEGAL.msg());
         }
     }
 
@@ -86,7 +86,7 @@ public class IotDeviceDownstreamHandlerImpl implements IotDeviceDownstreamHandle
         log.info("[setProperty][开始设置设备属性][reqDTO: {}]", JSONUtil.toJsonStr(reqDTO));
         if (reqDTO.getProductKey() == null || reqDTO.getDeviceName() == null) {
             log.error("[setProperty][参数不完整][reqDTO: {}]", JSONUtil.toJsonStr(reqDTO));
-            return CommonResult.error(MQTT_TOPIC_ILLEGAL.getCode(), MQTT_TOPIC_ILLEGAL.getMsg());
+            return CommonResult.error(MQTT_TOPIC_ILLEGAL.code(), MQTT_TOPIC_ILLEGAL.msg());
         }
 
         try {
@@ -102,7 +102,7 @@ public class IotDeviceDownstreamHandlerImpl implements IotDeviceDownstreamHandle
             return CommonResult.success(true);
         } catch (Exception e) {
             log.error("[setProperty][设置设备属性异常][reqDTO: {}]", JSONUtil.toJsonStr(reqDTO), e);
-            return CommonResult.error(MQTT_TOPIC_ILLEGAL.getCode(), MQTT_TOPIC_ILLEGAL.getMsg());
+            return CommonResult.error(MQTT_TOPIC_ILLEGAL.code(), MQTT_TOPIC_ILLEGAL.msg());
         }
     }
 
@@ -117,29 +117,10 @@ public class IotDeviceDownstreamHandlerImpl implements IotDeviceDownstreamHandle
     }
 
     /**
-     * 构建服务调用主题
-     */
-    private String buildServiceTopic(String productKey, String deviceName, String serviceIdentifier) {
-        return SYS_TOPIC_PREFIX + productKey + "/" + deviceName + SERVICE_TOPIC_PREFIX + serviceIdentifier;
-    }
-
-    /**
      * 构建属性设置主题
      */
     private String buildPropertySetTopic(String productKey, String deviceName) {
         return SYS_TOPIC_PREFIX + productKey + "/" + deviceName + PROPERTY_SET_TOPIC;
-    }
-
-    // TODO @haohao：这个，后面搞个对象，会不会好点哈？
-    /**
-     * 构建服务调用请求
-     */
-    private JSONObject buildServiceRequest(String requestId, String serviceIdentifier, Map<String, Object> params) {
-        return new JSONObject()
-                .set("id", requestId)
-                .set("version", "1.0")
-                .set("method", "thing.service." + serviceIdentifier)
-                .set("params", params != null ? params : new JSONObject());
     }
 
     /**
@@ -153,6 +134,33 @@ public class IotDeviceDownstreamHandlerImpl implements IotDeviceDownstreamHandle
                 .set("params", properties);
     }
 
+    // TODO @haohao：这个，后面搞个对象，会不会好点哈？
+
+    /**
+     * 构建服务调用主题
+     */
+    private String buildServiceTopic(String productKey, String deviceName, String serviceIdentifier) {
+        return SYS_TOPIC_PREFIX + productKey + "/" + deviceName + SERVICE_TOPIC_PREFIX + serviceIdentifier;
+    }
+
+    /**
+     * 生成请求 ID
+     */
+    private String generateRequestId() {
+        return IdUtil.fastSimpleUUID();
+    }
+
+    /**
+     * 构建服务调用请求
+     */
+    private JSONObject buildServiceRequest(String requestId, String serviceIdentifier, Map<String, Object> params) {
+        return new JSONObject()
+                .set("id", requestId)
+                .set("version", "1.0")
+                .set("method", "thing.service." + serviceIdentifier)
+                .set("params", params != null ? params : new JSONObject());
+    }
+
     /**
      * 发布 MQTT 消息
      */
@@ -164,13 +172,6 @@ public class IotDeviceDownstreamHandlerImpl implements IotDeviceDownstreamHandle
                 false,
                 false);
         log.info("[publishMessage][发送消息成功][topic: {}][payload: {}]", topic, payload);
-    }
-
-    /**
-     * 生成请求 ID
-     */
-    private String generateRequestId() {
-        return IdUtil.fastSimpleUUID();
     }
 
 }

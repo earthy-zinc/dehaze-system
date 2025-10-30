@@ -3,7 +3,6 @@ package com.pei.dehaze.module.pay.convert.order;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.common.util.collection.MapUtils;
-import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
 import com.pei.dehaze.module.pay.api.order.dto.PayOrderCreateReqDTO;
 import com.pei.dehaze.module.pay.api.order.dto.PayOrderRespDTO;
 import com.pei.dehaze.module.pay.controller.admin.order.vo.*;
@@ -11,6 +10,7 @@ import com.pei.dehaze.module.pay.controller.app.order.vo.AppPayOrderSubmitRespVO
 import com.pei.dehaze.module.pay.dal.dataobject.app.PayAppDO;
 import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderDO;
 import com.pei.dehaze.module.pay.dal.dataobject.order.PayOrderExtensionDO;
+import com.pei.dehaze.module.pay.framework.pay.core.client.dto.order.PayOrderUnifiedReqDTO;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
@@ -40,7 +40,9 @@ public interface PayOrderConvert {
         }
         return respVO;
     }
+
     PayOrderDetailsRespVO convertDetail(PayOrderDO bean);
+
     PayOrderDetailsRespVO.PayOrderExtension convert(PayOrderExtensionDO bean);
 
     default PageResult<PayOrderPageItemRespVO> convertPage(PageResult<PayOrderDO> page, Map<Long, PayAppDO> appMap) {
@@ -48,6 +50,7 @@ public interface PayOrderConvert {
         result.getList().forEach(order -> MapUtils.findAndThen(appMap, order.getAppId(), app -> order.setAppName(app.getName())));
         return result;
     }
+
     PageResult<PayOrderPageItemRespVO> convertPage(PageResult<PayOrderDO> page);
 
     default List<PayOrderExcelVO> convertList(List<PayOrderDO> list, Map<Long, PayAppDO> appMap) {
@@ -57,6 +60,7 @@ public interface PayOrderConvert {
             return excelVO;
         });
     }
+
     PayOrderExcelVO convertExcel(PayOrderDO bean);
 
     PayOrderDO convert(PayOrderCreateReqDTO bean);

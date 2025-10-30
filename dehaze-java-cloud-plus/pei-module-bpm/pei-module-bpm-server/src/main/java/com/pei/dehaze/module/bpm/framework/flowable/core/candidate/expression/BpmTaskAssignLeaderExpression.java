@@ -18,8 +18,7 @@ import static com.pei.dehaze.framework.common.util.collection.SetUtils.asSet;
 import static java.util.Collections.emptySet;
 
 /**
- * 分配给发起人的 Leader 审批的 Expression 流程表达式
- * 目前 Leader 的定义是，发起人所在部门的 Leader
+ * 分配给发起人的 Leader 审批的 Expression 流程表达式 目前 Leader 的定义是，发起人所在部门的 Leader
  *
  * @author earthyzinc
  */
@@ -38,7 +37,7 @@ public class BpmTaskAssignLeaderExpression {
      * 计算审批的候选人
      *
      * @param execution 流程执行实体
-     * @param level 指定级别
+     * @param level     指定级别
      * @return 指定级别的领导
      */
     public Set<Long> calculateUsers(DelegateExecution execution, int level) {

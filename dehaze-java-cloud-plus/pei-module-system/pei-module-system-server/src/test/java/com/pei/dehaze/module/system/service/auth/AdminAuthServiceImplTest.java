@@ -1,6 +1,8 @@
 package com.pei.dehaze.module.system.service.auth;
 
 import cn.hutool.core.util.ReflectUtil;
+import com.anji.captcha.model.common.ResponseModel;
+import com.anji.captcha.service.CaptchaService;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.enums.UserTypeEnum;
 import com.pei.dehaze.framework.test.core.ut.BaseDbUnitTest;
@@ -19,8 +21,6 @@ import com.pei.dehaze.module.system.service.member.MemberService;
 import com.pei.dehaze.module.system.service.oauth2.OAuth2TokenService;
 import com.pei.dehaze.module.system.service.social.SocialUserService;
 import com.pei.dehaze.module.system.service.user.AdminUserService;
-import com.anji.captcha.model.common.ResponseModel;
-import com.anji.captcha.service.CaptchaService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;

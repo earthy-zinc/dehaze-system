@@ -5,6 +5,10 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.extra.spring.SpringUtil;
+import com.google.common.annotations.VisibleForTesting;
+import com.mzt.logapi.context.LogRecordContext;
+import com.mzt.logapi.service.impl.DiffParseFunction;
+import com.mzt.logapi.starter.annotation.LogRecord;
 import com.pei.dehaze.framework.common.enums.CommonStatusEnum;
 import com.pei.dehaze.framework.common.pojo.PageResult;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
@@ -17,10 +21,6 @@ import com.pei.dehaze.module.system.dal.redis.RedisKeyConstants;
 import com.pei.dehaze.module.system.enums.permission.DataScopeEnum;
 import com.pei.dehaze.module.system.enums.permission.RoleCodeEnum;
 import com.pei.dehaze.module.system.enums.permission.RoleTypeEnum;
-import com.google.common.annotations.VisibleForTesting;
-import com.mzt.logapi.context.LogRecordContext;
-import com.mzt.logapi.service.impl.DiffParseFunction;
-import com.mzt.logapi.starter.annotation.LogRecord;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -91,20 +91,6 @@ public class RoleServiceImpl implements RoleService {
     }
 
     @Override
-    @CacheEvict(value = RedisKeyConstants.ROLE, key = "#id")
-    public void updateRoleDataScope(Long id, Integer dataScope, Set<Long> dataScopeDeptIds) {
-        // 校验是否可以更新
-        validateRoleForUpdate(id);
-
-        // 更新数据范围
-        RoleDO updateObject = new RoleDO();
-        updateObject.setId(id);
-        updateObject.setDataScope(dataScope);
-        updateObject.setDataScopeDeptIds(dataScopeDeptIds);
-        roleMapper.updateById(updateObject);
-    }
-
-    @Override
     @Transactional(rollbackFor = Exception.class)
     @CacheEvict(value = RedisKeyConstants.ROLE, key = "#id")
     @LogRecord(type = SYSTEM_ROLE_TYPE, subType = SYSTEM_ROLE_DELETE_SUB_TYPE, bizNo = "{{#id}}",
@@ -122,54 +108,18 @@ public class RoleServiceImpl implements RoleService {
         LogRecordContext.putVariable("role", role);
     }
 
-    /**
-     * 校验角色的唯一字段是否重复
-     *
-     * 1. 是否存在相同名字的角色
-     * 2. 是否存在相同编码的角色
-     *
-     * @param name 角色名字
-     * @param code 角色额编码
-     * @param id 角色编号
-     */
-    @VisibleForTesting
-    void validateRoleDuplicate(String name, String code, Long id) {
-        // 0. 超级管理员，不允许创建
-        if (RoleCodeEnum.isSuperAdmin(code)) {
-            throw exception(ROLE_ADMIN_CODE_ERROR, code);
-        }
-        // 1. 该 name 名字被其它角色所使用
-        RoleDO role = roleMapper.selectByName(name);
-        if (role != null && !role.getId().equals(id)) {
-            throw exception(ROLE_NAME_DUPLICATE, name);
-        }
-        // 2. 是否存在相同编码的角色
-        if (!StringUtils.hasText(code)) {
-            return;
-        }
-        // 该 code 编码被其它角色所使用
-        role = roleMapper.selectByCode(code);
-        if (role != null && !role.getId().equals(id)) {
-            throw exception(ROLE_CODE_DUPLICATE, code);
-        }
-    }
+    @Override
+    @CacheEvict(value = RedisKeyConstants.ROLE, key = "#id")
+    public void updateRoleDataScope(Long id, Integer dataScope, Set<Long> dataScopeDeptIds) {
+        // 校验是否可以更新
+        validateRoleForUpdate(id);
 
-    /**
-     * 校验角色是否可以被更新
-     *
-     * @param id 角色编号
-     */
-    @VisibleForTesting
-    RoleDO validateRoleForUpdate(Long id) {
-        RoleDO role = roleMapper.selectById(id);
-        if (role == null) {
-            throw exception(ROLE_NOT_EXISTS);
-        }
-        // 内置角色，不允许删除
-        if (RoleTypeEnum.SYSTEM.getType().equals(role.getType())) {
-            throw exception(ROLE_CAN_NOT_UPDATE_SYSTEM_TYPE_ROLE);
-        }
-        return role;
+        // 更新数据范围
+        RoleDO updateObject = new RoleDO();
+        updateObject.setId(id);
+        updateObject.setDataScope(dataScope);
+        updateObject.setDataScopeDeptIds(dataScopeDeptIds);
+        roleMapper.updateById(updateObject);
     }
 
     @Override
@@ -182,17 +132,6 @@ public class RoleServiceImpl implements RoleService {
             unless = "#result == null")
     public RoleDO getRoleFromCache(Long id) {
         return roleMapper.selectById(id);
-    }
-
-
-    @Override
-    public List<RoleDO> getRoleListByStatus(Collection<Integer> statuses) {
-        return roleMapper.selectListByStatus(statuses);
-    }
-
-    @Override
-    public List<RoleDO> getRoleList() {
-        return roleMapper.selectList();
     }
 
     @Override
@@ -211,6 +150,16 @@ public class RoleServiceImpl implements RoleService {
         // 这里采用 for 循环从缓存中获取，主要考虑 Spring CacheManager 无法批量操作的问题
         RoleServiceImpl self = getSelf();
         return CollectionUtils.convertList(ids, self::getRoleFromCache);
+    }
+
+    @Override
+    public List<RoleDO> getRoleListByStatus(Collection<Integer> statuses) {
+        return roleMapper.selectListByStatus(statuses);
+    }
+
+    @Override
+    public List<RoleDO> getRoleList() {
+        return roleMapper.selectList();
     }
 
     @Override
@@ -257,6 +206,55 @@ public class RoleServiceImpl implements RoleService {
      */
     private RoleServiceImpl getSelf() {
         return SpringUtil.getBean(getClass());
+    }
+
+    /**
+     * 校验角色是否可以被更新
+     *
+     * @param id 角色编号
+     */
+    @VisibleForTesting
+    RoleDO validateRoleForUpdate(Long id) {
+        RoleDO role = roleMapper.selectById(id);
+        if (role == null) {
+            throw exception(ROLE_NOT_EXISTS);
+        }
+        // 内置角色，不允许删除
+        if (RoleTypeEnum.SYSTEM.getType().equals(role.getType())) {
+            throw exception(ROLE_CAN_NOT_UPDATE_SYSTEM_TYPE_ROLE);
+        }
+        return role;
+    }
+
+    /**
+     * 校验角色的唯一字段是否重复
+     * <p>
+     * 1. 是否存在相同名字的角色 2. 是否存在相同编码的角色
+     *
+     * @param name 角色名字
+     * @param code 角色额编码
+     * @param id   角色编号
+     */
+    @VisibleForTesting
+    void validateRoleDuplicate(String name, String code, Long id) {
+        // 0. 超级管理员，不允许创建
+        if (RoleCodeEnum.isSuperAdmin(code)) {
+            throw exception(ROLE_ADMIN_CODE_ERROR, code);
+        }
+        // 1. 该 name 名字被其它角色所使用
+        RoleDO role = roleMapper.selectByName(name);
+        if (role != null && !role.getId().equals(id)) {
+            throw exception(ROLE_NAME_DUPLICATE, name);
+        }
+        // 2. 是否存在相同编码的角色
+        if (!StringUtils.hasText(code)) {
+            return;
+        }
+        // 该 code 编码被其它角色所使用
+        role = roleMapper.selectByCode(code);
+        if (role != null && !role.getId().equals(id)) {
+            throw exception(ROLE_CODE_DUPLICATE, code);
+        }
     }
 
 }

@@ -70,14 +70,15 @@ public class BpmProcessDefinitionController {
                 convertSet(pageResult.getList(), ProcessDefinition::getId));
         // 获得 Form Map
         Map<Long, BpmFormDO> formMap = formService.getFormMap(
-               convertSet(processDefinitionMap.values(), BpmProcessDefinitionInfoDO::getFormId));
+                convertSet(processDefinitionMap.values(), BpmProcessDefinitionInfoDO::getFormId));
         return success(BpmProcessDefinitionConvert.INSTANCE.buildProcessDefinitionPage(
                 pageResult, deploymentMap, processDefinitionMap, formMap, categoryMap));
     }
 
-    @GetMapping ("/list")
+    @GetMapping("/list")
     @Operation(summary = "获得流程定义列表")
-    @Parameter(name = "suspensionState", description = "挂起状态", required = true, example = "1") // 参见 Flowable SuspensionState 枚举
+    @Parameter(name = "suspensionState", description = "挂起状态", required = true, example = "1")
+    // 参见 Flowable SuspensionState 枚举
     public CommonResult<List<BpmProcessDefinitionRespVO>> getProcessDefinitionList(
             @RequestParam("suspensionState") Integer suspensionState) {
         // 1.1 获得开启的流程定义
@@ -112,7 +113,7 @@ public class BpmProcessDefinitionController {
                 .setId(definition.getId()).setName(definition.getName()).setKey(definition.getKey())));
     }
 
-    @GetMapping ("/get")
+    @GetMapping("/get")
     @Operation(summary = "获得流程定义")
     @Parameter(name = "id", description = "流程编号", required = true, example = "1024")
     @Parameter(name = "key", description = "流程定义标识", required = true, example = "1024")

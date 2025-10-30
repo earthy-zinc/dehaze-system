@@ -122,19 +122,6 @@ public class ErpSaleOrderServiceImpl implements ErpSaleOrderService {
         updateSaleOrderItemList(updateReqVO.getId(), saleOrderItems);
     }
 
-    private void calculateTotalPrice(ErpSaleOrderDO saleOrder, List<ErpSaleOrderItemDO> saleOrderItems) {
-        saleOrder.setTotalCount(getSumValue(saleOrderItems, ErpSaleOrderItemDO::getCount, BigDecimal::add));
-        saleOrder.setTotalProductPrice(getSumValue(saleOrderItems, ErpSaleOrderItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
-        saleOrder.setTotalTaxPrice(getSumValue(saleOrderItems, ErpSaleOrderItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
-        saleOrder.setTotalPrice(saleOrder.getTotalProductPrice().add(saleOrder.getTotalTaxPrice()));
-        // 计算优惠价格
-        if (saleOrder.getDiscountPercent() == null) {
-            saleOrder.setDiscountPercent(BigDecimal.ZERO);
-        }
-        saleOrder.setDiscountPrice(MoneyUtils.priceMultiplyPercent(saleOrder.getTotalPrice(), saleOrder.getDiscountPercent()));
-        saleOrder.setTotalPrice(saleOrder.getTotalPrice().subtract(saleOrder.getDiscountPrice()));
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateSaleOrderStatus(Long id, Integer status) {
@@ -159,43 +146,6 @@ public class ErpSaleOrderServiceImpl implements ErpSaleOrderService {
                 new ErpSaleOrderDO().setStatus(status));
         if (updateCount == 0) {
             throw exception(approve ? SALE_ORDER_APPROVE_FAIL : SALE_ORDER_PROCESS_FAIL);
-        }
-    }
-
-    private List<ErpSaleOrderItemDO> validateSaleOrderItems(List<ErpSaleOrderSaveReqVO.Item> list) {
-        // 1. 校验产品存在
-        List<ErpProductDO> productList = productService.validProductList(
-                convertSet(list, ErpSaleOrderSaveReqVO.Item::getProductId));
-        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
-        // 2. 转化为 ErpSaleOrderItemDO 列表
-        return convertList(list, o -> BeanUtils.toBean(o, ErpSaleOrderItemDO.class, item -> {
-            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
-            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
-            if (item.getTotalPrice() == null) {
-                return;
-            }
-            if (item.getTaxPercent() != null) {
-                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
-            }
-        }));
-    }
-
-    private void updateSaleOrderItemList(Long id, List<ErpSaleOrderItemDO> newList) {
-        // 第一步，对比新老数据，获得添加、修改、删除的列表
-        List<ErpSaleOrderItemDO> oldList = saleOrderItemMapper.selectListByOrderId(id);
-        List<List<ErpSaleOrderItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
-                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
-
-        // 第二步，批量添加、修改、删除
-        if (CollUtil.isNotEmpty(diffList.get(0))) {
-            diffList.get(0).forEach(o -> o.setOrderId(id));
-            saleOrderItemMapper.insertBatch(diffList.get(0));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(1))) {
-            saleOrderItemMapper.updateBatch(diffList.get(1));
-        }
-        if (CollUtil.isNotEmpty(diffList.get(2))) {
-            saleOrderItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpSaleOrderItemDO::getId));
         }
     }
 
@@ -262,14 +212,6 @@ public class ErpSaleOrderServiceImpl implements ErpSaleOrderService {
         });
     }
 
-    private ErpSaleOrderDO validateSaleOrderExists(Long id) {
-        ErpSaleOrderDO saleOrder = saleOrderMapper.selectById(id);
-        if (saleOrder == null) {
-            throw exception(SALE_ORDER_NOT_EXISTS);
-        }
-        return saleOrder;
-    }
-
     @Override
     public ErpSaleOrderDO getSaleOrder(Long id) {
         return saleOrderMapper.selectById(id);
@@ -289,8 +231,6 @@ public class ErpSaleOrderServiceImpl implements ErpSaleOrderService {
         return saleOrderMapper.selectPage(pageReqVO);
     }
 
-    // ==================== 订单项 ====================
-
     @Override
     public List<ErpSaleOrderItemDO> getSaleOrderItemListByOrderId(Long orderId) {
         return saleOrderItemMapper.selectListByOrderId(orderId);
@@ -302,6 +242,66 @@ public class ErpSaleOrderServiceImpl implements ErpSaleOrderService {
             return Collections.emptyList();
         }
         return saleOrderItemMapper.selectListByOrderIds(orderIds);
+    }
+
+    private ErpSaleOrderDO validateSaleOrderExists(Long id) {
+        ErpSaleOrderDO saleOrder = saleOrderMapper.selectById(id);
+        if (saleOrder == null) {
+            throw exception(SALE_ORDER_NOT_EXISTS);
+        }
+        return saleOrder;
+    }
+
+    private void updateSaleOrderItemList(Long id, List<ErpSaleOrderItemDO> newList) {
+        // 第一步，对比新老数据，获得添加、修改、删除的列表
+        List<ErpSaleOrderItemDO> oldList = saleOrderItemMapper.selectListByOrderId(id);
+        List<List<ErpSaleOrderItemDO>> diffList = diffList(oldList, newList, // id 不同，就认为是不同的记录
+                (oldVal, newVal) -> oldVal.getId().equals(newVal.getId()));
+
+        // 第二步，批量添加、修改、删除
+        if (CollUtil.isNotEmpty(diffList.get(0))) {
+            diffList.get(0).forEach(o -> o.setOrderId(id));
+            saleOrderItemMapper.insertBatch(diffList.get(0));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(1))) {
+            saleOrderItemMapper.updateBatch(diffList.get(1));
+        }
+        if (CollUtil.isNotEmpty(diffList.get(2))) {
+            saleOrderItemMapper.deleteBatchIds(convertList(diffList.get(2), ErpSaleOrderItemDO::getId));
+        }
+    }
+
+    // ==================== 订单项 ====================
+
+    private List<ErpSaleOrderItemDO> validateSaleOrderItems(List<ErpSaleOrderSaveReqVO.Item> list) {
+        // 1. 校验产品存在
+        List<ErpProductDO> productList = productService.validProductList(
+                convertSet(list, ErpSaleOrderSaveReqVO.Item::getProductId));
+        Map<Long, ErpProductDO> productMap = convertMap(productList, ErpProductDO::getId);
+        // 2. 转化为 ErpSaleOrderItemDO 列表
+        return convertList(list, o -> BeanUtils.toBean(o, ErpSaleOrderItemDO.class, item -> {
+            item.setProductUnitId(productMap.get(item.getProductId()).getUnitId());
+            item.setTotalPrice(MoneyUtils.priceMultiply(item.getProductPrice(), item.getCount()));
+            if (item.getTotalPrice() == null) {
+                return;
+            }
+            if (item.getTaxPercent() != null) {
+                item.setTaxPrice(MoneyUtils.priceMultiplyPercent(item.getTotalPrice(), item.getTaxPercent()));
+            }
+        }));
+    }
+
+    private void calculateTotalPrice(ErpSaleOrderDO saleOrder, List<ErpSaleOrderItemDO> saleOrderItems) {
+        saleOrder.setTotalCount(getSumValue(saleOrderItems, ErpSaleOrderItemDO::getCount, BigDecimal::add));
+        saleOrder.setTotalProductPrice(getSumValue(saleOrderItems, ErpSaleOrderItemDO::getTotalPrice, BigDecimal::add, BigDecimal.ZERO));
+        saleOrder.setTotalTaxPrice(getSumValue(saleOrderItems, ErpSaleOrderItemDO::getTaxPrice, BigDecimal::add, BigDecimal.ZERO));
+        saleOrder.setTotalPrice(saleOrder.getTotalProductPrice().add(saleOrder.getTotalTaxPrice()));
+        // 计算优惠价格
+        if (saleOrder.getDiscountPercent() == null) {
+            saleOrder.setDiscountPercent(BigDecimal.ZERO);
+        }
+        saleOrder.setDiscountPrice(MoneyUtils.priceMultiplyPercent(saleOrder.getTotalPrice(), saleOrder.getDiscountPercent()));
+        saleOrder.setTotalPrice(saleOrder.getTotalPrice().subtract(saleOrder.getDiscountPrice()));
     }
 
 }

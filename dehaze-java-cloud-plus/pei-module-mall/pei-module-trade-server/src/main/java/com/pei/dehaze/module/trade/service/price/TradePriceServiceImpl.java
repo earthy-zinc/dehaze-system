@@ -113,7 +113,7 @@ public class TradePriceServiceImpl implements TradePriceService {
                 discountActivityApi.getMatchDiscountProductListBySkuIds(convertSet(allSkuList, ProductSkuRespDTO::getId)).getCheckedData(),
                 DiscountProductRespDTO::getSkuId);
         // 1.4 获得满减送活动
-       List<RewardActivityMatchRespDTO> rewardActivityMap = rewardActivityApi.getMatchRewardActivityListBySpuIds(spuIds).getCheckedData();
+        List<RewardActivityMatchRespDTO> rewardActivityMap = rewardActivityApi.getMatchRewardActivityListBySpuIds(spuIds).getCheckedData();
 
         // 2. 价格计算
         return convertList(spuIds, spuId -> {

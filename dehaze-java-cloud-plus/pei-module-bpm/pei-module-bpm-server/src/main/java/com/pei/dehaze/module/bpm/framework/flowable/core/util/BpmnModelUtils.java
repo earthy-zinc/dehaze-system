@@ -7,6 +7,7 @@ import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.StrUtil;
+import com.google.common.collect.Maps;
 import com.pei.dehaze.framework.common.util.collection.CollectionUtils;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import com.pei.dehaze.framework.common.util.number.NumberUtils;
@@ -15,11 +16,10 @@ import com.pei.dehaze.module.bpm.controller.admin.definition.vo.model.simple.Bpm
 import com.pei.dehaze.module.bpm.controller.admin.task.vo.task.BpmTaskRespVO;
 import com.pei.dehaze.module.bpm.enums.definition.*;
 import com.pei.dehaze.module.bpm.framework.flowable.core.enums.BpmnModelConstants;
-import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
-import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.*;
+import org.flowable.bpmn.model.Process;
 import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.impl.util.io.BytesStreamSource;
 import org.flowable.engine.impl.el.FixedValue;
@@ -32,11 +32,8 @@ import static org.flowable.bpmn.constants.BpmnXMLConstants.FLOWABLE_EXTENSIONS_P
 
 /**
  * BPMN Model 操作工具类。目前分成三部分：
- *
- * 1. BPMN 修改 + 解析元素相关的方法
- * 2. BPMN 简单查找相关的方法
- * 3. BPMN 复杂遍历相关的方法
- * 4. BPMN 流程预测相关的方法
+ * <p>
+ * 1. BPMN 修改 + 解析元素相关的方法 2. BPMN 简单查找相关的方法 3. BPMN 复杂遍历相关的方法 4. BPMN 流程预测相关的方法
  *
  * @author earthyzinc
  */
@@ -44,6 +41,26 @@ import static org.flowable.bpmn.constants.BpmnXMLConstants.FLOWABLE_EXTENSIONS_P
 public class BpmnModelUtils {
 
     // ========== BPMN 修改 + 解析元素相关的方法 ==========
+
+    public static void addExtensionElementJson(FlowElement element, String name, Object value) {
+        if (value == null) {
+            return;
+        }
+        addExtensionElement(element, name, JsonUtils.toJsonString(value));
+    }
+
+    /**
+     * 给节点添加候选人元素
+     *
+     * @param candidateStrategy 候选人策略
+     * @param candidateParam    候选人参数，允许空
+     * @param flowElement       节点
+     */
+    public static void addCandidateElements(Integer candidateStrategy, String candidateParam, FlowElement flowElement) {
+        addExtensionElement(flowElement, BpmnModelConstants.USER_TASK_CANDIDATE_STRATEGY,
+                candidateStrategy == null ? null : candidateStrategy.toString());
+        addExtensionElement(flowElement, BpmnModelConstants.USER_TASK_CANDIDATE_PARAM, candidateParam);
+    }
 
     public static void addExtensionElement(FlowElement element, String name, String value) {
         if (value == null) {
@@ -55,63 +72,6 @@ public class BpmnModelUtils {
         extensionElement.setElementText(value);
         extensionElement.setName(name);
         element.addExtensionElement(extensionElement);
-    }
-
-    public static void addExtensionElement(FlowElement element, String name, Integer value) {
-        if (value == null) {
-            return;
-        }
-        addExtensionElement(element, name, String.valueOf(value));
-    }
-
-    public static void addExtensionElementJson(FlowElement element, String name, Object value) {
-        if (value == null) {
-            return;
-        }
-        addExtensionElement(element, name, JsonUtils.toJsonString(value));
-    }
-
-    public static void addExtensionElement(FlowElement element, String name, Map<String, String> attributes) {
-        if (attributes == null) {
-            return;
-        }
-        ExtensionElement extensionElement = new ExtensionElement();
-        extensionElement.setNamespace(FLOWABLE_EXTENSIONS_NAMESPACE);
-        extensionElement.setNamespacePrefix(FLOWABLE_EXTENSIONS_PREFIX);
-        extensionElement.setName(name);
-        attributes.forEach((key, value) -> {
-            ExtensionAttribute extensionAttribute = new ExtensionAttribute(key, value);
-            extensionElement.addAttribute(extensionAttribute);
-        });
-        element.addExtensionElement(extensionElement);
-    }
-
-    /**
-     * 解析扩展元素
-     *
-     * @param flowElement 节点
-     * @param elementName 元素名称
-     * @return 扩展元素
-     */
-    public static String parseExtensionElement(FlowElement flowElement, String elementName) {
-        if (flowElement == null) {
-            return null;
-        }
-        ExtensionElement element = CollUtil.getFirst(flowElement.getExtensionElements().get(elementName));
-        return element != null ? element.getElementText() : null;
-    }
-
-    /**
-     * 给节点添加候选人元素
-     *
-     * @param candidateStrategy 候选人策略
-     * @param candidateParam 候选人参数，允许空
-     * @param flowElement 节点
-     */
-    public static void addCandidateElements(Integer candidateStrategy, String candidateParam, FlowElement flowElement) {
-        addExtensionElement(flowElement, BpmnModelConstants.USER_TASK_CANDIDATE_STRATEGY,
-                candidateStrategy == null ? null : candidateStrategy.toString());
-        addExtensionElement(flowElement, BpmnModelConstants.USER_TASK_CANDIDATE_PARAM, candidateParam);
     }
 
     /**
@@ -150,20 +110,35 @@ public class BpmnModelUtils {
     /**
      * 解析审批类型
      *
-     * @see BpmUserTaskApproveTypeEnum
      * @param userTask 任务节点
      * @return 审批类型
+     * @see BpmUserTaskApproveTypeEnum
      */
     public static Integer parseApproveType(FlowElement userTask) {
         return NumberUtils.parseInt(parseExtensionElement(userTask, BpmnModelConstants.USER_TASK_APPROVE_TYPE));
     }
 
     /**
+     * 解析扩展元素
+     *
+     * @param flowElement 节点
+     * @param elementName 元素名称
+     * @return 扩展元素
+     */
+    public static String parseExtensionElement(FlowElement flowElement, String elementName) {
+        if (flowElement == null) {
+            return null;
+        }
+        ExtensionElement element = CollUtil.getFirst(flowElement.getExtensionElements().get(elementName));
+        return element != null ? element.getElementText() : null;
+    }
+
+    /**
      * 解析子流程多实例来源类型
      *
-     * @see BpmChildProcessMultiInstanceSourceTypeEnum
      * @param element 任务节点
      * @return 多实例来源类型
+     * @see BpmChildProcessMultiInstanceSourceTypeEnum
      */
     public static Integer parseMultiInstanceSourceType(FlowElement element) {
         return NumberUtils.parseInt(parseExtensionElement(element, BpmnModelConstants.CHILD_PROCESS_MULTI_INSTANCE_SOURCE_TYPE));
@@ -173,7 +148,7 @@ public class BpmnModelUtils {
      * 添加任务拒绝处理元素
      *
      * @param rejectHandler 任务拒绝处理
-     * @param userTask 任务节点
+     * @param userTask      任务节点
      */
     public static void addTaskRejectElements(BpmSimpleModelNodeVO.RejectHandler rejectHandler, UserTask userTask) {
         if (rejectHandler == null) {
@@ -207,9 +182,9 @@ public class BpmnModelUtils {
     /**
      * 给节点添加用户任务的审批人与发起人相同时，处理类型枚举
      *
-     * @see BpmUserTaskAssignStartUserHandlerTypeEnum
      * @param assignStartUserHandlerType 发起人处理类型
-     * @param userTask 任务节点
+     * @param userTask                   任务节点
+     * @see BpmUserTaskAssignStartUserHandlerTypeEnum
      */
     public static void addAssignStartUserHandlerType(Integer assignStartUserHandlerType, UserTask userTask) {
         if (assignStartUserHandlerType == null) {
@@ -221,9 +196,9 @@ public class BpmnModelUtils {
     /**
      * 给节点添加用户任务的审批人为空时，处理类型枚举
      *
-     * @see BpmUserTaskAssignEmptyHandlerTypeEnum
      * @param emptyHandler 空处理
-     * @param userTask 任务节点
+     * @param userTask     任务节点
+     * @see BpmUserTaskAssignEmptyHandlerTypeEnum
      */
     public static void addAssignEmptyHandlerType(BpmSimpleModelNodeVO.AssignEmptyHandler emptyHandler, UserTask userTask) {
         if (emptyHandler == null) {
@@ -267,7 +242,7 @@ public class BpmnModelUtils {
      * 给节点添加表单字段权限元素
      *
      * @param fieldsPermissions 表单字段权限
-     * @param flowElement 节点
+     * @param flowElement       节点
      */
     public static void addFormFieldsPermission(List<Map<String, String>> fieldsPermissions, FlowElement flowElement) {
         if (CollUtil.isNotEmpty(fieldsPermissions)) {
@@ -275,10 +250,25 @@ public class BpmnModelUtils {
         }
     }
 
+    public static void addExtensionElement(FlowElement element, String name, Map<String, String> attributes) {
+        if (attributes == null) {
+            return;
+        }
+        ExtensionElement extensionElement = new ExtensionElement();
+        extensionElement.setNamespace(FLOWABLE_EXTENSIONS_NAMESPACE);
+        extensionElement.setNamespacePrefix(FLOWABLE_EXTENSIONS_PREFIX);
+        extensionElement.setName(name);
+        attributes.forEach((key, value) -> {
+            ExtensionAttribute extensionAttribute = new ExtensionAttribute(key, value);
+            extensionElement.addAttribute(extensionAttribute);
+        });
+        element.addExtensionElement(extensionElement);
+    }
+
     /**
      * 解析表单字段权限
      *
-     * @param bpmnModel bpmnModel 对象
+     * @param bpmnModel     bpmnModel 对象
      * @param flowElementId 元素 ID
      * @return 表单字段权限
      */
@@ -306,6 +296,18 @@ public class BpmnModelUtils {
     }
 
     /**
+     * 获取流程元素信息
+     *
+     * @param model         bpmnModel 对象
+     * @param flowElementId 元素 ID
+     * @return 元素信息
+     */
+    public static FlowElement getFlowElementById(BpmnModel model, String flowElementId) {
+        Process process = model.getMainProcess();
+        return process.getFlowElement(flowElementId);
+    }
+
+    /**
      * 给节点添加操作按钮设置元素
      */
     public static void addButtonsSetting(List<BpmSimpleModelNodeVO.OperationButtonSetting> buttonsSetting, UserTask userTask) {
@@ -324,7 +326,7 @@ public class BpmnModelUtils {
     /**
      * 解析操作按钮设置
      *
-     * @param bpmnModel bpmnModel 对象
+     * @param bpmnModel     bpmnModel 对象
      * @param flowElementId 元素 ID
      * @return 操作按钮设置
      */
@@ -424,12 +426,21 @@ public class BpmnModelUtils {
     /**
      * 给节点添加节点类型
      *
-     * @param nodeType 节点类型
+     * @param nodeType    节点类型
      * @param flowElement 节点
      */
     public static void addNodeType(Integer nodeType, FlowElement flowElement) {
         addExtensionElement(flowElement, BpmnModelConstants.NODE_TYPE, nodeType);
     }
+
+    public static void addExtensionElement(FlowElement element, String name, Integer value) {
+        if (value == null) {
+            return;
+        }
+        addExtensionElement(element, name, String.valueOf(value));
+    }
+
+    // ========== BPM 简单查找相关的方法 ==========
 
     /**
      * 解析节点类型
@@ -440,8 +451,6 @@ public class BpmnModelUtils {
     public static Integer parseNodeType(FlowElement flowElement) {
         return NumberUtils.parseInt(parseExtensionElement(flowElement, BpmnModelConstants.NODE_TYPE));
     }
-
-    // ========== BPM 简单查找相关的方法 ==========
 
     /**
      * 根据节点，获取入口连线
@@ -467,18 +476,6 @@ public class BpmnModelUtils {
             return ((FlowNode) source).getOutgoingFlows();
         }
         return new ArrayList<>();
-    }
-
-    /**
-     * 获取流程元素信息
-     *
-     * @param model         bpmnModel 对象
-     * @param flowElementId 元素 ID
-     * @return 元素信息
-     */
-    public static FlowElement getFlowElementById(BpmnModel model, String flowElementId) {
-        Process process = model.getMainProcess();
-        return process.getFlowElement(flowElementId);
     }
 
     /**
@@ -636,8 +633,7 @@ public class BpmnModelUtils {
     }
 
     /**
-     * 迭代从后向前扫描，判断目标节点相对于当前节点是否是串行
-     * 不存在直接退回到子流程中的情况，但存在从子流程出去到父流程情况
+     * 迭代从后向前扫描，判断目标节点相对于当前节点是否是串行 不存在直接退回到子流程中的情况，但存在从子流程出去到父流程情况
      *
      * @param source          起始节点
      * @param target          目标节点
@@ -793,9 +789,9 @@ public class BpmnModelUtils {
 
         // 情况：StartEvent/EndEvent/UserTask/ServiceTask
         if (currentElement instanceof StartEvent
-            || currentElement instanceof EndEvent
-            || currentElement instanceof UserTask
-            || currentElement instanceof ServiceTask) {
+                || currentElement instanceof EndEvent
+                || currentElement instanceof UserTask
+                || currentElement instanceof ServiceTask) {
             // 添加元素
             FlowNode flowNode = (FlowNode) currentElement;
             resultElements.add(flowNode);
@@ -835,12 +831,12 @@ public class BpmnModelUtils {
      * 根据当前节点，获取下一个节点
      *
      * @param currentElement 当前节点
-     * @param bpmnModel  BPMN模型
-     * @param variables 流程变量
+     * @param bpmnModel      BPMN模型
+     * @param variables      流程变量
      */
     @SuppressWarnings("PatternVariableCanBeUsed")
     public static List<FlowNode> getNextFlowNodes(FlowElement currentElement, BpmnModel bpmnModel,
-                                                  Map<String, Object> variables){
+                                                  Map<String, Object> variables) {
         List<FlowNode> nextFlowNodes = new ArrayList<>(); // 下一个执行的流程节点集合
         FlowNode currentNode = (FlowNode) currentElement;  // 当前执行节点的基本属性
         List<SequenceFlow> outgoingFlows = currentNode.getOutgoingFlows();  // 当前节点的关联节点
@@ -881,9 +877,9 @@ public class BpmnModelUtils {
     /**
      * 处理排它网关
      *
-     * @param gateway 排他网关
-     * @param bpmnModel BPMN模型
-     * @param variables 流程变量
+     * @param gateway       排他网关
+     * @param bpmnModel     BPMN模型
+     * @param variables     流程变量
      * @param nextFlowNodes 下一个执行的流程节点集合
      */
     private static void handleExclusiveGateway(Gateway gateway, BpmnModel bpmnModel,
@@ -900,33 +896,11 @@ public class BpmnModelUtils {
     }
 
     /**
-     * 处理排它网关（Exclusive Gateway），选择符合条件的路径
-     *
-     * @param gateway 排他网关
-     * @param variables 流程变量
-     * @return 符合条件的路径
-     */
-    private static SequenceFlow findMatchSequenceFlowByExclusiveGateway(Gateway gateway, Map<String, Object> variables) {
-        SequenceFlow matchSequenceFlow = CollUtil.findOne(gateway.getOutgoingFlows(),
-                    flow -> ObjUtil.notEqual(gateway.getDefaultFlow(), flow.getId())
-                            && (evalConditionExpress(variables, flow.getConditionExpression())));
-        if (matchSequenceFlow == null) {
-            matchSequenceFlow = CollUtil.findOne(gateway.getOutgoingFlows(),
-                    flow -> ObjUtil.equal(gateway.getDefaultFlow(), flow.getId()));
-            // 特殊：没有默认的情况下，并且只有 1 个条件，则认为它是默认的
-            if (matchSequenceFlow == null && gateway.getOutgoingFlows().size() == 1) {
-                matchSequenceFlow = gateway.getOutgoingFlows().get(0);
-            }
-        }
-        return matchSequenceFlow;
-    }
-
-    /**
      * 处理包容网关
      *
-     * @param gateway 排他网关
-     * @param bpmnModel BPMN模型
-     * @param variables 流程变量
+     * @param gateway       排他网关
+     * @param bpmnModel     BPMN模型
+     * @param variables     流程变量
      * @param nextFlowNodes 下一个执行的流程节点集合
      */
     private static void handleInclusiveGateway(Gateway gateway, BpmnModel bpmnModel,
@@ -943,9 +917,50 @@ public class BpmnModelUtils {
     }
 
     /**
+     * 处理并行网关
+     *
+     * @param gateway       排他网关
+     * @param bpmnModel     BPMN模型
+     * @param variables     流程变量
+     * @param nextFlowNodes 下一个执行的流程节点集合
+     */
+    private static void handleParallelGateway(Gateway gateway, BpmnModel bpmnModel,
+                                              Map<String, Object> variables, List<FlowNode> nextFlowNodes) {
+        // 并行网关，遍历所有出口路径，获取目标节点
+        gateway.getOutgoingFlows().forEach(flow -> {
+            FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
+            if (targetElement instanceof FlowNode) {
+                nextFlowNodes.add((FlowNode) targetElement);
+            }
+        });
+    }
+
+    /**
+     * 处理排它网关（Exclusive Gateway），选择符合条件的路径
+     *
+     * @param gateway   排他网关
+     * @param variables 流程变量
+     * @return 符合条件的路径
+     */
+    private static SequenceFlow findMatchSequenceFlowByExclusiveGateway(Gateway gateway, Map<String, Object> variables) {
+        SequenceFlow matchSequenceFlow = CollUtil.findOne(gateway.getOutgoingFlows(),
+                flow -> ObjUtil.notEqual(gateway.getDefaultFlow(), flow.getId())
+                        && (evalConditionExpress(variables, flow.getConditionExpression())));
+        if (matchSequenceFlow == null) {
+            matchSequenceFlow = CollUtil.findOne(gateway.getOutgoingFlows(),
+                    flow -> ObjUtil.equal(gateway.getDefaultFlow(), flow.getId()));
+            // 特殊：没有默认的情况下，并且只有 1 个条件，则认为它是默认的
+            if (matchSequenceFlow == null && gateway.getOutgoingFlows().size() == 1) {
+                matchSequenceFlow = gateway.getOutgoingFlows().get(0);
+            }
+        }
+        return matchSequenceFlow;
+    }
+
+    /**
      * 处理排它网关（Inclusive Gateway），选择符合条件的路径
      *
-     * @param gateway 排他网关
+     * @param gateway   排他网关
      * @param variables 流程变量
      * @return 符合条件的路径
      */
@@ -965,30 +980,10 @@ public class BpmnModelUtils {
         return matchSequenceFlows;
     }
 
-
-    /**
-     * 处理并行网关
-     *
-     * @param gateway 排他网关
-     * @param bpmnModel BPMN模型
-     * @param variables 流程变量
-     * @param nextFlowNodes 下一个执行的流程节点集合
-     */
-    private static void handleParallelGateway(Gateway gateway, BpmnModel bpmnModel,
-                                              Map<String, Object> variables, List<FlowNode> nextFlowNodes) {
-        // 并行网关，遍历所有出口路径，获取目标节点
-        gateway.getOutgoingFlows().forEach(flow -> {
-            FlowElement targetElement = bpmnModel.getFlowElement(flow.getTargetRef());
-            if (targetElement instanceof FlowNode) {
-                nextFlowNodes.add((FlowNode) targetElement);
-            }
-        });
-    }
-
     /**
      * 计算条件表达式是否为 true 满足条件
      *
-     * @param variables 流程实例
+     * @param variables  流程实例
      * @param expression 条件表达式
      * @return 是否满足条件
      */

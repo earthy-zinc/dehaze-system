@@ -4,10 +4,10 @@ import com.pei.dehaze.module.statistics.dal.mysql.trade.BrokerageStatisticsMappe
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordBizTypeEnum;
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageRecordStatusEnum;
 import com.pei.dehaze.module.trade.enums.brokerage.BrokerageWithdrawStatusEnum;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
-import jakarta.annotation.Resource;
 import java.time.LocalDateTime;
 
 /**

@@ -57,7 +57,7 @@ public interface MpAutoReplyService {
     /**
      * 当收到消息时，自动回复
      *
-     * @param appId 微信公众号 appId
+     * @param appId     微信公众号 appId
      * @param wxMessage 消息
      * @return 回复的消息
      */
@@ -66,7 +66,7 @@ public interface MpAutoReplyService {
     /**
      * 当粉丝关注时，自动回复
      *
-     * @param appId 微信公众号 appId
+     * @param appId     微信公众号 appId
      * @param wxMessage 消息
      * @return 回复的消息
      */

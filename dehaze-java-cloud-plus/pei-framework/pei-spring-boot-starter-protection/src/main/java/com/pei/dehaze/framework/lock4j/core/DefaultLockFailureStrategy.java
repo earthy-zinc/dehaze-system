@@ -1,8 +1,8 @@
 package com.pei.dehaze.framework.lock4j.core;
 
+import com.baomidou.lock.LockFailureStrategy;
 import com.pei.dehaze.framework.common.exception.ServiceException;
 import com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeConstants;
-import com.baomidou.lock.LockFailureStrategy;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.Method;

@@ -114,6 +114,26 @@ public interface BpmTaskConvert {
         });
     }
 
+    default void buildTaskAssignee(BpmTaskRespVO task, String taskAssignee,
+                                   Map<Long, AdminUserRespDTO> userMap,
+                                   Map<Long, DeptRespDTO> deptMap) {
+        AdminUserRespDTO assignUser = userMap.get(NumberUtils.parseLong(taskAssignee));
+        if (assignUser != null) {
+            task.setAssigneeUser(BeanUtils.toBean(assignUser, UserSimpleBaseVO.class));
+            findAndThen(deptMap, assignUser.getDeptId(), dept -> task.getAssigneeUser().setDeptName(dept.getName()));
+        }
+    }
+
+    default void buildTaskOwner(BpmTaskRespVO task, String taskOwner,
+                                Map<Long, AdminUserRespDTO> userMap,
+                                Map<Long, DeptRespDTO> deptMap) {
+        AdminUserRespDTO ownerUser = userMap.get(NumberUtils.parseLong(taskOwner));
+        if (ownerUser != null) {
+            task.setOwnerUser(BeanUtils.toBean(ownerUser, UserSimpleBaseVO.class));
+            findAndThen(deptMap, ownerUser.getDeptId(), dept -> task.getOwnerUser().setDeptName(dept.getName()));
+        }
+    }
+
     default List<BpmTaskRespVO> buildTaskListByParentTaskId(List<Task> taskList,
                                                             Map<Long, AdminUserRespDTO> userMap,
                                                             Map<Long, DeptRespDTO> deptMap) {
@@ -159,16 +179,6 @@ public interface BpmTaskConvert {
         return reqDTO;
     }
 
-    default void buildTaskOwner(BpmTaskRespVO task, String taskOwner,
-                                Map<Long, AdminUserRespDTO> userMap,
-                                Map<Long, DeptRespDTO> deptMap) {
-        AdminUserRespDTO ownerUser = userMap.get(NumberUtils.parseLong(taskOwner));
-        if (ownerUser != null) {
-            task.setOwnerUser(BeanUtils.toBean(ownerUser, UserSimpleBaseVO.class));
-            findAndThen(deptMap, ownerUser.getDeptId(), dept -> task.getOwnerUser().setDeptName(dept.getName()));
-        }
-    }
-
     default void buildTaskChildren(BpmTaskRespVO task, Map<String, List<Task>> childrenTaskMap,
                                    Map<Long, AdminUserRespDTO> userMap, Map<Long, DeptRespDTO> deptMap) {
         List<Task> childTasks = childrenTaskMap.get(task.getId());
@@ -185,21 +195,10 @@ public interface BpmTaskConvert {
         }
     }
 
-    default void buildTaskAssignee(BpmTaskRespVO task, String taskAssignee,
-                                   Map<Long, AdminUserRespDTO> userMap,
-                                   Map<Long, DeptRespDTO> deptMap) {
-        AdminUserRespDTO assignUser = userMap.get(NumberUtils.parseLong(taskAssignee));
-        if (assignUser != null) {
-            task.setAssigneeUser(BeanUtils.toBean(assignUser, UserSimpleBaseVO.class));
-            findAndThen(deptMap, assignUser.getDeptId(), dept -> task.getAssigneeUser().setDeptName(dept.getName()));
-        }
-    }
-
     /**
      * 将父任务的属性，拷贝到子任务（加签任务）
      * <p>
-     * 为什么不使用 mapstruct 映射？因为 TaskEntityImpl 还有很多其他属性，这里我们只设置我们需要的。
-     * 使用 mapstruct 会将里面嵌套的各个属性值都设置进去，会出现意想不到的问题。
+     * 为什么不使用 mapstruct 映射？因为 TaskEntityImpl 还有很多其他属性，这里我们只设置我们需要的。 使用 mapstruct 会将里面嵌套的各个属性值都设置进去，会出现意想不到的问题。
      *
      * @param parentTask 父任务
      * @param childTask  加签任务

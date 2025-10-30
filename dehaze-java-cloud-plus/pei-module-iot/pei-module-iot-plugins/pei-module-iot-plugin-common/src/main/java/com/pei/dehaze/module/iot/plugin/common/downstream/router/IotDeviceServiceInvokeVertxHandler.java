@@ -18,7 +18,7 @@ import static com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeCon
 
 /**
  * IoT 设备服务调用 Vertx Handler
- *
+ * <p>
  * earthyzinc
  */
 @Slf4j
@@ -50,7 +50,7 @@ public class IotDeviceServiceInvokeVertxHandler implements Handler<RoutingContex
             log.error("[handle][路径参数({}) 解析参数失败]", routingContext.pathParams(), e);
             String method = METHOD_PREFIX + routingContext.pathParam("identifier") + METHOD_SUFFIX;
             IotStandardResponse errorResponse = IotStandardResponse.error(
-                    null, method, BAD_REQUEST.getCode(), BAD_REQUEST.getMsg());
+                    null, method, BAD_REQUEST.code(), BAD_REQUEST.msg());
             IotPluginCommonUtils.writeJsonResponse(routingContext, errorResponse);
             return;
         }
@@ -72,7 +72,7 @@ public class IotDeviceServiceInvokeVertxHandler implements Handler<RoutingContex
             log.error("[handle][请求参数({}) 服务调用异常]", reqDTO, e);
             String method = METHOD_PREFIX + reqDTO.getIdentifier() + METHOD_SUFFIX;
             IotStandardResponse errorResponse = IotStandardResponse.error(
-                    reqDTO.getRequestId(), method, INTERNAL_SERVER_ERROR.getCode(), INTERNAL_SERVER_ERROR.getMsg());
+                    reqDTO.getRequestId(), method, INTERNAL_SERVER_ERROR.code(), INTERNAL_SERVER_ERROR.msg());
             IotPluginCommonUtils.writeJsonResponse(routingContext, errorResponse);
         }
     }

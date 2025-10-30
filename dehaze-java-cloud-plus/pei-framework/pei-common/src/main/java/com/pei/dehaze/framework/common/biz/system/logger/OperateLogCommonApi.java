@@ -17,10 +17,6 @@ public interface OperateLogCommonApi {
 
     String PREFIX = RpcConstants.SYSTEM_PREFIX + "/operate-log";
 
-    @PostMapping(PREFIX + "/create")
-    @Operation(summary = "创建操作日志")
-    CommonResult<Boolean> createOperateLog(@Valid @RequestBody OperateLogCreateReqDTO createReqDTO);
-
     /**
      * 【异步】创建操作日志
      *
@@ -30,5 +26,9 @@ public interface OperateLogCommonApi {
     default void createOperateLogAsync(OperateLogCreateReqDTO createReqDTO) {
         createOperateLog(createReqDTO).checkError();
     }
+
+    @PostMapping(PREFIX + "/create")
+    @Operation(summary = "创建操作日志")
+    CommonResult<Boolean> createOperateLog(@Valid @RequestBody OperateLogCreateReqDTO createReqDTO);
 
 }

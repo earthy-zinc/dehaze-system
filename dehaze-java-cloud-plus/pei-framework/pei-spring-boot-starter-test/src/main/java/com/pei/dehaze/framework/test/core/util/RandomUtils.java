@@ -65,10 +65,6 @@ public class RandomUtils {
         });
     }
 
-    public static String randomString() {
-        return RandomUtil.randomString(RANDOM_STRING_LENGTH);
-    }
-
     public static Long randomLongId() {
         return RandomUtil.randomLong(0, Long.MAX_VALUE);
     }
@@ -77,13 +73,13 @@ public class RandomUtils {
         return RandomUtil.randomInt(0, Integer.MAX_VALUE);
     }
 
-    public static Date randomDate() {
-        return RandomUtil.randomDay(0, RANDOM_DATE_MAX);
-    }
-
     public static LocalDateTime randomLocalDateTime() {
         // 设置 Nano 为零的原因，避免 MySQL、H2 存储不到时间戳
         return LocalDateTimeUtil.of(randomDate()).withNano(0);
+    }
+
+    public static Date randomDate() {
+        return RandomUtil.randomDay(0, RANDOM_DATE_MAX);
     }
 
     public static Short randomShort() {
@@ -95,22 +91,6 @@ public class RandomUtils {
                 .map(i -> randomPojo(clazz)).collect(Collectors.toSet());
     }
 
-    public static Integer randomCommonStatus() {
-        return RandomUtil.randomEle(CommonStatusEnum.values()).getStatus();
-    }
-
-    public static String randomEmail() {
-        return randomString() + "@qq.com";
-    }
-
-    public static String randomMobile() {
-        return "13800138" + RandomUtil.randomNumbers(3);
-    }
-
-    public static String randomURL() {
-        return "https://www.iocoder.cn/" + randomString();
-    }
-
     @SafeVarargs
     public static <T> T randomPojo(Class<T> clazz, Consumer<T>... consumers) {
         T pojo = PODAM_FACTORY.manufacturePojo(clazz);
@@ -119,6 +99,26 @@ public class RandomUtils {
             Arrays.stream(consumers).forEach(consumer -> consumer.accept(pojo));
         }
         return pojo;
+    }
+
+    public static Integer randomCommonStatus() {
+        return RandomUtil.randomEle(CommonStatusEnum.values()).getStatus();
+    }
+
+    public static String randomEmail() {
+        return randomString() + "@qq.com";
+    }
+
+    public static String randomString() {
+        return RandomUtil.randomString(RANDOM_STRING_LENGTH);
+    }
+
+    public static String randomMobile() {
+        return "13800138" + RandomUtil.randomNumbers(3);
+    }
+
+    public static String randomURL() {
+        return "https://www.iocoder.cn/" + randomString();
     }
 
     @SafeVarargs

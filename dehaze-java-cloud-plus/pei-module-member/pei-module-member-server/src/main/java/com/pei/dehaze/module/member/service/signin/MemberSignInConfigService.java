@@ -3,8 +3,8 @@ package com.pei.dehaze.module.member.service.signin;
 import com.pei.dehaze.module.member.controller.admin.signin.vo.config.MemberSignInConfigCreateReqVO;
 import com.pei.dehaze.module.member.controller.admin.signin.vo.config.MemberSignInConfigUpdateReqVO;
 import com.pei.dehaze.module.member.dal.dataobject.signin.MemberSignInConfigDO;
-
 import jakarta.validation.Valid;
+
 import java.util.List;
 
 /**

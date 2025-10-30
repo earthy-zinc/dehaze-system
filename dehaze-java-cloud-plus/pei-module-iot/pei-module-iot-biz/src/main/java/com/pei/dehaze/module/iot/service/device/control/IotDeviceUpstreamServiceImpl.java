@@ -89,7 +89,7 @@ public class IotDeviceUpstreamServiceImpl implements IotDeviceUpstreamService {
     @Override
     public void updateDeviceState(IotDeviceStateUpdateReqDTO updateReqDTO) {
         Assert.isTrue(ObjectUtils.equalsAny(updateReqDTO.getState(),
-                IotDeviceStateEnum.ONLINE.getState(), IotDeviceStateEnum.OFFLINE.getState()),
+                        IotDeviceStateEnum.ONLINE.getState(), IotDeviceStateEnum.OFFLINE.getState()),
                 "状态不合法");
         // 1.1 获得设备
         log.info("[updateDeviceState][更新设备状态: {}]", updateReqDTO);
@@ -174,7 +174,7 @@ public class IotDeviceUpstreamServiceImpl implements IotDeviceUpstreamService {
     }
 
     private void registerDevice0(String productKey, String deviceName, Long gatewayId,
-            IotDeviceUpstreamAbstractReqDTO registerReqDTO) {
+                                 IotDeviceUpstreamAbstractReqDTO registerReqDTO) {
         // 1.1 注册设备
         IotDeviceDO device = deviceService.getDeviceByProductKeyAndDeviceNameFromCache(productKey, deviceName);
         boolean registerNew = device == null;
@@ -305,7 +305,7 @@ public class IotDeviceUpstreamServiceImpl implements IotDeviceUpstreamService {
         String clientId = authReqDTO.getClientId();
         MqttSignResult sign = MqttSignUtils.calculate(productKey, deviceName, deviceSecret, clientId);
         // TODO 建议，先失败，return false；
-        if (StrUtil.equals(sign.getPassword(), authReqDTO.getPassword())) {
+        if (StrUtil.equals(sign.password(), authReqDTO.getPassword())) {
             log.info("[authenticateEmqxConnection][认证成功]");
             return true;
         }
