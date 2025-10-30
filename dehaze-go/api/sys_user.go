@@ -45,7 +45,7 @@ func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 	}
 	queryParams.StartTime = c.Query("startTime")
 	queryParams.EndTime = c.Query("endTime")
-	
+
 	if pageNumStr := c.Query("pageNum"); pageNumStr != "" {
 		if pageNum, err := strconv.Atoi(pageNumStr); err == nil {
 			queryParams.PageNum = pageNum
@@ -55,7 +55,7 @@ func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 	} else {
 		queryParams.PageNum = 1
 	}
-	
+
 	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
 		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
 			queryParams.PageSize = pageSize

@@ -132,9 +132,9 @@ Name: strings.Title(strings.ReplaceAll(route.Path, "-", ""))
 - **Java**: 使用 Hutool 的 `toCamelCase` 转驼峰 + `capitalize` 首字母大写
 - **Go**: 简单替换 `-` + `strings.Title`（已废弃函数）
 - **示例**:
-  - 路径 `user-management`
-  - Java: `UserManagement`
-  - Go: `Usermanagement` ❌
+    - 路径 `user-management`
+    - Java: `UserManagement`
+    - Go: `Usermanagement` ❌
 
 **一致性评分**: 95% - SQL 完全一致，路由名转换有差异
 
@@ -303,9 +303,9 @@ return err
 
 1. **缺少权限缓存刷新**: Go 实现没有刷新缓存
 2. **SQL 略有差异**:
-   - Java: `CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')`
-   - Go: `tree_path LIKE '%,{id},%'`
-   - Go 的实现可能匹配到不完整的 ID（如 tree_path="0,12" 会匹配 id=1）
+    - Java: `CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')`
+    - Go: `tree_path LIKE '%,{id},%'`
+    - Go 的实现可能匹配到不完整的 ID（如 tree_path="0,12" 会匹配 id=1）
 
 **一致性评分**: 70% - 核心逻辑相似，但缺少缓存且 SQL 有风险
 
@@ -380,8 +380,8 @@ err = global.DB.Model(&model.SysMenu{}).
 
 - **当前实现**: `strings.Title(strings.ReplaceAll(route.Path, "-", ""))`
 - **问题**:
-  - `strings.Title` 已废弃（Go 1.18+）
-  - 转换结果不符合驼峰命名（`user-management` → `Usermanagement`）
+    - `strings.Title` 已废弃（Go 1.18+）
+    - 转换结果不符合驼峰命名（`user-management` → `Usermanagement`）
 - **Java 实现**: 使用 Hutool 的 `toCamelCase` 转驼峰
 - **建议**: 实现正确的驼峰转换函数
 
@@ -402,16 +402,16 @@ err = global.DB.Model(&model.SysMenu{}).
 
 ## 三、逻辑一致性评分
 
-| 方法 | 一致性评分 | 主要问题 |
-|------|-----------|---------|
-| ListMenus | 75% | 未使用 rootIds，实现方式差异 |
-| ListMenuOptions | 100% | ✅ 完全一致 |
-| ListRoutes | 95% | 路由名转换有差异 |
-| SaveMenu | 80% | 缺少缓存刷新 |
-| UpdateMenuVisible | 100% | ✅ 完全一致 |
-| GetMenuForm | 95% | 实现方式不同 |
-| DeleteMenu | 70% | 缺少缓存刷新 + SQL 风险 |
-| ListRolePerms | 100% | ✅ 完全一致 |
+| 方法                | 一致性评分 | 主要问题               |
+|-------------------|-------|--------------------|
+| ListMenus         | 75%   | 未使用 rootIds，实现方式差异 |
+| ListMenuOptions   | 100%  | ✅ 完全一致             |
+| ListRoutes        | 95%   | 路由名转换有差异           |
+| SaveMenu          | 80%   | 缺少缓存刷新             |
+| UpdateMenuVisible | 100%  | ✅ 完全一致             |
+| GetMenuForm       | 95%   | 实现方式不同             |
+| DeleteMenu        | 70%   | 缺少缓存刷新 + SQL 风险    |
+| ListRolePerms     | 100%  | ✅ 完全一致             |
 
 **总体一致性**: **89%**
 

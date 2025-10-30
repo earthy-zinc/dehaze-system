@@ -28,7 +28,7 @@ func (api *SysMenuApi) ListMenus(c *gin.Context) {
 	// 解析查询参数
 	var queryParams query.MenuQuery
 	queryParams.Keywords = c.Query("keywords")
-	
+
 	if statusStr := c.Query("status"); statusStr != "" {
 		if status, err := strconv.Atoi(statusStr); err == nil {
 			queryParams.Status = &status

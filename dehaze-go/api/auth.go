@@ -87,7 +87,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 		global.LOCAL_CACHE.Set(userIp, 1, time.Second*time.Duration(captchaTimeOut))
 	}
 
-	var oc bool = retryCount == 0 || retryCount < utils.InterfaceToInt(v)
+	var oc = retryCount == 0 || retryCount < utils.InterfaceToInt(v)
 	var store = utils.GetCaptchaStore()
 	if !oc && (loginReq.CaptchaCode == "" || loginReq.CaptchaKey == "" || !store.Verify(loginReq.CaptchaKey, loginReq.CaptchaCode, true)) {
 		// 验证码次数+1

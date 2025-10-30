@@ -46,9 +46,9 @@ db:
   log-zap: true
 
 redis:
-    #是否使用redis集群模式
-    useCluster: false
-    #使用集群模式addr和db默认无效
-    addr: 127.0.0.1:6379
-    password: 123456
-    db: 3
+  #是否使用redis集群模式
+  useCluster: false
+  #使用集群模式addr和db默认无效
+  addr: 127.0.0.1:6379
+  password: 123456
+  db: 3

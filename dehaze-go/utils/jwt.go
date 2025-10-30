@@ -7,7 +7,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/model"
-	jwt "github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 

@@ -19,16 +19,16 @@ type ApiGroup struct {
 var ApiGroupApp = new(ApiGroup)
 
 var (
-	userService         = service.ServiceGroupApp.UserService
-	sysUserApi          = service.ServiceGroupApp.UserServiceExtend
-	roleService         = service.ServiceGroupApp.RoleService
-	deptService         = service.ServiceGroupApp.DeptService
-	dictService         = service.ServiceGroupApp.DictService
-	dictTypeService     = service.ServiceGroupApp.DictTypeService
-	menuService         = service.ServiceGroupApp.MenuService
-	algorithmService    = service.ServiceGroupApp.AlgorithmService
-	datasetService      = service.ServiceGroupApp.DatasetService
-	sysFileService      = service.ServiceGroupApp.SysFileService
-	datasetItemService  = service.ServiceGroupApp.DatasetItemService
-	itemFileService     = service.ServiceGroupApp.ItemFileService
+	userService        = service.ServiceGroupApp.UserService
+	sysUserApi         = service.ServiceGroupApp.UserServiceExtend
+	roleService        = service.ServiceGroupApp.RoleService
+	deptService        = service.ServiceGroupApp.DeptService
+	dictService        = service.ServiceGroupApp.DictService
+	dictTypeService    = service.ServiceGroupApp.DictTypeService
+	menuService        = service.ServiceGroupApp.MenuService
+	algorithmService   = service.ServiceGroupApp.AlgorithmService
+	datasetService     = service.ServiceGroupApp.DatasetService
+	sysFileService     = service.ServiceGroupApp.SysFileService
+	datasetItemService = service.ServiceGroupApp.DatasetItemService
+	itemFileService    = service.ServiceGroupApp.ItemFileService
 )

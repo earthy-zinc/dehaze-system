@@ -14,8 +14,8 @@ func (datasetItemRouter *DatasetItemRouter) InitDatasetItemRouter(routerGroup *g
 		Use(middleware.JWTAuth())
 
 	{
-		datasetItemRouterGroup.POST("", datasetItemApi.CreateDatasetItem)    // 新增数据项
-		datasetItemRouterGroup.PUT("", datasetItemApi.UpdateDatasetItem)     // 修改数据项
-		datasetItemRouterGroup.DELETE("", datasetItemApi.DeleteDatasetItem)  // 删除数据项
+		datasetItemRouterGroup.POST("", datasetItemApi.CreateDatasetItem)   // 新增数据项
+		datasetItemRouterGroup.PUT("", datasetItemApi.UpdateDatasetItem)    // 修改数据项
+		datasetItemRouterGroup.DELETE("", datasetItemApi.DeleteDatasetItem) // 删除数据项
 	}
 }

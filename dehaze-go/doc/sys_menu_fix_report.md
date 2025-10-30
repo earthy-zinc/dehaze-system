@@ -6,7 +6,8 @@
 
 ## 修复概述
 
-本次修复针对 sys_menu 模块中 Service 层逻辑一致性校验发现的所有 P0 高优先级问题进行了修复，确保 dehaze-go 实现与 dehaze-java 保持一致。
+本次修复针对 sys_menu 模块中 Service 层逻辑一致性校验发现的所有 P0 高优先级问题进行了修复，确保 dehaze-go 实现与
+dehaze-java 保持一致。
 
 ## 修复问题清单
 
@@ -59,7 +60,8 @@ WHERE t1.type = 4 AND t1.perm IS NOT NULL
 
 **问题描述**：
 
-- Java 版本在 `saveMenu` 方法中，当更新菜单（`menuForm.getId() != null`）后会调用 `roleMenuService.refreshRolePermsCache()` 刷新权限缓存
+- Java 版本在 `saveMenu` 方法中，当更新菜单（`menuForm.getId() != null`）后会调用 `roleMenuService.refreshRolePermsCache()`
+  刷新权限缓存
 - dehaze-go 缺少此逻辑，可能导致菜单权限变更后缓存不一致
 
 **修复方案**：
@@ -276,9 +278,9 @@ cd dehaze-go && go build ./service
 根据逻辑一致性报告，以下问题暂未修复（影响较小）：
 
 1. **SaveMenu 外链处理不一致**
-   - Java: `menuForm.setComponent(null)`
-   - Go: `menuForm.Component = ""`
-   - 建议：统一为空字符串或 NULL，需确认前端是否依赖此行为
+    - Java: `menuForm.setComponent(null)`
+    - Go: `menuForm.Component = ""`
+    - 建议：统一为空字符串或 NULL，需确认前端是否依赖此行为
 
 ---
 

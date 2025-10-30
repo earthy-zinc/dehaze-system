@@ -14,7 +14,7 @@ func (datasetRouter *DatasetRouter) InitDatasetRouter(routerGroup *gin.RouterGro
 		Use(middleware.JWTAuth())
 
 	{
-		datasetRouterGroup.GET("", datasetApi.GetDatasetList)          // 获取数据集树形列表
+		datasetRouterGroup.GET("", datasetApi.GetDatasetList)            // 获取数据集树形列表
 		datasetRouterGroup.GET("/options", datasetApi.GetDatasetOptions) // 获取数据集下拉选项
 		datasetRouterGroup.GET("/:id/form", datasetApi.GetDatasetForm)   // 获取数据集表单数据
 		datasetRouterGroup.POST("", datasetApi.SaveDataset)              // 新增数据集

@@ -218,7 +218,7 @@ func (datasetService *DatasetService) UpdateDataset(id int64, datasetFormBO bo.D
 		"description": datasetFormBO.Description,
 		"path":        datasetFormBO.Path,
 		"status":      datasetFormBO.Status,
-		"update_time":  time.Now(),
+		"update_time": time.Now(),
 	}
 
 	err = global.DB.Model(&model.SysDataset{}).
@@ -244,5 +244,3 @@ func (datasetService *DatasetService) DeleteDatasets(ids []int64) (err error) {
 
 	return err
 }
-
-

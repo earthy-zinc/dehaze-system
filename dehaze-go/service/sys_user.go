@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	
+
 	"github.com/earthyzinc/dehaze-go/global"
 	"github.com/earthyzinc/dehaze-go/model"
 	"golang.org/x/crypto/bcrypt"
@@ -15,12 +15,12 @@ func (userService *UserService) Login(u *model.SysUser) (userAuthInfo *model.Use
 	if u == nil {
 		return nil, fmt.Errorf("用户信息不能为空")
 	}
-	
+
 	// 检查数据库连接
 	if global.DB == nil {
 		return nil, fmt.Errorf("数据库连接未初始化")
 	}
-	
+
 	inputPassword := u.Password
 	// 先通过用户名查找用户
 	err = global.DB.Where("username = ? AND deleted = 0", u.Username).First(u).Error
@@ -44,7 +44,7 @@ func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *
 	if global.DB == nil {
 		return nil, fmt.Errorf("数据库连接未初始化")
 	}
-	
+
 	userAuthInfo = &model.UserAuthInfo{}
 
 	user := model.SysUser{}
@@ -63,7 +63,7 @@ func (userService *UserService) GetUserAuthInfo(username string) (userAuthInfo *
 	userAuthInfo.Nickname = user.Nickname
 	userAuthInfo.Password = user.Password
 	userAuthInfo.Status = user.Status
-	userAuthInfo.DeptId = user.DeptID  // 修复类型转换
+	userAuthInfo.DeptId = user.DeptID // 修复类型转换
 
 	// 如果查询到用户信息
 	if userAuthInfo.UserId != 0 {

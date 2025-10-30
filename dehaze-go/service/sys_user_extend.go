@@ -85,17 +85,17 @@ func (userService *UserServiceExtend) ListPagedUsers(queryParams query.UserPageQ
 		}
 
 		userPageVO := vo.UserPageVO{
-			ID:         userBO.ID,
-			Username:   userBO.Username,
-			Nickname:   userBO.Nickname,
-			Mobile:     userBO.Mobile,
+			ID:          userBO.ID,
+			Username:    userBO.Username,
+			Nickname:    userBO.Nickname,
+			Mobile:      userBO.Mobile,
 			GenderLabel: genderLabel,
-			Avatar:     userBO.Avatar,
-			Email:      userBO.Email,
-			Status:     userBO.Status,
-			DeptName:   userBO.DeptName,
-			RoleNames:  userBO.RoleNames,
-			CreateTime: userBO.CreateTime,
+			Avatar:      userBO.Avatar,
+			Email:       userBO.Email,
+			Status:      userBO.Status,
+			DeptName:    userBO.DeptName,
+			RoleNames:   userBO.RoleNames,
+			CreateTime:  userBO.CreateTime,
 		}
 		userPageVOs = append(userPageVOs, userPageVO)
 	}
@@ -326,7 +326,7 @@ func (userService *UserServiceExtend) DeleteUsers(ids string) (err error) {
 	err = tx.Model(&model.SysUser{}).
 		Where("id IN ?", idList).
 		Updates(map[string]interface{}{
-			"deleted":    1,
+			"deleted":   1,
 			"UpdatedAt": time.Now(),
 		}).Error
 
@@ -346,7 +346,7 @@ func (userService *UserServiceExtend) UpdatePassword(userId int64, password stri
 	if err != nil {
 		return err
 	}
-	
+
 	// 开启事务
 	tx := global.DB.Begin()
 	defer func() {
@@ -354,11 +354,11 @@ func (userService *UserServiceExtend) UpdatePassword(userId int64, password stri
 			tx.Rollback()
 		}
 	}()
-	
+
 	err = tx.Model(&model.SysUser{}).
 		Where("id = ? AND deleted = 0", userId).
 		Updates(map[string]interface{}{
-			"password":   string(hashedPassword),
+			"password":  string(hashedPassword),
 			"UpdatedAt": time.Now(),
 		}).Error
 
@@ -384,7 +384,7 @@ func (userService *UserServiceExtend) UpdateUserStatus(userId int64, status int8
 	err = tx.Model(&model.SysUser{}).
 		Where("id = ? AND deleted = 0", userId).
 		Updates(map[string]interface{}{
-			"status":     status,
+			"status":    status,
 			"UpdatedAt": time.Now(),
 		}).Error
 
@@ -455,8 +455,8 @@ func (userService *UserServiceExtend) GetCurrentUserInfo(username string) (userI
 func (userService *UserServiceExtend) ListExportUsers(queryParams query.UserPageQuery) (userExportVOs []vo.UserExportVO, err error) {
 	// 构建查询
 	db := global.DB.Table("sys_user u").
-		Select("u.username, u.nickname, u.mobile, "+
-			"CASE u.gender WHEN 1 THEN '男' WHEN 2 THEN '女' ELSE '未知' END as gender, "+
+		Select("u.username, u.nickname, u.mobile, " +
+			"CASE u.gender WHEN 1 THEN '男' WHEN 2 THEN '女' ELSE '未知' END as gender, " +
 			"d.name as dept_name, u.create_time").
 		Joins("LEFT JOIN sys_dept d ON u.dept_id = d.id").
 		Where("u.deleted = 0 AND u.username != 'root'")

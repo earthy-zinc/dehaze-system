@@ -18,11 +18,11 @@ type RouterGroup struct {
 var RouterGroupApp = new(RouterGroup)
 
 var (
-	authApi = api.ApiGroupApp.AuthApi
-	sysDictApi = api.ApiGroupApp.SysDictApi
-	algorithmApi = api.ApiGroupApp.AlgorithmApi
-	datasetApi = api.ApiGroupApp.SysDatasetApi
-	fileApi = api.ApiGroupApp.SysFileApi
+	authApi        = api.ApiGroupApp.AuthApi
+	sysDictApi     = api.ApiGroupApp.SysDictApi
+	algorithmApi   = api.ApiGroupApp.AlgorithmApi
+	datasetApi     = api.ApiGroupApp.SysDatasetApi
+	fileApi        = api.ApiGroupApp.SysFileApi
 	datasetItemApi = api.ApiGroupApp.SysDatasetItemApi
-	itemFileApi = api.ApiGroupApp.SysItemFileApi
+	itemFileApi    = api.ApiGroupApp.SysItemFileApi
 )

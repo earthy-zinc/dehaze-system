@@ -151,11 +151,11 @@ func (api *SysFileApi) DownloadFile(c *gin.Context) {
 
 	// 提取文件名
 	filename := filepath.Base(objectName)
-	
+
 	// 设置响应头
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	c.Header("Content-Type", "application/octet-stream")
-	
+
 	// 返回文件
 	c.File(filePath)
 }

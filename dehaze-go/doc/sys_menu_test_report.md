@@ -196,26 +196,26 @@
 
 ### Service层方法覆盖情况
 
-| 方法名 | 测试覆盖 | 测试用例数 |
-|--------|---------|-----------|
-| SaveMenu | ✅ | 5 |
-| ListMenus | ⚠️ | 3 (1失败) |
-| ListMenuOptions | ✅ | 1 |
-| ListRoutes | ✅ | 1 |
-| GetMenuForm | ✅ | 2 |
-| UpdateMenuVisible | ✅ | 1 |
-| DeleteMenu | ✅ | 1 |
-| ListRolePerms | ✅ | 2 |
-| clearAllRolePermsCache | ✅ | 间接测试 |
-| generateMenuTreePath | ✅ | 间接测试 |
+| 方法名                    | 测试覆盖 | 测试用例数   |
+|------------------------|------|---------|
+| SaveMenu               | ✅    | 5       |
+| ListMenus              | ⚠️   | 3 (1失败) |
+| ListMenuOptions        | ✅    | 1       |
+| ListRoutes             | ✅    | 1       |
+| GetMenuForm            | ✅    | 2       |
+| UpdateMenuVisible      | ✅    | 1       |
+| DeleteMenu             | ✅    | 1       |
+| ListRolePerms          | ✅    | 2       |
+| clearAllRolePermsCache | ✅    | 间接测试    |
+| generateMenuTreePath   | ✅    | 间接测试    |
 
 ### 代码覆盖率估算
 
 - **估算覆盖率**: ~85%
 - **未覆盖部分**:
-  - 部分错误处理分支
-  - generateMenuTreePath 的错误路径
-  - 深层次的树形结构递归
+    - 部分错误处理分支
+    - generateMenuTreePath 的错误路径
+    - 深层次的树形结构递归
 
 ---
 
@@ -224,9 +224,9 @@
 ### 高优先级
 
 1. **TestListMenus_WithKeywords 失败**
-   - **问题**: 测试断言逻辑错误
-   - **建议**: 修改断言为 `assert.NotNil(t, menuList)`
-   - **影响**: 测试用例本身的问题，不影响代码功能
+    - **问题**: 测试断言逻辑错误
+    - **建议**: 修改断言为 `assert.NotNil(t, menuList)`
+    - **影响**: 测试用例本身的问题，不影响代码功能
 
 ### 中优先级
 
@@ -236,16 +236,16 @@
    failed to parse field: Roles, error: unsupported data type: &[]
    ```
 
-   - **问题**: Roles 字段类型不支持
-   - **建议**: 检查 RouteBO 结构体中 Roles 字段定义
-   - **影响**: 功能正常，但有警告日志
+    - **问题**: Roles 字段类型不支持
+    - **建议**: 检查 RouteBO 结构体中 Roles 字段定义
+    - **影响**: 功能正常，但有警告日志
 
 ### 低优先级
 
 3. **测试数据准备不充分**
-   - **问题**: 部分测试用例依赖数据库初始状态
-   - **建议**: 每个测试前插入必要的测试数据
-   - **影响**: 测试稳定性
+    - **问题**: 部分测试用例依赖数据库初始状态
+    - **建议**: 每个测试前插入必要的测试数据
+    - **影响**: 测试稳定性
 
 ---
 

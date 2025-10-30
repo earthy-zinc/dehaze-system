@@ -13,7 +13,7 @@ import (
 // CustomClaims 自定义声明结构体
 type CustomClaims struct {
 	UserID      int64    `json:"userId"`
-	DeptID      int64    `json:"deptId"`  // 修复类型为int64以匹配UserAuthInfo
+	DeptID      int64    `json:"deptId"` // 修复类型为int64以匹配UserAuthInfo
 	DataScope   int8     `json:"dataScope"`
 	Authorities []string `json:"authorities"`
 	jwt.RegisteredClaims
