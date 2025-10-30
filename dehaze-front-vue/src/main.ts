@@ -1,12 +1,11 @@
-import { createApp } from "vue";
-import App from "./App.vue";
-import router from "@/router";
-import { setupStore } from "@/store";
 import { setupDirective } from "@/directive";
 import { setupElIcons, setupI18n, setupPermission } from "@/plugins";
+import router from "@/router";
+import { setupStore } from "@/store";
 import setupRequest from "@/utils/request";
 import VueViewer from "v-viewer";
 import "viewerjs/dist/viewer.css";
+import { createApp } from "vue";
 import VueLazyLoad from "vue3-lazyload";
 
 // 本地SVG图标
@@ -16,6 +15,7 @@ import "virtual:svg-icons-register";
 import "element-plus/theme-chalk/dark/css-vars.css";
 import "@/styles/index.scss";
 import "uno.css";
+import App from "./App.vue";
 import "animate.css";
 
 const app = createApp(App);

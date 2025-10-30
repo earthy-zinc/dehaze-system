@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import * as waterfallModule from "../waterfall";
-import { ref, nextTick } from "vue";
 import { useResizeObserver } from "@vueuse/core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ref } from "vue";
+import * as waterfallModule from "../waterfall";
 
 // Mock @vueuse/core
 vi.mock("@vueuse/core", () => ({

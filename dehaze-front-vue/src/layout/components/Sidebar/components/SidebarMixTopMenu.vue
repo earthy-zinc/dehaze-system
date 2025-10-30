@@ -2,11 +2,11 @@
 <template>
   <el-scrollbar>
     <el-menu
-      mode="horizontal"
-      :default-active="activePath"
-      :background-color="variables['menu-background']"
-      :text-color="variables['menu-text']"
       :active-text-color="variables['menu-active-text']"
+      :background-color="variables['menu-background']"
+      :default-active="activePath"
+      :text-color="variables['menu-text']"
+      mode="horizontal"
       @select="handleMenuSelect"
     >
       <el-menu-item
@@ -32,9 +32,9 @@
 </template>
 
 <script lang="ts" setup>
-import { usePermissionStore, useAppStore } from "@/store";
-import { translateRouteTitle } from "@/utils/i18n";
+import { useAppStore, usePermissionStore } from "@/store";
 import variables from "@/styles/variables.module.scss";
+import { translateRouteTitle } from "@/utils/i18n";
 import { RouteRecordRaw } from "vue-router";
 
 const appStore = useAppStore();

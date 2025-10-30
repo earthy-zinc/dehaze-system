@@ -1,15 +1,15 @@
 <template>
   <el-dropdown trigger="click" @command="handleLanguageChange">
     <div>
-      <svg-icon icon-class="language" :size="size" />
+      <svg-icon :size="size" icon-class="language" />
     </div>
     <template #dropdown>
       <el-dropdown-menu>
         <el-dropdown-item
           v-for="item in langOptions"
           :key="item.value"
-          :disabled="appStore.language === item.value"
           :command="item.value"
+          :disabled="appStore.language === item.value"
         >
           {{ item.label }}
         </el-dropdown-item>
@@ -18,10 +18,10 @@
   </el-dropdown>
 </template>
 
-<script setup lang="ts">
-import { useI18n } from "vue-i18n";
-import { useAppStore } from "@/store/modules/app";
+<script lang="ts" setup>
 import { LanguageEnum } from "@/enums/LanguageEnum";
+import { useAppStore } from "@/store/modules/app";
+import { useI18n } from "vue-i18n";
 
 defineProps({
   size: {

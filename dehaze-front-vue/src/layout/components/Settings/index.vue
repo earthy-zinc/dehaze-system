@@ -1,8 +1,8 @@
 <template>
   <el-drawer
     v-model="settingsVisible"
-    size="300"
     :title="$t('settings.project')"
+    size="300"
   >
     <el-divider>{{ $t("settings.theme") }}</el-divider>
 
@@ -54,11 +54,11 @@
   </el-drawer>
 </template>
 
-<script setup lang="ts">
-import { useSettingsStore, usePermissionStore, useAppStore } from "@/store";
-import { Sunny, Moon } from "@element-plus/icons-vue";
+<script lang="ts" setup>
 import { LayoutEnum } from "@/enums/LayoutEnum";
 import { ThemeEnum } from "@/enums/ThemeEnum";
+import { useAppStore, usePermissionStore, useSettingsStore } from "@/store";
+import { Moon, Sunny } from "@element-plus/icons-vue";
 
 const route = useRoute();
 const appStore = useAppStore();

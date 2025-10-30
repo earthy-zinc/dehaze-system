@@ -1,11 +1,11 @@
+import { DeviceEnum } from "@/enums/DeviceEnum";
+import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
 import defaultSettings from "@/settings";
+import { store } from "@/store";
+import en from "element-plus/es/locale/lang/en";
 
 // 导入 Element Plus 中英文语言包
 import zhCn from "element-plus/es/locale/lang/zh-cn";
-import en from "element-plus/es/locale/lang/en";
-import { store } from "@/store";
-import { DeviceEnum } from "@/enums/DeviceEnum";
-import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
 
 // setup
 export const useAppStore = defineStore("app", () => {

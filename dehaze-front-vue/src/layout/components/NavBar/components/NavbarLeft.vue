@@ -8,7 +8,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { useAppStore } from "@/store";
 
 const appStore = useAppStore();

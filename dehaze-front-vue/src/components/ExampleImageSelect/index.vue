@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 defineOptions({
   name: "ExampleImageSelect",
 });
@@ -18,16 +18,16 @@ const emit = defineEmits(["onExampleSelect"]);
     <div class="text-center">选一张图片试一下吧</div>
     <div id="example-img-container">
       <img
-        class="example-img"
         v-for="url in urls"
         :key="url"
         :src="url"
         alt="样张"
+        class="example-img"
         @click="emit('onExampleSelect', url)"
       />
     </div>
     <div class="example-logo">
-      <img src="@/assets/logo.png" alt="logo" />
+      <img alt="logo" src="@/assets/logo.png" />
     </div>
   </div>
 </template>

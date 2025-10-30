@@ -113,14 +113,14 @@
 </template>
 
 <script lang="ts" setup>
-import { useSettingsStore, useUserStore } from "@/store";
-
-import { AuthAPI, LoginData } from "dehaze-sdk-js";
-import { Moon, Sunny } from "@element-plus/icons-vue";
-import { LocationQuery, LocationQueryValue, useRoute } from "vue-router";
+import { ThemeEnum } from "@/enums/ThemeEnum";
 import router from "@/router";
 import defaultSettings from "@/settings";
-import { ThemeEnum } from "@/enums/ThemeEnum";
+import { useSettingsStore, useUserStore } from "@/store";
+import { Moon, Sunny } from "@element-plus/icons-vue";
+
+import { AuthAPI, LoginData } from "dehaze-sdk-js";
+import { LocationQuery, LocationQueryValue, useRoute } from "vue-router";
 
 // Stores
 const userStore = useUserStore();

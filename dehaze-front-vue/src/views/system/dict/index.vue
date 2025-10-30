@@ -3,12 +3,12 @@
 <template>
   <div class="app-container">
     <div class="search-container">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+      <el-form ref="queryFormRef" :inline="true" :model="queryParams">
         <el-form-item label="关键字" prop="name">
           <el-input
             v-model="queryParams.keywords"
-            placeholder="字典类型名称/编码"
             clearable
+            placeholder="字典类型名称/编码"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
@@ -21,7 +21,7 @@
       </el-form>
     </div>
 
-    <el-card shadow="never" class="table-container">
+    <el-card class="table-container" shadow="never">
       <template #header>
         <el-button
           v-hasPerm="['sys:dict_type:add']"
@@ -30,51 +30,51 @@
           ><i-ep-plus />新增</el-button
         >
         <el-button
-          type="danger"
           :disabled="ids.length === 0"
+          type="danger"
           @click="handleDelete()"
           ><i-ep-delete />删除</el-button
         >
       </template>
       <el-table
         v-loading="loading"
-        highlight-current-row
         :data="dictTypeList"
         border
+        highlight-current-row
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" align="center" />
+        <el-table-column align="center" type="selection" width="55" />
         <el-table-column label="字典类型名称" prop="name" width="200" />
         <el-table-column label="字典类型编码" prop="code" width="200" />
-        <el-table-column label="状态" align="center" width="100">
+        <el-table-column align="center" label="状态" width="100">
           <template #default="scope">
             <el-tag v-if="scope.row.status === 1" type="success">启用</el-tag>
             <el-tag v-else type="info">禁用</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="备注" prop="remark" align="center" />
-        <el-table-column fixed="right" label="操作" align="center" width="220">
+        <el-table-column align="center" label="备注" prop="remark" />
+        <el-table-column align="center" fixed="right" label="操作" width="220">
           <template #default="scope">
             <el-button
-              type="primary"
               link
               size="small"
+              type="primary"
               @click.stop="openDictDialog(scope.row)"
               ><i-ep-Collection />字典数据</el-button
             >
             <el-button
               v-hasPerm="['sys:dict_type:edit']"
-              type="primary"
               link
               size="small"
+              type="primary"
               @click.stop="openDialog(scope.row.id)"
               ><i-ep-edit />编辑</el-button
             >
             <el-button
               v-hasPerm="['sys:dict_type:delete']"
-              type="primary"
               link
               size="small"
+              type="primary"
               @click.stop="handleDelete(scope.row.id)"
               ><i-ep-delete />删除</el-button
             >
@@ -84,9 +84,9 @@
 
       <pagination
         v-if="total > 0"
-        v-model:total="total"
-        v-model:page="queryParams.pageNum"
         v-model:limit="queryParams.pageSize"
+        v-model:page="queryParams.pageNum"
+        v-model:total="total"
         @pagination="handleQuery"
       />
     </el-card>
@@ -118,9 +118,9 @@
         <el-form-item label="备注" prop="remark">
           <el-input
             v-model="formData.remark"
-            type="textarea"
-            placeholder="字典类型备注"
             :autosize="{ minRows: 2, maxRows: 4 }"
+            placeholder="字典类型备注"
+            type="textarea"
           />
         </el-form-item>
       </el-form>
@@ -147,18 +147,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 defineOptions({
   name: "DictType",
   inheritAttrs: false,
 });
 
-import {
-  DictAPI,
-  DictTypePageVO,
-  DictTypeQuery,
-  DictTypeForm,
-} from "dehaze-sdk-js";
+import { DictAPI, DictTypeForm, DictTypePageVO, DictTypeQuery, } from "dehaze-sdk-js";
 
 const queryFormRef = ref(ElForm);
 const dataFormRef = ref(ElForm);

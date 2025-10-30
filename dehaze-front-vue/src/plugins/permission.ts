@@ -1,8 +1,8 @@
+import { TOKEN_KEY } from "@/enums/CacheEnum";
 import router from "@/router";
-import { useUserStore, usePermissionStore } from "@/store";
+import { usePermissionStore, useUserStore } from "@/store";
 import NProgress from "@/utils/nprogress";
 import { RouteRecordRaw } from "vue-router";
-import { TOKEN_KEY } from "@/enums/CacheEnum";
 
 export function setupPermission() {
   // 白名单路由

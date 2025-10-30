@@ -1,17 +1,17 @@
 import vue from "@vitejs/plugin-vue";
 import vueJsx from "@vitejs/plugin-vue-jsx";
-import { ConfigEnv, defineConfig, loadEnv, UserConfig } from "vite";
-import AutoImport from "unplugin-auto-import/vite";
-import Components from "unplugin-vue-components/vite";
-import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
-import Icons from "unplugin-icons/vite";
-import IconsResolver from "unplugin-icons/resolver";
-
-import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
-import { mockDevServerPlugin } from "vite-plugin-mock-dev-server";
+import { resolve } from "path";
 
 import UnoCSS from "unocss/vite";
-import path, { resolve } from "path";
+import AutoImport from "unplugin-auto-import/vite";
+import IconsResolver from "unplugin-icons/resolver";
+import Icons from "unplugin-icons/vite";
+import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
+import Components from "unplugin-vue-components/vite";
+import { ConfigEnv, defineConfig, loadEnv, UserConfig } from "vite";
+import { mockDevServerPlugin } from "vite-plugin-mock-dev-server";
+
+import { createSvgIconsPlugin } from "vite-plugin-svg-icons";
 import {
   dependencies,
   devDependencies,

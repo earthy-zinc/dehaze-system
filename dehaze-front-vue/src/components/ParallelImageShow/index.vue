@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useImageShowStore } from "@/store/modules/imageShow";
-import { CSSProperties } from "vue";
 import { hexToRGBA } from "@/utils";
+import { CSSProperties } from "vue";
 
 defineOptions({ name: "ParallelImageShow" });
 

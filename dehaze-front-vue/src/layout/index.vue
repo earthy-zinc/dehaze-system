@@ -1,5 +1,5 @@
 <template>
-  <div class="wh-full" :class="classObj">
+  <div :class="classObj" class="wh-full">
     <!-- 遮罩层 -->
     <div
       v-if="isMobile && isOpenSidebar"
@@ -13,7 +13,7 @@
     <!-- 混合布局 -->
     <div v-if="layout === LayoutEnum.MIX" class="mix-container">
       <div class="mix-container__left">
-        <SidebarMenu :menu-list="mixLeftMenus" :base-path="activeTopMenuPath" />
+        <SidebarMenu :base-path="activeTopMenuPath" :menu-list="mixLeftMenus" />
         <div class="sidebar-toggle">
           <hamburger
             :is-active="appStore.sidebar.opened"
@@ -43,11 +43,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { useAppStore, useSettingsStore, usePermissionStore } from "@/store";
-import defaultSettings from "@/settings";
+<script lang="ts" setup>
 import { DeviceEnum } from "@/enums/DeviceEnum";
 import { LayoutEnum } from "@/enums/LayoutEnum";
+import defaultSettings from "@/settings";
+import { useAppStore, usePermissionStore, useSettingsStore } from "@/store";
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();

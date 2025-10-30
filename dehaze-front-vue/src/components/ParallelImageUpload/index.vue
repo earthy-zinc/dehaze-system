@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { useImageShowStore } from "@/store/modules/imageShow";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
+import { useImageShowStore } from "@/store/modules/imageShow";
 
 defineOptions({
   name: "ParallelImageUpload",

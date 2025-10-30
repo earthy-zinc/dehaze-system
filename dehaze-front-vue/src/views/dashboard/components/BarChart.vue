@@ -4,7 +4,7 @@
     <template #header>
       <div class="title">
         业绩柱状图
-        <el-tooltip effect="dark" content="点击试试下载" placement="bottom">
+        <el-tooltip content="点击试试下载" effect="dark" placement="bottom">
           <i-ep-download class="download" @click="downloadEchart" />
         </el-tooltip>
       </div>
@@ -14,7 +14,7 @@
   </el-card>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as echarts from "echarts";
 
 const props = defineProps({

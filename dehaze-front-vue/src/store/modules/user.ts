@@ -1,8 +1,8 @@
+import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { resetRouter } from "@/router";
 import { store } from "@/store";
 
-import { AuthAPI, UserAPI, LoginData, UserInfo } from "dehaze-sdk-js";
-import { TOKEN_KEY } from "@/enums/CacheEnum";
+import { AuthAPI, UserAPI, UserInfo } from "dehaze-sdk-js";
 
 export const useUserStore = defineStore("user", () => {
   const user = ref<UserInfo>({

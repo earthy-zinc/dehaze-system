@@ -24,9 +24,9 @@
 </template>
 
 <script lang="ts" setup>
-import { UploadRawFile, UploadRequestOptions } from "element-plus";
-import { FileAPI } from "dehaze-sdk-js";
 import { useImageShowStore } from "@/store/modules/imageShow";
+import { FileAPI } from "dehaze-sdk-js";
+import { UploadRawFile, UploadRequestOptions } from "element-plus";
 
 const props = defineProps({
   modelValue: {

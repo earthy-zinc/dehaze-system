@@ -19,11 +19,11 @@
   </el-breadcrumb>
 </template>
 
-<script setup lang="ts">
-import { RouteLocationMatched } from "vue-router";
-import { compile } from "path-to-regexp";
+<script lang="ts" setup>
 import router from "@/router";
 import { translateRouteTitle } from "@/utils/i18n";
+import { compile } from "path-to-regexp";
+import { RouteLocationMatched } from "vue-router";
 
 const currentRoute = useRoute();
 const pathCompile = (path: string) => {

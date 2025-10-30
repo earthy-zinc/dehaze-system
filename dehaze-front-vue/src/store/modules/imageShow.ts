@@ -1,5 +1,5 @@
-import { store, useSettingsStore } from "@/store";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
+import { store, useSettingsStore } from "@/store";
 
 export interface ImageUrlType {
   id: number;

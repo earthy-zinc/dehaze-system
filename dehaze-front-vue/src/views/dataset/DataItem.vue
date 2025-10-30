@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { DatasetAPI, Dataset, ImageItem, ImageItemQuery } from "dehaze-sdk-js";
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
-import { api as viewerApi } from "v-viewer";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { changeUrl } from "@/utils";
+import { Dataset, DatasetAPI, ImageItem, ImageItemQuery } from "dehaze-sdk-js";
+import { api as viewerApi } from "v-viewer";
 
 defineOptions({
   name: "DataItem",

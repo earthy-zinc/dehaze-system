@@ -1,13 +1,13 @@
 <script lang="ts" setup>
+import EditDialog from "@/components/DataList/EditDialog/index.vue";
 import {
-  AlgorithmAPI,
-  DatasetAPI,
   Algorithm,
+  AlgorithmAPI,
   AlgorithmQuery,
   Dataset,
+  DatasetAPI,
   DatasetQuery,
 } from "dehaze-sdk-js";
-import EditDialog from "@/components/DataList/EditDialog/index.vue";
 
 const props = defineProps<{
   listType: string;

@@ -1,10 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import type {
-  ViewCard,
   Breakpoints,
-  WaterfallProps,
-  ItemWidthProps,
   ItemWidthByBreakpointProps,
+  ItemWidthProps,
+  ViewCard,
+  WaterfallProps,
 } from "../types";
 
 describe("Waterfall Types", () => {

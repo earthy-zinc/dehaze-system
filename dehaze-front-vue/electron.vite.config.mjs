@@ -2,8 +2,8 @@
 import {
   defineConfig,
   defineViteConfig,
-  mergeConfig,
   loadEnv,
+  mergeConfig,
 } from "electron-vite";
 import { resolve } from "path";
 import viteConfig from "./vite.config.ts";

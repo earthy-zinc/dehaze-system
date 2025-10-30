@@ -1,6 +1,6 @@
 import { assign, hasIntersectionObserver, isObject, loadImage } from "@/utils";
-import { CallbackFunction, LazyOptions, ValueFormatterObject } from "./types";
 import { CssStyleObject } from "@/utils/types";
+import { CallbackFunction, LazyOptions, ValueFormatterObject } from "./types";
 
 enum LifecycleEnum {
   LOADING = "loading",

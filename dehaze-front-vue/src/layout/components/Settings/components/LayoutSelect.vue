@@ -2,8 +2,8 @@
   <div class="flex flex-wrap justify-around w-full h-12">
     <el-tooltip content="左侧模式" placement="bottom">
       <div
-        class="layout-item left"
         :class="{ 'is-active': modelValue === LayoutEnum.LEFT }"
+        class="layout-item left"
         @click="updateValue(LayoutEnum.LEFT)"
       >
         <div></div>
@@ -13,8 +13,8 @@
 
     <el-tooltip content="顶部模式" placement="bottom">
       <div
-        class="layout-item top"
         :class="{ 'is-active': modelValue === LayoutEnum.TOP }"
+        class="layout-item top"
         @click="updateValue(LayoutEnum.TOP)"
       >
         <div></div>
@@ -24,8 +24,8 @@
 
     <el-tooltip content="混合模式" placement="bottom">
       <div
-        class="layout-item mix"
         :class="{ 'is-active': modelValue === LayoutEnum.MIX }"
+        class="layout-item mix"
         @click="updateValue(LayoutEnum.MIX)"
       >
         <div></div>

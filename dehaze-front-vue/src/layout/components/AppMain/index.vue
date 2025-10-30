@@ -15,7 +15,7 @@
   </section>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { useTagsViewStore } from "@/store";
 
 const cachedViews = computed(() => useTagsViewStore().cachedViews); // 缓存页面集合

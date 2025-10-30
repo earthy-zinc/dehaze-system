@@ -1,7 +1,7 @@
 <!-- 部门树 -->
 <template>
   <el-card shadow="never">
-    <el-input v-model="deptName" placeholder="部门名称" clearable>
+    <el-input v-model="deptName" clearable placeholder="部门名称">
       <template #prefix>
         <i-ep-search />
       </template>
@@ -9,19 +9,20 @@
 
     <el-tree
       ref="deptTreeRef"
-      class="mt-2"
       :data="deptList"
-      :props="{ children: 'children', label: 'label', disabled: '' }"
       :expand-on-click-node="false"
       :filter-node-method="handleFilter"
+      :props="{ children: 'children', label: 'label', disabled: '' }"
+      class="mt-2"
       default-expand-all
       @node-click="handleNodeClick"
     />
   </el-card>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { DeptAPI } from "dehaze-sdk-js";
+
 const props = defineProps({
   modelValue: {
     type: [Number],

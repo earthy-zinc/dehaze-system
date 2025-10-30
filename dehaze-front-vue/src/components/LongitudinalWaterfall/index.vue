@@ -1,10 +1,10 @@
 <script lang="ts" setup>
+import { getValue } from "@/utils";
 import { ref } from "vue";
+import Lazy from "../LazyImg/lazy";
+import { LazyType } from "../LazyImg/types";
 import { ViewCard } from "../Waterfall/types";
 import { useCalculateCols, useLayout } from "../Waterfall/waterfall";
-import { LazyType } from "../LazyImg/types";
-import Lazy from "../LazyImg/lazy";
-import { getValue } from "@/utils";
 
 defineOptions({
   name: "LongitudinalWaterfall",

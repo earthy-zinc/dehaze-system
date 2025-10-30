@@ -2,30 +2,30 @@
 <template>
   <el-upload
     v-model:file-list="fileList"
-    list-type="picture-card"
     :before-upload="handleBeforeUpload"
     :http-request="handleUpload"
-    :on-remove="handleRemove"
-    :on-preview="previewImg"
     :limit="props.limit"
+    :on-preview="previewImg"
+    :on-remove="handleRemove"
+    list-type="picture-card"
   >
     <i-ep-plus />
   </el-upload>
 
   <el-dialog v-model="dialogVisible">
-    <img w-full :src="previewImgUrl" alt="Preview Image" />
+    <img :src="previewImgUrl" alt="Preview Image" w-full />
   </el-dialog>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import { FileAPI } from "dehaze-sdk-js";
 import {
+  UploadFile,
+  UploadProps,
   UploadRawFile,
   UploadRequestOptions,
   UploadUserFile,
-  UploadFile,
-  UploadProps,
 } from "element-plus";
-import { FileAPI } from "dehaze-sdk-js";
 
 const emit = defineEmits(["update:modelValue"]);
 

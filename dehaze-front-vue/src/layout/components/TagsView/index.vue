@@ -1,14 +1,14 @@
 <template>
   <div class="tags-container">
     <el-scrollbar
-      class="scroll-container"
       :vertical="false"
+      class="scroll-container"
       @wheel.prevent="handleScroll"
     >
       <router-link
-        ref="tagRef"
         v-for="tag in visitedViews"
         :key="tag.fullPath"
+        ref="tagRef"
         :class="'tags-item ' + (isActive(tag) ? 'active' : '')"
         :to="{ path: tag.path, query: tag.query }"
         @click.middle="!isAffix(tag) ? closeSelectedTag(tag) : ''"
@@ -16,9 +16,9 @@
       >
         {{ translateRouteTitle(tag.title) }}
         <i-ep-close
+          v-if="!isAffix(tag)"
           class="close-icon"
           size="12px"
-          v-if="!isAffix(tag)"
           @click.prevent.stop="closeSelectedTag(tag)"
         />
       </router-link>
@@ -27,8 +27,8 @@
     <!-- tag标签操作菜单 -->
     <ul
       v-show="contentMenuVisible"
-      class="contextmenu"
       :style="{ left: left + 'px', top: top + 'px' }"
+      class="contextmenu"
     >
       <li @click="refreshSelectedTag(selectedTag)">
         <svg-icon icon-class="refresh" />
@@ -58,17 +58,11 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { useRoute, useRouter, RouteRecordRaw } from "vue-router";
-import { resolve } from "path-browserify";
+<script lang="ts" setup>
+import { useAppStore, usePermissionStore, useSettingsStore, useTagsViewStore, } from "@/store";
 import { translateRouteTitle } from "@/utils/i18n";
-
-import {
-  usePermissionStore,
-  useTagsViewStore,
-  useSettingsStore,
-  useAppStore,
-} from "@/store";
+import { resolve } from "path-browserify";
+import { RouteRecordRaw, useRoute, useRouter } from "vue-router";
 
 const { proxy } = getCurrentInstance()!;
 const router = useRouter();

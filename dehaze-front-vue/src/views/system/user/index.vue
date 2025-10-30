@@ -10,12 +10,12 @@
       <!-- 用户列表 -->
       <el-col :lg="20" :xs="24">
         <div class="search-container">
-          <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+          <el-form ref="queryFormRef" :inline="true" :model="queryParams">
             <el-form-item label="关键字" prop="keywords">
               <el-input
                 v-model="queryParams.keywords"
-                placeholder="用户名/昵称/手机号"
                 clearable
+                placeholder="用户名/昵称/手机号"
                 style="width: 200px"
                 @keyup.enter="handleQuery"
               />
@@ -24,9 +24,9 @@
             <el-form-item label="状态" prop="status">
               <el-select
                 v-model="queryParams.status"
-                placeholder="全部"
-                clearable
                 class="!w-[100px]"
+                clearable
+                placeholder="全部"
               >
                 <el-option label="启用" value="1" />
                 <el-option label="禁用" value="0" />
@@ -35,12 +35,12 @@
 
             <el-form-item label="创建时间">
               <el-date-picker
-                class="!w-[240px]"
                 v-model="dateTimeRange"
-                type="daterange"
+                class="!w-[240px]"
+                end-placeholder="截止时间"
                 range-separator="~"
                 start-placeholder="开始时间"
-                end-placeholder="截止时间"
+                type="daterange"
                 value-format="YYYY-MM-DD"
               />
             </el-form-item>
@@ -57,7 +57,7 @@
           </el-form>
         </div>
 
-        <el-card shadow="never" class="table-container">
+        <el-card class="table-container" shadow="never">
           <template #header>
             <div class="flex justify-between">
               <div>
@@ -69,8 +69,8 @@
                 >
                 <el-button
                   v-hasPerm="['sys:user:delete']"
-                  type="danger"
                   :disabled="removeIds.length === 0"
+                  type="danger"
                   @click="handleDelete()"
                   ><i-ep-delete />删除</el-button
                 >
@@ -101,48 +101,48 @@
             :data="pageData"
             @selection-change="handleSelectionChange"
           >
-            <el-table-column type="selection" width="50" align="center" />
+            <el-table-column align="center" type="selection" width="50" />
             <el-table-column
               key="id"
-              label="编号"
               align="center"
+              label="编号"
               prop="id"
               width="100"
             />
             <el-table-column
               key="username"
-              label="用户名"
               align="center"
+              label="用户名"
               prop="username"
             />
             <el-table-column
+              align="center"
               label="用户昵称"
-              width="120"
-              align="center"
               prop="nickname"
-            />
-
-            <el-table-column
-              label="性别"
-              width="100"
-              align="center"
-              prop="genderLabel"
-            />
-
-            <el-table-column
-              label="部门"
               width="120"
+            />
+
+            <el-table-column
               align="center"
+              label="性别"
+              prop="genderLabel"
+              width="100"
+            />
+
+            <el-table-column
+              align="center"
+              label="部门"
               prop="deptName"
+              width="120"
             />
             <el-table-column
-              label="手机号码"
               align="center"
+              label="手机号码"
               prop="mobile"
               width="120"
             />
 
-            <el-table-column label="状态" align="center" prop="status">
+            <el-table-column align="center" label="状态" prop="status">
               <template #default="scope">
                 <el-tag :type="scope.row.status == 1 ? 'success' : 'info'">{{
                   scope.row.status == 1 ? "启用" : "禁用"
@@ -150,34 +150,34 @@
               </template>
             </el-table-column>
             <el-table-column
-              label="创建时间"
               align="center"
+              label="创建时间"
               prop="createTime"
               width="180"
             />
-            <el-table-column label="操作" fixed="right" width="220">
+            <el-table-column fixed="right" label="操作" width="220">
               <template #default="scope">
                 <el-button
                   v-hasPerm="['sys:user:password:reset']"
-                  type="primary"
-                  size="small"
                   link
+                  size="small"
+                  type="primary"
                   @click="resetPassword(scope.row)"
                   ><i-ep-refresh-left />重置密码</el-button
                 >
                 <el-button
                   v-hasPerm="['sys:user:edit']"
-                  type="primary"
                   link
                   size="small"
+                  type="primary"
                   @click="openDialog('user-form', scope.row.id)"
                   ><i-ep-edit />编辑</el-button
                 >
                 <el-button
                   v-hasPerm="['sys:user:delete']"
-                  type="primary"
                   link
                   size="small"
+                  type="primary"
                   @click="handleDelete(scope.row.id)"
                   ><i-ep-delete />删除</el-button
                 >
@@ -187,9 +187,9 @@
 
           <pagination
             v-if="total > 0"
-            v-model:total="total"
-            v-model:page="queryParams.pageNum"
             v-model:limit="queryParams.pageSize"
+            v-model:page="queryParams.pageNum"
+            v-model:total="total"
             @pagination="handleQuery"
           />
         </el-card>
@@ -227,11 +227,11 @@
         <el-form-item label="所属部门" prop="deptId">
           <el-tree-select
             v-model="formData.deptId"
-            placeholder="请选择所属部门"
             :data="deptList"
-            filterable
-            check-strictly
             :render-after-expand="false"
+            check-strictly
+            filterable
+            placeholder="请选择所属部门"
           />
         </el-form-item>
 
@@ -253,16 +253,16 @@
         <el-form-item label="手机号码" prop="mobile">
           <el-input
             v-model="formData.mobile"
-            placeholder="请输入手机号码"
             maxlength="11"
+            placeholder="请输入手机号码"
           />
         </el-form-item>
 
         <el-form-item label="邮箱" prop="email">
           <el-input
             v-model="formData.email"
-            placeholder="请输入邮箱"
             maxlength="50"
+            placeholder="请输入邮箱"
           />
         </el-form-item>
 
@@ -283,24 +283,24 @@
         <el-form-item label="部门">
           <el-tree-select
             v-model="importData.deptId"
-            placeholder="请选择部门"
             :data="deptList"
-            filterable
             check-strictly
+            filterable
+            placeholder="请选择部门"
           />
         </el-form-item>
 
         <el-form-item label="Excel文件">
           <el-upload
             ref="uploadRef"
-            action=""
-            drag
-            accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
-            :limit="1"
             :auto-upload="false"
             :file-list="importData.fileList"
+            :limit="1"
             :on-change="handleFileChange"
             :on-exceed="handleFileExceed"
+            accept="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+            action=""
+            drag
           >
             <el-icon class="el-icon--upload">
               <i-ep-upload-filled />
@@ -326,20 +326,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 defineOptions({
   name: "User",
   inheritAttrs: false,
 });
 
-import {
-  UserAPI,
-  DeptAPI,
-  RoleAPI,
-  UserForm,
-  UserQuery,
-  UserPageVO,
-} from "dehaze-sdk-js";
+import { DeptAPI, RoleAPI, UserAPI, UserForm, UserPageVO, UserQuery, } from "dehaze-sdk-js";
 
 import type { UploadInstance } from "element-plus";
 import { genFileId } from "element-plus";

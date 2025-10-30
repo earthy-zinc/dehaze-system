@@ -1,14 +1,14 @@
 <template>
   <svg
+    :style="'width:' + size + ';height:' + size"
     aria-hidden="true"
     class="svg-icon"
-    :style="'width:' + size + ';height:' + size"
   >
-    <use :xlink:href="symbolId" :fill="color" />
+    <use :fill="color" :xlink:href="symbolId" />
   </svg>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 const props = defineProps({
   prefix: {
     type: String,

@@ -26,14 +26,9 @@
     </template>
   </div>
 </template>
-<script setup lang="ts">
-import {
-  useAppStore,
-  useTagsViewStore,
-  useUserStore,
-  useSettingsStore,
-} from "@/store";
+<script lang="ts" setup>
 import defaultSettings from "@/settings";
+import { useSettingsStore, useTagsViewStore, useUserStore } from "@/store";
 
 const tagsViewStore = useTagsViewStore();
 const userStore = useUserStore();

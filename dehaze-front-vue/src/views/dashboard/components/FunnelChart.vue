@@ -3,7 +3,7 @@
   <div :id="id" :class="className" :style="{ height, width }"></div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as echarts from "echarts";
 
 const props = defineProps({

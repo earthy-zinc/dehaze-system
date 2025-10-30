@@ -3,10 +3,10 @@
     <el-popover :visible="popoverVisible" :width="width" placement="bottom-end">
       <template #reference>
         <el-input
-          class="reference"
           v-model="selectedIcon"
-          readonly
+          class="reference"
           placeholder="点击选择图标"
+          readonly
           @click="popoverVisible = !popoverVisible"
         >
           <template #prepend>
@@ -39,8 +39,8 @@
       <div ref="popoverContentRef">
         <el-input
           v-model="searchText"
-          placeholder="搜索图标"
           clearable
+          placeholder="搜索图标"
           @input="filterIcons"
         />
         <el-tabs v-model="activeTab" @tab-click="handleTabClick">
@@ -53,7 +53,7 @@
                   class="icon-item"
                   @click="selectIcon(icon)"
                 >
-                  <el-tooltip :content="icon" placement="bottom" effect="light">
+                  <el-tooltip :content="icon" effect="light" placement="bottom">
                     <svg-icon :icon-class="icon" />
                   </el-tooltip>
                 </li>
@@ -82,7 +82,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 
 const props = defineProps({
@@ -178,7 +178,7 @@ onClickOutside(iconSelectRef, () => (popoverVisible.value = false), {
 });
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .reference :deep(.el-input__wrapper),
 .reference :deep(.el-input__inner) {
   cursor: pointer;

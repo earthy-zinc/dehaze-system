@@ -6,7 +6,7 @@
   </el-card>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import * as echarts from "echarts";
 
 const props = defineProps({

@@ -1,30 +1,30 @@
 <!-- 左侧边菜单：包括左侧布局(left)、顶部布局(all)、混合布局(left) -->
 <template>
   <el-menu
-    :default-active="currentRoute.path"
-    :collapse="!appStore.sidebar.opened"
-    :background-color="variables['menu-background']"
-    :text-color="variables['menu-text']"
     :active-text-color="variables['menu-active-text']"
-    :unique-opened="false"
+    :background-color="variables['menu-background']"
+    :collapse="!appStore.sidebar.opened"
     :collapse-transition="false"
+    :default-active="currentRoute.path"
     :mode="layout === 'top' ? 'horizontal' : 'vertical'"
+    :text-color="variables['menu-text']"
+    :unique-opened="false"
   >
     <SidebarMenuItem
       v-for="route in menuList"
       :key="route.path"
-      :item="route"
       :base-path="resolvePath(route.path)"
       :is-collapse="!appStore.sidebar.opened"
+      :item="route"
     />
   </el-menu>
 </template>
 
 <script lang="ts" setup>
-import { useSettingsStore, useAppStore } from "@/store";
+import { useAppStore, useSettingsStore } from "@/store";
+import variables from "@/styles/variables.module.scss";
 import { isExternal } from "@/utils/index";
 import path from "path-browserify";
-import variables from "@/styles/variables.module.scss";
 
 const settingsStore = useSettingsStore();
 const appStore = useAppStore();

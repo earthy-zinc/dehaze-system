@@ -5,8 +5,8 @@
         <el-col :span="18" :xs="24">
           <div class="flex h-full items-center">
             <img
-              class="w-20 h-20 mr-5 rounded-full"
               :src="userStore.user.avatar + '?imageView2/1/w/80/h/80'"
+              class="w-20 h-20 mr-5 rounded-full"
             />
             <div>
               <p>{{ greetings }}</p>
@@ -40,11 +40,11 @@
     <!-- 数据卡片 -->
     <el-row :gutter="10" class="mt-3">
       <el-col
-        :xs="24"
-        :sm="12"
-        :lg="6"
         v-for="(item, index) in cardData"
         :key="index"
+        :lg="6"
+        :sm="12"
+        :xs="24"
       >
         <el-card shadow="never">
           <template #header>
@@ -78,34 +78,34 @@
     <!-- Echarts 图表 -->
     <el-row :gutter="10" class="mt-3">
       <el-col
-        :xs="24"
-        :sm="12"
-        :lg="8"
-        class="mb-2"
         v-for="item in chartData"
         :key="item"
+        :lg="8"
+        :sm="12"
+        :xs="24"
+        class="mb-2"
       >
         <component
           :is="chartComponent(item)"
           :id="item"
+          class="bg-[var(--el-bg-color-overlay)]"
           height="400px"
           width="100%"
-          class="bg-[var(--el-bg-color-overlay)]"
         />
       </el-col>
     </el-row>
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
+import { useUserStore } from "@/store/modules/user";
+import { TransitionPresets, useTransition } from "@vueuse/core";
 import type { EpPropMergeType } from "element-plus/es/utils/vue/props/types";
+
 defineOptions({
   name: "Dashboard",
   inheritAttrs: false,
 });
-
-import { useUserStore } from "@/store/modules/user";
-import { useTransition, TransitionPresets } from "@vueuse/core";
 
 const userStore = useUserStore();
 const date: Date = new Date();

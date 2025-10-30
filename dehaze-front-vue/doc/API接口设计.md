@@ -5,16 +5,17 @@ order: 4
 # API接口设计
 
 ## 认证接口
+
 ### POST 登录
 
 POST /api/v1/auth/login
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明   |
-| -------- | ----- | ------ | ---- | ------ |
-| username | query | string | 是   | 用户名 |
-| password | query | string | 是   | 密码   |
+| 名称       | 位置    | 类型     | 必选 | 说明  |
+|----------|-------|--------|----|-----|
+| username | query | string | 是  | 用户名 |
+| password | query | string | 是  | 密码  |
 
 > 返回示例
 
@@ -36,6 +37,7 @@ POST /api/v1/auth/login
 GET /api/v1/auth/captcha
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -60,12 +62,12 @@ DELETE /api/v1/auth/logout
 
 ## 用户接口
 
-
 ### PUT 修改用户
 
 PUT /api/v1/users/{userId}
 
 > Body 请求参数
+
 ```json
 {
   "id": 0,
@@ -85,10 +87,10 @@ PUT /api/v1/users/{userId}
 
 ### 请求参数
 
-| 名称   | 位置 | 类型                        | 必选 | 说明   |
-| ------ | ---- | --------------------------- | ---- | ------ |
-| userId | path | integer                     | 是   | 用户ID |
-| body   | body | [UserForm](#schemauserform) | 否   | none   |
+| 名称     | 位置   | 类型                          | 必选 | 说明   |
+|--------|------|-----------------------------|----|------|
+| userId | path | integer                     | 是  | 用户ID |
+| body   | body | [UserForm](#schemauserform) | 否  | none |
 
 > 返回示例
 
@@ -125,9 +127,9 @@ POST /api/v1/users
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| body | body | [UserForm](#schemauserform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| body | body | [UserForm](#schemauserform) | 否  | none |
 
 > 返回示例
 
@@ -138,7 +140,6 @@ POST /api/v1/users
   "msg": "string"
 }
 ```
-
 
 ### POST 导入用户
 
@@ -146,12 +147,13 @@ POST /api/v1/users/_import
 
 #### 请求参数
 
-| 名称   | 位置  | 类型    | 必选 | 说明   |
-| ------ | ----- | ------- | ---- | ------ |
-| deptId | query | integer | 是   | 部门ID |
-| file   | query | string  | 是   | none   |
+| 名称     | 位置    | 类型      | 必选 | 说明   |
+|--------|-------|---------|----|------|
+| deptId | query | integer | 是  | 部门ID |
+| file   | query | string  | 是  | none |
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -160,17 +162,16 @@ POST /api/v1/users/_import
 }
 ```
 
-
 ### PATCH 修改用户状态
 
 PATCH /api/v1/users/{userId}/status
 
 #### 请求参数
 
-| 名称   | 位置  | 类型    | 必选 | 说明                    |
-| ------ | ----- | ------- | ---- | ----------------------- |
-| userId | path  | integer | 是   | 用户ID                  |
-| status | query | integer | 是   | 用户状态(1:启用;0:禁用) |
+| 名称     | 位置    | 类型      | 必选 | 说明              |
+|--------|-------|---------|----|-----------------|
+| userId | path  | integer | 是  | 用户ID            |
+| status | query | integer | 是  | 用户状态(1:启用;0:禁用) |
 
 > 返回示例
 
@@ -188,10 +189,10 @@ PATCH /api/v1/users/{userId}/password
 
 #### 请求参数
 
-| 名称     | 位置  | 类型    | 必选 | 说明   |
-| -------- | ----- | ------- | ---- | ------ |
-| userId   | path  | integer | 是   | 用户ID |
-| password | query | string  | 是   | none   |
+| 名称       | 位置    | 类型      | 必选 | 说明   |
+|----------|-------|---------|----|------|
+| userId   | path  | integer | 是  | 用户ID |
+| password | query | string  | 是  | none |
 
 > 返回示例
 
@@ -209,9 +210,9 @@ GET /api/v1/users/{userId}/form
 
 #### 请求参数
 
-| 名称   | 位置 | 类型    | 必选 | 说明   |
-| ------ | ---- | ------- | ---- | ------ |
-| userId | path | integer | 是   | 用户ID |
+| 名称     | 位置   | 类型      | 必选 | 说明   |
+|--------|------|---------|----|------|
+| userId | path | integer | 是  | 用户ID |
 
 > 返回示例
 
@@ -240,22 +241,22 @@ GET /api/v1/users/{userId}/form
 
 GET /api/v1/users/template
 
-
 ### GET 用户分页列表
 
 GET /api/v1/users/page
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明                       |
-| -------- | ----- | ------ | ---- | -------------------------- |
-| keywords | query | string | 否   | 关键字(用户名/昵称/手机号) |
-| status   | query | string | 否   | 用户状态                   |
-| deptId   | query | string | 否   | 部门ID                     |
-| pageNum  | query | string | 否   | 页码                       |
-| pageSize | query | string | 否   | 每页记录数                 |
+| 名称       | 位置    | 类型     | 必选 | 说明              |
+|----------|-------|--------|----|-----------------|
+| keywords | query | string | 否  | 关键字(用户名/昵称/手机号) |
+| status   | query | string | 否  | 用户状态            |
+| deptId   | query | string | 否  | 部门ID            |
+| pageNum  | query | string | 否  | 页码              |
+| pageSize | query | string | 否  | 每页记录数           |
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -311,14 +312,13 @@ GET /api/v1/users/_export
 
 #### 请求参数
 
-| 名称     | 位置  | 类型    | 必选 | 说明                       |
-| -------- | ----- | ------- | ---- | -------------------------- |
-| pageNum  | query | integer | 否   | 页码                       |
-| pageSize | query | integer | 否   | 每页记录数                 |
-| keywords | query | string  | 否   | 关键字(用户名/昵称/手机号) |
-| status   | query | integer | 否   | 用户状态                   |
-| deptId   | query | integer | 否   | 部门ID                     |
-
+| 名称       | 位置    | 类型      | 必选 | 说明              |
+|----------|-------|---------|----|-----------------|
+| pageNum  | query | integer | 否  | 页码              |
+| pageSize | query | integer | 否  | 每页记录数           |
+| keywords | query | string  | 否  | 关键字(用户名/昵称/手机号) |
+| status   | query | integer | 否  | 用户状态            |
+| deptId   | query | integer | 否  | 部门ID            |
 
 ### DELETE 删除用户
 
@@ -326,9 +326,9 @@ DELETE /api/v1/users/{ids}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型   | 必选 | 说明                          |
-| ---- | ---- | ------ | ---- | ----------------------------- |
-| ids  | path | string | 是   | 用户ID，多个以英文逗号(,)分割 |
+| 名称  | 位置   | 类型     | 必选 | 说明                |
+|-----|------|--------|----|-------------------|
+| ids | path | string | 是  | 用户ID，多个以英文逗号(,)分割 |
 
 > 返回示例
 
@@ -348,10 +348,10 @@ PUT /api/v1/roles/{roleId}/status
 
 #### 请求参数
 
-| 名称   | 位置  | 类型    | 必选 | 说明                |
-| ------ | ----- | ------- | ---- | ------------------- |
-| roleId | path  | integer | 是   | 角色ID              |
-| status | query | integer | 是   | 状态(1:启用;0:禁用) |
+| 名称     | 位置    | 类型      | 必选 | 说明            |
+|--------|-------|---------|----|---------------|
+| roleId | path  | integer | 是  | 角色ID          |
+| status | query | integer | 是  | 状态(1:启用;0:禁用) |
 
 > 返回示例
 
@@ -377,12 +377,13 @@ PUT /api/v1/roles/{roleId}/menus
 
 ### 请求参数
 
-| 名称   | 位置 | 类型           | 必选 | 说明 |
-| ------ | ---- | -------------- | ---- | ---- |
-| roleId | path | integer        | 是   | none |
-| body   | body | array[integer] | 否   | none |
+| 名称     | 位置   | 类型             | 必选 | 说明   |
+|--------|------|----------------|----|------|
+| roleId | path | integer        | 是  | none |
+| body   | body | array[integer] | 否  | none |
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -410,10 +411,10 @@ PUT /api/v1/roles/{id}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| id   | path | string                      | 是   | none |
-| body | body | [RoleForm](#schemaroleform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| id   | path | string                      | 是  | none |
+| body | body | [RoleForm](#schemaroleform) | 否  | none |
 
 > 返回示例
 
@@ -424,7 +425,6 @@ PUT /api/v1/roles/{id}
   "msg": "string"
 }
 ```
-
 
 ### POST 新增角色
 
@@ -445,9 +445,9 @@ POST /api/v1/roles
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| body | body | [RoleForm](#schemaroleform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| body | body | [RoleForm](#schemaroleform) | 否  | none |
 
 > 返回示例
 
@@ -465,9 +465,9 @@ GET /api/v1/roles/{roleId}/menuIds
 
 #### 请求参数
 
-| 名称   | 位置 | 类型    | 必选 | 说明   |
-| ------ | ---- | ------- | ---- | ------ |
-| roleId | path | integer | 是   | 角色ID |
+| 名称     | 位置   | 类型      | 必选 | 说明   |
+|--------|------|---------|----|------|
+| roleId | path | integer | 是  | 角色ID |
 
 > 返回示例
 
@@ -487,9 +487,9 @@ GET /api/v1/roles/{roleId}/form
 
 #### 请求参数
 
-| 名称   | 位置 | 类型    | 必选 | 说明   |
-| ------ | ---- | ------- | ---- | ------ |
-| roleId | path | integer | 是   | 角色ID |
+| 名称     | 位置   | 类型      | 必选 | 说明   |
+|--------|------|---------|----|------|
+| roleId | path | integer | 是  | 角色ID |
 
 > 返回示例
 
@@ -514,11 +514,11 @@ GET /api/v1/roles/page
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明                      |
-| -------- | ----- | ------ | ---- | ------------------------- |
-| keywords | query | string | 否   | 关键字(角色名称/角色编码) |
-| pageNum  | query | string | 否   | 页码                      |
-| pageSize | query | string | 否   | 每页记录数                |
+| 名称       | 位置    | 类型     | 必选 | 说明             |
+|----------|-------|--------|----|----------------|
+| keywords | query | string | 否  | 关键字(角色名称/角色编码) |
+| pageNum  | query | string | 否  | 页码             |
+| pageSize | query | string | 否  | 每页记录数          |
 
 > 返回示例
 
@@ -543,13 +543,11 @@ GET /api/v1/roles/page
 }
 ```
 
-
 ### GET 角色下拉列表
 
 GET /api/v1/roles/options
 
 > 返回示例
-
 
 ```json
 {
@@ -576,9 +574,9 @@ DELETE /api/v1/roles/{ids}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型   | 必选 | 说明                            |
-| ---- | ---- | ------ | ---- | ------------------------------- |
-| ids  | path | string | 是   | 删除角色，多个以英文逗号(,)分割 |
+| 名称  | 位置   | 类型     | 必选 | 说明                |
+|-----|------|--------|----|-------------------|
+| ids | path | string | 是  | 删除角色，多个以英文逗号(,)分割 |
 
 > 返回示例
 
@@ -616,10 +614,10 @@ PUT /api/v1/menus/{id}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| id   | path | string                      | 是   | none |
-| body | body | [MenuForm](#schemamenuform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| id   | path | string                      | 是  | none |
+| body | body | [MenuForm](#schemamenuform) | 否  | none |
 
 > 返回示例
 
@@ -637,11 +635,12 @@ DELETE /api/v1/menus/{id}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型    | 必选 | 说明                      |
-| ---- | ---- | ------- | ---- | ------------------------- |
-| id   | path | integer | 是   | 菜单ID，多个以英文(,)分割 |
+| 名称 | 位置   | 类型      | 必选 | 说明              |
+|----|------|---------|----|-----------------|
+| id | path | integer | 是  | 菜单ID，多个以英文(,)分割 |
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -656,10 +655,10 @@ GET /api/v1/menus
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明                   |
-| -------- | ----- | ------ | ---- | ---------------------- |
-| keywords | query | string | 否   | 关键字(菜单名称)       |
-| status   | query | string | 否   | 状态(1->显示；0->隐藏) |
+| 名称       | 位置    | 类型     | 必选 | 说明              |
+|----------|-------|--------|----|-----------------|
+| keywords | query | string | 否  | 关键字(菜单名称)       |
+| status   | query | string | 否  | 状态(1->显示；0->隐藏) |
 
 > 返回示例
 
@@ -727,9 +726,9 @@ POST /api/v1/menus
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| body | body | [MenuForm](#schemamenuform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| body | body | [MenuForm](#schemamenuform) | 否  | none |
 
 > 返回示例
 
@@ -747,10 +746,10 @@ PATCH /api/v1/menus/{menuId}
 
 #### 请求参数
 
-| 名称    | 位置  | 类型    | 必选 | 说明                    |
-| ------- | ----- | ------- | ---- | ----------------------- |
-| menuId  | path  | integer | 是   | 菜单ID                  |
-| visible | query | integer | 是   | 显示状态(1:显示;0:隐藏) |
+| 名称      | 位置    | 类型      | 必选 | 说明              |
+|---------|-------|---------|----|-----------------|
+| menuId  | path  | integer | 是  | 菜单ID            |
+| visible | query | integer | 是  | 显示状态(1:显示;0:隐藏) |
 
 > 返回示例
 
@@ -768,9 +767,9 @@ GET /api/v1/menus/{id}/form
 
 #### 请求参数
 
-| 名称 | 位置 | 类型    | 必选 | 说明   |
-| ---- | ---- | ------- | ---- | ------ |
-| id   | path | integer | 是   | 菜单ID |
+| 名称 | 位置   | 类型      | 必选 | 说明   |
+|----|------|---------|----|------|
+| id | path | integer | 是  | 菜单ID |
 
 > 返回示例
 
@@ -846,7 +845,6 @@ GET /api/v1/menus/options
 
 > 返回示例
 
-
 ```json
 {
   "code": "string",
@@ -877,13 +875,12 @@ PUT /api/v1/dict/{id}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| id   | path | integer                     | 是   | none |
-| body | body | [DictForm](#schemadictform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| id   | path | integer                     | 是  | none |
+| body | body | [DictForm](#schemadictform) | 否  | none |
 
 > 返回示例
-
 
 ```json
 {
@@ -911,12 +908,13 @@ PUT /api/v1/dict/types/{id}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                                | 必选 | 说明 |
-| ---- | ---- | ----------------------------------- | ---- | ---- |
-| id   | path | integer                             | 是   | none |
-| body | body | [DictTypeForm](#schemadicttypeform) | 否   | none |
+| 名称   | 位置   | 类型                                  | 必选 | 说明   |
+|------|------|-------------------------------------|----|------|
+| id   | path | integer                             | 是  | none |
+| body | body | [DictTypeForm](#schemadicttypeform) | 否  | none |
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -945,9 +943,9 @@ POST /api/v1/dict
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| body | body | [DictForm](#schemadictform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| body | body | [DictForm](#schemadictform) | 否  | none |
 
 > 返回示例
 
@@ -977,9 +975,9 @@ POST /api/v1/dict/types
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                                | 必选 | 说明 |
-| ---- | ---- | ----------------------------------- | ---- | ---- |
-| body | body | [DictTypeForm](#schemadicttypeform) | 否   | none |
+| 名称   | 位置   | 类型                                  | 必选 | 说明   |
+|------|------|-------------------------------------|----|------|
+| body | body | [DictTypeForm](#schemadicttypeform) | 否  | none |
 
 > 返回示例
 
@@ -997,9 +995,9 @@ GET /api/v1/dict/{typeCode}/options
 
 #### 请求参数
 
-| 名称     | 位置 | 类型   | 必选 | 说明         |
-| -------- | ---- | ------ | ---- | ------------ |
-| typeCode | path | string | 是   | 字典类型编码 |
+| 名称       | 位置   | 类型     | 必选 | 说明     |
+|----------|------|--------|----|--------|
+| typeCode | path | string | 是  | 字典类型编码 |
 
 > 返回示例
 
@@ -1028,9 +1026,9 @@ GET /api/v1/dict/{id}/form
 
 #### 请求参数
 
-| 名称 | 位置 | 类型    | 必选 | 说明   |
-| ---- | ---- | ------- | ---- | ------ |
-| id   | path | integer | 是   | 字典ID |
+| 名称 | 位置   | 类型      | 必选 | 说明   |
+|----|------|---------|----|------|
+| id | path | integer | 是  | 字典ID |
 
 > 返回示例
 
@@ -1056,9 +1054,9 @@ GET /api/v1/dict/types/{id}/form
 
 #### 请求参数
 
-| 名称 | 位置 | 类型    | 必选 | 说明   |
-| ---- | ---- | ------- | ---- | ------ |
-| id   | path | integer | 是   | 字典ID |
+| 名称 | 位置   | 类型      | 必选 | 说明   |
+|----|------|---------|----|------|
+| id | path | integer | 是  | 字典ID |
 
 > 返回示例
 
@@ -1076,20 +1074,20 @@ GET /api/v1/dict/types/{id}/form
 }
 ```
 
-
 ### GET 字典类型分页列表
 
 GET /api/v1/dict/types/page
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明                      |
-| -------- | ----- | ------ | ---- | ------------------------- |
-| keywords | query | string | 否   | 关键字(类型名称/类型编码) |
-| pageNum  | query | string | 否   | 页码                      |
-| pageSize | query | string | 否   | 每页记录数                |
+| 名称       | 位置    | 类型     | 必选 | 说明             |
+|----------|-------|--------|----|----------------|
+| keywords | query | string | 否  | 关键字(类型名称/类型编码) |
+| pageNum  | query | string | 否  | 页码             |
+| pageSize | query | string | 否  | 每页记录数          |
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -1114,12 +1112,12 @@ GET /api/v1/dict/page
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明               |
-| -------- | ----- | ------ | ---- | ------------------ |
-| keywords | query | string | 否   | 关键字(字典项名称) |
-| typeCode | query | string | 否   | 字典类型编码       |
-| pageNum  | query | string | 否   | 页码               |
-| pageSize | query | string | 否   | 每页记录数         |
+| 名称       | 位置    | 类型     | 必选 | 说明         |
+|----------|-------|--------|----|------------|
+| keywords | query | string | 否  | 关键字(字典项名称) |
+| typeCode | query | string | 否  | 字典类型编码     |
+| pageNum  | query | string | 否  | 页码         |
+| pageSize | query | string | 否  | 每页记录数      |
 
 > 返回示例
 
@@ -1149,9 +1147,9 @@ DELETE /api/v1/dict/{ids}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型   | 必选 | 说明                          |
-| ---- | ---- | ------ | ---- | ----------------------------- |
-| ids  | path | string | 是   | 字典ID，多个以英文逗号(,)拼接 |
+| 名称  | 位置   | 类型     | 必选 | 说明                |
+|-----|------|--------|----|-------------------|
+| ids | path | string | 是  | 字典ID，多个以英文逗号(,)拼接 |
 
 > 返回示例
 
@@ -1165,16 +1163,15 @@ DELETE /api/v1/dict/{ids}
 }
 ```
 
-
 ### DELETE 删除字典类型
 
 DELETE /api/v1/dict/types/{ids}
 
 #### 请求参数
 
-| 名称 | 位置 | 类型   | 必选 | 说明                              |
-| ---- | ---- | ------ | ---- | --------------------------------- |
-| ids  | path | string | 是   | 字典类型ID，多个以英文逗号(,)分割 |
+| 名称  | 位置   | 类型     | 必选 | 说明                  |
+|-----|------|--------|----|---------------------|
+| ids | path | string | 是  | 字典类型ID，多个以英文逗号(,)分割 |
 
 > 返回示例
 
@@ -1185,7 +1182,6 @@ DELETE /api/v1/dict/types/{ids}
   "msg": "string"
 }
 ```
-
 
 ## 部门接口
 
@@ -1207,10 +1203,10 @@ PUT /api/v1/dept/{deptId}
 
 #### 请求参数
 
-| 名称   | 位置 | 类型                        | 必选 | 说明 |
-| ------ | ---- | --------------------------- | ---- | ---- |
-| deptId | path | integer                     | 是   | none |
-| body   | body | [DeptForm](#schemadeptform) | 否   | none |
+| 名称     | 位置   | 类型                          | 必选 | 说明   |
+|--------|------|-----------------------------|----|------|
+| deptId | path | integer                     | 是  | none |
+| body   | body | [DeptForm](#schemadeptform) | 否  | none |
 
 > 返回示例
 
@@ -1228,10 +1224,10 @@ GET /api/v1/dept
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明                   |
-| -------- | ----- | ------ | ---- | ---------------------- |
-| keywords | query | string | 否   | 关键字(部门名称)       |
-| status   | query | string | 否   | 状态(1->正常；0->禁用) |
+| 名称       | 位置    | 类型     | 必选 | 说明              |
+|----------|-------|--------|----|-----------------|
+| keywords | query | string | 否  | 关键字(部门名称)       |
+| status   | query | string | 否  | 状态(1->正常；0->禁用) |
 
 > 返回示例
 
@@ -1285,9 +1281,9 @@ POST /api/v1/dept
 
 #### 请求参数
 
-| 名称 | 位置 | 类型                        | 必选 | 说明 |
-| ---- | ---- | --------------------------- | ---- | ---- |
-| body | body | [DeptForm](#schemadeptform) | 否   | none |
+| 名称   | 位置   | 类型                          | 必选 | 说明   |
+|------|------|-----------------------------|----|------|
+| body | body | [DeptForm](#schemadeptform) | 否  | none |
 
 > 返回示例
 
@@ -1301,16 +1297,15 @@ POST /api/v1/dept
 }
 ```
 
-
 ### GET 获取部门表单数据
 
 GET /api/v1/dept/{deptId}/form
 
 #### 请求参数
 
-| 名称   | 位置 | 类型    | 必选 | 说明   |
-| ------ | ---- | ------- | ---- | ------ |
-| deptId | path | integer | 是   | 部门ID |
+| 名称     | 位置   | 类型      | 必选 | 说明   |
+|--------|------|---------|----|------|
+| deptId | path | integer | 是  | 部门ID |
 
 > 返回示例
 
@@ -1333,6 +1328,7 @@ GET /api/v1/dept/{deptId}/form
 GET /api/v1/dept/options
 
 > 返回示例
+
 ```json
 {
   "code": "string",
@@ -1358,9 +1354,9 @@ DELETE /api/v1/dept/{ids}
 
 ### 请求参数
 
-| 名称 | 位置 | 类型   | 必选 | 说明                          |
-| ---- | ---- | ------ | ---- | ----------------------------- |
-| ids  | path | string | 是   | 部门ID，多个以英文逗号(,)分割 |
+| 名称  | 位置   | 类型     | 必选 | 说明                |
+|-----|------|--------|----|-------------------|
+| ids | path | string | 是  | 部门ID，多个以英文逗号(,)分割 |
 
 > 返回示例
 
@@ -1373,6 +1369,7 @@ DELETE /api/v1/dept/{ids}
 ```
 
 ## 文件接口
+
 ### POST 文件上传
 
 POST /api/v1/files
@@ -1387,10 +1384,10 @@ POST /api/v1/files
 
 #### 请求参数
 
-| 名称   | 位置 | 类型           | 必选 | 说明         |
-| ------ | ---- | -------------- | ---- | ------------ |
-| body   | body | object         | 否   | none         |
-| » file | body | string(binary) | 是   | 表单文件对象 |
+| 名称     | 位置   | 类型             | 必选 | 说明     |
+|--------|------|----------------|----|--------|
+| body   | body | object         | 否  | none   |
+| » file | body | string(binary) | 是  | 表单文件对象 |
 
 > 返回示例
 
@@ -1411,9 +1408,9 @@ DELETE /api/v1/files
 
 #### 请求参数
 
-| 名称     | 位置  | 类型   | 必选 | 说明     |
-| -------- | ----- | ------ | ---- | -------- |
-| filePath | query | string | 是   | 文件路径 |
+| 名称       | 位置    | 类型     | 必选 | 说明   |
+|----------|-------|--------|----|------|
+| filePath | query | string | 是  | 文件路径 |
 
 > 返回示例
 
@@ -1433,9 +1430,9 @@ POST /upload/
 
 #### 请求参数
 
-| 名称 | 位置 | 类型           | 必选 | 说明 |
-| ---- | ---- | -------------- | ---- | ---- |
-| body | body | string(binary) | 否   | none |
+| 名称   | 位置   | 类型             | 必选 | 说明   |
+|------|------|----------------|----|------|
+| body | body | string(binary) | 否  | none |
 
 > 返回示例
 
@@ -1455,10 +1452,9 @@ GET /download/{image_name}/
 
 #### 请求参数
 
-| 名称       | 位置 | 类型   | 必选 | 说明 |
-| ---------- | ---- | ------ | ---- | ---- |
-| image_name | path | string | 是   | none |
-
+| 名称         | 位置   | 类型     | 必选 | 说明   |
+|------------|------|--------|----|------|
+| image_name | path | string | 是  | none |
 
 ### POST 图片去雾
 
@@ -1475,16 +1471,16 @@ POST /dehazeImage/
 
 #### 请求参数
 
-| 名称         | 位置 | 类型   | 必选 | 说明             |
-| ------------ | ---- | ------ | ---- | ---------------- |
-| body         | body | object | 否   | none             |
-| » haze_image | body | string | 是   | 有雾图片的文件名 |
-| » model_name | body | string | 是   | none             |
+| 名称           | 位置   | 类型     | 必选 | 说明       |
+|--------------|------|--------|----|----------|
+| body         | body | object | 否  | none     |
+| » haze_image | body | string | 是  | 有雾图片的文件名 |
+| » model_name | body | string | 是  | none     |
 
 ##### 枚举值
 
-| 属性         | 值             |
-| ------------ | -------------- |
+| 属性           | 值              |
+|--------------|----------------|
 | » model_name | C2PNet/OTS.pkl |
 
 > 返回示例
@@ -1516,11 +1512,11 @@ POST /calculateIndex/
 
 #### 请求参数
 
-| 名称          | 位置 | 类型   | 必选 | 说明 |
-| ------------- | ---- | ------ | ---- | ---- |
-| body          | body | object | 否   | none |
-| » haze_image  | body | string | 是   | none |
-| » clear_image | body | string | 是   | none |
+| 名称            | 位置   | 类型     | 必选 | 说明   |
+|---------------|------|--------|----|------|
+| body          | body | object | 否  | none |
+| » haze_image  | body | string | 是  | none |
+| » clear_image | body | string | 是  | none |
 
 > 返回示例
 
@@ -1540,6 +1536,7 @@ POST /calculateIndex/
 GET /model/
 
 > 返回示例
+
 ```json
 {
   "code": "string",

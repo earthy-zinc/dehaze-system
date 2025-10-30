@@ -5,7 +5,7 @@ export default {
 };
 </script>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 function message() {
   return "The webmaster said that you can not enter this page...";
 }
@@ -15,21 +15,21 @@ function message() {
   <div class="wscn-http404-container">
     <div class="wscn-http404">
       <div class="pic-404">
-        <img class="pic-404__parent" src="@/assets/images/404.png" alt="404" />
+        <img alt="404" class="pic-404__parent" src="@/assets/images/404.png" />
         <img
+          alt="404"
           class="pic-404__child left"
           src="@/assets/images/404_cloud.png"
-          alt="404"
         />
         <img
+          alt="404"
           class="pic-404__child mid"
           src="@/assets/images/404_cloud.png"
-          alt="404"
         />
         <img
+          alt="404"
           class="pic-404__child right"
           src="@/assets/images/404_cloud.png"
-          alt="404"
         />
       </div>
       <div class="bullshit">
@@ -37,8 +37,8 @@ function message() {
         <div class="bullshit__info">
           All rights reserved
           <a
-            style="color: #20a0ff"
             href="https://wallstreetcn.com"
+            style="color: #20a0ff"
             target="_blank"
             >wallstreetcn</a
           >
@@ -48,7 +48,7 @@ function message() {
           Please check that the URL you entered is correct, or click the button
           below to return to the homepage.
         </div>
-        <a href="" class="bullshit__return-home">Back to home</a>
+        <a class="bullshit__return-home" href="">Back to home</a>
       </div>
     </div>
   </div>

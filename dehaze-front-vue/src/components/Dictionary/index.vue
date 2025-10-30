@@ -1,8 +1,8 @@
 <template>
   <el-select
     v-model="selectedValue"
-    :placeholder="placeholder"
     :disabled="disabled"
+    :placeholder="placeholder"
     clearable
     @change="handleChange"
   >
@@ -15,7 +15,7 @@
   </el-select>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { DictAPI } from "dehaze-sdk-js";
 
 const props = defineProps({

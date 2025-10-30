@@ -19,7 +19,7 @@ function handleImageLoad() {
 </script>
 
 <template>
-  <img @load="handleImageLoad" :src="src" alt="加载失败" />
+  <img :src="src" alt="加载失败" @load="handleImageLoad" />
 </template>
 
 <style lang="scss" scoped>

@@ -7,7 +7,7 @@
   <span v-if="title" class="ml-1">{{ translateRouteTitle(title) }}</span>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { translateRouteTitle } from "@/utils/i18n";
 
 defineProps({

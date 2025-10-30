@@ -10,8 +10,8 @@
     >
       <AppLink v-if="onlyOneChild.meta" :to="resolvePath(onlyOneChild.path)">
         <el-menu-item
-          :index="resolvePath(onlyOneChild.path)"
           :class="{ 'submenu-title-noDropdown': !isNest }"
+          :index="resolvePath(onlyOneChild.path)"
         >
           <SidebarMenuItemTitle
             :icon="onlyOneChild.meta.icon || (item.meta && item.meta.icon)"
@@ -34,21 +34,21 @@
       <SidebarMenuItem
         v-for="child in item.children"
         :key="child.path"
+        :base-path="resolvePath(child.path)"
         :is-nest="true"
         :item="child"
-        :base-path="resolvePath(child.path)"
       />
     </el-sub-menu>
   </div>
 </template>
-<script setup lang="ts">
+<script lang="ts" setup>
 defineOptions({
   name: "SidebarMenuItem",
   inheritAttrs: false,
 });
 
-import path from "path-browserify";
 import { isExternal } from "@/utils/index";
+import path from "path-browserify";
 import { RouteRecordRaw } from "vue-router";
 
 const props = defineProps({

@@ -1,5 +1,5 @@
-import { createI18n } from "vue-i18n";
 import { useAppStoreHook } from "@/store/modules/app";
+import { createI18n } from "vue-i18n";
 // 本地语言包
 import enLocale from "./package/en";
 import zhCnLocale from "./package/zh-cn";

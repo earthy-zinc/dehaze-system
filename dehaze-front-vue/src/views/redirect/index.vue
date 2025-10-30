@@ -2,7 +2,7 @@
   <div></div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();

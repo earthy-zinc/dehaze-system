@@ -1,8 +1,6 @@
-<script setup lang="ts">
-import { reactive, toRefs } from "vue";
+<script lang="ts" setup>
+import { defineComponent, reactive, toRefs } from "vue";
 import { useRouter } from "vue-router";
-
-import { defineComponent } from "vue";
 
 defineComponent({
   name: "Page401",
@@ -27,7 +25,7 @@ function back() {
 
 <template>
   <div class="errPage-container">
-    <el-button icon="el-icon-arrow-left" class="pan-back-btn" @click="back">
+    <el-button class="pan-back-btn" icon="el-icon-arrow-left" @click="back">
       返回
     </el-button>
     <el-row>
@@ -52,9 +50,9 @@ function back() {
       <el-col :span="12">
         <img
           :src="errGif"
-          width="313"
-          height="428"
           alt="Girl has dropped her ice cream."
+          height="428"
+          width="313"
         />
       </el-col>
     </el-row>

@@ -8,8 +8,8 @@
         <el-dropdown-item
           v-for="item of sizeOptions"
           :key="item.value"
-          :disabled="appStore.size == item.value"
           :command="item.value"
+          :disabled="appStore.size == item.value"
         >
           {{ item.label }}
         </el-dropdown-item>
@@ -18,7 +18,7 @@
   </el-dropdown>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { SizeEnum } from "@/enums/SizeEnum";
 import { useAppStore } from "@/store/modules/app";
 

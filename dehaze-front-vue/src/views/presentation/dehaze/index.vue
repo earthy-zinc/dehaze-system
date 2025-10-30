@@ -1,17 +1,17 @@
 <script lang="ts" setup>
 import AlgorithmToolBar from "@/components/AlgorithmToolBar/index.vue";
-import { useAlgorithmStore } from "@/store";
 import Camera from "@/components/Camera/index.vue";
-import SingleImageShow from "@/components/SingleImageShow/index.vue";
-import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
-import Loading from "@/components/Loading/index.vue";
-import { FileAPI, ModelAPI } from "dehaze-sdk-js";
-import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
-import { useImageShowStore } from "@/store/modules/imageShow";
 import DatasetImageSelect from "@/components/DatasetImageSelect/index.vue";
+import ExampleImageSelect from "@/components/ExampleImageSelect/index.vue";
+import Loading from "@/components/Loading/index.vue";
+import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
+import SingleImageShow from "@/components/SingleImageShow/index.vue";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
-import examples from "@/views/presentation/dehaze/exampleImages";
+import { useAlgorithmStore } from "@/store";
+import { useImageShowStore } from "@/store/modules/imageShow";
 import { changeUrl } from "@/utils";
+import examples from "@/views/presentation/dehaze/exampleImages";
+import { FileAPI, ModelAPI } from "dehaze-sdk-js";
 
 const algorithmStore = useAlgorithmStore();
 const imageShowStore = useImageShowStore();

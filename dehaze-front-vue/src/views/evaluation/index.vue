@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import { useImageShowStore } from "@/store/modules/imageShow";
-
-import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
-import { ModelAPI, AlgorithmAPI, Algorithm, EvalResult } from "dehaze-sdk-js";
 import ParallelImageShow from "@/components/ParallelImageShow/index.vue";
 import ParallelImageUpload from "@/components/ParallelImageUpload/index.vue";
+
+import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
+import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
+import { Algorithm, AlgorithmAPI, EvalResult, ModelAPI } from "dehaze-sdk-js";
 
 defineOptions({
   name: "Evaluation",

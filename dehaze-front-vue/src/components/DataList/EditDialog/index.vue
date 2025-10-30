@@ -1,5 +1,5 @@
-<script setup lang="ts">
-import { AlgorithmAPI, DatasetAPI, Algorithm, Dataset } from "dehaze-sdk-js";
+<script lang="ts" setup>
+import { Algorithm, AlgorithmAPI, Dataset, DatasetAPI } from "dehaze-sdk-js";
 
 defineOptions({
   name: "EditDialog",
@@ -216,8 +216,8 @@ async function submitForm() {
   <el-dialog
     v-model="dialogVisible"
     :title="title"
-    destroy-on-close
     append-to-body
+    destroy-on-close
     @close="closeDialog"
   >
     <el-form ref="formRef" :model="formData" :rules="rules">
@@ -237,10 +237,10 @@ async function submitForm() {
           <el-option label="GB" value="GB" />
         </el-select>
       </el-form-item>
-      <el-form-item label="总图片数量" prop="total" v-if="isDatasetList">
+      <el-form-item v-if="isDatasetList" label="总图片数量" prop="total">
         <el-input-number v-model="formData.total" :min="1" />
       </el-form-item>
-      <el-form-item label="导 入 路 径" prop="importPath" v-else>
+      <el-form-item v-else label="导 入 路 径" prop="importPath">
         <el-input v-model="formData.importPath" clearable />
       </el-form-item>
       <el-form-item label="存 储 位 置" prop="path">
@@ -248,13 +248,13 @@ async function submitForm() {
       </el-form-item>
       <el-form-item :label="`&nbsp;&nbsp;${NAME_CONSTANT}状态`">
         <el-switch
-          size="large"
           v-model="formData.status"
-          inline-prompt
           :active-text="`${isDatasetList ? '显示' : '启用'}`"
           :inactive-text="`${isDatasetList ? '隐藏' : '禁用'}`"
           active-value="1"
           inactive-value="0"
+          inline-prompt
+          size="large"
         />
       </el-form-item>
     </el-form>
@@ -267,4 +267,4 @@ async function submitForm() {
   </el-dialog>
 </template>
 
-<style scoped lang="scss"></style>
+<style lang="scss" scoped></style>

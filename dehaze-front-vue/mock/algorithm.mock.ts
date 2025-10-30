@@ -1,6 +1,7 @@
 import { defineMock } from "./base";
-import modelVO from "./data/ModelVO";
 import modelOptionsVO from "./data/ModelOptionsVO";
+import modelVO from "./data/ModelVO";
+
 export default defineMock([
   {
     url: "algorithm",

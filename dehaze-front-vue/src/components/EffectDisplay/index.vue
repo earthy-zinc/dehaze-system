@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { onMounted } from "vue";
-import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
 import { Point } from "@/components/AlgorithmToolBar/types";
+import OverlapImageShow from "@/components/OverlapImageShow/index.vue";
+import { onMounted } from "vue";
 
 defineOptions({
   name: "EffectDisplay",

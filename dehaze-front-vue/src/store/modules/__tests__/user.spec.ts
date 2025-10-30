@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { setActivePinia, createPinia } from "pinia";
-import { useUserStore } from "../user";
-import { AuthAPI, UserAPI } from "dehaze-sdk-js";
 import { TOKEN_KEY } from "@/enums/CacheEnum";
+import { AuthAPI, UserAPI } from "dehaze-sdk-js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useUserStore } from "../user";
 
 // Mock SDK APIs
 vi.mock("dehaze-sdk-js", () => ({

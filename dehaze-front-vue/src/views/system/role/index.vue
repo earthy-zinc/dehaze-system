@@ -1,12 +1,12 @@
 <template>
   <div class="app-container">
     <div class="search-container">
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
-        <el-form-item prop="keywords" label="关键字">
+      <el-form ref="queryFormRef" :inline="true" :model="queryParams">
+        <el-form-item label="关键字" prop="keywords">
           <el-input
             v-model="queryParams.keywords"
-            placeholder="角色名称"
             clearable
+            placeholder="角色名称"
             @keyup.enter="handleQuery"
           />
         </el-form-item>
@@ -20,14 +20,14 @@
       </el-form>
     </div>
 
-    <el-card shadow="never" class="table-container">
+    <el-card class="table-container" shadow="never">
       <template #header>
         <el-button type="success" @click="openDialog()"
           ><i-ep-plus />新增</el-button
         >
         <el-button
-          type="danger"
           :disabled="ids.length === 0"
+          type="danger"
           @click="handleDelete()"
           ><i-ep-delete />删除</el-button
         >
@@ -37,45 +37,45 @@
         ref="dataTableRef"
         v-loading="loading"
         :data="roleList"
-        highlight-current-row
         border
+        highlight-current-row
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column label="角色名称" prop="name" min-width="100" />
+        <el-table-column align="center" type="selection" width="55" />
+        <el-table-column label="角色名称" min-width="100" prop="name" />
         <el-table-column label="角色编码" prop="code" width="150" />
 
-        <el-table-column label="状态" align="center" width="100">
+        <el-table-column align="center" label="状态" width="100">
           <template #default="scope">
             <el-tag v-if="scope.row.status === 1" type="success">正常</el-tag>
             <el-tag v-else type="info">禁用</el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column label="排序" align="center" width="80" prop="sort" />
+        <el-table-column align="center" label="排序" prop="sort" width="80" />
 
         <el-table-column fixed="right" label="操作" width="220">
           <template #default="scope">
             <el-button
-              type="primary"
-              size="small"
               link
+              size="small"
+              type="primary"
               @click="openMenuDialog(scope.row)"
             >
               <i-ep-position />分配权限
             </el-button>
             <el-button
-              type="primary"
-              size="small"
               link
+              size="small"
+              type="primary"
               @click="openDialog(scope.row.id)"
             >
               <i-ep-edit />编辑
             </el-button>
             <el-button
-              type="primary"
-              size="small"
               link
+              size="small"
+              type="primary"
               @click="handleDelete(scope.row.id)"
             >
               <i-ep-delete />删除
@@ -86,9 +86,9 @@
 
       <pagination
         v-if="total > 0"
-        v-model:total="total"
-        v-model:page="queryParams.pageNum"
         v-model:limit="queryParams.pageSize"
+        v-model:page="queryParams.pageNum"
+        v-model:total="total"
         @pagination="handleQuery"
       />
     </el-card>
@@ -116,10 +116,10 @@
 
         <el-form-item label="数据权限" prop="dataScope">
           <el-select v-model="formData.dataScope">
-            <el-option :key="0" label="全部数据" :value="0" />
-            <el-option :key="1" label="部门及子部门数据" :value="1" />
-            <el-option :key="2" label="本部门数据" :value="2" />
-            <el-option :key="3" label="本人数据" :value="3" />
+            <el-option :key="0" :value="0" label="全部数据" />
+            <el-option :key="1" :value="1" label="部门及子部门数据" />
+            <el-option :key="2" :value="2" label="本部门数据" />
+            <el-option :key="3" :value="3" label="本人数据" />
           </el-select>
         </el-form-item>
 
@@ -133,8 +133,8 @@
         <el-form-item label="排序" prop="sort">
           <el-input-number
             v-model="formData.sort"
-            controls-position="right"
             :min="0"
+            controls-position="right"
             style="width: 100px"
           />
         </el-form-item>
@@ -157,10 +157,10 @@
       <el-scrollbar v-loading="loading" max-height="600px">
         <el-tree
           ref="menuRef"
-          node-key="value"
-          show-checkbox
           :data="menuList"
           :default-expand-all="true"
+          node-key="value"
+          show-checkbox
         >
           <template #default="{ data }">
             {{ data.label }}
@@ -180,12 +180,12 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import {
-  RoleAPI,
   MenuAPI,
-  RolePageVO,
+  RoleAPI,
   RoleForm,
+  RolePageVO,
   RoleQuery,
 } from "dehaze-sdk-js";
 

@@ -3,8 +3,8 @@
     <!-- 开启水印 -->
     <el-watermark
       v-if="watermarkEnabled"
-      :font="{ color: fontColor }"
       :content="defaultSettings.watermarkContent"
+      :font="{ color: fontColor }"
       class="wh-full"
     >
       <router-view />
@@ -14,11 +14,11 @@
   </el-config-provider>
 </template>
 
-<script setup lang="ts">
-import { useAppStore, useSettingsStore } from "@/store";
-import defaultSettings from "@/settings";
-import { ThemeEnum } from "@/enums/ThemeEnum";
+<script lang="ts" setup>
 import { SizeEnum } from "@/enums/SizeEnum";
+import { ThemeEnum } from "@/enums/ThemeEnum";
+import defaultSettings from "@/settings";
+import { useAppStore, useSettingsStore } from "@/store";
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();

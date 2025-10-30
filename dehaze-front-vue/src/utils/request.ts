@@ -1,12 +1,12 @@
+import { useUserStoreHook } from "@/store/modules/user";
+
+import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import {
   configJavaAxios,
   configPythonAxios,
   ResponseData,
   ResultEnum,
 } from "dehaze-sdk-js";
-
-import type { AxiosError, InternalAxiosRequestConfig } from "axios";
-import { useUserStoreHook } from "@/store/modules/user";
 
 const onResponseError = (error: AxiosError) => {
   if (error.response?.data) {

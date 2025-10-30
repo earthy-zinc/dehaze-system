@@ -3,12 +3,12 @@
   <div class="app-container">
     <div class="search-container">
       <!-- 搜索表单 -->
-      <el-form ref="queryFormRef" :model="queryParams" :inline="true">
+      <el-form ref="queryFormRef" :inline="true" :model="queryParams">
         <el-form-item label="关键字" prop="name">
           <el-input
             v-model="queryParams.name"
-            placeholder="字典名称"
             clearable
+            placeholder="字典名称"
           />
         </el-form-item>
         <el-form-item>
@@ -29,8 +29,8 @@
         >
         <el-button
           v-hasPerm="['sys:dict:delete']"
-          type="danger"
           :disabled="ids.length === 0"
+          type="danger"
           @click="handleDelete()"
           ><i-ep-delete />删除</el-button
         >
@@ -46,25 +46,25 @@
         <el-table-column type="selection" width="50" />
         <el-table-column label="字典名称" prop="name" />
         <el-table-column label="字典值" prop="value" />
-        <el-table-column label="状态" align="center">
+        <el-table-column align="center" label="状态">
           <template #default="scope">
             <el-tag v-if="scope.row.status === 1" type="success">启用</el-tag>
             <el-tag v-else type="info">禁用</el-tag>
           </template>
         </el-table-column>
-        <el-table-column fixed="right" label="操作" align="center">
+        <el-table-column align="center" fixed="right" label="操作">
           <template #default="scope">
             <el-button
               v-hasPerm="['sys:dict:edit']"
-              type="primary"
               link
+              type="primary"
               @click="openDialog(scope.row.id)"
               ><i-ep-edit />编辑</el-button
             >
             <el-button
               v-hasPerm="['sys:dict:delete']"
-              type="primary"
               link
+              type="primary"
               @click.stop="handleDelete(scope.row.id)"
               ><i-ep-delete />删除</el-button
             >
@@ -74,9 +74,9 @@
 
       <pagination
         v-if="total > 0"
-        v-model:total="total"
-        v-model:page="queryParams.pageNum"
         v-model:limit="queryParams.pageSize"
+        v-model:page="queryParams.pageNum"
+        v-model:total="total"
         @pagination="handleQuery"
       />
     </el-card>
@@ -104,8 +104,8 @@
         <el-form-item label="排序" prop="sort">
           <el-input-number
             v-model="formData.sort"
-            controls-position="right"
             :min="0"
+            controls-position="right"
           />
         </el-form-item>
         <el-form-item label="状态" prop="status">
@@ -128,13 +128,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 defineOptions({
   name: "DictData",
   inheritAttrs: false,
 });
 
-import { DictAPI, DictPageVO, DictForm, DictQuery } from "dehaze-sdk-js";
+import { DictAPI, DictForm, DictPageVO, DictQuery } from "dehaze-sdk-js";
 
 const props = defineProps({
   typeCode: {

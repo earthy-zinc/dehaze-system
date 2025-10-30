@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { LabelType, useImageShowStore } from "@/store/modules/imageShow";
-import { PropType } from "vue";
 import { loadImage } from "@/utils";
+import { PropType } from "vue";
 
 const props = defineProps({
   src: {

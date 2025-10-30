@@ -1,10 +1,10 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { getValue } from "@/utils";
+import LazyImg from "../LazyImg/index.vue";
 import Lazy from "../LazyImg/lazy";
 import { LazyType } from "../LazyImg/types";
-import LazyImg from "../LazyImg/index.vue";
-import { useCalculateCols, useLayout } from "./waterfall";
 import { ViewCard } from "./types";
+import { useCalculateCols, useLayout } from "./waterfall";
 
 defineOptions({
   name: "Waterfall",
@@ -216,15 +216,15 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="all-wrapper" ref="allWrapper" style="height: 700px">
+  <div ref="allWrapper" class="all-wrapper" style="height: 700px">
     <div
       ref="waterfallWrapper"
-      class="waterfall-list"
       :style="{
         height: `${wrapperHeight}px`,
         backgroundColor,
         transform: `translateY(${translateY}px)`,
       }"
+      class="waterfall-list"
       @mouseenter="stop"
       @mouseleave="start"
     >

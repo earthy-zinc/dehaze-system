@@ -1,7 +1,7 @@
-import { RouteRecordRaw } from "vue-router";
 import { constantRoutes } from "@/router";
 import { store } from "@/store";
 import { MenuAPI, RouteVO } from "dehaze-sdk-js";
+import { RouteRecordRaw } from "vue-router";
 
 const modules = import.meta.glob("../../views/**/**.vue");
 const Layout = () => import("@/layout/index.vue");

@@ -1,7 +1,7 @@
 <template>
   <div :class="{ 'has-logo': sidebarLogo }">
     <!--混合布局-->
-    <div class="flex w-full" v-if="layout == LayoutEnum.MIX">
+    <div v-if="layout == LayoutEnum.MIX" class="flex w-full">
       <SidebarLogo v-if="sidebarLogo" :collapse="!appStore.sidebar.opened" />
       <SidebarMixTopMenu class="flex-1" />
       <NavbarRight />
@@ -17,9 +17,9 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { useSettingsStore, usePermissionStore, useAppStore } from "@/store";
+<script lang="ts" setup>
 import { LayoutEnum } from "@/enums/LayoutEnum";
+import { useAppStore, usePermissionStore, useSettingsStore } from "@/store";
 
 const appStore = useAppStore();
 const settingsStore = useSettingsStore();

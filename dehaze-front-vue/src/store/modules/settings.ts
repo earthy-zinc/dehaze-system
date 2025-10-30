@@ -1,7 +1,8 @@
-import defaultSettings from "@/settings";
 import { ThemeEnum } from "@/enums/ThemeEnum";
-import Color from "color";
+import defaultSettings from "@/settings";
 import { store } from "@/store";
+import Color from "color";
+
 type SettingsValue = boolean | string;
 
 export const useSettingsStore = defineStore("setting", () => {

@@ -1,8 +1,8 @@
+import storybookTest from "@storybook/addon-vitest/vitest-plugin";
+import { playwright } from "@vitest/browser-playwright";
+import path from "path";
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config";
-import { playwright } from "@vitest/browser-playwright";
-import storybookTest from "@storybook/addon-vitest/vitest-plugin";
-import path from "path";
 
 export default defineConfig((configEnv) =>
   mergeConfig(

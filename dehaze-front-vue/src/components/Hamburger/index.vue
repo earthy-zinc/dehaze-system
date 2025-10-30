@@ -4,13 +4,13 @@
     @click="toggleClick"
   >
     <svg-icon
-      class="hamburger"
       :class="{ 'is-active': isActive }"
+      class="hamburger"
       icon-class="indent-decrease"
     />
   </div>
 </template>
-<script setup lang="ts">
+<script lang="ts" setup>
 defineProps({
   isActive: {
     required: true,
@@ -26,7 +26,7 @@ function toggleClick() {
 }
 </script>
 
-<style scoped lang="scss">
+<style lang="scss" scoped>
 .hamburger {
   vertical-align: middle;
   cursor: pointer;
