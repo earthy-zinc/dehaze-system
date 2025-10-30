@@ -9,19 +9,40 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": ["esnext", "dom"],
+    "lib": [
+      "esnext",
+      "dom"
+    ],
     "allowJs": true,
-    "typeRoots": ["./node_modules/@types", "./src/typings"],
-    "types": ["vite/client", "node"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/typings"
+    ],
+    "types": [
+      "vite/client",
+      "node"
+    ],
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     }
   },
-  "include": ["**/*.ts", "src", "mock", ".storybook/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.js", "eslint.config.js"]
+  "include": [
+    "**/*.ts",
+    "src",
+    "mock",
+    ".storybook/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.js",
+    "eslint.config.js"
+  ]
 }
