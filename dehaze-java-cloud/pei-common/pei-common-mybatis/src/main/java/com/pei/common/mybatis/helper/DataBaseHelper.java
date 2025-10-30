@@ -2,11 +2,11 @@ package com.pei.common.mybatis.helper;
 
 import cn.hutool.core.convert.Convert;
 import com.baomidou.dynamic.datasource.DynamicRoutingDataSource;
+import com.pei.common.core.exception.ServiceException;
+import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.mybatis.enums.DataBaseType;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import com.pei.common.core.exception.ServiceException;
-import com.pei.common.core.utils.SpringUtils;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -25,6 +25,10 @@ public class DataBaseHelper {
 
     private static final DynamicRoutingDataSource DS = SpringUtils.getBean(DynamicRoutingDataSource.class);
 
+    public static boolean isMySql() {
+        return DataBaseType.MY_SQL == getDataBaseType();
+    }
+
     /**
      * 获取当前数据库类型
      */
@@ -37,10 +41,6 @@ public class DataBaseHelper {
         } catch (SQLException e) {
             throw new ServiceException(e.getMessage());
         }
-    }
-
-    public static boolean isMySql() {
-        return DataBaseType.MY_SQL == getDataBaseType();
     }
 
     public static boolean isOracle() {

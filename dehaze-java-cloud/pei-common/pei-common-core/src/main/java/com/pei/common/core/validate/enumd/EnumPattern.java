@@ -30,8 +30,7 @@ public @interface EnumPattern {
     Class<? extends Enum<?>> type();
 
     /**
-     * 枚举类型校验值字段名称
-     * 需确保该字段实现了 getter 方法
+     * 枚举类型校验值字段名称 需确保该字段实现了 getter 方法
      */
     String fieldName();
 

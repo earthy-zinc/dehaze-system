@@ -30,7 +30,7 @@
                fd.category
         from flow_instance fi
                  left join flow_definition fd on fi.definition_id = fd.id
-                ${ew.getCustomSqlSegment}
+            ${ew.getCustomSqlSegment}
     </select>
 
 </mapper>

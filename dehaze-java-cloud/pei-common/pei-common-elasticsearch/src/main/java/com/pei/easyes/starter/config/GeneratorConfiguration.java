@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 代码生成注册
+ *
  * @author MoJie
  * @since 2.0
  */

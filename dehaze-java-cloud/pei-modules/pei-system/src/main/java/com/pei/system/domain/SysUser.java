@@ -1,11 +1,11 @@
 package com.pei.system.domain;
 
 import com.baomidou.mybatisplus.annotation.*;
+import com.pei.common.core.constant.SystemConstants;
+import com.pei.common.tenant.core.TenantEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import com.pei.common.core.constant.SystemConstants;
-import com.pei.common.tenant.core.TenantEntity;
 
 import java.util.Date;
 

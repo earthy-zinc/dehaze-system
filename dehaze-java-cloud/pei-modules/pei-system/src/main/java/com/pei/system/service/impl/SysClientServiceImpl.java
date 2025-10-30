@@ -5,8 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.constant.CacheNames;
 import com.pei.common.core.utils.MapstructUtils;
 import com.pei.common.core.utils.StringUtils;
@@ -17,6 +15,8 @@ import com.pei.system.domain.bo.SysClientBo;
 import com.pei.system.domain.vo.SysClientVo;
 import com.pei.system.mapper.SysClientMapper;
 import com.pei.system.service.ISysClientService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -76,16 +76,6 @@ public class SysClientServiceImpl implements ISysClientService {
         return baseMapper.selectVoList(lqw);
     }
 
-    private LambdaQueryWrapper<SysClient> buildQueryWrapper(SysClientBo bo) {
-        LambdaQueryWrapper<SysClient> lqw = Wrappers.lambdaQuery();
-        lqw.eq(StringUtils.isNotBlank(bo.getClientId()), SysClient::getClientId, bo.getClientId());
-        lqw.eq(StringUtils.isNotBlank(bo.getClientKey()), SysClient::getClientKey, bo.getClientKey());
-        lqw.eq(StringUtils.isNotBlank(bo.getClientSecret()), SysClient::getClientSecret, bo.getClientSecret());
-        lqw.eq(StringUtils.isNotBlank(bo.getStatus()), SysClient::getStatus, bo.getStatus());
-        lqw.orderByAsc(SysClient::getId);
-        return lqw;
-    }
-
     /**
      * 新增客户端管理
      */
@@ -130,13 +120,6 @@ public class SysClientServiceImpl implements ISysClientService {
     }
 
     /**
-     * 保存前的数据校验
-     */
-    private void validEntityBeforeSave(SysClient entity) {
-        //TODO 做一些数据校验,如唯一约束
-    }
-
-    /**
      * 批量删除客户端管理
      */
     @CacheEvict(cacheNames = CacheNames.SYS_CLIENT, allEntries = true)
@@ -146,5 +129,22 @@ public class SysClientServiceImpl implements ISysClientService {
             //TODO 做一些业务上的校验,判断是否需要校验
         }
         return baseMapper.deleteByIds(ids) > 0;
+    }
+
+    /**
+     * 保存前的数据校验
+     */
+    private void validEntityBeforeSave(SysClient entity) {
+        //TODO 做一些数据校验,如唯一约束
+    }
+
+    private LambdaQueryWrapper<SysClient> buildQueryWrapper(SysClientBo bo) {
+        LambdaQueryWrapper<SysClient> lqw = Wrappers.lambdaQuery();
+        lqw.eq(StringUtils.isNotBlank(bo.getClientId()), SysClient::getClientId, bo.getClientId());
+        lqw.eq(StringUtils.isNotBlank(bo.getClientKey()), SysClient::getClientKey, bo.getClientKey());
+        lqw.eq(StringUtils.isNotBlank(bo.getClientSecret()), SysClient::getClientSecret, bo.getClientSecret());
+        lqw.eq(StringUtils.isNotBlank(bo.getStatus()), SysClient::getStatus, bo.getStatus());
+        lqw.orderByAsc(SysClient::getId);
+        return lqw;
     }
 }

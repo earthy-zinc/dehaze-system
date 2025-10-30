@@ -1,11 +1,11 @@
 package com.pei.common.sse.utils;
 
+import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.sse.core.SseEmitterManager;
 import com.pei.common.sse.dto.SseMessageDto;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.core.utils.SpringUtils;
 
 /**
  * SSE工具类
@@ -36,6 +36,13 @@ public class SseMessageUtils {
             return;
         }
         MANAGER.sendMessage(userId, message);
+    }
+
+    /**
+     * 是否开启
+     */
+    public static Boolean isEnable() {
+        return SSE_ENABLE;
     }
 
     /**
@@ -72,13 +79,6 @@ public class SseMessageUtils {
             return;
         }
         MANAGER.publishAll(message);
-    }
-
-    /**
-     * 是否开启
-     */
-    public static Boolean isEnable() {
-        return SSE_ENABLE;
     }
 
 }

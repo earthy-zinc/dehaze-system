@@ -1,14 +1,13 @@
 package com.pei.system.api.domain.bo;
 
 
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.xss.Xss;
-
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;

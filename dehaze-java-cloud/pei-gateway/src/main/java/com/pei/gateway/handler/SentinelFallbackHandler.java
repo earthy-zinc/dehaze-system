@@ -14,10 +14,6 @@ import reactor.core.publisher.Mono;
  * @author ruoyi
  */
 public class SentinelFallbackHandler implements WebExceptionHandler {
-    private Mono<Void> writeResponse(ServerResponse response, ServerWebExchange exchange) {
-        return WebFluxUtils.webFluxResponseWriter(exchange.getResponse(), "请求超过最大数，请稍候再试");
-    }
-
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
         ex.printStackTrace();
@@ -32,5 +28,9 @@ public class SentinelFallbackHandler implements WebExceptionHandler {
 
     private Mono<ServerResponse> handleBlockedRequest(ServerWebExchange exchange, Throwable throwable) {
         return GatewayCallbackManager.getBlockHandler().handleRequest(exchange, throwable);
+    }
+
+    private Mono<Void> writeResponse(ServerResponse response, ServerWebExchange exchange) {
+        return WebFluxUtils.webFluxResponseWriter(exchange.getResponse(), "请求超过最大数，请稍候再试");
     }
 }

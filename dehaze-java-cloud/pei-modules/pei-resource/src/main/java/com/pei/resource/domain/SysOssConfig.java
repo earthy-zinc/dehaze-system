@@ -2,9 +2,9 @@ package com.pei.resource.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.common.mybatis.core.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.mybatis.core.domain.BaseEntity;
 
 /**
  * 对象存储配置对象 sys_oss_config

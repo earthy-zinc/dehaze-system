@@ -1,15 +1,15 @@
 package com.pei.system.domain.bo;
 
+import com.pei.common.core.validate.AddGroup;
+import com.pei.common.core.validate.EditGroup;
+import com.pei.common.tenant.core.TenantEntity;
+import com.pei.system.domain.SysSocial;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import com.pei.common.core.validate.AddGroup;
-import com.pei.common.core.validate.EditGroup;
-import com.pei.common.tenant.core.TenantEntity;
-import com.pei.system.domain.SysSocial;
 
 /**
  * 社会化关系业务对象 sys_social
@@ -25,25 +25,25 @@ public class SysSocialBo extends TenantEntity {
     /**
      * 主键
      */
-    @NotNull(message = "主键不能为空", groups = { EditGroup.class })
+    @NotNull(message = "主键不能为空", groups = {EditGroup.class})
     private Long id;
 
     /**
      * 认证唯一ID
      */
-    @NotBlank(message = "的唯一ID不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "的唯一ID不能为空", groups = {AddGroup.class, EditGroup.class})
     private String authId;
 
     /**
      * 用户来源
      */
-    @NotBlank(message = "用户来源不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "用户来源不能为空", groups = {AddGroup.class, EditGroup.class})
     private String source;
 
     /**
      * 用户的授权令牌
      */
-    @NotBlank(message = "用户的授权令牌不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "用户的授权令牌不能为空", groups = {AddGroup.class, EditGroup.class})
     private String accessToken;
 
     /**
@@ -64,7 +64,7 @@ public class SysSocialBo extends TenantEntity {
     /**
      * 用户的 ID
      */
-    @NotBlank(message = "用户的 ID不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "用户的 ID不能为空", groups = {AddGroup.class, EditGroup.class})
     private Long userId;
 
     /**
@@ -136,7 +136,6 @@ public class SysSocialBo extends TenantEntity {
      * Twitter平台用户的附带属性，部分平台可能没有
      */
     private String oauthTokenSecret;
-
 
 
 }

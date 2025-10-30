@@ -1,9 +1,9 @@
 package com.pei.system.service;
 
-import com.pei.system.domain.vo.SysTenantPackageVo;
-import com.pei.system.domain.bo.SysTenantPackageBo;
-import com.pei.common.mybatis.core.page.TableDataInfo;
 import com.pei.common.mybatis.core.page.PageQuery;
+import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.system.domain.bo.SysTenantPackageBo;
+import com.pei.system.domain.vo.SysTenantPackageVo;
 
 import java.util.Collection;
 import java.util.List;

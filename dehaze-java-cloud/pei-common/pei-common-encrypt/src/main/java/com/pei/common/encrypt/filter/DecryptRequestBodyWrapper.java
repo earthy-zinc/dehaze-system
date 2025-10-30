@@ -1,12 +1,12 @@
 package com.pei.common.encrypt.filter;
 
 import cn.hutool.core.io.IoUtil;
+import com.pei.common.core.constant.Constants;
+import com.pei.common.encrypt.utils.EncryptUtils;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
-import com.pei.common.core.constant.Constants;
-import com.pei.common.encrypt.utils.EncryptUtils;
 import org.springframework.http.MediaType;
 
 import java.io.BufferedReader;
@@ -40,12 +40,6 @@ public class DecryptRequestBodyWrapper extends HttpServletRequestWrapper {
     }
 
     @Override
-    public BufferedReader getReader() {
-        return new BufferedReader(new InputStreamReader(getInputStream()));
-    }
-
-
-    @Override
     public int getContentLength() {
         return body.length;
     }
@@ -59,7 +53,6 @@ public class DecryptRequestBodyWrapper extends HttpServletRequestWrapper {
     public String getContentType() {
         return MediaType.APPLICATION_JSON_VALUE;
     }
-
 
     @Override
     public ServletInputStream getInputStream() {
@@ -90,5 +83,10 @@ public class DecryptRequestBodyWrapper extends HttpServletRequestWrapper {
 
             }
         };
+    }
+
+    @Override
+    public BufferedReader getReader() {
+        return new BufferedReader(new InputStreamReader(getInputStream()));
     }
 }

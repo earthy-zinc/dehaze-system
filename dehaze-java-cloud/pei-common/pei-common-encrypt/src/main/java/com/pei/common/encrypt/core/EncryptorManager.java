@@ -2,12 +2,12 @@ package com.pei.common.encrypt.core;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ReflectUtil;
+import com.pei.common.core.utils.ObjectUtils;
+import com.pei.common.core.utils.StringUtils;
 import com.pei.common.encrypt.annotation.EncryptField;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.io.Resources;
-import com.pei.common.core.utils.ObjectUtils;
-import com.pei.common.core.utils.StringUtils;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
@@ -51,60 +51,6 @@ public class EncryptorManager {
      */
     public EncryptorManager(String typeAliasesPackage) {
         scanEncryptClasses(typeAliasesPackage);
-    }
-
-
-    /**
-     * 获取类加密字段缓存
-     */
-    public Set<Field> getFieldCache(Class<?> sourceClazz) {
-        return ObjectUtils.notNullGetter(fieldCache, f -> f.get(sourceClazz));
-    }
-
-    /**
-     * 注册加密执行者到缓存
-     *
-     * @param encryptContext 加密执行者需要的相关配置参数
-     */
-    public IEncryptor registAndGetEncryptor(EncryptContext encryptContext) {
-        int key = encryptContext.hashCode();
-        if (encryptorMap.containsKey(key)) {
-            return encryptorMap.get(key);
-        }
-        IEncryptor encryptor = ReflectUtil.newInstance(encryptContext.getAlgorithm().getClazz(), encryptContext);
-        encryptorMap.put(key, encryptor);
-        return encryptor;
-    }
-
-    /**
-     * 移除缓存中的加密执行者
-     *
-     * @param encryptContext 加密执行者需要的相关配置参数
-     */
-    public void removeEncryptor(EncryptContext encryptContext) {
-        this.encryptorMap.remove(encryptContext.hashCode());
-    }
-
-    /**
-     * 根据配置进行加密。会进行本地缓存对应的算法和对应的秘钥信息。
-     *
-     * @param value          待加密的值
-     * @param encryptContext 加密相关的配置信息
-     */
-    public String encrypt(String value, EncryptContext encryptContext) {
-        IEncryptor encryptor = this.registAndGetEncryptor(encryptContext);
-        return encryptor.encrypt(value, encryptContext.getEncode());
-    }
-
-    /**
-     * 根据配置进行解密
-     *
-     * @param value          待解密的值
-     * @param encryptContext 加密相关的配置信息
-     */
-    public String decrypt(String value, EncryptContext encryptContext) {
-        IEncryptor encryptor = this.registAndGetEncryptor(encryptContext);
-        return encryptor.decrypt(value);
     }
 
     /**
@@ -154,6 +100,59 @@ public class EncryptorManager {
             field.setAccessible(true);
         }
         return fieldSet;
+    }
+
+    /**
+     * 获取类加密字段缓存
+     */
+    public Set<Field> getFieldCache(Class<?> sourceClazz) {
+        return ObjectUtils.notNullGetter(fieldCache, f -> f.get(sourceClazz));
+    }
+
+    /**
+     * 移除缓存中的加密执行者
+     *
+     * @param encryptContext 加密执行者需要的相关配置参数
+     */
+    public void removeEncryptor(EncryptContext encryptContext) {
+        this.encryptorMap.remove(encryptContext.hashCode());
+    }
+
+    /**
+     * 根据配置进行加密。会进行本地缓存对应的算法和对应的秘钥信息。
+     *
+     * @param value          待加密的值
+     * @param encryptContext 加密相关的配置信息
+     */
+    public String encrypt(String value, EncryptContext encryptContext) {
+        IEncryptor encryptor = this.registAndGetEncryptor(encryptContext);
+        return encryptor.encrypt(value, encryptContext.getEncode());
+    }
+
+    /**
+     * 注册加密执行者到缓存
+     *
+     * @param encryptContext 加密执行者需要的相关配置参数
+     */
+    public IEncryptor registAndGetEncryptor(EncryptContext encryptContext) {
+        int key = encryptContext.hashCode();
+        if (encryptorMap.containsKey(key)) {
+            return encryptorMap.get(key);
+        }
+        IEncryptor encryptor = ReflectUtil.newInstance(encryptContext.getAlgorithm().getClazz(), encryptContext);
+        encryptorMap.put(key, encryptor);
+        return encryptor;
+    }
+
+    /**
+     * 根据配置进行解密
+     *
+     * @param value          待解密的值
+     * @param encryptContext 加密相关的配置信息
+     */
+    public String decrypt(String value, EncryptContext encryptContext) {
+        IEncryptor encryptor = this.registAndGetEncryptor(encryptContext);
+        return encryptor.decrypt(value);
     }
 
 }

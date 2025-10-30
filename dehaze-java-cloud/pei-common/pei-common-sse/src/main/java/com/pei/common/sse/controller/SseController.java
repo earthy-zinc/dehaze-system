@@ -1,11 +1,11 @@
 package com.pei.common.sse.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.pei.common.core.domain.R;
+import com.pei.common.satoken.utils.LoginHelper;
 import com.pei.common.sse.core.SseEmitterManager;
 import com.pei.common.sse.dto.SseMessageDto;
 import lombok.RequiredArgsConstructor;
-import com.pei.common.core.domain.R;
-import com.pei.common.satoken.utils.LoginHelper;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;

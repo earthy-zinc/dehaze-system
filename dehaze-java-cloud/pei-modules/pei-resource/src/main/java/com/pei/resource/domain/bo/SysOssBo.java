@@ -1,10 +1,10 @@
 package com.pei.resource.domain.bo;
 
+import com.pei.common.mybatis.core.domain.BaseEntity;
+import com.pei.resource.domain.SysOss;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.mybatis.core.domain.BaseEntity;
-import com.pei.resource.domain.SysOss;
 
 /**
  * OSS对象存储分页查询对象 sys_oss

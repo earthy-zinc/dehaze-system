@@ -2,17 +2,17 @@ package com.pei.common.web.handler;
 
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.http.HttpStatus;
+import com.pei.common.core.domain.R;
+import com.pei.common.core.exception.ServiceException;
+import com.pei.common.core.exception.SseException;
+import com.pei.common.core.exception.base.BaseException;
+import com.pei.common.core.utils.StreamUtils;
 import com.pei.common.json.utils.JsonUtils;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.core.domain.R;
-import com.pei.common.core.exception.ServiceException;
-import com.pei.common.core.exception.SseException;
-import com.pei.common.core.exception.base.BaseException;
-import com.pei.common.core.utils.StreamUtils;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public R<Void> handleHttpRequestMethodNotSupported(HttpRequestMethodNotSupportedException e,
-                                                                HttpServletRequest request) {
+                                                       HttpServletRequest request) {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',不支持'{}'请求", requestURI, e.getMethod());
         return R.fail(HttpStatus.HTTP_BAD_METHOD, e.getMessage());

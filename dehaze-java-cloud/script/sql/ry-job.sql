@@ -18,8 +18,10 @@ CREATE TABLE `sj_namespace`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='命名空间';
 
-INSERT INTO `sj_namespace` VALUES (1, 'Development', 'dev', '', 0, now(), now());
-INSERT INTO `sj_namespace` VALUES (2, 'Production', 'prod', '', 0, now(), now());
+INSERT INTO `sj_namespace`
+VALUES (1, 'Development', 'dev', '', 0, now(), now());
+INSERT INTO `sj_namespace`
+VALUES (2, 'Production', 'prod', '', 0, now(), now());
 
 CREATE TABLE `sj_group_config`
 (
@@ -41,8 +43,10 @@ CREATE TABLE `sj_group_config`
   AUTO_INCREMENT = 0
   DEFAULT CHARSET = utf8mb4 COMMENT ='组配置';
 
-INSERT INTO `sj_group_config` VALUES (1, 'dev', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1,  now(), now());
-INSERT INTO `sj_group_config` VALUES (2, 'prod', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1,  now(), now());
+INSERT INTO `sj_group_config`
+VALUES (1, 'dev', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1, now(), now());
+INSERT INTO `sj_group_config`
+VALUES (2, 'prod', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1, now(), now());
 
 CREATE TABLE `sj_notify_config`
 (
@@ -146,7 +150,7 @@ CREATE TABLE `sj_retry_task`
     `task_status`      tinyint(4)          NOT NULL DEFAULT 1 COMMENT '重试状态',
     `task_type`        tinyint(4)          NOT NULL DEFAULT 1 COMMENT '任务类型 1、重试数据 2、回调数据',
     `operation_reason` tinyint(4)          NOT NULL DEFAULT 0 COMMENT '操作原因',
-    `client_info`      varchar(128)        DEFAULT NULL COMMENT '客户端地址 clientId#ip:port',
+    `client_info`      varchar(128)                 DEFAULT NULL COMMENT '客户端地址 clientId#ip:port',
     `create_dt`        datetime            NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_dt`        datetime            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
     PRIMARY KEY (`id`),
@@ -227,12 +231,12 @@ CREATE TABLE `sj_server_node`
 
 CREATE TABLE `sj_distributed_lock`
 (
-    `name`       varchar(64)         NOT NULL COMMENT '锁名称',
-    `lock_until` timestamp(3)        NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '锁定时长',
-    `locked_at`  timestamp(3)        NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '锁定时间',
-    `locked_by`  varchar(255)        NOT NULL COMMENT '锁定者',
-    `create_dt`  datetime            NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `update_dt`  datetime            NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
+    `name`       varchar(64)  NOT NULL COMMENT '锁名称',
+    `lock_until` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '锁定时长',
+    `locked_at`  timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '锁定时间',
+    `locked_by`  varchar(255) NOT NULL COMMENT '锁定者',
+    `create_dt`  datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_dt`  datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '修改时间',
     PRIMARY KEY (`name`)
 ) ENGINE = InnoDB
   AUTO_INCREMENT = 0
@@ -306,7 +310,7 @@ CREATE TABLE `sj_job`
     `bucket_index`     int(11)             NOT NULL DEFAULT 0 COMMENT 'bucket',
     `resident`         tinyint(4)          NOT NULL DEFAULT 0 COMMENT '是否是常驻任务',
     `notify_ids`       varchar(128)        NOT NULL DEFAULT '' COMMENT '通知告警场景配置id列表',
-    `owner_id`         bigint(20)          NULL                 COMMENT '负责人id',
+    `owner_id`         bigint(20)          NULL COMMENT '负责人id',
     `description`      varchar(256)        NOT NULL DEFAULT '' COMMENT '描述',
     `ext_attrs`        varchar(256)        NULL     DEFAULT '' COMMENT '扩展字段',
     `deleted`          tinyint(4)          NOT NULL DEFAULT 0 COMMENT '逻辑删除 1、删除',
@@ -320,7 +324,9 @@ CREATE TABLE `sj_job`
   AUTO_INCREMENT = 0
   DEFAULT CHARSET = utf8mb4 COMMENT ='任务信息';
 
-INSERT INTO `sj_job` VALUES (1, 'dev', 'ruoyi_group', 'demo-job', null, 1, 1710344035622, 1, 1, 4, 1, 'testJobExecutor', 2, '60', 1, 60, 3, 1, 1, 116, 0, '', 1, '', '', 0 , now(), now());
+INSERT INTO `sj_job`
+VALUES (1, 'dev', 'ruoyi_group', 'demo-job', null, 1, 1710344035622, 1, 1, 4, 1, 'testJobExecutor', 2, '60', 1, 60, 3,
+        1, 1, 116, 0, '', 1, '', '', 0, now(), now());
 
 CREATE TABLE `sj_job_log_message`
 (
@@ -510,7 +516,7 @@ CREATE TABLE `sj_workflow_task_batch`
     `wf_context`        text                         DEFAULT NULL COMMENT '全局上下文',
     `execution_at`      bigint(13)          NOT NULL DEFAULT 0 COMMENT '任务执行时间',
     `ext_attrs`         varchar(256)        NULL     DEFAULT '' COMMENT '扩展字段',
-    `version`           int(11)              NOT NULL DEFAULT 1 COMMENT '版本号',
+    `version`           int(11)             NOT NULL DEFAULT 1 COMMENT '版本号',
     `deleted`           tinyint(4)          NOT NULL DEFAULT 0 COMMENT '逻辑删除 1、删除',
     `create_dt`         datetime            NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_dt`         datetime            NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',

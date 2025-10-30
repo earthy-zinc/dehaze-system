@@ -1,8 +1,8 @@
 package com.pei.system.domain.vo;
 
+import com.pei.system.domain.SysSocial;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
-import com.pei.system.domain.SysSocial;
 
 import java.io.Serial;
 import java.io.Serializable;

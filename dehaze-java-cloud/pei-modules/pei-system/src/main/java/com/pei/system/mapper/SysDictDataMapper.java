@@ -1,9 +1,9 @@
 package com.pei.system.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pei.system.domain.vo.SysDictDataVo;
 import com.pei.common.mybatis.core.mapper.BaseMapperPlus;
 import com.pei.system.domain.SysDictData;
+import com.pei.system.domain.vo.SysDictDataVo;
 
 import java.util.List;
 

@@ -7,7 +7,6 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.utils.MapstructUtils;
 import com.pei.common.core.utils.StreamUtils;
@@ -27,6 +26,7 @@ import com.pei.system.mapper.SysRoleMapper;
 import com.pei.system.mapper.SysRoleMenuMapper;
 import com.pei.system.mapper.SysTenantPackageMapper;
 import com.pei.system.service.ISysMenuService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -169,16 +169,19 @@ public class SysMenuServiceImpl implements ISysMenuService {
         if (tenantPackage.getMenuCheckStrictly()) {
             parentIds = baseMapper.selectObjs(new LambdaQueryWrapper<SysMenu>()
                 .select(SysMenu::getParentId)
-                .in(SysMenu::getMenuId, menuIds), x -> {return Convert.toLong(x);});
+                .in(SysMenu::getMenuId, menuIds), x -> {
+                return Convert.toLong(x);
+            });
         }
         return baseMapper.selectObjs(new LambdaQueryWrapper<SysMenu>()
             .in(SysMenu::getMenuId, menuIds)
-            .notIn(CollUtil.isNotEmpty(parentIds), SysMenu::getMenuId, parentIds), x -> {return Convert.toLong(x);});
+            .notIn(CollUtil.isNotEmpty(parentIds), SysMenu::getMenuId, parentIds), x -> {
+            return Convert.toLong(x);
+        });
     }
 
     /**
-     * 构建前端路由所需要的菜单
-     * 路由name命名规则 path首字母转大写 + id
+     * 构建前端路由所需要的菜单 路由name命名规则 path首字母转大写 + id
      *
      * @param menus 菜单列表
      * @return 路由列表

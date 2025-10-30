@@ -1,17 +1,14 @@
 /**
  * Copyright (c) 2013-2021 Nikita Koksharov
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
  */
 package com.pei.common.redis.manager;
 
@@ -45,14 +42,11 @@ import java.util.concurrent.ConcurrentMap;
 @SuppressWarnings("unchecked")
 public class PlusSpringCacheManager implements CacheManager {
 
-    private boolean dynamic = true;
-
-    private boolean allowNullValues = true;
-
-    private boolean transactionAware = true;
-
     Map<String, CacheConfig> configMap = new ConcurrentHashMap<>();
     ConcurrentMap<String, Cache> instanceMap = new ConcurrentHashMap<>();
+    private boolean dynamic = true;
+    private boolean allowNullValues = true;
+    private boolean transactionAware = true;
 
     /**
      * Creates CacheManager supplied by Redisson instance
@@ -85,6 +79,13 @@ public class PlusSpringCacheManager implements CacheManager {
     }
 
     /**
+     * Set cache config mapped by cache name
+     *
+     * @param config object
+     */
+    public void setConfig(Map<String, ? extends CacheConfig> config) {
+        this.configMap = (Map<String, CacheConfig>) config;
+    }    /**
      * Defines 'fixed' cache names.
      * A new cache instance will not be created in dynamic for non-defined names.
      * <p>
@@ -103,14 +104,7 @@ public class PlusSpringCacheManager implements CacheManager {
         }
     }
 
-    /**
-     * Set cache config mapped by cache name
-     *
-     * @param config object
-     */
-    public void setConfig(Map<String, ? extends CacheConfig> config) {
-        this.configMap = (Map<String, CacheConfig>) config;
-    }
+
 
     protected CacheConfig createDefaultConfig() {
         return new CacheConfig();

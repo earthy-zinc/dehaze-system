@@ -12,21 +12,13 @@ import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pei.common.json.utils.JsonUtils;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.anyline.metadata.Column;
-import org.anyline.metadata.Table;
-import org.anyline.proxy.ServiceProxy;
-import org.apache.velocity.Template;
-import org.apache.velocity.VelocityContext;
-import org.apache.velocity.app.Velocity;
 import com.pei.common.core.constant.Constants;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.core.utils.StreamUtils;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.core.utils.file.FileUtils;
+import com.pei.common.json.utils.JsonUtils;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
 import com.pei.gen.constant.GenConstants;
@@ -37,6 +29,14 @@ import com.pei.gen.mapper.GenTableMapper;
 import com.pei.gen.util.GenUtils;
 import com.pei.gen.util.VelocityInitializer;
 import com.pei.gen.util.VelocityUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.anyline.metadata.Column;
+import org.anyline.metadata.Table;
+import org.anyline.proxy.ServiceProxy;
+import org.apache.velocity.Template;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.Velocity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,11 +59,10 @@ import java.util.zip.ZipOutputStream;
 @Service
 public class GenTableServiceImpl implements IGenTableService {
 
+    private static final String[] TABLE_IGNORE = new String[]{"sj_", "act_", "flw_", "gen_"};
     private final GenTableMapper baseMapper;
     private final GenTableColumnMapper genTableColumnMapper;
     private final IdentifierGenerator identifierGenerator;
-
-    private static final String[] TABLE_IGNORE = new String[]{"sj_", "act_", "flw_", "gen_"};
 
     /**
      * 查询业务字段列表
@@ -76,19 +75,6 @@ public class GenTableServiceImpl implements IGenTableService {
         return genTableColumnMapper.selectList(new LambdaQueryWrapper<GenTableColumn>()
             .eq(GenTableColumn::getTableId, tableId)
             .orderByAsc(GenTableColumn::getSort));
-    }
-
-    /**
-     * 查询业务信息
-     *
-     * @param id 业务ID
-     * @return 业务信息
-     */
-    @Override
-    public GenTable selectGenTableById(Long id) {
-        GenTable genTable = baseMapper.selectGenTableById(id);
-        setTableFromOptions(genTable);
-        return genTable;
     }
 
     @Override
@@ -219,6 +205,19 @@ public class GenTableServiceImpl implements IGenTableService {
     @Override
     public List<GenTable> selectGenTableAll() {
         return baseMapper.selectGenTableAll();
+    }
+
+    /**
+     * 查询业务信息
+     *
+     * @param id 业务ID
+     * @return 业务信息
+     */
+    @Override
+    public GenTable selectGenTableById(Long id) {
+        GenTable genTable = baseMapper.selectGenTableById(id);
+        setTableFromOptions(genTable);
+        return genTable;
     }
 
     /**
@@ -467,6 +466,41 @@ public class GenTableServiceImpl implements IGenTableService {
     }
 
     /**
+     * 修改保存参数校验
+     *
+     * @param genTable 业务信息
+     */
+    @Override
+    public void validateEdit(GenTable genTable) {
+        if (GenConstants.TPL_TREE.equals(genTable.getTplCategory())) {
+            String options = JsonUtils.toJsonString(genTable.getParams());
+            Dict paramsObj = JsonUtils.parseMap(options);
+            if (StringUtils.isEmpty(paramsObj.getStr(GenConstants.TREE_CODE))) {
+                throw new ServiceException("树编码字段不能为空");
+            } else if (StringUtils.isEmpty(paramsObj.getStr(GenConstants.TREE_PARENT_CODE))) {
+                throw new ServiceException("树父编码字段不能为空");
+            } else if (StringUtils.isEmpty(paramsObj.getStr(GenConstants.TREE_NAME))) {
+                throw new ServiceException("树名称字段不能为空");
+            }
+        }
+    }
+
+    /**
+     * 获取代码生成地址
+     *
+     * @param table    业务表信息
+     * @param template 模板文件路径
+     * @return 生成地址
+     */
+    public static String getGenPath(GenTable table, String template) {
+        String genPath = table.getGenPath();
+        if (StringUtils.equals(genPath, "/")) {
+            return System.getProperty("user.dir") + File.separator + "src" + File.separator + VelocityUtils.getFileName(template, table);
+        }
+        return genPath + File.separator + VelocityUtils.getFileName(template, table);
+    }
+
+    /**
      * 查询表信息并生成代码
      */
     private void generatorCode(Long tableId, ZipOutputStream zip) {
@@ -500,26 +534,6 @@ public class GenTableServiceImpl implements IGenTableService {
                 zip.closeEntry();
             } catch (IOException e) {
                 log.error("渲染模板失败，表名：" + table.getTableName(), e);
-            }
-        }
-    }
-
-    /**
-     * 修改保存参数校验
-     *
-     * @param genTable 业务信息
-     */
-    @Override
-    public void validateEdit(GenTable genTable) {
-        if (GenConstants.TPL_TREE.equals(genTable.getTplCategory())) {
-            String options = JsonUtils.toJsonString(genTable.getParams());
-            Dict paramsObj = JsonUtils.parseMap(options);
-            if (StringUtils.isEmpty(paramsObj.getStr(GenConstants.TREE_CODE))) {
-                throw new ServiceException("树编码字段不能为空");
-            } else if (StringUtils.isEmpty(paramsObj.getStr(GenConstants.TREE_PARENT_CODE))) {
-                throw new ServiceException("树父编码字段不能为空");
-            } else if (StringUtils.isEmpty(paramsObj.getStr(GenConstants.TREE_NAME))) {
-                throw new ServiceException("树名称字段不能为空");
             }
         }
     }
@@ -562,21 +576,6 @@ public class GenTableServiceImpl implements IGenTableService {
             genTable.setParentMenuId(parentMenuId);
             genTable.setParentMenuName(parentMenuName);
         }
-    }
-
-    /**
-     * 获取代码生成地址
-     *
-     * @param table    业务表信息
-     * @param template 模板文件路径
-     * @return 生成地址
-     */
-    public static String getGenPath(GenTable table, String template) {
-        String genPath = table.getGenPath();
-        if (StringUtils.equals(genPath, "/")) {
-            return System.getProperty("user.dir") + File.separator + "src" + File.separator + VelocityUtils.getFileName(template, table);
-        }
-        return genPath + File.separator + VelocityUtils.getFileName(template, table);
     }
 }
 

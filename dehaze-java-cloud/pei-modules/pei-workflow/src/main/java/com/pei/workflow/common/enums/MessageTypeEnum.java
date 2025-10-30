@@ -32,12 +32,10 @@ public enum MessageTypeEnum {
      */
     SMS_MESSAGE("3", "短信");
 
-    private final String code;
-
-    private final String desc;
-
     private static final Map<String, MessageTypeEnum> MESSAGE_TYPE_ENUM_MAP = Arrays.stream(values())
         .collect(Collectors.toConcurrentMap(MessageTypeEnum::getCode, Function.identity()));
+    private final String code;
+    private final String desc;
 
     /**
      * 根据消息类型 code 获取 MessageTypeEnum

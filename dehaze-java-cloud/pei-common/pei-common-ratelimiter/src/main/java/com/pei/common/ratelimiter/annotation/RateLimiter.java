@@ -14,8 +14,7 @@ import java.lang.annotation.*;
 @Documented
 public @interface RateLimiter {
     /**
-     * 限流key,支持使用Spring el表达式来动态获取方法上的参数值
-     * 格式类似于  #code.id #{#code}
+     * 限流key,支持使用Spring el表达式来动态获取方法上的参数值 格式类似于  #code.id #{#code}
      */
     String key() default "";
 

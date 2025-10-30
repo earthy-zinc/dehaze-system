@@ -1,5 +1,8 @@
 package com.pei.common.doc.config;
 
+import com.pei.common.core.utils.ServletUtils;
+import com.pei.common.core.utils.StringUtils;
+import com.pei.common.doc.config.properties.SpringDocProperties;
 import com.pei.common.doc.handler.OpenApiHandler;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Paths;
@@ -7,9 +10,6 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import com.pei.common.core.utils.ServletUtils;
-import com.pei.common.core.utils.StringUtils;
-import com.pei.common.doc.config.properties.SpringDocProperties;
 import org.springdoc.core.configuration.SpringDocConfiguration;
 import org.springdoc.core.customizers.OpenApiBuilderCustomizer;
 import org.springdoc.core.customizers.OpenApiCustomizer;
@@ -27,7 +27,10 @@ import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Swagger 文档配置

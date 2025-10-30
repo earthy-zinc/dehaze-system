@@ -11,10 +11,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.CacheNames;
-import com.pei.common.core.constant.TenantConstants;
 import com.pei.common.core.constant.SystemConstants;
+import com.pei.common.core.constant.TenantConstants;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.MapstructUtils;
 import com.pei.common.core.utils.StreamUtils;
@@ -34,6 +33,7 @@ import com.pei.system.mapper.SysRoleMapper;
 import com.pei.system.mapper.SysRoleMenuMapper;
 import com.pei.system.mapper.SysUserRoleMapper;
 import com.pei.system.service.ISysRoleService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,20 +69,6 @@ public class SysRoleServiceImpl implements ISysRoleService {
     @Override
     public List<SysRoleVo> selectRoleList(SysRoleBo role) {
         return baseMapper.selectRoleList(this.buildQueryWrapper(role));
-    }
-
-    private Wrapper<SysRole> buildQueryWrapper(SysRoleBo bo) {
-        Map<String, Object> params = bo.getParams();
-        QueryWrapper<SysRole> wrapper = Wrappers.query();
-        wrapper.eq("r.del_flag", SystemConstants.NORMAL)
-            .eq(ObjectUtil.isNotNull(bo.getRoleId()), "r.role_id", bo.getRoleId())
-            .like(StringUtils.isNotBlank(bo.getRoleName()), "r.role_name", bo.getRoleName())
-            .eq(StringUtils.isNotBlank(bo.getStatus()), "r.status", bo.getStatus())
-            .like(StringUtils.isNotBlank(bo.getRoleKey()), "r.role_key", bo.getRoleKey())
-            .between(params.get("beginTime") != null && params.get("endTime") != null,
-                "r.create_time", params.get("beginTime"), params.get("endTime"))
-            .orderByAsc("r.role_sort").orderByAsc("r.create_time");
-        return wrapper;
     }
 
     /**
@@ -344,27 +330,6 @@ public class SysRoleServiceImpl implements ISysRoleService {
     }
 
     /**
-     * 新增角色菜单信息
-     *
-     * @param role 角色对象
-     */
-    private int insertRoleMenu(SysRoleBo role) {
-        int rows = 1;
-        // 新增用户与角色管理
-        List<SysRoleMenu> list = new ArrayList<SysRoleMenu>();
-        for (Long menuId : role.getMenuIds()) {
-            SysRoleMenu rm = new SysRoleMenu();
-            rm.setRoleId(role.getRoleId());
-            rm.setMenuId(menuId);
-            list.add(rm);
-        }
-        if (list.size() > 0) {
-            rows = roleMenuMapper.insertBatch(list) ? list.size() : 0;
-        }
-        return rows;
-    }
-
-    /**
      * 新增角色部门信息(数据权限)
      *
      * @param role 角色对象
@@ -546,5 +511,40 @@ public class SysRoleServiceImpl implements ISysRoleService {
                 }
             }
         });
+    }
+
+    /**
+     * 新增角色菜单信息
+     *
+     * @param role 角色对象
+     */
+    private int insertRoleMenu(SysRoleBo role) {
+        int rows = 1;
+        // 新增用户与角色管理
+        List<SysRoleMenu> list = new ArrayList<SysRoleMenu>();
+        for (Long menuId : role.getMenuIds()) {
+            SysRoleMenu rm = new SysRoleMenu();
+            rm.setRoleId(role.getRoleId());
+            rm.setMenuId(menuId);
+            list.add(rm);
+        }
+        if (list.size() > 0) {
+            rows = roleMenuMapper.insertBatch(list) ? list.size() : 0;
+        }
+        return rows;
+    }
+
+    private Wrapper<SysRole> buildQueryWrapper(SysRoleBo bo) {
+        Map<String, Object> params = bo.getParams();
+        QueryWrapper<SysRole> wrapper = Wrappers.query();
+        wrapper.eq("r.del_flag", SystemConstants.NORMAL)
+            .eq(ObjectUtil.isNotNull(bo.getRoleId()), "r.role_id", bo.getRoleId())
+            .like(StringUtils.isNotBlank(bo.getRoleName()), "r.role_name", bo.getRoleName())
+            .eq(StringUtils.isNotBlank(bo.getStatus()), "r.status", bo.getStatus())
+            .like(StringUtils.isNotBlank(bo.getRoleKey()), "r.role_key", bo.getRoleKey())
+            .between(params.get("beginTime") != null && params.get("endTime") != null,
+                "r.create_time", params.get("beginTime"), params.get("endTime"))
+            .orderByAsc("r.role_sort").orderByAsc("r.create_time");
+        return wrapper;
     }
 }

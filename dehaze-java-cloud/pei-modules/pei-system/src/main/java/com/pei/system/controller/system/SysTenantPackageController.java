@@ -2,28 +2,28 @@ package com.pei.system.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.TenantConstants;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.validate.AddGroup;
 import com.pei.common.core.validate.EditGroup;
-import com.pei.common.web.core.BaseController;
 import com.pei.common.excel.utils.ExcelUtil;
 import com.pei.common.idempotent.annotation.RepeatSubmit;
 import com.pei.common.log.annotation.Log;
 import com.pei.common.log.enums.BusinessType;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.common.web.core.BaseController;
 import com.pei.system.domain.bo.SysTenantPackageBo;
 import com.pei.system.domain.vo.SysTenantPackageVo;
 import com.pei.system.service.ISysTenantPackageService;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import java.util.Arrays;
 import java.util.List;
 
@@ -82,7 +82,7 @@ public class SysTenantPackageController extends BaseController {
     @SaCheckPermission("system:tenantPackage:query")
     @GetMapping("/{packageId}")
     public R<SysTenantPackageVo> getInfo(@NotNull(message = "主键不能为空")
-                                     @PathVariable Long packageId) {
+                                         @PathVariable Long packageId) {
         return R.ok(tenantPackageService.queryById(packageId));
     }
 

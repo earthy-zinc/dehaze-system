@@ -2,16 +2,15 @@ package com.pei.system.domain.vo;
 
 import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import com.alibaba.excel.annotation.ExcelProperty;
-import io.github.linpeilie.annotations.AutoMapper;
-import lombok.Data;
 import com.pei.common.excel.annotation.ExcelDictFormat;
 import com.pei.common.excel.convert.ExcelDictConvert;
 import com.pei.system.domain.SysLogininfor;
+import io.github.linpeilie.annotations.AutoMapper;
+import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
-
 
 
 /**

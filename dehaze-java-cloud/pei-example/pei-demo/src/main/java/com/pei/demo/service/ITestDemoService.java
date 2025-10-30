@@ -1,10 +1,10 @@
 package com.pei.demo.service;
 
-import com.pei.demo.domain.bo.TestDemoBo;
-import com.pei.demo.domain.vo.TestDemoVo;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
 import com.pei.demo.domain.TestDemo;
+import com.pei.demo.domain.bo.TestDemoBo;
+import com.pei.demo.domain.vo.TestDemoVo;
 
 import java.util.Collection;
 import java.util.List;

@@ -1,24 +1,21 @@
 package com.pei.common.dubbo.filter;
 
+import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.dubbo.enumd.RequestLogEnum;
 import com.pei.common.dubbo.properties.DubboCustomProperties;
+import com.pei.common.json.utils.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.extension.Activate;
 import org.apache.dubbo.rpc.*;
 import org.apache.dubbo.rpc.service.GenericService;
-import com.pei.common.core.utils.SpringUtils;
-import com.pei.common.json.utils.JsonUtils;
 
 /**
  * Dubbo 日志过滤器
  * <p>
- * 该过滤器通过实现 Dubbo 的 Filter 接口，在服务调用前后记录日志信息
- * 可根据配置开关和日志级别输出不同详细程度的日志信息
+ * 该过滤器通过实现 Dubbo 的 Filter 接口，在服务调用前后记录日志信息 可根据配置开关和日志级别输出不同详细程度的日志信息
  * <p>
- * 激活条件：
- * - 在 Provider 和 Consumer 端都生效
- * - 执行顺序设置为最大值，确保在所有其他过滤器之后执行
+ * 激活条件： - 在 Provider 和 Consumer 端都生效 - 执行顺序设置为最大值，确保在所有其他过滤器之后执行
  * <p>
  * 使用 SpringUtils 获取配置信息，根据配置决定是否记录日志及日志详细程度
  * <p>

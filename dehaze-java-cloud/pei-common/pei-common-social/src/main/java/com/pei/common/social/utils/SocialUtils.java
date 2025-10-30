@@ -1,6 +1,7 @@
 package com.pei.common.social.utils;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.social.config.properties.SocialLoginConfigProperties;
 import com.pei.common.social.config.properties.SocialProperties;
 import com.pei.common.social.maxkey.AuthMaxKeyRequest;
@@ -11,14 +12,13 @@ import me.zhyd.oauth.model.AuthCallback;
 import me.zhyd.oauth.model.AuthResponse;
 import me.zhyd.oauth.model.AuthUser;
 import me.zhyd.oauth.request.*;
-import com.pei.common.core.utils.SpringUtils;
 
 /**
  * 认证授权工具类
  *
  * @author thiszhc
  */
-public class SocialUtils  {
+public class SocialUtils {
 
     private static final AuthRedisStateCache STATE_CACHE = SpringUtils.getBean(AuthRedisStateCache.class);
 
@@ -50,7 +50,8 @@ public class SocialUtils  {
             case "coding" -> new AuthCodingRequest(builder.build(), STATE_CACHE);
             case "oschina" -> new AuthOschinaRequest(builder.build(), STATE_CACHE);
             // 支付宝在创建回调地址时，不允许使用localhost或者127.0.0.1，所以这儿的回调地址使用的局域网内的ip
-            case "alipay_wallet" -> new AuthAlipayRequest(builder.build(), socialProperties.getType().get("alipay_wallet").getAlipayPublicKey(), STATE_CACHE);
+            case "alipay_wallet" ->
+                new AuthAlipayRequest(builder.build(), socialProperties.getType().get("alipay_wallet").getAlipayPublicKey(), STATE_CACHE);
             case "qq" -> new AuthQqRequest(builder.build(), STATE_CACHE);
             case "wechat_open" -> new AuthWeChatOpenRequest(builder.build(), STATE_CACHE);
             case "taobao" -> new AuthTaobaoRequest(builder.build(), STATE_CACHE);
@@ -58,9 +59,11 @@ public class SocialUtils  {
             case "linkedin" -> new AuthLinkedinRequest(builder.build(), STATE_CACHE);
             case "microsoft" -> new AuthMicrosoftRequest(builder.build(), STATE_CACHE);
             case "renren" -> new AuthRenrenRequest(builder.build(), STATE_CACHE);
-            case "stack_overflow" -> new AuthStackOverflowRequest(builder.stackOverflowKey(obj.getStackOverflowKey()).build(), STATE_CACHE);
+            case "stack_overflow" ->
+                new AuthStackOverflowRequest(builder.stackOverflowKey(obj.getStackOverflowKey()).build(), STATE_CACHE);
             case "huawei" -> new AuthHuaweiV3Request(builder.build(), STATE_CACHE);
-            case "wechat_enterprise" -> new AuthWeChatEnterpriseQrcodeRequest(builder.agentId(obj.getAgentId()).build(), STATE_CACHE);
+            case "wechat_enterprise" ->
+                new AuthWeChatEnterpriseQrcodeRequest(builder.agentId(obj.getAgentId()).build(), STATE_CACHE);
             case "gitlab" -> new AuthGitlabRequest(builder.build(), STATE_CACHE);
             case "wechat_mp" -> new AuthWeChatMpRequest(builder.build(), STATE_CACHE);
             case "aliyun" -> new AuthAliyunRequest(builder.build(), STATE_CACHE);

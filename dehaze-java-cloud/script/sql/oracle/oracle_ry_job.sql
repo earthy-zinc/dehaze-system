@@ -1,4 +1,3 @@
-
 /*
  SnailJob Database Transfer Tool
  Source Server Type    : MySQL
@@ -10,13 +9,13 @@
 -- sj_namespace
 CREATE TABLE sj_namespace
 (
-    id          number GENERATED ALWAYS AS IDENTITY,
-    name        varchar2(64)                            NULL,
-    unique_id   varchar2(64)                            NULL,
-    description varchar2(256) DEFAULT ''                NULL,
-    deleted     smallint      DEFAULT 0                 NOT NULL,
-    create_dt   date          DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    update_dt   date          DEFAULT CURRENT_TIMESTAMP NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    name varchar2 (64) NULL,
+    unique_id varchar2 (64) NULL,
+    description varchar2 (256) DEFAULT '' NULL,
+    deleted   smallint DEFAULT 0                 NOT NULL,
+    create_dt date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_namespace
@@ -33,24 +32,26 @@ COMMENT ON COLUMN sj_namespace.create_dt IS '创建时间';
 COMMENT ON COLUMN sj_namespace.update_dt IS '修改时间';
 COMMENT ON TABLE sj_namespace IS '命名空间';
 
-INSERT INTO sj_namespace(name, unique_id, description, deleted, create_dt, update_dt) VALUES ('Development', 'dev', '', 0, sysdate, sysdate);
-INSERT INTO sj_namespace(name, unique_id, description, deleted, create_dt, update_dt) VALUES ('Production', 'prod', '', 0, sysdate, sysdate);
+INSERT INTO sj_namespace(name, unique_id, description, deleted, create_dt, update_dt)
+VALUES ('Development', 'dev', '', 0, sysdate, sysdate);
+INSERT INTO sj_namespace(name, unique_id, description, deleted, create_dt, update_dt)
+VALUES ('Production', 'prod', '', 0, sysdate, sysdate);
 
 -- sj_group_config
 CREATE TABLE sj_group_config
 (
-    id                number GENERATED ALWAYS AS IDENTITY,
-    namespace_id      varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a'    NULL,
-    group_name        varchar2(64)  DEFAULT ''                                    NULL,
-    description       varchar2(256) DEFAULT ''                                    NULL,
-    token             varchar2(64)  DEFAULT 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT' NULL,
-    group_status      smallint      DEFAULT 0                                     NOT NULL,
-    version           number                                                      NOT NULL,
-    group_partition   number                                                      NOT NULL,
-    id_generator_mode smallint      DEFAULT 1                                     NOT NULL,
-    init_scene        smallint      DEFAULT 0                                     NOT NULL,
-    create_dt         date          DEFAULT CURRENT_TIMESTAMP                     NOT NULL,
-    update_dt         date          DEFAULT CURRENT_TIMESTAMP                     NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) DEFAULT '' NULL,
+    description varchar2 (256) DEFAULT '' NULL,
+    token varchar2 (64) DEFAULT 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT' NULL,
+    group_status      smallint DEFAULT 0                 NOT NULL,
+    version number NOT NULL,
+    group_partition number NOT NULL,
+    id_generator_mode smallint DEFAULT 1                 NOT NULL,
+    init_scene        smallint DEFAULT 0                 NOT NULL,
+    create_dt         date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt         date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_group_config
@@ -72,26 +73,30 @@ COMMENT ON COLUMN sj_group_config.create_dt IS '创建时间';
 COMMENT ON COLUMN sj_group_config.update_dt IS '修改时间';
 COMMENT ON TABLE sj_group_config IS '组配置';
 
-INSERT INTO sj_group_config (namespace_id, group_name, description, token, group_status, version, group_partition, id_generator_mode, init_scene, create_dt, update_dt) VALUES ('dev', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1,  sysdate, sysdate);
-INSERT INTO sj_group_config (namespace_id, group_name, description, token, group_status, version, group_partition, id_generator_mode, init_scene, create_dt, update_dt) VALUES ('prod', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1,  sysdate, sysdate);
+INSERT INTO sj_group_config (namespace_id, group_name, description, token, group_status, version, group_partition,
+                             id_generator_mode, init_scene, create_dt, update_dt)
+VALUES ('dev', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1, sysdate, sysdate);
+INSERT INTO sj_group_config (namespace_id, group_name, description, token, group_status, version, group_partition,
+                             id_generator_mode, init_scene, create_dt, update_dt)
+VALUES ('prod', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1, sysdate, sysdate);
 
 -- sj_notify_config
 CREATE TABLE sj_notify_config
 (
-    id                     number GENERATED ALWAYS AS IDENTITY,
-    namespace_id           varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name             varchar2(64)                                             NULL,
-    notify_name            varchar2(64)  DEFAULT ''                                 NULL,
-    system_task_type       smallint      DEFAULT 3                                  NOT NULL,
-    notify_status          smallint      DEFAULT 0                                  NOT NULL,
-    recipient_ids          varchar2(128)                                            NULL,
-    notify_threshold       number        DEFAULT 0                                  NOT NULL,
-    notify_scene           smallint      DEFAULT 0                                  NOT NULL,
-    rate_limiter_status    smallint      DEFAULT 0                                  NOT NULL,
-    rate_limiter_threshold number        DEFAULT 0                                  NOT NULL,
-    description            varchar2(256) DEFAULT ''                                 NULL,
-    create_dt              date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt              date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    notify_name varchar2 (64) DEFAULT '' NULL,
+    system_task_type    smallint DEFAULT 3                 NOT NULL,
+    notify_status       smallint DEFAULT 0                 NOT NULL,
+    recipient_ids varchar2 (128) NULL,
+    notify_threshold number DEFAULT 0 NOT NULL,
+    notify_scene        smallint DEFAULT 0                 NOT NULL,
+    rate_limiter_status smallint DEFAULT 0                 NOT NULL,
+    rate_limiter_threshold number DEFAULT 0 NOT NULL,
+    description varchar2 (256) DEFAULT '' NULL,
+    create_dt           date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt           date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_notify_config
@@ -118,14 +123,14 @@ COMMENT ON TABLE sj_notify_config IS '通知配置';
 -- sj_notify_recipient
 CREATE TABLE sj_notify_recipient
 (
-    id               number GENERATED ALWAYS AS IDENTITY,
-    namespace_id     varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    recipient_name   varchar2(64)                                             NULL,
-    notify_type      smallint      DEFAULT 0                                  NOT NULL,
-    notify_attribute varchar2(512)                                            NULL,
-    description      varchar2(256) DEFAULT ''                                 NULL,
-    create_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    recipient_name varchar2 (64) NULL,
+    notify_type smallint DEFAULT 0                 NOT NULL,
+    notify_attribute varchar2 (512) NULL,
+    description varchar2 (256) DEFAULT '' NULL,
+    create_dt   date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt   date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_notify_recipient
@@ -146,16 +151,16 @@ COMMENT ON TABLE sj_notify_recipient IS '告警通知接收人';
 -- sj_retry_dead_letter
 CREATE TABLE sj_retry_dead_letter
 (
-    id            number GENERATED ALWAYS AS IDENTITY,
-    namespace_id  varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name    varchar2(64)                                             NULL,
-    scene_name    varchar2(64)                                             NULL,
-    idempotent_id varchar2(64)                                             NULL,
-    biz_no        varchar2(64)  DEFAULT ''                                 NULL,
-    executor_name varchar2(512) DEFAULT ''                                 NULL,
-    args_str      clob                                                     NULL,
-    ext_attrs     clob                                                     NULL,
-    create_dt     date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    scene_name varchar2 (64) NULL,
+    idempotent_id varchar2 (64) NULL,
+    biz_no varchar2 (64) DEFAULT '' NULL,
+    executor_name varchar2 (512) DEFAULT '' NULL,
+    args_str clob NULL,
+    ext_attrs clob NULL,
+    create_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_retry_dead_letter
@@ -181,24 +186,24 @@ COMMENT ON TABLE sj_retry_dead_letter IS '死信队列表';
 -- sj_retry
 CREATE TABLE sj_retry
 (
-    id              number GENERATED ALWAYS AS IDENTITY,
-    namespace_id    varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name      varchar2(64)                                             NULL,
-    scene_name      varchar2(64)                                             NULL,
-    idempotent_id   varchar2(64)                                             NULL,
-    biz_no          varchar2(64)  DEFAULT ''                                 NULL,
-    executor_name   varchar2(512) DEFAULT ''                                 NULL,
-    args_str        clob                                                     NULL,
-    ext_attrs       clob                                                     NULL,
-    next_trigger_at number                                                   NOT NULL,
-    retry_count     number        DEFAULT 0                                  NOT NULL,
-    retry_status    smallint      DEFAULT 0                                  NOT NULL,
-    task_type       smallint      DEFAULT 1                                  NOT NULL,
-    bucket_index    number        DEFAULT 0                                  NOT NULL,
-    parent_id       number        DEFAULT 0                                  NOT NULL,
-    deleted         number        DEFAULT 0                                  NOT NULL,
-    create_dt       date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt       date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    scene_name varchar2 (64) NULL,
+    idempotent_id varchar2 (64) NULL,
+    biz_no varchar2 (64) DEFAULT '' NULL,
+    executor_name varchar2 (512) DEFAULT '' NULL,
+    args_str clob NULL,
+    ext_attrs clob NULL,
+    next_trigger_at number NOT NULL,
+    retry_count number DEFAULT 0 NOT NULL,
+    retry_status smallint DEFAULT 0                 NOT NULL,
+    task_type    smallint DEFAULT 1                 NOT NULL,
+    bucket_index number DEFAULT 0 NOT NULL,
+    parent_id number DEFAULT 0 NOT NULL,
+    deleted number DEFAULT 0 NOT NULL,
+    create_dt    date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt    date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_retry
@@ -236,18 +241,18 @@ COMMENT ON TABLE sj_retry IS '重试信息表';
 -- sj_retry_task
 CREATE TABLE sj_retry_task
 (
-    id               number GENERATED ALWAYS AS IDENTITY,
-    namespace_id     varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name       varchar2(64)                                             NULL,
-    scene_name       varchar2(64)                                             NULL,
-    retry_id         number                                                   NOT NULL,
-    ext_attrs        clob                                                     NULL,
-    task_status      smallint      DEFAULT 1                                  NOT NULL,
-    task_type        smallint      DEFAULT 1                                  NOT NULL,
-    operation_reason smallint      DEFAULT 0                                  NOT NULL,
-    client_info      varchar2(128) DEFAULT NULL                               NULL,
-    create_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    scene_name varchar2 (64) NULL,
+    retry_id number NOT NULL,
+    ext_attrs clob NULL,
+    task_status      smallint DEFAULT 1                 NOT NULL,
+    task_type        smallint DEFAULT 1                 NOT NULL,
+    operation_reason smallint DEFAULT 0                 NOT NULL,
+    client_info varchar2 (128) DEFAULT NULL NULL,
+    create_dt        date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt        date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_retry_task
@@ -275,15 +280,15 @@ COMMENT ON TABLE sj_retry_task IS '重试任务表';
 -- sj_retry_task_log_message
 CREATE TABLE sj_retry_task_log_message
 (
-    id            number GENERATED ALWAYS AS IDENTITY,
-    namespace_id  varchar2(64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name    varchar2(64)                                            NULL,
-    retry_id      number                                                  NOT NULL,
-    retry_task_id number                                                  NOT NULL,
-    message       clob                                                    NULL,
-    log_num       number       DEFAULT 1                                  NOT NULL,
-    real_time     number       DEFAULT 0                                  NOT NULL,
-    create_dt     date         DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    retry_id number NOT NULL,
+    retry_task_id number NOT NULL,
+    message clob NULL,
+    log_num number DEFAULT 1 NOT NULL,
+    real_time number DEFAULT 0 NOT NULL,
+    create_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_retry_task_log_message
@@ -306,26 +311,26 @@ COMMENT ON TABLE sj_retry_task_log_message IS '任务调度日志信息记录表
 -- sj_retry_scene_config
 CREATE TABLE sj_retry_scene_config
 (
-    id                  number GENERATED ALWAYS AS IDENTITY,
-    namespace_id        varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    scene_name          varchar2(64)                                             NULL,
-    group_name          varchar2(64)                                             NULL,
-    scene_status        smallint      DEFAULT 0                                  NOT NULL,
-    max_retry_count     number        DEFAULT 5                                  NOT NULL,
-    back_off            smallint      DEFAULT 1                                  NOT NULL,
-    trigger_interval    varchar2(16)  DEFAULT ''                                 NULL,
-    notify_ids          varchar2(128) DEFAULT ''                                 NULL,
-    deadline_request    number        DEFAULT 60000                              NOT NULL,
-    executor_timeout    number        DEFAULT 5                                  NOT NULL,
-    route_key           smallint      DEFAULT 4                                  NOT NULL,
-    block_strategy      smallint      DEFAULT 1                                  NOT NULL,
-    cb_status           smallint      DEFAULT 0                                  NOT NULL,
-    cb_trigger_type     smallint      DEFAULT 1                                  NOT NULL,
-    cb_max_count        number        DEFAULT 16                                 NOT NULL,
-    cb_trigger_interval varchar2(16)  DEFAULT ''                                 NULL,
-    description         varchar2(256) DEFAULT ''                                 NULL,
-    create_dt           date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt           date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    scene_name varchar2 (64) NULL,
+    group_name varchar2 (64) NULL,
+    scene_status    smallint DEFAULT 0                 NOT NULL,
+    max_retry_count number DEFAULT 5 NOT NULL,
+    back_off        smallint DEFAULT 1                 NOT NULL,
+    trigger_interval varchar2 (16) DEFAULT '' NULL,
+    notify_ids varchar2 (128) DEFAULT '' NULL,
+    deadline_request number DEFAULT 60000 NOT NULL,
+    executor_timeout number DEFAULT 5 NOT NULL,
+    route_key       smallint DEFAULT 4                 NOT NULL,
+    block_strategy  smallint DEFAULT 1                 NOT NULL,
+    cb_status       smallint DEFAULT 0                 NOT NULL,
+    cb_trigger_type smallint DEFAULT 1                 NOT NULL,
+    cb_max_count number DEFAULT 16 NOT NULL,
+    cb_trigger_interval varchar2 (16) DEFAULT '' NULL,
+    description varchar2 (256) DEFAULT '' NULL,
+    create_dt       date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt       date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_retry_scene_config
@@ -358,17 +363,17 @@ COMMENT ON TABLE sj_retry_scene_config IS '场景配置';
 -- sj_server_node
 CREATE TABLE sj_server_node
 (
-    id           number GENERATED ALWAYS AS IDENTITY,
-    namespace_id varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name   varchar2(64)                                             NULL,
-    host_id      varchar2(64)                                             NULL,
-    host_ip      varchar2(64)                                             NULL,
-    host_port    number                                                   NOT NULL,
-    expire_at    date                                                     NOT NULL,
-    node_type    smallint                                                 NOT NULL,
-    ext_attrs    varchar2(256) DEFAULT ''                                 NULL,
-    create_dt    date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt    date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    host_id varchar2 (64) NULL,
+    host_ip varchar2 (64) NULL,
+    host_port number NOT NULL,
+    expire_at date                           NOT NULL,
+    node_type smallint                       NOT NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    create_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_server_node
@@ -395,10 +400,10 @@ COMMENT ON TABLE sj_server_node IS '服务器节点';
 -- sj_distributed_lock
 CREATE TABLE sj_distributed_lock
 (
-    name       varchar2(64)                              NOT NULL,
+    name varchar2 (64) NOT NULL,
     lock_until timestamp(3) DEFAULT CURRENT_TIMESTAMP(3) NOT NULL,
     locked_at  timestamp(3) DEFAULT CURRENT_TIMESTAMP(3) NOT NULL,
-    locked_by  varchar2(255)                             NULL,
+    locked_by varchar2 (255) NULL,
     create_dt  date         DEFAULT CURRENT_TIMESTAMP    NOT NULL,
     update_dt  date         DEFAULT CURRENT_TIMESTAMP    NOT NULL
 );
@@ -417,9 +422,9 @@ COMMENT ON TABLE sj_distributed_lock IS '锁定表';
 -- sj_system_user
 CREATE TABLE sj_system_user
 (
-    id        number GENERATED ALWAYS AS IDENTITY,
-    username  varchar2(64)                       NULL,
-    password  varchar2(128)                      NULL,
+    id number GENERATED ALWAYS AS IDENTITY,
+    username varchar2 (64) NULL,
+    password varchar2 (128) NULL,
     role      smallint DEFAULT 0                 NOT NULL,
     create_dt date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
     update_dt date     DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -437,17 +442,18 @@ COMMENT ON COLUMN sj_system_user.update_dt IS '修改时间';
 COMMENT ON TABLE sj_system_user IS '系统用户表';
 
 -- pwd: admin
-INSERT INTO sj_system_user(username, password, role, create_dt, update_dt) VALUES ('admin', '465c194afb65670f38322df087f0a9bb225cc257e43eb4ac5a0c98ef5b3173ac', 2, sysdate, sysdate);
+INSERT INTO sj_system_user(username, password, role, create_dt, update_dt)
+VALUES ('admin', '465c194afb65670f38322df087f0a9bb225cc257e43eb4ac5a0c98ef5b3173ac', 2, sysdate, sysdate);
 
 -- sj_system_user_permission
 CREATE TABLE sj_system_user_permission
 (
-    id             number GENERATED ALWAYS AS IDENTITY,
-    group_name     varchar2(64)                                            NULL,
-    namespace_id   varchar2(64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    system_user_id number                                                  NOT NULL,
-    create_dt      date         DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt      date         DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    group_name varchar2 (64) NULL,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    system_user_id number NOT NULL,
+    create_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_system_user_permission
@@ -466,12 +472,12 @@ COMMENT ON TABLE sj_system_user_permission IS '系统用户权限表';
 -- sj_sequence_alloc
 CREATE TABLE sj_sequence_alloc
 (
-    id           number GENERATED ALWAYS AS IDENTITY,
-    namespace_id varchar2(64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name   varchar2(64) DEFAULT ''                                 NULL,
-    max_id       number       DEFAULT 1                                  NOT NULL,
-    step         number       DEFAULT 100                                NOT NULL,
-    update_dt    date         DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) DEFAULT '' NULL,
+    max_id number DEFAULT 1 NOT NULL,
+    step number DEFAULT 100 NOT NULL,
+    update_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_sequence_alloc
@@ -490,34 +496,34 @@ COMMENT ON TABLE sj_sequence_alloc IS '号段模式序号ID分配表';
 -- sj_job
 CREATE TABLE sj_job
 (
-    id               number GENERATED ALWAYS AS IDENTITY,
-    namespace_id     varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name       varchar2(64)                                             NULL,
-    job_name         varchar2(64)                                             NULL,
-    args_str         clob          DEFAULT NULL                               NULL,
-    args_type        smallint      DEFAULT 1                                  NOT NULL,
-    next_trigger_at  number                                                   NOT NULL,
-    job_status       smallint      DEFAULT 1                                  NOT NULL,
-    task_type        smallint      DEFAULT 1                                  NOT NULL,
-    route_key        smallint      DEFAULT 4                                  NOT NULL,
-    executor_type    smallint      DEFAULT 1                                  NOT NULL,
-    executor_info    varchar2(255) DEFAULT NULL                               NULL,
-    trigger_type     smallint                                                 NOT NULL,
-    trigger_interval varchar2(255)                                            NULL,
-    block_strategy   smallint      DEFAULT 1                                  NOT NULL,
-    executor_timeout number        DEFAULT 0                                  NOT NULL,
-    max_retry_times  number        DEFAULT 0                                  NOT NULL,
-    parallel_num     number        DEFAULT 1                                  NOT NULL,
-    retry_interval   number        DEFAULT 0                                  NOT NULL,
-    bucket_index     number        DEFAULT 0                                  NOT NULL,
-    resident         smallint      DEFAULT 0                                  NOT NULL,
-    notify_ids       varchar2(128) DEFAULT ''                                 NULL,
-    owner_id         number                                                   NULL,
-    description      varchar2(256) DEFAULT ''                                 NULL,
-    ext_attrs        varchar2(256) DEFAULT ''                                 NULL,
-    deleted          smallint      DEFAULT 0                                  NOT NULL,
-    create_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    job_name varchar2 (64) NULL,
+    args_str clob DEFAULT NULL NULL,
+    args_type      smallint DEFAULT 1                 NOT NULL,
+    next_trigger_at number NOT NULL,
+    job_status     smallint DEFAULT 1                 NOT NULL,
+    task_type      smallint DEFAULT 1                 NOT NULL,
+    route_key      smallint DEFAULT 4                 NOT NULL,
+    executor_type  smallint DEFAULT 1                 NOT NULL,
+    executor_info varchar2 (255) DEFAULT NULL NULL,
+    trigger_type   smallint                           NOT NULL,
+    trigger_interval varchar2 (255) NULL,
+    block_strategy smallint DEFAULT 1                 NOT NULL,
+    executor_timeout number DEFAULT 0 NOT NULL,
+    max_retry_times number DEFAULT 0 NOT NULL,
+    parallel_num number DEFAULT 1 NOT NULL,
+    retry_interval number DEFAULT 0 NOT NULL,
+    bucket_index number DEFAULT 0 NOT NULL,
+    resident       smallint DEFAULT 0                 NOT NULL,
+    notify_ids varchar2 (128) DEFAULT '' NULL,
+    owner_id number NULL,
+    description varchar2 (256) DEFAULT '' NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    deleted        smallint DEFAULT 0                 NOT NULL,
+    create_dt      date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt      date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_job
@@ -557,22 +563,27 @@ COMMENT ON COLUMN sj_job.create_dt IS '创建时间';
 COMMENT ON COLUMN sj_job.update_dt IS '修改时间';
 COMMENT ON TABLE sj_job IS '任务信息';
 
-INSERT INTO sj_job(namespace_id, group_name, job_name, args_str, args_type, next_trigger_at, job_status, task_type, route_key, executor_type, executor_info, trigger_type, trigger_interval, block_strategy,executor_timeout, max_retry_times, parallel_num, retry_interval, bucket_index, resident, notify_ids, owner_id, description, ext_attrs, deleted, create_dt, update_dt) VALUES ('dev', 'ruoyi_group', 'demo-job', NULL, 1, 1710344035622, 1, 1, 4, 1, 'testJobExecutor', 2, '60', 1, 60, 3, 1, 1, 116, 0, '', 1,'', '', 0, sysdate, sysdate);
+INSERT INTO sj_job(namespace_id, group_name, job_name, args_str, args_type, next_trigger_at, job_status, task_type,
+                   route_key, executor_type, executor_info, trigger_type, trigger_interval, block_strategy,
+                   executor_timeout, max_retry_times, parallel_num, retry_interval, bucket_index, resident, notify_ids,
+                   owner_id, description, ext_attrs, deleted, create_dt, update_dt)
+VALUES ('dev', 'ruoyi_group', 'demo-job', NULL, 1, 1710344035622, 1, 1, 4, 1, 'testJobExecutor', 2, '60', 1, 60, 3, 1,
+        1, 116, 0, '', 1, '', '', 0, sysdate, sysdate);
 
 -- sj_job_log_message
 CREATE TABLE sj_job_log_message
 (
-    id            number GENERATED ALWAYS AS IDENTITY,
-    namespace_id  varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name    varchar2(64)                                             NULL,
-    job_id        number                                                   NOT NULL,
-    task_batch_id number                                                   NOT NULL,
-    task_id       number                                                   NOT NULL,
-    message       clob                                                     NULL,
-    log_num       number        DEFAULT 1                                  NOT NULL,
-    real_time     number        DEFAULT 0                                  NOT NULL,
-    ext_attrs     varchar2(256) DEFAULT ''                                 NULL,
-    create_dt     date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    job_id number NOT NULL,
+    task_batch_id number NOT NULL,
+    task_id number NOT NULL,
+    message clob NULL,
+    log_num number DEFAULT 1 NOT NULL,
+    real_time number DEFAULT 0 NOT NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    create_dt date DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_job_log_message
@@ -598,25 +609,25 @@ COMMENT ON TABLE sj_job_log_message IS '调度日志';
 -- sj_job_task
 CREATE TABLE sj_job_task
 (
-    id             number GENERATED ALWAYS AS IDENTITY,
-    namespace_id   varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name     varchar2(64)                                             NULL,
-    job_id         number                                                   NOT NULL,
-    task_batch_id  number                                                   NOT NULL,
-    parent_id      number        DEFAULT 0                                  NOT NULL,
-    task_status    smallint      DEFAULT 0                                  NOT NULL,
-    retry_count    number        DEFAULT 0                                  NOT NULL,
-    mr_stage       smallint      DEFAULT NULL                               NULL,
-    leaf           smallint      DEFAULT '1'                                NOT NULL,
-    task_name      varchar2(255) DEFAULT ''                                 NULL,
-    client_info    varchar2(128) DEFAULT NULL                               NULL,
-    wf_context     clob          DEFAULT NULL                               NULL,
-    result_message clob                                                     NULL,
-    args_str       clob          DEFAULT NULL                               NULL,
-    args_type      smallint      DEFAULT 1                                  NOT NULL,
-    ext_attrs      varchar2(256) DEFAULT ''                                 NULL,
-    create_dt      date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt      date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    job_id number NOT NULL,
+    task_batch_id number NOT NULL,
+    parent_id number DEFAULT 0 NOT NULL,
+    task_status smallint DEFAULT 0                 NOT NULL,
+    retry_count number DEFAULT 0 NOT NULL,
+    mr_stage    smallint DEFAULT NULL              NULL,
+    leaf        smallint DEFAULT '1'               NOT NULL,
+    task_name varchar2 (255) DEFAULT '' NULL,
+    client_info varchar2 (128) DEFAULT NULL NULL,
+    wf_context clob DEFAULT NULL NULL,
+    result_message clob NULL,
+    args_str clob DEFAULT NULL NULL,
+    args_type   smallint DEFAULT 1                 NOT NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    create_dt   date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt   date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_job_task
@@ -650,22 +661,22 @@ COMMENT ON TABLE sj_job_task IS '任务实例';
 -- sj_job_task_batch
 CREATE TABLE sj_job_task_batch
 (
-    id                      number GENERATED ALWAYS AS IDENTITY,
-    namespace_id            varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name              varchar2(64)                                             NULL,
-    job_id                  number                                                   NOT NULL,
-    workflow_node_id        number        DEFAULT 0                                  NOT NULL,
-    parent_workflow_node_id number        DEFAULT 0                                  NOT NULL,
-    workflow_task_batch_id  number        DEFAULT 0                                  NOT NULL,
-    task_batch_status       smallint      DEFAULT 0                                  NOT NULL,
-    operation_reason        smallint      DEFAULT 0                                  NOT NULL,
-    execution_at            number        DEFAULT 0                                  NOT NULL,
-    system_task_type        smallint      DEFAULT 3                                  NOT NULL,
-    parent_id               varchar2(64)  DEFAULT ''                                 NULL,
-    ext_attrs               varchar2(256) DEFAULT ''                                 NULL,
-    deleted                 smallint      DEFAULT 0                                  NOT NULL,
-    create_dt               date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt               date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    job_id number NOT NULL,
+    workflow_node_id number DEFAULT 0 NOT NULL,
+    parent_workflow_node_id number DEFAULT 0 NOT NULL,
+    workflow_task_batch_id number DEFAULT 0 NOT NULL,
+    task_batch_status smallint DEFAULT 0                 NOT NULL,
+    operation_reason  smallint DEFAULT 0                 NOT NULL,
+    execution_at number DEFAULT 0 NOT NULL,
+    system_task_type  smallint DEFAULT 3                 NOT NULL,
+    parent_id varchar2 (64) DEFAULT '' NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    deleted           smallint DEFAULT 0                 NOT NULL,
+    create_dt         date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt         date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_job_task_batch
@@ -697,21 +708,21 @@ COMMENT ON TABLE sj_job_task_batch IS '任务批次';
 -- sj_job_summary
 CREATE TABLE sj_job_summary
 (
-    id               number GENERATED ALWAYS AS IDENTITY,
-    namespace_id     varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name       varchar2(64)  DEFAULT ''                                 NULL,
-    business_id      number                                                   NOT NULL,
-    system_task_type smallint      DEFAULT 3                                  NOT NULL,
-    trigger_at       date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    success_num      number        DEFAULT 0                                  NOT NULL,
-    fail_num         number        DEFAULT 0                                  NOT NULL,
-    fail_reason      varchar2(512) DEFAULT ''                                 NULL,
-    stop_num         number        DEFAULT 0                                  NOT NULL,
-    stop_reason      varchar2(512) DEFAULT ''                                 NULL,
-    cancel_num       number        DEFAULT 0                                  NOT NULL,
-    cancel_reason    varchar2(512) DEFAULT ''                                 NULL,
-    create_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) DEFAULT '' NULL,
+    business_id number NOT NULL,
+    system_task_type smallint DEFAULT 3                 NOT NULL,
+    trigger_at       date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    success_num number DEFAULT 0 NOT NULL,
+    fail_num number DEFAULT 0 NOT NULL,
+    fail_reason varchar2 (512) DEFAULT '' NULL,
+    stop_num number DEFAULT 0 NOT NULL,
+    stop_reason varchar2 (512) DEFAULT '' NULL,
+    cancel_num number DEFAULT 0 NOT NULL,
+    cancel_reason varchar2 (512) DEFAULT '' NULL,
+    create_dt        date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt        date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_job_summary
@@ -741,17 +752,17 @@ COMMENT ON TABLE sj_job_summary IS 'DashBoard_Job';
 -- sj_retry_summary
 CREATE TABLE sj_retry_summary
 (
-    id            number GENERATED ALWAYS AS IDENTITY,
-    namespace_id  varchar2(64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name    varchar2(64) DEFAULT ''                                 NULL,
-    scene_name    varchar2(50) DEFAULT ''                                 NULL,
-    trigger_at    date         DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    running_num   number       DEFAULT 0                                  NOT NULL,
-    finish_num    number       DEFAULT 0                                  NOT NULL,
-    max_count_num number       DEFAULT 0                                  NOT NULL,
-    suspend_num   number       DEFAULT 0                                  NOT NULL,
-    create_dt     date         DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt     date         DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) DEFAULT '' NULL,
+    scene_name varchar2 (50) DEFAULT '' NULL,
+    trigger_at date DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    running_num number DEFAULT 0 NOT NULL,
+    finish_num number DEFAULT 0 NOT NULL,
+    max_count_num number DEFAULT 0 NOT NULL,
+    suspend_num number DEFAULT 0 NOT NULL,
+    create_dt  date DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt  date DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_retry_summary
@@ -777,26 +788,26 @@ COMMENT ON TABLE sj_retry_summary IS 'DashBoard_Retry';
 -- sj_workflow
 CREATE TABLE sj_workflow
 (
-    id               number GENERATED ALWAYS AS IDENTITY,
-    workflow_name    varchar2(64)                                             NULL,
-    namespace_id     varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name       varchar2(64)                                             NULL,
-    workflow_status  smallint      DEFAULT 1                                  NOT NULL,
-    trigger_type     smallint                                                 NOT NULL,
-    trigger_interval varchar2(255)                                            NULL,
-    next_trigger_at  number                                                   NOT NULL,
-    block_strategy   smallint      DEFAULT 1                                  NOT NULL,
-    executor_timeout number        DEFAULT 0                                  NOT NULL,
-    description      varchar2(256) DEFAULT ''                                 NULL,
-    flow_info        clob          DEFAULT NULL                               NULL,
-    wf_context       clob          DEFAULT NULL                               NULL,
-    notify_ids       varchar2(128) DEFAULT ''                                 NULL,
-    bucket_index     number        DEFAULT 0                                  NOT NULL,
-    version          number                                                   NOT NULL,
-    ext_attrs        varchar2(256) DEFAULT ''                                 NULL,
-    deleted          smallint      DEFAULT 0                                  NOT NULL,
-    create_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt        date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    workflow_name varchar2 (64) NULL,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    workflow_status smallint DEFAULT 1                 NOT NULL,
+    trigger_type    smallint                           NOT NULL,
+    trigger_interval varchar2 (255) NULL,
+    next_trigger_at number NOT NULL,
+    block_strategy  smallint DEFAULT 1                 NOT NULL,
+    executor_timeout number DEFAULT 0 NOT NULL,
+    description varchar2 (256) DEFAULT '' NULL,
+    flow_info clob DEFAULT NULL NULL,
+    wf_context clob DEFAULT NULL NULL,
+    notify_ids varchar2 (128) DEFAULT '' NULL,
+    bucket_index number DEFAULT 0 NOT NULL,
+    version number NOT NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    deleted         smallint DEFAULT 0                 NOT NULL,
+    create_dt       date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt       date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_workflow
@@ -830,23 +841,23 @@ COMMENT ON TABLE sj_workflow IS '工作流';
 -- sj_workflow_node
 CREATE TABLE sj_workflow_node
 (
-    id                   number GENERATED ALWAYS AS IDENTITY,
-    namespace_id         varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    node_name            varchar2(64)                                             NULL,
-    group_name           varchar2(64)                                             NULL,
-    job_id               number                                                   NOT NULL,
-    workflow_id          number                                                   NOT NULL,
-    node_type            smallint      DEFAULT 1                                  NOT NULL,
-    expression_type      smallint      DEFAULT 0                                  NOT NULL,
-    fail_strategy        smallint      DEFAULT 1                                  NOT NULL,
-    workflow_node_status smallint      DEFAULT 1                                  NOT NULL,
-    priority_level       number        DEFAULT 1                                  NOT NULL,
-    node_info            clob          DEFAULT NULL                               NULL,
-    version              number                                                   NOT NULL,
-    ext_attrs            varchar2(256) DEFAULT ''                                 NULL,
-    deleted              smallint      DEFAULT 0                                  NOT NULL,
-    create_dt            date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt            date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    node_name varchar2 (64) NULL,
+    group_name varchar2 (64) NULL,
+    job_id number NOT NULL,
+    workflow_id number NOT NULL,
+    node_type            smallint DEFAULT 1                 NOT NULL,
+    expression_type      smallint DEFAULT 0                 NOT NULL,
+    fail_strategy        smallint DEFAULT 1                 NOT NULL,
+    workflow_node_status smallint DEFAULT 1                 NOT NULL,
+    priority_level number DEFAULT 1 NOT NULL,
+    node_info clob DEFAULT NULL NULL,
+    version number NOT NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    deleted              smallint DEFAULT 0                 NOT NULL,
+    create_dt            date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt            date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_workflow_node
@@ -877,20 +888,20 @@ COMMENT ON TABLE sj_workflow_node IS '工作流节点';
 -- sj_workflow_task_batch
 CREATE TABLE sj_workflow_task_batch
 (
-    id                number GENERATED ALWAYS AS IDENTITY,
-    namespace_id      varchar2(64)  DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
-    group_name        varchar2(64)                                             NULL,
-    workflow_id       number                                                   NOT NULL,
-    task_batch_status smallint      DEFAULT 0                                  NOT NULL,
-    operation_reason  smallint      DEFAULT 0                                  NOT NULL,
-    flow_info         clob          DEFAULT NULL                               NULL,
-    wf_context        clob          DEFAULT NULL                               NULL,
-    execution_at      number        DEFAULT 0                                  NOT NULL,
-    ext_attrs         varchar2(256) DEFAULT ''                                 NULL,
-    version           number        DEFAULT 1                                  NOT NULL,
-    deleted           smallint      DEFAULT 0                                  NOT NULL,
-    create_dt         date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL,
-    update_dt         date          DEFAULT CURRENT_TIMESTAMP                  NOT NULL
+    id number GENERATED ALWAYS AS IDENTITY,
+    namespace_id varchar2 (64) DEFAULT '764d604ec6fc45f68cd92514c40e9e1a' NULL,
+    group_name varchar2 (64) NULL,
+    workflow_id number NOT NULL,
+    task_batch_status smallint DEFAULT 0                 NOT NULL,
+    operation_reason  smallint DEFAULT 0                 NOT NULL,
+    flow_info clob DEFAULT NULL NULL,
+    wf_context clob DEFAULT NULL NULL,
+    execution_at number DEFAULT 0 NOT NULL,
+    ext_attrs varchar2 (256) DEFAULT '' NULL,
+    version number DEFAULT 1 NOT NULL,
+    deleted           smallint DEFAULT 0                 NOT NULL,
+    create_dt         date     DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    update_dt         date     DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 ALTER TABLE sj_workflow_task_batch

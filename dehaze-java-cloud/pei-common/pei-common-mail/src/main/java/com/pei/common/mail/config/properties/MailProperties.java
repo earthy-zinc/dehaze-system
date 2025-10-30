@@ -43,8 +43,7 @@ public class MailProperties {
     private String pass;
 
     /**
-     * 发送方，遵循RFC-822标准<br>
-     * 发件人可以是以下形式：
+     * 发送方，遵循RFC-822标准<br> 发件人可以是以下形式：
      *
      * <pre>
      * 1. user@xxx.xx

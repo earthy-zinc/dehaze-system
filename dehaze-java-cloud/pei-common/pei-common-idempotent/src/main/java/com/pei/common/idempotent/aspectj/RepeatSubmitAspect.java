@@ -4,8 +4,15 @@ import cn.dev33.satoken.SaManager;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.crypto.SecureUtil;
+import com.pei.common.core.constant.GlobalConstants;
+import com.pei.common.core.domain.R;
+import com.pei.common.core.exception.ServiceException;
+import com.pei.common.core.utils.MessageUtils;
+import com.pei.common.core.utils.ServletUtils;
+import com.pei.common.core.utils.StringUtils;
 import com.pei.common.idempotent.annotation.RepeatSubmit;
 import com.pei.common.json.utils.JsonUtils;
+import com.pei.common.redis.utils.RedisUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.aspectj.lang.JoinPoint;
@@ -13,13 +20,6 @@ import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
-import com.pei.common.core.constant.GlobalConstants;
-import com.pei.common.core.domain.R;
-import com.pei.common.core.exception.ServiceException;
-import com.pei.common.core.utils.MessageUtils;
-import com.pei.common.core.utils.ServletUtils;
-import com.pei.common.core.utils.StringUtils;
-import com.pei.common.redis.utils.RedisUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -70,38 +70,6 @@ public class RepeatSubmitAspect {
     }
 
     /**
-     * 处理完请求后执行
-     *
-     * @param joinPoint 切点
-     */
-    @AfterReturning(pointcut = "@annotation(repeatSubmit)", returning = "jsonResult")
-    public void doAfterReturning(JoinPoint joinPoint, RepeatSubmit repeatSubmit, Object jsonResult) {
-        if (jsonResult instanceof R<?> r) {
-            try {
-                // 成功则不删除redis数据 保证在有效时间内无法重复提交
-                if (r.getCode() == R.SUCCESS) {
-                    return;
-                }
-                RedisUtils.deleteObject(KEY_CACHE.get());
-            } finally {
-                KEY_CACHE.remove();
-            }
-        }
-    }
-
-    /**
-     * 拦截异常操作
-     *
-     * @param joinPoint 切点
-     * @param e         异常
-     */
-    @AfterThrowing(value = "@annotation(repeatSubmit)", throwing = "e")
-    public void doAfterThrowing(JoinPoint joinPoint, RepeatSubmit repeatSubmit, Exception e) {
-        RedisUtils.deleteObject(KEY_CACHE.get());
-        KEY_CACHE.remove();
-    }
-
-    /**
      * 参数拼装
      */
     private String argsArrayToString(Object[] paramsArray) {
@@ -141,6 +109,38 @@ public class RepeatSubmitAspect {
         }
         return o instanceof MultipartFile || o instanceof HttpServletRequest || o instanceof HttpServletResponse
             || o instanceof BindingResult;
+    }
+
+    /**
+     * 处理完请求后执行
+     *
+     * @param joinPoint 切点
+     */
+    @AfterReturning(pointcut = "@annotation(repeatSubmit)", returning = "jsonResult")
+    public void doAfterReturning(JoinPoint joinPoint, RepeatSubmit repeatSubmit, Object jsonResult) {
+        if (jsonResult instanceof R<?> r) {
+            try {
+                // 成功则不删除redis数据 保证在有效时间内无法重复提交
+                if (r.getCode() == R.SUCCESS) {
+                    return;
+                }
+                RedisUtils.deleteObject(KEY_CACHE.get());
+            } finally {
+                KEY_CACHE.remove();
+            }
+        }
+    }
+
+    /**
+     * 拦截异常操作
+     *
+     * @param joinPoint 切点
+     * @param e         异常
+     */
+    @AfterThrowing(value = "@annotation(repeatSubmit)", throwing = "e")
+    public void doAfterThrowing(JoinPoint joinPoint, RepeatSubmit repeatSubmit, Exception e) {
+        RedisUtils.deleteObject(KEY_CACHE.get());
+        KEY_CACHE.remove();
     }
 
 }

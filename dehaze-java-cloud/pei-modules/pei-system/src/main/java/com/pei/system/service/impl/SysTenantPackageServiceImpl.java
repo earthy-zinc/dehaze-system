@@ -5,7 +5,6 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.MapstructUtils;
@@ -19,6 +18,7 @@ import com.pei.system.domain.vo.SysTenantPackageVo;
 import com.pei.system.mapper.SysTenantMapper;
 import com.pei.system.mapper.SysTenantPackageMapper;
 import com.pei.system.service.ISysTenantPackageService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +42,7 @@ public class SysTenantPackageServiceImpl implements ISysTenantPackageService {
      * 查询租户套餐
      */
     @Override
-    public SysTenantPackageVo queryById(Long packageId){
+    public SysTenantPackageVo queryById(Long packageId) {
         return baseMapper.selectVoById(packageId);
     }
 
@@ -59,7 +59,7 @@ public class SysTenantPackageServiceImpl implements ISysTenantPackageService {
     @Override
     public List<SysTenantPackageVo> selectList() {
         return baseMapper.selectVoList(new LambdaQueryWrapper<SysTenantPackage>()
-                .eq(SysTenantPackage::getStatus, SystemConstants.NORMAL));
+            .eq(SysTenantPackage::getStatus, SystemConstants.NORMAL));
     }
 
     /**
@@ -69,14 +69,6 @@ public class SysTenantPackageServiceImpl implements ISysTenantPackageService {
     public List<SysTenantPackageVo> queryList(SysTenantPackageBo bo) {
         LambdaQueryWrapper<SysTenantPackage> lqw = buildQueryWrapper(bo);
         return baseMapper.selectVoList(lqw);
-    }
-
-    private LambdaQueryWrapper<SysTenantPackage> buildQueryWrapper(SysTenantPackageBo bo) {
-        LambdaQueryWrapper<SysTenantPackage> lqw = Wrappers.lambdaQuery();
-        lqw.like(StringUtils.isNotBlank(bo.getPackageName()), SysTenantPackage::getPackageName, bo.getPackageName());
-        lqw.eq(StringUtils.isNotBlank(bo.getStatus()), SysTenantPackage::getStatus, bo.getStatus());
-        lqw.orderByAsc(SysTenantPackage::getPackageId);
-        return lqw;
     }
 
     /**
@@ -146,12 +138,20 @@ public class SysTenantPackageServiceImpl implements ISysTenantPackageService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
-        if(isValid){
+        if (isValid) {
             boolean exists = tenantMapper.exists(new LambdaQueryWrapper<SysTenant>().in(SysTenant::getPackageId, ids));
             if (exists) {
                 throw new ServiceException("租户套餐已被使用");
             }
         }
         return baseMapper.deleteByIds(ids) > 0;
+    }
+
+    private LambdaQueryWrapper<SysTenantPackage> buildQueryWrapper(SysTenantPackageBo bo) {
+        LambdaQueryWrapper<SysTenantPackage> lqw = Wrappers.lambdaQuery();
+        lqw.like(StringUtils.isNotBlank(bo.getPackageName()), SysTenantPackage::getPackageName, bo.getPackageName());
+        lqw.eq(StringUtils.isNotBlank(bo.getStatus()), SysTenantPackage::getStatus, bo.getStatus());
+        lqw.orderByAsc(SysTenantPackage::getPackageId);
+        return lqw;
     }
 }

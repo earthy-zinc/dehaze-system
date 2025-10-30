@@ -2,9 +2,9 @@ package com.pei.workflow.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.common.mybatis.core.domain.BaseEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.mybatis.core.domain.BaseEntity;
 
 import java.io.Serial;
 import java.util.Date;

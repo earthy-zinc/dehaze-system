@@ -6,6 +6,7 @@ import org.springframework.boot.context.metrics.buffering.BufferingApplicationSt
 
 /**
  * SpringBoot-MQ 案例项目
+ *
  * @author Lion Li
  */
 @SpringBootApplication

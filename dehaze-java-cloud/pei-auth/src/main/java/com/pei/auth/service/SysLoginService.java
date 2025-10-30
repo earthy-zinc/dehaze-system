@@ -11,10 +11,6 @@ import com.pei.auth.form.RegisterBody;
 import com.pei.auth.properties.CaptchaProperties;
 import com.pei.auth.properties.UserPasswordProperties;
 import com.pei.common.core.constant.*;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import me.zhyd.oauth.model.AuthUser;
-import org.apache.dubbo.config.annotation.DubboReference;
 import com.pei.common.core.enums.LoginType;
 import com.pei.common.core.enums.UserType;
 import com.pei.common.core.exception.ServiceException;
@@ -37,6 +33,10 @@ import com.pei.system.api.domain.bo.RemoteUserBo;
 import com.pei.system.api.domain.vo.RemoteSocialVo;
 import com.pei.system.api.domain.vo.RemoteTenantVo;
 import com.pei.system.api.model.LoginUser;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import me.zhyd.oauth.model.AuthUser;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -55,17 +55,16 @@ import java.util.function.Supplier;
 @Slf4j
 public class SysLoginService {
 
+    @Autowired
+    private final CaptchaProperties captchaProperties;
     @DubboReference
     private RemoteUserService remoteUserService;
     @DubboReference
     private RemoteTenantService remoteTenantService;
     @DubboReference
     private RemoteSocialService remoteSocialService;
-
     @Autowired
     private UserPasswordProperties userPasswordProperties;
-    @Autowired
-    private final CaptchaProperties captchaProperties;
 
     /**
      * 绑定第三方用户
@@ -129,6 +128,24 @@ public class SysLoginService {
     }
 
     /**
+     * 记录登录信息
+     *
+     * @param username 用户名
+     * @param status   状态
+     * @param message  消息内容
+     * @return
+     */
+    public void recordLogininfor(String tenantId, String username, String status, String message) {
+        // 封装对象
+        LogininforEvent logininforEvent = new LogininforEvent();
+        logininforEvent.setTenantId(tenantId);
+        logininforEvent.setUsername(username);
+        logininforEvent.setStatus(status);
+        logininforEvent.setMessage(message);
+        SpringUtils.context().publishEvent(logininforEvent);
+    }
+
+    /**
      * 注册
      */
     public void register(RegisterBody registerBody) {
@@ -178,24 +195,6 @@ public class SysLoginService {
             recordLogininfor(tenantId, username, Constants.LOGIN_FAIL, MessageUtils.message("user.jcaptcha.error"));
             throw new CaptchaException();
         }
-    }
-
-    /**
-     * 记录登录信息
-     *
-     * @param username 用户名
-     * @param status   状态
-     * @param message  消息内容
-     * @return
-     */
-    public void recordLogininfor(String tenantId, String username, String status, String message) {
-        // 封装对象
-        LogininforEvent logininforEvent = new LogininforEvent();
-        logininforEvent.setTenantId(tenantId);
-        logininforEvent.setUsername(username);
-        logininforEvent.setStatus(status);
-        logininforEvent.setMessage(message);
-        SpringUtils.context().publishEvent(logininforEvent);
     }
 
     /**

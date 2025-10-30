@@ -46,8 +46,8 @@ public class UnsignedMathGenerator implements CodeGenerator {
         final int limit = getLimit();
         int a = RandomUtil.randomInt(limit);
         int b = RandomUtil.randomInt(limit);
-        String max = Integer.toString(Math.max(a,b));
-        String min = Integer.toString(Math.min(a,b));
+        String max = Integer.toString(Math.max(a, b));
+        String min = Integer.toString(Math.min(a, b));
         max = StringUtils.rightPad(max, this.numberLength, CharUtil.SPACE);
         min = StringUtils.rightPad(min, this.numberLength, CharUtil.SPACE);
 
@@ -69,20 +69,20 @@ public class UnsignedMathGenerator implements CodeGenerator {
     }
 
     /**
-     * 获取验证码长度
-     *
-     * @return 验证码长度
-     */
-    public int getLength() {
-        return this.numberLength * 2 + 2;
-    }
-
-    /**
      * 根据长度获取参与计算数字最大值
      *
      * @return 最大值
      */
     private int getLimit() {
         return Integer.parseInt("1" + StringUtils.repeat('0', this.numberLength));
+    }
+
+    /**
+     * 获取验证码长度
+     *
+     * @return 验证码长度
+     */
+    public int getLength() {
+        return this.numberLength * 2 + 2;
     }
 }

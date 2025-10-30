@@ -1,7 +1,7 @@
 package com.pei.system.domain.vo;
 
-import lombok.Data;
 import com.pei.common.core.utils.StringUtils;
+import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;

@@ -1,14 +1,14 @@
 package com.pei.system.domain.bo;
 
+import com.pei.common.core.constant.RegexConstants;
+import com.pei.common.mybatis.core.domain.BaseEntity;
+import com.pei.system.domain.SysDictType;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.core.constant.RegexConstants;
-import com.pei.common.mybatis.core.domain.BaseEntity;
-import com.pei.system.domain.SysDictType;
 
 /**
  * 字典类型业务对象 sys_dict_type

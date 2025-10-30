@@ -1,12 +1,12 @@
 package com.pei.system.dubbo;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.pei.system.api.RemoteDeptService;
+import com.pei.system.api.domain.vo.RemoteDeptVo;
 import com.pei.system.domain.vo.SysDeptVo;
 import com.pei.system.service.ISysDeptService;
 import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboService;
-import com.pei.system.api.RemoteDeptService;
-import com.pei.system.api.domain.vo.RemoteDeptVo;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

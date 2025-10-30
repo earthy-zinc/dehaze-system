@@ -1,10 +1,10 @@
 package com.pei.common.core.enums;
 
 import cn.hutool.core.util.StrUtil;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.StringUtils;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 import java.util.Arrays;
 import java.util.List;
@@ -56,18 +56,16 @@ public enum BusinessStatusEnum {
      */
     TERMINATION("termination", "已终止");
 
+    private static final Map<String, BusinessStatusEnum> STATUS_MAP = Arrays.stream(BusinessStatusEnum.values())
+        .collect(Collectors.toConcurrentMap(BusinessStatusEnum::getStatus, Function.identity()));
     /**
      * 状态
      */
     private final String status;
-
     /**
      * 描述
      */
     private final String desc;
-
-    private static final Map<String, BusinessStatusEnum> STATUS_MAP = Arrays.stream(BusinessStatusEnum.values())
-        .collect(Collectors.toConcurrentMap(BusinessStatusEnum::getStatus, Function.identity()));
 
     /**
      * 根据状态获取对应的 BusinessStatusEnum 枚举
@@ -117,8 +115,7 @@ public enum BusinessStatusEnum {
     /**
      * 获取运行中的实例状态列表
      *
-     * @return 包含运行中实例状态的不可变列表
-     * （包含 DRAFT、WAITING、BACK 和 CANCEL 状态）
+     * @return 包含运行中实例状态的不可变列表 （包含 DRAFT、WAITING、BACK 和 CANCEL 状态）
      */
     public static List<String> runningStatus() {
         return Arrays.asList(DRAFT.status, WAITING.status, BACK.status, CANCEL.status);
@@ -127,8 +124,7 @@ public enum BusinessStatusEnum {
     /**
      * 获取结束实例的状态列表
      *
-     * @return 包含结束实例状态的不可变列表
-     * （包含 FINISH、INVALID 和 TERMINATION 状态）
+     * @return 包含结束实例状态的不可变列表 （包含 FINISH、INVALID 和 TERMINATION 状态）
      */
     public static List<String> finishStatus() {
         return Arrays.asList(FINISH.status, INVALID.status, TERMINATION.status);

@@ -1,13 +1,13 @@
 package com.pei.gen.util;
 
+import com.pei.common.core.utils.StringUtils;
+import com.pei.gen.config.GenConfig;
 import com.pei.gen.constant.GenConstants;
 import com.pei.gen.domain.GenTable;
 import com.pei.gen.domain.GenTableColumn;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.RegExUtils;
-import com.pei.common.core.utils.StringUtils;
-import com.pei.gen.config.GenConfig;
 
 import java.util.Arrays;
 
@@ -31,6 +31,75 @@ public class GenUtils {
         genTable.setFunctionAuthor(GenConfig.getAuthor());
         genTable.setCreateTime(null);
         genTable.setUpdateTime(null);
+    }
+
+    /**
+     * 表名转换成Java类名
+     *
+     * @param tableName 表名称
+     * @return 类名
+     */
+    public static String convertClassName(String tableName) {
+        boolean autoRemovePre = GenConfig.getAutoRemovePre();
+        String tablePrefix = GenConfig.getTablePrefix();
+        if (autoRemovePre && StringUtils.isNotEmpty(tablePrefix)) {
+            String[] searchList = StringUtils.split(tablePrefix, StringUtils.SEPARATOR);
+            tableName = replaceFirst(tableName, searchList);
+        }
+        return StringUtils.convertToCamelCase(tableName);
+    }
+
+    /**
+     * 获取模块名
+     *
+     * @param packageName 包名
+     * @return 模块名
+     */
+    public static String getModuleName(String packageName) {
+        int lastIndex = packageName.lastIndexOf(".");
+        int nameLength = packageName.length();
+        return StringUtils.substring(packageName, lastIndex + 1, nameLength);
+    }
+
+    /**
+     * 获取业务名
+     *
+     * @param tableName 表名
+     * @return 业务名
+     */
+    public static String getBusinessName(String tableName) {
+        int firstIndex = tableName.indexOf("_");
+        int nameLength = tableName.length();
+        String businessName = StringUtils.substring(tableName, firstIndex + 1, nameLength);
+        businessName = StringUtils.toCamelCase(businessName);
+        return businessName;
+    }
+
+    /**
+     * 关键字替换
+     *
+     * @param text 需要被替换的名字
+     * @return 替换后的名字
+     */
+    public static String replaceText(String text) {
+        return RegExUtils.replaceAll(text, "(?:表|若依)", "");
+    }
+
+    /**
+     * 批量替换前缀
+     *
+     * @param replacementm 替换值
+     * @param searchList   替换列表
+     */
+    public static String replaceFirst(String replacementm, String[] searchList) {
+        String text = replacementm;
+        for (String searchString : searchList) {
+            if (replacementm.startsWith(searchString)) {
+                text = replacementm.replaceFirst(searchString, StringUtils.EMPTY);
+                break;
+            }
+        }
+        return text;
     }
 
     /**
@@ -109,86 +178,6 @@ public class GenUtils {
     }
 
     /**
-     * 校验数组是否包含指定值
-     *
-     * @param arr         数组
-     * @param targetValue 值
-     * @return 是否包含
-     */
-    public static boolean arraysContains(String[] arr, String targetValue) {
-        return Arrays.asList(arr).contains(targetValue);
-    }
-
-    /**
-     * 获取模块名
-     *
-     * @param packageName 包名
-     * @return 模块名
-     */
-    public static String getModuleName(String packageName) {
-        int lastIndex = packageName.lastIndexOf(".");
-        int nameLength = packageName.length();
-        return StringUtils.substring(packageName, lastIndex + 1, nameLength);
-    }
-
-    /**
-     * 获取业务名
-     *
-     * @param tableName 表名
-     * @return 业务名
-     */
-    public static String getBusinessName(String tableName) {
-        int firstIndex = tableName.indexOf("_");
-        int nameLength = tableName.length();
-        String businessName = StringUtils.substring(tableName, firstIndex + 1, nameLength);
-        businessName = StringUtils.toCamelCase(businessName);
-        return businessName;
-    }
-
-    /**
-     * 表名转换成Java类名
-     *
-     * @param tableName 表名称
-     * @return 类名
-     */
-    public static String convertClassName(String tableName) {
-        boolean autoRemovePre = GenConfig.getAutoRemovePre();
-        String tablePrefix = GenConfig.getTablePrefix();
-        if (autoRemovePre && StringUtils.isNotEmpty(tablePrefix)) {
-            String[] searchList = StringUtils.split(tablePrefix, StringUtils.SEPARATOR);
-            tableName = replaceFirst(tableName, searchList);
-        }
-        return StringUtils.convertToCamelCase(tableName);
-    }
-
-    /**
-     * 批量替换前缀
-     *
-     * @param replacementm 替换值
-     * @param searchList   替换列表
-     */
-    public static String replaceFirst(String replacementm, String[] searchList) {
-        String text = replacementm;
-        for (String searchString : searchList) {
-            if (replacementm.startsWith(searchString)) {
-                text = replacementm.replaceFirst(searchString, StringUtils.EMPTY);
-                break;
-            }
-        }
-        return text;
-    }
-
-    /**
-     * 关键字替换
-     *
-     * @param text 需要被替换的名字
-     * @return 替换后的名字
-     */
-    public static String replaceText(String text) {
-        return RegExUtils.replaceAll(text, "(?:表|若依)", "");
-    }
-
-    /**
      * 获取数据库类型字段
      *
      * @param columnType 列类型
@@ -200,6 +189,17 @@ public class GenUtils {
         } else {
             return columnType;
         }
+    }
+
+    /**
+     * 校验数组是否包含指定值
+     *
+     * @param arr         数组
+     * @param targetValue 值
+     * @return 是否包含
+     */
+    public static boolean arraysContains(String[] arr, String targetValue) {
+        return Arrays.asList(arr).contains(targetValue);
     }
 
     /**

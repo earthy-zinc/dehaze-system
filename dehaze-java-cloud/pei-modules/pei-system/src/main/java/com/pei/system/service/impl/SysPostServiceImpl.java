@@ -5,7 +5,6 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.MapstructUtils;
@@ -22,6 +21,7 @@ import com.pei.system.mapper.SysDeptMapper;
 import com.pei.system.mapper.SysPostMapper;
 import com.pei.system.mapper.SysUserPostMapper;
 import com.pei.system.service.ISysPostService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -66,34 +66,6 @@ public class SysPostServiceImpl implements ISysPostService {
     @Override
     public List<SysPostVo> selectPostsByUserId(Long userId) {
         return baseMapper.selectPostsByUserId(userId);
-    }
-
-    /**
-     * 根据查询条件构建查询包装器
-     *
-     * @param bo 查询条件对象
-     * @return 构建好的查询包装器
-     */
-    private LambdaQueryWrapper<SysPost> buildQueryWrapper(SysPostBo bo) {
-        LambdaQueryWrapper<SysPost> wrapper = new LambdaQueryWrapper<>();
-        wrapper.like(StringUtils.isNotBlank(bo.getPostCode()), SysPost::getPostCode, bo.getPostCode())
-            .like(StringUtils.isNotBlank(bo.getPostCategory()), SysPost::getPostCategory, bo.getPostCategory())
-            .like(StringUtils.isNotBlank(bo.getPostName()), SysPost::getPostName, bo.getPostName())
-            .eq(StringUtils.isNotBlank(bo.getStatus()), SysPost::getStatus, bo.getStatus())
-            .orderByAsc(SysPost::getPostSort);
-        if (ObjectUtil.isNotNull(bo.getDeptId())) {
-            //优先单部门搜索
-            wrapper.eq(SysPost::getDeptId, bo.getDeptId());
-        } else if (ObjectUtil.isNotNull(bo.getBelongDeptId())) {
-            //部门树搜索
-            wrapper.and(x -> {
-                List<SysDept> deptList = deptMapper.selectListByParentId(bo.getBelongDeptId());
-                List<Long> deptIds = StreamUtils.toList(deptList, SysDept::getDeptId);
-                deptIds.add(bo.getBelongDeptId());
-                x.in(SysPost::getDeptId, deptIds);
-            });
-        }
-        return wrapper;
     }
 
     /**
@@ -244,5 +216,33 @@ public class SysPostServiceImpl implements ISysPostService {
     public int updatePost(SysPostBo bo) {
         SysPost post = MapstructUtils.convert(bo, SysPost.class);
         return baseMapper.updateById(post);
+    }
+
+    /**
+     * 根据查询条件构建查询包装器
+     *
+     * @param bo 查询条件对象
+     * @return 构建好的查询包装器
+     */
+    private LambdaQueryWrapper<SysPost> buildQueryWrapper(SysPostBo bo) {
+        LambdaQueryWrapper<SysPost> wrapper = new LambdaQueryWrapper<>();
+        wrapper.like(StringUtils.isNotBlank(bo.getPostCode()), SysPost::getPostCode, bo.getPostCode())
+            .like(StringUtils.isNotBlank(bo.getPostCategory()), SysPost::getPostCategory, bo.getPostCategory())
+            .like(StringUtils.isNotBlank(bo.getPostName()), SysPost::getPostName, bo.getPostName())
+            .eq(StringUtils.isNotBlank(bo.getStatus()), SysPost::getStatus, bo.getStatus())
+            .orderByAsc(SysPost::getPostSort);
+        if (ObjectUtil.isNotNull(bo.getDeptId())) {
+            //优先单部门搜索
+            wrapper.eq(SysPost::getDeptId, bo.getDeptId());
+        } else if (ObjectUtil.isNotNull(bo.getBelongDeptId())) {
+            //部门树搜索
+            wrapper.and(x -> {
+                List<SysDept> deptList = deptMapper.selectListByParentId(bo.getBelongDeptId());
+                List<Long> deptIds = StreamUtils.toList(deptList, SysDept::getDeptId);
+                deptIds.add(bo.getBelongDeptId());
+                x.in(SysPost::getDeptId, deptIds);
+            });
+        }
+        return wrapper;
     }
 }

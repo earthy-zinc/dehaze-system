@@ -1,8 +1,8 @@
 package com.pei.workflow.api.event;
 
+import com.pei.common.core.utils.SpringUtils;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.core.utils.SpringUtils;
 import org.springframework.cloud.bus.event.RemoteApplicationEvent;
 
 import java.io.Serial;

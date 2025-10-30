@@ -7,6 +7,12 @@ import cn.hutool.core.io.IoUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.common.core.exception.ServiceException;
+import com.pei.common.core.utils.StreamUtils;
+import com.pei.common.core.utils.StringUtils;
+import com.pei.common.json.utils.JsonUtils;
+import com.pei.common.mybatis.core.page.PageQuery;
+import com.pei.common.mybatis.core.page.TableDataInfo;
 import com.pei.workflow.common.ConditionalOnEnable;
 import com.pei.workflow.common.constant.FlowConstant;
 import com.pei.workflow.domain.FlowCategory;
@@ -17,12 +23,6 @@ import com.pei.workflow.service.IFlwDefinitionService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.core.exception.ServiceException;
-import com.pei.common.core.utils.StreamUtils;
-import com.pei.common.core.utils.StringUtils;
-import com.pei.common.json.utils.JsonUtils;
-import com.pei.common.mybatis.core.page.PageQuery;
-import com.pei.common.mybatis.core.page.TableDataInfo;
 import org.dromara.warm.flow.core.dto.DefJson;
 import org.dromara.warm.flow.core.enums.NodeType;
 import org.dromara.warm.flow.core.enums.PublishStatus;
@@ -102,18 +102,6 @@ public class FlwDefinitionServiceImpl implements IFlwDefinitionService {
         return build;
     }
 
-    private LambdaQueryWrapper<FlowDefinition> buildQueryWrapper(FlowDefinition flowDefinition) {
-        LambdaQueryWrapper<FlowDefinition> wrapper = Wrappers.lambdaQuery();
-        wrapper.like(StringUtils.isNotBlank(flowDefinition.getFlowCode()), FlowDefinition::getFlowCode, flowDefinition.getFlowCode());
-        wrapper.like(StringUtils.isNotBlank(flowDefinition.getFlowName()), FlowDefinition::getFlowName, flowDefinition.getFlowName());
-        if (StringUtils.isNotBlank(flowDefinition.getCategory())) {
-            List<Long> categoryIds = flwCategoryMapper.selectCategoryIdsByParentId(Convert.toLong(flowDefinition.getCategory()));
-            wrapper.in(FlowDefinition::getCategory, StreamUtils.toList(categoryIds, Convert::toStr));
-        }
-        wrapper.orderByDesc(FlowDefinition::getCreateTime);
-        return wrapper;
-    }
-
     /**
      * 发布流程定义
      *
@@ -139,25 +127,6 @@ public class FlwDefinitionServiceImpl implements IFlwDefinitionService {
     }
 
     /**
-     * 导入流程定义
-     *
-     * @param file 文件
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean importJson(MultipartFile file, String category) {
-        try {
-            DefJson defJson = JsonUtils.parseObject(file.getBytes(), DefJson.class);
-            defJson.setCategory(category);
-            defService.importDef(defJson);
-        } catch (IOException e) {
-            log.error("读取文件流错误: {}", e.getMessage(), e);
-            throw new IllegalStateException("文件读取失败，请检查文件内容", e);
-        }
-        return true;
-    }
-
-    /**
      * 导出流程定义
      *
      * @param id       流程定义id
@@ -174,6 +143,25 @@ public class FlwDefinitionServiceImpl implements IFlwDefinitionService {
         response.setHeader("Content-Disposition", "attachment;");
         response.addHeader("Content-Length", "" + data.length);
         IoUtil.write(response.getOutputStream(), false, data);
+    }
+
+    /**
+     * 导入流程定义
+     *
+     * @param file 文件
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean importJson(MultipartFile file, String category) {
+        try {
+            DefJson defJson = JsonUtils.parseObject(file.getBytes(), DefJson.class);
+            defJson.setCategory(category);
+            defService.importDef(defJson);
+        } catch (IOException e) {
+            log.error("读取文件流错误: {}", e.getMessage(), e);
+            throw new IllegalStateException("文件读取失败，请检查文件内容", e);
+        }
+        return true;
     }
 
     /**
@@ -268,5 +256,17 @@ public class FlwDefinitionServiceImpl implements IFlwDefinitionService {
                 }
             }
         }
+    }
+
+    private LambdaQueryWrapper<FlowDefinition> buildQueryWrapper(FlowDefinition flowDefinition) {
+        LambdaQueryWrapper<FlowDefinition> wrapper = Wrappers.lambdaQuery();
+        wrapper.like(StringUtils.isNotBlank(flowDefinition.getFlowCode()), FlowDefinition::getFlowCode, flowDefinition.getFlowCode());
+        wrapper.like(StringUtils.isNotBlank(flowDefinition.getFlowName()), FlowDefinition::getFlowName, flowDefinition.getFlowName());
+        if (StringUtils.isNotBlank(flowDefinition.getCategory())) {
+            List<Long> categoryIds = flwCategoryMapper.selectCategoryIdsByParentId(Convert.toLong(flowDefinition.getCategory()));
+            wrapper.in(FlowDefinition::getCategory, StreamUtils.toList(categoryIds, Convert::toStr));
+        }
+        wrapper.orderByDesc(FlowDefinition::getCreateTime);
+        return wrapper;
     }
 }

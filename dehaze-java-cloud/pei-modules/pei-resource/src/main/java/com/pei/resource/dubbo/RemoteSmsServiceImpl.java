@@ -1,10 +1,10 @@
 package com.pei.resource.dubbo;
 
+import com.pei.resource.api.RemoteSmsService;
+import com.pei.resource.api.domain.RemoteSms;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboService;
-import com.pei.resource.api.RemoteSmsService;
-import com.pei.resource.api.domain.RemoteSms;
 import org.dromara.sms4j.api.SmsBlend;
 import org.dromara.sms4j.api.entity.SmsResponse;
 import org.dromara.sms4j.core.factory.SmsFactory;
@@ -23,6 +23,20 @@ import java.util.List;
 @Service
 @DubboService
 public class RemoteSmsServiceImpl implements RemoteSmsService {
+
+    /**
+     * 同步方法：发送简单文本短信
+     *
+     * @param phone   目标手机号
+     * @param message 短信内容
+     * @return 封装了短信发送结果的 RemoteSms 对象
+     */
+    @Override
+    public RemoteSms sendMessage(String phone, String message) {
+        // 调用 getSmsBlend 方法获取对应短信供应商的 SmsBlend 实例
+        SmsResponse smsResponse = getSmsBlend().sendMessage(phone, message);
+        return getRemoteSms(smsResponse);
+    }
 
     /**
      * 获取特定供应商类型的 SmsBlend 实例
@@ -47,20 +61,6 @@ public class RemoteSmsServiceImpl implements RemoteSmsService {
         sms.setResponse(smsResponse.getData().toString());
         sms.setConfigId(smsResponse.getConfigId());
         return sms;
-    }
-
-    /**
-     * 同步方法：发送简单文本短信
-     *
-     * @param phone   目标手机号
-     * @param message 短信内容
-     * @return 封装了短信发送结果的 RemoteSms 对象
-     */
-    @Override
-    public RemoteSms sendMessage(String phone, String message) {
-        // 调用 getSmsBlend 方法获取对应短信供应商的 SmsBlend 实例
-        SmsResponse smsResponse = getSmsBlend().sendMessage(phone, message);
-        return getRemoteSms(smsResponse);
     }
 
     /**

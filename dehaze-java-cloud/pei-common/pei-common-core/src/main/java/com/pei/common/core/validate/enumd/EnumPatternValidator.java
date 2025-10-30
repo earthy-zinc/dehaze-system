@@ -1,9 +1,9 @@
 package com.pei.common.core.validate.enumd;
 
+import com.pei.common.core.utils.StringUtils;
 import com.pei.common.core.utils.reflect.ReflectUtils;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
-import com.pei.common.core.utils.StringUtils;
 
 /**
  * 自定义枚举校验注解实现
@@ -13,7 +13,8 @@ import com.pei.common.core.utils.StringUtils;
  */
 public class EnumPatternValidator implements ConstraintValidator<EnumPattern, String> {
 
-    private EnumPattern annotation;;
+    private EnumPattern annotation;
+    ;
 
     @Override
     public void initialize(EnumPattern annotation) {

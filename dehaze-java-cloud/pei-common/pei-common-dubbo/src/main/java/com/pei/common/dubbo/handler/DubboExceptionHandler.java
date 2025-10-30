@@ -1,8 +1,8 @@
 package com.pei.common.dubbo.handler;
 
+import com.pei.common.core.domain.R;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.rpc.RpcException;
-import com.pei.common.core.domain.R;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 

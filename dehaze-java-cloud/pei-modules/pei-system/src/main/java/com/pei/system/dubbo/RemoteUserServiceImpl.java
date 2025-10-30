@@ -5,18 +5,6 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.lang.Opt;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pei.system.domain.SysUserPost;
-import com.pei.system.domain.bo.SysUserBo;
-import com.pei.system.domain.vo.SysDeptVo;
-import com.pei.system.domain.vo.SysPostVo;
-import com.pei.system.domain.vo.SysRoleVo;
-import com.pei.system.domain.vo.SysUserVo;
-import com.pei.system.mapper.SysUserMapper;
-import com.pei.system.mapper.SysUserPostMapper;
-import com.pei.system.mapper.SysUserRoleMapper;
-import com.pei.system.service.*;
-import lombok.RequiredArgsConstructor;
-import org.apache.dubbo.config.annotation.DubboService;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.enums.UserStatus;
 import com.pei.common.core.exception.ServiceException;
@@ -35,8 +23,19 @@ import com.pei.system.api.model.PostDTO;
 import com.pei.system.api.model.RoleDTO;
 import com.pei.system.api.model.XcxLoginUser;
 import com.pei.system.domain.SysUser;
+import com.pei.system.domain.SysUserPost;
 import com.pei.system.domain.SysUserRole;
+import com.pei.system.domain.bo.SysUserBo;
+import com.pei.system.domain.vo.SysDeptVo;
+import com.pei.system.domain.vo.SysPostVo;
+import com.pei.system.domain.vo.SysRoleVo;
+import com.pei.system.domain.vo.SysUserVo;
+import com.pei.system.mapper.SysUserMapper;
+import com.pei.system.mapper.SysUserPostMapper;
+import com.pei.system.mapper.SysUserRoleMapper;
 import com.pei.system.service.*;
+import lombok.RequiredArgsConstructor;
+import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -261,33 +260,6 @@ public class RemoteUserServiceImpl implements RemoteUserService {
     }
 
     /**
-     * 构建登录用户
-     */
-    private LoginUser buildLoginUser(SysUserVo userVo) {
-        LoginUser loginUser = new LoginUser();
-        Long userId = userVo.getUserId();
-        loginUser.setTenantId(userVo.getTenantId());
-        loginUser.setUserId(userId);
-        loginUser.setDeptId(userVo.getDeptId());
-        loginUser.setUsername(userVo.getUserName());
-        loginUser.setNickname(userVo.getNickName());
-        loginUser.setPassword(userVo.getPassword());
-        loginUser.setUserType(userVo.getUserType());
-        loginUser.setMenuPermission(permissionService.getMenuPermission(userId));
-        loginUser.setRolePermission(permissionService.getRolePermission(userId));
-        if (ObjectUtil.isNotNull(userVo.getDeptId())) {
-            Opt<SysDeptVo> deptOpt = Opt.of(userVo.getDeptId()).map(deptService::selectDeptById);
-            loginUser.setDeptName(deptOpt.map(SysDeptVo::getDeptName).orElse(StringUtils.EMPTY));
-            loginUser.setDeptCategory(deptOpt.map(SysDeptVo::getDeptCategory).orElse(StringUtils.EMPTY));
-        }
-        List<SysRoleVo> roles = roleService.selectRolesByUserId(userId);
-        List<SysPostVo> posts = postService.selectPostsByUserId(userId);
-        loginUser.setRoles(BeanUtil.copyToList(roles, RoleDTO.class));
-        loginUser.setPosts(BeanUtil.copyToList(posts, PostDTO.class));
-        return loginUser;
-    }
-
-    /**
      * 更新用户信息
      *
      * @param userId 用户ID
@@ -395,6 +367,33 @@ public class RemoteUserServiceImpl implements RemoteUserService {
         Set<Long> userIds = StreamUtils.toSet(userPosts, SysUserPost::getUserId);
 
         return selectListByIds(new ArrayList<>(userIds));
+    }
+
+    /**
+     * 构建登录用户
+     */
+    private LoginUser buildLoginUser(SysUserVo userVo) {
+        LoginUser loginUser = new LoginUser();
+        Long userId = userVo.getUserId();
+        loginUser.setTenantId(userVo.getTenantId());
+        loginUser.setUserId(userId);
+        loginUser.setDeptId(userVo.getDeptId());
+        loginUser.setUsername(userVo.getUserName());
+        loginUser.setNickname(userVo.getNickName());
+        loginUser.setPassword(userVo.getPassword());
+        loginUser.setUserType(userVo.getUserType());
+        loginUser.setMenuPermission(permissionService.getMenuPermission(userId));
+        loginUser.setRolePermission(permissionService.getRolePermission(userId));
+        if (ObjectUtil.isNotNull(userVo.getDeptId())) {
+            Opt<SysDeptVo> deptOpt = Opt.of(userVo.getDeptId()).map(deptService::selectDeptById);
+            loginUser.setDeptName(deptOpt.map(SysDeptVo::getDeptName).orElse(StringUtils.EMPTY));
+            loginUser.setDeptCategory(deptOpt.map(SysDeptVo::getDeptCategory).orElse(StringUtils.EMPTY));
+        }
+        List<SysRoleVo> roles = roleService.selectRolesByUserId(userId);
+        List<SysPostVo> posts = postService.selectPostsByUserId(userId);
+        loginUser.setRoles(BeanUtil.copyToList(roles, RoleDTO.class));
+        loginUser.setPosts(BeanUtil.copyToList(posts, PostDTO.class));
+        return loginUser;
     }
 
 }

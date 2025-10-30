@@ -3,9 +3,17 @@ package com.pei.common.mybatis.handler;
 import cn.hutool.core.annotation.AnnotationUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.pei.common.core.exception.ServiceException;
+import com.pei.common.core.utils.SpringUtils;
+import com.pei.common.core.utils.StreamUtils;
+import com.pei.common.core.utils.StringUtils;
 import com.pei.common.mybatis.annotation.DataColumn;
 import com.pei.common.mybatis.annotation.DataPermission;
 import com.pei.common.mybatis.enums.DataScopeType;
+import com.pei.common.mybatis.helper.DataPermissionHelper;
+import com.pei.common.satoken.utils.LoginHelper;
+import com.pei.system.api.model.LoginUser;
+import com.pei.system.api.model.RoleDTO;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.JSQLParserException;
@@ -14,14 +22,6 @@ import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.ParenthesedExpressionList;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.apache.ibatis.io.Resources;
-import com.pei.common.core.exception.ServiceException;
-import com.pei.common.core.utils.SpringUtils;
-import com.pei.common.core.utils.StreamUtils;
-import com.pei.common.core.utils.StringUtils;
-import com.pei.common.mybatis.helper.DataPermissionHelper;
-import com.pei.common.satoken.utils.LoginHelper;
-import com.pei.system.api.model.LoginUser;
-import com.pei.system.api.model.RoleDTO;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.io.Resource;
@@ -74,6 +74,61 @@ public class PlusDataPermissionHandler {
     }
 
     /**
+     * 扫描指定包下的 Mapper 类，并查找其中带有特定注解的方法或类
+     *
+     * @param mapperPackage Mapper 类所在的包路径
+     */
+    private void scanMapperClasses(String mapperPackage) {
+        // 创建资源解析器和元数据读取工厂
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+        CachingMetadataReaderFactory factory = new CachingMetadataReaderFactory();
+        // 将 Mapper 包路径按分隔符拆分为数组
+        String[] packagePatternArray = StringUtils.splitPreserveAllTokens(mapperPackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS);
+        String classpath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX;
+        try {
+            for (String packagePattern : packagePatternArray) {
+                // 将包路径转换为资源路径
+                String path = ClassUtils.convertClassNameToResourcePath(packagePattern);
+                // 获取指定路径下的所有 .class 文件资源
+                Resource[] resources = resolver.getResources(classpath + path + "/*.class");
+                for (Resource resource : resources) {
+                    // 获取资源的类元数据
+                    ClassMetadata classMetadata = factory.getMetadataReader(resource).getClassMetadata();
+                    // 获取资源对应的类对象
+                    Class<?> clazz = Resources.classForName(classMetadata.getClassName());
+                    // 查找类中的特定注解
+                    findAnnotation(clazz);
+                }
+            }
+        } catch (Exception e) {
+            log.error("初始化数据安全缓存时出错:{}", e.getMessage());
+        }
+    }
+
+    /**
+     * 在指定的类中查找特定的注解 DataPermission，并将带有这个注解的方法或类存储到 dataPermissionCacheMap 中
+     *
+     * @param clazz 要查找的类
+     */
+    private void findAnnotation(Class<?> clazz) {
+        DataPermission dataPermission;
+        for (Method method : clazz.getMethods()) {
+            if (method.isDefault() || method.isVarArgs()) {
+                continue;
+            }
+            String mappedStatementId = clazz.getName() + "." + method.getName();
+            if (AnnotationUtil.hasAnnotation(method, DataPermission.class)) {
+                dataPermission = AnnotationUtil.getAnnotation(method, DataPermission.class);
+                dataPermissionCacheMap.put(mappedStatementId, dataPermission);
+            }
+        }
+        if (AnnotationUtil.hasAnnotation(clazz, DataPermission.class)) {
+            dataPermission = AnnotationUtil.getAnnotation(clazz, DataPermission.class);
+            dataPermissionCacheMap.put(clazz.getName(), dataPermission);
+        }
+    }
+
+    /**
      * 获取数据过滤条件的 SQL 片段
      *
      * @param where             原始的查询条件表达式
@@ -113,6 +168,29 @@ public class PlusDataPermissionHandler {
         } finally {
             DataPermissionHelper.removePermission();
         }
+    }
+
+    /**
+     * 根据映射语句 ID 或类名获取对应的 DataPermission 注解对象
+     *
+     * @param mapperId 映射语句 ID
+     * @return DataPermission 注解对象，如果不存在则返回 null
+     */
+    public DataPermission getDataPermission(String mapperId) {
+        // 检查上下文中是否包含映射语句 ID 对应的 DataPermission 注解对象
+        if (DataPermissionHelper.getPermission() != null) {
+            return DataPermissionHelper.getPermission();
+        }
+        // 检查缓存中是否包含映射语句 ID 对应的 DataPermission 注解对象
+        if (dataPermissionCacheMap.containsKey(mapperId)) {
+            return dataPermissionCacheMap.get(mapperId);
+        }
+        // 如果缓存中不包含映射语句 ID 对应的 DataPermission 注解对象，则尝试使用类名作为键查找
+        String clazzName = mapperId.substring(0, mapperId.lastIndexOf("."));
+        if (dataPermissionCacheMap.containsKey(clazzName)) {
+            return dataPermissionCacheMap.get(clazzName);
+        }
+        return null;
     }
 
     /**
@@ -204,84 +282,6 @@ public class PlusDataPermissionHandler {
             return sql.substring(joinStr.length());
         }
         return StringUtils.EMPTY;
-    }
-
-    /**
-     * 扫描指定包下的 Mapper 类，并查找其中带有特定注解的方法或类
-     *
-     * @param mapperPackage Mapper 类所在的包路径
-     */
-    private void scanMapperClasses(String mapperPackage) {
-        // 创建资源解析器和元数据读取工厂
-        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-        CachingMetadataReaderFactory factory = new CachingMetadataReaderFactory();
-        // 将 Mapper 包路径按分隔符拆分为数组
-        String[] packagePatternArray = StringUtils.splitPreserveAllTokens(mapperPackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS);
-        String classpath = ResourcePatternResolver.CLASSPATH_ALL_URL_PREFIX;
-        try {
-            for (String packagePattern : packagePatternArray) {
-                // 将包路径转换为资源路径
-                String path = ClassUtils.convertClassNameToResourcePath(packagePattern);
-                // 获取指定路径下的所有 .class 文件资源
-                Resource[] resources = resolver.getResources(classpath + path + "/*.class");
-                for (Resource resource : resources) {
-                    // 获取资源的类元数据
-                    ClassMetadata classMetadata = factory.getMetadataReader(resource).getClassMetadata();
-                    // 获取资源对应的类对象
-                    Class<?> clazz = Resources.classForName(classMetadata.getClassName());
-                    // 查找类中的特定注解
-                    findAnnotation(clazz);
-                }
-            }
-        } catch (Exception e) {
-            log.error("初始化数据安全缓存时出错:{}", e.getMessage());
-        }
-    }
-
-    /**
-     * 在指定的类中查找特定的注解 DataPermission，并将带有这个注解的方法或类存储到 dataPermissionCacheMap 中
-     *
-     * @param clazz 要查找的类
-     */
-    private void findAnnotation(Class<?> clazz) {
-        DataPermission dataPermission;
-        for (Method method : clazz.getMethods()) {
-            if (method.isDefault() || method.isVarArgs()) {
-                continue;
-            }
-            String mappedStatementId = clazz.getName() + "." + method.getName();
-            if (AnnotationUtil.hasAnnotation(method, DataPermission.class)) {
-                dataPermission = AnnotationUtil.getAnnotation(method, DataPermission.class);
-                dataPermissionCacheMap.put(mappedStatementId, dataPermission);
-            }
-        }
-        if (AnnotationUtil.hasAnnotation(clazz, DataPermission.class)) {
-            dataPermission = AnnotationUtil.getAnnotation(clazz, DataPermission.class);
-            dataPermissionCacheMap.put(clazz.getName(), dataPermission);
-        }
-    }
-
-    /**
-     * 根据映射语句 ID 或类名获取对应的 DataPermission 注解对象
-     *
-     * @param mapperId 映射语句 ID
-     * @return DataPermission 注解对象，如果不存在则返回 null
-     */
-    public DataPermission getDataPermission(String mapperId) {
-        // 检查上下文中是否包含映射语句 ID 对应的 DataPermission 注解对象
-        if (DataPermissionHelper.getPermission() != null) {
-            return DataPermissionHelper.getPermission();
-        }
-        // 检查缓存中是否包含映射语句 ID 对应的 DataPermission 注解对象
-        if (dataPermissionCacheMap.containsKey(mapperId)) {
-            return dataPermissionCacheMap.get(mapperId);
-        }
-        // 如果缓存中不包含映射语句 ID 对应的 DataPermission 注解对象，则尝试使用类名作为键查找
-        String clazzName = mapperId.substring(0, mapperId.lastIndexOf("."));
-        if (dataPermissionCacheMap.containsKey(clazzName)) {
-            return dataPermissionCacheMap.get(clazzName);
-        }
-        return null;
     }
 
     /**

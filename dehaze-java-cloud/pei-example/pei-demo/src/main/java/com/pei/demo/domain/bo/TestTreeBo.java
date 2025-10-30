@@ -1,14 +1,14 @@
 package com.pei.demo.domain.bo;
 
+import com.pei.common.core.validate.AddGroup;
+import com.pei.common.core.validate.EditGroup;
+import com.pei.common.mybatis.core.domain.BaseEntity;
+import com.pei.demo.domain.TestTree;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.core.validate.AddGroup;
-import com.pei.common.core.validate.EditGroup;
-import com.pei.common.mybatis.core.domain.BaseEntity;
-import com.pei.demo.domain.TestTree;
 
 /**
  * 测试树表业务对象 test_tree

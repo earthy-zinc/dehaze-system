@@ -1,12 +1,12 @@
 package com.pei.workflow.handler;
 
 import cn.hutool.core.util.ObjectUtil;
+import com.pei.common.satoken.utils.LoginHelper;
+import com.pei.system.api.model.LoginUser;
 import com.pei.workflow.common.ConditionalOnEnable;
 import com.pei.workflow.common.enums.TaskAssigneeEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.satoken.utils.LoginHelper;
-import com.pei.system.api.model.LoginUser;
 import org.dromara.warm.flow.core.dto.FlowParams;
 import org.dromara.warm.flow.core.handler.PermissionHandler;
 import org.dromara.warm.flow.core.service.impl.TaskServiceImpl;
@@ -30,9 +30,7 @@ import java.util.stream.Stream;
 public class WorkflowPermissionHandler implements PermissionHandler {
 
     /**
-     * 审批前获取当前办理人，办理时会校验的该权限集合
-     * 后续在{@link TaskServiceImpl#checkAuth(Task, FlowParams)} 中调用
-     * 返回当前用户权限集合
+     * 审批前获取当前办理人，办理时会校验的该权限集合 后续在{@link TaskServiceImpl#checkAuth(Task, FlowParams)} 中调用 返回当前用户权限集合
      */
     @Override
     public List<String> permissions() {

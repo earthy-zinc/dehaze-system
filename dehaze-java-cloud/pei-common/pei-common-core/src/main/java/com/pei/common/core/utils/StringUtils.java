@@ -36,16 +36,6 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
     }
 
     /**
-     * * 判断一个字符串是否为空串
-     *
-     * @param str String
-     * @return true：为空 false：非空
-     */
-    public static boolean isEmpty(String str) {
-        return StrUtil.isEmpty(str);
-    }
-
-    /**
      * * 判断一个字符串是否为非空串
      *
      * @param str String
@@ -56,10 +46,13 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
     }
 
     /**
-     * 去空格
+     * * 判断一个字符串是否为空串
+     *
+     * @param str String
+     * @return true：为空 false：非空
      */
-    public static String trim(String str) {
-        return StrUtil.trim(str);
+    public static boolean isEmpty(String str) {
+        return StrUtil.isEmpty(str);
     }
 
     /**
@@ -86,13 +79,9 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
     }
 
     /**
-     * 格式化文本, {} 表示占位符<br>
-     * 此方法只是简单将占位符 {} 按照顺序替换为参数<br>
-     * 如果想输出 {} 使用 \\转义 { 即可，如果想输出 {} 之前的 \ 使用双转义符 \\\\ 即可<br>
-     * 例：<br>
-     * 通常使用：format("this is {} for {}", "a", "b") -> this is a for b<br>
-     * 转义{}： format("this is \\{} for {}", "a", "b") -> this is {} for a<br>
-     * 转义\： format("this is \\\\{} for {}", "a", "b") -> this is \a for b<br>
+     * 格式化文本, {} 表示占位符<br> 此方法只是简单将占位符 {} 按照顺序替换为参数<br> 如果想输出 {} 使用 \\转义 { 即可，如果想输出 {} 之前的 \ 使用双转义符 \\\\ 即可<br> 例：<br>
+     * 通常使用：format("this is {} for {}", "a", "b") -> this is a for b<br> 转义{}： format("this is \\{} for {}", "a", "b")
+     * -> this is {} for a<br> 转义\： format("this is \\\\{} for {}", "a", "b") -> this is \a for b<br>
      *
      * @param template 文本模板，被替换的部分用 {} 表示
      * @param params   参数值
@@ -154,6 +143,13 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
         }
 
         return list;
+    }
+
+    /**
+     * 去空格
+     */
+    public static String trim(String str) {
+        return StrUtil.trim(str);
     }
 
     /**
@@ -222,10 +218,7 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
     }
 
     /**
-     * 判断url是否与规则配置:
-     * ? 表示单个字符;
-     * * 表示一层路径内的任意字符串，不可跨层级;
-     * ** 表示任意层路径;
+     * 判断url是否与规则配置: ? 表示单个字符; * 表示一层路径内的任意字符串，不可跨层级; ** 表示任意层路径;
      *
      * @param pattern 匹配规则
      * @param url     需要匹配的url
@@ -281,17 +274,6 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
     }
 
     /**
-     * 切分字符串
-     *
-     * @param str       被切分的字符串
-     * @param separator 分隔符
-     * @return 分割后的数据列表
-     */
-    public static List<String> splitList(String str, String separator) {
-        return splitTo(str, separator, Convert::toStr);
-    }
-
-    /**
      * 切分字符串自定义转换(分隔符默认逗号)
      *
      * @param str    被切分的字符串
@@ -320,6 +302,17 @@ public class StringUtils extends org.apache.commons.lang3.StringUtils {
             .map(mapper)
             .filter(Objects::nonNull)
             .collect(Collectors.toList());
+    }
+
+    /**
+     * 切分字符串
+     *
+     * @param str       被切分的字符串
+     * @param separator 分隔符
+     * @return 分割后的数据列表
+     */
+    public static List<String> splitList(String str, String separator) {
+        return splitTo(str, separator, Convert::toStr);
     }
 
     /**

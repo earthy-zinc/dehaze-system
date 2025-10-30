@@ -1,13 +1,13 @@
 package com.pei.common.mybatis.aspect;
 
+import com.pei.common.mybatis.annotation.DataPermission;
+import com.pei.common.mybatis.helper.DataPermissionHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.AfterReturning;
 import org.aspectj.lang.annotation.AfterThrowing;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
-import com.pei.common.mybatis.annotation.DataPermission;
-import com.pei.common.mybatis.helper.DataPermissionHelper;
 
 /**
  * 数据权限处理

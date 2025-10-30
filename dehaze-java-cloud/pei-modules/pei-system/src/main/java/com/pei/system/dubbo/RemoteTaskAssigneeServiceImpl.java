@@ -1,6 +1,11 @@
 package com.pei.system.dubbo;
 
 import cn.hutool.core.convert.Convert;
+import com.pei.common.mybatis.core.page.PageQuery;
+import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.system.api.RemoteTaskAssigneeService;
+import com.pei.system.api.domain.bo.RemoteTaskAssigneeBo;
+import com.pei.system.api.domain.vo.RemoteTaskAssigneeVo;
 import com.pei.system.domain.bo.SysDeptBo;
 import com.pei.system.domain.bo.SysPostBo;
 import com.pei.system.domain.bo.SysRoleBo;
@@ -15,11 +20,6 @@ import com.pei.system.service.ISysRoleService;
 import com.pei.system.service.ISysUserService;
 import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboService;
-import com.pei.common.mybatis.core.page.PageQuery;
-import com.pei.common.mybatis.core.page.TableDataInfo;
-import com.pei.system.api.RemoteTaskAssigneeService;
-import com.pei.system.api.domain.bo.RemoteTaskAssigneeBo;
-import com.pei.system.api.domain.vo.RemoteTaskAssigneeVo;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

@@ -1,9 +1,9 @@
 package com.pei.demo.controller;
 
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.domain.R;
 import com.pei.demo.domain.Document;
 import com.pei.demo.esmapper.DocumentMapper;
+import lombok.RequiredArgsConstructor;
 import org.dromara.easyes.core.conditions.select.LambdaEsQueryWrapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.bind.annotation.*;

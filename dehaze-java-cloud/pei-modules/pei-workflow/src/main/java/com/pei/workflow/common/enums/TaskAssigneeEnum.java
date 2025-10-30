@@ -1,8 +1,8 @@
 package com.pei.workflow.common.enums;
 
+import com.pei.common.core.exception.ServiceException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import com.pei.common.core.exception.ServiceException;
 
 import java.util.Arrays;
 import java.util.List;

@@ -1,10 +1,10 @@
 package com.pei.system.domain.vo;
 
 import com.alibaba.excel.annotation.ExcelProperty;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import com.pei.common.excel.annotation.ExcelDictFormat;
 import com.pei.common.excel.convert.ExcelDictConvert;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.io.Serial;
 import java.io.Serializable;

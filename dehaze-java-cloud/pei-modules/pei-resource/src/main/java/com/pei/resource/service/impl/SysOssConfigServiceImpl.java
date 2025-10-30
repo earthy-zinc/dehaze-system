@@ -7,8 +7,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.constant.CacheNames;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.ObjectUtils;
@@ -24,6 +22,8 @@ import com.pei.resource.domain.bo.SysOssConfigBo;
 import com.pei.resource.domain.vo.SysOssConfigVo;
 import com.pei.resource.mapper.SysOssConfigMapper;
 import com.pei.resource.service.ISysOssConfigService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -114,15 +114,6 @@ public class SysOssConfigServiceImpl implements ISysOssConfigService {
         return flag;
     }
 
-    /**
-     * 保存前的数据校验
-     */
-    private void validEntityBeforeSave(SysOssConfig entity) {
-        if (StringUtils.isNotEmpty(entity.getConfigKey()) && !checkConfigKeyUnique(entity)) {
-            throw new ServiceException("操作配置'" + entity.getConfigKey() + "'失败, 配置key已存在!");
-        }
-    }
-
     @Override
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
         if (isValid) {
@@ -144,20 +135,6 @@ public class SysOssConfigServiceImpl implements ISysOssConfigService {
     }
 
     /**
-     * 判断configKey是否唯一
-     */
-    private boolean checkConfigKeyUnique(SysOssConfig sysOssConfig) {
-        long ossConfigId = ObjectUtils.notNull(sysOssConfig.getOssConfigId(), -1L);
-        SysOssConfig info = baseMapper.selectOne(new LambdaQueryWrapper<SysOssConfig>()
-            .select(SysOssConfig::getOssConfigId, SysOssConfig::getConfigKey)
-            .eq(SysOssConfig::getConfigKey, sysOssConfig.getConfigKey()));
-        if (ObjectUtil.isNotNull(info) && info.getOssConfigId() != ossConfigId) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
      * 启用禁用状态
      */
     @Override
@@ -171,6 +148,29 @@ public class SysOssConfigServiceImpl implements ISysOssConfigService {
             RedisUtils.setCacheObject(OssConstant.DEFAULT_CONFIG_KEY, sysOssConfig.getConfigKey());
         }
         return row;
+    }
+
+    /**
+     * 保存前的数据校验
+     */
+    private void validEntityBeforeSave(SysOssConfig entity) {
+        if (StringUtils.isNotEmpty(entity.getConfigKey()) && !checkConfigKeyUnique(entity)) {
+            throw new ServiceException("操作配置'" + entity.getConfigKey() + "'失败, 配置key已存在!");
+        }
+    }
+
+    /**
+     * 判断configKey是否唯一
+     */
+    private boolean checkConfigKeyUnique(SysOssConfig sysOssConfig) {
+        long ossConfigId = ObjectUtils.notNull(sysOssConfig.getOssConfigId(), -1L);
+        SysOssConfig info = baseMapper.selectOne(new LambdaQueryWrapper<SysOssConfig>()
+            .select(SysOssConfig::getOssConfigId, SysOssConfig::getConfigKey)
+            .eq(SysOssConfig::getConfigKey, sysOssConfig.getConfigKey()));
+        if (ObjectUtil.isNotNull(info) && info.getOssConfigId() != ossConfigId) {
+            return false;
+        }
+        return true;
     }
 
 }

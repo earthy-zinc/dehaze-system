@@ -1,8 +1,8 @@
 package com.pei.system.domain.bo;
 
+import com.pei.system.domain.SysLogininfor;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
-import com.pei.system.domain.SysLogininfor;
 
 import java.util.Date;
 import java.util.HashMap;

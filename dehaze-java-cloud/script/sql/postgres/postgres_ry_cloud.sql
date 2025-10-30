@@ -3,35 +3,35 @@
 -- ----------------------------
 create table sys_social
 (
-    id                 int8             not null,
-    user_id            int8             not null,
-    tenant_id          varchar(20)      default '000000'::varchar,
-    auth_id            varchar(255)     not null,
-    source             varchar(255)     not null,
-    open_id            varchar(255)     default null::varchar,
-    user_name          varchar(30)      not null,
-    nick_name          varchar(30)      default ''::varchar,
-    email              varchar(255)     default ''::varchar,
-    avatar             varchar(500)     default ''::varchar,
-    access_token       varchar(255)     not null,
-    expire_in          int8             default null,
-    refresh_token      varchar(255)     default null::varchar,
-    access_code        varchar(255)     default null::varchar,
-    union_id           varchar(255)     default null::varchar,
-    scope              varchar(255)     default null::varchar,
-    token_type         varchar(255)     default null::varchar,
-    id_token           varchar(2000)    default null::varchar,
-    mac_algorithm      varchar(255)     default null::varchar,
-    mac_key            varchar(255)     default null::varchar,
-    code               varchar(255)     default null::varchar,
-    oauth_token        varchar(255)     default null::varchar,
-    oauth_token_secret varchar(255)     default null::varchar,
+    id                 int8         not null,
+    user_id            int8         not null,
+    tenant_id          varchar(20)   default '000000'::varchar,
+    auth_id            varchar(255) not null,
+    source             varchar(255) not null,
+    open_id            varchar(255)  default null::varchar,
+    user_name          varchar(30)  not null,
+    nick_name          varchar(30)   default ''::varchar,
+    email              varchar(255)  default ''::varchar,
+    avatar             varchar(500)  default ''::varchar,
+    access_token       varchar(255) not null,
+    expire_in          int8          default null,
+    refresh_token      varchar(255)  default null::varchar,
+    access_code        varchar(255)  default null::varchar,
+    union_id           varchar(255)  default null::varchar,
+    scope              varchar(255)  default null::varchar,
+    token_type         varchar(255)  default null::varchar,
+    id_token           varchar(2000) default null::varchar,
+    mac_algorithm      varchar(255)  default null::varchar,
+    mac_key            varchar(255)  default null::varchar,
+    code               varchar(255)  default null::varchar,
+    oauth_token        varchar(255)  default null::varchar,
+    oauth_token_secret varchar(255)  default null::varchar,
     create_dept        int8,
     create_by          int8,
     create_time        timestamp,
     update_by          int8,
     update_time        timestamp,
-    del_flag           char             default '0'::bpchar,
+    del_flag           char          default '0'::bpchar,
     constraint "pk_sys_social" primary key (id)
 );
 
@@ -72,20 +72,20 @@ comment on column  sys_social.del_flag          is '删除标志（0代表存在
 create table if not exists sys_tenant
 (
     id                int8,
-    tenant_id         varchar(20)   not null,
-    contact_user_name varchar(20)   default null::varchar,
-    contact_phone     varchar(20)   default null::varchar,
-    company_name      varchar(30)   default null::varchar,
-    license_number    varchar(30)   default null::varchar,
-    address           varchar(200)  default null::varchar,
-    intro             varchar(200)  default null::varchar,
-    domain            varchar(200)  default null::varchar,
-    remark            varchar(200)  default null::varchar,
+    tenant_id         varchar(20) not null,
+    contact_user_name varchar(20)  default null::varchar,
+    contact_phone     varchar(20)  default null::varchar,
+    company_name      varchar(30)  default null::varchar,
+    license_number    varchar(30)  default null::varchar,
+    address           varchar(200) default null::varchar,
+    intro             varchar(200) default null::varchar,
+    domain            varchar(200) default null::varchar,
+    remark            varchar(200) default null::varchar,
     package_id        int8,
     expire_time       timestamp,
-    account_count     int4          default -1,
-    status            char          default '0'::bpchar,
-    del_flag          char          default '0'::bpchar,
+    account_count     int4         default -1,
+    status            char         default '0'::bpchar,
+    del_flag          char         default '0'::bpchar,
     create_dept       int8,
     create_by         int8,
     create_time       timestamp,
@@ -121,7 +121,9 @@ comment on column  sys_tenant.update_time        is '更新时间';
 -- 初始化-租户表数据
 -- ----------------------------
 
-insert into sys_tenant values(1, '000000', '管理组', '15888888888', 'XXX有限公司', null, null, '多租户通用后台管理管理系统', null, null, null, null, -1, '0', '0', 103, 1, now(), null, null);
+insert into sys_tenant
+values (1, '000000', '管理组', '15888888888', 'XXX有限公司', null, null, '多租户通用后台管理管理系统', null, null, null,
+        null, -1, '0', '0', 103, 1, now(), null, null);
 
 
 -- ----------------------------
@@ -130,12 +132,12 @@ insert into sys_tenant values(1, '000000', '管理组', '15888888888', 'XXX有�
 create table if not exists sys_tenant_package
 (
     package_id          int8,
-    package_name        varchar(20)     default ''::varchar,
-    menu_ids            varchar(3000)   default ''::varchar,
-    remark              varchar(200)    default ''::varchar,
-    menu_check_strictly bool            default true,
-    status              char            default '0'::bpchar,
-    del_flag            char            default '0'::bpchar,
+    package_name        varchar(20)   default ''::varchar,
+    menu_ids            varchar(3000) default ''::varchar,
+    remark              varchar(200)  default ''::varchar,
+    menu_check_strictly bool          default true,
+    status              char          default '0'::bpchar,
+    del_flag            char          default '0'::bpchar,
     create_dept         int8,
     create_by           int8,
     create_time         timestamp,
@@ -164,23 +166,23 @@ comment on column  sys_tenant_package.update_time        is '更新时间';
 -- ----------------------------
 create table if not exists sys_dept
 (
-    dept_id     int8,
-    tenant_id   varchar(20) default '000000'::varchar,
-    parent_id   int8        default 0,
-    ancestors   varchar(500)default ''::varchar,
-    dept_name   varchar(30) default ''::varchar,
+    dept_id       int8,
+    tenant_id     varchar(20)  default '000000'::varchar,
+    parent_id     int8         default 0,
+    ancestors     varchar(500) default ''::varchar,
+    dept_name     varchar(30)  default ''::varchar,
     dept_category varchar(100) default null::varchar,
-    order_num   int4        default 0,
-    leader      int8        default null,
-    phone       varchar(11) default null::varchar,
-    email       varchar(50) default null::varchar,
-    status      char        default '0'::bpchar,
-    del_flag    char        default '0'::bpchar,
-    create_dept int8,
-    create_by   int8,
-    create_time timestamp,
-    update_by   int8,
-    update_time timestamp,
+    order_num     int4         default 0,
+    leader        int8         default null,
+    phone         varchar(11)  default null::varchar,
+    email         varchar(50)  default null::varchar,
+    status        char         default '0'::bpchar,
+    del_flag      char         default '0'::bpchar,
+    create_dept   int8,
+    create_by     int8,
+    create_time   timestamp,
+    update_by     int8,
+    update_time   timestamp,
     constraint "sys_dept_pk" primary key (dept_id)
 );
 
@@ -206,16 +208,36 @@ comment on column sys_dept.update_time  is '更新时间';
 -- ----------------------------
 -- 初始化-部门表数据
 -- ----------------------------
-insert into sys_dept values(100, '000000', 0,   '0',          'XXX科技',   null, 0, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(101, '000000', 100, '0,100',      '深圳总公司', null, 1, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(102, '000000', 100, '0,100',      '长沙分公司', null, 2, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(103, '000000', 101, '0,100,101',  '研发部门',   null, 1, 1, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(104, '000000', 101, '0,100,101',  '市场部门',   null, 2, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(105, '000000', 101, '0,100,101',  '测试部门',   null, 3, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(106, '000000', 101, '0,100,101',  '财务部门',   null, 4, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(107, '000000', 101, '0,100,101',  '运维部门',   null, 5, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(108, '000000', 102, '0,100,102',  '市场部门',   null, 1, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
-insert into sys_dept values(109, '000000', 102, '0,100,102',  '财务部门',   null, 2, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null, null);
+insert into sys_dept
+values (100, '000000', 0, '0', 'XXX科技', null, 0, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(), null,
+        null);
+insert into sys_dept
+values (101, '000000', 100, '0,100', '深圳总公司', null, 1, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(),
+        null, null);
+insert into sys_dept
+values (102, '000000', 100, '0,100', '长沙分公司', null, 2, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(),
+        null, null);
+insert into sys_dept
+values (103, '000000', 101, '0,100,101', '研发部门', null, 1, 1, '15888888888', 'xxx@qq.com', '0', '0', 103, 1, now(),
+        null, null);
+insert into sys_dept
+values (104, '000000', 101, '0,100,101', '市场部门', null, 2, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1,
+        now(), null, null);
+insert into sys_dept
+values (105, '000000', 101, '0,100,101', '测试部门', null, 3, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1,
+        now(), null, null);
+insert into sys_dept
+values (106, '000000', 101, '0,100,101', '财务部门', null, 4, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1,
+        now(), null, null);
+insert into sys_dept
+values (107, '000000', 101, '0,100,101', '运维部门', null, 5, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1,
+        now(), null, null);
+insert into sys_dept
+values (108, '000000', 102, '0,100,102', '市场部门', null, 1, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1,
+        now(), null, null);
+insert into sys_dept
+values (109, '000000', 102, '0,100,102', '财务部门', null, 2, null, '15888888888', 'xxx@qq.com', '0', '0', 103, 1,
+        now(), null, null);
 
 -- ----------------------------
 -- 2、用户信息表
@@ -225,8 +247,8 @@ create table if not exists sys_user
     user_id     int8,
     tenant_id   varchar(20)  default '000000'::varchar,
     dept_id     int8,
-    user_name   varchar(30)  not null,
-    nick_name   varchar(30)  not null,
+    user_name   varchar(30) not null,
+    nick_name   varchar(30) not null,
     user_type   varchar(10)  default 'sys_user'::varchar,
     email       varchar(50)  default ''::varchar,
     phonenumber varchar(11)  default ''::varchar,
@@ -273,9 +295,18 @@ comment on column sys_user.remark       is '备注';
 
 -- 初始化-用户信息表数据
 -- ----------------------------
-insert into sys_user values(1, '000000', 103, 'admin', '疯狂的狮子Li', 'sys_user', 'crazyLionLi@163.com', '15888888888', '1', null, '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', now(), 103, 1, now(), null, null, '管理员');
-insert into sys_user values(3, '000000', 108, 'test', '本部门及以下 密码666666', 'sys_user', '', '', '0', null, '$2a$10$b8yUzN0C71sbz.PhNOCgJe.Tu1yWC3RNrTyjSQ8p1W0.aaUXUJ.Ne', '0', '0', '127.0.0.1', now(), 103, 1, now(), 3, now(), NULL);
-insert into sys_user values(4, '000000', 102, 'test1', '仅本人 密码666666', 'sys_user', '', '', '0', null, '$2a$10$b8yUzN0C71sbz.PhNOCgJe.Tu1yWC3RNrTyjSQ8p1W0.aaUXUJ.Ne', '0', '0', '127.0.0.1', now(), 103, 1, now(), 4, now(), NULL);
+insert into sys_user
+values (1, '000000', 103, 'admin', '疯狂的狮子Li', 'sys_user', 'crazyLionLi@163.com', '15888888888', '1', null,
+        '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '0', '0', '127.0.0.1', now(), 103, 1, now(),
+        null, null, '管理员');
+insert into sys_user
+values (3, '000000', 108, 'test', '本部门及以下 密码666666', 'sys_user', '', '', '0', null,
+        '$2a$10$b8yUzN0C71sbz.PhNOCgJe.Tu1yWC3RNrTyjSQ8p1W0.aaUXUJ.Ne', '0', '0', '127.0.0.1', now(), 103, 1, now(), 3,
+        now(), NULL);
+insert into sys_user
+values (4, '000000', 102, 'test1', '仅本人 密码666666', 'sys_user', '', '', '0', null,
+        '$2a$10$b8yUzN0C71sbz.PhNOCgJe.Tu1yWC3RNrTyjSQ8p1W0.aaUXUJ.Ne', '0', '0', '127.0.0.1', now(), 103, 1, now(), 4,
+        now(), NULL);
 
 
 -- ----------------------------
@@ -283,20 +314,20 @@ insert into sys_user values(4, '000000', 102, 'test1', '仅本人 密码666666',
 -- ----------------------------
 create table if not exists sys_post
 (
-    post_id     int8,
-    tenant_id   varchar(20) default '000000'::varchar,
-    dept_id     int8,
-    post_code   varchar(64) not null,
-    post_category   varchar(100) default null,
-    post_name   varchar(50) not null,
-    post_sort   int4        not null,
-    status      char        not null,
-    create_dept int8,
-    create_by   int8,
-    create_time timestamp,
-    update_by   int8,
-    update_time timestamp,
-    remark      varchar(500) default null::varchar,
+    post_id       int8,
+    tenant_id     varchar(20)  default '000000'::varchar,
+    dept_id       int8,
+    post_code     varchar(64) not null,
+    post_category varchar(100) default null,
+    post_name     varchar(50) not null,
+    post_sort     int4        not null,
+    status        char        not null,
+    create_dept   int8,
+    create_by     int8,
+    create_time   timestamp,
+    update_by     int8,
+    update_time   timestamp,
+    remark        varchar(500) default null::varchar,
     constraint "sys_post_pk" primary key (post_id)
 );
 
@@ -319,10 +350,14 @@ comment on column sys_post.remark       is '备注';
 -- ----------------------------
 -- 初始化-岗位信息表数据
 -- ----------------------------
-insert into sys_post values(1, '000000', 103, 'ceo',  null, '董事长',    1, '0', 103, 1, now(), null, null, '');
-insert into sys_post values(2, '000000', 100, 'se',   null, '项目经理',  2, '0', 103, 1, now(), null, null, '');
-insert into sys_post values(3, '000000', 100, 'hr',   null, '人力资源',  3, '0', 103, 1, now(), null, null, '');
-insert into sys_post values(4, '000000', 100, 'user', null, '普通员工',  4, '0', 103, 1, now(), null, null, '');
+insert into sys_post
+values (1, '000000', 103, 'ceo', null, '董事长', 1, '0', 103, 1, now(), null, null, '');
+insert into sys_post
+values (2, '000000', 100, 'se', null, '项目经理', 2, '0', 103, 1, now(), null, null, '');
+insert into sys_post
+values (3, '000000', 100, 'hr', null, '人力资源', 3, '0', 103, 1, now(), null, null, '');
+insert into sys_post
+values (4, '000000', 100, 'user', null, '普通员工', 4, '0', 103, 1, now(), null, null, '');
 
 -- ----------------------------
 -- 4、角色信息表
@@ -369,9 +404,12 @@ comment on column sys_role.remark               is '备注';
 -- ----------------------------
 -- 初始化-角色信息表数据
 -- ----------------------------
-insert into sys_role values('1', '000000', '超级管理员',  'superadmin',  1, '1', 't', 't', '0', '0', 103, 1, now(), null, null, '超级管理员');
-insert into sys_role values('3', '000000', '本部门及以下', 'test1', 3, '4', 't', 't', '0', '0', 103, 1, now(), NULL, NULL, '');
-insert into sys_role values('4', '000000', '仅本人', 'test2', 4, '5', 't', 't', '0', '0', 103, 1, now(), NULL, NULL, '');
+insert into sys_role
+values ('1', '000000', '超级管理员', 'superadmin', 1, '1', 't', 't', '0', '0', 103, 1, now(), null, null, '超级管理员');
+insert into sys_role
+values ('3', '000000', '本部门及以下', 'test1', 3, '4', 't', 't', '0', '0', 103, 1, now(), NULL, NULL, '');
+insert into sys_role
+values ('4', '000000', '仅本人', 'test2', 4, '5', 't', 't', '0', '0', 103, 1, now(), NULL, NULL, '');
 
 
 -- ----------------------------
@@ -428,167 +466,447 @@ comment on column sys_menu.remark       is '备注';
 -- 初始化-菜单信息表数据
 -- ----------------------------
 -- 一级菜单
-insert into sys_menu values('1', '系统管理', '0', '1', 'system',           null, '', '1', '0', 'M', '0', '0', '', 'system',   103, 1, now(), null, null, '系统管理目录');
-insert into sys_menu values('6', '租户管理', '0', '2', 'tenant',           null, '', '1', '0', 'M', '0', '0', '', 'chart',    103, 1, now(), null, null, '租户管理目录');
-insert into sys_menu values('2', '系统监控', '0', '3', 'monitor',          null, '', '1', '0', 'M', '0', '0', '', 'monitor',  103, 1, now(), null, null, '系统监控目录');
-insert into sys_menu values('3', '系统工具', '0', '4', 'tool',             null, '', '1', '0', 'M', '0', '0', '', 'tool',     103, 1, now(), null, null, '系统工具目录');
-insert into sys_menu values('4', 'PLUS官网', '0', '5', 'https://gitee.com/earthyzinc/dehaze-java', null, '', '0', '0', 'M', '0', '0', '', 'guide',    103, 1, now(), null, null, 'RuoYi-Cloud-Plus官网地址');
-insert into sys_menu values('5', '测试菜单', '0', '5', 'demo',             null, '', '1', '0', 'M', '0', '0', null, 'star',       103, 1, now(), null, null, '测试菜单');
+insert into sys_menu
+values ('1', '系统管理', '0', '1', 'system', null, '', '1', '0', 'M', '0', '0', '', 'system', 103, 1, now(), null, null,
+        '系统管理目录');
+insert into sys_menu
+values ('6', '租户管理', '0', '2', 'tenant', null, '', '1', '0', 'M', '0', '0', '', 'chart', 103, 1, now(), null, null,
+        '租户管理目录');
+insert into sys_menu
+values ('2', '系统监控', '0', '3', 'monitor', null, '', '1', '0', 'M', '0', '0', '', 'monitor', 103, 1, now(), null,
+        null, '系统监控目录');
+insert into sys_menu
+values ('3', '系统工具', '0', '4', 'tool', null, '', '1', '0', 'M', '0', '0', '', 'tool', 103, 1, now(), null, null,
+        '系统工具目录');
+insert into sys_menu
+values ('4', 'PLUS官网', '0', '5', 'https://gitee.com/earthyzinc/dehaze-java', null, '', '0', '0', 'M', '0', '0', '',
+        'guide', 103, 1, now(), null, null, 'RuoYi-Cloud-Plus官网地址');
+insert into sys_menu
+values ('5', '测试菜单', '0', '5', 'demo', null, '', '1', '0', 'M', '0', '0', null, 'star', 103, 1, now(), null, null,
+        '测试菜单');
 -- 二级菜单
-insert into sys_menu values('100',  '用户管理',     '1',   '1', 'user',             'system/user/index',            '', '1', '0', 'C', '0', '0', 'system:user:list',            'user',          103, 1, now(), null, null, '用户管理菜单');
-insert into sys_menu values('101',  '角色管理',     '1',   '2', 'role',             'system/role/index',            '', '1', '0', 'C', '0', '0', 'system:role:list',            'peoples',       103, 1, now(), null, null, '角色管理菜单');
-insert into sys_menu values('102',  '菜单管理',     '1',   '3', 'menu',             'system/menu/index',            '', '1', '0', 'C', '0', '0', 'system:menu:list',            'tree-table',    103, 1, now(), null, null, '菜单管理菜单');
-insert into sys_menu values('103',  '部门管理',     '1',   '4', 'dept',             'system/dept/index',            '', '1', '0', 'C', '0', '0', 'system:dept:list',            'tree',          103, 1, now(), null, null, '部门管理菜单');
-insert into sys_menu values('104',  '岗位管理',     '1',   '5', 'post',             'system/post/index',            '', '1', '0', 'C', '0', '0', 'system:post:list',            'post',          103, 1, now(), null, null, '岗位管理菜单');
-insert into sys_menu values('105',  '字典管理',     '1',   '6', 'dict',             'system/dict/index',            '', '1', '0', 'C', '0', '0', 'system:dict:list',            'dict',          103, 1, now(), null, null, '字典管理菜单');
-insert into sys_menu values('106',  '参数设置',     '1',   '7', 'config',           'system/config/index',          '', '1', '0', 'C', '0', '0', 'system:config:list',          'edit',          103, 1, now(), null, null, '参数设置菜单');
-insert into sys_menu values('107',  '通知公告',     '1',   '8', 'notice',           'system/notice/index',          '', '1', '0', 'C', '0', '0', 'system:notice:list',          'message',       103, 1, now(), null, null, '通知公告菜单');
-insert into sys_menu values('108',  '日志管理',     '1',   '9', 'log',              '',                             '', '1', '0', 'M', '0', '0', '',                            'log',           103, 1, now(), null, null, '日志管理菜单');
-insert into sys_menu values('109',  '在线用户',     '2',   '1', 'online',           'monitor/online/index',         '', '1', '0', 'C', '0', '0', 'monitor:online:list',         'online',        103, 1, now(), null, null, '在线用户菜单');
-insert into sys_menu values('124',  '缓存监控',     '2',   '1',  'cache',           'monitor/cache/index',          '', '1', '0', 'C', '0', '0',  'monitor:cache:list',          'redis',        103, 1, now(), null, null, '缓存监控');
-insert into sys_menu values('110',  'SnailJob控制台', '2', '2', 'http://localhost:8800/snail-job', '',              '', '0', '0', 'C', '0', '0', 'monitor:job:list',            'job',           103, 1, now(), null, null, 'SJ定时任务菜单');
-insert into sys_menu values('111',  'Sentinel控制台','2',  '3', 'http://localhost:8718',        '',                 '', '0', '0', 'C', '0', '0', 'monitor:sentinel:list',       'sentinel',      103, 1, now(), null, null, '流量控制菜单');
-insert into sys_menu values('112',  'Nacos控制台',  '2',   '4', 'http://localhost:8848/nacos',  '',                 '', '0', '0', 'C', '0', '0', 'monitor:nacos:list',          'nacos',         103, 1, now(), null, null, '服务治理菜单');
-insert into sys_menu values('113',  'Admin控制台',  '2',   '5', 'http://localhost:9100/login',  '',                 '', '0', '0', 'C', '0', '0', 'monitor:server:list',         'server',        103, 1, now(), null, null, '服务监控菜单');
-insert into sys_menu values('115',  '代码生成',     '3',   '2', 'gen',              'tool/gen/index',               '', '1', '0', 'C', '0', '0', 'tool:gen:list',               'code',          103, 1, now(), null, null, '代码生成菜单');
-insert into sys_menu values('121',  '租户管理',     '6',   '1', 'tenant',           'system/tenant/index',          '', '1', '0', 'C', '0', '0', 'system:tenant:list',          'list',          103, 1, now(), null, null, '租户管理菜单');
-insert into sys_menu values('122',  '租户套餐管理',  '6',   '2', 'tenantPackage',    'system/tenantPackage/index',   '', '1', '0', 'C', '0', '0', 'system:tenantPackage:list',   'form',          103, 1, now(), null, null, '租户套餐管理菜单');
-insert into sys_menu values('123',  '客户端管理',   '1',   '11', 'client',           'system/client/index',          '', '1', '0', 'C', '0', '0', 'system:client:list',          'international', 103, 1, now(), null, null, '客户端管理菜单');
+insert into sys_menu
+values ('100', '用户管理', '1', '1', 'user', 'system/user/index', '', '1', '0', 'C', '0', '0', 'system:user:list',
+        'user', 103, 1, now(), null, null, '用户管理菜单');
+insert into sys_menu
+values ('101', '角色管理', '1', '2', 'role', 'system/role/index', '', '1', '0', 'C', '0', '0', 'system:role:list',
+        'peoples', 103, 1, now(), null, null, '角色管理菜单');
+insert into sys_menu
+values ('102', '菜单管理', '1', '3', 'menu', 'system/menu/index', '', '1', '0', 'C', '0', '0', 'system:menu:list',
+        'tree-table', 103, 1, now(), null, null, '菜单管理菜单');
+insert into sys_menu
+values ('103', '部门管理', '1', '4', 'dept', 'system/dept/index', '', '1', '0', 'C', '0', '0', 'system:dept:list',
+        'tree', 103, 1, now(), null, null, '部门管理菜单');
+insert into sys_menu
+values ('104', '岗位管理', '1', '5', 'post', 'system/post/index', '', '1', '0', 'C', '0', '0', 'system:post:list',
+        'post', 103, 1, now(), null, null, '岗位管理菜单');
+insert into sys_menu
+values ('105', '字典管理', '1', '6', 'dict', 'system/dict/index', '', '1', '0', 'C', '0', '0', 'system:dict:list',
+        'dict', 103, 1, now(), null, null, '字典管理菜单');
+insert into sys_menu
+values ('106', '参数设置', '1', '7', 'config', 'system/config/index', '', '1', '0', 'C', '0', '0', 'system:config:list',
+        'edit', 103, 1, now(), null, null, '参数设置菜单');
+insert into sys_menu
+values ('107', '通知公告', '1', '8', 'notice', 'system/notice/index', '', '1', '0', 'C', '0', '0', 'system:notice:list',
+        'message', 103, 1, now(), null, null, '通知公告菜单');
+insert into sys_menu
+values ('108', '日志管理', '1', '9', 'log', '', '', '1', '0', 'M', '0', '0', '', 'log', 103, 1, now(), null, null,
+        '日志管理菜单');
+insert into sys_menu
+values ('109', '在线用户', '2', '1', 'online', 'monitor/online/index', '', '1', '0', 'C', '0', '0',
+        'monitor:online:list', 'online', 103, 1, now(), null, null, '在线用户菜单');
+insert into sys_menu
+values ('124', '缓存监控', '2', '1', 'cache', 'monitor/cache/index', '', '1', '0', 'C', '0', '0', 'monitor:cache:list',
+        'redis', 103, 1, now(), null, null, '缓存监控');
+insert into sys_menu
+values ('110', 'SnailJob控制台', '2', '2', 'http://localhost:8800/snail-job', '', '', '0', '0', 'C', '0', '0',
+        'monitor:job:list', 'job', 103, 1, now(), null, null, 'SJ定时任务菜单');
+insert into sys_menu
+values ('111', 'Sentinel控制台', '2', '3', 'http://localhost:8718', '', '', '0', '0', 'C', '0', '0',
+        'monitor:sentinel:list', 'sentinel', 103, 1, now(), null, null, '流量控制菜单');
+insert into sys_menu
+values ('112', 'Nacos控制台', '2', '4', 'http://localhost:8848/nacos', '', '', '0', '0', 'C', '0', '0',
+        'monitor:nacos:list', 'nacos', 103, 1, now(), null, null, '服务治理菜单');
+insert into sys_menu
+values ('113', 'Admin控制台', '2', '5', 'http://localhost:9100/login', '', '', '0', '0', 'C', '0', '0',
+        'monitor:server:list', 'server', 103, 1, now(), null, null, '服务监控菜单');
+insert into sys_menu
+values ('115', '代码生成', '3', '2', 'gen', 'tool/gen/index', '', '1', '0', 'C', '0', '0', 'tool:gen:list', 'code', 103,
+        1, now(), null, null, '代码生成菜单');
+insert into sys_menu
+values ('121', '租户管理', '6', '1', 'tenant', 'system/tenant/index', '', '1', '0', 'C', '0', '0', 'system:tenant:list',
+        'list', 103, 1, now(), null, null, '租户管理菜单');
+insert into sys_menu
+values ('122', '租户套餐管理', '6', '2', 'tenantPackage', 'system/tenantPackage/index', '', '1', '0', 'C', '0', '0',
+        'system:tenantPackage:list', 'form', 103, 1, now(), null, null, '租户套餐管理菜单');
+insert into sys_menu
+values ('123', '客户端管理', '1', '11', 'client', 'system/client/index', '', '1', '0', 'C', '0', '0',
+        'system:client:list', 'international', 103, 1, now(), null, null, '客户端管理菜单');
 -- oss菜单
-insert into sys_menu values('118',  '文件管理',     '1',   '10', 'oss',              'system/oss/index',            '', '1', '0', 'C', '0', '0', 'system:oss:list',             'upload',        103, 1, now(), null, null, '文件管理菜单');
+insert into sys_menu
+values ('118', '文件管理', '1', '10', 'oss', 'system/oss/index', '', '1', '0', 'C', '0', '0', 'system:oss:list',
+        'upload', 103, 1, now(), null, null, '文件管理菜单');
 -- 三级菜单
-insert into sys_menu values('500',  '操作日志', '108', '1', 'operlog',    'monitor/operlog/index',    '', '1', '0', 'C', '0', '0', 'monitor:operlog:list',    'form',          103, 1, now(), null, null, '操作日志菜单');
-insert into sys_menu values('501',  '登录日志', '108', '2', 'logininfor', 'monitor/logininfor/index', '', '1', '0', 'C', '0', '0', 'monitor:logininfor:list', 'logininfor',    103, 1, now(), null, null, '登录日志菜单');
+insert into sys_menu
+values ('500', '操作日志', '108', '1', 'operlog', 'monitor/operlog/index', '', '1', '0', 'C', '0', '0',
+        'monitor:operlog:list', 'form', 103, 1, now(), null, null, '操作日志菜单');
+insert into sys_menu
+values ('501', '登录日志', '108', '2', 'logininfor', 'monitor/logininfor/index', '', '1', '0', 'C', '0', '0',
+        'monitor:logininfor:list', 'logininfor', 103, 1, now(), null, null, '登录日志菜单');
 -- 用户管理按钮
-insert into sys_menu values('1001', '用户查询', '100', '1',  '', '', '', '1', '0', 'F', '0', '0', 'system:user:query',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1002', '用户新增', '100', '2',  '', '', '', '1', '0', 'F', '0', '0', 'system:user:add',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1003', '用户修改', '100', '3',  '', '', '', '1', '0', 'F', '0', '0', 'system:user:edit',           '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1004', '用户删除', '100', '4',  '', '', '', '1', '0', 'F', '0', '0', 'system:user:remove',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1005', '用户导出', '100', '5',  '', '', '', '1', '0', 'F', '0', '0', 'system:user:export',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1006', '用户导入', '100', '6',  '', '', '', '1', '0', 'F', '0', '0', 'system:user:import',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1007', '重置密码', '100', '7',  '', '', '', '1', '0', 'F', '0', '0', 'system:user:resetPwd',       '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1001', '用户查询', '100', '1', '', '', '', '1', '0', 'F', '0', '0', 'system:user:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1002', '用户新增', '100', '2', '', '', '', '1', '0', 'F', '0', '0', 'system:user:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1003', '用户修改', '100', '3', '', '', '', '1', '0', 'F', '0', '0', 'system:user:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1004', '用户删除', '100', '4', '', '', '', '1', '0', 'F', '0', '0', 'system:user:remove', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1005', '用户导出', '100', '5', '', '', '', '1', '0', 'F', '0', '0', 'system:user:export', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1006', '用户导入', '100', '6', '', '', '', '1', '0', 'F', '0', '0', 'system:user:import', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1007', '重置密码', '100', '7', '', '', '', '1', '0', 'F', '0', '0', 'system:user:resetPwd', '#', 103, 1, now(),
+        null, null, '');
 -- 角色管理按钮
-insert into sys_menu values('1008', '角色查询', '101', '1',  '', '', '', '1', '0', 'F', '0', '0', 'system:role:query',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1009', '角色新增', '101', '2',  '', '', '', '1', '0', 'F', '0', '0', 'system:role:add',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1010', '角色修改', '101', '3',  '', '', '', '1', '0', 'F', '0', '0', 'system:role:edit',           '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1011', '角色删除', '101', '4',  '', '', '', '1', '0', 'F', '0', '0', 'system:role:remove',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1012', '角色导出', '101', '5',  '', '', '', '1', '0', 'F', '0', '0', 'system:role:export',         '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1008', '角色查询', '101', '1', '', '', '', '1', '0', 'F', '0', '0', 'system:role:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1009', '角色新增', '101', '2', '', '', '', '1', '0', 'F', '0', '0', 'system:role:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1010', '角色修改', '101', '3', '', '', '', '1', '0', 'F', '0', '0', 'system:role:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1011', '角色删除', '101', '4', '', '', '', '1', '0', 'F', '0', '0', 'system:role:remove', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1012', '角色导出', '101', '5', '', '', '', '1', '0', 'F', '0', '0', 'system:role:export', '#', 103, 1, now(),
+        null, null, '');
 -- 菜单管理按钮
-insert into sys_menu values('1013', '菜单查询', '102', '1',  '', '', '', '1', '0', 'F', '0', '0', 'system:menu:query',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1014', '菜单新增', '102', '2',  '', '', '', '1', '0', 'F', '0', '0', 'system:menu:add',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1015', '菜单修改', '102', '3',  '', '', '', '1', '0', 'F', '0', '0', 'system:menu:edit',           '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1016', '菜单删除', '102', '4',  '', '', '', '1', '0', 'F', '0', '0', 'system:menu:remove',         '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1013', '菜单查询', '102', '1', '', '', '', '1', '0', 'F', '0', '0', 'system:menu:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1014', '菜单新增', '102', '2', '', '', '', '1', '0', 'F', '0', '0', 'system:menu:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1015', '菜单修改', '102', '3', '', '', '', '1', '0', 'F', '0', '0', 'system:menu:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1016', '菜单删除', '102', '4', '', '', '', '1', '0', 'F', '0', '0', 'system:menu:remove', '#', 103, 1, now(),
+        null, null, '');
 -- 部门管理按钮
-insert into sys_menu values('1017', '部门查询', '103', '1',  '', '', '', '1', '0', 'F', '0', '0', 'system:dept:query',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1018', '部门新增', '103', '2',  '', '', '', '1', '0', 'F', '0', '0', 'system:dept:add',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1019', '部门修改', '103', '3',  '', '', '', '1', '0', 'F', '0', '0', 'system:dept:edit',           '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1020', '部门删除', '103', '4',  '', '', '', '1', '0', 'F', '0', '0', 'system:dept:remove',         '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1017', '部门查询', '103', '1', '', '', '', '1', '0', 'F', '0', '0', 'system:dept:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1018', '部门新增', '103', '2', '', '', '', '1', '0', 'F', '0', '0', 'system:dept:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1019', '部门修改', '103', '3', '', '', '', '1', '0', 'F', '0', '0', 'system:dept:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1020', '部门删除', '103', '4', '', '', '', '1', '0', 'F', '0', '0', 'system:dept:remove', '#', 103, 1, now(),
+        null, null, '');
 -- 岗位管理按钮
-insert into sys_menu values('1021', '岗位查询', '104', '1',  '', '', '', '1', '0', 'F', '0', '0', 'system:post:query',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1022', '岗位新增', '104', '2',  '', '', '', '1', '0', 'F', '0', '0', 'system:post:add',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1023', '岗位修改', '104', '3',  '', '', '', '1', '0', 'F', '0', '0', 'system:post:edit',           '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1024', '岗位删除', '104', '4',  '', '', '', '1', '0', 'F', '0', '0', 'system:post:remove',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1025', '岗位导出', '104', '5',  '', '', '', '1', '0', 'F', '0', '0', 'system:post:export',         '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1021', '岗位查询', '104', '1', '', '', '', '1', '0', 'F', '0', '0', 'system:post:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1022', '岗位新增', '104', '2', '', '', '', '1', '0', 'F', '0', '0', 'system:post:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1023', '岗位修改', '104', '3', '', '', '', '1', '0', 'F', '0', '0', 'system:post:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1024', '岗位删除', '104', '4', '', '', '', '1', '0', 'F', '0', '0', 'system:post:remove', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1025', '岗位导出', '104', '5', '', '', '', '1', '0', 'F', '0', '0', 'system:post:export', '#', 103, 1, now(),
+        null, null, '');
 -- 字典管理按钮
-insert into sys_menu values('1026', '字典查询', '105', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:query',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1027', '字典新增', '105', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:add',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1028', '字典修改', '105', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:edit',           '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1029', '字典删除', '105', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:remove',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1030', '字典导出', '105', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:export',         '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1026', '字典查询', '105', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1027', '字典新增', '105', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1028', '字典修改', '105', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1029', '字典删除', '105', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:remove', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1030', '字典导出', '105', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:dict:export', '#', 103, 1, now(),
+        null, null, '');
 -- 参数设置按钮
-insert into sys_menu values('1031', '参数查询', '106', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:query',        '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1032', '参数新增', '106', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:add',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1033', '参数修改', '106', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:edit',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1034', '参数删除', '106', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:remove',       '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1035', '参数导出', '106', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:export',       '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1031', '参数查询', '106', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1032', '参数新增', '106', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1033', '参数修改', '106', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1034', '参数删除', '106', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:remove', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1035', '参数导出', '106', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:config:export', '#', 103, 1,
+        now(), null, null, '');
 -- 通知公告按钮
-insert into sys_menu values('1036', '公告查询', '107', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:query',        '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1037', '公告新增', '107', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:add',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1038', '公告修改', '107', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:edit',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1039', '公告删除', '107', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:remove',       '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1036', '公告查询', '107', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1037', '公告新增', '107', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1038', '公告修改', '107', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1039', '公告删除', '107', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:notice:remove', '#', 103, 1,
+        now(), null, null, '');
 -- 操作日志按钮
-insert into sys_menu values('1040', '操作查询', '500', '1', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:operlog:query',      '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1041', '操作删除', '500', '2', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:operlog:remove',     '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1042', '日志导出', '500', '4', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:operlog:export',     '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1040', '操作查询', '500', '1', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:operlog:query', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1041', '操作删除', '500', '2', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:operlog:remove', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1042', '日志导出', '500', '4', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:operlog:export', '#', 103, 1,
+        now(), null, null, '');
 -- 登录日志按钮
-insert into sys_menu values('1043', '登录查询', '501', '1', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:query',   '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1044', '登录删除', '501', '2', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:remove',  '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1045', '日志导出', '501', '3', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:export',  '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1050', '账户解锁', '501', '4', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:unlock',  '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1043', '登录查询', '501', '1', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:query', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1044', '登录删除', '501', '2', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:remove', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1045', '日志导出', '501', '3', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:export', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1050', '账户解锁', '501', '4', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:logininfor:unlock', '#', 103, 1,
+        now(), null, null, '');
 -- 在线用户按钮
-insert into sys_menu values('1046', '在线查询', '109', '1', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:online:query',       '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1047', '批量强退', '109', '2', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:online:batchLogout', '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1048', '单条强退', '109', '3', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:online:forceLogout', '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1046', '在线查询', '109', '1', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:online:query', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1047', '批量强退', '109', '2', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:online:batchLogout', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1048', '单条强退', '109', '3', '#', '', '', '1', '0', 'F', '0', '0', 'monitor:online:forceLogout', '#', 103, 1,
+        now(), null, null, '');
 -- 代码生成按钮
-insert into sys_menu values('1055', '生成查询', '115', '1', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:query',             '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1056', '生成修改', '115', '2', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:edit',              '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1057', '生成删除', '115', '3', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:remove',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1058', '导入代码', '115', '2', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:import',            '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1059', '预览代码', '115', '4', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:preview',           '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1060', '生成代码', '115', '5', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:code',              '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1055', '生成查询', '115', '1', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1056', '生成修改', '115', '2', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:edit', '#', 103, 1, now(), null,
+        null, '');
+insert into sys_menu
+values ('1057', '生成删除', '115', '3', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:remove', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1058', '导入代码', '115', '2', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:import', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1059', '预览代码', '115', '4', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:preview', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1060', '生成代码', '115', '5', '#', '', '', '1', '0', 'F', '0', '0', 'tool:gen:code', '#', 103, 1, now(), null,
+        null, '');
 -- oss相关按钮
-insert into sys_menu values('1600', '文件查询', '118', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:query',        '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1601', '文件上传', '118', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:upload',       '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1602', '文件下载', '118', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:download',     '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1603', '文件删除', '118', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:remove',       '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1620', '配置列表', '118', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:list',   '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1621', '配置添加', '118', '6', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:add',    '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1622', '配置编辑', '118', '6', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:edit',   '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1623', '配置删除', '118', '6', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:remove', '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1600', '文件查询', '118', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1601', '文件上传', '118', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:upload', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1602', '文件下载', '118', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:download', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1603', '文件删除', '118', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:oss:remove', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1620', '配置列表', '118', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:list', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1621', '配置添加', '118', '6', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:add', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1622', '配置编辑', '118', '6', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:edit', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1623', '配置删除', '118', '6', '#', '', '', '1', '0', 'F', '0', '0', 'system:ossConfig:remove', '#', 103, 1,
+        now(), null, null, '');
 -- 租户管理相关按钮
-insert into sys_menu values('1606', '租户查询', '121', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:query',   '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1607', '租户新增', '121', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:add',     '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1608', '租户修改', '121', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:edit',    '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1609', '租户删除', '121', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:remove',  '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1610', '租户导出', '121', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:export',  '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1606', '租户查询', '121', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:query', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1607', '租户新增', '121', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:add', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1608', '租户修改', '121', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:edit', '#', 103, 1, now(),
+        null, null, '');
+insert into sys_menu
+values ('1609', '租户删除', '121', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:remove', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1610', '租户导出', '121', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenant:export', '#', 103, 1,
+        now(), null, null, '');
 -- 租户套餐管理相关按钮
-insert into sys_menu values('1611', '租户套餐查询', '122', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:query',   '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1612', '租户套餐新增', '122', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:add',     '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1613', '租户套餐修改', '122', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:edit',    '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1614', '租户套餐删除', '122', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:remove',  '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1615', '租户套餐导出', '122', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:export',  '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1611', '租户套餐查询', '122', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:query', '#',
+        103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1612', '租户套餐新增', '122', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:add', '#', 103,
+        1, now(), null, null, '');
+insert into sys_menu
+values ('1613', '租户套餐修改', '122', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:edit', '#', 103,
+        1, now(), null, null, '');
+insert into sys_menu
+values ('1614', '租户套餐删除', '122', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:remove', '#',
+        103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1615', '租户套餐导出', '122', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:tenantPackage:export', '#',
+        103, 1, now(), null, null, '');
 -- 客户端管理按钮
-insert into sys_menu values('1061', '客户端管理查询', '123', '1',  '#', '', '', '1', '0', 'F', '0', '0', 'system:client:query',        '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1062', '客户端管理新增', '123', '2',  '#', '', '', '1', '0', 'F', '0', '0', 'system:client:add',          '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1063', '客户端管理修改', '123', '3',  '#', '', '', '1', '0', 'F', '0', '0', 'system:client:edit',         '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1064', '客户端管理删除', '123', '4',  '#', '', '', '1', '0', 'F', '0', '0', 'system:client:remove',       '#', 103, 1, now(), null, null, '');
-insert into sys_menu values('1065', '客户端管理导出', '123', '5',  '#', '', '', '1', '0', 'F', '0', '0', 'system:client:export',       '#', 103, 1, now(), null, null, '');
+insert into sys_menu
+values ('1061', '客户端管理查询', '123', '1', '#', '', '', '1', '0', 'F', '0', '0', 'system:client:query', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1062', '客户端管理新增', '123', '2', '#', '', '', '1', '0', 'F', '0', '0', 'system:client:add', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1063', '客户端管理修改', '123', '3', '#', '', '', '1', '0', 'F', '0', '0', 'system:client:edit', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1064', '客户端管理删除', '123', '4', '#', '', '', '1', '0', 'F', '0', '0', 'system:client:remove', '#', 103, 1,
+        now(), null, null, '');
+insert into sys_menu
+values ('1065', '客户端管理导出', '123', '5', '#', '', '', '1', '0', 'F', '0', '0', 'system:client:export', '#', 103, 1,
+        now(), null, null, '');
 -- 测试菜单
-insert into sys_menu values('1500', '测试单表',     '5',   '1', 'demo', 'demo/demo/index', '',  '1', '0', 'C', '0', '0', 'demo:demo:list', '#', 103, 1, now(), NULL, NULL, '测试单表菜单');
-insert into sys_menu values('1501', '测试单表查询', '1500', '1', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:demo:query',                  '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1502', '测试单表新增', '1500', '2', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:demo:add',                    '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1503', '测试单表修改', '1500', '3', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:demo:edit',                   '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1504', '测试单表删除', '1500', '4', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:demo:remove',                 '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1505', '测试单表导出', '1500', '5', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:demo:export',                 '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1506', '测试树表',     '5',   '1', 'tree', 'demo/tree/index', '',  '1', '0', 'C', '0', '0', 'demo:tree:list', '#', 103, 1, now(), NULL, NULL, '测试树表菜单');
-insert into sys_menu values('1507', '测试树表查询', '1506', '1', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:tree:query',                  '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1508', '测试树表新增', '1506', '2', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:tree:add',                    '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1509', '测试树表修改', '1506', '3', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:tree:edit',                   '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1510', '测试树表删除', '1506', '4', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:tree:remove',                 '#', 103, 1, now(), NULL, NULL, '');
-insert into sys_menu values('1511', '测试树表导出', '1506', '5', '#', '', '',  '1', '0', 'F', '0', '0', 'demo:tree:export',                 '#', 103, 1, now(), NULL, NULL, '');
+insert into sys_menu
+values ('1500', '测试单表', '5', '1', 'demo', 'demo/demo/index', '', '1', '0', 'C', '0', '0', 'demo:demo:list', '#',
+        103, 1, now(), NULL, NULL, '测试单表菜单');
+insert into sys_menu
+values ('1501', '测试单表查询', '1500', '1', '#', '', '', '1', '0', 'F', '0', '0', 'demo:demo:query', '#', 103, 1,
+        now(), NULL, NULL, '');
+insert into sys_menu
+values ('1502', '测试单表新增', '1500', '2', '#', '', '', '1', '0', 'F', '0', '0', 'demo:demo:add', '#', 103, 1, now(),
+        NULL, NULL, '');
+insert into sys_menu
+values ('1503', '测试单表修改', '1500', '3', '#', '', '', '1', '0', 'F', '0', '0', 'demo:demo:edit', '#', 103, 1, now(),
+        NULL, NULL, '');
+insert into sys_menu
+values ('1504', '测试单表删除', '1500', '4', '#', '', '', '1', '0', 'F', '0', '0', 'demo:demo:remove', '#', 103, 1,
+        now(), NULL, NULL, '');
+insert into sys_menu
+values ('1505', '测试单表导出', '1500', '5', '#', '', '', '1', '0', 'F', '0', '0', 'demo:demo:export', '#', 103, 1,
+        now(), NULL, NULL, '');
+insert into sys_menu
+values ('1506', '测试树表', '5', '1', 'tree', 'demo/tree/index', '', '1', '0', 'C', '0', '0', 'demo:tree:list', '#',
+        103, 1, now(), NULL, NULL, '测试树表菜单');
+insert into sys_menu
+values ('1507', '测试树表查询', '1506', '1', '#', '', '', '1', '0', 'F', '0', '0', 'demo:tree:query', '#', 103, 1,
+        now(), NULL, NULL, '');
+insert into sys_menu
+values ('1508', '测试树表新增', '1506', '2', '#', '', '', '1', '0', 'F', '0', '0', 'demo:tree:add', '#', 103, 1, now(),
+        NULL, NULL, '');
+insert into sys_menu
+values ('1509', '测试树表修改', '1506', '3', '#', '', '', '1', '0', 'F', '0', '0', 'demo:tree:edit', '#', 103, 1, now(),
+        NULL, NULL, '');
+insert into sys_menu
+values ('1510', '测试树表删除', '1506', '4', '#', '', '', '1', '0', 'F', '0', '0', 'demo:tree:remove', '#', 103, 1,
+        now(), NULL, NULL, '');
+insert into sys_menu
+values ('1511', '测试树表导出', '1506', '5', '#', '', '', '1', '0', 'F', '0', '0', 'demo:tree:export', '#', 103, 1,
+        now(), NULL, NULL, '');
 -- 工作流相关
-INSERT INTO sys_menu VALUES ('11616', '工作流', '0', '6', 'workflow', '', '', '1', '0', 'M', '0', '0', '', 'workflow', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11618', '我的任务', '0', '7', 'task', '', '', '1', '0', 'M', '0', '0', '', 'my-task', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11619', '我的待办', '11618', '2', 'taskWaiting', 'workflow/task/taskWaiting', '', '1', '1', 'C', '0', '0', '', 'waiting', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11632', '我的已办', '11618', '3', 'taskFinish', 'workflow/task/taskFinish', '', '1', '1', 'C', '0', '0', '', 'finish', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11633', '我的抄送', '11618', '4', 'taskCopyList', 'workflow/task/taskCopyList', '', '1', '1', 'C', '0', '0', '', 'my-copy', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11620', '流程定义', '11616', '3', 'processDefinition', 'workflow/processDefinition/index', '', '1', '1', 'C', '0', '0', '', 'process-definition', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11621', '流程实例', '11630', '1', 'processInstance', 'workflow/processInstance/index', '', '1', '1', 'C', '0', '0', '', 'tree-table', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11622', '流程分类', '11616', '1', 'category', 'workflow/category/index', '', '1', '0', 'C', '0', '0', 'workflow:category:list', 'category', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11629', '我发起的', '11618', '1', 'myDocument', 'workflow/task/myDocument', '', '1', '1', 'C', '0', '0', '', 'guide', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11630', '流程监控', '11616', '4', 'monitor', '', '', '1', '0', 'M', '0', '0', '', 'monitor', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11631', '待办任务', '11630', '2', 'allTaskWaiting', 'workflow/task/allTaskWaiting', '', '1', '1', 'C', '0', '0', '', 'waiting', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11623', '流程分类查询', '11622', '1', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:query', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11624', '流程分类新增', '11622', '2', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:add', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11625', '流程分类修改', '11622', '3', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:edit', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11626', '流程分类删除', '11622', '4', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:remove', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11627', '流程分类导出', '11622', '5', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:export', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11638', '请假申请', '5', '1', 'leave', 'workflow/leave/index', '', '1', '0', 'C', '0', '0', 'workflow:leave:list', '#', 103, 1, now(), NULL, NULL, '请假申请菜单');
-INSERT INTO sys_menu VALUES ('11639', '请假申请查询', '11638', '1', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:query', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11640', '请假申请新增', '11638', '2', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:add', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11641', '请假申请修改', '11638', '3', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:edit', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11642', '请假申请删除', '11638', '4', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:remove', '#', 103, 1, now(), NULL, NULL, '');
-INSERT INTO sys_menu VALUES ('11643', '请假申请导出', '11638', '5', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:export', '#', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11616', '工作流', '0', '6', 'workflow', '', '', '1', '0', 'M', '0', '0', '', 'workflow', 103, 1, now(), NULL,
+        NULL, '');
+INSERT INTO sys_menu
+VALUES ('11618', '我的任务', '0', '7', 'task', '', '', '1', '0', 'M', '0', '0', '', 'my-task', 103, 1, now(), NULL,
+        NULL, '');
+INSERT INTO sys_menu
+VALUES ('11619', '我的待办', '11618', '2', 'taskWaiting', 'workflow/task/taskWaiting', '', '1', '1', 'C', '0', '0', '',
+        'waiting', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11632', '我的已办', '11618', '3', 'taskFinish', 'workflow/task/taskFinish', '', '1', '1', 'C', '0', '0', '',
+        'finish', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11633', '我的抄送', '11618', '4', 'taskCopyList', 'workflow/task/taskCopyList', '', '1', '1', 'C', '0', '0',
+        '', 'my-copy', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11620', '流程定义', '11616', '3', 'processDefinition', 'workflow/processDefinition/index', '', '1', '1', 'C',
+        '0', '0', '', 'process-definition', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11621', '流程实例', '11630', '1', 'processInstance', 'workflow/processInstance/index', '', '1', '1', 'C', '0',
+        '0', '', 'tree-table', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11622', '流程分类', '11616', '1', 'category', 'workflow/category/index', '', '1', '0', 'C', '0', '0',
+        'workflow:category:list', 'category', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11629', '我发起的', '11618', '1', 'myDocument', 'workflow/task/myDocument', '', '1', '1', 'C', '0', '0', '',
+        'guide', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11630', '流程监控', '11616', '4', 'monitor', '', '', '1', '0', 'M', '0', '0', '', 'monitor', 103, 1, now(),
+        NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11631', '待办任务', '11630', '2', 'allTaskWaiting', 'workflow/task/allTaskWaiting', '', '1', '1', 'C', '0',
+        '0', '', 'waiting', 103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11623', '流程分类查询', '11622', '1', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:query', '#',
+        103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11624', '流程分类新增', '11622', '2', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:add', '#', 103,
+        1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11625', '流程分类修改', '11622', '3', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:edit', '#', 103,
+        1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11626', '流程分类删除', '11622', '4', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:remove', '#',
+        103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11627', '流程分类导出', '11622', '5', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:category:export', '#',
+        103, 1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11638', '请假申请', '5', '1', 'leave', 'workflow/leave/index', '', '1', '0', 'C', '0', '0',
+        'workflow:leave:list', '#', 103, 1, now(), NULL, NULL, '请假申请菜单');
+INSERT INTO sys_menu
+VALUES ('11639', '请假申请查询', '11638', '1', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:query', '#', 103,
+        1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11640', '请假申请新增', '11638', '2', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:add', '#', 103, 1,
+        now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11641', '请假申请修改', '11638', '3', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:edit', '#', 103, 1,
+        now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11642', '请假申请删除', '11638', '4', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:remove', '#', 103,
+        1, now(), NULL, NULL, '');
+INSERT INTO sys_menu
+VALUES ('11643', '请假申请导出', '11638', '5', '#', '', '', '1', '0', 'F', '0', '0', 'workflow:leave:export', '#', 103,
+        1, now(), NULL, NULL, '');
 
 -- ----------------------------
 -- 6、用户和角色关联表  用户N-1角色
@@ -607,9 +925,12 @@ comment on column sys_user_role.role_id     is '角色ID';
 -- ----------------------------
 -- 初始化-用户和角色关联表数据
 -- ----------------------------
-insert into sys_user_role values ('1', '1');
-insert into sys_user_role values ('3', '3');
-insert into sys_user_role values ('4', '4');
+insert into sys_user_role
+values ('1', '1');
+insert into sys_user_role
+values ('3', '3');
+insert into sys_user_role
+values ('4', '4');
 
 
 -- ----------------------------
@@ -629,89 +950,172 @@ comment on column sys_role_menu.menu_id     is '菜单ID';
 -- ----------------------------
 -- 初始化-角色和菜单关联表数据
 -- ----------------------------
-insert into sys_role_menu values ('3', '1');
-insert into sys_role_menu values ('3', '5');
-insert into sys_role_menu values ('3', '100');
-insert into sys_role_menu values ('3', '101');
-insert into sys_role_menu values ('3', '102');
-insert into sys_role_menu values ('3', '103');
-insert into sys_role_menu values ('3', '104');
-insert into sys_role_menu values ('3', '105');
-insert into sys_role_menu values ('3', '106');
-insert into sys_role_menu values ('3', '107');
-insert into sys_role_menu values ('3', '108');
-insert into sys_role_menu values ('3', '500');
-insert into sys_role_menu values ('3', '501');
-insert into sys_role_menu values ('3', '1001');
-insert into sys_role_menu values ('3', '1002');
-insert into sys_role_menu values ('3', '1003');
-insert into sys_role_menu values ('3', '1004');
-insert into sys_role_menu values ('3', '1005');
-insert into sys_role_menu values ('3', '1006');
-insert into sys_role_menu values ('3', '1007');
-insert into sys_role_menu values ('3', '1008');
-insert into sys_role_menu values ('3', '1009');
-insert into sys_role_menu values ('3', '1010');
-insert into sys_role_menu values ('3', '1011');
-insert into sys_role_menu values ('3', '1012');
-insert into sys_role_menu values ('3', '1013');
-insert into sys_role_menu values ('3', '1014');
-insert into sys_role_menu values ('3', '1015');
-insert into sys_role_menu values ('3', '1016');
-insert into sys_role_menu values ('3', '1017');
-insert into sys_role_menu values ('3', '1018');
-insert into sys_role_menu values ('3', '1019');
-insert into sys_role_menu values ('3', '1020');
-insert into sys_role_menu values ('3', '1021');
-insert into sys_role_menu values ('3', '1022');
-insert into sys_role_menu values ('3', '1023');
-insert into sys_role_menu values ('3', '1024');
-insert into sys_role_menu values ('3', '1025');
-insert into sys_role_menu values ('3', '1026');
-insert into sys_role_menu values ('3', '1027');
-insert into sys_role_menu values ('3', '1028');
-insert into sys_role_menu values ('3', '1029');
-insert into sys_role_menu values ('3', '1030');
-insert into sys_role_menu values ('3', '1031');
-insert into sys_role_menu values ('3', '1032');
-insert into sys_role_menu values ('3', '1033');
-insert into sys_role_menu values ('3', '1034');
-insert into sys_role_menu values ('3', '1035');
-insert into sys_role_menu values ('3', '1036');
-insert into sys_role_menu values ('3', '1037');
-insert into sys_role_menu values ('3', '1038');
-insert into sys_role_menu values ('3', '1039');
-insert into sys_role_menu values ('3', '1040');
-insert into sys_role_menu values ('3', '1041');
-insert into sys_role_menu values ('3', '1042');
-insert into sys_role_menu values ('3', '1043');
-insert into sys_role_menu values ('3', '1044');
-insert into sys_role_menu values ('3', '1045');
-insert into sys_role_menu values ('3', '1500');
-insert into sys_role_menu values ('3', '1501');
-insert into sys_role_menu values ('3', '1502');
-insert into sys_role_menu values ('3', '1503');
-insert into sys_role_menu values ('3', '1504');
-insert into sys_role_menu values ('3', '1505');
-insert into sys_role_menu values ('3', '1506');
-insert into sys_role_menu values ('3', '1507');
-insert into sys_role_menu values ('3', '1508');
-insert into sys_role_menu values ('3', '1509');
-insert into sys_role_menu values ('3', '1510');
-insert into sys_role_menu values ('3', '1511');
-insert into sys_role_menu values ('4', '5');
-insert into sys_role_menu values ('4', '1500');
-insert into sys_role_menu values ('4', '1501');
-insert into sys_role_menu values ('4', '1502');
-insert into sys_role_menu values ('4', '1503');
-insert into sys_role_menu values ('4', '1504');
-insert into sys_role_menu values ('4', '1505');
-insert into sys_role_menu values ('4', '1506');
-insert into sys_role_menu values ('4', '1507');
-insert into sys_role_menu values ('4', '1508');
-insert into sys_role_menu values ('4', '1509');
-insert into sys_role_menu values ('4', '1510');
-insert into sys_role_menu values ('4', '1511');
+insert into sys_role_menu
+values ('3', '1');
+insert into sys_role_menu
+values ('3', '5');
+insert into sys_role_menu
+values ('3', '100');
+insert into sys_role_menu
+values ('3', '101');
+insert into sys_role_menu
+values ('3', '102');
+insert into sys_role_menu
+values ('3', '103');
+insert into sys_role_menu
+values ('3', '104');
+insert into sys_role_menu
+values ('3', '105');
+insert into sys_role_menu
+values ('3', '106');
+insert into sys_role_menu
+values ('3', '107');
+insert into sys_role_menu
+values ('3', '108');
+insert into sys_role_menu
+values ('3', '500');
+insert into sys_role_menu
+values ('3', '501');
+insert into sys_role_menu
+values ('3', '1001');
+insert into sys_role_menu
+values ('3', '1002');
+insert into sys_role_menu
+values ('3', '1003');
+insert into sys_role_menu
+values ('3', '1004');
+insert into sys_role_menu
+values ('3', '1005');
+insert into sys_role_menu
+values ('3', '1006');
+insert into sys_role_menu
+values ('3', '1007');
+insert into sys_role_menu
+values ('3', '1008');
+insert into sys_role_menu
+values ('3', '1009');
+insert into sys_role_menu
+values ('3', '1010');
+insert into sys_role_menu
+values ('3', '1011');
+insert into sys_role_menu
+values ('3', '1012');
+insert into sys_role_menu
+values ('3', '1013');
+insert into sys_role_menu
+values ('3', '1014');
+insert into sys_role_menu
+values ('3', '1015');
+insert into sys_role_menu
+values ('3', '1016');
+insert into sys_role_menu
+values ('3', '1017');
+insert into sys_role_menu
+values ('3', '1018');
+insert into sys_role_menu
+values ('3', '1019');
+insert into sys_role_menu
+values ('3', '1020');
+insert into sys_role_menu
+values ('3', '1021');
+insert into sys_role_menu
+values ('3', '1022');
+insert into sys_role_menu
+values ('3', '1023');
+insert into sys_role_menu
+values ('3', '1024');
+insert into sys_role_menu
+values ('3', '1025');
+insert into sys_role_menu
+values ('3', '1026');
+insert into sys_role_menu
+values ('3', '1027');
+insert into sys_role_menu
+values ('3', '1028');
+insert into sys_role_menu
+values ('3', '1029');
+insert into sys_role_menu
+values ('3', '1030');
+insert into sys_role_menu
+values ('3', '1031');
+insert into sys_role_menu
+values ('3', '1032');
+insert into sys_role_menu
+values ('3', '1033');
+insert into sys_role_menu
+values ('3', '1034');
+insert into sys_role_menu
+values ('3', '1035');
+insert into sys_role_menu
+values ('3', '1036');
+insert into sys_role_menu
+values ('3', '1037');
+insert into sys_role_menu
+values ('3', '1038');
+insert into sys_role_menu
+values ('3', '1039');
+insert into sys_role_menu
+values ('3', '1040');
+insert into sys_role_menu
+values ('3', '1041');
+insert into sys_role_menu
+values ('3', '1042');
+insert into sys_role_menu
+values ('3', '1043');
+insert into sys_role_menu
+values ('3', '1044');
+insert into sys_role_menu
+values ('3', '1045');
+insert into sys_role_menu
+values ('3', '1500');
+insert into sys_role_menu
+values ('3', '1501');
+insert into sys_role_menu
+values ('3', '1502');
+insert into sys_role_menu
+values ('3', '1503');
+insert into sys_role_menu
+values ('3', '1504');
+insert into sys_role_menu
+values ('3', '1505');
+insert into sys_role_menu
+values ('3', '1506');
+insert into sys_role_menu
+values ('3', '1507');
+insert into sys_role_menu
+values ('3', '1508');
+insert into sys_role_menu
+values ('3', '1509');
+insert into sys_role_menu
+values ('3', '1510');
+insert into sys_role_menu
+values ('3', '1511');
+insert into sys_role_menu
+values ('4', '5');
+insert into sys_role_menu
+values ('4', '1500');
+insert into sys_role_menu
+values ('4', '1501');
+insert into sys_role_menu
+values ('4', '1502');
+insert into sys_role_menu
+values ('4', '1503');
+insert into sys_role_menu
+values ('4', '1504');
+insert into sys_role_menu
+values ('4', '1505');
+insert into sys_role_menu
+values ('4', '1506');
+insert into sys_role_menu
+values ('4', '1507');
+insert into sys_role_menu
+values ('4', '1508');
+insert into sys_role_menu
+values ('4', '1509');
+insert into sys_role_menu
+values ('4', '1510');
+insert into sys_role_menu
+values ('4', '1511');
 
 -- ----------------------------
 -- 8、角色和部门关联表  角色1-N部门
@@ -745,7 +1149,8 @@ comment on column sys_user_post.post_id     is '岗位ID';
 -- ----------------------------
 -- 初始化-用户与岗位关联表数据
 -- ----------------------------
-insert into sys_user_post values ('1', '1');
+insert into sys_user_post
+values ('1', '1');
 
 -- ----------------------------
 -- 10、操作日志记录
@@ -829,19 +1234,32 @@ comment on column sys_dict_type.update_by       is '更新者';
 comment on column sys_dict_type.update_time     is '更新时间';
 comment on column sys_dict_type.remark          is '备注';
 
-insert into sys_dict_type values(1, '000000', '用户性别', 'sys_user_sex',        103, 1, now(), null, null, '用户性别列表');
-insert into sys_dict_type values(2, '000000', '菜单状态', 'sys_show_hide',       103, 1, now(), null, null, '菜单状态列表');
-insert into sys_dict_type values(3, '000000', '系统开关', 'sys_normal_disable',  103, 1, now(), null, null, '系统开关列表');
-insert into sys_dict_type values(6, '000000', '系统是否', 'sys_yes_no',          103, 1, now(), null, null, '系统是否列表');
-insert into sys_dict_type values(7, '000000', '通知类型', 'sys_notice_type',     103, 1, now(), null, null, '通知类型列表');
-insert into sys_dict_type values(8, '000000', '通知状态', 'sys_notice_status',   103, 1, now(), null, null, '通知状态列表');
-insert into sys_dict_type values(9, '000000', '操作类型', 'sys_oper_type',       103, 1, now(), null, null, '操作类型列表');
-insert into sys_dict_type values(10, '000000', '系统状态', 'sys_common_status',  103, 1, now(), null, null, '登录状态列表');
-insert into sys_dict_type values(11, '000000', '授权类型', 'sys_grant_type',     103, 1, now(), null, null, '认证授权类型');
-insert into sys_dict_type values(12, '000000', '设备类型', 'sys_device_type',    103, 1, now(), null, null, '客户端设备类型');
-INSERT INTO sys_dict_type VALUES (13, '000000', '业务状态', 'wf_business_status', 103, 1, now(), NULL, NULL, '业务状态列表');
-INSERT INTO sys_dict_type VALUES (14, '000000', '表单类型', 'wf_form_type', 103, 1, now(), NULL, NULL, '表单类型列表');
-INSERT INTO sys_dict_type VALUES (15, '000000', '任务状态', 'wf_task_status', 103, 1, now(), NULL, NULL, '任务状态');
+insert into sys_dict_type
+values (1, '000000', '用户性别', 'sys_user_sex', 103, 1, now(), null, null, '用户性别列表');
+insert into sys_dict_type
+values (2, '000000', '菜单状态', 'sys_show_hide', 103, 1, now(), null, null, '菜单状态列表');
+insert into sys_dict_type
+values (3, '000000', '系统开关', 'sys_normal_disable', 103, 1, now(), null, null, '系统开关列表');
+insert into sys_dict_type
+values (6, '000000', '系统是否', 'sys_yes_no', 103, 1, now(), null, null, '系统是否列表');
+insert into sys_dict_type
+values (7, '000000', '通知类型', 'sys_notice_type', 103, 1, now(), null, null, '通知类型列表');
+insert into sys_dict_type
+values (8, '000000', '通知状态', 'sys_notice_status', 103, 1, now(), null, null, '通知状态列表');
+insert into sys_dict_type
+values (9, '000000', '操作类型', 'sys_oper_type', 103, 1, now(), null, null, '操作类型列表');
+insert into sys_dict_type
+values (10, '000000', '系统状态', 'sys_common_status', 103, 1, now(), null, null, '登录状态列表');
+insert into sys_dict_type
+values (11, '000000', '授权类型', 'sys_grant_type', 103, 1, now(), null, null, '认证授权类型');
+insert into sys_dict_type
+values (12, '000000', '设备类型', 'sys_device_type', 103, 1, now(), null, null, '客户端设备类型');
+INSERT INTO sys_dict_type
+VALUES (13, '000000', '业务状态', 'wf_business_status', 103, 1, now(), NULL, NULL, '业务状态列表');
+INSERT INTO sys_dict_type
+VALUES (14, '000000', '表单类型', 'wf_form_type', 103, 1, now(), NULL, NULL, '表单类型列表');
+INSERT INTO sys_dict_type
+VALUES (15, '000000', '任务状态', 'wf_task_status', 103, 1, now(), NULL, NULL, '任务状态');
 
 -- ----------------------------
 -- 12、字典数据表
@@ -883,61 +1301,130 @@ comment on column sys_dict_data.update_by       is '更新者';
 comment on column sys_dict_data.update_time     is '更新时间';
 comment on column sys_dict_data.remark          is '备注';
 
-insert into sys_dict_data values(1, '000000', 1,  '男',       '0',       'sys_user_sex',        '',   '',        'Y', 103, 1, now(), null, null, '性别男');
-insert into sys_dict_data values(2, '000000', 2,  '女',       '1',       'sys_user_sex',        '',   '',        'N', 103, 1, now(), null, null, '性别女');
-insert into sys_dict_data values(3, '000000', 3,  '未知',     '2',       'sys_user_sex',        '',   '',        'N', 103, 1, now(), null, null, '性别未知');
-insert into sys_dict_data values(4, '000000', 1,  '显示',     '0',       'sys_show_hide',       '',   'primary', 'Y', 103, 1, now(), null, null, '显示菜单');
-insert into sys_dict_data values(5, '000000', 2,  '隐藏',     '1',       'sys_show_hide',       '',   'danger',  'N', 103, 1, now(), null, null, '隐藏菜单');
-insert into sys_dict_data values(6, '000000', 1,  '正常',     '0',       'sys_normal_disable',  '',   'primary', 'Y', 103, 1, now(), null, null, '正常状态');
-insert into sys_dict_data values(7, '000000', 2,  '停用',     '1',       'sys_normal_disable',  '',   'danger',  'N', 103, 1, now(), null, null, '停用状态');
-insert into sys_dict_data values(12, '000000', 1,  '是',       'Y',       'sys_yes_no',          '',   'primary', 'Y', 103, 1, now(), null, null, '系统默认是');
-insert into sys_dict_data values(13, '000000', 2,  '否',       'N',       'sys_yes_no',          '',   'danger',  'N', 103, 1, now(), null, null, '系统默认否');
-insert into sys_dict_data values(14, '000000', 1,  '通知',     '1',       'sys_notice_type',     '',   'warning', 'Y', 103, 1, now(), null, null, '通知');
-insert into sys_dict_data values(15, '000000', 2,  '公告',     '2',       'sys_notice_type',     '',   'success', 'N', 103, 1, now(), null, null, '公告');
-insert into sys_dict_data values(16, '000000', 1,  '正常',     '0',       'sys_notice_status',   '',   'primary', 'Y', 103, 1, now(), null, null, '正常状态');
-insert into sys_dict_data values(17, '000000', 2,  '关闭',     '1',       'sys_notice_status',   '',   'danger',  'N', 103, 1, now(), null, null, '关闭状态');
-insert into sys_dict_data values(29, '000000', 99, '其他',     '0',       'sys_oper_type',       '',   'info',    'N', 103, 1, now(), null, null, '其他操作');
-insert into sys_dict_data values(18, '000000', 1,  '新增',     '1',       'sys_oper_type',       '',   'info',    'N', 103, 1, now(), null, null, '新增操作');
-insert into sys_dict_data values(19, '000000', 2,  '修改',     '2',       'sys_oper_type',       '',   'info',    'N', 103, 1, now(), null, null, '修改操作');
-insert into sys_dict_data values(20, '000000', 3,  '删除',     '3',       'sys_oper_type',       '',   'danger',  'N', 103, 1, now(), null, null, '删除操作');
-insert into sys_dict_data values(21, '000000', 4,  '授权',     '4',       'sys_oper_type',       '',   'primary', 'N', 103, 1, now(), null, null, '授权操作');
-insert into sys_dict_data values(22, '000000', 5,  '导出',     '5',       'sys_oper_type',       '',   'warning', 'N', 103, 1, now(), null, null, '导出操作');
-insert into sys_dict_data values(23, '000000', 6,  '导入',     '6',       'sys_oper_type',       '',   'warning', 'N', 103, 1, now(), null, null, '导入操作');
-insert into sys_dict_data values(24, '000000', 7,  '强退',     '7',       'sys_oper_type',       '',   'danger',  'N', 103, 1, now(), null, null, '强退操作');
-insert into sys_dict_data values(25, '000000', 8,  '生成代码', '8',       'sys_oper_type',       '',   'warning', 'N', 103, 1, now(), null, null, '生成操作');
-insert into sys_dict_data values(26, '000000', 9,  '清空数据', '9',       'sys_oper_type',       '',   'danger',  'N', 103, 1, now(), null, null, '清空操作');
-insert into sys_dict_data values(27, '000000', 1,  '成功',     '0',       'sys_common_status',   '',   'primary', 'N', 103, 1, now(), null, null, '正常状态');
-insert into sys_dict_data values(28, '000000', 2,  '失败',     '1',       'sys_common_status',   '',   'danger',  'N', 103, 1, now(), null, null, '停用状态');
-insert into sys_dict_data values(30, '000000', 0,  '密码认证', 'password',   'sys_grant_type',   '',   'default', 'N', 103, 1, now(), null, null, '密码认证');
-insert into sys_dict_data values(31, '000000', 0,  '短信认证', 'sms',        'sys_grant_type',   '',   'default', 'N', 103, 1, now(), null, null, '短信认证');
-insert into sys_dict_data values(32, '000000', 0,  '邮件认证', 'email',      'sys_grant_type',   '',   'default', 'N', 103, 1, now(), null, null, '邮件认证');
-insert into sys_dict_data values(33, '000000', 0,  '小程序认证', 'xcx',      'sys_grant_type',   '',   'default', 'N', 103, 1, now(), null, null, '小程序认证');
-insert into sys_dict_data values(34, '000000', 0,  '三方登录认证', 'social', 'sys_grant_type',   '',   'default', 'N', 103, 1, now(), null, null, '三方登录认证');
-insert into sys_dict_data values(35, '000000', 0,  'PC', 'pc',              'sys_device_type',   '',   'default', 'N', 103, 1, now(), null, null, 'PC');
-insert into sys_dict_data values(36, '000000', 0,  '安卓', 'android',       'sys_device_type',   '',   'default', 'N', 103, 1, now(), null, null, '安卓');
-insert into sys_dict_data values(37, '000000', 0,  'iOS', 'ios',            'sys_device_type',   '',   'default', 'N', 103, 1, now(), null, null, 'iOS');
-insert into sys_dict_data values(38, '000000', 0,  '小程序', 'xcx',         'sys_device_type',   '',   'default', 'N', 103, 1, now(), null, null, '小程序');
-INSERT INTO sys_dict_data VALUES (39, '000000', 1, '已撤销', 'cancel', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '已撤销');
-INSERT INTO sys_dict_data VALUES (40, '000000', 2, '草稿', 'draft', 'wf_business_status', '', 'info', 'N', 103, 1, now(), NULL, NULL, '草稿');
-INSERT INTO sys_dict_data VALUES (41, '000000', 3, '待审核', 'waiting', 'wf_business_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '待审核');
-INSERT INTO sys_dict_data VALUES (42, '000000', 4, '已完成', 'finish', 'wf_business_status', '', 'success', 'N', 103, 1, now(), NULL, NULL, '已完成');
-INSERT INTO sys_dict_data VALUES (43, '000000', 5, '已作废', 'invalid', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '已作废');
-INSERT INTO sys_dict_data VALUES (44, '000000', 6, '已退回', 'back', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '已退回');
-INSERT INTO sys_dict_data VALUES (45, '000000', 7, '已终止', 'termination', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '已终止');
-INSERT INTO sys_dict_data VALUES (46, '000000', 1, '自定义表单', 'static', 'wf_form_type', '', 'success', 'N', 103, 1, now(), NULL, NULL, '自定义表单');
-INSERT INTO sys_dict_data VALUES (47, '000000', 2, '动态表单', 'dynamic', 'wf_form_type', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '动态表单');
-INSERT INTO sys_dict_data VALUES (48, '000000', 1, '撤销', 'cancel', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '撤销');
-INSERT INTO sys_dict_data VALUES (49, '000000', 2, '通过', 'pass', 'wf_task_status', '', 'success', 'N', 103, 1, now(), NULL, NULL, '通过');
-INSERT INTO sys_dict_data VALUES (50, '000000', 3, '待审核', 'waiting', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '待审核');
-INSERT INTO sys_dict_data VALUES (51, '000000', 4, '作废', 'invalid', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '作废');
-INSERT INTO sys_dict_data VALUES (52, '000000', 5, '退回', 'back', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '退回');
-INSERT INTO sys_dict_data VALUES (53, '000000', 6, '终止', 'termination', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '终止');
-INSERT INTO sys_dict_data VALUES (54, '000000', 7, '转办', 'transfer', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '转办');
-INSERT INTO sys_dict_data VALUES (55, '000000', 8, '委托', 'depute', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '委托');
-INSERT INTO sys_dict_data VALUES (56, '000000', 9, '抄送', 'copy', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '抄送');
-INSERT INTO sys_dict_data VALUES (57, '000000', 10, '加签', 'sign', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '加签');
-INSERT INTO sys_dict_data VALUES (58, '000000', 11, '减签', 'sign_off', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '减签');
-INSERT INTO sys_dict_data VALUES (59, '000000', 11, '超时', 'timeout', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '超时');
+insert into sys_dict_data
+values (1, '000000', 1, '男', '0', 'sys_user_sex', '', '', 'Y', 103, 1, now(), null, null, '性别男');
+insert into sys_dict_data
+values (2, '000000', 2, '女', '1', 'sys_user_sex', '', '', 'N', 103, 1, now(), null, null, '性别女');
+insert into sys_dict_data
+values (3, '000000', 3, '未知', '2', 'sys_user_sex', '', '', 'N', 103, 1, now(), null, null, '性别未知');
+insert into sys_dict_data
+values (4, '000000', 1, '显示', '0', 'sys_show_hide', '', 'primary', 'Y', 103, 1, now(), null, null, '显示菜单');
+insert into sys_dict_data
+values (5, '000000', 2, '隐藏', '1', 'sys_show_hide', '', 'danger', 'N', 103, 1, now(), null, null, '隐藏菜单');
+insert into sys_dict_data
+values (6, '000000', 1, '正常', '0', 'sys_normal_disable', '', 'primary', 'Y', 103, 1, now(), null, null, '正常状态');
+insert into sys_dict_data
+values (7, '000000', 2, '停用', '1', 'sys_normal_disable', '', 'danger', 'N', 103, 1, now(), null, null, '停用状态');
+insert into sys_dict_data
+values (12, '000000', 1, '是', 'Y', 'sys_yes_no', '', 'primary', 'Y', 103, 1, now(), null, null, '系统默认是');
+insert into sys_dict_data
+values (13, '000000', 2, '否', 'N', 'sys_yes_no', '', 'danger', 'N', 103, 1, now(), null, null, '系统默认否');
+insert into sys_dict_data
+values (14, '000000', 1, '通知', '1', 'sys_notice_type', '', 'warning', 'Y', 103, 1, now(), null, null, '通知');
+insert into sys_dict_data
+values (15, '000000', 2, '公告', '2', 'sys_notice_type', '', 'success', 'N', 103, 1, now(), null, null, '公告');
+insert into sys_dict_data
+values (16, '000000', 1, '正常', '0', 'sys_notice_status', '', 'primary', 'Y', 103, 1, now(), null, null, '正常状态');
+insert into sys_dict_data
+values (17, '000000', 2, '关闭', '1', 'sys_notice_status', '', 'danger', 'N', 103, 1, now(), null, null, '关闭状态');
+insert into sys_dict_data
+values (29, '000000', 99, '其他', '0', 'sys_oper_type', '', 'info', 'N', 103, 1, now(), null, null, '其他操作');
+insert into sys_dict_data
+values (18, '000000', 1, '新增', '1', 'sys_oper_type', '', 'info', 'N', 103, 1, now(), null, null, '新增操作');
+insert into sys_dict_data
+values (19, '000000', 2, '修改', '2', 'sys_oper_type', '', 'info', 'N', 103, 1, now(), null, null, '修改操作');
+insert into sys_dict_data
+values (20, '000000', 3, '删除', '3', 'sys_oper_type', '', 'danger', 'N', 103, 1, now(), null, null, '删除操作');
+insert into sys_dict_data
+values (21, '000000', 4, '授权', '4', 'sys_oper_type', '', 'primary', 'N', 103, 1, now(), null, null, '授权操作');
+insert into sys_dict_data
+values (22, '000000', 5, '导出', '5', 'sys_oper_type', '', 'warning', 'N', 103, 1, now(), null, null, '导出操作');
+insert into sys_dict_data
+values (23, '000000', 6, '导入', '6', 'sys_oper_type', '', 'warning', 'N', 103, 1, now(), null, null, '导入操作');
+insert into sys_dict_data
+values (24, '000000', 7, '强退', '7', 'sys_oper_type', '', 'danger', 'N', 103, 1, now(), null, null, '强退操作');
+insert into sys_dict_data
+values (25, '000000', 8, '生成代码', '8', 'sys_oper_type', '', 'warning', 'N', 103, 1, now(), null, null, '生成操作');
+insert into sys_dict_data
+values (26, '000000', 9, '清空数据', '9', 'sys_oper_type', '', 'danger', 'N', 103, 1, now(), null, null, '清空操作');
+insert into sys_dict_data
+values (27, '000000', 1, '成功', '0', 'sys_common_status', '', 'primary', 'N', 103, 1, now(), null, null, '正常状态');
+insert into sys_dict_data
+values (28, '000000', 2, '失败', '1', 'sys_common_status', '', 'danger', 'N', 103, 1, now(), null, null, '停用状态');
+insert into sys_dict_data
+values (30, '000000', 0, '密码认证', 'password', 'sys_grant_type', '', 'default', 'N', 103, 1, now(), null, null,
+        '密码认证');
+insert into sys_dict_data
+values (31, '000000', 0, '短信认证', 'sms', 'sys_grant_type', '', 'default', 'N', 103, 1, now(), null, null,
+        '短信认证');
+insert into sys_dict_data
+values (32, '000000', 0, '邮件认证', 'email', 'sys_grant_type', '', 'default', 'N', 103, 1, now(), null, null,
+        '邮件认证');
+insert into sys_dict_data
+values (33, '000000', 0, '小程序认证', 'xcx', 'sys_grant_type', '', 'default', 'N', 103, 1, now(), null, null,
+        '小程序认证');
+insert into sys_dict_data
+values (34, '000000', 0, '三方登录认证', 'social', 'sys_grant_type', '', 'default', 'N', 103, 1, now(), null, null,
+        '三方登录认证');
+insert into sys_dict_data
+values (35, '000000', 0, 'PC', 'pc', 'sys_device_type', '', 'default', 'N', 103, 1, now(), null, null, 'PC');
+insert into sys_dict_data
+values (36, '000000', 0, '安卓', 'android', 'sys_device_type', '', 'default', 'N', 103, 1, now(), null, null, '安卓');
+insert into sys_dict_data
+values (37, '000000', 0, 'iOS', 'ios', 'sys_device_type', '', 'default', 'N', 103, 1, now(), null, null, 'iOS');
+insert into sys_dict_data
+values (38, '000000', 0, '小程序', 'xcx', 'sys_device_type', '', 'default', 'N', 103, 1, now(), null, null, '小程序');
+INSERT INTO sys_dict_data
+VALUES (39, '000000', 1, '已撤销', 'cancel', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL,
+        '已撤销');
+INSERT INTO sys_dict_data
+VALUES (40, '000000', 2, '草稿', 'draft', 'wf_business_status', '', 'info', 'N', 103, 1, now(), NULL, NULL, '草稿');
+INSERT INTO sys_dict_data
+VALUES (41, '000000', 3, '待审核', 'waiting', 'wf_business_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL,
+        '待审核');
+INSERT INTO sys_dict_data
+VALUES (42, '000000', 4, '已完成', 'finish', 'wf_business_status', '', 'success', 'N', 103, 1, now(), NULL, NULL,
+        '已完成');
+INSERT INTO sys_dict_data
+VALUES (43, '000000', 5, '已作废', 'invalid', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL,
+        '已作废');
+INSERT INTO sys_dict_data
+VALUES (44, '000000', 6, '已退回', 'back', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL,
+        '已退回');
+INSERT INTO sys_dict_data
+VALUES (45, '000000', 7, '已终止', 'termination', 'wf_business_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL,
+        '已终止');
+INSERT INTO sys_dict_data
+VALUES (46, '000000', 1, '自定义表单', 'static', 'wf_form_type', '', 'success', 'N', 103, 1, now(), NULL, NULL,
+        '自定义表单');
+INSERT INTO sys_dict_data
+VALUES (47, '000000', 2, '动态表单', 'dynamic', 'wf_form_type', '', 'primary', 'N', 103, 1, now(), NULL, NULL,
+        '动态表单');
+INSERT INTO sys_dict_data
+VALUES (48, '000000', 1, '撤销', 'cancel', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '撤销');
+INSERT INTO sys_dict_data
+VALUES (49, '000000', 2, '通过', 'pass', 'wf_task_status', '', 'success', 'N', 103, 1, now(), NULL, NULL, '通过');
+INSERT INTO sys_dict_data
+VALUES (50, '000000', 3, '待审核', 'waiting', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL,
+        '待审核');
+INSERT INTO sys_dict_data
+VALUES (51, '000000', 4, '作废', 'invalid', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '作废');
+INSERT INTO sys_dict_data
+VALUES (52, '000000', 5, '退回', 'back', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '退回');
+INSERT INTO sys_dict_data
+VALUES (53, '000000', 6, '终止', 'termination', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '终止');
+INSERT INTO sys_dict_data
+VALUES (54, '000000', 7, '转办', 'transfer', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '转办');
+INSERT INTO sys_dict_data
+VALUES (55, '000000', 8, '委托', 'depute', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '委托');
+INSERT INTO sys_dict_data
+VALUES (56, '000000', 9, '抄送', 'copy', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '抄送');
+INSERT INTO sys_dict_data
+VALUES (57, '000000', 10, '加签', 'sign', 'wf_task_status', '', 'primary', 'N', 103, 1, now(), NULL, NULL, '加签');
+INSERT INTO sys_dict_data
+VALUES (58, '000000', 11, '减签', 'sign_off', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '减签');
+INSERT INTO sys_dict_data
+VALUES (59, '000000', 11, '超时', 'timeout', 'wf_task_status', '', 'danger', 'N', 103, 1, now(), NULL, NULL, '超时');
 
 
 -- ----------------------------
@@ -974,11 +1461,21 @@ comment on column sys_config.update_by      is '更新者';
 comment on column sys_config.update_time    is '更新时间';
 comment on column sys_config.remark         is '备注';
 
-insert into sys_config values(1, '000000', '主框架页-默认皮肤样式名称',     'sys.index.skinName',            'skin-blue',     'Y', 103, 1, now(), null, null, '蓝色 skin-blue、绿色 skin-green、紫色 skin-purple、红色 skin-red、黄色 skin-yellow' );
-insert into sys_config values(2, '000000', '用户管理-账号初始密码',         'sys.user.initPassword',         '123456',        'Y', 103, 1, now(), null, null, '初始化密码 123456' );
-insert into sys_config values(3, '000000', '主框架页-侧边栏主题',           'sys.index.sideTheme',           'theme-dark',    'Y', 103, 1, now(), null, null, '深色主题theme-dark，浅色主题theme-light' );
-insert into sys_config values(5, '000000', '账号自助-是否开启用户注册功能',   'sys.account.registerUser',      'false',         'Y', 103, 1, now(), null, null, '是否开启注册用户功能（true开启，false关闭）');
-insert into sys_config values(11, '000000', 'OSS预览列表资源开关',          'sys.oss.previewListResource',   'true',          'Y', 103, 1, now(), null, null, 'true:开启, false:关闭');
+insert into sys_config
+values (1, '000000', '主框架页-默认皮肤样式名称', 'sys.index.skinName', 'skin-blue', 'Y', 103, 1, now(), null, null,
+        '蓝色 skin-blue、绿色 skin-green、紫色 skin-purple、红色 skin-red、黄色 skin-yellow');
+insert into sys_config
+values (2, '000000', '用户管理-账号初始密码', 'sys.user.initPassword', '123456', 'Y', 103, 1, now(), null, null,
+        '初始化密码 123456');
+insert into sys_config
+values (3, '000000', '主框架页-侧边栏主题', 'sys.index.sideTheme', 'theme-dark', 'Y', 103, 1, now(), null, null,
+        '深色主题theme-dark，浅色主题theme-light');
+insert into sys_config
+values (5, '000000', '账号自助-是否开启用户注册功能', 'sys.account.registerUser', 'false', 'Y', 103, 1, now(), null,
+        null, '是否开启注册用户功能（true开启，false关闭）');
+insert into sys_config
+values (11, '000000', 'OSS预览列表资源开关', 'sys.oss.previewListResource', 'true', 'Y', 103, 1, now(), null, null,
+        'true:开启, false:关闭');
 
 
 -- ----------------------------
@@ -1025,8 +1522,8 @@ create table if not exists sys_notice
 (
     notice_id      int8,
     tenant_id      varchar(20)  default '000000'::varchar,
-    notice_title   varchar(50)  not null,
-    notice_type    char         not null,
+    notice_title   varchar(50) not null,
+    notice_type    char        not null,
     notice_content text,
     status         char         default '0'::bpchar,
     create_dept    int8,
@@ -1055,8 +1552,10 @@ comment on column sys_notice.remark         is '备注';
 -- ----------------------------
 -- 初始化-公告信息表数据
 -- ----------------------------
-insert into sys_notice values('1', '000000', '温馨提醒：2018-07-01 新版本发布啦', '2', '新版本内容', '0', 103, 1, now(), null, null, '管理员');
-insert into sys_notice values('2', '000000', '维护通知：2018-07-01 系统凌晨维护', '1', '维护内容',   '0', 103, 1, now(), null, null, '管理员');
+insert into sys_notice
+values ('1', '000000', '温馨提醒：2018-07-01 新版本发布啦', '2', '新版本内容', '0', 103, 1, now(), null, null, '管理员');
+insert into sys_notice
+values ('2', '000000', '维护通知：2018-07-01 系统凌晨维护', '1', '维护内容', '0', 103, 1, now(), null, null, '管理员');
 
 
 -- ----------------------------
@@ -1255,32 +1754,43 @@ comment on column sys_oss_config.update_by      is '更新者';
 comment on column sys_oss_config.update_time    is '更新时间';
 comment on column sys_oss_config.remark         is '备注';
 
-insert into sys_oss_config values (1, '000000', 'minio',  'ruoyi',            'ruoyi123',        'ruoyi',             '', '127.0.0.1:9000',                      '','N', '',            '1', '0', '', 103, 1, now(), 1, now(), null);
-insert into sys_oss_config values (2, '000000', 'qiniu',  'XXXXXXXXXXXXXXX',  'XXXXXXXXXXXXXXX', 'ruoyi',             '', 's3-cn-north-1.qiniucs.com',           '','N', '',            '1', '1', '', 103, 1, now(), 1, now(), null);
-insert into sys_oss_config values (3, '000000', 'aliyun', 'XXXXXXXXXXXXXXX',  'XXXXXXXXXXXXXXX', 'ruoyi',             '', 'oss-cn-beijing.aliyuncs.com',         '','N', '',            '1', '1', '', 103, 1, now(), 1, now(), null);
-insert into sys_oss_config values (4, '000000', 'qcloud', 'XXXXXXXXXXXXXXX',  'XXXXXXXXXXXXXXX', 'ruoyi-1240000000',  '', 'cos.ap-beijing.myqcloud.com',         '','N', 'ap-beijing',  '1', '1', '', 103, 1, now(), 1, now(), null);
-insert into sys_oss_config values (5, '000000', 'image',  'ruoyi',            'ruoyi123',        'ruoyi',             'image', '127.0.0.1:9000',                 '','N', '',            '1', '1', '', 103, 1, now(), 1, now(), NULL);
+insert into sys_oss_config
+values (1, '000000', 'minio', 'ruoyi', 'ruoyi123', 'ruoyi', '', '127.0.0.1:9000', '', 'N', '', '1', '0', '', 103, 1,
+        now(), 1, now(), null);
+insert into sys_oss_config
+values (2, '000000', 'qiniu', 'XXXXXXXXXXXXXXX', 'XXXXXXXXXXXXXXX', 'ruoyi', '', 's3-cn-north-1.qiniucs.com', '', 'N',
+        '', '1', '1', '', 103, 1, now(), 1, now(), null);
+insert into sys_oss_config
+values (3, '000000', 'aliyun', 'XXXXXXXXXXXXXXX', 'XXXXXXXXXXXXXXX', 'ruoyi', '', 'oss-cn-beijing.aliyuncs.com', '',
+        'N', '', '1', '1', '', 103, 1, now(), 1, now(), null);
+insert into sys_oss_config
+values (4, '000000', 'qcloud', 'XXXXXXXXXXXXXXX', 'XXXXXXXXXXXXXXX', 'ruoyi-1240000000', '',
+        'cos.ap-beijing.myqcloud.com', '', 'N', 'ap-beijing', '1', '1', '', 103, 1, now(), 1, now(), null);
+insert into sys_oss_config
+values (5, '000000', 'image', 'ruoyi', 'ruoyi123', 'ruoyi', 'image', '127.0.0.1:9000', '', 'N', '', '1', '1', '', 103,
+        1, now(), 1, now(), NULL);
 
 
 -- ----------------------------
 -- 系统授权表
 -- ----------------------------
-create table sys_client (
-    id                  int8,
-    client_id           varchar(64)   default ''::varchar,
-    client_key          varchar(32)   default ''::varchar,
-    client_secret       varchar(255)  default ''::varchar,
-    grant_type          varchar(255)  default ''::varchar,
-    device_type         varchar(32)   default ''::varchar,
-    active_timeout      int4          default 1800,
-    timeout             int4          default 604800,
-    status              char(1)       default '0'::bpchar,
-    del_flag            char(1)       default '0'::bpchar,
-    create_dept         int8,
-    create_by           int8,
-    create_time         timestamp,
-    update_by           int8,
-    update_time         timestamp,
+create table sys_client
+(
+    id             int8,
+    client_id      varchar(64)  default ''::varchar,
+    client_key     varchar(32)  default ''::varchar,
+    client_secret  varchar(255) default ''::varchar,
+    grant_type     varchar(255) default ''::varchar,
+    device_type    varchar(32)  default ''::varchar,
+    active_timeout int4         default 1800,
+    timeout        int4         default 604800,
+    status         char(1)      default '0'::bpchar,
+    del_flag       char(1)      default '0'::bpchar,
+    create_dept    int8,
+    create_by      int8,
+    create_time    timestamp,
+    update_by      int8,
+    update_time    timestamp,
     constraint sys_client_pk primary key (id)
 );
 
@@ -1301,25 +1811,29 @@ comment on column sys_client.create_time            is '创建时间';
 comment on column sys_client.update_by              is '更新者';
 comment on column sys_client.update_time            is '更新时间';
 
-insert into sys_client values (1, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 'password,social', 'pc', 1800, 604800, 0, 0, 103, 1, now(), 1, now());
-insert into sys_client values (2, '428a8310cd442757ae699df5d894f051', 'app', 'app123', 'password,sms,social', 'android', 1800, 604800, 0, 0, 103, 1, now(), 1, now());
+insert into sys_client
+values (1, 'e5cd7e4891bf95d1d19206ce24a7b32e', 'pc', 'pc123', 'password,social', 'pc', 1800, 604800, 0, 0, 103, 1,
+        now(), 1, now());
+insert into sys_client
+values (2, '428a8310cd442757ae699df5d894f051', 'app', 'app123', 'password,sms,social', 'android', 1800, 604800, 0, 0,
+        103, 1, now(), 1, now());
 
 create table if not exists test_demo
 (
     id          int8,
-    tenant_id   varchar(20)     default '000000',
+    tenant_id   varchar(20) default '000000',
     dept_id     int8,
     user_id     int8,
-    order_num   int4            default 0,
+    order_num   int4        default 0,
     test_key    varchar(255),
     value       varchar(255),
-    version     int4            default 0,
+    version     int4        default 0,
     create_dept int8,
     create_time timestamp,
     create_by   int8,
     update_time timestamp,
     update_by   int8,
-    del_flag    int4            default 0
+    del_flag    int4        default 0
 );
 
 comment on table test_demo is '测试单表';
@@ -1341,18 +1855,18 @@ comment on column test_demo.del_flag is '删除标志';
 create table if not exists test_tree
 (
     id          int8,
-    tenant_id   varchar(20)     default '000000',
-    parent_id   int8            default 0,
+    tenant_id   varchar(20) default '000000',
+    parent_id   int8        default 0,
     dept_id     int8,
     user_id     int8,
     tree_name   varchar(255),
-    version     int4            default 0,
+    version     int4        default 0,
     create_dept int8,
     create_time timestamp,
     create_by   int8,
     update_time timestamp,
     update_by   int8,
-    del_flag    integer         default 0
+    del_flag    integer     default 0
 );
 
 comment on table test_tree is '测试树表';
@@ -1370,58 +1884,89 @@ comment on column test_tree.update_time is '更新时间';
 comment on column test_tree.update_by is '更新人';
 comment on column test_tree.del_flag is '删除标志';
 
-insert into test_demo values (1, '000000', 102, 4, 1, '测试数据权限', '测试', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (2, '000000', 102, 3, 2, '子节点1', '111', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (3, '000000', 102, 3, 3, '子节点2', '222', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (4, '000000', 108, 4, 4, '测试数据', 'demo', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (5, '000000', 108, 3, 13, '子节点11', '1111', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (6, '000000', 108, 3, 12, '子节点22', '2222', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (7, '000000', 108, 3, 11, '子节点33', '3333', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (8, '000000', 108, 3, 10, '子节点44', '4444', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (9, '000000', 108, 3, 9, '子节点55', '5555', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (10, '000000', 108, 3, 8, '子节点66', '6666', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (11, '000000', 108, 3, 7, '子节点77', '7777', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (12, '000000', 108, 3, 6, '子节点88', '8888', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_demo values (13, '000000', 108, 3, 5, '子节点99', '9999', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (1, '000000', 102, 4, 1, '测试数据权限', '测试', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (2, '000000', 102, 3, 2, '子节点1', '111', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (3, '000000', 102, 3, 3, '子节点2', '222', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (4, '000000', 108, 4, 4, '测试数据', 'demo', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (5, '000000', 108, 3, 13, '子节点11', '1111', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (6, '000000', 108, 3, 12, '子节点22', '2222', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (7, '000000', 108, 3, 11, '子节点33', '3333', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (8, '000000', 108, 3, 10, '子节点44', '4444', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (9, '000000', 108, 3, 9, '子节点55', '5555', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (10, '000000', 108, 3, 8, '子节点66', '6666', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (11, '000000', 108, 3, 7, '子节点77', '7777', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (12, '000000', 108, 3, 6, '子节点88', '8888', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_demo
+values (13, '000000', 108, 3, 5, '子节点99', '9999', 0, 103, now(), 1, NULL, NULL, 0);
 
-insert into test_tree values (1, '000000', 0, 102, 4, '测试数据权限', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (2, '000000', 1, 102, 3, '子节点1', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (3, '000000', 2, 102, 3, '子节点2', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (4, '000000', 0, 108, 4, '测试树1', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (5, '000000', 4, 108, 3, '子节点11', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (6, '000000', 4, 108, 3, '子节点22', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (7, '000000', 4, 108, 3, '子节点33', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (8, '000000', 5, 108, 3, '子节点44', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (9, '000000', 6, 108, 3, '子节点55', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (10, '000000', 7, 108, 3, '子节点66', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (11, '000000', 7, 108, 3, '子节点77', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (12, '000000', 10, 108, 3, '子节点88', 0, 103, now(), 1, NULL, NULL, 0);
-insert into test_tree values (13, '000000', 10, 108, 3, '子节点99', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (1, '000000', 0, 102, 4, '测试数据权限', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (2, '000000', 1, 102, 3, '子节点1', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (3, '000000', 2, 102, 3, '子节点2', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (4, '000000', 0, 108, 4, '测试树1', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (5, '000000', 4, 108, 3, '子节点11', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (6, '000000', 4, 108, 3, '子节点22', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (7, '000000', 4, 108, 3, '子节点33', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (8, '000000', 5, 108, 3, '子节点44', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (9, '000000', 6, 108, 3, '子节点55', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (10, '000000', 7, 108, 3, '子节点66', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (11, '000000', 7, 108, 3, '子节点77', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (12, '000000', 10, 108, 3, '子节点88', 0, 103, now(), 1, NULL, NULL, 0);
+insert into test_tree
+values (13, '000000', 10, 108, 3, '子节点99', 0, 103, now(), 1, NULL, NULL, 0);
 
 
 -- 字符串自动转时间 避免框架时间查询报错问题
-create or replace function cast_varchar_to_timestamp(varchar) returns timestamptz as $$
+create
+or
+replace function cast_varchar_to_timestamp(varchar) returns timestamptz as $$
 select to_timestamp($1, 'yyyy-mm-dd hh24:mi:ss');
 $$ language sql strict ;
 
-create cast (varchar as timestamptz) with function cast_varchar_to_timestamp as IMPLICIT;
+create
+cast
+    (varchar as timestamptz)
+    with function cast_varchar_to_timestamp as IMPLICIT;
 
 
 -- for AT mode you must to init this sql for you business database. the seata server not need it.
 CREATE TABLE IF NOT EXISTS public.undo_log
 (
-    id            SERIAL       NOT NULL,
-    branch_id     BIGINT       NOT NULL,
-    xid           VARCHAR(128) NOT NULL,
-    context       VARCHAR(128) NOT NULL,
-    rollback_info BYTEA        NOT NULL,
-    log_status    INT          NOT NULL,
-    log_created   TIMESTAMP(0) NOT NULL,
-    log_modified  TIMESTAMP(0) NOT NULL,
+    id           SERIAL       NOT NULL,
+    branch_id    BIGINT       NOT NULL,
+    xid          VARCHAR(128) NOT NULL,
+    context      VARCHAR(128) NOT NULL,
+    rollback_info BYTEA NOT NULL,
+    log_status   INT          NOT NULL,
+    log_created  TIMESTAMP(0) NOT NULL,
+    log_modified TIMESTAMP(0) NOT NULL,
     CONSTRAINT pk_undo_log PRIMARY KEY (id),
     CONSTRAINT ux_undo_log UNIQUE (xid, branch_id)
-    );
-CREATE INDEX ix_log_created ON undo_log(log_created);
+);
+CREATE INDEX ix_log_created ON undo_log (log_created);
 
 COMMENT ON TABLE public.undo_log IS 'AT transaction mode undo table';
 COMMENT ON COLUMN public.undo_log.branch_id IS 'branch transaction id';
@@ -1432,4 +1977,5 @@ COMMENT ON COLUMN public.undo_log.log_status IS '0:normal status,1:defense statu
 COMMENT ON COLUMN public.undo_log.log_created IS 'create datetime';
 COMMENT ON COLUMN public.undo_log.log_modified IS 'modify datetime';
 
-CREATE SEQUENCE IF NOT EXISTS undo_log_id_seq INCREMENT BY 1 MINVALUE 1 ;
+CREATE
+SEQUENCE IF NOT EXISTS undo_log_id_seq INCREMENT BY 1 MINVALUE 1 ;

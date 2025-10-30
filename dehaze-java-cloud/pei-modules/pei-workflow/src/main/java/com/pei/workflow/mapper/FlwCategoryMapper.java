@@ -1,12 +1,12 @@
 package com.pei.workflow.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.pei.workflow.domain.FlowCategory;
-import com.pei.workflow.domain.vo.FlowCategoryVo;
 import com.pei.common.mybatis.annotation.DataColumn;
 import com.pei.common.mybatis.annotation.DataPermission;
 import com.pei.common.mybatis.core.mapper.BaseMapperPlus;
 import com.pei.common.mybatis.helper.DataBaseHelper;
+import com.pei.workflow.domain.FlowCategory;
+import com.pei.workflow.domain.vo.FlowCategoryVo;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -32,18 +32,6 @@ public interface FlwCategoryMapper extends BaseMapperPlus<FlowCategory, FlowCate
     long countCategoryById(Long categoryId);
 
     /**
-     * 根据父流程分类ID查询其所有子流程分类的列表
-     *
-     * @param parentId 父流程分类ID
-     * @return 包含子流程分类的列表
-     */
-    default List<FlowCategory> selectListByParentId(Long parentId) {
-        return this.selectList(new LambdaQueryWrapper<FlowCategory>()
-            .select(FlowCategory::getCategoryId)
-            .apply(DataBaseHelper.findInSet(parentId, "ancestors")));
-    }
-
-    /**
      * 根据父流程分类ID查询包括父ID及其所有子流程分类ID的列表
      *
      * @param parentId 父流程分类ID
@@ -55,6 +43,18 @@ public interface FlwCategoryMapper extends BaseMapperPlus<FlowCategory, FlowCate
                 .map(FlowCategory::getCategoryId),
             Stream.of(parentId)
         ).collect(Collectors.toList());
+    }
+
+    /**
+     * 根据父流程分类ID查询其所有子流程分类的列表
+     *
+     * @param parentId 父流程分类ID
+     * @return 包含子流程分类的列表
+     */
+    default List<FlowCategory> selectListByParentId(Long parentId) {
+        return this.selectList(new LambdaQueryWrapper<FlowCategory>()
+            .select(FlowCategory::getCategoryId)
+            .apply(DataBaseHelper.findInSet(parentId, "ancestors")));
     }
 
 }

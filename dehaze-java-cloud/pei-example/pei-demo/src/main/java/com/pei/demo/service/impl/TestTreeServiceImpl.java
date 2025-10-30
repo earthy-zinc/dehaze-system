@@ -4,10 +4,10 @@ import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.pei.common.core.utils.StringUtils;
+import com.pei.demo.domain.TestTree;
 import com.pei.demo.domain.bo.TestTreeBo;
 import com.pei.demo.domain.vo.TestTreeVo;
 import com.pei.demo.mapper.TestTreeMapper;
-import com.pei.demo.domain.TestTree;
 import com.pei.demo.service.ITestTreeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -69,6 +69,14 @@ public class TestTreeServiceImpl implements ITestTreeService {
         return baseMapper.updateById(update) > 0;
     }
 
+    @Override
+    public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
+        if (isValid) {
+            //TODO 做一些业务上的校验,判断是否需要校验
+        }
+        return baseMapper.deleteByIds(ids) > 0;
+    }
+
     /**
      * 保存前的数据校验
      *
@@ -76,13 +84,5 @@ public class TestTreeServiceImpl implements ITestTreeService {
      */
     private void validEntityBeforeSave(TestTree entity) {
         //TODO 做一些数据校验,如唯一约束
-    }
-
-    @Override
-    public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
-        if (isValid) {
-            //TODO 做一些业务上的校验,判断是否需要校验
-        }
-        return baseMapper.deleteByIds(ids) > 0;
     }
 }

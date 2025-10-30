@@ -1,10 +1,10 @@
 package com.pei.system.domain.bo;
 
+import com.pei.common.log.event.OperLogEvent;
+import com.pei.system.domain.SysOperLog;
 import io.github.linpeilie.annotations.AutoMapper;
 import io.github.linpeilie.annotations.AutoMappers;
 import lombok.Data;
-import com.pei.common.log.event.OperLogEvent;
-import com.pei.system.domain.SysOperLog;
 
 import java.util.Date;
 import java.util.HashMap;

@@ -2,11 +2,14 @@ package com.pei.workflow.listener;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
-import com.pei.workflow.common.ConditionalOnEnable;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.enums.BusinessStatusEnum;
 import com.pei.common.core.utils.StringUtils;
+import com.pei.workflow.common.ConditionalOnEnable;
+import com.pei.workflow.handler.FlowProcessEventHandler;
+import com.pei.workflow.service.IFlwInstanceService;
+import com.pei.workflow.service.IFlwTaskService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.dromara.warm.flow.core.dto.FlowParams;
 import org.dromara.warm.flow.core.entity.Definition;
 import org.dromara.warm.flow.core.entity.Instance;
@@ -14,9 +17,6 @@ import org.dromara.warm.flow.core.entity.Task;
 import org.dromara.warm.flow.core.listener.GlobalListener;
 import org.dromara.warm.flow.core.listener.ListenerVariable;
 import org.dromara.warm.flow.orm.entity.FlowTask;
-import com.pei.workflow.handler.FlowProcessEventHandler;
-import com.pei.workflow.service.IFlwInstanceService;
-import com.pei.workflow.service.IFlwTaskService;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -37,24 +37,6 @@ public class WorkflowGlobalListener implements GlobalListener {
     private final IFlwTaskService taskService;
     private final IFlwInstanceService instanceService;
     private final FlowProcessEventHandler flowProcessEventHandler;
-
-    /**
-     * 创建监听器，任务创建时执行
-     *
-     * @param listenerVariable 监听器变量
-     */
-    @Override
-    public void create(ListenerVariable listenerVariable) {
-        Instance instance = listenerVariable.getInstance();
-        Definition definition = listenerVariable.getDefinition();
-        String businessId = instance.getBusinessId();
-        String flowStatus = instance.getFlowStatus();
-        Task task = listenerVariable.getTask();
-        if (task != null && BusinessStatusEnum.WAITING.getStatus().equals(flowStatus)) {
-            // 判断流程状态（发布审批中事件）
-            flowProcessEventHandler.processCreateTaskHandler(definition.getFlowCode(), task.getNodeCode(), task.getId(), businessId);
-        }
-    }
 
     /**
      * 开始监听器，任务开始办理时执行
@@ -99,6 +81,24 @@ public class WorkflowGlobalListener implements GlobalListener {
         String status = determineFlowStatus(instance, flowStatus);
         if (StringUtils.isNotBlank(status)) {
             flowProcessEventHandler.processHandler(definition.getFlowCode(), businessId, status, params, false);
+        }
+    }
+
+    /**
+     * 创建监听器，任务创建时执行
+     *
+     * @param listenerVariable 监听器变量
+     */
+    @Override
+    public void create(ListenerVariable listenerVariable) {
+        Instance instance = listenerVariable.getInstance();
+        Definition definition = listenerVariable.getDefinition();
+        String businessId = instance.getBusinessId();
+        String flowStatus = instance.getFlowStatus();
+        Task task = listenerVariable.getTask();
+        if (task != null && BusinessStatusEnum.WAITING.getStatus().equals(flowStatus)) {
+            // 判断流程状态（发布审批中事件）
+            flowProcessEventHandler.processCreateTaskHandler(definition.getFlowCode(), task.getNodeCode(), task.getId(), businessId);
         }
     }
 

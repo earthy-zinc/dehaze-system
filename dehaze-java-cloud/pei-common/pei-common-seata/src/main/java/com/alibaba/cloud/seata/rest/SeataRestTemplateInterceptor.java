@@ -31,17 +31,17 @@ import java.io.IOException;
  */
 public class SeataRestTemplateInterceptor implements ClientHttpRequestInterceptor {
 
-	@Override
-	public ClientHttpResponse intercept(HttpRequest httpRequest, byte[] bytes,
-			ClientHttpRequestExecution clientHttpRequestExecution) throws IOException {
-		HttpRequestWrapper requestWrapper = new HttpRequestWrapper(httpRequest);
+    @Override
+    public ClientHttpResponse intercept(HttpRequest httpRequest, byte[] bytes,
+                                        ClientHttpRequestExecution clientHttpRequestExecution) throws IOException {
+        HttpRequestWrapper requestWrapper = new HttpRequestWrapper(httpRequest);
 
-		String xid = RootContext.getXID();
+        String xid = RootContext.getXID();
 
-		if (StringUtils.hasLength(xid)) {
-			requestWrapper.getHeaders().add(RootContext.KEY_XID, xid);
-		}
-		return clientHttpRequestExecution.execute(requestWrapper, bytes);
-	}
+        if (StringUtils.hasLength(xid)) {
+            requestWrapper.getHeaders().add(RootContext.KEY_XID, xid);
+        }
+        return clientHttpRequestExecution.execute(requestWrapper, bytes);
+    }
 
 }

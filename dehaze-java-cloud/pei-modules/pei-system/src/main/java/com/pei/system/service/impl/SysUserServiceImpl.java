@@ -70,29 +70,6 @@ public class SysUserServiceImpl implements ISysUserService {
         return baseMapper.selectUserExportList(this.buildQueryWrapper(user));
     }
 
-    private Wrapper<SysUser> buildQueryWrapper(SysUserBo user) {
-        Map<String, Object> params = user.getParams();
-        QueryWrapper<SysUser> wrapper = Wrappers.query();
-        wrapper.eq("u.del_flag", SystemConstants.NORMAL)
-            .eq(ObjectUtil.isNotNull(user.getUserId()), "u.user_id", user.getUserId())
-            .in(StringUtils.isNotBlank(user.getUserIds()), "u.user_id", StringUtils.splitTo(user.getUserIds(), Convert::toLong))
-            .like(StringUtils.isNotBlank(user.getUserName()), "u.user_name", user.getUserName())
-            .eq(StringUtils.isNotBlank(user.getStatus()), "u.status", user.getStatus())
-            .like(StringUtils.isNotBlank(user.getPhonenumber()), "u.phonenumber", user.getPhonenumber())
-            .between(params.get("beginTime") != null && params.get("endTime") != null,
-                "u.create_time", params.get("beginTime"), params.get("endTime"))
-            .and(ObjectUtil.isNotNull(user.getDeptId()), w -> {
-                List<SysDept> deptList = deptMapper.selectListByParentId(user.getDeptId());
-                List<Long> ids = StreamUtils.toList(deptList, SysDept::getDeptId);
-                ids.add(user.getDeptId());
-                w.in("u.dept_id", ids);
-            }).orderByAsc("u.user_id");
-        if (StringUtils.isNotBlank(user.getExcludeUserIds())) {
-            wrapper.notIn("u.user_id", StringUtils.splitList(user.getExcludeUserIds()));
-        }
-        return wrapper;
-    }
-
     /**
      * 根据条件分页查询已分配用户角色列表
      *
@@ -180,7 +157,7 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     public List<SysUserVo> selectUserByIds(List<Long> userIds, Long deptId) {
         return baseMapper.selectUserList(new LambdaQueryWrapper<SysUser>()
-            .select(SysUser::getUserId, SysUser::getUserName, SysUser::getNickName, SysUser::getEmail, SysUser::getPhonenumber)            .eq(SysUser::getStatus, SystemConstants.NORMAL)
+            .select(SysUser::getUserId, SysUser::getUserName, SysUser::getNickName, SysUser::getEmail, SysUser::getPhonenumber).eq(SysUser::getStatus, SystemConstants.NORMAL)
             .eq(ObjectUtil.isNotNull(deptId), SysUser::getDeptId, deptId)
             .in(CollUtil.isNotEmpty(userIds), SysUser::getUserId, userIds));
     }
@@ -419,74 +396,6 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     /**
-     * 新增用户角色信息
-     *
-     * @param user  用户对象
-     * @param clear 清除已存在的关联数据
-     */
-    private void insertUserRole(SysUserBo user, boolean clear) {
-        this.insertUserRole(user.getUserId(), user.getRoleIds(), clear);
-    }
-
-    /**
-     * 新增用户岗位信息
-     *
-     * @param user  用户对象
-     * @param clear 清除已存在的关联数据
-     */
-    private void insertUserPost(SysUserBo user, boolean clear) {
-        Long[] posts = user.getPostIds();
-        if (ArrayUtil.isNotEmpty(posts)) {
-            if (clear) {
-                // 删除用户与岗位关联
-                userPostMapper.delete(new LambdaQueryWrapper<SysUserPost>().eq(SysUserPost::getUserId, user.getUserId()));
-            }
-            // 新增用户与岗位管理
-            List<SysUserPost> list = StreamUtils.toList(List.of(posts), postId -> {
-                SysUserPost up = new SysUserPost();
-                up.setUserId(user.getUserId());
-                up.setPostId(postId);
-                return up;
-            });
-            userPostMapper.insertBatch(list);
-        }
-    }
-
-    /**
-     * 新增用户角色信息
-     *
-     * @param userId  用户ID
-     * @param roleIds 角色组
-     * @param clear   清除已存在的关联数据
-     */
-    private void insertUserRole(Long userId, Long[] roleIds, boolean clear) {
-        if (ArrayUtil.isNotEmpty(roleIds)) {
-            List<Long> roleList = new ArrayList<>(List.of(roleIds));
-            if (!LoginHelper.isSuperAdmin(userId)) {
-                roleList.remove(SystemConstants.SUPER_ADMIN_ID);
-            }
-            // 判断是否具有此角色的操作权限
-            List<SysRoleVo> roles = roleMapper.selectRoleList(
-                new QueryWrapper<SysRole>().in("r.role_id", roleList));
-            if (CollUtil.isEmpty(roles)) {
-                throw new ServiceException("没有权限访问角色的数据");
-            }
-            if (clear) {
-                // 删除用户与角色关联
-                userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
-            }
-            // 新增用户与角色管理
-            List<SysUserRole> list = StreamUtils.toList(roleList, roleId -> {
-                SysUserRole ur = new SysUserRole();
-                ur.setUserId(userId);
-                ur.setRoleId(roleId);
-                return ur;
-            });
-            userRoleMapper.insertBatch(list);
-        }
-    }
-
-    /**
      * 通过用户ID删除用户
      *
      * @param userId 用户ID
@@ -531,27 +440,6 @@ public class SysUserServiceImpl implements ISysUserService {
             throw new ServiceException("删除用户失败!");
         }
         return flag;
-    }
-
-    /**
-     * 通过部门id查询当前部门所有用户
-     *
-     * @param deptId 部门ID
-     * @return 用户信息集合信息
-     */
-    @Override
-    public List<SysUserVo> selectUserListByDept(Long deptId) {
-        LambdaQueryWrapper<SysUser> lqw = Wrappers.lambdaQuery();
-        lqw.eq(SysUser::getDeptId, deptId);
-        lqw.orderByAsc(SysUser::getUserId);
-        return baseMapper.selectVoList(lqw);
-    }
-
-    @Override
-    public List<Long> selectUserIdsByRoleIds(List<Long> roleIds) {
-        List<SysUserRole> userRoles = userRoleMapper.selectList(
-            new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getRoleId, roleIds));
-        return StreamUtils.toList(userRoles, SysUserRole::getUserId);
     }
 
     /**
@@ -618,6 +506,118 @@ public class SysUserServiceImpl implements ISysUserService {
         SysUser sysUser = baseMapper.selectOne(new LambdaQueryWrapper<SysUser>()
             .select(SysUser::getEmail).eq(SysUser::getUserId, userId));
         return ObjectUtils.notNullGetter(sysUser, SysUser::getEmail);
+    }
+
+    /**
+     * 通过部门id查询当前部门所有用户
+     *
+     * @param deptId 部门ID
+     * @return 用户信息集合信息
+     */
+    @Override
+    public List<SysUserVo> selectUserListByDept(Long deptId) {
+        LambdaQueryWrapper<SysUser> lqw = Wrappers.lambdaQuery();
+        lqw.eq(SysUser::getDeptId, deptId);
+        lqw.orderByAsc(SysUser::getUserId);
+        return baseMapper.selectVoList(lqw);
+    }
+
+    @Override
+    public List<Long> selectUserIdsByRoleIds(List<Long> roleIds) {
+        List<SysUserRole> userRoles = userRoleMapper.selectList(
+            new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getRoleId, roleIds));
+        return StreamUtils.toList(userRoles, SysUserRole::getUserId);
+    }
+
+    /**
+     * 新增用户岗位信息
+     *
+     * @param user  用户对象
+     * @param clear 清除已存在的关联数据
+     */
+    private void insertUserPost(SysUserBo user, boolean clear) {
+        Long[] posts = user.getPostIds();
+        if (ArrayUtil.isNotEmpty(posts)) {
+            if (clear) {
+                // 删除用户与岗位关联
+                userPostMapper.delete(new LambdaQueryWrapper<SysUserPost>().eq(SysUserPost::getUserId, user.getUserId()));
+            }
+            // 新增用户与岗位管理
+            List<SysUserPost> list = StreamUtils.toList(List.of(posts), postId -> {
+                SysUserPost up = new SysUserPost();
+                up.setUserId(user.getUserId());
+                up.setPostId(postId);
+                return up;
+            });
+            userPostMapper.insertBatch(list);
+        }
+    }
+
+    /**
+     * 新增用户角色信息
+     *
+     * @param user  用户对象
+     * @param clear 清除已存在的关联数据
+     */
+    private void insertUserRole(SysUserBo user, boolean clear) {
+        this.insertUserRole(user.getUserId(), user.getRoleIds(), clear);
+    }
+
+    /**
+     * 新增用户角色信息
+     *
+     * @param userId  用户ID
+     * @param roleIds 角色组
+     * @param clear   清除已存在的关联数据
+     */
+    private void insertUserRole(Long userId, Long[] roleIds, boolean clear) {
+        if (ArrayUtil.isNotEmpty(roleIds)) {
+            List<Long> roleList = new ArrayList<>(List.of(roleIds));
+            if (!LoginHelper.isSuperAdmin(userId)) {
+                roleList.remove(SystemConstants.SUPER_ADMIN_ID);
+            }
+            // 判断是否具有此角色的操作权限
+            List<SysRoleVo> roles = roleMapper.selectRoleList(
+                new QueryWrapper<SysRole>().in("r.role_id", roleList));
+            if (CollUtil.isEmpty(roles)) {
+                throw new ServiceException("没有权限访问角色的数据");
+            }
+            if (clear) {
+                // 删除用户与角色关联
+                userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getUserId, userId));
+            }
+            // 新增用户与角色管理
+            List<SysUserRole> list = StreamUtils.toList(roleList, roleId -> {
+                SysUserRole ur = new SysUserRole();
+                ur.setUserId(userId);
+                ur.setRoleId(roleId);
+                return ur;
+            });
+            userRoleMapper.insertBatch(list);
+        }
+    }
+
+    private Wrapper<SysUser> buildQueryWrapper(SysUserBo user) {
+        Map<String, Object> params = user.getParams();
+        QueryWrapper<SysUser> wrapper = Wrappers.query();
+        wrapper.eq("u.del_flag", SystemConstants.NORMAL)
+            .eq(ObjectUtil.isNotNull(user.getUserId()), "u.user_id", user.getUserId())
+            .in(StringUtils.isNotBlank(user.getUserIds()), "u.user_id", StringUtils.splitTo(user.getUserIds(), Convert::toLong))
+            .like(StringUtils.isNotBlank(user.getUserName()), "u.user_name", user.getUserName())
+            .eq(StringUtils.isNotBlank(user.getStatus()), "u.status", user.getStatus())
+            .like(StringUtils.isNotBlank(user.getPhonenumber()), "u.phonenumber", user.getPhonenumber())
+            .between(params.get("beginTime") != null && params.get("endTime") != null,
+                "u.create_time", params.get("beginTime"), params.get("endTime"))
+            .and(ObjectUtil.isNotNull(user.getDeptId()), w -> {
+                List<SysDept> deptList = deptMapper.selectListByParentId(user.getDeptId());
+                List<Long> ids = StreamUtils.toList(deptList, SysDept::getDeptId);
+                ids.add(user.getDeptId());
+                w.in("u.dept_id", ids);
+            }).orderByAsc("u.user_id");
+        if (StringUtils.isNotBlank(user.getExcludeUserIds())) {
+            wrapper.notIn("u.user_id", StringUtils.splitList(user.getExcludeUserIds()));
+        }
+        return wrapper;
     }
 
 }

@@ -2,10 +2,10 @@ package com.pei.system.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.tenant.core.TenantEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 字典数据表 sys_dict_data

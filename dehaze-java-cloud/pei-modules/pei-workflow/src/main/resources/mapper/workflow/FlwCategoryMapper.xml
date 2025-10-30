@@ -5,7 +5,10 @@
 <mapper namespace="com.pei.workflow.mapper.FlwCategoryMapper">
 
     <select id="countCategoryById" resultType="Long">
-        select count(*) from flow_category where del_flag = '0' and category_id = #{categoryId}
+        select count(*)
+        from flow_category
+        where del_flag = '0'
+          and category_id = #{categoryId}
     </select>
 
 </mapper>

@@ -2,10 +2,10 @@ package com.pei.common.redis.utils;
 
 import cn.hutool.core.date.DatePattern;
 import cn.hutool.core.date.DateUtil;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
 import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.core.utils.StringUtils;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import org.redisson.api.RIdGenerator;
 import org.redisson.api.RedissonClient;
 
@@ -43,6 +43,32 @@ public class SequenceUtils {
     private static final RedissonClient REDISSON_CLIENT = SpringUtils.getBean(RedissonClient.class);
 
     /**
+     * 获取指定业务key的唯一id字符串
+     *
+     * @param key        业务key
+     * @param expireTime 过期时间
+     * @param initValue  ID初始值
+     * @param stepValue  ID步长
+     * @return 唯一id
+     */
+    public static String nextIdStr(String key, Duration expireTime, Long initValue, Long stepValue) {
+        return String.valueOf(nextId(key, expireTime, initValue, stepValue));
+    }
+
+    /**
+     * 获取指定业务key的唯一id
+     *
+     * @param key        业务key
+     * @param expireTime 过期时间
+     * @param initValue  ID初始值
+     * @param stepValue  ID步长
+     * @return 唯一id
+     */
+    public static long nextId(String key, Duration expireTime, Long initValue, Long stepValue) {
+        return getIdGenerator(key, expireTime, initValue, stepValue).nextId();
+    }
+
+    /**
      * 获取ID生成器
      *
      * @param key        业务key
@@ -67,29 +93,14 @@ public class SequenceUtils {
     }
 
     /**
-     * 获取指定业务key的唯一id
+     * 获取指定业务key的唯一id字符串 (ID初始值=1,ID步长=1)
      *
      * @param key        业务key
      * @param expireTime 过期时间
-     * @param initValue  ID初始值
-     * @param stepValue  ID步长
      * @return 唯一id
      */
-    public static long nextId(String key, Duration expireTime, Long initValue, Long stepValue) {
-        return getIdGenerator(key, expireTime, initValue, stepValue).nextId();
-    }
-
-    /**
-     * 获取指定业务key的唯一id字符串
-     *
-     * @param key        业务key
-     * @param expireTime 过期时间
-     * @param initValue  ID初始值
-     * @param stepValue  ID步长
-     * @return 唯一id
-     */
-    public static String nextIdStr(String key, Duration expireTime, Long initValue, Long stepValue) {
-        return String.valueOf(nextId(key, expireTime, initValue, stepValue));
+    public static String nextIdStr(String key, Duration expireTime) {
+        return String.valueOf(nextId(key, expireTime));
     }
 
     /**
@@ -101,17 +112,6 @@ public class SequenceUtils {
      */
     public static long nextId(String key, Duration expireTime) {
         return getIdGenerator(key, expireTime, DEFAULT_INIT_VALUE, DEFAULT_STEP_VALUE).nextId();
-    }
-
-    /**
-     * 获取指定业务key的唯一id字符串 (ID初始值=1,ID步长=1)
-     *
-     * @param key        业务key
-     * @param expireTime 过期时间
-     * @return 唯一id
-     */
-    public static String nextIdStr(String key, Duration expireTime) {
-        return String.valueOf(nextId(key, expireTime));
     }
 
     /**

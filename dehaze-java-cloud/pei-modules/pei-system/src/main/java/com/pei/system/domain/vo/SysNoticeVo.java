@@ -1,15 +1,14 @@
 package com.pei.system.domain.vo;
 
-import io.github.linpeilie.annotations.AutoMapper;
-import lombok.Data;
 import com.pei.common.translation.annotation.Translation;
 import com.pei.common.translation.constant.TransConstant;
 import com.pei.system.domain.SysNotice;
+import io.github.linpeilie.annotations.AutoMapper;
+import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
-
 
 
 /**

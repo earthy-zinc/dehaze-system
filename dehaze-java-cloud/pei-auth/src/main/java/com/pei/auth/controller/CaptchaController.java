@@ -3,11 +3,9 @@ package com.pei.auth.controller;
 import cn.hutool.captcha.AbstractCaptcha;
 import cn.hutool.captcha.generator.CodeGenerator;
 import cn.hutool.core.util.IdUtil;
+import com.pei.auth.domain.vo.CaptchaVo;
 import com.pei.auth.enums.CaptchaType;
 import com.pei.auth.properties.CaptchaProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import com.pei.auth.domain.vo.CaptchaVo;
 import com.pei.common.core.constant.Constants;
 import com.pei.common.core.constant.GlobalConstants;
 import com.pei.common.core.domain.R;
@@ -17,6 +15,8 @@ import com.pei.common.core.utils.reflect.ReflectUtils;
 import com.pei.common.ratelimiter.annotation.RateLimiter;
 import com.pei.common.ratelimiter.enums.LimitType;
 import com.pei.common.redis.utils.RedisUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
@@ -54,8 +54,7 @@ public class CaptchaController {
     }
 
     /**
-     * 生成验证码
-     * 独立方法避免验证码关闭之后仍然走限流
+     * 生成验证码 独立方法避免验证码关闭之后仍然走限流
      */
     @RateLimiter(time = 60, count = 10, limitType = LimitType.IP)
     public CaptchaVo getCodeImpl() {

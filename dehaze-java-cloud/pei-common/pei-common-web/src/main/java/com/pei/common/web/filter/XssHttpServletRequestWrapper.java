@@ -5,11 +5,11 @@ import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ArrayUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.http.HtmlUtil;
+import com.pei.common.core.utils.StringUtils;
 import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
-import com.pei.common.core.utils.StringUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
@@ -30,6 +30,50 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
      */
     public XssHttpServletRequestWrapper(HttpServletRequest request) {
         super(request);
+    }
+
+    @Override
+    public ServletInputStream getInputStream() throws IOException {
+        // 非json类型，直接返回
+        if (!isJsonRequest()) {
+            return super.getInputStream();
+        }
+
+        // 为空，直接返回
+        String json = StrUtil.str(IoUtil.readBytes(super.getInputStream(), false), StandardCharsets.UTF_8);
+        if (StringUtils.isEmpty(json)) {
+            return super.getInputStream();
+        }
+
+        // xss过滤
+        json = HtmlUtil.cleanHtmlTag(json).trim();
+        byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
+        final ByteArrayInputStream bis = IoUtil.toStream(jsonBytes);
+        return new ServletInputStream() {
+            @Override
+            public boolean isFinished() {
+                return true;
+            }
+
+            @Override
+            public boolean isReady() {
+                return true;
+            }
+
+            @Override
+            public void setReadListener(ReadListener readListener) {
+            }
+
+            @Override
+            public int read() throws IOException {
+                return bis.read();
+            }
+
+            @Override
+            public int available() throws IOException {
+                return jsonBytes.length;
+            }
+        };
     }
 
     @Override
@@ -78,50 +122,6 @@ public class XssHttpServletRequestWrapper extends HttpServletRequestWrapper {
             escapseValues[i] = HtmlUtil.cleanHtmlTag(values[i]).trim();
         }
         return escapseValues;
-    }
-
-    @Override
-    public ServletInputStream getInputStream() throws IOException {
-        // 非json类型，直接返回
-        if (!isJsonRequest()) {
-            return super.getInputStream();
-        }
-
-        // 为空，直接返回
-        String json = StrUtil.str(IoUtil.readBytes(super.getInputStream(), false), StandardCharsets.UTF_8);
-        if (StringUtils.isEmpty(json)) {
-            return super.getInputStream();
-        }
-
-        // xss过滤
-        json = HtmlUtil.cleanHtmlTag(json).trim();
-        byte[] jsonBytes = json.getBytes(StandardCharsets.UTF_8);
-        final ByteArrayInputStream bis = IoUtil.toStream(jsonBytes);
-        return new ServletInputStream() {
-            @Override
-            public boolean isFinished() {
-                return true;
-            }
-
-            @Override
-            public boolean isReady() {
-                return true;
-            }
-
-            @Override
-            public int available() throws IOException {
-                return jsonBytes.length;
-            }
-
-            @Override
-            public void setReadListener(ReadListener readListener) {
-            }
-
-            @Override
-            public int read() throws IOException {
-                return bis.read();
-            }
-        };
     }
 
     /**

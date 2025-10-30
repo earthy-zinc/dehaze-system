@@ -1,10 +1,10 @@
 package com.pei.common.core.config;
 
+import com.pei.common.core.utils.SpringUtils;
+import com.pei.common.core.utils.Threads;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
-import com.pei.common.core.utils.SpringUtils;
-import com.pei.common.core.utils.Threads;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.task.VirtualThreadTaskExecutor;

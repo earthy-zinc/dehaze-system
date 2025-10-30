@@ -1,10 +1,10 @@
 package com.pei.auth.form;
 
+import com.pei.common.core.domain.model.LoginBody;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.core.domain.model.LoginBody;
 
 /**
  * 邮件登录对象

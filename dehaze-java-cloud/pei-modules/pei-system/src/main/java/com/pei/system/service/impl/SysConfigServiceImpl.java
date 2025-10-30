@@ -6,7 +6,6 @@ import com.baomidou.dynamic.datasource.annotation.DS;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.CacheNames;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.exception.ServiceException;
@@ -22,6 +21,7 @@ import com.pei.system.domain.bo.SysConfigBo;
 import com.pei.system.domain.vo.SysConfigVo;
 import com.pei.system.mapper.SysConfigMapper;
 import com.pei.system.service.ISysConfigService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -76,6 +76,7 @@ public class SysConfigServiceImpl implements ISysConfigService {
 
     /**
      * 获取注册开关
+     *
      * @param tenantId 租户id
      * @return true开启，false关闭
      */
@@ -101,18 +102,6 @@ public class SysConfigServiceImpl implements ISysConfigService {
     public List<SysConfigVo> selectConfigList(SysConfigBo config) {
         LambdaQueryWrapper<SysConfig> lqw = buildQueryWrapper(config);
         return baseMapper.selectVoList(lqw);
-    }
-
-    private LambdaQueryWrapper<SysConfig> buildQueryWrapper(SysConfigBo bo) {
-        Map<String, Object> params = bo.getParams();
-        LambdaQueryWrapper<SysConfig> lqw = Wrappers.lambdaQuery();
-        lqw.like(StringUtils.isNotBlank(bo.getConfigName()), SysConfig::getConfigName, bo.getConfigName());
-        lqw.eq(StringUtils.isNotBlank(bo.getConfigType()), SysConfig::getConfigType, bo.getConfigType());
-        lqw.like(StringUtils.isNotBlank(bo.getConfigKey()), SysConfig::getConfigKey, bo.getConfigKey());
-        lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
-            SysConfig::getCreateTime, params.get("beginTime"), params.get("endTime"));
-        lqw.orderByAsc(SysConfig::getConfigId);
-        return lqw;
     }
 
     /**
@@ -199,6 +188,18 @@ public class SysConfigServiceImpl implements ISysConfigService {
             return false;
         }
         return true;
+    }
+
+    private LambdaQueryWrapper<SysConfig> buildQueryWrapper(SysConfigBo bo) {
+        Map<String, Object> params = bo.getParams();
+        LambdaQueryWrapper<SysConfig> lqw = Wrappers.lambdaQuery();
+        lqw.like(StringUtils.isNotBlank(bo.getConfigName()), SysConfig::getConfigName, bo.getConfigName());
+        lqw.eq(StringUtils.isNotBlank(bo.getConfigType()), SysConfig::getConfigType, bo.getConfigType());
+        lqw.like(StringUtils.isNotBlank(bo.getConfigKey()), SysConfig::getConfigKey, bo.getConfigKey());
+        lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
+            SysConfig::getCreateTime, params.get("beginTime"), params.get("endTime"));
+        lqw.orderByAsc(SysConfig::getConfigId);
+        return lqw;
     }
 
 }

@@ -6,13 +6,8 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.http.HttpUtil;
 import cn.hutool.http.Method;
-import com.pei.auth.form.SocialLoginBody;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import me.zhyd.oauth.model.AuthResponse;
-import me.zhyd.oauth.model.AuthUser;
-import org.apache.dubbo.config.annotation.DubboReference;
 import com.pei.auth.domain.vo.LoginVo;
+import com.pei.auth.form.SocialLoginBody;
 import com.pei.auth.service.IAuthStrategy;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.StreamUtils;
@@ -27,6 +22,11 @@ import com.pei.system.api.RemoteUserService;
 import com.pei.system.api.domain.vo.RemoteClientVo;
 import com.pei.system.api.domain.vo.RemoteSocialVo;
 import com.pei.system.api.model.LoginUser;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import me.zhyd.oauth.model.AuthResponse;
+import me.zhyd.oauth.model.AuthUser;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -52,8 +52,8 @@ public class SocialAuthStrategy implements IAuthStrategy {
     /**
      * 登录-第三方授权登录
      *
-     * @param body     登录信息
-     * @param client   客户端信息
+     * @param body   登录信息
+     * @param client 客户端信息
      */
     @Override
     public LoginVo login(String body, RemoteClientVo client) {

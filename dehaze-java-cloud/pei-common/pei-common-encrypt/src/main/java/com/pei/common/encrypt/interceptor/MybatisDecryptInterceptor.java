@@ -3,17 +3,17 @@ package com.pei.common.encrypt.interceptor;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
-import com.pei.common.encrypt.properties.EncryptorProperties;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.executor.resultset.ResultSetHandler;
-import org.apache.ibatis.plugin.*;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.encrypt.annotation.EncryptField;
 import com.pei.common.encrypt.core.EncryptContext;
 import com.pei.common.encrypt.core.EncryptorManager;
 import com.pei.common.encrypt.enumd.AlgorithmType;
 import com.pei.common.encrypt.enumd.EncodeType;
+import com.pei.common.encrypt.properties.EncryptorProperties;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.executor.resultset.ResultSetHandler;
+import org.apache.ibatis.plugin.*;
 
 import java.lang.reflect.Field;
 import java.sql.Statement;
@@ -48,6 +48,16 @@ public class MybatisDecryptInterceptor implements Interceptor {
         return result;
     }
 
+    @Override
+    public Object plugin(Object target) {
+        return Plugin.wrap(target, this);
+    }
+
+    @Override
+    public void setProperties(Properties properties) {
+
+    }
+
     /**
      * 解密对象
      *
@@ -62,7 +72,7 @@ public class MybatisDecryptInterceptor implements Interceptor {
             return;
         }
         if (sourceObject instanceof List<?> list) {
-            if(CollUtil.isEmpty(list)) {
+            if (CollUtil.isEmpty(list)) {
                 return;
             }
             // 判断第一个元素是否含有注解。如果没有直接返回，提高效率
@@ -75,7 +85,7 @@ public class MybatisDecryptInterceptor implements Interceptor {
         }
         // 不在缓存中的类,就是没有加密注解的类(当然也有可能是typeAliasesPackage写错)
         Set<Field> fields = encryptorManager.getFieldCache(sourceObject.getClass());
-        if(ObjectUtil.isNull(fields)){
+        if (ObjectUtil.isNull(fields)) {
             return;
         }
         try {
@@ -106,15 +116,5 @@ public class MybatisDecryptInterceptor implements Interceptor {
         encryptContext.setPrivateKey(StringUtils.isBlank(encryptField.privateKey()) ? defaultProperties.getPrivateKey() : encryptField.privateKey());
         encryptContext.setPublicKey(StringUtils.isBlank(encryptField.publicKey()) ? defaultProperties.getPublicKey() : encryptField.publicKey());
         return this.encryptorManager.decrypt(value, encryptContext);
-    }
-
-    @Override
-    public Object plugin(Object target) {
-        return Plugin.wrap(target, this);
-    }
-
-    @Override
-    public void setProperties(Properties properties) {
-
     }
 }

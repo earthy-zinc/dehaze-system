@@ -1,11 +1,11 @@
 package com.pei.system.controller.system;
 
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.domain.R;
 import com.pei.common.satoken.utils.LoginHelper;
 import com.pei.common.web.core.BaseController;
 import com.pei.system.domain.vo.SysSocialVo;
 import com.pei.system.service.ISysSocialService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

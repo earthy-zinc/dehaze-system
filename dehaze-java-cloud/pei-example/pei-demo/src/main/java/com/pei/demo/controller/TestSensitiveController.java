@@ -1,10 +1,10 @@
 package com.pei.demo.controller;
 
 import com.pei.common.core.domain.R;
-import com.pei.common.web.core.BaseController;
 import com.pei.common.sensitive.annotation.Sensitive;
 import com.pei.common.sensitive.core.SensitiveService;
 import com.pei.common.sensitive.core.SensitiveStrategy;
+import com.pei.common.web.core.BaseController;
 import lombok.Data;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,8 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 测试数据脱敏控制器
  * <p>
- * 默认管理员不过滤
- * 需自行根据业务重写实现
+ * 默认管理员不过滤 需自行根据业务重写实现
  *
  * @author Lion Li
  * @version 3.6.0

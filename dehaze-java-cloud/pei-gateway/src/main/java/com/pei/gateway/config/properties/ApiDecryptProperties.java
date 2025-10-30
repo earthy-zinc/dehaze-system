@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * api解密属性配置类
+ *
  * @author wdhcr
  */
 @Data

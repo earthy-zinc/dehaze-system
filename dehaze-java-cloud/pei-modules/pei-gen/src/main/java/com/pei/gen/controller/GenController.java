@@ -3,18 +3,18 @@ package com.pei.gen.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.io.IoUtil;
-import com.pei.common.web.core.BaseController;
-import com.pei.gen.service.IGenTableService;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.domain.R;
 import com.pei.common.log.annotation.Log;
 import com.pei.common.log.enums.BusinessType;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
 import com.pei.common.mybatis.helper.DataBaseHelper;
+import com.pei.common.web.core.BaseController;
 import com.pei.gen.domain.GenTable;
 import com.pei.gen.domain.GenTableColumn;
+import com.pei.gen.service.IGenTableService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -154,6 +154,19 @@ public class GenController extends BaseController {
     }
 
     /**
+     * 生成zip文件
+     */
+    private void genCode(HttpServletResponse response, byte[] data) throws IOException {
+        response.reset();
+        response.addHeader("Access-Control-Allow-Origin", "*");
+        response.addHeader("Access-Control-Expose-Headers", "Content-Disposition");
+        response.setHeader("Content-Disposition", "attachment; filename=\"ruoyi.zip\"");
+        response.addHeader("Content-Length", "" + data.length);
+        response.setContentType("application/octet-stream; charset=UTF-8");
+        IoUtil.write(response.getOutputStream(), false, data);
+    }
+
+    /**
      * 生成代码（自定义路径）
      *
      * @param tableId 表ID
@@ -194,24 +207,11 @@ public class GenController extends BaseController {
     }
 
     /**
-     * 生成zip文件
-     */
-    private void genCode(HttpServletResponse response, byte[] data) throws IOException {
-        response.reset();
-        response.addHeader("Access-Control-Allow-Origin", "*");
-        response.addHeader("Access-Control-Expose-Headers", "Content-Disposition");
-        response.setHeader("Content-Disposition", "attachment; filename=\"ruoyi.zip\"");
-        response.addHeader("Content-Length", "" + data.length);
-        response.setContentType("application/octet-stream; charset=UTF-8");
-        IoUtil.write(response.getOutputStream(), false, data);
-    }
-
-    /**
      * 查询数据源名称列表
      */
     @SaCheckPermission("tool:gen:list")
     @GetMapping(value = "/getDataNames")
-    public R<Object> getCurrentDataSourceNameList(){
+    public R<Object> getCurrentDataSourceNameList() {
         return R.ok(DataBaseHelper.getDataSourceNameList());
     }
 }

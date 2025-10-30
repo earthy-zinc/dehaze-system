@@ -18,6 +18,16 @@ public class DemoUnitTest {
     @Value("${spring.application.name}")
     private String appName;
 
+    @BeforeAll
+    public static void testBeforeAll() {
+        System.out.println("@BeforeAll ==================");
+    }
+
+    @AfterAll
+    public static void testAfterAll() {
+        System.out.println("@AfterAll ==================");
+    }
+
     @DisplayName("测试 @SpringBootTest @Test @DisplayName 注解")
     @Test
     public void testTest() {
@@ -39,16 +49,10 @@ public class DemoUnitTest {
         System.out.println(appName);
     }
 
-
     @DisplayName("测试 @RepeatedTest 注解")
     @RepeatedTest(3)
     public void testRepeatedTest() {
         System.out.println(666);
-    }
-
-    @BeforeAll
-    public static void testBeforeAll() {
-        System.out.println("@BeforeAll ==================");
     }
 
     @BeforeEach
@@ -59,11 +63,6 @@ public class DemoUnitTest {
     @AfterEach
     public void testAfterEach() {
         System.out.println("@AfterEach ==================");
-    }
-
-    @AfterAll
-    public static void testAfterAll() {
-        System.out.println("@AfterAll ==================");
     }
 
 }

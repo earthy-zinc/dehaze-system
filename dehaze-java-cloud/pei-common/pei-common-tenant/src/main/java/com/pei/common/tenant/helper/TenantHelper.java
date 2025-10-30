@@ -7,15 +7,15 @@ import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.plugins.IgnoreStrategy;
 import com.baomidou.mybatisplus.core.plugins.InterceptorIgnoreHelper;
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.constant.GlobalConstants;
 import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.core.utils.reflect.ReflectUtils;
 import com.pei.common.redis.utils.RedisUtils;
 import com.pei.common.satoken.utils.LoginHelper;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Stack;
 import java.util.function.Supplier;
@@ -36,20 +36,17 @@ public class TenantHelper {
     private static final ThreadLocal<Stack<Integer>> REENTRANT_IGNORE = ThreadLocal.withInitial(Stack::new);
 
     /**
-     * 租户功能是否启用
+     * 在忽略租户中执行
+     *
+     * @param handle 处理执行方法
      */
-    public static boolean isEnable() {
-        return Convert.toBool(SpringUtils.getProperty("tenant.enable"), false);
-    }
-
-    private static IgnoreStrategy getIgnoreStrategy() {
-        Object ignoreStrategyLocal = ReflectUtils.getStaticFieldValue(ReflectUtils.getField(InterceptorIgnoreHelper.class, "IGNORE_STRATEGY_LOCAL"));
-        if (ignoreStrategyLocal instanceof ThreadLocal<?> IGNORE_STRATEGY_LOCAL) {
-            if (IGNORE_STRATEGY_LOCAL.get() instanceof IgnoreStrategy ignoreStrategy) {
-                return ignoreStrategy;
-            }
+    public static void ignore(Runnable handle) {
+        enableIgnore();
+        try {
+            handle.run();
+        } finally {
+            disableIgnore();
         }
-        return null;
     }
 
     /**
@@ -87,18 +84,14 @@ public class TenantHelper {
         }
     }
 
-    /**
-     * 在忽略租户中执行
-     *
-     * @param handle 处理执行方法
-     */
-    public static void ignore(Runnable handle) {
-        enableIgnore();
-        try {
-            handle.run();
-        } finally {
-            disableIgnore();
+    private static IgnoreStrategy getIgnoreStrategy() {
+        Object ignoreStrategyLocal = ReflectUtils.getStaticFieldValue(ReflectUtils.getField(InterceptorIgnoreHelper.class, "IGNORE_STRATEGY_LOCAL"));
+        if (ignoreStrategyLocal instanceof ThreadLocal<?> IGNORE_STRATEGY_LOCAL) {
+            if (IGNORE_STRATEGY_LOCAL.get() instanceof IgnoreStrategy ignoreStrategy) {
+                return ignoreStrategy;
+            }
         }
+        return null;
     }
 
     /**
@@ -115,8 +108,35 @@ public class TenantHelper {
         }
     }
 
-    public static void setDynamic(String tenantId) {
-        setDynamic(tenantId, false);
+    /**
+     * 在动态租户中执行
+     *
+     * @param handle 处理执行方法
+     */
+    public static void dynamic(String tenantId, Runnable handle) {
+        setDynamic(tenantId);
+        try {
+            handle.run();
+        } finally {
+            clearDynamic();
+        }
+    }
+
+    /**
+     * 清除动态租户
+     */
+    public static void clearDynamic() {
+        if (!isEnable()) {
+            return;
+        }
+        if (!LoginHelper.isLogin()) {
+            TEMP_DYNAMIC_TENANT.remove();
+            return;
+        }
+        TEMP_DYNAMIC_TENANT.remove();
+        String cacheKey = DYNAMIC_TENANT_KEY + ":" + LoginHelper.getUserId();
+        RedisUtils.deleteObject(cacheKey);
+        SaHolder.getStorage().delete(cacheKey);
     }
 
     /**
@@ -138,6 +158,41 @@ public class TenantHelper {
         String cacheKey = DYNAMIC_TENANT_KEY + ":" + LoginHelper.getUserId();
         RedisUtils.setCacheObject(cacheKey, tenantId);
         SaHolder.getStorage().set(cacheKey, tenantId);
+    }
+
+    /**
+     * 租户功能是否启用
+     */
+    public static boolean isEnable() {
+        return Convert.toBool(SpringUtils.getProperty("tenant.enable"), false);
+    }
+
+    /**
+     * 在动态租户中执行
+     *
+     * @param handle 处理执行方法
+     */
+    public static <T> T dynamic(String tenantId, Supplier<T> handle) {
+        setDynamic(tenantId);
+        try {
+            return handle.get();
+        } finally {
+            clearDynamic();
+        }
+    }
+
+    /**
+     * 获取当前租户id(动态租户优先)
+     */
+    public static String getTenantId() {
+        if (!isEnable()) {
+            return null;
+        }
+        String tenantId = TenantHelper.getDynamic();
+        if (StringUtils.isBlank(tenantId)) {
+            tenantId = LoginHelper.getTenantId();
+        }
+        return tenantId;
     }
 
     /**
@@ -169,63 +224,8 @@ public class TenantHelper {
         return tenantId;
     }
 
-    /**
-     * 清除动态租户
-     */
-    public static void clearDynamic() {
-        if (!isEnable()) {
-            return;
-        }
-        if (!LoginHelper.isLogin()) {
-            TEMP_DYNAMIC_TENANT.remove();
-            return;
-        }
-        TEMP_DYNAMIC_TENANT.remove();
-        String cacheKey = DYNAMIC_TENANT_KEY + ":" + LoginHelper.getUserId();
-        RedisUtils.deleteObject(cacheKey);
-        SaHolder.getStorage().delete(cacheKey);
-    }
-
-    /**
-     * 在动态租户中执行
-     *
-     * @param handle 处理执行方法
-     */
-    public static void dynamic(String tenantId, Runnable handle) {
-        setDynamic(tenantId);
-        try {
-            handle.run();
-        } finally {
-            clearDynamic();
-        }
-    }
-
-    /**
-     * 在动态租户中执行
-     *
-     * @param handle 处理执行方法
-     */
-    public static <T> T dynamic(String tenantId, Supplier<T> handle) {
-        setDynamic(tenantId);
-        try {
-            return handle.get();
-        } finally {
-            clearDynamic();
-        }
-    }
-
-    /**
-     * 获取当前租户id(动态租户优先)
-     */
-    public static String getTenantId() {
-        if (!isEnable()) {
-            return null;
-        }
-        String tenantId = TenantHelper.getDynamic();
-        if (StringUtils.isBlank(tenantId)) {
-            tenantId = LoginHelper.getTenantId();
-        }
-        return tenantId;
+    public static void setDynamic(String tenantId) {
+        setDynamic(tenantId, false);
     }
 
 }

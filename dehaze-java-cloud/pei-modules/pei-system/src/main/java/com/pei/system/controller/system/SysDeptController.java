@@ -2,7 +2,6 @@ package com.pei.system.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.convert.Convert;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.utils.StringUtils;
@@ -13,6 +12,7 @@ import com.pei.system.domain.bo.SysDeptBo;
 import com.pei.system.domain.vo.SysDeptVo;
 import com.pei.system.service.ISysDeptService;
 import com.pei.system.service.ISysPostService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 

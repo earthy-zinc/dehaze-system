@@ -1,8 +1,8 @@
 package com.pei.resource.domain.vo;
 
+import com.pei.resource.domain.SysOssConfig;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
-import com.pei.resource.domain.SysOssConfig;
 
 import java.io.Serial;
 import java.io.Serializable;

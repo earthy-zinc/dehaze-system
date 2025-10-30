@@ -1,10 +1,10 @@
 package com.pei.common.translation.core.impl;
 
+import com.pei.common.core.service.DictService;
+import com.pei.common.core.utils.StringUtils;
 import com.pei.common.translation.annotation.TranslationType;
 import com.pei.common.translation.constant.TransConstant;
 import com.pei.common.translation.core.TranslationInterface;
-import com.pei.common.core.service.DictService;
-import com.pei.common.core.utils.StringUtils;
 import lombok.AllArgsConstructor;
 
 /**

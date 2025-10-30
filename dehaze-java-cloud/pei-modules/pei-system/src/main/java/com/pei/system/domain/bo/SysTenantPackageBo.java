@@ -1,16 +1,15 @@
 package com.pei.system.domain.bo;
 
-import io.github.linpeilie.annotations.AutoMapper;
-import io.github.linpeilie.annotations.AutoMapping;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
 import com.pei.common.core.validate.AddGroup;
 import com.pei.common.core.validate.EditGroup;
 import com.pei.common.mybatis.core.domain.BaseEntity;
 import com.pei.system.domain.SysTenantPackage;
-
+import io.github.linpeilie.annotations.AutoMapper;
+import io.github.linpeilie.annotations.AutoMapping;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 租户套餐业务对象 sys_tenant_package
@@ -26,13 +25,13 @@ public class SysTenantPackageBo extends BaseEntity {
     /**
      * 租户套餐id
      */
-    @NotNull(message = "租户套餐id不能为空", groups = { EditGroup.class })
+    @NotNull(message = "租户套餐id不能为空", groups = {EditGroup.class})
     private Long packageId;
 
     /**
      * 套餐名称
      */
-    @NotBlank(message = "套餐名称不能为空", groups = { AddGroup.class, EditGroup.class })
+    @NotBlank(message = "套餐名称不能为空", groups = {AddGroup.class, EditGroup.class})
     private String packageName;
 
     /**

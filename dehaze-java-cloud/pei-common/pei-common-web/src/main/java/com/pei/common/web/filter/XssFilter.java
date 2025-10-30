@@ -1,11 +1,11 @@
 package com.pei.common.web.filter;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.web.config.properties.XssProperties;
+import jakarta.servlet.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpMethod;
 
 import java.io.IOException;

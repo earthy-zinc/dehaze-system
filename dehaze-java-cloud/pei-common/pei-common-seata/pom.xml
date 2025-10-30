@@ -15,7 +15,7 @@
         pei-common-seata 分布式事务
     </description>
 
-	<dependencies>
+    <dependencies>
 
         <dependency>
             <groupId>com.pei</groupId>

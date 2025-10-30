@@ -1,7 +1,7 @@
 package com.pei.demo.controller;
 
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.domain.R;
+import lombok.RequiredArgsConstructor;
 import org.dromara.sms4j.api.SmsBlend;
 import org.dromara.sms4j.api.entity.SmsResponse;
 import org.dromara.sms4j.core.factory.SmsFactory;
@@ -13,8 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.LinkedHashMap;
 
 /**
- * 短信演示案例
- * 请先阅读文档 否则无法使用
+ * 短信演示案例 请先阅读文档 否则无法使用
  *
  * @author Lion Li
  * @version 4.2.0
@@ -61,7 +60,7 @@ public class SmsController {
      * @param phone 手机号
      */
     @GetMapping("/addBlacklist")
-    public R<Object> addBlacklist(String phone){
+    public R<Object> addBlacklist(String phone) {
         SmsBlend smsBlend = SmsFactory.getSmsBlend("config1");
         smsBlend.joinInBlacklist(phone);
         return R.ok();
@@ -73,7 +72,7 @@ public class SmsController {
      * @param phone 手机号
      */
     @GetMapping("/removeBlacklist")
-    public R<Object> removeBlacklist(String phone){
+    public R<Object> removeBlacklist(String phone) {
         SmsBlend smsBlend = SmsFactory.getSmsBlend("config1");
         smsBlend.removeFromBlacklist(phone);
         return R.ok();

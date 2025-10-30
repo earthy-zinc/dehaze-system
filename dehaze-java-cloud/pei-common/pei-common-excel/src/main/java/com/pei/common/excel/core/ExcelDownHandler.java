@@ -11,11 +11,6 @@ import com.alibaba.excel.util.ClassUtils;
 import com.alibaba.excel.write.handler.SheetWriteHandler;
 import com.alibaba.excel.write.metadata.holder.WriteSheetHolder;
 import com.alibaba.excel.write.metadata.holder.WriteWorkbookHolder;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.ss.util.CellRangeAddressList;
-import org.apache.poi.ss.util.WorkbookUtil;
-import org.apache.poi.xssf.usermodel.XSSFDataValidation;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.service.DictService;
 import com.pei.common.core.utils.SpringUtils;
@@ -23,6 +18,11 @@ import com.pei.common.core.utils.StreamUtils;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.excel.annotation.ExcelDictFormat;
 import com.pei.common.excel.annotation.ExcelEnumFormat;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.ss.util.CellRangeAddressList;
+import org.apache.poi.ss.util.WorkbookUtil;
+import org.apache.poi.xssf.usermodel.XSSFDataValidation;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -39,8 +39,7 @@ import java.util.*;
 public class ExcelDownHandler implements SheetWriteHandler {
 
     /**
-     * Excel表格中的列名英文
-     * 仅为了解析列英文，禁止修改
+     * Excel表格中的列名英文 仅为了解析列英文，禁止修改
      */
     private static final String EXCEL_COLUMN_NAME = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     /**
@@ -74,8 +73,7 @@ public class ExcelDownHandler implements SheetWriteHandler {
 
     /**
      * <h2>开始创建下拉数据</h2>
-     * 1.通过解析传入的@ExcelProperty同级是否标注有@DropDown选项
-     * 如果有且设置了value值，则将其直接置为下拉可选项
+     * 1.通过解析传入的@ExcelProperty同级是否标注有@DropDown选项 如果有且设置了value值，则将其直接置为下拉可选项
      * <p>
      * 2.或者在调用ExcelUtil时指定了可选项，将依据传入的可选项做下拉
      * <p>

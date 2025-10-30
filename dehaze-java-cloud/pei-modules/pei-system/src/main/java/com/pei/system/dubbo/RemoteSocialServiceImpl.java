@@ -1,14 +1,14 @@
 package com.pei.system.dubbo;
 
+import com.pei.common.core.utils.MapstructUtils;
+import com.pei.system.api.RemoteSocialService;
+import com.pei.system.api.domain.bo.RemoteSocialBo;
+import com.pei.system.api.domain.vo.RemoteSocialVo;
 import com.pei.system.domain.bo.SysSocialBo;
 import com.pei.system.domain.vo.SysSocialVo;
 import com.pei.system.service.ISysSocialService;
 import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboService;
-import com.pei.common.core.utils.MapstructUtils;
-import com.pei.system.api.RemoteSocialService;
-import com.pei.system.api.domain.bo.RemoteSocialBo;
-import com.pei.system.api.domain.vo.RemoteSocialVo;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

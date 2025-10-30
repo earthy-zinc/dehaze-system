@@ -25,6 +25,8 @@ import java.util.Map;
 @Component
 public class MyBatisDataSourceMonitor implements DataSourceMonitor {
 
+    private final Map<String, String> features = new HashMap<>();
+
     public MyBatisDataSourceMonitor() {
         // 调整执行模式为自定义
         ConfigTable.KEEP_ADAPTER = 2;
@@ -32,11 +34,8 @@ public class MyBatisDataSourceMonitor implements DataSourceMonitor {
         ConfigTable.METADATA_CACHE_SCOPE = 0;
     }
 
-    private final Map<String, String> features = new HashMap<>();
-
     /**
-     * 数据源特征 用来定准 adapter 包含数据库或JDBC协议关键字<br/>
-     * 一般会通过 产品名_url 合成 如果返回null 上层方法会通过driver_产品名_url合成
+     * 数据源特征 用来定准 adapter 包含数据库或JDBC协议关键字<br/> 一般会通过 产品名_url 合成 如果返回null 上层方法会通过driver_产品名_url合成
      *
      * @param datasource 数据源
      * @return String 返回null由上层自动提取
@@ -72,14 +71,15 @@ public class MyBatisDataSourceMonitor implements DataSourceMonitor {
 
     /**
      * 数据源唯一标识 如果不实现则默认feature
+     *
      * @param datasource 数据源
      * @return String 返回null由上层自动提取
      */
     @Override
     public String key(DataRuntime runtime, Object datasource) {
-        if(datasource instanceof JdbcTemplate jdbc){
+        if (datasource instanceof JdbcTemplate jdbc) {
             DataSource ds = jdbc.getDataSource();
-            if(ds instanceof DynamicRoutingDataSource){
+            if (ds instanceof DynamicRoutingDataSource) {
                 return DynamicDataSourceContextHolder.peek();
             }
         }

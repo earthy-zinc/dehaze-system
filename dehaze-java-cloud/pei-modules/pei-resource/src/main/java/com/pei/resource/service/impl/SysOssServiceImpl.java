@@ -6,8 +6,6 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.CacheNames;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.MapstructUtils;
@@ -25,6 +23,8 @@ import com.pei.resource.domain.bo.SysOssBo;
 import com.pei.resource.domain.vo.SysOssVo;
 import com.pei.resource.mapper.SysOssMapper;
 import com.pei.resource.service.ISysOssService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -114,21 +114,6 @@ public class SysOssServiceImpl implements ISysOssService {
         return String.join(StringUtils.SEPARATOR, list);
     }
 
-    private LambdaQueryWrapper<SysOss> buildQueryWrapper(SysOssBo bo) {
-        Map<String, Object> params = bo.getParams();
-        LambdaQueryWrapper<SysOss> lqw = Wrappers.lambdaQuery();
-        lqw.like(StringUtils.isNotBlank(bo.getFileName()), SysOss::getFileName, bo.getFileName());
-        lqw.like(StringUtils.isNotBlank(bo.getOriginalName()), SysOss::getOriginalName, bo.getOriginalName());
-        lqw.eq(StringUtils.isNotBlank(bo.getFileSuffix()), SysOss::getFileSuffix, bo.getFileSuffix());
-        lqw.eq(StringUtils.isNotBlank(bo.getUrl()), SysOss::getUrl, bo.getUrl());
-        lqw.between(params.get("beginCreateTime") != null && params.get("endCreateTime") != null,
-            SysOss::getCreateTime, params.get("beginCreateTime"), params.get("endCreateTime"));
-        lqw.eq(ObjectUtil.isNotNull(bo.getCreateBy()), SysOss::getCreateBy, bo.getCreateBy());
-        lqw.eq(StringUtils.isNotBlank(bo.getService()), SysOss::getService, bo.getService());
-        lqw.orderByAsc(SysOss::getOssId);
-        return lqw;
-    }
-
     /**
      * 根据 ossId 从缓存或数据库中获取 SysOssVo 对象
      *
@@ -139,24 +124,6 @@ public class SysOssServiceImpl implements ISysOssService {
     @Override
     public SysOssVo getById(Long ossId) {
         return baseMapper.selectVoById(ossId);
-    }
-
-    /**
-     * 文件下载方法，支持一次性下载完整文件
-     *
-     * @param ossId    OSS对象ID
-     * @param response HttpServletResponse对象，用于设置响应头和向客户端发送文件内容
-     */
-    @Override
-    public void download(Long ossId, HttpServletResponse response) throws IOException {
-        SysOssVo sysOss = SpringUtils.getAopProxy(this).getById(ossId);
-        if (ObjectUtil.isNull(sysOss)) {
-            throw new ServiceException("文件数据不存在!");
-        }
-        FileUtils.setAttachmentResponseHeader(response, sysOss.getOriginalName());
-        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE + "; charset=UTF-8");
-        OssClient storage = OssFactory.instance(sysOss.getService());
-        storage.download(sysOss.getFileName(), response.getOutputStream(), response::setContentLengthLong);
     }
 
     /**
@@ -197,18 +164,6 @@ public class SysOssServiceImpl implements ISysOssService {
         return buildResultEntity(originalfileName, suffix, storage.getConfigKey(), uploadResult);
     }
 
-    private SysOssVo buildResultEntity(String originalfileName, String suffix, String configKey, UploadResult uploadResult) {
-        SysOss oss = new SysOss();
-        oss.setUrl(uploadResult.getUrl());
-        oss.setFileSuffix(suffix);
-        oss.setFileName(uploadResult.getFilename());
-        oss.setOriginalName(originalfileName);
-        oss.setService(configKey);
-        baseMapper.insert(oss);
-        SysOssVo sysOssVo = MapstructUtils.convert(oss, SysOssVo.class);
-        return this.matchingUrl(sysOssVo);
-    }
-
     /**
      * 新增OSS对象存储
      *
@@ -223,6 +178,24 @@ public class SysOssServiceImpl implements ISysOssService {
             bo.setOssId(oss.getOssId());
         }
         return flag;
+    }
+
+    /**
+     * 文件下载方法，支持一次性下载完整文件
+     *
+     * @param ossId    OSS对象ID
+     * @param response HttpServletResponse对象，用于设置响应头和向客户端发送文件内容
+     */
+    @Override
+    public void download(Long ossId, HttpServletResponse response) throws IOException {
+        SysOssVo sysOss = SpringUtils.getAopProxy(this).getById(ossId);
+        if (ObjectUtil.isNull(sysOss)) {
+            throw new ServiceException("文件数据不存在!");
+        }
+        FileUtils.setAttachmentResponseHeader(response, sysOss.getOriginalName());
+        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE + "; charset=UTF-8");
+        OssClient storage = OssFactory.instance(sysOss.getService());
+        storage.download(sysOss.getFileName(), response.getOutputStream(), response::setContentLengthLong);
     }
 
     /**
@@ -243,6 +216,33 @@ public class SysOssServiceImpl implements ISysOssService {
             storage.delete(sysOss.getUrl());
         }
         return baseMapper.deleteByIds(ids) > 0;
+    }
+
+    private SysOssVo buildResultEntity(String originalfileName, String suffix, String configKey, UploadResult uploadResult) {
+        SysOss oss = new SysOss();
+        oss.setUrl(uploadResult.getUrl());
+        oss.setFileSuffix(suffix);
+        oss.setFileName(uploadResult.getFilename());
+        oss.setOriginalName(originalfileName);
+        oss.setService(configKey);
+        baseMapper.insert(oss);
+        SysOssVo sysOssVo = MapstructUtils.convert(oss, SysOssVo.class);
+        return this.matchingUrl(sysOssVo);
+    }
+
+    private LambdaQueryWrapper<SysOss> buildQueryWrapper(SysOssBo bo) {
+        Map<String, Object> params = bo.getParams();
+        LambdaQueryWrapper<SysOss> lqw = Wrappers.lambdaQuery();
+        lqw.like(StringUtils.isNotBlank(bo.getFileName()), SysOss::getFileName, bo.getFileName());
+        lqw.like(StringUtils.isNotBlank(bo.getOriginalName()), SysOss::getOriginalName, bo.getOriginalName());
+        lqw.eq(StringUtils.isNotBlank(bo.getFileSuffix()), SysOss::getFileSuffix, bo.getFileSuffix());
+        lqw.eq(StringUtils.isNotBlank(bo.getUrl()), SysOss::getUrl, bo.getUrl());
+        lqw.between(params.get("beginCreateTime") != null && params.get("endCreateTime") != null,
+            SysOss::getCreateTime, params.get("beginCreateTime"), params.get("endCreateTime"));
+        lqw.eq(ObjectUtil.isNotNull(bo.getCreateBy()), SysOss::getCreateBy, bo.getCreateBy());
+        lqw.eq(StringUtils.isNotBlank(bo.getService()), SysOss::getService, bo.getService());
+        lqw.orderByAsc(SysOss::getOssId);
+        return lqw;
     }
 
     /**

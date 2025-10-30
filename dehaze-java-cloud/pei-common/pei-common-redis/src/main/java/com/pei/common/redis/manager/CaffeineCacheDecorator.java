@@ -33,20 +33,27 @@ public class CaffeineCacheDecorator implements Cache {
         return cache.getNativeCache();
     }
 
-    public String getUniqueKey(Object key) {
-        return name + ":" + key;
-    }
-
     @Override
     public ValueWrapper get(Object key) {
         Object o = CAFFEINE.get(getUniqueKey(key), k -> cache.get(key));
         return (ValueWrapper) o;
     }
 
+    public String getUniqueKey(Object key) {
+        return name + ":" + key;
+    }
+
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(Object key, Class<T> type) {
         Object o = CAFFEINE.get(getUniqueKey(key), k -> cache.get(key, type));
+        return (T) o;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T get(Object key, Callable<T> valueLoader) {
+        Object o = CAFFEINE.get(getUniqueKey(key), k -> cache.get(key, valueLoader));
         return (T) o;
     }
 
@@ -85,13 +92,6 @@ public class CaffeineCacheDecorator implements Cache {
     @Override
     public boolean invalidate() {
         return cache.invalidate();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public <T> T get(Object key, Callable<T> valueLoader) {
-        Object o = CAFFEINE.get(getUniqueKey(key), k -> cache.get(key, valueLoader));
-        return (T) o;
     }
 
 }

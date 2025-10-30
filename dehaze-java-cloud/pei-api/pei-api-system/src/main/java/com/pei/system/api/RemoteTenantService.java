@@ -14,6 +14,7 @@ public interface RemoteTenantService {
 
     /**
      * 根据租户id获取租户详情
+     *
      * @param tenantId 租户id
      * @return 结果
      */
@@ -21,6 +22,7 @@ public interface RemoteTenantService {
 
     /**
      * 获取租户列表
+     *
      * @return 结果
      */
     List<RemoteTenantVo> queryList();

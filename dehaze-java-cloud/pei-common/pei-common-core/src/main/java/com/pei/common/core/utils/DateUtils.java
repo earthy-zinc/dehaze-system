@@ -1,8 +1,8 @@
 package com.pei.common.core.utils;
 
 import com.pei.common.core.enums.FormatsType;
-import org.apache.commons.lang3.time.DateFormatUtils;
 import com.pei.common.core.exception.ServiceException;
+import org.apache.commons.lang3.time.DateFormatUtils;
 
 import java.lang.management.ManagementFactory;
 import java.text.ParseException;
@@ -42,6 +42,27 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
      */
     public static String getDate() {
         return dateTimeNow(FormatsType.YYYY_MM_DD);
+    }
+
+    /**
+     * 获取当前日期和时间的指定格式的字符串表示
+     *
+     * @param format 日期时间格式，例如"YYYY-MM-DD HH:MM:SS"
+     * @return 当前日期和时间的字符串表示
+     */
+    public static String dateTimeNow(final FormatsType format) {
+        return parseDateToStr(format, new Date());
+    }
+
+    /**
+     * 将指定日期按照指定格式进行格式化
+     *
+     * @param format 要使用的日期时间格式，例如"YYYY-MM-DD HH:MM:SS"
+     * @param date   要格式化的日期对象
+     * @return 格式化后的日期时间字符串
+     */
+    public static String parseDateToStr(final FormatsType format, final Date date) {
+        return new SimpleDateFormat(format.getTimeFormat()).format(date);
     }
 
     /**
@@ -91,16 +112,6 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
     }
 
     /**
-     * 获取当前日期和时间的指定格式的字符串表示
-     *
-     * @param format 日期时间格式，例如"YYYY-MM-DD HH:MM:SS"
-     * @return 当前日期和时间的字符串表示
-     */
-    public static String dateTimeNow(final FormatsType format) {
-        return parseDateToStr(format, new Date());
-    }
-
-    /**
      * 将指定日期格式化为 YYYY-MM-DD 格式的字符串
      *
      * @param date 要格式化的日期对象
@@ -118,17 +129,6 @@ public class DateUtils extends org.apache.commons.lang3.time.DateUtils {
      */
     public static String formatDateTime(final Date date) {
         return parseDateToStr(FormatsType.YYYY_MM_DD_HH_MM_SS, date);
-    }
-
-    /**
-     * 将指定日期按照指定格式进行格式化
-     *
-     * @param format 要使用的日期时间格式，例如"YYYY-MM-DD HH:MM:SS"
-     * @param date   要格式化的日期对象
-     * @return 格式化后的日期时间字符串
-     */
-    public static String parseDateToStr(final FormatsType format, final Date date) {
-        return new SimpleDateFormat(format.getTimeFormat()).format(date);
     }
 
     /**

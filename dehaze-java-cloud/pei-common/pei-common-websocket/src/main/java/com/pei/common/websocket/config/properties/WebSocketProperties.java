@@ -20,7 +20,7 @@ public class WebSocketProperties {
     private String path;
 
     /**
-     *  设置访问源地址
+     * 设置访问源地址
      */
     private String allowedOrigins;
 }

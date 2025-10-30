@@ -1,7 +1,7 @@
 package com.pei.common.dubbo.properties;
 
-import lombok.Data;
 import com.pei.common.dubbo.enumd.RequestLogEnum;
+import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 

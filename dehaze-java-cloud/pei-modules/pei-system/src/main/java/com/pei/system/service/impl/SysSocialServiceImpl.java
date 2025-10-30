@@ -2,7 +2,6 @@ package com.pei.system.service.impl;
 
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.utils.MapstructUtils;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.system.domain.SysSocial;
@@ -10,6 +9,7 @@ import com.pei.system.domain.bo.SysSocialBo;
 import com.pei.system.domain.vo.SysSocialVo;
 import com.pei.system.mapper.SysSocialMapper;
 import com.pei.system.service.ISysSocialService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -98,13 +98,6 @@ public class SysSocialServiceImpl implements ISysSocialService {
     }
 
     /**
-     * 保存前的数据校验
-     */
-    private void validEntityBeforeSave(SysSocial entity) {
-        //TODO 做一些数据校验,如唯一约束
-    }
-
-    /**
      * 删除社会化关系信息
      *
      * @param id 要删除的社会化关系的唯一标识符
@@ -124,6 +117,13 @@ public class SysSocialServiceImpl implements ISysSocialService {
     @Override
     public List<SysSocialVo> selectByAuthId(String authId) {
         return baseMapper.selectVoList(new LambdaQueryWrapper<SysSocial>().eq(SysSocial::getAuthId, authId));
+    }
+
+    /**
+     * 保存前的数据校验
+     */
+    private void validEntityBeforeSave(SysSocial entity) {
+        //TODO 做一些数据校验,如唯一约束
     }
 
 }

@@ -61,14 +61,6 @@ public class MybatisPlusConfiguration {
     }
 
     /**
-     * 数据权限切面处理器
-     */
-    @Bean
-    public DataPermissionAspect dataPermissionAspect() {
-        return new DataPermissionAspect();
-    }
-
-    /**
      * 分页插件，自动识别数据库类型
      */
     public PaginationInnerInterceptor paginationInnerInterceptor() {
@@ -86,6 +78,14 @@ public class MybatisPlusConfiguration {
     }
 
     /**
+     * 数据权限切面处理器
+     */
+    @Bean
+    public DataPermissionAspect dataPermissionAspect() {
+        return new DataPermissionAspect();
+    }
+
+    /**
      * 元对象字段填充控制器
      */
     @Bean
@@ -94,8 +94,7 @@ public class MybatisPlusConfiguration {
     }
 
     /**
-     * 使用网卡信息绑定雪花生成器
-     * 防止集群雪花ID重复
+     * 使用网卡信息绑定雪花生成器 防止集群雪花ID重复
      */
     @Bean
     public IdentifierGenerator idGenerator() {

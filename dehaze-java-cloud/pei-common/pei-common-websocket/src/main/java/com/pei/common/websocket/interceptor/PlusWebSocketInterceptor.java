@@ -1,10 +1,10 @@
 package com.pei.common.websocket.interceptor;
 
 import cn.dev33.satoken.exception.NotLoginException;
-import com.pei.common.websocket.constant.WebSocketConstants;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.satoken.utils.LoginHelper;
+import com.pei.common.websocket.constant.WebSocketConstants;
 import com.pei.system.api.model.LoginUser;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.socket.WebSocketHandler;

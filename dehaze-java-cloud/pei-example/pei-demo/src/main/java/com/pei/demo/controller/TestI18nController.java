@@ -2,15 +2,14 @@ package com.pei.demo.controller;
 
 import com.pei.common.core.domain.R;
 import com.pei.common.core.utils.MessageUtils;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import org.hibernate.validator.constraints.Range;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 
 /**
@@ -24,8 +23,7 @@ import jakarta.validation.constraints.NotNull;
 public class TestI18nController {
 
     /**
-     * 通过code获取国际化内容
-     * code为 messages.properties 中的 key
+     * 通过code获取国际化内容 code为 messages.properties 中的 key
      * <p>
      * 测试使用 user.register.success
      *
@@ -37,8 +35,7 @@ public class TestI18nController {
     }
 
     /**
-     * Validator 校验国际化
-     * 不传值 分别查看异常返回
+     * Validator 校验国际化 不传值 分别查看异常返回
      * <p>
      * 测试使用 not.null
      */
@@ -48,8 +45,7 @@ public class TestI18nController {
     }
 
     /**
-     * Bean 校验国际化
-     * 不传值 分别查看异常返回
+     * Bean 校验国际化 不传值 分别查看异常返回
      * <p>
      * 测试使用 not.null
      */

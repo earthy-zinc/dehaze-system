@@ -1,10 +1,10 @@
 package com.pei.resource.domain.vo;
 
-import io.github.linpeilie.annotations.AutoMapper;
-import lombok.Data;
 import com.pei.common.translation.annotation.Translation;
 import com.pei.common.translation.constant.TransConstant;
 import com.pei.resource.domain.SysOss;
+import io.github.linpeilie.annotations.AutoMapper;
+import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;

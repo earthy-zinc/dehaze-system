@@ -1,7 +1,7 @@
 package com.pei.system.mapper;
 
-import com.pei.system.domain.SysDictType;
 import com.pei.common.mybatis.core.mapper.BaseMapperPlus;
+import com.pei.system.domain.SysDictType;
 import com.pei.system.domain.vo.SysDictTypeVo;
 
 /**

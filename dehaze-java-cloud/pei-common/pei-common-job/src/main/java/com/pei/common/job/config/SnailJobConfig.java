@@ -48,12 +48,6 @@ public class SnailJobConfig {
         registerLogging();
     }
 
-    @EventListener(SnailChannelReconnectEvent.class)
-    public void onReconnect(SnailChannelReconnectEvent event) {
-        // 连接中断 重新从 nacos 获取存活的服务连接(高可用配置)
-        registerServer();
-    }
-
     private void registerServer() {
         String serverName = properties.getServerName();
         if (StringUtils.isNotBlank(serverName)) {
@@ -73,6 +67,12 @@ public class SnailJobConfig {
         ca.start();
         Logger rootLogger = lc.getLogger(Logger.ROOT_LOGGER_NAME);
         rootLogger.addAppender(ca);
+    }
+
+    @EventListener(SnailChannelReconnectEvent.class)
+    public void onReconnect(SnailChannelReconnectEvent event) {
+        // 连接中断 重新从 nacos 获取存活的服务连接(高可用配置)
+        registerServer();
     }
 
 }

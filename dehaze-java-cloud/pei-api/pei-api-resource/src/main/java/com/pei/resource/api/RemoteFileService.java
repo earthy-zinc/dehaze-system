@@ -1,7 +1,7 @@
 package com.pei.resource.api;
 
-import com.pei.resource.api.domain.RemoteFile;
 import com.pei.common.core.exception.ServiceException;
+import com.pei.resource.api.domain.RemoteFile;
 
 import java.util.List;
 

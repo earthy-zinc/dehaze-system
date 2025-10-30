@@ -22,6 +22,14 @@ import java.util.stream.Stream;
 @DisplayName("带参数单元测试案例")
 public class ParamUnitTest {
 
+    public static Stream<String> getParam() {
+        List<String> list = new ArrayList<>();
+        list.add("t1");
+        list.add("t2");
+        list.add("t3");
+        return list.stream();
+    }
+
     @DisplayName("测试 @ValueSource 注解")
     @ParameterizedTest
     @ValueSource(strings = {"t1", "t2", "t3"})
@@ -48,14 +56,6 @@ public class ParamUnitTest {
     @MethodSource("getParam")
     public void testMethodSource(String str) {
         System.out.println(str);
-    }
-
-    public static Stream<String> getParam() {
-        List<String> list = new ArrayList<>();
-        list.add("t1");
-        list.add("t2");
-        list.add("t3");
-        return list.stream();
     }
 
     @BeforeEach

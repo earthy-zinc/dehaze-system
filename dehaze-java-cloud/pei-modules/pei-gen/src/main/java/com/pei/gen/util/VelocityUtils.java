@@ -3,16 +3,16 @@ package com.pei.gen.util;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.lang.Dict;
+import com.pei.common.core.utils.DateUtils;
+import com.pei.common.core.utils.StringUtils;
 import com.pei.common.json.utils.JsonUtils;
+import com.pei.common.mybatis.helper.DataBaseHelper;
 import com.pei.gen.constant.GenConstants;
 import com.pei.gen.domain.GenTable;
 import com.pei.gen.domain.GenTableColumn;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import org.apache.velocity.VelocityContext;
-import com.pei.common.core.utils.DateUtils;
-import com.pei.common.core.utils.StringUtils;
-import com.pei.common.mybatis.helper.DataBaseHelper;
 
 import java.util.*;
 
@@ -77,6 +77,64 @@ public class VelocityUtils {
         return velocityContext;
     }
 
+    /**
+     * 获取包前缀
+     *
+     * @param packageName 包名称
+     * @return 包前缀名称
+     */
+    public static String getPackagePrefix(String packageName) {
+        int lastIndex = packageName.lastIndexOf(".");
+        return StringUtils.substring(packageName, 0, lastIndex);
+    }
+
+    /**
+     * 根据列类型获取导入包
+     *
+     * @param genTable 业务表对象
+     * @return 返回需要导入的包列表
+     */
+    public static HashSet<String> getImportList(GenTable genTable) {
+        List<GenTableColumn> columns = genTable.getColumns();
+        HashSet<String> importList = new HashSet<>();
+        for (GenTableColumn column : columns) {
+            if (!column.isSuperColumn() && GenConstants.TYPE_DATE.equals(column.getJavaType())) {
+                importList.add("java.util.Date");
+                importList.add("com.fasterxml.jackson.annotation.JsonFormat");
+            } else if (!column.isSuperColumn() && GenConstants.TYPE_BIGDECIMAL.equals(column.getJavaType())) {
+                importList.add("java.math.BigDecimal");
+            } else if (!column.isSuperColumn() && "imageUpload".equals(column.getHtmlType())) {
+                importList.add("com.pei.common.translation.annotation.Translation");
+                importList.add("com.pei.common.translation.constant.TransConstant");
+            }
+        }
+        return importList;
+    }
+
+    /**
+     * 获取权限前缀
+     *
+     * @param moduleName   模块名称
+     * @param businessName 业务名称
+     * @return 返回权限前缀
+     */
+    public static String getPermissionPrefix(String moduleName, String businessName) {
+        return StringUtils.format("{}:{}", moduleName, businessName);
+    }
+
+    /**
+     * 根据列类型获取字典组
+     *
+     * @param genTable 业务表对象
+     * @return 返回字典组
+     */
+    public static String getDicts(GenTable genTable) {
+        List<GenTableColumn> columns = genTable.getColumns();
+        Set<String> dicts = new HashSet<>();
+        addDicts(dicts, columns);
+        return StringUtils.join(dicts, ", ");
+    }
+
     public static void setMenuVelocityContext(VelocityContext context, GenTable genTable) {
         String options = genTable.getOptions();
         Dict paramsObj = JsonUtils.parseMap(options);
@@ -101,6 +159,98 @@ public class VelocityUtils {
         if (paramsObj.containsKey(GenConstants.TREE_NAME)) {
             context.put("tree_name", paramsObj.get(GenConstants.TREE_NAME));
         }
+    }
+
+    /**
+     * 添加字典列表
+     *
+     * @param dicts   字典列表
+     * @param columns 列集合
+     */
+    public static void addDicts(Set<String> dicts, List<GenTableColumn> columns) {
+        for (GenTableColumn column : columns) {
+            if (!column.isSuperColumn() && StringUtils.isNotEmpty(column.getDictType()) && StringUtils.equalsAny(
+                column.getHtmlType(),
+                new String[]{GenConstants.HTML_SELECT, GenConstants.HTML_RADIO, GenConstants.HTML_CHECKBOX})) {
+                dicts.add("'" + column.getDictType() + "'");
+            }
+        }
+    }
+
+    /**
+     * 获取上级菜单ID字段
+     *
+     * @param paramsObj 生成其他选项
+     * @return 上级菜单ID字段
+     */
+    public static String getParentMenuId(Dict paramsObj) {
+        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.PARENT_MENU_ID)
+            && StringUtils.isNotEmpty(paramsObj.getStr(GenConstants.PARENT_MENU_ID))) {
+            return paramsObj.getStr(GenConstants.PARENT_MENU_ID);
+        }
+        return DEFAULT_PARENT_MENU_ID;
+    }
+
+    /**
+     * 获取树编码
+     *
+     * @param paramsObj 生成其他选项
+     * @return 树编码
+     */
+    public static String getTreecode(Map<String, Object> paramsObj) {
+        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.TREE_CODE)) {
+            return StringUtils.toCamelCase(Convert.toStr(paramsObj.get(GenConstants.TREE_CODE)));
+        }
+        return StringUtils.EMPTY;
+    }
+
+    /**
+     * 获取树父编码
+     *
+     * @param paramsObj 生成其他选项
+     * @return 树父编码
+     */
+    public static String getTreeParentCode(Dict paramsObj) {
+        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.TREE_PARENT_CODE)) {
+            return StringUtils.toCamelCase(paramsObj.getStr(GenConstants.TREE_PARENT_CODE));
+        }
+        return StringUtils.EMPTY;
+    }
+
+    /**
+     * 获取树名称
+     *
+     * @param paramsObj 生成其他选项
+     * @return 树名称
+     */
+    public static String getTreeName(Dict paramsObj) {
+        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.TREE_NAME)) {
+            return StringUtils.toCamelCase(paramsObj.getStr(GenConstants.TREE_NAME));
+        }
+        return StringUtils.EMPTY;
+    }
+
+    /**
+     * 获取需要在哪一列上面显示展开按钮
+     *
+     * @param genTable 业务表对象
+     * @return 展开按钮列序号
+     */
+    public static int getExpandColumn(GenTable genTable) {
+        String options = genTable.getOptions();
+        Dict paramsObj = JsonUtils.parseMap(options);
+        String treeName = paramsObj.getStr(GenConstants.TREE_NAME);
+        int num = 0;
+        for (GenTableColumn column : genTable.getColumns()) {
+            if (column.isList()) {
+                num++;
+                String columnName = column.getColumnName();
+                if (columnName.equals(treeName)) {
+                    break;
+                }
+            }
+        }
+        return num;
     }
 
     /**
@@ -185,155 +335,5 @@ public class VelocityUtils {
             fileName = StringUtils.format("{}/views/{}/{}/index.vue", vuePath, moduleName, businessName);
         }
         return fileName;
-    }
-
-    /**
-     * 获取包前缀
-     *
-     * @param packageName 包名称
-     * @return 包前缀名称
-     */
-    public static String getPackagePrefix(String packageName) {
-        int lastIndex = packageName.lastIndexOf(".");
-        return StringUtils.substring(packageName, 0, lastIndex);
-    }
-
-    /**
-     * 根据列类型获取导入包
-     *
-     * @param genTable 业务表对象
-     * @return 返回需要导入的包列表
-     */
-    public static HashSet<String> getImportList(GenTable genTable) {
-        List<GenTableColumn> columns = genTable.getColumns();
-        HashSet<String> importList = new HashSet<>();
-        for (GenTableColumn column : columns) {
-            if (!column.isSuperColumn() && GenConstants.TYPE_DATE.equals(column.getJavaType())) {
-                importList.add("java.util.Date");
-                importList.add("com.fasterxml.jackson.annotation.JsonFormat");
-            } else if (!column.isSuperColumn() && GenConstants.TYPE_BIGDECIMAL.equals(column.getJavaType())) {
-                importList.add("java.math.BigDecimal");
-            } else if (!column.isSuperColumn() && "imageUpload".equals(column.getHtmlType())) {
-                importList.add("com.pei.common.translation.annotation.Translation");
-                importList.add("com.pei.common.translation.constant.TransConstant");
-            }
-        }
-        return importList;
-    }
-
-    /**
-     * 根据列类型获取字典组
-     *
-     * @param genTable 业务表对象
-     * @return 返回字典组
-     */
-    public static String getDicts(GenTable genTable) {
-        List<GenTableColumn> columns = genTable.getColumns();
-        Set<String> dicts = new HashSet<>();
-        addDicts(dicts, columns);
-        return StringUtils.join(dicts, ", ");
-    }
-
-    /**
-     * 添加字典列表
-     *
-     * @param dicts 字典列表
-     * @param columns 列集合
-     */
-    public static void addDicts(Set<String> dicts, List<GenTableColumn> columns) {
-        for (GenTableColumn column : columns) {
-            if (!column.isSuperColumn() && StringUtils.isNotEmpty(column.getDictType()) && StringUtils.equalsAny(
-                column.getHtmlType(),
-                new String[] { GenConstants.HTML_SELECT, GenConstants.HTML_RADIO, GenConstants.HTML_CHECKBOX })) {
-                dicts.add("'" + column.getDictType() + "'");
-            }
-        }
-    }
-
-    /**
-     * 获取权限前缀
-     *
-     * @param moduleName   模块名称
-     * @param businessName 业务名称
-     * @return 返回权限前缀
-     */
-    public static String getPermissionPrefix(String moduleName, String businessName) {
-        return StringUtils.format("{}:{}", moduleName, businessName);
-    }
-
-    /**
-     * 获取上级菜单ID字段
-     *
-     * @param paramsObj 生成其他选项
-     * @return 上级菜单ID字段
-     */
-    public static String getParentMenuId(Dict paramsObj) {
-        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.PARENT_MENU_ID)
-            && StringUtils.isNotEmpty(paramsObj.getStr(GenConstants.PARENT_MENU_ID))) {
-            return paramsObj.getStr(GenConstants.PARENT_MENU_ID);
-        }
-        return DEFAULT_PARENT_MENU_ID;
-    }
-
-    /**
-     * 获取树编码
-     *
-     * @param paramsObj 生成其他选项
-     * @return 树编码
-     */
-    public static String getTreecode(Map<String, Object> paramsObj) {
-        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.TREE_CODE)) {
-            return StringUtils.toCamelCase(Convert.toStr(paramsObj.get(GenConstants.TREE_CODE)));
-        }
-        return StringUtils.EMPTY;
-    }
-
-    /**
-     * 获取树父编码
-     *
-     * @param paramsObj 生成其他选项
-     * @return 树父编码
-     */
-    public static String getTreeParentCode(Dict paramsObj) {
-        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.TREE_PARENT_CODE)) {
-            return StringUtils.toCamelCase(paramsObj.getStr(GenConstants.TREE_PARENT_CODE));
-        }
-        return StringUtils.EMPTY;
-    }
-
-    /**
-     * 获取树名称
-     *
-     * @param paramsObj 生成其他选项
-     * @return 树名称
-     */
-    public static String getTreeName(Dict paramsObj) {
-        if (CollUtil.isNotEmpty(paramsObj) && paramsObj.containsKey(GenConstants.TREE_NAME)) {
-            return StringUtils.toCamelCase(paramsObj.getStr(GenConstants.TREE_NAME));
-        }
-        return StringUtils.EMPTY;
-    }
-
-    /**
-     * 获取需要在哪一列上面显示展开按钮
-     *
-     * @param genTable 业务表对象
-     * @return 展开按钮列序号
-     */
-    public static int getExpandColumn(GenTable genTable) {
-        String options = genTable.getOptions();
-        Dict paramsObj = JsonUtils.parseMap(options);
-        String treeName = paramsObj.getStr(GenConstants.TREE_NAME);
-        int num = 0;
-        for (GenTableColumn column : genTable.getColumns()) {
-            if (column.isList()) {
-                num++;
-                String columnName = column.getColumnName();
-                if (columnName.equals(treeName)) {
-                    break;
-                }
-            }
-        }
-        return num;
     }
 }

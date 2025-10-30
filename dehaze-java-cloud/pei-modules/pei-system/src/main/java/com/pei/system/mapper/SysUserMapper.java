@@ -3,13 +3,13 @@ package com.pei.system.mapper;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import org.apache.ibatis.annotations.Param;
 import com.pei.common.mybatis.annotation.DataColumn;
 import com.pei.common.mybatis.annotation.DataPermission;
 import com.pei.common.mybatis.core.mapper.BaseMapperPlus;
 import com.pei.system.domain.SysUser;
 import com.pei.system.domain.vo.SysUserExportVo;
 import com.pei.system.domain.vo.SysUserVo;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 
@@ -79,13 +79,13 @@ public interface SysUserMapper extends BaseMapperPlus<SysUser, SysUserVo> {
         @DataColumn(key = "deptName", value = "dept_id"),
         @DataColumn(key = "userName", value = "user_id")
     })
-    int update(@Param(Constants.ENTITY) SysUser user, @Param(Constants.WRAPPER) Wrapper<SysUser> updateWrapper);
+    int updateById(@Param(Constants.ENTITY) SysUser user);
 
     @Override
     @DataPermission({
         @DataColumn(key = "deptName", value = "dept_id"),
         @DataColumn(key = "userName", value = "user_id")
     })
-    int updateById(@Param(Constants.ENTITY) SysUser user);
+    int update(@Param(Constants.ENTITY) SysUser user, @Param(Constants.WRAPPER) Wrapper<SysUser> updateWrapper);
 
 }

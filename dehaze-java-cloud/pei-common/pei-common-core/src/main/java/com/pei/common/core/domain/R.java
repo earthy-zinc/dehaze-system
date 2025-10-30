@@ -1,8 +1,8 @@
 package com.pei.common.core.domain;
 
+import com.pei.common.core.constant.HttpStatus;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.pei.common.core.constant.HttpStatus;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -16,19 +16,16 @@ import java.io.Serializable;
 @NoArgsConstructor
 public class R<T> implements Serializable {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
     /**
      * 成功
      */
     public static final int SUCCESS = 200;
-
     /**
      * 失败
      */
     public static final int FAIL = 500;
-
+    @Serial
+    private static final long serialVersionUID = 1L;
     /**
      * 消息状态码
      */
@@ -46,6 +43,14 @@ public class R<T> implements Serializable {
 
     public static <T> R<T> ok() {
         return restResult(null, SUCCESS, "操作成功");
+    }
+
+    private static <T> R<T> restResult(T data, int code, String msg) {
+        R<T> r = new R<>();
+        r.setCode(code);
+        r.setData(data);
+        r.setMsg(msg);
+        return r;
     }
 
     public static <T> R<T> ok(T data) {
@@ -93,20 +98,12 @@ public class R<T> implements Serializable {
     /**
      * 返回警告消息
      *
-     * @param msg 返回内容
+     * @param msg  返回内容
      * @param data 数据对象
      * @return 警告消息
      */
     public static <T> R<T> warn(String msg, T data) {
         return restResult(data, HttpStatus.WARN, msg);
-    }
-
-    private static <T> R<T> restResult(T data, int code, String msg) {
-        R<T> r = new R<>();
-        r.setCode(code);
-        r.setData(data);
-        r.setMsg(msg);
-        return r;
     }
 
     public static <T> Boolean isError(R<T> ret) {

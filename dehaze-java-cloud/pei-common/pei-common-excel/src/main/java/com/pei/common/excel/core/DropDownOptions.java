@@ -1,10 +1,10 @@
 package com.pei.common.excel.core;
 
 import cn.hutool.core.util.StrUtil;
+import com.pei.common.core.exception.ServiceException;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import com.pei.common.core.exception.ServiceException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +25,10 @@ import java.util.stream.Collectors;
 @SuppressWarnings("unused")
 public class DropDownOptions {
     /**
+     * 分隔符
+     */
+    private static final String DELIMITER = "_";
+    /**
      * 一级下拉所在列index，从0开始算
      */
     private int index = 0;
@@ -41,10 +45,6 @@ public class DropDownOptions {
      * <p>以每一个一级选项值为Key，每个一级选项对应的二级数据为Value</p>
      */
     private Map<String, List<String>> nextOptions = new HashMap<>();
-    /**
-     * 分隔符
-     */
-    private static final String DELIMITER = "_";
 
     /**
      * 创建只有一级的下拉选

@@ -2,9 +2,9 @@ package com.pei.system.domain.vo;
 
 import com.alibaba.excel.annotation.ExcelIgnoreUnannotated;
 import com.alibaba.excel.annotation.ExcelProperty;
+import com.pei.system.domain.SysDictType;
 import io.github.linpeilie.annotations.AutoMapper;
 import lombok.Data;
-import com.pei.system.domain.SysDictType;
 
 import java.io.Serial;
 import java.io.Serializable;

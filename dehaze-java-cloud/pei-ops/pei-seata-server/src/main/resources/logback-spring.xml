@@ -36,12 +36,12 @@
         </encoder>
     </appender>
 
-    <include resource="logback-common.xml" />
+    <include resource="logback-common.xml"/>
 
-    <include resource="logback-logstash.xml" />
+    <include resource="logback-logstash.xml"/>
 
     <!-- 开启 skywalking 日志收集 -->
-    <include resource="logback-skylog.xml" />
+    <include resource="logback-skylog.xml"/>
 
     <root level="INFO">
         <appender-ref ref="console"/>

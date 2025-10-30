@@ -2,11 +2,6 @@ package com.pei.workflow.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.hutool.core.lang.tree.Tree;
-import com.pei.workflow.common.ConditionalOnEnable;
-import com.pei.workflow.domain.bo.FlowCategoryBo;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.constraints.NotNull;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.validate.AddGroup;
 import com.pei.common.core.validate.EditGroup;
@@ -15,8 +10,13 @@ import com.pei.common.idempotent.annotation.RepeatSubmit;
 import com.pei.common.log.annotation.Log;
 import com.pei.common.log.enums.BusinessType;
 import com.pei.common.web.core.BaseController;
+import com.pei.workflow.common.ConditionalOnEnable;
+import com.pei.workflow.domain.bo.FlowCategoryBo;
 import com.pei.workflow.domain.vo.FlowCategoryVo;
 import com.pei.workflow.service.IFlwCategoryService;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 

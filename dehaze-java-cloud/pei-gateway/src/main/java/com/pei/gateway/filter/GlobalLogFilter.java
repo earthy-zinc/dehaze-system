@@ -2,11 +2,11 @@ package com.pei.gateway.filter;
 
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ObjectUtil;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.json.utils.JsonUtils;
 import com.pei.gateway.config.properties.ApiDecryptProperties;
 import com.pei.gateway.config.properties.CustomGatewayProperties;
 import com.pei.gateway.utils.WebFluxUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -28,12 +28,11 @@ import reactor.core.publisher.Mono;
 @Component
 public class GlobalLogFilter implements GlobalFilter, Ordered {
 
+    private static final String START_TIME = "startTime";
     @Autowired
     private CustomGatewayProperties customGatewayProperties;
     @Autowired
     private ApiDecryptProperties apiDecryptProperties;
-
-    private static final String START_TIME = "startTime";
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {

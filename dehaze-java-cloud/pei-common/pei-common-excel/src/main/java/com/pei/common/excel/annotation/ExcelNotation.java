@@ -7,6 +7,7 @@ import java.lang.annotation.Target;
 
 /**
  * 批注
+ *
  * @author guzhouyanyu
  */
 @Target({ElementType.FIELD})
@@ -17,6 +18,7 @@ public @interface ExcelNotation {
      * col index
      */
     int index() default -1;
+
     /**
      * 批注内容
      */

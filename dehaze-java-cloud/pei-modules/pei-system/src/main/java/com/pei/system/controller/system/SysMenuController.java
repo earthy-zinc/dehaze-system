@@ -4,21 +4,21 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import cn.hutool.core.lang.tree.Tree;
-import lombok.RequiredArgsConstructor;
-import com.pei.common.core.constant.TenantConstants;
 import com.pei.common.core.constant.SystemConstants;
+import com.pei.common.core.constant.TenantConstants;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.utils.StringUtils;
-import com.pei.common.web.core.BaseController;
 import com.pei.common.log.annotation.Log;
 import com.pei.common.log.enums.BusinessType;
 import com.pei.common.satoken.utils.LoginHelper;
+import com.pei.common.web.core.BaseController;
 import com.pei.system.domain.SysMenu;
 import com.pei.system.domain.bo.SysMenuBo;
 import com.pei.system.domain.vo.MenuTreeSelectVo;
 import com.pei.system.domain.vo.RouterVo;
 import com.pei.system.domain.vo.SysMenuVo;
 import com.pei.system.service.ISysMenuService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,8 +52,8 @@ public class SysMenuController extends BaseController {
      * 获取菜单列表
      */
     @SaCheckRole(value = {
-            TenantConstants.SUPER_ADMIN_ROLE_KEY,
-            TenantConstants.TENANT_ADMIN_ROLE_KEY
+        TenantConstants.SUPER_ADMIN_ROLE_KEY,
+        TenantConstants.TENANT_ADMIN_ROLE_KEY
     }, mode = SaMode.OR)
     @SaCheckPermission("system:menu:list")
     @GetMapping("/list")
@@ -68,8 +68,8 @@ public class SysMenuController extends BaseController {
      * @param menuId 菜单ID
      */
     @SaCheckRole(value = {
-            TenantConstants.SUPER_ADMIN_ROLE_KEY,
-            TenantConstants.TENANT_ADMIN_ROLE_KEY
+        TenantConstants.SUPER_ADMIN_ROLE_KEY,
+        TenantConstants.TENANT_ADMIN_ROLE_KEY
     }, mode = SaMode.OR)
     @SaCheckPermission("system:menu:query")
     @GetMapping(value = "/{menuId}")

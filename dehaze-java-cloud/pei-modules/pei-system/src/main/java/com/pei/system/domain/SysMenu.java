@@ -3,12 +3,12 @@ package com.pei.system.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
 import com.pei.common.core.constant.Constants;
 import com.pei.common.core.constant.SystemConstants;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.mybatis.core.domain.BaseEntity;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -125,6 +125,13 @@ public class SysMenu extends BaseEntity {
     }
 
     /**
+     * 是否为菜单内部跳转
+     */
+    public boolean isMenuFrame() {
+        return getParentId() == 0L && SystemConstants.TYPE_MENU.equals(menuType) && isFrame.equals(SystemConstants.NO_FRAME);
+    }
+
+    /**
      * 获取路由地址
      */
     public String getRouterPath() {
@@ -146,6 +153,21 @@ public class SysMenu extends BaseEntity {
     }
 
     /**
+     * 是否为内链组件
+     */
+    public boolean isInnerLink() {
+        return isFrame.equals(SystemConstants.NO_FRAME) && StringUtils.ishttp(path);
+    }
+
+    /**
+     * 内链域名特殊字符替换
+     */
+    public static String innerLinkReplaceEach(String path) {
+        return StringUtils.replaceEach(path, new String[]{Constants.HTTP, Constants.HTTPS, Constants.WWW, ".", ":"},
+            new String[]{"", "", "", "/", "/"});
+    }
+
+    /**
      * 获取组件信息
      */
     public String getComponentInfo() {
@@ -161,31 +183,9 @@ public class SysMenu extends BaseEntity {
     }
 
     /**
-     * 是否为菜单内部跳转
-     */
-    public boolean isMenuFrame() {
-        return getParentId() == 0L && SystemConstants.TYPE_MENU.equals(menuType) && isFrame.equals(SystemConstants.NO_FRAME);
-    }
-
-    /**
-     * 是否为内链组件
-     */
-    public boolean isInnerLink() {
-        return isFrame.equals(SystemConstants.NO_FRAME) && StringUtils.ishttp(path);
-    }
-
-    /**
      * 是否为parent_view组件
      */
     public boolean isParentView() {
         return getParentId() != 0L && SystemConstants.TYPE_DIR.equals(menuType);
-    }
-
-    /**
-     * 内链域名特殊字符替换
-     */
-    public static String innerLinkReplaceEach(String path) {
-        return StringUtils.replaceEach(path, new String[]{Constants.HTTP, Constants.HTTPS, Constants.WWW, ".", ":"},
-            new String[]{"", "", "", "/", "/"});
     }
 }

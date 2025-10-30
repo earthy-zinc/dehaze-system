@@ -1,19 +1,19 @@
 package com.pei.system.controller.system;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import lombok.RequiredArgsConstructor;
-import org.apache.dubbo.config.annotation.DubboReference;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.service.DictService;
-import com.pei.common.web.core.BaseController;
 import com.pei.common.log.annotation.Log;
 import com.pei.common.log.enums.BusinessType;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.common.web.core.BaseController;
 import com.pei.resource.api.RemoteMessageService;
 import com.pei.system.domain.bo.SysNoticeBo;
 import com.pei.system.domain.vo.SysNoticeVo;
 import com.pei.system.service.ISysNoticeService;
+import lombok.RequiredArgsConstructor;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 

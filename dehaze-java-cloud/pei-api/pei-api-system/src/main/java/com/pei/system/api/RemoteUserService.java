@@ -1,11 +1,11 @@
 package com.pei.system.api;
 
-import com.pei.system.api.model.XcxLoginUser;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.exception.user.UserException;
 import com.pei.system.api.domain.bo.RemoteUserBo;
 import com.pei.system.api.domain.vo.RemoteUserVo;
 import com.pei.system.api.model.LoginUser;
+import com.pei.system.api.model.XcxLoginUser;
 
 import java.util.List;
 

@@ -9,7 +9,7 @@
 -- sj_namespace
 CREATE TABLE sj_namespace
 (
-    id          bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     name        varchar(64)  NOT NULL,
     unique_id   varchar(64)  NOT NULL,
     description varchar(256) NOT NULL DEFAULT '',
@@ -29,13 +29,15 @@ COMMENT ON COLUMN sj_namespace.create_dt IS '创建时间';
 COMMENT ON COLUMN sj_namespace.update_dt IS '修改时间';
 COMMENT ON TABLE sj_namespace IS '命名空间';
 
-INSERT INTO sj_namespace VALUES (1, 'Development', 'dev', '', 0, now(), now());
-INSERT INTO sj_namespace VALUES (2, 'Production', 'prod', '', 0, now(), now());
+INSERT INTO sj_namespace
+VALUES (1, 'Development', 'dev', '', 0, now(), now());
+INSERT INTO sj_namespace
+VALUES (2, 'Production', 'prod', '', 0, now(), now());
 
 -- sj_group_config
 CREATE TABLE sj_group_config
 (
-    id                bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id      varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name        varchar(64)  NOT NULL DEFAULT '',
     description       varchar(256) NOT NULL DEFAULT '',
@@ -65,13 +67,15 @@ COMMENT ON COLUMN sj_group_config.create_dt IS '创建时间';
 COMMENT ON COLUMN sj_group_config.update_dt IS '修改时间';
 COMMENT ON TABLE sj_group_config IS '组配置';
 
-INSERT INTO sj_group_config VALUES (1, 'dev', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1,  now(), now());
-INSERT INTO sj_group_config VALUES (2, 'prod', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1,  now(), now());
+INSERT INTO sj_group_config
+VALUES (1, 'dev', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1, now(), now());
+INSERT INTO sj_group_config
+VALUES (2, 'prod', 'ruoyi_group', '', 'SJ_cKqBTPzCsWA3VyuCfFoccmuIEGXjr5KT', 1, 1, 0, 1, 1, now(), now());
 
 -- sj_notify_config
 CREATE TABLE sj_notify_config
 (
-    id                     bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id           varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name             varchar(64)  NOT NULL,
     notify_name            varchar(64)  NOT NULL DEFAULT '',
@@ -108,7 +112,7 @@ COMMENT ON TABLE sj_notify_config IS '通知配置';
 -- sj_notify_recipient
 CREATE TABLE sj_notify_recipient
 (
-    id               bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id     varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     recipient_name   varchar(64)  NOT NULL,
     notify_type      smallint     NOT NULL DEFAULT 0,
@@ -133,7 +137,7 @@ COMMENT ON TABLE sj_notify_recipient IS '告警通知接收人';
 -- sj_retry_dead_letter
 CREATE TABLE sj_retry_dead_letter
 (
-    id            bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id  varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name    varchar(64)  NOT NULL,
     scene_name    varchar(64)  NOT NULL,
@@ -165,7 +169,7 @@ COMMENT ON TABLE sj_retry_dead_letter IS '死信队列表';
 -- sj_retry
 CREATE TABLE sj_retry
 (
-    id              bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id    varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name      varchar(64)  NOT NULL,
     scene_name      varchar(64)  NOT NULL,
@@ -217,7 +221,7 @@ COMMENT ON TABLE sj_retry IS '重试信息表';
 -- sj_retry_task
 CREATE TABLE sj_retry_task
 (
-    id               bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id     varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name       varchar(64)  NOT NULL,
     scene_name       varchar(64)  NOT NULL,
@@ -253,7 +257,7 @@ COMMENT ON TABLE sj_retry_task IS '重试任务表';
 -- sj_retry_task_log_message
 CREATE TABLE sj_retry_task_log_message
 (
-    id            bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id  varchar(64) NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name    varchar(64) NOT NULL,
     retry_id      bigint      NOT NULL,
@@ -281,7 +285,7 @@ COMMENT ON TABLE sj_retry_task_log_message IS '任务调度日志信息记录表
 -- sj_retry_scene_config
 CREATE TABLE sj_retry_scene_config
 (
-    id                  bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id        varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     scene_name          varchar(64)  NOT NULL,
     group_name          varchar(64)  NOT NULL,
@@ -330,7 +334,7 @@ COMMENT ON TABLE sj_retry_scene_config IS '场景配置';
 -- sj_server_node
 CREATE TABLE sj_server_node
 (
-    id           bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name   varchar(64)  NOT NULL,
     host_id      varchar(64)  NOT NULL,
@@ -383,7 +387,7 @@ COMMENT ON TABLE sj_distributed_lock IS '锁定表';
 -- sj_system_user
 CREATE TABLE sj_system_user
 (
-    id        bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     username  varchar(64)  NOT NULL,
     password  varchar(128) NOT NULL,
     role      smallint     NOT NULL DEFAULT 0,
@@ -400,12 +404,13 @@ COMMENT ON COLUMN sj_system_user.update_dt IS '修改时间';
 COMMENT ON TABLE sj_system_user IS '系统用户表';
 
 -- pwd: admin
-INSERT INTO sj_system_user VALUES (1, 'admin', '465c194afb65670f38322df087f0a9bb225cc257e43eb4ac5a0c98ef5b3173ac', 2, now(), now());
+INSERT INTO sj_system_user
+VALUES (1, 'admin', '465c194afb65670f38322df087f0a9bb225cc257e43eb4ac5a0c98ef5b3173ac', 2, now(), now());
 
 -- sj_system_user_permission
 CREATE TABLE sj_system_user_permission
 (
-    id             bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     group_name     varchar(64) NOT NULL,
     namespace_id   varchar(64) NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     system_user_id bigint      NOT NULL,
@@ -426,7 +431,7 @@ COMMENT ON TABLE sj_system_user_permission IS '系统用户权限表';
 -- sj_sequence_alloc
 CREATE TABLE sj_sequence_alloc
 (
-    id           bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id varchar(64) NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name   varchar(64) NOT NULL DEFAULT '',
     max_id       bigint      NOT NULL DEFAULT 1,
@@ -447,7 +452,7 @@ COMMENT ON TABLE sj_sequence_alloc IS '号段模式序号ID分配表';
 -- sj_job
 CREATE TABLE sj_job
 (
-    id               bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id     varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name       varchar(64)  NOT NULL,
     job_name         varchar(64)  NOT NULL,
@@ -511,12 +516,14 @@ COMMENT ON COLUMN sj_job.create_dt IS '创建时间';
 COMMENT ON COLUMN sj_job.update_dt IS '修改时间';
 COMMENT ON TABLE sj_job IS '任务信息';
 
-INSERT INTO sj_job VALUES (1, 'dev', 'ruoyi_group', 'demo-job', null, 1, 1710344035622, 1, 1, 4, 1, 'testJobExecutor', 2, '60', 1, 60, 3, 1, 1, 116, 0, '', 1, '', '', 0, now(), now());
+INSERT INTO sj_job
+VALUES (1, 'dev', 'ruoyi_group', 'demo-job', null, 1, 1710344035622, 1, 1, 4, 1, 'testJobExecutor', 2, '60', 1, 60, 3,
+        1, 1, 116, 0, '', 1, '', '', 0, now(), now());
 
 -- sj_job_log_message
 CREATE TABLE sj_job_log_message
 (
-    id            bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id  varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name    varchar(64)  NOT NULL,
     job_id        bigint       NOT NULL,
@@ -549,7 +556,7 @@ COMMENT ON TABLE sj_job_log_message IS '调度日志';
 -- sj_job_task
 CREATE TABLE sj_job_task
 (
-    id             bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id   varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name     varchar(64)  NOT NULL,
     job_id         bigint       NOT NULL,
@@ -598,7 +605,7 @@ COMMENT ON TABLE sj_job_task IS '任务实例';
 -- sj_job_task_batch
 CREATE TABLE sj_job_task_batch
 (
-    id                      bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id            varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name              varchar(64)  NOT NULL,
     job_id                  bigint       NOT NULL,
@@ -642,7 +649,7 @@ COMMENT ON TABLE sj_job_task_batch IS '任务批次';
 -- sj_job_summary
 CREATE TABLE sj_job_summary
 (
-    id               bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id     varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name       varchar(64)  NOT NULL DEFAULT '',
     business_id      bigint       NOT NULL,
@@ -683,7 +690,7 @@ COMMENT ON TABLE sj_job_summary IS 'DashBoard_Job';
 -- sj_retry_summary
 CREATE TABLE sj_retry_summary
 (
-    id            bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id  varchar(64) NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name    varchar(64) NOT NULL DEFAULT '',
     scene_name    varchar(50) NOT NULL DEFAULT '',
@@ -716,7 +723,7 @@ COMMENT ON TABLE sj_retry_summary IS 'DashBoard_Retry';
 -- sj_workflow
 CREATE TABLE sj_workflow
 (
-    id               bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     workflow_name    varchar(64)  NOT NULL,
     namespace_id     varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name       varchar(64)  NOT NULL,
@@ -766,7 +773,7 @@ COMMENT ON TABLE sj_workflow IS '工作流';
 -- sj_workflow_node
 CREATE TABLE sj_workflow_node
 (
-    id                   bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id         varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     node_name            varchar(64)  NOT NULL,
     group_name           varchar(64)  NOT NULL,
@@ -810,7 +817,7 @@ COMMENT ON TABLE sj_workflow_node IS '工作流节点';
 -- sj_workflow_task_batch
 CREATE TABLE sj_workflow_task_batch
 (
-    id                bigserial PRIMARY KEY,
+    id bigserial PRIMARY KEY,
     namespace_id      varchar(64)  NOT NULL DEFAULT '764d604ec6fc45f68cd92514c40e9e1a',
     group_name        varchar(64)  NOT NULL,
     workflow_id       bigint       NOT NULL,

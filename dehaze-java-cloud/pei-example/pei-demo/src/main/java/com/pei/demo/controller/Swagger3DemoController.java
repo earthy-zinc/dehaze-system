@@ -18,8 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class Swagger3DemoController {
 
     /**
-     * 上传请求
-     * 必须使用 @RequestPart 注解标注为文件
+     * 上传请求 必须使用 @RequestPart 注解标注为文件
      *
      * @param file 文件
      */

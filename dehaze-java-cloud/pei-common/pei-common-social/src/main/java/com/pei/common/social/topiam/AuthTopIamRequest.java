@@ -2,6 +2,7 @@ package com.pei.common.social.topiam;
 
 import cn.hutool.core.lang.Dict;
 import cn.hutool.core.util.StrUtil;
+import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.json.utils.JsonUtils;
 import com.xkcoding.http.support.HttpHeader;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +15,6 @@ import me.zhyd.oauth.model.AuthUser;
 import me.zhyd.oauth.request.AuthDefaultRequest;
 import me.zhyd.oauth.utils.HttpUtils;
 import me.zhyd.oauth.utils.UrlBuilder;
-import com.pei.common.core.utils.SpringUtils;
 
 /**
  * TopIAM 认证请求
@@ -68,22 +68,6 @@ public class AuthTopIamRequest extends AuthDefaultRequest {
             .build();
     }
 
-
-    @Override
-    protected String doGetUserInfo(AuthToken authToken) {
-        return new HttpUtils(config.getHttpConfig()).get(source.userInfo(), null, new HttpHeader()
-            .add("Content-Type", "application/json")
-            .add("Authorization", "Bearer " + authToken.getAccessToken()), false).getBody();
-    }
-
-
-    @Override
-    public String authorize(String state) {
-        return UrlBuilder.fromBaseUrl(super.authorize(state))
-            .queryParam("scope", StrUtil.join("%20", config.getScopes()))
-            .build();
-    }
-
     public static void checkResponse(Dict object) {
         // oauth/token 验证异常
         if (object.containsKey("error")) {
@@ -93,6 +77,20 @@ public class AuthTopIamRequest extends AuthDefaultRequest {
         if (object.containsKey("message")) {
             throw new AuthException(object.getStr("message"));
         }
+    }
+
+    @Override
+    public String authorize(String state) {
+        return UrlBuilder.fromBaseUrl(super.authorize(state))
+            .queryParam("scope", StrUtil.join("%20", config.getScopes()))
+            .build();
+    }
+
+    @Override
+    protected String doGetUserInfo(AuthToken authToken) {
+        return new HttpUtils(config.getHttpConfig()).get(source.userInfo(), null, new HttpHeader()
+            .add("Content-Type", "application/json")
+            .add("Authorization", "Bearer " + authToken.getAccessToken()), false).getBody();
     }
 
 }

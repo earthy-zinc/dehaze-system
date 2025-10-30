@@ -7,8 +7,7 @@ import com.pei.common.core.factory.RegexPatternPoolFactory;
 import java.util.regex.Pattern;
 
 /**
- * 正则字段校验器
- * 主要验证字段非空、是否为满足指定格式等
+ * 正则字段校验器 主要验证字段非空、是否为满足指定格式等
  *
  * @author Feng
  */
@@ -49,17 +48,6 @@ public class RegexValidator extends Validator {
      */
     public static final Pattern STATUS = RegexPatternPoolFactory.STATUS;
 
-
-    /**
-     * 检查输入的账号是否匹配预定义的规则
-     *
-     * @param value 要验证的账号
-     * @return 如果账号符合规则，返回 true；否则，返回 false。
-     */
-    public static boolean isAccount(CharSequence value) {
-        return isMatchRegex(ACCOUNT, value);
-    }
-
     /**
      * 验证输入的账号是否符合规则，如果不符合，则抛出 ValidateException 异常
      *
@@ -77,13 +65,13 @@ public class RegexValidator extends Validator {
     }
 
     /**
-     * 检查输入的状态是否匹配预定义的规则
+     * 检查输入的账号是否匹配预定义的规则
      *
-     * @param value 要验证的状态
-     * @return 如果状态符合规则，返回 true；否则，返回 false。
+     * @param value 要验证的账号
+     * @return 如果账号符合规则，返回 true；否则，返回 false。
      */
-    public static boolean isStatus(CharSequence value) {
-        return isMatchRegex(STATUS, value);
+    public static boolean isAccount(CharSequence value) {
+        return isMatchRegex(ACCOUNT, value);
     }
 
     /**
@@ -100,6 +88,16 @@ public class RegexValidator extends Validator {
             throw new ValidateException(errorMsg);
         }
         return value;
+    }
+
+    /**
+     * 检查输入的状态是否匹配预定义的规则
+     *
+     * @param value 要验证的状态
+     * @return 如果状态符合规则，返回 true；否则，返回 false。
+     */
+    public static boolean isStatus(CharSequence value) {
+        return isMatchRegex(STATUS, value);
     }
 
 }

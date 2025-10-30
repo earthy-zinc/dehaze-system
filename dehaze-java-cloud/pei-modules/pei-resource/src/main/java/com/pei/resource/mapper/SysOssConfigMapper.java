@@ -1,9 +1,9 @@
 package com.pei.resource.mapper;
 
 
-import com.pei.resource.domain.vo.SysOssConfigVo;
 import com.pei.common.mybatis.core.mapper.BaseMapperPlus;
 import com.pei.resource.domain.SysOssConfig;
+import com.pei.resource.domain.vo.SysOssConfigVo;
 
 /**
  * 对象存储配置Mapper接口

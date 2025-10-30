@@ -1,17 +1,20 @@
 package com.pei.common.dict.service.impl;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import org.apache.dubbo.config.annotation.DubboReference;
 import com.pei.common.core.constant.CacheConstants;
 import com.pei.common.core.service.DictService;
 import com.pei.common.core.utils.StreamUtils;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.system.api.RemoteDictService;
 import com.pei.system.api.domain.vo.RemoteDictDataVo;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**

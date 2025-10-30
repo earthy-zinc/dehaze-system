@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.toolkit.PluginUtils;
 import com.baomidou.mybatisplus.extension.plugins.handler.MultiDataPermissionHandler;
 import com.baomidou.mybatisplus.extension.plugins.inner.BaseMultiTableInnerInterceptor;
 import com.baomidou.mybatisplus.extension.plugins.inner.InnerInterceptor;
+import com.pei.common.mybatis.handler.PlusDataPermissionHandler;
 import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
@@ -20,7 +21,6 @@ import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.mapping.SqlCommandType;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
-import com.pei.common.mybatis.handler.PlusDataPermissionHandler;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -101,20 +101,18 @@ public class PlusDataPermissionInterceptor extends BaseMultiTableInnerIntercepto
     }
 
     /**
-     * 处理 SELECT 查询语句中的 WHERE 条件
+     * 处理 DELETE 语句中的 WHERE 条件
      *
-     * @param select SELECT 查询对象
+     * @param delete DELETE 查询对象
      * @param index  查询语句的索引
      * @param sql    查询语句
      * @param obj    WHERE 条件参数
      */
     @Override
-    protected void processSelect(Select select, int index, String sql, Object obj) {
-        if (select instanceof PlainSelect) {
-            this.setWhere((PlainSelect) select, (String) obj);
-        } else if (select instanceof SetOperationList setOperationList) {
-            List<Select> selectBodyList = setOperationList.getSelects();
-            selectBodyList.forEach(s -> this.setWhere((PlainSelect) s, (String) obj));
+    protected void processDelete(Delete delete, int index, String sql, Object obj) {
+        Expression sqlSegment = dataPermissionHandler.getSqlSegment(delete.getWhere(), (String) obj, false);
+        if (null != sqlSegment) {
+            delete.setWhere(sqlSegment);
         }
     }
 
@@ -135,18 +133,20 @@ public class PlusDataPermissionInterceptor extends BaseMultiTableInnerIntercepto
     }
 
     /**
-     * 处理 DELETE 语句中的 WHERE 条件
+     * 处理 SELECT 查询语句中的 WHERE 条件
      *
-     * @param delete DELETE 查询对象
+     * @param select SELECT 查询对象
      * @param index  查询语句的索引
      * @param sql    查询语句
      * @param obj    WHERE 条件参数
      */
     @Override
-    protected void processDelete(Delete delete, int index, String sql, Object obj) {
-        Expression sqlSegment = dataPermissionHandler.getSqlSegment(delete.getWhere(), (String) obj, false);
-        if (null != sqlSegment) {
-            delete.setWhere(sqlSegment);
+    protected void processSelect(Select select, int index, String sql, Object obj) {
+        if (select instanceof PlainSelect) {
+            this.setWhere((PlainSelect) select, (String) obj);
+        } else if (select instanceof SetOperationList setOperationList) {
+            List<Select> selectBodyList = setOperationList.getSelects();
+            selectBodyList.forEach(s -> this.setWhere((PlainSelect) s, (String) obj));
         }
     }
 

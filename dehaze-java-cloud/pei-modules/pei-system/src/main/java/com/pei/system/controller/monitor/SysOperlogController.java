@@ -1,21 +1,21 @@
 package com.pei.system.controller.monitor;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.domain.R;
-import com.pei.common.web.core.BaseController;
 import com.pei.common.excel.utils.ExcelUtil;
 import com.pei.common.log.annotation.Log;
 import com.pei.common.log.enums.BusinessType;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.common.web.core.BaseController;
 import com.pei.system.domain.bo.SysOperLogBo;
 import com.pei.system.domain.vo.SysOperLogVo;
 import com.pei.system.service.ISysOperLogService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 
 /**
@@ -53,6 +53,7 @@ public class SysOperlogController extends BaseController {
 
     /**
      * 批量删除操作日志记录
+     *
      * @param operIds 日志ids
      */
     @Log(title = "操作日志", businessType = BusinessType.DELETE)

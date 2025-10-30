@@ -3,12 +3,9 @@ package com.pei.auth.service.impl;
 import cn.dev33.satoken.secure.BCrypt;
 import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
+import com.pei.auth.domain.vo.LoginVo;
 import com.pei.auth.form.PasswordLoginBody;
 import com.pei.auth.properties.CaptchaProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.dubbo.config.annotation.DubboReference;
-import com.pei.auth.domain.vo.LoginVo;
 import com.pei.auth.service.IAuthStrategy;
 import com.pei.auth.service.SysLoginService;
 import com.pei.common.core.constant.Constants;
@@ -26,6 +23,9 @@ import com.pei.common.tenant.helper.TenantHelper;
 import com.pei.system.api.RemoteUserService;
 import com.pei.system.api.domain.vo.RemoteClientVo;
 import com.pei.system.api.model.LoginUser;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.springframework.stereotype.Service;
 
 /**

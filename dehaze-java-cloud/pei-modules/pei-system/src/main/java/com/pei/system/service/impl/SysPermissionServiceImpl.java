@@ -1,11 +1,11 @@
 package com.pei.system.service.impl;
 
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.TenantConstants;
 import com.pei.common.satoken.utils.LoginHelper;
 import com.pei.system.service.ISysMenuService;
 import com.pei.system.service.ISysPermissionService;
 import com.pei.system.service.ISysRoleService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -26,7 +26,7 @@ public class SysPermissionServiceImpl implements ISysPermissionService {
     /**
      * 获取角色数据权限
      *
-     * @param userId  用户id
+     * @param userId 用户id
      * @return 角色权限信息
      */
     @Override
@@ -44,7 +44,7 @@ public class SysPermissionServiceImpl implements ISysPermissionService {
     /**
      * 获取菜单数据权限
      *
-     * @param userId  用户id
+     * @param userId 用户id
      * @return 菜单权限信息
      */
     @Override

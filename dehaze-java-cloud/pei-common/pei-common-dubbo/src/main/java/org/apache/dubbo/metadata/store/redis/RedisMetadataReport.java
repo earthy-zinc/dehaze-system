@@ -52,14 +52,13 @@ public class RedisMetadataReport extends AbstractMetadataReport {
 
     private static final String REDIS_DATABASE_KEY = "database";
     private static final ErrorTypeAwareLogger logger = LoggerFactory.getErrorTypeAwareLogger(RedisMetadataReport.class);
-
+    private final String root;
+    private final ConcurrentHashMap<String, MappingDataListener> mappingDataListenerMap = new ConcurrentHashMap<>();
     // protected , for test
     protected JedisPool pool;
     private Set<HostAndPort> jedisClusterNodes;
     private int timeout;
     private String password;
-    private final String root;
-    private final ConcurrentHashMap<String, MappingDataListener> mappingDataListenerMap = new ConcurrentHashMap<>();
     private SetParams jedisParams = SetParams.setParams();
 
     public RedisMetadataReport(URL url) {
@@ -122,9 +121,62 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         return this.getMetadata(subscriberMetadataIdentifier);
     }
 
-    @Override
-    public String getServiceDefinition(MetadataIdentifier metadataIdentifier) {
-        return this.getMetadata(metadataIdentifier);
+    private String getMetadata(BaseMetadataIdentifier metadataIdentifier) {
+        if (pool != null) {
+            return getMetadataStandalone(metadataIdentifier);
+        } else {
+            return getMetadataInCluster(metadataIdentifier);
+        }
+    }
+
+    private String getMetadataStandalone(BaseMetadataIdentifier metadataIdentifier) {
+        try (Jedis jedis = pool.getResource()) {
+            return jedis.get(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
+        } catch (Throwable e) {
+            String msg = "Failed to get " + metadataIdentifier + " from redis , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
+    }
+
+    private String getMetadataInCluster(BaseMetadataIdentifier metadataIdentifier) {
+        try (JedisCluster jedisCluster =
+                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
+            return jedisCluster.get(metadataIdentifier.getIdentifierKey() + META_DATA_STORE_TAG);
+        } catch (Throwable e) {
+            String msg = "Failed to get " + metadataIdentifier + " from redis cluster , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
+    }
+
+    private void deleteMetadata(BaseMetadataIdentifier metadataIdentifier) {
+        if (pool != null) {
+            deleteMetadataStandalone(metadataIdentifier);
+        } else {
+            deleteMetadataInCluster(metadataIdentifier);
+        }
+    }
+
+    private void deleteMetadataStandalone(BaseMetadataIdentifier metadataIdentifier) {
+        try (Jedis jedis = pool.getResource()) {
+            jedis.del(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
+        } catch (Throwable e) {
+            String msg = "Failed to delete " + metadataIdentifier + " from redis , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
+    }
+
+    private void deleteMetadataInCluster(BaseMetadataIdentifier metadataIdentifier) {
+        try (JedisCluster jedisCluster =
+                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
+            jedisCluster.del(metadataIdentifier.getIdentifierKey() + META_DATA_STORE_TAG);
+        } catch (Throwable e) {
+            String msg = "Failed to delete " + metadataIdentifier + " from redis cluster , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
     }
 
     private void storeMetadata(BaseMetadataIdentifier metadataIdentifier, String v) {
@@ -132,6 +184,16 @@ public class RedisMetadataReport extends AbstractMetadataReport {
             storeMetadataStandalone(metadataIdentifier, v);
         } else {
             storeMetadataInCluster(metadataIdentifier, v);
+        }
+    }
+
+    private void storeMetadataStandalone(BaseMetadataIdentifier metadataIdentifier, String v) {
+        try (Jedis jedis = pool.getResource()) {
+            jedis.set(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY), v, jedisParams);
+        } catch (Throwable e) {
+            String msg = "Failed to put " + metadataIdentifier + " to redis " + v + ", cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
         }
     }
 
@@ -147,83 +209,49 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         }
     }
 
-    private void storeMetadataStandalone(BaseMetadataIdentifier metadataIdentifier, String v) {
-        try (Jedis jedis = pool.getResource()) {
-            jedis.set(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY), v, jedisParams);
-        } catch (Throwable e) {
-            String msg = "Failed to put " + metadataIdentifier + " to redis " + v + ", cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
+    @Override
+    public String getServiceDefinition(MetadataIdentifier metadataIdentifier) {
+        return this.getMetadata(metadataIdentifier);
     }
 
-    private void deleteMetadata(BaseMetadataIdentifier metadataIdentifier) {
-        if (pool != null) {
-            deleteMetadataStandalone(metadataIdentifier);
-        } else {
-            deleteMetadataInCluster(metadataIdentifier);
-        }
+    @Override
+    public void publishAppMetadata(SubscriberMetadataIdentifier identifier, MetadataInfo metadataInfo) {
+        this.storeMetadata(identifier, metadataInfo.getContent());
     }
 
-    private void deleteMetadataInCluster(BaseMetadataIdentifier metadataIdentifier) {
-        try (JedisCluster jedisCluster =
-                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
-            jedisCluster.del(metadataIdentifier.getIdentifierKey() + META_DATA_STORE_TAG);
-        } catch (Throwable e) {
-            String msg = "Failed to delete " + metadataIdentifier + " from redis cluster , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
+    @Override
+    public void unPublishAppMetadata(SubscriberMetadataIdentifier identifier, MetadataInfo metadataInfo) {
+        this.deleteMetadata(identifier);
     }
 
-    private void deleteMetadataStandalone(BaseMetadataIdentifier metadataIdentifier) {
-        try (Jedis jedis = pool.getResource()) {
-            jedis.del(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
-        } catch (Throwable e) {
-            String msg = "Failed to delete " + metadataIdentifier + " from redis , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
-    }
-
-    private String getMetadata(BaseMetadataIdentifier metadataIdentifier) {
-        if (pool != null) {
-            return getMetadataStandalone(metadataIdentifier);
-        } else {
-            return getMetadataInCluster(metadataIdentifier);
-        }
-    }
-
-    private String getMetadataInCluster(BaseMetadataIdentifier metadataIdentifier) {
-        try (JedisCluster jedisCluster =
-                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
-            return jedisCluster.get(metadataIdentifier.getIdentifierKey() + META_DATA_STORE_TAG);
-        } catch (Throwable e) {
-            String msg = "Failed to get " + metadataIdentifier + " from redis cluster , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
-    }
-
-    private String getMetadataStandalone(BaseMetadataIdentifier metadataIdentifier) {
-        try (Jedis jedis = pool.getResource()) {
-            return jedis.get(metadataIdentifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
-        } catch (Throwable e) {
-            String msg = "Failed to get " + metadataIdentifier + " from redis , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
+    @Override
+    public MetadataInfo getAppMetadata(SubscriberMetadataIdentifier identifier, Map<String, String> instanceMetadata) {
+        String content = this.getMetadata(identifier);
+        return JsonUtils.toJavaObject(content, MetadataInfo.class);
     }
 
     /**
-     * Store class and application names using Redis hashes
-     * key: default 'dubbo:mapping'
-     * field: class (serviceInterface)
+     * get content and use content to complete cas
+     *
+     * @param serviceKey class
+     * @param group      {@link ServiceNameMapping#DEFAULT_MAPPING_GROUP}
+     */
+    @Override
+    public ConfigItem getConfigItem(String serviceKey, String group) {
+        String key = buildMappingKey(group);
+        String content = getMappingData(key, serviceKey);
+
+        return new ConfigItem(content, content);
+    }
+
+    /**
+     * Store class and application names using Redis hashes key: default 'dubbo:mapping' field: class (serviceInterface)
      * value: application_names
-     * @param serviceInterface field(class)
-     * @param defaultMappingGroup  {@link ServiceNameMapping#DEFAULT_MAPPING_GROUP}
-     * @param newConfigContent new application_names
-     * @param ticket previous application_names
+     *
+     * @param serviceInterface    field(class)
+     * @param defaultMappingGroup {@link ServiceNameMapping#DEFAULT_MAPPING_GROUP}
+     * @param newConfigContent    new application_names
+     * @param ticket              previous application_names
      * @return
      */
     @Override
@@ -242,6 +270,92 @@ public class RedisMetadataReport extends AbstractMetadataReport {
         }
     }
 
+    /**
+     * remove listener. If have no listener,thread will dead
+     */
+    @Override
+    public void removeServiceAppMappingListener(String serviceKey, MappingListener listener) {
+        MappingDataListener mappingDataListener = mappingDataListenerMap.get(buildPubSubKey());
+        if (null != mappingDataListener) {
+            NotifySub notifySub = mappingDataListener.getNotifySub();
+            notifySub.removeListener(serviceKey, listener);
+            if (notifySub.isEmpty()) {
+                mappingDataListener.shutdown();
+            }
+        }
+    }
+
+    /**
+     * build pub/sub key
+     */
+    private String buildPubSubKey() {
+        return buildMappingKey(DEFAULT_MAPPING_GROUP) + GROUP_CHAR_SEPARATOR + QUEUES_KEY;
+    }
+
+    /**
+     * Start a thread and subscribe to {@link this#buildPubSubKey()}. Notify {@link MappingListener} if there is a
+     * change in the 'application_names' message.
+     */
+    @Override
+    public Set<String> getServiceAppMapping(String serviceKey, MappingListener listener, URL url) {
+        MappingDataListener mappingDataListener =
+            ConcurrentHashMapUtils.computeIfAbsent(mappingDataListenerMap, buildPubSubKey(), k -> {
+                MappingDataListener dataListener = new MappingDataListener(buildPubSubKey());
+                dataListener.start();
+                return dataListener;
+            });
+        mappingDataListener.getNotifySub().addListener(serviceKey, listener);
+        return this.getServiceAppMapping(serviceKey, url);
+    }
+
+    @Override
+    public Set<String> getServiceAppMapping(String serviceKey, URL url) {
+        String key = buildMappingKey(DEFAULT_MAPPING_GROUP);
+        return getAppNames(getMappingData(key, serviceKey));
+    }
+
+    /**
+     * build mapping key
+     *
+     * @param defaultMappingGroup {@link ServiceNameMapping#DEFAULT_MAPPING_GROUP}
+     * @return
+     */
+    private String buildMappingKey(String defaultMappingGroup) {
+        return this.root + GROUP_CHAR_SEPARATOR + defaultMappingGroup;
+    }
+
+    /**
+     * get current application_names
+     */
+    private String getMappingData(String key, String field) {
+        if (pool != null) {
+            return getMappingDataStandalone(key, field);
+        } else {
+            return getMappingDataInCluster(key, field);
+        }
+    }
+
+    private String getMappingDataStandalone(String key, String field) {
+        try (Jedis jedis = pool.getResource()) {
+            return jedis.hget(key, field);
+        } catch (Throwable e) {
+            String msg = "Failed to get " + key + ":" + field + " from redis , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
+    }
+
+    private String getMappingDataInCluster(String key, String field) {
+        try (JedisCluster jedisCluster =
+                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
+            return jedisCluster.hget(key, field);
+        } catch (Throwable e) {
+            String msg = "Failed to get " + key + ":" + field + " from redis cluster , cause: " + e.getMessage();
+            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
+            throw new RpcException(msg, e);
+        }
+    }
+
     private boolean storeMapping(String key, String field, String value, String ticket) {
         if (pool != null) {
             return storeMappingStandalone(key, field, value, ticket);
@@ -251,8 +365,7 @@ public class RedisMetadataReport extends AbstractMetadataReport {
     }
 
     /**
-     * use 'watch' to implement cas.
-     * Find information about slot distribution by key.
+     * use 'watch' to implement cas. Find information about slot distribution by key.
      */
     private boolean storeMappingInCluster(String key, String field, String value, String ticket) {
         try (JedisCluster jedisCluster =
@@ -281,8 +394,7 @@ public class RedisMetadataReport extends AbstractMetadataReport {
     }
 
     /**
-     * use 'watch' to implement cas.
-     * Find information about slot distribution by key.
+     * use 'watch' to implement cas. Find information about slot distribution by key.
      */
     private boolean storeMappingStandalone(String key, String field, String value, String ticket) {
         try (Jedis jedis = pool.getResource()) {
@@ -304,120 +416,6 @@ public class RedisMetadataReport extends AbstractMetadataReport {
             throw new RpcException(msg, e);
         }
         return false;
-    }
-
-    /**
-     * build mapping key
-     * @param defaultMappingGroup {@link ServiceNameMapping#DEFAULT_MAPPING_GROUP}
-     * @return
-     */
-    private String buildMappingKey(String defaultMappingGroup) {
-        return this.root + GROUP_CHAR_SEPARATOR + defaultMappingGroup;
-    }
-
-    /**
-     * build pub/sub key
-     */
-    private String buildPubSubKey() {
-        return buildMappingKey(DEFAULT_MAPPING_GROUP) + GROUP_CHAR_SEPARATOR + QUEUES_KEY;
-    }
-
-    /**
-     * get content and use content to complete cas
-     * @param serviceKey class
-     * @param group {@link ServiceNameMapping#DEFAULT_MAPPING_GROUP}
-     */
-    @Override
-    public ConfigItem getConfigItem(String serviceKey, String group) {
-        String key = buildMappingKey(group);
-        String content = getMappingData(key, serviceKey);
-
-        return new ConfigItem(content, content);
-    }
-
-    /**
-     * get current application_names
-     */
-    private String getMappingData(String key, String field) {
-        if (pool != null) {
-            return getMappingDataStandalone(key, field);
-        } else {
-            return getMappingDataInCluster(key, field);
-        }
-    }
-
-    private String getMappingDataInCluster(String key, String field) {
-        try (JedisCluster jedisCluster =
-                 new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig<>())) {
-            return jedisCluster.hget(key, field);
-        } catch (Throwable e) {
-            String msg = "Failed to get " + key + ":" + field + " from redis cluster , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
-    }
-
-    private String getMappingDataStandalone(String key, String field) {
-        try (Jedis jedis = pool.getResource()) {
-            return jedis.hget(key, field);
-        } catch (Throwable e) {
-            String msg = "Failed to get " + key + ":" + field + " from redis , cause: " + e.getMessage();
-            logger.error(TRANSPORT_FAILED_RESPONSE, "", "", msg, e);
-            throw new RpcException(msg, e);
-        }
-    }
-
-    /**
-     * remove listener. If have no listener,thread will dead
-     */
-    @Override
-    public void removeServiceAppMappingListener(String serviceKey, MappingListener listener) {
-        MappingDataListener mappingDataListener = mappingDataListenerMap.get(buildPubSubKey());
-        if (null != mappingDataListener) {
-            NotifySub notifySub = mappingDataListener.getNotifySub();
-            notifySub.removeListener(serviceKey, listener);
-            if (notifySub.isEmpty()) {
-                mappingDataListener.shutdown();
-            }
-        }
-    }
-
-    /**
-     * Start a thread and subscribe to {@link this#buildPubSubKey()}.
-     * Notify {@link MappingListener} if there is a change in the 'application_names' message.
-     */
-    @Override
-    public Set<String> getServiceAppMapping(String serviceKey, MappingListener listener, URL url) {
-        MappingDataListener mappingDataListener =
-            ConcurrentHashMapUtils.computeIfAbsent(mappingDataListenerMap, buildPubSubKey(), k -> {
-                MappingDataListener dataListener = new MappingDataListener(buildPubSubKey());
-                dataListener.start();
-                return dataListener;
-            });
-        mappingDataListener.getNotifySub().addListener(serviceKey, listener);
-        return this.getServiceAppMapping(serviceKey, url);
-    }
-
-    @Override
-    public Set<String> getServiceAppMapping(String serviceKey, URL url) {
-        String key = buildMappingKey(DEFAULT_MAPPING_GROUP);
-        return getAppNames(getMappingData(key, serviceKey));
-    }
-
-    @Override
-    public MetadataInfo getAppMetadata(SubscriberMetadataIdentifier identifier, Map<String, String> instanceMetadata) {
-        String content = this.getMetadata(identifier);
-        return JsonUtils.toJavaObject(content, MetadataInfo.class);
-    }
-
-    @Override
-    public void publishAppMetadata(SubscriberMetadataIdentifier identifier, MetadataInfo metadataInfo) {
-        this.storeMetadata(identifier, metadataInfo.getContent());
-    }
-
-    @Override
-    public void unPublishAppMetadata(SubscriberMetadataIdentifier identifier, MetadataInfo metadataInfo) {
-        this.deleteMetadata(identifier);
     }
 
     // for test
@@ -479,11 +477,10 @@ public class RedisMetadataReport extends AbstractMetadataReport {
      */
     class MappingDataListener extends Thread {
 
-        private String path;
-
         private final NotifySub notifySub = new NotifySub();
         // for test
         protected volatile boolean running = true;
+        private String path;
 
         public MappingDataListener(String path) {
             this.path = path;

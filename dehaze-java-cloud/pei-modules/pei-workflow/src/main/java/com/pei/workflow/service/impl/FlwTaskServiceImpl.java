@@ -22,6 +22,7 @@ import com.pei.common.mybatis.core.page.TableDataInfo;
 import com.pei.common.satoken.utils.LoginHelper;
 import com.pei.system.api.RemoteUserService;
 import com.pei.system.api.domain.vo.RemoteUserVo;
+import com.pei.workflow.api.domain.RemoteStartProcessReturn;
 import com.pei.workflow.common.ConditionalOnEnable;
 import com.pei.workflow.common.constant.FlowConstant;
 import com.pei.workflow.common.enums.TaskAssigneeType;
@@ -51,7 +52,6 @@ import org.dromara.warm.flow.orm.mapper.FlowHisTaskMapper;
 import org.dromara.warm.flow.orm.mapper.FlowInstanceMapper;
 import org.dromara.warm.flow.orm.mapper.FlowNodeMapper;
 import org.dromara.warm.flow.orm.mapper.FlowTaskMapper;
-import com.pei.workflow.api.domain.RemoteStartProcessReturn;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -194,29 +194,6 @@ public class FlwTaskServiceImpl implements IFlwTaskService {
     }
 
     /**
-     * 设置下一环节处理人
-     *
-     * @param instanceId 实例ID
-     */
-    private void setNextHandler(Long instanceId) {
-        Instance inst = insService.getById(instanceId);
-        List<FlowTask> flowTaskList = selectByInstId(instanceId);
-        Map<String, Object> variableMap = inst.getVariableMap();
-        for (FlowTask task : flowTaskList) {
-            if (variableMap != null && variableMap.containsKey(task.getNodeCode())) {
-                String userIds = variableMap.get(task.getNodeCode()).toString();
-                // 批量删除现有任务的办理人记录
-                flwCommonService.getFlowUserService().deleteByTaskIds(List.of(task.getId()));
-                // 批量新增任务办理人记录
-                Set<User> users = flwCommonService.buildFlowUser(List.of(userIds.split(StringUtils.SEPARATOR)), task.getId());
-                flwCommonService.getFlowUserService().saveBatch(new ArrayList<>(users));
-                variableMap.remove(task.getNodeCode());
-            }
-        }
-        taskService.mergeVariable(inst, variableMap);
-    }
-
-    /**
      * 设置弹窗处理人
      *
      * @param assigneeMap  处理人
@@ -286,6 +263,29 @@ public class FlwTaskServiceImpl implements IFlwTaskService {
             return;
         }
         flwCommonService.getFlowUserService().saveBatch(userList);
+    }
+
+    /**
+     * 设置下一环节处理人
+     *
+     * @param instanceId 实例ID
+     */
+    private void setNextHandler(Long instanceId) {
+        Instance inst = insService.getById(instanceId);
+        List<FlowTask> flowTaskList = selectByInstId(instanceId);
+        Map<String, Object> variableMap = inst.getVariableMap();
+        for (FlowTask task : flowTaskList) {
+            if (variableMap != null && variableMap.containsKey(task.getNodeCode())) {
+                String userIds = variableMap.get(task.getNodeCode()).toString();
+                // 批量删除现有任务的办理人记录
+                flwCommonService.getFlowUserService().deleteByTaskIds(List.of(task.getId()));
+                // 批量新增任务办理人记录
+                Set<User> users = flwCommonService.buildFlowUser(List.of(userIds.split(StringUtils.SEPARATOR)), task.getId());
+                flwCommonService.getFlowUserService().saveBatch(new ArrayList<>(users));
+                variableMap.remove(task.getNodeCode());
+            }
+        }
+        taskService.mergeVariable(inst, variableMap);
     }
 
     /**
@@ -374,23 +374,6 @@ public class FlwTaskServiceImpl implements IFlwTaskService {
         return TableDataInfo.build(page);
     }
 
-    private Page<FlowTaskVo> getFlowTaskVoPage(PageQuery pageQuery, QueryWrapper<FlowTaskBo> queryWrapper) {
-        Page<FlowTaskVo> page = flwTaskMapper.getListRunTask(pageQuery.build(), queryWrapper);
-        List<FlowTaskVo> records = page.getRecords();
-        if (CollUtil.isNotEmpty(records)) {
-            List<Long> taskIds = StreamUtils.toList(records, FlowTaskVo::getId);
-            Map<Long, List<RemoteUserVo>> listMap = currentTaskAllUser(taskIds);
-            records.forEach(t -> {
-                List<RemoteUserVo> userList = listMap.getOrDefault(t.getId(), Collections.emptyList());
-                if (CollUtil.isNotEmpty(userList)) {
-                    t.setAssigneeIds(StreamUtils.join(userList, e -> String.valueOf(e.getUserId())));
-                    t.setAssigneeNames(StreamUtils.join(userList, RemoteUserVo::getNickName));
-                }
-            });
-        }
-        return page;
-    }
-
     /**
      * 查询已办任务
      *
@@ -418,18 +401,41 @@ public class FlwTaskServiceImpl implements IFlwTaskService {
         return TableDataInfo.build(page);
     }
 
-    private QueryWrapper<FlowTaskBo> buildQueryWrapper(FlowTaskBo flowTaskBo) {
-        QueryWrapper<FlowTaskBo> wrapper = Wrappers.query();
-        wrapper.like(StringUtils.isNotBlank(flowTaskBo.getNodeName()), "t.node_name", flowTaskBo.getNodeName());
-        wrapper.like(StringUtils.isNotBlank(flowTaskBo.getFlowName()), "t.flow_name", flowTaskBo.getFlowName());
-        wrapper.like(StringUtils.isNotBlank(flowTaskBo.getFlowCode()), "t.flow_code", flowTaskBo.getFlowCode());
-        wrapper.in(CollUtil.isNotEmpty(flowTaskBo.getCreateByIds()), "t.create_by", flowTaskBo.getCreateByIds());
-        if (StringUtils.isNotBlank(flowTaskBo.getCategory())) {
-            List<Long> categoryIds = flwCategoryMapper.selectCategoryIdsByParentId(Convert.toLong(flowTaskBo.getCategory()));
-            wrapper.in("t.category", StreamUtils.toList(categoryIds, Convert::toStr));
+    /**
+     * 修改任务办理人（此方法将会批量修改所有任务的办理人）
+     *
+     * @param taskIdList 任务id
+     * @param userId     用户id
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateAssignee(List<Long> taskIdList, String userId) {
+        if (CollUtil.isEmpty(taskIdList)) {
+            return false;
         }
-        wrapper.orderByDesc("t.create_time");
-        return wrapper;
+        try {
+            List<FlowTask> flowTasks = this.selectByIdList(taskIdList);
+            // 批量删除现有任务的办理人记录
+            if (CollUtil.isNotEmpty(flowTasks)) {
+                flwCommonService.getFlowUserService().deleteByTaskIds(StreamUtils.toList(flowTasks, FlowTask::getId));
+                List<User> userList = flowTasks.stream()
+                    .map(flowTask -> {
+                        FlowUser flowUser = new FlowUser();
+                        flowUser.setType(TaskAssigneeType.APPROVER.getCode());
+                        flowUser.setProcessedBy(userId);
+                        flowUser.setAssociated(flowTask.getId());
+                        return flowUser;
+                    })
+                    .collect(Collectors.toList());
+                if (CollUtil.isNotEmpty(userList)) {
+                    flwCommonService.getFlowUserService().saveBatch(userList);
+                }
+            }
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+            throw new ServiceException(e.getMessage());
+        }
+        return true;
     }
 
     /**
@@ -724,43 +730,6 @@ public class FlwTaskServiceImpl implements IFlwTaskService {
     }
 
     /**
-     * 修改任务办理人（此方法将会批量修改所有任务的办理人）
-     *
-     * @param taskIdList 任务id
-     * @param userId     用户id
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public boolean updateAssignee(List<Long> taskIdList, String userId) {
-        if (CollUtil.isEmpty(taskIdList)) {
-            return false;
-        }
-        try {
-            List<FlowTask> flowTasks = this.selectByIdList(taskIdList);
-            // 批量删除现有任务的办理人记录
-            if (CollUtil.isNotEmpty(flowTasks)) {
-                flwCommonService.getFlowUserService().deleteByTaskIds(StreamUtils.toList(flowTasks, FlowTask::getId));
-                List<User> userList = flowTasks.stream()
-                    .map(flowTask -> {
-                        FlowUser flowUser = new FlowUser();
-                        flowUser.setType(TaskAssigneeType.APPROVER.getCode());
-                        flowUser.setProcessedBy(userId);
-                        flowUser.setAssociated(flowTask.getId());
-                        return flowUser;
-                    })
-                    .collect(Collectors.toList());
-                if (CollUtil.isNotEmpty(userList)) {
-                    flwCommonService.getFlowUserService().saveBatch(userList);
-                }
-            }
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            throw new ServiceException(e.getMessage());
-        }
-        return true;
-    }
-
-    /**
      * 获取任务所有办理人
      *
      * @param taskIdList 任务id
@@ -807,6 +776,37 @@ public class FlwTaskServiceImpl implements IFlwTaskService {
         return flowNodeMapper.selectOne(new LambdaQueryWrapper<FlowNode>()
             .eq(FlowNode::getNodeCode, nodeCode)
             .eq(FlowNode::getDefinitionId, definitionId));
+    }
+
+    private QueryWrapper<FlowTaskBo> buildQueryWrapper(FlowTaskBo flowTaskBo) {
+        QueryWrapper<FlowTaskBo> wrapper = Wrappers.query();
+        wrapper.like(StringUtils.isNotBlank(flowTaskBo.getNodeName()), "t.node_name", flowTaskBo.getNodeName());
+        wrapper.like(StringUtils.isNotBlank(flowTaskBo.getFlowName()), "t.flow_name", flowTaskBo.getFlowName());
+        wrapper.like(StringUtils.isNotBlank(flowTaskBo.getFlowCode()), "t.flow_code", flowTaskBo.getFlowCode());
+        wrapper.in(CollUtil.isNotEmpty(flowTaskBo.getCreateByIds()), "t.create_by", flowTaskBo.getCreateByIds());
+        if (StringUtils.isNotBlank(flowTaskBo.getCategory())) {
+            List<Long> categoryIds = flwCategoryMapper.selectCategoryIdsByParentId(Convert.toLong(flowTaskBo.getCategory()));
+            wrapper.in("t.category", StreamUtils.toList(categoryIds, Convert::toStr));
+        }
+        wrapper.orderByDesc("t.create_time");
+        return wrapper;
+    }
+
+    private Page<FlowTaskVo> getFlowTaskVoPage(PageQuery pageQuery, QueryWrapper<FlowTaskBo> queryWrapper) {
+        Page<FlowTaskVo> page = flwTaskMapper.getListRunTask(pageQuery.build(), queryWrapper);
+        List<FlowTaskVo> records = page.getRecords();
+        if (CollUtil.isNotEmpty(records)) {
+            List<Long> taskIds = StreamUtils.toList(records, FlowTaskVo::getId);
+            Map<Long, List<RemoteUserVo>> listMap = currentTaskAllUser(taskIds);
+            records.forEach(t -> {
+                List<RemoteUserVo> userList = listMap.getOrDefault(t.getId(), Collections.emptyList());
+                if (CollUtil.isNotEmpty(userList)) {
+                    t.setAssigneeIds(StreamUtils.join(userList, e -> String.valueOf(e.getUserId())));
+                    t.setAssigneeNames(StreamUtils.join(userList, RemoteUserVo::getNickName));
+                }
+            });
+        }
+        return page;
     }
 
 }

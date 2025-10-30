@@ -7,15 +7,6 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pei.workflow.common.ConditionalOnEnable;
-import com.pei.workflow.domain.TestLeave;
-import com.pei.workflow.domain.bo.TestLeaveBo;
-import com.pei.workflow.domain.vo.TestLeaveVo;
-import com.pei.workflow.mapper.TestLeaveMapper;
-import com.pei.workflow.service.ITestLeaveService;
-import com.pei.workflow.service.WorkflowService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.enums.BusinessStatusEnum;
 import com.pei.common.core.utils.MapstructUtils;
 import com.pei.common.core.utils.StringUtils;
@@ -26,6 +17,15 @@ import com.pei.common.tenant.helper.TenantHelper;
 import com.pei.workflow.api.event.ProcessCreateTaskEvent;
 import com.pei.workflow.api.event.ProcessDeleteEvent;
 import com.pei.workflow.api.event.ProcessEvent;
+import com.pei.workflow.common.ConditionalOnEnable;
+import com.pei.workflow.domain.TestLeave;
+import com.pei.workflow.domain.bo.TestLeaveBo;
+import com.pei.workflow.domain.vo.TestLeaveVo;
+import com.pei.workflow.mapper.TestLeaveMapper;
+import com.pei.workflow.service.ITestLeaveService;
+import com.pei.workflow.service.WorkflowService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,15 +88,6 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
         return baseMapper.selectVoList(lqw);
     }
 
-    private LambdaQueryWrapper<TestLeave> buildQueryWrapper(TestLeaveBo bo) {
-        LambdaQueryWrapper<TestLeave> lqw = Wrappers.lambdaQuery();
-        lqw.eq(StringUtils.isNotBlank(bo.getLeaveType()), TestLeave::getLeaveType, bo.getLeaveType());
-        lqw.ge(bo.getStartLeaveDays() != null, TestLeave::getLeaveDays, bo.getStartLeaveDays());
-        lqw.le(bo.getEndLeaveDays() != null, TestLeave::getLeaveDays, bo.getEndLeaveDays());
-        lqw.orderByDesc(BaseEntity::getCreateTime);
-        return lqw;
-    }
-
     /**
      * 新增请假
      */
@@ -136,10 +127,17 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
         return baseMapper.deleteByIds(ids) > 0;
     }
 
+    private LambdaQueryWrapper<TestLeave> buildQueryWrapper(TestLeaveBo bo) {
+        LambdaQueryWrapper<TestLeave> lqw = Wrappers.lambdaQuery();
+        lqw.eq(StringUtils.isNotBlank(bo.getLeaveType()), TestLeave::getLeaveType, bo.getLeaveType());
+        lqw.ge(bo.getStartLeaveDays() != null, TestLeave::getLeaveDays, bo.getStartLeaveDays());
+        lqw.le(bo.getEndLeaveDays() != null, TestLeave::getLeaveDays, bo.getEndLeaveDays());
+        lqw.orderByDesc(BaseEntity::getCreateTime);
+        return lqw;
+    }
+
     /**
-     * 总体流程监听(例如: 草稿，撤销，退回，作废，终止，已完成，单任务完成等)
-     * 正常使用只需#processEvent.flowCode=='leave1'
-     * 示例为了方便则使用startsWith匹配了全部示例key
+     * 总体流程监听(例如: 草稿，撤销，退回，作废，终止，已完成，单任务完成等) 正常使用只需#processEvent.flowCode=='leave1' 示例为了方便则使用startsWith匹配了全部示例key
      *
      * @param processEvent 参数
      */
@@ -167,12 +165,8 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
     }
 
     /**
-     * 执行任务创建监听
-     * 示例：也可通过  @EventListener(condition = "#processCreateTaskEvent.flowCode=='leave1'")进行判断
-     * 在方法中判断流程节点key
-     * if ("xxx".equals(processCreateTaskEvent.getNodeCode())) {
-     * //执行业务逻辑
-     * }
+     * 执行任务创建监听 示例：也可通过  @EventListener(condition = "#processCreateTaskEvent.flowCode=='leave1'")进行判断 在方法中判断流程节点key if
+     * ("xxx".equals(processCreateTaskEvent.getNodeCode())) { //执行业务逻辑 }
      *
      * @param processCreateTaskEvent 参数
      */
@@ -187,9 +181,7 @@ public class TestLeaveServiceImpl implements ITestLeaveService {
     }
 
     /**
-     * 监听删除流程事件
-     * 正常使用只需#processDeleteEvent.flowCode=='leave1'
-     * 示例为了方便则使用startsWith匹配了全部示例key
+     * 监听删除流程事件 正常使用只需#processDeleteEvent.flowCode=='leave1' 示例为了方便则使用startsWith匹配了全部示例key
      *
      * @param processDeleteEvent 参数
      */

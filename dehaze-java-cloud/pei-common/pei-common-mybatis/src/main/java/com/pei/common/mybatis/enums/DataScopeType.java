@@ -1,21 +1,16 @@
 package com.pei.common.mybatis.enums;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.mybatis.helper.DataPermissionHelper;
 import com.pei.system.api.model.LoginUser;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 /**
  * 数据权限类型枚举
  * <p>
- * 支持使用 SpEL 模板表达式定义 SQL 查询条件
- * 内置数据：
- * - {@code user}: 当前登录用户信息，参考 {@link LoginUser}
- * 内置服务：
- * - {@code sdss}: 系统数据权限服务，参考 SysDataScopeService
- * 如需扩展数据，可以通过 {@link DataPermissionHelper} 进行操作
- * 如需扩展服务，可以通过 SysDataScopeService 自行编写
+ * 支持使用 SpEL 模板表达式定义 SQL 查询条件 内置数据： - {@code user}: 当前登录用户信息，参考 {@link LoginUser} 内置服务： - {@code sdss}: 系统数据权限服务，参考
+ * SysDataScopeService 如需扩展数据，可以通过 {@link DataPermissionHelper} 进行操作 如需扩展服务，可以通过 SysDataScopeService 自行编写
  * </p>
  *
  * @author Lion Li

@@ -1,14 +1,14 @@
 package com.pei.demo.domain.bo;
 
+import com.pei.common.core.validate.AddGroup;
+import com.pei.common.core.validate.EditGroup;
+import com.pei.common.mybatis.core.domain.BaseEntity;
+import com.pei.demo.domain.TestDemo;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.core.validate.AddGroup;
-import com.pei.common.core.validate.EditGroup;
-import com.pei.common.mybatis.core.domain.BaseEntity;
-import com.pei.demo.domain.TestDemo;
 
 /**
  * 测试单表业务对象 test_demo

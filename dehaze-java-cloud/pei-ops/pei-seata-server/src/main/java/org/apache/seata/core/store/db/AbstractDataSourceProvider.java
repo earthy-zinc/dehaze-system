@@ -46,107 +46,22 @@ import static org.apache.seata.common.DefaultValues.DEFAULT_DB_MIN_CONN;
  */
 public abstract class AbstractDataSourceProvider implements DataSourceProvider, Initialize {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractDataSourceProvider.class);
-
-    private DataSource dataSource;
-
     /**
      * The constant CONFIG.
      */
     protected static final Configuration CONFIG = ConfigurationFactory.getInstance();
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractDataSourceProvider.class);
     private final static String MYSQL_DRIVER_CLASS_NAME = "com.mysql.jdbc.Driver";
-
     private final static String MYSQL8_DRIVER_CLASS_NAME = "com.mysql.cj.jdbc.Driver";
-
     private final static String MYSQL_DRIVER_FILE_PREFIX = "mysql-connector-java-";
-
     private final static Map<String, ClassLoader> MYSQL_DRIVER_LOADERS;
-
     private static final long DEFAULT_DB_MAX_WAIT = 5000;
 
     static {
         MYSQL_DRIVER_LOADERS = createMysqlDriverClassLoaders();
     }
 
-    @Override
-    public void init() {
-        this.dataSource = generate();
-    }
-
-    @Override
-    public DataSource provide() {
-        return this.dataSource;
-    }
-
-    public DataSource generate() {
-        validate();
-        return doGenerate();
-    }
-
-    public void validate() {
-        //valid driver class name
-        String driverClassName = getDriverClassName();
-//        ClassLoader loader = getDriverClassLoader();
-//        if (null == loader) {
-//            throw new StoreException("class loader set error, you should not use the Bootstrap classloader");
-//        }
-        try {
-//            loader.loadClass(driverClassName);
-            Class.forName(driverClassName);
-        } catch (ClassNotFoundException exx) {
-            String driverClassPath = null;
-            String folderPath = System.getProperty("loader.path");
-            if (null != folderPath) {
-                driverClassPath = folderPath + "/jdbc/";
-            }
-            throw new StoreException(String.format(
-                "The driver {%s} cannot be found in the path %s. Please ensure that the appropriate database driver dependencies are included in the classpath.", driverClassName, driverClassPath));
-        }
-
-    }
-    /**
-     * generate the datasource
-     * @return datasource
-     */
-    public abstract DataSource doGenerate();
-
-    /**
-     * Get db type db type.
-     *
-     * @return the db type
-     */
-    protected DBType getDBType() {
-        return DBType.valueof(CONFIG.getConfig(ConfigurationKeys.STORE_DB_TYPE));
-    }
-
-    /**
-     * get db driver class name
-     *
-     * @return the db driver class name
-     */
-    protected String getDriverClassName() {
-        String driverClassName = CONFIG.getConfig(ConfigurationKeys.STORE_DB_DRIVER_CLASS_NAME);
-        if (StringUtils.isBlank(driverClassName)) {
-            throw new StoreException(
-                String.format("the {%s} can't be empty", ConfigurationKeys.STORE_DB_DRIVER_CLASS_NAME));
-        }
-        return driverClassName;
-    }
-
-    /**
-     * get db max wait
-     *
-     * @return the db max wait
-     */
-    protected Long getMaxWait() {
-        Long maxWait = CONFIG.getLong(ConfigurationKeys.STORE_DB_MAX_WAIT, DEFAULT_DB_MAX_WAIT);
-        return maxWait;
-    }
-
-    protected ClassLoader getDriverClassLoader() {
-        return MYSQL_DRIVER_LOADERS.getOrDefault(getDriverClassName(), ClassLoader.getSystemClassLoader());
-    }
+    private DataSource dataSource;
 
     private static Map<String, ClassLoader> createMysqlDriverClassLoaders() {
         Map<String, ClassLoader> loaders = new HashMap<>();
@@ -189,6 +104,87 @@ public abstract class AbstractDataSourceProvider implements DataSourceProvider, 
                 }
             });
         return loaders;
+    }
+
+    @Override
+    public void init() {
+        this.dataSource = generate();
+    }
+
+    public DataSource generate() {
+        validate();
+        return doGenerate();
+    }
+
+    public void validate() {
+        //valid driver class name
+        String driverClassName = getDriverClassName();
+//        ClassLoader loader = getDriverClassLoader();
+//        if (null == loader) {
+//            throw new StoreException("class loader set error, you should not use the Bootstrap classloader");
+//        }
+        try {
+//            loader.loadClass(driverClassName);
+            Class.forName(driverClassName);
+        } catch (ClassNotFoundException exx) {
+            String driverClassPath = null;
+            String folderPath = System.getProperty("loader.path");
+            if (null != folderPath) {
+                driverClassPath = folderPath + "/jdbc/";
+            }
+            throw new StoreException(String.format(
+                "The driver {%s} cannot be found in the path %s. Please ensure that the appropriate database driver dependencies are included in the classpath.", driverClassName, driverClassPath));
+        }
+
+    }
+
+    /**
+     * generate the datasource
+     *
+     * @return datasource
+     */
+    public abstract DataSource doGenerate();
+
+    /**
+     * get db driver class name
+     *
+     * @return the db driver class name
+     */
+    protected String getDriverClassName() {
+        String driverClassName = CONFIG.getConfig(ConfigurationKeys.STORE_DB_DRIVER_CLASS_NAME);
+        if (StringUtils.isBlank(driverClassName)) {
+            throw new StoreException(
+                String.format("the {%s} can't be empty", ConfigurationKeys.STORE_DB_DRIVER_CLASS_NAME));
+        }
+        return driverClassName;
+    }
+
+    @Override
+    public DataSource provide() {
+        return this.dataSource;
+    }
+
+    /**
+     * Get db type db type.
+     *
+     * @return the db type
+     */
+    protected DBType getDBType() {
+        return DBType.valueof(CONFIG.getConfig(ConfigurationKeys.STORE_DB_TYPE));
+    }
+
+    /**
+     * get db max wait
+     *
+     * @return the db max wait
+     */
+    protected Long getMaxWait() {
+        Long maxWait = CONFIG.getLong(ConfigurationKeys.STORE_DB_MAX_WAIT, DEFAULT_DB_MAX_WAIT);
+        return maxWait;
+    }
+
+    protected ClassLoader getDriverClassLoader() {
+        return MYSQL_DRIVER_LOADERS.getOrDefault(getDriverClassName(), ClassLoader.getSystemClassLoader());
     }
 
     /**
@@ -238,6 +234,15 @@ public abstract class AbstractDataSourceProvider implements DataSourceProvider, 
     }
 
     /**
+     * Get public key.
+     *
+     * @return the string
+     */
+    protected String getPublicKey() {
+        return CONFIG.getConfig(ConfigurationKeys.STORE_PUBLIC_KEY);
+    }
+
+    /**
      * Get min conn int.
      *
      * @return the int
@@ -269,15 +274,6 @@ public abstract class AbstractDataSourceProvider implements DataSourceProvider, 
         } else {
             return "select 1";
         }
-    }
-
-    /**
-     * Get public key.
-     *
-     * @return the string
-     */
-    protected String getPublicKey() {
-        return CONFIG.getConfig(ConfigurationKeys.STORE_PUBLIC_KEY);
     }
 
 }

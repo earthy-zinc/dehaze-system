@@ -21,8 +21,7 @@ public class ReflectUtils extends ReflectUtil {
     private static final String GETTER_PREFIX = "get";
 
     /**
-     * 调用Getter方法.
-     * 支持多级，如：对象名.对象名.方法
+     * 调用Getter方法. 支持多级，如：对象名.对象名.方法
      */
     @SuppressWarnings("unchecked")
     public static <E> E invokeGetter(Object obj, String propertyName) {
@@ -35,8 +34,7 @@ public class ReflectUtils extends ReflectUtil {
     }
 
     /**
-     * 调用Setter方法, 仅匹配方法名。
-     * 支持多级，如：对象名.对象名.方法
+     * 调用Setter方法, 仅匹配方法名。 支持多级，如：对象名.对象名.方法
      */
     public static <E> void invokeSetter(Object obj, String propertyName, E value) {
         Object object = obj;

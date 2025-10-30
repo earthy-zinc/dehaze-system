@@ -5,20 +5,20 @@ import com.pei.common.core.domain.R;
 import com.pei.common.core.validate.AddGroup;
 import com.pei.common.core.validate.EditGroup;
 import com.pei.common.core.validate.QueryGroup;
-import com.pei.common.web.core.BaseController;
 import com.pei.common.log.annotation.Log;
 import com.pei.common.log.enums.BusinessType;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.common.web.core.BaseController;
 import com.pei.resource.domain.bo.SysOssConfigBo;
 import com.pei.resource.domain.vo.SysOssConfigVo;
 import com.pei.resource.service.ISysOssConfigService;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import java.util.Arrays;
 
 /**

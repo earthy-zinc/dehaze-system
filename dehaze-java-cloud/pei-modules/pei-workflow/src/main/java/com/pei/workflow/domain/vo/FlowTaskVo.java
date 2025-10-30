@@ -2,12 +2,12 @@ package com.pei.workflow.domain.vo;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.json.JSONUtil;
-import com.pei.workflow.common.constant.FlowConstant;
-import com.pei.workflow.common.enums.ButtonPermissionEnum;
-import lombok.Data;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.translation.annotation.Translation;
 import com.pei.common.translation.constant.TransConstant;
+import com.pei.workflow.common.constant.FlowConstant;
+import com.pei.workflow.common.enums.ButtonPermissionEnum;
+import lombok.Data;
 import org.dromara.warm.flow.core.entity.User;
 
 import java.io.Serial;

@@ -3,8 +3,8 @@ package com.pei.gateway.utils;
 import cn.hutool.core.util.ObjectUtil;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.utils.StringUtils;
-import com.pei.gateway.filter.WebCacheRequestFilter;
 import com.pei.common.json.utils.JsonUtils;
+import com.pei.gateway.filter.WebCacheRequestFilter;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -56,7 +56,7 @@ public class WebFluxUtils {
 
     /**
      * 读取request内的body
-     *
+     * <p>
      * 注意一个request只能读取一次 读取之后需要重新包装
      */
     public static String resolveBodyFromRequest(ServerHttpRequest serverHttpRequest) {
@@ -75,9 +75,9 @@ public class WebFluxUtils {
 
     /**
      * 从缓存中读取request内的body
-     *
-     * 注意要求经过 {@link ServerWebExchangeUtils#cacheRequestBody(ServerWebExchange, Function)} 此方法创建缓存
-     * 框架内已经使用 {@link WebCacheRequestFilter} 全局创建了body缓存
+     * <p>
+     * 注意要求经过 {@link ServerWebExchangeUtils#cacheRequestBody(ServerWebExchange, Function)} 此方法创建缓存 框架内已经使用
+     * {@link WebCacheRequestFilter} 全局创建了body缓存
      *
      * @return body
      */
@@ -111,18 +111,6 @@ public class WebFluxUtils {
      * 设置webflux模型响应
      *
      * @param response ServerHttpResponse
-     * @param code     响应状态码
-     * @param value    响应内容
-     * @return Mono<Void>
-     */
-    public static Mono<Void> webFluxResponseWriter(ServerHttpResponse response, Object value, int code) {
-        return webFluxResponseWriter(response, HttpStatus.OK, value, code);
-    }
-
-    /**
-     * 设置webflux模型响应
-     *
-     * @param response ServerHttpResponse
      * @param status   http状态码
      * @param code     响应状态码
      * @param value    响应内容
@@ -148,5 +136,17 @@ public class WebFluxUtils {
         R<?> result = R.fail(code, value.toString());
         DataBuffer dataBuffer = response.bufferFactory().wrap(JsonUtils.toJsonString(result).getBytes());
         return response.writeWith(Mono.just(dataBuffer));
+    }
+
+    /**
+     * 设置webflux模型响应
+     *
+     * @param response ServerHttpResponse
+     * @param code     响应状态码
+     * @param value    响应内容
+     * @return Mono<Void>
+     */
+    public static Mono<Void> webFluxResponseWriter(ServerHttpResponse response, Object value, int code) {
+        return webFluxResponseWriter(response, HttpStatus.OK, value, code);
     }
 }

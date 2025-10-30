@@ -29,9 +29,9 @@ import static org.springframework.web.reactive.function.BodyInserters.fromObject
 
 // https://github.com/alibaba/Sentinel/issues/3298
 // 临时解决 sentinel 限流插件 jdk17 报错问题
+
 /**
- * The default implementation of {@link BlockRequestHandler}.
- * Compatible with Spring WebFlux and Spring Cloud Gateway.
+ * The default implementation of {@link BlockRequestHandler}. Compatible with Spring WebFlux and Spring Cloud Gateway.
  *
  * @author Eric Zhao
  */
@@ -50,6 +50,21 @@ public class DefaultBlockRequestHandler implements BlockRequestHandler {
             .body(fromObject(buildErrorResult(ex)));
     }
 
+    /**
+     * Reference from {@code DefaultErrorWebExceptionHandler} of Spring Boot.
+     */
+    private boolean acceptsHtml(ServerWebExchange exchange) {
+        try {
+            List<MediaType> acceptedMediaTypes = exchange.getRequest().getHeaders().getAccept();
+            acceptedMediaTypes.remove(MediaType.ALL);
+            MimeTypeUtils.sortBySpecificity(acceptedMediaTypes);
+            return acceptedMediaTypes.stream()
+                .anyMatch(MediaType.TEXT_HTML::isCompatibleWith);
+        } catch (InvalidMediaTypeException ex) {
+            return false;
+        }
+    }
+
     private Mono<ServerResponse> htmlErrorResponse(Throwable ex) {
         return ServerResponse.status(HttpStatus.TOO_MANY_REQUESTS)
             .contentType(MediaType.TEXT_PLAIN)
@@ -59,21 +74,6 @@ public class DefaultBlockRequestHandler implements BlockRequestHandler {
     private ErrorResult buildErrorResult(Throwable ex) {
         return new ErrorResult(HttpStatus.TOO_MANY_REQUESTS.value(),
             DEFAULT_BLOCK_MSG_PREFIX + ex.getClass().getSimpleName());
-    }
-
-    /**
-     * Reference from {@code DefaultErrorWebExceptionHandler} of Spring Boot.
-     */
-    private boolean acceptsHtml(ServerWebExchange exchange) {
-        try {
-            List<MediaType> acceptedMediaTypes = exchange.getRequest().getHeaders().getAccept();
-            acceptedMediaTypes.remove(MediaType.ALL);
-            MimeTypeUtils. sortBySpecificity(acceptedMediaTypes);
-            return acceptedMediaTypes.stream()
-                .anyMatch(MediaType.TEXT_HTML::isCompatibleWith);
-        } catch (InvalidMediaTypeException ex) {
-            return false;
-        }
     }
 
     private static class ErrorResult {

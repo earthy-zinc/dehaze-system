@@ -1,8 +1,8 @@
 package com.pei.resource.api;
 
+import com.pei.common.core.utils.StringUtils;
 import com.pei.resource.api.domain.RemoteFile;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.core.utils.StringUtils;
 
 import java.util.List;
 

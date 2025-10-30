@@ -2,6 +2,7 @@ package com.pei.common.tenant.handle;
 
 import cn.hutool.core.collection.ListUtil;
 import com.baomidou.mybatisplus.extension.plugins.handler.TenantLineHandler;
+import com.pei.common.core.utils.StringUtils;
 import com.pei.common.tenant.helper.TenantHelper;
 import com.pei.common.tenant.properties.TenantProperties;
 import lombok.AllArgsConstructor;
@@ -9,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.NullValue;
 import net.sf.jsqlparser.expression.StringValue;
-import com.pei.common.core.utils.StringUtils;
 
 import java.util.List;
 

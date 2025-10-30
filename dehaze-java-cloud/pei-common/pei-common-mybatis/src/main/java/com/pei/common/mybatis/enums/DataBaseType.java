@@ -1,8 +1,8 @@
 package com.pei.common.mybatis.enums;
 
+import com.pei.common.core.utils.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import com.pei.common.core.utils.StringUtils;
 
 /**
  * 数据库类型

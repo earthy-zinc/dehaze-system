@@ -1,10 +1,10 @@
 package com.pei.common.web.config;
 
+import com.pei.common.core.utils.SpringUtils;
 import io.undertow.server.DefaultByteBufferPool;
 import io.undertow.server.handlers.DisallowedMethodsHandler;
 import io.undertow.util.HttpString;
 import io.undertow.websockets.jsr.WebSocketDeploymentInfo;
-import com.pei.common.core.utils.SpringUtils;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.web.embedded.undertow.UndertowServletWebServerFactory;
 import org.springframework.boot.web.server.WebServerFactoryCustomizer;
@@ -21,10 +21,7 @@ public class UndertowConfig implements WebServerFactoryCustomizer<UndertowServle
     /**
      * 自定义 Undertow 配置
      * <p>
-     * 主要配置内容包括：
-     * 1. 配置 WebSocket 部署信息
-     * 2. 在虚拟线程模式下使用虚拟线程池
-     * 3. 禁用不安全的 HTTP 方法，如 CONNECT、TRACE、TRACK
+     * 主要配置内容包括： 1. 配置 WebSocket 部署信息 2. 在虚拟线程模式下使用虚拟线程池 3. 禁用不安全的 HTTP 方法，如 CONNECT、TRACE、TRACK
      * </p>
      *
      * @param factory Undertow 的 Web 服务器工厂

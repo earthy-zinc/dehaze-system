@@ -1,16 +1,16 @@
 package com.pei.system.domain.bo;
 
+import com.pei.common.core.constant.RegexConstants;
+import com.pei.common.core.xss.Xss;
+import com.pei.common.mybatis.core.domain.BaseEntity;
+import com.pei.common.sensitive.annotation.Sensitive;
+import com.pei.common.sensitive.core.SensitiveStrategy;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import com.pei.common.core.constant.RegexConstants;
-import com.pei.common.core.xss.Xss;
-import com.pei.common.mybatis.core.domain.BaseEntity;
-import com.pei.common.sensitive.annotation.Sensitive;
-import com.pei.common.sensitive.core.SensitiveStrategy;
 
 /**
  * 个人信息业务处理

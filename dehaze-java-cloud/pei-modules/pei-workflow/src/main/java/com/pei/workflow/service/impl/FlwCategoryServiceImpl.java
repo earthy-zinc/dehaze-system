@@ -176,19 +176,6 @@ public class FlwCategoryServiceImpl implements IFlwCategoryService {
             .eq(FlowCategory::getParentId, categoryId));
     }
 
-    private LambdaQueryWrapper<FlowCategory> buildQueryWrapper(FlowCategoryBo bo) {
-        LambdaQueryWrapper<FlowCategory> lqw = Wrappers.lambdaQuery();
-        lqw.eq(FlowCategory::getDelFlag, SystemConstants.NORMAL);
-        lqw.eq(ObjectUtil.isNotNull(bo.getCategoryId()), FlowCategory::getCategoryId, bo.getCategoryId());
-        lqw.eq(ObjectUtil.isNotNull(bo.getParentId()), FlowCategory::getParentId, bo.getParentId());
-        lqw.like(StringUtils.isNotBlank(bo.getCategoryName()), FlowCategory::getCategoryName, bo.getCategoryName());
-        lqw.orderByAsc(FlowCategory::getAncestors);
-        lqw.orderByAsc(FlowCategory::getParentId);
-        lqw.orderByAsc(FlowCategory::getOrderNum);
-        lqw.orderByAsc(FlowCategory::getCategoryId);
-        return lqw;
-    }
-
     /**
      * 新增流程分类
      *
@@ -265,5 +252,18 @@ public class FlwCategoryServiceImpl implements IFlwCategoryService {
     @Override
     public int deleteWithValidById(Long categoryId) {
         return baseMapper.deleteById(categoryId);
+    }
+
+    private LambdaQueryWrapper<FlowCategory> buildQueryWrapper(FlowCategoryBo bo) {
+        LambdaQueryWrapper<FlowCategory> lqw = Wrappers.lambdaQuery();
+        lqw.eq(FlowCategory::getDelFlag, SystemConstants.NORMAL);
+        lqw.eq(ObjectUtil.isNotNull(bo.getCategoryId()), FlowCategory::getCategoryId, bo.getCategoryId());
+        lqw.eq(ObjectUtil.isNotNull(bo.getParentId()), FlowCategory::getParentId, bo.getParentId());
+        lqw.like(StringUtils.isNotBlank(bo.getCategoryName()), FlowCategory::getCategoryName, bo.getCategoryName());
+        lqw.orderByAsc(FlowCategory::getAncestors);
+        lqw.orderByAsc(FlowCategory::getParentId);
+        lqw.orderByAsc(FlowCategory::getOrderNum);
+        lqw.orderByAsc(FlowCategory::getCategoryId);
+        return lqw;
     }
 }

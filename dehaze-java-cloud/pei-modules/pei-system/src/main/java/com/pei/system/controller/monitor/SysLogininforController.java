@@ -1,8 +1,6 @@
 package com.pei.system.controller.monitor;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.CacheConstants;
 import com.pei.common.core.domain.R;
 import com.pei.common.excel.utils.ExcelUtil;
@@ -15,6 +13,8 @@ import com.pei.common.web.core.BaseController;
 import com.pei.system.domain.bo.SysLogininforBo;
 import com.pei.system.domain.vo.SysLogininforVo;
 import com.pei.system.service.ISysLogininforService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -55,6 +55,7 @@ public class SysLogininforController extends BaseController {
 
     /**
      * 批量删除登录日志
+     *
      * @param infoIds 日志ids
      */
     @SaCheckPermission("monitor:logininfor:remove")

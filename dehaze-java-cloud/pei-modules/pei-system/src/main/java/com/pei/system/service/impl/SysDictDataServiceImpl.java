@@ -4,8 +4,6 @@ import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pei.system.service.ISysDictDataService;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.CacheNames;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.MapstructUtils;
@@ -18,6 +16,8 @@ import com.pei.system.domain.SysDictData;
 import com.pei.system.domain.bo.SysDictDataBo;
 import com.pei.system.domain.vo.SysDictDataVo;
 import com.pei.system.mapper.SysDictDataMapper;
+import com.pei.system.service.ISysDictDataService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.stereotype.Service;
 
@@ -51,15 +51,6 @@ public class SysDictDataServiceImpl implements ISysDictDataService {
     public List<SysDictDataVo> selectDictDataList(SysDictDataBo dictData) {
         LambdaQueryWrapper<SysDictData> lqw = buildQueryWrapper(dictData);
         return baseMapper.selectVoList(lqw);
-    }
-
-    private LambdaQueryWrapper<SysDictData> buildQueryWrapper(SysDictDataBo bo) {
-        LambdaQueryWrapper<SysDictData> lqw = Wrappers.lambdaQuery();
-        lqw.eq(bo.getDictSort() != null, SysDictData::getDictSort, bo.getDictSort());
-        lqw.like(StringUtils.isNotBlank(bo.getDictLabel()), SysDictData::getDictLabel, bo.getDictLabel());
-        lqw.eq(StringUtils.isNotBlank(bo.getDictType()), SysDictData::getDictType, bo.getDictType());
-        lqw.orderByAsc(SysDictData::getDictSort);
-        return lqw;
     }
 
     /**
@@ -152,6 +143,15 @@ public class SysDictDataServiceImpl implements ISysDictDataService {
             return false;
         }
         return true;
+    }
+
+    private LambdaQueryWrapper<SysDictData> buildQueryWrapper(SysDictDataBo bo) {
+        LambdaQueryWrapper<SysDictData> lqw = Wrappers.lambdaQuery();
+        lqw.eq(bo.getDictSort() != null, SysDictData::getDictSort, bo.getDictSort());
+        lqw.like(StringUtils.isNotBlank(bo.getDictLabel()), SysDictData::getDictLabel, bo.getDictLabel());
+        lqw.eq(StringUtils.isNotBlank(bo.getDictType()), SysDictData::getDictType, bo.getDictType());
+        lqw.orderByAsc(SysDictData::getDictSort);
+        return lqw;
     }
 
 }

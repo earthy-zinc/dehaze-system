@@ -4,13 +4,13 @@ import cn.dev33.satoken.dao.SaTokenDao;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.extension.plugins.inner.TenantLineInnerInterceptor;
 import com.pei.common.core.utils.reflect.ReflectUtils;
+import com.pei.common.redis.config.RedisConfiguration;
+import com.pei.common.redis.config.properties.RedissonProperties;
 import com.pei.common.tenant.core.TenantSaTokenDao;
+import com.pei.common.tenant.handle.PlusTenantLineHandler;
 import com.pei.common.tenant.handle.TenantKeyPrefixHandler;
 import com.pei.common.tenant.manager.TenantSpringCacheManager;
 import com.pei.common.tenant.properties.TenantProperties;
-import com.pei.common.redis.config.RedisConfiguration;
-import com.pei.common.redis.config.properties.RedissonProperties;
-import com.pei.common.tenant.handle.PlusTenantLineHandler;
 import org.redisson.config.ClusterServersConfig;
 import org.redisson.config.SingleServerConfig;
 import org.redisson.spring.starter.RedissonAutoConfigurationCustomizer;
@@ -31,20 +31,6 @@ import org.springframework.context.annotation.Primary;
 @AutoConfiguration(after = {RedisConfiguration.class})
 @ConditionalOnProperty(value = "tenant.enable", havingValue = "true")
 public class TenantConfiguration {
-
-    @ConditionalOnClass(TenantLineInnerInterceptor.class)
-    @AutoConfiguration
-    static class MybatisPlusConfig {
-
-        /**
-         * 多租户插件
-         */
-        @Bean
-        public TenantLineInnerInterceptor tenantLineInnerInterceptor(TenantProperties tenantProperties) {
-            return new TenantLineInnerInterceptor(new PlusTenantLineHandler(tenantProperties));
-        }
-
-    }
 
     @Bean
     public RedissonAutoConfigurationCustomizer tenantRedissonCustomizer(RedissonProperties redissonProperties) {
@@ -81,6 +67,20 @@ public class TenantConfiguration {
     @Bean
     public SaTokenDao tenantSaTokenDao() {
         return new TenantSaTokenDao();
+    }
+
+    @ConditionalOnClass(TenantLineInnerInterceptor.class)
+    @AutoConfiguration
+    static class MybatisPlusConfig {
+
+        /**
+         * 多租户插件
+         */
+        @Bean
+        public TenantLineInnerInterceptor tenantLineInnerInterceptor(TenantProperties tenantProperties) {
+            return new TenantLineInnerInterceptor(new PlusTenantLineHandler(tenantProperties));
+        }
+
     }
 
 }

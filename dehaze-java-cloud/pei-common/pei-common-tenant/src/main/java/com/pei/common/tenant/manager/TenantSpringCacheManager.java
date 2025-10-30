@@ -1,11 +1,11 @@
 package com.pei.common.tenant.manager;
 
 import com.baomidou.mybatisplus.core.plugins.InterceptorIgnoreHelper;
-import com.pei.common.tenant.helper.TenantHelper;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.constant.GlobalConstants;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.redis.manager.PlusSpringCacheManager;
+import com.pei.common.tenant.helper.TenantHelper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 
 /**

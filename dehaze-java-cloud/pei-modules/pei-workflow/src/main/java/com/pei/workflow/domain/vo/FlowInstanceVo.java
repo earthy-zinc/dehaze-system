@@ -1,9 +1,9 @@
 package com.pei.workflow.domain.vo;
 
-import com.pei.workflow.common.constant.FlowConstant;
-import lombok.Data;
 import com.pei.common.translation.annotation.Translation;
 import com.pei.common.translation.constant.TransConstant;
+import com.pei.workflow.common.constant.FlowConstant;
+import lombok.Data;
 
 import java.util.Date;
 

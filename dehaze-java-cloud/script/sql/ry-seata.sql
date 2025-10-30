@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `global_table`
     `gmt_create`                DATETIME,
     `gmt_modified`              DATETIME,
     PRIMARY KEY (`xid`),
-    KEY `idx_status_gmt_modified` (`status` , `gmt_modified`),
+    KEY `idx_status_gmt_modified` (`status`, `gmt_modified`),
     KEY `idx_transaction_id` (`transaction_id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
@@ -63,17 +63,21 @@ CREATE TABLE IF NOT EXISTS `lock_table`
 
 CREATE TABLE IF NOT EXISTS `distributed_lock`
 (
-    `lock_key`       CHAR(20) NOT NULL,
-    `lock_value`     VARCHAR(20) NOT NULL,
-    `expire`         BIGINT,
+    `lock_key`   CHAR(20)    NOT NULL,
+    `lock_value` VARCHAR(20) NOT NULL,
+    `expire`     BIGINT,
     primary key (`lock_key`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;
 
-INSERT INTO `distributed_lock` (lock_key, lock_value, expire) VALUES ('AsyncCommitting', ' ', 0);
-INSERT INTO `distributed_lock` (lock_key, lock_value, expire) VALUES ('RetryCommitting', ' ', 0);
-INSERT INTO `distributed_lock` (lock_key, lock_value, expire) VALUES ('RetryRollbacking', ' ', 0);
-INSERT INTO `distributed_lock` (lock_key, lock_value, expire) VALUES ('TxTimeoutCheck', ' ', 0);
+INSERT INTO `distributed_lock` (lock_key, lock_value, expire)
+VALUES ('AsyncCommitting', ' ', 0);
+INSERT INTO `distributed_lock` (lock_key, lock_value, expire)
+VALUES ('RetryCommitting', ' ', 0);
+INSERT INTO `distributed_lock` (lock_key, lock_value, expire)
+VALUES ('RetryRollbacking', ' ', 0);
+INSERT INTO `distributed_lock` (lock_key, lock_value, expire)
+VALUES ('TxTimeoutCheck', ' ', 0);
 
 
 CREATE TABLE IF NOT EXISTS `vgroup_table`
@@ -81,6 +85,6 @@ CREATE TABLE IF NOT EXISTS `vgroup_table`
     `vGroup`    VARCHAR(255),
     `namespace` VARCHAR(255),
     `cluster`   VARCHAR(255),
-    UNIQUE KEY `idx_vgroup_namespace_cluster` (`vGroup`,`namespace`,`cluster`)
+    UNIQUE KEY `idx_vgroup_namespace_cluster` (`vGroup`, `namespace`, `cluster`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4;

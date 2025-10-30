@@ -2,15 +2,15 @@ package com.pei.demo.service.impl;
 
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.demo.domain.vo.ExportDemoVo;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.enums.UserStatus;
 import com.pei.common.core.utils.StreamUtils;
 import com.pei.common.excel.core.DropDownOptions;
 import com.pei.common.excel.utils.ExcelUtil;
+import com.pei.demo.domain.vo.ExportDemoVo;
 import com.pei.demo.service.IExportExcelService;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.Data;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -102,17 +102,6 @@ public class ExportExcelServiceImpl implements IExportExcelService {
         ExcelUtil.exportExcel(outList, "下拉框示例", ExportDemoVo.class, response, options);
     }
 
-    private String buildOptions(List<DemoCityData> cityDataList, Integer id) {
-        Map<Integer, List<DemoCityData>> groupByIdMap =
-            cityDataList.stream().collect(Collectors.groupingBy(DemoCityData::getId));
-        if (groupByIdMap.containsKey(id)) {
-            DemoCityData demoCityData = groupByIdMap.get(id).get(0);
-            return DropDownOptions.createOptionValue(demoCityData.getName(), demoCityData.getId());
-        } else {
-            return StrUtil.EMPTY;
-        }
-    }
-
     /**
      * 模拟查询数据库操作
      *
@@ -186,6 +175,17 @@ public class ExportExcelServiceImpl implements IExportExcelService {
         selectParentData(cityList, areaList);
 
         return areaList;
+    }
+
+    private String buildOptions(List<DemoCityData> cityDataList, Integer id) {
+        Map<Integer, List<DemoCityData>> groupByIdMap =
+            cityDataList.stream().collect(Collectors.groupingBy(DemoCityData::getId));
+        if (groupByIdMap.containsKey(id)) {
+            DemoCityData demoCityData = groupByIdMap.get(id).get(0);
+            return DropDownOptions.createOptionValue(demoCityData.getName(), demoCityData.getId());
+        } else {
+            return StrUtil.EMPTY;
+        }
     }
 
     /**

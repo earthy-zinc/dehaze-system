@@ -1,11 +1,11 @@
 package com.pei.resource.dubbo;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.dubbo.config.annotation.DubboService;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.mail.utils.MailUtils;
 import com.pei.resource.api.RemoteMailService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.stereotype.Service;
 
 /**

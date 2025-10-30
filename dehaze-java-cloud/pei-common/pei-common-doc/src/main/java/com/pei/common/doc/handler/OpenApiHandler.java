@@ -30,8 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * 自定义 openapi 处理器
- * 对源码功能进行修改 增强使用
+ * 自定义 openapi 处理器 对源码功能进行修改 增强使用
  */
 @Slf4j
 @SuppressWarnings("all")

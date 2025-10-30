@@ -1,7 +1,7 @@
 package com.pei.stream.producer;
 
-import lombok.extern.slf4j.Slf4j;
 import com.pei.stream.config.RabbitTtlQueueConfig;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

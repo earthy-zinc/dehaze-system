@@ -60,7 +60,7 @@ public class EasyEsConfiguration implements InitializingBean {
         for (String key : datasourceMap.keySet()) {
             EasyEsProperties easyEsConfigProperties = datasourceMap.get(key);
             RestHighLevelClientUtils.registerRestHighLevelClient(key, RestHighLevelClientUtils
-                    .restHighLevelClient(easyEsConfigProperties));
+                .restHighLevelClient(easyEsConfigProperties));
         }
         return restHighLevelClientUtils;
     }

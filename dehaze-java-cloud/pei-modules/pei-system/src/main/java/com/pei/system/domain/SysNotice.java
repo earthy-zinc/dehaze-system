@@ -2,9 +2,9 @@ package com.pei.system.domain;
 
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.common.tenant.core.TenantEntity;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.tenant.core.TenantEntity;
 
 
 /**

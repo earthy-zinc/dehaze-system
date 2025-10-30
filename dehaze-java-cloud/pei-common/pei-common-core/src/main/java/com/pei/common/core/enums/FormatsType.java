@@ -1,8 +1,8 @@
 package com.pei.common.core.enums;
 
+import com.pei.common.core.utils.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import com.pei.common.core.utils.StringUtils;
 
 /*
  * 日期格式

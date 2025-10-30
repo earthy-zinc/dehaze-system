@@ -1,8 +1,8 @@
 package com.pei.workflow.domain.bo;
 
+import com.pei.common.core.validate.AddGroup;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import com.pei.common.core.validate.AddGroup;
 
 import java.io.Serial;
 import java.io.Serializable;

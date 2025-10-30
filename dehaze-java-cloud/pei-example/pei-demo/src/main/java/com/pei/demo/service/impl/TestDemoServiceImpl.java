@@ -6,13 +6,13 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.StringUtils;
+import com.pei.common.mybatis.core.page.PageQuery;
+import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.demo.domain.TestDemo;
 import com.pei.demo.domain.bo.TestDemoBo;
 import com.pei.demo.domain.vo.TestDemoVo;
 import com.pei.demo.mapper.TestDemoMapper;
 import com.pei.demo.service.ITestDemoService;
-import com.pei.common.mybatis.core.page.PageQuery;
-import com.pei.common.mybatis.core.page.TableDataInfo;
-import com.pei.demo.domain.TestDemo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -59,17 +59,6 @@ public class TestDemoServiceImpl implements ITestDemoService {
         return baseMapper.selectVoList(buildQueryWrapper(bo));
     }
 
-    private LambdaQueryWrapper<TestDemo> buildQueryWrapper(TestDemoBo bo) {
-        Map<String, Object> params = bo.getParams();
-        LambdaQueryWrapper<TestDemo> lqw = Wrappers.lambdaQuery();
-        lqw.like(StringUtils.isNotBlank(bo.getTestKey()), TestDemo::getTestKey, bo.getTestKey());
-        lqw.eq(StringUtils.isNotBlank(bo.getValue()), TestDemo::getValue, bo.getValue());
-        lqw.between(params.get("beginCreateTime") != null && params.get("endCreateTime") != null,
-            TestDemo::getCreateTime, params.get("beginCreateTime"), params.get("endCreateTime"));
-        lqw.orderByAsc(TestDemo::getId);
-        return lqw;
-    }
-
     @Override
     public Boolean insertByBo(TestDemoBo bo) {
         TestDemo add = BeanUtil.toBean(bo, TestDemo.class);
@@ -88,15 +77,6 @@ public class TestDemoServiceImpl implements ITestDemoService {
         return baseMapper.updateById(update) > 0;
     }
 
-    /**
-     * 保存前的数据校验
-     *
-     * @param entity 实体类数据
-     */
-    private void validEntityBeforeSave(TestDemo entity) {
-        //TODO 做一些数据校验,如唯一约束
-    }
-
     @Override
     public Boolean deleteWithValidByIds(Collection<Long> ids, Boolean isValid) {
         if (isValid) {
@@ -112,5 +92,25 @@ public class TestDemoServiceImpl implements ITestDemoService {
     @Override
     public Boolean saveBatch(List<TestDemo> list) {
         return baseMapper.insertBatch(list);
+    }
+
+    /**
+     * 保存前的数据校验
+     *
+     * @param entity 实体类数据
+     */
+    private void validEntityBeforeSave(TestDemo entity) {
+        //TODO 做一些数据校验,如唯一约束
+    }
+
+    private LambdaQueryWrapper<TestDemo> buildQueryWrapper(TestDemoBo bo) {
+        Map<String, Object> params = bo.getParams();
+        LambdaQueryWrapper<TestDemo> lqw = Wrappers.lambdaQuery();
+        lqw.like(StringUtils.isNotBlank(bo.getTestKey()), TestDemo::getTestKey, bo.getTestKey());
+        lqw.eq(StringUtils.isNotBlank(bo.getValue()), TestDemo::getValue, bo.getValue());
+        lqw.between(params.get("beginCreateTime") != null && params.get("endCreateTime") != null,
+            TestDemo::getCreateTime, params.get("beginCreateTime"), params.get("endCreateTime"));
+        lqw.orderByAsc(TestDemo::getId);
+        return lqw;
     }
 }

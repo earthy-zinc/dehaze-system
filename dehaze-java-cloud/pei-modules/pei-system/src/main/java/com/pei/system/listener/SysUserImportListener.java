@@ -6,9 +6,6 @@ import cn.hutool.crypto.digest.BCrypt;
 import cn.hutool.http.HtmlUtil;
 import com.alibaba.excel.context.AnalysisContext;
 import com.alibaba.excel.event.AnalysisEventListener;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.core.utils.StreamUtils;
@@ -21,6 +18,9 @@ import com.pei.system.domain.vo.SysUserImportVo;
 import com.pei.system.domain.vo.SysUserVo;
 import com.pei.system.service.ISysConfigService;
 import com.pei.system.service.ISysUserService;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 
@@ -39,11 +39,10 @@ public class SysUserImportListener extends AnalysisEventListener<SysUserImportVo
     private final Boolean isUpdateSupport;
 
     private final Long operUserId;
-
-    private int successNum = 0;
-    private int failureNum = 0;
     private final StringBuilder successMsg = new StringBuilder();
     private final StringBuilder failureMsg = new StringBuilder();
+    private int successNum = 0;
+    private int failureNum = 0;
 
     public SysUserImportListener(Boolean isUpdateSupport) {
         String initPassword = SpringUtils.getBean(ISysConfigService.class).selectConfigByKey("sys.user.initPassword");
@@ -103,6 +102,16 @@ public class SysUserImportListener extends AnalysisEventListener<SysUserImportVo
         return new ExcelResult<SysUserImportVo>() {
 
             @Override
+            public List<SysUserImportVo> getList() {
+                return null;
+            }
+
+            @Override
+            public List<String> getErrorList() {
+                return null;
+            }
+
+            @Override
             public String getAnalysis() {
                 if (failureNum > 0) {
                     failureMsg.insert(0, "很抱歉，导入失败！共 " + failureNum + " 条数据格式不正确，错误如下：");
@@ -111,16 +120,6 @@ public class SysUserImportListener extends AnalysisEventListener<SysUserImportVo
                     successMsg.insert(0, "恭喜您，数据已全部导入成功！共 " + successNum + " 条，数据如下：");
                 }
                 return successMsg.toString();
-            }
-
-            @Override
-            public List<SysUserImportVo> getList() {
-                return null;
-            }
-
-            @Override
-            public List<String> getErrorList() {
-                return null;
             }
         };
     }

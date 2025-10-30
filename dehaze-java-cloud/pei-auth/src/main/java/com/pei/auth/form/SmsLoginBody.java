@@ -1,9 +1,9 @@
 package com.pei.auth.form;
 
+import com.pei.common.core.domain.model.LoginBody;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.core.domain.model.LoginBody;
 
 /**
  * 短信登录对象

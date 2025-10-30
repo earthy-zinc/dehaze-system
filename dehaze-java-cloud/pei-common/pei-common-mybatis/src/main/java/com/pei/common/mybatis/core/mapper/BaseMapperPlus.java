@@ -9,9 +9,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.ReflectionKit;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.toolkit.Db;
+import com.pei.common.core.utils.MapstructUtils;
 import org.apache.ibatis.logging.Log;
 import org.apache.ibatis.logging.LogFactory;
-import com.pei.common.core.utils.MapstructUtils;
 
 import java.io.Serializable;
 import java.util.Collection;
@@ -33,17 +33,6 @@ import java.util.stream.Collectors;
 public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
 
     Log log = LogFactory.getLog(BaseMapperPlus.class);
-
-    /**
-     * 获取当前类的泛型类型 V 的 Class 对象
-     * <p>
-     * 该方法使用反射机制从当前类（继承自 BaseMapperPlus 类）的泛型参数中获取第一个泛型类型 V 的 Class 对象
-     *
-     * @return 当前类的泛型类型 V 的 Class 对象
-     */
-    default Class<V> currentVoClass() {
-        return (Class<V>) ReflectionKit.getSuperClassGenericType(this.getClass(), BaseMapperPlus.class, 1);
-    }
 
     /**
      * 获取当前类的泛型类型 T 的 Class 对象
@@ -155,6 +144,17 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
     }
 
     /**
+     * 获取当前类的泛型类型 V 的 Class 对象
+     * <p>
+     * 该方法使用反射机制从当前类（继承自 BaseMapperPlus 类）的泛型参数中获取第一个泛型类型 V 的 Class 对象
+     *
+     * @return 当前类的泛型类型 V 的 Class 对象
+     */
+    default Class<V> currentVoClass() {
+        return (Class<V>) ReflectionKit.getSuperClassGenericType(this.getClass(), BaseMapperPlus.class, 1);
+    }
+
+    /**
      * 根据ID集合批量查询VO对象列表
      *
      * @param idList 主键ID集合
@@ -217,17 +217,6 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
     }
 
     /**
-     * 根据条件查询单个VO对象，并根据需要决定是否抛出异常
-     *
-     * @param wrapper 查询条件Wrapper
-     * @param throwEx 是否抛出异常的标志
-     * @return 查询到的单个VO对象
-     */
-    default V selectVoOne(Wrapper<T> wrapper, boolean throwEx) {
-        return selectVoOne(wrapper, this.currentVoClass(), throwEx);
-    }
-
-    /**
      * 根据条件查询单个VO对象，并指定返回的VO对象的类型
      *
      * @param wrapper 查询条件Wrapper
@@ -241,6 +230,17 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
             return null;
         }
         return MapstructUtils.convert(obj, voClass);
+    }
+
+    /**
+     * 根据条件查询单个VO对象，并根据需要决定是否抛出异常
+     *
+     * @param wrapper 查询条件Wrapper
+     * @param throwEx 是否抛出异常的标志
+     * @return 查询到的单个VO对象
+     */
+    default V selectVoOne(Wrapper<T> wrapper, boolean throwEx) {
+        return selectVoOne(wrapper, this.currentVoClass(), throwEx);
     }
 
     /**
@@ -270,16 +270,6 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
     }
 
     /**
-     * 根据条件查询VO对象列表
-     *
-     * @param wrapper 查询条件Wrapper
-     * @return 查询到的VO对象列表
-     */
-    default List<V> selectVoList(Wrapper<T> wrapper) {
-        return selectVoList(wrapper, this.currentVoClass());
-    }
-
-    /**
      * 根据条件查询实体对象列表，并将其转换为指定的VO对象列表
      *
      * @param wrapper 查询条件Wrapper
@@ -293,6 +283,16 @@ public interface BaseMapperPlus<T, V> extends BaseMapper<T> {
             return CollUtil.newArrayList();
         }
         return MapstructUtils.convert(list, voClass);
+    }
+
+    /**
+     * 根据条件查询VO对象列表
+     *
+     * @param wrapper 查询条件Wrapper
+     * @return 查询到的VO对象列表
+     */
+    default List<V> selectVoList(Wrapper<T> wrapper) {
+        return selectVoList(wrapper, this.currentVoClass());
     }
 
     /**

@@ -6,10 +6,10 @@ import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.plugins.IgnoreStrategy;
 import com.baomidou.mybatisplus.core.plugins.InterceptorIgnoreHelper;
+import com.pei.common.core.utils.reflect.ReflectUtils;
 import com.pei.common.mybatis.annotation.DataPermission;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import com.pei.common.core.utils.reflect.ReflectUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,7 +44,7 @@ public class DataPermissionHelper {
     /**
      * 设置当前执行mapper权限注解
      *
-     * @param dataPermission   数据权限注解
+     * @param dataPermission 数据权限注解
      */
     public static void setPermission(DataPermission dataPermission) {
         PERMISSION_CACHE.set(dataPermission);
@@ -70,17 +70,6 @@ public class DataPermissionHelper {
     }
 
     /**
-     * 向上下文中设置指定键的变量值
-     *
-     * @param key   要设置的变量的键
-     * @param value 要设置的变量值
-     */
-    public static void setVariable(String key, Object value) {
-        Map<String, Object> context = getContext();
-        context.put(key, value);
-    }
-
-    /**
      * 获取数据权限上下文
      *
      * @return 存储在SaStorage中的Map对象，用于存储数据权限相关的上下文信息
@@ -99,14 +88,29 @@ public class DataPermissionHelper {
         throw new NullPointerException("data permission context type exception");
     }
 
-    private static IgnoreStrategy getIgnoreStrategy() {
-        Object ignoreStrategyLocal = ReflectUtils.getStaticFieldValue(ReflectUtils.getField(InterceptorIgnoreHelper.class, "IGNORE_STRATEGY_LOCAL"));
-        if (ignoreStrategyLocal instanceof ThreadLocal<?> IGNORE_STRATEGY_LOCAL) {
-            if (IGNORE_STRATEGY_LOCAL.get() instanceof IgnoreStrategy ignoreStrategy) {
-                return ignoreStrategy;
-            }
+    /**
+     * 向上下文中设置指定键的变量值
+     *
+     * @param key   要设置的变量的键
+     * @param value 要设置的变量值
+     */
+    public static void setVariable(String key, Object value) {
+        Map<String, Object> context = getContext();
+        context.put(key, value);
+    }
+
+    /**
+     * 在忽略数据权限中执行
+     *
+     * @param handle 处理执行方法
+     */
+    public static void ignore(Runnable handle) {
+        enableIgnore();
+        try {
+            handle.run();
+        } finally {
+            disableIgnore();
         }
-        return null;
     }
 
     /**
@@ -145,18 +149,14 @@ public class DataPermissionHelper {
         }
     }
 
-    /**
-     * 在忽略数据权限中执行
-     *
-     * @param handle 处理执行方法
-     */
-    public static void ignore(Runnable handle) {
-        enableIgnore();
-        try {
-            handle.run();
-        } finally {
-            disableIgnore();
+    private static IgnoreStrategy getIgnoreStrategy() {
+        Object ignoreStrategyLocal = ReflectUtils.getStaticFieldValue(ReflectUtils.getField(InterceptorIgnoreHelper.class, "IGNORE_STRATEGY_LOCAL"));
+        if (ignoreStrategyLocal instanceof ThreadLocal<?> IGNORE_STRATEGY_LOCAL) {
+            if (IGNORE_STRATEGY_LOCAL.get() instanceof IgnoreStrategy ignoreStrategy) {
+                return ignoreStrategy;
+            }
         }
+        return null;
     }
 
     /**

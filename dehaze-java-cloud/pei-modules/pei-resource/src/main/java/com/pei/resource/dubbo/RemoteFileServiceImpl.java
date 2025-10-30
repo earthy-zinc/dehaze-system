@@ -1,9 +1,6 @@
 package com.pei.resource.dubbo;
 
 import cn.hutool.core.convert.Convert;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.dubbo.config.annotation.DubboService;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.MapstructUtils;
 import com.pei.common.core.utils.StringUtils;
@@ -15,6 +12,9 @@ import com.pei.resource.api.domain.RemoteFile;
 import com.pei.resource.domain.bo.SysOssBo;
 import com.pei.resource.domain.vo.SysOssVo;
 import com.pei.resource.service.ISysOssService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -82,7 +82,7 @@ public class RemoteFileServiceImpl implements RemoteFileService {
      * @return 列表
      */
     @Override
-    public List<RemoteFile> selectByIds(String ossIds){
+    public List<RemoteFile> selectByIds(String ossIds) {
         List<SysOssVo> sysOssVos = sysOssService.listByIds(StringUtils.splitTo(ossIds, Convert::toLong));
         return MapstructUtils.convert(sysOssVos, RemoteFile.class);
     }

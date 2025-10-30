@@ -2,14 +2,14 @@ package com.pei.workflow.service.impl;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.ObjectUtil;
+import com.pei.system.api.RemoteDictService;
+import com.pei.system.api.domain.vo.RemoteDictTypeVo;
 import com.pei.workflow.common.ConditionalOnEnable;
 import com.pei.workflow.common.enums.ButtonPermissionEnum;
 import com.pei.workflow.common.enums.NodeExtEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.dubbo.config.annotation.DubboReference;
-import com.pei.system.api.RemoteDictService;
-import com.pei.system.api.domain.vo.RemoteDictTypeVo;
 import org.dromara.warm.flow.ui.service.NodeExtService;
 import org.dromara.warm.flow.ui.vo.NodeExt;
 import org.springframework.stereotype.Service;
@@ -154,8 +154,7 @@ public class FlwNodeExtServiceImpl implements NodeExtService {
     }
 
     /**
-     * 根据 CHILD_NODE_MAP 中的配置信息，构建一个基本的 ChildNode 对象
-     * 该方法用于设置 ChildNode 的常规属性，例如 label、type、是否必填、是否多选等
+     * 根据 CHILD_NODE_MAP 中的配置信息，构建一个基本的 ChildNode 对象 该方法用于设置 ChildNode 的常规属性，例如 label、type、是否必填、是否多选等
      *
      * @param key CHILD_NODE_MAP 的 key
      * @return 返回构建好的 ChildNode 对象

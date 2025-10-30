@@ -6,7 +6,6 @@
 2. rocketmq：普通消息、事务消息、延迟消息
 3. kafka：普通消息
 
-
 ## 使用方式
 
 rocketmq：

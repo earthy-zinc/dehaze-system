@@ -1,7 +1,7 @@
 package com.pei.common.sse.config;
 
-import com.pei.common.sse.core.SseEmitterManager;
 import com.pei.common.sse.controller.SseController;
+import com.pei.common.sse.core.SseEmitterManager;
 import com.pei.common.sse.listener.SseTopicListener;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

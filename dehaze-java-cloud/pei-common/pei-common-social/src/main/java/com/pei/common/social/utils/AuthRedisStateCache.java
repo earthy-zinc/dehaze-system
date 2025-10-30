@@ -1,9 +1,9 @@
 package com.pei.common.social.utils;
 
-import lombok.AllArgsConstructor;
-import me.zhyd.oauth.cache.AuthStateCache;
 import com.pei.common.core.constant.GlobalConstants;
 import com.pei.common.redis.utils.RedisUtils;
+import lombok.AllArgsConstructor;
+import me.zhyd.oauth.cache.AuthStateCache;
 
 import java.time.Duration;
 

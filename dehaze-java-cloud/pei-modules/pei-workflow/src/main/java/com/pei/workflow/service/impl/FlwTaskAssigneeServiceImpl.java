@@ -3,11 +3,6 @@ package com.pei.workflow.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
-import com.pei.workflow.common.ConditionalOnEnable;
-import com.pei.workflow.common.enums.TaskAssigneeEnum;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.dubbo.config.annotation.DubboReference;
 import com.pei.common.core.enums.FormatsType;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.DateUtils;
@@ -19,12 +14,17 @@ import com.pei.system.api.domain.bo.RemoteTaskAssigneeBo;
 import com.pei.system.api.domain.vo.RemoteDeptVo;
 import com.pei.system.api.domain.vo.RemoteTaskAssigneeVo;
 import com.pei.system.api.domain.vo.RemoteUserVo;
+import com.pei.workflow.common.ConditionalOnEnable;
+import com.pei.workflow.common.enums.TaskAssigneeEnum;
+import com.pei.workflow.service.IFlwTaskAssigneeService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.dubbo.config.annotation.DubboReference;
 import org.dromara.warm.flow.ui.dto.HandlerFunDto;
 import org.dromara.warm.flow.ui.dto.HandlerQuery;
 import org.dromara.warm.flow.ui.dto.TreeFunDto;
 import org.dromara.warm.flow.ui.service.HandlerSelectService;
 import org.dromara.warm.flow.ui.vo.HandlerSelectVo;
-import com.pei.workflow.service.IFlwTaskAssigneeService;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -103,16 +103,6 @@ public class FlwTaskAssigneeServiceImpl implements IFlwTaskAssigneeService, Hand
     }
 
     /**
-     * 构建部门树状结构
-     */
-    private TreeFunDto<RemoteDeptVo> buildDeptTree(List<RemoteDeptVo> depts) {
-        return new TreeFunDto<>(depts)
-            .setId(dept -> String.valueOf(dept.getDeptId()))
-            .setName(RemoteDeptVo::getDeptName)
-            .setParentId(dept -> String.valueOf(dept.getParentId()));
-    }
-
-    /**
      * 构建任务办理人数据
      */
     private HandlerFunDto<RemoteTaskAssigneeVo.TaskHandler> buildHandlerData(RemoteTaskAssigneeVo dto, TaskAssigneeEnum type) {
@@ -125,6 +115,16 @@ public class FlwTaskAssigneeServiceImpl implements IFlwTaskAssigneeService, Hand
                     .map(remoteDeptService::selectDeptNameByIds)
                     .orElse(DEFAULT_GROUP_NAME), DEFAULT_GROUP_NAME))
             .setCreateTime(assignee -> DateUtils.parseDateToStr(FormatsType.YYYY_MM_DD_HH_MM_SS, assignee.getCreateTime()));
+    }
+
+    /**
+     * 构建部门树状结构
+     */
+    private TreeFunDto<RemoteDeptVo> buildDeptTree(List<RemoteDeptVo> depts) {
+        return new TreeFunDto<>(depts)
+            .setId(dept -> String.valueOf(dept.getDeptId()))
+            .setName(RemoteDeptVo::getDeptName)
+            .setParentId(dept -> String.valueOf(dept.getParentId()));
     }
 
     /**
@@ -163,9 +163,7 @@ public class FlwTaskAssigneeServiceImpl implements IFlwTaskAssigneeService, Hand
      *
      * @param type 任务分配类型，表示用户、角色、部门或其他（TaskAssigneeEnum 枚举值）
      * @param ids  与指定分配类型关联的 ID 列表（例如用户ID、角色ID、部门ID等）
-     * @return 返回包含用户信息的列表。如果类型为用户（USER），则通过用户ID列表查询；
-     * 如果类型为角色（ROLE），则通过角色ID列表查询；
-     * 如果类型为部门（DEPT），则通过部门ID列表查询；
+     * @return 返回包含用户信息的列表。如果类型为用户（USER），则通过用户ID列表查询； 如果类型为角色（ROLE），则通过角色ID列表查询； 如果类型为部门（DEPT），则通过部门ID列表查询；
      * 如果类型为岗位（POST）或无法识别的类型，则返回空列表
      */
     private List<RemoteUserVo> getUsersByType(TaskAssigneeEnum type, List<Long> ids) {

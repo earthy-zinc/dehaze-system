@@ -88,31 +88,6 @@ public class SysDeptServiceImpl implements ISysDeptService {
         return buildDeptTreeSelect(depts);
     }
 
-    private LambdaQueryWrapper<SysDept> buildQueryWrapper(SysDeptBo bo) {
-        LambdaQueryWrapper<SysDept> lqw = Wrappers.lambdaQuery();
-        lqw.eq(SysDept::getDelFlag, SystemConstants.NORMAL);
-        lqw.eq(ObjectUtil.isNotNull(bo.getDeptId()), SysDept::getDeptId, bo.getDeptId());
-        lqw.eq(ObjectUtil.isNotNull(bo.getParentId()), SysDept::getParentId, bo.getParentId());
-        lqw.like(StringUtils.isNotBlank(bo.getDeptName()), SysDept::getDeptName, bo.getDeptName());
-        lqw.like(StringUtils.isNotBlank(bo.getDeptCategory()), SysDept::getDeptCategory, bo.getDeptCategory());
-        lqw.eq(StringUtils.isNotBlank(bo.getStatus()), SysDept::getStatus, bo.getStatus());
-        lqw.orderByAsc(SysDept::getAncestors);
-        lqw.orderByAsc(SysDept::getParentId);
-        lqw.orderByAsc(SysDept::getOrderNum);
-        lqw.orderByAsc(SysDept::getDeptId);
-        if (ObjectUtil.isNotNull(bo.getBelongDeptId())) {
-            //部门树搜索
-            lqw.and(x -> {
-                Long parentId = bo.getBelongDeptId();
-                List<SysDept> deptList = baseMapper.selectListByParentId(parentId);
-                List<Long> deptIds = StreamUtils.toList(deptList, SysDept::getDeptId);
-                deptIds.add(parentId);
-                x.in(SysDept::getDeptId, deptIds);
-            });
-        }
-        return lqw;
-    }
-
     /**
      * 构建前端所需要下拉树结构
      *
@@ -335,19 +310,6 @@ public class SysDeptServiceImpl implements ISysDeptService {
     }
 
     /**
-     * 修改该部门的父级部门状态
-     *
-     * @param dept 当前部门
-     */
-    private void updateParentDeptStatusNormal(SysDept dept) {
-        String ancestors = dept.getAncestors();
-        Long[] deptIds = Convert.toLongArray(ancestors);
-        baseMapper.update(null, new LambdaUpdateWrapper<SysDept>()
-            .set(SysDept::getStatus, SystemConstants.NORMAL)
-            .in(SysDept::getDeptId, Arrays.asList(deptIds)));
-    }
-
-    /**
      * 修改子元素关系
      *
      * @param deptId       被修改的部门ID
@@ -369,6 +331,19 @@ public class SysDeptServiceImpl implements ISysDeptService {
                 list.forEach(dept -> CacheUtils.evict(CacheNames.SYS_DEPT, dept.getDeptId()));
             }
         }
+    }
+
+    /**
+     * 修改该部门的父级部门状态
+     *
+     * @param dept 当前部门
+     */
+    private void updateParentDeptStatusNormal(SysDept dept) {
+        String ancestors = dept.getAncestors();
+        Long[] deptIds = Convert.toLongArray(ancestors);
+        baseMapper.update(null, new LambdaUpdateWrapper<SysDept>()
+            .set(SysDept::getStatus, SystemConstants.NORMAL)
+            .in(SysDept::getDeptId, Arrays.asList(deptIds)));
     }
 
     /**
@@ -396,6 +371,31 @@ public class SysDeptServiceImpl implements ISysDeptService {
         return baseMapper.selectDeptList(new LambdaQueryWrapper<SysDept>()
             .select(SysDept::getDeptId, SysDept::getDeptName, SysDept::getParentId)
             .eq(SysDept::getStatus, SystemConstants.NORMAL));
+    }
+
+    private LambdaQueryWrapper<SysDept> buildQueryWrapper(SysDeptBo bo) {
+        LambdaQueryWrapper<SysDept> lqw = Wrappers.lambdaQuery();
+        lqw.eq(SysDept::getDelFlag, SystemConstants.NORMAL);
+        lqw.eq(ObjectUtil.isNotNull(bo.getDeptId()), SysDept::getDeptId, bo.getDeptId());
+        lqw.eq(ObjectUtil.isNotNull(bo.getParentId()), SysDept::getParentId, bo.getParentId());
+        lqw.like(StringUtils.isNotBlank(bo.getDeptName()), SysDept::getDeptName, bo.getDeptName());
+        lqw.like(StringUtils.isNotBlank(bo.getDeptCategory()), SysDept::getDeptCategory, bo.getDeptCategory());
+        lqw.eq(StringUtils.isNotBlank(bo.getStatus()), SysDept::getStatus, bo.getStatus());
+        lqw.orderByAsc(SysDept::getAncestors);
+        lqw.orderByAsc(SysDept::getParentId);
+        lqw.orderByAsc(SysDept::getOrderNum);
+        lqw.orderByAsc(SysDept::getDeptId);
+        if (ObjectUtil.isNotNull(bo.getBelongDeptId())) {
+            //部门树搜索
+            lqw.and(x -> {
+                Long parentId = bo.getBelongDeptId();
+                List<SysDept> deptList = baseMapper.selectListByParentId(parentId);
+                List<Long> deptIds = StreamUtils.toList(deptList, SysDept::getDeptId);
+                deptIds.add(parentId);
+                x.in(SysDept::getDeptId, deptIds);
+            });
+        }
+        return lqw;
     }
 
 }

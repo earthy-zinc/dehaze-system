@@ -43,11 +43,10 @@ public class PushMessageController {
     }
 
     /**
-     * rocketmq 发送消息
-     * 需要手动创建相关的Topic和group
+     * rocketmq 发送消息 需要手动创建相关的Topic和group
      */
     @GetMapping("/rocket/send")
-    public void rocketSend(){
+    public void rocketSend() {
         normalRocketProducer.sendMessage();
     }
 
@@ -55,7 +54,7 @@ public class PushMessageController {
      * rocketmq 事务消息
      */
     @GetMapping("/rocket/transaction")
-    public void rocketTransaction(){
+    public void rocketTransaction() {
         transactionRocketProducer.sendTransactionMessage();
     }
 
@@ -63,7 +62,7 @@ public class PushMessageController {
      * kafka 发送消息
      */
     @GetMapping("/kafka/send")
-    public void kafkaSend(){
+    public void kafkaSend() {
         normalKafkaProducer.sendKafkaMsg();
     }
 }

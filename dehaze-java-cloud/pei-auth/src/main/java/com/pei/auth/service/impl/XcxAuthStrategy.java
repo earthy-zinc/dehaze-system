@@ -2,7 +2,17 @@ package com.pei.auth.service.impl;
 
 import cn.dev33.satoken.stp.SaLoginModel;
 import cn.dev33.satoken.stp.StpUtil;
+import com.pei.auth.domain.vo.LoginVo;
 import com.pei.auth.form.XcxLoginBody;
+import com.pei.auth.service.IAuthStrategy;
+import com.pei.auth.service.SysLoginService;
+import com.pei.common.core.exception.ServiceException;
+import com.pei.common.core.utils.ValidatorUtils;
+import com.pei.common.json.utils.JsonUtils;
+import com.pei.common.satoken.utils.LoginHelper;
+import com.pei.system.api.RemoteUserService;
+import com.pei.system.api.domain.vo.RemoteClientVo;
+import com.pei.system.api.model.XcxLoginUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import me.zhyd.oauth.config.AuthConfig;
@@ -13,16 +23,6 @@ import me.zhyd.oauth.model.AuthUser;
 import me.zhyd.oauth.request.AuthRequest;
 import me.zhyd.oauth.request.AuthWechatMiniProgramRequest;
 import org.apache.dubbo.config.annotation.DubboReference;
-import com.pei.auth.domain.vo.LoginVo;
-import com.pei.auth.service.IAuthStrategy;
-import com.pei.auth.service.SysLoginService;
-import com.pei.common.core.exception.ServiceException;
-import com.pei.common.core.utils.ValidatorUtils;
-import com.pei.common.json.utils.JsonUtils;
-import com.pei.common.satoken.utils.LoginHelper;
-import com.pei.system.api.RemoteUserService;
-import com.pei.system.api.domain.vo.RemoteClientVo;
-import com.pei.system.api.model.XcxLoginUser;
 import org.springframework.stereotype.Service;
 
 /**

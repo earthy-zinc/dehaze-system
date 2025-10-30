@@ -23,6 +23,16 @@ public interface DictService {
     }
 
     /**
+     * 根据字典类型和字典值获取字典标签
+     *
+     * @param dictType  字典类型
+     * @param dictValue 字典值
+     * @param separator 分隔符
+     * @return 字典标签
+     */
+    String getDictLabel(String dictType, String dictValue, String separator);
+
+    /**
      * 根据字典类型和字典标签获取字典值
      *
      * @param dictType  字典类型
@@ -32,16 +42,6 @@ public interface DictService {
     default String getDictValue(String dictType, String dictLabel) {
         return getDictValue(dictType, dictLabel, StringUtils.SEPARATOR);
     }
-
-    /**
-     * 根据字典类型和字典值获取字典标签
-     *
-     * @param dictType  字典类型
-     * @param dictValue 字典值
-     * @param separator 分隔符
-     * @return 字典标签
-     */
-    String getDictLabel(String dictType, String dictValue, String separator);
 
     /**
      * 根据字典类型和字典标签获取字典值

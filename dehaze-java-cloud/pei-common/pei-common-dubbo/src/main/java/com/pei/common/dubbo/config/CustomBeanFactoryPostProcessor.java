@@ -1,7 +1,7 @@
 package com.pei.common.dubbo.config;
 
-import org.apache.dubbo.common.constants.CommonConstants;
 import com.pei.common.core.utils.StringUtils;
+import org.apache.dubbo.common.constants.CommonConstants;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;

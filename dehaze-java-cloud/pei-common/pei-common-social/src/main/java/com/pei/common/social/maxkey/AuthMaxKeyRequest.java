@@ -1,6 +1,7 @@
 package com.pei.common.social.maxkey;
 
 import cn.hutool.core.lang.Dict;
+import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.json.utils.JsonUtils;
 import me.zhyd.oauth.cache.AuthStateCache;
 import me.zhyd.oauth.config.AuthConfig;
@@ -9,10 +10,9 @@ import me.zhyd.oauth.model.AuthCallback;
 import me.zhyd.oauth.model.AuthToken;
 import me.zhyd.oauth.model.AuthUser;
 import me.zhyd.oauth.request.AuthDefaultRequest;
-import com.pei.common.core.utils.SpringUtils;
 
 /**
- *  @author 长春叭哥 2023年03月26日
+ * @author 长春叭哥 2023年03月26日
  */
 public class AuthMaxKeyRequest extends AuthDefaultRequest {
 

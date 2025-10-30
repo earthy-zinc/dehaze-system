@@ -3,13 +3,11 @@ package com.pei.system.controller.system;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.lock.annotation.Lock4j;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.TenantConstants;
 import com.pei.common.core.domain.R;
 import com.pei.common.core.validate.AddGroup;
 import com.pei.common.core.validate.EditGroup;
 import com.pei.common.encrypt.annotation.ApiEncrypt;
-import com.pei.common.web.core.BaseController;
 import com.pei.common.excel.utils.ExcelUtil;
 import com.pei.common.idempotent.annotation.RepeatSubmit;
 import com.pei.common.log.annotation.Log;
@@ -17,17 +15,19 @@ import com.pei.common.log.enums.BusinessType;
 import com.pei.common.mybatis.core.page.PageQuery;
 import com.pei.common.mybatis.core.page.TableDataInfo;
 import com.pei.common.tenant.helper.TenantHelper;
+import com.pei.common.web.core.BaseController;
 import com.pei.system.domain.bo.SysTenantBo;
 import com.pei.system.domain.vo.SysTenantVo;
 import com.pei.system.service.ISysTenantService;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
-
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -76,7 +76,7 @@ public class SysTenantController extends BaseController {
     @SaCheckPermission("system:tenant:query")
     @GetMapping("/{id}")
     public R<SysTenantVo> getInfo(@NotNull(message = "主键不能为空")
-                                     @PathVariable Long id) {
+                                  @PathVariable Long id) {
         return R.ok(tenantService.queryById(id));
     }
 

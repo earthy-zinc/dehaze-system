@@ -239,7 +239,7 @@ springdoc:
     # 是否开启接口文档
     enabled: true
   swagger-ui:
-#    # 持久化认证数据
+    #    # 持久化认证数据
     persistAuthorization: true
   info:
     # 标题

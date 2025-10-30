@@ -19,6 +19,10 @@ public class ActuatorAuthFilter implements Filter {
     }
 
     @Override
+    public void init(FilterConfig filterConfig) {
+    }
+
+    @Override
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
@@ -51,10 +55,6 @@ public class ActuatorAuthFilter implements Filter {
         }
         // 如果认证成功，继续处理请求
         filterChain.doFilter(request, response);
-    }
-
-    @Override
-    public void init(FilterConfig filterConfig) {
     }
 
     @Override

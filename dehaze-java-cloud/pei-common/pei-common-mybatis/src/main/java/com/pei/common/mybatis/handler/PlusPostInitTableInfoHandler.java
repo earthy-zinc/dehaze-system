@@ -3,13 +3,12 @@ package com.pei.common.mybatis.handler;
 import cn.hutool.core.convert.Convert;
 import com.baomidou.mybatisplus.core.handlers.PostInitTableInfoHandler;
 import com.baomidou.mybatisplus.core.metadata.TableInfo;
-import org.apache.ibatis.session.Configuration;
 import com.pei.common.core.utils.SpringUtils;
 import com.pei.common.core.utils.reflect.ReflectUtils;
+import org.apache.ibatis.session.Configuration;
 
 /**
- * 修改表信息初始化方式
- * 目前用于全局修改是否使用逻辑删除
+ * 修改表信息初始化方式 目前用于全局修改是否使用逻辑删除
  *
  * @author Lion Li
  */

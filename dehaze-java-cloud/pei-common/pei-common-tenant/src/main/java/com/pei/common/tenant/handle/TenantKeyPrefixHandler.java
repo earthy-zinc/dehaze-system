@@ -1,11 +1,11 @@
 package com.pei.common.tenant.handle;
 
 import com.baomidou.mybatisplus.core.plugins.InterceptorIgnoreHelper;
-import lombok.extern.slf4j.Slf4j;
 import com.pei.common.core.constant.GlobalConstants;
 import com.pei.common.core.utils.StringUtils;
 import com.pei.common.redis.handler.KeyPrefixHandler;
 import com.pei.common.tenant.helper.TenantHelper;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 多租户redis缓存key前缀处理

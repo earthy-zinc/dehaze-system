@@ -1,10 +1,10 @@
 package com.pei.workflow.domain.vo;
 
-import com.pei.workflow.common.constant.FlowConstant;
-import lombok.Data;
 import com.pei.common.core.utils.DateUtils;
 import com.pei.common.translation.annotation.Translation;
 import com.pei.common.translation.constant.TransConstant;
+import com.pei.workflow.common.constant.FlowConstant;
+import lombok.Data;
 import org.dromara.warm.flow.core.enums.CooperateType;
 
 import java.io.Serial;
@@ -214,16 +214,6 @@ public class FlowHisTaskVo implements Serializable {
     }
 
     /**
-     * 设置更新时间并计算任务运行时长
-     *
-     * @param updateTime 更新时间
-     */
-    public void setUpdateTime(Date updateTime) {
-        this.updateTime = updateTime;
-        updateRunDuration();
-    }
-
-    /**
      * 更新运行时长
      */
     private void updateRunDuration() {
@@ -231,6 +221,16 @@ public class FlowHisTaskVo implements Serializable {
         if (this.updateTime != null && this.createTime != null) {
             this.runDuration = DateUtils.getTimeDifference(this.updateTime, this.createTime);
         }
+    }
+
+    /**
+     * 设置更新时间并计算任务运行时长
+     *
+     * @param updateTime 更新时间
+     */
+    public void setUpdateTime(Date updateTime) {
+        this.updateTime = updateTime;
+        updateRunDuration();
     }
 
     /**

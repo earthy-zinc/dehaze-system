@@ -1,9 +1,9 @@
 package com.pei.system.dubbo;
 
+import com.pei.system.api.RemoteConfigService;
 import com.pei.system.service.ISysConfigService;
 import lombok.RequiredArgsConstructor;
 import org.apache.dubbo.config.annotation.DubboService;
-import com.pei.system.api.RemoteConfigService;
 import org.springframework.stereotype.Service;
 
 /**

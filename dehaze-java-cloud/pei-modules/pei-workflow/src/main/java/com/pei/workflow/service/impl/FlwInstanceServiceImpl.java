@@ -9,6 +9,14 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.common.core.enums.BusinessStatusEnum;
+import com.pei.common.core.exception.ServiceException;
+import com.pei.common.core.utils.StreamUtils;
+import com.pei.common.core.utils.StringUtils;
+import com.pei.common.mybatis.core.page.PageQuery;
+import com.pei.common.mybatis.core.page.TableDataInfo;
+import com.pei.common.satoken.utils.LoginHelper;
+import com.pei.system.api.domain.vo.RemoteUserVo;
 import com.pei.workflow.common.ConditionalOnEnable;
 import com.pei.workflow.common.enums.TaskStatusEnum;
 import com.pei.workflow.domain.bo.FlowCancelBo;
@@ -21,16 +29,10 @@ import com.pei.workflow.handler.FlowProcessEventHandler;
 import com.pei.workflow.mapper.FlwCategoryMapper;
 import com.pei.workflow.mapper.FlwInstanceMapper;
 import com.pei.workflow.service.IFlwCommonService;
+import com.pei.workflow.service.IFlwInstanceService;
+import com.pei.workflow.service.IFlwTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.core.enums.BusinessStatusEnum;
-import com.pei.common.core.exception.ServiceException;
-import com.pei.common.core.utils.StreamUtils;
-import com.pei.common.core.utils.StringUtils;
-import com.pei.common.mybatis.core.page.PageQuery;
-import com.pei.common.mybatis.core.page.TableDataInfo;
-import com.pei.common.satoken.utils.LoginHelper;
-import com.pei.system.api.domain.vo.RemoteUserVo;
 import org.dromara.warm.flow.core.FlowEngine;
 import org.dromara.warm.flow.core.constant.ExceptionCons;
 import org.dromara.warm.flow.core.dto.FlowParams;
@@ -47,8 +49,6 @@ import org.dromara.warm.flow.orm.entity.FlowInstance;
 import org.dromara.warm.flow.orm.entity.FlowTask;
 import org.dromara.warm.flow.orm.mapper.FlowHisTaskMapper;
 import org.dromara.warm.flow.orm.mapper.FlowInstanceMapper;
-import com.pei.workflow.service.IFlwInstanceService;
-import com.pei.workflow.service.IFlwTaskService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -124,28 +124,6 @@ public class FlwInstanceServiceImpl implements IFlwInstanceService {
         instanceVo.setFormPath(definition.getFormPath());
         instanceVo.setCategory(definition.getCategory());
         return instanceVo;
-    }
-
-    /**
-     * 通用查询条件
-     *
-     * @param flowInstanceBo 查询条件
-     * @return 查询条件构造方法
-     */
-    private QueryWrapper<FlowInstanceBo> buildQueryWrapper(FlowInstanceBo flowInstanceBo) {
-        QueryWrapper<FlowInstanceBo> queryWrapper = Wrappers.query();
-        queryWrapper.like(StringUtils.isNotBlank(flowInstanceBo.getNodeName()), "fi.node_name", flowInstanceBo.getNodeName());
-        queryWrapper.like(StringUtils.isNotBlank(flowInstanceBo.getFlowName()), "fd.flow_name", flowInstanceBo.getFlowName());
-        queryWrapper.like(StringUtils.isNotBlank(flowInstanceBo.getFlowCode()), "fd.flow_code", flowInstanceBo.getFlowCode());
-        if (StringUtils.isNotBlank(flowInstanceBo.getCategory())) {
-            List<Long> categoryIds = flwCategoryMapper.selectCategoryIdsByParentId(Convert.toLong(flowInstanceBo.getCategory()));
-            queryWrapper.in("fd.category", StreamUtils.toList(categoryIds, Convert::toStr));
-        }
-        queryWrapper.eq(StringUtils.isNotBlank(flowInstanceBo.getBusinessId()), "fi.business_id", flowInstanceBo.getBusinessId());
-        queryWrapper.in(CollUtil.isNotEmpty(flowInstanceBo.getCreateByIds()), "fi.create_by", flowInstanceBo.getCreateByIds());
-        queryWrapper.eq("fi.del_flag", "0");
-        queryWrapper.orderByDesc("fi.create_time");
-        return queryWrapper;
     }
 
     /**
@@ -449,5 +427,27 @@ public class FlwInstanceServiceImpl implements IFlwInstanceService {
             log.error(e.getMessage(), e);
             throw new ServiceException(e.getMessage());
         }
+    }
+
+    /**
+     * 通用查询条件
+     *
+     * @param flowInstanceBo 查询条件
+     * @return 查询条件构造方法
+     */
+    private QueryWrapper<FlowInstanceBo> buildQueryWrapper(FlowInstanceBo flowInstanceBo) {
+        QueryWrapper<FlowInstanceBo> queryWrapper = Wrappers.query();
+        queryWrapper.like(StringUtils.isNotBlank(flowInstanceBo.getNodeName()), "fi.node_name", flowInstanceBo.getNodeName());
+        queryWrapper.like(StringUtils.isNotBlank(flowInstanceBo.getFlowName()), "fd.flow_name", flowInstanceBo.getFlowName());
+        queryWrapper.like(StringUtils.isNotBlank(flowInstanceBo.getFlowCode()), "fd.flow_code", flowInstanceBo.getFlowCode());
+        if (StringUtils.isNotBlank(flowInstanceBo.getCategory())) {
+            List<Long> categoryIds = flwCategoryMapper.selectCategoryIdsByParentId(Convert.toLong(flowInstanceBo.getCategory()));
+            queryWrapper.in("fd.category", StreamUtils.toList(categoryIds, Convert::toStr));
+        }
+        queryWrapper.eq(StringUtils.isNotBlank(flowInstanceBo.getBusinessId()), "fi.business_id", flowInstanceBo.getBusinessId());
+        queryWrapper.in(CollUtil.isNotEmpty(flowInstanceBo.getCreateByIds()), "fi.create_by", flowInstanceBo.getCreateByIds());
+        queryWrapper.eq("fi.del_flag", "0");
+        queryWrapper.orderByDesc("fi.create_time");
+        return queryWrapper;
     }
 }

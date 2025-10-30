@@ -1,8 +1,8 @@
 package com.pei.system.domain.convert;
 
-import io.github.linpeilie.BaseMapper;
 import com.pei.system.api.domain.vo.RemoteClientVo;
 import com.pei.system.domain.vo.SysClientVo;
+import io.github.linpeilie.BaseMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 import org.mapstruct.ReportingPolicy;

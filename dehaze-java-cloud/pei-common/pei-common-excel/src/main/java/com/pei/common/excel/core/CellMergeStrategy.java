@@ -8,6 +8,8 @@ import com.alibaba.excel.metadata.Head;
 import com.alibaba.excel.write.handler.WorkbookWriteHandler;
 import com.alibaba.excel.write.handler.context.WorkbookWriteHandlerContext;
 import com.alibaba.excel.write.merge.AbstractMergeStrategy;
+import com.pei.common.core.utils.reflect.ReflectUtils;
+import com.pei.common.excel.annotation.CellMerge;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.SneakyThrows;
@@ -15,8 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.util.CellRangeAddress;
-import com.pei.common.core.utils.reflect.ReflectUtils;
-import com.pei.common.excel.annotation.CellMerge;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -38,30 +38,6 @@ public class CellMergeStrategy extends AbstractMergeStrategy implements Workbook
         // 行合并开始下标
         this.rowIndex = hasTitle ? 1 : 0;
         this.cellList = handle(list, hasTitle);
-    }
-
-    @Override
-    protected void merge(Sheet sheet, Cell cell, Head head, Integer relativeRowIndex) {
-        //单元格写入了,遍历合并区域,如果该Cell在区域内,但非首行,则清空
-        final int rowIndex = cell.getRowIndex();
-        if (CollUtil.isNotEmpty(cellList)){
-            for (CellRangeAddress cellAddresses : cellList) {
-                final int firstRow = cellAddresses.getFirstRow();
-                if (cellAddresses.isInRange(cell) && rowIndex != firstRow){
-                    cell.setBlank();
-                }
-            }
-        }
-    }
-
-    @Override
-    public void afterWorkbookDispose(final WorkbookWriteHandlerContext context) {
-        //当前表格写完后，统一写入
-        if (CollUtil.isNotEmpty(cellList)){
-            for (CellRangeAddress item : cellList) {
-                context.getWriteContext().writeSheetHolder().getSheet().addMergedRegion(item);
-            }
-        }
     }
 
     @SneakyThrows
@@ -143,6 +119,30 @@ public class CellMergeStrategy extends AbstractMergeStrategy implements Workbook
             }
         }
         return isMerge;
+    }
+
+    @Override
+    protected void merge(Sheet sheet, Cell cell, Head head, Integer relativeRowIndex) {
+        //单元格写入了,遍历合并区域,如果该Cell在区域内,但非首行,则清空
+        final int rowIndex = cell.getRowIndex();
+        if (CollUtil.isNotEmpty(cellList)) {
+            for (CellRangeAddress cellAddresses : cellList) {
+                final int firstRow = cellAddresses.getFirstRow();
+                if (cellAddresses.isInRange(cell) && rowIndex != firstRow) {
+                    cell.setBlank();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void afterWorkbookDispose(final WorkbookWriteHandlerContext context) {
+        //当前表格写完后，统一写入
+        if (CollUtil.isNotEmpty(cellList)) {
+            for (CellRangeAddress item : cellList) {
+                context.getWriteContext().writeSheetHolder().getSheet().addMergedRegion(item);
+            }
+        }
     }
 
     @Data

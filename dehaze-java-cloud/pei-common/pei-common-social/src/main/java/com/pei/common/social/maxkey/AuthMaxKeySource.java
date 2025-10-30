@@ -15,7 +15,6 @@ public enum AuthMaxKeySource implements AuthSource {
      * 自己搭建的 maxkey 私服
      */
     MAXKEY {
-
         /**
          * 授权的api
          */

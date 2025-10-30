@@ -1,9 +1,9 @@
 package com.pei.common.sse.core;
 
 import cn.hutool.core.map.MapUtil;
+import com.pei.common.redis.utils.RedisUtils;
 import com.pei.common.sse.dto.SseMessageDto;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.redis.utils.RedisUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -92,6 +92,17 @@ public class SseEmitterManager {
     }
 
     /**
+     * 本机全用户会话发送消息
+     *
+     * @param message 要发送的消息内容
+     */
+    public void sendMessage(String message) {
+        for (Long userId : USER_TOKEN_EMITTERS.keySet()) {
+            sendMessage(userId, message);
+        }
+    }
+
+    /**
      * 向指定的用户会话发送消息
      *
      * @param userId  要发送消息的用户id
@@ -111,17 +122,6 @@ public class SseEmitterManager {
             }
         } else {
             USER_TOKEN_EMITTERS.remove(userId);
-        }
-    }
-
-    /**
-     * 本机全用户会话发送消息
-     *
-     * @param message 要发送的消息内容
-     */
-    public void sendMessage(String message) {
-        for (Long userId : USER_TOKEN_EMITTERS.keySet()) {
-            sendMessage(userId, message);
         }
     }
 

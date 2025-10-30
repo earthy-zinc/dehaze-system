@@ -1,8 +1,8 @@
 package com.pei.common.satoken.core.service;
 
 import cn.dev33.satoken.stp.StpInterface;
-import com.pei.common.satoken.utils.LoginHelper;
 import com.pei.common.core.enums.UserType;
+import com.pei.common.satoken.utils.LoginHelper;
 import com.pei.system.api.model.LoginUser;
 
 import java.util.ArrayList;

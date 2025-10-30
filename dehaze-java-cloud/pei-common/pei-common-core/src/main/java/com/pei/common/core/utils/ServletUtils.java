@@ -43,6 +43,33 @@ public class ServletUtils extends JakartaServletUtil {
     }
 
     /**
+     * 获取当前 HTTP 请求对象
+     *
+     * @return 当前 HTTP 请求对象
+     */
+    public static HttpServletRequest getRequest() {
+        try {
+            return getRequestAttributes().getRequest();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * 获取当前请求的请求属性
+     *
+     * @return {@link ServletRequestAttributes} 请求属性对象
+     */
+    public static ServletRequestAttributes getRequestAttributes() {
+        try {
+            RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+            return (ServletRequestAttributes) attributes;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
      * 获取指定名称的 String 类型的请求参数，若参数不存在，则返回默认值
      *
      * @param name         参数名
@@ -96,17 +123,6 @@ public class ServletUtils extends JakartaServletUtil {
     }
 
     /**
-     * 获取所有请求参数（以 Map 的形式返回）
-     *
-     * @param request 请求对象{@link ServletRequest}
-     * @return 请求参数的 Map，键为参数名，值为参数值数组
-     */
-    public static Map<String, String[]> getParams(ServletRequest request) {
-        final Map<String, String[]> map = request.getParameterMap();
-        return Collections.unmodifiableMap(map);
-    }
-
-    /**
      * 获取所有请求参数（以 Map 的形式返回，值为字符串形式的拼接）
      *
      * @param request 请求对象{@link ServletRequest}
@@ -121,16 +137,14 @@ public class ServletUtils extends JakartaServletUtil {
     }
 
     /**
-     * 获取当前 HTTP 请求对象
+     * 获取所有请求参数（以 Map 的形式返回）
      *
-     * @return 当前 HTTP 请求对象
+     * @param request 请求对象{@link ServletRequest}
+     * @return 请求参数的 Map，键为参数名，值为参数值数组
      */
-    public static HttpServletRequest getRequest() {
-        try {
-            return getRequestAttributes().getRequest();
-        } catch (Exception e) {
-            return null;
-        }
+    public static Map<String, String[]> getParams(ServletRequest request) {
+        final Map<String, String[]> map = request.getParameterMap();
+        return Collections.unmodifiableMap(map);
     }
 
     /**
@@ -149,30 +163,14 @@ public class ServletUtils extends JakartaServletUtil {
     /**
      * 获取当前请求的 HttpSession 对象
      * <p>
-     * 如果当前请求已经关联了一个会话（即已经存在有效的 session ID），
-     * 则返回该会话对象；如果没有关联会话，则会创建一个新的会话对象并返回。
+     * 如果当前请求已经关联了一个会话（即已经存在有效的 session ID）， 则返回该会话对象；如果没有关联会话，则会创建一个新的会话对象并返回。
      * <p>
-     * HttpSession 用于存储会话级别的数据，如用户登录信息、购物车内容等，
-     * 可以在多个请求之间共享会话数据
+     * HttpSession 用于存储会话级别的数据，如用户登录信息、购物车内容等， 可以在多个请求之间共享会话数据
      *
      * @return 当前请求的 HttpSession 对象
      */
     public static HttpSession getSession() {
         return getRequest().getSession();
-    }
-
-    /**
-     * 获取当前请求的请求属性
-     *
-     * @return {@link ServletRequestAttributes} 请求属性对象
-     */
-    public static ServletRequestAttributes getRequestAttributes() {
-        try {
-            RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
-            return (ServletRequestAttributes) attributes;
-        } catch (Exception e) {
-            return null;
-        }
     }
 
     /**
@@ -188,6 +186,16 @@ public class ServletUtils extends JakartaServletUtil {
             return StringUtils.EMPTY;
         }
         return urlDecode(value);
+    }
+
+    /**
+     * 对内容进行 URL 解码
+     *
+     * @param str 内容
+     * @return 解码后的内容
+     */
+    public static String urlDecode(String str) {
+        return URLDecoder.decode(str, StandardCharsets.UTF_8);
     }
 
     /**
@@ -274,16 +282,6 @@ public class ServletUtils extends JakartaServletUtil {
      */
     public static String urlEncode(String str) {
         return URLEncoder.encode(str, StandardCharsets.UTF_8);
-    }
-
-    /**
-     * 对内容进行 URL 解码
-     *
-     * @param str 内容
-     * @return 解码后的内容
-     */
-    public static String urlDecode(String str) {
-        return URLDecoder.decode(str, StandardCharsets.UTF_8);
     }
 
 }

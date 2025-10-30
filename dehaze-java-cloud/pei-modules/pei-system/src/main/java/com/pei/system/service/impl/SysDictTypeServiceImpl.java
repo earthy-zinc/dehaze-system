@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import lombok.RequiredArgsConstructor;
 import com.pei.common.core.constant.CacheNames;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.MapstructUtils;
@@ -22,6 +21,7 @@ import com.pei.system.domain.vo.SysDictTypeVo;
 import com.pei.system.mapper.SysDictDataMapper;
 import com.pei.system.mapper.SysDictTypeMapper;
 import com.pei.system.service.ISysDictTypeService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -61,17 +61,6 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService {
     public List<SysDictTypeVo> selectDictTypeList(SysDictTypeBo dictType) {
         LambdaQueryWrapper<SysDictType> lqw = buildQueryWrapper(dictType);
         return baseMapper.selectVoList(lqw);
-    }
-
-    private LambdaQueryWrapper<SysDictType> buildQueryWrapper(SysDictTypeBo bo) {
-        Map<String, Object> params = bo.getParams();
-        LambdaQueryWrapper<SysDictType> lqw = Wrappers.lambdaQuery();
-        lqw.like(StringUtils.isNotBlank(bo.getDictName()), SysDictType::getDictName, bo.getDictName());
-        lqw.like(StringUtils.isNotBlank(bo.getDictType()), SysDictType::getDictType, bo.getDictType());
-        lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
-            SysDictType::getCreateTime, params.get("beginTime"), params.get("endTime"));
-        lqw.orderByAsc(SysDictType::getDictId);
-        return lqw;
     }
 
     /**
@@ -204,6 +193,17 @@ public class SysDictTypeServiceImpl implements ISysDictTypeService {
             .eq(SysDictType::getDictType, dictType.getDictType())
             .ne(ObjectUtil.isNotNull(dictType.getDictId()), SysDictType::getDictId, dictType.getDictId()));
         return !exist;
+    }
+
+    private LambdaQueryWrapper<SysDictType> buildQueryWrapper(SysDictTypeBo bo) {
+        Map<String, Object> params = bo.getParams();
+        LambdaQueryWrapper<SysDictType> lqw = Wrappers.lambdaQuery();
+        lqw.like(StringUtils.isNotBlank(bo.getDictName()), SysDictType::getDictName, bo.getDictName());
+        lqw.like(StringUtils.isNotBlank(bo.getDictType()), SysDictType::getDictType, bo.getDictType());
+        lqw.between(params.get("beginTime") != null && params.get("endTime") != null,
+            SysDictType::getCreateTime, params.get("beginTime"), params.get("endTime"));
+        lqw.orderByAsc(SysDictType::getDictId);
+        return lqw;
     }
 
 }

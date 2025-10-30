@@ -3,13 +3,13 @@ package com.pei.common.mybatis.handler;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.http.HttpStatus;
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
-import com.pei.common.mybatis.core.domain.BaseEntity;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.ibatis.reflection.MetaObject;
 import com.pei.common.core.exception.ServiceException;
 import com.pei.common.core.utils.ObjectUtils;
+import com.pei.common.mybatis.core.domain.BaseEntity;
 import com.pei.common.satoken.utils.LoginHelper;
 import com.pei.system.api.model.LoginUser;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.reflection.MetaObject;
 
 import java.util.Date;
 

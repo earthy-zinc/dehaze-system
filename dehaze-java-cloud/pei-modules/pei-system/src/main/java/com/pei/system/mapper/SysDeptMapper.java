@@ -4,13 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import org.apache.ibatis.annotations.Param;
 import com.pei.common.mybatis.annotation.DataColumn;
 import com.pei.common.mybatis.annotation.DataPermission;
 import com.pei.common.mybatis.core.mapper.BaseMapperPlus;
 import com.pei.common.mybatis.helper.DataBaseHelper;
 import com.pei.system.domain.SysDept;
 import com.pei.system.domain.vo.SysDeptVo;
+import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
 

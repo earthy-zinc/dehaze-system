@@ -1,6 +1,9 @@
 package com.pei.system.domain.bo;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.pei.common.core.constant.RegexConstants;
+import com.pei.common.mybatis.core.domain.BaseEntity;
+import com.pei.system.domain.SysMenu;
 import io.github.linpeilie.annotations.AutoMapper;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -8,9 +11,6 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import com.pei.common.core.constant.RegexConstants;
-import com.pei.common.mybatis.core.domain.BaseEntity;
-import com.pei.system.domain.SysMenu;
 
 /**
  * 菜单权限业务对象 sys_menu

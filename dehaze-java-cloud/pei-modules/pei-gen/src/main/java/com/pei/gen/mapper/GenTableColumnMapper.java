@@ -1,8 +1,8 @@
 package com.pei.gen.mapper;
 
 import com.baomidou.mybatisplus.annotation.InterceptorIgnore;
-import com.pei.gen.domain.GenTableColumn;
 import com.pei.common.mybatis.core.mapper.BaseMapperPlus;
+import com.pei.gen.domain.GenTableColumn;
 
 /**
  * 业务字段 数据层

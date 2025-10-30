@@ -1,13 +1,13 @@
 package com.pei.common.websocket.utils;
 
 import cn.hutool.core.collection.CollUtil;
+import com.pei.common.redis.utils.RedisUtils;
 import com.pei.common.websocket.constant.WebSocketConstants;
 import com.pei.common.websocket.dto.WebSocketMessageDto;
 import com.pei.common.websocket.holder.WebSocketSessionHolder;
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import com.pei.common.redis.utils.RedisUtils;
 import org.springframework.web.socket.PongMessage;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketMessage;
@@ -26,17 +26,6 @@ import java.util.function.Consumer;
 @Slf4j
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class WebSocketUtils {
-
-    /**
-     * 向指定的WebSocket会话发送消息
-     *
-     * @param sessionKey 要发送消息的用户id
-     * @param message    要发送的消息内容
-     */
-    public static void sendMessage(Long sessionKey, String message) {
-        WebSocketSession session = WebSocketSessionHolder.getSessions(sessionKey);
-        sendMessage(session, message);
-    }
 
     /**
      * 订阅WebSocket消息主题，并提供一个消费者函数来处理接收到的消息
@@ -75,25 +64,14 @@ public class WebSocketUtils {
     }
 
     /**
-     * 向所有的WebSocket会话发布订阅的消息(群发)
+     * 向指定的WebSocket会话发送消息
      *
-     * @param message 要发布的消息内容
+     * @param sessionKey 要发送消息的用户id
+     * @param message    要发送的消息内容
      */
-    public static void publishAll(String message) {
-        WebSocketMessageDto broadcastMessage = new WebSocketMessageDto();
-        broadcastMessage.setMessage(message);
-        RedisUtils.publish(WebSocketConstants.WEB_SOCKET_TOPIC, broadcastMessage, consumer -> {
-            log.info("WebSocket发送主题订阅消息topic:{} message:{}", WebSocketConstants.WEB_SOCKET_TOPIC, message);
-        });
-    }
-
-    /**
-     * 向指定的WebSocket会话发送Pong消息
-     *
-     * @param session 要发送Pong消息的WebSocket会话
-     */
-    public static void sendPongMessage(WebSocketSession session) {
-        sendMessage(session, new PongMessage());
+    public static void sendMessage(Long sessionKey, String message) {
+        WebSocketSession session = WebSocketSessionHolder.getSessions(sessionKey);
+        sendMessage(session, message);
     }
 
     /**
@@ -122,5 +100,27 @@ public class WebSocketUtils {
                 log.error("[send] session({}) 发送消息({}) 异常", session, message, e);
             }
         }
+    }
+
+    /**
+     * 向所有的WebSocket会话发布订阅的消息(群发)
+     *
+     * @param message 要发布的消息内容
+     */
+    public static void publishAll(String message) {
+        WebSocketMessageDto broadcastMessage = new WebSocketMessageDto();
+        broadcastMessage.setMessage(message);
+        RedisUtils.publish(WebSocketConstants.WEB_SOCKET_TOPIC, broadcastMessage, consumer -> {
+            log.info("WebSocket发送主题订阅消息topic:{} message:{}", WebSocketConstants.WEB_SOCKET_TOPIC, message);
+        });
+    }
+
+    /**
+     * 向指定的WebSocket会话发送Pong消息
+     *
+     * @param session 要发送Pong消息的WebSocket会话
+     */
+    public static void sendPongMessage(WebSocketSession session) {
+        sendMessage(session, new PongMessage());
     }
 }
