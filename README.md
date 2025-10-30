@@ -322,7 +322,21 @@ dehaze-system/
 │   └── requirements.txt      # Python依赖
 │
 ├── dehaze-java-cloud/         # Java微服务版本
+│   ├── pei-api/              # API接口定义
+│   ├── pei-auth/             # 认证授权服务
+│   ├── pei-common/           # 通用模块
+│   ├── pei-gateway/          # 网关服务
+│   ├── pei-modules/          # 业务模块
+│   └── pei-ops/              # 运维相关
+│
 ├── dehaze-java-cloud-plus/    # Java微服务增强版
+│   ├── pei-dependencies/     # 依赖管理
+│   ├── pei-framework/        # 框架拓展
+│   ├── pei-gateway/          # 网关服务
+│   ├── pei-module-ai/        # AI大模型模块
+│   ├── pei-module-system/    # 系统功能模块
+│   ├── pei-module-infra/     # 基础设施模块
+│   └── pei-server/           # 服务端
 │
 ├── dehaze-android/            # Android客户端
 ├── dehaze-react-native/       # RN跨平台应用
@@ -376,6 +390,119 @@ python inference_ridcp.py \
   -w weights/ridcp_model.pth \
   -o results/
 ```
+
+---
+
+## ☁️ 微服务版本介绍
+
+### dehaze-java-cloud (微服务版本)
+
+基于 RuoYi-Cloud-Plus 微服务架构构建的图像去雾系统，旨在提供一个高性能、可扩展的图像处理平台。系统采用现代化微服务技术架构，集成20+种主流去雾算法，提供完整的端到端图像去雾解决方案。
+
+#### 核心特性
+
+- **🎯 智能去雾**: 集成20+种主流去雾算法(RIDCP、WPXNet、Dehamer等)，基于深度学习实现高质量图像恢复
+- **🌐 微服务架构**: 基于Spring Cloud Alibaba的微服务架构，支持服务治理、配置管理、熔断限流等企业级特性
+- **⚡ 高性能处理**: 异步任务处理、Redis缓存优化、GPU加速推理，提高系统吞吐量
+- **🔐 安全可靠**: JWT+RBAC权限模型、Redisson分布式锁、完善的安全防护机制
+- **📱 多端支持**: Web端管理后台，配合Android App、React Native等多端应用
+
+#### 系统技术特性
+
+- **前端项目**: 支持Vue3、React、Taro多技术栈，采用TypeScript语言，Element Plus/Ant Design等UI库，Vite构建工具，支持Web、移动端、桌面端多端应用
+- **微服务架构**: 基于Spring Cloud Alibaba微服务架构，服务拆分清晰，包含网关、认证、系统管理、资源管理等核心服务，支持服务注册发现、配置管理、负载均衡等微服务特性
+- **分布式注册中心**: 集成Alibaba Nacos作为服务注册与发现中心，支持服务实例的自动注册与健康检查
+- **分布式配置中心**: 基于Alibaba Nacos实现配置管理，支持配置的动态更新和多环境配置管理
+- **服务网关**: 采用Spring Cloud Gateway作为API网关，提供路由转发、权限校验、请求限流、跨域处理、日志记录等功能
+- **权限认证**: 集成Sa-Token和JWT实现认证授权机制，支持Token签发、验证、续期、黑名单管理等功能
+- **数据库支持**: 基于MyBatis-Plus支持MySQL、Oracle、PostgreSQL、SQLServer等主流关系型数据库，支持多数据源和动态数据源切换
+- **缓存数据库**: 集成Redis作为分布式缓存，支持数据缓存、分布式锁、会话存储、消息队列等高级功能
+- **文件存储**: 集成Minio实现分布式文件存储，支持多机、多硬盘、多分片、多副本存储，具备权限管理和文件加密功能
+- **服务监控**: 集成Spring Boot Admin实现服务监控，基于Actuator探针机制，支持在线日志查看和应用状态监控
+- **链路追踪**: 集成Apache SkyWalking实现分布式链路追踪，支持请求路径分析和性能瓶颈定位
+
+#### 系统业务模块
+
+- 租户管理、租户套餐管理
+- 用户管理、部门管理、岗位管理
+- 菜单管理、角色管理、字典管理
+- 参数管理、通知公告、操作日志
+- 登录日志、文件管理、文件配置管理
+- 在线用户管理、定时任务、代码生成
+- 系统接口、服务监控、缓存监控
+- 算法管理、数据集管理、图像处理
+
+### dehaze-java-cloud-plus (微服务增强版)
+
+图像去雾系统（微服务增强版）是基于 Spring Cloud 的分布式图像处理系统，采用现代化微服务架构设计，提供完整的端到端图像去雾解决方案。系统集成了20+种主流去雾算法，基于深度学习实现高质量图像恢复，支持高并发、高可用的企业级部署。
+
+#### 核心特性
+
+- **🎯 智能去雾**: 集成20+种主流去雾算法(RIDCP、WPXNet、Dehamer等)，基于深度学习实现高质量图像恢复
+- **🌐 微服务架构**: 基于Spring Cloud 2024 + Spring Boot 3.4 + Java 17构建，支持服务治理、配置管理、熔断限流等企业级特性
+- **⚡ 高性能处理**: 异步任务处理、Redis缓存优化、GPU加速推理，提高系统吞吐量
+- **🔐 安全可靠**: JWT+RBAC权限模型、Redisson分布式锁、完善的安全防护机制
+- **📱 多端支持**: Web端管理后台，配合Android App、React Native等多端应用
+
+#### 技术架构
+
+- **微服务框架**: Spring Cloud 2024 + Spring Boot 3.4 + Java 17
+- **服务注册与发现**: Nacos
+- **配置中心**: Nacos
+- **服务网关**: Spring Cloud Gateway
+- **负载均衡**: Spring Cloud LoadBalancer
+- **RPC调用**: Apache Dubbo 3.X
+- **熔断限流**: Sentinel
+- **分布式事务**: Seata
+- **安全框架**: Sa-Token + JWT
+- **数据库**: MySQL 8.4 + MyBatis Plus
+- **缓存**: Redis 6 + Redisson
+- **对象存储**: MinIO
+- **消息队列**: RocketMQ
+- **定时任务**: XXL-JOB
+- **监控**: Prometheus + Grafana
+- **链路追踪**: SkyWalking
+- **日志系统**: ELK
+
+#### 核心模块介绍
+
+##### pei-module-ai（AI大模型模块）
+
+AI模块是系统的核心智能处理模块，支持多种大模型平台接入，包括通义千问、文心一言、讯飞星火、智谱GLM、DeepSeek、OpenAI、Ollama、Midjourney、StableDiffusion、Suno等。
+
+主要功能：
+- 聊天助手（Chat）
+- 图像生成（Image Generation）
+- 音乐创作（Music Creation）
+- 思维导图（Mind Map）
+- 写作辅助（Writing Assistant）
+- 工作流引擎（Workflow Engine）
+- 知识库管理（Knowledge Base）
+
+##### pei-module-system（系统功能模块）
+
+系统功能模块提供基础的用户管理、权限控制、菜单管理、部门管理、角色管理等功能。
+
+主要功能：
+- 用户管理：用户注册、登录、信息维护
+- 权限管理：RBAC权限模型，菜单权限、按钮权限控制
+- 部门管理：组织架构管理，支持树形结构
+- 角色管理：角色分配，权限配置
+- 字典管理：系统字典维护
+- 通知公告：系统消息发布
+- 操作日志：用户操作记录
+- 登录日志：用户登录记录
+
+##### pei-module-infra（基础设施模块）
+
+基础设施模块提供文件管理、代码生成、系统监控等基础功能。
+
+主要功能：
+- 文件管理：支持本地、MinIO、阿里云OSS等多种存储方式
+- 代码生成：基于数据库表结构自动生成前后端代码
+- 系统监控：服务状态监控、缓存监控、操作日志等
+- API文档：自动生成接口文档，支持在线调试
+- 定时任务：分布式任务调度管理
 
 ---
 
