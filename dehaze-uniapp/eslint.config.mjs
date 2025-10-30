@@ -2,9 +2,7 @@ import pluginVue from "eslint-plugin-vue";
 import eslintConfigPrettier from "eslint-config-prettier";
 import pluginPrettier from "eslint-plugin-prettier";
 import tsEslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser";
 import vueParser from "vue-eslint-parser";
-import fs from "fs";
 import globals from "globals";
 
 export default [

@@ -1,7 +1,6 @@
-import { AuthAPI, UserAPI, TOKEN_KEY } from "dehaze-sdk-js";
-import type { LoginData, UserInfo } from "dehaze-sdk-js";
-
 import Taro from "@tarojs/taro";
+import type {LoginData, UserInfo} from "dehaze-sdk-js";
+import {AuthAPI, TOKEN_KEY, UserAPI} from "dehaze-sdk-js";
 
 // 定义用户状态类型
 export interface UserState {
@@ -13,7 +12,7 @@ export function login(loginData: LoginData) {
   return new Promise<void>((resolve, reject) => {
     AuthAPI.login(loginData)
       .then((data) => {
-        const { tokenType, accessToken } = data;
+        const {tokenType, accessToken} = data;
         localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken); // Bearer eyJhbGciOiJIUzI1NiJ9.xxx.xxx
         resolve();
       })
@@ -51,7 +50,7 @@ export function logout() {
       .then(() => {
         localStorage.setItem(TOKEN_KEY, "");
         // 使用 Taro 的 API 进行页面跳转
-        Taro.redirectTo({ url: "/pages/login/login" });
+        Taro.redirectTo({url: "/pages/login/login"});
         resolve();
       })
       .catch((error) => {

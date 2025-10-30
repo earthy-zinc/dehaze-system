@@ -12,31 +12,31 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 
 class MainApplication : Application(), ReactApplication {
 
-  @Deprecated(
-      "You should not use ReactNativeHost directly in the New Architecture. Use ReactHost instead.",
-      replaceWith = ReplaceWith("reactHost")
-  )
-  override val reactNativeHost: ReactNativeHost =
-      object : DefaultReactNativeHost(this) {
-        override fun getPackages(): List<ReactPackage> =
-            PackageList(this).packages.apply {
-              // Packages that cannot be autolinked yet can be added manually here, for example:
-              // add(MyReactNativePackage())
-            }
+    @Deprecated(
+        "You should not use ReactNativeHost directly in the New Architecture. Use ReactHost instead.",
+        replaceWith = ReplaceWith("reactHost")
+    )
+    override val reactNativeHost: ReactNativeHost =
+        object : DefaultReactNativeHost(this) {
+            override fun getPackages(): List<ReactPackage> =
+                PackageList(this).packages.apply {
+                    // Packages that cannot be autolinked yet can be added manually here, for example:
+                    // add(MyReactNativePackage())
+                }
 
-        override fun getJSMainModuleName(): String = "index"
+            override fun getJSMainModuleName(): String = "index"
 
-        override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
+            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
 
-        override val isNewArchEnabled: Boolean = true
-        override val isHermesEnabled: Boolean = true
-      }
+            override val isNewArchEnabled: Boolean = true
+            override val isHermesEnabled: Boolean = true
+        }
 
-  override val reactHost: ReactHost
-    get() = getDefaultReactHost(applicationContext, reactNativeHost)
+    override val reactHost: ReactHost
+        get() = getDefaultReactHost(applicationContext, reactNativeHost)
 
-  override fun onCreate() {
-    super.onCreate()
-    loadReactNative(this)
-  }
+    override fun onCreate() {
+        super.onCreate()
+        loadReactNative(this)
+    }
 }

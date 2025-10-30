@@ -1,5 +1,5 @@
 import { ResultEnum } from '@/enums/ResultEnum';
-import axios, { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // 创建 axios 实例
 const service = axios.create({

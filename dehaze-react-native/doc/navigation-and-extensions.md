@@ -451,16 +451,16 @@ export default MaterialTopTabs;
 ### 8.1 两者的区别
 
 1. **axios**:
-   - 通用的 HTTP 客户端，可在浏览器和 Node.js 环境中使用
-   - 在 React Native 中也能正常工作
-   - 功能全面，社区支持广泛
-   - 项目中已使用
+    - 通用的 HTTP 客户端，可在浏览器和 Node.js 环境中使用
+    - 在 React Native 中也能正常工作
+    - 功能全面，社区支持广泛
+    - 项目中已使用
 
 2. **react-native-axios**:
-   - 专门为 React Native 环境优化的 axios 版本
-   - 针对移动端网络环境进行了优化
-   - 修复了一些在 React Native 环境中可能出现的问题
-   - 更好地适配 React Native 的网络请求机制
+    - 专门为 React Native 环境优化的 axios 版本
+    - 针对移动端网络环境进行了优化
+    - 修复了一些在 React Native 环境中可能出现的问题
+    - 更好地适配 React Native 的网络请求机制
 
 ### 8.2 使用方法
 
@@ -578,7 +578,8 @@ const postData = async (data) => {
 
 ### 9.1 用途介绍
 
-Lottie 是一个由 Airbnb 开发的动画库，可以将 After Effects 动画导出为 JSON 格式，并在移动端和 Web 端原生渲染。lottie-react-native 是 Lottie 在 React Native 中的实现。
+Lottie 是一个由 Airbnb 开发的动画库，可以将 After Effects 动画导出为 JSON 格式，并在移动端和 Web 端原生渲染。lottie-react-native
+是 Lottie 在 React Native 中的实现。
 
 #### 主要用途
 

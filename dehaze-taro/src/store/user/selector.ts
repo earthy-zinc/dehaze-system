@@ -1,5 +1,5 @@
-import type { UserState } from ".";
-import type { UserInfo } from "dehaze-sdk-js";
+import type {UserInfo} from "dehaze-sdk-js";
+import type {UserState} from ".";
 
 // 定义 RootState 类型
 interface RootState {

@@ -1,20 +1,15 @@
-import {
-  configJavaAxios,
-  configPythonAxios,
-  ResponseData,
-  ResultEnum,
-} from "dehaze-sdk-js";
-
-import type { AxiosError } from "axios";
-import { Dialog, Notify } from "@taroify/core";
-import { resetToken } from "@/store/user";
+import {resetToken} from "@/store/user";
+import {Dialog, Notify} from "@taroify/core";
 import Taro from "@tarojs/taro";
+
+import type {AxiosError} from "axios";
+import {configJavaAxios, configPythonAxios, ResponseData, ResultEnum,} from "dehaze-sdk-js";
 
 export default function configRequest() {
   configJavaAxios({
     onResponseError: (error: AxiosError) => {
       if (error.response?.data) {
-        const { code, msg } = error.response.data as ResponseData;
+        const {code, msg} = error.response.data as ResponseData;
         if (code === ResultEnum.TOKEN_INVALID) {
           Dialog.confirm({
             title: "提示",
@@ -23,7 +18,7 @@ export default function configRequest() {
             cancel: "取消",
             onConfirm: async () => {
               await resetToken();
-              Taro.redirectTo({ url: "/pages/login/login" });
+              Taro.redirectTo({url: "/pages/login/login"});
             },
           });
         } else {

@@ -1,18 +1,17 @@
+import { RootStackParamList } from '@/routes/navigator';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { useState } from 'react';
 import {
-  View,
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
-  ScrollView,
-  Image,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/routes/navigator';
-
 
 // 定义导航属性类型
 type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
@@ -57,8 +56,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           onPress: () => {
             // 登录成功后跳转到主页
             navigation.navigate('Home');
-          }
-        }
+          },
+        },
       ]);
     }, 1000);
   };
@@ -107,7 +106,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 style={styles.input}
                 placeholder="请输入用户名"
                 value={formData.username}
-                onChangeText={(value) => handleInputChange('username', value)}
+                onChangeText={value => handleInputChange('username', value)}
                 autoCapitalize="none"
                 keyboardType="default"
                 returnKeyType="next"
@@ -119,17 +118,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                 style={styles.input}
                 placeholder="请输入密码"
                 value={formData.password}
-                onChangeText={(value) => handleInputChange('password', value)}
+                onChangeText={value => handleInputChange('password', value)}
                 secureTextEntry
                 returnKeyType={isRegister ? 'next' : 'done'}
               />
             </View>
             <View style={styles.captcha}>
               <TextInput
-                style={{...styles.input, ...styles.captchaInput}}
+                style={{ ...styles.input, ...styles.captchaInput }}
                 placeholder="请输入验证码"
                 value={formData.password}
-                onChangeText={(value) => handleInputChange('password', value)}
+                onChangeText={value => handleInputChange('password', value)}
                 secureTextEntry
                 returnKeyType={isRegister ? 'next' : 'done'}
               />
@@ -141,7 +140,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               </View>
             </View>
 
-
             {isRegister && (
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>确认密码</Text>
@@ -149,7 +147,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                   style={styles.input}
                   placeholder="请再次输入密码"
                   value={formData.confirmPassword}
-                  onChangeText={(value) =>
+                  onChangeText={value =>
                     handleInputChange('confirmPassword', value)
                   }
                   secureTextEntry
@@ -161,7 +159,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             <TouchableOpacity
               style={styles.button}
               onPress={handleSubmit}
-              disabled={loading}>
+              disabled={loading}
+            >
               <Text style={styles.buttonText}>
                 {loading
                   ? isRegister
@@ -185,7 +184,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                       password: '',
                       confirmPassword: '',
                     });
-                  }}>
+                  }}
+                >
                   {isRegister ? '立即登录' : '立即注册'}
                 </Text>
               </Text>
@@ -194,7 +194,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Copyright © 2022 - 2024 Peixin Wu All Rights Reserved.</Text>
+          <Text style={styles.footerText}>
+            Copyright © 2022 - 2024 Peixin Wu All Rights Reserved.
+          </Text>
           <Text style={styles.footerText}>武沛鑫 版权所有</Text>
           <Text style={styles.footerText}>渝ICP备2024111923号-2</Text>
         </View>
@@ -273,7 +275,7 @@ const styles = StyleSheet.create({
   captchaInput: {
     flex: 1,
   },
-  captchaContainer: { 
+  captchaContainer: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',

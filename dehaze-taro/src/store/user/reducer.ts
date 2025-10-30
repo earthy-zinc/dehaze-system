@@ -1,6 +1,6 @@
-import type { UserInfo } from "dehaze-sdk-js";
-import { UserState } from ".";
-import { RESET_USER_INFO, SET_USER_INFO } from "./actions";
+import type {UserInfo} from "dehaze-sdk-js";
+import {UserState} from ".";
+import {RESET_USER_INFO, SET_USER_INFO} from "./actions";
 
 interface SetUserInfoAction {
   type: typeof SET_USER_INFO;

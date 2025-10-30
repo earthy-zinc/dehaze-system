@@ -22,7 +22,7 @@ dependencyResolutionManagement {
         maven { url 'https://maven.aliyun.com/repository/public/' }
         maven { url 'https://maven.aliyun.com/nexus/content/repositories/google' }
         maven { url 'https://maven.aliyun.com/nexus/content/groups/public' }
-        maven { url 'https://maven.aliyun.com/nexus/content/repositories/jcenter'}
+        maven { url 'https://maven.aliyun.com/nexus/content/repositories/jcenter' }
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
@@ -35,7 +35,7 @@ dependencyResolutionManagement {
     }
 }
 
-extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'DehazeReactNative'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')

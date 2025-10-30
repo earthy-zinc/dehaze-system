@@ -49,7 +49,9 @@ yarn run android
 ```
 yarn run start
 ```
+
 然后在另一个终端执行:
+
 ```
 yarn react-native run-android
 ```
@@ -65,7 +67,9 @@ yarn run ios
 ```
 yarn run start
 ```
+
 然后在另一个终端执行:
+
 ```
 yarn react-native run-ios
 ```

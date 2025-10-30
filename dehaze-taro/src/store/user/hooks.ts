@@ -1,7 +1,7 @@
-import { useDispatch, useSelector } from "react-redux";
-import type { UserState } from ".";
-import type { UserInfo } from "dehaze-sdk-js";
-import { resetUserInfo, setUserInfo } from "./actions";
+import type {UserInfo} from "dehaze-sdk-js";
+import {useDispatch, useSelector} from "react-redux";
+import type {UserState} from ".";
+import {resetUserInfo, setUserInfo} from "./actions";
 
 // 定义 RootState 类型
 interface RootState {

@@ -11,27 +11,27 @@
       <form class="form-container">
         <view class="form-group">
           <input
+            v-model="formData.username"
             class="form-input"
             placeholder="请输入用户名"
-            v-model="formData.username"
           />
         </view>
 
         <view class="form-group">
           <input
-            class="form-input"
-            placeholder="请输入密码"
-            password
             v-model="formData.password"
+            class="form-input"
+            password
+            placeholder="请输入密码"
           />
         </view>
 
         <view class="form-group">
           <view class="captcha-container">
             <input
+              v-model="formData.captcha"
               :class="{ 'form-input': true, error: captchaError }"
               placeholder="请输入验证码"
-              v-model="formData.captcha"
             />
             <view class="captcha-image" @click="refreshCaptcha">
               <text class="captcha-text">{{ captchaValue }}</text>
@@ -42,7 +42,7 @@
           </text>
         </view>
 
-        <button class="form-button" @click="handleSubmit" :disabled="loading">
+        <button :disabled="loading" class="form-button" @click="handleSubmit">
           {{ loading ? "登录中..." : "登 录" }}
         </button>
 
@@ -67,7 +67,7 @@
   </view>
 </template>
 
-<script setup lang="ts">
+<script lang="ts" setup>
 import { reactive, ref } from "vue";
 
 const loading = ref(false);

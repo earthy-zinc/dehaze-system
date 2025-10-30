@@ -1,14 +1,8 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/routes/navigator';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import React from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -27,7 +21,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onPress: () => navigation.navigate('Login'),
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -35,10 +29,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>欢迎来到主页</Text>
-        <Text style={styles.description}>
-          您已经成功登录图像去雾系统
-        </Text>
-        
+        <Text style={styles.description}>您已经成功登录图像去雾系统</Text>
+
         <TouchableOpacity style={styles.button} onPress={handleLogout}>
           <Text style={styles.buttonText}>退出登录</Text>
         </TouchableOpacity>

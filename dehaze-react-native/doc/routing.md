@@ -22,7 +22,8 @@
 
 ### 2.1 创建导航容器
 
-我们创建了 [NavigationContainer.tsx](file:///e:/DehazeSystem/dehaze-react-native/src/navigation/NavigationContainer.tsx) 文件来管理应用的路由：
+我们创建了 [NavigationContainer.tsx](file:///e:/DehazeSystem/dehaze-react-native/src/navigation/NavigationContainer.tsx)
+文件来管理应用的路由：
 
 ```typescript
 import * as React from 'react';

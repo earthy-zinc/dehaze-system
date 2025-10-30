@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
-import { View, Input, Button, Text, Form, Image } from '@tarojs/components';
-import { useDidShow, useRouter } from '@tarojs/taro';
+import {Button, Form, Image, Input, Text, View} from '@tarojs/components';
+import Taro, {useDidShow, useRouter} from '@tarojs/taro';
 import './index.less';
-import Taro from '@tarojs/taro';
+import {AuthAPI, CaptchaResult} from "dehaze-sdk-js";
+import React, {useEffect, useState} from 'react';
 
 const Login: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -71,7 +70,7 @@ const Login: React.FC = () => {
       .login(loginData)
       .then(() => {
         // 登录成功后跳转到主页面
-        Taro.redirectTo({ url: '/pages/dashboard/index' }); // 假设有这样的页面
+        Taro.redirectTo({url: '/pages/dashboard/index'}); // 假设有这样的页面
       })
       .catch(() => {
         // 登录失败，刷新验证码
