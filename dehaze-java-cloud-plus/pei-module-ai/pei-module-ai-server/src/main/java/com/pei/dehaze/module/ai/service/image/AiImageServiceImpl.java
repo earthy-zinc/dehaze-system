@@ -89,7 +89,7 @@ public class AiImageServiceImpl implements AiImageService {
         if (CollUtil.isEmpty(ids)) {
             return Collections.emptyList();
         }
-        return imageMapper.selectBatchIds(ids);
+        return imageMapper.selectByIds(ids);
     }
 
     @Override
@@ -234,12 +234,14 @@ public class AiImageServiceImpl implements AiImageService {
         // 2. 保存数据库
         AiImageDO image = BeanUtils.toBean(drawReqVO, AiImageDO.class).setUserId(userId).setPublicStatus(false)
                 .setStatus(AiImageStatusEnum.IN_PROGRESS.getStatus())
-                .setPlatform(AiPlatformEnum.MIDJOURNEY.getPlatform()).setModelId(model.getId()).setModel(model.getName());
+                .setPlatform(AiPlatformEnum.MIDJOURNEY.getPlatform()).setModelId(model.getId())
+                .setModel(model.getName());
         imageMapper.insert(image);
 
         // 3. 调用 Midjourney Proxy 提交任务
-        List<String> base64Array = StrUtil.isBlank(drawReqVO.getReferImageUrl()) ? null :
-                Collections.singletonList("data:image/jpeg;base64,".concat(Base64.encode(HttpUtil.downloadBytes(drawReqVO.getReferImageUrl()))));
+        List<String> base64Array = StrUtil.isBlank(drawReqVO.getReferImageUrl()) ? null
+                : Collections.singletonList("data:image/jpeg;base64,"
+                        .concat(Base64.encode(HttpUtil.downloadBytes(drawReqVO.getReferImageUrl()))));
         MidjourneyApi.ImagineRequest imagineRequest = new MidjourneyApi.ImagineRequest(
                 base64Array, drawReqVO.getPrompt(), null,
                 MidjourneyApi.ImagineRequest.buildState(drawReqVO.getWidth(),
@@ -248,8 +250,8 @@ public class AiImageServiceImpl implements AiImageService {
 
         // 4.1 情况一【失败】：抛出业务异常
         if (!MidjourneyApi.SubmitCodeEnum.SUCCESS_CODES.contains(imagineResponse.code())) {
-            String description = imagineResponse.description().contains("quota_not_enough") ?
-                    "账户余额不足" : imagineResponse.description();
+            String description = imagineResponse.description().contains("quota_not_enough") ? "账户余额不足"
+                    : imagineResponse.description();
             throw exception(IMAGE_MIDJOURNEY_SUBMIT_FAIL, description);
         }
 
@@ -317,13 +319,14 @@ public class AiImageServiceImpl implements AiImageService {
         MidjourneyApi.SubmitResponse actionResponse = midjourneyApi.action(
                 new MidjourneyApi.ActionRequest(button.customId(), image.getTaskId(), null));
         if (!MidjourneyApi.SubmitCodeEnum.SUCCESS_CODES.contains(actionResponse.code())) {
-            String description = actionResponse.description().contains("quota_not_enough") ?
-                    "账户余额不足" : actionResponse.description();
+            String description = actionResponse.description().contains("quota_not_enough") ? "账户余额不足"
+                    : actionResponse.description();
             throw exception(IMAGE_MIDJOURNEY_SUBMIT_FAIL, description);
         }
 
         // 3. 新增 image 记录
-        AiImageDO newImage = new AiImageDO().setUserId(image.getUserId()).setPublicStatus(false).setPrompt(image.getPrompt())
+        AiImageDO newImage = new AiImageDO().setUserId(image.getUserId()).setPublicStatus(false)
+                .setPrompt(image.getPrompt())
                 .setStatus(AiImageStatusEnum.IN_PROGRESS.getStatus())
                 .setPlatform(AiPlatformEnum.MIDJOURNEY.getPlatform())
                 .setModel(image.getModel()).setWidth(image.getWidth()).setHeight(image.getHeight())

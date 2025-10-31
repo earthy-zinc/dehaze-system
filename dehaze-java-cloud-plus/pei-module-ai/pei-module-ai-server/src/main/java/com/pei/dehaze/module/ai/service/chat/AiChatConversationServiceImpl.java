@@ -54,7 +54,8 @@ public class AiChatConversationServiceImpl implements AiChatConversationService 
     @Override
     public Long createChatConversationMy(AiChatConversationCreateMyReqVO createReqVO, Long userId) {
         // 1.1 获得 AiChatRoleDO 聊天角色
-        AiChatRoleDO role = createReqVO.getRoleId() != null ? chatRoleService.validateChatRole(createReqVO.getRoleId()) : null;
+        AiChatRoleDO role = createReqVO.getRoleId() != null ? chatRoleService.validateChatRole(createReqVO.getRoleId())
+                : null;
         // 1.2 获得 AiModelDO 聊天模型
         AiModelDO model = role != null && role.getModelId() != null ? modalService.validateModel(role.getModelId())
                 : modalService.getRequiredDefaultModel(AiModelTypeEnum.CHAT.getType());
@@ -69,7 +70,8 @@ public class AiChatConversationServiceImpl implements AiChatConversationService 
         // 2. 创建 AiChatConversationDO 聊天对话
         AiChatConversationDO conversation = new AiChatConversationDO().setUserId(userId).setPinned(false)
                 .setModelId(model.getId()).setModel(model.getModel())
-                .setTemperature(model.getTemperature()).setMaxTokens(model.getMaxTokens()).setMaxContexts(model.getMaxContexts());
+                .setTemperature(model.getTemperature()).setMaxTokens(model.getMaxTokens())
+                .setMaxContexts(model.getMaxContexts());
         if (role != null) {
             conversation.setTitle(role.getName()).setRoleId(role.getId()).setSystemMessage(role.getSystemMessage());
         } else {
@@ -154,7 +156,7 @@ public class AiChatConversationServiceImpl implements AiChatConversationService 
         if (CollUtil.isEmpty(list)) {
             return;
         }
-        chatConversationMapper.deleteBatchIds(convertList(list, AiChatConversationDO::getId));
+        chatConversationMapper.deleteByIds(convertList(list, AiChatConversationDO::getId));
     }
 
     @Override

@@ -29,8 +29,10 @@ import java.util.function.Function;
 import static com.pei.dehaze.framework.common.util.cache.CacheUtils.buildAsyncReloadingCache;
 
 /**
- * Token 过滤器，验证 token 的有效性 1. 验证通过时，将 userId、userType、tenantId 通过 Header 转发给服务 2.
- * 验证不通过，还是会转发给服务。因为，接口是否需要登录的校验，还是交给服务自身处理
+ * Token 过滤器，验证 token 的有效性
+ * <p>
+ * 1. 验证通过时，将 userId、userType、tenantId 通过 Header 转发给服务
+ * 2. 验证不通过，还是会转发给服务。因为，接口是否需要登录的校验，还是交给服务自身处理
  *
  * @author earthyzinc
  */
@@ -38,17 +40,20 @@ import static com.pei.dehaze.framework.common.util.cache.CacheUtils.buildAsyncRe
 public class TokenAuthenticationFilter implements GlobalFilter, Ordered {
 
     /**
-     * CommonResult<OAuth2AccessTokenCheckRespDTO> 对应的 TypeReference 结果，用于解析 checkToken 的结果
+     * CommonResult<OAuth2AccessTokenCheckRespDTO> 对应的 TypeReference 结果，用于解析
+     * checkToken 的结果
      */
-    private static final TypeReference<CommonResult<OAuth2AccessTokenCheckRespDTO>> CHECK_RESULT_TYPE_REFERENCE
-            = new TypeReference<CommonResult<OAuth2AccessTokenCheckRespDTO>>() {
+    private static final TypeReference<CommonResult<OAuth2AccessTokenCheckRespDTO>> CHECK_RESULT_TYPE_REFERENCE = new TypeReference<CommonResult<OAuth2AccessTokenCheckRespDTO>>() {
     };
 
     /**
      * 空的 LoginUser 的结果
      * <p>
-     * 用于解决如下问题： 1. {@link #getLoginUser(ServerWebExchange, String)} 返回 Mono.empty() 时，会导致后续的 flatMap 无法进行处理的问题。 2.
-     * {@link #buildUser(String)} 时，如果 Token 已经过期，返回 LOGIN_USER_EMPTY 对象，避免缓存无法刷新
+     * 用于解决如下问题：
+     * 
+     * 1. {@link #getLoginUser(ServerWebExchange, String)} 返回 Mono.empty() 时，会导致后续的
+     * flatMap 无法进行处理的问题。
+     * 2. {@link #buildUser(String)} 时，如果 Token 已经过期，返回 LOGIN_USER_EMPTY 对象，避免缓存无法刷新
      */
     private static final LoginUser LOGIN_USER_EMPTY = new LoginUser();
 
@@ -59,7 +64,8 @@ public class TokenAuthenticationFilter implements GlobalFilter, Ordered {
      * <p>
      * key1：多租户的编号 key2：访问令牌
      */
-    private final LoadingCache<KeyValue<Long, String>, LoginUser> loginUserCache = buildAsyncReloadingCache(Duration.ofMinutes(1),
+    private final LoadingCache<KeyValue<Long, String>, LoginUser> loginUserCache = buildAsyncReloadingCache(
+            Duration.ofMinutes(1),
             new CacheLoader<KeyValue<Long, String>, LoginUser>() {
 
                 @Override
@@ -72,7 +78,8 @@ public class TokenAuthenticationFilter implements GlobalFilter, Ordered {
 
     public TokenAuthenticationFilter(ReactorLoadBalancerExchangeFilterFunction lbFunction) {
         // Q：为什么不使用 OAuth2TokenApi 进行调用？
-        // A1：Spring Cloud OpenFeign 官方未内置 Reactive 的支持 https://docs.spring.io/spring-cloud-openfeign/docs/current/reference/html/#reactive-support
+        // A1：Spring Cloud OpenFeign 官方未内置 Reactive 的支持
+        // https://docs.spring.io/spring-cloud-openfeign/docs/current/reference/html/#reactive-support
         // A2：校验 Token 的 API 需要使用到 header[tenant-id] 传递租户编号，暂时不想编写 RequestInterceptor 实现
         // 因此，这里采用 WebClient，通过 lbFunction 实现负载均衡
         this.webClient = WebClient.builder().filter(lbFunction).build();
@@ -90,7 +97,8 @@ public class TokenAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         // 情况二，如果有 Token 令牌，则解析对应 userId、userType、tenantId 等字段，并通过 通过 Header 转发给服务
-        // 重要说明：defaultIfEmpty 作用，保证 Mono.empty() 情况，可以继续执行 `flatMap 的 chain.filter(exchange)` 逻辑，避免返回给前端空的 Response！！
+        // 重要说明：defaultIfEmpty 作用，保证 Mono.empty() 情况，可以继续执行 `flatMap 的
+        // chain.filter(exchange)` 逻辑，避免返回给前端空的 Response！！
         ServerWebExchange finalExchange = exchange;
         return getLoginUser(exchange, token).defaultIfEmpty(LOGIN_USER_EMPTY).flatMap(user -> {
             // 1. 无用户，直接 filter 继续请求

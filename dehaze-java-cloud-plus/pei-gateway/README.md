@@ -1,123 +1,184 @@
-`pei-gateway` 是一个基于 Spring Cloud Gateway
-的网关模块，作为微服务架构中的入口点。它的主要作用是集中处理请求的路由、安全认证、跨域配置、日志记录等功能。通过网关，可以统一管理各个微服务的访问入口，并提供通用的功能支持。
+# pei-gateway 网关模块说明文档
+
+## 1. 总体说明
+
+### 核心职责
+
+`pei-gateway` 是基于 Spring Cloud Gateway 构建的微服务网关模块，作为整个微服务架构的统一入口点。其主要职责包括：
+
+1. **请求路由**：根据配置的路由规则将请求转发到相应的后端微服务
+2. **身份认证**：统一验证请求的合法性，解析并验证 Token
+3. **跨域处理**：解决前端跨域访问问题
+4. **灰度发布**：基于请求头实现服务实例的版本选择
+5. **访问日志**：记录详细的请求和响应信息
+6. **异常处理**：统一处理网关层异常并返回标准错误响应
+
+### 边界声明
+
+**本模块负责：**
+- 所有进入微服务架构的 HTTP 请求统一入口处理
+- 请求的路由、认证、日志记录等通用功能
+- 跨域问题的统一解决
+- 灰度发布策略的实现
+
+**本模块不负责：**
+- 具体业务逻辑的处理
+- 数据持久化操作
+- 业务异常的具体处理（由各微服务自行处理）
 
 ---
 
-## 一、简介
+## 2. 需求与背景
 
-在微服务架构中，每个服务都有自己的独立部署和接口，如果直接暴露给前端或第三方调用，会导致以下问题：
+### 业务动机
 
-- **安全性不足**：无法对所有请求进行统一的身份验证和权限控制。
-- **请求管理困难**：多个服务的 API 分散，缺乏统一的路由和转发机制。
-- **跨域问题**：不同服务之间可能存在跨域限制，前端调用复杂。
-- **日志和监控缺失**：无法集中收集所有服务的访问日志，影响运维效率。
-- **负载均衡和灰度发布**：缺乏统一的流量控制策略，难以实现灵活的服务治理。
+在微服务架构中，每个服务都有独立的部署和接口，如果直接暴露给前端或第三方调用，会面临以下问题：
 
-为了解决这些问题，引入了 `pei-gateway` 网关模块，它具备如下核心优势：
+1. **安全性不足**：无法对所有请求进行统一的身份验证和权限控制
+2. **请求管理困难**：多个服务的 API 分散，缺乏统一的路由和转发机制
+3. **跨域问题**：不同服务之间可能存在跨域限制，前端调用复杂
+4. **日志和监控缺失**：无法集中收集所有服务的访问日志，影响运维效率
+5. **负载均衡和灰度发布**：缺乏统一的流量控制策略
 
-### ✅ 核心作用
+为了解决这些问题，引入了 `pei-gateway` 网关模块。
 
-1. **统一入口**：将所有服务的请求都经过网关，对外提供统一的访问入口。
-2. **身份认证**：集成 Token 验证机制，确保只有合法用户才能访问受保护的资源。
-3. **跨域处理**：统一解决跨域问题，简化前端开发。
-4. **灰度发布**：支持根据请求头（如 version）动态选择服务实例，实现灰度测试。
-5. **日志记录**：记录详细的访问日志，便于后续分析和排查问题。
-6. **负载均衡**：结合 Nacos 和 LoadBalancer 实现服务发现与负载均衡。
-7. **异常处理**：统一捕获并返回异常信息，提升系统健壮性。
+### 技术驱动因素
+
+1. **统一入口**：通过网关提供统一的访问入口，简化客户端调用
+2. **安全控制**：在网关层统一进行身份认证，确保只有合法用户才能访问受保护的资源
+3. **负载均衡**：结合 Nacos 和 LoadBalancer 实现服务发现与负载均衡
+4. **灰度发布**：支持根据请求头中的 version 字段实现灰度发布
+5. **可观测性**：记录详细的访问日志，便于后续分析和问题排查
+
+### 需求映射
+
+| 用户需求 | 技术实现 | 代码依据 |
+|---------|---------|---------|
+| 统一访问入口 | Spring Cloud Gateway | GatewayServerApplication.java |
+| 身份认证 | TokenAuthenticationFilter | TokenAuthenticationFilter.java |
+| 跨域处理 | CorsFilter + CorsResponseHeaderFilter | CorsFilter.java |
+| 灰度发布 | GrayReactiveLoadBalancerClientFilter + GrayLoadBalancer | GrayReactiveLoadBalancerClientFilter.java |
+| 日志记录 | AccessLogFilter | AccessLogFilter.java |
+| 异常处理 | GlobalExceptionHandler | GlobalExceptionHandler.java |
 
 ---
 
-## 二、模块结构说明
+## 3. 功能与非功能需求分析
+
+### 功能性需求
+
+1. **路由转发**：根据配置的路由规则将请求转发到对应的微服务
+2. **身份认证**：验证请求携带的 Token 合法性
+3. **跨域支持**：处理跨域请求并添加相应响应头
+4. **灰度发布**：基于请求头中的 version 字段选择服务实例
+5. **日志记录**：记录请求和响应的详细信息
+6. **异常处理**：统一处理网关层异常并返回标准错误响应
+
+### 非功能性需求
+
+1. **性能**：作为所有请求的入口，需要具备高并发处理能力
+2. **安全**：在网关层统一进行身份认证，保护后端服务
+3. **可观测性**：详细记录访问日志，便于监控和问题排查
+4. **可靠性**：具备良好的容错能力，异常情况下能返回标准错误响应
+
+---
+
+## 4. 技术栈与依赖解析
+
+### 核心技术栈
+
+- **Spring Cloud Gateway**: 基于 Spring Boot 3.4 的网关框架
+- **Spring Cloud LoadBalancer**: 客户端负载均衡
+- **Nacos**: 服务注册与发现
+- **Reactor**: 响应式编程模型
+
+### 核心依赖
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-gateway</artifactId>
+</dependency>
+```
+
+该依赖引入了 Spring Cloud Gateway 的核心功能，包括路由、过滤、负载均衡等。
+
+```xml
+<dependency>
+    <groupId>com.pei</groupId>
+    <artifactId>pei-module-system-api</artifactId>
+    <version>${revision}</version>
+</dependency>
+```
+
+该依赖提供了系统模块的 API 接口定义，用于网关与系统服务的交互。
+
+---
+
+## 5. 架构设计
+
+### 5.1 分层结构
 
 ```
-src/main/java/
-└── com/pei/dehaze/gateway/
-    ├── filter/               // 过滤器类，用于实现各种请求拦截逻辑
-    │   ├── cors/              // 跨域相关过滤器
-    │   ├── grey/              // 灰度发布相关过滤器
-    │   ├── logging/           // 访问日志记录
-    │   └── security/          // 安全认证相关过滤器
-    ├── handler/              // 异常处理器，统一处理全局异常
-    ├── jackson/              // Jackson 序列化配置，处理 JSON 格式数据
-    ├── route/                // 动态路由配置（可从 Nacos 获取）
-    ├── util/                 // 工具类，如 IP 获取、租户识别等
-    └── GatewayServerApplication.java // 启动类
+com.pei.dehaze.gateway
+├── filter/               // 过滤器类，用于实现各种请求拦截逻辑
+│   ├── cors/              // 跨域相关过滤器
+│   ├── grey/              // 灰度发布相关过滤器
+│   ├── logging/           // 访问日志记录
+│   └── security/          // 安全认证相关过滤器
+├── handler/              // 异常处理器，统一处理全局异常
+├── jackson/              // Jackson 序列化配置，处理 JSON 格式数据
+├── route/                // 动态路由配置（可从 Nacos 获取）
+├── util/                 // 工具类，如 IP 获取、租户识别等
+└── GatewayServerApplication.java // 启动类
+```
+
+### 5.2 组件交互图
+
+```mermaid
+graph TB
+    A[客户端] --> B[CorsFilter]
+    B --> C[TokenAuthenticationFilter]
+    C --> D[GrayReactiveLoadBalancerClientFilter]
+    D --> E[目标微服务]
+    E --> F[AccessLogFilter]
+    F --> G[客户端]
+    H[GlobalExceptionHandler] --> G
+```
+
+### 5.3 关键流程时序图
+
+```mermaid
+sequenceDiagram
+    participant Client as 客户端
+    participant CorsFilter
+    participant TokenAuthenticationFilter
+    participant GrayReactiveLoadBalancerClientFilter
+    participant AccessLogFilter
+    participant BackendService as 后端服务
+    participant GlobalExceptionHandler
+    
+    Client->>CorsFilter: 发送 HTTP 请求
+    CorsFilter->>CorsFilter: 处理跨域
+    CorsFilter->>TokenAuthenticationFilter: 继续请求链
+    TokenAuthenticationFilter->>TokenAuthenticationFilter: 验证 Token
+    TokenAuthenticationFilter->>GrayReactiveLoadBalancerClientFilter: 继续请求链
+    GrayReactiveLoadBalancerClientFilter->>BackendService: 转发请求
+    BackendService->>AccessLogFilter: 返回响应
+    AccessLogFilter->>AccessLogFilter: 记录日志
+    AccessLogFilter->>Client: 返回响应
+    
+    GlobalExceptionHandler->>GlobalExceptionHandler: 处理异常
+    GlobalExceptionHandler->>Client: 返回错误响应
 ```
 
 ---
 
-## 三、包结构详解
+## 6. 核心实现详解
 
-### 1️⃣ `filter` 包
+### 6.1 路由配置
 
-#### 📁 `cors` 子包
-
-- **功能**：处理跨域请求。
-- **关键类**：
-    - `CorsFilter`：设置响应头允许跨域访问。
-    - `CorsResponseHeaderFilter`：修复 Spring Cloud Gateway 中重复 `Access-Control-Allow-Origin` 头的问题。
-
-#### 📁 `grey` 子包
-
-- **功能**：实现灰度发布，根据请求头（如 `version`）选择对应版本的服务实例。
-- **关键类**：
-    - `GrayLoadBalancer`：自定义负载均衡器，支持按版本匹配。
-    - `GrayReactiveLoadBalancerClientFilter`：注册为全局过滤器，接管默认的负载均衡逻辑。
-
-#### 📁 `logging` 子包
-
-- **功能**：记录访问日志，包括请求参数、响应体、执行时间等。
-- **关键类**：
-    - `AccessLog`：日志实体类。
-    - `AccessLogFilter`：全局过滤器，记录完整的 HTTP 请求日志。
-
-#### 📁 `security` 子包
-
-- **功能**：实现基于 Token 的身份认证。
-- **关键类**：
-    - `LoginUser`：封装登录用户信息。
-    - `TokenAuthenticationFilter`：全局过滤器，解析 Token 并设置用户上下文。
-
----
-
-### 2️⃣ `handler` 包
-
-- **功能**：统一处理异常，返回标准化错误响应。
-- **关键类**：
-    - `GlobalExceptionHandler`：继承 `ErrorWebExceptionHandler`，捕获并处理所有异常，返回 `CommonResult` 格式的错误信息。
-
----
-
-### 3️⃣ `jackson` 包
-
-- **功能**：定制 Jackson 序列化规则，解决 Long 类型精度丢失、日期格式等问题。
-- **关键类**：
-    - `JacksonAutoConfiguration`：配置 Jackson 的序列化规则，如 Long 转 String、LocalDateTime 使用时间戳等。
-
----
-
-### 4️⃣ `route` 包
-
-- **功能**：动态路由配置，支持从 Nacos 获取最新的路由规则。
-- **关键文件**：
-    - `package-info.java`：占位符。
-    - `dynamic/package-info.java`：描述如何从 Nacos 动态刷新路由。
-
----
-
-### 5️⃣ `util` 包
-
-- **功能**：工具类，提供通用辅助方法。
-- **关键类**：
-    - `SecurityFrameworkUtils`：处理 Token 解析、用户信息设置等。
-    - `WebFrameworkUtils`：获取客户端 IP、写入 JSON 响应、构建路由信息等。
-    - `EnvUtils`：处理环境变量、标签识别等。
-
----
-
-## 四、核心代码实现原理
-
-### 1️⃣ 路由配置 (`application.yaml`)
+路由配置在 application.yaml 文件中定义，示例如下：
 
 ```yaml
 spring:
@@ -132,44 +193,39 @@ spring:
             - RewritePath=/admin-api/system/v3/api-docs, /v3/api-docs
 ```
 
-- **作用**：定义请求路径 `/admin-api/system/**` 被路由到 `system-server` 服务。
-- **RewritePath**：重写路径，适配 Swagger 文档访问。
+该配置定义了将 `/admin-api/system/**` 路径的请求路由到 `system-server` 服务，并重写路径以适配 Swagger 文档访问。
 
----
+### 6.2 身份认证实现
 
-### 2️⃣ 身份认证 (`TokenAuthenticationFilter`)
+TokenAuthenticationFilter 负责身份认证：
 
+1. 从请求头中提取 `Authorization` 字段
+2. 调用 OAuth2 服务验证 Token 合法性
+3. 将用户信息写入请求上下文
+
+核心代码逻辑：
 ```java
-public class TokenAuthenticationFilter implements GlobalFilter, Ordered {
-    private final WebClient webClient;
-    private final LoadingCache<KeyValue<Long, String>, LoginUser> loginUserCache;
-
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-        String token = SecurityFrameworkUtils.obtainAuthorization(exchange);
-        return getLoginUser(exchange, token).defaultIfEmpty(LOGIN_USER_EMPTY)
-                .flatMap(user -> {
-                    if (user == LOGIN_USER_EMPTY) {
-                        return chain.filter(exchange);
-                    }
-                    SecurityFrameworkUtils.setLoginUser(exchange, user);
-                    ServerWebExchange newExchange = exchange.mutate()
-                            .request(builder -> SecurityFrameworkUtils.setLoginUserHeader(builder, user))
-                            .build();
-                    return chain.filter(newExchange);
-                });
+String authorization = SecurityFrameworkUtils.obtainAuthorization(exchange);
+if (StrUtil.isNotEmpty(authorization)) {
+    // 调用远程服务验证 Token
+    CommonResult<OAuth2AccessTokenCheckRespDTO> accessToken = oauth2TokenApi.checkToken(authorization);
+    if (accessToken.isSuccess()) {
+        // 将用户信息写入 exchange 属性和请求头
+        exchange.getAttributes().put(WebFrameworkUtils.LOGIN_USER_KEY, loginUser);
+        request.mutate().header(WebFrameworkUtils.LOGIN_USER_HEADER, JsonUtils.toJsonString(loginUser)).build();
     }
 }
 ```
 
-- **流程**：
-    1. 从 Header 中提取 Token。
-    2. 查询缓存或远程校验 Token 是否有效。
-    3. 如果有效，设置用户信息到 Header 并转发请求；否则继续链式调用。
+### 6.3 灰度发布实现
 
----
+灰度发布通过 GrayReactiveLoadBalancerClientFilter 和 GrayLoadBalancer 实现：
 
-### 3️⃣ 灰度发布 (`GrayLoadBalancer`)
+1. 从请求头中提取 version 字段
+2. 根据版本信息筛选匹配的服务实例
+3. 若无匹配项，则使用默认策略选择服务实例
 
+核心代码逻辑：
 ```java
 private Response<ServiceInstance> getInstanceResponse(List<ServiceInstance> instances, HttpHeaders headers) {
     String version = headers.getFirst(VERSION);
@@ -184,15 +240,15 @@ private Response<ServiceInstance> getInstanceResponse(List<ServiceInstance> inst
 }
 ```
 
-- **流程**：
-    1. 从请求头获取 `version`。
-    2. 匹配 metadata 中包含相同 `version` 的服务实例。
-    3. 若无匹配，则使用默认权重随机选择实例。
+### 6.4 访问日志实现
 
----
+AccessLogFilter 负责记录访问日志：
 
-### 4️⃣ 日志记录 (`AccessLogFilter`)
+1. 拦截请求和响应内容
+2. 构建 AccessLog 对象记录详细信息
+3. 支持打印到日志或发送至远程服务存储
 
+核心代码逻辑：
 ```java
 private Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
     if (body instanceof Flux) {
@@ -207,14 +263,30 @@ private Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
 }
 ```
 
-- **流程**：
-    1. 拦截请求和响应内容。
-    2. 构建 `AccessLog` 对象，记录详细请求信息。
-    3. 支持打印到日志或发送至远程服务存储。
+### 6.5 全局异常处理
+
+GlobalExceptionHandler 统一处理所有异常：
+
+1. 捕获网关层的所有异常
+2. 返回统一格式的 JSON 错误响应
+
+核心代码逻辑：
+```java
+@Order(-1)
+@Slf4j
+public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
+    @Override
+    public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+        // 处理异常并返回统一格式的错误响应
+        CommonResult<?> result = CommonResult.error(INTERNAL_SERVER_ERROR.getCode(), INTERNAL_SERVER_ERROR.getMsg());
+        return WebFrameworkUtils.writeJSON(exchange.getResponse(), result);
+    }
+}
+```
 
 ---
 
-## 五、网关模块完整工作图解
+## 7. 网关模块完整工作图解
 
 ### 时序图
 
@@ -258,7 +330,7 @@ sequenceDiagram
 
 ---
 
-#### 📚 流程说明与逻辑解析
+#### 流程说明与逻辑解析
 
 1. **客户端发送请求**
 
@@ -270,14 +342,14 @@ sequenceDiagram
   version: v2
   ```
 
-2. **跨域处理 (`CorsFilter`)**
+2. **跨域处理 (`CorsFilter`)`
 
 - 网关注册了两个 CORS 相关 Filter：
     - `CorsFilter`: 添加标准的跨域响应头，如 `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`
     - `CorsResponseHeaderFilter`: 解决 Spring Cloud Gateway 默认添加多个 `Access-Control-Allow-Origin` 导致浏览器拒绝的问题
 - 如果是 `OPTIONS` 请求，则直接返回 `200 OK` 并结束流程
 
-3. **身份认证 (`TokenAuthenticationFilter`)**
+3. **身份认证 (`TokenAuthenticationFilter`)`
 
 - 网关对请求进行统一的身份认证：
     - 从 `Authorization` Header 提取 Token
@@ -285,7 +357,7 @@ sequenceDiagram
     - 将登录用户信息（userId、userType、tenantId）写入 `exchange.getAttributes()` 和 `request.header("login-user")`
 - 如果 Token 无效或过期，仍会继续请求链，由下游服务做权限控制
 
-4. **灰度路由 (`GrayReactiveLoadBalancerClientFilter`)**
+4. **灰度路由 (`GrayReactiveLoadBalancerClientFilter`)`
 
 - 网关支持基于请求头中的 `version` 实现灰度发布。
 - 使用自定义负载均衡器 `GrayLoadBalancer`：
@@ -294,7 +366,7 @@ sequenceDiagram
     - 若无匹配项，则使用默认策略（随机加权选择）
 - 最终将请求转发到匹配的服务实例
 
-5. **日志记录 (`AccessLogFilter`)**
+5. **日志记录 (`AccessLogFilter`)`
 
 - 记录完整的请求和响应内容，包括：
     - 请求方法、URL、QueryParams、RequestBody
@@ -314,7 +386,7 @@ sequenceDiagram
 - 网关将后端服务的响应返回给客户端。
 - 所有响应都经过 `AccessLogFilter` 记录完整的访问日志。
 
-8. **全局异常处理 (`GlobalExceptionHandler`)**
+8. **全局异常处理 (`GlobalExceptionHandler`)`
 
 - 网关统一捕获所有异常：
     - 如 Token 无效、找不到服务实例等
@@ -327,7 +399,7 @@ sequenceDiagram
   }
   ```
 
-#### 🔍 各组件作用详解
+#### 各组件作用详解
 
 | 组件名                                    | 功能               | 关键作用                              |
 |----------------------------------------|------------------|-----------------------------------|
@@ -339,7 +411,7 @@ sequenceDiagram
 
 ---
 
-#### 🔄 核心交互流程总结
+#### 核心交互流程总结
 
 | 步骤 | 操作       | 说明                     |
 |----|----------|------------------------|
@@ -396,7 +468,7 @@ V --> W[流程结束]
 
 ---
 
-#### 📌 图解说明与逻辑细化
+#### 图解说明与逻辑细化
 
 1. **客户端发起请求**
 
@@ -408,7 +480,6 @@ V --> W[流程结束]
   Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
   version: v2
   ```
-
 
 2. **跨域判断与处理**
 
@@ -474,7 +545,6 @@ V --> W[流程结束]
   }
   ```
 
-
 11. **响应返回客户端**
 
 - 最终响应返回给客户端
@@ -487,7 +557,7 @@ V --> W[流程结束]
 
 ---
 
-#### 🔍 各阶段作用总结
+#### 各阶段作用总结
 
 | 步骤    | 关键组件                                 | 功能描述                              |
 |-------|--------------------------------------|-----------------------------------|
@@ -500,7 +570,68 @@ V --> W[流程结束]
 | 14~16 | GlobalExceptionHandler               | 统一处理异常，避免暴露堆栈信息                   |
 | 17~18 | GatewayServerApplication             | Spring Boot 主程序，启动网关服务            |
 
-## 六、总结
+---
+
+## 8. 部署与运维
+
+### 启动方式
+
+通过 GatewayServerApplication 启动类启动服务：
+
+```java
+@SpringBootApplication
+public class GatewayServerApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(GatewayServerApplication.class, args);
+    }
+}
+```
+
+### Docker 部署
+
+使用提供的 Dockerfile 进行容器化部署：
+
+```dockerfile
+FROM eclipse-temurin:21-jre
+
+RUN mkdir -p /pei-gateway
+WORKDIR /pei-gateway
+COPY ./target/pei-gateway.jar app.jar
+
+ENV TZ=Asia/Shanghai JAVA_OPTS="-Xms256m -Xmx256m"
+
+EXPOSE 48080
+
+CMD ["sh", "-c", "exec java ${JAVA_OPTS} -Djava.security.egd=file:/dev/./urandom -jar app.jar"]
+```
+
+### 日志配置
+
+日志配置在 logback-spring.xml 中定义，支持控制台和文件两种输出方式：
+
+```xml
+<configuration>
+    <!-- 控制台 Appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="org.apache.skywalking.apm.toolkit.log.logback.v1.x.TraceIdPatternLogbackLayout">
+                <pattern>${PATTERN_DEFAULT}</pattern>
+            </layout>
+        </encoder>
+    </appender>
+    
+    <!-- 文件 Appender -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 文件滚动策略和编码配置 -->
+    </appender>
+</configuration>
+```
+
+---
+
+## 9. 总结
+
+`pei-gateway` 网关模块作为微服务架构的统一入口，承担着路由转发、身份认证、跨域处理、灰度发布、日志记录等重要职责。通过合理的设计和实现，为整个系统提供了安全、可靠、可观察的流量入口，有效简化了客户端与后端服务的交互复杂度。
 
 | 模块                | 主要职责     | 关键实现                        |
 |-------------------|----------|-----------------------------|

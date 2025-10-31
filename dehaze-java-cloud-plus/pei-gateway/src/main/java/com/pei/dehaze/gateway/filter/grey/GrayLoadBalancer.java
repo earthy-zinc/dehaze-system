@@ -22,10 +22,12 @@ import java.util.List;
 /**
  * 灰度 {@link GrayLoadBalancer} 实现类
  * <p>
- * 根据请求的 header[version] 匹配，筛选满足 metadata[version] 相等的服务实例列表，然后随机 + 权重进行选择一个 1. 假如请求的 header[version]
+ * 根据请求的 header[version] 匹配，筛选满足 metadata[version] 相等的服务实例列表，然后随机 + 权重进行选择一个 1.
+ * 假如请求的 header[version]
  * 为空，则不进行筛选，所有服务实例都进行选择 2. 如果 metadata[version] 都不相等，则不进行筛选，所有服务实例都进行选择
  * <p>
- * 注意，考虑到实现的简易，它的权重是使用 Nacos 的 nacos.weight，所以随机 + 权重也是基于 {@link NacosBalancer} 筛选。 也就是说，如果你不使用 Nacos
+ * 注意，考虑到实现的简易，它的权重是使用 Nacos 的 nacos.weight，所以随机 + 权重也是基于 {@link NacosBalancer}
+ * 筛选。 也就是说，如果你不使用 Nacos
  * 作为注册中心，需要微调一下筛选的实现逻辑
  *
  * @author earthyzinc
@@ -47,12 +49,13 @@ public class GrayLoadBalancer implements ReactorServiceInstanceLoadBalancer {
      */
     private final String serviceId;
 
-    @Override
+    @SuppressWarnings("rawtypes")
     public Mono<Response<ServiceInstance>> choose(Request request) {
         // 获得 HttpHeaders 属性，实现从 header 中获取 version
         HttpHeaders headers = ((RequestDataContext) request.getContext()).getClientRequest().getHeaders();
         // 选择实例
-        ServiceInstanceListSupplier supplier = serviceInstanceListSupplierProvider.getIfAvailable(NoopServiceInstanceListSupplier::new);
+        ServiceInstanceListSupplier supplier = serviceInstanceListSupplierProvider
+                .getIfAvailable(NoopServiceInstanceListSupplier::new);
         return supplier.get(request).next().map(list -> getInstanceResponse(list, headers));
     }
 
@@ -69,7 +72,8 @@ public class GrayLoadBalancer implements ReactorServiceInstanceLoadBalancer {
         if (CharSequenceUtil.isEmpty(version)) {
             chooseInstances = instances;
         } else {
-            chooseInstances = CollectionUtils.filterList(instances, instance -> version.equals(instance.getMetadata().get("version")));
+            chooseInstances = CollectionUtils.filterList(instances,
+                    instance -> version != null && version.equals(instance.getMetadata().get("version")));
             if (CollUtil.isEmpty(chooseInstances)) {
                 log.warn("[getInstanceResponse][serviceId({}) 没有满足版本({})的服务实例列表，直接使用所有服务实例列表]", serviceId, version);
                 chooseInstances = instances;
@@ -79,7 +83,7 @@ public class GrayLoadBalancer implements ReactorServiceInstanceLoadBalancer {
         // 基于 tag 过滤实例列表
         chooseInstances = filterTagServiceInstances(chooseInstances, headers);
 
-        // 随机 + 权重获取实例列表 TODO 芋艿：目前直接使用 Nacos 提供的方法，如果替换注册中心，需要重新失败该方法
+        // 随机 + 权重获取实例列表 目前直接使用 Nacos 提供的方法，如果替换注册中心，需要重新失败该方法
         return new DefaultResponse(NacosBalancer.getHostByRandomWeight3(chooseInstances));
     }
 
@@ -100,7 +104,8 @@ public class GrayLoadBalancer implements ReactorServiceInstanceLoadBalancer {
         }
 
         // 情况二，有 tag 时，使用 tag 匹配服务实例
-        List<ServiceInstance> chooseInstances = CollectionUtils.filterList(instances, instance -> tag.equals(EnvUtils.getTag(instance)));
+        List<ServiceInstance> chooseInstances = CollectionUtils.filterList(instances,
+                instance -> tag.equals(EnvUtils.getTag(instance)));
         if (CollUtil.isEmpty(chooseInstances)) {
             log.warn("[filterTagServiceInstances][serviceId({}) 没有满足 tag({}) 的服务实例列表，直接使用所有服务实例列表]", serviceId, tag);
             chooseInstances = instances;

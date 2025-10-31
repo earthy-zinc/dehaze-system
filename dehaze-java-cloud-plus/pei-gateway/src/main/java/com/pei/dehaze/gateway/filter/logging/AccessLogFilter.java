@@ -30,6 +30,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpRequestDecorator;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.BodyInserter;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -50,7 +51,8 @@ import static cn.hutool.core.date.DatePattern.NORM_DATETIME_MS_FORMATTER;
  * <p>
  * 从功能上，它类似 pei-spring-boot-starter-web 的 ApiAccessLogFilter 过滤器
  * <p>
- * TODO 芋艿：如果网关执行异常，不会记录访问日志，后续研究下 https://github.com/Silvmike/webflux-demo/blob/master/tests/src/test/java/ru/hardcoders/demo/webflux/web_handler/filters/logging
+ * TODO 芋艿：如果网关执行异常，不会记录访问日志，后续研究下
+ * https://github.com/Silvmike/webflux-demo/blob/master/tests/src/test/java/ru/hardcoders/demo/webflux/web_handler/filters/logging
  *
  * @author earthyzinc
  */
@@ -87,8 +89,10 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
         values.put("userIp", gatewayLog.getUserIp());
         values.put("responseBody", JsonUtils.isJson(gatewayLog.getResponseBody()) ? // 保证 body 的展示好看
                 JSONUtil.parse(gatewayLog.getResponseBody()) : gatewayLog.getResponseBody());
-        values.put("responseHeaders", gatewayLog.getResponseHeaders() != null ?
-                JsonUtils.toJsonString(gatewayLog.getResponseHeaders().toSingleValueMap()) : null);
+        values.put("responseHeaders",
+                gatewayLog.getResponseHeaders() != null
+                        ? JsonUtils.toJsonString(gatewayLog.getResponseHeaders().toSingleValueMap())
+                        : null);
         values.put("httpStatus", gatewayLog.getHttpStatus());
         values.put("startTime", LocalDateTimeUtil.format(gatewayLog.getStartTime(), NORM_DATETIME_MS_FORMATTER));
         values.put("endTime", LocalDateTimeUtil.format(gatewayLog.getEndTime(), NORM_DATETIME_MS_FORMATTER));
@@ -125,7 +129,8 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
         return filterWithoutRequestBody(exchange, chain, gatewayLog);
     }
 
-    private Mono<Void> filterWithoutRequestBody(ServerWebExchange exchange, GatewayFilterChain chain, AccessLog accessLog) {
+    private Mono<Void> filterWithoutRequestBody(ServerWebExchange exchange, GatewayFilterChain chain,
+            AccessLog accessLog) {
         // 包装 Response，用于记录 Response Body
         ServerHttpResponseDecorator decoratedResponse = recordResponseLog(exchange, accessLog);
         return chain.filter(exchange.mutate().response(decoratedResponse).build())
@@ -137,7 +142,8 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
      * <p>
      * 差别主要在于使用 modifiedBody 来读取 Request Body 数据
      */
-    private Mono<Void> filterWithRequestBody(ServerWebExchange exchange, GatewayFilterChain chain, AccessLog gatewayLog) {
+    private Mono<Void> filterWithRequestBody(ServerWebExchange exchange, GatewayFilterChain chain,
+            AccessLog gatewayLog) {
         // 设置 Request Body 读取时，设置到网关日志
         // 此处 codecConfigurer.getReaders() 的目的，是解决 spring.codec.max-in-memory-size 不生效
         ServerRequest serverRequest = ServerRequest.create(exchange, codecConfigurer.getReaders());
@@ -147,7 +153,8 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
         });
 
         // 创建 BodyInserter 对象
-        BodyInserter<Mono<String>, ReactiveHttpOutputMessage> bodyInserter = BodyInserters.fromPublisher(modifiedBody, String.class);
+        BodyInserter<Mono<String>, ReactiveHttpOutputMessage> bodyInserter = BodyInserters.fromPublisher(modifiedBody,
+                String.class);
         // 创建 CachedBodyOutputMessage 对象
         HttpHeaders headers = new HttpHeaders();
         headers.putAll(exchange.getRequest().getHeaders());
@@ -176,10 +183,12 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
      * @param outputMessage body 缓存
      * @return 请求装饰器
      */
-    private ServerHttpRequestDecorator requestDecorate(ServerWebExchange exchange, HttpHeaders headers, CachedBodyOutputMessage outputMessage) {
+    private ServerHttpRequestDecorator requestDecorate(ServerWebExchange exchange, HttpHeaders headers,
+            CachedBodyOutputMessage outputMessage) {
         return new ServerHttpRequestDecorator(exchange.getRequest()) {
 
             @Override
+            @NonNull
             public HttpHeaders getHeaders() {
                 long contentLength = headers.getContentLength();
                 HttpHeaders httpHeaders = new HttpHeaders();
@@ -195,6 +204,7 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
             }
 
             @Override
+            @NonNull
             public Flux<DataBuffer> getBody() {
                 return outputMessage.getBody();
             }
@@ -211,7 +221,8 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
         return new ServerHttpResponseDecorator(response) {
 
             @Override
-            public Mono<Void> writeWith(Publisher<? extends DataBuffer> body) {
+            @NonNull
+            public Mono<Void> writeWith(@NonNull Publisher<? extends DataBuffer> body) {
                 if (body instanceof Flux) {
                     DataBufferFactory bufferFactory = response.bufferFactory();
                     // 计算执行时间
@@ -225,8 +236,11 @@ public class AccessLogFilter implements GlobalFilter, Ordered {
                     gatewayLog.setHttpStatus((HttpStatus) response.getStatusCode());
 
                     // 获取响应类型，如果是 json 就打印
-                    String originalResponseContentType = exchange.getAttribute(ServerWebExchangeUtils.ORIGINAL_RESPONSE_CONTENT_TYPE_ATTR);
-                    if (StringUtils.isNotBlank(originalResponseContentType)
+                    String originalResponseContentType = exchange
+                            .getAttribute(ServerWebExchangeUtils.ORIGINAL_RESPONSE_CONTENT_TYPE_ATTR);
+
+                    if (originalResponseContentType != null
+                            && StringUtils.isNotBlank(originalResponseContentType)
                             && originalResponseContentType.contains("application/json")) {
                         Flux<? extends DataBuffer> fluxBody = Flux.from(body);
                         return super.writeWith(fluxBody.buffer().map(dataBuffers -> {

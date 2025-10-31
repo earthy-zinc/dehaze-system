@@ -101,7 +101,8 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
         ChatModel chatModel = modalService.getChatModel(model.getId());
 
         // 2. 知识库找回
-        List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments = recallKnowledgeSegment(sendReqVO.getContent(), conversation);
+        List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments = recallKnowledgeSegment(sendReqVO.getContent(),
+                conversation);
 
         // 3. 插入 user 发送消息
         AiChatMessageDO userMessage = createChatMessage(conversation.getId(), null, model,
@@ -136,7 +137,7 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
 
     @Override
     public Flux<CommonResult<AiChatMessageSendRespVO>> sendChatMessageStream(AiChatMessageSendReqVO sendReqVO,
-                                                                             Long userId) {
+            Long userId) {
         // 1.1 校验对话存在
         AiChatConversationDO conversation = chatConversationService
                 .validateChatConversationExists(sendReqVO.getConversationId());
@@ -172,8 +173,8 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
             // 处理知识库的返回，只有首次才有
             List<AiChatMessageRespVO.KnowledgeSegment> segments = null;
             if (StrUtil.isEmpty(contentBuffer)) {
-                Map<Long, AiKnowledgeDocumentDO> documentMap = TenantUtils.executeIgnore(() ->
-                        knowledgeDocumentService.getKnowledgeDocumentMap(
+                Map<Long, AiKnowledgeDocumentDO> documentMap = TenantUtils
+                        .executeIgnore(() -> knowledgeDocumentService.getKnowledgeDocumentMap(
                                 convertSet(knowledgeSegments, AiKnowledgeSegmentSearchRespBO::getDocumentId)));
                 segments = BeanUtils.toBean(knowledgeSegments, AiChatMessageRespVO.KnowledgeSegment.class, segment -> {
                     AiKnowledgeDocumentDO document = documentMap.get(segment.getDocumentId());
@@ -224,7 +225,7 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
             throw exception(CHAT_MESSAGE_NOT_EXIST);
         }
         // 2. 执行删除
-        chatMessageMapper.deleteBatchIds(convertList(messages, AiChatMessageDO::getId));
+        chatMessageMapper.deleteByIds(convertList(messages, AiChatMessageDO::getId));
     }
 
     @Override
@@ -249,7 +250,7 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
     }
 
     private List<AiKnowledgeSegmentSearchRespBO> recallKnowledgeSegment(String content,
-                                                                        AiChatConversationDO conversation) {
+            AiChatConversationDO conversation) {
         // 1. 查询聊天角色
         if (conversation == null || conversation.getRoleId() == null) {
             return Collections.emptyList();
@@ -269,9 +270,9 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
     }
 
     private AiChatMessageDO createChatMessage(Long conversationId, Long replyId,
-                                              AiModelDO model, Long userId, Long roleId,
-                                              MessageType messageType, String content, Boolean useContext,
-                                              List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments) {
+            AiModelDO model, Long userId, Long roleId,
+            MessageType messageType, String content, Boolean useContext,
+            List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments) {
         AiChatMessageDO message = new AiChatMessageDO().setConversationId(conversationId).setReplyId(replyId)
                 .setModel(model.getModel()).setModelId(model.getId()).setUserId(userId).setRoleId(roleId)
                 .setType(messageType.getValue()).setContent(content).setUseContext(useContext)
@@ -282,8 +283,8 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
     }
 
     private Prompt buildPrompt(AiChatConversationDO conversation, List<AiChatMessageDO> messages,
-                               List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments,
-                               AiModelDO model, AiChatMessageSendReqVO sendReqVO) {
+            List<AiKnowledgeSegmentSearchRespBO> knowledgeSegments,
+            AiModelDO model, AiChatMessageSendReqVO sendReqVO) {
         List<Message> chatMessages = new ArrayList<>();
         // 1.1 System Context 角色设定
         if (StrUtil.isNotBlank(conversation.getSystemMessage())) {
@@ -334,8 +335,8 @@ public class AiChatMessageServiceImpl implements AiChatMessageService {
      * @return 消息上下文
      */
     private List<AiChatMessageDO> filterContextMessages(List<AiChatMessageDO> messages,
-                                                        AiChatConversationDO conversation,
-                                                        AiChatMessageSendReqVO sendReqVO) {
+            AiChatConversationDO conversation,
+            AiChatMessageSendReqVO sendReqVO) {
         if (conversation.getMaxContexts() == null || ObjUtil.notEqual(sendReqVO.getUseContext(), Boolean.TRUE)) {
             return Collections.emptyList();
         }

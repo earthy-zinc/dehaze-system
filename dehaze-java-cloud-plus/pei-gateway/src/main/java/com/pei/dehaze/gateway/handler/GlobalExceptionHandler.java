@@ -7,6 +7,7 @@ import org.springframework.boot.web.reactive.error.ErrorWebExceptionHandler;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,7 +29,8 @@ import static com.pei.dehaze.framework.common.exception.enums.GlobalErrorCodeCon
 public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
 
     @Override
-    public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
+    @NonNull
+    public Mono<Void> handle(@NonNull ServerWebExchange exchange, @NonNull Throwable ex) {
         // 已经 commit，则直接返回异常
         ServerHttpResponse response = exchange.getResponse();
         if (response.isCommitted()) {
@@ -51,7 +53,7 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
      * 处理 Spring Cloud Gateway 默认抛出的 ResponseStatusException 异常
      */
     private CommonResult<?> responseStatusExceptionHandler(ServerWebExchange exchange,
-                                                           ResponseStatusException ex) {
+            ResponseStatusException ex) {
         // TODO 芋艿：这里要精细化翻译，默认返回用户是看不懂的
         ServerHttpRequest request = exchange.getRequest();
         log.error("[responseStatusExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
@@ -63,7 +65,7 @@ public class GlobalExceptionHandler implements ErrorWebExceptionHandler {
      */
     @ExceptionHandler(value = Exception.class)
     public CommonResult<?> defaultExceptionHandler(ServerWebExchange exchange,
-                                                   Throwable ex) {
+            Throwable ex) {
         ServerHttpRequest request = exchange.getRequest();
         log.error("[defaultExceptionHandler][uri({}/{}) 发生异常]", request.getURI(), request.getMethod(), ex);
         // TODO 芋艿：是否要插入异常日志呢？

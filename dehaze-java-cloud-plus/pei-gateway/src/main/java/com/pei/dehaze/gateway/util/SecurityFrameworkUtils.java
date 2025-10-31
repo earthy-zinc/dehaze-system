@@ -41,7 +41,7 @@ public class SecurityFrameworkUtils {
      */
     public static String obtainAuthorization(ServerWebExchange exchange) {
         String authorization = exchange.getRequest().getHeaders().getFirst(AUTHORIZATION_HEADER);
-        if (!StringUtils.hasText(authorization)) {
+        if (authorization == null || !StringUtils.hasText(authorization)) {
             return null;
         }
         int index = authorization.indexOf(AUTHORIZATION_BEARER + " ");

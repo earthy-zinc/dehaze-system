@@ -7,7 +7,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 /**
- * 项目启动成功后，提供文档相关的地址
+ * 项目启动成功后，可以做一些事情
  *
  * @author earthyzinc
  */

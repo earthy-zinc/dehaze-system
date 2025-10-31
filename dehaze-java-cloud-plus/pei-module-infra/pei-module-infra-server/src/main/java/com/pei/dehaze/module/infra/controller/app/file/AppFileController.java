@@ -36,8 +36,12 @@ public class AppFileController {
     public CommonResult<String> uploadFile(AppFileUploadReqVO uploadReqVO) throws Exception {
         MultipartFile file = uploadReqVO.getFile();
         byte[] content = IoUtil.readBytes(file.getInputStream());
-        return success(fileService.createFile(content, file.getOriginalFilename(),
-                uploadReqVO.getDirectory(), file.getContentType()));
+        return success(
+                fileService.createFile(
+                        content,
+                        file.getOriginalFilename(),
+                        uploadReqVO.getDirectory(),
+                        file.getContentType()));
     }
 
     @GetMapping("/presigned-url")

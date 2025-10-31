@@ -15,8 +15,6 @@ import java.util.Map;
 
 /**
  * 解决 Spring Cloud Gateway 2.x 跨域时，出现重复 Origin 的 BUG
- * <p>
- * 参考文档：<a href="https://blog.csdn.net/zimou5581/article/details/90043178" />
  *
  * @author earthyzinc
  */

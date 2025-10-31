@@ -6,6 +6,9 @@ import cn.hutool.core.util.NumberUtil;
 import cn.hutool.extra.servlet.ServletUtil;
 import com.pei.dehaze.framework.common.util.json.JsonUtils;
 import lombok.extern.slf4j.Slf4j;
+
+import java.net.InetSocketAddress;
+
 import org.springframework.cloud.gateway.route.Route;
 import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.core.io.buffer.DataBufferFactory;
@@ -83,7 +86,8 @@ public class WebFrameworkUtils {
      * @return 客户端 IP
      */
     public static String getClientIP(ServerWebExchange exchange, String... otherHeaderNames) {
-        String[] headers = {"X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP", "HTTP_X_FORWARDED_FOR"};
+        String[] headers = { "X-Forwarded-For", "X-Real-IP", "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP",
+                "HTTP_X_FORWARDED_FOR" };
         if (ArrayUtil.isNotEmpty(otherHeaderNames)) {
             headers = ArrayUtil.addAll(headers, otherHeaderNames);
         }
@@ -97,10 +101,11 @@ public class WebFrameworkUtils {
         }
 
         // 方式二，通过 remoteAddress 获取
-        if (exchange.getRequest().getRemoteAddress() == null) {
+        InetSocketAddress address = exchange.getRequest().getRemoteAddress();
+        if (address == null) {
             return null;
         }
-        ip = exchange.getRequest().getRemoteAddress().getHostString();
+        ip = address.getHostString();
         return NetUtil.getMultistageReverseProxyIp(ip);
     }
 
