@@ -159,19 +159,19 @@
 #### 方式一：本地启动
 
 1. 导入SQL脚本
-    - 执行 [script/sql](file:///e:/DehazeSystem/dehaze-java-cloud/script/sql) 目录下的数据库脚本，初始化数据库
+    - 执行 [script/sql](script/sql) 目录下的数据库脚本，初始化数据库
 
 2. 启动Nacos
     - 下载并启动Nacos，配置地址：[http://localhost:8848](http://localhost:8848)
-    - 导入 [script/config](file:///e:/DehazeSystem/dehaze-java-cloud/script/config) 目录下的配置文件到Nacos配置中心
+    - 导入 [script/config](script/config) 目录下的配置文件到Nacos配置中心
 
 3. 修改配置
     - 根据实际环境修改Nacos中的配置信息，包括数据库连接、Redis连接等
 
 4. 按顺序启动服务
-    - 启动 [pei-gateway](file:///e:/DehazeSystem/dehaze-java-cloud/pei-gateway) 网关服务
-    - 启动 [pei-auth](file:///e:/DehazeSystem/dehaze-java-cloud/pei-auth) 认证服务
-    - 启动 [pei-modules/pei-system](file:///e:/DehazeSystem/dehaze-java-cloud/pei-modules/pei-system) 系统服务
+    - 启动 [pei-gateway](pei-gateway) 网关服务
+    - 启动 [pei-auth](pei-auth) 认证服务
+    - 启动 [pei-modules/pei-system](pei-modules/pei-system) 系统服务
     - 根据需要启动其他业务模块
 
 5. 启动前端项目
