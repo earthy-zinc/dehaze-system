@@ -77,6 +77,7 @@ export const useAppStore = defineStore("app", () => {
     locale,
     size,
     activeTopMenu,
+    sidebarStatus,
     toggleDevice,
     changeSize,
     changeLanguage,

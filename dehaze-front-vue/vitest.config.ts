@@ -4,6 +4,8 @@ import path from "path";
 import { defineConfig, mergeConfig } from "vitest/config";
 import viteConfig from "./vite.config";
 
+const pathSrc = path.resolve(__dirname, "src");
+
 export default defineConfig((configEnv) =>
   mergeConfig(
     viteConfig(configEnv),
@@ -62,6 +64,9 @@ export default defineConfig((configEnv) =>
               mockReset: true,
               restoreMocks: true,
               clearMocks: true,
+
+              // 处理CSS文件
+              css: true,
             },
           },
           {

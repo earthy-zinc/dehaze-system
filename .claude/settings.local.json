@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm test:unit:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm test:coverage:*)",
+      "Bash(npx tsc:*)",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_snapshot"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
