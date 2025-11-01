@@ -1,0 +1,274 @@
+import React, { useState } from 'react';
+import { View } from '@tarojs/components';
+import Taro, { useLoad, usePullDownRefresh, useReachBottom } from '@tarojs/taro';
+import {
+  Navbar,
+  Search,
+  Button,
+  Loading,
+  Empty,
+  SwipeCell,
+  Dialog,
+  Tag,
+  Cell,
+} from '@taroify/core';
+import { ArrowLeft, Add, Edit, Delete, Lock } from '@taroify/icons';
+import { useRoleManagement } from '@/hooks/useRoleManagement';
+import './index.scss';
+import { usePermission } from '@/hooks/usePermission';
+
+// 日期格式化函数
+const formatDateTime = (date: Date | string | undefined): string => {
+  if (!date) return '';
+
+  const d = typeof date === 'string' ? new Date(date) : date;
+  if (isNaN(d.getTime())) return '';
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+const RoleListPage: React.FC = () => {
+  const {
+    roles,
+    loading,
+    total,
+    queryParams,
+    fetchRoles,
+    deleteRole,
+    searchRoles,
+    resetQuery,
+  } = useRoleManagement();
+
+  const { hasPermission } = usePermission();
+
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingRole, setDeletingRole] = useState<any>(null);
+
+  // 页面加载
+  useLoad(async () => {
+    await fetchRoles();
+  });
+
+  // 下拉刷新
+  usePullDownRefresh(async () => {
+    try {
+      await fetchRoles({ pageNum: 1 });
+      Taro.stopPullDownRefresh();
+    } catch (error) {
+      Taro.stopPullDownRefresh();
+    }
+  });
+
+  // 上拉加载更多
+  useReachBottom(async () => {
+    if (roles.length < total) {
+      await fetchRoles({ pageNum: queryParams.pageNum + 1 });
+    }
+  });
+
+  // 搜索处理
+  const handleSearch = async (event: any) => {
+    const value = event.detail?.value || '';
+    setSearchKeyword(value);
+    if (value.trim()) {
+      await searchRoles(value.trim());
+    } else {
+      await resetQuery();
+    }
+  };
+
+  // 新增角色
+  const handleAdd = () => {
+    Taro.navigateTo({
+      url: '/pages/system/role/detail'
+    });
+  };
+
+  // 编辑角色
+  const handleEdit = (id: number | undefined) => {
+    if (!id) return;
+    Taro.navigateTo({
+      url: `/pages/system/role/detail?id=${id}`
+    });
+  };
+
+  // 权限配置
+  const handlePermission = (id: number | undefined) => {
+    if (!id) return;
+    Taro.navigateTo({
+      url: `/pages/system/role/permission?id=${id}`
+    });
+  };
+
+  // 删除确认
+  const handleDelete = (role: any) => {
+    setDeletingRole(role);
+    setShowDeleteDialog(true);
+  };
+
+  // 确认删除
+  const confirmDelete = async () => {
+    if (!deletingRole) return;
+
+    try {
+      await deleteRole(deletingRole.id);
+      setShowDeleteDialog(false);
+      setDeletingRole(null);
+    } catch (error) {
+      // 错误已在 hook 中处理
+    }
+  };
+
+  // 获取状态标签
+  const getStatusTag = (status?: number) => {
+    return status === 1
+      ? <Tag color="success" size="small">启用</Tag>
+      : <Tag color="danger" size="small">禁用</Tag>;
+  };
+
+  return (
+    <View className="role-list-page">
+      <Navbar
+        title="角色管理"
+      >
+        <Navbar.NavLeft>
+          <ArrowLeft onClick={() => Taro.navigateBack()} />
+        </Navbar.NavLeft>
+        <Navbar.NavRight>
+          {hasPermission('system:role:create') && (
+            <Add onClick={handleAdd} />
+          )}
+        </Navbar.NavRight>
+      </Navbar>
+
+      {/* 搜索栏 */}
+      <View className="search-bar">
+        <Search
+          placeholder="请输入角色名称"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.detail.value)}
+          onSearch={handleSearch}
+          onClear={() => handleSearch('')}
+        />
+      </View>
+
+      {/* 角色列表 */}
+      <View className="role-list">
+        {loading && roles.length === 0 ? (
+          <Loading>加载中...</Loading>
+        ) : roles.length === 0 ? (
+          <Empty>
+            <Empty.Image />
+            <Empty.Description>暂无角色数据</Empty.Description>
+            {hasPermission('system:role:create') && (
+              <Button
+                className="empty-state__button"
+                color="primary"
+                size="small"
+                onClick={handleAdd}
+              >
+                新增角色
+              </Button>
+            )}
+          </Empty>
+        ) : (
+          roles.map((role) => (
+            <SwipeCell key={role.id} className="role-swipe-cell">
+              <SwipeCell.Actions side="right">
+                {hasPermission('system:role:permission') && (
+                  <Button
+                    className="action-btn permission-btn"
+                    size="small"
+                    onClick={() => handlePermission(role.id)}
+                  >
+                    <Lock />
+                    权限
+                  </Button>
+                )}
+                {hasPermission('system:role:update') && (
+                  <Button
+                    className="action-btn edit-btn"
+                    size="small"
+                    onClick={() => handleEdit(role.id)}
+                  >
+                    <Edit />
+                    编辑
+                  </Button>
+                )}
+                {hasPermission('system:role:delete') && (
+                  <Button
+                    className="action-btn delete-btn"
+                    size="small"
+                    onClick={() => handleDelete(role)}
+                  >
+                    <Delete />
+                    删除
+                  </Button>
+                )}
+              </SwipeCell.Actions>
+              <Cell className="role-cell">
+                <View className="role-info">
+                  <View className="role-name">{role.name}</View>
+                  <View className="role-code">编码: {role.code}</View>
+                </View>
+                <View className="role-status">
+                  {getStatusTag(role.status)}
+                </View>
+                <View className="role-meta">
+                  <View className="meta-item">
+                    <View className="meta-label">排序:</View>
+                    <View className="meta-value">{role.sort}</View>
+                  </View>
+                </View>
+                {role.createTime && (
+                  <View className="role-time">
+                    创建时间: {formatDateTime(role.createTime)}
+                  </View>
+                )}
+              </Cell>
+            </SwipeCell>
+          ))
+        )}
+      </View>
+
+      {/* 加载更多 */}
+      {loading && roles.length > 0 && (
+        <View className="loading-more">
+          <Loading size="small">加载中...</Loading>
+        </View>
+      )}
+
+      {/* 删除确认弹窗 */}
+      <Dialog
+        open={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        title="确认删除"
+      >
+        <Dialog.Content>
+          确定要删除角色 "{deletingRole?.name}" 吗？此操作不可恢复。
+        </Dialog.Content>
+        <Dialog.Actions>
+          <Button onClick={() => setShowDeleteDialog(false)}>
+            取消
+          </Button>
+          <Button
+            color="danger"
+            onClick={confirmDelete}
+          >
+            删除
+          </Button>
+        </Dialog.Actions>
+      </Dialog>
+    </View>
+  );
+};
+
+export default RoleListPage;

@@ -148,7 +148,6 @@ WebSocket 是否稳定连接并接收消息
 🎯 总体目标
 功能对齐：完整迁移用户系统、数据集管理、图像去雾、对比评估等核心业务。
 体验适配：不照搬桌面交互，而是基于 移动端最佳实践 重构（如拖拽 → 滑动切换，Canvas → 图片预览）。
-架构现代化：采用 Redux Toolkit（RTK） 替代传统 Redux，提升可维护性。
 全平台兼容：确保在 微信小程序、支付宝小程序、H5（移动端） 上功能可用、体验一致。
 以实现为准：若某能力在小程序受限，采用 Taro 跨端通用方案 或 合理交互降级，但必须保障主流程畅通。
 📦 执行方式：按业务模块逐个处理
@@ -162,46 +161,19 @@ Pages（路由、布局、交互流）
 Components（如 DraggableLine, Magnifier, Waterfall）
 Store（Pinia 状态逻辑）
 API 与 WebSocket 逻辑
-输出：
-✅ 移动端交互设计方案（含 @taroify/core 组件选型）：
-✅ 跨端能力适配策略
 
 第二步：代码实现与架构现代化重构
-技术规范：
+请思考代码整体架构如何实现，编写代码详细设计文档，给出方案，随后编写代码实现
 框架：Taro 4.0 + React 18 + TypeScript
-状态管理：Redux Toolkit（createSlice, configureStore）
-UI：以 @taroify/core 为主（Swiper, ImagePreview, Slider, Button 等）
-网络层：封装 request.ts，统一处理 token、错误拦截、loading
+UI：以 @taroify/core 为主
+网络层：基于 [dehaze-sdk-js](/dehaze-tool/dehaze-sdk-js/README.md) 封装的API
 
-输出：
-✅ 符合 Taro 多端规范的代码
-✅ RTK 状态流设计说明（UML图等，写在doc文件夹）
-✅ 组件与页面结构图
-
-第三步：多端兼容性验证
-在以下平台验证：
-✅ 微信小程序（基础库 ≥ 2.24.0）
-✅ 支付宝小程序
-✅ 移动端 H5（iOS/Android 主流浏览器）
-验证重点：
-页面跳转是否符合小程序导航规范
-图片上传/预览是否正常
-WebSocket 是否稳定接收进度消息
-列表滚动、内存占用是否流畅
-
-第四步：测试覆盖与体验优化
-体验优化：
-加载状态：@taroify/loading 或骨架屏
-操作反馈：Taro.showToast
-手势友好：避免小点击区域，支持返回手势
-性能：图片懒加载、列表虚拟滚动（如需）
-输出：
-✅ 测试代码，所有测试代码必须通过 TypeScript 类型检查
-不使用 any，充分利用项目中 typings/ 和 本地库 [dehaze-sdk-js](/dehaze-tool/dehaze-sdk-js/README.md) 
+第三步：多端验证
+编译和运行微信小程序、支付宝小程序、移动端 H5（iOS/Android 主流浏览器）来验证代码是否正确，并分析代码架构是否
 
 📌 执行规则（强制约束）
 每次仅处理一个业务模块
-每完成上述四步中的任意一步，必须暂停并提交结构化报告，等待您审核确认。
+每完成上述三步中的任意一步，必须给出结构化报告文档。
 所有交互设计必须附带移动端合理性说明（如“滑动切换更适合单手操作”）。
 若某功能在所有目标平台均无法实现，需提出替代方案并请您决策。
 逐步沉淀 dehaze-taro 自有设计规范（从第一个模块开始记录组件使用、状态管理、错误处理等）。

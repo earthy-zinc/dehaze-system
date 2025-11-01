@@ -1,0 +1,61 @@
+.user-detail-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.user-form {
+  padding: 12px;
+
+  .taroify-cell-group {
+    margin-bottom: 16px;
+  }
+
+  .taroify-form-item {
+    .taroify-input {
+      background-color: #fff;
+    }
+  }
+}
+
+.form-actions {
+  padding: 20px 16px;
+  background-color: #fff;
+  margin-top: 16px;
+
+  .taroify-button {
+    height: 44px;
+    font-size: 16px;
+  }
+}
+
+// 表单验证样式
+.user-form {
+  .taroify-form-item--error {
+    .taroify-input {
+      border-color: #ff4d4f;
+    }
+  }
+}
+
+// 响应式适配
+@media (max-width: 768px) {
+  .user-detail-page {
+    .user-form {
+      padding: 8px;
+    }
+
+    .form-actions {
+      padding: 16px 12px;
+    }
+  }
+}
+
+// 小程序特定样式
+#if MP
+.user-detail-page {
+  .user-form {
+    .taroify-cell-group {
+      margin: 0 8px 16px;
+    }
+  }
+}
