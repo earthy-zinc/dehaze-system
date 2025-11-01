@@ -1,14 +1,131 @@
 .dashboard-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background-color: #f5f7fa;
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 20px;
 
   .welcome-text {
-    font-size: 36rpx;
-    color: #333;
+    font-size: 24px;
+    font-weight: 600;
+    color: #262626;
     text-align: center;
+    margin-bottom: 30px;
+  }
+}
+
+.module-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+
+.module-card {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  cursor: pointer;
+
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+
+    &:hover {
+      transform: none;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  .module-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+    margin-right: 16px;
+  }
+
+  .module-info {
+    flex: 1;
+
+    .module-title {
+      display: block;
+      font-size: 18px;
+      font-weight: 600;
+      color: #262626;
+      margin-bottom: 4px;
+    }
+
+    .module-desc {
+      display: block;
+      font-size: 14px;
+      color: #8c8c8c;
+    }
+  }
+
+  .module-arrow {
+    font-size: 18px;
+    color: #bfbfbf;
+    font-weight: bold;
+  }
+}
+
+.dashboard-footer {
+  text-align: center;
+  padding: 20px 0;
+
+  .footer-text {
+    font-size: 12px;
+    color: #bfbfbf;
+  }
+}
+
+// 响应式适配
+@media (min-width: 768px) {
+  .dashboard-container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+
+  .module-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+}
+
+// 小程序特定样式
+#if MP
+.dashboard-container {
+  padding: 20px 16px;
+
+  .welcome-text {
+    font-size: 22px;
+  }
+}
+
+.module-card {
+  .module-icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .module-info {
+    .module-title {
+      font-size: 16px;
+    }
+
+    .module-desc {
+      font-size: 13px;
+    }
   }
 }

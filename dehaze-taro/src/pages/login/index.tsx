@@ -1,11 +1,13 @@
+import React, { useEffect, useState } from 'react';
 import {Button, Form, Image, Input, Text, View} from '@tarojs/components';
-import Taro, {useDidShow, useRouter} from '@tarojs/taro';
+import Taro, { useDidShow } from '@tarojs/taro';
+import {
+  Toast,
+} from '@taroify/core';
 import './index.less';
-import {AuthAPI, CaptchaResult} from "dehaze-sdk-js";
-import React, {useEffect, useState} from 'react';
+import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
 
 const Login: React.FC = () => {
-  const [isRegister, setIsRegister] = useState(false);
   const [formData, setFormData] = useState({
     username: 'admin',
     password: '123456',
@@ -17,9 +19,6 @@ const Login: React.FC = () => {
     captchaKey: ''
   });
 
-  const [captchaError, setCaptchaError] = useState('');
-  const router = useRouter();
-
   useDidShow(async () => {
 
   });
@@ -28,57 +27,78 @@ const Login: React.FC = () => {
     getCaptcha();
   }, []);
 
-  const getCaptcha = () => {
-    AuthAPI
-      .getCaptcha()
-      .then((res) => {
-        setCaptcha(res);
-        setFormData(prev => ({
-          ...prev,
-          captchaCode: ''
-        }));
-      });
+  const getCaptcha = async () => {
+    try {
+      const res = await AuthAPI.getCaptcha();
+      setCaptcha(res);
+      setFormData(prev => ({
+        ...prev,
+        captchaCode: ''
+      }));
+    } catch (error) {
+      console.error('获取验证码失败:', error);
+      Toast.open({ message: '获取验证码失败', position: 'top' });
+    }
   };
 
   const handleInput = (field: string, value: string) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [field]: value
-    });
-
-    if (field === 'captchaCode') {
-      setCaptchaError('');
-    }
+    }));
   };
 
-  const handleSubmit = () => {
-    if (!formData.username || !formData.password || !formData.captchaCode) {
-      console.log('请输入所有字段');
+  const handleSubmit = async () => {
+    // 表单验证
+    const trimmedUsername = formData.username?.trim();
+    const trimmedPassword = formData.password?.trim();
+    const trimmedCaptcha = formData.captchaCode?.trim();
+
+    if (!trimmedUsername) {
+      Toast.open({ message: '请输入用户名', position: 'top' });
       return;
     }
 
-    setLoading(true);
+    if (!trimmedPassword) {
+      Toast.open({ message: '请输入密码', position: 'top' });
+      return;
+    }
 
-    const loginData = {
-      username: formData.username,
-      password: formData.password,
-      captchaKey: captcha.captchaKey,
-      captchaCode: formData.captchaCode
-    };
+    if (!trimmedCaptcha) {
+      Toast.open({ message: '请输入验证码', position: 'top' });
+      return;
+    }
 
-    AuthAPI
-      .login(loginData)
-      .then(() => {
-        // 登录成功后跳转到主页面
-        Taro.redirectTo({url: '/pages/dashboard/index'}); // 假设有这样的页面
-      })
-      .catch(() => {
-        // 登录失败，刷新验证码
-        getCaptcha();
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    try {
+      setLoading(true);
+
+      const loginData = {
+        username: trimmedUsername,
+        password: trimmedPassword,
+        captchaKey: captcha.captchaKey,
+        captchaCode: trimmedCaptcha
+      };
+
+      await AuthAPI.login(loginData);
+
+      // 登录成功
+      Toast.open({ message: '登录成功', position: 'top' });
+
+      // 延迟跳转，让用户看到成功提示
+      setTimeout(() => {
+        Taro.redirectTo({url: '/pages/dashboard/index'});
+      }, 1000);
+
+    } catch (error) {
+      console.error('登录失败:', error);
+      Toast.open({ message: '登录失败，请检查用户名和密码', position: 'top' });
+
+      // 登录失败，刷新验证码
+      await getCaptcha();
+      setFormData(prev => ({ ...prev, captchaCode: '' }));
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -127,8 +147,8 @@ const Login: React.FC = () => {
               />
               <Image className='captcha-image' src={captcha?.captchaBase64} onClick={refreshCaptcha}/>
             </View>
-            {captchaError && <Text className='error-message'>{captchaError}</Text>}
           </View>
+
 
           <Button
             className='form-button'

@@ -1,0 +1,189 @@
+.role-permission-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding-bottom: 80px;
+}
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  background-color: #fff;
+}
+
+.permission-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background-color: #fff;
+  border-bottom: 1px solid #f0f0f0;
+
+  .selected-count {
+    font-size: 14px;
+    color: #666;
+  }
+}
+
+.permission-tree {
+  padding: 8px 0;
+}
+
+.permission-item {
+  background-color: #fff;
+  margin-bottom: 1px;
+}
+
+.permission-cell {
+  padding: 12px 16px;
+  border-bottom: none;
+
+  .taroify-checkbox {
+    width: 100%;
+  }
+}
+
+.permission-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+}
+
+.permission-label {
+  font-size: 14px;
+  color: #262626;
+}
+
+.permission-children-count {
+  font-size: 12px;
+  color: #999;
+}
+
+.empty-permissions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background-color: #fff;
+  color: #999;
+  font-size: 14px;
+}
+
+.permission-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px;
+  background-color: #fff;
+  border-top: 1px solid #f0f0f0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+
+  .taroify-button {
+    height: 44px;
+    font-size: 16px;
+  }
+}
+
+// 嵌套权限项的缩进样式
+.permission-item {
+  .permission-item {
+    background-color: #fafafa;
+
+    .permission-cell {
+      padding-left: 16px;
+    }
+
+    .permission-item {
+      background-color: #fff;
+
+      .permission-cell {
+        padding-left: 16px;
+      }
+    }
+  }
+}
+
+// 层级样式
+.permission-level-0 {
+  background-color: #fff;
+}
+
+.permission-level-1 {
+  background-color: #fafafa;
+
+  .permission-cell {
+    padding-left: 24px;
+  }
+}
+
+.permission-level-2 {
+  background-color: #fff;
+
+  .permission-cell {
+    padding-left: 32px;
+  }
+}
+
+.permission-level-3 {
+  background-color: #fafafa;
+
+  .permission-cell {
+    padding-left: 40px;
+  }
+}
+
+// 复选框样式优化
+.taroify-checkbox {
+  .taroify-checkbox__icon {
+    font-size: 18px;
+  }
+
+  .taroify-checkbox__label {
+    margin-left: 8px;
+  }
+}
+
+// 响应式适配
+@media (max-width: 768px) {
+  .role-permission-page {
+    .permission-actions {
+      padding: 10px 12px;
+    }
+
+    .permission-cell {
+      padding: 10px 12px;
+    }
+
+    .permission-footer {
+      padding: 12px;
+    }
+  }
+}
+
+// 小程序特定样式
+#if MP
+.role-permission-page {
+  .permission-actions {
+    .taroify-button {
+      // 小程序中按钮样式调整
+      border-radius: 4px;
+      &::after {
+        border: none;
+      }
+    }
+  }
+
+  .permission-cell {
+    // 小程序中cell样式调整
+    background-color: transparent;
+  }
+
+  .permission-footer {
+    // 小程序中fixed定位可能有兼容性问题
+    position: sticky;
+    bottom: 0;
+  }
+}

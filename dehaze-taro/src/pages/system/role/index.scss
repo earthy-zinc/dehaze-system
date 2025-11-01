@@ -1,0 +1,189 @@
+.role-list-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.search-bar {
+  padding: 12px 16px;
+  background-color: #fff;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.role-list {
+  padding: 12px 16px;
+}
+
+.role-card {
+  margin-bottom: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  &__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 16px 0;
+  }
+
+  &__body {
+    padding: 12px 16px 16px;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    height: 100%;
+
+    .action-btn {
+      height: 100%;
+      border: none;
+      padding: 0 16px;
+      font-size: 12px;
+      color: #fff;
+
+      &.permission-btn {
+        background-color: #722ed1;
+      }
+
+      &.edit-btn {
+        background-color: #1890ff;
+      }
+
+      &.delete-btn {
+        background-color: #ff4d4f;
+      }
+    }
+  }
+}
+
+.role-info {
+  flex: 1;
+
+  .role-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #262626;
+    margin-bottom: 4px;
+  }
+
+  .role-code {
+    font-size: 12px;
+    color: #8c8c8c;
+  }
+}
+
+.role-status {
+  display: flex;
+  align-items: center;
+}
+
+.role-description {
+  font-size: 14px;
+  color: #595959;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.role-meta {
+  display: flex;
+  margin-bottom: 8px;
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    margin-right: 20px;
+
+    .meta-label {
+      font-size: 12px;
+      color: #8c8c8c;
+      margin-right: 4px;
+    }
+
+    .meta-value {
+      font-size: 12px;
+      color: #262626;
+    }
+  }
+}
+
+.role-time {
+  font-size: 11px;
+  color: #bfbfbf;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+
+  &__button {
+    margin-top: 20px;
+  }
+}
+
+.loading-more {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
+// 响应式适配
+@media (max-width: 768px) {
+  .role-list-page {
+    .search-bar {
+      padding: 10px 12px;
+    }
+
+    .role-list {
+      padding: 8px 12px;
+    }
+
+    .role-card {
+      &__header {
+        padding: 12px 12px 0;
+      }
+
+      &__body {
+        padding: 10px 12px 12px;
+      }
+
+      &__actions {
+        .action-btn {
+          padding: 0 12px;
+          font-size: 11px;
+        }
+      }
+    }
+
+    .role-meta {
+      .meta-item {
+        margin-right: 16px;
+      }
+    }
+  }
+}
+
+// 小程序特定样式
+#if MP
+.role-list-page {
+  .search-bar {
+    .taroify-search {
+      background-color: #f8f8f8;
+    }
+  }
+
+  .role-card {
+    &__actions {
+      .action-btn {
+        // 小程序中按钮样式调整
+        border-radius: 0;
+        &::after {
+          border: none;
+        }
+      }
+    }
+  }
+}

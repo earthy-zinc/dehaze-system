@@ -1,0 +1,15 @@
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  min-height: 100px;
+
+  &.small {
+    min-height: 60px;
+  }
+
+  &.large {
+    min-height: 200px;
+  }
+}

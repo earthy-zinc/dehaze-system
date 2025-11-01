@@ -1,0 +1,67 @@
+.role-detail-page {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+}
+
+.role-form {
+  padding: 12px;
+
+  .taroify-cell-group {
+    margin-bottom: 16px;
+  }
+
+  .taroify-form-item {
+    .taroify-input {
+      background-color: #fff;
+    }
+
+    .taroify-textarea {
+      background-color: #fff;
+      min-height: 80px;
+    }
+  }
+}
+
+.form-actions {
+  padding: 20px 16px;
+  background-color: #fff;
+  margin-top: 16px;
+
+  .taroify-button {
+    height: 44px;
+    font-size: 16px;
+  }
+}
+
+// 表单验证样式
+.role-form {
+  .taroify-form-item--error {
+    .taroify-input,
+    .taroify-textarea {
+      border-color: #ff4d4f;
+    }
+  }
+}
+
+// 响应式适配
+@media (max-width: 768px) {
+  .role-detail-page {
+    .role-form {
+      padding: 8px;
+    }
+
+    .form-actions {
+      padding: 16px 12px;
+    }
+  }
+}
+
+// 小程序特定样式
+#if MP
+.role-detail-page {
+  .role-form {
+    .taroify-cell-group {
+      margin: 0 8px 16px;
+    }
+  }
+}
