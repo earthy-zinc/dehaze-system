@@ -6,7 +6,21 @@
       "Bash(pnpm test:coverage:*)",
       "Bash(npx tsc:*)",
       "mcp__playwright__browser_take_screenshot",
-      "mcp__playwright__browser_snapshot"
+      "mcp__playwright__browser_snapshot",
+      "mcp__taroify__list-components",
+      "mcp__taroify__get-component-docs",
+      "mcp__taroify__get-component-props",
+      "mcp__taroify__list-component-example",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__get-library-docs",
+      "WebFetch(domain:uview-plus.jiangruyi.com)",
+      "mcp__fetch__fetch",
+      "Bash(mkdir:*)",
+      "Bash(echo:*)",
+      "Bash(\"E:\\DehazeSystem\\dehaze-uniapp\\doc\\uview-plus\\表单组件\\Form.md\")",
+      "Bash(\"E:\\DehazeSystem\\dehaze-uniapp\\doc\\uview-plus\\表单组件\\Input.md\")",
+      "Bash(for:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
