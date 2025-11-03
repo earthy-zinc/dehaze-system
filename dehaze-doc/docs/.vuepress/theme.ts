@@ -44,6 +44,8 @@ export default hopeTheme({
 
     codeTabs: true,
     preview: true,
+
+    highlighter: "shiki",
   },
   plugins: {
     icon: {
