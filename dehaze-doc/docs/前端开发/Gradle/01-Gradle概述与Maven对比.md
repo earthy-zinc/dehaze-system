@@ -1,4 +1,4 @@
-# 第一章：Gradle概述与Maven对比
+# 第1章：Gradle概述与Maven对比
 
 ## 1.1 为什么需要学习Gradle
 
