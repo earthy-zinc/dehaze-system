@@ -3,7 +3,20 @@
   <component name="Go" enabled="true" />
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-doc/docs/.vuepress/.cache" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-doc/docs/.vuepress/.temp" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-doc/docs/.vuepress/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-front-react/out" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-front-react/target" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-front-vue/out" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-front-vue/test-results" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze-front-vue/test_result" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze_harmory/.hvigor" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze_harmory/oh_modules" />
+      <excludeFolder url="file://$MODULE_DIR$/logs" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
     <orderEntry type="jdk" jdkName="Python 3.10 (DehazeSystem)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
