@@ -20,7 +20,10 @@
       "Bash(for:*)",
       "Bash(done)",
       "mcp__sequential-thinking__sequentialthinking",
-      "WebSearch"
+      "WebSearch",
+      "Bash(flutter doctor:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter analyze:*)"
     ],
     "deny": [],
     "ask": []
