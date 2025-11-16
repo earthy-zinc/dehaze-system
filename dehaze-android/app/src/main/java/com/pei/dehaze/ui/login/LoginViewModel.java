@@ -1,13 +1,10 @@
 package com.pei.dehaze.ui.login;
 
-import android.util.Log;
 import android.util.Patterns;
 
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.pei.dehaze.R;
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.api.AuthAPI;
 import com.pei.dehaze.sdk.network.ApiException;
@@ -15,22 +12,22 @@ import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
 
-import timber.log.Timber;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter
+@Setter
 public class LoginViewModel extends ViewModel {
+    private final MutableLiveData<String> username = new MutableLiveData<>();
+    private final MutableLiveData<String> password = new MutableLiveData<>();
+    private final MutableLiveData<String> captchaCode = new MutableLiveData<>();
+    private final MutableLiveData<String> captchaKey = new MutableLiveData<>();
+    private final MutableLiveData<String> captchaImage = new MutableLiveData<>();
 
-    private static final String TAG = "LoginViewModel";
+    private final MutableLiveData<Boolean> loading = new MutableLiveData<>();
+    private final MutableLiveData<String> loginError = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> loginSuccess = new MutableLiveData<>();
 
-    private MutableLiveData<String> username = new MutableLiveData<>();
-    private MutableLiveData<String> password = new MutableLiveData<>();
-    private MutableLiveData<String> captchaCode = new MutableLiveData<>();
-    private MutableLiveData<String> captchaKey = new MutableLiveData<>();
-    private MutableLiveData<String> captchaImage = new MutableLiveData<>();
-    
-    private MutableLiveData<Boolean> loading = new MutableLiveData<>();
-    private MutableLiveData<String> loginError = new MutableLiveData<>();
-    private MutableLiveData<Boolean> loginSuccess = new MutableLiveData<>();
-    
     public LoginViewModel() {
         // 初始化默认值
         username.setValue("");
@@ -41,54 +38,6 @@ public class LoginViewModel extends ViewModel {
         loading.setValue(false);
         loginError.setValue("");
         loginSuccess.setValue(false);
-    }
-
-    public MutableLiveData<String> getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username.setValue(username);
-    }
-
-    public MutableLiveData<String> getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password.setValue(password);
-    }
-
-    public MutableLiveData<String> getCaptchaCode() {
-        return captchaCode;
-    }
-
-    public void setCaptchaCode(String captchaCode) {
-        this.captchaCode.setValue(captchaCode);
-    }
-
-    public MutableLiveData<String> getCaptchaKey() {
-        return captchaKey;
-    }
-
-    public void setCaptchaKey(String captchaKey) {
-        this.captchaKey.setValue(captchaKey);
-    }
-
-    public MutableLiveData<String> getCaptchaImage() {
-        return captchaImage;
-    }
-
-    public MutableLiveData<Boolean> getLoading() {
-        return loading;
-    }
-
-    public MutableLiveData<String> getLoginError() {
-        return loginError;
-    }
-
-    public MutableLiveData<Boolean> getLoginSuccess() {
-        return loginSuccess;
     }
 
     /**
