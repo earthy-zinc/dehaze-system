@@ -499,3 +499,6 @@ Navigation 返回栈是否符合用户预期
 24.3 文件管理器
 24.4 系统监控工具
 24.5 个性化设置
+
+
+google-chrome --force-device-scale-factor=1.5

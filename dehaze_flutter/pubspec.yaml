@@ -44,3 +44,11 @@ flutter:
 
   # 确保可以使用 material Icons 类中的图标。
   uses-material-design: true
+
+  # 字体配置
+  fonts:
+    - family: NotoSansSC
+      fonts:
+        - asset: assets/fonts/NotoSansSC-Regular.ttf
+        - asset: assets/fonts/NotoSansSC-Bold.ttf
+          weight: 700
