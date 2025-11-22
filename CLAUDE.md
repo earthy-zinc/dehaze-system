@@ -200,9 +200,10 @@ npm run dev:rn                    # React Native
 - **Coverage**: 80% threshold for lines, functions, branches, statements
 
 ### Backend Testing
-- **Java**: JUnit 5 + Spring Boot Test
-- **Integration Tests**: H2 in-memory database
-- **Security Tests**: Spring Security Test
+- **Java**: JUnit 5 + Spring Boot Test + H2 in-memory database
+- **Python**: pytest (if available)
+- **Integration Tests**: API endpoint testing with test containers
+- **Security Tests**: Spring Security Test for authentication/authorization
 
 ### Test Commands Summary
 ```bash
@@ -255,7 +256,7 @@ pnpm test:e2e:ui
 - **Algorithm implementations**: `dehaze-algorithm/`
 - **Vue router**: `dehaze-front-vue/src/router/index.ts`
 - **React router**: `dehaze-front-react/src/router/index.tsx`
-- **Database init**: `dehaze-java/sql/init.sql` (must run before first startup)
+- **Database init**: `dehaze-java/config/sql/init.sql` (must run before first startup)
 - **Main algorithm inference**: `dehaze-algorithm/inference_ridcp.py`
 
 ### Algorithm Development Workflow
@@ -269,6 +270,21 @@ python inference_ridcp.py -i input.jpg -w model.pth -o output/
 # 2. Implement Flask route in dehaze-python/app/api/
 # 3. Register algorithm in algorithm factory
 ```
+
+### Key Configuration Files
+- **Java Dev Config**: `dehaze-java/src/main/resources/application-dev.yml` (port 8989)
+- **Python Flask App**: `dehaze-python/app/__init__.py` (port 5000)
+- **Database Init**: `dehaze-java/config/sql/init.sql` (required before first startup)
+- **Main Algorithm**: `dehaze-algorithm/inference_ridcp.py` (RIDCP implementation)
+- **Vue Build**: `dehaze-front-vue/vite.config.ts` (port 5173)
+- **Vue Tests**: `dehaze-front-vue/vitest.config.ts` (unit + e2e setup)
+
+### Development Workflow Details
+1. **Database Setup First**: `mysql -u root -p < dehaze-java/config/sql/init.sql`
+2. **Start Backend Services**: Java (8989) → Python Algorithm (5000)
+3. **Start Frontend**: Vue Dev Server (5173)
+4. **Verify API Docs**: http://localhost:8989/doc.html
+5. **GPU Check**: Python service auto-detects CUDA, falls back to CPU
 
 ## Package Management
 - **Node.js projects**: pnpm (enforced via `preinstall` script)
@@ -306,3 +322,18 @@ All major services include Dockerfile support:
 - **MinIO errors**: Ensure MinIO is running and check bucket permissions
 - **GPU not available**: Python algorithm service will fallback to CPU (slower performance)
 - **Port conflicts**: Check if ports 5173, 8989, 5000 are already in use
+
+### Algorithm Service Debugging
+- **CUDA detection error**: Check NVIDIA drivers and CUDA installation
+- **Model loading failures**: Verify model weights path and file integrity
+- **Memory errors**: Reduce batch size or use tiled inference for large images
+
+### Frontend Development Issues
+- **pnpm install fails**: Use `PNPM_APPROVE_BUILDS=1 pnpm install -r` for all projects
+- **Vite build errors**: Check Node.js version (requires 18+)
+- **Playwright tests failing**: Run `npx playwright install` to install browsers
+
+### Backend Development Issues
+- **JWT token errors**: Check security.jwt.key in application-dev.yml
+- **File upload failures**: Verify MinIO/OSS configuration and permissions
+- **Maven build errors**: Check Java version (requires 17+) and Maven settings

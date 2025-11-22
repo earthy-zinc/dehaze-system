@@ -502,3 +502,15 @@ Navigation 返回栈是否符合用户预期
 
 
 google-chrome --force-device-scale-factor=1.5
+
+请为我撰写 dehaze-react-native 的架构设计文档，dehaze-react-native着重考虑用户交互和前端的逻辑，后端强相关的部分主要交由dehaze-java dehaze-go dehaze-python 等系统实现，具体请参考dehaze-java dehaze-go dehaze-python 项目，前端的产品原型请参考demo文件夹中的需求单和html设计稿，详细的界面设计文档参考 dehaze_flutter\docs\design
+
+当前属于在代码架构设计和文档撰写环节，文档尽量采用文字描述、mermaid 图表、表格形式，为之后的代码撰写打下一个良好的基础，只有在必须使用代码的情况下才使用
+
+请开始根据上述要求在 dehaze-react-native\doc\architecture 文件夹中撰写架构设计文档，如内容较多，请考虑拆分为多篇 markdown
+
+@dehaze_flutter/docs/PERFORMANCE_AND_TESTING.md 请考虑拆分和重构该flutter性能优化与测试策略文档，按照目录对文档进行拆分，其中整体项目架构参考 dehaze_flutter\docs\architecture 文件夹下一系列架构设计文档，前端的产品原型请参考demo文件夹中的需求单和html设计稿，详细的界面设计参考 dehaze_flutter\docs\design
+
+当前属于在代码架构设计和文档撰写环节，文档尽量采用文字描述、图表、表格形式，为之后的代码撰写打下一个良好的基础，只有在必须使用代码的情况下才使用
+
+请开始根据上述要求拆分和重构该性能优化与测试策略文档，将其转移到 dehaze_flutter/docs/test 文件夹中

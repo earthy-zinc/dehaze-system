@@ -1,0 +1,39 @@
+/* ==================== 图像去雾系统 - 主样式文件 ==================== */
+/*
+ * 模块化CSS架构
+ * 作者: with AI
+ * 创建时间: 2025-01-21
+ *
+ * 文件结构说明:
+ * - base.css: 基础样式（重置、变量、动画、工具类）
+ * - layout.css: 布局组件（Header、导航、侧边栏、容器）
+ * - components.css: 通用组件（按钮、卡片、标签、滑块）
+ * - features.css: 功能组件（图片处理、对比工具、滤镜）
+ * - dataset.css: 数据集管理（数据集卡片、图片网格）
+ * - homepage.css: 首页样式（Hero区、工作流程、技术规格）
+ * - responsive.css: 响应式适配（移动端、平板、横屏）
+ */
+
+/* 导入基础样式模块 */
+@import url('./styles/base.css');
+
+/* 导入布局组件模块 */
+@import url('./styles/layout.css');
+
+/* 导入通用组件模块 */
+@import url('./styles/components.css');
+
+/* 导入功能组件模块 */
+@import url('./styles/features.css');
+
+/* 导入数据集管理模块 */
+@import url('./styles/dataset.css');
+
+/* 导入首页样式模块 */
+@import url('./styles/homepage.css');
+
+/* 导入响应式适配模块 */
+@import url('./styles/responsive.css');
+
+/* ==================== 项目签名 ==================== */
+/* 由 with (https://with.woa.com/) 通过自然语言生成 */

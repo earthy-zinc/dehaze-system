@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <title>图像去雾对比系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="min-h-screen">
+    <!-- 顶部导航栏 -->
+    <header class="app-header bg-white shadow-lg sticky top-0 z-50">
+      <div class="container mx-auto px-4 py-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <div
+              class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center"
+            >
+              <i class="fas fa-cloud-sun text-white text-base"></i>
+            </div>
+            <h1 class="text-base font-bold text-gray-800">图像去雾系统</h1>
+          </div>
+          <button
+            id="menuBtn"
+            class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <i class="fas fa-bars text-gray-600 text-lg"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- 侧边菜单 -->
+    <div id="sideMenu" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+      <div
+        class="absolute right-0 top-0 h-full w-80 max-w-full bg-white shadow-2xl transform transition-transform duration-300 overflow-y-auto"
+        id="menuPanel"
+        style="transform: translateX(100%)"
+      >
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold text-gray-800">功能菜单</h2>
+            <button id="closeMenuBtn" class="p-2 rounded-lg hover:bg-gray-100">
+              <i class="fas fa-times text-gray-600"></i>
+            </button>
+          </div>
+          <nav class="space-y-2">
+            <a href="#home" class="menu-item active">
+              <i class="fas fa-home"></i>
+              <span>首页</span>
+            </a>
+            <div
+              class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase"
+            >
+              处理流程
+            </div>
+            <a href="#image-input" class="menu-item">
+              <i class="fas fa-image"></i>
+              <span>图像输入</span>
+            </a>
+            <a href="#algorithm-select" class="menu-item">
+              <i class="fas fa-brain"></i>
+              <span>算法选择</span>
+            </a>
+            <a href="#processing" class="menu-item">
+              <i class="fas fa-cog"></i>
+              <span>去雾处理</span>
+            </a>
+            <div
+              class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase"
+            >
+              效果对比
+            </div>
+            <a href="#side-by-side" class="menu-item">
+              <i class="fas fa-columns"></i>
+              <span>并排对比</span>
+            </a>
+            <a href="#overlay" class="menu-item">
+              <i class="fas fa-layer-group"></i>
+              <span>重叠对比</span>
+            </a>
+            <a href="#magnifier" class="menu-item">
+              <i class="fas fa-search-plus"></i>
+              <span>放大镜</span>
+            </a>
+            <a href="#filter" class="menu-item">
+              <i class="fas fa-adjust"></i>
+              <span>滤镜调节</span>
+            </a>
+            <a href="#metrics" class="menu-item">
+              <i class="fas fa-chart-bar"></i>
+              <span>指标评估</span>
+            </a>
+            <a href="#algorithm" class="menu-item">
+              <i class="fas fa-info-circle"></i>
+              <span>算法信息</span>
+            </a>
+            <div
+              class="px-4 py-2 text-xs font-semibold text-gray-500 uppercase"
+            >
+              数据管理
+            </div>
+            <a href="#dataset" class="menu-item">
+              <i class="fas fa-database"></i>
+              <span>数据集管理</span>
+            </a>
+          </nav>
+        </div>
+      </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-0 pb-24 bg-[#fff]">
+      <!-- 首页 -->
+      <section id="home" class="page-section active">
+        <!-- Hero Section - 苹果风格大标题区 -->
+        <div class="hero-section">
+          <div class="hero-content">
+            <h1 class="hero-title">图像去雾</h1>
+            <h2 class="hero-subtitle">专业级图像处理系统</h2>
+            <p class="hero-description">
+              采用先进的深度学习算法，一键还原清晰视界<br />
+              从图像输入到效果评估的完整闭环体验
+            </p>
+            <div class="hero-cta">
+              <button
+                class="cta-primary"
+                onclick="window.location.hash='#image-input'"
+              >
+                立即开始
+                <i class="fas fa-arrow-right ml-2"></i>
+              </button>
+              <button
+                class="cta-secondary"
+                onclick="window.location.hash='#dataset'"
+              >
+                浏览数据集
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 效果展示区 - 去雾前后对比 -->
+        <div class="showcase-section">
+          <div class="showcase-header">
+            <h3 class="section-title">一键去雾，效果显著</h3>
+            <p class="section-subtitle">
+              智能算法自动识别雾霾程度，精准还原图像细节
+            </p>
+          </div>
+          <div class="comparison-showcase">
+            <div class="comparison-item">
+              <img
+                src="https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/20b8704f-d37e-45b9-a6c8-3c5d297e8a98/image_1763727568_3_3.jpg"
+                alt="去雾效果对比"
+                class="showcase-image"
+              />
+              <div class="comparison-label">
+                <span class="label-before">去雾前</span>
+                <span class="label-divider">→</span>
+                <span class="label-after">去雾后</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 核心功能区 -->
+        <div class="features-section">
+          <div class="features-header">
+            <h3 class="section-title">强大的功能生态</h3>
+            <p class="section-subtitle">从输入到输出，每一步都精心设计</p>
+          </div>
+
+          <!-- 处理流程 -->
+          <div class="workflow-container">
+            <div class="workflow-step" data-target="image-input">
+              <div class="step-number">01</div>
+              <div class="step-icon">
+                <i class="fas fa-image"></i>
+              </div>
+              <h4 class="step-title">图像输入</h4>
+              <p class="step-desc">
+                支持上传、拍照、样例图片<br />多种输入方式随心选择
+              </p>
+            </div>
+
+            <div class="workflow-arrow">
+              <i class="fas fa-arrow-right"></i>
+            </div>
+
+            <div class="workflow-step" data-target="algorithm-select">
+              <div class="step-number">02</div>
+              <div class="step-icon">
+                <i class="fas fa-brain"></i>
+              </div>
+              <h4 class="step-title">智能算法</h4>
+              <p class="step-desc">多种去雾算法可选<br />AI智能推荐最优方案</p>
+            </div>
+
+            <div class="workflow-arrow">
+              <i class="fas fa-arrow-right"></i>
+            </div>
+
+            <div class="workflow-step" data-target="processing">
+              <div class="step-number">03</div>
+              <div class="step-icon">
+                <i class="fas fa-magic"></i>
+              </div>
+              <h4 class="step-title">一键处理</h4>
+              <p class="step-desc">毫秒级处理速度<br />实时预览处理效果</p>
+            </div>
+          </div>
+
+          <!-- 对比工具网格 -->
+          <div class="tools-grid">
+            <div class="tool-card" data-target="side-by-side">
+              <div class="tool-icon-wrapper">
+                <i class="fas fa-columns"></i>
+              </div>
+              <h4 class="tool-title">并排对比</h4>
+              <p class="tool-desc">多图并排展示，支持2-4张图片同屏对比</p>
+            </div>
+
+            <div class="tool-card" data-target="overlay">
+              <div class="tool-icon-wrapper">
+                <i class="fas fa-layer-group"></i>
+              </div>
+              <h4 class="tool-title">重叠对比</h4>
+              <p class="tool-desc">拖动分割线实时对比，支持横向和纵向模式</p>
+            </div>
+
+            <div class="tool-card" data-target="magnifier">
+              <div class="tool-icon-wrapper">
+                <i class="fas fa-search-plus"></i>
+              </div>
+              <h4 class="tool-title">放大镜</h4>
+              <p class="tool-desc">局部细节放大查看，精确对比图像质量</p>
+            </div>
+
+            <div class="tool-card" data-target="filter">
+              <div class="tool-icon-wrapper">
+                <i class="fas fa-sliders-h"></i>
+              </div>
+              <h4 class="tool-title">滤镜调节</h4>
+              <p class="tool-desc">实时调节亮度、对比度、饱和度等参数</p>
+            </div>
+
+            <div class="tool-card" data-target="metrics">
+              <div class="tool-icon-wrapper">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <h4 class="tool-title">指标评估</h4>
+              <p class="tool-desc">SSIM、PSNR等专业指标定量分析</p>
+            </div>
+
+            <div class="tool-card" data-target="dataset">
+              <div class="tool-icon-wrapper">
+                <i class="fas fa-database"></i>
+              </div>
+              <h4 class="tool-title">数据集管理</h4>
+              <p class="tool-desc">浏览和管理多个专业去雾数据集</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 算法优势区 -->
+        <div class="algorithm-section">
+          <div class="algorithm-content">
+            <div class="algorithm-text">
+              <h3 class="section-title">多算法智能选择</h3>
+              <p class="section-subtitle">
+                支持DCP、AOD-Net、DehazeNet等多种先进算法
+              </p>
+              <ul class="algorithm-features">
+                <li>
+                  <i class="fas fa-check-circle"></i>
+                  <span>智能推荐最适合的去雾算法</span>
+                </li>
+                <li>
+                  <i class="fas fa-check-circle"></i>
+                  <span>实时对比不同算法的处理效果</span>
+                </li>
+                <li>
+                  <i class="fas fa-check-circle"></i>
+                  <span>毫秒级处理速度，即时查看结果</span>
+                </li>
+                <li>
+                  <i class="fas fa-check-circle"></i>
+                  <span>支持批量处理和参数自定义</span>
+                </li>
+              </ul>
+              <button
+                class="learn-more-btn"
+                onclick="window.location.hash='#algorithm'"
+              >
+                了解更多算法详情
+                <i class="fas fa-arrow-right ml-2"></i>
+              </button>
+            </div>
+            <div class="algorithm-visual">
+              <img
+                src="https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/f49e4b9e-6079-4a0b-8f91-bcab5deec2c7/image_1763727581_1_3.jpg"
+                alt="算法对比"
+                class="algorithm-image"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 技术特性区 -->
+        <div class="tech-specs-section">
+          <div class="specs-grid">
+            <div class="spec-card">
+              <div class="spec-icon">
+                <i class="fas fa-bolt"></i>
+              </div>
+              <h4 class="spec-title">高性能</h4>
+              <p class="spec-value">60fps</p>
+              <p class="spec-desc">流畅运行，响应时间&lt;200ms</p>
+            </div>
+
+            <div class="spec-card">
+              <div class="spec-icon">
+                <i class="fas fa-mobile-alt"></i>
+              </div>
+              <h4 class="spec-title">全平台</h4>
+              <p class="spec-value">100%</p>
+              <p class="spec-desc">完美适配手机、平板、桌面</p>
+            </div>
+
+            <div class="spec-card">
+              <div class="spec-icon">
+                <i class="fas fa-brain"></i>
+              </div>
+              <h4 class="spec-title">智能算法</h4>
+              <p class="spec-value">8+</p>
+              <p class="spec-desc">支持多种先进去雾算法</p>
+            </div>
+
+            <div class="spec-card">
+              <div class="spec-icon">
+                <i class="fas fa-chart-bar"></i>
+              </div>
+              <h4 class="spec-title">专业评估</h4>
+              <p class="spec-value">5+</p>
+              <p class="spec-desc">多维度定量分析指标</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA区域 -->
+        <div class="final-cta-section">
+          <h3 class="cta-title">准备好体验专业级图像去雾了吗？</h3>
+          <p class="cta-subtitle">立即开始，让您的图像重获清晰</p>
+          <button
+            class="cta-large-btn"
+            onclick="window.location.hash='#image-input'"
+          >
+            开始使用
+            <i class="fas fa-arrow-right ml-3"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- 其他页面容器 -->
+      <section id="image-input" class="page-section"></section>
+      <section id="algorithm-select" class="page-section"></section>
+      <section id="processing" class="page-section"></section>
+      <section id="side-by-side" class="page-section"></section>
+      <section id="overlay" class="page-section"></section>
+      <section id="magnifier" class="page-section"></section>
+      <section id="filter" class="page-section"></section>
+      <section id="metrics" class="page-section"></section>
+      <section id="algorithm" class="page-section"></section>
+      <section id="dataset" class="page-section"></section>
+    </main>
+
+    <!-- 底部导航栏 -->
+    <nav
+      class="fixed bottom-0 left-0 right-0 bg-white shadow-2xl border-t border-gray-200 z-40"
+    >
+      <div class="flex justify-around items-center h-16">
+        <a href="#home" class="nav-item active">
+          <i class="fas fa-home"></i>
+          <span>首页</span>
+        </a>
+        <a href="#image-input" class="nav-item">
+          <i class="fas fa-image"></i>
+          <span>输入</span>
+        </a>
+        <a href="#algorithm-select" class="nav-item">
+          <i class="fas fa-brain"></i>
+          <span>算法</span>
+        </a>
+        <a href="#processing" class="nav-item">
+          <i class="fas fa-cog"></i>
+          <span>处理</span>
+        </a>
+        <a href="#side-by-side" class="nav-item">
+          <i class="fas fa-columns"></i>
+          <span>对比</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- 加载提示 -->
+    <div
+      id="loadingOverlay"
+      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+    >
+      <div class="bg-white rounded-2xl p-6 flex flex-col items-center">
+        <div class="loader mb-4"></div>
+        <p class="text-gray-700 font-medium">加载中...</p>
+      </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div
+      id="toast"
+      class="fixed top-20 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-full shadow-lg z-50 hidden"
+    >
+      <span id="toastMessage"></span>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

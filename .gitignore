@@ -67,6 +67,7 @@ Thumbs.db
 **/logs/
 .mvn/
 dependency-reduced-pom.xml
+**/.flattened-pom.xml
 release.properties
 buildNumber.properties
 
