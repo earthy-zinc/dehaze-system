@@ -87,10 +87,10 @@ features/effect_comparison/
     │   ├── filter_controls_widget.dart      // 滤镜控制组件
     │   └── export_options_widget.dart       // 导出选项组件
     └── providers/                      # 状态管理
-        ├── comparison_bloc.dart             # 对比状态管理
-        ├── image_viewer_bloc.dart           // 图像查看器状态管理
-        ├── metrics_bloc.dart                // 指标状态管理
-        └── export_bloc.dart                 // 导出状态管理
+        ├── comparison_provider.dart          # 对比状态管理
+        ├── image_viewer_provider.dart           // 图像查看器状态管理
+        ├── metrics_provider.dart                // 指标状态管理
+        └── export_provider.dart                 // 导出状态管理
 ```
 
 ### 数据流架构
@@ -103,8 +103,8 @@ graph TD
     end
 
     subgraph "状态管理层"
-        BLOC[Comparison Bloc]
-        EVENTS[用户事件]
+        PROVIDER[Comparison Provider]
+        ACTIONS[用户操作]
         STATES[状态更新]
     end
 
@@ -128,11 +128,11 @@ graph TD
         EXPORT_SERVICE[导出服务]
     end
 
-    UI --> EVENTS
-    EVENTS --> BLOC
-    BLOC --> STATES
+    UI --> ACTIONS
+    ACTIONS --> PROVIDER
+    PROVIDER --> STATES
     STATES --> UI
-    BLOC --> USECASES
+    PROVIDER --> USECASES
     USECASES --> CALCULATE
     USECASES --> ANALYZE
     USECASES --> EXPORT
@@ -1068,114 +1068,39 @@ class RulerPainter extends CustomPainter {
 
 ## 🔄 状态管理
 
-### Bloc状态设计
+### Riverpod状态设计
 
 ```dart
 /// 效果对比状态
-abstract class ComparisonState extends Equatable {
-  const ComparisonState();
-
-  @override
-  List<Object?> get props => [];
-}
-
-/// 初始状态
-class ComparisonInitial extends ComparisonState {}
-
-/// 加载中状态
-class ComparisonLoading extends ComparisonState {
-  final String message;
-
-  const ComparisonLoading({this.message = '正在加载对比数据...'});
-
-  @override
-  List<Object?> get props => [message];
-}
-
-/// 对比数据加载完成
-class ComparisonLoaded extends ComparisonState {
-  final ComparisonResult comparisonResult;
-  final ComparisonConfig config;
-
-  const ComparisonLoaded({
-    required this.comparisonResult,
-    required this.config,
-  });
-
-  @override
-  List<Object?> get props => [comparisonResult, config];
-}
-
-/// 对比模式切换
-class ComparisonModeChanged extends ComparisonState {
-  final ComparisonResult comparisonResult;
-  final ComparisonMode newMode;
-
-  const ComparisonModeChanged({
-    required this.comparisonResult,
-    required this.newMode,
-  });
-
-  @override
-  List<Object?> get props => [comparisonResult, newMode];
-}
-
-/// 指标计算完成
-class MetricsCalculated extends ComparisonState {
-  final ComparisonResult comparisonResult;
-  final Map<String, QualityMetrics> metrics;
-
-  const MetricsCalculated({
-    required this.comparisonResult,
-    required this.metrics,
-  });
-
-  @override
-  List<Object?> get props => [comparisonResult, metrics];
-}
-
-/// 导出中状态
-class ComparisonExporting extends ComparisonState {
-  final String exportFormat;
-  final double progress;
-
-  const ComparisonExporting({
-    required this.exportFormat,
-    required this.progress,
-  });
-
-  @override
-  List<Object?> get props => [exportFormat, progress];
-}
-
-/// 导出完成
-class ComparisonExported extends ComparisonState {
-  final String filePath;
-  final String format;
-
-  const ComparisonExported({
-    required this.filePath,
-    required this.format,
-  });
-
-  @override
-  List<Object?> get props => [filePath, format];
-}
-
-/// 错误状态
-class ComparisonError extends ComparisonState {
-  final String message;
-  final ComparisonErrorType errorType;
-  final VoidCallback? onRetry;
-
-  const ComparisonError({
-    required this.message,
-    required this.errorType,
-    this.onRetry,
-  });
-
-  @override
-  List<Object?> get props => [message, errorType, onRetry];
+@freezed
+class ComparisonState with _$ComparisonState {
+  const factory ComparisonState.initial() = _ComparisonInitial;
+  const factory ComparisonState.loading(String message) = _ComparisonLoading;
+  const factory ComparisonState.loaded({
+    required ComparisonResult comparisonResult,
+    required ComparisonConfig config,
+  }) = _ComparisonLoaded;
+  const factory ComparisonState.modeChanged({
+    required ComparisonResult comparisonResult,
+    required ComparisonMode newMode,
+  }) = _ComparisonModeChanged;
+  const factory ComparisonState.metricsCalculated({
+    required ComparisonResult comparisonResult,
+    required Map<String, QualityMetrics> metrics,
+  }) = _MetricsCalculated;
+  const factory ComparisonState.exporting({
+    required String exportFormat,
+    required double progress,
+  }) = _ComparisonExporting;
+  const factory ComparisonState.exported({
+    required String filePath,
+    required String format,
+  }) = _ComparisonExported;
+  const factory ComparisonState.error({
+    required String message,
+    required ComparisonErrorType errorType,
+    VoidCallback? onRetry,
+  }) = _ComparisonError;
 }
 
 /// 错误类型枚举
@@ -1187,87 +1112,228 @@ enum ComparisonErrorType {
   networkError,        // 网络错误
   unknownError,        // 未知错误
 }
+
+/// 效果对比状态Provider
+final comparisonProvider = StateNotifierProvider<ComparisonNotifier, ComparisonState>((ref) {
+  return ComparisonNotifier(
+    ref.read(comparisonRepositoryProvider),
+    ref.read(metricsRepositoryProvider),
+  );
+});
+
+/// 效果对比状态管理器
+class ComparisonNotifier extends StateNotifier<ComparisonState> {
+  final ComparisonRepository _comparisonRepository;
+  final MetricsRepository _metricsRepository;
+
+  ComparisonNotifier(
+    this._comparisonRepository,
+    this._metricsRepository,
+  ) : super(const ComparisonState.initial());
+
+  /// 创建对比
+  Future<void> createComparison({
+    required String originalImageId,
+    required List<String> processedImageIds,
+    ComparisonConfig config = const ComparisonConfig(),
+  }) async {
+    state = const ComparisonState.loading('正在创建对比...');
+    try {
+      final comparisonResult = await _comparisonRepository.createComparison(
+        originalImageId: originalImageId,
+        processedImageIds: processedImageIds,
+        config: config,
+      );
+
+      state = ComparisonState.loaded(
+        comparisonResult: comparisonResult,
+        config: config,
+      );
+    } catch (e) {
+      state = ComparisonState.error(
+        message: '创建对比失败: ${e.toString()}',
+        errorType: _getErrorType(e),
+        onRetry: () => createComparison(
+          originalImageId: originalImageId,
+          processedImageIds: processedImageIds,
+          config: config,
+        ),
+      );
+    }
+  }
+
+  /// 切换对比模式
+  void changeComparisonMode(ComparisonMode newMode, {Map<String, dynamic>? parameters}) {
+    final currentState = state;
+    if (currentState is _ComparisonLoaded) {
+      final updatedConfig = _updateConfigForMode(currentState.config, newMode, parameters);
+
+      state = ComparisonState.modeChanged(
+        comparisonResult: currentState.comparisonResult,
+        newMode: newMode,
+      );
+    }
+  }
+
+  /// 计算质量指标
+  Future<void> calculateMetrics(MetricCalculationConfig config) async {
+    final currentState = state;
+    if (currentState is _ComparisonLoaded) {
+      state = const ComparisonState.loading('正在计算质量指标...');
+      try {
+        final metrics = <String, QualityMetrics>{};
+
+        for (final processedImage in currentState.comparisonResult.processedImages) {
+          final metric = await _metricsRepository.calculateMetrics(
+            originalImageId: currentState.comparisonResult.originalImageId,
+            processedImageId: processedImage.id,
+            config: config,
+          );
+          metrics[processedImage.id] = metric;
+        }
+
+        state = ComparisonState.metricsCalculated(
+          comparisonResult: currentState.comparisonResult,
+          metrics: metrics,
+        );
+      } catch (e) {
+        state = ComparisonState.error(
+          message: '计算指标失败: ${e.toString()}',
+          errorType: ComparisonErrorType.metricsCalculationFailed,
+          onRetry: () => calculateMetrics(config),
+        );
+      }
+    }
+  }
+
+  /// 导出对比结果
+  Future<void> exportComparison(ExportConfig exportConfig) async {
+    state = ComparisonState.exporting(
+      exportFormat: exportConfig.format,
+      progress: 0.0,
+    );
+
+    try {
+      final filePath = await _comparisonRepository.exportComparison(
+        comparisonResult: _getComparisonResult(),
+        exportConfig: exportConfig,
+        onProgress: (progress) {
+          state = ComparisonState.exporting(
+            exportFormat: exportConfig.format,
+            progress: progress,
+          );
+        },
+      );
+
+      state = ComparisonState.exported(
+        filePath: filePath,
+        format: exportConfig.format,
+      );
+    } catch (e) {
+      state = ComparisonState.error(
+        message: '导出失败: ${e.toString()}',
+        errorType: _getErrorType(e),
+        onRetry: () => exportComparison(exportConfig),
+      );
+    }
+  }
+
+  ComparisonConfig _updateConfigForMode(
+    ComparisonConfig currentConfig,
+    ComparisonMode newMode,
+    Map<String, dynamic>? parameters,
+  ) {
+    return currentConfig.copyWith(
+      mode: newMode,
+      parameters: parameters ?? {},
+    );
+  }
+
+  ComparisonResult _getComparisonResult() {
+    final currentState = state;
+    if (currentState is _ComparisonLoaded) {
+      return currentState.comparisonResult;
+    } else if (currentState is _ComparisonModeChanged) {
+      return currentState.comparisonResult;
+    } else if (currentState is _MetricsCalculated) {
+      return currentState.comparisonResult;
+    } else {
+      throw StateError('无效的状态，无法获取对比结果');
+    }
+  }
+
+  ComparisonErrorType _getErrorType(dynamic error) {
+    if (error is ImageLoadException) {
+      return ComparisonErrorType.imageLoadFailed;
+    } else if (error is MetricsCalculationException) {
+      return ComparisonErrorType.metricsCalculationFailed;
+    } else if (error is ExportException) {
+      return ComparisonErrorType.exportFailed;
+    } else if (error is ParametersException) {
+      return ComparisonErrorType.invalidParameters;
+    } else if (error is NetworkException) {
+      return ComparisonErrorType.networkError;
+    } else {
+      return ComparisonErrorType.unknownError;
+    }
+  }
+}
+
+/// 图像查看器Provider
+final imageViewerProvider = StateNotifierProvider.family<ImageViewerNotifier, ImageViewerState, String>((ref, comparisonId) {
+  return ImageViewerNotifier(ref.read(comparisonRepositoryProvider));
+});
+
+/// 指标Provider
+final metricsProvider = FutureProvider.family<Map<String, QualityMetrics>, String>((ref, comparisonId) async {
+  final comparison = await ref.read(comparisonRepositoryProvider).getComparisonById(comparisonId);
+  final metrics = <String, QualityMetrics>{};
+
+  for (final processedImage in comparison.processedImages) {
+    metrics[processedImage.id] = await ref.read(metricsRepositoryProvider).getMetrics(processedImage.id);
+  }
+
+  return metrics;
+});
 ```
 
-### 事件设计
+### Provider依赖管理
 
 ```dart
-/// 效果对比事件
-abstract class ComparisonEvent extends Equatable {
-  const ComparisonEvent();
+/// 对比仓储Provider
+final comparisonRepositoryProvider = Provider<ComparisonRepository>((ref) {
+  return ComparisonRepositoryImpl(
+    ref.read(comparisonDatasourceProvider),
+    ref.read(imageDatasourceProvider),
+  );
+});
 
-  @override
-  List<Object?> get props => [];
-}
+/// 指标仓储Provider
+final metricsRepositoryProvider = Provider<MetricsRepository>((ref) {
+  return MetricsRepositoryImpl(
+    ref.read(metricsDatasourceProvider),
+  );
+});
 
-/// 加载对比数据
-class LoadComparisonEvent extends ComparisonEvent {
-  final String comparisonId;
+/// 导出仓储Provider
+final exportRepositoryProvider = Provider<ExportRepository>((ref) {
+  return ExportRepositoryImpl(
+    ref.read(exportDatasourceProvider),
+  );
+});
 
-  const LoadComparisonEvent({required this.comparisonId});
-
-  @override
-  List<Object?> get props => [comparisonId];
-}
-
-/// 创建对比
-class CreateComparisonEvent extends ComparisonEvent {
-  final String originalImageId;
-  final List<String> processedImageIds;
-  final ComparisonConfig config;
-
-  const CreateComparisonEvent({
-    required this.originalImageId,
-    required this.processedImageIds,
-    required this.config,
-  });
-
-  @override
-  List<Object?> get props => [originalImageId, processedImageIds, config];
-}
-
-/// 切换对比模式
-class ChangeComparisonModeEvent extends ComparisonEvent {
-  final ComparisonMode newMode;
-  final Map<String, dynamic>? parameters;
-
-  const ChangeComparisonModeEvent({
-    required this.newMode,
-    this.parameters,
-  });
-
-  @override
-  List<Object?> get props => [newMode, parameters];
-}
-
-/// 计算质量指标
-class CalculateMetricsEvent extends ComparisonEvent {
-  final MetricCalculationConfig config;
-
-  const CalculateMetricsEvent({required this.config});
-
-  @override
-  List<Object?> get props => [config];
-}
-
-/// 导出对比结果
-class ExportComparisonEvent extends ComparisonEvent {
-  final ExportConfig exportConfig;
-
-  const ExportComparisonEvent({required this.exportConfig});
-
-  @override
-  List<Object?> get props => [exportConfig];
-}
-
-/// 更新对比配置
-class UpdateComparisonConfigEvent extends ComparisonEvent {
-  final ComparisonConfig newConfig;
-
-  const UpdateComparisonConfigEvent({required this.newConfig});
-
-  @override
-  List<Object?> get props => [newConfig];
+/// 图像查看器状态
+@freezed
+class ImageViewerState with _$ImageViewerState {
+  const factory ImageViewerState.initial() = _ImageViewerInitial;
+  const factory ImageViewerState.loading() = _ImageViewerLoading;
+  const factory ImageViewerState.viewing({
+    required String imageId,
+    required double zoomLevel,
+    required Offset panOffset,
+    required ComparisonMode mode,
+  }) = _ImageViewerViewing;
+  const factory ImageViewerState.error(String message) = _ImageViewerError;
 }
 ```
 

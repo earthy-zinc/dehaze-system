@@ -80,9 +80,9 @@ features/algorithm_select/
     │   ├── parameter_slider_widget.dart       # 参数滑块组件
     │   └── performance_chart_widget.dart      # 性能图表组件
     └── providers/                      # 状态管理
-        ├── algorithm_select_bloc.dart         # 算法选择状态管理
-        ├── algorithm_details_bloc.dart        # 算法详情状态管理
-        └── recommendation_bloc.dart           # 推荐状态管理
+        ├── algorithm_select_provider.dart      # 算法选择状态管理
+        ├── algorithm_details_provider.dart     # 算法详情状态管理
+        └── recommendation_provider.dart        # 推荐状态管理
 ```
 
 ### 数据流架构
@@ -95,8 +95,8 @@ graph TD
     end
 
     subgraph "状态管理层"
-        BLOC[AlgorithmSelect Bloc]
-        EVENTS[用户事件]
+        PROVIDER[AlgorithmSelect Provider]
+        ACTIONS[用户操作]
         STATES[状态更新]
     end
 
@@ -120,11 +120,11 @@ graph TD
         LOCAL_DB[本地数据库]
     end
 
-    UI --> EVENTS
-    EVENTS --> BLOC
-    BLOC --> STATES
+    UI --> ACTIONS
+    ACTIONS --> PROVIDER
+    PROVIDER --> STATES
     STATES --> UI
-    BLOC --> USECASES
+    PROVIDER --> USECASES
     USECASES --> RECOMMEND
     USECASES --> SEARCH
     USECASES --> FILTER
@@ -972,114 +972,36 @@ class RecommendationWidget extends StatelessWidget {
 
 ## 🔄 状态管理
 
-### Bloc状态设计
+### Riverpod状态设计
 
 ```dart
 /// 算法选择状态
-abstract class AlgorithmSelectState extends Equatable {
-  const AlgorithmSelectState();
-
-  @override
-  List<Object?> get props => [];
-}
-
-/// 初始状态
-class AlgorithmSelectInitial extends AlgorithmSelectState {}
-
-/// 加载中状态
-class AlgorithmSelectLoading extends AlgorithmSelectState {
-  final String message;
-
-  const AlgorithmSelectLoading({this.message = '正在加载算法...'});
-
-  @override
-  List<Object?> get props => [message];
-}
-
-/// 算法列表加载完成
-class AlgorithmsLoaded extends AlgorithmSelectState {
-  final List<Algorithm> algorithms;
-  final List<AlgorithmCategory> categories;
-  final AlgorithmFilters filters;
-
-  const AlgorithmsLoaded({
-    required this.algorithms,
-    required this.categories,
-    required this.filters,
-  });
-
-  @override
-  List<Object?> get props => [algorithms, categories, filters];
-
-  AlgorithmsLoaded copyWith({
-    List<Algorithm>? algorithms,
-    List<AlgorithmCategory>? categories,
-    AlgorithmFilters? filters,
-  }) {
-    return AlgorithmsLoaded(
-      algorithms: algorithms ?? this.algorithms,
-      categories: categories ?? this.categories,
-      filters: filters ?? this.filters,
-    );
-  }
-}
-
-/// 推荐算法生成完成
-class RecommendationsLoaded extends AlgorithmSelectState {
-  final Recommendation recommendation;
-  final List<Algorithm> allAlgorithms;
-
-  const RecommendationsLoaded({
-    required this.recommendation,
-    required this.allAlgorithms,
-  });
-
-  @override
-  List<Object?> get props => [recommendation, allAlgorithms];
-}
-
-/// 算法详情加载完成
-class AlgorithmDetailsLoaded extends AlgorithmSelectState {
-  final Algorithm algorithm;
-  final AlgorithmPerformance? performance;
-
-  const AlgorithmDetailsLoaded({
-    required this.algorithm,
-    this.performance,
-  });
-
-  @override
-  List<Object?> get props => [algorithm, performance];
-}
-
-/// 算法已选择
-class AlgorithmSelected extends AlgorithmSelectState {
-  final Algorithm algorithm;
-  final Map<String, dynamic> parameters;
-
-  const AlgorithmSelected({
-    required this.algorithm,
-    required this.parameters,
-  });
-
-  @override
-  List<Object?> get props => [algorithm, parameters];
-}
-
-/// 错误状态
-class AlgorithmSelectError extends AlgorithmSelectState {
-  final String message;
-  final ErrorType errorType;
-  final VoidCallback? onRetry;
-
-  const AlgorithmSelectError({
-    required this.message,
-    required this.errorType,
-    this.onRetry,
-  });
-
-  @override
-  List<Object?> get props => [message, errorType, onRetry];
+@freezed
+class AlgorithmSelectState with _$AlgorithmSelectState {
+  const factory AlgorithmSelectState.initial() = _AlgorithmSelectInitial;
+  const factory AlgorithmSelectState.loading(String message) = _AlgorithmSelectLoading;
+  const factory AlgorithmSelectState.algorithmsLoaded({
+    required List<Algorithm> algorithms,
+    required List<AlgorithmCategory> categories,
+    required AlgorithmFilters filters,
+  }) = _AlgorithmsLoaded;
+  const factory AlgorithmSelectState.recommendationsLoaded({
+    required Recommendation recommendation,
+    required List<Algorithm> allAlgorithms,
+  }) = _RecommendationsLoaded;
+  const factory AlgorithmSelectState.algorithmDetailsLoaded({
+    required Algorithm algorithm,
+    AlgorithmPerformance? performance,
+  }) = _AlgorithmDetailsLoaded;
+  const factory AlgorithmSelectState.algorithmSelected({
+    required Algorithm algorithm,
+    required Map<String, dynamic> parameters,
+  }) = _AlgorithmSelected;
+  const factory AlgorithmSelectState.error({
+    required String message,
+    required AlgorithmSelectErrorType errorType,
+    VoidCallback? onRetry,
+  }) = _AlgorithmSelectError;
 }
 
 /// 错误类型枚举
@@ -1090,106 +1012,139 @@ enum AlgorithmSelectErrorType {
   recommendationFailed, // 推荐失败
   unknownError,       // 未知错误
 }
+
+/// 算法选择状态Provider
+final algorithmSelectProvider = StateNotifierProvider<AlgorithmSelectNotifier, AlgorithmSelectState>((ref) {
+  return AlgorithmSelectNotifier(
+    ref.read(algorithmRepositoryProvider),
+    ref.read(recommendationRepositoryProvider),
+  );
+});
+
+/// 算法选择状态管理器
+class AlgorithmSelectNotifier extends StateNotifier<AlgorithmSelectState> {
+  final AlgorithmRepository _algorithmRepository;
+  final RecommendationRepository _recommendationRepository;
+
+  AlgorithmSelectNotifier(
+    this._algorithmRepository,
+    this._recommendationRepository,
+  ) : super(const AlgorithmSelectState.initial());
+
+  /// 加载算法列表
+  Future<void> loadAlgorithms({bool forceRefresh = false}) async {
+    state = const AlgorithmSelectState.loading('正在加载算法...');
+    try {
+      final algorithms = await _algorithmRepository.getAvailableAlgorithms();
+      final categories = await _algorithmRepository.getAlgorithmCategories();
+
+      state = AlgorithmSelectState.algorithmsLoaded(
+        algorithms: algorithms,
+        categories: categories,
+        filters: const AlgorithmFilters(),
+      );
+    } catch (e) {
+      state = AlgorithmSelectState.error(
+        message: '加载算法失败: ${e.toString()}',
+        errorType: _getErrorType(e),
+        onRetry: () => loadAlgorithms(forceRefresh: forceRefresh),
+      );
+    }
+  }
+
+  /// 生成推荐算法
+  Future<void> generateRecommendations(InputImage inputImage) async {
+    state = const AlgorithmSelectState.loading('正在生成推荐...');
+    try {
+      final recommendation = await _recommendationRepository.generateRecommendation(
+        inputImage: inputImage,
+      );
+
+      final allAlgorithms = await _algorithmRepository.getAvailableAlgorithms();
+
+      state = AlgorithmSelectState.recommendationsLoaded(
+        recommendation: recommendation,
+        allAlgorithms: allAlgorithms,
+      );
+    } catch (e) {
+      state = AlgorithmSelectState.error(
+        message: '生成推荐失败: ${e.toString()}',
+        errorType: _getErrorType(e),
+        onRetry: () => generateRecommendations(inputImage),
+      );
+    }
+  }
+
+  /// 选择算法
+  void selectAlgorithm(Algorithm algorithm, Map<String, dynamic> parameters) {
+    state = AlgorithmSelectState.algorithmSelected(
+      algorithm: algorithm,
+      parameters: parameters,
+    );
+  }
+
+  /// 应用筛选
+  void applyFilters(AlgorithmFilters filters) {
+    final currentState = state;
+    if (currentState is _AlgorithmsLoaded) {
+      state = AlgorithmSelectState.algorithmsLoaded(
+        algorithms: currentState.algorithms,
+        categories: currentState.categories,
+        filters: filters,
+      );
+    }
+  }
+
+  AlgorithmSelectErrorType _getErrorType(dynamic error) {
+    if (error is NetworkException) {
+      return AlgorithmSelectErrorType.networkError;
+    } else if (error is ApiException) {
+      return AlgorithmSelectErrorType.apiError;
+    } else if (error is AlgorithmNotFoundException) {
+      return AlgorithmSelectErrorType.algorithmNotFound;
+    } else if (error is RecommendationException) {
+      return AlgorithmSelectErrorType.recommendationFailed;
+    } else {
+      return AlgorithmSelectErrorType.unknownError;
+    }
+  }
+}
+
+/// 算法详情Provider
+final algorithmDetailsProvider = FutureProvider.family<Algorithm, String>((ref, algorithmId) async {
+  return ref.read(algorithmRepositoryProvider).getAlgorithmById(algorithmId);
+});
+
+/// 推荐算法Provider
+final recommendationProvider = FutureProvider.family<Recommendation, InputImage>((ref, inputImage) async {
+  return ref.read(recommendationRepositoryProvider).generateRecommendation(
+    inputImage: inputImage,
+  );
+});
 ```
 
-### 事件设计
+### Provider依赖管理
 
 ```dart
-/// 算法选择事件
-abstract class AlgorithmSelectEvent extends Equatable {
-  const AlgorithmSelectEvent();
+/// 算法仓储Provider
+final algorithmRepositoryProvider = Provider<AlgorithmRepository>((ref) {
+  return AlgorithmRepositoryImpl(
+    ref.read(algorithmDatasourceProvider),
+    ref.read(performanceDatasourceProvider),
+  );
+});
 
-  @override
-  List<Object?> get props => [];
-}
+/// 推荐仓储Provider
+final recommendationRepositoryProvider = Provider<RecommendationRepository>((ref) {
+  return RecommendationRepositoryImpl(
+    ref.read(recommendationDatasourceProvider),
+  );
+});
 
-/// 加载算法列表
-class LoadAlgorithmsEvent extends AlgorithmSelectEvent {
-  final bool forceRefresh;
-
-  const LoadAlgorithmsEvent({this.forceRefresh = false});
-
-  @override
-  List<Object?> get props => [forceRefresh];
-}
-
-/// 生成推荐算法
-class GenerateRecommendationsEvent extends AlgorithmSelectEvent {
-  final InputImage inputImage;
-  final RecommendParams params;
-
-  const GenerateRecommendationsEvent({
-    required this.inputImage,
-    this.params = const RecommendParams(),
-  });
-
-  @override
-  List<Object?> get props => [inputImage, params];
-}
-
-/// 搜索算法
-class SearchAlgorithmsEvent extends AlgorithmSelectEvent {
-  final String query;
-
-  const SearchAlgorithmsEvent({required this.query});
-
-  @override
-  List<Object?> get props => [query];
-}
-
-/// 应用筛选条件
-class ApplyFiltersEvent extends AlgorithmSelectEvent {
-  final AlgorithmFilters filters;
-
-  const ApplyFiltersEvent({required this.filters});
-
-  @override
-  List<Object?> get props => [filters];
-}
-
-/// 选择算法
-class SelectAlgorithmEvent extends AlgorithmSelectEvent {
-  final Algorithm algorithm;
-  final Map<String, dynamic> parameters;
-
-  const SelectAlgorithmEvent({
-    required this.algorithm,
-    required this.parameters,
-  });
-
-  @override
-  List<Object?> get props => [algorithm, parameters];
-}
-
-/// 查看算法详情
-class ViewAlgorithmDetailsEvent extends AlgorithmSelectEvent {
-  final String algorithmId;
-
-  const ViewAlgorithmDetailsEvent({required this.algorithmId});
-
-  @override
-  List<Object?> get props => [algorithmId];
-}
-
-/// 收藏算法
-class ToggleFavoriteAlgorithmEvent extends AlgorithmSelectEvent {
-  final String algorithmId;
-
-  const ToggleFavoriteAlgorithmEvent({required this.algorithmId});
-
-  @override
-  List<Object?> get props => [algorithmId];
-}
-
-/// 加载性能指标
-class LoadPerformanceMetricsEvent extends AlgorithmSelectEvent {
-  final String algorithmId;
-
-  const LoadPerformanceMetricsEvent({required this.algorithmId});
-
-  @override
-  List<Object?> get props => [algorithmId];
-}
+/// 搜索算法Provider
+final searchResultsProvider = FutureProvider.family<List<Algorithm>, String>((ref, query) async {
+  return ref.read(algorithmRepositoryProvider).searchAlgorithms(query: query);
+});
 ```
 
 ---

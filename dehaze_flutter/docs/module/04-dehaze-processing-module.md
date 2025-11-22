@@ -84,10 +84,10 @@ features/dehaze_processing/
     │   ├── batch_status_widget.dart        // 批量状态组件
     │   └── control_panel_widget.dart       # 控制面板组件
     └── providers/                      # 状态管理
-        ├── processing_bloc.dart            # 处理状态管理
-        ├── batch_processing_bloc.dart      # 批量处理状态管理
-        ├── progress_monitor_bloc.dart      # 进度监控状态管理
-        └── result_preview_bloc.dart        # 结果预览状态管理
+        ├── processing_provider.dart         # 处理状态管理
+        ├── batch_processing_provider.dart   # 批量处理状态管理
+        ├── progress_monitor_provider.dart   # 进度监控状态管理
+        └── result_preview_provider.dart     # 结果预览状态管理
 ```
 
 ### 数据流架构
@@ -100,8 +100,8 @@ graph TD
     end
 
     subgraph "状态管理层"
-        BLOC[Processing Bloc]
-        EVENTS[用户事件]
+        PROVIDER[Processing Provider]
+        ACTIONS[用户操作]
         STATES[状态更新]
     end
 
@@ -125,11 +125,11 @@ graph TD
         NOTIFICATION_SERVICE[通知服务]
     end
 
-    UI --> EVENTS
-    EVENTS --> BLOC
-    BLOC --> STATES
+    UI --> ACTIONS
+    ACTIONS --> PROVIDER
+    PROVIDER --> STATES
     STATES --> UI
-    BLOC --> USECASES
+    PROVIDER --> USECASES
     USECASES --> START
     USECASES --> CONTROL
     USECASES --> MONITOR
@@ -477,7 +477,7 @@ class StartProcessingUseCase implements UseCase<ProcessingTask, StartProcessingP
       // 4. 创建WebSocket连接监听进度
       await webSocketRepository.connectToTask(task.id);
       webSocketRepository.listenToTaskProgress(task.id, (progress) {
-        // 这里会通过Bloc状态管理更新UI
+        // 这里会通过Riverpod状态管理更新UI
         notificationService.updateProgressNotification(task.id, progress);
       });
 
@@ -1436,193 +1436,311 @@ class BatchProcessingWidget extends StatelessWidget {
 
 ## 🔄 状态管理
 
-### Bloc状态设计
+### Riverpod状态设计
 
 ```dart
 /// 处理任务状态
-abstract class ProcessingState extends Equatable {
-  const ProcessingState();
-
-  @override
-  List<Object?> get props => [];
+@freezed
+class ProcessingState with _$ProcessingState {
+  const factory ProcessingState.initial() = _ProcessingInitial;
+  const factory ProcessingState.ready({
+    required InputImage inputImage,
+    required Algorithm algorithm,
+    required ProcessingParameters parameters,
+  }) = _ProcessingReady;
+  const factory ProcessingState.inProgress(ProcessingTask task) = _ProcessingInProgress;
+  const factory ProcessingState.progressUpdated({
+    required ProcessingTask task,
+    required ProcessingProgress progress,
+  }) = _ProcessingProgressUpdated;
+  const factory ProcessingState.completed({
+    required ProcessingTask task,
+    required ProcessedImage result,
+  }) = _ProcessingCompleted;
+  const factory ProcessingState.failed({
+    required ProcessingTask task,
+    required String errorMessage,
+    VoidCallback? onRetry,
+  }) = _ProcessingFailed;
+  const factory ProcessingState.cancelled(ProcessingTask task) = _ProcessingCancelled;
+  const factory ProcessingState.batchInProgress(BatchProcessingTask batchTask) = _BatchProcessingInProgress;
 }
 
-/// 初始状态
-class ProcessingInitial extends ProcessingState {}
+/// 处理状态Provider
+final processingProvider = StateNotifierProvider<ProcessingNotifier, ProcessingState>((ref) {
+  return ProcessingNotifier(
+    ref.read(processingRepositoryProvider),
+    ref.read(webSocketRepositoryProvider),
+  );
+});
 
-/// 准备处理状态
-class ProcessingReady extends ProcessingState {
-  final InputImage inputImage;
-  final Algorithm algorithm;
-  final ProcessingParameters parameters;
+/// 处理状态管理器
+class ProcessingNotifier extends StateNotifier<ProcessingState> {
+  final ProcessingRepository _repository;
+  final WebSocketRepository _webSocketRepository;
+  StreamSubscription<ProcessingProgress>? _progressSubscription;
 
-  const ProcessingReady({
-    required this.inputImage,
-    required this.algorithm,
-    required this.parameters,
-  });
+  ProcessingNotifier(this._repository, this._webSocketRepository)
+      : super(const ProcessingState.initial());
+
+  /// 准备处理
+  void prepareProcessing({
+    required InputImage inputImage,
+    required Algorithm algorithm,
+    required ProcessingParameters parameters,
+  }) {
+    state = ProcessingState.ready(
+      inputImage: inputImage,
+      algorithm: algorithm,
+      parameters: parameters,
+    );
+  }
+
+  /// 开始处理
+  Future<void> startProcessing({TaskPriority priority = TaskPriority.normal}) async {
+    final readyState = state;
+    if (readyState is! _ProcessingReady) {
+      throw StateError('处理状态不正确，请先准备处理参数');
+    }
+
+    try {
+      // 启动WebSocket监听
+      _progressSubscription = _webSocketRepository
+          .listenToTaskProgress('temp-task-id')
+          .listen((progress) {
+            _handleProgressUpdate(progress);
+          });
+
+      state = ProcessingState.inProgress(
+        ProcessingTask(
+          id: const Uuid().v4(),
+          inputImage: readyState.inputImage,
+          algorithm: readyState.algorithm,
+          parameters: readyState.parameters,
+          status: ProcessingStatus.processing,
+          progress: 0.0,
+          createdAt: DateTime.now(),
+          startedAt: DateTime.now(),
+          logs: [
+            ProcessingLog(
+              timestamp: DateTime.now(),
+              stage: ProcessingStage.validation,
+              message: '开始处理任务',
+              level: LogLevel.info,
+            ),
+          ],
+        ),
+      );
+
+      final result = await _repository.startProcessing(
+        readyState.inputImage,
+        readyState.algorithm,
+        readyState.parameters,
+        priority: priority,
+      );
+
+      state = ProcessingState.completed(
+        task: _updateTaskWithResult(state as _ProcessingInProgress, result),
+        result: result,
+      );
+
+      await _progressSubscription?.cancel();
+    } catch (e) {
+      state = ProcessingState.failed(
+        task: (state as _ProcessingInProgress).task,
+        errorMessage: e.toString(),
+        onRetry: () => startProcessing(priority: priority),
+      );
+      await _progressSubscription?.cancel();
+    }
+  }
+
+  /// 暂停处理
+  Future<void> pauseProcessing() async {
+    final currentState = state;
+    if (currentState is _ProcessingInProgress) {
+      try {
+        await _repository.pauseProcessing(currentState.task.id);
+        // 更新任务状态
+        final updatedTask = ProcessingTask(
+          id: currentState.task.id,
+          inputImage: currentState.task.inputImage,
+          algorithm: currentState.task.algorithm,
+          parameters: currentState.task.parameters,
+          status: ProcessingStatus.paused,
+          progress: currentState.task.progress,
+          createdAt: currentState.task.createdAt,
+          startedAt: currentState.task.startedAt,
+        );
+        state = ProcessingState.inProgress(updatedTask);
+      } catch (e) {
+        state = ProcessingState.failed(
+          task: currentState.task,
+          errorMessage: '暂停处理失败: ${e.toString()}',
+          onRetry: pauseProcessing,
+        );
+      }
+    }
+  }
+
+  /// 恢复处理
+  Future<void> resumeProcessing() async {
+    final currentState = state;
+    if (currentState is _ProcessingInProgress && currentState.task.status == ProcessingStatus.paused) {
+      try {
+        await _repository.resumeProcessing(currentState.task.id);
+        // 更新任务状态
+        final updatedTask = ProcessingTask(
+          id: currentState.task.id,
+          inputImage: currentState.task.inputImage,
+          algorithm: currentState.task.algorithm,
+          parameters: currentState.task.parameters,
+          status: ProcessingStatus.processing,
+          progress: currentState.task.progress,
+          createdAt: currentState.task.createdAt,
+          startedAt: currentState.task.startedAt,
+        );
+        state = ProcessingState.inProgress(updatedTask);
+      } catch (e) {
+        state = ProcessingState.failed(
+          task: currentState.task,
+          errorMessage: '恢复处理失败: ${e.toString()}',
+          onRetry: resumeProcessing,
+        );
+      }
+    }
+  }
+
+  /// 取消处理
+  Future<void> cancelProcessing() async {
+    final currentState = state;
+    if (currentState is _ProcessingInProgress) {
+      try {
+        await _repository.cancelProcessing(currentState.task.id);
+        state = ProcessingState.cancelled(currentState.task);
+        await _progressSubscription?.cancel();
+      } catch (e) {
+        state = ProcessingState.failed(
+          task: currentState.task,
+          errorMessage: '取消处理失败: ${e.toString()}',
+        );
+      }
+    }
+  }
+
+  void _handleProgressUpdate(ProcessingProgress progress) {
+    final currentState = state;
+    if (currentState is _ProcessingInProgress) {
+      final updatedTask = ProcessingTask(
+        id: currentState.task.id,
+        inputImage: currentState.task.inputImage,
+        algorithm: currentState.task.algorithm,
+        parameters: currentState.task.parameters,
+        status: _mapProgressStatus(progress.stage),
+        progress: progress.percentage,
+        currentStage: progress.stage,
+        createdAt: currentState.task.createdAt,
+        startedAt: currentState.task.startedAt,
+        logs: [
+          ...currentState.task.logs,
+          ProcessingLog(
+            timestamp: DateTime.now(),
+            stage: progress.stage,
+            message: progress.message,
+            level: LogLevel.info,
+          ),
+        ],
+      );
+
+      state = ProcessingState.progressUpdated(
+        task: updatedTask,
+        progress: progress,
+      );
+    }
+  }
+
+  ProcessingTask _updateTaskWithResult(_ProcessingInProgress currentState, ProcessedImage result) {
+    return ProcessingTask(
+      id: currentState.task.id,
+      inputImage: currentState.task.inputImage,
+      algorithm: currentState.task.algorithm,
+      parameters: currentState.task.parameters,
+      status: ProcessingStatus.completed,
+      progress: 1.0,
+      result: result,
+      createdAt: currentState.task.createdAt,
+      startedAt: currentState.task.startedAt,
+      completedAt: DateTime.now(),
+      logs: currentState.task.logs,
+    );
+  }
+
+  ProcessingStatus _mapProgressStatus(ProcessingStage stage) {
+    switch (stage) {
+      case ProcessingStage.validation:
+      case ProcessingStage.preprocessing:
+      case ProcessingStage.analysis:
+      case ProcessingStage.processing:
+      case ProcessingStage.postprocessing:
+        return ProcessingStatus.processing;
+      case ProcessingStage.finalization:
+        return ProcessingStatus.completed;
+    }
+  }
 
   @override
-  List<Object?> get props => [inputImage, algorithm, parameters];
+  void dispose() {
+    _progressSubscription?.cancel();
+    super.dispose();
+  }
 }
 
-/// 处理中状态
-class ProcessingInProgress extends ProcessingState {
-  final ProcessingTask task;
+/// 批量处理Provider
+final batchProcessingProvider = StateNotifierProvider<BatchProcessingNotifier, BatchProcessingState>((ref) {
+  return BatchProcessingNotifier(ref.read(processingRepositoryProvider));
+});
 
-  const ProcessingInProgress({required this.task});
-
-  @override
-  List<Object?> get props => [task];
-}
-
-/// 处理进度更新状态
-class ProcessingProgressUpdated extends ProcessingState {
-  final ProcessingTask task;
-  final ProcessingProgress progress;
-
-  const ProcessingProgressUpdated({
-    required this.task,
-    required this.progress,
-  });
-
-  @override
-  List<Object?> get props => [task, progress];
-}
-
-/// 处理完成状态
-class ProcessingCompleted extends ProcessingState {
-  final ProcessingTask task;
-  final ProcessedImage result;
-
-  const ProcessingCompleted({
-    required this.task,
-    required this.result,
-  });
-
-  @override
-  List<Object?> get props => [task, result];
-}
-
-/// 处理失败状态
-class ProcessingFailed extends ProcessingState {
-  final ProcessingTask task;
-  final String errorMessage;
-  final VoidCallback? onRetry;
-
-  const ProcessingFailed({
-    required this.task,
-    required this.errorMessage,
-    this.onRetry,
-  });
-
-  @override
-  List<Object?> get props => [task, errorMessage, onRetry];
-}
-
-/// 处理已取消状态
-class ProcessingCancelled extends ProcessingState {
-  final ProcessingTask task;
-
-  const ProcessingCancelled({required this.task});
-
-  @override
-  List<Object?> get props => [task];
-}
-
-/// 批量处理状态
-class BatchProcessingInProgress extends ProcessingState {
-  final BatchProcessingTask batchTask;
-
-  const BatchProcessingInProgress({required this.batchTask});
-
-  @override
-  List<Object?> get props => [batchTask];
-}
+/// 进度监控Provider
+final progressMonitorProvider = StreamProvider<ProcessingProgress>((ref) {
+  return ref.read(webSocketRepositoryProvider).listenToProgress();
+});
 ```
 
-### 事件设计
+### Provider依赖管理
 
 ```dart
-/// 处理任务事件
-abstract class ProcessingEvent extends Equatable {
-  const ProcessingEvent();
+/// 处理仓储Provider
+final processingRepositoryProvider = Provider<ProcessingRepository>((ref) {
+  return ProcessingRepositoryImpl(
+    ref.read(processingDatasourceProvider),
+    ref.read(resultDatasourceProvider),
+  );
+});
 
-  @override
-  List<Object?> get props => [];
-}
+/// WebSocket仓储Provider
+final webSocketRepositoryProvider = Provider<WebSocketRepository>((ref) {
+  return WebSocketRepositoryImpl(
+    ref.read(websocketDatasourceProvider),
+  );
+});
 
-/// 准备处理
-class PrepareProcessingEvent extends ProcessingEvent {
-  final InputImage inputImage;
-  final Algorithm algorithm;
-  final ProcessingParameters parameters;
+/// 结果预览Provider
+final resultPreviewProvider = FutureProvider.family<ProcessedImage, String>((ref, taskId) async {
+  return ref.read(processingRepositoryProvider).getProcessingResult(taskId);
+});
 
-  const PrepareProcessingEvent({
-    required this.inputImage,
-    required this.algorithm,
-    required this.parameters,
-  });
-
-  @override
-  List<Object?> get props => [inputImage, algorithm, parameters];
-}
-
-/// 开始处理
-class StartProcessingEvent extends ProcessingEvent {
-  final TaskPriority priority;
-
-  const StartProcessingEvent({this.priority = TaskPriority.normal});
-
-  @override
-  List<Object?> get props => [priority];
-}
-
-/// 暂停处理
-class PauseProcessingEvent extends ProcessingEvent {}
-
-/// 恢复处理
-class ResumeProcessingEvent extends ProcessingEvent {}
-
-/// 取消处理
-class CancelProcessingEvent extends ProcessingEvent {}
-
-/// 更新参数
-class UpdateParametersEvent extends ProcessingEvent {
-  final ProcessingParameters parameters;
-
-  const UpdateParametersEvent({required this.parameters});
-
-  @override
-  List<Object?> get props => [parameters];
-}
-
-/// 开始批量处理
-class StartBatchProcessingEvent extends ProcessingEvent {
-  final List<ProcessItem> items;
-  final BatchProcessingConfig config;
-
-  const StartBatchProcessingEvent({
-    required this.items,
-    required this.config,
-  });
-
-  @override
-  List<Object?> get props => [items, config];
-}
-
-/// WebSocket进度更新
-class WebSocketProgressUpdateEvent extends ProcessingEvent {
-  final String taskId;
-  final ProcessingProgress progress;
-
-  const WebSocketProgressUpdateEvent({
-    required this.taskId,
-    required this.progress,
-  });
-
-  @override
-  List<Object?> get props => [taskId, progress];
+/// 批量处理状态
+@freezed
+class BatchProcessingState with _$BatchProcessingState {
+  const factory BatchProcessingState.initial() = _BatchProcessingInitial;
+  const factory BatchProcessingState.loading() = _BatchProcessingLoading;
+  const factory BatchProcessingState.inProgress({
+    required BatchProcessingTask batchTask,
+  }) = _BatchProcessingInProgress;
+  const factory BatchProcessingState.completed({
+    required BatchProcessingTask batchTask,
+  }) = _BatchProcessingCompleted;
+  const factory BatchProcessingState.error(String message) = _BatchProcessingError;
 }
 ```
 

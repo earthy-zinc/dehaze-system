@@ -72,7 +72,7 @@ features/home/
     │   ├── quick_action_widget.dart         // 快捷操作组件
     │   └── testimonial_widget.dart          // 用户评价组件
     └── providers/                      # 状态管理
-        └── home_bloc.dart                     # 首页状态管理
+        └── home_provider.dart                 # 首页状态管理
 ```
 
 ### 领域实体设计
@@ -190,32 +190,56 @@ class HomeStatistics {
 
 ## 🔄 状态管理
 
-### Bloc状态设计
+### Riverpod状态设计
 
 ```dart
 /// 首页状态
-abstract class HomeState extends Equatable {
-  const HomeState();
+@freezed
+class HomeState with _$HomeState {
+  const factory HomeState.initial() = _HomeInitial;
+  const factory HomeState.loading() = _HomeLoading;
+  const factory HomeState.loaded({
+    required List<ShowcaseItem> showcaseItems,
+    required HomeStatistics statistics,
+    required List<FeatureHighlight> features,
+  }) = _HomeLoaded;
+  const factory HomeState.error(String message) = _HomeError;
 }
 
-class HomeInitial extends HomeState {}
+/// 首页状态Provider
+final homeStateProvider = StateNotifierProvider<HomeNotifier, HomeState>((ref) {
+  return HomeNotifier(ref.read(homeRepositoryProvider));
+});
 
-class HomeLoading extends HomeState {}
+/// 首页状态管理器
+class HomeNotifier extends StateNotifier<HomeState> {
+  final HomeRepository _repository;
 
-class HomeLoaded extends HomeState {
-  final List<ShowcaseItem> showcaseItems;
-  final HomeStatistics statistics;
-  final List<FeatureHighlight> features;
+  HomeNotifier(this._repository) : super(const HomeState.initial());
 
-  HomeLoaded({
-    required this.showcaseItems,
-    required this.statistics,
-    required this.features,
-  });
+  /// 加载首页数据
+  Future<void> loadHomeData() async {
+    state = const HomeState.loading();
+    try {
+      final showcaseItems = await _repository.getShowcaseItems();
+      final statistics = await _repository.getStatistics();
+      final features = await _repository.getFeatureHighlights();
 
-  @override
-  List<Object?> get props => [showcaseItems, statistics, features];
+      state = HomeState.loaded(
+        showcaseItems: showcaseItems,
+        statistics: statistics,
+        features: features,
+      );
+    } catch (e) {
+      state = HomeState.error('加载首页数据失败: ${e.toString()}');
+    }
+  }
 }
+
+/// 仓储Provider
+final homeRepositoryProvider = Provider<HomeRepository>((ref) {
+  return HomeRepositoryImpl(ref.read(homeDatasourceProvider));
+});
 ```
 
 ---

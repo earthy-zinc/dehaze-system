@@ -75,9 +75,9 @@ features/image_input/
     │   ├── source_selector_widget.dart     # 来源选择器
     │   └── recent_images_widget.dart       # 最近图片组件
     └── providers/                      # 状态管理
-        ├── image_input_bloc.dart           # 图像输入状态管理
-        ├── camera_bloc.dart                # 相机状态管理
-        └── upload_progress_bloc.dart       # 上传进度管理
+        ├── image_input_provider.dart        # 图像输入状态管理
+        ├── camera_provider.dart             # 相机状态管理
+        └── upload_progress_provider.dart     # 上传进度管理
 ```
 
 ### 数据流架构
@@ -90,8 +90,8 @@ graph TD
     end
 
     subgraph "状态管理层"
-        BLOC[ImageInput Bloc]
-        EVENTS[用户事件]
+        PROVIDER[ImageInput Provider]
+        ACTIONS[用户操作]
         STATES[状态更新]
     end
 
@@ -109,11 +109,11 @@ graph TD
         SAMPLE[样例数据源]
     end
 
-    UI --> EVENTS
-    EVENTS --> BLOC
-    BLOC --> STATES
+    UI --> ACTIONS
+    ACTIONS --> PROVIDER
+    PROVIDER --> STATES
     STATES --> UI
-    BLOC --> USECASES
+    PROVIDER --> USECASES
     USECASES --> VALIDATE
     USECASES --> COMPRESS
     USECASES --> PROCESS
@@ -502,90 +502,34 @@ class UploadCardWidget extends StatelessWidget {
 
 ## 🔄 状态管理
 
-### Bloc状态设计
+### Riverpod状态设计
 
 ```dart
 /// 图像输入状态
-abstract class ImageInputState extends Equatable {
-  const ImageInputState();
-
-  @override
-  List<Object?> get props => [];
-}
-
-/// 初始状态
-class ImageInputInitial extends ImageInputState {}
-
-/// 加载中状态
-class ImageInputLoading extends ImageInputState {
-  final String message;
-  final double progress;
-
-  const ImageInputLoading({
-    required this.message,
-    this.progress = 0.0,
-  });
-
-  @override
-  List<Object?> get props => [message, progress];
-}
-
-/// 图片选择成功状态
-class ImageInputSelected extends ImageInputState {
-  final List<InputImage> selectedImages;
-  final ImageValidationResult? validationResult;
-
-  const ImageInputSelected({
-    required this.selectedImages,
-    this.validationResult,
-  });
-
-  @override
-  List<Object?> get props => [selectedImages, validationResult];
-}
-
-/// 样例图片加载状态
-class SampleImagesLoaded extends ImageInputState {
-  final List<SampleImage> sampleImages;
-  final List<String> categories;
-
-  const SampleImagesLoaded({
-    required this.sampleImages,
-    required this.categories,
-  });
-
-  @override
-  List<Object?> get props => [sampleImages, categories];
-}
-
-/// 历史记录加载状态
-class HistoryLoaded extends ImageInputState {
-  final List<HistoryRecord> historyRecords;
-  final DateTime? lastUpdated;
-
-  const HistoryLoaded({
-    required this.historyRecords,
-    this.lastUpdated,
-  });
-
-  @override
-  List<Object?> get props => [historyRecords, lastUpdated];
-}
-
-/// 错误状态
-class ImageInputError extends ImageInputState {
-  final String message;
-  final ErrorType errorType;
-  final VoidCallback? onRetry;
-
-  const ImageInputError({
-    required this.message,
-    required this.errorType,
-    this.onRetry,
-  });
-
-  @override
-  List<Object?> get props => [message, errorType, onRetry];
+@freezed
+class ImageInputState with _$ImageInputState {
+  const factory ImageInputState.initial() = _ImageInputInitial;
+  const factory ImageInputState.loading({
+    required String message,
+    @Default(0.0) double progress,
+  }) = _ImageInputLoading;
+  const factory ImageInputState.selected({
+    required List<InputImage> selectedImages,
+    ImageValidationResult? validationResult,
+  }) = _ImageInputSelected;
+  const factory ImageInputState.sampleImagesLoaded({
+    required List<SampleImage> sampleImages,
+    required List<String> categories,
+  }) = _SampleImagesLoaded;
+  const factory ImageInputState.historyLoaded({
+    required List<HistoryRecord> historyRecords,
+    DateTime? lastUpdated,
+  }) = _HistoryLoaded;
+  const factory ImageInputState.error({
+    required String message,
+    required ErrorType errorType,
+    VoidCallback? onRetry,
+  }) = _ImageInputError;
 }
 
 /// 错误类型枚举
@@ -597,65 +541,153 @@ enum ErrorType {
   storageError,        // 存储错误
   unknownError,        // 未知错误
 }
+
+/// 图像输入状态Provider
+final imageInputProvider = StateNotifierProvider<ImageInputNotifier, ImageInputState>((ref) {
+  return ImageInputNotifier(
+    ref.read(imageInputRepositoryProvider),
+    ref.read(permissionServiceProvider),
+  );
+});
+
+/// 图像输入状态管理器
+class ImageInputNotifier extends StateNotifier<ImageInputState> {
+  final ImageInputRepository _repository;
+  final PermissionService _permissionService;
+
+  ImageInputNotifier(this._repository, this._permissionService)
+      : super(const ImageInputState.initial());
+
+  /// 选择图片
+  Future<void> pickImage({PickImageParams? params}) async {
+    state = ImageInputState.loading(message: '正在选择图片...');
+    try {
+      final permissionResult = await _permissionService.checkStoragePermission();
+      if (!permissionResult.isGranted) {
+        state = ImageInputState.error(
+          message: '需要存储权限才能选择图片',
+          errorType: ErrorType.permissionDenied,
+          onRetry: requestPermission,
+        );
+        return;
+      }
+
+      final selectedFile = await _repository.pickImageFromGallery(
+        params ?? const PickImageParams(),
+      );
+
+      if (selectedFile == null) {
+        return; // 用户取消选择
+      }
+
+      final validationResult = await _repository.validateImage(selectedFile);
+      final inputImage = await _saveAndCreateInputImage(selectedFile);
+
+      state = ImageInputState.selected(
+        selectedImages: [inputImage],
+        validationResult: validationResult,
+      );
+    } catch (e) {
+      final errorType = _getErrorType(e);
+      state = ImageInputState.error(
+        message: e.toString(),
+        errorType: errorType,
+        onRetry: () => pickImage(params: params),
+      );
+    }
+  }
+
+  /// 加载样例图片
+  Future<void> loadSampleImages({String? category}) async {
+    state = ImageInputState.loading(message: '正在加载样例图片...');
+    try {
+      final sampleImages = await _repository.loadSampleImages(category: category);
+      final categories = await _repository.getSampleCategories();
+
+      state = ImageInputState.sampleImagesLoaded(
+        sampleImages: sampleImages,
+        categories: categories,
+      );
+    } catch (e) {
+      state = ImageInputState.error(
+        message: '加载样例图片失败: ${e.toString()}',
+        errorType: ErrorType.networkError,
+        onRetry: () => loadSampleImages(category: category),
+      );
+    }
+  }
+
+  /// 请求权限
+  Future<void> requestPermission() async {
+    try {
+      final permissionResult = await _permissionService.requestStoragePermission();
+      if (!permissionResult.isGranted) {
+        state = ImageInputState.error(
+          message: '权限被拒绝，无法访问相册',
+          errorType: ErrorType.permissionDenied,
+        );
+        return;
+      }
+
+      // 权限获得后，重新尝试选择图片
+      await pickImage();
+    } catch (e) {
+      state = ImageInputState.error(
+        message: '请求权限失败: ${e.toString()}',
+        errorType: ErrorType.permissionDenied,
+      );
+    }
+  }
+
+  ErrorType _getErrorType(dynamic error) {
+    if (error is PermissionDeniedException) {
+      return ErrorType.permissionDenied;
+    } else if (error is FileSizeExceededException) {
+      return ErrorType.fileSizeExceeded;
+    } else if (error is UnsupportedFormatException) {
+      return ErrorType.unsupportedFormat;
+    } else if (error is NetworkException) {
+      return ErrorType.networkError;
+    } else if (error is StorageException) {
+      return ErrorType.storageError;
+    } else {
+      return ErrorType.unknownError;
+    }
+  }
+}
+
+/// 相机状态Provider
+final cameraProvider = StateNotifierProvider<CameraNotifier, CameraState>((ref) {
+  return CameraNotifier(ref.read(cameraRepositoryProvider));
+});
+
+/// 上传进度Provider
+final uploadProgressProvider = StateNotifierProvider<UploadProgressNotifier, UploadProgressState>((ref) {
+  return UploadProgressNotifier();
+});
 ```
 
-### 事件设计
+### Provider依赖管理
 
 ```dart
-/// 图像输入事件
-abstract class ImageInputEvent extends Equatable {
-  const ImageInputEvent();
+/// 图像输入仓储Provider
+final imageInputRepositoryProvider = Provider<ImageInputRepository>((ref) {
+  return ImageInputRepositoryImpl(
+    ref.read(localImageDatasourceProvider),
+    ref.read(cameraDatasourceProvider),
+    ref.read(sampleImageDatasourceProvider),
+  );
+});
 
-  @override
-  List<Object?> get props => [];
-}
+/// 权限服务Provider
+final permissionServiceProvider = Provider<PermissionService>((ref) {
+  return PermissionServiceImpl();
+});
 
-/// 选择图片事件
-class PickImageEvent extends ImageInputEvent {
-  final PickImageParams params;
-
-  const PickImageEvent({this.params = const PickImageParams()});
-
-  @override
-  List<Object?> get props => [params];
-}
-
-/// 拍照事件
-class CaptureImageEvent extends ImageInputEvent {}
-
-/// 加载样例图片事件
-class LoadSampleImagesEvent extends ImageInputEvent {
-  final String? category;
-
-  const LoadSampleImagesEvent({this.category});
-
-  @override
-  List<Object?> get props => [category];
-}
-
-/// 加载历史记录事件
-class LoadHistoryEvent extends ImageInputEvent {
-  final int? limit;
-  final String? category;
-
-  const LoadHistoryEvent({this.limit, this.category});
-
-  @override
-  List<Object?> get props => [limit, category];
-}
-
-/// 删除选中图片事件
-class RemoveSelectedImageEvent extends ImageInputEvent {
-  final String imageId;
-
-  const RemoveSelectedImageEvent({required this.imageId});
-
-  @override
-  List<Object?> get props => [imageId];
-}
-
-/// 清空选中图片事件
-class ClearSelectedImagesEvent extends ImageInputEvent {}
+/// 相机仓储Provider
+final cameraRepositoryProvider = Provider<CameraRepository>((ref) {
+  return CameraRepositoryImpl(ref.read(cameraDatasourceProvider));
+});
 ```
 
 ---

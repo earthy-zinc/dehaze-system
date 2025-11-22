@@ -288,18 +288,18 @@ class CustomCodeQualityRules {
     ResolvedUnitResult result,
     AnalysisErrorListener listener,
   ) {
-    // 检查是否正确使用Bloc/Cubit
-    final bLocUsage = _findBlocUsage(result);
-    for (final usage in bLocUsage) {
-      if (_isImproperBlocUsage(usage)) {
+    // 检查是否正确使用Riverpod
+    final riverpodUsage = _findRiverpodUsage(result);
+    for (final usage in riverpodUsage) {
+      if (_isImproperRiverpodUsage(usage)) {
         listener.onError(
           AnalysisError(
             result.source,
             usage.offset,
             usage.length,
-            CustomErrorCode.improper_bloc_usage,
-            message: 'Improper Bloc usage detected. '
-                    'Consider using BlocBuilder/BlocProvider for proper state management.',
+            CustomErrorCode.improper_riverpod_usage,
+            message: 'Improper Riverpod usage detected. '
+                    'Consider using Consumer/Provider for proper state management.',
           ),
         );
       }
@@ -336,10 +336,10 @@ class CustomErrorCode extends ErrorCode {
     correctionMessage: 'Extract complex logic into separate methods.',
   );
 
-  static const ErrorCode improper_bloc_usage = ErrorCode(
+  static const ErrorCode improper_riverpod_usage = ErrorCode(
     'custom_quality',
-    'improper_bloc_usage',
-    correctionMessage: 'Use proper Bloc patterns for state management.',
+    'improper_riverpod_usage',
+    correctionMessage: 'Use proper Riverpod patterns for state management.',
   );
 
   static const ErrorCode inefficient_image_operation = ErrorCode(
@@ -624,7 +624,7 @@ lib/
 │   │   │   ├── repositories/ # 仓库接口
 │   │   │   └── usecases/     # 用例
 │   │   └── presentation/  # 表现层
-│   │       ├── cubits/       # 状态管理
+│   │       ├── providers/       # 状态管理
 │   │       ├── widgets/      # UI组件
 │   │       └── pages/        # 页面
 │   ├── image_processing/   # 图像处理功能

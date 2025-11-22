@@ -95,25 +95,95 @@ enum ManagementStatus {
 
 ## 🔄 状态管理
 
-### Bloc状态设计
+### Riverpod状态设计
 
 ```dart
-abstract class AlgorithmManagementState extends Equatable {}
-
-class AlgorithmManagementInitial extends AlgorithmManagementState {}
-
-class AlgorithmManagementLoaded extends AlgorithmManagementState {
-  final List<AlgorithmManagement> algorithms;
-  final ManagementFilters filters;
-
-  const AlgorithmManagementLoaded({
-    required this.algorithms,
-    required this.filters,
-  });
-
-  @override
-  List<Object?> get props => [algorithms, filters];
+/// 算法管理状态
+@freezed
+class AlgorithmManagementState with _$AlgorithmManagementState {
+  const factory AlgorithmManagementState.initial() = _AlgorithmManagementInitial;
+  const factory AlgorithmManagementState.loading() = _AlgorithmManagementLoading;
+  const factory AlgorithmManagementState.loaded({
+    required List<AlgorithmManagement> algorithms,
+    required ManagementFilters filters,
+  }) = _AlgorithmManagementLoaded;
+  const factory AlgorithmManagementState.error(String message) = _AlgorithmManagementError;
 }
+
+/// 算法管理状态Provider
+final algorithmManagementProvider = StateNotifierProvider<AlgorithmManagementNotifier, AlgorithmManagementState>((ref) {
+  return AlgorithmManagementNotifier(ref.read(algorithmManagementRepositoryProvider));
+});
+
+/// 算法管理状态管理器
+class AlgorithmManagementNotifier extends StateNotifier<AlgorithmManagementState> {
+  final AlgorithmManagementRepository _repository;
+
+  AlgorithmManagementNotifier(this._repository) : super(const AlgorithmManagementState.initial());
+
+  /// 加载算法列表
+  Future<void> loadAlgorithms({bool forceRefresh = false}) async {
+    state = const AlgorithmManagementState.loading();
+    try {
+      final algorithms = await _repository.getAlgorithmList();
+      state = AlgorithmManagementState.loaded(
+        algorithms: algorithms,
+        filters: const ManagementFilters(),
+      );
+    } catch (e) {
+      state = AlgorithmManagementState.error('加载算法列表失败: ${e.toString()}');
+    }
+  }
+
+  /// 应用筛选
+  void applyFilters(ManagementFilters filters) {
+    final currentState = state;
+    if (currentState is _AlgorithmManagementLoaded) {
+      state = currentState.copyWith(filters: filters);
+    }
+  }
+
+  /// 添加新算法
+  Future<void> addAlgorithm(AlgorithmManagement algorithm) async {
+    try {
+      await _repository.addAlgorithm(algorithm);
+      await loadAlgorithms(); // 重新加载列表
+    } catch (e) {
+      final currentState = state;
+      state = AlgorithmManagementState.error('添加算法失败: ${e.toString()}');
+      state = currentState; // 恢复原状态
+    }
+  }
+
+  /// 更新算法
+  Future<void> updateAlgorithm(AlgorithmManagement algorithm) async {
+    try {
+      await _repository.updateAlgorithm(algorithm);
+      await loadAlgorithms(); // 重新加载列表
+    } catch (e) {
+      final currentState = state;
+      state = AlgorithmManagementState.error('更新算法失败: ${e.toString()}');
+      state = currentState; // 恢复原状态
+    }
+  }
+
+  /// 删除算法
+  Future<void> deleteAlgorithm(String algorithmId) async {
+    try {
+      await _repository.deleteAlgorithm(algorithmId);
+      await loadAlgorithms(); // 重新加载列表
+    } catch (e) {
+      final currentState = state;
+      state = AlgorithmManagementState.error('删除算法失败: ${e.toString()}');
+      state = currentState; // 恢复原状态
+    }
+  }
+}
+
+/// 仓储Provider
+final algorithmManagementRepositoryProvider = Provider<AlgorithmManagementRepository>((ref) {
+  return AlgorithmManagementRepositoryImpl(ref.read(algorithmManagementDatasourceProvider));
+});
 ```
 
 ---

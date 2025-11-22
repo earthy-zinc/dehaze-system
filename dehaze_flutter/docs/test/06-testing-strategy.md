@@ -72,7 +72,7 @@ graph TD
 | **业务逻辑** | UseCase、业务规则 | 95% | 高 |
 | **数据模型** | Entity、数据验证 | 90% | 中 |
 | **工具函数** | 通用工具、算法 | 95% | 低 |
-| **状态管理** | Bloc/Cubit逻辑 | 90% | 高 |
+| **状态管理** | Riverpod逻辑 | 90% | 高 |
 | **网络请求** | API调用、数据转换 | 85% | 中 |
 | **本地存储** | 数据库操作、缓存 | 80% | 中 |
 
@@ -83,6 +83,7 @@ graph TD
 ```dart
 // test/features/image_processing/domain/usecases/process_image_test.dart
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockImageRepository extends Mock implements ImageRepository {}
@@ -196,34 +197,42 @@ void main() {
 
 ### 状态管理测试
 
-#### Bloc/Cubit测试
+#### Riverpod测试
 
 ```dart
-// test/features/image_input/presentation/cubits/image_input_cubit_test.dart
+// test/features/image_input/presentation/providers/image_input_provider_test.dart
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockImageRepository extends Mock implements ImageRepository {}
 class MockFilePicker extends Mock implements FilePicker {}
 
 void main() {
-  late ImageInputCubit cubit;
+  late ProviderContainer container;
   late MockImageRepository mockRepository;
   late MockFilePicker mockFilePicker;
 
   setUp(() {
     mockRepository = MockImageRepository();
     mockFilePicker = MockFilePicker();
-    cubit = ImageInputCubit(mockRepository, mockFilePicker);
+
+    container = ProviderContainer(
+      overrides: [
+        imageRepositoryProvider.overrideWithValue(mockRepository),
+        filePickerProvider.overrideWithValue(mockFilePicker),
+      ],
+    );
   });
 
   tearDown(() {
-    cubit.close();
+    container.dispose();
   });
 
-  group('ImageInputCubit', () {
+  group('imageInputProvider', () {
     test('initial state should be ImageInputInitial', () {
-      expect(cubit.state, ImageInputInitial());
+      final state = container.read(imageInputProvider);
+      expect(state, isA<ImageInputInitial>());
     });
 
     test('should pick images from gallery successfully', () async {
@@ -246,11 +255,13 @@ void main() {
           .thenAnswer((_) async => Right(mockImages));
 
       // Act
-      await cubit.pickImagesFromGallery();
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
 
       // Assert
-      expect(cubit.state, isA<ImageInputSuccess>());
-      final successState = cubit.state as ImageInputSuccess;
+      final state = container.read(imageInputProvider);
+      expect(state, isA<ImageInputSuccess>());
+      final successState = state as ImageInputSuccess;
       expect(successState.images.length, 2);
       expect(successState.images.first.source, ImageSource.gallery);
 
@@ -264,11 +275,13 @@ void main() {
           .thenThrow(FilePickerException('User cancelled'));
 
       // Act
-      await cubit.pickImagesFromGallery();
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
 
       // Assert
-      expect(cubit.state, isA<ImageInputError>());
-      final errorState = cubit.state as ImageInputError;
+      final state = container.read(imageInputProvider);
+      expect(state, isA<ImageInputError>());
+      final errorState = state as ImageInputError;
       expect(errorState.message, contains('User cancelled'));
     });
 
@@ -282,11 +295,129 @@ void main() {
           .thenAnswer((_) async => Left(ValidationError('Invalid image format')));
 
       // Act
-      await cubit.pickImagesFromGallery();
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
 
       // Assert
-      expect(cubit.state, isA<ImageInputError>());
-      final errorState = cubit.state as ImageInputError;
+      final state = container.read(imageInputProvider);
+      expect(state, isA<ImageInputError>());
+      final errorState = state as ImageInputError;
+      expect(errorState.message, 'Invalid image format');
+    });
+
+    test('should emit loading state during processing', () async {
+      // Arrange
+      when(() => mockFilePicker.pickImages())
+          .thenAnswer((_) async => [File('/test/image.jpg')]);
+
+      when(() => mockRepository.validateImages(any()))
+          .thenAnswer((_) async {
+        await Future.delayed(Duration(milliseconds: 100));
+        return Right([InputImage(
+          id: 'test-id',
+          path: '/test/image.jpg',
+          source: ImageSource.gallery,
+          timestamp: DateTime.now(),
+          width: 1920,
+          height: 1080,
+          fileSize: 1024000,
+        )]);
+      });
+
+      // Act & Assert - Listen to state changes
+      final listener = Listener<ImageInputState>();
+      container.listen(imageInputProvider, listener, fireImmediately: true);
+
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
+
+      // Verify state changes
+      verifyInOrder([
+        listener(null, isA<ImageInputInitial>()),
+        listener(isA<ImageInputInitial>(), isA<ImageInputLoading>()),
+        listener(isA<ImageInputLoading>(), isA<ImageInputSuccess>()),
+      ]);
+    });
+  });
+});
+
+  tearDown(() {
+    container.dispose();
+  });
+
+  group('imageInputProvider', () {
+    test('initial state should be ImageInputInitial', () {
+      final state = container.read(imageInputProvider);
+      expect(state, ImageInputInitial());
+    });
+
+    test('should pick images from gallery successfully', () async {
+      // Arrange
+      final mockFiles = [File('/test/image1.jpg'), File('/test/image2.jpg')];
+      when(() => mockFilePicker.pickImages())
+          .thenAnswer((_) async => mockFiles);
+
+      final mockImages = mockFiles.map((file) => InputImage(
+        id: 'id-${file.path}',
+        path: file.path,
+        source: ImageSource.gallery,
+        timestamp: DateTime.now(),
+        width: 1920,
+        height: 1080,
+        fileSize: 1024000,
+      )).toList();
+
+      when(() => mockRepository.validateImages(mockFiles))
+          .thenAnswer((_) async => Right(mockImages));
+
+      // Act
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
+
+      // Assert
+      final state = container.read(imageInputProvider);
+      expect(state, isA<ImageInputSuccess>());
+      final successState = state as ImageInputSuccess;
+      expect(successState.images.length, 2);
+      expect(successState.images.first.source, ImageSource.gallery);
+
+      verify(() => mockFilePicker.pickImages()).called(1);
+      verify(() => mockRepository.validateImages(mockFiles)).called(1);
+    });
+
+    test('should handle file picker error', () async {
+      // Arrange
+      when(() => mockFilePicker.pickImages())
+          .thenThrow(FilePickerException('User cancelled'));
+
+      // Act
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
+
+      // Assert
+      final state = container.read(imageInputProvider);
+      expect(state, isA<ImageInputError>());
+      final errorState = state as ImageInputError;
+      expect(errorState.message, contains('User cancelled'));
+    });
+
+    test('should handle image validation failure', () async {
+      // Arrange
+      final mockFiles = [File('/test/invalid.jpg')];
+      when(() => mockFilePicker.pickImages())
+          .thenAnswer((_) async => mockFiles);
+
+      when(() => mockRepository.validateImages(mockFiles))
+          .thenAnswer((_) async => Left(ValidationError('Invalid image format')));
+
+      // Act
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
+
+      // Assert
+      final state = container.read(imageInputProvider);
+      expect(state, isA<ImageInputError>());
+      final errorState = state as ImageInputError;
       expect(errorState.message, 'Invalid image format');
     });
 
@@ -315,7 +446,8 @@ void main() {
         isA<ImageInputSuccess>(),
       ]));
 
-      await cubit.pickImagesFromGallery();
+      final notifier = container.read(imageInputProvider.notifier);
+      await notifier.pickImagesFromGallery();
     });
   });
 }
@@ -333,6 +465,7 @@ void main() {
 // test/integration/image_processing_integration_test.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:network_image_mock/network_image_mock.dart';
 
 void main() {
@@ -418,6 +551,7 @@ void main() {
 ```dart
 // test/integration/api_integration_test.dart
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:mock_server/mock_server.dart';
 
@@ -518,6 +652,7 @@ void main() {
 // integration_test/app_e2e_test.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
@@ -632,6 +767,7 @@ void main() {
 // integration_test/platform_compatibility_test.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {
@@ -713,6 +849,7 @@ void main() {
 // test/performance/app_startup_test.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:integration_test/integration_test.dart';
 
 void main() {

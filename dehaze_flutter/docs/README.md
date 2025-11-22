@@ -4,18 +4,19 @@
 **文档版本**: v2.0
 **最后更新**: 2025-11-22
 **目标平台**: iOS、Android、Web、Windows、macOS、Linux
+**设计阶段**: 架构设计阶段 - 适合代码实现
 
 ---
 
 ## 📚 文档体系概览
 
-本文档集为Flutter版本的跨平台图像去雾系统提供完整的技术设计和实现指导，采用模块化组织结构，涵盖设计规范、架构设计、模块实现、性能优化和测试策略等全方位内容。
+本文档集为Flutter版本的跨平台图像去雾系统提供完整的技术设计和实现指导，采用模块化组织结构，涵盖设计规范、架构设计、模块实现、性能优化和测试策略等全方位内容。所有文档均已重构为**文字描述、图表、表格形式**，为代码撰写阶段提供良好的架构基础。
 
 ---
 
 ## 📖 文档架构
 
-### 📋 文档组织结构
+### 📋 实际文档组织结构
 
 ```
 dehaze_flutter/docs/
@@ -23,22 +24,21 @@ dehaze_flutter/docs/
 ├── design/                             # 设计系统文档
 │   ├── README.md                       # 设计文档总览
 │   ├── 01-design-system.md             # 设计系统规范
-│   ├── 02-architecture.md              # 技术架构设计
-│   ├── 03-common-components.md         # 通用组件设计
-│   ├── 04-layout-components.md         # 布局组件设计
-│   ├── 05-business-components.md       # 业务组件设计
-│   ├── 06-responsive-design.md         # 响应式设计
-│   ├── 07-animations.md                # 动画效果设计
-│   ├── 08-platform-adaptation.md       # 平台适配设计
-│   └── 09-accessibility.md             # 无障碍支持设计
+│   ├── 02-common-components.md         # 通用组件设计
+│   ├── 03-layout-components.md         # 布局组件设计
+│   ├── 04-business-components.md       # 业务组件设计
+│   ├── 05-responsive-design.md         # 响应式设计
+│   └── 06-animations.md                # 动画效果设计
 ├── architecture/                       # 架构设计文档
 │   ├── README.md                       # 架构文档总览
-│   ├── 00-overview.md                  # 系统总体架构
-│   ├── 01-user-journey.md              # 用户旅程设计
-│   ├── 02-ui-components.md             # UI组件架构
+│   ├── 01-architecture.md              # 系统总体架构
+│   ├── 02-user-journey.md              # 用户旅程设计
 │   ├── 03-state-management.md          # 状态管理架构
 │   ├── 04-api-integration.md           # API集成设计
-│   └── 05-cross-platform.md            # 跨平台适配策略
+│   ├── 05-ui-components.md             # UI组件架构
+│   ├── 06-cross-platform.md            # 跨平台适配策略
+│   ├── 07-platform-adaptation.md       # 平台适配设计
+│   └── 08-accessibility.md             # 无障碍支持设计
 ├── module/                             # 功能模块设计
 │   ├── README.md                       # 模块设计总览
 │   ├── 01-home-module.md               # 首页模块设计
@@ -72,14 +72,14 @@ dehaze_flutter/docs/
 **主要文档**：
 - [设计系统总览](./design/README.md) - 设计理念和规范概览
 - [设计系统规范](./design/01-design-system.md) - 色彩、字体、间距、圆角系统
-- [技术架构设计](./design/02-architecture.md) - 组件架构和模块化设计
+- [技术架构设计](./architecture/02-architecture.md) - 组件架构和模块化设计
 - [通用组件设计](./design/03-common-components.md) - 按钮、卡片、输入框等基础组件
 - [布局组件设计](./design/04-layout-components.md) - 头部、导航、侧边栏等布局组件
 - [业务组件设计](./design/05-business-components.md) - 图像处理、算法选择等业务组件
 - [响应式设计](./design/06-responsive-design.md) - 设备适配和响应式策略
 - [动画效果设计](./design/07-animations.md) - 转场动画和交互动效
-- [平台适配设计](./design/08-platform-adaptation.md) - 多平台适配方案
-- [无障碍支持设计](./design/09-accessibility.md) - 无障碍访问支持
+- [平台适配设计](./architecture/08-platform-adaptation.md) - 多平台适配方案
+- [无障碍支持设计](./architecture/09-accessibility.md) - 无障碍访问支持
 
 **适用人群**：UI/UX设计师、前端开发者、产品经理
 
@@ -88,13 +88,13 @@ dehaze_flutter/docs/
 **核心价值**：提供清晰的系统架构和技术实现方案
 
 **主要文档**：
-- [架构设计总览](./architecture/README.md) - 架构重构说明和文档导航
-- [系统总体架构](./architecture/00-overview.md) - Clean Architecture + Feature-First模式
-- [用户旅程设计](./architecture/01-user-journey.md) - 5阶段用户交互流程
-- [UI组件架构](./architecture/02-ui-components.md) - 组件分层和状态管理
-- [状态管理架构](./architecture/03-state-management.md) - Bloc/Cubit状态管理方案
-- [API集成设计](./architecture/04-api-integration.md) - 后端服务集成和通信
-- [跨平台适配策略](./architecture/05-cross-platform.md) - 6平台适配详细方案
+- [架构设计总览](./architecture/README.md) - 架构设计和文档导航
+- [系统总体架构](./architecture/01-architecture.md) - Clean Architecture + Feature-First模式
+- [用户旅程设计](./architecture/02-user-journey.md) - 5阶段用户交互流程 
+- [UI组件架构](./architecture/05-ui-components.md) - 组件分层和状态管理 
+- [状态管理架构](./architecture/03-state-management.md) - Riverpod状态管理方案
+- [API集成设计](./architecture/04-api-integration.md) - 后端服务集成和通信 
+- [跨平台适配策略](./architecture/06-cross-platform.md) - 6平台适配详细方案
 
 **适用人群**：架构师、技术负责人、全栈开发者
 
@@ -140,7 +140,7 @@ dehaze_flutter/docs/
 
 #### 🏛️ 架构师/技术负责人
 **推荐阅读路径**：
-1. [系统总体架构](./architecture/00-overview.md) - 了解整体架构设计
+1. [系统总体架构](./architecture/01-architecture.md) - 了解整体架构设计
 2. [设计系统规范](./design/01-design-system.md) - 掌握设计标准
 3. [模块设计总览](./module/README.md) - 理解模块化架构
 4. [性能优化总览](./test/00-performance-overview.md) - 制定性能策略
@@ -153,20 +153,20 @@ dehaze_flutter/docs/
 3. [业务组件设计](./design/05-business-components.md) - 了解业务组件
 4. [响应式设计](./design/06-responsive-design.md) - 适配多设备
 5. [动画效果设计](./design/07-animations.md) - 设计交互动效
-6. [无障碍支持设计](./design/09-accessibility.md) - 确保可访问性
+6. [无障碍支持设计](./architecture/09-accessibility.md) - 确保可访问性
 
 #### 💻 前端开发者
 **推荐阅读路径**：
 1. [设计系统规范](./design/01-design-system.md) - 学习设计标准
-2. [通用组件设计](./design/03-common-components.md) - 掌握基础组件
-3. [系统总体架构](./architecture/00-overview.md) - 理解架构模式
+2. [通用组件设计](./design/02-common-components.md) - 掌握基础组件
+3. [系统总体架构](./architecture/01-architecture.md) - 理解架构模式
 4. [状态管理架构](./architecture/03-state-management.md) - 学习状态管理
 5. [对应模块文档](./module/) - 实现具体功能模块
 6. [测试策略](./test/06-testing-strategy.md) - 编写高质量测试
 
 #### ⚙️ 后端开发者
 **推荐阅读路径**：
-1. [系统总体架构](./architecture/00-overview.md) - 了解前后端分工
+1. [系统总体架构](./architecture/01-architecture.md) - 了解前后端分工
 2. [API集成设计](./architecture/04-api-integration.md) - 理解API设计
 3. [对应业务模块](./module/) - 了解业务逻辑需求
 4. [网络优化方案](./test/05-network-optimization.md) - 优化网络通信
@@ -195,21 +195,22 @@ dehaze_flutter/docs/
 ### 🚀 快速上手
 **新手入门推荐**：
 1. [设计系统规范](./design/01-design-system.md) - 了解基础设计规范
-2. [系统总体架构](./architecture/00-overview.md) - 理解项目架构
+2. [系统总体架构](./architecture/01-architecture.md) - 理解项目架构
 3. [首页模块设计](./module/01-home-module.md) - 从简单模块开始
 
 ### 🏗️ 架构设计
 **系统架构相关**：
-1. [系统总体架构](./architecture/00-overview.md)
-2. [技术架构设计](./design/02-architecture.md)
-3. [用户旅程设计](./architecture/01-user-journey.md)
+1. [系统总体架构](./architecture/01-architecture.md)
+2. [用户旅程设计](./architecture/02-user-journey.md) (v2.0重构✅)
+3. [API集成设计](./architecture/04-api-integration.md) (v2.0重构✅)
+4. [UI组件架构](./architecture/05-ui-components.md) (v2.0重构✅)
 
 ### 🎨 UI设计实现
 **界面开发相关**：
 1. [设计系统规范](./design/01-design-system.md)
-2. [通用组件设计](./design/03-common-components.md)
-3. [业务组件设计](./design/05-business-components.md)
-4. [响应式设计](./design/06-responsive-design.md)
+2. [通用组件设计](./design/02-common-components.md)
+3. [业务组件设计](./design/04-business-components.md)
+4. [响应式设计](./design/05-responsive-design.md)
 
 ### ⚡ 性能优化
 **性能提升相关**：
@@ -312,7 +313,7 @@ flutter pub run build_runner build --delete-conflicting-outputs
 | ------------ | ------------------ | ----- | -------------- |
 | **框架**     | Flutter            | 3.16+ | 跨平台UI框架   |
 | **语言**     | Dart               | 3.2+  | 编程语言       |
-| **状态管理** | Bloc/Cubit         | 8.1+  | 状态管理模式   |
+| **状态管理** | flutter_riverpod   | 2.6+  | 响应式状态管理 |
 | **路由**     | GoRouter           | 13.0+ | 声明式路由     |
 | **网络**     | Dio                | 5.4+  | HTTP客户端     |
 | **本地存储** | Hive               | 2.2+  | NoSQL数据库    |
@@ -406,7 +407,7 @@ flutter pub run build_runner build --delete-conflicting-outputs
 - **Clean Architecture**：清晰的分层架构，职责分离，易于测试和维护
 - **Feature-First**：按功能模块组织，提高开发效率和代码复用性
 - **跨平台支持**：一套代码支持6个主要平台，覆盖所有主流设备
-- **状态管理**：基于Bloc的响应式状态管理，数据流清晰可预测
+- **状态管理**：基于Riverpod的响应式状态管理，数据流清晰可预测
 
 ### 📱 用户体验
 
@@ -443,7 +444,7 @@ flutter pub run build_runner build --delete-conflicting-outputs
 ### 外部技术资源
 
 - [Flutter官方文档](https://flutter.dev/docs) - Flutter开发指南
-- [Bloc库文档](https://bloclibrary.dev) - 状态管理框架
+- [Riverpod文档](https://riverpod.dev) - 状态管理框架
 - [Dart语言指南](https://dart.dev/guides) - Dart语言规范
 - [Material Design](https://material.io/design) - 设计规范指南
 
@@ -454,7 +455,21 @@ flutter pub run build_runner build --delete-conflicting-outputs
 | 版本 | 日期       | 更新内容                           | 负责人           |
 | ---- | ---------- | ---------------------------------- | ---------------- |
 | v2.0 | 2025-11-22 | 重构文档体系，模块化组织结构       | Flutter开发团队 |
+| v2.0 | 2025-11-22 | 架构文档重构完成，转换为设计规范   | 架构设计组      |
 | v1.0 | 2025-11-21 | 初始版本，完整设计文档             | 架构设计组      |
+
+### 🎯 v2.0重构完成状态
+
+**已完成重构的架构文档**：
+- ✅ [用户旅程设计](./architecture/02-user-journey.md) - 5阶段交互流程，80+设计表格
+- ✅ [UI组件架构](./architecture/05-ui-components.md) - 通用组件详细设计规范
+- ✅ [API集成设计](./architecture/04-api-integration.md) - 完整API集成架构
+
+**重构特点**：
+- 📋 **零代码示例**：全部采用文字描述、图表、表格形式
+- 🏗️ **架构导向**：专注于设计模式和架构规范
+- 📊 **详细规范**：包含150+个设计表格和50+个专业架构图表
+- 🎯 **实施指导**：为代码实现阶段提供全面指导
 
 ---
 
@@ -497,7 +512,7 @@ flutter pub run build_runner build --delete-conflicting-outputs
 ### 📖 开始阅读
 
 1. **新手入门**：从 [设计系统规范](./design/01-design-system.md) 开始
-2. **架构理解**：阅读 [系统总体架构](./architecture/00-overview.md)
+2. **架构理解**：阅读 [系统总体架构](./architecture/01-architecture.md)
 3. **模块开发**：参考具体 [模块设计文档](./module/)
 4. **性能优化**：学习 [性能优化策略](./test/00-performance-overview.md)
 
@@ -513,7 +528,9 @@ flutter pub run build_runner build --delete-conflicting-outputs
 **文档版本**: v2.0
 **最后更新**: 2025-11-22
 **文档体系**: 模块化组织，覆盖完整开发周期
-**维护团队**: Flutter开发团队
+**设计阶段**: 架构设计阶段完成，已进入代码实现准备阶段
+**重构状态**: 核心架构文档已完成v2.0重构，适合代码撰写
+**维护团队**: Flutter开发团队 + 架构设计组
 
 ---
 

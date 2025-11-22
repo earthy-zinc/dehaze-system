@@ -1,1848 +1,1474 @@
 # API集成设计文档
 
-**文档版本**: v1.0
+**文档版本**: v2.0
 **最后更新**: 2025-11-22
 **项目名称**: dehaze_flutter
-**参考文档**: [后端服务](../../CLAUDE.md#java-backend-dehaze-java)、[总体架构](00-overview.md)
 
 ---
 
 ## 📋 概述
 
-本文档详细描述了Flutter图像去雾系统与后端服务的API集成设计方案，基于项目中的多后端架构（dehaze-java、dehaze-go、dehaze-python），专注于前端API客户端的实现细节和最佳实践。
+本文档详细描述了Flutter图像去雾系统与后端服务的API集成架构设计规范，基于项目中的多后端架构（dehaze-java、dehaze-go、dehaze-python），专注于前端API客户端的架构设计、接口规范、安全策略和最佳实践指导。
+
+### 4.3.1 API集成架构设计目标
+
+**核心设计原则：**
+- **分层架构**：构建清晰的API客户端分层架构，实现关注点分离
+- **统一接口**：提供统一、一致的API调用体验和错误处理机制
+- **高性能**：优化网络请求性能，支持并发处理和智能缓存
+- **安全可靠**：实现完善的安全认证、数据加密和错误恢复机制
+- **可扩展性**：支持动态配置、插件化扩展和多环境适配
+
+**架构质量要求：**
+
+| 质量属性 | 设计要求 | 验证标准 | 优化目标 |
+|----------|----------|----------|----------|
+| **性能** | API响应时间 < 200ms | 压力测试验证 | 95%请求在100ms内完成 |
+| **可靠性** | 服务可用性 > 99.9% | 故障注入测试 | 自动重试和降级机制 |
+| **安全性** | 数据传输加密率 100% | 安全审计检查 | 零明文数据传输 |
+| **可维护性** | 代码复用率 > 80% | 代码质量分析 | 模块化设计 |
+| **可扩展性** | 新API接入时间 < 1天 | 扩展性测试 | 插件化架构 |
 
 ---
 
-## 🏗️ 后端服务架构概览
+## 🏗️ 后端服务架构设计
 
-### 服务架构图
+### 4.3.2 多服务架构概览
 
+**架构设计理念：**
+- 采用微服务架构模式，实现服务解耦和独立部署
+- 建立统一的API网关，提供统一的服务入口和安全防护
+- 实现服务间的松耦合通信，支持水平扩展和故障隔离
+- 构建完善的监控和服务治理体系
+
+**整体服务架构图：**
+
+```mermaid
+graph TB
+    subgraph "客户端层"
+        FLUTTER[Flutter App]
+        WEB[Web 应用]
+        MOBILE[移动端]
+    end
+
+    subgraph "API网关层"
+        GATEWAY[API Gateway]
+        LB[负载均衡器]
+        RATE[限流控制]
+        AUTH_GATEWAY[认证网关]
+    end
+
+    subgraph "业务服务层"
+        JAVA[dehaze-java<br/>核心业务服务]
+        PYTHON[dehaze-python<br/>算法处理服务]
+        GO[dehaze-go<br/>数据统计服务]
+    end
+
+    subgraph "数据存储层"
+        MYSQL[(MySQL<br/>关系数据)]
+        MONGODB[(MongoDB<br/>文档数据)]
+        REDIS[(Redis<br/>缓存数据)]
+        MINIO[(MinIO<br/>对象存储)]
+    end
+
+    subgraph "基础设施层"
+        MONITOR[监控系统]
+        LOG[日志系统]
+        CONFIG[配置中心]
+        REGISTRY[服务注册]
+    end
+
+    FLUTTER --> GATEWAY
+    WEB --> GATEWAY
+    MOBILE --> GATEWAY
+
+    GATEWAY --> LB
+    GATEWAY --> RATE
+    GATEWAY --> AUTH_GATEWAY
+
+    LB --> JAVA
+    LB --> PYTHON
+    LB --> GO
+
+    JAVA --> MYSQL
+    JAVA --> REDIS
+    JAVA --> MINIO
+
+    PYTHON --> MONGODB
+    PYTHON --> REDIS
+
+    GO --> MYSQL
+    GO --> REDIS
+
+    JAVA -.-> MONITOR
+    PYTHON -.-> MONITOR
+    GO -.-> MONITOR
+
+    MONITOR --> LOG
+    GATEWAY --> CONFIG
+    JAVA --> REGISTRY
+    PYTHON --> REGISTRY
+    GO --> REGISTRY
 ```
-Flutter Frontend (dehaze_flutter)
-    ↓ HTTP/WebSocket API
-┌─────────────────────────────────────────┐
-│              API Gateway                 │
-│    - 统一入口                             │
-│    - 路由分发                             │
-│    - 负载均衡                             │
-│    - 限流熔断                             │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│ dehaze-java (Spring Boot)               │
-│ • 用户认证和权限管理                      │
-│ • 算法管理和推荐                          │
-│ • 文件上传下载                            │
-│ • 业务数据管理                            │
-│ • WebSocket服务                          │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│ dehaze-python (Flask + PyTorch)         │
-│ • 图像去雾算法执行                        │
-│ • 深度学习模型服务                        │
-│ • 实时处理进度推送                        │
-│ • 算法参数优化                            │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│ dehaze-go (Gin)                         │
-│ • 数据统计分析                          │
-│ • 高并发接口服务                          │
-│ • 缓存和性能优化                          │
-│ • 备用服务接口                            │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│        数据存储层                         │
-│ MySQL | MongoDB | Redis | MinIO        │
-└─────────────────────────────────────────┘
-```
 
-### 服务职责分工
+### 4.3.3 服务职责与能力矩阵
 
-| 服务名称 | 主要职责 | 核心API | 通信协议 |
-|---------|----------|----------|----------|
-| **dehaze-java** | 核心业务服务 | 认证、算法、文件管理 | HTTP REST + WebSocket |
-| **dehaze-python** | 算法处理服务 | 图像处理、进度推送 | HTTP REST + WebSocket |
-| **dehaze-go** | 数据统计服务 | 统计分析、性能监控 | HTTP REST |
+**核心服务能力规划：**
+
+| 服务名称 | 架构模式 | 核心职责 | 关键API | 通信协议 | 性能要求 | 部署策略 |
+|----------|----------|----------|---------|----------|----------|----------|
+| **dehaze-java** | 单体应用 | 用户管理、认证授权、业务逻辑 | 认证、算法、文件管理 | HTTP REST + WebSocket | 响应时间<100ms | 容器化部署 |
+| **dehaze-python** | 微服务 | 图像处理、算法执行、模型服务 | 图像处理、进度推送 | HTTP REST + WebSocket | 处理时间<5s | GPU集群部署 |
+| **dehaze-go** | 微服务 | 数据统计、性能监控、高并发接口 | 统计分析、监控数据 | HTTP REST | 响应时间<50ms | 多实例部署 |
+
+**服务间通信设计：**
+
+| 通信场景 | 通信方式 | 协议选择 | 超时设置 | 重试策略 | 熔断机制 |
+|----------|----------|----------|----------|----------|----------|
+| **客户端↔网关** | 同步调用 | HTTPS + WebSocket | 30s | 指数退避 | 快速失败 |
+| **网关↔业务服务** | 同步调用 | HTTP/2 | 10s | 线性重试 | 服务降级 |
+| **服务间调用** | 异步消息 | Message Queue | 60s | 死信队列 | 消息丢弃 |
+| **数据访问** | 同步调用 | Database Driver | 5s | 事务重试 | 连接池 |
+
+### 4.3.4 服务治理架构
+
+**服务治理策略矩阵：**
+
+| 治理维度 | 实施策略 | 技术方案 | 监控指标 | 应急预案 |
+|----------|----------|----------|----------|----------|
+| **服务发现** | 自动注册与发现 | Consul/Eureka | 注册成功率<99% | 手动配置 |
+| **负载均衡** | 智能路由 | Nginx/HAProxy | 响应时间分布 | 权重调整 |
+| **熔断降级** | 快速失败保护 | Hystrix/Sentinel | 熔断触发率<5% | 人工介入 |
+| **限流控制** | 流量整形 | 令牌桶算法 | 限流触发率<1% | 动态调整 |
+| **监控告警** | 全链路监控 | Prometheus+Grafana | 监控覆盖率100% | 人工巡检 |
 
 ---
 
-## 🔧 API客户端架构设计
+## 🔐 认证与授权架构设计
 
-### 技术选型
+### 4.3.5 统一认证架构
 
-基于[架构设计中的技术选型决策](../design/02-architecture.md#4-1-技术选型决策)，采用以下技术栈：
+**认证架构设计原则：**
+- **零信任架构**：默认不信任任何请求，都需要认证和授权
+- **多因素认证**：支持密码、验证码、生物识别等多种认证方式
+- **无状态设计**：采用JWT令牌机制，服务端无需存储会话状态
+- **安全传输**：全程HTTPS加密，敏感数据额外加密保护
 
-- **HTTP客户端**: `dio` + `retrofit`
-- **WebSocket客户端**: `web_socket_channel`
-- **状态管理**: 集成到Bloc中
-- **错误处理**: 统一错误处理机制
-- **缓存策略**: 内存缓存 + 持久化存储
+**认证架构层次图：**
 
-### 服务分层架构
+```mermaid
+graph TB
+    subgraph "认证架构层次"
+        L1[认证接入层<br/>Auth接入点]
+        L2[认证处理层<br/>Auth处理器]
+        L3[令牌管理层<br/>Token管理]
+        L4[权限控制层<br/>Permission控制]
+        L5[审计日志层<br/>Audit日志]
+    end
 
+    subgraph "认证方式"
+        PWD[用户名密码]
+        SMS[短信验证码]
+        BIO[生物识别]
+        SSO[单点登录]
+        OAUTH[OAuth认证]
+    end
+
+    subgraph "安全机制"
+        ENCRYPT[数据加密]
+        SIGN[数字签名]
+        RATE[限流保护]
+        AUDIT[安全审计]
+    end
+
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+    L4 --> L5
+
+    PWD --> L1
+    SMS --> L1
+    BIO --> L1
+    SSO --> L1
+    OAUTH --> L1
+
+    ENCRYPT --> L2
+    SIGN --> L3
+    RATE --> L1
+    AUDIT --> L5
 ```
-API Client Layer (Flutter)
-    ↓
-┌─────────────────────────────────────────┐
-│         Repository Layer                 │
-│ • 统一的数据访问接口                      │
-│ • 缓存策略实现                           │
-│ • 错误处理和重试                          │
-│ • 数据转换和验证                          │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│         Service Layer                    │
-│ • API Service实现                        │
-│ • WebSocket管理                          │
-│ • 网络配置和拦截器                        │
-│ • 认证和授权                             │
-└─────────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│         Transport Layer                  │
-│ • HTTP客户端(Dio)                        │
-│ • WebSocket客户端                         │
-│ • 网络请求封装                           │
-│ • 协议适配                              │
-└─────────────────────────────────────────┘
-```
 
----
+### 4.3.6 JWT认证机制设计
 
-## 🔐 认证与授权
+**JWT令牌体系架构：**
 
-### JWT认证机制
+| 令牌类型 | 结构组成 | 有效期 | 存储策略 | 安全级别 | 刷新机制 |
+|----------|----------|--------|----------|----------|----------|
+| **Access Token** | Header.Payload.Signature | 2小时 | 内存+Redis | 高 | 无需刷新 |
+| **Refresh Token** | 随机字符串 | 30天 | 安全存储 | 极高 | 支持刷新 |
+| **ID Token** | 用户身份信息 | 1小时 | 内存 | 中高 | 签名验证 |
+| **Session Token** | 会话状态标识 | 24小时 | Redis | 高 | 自动延期 |
 
-#### 认证流程图
+**JWT认证流程设计：**
+
 ```mermaid
 sequenceDiagram
-    participant App as Flutter App
-    participant API as API Gateway
-    participant Auth as Auth Service
-    participant Redis as Redis
+    participant C as 客户端
+    participant G as API网关
+    participant A as 认证服务
+    participant R as Redis缓存
+    participant D as 数据库
 
-    App->>API: 登录请求 (username, password)
-    API->>Auth: 验证用户凭据
-    Auth-->>API: 返回JWT Token
-    API->>Redis: 存储Token (key: userId, value: token)
-    API-->>App: 返回认证结果 + JWT Token
+    Note over C,D: 1. 用户登录认证
+    C->>A: 发送登录凭据
+    A->>D: 验证用户信息
+    D-->>A: 返回用户数据
+    A->>A: 验证凭据有效性
 
-    Note over App,API: 后续API请求携带JWT Token
+    Note over A,R: 2. 生成JWT令牌
+    A->>A: 生成Access Token
+    A->>A: 生成Refresh Token
+    A->>R: 存储令牌映射关系
+    A-->>C: 返回令牌对
 
-    App->>API: API请求 (Bearer Token)
-    API->>Redis: 验证Token有效性
-    Redis-->>API: Token有效
-    API-->>App: 返回API响应
+    Note over C,G: 3. API请求认证
+    C->>G: 携带Access Token
+    G->>A: 验证令牌有效性
+    A->>R: 检查令牌状态
+    R-->>A: 令牌有效
+    A-->>G: 认证通过
+    G-->>C: 返回API响应
 
-    Note over App,API: Token过期处理
-
-    API->>Auth: Token刷新 (Refresh Token)
-    Auth-->>API: 新JWT Token
-    API->>Redis: 更新Token
-    API-->>App: 新Token (401响应头)
+    Note over C,A: 4. 令牌刷新机制
+    G->>A: Token过期检测
+    A->>R: 验证Refresh Token
+    R-->>A: 刷新令牌有效
+    A->>A: 生成新令牌对
+    A->>R: 更新令牌存储
+    A-->>G: 返回新令牌
+    G-->>C: 自动更新令牌
 ```
 
-#### 认证服务实现
-```dart
-// lib/core/services/auth_service.dart
-class AuthService {
-  final Dio _dio;
-  final StorageService _storage;
+### 4.3.7 认证服务设计规范
 
-  static const String _tokenKey = 'auth_token';
-  static const String _refreshTokenKey = 'refresh_token';
-  static const String _userKey = 'user_info';
+**认证服务核心能力矩阵：**
 
-  AuthService(this._dio, this._storage);
+| 功能域 | 具体能力 | 技术要求 | 性能指标 | 安全等级 | 实现复杂度 |
+|--------|----------|----------|----------|----------|------------|
+| **身份认证** | 多种认证方式支持 | 密码加密、生物识别 | 响应时间<200ms | 极高 | 高 |
+| **令牌管理** | JWT生成、验证、刷新 | RS256签名、缓存机制 | 验证时间<50ms | 高 | 中 |
+| **会话管理** | 用户会话状态跟踪 | Redis分布式会话 | 并发支持>1000 | 高 | 中 |
+| **权限控制** | RBAC权限模型 | 角色权限映射 | 检查时间<10ms | 高 | 中高 |
+| **安全防护** | 防攻击、限流、审计 | 多层安全机制 | 防护覆盖率100% | 极高 | 高 |
 
-  // 登录
-  Future<AuthResult> login(String username, String password) async {
-    try {
-      final response = await _dio.post('/auth/login', data: {
-        'username': username,
-        'password': password,
-      });
+**认证状态管理策略：**
 
-      final authData = AuthResponse.fromJson(response.data);
+| 状态类型 | 管理策略 | 存储位置 | 同步机制 | 过期策略 | 容错机制 |
+|----------|----------|----------|----------|----------|----------|
+| **登录状态** | 内存+持久化 | 内存+Redis | 实时同步 | 30天自动过期 | 本地缓存恢复 |
+| **权限信息** | 懒加载+缓存 | Redis缓存 | 事件驱动更新 | 24小时刷新 | 降级到默认权限 |
+| **会话信息** | 分布式存储 | Redis集群 | 主从同步 | 活跃延期 | 故障转移 |
+| **设备信息** | 绑定验证 | 数据库存储 | 异步同步 | 永久有效 | 人工解绑 |
 
-      // 保存认证信息
-      await _saveAuthData(authData);
+### 4.3.8 多端认证统一设计
 
-      // 配置dio的认证拦截器
-      _updateDioAuthInterceptor(authData.token);
+**跨平台认证架构：**
 
-      return AuthResult.success(authData.user);
-    } on DioException catch (e) {
-      return AuthResult.failure(e.message ?? '登录失败');
-    }
-  }
+```mermaid
+graph LR
+    subgraph "客户端类型"
+        MOBILE[移动端<br/>iOS/Android]
+        WEB[Web端<br/>浏览器]
+        DESKTOP[桌面端<br/>Windows/Mac/Linux]
+    end
 
-  // 注册
-  Future<AuthResult> register(String username, String password, String email) async {
-    try {
-      final response = await _dio.post('/auth/register', data: {
-        'username': username,
-        'password': password,
-        'email': email,
-      });
+    subgraph "认证适配层"
+        MOBILE_AUTH[移动认证SDK]
+        WEB_AUTH[Web认证组件]
+        DESKTOP_AUTH[桌面认证模块]
+    end
 
-      final authData = AuthResponse.fromJson(response.data);
+    subgraph "统一认证中心"
+        AUTH_GATEWAY[认证网关]
+        TOKEN_SERVICE[令牌服务]
+        USER_SERVICE[用户服务]
+    end
 
-      await _saveAuthData(authData);
-      _updateDioAuthInterceptor(authData.token);
+    subgraph "认证方式"
+        PASSWORD[密码认证]
+        BIOMETRIC[生物识别]
+        SSO[单点登录]
+        OAUTH[第三方认证]
+    end
 
-      return AuthResult.success(authData.user);
-    } on DioException catch (e) {
-      return AuthResult.failure(e.message ?? '注册失败');
-    }
-  }
+    MOBILE --> MOBILE_AUTH
+    WEB --> WEB_AUTH
+    DESKTOP --> DESKTOP_AUTH
 
-  // 注销
-  Future<void> logout() async {
-    try {
-      await _dio.post('/auth/logout');
-    } catch (e) {
-      // 即使API调用失败，也要清除本地数据
-    } finally {
-      await _clearAuthData();
-      _removeDioAuthInterceptor();
-    }
-  }
+    MOBILE_AUTH --> AUTH_GATEWAY
+    WEB_AUTH --> AUTH_GATEWAY
+    DESKTOP_AUTH --> AUTH_GATEWAY
 
-  // 检查登录状态
-  bool get isLoggedIn {
-    final token = _storage.getString(_tokenKey);
-    return token != null && _isTokenValid(token);
-  }
+    AUTH_GATEWAY --> TOKEN_SERVICE
+    AUTH_GATEWAY --> USER_SERVICE
 
-  // 获取当前用户
-  User? get currentUser {
-    final userData = _storage.getString(_userKey);
-    if (userData != null) {
-      return User.fromJson(jsonDecode(userData));
-    }
-    return null;
-  }
+    TOKEN_SERVICE -.-> PASSWORD
+    TOKEN_SERVICE -.-> BIOMETRIC
+    AUTH_GATEWAY -.-> SSO
+    AUTH_GATEWAY -.-> OAUTH
+```
 
-  // 刷新Token
-  Future<bool> refreshToken() async {
-    try {
-      final refreshToken = _storage.getString(_refreshTokenKey);
-      if (refreshToken == null) return false;
+**多端认证一致性保障：**
 
-      final response = await _dio.post('/auth/refresh', data: {
-        'refresh_token': refreshToken,
-      });
+| 一致性维度 | 保障策略 | 技术实现 | 同步机制 | 用户体验 | 容错能力 |
+|------------|----------|----------|----------|----------|----------|
+| **认证状态** | 实时同步 | WebSocket通知 | 推送机制 | 无感切换 | 自动重连 |
+| **用户信息** | 缓存一致性 | Redis集群 | 事件驱动 | 延迟更新 | 最终一致性 |
+| **权限变更** | 立即生效 | 令牌刷新机制 | 主动刷新 | 即时生效 | 降级处理 |
+| **设备管理** | 统一管理 | 设备注册中心 | 异步同步 | 后台管理 | 人工干预 |
 
-      final authData = AuthResponse.fromJson(response.data);
+### 4.3.9 安全防护机制设计
 
-      await _saveAuthData(authData);
-      _updateDioAuthInterceptor(authData.token);
+**多层安全防护架构：**
 
-      return true;
-    } catch (e) {
-      await _clearAuthData();
-      return false;
-    }
-  }
+```mermaid
+graph TD
+    subgraph "安全防护层次"
+        NETWORK[网络层安全<br/>HTTPS/TLS]
+        APP[应用层安全<br/>认证授权]
+        DATA[数据层安全<br/>加密存储]
+        BUSINESS[业务层安全<br/>权限控制]
+    end
 
-  // 私有方法
-  Future<void> _saveAuthData(AuthResponse authData) async {
-    await _storage.setString(_tokenKey, authData.token);
-    await _storage.setString(_refreshTokenKey, authData.refreshToken);
-    await _storage.setString(_userKey, jsonEncode(authData.user.toJson()));
-  }
+    subgraph "攻击防护"
+        INJECTION[注入攻击防护]
+        CSRF[CSRF攻击防护]
+        XSS[XSS攻击防护]
+        REPLAY[重放攻击防护]
+        BRUTE[暴力破解防护]
+    end
 
-  Future<void> _clearAuthData() async {
-    await _storage.remove(_tokenKey);
-    await _storage.remove(_refreshTokenKey);
-    await _storage.remove(_userKey);
-  }
+    subgraph "安全监控"
+        DETECT[威胁检测]
+        ALERT[实时告警]
+        AUDIT[安全审计]
+        RESPONSE[应急响应]
+    end
 
-  void _updateDioAuthInterceptor(String token) {
-    _dio.interceptors.removeWhere((interceptor) => interceptor is AuthInterceptor);
-    _dio.interceptors.add(AuthInterceptor(token));
-  }
+    NETWORK --> APP
+    APP --> DATA
+    DATA --> BUSINESS
 
-  void _removeDioAuthInterceptor() {
-    _dio.interceptors.removeWhere((interceptor) => interceptor is AuthInterceptor);
-  }
+    INJECTION --> NETWORK
+    CSRF --> APP
+    XSS --> APP
+    REPLAY --> APP
+    BRUTE --> APP
 
-  bool _isTokenValid(String token) {
-    try {
-      final parts = token.split('.');
-      if (parts.length != 3) return false;
+    DETECT --> ALERT
+    ALERT --> AUDIT
+    AUDIT --> RESPONSE
+```
 
-      final payload = jsonDecode(
-        utf8.decode(base64Url.decode(base64Url.normalize(parts[1])))
-      );
+**安全防护策略矩阵：**
 
-      final exp = payload['exp'] as int?;
-      if (exp == null) return false;
+| 威胁类型 | 防护措施 | 检测机制 | 响应策略 | 防护效果 | 性能影响 |
+|----------|----------|----------|----------|----------|----------|
+| **SQL注入** | 参数化查询 | 语义分析 | 请求拦截 | 100%防护 | 轻微影响 |
+| **XSS攻击** | 输入验证+输出编码 | 特征检测 | 内容过滤 | 95%防护 | 轻微影响 |
+| **CSRF攻击** | CSRF令牌 | Referer检查 | 请求拒绝 | 98%防护 | 无影响 |
+| **重放攻击** | 时间戳+随机数 | 序列号验证 | 请求丢弃 | 99%防护 | 轻微影响 |
+| **暴力破解** | 登录限流 | 失败次数统计 | 账户锁定 | 90%防护 | 轻微影响 |
 
-      final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      return exp > now;
-    } catch (e) {
-      return false;
-    }
-  }
-}
+### 4.3.10 认证性能优化设计
 
-// 认证拦截器
-class AuthInterceptor extends Interceptor {
-  final String _token;
+**性能优化策略表：**
 
-  AuthInterceptor(this._token);
+| 优化方向 | 具体措施 | 性能提升 | 实施复杂度 | 优先级 | 风险评估 |
+|----------|----------|----------|------------|--------|----------|
+| **令牌缓存** | 多级缓存策略 | 验证速度提升90% | 中 | 高 | 低风险 |
+| **连接复用** | HTTP/2连接池 | 连接时间减少80% | 中 | 高 | 低风险 |
+| **并发处理** | 异步认证处理 | 吞吐量提升300% | 高 | 中 | 中风险 |
+| **预认证** | 后台令牌预刷新 | 用户无感知 | 中高 | 中 | 中风险 |
+| **智能路由** | 就近服务访问 | 网络延迟减少50% | 高 | 低 | 低风险 |
 
-  @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    options.headers['Authorization'] = 'Bearer $_token';
-    super.onRequest(options, handler);
-  }
+**缓存架构设计：**
 
-  @override
-  void onError(DioException error, ErrorInterceptorHandler handler) {
-    if (error.response?.statusCode == 401) {
-      // Token过期，尝试刷新
-      final authService = serviceLocator<AuthService>();
-      authService.refreshToken().then((success) {
-        if (success) {
-          // 重新发起请求
-          handler.resolve(_retryRequest(error.requestOptions!));
-        } else {
-          // 刷新失败，需要重新登录
-          handler.next(error);
-        }
-      });
-      return;
-    }
-    super.onError(error, handler);
-  }
+```mermaid
+graph TB
+    subgraph "多级缓存体系"
+        L1[L1缓存<br/>内存缓存<br/>响应时间<1ms]
+        L2[L2缓存<br/>Redis集群<br/>响应时间<5ms]
+        L3[L3缓存<br/>数据库缓存<br/>响应时间<20ms]
+    end
 
-  Future<Response<dynamic>> _retryRequest(RequestOptions options) async {
-    final token = await _getRefreshedToken();
-    options.headers['Authorization'] = 'Bearer $token';
+    subgraph "缓存策略"
+        HOT[热点数据<br/>TTL: 1小时]
+        WARM[温数据<br/>TTL: 6小时]
+        COLD[冷数据<br/>TTL: 24小时]
+    end
 
-    final dio = Dio();
-    return dio.fetch(options);
-  }
+    subgraph "一致性机制"
+        INVALIDATE[缓存失效]
+        REFRESH[缓存刷新]
+        SYNC[数据同步]
+        RECOVER[故障恢复]
+    end
 
-  Future<String> _getRefreshedToken() async {
-    final authService = serviceLocator<AuthService>();
-    final storage = serviceLocator<StorageService>();
-    return await storage.getString('auth_token') ?? '';
-  }
-}
+    L1 --> HOT
+    L2 --> WARM
+    L3 --> COLD
+
+    L1 -.-> L2
+    L2 -.-> L3
+
+    HOT --> INVALIDATE
+    WARM --> REFRESH
+    COLD --> SYNC
+    L1 --> RECOVER
 ```
 
 ---
 
-## 📡 API服务实现
+## 📡 API客户端架构设计
 
-### 基础API客户端
+### 4.3.11 API客户端技术栈选型
 
-#### 配置和初始化
-```dart
-// lib/core/network/api_client.dart
-class ApiClient {
-  late final Dio _dio;
-  late final String _baseUrl;
-  late final Duration _timeout;
-  late final int _maxRetries;
+**技术选型原则：**
+- **成熟稳定**：选择经过生产验证的技术栈，确保系统稳定性
+- **性能优异**：优先选择性能表现优秀的组件，提升用户体验
+- **生态完善**：选择社区活跃、文档丰富的技术，降低开发成本
+- **易于维护**：选择代码结构清晰、易于理解和维护的框架
 
-  ApiClient({
-    String baseUrl = 'https://api.dehaze.com',
-    Duration timeout = const Duration(seconds: 30),
-    int maxRetries = 3,
-  }) {
-    _baseUrl = baseUrl;
-    _timeout = timeout;
-    _maxRetries = maxRetries;
-    _initializeDio();
-  }
+**核心技术栈规划：**
 
-  void _initializeDio() {
-    _dio = Dio(BaseOptions(
-      baseUrl: _baseUrl,
-      timeout: _timeout,
-      connectTimeout: _timeout,
-      receiveTimeout: _timeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'User-Agent': 'DehazeFlutter/${AppConfig.version}',
-      },
-    ));
+| 技术领域 | 技术选型 | 选型理由 | 性能指标 | 维护成本 | 社区支持 |
+|----------|----------|----------|----------|----------|----------|
+| **HTTP客户端** | Dio + Retrofit | 功能强大、拦截器丰富 | 响应时间<100ms | 低 | 活跃 |
+| **WebSocket客户端** | web_socket_channel | Flutter官方推荐 | 延迟<50ms | 低 | 官方支持 |
+| **状态管理** | Riverpod集成 | 类型安全、测试友好 | 状态更新<10ms | 中 | 活跃 |
+| **错误处理** | 统一异常机制 | 一致性体验 | 处理时间<5ms | 低 | 自研 |
+| **缓存管理** | 内存+持久化 | 多级缓存提升性能 | 缓存命中>90% | 中 | 自研 |
 
-    _setupInterceptors();
-  }
+### 4.3.12 分层架构设计
 
-  void _setupInterceptors() {
-    // 日志拦截器（仅在调试模式）
-    if (kDebugMode) {
-      _dio.interceptors.add(LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (object) => log(object.toString()),
-      ));
-    }
+**四层架构模式：**
 
-    // 重试拦截器
-    _dio.interceptors.add(RetryInterceptor(
-      dio: _dio,
-      retries: _maxRetries,
-      retryDelays: const [
-        Duration(seconds: 1),
-        Duration(seconds: 2),
-        Duration(seconds: 3),
-      ],
-    ));
+```mermaid
+graph TB
+    subgraph "API客户端分层架构"
+        CLIENT[客户端应用层]
+        REPO[Repository仓储层]
+        SERVICE[Service服务层]
+        TRANSPORT[Transport传输层]
+    end
 
-    // 缓存拦截器
-    _dio.interceptors.add(CacheInterceptor());
+    subgraph "仓储层职责"
+        UNIFIED[统一数据接口]
+        CACHE[缓存策略]
+        ERROR[错误处理]
+        TRANSFORM[数据转换]
+    end
 
-    // 错误处理拦截器
-    _dio.interceptors.add(ErrorInterceptor());
+    subgraph "服务层职责"
+        API_SVC[API服务实现]
+        WS_SVC[WebSocket管理]
+        NETWORK[网络配置]
+        AUTH_SVC[认证授权]
+    end
 
-    // 性能监控拦截器
-    _dio.interceptors.add(PerformanceInterceptor());
-  }
+    subgraph "传输层职责"
+        HTTP[HTTP客户端]
+        WEBSOCKET[WebSocket客户端]
+        REQUEST[请求封装]
+        PROTOCOL[协议适配]
+    end
 
-  // GET请求
-  Future<Response<T>> get<T>(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) async {
-    try {
-      return await _dio.get<T>(
-        path,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+    CLIENT --> REPO
+    REPO --> SERVICE
+    SERVICE --> TRANSPORT
 
-  // POST请求
-  Future<Response<T>> post<T>(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) async {
-    try {
-      return await _dio.post<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+    REPO --> UNIFIED
+    REPO --> CACHE
+    REPO --> ERROR
+    REPO --> TRANSFORM
 
-  // PUT请求
-  Future<Response<T>> put<T>(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) async {
-    try {
-      return await _dio.put<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
+    SERVICE --> API_SVC
+    SERVICE --> WS_SVC
+    SERVICE --> NETWORK
+    SERVICE --> AUTH_SVC
 
-  // DELETE请求
-  Future<Response<T>> delete<T>(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) async {
-    try {
-      return await _dio.delete<T>(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-        options: options,
-        cancelToken: cancelToken,
-      );
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // 文件上传
-  Future<Response<T>> uploadFile<T>(
-    String path,
-    File file, {
-    Map<String, String>? fields,
-    ProgressCallback? onSendProgress,
-    CancelToken? cancelToken,
-  }) async {
-    try {
-      final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path),
-        ...?fields,
-      });
-
-      final options = Options(
-        contentType: 'multipart/form-data',
-      );
-
-      return await _dio.post<T>(
-        path,
-        data: formData,
-        options: options,
-        onSendProgress: onSendProgress,
-        cancelToken: cancelToken,
-      );
-    } on DioException catch (e) {
-      throw _handleError(e);
-    }
-  }
-
-  // 错误处理
-  ApiException _handleError(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return ApiException.timeout('请求超时，请检查网络连接');
-
-      case DioExceptionType.connectionError:
-        return ApiException.networkError('网络连接失败，请检查网络设置');
-
-      case DioExceptionType.badResponse:
-        return _handleHttpError(error);
-
-      case DioExceptionType.cancel:
-        return ApiException.cancelled('请求已取消');
-
-      case DioExceptionType.unknown:
-      default:
-        return ApiException.unknown(error.message ?? '未知错误');
-    }
-  }
-
-  ApiException _handleHttpError(DioException error) {
-    final statusCode = error.response?.statusCode;
-    final message = error.response?.data?['message'] ?? '服务器错误';
-
-    switch (statusCode) {
-      case 400:
-        return ApiException.badRequest(message);
-      case 401:
-        return ApiException.unauthorized('未授权访问');
-      case 403:
-        return ApiException.forbidden('权限不足');
-      case 404:
-        return ApiException.notFound('请求的资源不存在');
-      case 429:
-        return ApiException.tooManyRequests('请求过于频繁，请稍后再试');
-      case 500:
-        return ApiException.serverError('服务器内部错误');
-      case 503:
-        return ApiException.serviceUnavailable('服务暂时不可用');
-      default:
-        return ApiException.httpError(statusCode, message);
-    }
-  }
-}
+    TRANSPORT --> HTTP
+    TRANSPORT --> WEBSOCKET
+    TRANSPORT --> REQUEST
+    TRANSPORT --> PROTOCOL
 ```
 
-### 算法服务API
+**层次间通信规范：**
 
-#### API接口定义
-```dart
-// lib/features/algorithm/data/repositories/algorithm_repository_impl.dart
-class AlgorithmRepositoryImpl implements AlgorithmRepository {
-  final ApiClient _apiClient;
+| 层次 | 职责范围 | 接口规范 | 数据格式 | 错误处理 | 性能要求 |
+|------|----------|----------|----------|----------|----------|
+| **客户端应用层** | 业务逻辑实现 | Repository接口 | 领域对象 | 统一异常 | UI响应<16ms |
+| **Repository层** | 数据访问抽象 | 抽象接口定义 | DTO对象 | 数据层异常 | 转换时间<10ms |
+| **Service层** | 外部服务调用 | 具体服务实现 | API响应格式 | 服务层异常 | 网络时间<200ms |
+| **Transport层** | 网络通信 | 传输协议 | HTTP/WebSocket | 传输层异常 | 连接时间<50ms |
 
-  AlgorithmRepositoryImpl(this._apiClient);
+### 4.3.13 API服务架构设计
 
-  @override
-  Future<List<Algorithm>> getAlgorithms() async {
-    try {
-      final response = await _apiClient.get<List<dynamic>>('/algorithms');
+**核心服务组件设计：**
 
-      final algorithms = (response.data as List)
-          .map((json) => Algorithm.fromJson(json as Map<String, dynamic>))
-          .toList();
+| 服务组件 | 核心功能 | 接口设计 | 配置参数 | 性能指标 | 容错机制 |
+|----------|----------|----------|----------|----------|----------|
+| **基础API客户端** | HTTP请求封装 | RESTful接口 | 超时、重试、拦截器 | 成功率>99.9% | 自动重试+熔断 |
+| **算法服务** | 算法管理调用 | 算法CRUD接口 | 分页、过滤、排序 | 响应时间<100ms | 降级到默认算法 |
+| **图像处理服务** | 图像处理管理 | 文件上传/处理接口 | 文件大小、格式限制 | 处理时间<5s | 队列缓冲 |
+| **WebSocket服务** | 实时通信 | 双向消息接口 | 心跳、重连机制 | 消息延迟<100ms | 自动重连 |
+| **文件管理服务** | 文件操作 | 上传/下载接口 | 缓存、压缩策略 | 传输速度>1MB/s | 断点续传 |
 
-      return algorithms;
-    } on ApiException catch (e) {
-      throw RepositoryException('获取算法列表失败: ${e.message}');
-    }
-  }
+**API服务交互设计：**
 
-  @override
-  Future<Algorithm?> getAlgorithmById(String algorithmId) async {
-    try {
-      final response = await _apiClient.get<Map<String, dynamic>>(
-        '/algorithms/$algorithmId',
-      );
+```mermaid
+sequenceDiagram
+    participant UI as UI界面
+    participant REPO as Repository层
+    participant SVC as Service层
+    participant API as 后端API
+    participant CACHE as 缓存层
 
-      return Algorithm.fromJson(response.data!);
-    } on ApiException catch (e) {
-      if (e is NotFoundException) {
-        return null;
-      }
-      throw RepositoryException('获取算法详情失败: ${e.message}');
-    }
-  }
+    Note over UI,CACHE: 1. 数据请求流程
+    UI->>REPO: 请求数据
+    REPO->>CACHE: 检查缓存
 
-  @override
-  Future<List<Algorithm>> getRecommendedAlgorithms(ImageFile imageFile) async {
-    try {
-      final formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(imageFile.path),
-        'features': await _extractImageFeatures(imageFile),
-      });
+    alt 缓存命中
+        CACHE-->>REPO: 返回缓存数据
+        REPO-->>UI: 显示数据
+    else 缓存未命中
+        REPO->>SVC: 调用服务
+        SVC->>API: HTTP请求
+        API-->>SVC: 返回响应
+        SVC->>CACHE: 更新缓存
+        SVC-->>REPO: 返回数据
+        REPO-->>UI: 显示数据
+    end
 
-      final response = await _apiClient.post<List<dynamic>>(
-        '/algorithms/recommend',
-        data: formData,
-      );
-
-      final recommendations = (response.data as List)
-          .map((json) => Algorithm.fromJson(json as Map<String, dynamic>))
-          .toList();
-
-      return recommendations;
-    } on ApiException catch (e) {
-      throw RepositoryException('获取推荐算法失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<Set<String>> getFavoriteAlgorithms() async {
-    try {
-      final response = await _apiClient.get<List<dynamic>>('/algorithms/favorites');
-
-      final favorites = (response.data as List)
-          .map((json) => json.toString())
-          .toSet();
-
-      return favorites;
-    } on ApiException catch (e) {
-      throw RepositoryException('获取收藏算法失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<void> addFavoriteAlgorithm(String algorithmId) async {
-    try {
-      await _apiClient.post('/algorithms/$algorithmId/favorite');
-    } on ApiException catch (e) {
-      throw RepositoryException('添加收藏失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<void> removeFavoriteAlgorithm(String algorithmId) async {
-    try {
-      await _apiClient.delete('/algorithms/$algorithmId/favorite');
-    } on ApiException catch (e) {
-      throw RepositoryException('取消收藏失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<AlgorithmPerformance> getAlgorithmPerformance(
-    String algorithmId,
-    ImageFile imageFile,
-  ) async {
-    try {
-      final formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(imageFile.path),
-      });
-
-      final response = await _apiClient.post<Map<String, dynamic>>(
-        '/algorithms/$algorithmId/performance',
-        data: formData,
-      );
-
-      return AlgorithmPerformance.fromJson(response.data!);
-    } on ApiException catch (e) {
-      throw RepositoryException('获取算法性能失败: ${e.message}');
-    }
-  }
-
-  // 私有辅助方法
-  Future<Map<String, dynamic>> _extractImageFeatures(ImageFile imageFile) async {
-    // 使用图像处理库提取特征
-    final image = img.decodeImage(await imageFile.readAsBytes());
-
-    return {
-      'width': image?.width ?? 0,
-      'height': image?.height ?? 0,
-      'size': imageFile.sizeBytes,
-      'format': imageFile.format,
-      'has_transparency': _hasTransparency(image),
-    };
-  }
-
-  bool _hasTransparency(img.Image? image) {
-    if (image == null) return false;
-
-    // 检查是否有alpha通道
-    return image.numChannels == 4 ||
-           image.format == img.Format.png ||
-           image.format == img.Format.webp;
-  }
-}
+    Note over UI,CACHE: 2. 实时数据流程
+    SVC->>API: 建立WebSocket
+    API-->>SVC: 推送实时数据
+    SVC->>REPO: 数据更新通知
+    REPO->>UI: 界面状态更新
 ```
 
-### 图像处理API
+### 4.3.14 请求拦截器架构
 
-#### WebSocket集成
-```dart
-// lib/features/processing/data/repositories/processing_repository_impl.dart
-class ProcessingRepositoryImpl implements ProcessingRepository {
-  final ApiClient _apiClient;
-  final WebSocketManager _webSocketManager;
+**拦截器链设计：**
 
-  ProcessingRepositoryImpl(this._apiClient)
-      : _webSocketManager = WebSocketManager();
+```mermaid
+graph LR
+    subgraph "请求拦截器链"
+        REQUEST[请求发起]
+        LOG[日志拦截器]
+        AUTH[认证拦截器]
+        CACHE[缓存拦截器]
+        RETRY[重试拦截器]
+        PERFORMANCE[性能拦截器]
+        NETWORK[网络请求]
+    end
 
-  @override
-  Future<ProcessingTask> startProcessing(
-    ImageFile imageFile,
-    Algorithm algorithm,
-    ProcessingParameters parameters,
-  ) async {
-    try {
-      final formData = FormData.fromMap({
-        'image': await MultipartFile.fromFile(imageFile.path),
-        'algorithm_id': algorithm.id,
-        'parameters': jsonEncode(parameters.toJson()),
-      });
+    subgraph "响应拦截器链"
+        RESPONSE[网络响应]
+        PERF_RES[性能监控]
+        CACHE_RES[缓存处理]
+        ERROR_RES[错误处理]
+        LOG_RES[日志记录]
+        RESULT[最终结果]
+    end
 
-      final response = await _apiClient.post<Map<String, dynamic>>(
-        '/processing/start',
-        data: formData,
-      );
+    REQUEST --> LOG
+    LOG --> AUTH
+    AUTH --> CACHE
+    CACHE --> RETRY
+    RETRY --> PERFORMANCE
+    PERFORMANCE --> NETWORK
 
-      return ProcessingTask.fromJson(response.data!);
-    } on ApiException catch (e) {
-      throw RepositoryException('启动处理失败: ${e.message}');
-    }
-  }
-
-  @override
-  Stream<ProcessingProgress> getProcessingStream(String taskId) {
-    return _webSocketManager.connectToTask(taskId);
-  }
-
-  @override
-  Future<void> pauseProcessing(String taskId) async {
-    try {
-      await _apiClient.post('/processing/$taskId/pause');
-    } on ApiException catch (e) {
-      throw RepositoryException('暂停处理失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<void> resumeProcessing(String taskId) async {
-    try {
-      await _apiClient.post('/processing/$taskId/resume');
-    } on ApiException catch (e) {
-      throw RepositoryException('恢复处理失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<void> cancelProcessing(String taskId) async {
-    try {
-      await _apiClient.delete('/processing/$taskId');
-      _webSocketManager.disconnectFromTask(taskId);
-    } on ApiException catch (e) {
-      throw RepositoryException('取消处理失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<ProcessedImage> getProcessingResult(String taskId) async {
-    try {
-      final response = await _apiClient.get<Map<String, dynamic>>(
-        '/processing/$taskId/result',
-      );
-
-      return ProcessedImage.fromJson(response.data!);
-    } on ApiException catch (e) {
-      throw RepositoryException('获取处理结果失败: ${e.message}');
-    }
-  }
-
-  @override
-  Future<List<ProcessingTask>> getProcessingHistory() async {
-    try {
-      final response = await _apiClient.get<List<dynamic>>('/processing/history');
-
-      final history = (response.data as List)
-          .map((json) => ProcessingTask.fromJson(json as Map<String, dynamic>))
-          .toList();
-
-      return history;
-    } on ApiException catch (e) {
-      throw RepositoryException('获取处理历史失败: ${e.message}');
-    }
-  }
-}
-
-// WebSocket管理器
-class WebSocketManager {
-  final Map<String, StreamController<ProcessingProgress>> _controllers = {};
-  final Map<String, WebSocketChannel> _channels = {};
-
-  Stream<ProcessingProgress> connectToTask(String taskId) {
-    if (_controllers.containsKey(taskId)) {
-      return _controllers[taskId]!.stream;
-    }
-
-    final controller = StreamController<ProcessingProgress>.broadcast();
-    _controllers[taskId] = controller;
-
-    _connectWebSocket(taskId, controller);
-
-    return controller.stream;
-  }
-
-  void disconnectFromTask(String taskId) {
-    _controllers[taskId]?.close();
-    _controllers.remove(taskId);
-
-    _channels[taskId]?.sink.close();
-    _channels.remove(taskId);
-  }
-
-  void _connectWebSocket(String taskId, StreamController<ProcessingProgress> controller) {
-    final uri = Uri.parse('${AppConfig.websocketUrl}/processing/$taskId');
-    final channel = WebSocketChannel.connect(uri);
-
-    _channels[taskId] = channel;
-
-    channel.stream.listen(
-      (data) {
-        try {
-          final json = jsonDecode(data as String);
-          final progress = ProcessingProgress.fromJson(json);
-          controller.add(progress);
-        } catch (e) {
-          log('WebSocket data parsing error: $e');
-        }
-      },
-      onError: (error) {
-        log('WebSocket error: $error');
-        controller.addError(error);
-      },
-      onDone: () {
-        log('WebSocket connection closed for task: $taskId');
-        controller.close();
-      },
-    );
-  }
-
-  void dispose() {
-    for (final controller in _controllers.values) {
-      controller.close();
-    }
-    _controllers.clear();
-
-    for (final channel in _channels.values) {
-      channel.sink.close();
-    }
-    _channels.clear();
-  }
-}
+    NETWORK --> RESPONSE
+    RESPONSE --> PERF_RES
+    PERF_RES --> CACHE_RES
+    CACHE_RES --> ERROR_RES
+    ERROR_RES --> LOG_RES
+    LOG_RES --> RESULT
 ```
 
-### 文件管理API
+**拦截器功能矩阵：**
 
-#### 文件上传下载服务
-```dart
-// lib/core/services/file_service.dart
-class FileService {
-  final ApiClient _apiClient;
-  final StorageService _storage;
+| 拦截器类型 | 执行时机 | 核心功能 | 配置参数 | 性能影响 | 开关控制 |
+|------------|----------|----------|----------|----------|----------|
+| **日志拦截器** | 请求前后 | 请求/响应日志记录 | 日志级别、输出格式 | 轻微 | 支持 |
+| **认证拦截器** | 请求前 | 添加认证头、令牌刷新 | 令牌存储、刷新策略 | 轻微 | 不支持 |
+| **缓存拦截器** | 请求前/响应后 | 缓存检查、更新 | 缓存策略、TTL设置 | 中等 | 支持 |
+| **重试拦截器** | 错误时 | 自动重试机制 | 重试次数、退避策略 | 中等 | 支持 |
+| **性能拦截器** | 请求前后 | 性能指标收集 | 指标类型、上报策略 | 轻微 | 支持 |
 
-  FileService(this._apiClient, this._storage);
+### 4.3.15 多环境配置架构
 
-  // 图片上传
-  Future<UploadResult> uploadImage(
-    File imageFile, {
-    ProgressCallback? onProgress,
-    Map<String, String>? metadata,
-  }) async {
-    try {
-      // 生成唯一文件ID
-      final fileId = _generateFileId();
+**环境配置策略：**
 
-      // 添加元数据
-      final fields = <String, String>{
-        'file_id': fileId,
-        'file_name': path.basename(imageFile.path),
-        'file_size': await imageFile.length().toString(),
-        'upload_time': DateTime.now().toIso8601String(),
-        ...?metadata,
-      };
+| 环境类型 | 配置特点 | 安全要求 | 性能要求 | 监控等级 | 数据管理 |
+|----------|----------|----------|----------|----------|----------|
+| **开发环境** | 详细日志、模拟数据 | 基础安全 | 无特殊要求 | 详细调试 | 本地数据库 |
+| **测试环境** | 自动化测试数据 | 中等安全 | 模拟生产 | 完整监控 | 测试数据库 |
+| **预生产环境** | 生产级配置 | 高安全 | 接近生产 | 生产监控 | 生产数据镜像 |
+| **生产环境** | 优化配置 | 最高安全 | 最高性能 | 实时监控 | 生产数据库 |
 
-      final response = await _apiClient.uploadFile<Map<String, dynamic>>(
-        '/files/upload/image',
-        imageFile,
-        fields: fields,
-        onSendProgress: onProgress,
-      );
+**配置管理架构：**
 
-      return UploadResult.fromJson(response.data!);
-    } on ApiException catch (e) {
-      throw FileServiceException('图片上传失败: ${e.message}');
-    }
-  }
+```mermaid
+graph TB
+    subgraph "配置管理层次"
+        BASE[基础配置]
+        ENV[环境配置]
+        USER[用户配置]
+        RUNTIME[运行时配置]
+    end
 
-  // 批量图片上传
-  Future<List<UploadResult>> uploadImages(
-    List<File> imageFiles, {
-    ProgressCallback? onProgress,
-    Map<String, String>? metadata,
-  }) async {
-    final results = <UploadResult>[];
+    subgraph "配置源"
+        DEFAULT[默认配置文件]
+        ENV_FILE[环境变量文件]
+        REMOTE[远程配置中心]
+        LOCAL[本地存储]
+    end
 
-    for (int i = 0; i < imageFiles.length; i++) {
-      final file = imageFiles[i];
+    subgraph "配置应用"
+        APP_START[应用启动]
+        FEATURE[功能开关]
+        API_CONFIG[API参数]
+        CACHE_CONFIG[缓存策略]
+    end
 
-      try {
-        final result = await uploadImage(
-          file,
-          onProgress: (sent, total) {
-            // 计算总体进度
-            final totalFiles = imageFiles.length;
-            final totalSize = await imageFiles
-                .map((f) => f.length())
-                .reduce((a, b) => a + b);
+    BASE --> DEFAULT
+    ENV --> ENV_FILE
+    USER --> REMOTE
+    RUNTIME --> LOCAL
 
-            final currentTotalSent = results.fold<int>(
-              0, (sum, result) => sum + result.fileSize,
-            ) + sent;
+    BASE --> APP_START
+    ENV --> FEATURE
+    USER --> API_CONFIG
+    RUNTIME --> CACHE_CONFIG
+```
 
-            final overallProgress = (currentTotalSent / totalSize) * 100;
-            onProgress?.call(overallProgress.round(), 100);
-          },
-          metadata: {
-            ...?metadata,
-            'batch_index': i.toString(),
-            'batch_total': imageFiles.length.toString(),
-          },
-        );
+### 4.3.16 服务发现与负载均衡
 
-        results.add(result);
-      } catch (e) {
-        // 单个文件上传失败，记录错误但继续其他文件
-        log('Failed to upload image ${file.path}: $e');
-      }
-    }
+**服务发现策略：**
 
-    return results;
-  }
+| 发现机制 | 实现方式 | 发现延迟 | 健康检查 | 故障转移 | 配置复杂度 |
+|----------|----------|----------|----------|----------|------------|
+| **静态配置** | 配置文件定义 | 无 | 心跳检测 | 手动切换 | 低 |
+| **DNS发现** | 域名解析 | DNS缓存 | TTL检查 | 自动切换 | 中 |
+| **服务注册中心** | Consul/Eureka | 注册延迟 | 实时检查 | 自动转移 | 高 |
+| **配置中心** | Apollo/Nacos | 配置拉取 | 配置推送 | 配置更新 | 中高 |
 
-  // 文件下载
-  Future<File> downloadFile(String fileId, String fileName) async {
-    try {
-      final response = await _apiClient.get<List<int>>(
-        '/files/download/$fileId',
-        options: Options(
-          responseType: ResponseType.bytes,
-        ),
-      );
+**负载均衡算法选择：**
 
-      final directory = await getApplicationDocumentsDirectory();
-      final filePath = path.join(directory.path, fileName);
-      final file = File(filePath);
+| 算法类型 | 适用场景 | 性能表现 | 实现复杂度 | 数据一致性要求 |
+|----------|----------|----------|------------|----------------|
+| **轮询算法** | 服务能力相近 | 优秀 | 低 | 无要求 |
+| **加权轮询** | 服务能力差异 | 良好 | 中 | 无要求 |
+| **最少连接** | 长连接场景 | 优秀 | 中 | 实时统计 |
+| **响应时间加权** | 性能敏感场景 | 优秀 | 高 | 历史数据 |
+| **一致性哈希** | 缓存友好场景 | 良好 | 高 | 节点状态 |
 
-      await file.writeAsBytes(response.data!);
+### 4.3.17 API版本管理策略
 
-      return file;
-    } on ApiException catch (e) {
-      throw FileServiceException('文件下载失败: ${e.message}');
-    }
-  }
+**版本管理规范：**
 
-  // 获取文件信息
-  Future<FileInfo> getFileInfo(String fileId) async {
-    try {
-      final response = await _apiClient.get<Map<String, dynamic>>(
-        '/files/info/$fileId',
-      );
+| 版本策略 | 版本格式 | 兼容性要求 | 发布周期 | 维护成本 | 适用场景 |
+|----------|----------|------------|----------|----------|----------|
+| **语义化版本** | Major.Minor.Patch | 向后兼容 | 按需发布 | 中 | 标准API |
+| **日期版本** | YYYY-MM-DD | 不保证兼容 | 定期发布 | 高 | 内部API |
+| **URL版本** | /v1/, /v2/ | 版本隔离 | 长期维护 | 低 | 公开API |
+| **Header版本** | Accept: application/vnd.api+jsonv1 | 请求级版本 | 灵活发布 | 高 | 复杂API |
 
-      return FileInfo.fromJson(response.data!);
-    } on ApiException catch (e) {
-      throw FileServiceException('获取文件信息失败: ${e.message}');
-    }
-  }
+**版本兼容性矩阵：**
 
-  // 删除文件
-  Future<void> deleteFile(String fileId) async {
-    try {
-      await _apiClient.delete('/files/$fileId');
-    } on ApiException catch (e) {
-      throw FileServiceException('删除文件失败: ${e.message}');
-    }
-  }
+| 版本关系 | 兼容性状态 | 处理策略 | 迁移时间 | 通知机制 | 风险等级 |
+|----------|------------|----------|----------|----------|----------|
+| **主版本升级** | 破坏性变更 | 并行维护 | 6-12个月 | 提前3个月通知 | 高 |
+| **次版本升级** | 向后兼容 | 渐进式升级 | 1-3个月 | 提前1个月通知 | 中 |
+| **补丁版本** | 完全兼容 | 自动升级 | 1-4周 | 发布时通知 | 低 |
+| **预发布版本** | 不保证兼容 | 测试环境专用 | 持续更新 | 开发者通知 | 极高 |
 
-  // 获取文件预览URL
-  String getPreviewUrl(String fileId, {int? width, int? height}) {
-    final baseUrl = AppConfig.apiBaseUrl;
-    final queryParams = <String, String>{
-      'file_id': fileId,
-      if (width != null) 'width': width.toString(),
-      if (height != null) 'height': height.toString(),
-    };
+---
 
-    final uri = Uri.parse('$baseUrl/files/preview')
-        .replace(queryParameters: queryParams);
+## 🔌 API服务接口规范
 
-    return uri.toString();
-  }
+### 4.3.18 算法服务API设计
 
-  // 本地缓存管理
-  Future<void> cacheFile(String fileId, File file) async {
-    final cacheDir = await getTemporaryDirectory();
-    final cachePath = path.join(cacheDir.path, 'cache', fileId);
-    final cacheFile = File(cachePath);
+**算法管理接口规范：**
 
-    await cacheFile.parent.create(recursive: true);
-    await file.copy(cachePath);
-  }
+| 接口类型 | HTTP方法 | 路径规范 | 请求格式 | 响应格式 | 认证要求 |
+|----------|----------|----------|----------|----------|----------|
+| **获取算法列表** | GET | /api/v1/algorithms | Query参数 | JSON列表 | 必需 |
+| **获取算法详情** | GET | /api/v1/algorithms/{id} | 路径参数 | JSON对象 | 必需 |
+| **获取推荐算法** | POST | /api/v1/algorithms/recommend | FormData | JSON列表 | 必需 |
+| **收藏算法** | POST | /api/v1/algorithms/{id}/favorite | 空请求 | 状态消息 | 必需 |
+| **取消收藏** | DELETE | /api/v1/algorithms/{id}/favorite | 空请求 | 状态消息 | 必需 |
+| **获取算法性能** | POST | /api/v1/algorithms/{id}/performance | FormData | 性能数据 | 必需 |
 
-  Future<File?> getCachedFile(String fileId) async {
-    final cacheDir = await getTemporaryDirectory();
-    final cachePath = path.join(cacheDir.path, 'cache', fileId);
-    final cacheFile = File(cachePath);
+**算法接口参数规范：**
 
-    if (await cacheFile.exists()) {
-      return cacheFile;
-    }
+| 参数名称 | 参数类型 | 必填 | 格式要求 | 默认值 | 说明 |
+|----------|----------|------|----------|--------|------|
+| **page** | Integer | 否 | ≥1 | 1 | 分页页码 |
+| **limit** | Integer | 否 | 1-100 | 20 | 每页数量 |
+| **category** | String | 否 | 算法分类枚举 | 全部 | 算法分类 |
+| **type** | String | 否 | traditional/deep_learning | 全部 | 算法类型 |
+| **sort** | String | 否 | name/rating/created_at | created_at | 排序字段 |
+| **order** | String | 否 | asc/desc | desc | 排序方向 |
 
-    return null;
-  }
+### 4.3.19 图像处理服务API设计
 
-  Future<void> clearCache() async {
-    final cacheDir = await getTemporaryDirectory();
-    final cachePath = path.join(cacheDir.path, 'cache');
-    final cacheDirToDelete = Directory(cachePath);
+**图像处理接口架构：**
 
-    if (await cacheDirToDelete.exists()) {
-      await cacheDirToDelete.delete(recursive: true);
-    }
-  }
+```mermaid
+graph TB
+    subgraph "图像处理API流程"
+        UPLOAD[图片上传]
+        ANALYZE[图像分析]
+        PROCESS[算法处理]
+        PROGRESS[进度推送]
+        RESULT[结果返回]
+    end
 
-  // 私有辅助方法
-  String _generateFileId() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final random = Random().nextInt(10000);
-    return '${timestamp}_$random';
-  }
-}
+    subgraph "支持的操作"
+        RESIZE[尺寸调整]
+        FORMAT[格式转换]
+        ENHANCE[质量增强]
+        DEHAZE[去雾处理]
+        COMPRESS[压缩优化]
+    end
+
+    subgraph "处理参数"
+        QUALITY[质量参数]
+        SIZE[尺寸参数]
+        ALGORITHM[算法参数]
+        FILTER[滤镜参数]
+    end
+
+    UPLOAD --> ANALYZE
+    ANALYZE --> PROCESS
+    PROCESS --> PROGRESS
+    PROGRESS --> RESULT
+
+    PROCESS --> RESIZE
+    PROCESS --> FORMAT
+    PROCESS --> ENHANCE
+    PROCESS --> DEHAZE
+    PROCESS --> COMPRESS
+
+    RESIZE --> SIZE
+    FORMAT --> QUALITY
+    ENHANCE --> FILTER
+    DEHAZE --> ALGORITHM
+```
+
+**图像处理接口规范：**
+
+| 接口功能 | HTTP方法 | 路径 | 请求体 | 响应体 | 特殊要求 |
+|----------|----------|------|--------|--------|----------|
+| **开始处理** | POST | /api/v1/processing/start | Multipart表单 | 任务ID | 文件大小限制10MB |
+| **查询状态** | GET | /api/v1/processing/{taskId}/status | 无 | 进度信息 | 实时查询 |
+| **暂停处理** | POST | /api/v1/processing/{taskId}/pause | 无 | 状态消息 | 仅处理中任务 |
+| **恢复处理** | POST | /api/v1/processing/{taskId}/resume | 无 | 状态消息 | 仅暂停任务 |
+| **取消处理** | DELETE | /api/v1/processing/{taskId} | 无 | 状态消息 | 强制终止 |
+| **获取结果** | GET | /api/v1/processing/{taskId}/result | 无 | 处理结果 | 下载链接有效期24h |
+
+### 4.3.20 文件管理服务API设计
+
+**文件管理接口矩阵：**
+
+| 文件操作 | HTTP方法 | 接口路径 | 支持格式 | 大小限制 | 存储策略 |
+|----------|----------|----------|----------|----------|----------|
+| **单文件上传** | POST | /api/v1/files/upload | JPG/PNG/WebP | 10MB | 本地+云备份 |
+| **批量上传** | POST | /api/v1/files/batch-upload | 多格式 | 50MB总量 | 分布式存储 |
+| **文件下载** | GET | /api/v1/files/{fileId}/download | 原格式 | 无限制 | CDN加速 |
+| **文件预览** | GET | /api/v1/files/{fileId}/preview | WebP/JPG | 无限制 | 缩略图生成 |
+| **文件删除** | DELETE | /api/v1/files/{fileId} | 无 | 无限制 | 软删除+定时清理 |
+
+**文件安全策略：**
+
+| 安全措施 | 实施方式 | 防护目标 | 检测机制 | 响应策略 |
+|----------|----------|----------|----------|----------|
+| **文件类型验证** | 文件头+扩展名双重检查 | 恶意文件上传 | 实时检测 | 拒绝上传 |
+| **病毒扫描** | 集成杀毒引擎 | 病毒文件传播 | 异步扫描 | 隔离文件 |
+| **大小限制** | 前后端双重验证 | 存储空间攻击 | 预检查 | 返回错误 |
+| **访问控制** | 令牌+权限验证 | 未授权访问 | 请求验证 | 拒绝访问 |
+| **加密存储** | AES-256加密 | 数据泄露风险 | 存储加密 | 安全存储 |
+
+### 4.3.21 WebSocket实时通信架构
+
+**WebSocket连接管理策略：**
+
+| 管理方面 | 设计策略 | 技术实现 | 性能指标 | 容错机制 |
+|----------|----------|----------|----------|----------|
+| **连接建立** | 统一连接点 | 连接池管理 | 建立时间<1s | 自动重试 |
+| **心跳维持** | 定时心跳包 | Ping/Pong机制 | 心跳间隔30s | 连接超时重连 |
+| **消息传输** | 二进制优先 | 消息压缩 | 延迟<100ms | 重发机制 |
+| **状态同步** | 实时推送 | 状态广播 | 同步延迟<50ms | 状态缓存 |
+| **连接关闭** | 优雅关闭 | 清理资源 | 关闭时间<1s | 强制关闭备份 |
+
+**WebSocket消息格式规范：**
+
+| 消息类型 | 格式结构 | 必填字段 | 可选字段 | 压缩策略 |
+|----------|----------|----------|----------|----------|
+| **进度消息** | JSON | task_id, progress, status | message, timestamp | 无压缩 |
+| **状态消息** | JSON | task_id, status | details, error_code | 轻量压缩 |
+| **文件消息** | Binary | file_id, chunk_index, total_chunks | checksum | 压缩传输 |
+| **控制消息** | JSON | command, target | parameters | 无压缩 |
+
+### 4.3.22 API响应格式标准化
+
+**统一响应结构设计：**
+
+```mermaid
+graph TB
+    subgraph "API响应结构"
+        RESPONSE[统一响应体]
+        STATUS[状态码]
+        DATA[数据内容]
+        MESSAGE[消息信息]
+        META[元数据]
+    end
+
+    subgraph "成功响应"
+        SUCCESS_CODE[200/201/204]
+        SUCCESS_DATA[业务数据]
+        SUCCESS_MSG["操作成功"]
+        SUCCESS_META[分页/统计信息]
+    end
+
+    subgraph "错误响应"
+        ERROR_CODE[4xx/5xx]
+        ERROR_DATA[错误详情]
+        ERROR_MSG[错误描述]
+        ERROR_META[请求ID/时间戳]
+    end
+
+    RESPONSE --> STATUS
+    RESPONSE --> DATA
+    RESPONSE --> MESSAGE
+    RESPONSE --> META
+
+    STATUS --> SUCCESS_CODE
+    DATA --> SUCCESS_DATA
+    MESSAGE --> SUCCESS_MSG
+    META --> SUCCESS_META
+
+    STATUS --> ERROR_CODE
+    DATA --> ERROR_DATA
+    MESSAGE --> ERROR_MSG
+    META --> ERROR_META
+```
+
+**HTTP状态码使用规范：**
+
+| 状态码 | 含义 | 使用场景 | 响应体格式 | 客户端处理 |
+|--------|------|----------|------------|------------|
+| **200** | 成功 | 查询操作成功 | 标准成功格式 | 显示数据 |
+| **201** | 创建成功 | 资源创建成功 | 包含创建的资源 | 跳转到资源 |
+| **204** | 无内容 | 删除/更新成功 | 空响应体 | 刷新本地状态 |
+| **400** | 请求错误 | 参数验证失败 | 错误详情 | 显示错误信息 |
+| **401** | 未授权 | 认证失败 | 认证错误 | 跳转登录页 |
+| **403** | 禁止访问 | 权限不足 | 权限错误 | 显示权限提示 |
+| **404** | 未找到 | 资源不存在 | 资源错误 | 显示404页面 |
+| **429** | 限流 | 请求过于频繁 | 限流信息 | 延迟重试 |
+| **500** | 服务器错误 | 内部错误 | 系统错误 | 显示友好提示 |
+
+### 4.3.23 API接口文档规范
+
+**接口文档标准模板：**
+
+| 文档章节 | 内容要求 | 格式规范 | 示例要求 | 维护责任 |
+|----------|----------|----------|----------|----------|
+| **接口概述** | 功能描述、使用场景 | Markdown格式 | 实际业务场景 | 产品经理 |
+| **请求参数** | 参数名、类型、必填、说明 | 表格形式 | 真实参数示例 | 后端开发 |
+| **响应格式** | 状态码、数据结构 | JSON示例 | 完整响应示例 | 后端开发 |
+| **错误码** | 错误类型、解决方案 | 枚举表格 | 常见错误场景 | 后端开发 |
+| **使用示例** | 代码示例、调用流程 | 多语言示例 | 可运行示例 | 前端开发 |
+| **更新日志** | 版本变更、兼容性 | 时间倒序 | 具体变更说明 | 技术负责人 |
+
+**接口测试规范：**
+
+| 测试类型 | 测试范围 | 工具要求 | 覆盖率标准 | 自动化程度 |
+|----------|----------|----------|------------|------------|
+| **单元测试** | 单个接口逻辑 | 测试框架 | 代码覆盖率>90% | 完全自动化 |
+| **集成测试** | 接口间调用 | API测试工具 | 业务场景覆盖>80% | 自动化为主 |
+| **性能测试** | 响应时间、并发 | 压测工具 | 峰值并发模拟 | 自动化测试 |
+| **安全测试** | 安全漏洞扫描 | 安全扫描工具 | OWASP标准检查 | 定期自动扫描 |
+| **兼容性测试** | 版本兼容性 | 多版本测试 | 主要版本覆盖 | 部分自动化 |
+
+---
+
+## 📦 缓存策略架构设计
+
+### 4.3.24 多级缓存体系设计
+
+**缓存架构理念：**
+- **分层缓存**：内存缓存、磁盘缓存、网络缓存三级架构
+- **智能策略**：基于访问频率和数据特性的缓存策略
+- **一致性保证**：多级缓存间的数据一致性机制
+- **性能优化**：最大化缓存命中率，最小化网络请求
+
+**多级缓存架构图：**
+
+```mermaid
+graph TB
+    subgraph "客户端缓存层"
+        L1[L1缓存 - 内存缓存<br/>响应时间: <1ms<br/>容量: 50MB<br/>TTL: 30分钟]
+        L2[L2缓存 - 磁盘缓存<br/>响应时间: <10ms<br/>容量: 200MB<br/>TTL: 24小时]
+    end
+
+    subgraph "网络缓存层"
+        HTTP[HTTP缓存<br/>响应时间: <50ms<br/>容量: 无限制<br/>TTL: 服务器控制]
+        CDN[CDN缓存<br/>响应时间: <100ms<br/>容量: 全球分发<br/>TTL: 7天]
+    end
+
+    subgraph "服务端缓存层"
+        REDIS[(Redis缓存<br/>响应时间: <5ms<br/>容量: 2GB<br/>TTL: 1小时)]
+        DB_CACHE[(数据库缓存<br/>响应时间: <20ms<br/>容量: 查询缓存<br/>TTL: 10分钟)]
+    end
+
+    L1 --> L2
+    L2 --> HTTP
+    HTTP --> CDN
+    CDN --> REDIS
+    REDIS --> DB_CACHE
+
+    L1 -.->|热点数据| L1
+    L2 -.->|温数据| L2
+    HTTP -.->|静态资源| HTTP
+    CDN -.->|全球资源| CDN
+```
+
+**缓存策略配置矩阵：**
+
+| 缓存级别 | 缓存对象 | TTL策略 | 淘汰策略 | 容量限制 | 一致性保证 |
+|----------|----------|---------|----------|----------|------------|
+| **L1内存缓存** | 用户信息、配置数据 | 30分钟 | LRU算法 | 50MB | 弱一致性 |
+| **L2磁盘缓存** | 图片、文件数据 | 24小时 | LFU算法 | 200MB | 最终一致性 |
+| **HTTP缓存** | API响应数据 | 服务器控制 | Cache-Control | 无限制 | 强一致性 |
+| **CDN缓存** | 静态资源 | 7天 | 时间失效 | 无限制 | 弱一致性 |
+| **Redis缓存** | 会话数据、热点数据 | 1小时 | 内存不足淘汰 | 2GB | 强一致性 |
+
+### 4.3.25 缓存策略设计规范
+
+**数据分类缓存策略：**
+
+| 数据类型 | 缓存级别 | 缓存时长 | 更新策略 | 失效策略 | 预期命中率 |
+|----------|----------|----------|----------|----------|------------|
+| **用户信息** | L1+Redis | 30分钟 | 写入时更新 | 主动失效 | 95% |
+| **算法列表** | L1+L2+HTTP | 1小时 | 定时刷新 | TTL失效 | 90% |
+| **处理结果** | L2+CDN | 24小时 | 写入时更新 | 手动失效 | 85% |
+| **配置数据** | L1+Redis | 12小时 | 推送更新 | 版本控制 | 98% |
+| **临时数据** | L1仅缓存 | 5分钟 | 写入时更新 | 快速失效 | 70% |
+
+**缓存淘汰策略：**
+
+| 策略类型 | 适用场景 | 实现复杂度 | 性能影响 | 内存效率 | 配置灵活性 |
+|----------|----------|------------|----------|----------|------------|
+| **LRU** | 通用场景 | 低 | 低 | 中等 | 高 |
+| **LFU** | 访问频率差异大 | 中 | 中等 | 高 | 中 |
+| **FIFO** | 简单队列 | 极低 | 极低 | 低 | 高 |
+| **TTL** | 时间敏感数据 | 低 | 低 | 中等 | 高 |
+| **随机淘汰** | 缓存压力小时 | 极低 | 极低 | 低 | 高 |
+
+### 4.3.26 缓存一致性设计
+
+**一致性保证机制：**
+
+```mermaid
+graph TB
+    subgraph "缓存一致性架构"
+        WRITE[写操作触发]
+        INVALIDATE[缓存失效]
+        UPDATE[数据更新]
+        NOTIFY[变更通知]
+        SYNC[数据同步]
+    end
+
+    subgraph "同步策略"
+        IMMEDIATE[立即失效<br/>强一致性]
+        DELAYED[延迟失效<br/>最终一致性]
+        PERIODIC[定期同步<br/>弱一致性]
+        EVENT[事件驱动<br/>实时一致性]
+    end
+
+    subgraph "冲突处理"
+        VERSION[版本控制]
+        TIMESTAMP[时间戳检查]
+        CHECKSUM[数据校验]
+        LOCK[分布式锁]
+    end
+
+    WRITE --> INVALIDATE
+    INVALIDATE --> UPDATE
+    UPDATE --> NOTIFY
+    NOTIFY --> SYNC
+
+    INVALIDATE --> IMMEDIATE
+    INVALIDATE --> DELAYED
+    SYNC --> PERIODIC
+    SYNC --> EVENT
+
+    UPDATE --> VERSION
+    UPDATE --> TIMESTAMP
+    SYNC --> CHECKSUM
+    WRITE --> LOCK
+```
+
+**缓存一致性策略表：**
+
+| 一致性级别 | 实现方式 | 延迟容忍度 | 复杂度 | 性能影响 | 适用场景 |
+|------------|----------|------------|--------|----------|----------|
+| **强一致性** | 写入立即失效所有缓存 | 0延迟 | 高 | 中等 | 用户关键数据 |
+| **最终一致性** | 异步失效，延迟更新 | 秒级延迟 | 中 | 低 | 一般业务数据 |
+| **弱一致性** | 定时同步，允许短暂不一致 | 分钟级延迟 | 低 | 极低 | 统计类数据 |
+| **实时一致性** | 事件驱动，推送更新 | 毫秒级延迟 | 极高 | 中等 | 实时协作数据 |
+
+### 4.3.27 缓存性能监控
+
+**缓存性能指标体系：**
+
+| 监控维度 | 关键指标 | 健康阈值 | 监控频率 | 告警级别 | 优化建议 |
+|----------|----------|----------|----------|----------|----------|
+| **缓存命中率** | 整体命中率 | >80% | 实时 | Warning | 调整缓存策略 |
+| **响应时间** | 平均响应时间 | <10ms | 实时 | Critical | 优化缓存结构 |
+| **内存使用率** | 缓存内存占用 | <80% | 1分钟 | Warning | 调整缓存容量 |
+| **网络带宽** | 缓存节省带宽 | >60% | 5分钟 | Info | 扩大缓存范围 |
+| **数据一致性** | 缓存不一致事件 | <1% | 实时 | Error检查 | 加强同步机制 |
+
+**缓存监控架构：**
+
+```mermaid
+graph TB
+    subgraph "监控数据收集"
+        METRICS[性能指标]
+        EVENTS[缓存事件]
+        HEALTH[健康检查]
+        LOGS[缓存日志]
+    end
+
+    subgraph "数据处理"
+        AGGREGATE[数据聚合]
+        ANALYZE[趋势分析]
+        ALERT[告警判断]
+        REPORT[报告生成]
+    end
+
+    subgraph "监控输出"
+        DASHBOARD[监控面板]
+        NOTIFICATION[告警通知]
+        REPORT_DOC[性能报告]
+        INSIGHT[优化建议]
+    end
+
+    METRICS --> AGGREGATE
+    EVENTS --> AGGREGATE
+    HEALTH --> ANALYZE
+    LOGS --> ANALYZE
+
+    AGGREGATE --> ALERT
+    ANALYZE --> REPORT
+
+    ALERT --> NOTIFICATION
+    REPORT --> REPORT_DOC
+    AGGREGATE --> DASHBOARD
+    ANALYZE --> INSIGHT
+```
+
+### 4.3.28 缓存优化策略
+
+**性能优化技术：**
+
+| 优化技术 | 实施要点 | 性能提升 | 实施复杂度 | 风险评估 | 适用范围 |
+|----------|----------|----------|------------|----------|----------|
+| **数据压缩** | GZIP/Brotli压缩 | 减少70%存储 | 低 | 低风险 | 文本类数据 |
+| **序列化优化** | Protocol Buffers | 提升50%性能 | 中 | 中风险 | 结构化数据 |
+| **预加载策略** | 智能预测加载 | 提升30%命中率 | 高 | 高风险 | 用户行为数据 |
+| **分片缓存** | 数据水平分片 | 提升并发能力 | 高 | 高风险 | 大数据集 |
+| **热点优化** 热点数据识别与优化 | 提升80%热点性能 | 中 | 中风险 | 访问不均匀数据 |
+
+**缓存容量规划：**
+
+| 缓存类型 | 容量规划依据 | 增长策略 | 扩容方案 | 监控指标 | 成本控制 |
+|----------|--------------|----------|----------|----------|----------|
+| **内存缓存** | 应用内存限制 | 线性增长 | 垂直扩容 | 内存使用率 | 成本敏感 |
+| **磁盘缓存** | 存储空间限制 | 按需增长 | 水平扩容 | 磁盘使用率 | 成本中等 |
+| **分布式缓存** | 业务规模预测 | 阶梯式增长 | 集群扩容 | 节点负载 | 成本较高 |
+| **CDN缓存** | 用户分布规划 | 全球分布 | 就近部署 | 流量分布 | 成本可变 |
+
+---
+
+## ⚠️ 错误处理策略架构设计
+
+### 4.3.29 统一错误处理架构
+
+**错误处理设计原则：**
+- **分层处理**：不同层次的错误采用不同的处理策略
+- **统一标准**：建立统一的错误分类和处理规范
+- **用户友好**：提供清晰、有用的错误提示信息
+- **系统稳定**：错误不应导致系统崩溃或数据损坏
+
+**错误处理架构图：**
+
+```mermaid
+graph TB
+    subgraph "错误处理架构层次"
+        APP[应用层错误处理]
+        BUSINESS[业务层错误处理]
+        SERVICE[服务层错误处理]
+        NETWORK[网络层错误处理]
+    end
+
+    subgraph "错误分类体系"
+        VALIDATION[验证错误]
+        AUTHENTICATION[认证错误]
+        AUTHORIZATION[权限错误]
+        NETWORK_ERROR[网络错误]
+        SERVER_ERROR[服务端错误]
+        BUSINESS_ERROR[业务错误]
+    end
+
+    subgraph "错误处理策略"
+        RETRY[重试机制]
+        FALLBACK[降级策略]
+        CIRCUIT[熔断保护]
+        RECOVERY[故障恢复]
+        NOTIFICATION[错误通知]
+    end
+
+    APP --> VALIDATION
+    APP --> BUSINESS_ERROR
+    BUSINESS --> AUTHENTICATION
+    BUSINESS --> AUTHORIZATION
+    SERVICE --> SERVER_ERROR
+    NETWORK --> NETWORK_ERROR
+
+    VALIDATION --> RETRY
+    AUTHENTICATION --> FALLBACK
+    NETWORK_ERROR --> CIRCUIT
+    SERVER_ERROR --> RECOVERY
+    BUSINESS_ERROR --> NOTIFICATION
+```
+
+### 4.3.30 错误分类体系设计
+
+**错误分类矩阵：**
+
+| 错误大类 | 错误子类 | HTTP状态码 | 错误代码 | 严重程度 | 恢复策略 | 用户提示 |
+|----------|----------|------------|----------|----------|----------|----------|
+| **客户端错误** | 参数验证失败 | 400 | CLIENT_001 | 中等 | 输入验证 | 参数格式错误 |
+| **客户端错误** | 认证失败 | 401 | AUTH_001 | 高 | 重新登录 | 请重新登录 |
+| **客户端错误** | 权限不足 | 403 | PERM_001 | 高 | 权限申请 | 权限不足 |
+| **客户端错误** | 资源不存在 | 404 | RESOURCE_001 | 低 | 返回首页 | 资源未找到 |
+| **客户端错误** | 请求过于频繁 | 429 | RATE_001 | 中 | 延迟重试 | 请稍后再试 |
+| **服务端错误** | 服务器内部错误 | 500 | SERVER_001 | 极高 | 降级处理 | 系统维护中 |
+| **服务端错误** | 网关错误 | 502 | GATEWAY_001 | 高 | 重试其他服务 | 网络异常 |
+| **服务端错误** | 服务不可用 | 503 | SERVICE_001 | 极高 | 服务降级 | 服务暂时不可用 |
+
+**网络错误处理策略：**
+
+| 错误类型 | 触发条件 | 重试策略 | 降级方案 | 用户提示 | 日志级别 |
+|----------|----------|----------|----------|----------|----------|
+| **连接超时** | 网络连接超时 | 指数退避重试 | 使用缓存数据 | 网络连接超时 | Warning |
+| **请求超时** | 服务器响应慢 | 线性重试 | 显示加载状态 | 服务器繁忙 | Info |
+| **网络不可用** | 断网状态 | 定时重连 | 离线模式 | 网络不可用 | Error |
+| **DNS解析失败** | 域名解析错误 | 切换备用DNS | 使用IP地址 | 网络配置错误 | Error |
+| **SSL证书错误** | 证书验证失败 | 跳过验证(测试) | 提示安全风险 | 连接不安全 | Warning |
+
+### 4.3.31 错误恢复机制设计
+
+**自动恢复策略：**
+
+```mermaid
+graph LR
+    subgraph "错误检测"
+        DETECT[错误检测]
+        CLASSIFY[错误分类]
+        ANALYZE[影响分析]
+        DECISION[恢复决策]
+    end
+
+    subgraph "恢复策略"
+        RETRY[自动重试]
+        FALLBACK[服务降级]
+        CIRCUIT[熔断恢复]
+        RESET[状态重置]
+    end
+
+    subgraph "恢复验证"
+        VERIFY[恢复验证]
+        MONITOR[状态监控]
+        FEEDBACK[效果反馈]
+        OPTIMIZE[策略优化]
+    end
+
+    DETECT --> CLASSIFY
+    CLASSIFY --> ANALYZE
+    ANALYZE --> DECISION
+
+    DECISION --> RETRY
+    DECISION --> FALLBACK
+    DECISION --> CIRCUIT
+    DECISION --> RESET
+
+    RETRY --> VERIFY
+    FALLBACK --> VERIFY
+    CIRCUIT --> VERIFY
+    RESET --> VERIFY
+
+    VERIFY --> MONITOR
+    MONITOR --> FEEDBACK
+    FEEDBACK --> OPTIMIZE
+    OPTIMIZE -.-> DETECT
+```
+
+**恢复策略配置：**
+
+| 恢复策略 | 适用错误类型 | 重试次数 | 重试间隔 | 最大延迟 | 成功条件 |
+|----------|--------------|----------|----------|----------|----------|
+| **快速重试** | 临时网络错误 | 3次 | 1s, 2s, 4s | 4s | HTTP 2xx |
+| **指数退避** | 服务过载 | 5次 | 2^n秒 | 32s | 响应时间<1s |
+| **线性重试** | 连接超时 | 3次 | 1s, 2s, 3s | 3s | 连接成功 |
+| **固定间隔** | 认证失败 | 2次 | 5s | 5s | 认证成功 |
+| **单次重试** | 幂等操作 | 1次 | 立即 | 0s | 操作成功 |
+
+### 4.3.32 熔断器模式设计
+
+**熔断器状态机制：**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Closed: 初始状态
+    Closed --> Open: 失败率>阈值
+    Open --> HalfOpen: 超时时间到期
+    HalfOpen --> Closed: 成功率>阈值
+    HalfOpen --> Open: 失败率>阈值
+
+    note right of Closed
+        正常状态，请求正常通过
+        监控失败率
+        失败率>阈值时打开熔断器
+    end note
+
+    note right of Open
+        熔断状态，所有请求快速失败
+        经过超时时间后进入半开状态
+        避免级联故障
+    end note
+
+    note right of HalfOpen
+        半开状态，允许少量请求通过
+        根据成功率决定状态转换
+        成功率高则关闭，低则重新打开
+    end note
+```
+
+**熔断器配置策略：**
+
+| 配置参数 | 推荐值 | 调整依据 | 影响范围 | 监控指标 | 风险评估 |
+|----------|--------|----------|----------|----------|----------|
+| **失败率阈值** | 50% | 服务稳定性 | 熔断敏感度 | 错误率统计 | 中风险 |
+| **最小请求数** | 20 | 统计可靠性 | 熔断准确性 | 请求计数 | 低风险 |
+| **熔断超时时间** | 60秒 | 服务恢复时间 | 故障恢复时长 | 熔断时长 | 中风险 |
+| **半开请求数** | 10 | 测试样本量 | 恢复检测精度 | 测试请求量 | 低风险 |
+| **成功恢复阈值** | 70% | 恢复可靠性 | 熔断关闭条件 | 成功率 | 中风险 |
+
+### 4.3.33 降级策略设计
+
+**降级策略层次：**
+
+| 降级级别 | 触发条件 | 降级措施 | 功能保留 | 用户体验 | 恢复条件 |
+|----------|----------|----------|----------|----------|----------|
+| **完全降级** | 服务完全不可用 | 显示维护页面 | 基础导航 | 明确提示 | 服务恢复 |
+| **功能降级** | 部分功能故障 | 禁用故障功能 | 核心功能可用 | 功能限制 | 故障修复 |
+| **体验降级** | 性能下降 | 简化界面效果 | 主要功能 | 界面简化 | 性能恢复 |
+| **数据降级** | 数据获取失败 | 显示缓存/默认数据 | 基础展示 | 数据可能过期 | 数据恢复 |
+
+**降级决策流程：**
+
+```mermaid
+graph TD
+    START[请求开始] --> HEALTH_CHECK[服务健康检查]
+    HEALTH_CHECK -->|健康| NORMAL_EXEC[正常执行]
+    HEALTH_CHECK -->|不健康| DEGRADE_CHECK[降级条件检查]
+
+    DEGRADE_CHECK -->|严重故障| FULL_DEGRADE[完全降级]
+    DEGRADE_CHECK -->|部分故障| FUNC_DEGRADE[功能降级]
+    DEGRADE_CHECK -->|性能问题| EXP_DEGRADE[体验降级]
+    DEGRADE_CHECK -->|数据问题| DATA_DEGRADE[数据降级]
+
+    NORMAL_EXEC --> SUCCESS[执行成功]
+    FULL_DEGRADE --> MAINTENANCE[维护提示]
+    FUNC_DEGRADE --> LIMITED_FUNC[限制功能]
+    EXP_DEGRADE --> SIMPLE_UI[简化界面]
+    DATA_DEGRADE --> CACHED_DATA[缓存数据]
+
+    SUCCESS --> MONITOR[结果监控]
+    MAINTENANCE --> MONITOR
+    LIMITED_FUNC --> MONITOR
+    SIMPLE_UI --> MONITOR
+    CACHED_DATA --> MONITOR
+
+    MONITOR -->|持续监控| HEALTH_CHECK
+```
+
+### 4.3.34 错误监控与告警
+
+**错误监控指标体系：**
+
+| 监控维度 | 关键指标 | 告警阈值 | 监控频率 | 通知渠道 | 处理优先级 |
+|----------|----------|----------|----------|----------|------------|
+| **错误率** | API错误率 | >5% | 实时 | 短信+邮件 | Critical |
+| **响应时间** | P95响应时间 | >2s | 实时 | 即时通讯 | High |
+| **可用性** | 服务可用性 | <99% | 1分钟 | 邮件 | High |
+| **熔断状态** | 熔断器打开数 | >3个 | 实时 | 短信 | Critical |
+| **降级频率** | 降级触发次数 | >10次/小时 | 5分钟 | 邮件 | Medium |
+
+**告警处理流程：**
+
+```mermaid
+graph TB
+    subgraph "告警触发"
+        THRESHOLD[阈值检测]
+        CLASSIFY[告警分级]
+        ROUTE[路由分配]
+        ESCALATE[升级机制]
+    end
+
+    subgraph "告警处理"
+        ACKNOWLEDGE[告警确认]
+        DIAGNOSE[故障诊断]
+        RESOLVE[问题解决]
+        VERIFY[解决验证]
+    end
+
+    subgraph "告警闭环"
+        DOCUMENT[问题记录]
+        ANALYZE[根因分析]
+        IMPROVE[改进措施]
+        PREVENT[预防机制]
+    end
+
+    THRESHOLD --> CLASSIFY
+    CLASSIFY --> ROUTE
+    ROUTE --> ESCALATE
+
+    ESCALATE --> ACKNOWLEDGE
+    ACKNOWLEDGE --> DIAGNOSE
+    DIAGNOSE --> RESOLVE
+    RESOLVE --> VERIFY
+
+    VERIFY --> DOCUMENT
+    DOCUMENT --> ANALYZE
+    ANALYZE --> IMPROVE
+    IMPROVE --> PREVENT
 ```
 
 ---
 
-## 🔄 缓存策略
+## 📋 API集成规范汇总
 
-### 多级缓存架构
+### 4.3.35 核心设计原则与质量标准
 
-```dart
-// lib/core/cache/cache_manager.dart
-class CacheManager {
-  static const String _memoryCachePrefix = 'memory_';
-  static const String _diskCachePrefix = 'disk_';
+**架构设计质量要求：**
 
-  final Map<String, CacheItem> _memoryCache = {};
-  final StorageService _storage;
+| 质量维度 | 设计目标 | 验证标准 | 优化指标 | 风险控制 |
+|----------|----------|----------|----------|----------|
+| **性能** | API响应时间 < 200ms | 压力测试验证 | 95%请求在100ms内完成 | 性能监控告警 |
+| **可靠性** | 服务可用性 > 99.9% | 故障注入测试 | 自动重试和降级机制 | 熔断器保护 |
+| **安全性** | 数据传输加密率 100% | 安全审计检查 | 零明文数据传输 | 多层安全防护 |
+| **可维护性** | 代码复用率 > 80% | 代码质量分析 | 模块化设计 | 统一编码规范 |
+| **可扩展性** | 新API接入时间 < 1天 | 扩展性测试 | 插件化架构 | 版本兼容性管理 |
 
-  CacheManager(this._storage);
+### 4.3.36 API集成实施路线图
 
-  // 获取缓存
-  Future<T?> get<T>(String key) async {
-    // 1. 检查内存缓存
-    final memoryKey = _memoryCachePrefix + key;
-    final memoryItem = _memoryCache[memoryKey];
+**阶段性实施规划：**
 
-    if (memoryItem != null && !memoryItem.isExpired) {
-      return memoryItem.value as T?;
-    }
+| 阶段 | 时间周期 | 主要任务 | 关键交付物 | 成功标准 | 负责团队 |
+|------|----------|----------|------------|----------|----------|
+| **第一阶段** | 2周 | 基础架构搭建 | HTTP客户端、拦截器、错误处理 | 基础API调用成功 | 后端团队 |
+| **第二阶段** | 2周 | 认证授权实现 | JWT认证、权限控制、令牌管理 | 安全认证通过 | 安全团队 |
+| **第三阶段** | 3周 | 业务API集成 | 算法服务、文件管理、WebSocket | 核心功能可用 | 前后端团队 |
+| **第四阶段** | 2周 | 缓存策略实现 | 多级缓存、一致性保证 | 缓存命中率>80% | 后端团队 |
+| **第五阶段** | 1周 | 性能优化 | 连接池、批处理、监控 | 性能指标达标 | 性能团队 |
 
-    // 2. 检查磁盘缓存
-    final diskKey = _diskCachePrefix + key;
-    final diskData = _storage.getString(diskKey);
+**技术风险评估与应对：**
 
-    if (diskData != null) {
-      try {
-        final cacheItem = CacheItem.fromJson(jsonDecode(diskData));
+| 风险类型 | 风险描述 | 影响程度 | 应对策略 | 预防措施 | 应急预案 |
+|----------|----------|----------|----------|----------|----------|
+| **技术风险** | 依赖库兼容性问题 | 中等 | 版本锁定、备选方案 | 提前测试 | 回退到稳定版本 |
+| **安全风险** | 认证机制漏洞 | 极高 | 安全审计、渗透测试 | 代码审查 | 紧急安全补丁 |
+| **性能风险** | 高并发场景性能下降 | 高 | 性能测试、优化方案 | 压力测试 | 服务降级 |
+| **集成风险** | 多服务集成复杂性 | 中等 | 分阶段集成、Mock测试 | 接口标准化 | 回滚机制 |
+| **运维风险** | 监控告警不完善 | 中等 | 完善监控体系 | 监控覆盖 | 人工巡检 |
 
-        if (!cacheItem.isExpired) {
-          // 恢复到内存缓存
-          _memoryCache[memoryKey] = cacheItem;
-          return cacheItem.value as T?;
-        } else {
-          // 清理过期缓存
-          await _storage.remove(diskKey);
-        }
-      } catch (e) {
-        log('Cache deserialization error: $e');
-        await _storage.remove(diskKey);
-      }
-    }
+### 4.3.37 最佳实践总结
 
-    return null;
-  }
+**API集成最佳实践：**
 
-  // 设置缓存
-  Future<void> set<T>(
-    String key,
-    T value, {
-    Duration? expiry,
-    bool persistToDisk = false,
-  }) async {
-    final cacheItem = CacheItem<T>(
-      value: value,
-      expiry: expiry ?? Duration(hours: 1),
-      createdAt: DateTime.now(),
-    );
+| 实践领域 | 关键实践 | 实施建议 | 预期收益 | 实施难度 |
+|----------|----------|----------|----------|----------|
+| **架构设计** | 分层架构、依赖注入 | 使用Repository模式 | 提高代码可维护性 | 中等 |
+| **错误处理** | 统一异常处理、用户友好提示 | 建立错误分类体系 | 提升用户体验 | 低 |
+| **性能优化** | 缓存策略、连接复用 | 实施多级缓存 | 提升响应速度 | 中等 |
+| **安全防护** | JWT认证、数据加密 | 最小权限原则 | 保障数据安全 | 高 |
+| **监控告警** | 全链路监控、实时告警 | 建立监控体系 | 及时发现问题 | 中等 |
+| **测试策略** | 单元测试、集成测试 | 测试覆盖率>90% | 保障代码质量 | 中等 |
 
-    // 保存到内存缓存
-    final memoryKey = _memoryCachePrefix + key;
-    _memoryCache[memoryKey] = cacheItem;
+### 4.3.38 持续改进机制
 
-    // 可选：保存到磁盘缓存
-    if (persistToDisk) {
-      final diskKey = _diskCachePrefix + key;
-      await _storage.setString(diskKey, jsonEncode(cacheItem.toJson()));
-    }
-  }
+**改进迭代流程：**
 
-  // 移除缓存
-  Future<void> remove(String key) async {
-    final memoryKey = _memoryCachePrefix + key;
-    final diskKey = _diskCachePrefix + key;
+```mermaid
+graph LR
+    subgraph "改进循环"
+        MONITOR[持续监控]
+        ANALYZE[数据分析]
+        IDENTIFY[问题识别]
+        OPTIMIZE[优化改进]
+        VALIDATE[效果验证]
+    end
 
-    _memoryCache.remove(memoryKey);
-    await _storage.remove(diskKey);
-  }
+    subgraph "优化维度"
+        PERFORMANCE[性能优化]
+        SECURITY[安全加固]
+        USABILITY[可用性提升]
+        MAINTAINABILITY[可维护性改进]
+    end
 
-  // 清空所有缓存
-  Future<void> clear() async {
-    _memoryCache.clear();
+    MONITOR --> ANALYZE
+    ANALYZE --> IDENTIFY
+    IDENTIFY --> OPTIMIZE
+    OPTIMIZE --> VALIDATE
+    VALIDATE --> MONITOR
 
-    // 清空磁盘缓存
-    final keys = await _storage.getAllKeys();
-    for (final key in keys) {
-      if (key.startsWith(_diskCachePrefix)) {
-        await _storage.remove(key);
-      }
-    }
-  }
-
-  // 清理过期缓存
-  Future<void> cleanupExpired() async {
-    // 清理内存缓存
-    final expiredMemoryKeys = <String>[];
-    for (final entry in _memoryCache.entries) {
-      if (entry.value.isExpired) {
-        expiredMemoryKeys.add(entry.key);
-      }
-    }
-
-    for (final key in expiredMemoryKeys) {
-      _memoryCache.remove(key);
-    }
-
-    // 清理磁盘缓存
-    final keys = await _storage.getAllKeys();
-    for (final key in keys) {
-      if (key.startsWith(_diskCachePrefix)) {
-        try {
-          final data = _storage.getString(key);
-          if (data != null) {
-            final cacheItem = CacheItem.fromJson(jsonDecode(data));
-            if (cacheItem.isExpired) {
-              await _storage.remove(key);
-            }
-          }
-        } catch (e) {
-          await _storage.remove(key);
-        }
-      }
-    }
-  }
-
-  // 获取缓存统计信息
-  CacheStats getStats() {
-    int memoryItems = 0;
-    int memoryExpired = 0;
-
-    for (final item in _memoryCache.values) {
-      memoryItems++;
-      if (item.isExpired) {
-        memoryExpired++;
-      }
-    }
-
-    return CacheStats(
-      memoryItems: memoryItems,
-      memoryExpired: memoryExpired,
-      memorySize: _calculateMemorySize(),
-    );
-  }
-
-  int _calculateMemorySize() {
-    // 简单估算内存缓存大小
-    int totalSize = 0;
-    for (final entry in _memoryCache.entries) {
-      totalSize += entry.key.length * 2; // 字符串大小估算
-      totalSize += 100; // CacheItem 对象大小估算
-    }
-    return totalSize;
-  }
-}
-
-class CacheItem<T> {
-  final T value;
-  final Duration expiry;
-  final DateTime createdAt;
-
-  CacheItem({
-    required this.value,
-    required this.expiry,
-    required this.createdAt,
-  });
-
-  bool get isExpired {
-    return DateTime.now().difference(createdAt) > expiry;
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'value': value,
-      'expiry': expiry.inMilliseconds,
-      'createdAt': createdAt.toIso8601String(),
-    };
-  }
-
-  factory CacheItem.fromJson(Map<String, dynamic> json) {
-    return CacheItem(
-      value: json['value'],
-      expiry: Duration(milliseconds: json['expiry']),
-      createdAt: DateTime.parse(json['createdAt']),
-    );
-  }
-}
-
-class CacheStats {
-  final int memoryItems;
-  final int memoryExpired;
-  final int memorySize;
-
-  CacheStats({
-    required this.memoryItems,
-    required this.memoryExpired,
-    required this.memorySize,
-  });
-}
+    OPTIMIZE --> PERFORMANCE
+    OPTIMIZE --> SECURITY
+    OPTIMIZE --> USABILITY
+    OPTIMIZE --> MAINTAINABILITY
 ```
 
-### API缓存拦截器
-```dart
-// lib/core/network/cache_interceptor.dart
-class CacheInterceptor extends Interceptor {
-  final CacheManager _cacheManager;
-  final Duration _defaultCacheDuration;
+**监控指标与优化目标：**
 
-  CacheInterceptor(
-    this._cacheManager, {
-    Duration defaultCacheDuration = const Duration(minutes: 5),
-  }) : _defaultCacheDuration = defaultCacheDuration;
-
-  @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
-    // 只缓存GET请求
-    if (options.method != 'GET') {
-      handler.next(options);
-      return;
-    }
-
-    // 检查是否需要缓存
-    final cacheKey = _generateCacheKey(options);
-    final cachedResponse = await _cacheManager.get<Response<dynamic>>(cacheKey);
-
-    if (cachedResponse != null) {
-      // 返回缓存的响应
-      handler.resolve(cachedResponse);
-      return;
-    }
-
-    handler.next(options);
-  }
-
-  @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) async {
-    // 只缓存GET请求的成功响应
-    if (response.requestOptions.method != 'GET' ||
-        response.statusCode != 200) {
-      handler.next(response);
-      return;
-    }
-
-    // 检查响应头中的缓存控制
-    final cacheControl = response.headers['cache-control']?.first;
-    if (cacheControl != null && cacheControl.contains('no-cache')) {
-      handler.next(response);
-      return;
-    }
-
-    // 缓存响应
-    final cacheKey = _generateCacheKey(response.requestOptions);
-    final cacheDuration = _parseCacheControl(cacheControl) ?? _defaultCacheDuration;
-
-    await _cacheManager.set(cacheKey, response, expiry: cacheDuration);
-
-    handler.next(response);
-  }
-
-  String _generateCacheKey(RequestOptions options) {
-    final uri = options.uri;
-    final query = uri.query.isEmpty ? '' : '?${uri.query}';
-
-    return '${uri.scheme}://${uri.host}${uri.path}${query}';
-  }
-
-  Duration? _parseCacheControl(String? cacheControl) {
-    if (cacheControl == null) return null;
-
-    final maxAgeMatch = RegExp(r'max-age=(\d+)').firstMatch(cacheControl);
-    if (maxAgeMatch != null) {
-      final seconds = int.parse(maxAgeMatch.group(1)!);
-      return Duration(seconds: seconds);
-    }
-
-    return null;
-  }
-}
-```
+| 监控指标 | 当前基线 | 优化目标 | 监控频率 | 改进措施 | 验证周期 |
+|----------|----------|----------|----------|----------|----------|
+| **API响应时间** | 200ms | <100ms | 实时 | 缓存优化、连接池 | 每月 |
+| **错误率** | 2% | <0.5% | 实时 | 错误处理改进 | 每周 |
+| **缓存命中率** | 70% | >90% | 1小时 | 缓存策略调优 | 每月 |
+| **用户满意度** | 85% | >95% | 每日 | 用户体验优化 | 每季度 |
+| **系统可用性** | 99.5% | >99.9% | 1分钟 | 容错机制加强 | 每月 |
 
 ---
 
-## 📊 错误处理策略
-
-### 统一错误处理
-
-#### 自定义异常类型
-```dart
-// lib/core/exceptions/api_exceptions.dart
-abstract class ApiException implements Exception {
-  final String message;
-  final int? statusCode;
-  final dynamic details;
-
-  const ApiException(this.message, {this.statusCode, this.details});
-
-  @override
-  String toString() => message;
-}
-
-class NetworkException extends ApiException {
-  const NetworkException(String message) : super(message);
-}
-
-class TimeoutException extends ApiException {
-  const TimeoutException(String message) : super(message);
-}
-
-class ServerException extends ApiException {
-  const ServerException(String message, {int? statusCode})
-      : super(message, statusCode: statusCode);
-}
-
-class ValidationException extends ApiException {
-  const ValidationException(String message, {dynamic details})
-      : super(message, details: details);
-}
-
-class AuthenticationException extends ApiException {
-  const AuthenticationException(String message) : super(message);
-}
-
-class AuthorizationException extends ApiException {
-  const AuthorizationException(String message) : super(message);
-}
-
-class NotFoundException extends ApiException {
-  const NotFoundException(String message) : super(message, statusCode: 404);
-}
-
-class TooManyRequestsException extends ApiException {
-  const TooManyRequestsException(String message) : super(message, statusCode: 429);
-}
-```
-
-#### 错误处理拦截器
-```dart
-// lib/core/network/error_interceptor.dart
-class ErrorInterceptor extends Interceptor {
-  @override
-  void onError(DioException error, ErrorInterceptorHandler handler) async {
-    final apiException = _convertToApiException(error);
-
-    // 记录错误日志
-    log('API Error: ${apiException.message}',
-        error: apiException,
-        stackTrace: StackTrace.current);
-
-    // 发送错误统计
-    _reportError(apiException);
-
-    // 返回转换后的异常
-    handler.reject(apiException, error.stackTrace);
-  }
-
-  ApiException _convertToApiException(DioException error) {
-    switch (error.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.receiveTimeout:
-        return TimeoutException('请求超时，请检查网络连接');
-
-      case DioExceptionType.connectionError:
-        return NetworkException('网络连接失败，请检查网络设置');
-
-      case DioExceptionType.badResponse:
-        return _handleHttpError(error);
-
-      case DioExceptionType.cancel:
-        return const ApiException('请求已取消');
-
-      case DioExceptionType.unknown:
-      default:
-        return ApiException(error.message ?? '未知错误');
-    }
-  }
-
-  ApiException _handleHttpError(DioException error) {
-    final statusCode = error.response?.statusCode;
-    final responseData = error.response?.data;
-
-    String message = '服务器错误';
-    dynamic details;
-
-    if (responseData is Map<String, dynamic>) {
-      message = responseData['message'] ?? responseData['error'] ?? message;
-      details = responseData['details'];
-    }
-
-    switch (statusCode) {
-      case 400:
-        return ValidationException(message, details: details);
-      case 401:
-        return AuthenticationException('未授权访问，请重新登录');
-      case 403:
-        return AuthorizationException('权限不足');
-      case 404:
-        return NotFoundException(message);
-      case 422:
-        return ValidationException('数据验证失败: $message', details: details);
-      case 429:
-        return TooManyRequestsException('请求过于频繁，请稍后再试');
-      case 500:
-        return ServerException('服务器内部错误', statusCode: statusCode);
-      case 502:
-        return ServerException('网关错误', statusCode: statusCode);
-      case 503:
-        return ServerException('服务暂时不可用', statusCode: statusCode);
-      default:
-        return ServerException(message, statusCode: statusCode);
-    }
-  }
-
-  void _reportError(ApiException exception) {
-    // 发送错误统计到监控系统
-    // 这里可以集成Crashlytics、Sentry等错误监控服务
-
-    if (kReleaseMode) {
-      // 生产环境才发送错误报告
-      _sendToMonitoringService(exception);
-    }
-  }
-
-  void _sendToMonitoringService(ApiException exception) {
-    // 实现错误监控服务的集成
-    // 例如：Crashlytics.instance.recordError(exception, StackTrace.current);
-  }
-}
-```
-
----
-
-## 📈 性能优化
-
-### 请求优化策略
-
-#### 请求合并和批处理
-```dart
-// lib/core/network/request_batcher.dart
-class RequestBatcher {
-  final Map<String, List<BatchedRequest>> _batchedRequests = {};
-  final Map<String, Timer> _batchTimers = {};
-  final ApiClient _apiClient;
-  final Duration _batchDelay;
-
-  RequestBatcher(
-    this._apiClient, {
-    Duration batchDelay = const Duration(milliseconds: 100),
-  }) : _batchDelay = batchDelay;
-
-  // 添加批处理请求
-  Future<T> batchRequest<T>(
-    String batchKey,
-    String path, {
-    Map<String, dynamic>? data,
-    Map<String, dynamic>? queryParameters,
-  }) async {
-    final completer = Completer<T>();
-    final request = BatchedRequest<T>(
-      path: path,
-      data: data,
-      queryParameters: queryParameters,
-      completer: completer,
-    );
-
-    _addToBatch(batchKey, request);
-    return completer.future;
-  }
-
-  void _addToBatch(String batchKey, BatchedRequest request) {
-    final batch = _batchedRequests.putIfAbsent(batchKey, () => []);
-    batch.add(request);
-
-    // 重置批处理定时器
-    _batchTimers[batchKey]?.cancel();
-    _batchTimers[batchKey] = Timer(_batchDelay, () {
-      _processBatch(batchKey);
-    });
-  }
-
-  Future<void> _processBatch(String batchKey) async {
-    final requests = _batchedRequests.remove(batchKey)?.toList() ?? [];
-    _batchTimers.remove(batchKey);
-
-    if (requests.isEmpty) return;
-
-    try {
-      // 合并请求参数
-      final mergedData = <String, dynamic>{};
-      final mergedQueryParams = <String, dynamic>{};
-
-      for (final request in requests) {
-        if (request.data != null) {
-          mergedData.addAll(request.data!);
-        }
-        if (request.queryParameters != null) {
-          mergedQueryParams.addAll(request.queryParameters!);
-        }
-      }
-
-      // 发送合并后的请求
-      final response = await _apiClient.post<Map<String, dynamic>>(
-        '/batch/$batchKey',
-        data: mergedData,
-        queryParameters: mergedQueryParams,
-      );
-
-      final batchResults = response.data!['results'] as List;
-
-      // 分发结果到各个请求
-      for (int i = 0; i < requests.length && i < batchResults.length; i++) {
-        final request = requests[i] as BatchedRequest;
-        final result = batchResults[i];
-
-        if (result is Map<String, dynamic>) {
-          request.completer.complete(result as T);
-        } else {
-          request.completer.completeError(
-            ApiException('批处理请求结果格式错误'),
-          );
-        }
-      }
-    } catch (e) {
-      // 所有请求都失败
-      for (final request in requests) {
-        request.completer.completeError(e);
-      }
-    }
-  }
-
-  void dispose() {
-    for (final timer in _batchTimers.values) {
-      timer.cancel();
-    }
-    _batchTimers.clear();
-    _batchedRequests.clear();
-  }
-}
-
-class BatchedRequest<T> {
-  final String path;
-  final Map<String, dynamic>? data;
-  final Map<String, dynamic>? queryParameters;
-  final Completer<T> completer;
-
-  BatchedRequest({
-    required this.path,
-    this.data,
-    this.queryParameters,
-    required this.completer,
-  });
-}
-```
-
-### 连接池管理
-
-#### HTTP连接池
-```dart
-// lib/core/network/connection_pool.dart
-class ConnectionPool {
-  final Map<String, Dio> _connections = {};
-  final int _maxConnectionsPerHost;
-  final Duration _connectionTimeout;
-
-  ConnectionPool({
-    int maxConnectionsPerHost = 5,
-    Duration connectionTimeout = const Duration(seconds: 30),
-  }) : _maxConnectionsPerHost = maxConnectionsPerHost,
-       _connectionTimeout = connectionTimeout;
-
-  Dio getConnection(String baseUrl) {
-    final connection = _connections[baseUrl];
-
-    if (connection != null) {
-      return connection;
-    }
-
-    final newConnection = _createConnection(baseUrl);
-    _connections[baseUrl] = newConnection;
-
-    return newConnection;
-  }
-
-  Dio _createConnection(String baseUrl) {
-    return Dio(BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: _connectionTimeout,
-      receiveTimeout: _connectionTimeout,
-      sendTimeout: _connectionTimeout,
-      // 连接池配置
-      persistentConnection: true,
-      maxRedirects: 5,
-      followRedirects: true,
-      // 启用HTTP/2
-      httpClientAdapter: HttpClientAdapter(),
-    ));
-  }
-
-  void closeConnection(String baseUrl) {
-    final connection = _connections.remove(baseUrl);
-    connection?.close();
-  }
-
-  void closeAllConnections() {
-    for (final connection in _connections.values) {
-      connection.close();
-    }
-    _connections.clear();
-  }
-}
-```
-
----
-
-## 🧪 API测试策略
-
-### Mock服务实现
-
-#### 测试用的Mock API客户端
-```dart
-// test/mocks/mock_api_client.dart
-class MockApiClient extends Mock implements ApiClient {
-  final Map<String, dynamic> _responses = {};
-  final Map<String, dynamic> _delays = {};
-
-  void setResponse(String key, dynamic response) {
-    _responses[key] = response;
-  }
-
-  void setDelay(String key, Duration delay) {
-    _delays[key] = delay;
-  }
-
-  @override
-  Future<Response<T>> get<T>(
-    String path, {
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) async {
-    final key = _generateKey('GET', path, queryParameters);
-    final delay = _delays[key];
-
-    if (delay != null) {
-      await Future.delayed(delay);
-    }
-
-    final response = _responses[key];
-    if (response == null) {
-      throw ApiException('Mock response not found for key: $key');
-    }
-
-    return Response<T>(
-      data: response,
-      statusCode: 200,
-      requestOptions: RequestOptions(path: path),
-    );
-  }
-
-  @override
-  Future<Response<T>> post<T>(
-    String path, {
-    dynamic data,
-    Map<String, dynamic>? queryParameters,
-    Options? options,
-    CancelToken? cancelToken,
-  }) async {
-    final key = _generateKey('POST', path, queryParameters, data);
-    final delay = _delays[key];
-
-    if (delay != null) {
-      await Future.delayed(delay);
-    }
-
-    final response = _responses[key];
-    if (response == null) {
-      throw ApiException('Mock response not found for key: $key');
-    }
-
-    return Response<T>(
-      data: response,
-      statusCode: 200,
-      requestOptions: RequestOptions(path: path),
-    );
-  }
-
-  String _generateKey(
-    String method,
-    String path, [
-    Map<String, dynamic>? queryParameters,
-    dynamic data,
-  ]) {
-    final buffer = StringBuffer();
-    buffer.write(method);
-    buffer.write(path);
-
-    if (queryParameters != null) {
-      buffer.write(jsonEncode(queryParameters));
-    }
-
-    if (data != null) {
-      buffer.write(jsonEncode(data));
-    }
-
-    return buffer.toString();
-  }
-}
-
-// 集成测试示例
-void main() {
-  group('AlgorithmRepository Integration Tests', () {
-    late MockApiClient mockApiClient;
-    late AlgorithmRepository repository;
-
-    setUp(() {
-      mockApiClient = MockApiClient();
-      repository = AlgorithmRepositoryImpl(mockApiClient);
-    });
-
-    test('should get algorithms successfully', () async {
-      // Arrange
-      final mockAlgorithms = [
-        {
-          'id': '1',
-          'name': 'DCP',
-          'description': 'Dark Channel Prior',
-          'type': 'traditional',
-          'rating': 4.5,
-        },
-        {
-          'id': '2',
-          'name': 'AOD-Net',
-          'description': 'All-in-One Dehazing Network',
-          'type': 'deep_learning',
-          'rating': 4.8,
-        },
-      ];
-
-      mockApiClient.setResponse(
-        'GET/algorithms',
-        mockAlgorithms,
-      );
-
-      // Act
-      final algorithms = await repository.getAlgorithms();
-
-      // Assert
-      expect(algorithms, hasLength(2));
-      expect(algorithms.first.name, 'DCP');
-      expect(algorithms.last.name, 'AOD-Net');
-    });
-
-    test('should handle network error gracefully', () async {
-      // Arrange
-      mockApiClient.setDelay('GET/algorithms', Duration(seconds: 5));
-      mockApiClient.setResponse('GET/algorithms', null);
-
-      // Act & Assert
-      expect(
-        () => repository.getAlgorithms(),
-        throwsA(isA<RepositoryException>()),
-      );
-    });
-  });
-}
-```
-
----
-
-**文档版本**: v1.0
+**文档版本**: v2.0
 **最后更新**: 2025-11-22
-**参考文档**: [后端服务](../../CLAUDE.md#java-backend-dehaze-java)、[总体架构](00-overview.md)
+**文档状态**: 架构设计阶段 - 设计规范完成，待代码实现阶段使用

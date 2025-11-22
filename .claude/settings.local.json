@@ -23,7 +23,8 @@
       "WebSearch",
       "Bash(flutter doctor:*)",
       "Bash(flutter pub:*)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(mv:*)"
     ],
     "deny": [],
     "ask": []

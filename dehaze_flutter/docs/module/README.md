@@ -196,7 +196,7 @@ features/[module_name]/
 
 ### 状态管理模式
 
-每个模块使用Bloc进行状态管理：
+每个模块使用Riverpod进行状态管理：
 
 ```mermaid
 stateDiagram-v2
@@ -261,9 +261,9 @@ journey
 - **导入顺序**: dart库、flutter库、第三方库、本地库
 
 #### 状态管理规范
-- **Bloc模式**: 统一使用Bloc进行状态管理
-- **事件命名**: 使用动词+名词格式（如LoadImagesEvent）
-- **状态命名**: 使用名词+状态格式（如ImagesLoadedState）
+- **Riverpod模式**: 统一使用Riverpod进行状态管理
+- **Provider命名**: 使用具体功能+Provider格式（如imagesProvider）
+- **状态命名**: 使用具体状态描述格式（如ImagesLoadedState）
 - **错误处理**: 统一的错误状态和错误信息处理
 
 #### API集成规范
@@ -356,13 +356,13 @@ class NavigationService {
 - [总体架构概览](../architecture/00-overview.md): 系统整体架构设计
 - [用户旅程设计](../architecture/01-user-journey.md): 详细的用户交互流程
 - [UI组件设计](../architecture/02-ui-components.md): 组件设计和交互规范
-- [状态管理架构](../architecture/03-state-management.md): Bloc状态管理详细设计
+- [状态管理架构](../architecture/03-state-management.md): Riverpod状态管理详细设计
 - [API集成设计](../architecture/04-api-integration.md): 后端服务集成方案
 - [跨平台适配](../architecture/05-cross-platform.md): 多平台适配详细方案
 
 ### 设计文档系列
 - [设计系统](../design/01-design-system.md): 色彩、字体、间距等设计规范
-- [技术架构](../design/02-architecture.md): 详细的技术架构设计
+- [技术架构](../architecture/02-architecture.md): 详细的技术架构设计
 - [业务组件](../design/05-business-components.md): 核心业务组件设计
 - [响应式设计](../design/06-responsive-design.md): 响应式设计详细规范
 

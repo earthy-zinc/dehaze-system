@@ -102,27 +102,132 @@ enum DatasetType {
 
 ## 🔄 状态管理
 
-### Bloc状态设计
+### Riverpod状态设计
 
 ```dart
-abstract class DatasetManagementState extends Equatable {}
-
-class DatasetManagementInitial extends DatasetManagementState {}
-
-class DatasetManagementLoaded extends DatasetManagementState {
-  final List<Dataset> datasets;
-  final List<DatasetImage> images;
-  final DatasetFilters filters;
-
-  const DatasetManagementLoaded({
-    required this.datasets,
-    required this.images,
-    required this.filters,
-  });
-
-  @override
-  List<Object?> get props => [datasets, images, filters];
+/// 数据集管理状态
+@freezed
+class DatasetManagementState with _$DatasetManagementState {
+  const factory DatasetManagementState.initial() = _DatasetManagementInitial;
+  const factory DatasetManagementState.loading() = _DatasetManagementLoading;
+  const factory DatasetManagementState.loaded({
+    required List<Dataset> datasets,
+    required List<DatasetImage> images,
+    required DatasetFilters filters,
+  }) = _DatasetManagementLoaded;
+  const factory DatasetManagementState.error(String message) = _DatasetManagementError;
 }
+
+/// 数据集管理状态Provider
+final datasetManagementProvider = StateNotifierProvider<DatasetManagementNotifier, DatasetManagementState>((ref) {
+  return DatasetManagementNotifier(ref.read(datasetManagementRepositoryProvider));
+});
+
+/// 数据集管理状态管理器
+class DatasetManagementNotifier extends StateNotifier<DatasetManagementState> {
+  final DatasetManagementRepository _repository;
+
+  DatasetManagementNotifier(this._repository) : super(const DatasetManagementState.initial());
+
+  /// 加载数据集列表
+  Future<void> loadDatasets({bool forceRefresh = false}) async {
+    state = const DatasetManagementState.loading();
+    try {
+      final datasets = await _repository.getDatasetList();
+      final images = await _repository.getAllDatasetImages();
+
+      state = DatasetManagementState.loaded(
+        datasets: datasets,
+        images: images,
+        filters: const DatasetFilters(),
+      );
+    } catch (e) {
+      state = DatasetManagementState.error('加载数据集失败: ${e.toString()}');
+    }
+  }
+
+  /// 应用筛选
+  void applyFilters(DatasetFilters filters) {
+    final currentState = state;
+    if (currentState is _DatasetManagementLoaded) {
+      state = currentState.copyWith(filters: filters);
+    }
+  }
+
+  /// 创建新数据集
+  Future<void> createDataset(Dataset dataset) async {
+    try {
+      await _repository.createDataset(dataset);
+      await loadDatasets(); // 重新加载数据集
+    } catch (e) {
+      final currentState = state;
+      state = DatasetManagementState.error('创建数据集失败: ${e.toString()}');
+      state = currentState; // 恢复原状态
+    }
+  }
+
+  /// 上传图像到数据集
+  Future<void> uploadImagesToDataset(String datasetId, List<File> imageFiles) async {
+    try {
+      await _repository.uploadImagesToDataset(datasetId, imageFiles);
+      await loadDatasets(); // 重新加载
+    } catch (e) {
+      final currentState = state;
+      state = DatasetManagementState.error('上传图像失败: ${e.toString()}');
+      state = currentState; // 恢复原状态
+    }
+  }
+
+  /// 批量处理图像
+  Future<void> batchProcessImages({
+    required List<String> imageIds,
+    required String algorithmId,
+    required Map<String, dynamic> parameters,
+  }) async {
+    try {
+      await _repository.batchProcessImages(
+        imageIds: imageIds,
+        algorithmId: algorithmId,
+        parameters: parameters,
+      );
+      await loadDatasets(); // 重新加载
+    } catch (e) {
+      final currentState = state;
+      state = DatasetManagementState.error('批量处理失败: ${e.toString()}');
+      state = currentState; // 恢复原状态
+    }
+  }
+
+  /// 删除数据集
+  Future<void> deleteDataset(String datasetId) async {
+    try {
+      await _repository.deleteDataset(datasetId);
+      await loadDatasets(); // 重新加载数据集
+    } catch (e) {
+      final currentState = state;
+      state = DatasetManagementState.error('删除数据集失败: ${e.toString()}');
+      state = currentState; // 恢复原状态
+    }
+  }
+}
+
+/// 仓储Provider
+final datasetManagementRepositoryProvider = Provider<DatasetManagementRepository>((ref) {
+  return DatasetManagementRepositoryImpl(
+    ref.read(datasetManagementDatasourceProvider),
+    ref.read(fileStorageProvider),
+  );
+});
+
+/// 文件存储Provider
+final fileStorageProvider = Provider<FileStorageService>((ref) {
+  return FileStorageServiceImpl();
+});
+
+/// 单个数据集Provider
+final datasetProvider = FutureProvider.family<Dataset, String>((ref, datasetId) async {
+  return ref.read(datasetManagementRepositoryProvider).getDatasetById(datasetId);
+});
 ```
 
 ---

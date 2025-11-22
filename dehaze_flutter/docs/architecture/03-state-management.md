@@ -1,1811 +1,475 @@
 # 状态管理架构设计
 
-**文档版本**: v1.0
+**文档版本**: v3.0
 **最后更新**: 2025-11-22
 **项目名称**: dehaze_flutter
-**参考文档**: [架构设计](../design/02-architecture.md)、[UI组件设计](02-ui-components.md)
 
 ---
 
 ## 📋 概述
 
-本文档详细描述了Flutter图像去雾系统的状态管理架构设计，基于[架构设计文档](../design/02-architecture.md)中的Bloc模式选择，专注于前端状态管理的详细实现方案。
+本文档详细描述了Flutter图像去雾系统的状态管理架构设计，基于**Riverpod**状态管理框架，采用分层架构和模块化设计，确保系统的可维护性、可测试性和高性能。状态管理作为Flutter应用的核心架构，负责协调数据流、UI状态和业务逻辑，为用户提供流畅的交互体验。
 
 ---
 
 ## 🏗️ 状态管理架构概览
 
-### 技术选型：Bloc + Cubit
+### 技术选型：Riverpod
 
-基于[架构设计中的决策](../design/02-architecture.md#4-1-技术选型决策)，选择**Bloc**作为主要状态管理方案，结合**Cubit**用于简单场景。
+**核心优势分析**
 
-#### 选择理由
-- **清晰的业务逻辑分离**：Bloc强制将业务逻辑与UI分离
-- **可测试性强**：状态转换逻辑易于单元测试
-- **调试友好**：BlocObserver提供完整的状态变化日志
-- **类型安全**：编译时类型检查，减少运行时错误
-- **团队协作**：统一的状态管理模式，便于团队协作
+| 优势特性 | 描述 | 对项目价值 |
+|---------|------|-----------|
+| **编译时安全** | 提供编译时类型检查，防止运行时错误 | 减少开发阶段的bug，提高代码质量 |
+| **灵活性高** | 支持多种状态管理模式（Provider、StateProvider、FutureProvider等） | 适应不同场景的状态管理需求 |
+| **测试友好** | 易于Mock和单元测试，支持Provider覆盖 | 提高测试覆盖率，保证代码质量 |
+| **性能优秀** | 精细的依赖追踪和选择性重构建 | 优化应用性能，减少不必要的重渲染 |
+| **代码简洁** | 样板代码少，开发效率高 | 加快开发速度，降低维护成本 |
+| **生态兼容** | 与Flutter生态完美集成 | 便于集成第三方库和工具 |
 
-### 架构层次
+### 整体架构层次
 
 ```
-┌─────────────────────────────────────────┐
-│              UI Layer                   │
-│  ┌─────────────┬─────────────┐         │
-│  │   Widgets   │  BuildContext│         │
-│  └─────────────┴─────────────┘         │
-└─────────────────────────────────────────┘
-                    ↓ Events
-┌─────────────────────────────────────────┐
-│            Bloc/Cubit Layer              │
-│  ┌─────────────┬─────────────┐         │
-│  │   Events    │   States    │         │
-│  └─────────────┴─────────────┘         │
-└─────────────────────────────────────────┘
-                    ↓ Use Cases
-┌─────────────────────────────────────────┐
-│            Business Logic               │
-│  ┌─────────────┬─────────────┐         │
-│  │  Use Cases  │ Repositories│         │
-│  └─────────────┴─────────────┘         │
-└─────────────────────────────────────────┘
-                    ↓ Data Sources
-┌─────────────────────────────────────────┐
-│             Data Layer                   │
-│  ┌─────────────┬─────────────┐         │
-│  │   Remote    │    Local    │         │
-│  │   APIs      │  Storage    │         │
-│  └─────────────┴─────────────┘         │
-└─────────────────────────────────────────┘
-```
-
----
-
-## 🔧 核心状态管理组件
-
-### 全局状态配置
-
-#### 服务定位器配置
-```dart
-// lib/core/di/service_locator.dart
-import 'package:get_it/get_it.dart';
-import 'package:bloc/bloc.dart';
-import 'package:hydrated_bloc/hydrated_bloc.dart';
-
-final GetIt serviceLocator = GetIt.instance;
-
-Future<void> setupServiceLocator() async {
-  // 状态管理器注册
-  serviceLocator.registerLazySingleton(() => AppBlocObserver());
-  serviceLocator.registerLazySingleton(() => HydratedStorage());
-
-  // Repository注册
-  serviceLocator.registerLazySingleton<ImageRepository>(
-    () => ImageRepositoryImpl(),
-  );
-  serviceLocator.registerLazySingleton<AlgorithmRepository>(
-    () => AlgorithmRepositoryImpl(),
-  );
-  serviceLocator.registerLazySingleton<ProcessingRepository>(
-    () => ProcessingRepositoryImpl(),
-  );
-
-  // Service注册
-  serviceLocator.registerLazySingleton<ApiService>(
-    () => ApiService(),
-  );
-  serviceLocator.registerLazySingleton<StorageService>(
-    () => StorageServiceImpl(),
-  );
-
-  // Bloc/Cubit注册
-  serviceLocator.registerFactory<ImageInputCubit>(
-    () => ImageInputCubit(serviceLocator<ImageRepository>()),
-  );
-  serviceLocator.registerFactory<AlgorithmSelectCubit>(
-    () => AlgorithmSelectCubit(serviceLocator<AlgorithmRepository>()),
-  );
-  serviceLocator.registerFactory<ProcessingCubit>(
-    () => ProcessingCubit(
-      serviceLocator<ProcessingRepository>(),
-      serviceLocator<ImageRepository>(),
-    ),
-  );
-  serviceLocator.registerFactory<ComparisonCubit>(
-    () => ComparisonCubit(),
-  );
-}
-```
-
-#### Bloc观察器
-```dart
-// lib/core/observers/app_bloc_observer.dart
-class AppBlocObserver extends BlocObserver {
-  @override
-  void onCreate(BlocBase bloc) {
-    super.onCreate(bloc);
-    log('Bloc Created: ${bloc.runtimeType}');
-  }
-
-  @override
-  void onEvent(Bloc bloc, Object? event) {
-    super.onEvent(bloc, event);
-    log('Event: ${bloc.runtimeType} -> $event');
-  }
-
-  @override
-  void onChange(BlocBase bloc, Change change) {
-    super.onChange(bloc, change);
-    log('State Change: ${bloc.runtimeType} -> ${change.nextState}');
-  }
-
-  @override
-  void onTransition(Bloc bloc, Transition transition) {
-    super.onTransition(bloc, transition);
-    log('Transition: ${bloc.runtimeType} -> ${transition.nextState}');
-  }
-
-  @override
-  void onError(BlocBase bloc, Object error, StackTrace stackTrace) {
-    super.onError(bloc, error, stackTrace);
-    log('Error: ${bloc.runtimeType} -> $error', stackTrace: stackTrace);
-  }
-
-  @override
-  void onClose(BlocBase bloc) {
-    super.onClose(bloc);
-    log('Bloc Closed: ${bloc.runtimeType}');
-  }
-}
+┌─────────────────────────────────────────────────────────────┐
+│                    用户界面层 (UI Layer)                    │
+│  ┌─────────────────┬─────────────────┬─────────────────┐   │
+│  │   页面组件       │   自定义Widget   │   UI状态管理     │   │
+│  │  (Pages/Screens) │  (Custom Widgets)│ (UI State)     │   │
+│  └─────────────────┴─────────────────┴─────────────────┘   │
+│                           │ Ref.watch/Ref.read           │
+└─────────────────────────────────┼───────────────────────────┘
+                                 ↓ Provider调用
+┌─────────────────────────────────────────────────────────────┐
+│                   状态管理层 (Riverpod Layer)              │
+│  ┌─────────────────┬─────────────────┬─────────────────┐   │
+│  │   Provider容器   │   状态数据       │   业务逻辑       │   │
+│  │  (Providers)    │   (States)      │  (Notifiers)    │   │
+│  └─────────────────┴─────────────────┴─────────────────┘   │
+│                           │ Repository调用               │
+└─────────────────────────────────┼───────────────────────────┘
+                                 ↓ 数据访问
+┌─────────────────────────────────────────────────────────────┐
+│                  业务逻辑层 (Business Layer)               │
+│  ┌─────────────────┬─────────────────┬─────────────────┐   │
+│  │   用例服务       │   数据仓库       │   领域模型       │   │
+│  │  (Use Cases)    │ (Repositories)  │ (Domain Models) │   │
+│  └─────────────────┴─────────────────┴─────────────────┘   │
+│                           │ API/数据库调用                │
+└─────────────────────────────────┼───────────────────────────┘
+                                 ↓ 数据源
+┌─────────────────────────────────────────────────────────────┐
+│                    数据层 (Data Layer)                     │
+│  ┌─────────────────┬─────────────────┬─────────────────┐   │
+│  │   远程API       │   本地数据库     │   文件存储       │   │
+│  │  (Remote APIs)  │ (Local DB)      │ (File Storage)  │   │
+│  └─────────────────┴─────────────────┴─────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📷 图像输入状态管理
-
-### 状态定义
-```dart
-// lib/features/image_input/bloc/image_input_state.dart
-part of 'image_input_cubit.dart';
-
-enum ImageInputStatus {
-  initial,       // 初始状态
-  loading,       // 加载中
-  success,       // 成功
-  error,         // 错误
-  processing,    // 处理中
-}
-
-class ImageInputState extends Equatable {
-  final List<ImageFile> selectedImages;
-  final ImageInputStatus status;
-  final String? errorMessage;
-  final int maxImages;
-  final bool isSelecting;
-  final Map<String, double> uploadProgress;
-
-  const ImageInputState({
-    this.selectedImages = const [],
-    this.status = ImageInputStatus.initial,
-    this.errorMessage,
-    this.maxImages = 5,
-    this.isSelecting = false,
-    this.uploadProgress = const {},
-  });
-
-  ImageInputState copyWith({
-    List<ImageFile>? selectedImages,
-    ImageInputStatus? status,
-    String? errorMessage,
-    int? maxImages,
-    bool? isSelecting,
-    Map<String, double>? uploadProgress,
-  }) {
-    return ImageInputState(
-      selectedImages: selectedImages ?? this.selectedImages,
-      status: status ?? this.status,
-      errorMessage: errorMessage,
-      maxImages: maxImages ?? this.maxImages,
-      isSelecting: isSelecting ?? this.isSelecting,
-      uploadProgress: uploadProgress ?? this.uploadProgress,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-        selectedImages,
-        status,
-        errorMessage,
-        maxImages,
-        isSelecting,
-        uploadProgress,
-      ];
-
-  @override
-  String toString() {
-    return 'ImageInputState('
-        'selectedImages: ${selectedImages.length}, '
-        'status: $status, '
-        'errorMessage: $errorMessage, '
-        'maxImages: $maxImages, '
-        'isSelecting: $isSelecting, '
-        'uploadProgress: $uploadProgress)';
-  }
-}
-```
-
-### 事件定义
-```dart
-// lib/features/image_input/bloc/image_input_event.dart
-part of 'image_input_cubit.dart';
-
-abstract class ImageInputEvent extends Equatable {
-  const ImageInputEvent();
-
-  @override
-  List<Object> get props => [];
-}
-
-class SelectImagesFromGallery extends ImageInputEvent {}
-
-class CaptureImageFromCamera extends ImageInputEvent {}
-
-class SelectSampleImage extends ImageInputEvent {
-  final String sampleImageId;
-
-  const SelectSampleImage(this.sampleImageId);
-
-  @override
-  List<Object> get props => [sampleImageId];
-}
-
-class SelectFromHistory extends ImageInputEvent {
-  final ProcessingHistory historyItem;
-
-  const SelectFromHistory(this.historyItem);
-
-  @override
-  List<Object> get props => [historyItem];
-}
-
-class AddImage extends ImageInputEvent {
-  final ImageFile imageFile;
-
-  const AddImage(this.imageFile);
-
-  @override
-  List<Object> get props => [imageFile];
-}
-
-class RemoveImage extends ImageInputEvent {
-  final String imageId;
-
-  const RemoveImage(this.imageId);
-
-  @override
-  List<Object> get props => [imageId];
-}
-
-class ClearSelectedImages extends ImageInputEvent {}
-
-class UpdateImageUploadProgress extends ImageInputEvent {
-  final String imageId;
-  final double progress;
-
-  const UpdateImageUploadProgress(this.imageId, this.progress);
-
-  @override
-  List<Object> get props => [imageId, progress];
-}
-
-class ValidateImages extends ImageInputEvent {}
-
-class UploadImages extends ImageInputEvent {}
-
-class RetryUpload extends ImageInputEvent {
-  final String? imageId;
-
-  const RetryUpload({this.imageId});
-}
-
-class CancelUpload extends ImageInputEvent {
-  final String imageId;
-
-  const CancelUpload(this.imageId);
-
-  @override
-  List<Object> get props => [imageId];
-}
-```
-
-### Cubit实现
-```dart
-// lib/features/image_input/bloc/image_input_cubit.dart
-class ImageInputCubit extends Cubit<ImageInputState> {
-  final ImageRepository _imageRepository;
-
-  ImageInputCubit(this._imageRepository) : super(const ImageInputState());
-
-  // 图片选择相关方法
-  Future<void> selectImagesFromGallery() async {
-    try {
-      emit(state.copyWith(isSelecting: true, status: ImageInputStatus.loading));
-
-      final images = await _imageRepository.pickImagesFromGallery();
-
-      if (images.isEmpty) {
-        emit(state.copyWith(
-          isSelecting: false,
-          status: ImageInputStatus.initial,
-        ));
-        return;
-      }
-
-      final validImages = _validateImages(images);
-      await _addValidImages(validImages);
-
-      emit(state.copyWith(
-        isSelecting: false,
-        status: ImageInputStatus.success,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isSelecting: false,
-        status: ImageInputStatus.error,
-        errorMessage: '选择图片失败: ${e.toString()}',
-      ));
-    }
-  }
-
-  Future<void> captureImageFromCamera() async {
-    try {
-      emit(state.copyWith(isSelecting: true, status: ImageInputStatus.loading));
-
-      final image = await _imageRepository.captureImageFromCamera();
-
-      if (image == null) {
-        emit(state.copyWith(
-          isSelecting: false,
-          status: ImageInputStatus.initial,
-        ));
-        return;
-      }
-
-      final validImages = _validateImages([image]);
-      await _addValidImages(validImages);
-
-      emit(state.copyWith(
-        isSelecting: false,
-        status: ImageInputStatus.success,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        isSelecting: false,
-        status: ImageInputStatus.error,
-        errorMessage: '拍照失败: ${e.toString()}',
-      ));
-    }
-  }
-
-  Future<void> selectSampleImage(String sampleImageId) async {
-    try {
-      emit(state.copyWith(status: ImageInputStatus.loading));
-
-      final sampleImage = await _imageRepository.getSampleImage(sampleImageId);
-
-      if (sampleImage == null) {
-        emit(state.copyWith(
-          status: ImageInputStatus.error,
-          errorMessage: '样例图片不存在',
-        ));
-        return;
-      }
-
-      await _addValidImages([sampleImage]);
-
-      emit(state.copyWith(status: ImageInputStatus.success));
-    } catch (e) {
-      emit(state.copyWith(
-        status: ImageInputStatus.error,
-        errorMessage: '加载样例图片失败: ${e.toString()}',
-      ));
-    }
-  }
-
-  Future<void> selectFromHistory(ProcessingHistory historyItem) async {
-    try {
-      emit(state.copyWith(status: ImageInputStatus.loading));
-
-      final image = await _imageRepository.getImageFromHistory(historyItem);
-
-      if (image == null) {
-        emit(state.copyWith(
-          status: ImageInputStatus.error,
-          errorMessage: '历史图片不存在',
-        ));
-        return;
-      }
-
-      await _addValidImages([image]);
-
-      emit(state.copyWith(status: ImageInputStatus.success));
-    } catch (e) {
-      emit(state.copyWith(
-        status: ImageInputStatus.error,
-        errorMessage: '加载历史图片失败: ${e.toString()}',
-      ));
-    }
-  }
-
-  void removeImage(String imageId) {
-    final updatedImages = state.selectedImages
-        .where((image) => image.id != imageId)
-        .toList();
-
-    final updatedProgress = Map<String, double>.from(state.uploadProgress);
-    updatedProgress.remove(imageId);
-
-    emit(state.copyWith(
-      selectedImages: updatedImages,
-      uploadProgress: updatedProgress,
-    ));
-  }
-
-  void clearSelectedImages() {
-    emit(const ImageInputState());
-  }
-
-  void updateImageUploadProgress(String imageId, double progress) {
-    final updatedProgress = Map<String, double>.from(state.uploadProgress);
-    updatedProgress[imageId] = progress;
-
-    emit(state.copyWith(uploadProgress: updatedProgress));
-  }
-
-  // 图片验证逻辑
-  List<ImageFile> _validateImages(List<ImageFile> images) {
-    final validImages = <ImageFile>[];
-    final errors = <String>[];
-
-    for (final image in images) {
-      if (!_isValidFormat(image.format)) {
-        errors.add('图片格式不支持: ${image.format}');
-        continue;
-      }
-
-      if (!_isValidSize(image.sizeBytes)) {
-        errors.add('图片大小超过限制: ${image.name}');
-        continue;
-      }
-
-      validImages.add(image);
-    }
-
-    if (errors.isNotEmpty && validImages.isNotEmpty) {
-      // 可以显示部分错误信息
-    }
-
-    return validImages;
-  }
-
-  bool _isValidFormat(String format) {
-    const supportedFormats = ['JPG', 'JPEG', 'PNG', 'WEBP', 'HEIC'];
-    return supportedFormats.contains(format.toUpperCase());
-  }
-
-  bool _isValidSize(int sizeBytes) {
-    const maxSizeBytes = 20 * 1024 * 1024; // 20MB
-    return sizeBytes <= maxSizeBytes;
-  }
-
-  Future<void> _addValidImages(List<ImageFile> images) async {
-    final currentCount = state.selectedImages.length;
-    final availableSlots = state.maxImages - currentCount;
-
-    if (availableSlots <= 0) {
-      throw Exception('已达到最大图片数量限制');
-    }
-
-    final imagesToAdd = images.take(availableSlots).toList();
-    final updatedImages = [...state.selectedImages, ...imagesToAdd];
-
-    emit(state.copyWith(selectedImages: updatedImages));
-  }
-
-  // 上传相关逻辑
-  Future<void> uploadImages() async {
-    if (state.selectedImages.isEmpty) {
-      emit(state.copyWith(
-        status: ImageInputStatus.error,
-        errorMessage: '没有选择图片',
-      ));
-      return;
-    }
-
-    try {
-      emit(state.copyWith(status: ImageInputStatus.processing));
-
-      for (final image in state.selectedImages) {
-        updateImageUploadProgress(image.id, 0.0);
-      }
-
-      // 并行上传图片
-      final uploadFutures = state.selectedImages.map((image) =>
-        _uploadSingleImage(image)
-      ).toList();
-
-      await Future.wait(uploadFutures);
-
-      emit(state.copyWith(
-        status: ImageInputStatus.success,
-        uploadProgress: {},
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        status: ImageInputStatus.error,
-        errorMessage: '上传失败: ${e.toString()}',
-      ));
-    }
-  }
-
-  Future<void> _uploadSingleImage(ImageFile image) async {
-    try {
-      // 模拟上传进度
-      for (int i = 0; i <= 100; i += 10) {
-        await Future.delayed(Duration(milliseconds: 100));
-        updateImageUploadProgress(image.id, i / 100.0);
-      }
-
-      await _imageRepository.uploadImage(image);
-    } catch (e) {
-      // 单个图片上传失败，但不影响其他图片
-      print('Upload failed for ${image.id}: $e');
-    }
-  }
-
-  void retryUpload([String? imageId]) {
-    if (imageId != null) {
-      // 重试单个图片
-      _uploadSingleImage(
-        state.selectedImages.firstWhere((img) => img.id == imageId),
-      );
-    } else {
-      // 重试所有图片
-      uploadImages();
-    }
-  }
-
-  void cancelUpload(String imageId) {
-    removeImage(imageId);
-  }
-
-  @override
-  void onChange(Change<ImageInputState> change) {
-    super.onChange(change);
-    log('ImageInputState changed: $change');
-  }
-}
+## 🔧 Provider类型体系架构
+
+### Provider分类与用途
+
+**Riverpod Provider类型矩阵**
+
+| Provider类型 | 主要用途 | 生命周期 | 异步支持 | 适用场景 |
+|-------------|---------|---------|---------|---------|
+| **Provider** | 依赖注入、服务实例 | 应用生命周期 | ❌ | Repository、Service等单例 |
+| **StateProvider** | 简单状态管理 | Widget生命周期 | ❌ | UI状态、表单数据 |
+| **StateNotifierProvider** | 复杂状态逻辑 | 应用生命周期 | ❌ | 业务状态、数据集合 |
+| **FutureProvider** | 异步数据获取 | 首次访问后缓存 | ✅ | API调用、数据库查询 |
+| **StreamProvider** | 实时数据流 | 监听期间 | ✅ | WebSocket、事件流 |
+| **AsyncNotifierProvider** | 异步状态管理 | 应用生命周期 | ✅ | 复杂异步操作 |
+
+### 核心Provider架构图
+
+```mermaid
+graph TB
+    subgraph "UI层"
+        A[页面组件] --> B[自定义Widget]
+        B --> C[状态消费者]
+    end
+
+    subgraph "Riverpod状态层"
+        D[StateProvider<br/>UI状态] --> E[StateNotifierProvider<br/>业务状态]
+        E --> F[FutureProvider<br/>异步数据]
+        F --> G[StreamProvider<br/>实时数据]
+        H[Provider<br/>服务依赖] --> E
+        H --> F
+        H --> G
+    end
+
+    subgraph "业务逻辑层"
+        I[Repository] --> J[UseCase]
+        J --> K[Service]
+    end
+
+    subgraph "数据层"
+        L[远程API] --> I
+        M[本地数据库] --> I
+        N[文件存储] --> I
+    end
+
+    C --> D
+    C --> E
+    C --> F
+    C --> G
+    E --> J
+    F --> I
+    G --> K
 ```
 
 ---
 
-## 🧠 算法选择状态管理
+## 🏛️ Provider注册与依赖体系
 
-### 状态定义
-```dart
-// lib/features/algorithm_select/bloc/algorithm_select_state.dart
-part of 'algorithm_select_cubit.dart';
+### 全局Provider架构体系
 
-enum AlgorithmSelectStatus {
-  initial,           // 初始状态
-  loading,           // 加载算法列表
-  loaded,            // 算法列表已加载
-  recommending,      // 获取推荐算法
-  filtering,         // 筛选中
-  error,             // 错误状态
-}
+**Provider分层注册架构**
 
-class AlgorithmSelectState extends Equatable {
-  final List<Algorithm> algorithms;
-  final List<Algorithm> filteredAlgorithms;
-  final List<Algorithm> recommendedAlgorithms;
-  final Algorithm? selectedAlgorithm;
-  final Set<String> favoriteAlgorithms;
-  final AlgorithmSelectStatus status;
-  final String? errorMessage;
-  final String searchQuery;
-  final AlgorithmFilter filter;
+| 层级 | Provider类型 | 注册模块 | 主要职责 | 依赖关系 |
+|------|-------------|---------|---------|---------|
+| **应用层** | Provider | `app_providers.dart` | 全局服务、网络配置 | 依赖系统层 |
+| **领域层** | Provider | `domain_providers.dart` | Repository、Domain Service | 依赖数据层 |
+| **数据层** | Provider | `data_providers.dart` | DataSource、外部API | 依赖基础设施 |
+| **表现层** | 各种Provider | `presentation_providers.dart` | UI状态、ViewModel | 依赖领域层 |
 
-  const AlgorithmSelectState({
-    this.algorithms = const [],
-    this.filteredAlgorithms = const [],
-    this.recommendedAlgorithms = const [],
-    this.selectedAlgorithm,
-    this.favoriteAlgorithms = const {},
-    this.status = AlgorithmSelectStatus.initial,
-    this.errorMessage,
-    this.searchQuery = '',
-    this.filter = const AlgorithmFilter(),
-  });
+### 依赖注入架构表
 
-  AlgorithmSelectState copyWith({
-    List<Algorithm>? algorithms,
-    List<Algorithm>? filteredAlgorithms,
-    List<Algorithm>? recommendedAlgorithms,
-    Algorithm? selectedAlgorithm,
-    Set<String>? favoriteAlgorithms,
-    AlgorithmSelectStatus? status,
-    String? errorMessage,
-    String? searchQuery,
-    AlgorithmFilter? filter,
-  }) {
-    return AlgorithmSelectState(
-      algorithms: algorithms ?? this.algorithms,
-      filteredAlgorithms: filteredAlgorithms ?? this.filteredAlgorithms,
-      recommendedAlgorithms: recommendedAlgorithms ?? this.recommendedAlgorithms,
-      selectedAlgorithm: selectedAlgorithm ?? this.selectedAlgorithm,
-      favoriteAlgorithms: favoriteAlgorithms ?? this.favoriteAlgorithms,
-      status: status ?? this.status,
-      errorMessage: errorMessage,
-      searchQuery: searchQuery ?? this.searchQuery,
-      filter: filter ?? this.filter,
-    );
-  }
+**核心模块Provider映射关系**
 
-  @override
-  List<Object?> get props => [
-        algorithms,
-        filteredAlgorithms,
-        recommendedAlgorithms,
-        selectedAlgorithm,
-        favoriteAlgorithms,
-        status,
-        errorMessage,
-        searchQuery,
-        filter,
-      ];
-}
+| 模块 | 核心Provider | 状态类型 | 管理范围 | 更新频率 |
+|------|-------------|---------|---------|---------|
+| **图像输入** | `imageInputStateProvider` | `ImageInputState` | 图像选择、预览 | 中等 |
+| **算法选择** | `algorithmSelectProvider` | `AlgorithmSelectState` | 算法列表、推荐 | 低 |
+| **图像处理** | `processingStateProvider` | `ProcessingState` | 处理进度、结果 | 高 |
+| **效果对比** | `comparisonStateProvider` | `ComparisonState` | 对比视图、控制 | 中等 |
+| **算法管理** | `algorithmManagementProvider` | `AlgorithmManagementState` | 算法CRUD | 低 |
+| **数据集管理** | `datasetManagementProvider` | `DatasetManagementState` | 数据集操作 | 低 |
 
-class AlgorithmFilter extends Equatable {
-  final AlgorithmType? type;
-  final ProcessingSpeed? speed;
-  final QualityLevel? quality;
-  final double? minRating;
-  final bool favoritesOnly;
+---
 
-  const AlgorithmFilter({
-    this.type,
-    this.speed,
-    this.quality,
-    this.minRating,
-    this.favoritesOnly = false,
-  });
+## 📦 模块化状态管理架构
 
-  AlgorithmFilter copyWith({
-    AlgorithmType? type,
-    ProcessingSpeed? speed,
-    QualityLevel? quality,
-    double? minRating,
-    bool? favoritesOnly,
-  }) {
-    return AlgorithmFilter(
-      type: type ?? this.type,
-      speed: speed ?? this.speed,
-      quality: quality ?? this.quality,
-      minRating: minRating ?? this.minRating,
-      favoritesOnly: favoritesOnly ?? this.favoritesOnly,
-    );
-  }
+### 模块状态管理策略
 
-  @override
-  List<Object?> get props => [type, speed, quality, minRating, favoritesOnly];
+**模块化状态管理核心原则**
 
-  bool get isEmpty =>
-      type == null &&
-      speed == null &&
-      quality == null &&
-      minRating == null &&
-      !favoritesOnly;
-}
+| 原则 | 描述 | 实施方式 | 好处 |
+|------|------|---------|------|
+| **单一职责** | 每个Provider只负责一个业务域 | 按功能模块拆分Provider | 降低耦合度 |
+| **状态隔离** | 不同模块状态相互独立 | 独立的State和Notifier | 避免状态污染 |
+| **依赖清晰** | 明确定义模块间依赖关系 | 通过Repository或Service通信 | 便于维护和测试 |
+| **接口标准化** | 统一的Provider接口规范 | 定义标准State和Notifier模式 | 提高开发效率 |
+
+### 模块状态生命周期
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle: 初始化
+    Idle --> Loading: 开始操作
+    Loading --> Success: 操作成功
+    Loading --> Error: 操作失败
+    Success --> Idle: 重置状态
+    Error --> Loading: 重试操作
+    Error --> Idle: 放弃操作
+
+    note right of Loading: 显示进度指示器
+    note right of Success: 更新UI状态
+    note right of Error: 显示错误信息
 ```
 
-### Cubit实现
-```dart
-// lib/features/algorithm_select/bloc/algorithm_select_cubit.dart
-class AlgorithmSelectCubit extends Cubit<AlgorithmSelectState> {
-  final AlgorithmRepository _algorithmRepository;
+### 状态数据流架构
 
-  AlgorithmSelectCubit(this._algorithmRepository)
-      : super(const AlgorithmSelectState());
+**数据流向图**
 
-  Future<void> loadAlgorithms() async {
-    try {
-      emit(state.copyWith(status: AlgorithmSelectStatus.loading));
+```
+用户交互 → UI事件 → StateNotifier → 业务逻辑 → Repository → 数据源
+     ↑                                                    ↓
+UI更新 ← 状态变化 ← State更新 ← 处理结果 ← 数据返回 ← API/数据库
+```
 
-      final algorithms = await _algorithmRepository.getAlgorithms();
-      final favorites = await _algorithmRepository.getFavoriteAlgorithms();
+**状态转换表**
 
-      emit(state.copyWith(
-        algorithms: algorithms,
-        filteredAlgorithms: algorithms,
-        favoriteAlgorithms: favorites,
-        status: AlgorithmSelectStatus.loaded,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        status: AlgorithmSelectStatus.error,
-        errorMessage: '加载算法列表失败: ${e.toString()}',
-      ));
-    }
-  }
+| 状态 | 触发条件 | 数据变化 | UI响应 |
+|------|---------|---------|--------|
+| **Initial** | 组件初始化 | 设置默认值 | 显示默认UI |
+| **Loading** | 开始异步操作 | 设置loading=true | 显示加载指示器 |
+| **Success** | 操作成功 | 更新数据, loading=false | 显示新数据 |
+| **Error** | 操作失败 | 设置error信息, loading=false | 显示错误提示 |
+| **Refreshing** | 刷新数据 | 保持现有数据, refreshing=true | 显示刷新指示器 |
 
-  Future<void> getRecommendedAlgorithms(ImageFile imageFile) async {
-    try {
-      emit(state.copyWith(status: AlgorithmSelectStatus.recommending));
+---
 
-      final recommended = await _algorithmRepository.getRecommendedAlgorithms(imageFile);
+## 🎯 状态管理模式与策略
 
-      emit(state.copyWith(
-        recommendedAlgorithms: recommended,
-        status: AlgorithmSelectStatus.loaded,
-      ));
-    } catch (e) {
-      emit(state.copyWith(
-        status: AlgorithmSelectStatus.error,
-        errorMessage: '获取推荐算法失败: ${e.toString()}',
-      ));
-    }
-  }
+### 核心设计原则
 
-  void searchAlgorithms(String query) {
-    emit(state.copyWith(searchQuery: query));
-    _applyFilter();
-  }
+**1. 单一数据源原则**
 
-  void updateFilter(AlgorithmFilter filter) {
-    emit(state.copyWith(filter: filter));
-    _applyFilter();
-  }
+- **概念**: 每个状态由唯一的Provider管理
+- **实现**: 通过Provider注册表确保状态唯一性
+- **好处**: 避免状态冲突和同步问题
 
-  void clearFilter() {
-    emit(state.copyWith(
-      filter: const AlgorithmFilter(),
-      searchQuery: '',
-    ));
-    _applyFilter();
-  }
+**2. 依赖最小化原则**
 
-  void selectAlgorithm(Algorithm algorithm) {
-    emit(state.copyWith(selectedAlgorithm: algorithm));
-  }
+- **概念**: Provider只包含必要的状态和逻辑
+- **实现**: 按职责拆分，避免过度聚合
+- **好处**: 提高代码可读性和可维护性
 
-  void clearSelection() {
-    emit(state.copyWith(selectedAlgorithm: null));
-  }
+**3. 组合优于继承原则**
 
-  Future<void> toggleFavorite(String algorithmId) async {
-    final updatedFavorites = Set<String>.from(state.favoriteAlgorithms);
+- **概念**: 使用Provider组合构建复杂状态
+- **实现**: 通过多个Provider组合成复合状态
+- **好处**: 提高灵活性和可测试性
 
-    if (updatedFavorites.contains(algorithmId)) {
-      updatedFavorites.remove(algorithmId);
-      await _algorithmRepository.removeFavoriteAlgorithm(algorithmId);
-    } else {
-      updatedFavorites.add(algorithmId);
-      await _algorithmRepository.addFavoriteAlgorithm(algorithmId);
-    }
+### 状态管理决策矩阵
 
-    emit(state.copyWith(favoriteAlgorithms: updatedFavorites));
+**选择Provider类型的决策标准**
 
-    // 如果筛选条件包含只显示收藏，重新应用筛选
-    if (state.filter.favoritesOnly) {
-      _applyFilter();
-    }
-  }
+| 场景特征 | 推荐Provider | 决策因素 |
+|---------|-------------|---------|
+| **简单UI状态** | StateProvider | 状态变化频繁、逻辑简单 |
+| **复杂业务逻辑** | StateNotifierProvider | 多个相关状态、复杂操作 |
+| **一次性异步数据** | FutureProvider | API调用、数据库查询 |
+| **持续数据流** | StreamProvider | WebSocket、传感器数据 |
+| **服务依赖注入** | Provider | Repository、Service等单例 |
+| **复杂异步状态** | AsyncNotifierProvider | 需要管理多个异步操作 |
 
-  void _applyFilter() {
-    var filtered = List<Algorithm>.from(state.algorithms);
+---
 
-    // 搜索筛选
-    if (state.searchQuery.isNotEmpty) {
-      final query = state.searchQuery.toLowerCase();
-      filtered = filtered.where((algorithm) {
-        return algorithm.name.toLowerCase().contains(query) ||
-               algorithm.description.toLowerCase().contains(query) ||
-               algorithm.tags.any((tag) => tag.toLowerCase().contains(query));
-      }).toList();
-    }
+## 🧪 状态管理测试策略
 
-    // 类型筛选
-    if (state.filter.type != null) {
-      filtered = filtered
-          .where((algorithm) => algorithm.type == state.filter.type)
-          .toList();
-    }
+### 测试金字塔架构
 
-    // 速度筛选
-    if (state.filter.speed != null) {
-      filtered = filtered
-          .where((algorithm) => algorithm.speed == state.filter.speed)
-          .toList();
-    }
+```
+        ┌─────────────────┐
+        │   E2E测试       │ ← 最少
+        │  (集成测试)      │
+        └─────────────────┘
+      ┌───────────────────────┐
+      │   Widget测试          │ ← 适中
+      │  (UI组件集成测试)      │
+      └───────────────────────┘
+    ┌─────────────────────────────┐
+    │   Provider单元测试          │ ← 最多
+    │  (状态管理逻辑测试)         │
+    └─────────────────────────────┘
+```
 
-    // 质量筛选
-    if (state.filter.quality != null) {
-      filtered = filtered
-          .where((algorithm) => algorithm.quality == state.filter.quality)
-          .toList();
-    }
+### 测试覆盖率要求
 
-    // 评分筛选
-    if (state.filter.minRating != null) {
-      filtered = filtered
-          .where((algorithm) => algorithm.rating >= state.filter.minRating!)
-          .toList();
-    }
+**测试类型与覆盖率标准**
 
-    // 收藏筛选
-    if (state.filter.favoritesOnly) {
-      filtered = filtered
-          .where((algorithm) => state.favoriteAlgorithms.contains(algorithm.id))
-          .toList();
-    }
+| 测试类型 | 覆盖率要求 | 测试重点 | 测试工具 |
+|---------|-----------|---------|---------|
+| **Provider单元测试** | ≥90% | 状态逻辑、错误处理 | flutter_test |
+| **Widget集成测试** | ≥80% | UI交互、状态同步 | flutter_test |
+| **E2E集成测试** | ≥70% | 完整业务流程 | integration_test |
 
-    // 排序
-    filtered = _sortAlgorithms(filtered);
+### 模拟策略表
 
-    emit(state.copyWith(
-      filteredAlgorithms: filtered,
-      status: AlgorithmSelectStatus.loaded,
-    ));
-  }
+**Provider Mock策略**
 
-  List<Algorithm> _sortAlgorithms(List<Algorithm> algorithms) {
-    // 默认按评分排序，推荐算法优先
-    final sorted = List<Algorithm>.from(algorithms);
+| Provider类型 | Mock方式 | 测试场景 | 验证重点 |
+|-------------|---------|---------|---------|
+| **Repository Provider** | Mock实现类 | 数据获取失败 | 错误处理逻辑 |
+| **Service Provider** | 依赖注入覆盖 | 业务逻辑流程 | 业务正确性 |
+| **Future Provider** | 手动返回结果 | 异步状态转换 | 加载、成功、失败状态 |
+| **Stream Provider** | 手动发送事件 | 实时数据流处理 | 数据流订阅、取消订阅 |
 
-    sorted.sort((a, b) {
-      // 推荐算法排在前面
-      final aIsRecommended = state.recommendedAlgorithms.contains(a);
-      final bIsRecommended = state.recommendedAlgorithms.contains(b);
+---
 
-      if (aIsRecommended && !bIsRecommended) return -1;
-      if (!aIsRecommended && bIsRecommended) return 1;
+## 🚀 性能优化策略
 
-      // 收藏算法排在前面
-      final aIsFavorite = state.favoriteAlgorithms.contains(a.id);
-      final bIsFavorite = state.favoriteAlgorithms.contains(b.id);
+### 选择性重构建优化
 
-      if (aIsFavorite && !bIsFavorite) return -1;
-      if (!aIsFavorite && bIsFavorite) return 1;
+**性能优化策略矩阵**
 
-      // 按评分排序
-      return b.rating.compareTo(a.rating);
-    });
+| 优化技术 | 适用场景 | 性能提升 | 实施难度 | 优先级 |
+|---------|---------|---------|---------|--------|
+| **select监听** | 大型对象部分字段 | 30-50% | 低 | 🔥🔥🔥 |
+| **autoDispose** | 临时状态 | 20-40% | 低 | 🔥🔥🔥 |
+| **Provider缓存** | 重复计算结果 | 40-60% | 中 | 🔥🔥 |
+| **懒加载** | 按需加载 | 50-80% | 中 | 🔥🔥🔥 |
+| **状态分片** | 大型状态对象 | 20-30% | 高 | 🔥 |
 
-    return sorted;
-  }
+### 性能监控指标
 
-  Future<void> refreshAlgorithms() async {
-    await loadAlgorithms();
-  }
-}
+**关键性能指标(KPI)**
+
+| 指标名称 | 目标值 | 监控方式 | 优化措施 |
+|---------|-------|---------|---------|
+| **Provider重构建次数** | <5次/秒 | 开发工具监控 | 使用select优化 |
+| **状态更新延迟** | <16ms | 性能测试 | 异步处理优化 |
+| **内存使用量** | <100MB | 内存分析工具 | 及时释放状态 |
+| **启动时间** | <2秒 | 启动时间测试 | 延迟初始化 |
+
+---
+
+## 🔄 状态持久化架构
+
+### 持久化策略选择
+
+**持久化技术对比表**
+
+| 持久化方案 | 存储类型 | 容量限制 | 性能 | 适用数据 | 同步方式 |
+|-----------|---------|---------|------|---------|---------|
+| **SharedPreferences** | 键值对 | 几KB | 高 | 用户偏好、设置 | 同步 |
+| **Hive数据库** | NoSQL | 几MB | 高 | 缓存数据、会话 | 同步 |
+| **SQLite数据库** | 关系型 | 几百MB | 中 | 结构化数据 | 同步/异步 |
+| **文件存储** | 文件 | 几GB | 低 | 图像、文档 | 异步 |
+
+### 状态持久化决策图
+
+```
+数据类型判断
+     ↓
+┌─────────────┐
+│ 简单配置数据 │ → SharedPreferences
+└─────────────┘
+     ↓
+┌─────────────┐
+│ 结构化数据   │ → Hive/SQLite
+└─────────────┘
+     ↓
+┌─────────────┐
+│ 大型文件     │ → 文件存储
+└─────────────┘
 ```
 
 ---
 
-## ⚙️ 处理状态管理
+## 📊 监控与调试体系
 
-### 状态定义
-```dart
-// lib/features/processing/bloc/processing_state.dart
-part of 'processing_cubit.dart';
+### 状态监控架构
 
-enum ProcessingStatus {
-  initial,       // 初始状态
-  validating,    // 验证参数
-  queuing,       // 加入队列
-  processing,    // 处理中
-  paused,        // 已暂停
-  completed,     // 处理完成
-  error,         // 处理错误
-  cancelled,     // 已取消
-}
+**多层级监控体系**
 
-class ProcessingState extends Equatable {
-  final List<ImageFile> inputImages;
-  final Algorithm selectedAlgorithm;
-  final ProcessingParameters parameters;
-  final List<ProcessingTask> tasks;
-  final ProcessingTask? currentTask;
-  final ProcessingStatus status;
-  final String? errorMessage;
-  final Duration totalEstimatedTime;
-  final Duration elapsedTime;
-  final bool isBatchProcessing;
-  final Map<String, ProcessedImage> results;
+| 监控层级 | 监控内容 | 监控工具 | 告警阈值 |
+|---------|---------|---------|---------|
+| **应用级** | 整体性能、崩溃率 | Firebase Crashlytics | 崩溃率<0.1% |
+| **页面级** | 页面加载时间、交互延迟 | Flutter DevTools | 加载<2秒 |
+| **组件级** | Provider重构建次数 | Riverpod DevTools | 重构建<10次/操作 |
+| **业务级** | 核心流程成功率 | 自定义埋点 | 成功率>95% |
 
-  const ProcessingState({
-    this.inputImages = const [],
-    this.selectedAlgorithm = const Algorithm.empty(),
-    this.parameters = const ProcessingParameters(),
-    this.tasks = const [],
-    this.currentTask,
-    this.status = ProcessingStatus.initial,
-    this.errorMessage,
-    this.totalEstimatedTime = Duration.zero,
-    this.elapsedTime = Duration.zero,
-    this.isBatchProcessing = false,
-    this.results = const {},
-  });
+### 调试工具链
 
-  ProcessingState copyWith({
-    List<ImageFile>? inputImages,
-    Algorithm? selectedAlgorithm,
-    ProcessingParameters? parameters,
-    List<ProcessingTask>? tasks,
-    ProcessingTask? currentTask,
-    ProcessingStatus? status,
-    String? errorMessage,
-    Duration? totalEstimatedTime,
-    Duration? elapsedTime,
-    bool? isBatchProcessing,
-    Map<String, ProcessedImage>? results,
-  }) {
-    return ProcessingState(
-      inputImages: inputImages ?? this.inputImages,
-      selectedAlgorithm: selectedAlgorithm ?? this.selectedAlgorithm,
-      parameters: parameters ?? this.parameters,
-      tasks: tasks ?? this.tasks,
-      currentTask: currentTask ?? this.currentTask,
-      status: status ?? this.status,
-      errorMessage: errorMessage,
-      totalEstimatedTime: totalEstimatedTime ?? this.totalEstimatedTime,
-      elapsedTime: elapsedTime ?? this.elapsedTime,
-      isBatchProcessing: isBatchProcessing ?? this.isBatchProcessing,
-      results: results ?? this.results,
-    );
-  }
+**调试工具组合**
 
-  double get overallProgress {
-    if (tasks.isEmpty) return 0.0;
-
-    final completedTasks = tasks.where((task) =>
-        task.status == TaskStatus.completed).length;
-    return completedTasks / tasks.length;
-  }
-
-  Duration get remainingTime {
-    if (currentTask == null) return Duration.zero;
-
-    final remainingTasks = tasks.where((task) =>
-        task.status == TaskStatus.pending ||
-        task.status == TaskStatus.processing).length;
-
-    return Duration(
-      milliseconds: (remainingTasks *
-          selectedAlgorithm.averageProcessingTime.inMilliseconds).round(),
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-        inputImages,
-        selectedAlgorithm,
-        parameters,
-        tasks,
-        currentTask,
-        status,
-        errorMessage,
-        totalEstimatedTime,
-        elapsedTime,
-        isBatchProcessing,
-        results,
-      ];
-}
-```
-
-### Bloc实现
-```dart
-// lib/features/processing/bloc/processing_cubit.dart
-class ProcessingCubit extends Bloc<ProcessingEvent, ProcessingState> {
-  final ProcessingRepository _processingRepository;
-  final ImageRepository _imageRepository;
-  Timer? _progressTimer;
-  StreamSubscription<ProcessingProgress>? _progressSubscription;
-
-  ProcessingCubit(
-    this._processingRepository,
-    this._imageRepository,
-  ) : super(const ProcessingState()) {
-    on<StartProcessing>(_onStartProcessing);
-    on<PauseProcessing>(_onPauseProcessing);
-    on<ResumeProcessing>(_onResumeProcessing);
-    on<CancelProcessing>(_onCancelProcessing);
-    on<UpdateParameters>(_onUpdateParameters);
-    on<UpdateProgress>(_onUpdateProgress);
-    on<TaskCompleted>(_onTaskCompleted);
-    on<TaskFailed>(_onTaskFailed);
-    on<ProcessingCompleted>(_onProcessingCompleted);
-  }
-
-  Future<void> _onStartProcessing(
-    StartProcessing event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    try {
-      emit(state.copyWith(
-        status: ProcessingStatus.validating,
-        errorMessage: null,
-      ));
-
-      // 验证输入参数
-      await _validateInputs(event.images, event.algorithm, event.parameters);
-
-      emit(state.copyWith(
-        inputImages: event.images,
-        selectedAlgorithm: event.algorithm,
-        parameters: event.parameters,
-        isBatchProcessing: event.images.length > 1,
-        status: ProcessingStatus.queuing,
-      ));
-
-      // 创建处理任务
-      final tasks = await _createTasks(event.images, event.algorithm, event.parameters);
-
-      // 计算预估时间
-      final totalEstimatedTime = _calculateEstimatedTime(tasks, event.algorithm);
-
-      emit(state.copyWith(
-        tasks: tasks,
-        totalEstimatedTime: totalEstimatedTime,
-        status: ProcessingStatus.processing,
-        elapsedTime: Duration.zero,
-      ));
-
-      // 开始处理
-      await _startProcessingStream(tasks);
-
-    } catch (e) {
-      emit(state.copyWith(
-        status: ProcessingStatus.error,
-        errorMessage: e.toString(),
-      ));
-    }
-  }
-
-  Future<void> _onPauseProcessing(
-    PauseProcessing event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    if (state.currentTask != null) {
-      await _processingRepository.pauseTask(state.currentTask!.id);
-
-      emit(state.copyWith(
-        status: ProcessingStatus.paused,
-      ));
-
-      _progressTimer?.cancel();
-    }
-  }
-
-  Future<void> _onResumeProcessing(
-    ResumeProcessing event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    if (state.currentTask != null) {
-      await _processingRepository.resumeTask(state.currentTask!.id);
-
-      emit(state.copyWith(
-        status: ProcessingStatus.processing,
-      ));
-
-      _startProgressTimer();
-    }
-  }
-
-  Future<void> _onCancelProcessing(
-    CancelProcessing event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    // 取消当前任务
-    if (state.currentTask != null) {
-      await _processingRepository.cancelTask(state.currentTask!.id);
-    }
-
-    // 取消所有待处理任务
-    for (final task in state.tasks) {
-      if (task.status == TaskStatus.pending) {
-        await _processingRepository.cancelTask(task.id);
-      }
-    }
-
-    _progressTimer?.cancel();
-    _progressSubscription?.cancel();
-
-    emit(state.copyWith(
-      status: ProcessingStatus.cancelled,
-      currentTask: null,
-    ));
-  }
-
-  Future<void> _onUpdateParameters(
-    UpdateParameters event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    emit(state.copyWith(
-      parameters: event.parameters,
-    ));
-
-    // 如果当前有任务在处理，需要重新开始
-    if (state.status == ProcessingStatus.processing) {
-      add(CancelProcessing());
-      add(StartProcessing(
-        images: state.inputImages,
-        algorithm: state.selectedAlgorithm,
-        parameters: event.parameters,
-      ));
-    }
-  }
-
-  Future<void> _onUpdateProgress(
-    UpdateProgress event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    // 更新当前任务进度
-    final updatedTasks = state.tasks.map((task) {
-      if (task.id == event.taskId) {
-        return task.copyWith(
-          progress: event.progress,
-          status: event.status,
-          estimatedRemainingTime: event.estimatedRemainingTime,
-        );
-      }
-      return task;
-    }).toList();
-
-    final currentTask = updatedTasks.firstWhere(
-      (task) => task.id == event.taskId,
-    );
-
-    emit(state.copyWith(
-      tasks: updatedTasks,
-      currentTask: currentTask,
-      elapsedTime: event.elapsedTime,
-    ));
-  }
-
-  Future<void> _onTaskCompleted(
-    TaskCompleted event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    final updatedResults = Map<String, ProcessedImage>.from(state.results);
-    updatedResults[event.taskId] = event.result;
-
-    final updatedTasks = state.tasks.map((task) {
-      if (task.id == event.taskId) {
-        return task.copyWith(
-          status: TaskStatus.completed,
-          progress: 1.0,
-          result: event.result,
-        );
-      }
-      return task;
-    }).toList();
-
-    emit(state.copyWith(
-      results: updatedResults,
-      tasks: updatedTasks,
-    ));
-
-    // 检查是否所有任务都完成
-    if (_areAllTasksCompleted(updatedTasks)) {
-      add(ProcessingCompleted());
-    } else {
-      // 开始下一个任务
-      _startNextTask(updatedTasks);
-    }
-  }
-
-  Future<void> _onTaskFailed(
-    TaskFailed event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    final updatedTasks = state.tasks.map((task) {
-      if (task.id == event.taskId) {
-        return task.copyWith(
-          status: TaskStatus.failed,
-          errorMessage: event.error,
-        );
-      }
-      return task;
-    }).toList();
-
-    emit(state.copyWith(
-      tasks: updatedTasks,
-      status: ProcessingStatus.error,
-      errorMessage: '任务失败: ${event.error}',
-    ));
-  }
-
-  Future<void> _onProcessingCompleted(
-    ProcessingCompleted event,
-    Emitter<ProcessingState> emit,
-  ) async {
-    _progressTimer?.cancel();
-    _progressSubscription?.cancel();
-
-    emit(state.copyWith(
-      status: ProcessingStatus.completed,
-      currentTask: null,
-    ));
-
-    // 保存处理历史
-    await _saveProcessingHistory();
-  }
-
-  // 私有辅助方法
-  Future<void> _validateInputs(
-    List<ImageFile> images,
-    Algorithm algorithm,
-    ProcessingParameters parameters,
-  ) async {
-    if (images.isEmpty) {
-      throw Exception('没有选择图片');
-    }
-
-    if (algorithm.id.isEmpty) {
-      throw Exception('没有选择算法');
-    }
-
-    for (final image in images) {
-      if (!await _imageRepository.validateImage(image)) {
-        throw Exception('图片验证失败: ${image.name}');
-      }
-    }
-  }
-
-  Future<List<ProcessingTask>> _createTasks(
-    List<ImageFile> images,
-    Algorithm algorithm,
-    ProcessingParameters parameters,
-  ) async {
-    return images.map((image) => ProcessingTask(
-      id: uuid.v4(),
-      imageFile: image,
-      algorithm: algorithm,
-      parameters: parameters,
-      status: TaskStatus.pending,
-      progress: 0.0,
-      createdAt: DateTime.now(),
-    )).toList();
-  }
-
-  Duration _calculateEstimatedTime(
-    List<ProcessingTask> tasks,
-    Algorithm algorithm,
-  ) {
-    return Duration(
-      milliseconds: tasks.length * algorithm.averageProcessingTime.inMilliseconds,
-    );
-  }
-
-  Future<void> _startProcessingStream(List<ProcessingTask> tasks) async {
-    _progressSubscription = _processingRepository
-        .getProcessingStream(tasks)
-        .listen((progress) {
-          if (progress is ProcessingProgressUpdate) {
-            add(UpdateProgress(
-              taskId: progress.taskId,
-              progress: progress.progress,
-              status: progress.status,
-              estimatedRemainingTime: progress.estimatedRemainingTime,
-              elapsedTime: progress.elapsedTime,
-            ));
-          } else if (progress is TaskCompletion) {
-            add(TaskCompleted(
-              taskId: progress.taskId,
-              result: progress.result,
-            ));
-          } else if (progress is TaskFailure) {
-            add(TaskFailed(
-              taskId: progress.taskId,
-              error: progress.error,
-            ));
-          }
-        });
-
-    // 开始第一个任务
-    _startNextTask(tasks);
-    _startProgressTimer();
-  }
-
-  void _startNextTask(List<ProcessingTask> tasks) {
-    final pendingTask = tasks.firstWhere(
-      (task) => task.status == TaskStatus.pending,
-      orElse: () => throw StateError('No pending tasks found'),
-    );
-
-    _processingRepository.startTask(pendingTask);
-  }
-
-  void _startProgressTimer() {
-    _progressTimer?.cancel();
-    _progressTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
-      // 更新经过时间
-      final updatedElapsedTime = state.elapsedTime + Duration(milliseconds: 100);
-      // 可以在这里添加更多的进度更新逻辑
-    });
-  }
-
-  bool _areAllTasksCompleted(List<ProcessingTask> tasks) {
-    return tasks.every((task) =>
-        task.status == TaskStatus.completed ||
-        task.status == TaskStatus.failed);
-  }
-
-  Future<void> _saveProcessingHistory() async {
-    try {
-      final history = ProcessingHistory(
-        id: uuid.v4(),
-        images: state.inputImages,
-        algorithm: state.selectedAlgorithm,
-        parameters: state.parameters,
-        results: state.results.values.toList(),
-        processingTime: state.elapsedTime,
-        createdAt: DateTime.now(),
-      );
-
-      await _imageRepository.saveProcessingHistory(history);
-    } catch (e) {
-      log('Failed to save processing history: $e');
-    }
-  }
-
-  @override
-  Future<void> close() {
-    _progressTimer?.cancel();
-    _progressSubscription?.cancel();
-    return super.close();
-  }
-}
-```
+| 工具名称 | 主要功能 | 使用场景 | 集成方式 |
+|---------|---------|---------|---------|
+| **Flutter DevTools** | 性能分析、内存监控 | 开发阶段调试 | IDE插件 |
+| **Riverpod DevTools** | 状态可视化、Provider监控 | 状态管理调试 | 依赖包 |
+| **自定义Logger** | 业务日志、状态变化日志 | 生产环境问题追踪 | 自实现 |
+| **Performance Overlay** | 实时性能指标显示 | 性能优化 | Flutter内置 |
 
 ---
 
-## 📊 效果对比状态管理
+## 🎯 开发最佳实践指南
 
-### 状态定义
-```dart
-// lib/features/comparison/bloc/comparison_state.dart
-part of 'comparison_cubit.dart';
+### 代码规范与约定
 
-enum ComparisonMode {
-  sideBySide,    // 并排对比
-  overlay,       // 重叠对比
-  slider,        // 滑动对比
-  magnifier,     // 放大镜
-  filter,        // 滤镜调节
-  metrics,       // 指标评估
-}
+**Provider命名约定规范表**
 
-class ComparisonState extends Equatable {
-  final ImageData originalImage;
-  final ImageData processedImage;
-  final ComparisonMode currentMode;
-  final Map<ComparisonMode, ComparisonSettings> modeSettings;
-  final List<ImageQualityMetric> metrics;
-  final bool isLoading;
-  final String? errorMessage;
-  final List<ComparisonHistory> history;
+| Provider类型 | 命名模式 | 示例 | 说明 |
+|-------------|---------|------|------|
+| **StateProvider** | `xxxProvider` | `selectedImageProvider` | 简单状态 |
+| **StateNotifierProvider** | `xxxProvider` | `imageInputStateProvider` | 复杂状态 |
+| **FutureProvider** | `xxxProvider` | `algorithmsProvider` | 异步数据 |
+| **StreamProvider** | `xxxStreamProvider` | `processingProgressStreamProvider` | 数据流 |
+| **Provider** | `xxxProvider` | `imageRepositoryProvider` | 服务依赖 |
 
-  const ComparisonState({
-    required this.originalImage,
-    required this.processedImage,
-    this.currentMode = ComparisonMode.sideBySide,
-    this.modeSettings = const {},
-    this.metrics = const [],
-    this.isLoading = false,
-    this.errorMessage,
-    this.history = const [],
-  });
+### 错误处理策略
 
-  ComparisonState copyWith({
-    ImageData? originalImage,
-    ImageData? processedImage,
-    ComparisonMode? currentMode,
-    Map<ComparisonMode, ComparisonSettings>? modeSettings,
-    List<ImageQualityMetric>? metrics,
-    bool? isLoading,
-    String? errorMessage,
-    List<ComparisonHistory>? history,
-  }) {
-    return ComparisonState(
-      originalImage: originalImage ?? this.originalImage,
-      processedImage: processedImage ?? this.processedImage,
-      currentMode: currentMode ?? this.currentMode,
-      modeSettings: modeSettings ?? this.modeSettings,
-      metrics: metrics ?? this.metrics,
-      isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage,
-      history: history ?? this.history,
-    );
-  }
+**分层错误处理架构**
 
-  ComparisonSettings? get currentSettings =>
-      modeSettings[currentMode] ?? _getDefaultSettings(currentMode);
+| 错误层级 | 处理方式 | 错误类型 | 用户反馈 |
+|---------|---------|---------|---------|
+| **UI层错误** | 显示友好提示 | 表单验证、交互错误 | Toast、SnackBar |
+| **业务层错误** | 统一错误处理 | 业务逻辑错误 | 错误页面、重试按钮 |
+| **数据层错误** | 异常捕获、重试机制 | 网络、数据库错误 | 离线提示、重试机制 |
+| **系统级错误** | 崩溃上报、自动恢复 | 内存不足、系统异常 | 崩溃恢复、错误上报 |
 
-  ComparisonSettings _getDefaultSettings(ComparisonMode mode) {
-    switch (mode) {
-      case ComparisonMode.sideBySide:
-        return const ComparisonSettings(
-          splitPosition: 0.5,
-          splitDirection: Axis.horizontal,
-        );
-      case ComparisonMode.overlay:
-        return const ComparisonSettings(
-          overlayOpacity: 0.5,
-          originalOnTop: true,
-        );
-      case ComparisonMode.slider:
-        return const ComparisonSettings(
-          sliderPosition: 0.5,
-          sliderDirection: Axis.horizontal,
-        );
-      case ComparisonMode.magnifier:
-        return const ComparisonSettings(
-          magnifierSize: 150,
-          magnification: 2.0,
-          showOriginalInMagnifier: true,
-        );
-      case ComparisonMode.filter:
-        return const ComparisonSettings(
-          brightness: 0.0,
-          contrast: 0.0,
-          saturation: 0.0,
-        );
-      case ComparisonMode.metrics:
-        return const ComparisonSettings();
-    }
-  }
+### 代码审查检查清单
 
-  @override
-  List<Object?> get props => [
-        originalImage,
-        processedImage,
-        currentMode,
-        modeSettings,
-        metrics,
-        isLoading,
-        errorMessage,
-        history,
-      ];
-}
+**状态管理代码审查要点**
 
-class ComparisonSettings extends Equatable {
-  final double splitPosition;
-  final Axis splitDirection;
-  final double overlayOpacity;
-  final bool originalOnTop;
-  final double sliderPosition;
-  final Axis sliderDirection;
-  final double magnifierSize;
-  final double magnification;
-  final bool showOriginalInMagnifier;
-  final double brightness;
-  final double contrast;
-  final double saturation;
-
-  const ComparisonSettings({
-    this.splitPosition = 0.5,
-    this.splitDirection = Axis.horizontal,
-    this.overlayOpacity = 0.5,
-    this.originalOnTop = true,
-    this.sliderPosition = 0.5,
-    this.sliderDirection = Axis.horizontal,
-    this.magnifierSize = 150,
-    this.magnification = 2.0,
-    this.showOriginalInMagnifier = true,
-    this.brightness = 0.0,
-    this.contrast = 0.0,
-    this.saturation = 0.0,
-  });
-
-  ComparisonSettings copyWith({
-    double? splitPosition,
-    Axis? splitDirection,
-    double? overlayOpacity,
-    bool? originalOnTop,
-    double? sliderPosition,
-    Axis? sliderDirection,
-    double? magnifierSize,
-    double? magnification,
-    bool? showOriginalInMagnifier,
-    double? brightness,
-    double? contrast,
-    double? saturation,
-  }) {
-    return ComparisonSettings(
-      splitPosition: splitPosition ?? this.splitPosition,
-      splitDirection: splitDirection ?? this.splitDirection,
-      overlayOpacity: overlayOpacity ?? this.overlayOpacity,
-      originalOnTop: originalOnTop ?? this.originalOnTop,
-      sliderPosition: sliderPosition ?? this.sliderPosition,
-      sliderDirection: sliderDirection ?? this.sliderDirection,
-      magnifierSize: magnifierSize ?? this.magnifierSize,
-      magnification: magnification ?? this.magnification,
-      showOriginalInMagnifier:
-          showOriginalInMagnifier ?? this.showOriginalInMagnifier,
-      brightness: brightness ?? this.brightness,
-      contrast: contrast ?? this.contrast,
-      saturation: saturation ?? this.saturation,
-    );
-  }
-
-  @override
-  List<Object?> get props => [
-        splitPosition,
-        splitDirection,
-        overlayOpacity,
-        originalOnTop,
-        sliderPosition,
-        sliderDirection,
-        magnifierSize,
-        magnification,
-        showOriginalInMagnifier,
-        brightness,
-        contrast,
-        saturation,
-      ];
-}
-```
+| 审查项目 | 检查内容 | 通过标准 |
+|---------|---------|---------|
+| **Provider设计** | 职责单一性、依赖合理性 | 符合SOLID原则 |
+| **状态设计** | 不变性、状态转换完整性 | 状态转换清晰 |
+| **异步处理** | 错误处理、超时机制 | 完善的异常处理 |
+| **性能考虑** | 重构建优化、内存管理 | 无性能问题 |
+| **测试覆盖** | 单元测试、集成测试 | 覆盖率达标 |
 
 ---
 
-## 🔁 状态持久化
+## 📚 技术选型与资源
 
-### HydratedBloc配置
-```dart
-// lib/core/hydration/hydrated_bloc_config.dart
-class AppHydratedBlocConfig {
-  static void configure() {
-    // 配置存储
-    HydratedBloc.storage = HydratedStorage(
-      storage: SharedPreferencesStorage(),
-    );
+### 技术栈版本矩阵
 
-    // 自定义JSON转换器
-    HydratedBloc.transformers = [
-      ImageInputHydratedTransformer(),
-      AlgorithmSelectHydratedTransformer(),
-      UserPreferencesHydratedTransformer(),
-    ];
-  }
-}
+**核心技术版本要求**
 
-// 图像输入状态持久化
-class ImageInputHydratedTransformer extends HydratedTransformer<ImageInputState> {
-  @override
-  ImageInputState fromJson(Map<String, dynamic> json) {
-    return ImageInputState(
-      selectedImages: (json['selectedImages'] as List?)
-          ?.map((e) => ImageFile.fromJson(e))
-          .toList() ?? [],
-      maxImages: json['maxImages'] as int? ?? 5,
-      favoriteAlgorithms: (json['favoriteAlgorithms'] as List?)
-          ?.map((e) => e.toString())
-          .toSet() ?? {},
-    );
-  }
+| 技术组件 | 最低版本 | 推荐版本 | 兼容性说明 |
+|---------|---------|---------|-----------|
+| **Flutter** | 3.16.0 | 3.19.0+ | 支持最新特性 |
+| **Dart** | 3.2.0 | 3.4.0+ | 语言特性支持 |
+| **Riverpod** | 2.4.0 | 2.6.0+ | 状态管理核心 |
+| **Flutter Test** | 3.16.0 | 3.19.0+ | 测试框架 |
+| **DevTools** | 2.24.0 | 2.28.0+ | 开发工具 |
 
-  @override
-  Map<String, dynamic> toJson(ImageInputState state) {
-    return {
-      'selectedImages': state.selectedImages.map((e) => e.toJson()).toList(),
-      'maxImages': state.maxImages,
-      'favoriteAlgorithms': state.favoriteAlgorithms.toList(),
-    };
-  }
-}
-```
+### 学习资源与文档
+
+**官方文档与社区资源**
+
+| 资源类型 | 名称 | 链接 | 适用阶段 |
+|---------|------|------|---------|
+| **官方文档** | Riverpod官方文档 | https://riverpod.dev | 全阶段 |
+| **API文档** | Flutter Riverpod API | https://pub.dev/packages/flutter_riverpod | 开发阶段 |
+| **最佳实践** | Riverpod最佳实践指南 | https://riverpod.dev/docs/concepts/best_practices | 架构设计 |
+| **示例项目** | Riverpod官方示例 | https://github.com/rrousselGit/riverpod/tree/master/examples | 学习参考 |
+| **社区讨论** | GitHub Discussions | https://github.com/rrousselGit/riverpod/discussions | 问题解决 |
 
 ---
 
-## 📊 性能优化策略
+## 🔮 未来演进规划
 
-### 状态缓存
-```dart
-// lib/core/cache/state_cache.dart
-class StateCache {
-  static final Map<String, dynamic> _cache = {};
-  static const Duration _defaultExpiry = Duration(minutes: 5);
+### 状态管理技术演进路线
 
-  static T? get<T>(String key) {
-    final cached = _cache[key];
-    if (cached == null) return null;
+**短期目标 (3-6个月)**
+- 完善现有Riverpod架构，优化性能
+- 建立完整的状态管理测试体系
+- 实现状态持久化和缓存机制
 
-    final cachedItem = cached as _CachedItem<T>;
-    if (DateTime.now().isAfter(cachedItem.expiry)) {
-      _cache.remove(key);
-      return null;
-    }
+**中期目标 (6-12个月)**
+- 引入状态管理可视化工具
+- 实现跨页面状态同步机制
+- 建立状态管理监控和告警系统
 
-    return cachedItem.value;
-  }
+**长期目标 (1-2年)**
+- 探索下一代状态管理技术
+- 实现自适应性能优化
+- 建立状态管理最佳实践库
 
-  static void set<T>(String key, T value, [Duration? expiry]) {
-    _cache[key] = _CachedItem(
-      value: value,
-      expiry: DateTime.now().add(expiry ?? _defaultExpiry),
-    );
-  }
+### 技术债务管理
 
-  static void clear() {
-    _cache.clear();
-  }
+**重构优先级矩阵**
 
-  static void remove(String key) {
-    _cache.remove(key);
-  }
-}
-
-class _CachedItem<T> {
-  final T value;
-  final DateTime expiry;
-
-  _CachedItem({
-    required this.value,
-    required this.expiry,
-  });
-}
-```
-
-### 防抖处理
-```dart
-// lib/utils/debouncer.dart
-class Debouncer {
-  final Duration delay;
-  Timer? _timer;
-  VoidCallback? _callback;
-
-  Debouncer({required this.delay});
-
-  void run(VoidCallback callback) {
-    _callback = callback;
-    _timer?.cancel();
-    _timer = Timer(delay, _execute);
-  }
-
-  void _execute() {
-    _callback?.call();
-  }
-
-  void cancel() {
-    _timer?.cancel();
-  }
-
-  void dispose() {
-    _timer?.cancel();
-    _callback = null;
-  }
-}
-
-// 使用示例
-class SearchCubit extends Cubit<SearchState> {
-  final Debouncer _debouncer = Debouncer(delay: Duration(milliseconds: 300));
-
-  void updateSearchQuery(String query) {
-    _debouncer.run(() {
-      // 执行搜索逻辑
-      _performSearch(query);
-    });
-  }
-
-  @override
-  Future<void> close() {
-    _debouncer.dispose();
-    return super.close();
-  }
-}
-```
+| 技术债务项 | 影响程度 | 解决难度 | 优先级 | 计划解决时间 |
+|-----------|---------|---------|--------|-------------|
+| **Provider命名规范** | 中 | 低 | 🔥🔥 | Q1 2024 |
+| **测试覆盖率提升** | 高 | 中 | 🔥🔥🔥 | Q2 2024 |
+| **性能监控完善** | 高 | 中 | 🔥🔥🔥 | Q2 2024 |
+| **文档体系完善** | 中 | 低 | 🔥🔥 | Q1 2024 |
 
 ---
 
-## 🧪 测试策略
-
-### 状态管理测试
-```dart
-// test/features/algorithm_select/bloc/algorithm_select_cubit_test.dart
-void main() {
-  group('AlgorithmSelectCubit', () {
-    late AlgorithmSelectCubit cubit;
-    late MockAlgorithmRepository mockRepository;
-
-    setUp(() {
-      mockRepository = MockAlgorithmRepository();
-      cubit = AlgorithmSelectCubit(mockRepository);
-    });
-
-    tearDown(() {
-      cubit.close();
-    });
-
-    test('初始状态正确', () {
-      expect(cubit.state.status, AlgorithmSelectStatus.initial);
-      expect(cubit.state.algorithms, isEmpty);
-      expect(cubit.state.filteredAlgorithms, isEmpty);
-    });
-
-    test('加载算法列表成功', () async {
-      // Arrange
-      final algorithms = [
-        Algorithm.test('1', 'DCP', 'Dark Channel Prior'),
-        Algorithm.test('2', 'AOD-Net', 'All-in-One Dehazing Network'),
-      ];
-
-      when(() => mockRepository.getAlgorithms())
-          .thenAnswer((_) async => algorithms);
-      when(() => mockRepository.getFavoriteAlgorithms())
-          .thenAnswer((_) async => <String>{'1'});
-
-      // Act
-      await cubit.loadAlgorithms();
-
-      // Assert
-      expect(cubit.state.status, AlgorithmSelectStatus.loaded);
-      expect(cubit.state.algorithms, algorithms);
-      expect(cubit.state.filteredAlgorithms, algorithms);
-      expect(cubit.state.favoriteAlgorithms, contains('1'));
-
-      verify(() => mockRepository.getAlgorithms()).called(1);
-      verify(() => mockRepository.getFavoriteAlgorithms()).called(1);
-    });
-
-    test('搜索算法正确过滤', () {
-      // Arrange
-      cubit.emit(cubit.state.copyWith(
-        algorithms: [
-          Algorithm.test('1', 'DCP', 'Dark Channel Prior'),
-          Algorithm.test('2', 'AOD-Net', 'All-in-One Dehazing Network'),
-        ],
-        filteredAlgorithms: [
-          Algorithm.test('1', 'DCP', 'Dark Channel Prior'),
-          Algorithm.test('2', 'AOD-Net', 'All-in-One Dehazing Network'),
-        ],
-      ));
-
-      // Act
-      cubit.searchAlgorithms('DCP');
-
-      // Assert
-      expect(cubit.state.searchQuery, 'DCP');
-      expect(cubit.state.filteredAlgorithms, hasLength(1));
-      expect(cubit.state.filteredAlgorithms.first.name, 'DCP');
-    });
-
-    test('切换收藏状态', () async {
-      // Arrange
-      const algorithmId = '1';
-      cubit.emit(cubit.state.copyWith(
-        algorithms: [Algorithm.test(algorithmId, 'DCP', 'Dark Channel Prior')],
-        favoriteAlgorithms: <String>{},
-      ));
-
-      when(() => mockRepository.addFavoriteAlgorithm(algorithmId))
-          .thenAnswer((_) async {});
-
-      // Act
-      await cubit.toggleFavorite(algorithmId);
-
-      // Assert
-      expect(cubit.state.favoriteAlgorithms, contains(algorithmId));
-      verify(() => mockRepository.addFavoriteAlgorithm(algorithmId)).called(1);
-    });
-  });
-}
-```
-
----
-
-**文档版本**: v1.0
+**文档版本**: v3.0
 **最后更新**: 2025-11-22
-**参考文档**: [架构设计](../design/02-architecture.md)、[UI组件设计](02-ui-components.md)
+**技术栈**: Flutter 3.16+, Dart 3.2+, Riverpod 2.6+
+**架构原则**: 单一职责、依赖注入、测试驱动、性能优先
+**维护团队**: Flutter开发团队
+**下次评审**: 2025-12-22
