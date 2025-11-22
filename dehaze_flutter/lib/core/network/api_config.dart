@@ -10,9 +10,7 @@ class ApiConfig {
   static String get apiVersion => _apiVersion;
 
   // 构建完整的API URL
-  static String buildUrl(String endpoint) {
-    return '$_baseUrl/$_apiVersion$endpoint';
-  }
+  static String buildUrl(String endpoint) => '$_baseUrl/$_apiVersion$endpoint';
 
   // 请求超时配置
   static const Duration connectTimeout = Duration(seconds: 30);

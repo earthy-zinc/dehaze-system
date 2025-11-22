@@ -3,20 +3,15 @@ import 'package:go_router/go_router.dart';
 import '../../domain/entities/dehaze_image.dart';
 
 class DehazeControlsWidget extends StatefulWidget {
+
+  const DehazeControlsWidget({
+    required this.currentParameters, required this.availableAlgorithms, required this.isProcessing, required this.onParametersChanged, required this.onProcessImage, super.key,
+  });
   final DehazeParameters currentParameters;
   final List<DehazeAlgorithm> availableAlgorithms;
   final bool isProcessing;
-  final Function(DehazeParameters) onParametersChanged;
-  final Function(String) onProcessImage;
-
-  const DehazeControlsWidget({
-    super.key,
-    required this.currentParameters,
-    required this.availableAlgorithms,
-    required this.isProcessing,
-    required this.onParametersChanged,
-    required this.onProcessImage,
-  });
+  final void Function(DehazeParameters) onParametersChanged;
+  final void Function(String) onProcessImage;
 
   @override
   State<DehazeControlsWidget> createState() => _DehazeControlsWidgetState();
@@ -41,10 +36,9 @@ class _DehazeControlsWidgetState extends State<DehazeControlsWidget> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
+  Widget build(BuildContext context) => Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
           child: SingleChildScrollView(
@@ -91,12 +85,10 @@ class _DehazeControlsWidgetState extends State<DehazeControlsWidget> {
                     labelText: '去雾算法',
                     border: OutlineInputBorder(),
                   ),
-                  items: widget.availableAlgorithms.map((algorithm) {
-                    return DropdownMenuItem(
+                  items: widget.availableAlgorithms.map((algorithm) => DropdownMenuItem(
                       value: algorithm,
                       child: Text(_getAlgorithmName(algorithm)),
-                    );
-                  }).toList(),
+                    )).toList(),
                   onChanged: widget.isProcessing
                       ? null
                       : (algorithm) {
@@ -125,8 +117,6 @@ class _DehazeControlsWidgetState extends State<DehazeControlsWidget> {
                 ),
                 Slider(
                   value: _parameters.strength,
-                  min: 0.0,
-                  max: 1.0,
                   divisions: 100,
                   onChanged: widget.isProcessing
                       ? null
@@ -154,8 +144,7 @@ class _DehazeControlsWidgetState extends State<DehazeControlsWidget> {
                 ),
                 Slider(
                   value: _parameters.contrast,
-                  min: 0.0,
-                  max: 3.0,
+                  max: 3,
                   divisions: 30,
                   onChanged: widget.isProcessing
                       ? null
@@ -183,8 +172,7 @@ class _DehazeControlsWidgetState extends State<DehazeControlsWidget> {
                 ),
                 Slider(
                   value: _parameters.brightness,
-                  min: 0.0,
-                  max: 3.0,
+                  max: 3,
                   divisions: 30,
                   onChanged: widget.isProcessing
                       ? null
@@ -221,7 +209,6 @@ class _DehazeControlsWidgetState extends State<DehazeControlsWidget> {
         ),
       ),
     );
-  }
 
   void _updateParameters(DehazeParameters newParameters) {
     setState(() {
@@ -230,7 +217,7 @@ class _DehazeControlsWidgetState extends State<DehazeControlsWidget> {
     widget.onParametersChanged(newParameters);
   }
 
-  void _selectImage() async {
+  Future<void> _selectImage() async {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => const ImagePathDialog(),
@@ -267,8 +254,7 @@ class ImagePathDialog extends StatelessWidget {
   const ImagePathDialog({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
+  Widget build(BuildContext context) => AlertDialog(
       title: const Text('选择图片'),
       content: const Column(
         mainAxisSize: MainAxisSize.min,
@@ -289,5 +275,4 @@ class ImagePathDialog extends StatelessWidget {
         ),
       ],
     );
-  }
 }

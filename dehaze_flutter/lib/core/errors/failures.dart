@@ -1,11 +1,13 @@
-abstract class Failure {
-  final String message;
+abstract class Failure implements Exception {
 
   const Failure(this.message);
+  final String message;
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+    if (identical(this, other)) {
+      return true;
+    }
     return other is Failure && other.message == message;
   }
 
@@ -33,13 +35,15 @@ class ValidationFailure extends Failure {
 }
 
 class ProcessingFailure extends Failure {
-  final String? errorCode;
 
   const ProcessingFailure(super.message, [this.errorCode]);
+  final String? errorCode;
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+    if (identical(this, other)) {
+      return true;
+    }
     return other is ProcessingFailure &&
         other.message == message &&
         other.errorCode == errorCode;
@@ -57,14 +61,16 @@ class PermissionFailure extends Failure {
   const PermissionFailure(super.message);
 }
 
-class UnknownFailure extends Failure {
-  final dynamic originalError;
+class UnknownFailure extends Failure implements Exception {
 
   const UnknownFailure(super.message, [this.originalError]);
+  final dynamic originalError;
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+    if (identical(this, other)) {
+      return true;
+    }
     return other is UnknownFailure &&
         other.message == message &&
         other.originalError == originalError;

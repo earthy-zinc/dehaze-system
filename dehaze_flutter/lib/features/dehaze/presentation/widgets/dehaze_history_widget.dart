@@ -3,21 +3,19 @@ import 'package:go_router/go_router.dart';
 import '../../domain/entities/dehaze_image.dart';
 
 class DehazeHistoryWidget extends StatelessWidget {
-  final List<DehazeImage> history;
-  final Function(String) onDeleteImage;
 
   const DehazeHistoryWidget({
-    super.key,
-    required this.history,
-    required this.onDeleteImage,
+    required this.history, required this.onDeleteImage, super.key,
   });
+  final List<DehazeImage> history;
+  final void Function(String) onDeleteImage;
 
   @override
   Widget build(BuildContext context) {
     if (history.isEmpty) {
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -50,7 +48,7 @@ class DehazeHistoryWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 const Icon(Icons.history),
@@ -87,16 +85,13 @@ class DehazeHistoryWidget extends StatelessWidget {
   }
 
   void _showDeleteConfirmation(BuildContext context, DehazeImage image) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('删除确认'),
         content: Text('确定要删除这个去雾结果吗？\n\nID: ${image.id}'),
         actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('取消'),
-          ),
+          TextButton(onPressed: () => context.pop(), child: const Text('取消')),
           ElevatedButton(
             onPressed: () {
               onDeleteImage(image.id);
@@ -111,7 +106,7 @@ class DehazeHistoryWidget extends StatelessWidget {
   }
 
   void _showImageDetails(BuildContext context, DehazeImage image) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('图片详情'),
@@ -199,18 +194,14 @@ class DehazeHistoryWidget extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('关闭'),
-          ),
+          TextButton(onPressed: () => context.pop(), child: const Text('关闭')),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+  Widget _buildDetailRow(String label, String value) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -225,11 +216,8 @@ class DehazeHistoryWidget extends StatelessWidget {
         ],
       ),
     );
-  }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatDateTime(DateTime dateTime) => '${dateTime.year}-${dateTime.month.toString().padLeft(2, '0')}-${dateTime.day.toString().padLeft(2, '0')} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
 
   String _getStatusText(ProcessingStatus status) {
     switch (status) {
@@ -263,20 +251,16 @@ class DehazeHistoryWidget extends StatelessWidget {
 }
 
 class DehazeHistoryItem extends StatelessWidget {
+
+  const DehazeHistoryItem({
+    required this.image, required this.onDelete, required this.onTap, super.key,
+  });
   final DehazeImage image;
   final VoidCallback onDelete;
   final VoidCallback onTap;
 
-  const DehazeHistoryItem({
-    super.key,
-    required this.image,
-    required this.onDelete,
-    required this.onTap,
-  });
-
   @override
-  Widget build(BuildContext context) {
-    return Card(
+  Widget build(BuildContext context) => Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListTile(
         dense: true,
@@ -306,7 +290,6 @@ class DehazeHistoryItem extends StatelessWidget {
         onTap: onTap,
       ),
     );
-  }
 
   IconData _getStatusIcon(ProcessingStatus status) {
     switch (status) {
@@ -353,7 +336,5 @@ class DehazeHistoryItem extends StatelessWidget {
     }
   }
 
-  String _formatDateTime(DateTime dateTime) {
-    return '${dateTime.month}-${dateTime.day} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
-  }
+  String _formatDateTime(DateTime dateTime) => '${dateTime.month}-${dateTime.day} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
 }

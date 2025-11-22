@@ -1,17 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../services/providers.dart';
 import '../../domain/entities/dehaze_image.dart';
 import '../../domain/repositories/dehaze_repository.dart';
-import '../../../../services/providers.dart';
 
 // 状态类
 class DehazeState {
-  final List<DehazeImage> history;
-  final bool isLoading;
-  final bool isProcessing;
-  final String? errorMessage;
-  final DehazeImage? currentProcessingImage;
-  final List<DehazeAlgorithm> availableAlgorithms;
-  final DehazeParameters currentParameters;
 
   const DehazeState({
     this.history = const [],
@@ -27,6 +21,13 @@ class DehazeState {
     ],
     this.currentParameters = const DehazeParameters(),
   });
+  final List<DehazeImage> history;
+  final bool isLoading;
+  final bool isProcessing;
+  final String? errorMessage;
+  final DehazeImage? currentProcessingImage;
+  final List<DehazeAlgorithm> availableAlgorithms;
+  final DehazeParameters currentParameters;
 
   DehazeState copyWith({
     List<DehazeImage>? history,
@@ -36,45 +37,38 @@ class DehazeState {
     DehazeImage? currentProcessingImage,
     List<DehazeAlgorithm>? availableAlgorithms,
     DehazeParameters? currentParameters,
-  }) {
-    return DehazeState(
+  }) => DehazeState(
       history: history ?? this.history,
       isLoading: isLoading ?? this.isLoading,
       isProcessing: isProcessing ?? this.isProcessing,
       errorMessage: errorMessage ?? this.errorMessage,
-      currentProcessingImage: currentProcessingImage ?? this.currentProcessingImage,
+      currentProcessingImage:
+          currentProcessingImage ?? this.currentProcessingImage,
       availableAlgorithms: availableAlgorithms ?? this.availableAlgorithms,
       currentParameters: currentParameters ?? this.currentParameters,
     );
-  }
 }
 
 // Riverpod StateNotifier
 class DehazeNotifier extends StateNotifier<DehazeState> {
-  final DehazeRepository _repository;
 
   DehazeNotifier({required DehazeRepository repository})
-      : _repository = repository,
-        super(const DehazeState());
+    : _repository = repository,
+      super(const DehazeState());
+  final DehazeRepository _repository;
 
   // 加载历史记录
   Future<void> loadHistory() async {
-    state = state.copyWith(isLoading: true, errorMessage: null);
+    state = state.copyWith(isLoading: true);
 
     final result = await _repository.getDehazeHistory();
 
     result.fold(
       (failure) {
-        state = state.copyWith(
-          isLoading: false,
-          errorMessage: failure.message,
-        );
+        state = state.copyWith(isLoading: false, errorMessage: failure.message);
       },
       (history) {
-        state = state.copyWith(
-          isLoading: false,
-          history: history,
-        );
+        state = state.copyWith(isLoading: false, history: history);
       },
     );
   }
@@ -86,21 +80,17 @@ class DehazeNotifier extends StateNotifier<DehazeState> {
     result.fold(
       (failure) {
         // 如果获取算法失败，使用默认算法
-        state = state.copyWith(
-          errorMessage: failure.message,
-        );
+        state = state.copyWith(errorMessage: failure.message);
       },
       (algorithms) {
-        state = state.copyWith(
-          availableAlgorithms: algorithms,
-        );
+        state = state.copyWith(availableAlgorithms: algorithms);
       },
     );
   }
 
   // 处理图像
   Future<void> processImage(String imagePath) async {
-    state = state.copyWith(isProcessing: true, errorMessage: null);
+    state = state.copyWith(isProcessing: true);
 
     // 参数验证（原UseCase中的逻辑）
     if (imagePath.isEmpty) {
@@ -160,7 +150,7 @@ class DehazeNotifier extends StateNotifier<DehazeState> {
 
   // 删除图像
   Future<void> deleteImage(String imageId) async {
-    state = state.copyWith(errorMessage: null);
+    state = state.copyWith();
 
     final result = await _repository.deleteDehazeImage(imageId);
 
@@ -182,17 +172,19 @@ class DehazeNotifier extends StateNotifier<DehazeState> {
 
   // 清除当前处理的图像
   void clearCurrentProcessingImage() {
-    state = state.copyWith(currentProcessingImage: null);
+    state = state.copyWith();
   }
 
   // 清除错误信息
   void clearError() {
-    state = state.copyWith(errorMessage: null);
+    state = state.copyWith();
   }
 }
 
 // Riverpod Provider
-final dehazeProvider = StateNotifierProvider<DehazeNotifier, DehazeState>((ref) {
+final dehazeProvider = StateNotifierProvider<DehazeNotifier, DehazeState>((
+  ref,
+) {
   final repository = ref.read(dehazeRepositoryProvider);
   return DehazeNotifier(repository: repository);
 });

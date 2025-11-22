@@ -1,6 +1,6 @@
+import 'package:dehaze_flutter/app/app.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dehaze_flutter/app/app.dart';
 
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {

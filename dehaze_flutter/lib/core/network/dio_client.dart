@@ -6,7 +6,11 @@ import 'network_exceptions.dart';
 
 abstract class DioClient {
   Future<Map<String, dynamic>> get(String path);
-  Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? data, File? file});
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, dynamic>? data,
+    File? file,
+  });
   Future<Map<String, dynamic>> put(String path, {Map<String, dynamic>? data});
   Future<Map<String, dynamic>> delete(String path);
   Future<void> setAuthToken(String token);
@@ -14,22 +18,24 @@ abstract class DioClient {
 }
 
 class DioClientImpl implements DioClient {
+
+  DioClientImpl() : _dio = _createDioInstance();
   final Dio _dio;
   static final _logger = Logger('DioClient');
 
-  DioClientImpl() : _dio = _createDioInstance();
-
   static Dio _createDioInstance() {
-    final dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.buildUrl(''),
-      connectTimeout: ApiConfig.connectTimeout,
-      receiveTimeout: ApiConfig.receiveTimeout,
-      sendTimeout: ApiConfig.sendTimeout,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-    ));
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: ApiConfig.buildUrl(''),
+        connectTimeout: ApiConfig.connectTimeout,
+        receiveTimeout: ApiConfig.receiveTimeout,
+        sendTimeout: ApiConfig.sendTimeout,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      ),
+    );
 
     // 添加请求/响应拦截器
     dio.interceptors.add(
@@ -47,7 +53,9 @@ class DioClientImpl implements DioClient {
         onResponse: (response, handler) {
           // 添加响应日志（仅在调试模式下）
           if (!const bool.fromEnvironment('dart.vm.product')) {
-            _logger.info('🌐 Response: ${response.statusCode} ${response.requestOptions.uri}');
+            _logger.info(
+              '🌐 Response: ${response.statusCode} ${response.requestOptions.uri}',
+            );
             _logger.info('📥 Data: ${response.data}');
           }
           handler.next(response);
@@ -71,7 +79,7 @@ class DioClientImpl implements DioClient {
   @override
   Future<Map<String, dynamic>> get(String path) async {
     try {
-      final response = await _dio.get(path);
+      final response = await _dio.get<Map<String, dynamic>>(path);
       return _handleResponse(response);
     } on DioException catch (e) {
       throw NetworkException.fromDioError(e);
@@ -81,7 +89,11 @@ class DioClientImpl implements DioClient {
   }
 
   @override
-  Future<Map<String, dynamic>> post(String path, {Map<String, dynamic>? data, File? file}) async {
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, dynamic>? data,
+    File? file,
+  }) async {
     try {
       dynamic requestData;
 
@@ -95,12 +107,12 @@ class DioClientImpl implements DioClient {
         requestData = data;
       }
 
-      final response = await _dio.post(
+      final response = await _dio.post<Map<String, dynamic>>(
         path,
         data: requestData,
         options: file != null
-          ? Options(contentType: 'multipart/form-data')
-          : null,
+            ? Options(contentType: 'multipart/form-data')
+            : null,
       );
 
       return _handleResponse(response);
@@ -112,9 +124,12 @@ class DioClientImpl implements DioClient {
   }
 
   @override
-  Future<Map<String, dynamic>> put(String path, {Map<String, dynamic>? data}) async {
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Map<String, dynamic>? data,
+  }) async {
     try {
-      final response = await _dio.put(path, data: data);
+      final response = await _dio.put<Map<String, dynamic>>(path, data: data);
       return _handleResponse(response);
     } on DioException catch (e) {
       throw NetworkException.fromDioError(e);
@@ -126,7 +141,7 @@ class DioClientImpl implements DioClient {
   @override
   Future<Map<String, dynamic>> delete(String path) async {
     try {
-      final response = await _dio.delete(path);
+      final response = await _dio.delete<Map<String, dynamic>>(path);
       return _handleResponse(response);
     } on DioException catch (e) {
       throw NetworkException.fromDioError(e);
@@ -145,21 +160,18 @@ class DioClientImpl implements DioClient {
     _dio.options.headers.remove('Authorization');
   }
 
-  Map<String, dynamic> _handleResponse(Response response) {
+  Map<String, dynamic> _handleResponse(Response<dynamic> response) {
     switch (response.statusCode) {
       case HttpStatusCodes.ok:
       case HttpStatusCodes.created:
         return {
           'statusCode': response.statusCode,
           'data': response.data is Map<String, dynamic>
-            ? response.data as Map<String, dynamic>
-            : {'response': response.data},
+              ? response.data as Map<String, dynamic>
+              : {'response': response.data},
         };
       case HttpStatusCodes.noContent:
-        return {
-          'statusCode': response.statusCode,
-          'data': {},
-        };
+        return <String, dynamic>{'statusCode': response.statusCode, 'data': <String, dynamic>{}};
       default:
         throw NetworkException(
           message: 'HTTP ${response.statusCode}: ${response.statusMessage}',

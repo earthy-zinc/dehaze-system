@@ -3,28 +3,26 @@ import 'package:go_router/go_router.dart';
 import '../../domain/entities/dehaze_image.dart';
 
 class ProcessingStatusWidget extends StatelessWidget {
+
+  const ProcessingStatusWidget({
+    required this.isProcessing, required this.onClearCurrent, super.key,
+    this.currentImage,
+  });
   final bool isProcessing;
   final DehazeImage? currentImage;
   final VoidCallback onClearCurrent;
 
-  const ProcessingStatusWidget({
-    super.key,
-    required this.isProcessing,
-    this.currentImage,
-    required this.onClearCurrent,
-  });
-
   @override
   Widget build(BuildContext context) {
     if (isProcessing && currentImage == null) {
-      return Card(
+      return const Card(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(16),
           child: Row(
             children: [
-              const CircularProgressIndicator(),
-              const SizedBox(width: 16),
-              const Expanded(
+              CircularProgressIndicator(),
+              SizedBox(width: 16),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -45,7 +43,7 @@ class ProcessingStatusWidget extends StatelessWidget {
     if (currentImage != null) {
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -103,7 +101,7 @@ class ProcessingStatusWidget extends StatelessWidget {
                 ),
               if (currentImage!.status == ProcessingStatus.failed)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                  padding: const EdgeInsets.only(top: 8),
                   child: Text(
                     '处理失败，请重试',
                     style: TextStyle(
@@ -166,7 +164,7 @@ class ProcessingStatusWidget extends StatelessWidget {
   }
 
   void _viewResultImage(BuildContext context) {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('处理结果'),
@@ -198,10 +196,7 @@ class ProcessingStatusWidget extends StatelessWidget {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => context.pop(),
-            child: const Text('关闭'),
-          ),
+          TextButton(onPressed: () => context.pop(), child: const Text('关闭')),
         ],
       ),
     );

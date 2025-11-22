@@ -1,75 +1,78 @@
 class NetworkException implements Exception {
-  final String message;
-  final int? statusCode;
-  final String? response;
 
-  NetworkException({
-    required this.message,
-    this.statusCode,
-    this.response,
-  });
-
-  @override
-  String toString() {
-    return 'NetworkException: $message${statusCode != null ? ' (Status: $statusCode)' : ''}';
-  }
+  NetworkException({required this.message, this.statusCode, this.response});
 
   factory NetworkException.fromDioError(dynamic error) {
-    if (error.type?.name == 'connectTimeout') {
+    if (error is! Map<String, dynamic>) {
+      return NetworkException(
+        message: 'Unknown network error occurred.',
+      );
+    }
+
+    final errorType = error['type'] as Map<String, dynamic>?;
+    final typeName = errorType?['name'] as String?;
+
+    if (typeName == 'connectTimeout') {
       return NetworkException(
         message: 'Connection timeout. Please check your internet connection.',
         statusCode: 408,
       );
     }
 
-    if (error.type?.name == 'receiveTimeout') {
+    if (typeName == 'receiveTimeout') {
       return NetworkException(
         message: 'Receive timeout. Please try again.',
         statusCode: 408,
       );
     }
 
-    if (error.type?.name == 'sendTimeout') {
+    if (typeName == 'sendTimeout') {
       return NetworkException(
         message: 'Send timeout. Please try again.',
         statusCode: 408,
       );
     }
 
-    if (error.type?.name == 'cancel') {
-      return NetworkException(
-        message: 'Request was cancelled.',
-      );
+    if (typeName == 'cancel') {
+      return NetworkException(message: 'Request was cancelled.');
     }
 
-    if (error.type?.name == 'unknown') {
+    if (typeName == 'unknown') {
       return NetworkException(
         message: 'No internet connection.',
         statusCode: 0,
       );
     }
 
-    if (error.response != null) {
-      final statusCode = error.response?.statusCode;
-      final message = _getErrorMessage(statusCode, error.response?.data);
+    final response = error['response'] as Map<String, dynamic>?;
+    if (response != null) {
+      final statusCode = response['statusCode'] as int?;
+      final message = _getErrorMessage(statusCode, response['data']);
 
       return NetworkException(
         message: message,
         statusCode: statusCode,
-        response: error.response?.data?.toString(),
+        response: response['data']?.toString(),
       );
     }
 
     return NetworkException(
-      message: error.message ?? 'Unknown network error occurred.',
-      statusCode: error.response?.statusCode,
+      message: error['message'] as String? ?? 'Unknown network error occurred.',
+      statusCode: response?['statusCode'] as int?,
     );
   }
+  final String message;
+  final int? statusCode;
+  final String? response;
+
+  @override
+  String toString() => 'NetworkException: $message${statusCode != null ? ' (Status: $statusCode)' : ''}';
 
   static String _getErrorMessage(int? statusCode, dynamic responseData) {
     switch (statusCode) {
       case 400:
-        return responseData?['message'] ?? 'Bad request. Please check your input.';
+        return (responseData as Map<String, dynamic>?)?['message'] as String? ??
+            'Bad request. Please check your input.';
       case 401:
         return 'Unauthorized. Please login again.';
       case 403:
@@ -91,7 +94,11 @@ class NetworkException implements Exception {
       case 504:
         return 'Gateway timeout. Please try again later.';
       default:
-        return responseData?['message'] ?? 'Something went wrong. Please try again.';
+        if (responseData is Map<String, dynamic>) {
+          return responseData['message'] as String? ??
+              'Something went wrong. Please try again.';
+        }
+        return 'Something went wrong. Please try again.';
     }
   }
 }

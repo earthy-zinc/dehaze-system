@@ -1,8 +1,10 @@
 import 'dart:convert';
+
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/dehaze_image_model.dart';
-import '../../../../core/utils/result.dart';
+
 import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/result.dart';
+import '../models/dehaze_image_model.dart';
 
 abstract class DehazeLocalDataSource {
   Future<Result<List<DehazeImageModel>>> getDehazeHistory();
@@ -13,11 +15,11 @@ abstract class DehazeLocalDataSource {
 }
 
 class DehazeLocalDataSourceImpl implements DehazeLocalDataSource {
+
+  DehazeLocalDataSourceImpl(this.sharedPreferences);
   final SharedPreferences sharedPreferences;
   static const String _dehazeHistoryKey = 'dehaze_history';
   static const int _maxHistoryCount = 50;
-
-  DehazeLocalDataSourceImpl(this.sharedPreferences);
 
   @override
   Future<Result<List<DehazeImageModel>>> getDehazeHistory() async {
@@ -28,13 +30,15 @@ class DehazeLocalDataSourceImpl implements DehazeLocalDataSource {
       }
 
       final images = historyJson
-          .map((jsonString) => DehazeImageModel.fromJson(jsonDecode(jsonString)))
+          .map(
+            (jsonString) => DehazeImageModel.fromJson(jsonDecode(jsonString) as Map<String, dynamic>),
+          )
           .toList();
 
       images.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       return Result.success(images);
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to load dehaze history: $e'));
     }
   }
@@ -65,7 +69,7 @@ class DehazeLocalDataSourceImpl implements DehazeLocalDataSource {
       }
 
       return Result.success(null);
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to save dehaze image: $e'));
     }
   }
@@ -83,7 +87,7 @@ class DehazeLocalDataSourceImpl implements DehazeLocalDataSource {
       final filteredImages = images.where((img) => img.id != imageId).toList();
       await _saveImagesList(filteredImages);
       return Result.success(null);
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to delete dehaze image: $e'));
     }
   }
@@ -103,8 +107,10 @@ class DehazeLocalDataSourceImpl implements DehazeLocalDataSource {
         orElse: () => null,
       );
       return Result.success(image);
-    } catch (e) {
-      return Result.failure(CacheFailure('Failed to get dehaze image by ID: $e'));
+    } on Exception catch (e) {
+      return Result.failure(
+        CacheFailure('Failed to get dehaze image by ID: $e'),
+      );
     }
   }
 
@@ -113,7 +119,7 @@ class DehazeLocalDataSourceImpl implements DehazeLocalDataSource {
     try {
       await sharedPreferences.remove(_dehazeHistoryKey);
       return Result.success(null);
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to clear dehaze history: $e'));
     }
   }

@@ -159,7 +159,6 @@ instance/
 .webassets-cache
 
 # 算法项目特定（所有层级）
-**/data/
 **/cache/
 **/trained_model/
 **/deploy/

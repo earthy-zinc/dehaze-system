@@ -1,5 +1,5 @@
-import '../entities/dehaze_image.dart';
 import '../../../../core/utils/result.dart';
+import '../entities/dehaze_image.dart';
 
 abstract class DehazeRepository {
   Future<Result<List<DehazeImage>>> getDehazeHistory();

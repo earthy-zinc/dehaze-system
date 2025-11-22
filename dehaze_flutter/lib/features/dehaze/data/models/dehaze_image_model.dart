@@ -4,16 +4,12 @@ class DehazeImageModel extends DehazeImage {
   const DehazeImageModel({
     required super.id,
     required super.originalImagePath,
-    super.processedImagePath,
-    required super.createdAt,
+    required super.createdAt, required super.status, required super.parameters, super.processedImagePath,
     super.processedAt,
-    required super.status,
-    required super.parameters,
     super.metadata,
   });
 
-  factory DehazeImageModel.fromJson(Map<String, dynamic> json) {
-    return DehazeImageModel(
+  factory DehazeImageModel.fromJson(Map<String, dynamic> json) => DehazeImageModel(
       id: json['id'] as String,
       originalImagePath: json['originalImagePath'] as String,
       processedImagePath: json['processedImagePath'] as String?,
@@ -25,15 +21,17 @@ class DehazeImageModel extends DehazeImage {
         (status) => status.toString() == 'ProcessingStatus.${json['status']}',
         orElse: () => ProcessingStatus.pending,
       ),
-      parameters: DehazeParametersModel.fromJson(json['parameters'] as Map<String, dynamic>),
+      parameters: DehazeParametersModel.fromJson(
+        json['parameters'] as Map<String, dynamic>,
+      ),
       metadata: json['metadata'] != null
-          ? ProcessingMetadataModel.fromJson(json['metadata'] as Map<String, dynamic>)
+          ? ProcessingMetadataModel.fromJson(
+              json['metadata'] as Map<String, dynamic>,
+            )
           : null,
     );
-  }
 
-  factory DehazeImageModel.fromEntity(DehazeImage entity) {
-    return DehazeImageModel(
+  factory DehazeImageModel.fromEntity(DehazeImage entity) => DehazeImageModel(
       id: entity.id,
       originalImagePath: entity.originalImagePath,
       processedImagePath: entity.processedImagePath,
@@ -45,10 +43,8 @@ class DehazeImageModel extends DehazeImage {
           ? ProcessingMetadataModel.fromEntity(entity.metadata!)
           : null,
     );
-  }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'id': id,
       'originalImagePath': originalImagePath,
       'processedImagePath': processedImagePath,
@@ -60,10 +56,8 @@ class DehazeImageModel extends DehazeImage {
           ? ProcessingMetadataModel.fromEntity(metadata!).toJson()
           : null,
     };
-  }
 
-  DehazeImage toEntity() {
-    return DehazeImage(
+  DehazeImage toEntity() => DehazeImage(
       id: id,
       originalImagePath: originalImagePath,
       processedImagePath: processedImagePath,
@@ -73,7 +67,6 @@ class DehazeImageModel extends DehazeImage {
       parameters: parameters,
       metadata: metadata,
     );
-  }
 }
 
 class DehazeParametersModel extends DehazeParameters {
@@ -85,8 +78,7 @@ class DehazeParametersModel extends DehazeParameters {
     super.customParams = const {},
   });
 
-  factory DehazeParametersModel.fromJson(Map<String, dynamic> json) {
-    return DehazeParametersModel(
+  factory DehazeParametersModel.fromJson(Map<String, dynamic> json) => DehazeParametersModel(
       strength: (json['strength'] as num?)?.toDouble() ?? 0.8,
       contrast: (json['contrast'] as num?)?.toDouble() ?? 1.2,
       brightness: (json['brightness'] as num?)?.toDouble() ?? 1.1,
@@ -94,29 +86,24 @@ class DehazeParametersModel extends DehazeParameters {
         (algo) => algo.toString() == 'DehazeAlgorithm.${json['algorithm']}',
         orElse: () => DehazeAlgorithm.darkChannel,
       ),
-      customParams: Map<String, dynamic>.from(json['customParams'] ?? {}),
+      customParams: Map<String, dynamic>.from((json['customParams'] as Map?) ?? {}),
     );
-  }
 
-  factory DehazeParametersModel.fromEntity(DehazeParameters entity) {
-    return DehazeParametersModel(
+  factory DehazeParametersModel.fromEntity(DehazeParameters entity) => DehazeParametersModel(
       strength: entity.strength,
       contrast: entity.contrast,
       brightness: entity.brightness,
       algorithm: entity.algorithm,
       customParams: entity.customParams,
     );
-  }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'strength': strength,
       'contrast': contrast,
       'brightness': brightness,
       'algorithm': algorithm.toString().split('.').last,
       'customParams': customParams,
     };
-  }
 }
 
 class ProcessingMetadataModel extends ProcessingMetadata {
@@ -129,19 +116,16 @@ class ProcessingMetadataModel extends ProcessingMetadata {
     super.debugInfo = const {},
   });
 
-  factory ProcessingMetadataModel.fromJson(Map<String, dynamic> json) {
-    return ProcessingMetadataModel(
+  factory ProcessingMetadataModel.fromJson(Map<String, dynamic> json) => ProcessingMetadataModel(
       processingTime: Duration(milliseconds: json['processingTime'] as int),
       originalSize: json['originalSize'] as int,
       processedSize: json['processedSize'] as int,
       compressionRatio: (json['compressionRatio'] as num).toDouble(),
       algorithmVersion: json['algorithmVersion'] as String,
-      debugInfo: Map<String, dynamic>.from(json['debugInfo'] ?? {}),
+      debugInfo: Map<String, dynamic>.from((json['debugInfo'] as Map?) ?? {}),
     );
-  }
 
-  factory ProcessingMetadataModel.fromEntity(ProcessingMetadata entity) {
-    return ProcessingMetadataModel(
+  factory ProcessingMetadataModel.fromEntity(ProcessingMetadata entity) => ProcessingMetadataModel(
       processingTime: entity.processingTime,
       originalSize: entity.originalSize,
       processedSize: entity.processedSize,
@@ -149,10 +133,8 @@ class ProcessingMetadataModel extends ProcessingMetadata {
       algorithmVersion: entity.algorithmVersion,
       debugInfo: entity.debugInfo,
     );
-  }
 
-  Map<String, dynamic> toJson() {
-    return {
+  Map<String, dynamic> toJson() => {
       'processingTime': processingTime.inMilliseconds,
       'originalSize': originalSize,
       'processedSize': processedSize,
@@ -160,5 +142,4 @@ class ProcessingMetadataModel extends ProcessingMetadata {
       'algorithmVersion': algorithmVersion,
       'debugInfo': debugInfo,
     };
-  }
 }

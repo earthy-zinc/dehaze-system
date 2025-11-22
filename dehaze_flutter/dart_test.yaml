@@ -1,0 +1,25 @@
+# Configuration for Dart tests
+include: package:flutter_test/flutter_test.yaml
+
+# Test-specific settings
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - build/
+    - lib/generated/
+    - test/_test_data/
+
+# Test configuration
+test:
+  # Enable strict mode for tests
+  strict-casts: true
+  strict-inference: true
+  strict-raw-types: true
+
+  # Exclude generated files from test coverage
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - build/
+    - lib/generated/

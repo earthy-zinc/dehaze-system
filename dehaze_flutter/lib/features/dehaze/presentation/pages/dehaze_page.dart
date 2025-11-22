@@ -20,7 +20,8 @@ class _DehazePageState extends ConsumerState<DehazePage> {
 
     // 初始化数据
     ref.listen(dehazeProvider, (previous, next) {
-      if (previous == null && (next.history.isEmpty || next.availableAlgorithms.isEmpty)) {
+      if (previous == null &&
+          (next.history.isEmpty || next.availableAlgorithms.isEmpty)) {
         dehazeNotifier.loadHistory();
         dehazeNotifier.loadAvailableAlgorithms();
       }
@@ -32,9 +33,7 @@ class _DehazePageState extends ConsumerState<DehazePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
       ),
       body: dehazeState.isLoading && dehazeState.history.isEmpty
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : LayoutBuilder(
               builder: (context, constraints) {
                 // 根据屏幕高度调整布局
@@ -53,35 +52,42 @@ class _DehazePageState extends ConsumerState<DehazePage> {
                             maxHeight: isCompact ? 300 : 400,
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.all(16.0),
+                            padding: const EdgeInsets.all(16),
                             child: DehazeControlsWidget(
                               currentParameters: dehazeState.currentParameters,
-                              availableAlgorithms: dehazeState.availableAlgorithms,
+                              availableAlgorithms:
+                                  dehazeState.availableAlgorithms,
                               isProcessing: dehazeState.isProcessing,
-                              onParametersChanged: dehazeNotifier.updateParameters,
+                              onParametersChanged:
+                                  dehazeNotifier.updateParameters,
                               onProcessImage: dehazeNotifier.processImage,
                             ),
                           ),
                         ),
 
                         // 处理状态 - 仅在需要时显示
-                        if (dehazeState.isProcessing || dehazeState.currentProcessingImage != null)
+                        if (dehazeState.isProcessing ||
+                            dehazeState.currentProcessingImage != null)
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
                             child: ProcessingStatusWidget(
                               isProcessing: dehazeState.isProcessing,
                               currentImage: dehazeState.currentProcessingImage,
-                              onClearCurrent: dehazeNotifier.clearCurrentProcessingImage,
+                              onClearCurrent:
+                                  dehazeNotifier.clearCurrentProcessingImage,
                             ),
                           ),
 
-                        if (dehazeState.isProcessing || dehazeState.currentProcessingImage != null)
+                        if (dehazeState.isProcessing ||
+                            dehazeState.currentProcessingImage != null)
                           const SizedBox(height: 16),
 
                         // 分隔线
                         if (dehazeState.history.isNotEmpty)
                           const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16.0),
+                            padding: EdgeInsets.symmetric(horizontal: 16),
                             child: Divider(),
                           ),
 
@@ -91,7 +97,9 @@ class _DehazePageState extends ConsumerState<DehazePage> {
 
                         if (dehazeState.history.isNotEmpty)
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                            ),
                             child: DehazeHistoryWidget(
                               history: dehazeState.history,
                               onDeleteImage: dehazeNotifier.deleteImage,
@@ -104,13 +112,13 @@ class _DehazePageState extends ConsumerState<DehazePage> {
                         // 显示错误信息
                         if (dehazeState.errorMessage != null)
                           Padding(
-                            padding: const EdgeInsets.all(16.0),
+                            padding: const EdgeInsets.all(16),
                             child: Container(
-                              padding: const EdgeInsets.all(12.0),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.red.shade50,
                                 border: Border.all(color: Colors.red.shade200),
-                                borderRadius: BorderRadius.circular(8.0),
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 children: [
@@ -119,7 +127,9 @@ class _DehazePageState extends ConsumerState<DehazePage> {
                                   Expanded(
                                     child: Text(
                                       dehazeState.errorMessage!,
-                                      style: TextStyle(color: Colors.red.shade600),
+                                      style: TextStyle(
+                                        color: Colors.red.shade600,
+                                      ),
                                     ),
                                   ),
                                   IconButton(

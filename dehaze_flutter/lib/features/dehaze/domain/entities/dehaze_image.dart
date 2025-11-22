@@ -1,4 +1,12 @@
 class DehazeImage {
+
+  const DehazeImage({
+    required this.id,
+    required this.originalImagePath,
+    required this.createdAt, required this.status, required this.parameters, this.processedImagePath,
+    this.processedAt,
+    this.metadata,
+  });
   final String id;
   final String originalImagePath;
   final String? processedImagePath;
@@ -7,17 +15,6 @@ class DehazeImage {
   final ProcessingStatus status;
   final DehazeParameters parameters;
   final ProcessingMetadata? metadata;
-
-  const DehazeImage({
-    required this.id,
-    required this.originalImagePath,
-    this.processedImagePath,
-    required this.createdAt,
-    this.processedAt,
-    required this.status,
-    required this.parameters,
-    this.metadata,
-  });
 
   DehazeImage copyWith({
     String? id,
@@ -28,8 +25,7 @@ class DehazeImage {
     ProcessingStatus? status,
     DehazeParameters? parameters,
     ProcessingMetadata? metadata,
-  }) {
-    return DehazeImage(
+  }) => DehazeImage(
       id: id ?? this.id,
       originalImagePath: originalImagePath ?? this.originalImagePath,
       processedImagePath: processedImagePath ?? this.processedImagePath,
@@ -39,11 +35,12 @@ class DehazeImage {
       parameters: parameters ?? this.parameters,
       metadata: metadata ?? this.metadata,
     );
-  }
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+    if (identical(this, other)) {
+      return true;
+    }
     return other is DehazeImage &&
         other.id == id &&
         other.originalImagePath == originalImagePath &&
@@ -56,8 +53,7 @@ class DehazeImage {
   }
 
   @override
-  int get hashCode {
-    return id.hashCode ^
+  int get hashCode => id.hashCode ^
         originalImagePath.hashCode ^
         processedImagePath.hashCode ^
         createdAt.hashCode ^
@@ -65,23 +61,11 @@ class DehazeImage {
         status.hashCode ^
         parameters.hashCode ^
         metadata.hashCode;
-  }
 }
 
-enum ProcessingStatus {
-  pending,
-  processing,
-  completed,
-  failed,
-  cancelled,
-}
+enum ProcessingStatus { pending, processing, completed, failed, cancelled }
 
 class DehazeParameters {
-  final double strength;
-  final double contrast;
-  final double brightness;
-  final DehazeAlgorithm algorithm;
-  final Map<String, dynamic> customParams;
 
   const DehazeParameters({
     this.strength = 0.8,
@@ -90,6 +74,11 @@ class DehazeParameters {
     this.algorithm = DehazeAlgorithm.darkChannel,
     this.customParams = const {},
   });
+  final double strength;
+  final double contrast;
+  final double brightness;
+  final DehazeAlgorithm algorithm;
+  final Map<String, dynamic> customParams;
 
   DehazeParameters copyWith({
     double? strength,
@@ -97,19 +86,19 @@ class DehazeParameters {
     double? brightness,
     DehazeAlgorithm? algorithm,
     Map<String, dynamic>? customParams,
-  }) {
-    return DehazeParameters(
+  }) => DehazeParameters(
       strength: strength ?? this.strength,
       contrast: contrast ?? this.contrast,
       brightness: brightness ?? this.brightness,
       algorithm: algorithm ?? this.algorithm,
       customParams: customParams ?? this.customParams,
     );
-  }
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+    if (identical(this, other)) {
+      return true;
+    }
     return other is DehazeParameters &&
         other.strength == strength &&
         other.contrast == contrast &&
@@ -119,13 +108,11 @@ class DehazeParameters {
   }
 
   @override
-  int get hashCode {
-    return strength.hashCode ^
+  int get hashCode => strength.hashCode ^
         contrast.hashCode ^
         brightness.hashCode ^
         algorithm.hashCode ^
         customParams.hashCode;
-  }
 }
 
 enum DehazeAlgorithm {
@@ -137,12 +124,6 @@ enum DehazeAlgorithm {
 }
 
 class ProcessingMetadata {
-  final Duration processingTime;
-  final int originalSize;
-  final int processedSize;
-  final double compressionRatio;
-  final String algorithmVersion;
-  final Map<String, dynamic> debugInfo;
 
   const ProcessingMetadata({
     required this.processingTime,
@@ -152,10 +133,18 @@ class ProcessingMetadata {
     required this.algorithmVersion,
     this.debugInfo = const {},
   });
+  final Duration processingTime;
+  final int originalSize;
+  final int processedSize;
+  final double compressionRatio;
+  final String algorithmVersion;
+  final Map<String, dynamic> debugInfo;
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+    if (identical(this, other)) {
+      return true;
+    }
     return other is ProcessingMetadata &&
         other.processingTime == processingTime &&
         other.originalSize == originalSize &&
@@ -166,12 +155,10 @@ class ProcessingMetadata {
   }
 
   @override
-  int get hashCode {
-    return processingTime.hashCode ^
+  int get hashCode => processingTime.hashCode ^
         originalSize.hashCode ^
         processedSize.hashCode ^
         compressionRatio.hashCode ^
         algorithmVersion.hashCode ^
         debugInfo.hashCode;
-  }
 }

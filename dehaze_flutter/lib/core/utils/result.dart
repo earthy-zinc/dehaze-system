@@ -1,23 +1,15 @@
 import '../errors/failures.dart';
 
 class Result<T> {
+
+  const Result._({required this.isSuccess, this.data, this.error});
+
+  factory Result.success(T data) => Result._(data: data, isSuccess: true);
+
+  factory Result.failure(Failure error) => Result._(error: error, isSuccess: false);
   final T? data;
   final Failure? error;
   final bool isSuccess;
-
-  const Result._({
-    this.data,
-    this.error,
-    required this.isSuccess,
-  });
-
-  factory Result.success(T data) {
-    return Result._(data: data, isSuccess: true);
-  }
-
-  factory Result.failure(Failure error) {
-    return Result._(error: error, isSuccess: false);
-  }
 
   bool get isFailure => !isSuccess;
 
@@ -33,8 +25,8 @@ class Result<T> {
     if (isSuccess && data != null) {
       try {
         return Result.success(successMapper(data as T));
-      } catch (e) {
-        return Result.failure(UnknownFailure('Mapping failed', e));
+      } on Exception {
+        return Result.failure(const UnknownFailure('Mapping failed'));
       }
     } else {
       return Result.failure(error ?? const UnknownFailure('No data available'));
@@ -45,8 +37,8 @@ class Result<T> {
     if (isSuccess && data != null) {
       try {
         return successMapper(data as T);
-      } catch (e) {
-        return Result.failure(UnknownFailure('Flat mapping failed', e));
+      } on Exception {
+        return Result.failure(const UnknownFailure('Flat mapping failed'));
       }
     } else {
       return Result.failure(error ?? const UnknownFailure('No data available'));
@@ -72,7 +64,9 @@ class Result<T> {
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
+    if (identical(this, other)) {
+      return true;
+    }
     return other is Result<T> &&
         other.data == data &&
         other.error == error &&
@@ -83,7 +77,5 @@ class Result<T> {
   int get hashCode => data.hashCode ^ error.hashCode ^ isSuccess.hashCode;
 
   @override
-  String toString() {
-    return isSuccess ? 'Result.success($data)' : 'Result.failure($error)';
-  }
+  String toString() => isSuccess ? 'Result.success($data)' : 'Result.failure($error)';
 }

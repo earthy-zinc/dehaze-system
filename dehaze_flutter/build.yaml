@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          explicit_to_json: true
+          include_if_null: false
+          field_rename: snake_case
+          checked: true
+          create_factory: true
+          create_to_json: true

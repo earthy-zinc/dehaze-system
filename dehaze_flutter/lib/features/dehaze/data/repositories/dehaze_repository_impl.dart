@@ -1,22 +1,22 @@
+import '../../../../core/errors/failures.dart';
+import '../../../../core/network/network_info.dart';
+import '../../../../core/utils/result.dart';
 import '../../domain/entities/dehaze_image.dart';
 import '../../domain/repositories/dehaze_repository.dart';
 import '../datasources/dehaze_local_datasource.dart';
 import '../datasources/dehaze_remote_datasource.dart';
 import '../models/dehaze_image_model.dart';
-import '../../../../core/utils/result.dart';
-import '../../../../core/errors/failures.dart';
-import '../../../../core/network/network_info.dart';
 
 class DehazeRepositoryImpl implements DehazeRepository {
-  final DehazeLocalDataSource localDataSource;
-  final DehazeRemoteDataSource remoteDataSource;
-  final NetworkInfo networkInfo;
 
   DehazeRepositoryImpl({
     required this.localDataSource,
     required this.remoteDataSource,
     required this.networkInfo,
   });
+  final DehazeLocalDataSource localDataSource;
+  final DehazeRemoteDataSource remoteDataSource;
+  final NetworkInfo networkInfo;
 
   @override
   Future<Result<List<DehazeImage>>> getDehazeHistory() async {
@@ -25,7 +25,7 @@ class DehazeRepositoryImpl implements DehazeRepository {
       return result.map(
         (images) => images.map((model) => model.toEntity()).toList(),
       );
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to get dehaze history: $e'));
     }
   }
@@ -37,7 +37,10 @@ class DehazeRepositoryImpl implements DehazeRepository {
   ) async {
     if (await networkInfo.isConnected) {
       try {
-        final result = await remoteDataSource.processImage(imagePath, parameters);
+        final result = await remoteDataSource.processImage(
+          imagePath,
+          parameters,
+        );
 
         if (result.isSuccess) {
           final imageModel = result.dataOrThrow;
@@ -46,8 +49,10 @@ class DehazeRepositoryImpl implements DehazeRepository {
         } else {
           return Result.failure(result.getErrorOrNull()!);
         }
-      } catch (e) {
-        return Result.failure(NetworkFailure('Failed to process image remotely: $e'));
+      } on Exception catch (e) {
+        return Result.failure(
+          NetworkFailure('Failed to process image remotely: $e'),
+        );
       }
     } else {
       return Result.failure(const NetworkFailure('No internet connection'));
@@ -59,7 +64,7 @@ class DehazeRepositoryImpl implements DehazeRepository {
     try {
       final imageModel = DehazeImageModel.fromEntity(image);
       return await localDataSource.saveDehazeImage(imageModel);
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to save dehaze image: $e'));
     }
   }
@@ -74,7 +79,7 @@ class DehazeRepositoryImpl implements DehazeRepository {
       }
 
       return result;
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to delete dehaze image: $e'));
     }
   }
@@ -91,8 +96,10 @@ class DehazeRepositoryImpl implements DehazeRepository {
           throw Exception('Image not found');
         }
       });
-    } catch (e) {
-      return Result.failure(CacheFailure('Failed to get dehaze image by ID: $e'));
+    } on Exception catch (e) {
+      return Result.failure(
+        CacheFailure('Failed to get dehaze image by ID: $e'),
+      );
     }
   }
 
@@ -101,8 +108,10 @@ class DehazeRepositoryImpl implements DehazeRepository {
     if (await networkInfo.isConnected) {
       try {
         return await remoteDataSource.getAvailableAlgorithms();
-      } catch (e) {
-        return Result.failure(NetworkFailure('Failed to get algorithms remotely: $e'));
+      } on Exception catch (e) {
+        return Result.failure(
+          NetworkFailure('Failed to get algorithms remotely: $e'),
+        );
       }
     } else {
       return Result.success([
@@ -124,7 +133,7 @@ class DehazeRepositoryImpl implements DehazeRepository {
       }
 
       return result;
-    } catch (e) {
+    } on Exception catch (e) {
       return Result.failure(CacheFailure('Failed to cancel processing: $e'));
     }
   }
@@ -132,9 +141,9 @@ class DehazeRepositoryImpl implements DehazeRepository {
   @override
   Stream<Result<DehazeImage>> watchProcessingStatus(String imageId) async* {
     if (await networkInfo.isConnected) {
-      yield* remoteDataSource.watchProcessingStatus(imageId).map(
-        (model) => model.map((m) => m.toEntity()),
-      );
+      yield* remoteDataSource
+          .watchProcessingStatus(imageId)
+          .map((model) => model.map((m) => m.toEntity()));
     } else {
       yield Result.failure(const NetworkFailure('No internet connection'));
     }

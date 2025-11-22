@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/dehaze/presentation/pages/dehaze_page.dart';
+import '../../features/home/presentation/pages/home_page.dart';
 
 class AppRouterConfig {
   static const String splash = '/splash';
@@ -14,10 +15,16 @@ class AppRouterConfig {
   static const String about = '/about';
 
   static final GoRouter _router = GoRouter(
-    initialLocation: dehaze,
+    initialLocation: '/home',
     debugLogDiagnostics: true,
     routes: [
-      // 去雾页面 - 主页面
+      // 首页 - 主页面
+      GoRoute(
+        path: home,
+        name: 'home_main',
+        builder: (context, state) => const HomePage(),
+      ),
+      // 去雾页面
       GoRoute(
         path: dehaze,
         name: 'dehaze',
@@ -46,12 +53,7 @@ class AppRouterConfig {
       // 其他路由占位符 - 目前都指向DehazePage
       GoRoute(
         path: splash,
-        name: 'splash',
-        builder: (context, state) => const DehazePage(),
-      ),
-      GoRoute(
-        path: home,
-        name: 'home',
+        name: 'splash_page',
         builder: (context, state) => const DehazePage(),
       ),
       GoRoute(
@@ -78,7 +80,7 @@ class AppRouterConfig {
             const Text('页面未找到'),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => context.go(dehaze),
+              onPressed: () => context.go('/home'),
               child: const Text('返回首页'),
             ),
           ],
