@@ -5,6 +5,16 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "dehaze-flutter-edge",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "deviceId": "edge",
+      "presentation": {
+        "hidden": false
+      }
+    },
+    {
       "type": "msedge",
       "request": "launch",
       "name": "Edge",

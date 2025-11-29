@@ -42,7 +42,7 @@ linter:
     avoid_positional_boolean_parameters: true
     avoid_print: true
     avoid_private_typedef_functions: true
-    avoid_redundant_argument_values: true
+    avoid_redundant_argument_values: false
     avoid_renaming_method_parameters: true
     avoid_return_types_on_setters: true
     avoid_returning_null_for_void: true

@@ -11,8 +11,8 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
-        maven { url 'https://maven.aliyun.com/repository/public/' }
-        maven { url 'https://maven.aliyun.com/nexus/content/repositories/google' }
+        maven { url = uri("https://maven.aliyun.com/repository/public/") }
+        maven { url = uri("https://maven.aliyun.com/nexus/content/repositories/google") }
         google()
         mavenCentral()
         gradlePluginPortal()
@@ -21,10 +21,10 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
-        maven { url 'https://maven.aliyun.com/repository/public/' }
-        maven { url 'https://maven.aliyun.com/nexus/content/repositories/google' }
-        maven { url 'https://maven.aliyun.com/nexus/content/groups/public' }
-        maven { url 'https://maven.aliyun.com/nexus/content/repositories/jcenter'}
+        maven { url = uri("https://maven.aliyun.com/repository/public/") }
+        maven { url = uri("https://maven.aliyun.com/nexus/content/repositories/google") }
+        maven { url = uri("https://maven.aliyun.com/nexus/content/groups/public") }
+        maven { url = uri("https://maven.aliyun.com/nexus/content/repositories/jcenter") }
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
