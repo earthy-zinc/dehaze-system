@@ -647,22 +647,22 @@ class AppTheme {
         // 标题文字 (Headline)
         headlineLarge: TextStyle(
           inherit: true,
-          fontSize: 32, // H1
-          fontWeight: FontWeight.w700,
-          height: 1.2,
+          fontSize: 48, // H1
+          fontWeight: FontWeight.w900,
+          height: 1.5,
           color: primaryColor,
         ),
         headlineMedium: TextStyle(
           inherit: true,
-          fontSize: 24, // H2
-          fontWeight: FontWeight.w500,
+          fontSize: 40, // H2
+          fontWeight: FontWeight.w900,
           height: 1.3,
           color: primaryColor,
         ),
         headlineSmall: TextStyle(
           inherit: true,
-          fontSize: 20, // H3
-          fontWeight: FontWeight.w500,
+          fontSize: 32, // H3
+          fontWeight: FontWeight.w900,
           height: 1.3,
           color: primaryColor,
         ),

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../layout/main_layout.dart';
-import '../pages/home_page.dart';
+import '../pages/home/index.dart';
 
 class AppRouterConfig {
-  static const String splash = '/splash';
   static const String home = '/home';
+  static const String splash = '/splash';
   static const String dehaze = '/dehaze';
-  static const String auth = '/auth';
   static const String login = '/login';
   static const String register = '/register';
   static const String profile = '/profile';

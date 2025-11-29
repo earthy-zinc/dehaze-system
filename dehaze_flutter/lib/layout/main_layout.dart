@@ -23,6 +23,14 @@ class MainLayout extends StatelessWidget {
                 colors: [Color(0xFF3B82F6), Color(0xFF4F46E5)],
               ),
               borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 2), // 向下偏移
+                ),
+              ],
             ),
             child: const Icon(
               Icons.cloud_outlined,
