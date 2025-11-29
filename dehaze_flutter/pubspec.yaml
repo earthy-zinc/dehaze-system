@@ -40,9 +40,9 @@ flutter:
   uses-material-design: true
 
   # 字体配置
-  fonts:
-    - family: NotoSansSC
-      fonts:
-        - asset: assets/fonts/NotoSansSC-Regular.ttf
-        - asset: assets/fonts/NotoSansSC-Bold.ttf
-          weight: 700
+  # fonts:
+  #   - family: NotoSansSC
+  #     fonts:
+  #       - asset: assets/fonts/NotoSansSC-Regular.ttf
+  #       - asset: assets/fonts/NotoSansSC-Bold.ttf
+  #         weight: 700

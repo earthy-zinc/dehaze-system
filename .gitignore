@@ -26,8 +26,7 @@ Thumbs.db
 # =============================================================================
 # IDE 配置（所有层级）
 # =============================================================================
-.idea/
-.vscode/
+
 *.iml
 *.ipr
 *.iws
@@ -416,6 +415,9 @@ storybook-static/
 # 重要！需要保留的文件（排除忽略）
 # =============================================================================
 !dehaze_flutter/lib
+.idea/
+.vscode/.chrome
+.vscode/.msedge
 !.vscode/settings.json
 !.vscode/launch.json
 !.vscode/extensions.json

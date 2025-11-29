@@ -15,6 +15,16 @@
       }
     },
     {
+      "name": "dehaze-flutter-windows",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "deviceId": "windows",
+      "presentation": {
+        "hidden": false
+      }
+    },
+    {
       "type": "msedge",
       "request": "launch",
       "name": "Edge",
