@@ -517,3 +517,38 @@ google-chrome --force-device-scale-factor=1.5
 
 
 请你作为资深项目管理师，请详细阅读dehaze_flutter的相关文档，并查阅代码了解现在的代码开发进度，为我制定该项目第一阶段的开发计划，并在docs/plan文件夹中给出第一阶段开发计划文档，注意，在架构设计和计划制定期间尽量不要撰写实际的代码，你的工作是为后续的开发提供支持
+
+
+请根据 E:\DehazeSystem\demo\modules\dataset.js html设计稿（样式：demo\styles\dataset.css） 为我规划 dehaze-react-native 的数据集管理的实现，为了可维护性，请适当的考虑拆分组件，并且遵循当前 dehaze-react-native 项目代码风格、依赖架构和规范。请先给我一个代码方案
+以下是参考：
+dehaze-react-native\package.json
+dehaze-react-native\src\routes\config.ts 以及文件夹内相关的路由文件
+
+通用组件新增在dehaze-react-native\src\components
+数据集相关的组件新增在dehaze-react-native\src\pages\dataset 文件夹下中
+
+
+
+请根据 E:\DehazeSystem\demo\modules\dataset.js html设计稿（样式：demo\styles\dataset.css） 为我规划 dehaze-taro 的数据集管理的实现，为了可维护性，请适当的考虑拆分组件，并且遵循当前 dehaze-taro 项目代码风格、依赖架构和规范。请先给我一个代码方案
+以下是参考：
+ dehaze-taro\package.json
+ dehaze-taro\src\router\index.tsx
+
+通用组件新增在dehaze-taro\src\components 这些通用的组件请首先考虑使用tarofy
+dataset相关的组件新增在dehaze-taro\src\pages\dataset 文件夹下中
+
+
+dehaze_flutter\lib\theme\app_theme.dart
+dehaze_flutter\pubspec.yaml
+dehaze_flutter\lib\pages\dataset
+dehaze_flutter\lib\router\config.dart
+dehaze_flutter\lib\layout\menu_config.dart
+
+
+请根据 demo\index.html html设计稿中首页相关的代码 section id="home" 127-375行（样式：demo\styles\homepage.css）为我规划 dehaze-uniapp 的首页的实现，为了可维护性，请适当的考虑拆分组件，并且遵循当前 dehaze-uniapp 项目代码风格、依赖架构和规范。请先给我一个代码方案
+以下是参考：
+ dehaze-uniapp\package.json
+ dehaze-uniapp\src\router\index.tsx
+
+通用组件新增在dehaze-uniapp\src\components 这些通用的组件请首先考虑使用uview-plus
+首页相关的组件新增在dehaze-uniapp\src\pages\home 文件夹下中

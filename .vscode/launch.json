@@ -25,6 +25,16 @@
       }
     },
     {
+      "name": "dehaze-flutter-android",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "deviceId": "emulator-5554",
+      "presentation": {
+        "hidden": false
+      }
+    },
+    {
       "type": "msedge",
       "request": "launch",
       "name": "Edge",
