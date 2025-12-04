@@ -1,15 +1,18 @@
 {
   "pages": [
     {
-      "path": "pages/login/index",
+      "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "登录页"
+        "navigationBarTitleText": "图像去雾",
+        "navigationBarBackgroundColor": "#ffffff",
+        "navigationBarTextStyle": "black",
+        "backgroundColor": "#ffffff"
       }
     },
     {
-      "path": "pages/index/index",
+      "path": "pages/login/index",
       "style": {
-        "navigationBarTitleText": "首页"
+        "navigationBarTitleText": "登录页"
       }
     }
   ],

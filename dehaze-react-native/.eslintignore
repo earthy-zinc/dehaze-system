@@ -1,0 +1,13 @@
+# Storybook build output
+storybook-static
+storybook-static/**
+
+# Node modules
+node_modules
+
+# Coverage
+coverage
+
+# Build artifacts
+build
+dist

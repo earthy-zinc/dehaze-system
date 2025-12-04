@@ -1,0 +1,105 @@
+/* 最终CTA区域样式 */
+.final-cta-section {
+  padding: 100px 20px;
+  text-align: center;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.cta-title {
+  display: block;
+  font-size: 36px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+  text-align: center;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 28px;
+  /* #endif */
+}
+
+.cta-subtitle {
+  display: block;
+  font-size: 18px;
+  color: #6b7280;
+  margin-bottom: 40px;
+  text-align: center;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 16px;
+  /* #endif */
+}
+
+.cta-large-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white !important;
+  padding: 20px 60px;
+  border-radius: 14px;
+  font-size: 20px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  position: relative;
+
+  /* 重置Taro按钮默认样式 */
+  &::after {
+    display: none;
+  }
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  padding: 16px 48px;
+  font-size: 18px;
+  min-height: 48px;
+  /* #endif */
+}
+
+/* #ifdef H5 */
+.cta-large-btn:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px rgba(59, 130, 246, 0.4);
+}
+
+.cta-large-btn:active {
+  transform: translateY(-2px);
+}
+/* #endif */
+
+.cta-icon {
+  margin-left: 12px;
+  font-size: 16px;
+  color: white;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .final-cta-section {
+    padding: 80px 16px 60px;
+  }
+
+  .cta-large-btn {
+    padding: 16px 40px;
+    font-size: 18px;
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .final-cta-section {
+    padding: 60px 12px 40px;
+  }
+
+  .cta-large-btn {
+    width: 100%;
+    max-width: 280px;
+  }
+}

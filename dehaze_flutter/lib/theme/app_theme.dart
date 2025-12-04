@@ -56,24 +56,21 @@ class AppTheme {
   ];
 
   // ==================== 间距系统定义 ====================
-
-  static const double spacingXS = 4; // 超小间距
-  static const double spacingS = 8; // 小间距
-  static const double spacingM = 16; // 标准间距
-  static const double spacingL = 24; // 大间距
-  static const double spacingXL = 32; // 超大间距
-  static const double spacingXXL = 48; // 超超大间距
+  static double get spacingXS => 4; // 超小间距
+  static double get spacingS => 8; // 小间距
+  static double get spacingM => 16; // 标准间距
+  static double get spacingL => 24; // 大间距
+  static double get spacingXL => 32; // 超大间距
+  static double get spacingXXL => 48; // 超超大间距
 
   // ==================== 圆角系统定义 ====================
-
-  static const double radiusXS = 2; // 超小圆角
-  static const double radiusS = 4; // 小圆角
-  static const double radiusM = 8; // 标准圆角
-  static const double radiusL = 16; // 大圆角
-  static const double radiusXL = 24; // 超大圆角
+  static double get radiusXS => 2; // 超小圆角
+  static double get radiusS => 4; // 小圆角
+  static double get radiusM => 8; // 标准圆角
+  static double get radiusL => 16; // 大圆角
+  static double get radiusXL => 24; // 超大圆角
 
   // ==================== 阴影系统定义 ====================
-
   static const List<BoxShadow> shadowLevel1 = [
     BoxShadow(
       offset: Offset(0, 1),
@@ -141,7 +138,7 @@ class AppTheme {
     textTheme: _buildTextTheme(lightTextPrimary, lightTextSecondary),
 
     // 应用栏主题
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: lightBgPrimary,
       foregroundColor: lightTextPrimary,
       elevation: 0,
@@ -164,10 +161,7 @@ class AppTheme {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusL),
       ),
-      margin: const EdgeInsets.symmetric(
-        horizontal: spacingM,
-        vertical: spacingS,
-      ),
+      margin: EdgeInsets.symmetric(horizontal: spacingM, vertical: spacingS),
     ),
 
     // 按钮主题
@@ -180,11 +174,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusM),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: spacingL,
-          vertical: spacingM,
-        ),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        padding: EdgeInsets.symmetric(horizontal: spacingL, vertical: spacingM),
+        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
 
@@ -195,11 +186,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusM),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: spacingM,
-          vertical: spacingS,
-        ),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        padding: EdgeInsets.symmetric(horizontal: spacingM, vertical: spacingS),
+        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
     ),
 
@@ -211,11 +199,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusM),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: spacingL,
-          vertical: spacingM,
-        ),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        padding: EdgeInsets.symmetric(horizontal: spacingL, vertical: spacingM),
+        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
     ),
 
@@ -239,16 +224,16 @@ class AppTheme {
         borderRadius: BorderRadius.circular(radiusM),
         borderSide: const BorderSide(color: errorColor, width: 1),
       ),
-      contentPadding: const EdgeInsets.symmetric(
+      contentPadding: EdgeInsets.symmetric(
         horizontal: spacingM,
         vertical: spacingM,
       ),
-      hintStyle: const TextStyle(color: lightTextDisabled, fontSize: 16),
-      labelStyle: const TextStyle(color: lightTextSecondary, fontSize: 14),
+      hintStyle: TextStyle(color: lightTextDisabled, fontSize: 16),
+      labelStyle: TextStyle(color: lightTextSecondary, fontSize: 14),
     ),
 
     // 图标主题
-    iconTheme: const IconThemeData(color: lightTextPrimary, size: 24),
+    iconTheme: IconThemeData(color: lightTextPrimary, size: 24),
 
     // 分割线主题
     dividerTheme: const DividerThemeData(
@@ -257,7 +242,7 @@ class AppTheme {
     ),
 
     // 底部导航栏主题
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: lightBgPrimary,
       selectedItemColor: brandBlue,
       unselectedItemColor: lightTextSecondary,
@@ -323,20 +308,17 @@ class AppTheme {
       backgroundColor: lightBgSecondary,
       selectedColor: brandBlue.withValues(alpha: 0.1),
       disabledColor: lightBorderPrimary,
-      labelStyle: const TextStyle(
+      labelStyle: TextStyle(
         color: lightTextPrimary,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      secondaryLabelStyle: const TextStyle(
+      secondaryLabelStyle: TextStyle(
         color: brandBlue,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: spacingS,
-        vertical: spacingXS,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: spacingS, vertical: spacingXS),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusS),
       ),
@@ -351,10 +333,7 @@ class AppTheme {
       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
       overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
       valueIndicatorColor: brandBlue,
-      valueIndicatorTextStyle: const TextStyle(
-        color: Colors.white,
-        fontSize: 14,
-      ),
+      valueIndicatorTextStyle: TextStyle(color: Colors.white, fontSize: 14),
     ),
 
     // 进度条主题
@@ -392,7 +371,7 @@ class AppTheme {
     textTheme: _buildTextTheme(darkTextPrimary, darkTextSecondary),
 
     // 应用栏主题
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: darkBgPrimary,
       foregroundColor: darkTextPrimary,
       elevation: 0,
@@ -415,10 +394,7 @@ class AppTheme {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusL),
       ),
-      margin: const EdgeInsets.symmetric(
-        horizontal: spacingM,
-        vertical: spacingS,
-      ),
+      margin: EdgeInsets.symmetric(horizontal: spacingM, vertical: spacingS),
     ),
 
     // 按钮主题
@@ -431,11 +407,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusM),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: spacingL,
-          vertical: spacingM,
-        ),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        padding: EdgeInsets.symmetric(horizontal: spacingL, vertical: spacingM),
+        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     ),
 
@@ -446,11 +419,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusM),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: spacingM,
-          vertical: spacingS,
-        ),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        padding: EdgeInsets.symmetric(horizontal: spacingM, vertical: spacingS),
+        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
     ),
 
@@ -462,11 +432,8 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusM),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: spacingL,
-          vertical: spacingM,
-        ),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        padding: EdgeInsets.symmetric(horizontal: spacingL, vertical: spacingM),
+        textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
       ),
     ),
 
@@ -490,16 +457,16 @@ class AppTheme {
         borderRadius: BorderRadius.circular(radiusM),
         borderSide: const BorderSide(color: Color(0xFFEF5350), width: 1),
       ),
-      contentPadding: const EdgeInsets.symmetric(
+      contentPadding: EdgeInsets.symmetric(
         horizontal: spacingM,
         vertical: spacingM,
       ),
-      hintStyle: const TextStyle(color: darkTextDisabled, fontSize: 16),
-      labelStyle: const TextStyle(color: darkTextSecondary, fontSize: 14),
+      hintStyle: TextStyle(color: darkTextDisabled, fontSize: 16),
+      labelStyle: TextStyle(color: darkTextSecondary, fontSize: 14),
     ),
 
     // 图标主题
-    iconTheme: const IconThemeData(color: darkTextPrimary, size: 24),
+    iconTheme: IconThemeData(color: darkTextPrimary, size: 24),
 
     // 分割线主题
     dividerTheme: const DividerThemeData(
@@ -508,7 +475,7 @@ class AppTheme {
     ),
 
     // 底部导航栏主题
-    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+    bottomNavigationBarTheme: BottomNavigationBarThemeData(
       backgroundColor: darkBgPrimary,
       selectedItemColor: Color(0xFF90CAF9),
       unselectedItemColor: darkTextSecondary,
@@ -574,20 +541,17 @@ class AppTheme {
       backgroundColor: darkBgSecondary,
       selectedColor: const Color(0xFF90CAF9).withValues(alpha: 0.2),
       disabledColor: darkBorderPrimary,
-      labelStyle: const TextStyle(
+      labelStyle: TextStyle(
         color: darkTextPrimary,
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      secondaryLabelStyle: const TextStyle(
+      secondaryLabelStyle: TextStyle(
         color: Color(0xFF90CAF9),
         fontSize: 12,
         fontWeight: FontWeight.w500,
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: spacingS,
-        vertical: spacingXS,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: spacingS, vertical: spacingXS),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusS),
       ),
@@ -602,8 +566,8 @@ class AppTheme {
       thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
       overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
       valueIndicatorColor: const Color(0xFF90CAF9),
-      valueIndicatorTextStyle: const TextStyle(
-        color: Color(0xFF1C1B1F),
+      valueIndicatorTextStyle: TextStyle(
+        color: const Color(0xFF1C1B1F),
         fontSize: 14,
       ),
     ),
@@ -620,7 +584,7 @@ class AppTheme {
 
   static TextTheme _buildTextTheme(Color primaryColor, Color secondaryColor) =>
       TextTheme(
-        // 显示文字 (Display)
+        // 显示文字 (Display) - 响应式字体大小
         displayLarge: TextStyle(
           inherit: true,
           fontSize: 32, // H1
@@ -644,7 +608,7 @@ class AppTheme {
           color: primaryColor,
         ),
 
-        // 标题文字 (Headline)
+        // 标题文字 (Headline) - 响应式字体大小
         headlineLarge: TextStyle(
           inherit: true,
           fontSize: 48, // H1
@@ -667,7 +631,7 @@ class AppTheme {
           color: primaryColor,
         ),
 
-        // 标题文字 (Title)
+        // 标题文字 (Title) - 响应式字体大小
         titleLarge: TextStyle(
           inherit: true,
           fontSize: 18, // H4
@@ -690,7 +654,7 @@ class AppTheme {
           color: primaryColor,
         ),
 
-        // 正文文字 (Body)
+        // 正文文字 (Body) - 响应式字体大小
         bodyLarge: TextStyle(
           inherit: true,
           fontSize: 16, // Body Large
@@ -713,7 +677,7 @@ class AppTheme {
           color: secondaryColor,
         ),
 
-        // 标签文字 (Label)
+        // 标签文字 (Label) - 响应式字体大小
         labelLarge: TextStyle(
           inherit: true,
           fontSize: 14, // Body

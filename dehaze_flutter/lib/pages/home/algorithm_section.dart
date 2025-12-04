@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 
@@ -19,7 +18,7 @@ class AlgorithmSection extends StatelessWidget {
         colors: [Color(0xFF1e3a8a), Color(0xFF3b82f6)],
       ),
     ),
-    padding: const EdgeInsets.all(AppTheme.spacingXL),
+    padding: EdgeInsets.all(AppTheme.spacingXL),
     child: LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth > 800) {
@@ -27,7 +26,7 @@ class AlgorithmSection extends StatelessWidget {
           return Row(
             children: [
               Expanded(flex: 1, child: _buildAlgorithmText(context)),
-              const SizedBox(width: AppTheme.spacingXXL),
+              SizedBox(width: AppTheme.spacingXXL),
               Expanded(flex: 1, child: _buildAlgorithmVisual(context)),
             ],
           );
@@ -36,7 +35,7 @@ class AlgorithmSection extends StatelessWidget {
           return Column(
             children: [
               _buildAlgorithmText(context),
-              const SizedBox(height: AppTheme.spacingXL),
+              SizedBox(height: AppTheme.spacingXL),
               _buildAlgorithmVisual(context),
             ],
           );
@@ -65,27 +64,23 @@ class AlgorithmSection extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
-        const SizedBox(height: AppTheme.spacingM),
+        SizedBox(height: AppTheme.spacingM),
         Text(
           '支持DCP、AOD-Net、DehazeNet等多种先进算法',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: Colors.white.withValues(alpha: 0.8),
           ),
         ),
-        const SizedBox(height: AppTheme.spacingXL),
+        SizedBox(height: AppTheme.spacingXL),
 
         // 特性列表
         ...features.map(
           (feature) => Padding(
-            padding: const EdgeInsets.only(bottom: AppTheme.spacingM),
+            padding: EdgeInsets.only(bottom: AppTheme.spacingM),
             child: Row(
               children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF34d399),
-                  size: 20,
-                ),
-                const SizedBox(width: AppTheme.spacingM),
+                Icon(Icons.check_circle, color: Color(0xFF34d399), size: 20),
+                SizedBox(width: AppTheme.spacingM),
                 Expanded(
                   child: Text(
                     feature,
@@ -98,12 +93,12 @@ class AlgorithmSection extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: AppTheme.spacingXL),
+        SizedBox(height: AppTheme.spacingXL),
 
         // 了解更多按钮
         ElevatedButton.icon(
           onPressed: () => context.go(AppRouterConfig.algorithm),
-          icon: const Icon(Icons.arrow_forward, size: 16),
+          icon: Icon(Icons.arrow_forward, size: 16),
           label: const Text('了解更多算法详情'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
@@ -148,7 +143,7 @@ class AlgorithmSection extends StatelessWidget {
             ),
           ),
           // 中心图标和文字
-          const Center(
+          Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

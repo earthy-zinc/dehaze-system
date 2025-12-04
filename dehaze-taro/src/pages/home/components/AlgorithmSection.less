@@ -1,0 +1,197 @@
+/* 算法优势区样式 */
+.algorithm-section {
+  padding: 80px 20px;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  color: white;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.algorithm-content {
+  max-width: 100%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  align-items: center;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  grid-template-columns: 1fr;
+  gap: 40px;
+  /* #endif */
+}
+
+.algorithm-text {
+  /* #ifdef H5 */
+  animation: slideInLeft 0.8s ease-out;
+  /* #endif */
+}
+
+/* #ifdef H5 */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* #endif */
+
+.section-title {
+  display: block;
+  font-size: 40px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+  text-align: left;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 28px;
+  /* #endif */
+}
+
+.section-subtitle {
+  display: block;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  margin-bottom: 32px;
+  text-align: left;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 16px;
+  /* #endif */
+}
+
+.algorithm-features {
+  margin-bottom: 32px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.95);
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.feature-icon {
+  color: #34d399;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.feature-text {
+  font-size: 16px;
+  line-height: 1.5;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 14px;
+  /* #endif */
+}
+
+.learn-more-btn {
+  background: white;
+  color: #3b82f6 !important;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  position: relative;
+
+  /* 重置Taro按钮默认样式 */
+  &::after {
+    display: none;
+  }
+}
+
+/* #ifdef H5 */
+.learn-more-btn:hover {
+  transform: translateX(4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+/* #endif */
+
+.btn-icon {
+  margin-left: 8px;
+  font-size: 14px;
+  color: #3b82f6;
+}
+
+.algorithm-visual {
+  /* #ifdef H5 */
+  animation: slideInRight 0.8s ease-out;
+  /* #endif */
+}
+
+/* #ifdef H5 */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+/* #endif */
+
+.algorithm-image {
+  width: 100%;
+  height: auto;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: block;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .algorithm-section {
+    padding: 60px 16px;
+  }
+
+  .algorithm-content {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    text-align: center;
+  }
+
+  .section-title,
+  .section-subtitle {
+    text-align: center;
+  }
+
+  .algorithm-features {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .feature-item {
+    max-width: 280px;
+    text-align: left;
+  }
+
+  .learn-more-btn {
+    margin: 0 auto;
+    display: flex;
+  }
+}

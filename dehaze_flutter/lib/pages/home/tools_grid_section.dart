@@ -58,7 +58,7 @@ class ToolsGridSection extends StatelessWidget {
         LayoutBuilder(
           builder: (context, constraints) {
             // 根据屏幕宽度调整列数
-            int crossAxisCount = 2;
+            var crossAxisCount = 2;
             if (constraints.maxWidth > 800) {
               crossAxisCount = 3;
             } else if (constraints.maxWidth > 1200) {
@@ -120,7 +120,7 @@ class _ToolCard extends StatelessWidget {
         onTap: () => context.go(route),
         borderRadius: BorderRadius.circular(AppTheme.spacingXL),
         child: Padding(
-          padding: const EdgeInsets.all(AppTheme.spacingL),
+          padding: EdgeInsets.all(AppTheme.spacingL),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -136,7 +136,7 @@ class _ToolCard extends StatelessWidget {
                 ),
                 child: Icon(icon, color: const Color(0xFF3b82f6), size: 24),
               ),
-              const SizedBox(height: AppTheme.spacingL),
+              SizedBox(height: AppTheme.spacingL),
 
               // 标题
               Text(
@@ -148,7 +148,7 @@ class _ToolCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: AppTheme.spacingM),
+              SizedBox(height: AppTheme.spacingM),
 
               // 描述
               Expanded(

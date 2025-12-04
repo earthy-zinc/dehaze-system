@@ -27,13 +27,17 @@ export interface AppRouteObject {
 
 // 页面组件（懒加载）
 const pages = {
+  // 首页
+  home: React.lazy(() => import('@/pages/home/index')),
+
   // 认证相关
   login: React.lazy(() => import('@/pages/login/index')),
 
-  // 首页
-  dashboard: React.lazy(() => import('@/pages/dashboard/index')),
+  // 数据集管理
+  dataset: React.lazy(() => import('@/pages/dataset/index')),
 
   // 系统管理
+  dashboard: React.lazy(() => import('@/pages/dashboard/index')),
   userList: React.lazy(() => import('@/pages/system/user/index')),
   userDetail: React.lazy(() => import('@/pages/system/user/detail')),
   roleList: React.lazy(() => import('@/pages/system/role/index')),
@@ -42,6 +46,22 @@ const pages = {
 
 // 公共路由（无需权限）
 export const publicRoutes: AppRouteObject[] = [
+  {
+    path: '/pages/home/index',
+    component: pages.home,
+    meta: {
+      title: '首页',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/pages/dataset/index',
+    component: pages.dataset,
+    meta: {
+      title: '数据集管理',
+      requiresAuth: false,
+    },
+  },
   {
     path: '/pages/login/index',
     component: pages.login,

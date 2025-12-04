@@ -1,0 +1,67 @@
+/* 首页主样式 */
+.home-page {
+  width: 100%;
+  min-height: 100vh;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+
+/* 重置全局样式 */
+.home-page,
+.home-page * {
+  box-sizing: border-box;
+}
+
+/* 确保所有组件容器正确对齐 */
+.home-page > view {
+  width: 100%;
+}
+
+/* 响应式布局优化 */
+@media (max-width: 768px) {
+  .home-page {
+    padding-top: 0;
+  }
+}
+
+/* Taro平台特定样式重置 */
+/* #ifdef MP-WEIXIN || MP-ALIPAY */
+.home-page {
+  background: #f8fafc;
+}
+/* #endif */
+
+/* H5平台特定优化 */
+/* #ifdef H5 */
+.home-page {
+  scroll-behavior: smooth;
+}
+/* #endif */
+
+/* 确保图片加载时的占位样式 */
+image {
+  background-color: #f3f4f6;
+  border-radius: inherit;
+}
+
+/* 按钮点击反馈 */
+button {
+  outline: none;
+  user-select: none;
+}
+
+button::after {
+  display: none !important;
+}
+
+/* 文本选择优化 */
+text {
+  user-select: text;
+}
+
+/* 防止内容溢出 */
+view {
+  overflow: hidden;
+  word-wrap: break-word;
+  word-break: break-all;
+}

@@ -1,40 +1,100 @@
 import { RootStackParamList } from '@/routes/navigator';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import HeroSection from './components/HeroSection';
+import ShowcaseSection from './components/ShowcaseSection';
+import FeaturesSection from './components/FeaturesSection';
+import AlgorithmSection from './components/AlgorithmSection';
+import TechSpecsSection from './components/TechSpecsSection';
+import FinalCTASection from './components/FinalCTASection';
 
 type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
-  const handleLogout = () => {
-    Alert.alert(
-      '提示',
-      '确定要退出登录吗？',
-      [
-        {
-          text: '取消',
-          style: 'cancel',
-        },
-        {
-          text: '确定',
-          onPress: () => navigation.navigate('Login'),
-        },
-      ],
-      { cancelable: true },
-    );
+
+  // 导航处理函数
+  const handleStartPress = () => {
+    navigation.navigate('ImageInput');
+  };
+
+  const handleDatasetPress = () => {
+    navigation.navigate('Dataset');
+  };
+
+  const handleImageInputPress = () => {
+    navigation.navigate('ImageInput');
+  };
+
+  const handleAlgorithmSelectPress = () => {
+    navigation.navigate('AlgorithmSelect');
+  };
+
+  const handleProcessingPress = () => {
+    navigation.navigate('Processing');
+  };
+
+  const handleSideBySidePress = () => {
+    navigation.navigate('SideBySide');
+  };
+
+  const handleOverlayPress = () => {
+    navigation.navigate('Overlay');
+  };
+
+  const handleMagnifierPress = () => {
+    navigation.navigate('Magnifier');
+  };
+
+  const handleFilterPress = () => {
+    navigation.navigate('Filter');
+  };
+
+  const handleMetricsPress = () => {
+    navigation.navigate('Metrics');
+  };
+
+  const handleDatasetManagePress = () => {
+    navigation.navigate('Dataset');
+  };
+
+  const handleLearnMorePress = () => {
+    navigation.navigate('Algorithm');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>欢迎来到主页</Text>
-        <Text style={styles.description}>您已经成功登录图像去雾系统</Text>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <HeroSection
+          onStartPress={handleStartPress}
+          onDatasetPress={handleDatasetPress}
+        />
 
-        <TouchableOpacity style={styles.button} onPress={handleLogout}>
-          <Text style={styles.buttonText}>退出登录</Text>
-        </TouchableOpacity>
-      </View>
+        <ShowcaseSection onPress={handleStartPress} />
+
+        <FeaturesSection
+          onImageInputPress={handleImageInputPress}
+          onAlgorithmSelectPress={handleAlgorithmSelectPress}
+          onProcessingPress={handleProcessingPress}
+          onSideBySidePress={handleSideBySidePress}
+          onOverlayPress={handleOverlayPress}
+          onMagnifierPress={handleMagnifierPress}
+          onFilterPress={handleFilterPress}
+          onMetricsPress={handleMetricsPress}
+          onDatasetManagePress={handleDatasetManagePress}
+        />
+
+        <AlgorithmSection onLearnMorePress={handleLearnMorePress} />
+
+        <TechSpecsSection />
+
+        <FinalCTASection onStartPress={handleStartPress} />
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -42,36 +102,13 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#ffffff',
   },
-  content: {
+  scrollView: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-  },
-  description: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  button: {
-    backgroundColor: '#667eea',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
+  scrollContent: {
+    flexGrow: 1,
   },
 });
 

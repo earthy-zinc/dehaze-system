@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 
@@ -41,7 +40,7 @@ class WorkflowSection extends StatelessWidget {
       children: [
         // 标题区域
         _buildHeader(theme),
-        const SizedBox(height: AppTheme.spacingXL),
+        SizedBox(height: AppTheme.spacingXL),
 
         // 工作流程步骤
         LayoutBuilder(
@@ -68,7 +67,7 @@ class WorkflowSection extends StatelessWidget {
                         ),
                         if (index < steps.length - 1)
                           Padding(
-                            padding: const EdgeInsets.symmetric(
+                            padding: EdgeInsets.symmetric(
                               horizontal: AppTheme.spacingM,
                             ),
                             child: Icon(
@@ -88,9 +87,7 @@ class WorkflowSection extends StatelessWidget {
                 children: steps
                     .map(
                       (step) => Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: AppTheme.spacingL,
-                        ),
+                        padding: EdgeInsets.only(bottom: AppTheme.spacingL),
                         child: _WorkflowStep(
                           number: step['number']! as String,
                           icon: step['icon']! as IconData,
@@ -118,7 +115,7 @@ class WorkflowSection extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
-      const SizedBox(height: AppTheme.spacingM),
+      SizedBox(height: AppTheme.spacingM),
       Text(
         '从输入到输出，每一步都精心设计',
         style: theme.textTheme.bodyLarge?.copyWith(
@@ -154,7 +151,7 @@ class _WorkflowStep extends StatelessWidget {
       onTap: () => context.go(route),
       borderRadius: BorderRadius.circular(AppTheme.spacingXL),
       child: Container(
-        padding: const EdgeInsets.all(AppTheme.spacingXL),
+        padding: EdgeInsets.all(AppTheme.spacingXL),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.spacingXL),
@@ -177,7 +174,7 @@ class _WorkflowStep extends StatelessWidget {
                 child: Center(
                   child: Text(
                     number,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Color(0xFF3b82f6),
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
@@ -186,7 +183,7 @@ class _WorkflowStep extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            SizedBox(height: AppTheme.spacingM),
 
             // 图标
             Container(
@@ -200,7 +197,7 @@ class _WorkflowStep extends StatelessWidget {
               ),
               child: Icon(icon, color: Colors.white, size: 28),
             ),
-            const SizedBox(height: AppTheme.spacingL),
+            SizedBox(height: AppTheme.spacingL),
 
             // 标题
             Text(
@@ -210,7 +207,7 @@ class _WorkflowStep extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            SizedBox(height: AppTheme.spacingM),
 
             // 描述
             Text(

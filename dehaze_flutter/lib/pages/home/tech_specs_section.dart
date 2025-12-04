@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_theme.dart';
 
 /// 技术特性区域组件
@@ -38,12 +39,12 @@ class TechSpecsSection extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingXL),
+      padding: EdgeInsets.all(AppTheme.spacingXL),
       color: theme.colorScheme.surface,
       child: LayoutBuilder(
         builder: (context, constraints) {
           // 根据屏幕宽度调整列数
-          int crossAxisCount = 2;
+          var crossAxisCount = 2;
           if (constraints.maxWidth > 600) {
             crossAxisCount = 4;
           }
@@ -99,7 +100,7 @@ class _SpecCard extends StatelessWidget {
         side: BorderSide(color: theme.dividerColor, width: 2),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(AppTheme.spacingL),
+        padding: EdgeInsets.all(AppTheme.spacingL),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -115,7 +116,7 @@ class _SpecCard extends StatelessWidget {
               ),
               child: Icon(icon, color: Colors.white, size: 32),
             ),
-            const SizedBox(height: AppTheme.spacingL),
+            SizedBox(height: AppTheme.spacingL),
 
             // 标题
             Text(
@@ -127,7 +128,7 @@ class _SpecCard extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppTheme.spacingM),
+            SizedBox(height: AppTheme.spacingM),
 
             // 数值 - 使用渐变色
             ShaderMask(
@@ -142,7 +143,7 @@ class _SpecCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: AppTheme.spacingS),
+            SizedBox(height: AppTheme.spacingS),
 
             // 描述
             Text(

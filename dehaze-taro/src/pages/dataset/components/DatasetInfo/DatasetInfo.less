@@ -1,0 +1,230 @@
+/* 数据集信息组件样式 */
+.dataset-info {
+  background: linear-gradient(135deg, #14b8a6 0%, #06b6d4 100%);
+  border-radius: 16px;
+  padding: 24px;
+  color: white;
+  box-shadow: 0 8px 32px rgba(20, 184, 166, 0.3);
+  margin-bottom: 20px;
+  animation: slideInDown 0.4s ease;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.info-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.dataset-title {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1.3;
+  color: white;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 22px;
+  /* #endif */
+}
+
+.dataset-subtitle {
+  display: block;
+  font-size: 16px;
+  opacity: 0.9;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.9);
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 14px;
+  /* #endif */
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  gap: 12px;
+  /* #endif */
+}
+
+.stat-box {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 16px 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.stat-box:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  line-height: 1;
+  color: white;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 24px;
+  /* #endif */
+}
+
+.stat-label {
+  display: block;
+  font-size: 12px;
+  opacity: 0.8;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.2;
+}
+
+.meta-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  flex-wrap: wrap;
+  gap: 12px;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  /* #endif */
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 13px;
+  gap: 6px;
+  /* #endif */
+}
+
+.meta-label {
+  opacity: 0.8;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.meta-value {
+  font-weight: 600;
+  color: white;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .dataset-info {
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .dataset-title {
+    font-size: 22px;
+  }
+
+  .dataset-subtitle {
+    font-size: 15px;
+  }
+
+  .stats-grid {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-box {
+    padding: 14px 10px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .meta-info {
+    padding-top: 16px;
+    gap: 10px;
+  }
+
+  .meta-item {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dataset-info {
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .info-header {
+    margin-bottom: 20px;
+  }
+
+  .dataset-title {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .dataset-subtitle {
+    font-size: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat-box {
+    padding: 12px 8px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+    margin-bottom: 3px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  .meta-info {
+    padding-top: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .meta-item {
+    font-size: 12px;
+    gap: 4px;
+  }
+}

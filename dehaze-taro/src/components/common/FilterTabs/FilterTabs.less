@@ -1,0 +1,128 @@
+/* 筛选标签组件样式 */
+.filter-tabs {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tabs-container {
+  display: flex;
+  overflow-x: auto;
+  gap: 8px;
+  padding: 4px 0;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.tabs-container::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+.tab-item {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: white;
+  border: 2px solid #e5e7eb;
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 13px;
+  padding: 6px 14px;
+  min-height: 32px;
+  /* #endif */
+}
+
+.tab-item:hover {
+  border-color: #14b8a6;
+  color: #14b8a6;
+  background: #f0fdfa;
+}
+
+.tab-item.active {
+  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  border-color: #14b8a6;
+  color: white;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+}
+
+.tab-text {
+  font-size: inherit;
+  color: inherit;
+  font-weight: inherit;
+  line-height: 1.2;
+}
+
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: inherit;
+  line-height: 1;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 11px;
+  height: 16px;
+  min-width: 18px;
+  padding: 0 4px;
+  /* #endif */
+}
+
+.tab-item:not(.active) .tab-count {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .tabs-container {
+    gap: 6px;
+  }
+
+  .tab-item {
+    padding: 6px 14px;
+    font-size: 13px;
+    min-height: 32px;
+  }
+
+  .tab-count {
+    font-size: 11px;
+    height: 16px;
+    min-width: 18px;
+    padding: 0 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .tabs-container {
+    gap: 4px;
+  }
+
+  .tab-item {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-height: 30px;
+  }
+
+  .tab-count {
+    font-size: 10px;
+    height: 14px;
+    min-width: 16px;
+    padding: 0 3px;
+  }
+}

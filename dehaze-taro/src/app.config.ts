@@ -1,5 +1,7 @@
-export default defineAppConfig({
+export default {
   pages: [
+    "pages/home/index",
+    "pages/dataset/index",
     "pages/login/index",
     "pages/dashboard/index",
     "pages/system/user/index",
@@ -10,8 +12,8 @@ export default defineAppConfig({
   ],
   window: {
     backgroundTextStyle: "light",
-    navigationBarBackgroundColor: "#fff",
-    navigationBarTitleText: "WeChat",
-    navigationBarTextStyle: "black",
+    navigationBarBackgroundColor: "#3b82f6",
+    navigationBarTitleText: "图像去雾系统",
+    navigationBarTextStyle: "white",
   },
-});
+}

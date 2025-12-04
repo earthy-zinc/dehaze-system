@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../theme/app_theme.dart';
 
 /// 效果展示区组件
@@ -12,11 +13,11 @@ class ShowcaseSection extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingXL),
+      padding: EdgeInsets.all(AppTheme.spacingXL),
       child: Column(
         children: [
           // 标题区域
-          const SizedBox(height: AppTheme.spacingXXL),
+          SizedBox(height: AppTheme.spacingXXL),
 
           _buildHeader(theme),
 
@@ -39,7 +40,7 @@ class ShowcaseSection extends StatelessWidget {
         ),
       ),
 
-      const SizedBox(height: AppTheme.spacingM),
+      SizedBox(height: AppTheme.spacingM),
 
       Text(
         '智能算法自动识别雾霾程度，精准还原图像细节',
@@ -82,7 +83,7 @@ class ShowcaseSection extends StatelessWidget {
                           width: halfWidth - 1,
                           child: Container(
                             color: Colors.grey.shade300,
-                            child: const Center(
+                            child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -112,7 +113,7 @@ class ShowcaseSection extends StatelessWidget {
                           width: halfWidth - 1,
                           child: Container(
                             color: Colors.blue.shade100,
-                            child: const Center(
+                            child: Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -154,7 +155,7 @@ class ShowcaseSection extends StatelessWidget {
                 right: 0,
                 child: Center(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
+                    padding: EdgeInsets.symmetric(
                       horizontal: AppTheme.spacingL,
                       vertical: AppTheme.spacingM,
                     ),
@@ -162,7 +163,7 @@ class ShowcaseSection extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(50),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(

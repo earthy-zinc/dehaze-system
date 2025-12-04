@@ -14,7 +14,7 @@ class HeroSection extends StatelessWidget {
     final colorScheme = theme.colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
+      padding: EdgeInsets.symmetric(
         horizontal: AppTheme.spacingM,
         vertical: AppTheme.spacingXXL,
       ),
@@ -27,7 +27,7 @@ class HeroSection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const SizedBox(height: AppTheme.spacingXL),
+          SizedBox(height: AppTheme.spacingXL),
 
           // 主标题 - 使用渐变色
           ShaderMask(
@@ -43,7 +43,7 @@ class HeroSection extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: AppTheme.spacingS),
+          SizedBox(height: AppTheme.spacingS),
 
           // 副标题
           Text(
@@ -51,7 +51,7 @@ class HeroSection extends StatelessWidget {
             style: theme.textTheme.headlineMedium?.copyWith(fontSize: 36),
           ),
 
-          const SizedBox(height: AppTheme.spacingXL),
+          SizedBox(height: AppTheme.spacingXL),
 
           // 描述文本
           Text(
@@ -64,12 +64,12 @@ class HeroSection extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: 36),
+          SizedBox(height: 36),
 
           // CTA按钮组
           _buildCTAButtons(context),
 
-          const SizedBox(height: 64),
+          SizedBox(height: 64),
         ],
       ),
     );
@@ -87,8 +87,8 @@ class HeroSection extends StatelessWidget {
           // 使用go_router导航到图像输入页面
           context.go(AppRouterConfig.imageInput);
         },
-        icon: const Icon(Icons.arrow_forward, size: 26),
-        label: const Text(
+        icon: Icon(Icons.arrow_forward, size: 26),
+        label: Text(
           '立即开始',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
@@ -96,7 +96,7 @@ class HeroSection extends StatelessWidget {
           backgroundColor: const Color(0xFF3b82f6),
           foregroundColor: Colors.white,
 
-          padding: const EdgeInsets.symmetric(
+          padding: EdgeInsets.symmetric(
             horizontal: AppTheme.spacingXL,
             vertical: AppTheme.spacingL,
           ),
@@ -113,13 +113,13 @@ class HeroSection extends StatelessWidget {
           // 使用go_router导航到数据集页面
           context.go(AppRouterConfig.dataset);
         },
-        icon: const Icon(Icons.dataset, size: 26),
-        label: const Text(
+        icon: Icon(Icons.dataset, size: 26),
+        label: Text(
           '浏览数据集',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(
+          padding: EdgeInsets.symmetric(
             horizontal: AppTheme.spacingXL,
             vertical: AppTheme.spacingL,
           ),

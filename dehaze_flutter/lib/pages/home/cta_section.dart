@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../theme/app_theme.dart';
 import '../../router/config.dart';
+import '../../theme/app_theme.dart';
 
 /// 最终CTA区域组件
 ///
@@ -14,7 +14,7 @@ class CTASection extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Container(
-      padding: const EdgeInsets.all(AppTheme.spacingXL),
+      padding: EdgeInsets.all(AppTheme.spacingXL),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -34,7 +34,7 @@ class CTASection extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppTheme.spacingM),
+          SizedBox(height: AppTheme.spacingM),
 
           Text(
             '立即开始，让您的图像重获清晰',
@@ -43,11 +43,11 @@ class CTASection extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: AppTheme.spacingXL),
+          SizedBox(height: AppTheme.spacingXL),
 
           // CTA按钮
           _buildCTAButton(context),
-          const SizedBox(height: AppTheme.spacingXL),
+          SizedBox(height: AppTheme.spacingXL),
 
           // 额外的选项链接
           _buildAdditionalLinks(context),
@@ -59,12 +59,12 @@ class CTASection extends StatelessWidget {
   /// 构建主要CTA按钮
   Widget _buildCTAButton(BuildContext context) => ElevatedButton.icon(
     onPressed: () => context.go(AppRouterConfig.imageInput),
-    icon: const Icon(Icons.arrow_forward, size: 20),
+    icon: Icon(Icons.arrow_forward, size: 20),
     label: const Text('开始使用'),
     style: ElevatedButton.styleFrom(
       backgroundColor: const Color(0xFF3b82f6),
       foregroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(
+      padding: EdgeInsets.symmetric(
         horizontal: AppTheme.spacingXXL * 2,
         vertical: AppTheme.spacingL,
       ),
@@ -83,7 +83,7 @@ class CTASection extends StatelessWidget {
     children: [
       TextButton.icon(
         onPressed: () => context.go(AppRouterConfig.dataset),
-        icon: const Icon(Icons.dataset, size: 16),
+        icon: Icon(Icons.dataset, size: 16),
         label: const Text('查看示例'),
         style: TextButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.primary,
@@ -91,7 +91,7 @@ class CTASection extends StatelessWidget {
       ),
       TextButton.icon(
         onPressed: () => context.go(AppRouterConfig.algorithm),
-        icon: const Icon(Icons.science, size: 16),
+        icon: Icon(Icons.science, size: 16),
         label: const Text('了解算法'),
         style: TextButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.primary,
@@ -99,7 +99,7 @@ class CTASection extends StatelessWidget {
       ),
       TextButton.icon(
         onPressed: () => context.go(AppRouterConfig.about),
-        icon: const Icon(Icons.info_outline, size: 16),
+        icon: Icon(Icons.info_outline, size: 16),
         label: const Text('关于我们'),
         style: TextButton.styleFrom(
           foregroundColor: Theme.of(context).colorScheme.primary,

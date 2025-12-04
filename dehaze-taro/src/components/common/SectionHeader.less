@@ -1,0 +1,58 @@
+/* 通用区块标题组件 */
+.section-header {
+  margin-bottom: 60px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.section-header--left {
+  text-align: left;
+}
+
+.section-header--center {
+  text-align: center;
+}
+
+.section-header--right {
+  text-align: right;
+}
+
+.section-header__title {
+  display: block;
+  font-size: 40px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 28px;
+  /* #endif */
+}
+
+.section-header__subtitle {
+  display: block;
+  font-size: 18px;
+  color: #6b7280;
+  line-height: 1.6;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 16px;
+  /* #endif */
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .section-header {
+    margin-bottom: 40px;
+  }
+
+  .section-header__title {
+    font-size: 28px;
+  }
+
+  .section-header__subtitle {
+    font-size: 16px;
+  }
+}

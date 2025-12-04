@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../layout/main_layout.dart';
+import '../pages/dataset/index.dart';
 import '../pages/home/index.dart';
 
 class AppRouterConfig {
@@ -37,6 +39,12 @@ class AppRouterConfig {
             path: home,
             name: 'home',
             builder: (context, state) => const HomePage(),
+          ),
+          // 数据集管理
+          GoRoute(
+            path: dataset,
+            name: 'dataset',
+            builder: (context, state) => const DatasetPage(),
           ),
         ],
       ),

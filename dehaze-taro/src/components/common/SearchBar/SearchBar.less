@@ -1,0 +1,100 @@
+/* 搜索栏组件样式 */
+.search-bar {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 12px;
+  border: 2px solid #e5e7eb;
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+}
+
+.search-icon {
+  flex-shrink: 0;
+  margin-left: 12px;
+  margin-right: 8px;
+  z-index: 1;
+}
+
+.search-input {
+  flex: 1;
+  height: 44px;
+  padding: 0 12px 0 0;
+  font-size: 16px;
+  color: #374151;
+  background: transparent;
+  border: none;
+  outline: none;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 14px;
+  height: 40px;
+  /* #endif */
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.clear-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin: 0 8px;
+  background: #9ca3af;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-btn:hover {
+  background: #6b7280;
+  transform: scale(1.1);
+}
+
+.clear-btn:active {
+  transform: scale(0.95);
+}
+
+/* 响应式适配 */
+@media (max-width: 480px) {
+  .search-input-wrapper {
+    border-radius: 10px;
+  }
+
+  .search-icon {
+    margin-left: 10px;
+    margin-right: 6px;
+    font-size: 18px;
+  }
+
+  .search-input {
+    height: 40px;
+    padding: 0 8px 0 0;
+    font-size: 14px;
+  }
+
+  .clear-btn {
+    width: 20px;
+    height: 20px;
+    margin: 0 6px;
+    font-size: 12px;
+  }
+}

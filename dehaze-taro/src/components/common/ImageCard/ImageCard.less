@@ -1,0 +1,156 @@
+/* 图片卡片组件样式 */
+.image-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  animation: fadeIn 0.3s ease;
+}
+
+.image-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.image-card:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #f3f4f6;
+}
+
+.type-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
+  z-index: 1;
+}
+
+.type-badge-foggy {
+  background: rgba(107, 114, 128, 0.9);
+  color: white;
+}
+
+.type-badge-clear {
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+}
+
+.type-badge-annotated {
+  background: rgba(16, 185, 129, 0.9);
+  color: white;
+}
+
+.type-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: inherit;
+}
+
+.image-info {
+  padding: 12px;
+  background: white;
+}
+
+.image-filename {
+  display: block;
+  font-size: 13px;
+  color: #374151;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.image-meta {
+  display: block;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+
+.image-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #f3f4f6;
+  color: #6b7280;
+  font-size: 10px;
+  border-radius: 4px;
+  line-height: 1.2;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .image-info {
+    padding: 10px;
+  }
+
+  .image-filename {
+    font-size: 12px;
+  }
+
+  .image-meta {
+    font-size: 10px;
+  }
+
+  .tag {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .image-info {
+    padding: 8px;
+  }
+
+  .image-filename {
+    font-size: 11px;
+  }
+
+  .type-badge {
+    top: 6px;
+    right: 6px;
+    padding: 3px 6px;
+  }
+
+  .type-text {
+    font-size: 10px;
+  }
+}

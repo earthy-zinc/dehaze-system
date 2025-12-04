@@ -1,0 +1,59 @@
+/* 效果展示区样式 */
+.showcase-section {
+  padding: 80px 20px;
+  max-width: 100%;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.showcase-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.section-title {
+  display: block;
+  font-size: 40px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+  text-align: center;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 28px;
+  /* #endif */
+}
+
+.section-subtitle {
+  display: block;
+  font-size: 18px;
+  color: #6b7280;
+  line-height: 1.6;
+  text-align: center;
+
+  /* #ifdef MP-WEIXIN || MP-ALIPAY */
+  font-size: 16px;
+  /* #endif */
+}
+
+.comparison-showcase {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* 响应式适配 */
+@media (max-width: 768px) {
+  .showcase-section {
+    padding: 60px 16px;
+  }
+
+  .showcase-header {
+    margin-bottom: 40px;
+  }
+}

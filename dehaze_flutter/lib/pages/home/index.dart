@@ -54,7 +54,7 @@ class FeaturesSection extends StatelessWidget {
   const FeaturesSection({super.key});
 
   @override
-  Widget build(BuildContext context) => const Column(
+  Widget build(BuildContext context) => Column(
     children: [
       // 工作流程区域
       WorkflowSection(),
