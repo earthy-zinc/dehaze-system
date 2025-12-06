@@ -8,6 +8,18 @@ import '../../theme/app_theme.dart';
 class HeroSection extends StatelessWidget {
   const HeroSection({super.key});
 
+  /// 响应式字体大小计算
+  double _getResponsiveFontSize(
+    BuildContext context,
+    double desktopSize,
+    double mobileSize,
+  ) {
+    final width = MediaQuery.of(context).size.width;
+    if (width > 768) return desktopSize;
+    if (width > 480) return desktopSize * 0.8;
+    return mobileSize;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -29,15 +41,15 @@ class HeroSection extends StatelessWidget {
         children: [
           SizedBox(height: AppTheme.spacingXL),
 
-          // 主标题 - 使用渐变色
+          // 主标题 - 使用渐变色（与设计稿一致）
           ShaderMask(
             shaderCallback: (bounds) => const LinearGradient(
-              colors: [Color(0xFF1e40af), Color(0xFF3b82f6), Color(0xFF60a5fa)],
+              colors: AppTheme.heroGradient,
             ).createShader(bounds),
             child: Text(
               '图像去雾',
               style: theme.textTheme.headlineLarge?.copyWith(
-                fontSize: 58,
+                fontSize: _getResponsiveFontSize(context, 58, 42),
                 color: Colors.white,
               ),
             ),
@@ -48,7 +60,9 @@ class HeroSection extends StatelessWidget {
           // 副标题
           Text(
             '专业级图像处理系统',
-            style: theme.textTheme.headlineMedium?.copyWith(fontSize: 36),
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontSize: _getResponsiveFontSize(context, 36, 24),
+            ),
           ),
 
           SizedBox(height: AppTheme.spacingXL),
@@ -57,7 +71,7 @@ class HeroSection extends StatelessWidget {
           Text(
             '采用先进的深度学习算法，一键还原清晰视界\n从图像输入到效果评估的完整闭环体验',
             style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: 20,
+              fontSize: _getResponsiveFontSize(context, 20, 16),
               color: Colors.grey[700],
               height: 1.6,
             ),
@@ -93,7 +107,7 @@ class HeroSection extends StatelessWidget {
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF3b82f6),
+          backgroundColor: AppTheme.brandBlue,
           foregroundColor: Colors.white,
 
           padding: EdgeInsets.symmetric(

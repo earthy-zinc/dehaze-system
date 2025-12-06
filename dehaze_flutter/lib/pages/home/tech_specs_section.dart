@@ -49,14 +49,17 @@ class TechSpecsSection extends StatelessWidget {
             crossAxisCount = 4;
           }
 
+          // 根据屏幕宽度调整宽高比，确保内容不溢出
+          final childAspectRatio = crossAxisCount == 4 ? 0.85 : 0.9;
+
           return GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: crossAxisCount,
-              crossAxisSpacing: AppTheme.spacingL,
-              mainAxisSpacing: AppTheme.spacingL,
-              childAspectRatio: 1.1,
+              crossAxisSpacing: AppTheme.spacingM,
+              mainAxisSpacing: AppTheme.spacingM,
+              childAspectRatio: childAspectRatio,
             ),
             itemCount: specs.length,
             itemBuilder: (context, index) {
@@ -96,60 +99,84 @@ class _SpecCard extends StatelessWidget {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.spacingXL),
-        side: BorderSide(color: theme.dividerColor, width: 2),
+        borderRadius: BorderRadius.circular(AppTheme.spacingL),
+        side: BorderSide(color: theme.dividerColor, width: 1),
       ),
       child: Padding(
-        padding: EdgeInsets.all(AppTheme.spacingL),
+        padding: EdgeInsets.all(AppTheme.spacingM),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // 图标
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF3b82f6), Color(0xFF2563eb)],
+            // 图标 - 使用 Flexible 防止溢出
+            Flexible(
+              flex: 3,
+              child: Container(
+                constraints: const BoxConstraints(
+                  maxWidth: 56,
+                  maxHeight: 56,
                 ),
-                borderRadius: BorderRadius.circular(36),
-              ),
-              child: Icon(icon, color: Colors.white, size: 32),
-            ),
-            SizedBox(height: AppTheme.spacingL),
-
-            // 标题
-            Text(
-              title,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.textTheme.bodyMedium?.color,
-                letterSpacing: 0.05,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            SizedBox(height: AppTheme.spacingM),
-
-            // 数值 - 使用渐变色
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [Color(0xFF3b82f6), Color(0xFF2563eb)],
-              ).createShader(bounds),
-              child: Text(
-                value,
-                style: theme.textTheme.displayMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF3b82f6), Color(0xFF2563eb)],
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: Center(
+                  child: Icon(icon, color: Colors.white, size: 24),
                 ),
               ),
             ),
             SizedBox(height: AppTheme.spacingS),
 
+            // 标题
+            Flexible(
+              flex: 1,
+              child: Text(
+                title,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.textTheme.bodyMedium?.color,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            SizedBox(height: AppTheme.spacingXS),
+
+            // 数值 - 使用渐变色
+            Flexible(
+              flex: 2,
+              child: ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Color(0xFF3b82f6), Color(0xFF2563eb)],
+                ).createShader(bounds),
+                child: Text(
+                  value,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: AppTheme.spacingXS),
+
             // 描述
-            Text(
-              description,
-              style: theme.textTheme.bodySmall?.copyWith(height: 1.5),
-              textAlign: TextAlign.center,
+            Flexible(
+              flex: 2,
+              child: Text(
+                description,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 11,
+                  height: 1.3,
+                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),

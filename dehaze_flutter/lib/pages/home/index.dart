@@ -15,36 +15,56 @@ class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    body: CustomScrollView(
-      slivers: [
-        // Hero Section - 英雄区域
-        const SliverToBoxAdapter(child: HeroSection()),
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 统一的区块间距
+    final sectionSpacing = AppTheme.spacingXL * 1.5;
 
-        // 效果展示区
-        const SliverToBoxAdapter(child: ShowcaseSection()),
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          // Hero Section - 英雄区域
+          const SliverToBoxAdapter(child: HeroSection()),
 
-        // 核心功能区 - 包含工作流程和工具网格
-        const SliverToBoxAdapter(child: FeaturesSection()),
+          // 区块间距
+          SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
 
-        // 算法优势区
-        const SliverToBoxAdapter(child: AlgorithmSection()),
+          // 效果展示区
+          const SliverToBoxAdapter(child: ShowcaseSection()),
 
-        // 技术特性区
-        const SliverToBoxAdapter(child: TechSpecsSection()),
+          // 区块间距
+          SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
 
-        // 最终CTA区域
-        const SliverToBoxAdapter(child: CTASection()),
+          // 核心功能区 - 包含工作流程和工具网格
+          const SliverToBoxAdapter(child: FeaturesSection()),
 
-        // 底部安全区域
-        SliverToBoxAdapter(
-          child: SizedBox(
-            height: MediaQuery.of(context).padding.bottom + AppTheme.spacingXL,
+          // 区块间距
+          SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
+
+          // 算法优势区
+          const SliverToBoxAdapter(child: AlgorithmSection()),
+
+          // 区块间距
+          SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
+
+          // 技术特性区
+          const SliverToBoxAdapter(child: TechSpecsSection()),
+
+          // 区块间距
+          SliverToBoxAdapter(child: SizedBox(height: sectionSpacing)),
+
+          // 最终CTA区域
+          const SliverToBoxAdapter(child: CTASection()),
+
+          // 底部安全区域
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: MediaQuery.of(context).padding.bottom + AppTheme.spacingXL,
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
 
 /// 核心功能区组合组件

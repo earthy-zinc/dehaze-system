@@ -1,128 +1,191 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
+import '../../../utils/responsive_utils.dart';
 import '../models/dataset_model.dart';
 
-class DatasetCard extends StatelessWidget {
+/// 数据集卡片组件
+///
+/// 与设计稿 dataset.css 的 dataset-card 样式对应
+/// 支持悬停效果、点击缩放动画
+class DatasetCard extends StatefulWidget {
   const DatasetCard({required this.dataset, super.key, this.onTap});
 
   final DatasetModel dataset;
   final VoidCallback? onTap;
 
   @override
+  State<DatasetCard> createState() => _DatasetCardState();
+}
+
+class _DatasetCardState extends State<DatasetCard> {
+  bool _isHovered = false;
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final isMobile = ResponsiveUtils.isMobile(context);
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppTheme.radiusL),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 缩略图
-            ClipRRect(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(AppTheme.radiusL),
-                bottomLeft: Radius.circular(AppTheme.radiusL),
-              ),
-              child: Container(
-                width: 128,
-                height: 128,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.getPrimaryGradient(),
-                ),
-                child: Image.network(
-                  dataset.thumbnail,
-                  width: 128,
-                  height: 128,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Icon(
-                    Icons.storage_outlined,
-                    color: Colors.white,
-                    size: 48,
-                  ),
-                ),
-              ),
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          transform: Matrix4.identity()
+            ..setEntry(1, 3, _isHovered ? -2.0 : 0.0)
+            ..setEntry(0, 0, _isPressed ? 0.98 : 1.0)
+            ..setEntry(1, 1, _isPressed ? 0.98 : 1.0),
+          child: Card(
+            elevation: _isHovered ? 12 : 2,
+            shadowColor: Colors.black.withValues(alpha: _isHovered ? 0.12 : 0.08),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
-
-            // 内容区域
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.all(AppTheme.spacingM),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 标题
-                    Text(
-                      dataset.name,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    SizedBox(height: AppTheme.spacingS),
-
-                    // 描述
-                    Text(
-                      dataset.description ?? '暂无描述',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    SizedBox(height: AppTheme.spacingM),
-
-                    // 统计信息
-                    Row(
-                      children: [
-                        _buildStatItem(
-                          context,
-                          Icons.image_outlined,
-                          '${dataset.totalImages}',
-                          colorScheme.primary,
-                        ),
-                        SizedBox(width: AppTheme.spacingL),
-                        _buildStatItem(
-                          context,
-                          Icons.access_time_outlined,
-                          _formatDate(dataset.createdAt),
-                          theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: widget.onTap,
+              child: isMobile
+                  ? _buildMobileLayout(theme)
+                  : _buildDesktopLayout(theme),
             ),
-          ],
+          ),
         ),
       ),
     );
   }
+
+  /// 移动端布局 - 纵向排列
+  Widget _buildMobileLayout(ThemeData theme) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 缩略图
+          _buildThumbnail(height: 160),
+          // 内容区域
+          _buildContent(theme),
+        ],
+      );
+
+  /// 桌面端布局 - 横向排列
+  Widget _buildDesktopLayout(ThemeData theme) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 缩略图
+          _buildThumbnail(width: 128, height: 128),
+          // 内容区域
+          Expanded(child: _buildContent(theme)),
+        ],
+      );
+
+  /// 构建缩略图
+  Widget _buildThumbnail({double? width, double? height}) => SizedBox(
+        width: width,
+        height: height,
+        child: CachedNetworkImage(
+          imageUrl: widget.dataset.thumbnail,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          placeholder: (context, url) => Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              gradient: AppTheme.getSecondaryGradient(),
+            ),
+            child: const Center(child: CircularProgressIndicator()),
+          ),
+          errorWidget: (context, url, error) => Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              gradient: AppTheme.getSecondaryGradient(),
+            ),
+            child: const Icon(
+              Icons.storage_outlined,
+              color: Colors.white,
+              size: 48,
+            ),
+          ),
+        ),
+      );
+
+  /// 构建内容区域
+  Widget _buildContent(ThemeData theme) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 标题
+            Text(
+              widget.dataset.name,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1F2937), // gray-800
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            const SizedBox(height: 8),
+
+            // 描述
+            Text(
+              widget.dataset.description ?? '暂无描述',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: const Color(0xFF6B7280), // gray-500
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+
+            const SizedBox(height: 12),
+
+            // 统计信息
+            Row(
+              children: [
+                _buildStatItem(
+                  context,
+                  Icons.image_outlined,
+                  '${widget.dataset.totalImages}',
+                  const Color(0xFF14B8A6), // teal-500
+                ),
+                const SizedBox(width: 16),
+                _buildStatItem(
+                  context,
+                  Icons.access_time_outlined,
+                  _formatDate(widget.dataset.createdAt),
+                  const Color(0xFF9CA3AF), // gray-400
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
 
   Widget _buildStatItem(
     BuildContext context,
     IconData icon,
     String text,
     Color color,
-  ) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 16, color: color),
-      SizedBox(width: AppTheme.spacingXS),
-      Text(
-        text,
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    ],
-  );
+  ) =>
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              color: const Color(0xFF9CA3AF), // gray-400
+            ),
+          ),
+        ],
+      );
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();

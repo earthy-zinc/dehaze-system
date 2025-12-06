@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 /// Dehaze Flutter 应用主题配置
 ///
 /// 基于设计系统文档的最佳实践主题配置，支持明亮和暗黑两种模式
+/// 与 HTML 设计稿 (demo/index.html) 保持一致的视觉规范
 class AppTheme {
   // ==================== 颜色系统定义 ====================
 
-  // 品牌色彩
-  static const Color brandBlue = Color(0xFF4285F4); // 品牌蓝
-  static const Color techGreen = Color(0xFF0F9D58); // 科技绿
-  static const Color accentGreen = Color(0xFF34A853); // 辅助绿
+  // 品牌色彩 - 与 Tailwind CSS 设计稿保持一致
+  static const Color brandBlue = Color(0xFF3b82f6); // Tailwind blue-500
+  static const Color brandBlueDark = Color(0xFF2563eb); // Tailwind blue-600
+  static const Color brandBlueLight = Color(0xFF60a5fa); // Tailwind blue-400
+  static const Color techGreen = Color(0xFF10b981); // Tailwind emerald-500
+  static const Color accentGreen = Color(0xFF34d399); // Tailwind emerald-400
 
   // 功能色彩
   static const Color successColor = Color(0xFF34A853); // 成功
@@ -53,6 +56,19 @@ class AppTheme {
   static const List<Color> functionalGradient = [
     Color(0xFFF093FB),
     Color(0xFFF5576C),
+  ];
+
+  // Hero 区域渐变色 - 与设计稿一致
+  static const List<Color> heroGradient = [
+    Color(0xFF1e40af), // blue-800
+    Color(0xFF3b82f6), // blue-500
+    Color(0xFF60a5fa), // blue-400
+  ];
+
+  // 工具卡片背景渐变
+  static const List<Color> toolCardGradient = [
+    Color(0xFFeff6ff), // blue-50
+    Color(0xFFdbeafe), // blue-100
   ];
 
   // ==================== 间距系统定义 ====================
