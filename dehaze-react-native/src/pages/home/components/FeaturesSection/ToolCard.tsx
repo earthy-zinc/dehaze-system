@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Text, StyleSheet, Animated } from 'react-native';
 import Card from '@/components/Card';
 import Icon from '@/components/Icon';
 
@@ -17,8 +17,14 @@ const ToolCard: React.FC<ToolCardProps> = ({
   onPress,
 }) => {
   return (
-    <Card onPress={onPress} padding={32} margin={0} borderRadius={20}>
-      <View style={styles.iconWrapper}>
+    <Card 
+      onPress={onPress} 
+      padding={24} 
+      margin={0} 
+      borderRadius={20}
+      style={styles.card}
+    >
+      <Animated.View style={styles.iconWrapper}>
         <Icon
           name={icon}
           size={24}
@@ -26,7 +32,7 @@ const ToolCard: React.FC<ToolCardProps> = ({
           backgroundColor="#eff6ff"
           borderRadius={14}
         />
-      </View>
+      </Animated.View>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.description}>{description}</Text>
     </Card>
@@ -34,20 +40,24 @@ const ToolCard: React.FC<ToolCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  card: {
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
   iconWrapper: {
-    marginBottom: 20,
+    marginBottom: 16,
     alignSelf: 'flex-start',
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
     color: '#1f2937',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   description: {
     fontSize: 14,
     color: '#6b7280',
-    lineHeight: 22.4,
+    lineHeight: 22,
   },
 });
 

@@ -7,7 +7,7 @@ import {
   ViewStyle,
   ActivityIndicator,
 } from 'react-native';
-// import LinearGradient from 'react-native-linear-gradient';
+import { theme } from '@/theme';
 
 interface ButtonProps {
   title: string;
@@ -30,7 +30,7 @@ const Button: React.FC<ButtonProps> = ({
 }) => {
   const renderButtonContent = () => {
     if (loading) {
-      return <ActivityIndicator color="#ffffff" size="small" />;
+      return <ActivityIndicator color={theme.colors.text.inverse} size="small" />;
     }
 
     return (
@@ -72,44 +72,38 @@ const Button: React.FC<ButtonProps> = ({
 
 const styles = StyleSheet.create({
   button: {
-    borderRadius: 12,
+    borderRadius: theme.layout.borderRadius.md,
     overflow: 'hidden',
   },
   gradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 40,
-    paddingVertical: 16,
-    backgroundColor: '#3b82f6',
+    paddingHorizontal: theme.spacing.xxl,
+    paddingVertical: theme.spacing.md,
+    backgroundColor: theme.colors.primary,
   },
   primary: {
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    ...theme.layout.shadows.md,
+    shadowColor: theme.colors.primary,
   },
   primaryGradient: {
-    paddingHorizontal: 40,
-    paddingVertical: 16,
+    paddingHorizontal: theme.spacing.xxl,
+    paddingVertical: theme.spacing.md,
   },
   secondary: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
     borderWidth: 2,
-    borderColor: '#e5e7eb',
-    paddingHorizontal: 40,
-    paddingVertical: 16,
+    borderColor: theme.colors.border.light,
+    paddingHorizontal: theme.spacing.xxl,
+    paddingVertical: theme.spacing.md,
   },
   large: {
-    shadowColor: '#3b82f6',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 12,
+    ...theme.layout.shadows.lg,
+    shadowColor: theme.colors.primary,
   },
   largeGradient: {
-    paddingHorizontal: 60,
+    paddingHorizontal: theme.spacing.xxxl,
     paddingVertical: 20,
   },
   disabled: {
@@ -117,22 +111,22 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 17,
-    fontWeight: '600',
+    fontWeight: theme.typography.weights.semibold,
     textAlign: 'center',
   },
   primaryText: {
-    color: '#ffffff',
+    color: theme.colors.text.inverse,
   },
   secondaryText: {
-    color: '#3b82f6',
+    color: theme.colors.primary,
   },
   largeText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontSize: theme.typography.sizes.h5,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.inverse,
   },
   iconContainer: {
-    marginLeft: 8,
+    marginLeft: theme.spacing.sm,
   },
 });
 

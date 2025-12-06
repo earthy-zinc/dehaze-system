@@ -43,7 +43,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RouteManager = () => {
   return (
-    <Stack.Navigator initialRouteName="Dataset">
+    <Stack.Navigator
+      initialRouteName="Home"
+      screenOptions={{
+        headerShown: false, // 使用自定义 Header
+        animation: 'slide_from_right',
+      }}
+    >
       {routeConfigs.map(route => (
         <Stack.Screen
           key={route.name}

@@ -1,9 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import ImageLoader from '@/components/ImageLoader';
 import Button from '@/components/Button';
 import Icon from '@/components/Icon';
 import Card from '@/components/Card';
+import { useResponsive } from '@/hooks/useResponsive';
+import { useFadeSlideAnimation } from '@/hooks/useAnimation';
+import { theme } from '@/theme';
 
 interface AlgorithmSectionProps {
   onLearnMorePress: () => void;
@@ -12,6 +15,20 @@ interface AlgorithmSectionProps {
 const AlgorithmSection: React.FC<AlgorithmSectionProps> = ({
   onLearnMorePress,
 }) => {
+  const { isMobile, isTablet, fontScale, containerPadding } = useResponsive();
+
+  // Text animation (slide in from left)
+  const { animatedStyle: textAnimStyle } = useFadeSlideAnimation({
+    direction: 'right', // Slide TO right (from left)
+    slideDistance: 50,
+  });
+
+  // Image animation (slide in from right)
+  const { animatedStyle: imageAnimStyle } = useFadeSlideAnimation({
+    direction: 'left', // Slide TO left (from right)
+    slideDistance: 50,
+  });
+
   const algorithmFeatures = [
     '智能推荐最适合的去雾算法',
     '实时对比不同算法的处理效果',
@@ -21,53 +38,73 @@ const AlgorithmSection: React.FC<AlgorithmSectionProps> = ({
 
   const algorithmImageUrl = 'https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/f49e4b9e-6079-4a0b-8f91-bcab5deec2c7/image_1763727581_1_3.jpg';
 
+  // 响应式字体大小
+  const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h1 * fontScale;
+  const subtitleFontSize = isMobile ? theme.typography.sizes.body : theme.typography.sizes.h6 * fontScale;
+
+  // 响应式图片高度
+  const imageHeight = isMobile ? 200 : isTablet ? 280 : 320;
+
   return (
-    <View style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <View style={styles.algorithmContent}>
-          <View style={styles.algorithmText}>
-            <Text style={styles.sectionTitle}>多算法智能选择</Text>
-            <Text style={styles.sectionSubtitle}>
-              支持DCP、AOD-Net、DehazeNet等多种先进算法
-            </Text>
+    <View style={[styles.container, { paddingHorizontal: containerPadding }]}>
+      <View style={[
+        styles.algorithmContent,
+        !isMobile && styles.algorithmContentRow,
+      ]}>
+        {/* Text Content */}
+        <Animated.View style={[
+          styles.algorithmText,
+          !isMobile && styles.algorithmTextRow,
+          textAnimStyle,
+        ]}>
+          <Text style={[styles.sectionTitle, { fontSize: titleFontSize }]}>
+            多算法智能选择
+          </Text>
+          <Text style={[styles.sectionSubtitle, { fontSize: subtitleFontSize }]}>
+            支持DCP、AOD-Net、DehazeNet等多种先进算法
+          </Text>
 
-            <View style={styles.featuresList}>
-              {algorithmFeatures.map((feature, index) => (
-                <View key={`feature-${index}`} style={styles.featureItem}>
-                  <Icon
-                    name="check-circle"
-                    size={20}
-                    color="#34d399"
-                    style={styles.featureIcon}
-                  />
-                  <Text style={styles.featureText}>{feature}</Text>
-                </View>
-              ))}
-            </View>
+          <View style={styles.featuresList}>
+            {algorithmFeatures.map((feature, index) => (
+              <View key={`feature-${index}`} style={styles.featureItem}>
+                <Icon
+                  name="check-circle"
+                  size={20}
+                  color={theme.colors.success}
+                  style={styles.featureIcon}
+                />
+                <Text style={styles.featureText}>{feature}</Text>
+              </View>
+            ))}
+          </View>
 
-            <Button
-              title="了解更多算法详情"
-              onPress={onLearnMorePress}
-              variant="secondary"
-              icon={<Icon name="arrow-right" size={14} color="#3b82f6" />}
-              style={styles.learnMoreButton}
+          <Button
+            title="了解更多算法详情"
+            onPress={onLearnMorePress}
+            variant="secondary"
+            icon={<Icon name="arrow-right" size={14} color={theme.colors.primary} />}
+            style={styles.learnMoreButton}
+          />
+        </Animated.View>
+
+        {/* Image */}
+        <Animated.View style={[
+          styles.algorithmVisual,
+          !isMobile && styles.algorithmVisualRow,
+          imageAnimStyle,
+        ]}>
+          <Card padding={0} margin={0} borderRadius={theme.layout.borderRadius.xl}>
+            <ImageLoader
+              source={{ uri: algorithmImageUrl }}
+              style={styles.algorithmImage}
+              containerStyle={{
+                ...styles.imageContainer,
+                height: imageHeight,
+              }}
             />
-          </View>
-
-          <View style={styles.algorithmVisual}>
-            <Card padding={0} margin={0} borderRadius={20}>
-              <ImageLoader
-                source={{ uri: algorithmImageUrl }}
-                style={styles.algorithmImage}
-                containerStyle={styles.imageContainer}
-              />
-            </Card>
-          </View>
-        </View>
-      </ScrollView>
+          </Card>
+        </Animated.View>
+      </View>
     </View>
   );
 };
@@ -75,61 +112,66 @@ const AlgorithmSection: React.FC<AlgorithmSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: '#3b82f6',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 80,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.huge,
   },
   algorithmContent: {
     flexDirection: 'column',
-    gap: 40,
+    gap: theme.spacing.xxl,
+  },
+  algorithmContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xxxl,
   },
   algorithmText: {
     flex: 1,
   },
+  algorithmTextRow: {
+    flex: 1,
+  },
   sectionTitle: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 16,
-    letterSpacing: -0.5,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.inverse,
+    marginBottom: theme.spacing.md,
+    letterSpacing: theme.typography.letterSpacing.normal,
   },
   sectionSubtitle: {
-    fontSize: 18,
     color: 'rgba(255, 255, 255, 0.8)',
     lineHeight: 28.8,
-    marginBottom: 32,
+    marginBottom: theme.spacing.xl,
   },
   featuresList: {
-    marginBottom: 32,
+    marginBottom: theme.spacing.xl,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
-    marginBottom: 16,
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
   featureIcon: {
     marginTop: 2,
   },
   featureText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: theme.typography.sizes.body,
     color: 'rgba(255, 255, 255, 0.95)',
-    lineHeight: 25.6,
+    lineHeight: theme.typography.sizes.body * theme.typography.lineHeights.body,
   },
   learnMoreButton: {
     alignSelf: 'flex-start',
+    backgroundColor: theme.colors.background.primary,
   },
   algorithmVisual: {
     flex: 1,
   },
+  algorithmVisualRow: {
+    flex: 1,
+  },
   imageContainer: {
     width: '100%',
-    height: 240,
-    borderRadius: 20,
+    borderRadius: theme.layout.borderRadius.xl,
     overflow: 'hidden',
   },
   algorithmImage: {

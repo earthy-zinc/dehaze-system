@@ -2,11 +2,10 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   StyleSheet,
-  SafeAreaView,
-  StatusBar,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/routes/navigator';
+import { MainLayout } from '@/layout';
 import DatasetListSection from './components/DatasetListSection';
 import DatasetDetailSection from './components/DatasetDetailSection';
 import { Dataset } from './types/dataset';
@@ -34,9 +33,7 @@ const DatasetScreen: React.FC<Props> = () => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#14b8a6" />
-
+    <MainLayout title="数据集管理">
       <View style={styles.content}>
         {currentView === 'list' ? (
           <DatasetListSection
@@ -51,15 +48,11 @@ const DatasetScreen: React.FC<Props> = () => {
           />
         ) : null}
       </View>
-    </SafeAreaView>
+    </MainLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-  },
   content: {
     flex: 1,
   },

@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ViewStyle,
 } from 'react-native';
+import { theme } from '@/theme';
 
 interface SectionProps {
   title?: string;
@@ -23,7 +24,7 @@ const Section: React.FC<SectionProps> = ({
   style,
   contentStyle,
   centered = true,
-  padding = 80,
+  padding = theme.spacing.huge,
 }) => {
 
   return (
@@ -45,23 +46,23 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   header: {
-    marginBottom: 60,
+    marginBottom: theme.spacing.xxxl,
   },
   centeredHeader: {
     alignItems: 'center',
   },
   title: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-    letterSpacing: -0.5,
+    fontSize: theme.typography.sizes.h1,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+    letterSpacing: theme.typography.letterSpacing.normal,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 18,
-    color: '#6b7280',
-    lineHeight: 28.8,
+    fontSize: theme.typography.sizes.h6,
+    color: theme.colors.text.secondary,
+    lineHeight: theme.typography.sizes.h6 * theme.typography.lineHeights.body,
     textAlign: 'center',
   },
   content: {

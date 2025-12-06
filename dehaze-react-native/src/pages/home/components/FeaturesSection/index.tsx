@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import WorkflowStep from './WorkflowStep';
 import ToolCard from './ToolCard';
 import Icon from '@/components/Icon';
+import { useResponsive } from '@/hooks/useResponsive';
+import { theme } from '@/theme';
 
 interface FeaturesSectionProps {
   onImageInputPress: () => void;
@@ -16,8 +18,6 @@ interface FeaturesSectionProps {
   onDatasetManagePress: () => void;
 }
 
-const { width } = Dimensions.get('window');
-
 const FeaturesSection: React.FC<FeaturesSectionProps> = ({
   onImageInputPress,
   onAlgorithmSelectPress,
@@ -29,6 +29,9 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
   onMetricsPress,
   onDatasetManagePress,
 }) => {
+  const { width, isMobile, isTablet, spacing, containerPadding, fontScale } = useResponsive();
+
+  // ... workflowSteps and tools definitions ...
   const workflowSteps = [
     {
       number: '01',
@@ -92,41 +95,80 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
     },
   ];
 
+  // 计算工作流步骤卡片宽度
+  const stepCardWidth = isMobile 
+    ? width - containerPadding * 2 - 40 
+    : Math.min(280, (width - containerPadding * 2 - spacing * 4) / 3);
+
+  // 计算工具卡片宽度（响应式网格）
+  const toolColumns = isMobile ? 1 : isTablet ? 2 : 3;
+  const toolCardWidth = (width - containerPadding * 2 - spacing * (toolColumns - 1)) / toolColumns;
+
+  // 响应式字体大小
+  const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h1 * fontScale;
+  const subtitleFontSize = isMobile ? theme.typography.sizes.body : theme.typography.sizes.h6 * fontScale;
+
   return (
     <View style={styles.container}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>强大的功能生态</Text>
-        <Text style={styles.sectionSubtitle}>从输入到输出，每一步都精心设计</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.workflowContainer}
-        >
-          {workflowSteps.map((step, index) => (
-            <View key={`workflow-${index}`} style={styles.stepWrapper}>
-              <WorkflowStep {...step} />
-              {index < workflowSteps.length - 1 && (
-                <View style={styles.arrowContainer}>
-                  <Icon name="arrow-right" size={24} color="#d1d5db" />
-                </View>
-              )}
-            </View>
-          ))}
-        </ScrollView>
+      {/* Header */}
+      <View style={[styles.section, { paddingHorizontal: containerPadding }]}>
+        <Text style={[styles.sectionTitle, { fontSize: titleFontSize }]}>
+          强大的功能生态
+        </Text>
+        <Text style={[styles.sectionSubtitle, { fontSize: subtitleFontSize }]}>
+          从输入到输出，每一步都精心设计
+        </Text>
       </View>
 
-      <View style={styles.toolsSection}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.toolsContainer}
-        >
+      {/* Workflow Steps */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.workflowContainer,
+          { paddingHorizontal: containerPadding },
+        ]}
+      >
+        {workflowSteps.map((step, index) => (
+          <View key={`workflow-${index}`} style={styles.stepWrapper}>
+            <WorkflowStep {...step} width={stepCardWidth} />
+            {index < workflowSteps.length - 1 && (
+              <View style={[
+                styles.arrowContainer,
+                isMobile && styles.arrowContainerMobile,
+              ]}>
+                <Icon 
+                  name={isMobile ? 'arrow-down' : 'arrow-right'} 
+                  size={isMobile ? 20 : 24} 
+                  color={theme.colors.border.light} 
+                />
+              </View>
+            )}
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* Tools Grid */}
+      <View style={[
+        styles.toolsSection,
+        { paddingHorizontal: containerPadding },
+      ]}>
+        <View style={[
+          styles.toolsGrid,
+          { gap: spacing },
+        ]}>
           {tools.map((tool, index) => (
-            <View key={`tool-${index}`} style={styles.toolWrapper}>
+            <View 
+              key={`tool-${index}`} 
+              style={[
+                styles.toolWrapper,
+                { width: toolCardWidth - (isMobile ? 0 : spacing / toolColumns) },
+              ]}
+            >
               <ToolCard {...tool} />
             </View>
           ))}
-        </ScrollView>
+        </View>
       </View>
     </View>
   );
@@ -134,51 +176,50 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
+    paddingVertical: theme.spacing.huge,
   },
   section: {
-    paddingHorizontal: 20,
-    paddingVertical: 80,
+    marginBottom: theme.spacing.xxxl,
   },
   sectionTitle: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: '#1f2937',
-    marginBottom: 16,
-    letterSpacing: -0.5,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.md,
+    letterSpacing: theme.typography.letterSpacing.normal,
     textAlign: 'center',
   },
   sectionSubtitle: {
-    fontSize: 18,
-    color: '#6b7280',
+    color: theme.colors.text.secondary,
     lineHeight: 28.8,
     textAlign: 'center',
-    marginBottom: 60,
   },
   workflowContainer: {
-    paddingHorizontal: 20,
     gap: 20,
     alignItems: 'center',
+    paddingBottom: theme.spacing.xxxl,
   },
   stepWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
   },
   arrowContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    marginHorizontal: theme.spacing.md,
+  },
+  arrowContainerMobile: {
+    marginHorizontal: theme.spacing.sm,
   },
   toolsSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingTop: 20,
   },
-  toolsContainer: {
-    gap: 24,
+  toolsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   toolWrapper: {
-    width: width - 40,
+    marginBottom: theme.spacing.lg,
   },
 });
 

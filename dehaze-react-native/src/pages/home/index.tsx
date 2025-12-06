@@ -2,7 +2,7 @@ import { RootStackParamList } from '@/routes/navigator';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React from 'react';
 import { StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { MainLayout } from '@/layout';
 import HeroSection from './components/HeroSection';
 import ShowcaseSection from './components/ShowcaseSection';
 import FeaturesSection from './components/FeaturesSection';
@@ -64,7 +64,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <MainLayout title="图像去雾系统">
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -95,7 +95,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
 
         <FinalCTASection onStartPress={handleStartPress} />
       </ScrollView>
-    </SafeAreaView>
+    </MainLayout>
   );
 };
 

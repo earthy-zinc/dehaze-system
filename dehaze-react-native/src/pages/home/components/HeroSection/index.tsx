@@ -1,71 +1,96 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import Button from '@/components/Button';
 import Icon from '@/components/Icon';
+import { useResponsive } from '@/hooks/useResponsive';
+import { useFadeSlideAnimation } from '@/hooks/useAnimation';
+import { theme } from '@/theme';
 
 interface HeroSectionProps {
   onStartPress: () => void;
   onDatasetPress: () => void;
 }
 
-const { height } = Dimensions.get('window');
-
 const HeroSection: React.FC<HeroSectionProps> = ({
   onStartPress,
   onDatasetPress,
 }) => {
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>图像去雾</Text>
-          <Text style={styles.heroSubtitle}>专业级图像处理系统</Text>
-          <Text style={styles.heroDescription}>
-            采用先进的深度学习算法，一键还原清晰视界{'\n'}
-            从图像输入到效果评估的完整闭环体验
-          </Text>
+  const { isMobile, fontScale, containerPadding, height } = useResponsive();
+  
+  const { animatedStyle } = useFadeSlideAnimation({
+    scale: { initial: 0.95, final: 1 },
+    slideDistance: 30,
+  });
 
-          <View style={styles.ctaContainer}>
-            <Button
-              title="立即开始"
-              onPress={onStartPress}
-              variant="primary"
-              icon={<Icon name="arrow-right" size={16} color="#ffffff" />}
-              style={styles.ctaButton}
-            />
-            <Button
-              title="浏览数据集"
-              onPress={onDatasetPress}
-              variant="secondary"
-              style={styles.ctaButton}
-            />
-          </View>
+  // 响应式字体大小
+  const titleFontSize = isMobile ? 36 : 48 * fontScale;
+  const subtitleFontSize = isMobile ? 22 : 28 * fontScale;
+  const descFontSize = isMobile ? 16 : 18 * fontScale;
+
+  return (
+    <View style={[styles.container, { minHeight: height * 0.85 }]}>
+      <Animated.View
+        style={[
+          styles.heroContent,
+          animatedStyle,
+          { paddingHorizontal: containerPadding },
+        ]}
+      >
+        <Text
+          style={[
+            styles.heroTitle,
+            { fontSize: titleFontSize, lineHeight: titleFontSize * theme.typography.lineHeights.hero },
+          ]}
+        >
+          图像去雾
+        </Text>
+        <Text
+          style={[
+            styles.heroSubtitle,
+            { fontSize: subtitleFontSize, lineHeight: subtitleFontSize * theme.typography.lineHeights.title },
+          ]}
+        >
+          专业级图像处理系统
+        </Text>
+        <Text
+          style={[
+            styles.heroDescription,
+            { fontSize: descFontSize, lineHeight: descFontSize * theme.typography.lineHeights.body },
+          ]}
+        >
+          采用先进的深度学习算法，一键还原清晰视界{'\n'}
+          从图像输入到效果评估的完整闭环体验
+        </Text>
+
+        <View style={[
+          styles.ctaContainer,
+          isMobile ? styles.ctaContainerMobile : null,
+        ]}>
+          <Button
+            title="立即开始"
+            onPress={onStartPress}
+            variant="primary"
+            icon={<Icon name="arrow-right" size={16} color={theme.colors.text.inverse} />}
+            style={isMobile ? styles.ctaButtonMobile : styles.ctaButton}
+          />
+          <Button
+            title="浏览数据集"
+            onPress={onDatasetPress}
+            variant="secondary"
+            style={isMobile ? styles.ctaButtonMobile : styles.ctaButton}
+          />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    backgroundColor: theme.colors.background.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 60,
-    minHeight: height,
+    paddingVertical: theme.spacing.huge,
   },
   heroContent: {
     alignItems: 'center',
@@ -73,40 +98,42 @@ const styles = StyleSheet.create({
     maxWidth: 600,
   },
   heroTitle: {
-    fontSize: 48,
-    fontWeight: '700',
-    letterSpacing: -1,
-    color: '#1e40af',
-    marginBottom: 8,
+    fontWeight: theme.typography.weights.bold,
+    letterSpacing: theme.typography.letterSpacing.tight,
+    color: theme.colors.primaryDark,
+    marginBottom: theme.spacing.sm,
     textAlign: 'center',
-    lineHeight: 52.8,
   },
   heroSubtitle: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 20,
-    letterSpacing: -0.5,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.lg,
+    letterSpacing: theme.typography.letterSpacing.normal,
     textAlign: 'center',
-    lineHeight: 33.6,
   },
   heroDescription: {
-    fontSize: 18,
-    color: '#6b7280',
-    lineHeight: 28.8,
+    color: theme.colors.text.secondary,
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: theme.spacing.xxl,
     maxWidth: 600,
   },
   ctaContainer: {
     flexDirection: 'row',
-    gap: 16,
+    gap: theme.spacing.md,
     justifyContent: 'center',
     flexWrap: 'wrap',
     width: '100%',
   },
+  ctaContainerMobile: {
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
   ctaButton: {
-    minWidth: 140,
+    minWidth: 160,
+  },
+  ctaButtonMobile: {
+    width: '100%',
+    maxWidth: 280,
   },
 });
 

@@ -1,66 +1,97 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import Section from '@/components/Section';
 import ImageLoader from '@/components/ImageLoader';
 import Card from '@/components/Card';
+import { useResponsive } from '@/hooks/useResponsive';
+import { useFadeSlideAnimation } from '@/hooks/useAnimation';
+import { theme } from '@/theme';
 
 interface ShowcaseSectionProps {
   onPress?: () => void;
 }
 
-const { width } = Dimensions.get('window');
-
 const ShowcaseSection: React.FC<ShowcaseSectionProps> = ({ onPress }) => {
+  const { width, isMobile, containerPadding, fontScale } = useResponsive();
+  
+  const { animatedStyle } = useFadeSlideAnimation({
+    scale: { initial: 0.9, final: 1 },
+    slideDistance: 0, // Only scale and fade
+  });
+
   const showcaseImageUrl = 'https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/20b8704f-d37e-45b9-a6c8-3c5d297e8a98/image_1763727568_3_3.jpg';
+
+  // 响应式图片尺寸
+  const imageWidth = width - containerPadding * 2;
+  const imageHeight = isMobile ? 200 : Math.min(320, imageWidth * 0.5);
 
   return (
     <Section
       title="一键去雾，效果显著"
       subtitle="智能算法自动识别雾霾程度，精准还原图像细节"
-      padding={80}
+      padding={isMobile ? theme.spacing.xxxl : theme.spacing.huge}
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContainer}
+      <Animated.View
+        style={[
+          styles.showcaseContainer,
+          animatedStyle,
+          { paddingHorizontal: containerPadding },
+        ]}
       >
-        <Card onPress={onPress} margin={0} padding={0} borderRadius={24}>
+        <Card onPress={onPress} margin={0} padding={0} borderRadius={theme.layout.borderRadius.xxl}>
           <View style={styles.comparisonContainer}>
             <ImageLoader
               source={{ uri: showcaseImageUrl }}
               style={styles.showcaseImage}
-              containerStyle={styles.imageContainer}
+              containerStyle={{
+                ...styles.imageContainer,
+                width: imageWidth,
+                height: imageHeight,
+              }}
             />
-            <View style={styles.comparisonLabel}>
+            <View style={[
+              styles.comparisonLabel,
+              isMobile && styles.comparisonLabelMobile,
+            ]}>
               <View style={styles.labelItem}>
                 <View style={[styles.labelDot, styles.beforeDot]} />
-                <Text style={[styles.labelText, styles.beforeText]}>去雾前</Text>
+                <Text style={[
+                  styles.labelText,
+                  styles.beforeText,
+                  isMobile ? styles.labelTextMobile : { fontSize: 15 * fontScale },
+                ]}>
+                  去雾前
+                </Text>
               </View>
-              <Text style={styles.divider}>→</Text>
+              <Text style={[styles.divider, isMobile ? styles.dividerMobile : undefined]}>→</Text>
               <View style={styles.labelItem}>
                 <View style={[styles.labelDot, styles.afterDot]} />
-                <Text style={[styles.labelText, styles.afterText]}>去雾后</Text>
+                <Text style={[
+                  styles.labelText,
+                  styles.afterText,
+                  isMobile ? styles.labelTextMobile : { fontSize: 15 * fontScale },
+                ]}>
+                  去雾后
+                </Text>
               </View>
             </View>
           </View>
         </Card>
-      </ScrollView>
+      </Animated.View>
     </Section>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    paddingHorizontal: 20,
+  showcaseContainer: {
+    width: '100%',
   },
   comparisonContainer: {
     position: 'relative',
     overflow: 'hidden',
+    borderRadius: theme.layout.borderRadius.xxl,
   },
   imageContainer: {
-    width: width - 40,
-    height: 240,
     minHeight: 200,
   },
   showcaseImage: {
@@ -70,23 +101,30 @@ const styles = StyleSheet.create({
   },
   comparisonLabel: {
     position: 'absolute',
-    bottom: 24,
-    left: '50%',
-    transform: [{ translateX: -0.5 * (width - 40) }],
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 100,
+    bottom: theme.spacing.lg,
+    left: theme.spacing.lg,
+    right: theme.spacing.lg,
+    backgroundColor: theme.colors.background.overlay,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.layout.borderRadius.full,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    width: width - 40,
     justifyContent: 'center',
+    gap: theme.spacing.md,
+  },
+  comparisonLabelMobile: {
+    bottom: theme.spacing.md,
+    left: theme.spacing.md,
+    right: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+    gap: 12,
   },
   labelItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: theme.spacing.sm,
   },
   labelDot: {
     width: 8,
@@ -94,26 +132,31 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   beforeDot: {
-    backgroundColor: '#fbbf24',
+    backgroundColor: theme.colors.warning,
   },
   afterDot: {
-    backgroundColor: '#34d399',
+    backgroundColor: theme.colors.success,
   },
   labelText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#ffffff',
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.inverse,
   },
   beforeText: {
-    color: '#fbbf24',
+    color: theme.colors.warning,
   },
   afterText: {
-    color: '#34d399',
+    color: theme.colors.success,
   },
   divider: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#9ca3af',
+    fontSize: theme.typography.sizes.body,
+    fontWeight: theme.typography.weights.semibold,
+    color: theme.colors.text.muted,
+  },
+  dividerMobile: {
+    fontSize: theme.typography.sizes.bodySmall,
+  },
+  labelTextMobile: {
+    fontSize: theme.typography.sizes.caption,
   },
 });
 

@@ -9,6 +9,7 @@ interface WorkflowStepProps {
   title: string;
   description: string;
   onPress: () => void;
+  width?: number;
 }
 
 const WorkflowStep: React.FC<WorkflowStepProps> = ({
@@ -17,14 +18,19 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
   title,
   description,
   onPress,
+  width = 280,
 }) => {
+  const cardStyle = width < 200 
+    ? { ...styles.stepCard, ...styles.stepCardMinWidth, width } 
+    : { ...styles.stepCard, width };
+
   return (
     <Card
       onPress={onPress}
       padding={32}
       margin={0}
       borderRadius={20}
-      style={styles.stepCard}
+      style={cardStyle}
     >
       <View style={styles.numberContainer}>
         <Text style={styles.number}>{number}</Text>
@@ -46,10 +52,10 @@ const WorkflowStep: React.FC<WorkflowStepProps> = ({
 
 const styles = StyleSheet.create({
   stepCard: {
-    flex: 1,
-    minWidth: 200,
-    maxWidth: 280,
     position: 'relative',
+  },
+  stepCardMinWidth: {
+    minWidth: 200,
   },
   numberContainer: {
     position: 'absolute',

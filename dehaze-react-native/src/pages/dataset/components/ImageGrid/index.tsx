@@ -2,10 +2,12 @@ import React, { useCallback } from 'react';
 import {
   FlatList,
   StyleSheet,
-  Dimensions,
+  RefreshControl,
+  View,
 } from 'react-native';
 import ImageCard from '../ImageCard';
 import { DatasetImage } from '../../types/dataset';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface ImageGridProps {
   images: DatasetImage[];
@@ -14,10 +16,7 @@ interface ImageGridProps {
   onRefresh?: () => void;
   refreshing?: boolean;
   isLoading?: boolean;
-  numColumns?: number;
 }
-
-const { width: screenWidth } = Dimensions.get('window');
 
 const ImageGrid: React.FC<ImageGridProps> = ({
   images,
@@ -25,11 +24,12 @@ const ImageGrid: React.FC<ImageGridProps> = ({
   onEndReached,
   onRefresh,
   refreshing = false,
-  numColumns = 2,
 }) => {
-  const spacing = 12;
-  const containerPadding = 20;
-  const availableWidth = screenWidth - containerPadding * 2 - spacing * (numColumns - 1);
+  const { width, isMobile, isTablet, containerPadding, spacing } = useResponsive();
+
+  // 响应式列数
+  const numColumns = isMobile ? 2 : isTablet ? 3 : 4;
+  const availableWidth = width - containerPadding * 2 - spacing * (numColumns - 1);
   const imageWidth = Math.floor(availableWidth / numColumns);
 
   const renderItem = useCallback(({ item }: { item: DatasetImage }) => (
@@ -50,27 +50,41 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
   const renderEmpty = useCallback(() => null, []);
 
+  const ItemSeparator = useCallback(() => (
+    <View style={{ height: spacing }} />
+  ), [spacing]);
+
   return (
     <FlatList
       data={images}
       renderItem={renderItem}
       keyExtractor={keyExtractor}
       numColumns={numColumns}
+      key={`grid-${numColumns}`} // 强制重新渲染当列数变化时
       contentContainerStyle={[
         styles.container,
         { paddingHorizontal: containerPadding },
       ]}
-      columnWrapperStyle={numColumns > 1 ? styles.row : undefined}
+      columnWrapperStyle={numColumns > 1 ? [styles.row, { gap: spacing }] : undefined}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
-      onRefresh={onRefresh}
-      refreshing={refreshing}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#14b8a6"
+            colors={['#14b8a6']}
+          />
+        ) : undefined
+      }
       ListEmptyComponent={renderEmpty}
+      ItemSeparatorComponent={ItemSeparator}
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}
-      maxToRenderPerBatch={10}
+      maxToRenderPerBatch={12}
       updateCellsBatchingPeriod={50}
-      initialNumToRender={10}
+      initialNumToRender={12}
       windowSize={10}
       getItemLayout={getItemLayout}
     />
@@ -83,7 +97,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   row: {
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
   },
 });
 

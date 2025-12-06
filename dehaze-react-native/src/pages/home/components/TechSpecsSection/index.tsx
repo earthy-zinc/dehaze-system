@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Section from '@/components/Section';
 import SpecCard from './SpecCard';
-
-const { width } = Dimensions.get('window');
+import { useResponsive } from '@/hooks/useResponsive';
 
 const TechSpecsSection: React.FC = () => {
+  const { width, isMobile, isTablet, spacing, containerPadding } = useResponsive();
+
   const specs = [
     {
       icon: 'bolt',
@@ -33,24 +34,33 @@ const TechSpecsSection: React.FC = () => {
     },
   ];
 
+  // 响应式列数计算
+  const columns = isMobile ? 2 : isTablet ? 2 : 4;
+  const cardWidth = (width - containerPadding * 2 - spacing * (columns - 1)) / columns;
+
   return (
     <Section
       title={undefined}
       subtitle={undefined}
-      padding={80}
+      padding={isMobile ? 60 : 80}
       style={styles.container}
     >
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.specsContainer}
-      >
+      <View style={[
+        styles.specsGrid,
+        { paddingHorizontal: containerPadding, gap: spacing },
+      ]}>
         {specs.map((spec, index) => (
-          <View key={`spec-${index}`} style={styles.specWrapper}>
-            <SpecCard {...spec} />
+          <View 
+            key={`spec-${index}`} 
+            style={[
+              styles.specWrapper,
+              { width: cardWidth },
+            ]}
+          >
+            <SpecCard {...spec} compact={isMobile} />
           </View>
         ))}
-      </ScrollView>
+      </View>
     </Section>
   );
 };
@@ -59,12 +69,12 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#ffffff',
   },
-  specsContainer: {
-    paddingHorizontal: 20,
-    gap: 32,
+  specsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   specWrapper: {
-    width: width - 40,
+    marginBottom: 16,
   },
 });
 

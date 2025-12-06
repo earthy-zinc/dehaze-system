@@ -5,6 +5,8 @@ import {
   TouchableOpacity,
   Animated,
 } from 'react-native';
+import { usePressAnimation } from '@/hooks/useAnimation';
+import { theme } from '@/theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -21,33 +23,11 @@ const Card: React.FC<CardProps> = ({
   style,
   onPress,
   elevation = true,
-  padding = 32,
+  padding = theme.spacing.xl,
   margin = 0,
-  borderRadius = 20,
+  borderRadius = theme.layout.borderRadius.xl,
 }) => {
-  const animatedValue = React.useRef(new Animated.Value(1)).current;
-
-  const handlePressIn = () => {
-    if (onPress) {
-      Animated.spring(animatedValue, {
-        toValue: 0.98,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-    }
-  };
-
-  const handlePressOut = () => {
-    if (onPress) {
-      Animated.spring(animatedValue, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 100,
-        friction: 8,
-      }).start();
-    }
-  };
+  const { animatedStyle, onPressIn, onPressOut } = usePressAnimation({ scale: 0.98 });
 
   const cardStyle = [
     styles.card,
@@ -55,11 +35,7 @@ const Card: React.FC<CardProps> = ({
       padding,
       margin,
       borderRadius,
-      shadowColor: elevation ? '#000' : 'transparent',
-      shadowOffset: elevation ? { width: 0, height: 4 } : { width: 0, height: 0 },
-      shadowOpacity: elevation ? 0.06 : 0,
-      shadowRadius: elevation ? 16 : 0,
-      elevation: elevation ? 4 : 0,
+      ...(elevation ? theme.layout.shadows.md : {}),
     },
     style,
   ];
@@ -68,9 +44,7 @@ const Card: React.FC<CardProps> = ({
     <Animated.View
       style={[
         cardStyle,
-        onPress && {
-          transform: [{ scale: animatedValue }],
-        },
+        onPress && animatedStyle,
       ]}
     >
       {children}
@@ -81,8 +55,8 @@ const Card: React.FC<CardProps> = ({
     return (
       <TouchableOpacity
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
         activeOpacity={1}
       >
         {CardComponent}
@@ -95,9 +69,9 @@ const Card: React.FC<CardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.background.primary,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: theme.colors.border.transparent,
   },
 });
 
