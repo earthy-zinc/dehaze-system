@@ -1,140 +1,53 @@
-/* 图片网格组件样式 */
+/* 图片网格组件样式 - 基于750设计稿 */
 .image-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   width: 100%;
   box-sizing: border-box;
 
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  /* #endif */
-}
+  .grid-item {
+    width: calc(50% - 8px);
+    flex-shrink: 0;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
 
-.grid-item {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
-  animation: fadeInScale 0.4s ease;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  width: calc(50% - 6px);
-  flex-shrink: 0;
-  /* #endif */
-}
-
-.grid-item:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  transform: translateY(-4px);
-}
-
-.grid-item:active {
-  transform: translateY(-2px) scale(0.98);
-}
-
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
+    &:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
   }
-  to {
-    opacity: 1;
-    transform: scale(1);
+
+  /* 加载状态 */
+  .image-grid.loading {
+    position: relative;
   }
-}
 
-/* 响应式适配 */
-@media (min-width: 1200px) {
-  .image-grid {
-    grid-template-columns: repeat(5, 1fr);
-    gap: 18px;
+  .image-grid.loading::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
   }
-}
 
-@media (min-width: 992px) and (max-width: 1199px) {
-  .image-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
+  /* 空状态 */
+  .image-grid.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 2px dashed #e5e7eb;
   }
-}
-
-@media (min-width: 768px) and (max-width: 991px) {
-  .image-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 14px;
-  }
-}
-
-@media (min-width: 576px) and (max-width: 767px) {
-  .image-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-}
-
-@media (max-width: 575px) {
-  .image-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-  }
-}
-
-/* 特殊布局 - 瀑布流效果 */
-.image-grid.masonry {
-  column-count: 2;
-  column-gap: 12px;
-}
-
-.image-grid.masonry .grid-item {
-  break-inside: avoid;
-  margin-bottom: 12px;
-  width: 100%;
-}
-
-@media (min-width: 768px) {
-  .image-grid.masonry {
-    column-count: 3;
-    column-gap: 14px;
-  }
-}
-
-@media (min-width: 1200px) {
-  .image-grid.masonry {
-    column-count: 4;
-    column-gap: 16px;
-  }
-}
-
-/* 加载状态 */
-.image-grid.loading {
-  position: relative;
-}
-
-.image-grid.loading::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-}
-
-/* 空状态 */
-.image-grid.empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  background: #f9fafb;
-  border-radius: 12px;
-  border: 2px dashed #e5e7eb;
 }

@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text } from '@tarojs/components'
+import { Fire, PhoneOutlined, BulbOutlined, ChartTrendingOutlined } from '@taroify/icons'
 
 import './TechSpecs.less'
 
@@ -28,25 +29,25 @@ const SpecCard: React.FC<SpecCardProps> = ({ icon, title, value, description }) 
 const TechSpecs: React.FC = () => {
   const specs = [
     {
-      icon: <Text className='spec-icon-text'>⚡</Text>,
+      icon: <Fire size='28' color='#ffffff' />,
       title: '高性能',
       value: '60fps',
       description: '流畅运行，响应时间<200ms'
     },
     {
-      icon: <Text className='spec-icon-text'>📱</Text>,
+      icon: <PhoneOutlined size='28' color='#ffffff' />,
       title: '全平台',
       value: '100%',
       description: '完美适配手机、平板、桌面'
     },
     {
-      icon: <Text className='spec-icon-text'>🧠</Text>,
+      icon: <BulbOutlined size='28' color='#ffffff' />,
       title: '智能算法',
       value: '8+',
       description: '支持多种先进去雾算法'
     },
     {
-      icon: <Text className='spec-icon-text'>📊</Text>,
+      icon: <ChartTrendingOutlined size='28' color='#ffffff' />,
       title: '专业评估',
       value: '5+',
       description: '多维度定量分析指标'

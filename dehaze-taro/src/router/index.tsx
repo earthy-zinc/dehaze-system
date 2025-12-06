@@ -36,6 +36,9 @@ const pages = {
   // 数据集管理
   dataset: React.lazy(() => import('@/pages/dataset/index')),
 
+  // 图像处理流程
+  imageInput: React.lazy(() => import('@/pages/image-input/index')),
+
   // 系统管理
   dashboard: React.lazy(() => import('@/pages/dashboard/index')),
   userList: React.lazy(() => import('@/pages/system/user/index')),
@@ -67,6 +70,14 @@ export const publicRoutes: AppRouteObject[] = [
     component: pages.login,
     meta: {
       title: '登录',
+      requiresAuth: false,
+    },
+  },
+  {
+    path: '/pages/image-input/index',
+    component: pages.imageInput,
+    meta: {
+      title: '图像输入',
       requiresAuth: false,
     },
   },

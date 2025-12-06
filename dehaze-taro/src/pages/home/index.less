@@ -4,12 +4,34 @@
   min-height: 100vh;
   background: #ffffff;
   box-sizing: border-box;
-}
 
-/* 重置全局样式 */
-.home-page,
-.home-page * {
-  box-sizing: border-box;
+  /* 确保图片加载时的占位样式 */
+  image {
+    background-color: #f3f4f6;
+    border-radius: inherit;
+  }
+
+  /* 按钮点击反馈 */
+  button {
+    outline: none;
+    user-select: none;
+  }
+
+  button::after {
+    display: none !important;
+  }
+
+  /* 文本选择优化 */
+  text {
+    user-select: text;
+  }
+
+  /* 防止内容溢出 */
+  view {
+    overflow: hidden;
+    word-wrap: break-word;
+    word-break: break-all;
+  }
 }
 
 /* 确保所有组件容器正确对齐 */
@@ -37,31 +59,3 @@
   scroll-behavior: smooth;
 }
 /* #endif */
-
-/* 确保图片加载时的占位样式 */
-image {
-  background-color: #f3f4f6;
-  border-radius: inherit;
-}
-
-/* 按钮点击反馈 */
-button {
-  outline: none;
-  user-select: none;
-}
-
-button::after {
-  display: none !important;
-}
-
-/* 文本选择优化 */
-text {
-  user-select: text;
-}
-
-/* 防止内容溢出 */
-view {
-  overflow: hidden;
-  word-wrap: break-word;
-  word-break: break-all;
-}

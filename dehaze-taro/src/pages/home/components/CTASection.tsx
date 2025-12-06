@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { Arrow } from '@taroify/icons'
 
 import './CTASection.less'
 
@@ -26,7 +27,7 @@ const CTASection: React.FC = () => {
         onClick={handleStartClick}
       >
         开始使用
-        <Text className='cta-icon'>→</Text>
+        <Arrow className='cta-icon' size='16' color='#ffffff' />
       </Button>
     </View>
   )

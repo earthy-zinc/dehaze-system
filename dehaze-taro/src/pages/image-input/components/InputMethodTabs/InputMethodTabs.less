@@ -1,0 +1,85 @@
+.input-method-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  padding: 0 16px;
+  margin-bottom: 20px;
+
+  .method-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    background: #f8fafc;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &.active {
+      background: #eff6ff;
+      border-color: #3b82f6;
+    }
+
+    .tab-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 8px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .tab-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 2px;
+    }
+
+    .tab-sub-label {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    &.active {
+      .tab-label {
+        color: #3b82f6;
+      }
+    }
+  }
+}
+
+/* 小屏适配 */
+@media (max-width: 375px) {
+  .input-method-tabs {
+    gap: 8px;
+    padding: 0 12px;
+
+    .method-tab {
+      padding: 12px 8px;
+
+      .tab-icon {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 6px;
+      }
+
+      .tab-label {
+        font-size: 13px;
+      }
+
+      .tab-sub-label {
+        font-size: 10px;
+      }
+    }
+  }
+}

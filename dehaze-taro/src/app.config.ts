@@ -1,4 +1,4 @@
-export default {
+export default defineAppConfig({
   pages: [
     "pages/home/index",
     "pages/dataset/index",
@@ -8,12 +8,22 @@ export default {
     "pages/system/user/detail",
     "pages/system/role/index",
     "pages/system/role/detail",
-    "pages/system/role/permission"
+    "pages/system/role/permission",
+    "pages/image-input/index",
+    // "pages/algorithm-select/index",
+    // "pages/processing/index",
+    // "pages/side-by-side/index",
+    // "pages/overlay/index",
+    // "pages/magnifier/index",
+    // "pages/filter/index",
+    // "pages/metrics/index",
+    // "pages/algorithm/index"
   ],
   window: {
     backgroundTextStyle: "light",
-    navigationBarBackgroundColor: "#3b82f6",
+    navigationBarBackgroundColor: "#ffffff",
     navigationBarTitleText: "图像去雾系统",
-    navigationBarTextStyle: "white",
+    navigationBarTextStyle: "black",
+    navigationStyle: "custom",
   },
-}
+});

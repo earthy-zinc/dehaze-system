@@ -1,0 +1,15 @@
+.page-layout {
+  width: 100%;
+  min-height: 100vh;
+  background: #ffffff;
+
+  .page-content {
+    width: 100%;
+
+    &.with-tabbar {
+      // 为底部导航栏留出空间（100px tabbar高度）
+      padding-bottom: calc(100px + constant(safe-area-inset-bottom));
+      padding-bottom: calc(100px + env(safe-area-inset-bottom));
+    }
+  }
+}

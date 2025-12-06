@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Button } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { Arrow } from '@taroify/icons'
 
 import './HeroSection.less'
 
@@ -44,7 +45,7 @@ const HeroSection: React.FC = () => {
             onClick={handleStartClick}
           >
             立即开始
-            <Text className='cta-icon'>→</Text>
+            <Arrow className='cta-icon' size='14' color='#ffffff' />
           </Button>
           <Button
             className='cta-secondary'

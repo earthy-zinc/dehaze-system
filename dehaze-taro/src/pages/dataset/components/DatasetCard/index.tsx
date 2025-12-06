@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Image } from '@tarojs/components'
+import { PhotoOutlined, UserOutlined, CalendarOutlined } from '@taroify/icons'
 import { Dataset } from '../../services/types'
 import './DatasetCard.less'
 
@@ -50,15 +51,15 @@ const DatasetCard: React.FC<DatasetCardProps> = ({
           </Text>
           <View className="dataset-stats">
             <View className="stat-item">
-              <Text className="stat-icon">🖼️</Text>
+              <PhotoOutlined size='14' color='#9ca3af' />
               <Text className="stat-value">{dataset.total_images}</Text>
             </View>
             <View className="stat-item">
-              <Text className="stat-icon">👤</Text>
+              <UserOutlined size='14' color='#9ca3af' />
               <Text className="stat-value">{dataset.creator}</Text>
             </View>
             <View className="stat-item">
-              <Text className="stat-icon">📅</Text>
+              <CalendarOutlined size='14' color='#9ca3af' />
               <Text className="stat-value">{formatDate(dataset.created_at)}</Text>
             </View>
           </View>

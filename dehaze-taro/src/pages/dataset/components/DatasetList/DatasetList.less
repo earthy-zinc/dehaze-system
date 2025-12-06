@@ -1,171 +1,81 @@
-/* 数据集列表组件样式 */
 .dataset-list {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-}
-
-.list-content {
-  padding: 16px 20px;
-  box-sizing: border-box;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  padding: 12px 16px;
-  /* #endif */
-}
-
-/* 加载更多触发器 */
-.load-more-trigger {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 20px;
-  margin-top: 20px;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid #f3f4f6;
-  border-top: 3px solid #14b8a6;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 12px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-  font-size: 14px;
-  color: #9ca3af;
-  text-align: center;
-  line-height: 1.4;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  font-size: 13px;
-  /* #endif */
-}
-
-/* 没有更多数据 */
-.no-more {
-  display: flex;
-  justify-content: center;
-  padding: 30px 20px;
-  margin-top: 20px;
-}
-
-.no-more-text {
-  font-size: 12px;
-  color: #d1d5db;
-  text-align: center;
-  padding: 8px 20px;
-  background: #f9fafb;
-  border-radius: 16px;
-  border: 1px solid #e5e7eb;
-  line-height: 1.3;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  font-size: 11px;
-  padding: 6px 16px;
-  border-radius: 12px;
-  /* #endif */
-}
-
-/* 滚动条样式 */
-.dataset-list::-webkit-scrollbar {
-  width: 4px;
-}
-
-.dataset-list::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 2px;
-}
-
-.dataset-list::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 2px;
-}
-
-.dataset-list::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* 响应式适配 */
-@media (max-width: 768px) {
   .list-content {
-    padding: 12px 16px;
+    padding: 16px 20px;
+    box-sizing: border-box;
   }
 
+  /* 加载更多触发器 */
   .load-more-trigger {
-    padding: 30px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    margin-top: 20px;
   }
 
   .loading-spinner {
-    width: 20px;
-    height: 20px;
-    border-width: 2px;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid #14b8a6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   .loading-text {
-    font-size: 13px;
+    font-size: 14px;
+    color: #9ca3af;
+    text-align: center;
+    line-height: 1.4;
   }
 
+  /* 没有更多数据 */
   .no-more {
-    padding: 25px 16px;
+    display: flex;
+    justify-content: center;
+    padding: 30px 20px;
+    margin-top: 20px;
   }
 
   .no-more-text {
-    font-size: 11px;
-    padding: 6px 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .list-content {
-    padding: 10px 12px;
-  }
-
-  .load-more-trigger {
-    padding: 25px 12px;
-    margin-top: 15px;
-  }
-
-  .loading-spinner {
-    width: 18px;
-    height: 18px;
-  }
-
-  .loading-text {
     font-size: 12px;
+    color: #d1d5db;
+    text-align: center;
+    padding: 8px 20px;
+    background: #f9fafb;
+    border-radius: 16px;
+    border: 1px solid #e5e7eb;
+    line-height: 1.3;
   }
 
-  .no-more {
-    padding: 20px 12px;
+  /* 空状态容器 */
+  .dataset-list.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    min-height: 300px;
   }
 
-  .no-more-text {
-    font-size: 10px;
-    padding: 5px 14px;
+  .dataset-list.empty .list-content {
+    padding: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-}
-
-/* 空状态容器 */
-.dataset-list.empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 60vh;
-  min-height: 300px;
-}
-
-.dataset-list.empty .list-content {
-  padding: 0;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }

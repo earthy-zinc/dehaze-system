@@ -1,160 +1,75 @@
-/* 技术规格区样式 */
 .tech-specs-section {
-  padding: 80px 20px;
+  padding: 60px 32px;
   background: white;
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-}
-
-.specs-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 32px;
-  max-width: 100%;
-  margin: 0 auto;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-  /* #endif */
-}
-
-.spec-card {
-  text-align: center;
-  padding: 40px 24px;
-  background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
-  border-radius: 20px;
-  border: 2px solid #e5e7eb;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-sizing: border-box;
-  position: relative;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  padding: 32px 20px;
-  /* #endif */
-}
-
-/* #ifdef H5 */
-.spec-card:hover {
-  transform: translateY(-8px);
-  border-color: #3b82f6;
-  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.15);
-}
-/* #endif */
-
-.spec-icon {
-  width: 72px;
-  height: 72px;
-  margin: 0 auto 24px;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 32px;
-  transition: all 0.3s;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  width: 60px;
-  height: 60px;
-  font-size: 28px;
-  margin-bottom: 20px;
-  /* #endif */
-}
-
-.spec-icon-text {
-  font-size: 36px;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  font-size: 32px;
-  /* #endif */
-}
-
-/* #ifdef H5 */
-.spec-card:hover .spec-icon {
-  transform: scale(1.1) rotate(10deg);
-}
-/* #endif */
-
-.spec-title {
-  display: block;
-  font-size: 16px;
-  font-weight: 600;
-  color: #6b7280;
-  margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-align: center;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  font-size: 14px;
-  /* #endif */
-}
-
-.spec-value {
-  display: block;
-  font-size: 48px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  color: transparent;
-  margin-bottom: 8px;
-  line-height: 1;
-  text-align: center;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  font-size: 36px;
-  /* #endif */
-}
-
-.spec-desc {
-  font-size: 14px;
-  color: #9ca3af;
-  line-height: 1.5;
-  text-align: center;
-
-  /* #ifdef MP-WEIXIN || MP-ALIPAY */
-  font-size: 12px;
-  /* #endif */
-}
-
-/* 响应式适配 */
-@media (max-width: 768px) {
-  .tech-specs-section {
-    padding: 60px 16px;
-  }
 
   .specs-grid {
+    display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
+    gap: 24px;
+    max-width: 100%;
+    margin: 0 auto;
   }
 
   .spec-card {
-    padding: 32px 16px;
+    text-align: center;
+    padding: 32px 20px;
+    background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+    border-radius: 20px;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    position: relative;
+
+    &:active {
+      transform: scale(0.98);
+      border-color: #3b82f6;
+    }
   }
 
   .spec-icon {
-    width: 56px;
-    height: 56px;
-    font-size: 24px;
-    margin-bottom: 16px;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    transition: all 0.3s;
+  }
+
+  .spec-title {
+    display: block;
+    font-size: 20px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
   }
 
   .spec-value {
-    font-size: 32px;
+    display: block;
+    font-size: 26px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    margin-bottom: 14px;
+    line-height: 1;
+    text-align: center;
   }
-}
 
-@media (max-width: 480px) {
-  .specs-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .spec-card {
-    padding: 24px 16px;
+  .spec-desc {
+    font-size: 14px;
+    color: #9ca3af;
+    line-height: 1.4;
+    text-align: center;
   }
 }

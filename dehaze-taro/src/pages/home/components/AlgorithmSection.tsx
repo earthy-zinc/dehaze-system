@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text, Button, Image } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { Arrow, Success } from '@taroify/icons'
 
 import './AlgorithmSection.less'
 
@@ -45,7 +46,7 @@ const AlgorithmSection: React.FC = () => {
           <View className='algorithm-features'>
             {algorithmFeatures.map((feature, index) => (
               <View key={index} className='feature-item'>
-                <Text className='feature-icon'>✓</Text>
+                <Success size='18' color='#34d399' />
                 <Text className='feature-text'>{feature.text}</Text>
               </View>
             ))}
@@ -55,7 +56,7 @@ const AlgorithmSection: React.FC = () => {
             onClick={handleLearnMoreClick}
           >
             了解更多算法详情
-            <Text className='btn-icon'>→</Text>
+            <Arrow className='btn-icon' size='14' color='#3b82f6' />
           </Button>
         </View>
         <View className='algorithm-visual'>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, ReactNode, useCallback, useEffect } from 'react'
+import { createContext, useContext, useReducer, ReactNode, useCallback } from 'react'
 import { Dataset, DatasetImage } from '../services/types'
 import { DatasetService } from '../services/dataset'
 
@@ -271,7 +271,7 @@ export function useDataset() {
         dataset_id: datasetId,
         page,
         page_size: 20,
-        image_type,
+        image_type: imageType,
         search,
       })
 

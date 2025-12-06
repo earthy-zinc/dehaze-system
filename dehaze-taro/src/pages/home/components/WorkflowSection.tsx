@@ -1,6 +1,7 @@
 import React from 'react'
 import { View, Text } from '@tarojs/components'
 import Taro from '@tarojs/taro'
+import { PhotoOutlined, BulbOutlined, Fire, Arrow } from '@taroify/icons'
 
 import './WorkflowSection.less'
 
@@ -56,31 +57,31 @@ const WorkflowSection: React.FC = () => {
       <View className='workflow-container'>
         <WorkflowStep
           number='01'
-          icon={<Text className='step-icon-text'>🖼️</Text>}
+          icon={<PhotoOutlined size='28' color='#ffffff' />}
           title='图像输入'
           description='支持上传、拍照、样例图片\n多种输入方式随心选择'
           target='image-input'
         />
 
         <View className='workflow-arrow'>
-          <Text>→</Text>
+          <Arrow size='20' color='#d1d5db' />
         </View>
 
         <WorkflowStep
           number='02'
-          icon={<Text className='step-icon-text'>🧠</Text>}
+          icon={<BulbOutlined size='28' color='#ffffff' />}
           title='智能算法'
           description='多种去雾算法可选\nAI智能推荐最优方案'
           target='algorithm-select'
         />
 
         <View className='workflow-arrow'>
-          <Text>→</Text>
+          <Arrow size='20' color='#d1d5db' />
         </View>
 
         <WorkflowStep
           number='03'
-          icon={<Text className='step-icon-text'>⚡</Text>}
+          icon={<Fire size='28' color='#ffffff' />}
           title='一键处理'
           description='毫秒级处理速度\n实时预览处理效果'
           target='processing'

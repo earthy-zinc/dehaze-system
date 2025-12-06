@@ -1,0 +1,138 @@
+.sidebar-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ffffff;
+
+  .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 30px 20px 20px;
+    padding-top: calc(30px + env(safe-area-inset-top));
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  }
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-wrapper {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .app-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: #ffffff;
+  }
+
+  .app-desc {
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .close-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+
+  .sidebar-content {
+    flex: 1;
+    padding: 16px 0;
+    // 适配底部安全区
+    padding-bottom: calc(16px + constant(safe-area-inset-bottom));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .menu-divider {
+    height: 1px;
+    background: #e5e7eb;
+    margin: 12px 16px;
+  }
+
+  .menu-section {
+    margin-bottom: 12px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 20px;
+  }
+
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    margin: 2px 12px;
+    border-radius: 10px;
+    transition: all 0.2s;
+
+    &:active {
+      background: #f3f4f6;
+    }
+
+    &.active {
+      background: rgba(59, 130, 246, 0.1);
+
+      .menu-title {
+        color: #3b82f6;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .menu-title {
+    flex: 1;
+    font-size: 16px;
+    color: #374151;
+  }
+
+  .menu-badge {
+    padding: 4px 12px;
+    background: #3b82f6;
+    border-radius: 12px;
+    font-size: 16px;
+    color: #ffffff;
+    font-weight: 600;
+  }
+
+  .menu-new {
+    padding: 4px 10px;
+    background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+    border-radius: 6px;
+    font-size: 16px;
+    color: #ffffff;
+    font-weight: 700;
+  }
+}
