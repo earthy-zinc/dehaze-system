@@ -69,7 +69,7 @@ const handleSecondaryClick = () => {
 
 <style lang="scss" scoped>
 .hero-section {
-  padding: 120rpx 40rpx 80rpx;
+  padding: 120rpx 0 80rpx;
   text-align: center;
   width: 100%;
   background: #ffffff;
@@ -108,6 +108,7 @@ const handleSecondaryClick = () => {
 }
 
 .hero-cta {
+  padding: 0 82rpx;
   display: flex;
   gap: 24rpx;
   justify-content: center;

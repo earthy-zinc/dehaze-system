@@ -3,7 +3,8 @@
     {
       "path": "pages/home/index",
       "style": {
-        "navigationBarTitleText": "图像去雾",
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
         "navigationBarBackgroundColor": "#ffffff",
         "navigationBarTextStyle": "black",
         "backgroundColor": "#ffffff"
@@ -14,20 +15,111 @@
       "style": {
         "navigationBarTitleText": "登录页"
       }
+    },
+    {
+      "path": "pages/dataset/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/image-input/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
     }
+    // {
+    // {
+    //   "path": "pages/algorithm-select/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/processing/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/side-by-side/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/overlay/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/magnifier/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/filter/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/metrics/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/algorithm/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // },
+    // {
+    //   "path": "pages/dataset/index",
+    //   "style": {
+    //     "navigationStyle": "custom",
+    //     "navigationBarTitleText": ""
+    //   }
+    // }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "uni-app",
-    "navigationBarBackgroundColor": "#F8F8F8",
-    "backgroundColor": "#F8F8F8"
+    "navigationBarTitleText": "图像去雾系统",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f8f8f8"
+  },
+  "tabBar": {
+    "color": "#9ca3af",
+    "selectedColor": "#3b82f6",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      }
+    ]
   },
   "easycom": {
     "autoscan": true,
     "custom": {
       "^u--(.*)": "uview-plus/components/u-$1/u-$1.vue",
       "^up-(.*)": "uview-plus/components/u-$1/u-$1.vue",
-      "^u-([^-].*)": "uview-plus/components/u-$1/u-$1.vue"
+      "^u-([^-].*)": "uview-plus/components/u-$1/u-$1.vue",
+      "^App(.*)": "@/components/layout/App$1.vue"
     }
   }
 }

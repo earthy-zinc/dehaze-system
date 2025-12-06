@@ -1,44 +1,47 @@
 <template>
-  <view class="home-page">
-    <!-- Hero Section - 英雄区 -->
-    <HeroSection
-      @primary-click="handleStartClick"
-      @secondary-click="handleDatasetClick"
-    />
+  <PageLayout class="home-page">
+    <view class="main-content">
+      <!-- Hero Section - 英雄区 -->
+      <HeroSection
+        @primary-click="handleStartClick"
+        @secondary-click="handleDatasetClick"
+      />
 
-    <!-- 效果展示区 -->
-    <ShowcaseSection />
+      <!-- 效果展示区 -->
+      <ShowcaseSection />
 
-    <!-- 核心功能区 - 工作流程 -->
-    <WorkflowSection @step-click="handleStepClick" />
+      <!-- 核心功能区 - 工作流程 -->
+      <WorkflowSection @step-click="handleStepClick" />
 
-    <!-- 工具网格 -->
-    <ToolsSection @tool-click="handleToolClick" />
+      <!-- 工具网格 -->
+      <ToolsSection @tool-click="handleToolClick" />
 
-    <!-- 算法优势区 -->
-    <AlgorithmSection @learn-more="handleAlgorithmClick" />
+      <!-- 算法优势区 -->
+      <AlgorithmSection @learn-more="handleAlgorithmClick" />
 
-    <!-- 技术特性区 -->
-    <view class="tech-specs-section">
-      <view class="specs-grid">
-        <SpecCard
-          v-for="spec in specData"
-          :key="spec.title"
-          :icon="spec.icon"
-          :title="spec.title"
-          :value="spec.value"
-          :description="spec.description"
-        />
+      <!-- 技术特性区 -->
+      <view class="tech-specs-section">
+        <view class="specs-grid">
+          <SpecCard
+            v-for="spec in specData"
+            :key="spec.title"
+            :icon="spec.icon"
+            :title="spec.title"
+            :value="spec.value"
+            :description="spec.description"
+          />
+        </view>
       </view>
-    </view>
 
-    <!-- 最终CTA区域 -->
-    <CTASection @start-click="handleStartClick" />
-  </view>
+      <!-- 最终CTA区域 -->
+      <CTASection @start-click="handleStartClick" />
+    </view>
+  </PageLayout>
 </template>
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import PageLayout from "@/layout/index.vue";
 import HeroSection from "./components/HeroSection.vue";
 import ShowcaseSection from "./components/ShowcaseSection.vue";
 import WorkflowSection from "./components/WorkflowSection.vue";
@@ -112,6 +115,12 @@ const handleAlgorithmClick = () => {
   width: 100%;
   min-height: 100vh;
   background: #ffffff;
+}
+
+.main-content {
+  // 为底部导航栏留出空间
+  padding-bottom: calc(100rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom));
 }
 
 .tech-specs-section {
