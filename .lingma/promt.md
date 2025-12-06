@@ -534,7 +534,7 @@ dehaze-react-native\src\routes\config.ts 以及文件夹内相关的路由文件
  dehaze-taro\package.json
  dehaze-taro\src\router\index.tsx
 
-通用组件新增在dehaze-taro\src\components 这些通用的组件请首先考虑使用tarofy
+通用组件新增在dehaze-taro\src\components 这些通用的组件请首先考虑使用taroify
 dataset相关的组件新增在dehaze-taro\src\pages\dataset 文件夹下中
 
 
@@ -552,3 +552,22 @@ dehaze_flutter\lib\layout\menu_config.dart
 
 通用组件新增在dehaze-uniapp\src\components 这些通用的组件请首先考虑使用uview-plus
 首页相关的组件新增在dehaze-uniapp\src\pages\home 文件夹下中
+
+
+
+请根据 demo/docs/02-图像输入模块需求.md 需求文档 demo/modules/imageInput.js html设计稿（样式：demo/styles/responsive.css） 为我规划 dehaze-taro 的图像处理模块的实现，为了可维护性，请适当的考虑拆分组件，并且遵循当前 dehaze-taro 项目代码风格、依赖架构和规范。
+以下是参考：
+ dehaze-taro\package.json
+ dehaze-taro\src\router\index.tsx
+
+通用组件新增在dehaze-taro\src\components 这些通用的组件请首先考虑使用taroify
+
+
+请继续根据 demo/docs/02-图像输入模块需求.md 需求文档 demo/modules/imageInput.js html设计稿（样式：demo/styles/responsive.css） 为我规划 dehaze-uniapp 的图像处理模块的实现，为了可维护性，请适当的考虑拆分组件，并且遵循当前 dehaze-uniapp 项目代码风格、依赖架构和规范。
+以下是参考：
+  dehaze-uniapp\package.json
+  dehaze-uniapp\src\router\index.tsx
+  dehaze-uniapp/src/layout/index.vue
+  dehaze-uniapp/src/config/menu.ts
+  dehaze-uniapp/src/pages.json
+  

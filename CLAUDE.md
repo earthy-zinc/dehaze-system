@@ -8,126 +8,104 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common Development Commands
 
+### Quick Start - Install All JS Dependencies
+```bash
+PNPM_APPROVE_BUILDS=1 pnpm install -r
+```
+
 ### Frontend Development
 
 #### Vue 3 Frontend (dehaze-front-vue)
 ```bash
 cd dehaze-front-vue
-# Install dependencies (uses pnpm exclusively)
 pnpm install
+pnpm run dev                      # Development server (port 5173)
+pnpm run build                    # Production build
 
-# Development server (port 5173)
-pnpm run dev
-
-# Build for production
-pnpm run build
-
-# Run all tests
-pnpm test
-
-# Run tests individually
+# Testing
+pnpm test                         # Run all tests
 pnpm test:unit                    # Unit tests with Vitest
 pnpm test:unit:ui                 # Unit tests with UI
 pnpm test:coverage                # Coverage report
 pnpm test:e2e                     # E2E tests with Playwright
-pnpm test:storybook               # Storybook component tests
+pnpm test:e2e:ui                  # E2E tests with Playwright UI
 
-# Linting and formatting
+# Linting
 pnpm run lint                     # Run all linters
-pnpm run lint:eslint              # ESLint
-pnpm run lint:prettier            # Prettier
-pnpm run lint:stylelint           # Stylelint
 
-# Storybook
-pnpm run storybook                # Start Storybook (port 3021)
-pnpm run build-storybook          # Build Storybook
+# Storybook (port 3021)
+pnpm run storybook
 
 # Electron desktop app
-pnpm run dev:electron             # Development with Electron
-pnpm run build:electron:win       # Build Windows desktop app
-pnpm run build:electron:linux     # Build Linux desktop app
+pnpm run dev:electron
 ```
 
 #### React Frontend (dehaze-front-react)
 ```bash
 cd dehaze-front-react
-# Install dependencies
 pnpm install
-
-# Development server (port varies)
-pnpm run dev
-
-# Build for production
-pnpm run build
-
-# Testing (similar structure to Vue)
-pnpm test:unit
-pnpm test:e2e
-pnpm run lint
-
-# Storybook (port 3020)
-pnpm run storybook
+pnpm run dev                      # Development server
+pnpm test:unit                    # Unit tests
+pnpm test:e2e                     # E2E tests
+pnpm run storybook                # Storybook (port 3020)
 ```
+
+#### Flutter App (dehaze_flutter)
+```bash
+cd dehaze_flutter
+flutter pub get
+flutter run                       # Run on connected device
+flutter build apk                 # Build Android APK
+flutter build ios                 # Build iOS
+flutter test                      # Run tests
+```
+
+#### UniApp (dehaze-uniapp)
+```bash
+cd dehaze-uniapp
+pnpm install
+pnpm run dev:h5                   # H5 web version
+pnpm run dev:mp-weixin            # WeChat Mini Program
+```
+
+#### HarmonyOS (dehaze_harmory)
+Uses HarmonyOS DevEco Studio. Check `oh-package.json5` for dependencies.
 
 ### Backend Development
 
 #### Java Backend (dehaze-java) - Primary Backend
 ```bash
 cd dehaze-java
-
-# Database initialization (required first time)
-mysql -u root -p < sql/init.sql
-
-# Build and run
+mysql -u root -p < sql/init.sql   # Database init (first time only)
 mvn clean install
 mvn spring-boot:run               # Runs on port 8989
-
-# Development with auto-reload
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-
-# Testing
-mvn test
-mvn test -Dtest=ClassName        # Run specific test class
+mvn test                          # Run tests
+mvn test -Dtest=ClassName         # Run specific test
 ```
 
-**Key Configuration** (`src/main/resources/application-dev.yml`):
-- Server port: 8989
+**Dev Config** (`src/main/resources/application-dev.yml`):
+- Server: localhost:8989
 - MySQL: localhost:3306/dehaze (root/123456)
 - Redis: localhost:6379 (password: 123456)
 - MongoDB: localhost:27017/dehaze
-- MinIO: http://localhost:9000 (admin/12345678)
-- API documentation: http://localhost:8989/doc.html
+- MinIO: localhost:9000 (admin/12345678)
+- API docs: http://localhost:8989/doc.html
 
-#### Go Backend (dehaze-go) - Alternative Backend
+#### Go Backend (dehaze-go)
 ```bash
 cd dehaze-go
-
-# Setup and run
 go mod download
-go run main.go                    # Typically runs on port 8080
-
-# Build
-go build -o dehaze-go main.go
-./dehaze-go
+go run main.go                    # Runs on port 8080
 ```
 
-#### Python Algorithm Service (dehaze-python) - Core ML Service
+#### Python Algorithm Service (dehaze-python) - Core ML
 ```bash
 cd dehaze-python
-
-# Setup environment
 conda create -n dehaze_backend python=3.10
 conda activate dehaze_backend
 pip install -r requirements.txt
-
-# Development
 python run.py                     # Runs on port 5000
-
-# Production deployment
-gunicorn -w 4 run:app
-
-# Testing (if available)
-python -m pytest tests/
+gunicorn -w 4 run:app             # Production
 ```
 
 ### Mobile Applications
@@ -135,25 +113,17 @@ python -m pytest tests/
 #### React Native (dehaze-react-native)
 ```bash
 cd dehaze-react-native
-
-# Setup
-npm install
-npx pod-install ios              # For iOS
-
-# Development
-npm run start                     # Start Metro bundler
-npx react-native run-android      # Run on Android
-npx react-native run-ios          # Run on iOS
+npm install && npx pod-install ios
+npm run start                     # Metro bundler
+npx react-native run-android
+npx react-native run-ios
 ```
 
 #### Taro Multi-platform (dehaze-taro)
 ```bash
 cd dehaze-taro
-
-# Development
 npm run dev:weapp                 # WeChat Mini Program
 npm run dev:h5                    # H5 web version
-npm run dev:rn                    # React Native
 ```
 
 ## System Architecture
@@ -250,16 +220,16 @@ pnpm test:e2e:ui
 - Storybook Vue: 3021
 - Storybook React: 3020
 
-### Key Development Files
+### Key Files
 - **Java config**: `dehaze-java/src/main/resources/application-dev.yml`
+- **Database init**: `dehaze-java/sql/init.sql` (required before first startup)
 - **Python Flask app**: `dehaze-python/app/__init__.py`
 - **Algorithm implementations**: `dehaze-algorithm/`
-- **Vue router**: `dehaze-front-vue/src/router/index.ts`
-- **React router**: `dehaze-front-react/src/router/index.tsx`
-- **Database init**: `dehaze-java/config/sql/init.sql` (must run before first startup)
 - **Main algorithm inference**: `dehaze-algorithm/inference_ridcp.py`
+- **Vue router**: `dehaze-front-vue/src/router/index.ts`
+- **Vue tests config**: `dehaze-front-vue/vitest.config.ts`
 
-### Algorithm Development Workflow
+### Algorithm Development
 ```bash
 # Test individual algorithm
 cd dehaze-algorithm
@@ -271,20 +241,12 @@ python inference_ridcp.py -i input.jpg -w model.pth -o output/
 # 3. Register algorithm in algorithm factory
 ```
 
-### Key Configuration Files
-- **Java Dev Config**: `dehaze-java/src/main/resources/application-dev.yml` (port 8989)
-- **Python Flask App**: `dehaze-python/app/__init__.py` (port 5000)
-- **Database Init**: `dehaze-java/config/sql/init.sql` (required before first startup)
-- **Main Algorithm**: `dehaze-algorithm/inference_ridcp.py` (RIDCP implementation)
-- **Vue Build**: `dehaze-front-vue/vite.config.ts` (port 5173)
-- **Vue Tests**: `dehaze-front-vue/vitest.config.ts` (unit + e2e setup)
-
-### Development Workflow Details
-1. **Database Setup First**: `mysql -u root -p < dehaze-java/config/sql/init.sql`
-2. **Start Backend Services**: Java (8989) → Python Algorithm (5000)
-3. **Start Frontend**: Vue Dev Server (5173)
-4. **Verify API Docs**: http://localhost:8989/doc.html
-5. **GPU Check**: Python service auto-detects CUDA, falls back to CPU
+### Development Startup Order
+1. `mysql -u root -p < dehaze-java/sql/init.sql` (first time only)
+2. Start Java backend (port 8989)
+3. Start Python algorithm service (port 5000)
+4. Start frontend dev server (port 5173)
+5. Verify: http://localhost:8989/doc.html
 
 ## Package Management
 - **Node.js projects**: pnpm (enforced via `preinstall` script)
@@ -304,16 +266,12 @@ All major services include Dockerfile support:
 - **dehaze-java-cloud-plus**: Enhanced microservices with AI modules, BPM, CRM, ERP, IoT integration
 
 ## Important Notes
-- The Java backend is the **primary** and most feature-complete backend implementation
-- Python algorithm service requires **GPU acceleration** for optimal performance
-- Frontend projects **enforce pnpm** usage via preinstall scripts
-- All projects require **Node.js 18+** and **Java 17+**
-- Database credentials are **hardcoded for development** - change in production
-- The system supports **20+ dehazing algorithms** with dynamic model loading
-- **WebSocket** is used for real-time progress updates during image processing
-- **Database initialization is mandatory**: Run `mysql -u root -p < dehaze-java/sql/init.sql` before first use
-- **MinIO/OSS configuration**: Update file storage settings in application-dev.yml for your environment
-- **Algorithm models**: Download required model weights separately (not included in repo)
+- Java backend is the **primary** and most feature-complete implementation
+- Python algorithm service benefits from **GPU acceleration** (auto-fallback to CPU)
+- Requires **Node.js 18+**, **Java 17+**, **Python 3.8+**
+- Frontend projects **enforce pnpm** via preinstall scripts
+- **Algorithm models**: Download weights separately (not included in repo)
+- **WebSocket** used for real-time progress updates during image processing
 - 切记！请使用中文和我进行交流。
 
 ## Troubleshooting Common Issues

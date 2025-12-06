@@ -15,11 +15,31 @@
       }
     },
     {
+      "name": "dehaze-flutter-chrome",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "deviceId": "chrome",
+      "presentation": {
+        "hidden": false
+      }
+    },
+    {
       "name": "dehaze-flutter-windows",
       "type": "dart",
       "request": "launch",
       "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
       "deviceId": "windows",
+      "presentation": {
+        "hidden": false
+      }
+    },
+    {
+      "name": "dehaze-flutter-macos",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "deviceId": "macos",
       "presentation": {
         "hidden": false
       }

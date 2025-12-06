@@ -35,5 +35,6 @@
     "weapp",
     "weixin"
   ],
-  "java.search.scope": "main"
+  "java.search.scope": "main",
+  "codingcopilot.enableCompletionLanguage": {}
 }
