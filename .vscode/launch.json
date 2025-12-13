@@ -11,7 +11,9 @@
       "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
       "deviceId": "edge",
       "presentation": {
-        "hidden": false
+        "hidden": false,
+        "group": "Flutter应用",
+        "order": 10
       }
     },
     {
@@ -21,7 +23,9 @@
       "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
       "deviceId": "chrome",
       "presentation": {
-        "hidden": false
+        "hidden": false,
+        "group": "Flutter应用",
+        "order": 11
       }
     },
     {
@@ -31,7 +35,9 @@
       "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
       "deviceId": "windows",
       "presentation": {
-        "hidden": false
+        "hidden": false,
+        "group": "Flutter应用",
+        "order": 12
       }
     },
     {
@@ -41,7 +47,23 @@
       "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
       "deviceId": "macos",
       "presentation": {
-        "hidden": false
+        "hidden": false,
+        "group": "Flutter应用",
+        "order": 13
+      }
+    },
+    {
+      "name": "dehaze-flutter-ios",
+      "type": "dart",
+      "request": "launch",
+      "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
+      "deviceId": "ios",
+      "preLaunchTask": "flutter-ios-simulator-check",
+      "postDebugTask": "flutter-ios-simulator-stop",
+      "presentation": {
+        "hidden": false,
+        "group": "Flutter应用",
+        "order": 15
       }
     },
     {
@@ -49,9 +71,13 @@
       "type": "dart",
       "request": "launch",
       "program": "${workspaceFolder}/dehaze_flutter/lib/main.dart",
-      "deviceId": "emulator-5554",
+      "deviceId": "android",
+      "preLaunchTask": "flutter-android-emulator-check",
+      "postDebugTask": "flutter-android-emulator-stop",
       "presentation": {
-        "hidden": false
+        "hidden": false,
+        "group": "Flutter应用",
+        "order": 14
       }
     },
     {
@@ -64,7 +90,8 @@
       "userDataDir": "${workspaceFolder}/.vscode/.msedge",
       "presentation": {
         "hidden": false,
-        "group": "浏览器"
+        "group": "浏览器调试",
+        "order": 60
       }
     },
     {
@@ -77,7 +104,8 @@
       "userDataDir": "${workspaceFolder}/.vscode/.chrome",
       "presentation": {
         "hidden": false,
-        "group": "浏览器"
+        "group": "浏览器调试",
+        "order": 61
       }
     },
     {
@@ -86,8 +114,14 @@
       "cwd": "${workspaceFolder}/dehaze-doc",
       "runtimeArgs": ["run", "docs:dev"],
       "runtimeExecutable": "pnpm",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node"
+      "type": "node",
+      "presentation": {
+        "hidden": false,
+        "group": "前端项目",
+        "order": 20
+      }
     },
     {
       "name": "dehaze-front-vue",
@@ -95,8 +129,14 @@
       "cwd": "${workspaceFolder}/dehaze-front-vue",
       "runtimeArgs": ["run", "dev"],
       "runtimeExecutable": "pnpm",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node"
+      "type": "node",
+      "presentation": {
+        "hidden": false,
+        "group": "前端项目",
+        "order": 21
+      }
     },
     {
       "name": "dehaze-front-react",
@@ -104,8 +144,14 @@
       "cwd": "${workspaceFolder}/dehaze-front-react",
       "runtimeArgs": ["run", "dev"],
       "runtimeExecutable": "pnpm",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node"
+      "type": "node",
+      "presentation": {
+        "hidden": false,
+        "group": "前端项目",
+        "order": 22
+      }
     },
     {
       "name": "dehaze-front-desktop",
@@ -113,33 +159,60 @@
       "cwd": "${workspaceFolder}/dehaze-front-react/desktop",
       "runtimeArgs": ["run", "dev"],
       "runtimeExecutable": "yarn",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
-      "type": "node"
-    },
-    {
-      "name": "dehaze-react-native-dev-server",
-      "command": "yarn run start",
-      "cwd": "${workspaceFolder}/dehaze-react-native",
-      "skipFiles": ["<node_internals>/**"],
-      "request": "launch",
-      "type": "node-terminal",
+      "type": "node",
       "presentation": {
-        "hidden": true,
-        "group": "dehaze-react-native",
-        "order": 1
+        "hidden": false,
+        "group": "前端项目",
+        "order": 23
       }
     },
     {
-      "name": "dehaze-react-native",
-      "command": "yarn run android",
-      "cwd": "${workspaceFolder}/dehaze-react-native",
-      "skipFiles": ["<node_internals>/**"],
+      "name": "dehaze-react-native-dev-server",
       "request": "launch",
-      "type": "node-terminal",
+      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "runtimeArgs": ["start"],
+      "runtimeExecutable": "yarn",
+      "runtimeVersion": "20",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
       "presentation": {
         "hidden": true,
-        "group": "dehaze-react-native",
-        "order": 2
+        "group": "移动端框架",
+        "order": 30
+      }
+    },
+    {
+      "name": "dehaze-react-native-android",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "runtimeArgs": ["android"],
+      "runtimeExecutable": "yarn",
+      "runtimeVersion": "20",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "presentation": {
+        "hidden": true,
+        "group": "移动端框架",
+        "order": 31
+      }
+    },
+    {
+      "name": "dehaze-react-native-ios",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/dehaze-react-native",
+      "runtimeArgs": ["ios"],
+      "runtimeExecutable": "yarn",
+      "runtimeVersion": "20",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "node",
+      "preLaunchTask": "flutter-ios-simulator-check",
+      "postDebugTask": "flutter-ios-simulator-stop",
+      "presentation": {
+        "hidden": true,
+        "group": "移动端框架",
+        "order": 32
       }
     },
     {
@@ -148,11 +221,13 @@
       "cwd": "${workspaceFolder}/dehaze-taro",
       "runtimeArgs": ["run", "dev:h5"],
       "runtimeExecutable": "pnpm",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "presentation": {
         "hidden": false,
-        "group": "dehaze-taro"
+        "group": "移动端框架",
+        "order": 32
       }
     },
     {
@@ -161,11 +236,13 @@
       "cwd": "${workspaceFolder}/dehaze-taro",
       "runtimeArgs": ["run", "dev:weapp"],
       "runtimeExecutable": "pnpm",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "presentation": {
         "hidden": false,
-        "group": "dehaze-taro"
+        "group": "移动端框架",
+        "order": 33
       }
     },
     {
@@ -174,11 +251,13 @@
       "cwd": "${workspaceFolder}/dehaze-uniapp",
       "runtimeArgs": ["run", "dev:h5"],
       "runtimeExecutable": "pnpm",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "presentation": {
         "hidden": false,
-        "group": "dehaze-uniapp"
+        "group": "移动端框架",
+        "order": 34
       }
     },
     {
@@ -187,11 +266,13 @@
       "cwd": "${workspaceFolder}/dehaze-uniapp",
       "runtimeArgs": ["run", "dev:mp-weixin"],
       "runtimeExecutable": "pnpm",
+      "runtimeVersion": "20",
       "skipFiles": ["<node_internals>/**"],
       "type": "node",
       "presentation": {
         "hidden": false,
-        "group": "dehaze-uniapp"
+        "group": "移动端框架",
+        "order": 35
       }
     },
     {
@@ -199,7 +280,12 @@
       "type": "java",
       "request": "launch",
       "mainClass": "com.pei.dehaze.SystemApplication",
-      "projectName": "com.pei-dehaze-java"
+      "projectName": "com.pei-dehaze-java",
+      "presentation": {
+        "hidden": false,
+        "group": "后端服务",
+        "order": 40
+      }
     },
     {
       "name": "dehaze-python",
@@ -220,14 +306,24 @@
       },
       "args": ["run", "--no-debugger", "--no-reload"],
       "jinja": true,
-      "autoStartBrowser": false
+      "autoStartBrowser": false,
+      "presentation": {
+        "hidden": false,
+        "group": "后端服务",
+        "order": 41
+      }
     },
     {
       "name": "dehaze-go",
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/dehaze-go/main.go"
+      "program": "${workspaceFolder}/dehaze-go/main.go",
+      "presentation": {
+        "hidden": false,
+        "group": "后端服务",
+        "order": 42
+      }
     },
     {
       "type": "java",
@@ -236,7 +332,9 @@
       "mainClass": "com.alibaba.nacos.Nacos",
       "projectName": "com.pei-pei-nacos",
       "presentation": {
-        "hidden": true
+        "hidden": true,
+        "group": "基础设施服务",
+        "order": 50
       }
     },
     {
@@ -246,22 +344,57 @@
       "mainClass": "com.pei.gateway.PeiGatewayApplication",
       "projectName": "com.pei-pei-gateway",
       "presentation": {
-        "hidden": true
+        "hidden": true,
+        "group": "基础设施服务",
+        "order": 51
       }
     }
   ],
   "compounds": [
     {
-      "name": "dehaze-react-native-android",
+      "name": "dehaze-react-native-android-start",
       "configurations": [
         "dehaze-react-native-dev-server",
-        "dehaze-react-native"
+        "dehaze-react-native-android"
       ],
       "stopAll": true,
-      "preLaunchTask": "启动安卓模拟器",
-      "postDebugTask": "停止安卓模拟器",
+      "preLaunchTask": "flutter-android-emulator-check",
+      "postDebugTask": "flutter-android-emulator-stop",
       "presentation": {
-        "hidden": false
+        "hidden": false,
+        "group": "复合配置",
+        "order": 70
+      }
+    },
+    {
+      "name": "dehaze-react-native-ios-start",
+      "configurations": [
+        "dehaze-react-native-dev-server",
+        "dehaze-react-native-ios"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "flutter-ios-simulator-check",
+      "postDebugTask": "flutter-ios-simulator-stop",
+      "presentation": {
+        "hidden": false,
+        "group": "复合配置",
+        "order": 71
+      }
+    },
+    {
+      "name": "dehaze-react-native-all",
+      "configurations": [
+        "dehaze-react-native-dev-server",
+        "dehaze-react-native-android",
+        "dehaze-react-native-ios"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "start-all-simulators",
+      "postDebugTask": "stop-all-simulators",
+      "presentation": {
+        "hidden": false,
+        "group": "复合配置",
+        "order": 72
       }
     }
   ]

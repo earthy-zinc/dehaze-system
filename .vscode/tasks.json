@@ -4,6 +4,36 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "start-all-simulators",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "flutter-android-emulator-check",
+        "flutter-ios-simulator-check"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "stop-all-simulators",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "flutter-android-emulator-stop",
+        "flutter-ios-simulator-stop"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
       "label": "启动安卓模拟器",
       "type": "shell",
       "command": "emulator -avd $(emulator -list-avds | head -1)",
@@ -26,6 +56,94 @@
       "type": "shell",
       "command": "adb emu kill",
       "group": "build"
+    },
+    {
+      "label": "flutter-android-emulator-check",
+      "type": "shell",
+      "osx": {
+        "command": "bash",
+        "args": ["${workspaceFolder}/.vscode/scripts/android-emulator-check.sh"]
+      },
+      "linux": {
+        "command": "bash",
+        "args": ["${workspaceFolder}/.vscode/scripts/android-emulator-check.sh"]
+      },
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/.vscode/scripts/android-emulator-check.ps1"
+        ]
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "flutter-android-emulator-stop",
+      "type": "shell",
+      "osx": {
+        "command": "bash",
+        "args": ["${workspaceFolder}/.vscode/scripts/android-emulator-stop.sh"]
+      },
+      "linux": {
+        "command": "bash",
+        "args": ["${workspaceFolder}/.vscode/scripts/android-emulator-stop.sh"]
+      },
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/.vscode/scripts/android-emulator-stop.ps1"
+        ]
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "flutter-ios-simulator-check",
+      "type": "shell",
+      "osx": {
+        "command": "bash",
+        "args": ["${workspaceFolder}/.vscode/scripts/ios-simulator-check.sh"]
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "flutter-ios-simulator-stop",
+      "type": "shell",
+      "osx": {
+        "command": "bash",
+        "args": ["${workspaceFolder}/.vscode/scripts/ios-simulator-stop.sh"]
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false
+      }
     }
   ]
 }

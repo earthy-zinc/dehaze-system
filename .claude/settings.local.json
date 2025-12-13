@@ -28,7 +28,11 @@
       "Bash(flutter run:*)",
       "Bash(dir:*)",
       "Bash(npm run lint)",
-      "mcp__bingcn__bing_search"
+      "mcp__bingcn__bing_search",
+      "Bash(pnpm run type-check)",
+      "Bash(tree:*)",
+      "Bash(export PATH=\"$HOME/.goenv/shims:$PATH\")",
+      "Bash(go build:*)"
     ],
     "deny": [],
     "ask": []
