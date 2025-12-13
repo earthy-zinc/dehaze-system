@@ -5,10 +5,15 @@
 <mapper namespace="com.pei.dehaze.mapper.SysItemFileMapper">
     <resultMap id="ImageUrlMap" type="com.pei.dehaze.model.vo.ImageUrlVO">
         <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="itemId" column="item_id" jdbcType="BIGINT"/>
         <result property="type" column="type" jdbcType="VARCHAR"/>
         <result property="url" column="url" jdbcType="VARCHAR"/>
         <result property="originUrl" column="origin_url" jdbcType="VARCHAR"/>
         <result property="description" column="description" jdbcType="VARCHAR"/>
+        <result property="width" column="width" jdbcType="INTEGER"/>
+        <result property="height" column="height" jdbcType="INTEGER"/>
+        <result property="sceneType" column="scene_type" jdbcType="VARCHAR"/>
+        <result property="hazeLevel" column="haze_level" jdbcType="VARCHAR"/>
     </resultMap>
 
     <select id="listImageUrl" resultMap="ImageUrlMap">
@@ -16,7 +21,11 @@
                sif.type        AS type,
                sf_t.url        AS url,
                sf.url          AS origin_url,
-               sif.description AS description
+               sif.description AS description,
+               sif.width       AS width,
+               sif.height      AS height,
+               sif.scene_type  AS scene_type,
+               sif.haze_level  AS haze_level
         FROM sys_item_file sif
                  JOIN
              sys_file sf ON sif.file_id = sf.id
@@ -24,6 +33,29 @@
              sys_file sf_t ON sif.thumbnail_file_id = sf_t.id
         WHERE sif.item_id = #{itemId}
         ORDER BY sif.type
+    </select>
+
+    <select id="listImageUrlByItemIds" resultMap="ImageUrlMap">
+        SELECT sif.id          AS id,
+               sif.item_id     AS item_id,
+               sif.type        AS type,
+               sf_t.url        AS url,
+               sf.url          AS origin_url,
+               sif.description AS description,
+               sif.width       AS width,
+               sif.height      AS height,
+               sif.scene_type  AS scene_type,
+               sif.haze_level  AS haze_level
+        FROM sys_item_file sif
+                 JOIN
+             sys_file sf ON sif.file_id = sf.id
+                 LEFT JOIN
+             sys_file sf_t ON sif.thumbnail_file_id = sf_t.id
+        WHERE sif.item_id IN
+        <foreach collection="itemIds" item="itemId" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+        ORDER BY sif.item_id, sif.type
     </select>
 
 </mapper>

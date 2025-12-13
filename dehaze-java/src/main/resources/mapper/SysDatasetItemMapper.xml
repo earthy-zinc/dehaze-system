@@ -4,4 +4,68 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.pei.dehaze.mapper.SysDatasetItemMapper">
 
+    <!-- 搜索图片（支持多条件筛选和相关度排序） -->
+    <select id="searchImages" resultType="com.pei.dehaze.model.vo.DatasetItemVO">
+        SELECT DISTINCT
+            sdi.id AS id,
+            sdi.dataset_id AS datasetId,
+            sdi.name AS name,
+            MAX(sif.scene_type) AS sceneType,
+            MAX(sif.haze_level) AS hazeLevel,
+            sdi.create_time AS createTime,
+            <if test="keywords != null and keywords != ''">
+            MAX(CASE WHEN sf.name = #{keywords} THEN 100
+                  WHEN sf.name LIKE CONCAT('%', #{keywords}, '%') THEN 50
+                  ELSE 0 END +
+             CASE WHEN sif.description LIKE CONCAT('%', #{keywords}, '%') THEN 30 ELSE 0 END +
+             CASE WHEN sif.scene_type = #{keywords} THEN 20 ELSE 0 END) AS relevance
+            </if>
+            <if test="keywords == null or keywords == ''">
+            0 AS relevance
+            </if>
+        FROM sys_dataset_item sdi
+        LEFT JOIN sys_item_file sif ON sdi.id = sif.item_id
+        LEFT JOIN sys_file sf ON sif.file_id = sf.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="leafIds" item="leafId" open="(" separator="," close=")">
+            #{leafId}
+        </foreach>
+        <if test="keywords != null and keywords != ''">
+            AND (sf.name LIKE CONCAT('%', #{keywords}, '%')
+                 OR sif.description LIKE CONCAT('%', #{keywords}, '%')
+                 OR sif.scene_type LIKE CONCAT('%', #{keywords}, '%'))
+        </if>
+        <if test="sceneType != null and sceneType != ''">
+            AND sif.scene_type = #{sceneType}
+        </if>
+        <if test="hazeLevel != null and hazeLevel != ''">
+            AND sif.haze_level = #{hazeLevel}
+        </if>
+        <if test="minWidth != null">
+            AND sif.width >= #{minWidth}
+        </if>
+        <if test="maxWidth != null">
+            AND sif.width &lt;= #{maxWidth}
+        </if>
+        <if test="minHeight != null">
+            AND sif.height >= #{minHeight}
+        </if>
+        <if test="maxHeight != null">
+            AND sif.height &lt;= #{maxHeight}
+        </if>
+        <if test="minSize != null">
+            AND CAST(REPLACE(REPLACE(sf.size, ' ', ''), 'B', '') AS UNSIGNED) >= #{minSize}
+        </if>
+        <if test="maxSize != null">
+            AND CAST(REPLACE(REPLACE(sf.size, ' ', ''), 'B', '') AS UNSIGNED) &lt;= #{maxSize}
+        </if>
+        GROUP BY sdi.id, sdi.dataset_id, sdi.name, sdi.create_time
+        <if test="keywords != null and keywords != ''">
+            ORDER BY relevance DESC, sdi.create_time DESC
+        </if>
+        <if test="keywords == null or keywords == ''">
+            ORDER BY sdi.create_time DESC
+        </if>
+    </select>
+
 </mapper>

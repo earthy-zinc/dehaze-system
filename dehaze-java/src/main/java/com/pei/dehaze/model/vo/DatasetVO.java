@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author earthy-zinc
@@ -35,6 +36,15 @@ public class DatasetVO {
     @Schema(description = "占用空间大小")
     private String size;
 
+    @Schema(description = "样例图片URL")
+    private String img;
+
+    @Schema(description = "图片数量")
+    private Long imageCount;
+
+    @Schema(description = "使用次数")
+    private Long usageCount;
+
     @Schema(description = "子数据集")
     private List<DatasetVO> children;
 
@@ -48,4 +58,13 @@ public class DatasetVO {
 
     @Schema(description = "状态(1:启用；0:禁用)")
     private Integer status;
+
+    @Schema(description = "场景分布")
+    private Map<String, Long> sceneDistribution;
+
+    @Schema(description = "雾霾程度分布")
+    private Map<String, Long> hazeDistribution;
+
+    @Schema(description = "文件格式分布")
+    private Map<String, Long> formatDistribution;
 }

@@ -13,19 +13,28 @@ import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.DatasetConverter;
 import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.model.entity.SysDataset;
+import com.pei.dehaze.model.entity.SysDatasetItem;
+import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.form.DatasetForm;
 import com.pei.dehaze.model.query.DatasetQuery;
+import com.pei.dehaze.model.dto.DatasetStatistics;
 import com.pei.dehaze.model.vo.DatasetVO;
+import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
+import com.pei.dehaze.service.SysItemFileService;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author earthy-zinc
@@ -37,6 +46,14 @@ import java.util.List;
 public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysDataset> implements SysDatasetService {
 
     private final DatasetConverter datasetConverter;
+
+    @Resource
+    @Lazy
+    private SysDatasetItemService sysDatasetItemService;
+
+    @Resource
+    @Lazy
+    private SysItemFileService sysItemFileService;
 
     @Value("${file.datasetPath}")
     private String datasetPath;
@@ -106,12 +123,12 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     public List<Long> getLeafDatasetIds() {
         List<SysDataset> datasets = this.list();
         return datasets.stream()
-                .filter(dataset -> {
+                .map(SysDataset::getId)
+                .filter(id -> {
                     List<SysDataset> child = this.list(new LambdaQueryWrapper<SysDataset>()
-                            .eq(SysDataset::getParentId, dataset.getId()));
+                            .eq(SysDataset::getParentId, id));
                     return child.isEmpty();
                 })
-                .map(SysDataset::getId)
                 .toList();
     }
 
@@ -218,9 +235,96 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 .stream()
                 .filter(dataset -> dataset.getParentId().equals(rootId))
                 .map(entity -> {
-                    DatasetVO datasetVO = datasetConverter.entity2Vo(entity);
+                    DatasetVO datasetVO = datasetConverter.entity2Vo(entity, calculateStatistics(entity.getId()));
                     datasetVO.setChildren(buildDatasetTree(entity.getId(), datasets));
                     return datasetVO;
                 }).toList();
+    }
+
+    @Override
+    public DatasetVO getDatasetDetail(Long id) {
+        // 获取基本信息
+        SysDataset dataset = this.getDatasetById(id);
+        // 获取统计信息
+        DatasetStatistics stats = calculateStatistics(id);
+        return datasetConverter.entity2Vo(dataset, stats);
+    }
+
+    /**
+     * 计算数据集统计信息
+     */
+    private DatasetStatistics calculateStatistics(Long datasetId) {
+        DatasetStatistics stats = new DatasetStatistics();
+
+        // 获取所有叶子节点ID
+        List<Long> leafIds = this.getLeafDatasetId(datasetId);
+
+        // 获取所有数据项
+        List<SysDatasetItem> items = sysDatasetItemService.list(
+                new LambdaQueryWrapper<SysDatasetItem>()
+                        .in(SysDatasetItem::getDatasetId, leafIds));
+
+        if (items.isEmpty()) {
+            stats.setImageCount(0L);
+            stats.setSceneDistribution(new HashMap<>());
+            stats.setHazeDistribution(new HashMap<>());
+            stats.setFormatDistribution(new HashMap<>());
+            return stats;
+        }
+
+        List<Long> itemIds = items.stream().map(SysDatasetItem::getId).toList();
+
+        // 获取所有图片文件
+        List<SysItemFile> itemFiles = sysItemFileService.list(
+                new LambdaQueryWrapper<SysItemFile>()
+                        .in(SysItemFile::getItemId, itemIds));
+
+        // 统计图片总数
+        stats.setImageCount((long) itemFiles.size());
+
+        // 统计场景分布
+        Map<String, Long> sceneDistribution = new HashMap<>();
+        for (SysItemFile itemFile : itemFiles) {
+            String sceneType = itemFile.getSceneType();
+            if (sceneType != null && !sceneType.isBlank()) {
+                sceneDistribution.merge(sceneType, 1L, Long::sum);
+            } else {
+                sceneDistribution.merge("未分类", 1L, Long::sum);
+            }
+        }
+        stats.setSceneDistribution(sceneDistribution);
+
+        // 统计雾霾程度分布
+        Map<String, Long> hazeDistribution = new HashMap<>();
+        for (SysItemFile itemFile : itemFiles) {
+            String hazeLevel = itemFile.getHazeLevel();
+            if (hazeLevel != null && !hazeLevel.isBlank()) {
+                hazeDistribution.merge(hazeLevel, 1L, Long::sum);
+            } else {
+                hazeDistribution.merge("未标注", 1L, Long::sum);
+            }
+        }
+        stats.setHazeDistribution(hazeDistribution);
+
+        // 统计文件格式分布（需要关联查询sys_file表）
+        stats.setFormatDistribution(this.baseMapper.countFormatDistribution(itemIds));
+        return stats;
+    }
+
+    @Override
+    public void incrementUsageCount(Long id) {
+        this.baseMapper.incrementUsageCount(id);
+    }
+
+    @Override
+    public List<SysItemFile> getDatasetImages(Long datasetId, boolean recursive) {
+        if (recursive) {
+            // 递归获取所有子数据集ID
+            List<Long> datasetIds = this.getLeafDatasetId(datasetId);
+            return baseMapper.getDatasetImages(datasetIds);
+        } else {
+            // 只获取当前数据集的图片
+            return baseMapper.getDatasetImages(List.of(datasetId));
+        }
     }
 }

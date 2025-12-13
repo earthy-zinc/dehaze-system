@@ -9,6 +9,8 @@ import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.model.entity.SysFile;
+import com.pei.dehaze.model.vo.DownloadTaskVO;
+import com.pei.dehaze.service.DownloadService;
 import com.pei.dehaze.service.SysFileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -18,13 +20,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.time.LocalDateTime;
 
 @Tag(name = "07.文件接口")
@@ -35,6 +40,8 @@ import java.time.LocalDateTime;
 public class FileController {
 
     private final SysFileService sysFileService;
+
+    private final DownloadService downloadService;
 
     @Value("${file.baseUrl}")
     private String baseUrl;
@@ -74,15 +81,6 @@ public class FileController {
         return Result.judge(result);
     }
 
-    @GetMapping("/{fileId}")
-    @Operation(summary = "获取文件详情")
-    public Result<SysFile> getFileDetail(
-            @Parameter(description = "文件ID") @PathVariable Long fileId
-    ) {
-        SysFile file = sysFileService.getById(fileId);
-        return Result.success(file);
-    }
-
     @GetMapping("/page")
     @Operation(summary = "分页查询文件")
     public Result<PageResult<SysFile>> listPagedFiles(
@@ -102,6 +100,71 @@ public class FileController {
     }
 
 
+    /**
+     * 查询下载任务状态
+     *
+     * @param taskId 任务ID
+     * @return 下载任务状态
+     */
+    @GetMapping("/task/{taskId}")
+    @Operation(summary = "查询下载任务状态")
+    public ResponseEntity<DownloadTaskVO> getDownloadTaskStatus(@PathVariable String taskId) {
+        DownloadTaskVO task = downloadService.getTaskStatus(taskId);
+        if (task == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(task);
+    }
+
+    /**
+     * 根据任务id获取文件
+     *
+     * @param taskId 任务ID
+     * @return 文件流
+     */
+    @GetMapping("/download/{taskId}")
+    @Operation(summary = "根据任务id获取文件")
+    public ResponseEntity<Resource> downloadDatasetFile(@PathVariable String taskId) {
+        DownloadTaskVO task = downloadService.getTaskStatus(taskId);
+        if (task == null || !"completed".equals(task.getStatus())) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            String downloadUrl = task.getDownloadUrl();
+            if (downloadUrl == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // 从下载URL中提取文件名
+            String fileName = downloadUrl.substring(downloadUrl.lastIndexOf('/') + 1);
+            String filePath = System.getProperty("java.io.tmpdir") + File.separator + fileName;
+
+            File file = new File(filePath);
+            if (!file.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            Resource resource = new FileSystemResource(file);
+
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/{fileId}")
+    @Operation(summary = "获取文件详情")
+    public Result<SysFile> getFileDetail(
+            @Parameter(description = "文件ID") @PathVariable Long fileId
+    ) {
+        SysFile file = sysFileService.getById(fileId);
+        return Result.success(file);
+    }
+
     @GetMapping("/download/**")
     @Operation(summary = "文件下载")
     public ResponseEntity<Resource> download(HttpServletRequest request) {
@@ -115,5 +178,4 @@ public class FileController {
                 .headers(headers)
                 .body(resource);
     }
-
 }

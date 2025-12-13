@@ -4,4 +4,28 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.pei.dehaze.mapper.SysDatasetMapper">
 
+    <!-- 统计文件格式分布 -->
+    <select id="countFormatDistribution" resultType="java.util.Map">
+        SELECT sf.type AS `key`, COUNT(*) AS `value`
+        FROM sys_item_file sif
+        JOIN sys_file sf ON sif.file_id = sf.id
+        WHERE sif.item_id IN
+        <foreach collection="itemIds" item="itemId" open="(" separator="," close=")">
+            #{itemId}
+        </foreach>
+        GROUP BY sf.type
+    </select>
+
+    <!-- 获取数据集下的所有图片 -->
+    <select id="getDatasetImages" resultType="com.pei.dehaze.model.entity.SysItemFile">
+        SELECT sif.*
+        FROM sys_item_file sif
+        JOIN sys_dataset_item sdi ON sif.item_id = sdi.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+        ORDER BY sdi.dataset_id, sif.item_id, sif.type
+    </select>
+
 </mapper>

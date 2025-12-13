@@ -3,7 +3,7 @@ package com.pei.dehaze.common.util;
 
 import cn.hutool.core.io.FileUtil;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.model.bo.DatasetItemBO;
+import com.pei.dehaze.model.bo.ItemFileBO;
 import com.pei.dehaze.model.bo.FileBO;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -11,12 +11,16 @@ import org.apache.velocity.shaded.commons.io.FilenameUtils;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 
@@ -58,6 +62,48 @@ public class FileUploadUtils {
             extension = MimeTypeUtils.getExtension(Objects.requireNonNull(file.getContentType()));
         }
         return extension;
+    }
+
+    /**
+     * 获取图片宽高
+     *
+     * @param file 图片文件
+     * @return int数组，[0]为宽度，[1]为高度，解析失败返回[0,0]
+     */
+    public static int[] getImageDimensions(MultipartFile file) {
+        try (InputStream is = file.getInputStream();
+             ImageInputStream iis = ImageIO.createImageInputStream(is)) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+            if (readers.hasNext()) {
+                ImageReader reader = readers.next();
+                reader.setInput(iis, true);
+                return new int[]{reader.getWidth(0), reader.getHeight(0)};
+            }
+        } catch (IOException e) {
+            log.warn("解析图片宽高失败: {}", e.getMessage());
+        }
+        return new int[]{0, 0};
+    }
+
+    /**
+     * 获取图片宽高
+     *
+     * @param file 图片文件
+     * @return int数组，[0]为宽度，[1]为高度，解析失败返回[0,0]
+     */
+    public static int[] getImageDimensions(File file) {
+        try (InputStream is = new FileInputStream(file);
+             ImageInputStream iis = ImageIO.createImageInputStream(is)) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+            if (readers.hasNext()) {
+                ImageReader reader = readers.next();
+                reader.setInput(iis, true);
+                return new int[]{reader.getWidth(0), reader.getHeight(0)};
+            }
+        } catch (IOException e) {
+            log.warn("解析图片宽高失败: {}", e.getMessage());
+        }
+        return new int[]{0, 0};
     }
 
     public static int dirFileCount(String dir) {
@@ -158,17 +204,73 @@ public class FileUploadUtils {
         }
     }
 
-    public static DatasetItemBO createDatasetItemBO(
+    public static ItemFileBO createItemFileBO(
             MultipartFile file, String baseUrl, String path,
-            String type, String description) {
+            String type, String description, String sceneType, String hazeLevel) {
         try {
-            DatasetItemBO itemBO = new DatasetItemBO();
+            ItemFileBO itemBO = new ItemFileBO();
             setFileBO(file, baseUrl, path, itemBO);
             itemBO.setType(type);
             itemBO.setDescription(description);
+            itemBO.setSceneType(sceneType);
+            itemBO.setHazeLevel(hazeLevel);
+            // 解析图片宽高
+            int[] dimensions = getImageDimensions(file);
+            itemBO.setWidth(dimensions[0] > 0 ? dimensions[0] : null);
+            itemBO.setHeight(dimensions[1] > 0 ? dimensions[1] : null);
+
             return itemBO;
         } catch (IOException e) {
-            throw new BusinessException("Error creating DatasetItemBO from MultipartFile: " + e.getMessage(), e);
+            throw new BusinessException("无法从 MultipartFile 创建 ItemFileBO: " + e.getMessage(), e);
         }
     }
+    /**
+     * 校验图片文件格式和大小
+     */
+    public static void validateImageFile(File file) {
+        if (file == null) {
+            throw new BusinessException("文件不能为空");
+        }
+
+        // 校验文件大小（10MB限制）
+        if (file.length() > 10 * 1024 * 1024) {
+            throw new BusinessException("文件大小不能超过10MB");
+        }
+
+        // 校验文件格式
+        String fileName = file.getName();
+
+        String extension = fileName.toLowerCase();
+        if (!extension.endsWith(".jpg") && !extension.endsWith(".jpeg")
+                && !extension.endsWith(".png") && !extension.endsWith(".gif")) {
+            throw new BusinessException("仅支持 jpg/png/gif 格式");
+        }
+    }
+
+    /**
+     * 校验图片文件格式和大小（MultipartFile版本）
+     */
+    public static void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("文件不能为空");
+        }
+
+        // 校验文件大小（10MB限制）
+        if (file.getSize() > 10 * 1024 * 1024) {
+            throw new BusinessException("文件大小不能超过10MB");
+        }
+
+        // 校验文件格式
+        String fileName = file.getOriginalFilename();
+        if (fileName == null) {
+            throw new BusinessException("文件名不能为空");
+        }
+
+        String extension = fileName.toLowerCase();
+        if (!extension.endsWith(".jpg") && !extension.endsWith(".jpeg")
+                && !extension.endsWith(".png") && !extension.endsWith(".gif")) {
+            throw new BusinessException("仅支持 jpg/png/gif 格式");
+        }
+    }
+
 }

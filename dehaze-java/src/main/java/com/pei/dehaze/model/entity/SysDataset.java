@@ -39,6 +39,11 @@ public class SysDataset  extends BaseEntity {
      */
     private Integer deleted;
 
+    /**
+     * 使用次数（用户使用该数据集的次数）
+     */
+    private Long usageCount;
+
     @TableField(fill = FieldFill.INSERT)
     private Long createBy;
 

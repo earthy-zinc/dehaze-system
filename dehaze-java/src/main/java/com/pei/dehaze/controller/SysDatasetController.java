@@ -1,19 +1,15 @@
 package com.pei.dehaze.controller;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.pei.dehaze.common.base.BasePageQuery;
 import com.pei.dehaze.common.model.Option;
-import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
-import com.pei.dehaze.converter.DatasetConverter;
-import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.form.DatasetForm;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.vo.DatasetVO;
-import com.pei.dehaze.model.vo.ImageItemVO;
-import com.pei.dehaze.service.SysDatasetItemService;
+import com.pei.dehaze.model.vo.DownloadTaskVO;
+import com.pei.dehaze.service.DownloadService;
 import com.pei.dehaze.service.SysDatasetService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -36,9 +32,8 @@ public class SysDatasetController {
 
     private final SysDatasetService datasetService;
 
-    private final SysDatasetItemService sysDatasetItemService;
+    private final DownloadService downloadService;
 
-    private final DatasetConverter datasetConverter;
     /**
      * 数据集树形表格
      *
@@ -68,8 +63,8 @@ public class SysDatasetController {
     @Operation(summary = "根据ID获取数据集信息")
     @GetMapping("/{id}")
     public Result<DatasetVO> getDatasetInfoById(@PathVariable Long id) {
-        SysDataset sysDataset = datasetService.getDatasetById(id);
-        return Result.success(datasetConverter.entity2Vo(sysDataset));
+        DatasetVO datasetVO = datasetService.getDatasetDetail(id);
+        return Result.success(datasetVO);
     }
 
     /**
@@ -114,15 +109,23 @@ public class SysDatasetController {
     }
 
     /**
-     * 获取数据集详细图片
+     * 创建数据集下载任务
      *
      * @param id 数据集ID
-     * @return 图片列表
+     * @param organizeByItem 是否按数据项分目录（可选，默认true）
+     * @return 任务ID
      */
-    @Operation(summary = "获取数据集详细图片")
-    @GetMapping("/{id}/images")
-    public PageResult<ImageItemVO> getImageItem(@PathVariable Long id, BasePageQuery pageQuery) {
-        Page<ImageItemVO> pagedImageItemVOs = sysDatasetItemService.getPagedImageItemVOs(id, pageQuery.getPageNum(), pageQuery.getPageSize());
-        return PageResult.success(pagedImageItemVOs);
+    @PostMapping("/{id}/download")
+    @Operation(summary = "创建数据集下载任务")
+    public Result<DownloadTaskVO> createDownloadTask(
+            @PathVariable Long id,
+            @Parameter(description = "是否按数据项分目录组织") @RequestParam(value = "organizeByItem", defaultValue = "true") boolean organizeByItem
+    ) {
+        String taskId = downloadService.createDatasetDownloadTask(id, organizeByItem);
+        DownloadTaskVO task = new DownloadTaskVO();
+        task.setTaskId(taskId);
+        task.setStatus("processing");
+        task.setMessage("正在创建下载任务...");
+        return Result.success(task);
     }
 }

@@ -6,7 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.enums.ImageTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.FileUploadUtils;
-import com.pei.dehaze.model.bo.DatasetItemBO;
+import com.pei.dehaze.model.bo.ItemFileBO;
 import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.model.bo.PairedImage;
 import com.pei.dehaze.model.entity.SysDataset;
@@ -73,12 +73,12 @@ public class InitFile {
                 Long itemId = datasetItem.getId();
 
                 String cleanPath = pairedImage.getCleanPath();
-                DatasetItemBO cleanBO = createDatasetItemBO(cleanPath, ImageTypeEnum.CLEAN);
+                ItemFileBO cleanBO = createDatasetItemBO(cleanPath, ImageTypeEnum.CLEAN);
                 sysItemFileService.saveItemFile(itemId, cleanBO);
 
                 List<String> hazePath = pairedImage.getHazePath();
                 hazePath.forEach(haze -> {
-                    DatasetItemBO hazeBO = createDatasetItemBO(haze, ImageTypeEnum.HAZE);
+                    ItemFileBO hazeBO = createDatasetItemBO(haze, ImageTypeEnum.HAZE);
                     sysItemFileService.saveItemFile(itemId, hazeBO);
                 });
             });
@@ -122,7 +122,7 @@ public class InitFile {
         return getPairImages(hazeImages, cleanImages);
     }
 
-    private DatasetItemBO createDatasetItemBO(String filePath, ImageTypeEnum type) {
+    private ItemFileBO createDatasetItemBO(String filePath, ImageTypeEnum type) {
         File file = new File(filePath);
         if (!file.exists() && !file.isFile()) {
             throw new BusinessException("File not found: " + filePath);
@@ -140,7 +140,7 @@ public class InitFile {
             String objectName = dirRelPath + "/" + md5 + "." + suffix;
             String url = baseUrl + "/" + objectName;
 
-            DatasetItemBO itemBO = new DatasetItemBO();
+            ItemFileBO itemBO = new ItemFileBO();
             itemBO.setFile(file);
             itemBO.setName(fileName);
             itemBO.setObjectName(objectName);
