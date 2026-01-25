@@ -20,8 +20,21 @@
               "icon": "lucide-file",
               "title": "类与对象"
             }
+          },
+          {
+            "id": "cd948a8c8a9074bf",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.9.14"
+              },
+              "icon": "lucide-book-up",
+              "title": "版本说明 1.9.14"
+            }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -160,6 +173,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "bases:创建新数据库": false,
       "switcher:打开快速切换": false,
       "graph:查看关系图谱": false,
       "canvas:新建白板": false,
@@ -168,7 +182,7 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "33f9a5273c6d7afd",
+  "active": "cd948a8c8a9074bf",
   "lastOpenFiles": [
     "后端开发/操作系统/计算机网络.md",
     "后端开发/操作系统/操作系统.md",
