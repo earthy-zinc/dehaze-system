@@ -2,23 +2,23 @@
  * 模型查询参数类型
  */
 export interface AlgorithmQuery {
-    keywords?: string;
+  keywords?: string;
 }
 
 export interface Algorithm {
-    id: number;
-    parentId: number;
-    name: string;
-    type: string;
-    description: string;
-    img?: string;
-    path?: string;
-    importPath?: string;
-    params?: string;
-    flops?: string;
-    status?: number;
-    size?: string;
-    children?: Algorithm[];
+  id: number;
+  parentId: number;
+  name: string;
+  type: string;
+  description: string;
+  img?: string;
+  path?: string;
+  importPath?: string;
+  params?: string;
+  flops?: string;
+  status?: number;
+  size?: string;
+  children?: Algorithm[];
 }
 
 // 使得 T 中的 K 属性可选

@@ -7,38 +7,38 @@
  * 4. 根据模型文件预测
  */
 export interface PredParam {
-    modelId: number;
-    url: string;
-    modelParam?: Object;
+  modelId: number;
+  url: string;
+  modelParam?: Object;
 }
 
 export interface PredResult {
-    predUrl: string;
-    hazeUrl: string;
+  predUrl: string;
+  hazeUrl: string;
 }
 
 export interface EvalParam {
-    modelId: number;
-    predUrl: string;
-    gtUrl?: string;
+  modelId: number;
+  predUrl: string;
+  gtUrl?: string;
 }
 
 export interface EvalResult {
-    id: number;
-    // 评价指标的名称
-    label: string;
-    // 评价指标的值
-    value: string;
-    // 基准值
-    baseline?: string;
-    // 评价指标是越高越好还是越低越好
-    better?: "higher" | "lower";
-    // 评价指标的描述
-    description?: string;
+  id: number;
+  // 评价指标的名称
+  label: string;
+  // 评价指标的值
+  value: string;
+  // 基准值
+  baseline?: string;
+  // 评价指标是越高越好还是越低越好
+  better?: "higher" | "lower";
+  // 评价指标的描述
+  description?: string;
 }
 
 export interface PredImageInfo {
-    name: string;
-    path: string;
-    url: string;
+  name: string;
+  path: string;
+  url: string;
 }
