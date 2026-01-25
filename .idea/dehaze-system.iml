@@ -127,8 +127,17 @@
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/macos/Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/example/.dart_tool" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/macos/Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/example/.pub" />
       <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/macos/Flutter/ephemeral/.symlinks/plugins/sqflite_darwin/example/build" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/dataSources" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/jsLinters" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/libraries" />
+      <excludeFolder url="file://$MODULE_DIR$/.idea/stylesheetLinters" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/android/.gradle" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/ios/Flutter/ephemeral" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/linux/flutter/ephemeral" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/macos/Flutter/ephemeral" />
+      <excludeFolder url="file://$MODULE_DIR$/dehaze_flutter/windows/flutter/ephemeral" />
     </content>
-    <orderEntry type="jdk" jdkName="17" jdkType="JavaSDK" />
+    <orderEntry type="jdk" jdkName="Python 3.11" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Dart SDK" level="project" />
     <orderEntry type="library" name="Dart Packages" level="project" />
