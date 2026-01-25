@@ -7,20 +7,25 @@
  * - Please do NOT modify this file.
  */
 
-const PACKAGE_VERSION = "2.11.6";
+const PACKAGE_VERSION = "2.12.7";
 const INTEGRITY_CHECKSUM = "4db4a41e972cec1b64cc569c66952d82";
 const IS_MOCKED_RESPONSE = Symbol("isMockedResponse");
 const activeClientIds = new Set();
 
-addEventListener("install", function () {
-  self.skipWaiting();
-});
+addEventListener;
+"install";
+', function() {
+self.skipWaiting(;
+)
+}
+;
+)
 
-addEventListener("activate", function (event) {
+addEventListener("activate", function(event) {
   event.waitUntil(self.clients.claim());
 });
 
-addEventListener("message", async function (event) {
+addEventListener("message", async function(event) {
   const clientId = Reflect.get(event.source || {}, "id");
 
   if (!clientId || !self.clients) {
@@ -35,13 +40,13 @@ addEventListener("message", async function (event) {
 
   const allClients = await self.clients.matchAll({
     type: "window",
-  });
+  })
 
   switch (event.data) {
     case "KEEPALIVE_REQUEST": {
       sendToClient(client, {
         type: "KEEPALIVE_RESPONSE",
-      });
+      })
       break;
     }
 
@@ -52,7 +57,7 @@ addEventListener("message", async function (event) {
           packageVersion: PACKAGE_VERSION,
           checksum: INTEGRITY_CHECKSUM,
         },
-      });
+      })
       break;
     }
 
@@ -67,7 +72,7 @@ addEventListener("message", async function (event) {
             frameType: client.frameType,
           },
         },
-      });
+      })
       break;
     }
 
@@ -76,7 +81,7 @@ addEventListener("message", async function (event) {
 
       const remainingClients = allClients.filter((client) => {
         return client.id !== clientId;
-      });
+      })
 
       // Unregister itself when there are no more clients
       if (remainingClients.length === 0) {
@@ -86,9 +91,9 @@ addEventListener("message", async function (event) {
       break;
     }
   }
-});
+})
 
-addEventListener("fetch", function (event) {
+addEventListener("fetch", function(event) {
   const requestInterceptedAt = Date.now();
 
   // Bypass navigation requests.
@@ -114,7 +119,7 @@ addEventListener("fetch", function (event) {
 
   const requestId = crypto.randomUUID();
   event.respondWith(handleRequest(event, requestId, requestInterceptedAt));
-});
+})
 
 /**
  * @param {FetchEvent} event
@@ -128,8 +133,8 @@ async function handleRequest(event, requestId, requestInterceptedAt) {
     event,
     client,
     requestId,
-    requestInterceptedAt
-  );
+    requestInterceptedAt,
+  )
 
   // Send back the response clone for the "response:*" life-cycle events.
   // Ensure MSW is active and ready to handle the message, otherwise
@@ -159,8 +164,8 @@ async function handleRequest(event, requestId, requestInterceptedAt) {
           },
         },
       },
-      responseClone.body ? [serializedRequest.body, responseClone.body] : []
-    );
+      responseClone.body ? [serializedRequest.body, responseClone.body] : [],
+    )
   }
 
   return response;
@@ -187,7 +192,7 @@ async function resolveMainClient(event) {
 
   const allClients = await self.clients.matchAll({
     type: "window",
-  });
+  })
 
   return allClients
     .filter((client) => {
@@ -198,7 +203,7 @@ async function resolveMainClient(event) {
       // Find the client ID that's recorded in the
       // set of clients that have registered the worker.
       return activeClientIds.has(client.id);
-    });
+    })
 }
 
 /**
@@ -225,8 +230,8 @@ async function getResponse(event, client, requestId, requestInterceptedAt) {
     if (acceptHeader) {
       const values = acceptHeader.split(",").map((value) => value.trim());
       const filteredValues = values.filter(
-        (value) => value !== "msw/passthrough"
-      );
+        (value) => value !== "msw/passthrough",
+      )
 
       if (filteredValues.length > 0) {
         headers.set("accept", filteredValues.join(", "));
@@ -263,8 +268,8 @@ async function getResponse(event, client, requestId, requestInterceptedAt) {
         ...serializedRequest,
       },
     },
-    [serializedRequest.body]
-  );
+    [serializedRequest.body],
+  )
 
   switch (clientMessage.type) {
     case "MOCK_RESPONSE": {
@@ -295,13 +300,13 @@ function sendToClient(client, message, transferrables = []) {
       }
 
       resolve(event.data);
-    };
+    }
 
     client.postMessage(message, [
       channel.port2,
       ...transferrables.filter(Boolean),
-    ]);
-  });
+    ])
+  })
 }
 
 /**
@@ -322,7 +327,7 @@ function respondWithMock(response) {
   Reflect.defineProperty(mockedResponse, IS_MOCKED_RESPONSE, {
     value: true,
     enumerable: true,
-  });
+  })
 
   return mockedResponse;
 }
@@ -345,5 +350,5 @@ async function serializeRequest(request) {
     referrerPolicy: request.referrerPolicy,
     body: await request.arrayBuffer(),
     keepalive: request.keepalive,
-  };
+  }
 }
