@@ -1,3 +1,4 @@
+import os
 import os.path as path
 
 import torch
@@ -17,7 +18,7 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = 7200
 
     # 默认用户密码
-    DEFAULT_PASSWORD = "123456"
+    DEFAULT_PASSWORD = os.getenv('DEHAZE_PASSWORD')
 
 
 class DevelopmentConfig(Config):
@@ -27,20 +28,20 @@ class DevelopmentConfig(Config):
 
     DATASET_PATH = "/mnt/d/DeepLearning/dataset"
 
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:123456@localhost/dehaze?charset=utf8"
+    SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://root:{os.getenv('DEHAZE_PASSWORD')}@localhost/dehaze?charset=utf8"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
 
     REDIS_HOST = 'localhost'
     REDIS_PORT = 6379
-    REDIS_PASSWORD = '123456'
+    REDIS_PASSWORD = os.getenv('DEHAZE_PASSWORD')
     REDIS_DB = 0
 
-    MONGO_URI = "mongodb://localhost:27017/"
+    MONGO_URI = f"mongodb://localhost:27017/"
 
     MINIO_ENDPOINT = "localhost:9000"
     MINIO_ACCESS_KEY = "admin"
-    MINIO_SECRET_KEY = "12345678"
+    MINIO_SECRET_KEY = os.getenv('DEHAZE_PASSWORD')
     MINIO_SECURE = False
     MINIO_BUCKET_NAME = "dehaze"
     MINIO_CUSTOM_DOMAIN = "http://localhost:8989/api/v1/files/download"
@@ -50,7 +51,7 @@ class TestingConfig(Config):
     TESTING = True
     FLASK_ENV = 'testing'
 
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://root:123456@localhost/dehaze_test?charset=utf8"
+    SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://root:{os.getenv('DEHAZE_PASSWORD')}@localhost/dehaze_test?charset=utf8"
 
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_COMMIT_ON_TEARDOWN = False
@@ -60,14 +61,14 @@ class TestingConfig(Config):
 
     REDIS_HOST = 'localhost'
     REDIS_PORT = 6379
-    REDIS_PASSWORD = '123456'
+    REDIS_PASSWORD = os.getenv('DEHAZE_PASSWORD')
     REDIS_DB = 0
 
     MONGO_URI = "mongodb://localhost:27017/"
 
     MINIO_ENDPOINT = "localhost:9000"
     MINIO_ACCESS_KEY = "admin"
-    MINIO_SECRET_KEY = "12345678"
+    MINIO_SECRET_KEY = os.getenv('DEHAZE_PASSWORD')
     MINIO_SECURE = False
     MINIO_BUCKET_NAME = "dehaze"
     MINIO_CUSTOM_DOMAIN = "http://localhost:8989/api/v1/files/download"

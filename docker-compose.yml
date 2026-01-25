@@ -11,7 +11,7 @@ services:
     ports:
       - "3306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=123456
+      - MYSQL_ROOT_PASSWORD=${DEHAZE_PASSWORD}
       - TZ=Asia/Shanghai
     volumes:
       - mysql-data:/var/lib/mysql
@@ -34,21 +34,15 @@ services:
       TZ: Asia/Shanghai
     volumes:
       - redis-data:/data
-      - redis-config:/etc/redis
     command:
       [
         "redis-server",
-        "/etc/redis/redis.conf",
         "--appendonly",
         "yes",
         "--requirepass",
-        "123456",
+        "${DEHAZE_PASSWORD}",
       ]
     privileged: true
-    logging:
-      options:
-        max-size: "100m"
-        max-file: "2"
     networks:
       - pei-network
 
@@ -65,7 +59,7 @@ services:
       - mongo-logs:/var/log/mongodb
     environment:
       - MONGODB_ROOT_USER=root
-      - MONGODB_ROOT_PASSWORD=123456
+      - MONGODB_ROOT_PASSWORD=${DEHAZE_PASSWORD}
       - MONGODB_DATABASE=admin
     networks:
       - pei-network
@@ -80,7 +74,7 @@ services:
       - "9090:9090"
     environment:
       - MINIO_ACCESS_KEY=admin
-      - MINIO_SECRET_KEY=12345678
+      - MINIO_SECRET_KEY=${DEHAZE_PASSWORD}
       - MINIO_BROWSER_DEFAULT_LOCALE=zh_CN
     volumes:
       - minio-data:/data
@@ -569,25 +563,23 @@ services:
 
 volumes:
   mysql-data:
-    external: true
+
   mysql-logs:
-    external: true
+
   mysql-config:
-    external: true
+
   redis-data:
-    external: true
-  redis-config:
-    external: true
+
   mongo-data:
-    external: true
+
   mongo-config:
-    external: true
+
   mongo-logs:
-    external: true
+
   minio-data:
-    external: true
+
   minio-config:
-    external: true
+
   es-data:
     external: true
   es-logs:

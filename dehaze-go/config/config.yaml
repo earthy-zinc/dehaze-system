@@ -1,0 +1,79 @@
+zap:
+  level: info
+  format: console
+  prefix: "[dehaze-go]"
+  directory: log
+  show-line: true
+  encode-level: LowercaseColorLevelEncoder
+  stacktrace-key: stacktrace
+  log-in-console: true
+  retention-day: -1
+
+# system configuration
+system:
+  port: 8999
+  use-multi-point: false
+  # IP限制次数 一个小时15000次
+  ip-limit-count: 15000
+  #  IP限制一个小时
+  ip-limit-time: 3600
+  #  路由全局前缀
+  router-prefix: ""
+
+captcha:
+  length: 6
+  width: 240
+  height: 80
+  retry-count: 0 # 0代表无限制次数，大于0代表最多获取几次验证码
+  timeout: 3600 # retry-count大于0时才生效，表示解除验证码限制时间
+
+jwt:
+  key: SecretKey012345678901234567890123456789012345678901234567890123456789
+  ttl: 7200
+
+db:
+  driver: mysql
+  type: mysql
+  mysql:
+    host: localhost
+    port: 3306
+    database: dehaze
+    username: root
+    password: ${DEHAZE_PASSWORD}
+    config: "charset=utf8mb4&parseTime=True&loc=Local"
+    charset: utf8mb4
+    parse-time: true
+    loc: Local
+  postgres:
+    host: localhost
+    port: 5432
+    database: dehaze
+    username: postgres
+    password: ""
+  sqlite:
+    path: ./data/dehaze.db
+  max-idle-conns: 10
+  max-open-conns: 100
+  singular: true
+  log-mode: info
+  log-zap: true
+
+cache:
+  # 缓存类型：redis/local/multi
+  type: redis
+  redis:
+    enabled: true
+    addr: 127.0.0.1:6379
+    password: ${DEHAZE_PASSWORD}
+    db: 3
+    useCluster: false
+    timeout: 5
+  local:
+    defaultExpire: 7200
+    maxSize: 1000
+    enabled: false
+  fallback:
+    enabled: true
+    type: local
+    maxRetries: 3
+    retryDelay: 100
