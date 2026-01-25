@@ -26,6 +26,9 @@
     "allprojects",
     "buildscript",
     "dcloudio",
+    "dehaze",
+    "earthyzinc",
+    "Gorm",
     "kuaishou",
     "Peixin",
     "quickapp",
@@ -36,5 +39,6 @@
     "weixin"
   ],
   "java.search.scope": "main",
-  "codingcopilot.enableCompletionLanguage": {}
+  "codingcopilot.enableCompletionLanguage": {},
+  "dart.flutterSdkPath": "/usr/local/flutter"
 }

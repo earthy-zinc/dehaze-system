@@ -318,7 +318,8 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}/dehaze-go/main.go",
+      "cwd": "${workspaceFolder}/dehaze-go",
+      "program": "${workspaceFolder}/dehaze-go/cmd/server/main.go",
       "presentation": {
         "hidden": false,
         "group": "后端服务",
