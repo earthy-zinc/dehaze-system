@@ -9,13 +9,21 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode(callSuper = true)
 @Schema(name = "BatchUploadResultVO", description = "批量上传结果")
-public class BatchUploadResultVO extends BatchOperationResultVO {
+public class BatchUploadResultVO {
 
     @Schema(description = "总文件数")
-    private Integer totalFiles;
+    private Integer total;
 
-    @Schema(description = "成功配对详情")
-    private List<DatasetItemVO> successDetails;
+    @Schema(description = "成功数量")
+    private Integer succeeded;
+
+    @Schema(description = "失败数量")
+    private Integer failed;
+
+    @Schema(description = "成功项详情列表")
+    private List<BatchUploadSuccessItemVO> successItems;
+
+    @Schema(description = "失败项详情列表")
+    private List<BatchUploadFailedItemVO> failedItems;
 }

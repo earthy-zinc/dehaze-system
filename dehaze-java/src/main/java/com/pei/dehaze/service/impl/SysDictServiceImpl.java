@@ -108,7 +108,12 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
      */
     @Override
     public boolean updateDict(Long id, DictForm dictForm) {
+        // 获取字典数据项
+        SysDict existDict = this.getById(id);
+        Assert.isTrue(existDict != null, "字典数据项不存在");
+
         SysDict entity = dictConverter.form2Entity(dictForm);
+        entity.setId(id);  // 设置ID，确保更新正确执行
         return this.updateById(entity);
     }
 
@@ -126,6 +131,11 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
                 .map(Long::parseLong)
                 .toList();
 
+        // 校验字典数据项是否存在
+        long existCount = this.count(new LambdaQueryWrapper<SysDict>()
+                .in(SysDict::getId, ids));
+        Assert.isTrue(existCount > 0, "字典数据项不存在");
+
         // 删除字典数据项
         return this.removeByIds(ids);
     }
@@ -138,9 +148,11 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
      */
     @Override
     public List<Option<String>> listDictOptions(String typeCode) {
-        // 数据字典项
+        // 数据字典项 - typeCode必须精确匹配且不能为空
         List<SysDict> dictList = this.list(new LambdaQueryWrapper<SysDict>()
-                .eq(SysDict::getTypeCode, typeCode)
+                .isNotNull(SysDict::getTypeCode)
+                .ne(SysDict::getTypeCode, "")  // 排除空字符串
+                .eq(SysDict::getTypeCode, typeCode)  // 必须精确匹配typeCode参数
                 .select(SysDict::getValue, SysDict::getName)
         );
 

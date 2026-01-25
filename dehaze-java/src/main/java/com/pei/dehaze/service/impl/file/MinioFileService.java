@@ -96,6 +96,25 @@ public class MinioFileService implements FileService {
         }
     }
 
+    @Override
+    public String uploadFile(String objectName, InputStream inputStream, long fileSize, String contentType) {
+        Assert.notBlank(objectName, "objectName不能为空");
+        Assert.notNull(inputStream, "inputStream不能为空");
+
+        try {
+            PutObjectArgs putObjectArgs = PutObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(objectName)
+                    .contentType(contentType != null ? contentType : "application/octet-stream")
+                    .stream(inputStream, fileSize, -1)
+                    .build();
+            minioClient.putObject(putObjectArgs);
+            return getUrl(objectName);
+        } catch (Exception e) {
+            throw new BusinessException("无法保存文件: " + e.getMessage(), e);
+        }
+    }
+
     @NotNull
     private String getUrl(String objectName) throws ErrorResponseException, InsufficientDataException, InternalException, InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, XmlParserException, ServerException {
         // 返回文件路径
@@ -143,12 +162,14 @@ public class MinioFileService implements FileService {
                 .bucket(bucketName)
                 .object(objectName)
                 .build();
-        try (GetObjectResponse response = minioClient.getObject(getObjectArgs)) {
+        try {
+            GetObjectResponse response = minioClient.getObject(getObjectArgs);
+            // 返回一个新的InputStream，避免在try-with-resources中关闭
             return new ByteArrayInputStream(response.readAllBytes());
         } catch (IOException | ErrorResponseException | InsufficientDataException | InternalException |
                  InvalidKeyException | InvalidResponseException | NoSuchAlgorithmException | ServerException |
                  XmlParserException e) {
-            throw new BusinessException("下载文件失败", e);
+            throw new BusinessException("下载文件失败: " + e.getMessage(), e);
         }
     }
 

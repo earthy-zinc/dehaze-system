@@ -2,7 +2,9 @@ package com.pei.dehaze.service.impl.file;
 
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.file.PathUtil;
+import cn.hutool.core.lang.Assert;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.util.PathSecurityUtil;
 import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.service.FileService;
 import jakarta.annotation.PostConstruct;
@@ -70,6 +72,30 @@ public class LocalFileService implements FileService {
         return fileBO;
     }
 
+    @Override
+    public String uploadFile(String objectName, InputStream inputStream, long fileSize, String contentType) {
+        Assert.notBlank(objectName, "objectName不能为空");
+        Assert.notNull(inputStream, "inputStream不能为空");
+
+        Path filePath = Path.of(uploadPath, objectName);
+        Path dirPath = filePath.getParent();
+
+        if (!PathUtil.exists(dirPath, true)) {
+            try {
+                Files.createDirectories(dirPath);
+            } catch (IOException e) {
+                throw new BusinessException("无法为上传文件创建对应的文件夹: " + e.getMessage(), e);
+            }
+        }
+
+        try {
+            FileUtil.writeFromStream(inputStream, filePath.toAbsolutePath().toString());
+            return baseUrl + "/" + objectName;
+        } catch (Exception e) {
+            throw new BusinessException("无法保存文件: " + e.getMessage(), e);
+        }
+    }
+
 
     /**
      * 删除文件
@@ -79,36 +105,38 @@ public class LocalFileService implements FileService {
      */
     @Override
     public boolean deleteFile(String objectName) {
-        Path filePath = Path.of(uploadPath, objectName);
-        // 验证文件路径的安全性，避免路径遍历攻击
-        if (!filePath.isAbsolute()) {
-            throw new IllegalArgumentException("无效的文件路径");
-        }
+        Path filePath = PathSecurityUtil.validatePath(uploadPath, objectName);
+
         if (!Files.exists(filePath)) {
-            throw new BusinessException("文件不存在");
+            log.warn("文件不存在: {}", objectName);
+            return true; // 文件不存在视为删除成功（幂等性）
         }
-        // 目前不让删除本地文件
-        return false;
+
+        try {
+            Files.delete(filePath);
+            log.info("删除本地文件成功: {}", objectName);
+            return true;
+        } catch (IOException e) {
+            log.error("删除本地文件失败: {}", objectName, e);
+            return false;
+        }
     }
 
     @Override
     public InputStream downLoadFile(String objectName) {
-        Path filePath = Path.of(uploadPath, objectName);
-        // 验证文件路径的安全性，避免路径遍历攻击
-        if (!filePath.isAbsolute() || !Files.exists(filePath)) {
-            throw new IllegalArgumentException("无效的文件路径");
-        }
+        Path filePath = PathSecurityUtil.validatePath(uploadPath, objectName);
 
         // 验证文件名，避免文件名注入攻击
-        String fileName = filePath.getFileName().toString();
-        if (!fileName.matches("[a-zA-Z0-9.\\-_]+")) {
-            throw new IllegalArgumentException("不支持的文件名");
+        PathSecurityUtil.validateFileName(filePath.getFileName().toString());
+
+        if (!Files.exists(filePath)) {
+            throw new BusinessException("文件不存在: " + objectName);
         }
 
-        try (FileInputStream fileInputStream = new FileInputStream(filePath.toFile())) {
-            return fileInputStream;
+        try {
+            return new FileInputStream(filePath.toFile());
         } catch (IOException e) {
-            throw new BusinessException("文件下载失败，文件不存在", e);
+            throw new BusinessException("文件下载失败: " + e.getMessage(), e);
         }
     }
 

@@ -14,7 +14,21 @@ import org.mapstruct.Mapping;
 public interface AlgorithmConverter {
 
     @Mapping(ignore = true, target = "children")
+    @Mapping(ignore = true, target = "size")
+    @Mapping(ignore = true, target = "img")
+    @Mapping(ignore = true, target = "params")
+    @Mapping(ignore = true, target = "flops")
     AlgorithmVO entity2Vo(SysAlgorithm entity);
 
+    @Mapping(ignore = true, target = "id")
+    @Mapping(ignore = true, target = "parentId")
+    @Mapping(ignore = true, target = "createTime")
+    @Mapping(ignore = true, target = "updateTime")
+    @Mapping(ignore = true, target = "createBy")
+    @Mapping(ignore = true, target = "updateBy")
+    @Mapping(ignore = true, target = "size")
+    @Mapping(ignore = true, target = "img")
+    @Mapping(ignore = true, target = "params")
+    @Mapping(ignore = true, target = "flops")
     SysAlgorithm form2Entity(AlgorithmForm form);
 }

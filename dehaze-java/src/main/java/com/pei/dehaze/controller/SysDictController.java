@@ -16,6 +16,7 @@ import com.pei.dehaze.service.SysDictTypeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -56,7 +57,7 @@ public class SysDictController {
     @PreAuthorize("@ss.hasPerm('sys:dict:add')")
     @PreventDuplicateSubmit
     public Result<Void> saveDict(
-            @RequestBody DictForm DictForm
+            @Valid @RequestBody DictForm DictForm
     ) {
         boolean result = dictService.saveDict(DictForm);
         return Result.judge(result);

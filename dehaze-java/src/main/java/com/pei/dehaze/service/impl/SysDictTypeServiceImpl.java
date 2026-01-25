@@ -118,6 +118,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         Assert.isTrue(sysDictType != null, "字典类型不存在");
 
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
+        entity.setId(id);  // 设置ID，确保更新正确执行
         boolean result = this.updateById(entity);
         if (sysDictType != null && result) {
             // 字典类型code变化，同步修改字典项的类型code
@@ -146,14 +147,25 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
         List<String> ids = Arrays.stream(idsStr.split(",")).toList();
 
-        // 删除字典数据项
+        // 校验字典类型是否存在
+        long existCount = this.count(new LambdaQueryWrapper<SysDictType>()
+                .in(SysDictType::getId, ids));
+        Assert.isTrue(existCount > 0, "字典类型不存在");
+
+        // 获取字典类型编码列表
         List<String> dictTypeCodes = this.list(new LambdaQueryWrapper<SysDictType>()
                         .in(SysDictType::getId, ids)
                         .select(SysDictType::getCode))
                 .stream()
                 .map(SysDictType::getCode)
                 .toList();
+
+        // 校验字典类型下是否有字典数据
         if (CollUtil.isNotEmpty(dictTypeCodes)) {
+            long dictCount = dictItemService.count(new LambdaQueryWrapper<SysDict>()
+                    .in(SysDict::getTypeCode, dictTypeCodes));
+            Assert.isTrue(dictCount == 0, "字典类型下存在字典数据，不能删除");
+            // 删除字典数据项
             dictItemService.remove(new LambdaQueryWrapper<SysDict>()
                     .in(SysDict::getTypeCode, dictTypeCodes));
         }

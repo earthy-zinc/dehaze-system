@@ -24,7 +24,7 @@ public class DatasetItemUploadForm {
     private Long datasetId;
 
     @Schema(description = "数据项名称")
-    private String itemName;
+    private String name;
 
     @Schema(description = "清晰图文件")
     @NotNull(message = "清晰图不能为空")

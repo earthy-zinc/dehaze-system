@@ -1,45 +1,41 @@
 package com.pei.dehaze.service.impl;
 
-import cn.hutool.core.lang.Assert;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.util.FilePathBuilder;
 import com.pei.dehaze.common.util.FileUploadUtils;
-import com.pei.dehaze.common.util.ImageUtils;
+import com.pei.dehaze.mapper.SysDatasetItemMapper;
+import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.mapper.SysItemFileMapper;
 import com.pei.dehaze.model.bo.ItemFileBO;
-import com.pei.dehaze.model.dto.ImageFileInfo;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
-import com.pei.dehaze.model.form.BatchDatasetItemUploadForm;
-import com.pei.dehaze.model.form.ImageItemForm;
-import com.pei.dehaze.model.form.DatasetItemUploadForm;
-import com.pei.dehaze.model.vo.*;
-import com.pei.dehaze.service.SysDatasetItemService;
-import com.pei.dehaze.service.SysDatasetService;
+import com.pei.dehaze.model.event.ItemFileCreatedEvent;
+import com.pei.dehaze.model.event.ItemFileDeletedEvent;
+import com.pei.dehaze.model.form.ItemFileUpdateForm;
+import com.pei.dehaze.model.vo.BatchDeleteResultVO;
+import com.pei.dehaze.model.vo.DatasetItemSimpleVO;
+import com.pei.dehaze.model.vo.ImageUrlVO;
+import com.pei.dehaze.model.vo.SimpleImageUrlVO;
+import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
 import jakarta.annotation.Resource;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.context.annotation.Lazy;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static com.pei.dehaze.common.util.FileUploadUtils.validateImageFile;
 
 @Service
 public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysItemFile>
@@ -49,17 +45,26 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     private SysFileService sysFileService;
 
     @Resource
-    @Lazy
-    private SysDatasetItemService sysDatasetItemService;
+    private ImageProcessingService imageProcessingService;
 
     @Resource
-    @Lazy
-    private SysDatasetService sysDatasetService;
+    private FilePathBuilder filePathBuilder;
+
+    @Resource
+    private ApplicationEventPublisher eventPublisher;
+
+    // 使用 Mapper 直接查询，避免循环依赖
+    @Resource
+    private SysDatasetItemMapper sysDatasetItemMapper;
+
+    @Resource
+    private SysDatasetMapper sysDatasetMapper;
 
     @Override
-    public ImageFileInfo saveItemFile(Long itemId, ItemFileBO itemBO) {
-        // 校验图片文件
-        validateImageFile(itemBO.getFile());
+    @Transactional(rollbackFor = Exception.class)
+    public ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO) {
+        // 使用 ImageProcessingService 校验图片文件
+        imageProcessingService.validateImageFile(itemBO.getFile());
 
         // 保存源文件
         SysFile sysFile = sysFileService.saveFile(itemBO);
@@ -90,14 +95,27 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             this.save(sysItemFile);
         }
 
-        return ImageFileInfo.builder()
-                .id(sysItemFile.getId())
-                .datasetItemId(sysItemFile.getItemId())
-                .fileId(sysItemFile.getFileId())
-                .type(sysItemFile.getType())
-                .description(sysItemFile.getDescription())
-                .url(sysFile.getUrl())
-                .build();
+        ImageUrlVO result = new ImageUrlVO();
+        result.setId(sysItemFile.getId());
+        result.setItemId(sysItemFile.getItemId());
+        result.setType(sysItemFile.getType());
+        result.setDescription(sysItemFile.getDescription());
+        result.setUrl(sysFile.getUrl());
+        result.setThumbnailUrl(thumbnailSysFile.getUrl());
+        result.setFileName(sysFile.getName());
+        result.setFormattedSize(sysFile.getSize());
+        result.setFormat(sysFile.getType());
+        result.setWidth(sysItemFile.getWidth());
+        result.setHeight(sysItemFile.getHeight());
+        result.setSceneType(sysItemFile.getSceneType());
+        result.setHazeLevel(sysItemFile.getHazeLevel());
+        result.setUsageCount(0L);
+        result.setCreateTime(sysItemFile.getCreateTime());
+
+        // 发布文件创建事件，通知数据集统计更新
+        eventPublisher.publishEvent(new ItemFileCreatedEvent(itemId, sysFile.getId()));
+
+        return result;
     }
 
 
@@ -126,34 +144,98 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     }
 
     @Override
-    public boolean deleteItemFile(Long itemId) {
-        SysItemFile sysItemFile = this.getById(itemId);
-        Assert.notNull(sysItemFile, "未查询到对应数据项");
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteFile(Long id) {
+        SysItemFile sysItemFile = this.getById(id);
+        if (sysItemFile == null) {
+            throw new BusinessException("图片不存在");
+        }
 
+        // 如果删除的是清晰图，检查是否还有其他清晰图
+        if ("clear".equals(sysItemFile.getType())) {
+            // 查询同一数据项下的其他清晰图数量
+            long clearCount = this.count(
+                    new LambdaQueryWrapper<SysItemFile>()
+                            .eq(SysItemFile::getItemId, sysItemFile.getItemId())
+                            .eq(SysItemFile::getType, "clear")
+                            .ne(SysItemFile::getId, id)
+            );
+            // 如果这是最后一张清晰图，检查是否还有有雾图
+            if (clearCount == 0) {
+                long hazyCount = this.count(
+                        new LambdaQueryWrapper<SysItemFile>()
+                                .eq(SysItemFile::getItemId, sysItemFile.getItemId())
+                                .eq(SysItemFile::getType, "hazy")
+                );
+                // 如果还有有雾图，则不允许删除最后一张清晰图
+                if (hazyCount > 0) {
+                    throw new BusinessException("配对组必须至少保留一张清晰图（Ground Truth），请先删除有雾图或整个数据项");
+                }
+            }
+        }
+
+        Long itemId = sysItemFile.getItemId();
         Long fileId = sysItemFile.getFileId();
         Long thumbnailFileId = sysItemFile.getThumbnailFileId();
 
         boolean res1 = sysFileService.deleteFile(fileId);
-        Assert.isTrue(res1, "删除原图失败");
+        if (!res1) {
+            throw new BusinessException("删除原图失败");
+        }
 
         boolean res2 = sysFileService.deleteFile(thumbnailFileId);
-        Assert.isTrue(res2, "删除缩略图失败");
+        if (!res2) {
+            throw new BusinessException("删除缩略图失败");
+        }
 
-        return this.removeById(itemId);
+        boolean result = this.removeById(id);
+
+        // 发布文件删除事件，通知数据集统计更新
+        if (result) {
+            eventPublisher.publishEvent(new ItemFileDeletedEvent(itemId, fileId));
+        }
+
+        return result;
+    }
+
+    @Override
+    public BatchDeleteResultVO batchDelete(List<Long> ids) {
+        BatchDeleteResultVO result = new BatchDeleteResultVO();
+        List<Long> successIds = new ArrayList<>();
+        List<BatchDeleteResultVO.FailedItem> failedItems = new ArrayList<>();
+
+        for (Long id : ids) {
+            try {
+                boolean deleted = this.deleteFile(id);
+                if (deleted) {
+                    successIds.add(id);
+                } else {
+                    failedItems.add(new BatchDeleteResultVO.FailedItem(id, "删除失败"));
+                }
+            } catch (Exception e) {
+                failedItems.add(new BatchDeleteResultVO.FailedItem(id, e.getMessage()));
+            }
+        }
+
+        result.setSuccessIds(successIds);
+        result.setFailedItems(failedItems);
+        result.setSuccessCount(successIds.size());
+        result.setFailedCount(failedItems.size());
+        return result;
     }
 
     @NotNull
-    private static ItemFileBO getThumbnailItemBO(ItemFileBO itemBO) {
-        File thumbnailFile = ImageUtils.generateThumbnail(itemBO.getFile(), 400, 400);
+    private ItemFileBO getThumbnailItemBO(ItemFileBO itemBO) {
+        // 使用 ImageProcessingService 生成缩略图
+        File thumbnailFile = imageProcessingService.generateThumbnail(itemBO.getFile(), 400, 400);
 
         try (InputStream thumbnailInputStream = new FileInputStream(thumbnailFile)) {
             long size = thumbnailFile.length();
             String md5 = FileUploadUtils.getMd5(thumbnailInputStream);
             String extension = itemBO.getExtension();
             String name = addSuffix(itemBO.getName(), "_thumbnail");
-            String originPath = Paths.get(itemBO.getPath()).getParent().toString();
-            String objectName = Path.of("thumbnail", originPath, md5 + "." + extension).toString().replace("\\", "/");
-            String path = Path.of("thumbnail", objectName).toString();
+            // 使用 FilePathBuilder 构建缩略图路径
+            String objectName = filePathBuilder.buildThumbnailObjectName(itemBO.getObjectName(), md5, extension);
 
             ItemFileBO thumbnailItemBO = new ItemFileBO();
             thumbnailItemBO.setFile(thumbnailFile);
@@ -161,7 +243,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             thumbnailItemBO.setObjectName(objectName);
             thumbnailItemBO.setExtension(extension);
             thumbnailItemBO.setMd5(md5);
-            thumbnailItemBO.setPath(path);
+            thumbnailItemBO.setPath(objectName);
             thumbnailItemBO.setSize(size);
             thumbnailItemBO.setDescription(itemBO.getDescription());
             thumbnailItemBO.setType(itemBO.getType());
@@ -189,11 +271,13 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     }
 
     @Override
-    public ImageDetailVO getImageDetail(Long id) {
+    public ImageUrlVO getImageById(Long id) {
         SysItemFile itemFile = this.getById(id);
-        Assert.notNull(itemFile, "图片不存在");
+        if (itemFile == null) {
+            throw new BusinessException("图片不存在");
+        }
 
-        ImageDetailVO detail = new ImageDetailVO();
+        ImageUrlVO detail = new ImageUrlVO();
         detail.setId(itemFile.getId());
         detail.setItemId(itemFile.getItemId());
         detail.setType(itemFile.getType());
@@ -205,18 +289,15 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         detail.setUsageCount(itemFile.getUsageCount() != null ? itemFile.getUsageCount() : 0L);
         detail.setCreateTime(itemFile.getCreateTime());
 
-        // 设置分辨率
-        if (itemFile.getWidth() != null && itemFile.getHeight() != null) {
-            detail.setResolution(itemFile.getWidth() + "x" + itemFile.getHeight());
-        }
-
         // 获取文件信息
         SysFile sysFile = sysFileService.getById(itemFile.getFileId());
         if (sysFile != null) {
             detail.setFileName(sysFile.getName());
-            detail.setFileSize(sysFile.getSize());
-            detail.setFileFormat(sysFile.getType());
+            detail.setFormattedSize(sysFile.getSize());
+            detail.setSizeBytes(sysFile.getSizeBytes());
+            detail.setFormat(sysFile.getType());
             detail.setUrl(sysFile.getUrl());
+            detail.setMd5(sysFile.getMd5());
         }
 
         // 获取缩略图URL
@@ -227,36 +308,98 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             }
         }
 
-        // 获取数据项和数据集信息
-        SysDatasetItem datasetItem = sysDatasetItemService.getById(itemFile.getItemId());
+        // 使用 Mapper 直接查询数据项和数据集，避免循环依赖
+        SysDatasetItem datasetItem = sysDatasetItemMapper.selectById(itemFile.getItemId());
         if (datasetItem != null) {
             detail.setDatasetId(datasetItem.getDatasetId());
-            SysDataset dataset = sysDatasetService.getDatasetById(datasetItem.getDatasetId());
+
+            // 设置数据项简要信息
+            DatasetItemSimpleVO datasetItemSimpleVO = new DatasetItemSimpleVO();
+            datasetItemSimpleVO.setId(datasetItem.getId());
+            datasetItemSimpleVO.setDatasetId(datasetItem.getDatasetId());
+            datasetItemSimpleVO.setName(datasetItem.getName());
+            detail.setDatasetItem(datasetItemSimpleVO);
+
+            SysDataset dataset = sysDatasetMapper.selectById(datasetItem.getDatasetId());
             if (dataset != null) {
                 detail.setDatasetName(dataset.getName());
             }
         }
 
-        // 查询同一数据项下的其他图片数量，填充配对信息
-        long itemCount = this.count(
+        // 查询同一数据项下的其他图片，填充配对信息
+        List<SysItemFile> pairedFiles = this.list(
             new LambdaQueryWrapper<SysItemFile>()
                 .eq(SysItemFile::getItemId, itemFile.getItemId())
+                    .ne(SysItemFile::getId, id)
         );
 
         // 设置配对信息
-        detail.setHasPairedImages(itemCount > 1);
-        detail.setPairedCount((int) itemCount);
+        detail.setHasPairedImages(!pairedFiles.isEmpty());
+        detail.setPairedCount(pairedFiles.size() + 1);
+
+        // 转换配对图片列表
+        if (!pairedFiles.isEmpty()) {
+            List<SimpleImageUrlVO> pairedVOList = new ArrayList<>();
+            for (SysItemFile pairedFile : pairedFiles) {
+                SimpleImageUrlVO simpleVO = new SimpleImageUrlVO();
+                simpleVO.setId(pairedFile.getId());
+                simpleVO.setItemId(pairedFile.getItemId());
+                simpleVO.setDatasetId(detail.getDatasetId());
+                simpleVO.setType(pairedFile.getType());
+
+                // 获取文件信息
+                SysFile pairedSysFile = sysFileService.getById(pairedFile.getFileId());
+                if (pairedSysFile != null) {
+                    simpleVO.setUrl(pairedSysFile.getUrl());
+                    simpleVO.setFileName(pairedSysFile.getName());
+                    simpleVO.setFormattedSize(pairedSysFile.getSize());
+                    simpleVO.setFormat(pairedSysFile.getType());
+                }
+
+                // 获取缩略图URL
+                if (pairedFile.getThumbnailFileId() != null) {
+                    SysFile pairedThumbnail = sysFileService.getById(pairedFile.getThumbnailFileId());
+                    if (pairedThumbnail != null) {
+                        simpleVO.setThumbnailUrl(pairedThumbnail.getUrl());
+                    }
+                }
+
+                simpleVO.setDescription(pairedFile.getDescription());
+                simpleVO.setWidth(pairedFile.getWidth());
+                simpleVO.setHeight(pairedFile.getHeight());
+                simpleVO.setHazeLevel(pairedFile.getHazeLevel());
+                simpleVO.setCreateTime(pairedFile.getCreateTime());
+
+                pairedVOList.add(simpleVO);
+            }
+            detail.setPairedFiles(pairedVOList);
+        }
 
         return detail;
     }
 
     @Override
-    public boolean updateImageItemInfo(ImageItemForm form) {
-        SysItemFile itemFile = this.getById(form.getItemFileId());
-        Assert.notNull(itemFile, "图片不存在");
+    public boolean updateItemFileInfo(Long id, ItemFileUpdateForm form) {
+        SysItemFile itemFile = this.getById(id);
+        if (itemFile == null) {
+            throw new BusinessException("图片不存在");
+        }
 
-        // 更新图片类型
-        if (form.getType() != null) {
+        // 更新图片类型时，校验配对完整性
+        if (form.getType() != null && !form.getType().equals(itemFile.getType())) {
+            // 如果将清晰图改为有雾图，需要检查是否还有其他清晰图
+            if ("clear".equals(itemFile.getType()) && "hazy".equals(form.getType())) {
+                // 查询同一数据项下的其他清晰图数量
+                long clearCount = this.count(
+                        new LambdaQueryWrapper<SysItemFile>()
+                                .eq(SysItemFile::getItemId, itemFile.getItemId())
+                                .eq(SysItemFile::getType, "clear")
+                                .ne(SysItemFile::getId, id)
+                );
+                if (clearCount == 0) {
+                    throw new BusinessException("配对组必须至少保留一张清晰图（Ground Truth），不能将最后一张清晰图改为有雾图");
+                }
+            }
             itemFile.setType(form.getType());
         }
         // 更新标注信息
@@ -277,228 +420,43 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         this.baseMapper.incrementUsageCount(id);
     }
 
-
     @Override
-    public DatasetItemVO createDatasetItemAndUpload(DatasetItemUploadForm form) {
-        // 校验配对图片分辨率一致性
-        validatePairedImageResolution(form);
-
-        // 创建数据项
-        SysDatasetItem datasetItem = new SysDatasetItem();
-        datasetItem.setDatasetId(form.getDatasetId());
-        datasetItem.setName(form.getItemName());
-        sysDatasetItemService.save(datasetItem);
-
-        // 保存清晰图
-        ItemFileBO clearItemBO = FileUploadUtils.createItemFileBO(
-                form.getClearImage(),
-                "",
-                "",
-                "clear",
-                "",
-                form.getSceneType(),
-                ""
-        );
-        ImageFileInfo clearImageInfo = this.saveItemFile(datasetItem.getId(), clearItemBO);
-
-        // 保存有雾图
-        List<ItemFileBO> hazyImages = new ArrayList<>();
-        for (int i = 0; i < form.getHazyImages().size(); i++) {
-            String hazeLevel = form.getHazeLevels().get(i);
-            ItemFileBO hazyItemBO = FileUploadUtils.createItemFileBO(
-                    form.getHazyImages().get(i),
-                    "",
-                    "",
-                    "hazy",
-                    "",
-                    form.getSceneType(),
-                    hazeLevel
-            );
-            ImageFileInfo hazyImageInfo = this.saveItemFile(datasetItem.getId(), hazyItemBO);
-            hazyImages.add(hazyItemBO);
+    public ImageUrlVO convertToImageUrlVO(SysItemFile itemFile) {
+        if (itemFile == null) {
+            return null;
         }
 
-        // 构建返回结果
-        DatasetItemVO result = new DatasetItemVO();
-        result.setId(datasetItem.getId());
+        ImageUrlVO vo = new ImageUrlVO();
+        vo.setId(itemFile.getId());
+        vo.setItemId(itemFile.getItemId());
+        vo.setType(itemFile.getType());
+        vo.setDescription(itemFile.getDescription());
+        vo.setSceneType(itemFile.getSceneType());
+        vo.setHazeLevel(itemFile.getHazeLevel());
+        vo.setWidth(itemFile.getWidth());
+        vo.setHeight(itemFile.getHeight());
+        vo.setUsageCount(itemFile.getUsageCount() != null ? itemFile.getUsageCount() : 0L);
+        vo.setCreateTime(itemFile.getCreateTime());
 
-        return result;
-    }
-
-    /**
-     * 校验配对图片分辨率一致性
-     */
-    private void validatePairedImageResolution(DatasetItemUploadForm form) {
-        // 校验清晰图
-        validateImageFile(form.getClearImage());
-
-        // 解析清晰图宽高
-        int[] clearDimensions = FileUploadUtils.getImageDimensions(form.getClearImage());
-        if (clearDimensions[0] == 0 || clearDimensions[1] == 0) {
-            throw new BusinessException("无法解析清晰图分辨率");
+        // 获取文件信息
+        SysFile sysFile = sysFileService.getById(itemFile.getFileId());
+        if (sysFile != null) {
+            vo.setFileName(sysFile.getName());
+            vo.setFormattedSize(sysFile.getSize());
+            vo.setSizeBytes(sysFile.getSizeBytes());
+            vo.setFormat(sysFile.getType());
+            vo.setUrl(sysFile.getUrl());
+            vo.setMd5(sysFile.getMd5());
         }
 
-        // 检查每张有雾图的分辨率和格式
-        for (int i = 0; i < form.getHazyImages().size(); i++) {
-            MultipartFile hazyImage = form.getHazyImages().get(i);
-
-            // 校验文件格式和大小
-            validateImageFile(hazyImage);
-
-            // 校验分辨率
-            int[] hazyDimensions = FileUploadUtils.getImageDimensions(hazyImage);
-            if (hazyDimensions[0] == 0 || hazyDimensions[1] == 0) {
-                throw new BusinessException("无法解析有雾图分辨率：" + hazyImage.getOriginalFilename());
-            }
-
-            if (hazyDimensions[0] != clearDimensions[0] || hazyDimensions[1] != clearDimensions[1]) {
-                throw new BusinessException(String.format(
-                    "配对图片分辨率不一致，清晰图：%dx%d，有雾图%s：%dx%d",
-                    clearDimensions[0], clearDimensions[1],
-                    hazyImage.getOriginalFilename(),
-                    hazyDimensions[0], hazyDimensions[1]
-                ));
-            }
-        }
-    }
-
-    @Override
-    public BatchUploadResultVO batchCreateDatasetItemAndUpload(BatchDatasetItemUploadForm form) {
-        int totalGroups = 0;
-        int successGroups = 0;
-        int failedGroups = 0;
-        List<BatchActionFailureDetailVO> failureDetails = new ArrayList<>();
-
-        // 按文件名前缀分组
-        Map<String, Map<String, Object>> fileGroups = new HashMap<>();
-
-        for (MultipartFile file : form.getFiles()) {
-            String fileName = file.getOriginalFilename();
-            if (fileName == null) continue;
-
-            // 提取文件名前缀（去掉下划线和后缀之前的部分）
-            String prefix = extractFilePrefix(fileName);
-
-            if (!fileGroups.containsKey(prefix)) {
-                fileGroups.put(prefix, new HashMap<>());
-                totalGroups++;
-            }
-
-            Map<String, Object> group = fileGroups.get(prefix);
-
-            // 判断文件类型
-            if (isClearImage(fileName)) {
-                group.put("clear", file);
-            } else if (isHazyImage(fileName)) {
-                String hazeLevel = extractHazeLevel(fileName);
-                if (!group.containsKey("hazy")) {
-                    group.put("hazy", new ArrayList<Map<String, Object>>());
-                }
-
-                Map<String, Object> hazyInfo = new HashMap<>();
-                hazyInfo.put("file", file);
-                hazyInfo.put("hazeLevel", hazeLevel);
-                ((List<Map<String, Object>>) group.get("hazy")).add(hazyInfo);
+        // 获取缩略图URL
+        if (itemFile.getThumbnailFileId() != null) {
+            SysFile thumbnailFile = sysFileService.getById(itemFile.getThumbnailFileId());
+            if (thumbnailFile != null) {
+                vo.setThumbnailUrl(thumbnailFile.getUrl());
             }
         }
 
-        // 处理每个分组
-        for (Map.Entry<String, Map<String, Object>> entry : fileGroups.entrySet()) {
-            String groupName = entry.getKey();
-            Map<String, Object> group = entry.getValue();
-
-            try {
-                // 验证组完整性
-                if (!group.containsKey("clear") || !group.containsKey("hazy")) {
-                    throw new BusinessException("配对不完整：缺少清晰图或有雾图");
-                }
-
-                // 创建配对上传表单
-                DatasetItemUploadForm pairForm = new DatasetItemUploadForm();
-                pairForm.setDatasetId(form.getDatasetId());
-                pairForm.setItemName(groupName);
-                pairForm.setSceneType(form.getSceneType());
-
-                MultipartFile clearImage =
-                    (MultipartFile) group.get("clear");
-                pairForm.setClearImage(clearImage);
-
-                List<Map<String, Object>> hazyInfos =
-                    (List<Map<String, Object>>) group.get("hazy");
-                List<MultipartFile> hazyImages = new ArrayList<>();
-                List<String> hazeLevels = new ArrayList<>();
-
-                for (Map<String, Object> hazyInfo : hazyInfos) {
-                    hazyImages.add((MultipartFile) hazyInfo.get("file"));
-                    hazeLevels.add((String) hazyInfo.get("hazeLevel"));
-                }
-
-                pairForm.setHazyImages(hazyImages);
-                pairForm.setHazeLevels(hazeLevels);
-
-                // 校验分辨率一致性（这会在saveImagePair中自动执行）
-                // 保存配对图片
-                DatasetItemVO result = this.createDatasetItemAndUpload(pairForm);
-                successGroups++;
-            } catch (Exception e) {
-                BatchActionFailureDetailVO failureDetail = new BatchActionFailureDetailVO();
-                failureDetail.setIdentifier(groupName);
-                failureDetail.setReason(e.getMessage());
-                failureDetails.add(failureDetail);
-                failedGroups++;
-            }
-        }
-
-        BatchUploadResultVO result = new BatchUploadResultVO();
-        result.setSuccessCount(successGroups);
-        result.setFailedCount(failedGroups);
-        result.setTotalFiles(form.getFiles().size());
-        result.setMessage(String.format("批量上传完成：成功%d组，失败%d组", successGroups, failedGroups));
-        result.setFailureDetails(failureDetails.isEmpty() ? null : failureDetails);
-        return result;
-    }
-
-    /**
-     * 从文件名提取前缀（分组用）
-     */
-    private String extractFilePrefix(String fileName) {
-        // 移除文件扩展名
-        String nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
-
-        // 按下划线分割
-        String[] parts = nameWithoutExt.split("_");
-
-        // 返回第一部分作为前缀
-        return parts.length > 0 ? parts[0] : nameWithoutExt;
-    }
-
-    /**
-     * 判断是否为清晰图
-     */
-    private boolean isClearImage(String fileName) {
-        return fileName.contains("_clear") || fileName.contains("_gt");
-    }
-
-    /**
-     * 判断是否为有雾图
-     */
-    private boolean isHazyImage(String fileName) {
-        return fileName.contains("_hazy");
-    }
-
-    /**
-     * 从文件名提取雾霾程度
-     */
-    private String extractHazeLevel(String fileName) {
-        // 匹配 *_hazy_light.*, *_hazy_medium.*, *_hazy_heavy.*
-        Pattern pattern = Pattern.compile(".*_hazy_(light|medium|heavy).*");
-        Matcher matcher = pattern.matcher(fileName);
-
-        if (matcher.matches()) {
-            return matcher.group(1);
-        }
-
-        // 默认返回medium
-        return "medium";
+        return vo;
     }
 }

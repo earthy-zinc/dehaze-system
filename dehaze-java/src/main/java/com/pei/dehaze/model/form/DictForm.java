@@ -2,6 +2,7 @@ package com.pei.dehaze.model.form;
 
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Schema(description = "字典表单对象")
@@ -12,12 +13,15 @@ public class DictForm {
     private Long id;
 
     @Schema(description="类型编码")
+    @NotBlank(message = "字典类型编码不能为空")
     private String typeCode;
 
     @Schema(description="字典名称")
+    @NotBlank(message = "字典名称不能为空")
     private String name;
 
     @Schema(description="字典值")
+    @NotBlank(message = "字典值不能为空")
     private String value;
 
     @Schema(description="状态(1:启用;0:禁用)")

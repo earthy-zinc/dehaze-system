@@ -1,5 +1,8 @@
 package com.pei.dehaze.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -10,8 +13,11 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
+
+import static com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping.NON_FINAL;
 
 /**
  * Redis 缓存配置
@@ -52,8 +58,18 @@ public class RedisCacheConfig {
 
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
 
+        // 创建支持 Java 8 日期时间类型的 JSON 序列化器，并启用类型信息保存
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        // 启用类型信息保存，这样反序列化时能正确还原对象类型
+        objectMapper.activateDefaultTyping(
+                LaissezFaireSubTypeValidator.instance,
+                NON_FINAL
+        );
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+
         config = config.serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()));
-        config = config.serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.json()));
+        config = config.serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer));
 
         CacheProperties.Redis redisProperties = cacheProperties.getRedis();
 

@@ -10,9 +10,8 @@
             sdi.id AS id,
             sdi.dataset_id AS datasetId,
             sdi.name AS name,
-            MAX(sif.scene_type) AS sceneType,
-            MAX(sif.haze_level) AS hazeLevel,
             sdi.create_time AS createTime,
+        sdi.update_time AS updateTime,
             <if test="keywords != null and keywords != ''">
             MAX(CASE WHEN sf.name = #{keywords} THEN 100
                   WHEN sf.name LIKE CONCAT('%', #{keywords}, '%') THEN 50
@@ -59,7 +58,7 @@
         <if test="maxSize != null">
             AND CAST(REPLACE(REPLACE(sf.size, ' ', ''), 'B', '') AS UNSIGNED) &lt;= #{maxSize}
         </if>
-        GROUP BY sdi.id, sdi.dataset_id, sdi.name, sdi.create_time
+        GROUP BY sdi.id, sdi.dataset_id, sdi.name, sdi.create_time, sdi.update_time
         <if test="keywords != null and keywords != ''">
             ORDER BY relevance DESC, sdi.create_time DESC
         </if>

@@ -50,6 +50,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
                 .name(fileBO.getName())
                 .objectName(fileBO.getObjectName())
                 .size(FileUtil.readableFileSize(fileBO.getSize()))
+                .sizeBytes(fileBO.getSize())
                 .type(fileBO.getExtension())
                 .url(fileBO.getUrl())
                 .md5(fileBO.getMd5())

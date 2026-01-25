@@ -19,6 +19,17 @@ public interface FileService {
     FileBO uploadFile(FileBO fileBO);
 
     /**
+     * 上传文件（使用输入流）
+     *
+     * @param objectName  文件对象名
+     * @param inputStream 文件输入流
+     * @param fileSize    文件大小
+     * @param contentType 文件类型
+     * @return 文件访问路径
+     */
+    String uploadFile(String objectName, InputStream inputStream, long fileSize, String contentType);
+
+    /**
      * 删除文件
      *
      * @param objectName 文件完整 objectName

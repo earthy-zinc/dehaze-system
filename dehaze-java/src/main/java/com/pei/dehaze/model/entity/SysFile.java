@@ -3,13 +3,17 @@ package com.pei.dehaze.model.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class SysFile extends BaseEntity {
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -22,7 +26,15 @@ public class SysFile extends BaseEntity {
 
     private String objectName;
 
+    /**
+     * 文件大小（格式化显示，如 "2.44MB"）
+     */
     private String size;
+
+    /**
+     * 文件大小（原始字节数）
+     */
+    private Long sizeBytes;
 
     private String path;
 

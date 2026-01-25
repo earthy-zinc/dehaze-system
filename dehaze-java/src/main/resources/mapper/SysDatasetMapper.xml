@@ -28,4 +28,106 @@
         ORDER BY sdi.dataset_id, sif.item_id, sif.type
     </select>
 
+    <!-- 统计数据集图片总数 -->
+    <select id="countImagesByDatasetIds" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_item_file sif
+        JOIN sys_dataset_item sdi ON sif.item_id = sdi.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+    </select>
+
+    <!-- 统计场景类型分布 -->
+    <select id="countSceneDistribution" resultType="java.util.Map">
+        SELECT
+        COALESCE(NULLIF(sif.scene_type, ''), '未分类') AS scene_type,
+        COUNT(*) AS count
+        FROM sys_item_file sif
+        JOIN sys_dataset_item sdi ON sif.item_id = sdi.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+        GROUP BY COALESCE(NULLIF(sif.scene_type, ''), '未分类')
+    </select>
+
+    <!-- 统计雾霾程度分布 -->
+    <select id="countHazeDistribution" resultType="java.util.Map">
+        SELECT
+        COALESCE(NULLIF(sif.haze_level, ''), '未标注') AS haze_level,
+        COUNT(*) AS count
+        FROM sys_item_file sif
+        JOIN sys_dataset_item sdi ON sif.item_id = sdi.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+        GROUP BY COALESCE(NULLIF(sif.haze_level, ''), '未标注')
+    </select>
+
+    <!-- 统计文件格式分布（按数据集ID） -->
+    <select id="countFormatDistributionByDatasetIds" resultType="java.util.Map">
+        SELECT sf.type AS file_type, COUNT(*) AS count
+        FROM sys_item_file sif
+        JOIN sys_dataset_item sdi ON sif.item_id = sdi.id
+        JOIN sys_file sf ON sif.file_id = sf.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+        GROUP BY sf.type
+    </select>
+
+    <!-- 统计数据项总数 -->
+    <select id="countItemsByDatasetIds" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_dataset_item sdi
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+    </select>
+
+    <!-- 统计文件总大小（字节） -->
+    <select id="countTotalSizeByDatasetIds" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(sf.size), 0)
+        FROM sys_item_file sif
+        JOIN sys_file sf ON sif.file_id = sf.id
+        WHERE sif.item_id IN (
+        SELECT id FROM sys_dataset_item sdi
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+        )
+    </select>
+
+    <!-- 统计清晰图片数量 -->
+    <select id="countClearImagesByDatasetIds" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_item_file sif
+        JOIN sys_dataset_item sdi ON sif.item_id = sdi.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+        AND (LOWER(sif.type) LIKE '%clear%' OR LOWER(sif.type) LIKE '%clean%'
+        OR sif.type LIKE '%清晰%' OR sif.type LIKE '%无雾%')
+    </select>
+
+    <!-- 统计有雾图片数量 -->
+    <select id="countHazyImagesByDatasetIds" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM sys_item_file sif
+        JOIN sys_dataset_item sdi ON sif.item_id = sdi.id
+        WHERE sdi.dataset_id IN
+        <foreach collection="datasetIds" item="datasetId" open="(" separator="," close=")">
+            #{datasetId}
+        </foreach>
+        AND (LOWER(sif.type) LIKE '%haze%' OR LOWER(sif.type) LIKE '%hazy%'
+        OR sif.type LIKE '%有雾%')
+    </select>
+
 </mapper>

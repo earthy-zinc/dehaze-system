@@ -1,7 +1,6 @@
 package com.pei.dehaze.common.result;
 
 import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 
 /**
  * 响应码枚举
@@ -10,7 +9,6 @@ import lombok.NoArgsConstructor;
  * @since 2020-06-23
  **/
 @AllArgsConstructor
-@NoArgsConstructor
 public enum ResultCode implements IResultCode {
 
     SUCCESS("00000", "一切ok"),
@@ -52,9 +50,9 @@ public enum ResultCode implements IResultCode {
     SYSTEM_EXECUTION_TIMEOUT("B0100", "系统执行超时"),
     SYSTEM_ORDER_PROCESSING_TIMEOUT("B0101", "系统订单处理超时"),
 
-    SYSTEM_DISASTER_RECOVERY_TRIGGER("B0200", "系统容灾功能被出发"),
-    FLOW_LIMIT("B0210", "系统限流"),
-    RATE_LIMIT("B0211", "系统限流"),
+    SYSTEM_DISASTER_RECOVERY_TRIGGER("B0200", "系统容灾功能被触发"),
+    FLOW_LIMIT("B0210", "系统并发限流"),
+    RATE_LIMIT("B0211", "系统速率限流"),
     DEGRADATION("B0220", "系统功能降级"),
 
     SYSTEM_RESOURCE_ERROR("B0300", "系统资源异常"),

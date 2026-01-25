@@ -2,60 +2,80 @@ package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.model.bo.ItemFileBO;
-import com.pei.dehaze.model.dto.ImageFileInfo;
 import com.pei.dehaze.model.entity.SysItemFile;
-import com.pei.dehaze.model.form.BatchDatasetItemUploadForm;
-import com.pei.dehaze.model.form.ImageItemForm;
-import com.pei.dehaze.model.form.DatasetItemUploadForm;
-import com.pei.dehaze.model.vo.*;
+import com.pei.dehaze.model.form.BatchDeleteForm;
+import com.pei.dehaze.model.form.ItemFileUpdateForm;
+import com.pei.dehaze.model.vo.BatchDeleteResultVO;
+import com.pei.dehaze.model.vo.ImageUrlVO;
 
 import java.util.List;
-import java.util.Map;
 
 public interface SysItemFileService extends IService<SysItemFile> {
-    ImageFileInfo saveItemFile(Long itemId, ItemFileBO itemBO);
-
-    List<ImageUrlVO> getImageUrlVOs(Long itemId);
-
-    boolean deleteItemFile(Long itemId);
 
     /**
-     * 获取图片详情
+     * 保存数据项图片
      *
-     * @param id ItemFile ID
-     * @return 图片详情VO
+     * @param itemId 所属数据项ID
+     * @param itemBO 图片业务对象
+     * @return 图片信息VO
      */
-    ImageDetailVO getImageDetail(Long id);
+    ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO);
+
+    /**
+     * 获取指定数据项的图片列表
+     *
+     * @param itemId 数据项ID
+     * @return 图片URL列表
+     */
+    List<ImageUrlVO> getImageUrlVOs(Long itemId);
+
+    /**
+     * 删除图片
+     *
+     * @param id 图片ID
+     * @return 是否删除成功
+     */
+    boolean deleteFile(Long id);
+
+    /**
+     * 批量删除图片
+     *
+     * @param ids 图片ID列表
+     * @return 批量删除结果
+     */
+    BatchDeleteResultVO batchDelete(List<Long> ids);
+
+    /**
+     * 获取图片详情（包含配对图片和数据项信息）
+     *
+     * @param id 图片ID
+     * @return 图片详情VO（包含配对图片列表和数据项信息）
+     */
+    ImageUrlVO getImageById(Long id);
 
     /**
      * 修改图片信息（包含标注信息）
      * 合并了原来的"修改图片信息"和"图片标注"功能
      *
-     * @param form 图片信息表单
+     * @param id 图片ID
+     * @param form 图片更新表单
      * @return 更新结果
      */
-    boolean updateImageItemInfo(ImageItemForm form);
+    boolean updateItemFileInfo(Long id, ItemFileUpdateForm form);
 
     /**
      * 增加图片使用次数
      *
-     * @param id ItemFile ID
+     * @param id 图片ID
      */
     void incrementUsageCount(Long id);
 
     /**
-     * 保存配对图片（一张清晰图+多张有雾图）
+     * 将SysItemFile实体转换为ImageUrlVO
+     * 用于批量查询时避免N+1问题
      *
-     * @param form 配对上传表单
-     * @return 配对结果
+     * @param itemFile 数据项文件实体
+     * @return 图片URL信息VO
      */
-    DatasetItemVO createDatasetItemAndUpload(DatasetItemUploadForm form);
-
-    /**
-     * 批量保存配对图片（按文件名自动匹配）
-     *
-     * @param form 批量上传表单
-     * @return 批量处理结果
-     */
-    BatchUploadResultVO batchCreateDatasetItemAndUpload(BatchDatasetItemUploadForm form);
+    ImageUrlVO convertToImageUrlVO(SysItemFile itemFile);
 }

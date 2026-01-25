@@ -9,6 +9,7 @@
         <result property="type" column="type" jdbcType="VARCHAR"/>
         <result property="url" column="url" jdbcType="VARCHAR"/>
         <result property="originUrl" column="origin_url" jdbcType="VARCHAR"/>
+        <result property="thumbnailUrl" column="url" jdbcType="VARCHAR"/>
         <result property="description" column="description" jdbcType="VARCHAR"/>
         <result property="width" column="width" jdbcType="INTEGER"/>
         <result property="height" column="height" jdbcType="INTEGER"/>
@@ -18,6 +19,7 @@
 
     <select id="listImageUrl" resultMap="ImageUrlMap">
         SELECT sif.id          AS id,
+               sif.item_id AS item_id,
                sif.type        AS type,
                sf_t.url        AS url,
                sf.url          AS origin_url,

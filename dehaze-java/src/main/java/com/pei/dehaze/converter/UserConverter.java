@@ -36,8 +36,8 @@ public interface UserConverter {
     })
     Page<UserPageVO> bo2PageVo(Page<UserBO> bo);
 
-    @InheritInverseConfiguration(name = "entity2Form")
     @Mappings({
+            @Mapping(target = "id", ignore = true),
                     @Mapping(target = "createTime", ignore = true),
                     @Mapping(target = "updateTime", ignore = true),
                     @Mapping(target = "deleted", ignore = true),
@@ -51,7 +51,7 @@ public interface UserConverter {
             @Mapping(target = "perms", ignore = true),
     })
     UserInfoVO toUserInfoVo(SysUser entity);
-    
+
     @Mappings({
             @Mapping(target = "createTime", ignore = true),
             @Mapping(target = "updateTime", ignore = true),

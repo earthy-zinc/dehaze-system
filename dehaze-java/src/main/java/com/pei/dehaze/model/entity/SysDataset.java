@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
+import com.pei.dehaze.common.enums.StatusEnum;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -32,7 +33,7 @@ public class SysDataset  extends BaseEntity {
     /**
      * 状态(1:正常;0:禁用)
      */
-    private Integer status;
+    private StatusEnum status;
 
     /**
      * 逻辑删除标识(1:已删除;0:未删除)

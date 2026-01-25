@@ -24,6 +24,10 @@ public class BatchOperationResultVO {
     @Schema(description = "操作消息")
     private String message;
 
+    @Schema(description = "成功的ID列表")
+    private List<Long> successIds;
+
     @Schema(description = "失败详情列表")
     private List<BatchActionFailureDetailVO> failureDetails;
+
 }

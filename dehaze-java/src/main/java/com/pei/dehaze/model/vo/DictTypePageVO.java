@@ -20,4 +20,6 @@ public class DictTypePageVO {
     @Schema(description="状态：1:启用;0:禁用")
     private Integer status;
 
+    @Schema(description = "备注")
+    private String remark;
 }

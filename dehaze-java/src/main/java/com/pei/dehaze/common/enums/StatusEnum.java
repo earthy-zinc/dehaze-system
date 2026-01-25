@@ -1,5 +1,7 @@
 package com.pei.dehaze.common.enums;
 
+import com.baomidou.mybatisplus.annotation.EnumValue;
+import com.fasterxml.jackson.annotation.JsonValue;
 import com.pei.dehaze.common.base.IBaseEnum;
 import lombok.Getter;
 
@@ -15,6 +17,8 @@ public enum StatusEnum implements IBaseEnum<Integer> {
     ENABLE(1, "启用"),
     DISABLE (0, "禁用");
 
+    @JsonValue
+    @EnumValue
     private final Integer value;
 
     private final String label;

@@ -9,6 +9,9 @@ public class DirExistValidator implements ConstraintValidator<DirExists, String>
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
+        if (value == null || value.trim().isEmpty()) {
+            return false;
+        }
         File directory = new File(value);
         return directory.exists() && directory.isDirectory(); // 路径存在且为目录
     }

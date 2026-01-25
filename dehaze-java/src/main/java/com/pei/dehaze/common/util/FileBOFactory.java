@@ -1,0 +1,139 @@
+package com.pei.dehaze.common.util;
+
+import cn.hutool.core.io.FileUtil;
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.model.bo.FileBO;
+import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.service.ImageProcessingService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+
+/**
+ * FileBO 工厂类
+ * 从 FileUploadUtils 抽取的 FileBO 构建逻辑，职责更加单一
+ */
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class FileBOFactory {
+
+    private final FilePathBuilder filePathBuilder;
+    private final ImageProcessingService imageProcessingService;
+
+    /**
+     * 从 MultipartFile 创建 FileBO
+     *
+     * @param file 上传的文件
+     * @param path 存储路径前缀（如数据集名称）
+     * @return FileBO
+     */
+    public FileBO createFileBO(MultipartFile file, String path) {
+        try {
+            FileBO fileBO = new FileBO();
+            populateFileBO(file, path, fileBO);
+            return fileBO;
+        } catch (IOException e) {
+            throw new BusinessException("创建 FileBO 失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从 File 创建 FileBO
+     *
+     * @param file 文件对象
+     * @param path 存储路径前缀
+     * @return FileBO
+     */
+    public FileBO createFileBO(File file, String path) {
+        try (FileInputStream stream = new FileInputStream(file)) {
+            FileBO fileBO = new FileBO();
+
+            String filename = file.getName();
+            String extension = FileUtil.getSuffix(filename);
+            String md5 = FileUploadUtils.getMd5(stream);
+            String objectName = path + "/" + md5 + "." + extension;
+            String url = filePathBuilder.buildUrl(objectName);
+
+            fileBO.setFile(file);
+            fileBO.setName(filename);
+            fileBO.setObjectName(objectName);
+            fileBO.setExtension(extension);
+            fileBO.setMd5(md5);
+            fileBO.setPath(objectName);
+            fileBO.setSize(file.length());
+            fileBO.setUrl(url);
+            return fileBO;
+        } catch (IOException e) {
+            throw new BusinessException("创建 FileBO 失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从 MultipartFile 创建 ItemFileBO（数据项图片）
+     *
+     * @param file        上传的文件
+     * @param path        存储路径前缀（如数据集名称）
+     * @param type        图片类型（clear/hazy）
+     * @param description 描述
+     * @param sceneType   场景类型
+     * @param hazeLevel   雾霾等级
+     * @return ItemFileBO
+     */
+    public ItemFileBO createItemFileBO(
+            MultipartFile file,
+            String path,
+            String type,
+            String description,
+            String sceneType,
+            String hazeLevel) {
+        try {
+            ItemFileBO itemBO = new ItemFileBO();
+            populateFileBO(file, path, itemBO);
+            itemBO.setType(type);
+            itemBO.setDescription(description);
+            itemBO.setSceneType(sceneType);
+            itemBO.setHazeLevel(hazeLevel);
+
+            // 使用 ImageProcessingService 解析图片宽高
+            int[] dimensions = imageProcessingService.getImageDimensions(file);
+            itemBO.setWidth(dimensions[0] > 0 ? dimensions[0] : null);
+            itemBO.setHeight(dimensions[1] > 0 ? dimensions[1] : null);
+
+            return itemBO;
+        } catch (IOException e) {
+            throw new BusinessException("创建 ItemFileBO 失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 填充 FileBO 的公共字段
+     */
+    private void populateFileBO(MultipartFile file, String path, FileBO fileBO) throws IOException {
+        InputStream stream = file.getInputStream();
+        String filename = file.getOriginalFilename();
+        String extension = FileUtil.getSuffix(filename);
+        String md5 = FileUploadUtils.getMd5(stream);
+        String objectName = path + "/" + md5 + "." + extension;
+        String url = filePathBuilder.buildUrl(objectName);
+
+        File tempFile = Files.createTempFile(md5, "." + extension).toFile();
+        file.transferTo(tempFile);
+
+        fileBO.setFile(tempFile);
+        fileBO.setName(filename);
+        fileBO.setObjectName(objectName);
+        fileBO.setExtension(extension);
+        fileBO.setMd5(md5);
+        fileBO.setPath(objectName);
+        fileBO.setSize(file.getSize());
+        fileBO.setUrl(url);
+    }
+}

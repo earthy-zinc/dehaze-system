@@ -1,8 +1,10 @@
 package com.pei.dehaze.common.result;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 统一响应结构体
@@ -12,12 +14,35 @@ import java.io.Serializable;
  **/
 @Data
 public class Result<T> implements Serializable {
-
+    @Schema(description = "错误码")
     private String code;
 
+    @Schema(description = "返回数据")
     private T data;
 
+    @Schema(description = "消息")
     private String msg;
+
+    @Schema(description = "请求追踪ID，用于问题排查")
+    private String traceId;
+
+    @Schema(description = "错误详情列表")
+    private List<ErrorDetail> errors;
+
+    @Schema(description = "时间戳")
+    private Long timestamp;
+
+    @Data
+    public static class ErrorDetail {
+        @Schema(description = "错误字段")
+        private String field;
+
+        @Schema(description = "错误消息")
+        private String message;
+
+        @Schema(description = "错误代码")
+        private String code;
+    }
 
     public static <T> Result<T> success() {
         return success(null);
