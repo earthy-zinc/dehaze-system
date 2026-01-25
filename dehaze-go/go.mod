@@ -3,11 +3,14 @@ module github.com/earthyzinc/dehaze-go
 go 1.24.4
 
 require (
+	github.com/gin-contrib/cors v1.7.6
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/spf13/viper v1.21.0
-	golang.org/x/crypto v0.42.0
+	github.com/xuri/excelize/v2 v2.9.0
+	golang.org/x/crypto v0.47.0
+	gorm.io/driver/sqlite v1.6.0
 )
 
 require (
@@ -22,6 +25,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/gin-contrib/timeout v1.1.0 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
@@ -38,19 +42,27 @@ require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/richardlehane/mscfb v1.0.4 // indirect
+	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.0 // indirect
+	github.com/ulule/limiter/v3 v3.11.2 // indirect
+	github.com/xuri/efp v0.0.0-20240408161823-9ad904a10d6d // indirect
+	github.com/xuri/nfp v0.0.0-20240318013403-ab9948c2c4a7 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.21.0 // indirect
 	golang.org/x/image v0.31.0 // indirect
-	golang.org/x/net v0.44.0 // indirect
-	golang.org/x/sync v0.17.0 // indirect
-	google.golang.org/protobuf v1.36.9 // indirect
+	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 	modernc.org/libc v1.66.8 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
@@ -77,8 +89,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/driver/postgres v1.6.0

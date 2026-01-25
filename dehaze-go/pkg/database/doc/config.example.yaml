@@ -1,0 +1,121 @@
+# 数据库配置示例文件
+
+# MySQL 配置示例（支持主从分离）
+database:
+  driver: mysql                    # 数据库驱动（mysql/postgres/sqlite）
+  prefix: ""                       # 表名前缀
+  singular: true                   # 是否使用单数表名
+  log-mode: info                   # 日志模式（silent/error/warn/info）
+  log-zap: true                    # 是否使用zap日志
+  slow-threshold: 200              # 慢查询阈值（毫秒）
+  
+  # 连接池配置
+  max-idle-conns: 10               # 最大空闲连接数
+  max-open-conns: 100              # 最大打开连接数
+  conn-max-lifetime: 3600s         # 连接最大生命周期
+  conn-max-idle-time: 600s         # 连接最大空闲时间
+  
+  # MySQL专属配置
+  mysql:
+    charset: utf8mb4               # 字符集
+    parse-time: true               # 是否解析时间
+    loc: Local                     # 时区
+    engine: InnoDB                 # 存储引擎
+    default-string-size: 191       # string类型字段默认长度
+    skip-init-with-version: false  # 是否跳过版本初始化
+    
+    # 主库配置（必填）
+    master:
+      host: localhost
+      port: 3306
+      database: dehaze
+      username: root
+      password: password123
+      config: "charset=utf8mb4&parseTime=True&loc=Local"
+    
+    # 从库配置（可选，支持多从库）
+    slaves:
+      - host: slave1.example.com
+        port: 3306
+        database: dehaze
+        username: root
+        password: password123
+        config: "charset=utf8mb4&parseTime=True&loc=Local"
+      
+      - host: slave2.example.com
+        port: 3306
+        database: dehaze
+        username: root
+        password: password123
+        config: "charset=utf8mb4&parseTime=True&loc=Local"
+
+---
+# PostgreSQL 配置示例
+database:
+  driver: postgres
+  prefix: ""
+  singular: true
+  log-mode: info
+  log-zap: true
+  slow-threshold: 200
+  max-idle-conns: 10
+  max-open-conns: 100
+  conn-max-lifetime: 3600s
+  conn-max-idle-time: 600s
+  
+  # PostgreSQL专属配置
+  postgres:
+    ssl-mode: disable              # SSL模式（disable/require/verify-ca/verify-full）
+    prefer-simple-protocol: false  # 是否使用简单协议
+    
+    # 主库配置（必填）
+    master:
+      host: localhost
+      port: 5432
+      database: dehaze
+      username: postgres
+      password: password123
+      config: "sslmode=disable"
+    
+    # 从库配置（可选）
+    slaves:
+      - host: slave1.example.com
+        port: 5432
+        database: dehaze
+        username: postgres
+        password: password123
+        config: "sslmode=disable"
+
+---
+# SQLite 配置示例
+database:
+  driver: sqlite
+  prefix: ""
+  singular: true
+  log-mode: info
+  log-zap: true
+  slow-threshold: 200
+  max-idle-conns: 1                # SQLite建议设置为1
+  max-open-conns: 1                # SQLite建议设置为1
+  
+  # SQLite专属配置
+  sqlite:
+    path: ./data/dehaze.db         # 数据库文件路径
+
+---
+# 旧配置格式兼容（将被 MigrateFromOldConfig 自动转换）
+db:
+  type: mysql
+  path: localhost
+  port: 3306
+  config: charset=utf8mb4&parseTime=True&loc=Local
+  name: dehaze
+  username: root
+  password: password123
+  max-idle-conns: 10
+  max-open-conns: 100
+  singular: true
+  log-mode: info
+  log-zap: true
+  engine: InnoDB
+  prefix: ""

@@ -76,7 +76,7 @@ graph TD
 
 2. **数据库初始化**
    ```bash
-   mysql -u root -p < ./sql/init.sql
+   mysql -u root -p < ./sql/schema.sql
    ```
 
 3. **配置文件**

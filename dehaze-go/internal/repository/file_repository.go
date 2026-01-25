@@ -1,0 +1,67 @@
+package repository
+
+import (
+	"context"
+
+	"github.com/earthyzinc/dehaze-go/internal/model"
+	"gorm.io/gorm"
+)
+
+type fileRepository struct {
+	db *gorm.DB
+}
+
+// NewFileRepository 创建文件仓储实例
+func NewFileRepository(db *gorm.DB) IFileRepository {
+	return &fileRepository{db: db}
+}
+
+var _ IFileRepository = (*fileRepository)(nil)
+
+func (r *fileRepository) FindByID(ctx context.Context, id int64) (*model.SysFile, error) {
+	var file model.SysFile
+	err := r.db.WithContext(ctx).Where("id = ?", id).First(&file).Error
+	if err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+func (r *fileRepository) FindByMD5(ctx context.Context, md5 string) (*model.SysFile, error) {
+	var file model.SysFile
+	err := r.db.WithContext(ctx).Where("md5 = ?", md5).First(&file).Error
+	if err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+func (r *fileRepository) FindByObjectName(ctx context.Context, objectName string) (*model.SysFile, error) {
+	var file model.SysFile
+	err := r.db.WithContext(ctx).Where("object_name = ?", objectName).First(&file).Error
+	if err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+func (r *fileRepository) FindByPath(ctx context.Context, path string) (*model.SysFile, error) {
+	var file model.SysFile
+	err := r.db.WithContext(ctx).Where("path = ?", path).First(&file).Error
+	if err != nil {
+		return nil, err
+	}
+	return &file, nil
+}
+
+func (r *fileRepository) Create(ctx context.Context, file *model.SysFile) (*model.SysFile, error) {
+	err := r.db.WithContext(ctx).Create(file).Error
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
+}
+
+func (r *fileRepository) Delete(ctx context.Context, ids []int64) error {
+	return r.db.WithContext(ctx).Delete(&model.SysFile{}, ids).Error
+}
