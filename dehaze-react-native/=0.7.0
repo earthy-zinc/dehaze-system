@@ -1,0 +1,24 @@
+Progress: resolved 1, reused 0, downloaded 0, added 0
+ WARN  deprecated @babel/plugin-proposal-export-namespace-from@7.18.9: This proposal has been merged to the ECMAScript standard and thus this plugin is no longer maintained. Please use @babel/plugin-transform-export-namespace-from instead.
+ WARN  deprecated eslint@8.57.1: This version is no longer supported. Please see https://eslint.org/version-support for other options.
+ WARN  deprecated react-native-vector-icons@10.3.0: react-native-vector-icons package has moved to a new model of per-icon-family packages. See the https://github.com/oblador/react-native-vector-icons/blob/master/MIGRATION.md on how to migrate
+Progress: resolved 63, reused 0, downloaded 0, added 0
+Progress: resolved 362, reused 0, downloaded 0, added 0
+Progress: resolved 665, reused 0, downloaded 0, added 0
+Progress: resolved 847, reused 0, downloaded 0, added 0
+Progress: resolved 1026, reused 0, downloaded 0, added 0
+Progress: resolved 1145, reused 0, downloaded 0, added 0
+Progress: resolved 1191, reused 0, downloaded 0, added 0
+Progress: resolved 1267, reused 0, downloaded 0, added 0
+ WARN  5 deprecated subdependencies found: @humanwhocodes/config-array@0.13.0, @humanwhocodes/object-schema@2.0.3, glob@7.2.3, inflight@1.0.6, rimraf@3.0.2
+Progress: resolved 1361, reused 0, downloaded 0, added 0
+ WARN  Issues with peer dependencies found
+.
+└─┬ react-native-reanimated 4.2.1
+  └── ✕ unmet peer react-native-worklets@>=0.7.0: found 0.6.1
+
+Progress: resolved 1361, reused 95, downloaded 0, added 0
+Packages: -95
+--------------------------------------------------------------------------------
+Progress: resolved 1361, reused 95, downloaded 0, added 0, done
+Done in 12.6s using pnpm v10.26.2
