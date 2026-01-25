@@ -32,7 +32,11 @@
       "Bash(pnpm run type-check)",
       "Bash(tree:*)",
       "Bash(export PATH=\"$HOME/.goenv/shims:$PATH\")",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "mcp__aistor__list_buckets",
+      "mcp__API____read_project_oas_0ur0f8",
+      "mcp__mysql__execute_sql",
+      "mcp__redis__dbsize"
     ],
     "deny": [],
     "ask": []
