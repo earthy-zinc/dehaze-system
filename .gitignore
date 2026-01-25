@@ -121,6 +121,7 @@ MANIFEST
 
 # Python 测试和覆盖率（所有层级）
 **/htmlcov/
+**/htmlcov/*
 **/.coverage
 **/.coverage.*
 **/.cache
@@ -158,7 +159,7 @@ instance/
 .webassets-cache
 
 # 算法项目特定（所有层级）
-**/cache/
+dehaze-algorithm/cache/
 **/trained_model/
 **/deploy/
 **/pretrained_models/
@@ -435,3 +436,4 @@ storybook-static/
 # 2. 根目录直接存在的文件夹直接用 文件夹名/ 忽略
 # 3. 文件名（无路径前缀）在所有层级都生效
 # 4. 环境配置文件已忽略，生产环境请使用环境变量
+dehaze-tool/dehaze-sdk-js/test/resources

@@ -1,0 +1,15 @@
+# JMeter测试数据文件
+# 格式: username,password
+
+# 管理员账号
+admin,123456
+
+# 测试账号
+test001,test123
+test002,test123
+test003,test123
+
+# 普通用户账号
+user001,user123
+user002,user123
+user003,user123

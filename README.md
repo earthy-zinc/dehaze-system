@@ -226,7 +226,7 @@ pnpm run dev
 ```bash
 cd dehaze-java
 # 1. 执行数据库初始化脚本
-mysql -u root -p < sql/init.sql
+mysql -u root -p < sql/schema.sql
 
 # 2. 修改配置文件
 # 编辑 src/main/resources/application-dev.yml
@@ -301,7 +301,7 @@ dehaze-system/
 │   │   ├── model/            # 实体类
 │   │   └── config/           # 配置类
 │   ├── pom.xml               # Spring Boot 3.3
-│   └── sql/init.sql          # 数据库初始化脚本
+│   └── sql/schema.sql          # 数据库初始化脚本
 │
 ├── dehaze-go/                 # Go后端 (备选方案)
 │   ├── api/                  # API层
@@ -711,7 +711,7 @@ graph LR
 详细文档位于 `dehaze-doc` 目录:
 
 - [系统需求分析](dehaze-doc/docs/项目文档/图像去雾系统/需求分析/总体需求分析.md)
-- [系统设计文档](dehaze-doc/docs/项目文档/图像去雾系统/代码详细设计/总体系统架构.md)
+- [系统设计文档](dehaze-doc/docs/项目文档/图像去雾系统/代码详细设计/java/总体系统架构.md)
 - [用户使用手册](dehaze-doc/docs/项目文档/图像去雾系统/用户手册.md)
 
 ### API接口文档
