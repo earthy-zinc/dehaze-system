@@ -25,13 +25,15 @@ class TestAuthService(unittest.TestCase):
 
         # 手动模拟对象
         with patch('app.service.auth_service.SysUser') as mock_sys_user, \
+                patch('app.service.user.UserService._check_password') as mock_check_password, \
                 patch('app.service.auth_service.jwt') as mock_jwt:
             # 准备模拟数据
             mock_user = MagicMock()
             mock_user.id = self.user_id
             mock_user.status = 1
-            mock_user.check_password.return_value = True
+            mock_user.password = "hashed_password"  # 设置实际的哈希密码
             mock_sys_user.query.filter_by.return_value.first.return_value = mock_user
+            mock_check_password.return_value = True
             mock_jwt.encode.return_value = "fake_token"
 
             # 在应用上下文中调用被测试方法
@@ -42,7 +44,6 @@ class TestAuthService(unittest.TestCase):
             self.assertEqual(result['tokenType'], 'Bearer')
             self.assertEqual(result['accessToken'], 'fake_token')
             mock_sys_user.query.filter_by.assert_called_with(username=self.username, deleted=0)
-            mock_user.check_password.assert_called_with(self.password)
 
     @patch('app.service.auth_service.SysUser')
     def test_login_invalid_user(self, mock_sys_user):
@@ -56,13 +57,18 @@ class TestAuthService(unittest.TestCase):
 
         self.assertIn("用户名或密码错误", str(context.exception))
 
+    @patch('app.service.user.UserService._check_password')
     @patch('app.service.auth_service.SysUser')
-    def test_login_invalid_password(self, mock_sys_user):
+    def test_login_invalid_password(self, mock_sys_user, mock_check_password):
         """测试密码错误"""
         # 准备模拟数据
         mock_user = MagicMock()
-        mock_user.check_password.return_value = False
+        mock_user.status = 1  # 用户启用
+        mock_user.password = "hashed_password"  # 设置实际的哈希密码
         mock_sys_user.query.filter_by.return_value.first.return_value = mock_user
+
+        # Mock _check_password 返回 False
+        mock_check_password.return_value = False
 
         # 验证异常
         with self.assertRaises(Exception) as context:
@@ -70,14 +76,18 @@ class TestAuthService(unittest.TestCase):
 
         self.assertIn("用户名或密码错误", str(context.exception))
 
+    @patch('app.service.user.UserService._check_password')
     @patch('app.service.auth_service.SysUser')
-    def test_login_disabled_user(self, mock_sys_user):
+    def test_login_disabled_user(self, mock_sys_user, mock_check_password):
         """测试用户被禁用"""
         # 准备模拟数据
         mock_user = MagicMock()
         mock_user.status = 0  # 用户被禁用
-        mock_user.check_password.return_value = True
+        mock_user.password = "hashed_password"  # 设置实际的哈希密码
         mock_sys_user.query.filter_by.return_value.first.return_value = mock_user
+
+        # Mock _check_password 返回 True
+        mock_check_password.return_value = True
 
         # 验证异常
         with self.assertRaises(Exception) as context:

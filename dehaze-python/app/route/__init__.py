@@ -11,6 +11,7 @@ def init_routes(app):
     from app.route.item_file import item_file_blueprint
     from app.route.auth import auth_blueprint
     from app.route.websocket import websocket_blueprint
+    from app.route.task import task_blueprint
 
     app.register_blueprint(model_blueprint)
     app.register_blueprint(user_blueprint)
@@ -24,3 +25,4 @@ def init_routes(app):
     app.register_blueprint(item_file_blueprint)
     app.register_blueprint(auth_blueprint)
     app.register_blueprint(websocket_blueprint)
+    app.register_blueprint(task_blueprint)

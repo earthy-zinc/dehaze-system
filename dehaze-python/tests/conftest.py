@@ -4,6 +4,7 @@ pytest 配置和共享 fixtures
 import os
 
 import pytest
+from unittest.mock import MagicMock
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 
@@ -24,33 +25,148 @@ def app():
     # 创建应用
     app = create_app('testing')
 
+    # 为 MySQL 创建测试数据库
+    if 'mysql' in app.config['SQLALCHEMY_DATABASE_URI']:
+        _create_mysql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
+
     # 为 PostgreSQL 创建测试数据库（如果需要）
     if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']:
         _create_postgresql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
 
     yield app
 
-    # 清理：删除 PostgreSQL 测试数据库
+    # 清理：删除测试数据库
+    if 'mysql' in app.config['SQLALCHEMY_DATABASE_URI']:
+        _drop_mysql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
     if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']:
         _drop_postgresql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
+
+
+@pytest.fixture(scope='session', autouse=True)
+def setup_database(app):
+    """
+    在 session 级别创建所有数据库表
+    """
+    with app.app_context():
+        # 删除所有表
+        mysql.drop_all()
+        # 创建所有表
+        mysql.create_all()
+        yield
+        # session 结束后删除表
+        mysql.drop_all()
 
 
 @pytest.fixture(scope='function')
 def db_session(app):
     """
     为每个测试函数提供独立的数据库会话（function级别）
-    在测试前创建所有表，测试后删除所有表并清理会话
+    每个测试前清空所有表数据，测试后回滚事务
     """
     with app.app_context():
-        # 创建所有表
-        mysql.create_all()
+        # Mock redis_client
+        from app import extensions
+        original_redis_client = extensions.redis_client
+
+        # 创建 mock Redis 客户端
+        mock_redis_client = MagicMock()
+        mock_redis_client.get.return_value = None
+        mock_redis_client.set.return_value = True
+        mock_redis_client.setex.return_value = True
+        mock_redis_client.delete.return_value = 1
+
+        # 替换全局 redis_client
+        extensions.redis_client = mock_redis_client
+        app.extensions['redis_client'] = mock_redis_client
+
+        # 清空所有表数据
+        from sqlalchemy import inspect
+        inspector = inspect(mysql.engine)
+        tables = inspector.get_table_names()
+
+        # 暂时禁用外键检查
+        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=0"))
+
+        # 清空每个表
+        for table in tables:
+            try:
+                mysql.session.execute(mysql.text(f"TRUNCATE TABLE `{table}`"))
+            except Exception:
+                pass
+
+        # 重新启用外键检查
+        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=1"))
+        mysql.session.commit()
+
+        # 开始事务
+        mysql.session.begin()
 
         # 提供数据库会话
         yield mysql.session
 
-        # 测试后清理
+        # 恢复 redis_client
+        extensions.redis_client = original_redis_client
+        app.extensions['redis_client'] = original_redis_client
+
+        # 测试后回滚未提交的事务
+        mysql.session.rollback()
         mysql.session.remove()
-        mysql.drop_all()
+
+
+@pytest.fixture(scope='function')
+def db_session(app):
+    """
+    为每个测试函数提供独立的数据库会话（function级别）
+    每个测试前清空所有表数据，测试后回滚事务
+    """
+    with app.app_context():
+        # Mock redis_client
+        from app import extensions
+        original_redis_client = extensions.redis_client
+
+        # 创建 mock Redis 客户端
+        mock_redis_client = MagicMock()
+        mock_redis_client.get.return_value = None
+        mock_redis_client.set.return_value = True
+        mock_redis_client.setex.return_value = True
+        mock_redis_client.delete.return_value = 1
+
+        # 替换全局 redis_client
+        extensions.redis_client = mock_redis_client
+        app.extensions['redis_client'] = mock_redis_client
+
+        # 清空所有表数据
+        from sqlalchemy import inspect
+        inspector = inspect(mysql.engine)
+        tables = inspector.get_table_names()
+
+        # 暂时禁用外键检查
+        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=0"))
+
+        # 清空每个表
+        for table in tables:
+            try:
+                mysql.session.execute(mysql.text(f"TRUNCATE TABLE `{table}`"))
+            except Exception:
+                pass
+
+        # 重新启用外键检查
+        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=1"))
+        mysql.session.commit()
+
+        # 开始事务
+        mysql.session.begin()
+
+        # 提供数据库会话
+        yield mysql.session
+
+        # 恢复 redis_client
+        extensions.redis_client = original_redis_client
+        app.extensions['redis_client'] = original_redis_client
+
+        # 测试后回滚未提交的事务
+        mysql.session.rollback()
+        mysql.session.remove()
 
 
 @pytest.fixture
@@ -122,6 +238,70 @@ def sample_user(db_session):
 
 
 # ============ 辅助函数 ============
+
+def _create_mysql_test_db(db_uri):
+    """
+    为 MySQL 创建测试数据库
+    """
+    try:
+        # 解析数据库 URI
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(db_uri)
+        db_name = parsed.path.lstrip('/')
+
+        import pymysql
+        conn = pymysql.connect(
+            host=parsed.hostname,
+            port=parsed.port or 3306,
+            user=parsed.username or 'root',
+            password=parsed.password or 'root',
+            charset='utf8mb4'
+        )
+
+        with conn.cursor() as cursor:
+            # 创建数据库
+            cursor.execute(
+                f"CREATE DATABASE IF NOT EXISTS `{db_name}` "
+                "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            )
+            conn.commit()
+            print(f"✓ 已创建 MySQL 测试数据库: {db_name}")
+
+        conn.close()
+
+    except Exception as e:
+        print(f"警告: 无法创建 MySQL 测试数据库: {e}")
+
+
+def _drop_mysql_test_db(db_uri):
+    """
+    删除 MySQL 测试数据库
+    """
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(db_uri)
+        db_name = parsed.path.lstrip('/')
+
+        import pymysql
+        conn = pymysql.connect(
+            host=parsed.hostname,
+            port=parsed.port or 3306,
+            user=parsed.username or 'root',
+            password=parsed.password or 'root',
+            charset='utf8mb4'
+        )
+
+        with conn.cursor() as cursor:
+            # 删除数据库
+            cursor.execute(f"DROP DATABASE IF EXISTS `{db_name}`")
+            conn.commit()
+            print(f"✓ 已删除 MySQL 测试数据库: {db_name}")
+
+        conn.close()
+
+    except Exception as e:
+        print(f"警告: 无法删除 MySQL 测试数据库: {e}")
+
 
 def _create_postgresql_test_db(db_uri):
     """

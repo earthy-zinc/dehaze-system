@@ -307,7 +307,8 @@ class TestDeptService(unittest.TestCase):
 
     @patch('app.service.dept_service.mysql')
     @patch('app.service.dept_service.SysDept')
-    def test_delete_depts(self, mock_sys_dept, mock_mysql):
+    @patch('app.service.dept_service.or_')
+    def test_delete_depts(self, mock_or, mock_sys_dept, mock_mysql):
         """测试删除部门"""
         # 设置mock返回值
         mock_query = MagicMock()

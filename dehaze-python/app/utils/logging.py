@@ -118,3 +118,7 @@ def setup_logging(
         root_logger.info(f"轮转类型: {rotation_type}")
     if enable_console:
         root_logger.info("控制台输出: 启用")
+
+
+# 创建默认 logger 实例，供其他模块导入使用
+logger = logging.getLogger(__name__)

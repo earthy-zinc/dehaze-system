@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 import requests
 from flask import current_app
 from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 
 from app.extensions import mysql
 from app.models import SysFile, SysWpxFile
@@ -21,8 +22,10 @@ def upload_file_from_request(file: FileStorage) -> SysFile:
     :return: SysFile 数据库记录
     """
     file_bytes = BytesIO(file.read())
+    # 使用 werkzeug.utils.secure_filename 清理文件名，防止路径遍历攻击
+    safe_filename = secure_filename(file.filename) or 'unnamed'
     return _upload_to_storage(
-        filename=file.filename,
+        filename=safe_filename,
         content_type=file.mimetype,
         file_bytes=file_bytes,
         file_size=file.content_length

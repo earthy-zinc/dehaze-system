@@ -61,7 +61,13 @@ auth_blueprint = Blueprint('auth', __name__, url_prefix='/api/v1/auth')
 def login():
     """用户登录"""
     try:
-        data = request.get_json()
+        # 同时支持 application/json 和 multipart/form-data 格式
+        if request.is_json:
+            data = request.get_json()
+        else:
+            # 从表单数据中获取参数
+            data = request.form.to_dict()
+
         username = data.get('username')
         password = data.get('password')
 

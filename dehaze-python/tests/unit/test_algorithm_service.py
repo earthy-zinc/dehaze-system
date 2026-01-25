@@ -220,7 +220,8 @@ class TestAlgorithmService(unittest.TestCase):
 
     @patch('app.service.algorithm_service.mysql')
     @patch('app.service.algorithm_service.SysAlgorithm')
-    def test_delete_algorithms(self, mock_sys_algorithm, mock_mysql):
+    @patch('app.service.algorithm_service.or_')
+    def test_delete_algorithms(self, mock_or, mock_sys_algorithm, mock_mysql):
         """测试删除算法"""
         # 设置mock返回值
         mock_query1 = MagicMock()

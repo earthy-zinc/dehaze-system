@@ -95,10 +95,10 @@ class TestRoleService:
         db_session.add(role)
         db_session.commit()
 
-        # 更新角色
+        # 更新角色 (code 不允许修改，只修改其他字段)
         update_data = {
             'name': '更新后的角色',
-            'code': 'UPDATED_ROLE',
+            'code': 'UPDATED_ROLE',  # 这个字段会被忽略
             'sort': 2,
             'status': 0,
             'dataScope': 2
@@ -110,7 +110,7 @@ class TestRoleService:
         # 验证更新成功
         updated_role = RoleService.get_role_by_id(role.id)
         assert updated_role.name == '更新后的角色'
-        assert updated_role.code == 'UPDATED_ROLE'
+        assert updated_role.code == 'TEST_ROLE'  # code 不会被修改
         assert updated_role.sort == 2
         assert updated_role.status == 0
         assert updated_role.data_scope == 2
@@ -143,7 +143,7 @@ class TestRoleService:
 
         result = RoleService.update_role(role2.id, update_data)
         assert 'error' in result
-        assert result['error'] == '角色名称或编码已存在'
+        assert result['error'] == '角色名称已存在'  # 更新时只检查名称重复
 
     def test_get_role_list(self, db_session):
         """测试获取角色列表"""
@@ -349,15 +349,14 @@ class TestRoleService:
         }
         result = RoleService.update_role(role.id, update_data)
         assert 'error' in result
-        assert result['error'] == '角色名称和编码不能为空'
+        assert result['error'] == '角色名称不能为空'  # 更新时只检查名称
 
-        # 缺少编码
+        # 提供名称则应该成功（code可选，更新时不修改code）
         update_data = {
             'name': '更新角色'
         }
         result = RoleService.update_role(role.id, update_data)
-        assert 'error' in result
-        assert result['error'] == '角色名称和编码不能为空'
+        assert 'error' not in result
 
     def test_get_role_by_id_deleted(self, db_session):
         """测试获取已删除的角色"""

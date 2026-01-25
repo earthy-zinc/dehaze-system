@@ -224,3 +224,16 @@ class DeptService:
                 return str(parent_dept.id)
             else:
                 return "0"
+
+    @staticmethod
+    def dept_to_dict(dept: SysDept) -> dict:
+        """将部门对象转换为字典（与Java后端格式一致）"""
+        return {
+            'id': dept.id,
+            'name': dept.name,
+            'parentId': dept.parent_id,
+            'sort': dept.sort,
+            'status': dept.status,
+            'createTime': dept.create_time.strftime('%Y-%m-%d %H:%M') if dept.create_time else None,
+            'updateTime': dept.update_time.strftime('%Y-%m-%d %H:%M') if dept.update_time else None
+        }

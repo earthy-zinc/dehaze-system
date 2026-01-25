@@ -134,9 +134,8 @@ class TestUserService:
         result = UserService.create_user_with_roles(user_data)
         user_id = result['data']['id']
 
-        # 更新用户信息
+        # 更新用户信息（username 不可修改）
         update_data = {
-            'username': 'updateduser',
             'nickname': 'Updated User',
             'gender': 2,
             'deptId': 2,
@@ -151,7 +150,7 @@ class TestUserService:
 
         # 验证用户信息更新成功
         user = UserService.get_user_by_id(user_id)
-        assert user.username == 'updateduser'
+        assert user.username == 'testuser'  # username 不变
         assert user.nickname == 'Updated User'
         assert user.gender == 2
         assert user.dept_id == 2
@@ -298,20 +297,24 @@ class TestUserService:
         assert 'error' in result
         assert result['error'] == '用户不存在'
 
-    def test_update_user_with_duplicate_username(self, db_session):
-        """测试更新用户时使用已存在的用户名"""
+    def test_update_user_ignores_username(self, db_session):
+        """测试更新用户时忽略username字段(因为username不可修改)"""
         # 创建两个用户
-        UserService.create_user('user1', 'password123', 'User One')
+        user1 = UserService.create_user('user1', 'password123', 'User One')
         user2 = UserService.create_user('user2', 'password123', 'User Two')
 
-        # 尝试将user2的用户名更新为user1的用户名
+        # 尝试将user2的nickname更新为user1的nickname(应该成功)
         update_data = {
-            'username': 'user1'
+            'nickname': 'User One Updated'
         }
 
         result = UserService.update_user_with_roles(user2.id, update_data)
-        assert 'error' in result
-        assert result['error'] == '用户名已存在'
+        assert 'error' not in result
+
+        # 验证更新成功
+        updated_user = UserService.get_user_by_id(user2.id)
+        assert updated_user.nickname == 'User One Updated'
+        assert updated_user.username == 'user2'  # username 保持不变
 
     def test_update_password_user_not_found(self, db_session):
         """测试更新不存在用户的密码"""

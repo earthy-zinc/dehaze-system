@@ -1,89 +1,80 @@
-from flasgger import swag_from
-from flask import Blueprint, request
+"""
+数据集管理路由 - 使用 flask-openapi3 自动生成 Swagger 文档
+"""
+from flask_openapi3 import APIBlueprint, Tag
 
+from app.models import DatasetAddForm as FormDatasetAddForm, DatasetQuery as FormDatasetQuery
+from app.models import DatasetItemCreateForm as FormDatasetItemCreateForm, DatasetItemUpdateForm as FormDatasetItemUpdateForm
+from app.models.schema.dataset import (
+    DatasetQuery,
+    DatasetIdPath,
+    DatasetIdsQuery,
+    DatasetImagePageQuery,
+    DatasetAddForm,
+    DatasetUpdateForm,
+    DatasetItemCreateForm,
+    DatasetItemUpdateForm,
+    DatasetItemDeleteForm,
+)
 from app.service.dataset_service import DatasetService, DatasetItemService
 from app.utils.jwt_util import jwt_required
 from app.utils.result import success, error
 
-dataset_blueprint = Blueprint('dataset', __name__, url_prefix='/api/v1/dataset')
+
+# 定义 Tag
+dataset_tag = Tag(name="数据集管理", description="数据集相关接口")
+dataset_item_tag = Tag(name="数据集项管理", description="数据集项相关接口")
+
+# 创建 APIBlueprint（自动携带安全配置）
+dataset_blueprint = APIBlueprint(
+    "dataset",
+    __name__,
+    url_prefix="/api/v1/datasets",
+    abp_tags=[dataset_tag],
+    abp_security=[{"BearerAuth": []}]
+)
 
 
-@dataset_blueprint.route('/', methods=['GET'])
+# ==================== 数据集接口 ====================
+
+@dataset_blueprint.get(
+    "/",
+    summary="获取数据集列表",
+    description="获取数据集列表（树形结构）"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集管理'],
-    'summary': '数据集列表',
-    'description': '获取数据集列表（树形结构）',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'keywords',
-            'in': 'query',
-            'required': False,
-            'schema': {'type': 'string'},
-            'description': '关键字（数据集名称）'
-        }
-    ],
-    'responses': {
-        '200': {
-            'description': '获取成功'
-        }
-    }
-})
-def list_datasets():
+def list_datasets(query: DatasetQuery):
     """获取数据集列表"""
-    keywords = request.args.get('keywords', type=str)
+    # 构建查询条件
+    form_query = None
+    if query.keywords:
+        form_query = FormDatasetQuery(keyword=query.keywords)
 
-    dataset_list = DatasetService.get_dataset_list(keywords)
+    dataset_list = DatasetService.get_dataset_tree(form_query)
     return success(dataset_list)
 
 
-@dataset_blueprint.route('/options', methods=['GET'])
+@dataset_blueprint.get(
+    "/options",
+    summary="获取数据集下拉列表",
+    description="获取数据集下拉选项列表"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集管理'],
-    'summary': '数据集下拉列表',
-    'description': '获取数据集下拉列表',
-    'security': [{'BearerAuth': []}],
-    'responses': {
-        '200': {
-            'description': '获取成功'
-        }
-    }
-})
 def list_dataset_options():
     """数据集下拉列表"""
     options = DatasetService.get_dataset_options()
     return success(options)
 
 
-@dataset_blueprint.route('/<int:dataset_id>', methods=['GET'])
+@dataset_blueprint.get(
+    "/<int:dataset_id>",
+    summary="获取数据集信息",
+    description="根据ID获取数据集详情"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集管理'],
-    'summary': '数据集信息',
-    'description': '根据ID获取数据集信息',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'dataset_id',
-            'in': 'path',
-            'required': True,
-            'schema': {'type': 'integer'}
-        }
-    ],
-    'responses': {
-        '200': {
-            'description': '获取成功'
-        },
-        '404': {
-            'description': '数据集不存在'
-        }
-    }
-})
-def get_dataset_info(dataset_id):
+def get_dataset_info(path: DatasetIdPath):
     """获取数据集信息"""
-    dataset = DatasetService.get_dataset_by_id(dataset_id)
+    dataset = DatasetService.get_dataset_by_id(path.dataset_id)
 
     if dataset is None:
         return error('数据集不存在', 404)
@@ -91,95 +82,59 @@ def get_dataset_info(dataset_id):
     return success(dataset)
 
 
-@dataset_blueprint.route('/', methods=['POST'])
+@dataset_blueprint.post(
+    "/",
+    summary="新增数据集",
+    description="创建新的数据集"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集管理'],
-    'summary': '新增数据集',
-    'description': '新增数据集',
-    'security': [{'BearerAuth': []}],
-    'requestBody': {
-        'content': {
-            'application/json': {
-                'schema': {
-                    'type': 'object',
-                    'properties': {
-                        'parentId': {'type': 'integer', 'description': '父数据集ID'},
-                        'type': {'type': 'string', 'description': '数据集类型'},
-                        'name': {'type': 'string', 'description': '数据集名称'},
-                        'description': {'type': 'string', 'description': '数据集描述'},
-                        'path': {'type': 'string', 'description': '存储位置'},
-                        'status': {'type': 'integer', 'description': '状态(1:启用；0:禁用)'}
-                    }
-                }
-            }
-        }
-    },
-    'responses': {
-        '200': {
-            'description': '保存成功'
-        },
-        '400': {
-            'description': '参数错误'
-        }
-    }
-})
-def add_dataset():
+def add_dataset(body: DatasetAddForm):
     """新增数据集"""
-    data = request.get_json()
-    result = DatasetService.create_dataset(data)
+    try:
+        # 验证必填字段
+        if not body.name:
+            return error("数据集名称不能为空", 400)
 
-    if 'error' in result:
-        return error(result['error'], 400)
+        # 转换为 Form 对象
+        form = FormDatasetAddForm(
+            parent_id=body.parentId,
+            name=body.name,
+            type=body.type or '',
+            description=body.description or '',
+            path=body.path or '',
+            status=body.status
+        )
 
-    return success(result['data'], '保存成功')
+        result = DatasetService.create_dataset(form)
+        return success(result.to_dict() if result else None, '保存成功')
+    except Exception as e:
+        return error(f"创建数据集失败: {str(e)}", 500)
 
 
-@dataset_blueprint.route('/<int:dataset_id>', methods=['PUT'])
+@dataset_blueprint.put(
+    "/<int:dataset_id>",
+    summary="修改数据集",
+    description="根据ID修改数据集信息"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集管理'],
-    'summary': '修改数据集',
-    'description': '修改数据集',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'dataset_id',
-            'in': 'path',
-            'required': True,
-            'schema': {'type': 'integer'}
-        }
-    ],
-    'requestBody': {
-        'content': {
-            'application/json': {
-                'schema': {
-                    'type': 'object',
-                    'properties': {
-                        'parentId': {'type': 'integer', 'description': '父数据集ID'},
-                        'type': {'type': 'string', 'description': '数据集类型'},
-                        'name': {'type': 'string', 'description': '数据集名称'},
-                        'description': {'type': 'string', 'description': '数据集描述'},
-                        'path': {'type': 'string', 'description': '存储位置'},
-                        'status': {'type': 'integer', 'description': '状态(1:启用；0:禁用)'}
-                    }
-                }
-            }
-        }
-    },
-    'responses': {
-        '200': {
-            'description': '保存成功'
-        },
-        '400': {
-            'description': '参数错误'
-        }
-    }
-})
-def update_dataset(dataset_id):
+def update_dataset(path: DatasetIdPath, body: DatasetUpdateForm):
     """修改数据集"""
-    data = request.get_json()
-    result = DatasetService.update_dataset(dataset_id, data)
+    # 转换为字典供 service 使用
+    data = {}
+    if body.parentId is not None:
+        data['parentId'] = body.parentId
+    if body.name is not None:
+        data['name'] = body.name
+    if body.type is not None:
+        data['type'] = body.type
+    if body.description is not None:
+        data['description'] = body.description
+    if body.path is not None:
+        data['path'] = body.path
+    if body.status is not None:
+        data['status'] = body.status
+
+    result = DatasetService.update_dataset(path.dataset_id, data)
 
     if 'error' in result:
         return error(result['error'], 400)
@@ -187,41 +142,19 @@ def update_dataset(dataset_id):
     return success(result['data'], '保存成功')
 
 
-@dataset_blueprint.route('/', methods=['DELETE'])
+@dataset_blueprint.delete(
+    "/",
+    summary="删除数据集",
+    description="批量删除数据集，多个ID以英文逗号分隔"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集管理'],
-    'summary': '删除数据集',
-    'description': '删除数据集',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'ids',
-            'in': 'query',
-            'required': True,
-            'schema': {'type': 'array', 'items': {'type': 'integer'}},
-            'description': '数据集ID列表',
-            'style': 'form',
-            'explode': False
-        }
-    ],
-    'responses': {
-        '200': {
-            'description': '删除成功'
-        },
-        '400': {
-            'description': '参数错误'
-        }
-    }
-})
-def delete_datasets():
+def delete_datasets(query: DatasetIdsQuery):
     """删除数据集"""
-    ids = request.args.get('ids', type=str)
-    if not ids:
+    if not query.ids:
         return error('参数错误', 400)
 
     try:
-        dataset_ids = [int(id) for id in ids.split(',')]
+        dataset_ids = [int(id_str) for id_str in query.ids.split(',')]
     except ValueError:
         return error('参数格式错误', 400)
 
@@ -233,50 +166,15 @@ def delete_datasets():
     return success(result['data'], '删除成功')
 
 
-@dataset_blueprint.route('/<int:dataset_id>/images', methods=['GET'])
+@dataset_blueprint.get(
+    "/<int:dataset_id>/images",
+    summary="获取数据集图片项",
+    description="分页获取数据集下的图片项"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集管理'],
-    'summary': '数据集图片',
-    'description': '获取数据集图片项（分页）',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'dataset_id',
-            'in': 'path',
-            'required': True,
-            'schema': {'type': 'integer'}
-        },
-        {
-            'name': 'pageNum',
-            'in': 'query',
-            'required': False,
-            'schema': {'type': 'integer', 'default': 1},
-            'description': '页码'
-        },
-        {
-            'name': 'pageSize',
-            'in': 'query',
-            'required': False,
-            'schema': {'type': 'integer', 'default': 10},
-            'description': '每页数量'
-        }
-    ],
-    'responses': {
-        '200': {
-            'description': '获取成功'
-        },
-        '400': {
-            'description': '参数错误'
-        }
-    }
-})
-def get_dataset_images(dataset_id):
+def get_dataset_images(path: DatasetIdPath, query: DatasetImagePageQuery):
     """获取数据集图片项"""
-    page_num = request.args.get('pageNum', 1, type=int)
-    page_size = request.args.get('pageSize', 10, type=int)
-
-    result = DatasetService.get_image_items(dataset_id, page_num, page_size)
+    result = DatasetService.get_image_items(path.dataset_id, query.pageNum, query.pageSize)
 
     if 'error' in result:
         return error(result['error'], 400)
@@ -284,48 +182,21 @@ def get_dataset_images(dataset_id):
     return success(result['data'])
 
 
-# 数据集项相关接口
-@dataset_blueprint.route('/item', methods=['POST'])
-@jwt_required
-@swag_from({
-    'tags': ['数据集项管理'],
-    'summary': '新增数据项',
-    'description': '新增数据项',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'datasetId',
-            'in': 'query',
-            'required': True,
-            'schema': {'type': 'integer'},
-            'description': '所属数据集ID'
-        },
-        {
-            'name': 'name',
-            'in': 'query',
-            'required': False,
-            'schema': {'type': 'string'},
-            'description': '数据项名称'
-        }
-    ],
-    'responses': {
-        '200': {
-            'description': '创建成功'
-        },
-        '400': {
-            'description': '参数错误'
-        }
-    }
-})
-def add_dataset_item():
-    """新增数据项"""
-    dataset_id = request.args.get('datasetId', type=int)
-    name = request.args.get('name', type=str)
+# ==================== 数据集项接口 ====================
 
-    if not dataset_id:
+@dataset_blueprint.post(
+    "/item",
+    tags=[dataset_item_tag],
+    summary="新增数据项",
+    description="在指定数据集下创建新的数据项"
+)
+@jwt_required
+def add_dataset_item(body: DatasetItemCreateForm):
+    """新增数据项"""
+    if not body.datasetId:
         return error('缺少参数datasetId', 400)
 
-    result = DatasetItemService.create_dataset_item(dataset_id, name)
+    result = DatasetItemService.create_dataset_item(body.datasetId, body.name)
 
     if 'error' in result:
         return error(result['error'], 400)
@@ -333,50 +204,22 @@ def add_dataset_item():
     return success(result['data'], '创建成功')
 
 
-@dataset_blueprint.route('/item', methods=['PUT'])
+@dataset_blueprint.put(
+    "/item",
+    tags=[dataset_item_tag],
+    summary="修改数据项",
+    description="根据数据项ID修改数据项信息"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集项管理'],
-    'summary': '修改数据项',
-    'description': '修改数据项',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'datasetItemId',
-            'in': 'query',
-            'required': True,
-            'schema': {'type': 'integer'},
-            'description': '数据项ID'
-        },
-        {
-            'name': 'name',
-            'in': 'query',
-            'required': False,
-            'schema': {'type': 'string'},
-            'description': '数据项名称'
-        }
-    ],
-    'responses': {
-        '200': {
-            'description': '更新成功'
-        },
-        '400': {
-            'description': '参数错误'
-        }
-    }
-})
-def update_dataset_item():
+def update_dataset_item(body: DatasetItemUpdateForm):
     """修改数据项"""
-    dataset_item_id = request.args.get('datasetItemId', type=int)
-    name = request.args.get('name', type=str)
+    if not body.id:
+        return error('缺少参数id', 400)
 
-    if not dataset_item_id:
-        return error('缺少参数datasetItemId', 400)
-
-    if not name:
+    if not body.name:
         return error('缺少参数name', 400)
 
-    result = DatasetItemService.update_dataset_item(dataset_item_id, name)
+    result = DatasetItemService.update_dataset_item(body.id, body.name)
 
     if 'error' in result:
         return error(result['error'], 400)
@@ -384,39 +227,19 @@ def update_dataset_item():
     return success(result['data'], '更新成功')
 
 
-@dataset_blueprint.route('/item', methods=['DELETE'])
+@dataset_blueprint.delete(
+    "/item",
+    tags=[dataset_item_tag],
+    summary="删除数据项",
+    description="根据数据项ID删除数据项"
+)
 @jwt_required
-@swag_from({
-    'tags': ['数据集项管理'],
-    'summary': '删除数据项',
-    'description': '删除数据项',
-    'security': [{'BearerAuth': []}],
-    'parameters': [
-        {
-            'name': 'datasetItemId',
-            'in': 'query',
-            'required': True,
-            'schema': {'type': 'integer'},
-            'description': '数据项ID'
-        }
-    ],
-    'responses': {
-        '200': {
-            'description': '删除成功'
-        },
-        '400': {
-            'description': '参数错误'
-        }
-    }
-})
-def delete_dataset_item():
+def delete_dataset_item(body: DatasetItemDeleteForm):
     """删除数据项"""
-    dataset_item_id = request.args.get('datasetItemId', type=int)
-
-    if not dataset_item_id:
+    if not body.datasetItemId:
         return error('缺少参数datasetItemId', 400)
 
-    result = DatasetItemService.delete_dataset_item(dataset_item_id)
+    result = DatasetItemService.delete_dataset_item(body.datasetItemId)
 
     if 'error' in result:
         return error(result['error'], 400)

@@ -28,10 +28,13 @@ class AuthService:
         Returns:
             dict: 登录结果
         """
+        # 导入UserService以使用其密码验证方法
+        from app.service.user import UserService
+
         # 验证用户凭据
         user = SysUser.query.filter_by(username=username, deleted=0).first()
 
-        if not user or not user.check_password(password):
+        if not user or not UserService._check_password(password, user.password):
             raise Exception("用户名或密码错误")
 
         if user.status != 1:
