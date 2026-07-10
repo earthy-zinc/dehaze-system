@@ -16,10 +16,6 @@ class MenuRepository(BaseRepository[SysMenu]):
 
     model = SysMenu
 
-    def _get_menu_deleted_column(self) -> ColumnElement[Integer]:
-        """获取菜单 deleted 列"""
-        return getattr(SysMenu, "deleted")
-
     def _get_role_deleted_column(self) -> ColumnElement[Integer]:
         """获取角色 deleted 列"""
         return getattr(SysRole, "deleted")
@@ -30,9 +26,7 @@ class MenuRepository(BaseRepository[SysMenu]):
         keyword: str | None = None,
     ) -> list[SysMenu]:
         """获取菜单列表（按排序字段排序）"""
-        deleted_column = self._get_menu_deleted_column()
-        stmt = select(SysMenu).where(
-            deleted_column == 0).order_by(SysMenu.sort)
+        stmt = select(SysMenu).order_by(SysMenu.sort)
         if keyword:
             escaped = escape_like(keyword)
             stmt = stmt.where(SysMenu.name.like(f"%{escaped}%", escape="\\"))
@@ -41,14 +35,12 @@ class MenuRepository(BaseRepository[SysMenu]):
 
     async def get_route_menus(self, db: AsyncSession) -> list[SysMenu]:
         """获取路由菜单列表（类型为目录或菜单，且可见）"""
-        menu_deleted_column = self._get_menu_deleted_column()
         stmt = (
             select(SysMenu)
             .where(
                 and_(
                     SysMenu.type.in_([1, 2]),  # 目录或菜单类型
                     SysMenu.visible == 1,
-                    menu_deleted_column == 0,
                 )
             )
             .order_by(SysMenu.sort)
@@ -72,9 +64,7 @@ class MenuRepository(BaseRepository[SysMenu]):
         parent_id: int,
     ) -> SysMenu | None:
         """根据父级 ID 查询菜单"""
-        deleted_column = self._get_menu_deleted_column()
-        stmt = select(SysMenu).where(
-            SysMenu.id == parent_id, deleted_column == 0)
+        stmt = select(SysMenu).where(SysMenu.id == parent_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -87,11 +77,9 @@ class MenuRepository(BaseRepository[SysMenu]):
         exclude_id: int | None = None,
     ) -> bool:
         """检查同一父级下菜单名称是否已存在"""
-        deleted_column = self._get_menu_deleted_column()
         stmt = select(func.count()).select_from(SysMenu).where(
             SysMenu.name == name,
             SysMenu.parent_id == parent_id,
-            deleted_column == 0,
         )
         if exclude_id:
             stmt = stmt.where(SysMenu.id != exclude_id)
@@ -173,7 +161,6 @@ class MenuRepository(BaseRepository[SysMenu]):
         if not role_codes:
             return set()
         role_deleted_column = self._get_role_deleted_column()
-        menu_deleted_column = self._get_menu_deleted_column()
         stmt = (
             select(SysMenu.perm)
             .select_from(SysRoleMenu)
@@ -182,7 +169,6 @@ class MenuRepository(BaseRepository[SysMenu]):
             .where(
                 SysRole.code.in_(role_codes),
                 role_deleted_column == 0,
-                menu_deleted_column == 0,
                 SysMenu.perm.isnot(None),
                 SysMenu.perm != "",
             )

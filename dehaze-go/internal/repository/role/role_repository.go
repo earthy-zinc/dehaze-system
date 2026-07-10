@@ -11,6 +11,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// ROOT_ROLE_CODE 超级管理员角色编码
+const ROOT_ROLE_CODE = "ROOT"
+
 // RoleRepository 角色仓储实现
 type RoleRepository struct {
 	db *gorm.DB
@@ -127,15 +130,21 @@ func (r *RoleRepository) FindPage(ctx context.Context, q *query.RolePageQuery) (
 	}, nil
 }
 
-// FindOptions 获取角色下拉选项
-func (r *RoleRepository) FindOptions(ctx context.Context) ([]read.Option, error) {
+// FindOptions 获取角色下拉选项（isRoot 为 false 时排除 ROOT 角色）
+func (r *RoleRepository) FindOptions(ctx context.Context, isRoot bool) ([]read.Option, error) {
 	var options []read.Option
-	err := r.db.WithContext(ctx).
+	query := r.db.WithContext(ctx).
 		Model(&model.SysRole{}).
 		Select("id as value, name as label").
 		Where("status = 1 AND deleted = 0").
-		Order("sort ASC").
-		Scan(&options).Error
+		Order("sort ASC")
+
+	// 非超级管理员不显示超级管理员角色
+	if !isRoot {
+		query = query.Where("code != ?", ROOT_ROLE_CODE)
+	}
+
+	err := query.Scan(&options).Error
 	return options, err
 }
 

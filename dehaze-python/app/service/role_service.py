@@ -4,7 +4,6 @@
 提供角色 CRUD 功能，支持菜单分配和数据权限管理
 """
 
-import json
 import re
 from typing import Any
 
@@ -22,9 +21,7 @@ class RoleService:
 
     # 缓存常量
     ROLE_PERMS_PREFIX = "role:perms:"
-    ROLE_OPTIONS_KEY = "role:options"
     CACHE_TTL_PERMS = 1800  # 30分钟
-    CACHE_TTL_OPTIONS = 3600  # 1小时
 
     # 超级管理员角色编码
     ROOT_ROLE_CODE = "ROOT"
@@ -67,33 +64,18 @@ class RoleService:
         )
 
     @staticmethod
-    async def get_role_options(db: AsyncSession, redis: Redis) -> list[dict[str, Any]]:
+    async def get_role_options(db: AsyncSession, *, is_root: bool = False) -> list[dict[str, Any]]:
         """
         获取角色下拉选项列表
 
         Args:
             db: 异步数据库会话
-            redis: Redis 异步客户端
+            is_root: 当前用户是否为超级管理员（非超级管理员不显示 ROOT 角色）
 
         Returns:
             角色下拉选项列表
         """
-        # 尝试从缓存获取
-        cached_data = await redis.get(RoleService.ROLE_OPTIONS_KEY)
-        if cached_data:
-            return json.loads(cached_data)
-
-        # 从 repository 获取
-        options = await role_repository.get_role_options(db)
-
-        # 缓存结果
-        await redis.setex(
-            RoleService.ROLE_OPTIONS_KEY,
-            RoleService.CACHE_TTL_OPTIONS,
-            json.dumps(options),
-        )
-
-        return options
+        return await role_repository.get_role_options(db, is_root=is_root)
 
     @staticmethod
     async def get_role_by_id(db: AsyncSession, role_id: int) -> SysRole | None:
@@ -157,9 +139,6 @@ class RoleService:
 
         created = await role_repository.create(db, role)
 
-        # 清除角色选项缓存
-        await RoleService._clear_role_options_cache(redis)
-
         return created
 
     @staticmethod
@@ -209,8 +188,7 @@ class RoleService:
         # 更新角色信息（不更新 code，编码创建后不可修改）
         await role_repository.update_by_id(db, role_id, update_data)
 
-        # 清除角色选项缓存和角色权限缓存
-        await RoleService._clear_role_options_cache(redis)
+        # 清除角色权限缓存
         if role.code is None:
             raise ValueError("角色编码不能为空")
         await RoleService._clear_role_perms_cache(redis, role.code)
@@ -259,9 +237,6 @@ class RoleService:
                 raise ValueError("角色编码不能为空")
             await RoleService._clear_role_perms_cache(redis, role.code)
 
-        # 清除角色选项缓存
-        await RoleService._clear_role_options_cache(redis)
-
     @staticmethod
     async def update_role_status(
         db: AsyncSession,
@@ -293,9 +268,6 @@ class RoleService:
             raise BusinessException("超级管理员角色不可禁用")
 
         await role_repository.update_by_id(db, role_id, {"status": status})
-
-        # 清除角色选项缓存（因为下拉选项只查询启用状态的角色）
-        await RoleService._clear_role_options_cache(redis)
 
     @staticmethod
     async def get_role_menu_ids(db: AsyncSession, role_id: int) -> list[int]:
@@ -355,11 +327,6 @@ class RoleService:
         if role.code is None:
             raise ValueError("角色编码不能为空")
         await RoleService._clear_role_perms_cache(redis, role.code)
-
-    @staticmethod
-    async def _clear_role_options_cache(redis: Redis):
-        """清除角色选项缓存"""
-        await redis.delete(RoleService.ROLE_OPTIONS_KEY)
 
     @staticmethod
     async def _clear_role_perms_cache(redis: Redis, role_code: str):

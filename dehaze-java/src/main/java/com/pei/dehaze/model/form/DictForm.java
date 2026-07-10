@@ -30,6 +30,9 @@ public class DictForm {
     @Schema(description="排序")
     private Integer sort;
 
+    @Schema(description="是否默认(1:是;0:否)")
+    private Integer defaulted;
+
     @Schema(description = "字典备注")
     private String remark;
 

@@ -61,6 +61,12 @@ func (api *SysDictApi) GetDictPage(c *gin.Context) {
 		queryParams.PageSize = 10
 	}
 
+	// typeCode 必填校验
+	if queryParams.TypeCode == "" {
+		_ = c.Error(common.NewBizError(common.PARAM_IS_NULL, "字典类型编码不能为空"))
+		return
+	}
+
 	// 调用服务获取分页数据
 	result, err := api.dictService.GetPage(c.Request.Context(), &queryParams)
 	if err != nil {
@@ -215,12 +221,12 @@ func (api *SysDictApi) DeleteDict(c *gin.Context) {
 // @Tags 字典接口
 // @Accept application/json
 // @Produce application/json
-// @Param typeCode path string true "字典类型编码"
+// @Param id path string true "字典类型编码"
 // @Success 200 {object} common.Response{data=[]vo.Option}
-// @Router /api/v1/dict/options/{typeCode} [get]
+// @Router /api/v1/dict/{id}/options [get]
 func (api *SysDictApi) ListDictOptions(c *gin.Context) {
-	// 获取路径参数
-	typeCode := c.Param("typeCode")
+	// 获取路径参数（路由参数名统一为 :id）
+	typeCode := c.Param("id")
 
 	// 调用服务获取字典下拉列表
 	options, err := api.dictService.GetByTypeCode(c.Request.Context(), typeCode)

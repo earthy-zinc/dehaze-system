@@ -114,7 +114,7 @@ func (a *Application) Init() error {
 	menuService := menuservice.NewMenuService(cacheClient, menuRepo)
 	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo)
 	deptService := deptservice.NewDeptService(cacheClient, deptRepo)
-	dictTypeService := dictservice.NewDictTypeService(gormDB, dictTypeRepo, dictRepo)
+	dictTypeService := dictservice.NewDictTypeService(gormDB, dictTypeRepo, dictRepo, cacheClient)
 	dictService := dictservice.NewDictService(dictRepo, dictTypeRepo, cacheClient)
 	fileService := fileservice.NewFileService(fileRepo)
 	a.taskExecutor = taskservice.NewAsyncTaskExecutor(config.GetConfig().RabbitMQ, zap.L())

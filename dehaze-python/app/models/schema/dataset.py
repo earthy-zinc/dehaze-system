@@ -130,10 +130,9 @@ class DatasetItemUpdateForm(BaseModel):
 
 
 class ItemFileVO(BaseModel):
-    """数据项文件VO"""
+    """数据项文件VO（对齐 Java 丰富响应格式）"""
     id: int = Field(description="文件关联ID")
     itemId: int = Field(description="数据项ID")
-    fileId: int = Field(description="文件ID")
     type: str = Field(description="图片类型(clear/hazy/depth/segment)")
     sceneType: Optional[str] = Field(default=None, description="场景类型")
     hazeLevel: Optional[str] = Field(
@@ -141,9 +140,15 @@ class ItemFileVO(BaseModel):
     description: Optional[str] = Field(default=None, description="描述")
     url: Optional[str] = Field(default=None, description="文件URL")
     thumbnailUrl: Optional[str] = Field(default=None, description="缩略图URL")
-    name: Optional[str] = Field(default=None, description="文件名")
-    size: Optional[int] = Field(default=None, description="文件大小(字节)")
     md5: Optional[str] = Field(default=None, description="文件MD5")
+    fileName: Optional[str] = Field(default=None, description="文件名")
+    format: Optional[str] = Field(default=None, description="文件格式")
+    formattedSize: Optional[str] = Field(default=None, description="文件大小(格式化)")
+    datasetId: Optional[int] = Field(default=None, description="数据集ID")
+    datasetName: Optional[str] = Field(default=None, description="数据集名称")
+    hasPairedImages: Optional[bool] = Field(default=None, description="是否有配对图")
+    pairedCount: Optional[int] = Field(default=None, description="配对图片数")
+    usageCount: Optional[int] = Field(default=None, description="使用次数")
 
 
 class DatasetItemVO(BaseModel):

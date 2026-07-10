@@ -3,6 +3,7 @@ package menu
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -96,8 +97,9 @@ func (r *MenuRepository) FindRoutesByRoles(ctx context.Context, roles []string) 
 	var menus []model.SysMenu
 
 	// 如果是超级管理员（ROOT），返回所有菜单
+	roleCodes := stripRolePrefix(roles)
 	isRoot := false
-	for _, role := range roles {
+	for _, role := range roleCodes {
 		if role == "ROOT" {
 			isRoot = true
 			break
@@ -118,7 +120,7 @@ func (r *MenuRepository) FindRoutesByRoles(ctx context.Context, roles []string) 
 		Distinct("sys_menu.*").
 		Joins("JOIN sys_role_menu srm ON sys_menu.id = srm.menu_id").
 		Joins("JOIN sys_role sr ON srm.role_id = sr.id").
-		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roles).
+		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roleCodes).
 		Where("sys_menu.type IN (1, 2) AND sys_menu.visible = 1").
 		Order("sys_menu.sort ASC").
 		Find(&menus).Error
@@ -130,8 +132,9 @@ func (r *MenuRepository) FindPermsByRoles(ctx context.Context, roles []string) (
 	var perms []string
 
 	// 如果是超级管理员（ROOT），返回所有权限
+	roleCodes := stripRolePrefix(roles)
 	isRoot := false
-	for _, role := range roles {
+	for _, role := range roleCodes {
 		if role == "ROOT" {
 			isRoot = true
 			break
@@ -153,7 +156,7 @@ func (r *MenuRepository) FindPermsByRoles(ctx context.Context, roles []string) (
 		Select("DISTINCT sys_menu.perm").
 		Joins("JOIN sys_role_menu srm ON sys_menu.id = srm.menu_id").
 		Joins("JOIN sys_role sr ON srm.role_id = sr.id").
-		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roles).
+		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roleCodes).
 		Where("sys_menu.perm IS NOT NULL AND sys_menu.perm != ''").
 		Scan(&perms).Error
 	return perms, err
@@ -163,8 +166,9 @@ func (r *MenuRepository) FindPermsByRoles(ctx context.Context, roles []string) (
 func (r *MenuRepository) FindPermsByRolesWithType(ctx context.Context, roles []string, menuType int) ([]string, error) {
 	var perms []string
 
+	roleCodes := stripRolePrefix(roles)
 	isRoot := false
-	for _, role := range roles {
+	for _, role := range roleCodes {
 		if role == "ROOT" {
 			isRoot = true
 			break
@@ -186,7 +190,7 @@ func (r *MenuRepository) FindPermsByRolesWithType(ctx context.Context, roles []s
 		Select("DISTINCT sys_menu.perm").
 		Joins("JOIN sys_role_menu srm ON sys_menu.id = srm.menu_id").
 		Joins("JOIN sys_role sr ON srm.role_id = sr.id").
-		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roles).
+		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roleCodes).
 		Where("sys_menu.type = ?", menuType).
 		Where("sys_menu.perm IS NOT NULL AND sys_menu.perm != ''").
 		Scan(&perms).Error
@@ -218,12 +222,26 @@ func (r *MenuRepository) GetMenuOptions(ctx context.Context) ([]read.MenuOptionR
 }
 
 // GetMenuRoutes 获取菜单路由列表
+// stripRolePrefix 去除角色 ROLE_ 前缀，仅保留纯角色编码
+func stripRolePrefix(roles []string) []string {
+	result := make([]string, 0, len(roles))
+	for _, role := range roles {
+		if strings.HasPrefix(role, "ROLE_") {
+			result = append(result, role[5:])
+		} else {
+			result = append(result, role)
+		}
+	}
+	return result
+}
+
 func (r *MenuRepository) GetMenuRoutes(ctx context.Context, roles []string) ([]read.MenuRouteRead, error) {
 	var routes []read.MenuRouteRead
 
 	// 如果是超级管理员（ROOT），返回所有菜单
+	roleCodes := stripRolePrefix(roles)
 	isRoot := false
-	for _, role := range roles {
+	for _, role := range roleCodes {
 		if role == "ROOT" {
 			isRoot = true
 			break
@@ -251,7 +269,7 @@ func (r *MenuRepository) GetMenuRoutes(ctx context.Context, roles []string) ([]r
 		Joins("JOIN sys_role sr ON srm.role_id = sr.id").
 		Joins("LEFT JOIN sys_role_menu srm2 ON sys_menu.id = srm2.menu_id").
 		Joins("LEFT JOIN sys_role sr2 ON srm2.role_id = sr2.id AND sr2.status = 1 AND sr2.deleted = 0").
-		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roles).
+		Where("sr.code IN ? AND sr.status = 1 AND sr.deleted = 0", roleCodes).
 		Where("sys_menu.type IN (1, 2) AND sys_menu.visible = 1").
 		Group("sys_menu.id").
 		Order("sys_menu.sort ASC").

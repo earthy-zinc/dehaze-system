@@ -30,7 +30,7 @@ func (api *AlgorithmApi) GetList(c *gin.Context) {
 		return
 	}
 
-	algorithms, err := api.algorithmService.GetPage(ctx, &queryParams)
+	algorithms, err := api.algorithmService.GetTree(ctx, &queryParams)
 	if err != nil {
 		_ = c.Error(err)
 		return

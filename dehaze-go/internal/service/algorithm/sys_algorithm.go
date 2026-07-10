@@ -61,6 +61,45 @@ func (s *AlgorithmService) GetPage(ctx context.Context, q *query.AlgorithmQuery)
 	}, nil
 }
 
+// GetTree 获取算法树形列表（对齐 Java 树形表格格式）
+func (s *AlgorithmService) GetTree(ctx context.Context, q *query.AlgorithmQuery) ([]vo.AlgorithmVO, error) {
+	algorithms, err := s.algorithmRepo.FindAll(ctx, q)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法列表失败", err)
+	}
+
+	// 构建树形结构（parent_id == 0 为根节点）
+	tree := make([]vo.AlgorithmVO, 0)
+	for _, algo := range algorithms {
+		if algo.ParentID == 0 {
+			tree = append(tree, mapAlgorithmToVO(algo, algorithms))
+		}
+	}
+	return tree, nil
+}
+
+func mapAlgorithmToVO(algo read.Algorithm, all []read.Algorithm) vo.AlgorithmVO {
+	voItem := vo.AlgorithmVO{
+		ID:          algo.ID,
+		Name:        algo.Name,
+		Type:        algo.Type,
+		Img:         algo.Img,
+		Description: algo.Description,
+		Path:        algo.Path,
+		Flops:       algo.Flops,
+		Params:      algo.Params,
+		ImportPath:  algo.ImportPath,
+		Status:      algo.Status,
+		Size:        algo.Size,
+	}
+	for _, child := range all {
+		if child.ParentID == algo.ID {
+			voItem.Children = append(voItem.Children, mapAlgorithmToVO(child, all))
+		}
+	}
+	return voItem
+}
+
 // GetOptions 获取算法下拉选项
 func (s *AlgorithmService) GetOptions(ctx context.Context) ([]vo.Option, error) {
 	readOptions, err := s.algorithmRepo.FindOptions(ctx)

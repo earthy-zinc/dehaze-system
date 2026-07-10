@@ -67,7 +67,7 @@ public class FileController {
             @Parameter(description = "文件md5") @RequestParam String md5
     ) {
         boolean result = sysFileService.check(md5);
-        return Result.judge(result);
+        return Result.success(result);
     }
 
     @GetMapping("/page")

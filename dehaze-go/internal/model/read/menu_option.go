@@ -12,6 +12,6 @@ type MenuOptionRead struct {
 	Type int8 `json:"type"`
 	// 排序
 	Sort int `json:"sort"`
-	// 子菜单选项
-	Children []MenuOptionRead `json:"children,omitempty"`
+	// 子菜单选项（非数据库字段，由业务逻辑组装）
+	Children []MenuOptionRead `gorm:"-" json:"children,omitempty"`
 }

@@ -2,7 +2,6 @@ package role
 
 import (
 	"context"
-	"encoding/json"
 	"regexp"
 	"strings"
 	"time"
@@ -24,12 +23,8 @@ const (
 	ROOT_ROLE_CODE = "ROOT"
 	// ROLE_PERMS_PREFIX Redis中角色权限缓存key前缀
 	ROLE_PERMS_PREFIX = "role:perms"
-	// ROLE_OPTIONS_KEY 角色选项缓存key
-	ROLE_OPTIONS_KEY = "role:options"
 	// ROLE_PERMS_TTL 角色权限缓存过期时间（30分钟）
 	ROLE_PERMS_TTL = 30 * time.Minute
-	// ROLE_OPTIONS_TTL 角色选项缓存过期时间（1小时）
-	ROLE_OPTIONS_TTL = 1 * time.Hour
 )
 
 // roleCodePattern 角色编码正则（包级编译，避免每次验证重新编译）
@@ -94,32 +89,14 @@ func (s *RoleService) GetPage(ctx context.Context, q *query.RolePageQuery) (*vo.
 	}, nil
 }
 
-// GetOptions 角色下拉列表（带缓存）
-func (s *RoleService) GetOptions(ctx context.Context) ([]vo.Option, error) {
-	// 尝试从缓存获取
-	if s.cache != nil {
-		cached, err := s.cache.Get(ctx, ROLE_OPTIONS_KEY)
-		if err == nil && cached != "" {
-			var options []vo.Option
-			if jsonErr := json.Unmarshal([]byte(cached), &options); jsonErr == nil {
-				return options, nil
-			}
-		}
-	}
-
-	readOptions, err := s.roleRepo.FindOptions(ctx)
+// GetOptions 角色下拉列表（非超级管理员不显示 ROOT 角色）
+func (s *RoleService) GetOptions(ctx context.Context, isRoot bool) ([]vo.Option, error) {
+	readOptions, err := s.roleRepo.FindOptions(ctx, isRoot)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询角色选项列表失败", err)
 	}
 
 	options := mapper.OptionsFromRead(readOptions)
-
-	// 写入缓存
-	if s.cache != nil {
-		if data, jsonErr := json.Marshal(options); jsonErr == nil {
-			_ = s.cache.Set(ctx, ROLE_OPTIONS_KEY, string(data), ROLE_OPTIONS_TTL)
-		}
-	}
 
 	return options, nil
 }
@@ -163,9 +140,6 @@ func (s *RoleService) Create(ctx context.Context, form *bo.RoleFormBO) error {
 	if err := s.roleRepo.Create(ctx, role); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "创建角色失败", err)
 	}
-
-	// 角色增删改时清除选项缓存
-	s.clearOptionsCache(ctx)
 
 	return nil
 }
@@ -233,9 +207,6 @@ func (s *RoleService) Update(ctx context.Context, id int64, form *bo.RoleFormBO)
 		s.refreshRolePermsCache(ctx, form.Code, "")
 	}
 
-	// 角色增删改时清除选项缓存
-	s.clearOptionsCache(ctx)
-
 	return nil
 }
 
@@ -286,9 +257,6 @@ func (s *RoleService) UpdateStatus(ctx context.Context, id int64, status int8) e
 
 	// 刷新权限缓存
 	s.refreshRolePermsCache(ctx, role.Code, "")
-
-	// 角色状态变更时清除选项缓存
-	s.clearOptionsCache(ctx)
 
 	return nil
 }
@@ -341,9 +309,6 @@ func (s *RoleService) Delete(ctx context.Context, ids []int64) error {
 	for _, code := range roleCodes {
 		s.refreshRolePermsCache(ctx, code, "")
 	}
-
-	// 清除选项缓存
-	s.clearOptionsCache(ctx)
 
 	return nil
 }
@@ -455,12 +420,4 @@ func (s *RoleService) loadRolePermsToCache(ctx context.Context, roleCode string)
 	_ = s.cache.HSet(ctx, ROLE_PERMS_PREFIX, roleCode, strings.Join(perms, ","))
 	// 为 Hash Key 设置 TTL，确保缓存不会永远残留
 	_, _ = s.cache.Expire(ctx, ROLE_PERMS_PREFIX, ROLE_PERMS_TTL)
-}
-
-// clearOptionsCache 清除角色选项缓存
-func (s *RoleService) clearOptionsCache(ctx context.Context) {
-	if s.cache == nil {
-		return
-	}
-	_ = s.cache.Delete(ctx, ROLE_OPTIONS_KEY)
 }

@@ -17,8 +17,8 @@ type IRoleService interface {
 	// GetPage 角色分页列表
 	GetPage(ctx context.Context, q *query.RolePageQuery) (*vo.PageResult[vo.RolePageVO], error)
 
-	// GetOptions 获取角色下拉选项
-	GetOptions(ctx context.Context) ([]vo.Option, error)
+	// GetOptions 获取角色下拉选项（isRoot 为 false 时排除 ROOT 角色）
+	GetOptions(ctx context.Context, isRoot bool) ([]vo.Option, error)
 
 	// GetFormData 获取角色表单数据
 	GetFormData(ctx context.Context, id int64) (*bo.RoleFormBO, error)

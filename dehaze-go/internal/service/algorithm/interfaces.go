@@ -17,6 +17,9 @@ type IAlgorithmService interface {
 	// GetPage 算法分页列表
 	GetPage(ctx context.Context, q *query.AlgorithmQuery) (*vo.PageResult[vo.AlgorithmVO], error)
 
+	// GetTree 获取算法树形列表
+	GetTree(ctx context.Context, q *query.AlgorithmQuery) ([]vo.AlgorithmVO, error)
+
 	// GetOptions 获取算法下拉选项
 	GetOptions(ctx context.Context) ([]vo.Option, error)
 

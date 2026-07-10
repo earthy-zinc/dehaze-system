@@ -42,7 +42,6 @@ class FileUploadResultVO(BaseModel):
     name: str = Field(description="文件名称")
     type: Optional[str] = Field(default=None, description="文件类型")
     size: str = Field(description="文件大小(格式化)")
-    sizeBytes: int = Field(description="文件大小(字节)")
     url: Optional[str] = Field(default=None, description="文件URL")
     path: Optional[str] = Field(default=None, description="文件路径")
     objectName: str = Field(description="对象存储名称")
@@ -63,12 +62,12 @@ class FileVO(BaseModel):
     name: str = Field(description="文件名称")
     type: Optional[str] = Field(default=None, description="文件类型")
     size: Optional[str] = Field(default=None, description="文件大小(格式化)")
-    sizeBytes: Optional[int] = Field(default=None, description="文件大小(字节)")
     url: Optional[str] = Field(default=None, description="文件URL")
     path: Optional[str] = Field(default=None, description="文件路径")
     objectName: Optional[str] = Field(default=None, description="对象存储名称")
     md5: Optional[str] = Field(default=None, description="文件MD5值")
     createTime: Optional[datetime] = Field(default=None, description="创建时间")
+    updateTime: Optional[datetime] = Field(default=None, description="更新时间")
 
 
 class FilePageVO(BaseModel):

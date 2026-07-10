@@ -19,7 +19,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=Result[list[DeptVO]], summary="获取部门列表")
+@router.get("", response_model=Result[list[DeptVO]], summary="获取部门列表")
 async def list_depts(
     keywords: Optional[str] = Query(default=None),
     status: Optional[int] = Query(default=None, ge=0, le=1),
@@ -49,12 +49,13 @@ async def get_dept_form(
     return success(dept_form)
 
 
-@router.post("/", response_model=Result[dict[str, int]], summary="新增部门")
+@router.post("", response_model=Result[dict[str, int]], summary="新增部门")
 @require_permission("sys:dept:add")
 async def create_dept(
     body: DeptForm,  # type: ignore
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     dept_id = await DeptService.create_dept(db, redis, body.model_dump(exclude_none=True))
     return success({"id": dept_id}, msg="部门创建成功")
@@ -67,6 +68,7 @@ async def update_dept(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     body: DeptForm = Body(...),
+    user: UserContext = Depends(get_current_user),
 ):
     updated_id = await DeptService.update_dept(db, redis, dept_id, body.model_dump(exclude_none=True))
     return success({"id": updated_id}, msg="部门更新成功")
@@ -78,6 +80,7 @@ async def delete_depts(
     ids: str = Path(...),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     dept_ids = [int(i) for i in ids.split(",")]
     await DeptService.delete_depts(db, redis, dept_ids)

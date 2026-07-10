@@ -18,7 +18,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=Result[list[AlgorithmVO]], summary="获取算法树形表格")
+@router.get("", response_model=Result[list[AlgorithmVO]], summary="获取算法树形表格")
 async def list_algorithms(
     keywords: Optional[str] = Query(default=None, description="关键词"),
     db: AsyncSession = Depends(get_db),
@@ -51,7 +51,7 @@ async def get_algorithm(
 
 
 @router.post(
-    "/", response_model=Result[AlgorithmIdVO], summary="新增算法"
+    "", response_model=Result[AlgorithmIdVO], summary="新增算法"
 )
 async def create_algorithm(
     body: AlgorithmForm,
@@ -72,7 +72,7 @@ async def update_algorithm(
 
 
 @router.delete(
-    "/", response_model=Result[AlgorithmDeleteResultVO], summary="批量删除算法"
+    "", response_model=Result[AlgorithmDeleteResultVO], summary="批量删除算法"
 )
 async def delete_algorithms(
     ids: str = Query(..., description="算法ID，多个以逗号分隔"),

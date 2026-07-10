@@ -24,6 +24,9 @@ type IFileRepository interface {
 	// FindByObjectName 根据对象名称查询文件
 	FindByObjectName(ctx context.Context, objectName string) (*model.SysFile, error)
 
+	// FindPage 分页查询文件列表（keywords 模糊匹配 name 或 type）
+	FindPage(ctx context.Context, pageNum, pageSize int, keywords string) ([]model.SysFile, int64, error)
+
 	// Create 创建文件记录
 	Create(ctx context.Context, file *model.SysFile) (*model.SysFile, error)
 

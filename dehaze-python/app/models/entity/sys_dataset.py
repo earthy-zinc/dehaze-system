@@ -75,10 +75,4 @@ class SysItemFile(Base):
         String(64), default='未分类', comment='场景类型')
     haze_level: Mapped[str] = mapped_column(
         String(32), default='未标注', comment='雾霾等级')
-    quality_score: Mapped[float | None] = mapped_column(
-        Numeric(5, 2), nullable=True, comment='质量分数')
-    dehaze_algorithm: Mapped[str] = mapped_column(
-        String(64), default='', comment='去雾算法')
-    is_labeled: Mapped[bool] = mapped_column(
-        Boolean, default=False, comment='是否已标注')
     description: Mapped[str | None] = mapped_column(String(255), comment='描述')

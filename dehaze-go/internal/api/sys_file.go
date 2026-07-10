@@ -130,6 +130,69 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 	common.OkWithData(result, c)
 }
 
+// GetFilePage 分页查询文件列表
+// @Summary 分页查询文件列表
+// @Description 分页查询文件列表
+// @Tags 文件接口
+// @Accept application/json
+// @Produce application/json
+// @Param pageNum query int false "页码" default(1)
+// @Param pageSize query int false "每页数量" default(10)
+// @Param keywords query string false "关键字(文件名/类型)"
+// @Success 200 {object} common.Response{data=common.PageResult}
+// @Router /api/v1/files/page [get]
+func (api *SysFileApi) GetFilePage(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	pageNum := 1
+	pageSize := 10
+	if v := c.Query("pageNum"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			pageNum = n
+		}
+	}
+	if v := c.Query("pageSize"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			pageSize = n
+		}
+	}
+	keywords := c.Query("keywords")
+
+	result, err := api.fileService.GetPage(ctx, pageNum, pageSize, keywords)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
+}
+
+// GetFileDetail 获取文件详情
+// @Summary 获取文件详情
+// @Description 获取文件详情
+// @Tags 文件接口
+// @Accept application/json
+// @Produce application/json
+// @Param fileId path int true "文件ID"
+// @Success 200 {object} common.Response{data=model.SysFile}
+// @Router /api/v1/files/{fileId} [get]
+func (api *SysFileApi) GetFileDetail(c *gin.Context) {
+	fileIdStr := c.Param("fileId")
+	fileId, err := strconv.ParseInt(fileIdStr, 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "文件ID格式不正确"))
+		return
+	}
+
+	file, err := api.fileService.GetFileById(fileId)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithData(file, c)
+}
+
 // DownloadFile 文件下载
 // @Summary 文件下载
 // @Description 文件下载

@@ -42,8 +42,6 @@ class SysMenu(BaseModel):
                                              comment='【目录】只有一个子路由是否始终显示(1:是 0:否)')
     keep_alive: Mapped[int] = mapped_column(
         mysql_types.TINYINT, default=0, comment='【菜单】是否开启页面缓存(1:是 0:否)')
-    deleted: Mapped[int] = mapped_column(mysql_types.TINYINT, default=0,
-                                         comment='逻辑删除标识(1:已删除;0:未删除)')
 
 
 class SysRoleMenu(Base):

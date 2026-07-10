@@ -8,6 +8,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -80,14 +81,17 @@ func (api *SysRoleApi) GetRolePage(c *gin.Context) {
 func (api *SysRoleApi) ListRoleOptions(c *gin.Context) {
 	ctx := c.Request.Context()
 
+	// 非超级管理员不显示超级管理员角色
+	isRoot := security.IsRoot(c)
+
 	// 调用服务获取角色下拉列表
-	options, err := api.roleService.GetOptions(ctx)
+	options, err := api.roleService.GetOptions(ctx, isRoot)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithDetailed(options, "查询成功", c)
+	common.OkWithDetailed(options, common.SUCCESS.Msg, c)
 }
 
 // AddRole 新增角色

@@ -2,6 +2,7 @@ package dict
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -9,6 +10,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 
 	"gorm.io/gorm"
@@ -19,11 +21,12 @@ type DictTypeService struct {
 	db           *gorm.DB
 	dictTypeRepo dictrepo.IDictTypeRepository
 	dictRepo     dictrepo.IDictRepository
+	cache        types.ICache
 }
 
 // NewDictTypeService 创建字典类型服务实例
-func NewDictTypeService(db *gorm.DB, dictTypeRepo dictrepo.IDictTypeRepository, dictRepo dictrepo.IDictRepository) *DictTypeService {
-	return &DictTypeService{db: db, dictTypeRepo: dictTypeRepo, dictRepo: dictRepo}
+func NewDictTypeService(db *gorm.DB, dictTypeRepo dictrepo.IDictTypeRepository, dictRepo dictrepo.IDictRepository, cache types.ICache) *DictTypeService {
+	return &DictTypeService{db: db, dictTypeRepo: dictTypeRepo, dictRepo: dictRepo, cache: cache}
 }
 
 // ====================
@@ -171,6 +174,10 @@ func (s *DictTypeService) Update(ctx context.Context, id int64, form *bo.DictTyp
 		return common.WrapBizError(common.DATABASE_ERROR, "更新字典类型失败", err)
 	}
 
+	// 清除缓存（新旧类型编码都需要清除）
+	s.clearOptionsCache(ctx, oldCode)
+	s.clearOptionsCache(ctx, form.Code)
+
 	return nil
 }
 
@@ -203,4 +210,13 @@ func (s *DictTypeService) Delete(ctx context.Context, ids []int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除字典类型失败", err)
 	}
 	return nil
+}
+
+// clearOptionsCache 清除字典下拉选项缓存
+func (s *DictTypeService) clearOptionsCache(ctx context.Context, typeCode string) {
+	if s.cache == nil || typeCode == "" {
+		return
+	}
+	cacheKey := fmt.Sprintf("%s%s", DictOptionsCachePrefix, typeCode)
+	_ = s.cache.Delete(ctx, cacheKey)
 }

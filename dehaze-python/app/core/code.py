@@ -33,6 +33,8 @@ class ResultCode(Enum):
 
     PARAM_ERROR = ("A0400", "用户请求参数错误")
     RESOURCE_NOT_FOUND = ("A0401", "请求资源不存在")
+    DATA_EXISTS = ("A0501", "数据已存在")
+    DATA_BIND_EXISTS = ("A0504", "存在关联数据，无法删除")
     PARAM_IS_NULL = ("A0410", "请求必填参数为空")
 
     USER_UPLOAD_FILE_ERROR = ("A0700", "用户上传文件异常")

@@ -89,6 +89,42 @@ func (r *AlgorithmRepository) FindPage(ctx context.Context, q *query.AlgorithmQu
 	}, nil
 }
 
+// FindAll 查询所有算法（用于树形列表）
+func (r *AlgorithmRepository) FindAll(ctx context.Context, q *query.AlgorithmQuery) ([]read.Algorithm, error) {
+	db := r.db.WithContext(ctx).Model(&model.SysAlgorithm{})
+
+	if q.Keywords != "" {
+		keyword := "%" + q.Keywords + "%"
+		db = db.Where("name LIKE ?", keyword)
+	}
+
+	var algorithmList []model.SysAlgorithm
+	err := db.Find(&algorithmList).Error
+	if err != nil {
+		return nil, err
+	}
+
+	algorithmReads := make([]read.Algorithm, 0, len(algorithmList))
+	for _, algorithm := range algorithmList {
+		item := read.Algorithm{
+			ID:         algorithm.ID,
+			ParentID:   algorithm.ParentID,
+			Name:       algorithm.Name,
+			Type:       algorithm.Type,
+			Img:        algorithm.Img,
+			Description: algorithm.Description,
+			Path:       algorithm.Path,
+			Flops:      algorithm.Flops,
+			Params:     algorithm.Params,
+			ImportPath: algorithm.ImportPath,
+			Status:     int(algorithm.Status),
+			Size:       algorithm.Size,
+		}
+		algorithmReads = append(algorithmReads, item)
+	}
+	return algorithmReads, nil
+}
+
 // FindOptions 获取算法下拉选项
 func (r *AlgorithmRepository) FindOptions(ctx context.Context) ([]read.Option, error) {
 	var algorithms []model.SysAlgorithm

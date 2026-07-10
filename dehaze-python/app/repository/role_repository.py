@@ -9,6 +9,9 @@ from app.models.entity.sys_menu import SysRoleMenu
 from app.models.entity.sys_user import SysRole
 from app.repository.base import BaseRepository
 
+# 超级管理员角色编码
+ROOT_ROLE_CODE = "ROOT"
+
 
 class RoleRepository(BaseRepository[SysRole]):
     """角色数据访问层"""
@@ -87,16 +90,19 @@ class RoleRepository(BaseRepository[SysRole]):
     async def get_role_options(
         self,
         db: AsyncSession,
+        *,
+        is_root: bool = False,
     ) -> list[dict]:
-        """获取角色下拉选项列表（仅启用状态）"""
+        """获取角色下拉选项列表（仅启用状态，非 root 用户排除 ROOT 角色）"""
         stmt = (
-            select(SysRole)
+            select(SysRole.id, SysRole.name)
             .where(SysRole.deleted == 0, SysRole.status == 1)
             .order_by(SysRole.sort)
         )
+        if not is_root:
+            stmt = stmt.where(SysRole.code != ROOT_ROLE_CODE)
         result = await db.execute(stmt)
-        roles = result.scalars().all()
-        return [{"value": role.id, "label": role.name} for role in roles]
+        return [{"value": row[0], "label": row[1]} for row in result.fetchall()]
 
     async def get_role_menu_ids(
         self,

@@ -32,8 +32,8 @@ type IRoleRepository interface {
 	// FindPage 分页查询角色列表
 	FindPage(ctx context.Context, q *query.RolePageQuery) (*read.PageResult[read.RolePage], error)
 
-	// FindOptions 获取角色下拉选项
-	FindOptions(ctx context.Context) ([]read.Option, error)
+	// FindOptions 获取角色下拉选项（isRoot 为 false 时排除 ROOT 角色）
+	FindOptions(ctx context.Context, isRoot bool) ([]read.Option, error)
 
 	// Create 创建角色
 	Create(ctx context.Context, role *model.SysRole) error

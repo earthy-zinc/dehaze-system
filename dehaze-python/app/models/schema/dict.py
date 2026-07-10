@@ -58,6 +58,7 @@ class DictForm(BaseModel):
     value: str = Field(..., min_length=1, max_length=50, description="字典项值")
     status: int = Field(default=1, ge=0, le=1, description="状态(1-正常；0-禁用)")
     sort: int = Field(default=0, ge=0, description="排序")
+    defaulted: int = Field(default=0, ge=0, le=1, description="是否默认(1-是；0-否)")
     remark: Optional[str] = Field(
         default=None, max_length=255, description="备注")
 

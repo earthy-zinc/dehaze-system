@@ -430,9 +430,9 @@ func (_c *MockIRoleRepository_FindByID_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// FindOptions provides a mock function with given fields: ctx
-func (_m *MockIRoleRepository) FindOptions(ctx context.Context) ([]read.Option, error) {
-	ret := _m.Called(ctx)
+// FindOptions provides a mock function with given fields: ctx, isRoot
+func (_m *MockIRoleRepository) FindOptions(ctx context.Context, isRoot bool) ([]read.Option, error) {
+	ret := _m.Called(ctx, isRoot)
 
 	if len(ret) == 0 {
 		panic("no return value specified for FindOptions")
@@ -440,19 +440,19 @@ func (_m *MockIRoleRepository) FindOptions(ctx context.Context) ([]read.Option, 
 
 	var r0 []read.Option
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]read.Option, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, bool) ([]read.Option, error)); ok {
+		return rf(ctx, isRoot)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []read.Option); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, bool) []read.Option); ok {
+		r0 = rf(ctx, isRoot)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]read.Option)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, bool) error); ok {
+		r1 = rf(ctx, isRoot)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -467,13 +467,14 @@ type MockIRoleRepository_FindOptions_Call struct {
 
 // FindOptions is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockIRoleRepository_Expecter) FindOptions(ctx interface{}) *MockIRoleRepository_FindOptions_Call {
-	return &MockIRoleRepository_FindOptions_Call{Call: _e.mock.On("FindOptions", ctx)}
+//   - isRoot bool
+func (_e *MockIRoleRepository_Expecter) FindOptions(ctx interface{}, isRoot interface{}) *MockIRoleRepository_FindOptions_Call {
+	return &MockIRoleRepository_FindOptions_Call{Call: _e.mock.On("FindOptions", ctx, isRoot)}
 }
 
-func (_c *MockIRoleRepository_FindOptions_Call) Run(run func(ctx context.Context)) *MockIRoleRepository_FindOptions_Call {
+func (_c *MockIRoleRepository_FindOptions_Call) Run(run func(ctx context.Context, isRoot bool)) *MockIRoleRepository_FindOptions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(bool))
 	})
 	return _c
 }
@@ -483,7 +484,7 @@ func (_c *MockIRoleRepository_FindOptions_Call) Return(_a0 []read.Option, _a1 er
 	return _c
 }
 
-func (_c *MockIRoleRepository_FindOptions_Call) RunAndReturn(run func(context.Context) ([]read.Option, error)) *MockIRoleRepository_FindOptions_Call {
+func (_c *MockIRoleRepository_FindOptions_Call) RunAndReturn(run func(context.Context, bool) ([]read.Option, error)) *MockIRoleRepository_FindOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }

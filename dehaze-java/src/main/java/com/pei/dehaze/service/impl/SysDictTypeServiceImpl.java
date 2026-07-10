@@ -1,13 +1,14 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.lang.Assert;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.converter.DictTypeConverter;
 import com.pei.dehaze.mapper.SysDictTypeMapper;
 import com.pei.dehaze.model.entity.SysDict;
@@ -62,7 +63,8 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
                                 SysDictType::getName,
                                 SysDictType::getCode,
                                 SysDictType::getStatus,
-                                SysDictType::getRemark
+                                SysDictType::getRemark,
+                                SysDictType::getCreateTime
                         )
         );
 
@@ -87,7 +89,9 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
                         SysDictType::getStatus,
                         SysDictType::getRemark
                 ));
-        Assert.isTrue(entity != null, "字典类型不存在");
+        if (entity == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+        }
 
         // 实体转换
         return dictTypeConverter.entity2Form(entity);
@@ -98,6 +102,12 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      */
     @Override
     public boolean saveDictType(DictTypeForm dictTypeForm) {
+        // 检查编码唯一性
+        long count = this.count(new LambdaQueryWrapper<SysDictType>()
+                .eq(SysDictType::getCode, dictTypeForm.getCode()));
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS);
+        }
         // 实体对象转换 form->entity
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
         // 持久化
@@ -112,15 +122,26 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      * @param dictTypeForm 字典类型表单
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public boolean updateDictType(Long id, DictTypeForm dictTypeForm) {
         // 获取字典类型
         SysDictType sysDictType = this.getById(id);
-        Assert.isTrue(sysDictType != null, "字典类型不存在");
+        if (sysDictType == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+        }
+
+        // 检查编码唯一性（排除自身ID）
+        long count = this.count(new LambdaQueryWrapper<SysDictType>()
+                .eq(SysDictType::getCode, dictTypeForm.getCode())
+                .ne(SysDictType::getId, id));
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS);
+        }
 
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
         entity.setId(id);  // 设置ID，确保更新正确执行
         boolean result = this.updateById(entity);
-        if (sysDictType != null && result) {
+        if (result) {
             // 字典类型code变化，同步修改字典项的类型code
             String oldCode = sysDictType.getCode();
             String newCode = dictTypeForm.getCode();
@@ -143,14 +164,18 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     @Transactional
     public boolean deleteDictTypes(String idsStr) {
 
-        Assert.isTrue(CharSequenceUtil.isNotBlank(idsStr), "删除数据为空");
+        if (CharSequenceUtil.isBlank(idsStr)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR);
+        }
 
         List<String> ids = Arrays.stream(idsStr.split(",")).toList();
 
         // 校验字典类型是否存在
         long existCount = this.count(new LambdaQueryWrapper<SysDictType>()
                 .in(SysDictType::getId, ids));
-        Assert.isTrue(existCount > 0, "字典类型不存在");
+        if (existCount == 0) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+        }
 
         // 获取字典类型编码列表
         List<String> dictTypeCodes = this.list(new LambdaQueryWrapper<SysDictType>()
@@ -164,10 +189,9 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         if (CollUtil.isNotEmpty(dictTypeCodes)) {
             long dictCount = dictItemService.count(new LambdaQueryWrapper<SysDict>()
                     .in(SysDict::getTypeCode, dictTypeCodes));
-            Assert.isTrue(dictCount == 0, "字典类型下存在字典数据，不能删除");
-            // 删除字典数据项
-            dictItemService.remove(new LambdaQueryWrapper<SysDict>()
-                    .in(SysDict::getTypeCode, dictTypeCodes));
+            if (dictCount > 0) {
+                throw new BusinessException(ResultCode.DATA_BIND_EXISTS);
+            }
         }
         // 删除字典类型
         return this.removeByIds(ids);

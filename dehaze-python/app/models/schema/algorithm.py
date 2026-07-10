@@ -46,9 +46,9 @@ class AlgorithmForm(BaseModel):
 # ==================== 响应模型 ====================
 
 class AlgorithmVO(BaseModel):
-    """算法VO"""
+    """算法VO（对齐 Java/Go 字段名 camelCase）"""
     id: int = Field(description="算法ID")
-    parent_id: int = Field(description="父级ID")
+    parentId: int = Field(validation_alias="parent_id", serialization_alias="parentId", description="父级ID")
     type: Optional[str] = Field(default=None, description="算法类型")
     name: str = Field(description="算法名称")
     path: Optional[str] = Field(default=None, description="模型路径")
@@ -56,13 +56,15 @@ class AlgorithmVO(BaseModel):
     img: Optional[str] = Field(default=None, description="示例图片")
     params: Optional[str] = Field(default=None, description="参数量")
     flops: Optional[str] = Field(default=None, description="计算量")
-    import_path: Optional[str] = Field(default=None, description="导入路径")
+    importPath: Optional[str] = Field(default=None, validation_alias="import_path", serialization_alias="importPath", description="导入路径")
     description: Optional[str] = Field(default=None, description="算法描述")
     status: int = Field(description="状态(1-启用；0-停用)")
-    create_time: Optional[str] = Field(default=None, description="创建时间")
-    update_time: Optional[str] = Field(default=None, description="更新时间")
+    createTime: Optional[str] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
+    updateTime: Optional[str] = Field(default=None, validation_alias="update_time", serialization_alias="updateTime", description="更新时间")
     children: Optional[List["AlgorithmVO"]] = Field(
         default=None, description="子算法列表")
+
+    model_config = {"populate_by_name": True}
 
 
 class AlgorithmOptionVO(BaseModel):

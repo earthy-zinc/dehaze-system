@@ -9,6 +9,7 @@
 import logging
 from typing import Any
 
+from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.dict_repository import (dict_repository,
@@ -63,12 +64,12 @@ class DictService:
         # 检查类型编码是否存在
         dict_type = await dict_type_repository.get_by_code(db, type_code)
         if not dict_type:
-            raise BusinessException("字典类型不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在")
 
         # 检查同一类型下键值唯一性
         existing = await dict_repository.get_by_type_code_and_value(db, type_code, value)
         if existing:
-            raise BusinessException("该类型下字典值已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "该类型下字典值已存在")
 
         # 创建字典项
         result = await dict_repository.create_dict(db, data)
@@ -85,31 +86,31 @@ class DictService:
 
         业务规则:
         1. 检查字典是否存在
-        2. 如果修改了 typeCode 或 value，检查唯一性
-        3. 更新成功后清除相关缓存
+        2. typeCode 只读，不可修改
+        3. 如果修改了 value，检查唯一性
+        4. 更新成功后清除相关缓存
         """
         # 获取原字典数据
         old_dict = await dict_repository.get_by_id(db, dict_id)
         if not old_dict:
-            raise BusinessException("字典不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典不存在")
 
-        new_type_code = data.get("typeCode", old_dict.type_code)
+        # typeCode 只读，移除 form 传入的 typeCode
+        data.pop("typeCode", None)
         new_value = data.get("value", old_dict.value)
 
-        # 如果修改了 typeCode 或 value，检查唯一性
-        if new_type_code != old_dict.type_code or new_value != old_dict.value:
-            existing = await dict_repository.get_by_type_code_and_value(db, new_type_code, new_value)
+        # 如果修改了 value，检查唯一性（同类型下，排除自身）
+        if new_value != old_dict.value:
+            existing = await dict_repository.get_by_type_code_and_value(db, old_dict.type_code, new_value)
             if existing and existing.id != dict_id:
-                raise BusinessException("该类型下字典值已存在")
+                raise BusinessException(ResultCode.DATA_EXISTS, "该类型下字典值已存在")
 
         # 更新字典
         result = await dict_repository.update_by_id(db, dict_id, data)
 
-        # 清除缓存（新旧 typeCode 都需要清除）
+        # 清除缓存（typeCode 不变，只需清除一个）
         if old_dict.type_code:
             await DictService._invalidate_options_cache(old_dict.type_code)
-        if new_type_code and new_type_code != old_dict.type_code:
-            await DictService._invalidate_options_cache(new_type_code)
 
         return result
 
@@ -231,7 +232,7 @@ class DictTypeService:
         # 检查编码唯一性
         existing = await dict_type_repository.get_by_code(db, code)
         if existing:
-            raise BusinessException("字典类型编码已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在")
 
         return await dict_type_repository.create_type(db, data)
 
@@ -243,11 +244,12 @@ class DictTypeService:
         业务规则:
         1. 检查字典类型是否存在
         2. 如果修改了 code，检查唯一性
+        3. code 变更时级联更新 sys_dict.type_code 并清除缓存
         """
         # 获取原类型
         old_type = await dict_type_repository.get_by_id(db, type_id)
         if not old_type:
-            raise BusinessException("字典类型不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在")
 
         new_code = data.get("code")
 
@@ -255,9 +257,18 @@ class DictTypeService:
         if new_code and new_code != old_type.code:
             existing = await dict_type_repository.get_by_code(db, new_code)
             if existing:
-                raise BusinessException("字典类型编码已存在")
+                raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在")
 
-        return await dict_type_repository.update_by_id(db, type_id, data)
+        # 更新字典类型
+        result = await dict_type_repository.update_by_id(db, type_id, data)
+
+        # code 变更时级联更新 sys_dict.type_code 并清除缓存
+        if result and new_code and new_code != old_type.code:
+            await dict_repository.update_type_code(db, old_type.code, new_code)
+            await DictService._invalidate_options_cache(old_type.code)
+            await DictService._invalidate_options_cache(new_code)
+
+        return result
 
     @staticmethod
     async def delete_dict_types(db: AsyncSession, type_ids: list[int]) -> bool:
@@ -275,6 +286,7 @@ class DictTypeService:
                 count = await dict_repository.count_by_type_code(db, dict_type.code)
                 if count > 0:
                     raise BusinessException(
+                        ResultCode.DATA_BIND_EXISTS,
                         f"字典类型【{dict_type.name}】存在 {count} 条关联数据，无法删除")
 
         return await dict_type_repository.delete_by_ids(db, type_ids)

@@ -937,7 +937,7 @@ class ItemFileService:
             "url": file_obj.url if file_obj else None,
             "thumbnailUrl": file_obj.url if file_obj else None,
             "name": file_obj.name if file_obj else None,
-            "size": file_obj.size_bytes if file_obj else None,
+            "size": file_obj.size if file_obj else None,
             "md5": file_obj.md5 if file_obj else None,
         }
 

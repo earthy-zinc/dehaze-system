@@ -197,18 +197,9 @@ func (s *DictService) Update(ctx context.Context, id int64, form *bo.DictFormBO)
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典数据项不存在")
 	}
 
-	// 校验类型编码有效性
-	dictType, err := s.dictTypeRepo.FindByCode(ctx, form.TypeCode)
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "检查字典类型编码失败", err)
-	}
-	if dictType == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典类型编码不存在")
-	}
-
-	// 校验字典值唯一性（同类型下，排除当前记录）
-	if dict.Value != form.Value || dict.TypeCode != form.TypeCode {
-		exists, err := s.dictRepo.ExistsByTypeCodeAndValue(ctx, form.TypeCode, form.Value, id)
+	// 校验字典值唯一性（同类型下，排除当前记录）— typeCode 只读，使用原记录的 typeCode
+	if dict.Value != form.Value {
+		exists, err := s.dictRepo.ExistsByTypeCodeAndValue(ctx, dict.TypeCode, form.Value, id)
 		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "检查字典值唯一性失败", err)
 		}
@@ -217,10 +208,7 @@ func (s *DictService) Update(ctx context.Context, id int64, form *bo.DictFormBO)
 		}
 	}
 
-	// 记录旧的类型编码用于清除缓存
-	oldTypeCode := dict.TypeCode
-
-	dict.TypeCode = form.TypeCode
+	// 更新字典数据（typeCode 只读，不更新）
 	dict.Name = form.Name
 	dict.Value = form.Value
 	dict.Status = form.Status
@@ -233,11 +221,8 @@ func (s *DictService) Update(ctx context.Context, id int64, form *bo.DictFormBO)
 		return common.WrapBizError(common.DATABASE_ERROR, "更新字典数据失败", err)
 	}
 
-	// 清除相关缓存（新旧类型编码都需要清除）
-	s.clearOptionsCache(ctx, oldTypeCode)
-	if oldTypeCode != form.TypeCode {
-		s.clearOptionsCache(ctx, form.TypeCode)
-	}
+	// 清除缓存（typeCode 不变，只需清除一个）
+	s.clearOptionsCache(ctx, dict.TypeCode)
 
 	return nil
 }

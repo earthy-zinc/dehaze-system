@@ -111,6 +111,20 @@ func (s *FileService) GetFileById(fileId int64) (sysFile model.SysFile, err erro
 	return *file, nil
 }
 
+// GetPage 分页查询文件列表
+func (s *FileService) GetPage(ctx context.Context, pageNum, pageSize int, keywords string) (*common.PageResult, error) {
+	files, total, err := s.fileRepo.FindPage(ctx, pageNum, pageSize, keywords)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询文件列表失败", err)
+	}
+	return &common.PageResult{
+		List:     files,
+		Total:    total,
+		Page:     pageNum,
+		PageSize: pageSize,
+	}, nil
+}
+
 // DownloadFile 下载文件
 func (s *FileService) DownloadFile(objectName string) (filePath string, err error) {
 	// TODO: 实现文件下载逻辑

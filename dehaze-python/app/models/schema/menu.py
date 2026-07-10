@@ -81,27 +81,30 @@ class MenuVO(BaseModel):
     children: Optional[List["MenuVO"]] = Field(default=None, description="子菜单")
 
 
+class RouteMeta(BaseModel):
+    """路由元数据（对齐 Java RouteVO.Meta）"""
+    title: str = Field(description="路由标题")
+    icon: Optional[str] = Field(default=None, description="图标")
+    hidden: bool = Field(default=False, description="是否隐藏")
+    keepAlive: Optional[bool] = Field(default=None, description="是否开启页面缓存")
+    alwaysShow: Optional[bool] = Field(default=None, description="目录是否始终显示")
+
+
 class RouteVO(BaseModel):
-    """路由视图对象"""
-    id: int = Field(description="菜单ID")
-    parentId: int = Field(description="父菜单ID")
-    name: str = Field(description="菜单名称")
-    type: int = Field(description="菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)")
-    path: Optional[str] = Field(default=None, description="路由路径")
+    """路由视图对象（对齐 Java/Go RouteVO）"""
+    name: str = Field(description="路由名称")
+    path: str = Field(description="路由路径")
     component: Optional[str] = Field(default=None, description="组件路径")
-    sort: int = Field(description="菜单排序(数字越小排名越靠前)")
-    visible: int = Field(description="菜单是否可见(1:显示;0:隐藏)")
-    icon: Optional[str] = Field(default=None, description="ICON")
     redirect: Optional[str] = Field(default=None, description="跳转路径")
-    perm: Optional[str] = Field(default=None, description="按钮权限标识")
-    children: Optional[List["RouteVO"]] = Field(
-        default=None, description="子菜单")
+    meta: RouteMeta = Field(description="路由元数据")
+    children: Optional[List["RouteVO"]] = Field(default=None, description="子路由")
 
 
 class MenuOptionVO(BaseModel):
-    """菜单选项视图对象"""
-    id: int = Field(description="菜单ID")
-    name: str = Field(description="菜单名称")
+    """菜单选项视图对象（对齐 Java Option<T>）"""
+    value: int = Field(description="选项值（菜单ID）")
+    label: str = Field(description="选项标签（菜单名称）")
+    children: Optional[list["MenuOptionVO"]] = Field(default=None, description="子选项列表")
 
 
 class MenuFormVO(BaseModel):

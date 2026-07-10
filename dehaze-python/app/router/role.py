@@ -4,7 +4,7 @@ from app.core.code import ResultCode
 from app.core.result import Result, error, success
 from app.database import get_db
 from app.decorators import require_permission
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import PageResult
 from app.models.schema.role import (MenuIdsBody, RoleForm, RoleFormVO,
@@ -60,18 +60,19 @@ async def get_role_page(
 @router.get("/options", response_model=Result[list[RoleOptionVO]], summary="获取角色下拉列表")
 async def list_role_options(
     db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
-    options = await RoleService.get_role_options(db, redis)
+    options = await RoleService.get_role_options(db, is_root=user.is_root)
     return success(options)
 
 
-@router.post("/", response_model=Result[dict[str, int]], summary="新增角色")
+@router.post("", response_model=Result[dict[str, int]], summary="新增角色")
 @require_permission("sys:role:add")
 async def add_role(
     body: RoleForm,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     role = await RoleService.create_role(db, redis, body.model_dump(exclude_none=True))
 
@@ -107,6 +108,7 @@ async def update_role(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     body: RoleForm = Body(...),
+    user: UserContext = Depends(get_current_user),
 ):
     await RoleService.update_role(db, redis, role_id, body.model_dump(exclude_none=True))
 
@@ -119,6 +121,7 @@ async def delete_roles(
     ids: str = Path(..., description="角色ID，多个以英文逗号(,)分隔"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     await RoleService.delete_roles(db, redis, ids)
 
@@ -132,6 +135,7 @@ async def update_role_status(
     status: int = Query(..., ge=0, le=1, description="状态(1-启用；0-停用)"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
 ):
     await RoleService.update_role_status(db, redis, role_id, status)
 
@@ -159,6 +163,7 @@ async def assign_menus_to_role(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     body: MenuIdsBody = Body(...),
+    user: UserContext = Depends(get_current_user),
 ):
     # RootModel 使用 .root 访问实际的列表数据
     menu_ids: list[int] = body.root

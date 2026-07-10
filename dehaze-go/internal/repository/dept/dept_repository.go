@@ -114,16 +114,47 @@ func (r *DeptRepository) HasUsers(ctx context.Context, deptID int64) (bool, erro
 	return count > 0, err
 }
 
+// DeptOptionRead 部门选项读模型（含 parent_id 用于构建树）
+type DeptOptionRead struct {
+	Value    int64  `json:"value"`
+	Label    string `json:"label"`
+	ParentID int64  `json:"parentId"`
+}
+
 // GetOptions 获取部门下拉选项
 func (r *DeptRepository) GetOptions(ctx context.Context) ([]read.Option, error) {
-	var options []read.Option
+	var rawOptions []DeptOptionRead
 	err := r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
-		Select("id as value, name as label").
+		Select("id as value, name as label, parent_id as parent_id").
 		Where("status = 1 AND deleted = 0").
 		Order("sort ASC").
-		Scan(&options).Error
-	return options, err
+		Scan(&rawOptions).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建树形结构
+	return buildDeptOptionTree(0, rawOptions), nil
+}
+
+// buildDeptOptionTree 递归构建部门选项树
+func buildDeptOptionTree(parentID int64, all []DeptOptionRead) []read.Option {
+	var result []read.Option
+	for _, item := range all {
+		if item.ParentID == parentID {
+			option := read.Option{
+				Value:    item.Value,
+				Label:    item.Label,
+				Children: buildDeptOptionTree(item.Value, all),
+			}
+			if len(option.Children) == 0 {
+				option.Children = nil
+			}
+			result = append(result, option)
+		}
+	}
+	return result
 }
 
 // GetFormData 获取部门表单数据

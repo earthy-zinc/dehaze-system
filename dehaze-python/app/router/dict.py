@@ -1,6 +1,7 @@
 from typing import Annotated, Optional
 
 from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, error, success
 from app.database import get_db
 from app.decorators import require_permission
@@ -13,7 +14,7 @@ from app.service.dict_service import DictService, DictTypeService
 from fastapi import APIRouter, Body, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-router = APIRouter(prefix="/api/v1/dict", tags=["字典管理"])
+router = APIRouter(prefix="/api/v1/dict", tags=["字典管理"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/types/page", response_model=Result[PageResult[DictTypePageVO]], summary="字典类型分页列表")
@@ -50,7 +51,7 @@ async def get_dict_type_form(
     """获取字典类型表单数据"""
     dict_type_data = await DictTypeService.get_dict_type_form(db, type_id)
     if not dict_type_data:
-        return success(None)
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在")
     return success(dict_type_data)
 
 
@@ -108,6 +109,8 @@ async def get_dict_page(
     user: UserContext = Depends(get_current_user),
 ):
     """获取字典分页列表"""
+    if not typeCode:
+        raise BusinessException(ResultCode.PARAM_IS_NULL, "字典类型编码不能为空")
     items, total = await DictService.get_dict_page(db, pageNum, pageSize, keywords, typeCode)
 
     dict_list = [
@@ -136,11 +139,11 @@ async def get_dict_form(
     """获取字典表单数据"""
     dict_data = await DictService.get_dict_form(db, dict_id)
     if not dict_data:
-        return success(None)
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典数据项不存在")
     return success(dict_data)
 
 
-@router.post("/", response_model=Result[None], summary="新增字典")
+@router.post("", response_model=Result[None], summary="新增字典")
 @require_permission("sys:dict:data:add")
 async def create_dict(
     body: DictForm,
@@ -184,7 +187,7 @@ async def delete_dict(
         return error("参数错误", code=ResultCode.PARAM_ERROR.code)
 
 
-@router.get("/{type_code}/options", response_model=Result[list[DictOptionVO]], summary="字典下拉列表", description="无需认证，用于前端下拉框")
+@router.get("/{type_code}/options", response_model=Result[list[DictOptionVO]], summary="字典下拉列表", dependencies=[Depends(get_current_user)])
 async def list_dict_options(
     type_code: str = Path(...),
     db: AsyncSession = Depends(get_db),

@@ -45,7 +45,7 @@ def _validate_file(file: UploadFile) -> tuple[bool, ResultCode | None, str]:
 
 
 @router.post(
-    "/",
+    "",
     summary="文件上传",
     description="上传文件到存储服务，支持文件去重（根据MD5）",
     response_model=Result[FileUploadResultVO],
@@ -139,7 +139,6 @@ async def get_file_page(
             name=f.name,
             type=f.type,
             size=f.size,
-            sizeBytes=f.size_bytes,
             url=f.url,
             path=f.path,
             objectName=f.object_name,
@@ -183,8 +182,6 @@ async def download_file(
 
     # 构造响应头
     headers = {"Content-Disposition": content_disposition}
-    if file_info.size_bytes and file_info.size_bytes > 0:
-        headers["Content-Length"] = str(file_info.size_bytes)
 
     # 返回流式响应
     return StreamingResponse(
@@ -195,17 +192,17 @@ async def download_file(
 
 
 @router.delete(
-    "/{file_id}",
+    "",
     summary="文件删除",
     description="根据文件ID删除文件（包括物理文件和数据库记录）",
     response_model=Result[None],
 )
 async def delete_file(
-    file_id: int,
+    fileId: int = Query(..., description="文件ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[None]:
     try:
-        await FileService.delete_file_with_storage(db, file_id)
+        await FileService.delete_file_with_storage(db, fileId)
         return success(msg="文件删除成功")
     except BusinessException:
         raise
@@ -235,11 +232,11 @@ async def get_file_info(
             name=file_info.name,
             type=file_info.type,
             size=file_info.size,
-            sizeBytes=file_info.size_bytes,
             url=file_info.url,
             path=file_info.path,
             objectName=file_info.object_name,
             md5=file_info.md5,
             createTime=file_info.create_time,
+            updateTime=file_info.update_time,
         )
     )

@@ -294,7 +294,6 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         if (sysFile != null) {
             detail.setFileName(sysFile.getName());
             detail.setFormattedSize(sysFile.getSize());
-            detail.setSizeBytes(sysFile.getSizeBytes());
             detail.setFormat(sysFile.getType());
             detail.setUrl(sysFile.getUrl());
             detail.setMd5(sysFile.getMd5());
@@ -443,7 +442,6 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         if (sysFile != null) {
             vo.setFileName(sysFile.getName());
             vo.setFormattedSize(sysFile.getSize());
-            vo.setSizeBytes(sysFile.getSizeBytes());
             vo.setFormat(sysFile.getType());
             vo.setUrl(sysFile.getUrl());
             vo.setMd5(sysFile.getMd5());

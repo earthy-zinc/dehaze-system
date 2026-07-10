@@ -35,7 +35,7 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
 
     @Override
     public boolean check(String md5) {
-        return false;
+        return this.count(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5)) > 0;
     }
 
     @Override
@@ -50,7 +50,6 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
                 .name(fileBO.getName())
                 .objectName(fileBO.getObjectName())
                 .size(FileUtil.readableFileSize(fileBO.getSize()))
-                .sizeBytes(fileBO.getSize())
                 .type(fileBO.getExtension())
                 .url(fileBO.getUrl())
                 .md5(fileBO.getMd5())

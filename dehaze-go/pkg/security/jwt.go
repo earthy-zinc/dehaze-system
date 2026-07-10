@@ -38,16 +38,16 @@ func NewJWTWithConfig(key []byte, ttl time.Duration) *JWT {
 }
 
 func (j *JWT) CreateClaims(authInfo *model.UserAuthInfo) CustomClaims {
-	// 处理角色信息
+	// 合并角色（带 ROLE_ 前缀）和权限到 authorities
 	var authorities []string
-	if len(authInfo.Roles) > 0 {
-		authorities = make([]string, len(authInfo.Roles))
-		for i, role := range authInfo.Roles {
-			authorities[i] = "ROLE_" + role
-		}
-	} else {
-		authorities = []string{}
+
+	// 添加角色（带 ROLE_ 前缀，用于 IsRoot 等角色判断）
+	for _, role := range authInfo.Roles {
+		authorities = append(authorities, "ROLE_"+role)
 	}
+
+	// 添加实际权限（用于权限中间件校验）
+	authorities = append(authorities, authInfo.Perms...)
 
 	claims := CustomClaims{
 		UserID:      authInfo.UserId,

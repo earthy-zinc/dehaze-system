@@ -78,6 +78,8 @@ func (r *DictRepository) FindPage(ctx context.Context, q *query.DictPageQuery) (
 		db = db.Where("type_code = ?", q.TypeCode)
 	}
 
+	db = db.Order("sort ASC, create_time DESC")
+
 	var total int64
 	err := db.Count(&total).Error
 	if err != nil {

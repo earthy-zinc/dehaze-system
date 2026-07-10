@@ -346,9 +346,9 @@ func (_c *MockIRoleService_GetMenuIDs_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// GetOptions provides a mock function with given fields: ctx
-func (_m *MockIRoleService) GetOptions(ctx context.Context) ([]vo.Option, error) {
-	ret := _m.Called(ctx)
+// GetOptions provides a mock function with given fields: ctx, isRoot
+func (_m *MockIRoleService) GetOptions(ctx context.Context, isRoot bool) ([]vo.Option, error) {
+	ret := _m.Called(ctx, isRoot)
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetOptions")
@@ -356,19 +356,19 @@ func (_m *MockIRoleService) GetOptions(ctx context.Context) ([]vo.Option, error)
 
 	var r0 []vo.Option
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) ([]vo.Option, error)); ok {
-		return rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, bool) ([]vo.Option, error)); ok {
+		return rf(ctx, isRoot)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) []vo.Option); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, bool) []vo.Option); ok {
+		r0 = rf(ctx, isRoot)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]vo.Option)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
-		r1 = rf(ctx)
+	if rf, ok := ret.Get(1).(func(context.Context, bool) error); ok {
+		r1 = rf(ctx, isRoot)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -383,13 +383,14 @@ type MockIRoleService_GetOptions_Call struct {
 
 // GetOptions is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockIRoleService_Expecter) GetOptions(ctx interface{}) *MockIRoleService_GetOptions_Call {
-	return &MockIRoleService_GetOptions_Call{Call: _e.mock.On("GetOptions", ctx)}
+//   - isRoot bool
+func (_e *MockIRoleService_Expecter) GetOptions(ctx interface{}, isRoot interface{}) *MockIRoleService_GetOptions_Call {
+	return &MockIRoleService_GetOptions_Call{Call: _e.mock.On("GetOptions", ctx, isRoot)}
 }
 
-func (_c *MockIRoleService_GetOptions_Call) Run(run func(ctx context.Context)) *MockIRoleService_GetOptions_Call {
+func (_c *MockIRoleService_GetOptions_Call) Run(run func(ctx context.Context, isRoot bool)) *MockIRoleService_GetOptions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(bool))
 	})
 	return _c
 }
@@ -399,7 +400,7 @@ func (_c *MockIRoleService_GetOptions_Call) Return(_a0 []vo.Option, _a1 error) *
 	return _c
 }
 
-func (_c *MockIRoleService_GetOptions_Call) RunAndReturn(run func(context.Context) ([]vo.Option, error)) *MockIRoleService_GetOptions_Call {
+func (_c *MockIRoleService_GetOptions_Call) RunAndReturn(run func(context.Context, bool) ([]vo.Option, error)) *MockIRoleService_GetOptions_Call {
 	_c.Call.Return(run)
 	return _c
 }

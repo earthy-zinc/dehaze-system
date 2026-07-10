@@ -63,6 +63,33 @@ func (r *fileRepository) FindByPath(ctx context.Context, path string) (*model.Sy
 	return &file, nil
 }
 
+func (r *fileRepository) FindPage(ctx context.Context, pageNum, pageSize int, keywords string) ([]model.SysFile, int64, error) {
+	var files []model.SysFile
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&model.SysFile{})
+	if keywords != "" {
+		like := "%" + keywords + "%"
+		query = query.Where("name LIKE ? OR type LIKE ?", like, like)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if pageNum < 1 {
+		pageNum = 1
+	}
+	if pageSize < 1 {
+		pageSize = 10
+	}
+	offset := (pageNum - 1) * pageSize
+	if err := query.Order("id DESC").Offset(offset).Limit(pageSize).Find(&files).Error; err != nil {
+		return nil, 0, err
+	}
+	return files, total, nil
+}
+
 func (r *fileRepository) Create(ctx context.Context, file *model.SysFile) (*model.SysFile, error) {
 	err := r.db.WithContext(ctx).Create(file).Error
 	if err != nil {

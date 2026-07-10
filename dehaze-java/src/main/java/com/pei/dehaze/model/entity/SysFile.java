@@ -31,11 +31,6 @@ public class SysFile extends BaseEntity {
      */
     private String size;
 
-    /**
-     * 文件大小（原始字节数）
-     */
-    private Long sizeBytes;
-
     private String path;
 
     private String md5;

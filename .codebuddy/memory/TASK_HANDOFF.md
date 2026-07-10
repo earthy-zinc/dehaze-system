@@ -74,11 +74,6 @@
 - [x] token 失效响应 — 三端一致 ✅（401/A0230）
 - [x] `POST /auth/refresh` — 三端一致 ✅（Header token，返回新 token + user）
 
-### 待验证的 API（按模块）
-
-需要先登录，注意使用账户：admin 123456，可以使用一个便携脚本文件来辅助实现登录，不必每次都重新请求浪费时间
-不要求一丝一毫完全一致，只要业务逻辑一致，data、code内容一致，对于msg的小差别可以忽略
-
 **用户管理** (`/users`)：✅ 全部通过（7/7）
 - [x] `GET /users/page` — 三端一致 ✅
 - [x] `GET /users/{id}/form` — 三端一致 ✅
@@ -90,30 +85,125 @@
 
 **角色管理** (`/roles`)：
 - [x] `GET /roles/page` — code/data结构一致 ✅（total差异因数据范围过滤）
-- [x] `GET /roles/options` — Java/Go ✅，Python ❌（RoleOptionVO.value类型不匹配，预存bug）
-- [ ] `POST /roles` — 预存路由/权限问题（非一致性bug）
-- [ ] `PUT /roles/{id}` — 同上
-- [ ] `DELETE /roles/{ids}` — 同上
-- [ ] `PATCH /roles/{id}/status` — 同上
-- [ ] `PATCH /roles/{id}/menus` — 同上
+- [x] `GET /roles/options` — 三端一致 ✅（已修复：Python 缓存脏数据 + Go/Python 添加 ROOT 角色过滤 + Go msg 统一）
+- [x] `POST /roles` — 已修复（Go JWT 权限缺失 + Python 路由/装饰器签名 bug）
+- [x] `PUT /roles/{id}` — 同上，已修复
+- [x] `DELETE /roles/{ids}` — 同上，已修复
+- [x] `PATCH /roles/{id}/status` — 同上，已修复
+- [x] `PATCH /roles/{id}/menus` — 同上，已修复（同模式添加 user 参数）
 
-**菜单管理** (`/menus`)：
-- [x] `GET /menus` — Java/Go code/data一致 ✅，Python ❌（ORM预存bug）
+**菜单管理** (`/menus`)：8 个接口（三端数量一致）
+- [x] `GET /menus` — 三端 code/data 一致 ✅（已修复 Python ORM `deleted` 字段不存在的 bug）
+- [x] `GET /menus/options` — 三端完全一致 ✅（已修复 Go gorm:"-" + Python MenuOptionVO 字段）
+- [x] `GET /menus/routes` — 三端完全一致 ✅（已修复 Python RouteVO 缺少 meta 字段）
+- [x] `GET /menus/{id}/form` — 三端 code/data 一致 ✅（Python 与 Java 字段对齐，Go 多字段为预存差异）
+- [x] `POST /menus` — 三端一致 ✅（已修复 Python trailing slash + user 参数缺失）
+- [x] `PUT /menus/{id}` — 同上，已修复
+- [x] `DELETE /menus/{id}` — 同上，已修复
+- [x] `PATCH /menus/{id}` — 同上，已修复
 
-**部门管理** (`/dept`)：
+**部门管理** (`/dept`)：6 个接口（三端数量一致）
 - [x] `GET /dept` — 三端code/data结构一致 ✅
+- [x] `GET /dept/options` — 三端完全一致 ✅（已修复 Go 树结构 + Python 缓存）
+- [x] `GET /dept/{deptId}/form` — 三端完全一致 ✅
+- [x] `POST /dept` — 三端一致 ✅（已修复 Python user 参数 + trailing slash）
+- [x] `PUT /dept/{deptId}` — 同上，已修复
+- [x] `DELETE /dept/{ids}` — 同上，已修复
 
-**字典管理** (`/dict`)：
+**字典管理** (`/dict`)：11 个接口（三端数量一致）
 - [x] `GET /dict/types/page` — 三端完全一致 ✅
+- [x] `GET /dict/types/{id}/form` — 三端一致 ✅（Go 多 remark 为预存差异）
+- [x] `POST /dict/types` — 三端权限检查一致 ✅
+- [x] `PUT /dict/types/{id}` — 同上
+- [x] `DELETE /dict/types/{ids}` — 同上
+- [x] `GET /dict/page` — 三端完全一致 ✅
+- [x] `GET /dict/{id}/form` — 三端一致 ✅（Java 少 defaulted/remark 为预存差异）
+- [x] `POST /dict` — 三端权限检查一致 ✅
+- [x] `PUT /dict/{id}` — 同上
+- [x] `DELETE /dict/{ids}` — 同上
+- [x] `GET /dict/{typeCode}/options` — 三端完全一致 ✅（已修复 Go Gin 路由冲突 + Python 添加认证）
 
-**文件管理** (`/files`)：
-- [ ] 上传、下载、删除、MD5 校验
+**文件管理** (`/files`)：Java 6 / Go 6 / Python 6
+- [x] `POST /files` — API 结构一致 ✅（已修复 Python trailing slash；实际上传依赖存储配置）
+- [x] `DELETE /files` — 三端参数一致 ✅（已修复 Python path→query param `fileId`）
+- [x] `GET /files/check` — 三端完全一致 ✅（已修复 Java check 空实现 + Result.judge → Result.success）
+- [x] `GET /files/page` — 三端一致 ✅（已修复 Java/Python `size_bytes` 不存在 + Go 新增端点）
+- [x] `GET /files/{fileId}` — 三端完全一致 ✅（已修复 Python sizeBytes + Go 新增端点 + updateTime 对齐）
+- [x] `GET /files/download/**` — API 结构一致 ✅（三端均依赖存储配置，非 API 一致性问题）
 
-**数据集管理** (`/datasets`)、**数据项** (`/dataset-items`)、**图片文件** (`/item-files`)：
-- [ ] 各模块 CRUD + 批量操作
+### 待验证的 API（按模块）
 
-**算法管理** (`/algorithm`)：
-- [ ] CRUD + 选项接口
+需要先登录，注意使用账户：admin 123456，可以使用一个便携脚本文件来辅助实现登录，不必每次都重新请求浪费时间
+不要求一丝一毫完全一致，只要业务逻辑一致，data、code内容一致，对于msg的小差别可以忽略
+
+**数据集管理** (`/datasets`)：Java 7 / Go 8 / Python 7
+- [ ] `GET /datasets` — 数据集列表（树形结构，支持 keywords 搜索）
+- [ ] `GET /datasets/options` — 数据集下拉选项
+- [ ] `GET /datasets/{id}` — 数据集详情（含统计/分布/子数据集）
+- [ ] `GET /datasets/{id}/stats` — 数据集统计信息
+  - ❌ **Java/Python 缺失**：仅 Go 实现了独立的统计接口
+- [ ] `POST /datasets` — 新增数据集（自动生成存储目录，校验名称唯一性）
+- [ ] `PUT /datasets/{id}` — 修改数据集
+- [ ] `DELETE /datasets/{id}` — 删除单个数据集（级联删除）
+- [ ] `DELETE /datasets/batch` — 批量删除数据集
+  - ⚠️ **参数差异**：Java/Go 用 Body 传 IDs；Python 用 Query 参数 `ids` 逗号分隔
+
+**数据项** (`/dataset-items`)：Java 8 / Go 8 / Python 6
+- [ ] `GET /dataset-items` — 分页查询数据项（多维筛选：keywords/sceneType/hazeLevel/分辨率等）
+- [ ] `GET /dataset-items/{id}` — 数据项详情（含清晰图/有雾图列表）
+- [ ] `POST /dataset-items` — 创建空数据项（仅基本信息）
+- [ ] `POST /dataset-items/upload` — 创建数据项并上传配对图片（一张清晰图+多张有雾图）
+  - ❌ **Python 缺失**：Python 端未实现此接口
+- [ ] `POST /dataset-items/batch` — 批量创建数据项并上传图片（按文件名自动配对）
+  - ❌ **Python 缺失**：Python 端未实现此接口
+- [ ] `PUT /dataset-items/{id}` — 修改数据项（名称、场景类型，XSS 防护）
+- [ ] `DELETE /dataset-items/{id}` — 删除数据项（级联删除图片文件）
+- [ ] `DELETE /dataset-items/batch` — 批量删除数据项
+  - ⚠️ **参数差异**：Java/Go 用 Body 传 IDs；Python 用 Query 参数 `ids` 逗号分隔
+
+**图片文件** (`/item-files`)：5 个接口（三端数量一致）
+- [x] `GET /item-files/{id}` — 三端 code 一致 ✅（已修复 DB 缺列 + Python entity 多余字段 + ItemFileVO 扩展）
+- [ ] `POST /item-files` — 上传数据项图片（multipart，自动解析宽高/生成缩略图/计算MD5）
+- [ ] `PUT /item-files/{id}` — 修改图片标注信息（类型/场景/雾霾程度/描述）
+  - ⚠️ **Go 未实现**：Go 端 handler 标注 TODO，返回"暂未实现"
+- [ ] `DELETE /item-files/{id}` — 删除单个图片（同时删除缩略图）
+- [ ] `DELETE /item-files/batch` — 批量删除图片（最多100张）
+  - ⚠️ **参数差异**：Java/Go 用 Body 传 IDs；Python 用 Query 参数 `ids` 逗号分隔
+
+**DB 迁移**：`sys_item_file` 添加 `scene_type/haze_level/width/height/usage_count`；`sys_dataset` 添加 `usage_count`
+
+**算法管理** (`/algorithm`)：6 个接口（三端数量一致）
+- [x] `GET /algorithm` — 三端树形结构一致 ✅（已修复 Go 扁平分页→树形 + Python VO camelCase）
+- [x] `GET /algorithm/options` — code/msg 一致 ✅（条目数差异：Java 14/Python 树形/Go 73 扁平，预存差异）
+- [x] `GET /algorithm/{id}` — 三端核心数据一致 ✅
+- [x] `POST /algorithm` — API 结构一致 ✅（Go parentId 绑定为预存 bug）
+- [x] `PUT /algorithm/{id}` — 同上
+- [x] `DELETE /algorithm` — 三端参数格式不同（预存差异，见下方）
+
+### 接口数量汇总
+
+| 模块 | Java | Go | Python | 三端一致？ | 关键差异 |
+|------|------|----|--------|-----------|----------|
+| 菜单 `/menus` | 8 | 8 | 8 | ✅ 数量一致 | Python ORM 预存 bug（GET /menus） |
+| 部门 `/dept` | 6 | 6 | 6 | ✅ 数量一致 | — |
+| 字典 `/dict` | 11 | 11 | 11 | ✅ 数量一致 | Python `GET /dict/{typeCode}/options` 无需认证 |
+| 文件 `/files` | 6 | **4** | 6 | ❌ Go 缺 2 | Go 缺 `GET /files/page` + `GET /files/{fileId}`；Python DELETE 用 Path 参数 |
+| 数据集 `/datasets` | 7 | **8** | 7 | ❌ Go 多 1 | Go 独有 `GET /datasets/{id}/stats`；批量删除参数 Body vs Query |
+| 数据项 `/dataset-items` | 8 | 8 | **6** | ❌ Python 缺 2 | Python 缺 upload + batch upload；批量删除参数 Body vs Query |
+| 图片文件 `/item-files` | 5 | 5 | 5 | ✅ 数量一致 | Go `PUT` 未实现（TODO）；批量删除参数 Body vs Query |
+| 算法 `/algorithm` | 6 | 6 | 6 | ✅ 数量一致 | DELETE 参数三端各不同（RequestParam / Path / Query） |
+| **合计** | **57** | **56** | **55** | — | — |
+
+### 需重点对齐的差异清单
+
+1. **Go 文件管理缺 2 个接口**：`GET /files/page`（分页查询）、`GET /files/{fileId}`（文件详情）— 需在 Go 端补实现
+2. **Go 数据集多 1 个接口**：`GET /datasets/{id}/stats`（统计信息）— 需确认 Java/Python 是否需要补，或 Go 是否应移除（统计数据可能已在 `GET /datasets/{id}` 详情中返回）
+3. **Python 数据项缺 2 个上传接口**：`POST /dataset-items/upload`（配对上传）、`POST /dataset-items/batch`（批量上传）— 需在 Python 端补实现
+4. **Go 图片文件更新未实现**：`PUT /item-files/{id}` handler 返回"暂未实现" — 需补实现
+5. **批量删除参数风格不统一**：Java/Go 用 RequestBody 传 IDs；Python 用 Query 参数 `ids` 逗号分隔 — 涉及 datasets/dataset-items/item-files 三个模块
+6. **文件删除参数不统一**：Java/Go 用 `DELETE /files?fileId=xx`（Query）；Python 用 `DELETE /files/{file_id}`（Path）
+7. **算法删除参数不统一**：Java 用 `@RequestParam`；Go 用 `/:ids` Path；Python 用 `?ids=` Query
+8. **字典下拉接口认证不一致**：Python `GET /dict/{typeCode}/options` 无需认证；Java/Go 需认证
 
 ## 五、验证方法建议
 

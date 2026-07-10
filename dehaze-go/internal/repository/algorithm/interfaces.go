@@ -20,6 +20,9 @@ type IAlgorithmRepository interface {
 	// FindPage 分页查询算法
 	FindPage(ctx context.Context, q *query.AlgorithmQuery) (*read.PageResult[read.Algorithm], error)
 
+	// FindAll 查询所有算法（用于树形列表）
+	FindAll(ctx context.Context, q *query.AlgorithmQuery) ([]read.Algorithm, error)
+
 	// FindOptions 获取算法下拉选项
 	FindOptions(ctx context.Context) ([]read.Option, error)
 

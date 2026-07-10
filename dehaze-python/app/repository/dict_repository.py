@@ -8,7 +8,7 @@ from typing import Any
 
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.base import BaseRepository, escape_like
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -30,12 +30,8 @@ class DictRepository(BaseRepository[SysDict]):
 
         if keywords:
             stmt = stmt.where(
-                or_(
-                    SysDict.name.like(
-                        f"%{escape_like(keywords)}%", escape="\\"),
-                    SysDict.value.like(
-                        f"%{escape_like(keywords)}%", escape="\\"),
-                )
+                SysDict.name.like(
+                    f"%{escape_like(keywords)}%", escape="\\")
             )
 
         if type_code:
@@ -104,6 +100,14 @@ class DictRepository(BaseRepository[SysDict]):
         stmt = select(SysDict.type_code).where(SysDict.id.in_(dict_ids))
         result = await db.execute(stmt)
         return [row[0] for row in result.fetchall() if row[0]]
+
+    async def update_type_code(
+        self, db: AsyncSession, old_code: str, new_code: str
+    ) -> bool:
+        """批量更新字典数据的类型编码（用于字典类型 code 变更时的级联更新）"""
+        stmt = update(SysDict).where(SysDict.type_code == old_code).values(type_code=new_code)
+        await db.execute(stmt)
+        return True
 
     async def create_dict(self, db: AsyncSession, data: dict[str, Any]) -> SysDict:
         """创建字典项"""
