@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
-@Schema(description ="登录响应对象")
+@Schema(description = "登录响应对象")
 @Data
 @Builder
 public class LoginResult {
@@ -12,7 +12,7 @@ public class LoginResult {
     @Schema(description = "访问token")
     private String accessToken;
 
-    @Schema(description = "token 类型",example = "Bearer")
+    @Schema(description = "token 类型", example = "Bearer")
     private String tokenType;
 
     @Schema(description = "刷新token")
@@ -21,4 +21,14 @@ public class LoginResult {
     @Schema(description = "过期时间(单位：毫秒)")
     private Long expires;
 
+    @Schema(description = "用户信息")
+    private UserInfo user;
+
+    @Data
+    @Builder
+    public static class UserInfo {
+        private Long id;
+        private String username;
+        private String nickname;
+    }
 }

@@ -168,7 +168,7 @@ async def logout(
         except Exception:
             pass  # Token 解码失败时忽略
 
-    return success(msg="注销成功")
+    return success(msg="一切ok")
 
 
 @router.get("/captcha", response_model=Result[CaptchaData], summary="获取验证码", description="返回验证码图片和 key")

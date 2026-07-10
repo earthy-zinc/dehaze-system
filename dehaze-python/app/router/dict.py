@@ -39,7 +39,7 @@ async def get_dict_type_page(
         for item in items
     ]
 
-    return success({"list": type_list, "total": total, "pageNum": pageNum, "pageSize": pageSize})
+    return success({"list": type_list, "total": total})
 
 
 @router.get("/types/{type_id}/form", response_model=Result[DictTypeFormVO | None], summary="字典类型表单数据", dependencies=[Depends(get_current_user)])
@@ -125,7 +125,7 @@ async def get_dict_page(
         for item in items
     ]
 
-    return success({"list": dict_list, "total": total, "pageNum": pageNum, "pageSize": pageSize})
+    return success({"list": dict_list, "total": total})
 
 
 @router.get("/{dict_id}/form", response_model=Result[DictFormVO | None], summary="字典表单数据", dependencies=[Depends(get_current_user)])

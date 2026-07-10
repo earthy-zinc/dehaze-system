@@ -1,10 +1,8 @@
 package com.pei.dehaze.config;
 
-import cn.hutool.captcha.generator.CodeGenerator;
 import cn.hutool.core.collection.CollUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.config.property.SecurityProperties;
-import com.pei.dehaze.filter.CaptchaValidationFilter;
 import com.pei.dehaze.filter.JwtValidationFilter;
 import com.pei.dehaze.security.exception.MyAccessDeniedHandler;
 import com.pei.dehaze.security.exception.MyAuthenticationEntryPoint;
@@ -41,7 +39,6 @@ public class SecurityConfig {
     private final MyAuthenticationEntryPoint authenticationEntryPoint;
     private final MyAccessDeniedHandler accessDeniedHandler;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final CodeGenerator codeGenerator;
     private final SecurityProperties securityProperties;
 
 
@@ -65,8 +62,6 @@ public class SecurityConfig {
                 .headers(headers -> headers.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
         ;
 
-        // 验证码校验过滤器
-        http.addFilterBefore(new CaptchaValidationFilter(redisTemplate, codeGenerator), UsernamePasswordAuthenticationFilter.class);
         // JWT 校验过滤器
         http.addFilterBefore(new JwtValidationFilter(redisTemplate,securityProperties.getJwt().getKey()), UsernamePasswordAuthenticationFilter.class);
 

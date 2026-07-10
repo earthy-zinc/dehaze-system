@@ -103,10 +103,8 @@ func (datasetService *DatasetService) GetPage(ctx context.Context, q *query.Data
 	}
 
 	return &vo.PageResult[vo.DatasetVO]{
-		List:     voList,
-		Total:    readResult.Total,
-		PageNum:  readResult.PageNum,
-		PageSize: readResult.PageSize,
+		List:  voList,
+		Total: readResult.Total,
 	}, nil
 }
 

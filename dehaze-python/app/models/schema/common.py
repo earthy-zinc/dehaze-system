@@ -18,8 +18,6 @@ class PageResult(BaseModel, Generic[T]):
     """分页结果"""
     list: List[T] = Field(description="数据列表")
     total: int = Field(description="总记录数")
-    pageNum: int = Field(description="当前页码")
-    pageSize: int = Field(description="每页记录数")
 
 
 class Option(BaseModel, Generic[T]):

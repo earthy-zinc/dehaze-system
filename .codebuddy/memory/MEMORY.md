@@ -16,6 +16,18 @@
 - 三个后端（Go/Java/Python）共享相同密钥，确保 JWT token 可互认
 - `.env` 文件需放置在各后端项目的根目录（Go 加载位置为 CWD，Python/pydantic-settings 同）
 
+### 调试辅助脚本（三端 API 一致性验证）
+- **登录脚本**：`.codebuddy/scripts/login_helper.py [go|python|java|all]` — 自动获取验证码+登录，返回 token
+- **调试脚本**：`.codebuddy/scripts/debug_helper.py <command>` — 封装常用调试操作
+  - `status` — 三端服务状态
+  - `restart go|python|all` — 重启服务（Go 自动编译）
+  - `compare /api/v1/xxx [METHOD] [BODY]` — 三端对比同一 API（自动登录+一致性判断）
+  - `curl <backend> /api/v1/xxx [METHOD] [BODY]` — 单端请求
+  - `db "SQL"` — MySQL 查询 / `redis get|keys <key> [db]` — Redis 操作
+  - `logs python|go` — 服务日志 / `kill <port>` — 杀端口进程
+- 账号：admin / 123456（数据库密码也是 123456，基础设施密码是 12345678）
+- Git Bash 中 compare 需加 `MSYS_NO_PATHCONV=1` 前缀避免路径转换
+
 ### 运行端口记录（勿重复启动）
 - **Java**: 8989 (Spring Boot devtools 热重载，已在运行)
 - **Go**: 8999 (二进制，改代码后需 `go build` + 重启)

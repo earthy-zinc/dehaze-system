@@ -53,10 +53,8 @@ func (s *DictTypeService) GetPage(ctx context.Context, q *query.DictTypePageQuer
 	}
 
 	return &vo.PageResult[vo.DictTypePageVO]{
-		List:     voList,
-		Total:    readResult.Total,
-		PageNum:  readResult.PageNum,
-		PageSize: readResult.PageSize,
+		List:  voList,
+		Total: readResult.Total,
 	}, nil
 }
 

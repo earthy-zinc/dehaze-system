@@ -13,6 +13,7 @@
             u.mobile,
             u.gender,
             u.avatar,
+            u.email,
             u.STATUS,
             d.NAME AS dept_name,
             GROUP_CONCAT( r.NAME ) AS roleNames,
@@ -89,6 +90,7 @@
     <resultMap id="UserAuthMap" type="com.pei.dehaze.model.dto.UserAuthInfo">
         <id property="userId" column="userId" jdbcType="BIGINT"/>
         <result property="username" column="username" jdbcType="VARCHAR"/>
+        <result property="nickname" column="nickname" jdbcType="VARCHAR"/>
         <result property="password" column="password" jdbcType="VARCHAR"/>
         <result property="status" column="status" jdbcType="BOOLEAN"/>
         <result property="deptId" column="dept_id" jdbcType="BIGINT"/>

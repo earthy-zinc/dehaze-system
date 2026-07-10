@@ -109,6 +109,11 @@ func (s *AuthService) Login(ctx context.Context, req *bo.LoginRequest, clientIP 
 		TokenType:    "Bearer",
 		RefreshToken: refreshToken,
 		Expires:      expires,
+		User: &dto.LoginUser{
+			ID:       user.UserId,
+			Username: user.Username,
+			Nickname: user.Nickname,
+		},
 	}, nil
 }
 
@@ -214,6 +219,11 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*d
 		TokenType:    "Bearer",
 		RefreshToken: newRefreshToken,
 		Expires:      expires,
+		User: &dto.LoginUser{
+			ID:       userAuthInfo.UserId,
+			Username: userAuthInfo.Username,
+			Nickname: userAuthInfo.Nickname,
+		},
 	}, nil
 }
 

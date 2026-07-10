@@ -56,10 +56,8 @@ func (s *AlgorithmService) GetPage(ctx context.Context, q *query.AlgorithmQuery)
 	}
 
 	return &vo.PageResult[vo.AlgorithmVO]{
-		List:     voList,
-		Total:    readResult.Total,
-		PageNum:  readResult.PageNum,
-		PageSize: readResult.PageSize,
+		List:  voList,
+		Total: readResult.Total,
 	}, nil
 }
 

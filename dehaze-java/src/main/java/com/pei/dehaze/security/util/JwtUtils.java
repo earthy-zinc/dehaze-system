@@ -99,10 +99,14 @@ public class JwtUtils {
 
         userDetails.setUsername(payloads.getStr(RegisteredPayload.SUBJECT)); // 用户名
         // 角色集合
-        Set<SimpleGrantedAuthority> authorities = payloads.getJSONArray(JwtClaimConstants.AUTHORITIES)
-                .stream()
-                .map(authority -> new SimpleGrantedAuthority(Convert.toStr(authority)))
-                .collect(Collectors.toSet());
+        Set<SimpleGrantedAuthority> authorities = new java.util.HashSet<>();
+        cn.hutool.json.JSONArray jsonArray = payloads.getJSONArray(JwtClaimConstants.AUTHORITIES);
+        if (jsonArray != null) {
+            authorities = jsonArray.stream()
+                    .map(authority -> new SimpleGrantedAuthority(Convert.toStr(authority)))
+                    .collect(Collectors.toSet());
+        }
+        userDetails.setAuthorities(authorities);
 
         return new UsernamePasswordAuthenticationToken(userDetails, "", authorities);
     }

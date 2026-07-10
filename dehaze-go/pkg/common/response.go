@@ -105,11 +105,6 @@ func FailWithDataAndCode(resultCode *ResultCode, data interface{}, c *gin.Contex
 	result(resultCode, data, c)
 }
 
-// NoAuth 访问未授权
-func NoAuth(message string, c *gin.Context) {
-	resultWithMsg(ACCESS_UNAUTHORIZED, nil, message, c)
-}
-
 // FailWithDetailed 操作失败，返回数据和消息
 func FailWithDetailed(data interface{}, message string, c *gin.Context) {
 	resultWithMsg(SYSTEM_EXECUTION_ERROR, data, message, c)

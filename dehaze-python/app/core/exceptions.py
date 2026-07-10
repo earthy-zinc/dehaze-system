@@ -1,7 +1,7 @@
 import logging
 import traceback
 
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from jose import JWTError
@@ -90,6 +90,27 @@ def register_exception_handlers(app: FastAPI):
                 "data": None,
             },
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        # 根据 HTTP 状态码映射到对应的 ResultCode
+        status_code_map = {
+            status.HTTP_401_UNAUTHORIZED: ResultCode.TOKEN_INVALID,
+            status.HTTP_403_FORBIDDEN: ResultCode.ACCESS_UNAUTHORIZED,
+            status.HTTP_400_BAD_REQUEST: ResultCode.PARAM_ERROR,
+            status.HTTP_404_NOT_FOUND: ResultCode.RESOURCE_NOT_FOUND,
+        }
+        result_code = status_code_map.get(exc.status_code, ResultCode.SYSTEM_EXECUTION_ERROR)
+
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={
+                "code": result_code.code,
+                "msg": result_code.msg,
+                "data": None,
+            },
+            headers=exc.headers,
         )
 
     @app.exception_handler(SQLAlchemyError)

@@ -61,27 +61,37 @@ async def get_user_page(
 
     user_list = []
     for u in users:
-        gender_label = "男" if u.gender == 1 else "女"
-        status_label = "正常" if u.status == 1 else "禁用"
+        gender = u.get("gender", 1)
+        if gender == 1:
+            gender_label = "男"
+        elif gender == 2:
+            gender_label = "女"
+        else:
+            gender_label = "未知"
+
+        create_time = u.get("create_time")
+        if create_time:
+            create_time_str = create_time.strftime("%Y-%m-%d") if not isinstance(create_time, str) else create_time[:10]
+        else:
+            create_time_str = None
 
         user_list.append({
-            "id": u.id,
-            "username": u.username,
-            "nickname": u.nickname,
-            "mobile": u.mobile,
+            "id": u["id"],
+            "username": u["username"],
+            "nickname": u["nickname"],
+            "mobile": u.get("mobile"),
             "genderLabel": gender_label,
-            "avatar": u.avatar,
-            "status": u.status,
-            "statusLabel": status_label,
-            "email": u.email,
-            "createTime": u.create_time.strftime("%Y-%m-%d %H:%M:%S") if u.create_time else None,
+            "avatar": u.get("avatar"),
+            "status": u.get("status"),
+            "email": u.get("email"),
+            "deptName": u.get("deptName"),
+            "roleNames": u.get("roleNames"),
+            "createTime": create_time_str,
         })
 
     return success({
         "list": user_list,
         "total": total,
-        "pageNum": pageNum,
-        "pageSize": pageSize,
     })
 
 

@@ -11,9 +11,12 @@ import cn.hutool.jwt.RegisteredPayload;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.enums.CaptchaTypeEnum;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.dto.CaptchaResult;
+import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
 import com.pei.dehaze.plugin.captcha.CaptchaProperties;
+import com.pei.dehaze.security.model.SysUserDetails;
 import com.pei.dehaze.security.util.JwtUtils;
 import com.pei.dehaze.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,19 +27,19 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.awt.*;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 认证服务实现类
- *
- * @author earthyzinc
- * @since 2.4.0
  */
 @Service
 @RequiredArgsConstructor
@@ -48,31 +51,42 @@ public class AuthServiceImpl implements AuthService {
     private final Font captchaFont;
     private final CaptchaProperties captchaProperties;
 
-    /**
-     * 登录
-     *
-     * @param username 用户名
-     * @param password 密码
-     * @return 登录结果
-     */
     @Override
-    public LoginResult login(String username, String password) {
-        // 认证用户信息
+    public LoginResult login(LoginForm form) {
+        // 1. 验证码校验
+        String cacheKey = SecurityConstants.CAPTCHA_CODE_PREFIX + form.getCaptchaKey();
+        String cacheVerifyCode = (String) redisTemplate.opsForValue().get(cacheKey);
+        if (cacheVerifyCode == null) {
+            throw new BusinessException(ResultCode.VERIFY_CODE_TIMEOUT);
+        }
+        if (!codeGenerator.verify(cacheVerifyCode, form.getCaptchaCode())) {
+            throw new BusinessException(ResultCode.VERIFY_CODE_ERROR);
+        }
+        // 验证后删除验证码
+        redisTemplate.delete(cacheKey);
+
+        // 2. 用户认证
         UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(username.toLowerCase().trim(), password);
-        // 认证
+                new UsernamePasswordAuthenticationToken(form.getUsername().toLowerCase().trim(), form.getPassword());
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
-        // 认证成功，生成Token
+
+        // 3. 生成 Token
         String accessToken = JwtUtils.createToken(authentication);
+
+        // 4. 获取用户信息
+        SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
+
         return LoginResult.builder()
                 .tokenType("Bearer")
                 .accessToken(accessToken)
+                .user(LoginResult.UserInfo.builder()
+                        .id(userDetails.getUserId())
+                        .username(userDetails.getUsername())
+                        .nickname(userDetails.getNickname())
+                        .build())
                 .build();
     }
 
-    /**
-     * 注销
-     */
     @Override
     public void logout() {
         ServletRequestAttributes requestAttributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
@@ -81,40 +95,27 @@ public class AuthServiceImpl implements AuthService {
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (CharSequenceUtil.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
             token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length());
-            // 解析Token以获取有效载荷（payload）
             JSONObject payloads = JWTUtil.parseToken(token).getPayloads();
-            // 解析 Token 获取 jti(JWT ID) 和 exp(过期时间)
             String jti = payloads.getStr(RegisteredPayload.JWT_ID);
-            Long expiration = payloads.getLong(RegisteredPayload.EXPIRES_AT); // 过期时间(秒)
-            // 如果exp存在，则计算Token剩余有效时间
+            Long expiration = payloads.getLong(RegisteredPayload.EXPIRES_AT);
             if (expiration != null) {
                 long currentTimeSeconds = System.currentTimeMillis() / 1000;
                 if (expiration < currentTimeSeconds) {
-                    // Token已过期，不再加入黑名单
                     return;
                 }
-                // 将Token的jti加入黑名单，并设置剩余有效时间，使其在过期后自动从黑名单移除
                 long ttl = expiration - currentTimeSeconds;
                 redisTemplate.opsForValue()
                         .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, "", ttl, TimeUnit.SECONDS);
             } else {
-                // 如果exp不存在，说明Token永不过期，则永久加入黑名单
                 redisTemplate.opsForValue()
                         .set(SecurityConstants.BLACKLIST_TOKEN_PREFIX + jti, "");
             }
         }
-        // 清空Spring Security上下文
         SecurityContextHolder.clearContext();
     }
 
-    /**
-     * 获取验证码
-     *
-     * @return 验证码
-     */
     @Override
     public CaptchaResult getCaptcha() {
-
         String captchaType = captchaProperties.getType();
         AbstractCaptcha captcha = getAbstractCaptcha(captchaType);
         captcha.setGenerator(codeGenerator);
@@ -124,7 +125,6 @@ public class AuthServiceImpl implements AuthService {
         String captchaCode = captcha.getCode();
         String imageBase64Data = captcha.getImageBase64Data();
 
-        // 验证码文本缓存至Redis，用于登录校验
         String captchaKey = IdUtil.fastSimpleUUID();
         redisTemplate.opsForValue().set(SecurityConstants.CAPTCHA_CODE_PREFIX + captchaKey, captchaCode,
                 captchaProperties.getExpireSeconds(), TimeUnit.SECONDS);
@@ -132,6 +132,54 @@ public class AuthServiceImpl implements AuthService {
         return CaptchaResult.builder()
                 .captchaKey(captchaKey)
                 .captchaBase64(imageBase64Data)
+                .build();
+    }
+
+    @Override
+    public Map<String, Object> getAuthInfo() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof SysUserDetails)) {
+            throw new BusinessException(ResultCode.TOKEN_INVALID);
+        }
+        SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", userDetails.getUserId());
+        result.put("username", userDetails.getUsername());
+        result.put("nickname", userDetails.getNickname());
+
+        // 角色列表（去掉 ROLE_ 前缀）
+        result.put("roles", authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
+                .collect(Collectors.toList()));
+
+        // 权限列表
+        result.put("permissions", userDetails.getPerms() != null
+                ? new ArrayList<>(userDetails.getPerms())
+                : Collections.emptyList());
+
+        return result;
+    }
+
+    @Override
+    public LoginResult refreshToken() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !(authentication.getPrincipal() instanceof SysUserDetails)) {
+            throw new BusinessException(ResultCode.TOKEN_INVALID);
+        }
+
+        String accessToken = JwtUtils.createToken(authentication);
+        SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
+
+        return LoginResult.builder()
+                .tokenType("Bearer")
+                .accessToken(accessToken)
+                .user(LoginResult.UserInfo.builder()
+                        .id(userDetails.getUserId())
+                        .username(userDetails.getUsername())
+                        .nickname(userDetails.getNickname())
+                        .build())
                 .build();
     }
 
@@ -156,5 +204,4 @@ public class AuthServiceImpl implements AuthService {
         }
         return captcha;
     }
-
 }

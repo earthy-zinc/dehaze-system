@@ -115,15 +115,13 @@ func (s *UserService) GetPage(ctx context.Context, q *query.UserPageQuery) (*vo.
 			Status:      item.Status,
 			DeptName:    item.DeptName,
 			RoleNames:   item.RoleNames,
-			CreateTime:  item.CreateTime,
+			CreateTime:  item.CreateTime.Format("2006-01-02"),
 		})
 	}
 
 	return &vo.PageResult[vo.UserPageVO]{
-		List:     voList,
-		Total:    readResult.Total,
-		PageNum:  readResult.PageNum,
-		PageSize: readResult.PageSize,
+		List:  voList,
+		Total: readResult.Total,
 	}, nil
 }
 
@@ -157,7 +155,7 @@ func (s *UserService) GetByID(ctx context.Context, id int64) (*vo.UserPageVO, er
 		Avatar:      user.Avatar,
 		Email:       user.Email,
 		Status:      user.Status,
-		CreateTime:  user.CreatedAt,
+		CreateTime:  user.CreatedAt.Format("2006-01-02"),
 	}
 
 	return &userVO, nil

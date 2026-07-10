@@ -53,8 +53,6 @@ async def get_role_page(
         {
             "list": role_list,
             "total": total,
-            "pageNum": query.pageNum,
-            "pageSize": query.pageSize,
         }
     )
 

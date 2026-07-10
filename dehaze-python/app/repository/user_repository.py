@@ -119,9 +119,9 @@ class UserRepository(BaseRepository[SysUser]):
         dept_ids: list[int] | None = None,
         create_time_start: str | None = None,
         create_time_end: str | None = None,
-    ) -> tuple[list[SysUser], int]:
+    ) -> tuple[list[dict], int]:
         """
-        分页查询用户列表
+        分页查询用户列表（含部门名称、角色名称）
 
         Args:
             db: 数据库会话
@@ -134,14 +134,35 @@ class UserRepository(BaseRepository[SysUser]):
             create_time_end: 创建时间结束
 
         Returns:
-            (用户列表, 总数)
+            (用户列表字典, 总数)
         """
-        stmt = select(SysUser).where(SysUser.deleted == 0)
+        from app.models.entity.sys_dept import SysDept
+
+        base_query = (
+            select(
+                SysUser.id,
+                SysUser.username,
+                SysUser.nickname,
+                SysUser.mobile,
+                SysUser.avatar,
+                SysUser.status,
+                SysUser.email,
+                SysUser.gender,
+                SysUser.create_time,
+                SysDept.name.label("deptName"),
+                func.group_concat(SysRole.name).label("roleNames"),
+            )
+            .outerjoin(SysDept, SysUser.dept_id == SysDept.id)
+            .outerjoin(SysUserRole, SysUser.id == SysUserRole.user_id)
+            .outerjoin(SysRole, (SysUserRole.role_id == SysRole.id) & (SysRole.deleted == 0))
+            .where(SysUser.deleted == 0, SysUser.username != "root")
+            .group_by(SysUser.id)
+        )
 
         # 关键词搜索
         if keywords:
             escaped = escape_like(keywords)
-            stmt = stmt.where(
+            base_query = base_query.where(
                 or_(
                     SysUser.username.like(f"%{escaped}%", escape="\\"),
                     SysUser.nickname.like(f"%{escaped}%", escape="\\"),
@@ -151,30 +172,30 @@ class UserRepository(BaseRepository[SysUser]):
 
         # 状态筛选
         if status is not None:
-            stmt = stmt.where(SysUser.status == status)
+            base_query = base_query.where(SysUser.status == status)
 
         # 部门筛选
         if dept_ids:
-            stmt = stmt.where(SysUser.dept_id.in_(dept_ids))
+            base_query = base_query.where(SysUser.dept_id.in_(dept_ids))
 
         # 创建时间范围
         if create_time_start:
             try:
                 start_dt = datetime.strptime(create_time_start, "%Y-%m-%d")
-                stmt = stmt.where(SysUser.create_time >= start_dt)
+                base_query = base_query.where(SysUser.create_time >= start_dt)
             except ValueError:
                 pass
 
         if create_time_end:
             try:
                 end_dt = datetime.strptime(create_time_end, "%Y-%m-%d") + timedelta(days=1)
-                stmt = stmt.where(SysUser.create_time < end_dt)
+                base_query = base_query.where(SysUser.create_time < end_dt)
             except ValueError:
                 pass
 
         # 排序并分页
-        stmt = stmt.order_by(SysUser.create_time.desc())
-        return await self.paginate(db, stmt, page, page_size)
+        base_query = base_query.order_by(SysUser.create_time.desc())
+        return await BaseRepository.paginate_rows(db, base_query, page, page_size)
 
     async def get_protected_user_ids(
         self,

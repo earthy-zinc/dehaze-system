@@ -109,6 +109,33 @@ class BaseRepository(Generic[T]):
         return items, total
 
     @staticmethod
+    async def paginate_rows(
+        db: AsyncSession,
+        stmt: Select,
+        page: int,
+        size: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        """
+        对列级查询（select(columns)）执行分页，返回 dict 列表
+
+        Args:
+            stmt: 已构建好条件的 select 语句
+            page: 页码（从 1 开始）
+            size: 每页数量
+
+        Returns:
+            (rows, total) 元组，rows 为 dict 列表
+        """
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = (await db.execute(count_stmt)).scalar() or 0
+
+        paged_stmt = stmt.offset((page - 1) * size).limit(size)
+        result = await db.execute(paged_stmt)
+        columns = list(result.keys())
+        rows = [dict(zip(columns, row)) for row in result.all()]
+        return rows, total
+
+    @staticmethod
     def apply_keyword_filter(
         stmt: Select,
         columns: list,

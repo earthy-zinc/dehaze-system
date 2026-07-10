@@ -58,21 +58,28 @@
 
 | API | Java | Go | Python | 状态 |
 |-----|------|----|--------|------|
-| `GET /auth/captcha` | ✅ code=00000, msg=一切ok, data={captchaKey, captchaBase64} | ✅ 已修复一致 | ✅ code=00000, msg=一切ok, data={captchaKey, captchaBase64} | 三端一致 |
-| `POST /auth/login` | ❌ captcha 加密无法验证 | ⚠️ 功能正常，login result 缺少 user 字段 | ✅ code=00000, msg=一切ok, data={tokenType,accessToken,user} | Go 需补 user 字段 |
-| `POST /auth/logout` | ❌ 未验证 | ⚠️ 功能正常，msg=注销成功 | ✅ code=00000, msg=注销成功 | Java 待验证 |
-
-### 待验证的 API（按模块）
+| `GET /auth/captcha` | ✅ 一致 | ✅ 一致 | ✅ 一致 | 三端一致 |
+| `POST /auth/login` | ✅ JSON body, user={id,username,nickname} | ✅ 同左 | ✅ 同左 | 三端一致 |
+| `POST /auth/logout` | ✅ POST, code=00000, msg=一切ok | ✅ 同左 | ✅ 同左 | 三端一致 |
+| `GET /auth/me` | ✅ code=00000, msg=一切ok | ✅ 同左 | ✅ 同左 | 三端一致 |
+| token 失效后 | ✅ 401/A0230/token无效或已过期 | ✅ 同左 | ✅ 同左 | 三端一致 |
+| 跨端 token 互认 | ✅ Java→Go/Python | ✅ Go→Java/Python | ✅ Python→Java/Go | 全部通过 |
 
 **认证模块** (`/auth`)：
 - [x] `GET /auth/captcha` — 三端一致 ✅
-- [x] `POST /auth/login` — Go 缺少 user 字段；Java captcha 加密待验证
-- [x] `POST /auth/logout` — Python/Go 正常；Java 待验证
-- [ ] `POST /auth/refresh` — 刷新令牌
-- [ ] `GET /auth/me` — 获取当前用户权限信息
+- [x] `POST /auth/login` — 三端一致 ✅（JSON body, 返回 user 字段）
+- [x] `POST /auth/logout` — 三端一致 ✅（POST, token 黑名单）
+- [x] `GET /auth/me` — 三端一致 ✅
+- [x] 跨端 token 互认 — 全部通过 ✅
+- [x] token 失效响应 — 三端一致 ✅（401/A0230）
+- [x] `POST /auth/refresh` — 三端一致 ✅（Header token，返回新 token + user）
+
+### 待验证的 API（按模块）
+
+需要先登录，注意使用账户：admin 123456，可以使用一个便携脚本文件来辅助实现登录，不必每次都重新请求浪费时间
 
 **用户管理** (`/users`)：
-- [ ] `GET /users/page` — 分页列表
+- [x] `GET /users/page` — 三端一致 ✅（修复：Go msg/genderLabel/roleNames/email/createTime格式；Python statusLabel移除/deptName+roleNames查询/createTime格式；Java SQL加email）
 - [ ] `GET /users/{id}/form` — 获取用户表单
 - [ ] `POST /users` — 新增用户
 - [ ] `PUT /users/{id}` — 修改用户
@@ -120,12 +127,6 @@
 - 业务规则冲突（A0501 数据已存在等）
 
 ## 六、已知待修复问题
-
-~~1. Python 启动问题~~ ✅ 已解决（IPv6 回退超时）  
-~~2. Go config.yaml localhost~~ ✅ 已解决  
-~~3. Python 硬编码错误码~~ ✅ 已解决  
-~~6. 跨端 token 不互认~~ ✅ 已解决（Python JWT claims 对齐 Java/Go 格式）  
-~~7. Java captcha 加密~~ ✅ 已解决（Jackson 序列化带引号，去掉即可）  
 
 4. **URL 复数统一**（低优先级）：`/dept` → `/depts`、`/algorithm` → `/algorithms`，需前端同步
 5. **Go 测试文件**：`test/integration/auth_integration_test.go` 中 `assert.Equal(t, "验证码获取成功", resp.Msg)` 需更新为 `"一切ok"`

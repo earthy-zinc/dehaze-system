@@ -82,7 +82,7 @@ func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 		return
 	}
 
-	common.OkWithDetailed(result, "查询成功", c)
+	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
 }
 
 // GetUserForm 获取用户表单数据
@@ -112,11 +112,11 @@ func (api *SysUserApi) GetUserForm(c *gin.Context) {
 
 	// 用户不存在时返回null（与Java行为一致）
 	if formData == nil || formData.ID == 0 {
-		common.OkWithDetailed(nil, "查询成功", c)
+		common.OkWithDetailed(nil, common.SUCCESS.Msg, c)
 		return
 	}
 
-	common.OkWithDetailed(formData, "查询成功", c)
+	common.OkWithDetailed(formData, common.SUCCESS.Msg, c)
 }
 
 // SaveUser 新增用户

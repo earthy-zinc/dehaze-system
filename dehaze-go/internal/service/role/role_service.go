@@ -89,10 +89,8 @@ func (s *RoleService) GetPage(ctx context.Context, q *query.RolePageQuery) (*vo.
 	}
 
 	return &vo.PageResult[vo.RolePageVO]{
-		List:     voList,
-		Total:    readResult.Total,
-		PageNum:  readResult.PageNum,
-		PageSize: readResult.PageSize,
+		List:  voList,
+		Total: readResult.Total,
 	}, nil
 }
 

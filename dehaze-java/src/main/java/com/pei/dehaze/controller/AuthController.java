@@ -2,13 +2,15 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.dto.CaptchaResult;
+import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
 import com.pei.dehaze.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @Tag(name = "01.认证中心")
 @RestController
@@ -20,16 +22,13 @@ public class AuthController {
 
     @Operation(summary = "登录")
     @PostMapping("/login")
-    public Result<LoginResult> login(
-            @Parameter(description = "用户名", example = "admin") @RequestParam String username,
-            @Parameter(description = "密码", example = "123456") @RequestParam String password
-    ) {
-        LoginResult loginResult = authService.login(username, password);
+    public Result<LoginResult> login(@RequestBody LoginForm form) {
+        LoginResult loginResult = authService.login(form);
         return Result.success(loginResult);
     }
 
     @Operation(summary = "注销")
-    @DeleteMapping("/logout")
+    @PostMapping("/logout")
     public Result<Void> logout() {
         authService.logout();
         return Result.success();
@@ -42,4 +41,15 @@ public class AuthController {
         return Result.success(captcha);
     }
 
+    @Operation(summary = "获取当前用户信息")
+    @GetMapping("/me")
+    public Result<Map<String, Object>> me() {
+        return Result.success(authService.getAuthInfo());
+    }
+
+    @Operation(summary = "刷新令牌")
+    @PostMapping("/refresh")
+    public Result<LoginResult> refresh() {
+        return Result.success(authService.refreshToken());
+    }
 }

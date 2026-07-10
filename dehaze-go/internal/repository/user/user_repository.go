@@ -94,28 +94,45 @@ func (r *UserRepository) FindPage(ctx context.Context, q *query.UserPageQuery) (
 	var users []read.UserPage
 	var total int64
 
-	db := r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Select(`su.id, su.username, su.nickname, su.mobile, su.gender, su.avatar,
-                su.status, su.dept_id, sd.name as dept_name, su.create_time`).
+	// 基础计数查询（不含 GROUP BY）
+	countDB := r.db.WithContext(ctx).Model(&model.SysUser{}).
+		Table("sys_user su").
+		Where("su.deleted = 0 AND su.username != 'root'")
+
+	// 主数据查询（含 GROUP BY 用于聚合角色名称）
+	dataDB := r.db.WithContext(ctx).Model(&model.SysUser{}).
+		Select(`su.id, su.username, su.nickname, su.mobile, su.email, su.avatar,
+                su.status, su.dept_id, sd.name as dept_name,
+                CASE su.gender WHEN 1 THEN '男' WHEN 2 THEN '女' ELSE '未知' END as gender_label,
+                GROUP_CONCAT(sr.name SEPARATOR ',') as role_names,
+                su.create_time`).
 		Table("sys_user su").
 		Joins("LEFT JOIN sys_dept sd ON su.dept_id = sd.id").
-		Where("su.deleted = 0")
+		Joins("LEFT JOIN sys_user_role sur ON su.id = sur.user_id").
+		Joins("LEFT JOIN sys_role sr ON sur.role_id = sr.id AND sr.deleted = 0").
+		Where("su.deleted = 0 AND su.username != 'root'").
+		Group("su.id")
 
-	// 构建查询条件
-	if q.Keywords != "" {
-		keyword := "%" + q.Keywords + "%"
-		db = db.Where("(su.username LIKE ? OR su.nickname LIKE ? OR su.mobile LIKE ?)",
-			keyword, keyword, keyword)
+	// 构建查询条件（两个查询共用）
+	applyFilters := func(db *gorm.DB) *gorm.DB {
+		if q.Keywords != "" {
+			keyword := "%" + q.Keywords + "%"
+			db = db.Where("(su.username LIKE ? OR su.nickname LIKE ? OR su.mobile LIKE ?)",
+				keyword, keyword, keyword)
+		}
+		if q.Status != nil {
+			db = db.Where("su.status = ?", *q.Status)
+		}
+		if q.DeptId != nil {
+			db = db.Where("su.dept_id = ?", *q.DeptId)
+		}
+		return db
 	}
-	if q.Status != nil {
-		db = db.Where("su.status = ?", *q.Status)
-	}
-	if q.DeptId != nil {
-		db = db.Where("su.dept_id = ?", *q.DeptId)
-	}
+	countDB = applyFilters(countDB)
+	dataDB = applyFilters(dataDB)
 
-	// 统计总数
-	if err := db.Count(&total).Error; err != nil {
+	// 统计总数（不含 GROUP BY 的独立查询）
+	if err := countDB.Count(&total).Error; err != nil {
 		return nil, err
 	}
 
@@ -129,7 +146,7 @@ func (r *UserRepository) FindPage(ctx context.Context, q *query.UserPageQuery) (
 		pageSize = 10
 	}
 
-	err := db.Order("su.create_time DESC").
+	err := dataDB.Order("su.create_time DESC").
 		Offset((pageNum - 1) * pageSize).
 		Limit(pageSize).
 		Scan(&users).Error

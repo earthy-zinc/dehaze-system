@@ -88,7 +88,7 @@ func (a *AuthApi) Logout(c *gin.Context) {
 		return
 	}
 
-	common.OkWithMessage("注销成功", c)
+	common.OkWithMessage(common.SUCCESS.Msg, c)
 }
 
 // GetAuthInfo 获取当前用户认证信息
@@ -112,30 +112,29 @@ func (a *AuthApi) GetAuthInfo(c *gin.Context) {
 		return
 	}
 
-	common.OkWithDetailed(result, "获取成功", c)
+	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
 }
 
 // RefreshToken 刷新令牌
 // @Summary 刷新令牌
-// @Description 使用刷新令牌获取新的访问令牌
+// @Description 使用当前有效的 Token 获取新的访问令牌，原 Token 的 jti 会被加入黑名单
 // @Tags 认证管理
 // @Accept json
 // @Produce json
-// @Param request body bo.RefreshTokenRequest true "刷新令牌请求"
 // @Success 200 {object} common.Response{data=dto.LoginResult}
 // @Router /api/v1/auth/refresh [post]
 func (a *AuthApi) RefreshToken(c *gin.Context) {
-	var req bo.RefreshTokenRequest
-	if err := c.ShouldBind(&req); err != nil {
-		_ = c.Error(err)
+	token := security.GetToken(c)
+	if token == "" {
+		_ = c.Error(common.NewBizError(common.TOKEN_INVALID, common.TOKEN_INVALID.Msg))
 		return
 	}
 
-	result, err := a.authService.RefreshToken(c.Request.Context(), req.RefreshToken)
+	result, err := a.authService.RefreshToken(c.Request.Context(), token)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithDetailed(result, "刷新成功", c)
+	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
 }

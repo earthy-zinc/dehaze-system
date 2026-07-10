@@ -130,7 +130,6 @@ class UserPageVO(BaseModel):
     genderLabel: Optional[str] = Field(default=None, description="性别")
     avatar: Optional[str] = Field(default=None, description="用户头像地址")
     status: int = Field(description="用户状态(1:启用;0:禁用)")
-    statusLabel: Optional[str] = Field(default=None, description="状态标签")
     email: Optional[str] = Field(default=None, description="邮箱")
     deptName: Optional[str] = Field(default=None, description="部门名称")
     roleNames: Optional[str] = Field(

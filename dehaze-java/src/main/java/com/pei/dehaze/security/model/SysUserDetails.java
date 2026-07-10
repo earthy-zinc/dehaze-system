@@ -42,8 +42,11 @@ public class SysUserDetails implements UserDetails {
 
     private Integer dataScope;
 
+    private String nickname;
+
     public SysUserDetails(UserAuthInfo user) {
         this.userId = user.getUserId();
+        this.nickname = user.getNickname();
         Set<String> roles = user.getRoles();
         Set<SimpleGrantedAuthority> authorities;
         if (CollUtil.isNotEmpty(roles)) {
