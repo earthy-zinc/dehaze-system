@@ -44,7 +44,7 @@ func RegisterSysRoleRoutes(rg *gin.RouterGroup, sysRoleApi *api.SysRoleApi) gin.
 }
 
 func RegisterSysDeptRoutes(rg *gin.RouterGroup, sysDeptApi *api.SysDeptApi) gin.IRoutes {
-	sysDeptRouter := rg.Group("dept")
+	sysDeptRouter := rg.Group("depts")
 	{
 		// 读操作 - 无需额外权限
 		sysDeptRouter.GET("", sysDeptApi.ListDepartments)

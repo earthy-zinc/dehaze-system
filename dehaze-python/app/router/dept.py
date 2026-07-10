@@ -13,7 +13,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
-    prefix="/api/v1/dept",
+    prefix="/api/v1/depts",
     tags=["部门管理"],
     dependencies=[Depends(get_current_user)],
 )

@@ -9,7 +9,7 @@ class AlgorithmAPI {
    */
   static getList(queryParams?: AlgorithmQuery) {
     return request<any, Algorithm[]>({
-      url: "/api/v1/algorithm",
+      url: "/api/v1/algorithms",
       method: "get",
       params: queryParams,
     });
@@ -20,7 +20,7 @@ class AlgorithmAPI {
    */
   static getOption() {
     return request<any, OptionType[]>({
-      url: "/api/v1/algorithm/options",
+      url: "/api/v1/algorithms/options",
       method: "get",
     });
   }
@@ -30,7 +30,7 @@ class AlgorithmAPI {
    */
   static getAlgorithmInfoById(id: number) {
     return request<any, Algorithm>({
-      url: "/api/v1/algorithm/" + id,
+      url: "/api/v1/algorithms/" + id,
       method: "get",
     });
   }
@@ -42,7 +42,7 @@ class AlgorithmAPI {
    */
   static add(data: Algorithm) {
     return request({
-      url: "/api/v1/algorithm",
+      url: "/api/v1/algorithms",
       method: "post",
       data: data,
     });
@@ -56,7 +56,7 @@ class AlgorithmAPI {
    */
   static update(id: number, data: Algorithm) {
     return request({
-      url: "/api/v1/algorithm/" + id,
+      url: "/api/v1/algorithms/" + id,
       method: "put",
       data: data,
     });
@@ -69,8 +69,9 @@ class AlgorithmAPI {
    */
   static deleteByIds(ids: string[]) {
     return request({
-      url: "/api/v1/algorithm/" + ids,
+      url: "/api/v1/algorithms",
       method: "delete",
+      params: { ids: ids.join(",") },
     });
   }
 }

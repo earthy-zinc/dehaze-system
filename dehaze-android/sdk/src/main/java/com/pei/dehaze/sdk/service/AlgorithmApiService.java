@@ -21,21 +21,21 @@ import retrofit2.http.Path;
  */
 public interface AlgorithmApiService {
     // Algorithm APIs
-    @GET("/api/v1/algorithm")
+    @GET("/api/v1/algorithms")
     Call<Result<List<Algorithm>>> getAlgorithmList(@Query("keywords") String keywords);
 
-    @GET("/api/v1/algorithm/options")
+    @GET("/api/v1/algorithms/options")
     Call<Result<List<Option>>> getAlgorithmOptions();
 
-    @GET("/api/v1/algorithm/{id}")
+    @GET("/api/v1/algorithms/{id}")
     Call<Result<Algorithm>> getAlgorithmInfo(@Path("id") int id);
 
-    @POST("/api/v1/algorithm")
+    @POST("/api/v1/algorithms")
     Call<Result<Void>> addAlgorithm(@Body Algorithm data);
 
-    @PUT("/api/v1/algorithm/{id}")
+    @PUT("/api/v1/algorithms/{id}")
     Call<Result<Void>> updateAlgorithm(@Path("id") int id, @Body Algorithm data);
 
-    @DELETE("/api/v1/algorithm/{ids}")
-    Call<Result<Void>> deleteAlgorithms(@Path("ids") String ids);
+    @DELETE("/api/v1/algorithms")
+    Call<Result<Void>> deleteAlgorithms(@Query("ids") String ids);
 }

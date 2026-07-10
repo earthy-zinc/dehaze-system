@@ -11,6 +11,7 @@ from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.redis import get_redis
+from app.models.schema.common import BatchDeleteForm
 from app.models.schema.dataset import (DatasetAddForm, DatasetDeleteResultVO,
                                        DatasetIdVO, DatasetOptionVO,
                                        DatasetUpdateForm, DatasetVO)
@@ -89,18 +90,9 @@ async def delete_dataset(
 
 @router.delete("/batch", response_model=Result[DatasetDeleteResultVO], summary="批量删除数据集")
 async def batch_delete_datasets(
-    ids: str = Query(..., description="数据集ID列表，多个以英文逗号(,)分隔"),
+    body: BatchDeleteForm = Body(...),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    if not ids:
-        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
-
-    try:
-        dataset_ids = [int(id_str.strip())
-                       for id_str in ids.split(",") if id_str.strip()]
-    except ValueError:
-        raise BusinessException(ResultCode.PARAM_ERROR, "参数格式错误，ID 必须为数字")
-
-    result = await DatasetService.delete_datasets(db, redis, dataset_ids)
+    result = await DatasetService.delete_datasets(db, redis, body.ids)
     return success(result["data"], result["message"])

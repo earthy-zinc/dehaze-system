@@ -208,6 +208,34 @@ class ItemFileUpdateForm(BaseModel):
         default=None, max_length=255, description="描述")
 
 
+# ============================================================
+# 数据集项上传（配对上传 + 批量上传）
+# ============================================================
+
+class BatchUploadSuccessItemVO(BaseModel):
+    """批量上传成功项"""
+    id: int = Field(description="数据项ID")
+    name: Optional[str] = Field(default=None, description="数据项名称")
+    fileCount: int = Field(description="关联文件数量")
+
+
+class BatchUploadFailedItemVO(BaseModel):
+    """批量上传失败项"""
+    fileName: str = Field(description="文件名")
+    reason: str = Field(description="失败原因")
+
+
+class BatchUploadResultVO(BaseModel):
+    """批量上传结果VO"""
+    total: int = Field(description="总配对组数")
+    succeeded: int = Field(description="成功数量")
+    failed: int = Field(description="失败数量")
+    successItems: List[BatchUploadSuccessItemVO] = Field(
+        default_factory=list, description="成功项列表")
+    failedItems: List[BatchUploadFailedItemVO] = Field(
+        default_factory=list, description="失败项列表")
+
+
 # 树形结构自引用，需要调用 model_rebuild() 完成模型构建
 DatasetVO.model_rebuild()
 DatasetOptionVO.model_rebuild()

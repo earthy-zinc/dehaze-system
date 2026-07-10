@@ -6,7 +6,7 @@ import (
 )
 
 func RegisterAlgorithmRoutes(rg *gin.RouterGroup, algorithmApi *api.AlgorithmApi) {
-	algorithmRouterGroup := rg.Group("/algorithm")
+	algorithmRouterGroup := rg.Group("/algorithms")
 
 	{
 		algorithmRouterGroup.GET("", algorithmApi.GetList)            // 获取算法树形表格
@@ -14,6 +14,6 @@ func RegisterAlgorithmRoutes(rg *gin.RouterGroup, algorithmApi *api.AlgorithmApi
 		algorithmRouterGroup.GET("/:id", algorithmApi.GetById)        // 根据ID获取算法信息
 		algorithmRouterGroup.POST("", algorithmApi.Add)               // 新增算法
 		algorithmRouterGroup.PUT("/:id", algorithmApi.Update)         // 修改算法
-		algorithmRouterGroup.DELETE("/:ids", algorithmApi.Delete)     // 删除算法
+		algorithmRouterGroup.DELETE("", algorithmApi.Delete)           // 删除算法
 	}
 }

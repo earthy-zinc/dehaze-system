@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
-    prefix="/api/v1/algorithm",
+    prefix="/api/v1/algorithms",
     tags=["算法管理"],
     dependencies=[Depends(get_current_user)],
 )

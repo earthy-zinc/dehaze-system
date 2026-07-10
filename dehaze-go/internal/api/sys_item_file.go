@@ -99,14 +99,25 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 // @Router /api/v1/item-files/{id} [put]
 func (api *SysItemFileApi) UpdateImageById(c *gin.Context) {
 	idStr := c.Param("id")
-	_, err := strconv.ParseInt(idStr, 10, 64)
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "图片文件ID格式不正确"))
 		return
 	}
 
-	// TODO: 实现更新逻辑
-	_ = c.Error(common.NewBizError(common.PARAM_ERROR, "暂未实现"))
+	var form bo.ItemFileUpdateForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	err = api.itemFileService.UpdateItemFileInfo(id, form)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithMessage("更新成功", c)
 }
 
 // RemoveImageById 删除图片

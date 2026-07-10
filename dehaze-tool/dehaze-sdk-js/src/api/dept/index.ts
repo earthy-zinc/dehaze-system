@@ -10,7 +10,7 @@ class DeptAPI {
    */
   static getList(queryParams?: DeptQuery) {
     return request<any, DeptVO[]>({
-      url: "/api/v1/dept",
+      url: "/api/v1/depts",
       method: "get",
       params: queryParams,
     });
@@ -21,7 +21,7 @@ class DeptAPI {
    */
   static getOptions() {
     return request<any, OptionType[]>({
-      url: "/api/v1/dept/options",
+      url: "/api/v1/depts/options",
       method: "get",
     });
   }
@@ -33,7 +33,7 @@ class DeptAPI {
    */
   static getFormData(id: number) {
     return request<any, DeptForm>({
-      url: "/api/v1/dept/" + id + "/form",
+      url: "/api/v1/depts/" + id + "/form",
       method: "get",
     });
   }
@@ -45,7 +45,7 @@ class DeptAPI {
    */
   static add(data: DeptForm) {
     return request({
-      url: "/api/v1/dept",
+      url: "/api/v1/depts",
       method: "post",
       data: data,
     });
@@ -59,7 +59,7 @@ class DeptAPI {
    */
   static update(id: number, data: DeptForm) {
     return request({
-      url: "/api/v1/dept/" + id,
+      url: "/api/v1/depts/" + id,
       method: "put",
       data: data,
     });
@@ -72,7 +72,7 @@ class DeptAPI {
    */
   static deleteByIds(ids: string) {
     return request({
-      url: "/api/v1/dept/" + ids,
+      url: "/api/v1/depts/" + ids,
       method: "delete",
     });
   }

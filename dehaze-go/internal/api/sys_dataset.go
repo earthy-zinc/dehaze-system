@@ -198,28 +198,3 @@ func (api *SysDatasetApi) BatchDeleteDatasets(c *gin.Context) {
 
 	common.OkWithData(result, c)
 }
-
-// GetDatasetStatistics 获取数据集统计信息
-// @Summary 获取数据集统计信息
-// @Tags 数据集接口
-// @Accept application/json
-// @Produce application/json
-// @Param id path int true "数据集ID"
-// @Success 200 {object} common.Response
-// @Router /api/v1/datasets/{id}/stats [get]
-func (api *SysDatasetApi) GetDatasetStatistics(c *gin.Context) {
-	idStr := c.Param("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "数据集ID格式不正确"))
-		return
-	}
-
-	stats, err := api.datasetService.GetDatasetStatistics(id)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	common.OkWithDetailed(stats, "查询成功", c)
-}

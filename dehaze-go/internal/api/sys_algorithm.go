@@ -125,7 +125,7 @@ func (api *AlgorithmApi) Update(c *gin.Context) {
 // Delete 删除算法
 func (api *AlgorithmApi) Delete(c *gin.Context) {
 	ctx := c.Request.Context()
-	idsStr := c.Param("ids")
+	idsStr := c.Query("ids")
 	if idsStr == "" {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
 		return

@@ -16,7 +16,7 @@ export class DeptAPI {
    */
   public static async getList(queryParams?: DeptQuery): Promise<Result<Array<DeptVO>>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<Array<DeptVO>>>(`${DeptAPI.BASE_URL}/dept`, queryParams);
+    return await httpManager.get<Result<Array<DeptVO>>>(`${DeptAPI.BASE_URL}/depts`, queryParams);
   }
 
   /**
@@ -26,7 +26,7 @@ export class DeptAPI {
    */
   public static async getOptions(): Promise<Result<Array<any>>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<Array<any>>>(`${DeptAPI.BASE_URL}/dept/options`);
+    return await httpManager.get<Result<Array<any>>>(`${DeptAPI.BASE_URL}/depts/options`);
   }
 
   /**
@@ -37,7 +37,7 @@ export class DeptAPI {
    */
   public static async getFormData(id: number): Promise<Result<DeptForm>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<DeptForm>>(`${DeptAPI.BASE_URL}/dept/${id}/form`);
+    return await httpManager.get<Result<DeptForm>>(`${DeptAPI.BASE_URL}/depts/${id}/form`);
   }
 
   /**
@@ -48,7 +48,7 @@ export class DeptAPI {
    */
   public static async add(data: DeptForm): Promise<Result<void>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.post<Result<void>>(`${DeptAPI.BASE_URL}/dept`, data);
+    return await httpManager.post<Result<void>>(`${DeptAPI.BASE_URL}/depts`, data);
   }
 
   /**
@@ -60,7 +60,7 @@ export class DeptAPI {
    */
   public static async update(id: number, data: DeptForm): Promise<Result<void>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.put<Result<void>>(`${DeptAPI.BASE_URL}/dept/${id}`, data);
+    return await httpManager.put<Result<void>>(`${DeptAPI.BASE_URL}/depts/${id}`, data);
   }
 
   /**
@@ -71,6 +71,6 @@ export class DeptAPI {
    */
   public static async deleteByIds(ids: string): Promise<Result<void>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.delete<Result<void>>(`${DeptAPI.BASE_URL}/dept/${ids}`);
+    return await httpManager.delete<Result<void>>(`${DeptAPI.BASE_URL}/depts/${ids}`);
   }
 }

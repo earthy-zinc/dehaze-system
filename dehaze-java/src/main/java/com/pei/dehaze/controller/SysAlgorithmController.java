@@ -23,7 +23,7 @@ import java.util.List;
  */
 @Tag(name = "09.算法接口")
 @RestController
-@RequestMapping("/api/v1/algorithm")
+@RequestMapping("/api/v1/algorithms")
 @RequiredArgsConstructor
 public class SysAlgorithmController {
     private final SysAlgorithmService algorithmService;

@@ -29,7 +29,7 @@ func NewSysDeptApi(deptService deptservice.IDeptService) *SysDeptApi {
 // @Param keywords query string false "关键字(部门名称)"
 // @Param status query int false "状态(1->正常；0->禁用)"
 // @Success 200 {object} common.Response{data=[]vo.DeptVO}
-// @Router /api/v1/dept [get]
+// @Router /api/v1/depts [get]
 func (api *SysDeptApi) ListDepartments(c *gin.Context) {
 	// 解析查询参数
 	var queryParams query.DeptQuery
@@ -58,7 +58,7 @@ func (api *SysDeptApi) ListDepartments(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Success 200 {object} common.Response{data=[]vo.Option}
-// @Router /api/v1/dept/options [get]
+// @Router /api/v1/depts/options [get]
 func (api *SysDeptApi) ListDeptOptions(c *gin.Context) {
 	// 调用服务获取部门下拉选项
 	ctx := c.Request.Context()
@@ -79,7 +79,7 @@ func (api *SysDeptApi) ListDeptOptions(c *gin.Context) {
 // @Produce application/json
 // @Param deptId path int true "部门ID"
 // @Success 200 {object} common.Response{data=bo.DeptFormBO}
-// @Router /api/v1/dept/{deptId}/form [get]
+// @Router /api/v1/depts/{deptId}/form [get]
 func (api *SysDeptApi) GetDeptForm(c *gin.Context) {
 	// 获取路径参数
 	deptIdStr := c.Param("deptId")
@@ -114,7 +114,7 @@ func (api *SysDeptApi) GetDeptForm(c *gin.Context) {
 // @Produce application/json
 // @Param formData body bo.DeptFormBO true "部门表单数据"
 // @Success 200 {object} common.Response
-// @Router /api/v1/dept [post]
+// @Router /api/v1/depts [post]
 func (api *SysDeptApi) SaveDept(c *gin.Context) {
 	// 绑定请求参数
 	var deptFormBO bo.DeptFormBO
@@ -143,7 +143,7 @@ func (api *SysDeptApi) SaveDept(c *gin.Context) {
 // @Param deptId path int true "部门ID"
 // @Param formData body bo.DeptFormBO true "部门表单数据"
 // @Success 200 {object} common.Response
-// @Router /api/v1/dept/{deptId} [put]
+// @Router /api/v1/depts/{deptId} [put]
 func (api *SysDeptApi) UpdateDept(c *gin.Context) {
 	// 获取路径参数
 	deptIdStr := c.Param("deptId")
@@ -179,7 +179,7 @@ func (api *SysDeptApi) UpdateDept(c *gin.Context) {
 // @Produce application/json
 // @Param deptId path int true "部门ID"
 // @Success 200 {object} common.Response
-// @Router /api/v1/dept/{deptId} [delete]
+// @Router /api/v1/depts/{deptId} [delete]
 func (api *SysDeptApi) DeleteDepartments(c *gin.Context) {
 	// 获取路径参数
 	deptIdStr := c.Param("deptId")

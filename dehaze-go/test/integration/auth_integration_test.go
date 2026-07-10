@@ -37,7 +37,7 @@ func TestCaptcha_GetSuccess(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	resp := tu.ParseResponse(t, w)
 	assert.Equal(t, common.SUCCESS.Code, resp.Code)
-	assert.Equal(t, "验证码获取成功", resp.Msg)
+	assert.Equal(t, common.SUCCESS.Msg, resp.Msg)
 
 	var data struct {
 		CaptchaKey    string `json:"captchaKey"`

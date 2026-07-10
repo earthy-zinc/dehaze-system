@@ -269,6 +269,44 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (sysIt
 	return sysItemFile, nil
 }
 
+// UpdateItemFileInfo 更新图片信息
+func (itemFileService *ItemFileService) UpdateItemFileInfo(itemFileID int64, form bo.ItemFileUpdateForm) error {
+	ctx := context.Background()
+
+	itemFile, err := itemFileService.itemFileRepo.FindByID(ctx, itemFileID)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询项文件失败", err)
+	}
+	if itemFile == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "项文件不存在")
+	}
+
+	// 更新提供的字段
+	if form.Type != nil {
+		itemFile.Type = *form.Type
+	}
+	if form.SceneType != nil {
+		itemFile.SceneType = form.SceneType
+	}
+	if form.HazeLevel != nil {
+		itemFile.HazeLevel = form.HazeLevel
+	}
+	if form.Description != nil {
+		itemFile.Description = form.Description
+	}
+
+	err = itemFileService.itemFileRepo.Update(ctx, itemFile)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "更新项文件失败", err)
+	}
+
+	// 失效缓存
+	itemFileService.invalidateItemFileCache(itemFileID)
+	itemFileService.invalidateItemFilesCache(itemFile.ItemID)
+
+	return nil
+}
+
 // UpdateThumbnail 更新缩略图
 func (itemFileService *ItemFileService) UpdateThumbnail(itemFileID, thumbnailFileID int64) error {
 	ctx := context.Background()

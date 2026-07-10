@@ -16,7 +16,7 @@ export class AlgorithmAPI {
    */
   public static async getList(queryParams?: AlgorithmQuery): Promise<Result<Array<Algorithm>>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<Array<Algorithm>>>(`${AlgorithmAPI.BASE_URL}/algorithm`, queryParams);
+    return await httpManager.get<Result<Array<Algorithm>>>(`${AlgorithmAPI.BASE_URL}/algorithms`, queryParams);
   }
 
   /**
@@ -26,7 +26,7 @@ export class AlgorithmAPI {
    */
   public static async getOption(): Promise<Result<Array<any>>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<Array<any>>>(`${AlgorithmAPI.BASE_URL}/algorithm/options`);
+    return await httpManager.get<Result<Array<any>>>(`${AlgorithmAPI.BASE_URL}/algorithms/options`);
   }
 
   /**
@@ -37,7 +37,7 @@ export class AlgorithmAPI {
    */
   public static async getAlgorithmInfoById(id: number): Promise<Result<Algorithm>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<Algorithm>>(`${AlgorithmAPI.BASE_URL}/algorithm/${id}`);
+    return await httpManager.get<Result<Algorithm>>(`${AlgorithmAPI.BASE_URL}/algorithms/${id}`);
   }
 
   /**
@@ -48,7 +48,7 @@ export class AlgorithmAPI {
    */
   public static async add(data: Algorithm): Promise<Result<void>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.post<Result<void>>(`${AlgorithmAPI.BASE_URL}/algorithm`, data);
+    return await httpManager.post<Result<void>>(`${AlgorithmAPI.BASE_URL}/algorithms`, data);
   }
 
   /**
@@ -60,7 +60,7 @@ export class AlgorithmAPI {
    */
   public static async update(id: number, data: Algorithm): Promise<Result<void>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.put<Result<void>>(`${AlgorithmAPI.BASE_URL}/algorithm/${id}`, data);
+    return await httpManager.put<Result<void>>(`${AlgorithmAPI.BASE_URL}/algorithms/${id}`, data);
   }
 
   /**
@@ -71,6 +71,6 @@ export class AlgorithmAPI {
    */
   public static async deleteByIds(ids: Array<string>): Promise<Result<void>> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.delete<Result<void>>(`${AlgorithmAPI.BASE_URL}/algorithm/${ids.join(',')}`);
+    return await httpManager.delete<Result<void>>(`${AlgorithmAPI.BASE_URL}/algorithms?ids=${ids.join(',')}`);
   }
 }

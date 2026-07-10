@@ -6,6 +6,7 @@
 
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Any
 
@@ -14,12 +15,38 @@ from app.core.exceptions import BusinessException
 from app.models.entity.sys_dataset import (SysDataset, SysDatasetItem,
                                            SysItemFile)
 from app.repository.dataset_repository import dataset_repository
+from app.service.file_service import FileService
 from app.utils.datetime_utils import format_time
 from app.utils.tree import generate_tree_path
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_file_prefix(filename: str) -> str:
+    """提取文件名前缀（去除 _clear/_gt/_hazy_* 后缀和扩展名）"""
+    name = re.sub(r'\.[^.]+$', '', filename)
+    name = re.sub(r'_(clear|gt|hazy.*)$', '', name, flags=re.IGNORECASE)
+    return name
+
+
+def _is_clear_image(filename: str) -> bool:
+    """判断文件名是否为清晰图（含 _clear 或 _gt）"""
+    return bool(re.search(r'_(clear|gt)\b', filename, re.IGNORECASE))
+
+
+def _is_hazy_image(filename: str) -> bool:
+    """判断文件名是否为有雾图（含 _hazy）"""
+    return '_hazy' in filename.lower()
+
+
+def _extract_haze_level(filename: str) -> str:
+    """从文件名提取雾霾程度，默认 medium"""
+    match = re.search(r'_hazy_(light|medium|heavy)', filename, re.IGNORECASE)
+    if match:
+        return match.group(1).lower()
+    return "medium"
 
 
 class DatasetService:
@@ -910,6 +937,187 @@ class DatasetItemService:
         # 清除受影响数据集的统计缓存
         for ds_id in affected_dataset_ids:
             await DatasetService._evict_dataset_stats_cache(redis, ds_id)
+
+    @staticmethod
+    async def upload_dataset_item_with_images(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+        name: str | None = None,
+        scene_type: str | None = None,
+        clear_file_content: bytes | None = None,
+        clear_filename: str = "",
+        clear_content_type: str = "",
+        hazy_files_data: list[dict] | None = None,
+    ) -> dict:
+        """创建数据项并上传配对图片（一张清晰图 + 多张有雾图）"""
+        if clear_file_content is None:
+            raise BusinessException(ResultCode.PARAM_ERROR, "清晰图必须上传")
+        if not hazy_files_data:
+            raise BusinessException(ResultCode.PARAM_ERROR, "至少上传一张有雾图")
+
+        # 校验数据集存在
+        dataset = await dataset_repository.get_by_id(db, dataset_id)
+        if not dataset or dataset.deleted:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
+        if dataset.type == "DIR":
+            raise BusinessException(ResultCode.PARAM_ERROR, "目录类型数据集不允许创建数据项")
+
+        # 创建数据项
+        item_name = name or f"Item_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        item = SysDatasetItem(dataset_id=dataset_id, name=item_name)
+        db.add(item)
+        await db.flush()
+        await db.refresh(item)
+
+        # 上传清晰图
+        clear_sys_file = await FileService.upload_file(
+            db, clear_filename, clear_file_content, clear_content_type,
+        )
+        item_file_clear = SysItemFile(
+            item_id=item.id,
+            file_id=clear_sys_file.id,
+            type="clear",
+            scene_type=scene_type or "",
+            haze_level="",
+        )
+        db.add(item_file_clear)
+
+        # 上传有雾图
+        for hfd in hazy_files_data:
+            haze_level = hfd.get("hazeLevel", "medium").lower()
+            if haze_level not in ("light", "medium", "heavy"):
+                haze_level = "medium"
+
+            hazy_sys_file = await FileService.upload_file(
+                db, hfd["filename"], hfd["content"], hfd.get("contentType", "application/octet-stream"),
+            )
+            item_file_hazy = SysItemFile(
+                item_id=item.id,
+                file_id=hazy_sys_file.id,
+                type="hazy",
+                scene_type=scene_type or "",
+                haze_level=haze_level,
+            )
+            db.add(item_file_hazy)
+
+        await db.flush()
+
+        # 清除缓存
+        await DatasetService._evict_dataset_stats_cache(redis, dataset_id)
+        await DatasetService._evict_tree_cache(redis)
+
+        # 返回详情
+        return await DatasetItemService.get_item_detail(db, item.id)
+
+    @staticmethod
+    async def batch_create_dataset_items_with_images(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+        scene_type: str | None = None,
+        files_data: list[dict] | None = None,
+    ) -> dict:
+        """批量创建数据项并上传图片（按文件名自动配对）"""
+        if not files_data:
+            raise BusinessException(ResultCode.PARAM_ERROR, "至少上传一个文件")
+
+        # 校验数据集存在
+        dataset = await dataset_repository.get_by_id(db, dataset_id)
+        if not dataset or dataset.deleted:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
+        if dataset.type == "DIR":
+            raise BusinessException(ResultCode.PARAM_ERROR, "目录类型数据集不允许创建数据项")
+
+        # 按文件名前缀分组
+        groups: dict[str, dict[str, list]] = {}
+        unpaired: list[dict] = []
+
+        for fd in files_data:
+            filename = fd["filename"]
+            clear = _is_clear_image(filename)
+            hazy = _is_hazy_image(filename)
+
+            if not clear and not hazy:
+                unpaired.append({"fileName": filename, "reason": "无法识别文件类型，文件名需包含 _clear/_gt 或 _hazy"})
+                continue
+
+            if clear and hazy:
+                unpaired.append({"fileName": filename, "reason": "文件名同时包含清晰图和有雾图标识，无法判定"})
+                continue
+
+            prefix = _extract_file_prefix(filename)
+            if not prefix:
+                unpaired.append({"fileName": filename, "reason": "无法提取文件名前缀"})
+                continue
+
+            if prefix not in groups:
+                groups[prefix] = {"clear": [], "hazy": []}
+
+            if clear:
+                groups[prefix]["clear"].append(fd)
+            else:
+                haze_level = _extract_haze_level(filename)
+                fd["hazeLevel"] = haze_level
+                groups[prefix]["hazy"].append(fd)
+
+        # 处理每个配对组
+        success_items = []
+        failed_items = []
+        total = len(groups)
+
+        for prefix, files in groups.items():
+            if not files["clear"]:
+                failed_items.append({
+                    "fileName": prefix,
+                    "reason": f"未找到清晰图（需要 {prefix}_clear 或 {prefix}_gt 文件）",
+                })
+                continue
+            if not files["hazy"]:
+                failed_items.append({
+                    "fileName": prefix,
+                    "reason": f"未找到有雾图（需要 {prefix}_hazy 文件）",
+                })
+                continue
+
+            try:
+                clear_fd = files["clear"][0]
+                details = await DatasetItemService.upload_dataset_item_with_images(
+                    db=db,
+                    redis=redis,
+                    dataset_id=dataset_id,
+                    name=prefix,
+                    scene_type=scene_type,
+                    clear_file_content=clear_fd["content"],
+                    clear_filename=clear_fd["filename"],
+                    clear_content_type=clear_fd.get("contentType", "application/octet-stream"),
+                    hazy_files_data=files["hazy"],
+                )
+                file_count = len(details.get("files", [])) if details else 0
+                success_items.append({
+                    "id": details["id"] if details else 0,
+                    "name": details.get("name"),
+                    "fileCount": file_count,
+                })
+            except Exception as e:
+                failed_items.append({
+                    "fileName": prefix,
+                    "reason": str(e),
+                })
+
+        # 添加未配对文件到失败列表
+        failed_items.extend(unpaired)
+
+        succeeded = len(success_items)
+        failed = len(failed_items)
+
+        return {
+            "total": total,
+            "succeeded": succeeded,
+            "failed": failed,
+            "successItems": success_items,
+            "failedItems": failed_items,
+        }
 
 
 class ItemFileService:

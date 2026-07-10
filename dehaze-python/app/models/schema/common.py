@@ -34,3 +34,8 @@ class IdsPath(BaseModel):
 class IdPath(BaseModel):
     """单个 ID 路径参数"""
     id: int = Field(..., description="ID")
+
+
+class BatchDeleteForm(BaseModel):
+    """批量删除表单（RequestBody JSON）"""
+    ids: List[int] = Field(..., min_length=1, description="ID列表")

@@ -9,9 +9,10 @@ from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.redis import get_redis
+from app.models.schema.common import BatchDeleteForm
 from app.models.schema.dataset import ItemFileUpdateForm, ItemFileVO
 from app.service.dataset_service import ItemFileService
-from fastapi import (APIRouter, Body, Depends, File, Form, Path, Query,
+from fastapi import (APIRouter, Body, Depends, File, Form, Path,
                      UploadFile)
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,18 +84,9 @@ async def delete_item_file(
 
 @router.delete("/batch", response_model=Result[None], summary="批量删除图片")
 async def batch_delete_item_files(
-    ids: str = Query(..., description="图片文件关联ID列表，多个以英文逗号(,)分隔"),
+    body: BatchDeleteForm = Body(...),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    if not ids:
-        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
-
-    try:
-        file_ids = [int(id_str.strip())
-                    for id_str in ids.split(",") if id_str.strip()]
-    except ValueError:
-        raise BusinessException(ResultCode.PARAM_ERROR, "参数格式错误，ID 必须为数字")
-
-    await ItemFileService.batch_delete_item_files(db, redis, file_ids)
+    await ItemFileService.batch_delete_item_files(db, redis, body.ids)
     return success(msg="删除成功")
