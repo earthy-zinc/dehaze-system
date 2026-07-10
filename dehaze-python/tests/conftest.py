@@ -1,386 +1,250 @@
 """
 pytest 配置和共享 fixtures
+
+基于 FastAPI + pytest-asyncio 的测试框架
 """
+
 import os
+import sys
+from typing import AsyncGenerator
 
 import pytest
-from unittest.mock import MagicMock
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import OperationalError
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app import create_app
-from app.extensions import mysql
-from app.models import SysUser, SysRole
+# 确保项目根目录在 Python 路径中
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# 设置测试环境变量
+os.environ["APP_ENV"] = "testing"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only-32chars!"
+os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-for-testing-32chars!"
+os.environ["DEHAZE_PASSWORD"] = "test_password"
+
+from app.main import app as fastapi_app
+from tests.test_models import MockBase, MockRole, MockUser, MockUserRole
 
 
-@pytest.fixture(scope='session')
+# ==================== 数据库引擎 ====================
+
+# 使用 SQLite 内存数据库进行测试（快速、隔离）
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    echo=False,
+    future=True,
+)
+
+test_session_factory = async_sessionmaker(
+    test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+
+# ==================== Mock Redis ====================
+
+class MockRedis:
+    """Mock Redis 客户端"""
+
+    def __init__(self):
+        self._data: dict[str, str] = {}
+
+    async def get(self, key: str) -> bytes | None:
+        value = self._data.get(key)
+        return value.encode() if value else None
+
+    async def set(self, key: str, value: str, *args, **kwargs) -> bool:
+        self._data[key] = value
+        return True
+
+    async def setex(self, key: str, ttl: int, value: str) -> bool:
+        self._data[key] = value
+        return True
+
+    async def delete(self, key: str) -> int:
+        if key in self._data:
+            del self._data[key]
+            return 1
+        return 0
+
+    async def exists(self, key: str) -> bool:
+        return key in self._data
+
+    async def expire(self, key: str, ttl: int) -> bool:
+        return key in self._data
+
+    async def ttl(self, key: str) -> int:
+        return -1 if key not in self._data else 3600
+
+    async def incr(self, key: str) -> int:
+        if key not in self._data:
+            self._data[key] = "0"
+        self._data[key] = str(int(self._data[key]) + 1)
+        return int(self._data[key])
+
+    async def close(self) -> None:
+        pass
+
+
+# ==================== Fixtures ====================
+
+@pytest_asyncio.fixture(loop_scope="function")
+async def db_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Function 级别：提供独立的数据库会话
+    每个测试创建新表，测试后自动清理
+    """
+    # 每个测试创建表（使用测试模型）
+    async with test_engine.begin() as conn:
+        await conn.run_sync(MockBase.metadata.create_all)
+
+    async with test_session_factory() as session:
+        yield session
+
+    # 测试后清理
+    async with test_engine.begin() as conn:
+        await conn.run_sync(MockBase.metadata.drop_all)
+
+
+@pytest.fixture
+def mock_redis() -> MockRedis:
+    """Mock Redis 客户端"""
+    return MockRedis()
+
+
+@pytest_asyncio.fixture
+async def client() -> AsyncGenerator[AsyncClient, None]:
+    """
+    异步测试客户端
+    用于 API 接口测试
+    """
+    async with AsyncClient(
+        transport=ASGITransport(app=fastapi_app),
+        base_url="http://test",
+    ) as client:
+        yield client
+
+
+@pytest.fixture
 def app():
-    """
-    创建测试用的 Flask 应用实例（session级别）
-    """
-    # 设置测试环境
-    os.environ['FLASK_ENV'] = 'testing'
-    os.environ['TEST_DATABASE_TYPE'] = 'mysql'
-
-    # 创建应用
-    app = create_app('testing')
-
-    # 为 MySQL 创建测试数据库
-    if 'mysql' in app.config['SQLALCHEMY_DATABASE_URI']:
-        _create_mysql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
-
-    # 为 PostgreSQL 创建测试数据库（如果需要）
-    if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']:
-        _create_postgresql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
-
-    yield app
-
-    # 清理：删除测试数据库
-    if 'mysql' in app.config['SQLALCHEMY_DATABASE_URI']:
-        _drop_mysql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
-    if 'postgresql' in app.config['SQLALCHEMY_DATABASE_URI']:
-        _drop_postgresql_test_db(app.config['SQLALCHEMY_DATABASE_URI'])
+    """FastAPI 应用实例"""
+    return fastapi_app
 
 
-@pytest.fixture(scope='session', autouse=True)
-def setup_database(app):
-    """
-    在 session 级别创建所有数据库表
-    """
-    with app.app_context():
-        # 删除所有表
-        mysql.drop_all()
-        # 创建所有表
-        mysql.create_all()
-        yield
-        # session 结束后删除表
-        mysql.drop_all()
+# ==================== 数据 Fixtures ====================
 
+@pytest_asyncio.fixture
+async def sample_user(db_session: AsyncSession) -> dict:
+    """创建测试用户"""
+    from app.utils.password import hash_password_async
 
-@pytest.fixture(scope='function')
-def db_session(app):
-    """
-    为每个测试函数提供独立的数据库会话（function级别）
-    每个测试前清空所有表数据，测试后回滚事务
-    """
-    with app.app_context():
-        # Mock redis_client
-        from app import extensions
-        original_redis_client = extensions.redis_client
+    hashed_password = await hash_password_async("password123")
 
-        # 创建 mock Redis 客户端
-        mock_redis_client = MagicMock()
-        mock_redis_client.get.return_value = None
-        mock_redis_client.set.return_value = True
-        mock_redis_client.setex.return_value = True
-        mock_redis_client.delete.return_value = 1
-
-        # 替换全局 redis_client
-        extensions.redis_client = mock_redis_client
-        app.extensions['redis_client'] = mock_redis_client
-
-        # 清空所有表数据
-        from sqlalchemy import inspect
-        inspector = inspect(mysql.engine)
-        tables = inspector.get_table_names()
-
-        # 暂时禁用外键检查
-        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=0"))
-
-        # 清空每个表
-        for table in tables:
-            try:
-                mysql.session.execute(mysql.text(f"TRUNCATE TABLE `{table}`"))
-            except Exception:
-                pass
-
-        # 重新启用外键检查
-        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=1"))
-        mysql.session.commit()
-
-        # 开始事务
-        mysql.session.begin()
-
-        # 提供数据库会话
-        yield mysql.session
-
-        # 恢复 redis_client
-        extensions.redis_client = original_redis_client
-        app.extensions['redis_client'] = original_redis_client
-
-        # 测试后回滚未提交的事务
-        mysql.session.rollback()
-        mysql.session.remove()
-
-
-@pytest.fixture(scope='function')
-def db_session(app):
-    """
-    为每个测试函数提供独立的数据库会话（function级别）
-    每个测试前清空所有表数据，测试后回滚事务
-    """
-    with app.app_context():
-        # Mock redis_client
-        from app import extensions
-        original_redis_client = extensions.redis_client
-
-        # 创建 mock Redis 客户端
-        mock_redis_client = MagicMock()
-        mock_redis_client.get.return_value = None
-        mock_redis_client.set.return_value = True
-        mock_redis_client.setex.return_value = True
-        mock_redis_client.delete.return_value = 1
-
-        # 替换全局 redis_client
-        extensions.redis_client = mock_redis_client
-        app.extensions['redis_client'] = mock_redis_client
-
-        # 清空所有表数据
-        from sqlalchemy import inspect
-        inspector = inspect(mysql.engine)
-        tables = inspector.get_table_names()
-
-        # 暂时禁用外键检查
-        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=0"))
-
-        # 清空每个表
-        for table in tables:
-            try:
-                mysql.session.execute(mysql.text(f"TRUNCATE TABLE `{table}`"))
-            except Exception:
-                pass
-
-        # 重新启用外键检查
-        mysql.session.execute(mysql.text("SET FOREIGN_KEY_CHECKS=1"))
-        mysql.session.commit()
-
-        # 开始事务
-        mysql.session.begin()
-
-        # 提供数据库会话
-        yield mysql.session
-
-        # 恢复 redis_client
-        extensions.redis_client = original_redis_client
-        app.extensions['redis_client'] = original_redis_client
-
-        # 测试后回滚未提交的事务
-        mysql.session.rollback()
-        mysql.session.remove()
-
-
-@pytest.fixture
-def client(app):
-    """
-    Flask 测试客户端
-    """
-    return app.test_client()
-
-
-@pytest.fixture
-def runner(app):
-    """
-    Flask CLI runner
-    """
-    return app.test_cli_runner()
-
-
-@pytest.fixture
-def sample_roles(db_session):
-    """
-    创建测试角色数据
-    """
-    role1 = SysRole(
-        name='管理员',
-        code='ADMIN',
-        sort=1,
-        status=1,
-        data_scope=1
-    )
-    role2 = SysRole(
-        name='普通用户',
-        code='USER',
-        sort=2,
-        status=1,
-        data_scope=2
-    )
-
-    db_session.add(role1)
-    db_session.add(role2)
-    db_session.commit()
-
-    return {'admin': role1, 'user': role2}
-
-
-@pytest.fixture
-def sample_user(db_session):
-    """
-    创建测试用户
-    """
-    from werkzeug.security import generate_password_hash
-
-    user = SysUser(
-        username='testuser',
-        nickname='Test User',
-        password=generate_password_hash('password123'),
+    user = MockUser(
+        username="testuser",
+        nickname="Test User",
+        password=hashed_password,
         gender=1,
         dept_id=1,
-        mobile='13800138000',
-        email='test@example.com',
+        mobile="13800138000",
+        email="test@example.com",
         status=1,
-        deleted=0
+        deleted=0,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    return {
+        "id": user.id,
+        "username": user.username,
+        "nickname": user.nickname,
+        "password": "password123",  # 明文密码，用于测试
+    }
+
+
+@pytest_asyncio.fixture
+async def sample_roles(db_session: AsyncSession) -> dict:
+    """创建测试角色"""
+    admin_role = MockRole(
+        name="管理员",
+        code="ADMIN",
+        sort=1,
+        status=1,
+        data_scope=1,
+        deleted=0,
+    )
+    user_role = MockRole(
+        name="普通用户",
+        code="USER",
+        sort=2,
+        status=1,
+        data_scope=2,
+        deleted=0,
     )
 
-    db_session.add(user)
-    db_session.commit()
+    db_session.add_all([admin_role, user_role])
+    await db_session.commit()
+    await db_session.refresh(admin_role)
+    await db_session.refresh(user_role)
 
-    return user
-
-
-# ============ 辅助函数 ============
-
-def _create_mysql_test_db(db_uri):
-    """
-    为 MySQL 创建测试数据库
-    """
-    try:
-        # 解析数据库 URI
-        from urllib.parse import urlparse, urlunparse
-        parsed = urlparse(db_uri)
-        db_name = parsed.path.lstrip('/')
-
-        import pymysql
-        conn = pymysql.connect(
-            host=parsed.hostname,
-            port=parsed.port or 3306,
-            user=parsed.username or 'root',
-            password=parsed.password or 'root',
-            charset='utf8mb4'
-        )
-
-        with conn.cursor() as cursor:
-            # 创建数据库
-            cursor.execute(
-                f"CREATE DATABASE IF NOT EXISTS `{db_name}` "
-                "CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-            )
-            conn.commit()
-            print(f"✓ 已创建 MySQL 测试数据库: {db_name}")
-
-        conn.close()
-
-    except Exception as e:
-        print(f"警告: 无法创建 MySQL 测试数据库: {e}")
+    return {"admin": admin_role, "user": user_role}
 
 
-def _drop_mysql_test_db(db_uri):
-    """
-    删除 MySQL 测试数据库
-    """
-    try:
-        from urllib.parse import urlparse
-        parsed = urlparse(db_uri)
-        db_name = parsed.path.lstrip('/')
-
-        import pymysql
-        conn = pymysql.connect(
-            host=parsed.hostname,
-            port=parsed.port or 3306,
-            user=parsed.username or 'root',
-            password=parsed.password or 'root',
-            charset='utf8mb4'
-        )
-
-        with conn.cursor() as cursor:
-            # 删除数据库
-            cursor.execute(f"DROP DATABASE IF EXISTS `{db_name}`")
-            conn.commit()
-            print(f"✓ 已删除 MySQL 测试数据库: {db_name}")
-
-        conn.close()
-
-    except Exception as e:
-        print(f"警告: 无法删除 MySQL 测试数据库: {e}")
+@pytest_asyncio.fixture
+async def sample_menu(db_session: AsyncSession) -> dict:
+    """创建测试菜单"""
+    # 简化的菜单测试数据
+    return {"menu": {"id": 1, "name": "系统管理", "path": "/system"}}
 
 
-def _create_postgresql_test_db(db_uri):
-    """
-    为 PostgreSQL 创建测试数据库
-    """
-    try:
-        # 解析数据库 URI
-        from urllib.parse import urlparse, urlunparse
-        parsed = urlparse(db_uri)
-        db_name = parsed.path.lstrip('/')
+@pytest_asyncio.fixture
+async def auth_headers(sample_user: dict, mock_redis: MockRedis) -> dict:
+    """获取认证请求头"""
+    from datetime import datetime, timedelta, timezone
+    from uuid import uuid4
 
-        # 连接到默认的 postgres 数据库
-        default_db_uri = urlunparse((
-            parsed.scheme,
-            parsed.netloc,
-            '/postgres',
-            parsed.params,
-            parsed.query,
-            parsed.fragment
-        ))
+    from jose import jwt
 
-        engine = create_engine(default_db_uri, isolation_level='AUTOCOMMIT')
+    from app.config import settings
 
-        with engine.connect() as conn:
-            # 检查数据库是否存在
-            result = conn.execute(
-                text(f"SELECT 1 FROM pg_database WHERE datname = '{db_name}'")
-            )
-            exists = result.fetchone() is not None
+    jti = str(uuid4())
+    payload = {
+        "jti": jti,
+        "sub": str(sample_user["id"]),
+        "user_id": sample_user["id"],
+        "username": sample_user["username"],
+        "nickname": sample_user["nickname"],
+        "roles": "USER",
+        "permissions": "",
+        "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.JWT_ACCESS_TOKEN_EXPIRES),
+        "iat": datetime.now(timezone.utc),
+    }
 
-            if not exists:
-                # 创建数据库
-                conn.execute(text(f'CREATE DATABASE {db_name}'))
-                print(f"✓ 已创建 PostgreSQL 测试数据库: {db_name}")
+    token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm="HS256")
 
-        engine.dispose()
-
-    except OperationalError as e:
-        print(f"警告: 无法创建 PostgreSQL 测试数据库: {e}")
-        print("请确保 PostgreSQL 服务正在运行，并且用户有创建数据库的权限")
+    return {"Authorization": f"Bearer {token}"}
 
 
-def _drop_postgresql_test_db(db_uri):
-    """
-    删除 PostgreSQL 测试数据库
-    """
-    try:
-        from urllib.parse import urlparse, urlunparse
-        parsed = urlparse(db_uri)
-        db_name = parsed.path.lstrip('/')
+# ==================== 工具函数 ====================
 
-        # 连接到默认的 postgres 数据库
-        default_db_uri = urlunparse((
-            parsed.scheme,
-            parsed.netloc,
-            '/postgres',
-            parsed.params,
-            parsed.query,
-            parsed.fragment
-        ))
-
-        engine = create_engine(default_db_uri, isolation_level='AUTOCOMMIT')
-
-        with engine.connect() as conn:
-            # 终止所有连接到测试数据库的会话
-            conn.execute(text(f"""
-                SELECT pg_terminate_backend(pg_stat_activity.pid)
-                FROM pg_stat_activity
-                WHERE pg_stat_activity.datname = '{db_name}'
-                AND pid <> pg_backend_pid()
-            """))
-
-            # 删除数据库
-            conn.execute(text(f'DROP DATABASE IF EXISTS {db_name}'))
-            print(f"✓ 已删除 PostgreSQL 测试数据库: {db_name}")
-
-        engine.dispose()
-
-    except OperationalError as e:
-        print(f"警告: 无法删除 PostgreSQL 测试数据库: {e}")
-    except Exception as e:
-        print(f"警告: 删除 PostgreSQL 测试数据库时发生错误: {e}")
+def create_test_user_dict(
+    username: str = "testuser",
+    nickname: str = "Test User",
+    **kwargs,
+) -> dict:
+    """创建测试用户数据字典"""
+    return {
+        "username": username,
+        "nickname": nickname,
+        "gender": 1,
+        "deptId": 1,
+        "mobile": "13800138000",
+        "email": f"{username}@example.com",
+        **kwargs,
+    }

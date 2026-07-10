@@ -4,37 +4,31 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/app"
 )
 
+// @title Dehaze System API
+// @version 1.0
+// @description 去雾系统后端 API 接口文档
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@dehaze.com
+
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+
+// @host localhost:8080
+// @BasePath /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 //go:generate go env -w GO111MODULE=on
 //go:generate go env -w GOPROXY=https://goproxy.cn,direct
 //go:generate go mod tidy
 //go:generate go mod download
+//go:generate mockery --config ../config/.mockery.yaml
 func main() {
-	// // 加载配置文件
-	// initialize.Viper()
-	// // 初始化日志库
-	// initialize.Zap()
-	// // 初始化本地缓存
-	// initialize.LocalCache()
-	// // 初始化数据库
-	// initialize.Gorm()
-	// // 迁移数据库表
-	// initialize.Migrate()
-
-	// // 注册全局函数
-	// initialize.SetupHandlers()
-	// // 初始化路由
-	// initialize.Routers()
-	// // 初始化Redis
-	// initialize.Redis()
-
-	// // 初始化Job管理器
-	// initialize.StartJobs()
-
-	// // 初始化web服务器
-	// initialize.Server()
-
 	if err := app.Run(); err != nil {
 		panic(err)
 	}
-
 }

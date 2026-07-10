@@ -2,17 +2,25 @@ package api
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
-	"github.com/earthyzinc/dehaze-go/internal/service"
+	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
 type SysUserApi struct {
-	userServiceExtend service.UserServiceExtend
+	userService userservice.IUserService
+}
+
+func NewSysUserApi(userService userservice.IUserService) *SysUserApi {
+	return &SysUserApi{
+		userService: userService,
+	}
 }
 
 // ListPagedUsers 用户分页列表
@@ -28,7 +36,7 @@ type SysUserApi struct {
 // @Param endTime query string false "创建时间-结束时间"
 // @Param pageNum query int false "页码"
 // @Param pageSize query int false "每页条数"
-// @Success 200 {object} vo.Result{data=vo.PageResult[vo.UserPageVO]}
+// @Success 200 {object} common.Response{data=common.PageResult}
 // @Router /api/v1/users/page [get]
 func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 	// 解析查询参数
@@ -68,9 +76,9 @@ func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 	}
 
 	// 调用服务获取分页数据
-	result, err := api.userServiceExtend.ListPagedUsers(queryParams)
+	result, err := api.userService.GetPage(c.Request.Context(), &queryParams)
 	if err != nil {
-		common.FailWithMessage("获取用户分页列表失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -84,31 +92,31 @@ func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param userId path int true "用户ID"
-// @Success 200 {object} vo.Result{data=bo.UserFormBO}
+// @Success 200 {object} common.Response{data=bo.UserFormBO}
 // @Router /api/v1/users/{userId}/form [get]
 func (api *SysUserApi) GetUserForm(c *gin.Context) {
 	// 获取路径参数
 	userIdStr := c.Param("userId")
 	userId, err := strconv.ParseInt(userIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("用户ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "用户ID格式不正确"))
 		return
 	}
 
 	// 调用服务获取用户表单数据
-	userFormBO, err := api.userServiceExtend.GetUserFormData(userId)
+	formData, err := api.userService.GetFormData(c.Request.Context(), userId)
 	if err != nil {
-		common.FailWithMessage("获取用户表单数据失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 用户不存在时返回null（与Java行为一致）
-	if userFormBO.ID == 0 {
+	if formData == nil || formData.ID == 0 {
 		common.OkWithDetailed(nil, "查询成功", c)
 		return
 	}
 
-	common.OkWithDetailed(userFormBO, "查询成功", c)
+	common.OkWithDetailed(formData, "查询成功", c)
 }
 
 // SaveUser 新增用户
@@ -118,20 +126,20 @@ func (api *SysUserApi) GetUserForm(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param userForm body bo.UserFormBO true "用户表单对象"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/users [post]
 func (api *SysUserApi) SaveUser(c *gin.Context) {
 	// 绑定请求参数
 	var userFormBO bo.UserFormBO
 	if err := c.ShouldBindJSON(&userFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 调用服务保存用户
-	err := api.userServiceExtend.SaveUser(userFormBO)
+	err := api.userService.Create(c.Request.Context(), &userFormBO)
 	if err != nil {
-		common.FailWithMessage("新增用户失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -146,28 +154,28 @@ func (api *SysUserApi) SaveUser(c *gin.Context) {
 // @Produce application/json
 // @Param userId path int true "用户ID"
 // @Param userForm body bo.UserFormBO true "用户表单对象"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/users/{userId} [put]
 func (api *SysUserApi) UpdateUser(c *gin.Context) {
 	// 获取路径参数
 	userIdStr := c.Param("userId")
 	userId, err := strconv.ParseInt(userIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("用户ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "用户ID格式不正确"))
 		return
 	}
 
 	// 绑定请求参数
 	var userFormBO bo.UserFormBO
 	if err := c.ShouldBindJSON(&userFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 调用服务更新用户
-	err = api.userServiceExtend.UpdateUser(userId, userFormBO)
+	err = api.userService.Update(c.Request.Context(), userId, &userFormBO)
 	if err != nil {
-		common.FailWithMessage("修改用户失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -181,16 +189,32 @@ func (api *SysUserApi) UpdateUser(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param ids path string true "用户ID，多个以英文逗号(,)分割"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/users/{ids} [delete]
 func (api *SysUserApi) DeleteUsers(c *gin.Context) {
 	// 获取路径参数
-	ids := c.Param("ids")
+	idsStr := c.Param("ids")
+	if idsStr == "" {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除的用户数据为空"))
+		return
+	}
+
+	// 解析ID列表
+	idStrings := strings.Split(idsStr, ",")
+	var ids []int64
+	for _, idStr := range idStrings {
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "用户ID格式不正确"))
+			return
+		}
+		ids = append(ids, id)
+	}
 
 	// 调用服务删除用户
-	err := api.userServiceExtend.DeleteUsers(ids)
+	err := api.userService.Delete(c.Request.Context(), ids)
 	if err != nil {
-		common.FailWithMessage("删除用户失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -205,14 +229,14 @@ func (api *SysUserApi) DeleteUsers(c *gin.Context) {
 // @Produce application/json
 // @Param userId path int true "用户ID"
 // @Param password query string true "新密码"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/users/{userId}/password [patch]
 func (api *SysUserApi) UpdatePassword(c *gin.Context) {
 	// 获取路径参数
 	userIdStr := c.Param("userId")
 	userId, err := strconv.ParseInt(userIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("用户ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "用户ID格式不正确"))
 		return
 	}
 
@@ -220,9 +244,9 @@ func (api *SysUserApi) UpdatePassword(c *gin.Context) {
 	password := c.Query("password")
 
 	// 调用服务更新密码
-	err = api.userServiceExtend.UpdatePassword(userId, password)
+	err = api.userService.UpdatePassword(c.Request.Context(), userId, password)
 	if err != nil {
-		common.FailWithMessage("修改密码失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -237,14 +261,14 @@ func (api *SysUserApi) UpdatePassword(c *gin.Context) {
 // @Produce application/json
 // @Param userId path int true "用户ID"
 // @Param status query int true "用户状态(1:启用;0:禁用)"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/users/{userId}/status [patch]
 func (api *SysUserApi) UpdateUserStatus(c *gin.Context) {
 	// 获取路径参数
 	userIdStr := c.Param("userId")
 	userId, err := strconv.ParseInt(userIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("用户ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "用户ID格式不正确"))
 		return
 	}
 
@@ -252,14 +276,14 @@ func (api *SysUserApi) UpdateUserStatus(c *gin.Context) {
 	statusStr := c.Query("status")
 	status, err := strconv.Atoi(statusStr)
 	if err != nil {
-		common.FailWithMessage("状态参数格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "状态参数格式不正确"))
 		return
 	}
 
 	// 调用服务更新用户状态
-	err = api.userServiceExtend.UpdateUserStatus(userId, int8(status))
+	err = api.userService.UpdateStatus(c.Request.Context(), userId, int8(status))
 	if err != nil {
-		common.FailWithMessage("修改用户状态失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -272,21 +296,15 @@ func (api *SysUserApi) UpdateUserStatus(c *gin.Context) {
 // @Tags 用户接口
 // @Accept application/json
 // @Produce application/json
-// @Success 200 {object} vo.Result{data=vo.UserInfoVO}
+// @Success 200 {object} common.Response{data=vo.UserInfoVO}
 // @Router /api/v1/users/me [get]
 func (api *SysUserApi) GetCurrentUserInfo(c *gin.Context) {
-	// TODO: 这里应该从上下文中获取当前登录用户信息
-	// 简化处理，假设从某个地方获取到用户名
-	// 实际应该从token中解析
-	username := c.GetString("username")
-	if username == "" {
-		username = "admin" // 默认值，实际应从上下文获取
-	}
+	userID := security.GetUserID(c)
 
 	// 调用服务获取当前用户信息
-	userInfoVO, err := api.userServiceExtend.GetCurrentUserInfo(username)
+	userInfoVO, err := api.userService.GetCurrentUserInfo(c.Request.Context(), userID)
 	if err != nil {
-		common.FailWithMessage("获取当前用户信息失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -304,7 +322,7 @@ func (api *SysUserApi) GetCurrentUserInfo(c *gin.Context) {
 // @Param deptId query int false "部门ID"
 // @Param startTime query string false "创建时间-开始时间"
 // @Param endTime query string false "创建时间-结束时间"
-// @Success 200 {object} vo.Result{data=[]vo.UserExportVO}
+// @Success 200 {object} common.Response{data=[]vo.UserExportVO}
 // @Router /api/v1/users/_export [get]
 func (api *SysUserApi) ListExportUsers(c *gin.Context) {
 	// 解析查询参数
@@ -324,9 +342,9 @@ func (api *SysUserApi) ListExportUsers(c *gin.Context) {
 	queryParams.EndTime = c.Query("endTime")
 
 	// 调用服务获取导出数据
-	userExportVOs, err := api.userServiceExtend.ListExportUsers(queryParams)
+	userExportVOs, err := api.userService.ExportUsers(c.Request.Context(), &queryParams)
 	if err != nil {
-		common.FailWithMessage("获取导出用户列表失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -342,9 +360,9 @@ func (api *SysUserApi) ListExportUsers(c *gin.Context) {
 // @Success 200 {file} file
 // @Router /api/v1/users/template [get]
 func (api *SysUserApi) DownloadImportTemplate(c *gin.Context) {
-	filePath, err := api.userServiceExtend.DownloadImportTemplate()
+	filePath, err := api.userService.DownloadImportTemplate(c.Request.Context())
 	if err != nil {
-		common.FailWithMessage("下载导入模板失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 	defer func() {
@@ -365,28 +383,28 @@ func (api *SysUserApi) DownloadImportTemplate(c *gin.Context) {
 // @Accept multipart/form-data
 // @Produce application/json
 // @Param file formData file true "Excel文件"
-// @Success 200 {object} vo.Result{data=vo.ImportResultVO}
+// @Success 200 {object} common.Response{data=vo.ImportResultVO}
 // @Router /api/v1/users/_import [post]
 func (api *SysUserApi) ImportUsers(c *gin.Context) {
 	// 获取上传的文件
 	file, err := c.FormFile("file")
 	if err != nil {
-		common.FailWithMessage("获取上传文件失败: "+err.Error(), c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "文件上传失败"))
 		return
 	}
 
 	// 打开上传的文件
 	src, err := file.Open()
 	if err != nil {
-		common.FailWithMessage("打开上传文件失败: "+err.Error(), c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "打开上传文件失败"))
 		return
 	}
 	defer src.Close()
 
 	// 调用服务导入用户
-	importResult, err := api.userServiceExtend.ImportUsers(src)
+	importResult, err := api.userService.ImportUsersFromFile(c.Request.Context(), src)
 	if err != nil {
-		common.FailWithMessage("导入用户失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 

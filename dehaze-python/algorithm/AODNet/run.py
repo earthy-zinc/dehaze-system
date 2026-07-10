@@ -2,8 +2,8 @@ from io import BytesIO
 
 import torch
 
-from app.utils.image import postprocess_image, preprocess_image
-from config import Config
+from algorithm.image_utils import postprocess_image, preprocess_image
+from algorithm.config import Config
 from .net import dehaze_net
 
 

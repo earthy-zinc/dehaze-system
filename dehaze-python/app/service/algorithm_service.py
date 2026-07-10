@@ -1,200 +1,184 @@
+"""
+算法服务
+
+提供算法 CRUD 功能
+"""
+
 import os
-from typing import List, Dict, Optional, Any
+from typing import Any
 
-from sqlalchemy import or_
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions import mysql
-from app.models import SysAlgorithm
+from app.core.exceptions import BusinessException
+from app.models.entity.sys_algorithm import SysAlgorithm
+from app.repository.algorithm_repository import algorithm_repository
+from app.utils.datetime_utils import format_time
 from app.utils.file import get_file_size
-from app.utils.utils import format_time
 
 
 class AlgorithmService:
+    """算法服务（异步版本）"""
+
     @staticmethod
-    def get_algorithm_list(keywords: str = None) -> List[Dict[str, Any]]:
-        """
-        获取算法树形表格
-        :param keywords: 搜索关键词
-        :return: 算法列表
-        """
-        query = SysAlgorithm.query
+    def _build_algorithm_tree(algorithms: list[SysAlgorithm]) -> list[dict[str, Any]]:
+        """构建算法树形结构"""
+        algorithm_dict = {
+            algorithm.id: {
+                "id": algorithm.id,
+                "parentId": algorithm.parent_id,
+                "type": algorithm.type,
+                "name": algorithm.name,
+                "path": algorithm.path,
+                "size": algorithm.size,
+                "img": algorithm.img,
+                "params": algorithm.params,
+                "flops": algorithm.flops,
+                "importPath": algorithm.import_path,
+                "description": algorithm.description,
+                "status": algorithm.status,
+                "createTime": format_time(algorithm.create_time),
+                "updateTime": format_time(algorithm.update_time),
+                "children": [],
+            }
+            for algorithm in algorithms
+        }
 
-        if keywords:
-            query = query.filter(SysAlgorithm.name.like(f'%{keywords}%'))
-
-        algorithms = query.all()
-
-        # 构建树形结构
-        algorithm_dict = {algorithm.id: {
-            'id': algorithm.id,
-            'parent_id': algorithm.parent_id,
-            'type': algorithm.type,
-            'name': algorithm.name,
-            'path': algorithm.path,
-            'size': algorithm.size,
-            'img': algorithm.img,
-            'params': algorithm.params,
-            'flops': algorithm.flops,
-            'import_path': algorithm.import_path,
-            'description': algorithm.description,
-            'status': algorithm.status,
-            'create_time': format_time(algorithm.create_time),
-            'update_time': format_time(algorithm.update_time),
-            'children': []
-        } for algorithm in algorithms}
-
-        # 构建父子关系
         root_algorithms = []
         for algorithm in algorithm_dict.values():
-            if algorithm['parent_id'] == 0:
+            if algorithm["parentId"] == 0:
                 root_algorithms.append(algorithm)
             else:
-                parent = algorithm_dict.get(algorithm['parent_id'])
+                parent = algorithm_dict.get(algorithm["parentId"])
                 if parent:
-                    parent['children'].append(algorithm)
+                    parent["children"].append(algorithm)
 
         return root_algorithms
 
     @staticmethod
-    def get_algorithm_options() -> List[Dict[str, Any]]:
+    async def get_algorithm_list(db: AsyncSession, keywords: str | None = None) -> list[dict[str, Any]]:
         """
-        获取模型下拉选项列表
-        :return: 模型下拉选项列表
+        获取算法树形表格
+
+        Args:
+            db: 异步数据库会话
+            keywords: 搜索关键词
+
+        Returns:
+            算法列表（树形结构）
         """
-        algorithms = SysAlgorithm.query.filter(SysAlgorithm.status == 1).all()
-
-        # 构建树形选项
-        algorithm_dict = {algorithm.id: {
-            'value': algorithm.id,
-            'label': algorithm.name,
-            'children': []
-        } for algorithm in algorithms}
-
-        # 构建父子关系
-        root_options = []
-        for algorithm in algorithm_dict.values():
-            alg_obj = next((a for a in algorithms if a.id == algorithm['value']), None)
-            if alg_obj and alg_obj.parent_id == 0:
-                root_options.append(algorithm)
-            else:
-                if alg_obj:
-                    parent = algorithm_dict.get(alg_obj.parent_id)
-                    if parent:
-                        parent['children'].append(algorithm)
-
-        return root_options
+        algorithms = await algorithm_repository.get_list_with_keywords(db, keywords)
+        return AlgorithmService._build_algorithm_tree(algorithms)
 
     @staticmethod
-    def get_algorithm_by_id(algorithm_id: int) -> Optional[Dict[str, Any]]:
-        """
-        根据ID获取算法信息
-        :param algorithm_id: 算法ID
-        :return: 算法信息
-        """
-        algorithm = SysAlgorithm.query.get(algorithm_id)
+    async def get_algorithm_options(db: AsyncSession) -> list[dict[str, Any]]:
+        """获取模型下拉选项列表"""
+        return await algorithm_repository.get_algorithm_options(db)
+
+    @staticmethod
+    async def get_algorithm_by_id(db: AsyncSession, algorithm_id: int) -> dict[str, Any] | None:
+        """根据 ID 获取算法信息"""
+        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+
         if not algorithm:
             return None
 
         return {
-            'id': algorithm.id,
-            'parent_id': algorithm.parent_id,
-            'type': algorithm.type,
-            'name': algorithm.name,
-            'path': algorithm.path,
-            'size': algorithm.size,
-            'img': algorithm.img,
-            'params': algorithm.params,
-            'flops': algorithm.flops,
-            'import_path': algorithm.import_path,
-            'description': algorithm.description,
-            'status': algorithm.status,
-            'create_time': format_time(algorithm.create_time),
-            'update_time': format_time(algorithm.update_time)
+            "id": algorithm.id,
+            "parentId": algorithm.parent_id,
+            "type": algorithm.type,
+            "name": algorithm.name,
+            "path": algorithm.path,
+            "size": algorithm.size,
+            "img": algorithm.img,
+            "params": algorithm.params,
+            "flops": algorithm.flops,
+            "importPath": algorithm.import_path,
+            "description": algorithm.description,
+            "status": algorithm.status,
+            "createTime": format_time(algorithm.create_time),
+            "updateTime": format_time(algorithm.update_time),
         }
 
     @staticmethod
-    def create_algorithm(data: Dict[str, Any]) -> Dict[str, Any]:
+    async def create_algorithm(db: AsyncSession, data: dict[str, Any]) -> int:
         """
         新增算法
-        :param data: 算法数据
-        :return: 创建结果
+
+        Args:
+            db: 异步数据库会话
+            data: 算法数据
+
+        Returns:
+            创建的算法ID
         """
-        algorithm = SysAlgorithm()
-        algorithm.parent_id = data.get('parent_id', 0)
-        algorithm.type = data.get('type', '')
-        algorithm.name = data.get('name', '')
-        algorithm.path = data.get('path', '')
-        algorithm.import_path = data.get('import_path', '')
-        algorithm.description = data.get('description', '')
-        algorithm.status = data.get('status', 1)
+        algorithm = SysAlgorithm(
+            parent_id=data.get("parentId", 0),
+            type=data.get("type", ""),
+            name=data.get("name", ""),
+            path=data.get("path", ""),
+            import_path=data.get("importPath", ""),
+            description=data.get("description", ""),
+            status=data.get("status", 1),
+        )
 
         # 如果路径是有效文件，获取文件大小
-        if 'path' in data and os.path.isfile(data['path']):
-            algorithm.size = get_file_size(data['path'])
+        if "path" in data and os.path.isfile(data["path"]):
+            algorithm.size = get_file_size(data["path"])
 
-        try:
-            mysql.session.add(algorithm)
-            mysql.session.commit()
-            return {'success': True, 'message': '算法创建成功'}
-        except Exception as e:
-            mysql.session.rollback()
-            return {'success': False, 'message': f'算法创建失败: {str(e)}'}
+        created = await algorithm_repository.create(db, algorithm)
+        return created.id
 
     @staticmethod
-    def update_algorithm(algorithm_id: int, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def update_algorithm(db: AsyncSession, algorithm_id: int, data: dict[str, Any]) -> None:
         """
         修改算法
-        :param algorithm_id: 算法ID
-        :param data: 算法数据
-        :return: 更新结果
+
+        Args:
+            db: 异步数据库会话
+            algorithm_id: 算法ID
+            data: 算法数据
+
+        Raises:
+            BusinessException: 算法不存在
         """
-        algorithm = SysAlgorithm.query.get(algorithm_id)
+        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
+
         if not algorithm:
-            return {'success': False, 'message': '算法不存在'}
+            raise BusinessException("算法不存在")
 
-        algorithm.parent_id = data.get('parent_id', algorithm.parent_id)
-        algorithm.type = data.get('type', algorithm.type)
-        algorithm.name = data.get('name', algorithm.name)
-        algorithm.path = data.get('path', algorithm.path)
-        algorithm.import_path = data.get('import_path', algorithm.import_path)
-        algorithm.description = data.get('description', algorithm.description)
-        algorithm.status = data.get('status', algorithm.status)
+        update_data = {}
+        if "parentId" in data:
+            update_data["parent_id"] = data["parentId"]
+        if "type" in data:
+            update_data["type"] = data["type"]
+        if "name" in data:
+            update_data["name"] = data["name"]
+        if "path" in data:
+            update_data["path"] = data["path"]
+            if os.path.isfile(data["path"]):
+                update_data["size"] = get_file_size(data["path"])
+        if "importPath" in data:
+            update_data["import_path"] = data["importPath"]
+        if "description" in data:
+            update_data["description"] = data["description"]
+        if "status" in data:
+            update_data["status"] = data["status"]
 
-        # 如果路径是有效文件，获取文件大小
-        if 'path' in data and os.path.isfile(data['path']):
-            algorithm.size = get_file_size(data['path'])
-
-        try:
-            mysql.session.commit()
-            return {'success': True, 'message': '算法更新成功'}
-        except Exception as e:
-            mysql.session.rollback()
-            return {'success': False, 'message': f'算法更新失败: {str(e)}'}
+        await algorithm_repository.update(db, algorithm, update_data)
 
     @staticmethod
-    def delete_algorithms(algorithm_ids: List[int]) -> Dict[str, Any]:
+    async def delete_algorithms(db: AsyncSession, algorithm_ids: list[int]) -> int:
         """
-        删除算法
-        :param algorithm_ids: 算法ID列表
-        :return: 删除结果
+        删除算法（包含子算法）
+
+        Args:
+            db: 异步数据库会话
+            algorithm_ids: 算法ID列表
+
+        Returns:
+            删除的数量
         """
-        try:
-            # 查找要删除的算法及其子算法
-            algorithms = SysAlgorithm.query.filter(
-                or_(
-                    SysAlgorithm.id.in_(algorithm_ids),
-                    SysAlgorithm.parent_id.in_(algorithm_ids)
-                )
-            ).all()
-
-            algorithm_id_list = [alg.id for alg in algorithms]
-
-            # 删除算法
-            if algorithm_id_list:
-                deleted_count = SysAlgorithm.query.filter(SysAlgorithm.id.in_(algorithm_id_list)).delete(
-                    synchronize_session=False)
-            mysql.session.commit()
-            return {'success': True, 'message': '算法删除成功'}
-        except Exception as e:
-            mysql.session.rollback()
-            return {'success': False, 'message': f'算法删除失败: {str(e)}'}
+        ids_to_delete = await algorithm_repository.get_with_children_ids(db, algorithm_ids)
+        if ids_to_delete:
+            return await algorithm_repository.delete_by_ids(db, ids_to_delete)
+        return 0

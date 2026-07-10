@@ -5,8 +5,8 @@ import torch
 from PIL import Image
 from torchvision.transforms import Compose, ToTensor, Normalize
 
-from app.utils.image import postprocess_image
-from config import Config
+from algorithm.image_utils import postprocess_image
+from algorithm.config import Config
 from .swin_unet import UNet_emb
 
 

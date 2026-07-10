@@ -6,7 +6,7 @@ from torch import nn as nn
 import numpy as np
 import math
 
-from config import Config
+from algorithm.config import Config
 
 from .dcn import ModulatedDeformConvPack, modulated_deform_conv
 

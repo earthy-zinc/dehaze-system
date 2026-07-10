@@ -8,4 +8,8 @@ type System struct {
 	LimitTimeIP   int    `mapstructure:"ip-limit-time" json:"ip-limit-time" yaml:"ip-limit-time"`
 	RouterPrefix  string `mapstructure:"router-prefix" json:"router-prefix" yaml:"router-prefix"`
 	UseMultiPoint bool   `mapstructure:"use-multi-point" json:"use-multi-point" yaml:"use-multi-point"` // 多点登录拦截
+
+	// 登录安全配置
+	LoginFailLimit    int `mapstructure:"login-fail-limit" json:"login-fail-limit" yaml:"login-fail-limit"`             // 登录失败次数限制，默认5次
+	LoginFailLockTime int `mapstructure:"login-fail-lock-time" json:"login-fail-lock-time" yaml:"login-fail-lock-time"` // 登录失败锁定时间(秒)，默认300秒(5分钟)
 }

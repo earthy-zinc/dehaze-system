@@ -3,9 +3,9 @@ from collections import OrderedDict
 from io import BytesIO
 
 import torch
-from config import Config
+from algorithm.config import Config
 
-from app.utils.image import preprocess_image, postprocess_image
+from algorithm.image_utils import preprocess_image, postprocess_image
 
 
 def get_model(model_path: str):

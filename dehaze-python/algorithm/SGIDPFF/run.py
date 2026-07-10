@@ -3,8 +3,8 @@ from io import BytesIO
 import torch
 from torchvision import transforms
 
-from app.utils.image import postprocess_image, preprocess_image
-from config import Config
+from algorithm.image_utils import postprocess_image, preprocess_image
+from algorithm.config import Config
 from .model.dehaze_sgid_pff import DEHAZE_SGID_PFF
 
 

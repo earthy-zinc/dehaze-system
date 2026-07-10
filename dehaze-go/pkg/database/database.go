@@ -31,11 +31,19 @@ type Factory interface {
 	Create(config *Config) (DBer, error)
 }
 
+// 初始化状态常量
+const (
+	initStateNone   = iota // 未初始化
+	initStateDone          // 已成功初始化
+	initStateFailed        // 初始化失败
+)
+
 var (
 	factoryRegistry = make(map[string]Factory)
 	registryMu      sync.RWMutex
 	globalDB        DBer
-	globalDBOnce    sync.Once
+	globalDBMu      sync.Mutex                 // 保护 globalDB 和 initState
+	initState       int        = initStateNone // 初始化状态
 )
 
 // RegisterFactory 注册数据库工厂
@@ -70,36 +78,46 @@ func GetFactory(driver string) (Factory, error) {
 
 // Init 全局初始化数据库（单例模式）
 // 根据配置自动选择数据库驱动并创建实例
+// 支持失败后重试：若上次初始化失败，可再次调用重试
 func Init(config *Config) error {
-	var initErr error
+	globalDBMu.Lock()
+	defer globalDBMu.Unlock()
 
-	globalDBOnce.Do(func() {
-		if config == nil {
-			initErr = fmt.Errorf("database: 配置为空")
-			return
-		}
+	// 已成功初始化，直接返回
+	if initState == initStateDone && globalDB != nil {
+		return nil
+	}
 
-		if err := config.Validate(); err != nil {
-			initErr = fmt.Errorf("database: 无效的配置: %w", err)
-			return
-		}
+	// 重置失败状态，允许重试
+	if initState == initStateFailed {
+		initState = initStateNone
+	}
 
-		factory, err := GetFactory(config.Driver)
-		if err != nil {
-			initErr = err
-			return
-		}
+	if config == nil {
+		initState = initStateFailed
+		return fmt.Errorf("database: 配置为空")
+	}
 
-		db, err := factory.Create(config)
-		if err != nil {
-			initErr = fmt.Errorf("database: 创建 %s 实例失败: %w", config.Driver, err)
-			return
-		}
+	if err := config.Validate(); err != nil {
+		initState = initStateFailed
+		return fmt.Errorf("database: 无效的配置: %w", err)
+	}
 
-		globalDB = db
-	})
+	factory, err := GetFactory(config.Driver)
+	if err != nil {
+		initState = initStateFailed
+		return err
+	}
 
-	return initErr
+	db, err := factory.Create(config)
+	if err != nil {
+		initState = initStateFailed
+		return fmt.Errorf("database: 创建 %s 实例失败: %w", config.Driver, err)
+	}
+
+	globalDB = db
+	initState = initStateDone
+	return nil
 }
 
 // GetDB 获取全局数据库实例
@@ -136,6 +154,9 @@ func Close() error {
 
 // ResetGlobal 重置全局实例（仅用于测试）
 func ResetGlobal() {
+	globalDBMu.Lock()
+	defer globalDBMu.Unlock()
+
 	globalDB = nil
-	globalDBOnce = sync.Once{}
+	initState = initStateNone
 }

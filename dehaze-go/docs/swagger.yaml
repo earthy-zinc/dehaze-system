@@ -1,0 +1,2354 @@
+basePath: /api/v1
+definitions:
+  bo.DatasetFormBO:
+    properties:
+      createTime:
+        description: 创建时间
+        type: string
+      description:
+        description: 数据集描述
+        type: string
+      id:
+        description: 数据集ID
+        type: integer
+      name:
+        description: 数据集名称
+        type: string
+      parentId:
+        description: 父数据集ID
+        type: integer
+      path:
+        description: 数据集存储路径
+        type: string
+      statistics:
+        allOf:
+        - $ref: '#/definitions/bo.StatisticsBO'
+        description: 统计信息
+      status:
+        description: 状态(1:正常;0:禁用) - 支持字符串和数字类型
+        type: integer
+      type:
+        description: 数据集类型
+        type: string
+      updateTime:
+        description: 更新时间
+        type: string
+    required:
+    - parentId
+    type: object
+  bo.DeptFormBO:
+    properties:
+      id:
+        description: 部门ID
+        type: integer
+      name:
+        description: 部门名称
+        type: string
+      parentId:
+        description: 父部门ID
+        type: integer
+      sort:
+        description: 排序(数字越小排名越靠前)
+        type: integer
+      status:
+        description: 状态(1:启用;0:禁用)
+        type: integer
+    required:
+    - name
+    - parentId
+    type: object
+  bo.DictFormBO:
+    properties:
+      id:
+        description: 字典ID
+        type: integer
+      name:
+        description: 字典名称
+        type: string
+      remark:
+        description: 字典备注
+        type: string
+      sort:
+        description: 排序
+        type: integer
+      status:
+        description: 状态(1:启用;0:禁用)
+        type: integer
+      typeCode:
+        description: 类型编码
+        type: string
+      value:
+        description: 字典值
+        type: string
+    type: object
+  bo.DictTypeFormBO:
+    properties:
+      code:
+        description: 类型编码
+        type: string
+      id:
+        description: 字典类型ID
+        type: integer
+      name:
+        description: 类型名称
+        type: string
+      remark:
+        description: 备注
+        type: string
+      status:
+        description: 类型状态(1:启用;0:禁用)
+        type: integer
+    type: object
+  bo.MenuForm:
+    properties:
+      alwaysShow:
+        description: 【目录】只有一个子路由是否始终显示(1:是 0:否)
+        type: integer
+      component:
+        description: 组件路径(vue页面完整路径，省略.vue后缀)
+        type: string
+      icon:
+        description: 菜单图标
+        type: string
+      id:
+        description: 菜单ID
+        type: integer
+      keepAlive:
+        description: 【菜单】是否开启页面缓存(1:开启;0:关闭)
+        type: integer
+      name:
+        description: 菜单名称
+        type: string
+      parentId:
+        description: 父菜单ID
+        type: integer
+      path:
+        description: 路由路径
+        type: string
+      perm:
+        description: 权限标识
+        type: string
+      redirect:
+        description: 跳转路径
+        type: string
+      sort:
+        description: 排序(数字越小排名越靠前)
+        type: integer
+      type:
+        description: 菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)
+        type: integer
+      visible:
+        description: 显示状态(1:显示;0:隐藏)
+        type: integer
+    type: object
+  bo.RoleFormBO:
+    properties:
+      code:
+        description: 角色编码
+        type: string
+      dataScope:
+        description: 数据权限
+        type: integer
+      id:
+        description: 角色ID
+        type: integer
+      name:
+        description: 角色名称
+        type: string
+      sort:
+        description: 排序
+        type: integer
+      status:
+        description: 角色状态(1-正常；0-停用)
+        type: integer
+    required:
+    - code
+    - name
+    type: object
+  bo.StatisticsBO:
+    properties:
+      clearCount:
+        type: integer
+      fileCount:
+        type: integer
+      formatDistribution:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      hazeDistribution:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      hazyCount:
+        type: integer
+      itemCount:
+        type: integer
+      sceneDistribution:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      totalSize:
+        type: integer
+    type: object
+  bo.UserFormBO:
+    properties:
+      avatar:
+        description: 用户头像
+        type: string
+      deptId:
+        description: 部门ID
+        type: integer
+      email:
+        description: 用户邮箱
+        type: string
+      gender:
+        description: 性别(1:男;2:女)
+        type: integer
+      id:
+        description: 用户ID
+        type: integer
+      mobile:
+        description: 手机号
+        type: string
+      nickname:
+        description: 用户昵称
+        type: string
+      roleIds:
+        description: 角色ID集合
+        items:
+          type: integer
+        type: array
+      status:
+        description: 状态(1:启用;0:禁用)
+        type: integer
+      username:
+        description: 用户名
+        type: string
+    type: object
+  common.PageResult:
+    properties:
+      list: {}
+      page:
+        type: integer
+      pageSize:
+        type: integer
+      total:
+        type: integer
+    type: object
+  common.Response:
+    properties:
+      code:
+        type: string
+      data: {}
+      msg:
+        type: string
+    type: object
+  dto.ImageFileInfo:
+    properties:
+      datasetItemId:
+        description: 所属数据项id
+        type: integer
+      description:
+        description: 文件描述
+        type: string
+      fileId:
+        description: 所属文件id
+        type: integer
+      id:
+        description: 当前图片id
+        type: integer
+      type:
+        description: 图片类型
+        type: string
+      url:
+        description: 文件URL
+        type: string
+    type: object
+  model.SysFile:
+    properties:
+      createTime:
+        type: string
+      id:
+        type: integer
+      md5:
+        type: string
+      name:
+        type: string
+      objectName:
+        type: string
+      path:
+        type: string
+      size:
+        type: string
+      type:
+        type: string
+      updateTime:
+        type: string
+      url:
+        type: string
+    type: object
+  vo.DatasetVO:
+    properties:
+      children:
+        description: 子数据集
+        items:
+          $ref: '#/definitions/vo.DatasetVO'
+        type: array
+      createTime:
+        description: 创建时间
+        type: string
+      description:
+        description: 数据集描述
+        type: string
+      id:
+        description: 数据集ID
+        type: integer
+      name:
+        description: 数据集名称
+        type: string
+      parentId:
+        description: 父数据集ID
+        type: integer
+      path:
+        description: 存储位置
+        type: string
+      size:
+        description: 占用空间大小
+        type: string
+      status:
+        description: 状态(1:启用；0:禁用)
+        type: integer
+      type:
+        description: 数据集类型
+        type: string
+      updateTime:
+        description: 修改时间
+        type: string
+    type: object
+  vo.DeptVO:
+    properties:
+      children:
+        description: 子部门
+        items:
+          $ref: '#/definitions/vo.DeptVO'
+        type: array
+      createTime:
+        description: 创建时间
+        type: string
+      id:
+        description: 部门ID
+        type: integer
+      name:
+        description: 部门名称
+        type: string
+      parentId:
+        description: 父部门ID
+        type: integer
+      sort:
+        description: 排序
+        type: integer
+      status:
+        description: 状态(1:启用；0:禁用)
+        type: integer
+      updateTime:
+        description: 修改时间
+        type: string
+    type: object
+  vo.ImageItemVO:
+    properties:
+      createTime:
+        description: 创建时间
+        type: string
+      datasetId:
+        description: 数据集ID
+        type: integer
+      hazyImages:
+        description: 模糊图片
+        items:
+          $ref: '#/definitions/vo.ImageUrlVO'
+        type: array
+      id:
+        description: 数据项ID
+        type: integer
+      imageCount:
+        description: 图片数量
+        type: integer
+      name:
+        description: 数据项名称
+        type: string
+      updateTime:
+        description: 更新时间
+        type: string
+    type: object
+  vo.ImageUrlVO:
+    properties:
+      description:
+        type: string
+      id:
+        description: ItemFileId
+        type: integer
+      originUrl:
+        type: string
+      type:
+        type: string
+      url:
+        type: string
+    type: object
+  vo.ImportFailureVO:
+    properties:
+      message:
+        description: 错误信息
+        type: string
+      row:
+        description: 行号
+        type: integer
+      username:
+        description: 用户名
+        type: string
+    type: object
+  vo.ImportResultVO:
+    properties:
+      failed:
+        description: 失败数
+        type: integer
+      failures:
+        description: 失败明细
+        items:
+          $ref: '#/definitions/vo.ImportFailureVO'
+        type: array
+      success:
+        description: 成功数
+        type: integer
+      total:
+        description: 总数
+        type: integer
+    type: object
+  vo.MenuVO:
+    properties:
+      children:
+        description: 子菜单
+        items:
+          $ref: '#/definitions/vo.MenuVO'
+        type: array
+      component:
+        description: 组件路径
+        type: string
+      icon:
+        description: ICON
+        type: string
+      id:
+        description: 菜单ID
+        type: integer
+      name:
+        description: 菜单名称
+        type: string
+      parentId:
+        description: 父菜单ID
+        type: integer
+      path:
+        description: 路由路径
+        type: string
+      perm:
+        description: 按钮权限标识
+        type: string
+      redirect:
+        description: 跳转路径
+        type: string
+      sort:
+        description: 菜单排序(数字越小排名越靠前)
+        type: integer
+      visible:
+        description: 菜单是否可见(1:显示;0:隐藏)
+        type: integer
+    type: object
+  vo.Option:
+    properties:
+      children:
+        description: 子选项列表
+        items:
+          $ref: '#/definitions/vo.Option'
+        type: array
+      label:
+        description: 选项的标签
+        type: string
+      value:
+        description: 选项的值
+    type: object
+  vo.RouteMeta:
+    properties:
+      alwaysShow:
+        description: 【目录】只有一个子路由是否始终显示
+        type: boolean
+      hidden:
+        description: 是否隐藏(true-是 false-否)
+        type: boolean
+      icon:
+        description: ICON
+        type: string
+      keepAlive:
+        description: 【菜单】是否开启页面缓存
+        type: boolean
+      roles:
+        description: 拥有路由权限的角色编码
+        items:
+          type: string
+        type: array
+      title:
+        description: 路由title
+        type: string
+    type: object
+  vo.RouteVO:
+    properties:
+      children:
+        description: 子路由列表
+        items:
+          $ref: '#/definitions/vo.RouteVO'
+        type: array
+      component:
+        description: 组件路径
+        type: string
+      meta:
+        allOf:
+        - $ref: '#/definitions/vo.RouteMeta'
+        description: 路由属性
+      name:
+        description: 路由名称
+        type: string
+      path:
+        description: 路由路径
+        type: string
+      redirect:
+        description: 跳转链接
+        type: string
+    type: object
+  vo.UserExportVO:
+    properties:
+      createTime:
+        description: 创建时间
+        type: string
+      deptName:
+        description: 部门
+        type: string
+      email:
+        description: 邮箱
+        type: string
+      gender:
+        description: 性别
+        type: string
+      mobile:
+        description: 手机号码
+        type: string
+      nickname:
+        description: 用户昵称
+        type: string
+      statusLabel:
+        description: 状态(1:启用;0:禁用)
+        type: string
+      username:
+        description: 用户名
+        type: string
+    type: object
+  vo.UserInfoVO:
+    properties:
+      avatar:
+        description: 头像地址
+        type: string
+      nickname:
+        description: 用户昵称
+        type: string
+      perms:
+        description: 用户权限标识集合
+        items:
+          type: string
+        type: array
+      roles:
+        description: 用户角色编码集合
+        items:
+          type: string
+        type: array
+      userId:
+        description: 用户ID
+        type: integer
+      username:
+        description: 用户名
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@dehaze.com
+    name: API Support
+  description: 去雾系统后端 API 接口文档
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Dehaze System API
+  version: "1.0"
+paths:
+  /api/v1/dataset:
+    delete:
+      consumes:
+      - application/json
+      description: 删除数据集
+      parameters:
+      - description: 数据集ID，多个以英文逗号(,)分割
+        in: query
+        name: ids
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除数据集
+      tags:
+      - 数据集接口
+    get:
+      consumes:
+      - application/json
+      description: 获取数据集树形列表
+      parameters:
+      - description: 关键字
+        in: query
+        name: keywords
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.DatasetVO'
+                  type: array
+              type: object
+      summary: 数据集树形列表
+      tags:
+      - 数据集接口
+    post:
+      consumes:
+      - application/json
+      description: 新增数据集
+      parameters:
+      - description: 数据集表单数据
+        in: body
+        name: datasetForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DatasetFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.DatasetFormBO'
+              type: object
+      summary: 新增数据集
+      tags:
+      - 数据集接口
+  /api/v1/dataset-items:
+    get:
+      consumes:
+      - application/json
+      description: 分页查询数据项列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: pageNum
+        type: integer
+      - default: 10
+        description: 每页数量
+        in: query
+        name: pageSize
+        type: integer
+      - description: 数据集ID
+        in: query
+        name: datasetId
+        type: integer
+      - description: 场景类型
+        in: query
+        name: sceneType
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.ImageItemVO'
+                  type: array
+              type: object
+      summary: 分页查询数据项列表
+      tags:
+      - 数据集项接口
+  /api/v1/dataset-items/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 根据ID获取数据项详情
+      parameters:
+      - description: 数据项ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 获取数据项详情
+      tags:
+      - 数据集项接口
+  /api/v1/dataset/{id}:
+    put:
+      consumes:
+      - application/json
+      description: 修改数据集
+      parameters:
+      - description: 数据集ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 数据集表单数据
+        in: body
+        name: datasetForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DatasetFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改数据集
+      tags:
+      - 数据集接口
+  /api/v1/dataset/{id}/form:
+    get:
+      consumes:
+      - application/json
+      description: 获取数据集表单数据
+      parameters:
+      - description: 数据集ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.DatasetFormBO'
+              type: object
+      summary: 数据集表单数据
+      tags:
+      - 数据集接口
+  /api/v1/dataset/image:
+    delete:
+      consumes:
+      - application/json
+      description: 删除数据项图片
+      parameters:
+      - description: 数据项文件ID
+        in: query
+        name: itemFileId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除数据项图片
+      tags:
+      - 数据集项接口
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传数据项图片
+      parameters:
+      - description: 表单文件对象
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 所属数据集ID
+        in: formData
+        name: datasetId
+        required: true
+        type: integer
+      - description: 所属数据项ID
+        in: formData
+        name: datasetItemId
+        required: true
+        type: integer
+      - description: 图片类型
+        in: formData
+        name: type
+        required: true
+        type: string
+      - description: 图片描述
+        in: formData
+        name: description
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ImageFileInfo'
+              type: object
+      summary: 上传数据项图片
+      tags:
+      - 数据集项接口
+    put:
+      consumes:
+      - application/json
+      description: 修改数据项图片信息
+      parameters:
+      - description: 数据项文件ID
+        in: query
+        name: itemFileId
+        required: true
+        type: integer
+      - description: 图片类型
+        in: query
+        name: type
+        required: true
+        type: string
+      - description: 图片描述
+        in: query
+        name: description
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ImageFileInfo'
+              type: object
+      summary: 修改数据项图片信息
+      tags:
+      - 数据集项接口
+  /api/v1/dataset/item:
+    delete:
+      consumes:
+      - application/json
+      description: 删除数据项
+      parameters:
+      - description: 数据项ID
+        in: query
+        name: datasetItemId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除数据项
+      tags:
+      - 数据集项接口
+    post:
+      consumes:
+      - application/json
+      description: 新增数据项
+      parameters:
+      - description: 所属数据集ID
+        in: query
+        name: datasetId
+        required: true
+        type: integer
+      - description: 名称
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  format: int64
+                  type: integer
+              type: object
+      summary: 新增数据项
+      tags:
+      - 数据集项接口
+    put:
+      consumes:
+      - application/json
+      description: 修改数据项
+      parameters:
+      - description: 数据项ID
+        in: query
+        name: datasetItemId
+        required: true
+        type: integer
+      - description: 名称
+        in: query
+        name: name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改数据项
+      tags:
+      - 数据集项接口
+  /api/v1/dataset/operations/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 批量删除请求
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 批量删除数据集
+      tags:
+      - 数据集操作
+  /api/v1/dataset/operations/items:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 创建数据项并上传配对图片
+      tags:
+      - 数据集操作
+  /api/v1/dataset/operations/items/{itemId}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: 数据项ID
+        in: path
+        name: itemId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 级联删除数据项
+      tags:
+      - 数据集操作
+  /api/v1/dataset/operations/items/batch:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 批量创建请求
+        in: body
+        name: request
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 批量创建数据项并上传配对图片
+      tags:
+      - 数据集操作
+  /api/v1/dataset/operations/stats/{id}:
+    get:
+      consumes:
+      - application/json
+      description: 获取数据集统计信息，包括数据项数量、文件数量、总大小、场景分布、雾霾分布、格式分布
+      parameters:
+      - description: 数据集ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 获取数据集统计信息
+      tags:
+      - 数据集接口
+  /api/v1/dataset/options:
+    get:
+      consumes:
+      - application/json
+      description: 获取数据集下拉选项
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.Option'
+                  type: array
+              type: object
+      summary: 数据集下拉选项
+      tags:
+      - 数据集接口
+  /api/v1/dept:
+    get:
+      consumes:
+      - application/json
+      description: 获取部门列表
+      parameters:
+      - description: 关键字(部门名称)
+        in: query
+        name: keywords
+        type: string
+      - description: 状态(1->正常；0->禁用)
+        in: query
+        name: status
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.DeptVO'
+                  type: array
+              type: object
+      summary: 获取部门列表
+      tags:
+      - 部门接口
+    post:
+      consumes:
+      - application/json
+      description: 新增部门
+      parameters:
+      - description: 部门表单数据
+        in: body
+        name: formData
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DeptFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 新增部门
+      tags:
+      - 部门接口
+  /api/v1/dept/{deptId}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除部门
+      parameters:
+      - description: 部门ID
+        in: path
+        name: deptId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除部门
+      tags:
+      - 部门接口
+    put:
+      consumes:
+      - application/json
+      description: 修改部门
+      parameters:
+      - description: 部门ID
+        in: path
+        name: deptId
+        required: true
+        type: integer
+      - description: 部门表单数据
+        in: body
+        name: formData
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DeptFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改部门
+      tags:
+      - 部门接口
+  /api/v1/dept/{deptId}/form:
+    get:
+      consumes:
+      - application/json
+      description: 获取部门表单数据
+      parameters:
+      - description: 部门ID
+        in: path
+        name: deptId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.DeptFormBO'
+              type: object
+      summary: 获取部门表单数据
+      tags:
+      - 部门接口
+  /api/v1/dept/options:
+    get:
+      consumes:
+      - application/json
+      description: 获取部门下拉选项
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.Option'
+                  type: array
+              type: object
+      summary: 获取部门下拉选项
+      tags:
+      - 部门接口
+  /api/v1/dict:
+    post:
+      consumes:
+      - application/json
+      description: 新增字典
+      parameters:
+      - description: 字典表单数据
+        in: body
+        name: DictForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DictFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 新增字典
+      tags:
+      - 字典接口
+  /api/v1/dict/{id}:
+    put:
+      consumes:
+      - application/json
+      description: 修改字典
+      parameters:
+      - description: 字典ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 字典表单数据
+        in: body
+        name: DictForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DictFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改字典
+      tags:
+      - 字典接口
+  /api/v1/dict/{id}/form:
+    get:
+      consumes:
+      - application/json
+      description: 获取字典数据表单数据
+      parameters:
+      - description: 字典ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.DictFormBO'
+              type: object
+      summary: 字典数据表单数据
+      tags:
+      - 字典接口
+  /api/v1/dict/{ids}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除字典
+      parameters:
+      - description: 字典ID，多个以英文逗号(,)拼接
+        in: path
+        name: ids
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除字典
+      tags:
+      - 字典接口
+  /api/v1/dict/options/{typeCode}:
+    get:
+      consumes:
+      - application/json
+      description: 获取字典下拉列表
+      parameters:
+      - description: 字典类型编码
+        in: path
+        name: typeCode
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.Option'
+                  type: array
+              type: object
+      summary: 字典下拉列表
+      tags:
+      - 字典接口
+  /api/v1/dict/page:
+    get:
+      consumes:
+      - application/json
+      description: 获取字典分页列表
+      parameters:
+      - description: 关键字(字典项名称)
+        in: query
+        name: keywords
+        type: string
+      - description: 字典类型编码
+        in: query
+        name: typeCode
+        type: string
+      - description: 页码
+        in: query
+        name: pageNum
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/common.PageResult'
+              type: object
+      summary: 字典分页列表
+      tags:
+      - 字典接口
+  /api/v1/dict/types:
+    post:
+      consumes:
+      - application/json
+      description: 新增字典类型
+      parameters:
+      - description: 字典类型表单
+        in: body
+        name: dictTypeForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DictTypeFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 新增字典类型
+      tags:
+      - 字典接口
+  /api/v1/dict/types/{id}:
+    put:
+      consumes:
+      - application/json
+      description: 修改字典类型
+      parameters:
+      - description: 字典类型ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 字典类型表单
+        in: body
+        name: dictTypeForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.DictTypeFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改字典类型
+      tags:
+      - 字典接口
+  /api/v1/dict/types/{id}/form:
+    get:
+      consumes:
+      - application/json
+      description: 获取字典类型表单数据
+      parameters:
+      - description: 字典ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.DictTypeFormBO'
+              type: object
+      summary: 字典类型表单数据
+      tags:
+      - 字典接口
+  /api/v1/dict/types/{ids}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除字典类型
+      parameters:
+      - description: 字典类型ID，多个以英文逗号(,)分割
+        in: path
+        name: ids
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除字典类型
+      tags:
+      - 字典接口
+  /api/v1/dict/types/page:
+    get:
+      consumes:
+      - application/json
+      description: 获取字典类型分页列表
+      parameters:
+      - description: 关键字(类型名称/类型编码)
+        in: query
+        name: keywords
+        type: string
+      - description: 页码
+        in: query
+        name: pageNum
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/common.PageResult'
+              type: object
+      summary: 字典类型分页列表
+      tags:
+      - 字典接口
+  /api/v1/files:
+    delete:
+      consumes:
+      - application/json
+      description: 文件删除
+      parameters:
+      - description: 文件ID
+        in: query
+        name: fileId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 文件删除
+      tags:
+      - 文件接口
+    post:
+      consumes:
+      - multipart/form-data
+      description: 文件上传
+      parameters:
+      - description: 表单文件对象
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: 模型id
+        in: formData
+        name: modelId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SysFile'
+              type: object
+      summary: 文件上传
+      tags:
+      - 文件接口
+  /api/v1/files/check:
+    get:
+      consumes:
+      - application/json
+      description: 文件校验
+      parameters:
+      - description: 文件md5
+        in: query
+        name: md5
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  type: boolean
+              type: object
+      summary: 文件校验
+      tags:
+      - 文件接口
+  /api/v1/files/download/{objectName}:
+    get:
+      consumes:
+      - application/json
+      description: 文件下载
+      parameters:
+      - description: 对象存储名称
+        in: path
+        name: objectName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 文件下载
+      tags:
+      - 文件接口
+  /api/v1/menus:
+    get:
+      consumes:
+      - application/json
+      description: 获取菜单列表
+      parameters:
+      - description: 关键字(菜单名称)
+        in: query
+        name: keywords
+        type: string
+      - description: 状态(1->显示；0->隐藏)
+        in: query
+        name: status
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.MenuVO'
+                  type: array
+              type: object
+      summary: 菜单列表
+      tags:
+      - 菜单接口
+    post:
+      consumes:
+      - application/json
+      description: 新增菜单
+      parameters:
+      - description: 菜单表单数据
+        in: body
+        name: menuForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.MenuForm'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 新增菜单
+      tags:
+      - 菜单接口
+  /api/v1/menus/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除菜单
+      parameters:
+      - description: 菜单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除菜单
+      tags:
+      - 菜单接口
+    put:
+      consumes:
+      - application/json
+      description: 修改菜单
+      parameters:
+      - description: 菜单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 菜单表单数据
+        in: body
+        name: menuForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.MenuForm'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改菜单
+      tags:
+      - 菜单接口
+  /api/v1/menus/{id}/form:
+    get:
+      consumes:
+      - application/json
+      description: 获取菜单表单数据
+      parameters:
+      - description: 菜单ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.MenuForm'
+              type: object
+      summary: 菜单表单数据
+      tags:
+      - 菜单接口
+  /api/v1/menus/{menuId}:
+    patch:
+      consumes:
+      - application/json
+      description: 修改菜单显示状态
+      parameters:
+      - description: 菜单ID
+        in: path
+        name: menuId
+        required: true
+        type: integer
+      - description: 显示状态(1:显示;0:隐藏)
+        in: query
+        name: visible
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改菜单显示状态
+      tags:
+      - 菜单接口
+  /api/v1/menus/options:
+    get:
+      consumes:
+      - application/json
+      description: 获取菜单下拉列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.Option'
+                  type: array
+              type: object
+      summary: 菜单下拉列表
+      tags:
+      - 菜单接口
+  /api/v1/menus/routes:
+    get:
+      consumes:
+      - application/json
+      description: 获取路由列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.RouteVO'
+                  type: array
+              type: object
+      summary: 路由列表
+      tags:
+      - 菜单接口
+  /api/v1/roles:
+    post:
+      consumes:
+      - application/json
+      description: 新增角色
+      parameters:
+      - description: 角色表单对象
+        in: body
+        name: roleForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.RoleFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 新增角色
+      tags:
+      - 角色接口
+  /api/v1/roles/{id}:
+    put:
+      consumes:
+      - application/json
+      description: 修改角色
+      parameters:
+      - description: 角色ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 角色表单对象
+        in: body
+        name: roleForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.RoleFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改角色
+      tags:
+      - 角色接口
+  /api/v1/roles/{ids}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除角色
+      parameters:
+      - description: 删除角色，多个以英文逗号(,)拼接
+        in: path
+        name: ids
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除角色
+      tags:
+      - 角色接口
+  /api/v1/roles/{roleId}/form:
+    get:
+      consumes:
+      - application/json
+      description: 获取角色表单数据
+      parameters:
+      - description: 角色ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.RoleFormBO'
+              type: object
+      summary: 角色表单数据
+      tags:
+      - 角色接口
+  /api/v1/roles/{roleId}/menuIds:
+    get:
+      consumes:
+      - application/json
+      description: 获取角色的菜单ID集合
+      parameters:
+      - description: 角色ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    format: int64
+                    type: integer
+                  type: array
+              type: object
+      summary: 获取角色的菜单ID集合
+      tags:
+      - 角色接口
+  /api/v1/roles/{roleId}/menus:
+    put:
+      consumes:
+      - application/json
+      description: 分配菜单(包括按钮权限)给角色
+      parameters:
+      - description: 角色ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      - description: 菜单ID列表
+        in: body
+        name: menuIds
+        required: true
+        schema:
+          items:
+            type: integer
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 分配菜单(包括按钮权限)给角色
+      tags:
+      - 角色接口
+  /api/v1/roles/{roleId}/status:
+    put:
+      consumes:
+      - application/json
+      description: 修改角色状态
+      parameters:
+      - description: 角色ID
+        in: path
+        name: roleId
+        required: true
+        type: integer
+      - description: 状态(1:启用;0:禁用)
+        in: query
+        name: status
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改角色状态
+      tags:
+      - 角色接口
+  /api/v1/roles/options:
+    get:
+      consumes:
+      - application/json
+      description: 获取角色下拉列表
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.Option'
+                  type: array
+              type: object
+      summary: 角色下拉列表
+      tags:
+      - 角色接口
+  /api/v1/roles/page:
+    get:
+      consumes:
+      - application/json
+      description: 获取角色分页列表
+      parameters:
+      - description: 关键字(角色名称/角色编码)
+        in: query
+        name: keywords
+        type: string
+      - description: 页码
+        in: query
+        name: pageNum
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/common.PageResult'
+              type: object
+      summary: 角色分页列表
+      tags:
+      - 角色接口
+  /api/v1/users:
+    post:
+      consumes:
+      - application/json
+      description: 新增用户
+      parameters:
+      - description: 用户表单对象
+        in: body
+        name: userForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.UserFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 新增用户
+      tags:
+      - 用户接口
+  /api/v1/users/_export:
+    get:
+      consumes:
+      - application/json
+      description: 导出用户列表
+      parameters:
+      - description: 关键字(用户名/昵称/手机号)
+        in: query
+        name: keywords
+        type: string
+      - description: 用户状态
+        in: query
+        name: status
+        type: integer
+      - description: 部门ID
+        in: query
+        name: deptId
+        type: integer
+      - description: 创建时间-开始时间
+        in: query
+        name: startTime
+        type: string
+      - description: 创建时间-结束时间
+        in: query
+        name: endTime
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/vo.UserExportVO'
+                  type: array
+              type: object
+      summary: 导出用户
+      tags:
+      - 用户接口
+  /api/v1/users/_import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 通过Excel文件导入用户
+      parameters:
+      - description: Excel文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/vo.ImportResultVO'
+              type: object
+      summary: 导入用户
+      tags:
+      - 用户接口
+  /api/v1/users/{ids}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除用户
+      parameters:
+      - description: 用户ID，多个以英文逗号(,)分割
+        in: path
+        name: ids
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 删除用户
+      tags:
+      - 用户接口
+  /api/v1/users/{userId}:
+    put:
+      consumes:
+      - application/json
+      description: 修改用户
+      parameters:
+      - description: 用户ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 用户表单对象
+        in: body
+        name: userForm
+        required: true
+        schema:
+          $ref: '#/definitions/bo.UserFormBO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改用户
+      tags:
+      - 用户接口
+  /api/v1/users/{userId}/form:
+    get:
+      consumes:
+      - application/json
+      description: 获取用户表单数据
+      parameters:
+      - description: 用户ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/bo.UserFormBO'
+              type: object
+      summary: 用户表单数据
+      tags:
+      - 用户接口
+  /api/v1/users/{userId}/password:
+    patch:
+      consumes:
+      - application/json
+      description: 修改用户密码
+      parameters:
+      - description: 用户ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 新密码
+        in: query
+        name: password
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改用户密码
+      tags:
+      - 用户接口
+  /api/v1/users/{userId}/status:
+    patch:
+      consumes:
+      - application/json
+      description: 修改用户状态
+      parameters:
+      - description: 用户ID
+        in: path
+        name: userId
+        required: true
+        type: integer
+      - description: 用户状态(1:启用;0:禁用)
+        in: query
+        name: status
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.Response'
+      summary: 修改用户状态
+      tags:
+      - 用户接口
+  /api/v1/users/me:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前登录用户信息
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/vo.UserInfoVO'
+              type: object
+      summary: 获取当前登录用户信息
+      tags:
+      - 用户接口
+  /api/v1/users/page:
+    get:
+      consumes:
+      - application/json
+      description: 获取用户分页列表
+      parameters:
+      - description: 关键字(用户名/昵称/手机号)
+        in: query
+        name: keywords
+        type: string
+      - description: 用户状态
+        in: query
+        name: status
+        type: integer
+      - description: 部门ID
+        in: query
+        name: deptId
+        type: integer
+      - description: 创建时间-开始时间
+        in: query
+        name: startTime
+        type: string
+      - description: 创建时间-结束时间
+        in: query
+        name: endTime
+        type: string
+      - description: 页码
+        in: query
+        name: pageNum
+        type: integer
+      - description: 每页条数
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/common.PageResult'
+              type: object
+      summary: 用户分页列表
+      tags:
+      - 用户接口
+  /api/v1/users/template:
+    get:
+      consumes:
+      - application/json
+      description: 下载用户导入模板Excel文件
+      produces:
+      - application/vnd.ms-excel
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: 下载用户导入模板
+      tags:
+      - 用户接口
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

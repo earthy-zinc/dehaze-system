@@ -1,7 +1,8 @@
 """
 公共 Schema 模型 - 可复用的基础模型定义
 """
-from typing import TypeVar, Generic, List, Any, Optional
+from typing import TypeVar, Generic, List
+
 from pydantic import BaseModel, Field
 
 T = TypeVar('T')
@@ -25,13 +26,6 @@ class Option(BaseModel, Generic[T]):
     """下拉选项"""
     value: T = Field(description="选项值")
     label: str = Field(description="选项标签")
-
-
-class Result(BaseModel, Generic[T]):
-    """统一响应结果"""
-    code: str = Field(default="00000", description="响应码")
-    data: Optional[T] = Field(default=None, description="响应数据")
-    msg: str = Field(default="success", description="响应消息")
 
 
 class IdsPath(BaseModel):

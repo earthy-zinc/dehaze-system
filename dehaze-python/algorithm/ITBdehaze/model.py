@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn.functional as F
 
-from config import Config
+from algorithm.config import Config
 import os
 from . import common
 from . import Res2Net as Pre_Res2Net

@@ -3,6 +3,7 @@ package com.pei.dehaze.module.iot.service.device.data;
 import cn.hutool.core.date.LocalDateTimeUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.ReUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -17,6 +18,9 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
+
+import static com.pei.dehaze.framework.common.exception.util.ServiceExceptionUtil.exception;
+import static com.pei.dehaze.module.iot.enums.ErrorCodeConstants.DEVICE_KEY_INVALID;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -51,6 +55,7 @@ public class IotDeviceLogServiceImpl implements IotDeviceLogService {
 
     @Override
     public void createDeviceLog(IotDeviceMessage message) {
+        validateDeviceKey(message.getDeviceKey());
         IotDeviceLogDO log = BeanUtils.toBean(message, IotDeviceLogDO.class)
                 .setId(IdUtil.fastSimpleUUID())
                 .setContent(JsonUtils.toJsonString(message.getData()));
@@ -59,6 +64,7 @@ public class IotDeviceLogServiceImpl implements IotDeviceLogService {
 
     @Override
     public PageResult<IotDeviceLogDO> getDeviceLogPage(IotDeviceLogPageReqVO pageReqVO) {
+        validateDeviceKey(pageReqVO.getDeviceKey());
         try {
             IPage<IotDeviceLogDO> page = deviceLogMapper.selectPage(
                     new Page<>(pageReqVO.getPageNo(), pageReqVO.getPageSize()), pageReqVO);
@@ -73,13 +79,16 @@ public class IotDeviceLogServiceImpl implements IotDeviceLogService {
 
     @Override
     public Long getDeviceLogCount(LocalDateTime createTime) {
-        return deviceLogMapper.selectCountByCreateTime(createTime != null ? LocalDateTimeUtil.toEpochMilli(createTime) : null);
+        return deviceLogMapper
+                .selectCountByCreateTime(createTime != null ? LocalDateTimeUtil.toEpochMilli(createTime) : null);
     }
 
     // TODO @super：加一个参数，Boolean upstream：true 上行，false 下行，null 不过滤
     @Override
     public List<Map<Long, Integer>> getDeviceLogUpCountByHour(String deviceKey, Long startTime, Long endTime) {
-        // TODO @super：不能只基于数据库统计。因为有一些小时，可能出现没数据的情况，导致前端展示的图是不全的。可以参考 CrmStatisticsCustomerService 来实现
+        validateDeviceKey(deviceKey);
+        // TODO @super：不能只基于数据库统计。因为有一些小时，可能出现没数据的情况，导致前端展示的图是不全的。可以参考
+        // CrmStatisticsCustomerService 来实现
         List<Map<String, Object>> list = deviceLogMapper.selectDeviceLogUpCountByHour(deviceKey, startTime, endTime);
         return list.stream()
                 .map(map -> {
@@ -96,6 +105,7 @@ public class IotDeviceLogServiceImpl implements IotDeviceLogService {
     // TODO @super：getDeviceLogDownCountByHour 融合到 getDeviceLogUpCountByHour
     @Override
     public List<Map<Long, Integer>> getDeviceLogDownCountByHour(String deviceKey, Long startTime, Long endTime) {
+        validateDeviceKey(deviceKey);
         List<Map<String, Object>> list = deviceLogMapper.selectDeviceLogDownCountByHour(deviceKey, startTime, endTime);
         return list.stream()
                 .map(map -> {
@@ -107,6 +117,21 @@ public class IotDeviceLogServiceImpl implements IotDeviceLogService {
                     return MapUtil.of(timeMillis, count);
                 })
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 校验 deviceKey 合法性，防止 SQL 注入
+     * <p>
+     * 因为 TDengine 动态子表名必须使用 ${} 拼接，无法使用 #{} 预编译，
+     * 所以在 Service 层通过白名单正则校验来保证安全性
+     */
+    private void validateDeviceKey(String deviceKey) {
+        if (StrUtil.isBlank(deviceKey)) {
+            return;
+        }
+        if (!ReUtil.isMatch("^[a-zA-Z0-9_]+$", deviceKey)) {
+            throw exception(DEVICE_KEY_INVALID);
+        }
     }
 
 }

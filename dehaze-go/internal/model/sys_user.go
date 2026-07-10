@@ -25,7 +25,7 @@ type UserAuthInfo struct {
 	DeptId    int64    `json:"deptId"` // 修复类型为int64以匹配Java的Long类型
 	Password  string   `json:"password"`
 	Status    int8     `json:"status"`
-	Roles     []string `json:"roles"`
-	Perms     []string `json:"perms"`
-	DataScope int8     `json:"dataScope"`
+	Roles     []string `gorm:"-" json:"roles"`
+	Perms     []string `gorm:"-" json:"perms"`
+	DataScope int8     `gorm:"-" json:"dataScope"`
 }

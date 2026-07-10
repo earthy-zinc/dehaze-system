@@ -2,15 +2,17 @@
 数据集相关枚举
 """
 
+from enum import Enum
 
-class ImageType:
+
+class ImageType(str, Enum):
     """图片类型枚举"""
-    CLEAR = 'clear'  # 清晰图
-    HAZY = 'hazy'  # 雾霾图
+    CLEAR = 'clear'
+    HAZY = 'hazy'
 
 
-class HazeLevel:
+class HazeLevel(str, Enum):
     """雾霾等级枚举"""
-    LIGHT = 'light'  # 轻度
-    MEDIUM = 'medium'  # 中度
-    HEAVY = 'heavy'  # 重度
+    LIGHT = 'light'
+    MEDIUM = 'medium'
+    HEAVY = 'heavy'

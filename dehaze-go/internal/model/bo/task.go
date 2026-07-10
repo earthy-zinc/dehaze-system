@@ -13,7 +13,7 @@ type ExportOptions struct {
 // ExportTaskCreateForm 导出任务创建表单
 type ExportTaskCreateForm struct {
 	// 导出类型：dataset, dataset_item, batch_items, custom
-	Type string `json:"type" validate:"required"`
+	Type string `json:"type" binding:"required"`
 	// 目标ID（导出单个资源时使用）
 	TargetID int64 `json:"targetId"`
 	// 目标ID列表（批量导出时使用）
@@ -25,7 +25,7 @@ type ExportTaskCreateForm struct {
 // BatchDeleteBatchForm 批量删除表单
 type BatchDeleteForm struct {
 	// 要删除的ID列表
-	IDs []int64 `json:"ids" validate:"required,min=1"`
+	IDs []int64 `json:"ids" binding:"required,min=1"`
 	// 是否强制删除（跳过检查）
 	Force bool `json:"force"`
 }
@@ -33,7 +33,7 @@ type BatchDeleteForm struct {
 // BatchDownloadForm 批量下载表单
 type BatchDownloadForm struct {
 	// 数据集项ID列表
-	ItemID int64 `json:"itemId" validate:"required"`
+	ItemID int64 `json:"itemId" binding:"required"`
 	// 文件类型过滤器
 	Types []string `json:"types"`
 	// 是否包含缩略图

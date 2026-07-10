@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/earthyzinc/dehaze-go/pkg/cache/errs"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
-	global_error "github.com/earthyzinc/dehaze-go/pkg/error"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
@@ -28,7 +28,7 @@ func (c *RedisCache) Get(ctx context.Context, key string) (string, error) {
 	val, err := c.client.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", global_error.ErrKeyNotFound
+			return "", errs.ErrKeyNotFound
 		}
 		return "", err
 	}
@@ -175,7 +175,7 @@ func (c *RedisCache) HGet(ctx context.Context, key, field string) (string, error
 	val, err := c.client.HGet(ctx, key, field).Result()
 	if err != nil {
 		if err == redis.Nil {
-			return "", global_error.ErrKeyNotFound
+			return "", errs.ErrKeyNotFound
 		}
 		return "", err
 	}

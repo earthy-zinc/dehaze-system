@@ -8,7 +8,16 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/redis"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+// 消息类型常量
+const (
+	CacheTypePermission = "permission"
+	CacheTypeRole       = "role"
 )
 
 // cachedPerms 带过期时间的缓存权限数据
@@ -23,11 +32,13 @@ type cachedPerms struct {
 // - 使用 cachedPerms 结构体存储带过期时间的权限数据
 // - 在读取缓存时检查过期时间
 // - 默认缓存 TTL 为 5 分钟
+// - 增加 Redis Pub/Sub 支持，实现多实例缓存失效广播
 type PermissionChecker struct {
 	cache      *sync.Map // 本地缓存，减少Redis查询
 	mu         sync.RWMutex
 	casbinImpl CasbinAdapter // Casbin适配器接口
 	cacheTTL   time.Duration // 缓存过期时间
+	pubsub     *redis.PubSub // Redis Pub/Sub 实例
 }
 
 // CasbinAdapter Casbin适配器接口，支持可选的Casbin集成
@@ -52,8 +63,53 @@ func GetPermissionChecker() *PermissionChecker {
 			cache:    &sync.Map{},
 			cacheTTL: 5 * time.Minute, // 默认缓存 5 分钟
 		}
+		// 尝试初始化 Pub/Sub
+		permissionInstance.initPubSub()
 	})
 	return permissionInstance
+}
+
+// initPubSub 初始化 Pub/Sub 订阅
+func (pc *PermissionChecker) initPubSub() {
+	ps := redis.GetPubSub()
+	if ps == nil {
+		logger.Debug("Redis Pub/Sub 未启用，权限缓存失效广播不可用")
+		return
+	}
+
+	pc.pubsub = ps
+
+	// 订阅权限和角色缓存失效消息
+	ps.Subscribe(CacheTypePermission, pc.handleCacheInvalidation)
+	ps.Subscribe(CacheTypeRole, pc.handleCacheInvalidation)
+
+	logger.Info("权限检查器已订阅缓存失效广播")
+}
+
+// handleCacheInvalidation 处理缓存失效消息
+func (pc *PermissionChecker) handleCacheInvalidation(msg redis.CacheInvalidationMsg) {
+	logger.Debug("处理缓存失效消息", zap.String("type", msg.Type), zap.String("key", msg.Key))
+
+	switch msg.Type {
+	case CacheTypePermission, CacheTypeRole:
+		pc.deleteLocalCache(msg.Key)
+	}
+}
+
+// deleteLocalCache 删除本地缓存
+func (pc *PermissionChecker) deleteLocalCache(key string) {
+	if key == "" {
+		// 清理所有缓存
+		pc.cache.Range(func(k, v interface{}) bool {
+			pc.cache.Delete(k)
+			return true
+		})
+		logger.Debug("已清理所有本地权限缓存")
+		return
+	}
+
+	pc.cache.Delete(key)
+	logger.Debug("已清理本地权限缓存", zap.String("key", key))
 }
 
 // SetCasbinAdapter 设置Casbin适配器（可选）
@@ -288,20 +344,63 @@ func (pc *PermissionChecker) GetRolePermissions(roleCode string) ([]string, erro
 }
 
 // ClearRolePermissionCache 清理角色权限缓存
+// 同时广播到其他实例
 // 参数：
 //   - roleCode: 角色编码，为空则清理所有角色缓存
 func (pc *PermissionChecker) ClearRolePermissionCache(roleCode string) {
+	cacheKey := ""
 	if roleCode != "" {
-		pc.cache.Delete("role:" + roleCode)
+		cacheKey = "role:" + roleCode
+		pc.cache.Delete(cacheKey)
 	} else {
 		// 清理所有角色权限缓存
 		pc.cache.Range(func(key, value interface{}) bool {
 			if k, ok := key.(string); ok && strings.HasPrefix(k, "role:") {
-				pc.cache.Delete(key)
+				pc.cache.Delete(k)
 			}
 			return true
 		})
 	}
+
+	// 广播缓存失效消息
+	pc.broadcastInvalidation(CacheTypeRole, cacheKey)
+}
+
+// broadcastInvalidation 广播缓存失效消息
+func (pc *PermissionChecker) broadcastInvalidation(msgType, key string) {
+	if pc.pubsub == nil {
+		return
+	}
+
+	ctx := context.Background()
+	if err := pc.pubsub.Publish(ctx, msgType, key); err != nil {
+		logger.Warn("广播缓存失效消息失败",
+			zap.String("type", msgType),
+			zap.String("key", key),
+			zap.Error(err),
+		)
+	}
+}
+
+// ClearUserPermissionCache 清理用户权限缓存
+// 同时广播到其他实例
+func (pc *PermissionChecker) ClearUserPermissionCache(userID string) {
+	cacheKey := ""
+	if userID != "" {
+		cacheKey = "user:" + userID
+		pc.cache.Delete(cacheKey)
+	} else {
+		// 清理所有用户权限缓存
+		pc.cache.Range(func(key, value interface{}) bool {
+			if k, ok := key.(string); ok && strings.HasPrefix(k, "user:") {
+				pc.cache.Delete(k)
+			}
+			return true
+		})
+	}
+
+	// 广播缓存失效消息
+	pc.broadcastInvalidation(CacheTypePermission, cacheKey)
 }
 
 // HasRolePermission 检查用户角色是否有指定权限（支持通配符）

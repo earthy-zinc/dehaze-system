@@ -1,151 +1,157 @@
-import os
-import sys
-from io import BytesIO
-from unittest.mock import patch, MagicMock
+"""
+文件服务测试
 
-# 将项目根目录添加到Python路径
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+测试 FileService 的核心功能
+"""
 
-from app.models import SysFile
-from app.service.file import upload_file_from_request
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from app.service.file_service import FileService, calculate_bytes_md5, generate_object_name
+from app.core.exceptions import BusinessException
 
 
-class TestFileService:
+@pytest.mark.unit
+class TestFileUtils:
+    """文件工具函数测试"""
 
-    def setup_method(self):
-        """测试前准备"""
-        # 创建测试数据
-        self.test_file = SysFile(
-            id=1,
-            type='png',
-            url='http://localhost:9000/test-bucket/upload/20231201/test.png',
-            name='test.png',
-            object_name='upload/20231201/test.png',
-            size='100KB',
-            path='',
-            md5='d41d8cd98f00b204e9800998ecf8427e'
-        )
-
-    @patch('app.service.file._upload_to_storage')
-    @patch('app.service.file.BytesIO')
-    def test_upload_file_from_request(self, mock_bytes_io, mock_upload_to_storage, app):
-        """测试从请求上传文件"""
-        # 设置mock返回值
-        mock_file_storage = MagicMock()
-        mock_file_storage.filename = 'test.png'
-        mock_file_storage.mimetype = 'image/png'
-        mock_file_storage.read.return_value = b'test content'
-        mock_file_storage.content_length = 12
-
-        mock_bytes_instance = MagicMock()
-        mock_bytes_io.return_value = mock_bytes_instance
-
-        mock_upload_to_storage.return_value = self.test_file
-
-        # 测试文件上传
-        with app.app_context():
-            result = upload_file_from_request(mock_file_storage)
-            assert result.id == 1
-            assert result.name == 'test.png'
-            assert result.md5 == 'd41d8cd98f00b204e9800998ecf8427e'
-
-    @patch('app.service.file.calculate_bytes_md5')
-    @patch('app.service.file.SysFile')
-    @patch('app.service.file.mysql')
-    @patch('app.service.file.current_app')
-    def test_upload_to_storage_new_file(self, mock_current_app, mock_mysql, mock_sys_file, mock_calculate_md5, app):
-        """测试上传新文件到存储"""
-        # 设置mock返回值
-        mock_minio_client = MagicMock()
-        mock_current_app.extensions = {"minio_client": mock_minio_client}
-        mock_current_app.config = {"MINIO_BUCKET_NAME": "test-bucket"}
-
-        mock_calculate_md5.return_value = 'd41d8cd98f00b204e9800998ecf8427e'
-
-        mock_query = MagicMock()
-        mock_sys_file.query = mock_query
-        mock_query.filter_by.return_value.first.return_value = None  # 文件不存在
-
-        mock_file_instance = MagicMock()
-        mock_sys_file.return_value = mock_file_instance
-
-        mock_mysql.session.add = MagicMock()
-        mock_mysql.session.commit = MagicMock()
-
-        # 测试上传新文件
-        filename = 'test.png'
-        content_type = 'image/png'
-        file_bytes = BytesIO(b'test content')
-        file_size = 12
-
-        # 使用应用上下文
-        with app.app_context():
-            from app.service.file import _upload_to_storage
-            result = _upload_to_storage(filename, content_type, file_bytes, file_size)
-            assert result is not None
-            mock_minio_client.put_object.assert_called_once()
-            mock_mysql.session.add.assert_called_once()
-            mock_mysql.session.commit.assert_called_once()
-
-    @patch('app.service.file.SysFile')
-    @patch('app.service.file.current_app')
-    def test_upload_to_storage_existing_file(self, mock_current_app, mock_sys_file, app):
-        """测试上传已存在的文件"""
-        # 设置mock返回值
-        mock_query = MagicMock()
-        mock_sys_file.query = mock_query
-        mock_query.filter_by.return_value.first.return_value = self.test_file  # 文件已存在
-
-        # 测试上传已存在的文件
-        filename = 'test.png'
-        content_type = 'image/png'
-        file_bytes = BytesIO(b'test content')
-        file_size = 12
-
-        # 使用应用上下文
-        with app.app_context():
-            from app.service.file import _upload_to_storage
-            result = _upload_to_storage(filename, content_type, file_bytes, file_size)
-            assert result.id == 1
-            assert result.md5 == 'd41d8cd98f00b204e9800998ecf8427e'
+    def test_calculate_bytes_md5(self):
+        """测试计算 MD5"""
+        content = b"Hello, World!"
+        md5 = calculate_bytes_md5(content)
+        assert len(md5) == 32  # MD5 是 32 位十六进制
+        assert md5 == "65a8e27d8879283831b664bd8b7f0ad4"
 
     def test_generate_object_name(self):
-        """测试生成对象名"""
-        from app.service.file import _generate_object_name
-        import re
+        """测试生成对象名称"""
+        md5 = "abc123"
+        extension = "jpg"
+        object_name = generate_object_name(md5, extension)
+        assert md5 in object_name
+        assert object_name.endswith(".jpg")
+        assert "upload/" in object_name
 
-        md5 = 'd41d8cd98f00b204e9800998ecf8427e'
-        extension = 'png'
 
-        result = _generate_object_name(md5, extension)
-        # 检查格式是否正确
-        pattern = r'upload/\d{8}/[a-f0-9]{32}\.png'
-        assert re.match(pattern, result)
+@pytest.mark.unit
+class TestFileService:
+    """文件服务测试"""
 
-    @patch('app.service.file.SysFile')
-    def test_check_file_exists(self, mock_sys_file, app):
-        """测试检查文件是否存在"""
+    @pytest.mark.asyncio
+    async def test_upload_file_new(self):
+        """测试上传新文件"""
+        mock_db = AsyncMock()
 
-        # 设置mock返回值
-        mock_query = MagicMock()
-        mock_sys_file.query = mock_query
-        mock_query.filter_by.return_value.first.return_value = self.test_file  # 文件存在
+        with patch("app.service.file_service.file_repository") as mock_repo, \
+             patch("app.service.file_service.get_minio_client") as mock_minio:
+            mock_repo.get_by_md5 = AsyncMock(return_value=None)
+            mock_repo.create = AsyncMock(return_value=MagicMock(id=1))
+            mock_minio.return_value.bucket_exists = MagicMock(return_value=True)
+            mock_minio.return_value.put_object = MagicMock()
 
-        # 测试文件存在
-        with app.app_context():
-            result = mock_sys_file.query.filter_by(md5='d41d8cd98f00b204e9800998ecf8427e').first()
+            result = await FileService.upload_file(
+                db=mock_db,
+                filename="test.jpg",
+                content=b"test content",
+                content_type="image/jpeg",
+            )
+
             assert result is not None
-            assert result.md5 == 'd41d8cd98f00b204e9800998ecf8427e'
 
-    @patch('app.service.file.SysFile')
-    def test_check_file_not_exists(self, mock_sys_file, app):
+    @pytest.mark.asyncio
+    async def test_upload_file_duplicate(self):
+        """测试上传重复文件（MD5 去重）"""
+        mock_db = AsyncMock()
+        mock_existing_file = MagicMock()
+        mock_existing_file.md5 = "existing_md5"
+
+        with patch("app.service.file_service.file_repository") as mock_repo:
+            mock_repo.get_by_md5 = AsyncMock(return_value=mock_existing_file)
+
+            result = await FileService.upload_file(
+                db=mock_db,
+                filename="test.jpg",
+                content=b"test content",
+                content_type="image/jpeg",
+            )
+
+            assert result == mock_existing_file
+            # 不应该调用 create
+            mock_repo.create.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delete_file_success(self):
+        """测试删除文件成功"""
+        mock_db = AsyncMock()
+        mock_file = MagicMock()
+        mock_file.id = 1
+
+        with patch("app.service.file_service.file_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_file)
+            mock_repo.delete = AsyncMock()
+
+            result = await FileService.delete_file(mock_db, 1)
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_delete_file_not_found(self):
+        """测试删除文件时文件不存在"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.file_service.file_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=None)
+
+            with pytest.raises(BusinessException, match="文件不存在"):
+                await FileService.delete_file(mock_db, 999)
+
+    @pytest.mark.asyncio
+    async def test_check_file_exists_true(self):
+        """测试检查文件存在"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.file_service.file_repository") as mock_repo:
+            mock_repo.get_by_md5 = AsyncMock(return_value=MagicMock())
+
+            result = await FileService.check_file_exists(mock_db, "existing_md5")
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_check_file_exists_false(self):
         """测试检查文件不存在"""
-        # 设置mock返回值
-        mock_query = MagicMock()
-        mock_sys_file.query = mock_query
-        mock_query.filter_by.return_value.first.return_value = None  # 文件不存在
+        mock_db = AsyncMock()
 
-        # 测试文件不存在
-        with app.app_context():
-            result = mock_sys_file.query.filter_by(md5='nonexistent').first()
-            assert result is None
+        with patch("app.service.file_service.file_repository") as mock_repo:
+            mock_repo.get_by_md5 = AsyncMock(return_value=None)
+
+            result = await FileService.check_file_exists(mock_db, "nonexistent_md5")
+
+            assert result is False
+
+    @pytest.mark.asyncio
+    async def test_get_file_by_id(self):
+        """测试根据 ID 获取文件"""
+        mock_db = AsyncMock()
+        mock_file = MagicMock()
+        mock_file.id = 1
+
+        with patch("app.service.file_service.file_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_file)
+
+            result = await FileService.get_file_by_id(mock_db, 1)
+
+            assert result == mock_file
+
+    @pytest.mark.asyncio
+    async def test_get_file_by_md5(self):
+        """测试根据 MD5 获取文件"""
+        mock_db = AsyncMock()
+        mock_file = MagicMock()
+        mock_file.md5 = "test_md5"
+
+        with patch("app.service.file_service.file_repository") as mock_repo:
+            mock_repo.get_by_md5 = AsyncMock(return_value=mock_file)
+
+            result = await FileService.get_file_by_md5(mock_db, "test_md5")
+
+            assert result == mock_file

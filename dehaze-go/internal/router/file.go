@@ -2,16 +2,11 @@ package router
 
 import (
 	"github.com/earthyzinc/dehaze-go/internal/api"
-	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/gin-gonic/gin"
 )
 
-type FileRouter struct{}
-
-func (fileRouter *FileRouter) InitFileRouter(routerGroup *gin.RouterGroup) {
-	fileApi := api.ApiGroupApp.SysFileApi
-	fileRouterGroup := routerGroup.Group("/files").
-		Use(middleware.JWTAuth())
+func RegisterFileRoutes(rg *gin.RouterGroup, fileApi *api.SysFileApi) {
+	fileRouterGroup := rg.Group("/files")
 
 	{
 		fileRouterGroup.POST("", fileApi.UploadFile)                       // 文件上传

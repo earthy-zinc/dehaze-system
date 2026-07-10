@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 // CustomClaims 自定义声明结构体
@@ -126,9 +128,45 @@ func GetUserInfo(c *gin.Context) *CustomClaims {
 	}
 }
 
+// LoginToken 便捷包级函数（生产代码使用）
 func LoginToken(user *model.UserAuthInfo) (token string, claims CustomClaims, err error) {
 	j := NewJWT()
 	claims = j.CreateClaims(user)
 	token, err = j.CreateToken(claims)
+	return
+}
+
+// LoginTokenWithRefresh 便捷包级函数（生产代码使用），从全局配置读取 RefreshTokenTTL
+func LoginTokenWithRefresh(user *model.UserAuthInfo) (accessToken, refreshToken string, accessClaims, refreshClaims CustomClaims, err error) {
+	j := NewJWT()
+	cfg := config.GetConfig()
+	refreshTTL := cfg.JWT.RefreshTokenTTL
+	if refreshTTL <= 0 {
+		refreshTTL = 7 * 24 * 3600
+	}
+	return j.LoginTokenWithRefresh(user, time.Duration(refreshTTL)*time.Second)
+}
+
+// LoginTokenWithRefresh 实例方法，refreshTTL 由调用方传入（测试友好）
+func (j *JWT) LoginTokenWithRefresh(user *model.UserAuthInfo, refreshTTL time.Duration) (accessToken, refreshToken string, accessClaims, refreshClaims CustomClaims, err error) {
+	accessClaims = j.CreateClaims(user)
+	accessToken, err = j.CreateToken(accessClaims)
+	if err != nil {
+		return
+	}
+
+	refreshClaims = CustomClaims{
+		UserID:      user.UserId,
+		DeptID:      user.DeptId,
+		DataScope:   user.DataScope,
+		Authorities: []string{},
+		RegisteredClaims: jwt.RegisteredClaims{
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshTTL)),
+			Subject:   user.Username,
+			ID:        uuid.New().String(),
+		},
+	}
+	refreshToken, err = j.CreateToken(refreshClaims)
 	return
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-技能快速验证脚本 - 精简版本
+Quick validation script for skills - minimal version
 """
 
 import sys
@@ -9,118 +9,95 @@ import re
 import yaml
 from pathlib import Path
 
-# README.md 必需的章节
-REQUIRED_README_SECTIONS = ['基本信息', '适用场景', '使用示例']
-
-
-def validate_readme(skill_path):
-    """验证 README.md 文件"""
-    readme_path = skill_path / 'README.md'
-
-    if not readme_path.exists():
-        return False, "未找到 README.md - 每个技能必须包含维护文档"
-
-    content = readme_path.read_text()
-
-    # 检查必需的章节
-    missing_sections = []
-    for section in REQUIRED_README_SECTIONS:
-        if section not in content:
-            missing_sections.append(section)
-
-    if missing_sections:
-        return False, f"README.md 缺少必需章节: {', '.join(missing_sections)}"
-
-    return True, "README.md 验证通过"
-
-
 def validate_skill(skill_path):
-    """技能基本验证"""
+    """Basic validation of a skill"""
     skill_path = Path(skill_path)
 
-    # 检查 SKILL.md 存在
+    # Check SKILL.md exists
     skill_md = skill_path / 'SKILL.md'
     if not skill_md.exists():
-        return False, "未找到 SKILL.md"
+        return False, "SKILL.md not found"
 
-    # 检查 README.md 存在并验证格式
-    readme_valid, readme_message = validate_readme(skill_path)
-    if not readme_valid:
-        return False, readme_message
-
-    # 读取并验证 frontmatter
+    # Read and validate frontmatter
     content = skill_md.read_text()
     if not content.startswith('---'):
-        return False, "未找到 YAML frontmatter"
+        return False, "No YAML frontmatter found"
 
-    # 提取 frontmatter
+    # Extract frontmatter
     match = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
     if not match:
-        return False, "frontmatter 格式无效"
+        return False, "Invalid frontmatter format"
 
     frontmatter_text = match.group(1)
 
-    # 解析 YAML frontmatter
+    # Parse YAML frontmatter
     try:
         frontmatter = yaml.safe_load(frontmatter_text)
         if not isinstance(frontmatter, dict):
-            return False, "frontmatter 必须是 YAML 字典"
+            return False, "Frontmatter must be a YAML dictionary"
     except yaml.YAMLError as e:
-        return False, f"frontmatter 中的 YAML 无效: {e}"
+        return False, f"Invalid YAML in frontmatter: {e}"
 
-    # 定义允许的属性
-    ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata'}
+    # Define allowed properties
+    ALLOWED_PROPERTIES = {'name', 'description', 'license', 'allowed-tools', 'metadata', 'compatibility'}
 
-    # 检查意外的属性（排除 metadata 下的嵌套键）
+    # Check for unexpected properties (excluding nested keys under metadata)
     unexpected_keys = set(frontmatter.keys()) - ALLOWED_PROPERTIES
     if unexpected_keys:
         return False, (
-            f"SKILL.md frontmatter 中存在意外的键: {', '.join(sorted(unexpected_keys))}。"
-            f"允许的属性有: {', '.join(sorted(ALLOWED_PROPERTIES))}"
+            f"Unexpected key(s) in SKILL.md frontmatter: {', '.join(sorted(unexpected_keys))}. "
+            f"Allowed properties are: {', '.join(sorted(ALLOWED_PROPERTIES))}"
         )
 
-    # 检查必需字段
+    # Check required fields
     if 'name' not in frontmatter:
-        return False, "frontmatter 中缺少 'name'"
+        return False, "Missing 'name' in frontmatter"
     if 'description' not in frontmatter:
-        return False, "frontmatter 中缺少 'description'"
+        return False, "Missing 'description' in frontmatter"
 
-    # 提取 name 进行验证
+    # Extract name for validation
     name = frontmatter.get('name', '')
     if not isinstance(name, str):
-        return False, f"name 必须是字符串，得到 {type(name).__name__}"
+        return False, f"Name must be a string, got {type(name).__name__}"
     name = name.strip()
     if name:
-        # 检查命名约定（连字符格式：小写字母加连字符）
+        # Check naming convention (kebab-case: lowercase with hyphens)
         if not re.match(r'^[a-z0-9-]+$', name):
-            return False, f"名称 '{name}' 应为连字符格式（仅限小写字母、数字和连字符）"
+            return False, f"Name '{name}' should be kebab-case (lowercase letters, digits, and hyphens only)"
         if name.startswith('-') or name.endswith('-') or '--' in name:
-            return False, f"名称 '{name}' 不能以连字符开头/结尾或包含连续连字符"
-        # 检查名称长度（根据规范最多 64 个字符）
+            return False, f"Name '{name}' cannot start/end with hyphen or contain consecutive hyphens"
+        # Check name length (max 64 characters per spec)
         if len(name) > 64:
-            return False, f"名称过长（{len(name)} 个字符）。最大为 64 个字符。"
+            return False, f"Name is too long ({len(name)} characters). Maximum is 64 characters."
 
-    # 提取并验证 description
+    # Extract and validate description
     description = frontmatter.get('description', '')
     if not isinstance(description, str):
-        return False, f"description 必须是字符串，得到 {type(description).__name__}"
+        return False, f"Description must be a string, got {type(description).__name__}"
     description = description.strip()
     if description:
-        # 检查尖括号
+        # Check for angle brackets
         if '<' in description or '>' in description:
-            return False, "description 不能包含尖括号（< 或 >）"
-        # 检查描述长度（根据规范最多 1024 个字符）
+            return False, "Description cannot contain angle brackets (< or >)"
+        # Check description length (max 1024 characters per spec)
         if len(description) > 1024:
-            return False, f"描述过长（{len(description)} 个字符）。最大为 1024 个字符。"
+            return False, f"Description is too long ({len(description)} characters). Maximum is 1024 characters."
 
-    return True, "技能验证通过！"
+    # Validate compatibility field if present (optional)
+    compatibility = frontmatter.get('compatibility', '')
+    if compatibility:
+        if not isinstance(compatibility, str):
+            return False, f"Compatibility must be a string, got {type(compatibility).__name__}"
+        if len(compatibility) > 500:
+            return False, f"Compatibility is too long ({len(compatibility)} characters). Maximum is 500 characters."
 
+    return True, "Skill is valid!"
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("用法: python quick_validate.py <skill_directory>")
+        print("Usage: python quick_validate.py <skill_directory>")
         sys.exit(1)
-
+    
     valid, message = validate_skill(sys.argv[1])
     print(message)
     sys.exit(0 if valid else 1)

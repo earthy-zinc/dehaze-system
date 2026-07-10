@@ -1,417 +1,318 @@
 """
 字典服务测试
+
+测试 DictService 和 DictTypeService 的核心功能
 """
+
 import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.models import SysDict, SysDictType
 from app.service.dict_service import DictService, DictTypeService
+from app.core.exceptions import BusinessException
 
 
 @pytest.mark.unit
-@pytest.mark.requires_db
 class TestDictService:
-    """字典服务测试类"""
+    """字典服务测试"""
 
-    def test_create_dict(self, db_session):
-        """测试创建字典项"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1,
-            remark='测试类型备注'
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 创建字典项
-        dict_data = {
-            'typeCode': 'TEST_TYPE',
-            'name': '测试字典项',
-            'value': 'test_value',
-            'status': 1,
-            'sort': 1,
-            'remark': '测试字典项备注'
-        }
-
-        result = DictService.create_dict(dict_data)
-        assert result is True
-
-        # 验证字典项创建成功
-        dict_item = SysDict.query.filter_by(name='测试字典项').first()
-        assert dict_item is not None
-        assert dict_item.type_code == 'TEST_TYPE'
-        assert dict_item.value == 'test_value'
-        assert dict_item.status == 1
-        assert dict_item.sort == 1
-        assert dict_item.remark == '测试字典项备注'
-
-    def test_get_dict_form(self, db_session):
-        """测试获取字典表单数据"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 创建字典项
-        dict_item = SysDict(
-            type_code='TEST_TYPE',
-            name='测试字典项',
-            value='test_value',
-            status=1,
-            sort=1,
-            remark='测试备注'
-        )
-        db_session.add(dict_item)
-        db_session.commit()
-
-        # 获取表单数据
-        form_data = DictService.get_dict_form(dict_item.id)
-        assert form_data is not None
-        assert form_data['id'] == dict_item.id
-        assert form_data['typeCode'] == 'TEST_TYPE'
-        assert form_data['name'] == '测试字典项'
-        assert form_data['value'] == 'test_value'
-        assert form_data['status'] == 1
-        assert form_data['sort'] == 1
-        assert form_data['remark'] == '测试备注'
-
-    def test_update_dict(self, db_session):
-        """测试更新字典项"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 创建字典项
-        dict_item = SysDict(
-            type_code='TEST_TYPE',
-            name='测试字典项',
-            value='test_value',
-            status=1,
-            sort=1
-        )
-        db_session.add(dict_item)
-        db_session.commit()
-
-        # 更新字典项
-        update_data = {
-            'typeCode': 'TEST_TYPE',
-            'name': '更新后的字典项',
-            'value': 'updated_value',
-            'status': 0,
-            'sort': 2,
-            'remark': '更新后的备注'
-        }
-
-        result = DictService.update_dict(dict_item.id, update_data)
-        assert result is True
-
-        # 验证更新成功
-        updated_item = SysDict.query.get(dict_item.id)
-        assert updated_item.name == '更新后的字典项'
-        assert updated_item.value == 'updated_value'
-        assert updated_item.status == 0
-        assert updated_item.sort == 2
-        assert updated_item.remark == '更新后的备注'
-
-    def test_delete_dict(self, db_session):
-        """测试删除字典项"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 创建多个字典项
-        dict_item1 = SysDict(
-            type_code='TEST_TYPE',
-            name='测试字典项1',
-            value='test_value1'
-        )
-        dict_item2 = SysDict(
-            type_code='TEST_TYPE',
-            name='测试字典项2',
-            value='test_value2'
-        )
-        db_session.add(dict_item1)
-        db_session.add(dict_item2)
-        db_session.commit()
-
-        # 记录ID
-        id1, id2 = dict_item1.id, dict_item2.id
-
-        # 删除字典项
-        result = DictService.delete_dict([id1, id2])
-        assert result is True
-
-        # 验证删除成功
-        deleted_items = SysDict.query.filter(SysDict.id.in_([id1, id2])).all()
-        assert len(deleted_items) == 0
-
-    def test_list_dict_options(self, db_session):
-        """测试获取字典下拉列表"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 创建字典项
-        dict_item1 = SysDict(
-            type_code='TEST_TYPE',
-            name='选项1',
-            value='option1',
-            status=1
-        )
-        dict_item2 = SysDict(
-            type_code='TEST_TYPE',
-            name='选项2',
-            value='option2',
-            status=1
-        )
-        dict_item3 = SysDict(
-            type_code='TEST_TYPE',
-            name='禁用选项',
-            value='disabled_option',
-            status=0  # 禁用状态
-        )
-        db_session.add(dict_item1)
-        db_session.add(dict_item2)
-        db_session.add(dict_item3)
-        db_session.commit()
-
-        # 获取下拉列表
-        options = DictService.list_dict_options('TEST_TYPE')
-        assert len(options) == 3  # 包括禁用的选项
-        assert {'value': 'option1', 'label': '选项1'} in options
-        assert {'value': 'option2', 'label': '选项2'} in options
-        assert {'value': 'disabled_option', 'label': '禁用选项'} in options
-
-    def test_get_dict_page(self, db_session):
+    @pytest.mark.asyncio
+    async def test_get_dict_page(self):
         """测试获取字典分页列表"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1
-        )
-        db_session.add(dict_type)
-        db_session.commit()
+        mock_db = AsyncMock()
 
-        # 创建多个字典项
-        for i in range(15):
-            dict_item = SysDict(
-                type_code='TEST_TYPE',
-                name=f'测试字典项{i}',
-                value=f'test_value{i}',
-                status=1
+        with patch("app.service.dict_service.dict_repository") as mock_repo:
+            mock_repo.get_page = AsyncMock(return_value=([], 0))
+
+            result, total = await DictService.get_dict_page(
+                db=mock_db,
+                page=1,
+                page_size=10,
             )
-            db_session.add(dict_item)
-        db_session.commit()
 
-        # 获取第一页数据
-        items, total = DictService.get_dict_page(page=1, page_size=10)
-        assert len(items) == 10
-        assert total == 15
+            assert result == []
+            assert total == 0
 
-        # 获取第二页数据
-        items, total = DictService.get_dict_page(page=2, page_size=10)
-        assert len(items) == 5
-        assert total == 15
+    @pytest.mark.asyncio
+    async def test_get_dict_form(self):
+        """测试获取字典表单数据"""
+        mock_db = AsyncMock()
 
-        # 按关键词搜索
-        items, total = DictService.get_dict_page(page=1, page_size=10, keywords='测试字典项1')
-        assert total > 0
-        assert all('测试字典项1' in item.name for item in items)
+        with patch("app.service.dict_service.dict_repository") as mock_repo:
+            mock_repo.get_form_by_id = AsyncMock(return_value={"id": 1, "name": "测试"})
 
-        # 按类型编码搜索
-        items, total = DictService.get_dict_page(page=1, page_size=10, type_code='TEST_TYPE')
-        assert total == 15
-        assert all(item.type_code == 'TEST_TYPE' for item in items)
+            result = await DictService.get_dict_form(mock_db, 1)
+
+            assert result is not None
+            assert result["name"] == "测试"
+
+    @pytest.mark.asyncio
+    async def test_create_dict_success(self):
+        """测试创建字典项成功"""
+        mock_db = AsyncMock()
+        mock_dict_type = MagicMock()
+        mock_dict_type.code = "status"
+
+        with patch("app.service.dict_service.dict_repository") as mock_repo, \
+             patch("app.service.dict_service.dict_type_repository") as mock_type_repo:
+            mock_type_repo.get_by_code = AsyncMock(return_value=mock_dict_type)
+            mock_repo.get_by_type_code_and_value = AsyncMock(return_value=None)
+            mock_repo.create = AsyncMock(return_value=True)
+
+            # Mock 缓存清除
+            with patch.object(DictService, "_invalidate_options_cache", AsyncMock()):
+                result = await DictService.create_dict(
+                    db=mock_db,
+                    data={"name": "测试", "value": "test", "typeCode": "status"},
+                )
+
+                assert result is True
+
+    @pytest.mark.asyncio
+    async def test_create_dict_type_not_exist(self):
+        """测试创建字典项时类型不存在"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_type_repo:
+            mock_type_repo.get_by_code = AsyncMock(return_value=None)
+
+            with pytest.raises(BusinessException, match="字典类型不存在"):
+                await DictService.create_dict(
+                    db=mock_db,
+                    data={"name": "测试", "value": "test", "typeCode": "nonexistent"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_create_dict_value_duplicate(self):
+        """测试创建字典项时值重复"""
+        mock_db = AsyncMock()
+        mock_dict_type = MagicMock()
+        mock_dict_type.code = "status"
+        mock_existing = MagicMock()
+
+        with patch("app.service.dict_service.dict_repository") as mock_repo, \
+             patch("app.service.dict_service.dict_type_repository") as mock_type_repo:
+            mock_type_repo.get_by_code = AsyncMock(return_value=mock_dict_type)
+            mock_repo.get_by_type_code_and_value = AsyncMock(return_value=mock_existing)
+
+            with pytest.raises(BusinessException, match="该类型下字典值已存在"):
+                await DictService.create_dict(
+                    db=mock_db,
+                    data={"name": "测试", "value": "test", "typeCode": "status"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_update_dict_success(self):
+        """测试更新字典项成功"""
+        mock_db = AsyncMock()
+        mock_old_dict = MagicMock()
+        mock_old_dict.id = 1
+        mock_old_dict.type_code = "status"
+        mock_old_dict.value = "old_value"
+
+        with patch("app.service.dict_service.dict_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_old_dict)
+            mock_repo.get_by_type_code_and_value = AsyncMock(return_value=None)
+            mock_repo.update_by_id = AsyncMock(return_value=True)
+
+            # Mock 缓存清除
+            with patch.object(DictService, "_invalidate_options_cache", AsyncMock()):
+                result = await DictService.update_dict(
+                    db=mock_db,
+                    dict_id=1,
+                    data={"name": "更新测试"},
+                )
+
+                assert result is True
+
+    @pytest.mark.asyncio
+    async def test_update_dict_not_found(self):
+        """测试更新字典项时不存在"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.dict_service.dict_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=None)
+
+            with pytest.raises(BusinessException, match="字典不存在"):
+                await DictService.update_dict(
+                    db=mock_db,
+                    dict_id=999,
+                    data={"name": "更新测试"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_delete_dict_success(self):
+        """测试删除字典项成功"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.dict_service.dict_repository") as mock_repo:
+            mock_repo.get_type_codes_by_ids = AsyncMock(return_value=["status"])
+            mock_repo.delete_by_ids = AsyncMock(return_value=True)
+
+            # Mock 缓存清除
+            with patch.object(DictService, "_invalidate_options_cache", AsyncMock()):
+                result = await DictService.delete_dict(
+                    db=mock_db,
+                    dict_ids=[1, 2, 3],
+                )
+
+                assert result is True
+
+    @pytest.mark.asyncio
+    async def test_list_dict_options(self):
+        """测试获取字典下拉列表"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.dict_service.dict_repository") as mock_repo:
+            mock_repo.list_options_by_type = AsyncMock(return_value=[{"label": "启用", "value": "1"}])
+
+            # Mock 缓存
+            with patch.object(DictService, "_get_options_from_cache", AsyncMock(return_value=None)), \
+                 patch.object(DictService, "_set_options_to_cache", AsyncMock()):
+                result = await DictService.list_dict_options(mock_db, "status")
+
+                assert len(result) == 1
+                assert result[0]["label"] == "启用"
 
 
 @pytest.mark.unit
-@pytest.mark.requires_db
 class TestDictTypeService:
-    """字典类型服务测试类"""
+    """字典类型服务测试"""
 
-    def test_create_dict_type(self, db_session):
-        """测试创建字典类型"""
-        # 创建字典类型
-        dict_type_data = {
-            'name': '测试类型',
-            'code': 'TEST_TYPE',
-            'status': 1,
-            'remark': '测试类型备注'
-        }
-
-        result = DictTypeService.create_dict_type(dict_type_data)
-        assert result is True
-
-        # 验证字典类型创建成功
-        dict_type = SysDictType.query.filter_by(code='TEST_TYPE').first()
-        assert dict_type is not None
-        assert dict_type.name == '测试类型'
-        assert dict_type.status == 1
-        assert dict_type.remark == '测试类型备注'
-
-    def test_get_dict_type_form(self, db_session):
-        """测试获取字典类型表单数据"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1,
-            remark='测试备注'
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 获取表单数据
-        form_data = DictTypeService.get_dict_type_form(dict_type.id)
-        assert form_data is not None
-        assert form_data['id'] == dict_type.id
-        assert form_data['name'] == '测试类型'
-        assert form_data['code'] == 'TEST_TYPE'
-        assert form_data['status'] == 1
-        assert form_data['remark'] == '测试备注'
-
-    def test_update_dict_type(self, db_session):
-        """测试更新字典类型"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 更新字典类型
-        update_data = {
-            'name': '更新后的类型',
-            'code': 'UPDATED_TYPE',
-            'status': 0,
-            'remark': '更新后的备注'
-        }
-
-        result = DictTypeService.update_dict_type(dict_type.id, update_data)
-        assert result is True
-
-        # 验证更新成功
-        updated_type = SysDictType.query.get(dict_type.id)
-        assert updated_type.name == '更新后的类型'
-        assert updated_type.code == 'UPDATED_TYPE'
-        assert updated_type.status == 0
-        assert updated_type.remark == '更新后的备注'
-
-    def test_delete_dict_types(self, db_session):
-        """测试删除字典类型"""
-        # 创建多个字典类型
-        dict_type1 = SysDictType(
-            name='测试类型1',
-            code='TEST_TYPE1'
-        )
-        dict_type2 = SysDictType(
-            name='测试类型2',
-            code='TEST_TYPE2'
-        )
-        db_session.add(dict_type1)
-        db_session.add(dict_type2)
-        db_session.commit()
-
-        # 记录ID
-        id1, id2 = dict_type1.id, dict_type2.id
-
-        # 删除字典类型
-        result = DictTypeService.delete_dict_types([id1, id2])
-        assert result is True
-
-        # 验证删除成功
-        deleted_types = SysDictType.query.filter(SysDictType.id.in_([id1, id2])).all()
-        assert len(deleted_types) == 0
-
-    def test_list_dict_items_by_type_code(self, db_session):
-        """测试根据字典类型编码获取字典项列表"""
-        # 创建字典类型
-        dict_type = SysDictType(
-            name='测试类型',
-            code='TEST_TYPE',
-            status=1
-        )
-        db_session.add(dict_type)
-        db_session.commit()
-
-        # 创建字典项
-        dict_item1 = SysDict(
-            type_code='TEST_TYPE',
-            name='启用选项1',
-            value='enabled_option1',
-            status=1  # 启用状态
-        )
-        dict_item2 = SysDict(
-            type_code='TEST_TYPE',
-            name='启用选项2',
-            value='enabled_option2',
-            status=1  # 启用状态
-        )
-        dict_item3 = SysDict(
-            type_code='TEST_TYPE',
-            name='禁用选项',
-            value='disabled_option',
-            status=0  # 禁用状态
-        )
-        db_session.add(dict_item1)
-        db_session.add(dict_item2)
-        db_session.add(dict_item3)
-        db_session.commit()
-
-        # 获取字典项列表
-        items = DictTypeService.list_dict_items_by_type_code('TEST_TYPE')
-        # 只应该返回启用的选项
-        assert len(items) == 2
-        assert {'value': 'enabled_option1', 'label': '启用选项1'} in items
-        assert {'value': 'enabled_option2', 'label': '启用选项2'} in items
-        assert {'value': 'disabled_option', 'label': '禁用选项'} not in items
-
-    def test_get_dict_type_page(self, db_session):
+    @pytest.mark.asyncio
+    async def test_get_dict_type_page(self):
         """测试获取字典类型分页列表"""
-        # 创建多个字典类型
-        for i in range(15):
-            dict_type = SysDictType(
-                name=f'测试类型{i}',
-                code=f'TEST_TYPE{i}',
-                status=1
+        mock_db = AsyncMock()
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_repo:
+            mock_repo.get_page = AsyncMock(return_value=([], 0))
+
+            result, total = await DictTypeService.get_dict_type_page(
+                db=mock_db,
+                page=1,
+                page_size=10,
             )
-            db_session.add(dict_type)
-        db_session.commit()
 
-        # 获取第一页数据
-        types, total = DictTypeService.get_dict_type_page(page=1, page_size=10)
-        assert len(types) == 10
-        assert total == 15
+            assert result == []
+            assert total == 0
 
-        # 获取第二页数据
-        types, total = DictTypeService.get_dict_type_page(page=2, page_size=10)
-        assert len(types) == 5
-        assert total == 15
+    @pytest.mark.asyncio
+    async def test_get_dict_type_form(self):
+        """测试获取字典类型表单数据"""
+        mock_db = AsyncMock()
 
-        # 按关键词搜索
-        types, total = DictTypeService.get_dict_type_page(page=1, page_size=10, keywords='测试类型1')
-        assert total > 0
-        assert all('测试类型1' in t.name for t in types)
+        with patch("app.service.dict_service.dict_type_repository") as mock_repo:
+            mock_repo.get_form_by_id = AsyncMock(return_value={"id": 1, "name": "状态", "code": "status"})
+
+            result = await DictTypeService.get_dict_type_form(mock_db, 1)
+
+            assert result is not None
+            assert result["name"] == "状态"
+
+    @pytest.mark.asyncio
+    async def test_create_dict_type_success(self):
+        """测试创建字典类型成功"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_repo:
+            mock_repo.get_by_code = AsyncMock(return_value=None)
+            mock_repo.create = AsyncMock(return_value=True)
+
+            result = await DictTypeService.create_dict_type(
+                db=mock_db,
+                data={"name": "状态", "code": "status"},
+            )
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_create_dict_type_duplicate_code(self):
+        """测试创建字典类型时编码重复"""
+        mock_db = AsyncMock()
+        mock_existing = MagicMock()
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_repo:
+            mock_repo.get_by_code = AsyncMock(return_value=mock_existing)
+
+            with pytest.raises(BusinessException, match="字典类型编码已存在"):
+                await DictTypeService.create_dict_type(
+                    db=mock_db,
+                    data={"name": "状态", "code": "status"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_update_dict_type_success(self):
+        """测试更新字典类型成功"""
+        mock_db = AsyncMock()
+        mock_old_type = MagicMock()
+        mock_old_type.id = 1
+        mock_old_type.code = "status"
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_old_type)
+            mock_repo.get_by_code = AsyncMock(return_value=None)
+            mock_repo.update_by_id = AsyncMock(return_value=True)
+
+            result = await DictTypeService.update_dict_type(
+                db=mock_db,
+                type_id=1,
+                data={"name": "更新状态"},
+            )
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_update_dict_type_not_found(self):
+        """测试更新字典类型时不存在"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=None)
+
+            with pytest.raises(BusinessException, match="字典类型不存在"):
+                await DictTypeService.update_dict_type(
+                    db=mock_db,
+                    type_id=999,
+                    data={"name": "更新状态"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_delete_dict_types_success(self):
+        """测试删除字典类型成功"""
+        mock_db = AsyncMock()
+        mock_dict_type = MagicMock()
+        mock_dict_type.id = 1
+        mock_dict_type.code = "status"
+        mock_dict_type.name = "状态"
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_type_repo, \
+             patch("app.service.dict_service.dict_repository") as mock_dict_repo:
+            mock_type_repo.get_by_id = AsyncMock(return_value=mock_dict_type)
+            mock_dict_repo.count_by_type_code = AsyncMock(return_value=0)
+            mock_type_repo.delete_by_ids = AsyncMock(return_value=True)
+
+            result = await DictTypeService.delete_dict_types(
+                db=mock_db,
+                type_ids=[1, 2],
+            )
+
+            assert result is True
+
+    @pytest.mark.asyncio
+    async def test_delete_dict_types_has_data(self):
+        """测试删除字典类型时存在关联数据"""
+        mock_db = AsyncMock()
+        mock_dict_type = MagicMock()
+        mock_dict_type.id = 1
+        mock_dict_type.code = "status"
+        mock_dict_type.name = "状态"
+
+        with patch("app.service.dict_service.dict_type_repository") as mock_type_repo, \
+             patch("app.service.dict_service.dict_repository") as mock_dict_repo:
+            mock_type_repo.get_by_id = AsyncMock(return_value=mock_dict_type)
+            mock_dict_repo.count_by_type_code = AsyncMock(return_value=5)
+
+            with pytest.raises(BusinessException, match="存在.*关联数据"):
+                await DictTypeService.delete_dict_types(
+                    db=mock_db,
+                    type_ids=[1],
+                )

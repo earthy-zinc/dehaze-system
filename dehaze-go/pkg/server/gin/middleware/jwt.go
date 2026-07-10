@@ -5,9 +5,11 @@ import (
 	"errors"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
 )
 
@@ -59,10 +61,27 @@ func JWTAuth() gin.HandlerFunc {
 
 func isBlacklist(jwt string) bool {
 	cacheClient := cache.GetCache()
-	if exists, err := cacheClient.Exists(context.Background(), common.BlacklistPrefix+jwt); err != nil {
-		return exists
+
+	// 解析Token获取jti
+	j := security.NewJWT()
+	claims, err := j.ParseToken(jwt)
+	if err != nil {
+		// Token解析失败，视为无效Token
+		return false
 	}
 
-	// 未找到黑名单记录
-	return false
+	jti := claims.ID
+	if jti == "" {
+		return false
+	}
+
+	exists, err := cacheClient.Exists(context.Background(), common.BlacklistPrefix+jti)
+	if err != nil {
+		// 缓存服务异常时记录日志，但不阻止请求（保证服务可用性）
+		// 注意：这里不返回true，避免因缓存故障导致所有请求被拒绝
+		logger.Error("检查Token黑名单失败", zap.Error(err))
+		return false
+	}
+
+	return exists
 }

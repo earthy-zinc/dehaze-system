@@ -5,11 +5,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type SysDictRouter struct{}
-
-func (r *SysDictRouter) InitSysDictRouter(Router *gin.RouterGroup) (R gin.IRoutes) {
-	sysDictRouter := Router.Group("dict")
-	sysDictApi := api.ApiGroupApp.SysDictApi
+func RegisterSysDictRoutes(rg *gin.RouterGroup, sysDictApi *api.SysDictApi) gin.IRoutes {
+	sysDictRouter := rg.Group("dict")
 	{
 		// 字典类型相关路由（优先级高，避免参数冲突）
 		sysDictRouter.GET("types/page", sysDictApi.GetDictTypePage)

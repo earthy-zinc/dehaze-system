@@ -3,6 +3,7 @@ package com.pei.dehaze.module.iot.controller.admin.device.vo.data;
 import com.pei.dehaze.framework.common.pojo.PageParam;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Schema(description = "管理后台 - IoT 设备日志分页查询 Request VO")
@@ -11,6 +12,7 @@ public class IotDeviceLogPageReqVO extends PageParam {
 
     @Schema(description = "设备标识", requiredMode = Schema.RequiredMode.REQUIRED, example = "device123")
     @NotEmpty(message = "设备标识不能为空")
+    @Pattern(regexp = "^[a-zA-Z0-9_]+$", message = "设备标识只能包含字母、数字和下划线")
     private String deviceKey;
 
     @Schema(description = "消息类型", example = "property")

@@ -9,13 +9,15 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var traceHeaders = []string{"X-Trace-ID", "traceparent", "sw8"}
+
 // Cors 放行所有跨域请求
 func Cors() gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Content-Type", "AccessToken", "X-CSRF-Token", "Authorization", "Token", "X-Token", "X-User-Id"},
-		ExposeHeaders:    []string{"Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type", "New-Token", "New-Expires-At"},
+		AllowHeaders:     append([]string{"Content-Type", "AccessToken", "X-CSRF-Token", "Authorization", "Token", "X-Token", "X-User-Id"}, traceHeaders...),
+		ExposeHeaders:    append([]string{"Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type", "New-Token", "New-Expires-At"}, traceHeaders...),
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	})
@@ -43,8 +45,8 @@ func CorsByRules() gin.HandlerFunc {
 		corsConfig = cors.Config{
 			AllowOrigins:     allowOrigins,
 			AllowMethods:     splitAndTrim(first.AllowMethods),
-			AllowHeaders:     splitAndTrim(first.AllowHeaders),
-			ExposeHeaders:    splitAndTrim(first.ExposeHeaders),
+			AllowHeaders:     ensureHeaders(splitAndTrim(first.AllowHeaders), traceHeaders),
+			ExposeHeaders:    ensureHeaders(splitAndTrim(first.ExposeHeaders), traceHeaders),
 			AllowCredentials: first.AllowCredentials,
 			MaxAge:           12 * time.Hour,
 		}
@@ -53,7 +55,7 @@ func CorsByRules() gin.HandlerFunc {
 		corsConfig = cors.Config{
 			AllowOrigins:     []string{},
 			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Content-Type", "Authorization"},
+			AllowHeaders:     append([]string{"Content-Type", "Authorization"}, traceHeaders...),
 			AllowCredentials: true,
 			MaxAge:           12 * time.Hour,
 		}
@@ -88,6 +90,35 @@ func splitAndTrim(s string) []string {
 		if trimmed := strings.TrimSpace(p); trimmed != "" {
 			result = append(result, trimmed)
 		}
+	}
+	return result
+}
+
+func ensureHeaders(headers []string, extras []string) []string {
+	if len(extras) == 0 {
+		return headers
+	}
+	result := make([]string, 0, len(headers)+len(extras))
+	seen := make(map[string]struct{}, len(headers)+len(extras))
+	for _, h := range headers {
+		if h == "" {
+			continue
+		}
+		if _, ok := seen[h]; ok {
+			continue
+		}
+		seen[h] = struct{}{}
+		result = append(result, h)
+	}
+	for _, h := range extras {
+		if h == "" {
+			continue
+		}
+		if _, ok := seen[h]; ok {
+			continue
+		}
+		seen[h] = struct{}{}
+		result = append(result, h)
 	}
 	return result
 }

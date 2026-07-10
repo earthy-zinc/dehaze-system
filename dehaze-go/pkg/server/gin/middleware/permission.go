@@ -25,13 +25,13 @@ func Permission(perms ...string) gin.HandlerFunc {
 		// 检查是否有任一权限
 		hasPerm, err := security.HasAnyPermission(c, perms...)
 		if err != nil {
-			common.FailWithMessage("权限校验失败: "+err.Error(), c)
+			_ = c.Error(common.WrapBizError(common.AUTHORIZED_ERROR, "权限校验失败", err))
 			c.Abort()
 			return
 		}
 
 		if !hasPerm {
-			common.FailWithMessage("权限不足", c)
+			_ = c.Error(common.NewBizError(common.AUTHORIZED_ERROR, "权限不足"))
 			c.Abort()
 			return
 		}
@@ -63,7 +63,7 @@ func PermissionWithWildcard(perms ...string) gin.HandlerFunc {
 		// 获取用户信息
 		claims := security.GetUserInfo(c)
 		if claims == nil {
-			common.NoAuth("未登录或非法访问，请登录", c)
+			_ = c.Error(common.NewBizError(common.ACCESS_UNAUTHORIZED, "未登录或非法访问，请登录"))
 			c.Abort()
 			return
 		}
@@ -72,7 +72,7 @@ func PermissionWithWildcard(perms ...string) gin.HandlerFunc {
 		for _, perm := range perms {
 			hasPerm, err := security.HasPermissionWithWildcardList(perm, claims.Authorities)
 			if err != nil {
-				common.FailWithMessage("权限校验失败: "+err.Error(), c)
+				_ = c.Error(common.WrapBizError(common.AUTHORIZED_ERROR, "权限校验失败", err))
 				c.Abort()
 				return
 			}
@@ -82,7 +82,7 @@ func PermissionWithWildcard(perms ...string) gin.HandlerFunc {
 			}
 		}
 
-		common.FailWithMessage("权限不足", c)
+		_ = c.Error(common.NewBizError(common.AUTHORIZED_ERROR, "权限不足"))
 		c.Abort()
 	}
 }
@@ -104,13 +104,13 @@ func RequireAllPermission(perms ...string) gin.HandlerFunc {
 		// 检查是否有所有权限
 		hasAll, err := security.HasAllPermissions(c, perms...)
 		if err != nil {
-			common.FailWithMessage("权限校验失败: "+err.Error(), c)
+			_ = c.Error(common.WrapBizError(common.AUTHORIZED_ERROR, "权限校验失败", err))
 			c.Abort()
 			return
 		}
 
 		if !hasAll {
-			common.FailWithMessage("权限不足，需要满足所有权限", c)
+			_ = c.Error(common.NewBizError(common.AUTHORIZED_ERROR, "权限不足，需要满足所有权限"))
 			c.Abort()
 			return
 		}
@@ -136,7 +136,7 @@ func RequireAllPermissionWithWildcard(perms ...string) gin.HandlerFunc {
 		// 获取用户信息
 		claims := security.GetUserInfo(c)
 		if claims == nil {
-			common.NoAuth("未登录或非法访问，请登录", c)
+			_ = c.Error(common.NewBizError(common.ACCESS_UNAUTHORIZED, "未登录或非法访问，请登录"))
 			c.Abort()
 			return
 		}
@@ -145,12 +145,12 @@ func RequireAllPermissionWithWildcard(perms ...string) gin.HandlerFunc {
 		for _, perm := range perms {
 			hasPerm, err := security.HasPermissionWithWildcardList(perm, claims.Authorities)
 			if err != nil {
-				common.FailWithMessage("权限校验失败: "+err.Error(), c)
+				_ = c.Error(common.WrapBizError(common.AUTHORIZED_ERROR, "权限校验失败", err))
 				c.Abort()
 				return
 			}
 			if !hasPerm {
-				common.FailWithMessage("权限不足，需要满足所有权限", c)
+				_ = c.Error(common.NewBizError(common.AUTHORIZED_ERROR, "权限不足，需要满足所有权限"))
 				c.Abort()
 				return
 			}

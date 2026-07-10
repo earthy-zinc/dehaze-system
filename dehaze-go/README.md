@@ -80,11 +80,30 @@ graph TD
    ```
 
 3. **配置文件**
-   修改 `config/config.yaml` 配置数据库连接等信息
+   修改 `config/config.yaml` 配置数据库连接等信息。
+   如需使用环境变量（例如 `DEHAZE_PASSWORD`），在项目根目录创建 `.env` 文件，启动时会自动读取。
 
 4. **启动服务**
+   测试运行推荐使用脚本（自动编译、检查端口、nohup 启动、输出日志）：
    ```bash
-   go run main.go
+   ./start.sh
+   ```
+   
+   - 日志输出在 `log/dehaze-go.log`，进程号记录在 `log/dehaze-go.pid`
+
+   或者直接运行：
+   ```bash
+   go run ./cmd/main.go
+   ```
+
+5. **Mock 生成（去脚本化）**
+   直接使用 `go:generate` 触发：
+   ```bash
+   go generate ./cmd
+   ```
+   如需单独执行，直接运行：
+   ```bash
+   mockery --config .mockery.yaml
    ```
 
 ## 📥 后续优化方案

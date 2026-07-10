@@ -1,155 +1,222 @@
+"""
+认证服务
+
+提供用户登录、验证码生成等功能
+"""
+
 import base64
-import random
+import secrets
 import string
 import uuid
-from datetime import datetime, timedelta
 from io import BytesIO
 
-import jwt
+from app.config import settings
+from app.repository.user_repository import user_repository
+from app.utils.jwt import JWTUtils
+from app.utils.password import check_password_async
 from PIL import Image, ImageDraw, ImageFont
-from flask import current_app
-
-from app.models import SysUser
-from app.utils.jwt_util import get_current_user_id
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class AuthService:
-    """认证服务类"""
-
     @staticmethod
-    def login(username: str, password: str) -> dict:
+    async def login(
+        db: AsyncSession,
+        username: str,
+        password: str,
+    ) -> dict:
         """
         用户登录
 
         Args:
-            username (str): 用户名
-            password (str): 密码
+            db: 异步数据库会话
+            username: 用户名
+            password: 密码
 
         Returns:
-            dict: 登录结果
+            登录结果，包含 token
+
+        Raises:
+            ValueError: 用户名或密码错误
         """
-        # 导入UserService以使用其密码验证方法
-        from app.service.user import UserService
+        # 查询用户
+        user = await user_repository.get_by_username(db, username)
 
-        # 验证用户凭据
-        user = SysUser.query.filter_by(username=username, deleted=0).first()
+        if not user:
+            raise ValueError("用户名或密码错误")
 
-        if not user or not UserService._check_password(password, user.password):
-            raise Exception("用户名或密码错误")
+        # 验证密码（异步执行，避免阻塞事件循环）
+        if user.password is None:
+            raise ValueError("用户密码未设置")
+        is_valid = await check_password_async(password, user.password)
+        if not is_valid:
+            raise ValueError("用户名或密码错误")
 
+        # 检查用户状态
         if user.status != 1:
-            raise Exception("用户已被禁用")
+            raise ValueError("用户已被禁用")
 
-        # 生成访问令牌
-        payload = {
-            'user_id': user.id,
-            'exp': datetime.utcnow() + timedelta(hours=24),
-            'iat': datetime.utcnow()
-        }
-        access_token = jwt.encode(
-            payload,
-            current_app.config.get('SECRET_KEY', 'default_secret_key'),
-            algorithm='HS256'
+        # 查询用户角色和权限
+        roles = await user_repository.get_user_role_codes(db, user.id)
+        permissions = await user_repository.get_user_permissions(db, user.id)
+
+        # 使用 JWT 工具类生成 Token
+        if user.username is None or user.nickname is None:
+            raise ValueError("用户信息不完整")
+        access_token = JWTUtils.create_access_token(
+            user_id=user.id,
+            username=user.username,
+            nickname=user.nickname,
+            roles=roles,
+            permissions=permissions,
         )
 
         return {
-            'tokenType': 'Bearer',
-            'accessToken': access_token
+            "tokenType": "Bearer",
+            "accessToken": access_token,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "nickname": user.nickname,
+            },
         }
 
     @staticmethod
-    def logout():
-        """
-        用户注销
-        """
-        # 获取当前用户的ID
-        user_id = get_current_user_id()
-        if not user_id:
-            raise Exception("未找到有效的用户会话")
-
-        # 在实际应用中，可以将令牌加入黑名单
-        # 这里简化处理，仅清除会话相关信息
-        pass
-
-    @staticmethod
-    def get_captcha() -> dict:
+    async def get_captcha(redis: Redis) -> dict:
         """
         获取验证码
 
+        Args:
+            redis: Redis 异步客户端
+
         Returns:
-            dict: 验证码信息
+            验证码信息
         """
-        # 生成验证码文本
-        captcha_text = ''.join(random.choices(string.ascii_uppercase + string.digits, k=4))
+        # 生成验证码文本（使用 secrets 确保随机性）
+        captcha_text = "".join(
+            secrets.choice(string.ascii_uppercase + string.digits)
+            for _ in range(settings.CAPTCHA_LENGTH)
+        )
 
         # 生成验证码图片
-        image = Image.new('RGB', (120, 40), color=(255, 255, 255))
+        image = Image.new(
+            "RGB",
+            (settings.CAPTCHA_WIDTH, settings.CAPTCHA_HEIGHT),
+            color=(255, 255, 255),
+        )
         draw = ImageDraw.Draw(image)
 
-        # 使用默认字体绘制文本
+        # 使用默认字体
         try:
-            font = ImageFont.truetype('arial.ttf', 24)
-        except:
+            font = ImageFont.truetype("arial.ttf", settings.CAPTCHA_FONT_SIZE)
+        except OSError:
             font = ImageFont.load_default()
 
         draw.text((20, 10), captcha_text, fill=(0, 0, 0), font=font)
 
-        # 添加一些干扰线
-        for _ in range(5):
-            x1 = random.randint(0, 120)
-            y1 = random.randint(0, 40)
-            x2 = random.randint(0, 120)
-            y2 = random.randint(0, 40)
+        # 添加干扰线（使用 secrets 生成随机坐标）
+        for _ in range(settings.CAPTCHA_NOISE_LINES):
+            x1 = secrets.randbelow(settings.CAPTCHA_WIDTH)
+            y1 = secrets.randbelow(settings.CAPTCHA_HEIGHT)
+            x2 = secrets.randbelow(settings.CAPTCHA_WIDTH)
+            y2 = secrets.randbelow(settings.CAPTCHA_HEIGHT)
             draw.line([(x1, y1), (x2, y2)], fill=(0, 0, 0), width=1)
 
-        # 将图片转换为base64编码
+        # 转换为 base64
         buffered = BytesIO()
         image.save(buffered, format="JPEG")
         img_str = base64.b64encode(buffered.getvalue()).decode()
 
-        # 生成验证码key
+        # 生成验证码 key
         captcha_key = str(uuid.uuid4())
 
-        # 将验证码文本存储到Redis中，设置过期时间（5分钟）
-        redis_client = current_app.extensions.get('redis_client')
-        if redis_client:
-            redis_client.setex(f"captcha:{captcha_key}", 300, captcha_text)
+        # 存储到 Redis
+        await redis.setex(f"captcha:{captcha_key}", settings.CAPTCHA_EXPIRES, captcha_text)
 
         return {
-            'captchaKey': captcha_key,
-            'captchaBase64': f"data:image/jpeg;base64,{img_str}"
+            "captchaKey": captcha_key,
+            "captchaBase64": f"data:image/jpeg;base64,{img_str}",
         }
 
     @staticmethod
-    def verify_captcha(captcha_key: str, captcha_code: str) -> bool:
+    async def verify_captcha(redis: Redis, captcha_key: str, captcha_code: str) -> bool:
         """
         验证验证码
 
         Args:
-            captcha_key (str): 验证码key
-            captcha_code (str): 用户输入的验证码
+            redis: Redis 异步客户端
+            captcha_key: 验证码 key
+            captcha_code: 用户输入的验证码
 
         Returns:
-            bool: 验证结果
+            验证结果
         """
-        # 获取Redis客户端
-        redis_client = current_app.extensions.get('redis_client')
-
-        # 检查Redis客户端是否存在
-        if not redis_client:
-            return False
-
-        # 从Redis中获取验证码文本
-        stored_captcha = redis_client.get(f"captcha:{captcha_key}")
+        stored_captcha = await redis.get(f"captcha:{captcha_key}")
 
         if not stored_captcha:
             return False
 
         # 比较验证码（不区分大小写）
-        result = stored_captcha.decode().lower() == captcha_code.lower()
+        if isinstance(stored_captcha, bytes):
+            stored_captcha = stored_captcha.decode()
 
-        # 验证后删除验证码
+        result = stored_captcha.lower() == captcha_code.lower()
+
+        # 验证后删除
         if result:
-            redis_client.delete(f"captcha:{captcha_key}")
+            await redis.delete(f"captcha:{captcha_key}")
 
         return result
+
+    @staticmethod
+    async def refresh_token(
+        db: AsyncSession,
+        user_id: int,
+        redis: Redis,
+    ) -> dict:
+        """
+        刷新访问令牌
+
+        Args:
+            db: 异步数据库会话
+            user_id: 用户ID
+            redis: Redis 客户端
+
+        Returns:
+            新的访问令牌
+
+        Raises:
+            ValueError: 用户不存在或已禁用
+        """
+        # 验证用户状态
+        user = await user_repository.get_by_id(db, user_id)
+        if not user:
+            raise ValueError("用户不存在")
+        if user.status != 1:
+            raise ValueError("用户已被禁用")
+
+        # 查询用户角色和权限
+        roles = await user_repository.get_user_role_codes(db, user.id)
+        permissions = await user_repository.get_user_permissions(db, user.id)
+
+        # 使用 JWT 工具类生成 Token
+        if user.username is None or user.nickname is None:
+            raise ValueError("用户信息不完整")
+        access_token = JWTUtils.create_access_token(
+            user_id=user.id,
+            username=user.username,
+            nickname=user.nickname,
+            roles=roles,
+            permissions=permissions,
+        )
+
+        return {
+            "tokenType": "Bearer",
+            "accessToken": access_token,
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "nickname": user.nickname,
+            },
+        }

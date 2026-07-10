@@ -7,7 +7,7 @@ import torchvision.utils
 from PIL import Image
 
 from algorithm.WPXNet.ridcp_new_arch import FusionRefine
-from app.utils.image import preprocess_image
+from algorithm.image_utils import preprocess_image
 
 
 def ntire_gamma_correction(file: BytesIO, filepath: str = None) -> np.ndarray:

@@ -31,6 +31,9 @@ type CacheManager struct {
 	// 多级缓存
 	multiLevelCache *multilevel.MultiLevelCache
 
+	// Pub/Sub 缓存失效广播
+	pubsub *redis.PubSub
+
 	// 防护组件
 	bloomFilter  *protection.BloomFilter
 	singleFlight *protection.SingleFlight
@@ -51,13 +54,26 @@ func Init() *CacheManager {
 		}
 
 		if cacheManager.config.Redis.Enabled {
-			cacheManager.redisCache, _ = redis.InitRedis()
+			var err error
+			cacheManager.redisCache, err = redis.InitRedis()
+			if err != nil {
+				logger.Error("Redis 初始化失败", zap.Error(err))
+				// 非 fallback 模式下，Redis 是必需的，应返回错误让上层感知
+				if !cacheManager.config.Fallback.Enabled {
+					logger.Error("Redis 初始化失败且未启用 fallback 模式，缓存服务不可用")
+					return
+				}
+				logger.Warn("已启用 fallback 模式，将降级使用本地缓存")
+			}
 		}
 
 		if cacheManager.localCache == nil && cacheManager.redisCache == nil {
 			logger.Error("所有缓存后端都不可用")
 			return
 		}
+
+		// 初始化 Pub/Sub 缓存失效广播
+		cacheManager.initPubSub()
 
 		// 初始化防护组件
 		cacheManager.initProtection()
@@ -85,6 +101,48 @@ func GetCache() types.ICache {
 		return nil
 	}
 	return manager.GetCache()
+}
+
+// initPubSub 初始化 Pub/Sub 缓存失效广播
+func (m *CacheManager) initPubSub() {
+	psCfg := m.config.PubSub
+
+	// 未启用则跳过
+	if !psCfg.Enabled {
+		logger.Debug("Pub/Sub 缓存失效广播未启用")
+		return
+	}
+
+	// Redis 未初始化则跳过
+	if m.redisCache == nil {
+		logger.Warn("Redis 未初始化，Pub/Sub 缓存失效广播不可用")
+		return
+	}
+
+	// 设置默认频道名称
+	channel := psCfg.Channel
+	if channel == "" {
+		channel = "cache:invalidation"
+	}
+
+	// 设置实例标识
+	senderID := psCfg.SenderID
+	if senderID == "" {
+		// 使用默认标识（可以考虑使用 hostname 或 pod name）
+		senderID = "dehaze-instance"
+	}
+
+	var err error
+	m.pubsub, err = redis.InitPubSub(channel, senderID, psCfg.MaxConcurrency)
+	if err != nil {
+		logger.Error("Pub/Sub 初始化失败", zap.Error(err))
+		return
+	}
+
+	logger.Info("Pub/Sub 缓存失效广播初始化成功",
+		zap.String("channel", channel),
+		zap.String("senderId", senderID),
+	)
 }
 
 // initProtection 初始化防护组件
@@ -249,6 +307,11 @@ func (m *CacheManager) Close() error {
 
 	var errs []error
 
+	// 停止 Pub/Sub
+	if m.pubsub != nil {
+		m.pubsub.Stop()
+	}
+
 	if m.redisCache != nil {
 		if err := redis.Close(); err != nil {
 			logger.Error("关闭 Redis 连接失败", zap.Error(err))
@@ -266,4 +329,11 @@ func (m *CacheManager) Close() error {
 
 	logger.Info("缓存管理器已关闭")
 	return nil
+}
+
+// GetPubSub 获取 Pub/Sub 实例
+func (m *CacheManager) GetPubSub() *redis.PubSub {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.pubsub
 }

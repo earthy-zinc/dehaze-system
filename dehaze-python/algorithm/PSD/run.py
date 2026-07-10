@@ -8,11 +8,11 @@ from PIL import Image
 from torch import nn
 from torchvision.transforms import Compose, ToTensor, Normalize
 
-from app.utils.image import postprocess_image
+from algorithm.image_utils import postprocess_image
 from .FFA import FFANet
 from .GCA import GCANet
 from .MSBDN import MSBDNNet
-from config import Config
+from algorithm.config import Config
 
 
 def get_model(model_path: str):

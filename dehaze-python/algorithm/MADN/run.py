@@ -4,11 +4,11 @@ from io import BytesIO
 import cv2
 import numpy as np
 import torch
-from config import Config
+from algorithm.config import Config
 from torch.autograd import Variable
 from torchvision.transforms import transforms
 
-from app.utils.image import preprocess_image, postprocess_image
+from algorithm.image_utils import preprocess_image, postprocess_image
 from .model200314 import TransformNet
 from .modelmeta import Meta
 from .pregrocess import pre

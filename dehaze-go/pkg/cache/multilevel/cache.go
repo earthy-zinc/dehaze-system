@@ -6,9 +6,9 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/earthyzinc/dehaze-go/pkg/cache/errs"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/protection"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
-	global_error "github.com/earthyzinc/dehaze-go/pkg/error"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -39,7 +39,7 @@ func NewMultiLevelCache(opts ...Option) (*MultiLevelCache, error) {
 func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 	// 1. 布隆过滤器检查（防穿透）
 	if m.opts.BloomFilter != nil && !m.opts.BloomFilter.MayExist(key) {
-		return "", global_error.ErrKeyNotFound
+		return "", errs.ErrKeyNotFound
 	}
 
 	// 2. 尝试从L1获取
@@ -48,7 +48,7 @@ func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 		if err == nil {
 			// 检查是否为空值标记
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
-				return "", global_error.ErrKeyNotFound
+				return "", errs.ErrKeyNotFound
 			}
 			return val, nil
 		}
@@ -60,7 +60,7 @@ func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 		if err == nil {
 			// 检查是否为空值标记
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
-				return "", global_error.ErrKeyNotFound
+				return "", errs.ErrKeyNotFound
 			}
 			// 回填L1
 			m.writeBackToL1(ctx, key, val)
@@ -68,7 +68,7 @@ func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 		}
 	}
 
-	return "", global_error.ErrKeyNotFound
+	return "", errs.ErrKeyNotFound
 }
 
 // GetWithLoader 带数据加载器的多级缓存读取
@@ -76,7 +76,7 @@ func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader protection.DataLoader) (string, error) {
 	// 1. 布隆过滤器检查（防穿透）
 	if m.opts.BloomFilter != nil && !m.opts.BloomFilter.MayExist(key) {
-		return "", global_error.ErrKeyNotFound
+		return "", errs.ErrKeyNotFound
 	}
 
 	// 2. 尝试从L1获取
@@ -84,7 +84,7 @@ func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader 
 		val, err := m.opts.L1Cache.Get(ctx, key)
 		if err == nil {
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
-				return "", global_error.ErrKeyNotFound
+				return "", errs.ErrKeyNotFound
 			}
 			return val, nil
 		}
@@ -95,7 +95,7 @@ func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader 
 		val, err := m.getFromL2WithBreaker(ctx, key)
 		if err == nil {
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
-				return "", global_error.ErrKeyNotFound
+				return "", errs.ErrKeyNotFound
 			}
 			m.writeBackToL1(ctx, key, val)
 			return val, nil
@@ -107,7 +107,7 @@ func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader 
 		return m.loadWithSingleFlight(ctx, key, loader)
 	}
 
-	return "", global_error.ErrKeyNotFound
+	return "", errs.ErrKeyNotFound
 }
 
 // Set 设置缓存
@@ -495,7 +495,7 @@ func (m *MultiLevelCache) HGet(ctx context.Context, key, field string) (string, 
 		return "", err
 	}
 
-	return "", global_error.ErrKeyNotFound
+	return "", errs.ErrKeyNotFound
 }
 
 // HSet 设置哈希表中指定字段的值
@@ -667,7 +667,7 @@ func (m *MultiLevelCache) loadWithSingleFlight(ctx context.Context, key string, 
 
 	if err != nil {
 		// 数据不存在，设置空值缓存（防穿透）
-		if m.opts.NullCache != nil && errors.Is(err, global_error.ErrKeyNotFound) {
+		if m.opts.NullCache != nil && errors.Is(err, errs.ErrKeyNotFound) {
 			_ = m.opts.NullCache.SetNull(ctx, key, 0)
 		}
 		return "", err

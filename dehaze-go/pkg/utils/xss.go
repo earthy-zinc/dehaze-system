@@ -2,47 +2,59 @@ package utils
 
 // XSS 安全防护工具
 //
-// 重要说明：
-// 1. 本文件使用正则表达式进行 HTML 清理，虽然可以防御大多数 XSS 攻击，
-//    但不能完全替代专业的 HTML 解析库（如 golang.org/x/net/html）。
-// 2. 正则表达式匹配 HTML 存在固有限制，复杂的 HTML 结构可能被绕过。
-// 3. 对于富文本编辑器等复杂场景，建议使用专业的 HTML 清理库（如 bluemonday）。
-// 4. 本工具主要用于简单场景的 XSS 防护，作为深度防御的一部分。
+// 实现策略：
+// - 简单场景（纯文本）：使用标准库 html.EscapeString 进行 HTML 实体编码
+// - 富文本场景：使用 bluemonday 进行专业的 HTML 解析和清理
+//
+// bluemonday 基于 golang.org/x/net/html 进行真正的 HTML 解析，相比正则表达式：
+// - 能正确处理嵌套、畸形 HTML
+// - 使用白名单机制，默认拒绝所有，更安全
+// - 支持 CSS 清理（通过 gorilla/css）
 //
 // 安全最佳实践：
 // - 始终在输出时进行转义（Output Encoding），而不是仅在输入时
 // - 使用 Content Security Policy (CSP) 作为额外的防护层
-// - 对于用户生成的富文本内容，使用专门的 HTML 清理库
-//
-// 修复说明 (P0 问题)：
-// - 添加了本注释说明正则表达式的局限性
-// - 将 SQL 注入防护移至独立的 sql_injection.go 文件
-// - SQL 注入防护不应与 XSS 防护混在一起，遵循单一职责原则
+// - 根据上下文选择合适的清理方法
 
 import (
 	"bytes"
 	"html"
 	"regexp"
 	"strings"
+
+	"github.com/microcosm-cc/bluemonday"
 )
 
 // XSSUtil XSS 防护工具类
 // 用于防止跨站脚本攻击 (Cross-Site Scripting)
-type XSSUtil struct{}
+type XSSUtil struct {
+	// UGCPolicy: User Generated Content 策略，允许安全的 HTML 标签
+	// 适用于评论区、文章内容等富文本场景
+	UGCPolicy *bluemonday.Policy
+	// StrictPolicy: 严格策略，只允许极少数安全标签
+	// 适用于需要更多限制的场景
+	StrictPolicy *bluemonday.Policy
+	// StripTagsPolicy: 移除所有 HTML 标签，只保留文本内容
+	StripTagsPolicy *bluemonday.Policy
+}
 
 // NewXSSUtil 创建 XSS 防护工具实例
 func NewXSSUtil() *XSSUtil {
-	return &XSSUtil{}
+	return &XSSUtil{
+		UGCPolicy:       bluemonday.UGCPolicy(),
+		StrictPolicy:    bluemonday.StrictPolicy(),
+		StripTagsPolicy: bluemonday.StripTagsPolicy(),
+	}
 }
 
-// DANGEROUS_TAGS 危险的 HTML 标签列表
+// DANGEROUS_TAGS 危险的 HTML 标签列表（用于检测）
 var DANGEROUS_TAGS = []string{
 	"script", "iframe", "object", "embed", "form", "input", "textarea",
 	"button", "select", "option", "meta", "link", "style", "base",
 	"applet", "param", "video", "audio", "source", "track",
 }
 
-// DANGEROUS_ATTRIBUTES 危险的 HTML 属性列表
+// DANGEROUS_ATTRIBUTES 危险的 HTML 属性列表（用于检测）
 var DANGEROUS_ATTRIBUTES = []string{
 	"onclick", "ondblclick", "onmousedown", "onmouseup", "onmouseover",
 	"onmousemove", "onmouseout", "onfocus", "onblur", "onkeypress",
@@ -51,20 +63,20 @@ var DANGEROUS_ATTRIBUTES = []string{
 	"javascript:", "data:", "vbscript:",
 }
 
+// ==================== 简单场景方法（纯文本转义）====================
+
 // SanitizeInput 转义 HTML 特殊字符
 // 将 <, >, &, ", ' 等特殊字符转换为 HTML 实体
 //
+// 适用场景：纯文本输入，不需要保留任何 HTML 格式
+//
 // 参数:
-//   input: 需要清理的用户输入字符串
+//
+//	input: 需要清理的用户输入字符串
 //
 // 返回:
-//   转义后的安全字符串
 //
-// 安全原理:
-// - 使用标准库 html.EscapeString 进行 HTML 实体编码
-// - 将特殊字符转换为 HTML 实体，防止浏览器将其解析为 HTML 标签
-// - < 转换为 &lt; > 转换为 &gt; & 转换为 &amp;
-// - " 转换为 &quot; ' 转换为 &#39;
+//	转义后的安全字符串
 //
 // 使用示例:
 //
@@ -80,18 +92,17 @@ func (u *XSSUtil) SanitizeInput(input string) string {
 }
 
 // SanitizeInputDeep 深度转义 HTML 特殊字符
-// 递归处理字符串中的所有潜在危险字符
+// 递归处理字符串中的所有潜在危险字符，包括 Unicode 和 URL 编码
+//
+// 适用场景：需要额外防护的纯文本场景
 //
 // 参数:
-//   input: 需要深度清理的用户输入字符串
+//
+//	input: 需要深度清理的用户输入字符串
 //
 // 返回:
-//   深度转义后的安全字符串
 //
-// 安全原理:
-// - 在标准转义的基础上，额外处理一些边缘情况
-// - 处理 Unicode 编码的攻击向量
-// - 处理 URL 编码的攻击向量
+//	深度转义后的安全字符串
 func (u *XSSUtil) SanitizeInputDeep(input string) string {
 	if input == "" {
 		return ""
@@ -118,146 +129,184 @@ func (u *XSSUtil) SanitizeInputDeep(input string) string {
 	return result
 }
 
-// StripDangerousTags 移除危险的 HTML 标签
-// 使用正则表达式移除所有危险的 HTML 标签及其内容
+// ==================== 富文本场景方法（基于 bluemonday）====================
+
+// SanitizeHTML 清理富文本 HTML 内容
+// 使用 bluemonday UGC 策略进行安全的 HTML 清理
+//
+// 适用场景：
+// - 评论区、文章内容、用户生成的富文本
+// - 需要保留部分安全的 HTML 格式（如 <p>, <b>, <a> 等）
+//
+// UGC 策略允许的标签包括：
+// - 文本格式：<p>, <br>, <b>, <i>, <u>, <strong>, <em>, <s>, <del>
+// - 标题：<h1>-<h6>
+// - 列表：<ul>, <ol>, <li>
+// - 链接：<a>（仅允许 http/https/mailto 协议，自动添加 rel="nofollow"）
+// - 图片：<img>（仅允许 http/https 协议）
+// - 引用：<blockquote>
+// - 代码：<code>, <pre>
 //
 // 参数:
-//   htmlContent: 可能包含 HTML 标签的字符串
+//
+//	htmlContent: 可能包含 HTML 的用户输入
 //
 // 返回:
-//   移除危险标签后的安全字符串
 //
-// 安全原理:
-// - 使用正则表达式匹配并移除危险的 HTML 标签
-// - 同时移除自闭合标签和普通标签
-// - 移除标签内容中的危险事件处理器
+//	清理后的安全 HTML
 //
 // 使用示例:
 //
 //	xss := NewXSSUtil()
-//	input := `<div><script>alert('XSS')</script>Hello</div>`
-//	safe := xss.StripDangerousTags(input)
-//	// safe = "<div>Hello</div>"
-func (u *XSSUtil) StripDangerousTags(htmlContent string) string {
+//	input := `<p onclick="alert('XSS')">Hello</p><script>evil()</script>`
+//	safe := xss.SanitizeHTML(input)
+//	// safe = "<p>Hello</p>"
+func (u *XSSUtil) SanitizeHTML(htmlContent string) string {
 	if htmlContent == "" {
 		return ""
 	}
-
-	result := htmlContent
-
-	// 移除危险的 HTML 标签（包括自闭合标签）
-	for _, tag := range DANGEROUS_TAGS {
-		// 移除 <tag>...</tag>
-		regex := regexp.MustCompile(`(?i)<`+tag+`[^>]*>.*?</`+tag+`>`)
-		result = regex.ReplaceAllString(result, "")
-
-		// 移除 <tag />
-		regexSelfClose := regexp.MustCompile(`(?i)<`+tag+`[^>]*/>`)
-		result = regexSelfClose.ReplaceAllString(result, "")
-
-		// 移除 <tag>
-		regexOpen := regexp.MustCompile(`(?i)<`+tag+`[^>]*>`)
-		result = regexOpen.ReplaceAllString(result, "")
-
-		// 移除 </tag>
-		regexClose := regexp.MustCompile(`(?i)</`+tag+`>`)
-		result = regexClose.ReplaceAllString(result, "")
-	}
-
-	return result
+	return u.UGCPolicy.Sanitize(htmlContent)
 }
 
-// StripDangerousAttributes 移除危险的 HTML 属性
-// 移除可能导致 XSS 的 HTML 属性（如 onclick、javascript: 等）
+// SanitizeHTMLStrict 严格清理富文本 HTML 内容
+// 使用 bluemonday Strict 策略，只允许极少数安全标签
+//
+// 适用场景：
+// - 需要更多限制的富文本场景
+// - 只允许基本格式，不允许图片、链接等
+//
+// Strict 策略允许的标签：
+// - 文本格式：<b>, <i>, <u>, <strong>, <em>
 //
 // 参数:
-//   htmlContent: 可能包含危险属性的 HTML 字符串
+//
+//	htmlContent: 可能包含 HTML 的用户输入
 //
 // 返回:
-//   移除危险属性后的安全字符串
 //
-// 安全原理:
-// - 移除所有 on* 事件处理器
-// - 移除 javascript:、data:、vbscript: 等危险协议
-// - 保留其他合法的 HTML 属性
+//	严格清理后的安全 HTML
+func (u *XSSUtil) SanitizeHTMLStrict(htmlContent string) string {
+	if htmlContent == "" {
+		return ""
+	}
+	return u.StrictPolicy.Sanitize(htmlContent)
+}
+
+// StripAllHTML 移除所有 HTML 标签，只保留纯文本
+//
+// 适用场景：
+// - 需要提取纯文本内容
+// - 不需要保留任何 HTML 格式
+//
+// 参数:
+//
+//	htmlContent: 可能包含 HTML 的字符串
+//
+// 返回:
+//
+//	移除所有标签后的纯文本
 //
 // 使用示例:
 //
 //	xss := NewXSSUtil()
-//	input := `<a href="#" onclick="alert('XSS')">Click me</a>`
-//	safe := xss.StripDangerousAttributes(input)
-//	// safe = `<a href="#">Click me</a>`
-func (u *XSSUtil) StripDangerousAttributes(htmlContent string) string {
+//	input := `<p>Hello <b>World</b></p>`
+//	safe := xss.StripAllHTML(input)
+//	// safe = "Hello World"
+func (u *XSSUtil) StripAllHTML(htmlContent string) string {
 	if htmlContent == "" {
 		return ""
 	}
-
-	result := htmlContent
-
-	// 移除危险的属性
-	for _, attr := range DANGEROUS_ATTRIBUTES {
-		// 匹配属性名称和值
-		// 例如: onclick="alert('XSS')" 或 onclick='alert("XSS")' 或 onclick=alert('XSS')
-		regex := regexp.MustCompile(`(?i)\s+`+regexp.QuoteMeta(attr)+`\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)`)
-		result = regex.ReplaceAllString(result, "")
-
-		// 移除属性名本身（如果没有值）
-		regexNoValue := regexp.MustCompile(`(?i)\s+`+regexp.QuoteMeta(attr)+`\s*(?=[\s>])`)
-		result = regexNoValue.ReplaceAllString(result, "")
-	}
-
-	return result
+	return u.StripTagsPolicy.Sanitize(htmlContent)
 }
 
 // StripXSS 综合清理函数
-// 组合使用多种方法来防御 XSS 攻击
+// 使用 bluemonday 进行安全的 HTML 清理，然后转义剩余的特殊字符
 //
-// 参数:
-//   input: 需要清理的用户输入
-//
-// 返回:
-//   清理后的安全字符串
+// 适用场景：需要最严格防护的场景，不保留任何 HTML 格式
 //
 // 清理步骤:
-// 1. 移除危险的 HTML 标签
-// 2. 移除危险的 HTML 属性
-// 3. 转义剩余的 HTML 特殊字符
+// 1. 使用 bluemonday StripTagsPolicy 移除所有 HTML 标签
+// 2. 转义剩余的 HTML 特殊字符
+//
+// 参数:
+//
+//	input: 需要清理的用户输入
+//
+// 返回:
+//
+//	清理后的安全字符串
 //
 // 使用示例:
 //
 //	xss := NewXSSUtil()
 //	input := `<div onclick="alert('XSS')"><script>evil()</script>Hello</div>`
 //	safe := xss.StripXSS(input)
-//	// safe = "&lt;div&gt;Hello&lt;/div&gt;"
+//	// safe = "Hello"（或转义后的纯文本）
 func (u *XSSUtil) StripXSS(input string) string {
 	if input == "" {
 		return ""
 	}
 
-	// 步骤1: 移除危险的 HTML 标签
-	result := u.StripDangerousTags(input)
+	// 步骤1: 使用 bluemonday 移除所有 HTML 标签
+	result := u.StripTagsPolicy.Sanitize(input)
 
-	// 步骤2: 移除危险的 HTML 属性
-	result = u.StripDangerousAttributes(result)
-
-	// 步骤3: 转义剩余的 HTML 特殊字符
-	result = u.SanitizeInput(result)
+	// 步骤2: 转义剩余的 HTML 特殊字符
+	result = html.EscapeString(result)
 
 	return result
 }
+
+// StripDangerousTags 移除危险的 HTML 标签
+// 使用 bluemonday 进行安全的 HTML 清理
+//
+// 参数:
+//
+//	htmlContent: 可能包含 HTML 标签的字符串
+//
+// 返回:
+//
+//	移除危险标签后的安全字符串
+//
+// 注意：此方法现在内部使用 SanitizeHTML，保留安全的 HTML 格式
+// 如需移除所有标签，请使用 StripAllHTML
+func (u *XSSUtil) StripDangerousTags(htmlContent string) string {
+	if htmlContent == "" {
+		return ""
+	}
+	return u.UGCPolicy.Sanitize(htmlContent)
+}
+
+// StripDangerousAttributes 移除危险的 HTML 属性
+// 使用 bluemonday 进行安全的属性清理
+//
+// 参数:
+//
+//	htmlContent: 可能包含危险属性的 HTML 字符串
+//
+// 返回:
+//
+//	移除危险属性后的安全字符串
+//
+// 注意：此方法现在内部使用 SanitizeHTML，会同时移除危险标签和属性
+func (u *XSSUtil) StripDangerousAttributes(htmlContent string) string {
+	if htmlContent == "" {
+		return ""
+	}
+	return u.UGCPolicy.Sanitize(htmlContent)
+}
+
+// ==================== URL 清理方法 ====================
 
 // SanitizeURL 清理 URL 中的危险字符
 // 防止通过 URL 进行 XSS 攻击
 //
 // 参数:
-//   url: 需要清理的 URL
+//
+//	url: 需要清理的 URL
 //
 // 返回:
-//   清理后的安全 URL
 //
-// 安全原理:
-// - 移除 javascript:、data:、vbscript: 等危险协议
-// - 移除可能导致重定向的 URL 参数
+//	清理后的安全 URL
 //
 // 使用示例:
 //
@@ -291,13 +340,17 @@ func (u *XSSUtil) SanitizeURL(url string) string {
 	return result
 }
 
+// ==================== 检测方法 ====================
+
 // ValidateScriptContent 检查字符串中是否包含脚本代码
 //
 // 参数:
-//   content: 需要检查的内容
+//
+//	content: 需要检查的内容
 //
 // 返回:
-//   bool: 如果包含脚本代码返回 true，否则返回 false
+//
+//	bool: 如果包含脚本代码返回 true，否则返回 false
 //
 // 使用示例:
 //
@@ -340,10 +393,12 @@ func (u *XSSUtil) ValidateScriptContent(content string) bool {
 // 防止 JSON 数据中的脚本在 HTML 中被执行
 //
 // 参数:
-//   jsonStr: JSON 字符串
+//
+//	jsonStr: JSON 字符串
 //
 // 返回:
-//   在 HTML 中安全使用的 JSON 字符串
+//
+//	在 HTML 中安全使用的 JSON 字符串
 //
 // 使用示例:
 //
@@ -385,10 +440,12 @@ func (u *XSSUtil) SanitizeJSONForHTML(jsonStr string) string {
 // IsXSSAttack 检测输入是否可能是 XSS 攻击
 //
 // 参数:
-//   input: 需要检测的输入
+//
+//	input: 需要检测的输入
 //
 // 返回:
-//   bool: 如果可能是 XSS 攻击返回 true，否则返回 false
+//
+//	bool: 如果可能是 XSS 攻击返回 true，否则返回 false
 //
 // 使用示例:
 //
@@ -417,4 +474,50 @@ func (u *XSSUtil) IsXSSAttack(input string) bool {
 
 	// 检查脚本内容
 	return u.ValidateScriptContent(input)
+}
+
+// ==================== 自定义策略 ====================
+
+// SanitizeWithPolicy 使用自定义策略清理 HTML
+//
+// 适用场景：需要自定义允许的标签和属性
+//
+// 参数:
+//
+//	htmlContent: 可能包含 HTML 的字符串
+//	policy: bluemonday 策略实例
+//
+// 返回:
+//
+//	按自定义策略清理后的安全字符串
+//
+// 使用示例:
+//
+//	xss := NewXSSUtil()
+//	p := bluemonday.NewPolicy().
+//	    AllowElements("p", "br").
+//	    AllowAttrs("class").OnElements("p")
+//	safe := xss.SanitizeWithPolicy(input, p)
+func (u *XSSUtil) SanitizeWithPolicy(htmlContent string, policy *bluemonday.Policy) string {
+	if htmlContent == "" || policy == nil {
+		return ""
+	}
+	return policy.Sanitize(htmlContent)
+}
+
+// CreateCustomPolicy 创建自定义清理策略
+//
+// 返回:
+//
+//	一个新的 bluemonday 策略构建器，可链式调用配置
+//
+// 使用示例:
+//
+//	xss := NewXSSUtil()
+//	p := xss.CreateCustomPolicy().
+//	    AllowElements("p", "b", "i", "u").
+//	    AllowAttrs("class").OnElements("p")
+//	safe := p.Sanitize(input)
+func (u *XSSUtil) CreateCustomPolicy() *bluemonday.Policy {
+	return bluemonday.NewPolicy()
 }

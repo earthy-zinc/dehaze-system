@@ -115,7 +115,7 @@ func AntiRepeat(config AntiRepeatConfig) gin.HandlerFunc {
 			if config.OnCustomError != nil {
 				config.OnCustomError(c)
 			} else {
-				common.FailWithCode(common.REPEAT_SUBMIT_ERROR, c)
+				_ = c.Error(common.NewBizError(common.REPEAT_SUBMIT_ERROR, common.REPEAT_SUBMIT_ERROR.Msg))
 			}
 
 			c.Abort()

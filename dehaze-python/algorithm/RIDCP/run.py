@@ -2,8 +2,8 @@ from io import BytesIO
 
 import torch
 
-from app.utils.image import preprocess_image, postprocess_image
-from config import Config
+from algorithm.image_utils import preprocess_image, postprocess_image
+from algorithm.config import Config
 from .dehaze_vq_weight_arch import VQWeightDehazeNet
 
 

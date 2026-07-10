@@ -9,10 +9,10 @@ import torchvision
 import torchvision.transforms.functional
 from PIL import Image
 
-from app.utils.image import postprocess_image
+from algorithm.image_utils import postprocess_image
 from .config import Config
 from .models import Model
-from config import Config as GlobalConfig
+from algorithm.config import Config as GlobalConfig
 
 
 def get_model(model_path: str):

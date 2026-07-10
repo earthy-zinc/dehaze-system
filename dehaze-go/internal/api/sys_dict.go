@@ -6,14 +6,21 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
-	"github.com/earthyzinc/dehaze-go/internal/service"
+	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/gin-gonic/gin"
 )
 
 type SysDictApi struct {
-	dictService     service.IDictService
-	dictTypeService service.IDictTypeService
+	dictService     dictservice.IDictService
+	dictTypeService dictservice.IDictTypeService
+}
+
+func NewSysDictApi(dictService dictservice.IDictService, dictTypeService dictservice.IDictTypeService) *SysDictApi {
+	return &SysDictApi{
+		dictService:     dictService,
+		dictTypeService: dictTypeService,
+	}
 }
 
 // GetDictPage 字典分页列表
@@ -26,7 +33,7 @@ type SysDictApi struct {
 // @Param typeCode query string false "字典类型编码"
 // @Param pageNum query int false "页码"
 // @Param pageSize query int false "每页条数"
-// @Success 200 {object} vo.Result{data=vo.PageResult[vo.DictPageVO]}
+// @Success 200 {object} common.Response{data=common.PageResult}
 // @Router /api/v1/dict/page [get]
 func (api *SysDictApi) GetDictPage(c *gin.Context) {
 	// 解析查询参数
@@ -57,7 +64,7 @@ func (api *SysDictApi) GetDictPage(c *gin.Context) {
 	// 调用服务获取分页数据
 	result, err := api.dictService.GetPage(c.Request.Context(), &queryParams)
 	if err != nil {
-		common.FailWithMessage("获取字典分页列表失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -71,21 +78,21 @@ func (api *SysDictApi) GetDictPage(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param id path int true "字典ID"
-// @Success 200 {object} vo.Result{data=bo.DictFormBO}
+// @Success 200 {object} common.Response{data=bo.DictFormBO}
 // @Router /api/v1/dict/{id}/form [get]
 func (api *SysDictApi) GetDictForm(c *gin.Context) {
 	// 获取路径参数
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("字典ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典ID格式不正确"))
 		return
 	}
 
 	// 调用服务获取字典表单数据
 	dictFormBO, err := api.dictService.GetFormData(c.Request.Context(), id)
 	if err != nil {
-		common.FailWithMessage("获取字典表单数据失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -99,20 +106,20 @@ func (api *SysDictApi) GetDictForm(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param DictForm body bo.DictFormBO true "字典表单数据"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dict [post]
 func (api *SysDictApi) SaveDict(c *gin.Context) {
 	// 绑定请求参数
 	var dictFormBO bo.DictFormBO
 	if err := c.ShouldBindJSON(&dictFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 调用服务保存字典
 	err := api.dictService.Create(c.Request.Context(), &dictFormBO)
 	if err != nil {
-		common.FailWithMessage("新增字典失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -127,28 +134,28 @@ func (api *SysDictApi) SaveDict(c *gin.Context) {
 // @Produce application/json
 // @Param id path int true "字典ID"
 // @Param DictForm body bo.DictFormBO true "字典表单数据"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dict/{id} [put]
 func (api *SysDictApi) UpdateDict(c *gin.Context) {
 	// 获取路径参数
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("字典ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典ID格式不正确"))
 		return
 	}
 
 	// 绑定请求参数
 	var dictFormBO bo.DictFormBO
 	if err := c.ShouldBindJSON(&dictFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 调用服务更新字典
 	err = api.dictService.Update(c.Request.Context(), id, &dictFormBO)
 	if err != nil {
-		common.FailWithMessage("修改字典失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -162,13 +169,13 @@ func (api *SysDictApi) UpdateDict(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param ids path string true "字典ID，多个以英文逗号(,)拼接"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dict/{ids} [delete]
 func (api *SysDictApi) DeleteDict(c *gin.Context) {
 	// 获取路径参数
 	idsStr := c.Param("ids")
 	if idsStr == "" {
-		common.FailWithMessage("删除数据为空", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
 		return
 	}
 
@@ -181,21 +188,21 @@ func (api *SysDictApi) DeleteDict(c *gin.Context) {
 		}
 		id, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
 		if err != nil {
-			common.FailWithMessage("字典ID格式不正确", c)
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典ID格式不正确"))
 			return
 		}
 		ids = append(ids, id)
 	}
 
 	if len(ids) == 0 {
-		common.FailWithMessage("删除数据为空", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
 		return
 	}
 
 	// 调用服务删除字典
 	err := api.dictService.Delete(c.Request.Context(), ids)
 	if err != nil {
-		common.FailWithMessage("删除字典失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -209,7 +216,7 @@ func (api *SysDictApi) DeleteDict(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param typeCode path string true "字典类型编码"
-// @Success 200 {object} vo.Result{data=[]vo.Option}
+// @Success 200 {object} common.Response{data=[]vo.Option}
 // @Router /api/v1/dict/options/{typeCode} [get]
 func (api *SysDictApi) ListDictOptions(c *gin.Context) {
 	// 获取路径参数
@@ -218,7 +225,7 @@ func (api *SysDictApi) ListDictOptions(c *gin.Context) {
 	// 调用服务获取字典下拉列表
 	options, err := api.dictService.GetByTypeCode(c.Request.Context(), typeCode)
 	if err != nil {
-		common.FailWithMessage("获取字典下拉列表失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -234,7 +241,7 @@ func (api *SysDictApi) ListDictOptions(c *gin.Context) {
 // @Param keywords query string false "关键字(类型名称/类型编码)"
 // @Param pageNum query int false "页码"
 // @Param pageSize query int false "每页条数"
-// @Success 200 {object} vo.Result{data=vo.PageResult[vo.DictTypePageVO]}
+// @Success 200 {object} common.Response{data=common.PageResult}
 // @Router /api/v1/dict/types/page [get]
 func (api *SysDictApi) GetDictTypePage(c *gin.Context) {
 	// 解析查询参数
@@ -264,7 +271,7 @@ func (api *SysDictApi) GetDictTypePage(c *gin.Context) {
 	// 调用服务获取分页数据
 	result, err := api.dictTypeService.GetPage(c.Request.Context(), &queryParams)
 	if err != nil {
-		common.FailWithMessage("获取字典类型分页列表失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -278,21 +285,21 @@ func (api *SysDictApi) GetDictTypePage(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param id path int true "字典ID"
-// @Success 200 {object} vo.Result{data=bo.DictTypeFormBO}
+// @Success 200 {object} common.Response{data=bo.DictTypeFormBO}
 // @Router /api/v1/dict/types/{id}/form [get]
 func (api *SysDictApi) GetDictTypeForm(c *gin.Context) {
 	// 获取路径参数
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("字典类型ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典类型ID格式不正确"))
 		return
 	}
 
 	// 调用服务获取字典类型表单数据
 	dictTypeFormBO, err := api.dictTypeService.GetFormData(c.Request.Context(), id)
 	if err != nil {
-		common.FailWithMessage("获取字典类型表单数据失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -306,20 +313,20 @@ func (api *SysDictApi) GetDictTypeForm(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param dictTypeForm body bo.DictTypeFormBO true "字典类型表单"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dict/types [post]
 func (api *SysDictApi) SaveDictType(c *gin.Context) {
 	// 绑定请求参数
 	var dictTypeFormBO bo.DictTypeFormBO
 	if err := c.ShouldBindJSON(&dictTypeFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 调用服务保存字典类型
 	err := api.dictTypeService.Create(c.Request.Context(), &dictTypeFormBO)
 	if err != nil {
-		common.FailWithMessage("新增字典类型失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -334,28 +341,28 @@ func (api *SysDictApi) SaveDictType(c *gin.Context) {
 // @Produce application/json
 // @Param id path int true "字典类型ID"
 // @Param dictTypeForm body bo.DictTypeFormBO true "字典类型表单"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dict/types/{id} [put]
 func (api *SysDictApi) UpdateDictType(c *gin.Context) {
 	// 获取路径参数
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("字典类型ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典类型ID格式不正确"))
 		return
 	}
 
 	// 绑定请求参数
 	var dictTypeFormBO bo.DictTypeFormBO
 	if err := c.ShouldBindJSON(&dictTypeFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 调用服务更新字典类型
 	err = api.dictTypeService.Update(c.Request.Context(), id, &dictTypeFormBO)
 	if err != nil {
-		common.FailWithMessage("修改字典类型失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -369,13 +376,13 @@ func (api *SysDictApi) UpdateDictType(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param ids path string true "字典类型ID，多个以英文逗号(,)分割"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dict/types/{ids} [delete]
 func (api *SysDictApi) DeleteDictTypes(c *gin.Context) {
 	// 获取路径参数
 	idsStr := c.Param("ids")
 	if idsStr == "" {
-		common.FailWithMessage("删除数据为空", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
 		return
 	}
 
@@ -388,21 +395,21 @@ func (api *SysDictApi) DeleteDictTypes(c *gin.Context) {
 		}
 		id, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
 		if err != nil {
-			common.FailWithMessage("字典类型ID格式不正确", c)
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典类型ID格式不正确"))
 			return
 		}
 		ids = append(ids, id)
 	}
 
 	if len(ids) == 0 {
-		common.FailWithMessage("删除数据为空", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
 		return
 	}
 
 	// 调用服务删除字典类型
 	err := api.dictTypeService.Delete(c.Request.Context(), ids)
 	if err != nil {
-		common.FailWithMessage("删除字典类型失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 

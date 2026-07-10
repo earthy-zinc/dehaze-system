@@ -1,36 +1,34 @@
 {
   "main": {
-    "id": "402ef08f2660cee5",
+    "id": "d80dc2cec6e2530f",
     "type": "split",
     "children": [
       {
-        "id": "e42a2bf517148b9a",
+        "id": "faecf6e6309e7af8",
         "type": "tabs",
         "children": [
           {
-            "id": "33f9a5273c6d7afd",
-            "type": "leaf",
-            "state": {
-              "type": "markdown",
-              "state": {
-                "file": "后端开发/编程语言/Java/类与对象.md",
-                "mode": "source",
-                "source": false
-              },
-              "icon": "lucide-file",
-              "title": "类与对象"
-            }
-          },
-          {
-            "id": "cd948a8c8a9074bf",
+            "id": "4dc3ea152bebafc9",
             "type": "leaf",
             "state": {
               "type": "release-notes",
               "state": {
-                "currentVersion": "1.9.14"
+                "currentVersion": "1.10.6"
               },
               "icon": "lucide-book-up",
-              "title": "版本说明 1.9.14"
+              "title": "版本说明 1.10.6"
+            }
+          },
+          {
+            "id": "75f4276d109bd317",
+            "type": "leaf",
+            "state": {
+              "type": "release-notes",
+              "state": {
+                "currentVersion": "1.12.7"
+              },
+              "icon": "lucide-book-up",
+              "title": "版本说明 1.12.7"
             }
           }
         ],
@@ -40,15 +38,15 @@
     "direction": "vertical"
   },
   "left": {
-    "id": "0470d24b07a3e098",
+    "id": "4df640be7d8c8a30",
     "type": "split",
     "children": [
       {
-        "id": "10427aacef341fe7",
+        "id": "423cd59f5b9ca081",
         "type": "tabs",
         "children": [
           {
-            "id": "d38d2ce2861dc458",
+            "id": "fbad7f56e28ffb0f",
             "type": "leaf",
             "state": {
               "type": "file-explorer",
@@ -61,7 +59,7 @@
             }
           },
           {
-            "id": "78ee1ae18083a7ea",
+            "id": "ed261f168fee15e9",
             "type": "leaf",
             "state": {
               "type": "search",
@@ -78,7 +76,7 @@
             }
           },
           {
-            "id": "749876dc0438fdd5",
+            "id": "c06d0ab5d672b87d",
             "type": "leaf",
             "state": {
               "type": "bookmarks",
@@ -91,23 +89,22 @@
       }
     ],
     "direction": "horizontal",
-    "width": 267.5
+    "width": 300
   },
   "right": {
-    "id": "2b80db17008f16c7",
+    "id": "e1a325d659cec684",
     "type": "split",
     "children": [
       {
-        "id": "717a561a851861de",
+        "id": "e98f241024a2792e",
         "type": "tabs",
         "children": [
           {
-            "id": "5793a93c8b1082ef",
+            "id": "96ea78c4beac2ca2",
             "type": "leaf",
             "state": {
               "type": "backlink",
               "state": {
-                "file": "后端开发/编程语言/Java/类与对象.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -117,25 +114,24 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "类与对象 的反向链接列表"
+              "title": "反向链接"
             }
           },
           {
-            "id": "c009c2593bc447ed",
+            "id": "03a5fe8f4f0cc883",
             "type": "leaf",
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "后端开发/编程语言/Java/类与对象.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "类与对象 的出链列表"
+              "title": "出链"
             }
           },
           {
-            "id": "5287413364f6aac6",
+            "id": "a34924d707a6e01b",
             "type": "leaf",
             "state": {
               "type": "tag",
@@ -150,18 +146,31 @@
             }
           },
           {
-            "id": "d59743f3a6078196",
+            "id": "8c6d21dccff7e19e",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "4667ba88f2b38396",
             "type": "leaf",
             "state": {
               "type": "outline",
               "state": {
-                "file": "后端开发/编程语言/Java/类与对象.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "类与对象 的大纲"
+              "title": "大纲"
             }
           }
         ]
@@ -173,7 +182,7 @@
   },
   "left-ribbon": {
     "hiddenItems": {
-      "bases:创建新数据库": false,
+      "bases:新建数据库": false,
       "switcher:打开快速切换": false,
       "graph:查看关系图谱": false,
       "canvas:新建白板": false,
@@ -182,34 +191,6 @@
       "command-palette:打开命令面板": false
     }
   },
-  "active": "cd948a8c8a9074bf",
-  "lastOpenFiles": [
-    "后端开发/操作系统/计算机网络.md",
-    "后端开发/操作系统/操作系统.md",
-    "后端开发/编程语言/Java/README.md",
-    "项目文档/图像去雾系统/代码详细设计/部门管理.md",
-    "后端开发/编程语言/Java/JVM.md",
-    "后端开发/编程语言/Java/IO.md",
-    "后端开发/编程语言/Java/集合框架.md",
-    "后端开发/编程语言/Java/并发.md",
-    "后端开发/编程语言/Java/动态代理.md",
-    "后端开发/编程语言/Java/Web开发.md",
-    "后端开发/编程语言/Java/网络编程.md",
-    "后端开发/编程语言/Java/泛型.md",
-    "后端开发/编程语言/Java/注解.md",
-    "后端开发/编程语言/Java/反射.md",
-    "后端开发/编程语言/Java/函数式编程.md",
-    "后端开发/编程语言/Java/日期与时间.md",
-    "后端开发/编程语言/Java/异常处理.md",
-    "后端开发/编程语言/Java/数组.md",
-    "后端开发/编程语言/Java/字符串.md",
-    "后端开发/编程语言/Java/包.md",
-    "后端开发/编程语言/Java/接口.md",
-    "后端开发/编程语言/Java/继承.md",
-    "后端开发/编程语言/Java/类与对象.md",
-    "后端开发/编程语言/Java/基础/README.md",
-    "后端开发/编程语言/Java/基础",
-    "学术课程/程序比赛/天池比赛.md",
-    "学术课程/程序比赛/软件测试大赛.md"
-  ]
+  "active": "75f4276d109bd317",
+  "lastOpenFiles": []
 }

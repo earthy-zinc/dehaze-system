@@ -70,29 +70,22 @@ security:
     key: SecretKey012345678901234567890123456789012345678901234567890123456789
     ttl: 7200
   ignore-urls:
-    - /v3/api-docs/**
-    - /doc.html
-    - /swagger-resources/**
-    - /webjars/**
-    - /doc.html
-    - /swagger-ui/**
-    - /swagger-ui.html
     - /api/v1/files/download/**
     - /api/v1/auth/captcha
 
-# 监控配置
+# 监控配置 (生产环境仅暴露必要端点)
 management:
   endpoints:
     web:
       exposure:
-        include: "*"
+        include: health,info,prometheus
   metrics:
     export:
       prometheus:
         enabled: true
   endpoint:
     health:
-      show-details: ALWAYS
+      show-details: WHEN_AUTHORIZED
 
 # 文件上传配置
 file:
@@ -118,25 +111,16 @@ file:
     # 存储桶名称
     bucket-name: dehaze
 
-# springdoc配置： https://springdoc.org/properties.html
+# springdoc配置 (生产环境禁用 API 文档)
 springdoc:
-  swagger-ui:
-    path: /swagger-ui.html
-    operationsSorter: alpha
-    tags-sorter: alpha
   api-docs:
-    path: /v3/api-docs
-  group-configs:
-    - group: 'default'
-      paths-to-match: '/**'
-      packages-to-scan: com.pei.dehaze.controller
-  default-flat-param-object: true
+    enabled: false
+  swagger-ui:
+    enabled: false
 
-# knife4j的增强配置，不需要增强可以不配 https://doc.xiaominfo.com/docs/quick-start
+# knife4j (生产环境禁用)
 knife4j:
-  enable: true
-  setting:
-    language: zh_cn
+  enable: false
 
 # xxl-job 定时任务配置
 xxl:

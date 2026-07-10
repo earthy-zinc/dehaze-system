@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/earthyzinc/dehaze-go/pkg/cache/errs"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
-	global_error "github.com/earthyzinc/dehaze-go/pkg/error"
 	"github.com/songzhibin97/gkit/cache/local_cache"
 )
 
@@ -29,7 +29,7 @@ func NewLocalCache(localCache local_cache.Cache) *LocalCache {
 func (c *LocalCache) Get(ctx context.Context, key string) (string, error) {
 	val, found := c.cache.Get(key)
 	if !found {
-		return "", global_error.ErrKeyNotFound
+		return "", errs.ErrKeyNotFound
 	}
 	if strVal, ok := val.(string); ok {
 		return strVal, nil
@@ -245,17 +245,17 @@ func (c *LocalCache) Pipeline(ctx context.Context, ops []types.PipelineOp) error
 func (c *LocalCache) HGet(ctx context.Context, key, field string) (string, error) {
 	val, ok := c.hashData.Load(key)
 	if !ok {
-		return "", global_error.ErrKeyNotFound
+		return "", errs.ErrKeyNotFound
 	}
 
 	hashMap, ok := val.(*sync.Map)
 	if !ok {
-		return "", global_error.ErrKeyNotFound
+		return "", errs.ErrKeyNotFound
 	}
 
 	fieldVal, ok := hashMap.Load(field)
 	if !ok {
-		return "", global_error.ErrKeyNotFound
+		return "", errs.ErrKeyNotFound
 	}
 
 	if strVal, ok := fieldVal.(string); ok {

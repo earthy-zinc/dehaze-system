@@ -1,498 +1,327 @@
 """
 角色服务测试
-"""
-import pytest
 
-from app.models import SysRole
-from app.service.role import RoleService
+测试 RoleService 的核心功能
+"""
+
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from app.service.role_service import RoleService
+from app.core.exceptions import BusinessException
 
 
 @pytest.mark.unit
-@pytest.mark.requires_db
 class TestRoleService:
-    """角色服务测试类"""
+    """角色服务测试"""
 
-    def test_create_role(self, db_session):
-        """测试创建角色"""
-        role_data = {
-            'name': '测试角色',
-            'code': 'TEST_ROLE',
-            'sort': 1,
-            'status': 1,
-            'dataScope': 1
-        }
-
-        result = RoleService.create_role(role_data)
-        assert 'error' not in result
-        assert 'data' in result
-
-        # 验证角色创建成功
-        role = RoleService.get_role_by_id(result['data']['id'])
-        assert role is not None
-        assert role.name == '测试角色'
-        assert role.code == 'TEST_ROLE'
-        assert role.sort == 1
-        assert role.status == 1
-        assert role.data_scope == 1
-
-    def test_create_role_with_duplicate_name(self, db_session):
-        """测试创建重复名称的角色"""
-        # 先创建一个角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
-
-        # 尝试创建同名角色
-        role_data = {
-            'name': '测试角色',
-            'code': 'TEST_ROLE_2'
-        }
-
-        result = RoleService.create_role(role_data)
-        assert 'error' in result
-        assert result['error'] == '角色名称或编码已存在'
-
-    def test_create_role_with_duplicate_code(self, db_session):
-        """测试创建重复编码的角色"""
-        # 先创建一个角色
-        role = SysRole(name='测试角色1', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
-
-        # 尝试创建相同编码的角色
-        role_data = {
-            'name': '测试角色2',
-            'code': 'TEST_ROLE'
-        }
-
-        result = RoleService.create_role(role_data)
-        assert 'error' in result
-        assert result['error'] == '角色名称或编码已存在'
-
-    def test_get_role_by_id(self, db_session):
-        """测试根据ID获取角色"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
-
-        # 获取角色
-        retrieved_role = RoleService.get_role_by_id(role.id)
-        assert retrieved_role is not None
-        assert retrieved_role.id == role.id
-        assert retrieved_role.name == '测试角色'
-        assert retrieved_role.code == 'TEST_ROLE'
-
-    def test_get_role_by_id_not_found(self, db_session):
-        """测试获取不存在的角色"""
-        role = RoleService.get_role_by_id(999999)
-        assert role is None
-
-    def test_update_role(self, db_session):
-        """测试更新角色"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
-
-        # 更新角色 (code 不允许修改，只修改其他字段)
-        update_data = {
-            'name': '更新后的角色',
-            'code': 'UPDATED_ROLE',  # 这个字段会被忽略
-            'sort': 2,
-            'status': 0,
-            'dataScope': 2
-        }
-
-        result = RoleService.update_role(role.id, update_data)
-        assert 'error' not in result
-
-        # 验证更新成功
-        updated_role = RoleService.get_role_by_id(role.id)
-        assert updated_role.name == '更新后的角色'
-        assert updated_role.code == 'TEST_ROLE'  # code 不会被修改
-        assert updated_role.sort == 2
-        assert updated_role.status == 0
-        assert updated_role.data_scope == 2
-
-    def test_update_role_not_found(self, db_session):
-        """测试更新不存在的角色"""
-        update_data = {
-            'name': '更新后的角色',
-            'code': 'UPDATED_ROLE'
-        }
-
-        result = RoleService.update_role(999999, update_data)
-        assert 'error' in result
-        assert result['error'] == '角色不存在'
-
-    def test_update_role_with_duplicate_name(self, db_session):
-        """测试更新角色时名称重复"""
-        # 创建两个角色
-        role1 = SysRole(name='测试角色1', code='TEST_ROLE_1')
-        role2 = SysRole(name='测试角色2', code='TEST_ROLE_2')
-        db_session.add(role1)
-        db_session.add(role2)
-        db_session.commit()
-
-        # 尝试将role2的名称更新为role1的名称
-        update_data = {
-            'name': '测试角色1',
-            'code': 'TEST_ROLE_2'
-        }
-
-        result = RoleService.update_role(role2.id, update_data)
-        assert 'error' in result
-        assert result['error'] == '角色名称已存在'  # 更新时只检查名称重复
-
-    def test_get_role_list(self, db_session):
+    @pytest.mark.asyncio
+    async def test_get_role_list(self):
         """测试获取角色列表"""
-        # 创建测试角色
-        role1 = SysRole(name='角色1', code='ROLE_1', sort=1)
-        role2 = SysRole(name='角色2', code='ROLE_2', sort=2)
-        role3 = SysRole(name='测试角色', code='TEST_ROLE', sort=3)
-        db_session.add(role1)
-        db_session.add(role2)
-        db_session.add(role3)
-        db_session.commit()
+        mock_db = AsyncMock()
 
-        # 获取所有角色
-        roles, total = RoleService.get_role_list()
-        assert len(roles) == 3
-        assert total == 3
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_list = AsyncMock(return_value=([], 0))
 
-        # 按名称搜索
-        roles, total = RoleService.get_role_list(keywords='测试')
-        assert len(roles) == 1
-        assert total == 1
-        assert roles[0].name == '测试角色'
+            roles, total = await RoleService.get_role_list(
+                db=mock_db,
+                page=1,
+                page_size=10,
+            )
 
-        # 测试分页
-        roles, total = RoleService.get_role_list(page=1, page_size=2)
-        assert len(roles) == 2
-        assert total == 3
+            assert roles == []
+            assert total == 0
 
-    def test_get_role_options(self, db_session):
-        """测试获取角色下拉选项"""
-        # 创建测试角色
-        role1 = SysRole(name='角色1', code='ROLE_1', sort=1, status=1)
-        role2 = SysRole(name='角色2', code='ROLE_2', sort=2, status=1)
-        role3 = SysRole(name='禁用角色', code='DISABLED_ROLE', sort=3, status=0)
-        db_session.add(role1)
-        db_session.add(role2)
-        db_session.add(role3)
-        db_session.commit()
+    @pytest.mark.asyncio
+    async def test_get_role_options_with_cache(self):
+        """测试获取角色选项（有缓存）"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(return_value='[{"id": 1, "name": "Admin"}]')
 
-        # 获取角色选项
-        options = RoleService.get_role_options()
-        assert len(options) == 2  # 不包含禁用的角色
-        assert options[0]['label'] == '角色1'
-        assert options[1]['label'] == '角色2'
+        options = await RoleService.get_role_options(mock_db, mock_redis)
 
-    def test_delete_roles(self, db_session):
-        """测试删除角色"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
-
-        # 删除角色
-        result = RoleService.delete_roles(str(role.id))
-        assert 'error' not in result
-
-    def test_delete_roles_multiple(self, db_session):
-        """测试批量删除角色"""
-        # 创建测试角色
-        role1 = SysRole(name='测试角色1', code='TEST_ROLE_1')
-        role2 = SysRole(name='测试角色2', code='TEST_ROLE_2')
-        db_session.add(role1)
-        db_session.add(role2)
-        db_session.commit()
-
-        # 批量删除角色
-        result = RoleService.delete_roles(f'{role1.id},{role2.id}')
-        assert 'error' not in result
-
-        # 验证角色已删除
-        deleted_role1 = RoleService.get_role_by_id(role1.id)
-        deleted_role2 = RoleService.get_role_by_id(role2.id)
-        assert deleted_role1 is None
-        assert deleted_role2 is None
-
-    def test_delete_roles_not_found(self, db_session):
-        """测试删除不存在的角色"""
-        result = RoleService.delete_roles('999999')
-        assert 'error' in result
-        assert result['error'] == '角色ID 999999 不存在'
-
-    def test_delete_roles_assigned_to_user(self, db_session):
-        """测试删除已分配给用户的角色"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
-
-        # 模拟角色已分配给用户
-        from app.models import SysUserRole
-        user_role = SysUserRole(user_id=1, role_id=role.id)
-        db_session.add(user_role)
-        db_session.commit()
-
-        # 尝试删除角色
-        result = RoleService.delete_roles(str(role.id))
-        assert 'error' in result
-        assert '已分配给用户' in result['error']
-
-    def test_update_role_status(self, db_session):
-        """测试更新角色状态"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
-
-        # 启用角色
-        result = RoleService.update_role_status(role.id, 1)
-        assert 'error' not in result
-
-        updated_role = RoleService.get_role_by_id(role.id)
-        assert updated_role.status == 1
-
-        # 禁用角色
-        result = RoleService.update_role_status(role.id, 0)
-        assert 'error' not in result
-
-        updated_role = RoleService.get_role_by_id(role.id)
-        assert updated_role.status == 0
-
-    def test_update_role_status_invalid(self, db_session):
-        """测试更新角色状态为无效值"""
-        result = RoleService.update_role_status(1, 2)  # 无效状态
-        assert 'error' in result
-        assert result['error'] == '状态值只能为0或1'
-
-    def test_update_role_status_not_found(self, db_session):
-        """测试更新不存在的角色状态"""
-        result = RoleService.update_role_status(999999, 1)
-        assert 'error' in result
-        assert result['error'] == '角色不存在'
-
-    def test_get_role_list_pagination(self, db_session):
-        """测试角色列表分页"""
-        # 创建测试角色
-        for i in range(15):
-            role = SysRole(name=f'测试角色{i}', code=f'TEST_ROLE_{i}', sort=i)
-            db_session.add(role)
-        db_session.commit()
-
-        # 测试第一页
-        roles, total = RoleService.get_role_list(page=1, page_size=10)
-        assert len(roles) == 10
-        assert total == 15
-
-        # 测试第二页
-        roles, total = RoleService.get_role_list(page=2, page_size=10)
-        assert len(roles) == 5
-        assert total == 15
-
-    def test_get_role_list_empty(self, db_session):
-        """测试获取空角色列表"""
-        roles, total = RoleService.get_role_list()
-        assert len(roles) == 0
-        assert total == 0
-
-    def test_get_role_options_empty(self, db_session):
-        """测试获取空角色选项列表"""
-        options = RoleService.get_role_options()
-        assert len(options) == 0
-
-    def test_get_role_options_only_active(self, db_session):
-        """测试只获取启用的角色选项"""
-        # 创建测试角色
-        role1 = SysRole(name='启用角色', code='ACTIVE_ROLE', status=1)
-        role2 = SysRole(name='禁用角色', code='INACTIVE_ROLE', status=0)
-        db_session.add(role1)
-        db_session.add(role2)
-        db_session.commit()
-
-        options = RoleService.get_role_options()
         assert len(options) == 1
-        assert options[0]['label'] == '启用角色'
+        assert options[0]["name"] == "Admin"
 
-    def test_create_role_missing_fields(self, db_session):
-        """测试创建角色时缺少必要字段"""
-        # 缺少名称
-        role_data = {
-            'code': 'TEST_ROLE'
-        }
-        result = RoleService.create_role(role_data)
-        assert 'error' in result
-        assert result['error'] == '角色名称和编码不能为空'
+    @pytest.mark.asyncio
+    async def test_get_role_options_without_cache(self):
+        """测试获取角色选项（无缓存）"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_redis.get = AsyncMock(return_value=None)
+        mock_redis.setex = AsyncMock()
 
-        # 缺少编码
-        role_data = {
-            'name': '测试角色'
-        }
-        result = RoleService.create_role(role_data)
-        assert 'error' in result
-        assert result['error'] == '角色名称和编码不能为空'
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_role_options = AsyncMock(return_value=[{"id": 1, "name": "Admin"}])
 
-    def test_update_role_missing_fields(self, db_session):
-        """测试更新角色时缺少必要字段"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
+            options = await RoleService.get_role_options(mock_db, mock_redis)
 
-        # 缺少名称
-        update_data = {
-            'code': 'UPDATED_ROLE'
-        }
-        result = RoleService.update_role(role.id, update_data)
-        assert 'error' in result
-        assert result['error'] == '角色名称不能为空'  # 更新时只检查名称
+            assert len(options) == 1
+            mock_redis.setex.assert_called_once()
 
-        # 提供名称则应该成功（code可选，更新时不修改code）
-        update_data = {
-            'name': '更新角色'
-        }
-        result = RoleService.update_role(role.id, update_data)
-        assert 'error' not in result
+    @pytest.mark.asyncio
+    async def test_create_role_success(self):
+        """测试创建角色成功"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-    def test_get_role_by_id_deleted(self, db_session):
-        """测试获取已删除的角色"""
-        # 创建测试角色并标记为已删除
-        role = SysRole(name='测试角色', code='TEST_ROLE', deleted=1)
-        db_session.add(role)
-        db_session.commit()
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.check_name_exists = AsyncMock(return_value=False)
+            mock_repo.check_code_exists = AsyncMock(return_value=False)
+            mock_repo.create = AsyncMock(return_value=MagicMock(id=1))
 
-        retrieved_role = RoleService.get_role_by_id(role.id)
-        assert retrieved_role is None
+            role = await RoleService.create_role(
+                db=mock_db,
+                redis=mock_redis,
+                data={"name": "测试角色", "code": "TEST_ROLE"},
+            )
 
-    def test_get_role_list_with_deleted(self, db_session):
-        """测试角色列表不包含已删除的角色"""
-        # 创建测试角色
-        role1 = SysRole(name='正常角色', code='NORMAL_ROLE', deleted=0)
-        role2 = SysRole(name='已删除角色', code='DELETED_ROLE', deleted=1)
-        db_session.add(role1)
-        db_session.add(role2)
-        db_session.commit()
+            assert role is not None
 
-        roles, total = RoleService.get_role_list()
-        assert len(roles) == 1
-        assert total == 1
-        assert roles[0].name == '正常角色'
+    @pytest.mark.asyncio
+    async def test_create_role_empty_params(self):
+        """测试创建角色时参数为空"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-    def test_delete_roles_assigned_to_user(self, db_session):
+        with pytest.raises(BusinessException, match="角色名称和编码不能为空"):
+            await RoleService.create_role(
+                db=mock_db,
+                redis=mock_redis,
+                data={"name": "", "code": ""},
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_role_invalid_code(self):
+        """测试创建角色时编码格式错误"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+
+        with pytest.raises(BusinessException, match="角色编码格式错误"):
+            await RoleService.create_role(
+                db=mock_db,
+                redis=mock_redis,
+                data={"name": "测试角色", "code": "invalid-code"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_role_duplicate_name(self):
+        """测试创建角色时名称已存在"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.check_name_exists = AsyncMock(return_value=True)
+
+            with pytest.raises(BusinessException, match="角色名称已存在"):
+                await RoleService.create_role(
+                    db=mock_db,
+                    redis=mock_redis,
+                    data={"name": "Admin", "code": "ADMIN"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_create_role_duplicate_code(self):
+        """测试创建角色时编码已存在"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.check_name_exists = AsyncMock(return_value=False)
+            mock_repo.check_code_exists = AsyncMock(return_value=True)
+
+            with pytest.raises(BusinessException, match="角色编码已存在"):
+                await RoleService.create_role(
+                    db=mock_db,
+                    redis=mock_redis,
+                    data={"name": "Admin", "code": "ADMIN"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_update_role_success(self):
+        """测试更新角色成功"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.id = 1
+        mock_role.code = "TEST"
+        mock_role.sort = 1
+        mock_role.status = 1
+        mock_role.data_scope = 1
+
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
+            mock_repo.check_name_exists = AsyncMock(return_value=False)
+            mock_repo.update = AsyncMock()
+
+            await RoleService.update_role(
+                db=mock_db,
+                redis=mock_redis,
+                role_id=1,
+                data={"name": "Updated Role"},
+            )
+
+    @pytest.mark.asyncio
+    async def test_update_role_not_found(self):
+        """测试更新角色时角色不存在"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=None)
+
+            with pytest.raises(BusinessException, match="角色不存在"):
+                await RoleService.update_role(
+                    db=mock_db,
+                    redis=mock_redis,
+                    role_id=999,
+                    data={"name": "Test"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_update_role_duplicate_name(self):
+        """测试更新角色时名称已存在"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.id = 1
+        mock_role.code = "TEST"
+
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
+            mock_repo.check_name_exists = AsyncMock(return_value=True)
+
+            with pytest.raises(BusinessException, match="角色名称已存在"):
+                await RoleService.update_role(
+                    db=mock_db,
+                    redis=mock_redis,
+                    role_id=1,
+                    data={"name": "Existing Name"},
+                )
+
+    @pytest.mark.asyncio
+    async def test_delete_role_protect_root(self):
+        """测试不能删除 ROOT 角色"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.code = "ROOT"
+        mock_role.name = "超级管理员"
+
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
+
+            with pytest.raises(BusinessException, match="超级管理员角色不可删除"):
+                await RoleService.delete_roles(
+                    db=mock_db,
+                    redis=mock_redis,
+                    ids="1",
+                )
+
+    @pytest.mark.asyncio
+    async def test_delete_role_assigned_to_user(self):
         """测试删除已分配给用户的角色"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.code = "USER"
+        mock_role.name = "普通用户"
 
-        # 模拟角色已分配给用户
-        from app.models import SysUserRole
-        user_role = SysUserRole(user_id=1, role_id=role.id)
-        db_session.add(user_role)
-        db_session.commit()
+        with patch("app.service.role_service.role_repository") as mock_repo, \
+             patch("app.service.role_service.user_repository") as mock_user_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
+            mock_user_repo.count_users_by_role = AsyncMock(return_value=5)
 
-        # 尝试删除角色
-        result = RoleService.delete_roles(str(role.id))
-        assert 'error' in result
-        assert '已分配给用户' in result['error']
+            with pytest.raises(BusinessException, match="已分配给用户"):
+                await RoleService.delete_roles(
+                    db=mock_db,
+                    redis=mock_redis,
+                    ids="1",
+                )
 
-        # 验证角色未被删除
-        not_deleted_role = RoleService.get_role_by_id(role.id)
-        assert not_deleted_role is not None
-        assert not_deleted_role.deleted == 0
+    @pytest.mark.asyncio
+    async def test_delete_role_success(self):
+        """测试删除角色成功"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.code = "USER"
+        mock_role.name = "普通用户"
 
-    def test_delete_roles_not_found(self, db_session):
-        """测试删除不存在的角色"""
-        result = RoleService.delete_roles('999999')
-        assert 'error' in result
-        assert result['error'] == '角色ID 999999 不存在'
+        with patch("app.service.role_service.role_repository") as mock_repo, \
+             patch("app.service.role_service.user_repository") as mock_user_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
+            mock_repo.delete_role_menus = AsyncMock()
+            mock_repo.delete = AsyncMock()
+            mock_user_repo.count_users_by_role = AsyncMock(return_value=0)
+            mock_db.commit = AsyncMock()
 
-    def test_update_role_status(self, db_session):
-        """测试更新角色状态"""
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE', status=1)
-        db_session.add(role)
-        db_session.commit()
-        assert role.status == 1  # 默认启用
+            await RoleService.delete_roles(
+                db=mock_db,
+                redis=mock_redis,
+                ids="1",
+            )
 
-        # 禁用角色
-        result = RoleService.update_role_status(role.id, 0)
-        assert 'error' not in result
+            mock_repo.delete_role_menus.assert_called_once()
+            mock_repo.delete.assert_called_once()
 
-        # 验证状态已更新
-        updated_role = RoleService.get_role_by_id(role.id)
-        assert updated_role.status == 0
+    @pytest.mark.asyncio
+    async def test_update_role_status_protect_root(self):
+        """测试不能禁用 ROOT 角色"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.code = "ROOT"
 
-        # 启用角色
-        result = RoleService.update_role_status(role.id, 1)
-        assert 'error' not in result
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
 
-        # 验证状态已更新
-        updated_role = RoleService.get_role_by_id(role.id)
-        assert updated_role.status == 1
+            with pytest.raises(BusinessException, match="超级管理员角色不可禁用"):
+                await RoleService.update_role_status(
+                    db=mock_db,
+                    redis=mock_redis,
+                    role_id=1,
+                    status=0,
+                )
 
-    def test_update_role_status_invalid_status(self, db_session):
-        """测试更新角色状态时传入无效状态值"""
-        result = RoleService.update_role_status(1, 2)  # 2是无效状态
-        assert 'error' in result
-        assert result['error'] == '状态值只能为0或1'
+    @pytest.mark.asyncio
+    async def test_update_role_status_success(self):
+        """测试更新角色状态成功"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.code = "USER"
 
-    def test_assign_menus_to_role(self, db_session):
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
+            mock_repo.update = AsyncMock()
+
+            await RoleService.update_role_status(
+                db=mock_db,
+                redis=mock_redis,
+                role_id=1,
+                status=0,
+            )
+
+    @pytest.mark.asyncio
+    async def test_assign_menus_to_role(self):
         """测试分配菜单给角色"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_role = MagicMock()
+        mock_role.code = "TEST"
 
-        # 创建测试角色
-        role = SysRole(name='测试角色', code='TEST_ROLE')
-        db_session.add(role)
-        db_session.commit()
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_role)
+            mock_repo.replace_role_menus = AsyncMock()
+            mock_db.commit = AsyncMock()
 
-        # 分配菜单
-        menu_ids = [1, 2, 3]
-        result = RoleService.assign_menus_to_role(role.id, menu_ids)
-        assert 'error' not in result
+            await RoleService.assign_menus_to_role(
+                db=mock_db,
+                redis=mock_redis,
+                role_id=1,
+                menu_ids=[1, 2, 3],
+            )
 
-        # 验证菜单已分配
-        assigned_menu_ids = RoleService.get_role_menu_ids(role.id)
-        assert set(assigned_menu_ids) == set(menu_ids)
-
-        # 重新分配菜单
-        new_menu_ids = [3, 4, 5]
-        result = RoleService.assign_menus_to_role(role.id, new_menu_ids)
-        assert 'error' not in result
-
-        # 验证菜单已更新
-        assigned_menu_ids = RoleService.get_role_menu_ids(role.id)
-        assert set(assigned_menu_ids) == set(new_menu_ids)
-
-    def test_get_maximum_data_scope(self, db_session):
-        """测试获取最大范围的数据权限"""
-        # 创建测试角色
-        role1 = SysRole(name='角色1', code='ROLE_1', data_scope=1)  # 数据权限1
-        role2 = SysRole(name='角色2', code='ROLE_2', data_scope=2)  # 数据权限2
-        role3 = SysRole(name='角色3', code='ROLE_3', data_scope=3)  # 数据权限3
-        db_session.add(role1)
-        db_session.add(role2)
-        db_session.add(role3)
-        db_session.commit()
-
-        # 测试获取最大数据权限范围
-        roles = ['ROLE_1', 'ROLE_2', 'ROLE_3']
-        max_scope = RoleService.get_maximum_data_scope(roles)
-        assert max_scope == 1  # 应该返回最小值，即最大权限范围
-
-        # 测试部分角色
-        roles = ['ROLE_2', 'ROLE_3']
-        max_scope = RoleService.get_maximum_data_scope(roles)
-        assert max_scope == 2
-
-        # 测试空角色列表
-        max_scope = RoleService.get_maximum_data_scope([])
-        assert max_scope is None
-
-        # 测试不存在的角色
-        roles = ['NON_EXISTENT_ROLE']
-        max_scope = RoleService.get_maximum_data_scope(roles)
-        assert max_scope is None
+            mock_repo.replace_role_menus.assert_called_once()

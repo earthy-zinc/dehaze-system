@@ -1,162 +1,141 @@
 package api
 
 import (
-	"context"
-	"time"
-
-	"github.com/earthyzinc/dehaze-go/internal/model"
-	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
+	"github.com/earthyzinc/dehaze-go/internal/model/bo"
+	authservice "github.com/earthyzinc/dehaze-go/internal/service/auth"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
-	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/security"
-	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"github.com/gin-gonic/gin"
-	"github.com/mojocn/base64Captcha"
-	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
+// AuthApi 认证API处理器
+// 职责：负责HTTP请求解析、参数验证和响应组装，不包含业务逻辑
 type AuthApi struct {
-	cacheClient types.ICache
+	authService authservice.IAuthService
 }
 
+// NewAuthApi 创建认证API实例
+func NewAuthApi(authService authservice.IAuthService) *AuthApi {
+	return &AuthApi{
+		authService: authService,
+	}
+}
+
+// Captcha 获取验证码
+// @Summary 获取验证码
+// @Description 生成图形验证码，返回验证码ID和Base64编码的图片
+// @Tags 认证管理
+// @Accept json
+// @Produce json
+// @Success 200 {object} common.Response{data=dto.CaptchaResult}
+// @Router /api/v1/auth/captcha [get]
 func (a *AuthApi) Captcha(c *gin.Context) {
-	// 判断验证码是否开启
-	cfg := config.GetConfig()
-	openCaptcha := cfg.Captcha.RetryCount     // 是否开启防爆次数
-	openCaptchaTimeOut := cfg.Captcha.TimeOut // 缓存超时时间
-	key := c.ClientIP()
-
-	v, err := a.cacheClient.Get(c, key)
+	clientIP := c.ClientIP()
+	result, err := a.authService.GetCaptcha(c.Request.Context(), clientIP)
 	if err != nil {
-		a.cacheClient.Set(c, key, 1, time.Second*time.Duration(openCaptchaTimeOut))
-	}
-
-	if openCaptcha != 0 && utils.InterfaceToInt(v) >= openCaptcha {
-		common.FailWithMessage("验证码获取失败，已经达到最大获取次数，请稍后重试", c)
-		return
-	}
-	// 字符,公式,验证码配置
-	// 生成默认数字的driver
-	driver := base64Captcha.NewDriverDigit(
-		cfg.Captcha.Height,
-		cfg.Captcha.Width,
-		cfg.Captcha.Length,
-		0.7, 80)
-	var cp *base64Captcha.Captcha
-	var store = security.GetCaptchaStore()
-	cp = base64Captcha.NewCaptcha(driver, store)
-
-	id, b64s, _, err := cp.Generate()
-
-	if err != nil {
-		logger.Error("验证码获取失败!", zap.Error(err))
-		common.FailWithMessage("验证码获取失败", c)
+		logger.Error("验证码获取失败", zap.Error(err))
+		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithDetailed(
-		gin.H{
-			"captchaKey":    id,
-			"captchaBase64": b64s,
-		},
-		"验证码获取成功",
-		c,
-	)
+	common.OkWithDetailed(result, "验证码获取成功", c)
 }
 
-// Login User login structure
-type Login struct {
-	Username    string `form:"username" json:"username" validate:"required,min=3"` // 用户名，至少3个字符
-	Password    string `form:"password" json:"password" validate:"required,min=6"` // 密码，至少6个字符
-	CaptchaCode string `form:"captchaCode" json:"captchaCode" validate:"required"` // 验证码，必须存在
-	CaptchaKey  string `form:"captchaKey" json:"captchaKey" validate:"required"`   // 验证码ID，必须存在
-}
-
+// Login 用户登录
+// @Summary 用户登录
+// @Description 使用用户名密码登录，返回JWT访问令牌
+// @Tags 认证管理
+// @Accept json
+// @Produce json
+// @Param request body bo.LoginRequest true "登录请求"
+// @Success 200 {object} common.Response{data=dto.LoginResult}
+// @Router /api/v1/auth/login [post]
 func (a *AuthApi) Login(c *gin.Context) {
-	var loginReq Login
-	if err := c.ShouldBind(&loginReq); err != nil {
-		common.FailWithMessage(err.Error(), c)
+	var req bo.LoginRequest
+	if err := c.ShouldBind(&req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 
-	userIp := c.ClientIP()
-	// 判断验证码是否开启
-	cfg := config.GetConfig()
-	retryCount := cfg.Captcha.RetryCount  // 是否开启防爆次数
-	captchaTimeOut := cfg.Captcha.TimeOut // 缓存超时时间
-	v, err := a.cacheClient.Get(c, userIp)
+	clientIP := c.ClientIP()
+	result, err := a.authService.Login(c.Request.Context(), &req, clientIP)
 	if err != nil {
-		a.cacheClient.Set(c, userIp, 1, time.Second*time.Duration(captchaTimeOut))
-	}
-
-	var oc = retryCount == 0 || retryCount < utils.InterfaceToInt(v)
-	var store = security.GetCaptchaStore()
-	if !oc && (loginReq.CaptchaCode == "" || loginReq.CaptchaKey == "" || !store.Verify(loginReq.CaptchaKey, loginReq.CaptchaCode, true)) {
-		// 验证码次数+1
-		a.cacheClient.Incr(c, userIp)
-		common.FailWithMessage("验证码错误", c)
+		_ = c.Error(err)
 		return
 	}
 
-	u := &model.SysUser{Username: loginReq.Username, Password: loginReq.Password}
-	user, err := getUserService().Login(c.Request.Context(), u)
+	// 设置Token到Cookie
+	if result != nil {
+		security.SetToken(c, result.AccessToken, int(result.Expires/1000)) // 毫秒转秒
+	}
+
+	common.OkWithDetailed(result, "登录成功", c)
+}
+
+// Logout 用户注销
+// @Summary 用户注销
+// @Description 注销当前用户，将Token加入黑名单
+// @Tags 认证管理
+// @Accept json
+// @Produce json
+// @Success 200 {object} common.Response
+// @Router /api/v1/auth/logout [post]
+func (a *AuthApi) Logout(c *gin.Context) {
+	if err := a.authService.Logout(c); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithMessage("注销成功", c)
+}
+
+// GetAuthInfo 获取当前用户认证信息
+// @Summary 获取当前用户认证信息
+// @Description 获取当前登录用户的信息、角色和权限
+// @Tags 认证管理
+// @Accept json
+// @Produce json
+// @Success 200 {object} common.Response{data=vo.UserInfoVO}
+// @Router /api/v1/auth/me [get]
+func (a *AuthApi) GetAuthInfo(c *gin.Context) {
+	userID := security.GetUserID(c)
+	if userID == 0 {
+		_ = c.Error(common.NewBizError(common.ACCESS_UNAUTHORIZED, "未登录或登录已过期"))
+		return
+	}
+
+	result, err := a.authService.GetAuthInfo(c.Request.Context(), userID)
 	if err != nil {
-		logger.Error("登陆失败! 用户名不存在或者密码错误!", zap.Error(err))
-		// 验证码次数+1
-		a.cacheClient.Incr(c, userIp)
-		common.FailWithMessage("用户名不存在或者密码错误", c)
+		_ = c.Error(err)
 		return
 	}
 
-	if user.Status != 1 {
-		common.FailWithMessage("用户已被禁用", c)
+	common.OkWithDetailed(result, "获取成功", c)
+}
+
+// RefreshToken 刷新令牌
+// @Summary 刷新令牌
+// @Description 使用刷新令牌获取新的访问令牌
+// @Tags 认证管理
+// @Accept json
+// @Produce json
+// @Param request body bo.RefreshTokenRequest true "刷新令牌请求"
+// @Success 200 {object} common.Response{data=dto.LoginResult}
+// @Router /api/v1/auth/refresh [post]
+func (a *AuthApi) RefreshToken(c *gin.Context) {
+	var req bo.RefreshTokenRequest
+	if err := c.ShouldBind(&req); err != nil {
+		_ = c.Error(err)
 		return
 	}
 
-	token, claims, err := security.LoginToken(user)
+	result, err := a.authService.RefreshToken(c.Request.Context(), req.RefreshToken)
 	if err != nil {
-		logger.Error("获取token失败!", zap.Error(err))
-		common.FailWithMessage("获取token失败", c)
-		return
-	}
-	if !cfg.System.UseMultiPoint {
-		security.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
-		common.OkWithDetailed(gin.H{
-			"accessToken": token,
-			"tokenType":   "Bearer",
-		}, "登录成功", c)
+		_ = c.Error(err)
 		return
 	}
 
-	if jwt, err := a.cacheClient.Get(context.Background(), user.Username); err == redis.Nil {
-		if err := security.SetJWT(token, user.Username); err != nil {
-			logger.Error("设置登录状态失败!", zap.Error(err))
-			common.FailWithMessage("设置登录状态失败", c)
-			return
-		}
-		security.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
-		common.OkWithDetailed(gin.H{
-			"accessToken": token,
-			"tokenType":   "Bearer",
-		}, "登录成功", c)
-		return
-	} else if err != nil {
-		logger.Error("设置登录状态失败!", zap.Error(err))
-		common.FailWithMessage("设置登录状态失败", c)
-	} else {
-		// 设置JWT黑名单
-		a.cacheClient.Set(context.Background(), common.BlacklistPrefix+jwt, nil, time.Duration(cfg.JWT.TTL))
-
-		if err := security.SetJWT(token, user.Username); err != nil {
-			common.FailWithMessage("设置登录状态失败", c)
-			return
-		}
-		security.SetToken(c, token, int(claims.RegisteredClaims.ExpiresAt.Unix()-time.Now().Unix()))
-		common.OkWithDetailed(gin.H{
-			"accessToken": token,
-			"tokenType":   "Bearer",
-		}, "登录成功", c)
-	}
+	common.OkWithDetailed(result, "刷新成功", c)
 }

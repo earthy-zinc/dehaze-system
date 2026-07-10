@@ -36,7 +36,15 @@
       "mcp__aistor__list_buckets",
       "mcp__API____read_project_oas_0ur0f8",
       "mcp__mysql__execute_sql",
-      "mcp__redis__dbsize"
+      "mcp__redis__dbsize",
+      "Bash(mockery:*)",
+      "Bash(go vet:*)",
+      "Bash(go test:*)",
+      "Bash(ls:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(python:*)",
+      "Bash(npx pyright:*)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

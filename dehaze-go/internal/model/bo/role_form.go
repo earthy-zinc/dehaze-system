@@ -5,13 +5,13 @@ type RoleFormBO struct {
 	// 角色ID
 	ID *int64 `json:"id"`
 	// 角色名称
-	Name string `json:"name" binding:"required"`
+	Name string `json:"name" binding:"required,min=2,max=30"`
 	// 角色编码
-	Code string `json:"code" binding:"required"`
+	Code string `json:"code" binding:"required,max=50"`
 	// 排序
-	Sort int `json:"sort"`
+	Sort int `json:"sort" binding:"min=0"`
 	// 角色状态(1-正常；0-停用)
-	Status int8 `json:"status"`
+	Status int8 `json:"status" binding:"oneof=0 1"`
 	// 数据权限
-	DataScope int8 `json:"dataScope"`
+	DataScope int8 `json:"dataScope" binding:"oneof=0 1 2 3"`
 }

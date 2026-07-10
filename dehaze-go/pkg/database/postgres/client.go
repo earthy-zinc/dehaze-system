@@ -76,6 +76,11 @@ func (c *Client) initMaster() error {
 		return fmt.Errorf("打开主库失败: %w", err)
 	}
 
+	// 注册数据权限插件
+	if err := database.RegisterDataScopePlugin(db); err != nil {
+		return fmt.Errorf("注册数据权限插件失败: %w", err)
+	}
+
 	// 获取原生sql.DB并设置连接池
 	sqlDB, err := db.DB()
 	if err != nil {

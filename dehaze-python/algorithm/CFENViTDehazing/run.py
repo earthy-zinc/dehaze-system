@@ -2,8 +2,8 @@ from io import BytesIO
 
 import torch
 
-from app.utils.image import preprocess_image, postprocess_image
-from config import Config
+from algorithm.image_utils import preprocess_image, postprocess_image
+from algorithm.config import Config
 from .models.common import default_conv
 from .models.ipt import define_G
 from .test_options import TestOptions

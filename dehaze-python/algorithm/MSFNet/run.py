@@ -5,8 +5,8 @@ import torchvision.transforms as tfs
 from PIL import Image
 from torch.autograd import Variable
 
-from app.utils.image import postprocess_image
-from config import Config
+from algorithm.image_utils import postprocess_image
+from algorithm.config import Config
 from .net import final_Net
 
 

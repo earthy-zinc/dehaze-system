@@ -1,110 +1,54 @@
 """
 Schema 模型包 - Pydantic 模型定义，用于自动生成 OpenAPI 文档
 """
-from app.models.schema.common import (
-    BasePageQuery,
-    PageResult,
-    Option,
-    Result,
-    IdsPath,
-)
-from app.models.schema.role import (
-    RolePageQuery,
-    StatusQuery,
-    RoleIdPath,
-    RoleIdsPath,
-    RoleForm,
-    MenuIdsBody,
-    RolePageVO,
-)
-from app.models.schema.user import (
-    UserPageQuery,
-    UserStatusQuery,
-    UserPasswordQuery,
-    UserIdPath,
-    UserIdsPath,
-    LoginForm,
-    RegisterForm,
-    UserForm,
-    PasswordForm,
-    LoginVO,
-    UserInfoVO,
-    UserPageVO,
-    UserFormVO,
-)
-from app.models.schema.menu import (
-    MenuQuery,
-    MenuVisibleQuery,
-    MenuIdPath,
-    MenuForm,
-    MenuVO,
-    RouteVO,
-    MenuOptionVO,
-)
-from app.models.schema.dept import (
-    DeptQuery,
-    DeptIdPath,
-    DeptIdsPath,
-    DeptForm,
-    DeptVO,
-)
-from app.models.schema.dict import (
-    DictPageQuery,
-    DictTypePageQuery,
-    DictIdPath,
-    DictIdsPath,
-    DictTypeIdPath,
-    DictTypeIdsPath,
-    DictTypeCodePath,
-    DictForm,
-    DictTypeForm,
-    DictPageVO,
-    DictTypePageVO,
-)
-from app.models.schema.dataset import (
-    DatasetQuery,
-    DatasetImagePageQuery,
-    DatasetItemPageQuery,
-    DatasetIdPath,
-    DatasetIdsQuery,
-    DatasetItemIdPath,
-    DatasetAddForm,
-    DatasetUpdateForm,
-    DatasetItemCreateForm,
-    DatasetItemUpdateForm,
-    DatasetItemDeleteForm,
-    DatasetVO,
-    DatasetItemVO,
-    DatasetOptionVO,
-)
-from app.models.schema.algorithm import (
-    AlgorithmQuery,
-    AlgorithmIdPath,
-    AlgorithmIdsQuery,
-    AlgorithmForm,
-    AlgorithmVO,
-    AlgorithmOptionVO,
-)
-from app.models.schema.file import (
-    FileIdQuery,
-    FileCheckQuery,
-    FileUploadForm,
-    FileUploadResultVO,
-    FileVO,
-)
-from app.models.schema.task import (
-    TaskIdPath,
-    ExportOptions,
-    ExportTaskCreateForm,
-    TaskVO,
-)
+from app.models.schema.algorithm import (AlgorithmDeleteResultVO,
+                                         AlgorithmForm, AlgorithmIdPath,
+                                         AlgorithmIdsQuery, AlgorithmIdVO,
+                                         AlgorithmOptionVO, AlgorithmQuery,
+                                         AlgorithmVO)
+from app.models.schema.common import BasePageQuery, IdsPath, Option, PageResult
+from app.models.schema.dataset import (DatasetAddForm, DatasetIdPath,
+                                       DatasetIdsQuery, DatasetIdVO,
+                                       DatasetImagePageQuery,
+                                       DatasetItemCreateForm,
+                                       DatasetItemDeleteForm,
+                                       DatasetItemIdPath, DatasetItemIdVO,
+                                       DatasetItemPageQuery, DatasetItemPageVO,
+                                       DatasetItemUpdateForm, DatasetItemVO,
+                                       DatasetOptionVO, DatasetQuery,
+                                       DatasetUpdateForm, DatasetVO)
+from app.models.schema.dept import (DeptForm, DeptFormVO, DeptIdPath,
+                                    DeptIdsPath, DeptOptionVO, DeptQuery,
+                                    DeptVO)
+from app.models.schema.dict import (DictForm, DictFormVO, DictIdPath,
+                                    DictIdsPath, DictOptionVO, DictPageQuery,
+                                    DictPageVO, DictTypeCodePath, DictTypeForm,
+                                    DictTypeFormVO, DictTypeIdPath,
+                                    DictTypeIdsPath, DictTypePageQuery,
+                                    DictTypePageVO)
+from app.models.schema.file import (FileCheckQuery, FileIdQuery,
+                                    FileUploadForm, FileUploadResultVO, FileVO)
+from app.models.schema.menu import (MenuForm, MenuFormVO, MenuIdPath,
+                                    MenuOptionVO, MenuQuery, MenuVisibleQuery,
+                                    MenuVO, RouteVO)
+from app.models.schema.role import (MenuIdsBody, RoleForm, RoleFormVO,
+                                    RoleIdPath, RoleIdsPath, RoleOptionVO,
+                                    RolePageQuery, RolePageVO, StatusQuery)
+from app.models.schema.task import (ExportOptions, ExportTaskCreateForm,
+                                    TaskIdPath, TaskVO)
+from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
+                                    LoginForm, LoginVO, PasswordForm,
+                                    RegisterForm, UserCreateVO, UserDeleteVO,
+                                    UserForm, UserFormVO, UserIdPath,
+                                    UserIdsPath, UserImportVO, UserInfoVO,
+                                    UserPageQuery, UserPageVO,
+                                    UserPasswordQuery, UserStatusQuery)
 
 __all__ = [
     # common
     "BasePageQuery",
     "PageResult",
     "Option",
-    "Result",
     "IdsPath",
     # role
     "RolePageQuery",
@@ -114,6 +58,8 @@ __all__ = [
     "RoleForm",
     "MenuIdsBody",
     "RolePageVO",
+    "RoleOptionVO",
+    "RoleFormVO",
     # user
     "UserPageQuery",
     "UserStatusQuery",
@@ -128,6 +74,10 @@ __all__ = [
     "UserInfoVO",
     "UserPageVO",
     "UserFormVO",
+    "CurrentUserVO",
+    "UserCreateVO",
+    "UserImportVO",
+    "UserDeleteVO",
     # menu
     "MenuQuery",
     "MenuVisibleQuery",
@@ -136,12 +86,15 @@ __all__ = [
     "MenuVO",
     "RouteVO",
     "MenuOptionVO",
+    "MenuFormVO",
     # dept
     "DeptQuery",
     "DeptIdPath",
     "DeptIdsPath",
     "DeptForm",
     "DeptVO",
+    "DeptOptionVO",
+    "DeptFormVO",
     # dict
     "DictPageQuery",
     "DictTypePageQuery",
@@ -151,9 +104,12 @@ __all__ = [
     "DictTypeIdsPath",
     "DictTypeCodePath",
     "DictForm",
+    "DictFormVO",
     "DictTypeForm",
+    "DictTypeFormVO",
     "DictPageVO",
     "DictTypePageVO",
+    "DictOptionVO",
     # dataset
     "DatasetQuery",
     "DatasetImagePageQuery",
@@ -176,6 +132,10 @@ __all__ = [
     "AlgorithmForm",
     "AlgorithmVO",
     "AlgorithmOptionVO",
+    "AlgorithmIdVO",
+    "AlgorithmDeleteResultVO",
+    "AlgorithmIdVO",
+    "AlgorithmDeleteResultVO",
     # file
     "FileIdQuery",
     "FileCheckQuery",

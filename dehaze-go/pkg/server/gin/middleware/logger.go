@@ -34,7 +34,7 @@ type Logger struct {
 	// AuthProcess 鉴权处理
 	AuthProcess func(c *gin.Context, layout *LogLayout)
 	// 日志处理
-	Print func(LogLayout)
+	Print func(c *gin.Context, layout LogLayout)
 	// Source 服务唯一标识
 	Source string
 }
@@ -85,13 +85,13 @@ func (l Logger) SetLoggerMiddleware() gin.HandlerFunc {
 			l.FilterKeyword(&layout)
 		}
 		// 自行处理日志
-		l.Print(layout)
+		l.Print(c, layout)
 	}
 }
 
 func DefaultLogger() gin.HandlerFunc {
 	return Logger{
-		Print: func(layout LogLayout) {
+		Print: func(c *gin.Context, layout LogLayout) {
 			// 从 Metadata 中提取状态码
 			var status int
 			var method string
@@ -104,27 +104,24 @@ func DefaultLogger() gin.HandlerFunc {
 				}
 			}
 
-			// 根据状态码确定日志级别
-			var logFunc func(string, ...zap.Field)
+			log := logger.WithContext(c.Request.Context())
 			msg := fmt.Sprintf("%s %s %d %s", method, layout.Path, status, layout.Cost)
-
-			if status >= 500 {
-				logFunc = logger.Error
-			} else if status >= 400 {
-				logFunc = logger.Warn
-			} else {
-				logFunc = logger.Info
-			}
-
-			// 使用项目的 zap logger 输出，保持统一格式
-			logFunc(msg,
+			fields := []zap.Field{
 				zap.String("method", method),
 				zap.String("path", layout.Path),
 				zap.Int("status", status),
 				zap.Duration("cost", layout.Cost),
 				zap.String("ip", layout.IP),
 				zap.String("user_agent", layout.UserAgent),
-			)
+			}
+
+			if status >= 500 {
+				log.Error(msg, fields...)
+			} else if status >= 400 {
+				log.Warn(msg, fields...)
+			} else {
+				log.Info(msg, fields...)
+			}
 		},
 		Source: "GVA",
 	}.SetLoggerMiddleware()

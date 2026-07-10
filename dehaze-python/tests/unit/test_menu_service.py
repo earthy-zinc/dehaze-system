@@ -1,741 +1,396 @@
 """
 菜单服务测试
-"""
-import pytest
 
-from app.models import SysMenu
-from app.service.menu import MenuService
+测试 MenuService 的核心功能
+"""
+
+import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
+
+from app.service.menu_service import MenuService, MENU_TYPE_CATALOG, MENU_TYPE_MENU, MENU_TYPE_BUTTON
+from app.core.exceptions import BusinessException
 
 
 @pytest.mark.unit
-@pytest.mark.requires_db
 class TestMenuService:
-    """菜单服务测试类"""
+    """菜单服务测试"""
 
-    def test_save_menu_create(self, db_session):
-        """测试创建菜单"""
-        menu_data = {
-            'parentId': 0,
-            'name': '测试菜单',
-            'type': 1,
-            'path': '/test',
-            'component': 'TestComponent',
-            'sort': 1,
-            'visible': 1
-        }
-
-        result = MenuService.save_menu(menu_data)
-        assert 'error' not in result
-        assert 'data' in result
-        assert 'id' in result['data']
-
-        # 验证菜单创建成功
-        menu_id = result['data']['id']
-        menu = MenuService.get_menu_form(menu_id)
-        assert menu is not None
-        assert menu['name'] == '测试菜单'
-        assert menu['type'] == 1
-        assert menu['path'] == '/test'
-        assert menu['component'] == 'TestComponent'
-        assert menu['sort'] == 1
-        assert menu['visible'] == 1
-
-    def test_save_menu_update(self, db_session):
-        """测试更新菜单"""
-        # 先创建一个菜单
-        menu = SysMenu(
-            parent_id=0,
-            name='原始菜单',
-            type=1,
-            path='/original',
-            component='OriginalComponent',
-            sort=1,
-            visible=1
-        )
-        db_session.add(menu)
-        db_session.commit()
-
-        # 更新菜单
-        update_data = {
-            'id': menu.id,
-            'parentId': 0,
-            'name': '更新菜单',
-            'type': 1,  # 保持类型为1，避免被自动改为Layout
-            'path': '/updated',
-            'component': 'UpdatedComponent',
-            'sort': 2,
-            'visible': 0
-        }
-
-        result = MenuService.save_menu(update_data)
-        assert 'error' not in result
-
-        # 验证菜单更新成功
-        updated_menu = MenuService.get_menu_form(menu.id)
-        assert updated_menu is not None
-        assert updated_menu['name'] == '更新菜单'
-        assert updated_menu['type'] == 1
-        assert updated_menu['path'] == '/updated'
-        assert updated_menu['component'] == 'UpdatedComponent'
-        assert updated_menu['sort'] == 2
-        assert updated_menu['visible'] == 0
-
-    def test_save_menu_update_not_found(self, db_session):
-        """测试更新不存在的菜单"""
-        update_data = {
-            'id': 999999,
-            'parentId': 0,
-            'name': '更新菜单'
-        }
-
-        result = MenuService.save_menu(update_data)
-        assert 'error' in result
-        assert result['error'] == '菜单不存在'
-
-    def test_get_menu_form(self, db_session):
-        """测试获取菜单表单数据"""
-        # 创建测试菜单
-        menu = SysMenu(
-            parent_id=0,
-            name='测试菜单',
-            type=1,
-            path='/test',
-            component='TestComponent',
-            perm='test:permission',
-            sort=1,
-            visible=1,
-            icon='test-icon'
-        )
-        db_session.add(menu)
-        db_session.commit()
-
-        # 获取菜单表单数据
-        menu_form = MenuService.get_menu_form(menu.id)
-        assert menu_form is not None
-        assert menu_form['id'] == menu.id
-        assert menu_form['name'] == '测试菜单'
-        assert menu_form['type'] == 1
-        assert menu_form['path'] == '/test'
-        assert menu_form['component'] == 'TestComponent'
-        assert menu_form['perm'] == 'test:permission'
-        assert menu_form['sort'] == 1
-        assert menu_form['visible'] == 1
-        assert menu_form['icon'] == 'test-icon'
-
-    def test_get_menu_form_not_found(self, db_session):
-        """测试获取不存在的菜单表单数据"""
-        menu_form = MenuService.get_menu_form(999999)
-        assert menu_form is None
-
-    def test_list_menus(self, db_session):
+    @pytest.mark.asyncio
+    async def test_list_menus(self):
         """测试获取菜单列表"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='顶级菜单1',
-            type=2,
-            path='/menu1',
-            sort=1
-        )
-        menu2 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='顶级菜单2',
-            type=2,
-            path='/menu2',
-            sort=2
-        )
-        db_session.add(menu1)
-        db_session.add(menu2)
-        db_session.commit()  # 先提交以获取menu1.id
+        mock_db = AsyncMock()
 
-        submenu1 = SysMenu(
-            parent_id=menu1.id,  # 使用具体的parent_id而不是None
-            name='子菜单1',
-            type=1,
-            path='/menu1/sub1',
-            sort=1
-        )
-        db_session.add(submenu1)
-        db_session.commit()
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.get_list = AsyncMock(return_value=[])
 
-        # 获取菜单列表
-        menu_list = MenuService.list_menus()
-        assert len(menu_list) == 2
-        assert menu_list[0]['name'] == '顶级菜单1'
-        assert menu_list[1]['name'] == '顶级菜单2'
+            result = await MenuService.list_menus(mock_db)
 
-        # 验证子菜单
-        assert 'children' in menu_list[0]
-        assert len(menu_list[0]['children']) == 1
-        assert menu_list[0]['children'][0]['name'] == '子菜单1'
+            assert result == []
 
-    def test_list_menus_with_keywords(self, db_session):
-        """测试带关键字搜索的菜单列表"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,
-            name='用户管理',
-            type=2,
-            path='/user',
-            sort=1
-        )
-        menu2 = SysMenu(
-            parent_id=0,
-            name='角色管理',
-            type=2,
-            path='/role',
-            sort=2
-        )
-        menu3 = SysMenu(
-            parent_id=0,
-            name='菜单管理',
-            type=2,
-            path='/menu',
-            sort=3
-        )
-        db_session.add(menu1)
-        db_session.add(menu2)
-        db_session.add(menu3)
-        db_session.commit()
-
-        # 搜索包含"用户"的菜单
-        menu_list = MenuService.list_menus(keywords='用户')
-        assert len(menu_list) == 1
-        assert menu_list[0]['name'] == '用户管理'
-
-    def test_get_menu_routes(self, db_session):
-        """测试获取菜单路由列表"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,
-            name='顶级菜单',
-            type=2,  # 目录
-            path='/menu',
-            sort=1,
-            visible=1
-        )
-        db_session.add(menu1)
-        db_session.commit()
-
-        menu2 = SysMenu(
-            parent_id=menu1.id,
-            name='子菜单',
-            type=1,  # 菜单
-            path='sub',
-            component='SubMenu',
-            sort=1,
-            visible=1
-        )
-        menu3 = SysMenu(
-            parent_id=0,
-            name='隐藏菜单',
-            type=1,
-            path='/hidden',
-            component='HiddenMenu',
-            sort=2,
-            visible=0  # 隐藏
-        )
-        db_session.add(menu2)
-        db_session.add(menu3)
-        db_session.commit()
-
-        # 获取路由列表
-        routes = MenuService.list_routes()
-        # 应该只包含可见的菜单
-        assert len(routes) == 1
-        assert routes[0]['path'] == '/menu'
-        assert len(routes[0]['children']) == 1
-        assert routes[0]['children'][0]['path'] == 'sub'
-
-    def test_get_menu_options(self, db_session):
+    @pytest.mark.asyncio
+    async def test_list_menu_options(self):
         """测试获取菜单选项"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,
-            name='顶级菜单',
-            type=2,
-            path='/menu',
-            sort=1
-        )
-        db_session.add(menu1)
-        db_session.commit()
+        mock_db = AsyncMock()
 
-        menu2 = SysMenu(
-            parent_id=menu1.id,
-            name='子菜单',
-            type=1,
-            path='/menu/sub',
-            sort=1
-        )
-        db_session.add(menu2)
-        db_session.commit()
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.get_list = AsyncMock(return_value=[])
 
-        # 获取菜单选项
-        options = MenuService.list_menu_options()
-        assert len(options) == 1  # 顶级菜单
-        assert options[0]['label'] == '顶级菜单'
-        assert 'children' in options[0]
-        assert len(options[0]['children']) == 1
-        assert options[0]['children'][0]['label'] == '子菜单'
+            result = await MenuService.list_menu_options(mock_db)
 
-    def test_generate_menu_tree_path(self, db_session):
-        """测试生成菜单树路径"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,
-            name='顶级菜单',
-            type=2,
-            tree_path='0',
-            path='/menu',
-            sort=1
-        )
-        db_session.add(menu1)
-        db_session.commit()
+            assert result == []
 
-        menu2 = SysMenu(
-            parent_id=menu1.id,
-            name='子菜单',
-            type=1,
-            tree_path='0,1',
-            path='/menu/sub',
-            sort=1
-        )
-        db_session.add(menu2)
-        db_session.commit()
+    @pytest.mark.asyncio
+    async def test_save_menu_create(self):
+        """测试创建菜单"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-        # 测试生成树路径
-        path1 = MenuService._generate_menu_tree_path(0)
-        assert path1 == '0'
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            with patch.object(MenuService, "_validate_menu_data", new_callable=AsyncMock):
+                with patch.object(MenuService, "_clear_menu_cache", new_callable=AsyncMock):
+                    mock_repo.create_menu = AsyncMock(return_value=MagicMock(id=1))
+                    mock_db.commit = AsyncMock()
 
-        path2 = MenuService._generate_menu_tree_path(menu1.id)
-        assert path2 == '0,1'
+                    result = await MenuService.save_menu(
+                        db=mock_db,
+                        redis=mock_redis,
+                        data={"name": "测试菜单", "path": "/test", "type": MENU_TYPE_CATALOG, "parentId": 0},
+                    )
 
-    def test_save_menu_create_directory(self, db_session):
-        """测试创建目录类型菜单"""
-        menu_data = {
-            'parentId': 0,
-            'name': '测试目录',
-            'type': 2,  # 目录类型
-            'path': 'test',
-            'sort': 1,
-            'visible': 1
-        }
+                    assert result is not None
 
-        result = MenuService.save_menu(menu_data)
-        assert 'error' not in result
-        assert 'data' in result
-        assert 'id' in result['data']
+    @pytest.mark.asyncio
+    async def test_save_menu_update(self):
+        """测试更新菜单"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_menu = MagicMock()
+        mock_menu.id = 1
+        mock_menu.type = MENU_TYPE_CATALOG
 
-        # 验证菜单创建成功
-        menu_id = result['data']['id']
-        menu = MenuService.get_menu_form(menu_id)
-        assert menu is not None
-        assert menu['name'] == '测试目录'
-        assert menu['type'] == 2
-        assert menu['component'] == 'Layout'  # 目录类型自动设置为Layout
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            with patch.object(MenuService, "_validate_menu_data", new_callable=AsyncMock):
+                with patch.object(MenuService, "_clear_menu_cache", new_callable=AsyncMock):
+                    mock_repo.get_by_id = AsyncMock(return_value=mock_menu)
+                    mock_repo.update_menu = AsyncMock(return_value=mock_menu)
+                    mock_db.commit = AsyncMock()
 
-    def test_save_menu_create_external_link(self, db_session):
-        """测试创建外链类型菜单"""
-        menu_data = {
-            'parentId': 0,
-            'name': '外链菜单',
-            'type': 3,  # 外链类型
-            'path': 'https://example.com',
-            'sort': 1,
-            'visible': 1
-        }
+                    result = await MenuService.save_menu(
+                        db=mock_db,
+                        redis=mock_redis,
+                        data={"id": 1, "name": "更新菜单", "path": "/test", "type": MENU_TYPE_CATALOG},
+                    )
 
-        result = MenuService.save_menu(menu_data)
-        assert 'error' not in result
-        assert 'data' in result
-        assert 'id' in result['data']
+                    assert result is not None
 
-        # 验证菜单创建成功
-        menu_id = result['data']['id']
-        menu = MenuService.get_menu_form(menu_id)
-        assert menu is not None
-        assert menu['name'] == '外链菜单'
-        assert menu['type'] == 3
-        assert menu['component'] is None  # 外链类型组件为None
+    @pytest.mark.asyncio
+    async def test_save_menu_not_found(self):
+        """测试更新菜单时菜单不存在"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-    def test_save_menu_create_with_tree_path(self, db_session):
-        """测试创建菜单时生成树路径"""
-        # 先创建父级菜单
-        parent_menu = SysMenu(
-            parent_id=0,
-            name='父级菜单',
-            type=2,
-            tree_path='0',
-            path='/parent',
-            sort=1
-        )
-        db_session.add(parent_menu)
-        db_session.commit()
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            with patch.object(MenuService, "_validate_menu_data", new_callable=AsyncMock):
+                mock_repo.get_by_id = AsyncMock(return_value=None)
 
-        # 创建子菜单
-        menu_data = {
-            'parentId': parent_menu.id,
-            'name': '子菜单',
-            'type': 1,
-            'path': '/child',
-            'sort': 1,
-            'visible': 1
-        }
+                with pytest.raises(BusinessException, match="菜单不存在"):
+                    await MenuService.save_menu(
+                        db=mock_db,
+                        redis=mock_redis,
+                        data={"id": 999, "name": "测试", "path": "/test", "type": MENU_TYPE_CATALOG},
+                    )
 
-        result = MenuService.save_menu(menu_data)
-        assert 'error' not in result
-        assert 'data' in result
-        assert 'id' in result['data']
+    @pytest.mark.asyncio
+    async def test_save_menu_name_duplicate(self):
+        """测试创建菜单时名称重复"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-        # 验证菜单创建成功
-        menu_id = result['data']['id']
-        menu = MenuService.get_menu_form(menu_id)
-        assert menu is not None
-        assert menu['name'] == '子菜单'
-        assert menu['parentId'] == parent_menu.id
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.check_name_exists = AsyncMock(return_value=True)
 
-    def test_save_menu_update_directory(self, db_session):
-        """测试更新目录类型菜单"""
-        # 先创建一个菜单
-        menu = SysMenu(
-            parent_id=0,
-            name='原始目录',
-            type=2,
-            path='/original',
-            component='Layout',
-            sort=1,
-            visible=1
-        )
-        db_session.add(menu)
-        db_session.commit()
+            with pytest.raises(BusinessException, match="同一父级下菜单名称已存在"):
+                await MenuService.save_menu(
+                    db=mock_db,
+                    redis=mock_redis,
+                    data={"name": "重复菜单", "type": MENU_TYPE_CATALOG, "parentId": 0},
+                )
 
-        # 更新菜单
-        update_data = {
-            'id': menu.id,
-            'parentId': 0,
-            'name': '更新目录',
-            'type': 2,
-            'path': '/updated',
-            'sort': 2,
-            'visible': 0
-        }
+    @pytest.mark.asyncio
+    async def test_save_menu_button_as_parent(self):
+        """测试按钮类型作为父级菜单"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-        result = MenuService.save_menu(update_data)
-        assert 'error' not in result
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_parent = MagicMock()
+            mock_parent.type = MENU_TYPE_BUTTON
+            mock_repo.get_by_id = AsyncMock(return_value=mock_parent)
+            mock_repo.check_name_exists = AsyncMock(return_value=False)
 
-        # 验证菜单更新成功
-        updated_menu = MenuService.get_menu_form(menu.id)
-        assert updated_menu is not None
-        assert updated_menu['name'] == '更新目录'
-        assert updated_menu['type'] == 2
-        assert updated_menu['path'] == '/updated'
-        assert updated_menu['component'] == 'Layout'
-        assert updated_menu['sort'] == 2
-        assert updated_menu['visible'] == 0
+            with pytest.raises(BusinessException, match="按钮类型不能作为父级菜单"):
+                await MenuService.save_menu(
+                    db=mock_db,
+                    redis=mock_redis,
+                    data={"name": "测试菜单", "type": MENU_TYPE_MENU, "parentId": 1},
+                )
 
-    def test_save_menu_exception_handling(self, db_session):
-        """测试保存菜单时的异常处理"""
-        # 传递无效数据来触发异常
-        menu_data = {
-            'parentId': 'invalid',  # 应该是整数
-            'name': '测试菜单',
-            'type': 1,
-            'path': '/test',
-            'sort': 1
-        }
+    @pytest.mark.asyncio
+    async def test_save_menu_missing_path(self):
+        """测试菜单类型缺少路由地址"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-        result = MenuService.save_menu(menu_data)
-        # 由于我们没有在save_menu中处理类型转换错误，这里不会抛出异常
-        # 但我们可以测试正常流程
-        assert 'data' in result or 'error' in result
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.check_name_exists = AsyncMock(return_value=False)
 
-    def test_build_menu_tree_empty(self, db_session):
-        """测试构建空菜单树"""
-        menus = []
-        tree = MenuService._build_menu_tree(0, menus)
-        assert tree == []
+            with pytest.raises(BusinessException, match="菜单类型必须配置路由地址"):
+                await MenuService.save_menu(
+                    db=mock_db,
+                    redis=mock_redis,
+                    data={"name": "测试菜单", "type": MENU_TYPE_MENU, "parentId": 0},
+                )
 
-    def test_build_menu_options_empty(self, db_session):
-        """测试构建空菜单选项"""
-        menus = []
-        options = MenuService._build_menu_options(0, menus)
-        assert options == []
+    @pytest.mark.asyncio
+    async def test_save_menu_missing_perm_for_button(self):
+        """测试按钮类型缺少权限标识"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-    def test_list_menus_empty(self, db_session):
-        """测试获取空菜单列表"""
-        menus = MenuService.list_menus()
-        assert menus == []
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_parent = MagicMock()
+            mock_parent.type = MENU_TYPE_CATALOG  # 父级是目录类型，允许作为父级
+            mock_repo.check_name_exists = AsyncMock(return_value=False)
+            mock_repo.get_by_id = AsyncMock(return_value=mock_parent)
 
-    def test_list_routes_empty(self, db_session):
-        """测试获取空路由列表"""
-        routes = MenuService.list_routes()
-        assert routes == []
+            with pytest.raises(BusinessException, match="按钮类型必须配置权限标识"):
+                await MenuService.save_menu(
+                    db=mock_db,
+                    redis=mock_redis,
+                    data={"name": "测试按钮", "type": MENU_TYPE_BUTTON, "parentId": 1},
+                )
 
-    def test_list_menus_with_keywords(self, db_session):
-        """测试带关键字搜索的菜单列表"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,
-            name='用户管理',
-            type=2,
-            path='/user',
-            sort=1
-        )
-        menu2 = SysMenu(
-            parent_id=0,
-            name='角色管理',
-            type=2,
-            path='/role',
-            sort=2
-        )
-        menu3 = SysMenu(
-            parent_id=0,
-            name='菜单管理',
-            type=2,
-            path='/menu',
-            sort=3
-        )
-        db_session.add(menu1)
-        db_session.add(menu2)
-        db_session.add(menu3)
-        db_session.commit()
-
-        # 搜索包含"用户"的菜单
-        menu_list = MenuService.list_menus(keywords='用户')
-        assert len(menu_list) == 1
-        assert menu_list[0]['name'] == '用户管理'
-
-    def test_list_menu_options(self, db_session):
-        """测试获取菜单下拉选项"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='顶级菜单1',
-            type=2,
-            path='/menu1',
-            sort=1
-        )
-        menu2 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='顶级菜单2',
-            type=2,
-            path='/menu2',
-            sort=2
-        )
-        db_session.add(menu1)
-        db_session.add(menu2)
-        db_session.commit()  # 先提交以获取menu1.id
-
-        submenu1 = SysMenu(
-            parent_id=menu1.id,  # 使用具体的parent_id而不是None
-            name='子菜单1',
-            type=1,
-            path='/menu1/sub1',
-            sort=1
-        )
-        db_session.add(submenu1)
-        db_session.commit()
-
-        # 获取菜单下拉选项
-        options = MenuService.list_menu_options()
-        assert len(options) == 2
-        assert options[0]['label'] == '顶级菜单1'
-        assert options[1]['label'] == '顶级菜单2'
-
-        # 验证子菜单选项
-        assert 'children' in options[0]
-        assert len(options[0]['children']) == 1
-        assert options[0]['children'][0]['label'] == '子菜单1'
-
-    def test_list_routes(self, db_session):
+    @pytest.mark.asyncio
+    async def test_list_routes(self):
         """测试获取路由列表"""
-        # 创建测试菜单
-        menu1 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='首页',
-            type=2,  # 目录
-            path='/home',
-            component='Layout',
-            visible=1,
-            sort=1
-        )
-        menu2 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='用户',
-            type=1,  # 菜单
-            path='/user',
-            component='UserComponent',
-            perm='user:list',
-            visible=1,
-            sort=2,
-            keep_alive=1
-        )
-        db_session.add(menu1)
-        db_session.add(menu2)
-        db_session.commit()
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-        # 获取路由列表
-        routes = MenuService.list_routes()
-        assert len(routes) == 2
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            with patch("app.service.menu_service.CacheService") as mock_cache_class:
+                mock_cache = AsyncMock()
+                mock_cache.get_json = AsyncMock(return_value=None)
+                mock_cache.set_json = AsyncMock()
+                mock_cache_class.return_value = mock_cache
 
-        # 验证首页路由
-        home_route = None
-        user_route = None
-        for route in routes:
-            if route['path'] == '/home':
-                home_route = route
-            elif route['path'] == '/user':
-                user_route = route
+                mock_repo.get_route_menus = AsyncMock(return_value=[])
 
-        assert home_route is not None
-        assert home_route['path'] == '/home'
-        assert home_route['component'] == 'Layout'
-        assert 'meta' in home_route
-        assert home_route['meta']['title'] == '首页'
+                result = await MenuService.list_routes(mock_db, mock_redis)
 
-        # 验证用户路由
-        assert user_route is not None
-        assert user_route['path'] == '/user'
-        assert user_route['component'] == 'UserComponent'
-        assert 'meta' in user_route
-        assert user_route['meta']['title'] == '用户'
-        assert user_route['meta']['keepAlive'] is True
+                assert result == []
 
-    def test_update_menu_visible(self, db_session):
+    @pytest.mark.asyncio
+    async def test_list_routes_from_cache(self):
+        """测试从缓存获取路由列表"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        cached_routes = [{"name": "System", "path": "/system"}]
+
+        with patch("app.service.menu_service.CacheService") as mock_cache_class:
+            mock_cache = AsyncMock()
+            mock_cache.get_json = AsyncMock(return_value=cached_routes)
+            mock_cache_class.return_value = mock_cache
+
+            result = await MenuService.list_routes(mock_db, mock_redis)
+
+            assert result == cached_routes
+
+    @pytest.mark.asyncio
+    async def test_update_menu_visible_success(self):
         """测试更新菜单显示状态"""
-        # 创建测试菜单
-        menu = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='测试菜单',
-            type=1,
-            path='/test',
-            visible=1
-        )
-        db_session.add(menu)
-        db_session.commit()
-        assert menu.visible == 1
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_menu = MagicMock()
 
-        # 隐藏菜单
-        result = MenuService.update_menu_visible(menu.id, 0)
-        assert 'error' not in result
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            with patch.object(MenuService, "_clear_menu_cache", new_callable=AsyncMock):
+                mock_repo.get_by_id = AsyncMock(return_value=mock_menu)
+                mock_db.commit = AsyncMock()
 
-        # 验证状态已更新
-        updated_menu = MenuService.get_menu_form(menu.id)
-        assert updated_menu['visible'] == 0
+                await MenuService.update_menu_visible(
+                    db=mock_db,
+                    redis=mock_redis,
+                    menu_id=1,
+                    visible=0,
+                )
 
-        # 显示菜单
-        result = MenuService.update_menu_visible(menu.id, 1)
-        assert 'error' not in result
+    @pytest.mark.asyncio
+    async def test_update_menu_visible_invalid(self):
+        """测试更新菜单显示状态值无效"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-        # 验证状态已更新
-        updated_menu = MenuService.get_menu_form(menu.id)
-        assert updated_menu['visible'] == 1
+        with pytest.raises(BusinessException, match="显示状态只能为0或1"):
+            await MenuService.update_menu_visible(
+                db=mock_db,
+                redis=mock_redis,
+                menu_id=1,
+                visible=2,
+            )
 
-    def test_update_menu_visible_invalid_status(self, db_session):
-        """测试更新菜单显示状态时传入无效状态值"""
-        result = MenuService.update_menu_visible(1, 2)  # 2是无效状态
-        assert 'error' in result
-        assert result['error'] == '显示状态只能为0或1'
+    @pytest.mark.asyncio
+    async def test_update_menu_visible_not_found(self):
+        """测试更新菜单显示状态时菜单不存在"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-    def test_update_menu_visible_not_found(self, db_session):
-        """测试更新不存在的菜单显示状态"""
-        result = MenuService.update_menu_visible(999999, 1)
-        assert 'error' in result
-        assert result['error'] == '菜单不存在'
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=None)
 
-    def test_delete_menu(self, db_session):
+            with pytest.raises(BusinessException, match="菜单不存在"):
+                await MenuService.update_menu_visible(
+                    db=mock_db,
+                    redis=mock_redis,
+                    menu_id=999,
+                    visible=0,
+                )
+
+    @pytest.mark.asyncio
+    async def test_get_menu_form(self):
+        """测试获取菜单表单数据"""
+        mock_db = AsyncMock()
+        mock_menu = MagicMock()
+        mock_menu.id = 1
+        mock_menu.parent_id = 0
+        mock_menu.name = "测试菜单"
+        mock_menu.type = MENU_TYPE_CATALOG
+        mock_menu.path = "/test"
+        mock_menu.component = "Test"
+        mock_menu.perm = "test:list"
+        mock_menu.visible = 1
+        mock_menu.sort = 1
+        mock_menu.icon = "test"
+        mock_menu.redirect = None
+        mock_menu.always_show = 0
+        mock_menu.keep_alive = 0
+
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=mock_menu)
+
+            result = await MenuService.get_menu_form(mock_db, 1)
+
+            assert result is not None
+            assert result["name"] == "测试菜单"
+
+    @pytest.mark.asyncio
+    async def test_get_menu_form_not_found(self):
+        """测试获取菜单表单数据时菜单不存在"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=None)
+
+            result = await MenuService.get_menu_form(mock_db, 999)
+
+            assert result is None
+
+    @pytest.mark.asyncio
+    async def test_delete_menu_success(self):
         """测试删除菜单"""
-        # 创建测试菜单
-        menu = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='测试菜单',
-            type=1,
-            path='/test'
-        )
-        db_session.add(menu)
-        db_session.commit()
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
+        mock_menu = MagicMock()
+        mock_menu.id = 1
 
-        # 保存菜单ID用于后续验证
-        menu_id = menu.id
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            with patch.object(MenuService, "_clear_menu_cache", new_callable=AsyncMock):
+                mock_repo.get_by_id = AsyncMock(return_value=mock_menu)
+                mock_repo.delete_role_menus_by_menu_id = AsyncMock()
+                mock_repo.delete_menu_and_children = AsyncMock()
+                mock_db.commit = AsyncMock()
 
-        # 删除菜单
-        result = MenuService.delete_menu(menu_id)
-        assert 'error' not in result
+                await MenuService.delete_menu(mock_db, mock_redis, 1)
 
-        # 验证菜单已删除（使用原生SQL查询验证）
-        from sqlalchemy import text
-        result = db_session.execute(text("SELECT COUNT(*) FROM sys_menu WHERE id = :id"), {"id": menu_id})
-        count = result.scalar()
-        assert count == 0
+                mock_repo.delete_role_menus_by_menu_id.assert_called_once()
+                mock_repo.delete_menu_and_children.assert_called_once()
 
-    def test_delete_menu_not_found(self, db_session):
-        """测试删除不存在的菜单"""
-        result = MenuService.delete_menu(999999)
-        assert 'error' in result
-        assert result['error'] == '菜单不存在'
+    @pytest.mark.asyncio
+    async def test_delete_menu_not_found(self):
+        """测试删除菜单时菜单不存在"""
+        mock_db = AsyncMock()
+        mock_redis = AsyncMock()
 
-    def test_generate_menu_tree_path(self, db_session):
-        """测试生成菜单树路径"""
-        # 创建测试菜单
-        parent_menu = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='父菜单',
-            type=2,
-            path='/parent'
-        )
-        db_session.add(parent_menu)
-        db_session.commit()
+        with patch("app.service.menu_service.menu_repository") as mock_repo:
+            mock_repo.get_by_id = AsyncMock(return_value=None)
 
-        child_menu = SysMenu(
-            parent_id=parent_menu.id,
-            name='子菜单',
-            type=1,
-            path='/parent/child'
-        )
-        db_session.add(child_menu)
-        db_session.commit()
+            with pytest.raises(BusinessException, match="菜单不存在"):
+                await MenuService.delete_menu(mock_db, mock_redis, 999)
 
-        # 验证树路径生成
-        tree_path = MenuService._generate_menu_tree_path(0)
-        assert tree_path == '0'  # 根节点ID为0
 
-        tree_path = MenuService._generate_menu_tree_path(child_menu.id)
-        # 注意：这里需要根据实际实现调整期望值
-        # 当前实现中，如果parent_id是0，直接返回'0'
-        # 如果parent_id不是0，则查找父菜单并构建路径
-        assert tree_path in [f'0,{child_menu.id}', str(child_menu.id)]
+@pytest.mark.unit
+class TestMenuTreeBuilding:
+    """菜单树构建测试"""
 
-    def test_list_role_perms(self, db_session):
-        """测试获取角色权限集合"""
-        from app.models import SysRoleMenu
+    def test_build_empty_tree(self):
+        """测试构建空树"""
+        result = MenuService._build_menu_tree(0, [])
+        assert result == []
 
-        # 创建测试菜单和权限
-        menu1 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='菜单1',
-            type=1,
-            path='/menu1',
-            perm='menu1:list'
-        )
-        menu2 = SysMenu(
-            parent_id=0,  # 明确指定parent_id
-            name='菜单2',
-            type=1,
-            path='/menu2',
-            perm='menu2:list'
-        )
-        db_session.add(menu1)
-        db_session.add(menu2)
-        db_session.commit()
+    def test_build_single_level_tree(self):
+        """测试构建单层树"""
+        class MockMenu:
+            def __init__(self, id, name, parent_id, type, path, component, perm, visible, sort, icon, redirect, always_show, keep_alive, create_time):
+                self.id = id
+                self.name = name
+                self.parent_id = parent_id
+                self.type = type
+                self.path = path
+                self.component = component
+                self.perm = perm
+                self.visible = visible
+                self.sort = sort
+                self.icon = icon
+                self.redirect = redirect
+                self.always_show = always_show
+                self.keep_alive = keep_alive
+                self.create_time = create_time
 
-        # 创建角色菜单关联
-        role_menu1 = SysRoleMenu(role_id=1, menu_id=menu1.id)
-        role_menu2 = SysRoleMenu(role_id=1, menu_id=menu2.id)
-        db_session.add(role_menu1)
-        db_session.add(role_menu2)
-        db_session.commit()
+        mock_menus = [
+            MockMenu(1, "系统管理", 0, MENU_TYPE_CATALOG, "/system", "Layout", None, 1, 1, "system", None, 0, 0, None),
+        ]
 
-        # 获取角色权限集合
-        perms = MenuService.list_role_perms({'ADMIN'})
-        assert isinstance(perms, set)
-        # 注意：由于实现方式不同，这里可能不包含具体的权限，但至少不报错
+        result = MenuService._build_menu_tree(0, mock_menus)
+
+        assert len(result) == 1
+        assert result[0]["name"] == "系统管理"
+
+    def test_build_multi_level_tree(self):
+        """测试构建多层树"""
+        class MockMenu:
+            def __init__(self, id, name, parent_id, type, path, component, perm, visible, sort, icon, redirect, always_show, keep_alive, create_time):
+                self.id = id
+                self.name = name
+                self.parent_id = parent_id
+                self.type = type
+                self.path = path
+                self.component = component
+                self.perm = perm
+                self.visible = visible
+                self.sort = sort
+                self.icon = icon
+                self.redirect = redirect
+                self.always_show = always_show
+                self.keep_alive = keep_alive
+                self.create_time = create_time
+
+        mock_menus = [
+            MockMenu(1, "系统管理", 0, MENU_TYPE_CATALOG, "/system", "Layout", None, 1, 1, "system", None, 0, 0, None),
+            MockMenu(2, "用户管理", 1, MENU_TYPE_MENU, "/system/user", "system/user/index", "system:user:list", 1, 1, "user", None, 0, 0, None),
+            MockMenu(3, "角色管理", 1, MENU_TYPE_MENU, "/system/role", "system/role/index", "system:role:list", 1, 2, "role", None, 0, 0, None),
+        ]
+
+        result = MenuService._build_menu_tree(0, mock_menus)
+
+        assert len(result) == 1
+        assert result[0]["name"] == "系统管理"
+        assert len(result[0]["children"]) == 2

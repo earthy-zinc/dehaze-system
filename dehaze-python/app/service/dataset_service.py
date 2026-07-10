@@ -1,152 +1,188 @@
 """
-数据集服务模块 - 基于事件驱动架构的重构实现
-参考 dehaze-java 的数据集模块重构设计
-"""
-from typing import Optional, List, Dict, Any
-from datetime import datetime
-import re
-import json
-from collections import deque
+数据集服务
 
-from app.extensions import mysql, redis_client
-from app.models import (
-    SysDataset, SysDatasetItem, SysItemFile, SysFile,
-    DatasetAddForm, DatasetUpdateForm, DatasetQuery,
-    DatasetItemCreateForm, DatasetItemUpdateForm, DatasetItemUploadForm,
-    BatchDatasetItemUploadForm, ItemFileUpdateForm,
-    DatasetVO, DatasetItemVO, ItemFileVO, DatasetStatistics,
-    BatchDeleteResult, BatchDeleteResultItem, BatchOperationResultVO,
-    BatchUploadResultVO, BatchUploadSuccessItemVO, BatchUploadFailedItemVO,
-    BatchActionFailureDetailVO, ImageType, HazeLevel
-)
-from sqlalchemy import func, and_, or_
-from sqlalchemy.orm import joinedload
+提供数据集 CRUD 功能，支持树形结构、数据项管理
+"""
+
+import json
+import logging
+from datetime import datetime
+from typing import Any
+
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
+from app.models.entity.sys_dataset import (SysDataset, SysDatasetItem,
+                                           SysItemFile)
+from app.repository.dataset_repository import dataset_repository
+from app.utils.datetime_utils import format_time
+from app.utils.tree import generate_tree_path
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 
 class DatasetService:
-    """数据集服务类 - 支持缓存和性能优化"""
+    """数据集服务（异步版本）"""
 
     # 缓存键前缀
-    CACHE_TREE_PREFIX = "dataset:tree:"
+    CACHE_TREE_KEY = "dataset:tree"
     CACHE_STATS_PREFIX = "dataset:stats:"
-    CACHE_TTL = 3600  # 缓存1小时
+    CACHE_TREE_TTL = 3600  # 树缓存1小时
+    CACHE_STATS_TTL = 1800  # 统计缓存30分钟
 
     # 根节点ID
     ROOT_DATASET_ID = 0
 
     @staticmethod
-    def get_dataset_tree(query: DatasetQuery = None) -> List[Dict[str, Any]]:
+    async def get_dataset_tree(
+        db: AsyncSession,
+        redis: Redis,
+        keywords: str | None = None,
+    ) -> list[dict[str, Any]]:
         """
         获取数据集树（带缓存优化）
 
         Args:
-            query: 查询条件
+            db: 数据库会话
+            redis: Redis 客户端
+            keywords: 搜索关键字
 
         Returns:
             数据集树结构（带统计信息）
         """
-        cache_key = f"{DatasetService.CACHE_TREE_PREFIX}all"
+        # 仅无关键字时使用树缓存
+        use_cache = not keywords
 
-        # 尝试从缓存获取
-        cached_data = redis_client.get(cache_key)
-        if cached_data:
+        if use_cache:
             try:
-                return json.loads(cached_data)
-            except (json.JSONDecodeError, Exception):
+                cached_data = await redis.get(DatasetService.CACHE_TREE_KEY)
+                if cached_data:
+                    return json.loads(cached_data)
+            except Exception:
                 pass
 
-        # 构建查询
-        db_query = SysDataset.query.filter(SysDataset.deleted == 0)
-
-        if query and query.keyword:
-            db_query = db_query.filter(SysDataset.name.contains(query.keyword))
-
-        datasets = db_query.all()
+        # 使用 Repository 查询
+        datasets = await dataset_repository.get_list_with_keywords(db, keywords)
 
         # 使用 BFS 一次性加载所有节点，优化性能
-        tree = DatasetService._build_tree_with_bfs(0, datasets)
+        tree = await DatasetService._build_tree_with_bfs(db, redis, datasets)
 
-        # 缓存结果
-        try:
-            redis_client.setex(cache_key, DatasetService.CACHE_TTL,
-                               json.dumps(tree, ensure_ascii=False))
-        except Exception:
-            pass
+        # 仅无关键字时写入缓存
+        if use_cache:
+            try:
+                await redis.setex(
+                    DatasetService.CACHE_TREE_KEY,
+                    DatasetService.CACHE_TREE_TTL,
+                    json.dumps(tree, ensure_ascii=False),
+                )
+            except Exception as e:
+                logger.warning(f"缓存写入失败: {e}")
 
         return tree
 
     @staticmethod
-    def _build_tree_with_bfs(parent_id: int, datasets: List[SysDataset]) -> List[Dict[str, Any]]:
+    async def _build_tree_with_bfs(
+        db: AsyncSession,
+        redis: Redis,
+        datasets: list[SysDataset],
+    ) -> list[dict[str, Any]]:
         """
         使用 BFS 算法构建数据集树（优化 N+1 查询问题）
 
         Args:
-            parent_id: 父节点ID
+            db: 数据库会话
+            redis: Redis 客户端
             datasets: 所有数据集列表
 
         Returns:
             树形结构列表
         """
-        # 构建ID到节点的映射
-        dataset_map = {ds.id: ds for ds in datasets}
-
         # 构建父子关系映射
-        children_map: Dict[int, List[SysDataset]] = {}
+        children_map: dict[int, list[SysDataset]] = {}
         for dataset in datasets:
             if dataset.parent_id not in children_map:
                 children_map[dataset.parent_id] = []
             children_map[dataset.parent_id].append(dataset)
 
-        # 使用 BFS 遍历
+        # 使用 BFS 遍历构建树
         tree = []
-        queue = deque()
 
         # 处理根节点
         root_children = children_map.get(0, [])
         for root_child in root_children:
-            queue.append((root_child, tree, True))
-
-        while queue:
-            dataset, parent_list, is_root_child = queue.popleft()
-
-            # 获取或计算统计信息
-            statistics = DatasetService._get_or_calculate_statistics(dataset.id)
-
-            # 构建 VO
-            vo = DatasetVO(dataset, statistics)
-            vo_dict = vo.to_dict()
-
-            if is_root_child:
-                parent_list.append(vo_dict)
-                vo_dict['children'] = []
-                queue.extend([(child, vo_dict['children'], False)
-                              for child in children_map.get(dataset.id, [])])
-
-            # 添加子节点
-            children = children_map.get(dataset.id, [])
-            if children:
-                vo_dict['children'] = []
-                for child in children:
-                    child_stats = DatasetService._get_or_calculate_statistics(child.id)
-                    child_vo = DatasetVO(child, child_stats)
-                    child_dict = child_vo.to_dict()
-                    vo_dict['children'].append(child_dict)
-                    # 将子节点的子节点加入队列
-                    queue.extend([(grandchild, child_dict['children'], False)
-                                  for grandchild in children_map.get(child.id, [])])
+            node_dict = await DatasetService._build_dataset_node(db, redis, root_child, children_map)
+            tree.append(node_dict)
 
         return tree
 
     @staticmethod
-    def _get_or_calculate_statistics(dataset_id: int) -> Optional[DatasetStatistics]:
+    async def _build_dataset_node(
+        db: AsyncSession,
+        redis: Redis,
+        dataset: SysDataset,
+        children_map: dict[int, list[SysDataset]],
+    ) -> dict[str, Any]:
+        """
+        递归构建数据集节点
+
+        Args:
+            db: 数据库会话
+            redis: Redis 客户端
+            dataset: 数据集实体
+            children_map: 父子关系映射
+
+        Returns:
+            节点字典
+        """
+        # 获取统计信息
+        statistics = await DatasetService._get_or_calculate_statistics(db, redis, dataset.id)
+
+        # 先定义 children 列表，确保类型正确推断
+        children_list: list[dict[str, Any]] = []
+
+        node_dict = {
+            "id": dataset.id,
+            "parentId": dataset.parent_id,
+            "treePath": dataset.tree_path,
+            "type": dataset.type,
+            "name": dataset.name,
+            "img": dataset.img,
+            "description": dataset.description,
+            "path": dataset.path,
+            "size": dataset.size,
+            "status": dataset.status,
+            "deleted": dataset.deleted,
+            "createTime": format_time(dataset.create_time),
+            "updateTime": format_time(dataset.update_time),
+            "statistics": statistics,
+            "children": children_list,
+        }
+
+        # 递归处理子节点
+        children = children_map.get(dataset.id, [])
+        for child in children:
+            child_dict = await DatasetService._build_dataset_node(db, redis, child, children_map)
+            children_list.append(child_dict)
+
+        return node_dict
+
+    @staticmethod
+    async def _get_or_calculate_statistics(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+    ) -> dict[str, Any] | None:
         """
         获取或计算数据集统计信息（带缓存）
 
         Args:
+            db: 数据库会话
+            redis: Redis 客户端
             dataset_id: 数据集ID
 
         Returns:
-            统计信息对象
+            统计信息字典
         """
         if dataset_id == 0:
             return None
@@ -154,352 +190,245 @@ class DatasetService:
         cache_key = f"{DatasetService.CACHE_STATS_PREFIX}{dataset_id}"
 
         # 尝试从缓存获取
-        cached_data = redis_client.get(cache_key)
-        if cached_data:
-            try:
-                data = json.loads(cached_data)
-                stats = DatasetStatistics()
-                stats.item_count = data.get('itemCount', 0)
-                stats.file_count = data.get('fileCount', 0)
-                stats.total_size = data.get('totalSize', 0)
-                stats.clear_count = data.get('clearCount', 0)
-                stats.hazy_count = data.get('hazyCount', 0)
-                stats.scene_distribution = data.get('sceneDistribution', {})
-                stats.haze_distribution = data.get('hazeDistribution', {})
-                stats.format_distribution = data.get('formatDistribution', {})
-                return stats
-            except Exception:
-                pass
+        try:
+            cached_data = await redis.get(cache_key)
+            if cached_data:
+                return json.loads(cached_data)
+        except Exception:
+            pass
 
         # 计算统计信息
-        leaf_ids = DatasetService._get_leaf_dataset_ids(dataset_id)
-        stats = DatasetService._calculate_statistics_for_datasets(leaf_ids)
+        leaf_ids = await dataset_repository.get_leaf_ids(db, dataset_id)
+        stats = await dataset_repository.calculate_statistics(db, leaf_ids)
 
         # 缓存结果
         try:
-            redis_client.setex(cache_key, DatasetService.CACHE_TTL,
-                               json.dumps(stats.to_dict(), ensure_ascii=False))
+            await redis.setex(cache_key, DatasetService.CACHE_STATS_TTL, json.dumps(stats, ensure_ascii=False))
         except Exception:
             pass
 
         return stats
 
     @staticmethod
-    def _calculate_statistics_for_datasets(dataset_ids: List[int]) -> DatasetStatistics:
+    async def get_dataset_options(db: AsyncSession) -> list[dict[str, Any]]:
         """
-        计算指定数据集的统计信息（使用 SQL 聚合查询）
+        获取数据集下拉选项（树形结构）
 
         Args:
-            dataset_ids: 数据集ID列表（叶子节点）
+            db: 数据库会话
 
         Returns:
-            统计信息对象
+            下拉选项列表
         """
-        stats = DatasetStatistics()
-
-        if not dataset_ids:
-            return stats
-
-        # 统计数据项总数
-        stats.item_count = mysql.session.query(func.count(SysDatasetItem.id)) \
-                               .filter(SysDatasetItem.dataset_id.in_(dataset_ids)) \
-                               .scalar() or 0
-
-        # 统计文件总数和总大小
-        query = mysql.session.query(
-            func.count(SysItemFile.id),
-            func.sum(SysFile.size)
-        ).join(
-            SysFile, SysItemFile.file_id == SysFile.id
-        ).filter(
-            SysItemFile.item_id.in_(
-                mysql.session.query(SysDatasetItem.id)
-                .filter(SysDatasetItem.dataset_id.in_(dataset_ids))
-            )
-        ).first()
-
-        stats.file_count = query[0] or 0
-        stats.total_size = query[1] or 0
-
-        # 统计清晰图和有雾图数量
-        clear_count = mysql.session.query(func.count(SysItemFile.id)) \
-                          .join(
-            SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id
-        ).filter(
-            and_(
-                SysDatasetItem.dataset_id.in_(dataset_ids),
-                or_(
-                    func.lower(SysItemFile.type).like('%clear%'),
-                    func.lower(SysItemFile.type).like('%clean%'),
-                    SysItemFile.type.like('%清晰%'),
-                    SysItemFile.type.like('%无雾%')
-                )
-            )
-        ).scalar() or 0
-
-        hazy_count = mysql.session.query(func.count(SysItemFile.id)) \
-                         .join(
-            SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id
-        ).filter(
-            and_(
-                SysDatasetItem.dataset_id.in_(dataset_ids),
-                or_(
-                    func.lower(SysItemFile.type).like('%haze%'),
-                    func.lower(SysItemFile.type).like('%hazy%'),
-                    SysItemFile.type.like('%有雾%')
-                )
-            )
-        ).scalar() or 0
-
-        stats.clear_count = clear_count
-        stats.hazy_count = hazy_count
-
-        # 统计场景类型分布
-        scene_query = mysql.session.query(
-            func.coalesce(SysItemFile.scene_type, '未分类').label('scene_type'),
-            func.count(SysItemFile.id).label('count')
-        ).join(
-            SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id
-        ).filter(
-            SysDatasetItem.dataset_id.in_(dataset_ids)
-        ).group_by(
-            func.coalesce(SysItemFile.scene_type, '未分类')
-        ).all()
-
-        stats.scene_distribution = {row.scene_type: row.count for row in scene_query}
-
-        # 统计雾霾程度分布
-        haze_query = mysql.session.query(
-            func.coalesce(SysItemFile.haze_level, '未标注').label('haze_level'),
-            func.count(SysItemFile.id).label('count')
-        ).join(
-            SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id
-        ).filter(
-            SysDatasetItem.dataset_id.in_(dataset_ids)
-        ).group_by(
-            func.coalesce(SysItemFile.haze_level, '未标注')
-        ).all()
-
-        stats.haze_distribution = {row.haze_level: row.count for row in haze_query}
-
-        # 统计文件格式分布
-        format_query = mysql.session.query(
-            SysFile.type.label('file_type'),
-            func.count(SysFile.id).label('count')
-        ).join(
-            SysItemFile, SysFile.id == SysItemFile.file_id
-        ).join(
-            SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id
-        ).filter(
-            SysDatasetItem.dataset_id.in_(dataset_ids)
-        ).group_by(
-            SysFile.type
-        ).all()
-
-        stats.format_distribution = {row.file_type: row.count for row in format_query}
-
-        return stats
+        return await dataset_repository.get_dataset_options(db)
 
     @staticmethod
-    def _get_leaf_dataset_ids(dataset_id: int) -> List[int]:
-        """
-        获取指定节点下的所有叶子节点ID（使用 BFS 优化）
-
-        Args:
-            dataset_id: 数据集ID
-
-        Returns:
-            叶子节点ID列表
-        """
-        # 获取所有数据集
-        all_datasets = SysDataset.query.filter(SysDataset.deleted == 0).all()
-
-        # 构建父子关系映射
-        children_map: Dict[int, List[SysDataset]] = {}
-        for dataset in all_datasets:
-            if dataset.parent_id not in children_map:
-                children_map[dataset.parent_id] = []
-            children_map[dataset.parent_id].append(dataset)
-
-        # 使用 BFS 获取所有子节点
-        queue = deque([dataset_id])
-        all_ids = [dataset_id]
-
-        while queue:
-            current_id = queue.popleft()
-            children = children_map.get(current_id, [])
-            for child in children:
-                all_ids.append(child.id)
-                queue.append(child.id)
-
-        # 找出叶子节点（没有子节点的节点）
-        leaf_ids = [ds_id for ds_id in all_ids if not children_map.get(ds_id)]
-
-        return leaf_ids if leaf_ids else [dataset_id]
-
-    @staticmethod
-    def get_dataset_by_id(dataset_id: int) -> Optional[DatasetVO]:
+    async def get_dataset_by_id(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+    ) -> dict[str, Any] | None:
         """
         根据ID获取数据集详情
 
         Args:
+            db: 数据库会话
+            redis: Redis 客户端
             dataset_id: 数据集ID
 
         Returns:
-            数据集VO对象
+            数据集详情字典
         """
-        dataset = SysDataset.query.filter(
-            and_(SysDataset.id == dataset_id, SysDataset.deleted == 0)
-        ).first()
+        dataset = await dataset_repository.get_by_id(db, dataset_id)
 
         if not dataset:
             return None
 
-        statistics = DatasetService._get_or_calculate_statistics(dataset_id)
-        return DatasetVO(dataset, statistics)
+        statistics = await DatasetService._get_or_calculate_statistics(db, redis, dataset_id)
+
+        return {
+            "id": dataset.id,
+            "parentId": dataset.parent_id,
+            "treePath": dataset.tree_path,
+            "type": dataset.type,
+            "name": dataset.name,
+            "img": dataset.img,
+            "description": dataset.description,
+            "path": dataset.path,
+            "size": dataset.size,
+            "status": dataset.status,
+            "deleted": dataset.deleted,
+            "createTime": format_time(dataset.create_time),
+            "updateTime": format_time(dataset.update_time),
+            "statistics": statistics,
+        }
 
     @staticmethod
-    def create_dataset(form: DatasetAddForm) -> DatasetVO:
+    async def create_dataset(
+        db: AsyncSession,
+        redis: Redis,
+        data: dict[str, Any],
+    ) -> int:
         """
         创建数据集
 
         Args:
-            form: 数据集添加表单
+            db: 数据库会话
+            redis: Redis 客户端
+            data: 数据集数据
 
         Returns:
-            创建的数据集VO
+            创建的数据集ID
+
+        Raises:
+            BusinessException: 父数据集不存在
         """
+        parent_id = data.get("parentId", 0)
+        name = data.get("name", "")
+
         # 验证父数据集是否存在
-        if form.parent_id != 0:
-            parent = SysDataset.query.filter(
-                and_(SysDataset.id == form.parent_id, SysDataset.deleted == 0)
-            ).first()
+        if parent_id != 0:
+            parent = await dataset_repository.get_by_id(db, parent_id)
             if not parent:
-                raise ValueError("父数据集不存在")
+                raise BusinessException(
+                    ResultCode.RESOURCE_NOT_FOUND, "父数据集不存在")
+
+        # 名称唯一性校验：同一父节点下名称不重复
+        if name:
+            exists = await dataset_repository.check_name_exists(db, parent_id, name)
+            if exists:
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, "同一层级下数据集名称已存在")
 
         # 生成树路径
-        tree_path = DatasetService._generate_tree_path(form.parent_id)
+        tree_path = await DatasetService._generate_tree_path(db, parent_id)
 
         # 创建数据集
-        dataset = SysDataset()
-        dataset.parent_id = form.parent_id
-        dataset.tree_path = tree_path
-        dataset.type = form.type
-        dataset.name = form.name
-        dataset.description = form.description
-        dataset.path = form.path
-        dataset.status = form.status
-        dataset.deleted = 0
-        dataset.create_time = datetime.now()
-        dataset.update_time = datetime.now()
+        dataset = SysDataset(
+            parent_id=parent_id,
+            tree_path=tree_path,
+            type=data.get("type", ""),
+            name=data.get("name", ""),
+            description=data.get("description", ""),
+            path=data.get("path", ""),
+            status=data.get("status", 1),
+            deleted=0,
+        )
 
-        mysql.session.add(dataset)
-        mysql.session.commit()
+        db.add(dataset)
+        await db.flush()
+        await db.refresh(dataset)
 
-        # 清除父节点及其祖先的缓存
-        if form.parent_id != 0:
-            DatasetService._evict_dataset_and_ancestor_stats_cache(form.parent_id)
-        DatasetService._evict_tree_cache()
+        # 清除缓存
+        await DatasetService._evict_tree_cache(redis)
+        if parent_id != 0:
+            await DatasetService._evict_dataset_and_ancestor_stats_cache(db, redis, parent_id)
 
-        return DatasetService.get_dataset_by_id(dataset.id)
+        return dataset.id
 
     @staticmethod
-    def _generate_tree_path(parent_id: int) -> str:
-        """
-        生成树路径
-
-        Args:
-            parent_id: 父节点ID
-
-        Returns:
-            树路径字符串
-        """
+    async def _generate_tree_path(db: AsyncSession, parent_id: int) -> str:
+        """生成树路径"""
         if parent_id == 0:
             return "0"
-
-        # 获取父数据集的树路径
-        parent = SysDataset.query.get(parent_id)
-        if not parent or not parent.tree_path:
-            return f"0,{parent_id}"
-
-        return f"{parent.tree_path},{parent_id}"
+        tree_path = await dataset_repository.get_dataset_tree_path(db, parent_id)
+        return generate_tree_path(tree_path, parent_id)
 
     @staticmethod
-    def update_dataset(dataset_id: int, form: DatasetUpdateForm) -> DatasetVO:
+    async def update_dataset(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+        data: dict[str, Any],
+    ) -> int:
         """
         更新数据集
 
         Args:
+            db: 数据库会话
+            redis: Redis 客户端
             dataset_id: 数据集ID
-            form: 数据集更新表单
+            data: 更新数据
 
         Returns:
-            更新后的数据集VO
+            更新的数据集ID
+
+        Raises:
+            BusinessException: 数据集不存在、新父数据集不存在或循环引用
         """
-        dataset = SysDataset.query.filter(
-            and_(SysDataset.id == dataset_id, SysDataset.deleted == 0)
-        ).first()
+        dataset = await dataset_repository.get_by_id(db, dataset_id)
 
         if not dataset:
-            raise ValueError("数据集不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
 
         old_parent_id = dataset.parent_id
+        new_parent_id = data.get("parentId")
 
-        # 更新字段
-        if form.parent_id is not None and form.parent_id != old_parent_id:
+        # 处理父节点变更
+        if new_parent_id is not None and new_parent_id != old_parent_id:
             # 验证新父数据集
-            if form.parent_id != 0:
-                new_parent = SysDataset.query.filter(
-                    and_(SysDataset.id == form.parent_id, SysDataset.deleted == 0)
-                ).first()
+            if new_parent_id != 0:
+                new_parent = await dataset_repository.get_by_id(db, new_parent_id)
                 if not new_parent:
-                    raise ValueError("新父数据集不存在")
+                    raise BusinessException(
+                        ResultCode.RESOURCE_NOT_FOUND, "新父数据集不存在")
 
             # 防止循环引用
-            if DatasetService._would_create_cycle(dataset_id, form.parent_id):
-                raise ValueError("不能将数据集移动到其子节点下")
+            if await DatasetService._would_create_cycle(db, dataset_id, new_parent_id):
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, "不能将数据集移动到其子节点下")
 
             # 更新树路径
             old_tree_path = dataset.tree_path
-            new_tree_path = DatasetService._generate_tree_path(form.parent_id)
+            new_tree_path = await DatasetService._generate_tree_path(db, new_parent_id)
             dataset.tree_path = new_tree_path
-            dataset.parent_id = form.parent_id
+            dataset.parent_id = new_parent_id
 
             # 更新所有子节点的树路径
-            DatasetService._update_children_tree_paths(dataset_id, old_tree_path, new_tree_path)
+            await DatasetService._update_children_tree_paths(db, dataset_id, old_tree_path, new_tree_path)
 
             # 清除缓存
-            DatasetService._evict_dataset_stats_cache(dataset_id)
+            await DatasetService._evict_dataset_stats_cache(redis, dataset_id)
             if old_parent_id != 0:
-                DatasetService._evict_dataset_and_ancestor_stats_cache(old_parent_id)
-            if form.parent_id != 0:
-                DatasetService._evict_dataset_and_ancestor_stats_cache(form.parent_id)
+                await DatasetService._evict_dataset_and_ancestor_stats_cache(db, redis, old_parent_id)
+            if new_parent_id != 0:
+                await DatasetService._evict_dataset_and_ancestor_stats_cache(db, redis, new_parent_id)
 
-        if form.name is not None:
-            dataset.name = form.name
-        if form.type is not None:
-            dataset.type = form.type
-        if form.description is not None:
-            dataset.description = form.description
-        if form.path is not None:
-            dataset.path = form.path
-        if form.status is not None:
-            dataset.status = form.status
+        # 名称唯一性校验
+        if "name" in data and data["name"] != dataset.name:
+            check_parent = new_parent_id if new_parent_id is not None else old_parent_id
+            exists = await dataset_repository.check_name_exists(
+                db, check_parent, data["name"], exclude_id=dataset_id,
+            )
+            if exists:
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, "同一层级下数据集名称已存在")
+
+        # 更新其他字段
+        if "name" in data:
+            dataset.name = data["name"]
+        if "type" in data:
+            dataset.type = data["type"]
+        if "description" in data:
+            dataset.description = data["description"]
+        if "path" in data:
+            dataset.path = data["path"]
+        if "status" in data:
+            dataset.status = data["status"]
 
         dataset.update_time = datetime.now()
 
-        mysql.session.commit()
+        await DatasetService._evict_tree_cache(redis)
 
-        DatasetService._evict_tree_cache()
-
-        return DatasetService.get_dataset_by_id(dataset_id)
+        return dataset_id
 
     @staticmethod
-    def _would_create_cycle(dataset_id: int, new_parent_id: int) -> bool:
+    async def _would_create_cycle(db: AsyncSession, dataset_id: int, new_parent_id: int) -> bool:
         """
         检查是否会产生循环引用
 
         Args:
+            db: 数据库会话
             dataset_id: 当前数据集ID
             new_parent_id: 新父节点ID
 
@@ -510,675 +439,651 @@ class DatasetService:
             return False
 
         # 检查新父节点是否是当前节点的后代
-        descendants = DatasetService._get_all_descendant_ids(dataset_id)
+        descendants = await dataset_repository.get_all_descendant_ids(db, dataset_id)
         return new_parent_id in descendants
 
     @staticmethod
-    def _get_all_descendant_ids(dataset_id: int) -> List[int]:
-        """
-        获取所有后代节点ID
-
-        Args:
-            dataset_id: 数据集ID
-
-        Returns:
-            后代节点ID列表
-        """
-        all_datasets = SysDataset.query.filter(SysDataset.deleted == 0).all()
-        children_map: Dict[int, List[SysDataset]] = {}
-
-        for dataset in all_datasets:
-            if dataset.parent_id not in children_map:
-                children_map[dataset.parent_id] = []
-            children_map[dataset.parent_id].append(dataset)
-
-        queue = deque([dataset_id])
-        descendant_ids = []
-
-        while queue:
-            current_id = queue.popleft()
-            children = children_map.get(current_id, [])
-            for child in children:
-                descendant_ids.append(child.id)
-                queue.append(child.id)
-
-        return descendant_ids
-
-    @staticmethod
-    def _update_children_tree_paths(dataset_id: int, old_prefix: str, new_prefix: str):
+    async def _update_children_tree_paths(
+        db: AsyncSession,
+        dataset_id: int,
+        old_prefix: str,
+        new_prefix: str,
+    ):
         """
         更新所有子节点的树路径
 
         Args:
+            db: 数据库会话
             dataset_id: 数据集ID
             old_prefix: 旧路径前缀
             new_prefix: 新路径前缀
         """
-        children = DatasetService._get_all_descendant_ids(dataset_id)
+        children = await dataset_repository.get_all_descendant_ids(db, dataset_id)
 
         for child_id in children:
-            child = SysDataset.query.get(child_id)
+            child = await dataset_repository.get_by_id(db, child_id, with_deleted=True)
             if child and child.tree_path and child.tree_path.startswith(old_prefix):
                 suffix = child.tree_path[len(old_prefix):]
                 child.tree_path = f"{new_prefix}{suffix}"
 
-        mysql.session.commit()
-
     @staticmethod
-    def batch_delete_datasets(dataset_ids: List[int]) -> BatchDeleteResult:
+    async def delete_datasets(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_ids: list[int],
+    ) -> dict[str, Any]:
         """
         批量删除数据集（级联删除子数据集、数据项、文件）
 
         Args:
+            db: 数据库会话
+            redis: Redis 客户端
             dataset_ids: 数据集ID列表
 
         Returns:
-            批量删除结果
+            删除结果
         """
+        if not dataset_ids:
+            raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的数据集")
+
         total = len(dataset_ids)
         succeeded = 0
         failed = 0
-        results: List[BatchDeleteResultItem] = []
+        results = []
 
         for dataset_id in dataset_ids:
             try:
-                # 获取父数据集ID
-                dataset = SysDataset.query.get(dataset_id)
-                parent_id = dataset.parent_id if dataset else None
+                # 获取数据集
+                dataset = await dataset_repository.get_by_id(db, dataset_id, with_deleted=True)
+
+                if not dataset:
+                    failed += 1
+                    results.append({
+                        "datasetId": dataset_id,
+                        "status": "failed",
+                        "message": "数据集不存在",
+                    })
+                    continue
+
+                parent_id = dataset.parent_id
 
                 # 获取所有需要删除的数据集ID（包括子节点）
-                all_dataset_ids = DatasetService._get_dataset_and_descendant_ids(dataset_id)
+                all_dataset_ids = await DatasetService._get_dataset_and_descendant_ids(db, dataset_id)
 
-                # 获取所有叶子节点数据集
-                leaf_ids = []
-                all_datasets = SysDataset.query.filter(SysDataset.id.in_(all_dataset_ids)).all()
-                children_map: Dict[int, List[SysDataset]] = {}
+                # 找出叶子节点
+                all_datasets = await dataset_repository.get_all_datasets_for_tree_path_update(db, all_dataset_ids)
+
+                children_map: dict[int, list[SysDataset]] = {}
                 for ds in all_datasets:
                     if ds.parent_id not in children_map:
                         children_map[ds.parent_id] = []
                     children_map[ds.parent_id].append(ds)
 
-                for ds_id in all_dataset_ids:
-                    if not children_map.get(ds_id):
-                        leaf_ids.append(ds_id)
+                leaf_ids = [
+                    ds_id for ds_id in all_dataset_ids if not children_map.get(ds_id)]
 
-                # 删除所有数据项（包括关联的文件）
+                # 删除所有数据项（包括关联的文件记录）
                 for leaf_id in leaf_ids:
-                    items = SysDatasetItem.query.filter(
-                        SysDatasetItem.dataset_id == leaf_id
-                    ).all()
-                    for item in items:
-                        DatasetItemService.delete_item_cascade(item.id)
+                    await DatasetItemService.delete_items_by_dataset(db, redis, leaf_id)
 
-                # 从叶子节点往上删除数据集
-                all_dataset_ids.sort(reverse=True, key=lambda x: DatasetService._get_tree_depth(x))
-                for ds_id in all_dataset_ids:
-                    SysDataset.query.filter(SysDataset.id == ds_id).delete()
+                # 从叶子节点往上删除数据集（按深度排序）
+                depth_map = await dataset_repository.get_dataset_depth(db, all_dataset_ids)
+
+                sorted_ids = sorted(
+                    all_dataset_ids, key=lambda x: depth_map.get(x, 0), reverse=True)
+
+                # 批量删除数据集
+                await dataset_repository.delete_by_ids(db, sorted_ids)
 
                 succeeded += 1
 
-                # 清除已删除数据集的缓存
+                # 清除缓存
                 for deleted_id in all_dataset_ids:
-                    DatasetService._evict_dataset_stats_cache(deleted_id)
+                    await DatasetService._evict_dataset_stats_cache(redis, deleted_id)
                 if parent_id and parent_id != 0:
-                    DatasetService._evict_dataset_and_ancestor_stats_cache(parent_id)
+                    await DatasetService._evict_dataset_and_ancestor_stats_cache(db, redis, parent_id)
 
-                results.append(BatchDeleteResultItem(
-                    dataset_id=dataset_id,
-                    status="success"
-                ))
+                results.append({
+                    "datasetId": dataset_id,
+                    "status": "success",
+                })
 
             except Exception as e:
                 failed += 1
-                results.append(BatchDeleteResultItem(
-                    dataset_id=dataset_id,
-                    status="failed",
-                    message=str(e),
-                    error_code="SYSTEM_ERROR"
-                ))
+                results.append({
+                    "datasetId": dataset_id,
+                    "status": "failed",
+                    "message": str(e),
+                })
 
-        mysql.session.commit()
-        DatasetService._evict_tree_cache()
+        await DatasetService._evict_tree_cache(redis)
 
-        return BatchDeleteResult(
-            total=total,
-            succeeded=succeeded,
-            failed=failed,
-            results=results
-        )
+        return {
+            "success": True,
+            "message": f"删除完成：成功 {succeeded} 个，失败 {failed} 个",
+            "data": {
+                "total": total,
+                "succeeded": succeeded,
+                "failed": failed,
+                "results": results,
+            },
+        }
 
     @staticmethod
-    def _get_dataset_and_descendant_ids(dataset_id: int) -> List[int]:
+    async def _get_dataset_and_descendant_ids(db: AsyncSession, dataset_id: int) -> list[int]:
         """
         获取数据集及其所有后代ID
 
         Args:
+            db: 数据库会话
             dataset_id: 数据集ID
 
         Returns:
             数据集ID列表（包括自己和所有子节点）
         """
-        return [dataset_id] + DatasetService._get_all_descendant_ids(dataset_id)
+        descendants = await dataset_repository.get_all_descendant_ids(db, dataset_id)
+        return [dataset_id] + descendants
 
     @staticmethod
-    def _get_tree_depth(dataset_id: int) -> int:
-        """
-        计算节点在树中的深度
-
-        Args:
-            dataset_id: 数据集ID
-
-        Returns:
-            树深度
-        """
-        dataset = SysDataset.query.get(dataset_id)
-        if not dataset or not dataset.tree_path:
-            return 0
-        return dataset.tree_path.count(',')
-
-    @staticmethod
-    def _evict_dataset_stats_cache(dataset_id: int):
+    async def _evict_dataset_stats_cache(redis: Redis, dataset_id: int):
         """
         清除指定数据集的统计缓存
 
         Args:
+            redis: Redis 客户端
             dataset_id: 数据集ID
         """
         cache_key = f"{DatasetService.CACHE_STATS_PREFIX}{dataset_id}"
         try:
-            redis_client.delete(cache_key)
+            await redis.delete(cache_key)
         except Exception:
             pass
 
     @staticmethod
-    def _evict_dataset_and_ancestor_stats_cache(dataset_id: int):
+    async def _evict_dataset_and_ancestor_stats_cache(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+    ):
         """
         清除数据集及其祖先的统计缓存
 
         Args:
+            db: 数据库会话
+            redis: Redis 客户端
             dataset_id: 数据集ID
         """
-        dataset = SysDataset.query.get(dataset_id)
-        if not dataset or not dataset.tree_path:
+        tree_path = await dataset_repository.get_dataset_tree_path(db, dataset_id)
+
+        if not tree_path:
             return
 
         # tree_path 格式为 "0,1,2,3"，需要反转为 [3, 2, 1, 0]
-        ancestor_ids = [int(x) for x in reversed(dataset.tree_path.split(','))]
+        ancestor_ids = [int(x) for x in reversed(tree_path.split(","))]
 
         for ancestor_id in ancestor_ids:
-            DatasetService._evict_dataset_stats_cache(ancestor_id)
+            await DatasetService._evict_dataset_stats_cache(redis, ancestor_id)
 
     @staticmethod
-    def _evict_tree_cache():
+    async def _evict_tree_cache(redis: Redis):
         """清除数据集树缓存"""
-        cache_key = f"{DatasetService.CACHE_TREE_PREFIX}all"
         try:
-            redis_client.delete(cache_key)
+            await redis.delete(DatasetService.CACHE_TREE_KEY)
         except Exception:
             pass
 
     @staticmethod
-    def get_leaf_dataset_ids(dataset_id: int) -> List[int]:
+    async def get_image_items(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+        page_num: int = 1,
+        page_size: int = 20,
+        keywords: str | None = None,
+    ) -> dict[str, Any]:
         """
-        获取指定数据集下的所有叶子节点ID
+        获取数据集下的数据项（分页）
 
         Args:
+            db: 数据库会话
+            redis: Redis 客户端
             dataset_id: 数据集ID
-
-        Returns:
-            叶子节点ID列表
-        """
-        return DatasetService._get_leaf_dataset_ids(dataset_id)
-
-    @staticmethod
-    def evict_dataset_stats_cache(dataset_id: int):
-        """
-        公开方法：清除指定数据集的统计缓存
-        供其他服务调用
-
-        Args:
-            dataset_id: 数据集ID
-        """
-        DatasetService._evict_dataset_stats_cache(dataset_id)
-
-    @staticmethod
-    def evict_dataset_and_ancestor_stats_cache(dataset_id: int):
-        """
-        公开方法：清除数据集及其祖先的统计缓存
-        供其他服务调用
-
-        Args:
-            dataset_id: 数据集ID
-        """
-        DatasetService._evict_dataset_and_ancestor_stats_cache(dataset_id)
-
-
-class DatasetItemService:
-    """数据集项服务类"""
-
-    @staticmethod
-    def create_dataset_item(form: DatasetItemCreateForm) -> DatasetItemVO:
-        """
-        创建数据集项
-
-        Args:
-            form: 数据集项创建表单
-
-        Returns:
-            创建的数据集项VO
-        """
-        # 验证数据集存在且不是目录
-        dataset = SysDataset.query.filter(
-            and_(SysDataset.id == form.dataset_id, SysDataset.deleted == 0)
-        ).first()
-
-        if not dataset:
-            raise ValueError("数据集不存在")
-
-        # 检查是否是叶子节点
-        children_count = SysDataset.query.filter(
-            SysDataset.parent_id == form.dataset_id
-        ).count()
-
-        if children_count > 0:
-            raise ValueError("不能在目录类型的数据集中创建数据项")
-
-        dataset_item = SysDatasetItem()
-        dataset_item.dataset_id = form.dataset_id
-        dataset_item.name = form.name
-        dataset_item.create_time = datetime.now()
-        dataset_item.update_time = datetime.now()
-
-        mysql.session.add(dataset_item)
-        mysql.session.commit()
-
-        # 清除数据集统计缓存
-        DatasetService.evict_dataset_stats_cache(form.dataset_id)
-
-        return DatasetItemService.get_dataset_item(dataset_item.id)
-
-    @staticmethod
-    def get_dataset_item(item_id: int) -> DatasetItemVO:
-        """
-        获取数据集项详情
-
-        Args:
-            item_id: 数据集项ID
-
-        Returns:
-            数据集项VO
-        """
-        item = SysDatasetItem.query.get(item_id)
-        if not item:
-            raise ValueError("数据项不存在")
-
-        # 获取关联的文件
-        item_files = mysql.session.query(SysItemFile).join(
-            SysFile, SysItemFile.file_id == SysFile.id
-        ).join(
-            SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id
-        ).filter(
-            SysItemFile.item_id == item_id
-        ).all()
-
-        files = []
-        image_urls = []
-
-        for item_file in item_files:
-            file_obj = mysql.session.query(SysFile).get(item_file.file_id)
-            if file_obj:
-                files.append(ItemFileVO(item_file, file_obj).__dict__)
-                image_urls.append({
-                    'id': file_obj.id,
-                    'type': item_file.type,
-                    'url': file_obj.url,
-                    'thumbnailUrl': file_obj.url  # 可以后续添加缩略图处理
-                })
-
-        vo = DatasetItemVO(item, files)
-        vo.image_urls = image_urls
-        return vo
-
-    @staticmethod
-    def update_dataset_item(item_id: int, form: DatasetItemUpdateForm):
-        """
-        更新数据集项
-
-        Args:
-            item_id: 数据集项ID
-            form: 数据集项更新表单
-        """
-        item = SysDatasetItem.query.get(item_id)
-        if not item:
-            raise ValueError("数据项不存在")
-
-        item.name = form.name
-        item.update_time = datetime.now()
-
-        mysql.session.commit()
-
-    @staticmethod
-    def delete_item_cascade(item_id: int):
-        """
-        级联删除数据项（包括关联的文件记录）
-
-        Args:
-            item_id: 数据集项ID
-        """
-        item = SysDatasetItem.query.get(item_id)
-        if not item:
-            raise ValueError("数据项不存在")
-
-        dataset_id = item.dataset_id
-
-        # 删除关联的文件项记录
-        SysItemFile.query.filter(SysItemFile.item_id == item_id).delete()
-
-        # 删除数据项
-        SysDatasetItem.query.filter(SysDatasetItem.id == item_id).delete()
-
-        mysql.session.commit()
-
-        # 清除数据集统计缓存
-        DatasetService.evict_dataset_stats_cache(dataset_id)
-
-    @staticmethod
-    def batch_delete_items_cascade(item_ids: List[int]) -> BatchOperationResultVO:
-        """
-        批量级联删除数据项
-
-        Args:
-            item_ids: 数据集项ID列表
-
-        Returns:
-            批量操作结果
-        """
-        success_count = 0
-        failed_count = 0
-        success_ids = []
-        failure_details = []
-
-        for item_id in item_ids:
-            try:
-                DatasetItemService.delete_item_cascade(item_id)
-                success_count += 1
-                success_ids.append(item_id)
-            except Exception as e:
-                failed_count += 1
-                failure_details.append(BatchActionFailureDetailVO(
-                    identifier=str(item_id),
-                    reason=str(e)
-                ))
-
-        return BatchOperationResultVO(
-            success_count=success_count,
-            failed_count=failed_count,
-            success_ids=success_ids,
-            failure_details=failure_details,
-            message=f"批量删除完成：成功{success_count}个，失败{failed_count}个"
-        )
-
-    @staticmethod
-    def get_items_by_dataset(dataset_id: int, page: int = 1, page_size: int = 10) -> Dict[str, Any]:
-        """
-        分页获取数据集项
-
-        Args:
-            dataset_id: 数据集ID
-            page: 页码
+            page_num: 页码
             page_size: 每页数量
+            keywords: 搜索关键词
 
         Returns:
             分页结果
         """
         # 获取叶子节点
-        leaf_ids = DatasetService._get_leaf_dataset_ids(dataset_id)
+        leaf_ids = await dataset_repository.get_leaf_ids(db, dataset_id)
+
+        # 查询总数
+        total = await dataset_repository.get_items_count(db, leaf_ids, keywords)
 
         # 分页查询
-        query = SysDatasetItem.query.filter(
-            SysDatasetItem.dataset_id.in_(leaf_ids)
+        offset = (page_num - 1) * page_size
+        items = await dataset_repository.get_items_paginated(
+            db, leaf_ids, offset, page_size, keywords,
         )
-
-        total = query.count()
-        items = query.offset((page - 1) * page_size).limit(page_size).all()
 
         # 构建返回数据
         records = []
         for item in items:
-            item_vo = DatasetItemService.get_dataset_item(item.id)
-            records.append(item_vo.to_dict())
+            item_vo = await DatasetItemService.get_item_detail(db, item.id)
+            if item_vo:
+                records.append(item_vo)
 
         return {
-            'records': records,
-            'total': total,
-            'page': page,
-            'pageSize': page_size
+            "list": records,
+            "total": total,
+            "pageNum": page_num,
+            "pageSize": page_size,
         }
 
 
-class DatasetOperationService:
-    """数据集操作服务 - 处理跨服务的复杂组合操作"""
+class DatasetItemService:
+    """数据集项服务（异步版本）"""
 
     @staticmethod
-    def create_item_with_images(form: DatasetItemUploadForm) -> DatasetItemVO:
+    async def create_dataset_item(
+        db: AsyncSession,
+        redis: Redis,
+        data: dict[str, Any],
+    ) -> int:
         """
-        创建数据项并上传配对图片
+        创建数据集项
 
         Args:
-            form: 配对上传表单
+            db: 数据库会话
+            redis: Redis 客户端
+            data: 数据项数据
 
         Returns:
-            创建的数据项VO
-        """
-        # 校验配对图片分辨率一致性
-        DatasetOperationService._validate_paired_image_resolution(form)
-
-        # 创建数据项
-        items_form = DatasetItemCreate(form.dataset_id, form.name)
-        dataset_item = DatasetItemService.create_dataset_item(items_form)
-
-        # 保存文件（这里需要调用文件服务）
-        # TODO: 集成文件服务后完成
-
-        return DatasetItemService.get_dataset_item(dataset_item.id)
-
-    @staticmethod
-    def _validate_paired_image_resolution(form: DatasetItemUploadForm):
-        """
-        校验配对图片分辨率一致性
-
-        Args:
-            form: 上传表单
-        """
-        # TODO: 实现图片分辨率校验
-        # 需要Pillow库来解析图片尺寸
-        pass
-
-    @staticmethod
-    def batch_create_items_with_images(form: BatchDatasetItemUploadForm) -> BatchUploadResultVO:
-        """
-        批量创建数据项并上传配对图片
-
-        Args:
-            form: 批量上传表单
-
-        Returns:
-            批量处理结果
-        """
-        # 按文件名前缀分组
-        file_groups = DatasetOperationService._group_files_by_prefix(form.files)
-
-        success_groups = 0
-        failed_groups = 0
-        success_items = []
-        failed_items = []
-
-        for group_name, group_files in file_groups.items():
-            try:
-                # 验证组完整性
-                if "clear" not in group_files:
-                    raise ValueError("缺少清晰图（需包含_clear或_gt后缀）")
-                if "hazy" not in group_files or not group_files["hazy"]:
-                    raise ValueError("缺少有雾图（需包含_hazy后缀）")
-
-                # 创建单个表单
-                single_form = DatasetItemUploadForm(
-                    dataset_id=form.dataset_id,
-                    clear_image=group_files["clear"],
-                    hazy_images=[f["file"] for f in group_files["hazy"]],
-                    haze_levels=[f["hazeLevel"] for f in group_files["hazy"]],
-                    name=group_name,
-                    scene_type=form.scene_type
-                )
-
-                created_item = DatasetOperationService.create_item_with_images(single_form)
-                success_groups += 1
-
-                file_count = 1 + len(group_files["hazy"])
-                success_items.append(BatchUploadSuccessItemVO(
-                    dataset_item_id=created_item.id,
-                    name=group_name,
-                    file_count=file_count
-                ))
-
-            except Exception as e:
-                failed_groups += 1
-                failed_items.append(BatchUploadFailedItemVO(
-                    filename=group_name,
-                    error_message=str(e)
-                ))
-
-        return BatchUploadResultVO(
-            total=form.files.__len__() if form.files else 0,
-            success=success_groups,
-            failed=failed_groups,
-            success_items=success_items,
-            failed_items=failed_items
-        )
-
-    @staticmethod
-    def _group_files_by_prefix(files: List) -> Dict[str, Dict[str, Any]]:
-        """
-        按文件名前缀分组文件
-
-        Args:
-            files: 文件列表
-
-        Returns:
-            分组后的文件字典
-        """
-        groups = {}
-
-        for file in files:
-            filename = getattr(file, 'filename', '')
-            if not filename:
-                continue
-
-            prefix = DatasetOperationService._extract_file_prefix(filename)
-
-            if prefix not in groups:
-                groups[prefix] = {}
-
-            if DatasetOperationService._is_clear_image(filename):
-                groups[prefix]["clear"] = file
-            elif DatasetOperationService._is_hazy_image(filename):
-                try:
-                    haze_level = DatasetOperationService._extract_haze_level(filename)
-                    if "hazy" not in groups[prefix]:
-                        groups[prefix]["hazy"] = []
-                    groups[prefix]["hazy"].append({
-                        "file": file,
-                        "hazeLevel": haze_level
-                    })
-                except Exception:
-                    pass
-
-        return groups
-
-    @staticmethod
-    def _extract_file_prefix(filename: str) -> str:
-        """
-        从文件名提取前缀
-
-        Args:
-            filename: 文件名
-
-        Returns:
-            文件前缀
-        """
-        name_without_ext = filename.rsplit('.', 1)[0]
-        return re.sub(r'(_clear|_gt|_hazy.*)$', '', name_without_ext)
-
-    @staticmethod
-    def _is_clear_image(filename: str) -> bool:
-        """
-        判断是否为清晰图
-
-        Args:
-            filename: 文件名
-
-        Returns:
-            是否为清晰图
-        """
-        return '_clear' in filename.lower() or '_gt' in filename.lower()
-
-    @staticmethod
-    def _is_hazy_image(filename: str) -> bool:
-        """
-        判断是否为有雾图
-
-        Args:
-            filename: 文件名
-
-        Returns:
-            是否为有雾图
-        """
-        return '_hazy' in filename.lower()
-
-    @staticmethod
-    def _extract_haze_level(filename: str) -> str:
-        """
-        从文件名提取雾霾程度
-
-        Args:
-            filename: 文件名
-
-        Returns:
-            雾霾程度 (light/medium/heavy)
+            创建的数据项ID
 
         Raises:
-            ValueError: 无法提取雾霾程度
+            BusinessException: 数据集不存在或为目录类型
         """
-        pattern = r'.*_hazy_(light|medium|heavy).*'
-        match = re.fullmatch(pattern, filename.lower())
+        dataset_id = data.get("datasetId")
 
-        if match:
-            return match.group(1)
+        if not dataset_id:
+            raise BusinessException(ResultCode.PARAM_ERROR, "数据集ID不能为空")
 
-        raise ValueError("文件名必须包含雾霾程度标识(light/medium/heavy)")
+        # 验证数据集存在且不是目录
+        dataset = await dataset_repository.get_by_id(db, dataset_id)
+
+        if not dataset:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
+
+        # 检查是否是叶子节点
+        children_count = await dataset_repository.get_children_count(db, dataset_id)
+
+        if children_count > 0:
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, "不能在目录类型的数据集中创建数据项")
+
+        # 创建数据项
+        dataset_item = SysDatasetItem(
+            dataset_id=dataset_id,
+            name=data.get("name", ""),
+        )
+
+        db.add(dataset_item)
+        await db.flush()
+        await db.refresh(dataset_item)
+
+        # 清除数据集统计缓存
+        await DatasetService._evict_dataset_stats_cache(redis, dataset_id)
+
+        return dataset_item.id
 
     @staticmethod
-    def batch_delete_items_cascade_with_result(item_ids: List[int]) -> BatchOperationResultVO:
+    async def get_item_detail(db: AsyncSession, item_id: int) -> dict[str, Any]:
         """
-        批量级联删除数据项（带详细结果）
+        获取数据项详情
 
         Args:
-            item_ids: 数据集项ID列表
+            db: 数据库会话
+            item_id: 数据项ID
 
         Returns:
-            批量操作结果
+            数据项详情
         """
-        return DatasetItemService.batch_delete_items_cascade(item_ids)
+        item, item_files = await dataset_repository.get_item_with_files(db, item_id)
+
+        if not item:
+            return {}
+
+        files = []
+        image_urls = []
+
+        for item_file, file_obj in item_files:
+            files.append({
+                "id": item_file.id,
+                "itemId": item_file.item_id,
+                "fileId": item_file.file_id,
+                "type": item_file.type,
+                "sceneType": item_file.scene_type,
+                "hazeLevel": item_file.haze_level,
+                "description": item_file.description,
+                "url": file_obj.url,
+                "name": file_obj.name,
+                "size": file_obj.size,
+                "md5": file_obj.md5,
+            })
+            image_urls.append({
+                "id": file_obj.id,
+                "type": item_file.type,
+                "url": file_obj.url,
+                "thumbnailUrl": file_obj.url,
+            })
+
+        return {
+            "id": item.id,
+            "datasetId": item.dataset_id,
+            "name": item.name,
+            "createTime": format_time(item.create_time) if hasattr(item, "create_time") else None,
+            "updateTime": format_time(item.update_time) if hasattr(item, "update_time") else None,
+            "files": files,
+            "imgUrl": image_urls,
+        }
 
     @staticmethod
-    def batch_delete_datasets(dataset_ids: List[int]) -> BatchDeleteResult:
+    async def update_dataset_item(
+        db: AsyncSession,
+        redis: Redis,
+        item_id: int,
+        data: dict[str, Any],
+    ) -> dict[str, Any]:
         """
-        级联删除数据集（包括子数据集、数据项、文件）
+        更新数据集项
 
         Args:
-            dataset_ids: 数据集ID列表
+            db: 数据库会话
+            redis: Redis 客户端
+            item_id: 数据项ID
+            data: 更新数据
 
         Returns:
-            批量删除结果
+            更新结果
         """
-        return DatasetService.batch_delete_datasets(dataset_ids)
+        item = await dataset_repository.get_item_by_id(db, item_id)
+
+        if not item:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
+
+        if "name" in data:
+            item.name = data["name"]
+
+        item.update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # 清除数据集统计缓存
+        await DatasetService._evict_dataset_stats_cache(redis, item.dataset_id)
+
+        return {"id": item_id}
+
+    @staticmethod
+    async def delete_dataset_item(
+        db: AsyncSession,
+        redis: Redis,
+        item_id: int,
+    ):
+        """
+        删除数据项
+
+        Args:
+            db: 数据库会话
+            redis: Redis 客户端
+            item_id: 数据项ID
+
+        Returns:
+            删除结果
+        """
+        item = await dataset_repository.get_item_by_id(db, item_id)
+
+        if not item:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
+
+        dataset_id = item.dataset_id
+
+        # 删除关联的文件项记录
+        await dataset_repository.delete_item_files_by_item_id(db, item_id)
+
+        # 删除数据项
+        await dataset_repository.delete_item_by_id(db, item_id)
+
+        # 清除数据集统计缓存
+        await DatasetService._evict_dataset_stats_cache(redis, dataset_id)
+
+    @staticmethod
+    async def delete_items_by_dataset(
+        db: AsyncSession,
+        redis: Redis,
+        dataset_id: int,
+    ) -> int:
+        """
+        删除数据集下的所有数据项
+
+        Args:
+            db: 数据库会话
+            redis: Redis 客户端
+            dataset_id: 数据集ID
+
+        Returns:
+            操作结果
+        """
+        # 获取所有数据项ID
+        item_ids = await dataset_repository.get_item_ids_by_dataset(db, dataset_id)
+
+        if not item_ids:
+            return 0
+
+        # 删除关联的文件项记录
+        await dataset_repository.delete_item_files_by_item_ids(db, item_ids)
+
+        # 删除数据项
+        await dataset_repository.delete_items_by_dataset_id(db, dataset_id)
+
+        return len(item_ids)
+
+    @staticmethod
+    async def batch_delete_items(
+        db: AsyncSession,
+        redis: Redis,
+        item_ids: list[int],
+    ):
+        """批量删除数据项"""
+        if not item_ids:
+            raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的数据项")
+
+        affected_dataset_ids: set[int] = set()
+
+        for item_id in item_ids:
+            item = await dataset_repository.get_item_by_id(db, item_id)
+            if not item:
+                continue
+            affected_dataset_ids.add(item.dataset_id)
+            await dataset_repository.delete_item_files_by_item_id(db, item_id)
+            await dataset_repository.delete_item_by_id(db, item_id)
+
+        # 清除受影响数据集的统计缓存
+        for ds_id in affected_dataset_ids:
+            await DatasetService._evict_dataset_stats_cache(redis, ds_id)
+
+
+class ItemFileService:
+    """图片文件服务"""
+
+    @staticmethod
+    async def get_item_file_detail(
+        db: AsyncSession,
+        file_id: int,
+    ) -> dict[str, Any] | None:
+        """获取图片文件详情"""
+        result = await dataset_repository.get_item_file_with_file(db, file_id)
+        if not result:
+            return None
+
+        item_file, file_obj = result
+        return {
+            "id": item_file.id,
+            "itemId": item_file.item_id,
+            "fileId": item_file.file_id,
+            "type": item_file.type,
+            "sceneType": item_file.scene_type,
+            "hazeLevel": item_file.haze_level,
+            "description": item_file.description,
+            "url": file_obj.url if file_obj else None,
+            "thumbnailUrl": file_obj.url if file_obj else None,
+            "name": file_obj.name if file_obj else None,
+            "size": file_obj.size_bytes if file_obj else None,
+            "md5": file_obj.md5 if file_obj else None,
+        }
+
+    @staticmethod
+    async def upload_item_file(
+        db: AsyncSession,
+        redis: Redis,
+        item_id: int,
+        image_type: str,
+        scene_type: str,
+        haze_level: str,
+        description: str,
+        file,
+    ) -> dict[str, Any]:
+        """上传数据项图片（含文件上传 + 关联记录创建）"""
+        from app.service.file_service import FileService
+
+        # 校验数据项存在
+        item = await dataset_repository.get_item_by_id(db, item_id)
+        if not item:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
+
+        # 校验图片类型
+        valid_types = {"clear", "hazy", "depth", "segment"}
+        if image_type not in valid_types:
+            raise BusinessException(
+                ResultCode.PARAM_ERROR, f"不支持的图片类型: {image_type}")
+
+        # 校验雾霾等级
+        if image_type == "hazy" and haze_level:
+            valid_levels = {"light", "medium", "heavy"}
+            if haze_level not in valid_levels:
+                raise BusinessException(
+                    ResultCode.PARAM_ERROR, f"不支持的雾霾等级: {haze_level}")
+
+        # 读取文件内容并上传
+        content = await file.read()
+        if not file.filename:
+            raise BusinessException(ResultCode.PARAM_ERROR, "文件名不能为空")
+
+        file_info = await FileService.upload_file(
+            db=db,
+            filename=file.filename,
+            content=content,
+            content_type=file.content_type or "application/octet-stream",
+        )
+
+        # 创建关联记录
+        item_file = SysItemFile(
+            item_id=item_id,
+            file_id=file_info.id,
+            type=image_type,
+            scene_type=scene_type or "未分类",
+            haze_level=haze_level or "未标注",
+            description=description,
+        )
+        db.add(item_file)
+        await db.flush()
+        await db.refresh(item_file)
+
+        # 清除统计缓存
+        await DatasetService._evict_dataset_stats_cache(redis, item.dataset_id)
+
+        return {
+            "id": item_file.id,
+            "itemId": item_file.item_id,
+            "fileId": item_file.file_id,
+            "type": item_file.type,
+            "sceneType": item_file.scene_type,
+            "hazeLevel": item_file.haze_level,
+            "description": item_file.description,
+            "url": file_info.url,
+            "name": file_info.name,
+            "size": file_info.size_bytes,
+            "md5": file_info.md5,
+        }
+
+    @staticmethod
+    async def update_item_file(
+        db: AsyncSession,
+        redis: Redis,
+        file_id: int,
+        data: dict[str, Any],
+    ):
+        """修改图片元数据"""
+        item_file = await dataset_repository.get_item_file_by_id(db, file_id)
+        if not item_file:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
+
+        if "type" in data:
+            item_file.type = data["type"]
+        if "sceneType" in data:
+            item_file.scene_type = data["sceneType"]
+        if "hazeLevel" in data:
+            item_file.haze_level = data["hazeLevel"]
+        if "description" in data:
+            item_file.description = data["description"]
+
+        # 获取数据项以清除对应数据集缓存
+        item = await dataset_repository.get_item_by_id(db, item_file.item_id)
+        if item:
+            await DatasetService._evict_dataset_stats_cache(redis, item.dataset_id)
+
+    @staticmethod
+    async def delete_item_file(
+        db: AsyncSession,
+        redis: Redis,
+        file_id: int,
+    ):
+        """删除单个图片文件关联"""
+        item_file = await dataset_repository.get_item_file_by_id(db, file_id)
+        if not item_file:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
+
+        dataset_id = None
+        item = await dataset_repository.get_item_by_id(db, item_file.item_id)
+        if item:
+            dataset_id = item.dataset_id
+
+        await dataset_repository.delete_item_file_by_id(db, file_id)
+
+        if dataset_id:
+            await DatasetService._evict_dataset_stats_cache(redis, dataset_id)
+
+    @staticmethod
+    async def batch_delete_item_files(
+        db: AsyncSession,
+        redis: Redis,
+        file_ids: list[int],
+    ):
+        """批量删除图片文件关联"""
+        if not file_ids:
+            raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的图片")
+
+        affected_dataset_ids: set[int] = set()
+
+        for fid in file_ids:
+            item_file = await dataset_repository.get_item_file_by_id(db, fid)
+            if not item_file:
+                continue
+            item = await dataset_repository.get_item_by_id(db, item_file.item_id)
+            if item:
+                affected_dataset_ids.add(item.dataset_id)
+
+        await dataset_repository.delete_item_files_by_ids(db, file_ids)
+
+        for ds_id in affected_dataset_ids:
+            await DatasetService._evict_dataset_stats_cache(redis, ds_id)
+            await DatasetService._evict_dataset_stats_cache(redis, ds_id)

@@ -5,9 +5,9 @@ import torch
 import torchvision.transforms
 from PIL import Image
 
-from app.utils.image import postprocess_image
+from algorithm.image_utils import postprocess_image
 from .model import DehazeNet
-from config import Config
+from algorithm.config import Config
 
 
 def get_model(model_path: str):

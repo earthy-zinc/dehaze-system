@@ -2,7 +2,7 @@
 
 雾霾的存在会导致图像的质量会急剧恶化，造成⾊彩失真、特征模糊、对⽐度降低等问题，针对当前图像去雾领域存在缺乏强⼤的先验知识、浓雾区域去雾不彻底问题，本系统基于深度学习⽅法研究设计了⼀种真实场景⾮均匀雾的环境条件下的图像去雾⽅法。基于该方法构建了一个基于深度学习的在线实时响应的图像去雾系统，从⽽实现最终端到端的图像去雾的⽬标。
 
-本部分为图像去雾系统的 Python 后端，基于 PyTorch 构建深度学习模型，Flask 作为 Web 服务框架提供 API 接口，通过 Gunicorn
+本部分为图像去雾系统的 Python 后端，基于 PyTorch 构建深度学习模型，FastAPI 作为 Web 服务框架提供 API 接口，通过 uvicorn
 进行生产级部署。是整个图像去雾系统最核心的部分，同时向外提供 API 接口以供 Java 后端调用。
 
 ## 💻 模块划分
@@ -44,40 +44,50 @@
 
 ## 🚀 项目启动
 
-```bash
-# 克隆代码
-git clone https://gitee.com/earthy-zinc/dehaze_python.git
+### 一键启动（推荐）
 
-# 切换目录
-cd dehaze_python
-
-# 选择1：使用conda
-# 安装 miniconda 并创建虚拟环境
-conda env create -n dehaze-python python=3.10
-conda acticate dehaze-python
-
-# 安装依赖
-conda install --yes --file requirements.txt
-
-# 选择2：使用uv
-uv venv dehaze-python --python 3.11
-
-
-# 启动运行
-python run.py
-```
-
-## 🌺 项目部署
-
-在安装好项目依赖，启动项目成功之后。可以进行项目的部署操作。Gunicorn 是一个流行的 Python WSGI HTTP 服务器，适用于生产环境。我们通过使用
-Gunicorn 部署 Flask 应用。
+项目提供了 `start.sh` 脚本，自动完成虚拟环境激活、依赖同步、旧进程清理和后台启动：
 
 ```bash
-gunicorn -w 4 start:app
+./start.sh
 ```
 
-- -w 4 表示使用 4 个工作进程。
-- start:app 中的 start 是启动 Flask 应用所在的文件名（不包括.py 扩展名），app 是 Flask 实例的名称。
+脚本支持通过环境变量自定义参数：
+
+| 环境变量 | 默认值 | 说明 |
+|---|---|---|
+| `DEHAZE_PYTHON_PORT` | `8000` | 监听端口 |
+| `DEHAZE_PYTHON_HOST` | `0.0.0.0` | 监听地址 |
+| `DEHAZE_PYTHON_WORKERS` | `1` | uvicorn worker 进程数 |
+
+示例：
+
+```bash
+DEHAZE_PYTHON_PORT=8080 DEHAZE_PYTHON_WORKERS=4 ./start.sh
+```
+
+启动后日志输出到 `logs/dehaze-python.log`，PID 文件位于 `logs/dehaze-python.pid`。
+
+### 手动启动
+
+```bash
+# 创建虚拟环境并安装依赖
+uv venv .venv --python 3.11
+source .venv/bin/activate
+uv sync
+
+# 开发模式（热重载）
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# 生产模式
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### 访问地址
+
+- API 文档：`http://localhost:8000/docs`
+- ReDoc：`http://localhost:8000/redoc`
+- 健康检查：`http://localhost:8000/health`
 
 ## 🌈 模型
 

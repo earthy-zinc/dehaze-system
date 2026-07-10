@@ -2,16 +2,11 @@ package router
 
 import (
 	"github.com/earthyzinc/dehaze-go/internal/api"
-	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/gin-gonic/gin"
 )
 
-type AlgorithmRouter struct{}
-
-func (algorithmRouter *AlgorithmRouter) InitAlgorithmRouter(routerGroup *gin.RouterGroup) {
-	algorithmApi := api.ApiGroupApp.AlgorithmApi
-	algorithmRouterGroup := routerGroup.Group("/algorithm").
-		Use(middleware.JWTAuth())
+func RegisterAlgorithmRoutes(rg *gin.RouterGroup, algorithmApi *api.AlgorithmApi) {
+	algorithmRouterGroup := rg.Group("/algorithm")
 
 	{
 		algorithmRouterGroup.GET("", algorithmApi.GetList)            // 获取算法树形表格

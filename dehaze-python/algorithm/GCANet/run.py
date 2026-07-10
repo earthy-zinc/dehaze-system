@@ -6,9 +6,9 @@ import torch
 from PIL import Image
 from torch.autograd import Variable
 
-from app.utils.image import postprocess_image
+from algorithm.image_utils import postprocess_image
 from .GCANet import GCANet
-from config import Config
+from algorithm.config import Config
 
 
 def get_model(model_path: str):

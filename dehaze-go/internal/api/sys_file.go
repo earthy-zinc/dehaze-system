@@ -6,14 +6,19 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/earthyzinc/dehaze-go/internal/service"
+	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/gin-gonic/gin"
 )
 
 type SysFileApi struct {
-	sysFileService service.SysFileService
-	fileService    service.FileService
+	fileService *fileservice.FileService
+}
+
+func NewSysFileApi(fileService *fileservice.FileService) *SysFileApi {
+	return &SysFileApi{
+		fileService: fileService,
+	}
 }
 
 // UploadFile 文件上传
@@ -24,13 +29,13 @@ type SysFileApi struct {
 // @Produce application/json
 // @Param file formData file true "表单文件对象"
 // @Param modelId formData int false "模型id"
-// @Success 200 {object} common.Result{data=model.SysFile}
+// @Success 200 {object} common.Response{data=model.SysFile}
 // @Router /api/v1/files [post]
 func (api *SysFileApi) UploadFile(c *gin.Context) {
 	// 获取上传的文件
 	file, err := c.FormFile("file")
 	if err != nil {
-		common.FailWithMessage("文件上传失败: "+err.Error(), c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "文件上传失败"))
 		return
 	}
 
@@ -40,7 +45,7 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 	if modelIdStr != "" {
 		id, err := strconv.ParseInt(modelIdStr, 10, 64)
 		if err != nil {
-			common.FailWithMessage("模型ID格式不正确", c)
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "模型ID格式不正确"))
 			return
 		}
 		modelId = &id
@@ -53,14 +58,14 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 	// 上传文件
 	fileBO, err := api.fileService.UploadFile(file, baseUrl, uploadPath)
 	if err != nil {
-		common.FailWithMessage("文件上传失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
 	// 保存文件信息到数据库
-	sysFile, err := api.sysFileService.SaveFile(fileBO)
+	sysFile, err := api.fileService.SaveFile(fileBO)
 	if err != nil {
-		common.FailWithMessage("保存文件信息失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -82,21 +87,21 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param fileId query int true "文件ID"
-// @Success 200 {object} common.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/files [delete]
 func (api *SysFileApi) DeleteFile(c *gin.Context) {
 	// 获取文件ID参数
 	fileIdStr := c.Query("fileId")
 	fileId, err := strconv.ParseInt(fileIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("文件ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "文件ID格式不正确"))
 		return
 	}
 
 	// 删除文件
-	err = api.sysFileService.DeleteFile(fileId)
+	err = api.fileService.DeleteFile(fileId)
 	if err != nil {
-		common.FailWithMessage("删除文件失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -110,18 +115,18 @@ func (api *SysFileApi) DeleteFile(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param md5 query string true "文件md5"
-// @Success 200 {object} common.Result{data=bool}
+// @Success 200 {object} common.Response{data=bool}
 // @Router /api/v1/files/check [get]
 func (api *SysFileApi) CheckFile(c *gin.Context) {
 	// 获取MD5参数
 	md5 := c.Query("md5")
 	if md5 == "" {
-		common.FailWithMessage("缺少md5参数", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "缺少md5参数"))
 		return
 	}
 
 	// 校验文件
-	result := api.sysFileService.CheckFile(md5)
+	result := api.fileService.CheckFile(md5)
 	common.OkWithData(result, c)
 }
 
@@ -132,20 +137,20 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param objectName path string true "对象存储名称"
-// @Success 200 {object} common.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/files/download/{objectName} [get]
 func (api *SysFileApi) DownloadFile(c *gin.Context) {
 	// 获取对象存储名称
 	objectName := c.Param("objectName")
 	if objectName == "" {
-		common.FailWithMessage("缺少objectName参数", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "缺少objectName参数"))
 		return
 	}
 
 	// 获取文件路径
-	filePath, err := api.sysFileService.DownloadFile(objectName)
+	filePath, err := api.fileService.DownloadFile(objectName)
 	if err != nil {
-		common.FailWithMessage("下载文件失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 

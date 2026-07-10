@@ -15,7 +15,7 @@ type DeptVO struct {
 	// 状态(1:启用；0:禁用)
 	Status int8 `json:"status"`
 	// 子部门
-	Children []DeptVO `json:"children"`
+	Children []DeptVO `json:"children,omitempty"`
 	// 创建时间
 	CreateTime time.Time `json:"createTime"`
 	// 修改时间

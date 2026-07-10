@@ -2,7 +2,7 @@ import torch
 from thop import profile
 
 from app.utils.file import convert_size
-from config import Config
+from algorithm.config import Config
 
 DEVICE = Config.DEVICE
 

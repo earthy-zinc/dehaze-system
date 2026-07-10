@@ -5,13 +5,19 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
-	"github.com/earthyzinc/dehaze-go/internal/service"
+	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/gin-gonic/gin"
 )
 
 type SysDeptApi struct {
-	deptService service.IDeptService
+	deptService deptservice.IDeptService
+}
+
+func NewSysDeptApi(deptService deptservice.IDeptService) *SysDeptApi {
+	return &SysDeptApi{
+		deptService: deptService,
+	}
 }
 
 // ListDepartments 获取部门列表
@@ -22,7 +28,7 @@ type SysDeptApi struct {
 // @Produce application/json
 // @Param keywords query string false "关键字(部门名称)"
 // @Param status query int false "状态(1->正常；0->禁用)"
-// @Success 200 {object} vo.Result{data=[]vo.DeptVO}
+// @Success 200 {object} common.Response{data=[]vo.DeptVO}
 // @Router /api/v1/dept [get]
 func (api *SysDeptApi) ListDepartments(c *gin.Context) {
 	// 解析查询参数
@@ -38,7 +44,7 @@ func (api *SysDeptApi) ListDepartments(c *gin.Context) {
 	ctx := c.Request.Context()
 	deptVOs, err := api.deptService.GetList(ctx, &queryParams)
 	if err != nil {
-		common.FailWithMessage("获取部门列表失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -51,14 +57,14 @@ func (api *SysDeptApi) ListDepartments(c *gin.Context) {
 // @Tags 部门接口
 // @Accept application/json
 // @Produce application/json
-// @Success 200 {object} vo.Result{data=[]vo.Option}
+// @Success 200 {object} common.Response{data=[]vo.Option}
 // @Router /api/v1/dept/options [get]
 func (api *SysDeptApi) ListDeptOptions(c *gin.Context) {
 	// 调用服务获取部门下拉选项
 	ctx := c.Request.Context()
 	options, err := api.deptService.GetOptions(ctx)
 	if err != nil {
-		common.FailWithMessage("获取部门下拉选项失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -72,14 +78,14 @@ func (api *SysDeptApi) ListDeptOptions(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param deptId path int true "部门ID"
-// @Success 200 {object} vo.Result{data=bo.DeptFormBO}
+// @Success 200 {object} common.Response{data=bo.DeptFormBO}
 // @Router /api/v1/dept/{deptId}/form [get]
 func (api *SysDeptApi) GetDeptForm(c *gin.Context) {
 	// 获取路径参数
 	deptIdStr := c.Param("deptId")
 	deptId, err := strconv.ParseInt(deptIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("部门ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "部门ID格式不正确"))
 		return
 	}
 
@@ -87,7 +93,7 @@ func (api *SysDeptApi) GetDeptForm(c *gin.Context) {
 	ctx := c.Request.Context()
 	deptFormBO, err := api.deptService.GetFormData(ctx, deptId)
 	if err != nil {
-		common.FailWithMessage("获取部门表单数据失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -107,13 +113,13 @@ func (api *SysDeptApi) GetDeptForm(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param formData body bo.DeptFormBO true "部门表单数据"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dept [post]
 func (api *SysDeptApi) SaveDept(c *gin.Context) {
 	// 绑定请求参数
 	var deptFormBO bo.DeptFormBO
 	if err := c.ShouldBindJSON(&deptFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -121,7 +127,7 @@ func (api *SysDeptApi) SaveDept(c *gin.Context) {
 	ctx := c.Request.Context()
 	err := api.deptService.Create(ctx, &deptFormBO)
 	if err != nil {
-		common.FailWithMessage("新增部门失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -136,21 +142,21 @@ func (api *SysDeptApi) SaveDept(c *gin.Context) {
 // @Produce application/json
 // @Param deptId path int true "部门ID"
 // @Param formData body bo.DeptFormBO true "部门表单数据"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dept/{deptId} [put]
 func (api *SysDeptApi) UpdateDept(c *gin.Context) {
 	// 获取路径参数
 	deptIdStr := c.Param("deptId")
 	deptId, err := strconv.ParseInt(deptIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("部门ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "部门ID格式不正确"))
 		return
 	}
 
 	// 绑定请求参数
 	var deptFormBO bo.DeptFormBO
 	if err := c.ShouldBindJSON(&deptFormBO); err != nil {
-		common.FailWithMessage("请求参数解析失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -158,7 +164,7 @@ func (api *SysDeptApi) UpdateDept(c *gin.Context) {
 	ctx := c.Request.Context()
 	err = api.deptService.Update(ctx, deptId, &deptFormBO)
 	if err != nil {
-		common.FailWithMessage("修改部门失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 
@@ -172,14 +178,14 @@ func (api *SysDeptApi) UpdateDept(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param deptId path int true "部门ID"
-// @Success 200 {object} vo.Result
+// @Success 200 {object} common.Response
 // @Router /api/v1/dept/{deptId} [delete]
 func (api *SysDeptApi) DeleteDepartments(c *gin.Context) {
 	// 获取路径参数
 	deptIdStr := c.Param("deptId")
 	deptId, err := strconv.ParseInt(deptIdStr, 10, 64)
 	if err != nil {
-		common.FailWithMessage("部门ID格式不正确", c)
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "部门ID格式不正确"))
 		return
 	}
 
@@ -187,7 +193,7 @@ func (api *SysDeptApi) DeleteDepartments(c *gin.Context) {
 	ctx := c.Request.Context()
 	err = api.deptService.Delete(ctx, deptId)
 	if err != nil {
-		common.FailWithMessage("删除部门失败: "+err.Error(), c)
+		_ = c.Error(err)
 		return
 	}
 

@@ -1,279 +1,406 @@
 """
 任务服务模块
-实现导出任务的异步执行和管理
+
+实现导出任务的异步执行和管理，使用 Redis 存储任务状态
 """
 
+import asyncio
+import contextlib
 import json
-import os
-import re
-import threading
+import logging
 import time
 import uuid
-import zipfile
 from datetime import datetime, timedelta
-from io import BytesIO
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
-from flask import current_app
+from redis.asyncio import Redis
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions import mysql
-from app.models import (
-    ExportTaskCreateForm,
-    SysDataset,
-    SysDatasetItem,
-    SysFile,
-    SysItemFile,
-    SysTask,
-    TaskStatus,
-    TaskType,
-    TaskVO,
-)
-from app.utils.error import BusinessException
+from app.config import settings
+from app.core.code import ResultCode
+from app.core.exceptions import BusinessException, TaskCancelledException
+from app.database import get_db_session
+from app.dependencies.redis import get_redis_client
+from app.infrastructure.metrics.task_metrics import TaskMetricsContext
+from app.models.entity.sys_task import SysTask
+from app.models.enum.task_enum import TaskStatus, TaskType
+from app.repository.task_repository import task_repository
+
+logger = logging.getLogger(__name__)
 
 
-class TaskService:
-    """任务服务类"""
+class TaskServiceAsync:
+    """任务服务类（异步版本）"""
 
-    # 缓存键前缀
-    TASK_CACHE_PREFIX = "export:task:"
+    # Redis 键前缀（与文档对齐）
+    TASK_CACHE_PREFIX = "task:cache:"
+    TASK_PROGRESS_PREFIX = "task:progress:"
     TASK_CANCEL_PREFIX = "task:cancel:"
-    TASK_EXPIRE_HOURS = 24  # 任务文件缓存24小时
+    TASK_EXPIRE_HOURS = 24  # 任务缓存 24 小时
+    CANCEL_FLAG_TTL = 3600  # 取消标志 TTL 1 小时（与文档对齐）
+
+    # 进度更新频率控制
+    _PROGRESS_MIN_INTERVAL = 5.0  # 至少间隔 5 秒
+    _PROGRESS_MIN_PERCENT_DELTA = 5  # 至少变化 5%
 
     @staticmethod
-    def create_export_task(form: ExportTaskCreateForm, user_id: int) -> TaskVO:
+    async def create_export_task(
+        db: AsyncSession,
+        redis: Redis,
+        task_type: str,
+        target_id: Optional[int],
+        target_ids: Optional[List[int]],
+        options: Optional[Dict[str, Any]],
+        user_id: int,
+    ) -> Dict[str, Any]:
         """
         创建导出任务
 
         Args:
-            form: 导出任务创建表单
-            user_id: 当前用户ID
+            db: 异步数据库会话
+            redis: Redis 异步客户端
+            task_type: 任务类型
+            target_id: 单个目标 ID
+            target_ids: 批量目标 ID 列表
+            options: 导出选项
+            user_id: 当前用户 ID
 
         Returns:
-            任务VO
+            任务信息字典
 
         Raises:
-            BusinessException: 用户未登录或导出类型无效
+            BusinessException: 用户未登录、参数错误或超并发限制
         """
         if user_id is None:
             raise BusinessException("用户未登录")
 
-        # 生成任务ID
+        # 校验任务类型
+        valid_types = [t.value for t in TaskType]
+        if task_type not in valid_types:
+            raise BusinessException(ResultCode.TASK_TYPE_UNSUPPORTED)
+
+        # 并发限制检查（P1-07）
+        pending_count = await task_repository.count_pending_by_user_and_type(
+            db, user_id, task_type
+        )
+        if pending_count >= settings.TASK_MAX_CONCURRENT_PER_USER:
+            raise BusinessException(ResultCode.TASK_CONCURRENT_LIMIT)
+
+        # 生成任务 ID
         task_id = str(uuid.uuid4())
 
         # 创建任务实体
+        now = datetime.now()
         sys_task = SysTask(
             task_id=task_id,
-            task_type=form.type,
-            status=TaskStatus.PENDING,
+            task_type=task_type,
+            status=TaskStatus.PENDING.value,
             progress=0,
             total_files=0,
             processed_files=0,
             params=json.dumps({
-                'type': form.type,
-                'targetId': form.target_id,
-                'targetIds': form.target_ids,
-                'options': form.options
+                'type': task_type,
+                'targetId': target_id,
+                'targetIds': target_ids or [],
+                'options': options or {}
             }),
             created_by=user_id,
-            created_at=datetime.now(),
-            expires_at=datetime.now() + timedelta(hours=TaskService.TASK_EXPIRE_HOURS)
+            created_at=now,
+            updated_at=now,
+            expires_at=now +
+            timedelta(hours=TaskServiceAsync.TASK_EXPIRE_HOURS)
         )
 
-        # 保存任务到MySQL
-        mysql.session.add(sys_task)
-        mysql.session.flush()
+        # 保存任务到数据库
+        db.add(sys_task)
+        await db.flush()
+        await db.refresh(sys_task)
 
-        # 缓存任务信息到Redis
-        cache_key = TaskService.TASK_CACHE_PREFIX + task_id
-        task_dict = TaskService._task_to_dict(sys_task)
-        redis_client = current_app.extensions['redis_client']
-        redis_client.setex(
+        # 缓存任务信息到 Redis
+        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
+        task_dict = TaskServiceAsync._task_to_dict(sys_task)
+        await redis.setex(
             cache_key,
-            TaskService.TASK_EXPIRE_HOURS * 3600,
+            TaskServiceAsync.TASK_EXPIRE_HOURS * 3600,
             json.dumps(task_dict, default=str)
         )
 
-        # 转换为VO
-        task_vo = TaskVO(sys_task)
+        # 提交异步任务：优先通过 RabbitMQ 发布，不可用时 fallback 到 asyncio.Task
+        await TaskServiceAsync._dispatch_task(
+            db_task_id=sys_task.id,
+            task_id=task_id,
+            task_type=task_type,
+            target_id=target_id,
+            target_ids=target_ids,
+            options=options,
+            user_id=user_id,
+        )
 
-        # 异步提交任务执行
-        ThreadedTaskExecutor.submit_export_task(sys_task.id, form)
+        logger.info(
+            f"创建导出任务成功: taskId={task_id}, type={task_type}, userId={user_id}")
 
-        current_app.logger.info(f"创建导出任务成功: taskId={task_id}, type={form.type}, userId={user_id}")
-
-        return task_vo
+        return task_dict
 
     @staticmethod
-    def get_task_status(task_id: str) -> Optional[TaskVO]:
+    async def get_task_status(
+        db: AsyncSession,
+        redis: Redis,
+        task_id: str,
+        user_id: int,
+    ) -> Optional[Dict[str, Any]]:
         """
         查询任务状态
 
         Args:
-            task_id: 任务ID
+            db: 异步数据库会话
+            redis: Redis 异步客户端
+            task_id: 任务 ID
+            user_id: 当前用户 ID（权限校验）
 
         Returns:
-            任务VO，如果任务不存在则返回None
+            任务信息字典，如果任务不存在则返回 None
         """
         if not task_id:
-            raise BusinessException("任务ID不能为空")
+            raise BusinessException(ResultCode.TASK_PARAM_ERROR, "任务ID不能为空")
 
-        redis_client = current_app.extensions['redis_client']
-        cache_key = TaskService.TASK_CACHE_PREFIX + task_id
+        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
 
-        # 先从Redis缓存查询
-        cached_task = redis_client.get(cache_key)
+        # 先从 Redis 缓存查询
+        cached_task = await redis.get(cache_key)
         if cached_task:
             try:
                 task_data = json.loads(cached_task)
-                return TaskVO._from_dict(task_data)
+                # 权限校验
+                if task_data.get("created_by") != user_id:
+                    raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
+                return task_data
             except (json.JSONDecodeError, Exception) as e:
-                current_app.logger.warning(f"解析缓存数据失败: {e}")
+                if isinstance(e, BusinessException):
+                    raise
+                logger.warning(f"解析缓存数据失败: {e}")
 
-        # 从MySQL数据库查询
-        sys_task = SysTask.query.filter_by(task_id=task_id).first()
+        # 从数据库查询（使用 repository）
+        sys_task = await task_repository.get_by_task_id(db, task_id)
+
         if sys_task is None:
-            current_app.logger.warning(f"任务不存在: taskId={task_id}")
             return None
 
+        # 权限校验
+        if sys_task.created_by != user_id:
+            raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
+
         # 更新缓存
-        task_dict = TaskService._task_to_dict(sys_task)
-        redis_client.setex(
+        task_dict = TaskServiceAsync._task_to_dict(sys_task)
+        await redis.setex(
             cache_key,
-            TaskService.TASK_EXPIRE_HOURS * 3600,
+            TaskServiceAsync.TASK_EXPIRE_HOURS * 3600,
             json.dumps(task_dict, default=str)
         )
 
-        current_app.logger.info(f"查询任务状态: taskId={task_id}, status={sys_task.status}")
-
-        return TaskVO(sys_task)
+        return task_dict
 
     @staticmethod
-    def download_export_file(task_id: str) -> Optional[str]:
+    async def list_tasks(
+        db: AsyncSession,
+        user_id: int,
+        status: Optional[str] = None,
+        task_type: Optional[str] = None,
+        page: int = 1,
+        size: int = 10,
+    ) -> Dict[str, Any]:
+        """
+        查询当前用户的任务列表（分页+筛选）
+
+        Args:
+            db: 异步数据库会话
+            user_id: 当前用户 ID
+            status: 状态筛选
+            task_type: 类型筛选
+            page: 页码
+            size: 每页数量
+
+        Returns:
+            分页结果 {"list": [...], "total": N}
+        """
+        items, total = await task_repository.get_user_tasks_paginated(
+            db, user_id, status=status, task_type=task_type, page=page, size=size
+        )
+        return {
+            "list": [TaskServiceAsync._task_to_dict(t) for t in items],
+            "total": total,
+        }
+
+    @staticmethod
+    async def download_export_file(
+        db: AsyncSession,
+        redis: Redis,
+        task_id: str,
+        user_id: int,
+    ) -> Optional[str]:
         """
         下载导出文件
 
         Args:
-            task_id: 任务ID
+            db: 异步数据库会话
+            redis: Redis 异步客户端
+            task_id: 任务 ID
+            user_id: 当前用户 ID（权限校验）
 
         Returns:
-            下载链接，如果任务未完成或已过期则返回None
+            下载链接，如果任务未完成或已过期则返回 None
         """
         if not task_id:
-            raise BusinessException("任务ID不能为空")
+            raise BusinessException(ResultCode.TASK_PARAM_ERROR, "任务ID不能为空")
 
-        sys_task = TaskService._get_task_entity(task_id)
+        sys_task = await task_repository.get_by_task_id(db, task_id)
         if sys_task is None:
-            return None
+            raise BusinessException(ResultCode.TASK_NOT_FOUND)
+
+        # 权限校验
+        if sys_task.created_by != user_id:
+            raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
 
         # 检查任务状态
-        if sys_task.status != TaskStatus.COMPLETED:
-            current_app.logger.warning(f"任务未完成，无法下载: taskId={task_id}, status={sys_task.status}")
-            return None
+        if sys_task.status != TaskStatus.COMPLETED.value:
+            raise BusinessException(
+                ResultCode.TASK_STATUS_INVALID, "任务未完成，无法下载")
 
         # 检查任务是否过期
         if sys_task.expires_at and sys_task.expires_at < datetime.now():
-            current_app.logger.warning(f"任务已过期，无法下载: taskId={task_id}, expiresAt={sys_task.expires_at}")
-            return None
+            raise BusinessException(
+                ResultCode.TASK_STATUS_INVALID, "任务已过期，无法下载")
 
-        # 从result字段获取下载链接
+        # 从 result 字段获取下载链接
         if not sys_task.result:
-            current_app.logger.warning(f"任务结果为空: taskId={task_id}")
+            logger.warning(f"任务结果为空: taskId={task_id}")
             return None
 
-        download_url = sys_task.result
-        current_app.logger.info(f"生成下载链接: taskId={task_id}, url={download_url}")
-
-        return download_url
+        return sys_task.result
 
     @staticmethod
-    def cancel_task(task_id: str) -> None:
+    async def cancel_task(
+        db: AsyncSession,
+        redis: Redis,
+        task_id: str,
+        user_id: int,
+    ) -> bool:
         """
         取消导出任务
 
         Args:
-            task_id: 任务ID
+            db: 异步数据库会话
+            redis: Redis 异步客户端
+            task_id: 任务 ID
+            user_id: 当前用户 ID（权限校验）
+
+        Returns:
+            是否取消成功
         """
         if not task_id:
-            raise BusinessException("任务ID不能为空")
+            raise BusinessException(ResultCode.TASK_PARAM_ERROR, "任务ID不能为空")
 
-        sys_task = TaskService._get_task_entity(task_id)
+        sys_task = await task_repository.get_by_task_id(db, task_id)
         if sys_task is None:
-            raise BusinessException("任务不存在")
+            raise BusinessException(ResultCode.TASK_NOT_FOUND)
+
+        # 权限校验
+        if sys_task.created_by != user_id:
+            raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
 
         # 检查任务状态
-        if sys_task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED):
-            current_app.logger.warning(f"任务已完成或失败，无法取消: taskId={task_id}, status={sys_task.status}")
-            return
+        if sys_task.status in (TaskStatus.COMPLETED.value, TaskStatus.FAILED.value):
+            raise BusinessException(
+                ResultCode.TASK_STATUS_INVALID, "任务已完成或失败，无法取消")
 
-        if sys_task.status == TaskStatus.CANCELLED:
-            current_app.logger.warning(f"任务已取消: taskId={task_id}")
-            return
+        if sys_task.status == TaskStatus.CANCELLED.value:
+            return True
 
         # 更新任务状态
-        sys_task.status = TaskStatus.CANCELLED
+        sys_task.status = TaskStatus.CANCELLED.value
         sys_task.completed_at = datetime.now()
-        mysql.session.commit()
+        sys_task.updated_at = datetime.now()
 
         # 更新缓存
-        cache_key = TaskService.TASK_CACHE_PREFIX + task_id
-        redis_client = current_app.extensions['redis_client']
-        task_dict = TaskService._task_to_dict(sys_task)
-        redis_client.setex(
+        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
+        task_dict = TaskServiceAsync._task_to_dict(sys_task)
+        await redis.setex(
             cache_key,
-            TaskService.TASK_EXPIRE_HOURS * 3600,
+            TaskServiceAsync.TASK_EXPIRE_HOURS * 3600,
             json.dumps(task_dict, default=str)
         )
 
-        # 设置取消标志位（通知执行器停止）
-        cancel_key = TaskService.TASK_CANCEL_PREFIX + task_id
-        redis_client.setex(cancel_key, 300, 'true')  # 5分钟过期
+        # 设置取消标志位（通知执行器停止），TTL = 1 小时
+        cancel_key = TaskServiceAsync.TASK_CANCEL_PREFIX + task_id
+        await redis.setex(cancel_key, TaskServiceAsync.CANCEL_FLAG_TTL, 'true')
 
-        current_app.logger.info(f"取消导出任务成功: taskId={task_id}")
+        logger.info(f"取消导出任务成功: taskId={task_id}")
+        return True
 
     @staticmethod
-    def _get_task_entity(task_id: str) -> Optional[SysTask]:
+    async def _dispatch_task(
+        db_task_id: int,
+        task_id: str,
+        task_type: str,
+        target_id: Optional[int],
+        target_ids: Optional[List[int]],
+        options: Optional[Dict[str, Any]],
+        user_id: int,
+    ) -> None:
         """
-        获取任务实体（优先从缓存获取）
+        分发异步任务：优先通过 RabbitMQ 发布，不可用时 fallback 到 asyncio.Task
 
-        Args:
-            task_id: 任务ID
-
-        Returns:
-            任务实体，如果不存在则返回None
+        MQ 模式：消息持久化 + ACK 确认 + 死信队列，进程崩溃后可恢复
+        Fallback 模式：asyncio.Task + TaskTracker，进程崩溃则任务丢失
         """
-        redis_client = current_app.extensions['redis_client']
-        cache_key = TaskService.TASK_CACHE_PREFIX + task_id
+        from app.infrastructure.mq.connection import get_publisher
 
-        cached_task = redis_client.get(cache_key)
-        if cached_task:
+        publisher = get_publisher()
+
+        if publisher is not None and publisher.is_connected:
+            # MQ 模式：发布消息到 task.execute 队列
             try:
-                task_data = json.loads(cached_task)
-                # 转换回实体
-                sys_task = SysTask(
-                    id=task_data.get('id'),
-                    task_id=task_data.get('task_id'),
-                    task_type=task_data.get('task_type'),
-                    status=task_data.get('status'),
-                    progress=task_data.get('progress'),
-                    total_files=task_data.get('total_files'),
-                    processed_files=task_data.get('processed_files'),
-                    result=task_data.get('result'),
-                    error_message=task_data.get('error_message'),
-                    created_by=task_data.get('created_by'),
-                    created_at=datetime.fromisoformat(task_data['created_at']) if task_data.get('created_at') else None,
-                    started_at=datetime.fromisoformat(task_data['started_at']) if task_data.get('started_at') else None,
-                    completed_at=datetime.fromisoformat(task_data['completed_at']) if task_data.get(
-                        'completed_at') else None,
-                    expires_at=datetime.fromisoformat(task_data['expires_at']) if task_data.get('expires_at') else None,
+                await publisher.publish(
+                    routing_key="task.execute",
+                    body={
+                        "db_task_id": db_task_id,
+                        "task_id": task_id,
+                        "task_type": task_type,
+                        "target_id": target_id,
+                        "target_ids": target_ids or [],
+                        "options": options or {},
+                    },
                 )
-                return sys_task
-            except (json.JSONDecodeError, Exception):
-                pass
+                logger.info(f"任务已发布到 RabbitMQ: taskId={task_id}")
+                return
+            except Exception as e:
+                logger.warning(f"RabbitMQ 发布失败，降级为本地执行: {e}")
 
-        return SysTask.query.filter_by(task_id=task_id).first()
+        # Fallback：asyncio.Task + TaskTracker
+        background_task = asyncio.create_task(
+            TaskServiceAsync._execute_export_task_background(
+                db_task_id, task_id, task_type, target_id, target_ids, options
+            )
+        )
+
+        try:
+            from app.service.task_tracker import get_task_tracker
+            tracker = get_task_tracker()
+            await tracker.register(
+                task_id=task_id,
+                task=background_task,
+                task_type=task_type,
+                metadata={
+                    "db_task_id": db_task_id,
+                    "user_id": user_id,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"任务追踪注册失败（不影响执行）: {e}")
+
+    # ==================== 私有方法 ====================
 
     @staticmethod
-    def _task_to_dict(task: SysTask) -> dict:
+    def _task_to_dict(task: SysTask) -> Dict[str, Any]:
         """将任务实体转换为字典"""
         return {
             'id': task.id,
@@ -286,418 +413,221 @@ class TaskService:
             'result': task.result,
             'error_message': task.error_message,
             'created_by': task.created_by,
-            'created_at': task.created_at,
-            'started_at': task.started_at,
-            'completed_at': task.completed_at,
-            'expires_at': task.expires_at
+            'created_at': task.created_at.isoformat() if task.created_at else None,
+            'updated_at': task.updated_at.isoformat() if task.updated_at else None,
+            'started_at': task.started_at.isoformat() if task.started_at else None,
+            'completed_at': task.completed_at.isoformat() if task.completed_at else None,
+            'expires_at': task.expires_at.isoformat() if task.expires_at else None
         }
 
-
-class ThreadedTaskExecutor:
-    """线程化任务执行器 - 使用后台线程异步执行导出任务"""
-
-    # 存储活跃任务 {task_id: thread}
-    _active_tasks = {}
-    _lock = threading.Lock()
-    # 存储app上下文，供后台线程使用
-    _app_context = None
-    _app = None
-
     @staticmethod
-    def set_app_context(app):
-        """设置Flask应用上下文供后台线程使用"""
-        ThreadedTaskExecutor._app = app
-
-    @staticmethod
-    def submit_export_task(db_task_id: int, form: ExportTaskCreateForm) -> None:
-        """
-        提交导出任务到后台线程
-
-        Args:
-            db_task_id: 数据库任务ID
-            form: 导出任务创建表单
-        """
-        thread = threading.Thread(
-            target=ThreadedTaskExecutor._execute_export_task,
-            args=(db_task_id, form, ThreadedTaskExecutor._app),
-            daemon=True
-        )
-        thread.start()
-
-        # 注册活跃任务
-        with ThreadedTaskExecutor._lock:
-            sys_task = SysTask.query.get(db_task_id)
-            if sys_task:
-                ThreadedTaskExecutor._active_tasks[sys_task.task_id] = thread
-
-    @staticmethod
-    def _execute_export_task(db_task_id: int, form: ExportTaskCreateForm, app) -> None:
-        """
-        执行导出任务（在后台线程中运行）
-
-        Args:
-            db_task_id: 数据库任务ID
-            form: 导出任务创建表单
-            app: Flask应用实例
-        """
-        import logging
-        logger = logging.getLogger(__name__)
-
-        with app.app_context():
-            logger.info(
-                f"开始执行导出任务: taskId={db_task_id}, type={form.type}, "
-                f"thread={threading.current_thread().name}"
-            )
-
-            # 查询任务
-            sys_task = SysTask.query.get(db_task_id)
-            if sys_task is None:
-                logger.error(f"任务不存在: taskId={db_task_id}")
-                return
-
-            try:
-                # 更新任务状态为processing
-                sys_task.status = TaskStatus.PROCESSING
-                sys_task.started_at = datetime.now()
-                mysql.session.commit()
-
-                # 更新缓存
-                ThreadedTaskExecutor._update_cache(sys_task)
-
-                # 根据导出类型执行不同的逻辑
-                result = None
-                if form.type == 'dataset':
-                    result = ThreadedTaskExecutor._export_dataset(sys_task, form, app)
-                elif form.type == 'dataset_item':
-                    result = ThreadedTaskExecutor._export_dataset_item(sys_task, form, app)
-                elif form.type == 'batch_items':
-                    result = ThreadedTaskExecutor._export_batch_items(sys_task, form, app)
-                elif form.type == 'custom':
-                    result = ThreadedTaskExecutor._export_custom(sys_task, form, app)
-                else:
-                    logger.error(f"不支持的导出类型: type={form.type}")
-                    ThreadedTaskExecutor._update_task_status(
-                        db_task_id, TaskStatus.FAILED, None, "不支持的导出类型: " + form.type
-                    )
-                    return
-
-                if result:
-                    # 更新任务状态为completed
-                    ThreadedTaskExecutor._update_task_status(db_task_id, TaskStatus.COMPLETED, result, None)
-                    sys_task.status = TaskStatus.COMPLETED
-                    sys_task.progress = 100
-                    sys_task.result = result
-                    sys_task.completed_at = datetime.now()
-                    mysql.session.commit()
-                    logger.info(f"导出任务完成: taskId={sys_task.task_id}, downloadUrl={result}")
-                else:
-                    ThreadedTaskExecutor._update_task_status(db_task_id, TaskStatus.FAILED, None, "导出失败")
-                    sys_task.status = TaskStatus.FAILED
-                    sys_task.completed_at = datetime.now()
-                    mysql.session.commit()
-
-            except Exception as e:
-                if str(e) == "任务已被取消":
-                    logger.warning(f"导出任务被取消: taskId={db_task_id}")
-                    ThreadedTaskExecutor._update_task_status(db_task_id, TaskStatus.CANCELLED, None, None)
-                    sys_task.status = TaskStatus.CANCELLED
-                    sys_task.completed_at = datetime.now()
-                else:
-                    logger.error(f"导出任务执行失败: taskId={db_task_id}", exc_info=e)
-                    ThreadedTaskExecutor._update_task_status(db_task_id, TaskStatus.FAILED, None, str(e))
-                    sys_task.status = TaskStatus.FAILED
-                    sys_task.error_message = str(e)
-                    sys_task.completed_at = datetime.now()
-                mysql.session.commit()
-
-            finally:
-                # 移除活跃任务
-                task_id = sys_task.task_id  # 提前获取task_id，避免访问过期对象
-                with ThreadedTaskExecutor._lock:
-                    if task_id in ThreadedTaskExecutor._active_tasks:
-                        del ThreadedTaskExecutor._active_tasks[task_id]
-
-    @staticmethod
-    def _export_dataset(sys_task: SysTask, form: ExportTaskCreateForm, app) -> Optional[str]:
-        """导出单个数据集"""
-        import logging
-        logger = logging.getLogger(__name__)
-
-        dataset_id = form.target_id
-        if dataset_id is None:
-            raise BusinessException("数据集ID不能为空")
-
-        dataset = SysDataset.query.get(dataset_id)
-        if dataset is None:
-            raise BusinessException("数据集不存在")
-
-        # 查询数据集下的所有数据项
-        items = SysDatasetItem.query.filter_by(dataset_id=dataset_id).all()
-        if not items:
-            raise BusinessException("数据集为空")
-
-        item_ids = [item.id for item in items]
-        return ThreadedTaskExecutor._export_items_to_zip(
-            sys_task, item_ids, f"{dataset.name}_export", form, app
-        )
-
-    @staticmethod
-    def _export_dataset_item(sys_task: SysTask, form: ExportTaskCreateForm, app) -> Optional[str]:
-        """导出单个数据项"""
-        item_id = form.target_id
-        if item_id is None:
-            raise BusinessException("数据项ID不能为空")
-
-        item = SysDatasetItem.query.get(item_id)
-        if item is None:
-            raise BusinessException("数据项不存在")
-
-        return ThreadedTaskExecutor._export_items_to_zip(
-            sys_task, [item_id], f"{item.name}_export", form, app
-        )
-
-    @staticmethod
-    def _export_batch_items(sys_task: SysTask, form: ExportTaskCreateForm, app) -> Optional[str]:
-        """批量导出数据项"""
-        item_ids = form.target_ids
-        if not item_ids:
-            raise BusinessException("数据项ID列表不能为空")
-
-        return ThreadedTaskExecutor._export_items_to_zip(
-            sys_task, item_ids, f"batch_export_{uuid.uuid4().hex[:8]}", form, app
-        )
-
-    @staticmethod
-    def _export_custom(sys_task: SysTask, form: ExportTaskCreateForm, app) -> Optional[str]:
-        """自定义导出"""
-        item_ids = form.target_ids
-        if not item_ids:
-            raise BusinessException("数据项ID列表不能为空")
-
-        return ThreadedTaskExecutor._export_items_to_zip(
-            sys_task, item_ids, f"custom_export_{uuid.uuid4().hex[:8]}", form, app
-        )
-
-    @staticmethod
-    def _export_items_to_zip(
-            sys_task: SysTask,
-            item_ids: List[int],
-            zip_name: str,
-            form: ExportTaskCreateForm,
-            app
-    ) -> Optional[str]:
-        """将数据项导出为ZIP文件"""
-        import logging
-        logger = logging.getLogger(__name__)
-
-        # 检查取消标志位
-        if ThreadedTaskExecutor._is_task_cancelled(sys_task.task_id, app):
-            raise Exception("任务已被取消")
-
-        # 创建临时目录
-        temp_dir = os.path.join(app.config.get('TEMP_DIR', tempfile.gettempdir()), 'export')
-        os.makedirs(temp_dir, exist_ok=True)
-
-        zip_path = os.path.join(temp_dir, f"export_{zip_name}_{uuid.uuid4().hex[:8]}.zip")
-
-        # MinIO对象名称（使用任务ID确保唯一性）
-        object_name = f"exports/{sys_task.task_id}/{zip_name}.zip"
-
-        # 获取导出选项
-        options = form.options or {}
-        structure = options.get('structure', 'by_item')
-        include_types = options.get('includeTypes')
-        include_thumbnail = options.get('includeThumbnail', False)
-
-        try:
-            with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zos:
-                total_files = 0
-                processed_files = 0
-
-                # 预计算文件总数
-                for item_id in item_ids:
-                    item_files = SysItemFile.query.filter_by(item_id=item_id).all()
-                    total_files += len(item_files)
-                    if include_thumbnail:
-                        total_files += len(item_files)
-
-                sys_task.total_files = total_files
-                mysql.session.commit()
-
-                # 遍历每个数据项
-                for item_id in item_ids:
-                    # 检查取消标志位
-                    if ThreadedTaskExecutor._is_task_cancelled(sys_task.task_id, app):
-                        raise Exception("任务已被取消")
-
-                    item = SysDatasetItem.query.get(item_id)
-                    if item is None:
-                        logger.warning(f"数据项不存在: itemId={item_id}")
-                        continue
-
-                    item_files = SysItemFile.query.filter_by(item_id=item_id).all()
-
-                    # 根据组织结构添加文件
-                    for item_file in item_files:
-                        if ThreadedTaskExecutor._should_include_type(include_types, item_file.type):
-                            ThreadedTaskExecutor._add_file_to_zip(
-                                zos, item_file, structure, item.name, None, False, logger
-                            )
-                            processed_files += 1
-                            ThreadedTaskExecutor._update_task_progress(
-                                sys_task.id, processed_files, total_files
-                            )
-
-                        if include_thumbnail:
-                            ThreadedTaskExecutor._add_file_to_zip(
-                                zos, item_file, structure, item.name, "thumbnail", True, logger
-                            )
-                            processed_files += 1
-                            ThreadedTaskExecutor._update_task_progress(
-                                sys_task.id, processed_files, total_files
-                            )
-
-            logger.info(f"ZIP文件创建成功: file={zip_path}, totalFiles={processed_files}")
-
-            # 上传文件到MinIO
-            minio_client = app.extensions.get('minio_client')
-            bucket_name = app.config.get('MINIO_BUCKET_NAME')
-
-            if minio_client and bucket_name:
-                # 上传ZIP文件
-                with open(zip_path, 'rb') as f:
-                    minio_client.put_object(
-                        bucket_name,
-                        object_name,
-                        f,
-                        length=os.path.getsize(zip_path),
-                        content_type='application/zip'
-                    )
-
-                # 生成预签名URL（24小时有效）
-                from datetime import timedelta
-                download_url = minio_client.presigned_get_object(
-                    bucket_name,
-                    object_name,
-                    expires=timedelta(hours=24)
-                )
-
-                logger.info(f"文件上传成功: objectName={object_name}, downloadUrl={download_url}")
-                return download_url
-            else:
-                logger.warning("MinIO客户端未配置，返回空URL")
-                return ""
-
-        except Exception as e:
-            logger.error(f"导出文件失败", exc_info=e)
-            raise BusinessException("导出文件失败", e)
-        finally:
-            # 清理临时文件
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
-
-    @staticmethod
-    def _should_include_type(include_types: Optional[List[str]], type: str) -> bool:
-        """判断是否应该包含该类型"""
-        if not include_types:
-            return True
-        return type in include_types
-
-    @staticmethod
-    def _add_file_to_zip(
-            zos: zipfile.ZipFile,
-            item_file: SysItemFile,
-            structure: str,
-            item_name: str,
-            subfolder: Optional[str],
-            is_thumbnail: bool,
-            logger
-    ) -> None:
-        """
-        添加文件到ZIP
-
-        注意：这是一个简化实现，实际需要从文件存储系统下载文件内容
-        """
-        # 获取文件信息
-        file_obj = SysFile.query.get(item_file.file_id)
-        if file_obj is None:
-            logger.warning(f"文件不存在: fileId={item_file.file_id}")
-            return
-
-        # 构建ZIP条目路径
-        if structure == 'by_item':
-            if subfolder:
-                entry_path = f"{item_name}/{subfolder}/{item_file.id}.jpg"
-            else:
-                entry_path = f"{item_name}/{item_file.id}.jpg"
-        else:
-            if subfolder:
-                entry_path = f"{subfolder}/{item_file.id}.jpg"
-            else:
-                entry_path = f"{item_file.id}.jpg"
-
-        # 添加到ZIP（空文件，实际应该写入文件内容）
-        zos.writestr(entry_path, '')
-
-    @staticmethod
-    def _update_task_status(
-            db_task_id: int,
-            status: str,
-            result: Optional[str],
-            error_message: Optional[str]
+    async def _update_task_status(
+        db: AsyncSession,
+        redis: Redis,
+        db_task_id: int,
+        status: str,
+        result: Optional[str] = None,
+        error_message: Optional[str] = None,
     ) -> None:
         """更新任务状态"""
-        sys_task = SysTask.query.get(db_task_id)
+        sys_task = await task_repository.get_by_id(db, db_task_id)
+
         if sys_task:
             sys_task.status = status
+            sys_task.updated_at = datetime.now()
             if result:
                 sys_task.result = result
             if error_message:
                 sys_task.error_message = error_message
-            mysql.session.commit()
+            if status in (TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value):
+                sys_task.completed_at = datetime.now()
+            await db.commit()
 
-        # 更新缓存
-        if sys_task:
-            ThreadedTaskExecutor._update_cache(sys_task)
+            # 更新缓存
+            await TaskServiceAsync._update_cache(redis, sys_task)
 
     @staticmethod
-    def _update_task_progress(db_task_id: int, processed_files: int, total_files: int) -> None:
-        """更新任务进度"""
-        sys_task = SysTask.query.get(db_task_id)
+    async def _update_task_progress(
+        db: AsyncSession,
+        redis: Redis,
+        db_task_id: int,
+        processed_files: int,
+        total_files: int,
+        *,
+        _last_update: Dict[str, Any] | None = None,
+    ) -> None:
+        """更新任务进度（带频率控制）"""
+        progress = int((processed_files * 100 / total_files)
+                       ) if total_files > 0 else 100
+
+        # 频率控制：至少间隔 5 秒或进度变化 5%（P2-06）
+        if _last_update is not None:
+            elapsed = time.monotonic() - _last_update.get("time", 0)
+            last_progress = _last_update.get("progress", 0)
+            if (
+                elapsed < TaskServiceAsync._PROGRESS_MIN_INTERVAL
+                and abs(progress - last_progress) < TaskServiceAsync._PROGRESS_MIN_PERCENT_DELTA
+                and progress < 100
+            ):
+                return
+
+        sys_task = await task_repository.get_by_id(db, db_task_id)
+
         if sys_task:
-            progress = int((processed_files * 100 / total_files)) if total_files > 0 else 100
+            await task_repository.update_progress(
+                db, sys_task.task_id, progress, processed_files, total_files
+            )
             sys_task.progress = progress
             sys_task.processed_files = processed_files
-            mysql.session.commit()
 
-        # 更新缓存
-        if sys_task:
-            ThreadedTaskExecutor._update_cache(sys_task)
+            # 更新独立进度缓存（P1-05）
+            progress_key = TaskServiceAsync.TASK_PROGRESS_PREFIX + sys_task.task_id
+            await redis.setex(
+                progress_key,
+                TaskServiceAsync.TASK_EXPIRE_HOURS * 3600,
+                json.dumps(
+                    {"progress": progress, "processed": processed_files, "total": total_files})
+            )
+
+            # 更新主缓存
+            await TaskServiceAsync._update_cache(redis, sys_task)
+
+            # 更新频率控制状态
+            if _last_update is not None:
+                _last_update["time"] = time.monotonic()
+                _last_update["progress"] = progress
 
     @staticmethod
-    def _update_cache(sys_task: SysTask) -> None:
+    async def _update_cache(redis: Redis, sys_task: SysTask) -> None:
         """更新缓存"""
-        cache_key = TaskService.TASK_CACHE_PREFIX + sys_task.task_id
-        redis_client = current_app.extensions['redis_client']
-        task_dict = TaskService._task_to_dict(sys_task)
-        redis_client.setex(
+        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + sys_task.task_id
+        task_dict = TaskServiceAsync._task_to_dict(sys_task)
+        await redis.setex(
             cache_key,
-            TaskService.TASK_EXPIRE_HOURS * 3600,
+            TaskServiceAsync.TASK_EXPIRE_HOURS * 3600,
             json.dumps(task_dict, default=str)
         )
 
     @staticmethod
-    def _is_task_cancelled(task_id: str, app=None) -> bool:
+    async def _is_task_cancelled(redis: Redis, task_id: str) -> bool:
         """检查任务是否已被取消"""
-        from app.extensions import redis_client
-
-        cancel_key = TaskService.TASK_CANCEL_PREFIX + task_id
-        is_cancelled = redis_client.get(cancel_key)
-        # Redis返回的是bytes类型，需要解码
+        cancel_key = TaskServiceAsync.TASK_CANCEL_PREFIX + task_id
+        is_cancelled = await redis.get(cancel_key)
         if isinstance(is_cancelled, bytes):
             is_cancelled = is_cancelled.decode('utf-8')
         return is_cancelled == 'true'
 
+    # ==================== 后台任务执行 ====================
 
-# 临时文件导入
-import tempfile
+    @staticmethod
+    async def _execute_export_task_background(
+        db_task_id: int,
+        task_id: str,
+        task_type: str,
+        target_id: Optional[int],
+        target_ids: Optional[List[int]],
+        options: Optional[Dict[str, Any]],
+    ) -> None:
+        """
+        后台执行导出任务
+
+        Args:
+            db_task_id: 数据库任务 ID
+            task_id: 任务 UUID
+            task_type: 任务类型
+            target_id: 单个目标 ID
+            target_ids: 批量目标 ID 列表
+            options: 导出选项
+        """
+        redis = await get_redis_client()
+        metrics_enabled = settings.PROMETHEUS_ENABLED
+
+        try:
+            async with get_db_session() as db:
+                logger.info(f"开始执行导出任务: taskId={task_id}, type={task_type}")
+
+                # 查询任务（使用 repository）
+                sys_task = await task_repository.get_by_id(db, db_task_id)
+
+                if sys_task is None:
+                    logger.error(f"任务不存在: taskId={task_id}")
+                    return
+
+                try:
+                    # 更新任务状态为 processing
+                    sys_task.status = TaskStatus.PROCESSING.value
+                    sys_task.started_at = datetime.now()
+                    sys_task.updated_at = datetime.now()
+                    await db.commit()
+                    await TaskServiceAsync._update_cache(redis, sys_task)
+
+                    # 使用 TaskMetricsContext 自动管理指标
+                    metrics_cm = TaskMetricsContext(
+                        task_type) if metrics_enabled else contextlib.AsyncExitStack()
+                    async with metrics_cm as metrics_ctx:
+
+                        # 委托给策略执行器
+                        from app.service.task.factory import \
+                            TaskStrategyFactory
+                        strategy = TaskStrategyFactory.get_strategy(task_type)
+
+                        # 进度频率控制状态
+                        progress_state = {"time": 0.0, "progress": 0}
+
+                        async def progress_callback(processed: int, total: int) -> None:
+                            """进度回调（带频率控制）"""
+                            await TaskServiceAsync._update_task_progress(
+                                db, redis, db_task_id, processed, total,
+                                _last_update=progress_state,
+                            )
+
+                        async def cancel_checker() -> bool:
+                            """取消检测回调"""
+                            return await TaskServiceAsync._is_task_cancelled(redis, task_id)
+
+                        download_url = await strategy.execute(
+                            db=db,
+                            sys_task=sys_task,
+                            target_id=target_id,
+                            target_ids=target_ids,
+                            options=options or {},
+                            progress_callback=progress_callback,
+                            cancel_checker=cancel_checker,
+                        )
+
+                        if download_url:
+                            await TaskServiceAsync._update_task_status(
+                                db, redis, db_task_id, TaskStatus.COMPLETED.value, download_url, None
+                            )
+                            logger.info(
+                                f"导出任务完成: taskId={task_id}, downloadUrl={download_url}")
+                        else:
+                            if metrics_enabled and isinstance(metrics_ctx, TaskMetricsContext):
+                                metrics_ctx.set_status("failed")
+                            await TaskServiceAsync._update_task_status(
+                                db, redis, db_task_id, TaskStatus.FAILED.value, None, "导出失败"
+                            )
+
+                except asyncio.CancelledError:
+                    # 任务被取消（优雅关闭时）
+                    logger.warning(f"导出任务被取消（服务关闭）: taskId={task_id}")
+                    await TaskServiceAsync._update_task_status(
+                        db, redis, db_task_id, TaskStatus.FAILED.value, None, "服务关闭，任务中断"
+                    )
+                    raise
+
+                except TaskCancelledException:
+                    logger.warning(f"导出任务被取消: taskId={task_id}")
+                    await TaskServiceAsync._update_task_status(
+                        db, redis, db_task_id, TaskStatus.CANCELLED.value, None, None
+                    )
+
+                except Exception as e:
+                    logger.error(f"导出任务执行失败: taskId={task_id}", exc_info=True)
+                    await TaskServiceAsync._update_task_status(
+                        db, redis, db_task_id, TaskStatus.FAILED.value, None, str(
+                            e)
+                    )
+
+        except Exception as e:
+            logger.error(f"后台任务执行异常: {e}", exc_info=True)

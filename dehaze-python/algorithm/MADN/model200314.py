@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import nn, cat
 
 from .enhance0314 import Dehaze, Dehaze1
-from config import Config
+from algorithm.config import Config
 
 
 # device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")

@@ -14,6 +14,7 @@ import (
 
 type JWT struct {
 	Key []byte
+	TTL time.Duration
 }
 
 var (
@@ -25,37 +26,37 @@ var (
 	ErrTokenInvalid          = errors.New("无法处理此token")
 )
 
+// NewJWT 便捷构造函数，从全局配置读取（生产代码使用）
 func NewJWT() *JWT {
 	cfg := config.GetConfig()
-	return &JWT{
-		[]byte(cfg.JWT.Key),
-	}
+	return NewJWTWithConfig([]byte(cfg.JWT.Key), time.Duration(cfg.JWT.TTL)*time.Second)
+}
+
+// NewJWTWithConfig 可注入配置的构造函数（测试友好）
+func NewJWTWithConfig(key []byte, ttl time.Duration) *JWT {
+	return &JWT{Key: key, TTL: ttl}
 }
 
 func (j *JWT) CreateClaims(authInfo *model.UserAuthInfo) CustomClaims {
-	// 获取角色信息
-	roles := authInfo.Roles
-
 	// 处理角色信息
 	var authorities []string
-	if len(roles) > 0 {
-		authorities = make([]string, len(roles))
-		for i, role := range roles {
+	if len(authInfo.Roles) > 0 {
+		authorities = make([]string, len(authInfo.Roles))
+		for i, role := range authInfo.Roles {
 			authorities[i] = "ROLE_" + role
 		}
 	} else {
-		authorities = []string{} // 空切片表示无角色
+		authorities = []string{}
 	}
 
-	cfg := config.GetConfig()
 	claims := CustomClaims{
 		UserID:      authInfo.UserId,
-		DeptID:      authInfo.DeptId, // 修复类型匹配
+		DeptID:      authInfo.DeptId,
 		DataScope:   authInfo.DataScope,
 		Authorities: authorities,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(cfg.JWT.TTL) * time.Second)), // 过期时间（秒）
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(j.TTL)),
 			Subject:   authInfo.Username,
 			ID:        uuid.New().String(),
 		},
@@ -97,11 +98,14 @@ func (j *JWT) ParseToken(tokenString string) (*CustomClaims, error) {
 	return nil, ErrTokenValid
 }
 
-func SetJWT(jwt string, userName string) (err error) {
-	// 此处过期时间等于jwt过期时间
-	cfg := config.GetConfig()
+// SetJWT 便捷包级函数，从全局配置读取（生产代码使用）
+func SetJWT(token string, userName string) error {
+	j := NewJWT()
+	return j.SetToken(token, userName)
+}
+
+// SetToken 将Token存入缓存，TTL来自实例字段（测试友好）
+func (j *JWT) SetToken(token string, userName string) error {
 	cacheClient := cache.GetCache()
-	timer := time.Duration(cfg.JWT.TTL)
-	err = cacheClient.Set(context.Background(), userName, jwt, timer)
-	return err
+	return cacheClient.Set(context.Background(), userName, token, j.TTL)
 }

@@ -35,7 +35,7 @@ db:
   driver: mysql
   type: mysql
   mysql:
-    host: localhost
+    host: earthyzinc.devcloud.woa.com
     port: 3306
     database: dehaze
     username: root
@@ -45,7 +45,7 @@ db:
     parse-time: true
     loc: Local
   postgres:
-    host: localhost
+    host: earthyzinc.devcloud.woa.com
     port: 5432
     database: dehaze
     username: postgres
@@ -63,7 +63,7 @@ cache:
   type: redis
   redis:
     enabled: true
-    addr: 127.0.0.1:6379
+    addr: earthyzinc.devcloud.woa.com:6379
     password: ${DEHAZE_PASSWORD}
     db: 3
     useCluster: false
@@ -77,3 +77,22 @@ cache:
     type: local
     maxRetries: 3
     retryDelay: 100
+  pubsub:
+    enabled: true
+    channel: "cache:invalidation"
+    senderId: "pod-1"
+    maxConcurrency: 32  # 可选，默认16 
+
+rabbitmq:
+  enabled: true
+  url: "amqp://root:${DEHAZE_PASSWORD}@earthyzinc.devcloud.woa.com:5672/"
+  exchange: "dehaze.tasks"
+  exchangeType: "direct"
+  routingKeyPrefix: "task"
+
+kafka:
+  enabled: false
+  brokers:
+    - "earthyzinc.devcloud.woa.com:9092"
+  topic: "dehaze.logs"
+  clientId: "dehaze-go"

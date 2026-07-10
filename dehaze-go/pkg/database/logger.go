@@ -11,6 +11,11 @@ import (
 	gormLogger "gorm.io/gorm/logger"
 )
 
+// log 返回携带 trace_id 的 logger（从 ctx 自动提取）
+func (l *GormLogger) log(ctx context.Context) *zap.Logger {
+	return logger.WithContext(ctx)
+}
+
 // GormLogger Gorm日志适配器
 // 统一对接pkg/logger，所有数据库复用
 type GormLogger struct {
@@ -41,7 +46,7 @@ func (l *GormLogger) LogMode(level gormLogger.LogLevel) gormLogger.Interface {
 func (l *GormLogger) Info(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormLogger.Info {
 		if l.UseZap {
-			logger.Info(fmt.Sprintf(msg, data...))
+			l.log(ctx).Info(fmt.Sprintf(msg, data...))
 		} else {
 			fmt.Printf("[INFO] "+msg+"\n", data...)
 		}
@@ -52,7 +57,7 @@ func (l *GormLogger) Info(ctx context.Context, msg string, data ...interface{}) 
 func (l *GormLogger) Warn(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormLogger.Warn {
 		if l.UseZap {
-			logger.Warn(fmt.Sprintf(msg, data...))
+			l.log(ctx).Warn(fmt.Sprintf(msg, data...))
 		} else {
 			fmt.Printf("[WARN] "+msg+"\n", data...)
 		}
@@ -63,7 +68,7 @@ func (l *GormLogger) Warn(ctx context.Context, msg string, data ...interface{}) 
 func (l *GormLogger) Error(ctx context.Context, msg string, data ...interface{}) {
 	if l.LogLevel >= gormLogger.Error {
 		if l.UseZap {
-			logger.Error(fmt.Sprintf(msg, data...))
+			l.log(ctx).Error(fmt.Sprintf(msg, data...))
 		} else {
 			fmt.Printf("[ERROR] "+msg+"\n", data...)
 		}
@@ -83,7 +88,7 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 	case err != nil && l.LogLevel >= gormLogger.Error && (!errors.Is(err, gormLogger.ErrRecordNotFound) || !l.SkipErrRecordNotFound):
 		// 记录错误SQL
 		if l.UseZap {
-			logger.Error("SQL执行失败",
+			l.log(ctx).Error("SQL执行失败",
 				zap.Error(err),
 				zap.String("sql", sql),
 				zap.Int64("rows", rows),
@@ -96,7 +101,7 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 	case elapsed > l.SlowThreshold && l.SlowThreshold != 0 && l.LogLevel >= gormLogger.Warn:
 		// 记录慢查询
 		if l.UseZap {
-			logger.Warn("慢查询",
+			l.log(ctx).Warn("慢查询",
 				zap.Duration("elapsed", elapsed),
 				zap.Duration("threshold", l.SlowThreshold),
 				zap.String("sql", sql),
@@ -109,7 +114,7 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 	case l.LogLevel >= gormLogger.Info:
 		// 记录普通SQL
 		if l.UseZap {
-			logger.Debug("SQL执行",
+			l.log(ctx).Debug("SQL执行",
 				zap.Duration("elapsed", elapsed),
 				zap.String("sql", sql),
 				zap.Int64("rows", rows),

@@ -1,7 +1,7 @@
 # Dehaze System - 基于深度学习的图像去雾系统
 
 <p align="center">
-  <img src="dehaze-doc/docs/.vuepress/public/tou.jpg" alt="项目Logo" width="200">
+  <img src="dehaze-doc/docs/public/tou.jpg" alt="项目Logo" width="200">
 </p>
 
 <p align="center">

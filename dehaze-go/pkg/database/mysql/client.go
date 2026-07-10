@@ -82,6 +82,11 @@ func (c *Client) initMaster() error {
 		return fmt.Errorf("打开主库失败: %w", err)
 	}
 
+	// 注册数据权限插件
+	if err := database.RegisterDataScopePlugin(db); err != nil {
+		return fmt.Errorf("注册数据权限插件失败: %w", err)
+	}
+
 	// 设置表引擎
 	if c.config.MySQL.Engine != "" {
 		db.InstanceSet("gorm:table_options", "ENGINE="+c.config.MySQL.Engine)

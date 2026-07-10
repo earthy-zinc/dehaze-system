@@ -25,14 +25,23 @@
             </if>
         </where>
         <choose>
-            <when test="sortingField.field == 'userCount'">
-                ORDER BY brokerageUserCount ${sortingField.order}
+            <when test="sortingField != null and sortingField.field == 'userCount' and sortingField.order == 'asc'">
+                ORDER BY brokerageUserCount ASC
             </when>
-            <when test="sortingField.field == 'orderCount'">
-                ORDER BY brokerageOrderCount ${sortingField.order}
+            <when test="sortingField != null and sortingField.field == 'userCount' and sortingField.order == 'desc'">
+                ORDER BY brokerageUserCount DESC
             </when>
-            <when test="sortingField.field == 'price'">
-                ORDER BY brokeragePrice ${sortingField.order}
+            <when test="sortingField != null and sortingField.field == 'orderCount' and sortingField.order == 'asc'">
+                ORDER BY brokerageOrderCount ASC
+            </when>
+            <when test="sortingField != null and sortingField.field == 'orderCount' and sortingField.order == 'desc'">
+                ORDER BY brokerageOrderCount DESC
+            </when>
+            <when test="sortingField != null and sortingField.field == 'price' and sortingField.order == 'asc'">
+                ORDER BY brokeragePrice ASC
+            </when>
+            <when test="sortingField != null and sortingField.field == 'price' and sortingField.order == 'desc'">
+                ORDER BY brokeragePrice DESC
             </when>
             <otherwise>
                 ORDER BY bu.bind_user_time DESC

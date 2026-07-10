@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -9,13 +10,15 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/earthyzinc/dehaze-go/pkg/config"
+	"github.com/earthyzinc/dehaze-go/pkg/trace"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
 )
 
 var (
-	_globalLogger *zap.Logger
-	_once         sync.Once   // 保证Init方法仅执行一次
-	_defaultLog   *zap.Logger // 默认日志实例（初始化前临时使用）
+	// 默认使用 Nop，避免在未显式 Init 时出现空指针。
+	_globalLogger *zap.Logger = zap.NewNop()
+	_once         sync.Once                  // 保证Init方法仅执行一次
+	_defaultLog   *zap.Logger = zap.NewNop() // 默认日志实例（初始化前临时使用）
 )
 
 func InitDefaultLogger() {
@@ -61,6 +64,24 @@ func Init() error {
 		_globalLogger = logger
 	})
 	return initErr
+}
+
+// WithContext 返回携带 TraceID 的 logger
+// 优先从 context 取缓存实例（由 Trace 中间件写入），避免重复分配
+func WithContext(ctx context.Context) *zap.Logger {
+	if ctx == nil {
+		return _globalLogger
+	}
+	// 优先取缓存的 logger（整条请求链路复用同一实例）
+	if l := trace.LoggerFromContext(ctx); l != nil {
+		return l
+	}
+	// 降级：ctx 中有 TraceID 但无缓存 logger（如手动构造的 context）
+	traceID := trace.FromContext(ctx)
+	if traceID == "" {
+		return _globalLogger
+	}
+	return _globalLogger.With(zap.String(trace.TraceFieldName, traceID))
 }
 
 // Debug 调试日志（开发环境使用，生产环境可关闭）
