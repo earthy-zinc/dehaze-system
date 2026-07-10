@@ -213,20 +213,20 @@ class DevelopmentSettings(Settings):
     DATABASE_ECHO: bool = True
 
     # 数据库配置
-    DB_HOST: str = "earthyzinc.devcloud.woa.com"
+    DB_HOST: str = "localhost"
     DB_PORT: int = 3306
 
     # Redis 配置
-    REDIS_HOST: str = "earthyzinc.devcloud.woa.com"
+    REDIS_HOST: str = "localhost"
     REDIS_DB: int = 3
 
     # XXL-Job 配置
     XXLJOB_ENABLED: bool = True
-    XXLJOB_ADMIN_URL: str = "http://earthyzinc.devcloud.woa.com:14980/xxl-job-admin/api/"
+    XXLJOB_ADMIN_URL: str = "http://localhost:14980/xxl-job-admin/api/"
 
     # RabbitMQ 配置
     RABBITMQ_ENABLED: bool = True
-    RABBITMQ_HOST: str = "earthyzinc.devcloud.woa.com"
+    RABBITMQ_HOST: str = "localhost"
     RABBITMQ_USER: str = "root"
 
 

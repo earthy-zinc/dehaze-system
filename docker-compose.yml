@@ -579,22 +579,23 @@ services:
 
 volumes:
   mysql-data:
-
+    external: true
   mysql-logs:
-
+    external: true
   mysql-config:
-
+    external: true
   redis-data:
-
+    external: true
   mongo-data:
-
+    external: true
   mongo-config:
-
+    external: true
   mongo-logs:
-
+    external: true
   minio-data:
-
+    external: true
   minio-config:
+    external: true
 
   es-data:
     external: true

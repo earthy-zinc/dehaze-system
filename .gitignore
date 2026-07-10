@@ -136,7 +136,8 @@ coverage.xml
 **/.nox/
 
 # Python 环境文件
-.env
+**/.env*
+!**/.env.example
 .venv
 env/
 venv/

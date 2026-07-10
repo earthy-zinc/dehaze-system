@@ -99,7 +99,7 @@ mybatis-plus:
 # 安全配置
 security:
   jwt:
-    key: SecretKey012345678901234567890123456789012345678901234567890123456789
+    key: ${JWT_SECRET_KEY:SecretKey012345678901234567890123456789012345678901234567890123456789}
     ttl: 7200
   ignore-urls:
     - /v3/api-docs/**
@@ -203,6 +203,11 @@ captcha:
   code:
     type: random
     length: 24
+  # 验证码字体
+  font:
+    name: SansSerif
+    weight: 1
+    size: 24
   # 验证码有效期(秒)
   expire-seconds: 120
 
@@ -211,7 +216,7 @@ rabbitmq:
   # 是否启用 RabbitMQ
   enabled: false
   # RabbitMQ 连接 URL (amqp://user:password@host:port/vhost)
-  url: amqp://guest:guest@localhost:5672/
+  url: amqp://root:${DEHAZE_PASSWORD}@localhost:5672/
   # 交换机配置
   exchange:
     # 任务交换机名称 (与 Go 端保持一致)

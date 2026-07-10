@@ -32,7 +32,7 @@ db:
   driver: mysql
   type: mysql
   mysql:
-    host: earthyzinc.devcloud.woa.com
+    host: localhost
     port: 3306
     database: dehaze_test
     username: root
@@ -42,7 +42,7 @@ db:
     parse-time: true
     loc: Local
   postgres:
-    host: earthyzinc.devcloud.woa.com
+    host: localhost
     port: 5432
     database: dehaze
     username: postgres
@@ -65,7 +65,7 @@ cache:
   type: redis
   redis:
     enabled: true
-    addr: earthyzinc.devcloud.woa.com:6379
+    addr: localhost:6379
     password: "${DEHAZE_PASSWORD}"
     db: 4
     useCluster: false

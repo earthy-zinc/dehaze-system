@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -51,7 +52,7 @@ public class RabbitMQPublisher {
         Message message = MessageBuilder
                 .withBody(payload.getBytes())
                 .setContentType(MessageProperties.CONTENT_TYPE_JSON)
-                .setDeliveryMode(MessageProperties.DeliveryMode.PERSISTENT)
+                .setDeliveryMode(MessageDeliveryMode.PERSISTENT)
                 .build();
 
         // 设置 TraceID 到消息头
@@ -75,7 +76,7 @@ public class RabbitMQPublisher {
         String exchange = properties.getExchange().getName();
 
         rabbitTemplate.convertAndSend(exchange, routingKey, object, message -> {
-            message.getMessageProperties().setDeliveryMode(MessageProperties.DeliveryMode.PERSISTENT);
+            message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
             return message;
         });
 
@@ -94,7 +95,7 @@ public class RabbitMQPublisher {
         String exchange = properties.getExchange().getName();
 
         rabbitTemplate.convertAndSend(exchange, routingKey, object, message -> {
-            message.getMessageProperties().setDeliveryMode(MessageProperties.DeliveryMode.PERSISTENT);
+            message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
             if (traceId != null && !traceId.isEmpty()) {
                 message.getMessageProperties().setHeader("X-Trace-ID", traceId);
             }

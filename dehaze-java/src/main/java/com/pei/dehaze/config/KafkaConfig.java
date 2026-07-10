@@ -48,24 +48,7 @@ public class KafkaConfig {
      */
     @Bean
     public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> producerFactory) {
-        KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory);
-
-        // 消息发送回调
-        template.setProducerListener(new ProducerListener<>() {
-            @Override
-            public void onSuccess(String topic, Integer partition, String key, String value,
-                    org.apache.kafka.clients.producer.RecordMetadata recordMetadata) {
-                log.debug("Kafka 消息发送成功: topic={}, partition={}, offset={}",
-                        topic, partition, recordMetadata.offset());
-            }
-
-            @Override
-            public void onFailure(String topic, Integer partition, String key, String value, Exception exception) {
-                log.error("Kafka 消息发送失败: topic={}, key={}", topic, key, exception);
-            }
-        });
-
-        return template;
+        return new KafkaTemplate<>(producerFactory);
     }
 
     /**

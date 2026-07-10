@@ -28,14 +28,14 @@ captcha:
   timeout: 3600 # retry-count大于0时才生效，表示解除验证码限制时间
 
 jwt:
-  key: SecretKey012345678901234567890123456789012345678901234567890123456789
+  key: ${JWT_SECRET_KEY}
   ttl: 7200
 
 db:
   driver: mysql
   type: mysql
   mysql:
-    host: earthyzinc.devcloud.woa.com
+    host: localhost
     port: 3306
     database: dehaze
     username: root
@@ -45,7 +45,7 @@ db:
     parse-time: true
     loc: Local
   postgres:
-    host: earthyzinc.devcloud.woa.com
+    host: localhost
     port: 5432
     database: dehaze
     username: postgres
@@ -63,7 +63,7 @@ cache:
   type: redis
   redis:
     enabled: true
-    addr: earthyzinc.devcloud.woa.com:6379
+    addr: localhost:6379
     password: ${DEHAZE_PASSWORD}
     db: 3
     useCluster: false
@@ -85,7 +85,7 @@ cache:
 
 rabbitmq:
   enabled: true
-  url: "amqp://root:${DEHAZE_PASSWORD}@earthyzinc.devcloud.woa.com:5672/"
+  url: "amqp://root:${DEHAZE_PASSWORD}@localhost:5672/"
   exchange: "dehaze.tasks"
   exchangeType: "direct"
   routingKeyPrefix: "task"
@@ -93,6 +93,6 @@ rabbitmq:
 kafka:
   enabled: false
   brokers:
-    - "earthyzinc.devcloud.woa.com:9092"
+    - "localhost:9092"
   topic: "dehaze.logs"
   clientId: "dehaze-go"

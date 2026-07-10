@@ -12,13 +12,13 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://192.168.31.3:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
     username: root
-    password: 123456
+    password: ${DEHAZE_PASSWORD}
   data:
     redis:
       database: 0
       host: 192.168.31.3
       port: 6379
-      password: 123456
+      password: ${DEHAZE_PASSWORD}
       timeout: 10s
       lettuce:
         pool:
@@ -31,7 +31,7 @@ spring:
           # 连接池中的最小空闲连接 默认0
           min-idle: 0
     mongodb:
-      uri: mongodb://root:123456@192.168.31.3:27017/dehaze?authSource=admin
+      uri: mongodb://root:${DEHAZE_PASSWORD}@192.168.31.3:27017/dehaze?authSource=admin
   cache:
     enabled: false
     # 缓存类型 redis、none(不使用缓存)
@@ -67,7 +67,7 @@ mybatis-plus:
 # 安全配置
 security:
   jwt:
-    key: SecretKey012345678901234567890123456789012345678901234567890123456789
+    key: ${JWT_SECRET_KEY:SecretKey012345678901234567890123456789012345678901234567890123456789}
     ttl: 7200
   ignore-urls:
     - /api/v1/files/download/**
@@ -105,9 +105,9 @@ file:
     # 服务Endpoint
     endpoint: http://192.168.31.3:9000
     # 访问凭据
-    access-key: minioadmin
+    access-key: admin
     # 凭据密钥
-    secret-key: minioadmin
+    secret-key: ${DEHAZE_PASSWORD}
     # 存储桶名称
     bucket-name: dehaze
 
