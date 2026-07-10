@@ -35,7 +35,7 @@ db:
   driver: mysql
   type: mysql
   mysql:
-    host: localhost
+    host: 127.0.0.1
     port: 3306
     database: dehaze
     username: root
@@ -45,7 +45,7 @@ db:
     parse-time: true
     loc: Local
   postgres:
-    host: localhost
+    host: 127.0.0.1
     port: 5432
     database: dehaze
     username: postgres
@@ -63,7 +63,7 @@ cache:
   type: redis
   redis:
     enabled: true
-    addr: localhost:6379
+    addr: 127.0.0.1:6379
     password: ${DEHAZE_PASSWORD}
     db: 3
     useCluster: false
@@ -85,7 +85,7 @@ cache:
 
 rabbitmq:
   enabled: true
-  url: "amqp://root:${DEHAZE_PASSWORD}@localhost:5672/"
+  url: "amqp://root:${DEHAZE_PASSWORD}@127.0.0.1:5672/"
   exchange: "dehaze.tasks"
   exchangeType: "direct"
   routingKeyPrefix: "task"

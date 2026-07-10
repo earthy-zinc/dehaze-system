@@ -30,7 +30,7 @@ router = APIRouter(
 async def list_dataset_items(
     datasetId: int = Query(..., description="所属数据集ID"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
-    pageSize: int = Query(default=20, ge=1, le=200, description="每页数量"),
+    pageSize: int = Query(default=20, ge=1, le=100, description="每页数量"),
     keywords: Optional[str] = Query(default=None, description="搜索关键词"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),

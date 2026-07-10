@@ -40,7 +40,7 @@ func (a *AuthApi) Captcha(c *gin.Context) {
 		return
 	}
 
-	common.OkWithDetailed(result, "验证码获取成功", c)
+	common.OkWithData(result, c)
 }
 
 // Login 用户登录
@@ -71,7 +71,7 @@ func (a *AuthApi) Login(c *gin.Context) {
 		security.SetToken(c, result.AccessToken, int(result.Expires/1000)) // 毫秒转秒
 	}
 
-	common.OkWithDetailed(result, "登录成功", c)
+	common.OkWithDetailed(result, common.SUCCESS.Msg, c)
 }
 
 // Logout 用户注销

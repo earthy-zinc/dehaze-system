@@ -55,7 +55,7 @@ class SysOperationLog(Base):
     """
     操作日志模型
     """
-    __tablename__ = 'sys_operation_log'
+    __tablename__ = 'sys_operation_record'
     __table_args__ = (
         Index('idx_user_id', 'user_id'),
         Index('idx_create_time', 'create_time'),

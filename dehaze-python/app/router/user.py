@@ -2,6 +2,7 @@ from io import BytesIO
 from typing import Optional
 
 import openpyxl
+from app.core.code import ResultCode
 from app.core.result import Result, error, success
 from app.database import get_db
 from app.decorators.permission import require_permission
@@ -123,11 +124,11 @@ async def import_users(
     user: UserContext = Depends(get_current_user),
 ):
     if not file.filename or not file.filename.endswith((".xls", ".xlsx")):
-        return error("仅支持 .xls 和 .xlsx 格式的文件", code="B0001")
+        return error("仅支持 .xls 和 .xlsx 格式的文件", code=ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH.code)
 
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:
-        return error("文件大小超过限制（最大 10MB）", code="B0001")
+        return error("文件大小超过限制（最大 10MB）", code=ResultCode.USER_UPLOAD_FILE_SIZE_EXCEEDS.code)
 
     try:
         wb = openpyxl.load_workbook(BytesIO(contents))
@@ -140,7 +141,7 @@ async def import_users(
             msg=f'导入完成，成功{result["successCount"]}条，失败{result["failedCount"]}条',
         )
     except Exception as e:
-        return error(f"导入失败: {str(e)}", code="B0001")
+        return error(f"导入失败: {str(e)}")
 
 
 @router.post("/", summary="新增用户", response_model=Result[UserCreateVO])
@@ -200,7 +201,7 @@ async def update_user_status(
     return success(msg="更新成功")
 
 
-@router.put("/{user_id}/password", summary="修改用户密码", response_model=Result[None])
+@router.patch("/{user_id}/password", summary="修改用户密码", response_model=Result[None])
 async def update_password(
     user_id: int,
     body: PasswordForm,
@@ -209,7 +210,7 @@ async def update_password(
 ):
     # 只能修改自己的密码，或者有重置密码权限才能修改他人密码
     if user_id != user.id and not (user.is_root or "sys:user:password:reset" in user.permissions or "*" in user.permissions):
-        return error("无权修改其他用户的密码", code="AUTH_003")
+        return error("无权修改其他用户的密码", code=ResultCode.ACCESS_UNAUTHORIZED.code)
 
     await UserService.update_password(db, user_id, body.password)
 

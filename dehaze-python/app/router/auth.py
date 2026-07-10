@@ -52,8 +52,8 @@ async def login(
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={
-                    "code": ResultCode.CAPTCHA_EXPIRED.code,
-                    "msg": ResultCode.CAPTCHA_EXPIRED.msg,
+                    "code": ResultCode.VERIFY_CODE_TIMEOUT.code,
+                    "msg": ResultCode.VERIFY_CODE_TIMEOUT.msg,
                     "data": None,
                 },
             )
@@ -66,8 +66,8 @@ async def login(
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={
-                    "code": ResultCode.CAPTCHA_ERROR.code,
-                    "msg": ResultCode.CAPTCHA_ERROR.msg,
+                    "code": ResultCode.VERIFY_CODE_ERROR.code,
+                    "msg": ResultCode.VERIFY_CODE_ERROR.msg,
                     "data": None,
                 },
             )

@@ -83,20 +83,22 @@ def _extract_permissions(payload: dict) -> list[str]:
 
 def _extract_roles(payload: dict) -> list[str]:
     """
-    从 JWT payload 提取角色列表
+    从 JWT payload 的 authorities 字段提取角色列表
 
     Args:
         payload: JWT payload
 
     Returns:
-        角色列表
+        角色列表（去掉 ROLE_ 前缀）
     """
-    roles = payload.get("roles") or payload.get("role_codes", [])
+    authorities = payload.get("authorities")
+    if not authorities:
+        return []
 
-    if isinstance(roles, str):
-        return [r.strip() for r in roles.split(",") if r.strip()]
-    elif isinstance(roles, list):
-        return [str(r) for r in roles if r]
+    if isinstance(authorities, list):
+        return [str(a).replace("ROLE_", "", 1) if str(a).startswith("ROLE_") else str(a) for a in authorities]
+    elif isinstance(authorities, str):
+        return [a.strip().replace("ROLE_", "", 1) if a.strip().startswith("ROLE_") else a.strip() for a in authorities.split(",") if a.strip()]
     return []
 
 
@@ -140,7 +142,7 @@ async def get_current_user(
                     headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
                 )
 
-    user_id = payload.get("sub") or payload.get("user_id")
+    user_id = payload.get("userId")
     if not user_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -148,9 +150,12 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # sub 统一为 username（与 Java/Go 一致）
+    username = payload.get("sub") or payload.get("username", "")
+
     user_context = UserContext(
         id=int(user_id),
-        username=payload.get("username", ""),
+        username=username,
         nickname=payload.get("nickname"),
         roles=_extract_roles(payload),
         permissions=_extract_permissions(payload),
@@ -190,13 +195,16 @@ async def get_current_user_optional(
                 if is_blacklisted:
                     return None
 
-        user_id = payload.get("sub") or payload.get("user_id")
+        user_id = payload.get("userId")
         if not user_id:
             return None
 
+        # sub 统一为 username（与 Java/Go 一致）
+        username = payload.get("sub") or payload.get("username", "")
+
         return UserContext(
             id=int(user_id),
-            username=payload.get("username", ""),
+            username=username,
             nickname=payload.get("nickname"),
             roles=_extract_roles(payload),
             permissions=_extract_permissions(payload),

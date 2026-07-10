@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/earthyzinc/dehaze-go/pkg/app"
+	"github.com/earthyzinc/dehaze-go/internal/app"
 )
 
 // @title Dehaze System API

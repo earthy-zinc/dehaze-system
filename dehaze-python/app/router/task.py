@@ -43,8 +43,8 @@ async def list_tasks(
         default=None, alias="status", description="状态筛选"),
     task_type: str | None = Query(
         default=None, alias="taskType", description="类型筛选"),
-    page: int = Query(default=1, ge=1, description="页码"),
-    size: int = Query(default=10, ge=1, le=100, description="每页数量"),
+    pageNum: int = Query(default=1, ge=1, description="页码"),
+    pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
@@ -53,16 +53,16 @@ async def list_tasks(
 
     - **status**: 状态筛选（pending/processing/completed/failed/cancelled）
     - **taskType**: 类型筛选
-    - **page**: 页码（从1开始）
-    - **size**: 每页数量（最大100）
+    - **pageNum**: 页码（从1开始）
+    - **pageSize**: 每页数量（最大100）
     """
     result_data = await TaskServiceAsync.list_tasks(
         db=db,
         user_id=user.id,
         status=status_filter,
         task_type=task_type,
-        page=page,
-        size=size,
+        page=pageNum,
+        size=pageSize,
     )
     return success(
         TaskPageVO(

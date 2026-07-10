@@ -23,12 +23,9 @@ class ResultCode(Enum):
     VERIFY_CODE_TIMEOUT = ("A0213", "验证码已过期")
     VERIFY_CODE_ERROR = ("A0214", "验证码错误")
 
-    # 按文档要求：A0230 验证码错误，A0231 验证码已过期
-    CAPTCHA_ERROR = ("A0230", "验证码错误")
-    CAPTCHA_EXPIRED = ("A0231", "验证码已过期")
-
-    TOKEN_INVALID = ("A0240", "token无效或已过期")
-    TOKEN_ACCESS_FORBIDDEN = ("A0241", "token已被禁止访问")
+    # 按文档要求：A0230 token无效，A0231 token已被禁止
+    TOKEN_INVALID = ("A0230", "token无效或已过期")
+    TOKEN_ACCESS_FORBIDDEN = ("A0231", "token已被禁止访问")
 
     AUTHORIZED_ERROR = ("A0300", "访问权限异常")
     ACCESS_UNAUTHORIZED = ("A0301", "访问未授权")

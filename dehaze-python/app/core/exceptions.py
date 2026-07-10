@@ -55,8 +55,13 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError):
         errors = exc.errors()
+        error_details = [
+            {"field": ".".join(str(x) for x in e.get("loc", [])),
+             "message": e.get("msg", "格式错误"),
+             "code": e.get("type", "value_error")}
+            for e in errors
+        ]
         if errors:
-            # 提取第一个错误信息
             first_error = errors[0]
             msg = f"参数校验失败: {first_error.get('msg', '未知错误')}"
             if "loc" in first_error:
@@ -71,6 +76,7 @@ def register_exception_handlers(app: FastAPI):
                 "code": ResultCode.PARAM_ERROR.code,
                 "msg": msg,
                 "data": None,
+                "errors": error_details,
             },
         )
 
@@ -102,11 +108,9 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         """通用异常（兜底）"""
-        # 完整堆栈只记录日志，不返回给客户端
         _logger.error(f"未处理异常: {exc}\n{traceback.format_exc()}")
 
         if settings.DEBUG:
-            # 开发环境也只返回简化信息
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={

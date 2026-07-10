@@ -67,11 +67,11 @@ class JWTUtils:
 
         payload = {
             "jti": jti,
-            "sub": str(user_id),
-            "user_id": user_id,
+            "sub": username,  # sub 统一为 username（与 Java/Go 一致）
+            "userId": user_id,  # camelCase（与 Java/Go 一致）
             "username": username,
             "nickname": nickname,
-            "roles": ",".join(roles),
+            "authorities": ["ROLE_" + r for r in roles],  # 数组格式（与 Java/Go 一致）
             "permissions": ",".join(permissions),
             "exp": now + expires_delta,
             "iat": now,
@@ -149,14 +149,24 @@ class JWTUtils:
             return None
 
         try:
-            roles_str = payload.get("roles", "")
+            user_id = payload.get("userId")
+            if user_id is None:
+                return None
+            user_id = int(user_id)
+
+            authorities = payload.get("authorities")
+            if isinstance(authorities, list):
+                roles = [str(a).replace("ROLE_", "", 1) if str(a).startswith("ROLE_") else str(a) for a in authorities]
+            else:
+                roles = []
+
             permissions_str = payload.get("permissions", "")
 
             return TokenData(
-                user_id=int(payload["user_id"]),
-                username=payload["username"],
+                user_id=user_id,
+                username=payload.get("sub") or payload.get("username", ""),
                 nickname=payload.get("nickname", ""),
-                roles=roles_str.split(",") if roles_str else [],
+                roles=roles,
                 permissions=permissions_str.split(",") if permissions_str else [],
                 jti=payload.get("jti"),
             )
@@ -189,11 +199,13 @@ class JWTUtils:
             用户ID，获取失败返回 None
         """
         payload = JWTUtils.decode_token(token)
-        if payload and "user_id" in payload:
-            try:
-                return int(payload["user_id"])
-            except (ValueError, TypeError):
-                return None
+        if payload:
+            user_id = payload.get("userId")
+            if user_id is not None:
+                try:
+                    return int(user_id)
+                except (ValueError, TypeError):
+                    return None
         return None
 
     @staticmethod

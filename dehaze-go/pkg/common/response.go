@@ -6,29 +6,44 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Response 通用响应结构
+// Response 通用响应结构（与 Java 参考实现保持一致）
 type Response struct {
-	Code string      `json:"code"`
-	Data interface{} `json:"data"`
-	Msg  string      `json:"msg"`
+	Code      string      `json:"code"`
+	Data      interface{} `json:"data"`
+	Msg       string      `json:"msg"`
+	TraceId   string      `json:"traceId,omitempty"`
+	Timestamp int64       `json:"timestamp,omitempty"`
+	Errors    []ErrorItem `json:"errors,omitempty"`
 }
 
-// result 核心响应函数，返回 JSON 响应
-// 仿照 Java 的 Result.failed() 和 Result.ok() 方法
+// ErrorItem 参数校验错误项
+type ErrorItem struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Code    string `json:"code"`
+}
+
+// result 核心响应函数
 func result(resultCode *ResultCode, data interface{}, c *gin.Context) {
+	if data == nil {
+		data = map[string]interface{}{}
+	}
 	c.JSON(http.StatusOK, Response{
-		resultCode.Code,
-		data,
-		resultCode.Msg,
+		Code: resultCode.Code,
+		Data: data,
+		Msg:  resultCode.Msg,
 	})
 }
 
-// resultWithMsg 使用指定的消息覆盖默认消息
+// resultWithMsg 使用指定消息覆盖默认消息
 func resultWithMsg(resultCode *ResultCode, data interface{}, message string, c *gin.Context) {
+	if data == nil {
+		data = map[string]interface{}{}
+	}
 	c.JSON(http.StatusOK, Response{
-		resultCode.Code,
-		data,
-		message,
+		Code: resultCode.Code,
+		Data: data,
+		Msg:  message,
 	})
 }
 
@@ -90,13 +105,9 @@ func FailWithDataAndCode(resultCode *ResultCode, data interface{}, c *gin.Contex
 	result(resultCode, data, c)
 }
 
-// NoAuth 访问未授权，返回 401 状态码
+// NoAuth 访问未授权
 func NoAuth(message string, c *gin.Context) {
-	c.JSON(http.StatusUnauthorized, Response{
-		ACCESS_UNAUTHORIZED.Code,
-		nil,
-		message,
-	})
+	resultWithMsg(ACCESS_UNAUTHORIZED, nil, message, c)
 }
 
 // FailWithDetailed 操作失败，返回数据和消息

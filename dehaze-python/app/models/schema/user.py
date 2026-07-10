@@ -174,6 +174,6 @@ class CurrentUserVO(BaseModel):
     """当前用户信息VO"""
     userId: int = Field(description="用户ID")
     username: str = Field(description="用户名")
-    nickname: str = Field(description="昵称")
+    nickname: Optional[str] = Field(default=None, description="昵称")
     roles: List[str] = Field(description="角色列表")
     permissions: List[str] = Field(description="权限列表（最多显示10个）")

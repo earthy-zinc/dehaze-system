@@ -127,7 +127,7 @@ async def delete_roles(
     return success(msg="删除成功")
 
 
-@router.put("/{role_id}/status", response_model=Result[None], summary="修改角色状态")
+@router.patch("/{role_id}/status", response_model=Result[None], summary="修改角色状态")
 @require_permission("sys:role:edit")
 async def update_role_status(
     role_id: int = Path(..., description="角色ID"),
@@ -154,7 +154,7 @@ async def get_role_menu_ids(
     return success(menu_ids)
 
 
-@router.put("/{role_id}/menus", response_model=Result[None], summary="分配菜单给角色")
+@router.patch("/{role_id}/menus", response_model=Result[None], summary="分配菜单给角色")
 @require_permission("sys:role:edit")
 async def assign_menus_to_role(
     role_id: int = Path(..., description="角色ID"),

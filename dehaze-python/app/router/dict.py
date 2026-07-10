@@ -1,5 +1,6 @@
 from typing import Annotated, Optional
 
+from app.core.code import ResultCode
 from app.core.result import Result, error, success
 from app.database import get_db
 from app.decorators import require_permission
@@ -63,7 +64,7 @@ async def create_dict_type(
     result = await DictTypeService.create_dict_type(db, body.model_dump(exclude_none=True))
     if result:
         return success(msg="新增成功")
-    return error("新增失败", code="B0001")
+    return error("新增失败")
 
 
 @router.put("/types/{type_id}", response_model=Result[None], summary="修改字典类型")
@@ -77,7 +78,7 @@ async def update_dict_type(
     result = await DictTypeService.update_dict_type(db, type_id, body.model_dump(exclude_none=True))
     if result:
         return success(msg="修改成功")
-    return error("修改失败", code="B0001")
+    return error("修改失败")
 
 
 @router.delete("/types/{type_ids}", response_model=Result[None], summary="删除字典类型", description="存在关联字典数据时禁止删除")
@@ -92,9 +93,9 @@ async def delete_dict_types(
         result = await DictTypeService.delete_dict_types(db, id_list)
         if result:
             return success(msg="删除成功")
-        return error("删除失败", code="B0001")
+        return error("删除失败")
     except ValueError:
-        return error("参数错误", code="B0001")
+        return error("参数错误", code=ResultCode.PARAM_ERROR.code)
 
 
 @router.get("/page", response_model=Result[PageResult[DictPageVO]], summary="字典分页列表")
@@ -149,7 +150,7 @@ async def create_dict(
     result = await DictService.create_dict(db, body.model_dump(exclude_none=True))
     if result:
         return success(msg="新增成功")
-    return error("新增失败", code="B0001")
+    return error("新增失败")
 
 
 @router.put("/{dict_id}", response_model=Result[None], summary="修改字典")
@@ -163,7 +164,7 @@ async def update_dict(
     result = await DictService.update_dict(db, dict_id, body.model_dump(exclude_none=True))
     if result:
         return success(msg="修改成功")
-    return error("修改失败", code="B0001")
+    return error("修改失败")
 
 
 @router.delete("/{dict_ids}", response_model=Result[None], summary="删除字典", description="多个ID以逗号分隔")
@@ -178,9 +179,9 @@ async def delete_dict(
         result = await DictService.delete_dict(db, id_list)
         if result:
             return success(msg="删除成功")
-        return error("删除失败", code="B0001")
+        return error("删除失败")
     except ValueError:
-        return error("参数错误", code="B0001")
+        return error("参数错误", code=ResultCode.PARAM_ERROR.code)
 
 
 @router.get("/{type_code}/options", response_model=Result[list[DictOptionVO]], summary="字典下拉列表", description="无需认证，用于前端下拉框")

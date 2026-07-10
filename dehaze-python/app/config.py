@@ -89,10 +89,10 @@ class Settings(BaseSettings):
         return self.DEHAZE_PASSWORD if self.DEHAZE_PASSWORD else None
 
     # MongoDB 配置
-    MONGO_URI: str = "mongodb://localhost:27017/"
+    MONGO_URI: str = "mongodb://127.0.0.1:27017/"
 
     # MinIO 配置
-    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ENDPOINT: str = "127.0.0.1:9000"
     MINIO_ACCESS_KEY: str = ""  # 必须通过环境变量设置
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "dehaze"
@@ -213,20 +213,20 @@ class DevelopmentSettings(Settings):
     DATABASE_ECHO: bool = True
 
     # 数据库配置
-    DB_HOST: str = "localhost"
+    DB_HOST: str = "127.0.0.1"
     DB_PORT: int = 3306
 
     # Redis 配置
-    REDIS_HOST: str = "localhost"
+    REDIS_HOST: str = "127.0.0.1"
     REDIS_DB: int = 3
 
-    # XXL-Job 配置
-    XXLJOB_ENABLED: bool = True
-    XXLJOB_ADMIN_URL: str = "http://localhost:14980/xxl-job-admin/api/"
+    # XXL-Job 配置（Docker 中未运行 xxl-job-admin，关闭避免启动卡住）
+    XXLJOB_ENABLED: bool = False
+    XXLJOB_ADMIN_URL: str = "http://127.0.0.1:14980/xxl-job-admin/api/"
 
     # RabbitMQ 配置
     RABBITMQ_ENABLED: bool = True
-    RABBITMQ_HOST: str = "localhost"
+    RABBITMQ_HOST: str = "127.0.0.1"
     RABBITMQ_USER: str = "root"
 
 
