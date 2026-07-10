@@ -143,7 +143,7 @@ func (api *SysUserApi) SaveUser(c *gin.Context) {
 		return
 	}
 
-	common.OkWithMessage("新增用户成功", c)
+	common.Ok(c)
 }
 
 // UpdateUser 修改用户
@@ -179,7 +179,7 @@ func (api *SysUserApi) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	common.OkWithMessage("修改用户成功", c)
+	common.Ok(c)
 }
 
 // DeleteUsers 删除用户

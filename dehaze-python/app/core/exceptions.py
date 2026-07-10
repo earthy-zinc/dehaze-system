@@ -3,7 +3,7 @@ import traceback
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
 from jose import JWTError
 from sqlalchemy.exc import SQLAlchemyError
 

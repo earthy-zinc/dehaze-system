@@ -4,6 +4,7 @@ from app.config import settings
 from app.core.exceptions import register_exception_handlers
 from app.lifecycle import lifespan
 from app.middleware import init_middlewares
+from app.middleware.non_null_response import NonNullJSONResponse
 from app.router import init_routes
 from app.router.websocket import router as ws_router
 
@@ -15,6 +16,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
+    default_response_class=NonNullJSONResponse,
 )
 
 # 注册全局异常处理器

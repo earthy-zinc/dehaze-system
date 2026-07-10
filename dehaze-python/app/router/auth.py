@@ -10,7 +10,7 @@ from app.repository.login_log_repository import login_log_repository
 from app.service.auth_service import AuthService
 from app.utils.user_agent import parse_user_agent
 from fastapi import APIRouter, Depends, Request, status
-from fastapi.responses import JSONResponse
+from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 

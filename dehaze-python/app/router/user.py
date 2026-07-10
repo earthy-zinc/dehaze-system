@@ -154,7 +154,7 @@ async def import_users(
         return error(f"导入失败: {str(e)}")
 
 
-@router.post("/", summary="新增用户", response_model=Result[UserCreateVO])
+@router.post("", summary="新增用户", response_model=Result[UserCreateVO])
 @require_permission("sys:user:add")
 async def create_user(
     body: UserForm,
@@ -164,11 +164,7 @@ async def create_user(
     data = body.model_dump(exclude_none=True)
     new_user = await UserService.create_user_with_roles(db, data)
 
-    return success({
-        "id": new_user.id,
-        "username": new_user.username,
-        "nickname": new_user.nickname,
-    }, msg="新增成功")
+    return success(msg="一切ok")
 
 
 @router.get("/{user_id}/form", summary="获取用户表单数据", response_model=Result[UserFormVO])
@@ -191,12 +187,12 @@ async def update_user(
     user_id: int,
     body: UserForm,
     db: AsyncSession = Depends(get_db),
-    current_user: UserContext = Depends(get_current_user),
+    user: UserContext = Depends(get_current_user),
 ):
     data = body.model_dump(exclude_none=True)
     await UserService.update_user_with_roles(db, user_id, data)
 
-    return success(msg="更新成功")
+    return success(msg="一切ok")
 
 
 @router.patch("/{user_id}/status", summary="更新用户状态", response_model=Result[None])
@@ -208,7 +204,7 @@ async def update_user_status(
 ):
     await UserService.update_user_status(db, user_id, status)
 
-    return success(msg="更新成功")
+    return success(msg="一切ok")
 
 
 @router.patch("/{user_id}/password", summary="修改用户密码", response_model=Result[None])

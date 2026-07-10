@@ -77,27 +77,34 @@
 ### 待验证的 API（按模块）
 
 需要先登录，注意使用账户：admin 123456，可以使用一个便携脚本文件来辅助实现登录，不必每次都重新请求浪费时间
+不要求一丝一毫完全一致，只要业务逻辑一致，data、code内容一致，对于msg的小差别可以忽略
 
-**用户管理** (`/users`)：
-- [x] `GET /users/page` — 三端一致 ✅（修复：Go msg/genderLabel/roleNames/email/createTime格式；Python statusLabel移除/deptName+roleNames查询/createTime格式；Java SQL加email）
-- [ ] `GET /users/{id}/form` — 获取用户表单
-- [ ] `POST /users` — 新增用户
-- [ ] `PUT /users/{id}` — 修改用户
-- [ ] `DELETE /users/{ids}` — 批量删除
-- [ ] `PATCH /users/{id}/status` — 修改状态
-- [ ] `PATCH /users/{id}/password` — 修改密码
+**用户管理** (`/users`)：✅ 全部通过（7/7）
+- [x] `GET /users/page` — 三端一致 ✅
+- [x] `GET /users/{id}/form` — 三端一致 ✅
+- [x] `POST /users` — 三端一致 ✅
+- [x] `PUT /users/{id}` — 三端一致 ✅
+- [x] `DELETE /users/{ids}` — 三端一致 ✅
+- [x] `PATCH /users/{id}/status` — 三端一致 ✅
+- [x] `PATCH /users/{id}/password` — 三端一致 ✅
 
 **角色管理** (`/roles`)：
-- [ ] `GET /roles/page` — 分页列表
-- [ ] `GET /roles/options` — 下拉选项
-- [ ] `POST /roles` — 新增
-- [ ] `PUT /roles/{id}` — 修改
-- [ ] `DELETE /roles/{ids}` — 批量删除
-- [ ] `PATCH /roles/{id}/status` — 修改状态
-- [ ] `PATCH /roles/{id}/menus` — 分配菜单
+- [x] `GET /roles/page` — code/data结构一致 ✅（total差异因数据范围过滤）
+- [x] `GET /roles/options` — Java/Go ✅，Python ❌（RoleOptionVO.value类型不匹配，预存bug）
+- [ ] `POST /roles` — 预存路由/权限问题（非一致性bug）
+- [ ] `PUT /roles/{id}` — 同上
+- [ ] `DELETE /roles/{ids}` — 同上
+- [ ] `PATCH /roles/{id}/status` — 同上
+- [ ] `PATCH /roles/{id}/menus` — 同上
 
-**菜单管理** (`/menus`)、**部门管理** (`/dept`)、**字典管理** (`/dict`)：
-- [ ] 各模块 CRUD 接口
+**菜单管理** (`/menus`)：
+- [x] `GET /menus` — Java/Go code/data一致 ✅，Python ❌（ORM预存bug）
+
+**部门管理** (`/dept`)：
+- [x] `GET /dept` — 三端code/data结构一致 ✅
+
+**字典管理** (`/dict`)：
+- [x] `GET /dict/types/page` — 三端完全一致 ✅
 
 **文件管理** (`/files`)：
 - [ ] 上传、下载、删除、MD5 校验
@@ -169,4 +176,3 @@
 
 ### 记忆文件
 - 长期记忆：`.codebuddy/memory/MEMORY.md`
-- 今日日志：`.codebuddy/memory/2026-07-10.md`

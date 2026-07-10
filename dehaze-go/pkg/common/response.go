@@ -9,7 +9,7 @@ import (
 // Response 通用响应结构（与 Java 参考实现保持一致）
 type Response struct {
 	Code      string      `json:"code"`
-	Data      interface{} `json:"data"`
+	Data      interface{} `json:"data,omitempty"`
 	Msg       string      `json:"msg"`
 	TraceId   string      `json:"traceId,omitempty"`
 	Timestamp int64       `json:"timestamp,omitempty"`
@@ -25,9 +25,6 @@ type ErrorItem struct {
 
 // result 核心响应函数
 func result(resultCode *ResultCode, data interface{}, c *gin.Context) {
-	if data == nil {
-		data = map[string]interface{}{}
-	}
 	c.JSON(http.StatusOK, Response{
 		Code: resultCode.Code,
 		Data: data,
@@ -37,9 +34,6 @@ func result(resultCode *ResultCode, data interface{}, c *gin.Context) {
 
 // resultWithMsg 使用指定消息覆盖默认消息
 func resultWithMsg(resultCode *ResultCode, data interface{}, message string, c *gin.Context) {
-	if data == nil {
-		data = map[string]interface{}{}
-	}
 	c.JSON(http.StatusOK, Response{
 		Code: resultCode.Code,
 		Data: data,
@@ -52,13 +46,13 @@ func resultWithMsg(resultCode *ResultCode, data interface{}, message string, c *
 // Ok 操作成功，返回空数据
 // 仿照 Java: return Result.ok();
 func Ok(c *gin.Context) {
-	result(SUCCESS, map[string]interface{}{}, c)
+	result(SUCCESS, nil, c)
 }
 
 // OkWithMessage 操作成功，返回自定义消息
 // 仿照 Java: return Result.ok().message("自定义消息");
 func OkWithMessage(message string, c *gin.Context) {
-	resultWithMsg(SUCCESS, map[string]interface{}{}, message, c)
+	resultWithMsg(SUCCESS, nil, message, c)
 }
 
 // OkWithData 操作成功，返回数据
