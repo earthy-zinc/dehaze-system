@@ -81,7 +81,7 @@ public class SysRoleController {
     }
 
     @Operation(summary = "修改角色状态")
-    @PutMapping(value = "/{roleId}/status")
+    @PatchMapping(value = "/{roleId}/status")
     public Result<Void> updateRoleStatus(
             @Parameter(description = "角色ID") @PathVariable Long roleId,
             @Parameter(description = "状态(1:启用;0:禁用)") @RequestParam Integer status
@@ -100,7 +100,7 @@ public class SysRoleController {
     }
 
     @Operation(summary = "分配菜单(包括按钮权限)给角色")
-    @PutMapping("/{roleId}/menus")
+    @PatchMapping("/{roleId}/menus")
     public Result<Void> assignMenusToRole(
             @PathVariable Long roleId,
             @RequestBody List<Long> menuIds

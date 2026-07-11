@@ -54,24 +54,9 @@ func NewItemFileService(
 }
 
 // SaveItemFile 保存项文件
-func (itemFileService *ItemFileService) SaveItemFile(itemId int64, itemBO bo.DatasetItemBO, asyncThumbnail bool) (imageFileInfo dto.ImageFileInfo, err error) {
+// sysFile: 已上传完成的文件记录（由 API 层调用 FileService.UploadFile 获取）
+func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model.SysFile, itemBO bo.DatasetItemBO, asyncThumbnail bool) (imageFileInfo dto.ImageFileInfo, err error) {
 	ctx := context.Background()
-
-	// 创建文件记录
-	fileBO := bo.FileBO{
-		Name:       itemBO.Name,
-		ObjectName: "",
-		Extension:  itemBO.Extension,
-		MD5:        "",
-		Path:       "",
-		Size:       itemBO.Size,
-		URL:        "",
-	}
-
-	sysFile, err := itemFileService.fileService.SaveFile(fileBO)
-	if err != nil {
-		return imageFileInfo, common.WrapBizError(common.DATABASE_ERROR, "保存文件失败", err)
-	}
 
 	// 创建项文件关联记录
 	sysItemFile := model.SysItemFile{

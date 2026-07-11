@@ -79,3 +79,11 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
     # 评估路由（效果评估）
     from app.router.evaluation import router as evaluation_router
     app.include_router(evaluation_router)
+
+    # 图像输入历史记录路由
+    from app.router.image_input import router as image_input_router
+    app.include_router(image_input_router)
+
+    # 算法选择路由（智能推荐/收藏/对比）
+    from app.router.algorithm_select import router as algorithm_select_router
+    app.include_router(algorithm_select_router)

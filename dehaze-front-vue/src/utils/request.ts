@@ -31,9 +31,8 @@ function showReloginDialog() {
     type: "warning",
   }).then(() => {
     const userStore = useUserStoreHook();
-    userStore.resetToken().then(() => {
-      location.reload();
-    });
+    userStore.resetToken();
+    location.reload();
   });
 }
 
@@ -50,7 +49,7 @@ function handleTokenInvalid(error: any, service: AxiosInstance): Promise<any> {
   // 无 refreshToken，直接弹框重新登录
   if (!refreshToken) {
     showReloginDialog();
-    return Promise.reject(error.message);
+    return Promise.reject(error);
   }
 
   // 正在刷新中，将当前请求加入队列等待
@@ -78,7 +77,7 @@ function handleTokenInvalid(error: any, service: AxiosInstance): Promise<any> {
       pendingQueue.forEach(({ reject }) => reject(err));
       pendingQueue = [];
       showReloginDialog();
-      return Promise.reject(error.message);
+      return Promise.reject(error);
     })
     .finally(() => {
       isRefreshing = false;
@@ -96,8 +95,13 @@ function createOnResponseError(service: AxiosInstance) {
         return handleTokenInvalid(error, service);
       }
       ElMessage.error(msg || "系统出错");
+    } else if (error.request) {
+      // 请求已发出但无响应（网络断开、超时、CORS）
+      ElMessage.error("网络异常，请检查网络连接");
+    } else {
+      ElMessage.error(error.message || "请求发送失败");
     }
-    return Promise.reject(error.message);
+    return Promise.reject(error);
   };
 }
 

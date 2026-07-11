@@ -7,7 +7,6 @@ import { Algorithm, AlgorithmAPI, EvalResult, ModelAPI } from "dehaze-sdk-js";
 
 const imageShowStore = useImageShowStore();
 const { modelId } = toRefs(imageShowStore);
-const loading = ref(false);
 const state = reactive({
   magnifier: {
     enabled: imageShowStore.magnifierInfo.enabled,
@@ -17,25 +16,17 @@ const state = reactive({
     zoomLevel: imageShowStore.magnifierInfo.zoomLevel,
   },
   brightness: {
-    enabled: true,
     value: 0,
   },
   contrast: {
-    enabled: true,
     value: 0,
   },
   saturate: {
-    enabled: true,
     value: 0,
   },
 });
 
-const algorithmInfo = ref<Algorithm>({
-  id: 0,
-  parentId: 0,
-  name: "未知",
-  description: "未知",
-} as Algorithm);
+const algorithmInfo = ref<Algorithm | null>(null);
 const metrics = ref<EvalResult[]>();
 
 const { imageInfo } = toRefs(imageShowStore);
@@ -50,12 +41,6 @@ const gt = computed(
   () =>
     imageInfo.value.images.urls.filter(
       (img) => img.label.text === ImageTypeEnum.CLEAN
-    )[0]
-);
-const haze = computed(
-  () =>
-    imageInfo.value.images.urls.filter(
-      (img) => img.label.text === ImageTypeEnum.HAZE
     )[0]
 );
 
@@ -114,17 +99,25 @@ onMounted(() => {
     ElMessage.error("不存在图像");
     return;
   }
-  AlgorithmAPI.getAlgorithmInfoById(modelId.value).then((res) => {
-    algorithmInfo.value = res;
-  });
+  AlgorithmAPI.getAlgorithmInfoById(modelId.value)
+    .then((res) => {
+      algorithmInfo.value = res;
+    })
+    .catch((e: any) => {
+      ElMessage.error("获取算法信息失败：" + (e.message || "未知错误"));
+    });
 
   ModelAPI.evaluation({
     modelId: modelId.value,
     predUrl: pred.value.url,
     gtUrl: gt.value.url,
-  }).then((res) => {
-    metrics.value = res;
-  });
+  })
+    .then((res) => {
+      metrics.value = res;
+    })
+    .catch((e: any) => {
+      ElMessage.error("评估失败：" + (e.message || "未知错误"));
+    });
 });
 </script>
 
@@ -238,22 +231,22 @@ onMounted(() => {
           <h3 class="text-center">算法说明</h3>
           <el-descriptions :column="2" border>
             <el-descriptions-item :span="2" :width="120" label="算法名称">
-              {{ algorithmInfo.name }}
+              {{ algorithmInfo?.name }}
             </el-descriptions-item>
             <el-descriptions-item label="类型"
-              >{{ algorithmInfo.type }}
+              >{{ algorithmInfo?.type }}
             </el-descriptions-item>
             <el-descriptions-item label="权重大小">
-              {{ algorithmInfo.size }}
+              {{ algorithmInfo?.size }}
             </el-descriptions-item>
-            <el-descriptions-item v-if="algorithmInfo.flops" label="浮点数量">
+            <el-descriptions-item v-if="algorithmInfo?.flops" label="浮点数量">
               {{ algorithmInfo.flops }}
             </el-descriptions-item>
-            <el-descriptions-item v-if="algorithmInfo.params" label="参数量">
+            <el-descriptions-item v-if="algorithmInfo?.params" label="参数量">
               {{ algorithmInfo.params }}
             </el-descriptions-item>
             <el-descriptions-item :span="2" label="算法描述">
-              {{ algorithmInfo.description }}
+              {{ algorithmInfo?.description }}
             </el-descriptions-item>
             <el-descriptions-item label="网络架构">
               <div style="height: 105px"></div>
@@ -267,7 +260,9 @@ onMounted(() => {
             <el-table-column :width="90" fixed label="指标" prop="label" />
             <el-table-column :width="125" align="center" label="值">
               <template #default="scope">
-                <span>{{ scope.row.value.toFixed(4) }}&nbsp;&nbsp;</span>
+                <span
+                  >{{ Number(scope.row.value).toFixed(4) }}&nbsp;&nbsp;</span
+                >
 
                 <span v-if="scope.row.better === 'higher'">
                   <el-tag type="success"> ↑ </el-tag>

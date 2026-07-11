@@ -18,6 +18,7 @@ const imageShowStore = useImageShowStore();
 const HISTORY_KEY = "dehaze:image-history";
 // 支持的文件格式
 const ACCEPT_FORMATS = ".jpg,.jpeg,.png,.webp";
+const ALLOWED_EXTS = [".jpg", ".jpeg", ".png", ".webp"];
 // 最大文件大小：100MB
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 
@@ -30,32 +31,7 @@ const uploadProgress = ref(0);
 const previewUrl = ref("");
 
 // ========== 样例面板状态 ==========
-const sampleCategory = ref("all");
-
-// 样例图片分类
-const sampleCategories = [
-  { label: "全部", value: "all" },
-  { label: "城市建筑", value: "city" },
-  { label: "自然风景", value: "nature" },
-  { label: "人像", value: "portrait" },
-  { label: "夜景", value: "night" },
-];
-
-// 样例图片列表（复用现有样例图片，标记分类）
-const allSampleImages = examples.map((item) => ({
-  url: item.haze,
-  category: "nature" as const,
-}));
-
-// 按分类过滤后的样例图片 URL
-const filteredSampleUrls = computed(() => {
-  if (sampleCategory.value === "all") {
-    return allSampleImages.map((item) => item.url);
-  }
-  return allSampleImages
-    .filter((item) => item.category === sampleCategory.value)
-    .map((item) => item.url);
-});
+const sampleUrls = computed(() => examples.map((item) => item.haze));
 
 // ========== 历史记录状态 ==========
 interface HistoryRecord {
@@ -180,8 +156,7 @@ function handleImageSelected(
 // 文件上传前校验：格式与大小
 function handleBeforeUpload(file: UploadRawFile): boolean {
   const ext = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
-  const allowedExts = [".jpg", ".jpeg", ".png", ".webp"];
-  if (!allowedExts.includes(ext)) {
+  if (!ALLOWED_EXTS.includes(ext)) {
     ElMessage.error("不支持该图片格式，请选择 JPG/PNG/WEBP 格式");
     return false;
   }
@@ -213,7 +188,7 @@ async function handleUploadRequest(options: UploadRequestOptions) {
     const url = changeUrl(res.url);
     handleImageSelected(url, "upload");
   } catch (err: any) {
-    ElMessage.error("上传失败：" + (err?.message || err));
+    ElMessage.error("上传失败：" + (err?.message || "未知错误"));
   } finally {
     uploading.value = false;
     setTimeout(() => {
@@ -231,8 +206,8 @@ function handleCameraSave(file: File) {
       const url = changeUrl(res.url);
       handleImageSelected(url, "camera");
     })
-    .catch((err) => {
-      ElMessage.error("上传失败：" + err);
+    .catch((err: any) => {
+      ElMessage.error("上传失败：" + (err?.message || "未知错误"));
     })
     .finally(() => {
       uploading.value = false;
@@ -339,26 +314,13 @@ onActivated(() => {
       <!-- 样例面板 -->
       <el-tab-pane label="样例" name="sample">
         <div class="panel sample-panel">
-          <!-- 分类过滤 -->
-          <div class="category-filter">
-            <el-radio-group v-model="sampleCategory">
-              <el-radio-button
-                v-for="cat in sampleCategories"
-                :key="cat.value"
-                :value="cat.value"
-              >
-                {{ cat.label }}
-              </el-radio-button>
-            </el-radio-group>
-          </div>
-
           <!-- 样例图片 -->
           <ExampleImageSelect
-            v-if="filteredSampleUrls.length > 0"
-            :urls="filteredSampleUrls"
+            v-if="sampleUrls.length > 0"
+            :urls="sampleUrls"
             @on-example-select="handleSampleSelect"
           />
-          <el-empty v-else description="该分类暂无样例图片" />
+          <el-empty v-else description="暂无样例图片" />
         </div>
       </el-tab-pane>
 
@@ -494,10 +456,7 @@ onActivated(() => {
 
 /* 样例面板 */
 .sample-panel {
-  .category-filter {
-    margin-bottom: 20px;
-    text-align: center;
-  }
+  text-align: center;
 }
 
 /* 历史面板 */

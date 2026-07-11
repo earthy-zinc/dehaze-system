@@ -66,7 +66,7 @@ class UserAPI {
   }
 
   /**
-   * 修改用户密码（PATCH，query param）
+   * 修改用户密码（PATCH，请求体传参）
    *
    * @param id 用户ID
    * @param password 新密码
@@ -75,7 +75,7 @@ class UserAPI {
     return request({
       url: "/api/v1/users/" + id + "/password",
       method: "patch",
-      params: { password },
+      data: { password },
     });
   }
 

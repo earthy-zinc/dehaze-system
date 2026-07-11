@@ -65,39 +65,21 @@ const filterAsyncRoutes = (routes: RouteVO[], roles: string[]) => {
 };
 // setup
 export const usePermissionStore = defineStore("permission", () => {
-  // state
   const routes = ref<RouteRecordRaw[]>([]);
 
-  // actions
   function setRoutes(newRoutes: RouteRecordRaw[]) {
     routes.value = constantRoutes.concat(newRoutes);
   }
 
-  /**
-   * 生成动态路由
-   *
-   * @param roles 用户角色集合
-   * @returns
-   */
-  function generateRoutes(roles: string[]) {
-    return new Promise<RouteRecordRaw[]>((resolve, reject) => {
-      // 接口获取所有路由
-      MenuAPI.getRoutes()
-        .then((data) => {
-          // 过滤有权限的动态路由
-          const accessedRoutes = filterAsyncRoutes(data, roles);
-          setRoutes(accessedRoutes);
-          resolve(accessedRoutes);
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+  /** 生成动态路由 */
+  async function generateRoutes(roles: string[]) {
+    const data = await MenuAPI.getRoutes();
+    const accessedRoutes = filterAsyncRoutes(data, roles);
+    setRoutes(accessedRoutes);
+    return accessedRoutes;
   }
 
-  /**
-   * 获取与激活的顶部菜单项相关的混合模式左侧菜单集合
-   */
+  /** 获取与激活的顶部菜单项相关的混合模式左侧菜单集合 */
   const mixLeftMenus = ref<RouteRecordRaw[]>([]);
   function setMixLeftMenus(topMenuPath: string) {
     const matchedItem = routes.value.find((item) => item.path === topMenuPath);
@@ -107,7 +89,6 @@ export const usePermissionStore = defineStore("permission", () => {
   }
   return {
     routes,
-    setRoutes,
     generateRoutes,
     mixLeftMenus,
     setMixLeftMenus,

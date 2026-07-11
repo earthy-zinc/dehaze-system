@@ -20,44 +20,21 @@ const { imageInfo } = toRefs(imageShowStore);
 const { images } = toRefs(imageInfo.value);
 const { urls: imgUrls } = toRefs(images.value);
 
-const exampleImages = ref(examples);
-const exampleHazeUrls = computed(() =>
-  exampleImages.value.map((item) => item.haze)
-);
+const exampleHazeUrls = computed(() => examples.map((item) => item.haze));
 const cleanUrl = ref("");
-const modelOptions = ref<OptionType[]>([]);
 const selectedModel = ref<number>();
 
-const show = reactive({
-  camera: false,
-  singleImage: false,
-  example: false,
-  loading: false,
-  overlap: false,
-  effect: true,
-  batch: false,
-});
+// 当前激活的页面（单值状态机，替代多个布尔标志）
+type PageName =
+  | "camera"
+  | "singleImage"
+  | "example"
+  | "overlap"
+  | "loading"
+  | "batch";
+const activePage = ref<PageName>("example");
 
-const disableMore = computed(() => !show.overlap);
-
-function activePage(
-  page:
-    | "camera"
-    | "singleImage"
-    | "example"
-    | "overlap"
-    | "loading"
-    | "effect"
-    | "batch"
-) {
-  show.camera = page === "camera";
-  show.singleImage = page === "singleImage";
-  show.example = page === "example";
-  show.overlap = page === "overlap";
-  show.loading = page === "loading";
-  show.effect = page === "effect";
-  show.batch = page === "batch";
-}
+const disableMore = computed(() => activePage.value !== "overlap");
 
 // ============ 去雾算法参数（来自 AlgorithmToolBar） ============
 const dehazeParams = ref({
@@ -127,15 +104,11 @@ function handleImageUpload(file: File) {
   FileAPI.upload(file, imageShowStore.modelId)
     .then((res) => {
       // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
-      activePage("loading");
       imageShowStore.setImageUrl(changeUrl(res.url), ImageTypeEnum.HAZE);
-    })
-    .then(() => {
-      // 将文件显示到 SingleImageShow 组件中
-      activePage("singleImage");
+      activePage.value = "singleImage";
     })
     .catch((err) => {
-      ElMessage.error(err);
+      ElMessage.error(err.message || "图片上传失败");
     })
     .finally(() => {
       imageShowStore.setLoading(false);
@@ -144,8 +117,9 @@ function handleImageUpload(file: File) {
 
 function handleReset() {
   imageShowStore.setImageUrls([]);
-  imageShowStore.toggleMagnifierShow();
-  activePage("example");
+  imageShowStore.setMagnifierShow(false);
+  cleanUrl.value = "";
+  activePage.value = "example";
 }
 
 // 取消处理
@@ -154,7 +128,7 @@ function handleCancelProcess() {
   processing.value = false;
   stopProgressSimulation();
   progress.value = 0;
-  activePage("singleImage");
+  activePage.value = "singleImage";
   ElMessage.info("已取消处理");
 }
 
@@ -168,17 +142,18 @@ function handleGenerateImage() {
     ElMessage.error("请先上传图片");
     return;
   }
+  const modelId = selectedModel.value;
   cancelFlag = false;
   processing.value = true;
   progress.value = 0;
   imageShowStore.setLoading(true);
-  imageShowStore.setModelId(Number(selectedModel.value) || 1);
-  activePage("loading");
+  imageShowStore.setModelId(modelId);
+  activePage.value = "loading";
   // 启动模拟进度
   startProgressSimulation(95);
   const imgUrl = imgUrls.value[0].url;
   ModelAPI.prediction({
-    modelId: Number(selectedModel.value) || 1,
+    modelId,
     url: imgUrl,
     modelParam: dehazeParams.value,
   })
@@ -191,18 +166,20 @@ function handleGenerateImage() {
       imageShowStore.setImageUrl(changeUrl(res.hazeUrl), ImageTypeEnum.HAZE);
       imageShowStore.setImageUrl(changeUrl(res.predUrl), ImageTypeEnum.PRED);
       if (cleanUrl.value) {
-        const clean = cleanUrl.value;
-        handleCleanUrl(clean).then(
-          (cleanRes) => (cleanUrl.value = changeUrl(cleanRes))
-        );
+        try {
+          const cleanRes = await handleCleanUrl(cleanUrl.value, modelId);
+          cleanUrl.value = changeUrl(cleanRes);
+        } catch (e: any) {
+          ElMessage.error("清晰图上传失败：" + (e.message || "未知错误"));
+        }
       }
       progress.value = 100;
-      activePage("overlap");
+      activePage.value = "overlap";
     })
     .catch((err) => {
       if (cancelFlag) return;
-      ElMessage.error(err);
-      activePage("singleImage");
+      ElMessage.error(err.message || "去雾处理失败");
+      activePage.value = "singleImage";
     })
     .finally(() => {
       stopProgressSimulation();
@@ -221,6 +198,10 @@ async function handleSaveResult() {
     ElMessage.error("没有可保存的结果");
     return;
   }
+  if (!selectedModel.value) {
+    ElMessage.error("请先选择去雾模型");
+    return;
+  }
   saving.value = true;
   try {
     const res = await fetch(predImg.url);
@@ -228,10 +209,10 @@ async function handleSaveResult() {
     const file = new File([blob], `dehaze_result_${Date.now()}.jpg`, {
       type: "image/jpeg",
     });
-    await FileAPI.upload(file, Number(selectedModel.value) || 1);
+    await FileAPI.upload(file, selectedModel.value);
     ElMessage.success("结果保存成功");
-  } catch (e) {
-    ElMessage.error("保存失败：" + String(e));
+  } catch (e: any) {
+    ElMessage.error("保存失败：" + (e.message || "未知错误"));
   } finally {
     saving.value = false;
   }
@@ -244,6 +225,7 @@ interface BatchTask {
   file: File;
   status: "pending" | "processing" | "success" | "failed" | "cancelled";
   progress: number;
+  hazeUrl: string;
   resultUrl: string;
   errorMsg: string;
 }
@@ -279,13 +261,14 @@ function handleConfirmBatchAdd() {
       file,
       status: "pending",
       progress: 0,
+      hazeUrl: "",
       resultUrl: "",
       errorMsg: "",
     });
   });
   batchUploadFiles.value = [];
   batchDialogVisible.value = false;
-  activePage("batch");
+  activePage.value = "batch";
 }
 
 // 开始批量处理（串行）
@@ -294,9 +277,10 @@ async function handleStartBatch() {
     ElMessage.error("请选择去雾模型");
     return;
   }
+  const modelId = selectedModel.value;
   batchCancelled.value = false;
   batchProcessing.value = true;
-  imageShowStore.setModelId(Number(selectedModel.value) || 1);
+  imageShowStore.setModelId(modelId);
   for (const task of batchTasks.value) {
     if (task.status !== "pending") continue;
     if (batchCancelled.value) break;
@@ -309,22 +293,19 @@ async function handleStartBatch() {
     }, 300);
     try {
       // 先上传原图
-      const uploadRes = await FileAPI.upload(
-        task.file,
-        Number(selectedModel.value) || 1
-      );
-      const hazeUrl = changeUrl(uploadRes.url);
+      const uploadRes = await FileAPI.upload(task.file, modelId);
+      task.hazeUrl = changeUrl(uploadRes.url);
       const predRes = await ModelAPI.prediction({
-        modelId: Number(selectedModel.value) || 1,
-        url: hazeUrl,
+        modelId,
+        url: task.hazeUrl,
         modelParam: dehazeParams.value,
       });
       task.resultUrl = changeUrl(predRes.predUrl);
       task.progress = 100;
       task.status = "success";
-    } catch (e) {
+    } catch (e: any) {
       task.status = "failed";
-      task.errorMsg = String(e);
+      task.errorMsg = e.message || "处理失败";
       task.progress = 0;
     } finally {
       if (batchTimer !== undefined) {
@@ -357,7 +338,7 @@ function handleCancelBatch() {
 }
 
 // 重试失败的批量任务
-async function handleRetryBatch(task: BatchTask) {
+function handleRetryBatch(task: BatchTask) {
   task.status = "pending";
   task.progress = 0;
   task.errorMsg = "";
@@ -371,8 +352,11 @@ function handleRemoveBatch(task: BatchTask) {
 // 查看批量任务结果
 function handleViewBatchResult(task: BatchTask) {
   imageShowStore.setImageUrls([]);
+  if (task.hazeUrl) {
+    imageShowStore.setImageUrl(task.hazeUrl, ImageTypeEnum.HAZE);
+  }
   imageShowStore.setImageUrl(task.resultUrl, ImageTypeEnum.PRED);
-  activePage("overlap");
+  activePage.value = "overlap";
 }
 
 // 清空批量任务列表
@@ -408,36 +392,30 @@ function statusText(status: BatchTask["status"]) {
 }
 
 function handleExampleImageClick(url: string) {
-  imageShowStore.setLoading(true);
+  const matched = examples.find((item) => item.haze === url);
+  if (!matched) return;
   imageShowStore.setImageUrl(url, ImageTypeEnum.HAZE);
-  cleanUrl.value = exampleImages.value.filter(
-    (item) => item.haze === url
-  )[0].clean;
-  activePage("singleImage");
-  imageShowStore.setLoading(false);
+  cleanUrl.value = matched.clean;
+  activePage.value = "singleImage";
 }
 
 // 获取模型选项列表
-const getAlgorithmList = async () => {
+async function getAlgorithmList() {
   await algorithmStore.getAlgorithmOptions();
-  modelOptions.value = algorithmStore.algorithmOptions;
-};
+}
 
 function handleDatasetImageSelect(haze: string, clear: string) {
   imageShowStore.setImageUrl(haze, ImageTypeEnum.HAZE);
   cleanUrl.value = clear;
   dialogVisible.value = false;
-  activePage("singleImage");
+  activePage.value = "singleImage";
 }
 
-async function handleCleanUrl(url: string) {
+async function handleCleanUrl(url: string, modelId: number) {
   const res = await fetch(url);
   const blob = await res.blob();
   const cleanFile = new File([blob], "clean.jpg", { type: "image/jpeg" });
-  const cleanRes = await FileAPI.upload(
-    cleanFile,
-    Number(selectedModel.value) || 1
-  );
+  const cleanRes = await FileAPI.upload(cleanFile, modelId);
   return cleanRes.url;
 }
 
@@ -445,10 +423,14 @@ const router = useRouter();
 const route = useRoute();
 
 function handleEval() {
-  router.push("/evaluation/index").then(async () => {
-    imageShowStore.setModelId(Number(selectedModel.value) || 1);
+  if (!selectedModel.value) {
+    ElMessage.error("请先选择去雾模型");
+    return;
+  }
+  router.push("/evaluation/index").then(() => {
+    imageShowStore.setModelId(selectedModel.value!);
     imageShowStore.setImageUrls(imgUrls.value);
-    if (cleanUrl.value !== "") {
+    if (cleanUrl.value) {
       imageShowStore.setImageUrl(cleanUrl.value, ImageTypeEnum.CLEAN);
     }
   });
@@ -462,7 +444,7 @@ function loadImageFromQuery() {
   if (imageUrl) {
     imageShowStore.setImageUrls([]);
     imageShowStore.setImageUrl(imageUrl, ImageTypeEnum.HAZE);
-    activePage("singleImage");
+    activePage.value = "singleImage";
     // 清除 query 参数，避免回退时重复加载
     router.replace({ path: "/presentation/dehaze" });
     return true;
@@ -475,7 +457,7 @@ onMounted(() => {
   getAlgorithmList();
   imageShowStore.setImageUrls([]);
   if (!loadImageFromQuery()) {
-    activePage("example");
+    activePage.value = "example";
   }
   imageShowStore.setLoading(false);
 });
@@ -501,7 +483,7 @@ onUnmounted(() => {
       :show-dehaze-params="true"
       @on-upload="handleImageUpload"
       @on-eval="handleEval"
-      @on-take-photo="activePage('camera')"
+      @on-take-photo="activePage = 'camera'"
       @on-reset="handleReset"
       @on-generate="handleGenerateImage"
       @on-select-from-dataset="() => (dialogVisible = true)"
@@ -513,7 +495,7 @@ onUnmounted(() => {
           <span>选择去雾模型</span>
           <el-tree-select
             v-model="selectedModel"
-            :data="modelOptions"
+            :data="algorithmStore.algorithmOptions"
             placeholder="请选择去雾模型算法"
             style="width: 240px"
             @change="handleSelectModel"
@@ -523,7 +505,7 @@ onUnmounted(() => {
           <el-button type="primary" plain @click="batchDialogVisible = true">
             批量处理
           </el-button>
-          <el-button v-if="batchTasks.length > 0" @click="activePage('batch')">
+          <el-button v-if="batchTasks.length > 0" @click="activePage = 'batch'">
             查看任务列表（{{ batchTasks.length }}）
           </el-button>
         </div>
@@ -533,26 +515,26 @@ onUnmounted(() => {
     <el-card class="flex-center">
       <!-- 样例图片显示 -->
       <ExampleImageSelect
-        v-if="show.example"
+        v-if="activePage === 'example'"
         :urls="exampleHazeUrls"
         class="example"
         @on-example-select="handleExampleImageClick"
       />
       <!-- 拍照上传 -->
       <Camera
-        v-if="show.camera"
+        v-if="activePage === 'camera'"
         class="camera"
-        @on-cancel="activePage('example')"
+        @on-cancel="activePage = 'example'"
         @on-save="handleCameraSave"
       />
       <!-- 单图展示 -->
       <SingleImageShow
-        v-if="show.singleImage"
+        v-if="activePage === 'singleImage'"
         :src="imgUrls[0].url || ''"
         class="single-image"
       />
       <!-- 处理进度显示（5阶段） -->
-      <div v-if="show.loading" class="progress-wrap">
+      <div v-if="activePage === 'loading'" class="progress-wrap">
         <h3 class="progress-title">正在处理图像</h3>
         <el-steps
           :active="currentStageIndex"
@@ -587,16 +569,16 @@ onUnmounted(() => {
         </el-button>
       </div>
       <!-- 重叠展示 -->
-      <OverlapImageShow v-if="show.overlap" class="overlap" />
+      <OverlapImageShow v-if="activePage === 'overlap'" class="overlap" />
       <!-- 处理完成后保存结果 -->
-      <div v-if="show.overlap" class="save-result-wrap">
+      <div v-if="activePage === 'overlap'" class="save-result-wrap">
         <el-button :loading="saving" type="success" @click="handleSaveResult">
           保存结果
         </el-button>
         <el-button type="primary" @click="handleEval"> 评估结果 </el-button>
       </div>
       <!-- 批量处理任务列表 -->
-      <div v-if="show.batch" class="batch-wrap">
+      <div v-if="activePage === 'batch'" class="batch-wrap">
         <div class="batch-header">
           <h3>批量去雾处理</h3>
           <div class="batch-actions">
@@ -867,22 +849,6 @@ onUnmounted(() => {
       margin-bottom: 12px;
     }
   }
-
-  .effect-wrap {
-    width: 60vw;
-  }
-
-  .ev-all-wrap {
-    display: flex;
-    justify-content: space-between;
-    width: 60vw;
-    margin-bottom: 20px;
-
-    .ev-wrap {
-      width: 30%;
-      min-width: 250px;
-    }
-  }
 }
 
 @media screen and (width <=992px) {
@@ -900,18 +866,6 @@ onUnmounted(() => {
     .overlap {
       width: calc(100vw - 6vw);
       height: calc(100vh - $navbar-height - 40px);
-    }
-
-    .ev-all-wrap {
-      display: flex;
-      flex-direction: column;
-      width: 82vw;
-      margin: 0 auto;
-
-      .ev-wrap {
-        width: 100%;
-        margin: 10px 0;
-      }
     }
   }
 }

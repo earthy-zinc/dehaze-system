@@ -55,6 +55,13 @@ function imageOnload() {
   }
 }
 
+function imageOnerror() {
+  loadedCount.value++;
+  if (loadedCount.value === imgUrls.value.length) {
+    adjustSizes();
+  }
+}
+
 function adjustSizes() {
   const length = imgUrls.value.length;
   if (!containerRef.value || length === 0) return;
@@ -201,7 +208,8 @@ function handleMouseEvent() {
 
 function updateMagnifier(x: number, y: number) {
   magnifierRefs.value.forEach((magnifier, index) => {
-    const magnifierCtx = magnifier.getContext("2d")!;
+    const magnifierCtx = magnifier.getContext("2d");
+    if (!magnifierCtx) return;
     magnifierCtx.clearRect(
       0,
       0,
@@ -260,6 +268,7 @@ onMounted(() => {
         }"
         alt=""
         @load="imageOnload"
+        @error="imageOnerror"
       />
       <div
         :style="{

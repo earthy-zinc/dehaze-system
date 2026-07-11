@@ -10,97 +10,48 @@ export const useUserStore = defineStore("user", () => {
     perms: [],
   });
 
-  /**
-   * 登录
-   *
-   * @param {LoginData}
-   * @returns
-   */
-  function login(loginData: LoginData) {
-    return new Promise<void>((resolve, reject) => {
-      AuthAPI.login(loginData)
-        .then((data) => {
-          const { tokenType, accessToken, refreshToken } = data;
-          localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken); // Bearer eyJhbGciOiJIUzI1NiJ9.xxx.xxx
-          localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-          resolve();
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+  /** 登录 */
+  async function login(loginData: LoginData) {
+    const { tokenType, accessToken, refreshToken } =
+      await AuthAPI.login(loginData);
+    localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
   }
 
-  /**
-   * 刷新 accessToken
-   *
-   * @param refreshToken 刷新令牌
-   */
-  function refreshAccessToken(refreshToken: string) {
-    return new Promise<void>((resolve, reject) => {
-      AuthAPI.refreshToken(refreshToken)
-        .then((data) => {
-          const {
-            tokenType,
-            accessToken,
-            refreshToken: newRefreshToken,
-          } = data;
-          localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken);
-          localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
-          resolve();
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+  /** 刷新 accessToken */
+  async function refreshAccessToken(refreshToken: string) {
+    const {
+      tokenType,
+      accessToken,
+      refreshToken: newRefreshToken,
+    } = await AuthAPI.refreshToken(refreshToken);
+    localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
   }
 
-  // 获取信息(用户昵称、头像、角色集合、权限集合)
-  function getUserInfo() {
-    return new Promise<UserInfo>((resolve, reject) => {
-      UserAPI.getInfo()
-        .then((data) => {
-          if (!data) {
-            reject("Verification failed, please Login again.");
-            return;
-          }
-          if (!data.roles || data.roles.length <= 0) {
-            reject("getUserInfo: roles must be a non-null array!");
-            return;
-          }
-          Object.assign(user.value, { ...data });
-          resolve(data);
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+  /** 获取用户信息（昵称、头像、角色、权限） */
+  async function getUserInfo() {
+    const data = await UserAPI.getInfo();
+    if (!data.roles || data.roles.length === 0) {
+      throw new Error("getUserInfo: roles must be a non-null array!");
+    }
+    Object.assign(user.value, { ...data });
+    return data;
   }
 
-  // user logout
-  function logout() {
-    return new Promise<void>((resolve, reject) => {
-      AuthAPI.logout()
-        .then(() => {
-          localStorage.setItem(TOKEN_KEY, "");
-          localStorage.setItem(REFRESH_TOKEN_KEY, "");
-          location.reload(); // 清空路由
-          resolve();
-        })
-        .catch((error) => {
-          reject(error);
-        });
-    });
+  /** 登出 */
+  async function logout() {
+    await AuthAPI.logout();
+    localStorage.setItem(TOKEN_KEY, "");
+    localStorage.setItem(REFRESH_TOKEN_KEY, "");
+    location.reload();
   }
 
-  // remove token
+  /** 清除 token 并重置路由 */
   function resetToken() {
-    return new Promise<void>((resolve) => {
-      localStorage.setItem(TOKEN_KEY, "");
-      localStorage.setItem(REFRESH_TOKEN_KEY, "");
-      resetRouter();
-      resolve();
-    });
+    localStorage.setItem(TOKEN_KEY, "");
+    localStorage.setItem(REFRESH_TOKEN_KEY, "");
+    resetRouter();
   }
 
   return {

@@ -57,6 +57,8 @@ func (api *SysDatasetItemApi) GetDatasetItemById(c *gin.Context) {
 // @Param pageSize query int false "每页数量" default(10)
 // @Param datasetId query int false "数据集ID"
 // @Param sceneType query string false "场景类型"
+// @Param keyword query string false "关键字（搜索文件名/描述）"
+// @Param hazeLevel query string false "雾霾程度（light/medium/heavy）"
 // @Success 200 {object} common.Response{data=[]vo.ImageItemVO}
 // @Router /api/v1/dataset-items [get]
 func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
@@ -67,6 +69,8 @@ func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
 
 	datasetIdStr := c.Query("datasetId")
 	sceneType := c.Query("sceneType")
+	keyword := c.Query("keyword")
+	hazeLevel := c.Query("hazeLevel")
 
 	var datasetId int64
 	var err error
@@ -78,7 +82,7 @@ func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
 		}
 	}
 
-	items, total, err := api.datasetItemService.GetDatasetItemsByPage(int(pageNum), int(pageSize), datasetId, sceneType)
+	items, total, err := api.datasetItemService.GetDatasetItemsByPage(int(pageNum), int(pageSize), datasetId, sceneType, keyword, hazeLevel)
 	if err != nil {
 		_ = c.Error(err)
 		return

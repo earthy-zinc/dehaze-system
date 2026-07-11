@@ -8,12 +8,14 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/pkg/cache/errs"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
+	"github.com/google/uuid"
 	"github.com/songzhibin97/gkit/cache/local_cache"
 )
 
 type LocalCache struct {
 	cache    local_cache.Cache
 	counters sync.Map // 用于增量操作的计数器存储
+	incrMu   sync.Map // per-key mutex for atomic IncrBy/DecrBy
 	ttlMap   sync.Map // 用于存储TTL信息
 	locks    sync.Map // 用于分布式锁
 	hashData sync.Map // 用于Hash数据结构存储
@@ -40,9 +42,7 @@ func (c *LocalCache) Get(ctx context.Context, key string) (string, error) {
 func (c *LocalCache) Set(ctx context.Context, key string, value any, expiration time.Duration) error {
 	if expiration > 0 {
 		c.cache.Set(key, value, expiration)
-		if _, exists := c.ttlMap.Load(key); !exists {
-			c.ttlMap.Store(key, time.Now().Add(expiration))
-		}
+		c.ttlMap.Store(key, time.Now().Add(expiration))
 	} else {
 		c.cache.SetDefault(key, value)
 	}
@@ -117,10 +117,14 @@ func (c *LocalCache) Incr(ctx context.Context, key string) (int64, error) {
 }
 
 func (c *LocalCache) IncrBy(ctx context.Context, key string, value int64) (int64, error) {
-	var newValue int64
+	// 使用 per-key mutex 保证原子性
+	muVal, _ := c.incrMu.LoadOrStore(key, &sync.Mutex{})
+	mu := muVal.(*sync.Mutex)
+	mu.Lock()
+	defer mu.Unlock()
 
+	var newValue int64
 	if val, found := c.cache.Get(key); found {
-		// 尝试转换为int64
 		switch v := val.(type) {
 		case int:
 			newValue = int64(v) + value
@@ -132,8 +136,7 @@ func (c *LocalCache) IncrBy(ctx context.Context, key string, value int64) (int64
 			newValue = int64(v) + value
 		case string:
 			var parsed int64
-			_, err := fmt.Sscanf(v, "%d", &parsed)
-			if err != nil {
+			if _, err := fmt.Sscanf(v, "%d", &parsed); err != nil {
 				return 0, fmt.Errorf("value is not a valid integer")
 			}
 			newValue = parsed + value
@@ -190,22 +193,28 @@ const (
 	defaultLockPrefix = "lock:"
 )
 
-func (c *LocalCache) Lock(ctx context.Context, key string, expiration time.Duration) (bool, error) {
+func (c *LocalCache) Lock(ctx context.Context, key string, expiration time.Duration) (string, bool, error) {
 	lockKey := fmt.Sprintf("%s%s", defaultLockPrefix, key)
+	token := uuid.New().String()
 	if _, found := c.locks.Load(lockKey); found {
-		return false, nil
+		return "", false, nil
 	}
-	c.locks.Store(lockKey, true)
-	return true, nil
+	c.locks.Store(lockKey, token)
+	return token, true, nil
 }
 
-func (c *LocalCache) Unlock(ctx context.Context, key string) (bool, error) {
+func (c *LocalCache) Unlock(ctx context.Context, key string, token string) (bool, error) {
 	lockKey := fmt.Sprintf("%s%s", defaultLockPrefix, key)
-	if _, found := c.locks.Load(lockKey); found {
-		c.locks.Delete(lockKey)
-		return true, nil
+	existing, found := c.locks.Load(lockKey)
+	if !found {
+		return false, nil
 	}
-	return false, nil
+	// 仅当 token 匹配时才释放
+	if existing.(string) != token {
+		return false, nil
+	}
+	c.locks.Delete(lockKey)
+	return true, nil
 }
 
 // ========== Pipeline/事务 ==========

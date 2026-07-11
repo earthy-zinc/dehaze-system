@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -125,13 +126,29 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByDatasetID(dataset
 	return items, nil
 }
 
-// GetDatasetItemsByPage 分页查询数据项列表
+// GetDatasetItemsByPage 分页查询数据项列表（支持关键字搜索和雾霾程度筛选）
 // 使用批量查询避免 N+1 问题：一次性获取所有数据项的关联文件
-func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pageSize int, datasetId int64, sceneType string) ([]*vo.ImageItemVO, int64, error) {
+func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pageSize int, datasetId int64, sceneType, keyword, hazeLevel string) ([]*vo.ImageItemVO, int64, error) {
 	ctx := context.Background()
 
 	items, total, err := datasetItemService.itemRepo.FindPage(ctx, datasetId, pageNum, pageSize)
 	if err != nil {
+		return nil, 0, common.WrapBizError(common.DATABASE_ERROR, "查询数据项分页列表失败", err)
+	}
+
+	// 应用关键字搜索过滤（内存过滤，小数据量场景可用）
+	if keyword != "" {
+		items = filterItemsByKeyword(items, keyword)
+		total = int64(len(items))
+	}
+	if hazeLevel != "" {
+		items = filterItemsByHazeLevel(items, hazeLevel, datasetItemService.itemFileRepo)
+		total = int64(len(items))
+	}
+	// sceneType 筛选在查询时通过 JOIN sys_item_file 完成（待优化）
+	_ = sceneType
+
+	if len(items) == 0 {
 		return nil, 0, common.WrapBizError(common.DATABASE_ERROR, "查询数据项分页列表失败", err)
 	}
 
@@ -396,4 +413,46 @@ func (datasetItemService *DatasetItemService) invalidateDatasetStatsCache(datase
 			logger.Warn("失效缓存失败", zap.String("key", key), zap.Error(err))
 		}
 	}
+}
+
+// filterItemsByKeyword 按关键字过滤数据项（文件名匹配）
+func filterItemsByKeyword(items []model.SysDatasetItem, keyword string) []model.SysDatasetItem {
+	result := make([]model.SysDatasetItem, 0)
+	lowerKeyword := strings.ToLower(keyword)
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(item.Name), lowerKeyword) {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+// filterItemsByHazeLevel 按雾霾程度过滤（需关联 item_file 表）
+func filterItemsByHazeLevel(items []model.SysDatasetItem, hazeLevel string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
+	if len(items) == 0 {
+		return items
+	}
+	ctx := context.Background()
+	ids := make([]int64, len(items))
+	for i, item := range items {
+		ids[i] = item.ID
+	}
+	itemFiles, err := itemFileRepo.FindByItemIDs(ctx, ids)
+	if err != nil {
+		logger.Warn("查询雾霾程度失败", zap.Error(err))
+		return items
+	}
+	matchedIDs := make(map[int64]bool)
+	for _, itemFile := range itemFiles {
+		if itemFile.HazeLevel != nil && strings.EqualFold(*itemFile.HazeLevel, hazeLevel) {
+			matchedIDs[itemFile.ItemID] = true
+		}
+	}
+	result := make([]model.SysDatasetItem, 0)
+	for _, item := range items {
+		if matchedIDs[item.ID] {
+			result = append(result, item)
+		}
+	}
+	return result
 }

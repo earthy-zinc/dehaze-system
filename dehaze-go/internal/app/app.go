@@ -9,11 +9,15 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/api"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	afrepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	deptrepo "github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
+	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
+	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
+	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
@@ -24,10 +28,14 @@ import (
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
 	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
+	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
+	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
+	evalservice "github.com/earthyzinc/dehaze-go/internal/service/evaluation"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
+	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
@@ -37,6 +45,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
+	"github.com/earthyzinc/dehaze-go/pkg/storage"
 	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
 	"go.uber.org/zap"
 )
@@ -100,6 +109,7 @@ func (a *Application) Init() error {
 	dictTypeRepo := dictrepo.NewDictTypeRepository(gormDB)
 	dictRepo := dictrepo.NewDictRepository(gormDB)
 	algorithmRepo := algorepo.NewAlgorithmRepository(gormDB)
+	algorithmFavRepo := afrepo.NewRepository(gormDB)
 	datasetRepo := datasetrepo.NewDatasetRepository(gormDB)
 	datasetItemRepo := datasetrepo.NewDatasetItemRepository(gormDB)
 	datasetStatsRepo := datasetrepo.NewDatasetStatsRepository(gormDB)
@@ -107,6 +117,7 @@ func (a *Application) Init() error {
 	itemFileRepo := filerepo.NewItemFileRepository(gormDB)
 	fileRepo := filerepo.NewFileRepository(gormDB)
 	taskRepo := taskrepo.NewTaskRepository(gormDB)
+	inputHistoryRepo := ihrepo.NewInputHistoryRepository(gormDB)
 
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
@@ -117,8 +128,14 @@ func (a *Application) Init() error {
 	deptService := deptservice.NewDeptService(cacheClient, deptRepo)
 	dictTypeService := dictservice.NewDictTypeService(gormDB, dictTypeRepo, dictRepo, cacheClient)
 	dictService := dictservice.NewDictService(dictRepo, dictTypeRepo, cacheClient)
-	fileService := fileservice.NewFileService(fileRepo)
-	a.taskExecutor = taskservice.NewAsyncTaskExecutor(config.GetConfig().RabbitMQ, zap.L())
+	// 存储服务（根据配置选择 MinIO 或本地存储）
+	cfg := config.GetConfig()
+	storageService, err := storage.NewStorage(cfg.File.Type, cfg.File.MinIO, cfg.File.Local)
+	if err != nil {
+		return fmt.Errorf("初始化存储服务失败: %w", err)
+	}
+	fileService := fileservice.NewFileService(fileRepo, storageService)
+	a.taskExecutor = taskservice.NewAsyncTaskExecutor(cfg.RabbitMQ, zap.L())
 	if err := a.taskExecutor.Initialize(); err != nil {
 		return err
 	}
@@ -136,7 +153,13 @@ func (a *Application) Init() error {
 		fileRepo,
 		taskExecutor,
 	)
-	_ = taskService
+	taskApi := api.NewSysTaskApi(taskService, taskRepo)
+	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
+	algoClient := algo.NewClient(cfg.Algorithm)
+	predLogRepo := predrepo.NewPredLogRepository(gormDB)
+	predictionService := predservice.NewPredictionService(predLogRepo, algoClient, cacheClient)
+	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
+	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algoClient)
 
 	// apis
 	authApi := api.NewAuthApi(authService)
@@ -145,11 +168,14 @@ func (a *Application) Init() error {
 	sysDeptApi := api.NewSysDeptApi(deptService)
 	sysDictApi := api.NewSysDictApi(dictService, dictTypeService)
 	sysMenuApi := api.NewSysMenuApi(menuService)
-	algorithmApi := api.NewAlgorithmApi(algorithmService)
+	algorithmApi := api.NewAlgorithmApi(algorithmService, algorithmFavRepo)
 	datasetApi := api.NewSysDatasetApi(datasetService, datasetOperationService)
 	datasetItemApi := api.NewSysDatasetItemApi(datasetItemService, datasetOperationService)
-	itemFileApi := api.NewSysItemFileApi(itemFileService)
+	itemFileApi := api.NewSysItemFileApi(itemFileService, fileService)
 	fileApi := api.NewSysFileApi(fileService)
+	inputHistoryApi := api.NewSysInputHistoryApi(inputHistoryService)
+	predictionApi := api.NewSysPredictionApi(predictionService)
+	evaluationApi := api.NewSysEvaluationApi(evaluationService)
 
 	// routes
 	engine := a.Server.GetEngine()
@@ -172,6 +198,10 @@ func (a *Application) Init() error {
 	router.RegisterDatasetItemRoutes(protectedV1, datasetItemApi)
 	router.RegisterItemFileRoutes(protectedV1, itemFileApi)
 	router.RegisterAlgorithmRoutes(protectedV1, algorithmApi)
+	router.RegisterTaskRoutes(protectedV1, taskApi)
+	router.RegisterImageInputRoutes(protectedV1, inputHistoryApi)
+	router.RegisterPredictionRoutes(protectedV1, predictionApi)
+	router.RegisterEvaluationRoutes(protectedV1, evaluationApi)
 
 	return nil
 }

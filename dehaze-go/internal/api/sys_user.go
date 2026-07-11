@@ -228,7 +228,7 @@ func (api *SysUserApi) DeleteUsers(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param userId path int true "用户ID"
-// @Param password query string true "新密码"
+// @Param request body object true "密码请求体" default({"password":"newPassword"})
 // @Success 200 {object} common.Response
 // @Router /api/v1/users/{userId}/password [patch]
 func (api *SysUserApi) UpdatePassword(c *gin.Context) {
@@ -240,11 +240,17 @@ func (api *SysUserApi) UpdatePassword(c *gin.Context) {
 		return
 	}
 
-	// 获取查询参数
-	password := c.Query("password")
+	// 从请求体获取密码
+	var req struct {
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		_ = c.Error(err)
+		return
+	}
 
 	// 调用服务更新密码
-	err = api.userService.UpdatePassword(c.Request.Context(), userId, password)
+	err = api.userService.UpdatePassword(c.Request.Context(), userId, req.Password)
 	if err != nil {
 		_ = c.Error(err)
 		return

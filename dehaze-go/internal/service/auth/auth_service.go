@@ -303,9 +303,13 @@ func (s *AuthService) AddTokenToBlacklist(ctx context.Context, token string) err
 		return common.NewBizError(common.SYSTEM_EXECUTION_ERROR, "Token缺少jti")
 	}
 
-	cfg := config.GetConfig()
-	// 黑名单过期时间与JWT过期时间一致，确保Token过期后自动清理
-	ttl := time.Duration(cfg.JWT.TTL) * time.Second
+	// 黑名单过期时间使用 Token 实际剩余有效期，避免过度占用 Redis 内存
+	remaining := time.Until(claims.ExpiresAt.Time)
+	if remaining <= 0 {
+		logger.Info("Token已过期，无需加入黑名单", zap.String("jti", jti))
+		return nil
+	}
+	ttl := remaining
 
 	if err := s.cacheClient.Set(ctx, common.BlacklistPrefix+jti, "1", ttl); err != nil {
 		return err

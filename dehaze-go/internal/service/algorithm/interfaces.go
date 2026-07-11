@@ -3,6 +3,7 @@ package algorithm
 import (
 	"context"
 
+	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
@@ -37,4 +38,7 @@ type IAlgorithmService interface {
 
 	// UpdateStatus 更新算法状态
 	UpdateStatus(ctx context.Context, id int64, status int8) error
+
+	// Compare 批量查询算法用于对比
+	Compare(ctx context.Context, ids []int64) ([]model.SysAlgorithm, error)
 }

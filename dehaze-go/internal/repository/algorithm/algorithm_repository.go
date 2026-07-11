@@ -47,7 +47,13 @@ func (r *AlgorithmRepository) FindPage(ctx context.Context, q *query.AlgorithmQu
 
 	if q.Keywords != "" {
 		keyword := "%" + q.Keywords + "%"
-		db = db.Where("name LIKE ?", keyword)
+		db = db.Where("name LIKE ? OR type LIKE ?", keyword, keyword)
+	}
+	if q.Type != "" {
+		db = db.Where("type = ?", q.Type)
+	}
+	if q.Status != nil {
+		db = db.Where("status = ?", *q.Status)
 	}
 
 	var total int64

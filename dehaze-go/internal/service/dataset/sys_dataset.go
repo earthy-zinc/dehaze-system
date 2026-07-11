@@ -406,6 +406,90 @@ func (datasetService *DatasetService) GetChildren(ctx context.Context, parentID 
 	return result, nil
 }
 
+// GetTree 获取完整数据集树（查询所有数据集，BFS 内存构建树）
+func (datasetService *DatasetService) GetTree(ctx context.Context) ([]vo.DatasetVO, error) {
+	allDatasets, err := datasetService.getAllDatasets(ctx)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据集列表失败", err)
+	}
+	if len(allDatasets) == 0 {
+		return []vo.DatasetVO{}, nil
+	}
+
+	// 收集所有 parentID 用于判断是否有子节点
+	allIDs := make(map[int64]bool)
+	childParentIDs := make(map[int64]bool)
+	for _, d := range allDatasets {
+		allIDs[d.ID] = true
+	}
+	for _, d := range allDatasets {
+		if d.ParentID > 0 && allIDs[d.ParentID] {
+			childParentIDs[d.ParentID] = true
+		}
+	}
+
+	statsMap, err := datasetService.getAllDatasetStats(ctx)
+	if err != nil {
+		logger.Warn("获取统计信息失败", zap.Error(err))
+		statsMap = make(map[int64]*vo.DatasetStatistics)
+	}
+
+	// 构建 parentID → children 映射
+	childrenMap := make(map[int64][]model.SysDataset)
+	for _, d := range allDatasets {
+		childrenMap[d.ParentID] = append(childrenMap[d.ParentID], d)
+	}
+
+	// 构建 VO 映射
+	voMap := make(map[int64]vo.DatasetVO, len(allDatasets))
+	for _, d := range allDatasets {
+		stats := statsMap[d.ID]
+		voMap[d.ID] = datasetService.entityToVO(&d, stats, childParentIDs[d.ID])
+	}
+
+	// BFS 构建树
+	tree := make([]vo.DatasetVO, 0)
+	queue := make([]int64, 0, len(childrenMap[0]))
+	for _, root := range childrenMap[0] {
+		queue = append(queue, root.ID)
+		tree = append(tree, voMap[root.ID])
+	}
+
+	for len(queue) > 0 {
+		currentID := queue[0]
+		queue = queue[1:]
+
+		children := childrenMap[currentID]
+		if len(children) == 0 {
+			continue
+		}
+
+		parentVO := voMap[currentID]
+		childVOs := make([]vo.DatasetVO, 0, len(children))
+		for _, child := range children {
+			childVOs = append(childVOs, voMap[child.ID])
+			queue = append(queue, child.ID)
+		}
+		parentVO.Children = childVOs
+		voMap[currentID] = parentVO
+	}
+
+	// 重建引用（因为 children 按值复制）
+	for i := range tree {
+		tree[i] = rebuildVOChildren(&tree[i], voMap)
+	}
+
+	return tree, nil
+}
+
+func rebuildVOChildren(vo *vo.DatasetVO, voMap map[int64]vo.DatasetVO) vo.DatasetVO {
+	result := voMap[vo.ID]
+	for i := range result.Children {
+		result.Children[i] = voMap[result.Children[i].ID]
+	}
+	return result
+}
+
 func (datasetService *DatasetService) entityToVO(entity *model.SysDataset, stats *vo.DatasetStatistics, hasChildren bool) vo.DatasetVO {
 	voItem := vo.DatasetVO{
 		ID:          entity.ID,

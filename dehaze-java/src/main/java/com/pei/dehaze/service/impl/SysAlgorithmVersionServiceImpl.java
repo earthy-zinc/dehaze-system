@@ -78,7 +78,6 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
         // 更新主表版本号
         algorithm.setVersion(form.getVersion());
         algorithmService.updateById(algorithm);
-        algorithmService.evictAllAlgorithmsCache();
 
         return version;
     }
@@ -114,6 +113,5 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
         // 更新主表版本号
         algorithm.setVersion(targetVersion.getVersion());
         algorithmService.updateById(algorithm);
-        algorithmService.evictAllAlgorithmsCache();
     }
 }

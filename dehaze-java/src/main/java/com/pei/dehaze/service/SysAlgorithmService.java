@@ -32,8 +32,6 @@ public interface SysAlgorithmService extends IService<SysAlgorithm> {
 
     boolean deleteAlgorithms(List<Long> ids);
 
-    void evictAllAlgorithmsCache();
-
     /**
      * 修改算法状态
      */

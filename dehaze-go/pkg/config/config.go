@@ -7,15 +7,17 @@ import (
 )
 
 type AppConfig struct {
-	JWT      options.JWT      `mapstructure:"jwt" json:"jwt" yaml:"jwt"`
-	Zap      options.Zap      `mapstructure:"zap" json:"zap" yaml:"zap"`
-	Cache    options.Cache    `mapstructure:"cache" json:"cache" yaml:"cache"`
-	System   options.System   `mapstructure:"system" json:"system" yaml:"system"`
-	Captcha  options.Captcha  `mapstructure:"captcha" json:"captcha" yaml:"captcha"`
-	DB       options.DB       `mapstructure:"db" json:"db" yaml:"db"`
-	RabbitMQ options.RabbitMQ `mapstructure:"rabbitmq" json:"rabbitmq" yaml:"rabbitmq"`
-	Kafka    options.Kafka    `mapstructure:"kafka" json:"kafka" yaml:"kafka"`
-	Cors     options.CORS     `mapstructure:"cors" json:"cors" yaml:"cors"`
+	JWT       options.JWT       `mapstructure:"jwt" json:"jwt" yaml:"jwt"`
+	Zap       options.Zap       `mapstructure:"zap" json:"zap" yaml:"zap"`
+	Cache     options.Cache     `mapstructure:"cache" json:"cache" yaml:"cache"`
+	System    options.System    `mapstructure:"system" json:"system" yaml:"system"`
+	Captcha   options.Captcha   `mapstructure:"captcha" json:"captcha" yaml:"captcha"`
+	DB        options.DB        `mapstructure:"db" json:"db" yaml:"db"`
+	File      options.File      `mapstructure:"file" json:"file" yaml:"file"`
+	Algorithm options.Algorithm `mapstructure:"algorithm" json:"algorithm" yaml:"algorithm"`
+	RabbitMQ  options.RabbitMQ  `mapstructure:"rabbitmq" json:"rabbitmq" yaml:"rabbitmq"`
+	Kafka     options.Kafka     `mapstructure:"kafka" json:"kafka" yaml:"kafka"`
+	Cors      options.CORS      `mapstructure:"cors" json:"cors" yaml:"cors"`
 }
 
 var (

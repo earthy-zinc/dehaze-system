@@ -28,25 +28,17 @@ const state = reactive({
     zoomLevel: imageShowStore.magnifierInfo.zoomLevel,
   },
   brightness: {
-    enabled: true,
     value: 0,
   },
   contrast: {
-    enabled: true,
     value: 0,
   },
   saturate: {
-    enabled: true,
     value: 0,
   },
 });
 
-const algorithmInfo = ref<Algorithm>({
-  id: 0,
-  parentId: 0,
-  name: "未知",
-  description: "未知",
-} as Algorithm);
+const algorithmInfo = ref<Algorithm | null>(null);
 const metrics = ref<EvalResult[]>();
 
 const { imageInfo } = toRefs(imageShowStore);
@@ -121,7 +113,10 @@ function handleImageFilterChange(
 }
 
 function handleReset() {
-  // TODO 让图片全部重置
+  imageShowStore.setImageUrls([]);
+  showResult.value = false;
+  metrics.value = undefined;
+  algorithmInfo.value = null;
 }
 
 const allUploaded = computed(() => {
@@ -131,6 +126,7 @@ const allUploaded = computed(() => {
 async function handleEvaluation() {
   if (!allUploaded.value) {
     ElMessage.error("请先上传图片");
+    return;
   }
   loading.value = true;
   try {
@@ -140,12 +136,12 @@ async function handleEvaluation() {
 
     metrics.value = await ModelAPI.evaluation({
       modelId: modelId.value,
-      predUrl: pred.value.url,
-      gtUrl: gt.value.url,
+      predUrl: pred.value!.url,
+      gtUrl: gt.value!.url,
     });
     showResult.value = true;
-  } catch (e) {
-    console.log(e);
+  } catch (e: any) {
+    ElMessage.error("评估失败：" + (e.message || "未知错误"));
   } finally {
     loading.value = false;
   }
@@ -316,12 +312,13 @@ function handleExportReport() {
     ElMessage.error("暂无评估结果可导出");
     return;
   }
+  const algo = algorithmInfo.value;
   let content = "图像去雾效果评估报告\n";
   content += "========================================\n";
   content += `生成时间：${new Date().toLocaleString()}\n`;
-  content += `算法名称：${algorithmInfo.value.name}\n`;
-  content += `算法类型：${algorithmInfo.value.type || "未知"}\n`;
-  content += `算法描述：${algorithmInfo.value.description}\n`;
+  content += `算法名称：${algo?.name ?? "未知"}\n`;
+  content += `算法类型：${algo?.type ?? "未知"}\n`;
+  content += `算法描述：${algo?.description ?? ""}\n`;
   content += "========================================\n";
   content += "一、评估指标\n";
   metrics.value.forEach((m) => {
@@ -507,28 +504,28 @@ onUnmounted(() => {
                 <h3 class="text-center">算法说明</h3>
                 <el-descriptions :column="2" border>
                   <el-descriptions-item :span="2" :width="120" label="算法名称">
-                    {{ algorithmInfo.name }}
+                    {{ algorithmInfo?.name }}
                   </el-descriptions-item>
                   <el-descriptions-item label="类型"
-                    >{{ algorithmInfo.type }}
+                    >{{ algorithmInfo?.type }}
                   </el-descriptions-item>
                   <el-descriptions-item label="权重大小">
-                    {{ algorithmInfo.size }}
+                    {{ algorithmInfo?.size }}
                   </el-descriptions-item>
                   <el-descriptions-item
-                    v-if="algorithmInfo.flops"
+                    v-if="algorithmInfo?.flops"
                     label="浮点数量"
                   >
                     {{ algorithmInfo.flops }}
                   </el-descriptions-item>
                   <el-descriptions-item
-                    v-if="algorithmInfo.params"
+                    v-if="algorithmInfo?.params"
                     label="参数量"
                   >
                     {{ algorithmInfo.params }}
                   </el-descriptions-item>
                   <el-descriptions-item :span="2" label="算法描述">
-                    {{ algorithmInfo.description }}
+                    {{ algorithmInfo?.description }}
                   </el-descriptions-item>
                   <el-descriptions-item label="网络架构">
                     <div style="height: 105px"></div>

@@ -2,6 +2,7 @@ package algorithm
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -128,7 +129,7 @@ func (s *AlgorithmService) GetFormData(ctx context.Context, id int64) (*bo.Algor
 		Path:        algorithm.Path,
 		ImportPath:  algorithm.ImportPath,
 		Description: algorithm.Description,
-		Status:      int(algorithm.Status),
+		Status:      algorithm.Status,
 	}
 
 	return form, nil
@@ -222,12 +223,44 @@ func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 	return nil
 }
 
-// UpdateStatus 更新算法状态
+// UpdateStatus 更新算法状态（含状态流转校验）
 func (s *AlgorithmService) UpdateStatus(ctx context.Context, id int64, status int8) error {
+	// 1. 查询当前算法
+	algorithm, err := s.algorithmRepo.FindByID(ctx, id)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+	if algorithm == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+	}
+
+	// 2. 校验状态流转合法性
+	if !bo.CanTransitionTo(algorithm.Status, status) {
+		return common.NewBizError(common.DATA_STATE_NOT_ALLOW,
+			fmt.Sprintf("不允许将算法状态从 %d 变更为 %d", algorithm.Status, status))
+	}
+
+	// 3. 执行状态更新
 	if err := s.algorithmRepo.UpdateStatus(ctx, id, status); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新算法状态失败", err)
 	}
 	return nil
+}
+
+// Compare 批量查询算法用于对比
+func (s *AlgorithmService) Compare(ctx context.Context, ids []int64) ([]model.SysAlgorithm, error) {
+	if len(ids) == 0 {
+		return nil, common.NewBizError(common.PARAM_ERROR, "算法ID列表不能为空")
+	}
+	var algorithms []model.SysAlgorithm
+	for _, id := range ids {
+		a, err := s.algorithmRepo.FindByID(ctx, id)
+		if err != nil {
+			continue
+		}
+		algorithms = append(algorithms, *a)
+	}
+	return algorithms, nil
 }
 
 func mapAlgorithmReadChildren(children []read.Algorithm) []vo.AlgorithmVO {

@@ -105,8 +105,9 @@ public class SysUserController {
     @PreAuthorize("@ss.hasPerm('sys:user:password:reset')")
     public Result<Void> updatePassword(
             @Parameter(description = "用户ID") @PathVariable Long userId,
-            @RequestParam String password
+            @RequestBody java.util.Map<String, String> body
     ) {
+        String password = body.get("password");
         boolean result = userService.updatePassword(userId, password);
         return Result.judge(result);
     }

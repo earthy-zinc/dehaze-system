@@ -1,5 +1,5 @@
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
-import { store, useSettingsStore } from "@/store";
+import { useSettingsStore } from "@/store";
 
 export interface ImageUrlType {
   id: number;
@@ -13,9 +13,9 @@ export interface LabelType {
   backgroundColor: string;
 }
 
-const settingsStore = useSettingsStore();
-
 export const useImageShowStore = defineStore("imageShow", () => {
+  const settingsStore = useSettingsStore();
+
   const loading = ref(false);
 
   const modelId = ref();
@@ -23,35 +23,7 @@ export const useImageShowStore = defineStore("imageShow", () => {
   const imageInfo = reactive({
     // 缩略图
     images: {
-      urls: [
-        // {
-        //   id: 0,
-        //   label: {
-        //     text: ImageTypeEnum.HAZE,
-        //     color: "#000",
-        //     backgroundColor: "#fff",
-        //   },
-        //   url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/hazy/041.png",
-        // },
-        {
-          id: 1,
-          label: {
-            text: ImageTypeEnum.CLEAN,
-            color: "#000",
-            backgroundColor: "#fff",
-          },
-          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/clean/041.png",
-        },
-        {
-          id: 2,
-          label: {
-            text: ImageTypeEnum.PRED,
-            color: "#fff",
-            backgroundColor: "#4a4",
-          },
-          url: "http://10.16.39.192:8989/api/v1/files/dataset/origin/NH-HAZE-2021/hazy/041.png",
-        },
-      ] as ImageUrlType[],
+      urls: [] as ImageUrlType[],
       naturalWidth: 0,
       naturalHeight: 0,
     },
@@ -156,17 +128,6 @@ export const useImageShowStore = defineStore("imageShow", () => {
     }
   }
 
-  function updateImageUrls(url: ImageUrlType) {
-    const index = imageInfo.images.urls.findIndex(
-      (item) => item.label.text === url.label.text
-    );
-    if (index !== -1) {
-      imageInfo.images.urls[index] = url;
-    } else {
-      imageInfo.images.urls.push(url);
-    }
-  }
-
   function setImageNaturalSize(width: number, height: number) {
     imageInfo.images.naturalWidth = width;
     imageInfo.images.naturalHeight = height;
@@ -197,10 +158,6 @@ export const useImageShowStore = defineStore("imageShow", () => {
     dividerInfo.enabled = enabled;
   }
 
-  function toggleMagnifierShow() {
-    magnifierInfo.enabled = !magnifierInfo.enabled;
-  }
-
   function toggleDividerShow() {
     dividerInfo.enabled = !dividerInfo.enabled;
   }
@@ -228,18 +185,6 @@ export const useImageShowStore = defineStore("imageShow", () => {
     mouse.y = y;
   }
 
-  function setDehazeParams(params: {
-    dehazeStrength: number;
-    colorSaturation: number;
-    contrast: number;
-    sharpen: number;
-  }) {
-    dehazeParams.dehazeStrength = params.dehazeStrength;
-    dehazeParams.colorSaturation = params.colorSaturation;
-    dehazeParams.contrast = params.contrast;
-    dehazeParams.sharpen = params.sharpen;
-  }
-
   return {
     loading,
     scaleX,
@@ -258,7 +203,6 @@ export const useImageShowStore = defineStore("imageShow", () => {
     setModelId,
     setImageUrls,
     setImageUrl,
-    updateImageUrls,
     setImageNaturalSize,
     setImageSize,
     setBrightness,
@@ -266,17 +210,11 @@ export const useImageShowStore = defineStore("imageShow", () => {
     setSaturate,
     setMagnifierShow,
     setDividerShow,
-    toggleMagnifierShow,
     toggleDividerShow,
     setMagnifierShape,
     setMagnifierSize,
     setMagnifierZoomLevel,
     setMaskXY,
     setMouseXY,
-    setDehazeParams,
   };
 });
-
-export function useImageShowHook() {
-  return useImageShowStore(store);
-}

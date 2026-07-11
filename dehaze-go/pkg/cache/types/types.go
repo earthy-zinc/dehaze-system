@@ -41,10 +41,10 @@ type ICache interface {
 	// TTL 获取key的剩余过期时间
 	TTL(ctx context.Context, key string) (time.Duration, error)
 
-	// Lock 尝试获取分布式锁
-	Lock(ctx context.Context, key string, expiration time.Duration) (bool, error)
-	// Unlock 释放分布式锁
-	Unlock(ctx context.Context, key string) (bool, error)
+	// Lock 尝试获取分布式锁，返回锁持有者 token（UUID，用于安全解锁验证）
+	Lock(ctx context.Context, key string, expiration time.Duration) (token string, ok bool, err error)
+	// Unlock 释放分布式锁，传入 Lock 返回的 token 进行持有者验证
+	Unlock(ctx context.Context, key string, token string) (bool, error)
 
 	// Hash 操作
 	// HGet 获取哈希表中指定字段的值

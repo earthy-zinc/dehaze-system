@@ -51,6 +51,17 @@ func (api *SysDatasetApi) GetDatasetList(c *gin.Context) {
 	common.OkWithDetailed(result, "查询成功", c)
 }
 
+// GetDatasetTree 获取完整数据集树
+func (api *SysDatasetApi) GetDatasetTree(c *gin.Context) {
+	ctx := c.Request.Context()
+	tree, err := api.datasetService.GetTree(ctx)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithDetailed(tree, "查询成功", c)
+}
+
 // GetDatasetChildren 获取子数据集列表（懒加载）
 // @Summary 获取子数据集列表
 // @Tags 数据集接口
@@ -182,7 +193,7 @@ func (api *SysDatasetApi) UpdateDataset(c *gin.Context) {
 	common.OkWithMessage("修改数据集成功", c)
 }
 
-// DeleteDataset 删除单个数据集
+// DeleteDataset 删除单个数据集（含级联删除子数据集和关联数据）
 // @Summary 删除单个数据集
 // @Tags 数据集接口
 // @Accept application/json
@@ -191,7 +202,6 @@ func (api *SysDatasetApi) UpdateDataset(c *gin.Context) {
 // @Success 200 {object} common.Response
 // @Router /api/v1/datasets/{id} [delete]
 func (api *SysDatasetApi) DeleteDataset(c *gin.Context) {
-	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -199,7 +209,8 @@ func (api *SysDatasetApi) DeleteDataset(c *gin.Context) {
 		return
 	}
 
-	err = api.datasetService.Delete(ctx, []int64{id})
+	// 走级联删除逻辑（包含子数据集和关联数据项的递归删除）
+	_, err = api.operationService.BatchDeleteDatasets(c.Request.Context(), bo.BatchDeleteForm{IDs: []int64{id}})
 	if err != nil {
 		_ = c.Error(err)
 		return

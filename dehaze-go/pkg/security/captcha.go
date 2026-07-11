@@ -29,7 +29,7 @@ func GetCaptchaStore() base64Captcha.Store {
 
 func NewCacheStore() *CacheStore {
 	return &CacheStore{
-		Expiration: time.Second * 180,
+		Expiration: time.Second * 120,
 		PreKey:     common.CaptchaCodePrefix,
 		Context:    context.TODO(),
 	}
@@ -58,13 +58,13 @@ func (rs *CacheStore) Set(id string, value string) error {
 }
 
 func (rs *CacheStore) Get(key string, clear bool) string {
-	val, err := cacheClient.Get(rs.Context, key)
+	val, err := cacheClient.Get(rs.Context, rs.PreKey+key)
 	if err != nil {
 		logger.Error("RedisStoreGetError!", zap.Error(err))
 		return ""
 	}
 	if clear {
-		err := cacheClient.Delete(rs.Context, key)
+		err := cacheClient.Delete(rs.Context, rs.PreKey+key)
 		if err != nil {
 			logger.Error("RedisStoreClearError!", zap.Error(err))
 			return ""
@@ -74,7 +74,6 @@ func (rs *CacheStore) Get(key string, clear bool) string {
 }
 
 func (rs *CacheStore) Verify(id, answer string, clear bool) bool {
-	key := rs.PreKey + id
-	v := rs.Get(key, clear)
+	v := rs.Get(id, clear)
 	return v == answer
 }

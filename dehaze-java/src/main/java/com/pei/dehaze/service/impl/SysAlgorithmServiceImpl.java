@@ -29,8 +29,6 @@ import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -53,19 +51,12 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     private final SysEvalLogMapper sysEvalLogMapper;
 
     @Override
-    @Cacheable(value = "algorithm:all", key = "'all'", unless = "#result == null || #result.isEmpty()")
     public List<SysAlgorithm> getAllAlgorithms() {
         return this.list(new LambdaQueryWrapper<SysAlgorithm>()
                 .orderByAsc(SysAlgorithm::getId));
     }
 
-    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
-    public void evictAllAlgorithmsCache() {
-        log.debug("清除所有算法缓存");
-    }
-
     @Override
-    @Cacheable(value = "algorithm:list", key = "#queryParams.keywords", unless = "#result == null || #result.isEmpty()")
     public List<AlgorithmVO> getList(AlgorithmQuery queryParams) {
         List<SysAlgorithm> algorithms = this.list(new LambdaQueryWrapper<SysAlgorithm>()
                 .like(CharSequenceUtil.isNotBlank(queryParams.getKeywords()), SysAlgorithm::getName, queryParams.getKeywords()));
@@ -108,7 +99,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
-    @Cacheable(value = "algorithm:options", key = "'all'", unless = "#result == null || #result.isEmpty()")
     public List<Option<Long>> getOption() {
         List<SysAlgorithm> algorithms = this.list(
                 new LambdaQueryWrapper<SysAlgorithm>()
@@ -150,7 +140,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
-    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public Long addAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         sysAlgorithm.setStatus(StatusEnum.ENABLE.getValue());
@@ -177,7 +166,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
-    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public boolean updateAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
@@ -185,7 +173,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
-    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public boolean deleteAlgorithms(List<Long> ids) {
         List<SysAlgorithm> children = this.list(new LambdaQueryWrapper<SysAlgorithm>()
                 .in(SysAlgorithm::getParentId, ids));
@@ -226,7 +213,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     // ==================== 状态管理 ====================
 
     @Override
-    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public boolean updateStatus(Long id, Integer status) {
         SysAlgorithm algorithm = this.getById(id);
         if (algorithm == null) {
@@ -249,7 +235,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
-    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public boolean auditAlgorithm(Long id, AlgorithmAuditForm form) {
         SysAlgorithm algorithm = this.getById(id);
         if (algorithm == null) {

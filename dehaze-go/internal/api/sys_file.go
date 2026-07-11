@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/gin-gonic/gin"
 )
+
+const defaultMaxFileSize = int64(100 * 1024 * 1024) // 100MB
 
 type SysFileApi struct {
 	fileService *fileservice.FileService
@@ -23,7 +25,7 @@ func NewSysFileApi(fileService *fileservice.FileService) *SysFileApi {
 
 // UploadFile 文件上传
 // @Summary 文件上传
-// @Description 文件上传
+// @Description 文件上传（支持秒传：MD5 命中则直接返回已有记录）
 // @Tags 文件接口
 // @Accept multipart/form-data
 // @Produce application/json
@@ -32,48 +34,56 @@ func NewSysFileApi(fileService *fileservice.FileService) *SysFileApi {
 // @Success 200 {object} common.Response{data=model.SysFile}
 // @Router /api/v1/files [post]
 func (api *SysFileApi) UploadFile(c *gin.Context) {
-	// 获取上传的文件
-	file, err := c.FormFile("file")
+	ctx := c.Request.Context()
+
+	// 1. 获取上传的文件
+	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "文件上传失败"))
 		return
 	}
 
-	// 获取模型ID参数
+	// 2. 文件大小校验
+	maxSize := defaultMaxFileSize
+	if cfg := config.GetConfig(); cfg != nil && cfg.File.MaxSize > 0 {
+		maxSize = cfg.File.MaxSize
+	}
+	if fileHeader.Size > maxSize {
+		_ = c.Error(common.NewBizError(common.USER_UPLOAD_FILE_SIZE_EXCEEDS, "文件大小超过限制"))
+		return
+	}
+
+	// 3. 文件名安全校验
+	if err := validateFileName(fileHeader.Filename); err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, err.Error()))
+		return
+	}
+
+	// 4. 打开文件流并计算 MD5
+	file, err := fileHeader.Open()
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "无法读取文件"))
+		return
+	}
+	defer file.Close()
+
+	md5Hash, reader, err := fileservice.ComputeMD5(file)
+	if err != nil {
+		_ = c.Error(common.WrapBizError(common.SYSTEM_RESOURCE_ACCESS_ERR, "计算文件MD5失败", err))
+		return
+	}
+
+	// 5. 构建 baseURL
+	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
+
+	// 6. 获取模型ID参数
 	modelIdStr := c.PostForm("modelId")
-	var modelId *int64
-	if modelIdStr != "" {
-		id, err := strconv.ParseInt(modelIdStr, 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "模型ID格式不正确"))
-			return
-		}
-		modelId = &id
-	}
+	_ = modelIdStr // 暂未使用，WPX 功能后续实现
 
-	// 构建上传路径
-	uploadPath := "upload/" + time.Now().Format("20060102")
-	baseUrl := c.Request.Host
-
-	// 上传文件
-	fileBO, err := api.fileService.UploadFile(file, baseUrl, uploadPath)
+	// 7. 调用 Service 上传
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, baseURL)
 	if err != nil {
 		_ = c.Error(err)
-		return
-	}
-
-	// 保存文件信息到数据库
-	sysFile, err := api.fileService.SaveFile(fileBO)
-	if err != nil {
-		_ = c.Error(err)
-		return
-	}
-
-	// 如果有模型ID，则获取WPX文件
-	if modelId != nil {
-		// TODO: 实现获取WPX文件的逻辑
-		// 这里暂时直接返回原始文件
-		common.OkWithData(sysFile, c)
 		return
 	}
 
@@ -90,7 +100,6 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 // @Success 200 {object} common.Response
 // @Router /api/v1/files [delete]
 func (api *SysFileApi) DeleteFile(c *gin.Context) {
-	// 获取文件ID参数
 	fileIdStr := c.Query("fileId")
 	fileId, err := strconv.ParseInt(fileIdStr, 10, 64)
 	if err != nil {
@@ -98,7 +107,6 @@ func (api *SysFileApi) DeleteFile(c *gin.Context) {
 		return
 	}
 
-	// 删除文件
 	err = api.fileService.DeleteFile(fileId)
 	if err != nil {
 		_ = c.Error(err)
@@ -110,7 +118,7 @@ func (api *SysFileApi) DeleteFile(c *gin.Context) {
 
 // CheckFile 文件校验
 // @Summary 文件校验
-// @Description 文件校验
+// @Description 根据 MD5 校验文件是否已存在（用于秒传预检）
 // @Tags 文件接口
 // @Accept application/json
 // @Produce application/json
@@ -118,14 +126,12 @@ func (api *SysFileApi) DeleteFile(c *gin.Context) {
 // @Success 200 {object} common.Response{data=bool}
 // @Router /api/v1/files/check [get]
 func (api *SysFileApi) CheckFile(c *gin.Context) {
-	// 获取MD5参数
 	md5 := c.Query("md5")
 	if md5 == "" {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "缺少md5参数"))
 		return
 	}
 
-	// 校验文件
 	result := api.fileService.CheckFile(md5)
 	common.OkWithData(result, c)
 }
@@ -195,35 +201,52 @@ func (api *SysFileApi) GetFileDetail(c *gin.Context) {
 
 // DownloadFile 文件下载
 // @Summary 文件下载
-// @Description 文件下载
+// @Description 文件下载（流式传输）
 // @Tags 文件接口
 // @Accept application/json
-// @Produce application/json
+// @Produce application/octet-stream
 // @Param objectName path string true "对象存储名称"
 // @Success 200 {object} common.Response
 // @Router /api/v1/files/download/{objectName} [get]
 func (api *SysFileApi) DownloadFile(c *gin.Context) {
-	// 获取对象存储名称
+	ctx := c.Request.Context()
+
 	objectName := c.Param("objectName")
 	if objectName == "" {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "缺少objectName参数"))
 		return
 	}
 
-	// 获取文件路径
-	filePath, err := api.fileService.DownloadFile(objectName)
+	reader, sysFile, err := api.fileService.DownloadFile(ctx, objectName)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
+	defer reader.Close()
 
-	// 提取文件名
 	filename := filepath.Base(objectName)
+	if sysFile != nil && sysFile.Name != "" {
+		filename = sysFile.Name
+	}
 
-	// 设置响应头
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	c.Header("Content-Type", "application/octet-stream")
+	c.DataFromReader(200, -1, "application/octet-stream", reader, nil)
+}
 
-	// 返回文件
-	c.File(filePath)
+// validateFileName 校验文件名安全性
+func validateFileName(fileName string) error {
+	if fileName == "" {
+		return fmt.Errorf("文件名不能为空")
+	}
+	if len(fileName) > 255 {
+		return fmt.Errorf("文件名过长")
+	}
+	// 禁止路径分隔符防止路径穿越
+	for _, ch := range fileName {
+		if ch == '/' || ch == '\\' || ch == '\x00' {
+			return fmt.Errorf("文件名包含非法字符")
+		}
+	}
+	return nil
 }

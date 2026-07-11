@@ -8,6 +8,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/cache/errs"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -127,24 +128,35 @@ func (c *RedisCache) TTL(ctx context.Context, key string) (time.Duration, error)
 	return c.client.TTL(ctx, key).Result()
 }
 
-func (c *RedisCache) Lock(ctx context.Context, key string, expiration time.Duration) (bool, error) {
+// unlockScript Lua 脚本：仅当锁的持有者匹配时才删除锁
+const unlockScript = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+    return redis.call("DEL", KEYS[1])
+else
+    return 0
+end`
+
+func (c *RedisCache) Lock(ctx context.Context, key string, expiration time.Duration) (string, bool, error) {
 	lockKey := fmt.Sprintf("%s%s", defaultLockPrefix, key)
-	ok, err := c.client.SetNX(ctx, lockKey, 1, expiration).Result()
+	token := uuid.New().String()
+	ok, err := c.client.SetNX(ctx, lockKey, token, expiration).Result()
 	if err != nil {
 		logger.Error("获取分布式锁失败", zap.String("key", lockKey), zap.Error(err))
-		return false, err
+		return "", false, err
 	}
-	return ok, nil
+	return token, ok, nil
 }
 
-func (c *RedisCache) Unlock(ctx context.Context, key string) (bool, error) {
+func (c *RedisCache) Unlock(ctx context.Context, key string, token string) (bool, error) {
 	lockKey := fmt.Sprintf("%s%s", defaultLockPrefix, key)
-	result, err := c.client.Del(ctx, lockKey).Result()
+	result, err := c.client.Eval(ctx, unlockScript, []string{lockKey}, token).Result()
 	if err != nil {
 		logger.Error("释放分布式锁失败", zap.String("key", lockKey), zap.Error(err))
 		return false, err
 	}
-	return result > 0, nil
+	// Eval 返回 int64 类型（DEL 返回删除的 key 数量）
+	count, _ := result.(int64)
+	return count > 0, nil
 }
 
 func (c *RedisCache) Pipeline(ctx context.Context, ops []types.PipelineOp) error {

@@ -22,10 +22,19 @@ type CustomClaims struct {
 	jwt.RegisteredClaims
 }
 
-// GetUserID 实现 UserClaims 接口
-// 用于GORM自动填充回调获取当前用户ID
+// GetUserID 实现 UserClaims 和 dataScopeClaims 接口
 func (c *CustomClaims) GetUserID() int64 {
 	return c.UserID
+}
+
+// GetDeptID 实现 dataScopeClaims 接口，用于数据权限插件
+func (c *CustomClaims) GetDeptID() int64 {
+	return c.DeptID
+}
+
+// GetDataScope 实现 dataScopeClaims 接口，用于数据权限插件
+func (c *CustomClaims) GetDataScope() int8 {
+	return c.DataScope
 }
 
 func ClearToken(c *gin.Context) {

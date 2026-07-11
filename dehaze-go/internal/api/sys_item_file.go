@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -11,11 +12,13 @@ import (
 
 type SysItemFileApi struct {
 	itemFileService *fileservice.ItemFileService
+	fileService     *fileservice.FileService
 }
 
-func NewSysItemFileApi(itemFileService *fileservice.ItemFileService) *SysItemFileApi {
+func NewSysItemFileApi(itemFileService *fileservice.ItemFileService, fileService *fileservice.FileService) *SysItemFileApi {
 	return &SysItemFileApi{
 		itemFileService: itemFileService,
+		fileService:     fileService,
 	}
 }
 
@@ -56,7 +59,9 @@ func (api *SysItemFileApi) GetItemFileById(c *gin.Context) {
 // @Success 200 {object} common.Response{data=dto.ImageFileInfo}
 // @Router /api/v1/item-files [post]
 func (api *SysItemFileApi) AddImageById(c *gin.Context) {
-	file, err := c.FormFile("file")
+	ctx := c.Request.Context()
+
+	fileHeader, err := c.FormFile("file")
 	if err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "文件上传失败"))
 		return
@@ -72,15 +77,38 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 	fileType := c.PostForm("type")
 	description := c.PostForm("description")
 
+	// 打开文件流并计算 MD5
+	file, err := fileHeader.Open()
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "无法读取文件"))
+		return
+	}
+	defer file.Close()
+
+	md5Hash, reader, err := fileservice.ComputeMD5(file)
+	if err != nil {
+		_ = c.Error(common.WrapBizError(common.SYSTEM_RESOURCE_ACCESS_ERR, "计算文件MD5失败", err))
+		return
+	}
+
+	// 上传文件
+	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
+	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, baseURL)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	// 构建业务对象并保存项文件关联
 	itemBO := bo.DatasetItemBO{
 		FileBO: bo.FileBO{
-			Name: file.Filename,
+			Name: fileHeader.Filename,
 		},
 		Type:        fileType,
 		Description: description,
 	}
 
-	imageFileInfo, err := api.itemFileService.SaveItemFile(datasetItemId, itemBO, true)
+	imageFileInfo, err := api.itemFileService.SaveItemFile(datasetItemId, sysFile, itemBO, true)
 	if err != nil {
 		_ = c.Error(err)
 		return

@@ -413,9 +413,8 @@ func (m *MultiLevelCache) TTL(ctx context.Context, key string) (time.Duration, e
 	return -2 * time.Second, nil
 }
 
-// Lock 分布式锁
-func (m *MultiLevelCache) Lock(ctx context.Context, key string, expiration time.Duration) (bool, error) {
-	// 分布式锁必须使用L2
+// Lock 分布式锁，优先使用 L2（Redis）
+func (m *MultiLevelCache) Lock(ctx context.Context, key string, expiration time.Duration) (string, bool, error) {
 	if m.opts.L2Cache != nil {
 		return m.opts.L2Cache.Lock(ctx, key, expiration)
 	}
@@ -424,17 +423,17 @@ func (m *MultiLevelCache) Lock(ctx context.Context, key string, expiration time.
 		return m.opts.L1Cache.Lock(ctx, key, expiration)
 	}
 
-	return false, errors.New("no cache available for lock")
+	return "", false, errors.New("no cache available for lock")
 }
 
-// Unlock 释放分布式锁
-func (m *MultiLevelCache) Unlock(ctx context.Context, key string) (bool, error) {
+// Unlock 释放分布式锁，传入 Lock 返回的 token 进行持有者验证
+func (m *MultiLevelCache) Unlock(ctx context.Context, key string, token string) (bool, error) {
 	if m.opts.L2Cache != nil {
-		return m.opts.L2Cache.Unlock(ctx, key)
+		return m.opts.L2Cache.Unlock(ctx, key, token)
 	}
 
 	if m.opts.L1Cache != nil {
-		return m.opts.L1Cache.Unlock(ctx, key)
+		return m.opts.L1Cache.Unlock(ctx, key, token)
 	}
 
 	return false, errors.New("no cache available for unlock")

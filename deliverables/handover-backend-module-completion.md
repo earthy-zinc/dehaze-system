@@ -116,9 +116,9 @@
 
 ## 三、未完成的工作
 
-### 3.1 运行 API 集成测试（核心待办）
+### 3.1 运行 API 集成测试 ✅ 已完成（34/34 通过）
 
-测试代码已全部编写完成，但**尚未实际运行验证**。需要后续人员执行以下步骤：
+测试已实际运行并通过：`algorithm-new.test.ts` 10/10、`model.test.ts` 9/9（2 个预测正向测试因缺测试图片/模型文件 skip）、`history.test.ts` 15/15。以下为复现步骤：
 
 #### 步骤 1：启动 Java 后端
 
@@ -158,74 +158,24 @@ npx vitest --run test/modules/model/model.test.ts
 npx vitest --run test/modules/image-input/history.test.ts
 ```
 
-#### 步骤 3：根据测试结果修复问题
+#### 步骤 3：剩余可选完善
 
-测试可能发现的问题：
-- **算法新增接口**：`@FileExists` 校验器在 path 为 null 时抛 NPE（已知 bug，见 `algorithm.test.ts` 注释）
-- **预测 API**：Python 服务可能未启动，或算法模块 `dehaze()` 函数签名不匹配
-- **历史记录表**：`sys_input_history` 表可能未在数据库中创建，需手动建表
+- **预测 API 正向用例**：需提供真实测试图片 + 模型文件（`.pth`）后，2 个 skip 的用例才能跑通
 
-### 3.2 数据库建表
+### 3.2 数据库建表 ✅ 已完成
 
-以下新表需要在 MySQL 中创建（`dehaze-java/config/sql/schema.sql` 可能未包含）：
+`sys_algorithm_version`、`sys_input_history` 两张新表及 `sys_algorithm` 的 `version/audit_by/audit_time/audit_remark` 字段均已纳入：
+- `dehaze-java/config/sql/schema.sql`（完整建表）
+- `dehaze-java/config/sql/migration_20260711.sql`（增量迁移脚本）
 
-```sql
--- 算法版本历史表
-CREATE TABLE IF NOT EXISTS sys_algorithm_version (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    algorithm_id BIGINT NOT NULL COMMENT '关联算法ID',
-    version VARCHAR(50) NOT NULL COMMENT '版本号',
-    change_log TEXT COMMENT '变更日志',
-    status INT COMMENT '该版本时的状态',
-    config_json TEXT COMMENT '该版本时的配置JSON',
-    model_file_id BIGINT COMMENT '模型文件ID',
-    is_active TINYINT(1) DEFAULT 0 COMMENT '是否当前活跃版本',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    create_by BIGINT,
-    update_by BIGINT,
-    UNIQUE KEY uk_algo_version (algorithm_id, version),
-    INDEX idx_algorithm_id (algorithm_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='算法版本历史表';
+无需再手动建表，直接执行 schema/migration 即可。
 
--- 图像输入历史记录表
-CREATE TABLE IF NOT EXISTS sys_input_history (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL COMMENT '用户ID',
-    original_image_url VARCHAR(500) COMMENT '原始图片URL',
-    original_thumbnail_url VARCHAR(500) COMMENT '原始缩略图URL',
-    result_image_url VARCHAR(500) COMMENT '处理结果图片URL',
-    result_thumbnail_url VARCHAR(500) COMMENT '结果缩略图URL',
-    algorithm_id BIGINT COMMENT '算法ID',
-    algorithm_name VARCHAR(100) COMMENT '算法名称（冗余）',
-    algorithm_params TEXT COMMENT '算法参数（JSON）',
-    processing_time INT COMMENT '处理耗时（毫秒）',
-    status TINYINT DEFAULT 3 COMMENT '处理状态（1=成功，2=失败，3=处理中）',
-    input_source VARCHAR(20) COMMENT '图片来源（upload/camera/sample）',
-    is_favorite TINYINT(1) DEFAULT 0 COMMENT '是否收藏',
-    sync_status TINYINT DEFAULT 0 COMMENT '同步状态（0=未同步，1=已同步）',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    create_by BIGINT,
-    update_by BIGINT,
-    INDEX idx_user_time (user_id, create_time DESC),
-    INDEX idx_user_favorite (user_id, is_favorite, create_time DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图像输入历史记录表';
+### 3.3 Python 服务联调（基本打通，仅缺测试素材）
 
--- sys_algorithm 表新增字段
-ALTER TABLE sys_algorithm
-    ADD COLUMN IF NOT EXISTS version VARCHAR(50) DEFAULT NULL COMMENT '算法版本号',
-    ADD COLUMN IF NOT EXISTS audit_by BIGINT DEFAULT NULL COMMENT '审核人ID',
-    ADD COLUMN IF NOT EXISTS audit_time DATETIME DEFAULT NULL COMMENT '审核时间',
-    ADD COLUMN IF NOT EXISTS audit_remark VARCHAR(500) DEFAULT NULL COMMENT '审核备注';
-```
+Python 端 `app/router/prediction.py`、`evaluation.py`、`prediction_service.py` 已实现并注册，调用链已打通（loguru→logging、`async_session_factory`、`thop` 依赖等问题已修复；Java 侧 Python 服务 URL 已改为 `127.0.0.1:8014`）。剩余仅为跑通真实推理所需素材：
 
-### 3.3 Python 服务联调
-
-Python 端 `app/router/prediction.py` 和 `evaluation.py` 已创建，但：
-
-1. **需启动 Python 服务**：`cd dehaze-python && python -m uvicorn app.main:app --port 5000`
-2. **算法模块路径**：`prediction_service.py` 通过 `importlib.import_module(f"algorithm.{module_name}.run")` 动态导入，需确认 `import_path` 字段值与 `algorithm/` 目录名匹配
+1. **启动 Python 服务**：`cd dehaze-python && .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8014`
+2. **算法模块路径**：`prediction_service.py` 通过 `importlib.import_module(f"algorithm.{module_name}.run")` 动态导入，需确认 `import_path` 与 `algorithm/` 目录名匹配
 3. **模型文件路径**：默认从 `trained_model/{module_name}/*.pth` 查找，需确认模型文件存在
 
 ### 3.4 预编译 Lombok 问题（已修复）
@@ -250,7 +200,7 @@ JWT_SECRET_KEY=SecretKey01234567890123456789012345678901234567890123456789012345
 | 服务 | 端口 |
 |------|------|
 | Java 后端 | 8989 |
-| Python 算法服务 | 5000 |
+| Python 算法服务 | 8014 |
 | MySQL | 3306 |
 | Redis | 6379 |
 | MinIO | 9000（API）/ 9090（控制台） |
@@ -349,13 +299,15 @@ test/factories/model.ts                        — 测试数据工厂（Predicti
 
 ## 七、已知问题
 
-| # | 问题 | 影响 | 解决方案 |
-|---|------|------|----------|
-| 1 | `AlgorithmForm.path` 有 `@FileExists` 校验，null 时抛 NPE | 算法新增/修改接口无法正常使用 | 修复 `FileExistValidator.isValid()` 对 null 返回 true |
-| 2 | `sys_algorithm_version` 和 `sys_input_history` 表未在 schema.sql 中 | 新端点会报表不存在错误 | 执行第 3.2 节的建表 SQL |
-| 3 | Python 预测服务未实际联调 | 预测 API 返回模拟数据或报错 | 启动 Python 服务，确认算法模块路径 |
-| 4 | `AlgorithmAPI.updateStatus` 原为 PATCH，新实现为 PUT | 前端可能需适配 | SDK 已改为 PUT |
-| 5 | `AlgorithmAPI.deleteByIds` 参数为 `ids.join(",")` 传 query，但 Java 后端 `@RequestParam List<Long> ids` 期望数组 | 批量删除可能失败 | 需确认参数传递格式 |
+| # | 问题 | 影响 | 状态 |
+|---|------|------|------|
+| 1 | Python 预测/评估服务未实际端到端联调 | 需真实模型文件 + `dehaze()` 输出校验 | ⏳ 待验证（Java→Python 调用链已打通） |
+
+> 以下问题已在后续修复，保留备查：
+> - `@FileExists` null NPE — 已修复（`FileExistValidator.isValid()` 对 null/空返回 true）
+> - `sys_algorithm_version` / `sys_input_history` 表缺失 — 已纳入 schema.sql + migration_20260711.sql
+> - `AlgorithmAPI.updateStatus` PATCH→PUT — SDK 与后端已统一为 PUT
+> - `AlgorithmAPI.deleteByIds` 参数格式 — 后端 `@RequestParam List<Long> ids` 可正确绑定逗号分隔/数组，已验证
 
 ---
 
@@ -386,8 +338,7 @@ test/factories/model.ts                        — 测试数据工厂（Predicti
 
 ## 九、后续建议优先级
 
-1. **P0**：执行建表 SQL → 启动 Java 后端 → 运行 `pnpm test` → 修复测试发现的问题
-2. **P1**：修复 `@FileExists` NPE bug → 解除 algorithm 测试中的 `.skip()`
-3. **P1**：启动 Python 服务 → 联调预测/评估 API
-4. **P2**：完善算法导入导出（ZIP 格式 + 模型文件打包）
-5. **P2**：实现历史记录配额管理的定时清理任务
+1. ~~P0：建表 + 运行 `pnpm test`~~ ✅ 已完成（34/34 通过，建表已入库）
+2. **P1**：提供真实模型文件/测试图片 → 跑通 2 个 skip 的预测正向用例 + 端到端联调
+3. **P2**：完善算法导入导出（ZIP 格式 + 模型文件打包）
+4. **P2**：实现历史记录配额管理的定时清理任务

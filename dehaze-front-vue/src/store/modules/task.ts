@@ -1,4 +1,4 @@
-// 任务管理小仓库
+// 任务管理 store
 import { DownloadTaskVO, ExportTaskAPI, TaskQuery } from "dehaze-sdk-js";
 
 // 需要轮询的任务状态
@@ -7,21 +7,17 @@ const POLLING_STATUSES = ["pending", "processing"];
 const POLLING_INTERVAL = 3000;
 
 export const useTaskStore = defineStore("task", () => {
-  // 任务列表
   const taskList = ref<DownloadTaskVO[]>([]);
-  // 任务总数
   const total = ref(0);
-  // 列表加载状态
   const loading = ref(false);
-  // 当前查看的任务
   const currentTask = ref<DownloadTaskVO | null>(null);
-  // 轮询定时器
-  const pollingTimer = ref<ReturnType<typeof setInterval> | null>(null);
+  // 轮询定时器（内部私有，不导出）
+  let pollingTimer: ReturnType<typeof setInterval> | null = null;
+  // 轮询连续失败计数（避免接口持续失败时无限轮询）
+  let pollingFailCount = 0;
+  const MAX_POLLING_FAIL = 5;
 
-  /**
-   * 获取任务列表
-   * @param queryParams 查询参数
-   */
+  /** 获取任务列表 */
   const getTaskList = async (queryParams?: TaskQuery) => {
     loading.value = true;
     try {
@@ -33,27 +29,12 @@ export const useTaskStore = defineStore("task", () => {
     }
   };
 
-  /**
-   * 查询任务状态
-   * @param taskId 任务ID
-   * @returns 任务信息
-   */
-  const getTaskStatus = async (taskId: string) => {
-    return await ExportTaskAPI.getTaskStatus(taskId);
-  };
-
-  /**
-   * 取消任务
-   * @param taskId 任务ID
-   */
+  /** 取消任务 */
   const cancelTask = async (taskId: string) => {
     await ExportTaskAPI.cancelTask(taskId);
   };
 
-  /**
-   * 下载任务结果
-   * @param taskId 任务ID
-   */
+  /** 下载任务结果 */
   const downloadResult = async (taskId: string) => {
     const task = await ExportTaskAPI.getTaskStatus(taskId);
     if (task.status !== "completed") {
@@ -62,11 +43,9 @@ export const useTaskStore = defineStore("task", () => {
     if (!task.downloadUrl) {
       throw new Error("下载链接不存在");
     }
-    // 检查结果是否过期
     if (task.expiresAt && new Date(task.expiresAt) < new Date()) {
       throw new Error("任务结果已过期");
     }
-    // 触发浏览器下载
     const link = document.createElement("a");
     link.href = task.downloadUrl;
     link.download = "";
@@ -76,54 +55,54 @@ export const useTaskStore = defineStore("task", () => {
     document.body.removeChild(link);
   };
 
-  /**
-   * 轮询更新进行中任务的状态
-   */
+  /** 轮询更新进行中任务的状态 */
   const pollTaskStatuses = async () => {
     const activeTasks = taskList.value.filter((t) =>
       POLLING_STATUSES.includes(t.status)
     );
-    // 没有需要轮询的任务，停止轮询
     if (activeTasks.length === 0) {
       stopPolling();
       return;
     }
-    // 并行查询所有进行中任务的状态
     const results = await Promise.all(
-      activeTasks.map((t) =>
-        ExportTaskAPI.getTaskStatus(t.taskId).catch(() => null)
-      )
+      activeTasks.map((t) => ExportTaskAPI.getTaskStatus(t.taskId))
     );
-    // 更新列表中对应任务的状态
+    pollingFailCount = 0;
     results.forEach((updated, index) => {
-      if (!updated) return;
       const taskId = activeTasks[index].taskId;
       const listIndex = taskList.value.findIndex((t) => t.taskId === taskId);
       if (listIndex !== -1) {
         taskList.value[listIndex] = updated;
       }
-      // 同步更新当前查看的任务
       if (currentTask.value?.taskId === taskId) {
         currentTask.value = updated;
       }
     });
   };
 
-  /**
-   * 启动轮询
-   */
+  /** 启动轮询 */
   const startPolling = () => {
-    if (pollingTimer.value) return;
-    pollingTimer.value = setInterval(pollTaskStatuses, POLLING_INTERVAL);
+    if (pollingTimer) return;
+    pollingFailCount = 0;
+    pollingTimer = setInterval(async () => {
+      try {
+        await pollTaskStatuses();
+      } catch (e) {
+        pollingFailCount += 1;
+        if (pollingFailCount >= MAX_POLLING_FAIL) {
+          console.error("任务状态轮询连续失败，已停止轮询", e);
+          ElMessage.error("任务状态更新失败，已停止自动刷新");
+          stopPolling();
+        }
+      }
+    }, POLLING_INTERVAL);
   };
 
-  /**
-   * 停止轮询
-   */
+  /** 停止轮询 */
   const stopPolling = () => {
-    if (pollingTimer.value) {
-      clearInterval(pollingTimer.value);
-      pollingTimer.value = null;
+    if (pollingTimer) {
+      clearInterval(pollingTimer);
+      pollingTimer = null;
     }
   };
 
@@ -132,9 +111,7 @@ export const useTaskStore = defineStore("task", () => {
     total,
     loading,
     currentTask,
-    pollingTimer,
     getTaskList,
-    getTaskStatus,
     cancelTask,
     downloadResult,
     startPolling,

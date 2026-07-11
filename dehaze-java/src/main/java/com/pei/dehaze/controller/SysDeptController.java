@@ -2,6 +2,7 @@ package com.pei.dehaze.controller;
 
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.model.form.BatchDeleteRequest;
 import com.pei.dehaze.model.form.DeptForm;
 import com.pei.dehaze.model.query.DeptQuery;
 import com.pei.dehaze.model.vo.DeptVO;
@@ -83,6 +84,17 @@ public class SysDeptController {
     public Result<Void> deleteDepartments(
             @Parameter(description ="部门ID，多个以英文逗号(,)分割") @PathVariable("ids") String ids
     ) {
+        boolean result = deptService.deleteByIds(ids);
+        return Result.judge(result);
+    }
+
+    @Operation(summary = "批量删除部门")
+    @DeleteMapping("/batch")
+    @PreAuthorize("@ss.hasPerm('sys:dept:delete')")
+    public Result<Void> batchDeleteDepartments(@RequestBody BatchDeleteRequest request) {
+        String ids = request.getIds().stream()
+                .map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(","));
         boolean result = deptService.deleteByIds(ids);
         return Result.judge(result);
     }

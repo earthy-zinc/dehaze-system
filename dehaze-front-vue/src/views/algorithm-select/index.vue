@@ -21,12 +21,12 @@ const activeCategory = ref<string>("全部");
 const selectedAlgorithm = ref<Algorithm>();
 
 // 算法分类体系：传统/深度学习/混合
-const categories = ref([
+const categories = [
   { label: "全部", value: "全部" },
   { label: "传统算法", value: "传统算法" },
   { label: "深度学习算法", value: "深度学习算法" },
   { label: "混合算法", value: "混合算法" },
-]);
+];
 
 // 根据算法类型归入分类
 function classifyAlgorithm(type: string): string {
@@ -54,7 +54,7 @@ function flattenAlgorithms(nodes: Algorithm[]): Algorithm[] {
 
 // 树形分类数据
 const treeData = computed(() => {
-  const tree: any[] = categories.value
+  const tree: any[] = categories
     .filter((c) => c.value !== "全部")
     .map((c) => ({
       label: c.label,
@@ -124,6 +124,9 @@ function loadAlgorithms() {
   AlgorithmAPI.getList()
     .then((data) => {
       allAlgorithms.value = flattenAlgorithms(data);
+    })
+    .catch((e: any) => {
+      ElMessage.error("加载算法列表失败：" + (e.message || "未知错误"));
     })
     .finally(() => {
       loading.value = false;
@@ -245,9 +248,7 @@ onMounted(() => {
             @click="activeCategory = cat.value"
           >
             {{ cat.label }}
-            <span class="category-count">{{
-              categoryCount[cat.value] || 0
-            }}</span>
+            <span class="category-count">{{ categoryCount[cat.value] }}</span>
           </div>
         </div>
         <el-tree

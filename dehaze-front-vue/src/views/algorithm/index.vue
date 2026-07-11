@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import EditDialog from "@/components/DataList/EditDialog/index.vue";
+import type { FormInstance } from "element-plus";
 import { Algorithm, AlgorithmAPI, AlgorithmQuery } from "dehaze-sdk-js";
 
 defineOptions({
@@ -7,7 +8,7 @@ defineOptions({
   inheritAttrs: false,
 });
 
-const queryFormRef = ref(ElForm);
+const queryFormRef = ref<FormInstance>();
 const loading = ref(false);
 const queryParams = reactive<AlgorithmQuery>({
   keywords: "",
@@ -41,6 +42,9 @@ function handleQuery() {
     .then((data) => {
       list.value = data;
     })
+    .catch((e) => {
+      ElMessage.error("查询失败：" + e.message);
+    })
     .finally(() => {
       loading.value = false;
     });
@@ -58,18 +62,14 @@ watch(
 );
 
 function resetQuery() {
-  queryFormRef.value.resetFields();
+  queryFormRef.value?.resetFields();
   handleQuery();
 }
 
 const dialogRef = ref();
 
-function onEdit<T extends Algorithm>(type: string, row: T) {
-  dialogRef.value.open(type, row);
-}
-
 function openDialog<T extends Algorithm>(type: string, row: T) {
-  onEdit(type, row);
+  dialogRef.value.open(type, row);
 }
 
 // 删除算法（带算法名确认文案）
@@ -83,12 +83,17 @@ function handleDelete(row: Algorithm) {
       type: "warning",
     }
   )
-    .then(() => {
-      AlgorithmAPI.deleteByIds([row.id.toString()]);
+    .then(async () => {
+      await AlgorithmAPI.deleteByIds([row.id.toString()]);
       ElMessage.success("删除成功");
       handleQuery();
     })
-    .catch(() => ElMessage.info("已取消删除"));
+    .catch((err) => {
+      // 仅用户取消时静默，接口错误需提示
+      if (err !== "cancel" && err !== "close") {
+        ElMessage.error("删除失败：" + (err.message || "未知错误"));
+      }
+    });
 }
 
 // 切换算法状态
@@ -99,9 +104,10 @@ function handleStatusChange(row: Algorithm, val: string | number | boolean) {
       row.status = status;
       ElMessage.success(status === 1 ? "已启用" : "已禁用");
     })
-    .catch(() => {
-      // 接口失败时回滚状态
+    .catch((e) => {
+      // 接口失败时回滚状态并提示
       row.status = status === 1 ? 0 : 1;
+      ElMessage.error("状态切换失败：" + e.message);
     });
 }
 
@@ -317,16 +323,16 @@ onMounted(() => {
           <el-tag v-else type="info">禁用</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="导入路径" :span="2">
-          {{ detailData.importPath || "-" }}
+          {{ detailData.importPath }}
         </el-descriptions-item>
         <el-descriptions-item label="存储位置" :span="2">
-          {{ detailData.path || "-" }}
+          {{ detailData.path }}
         </el-descriptions-item>
         <el-descriptions-item label="创建时间" :span="2">
-          {{ detailData.createTime || "-" }}
+          {{ detailData.createTime }}
         </el-descriptions-item>
         <el-descriptions-item label="算法描述" :span="2">
-          {{ detailData.description || "-" }}
+          {{ detailData.description }}
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>

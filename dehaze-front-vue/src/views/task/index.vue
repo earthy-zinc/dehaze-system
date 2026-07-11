@@ -32,7 +32,7 @@
         />
         <el-table-column label="类型" width="130" align="center">
           <template #default="{ row }">
-            {{ taskTypeLabel[row.taskType] || row.taskType || "-" }}
+            {{ taskTypeLabel[row.taskType] ?? row.taskType }}
           </template>
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
@@ -262,7 +262,12 @@ function canCancel(status: string): boolean {
  * 加载任务列表
  */
 async function loadTaskList() {
-  await taskStore.getTaskList(queryParams);
+  try {
+    await taskStore.getTaskList(queryParams);
+  } catch (e: any) {
+    ElMessage.error(e.message || "加载任务列表失败");
+    return;
+  }
   // 存在进行中的任务时启动轮询，否则停止
   const hasActiveTasks = taskStore.taskList.some((t) =>
     POLLING_STATUSES.includes(t.status)
@@ -303,7 +308,11 @@ async function handleCancel(task: DownloadTaskVO) {
       cancelButtonText: "取消",
       type: "warning",
     });
-    cancelLoading.value = true;
+  } catch {
+    return; // 用户取消确认
+  }
+  cancelLoading.value = true;
+  try {
     await taskStore.cancelTask(task.taskId);
     ElMessage.success("任务已取消");
     // 同步更新当前查看的任务状态
@@ -315,8 +324,8 @@ async function handleCancel(task: DownloadTaskVO) {
       };
     }
     await loadTaskList();
-  } catch (e) {
-    // 用户取消确认，不处理
+  } catch (e: any) {
+    ElMessage.error(e.message || "取消任务失败");
   } finally {
     cancelLoading.value = false;
   }
