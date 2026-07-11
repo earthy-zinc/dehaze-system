@@ -28,7 +28,13 @@ import {
   message,
   type TableColumnsType,
 } from "antd";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { type DownloadTaskVO, type TaskQuery } from "dehaze-sdk-js";
 import "./index.scss";
@@ -122,7 +128,6 @@ const TaskManagement: React.FC = () => {
 
   useEffect(() => {
     loadTaskList(queryParams);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParams, refreshFlag]);
 
   const refreshList = useCallback(() => {
@@ -178,7 +183,6 @@ const TaskManagement: React.FC = () => {
     } else if (!hasPollingTask && pollingTimer) {
       stopPolling();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [taskList]);
 
   // 页面可见性变化：隐藏时暂停轮询，可见时恢复
@@ -203,7 +207,6 @@ const TaskManagement: React.FC = () => {
         window.clearInterval(pollingTimerRef.current);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ==================== 事件处理 ====================
@@ -337,11 +340,8 @@ const TaskManagement: React.FC = () => {
         align: "center",
         render: (progress: number, record: DownloadTaskVO) => {
           const status = record.status;
-          let progressStatus:
-            | "active"
-            | "success"
-            | "exception"
-            | "normal" = "active";
+          let progressStatus: "active" | "success" | "exception" | "normal" =
+            "active";
           if (status === "completed") {
             progressStatus = "success";
           } else if (status === "failed") {
@@ -531,10 +531,10 @@ const TaskManagement: React.FC = () => {
                   currentTask.status === "completed"
                     ? "success"
                     : currentTask.status === "failed"
-                    ? "exception"
-                    : currentTask.status === "cancelled"
-                    ? "normal"
-                    : "active"
+                      ? "exception"
+                      : currentTask.status === "cancelled"
+                        ? "normal"
+                        : "active"
                 }
               />
             </Descriptions.Item>

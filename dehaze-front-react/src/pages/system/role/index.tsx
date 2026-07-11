@@ -1,8 +1,4 @@
-import {
-  RoleAPI,
-  type RolePageVO,
-  type RoleQuery,
-} from "dehaze-sdk-js";
+import { RoleAPI, type RolePageVO, type RoleQuery } from "dehaze-sdk-js";
 import { useHasPerm } from "@/hooks/usePermission";
 import {
   Button,
@@ -26,7 +22,13 @@ import {
   SafetyOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import PermissionDialog, {
   type PermissionDialogRef,
 } from "./components/PermissionDialog";
@@ -50,9 +52,12 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
 };
 
 /** 获取数据权限标签文本 */
-function getDataScopeLabel(record: RolePageVO & { dataScope?: number; dataScopeLabel?: string }): string {
+function getDataScopeLabel(
+  record: RolePageVO & { dataScope?: number; dataScopeLabel?: string }
+): string {
   if (record.dataScopeLabel) return record.dataScopeLabel;
-  if (record.dataScope !== undefined) return DATA_SCOPE_MAP[record.dataScope] || "未知";
+  if (record.dataScope !== undefined)
+    return DATA_SCOPE_MAP[record.dataScope] || "未知";
   return "-";
 }
 
@@ -89,7 +94,6 @@ const RoleManagement: React.FC = () => {
 
   useEffect(() => {
     loadData(queryParams);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParams, refreshFlag]);
 
   const refreshList = useCallback(() => {
@@ -99,17 +103,14 @@ const RoleManagement: React.FC = () => {
 
   // ==================== 事件处理 ====================
 
-  const handleSearch = useCallback(
-    (values: { keywords?: string }) => {
-      setSelectedRowKeys([]);
-      setQueryParams((prev) => ({
-        ...prev,
-        pageNum: 1,
-        keywords: values.keywords || undefined,
-      }));
-    },
-    []
-  );
+  const handleSearch = useCallback((values: { keywords?: string }) => {
+    setSelectedRowKeys([]);
+    setQueryParams((prev) => ({
+      ...prev,
+      pageNum: 1,
+      keywords: values.keywords || undefined,
+    }));
+  }, []);
 
   const handleReset = useCallback(() => {
     searchForm.resetFields();
@@ -169,7 +170,9 @@ const RoleManagement: React.FC = () => {
       const newStatus = checked ? 1 : 0;
       RoleAPI.updateStatus(record.id!, newStatus)
         .then(() => {
-          message.success(`角色「${record.name}」已${checked ? "启用" : "禁用"}`);
+          message.success(
+            `角色「${record.name}」已${checked ? "启用" : "禁用"}`
+          );
           refreshList();
         })
         .catch((error) => {
@@ -206,7 +209,8 @@ const RoleManagement: React.FC = () => {
         key: "dataScope",
         width: 160,
         align: "center",
-        render: (_: unknown, record: RolePageVO) => getDataScopeLabel(record as any),
+        render: (_: unknown, record: RolePageVO) =>
+          getDataScopeLabel(record as any),
       },
       {
         title: "状态",

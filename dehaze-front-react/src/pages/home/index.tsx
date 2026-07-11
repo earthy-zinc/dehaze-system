@@ -126,7 +126,9 @@ const Home: React.FC = () => {
               onClick={() => navigate(entry.path)}
               style={{ height: "100%", cursor: "pointer" }}
             >
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+              <div
+                style={{ display: "flex", alignItems: "flex-start", gap: 12 }}
+              >
                 <div
                   style={{
                     fontSize: 28,

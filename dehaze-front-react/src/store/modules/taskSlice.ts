@@ -103,9 +103,7 @@ const taskSlice = createSlice({
       })
       .addCase(fetchTaskStatus.fulfilled, (state, action) => {
         const task = action.payload;
-        const index = state.taskList.findIndex(
-          (t) => t.taskId === task.taskId
-        );
+        const index = state.taskList.findIndex((t) => t.taskId === task.taskId);
         if (index !== -1) {
           state.taskList[index] = task;
         }

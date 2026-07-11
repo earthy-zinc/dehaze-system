@@ -45,7 +45,6 @@ const PasswordResetDialog = React.forwardRef<
       message.success(`用户「${username}」密码重置成功`);
       handleCancel();
       onSuccess?.();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       if (error?.errorFields) return;
       message.error(error?.message || "密码重置失败");

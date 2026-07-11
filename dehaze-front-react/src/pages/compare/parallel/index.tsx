@@ -165,7 +165,9 @@ const Parallel: React.FC = () => {
                     <Radio value="circle">圆形</Radio>
                   </Radio.Group>
                 </Form.Item>
-                <Form.Item label={`放大倍数：${magnifierZoomLevel.toFixed(1)}x`}>
+                <Form.Item
+                  label={`放大倍数：${magnifierZoomLevel.toFixed(1)}x`}
+                >
                   <Slider
                     min={2}
                     max={20}
@@ -305,9 +307,7 @@ const Parallel: React.FC = () => {
               </div>
             ))}
             {/* 继续添加图片入口 */}
-            <div
-              className={styles["add-panel"]}
-            >
+            <div className={styles["add-panel"]}>
               <Upload
                 multiple
                 beforeUpload={() => false}

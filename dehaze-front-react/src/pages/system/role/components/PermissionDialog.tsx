@@ -39,28 +39,25 @@ interface PermissionDialogProps {
   onSuccess?: () => void;
 }
 
-const PermissionDialog = forwardRef<
-  PermissionDialogRef,
-  PermissionDialogProps
->(({ onSuccess }, ref) => {
-  const [visible, setVisible] = useState(false);
-  const [confirmLoading, setConfirmLoading] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [roleId, setRoleId] = useState<number>(0);
-  const [roleName, setRoleName] = useState("");
-  const [menuTree, setMenuTree] = useState<any[]>([]);
-  const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
-  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
+const PermissionDialog = forwardRef<PermissionDialogRef, PermissionDialogProps>(
+  ({ onSuccess }, ref) => {
+    const [visible, setVisible] = useState(false);
+    const [confirmLoading, setConfirmLoading] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [roleId, setRoleId] = useState<number>(0);
+    const [roleName, setRoleName] = useState("");
+    const [menuTree, setMenuTree] = useState<any[]>([]);
+    const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
+    const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
 
-  // 所有树节点key（用于全选/展开所有）
-  const allKeys = useMemo(() => collectAllKeys(menuTree), [menuTree]);
-  const isAllChecked =
-    allKeys.length > 0 && checkedKeys.length >= allKeys.length;
-  const isAllExpanded =
-    allKeys.length > 0 && expandedKeys.length >= allKeys.length;
+    // 所有树节点key（用于全选/展开所有）
+    const allKeys = useMemo(() => collectAllKeys(menuTree), [menuTree]);
+    const isAllChecked =
+      allKeys.length > 0 && checkedKeys.length >= allKeys.length;
+    const isAllExpanded =
+      allKeys.length > 0 && expandedKeys.length >= allKeys.length;
 
-  const open = useCallback(
-    async (id: number, name: string) => {
+    const open = useCallback(async (id: number, name: string) => {
       setRoleId(id);
       setRoleName(name);
       setVisible(true);
@@ -84,97 +81,96 @@ const PermissionDialog = forwardRef<
       } finally {
         setLoading(false);
       }
-    },
-    []
-  );
+    }, []);
 
-  useImperativeHandle(ref, () => ({ open }), [open]);
+    useImperativeHandle(ref, () => ({ open }), [open]);
 
-  const handleCancel = useCallback(() => {
-    setVisible(false);
-  }, []);
-
-  const handleOk = useCallback(async () => {
-    setConfirmLoading(true);
-    try {
-      const ids = checkedKeys.map(Number);
-      await RoleAPI.updateRoleMenus(roleId, ids);
-      message.success(`角色「${roleName}」权限分配成功`);
+    const handleCancel = useCallback(() => {
       setVisible(false);
-      onSuccess?.();
-    } catch {
-      message.error("权限分配失败");
-    } finally {
-      setConfirmLoading(false);
-    }
-  }, [roleId, roleName, checkedKeys, onSuccess]);
+    }, []);
 
-  const handleCheck = useCallback(
-    (
-      checked:
-        | React.Key[]
-        | { checked: React.Key[]; halfChecked: React.Key[] }
-    ) => {
-      const keys = Array.isArray(checked) ? checked : checked.checked;
-      setCheckedKeys(keys);
-    },
-    []
-  );
+    const handleOk = useCallback(async () => {
+      setConfirmLoading(true);
+      try {
+        const ids = checkedKeys.map(Number);
+        await RoleAPI.updateRoleMenus(roleId, ids);
+        message.success(`角色「${roleName}」权限分配成功`);
+        setVisible(false);
+        onSuccess?.();
+      } catch {
+        message.error("权限分配失败");
+      } finally {
+        setConfirmLoading(false);
+      }
+    }, [roleId, roleName, checkedKeys, onSuccess]);
 
-  /** 全选/取消全选 */
-  const handleToggleCheckAll = useCallback(() => {
-    setCheckedKeys(isAllChecked ? [] : allKeys);
-  }, [isAllChecked, allKeys]);
+    const handleCheck = useCallback(
+      (
+        checked:
+          | React.Key[]
+          | { checked: React.Key[]; halfChecked: React.Key[] }
+      ) => {
+        const keys = Array.isArray(checked) ? checked : checked.checked;
+        setCheckedKeys(keys);
+      },
+      []
+    );
 
-  /** 展开/收起所有 */
-  const handleToggleExpandAll = useCallback(() => {
-    setExpandedKeys(isAllExpanded ? [] : allKeys);
-  }, [isAllExpanded, allKeys]);
+    /** 全选/取消全选 */
+    const handleToggleCheckAll = useCallback(() => {
+      setCheckedKeys(isAllChecked ? [] : allKeys);
+    }, [isAllChecked, allKeys]);
 
-  return (
-    <Modal
-      title={`分配权限 - ${roleName}`}
-      open={visible}
-      width={500}
-      confirmLoading={confirmLoading}
-      okText="确定"
-      cancelText="取消"
-      destroyOnClose
-      onOk={handleOk}
-      onCancel={handleCancel}
-    >
-      {loading ? (
-        <div style={{ textAlign: "center", padding: 40 }}>
-          <Spin />
-        </div>
-      ) : menuTree.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 40, color: "#999" }}>
-          暂无菜单数据
-        </div>
-      ) : (
-        <>
-          {/* 工具栏：全选/取消全选、展开/收起所有 */}
-          <Space style={{ marginBottom: 8 }}>
-            <Button size="small" onClick={handleToggleCheckAll}>
-              {isAllChecked ? "取消全选" : "全选"}
-            </Button>
-            <Button size="small" onClick={handleToggleExpandAll}>
-              {isAllExpanded ? "收起所有" : "展开所有"}
-            </Button>
-          </Space>
-          <Tree
-            checkable
-            expandedKeys={expandedKeys}
-            onExpand={(keys) => setExpandedKeys(keys)}
-            treeData={menuTree}
-            checkedKeys={checkedKeys}
-            onCheck={handleCheck}
-          />
-        </>
-      )}
-    </Modal>
-  );
-});
+    /** 展开/收起所有 */
+    const handleToggleExpandAll = useCallback(() => {
+      setExpandedKeys(isAllExpanded ? [] : allKeys);
+    }, [isAllExpanded, allKeys]);
+
+    return (
+      <Modal
+        title={`分配权限 - ${roleName}`}
+        open={visible}
+        width={500}
+        confirmLoading={confirmLoading}
+        okText="确定"
+        cancelText="取消"
+        destroyOnClose
+        onOk={handleOk}
+        onCancel={handleCancel}
+      >
+        {loading ? (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Spin />
+          </div>
+        ) : menuTree.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 40, color: "#999" }}>
+            暂无菜单数据
+          </div>
+        ) : (
+          <>
+            {/* 工具栏：全选/取消全选、展开/收起所有 */}
+            <Space style={{ marginBottom: 8 }}>
+              <Button size="small" onClick={handleToggleCheckAll}>
+                {isAllChecked ? "取消全选" : "全选"}
+              </Button>
+              <Button size="small" onClick={handleToggleExpandAll}>
+                {isAllExpanded ? "收起所有" : "展开所有"}
+              </Button>
+            </Space>
+            <Tree
+              checkable
+              expandedKeys={expandedKeys}
+              onExpand={(keys) => setExpandedKeys(keys)}
+              treeData={menuTree}
+              checkedKeys={checkedKeys}
+              onCheck={handleCheck}
+            />
+          </>
+        )}
+      </Modal>
+    );
+  }
+);
 
 PermissionDialog.displayName = "PermissionDialog";
 

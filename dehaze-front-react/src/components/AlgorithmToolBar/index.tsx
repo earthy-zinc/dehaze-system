@@ -14,11 +14,7 @@ import {
   selectDividerEnabled,
   selectMagnifierZoomLevel,
 } from "@/store/selector/imageShowSelector";
-import {
-  DownOutlined,
-  StopOutlined,
-  UploadOutlined,
-} from "@ant-design/icons";
+import { DownOutlined, StopOutlined, UploadOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,

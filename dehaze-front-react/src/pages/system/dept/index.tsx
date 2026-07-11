@@ -1,8 +1,4 @@
-import {
-  DeptAPI,
-  type DeptQuery,
-  type DeptVO,
-} from "dehaze-sdk-js";
+import { DeptAPI, type DeptQuery, type DeptVO } from "dehaze-sdk-js";
 import {
   Button,
   Card,
@@ -23,7 +19,13 @@ import {
   ReloadOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import DeptFormDialog, {
   type DeptFormDialogRef,
 } from "./components/DeptFormDialog";
@@ -62,7 +64,6 @@ const DeptManagement: React.FC = () => {
 
   useEffect(() => {
     loadDeptList(queryParams);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParams, refreshFlag]);
 
   const refreshList = useCallback(() => {
@@ -129,7 +130,10 @@ const DeptManagement: React.FC = () => {
         width: 100,
         align: "center",
         render: (status: number) => {
-          const info = STATUS_MAP[status] || { label: "未知", color: "default" };
+          const info = STATUS_MAP[status] || {
+            label: "未知",
+            color: "default",
+          };
           return <Tag color={info.color}>{info.label}</Tag>;
         },
       },

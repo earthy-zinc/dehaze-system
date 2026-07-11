@@ -57,8 +57,18 @@ const PROCESS_STAGES = [
     min: 20,
     max: 90,
   },
-  { title: "后处理", description: "色彩校正、对比度增强、锐化", min: 90, max: 95 },
-  { title: "保存", description: "生成结果图像、保存到服务器", min: 95, max: 100 },
+  {
+    title: "后处理",
+    description: "色彩校正、对比度增强、锐化",
+    min: 90,
+    max: 95,
+  },
+  {
+    title: "保存",
+    description: "生成结果图像、保存到服务器",
+    min: 95,
+    max: 100,
+  },
 ];
 
 /** 根据进度百分比计算当前所处阶段索引 */
@@ -190,7 +200,12 @@ const Dehaze: React.FC = () => {
     dispatch(setImageUrls([])); // 重置 urls
     setBatchMode(false);
     setBatchTasks([]);
-    setShow((prev) => ({ ...prev, example: true, singleImage: false, overlap: false }));
+    setShow((prev) => ({
+      ...prev,
+      example: true,
+      singleImage: false,
+      overlap: false,
+    }));
   };
 
   /** 启动模拟进度定时器，递增进度直到90%等待API完成 */
@@ -283,9 +298,7 @@ const Dehaze: React.FC = () => {
 
   /** 保存处理结果：获取预测图后上传保存 */
   const handleSaveResult = async () => {
-    const predUrl = urls.find(
-      (u) => u.label.text === ImageTypeEnum.PRED
-    )?.url;
+    const predUrl = urls.find((u) => u.label.text === ImageTypeEnum.PRED)?.url;
     if (!predUrl) return message.error("没有可保存的结果");
 
     setSaving(true);
@@ -322,7 +335,12 @@ const Dehaze: React.FC = () => {
 
     setBatchMode(true);
     batchCancelRef.current = false;
-    setShow((prev) => ({ ...prev, example: false, singleImage: false, overlap: false }));
+    setShow((prev) => ({
+      ...prev,
+      example: false,
+      singleImage: false,
+      overlap: false,
+    }));
 
     // 初始化批量任务列表
     const tasks: BatchTask[] = files.map((f, i) => ({
@@ -338,9 +356,7 @@ const Dehaze: React.FC = () => {
       if (batchCancelRef.current) break;
 
       setBatchTasks((prev) =>
-        prev.map((t, idx) =>
-          idx === i ? { ...t, status: "processing" } : t
-        )
+        prev.map((t, idx) => (idx === i ? { ...t, status: "processing" } : t))
       );
 
       try {
@@ -385,9 +401,7 @@ const Dehaze: React.FC = () => {
       } catch (error) {
         setBatchTasks((prev) =>
           prev.map((t, idx) =>
-            idx === i
-              ? { ...t, status: "failed", error: "处理失败" }
-              : t
+            idx === i ? { ...t, status: "failed", error: "处理失败" } : t
           )
         );
       }
@@ -421,7 +435,12 @@ const Dehaze: React.FC = () => {
     );
     setCleanUrl(selectedExample?.clean || "");
     setBatchMode(false);
-    setShow((prev) => ({ ...prev, singleImage: true, example: false, overlap: false }));
+    setShow((prev) => ({
+      ...prev,
+      singleImage: true,
+      example: false,
+      overlap: false,
+    }));
   };
 
   const handleSelectModel = (id: number) => {
@@ -434,7 +453,12 @@ const Dehaze: React.FC = () => {
     setCleanUrl(clean);
     setDialogVisible(false);
     setBatchMode(false);
-    setShow((prev) => ({ ...prev, singleImage: true, example: false, overlap: false }));
+    setShow((prev) => ({
+      ...prev,
+      singleImage: true,
+      example: false,
+      overlap: false,
+    }));
   };
 
   const handleEval = () => {
@@ -461,9 +485,17 @@ const Dehaze: React.FC = () => {
           </div>
         );
       case "completed":
-        return <Tag icon={<CheckCircleOutlined />} color="success">完成</Tag>;
+        return (
+          <Tag icon={<CheckCircleOutlined />} color="success">
+            完成
+          </Tag>
+        );
       case "failed":
-        return <Tag icon={<CloseCircleOutlined />} color="error">{task.error}</Tag>;
+        return (
+          <Tag icon={<CloseCircleOutlined />} color="error">
+            {task.error}
+          </Tag>
+        );
       default:
         return null;
     }
@@ -519,7 +551,8 @@ const Dehaze: React.FC = () => {
               strokeColor={{ from: "#108ee9", to: "#87d068" }}
             />
             <p className={styles["progress-tip"]}>
-              当前阶段：{PROCESS_STAGES[currentStage].title}（{PROCESS_STAGES[currentStage].min}%-
+              当前阶段：{PROCESS_STAGES[currentStage].title}（
+              {PROCESS_STAGES[currentStage].min}%-
               {PROCESS_STAGES[currentStage].max}%）
             </p>
           </div>

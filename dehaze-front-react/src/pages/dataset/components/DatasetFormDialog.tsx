@@ -1,6 +1,16 @@
-import { DatasetAPI, type Dataset, type DatasetAddForm, type DatasetUpdateForm } from "dehaze-sdk-js";
+import {
+  DatasetAPI,
+  type Dataset,
+  type DatasetAddForm,
+  type DatasetUpdateForm,
+} from "dehaze-sdk-js";
 import { Form, Input, Modal, Radio, TreeSelect, message } from "antd";
-import React, { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useState,
+} from "react";
 
 /** 递归转换数据集树为 TreeSelect 格式 */
 function buildTreeSelect(datasets: Dataset[]): any[] {
@@ -22,7 +32,9 @@ interface Props {
 const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
   ({ onSuccess }, ref) => {
     const [visible, setVisible] = useState(false);
-    const [dialogType, setDialogType] = useState<"add" | "edit" | "addSub">("add");
+    const [dialogType, setDialogType] = useState<"add" | "edit" | "addSub">(
+      "add"
+    );
     const [confirmLoading, setConfirmLoading] = useState(false);
     const [form] = Form.useForm();
     const [treeData, setTreeData] = useState<any[]>([]);
@@ -30,7 +42,10 @@ const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
     const loadTree = useCallback(async () => {
       try {
         const data = await DatasetAPI.getList();
-        setTreeData([{ title: "顶级数据集", value: 0 }, ...buildTreeSelect((data as any)?.list || data || [])]);
+        setTreeData([
+          { title: "顶级数据集", value: 0 },
+          ...buildTreeSelect((data as any)?.list || data || []),
+        ]);
       } catch {
         setTreeData([{ title: "顶级数据集", value: 0 }]);
       }
@@ -66,7 +81,10 @@ const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
 
     useImperativeHandle(ref, () => ({ open }), [open]);
 
-    const handleCancel = useCallback(() => { setVisible(false); form.resetFields(); }, [form]);
+    const handleCancel = useCallback(() => {
+      setVisible(false);
+      form.resetFields();
+    }, [form]);
 
     const handleSubmit = useCallback(async () => {
       try {
@@ -100,30 +118,68 @@ const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
       } catch (error: any) {
         if (error?.errorFields) return;
         message.error(error?.message || "操作失败");
-      } finally { setConfirmLoading(false); }
+      } finally {
+        setConfirmLoading(false);
+      }
     }, [form, dialogType, handleCancel, onSuccess]);
 
     const title = dialogType === "edit" ? "修改数据集" : "新增数据集";
 
     return (
       <Modal
-        title={title} open={visible} width={600} confirmLoading={confirmLoading}
-        okText="保存" cancelText="取消" destroyOnClose onOk={handleSubmit} onCancel={handleCancel}
+        title={title}
+        open={visible}
+        width={600}
+        confirmLoading={confirmLoading}
+        okText="保存"
+        cancelText="取消"
+        destroyOnClose
+        onOk={handleSubmit}
+        onCancel={handleCancel}
       >
-        <Form form={form} layout="vertical" colon={false} validateTrigger="onBlur">
+        <Form
+          form={form}
+          layout="vertical"
+          colon={false}
+          validateTrigger="onBlur"
+        >
           <Form.Item name="parentId" label="上级数据集">
-            <TreeSelect treeData={treeData} placeholder="请选择上级数据集（为空则顶级）" treeDefaultExpandAll allowClear />
+            <TreeSelect
+              treeData={treeData}
+              placeholder="请选择上级数据集（为空则顶级）"
+              treeDefaultExpandAll
+              allowClear
+            />
           </Form.Item>
-          <Form.Item name="name" label="数据集名称" rules={[{ required: true, message: "请输入数据集名称" }]}>
+          <Form.Item
+            name="name"
+            label="数据集名称"
+            rules={[{ required: true, message: "请输入数据集名称" }]}
+          >
             <Input placeholder="请输入数据集名称" />
           </Form.Item>
-          <Form.Item name="type" label="数据集类型" rules={[{ required: true, message: "请输入数据集类型" }]}>
-            <Input placeholder="请输入数据集类型（如 training/test）" disabled={dialogType === "edit"} />
+          <Form.Item
+            name="type"
+            label="数据集类型"
+            rules={[{ required: true, message: "请输入数据集类型" }]}
+          >
+            <Input
+              placeholder="请输入数据集类型（如 training/test）"
+              disabled={dialogType === "edit"}
+            />
           </Form.Item>
-          <Form.Item name="path" label="存储路径" rules={[{ required: true, message: "请输入数据集存储路径" }]}>
+          <Form.Item
+            name="path"
+            label="存储路径"
+            rules={[{ required: true, message: "请输入数据集存储路径" }]}
+          >
             <Input placeholder="请输入数据集存储路径（如 /data/training）" />
           </Form.Item>
-          <Form.Item name="description" label="数据集描述" rules={[{ max: 500, message: "描述不能超过500字" }]}>
+          <Form.Item
+            name="description"
+            label="数据集描述"
+            rules={[{ max: 500, message: "描述不能超过500字" }]}
+          >
             <Input.TextArea placeholder="请输入数据集描述" rows={3} />
           </Form.Item>
           <Form.Item name="status" label="状态">

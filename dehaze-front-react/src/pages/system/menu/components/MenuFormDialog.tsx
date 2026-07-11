@@ -165,7 +165,12 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
 
         if (type === "add") {
           form.resetFields();
-          form.setFieldsValue({ type: "CATALOG", visible: 1, sort: 1, parentId: 0 });
+          form.setFieldsValue({
+            type: "CATALOG",
+            visible: 1,
+            sort: 1,
+            parentId: 0,
+          });
           setMenuType("CATALOG");
         } else if (type === "edit" && record?.id) {
           form.resetFields();
@@ -218,7 +223,6 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
 
         handleCancel();
         onSuccess?.();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         if (error?.errorFields) return;
         message.error(error?.message || "操作失败");
@@ -272,7 +276,13 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
           colon={false}
           validateTrigger="onBlur"
         >
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0 24px",
+            }}
+          >
             <Form.Item
               name="type"
               label="菜单类型"
@@ -324,7 +334,11 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
               }
             >
               <Input
-                placeholder={menuType === "EXTLINK" ? "请输入外链地址（如 https://）" : "请输入路由地址（如 /system/user）"}
+                placeholder={
+                  menuType === "EXTLINK"
+                    ? "请输入外链地址（如 https://）"
+                    : "请输入路由地址（如 /system/user）"
+                }
               />
             </Form.Item>
           )}
@@ -386,7 +400,13 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
             </Form.Item>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0 24px",
+            }}
+          >
             <Form.Item name="visible" label="显示状态">
               <Radio.Group>
                 <Radio value={1}>显示</Radio>
@@ -399,7 +419,11 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
               label="排序"
               rules={[{ required: true, message: "请输入排序值" }]}
             >
-              <InputNumber min={1} style={{ width: "100%" }} placeholder="请输入排序值" />
+              <InputNumber
+                min={1}
+                style={{ width: "100%" }}
+                placeholder="请输入排序值"
+              />
             </Form.Item>
           </div>
         </Form>

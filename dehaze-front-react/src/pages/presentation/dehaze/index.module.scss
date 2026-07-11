@@ -47,16 +47,16 @@
   flex-direction: column;
   gap: 16px;
   width: 60%;
-  margin: 60px auto;
   padding: 24px;
+  margin: 60px auto;
   background: #fafafa;
   border-radius: 8px;
 }
 
 .progress-tip {
   margin: 0;
-  color: #888;
   font-size: 13px;
+  color: #888;
   text-align: center;
 }
 
@@ -85,12 +85,12 @@
 /* 保存结果提示 */
 .saving-tip {
   display: flex;
+  gap: 8px;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   padding: 20px;
-  color: #1890ff;
   font-size: 14px;
+  color: #1890ff;
 }
 
 @media screen and (width <=992px) {

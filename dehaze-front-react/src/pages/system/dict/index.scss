@@ -5,6 +5,11 @@
   height: 100%;
   padding: 16px;
 
-  .search-card { flex-shrink: 0; }
-  .table-card { flex: 1; overflow: hidden; }
+  .search-card {
+    flex-shrink: 0;
+  }
+  .table-card {
+    flex: 1;
+    overflow: hidden;
+  }
 }

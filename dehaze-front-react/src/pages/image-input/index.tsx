@@ -269,10 +269,7 @@ const CameraPanel: React.FC<CameraPanelProps> = ({ onImageSelected }) => {
 
   return (
     <div style={{ padding: "24px 0", maxWidth: 800, margin: "0 auto" }}>
-      <Camera
-        onSave={handleSave}
-        onCancel={() => message.info("已取消拍照")}
-      />
+      <Camera onSave={handleSave} onCancel={() => message.info("已取消拍照")} />
     </div>
   );
 };
@@ -453,30 +450,22 @@ const ImageInputPage: React.FC = () => {
             {
               key: "upload",
               label: "上传",
-              children: (
-                <UploadPanel onImageSelected={handleImageSelected} />
-              ),
+              children: <UploadPanel onImageSelected={handleImageSelected} />,
             },
             {
               key: "camera",
               label: "拍照",
-              children: (
-                <CameraPanel onImageSelected={handleImageSelected} />
-              ),
+              children: <CameraPanel onImageSelected={handleImageSelected} />,
             },
             {
               key: "sample",
               label: "样例",
-              children: (
-                <SamplePanel onImageSelected={handleImageSelected} />
-              ),
+              children: <SamplePanel onImageSelected={handleImageSelected} />,
             },
             {
               key: "history",
               label: "历史",
-              children: (
-                <HistoryPanel onImageSelected={handleImageSelected} />
-              ),
+              children: <HistoryPanel onImageSelected={handleImageSelected} />,
             },
           ]}
         />

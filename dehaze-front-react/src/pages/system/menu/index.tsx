@@ -21,7 +21,13 @@ import {
   ReloadOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useDispatch, useSelector } from "react-redux";
 import MenuFormDialog, {
   type MenuFormDialogRef,
@@ -60,7 +66,6 @@ const MenuManagement: React.FC = () => {
 
   useEffect(() => {
     loadData(queryParams);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParams, refreshFlag]);
 
   const refreshList = useCallback(() => setRefreshFlag((prev) => prev + 1), []);
@@ -71,12 +76,9 @@ const MenuManagement: React.FC = () => {
     dispatch(generateRoutes(roles));
   }, [refreshList, dispatch, roles]);
 
-  const handleSearch = useCallback(
-    (values: { keywords?: string }) => {
-      setQueryParams({ keywords: values.keywords || undefined });
-    },
-    []
-  );
+  const handleSearch = useCallback((values: { keywords?: string }) => {
+    setQueryParams({ keywords: values.keywords || undefined });
+  }, []);
 
   const handleReset = useCallback(() => {
     searchForm.resetFields();
@@ -84,7 +86,10 @@ const MenuManagement: React.FC = () => {
   }, [searchForm]);
 
   const handleAdd = useCallback(() => dialogRef.current?.open("add"), []);
-  const handleEdit = useCallback((record: MenuVO) => dialogRef.current?.open("edit", record), []);
+  const handleEdit = useCallback(
+    (record: MenuVO) => dialogRef.current?.open("edit", record),
+    []
+  );
 
   /** 切换菜单显示状态 */
   const handleToggleVisible = useCallback(
@@ -98,7 +103,6 @@ const MenuManagement: React.FC = () => {
           `菜单「${record.name}」${formData.visible === 1 ? "显示" : "隐藏"}成功`
         );
         refreshListAndRoutes();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         message.error(error?.message || "操作失败");
       }
@@ -142,7 +146,10 @@ const MenuManagement: React.FC = () => {
         width: 100,
         align: "center",
         render: (type: string) => {
-          const info = TYPE_MAP[type] || { label: type || "未知", color: "default" };
+          const info = TYPE_MAP[type] || {
+            label: type || "未知",
+            color: "default",
+          };
           return <Tag color={info.color}>{info.label}</Tag>;
         },
       },
@@ -227,9 +234,27 @@ const MenuManagement: React.FC = () => {
           </Form.Item>
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>搜索</Button>
-              <Button htmlType="reset" icon={<ReloadOutlined />} onClick={handleReset}>重置</Button>
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>新增</Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<SearchOutlined />}
+              >
+                搜索
+              </Button>
+              <Button
+                htmlType="reset"
+                icon={<ReloadOutlined />}
+                onClick={handleReset}
+              >
+                重置
+              </Button>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={handleAdd}
+              >
+                新增
+              </Button>
             </Space>
           </Form.Item>
         </Form>

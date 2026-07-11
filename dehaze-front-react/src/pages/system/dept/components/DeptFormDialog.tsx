@@ -1,8 +1,4 @@
-import {
-  DeptAPI,
-  type DeptForm,
-  type DeptVO,
-} from "dehaze-sdk-js";
+import { DeptAPI, type DeptForm, type DeptVO } from "dehaze-sdk-js";
 import {
   Form,
   Input,
@@ -41,7 +37,9 @@ interface DeptFormDialogProps {
 const DeptFormDialog = forwardRef<DeptFormDialogRef, DeptFormDialogProps>(
   ({ onSuccess }, ref) => {
     const [visible, setVisible] = useState(false);
-    const [dialogType, setDialogType] = useState<"add" | "edit" | "addSub">("add");
+    const [dialogType, setDialogType] = useState<"add" | "edit" | "addSub">(
+      "add"
+    );
     const [confirmLoading, setConfirmLoading] = useState(false);
     const [form] = Form.useForm<DeptForm>();
 
@@ -115,7 +113,6 @@ const DeptFormDialog = forwardRef<DeptFormDialogRef, DeptFormDialogProps>(
 
         handleCancel();
         onSuccess?.();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         if (error?.errorFields) return;
         message.error(error?.message || "操作失败");
@@ -124,8 +121,7 @@ const DeptFormDialog = forwardRef<DeptFormDialogRef, DeptFormDialogProps>(
       }
     }, [form, dialogType, handleCancel, onSuccess]);
 
-    const dialogTitle =
-      dialogType === "edit" ? "修改部门" : "新增部门";
+    const dialogTitle = dialogType === "edit" ? "修改部门" : "新增部门";
 
     return (
       <Modal
@@ -176,7 +172,11 @@ const DeptFormDialog = forwardRef<DeptFormDialogRef, DeptFormDialogProps>(
             label="排序"
             rules={[{ required: true, message: "请输入排序值" }]}
           >
-            <InputNumber min={1} style={{ width: "100%" }} placeholder="请输入排序值" />
+            <InputNumber
+              min={1}
+              style={{ width: "100%" }}
+              placeholder="请输入排序值"
+            />
           </Form.Item>
 
           <Form.Item name="status" label="状态">

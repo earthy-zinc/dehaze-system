@@ -51,7 +51,13 @@ import {
   type UploadFile,
   type MenuProps,
 } from "antd";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useParams } from "react-router-dom";
 
 // ==================== 类型定义 ====================
@@ -592,9 +598,7 @@ const BatchUploadDialog: React.FC<{
       return;
     }
 
-    const files = fileList
-      .map((f) => f.originFileObj as File)
-      .filter(Boolean);
+    const files = fileList.map((f) => f.originFileObj as File).filter(Boolean);
 
     if (files.length === 0) {
       message.warning("文件无效");
@@ -772,11 +776,7 @@ const ImageViewerModal: React.FC<{
               {image.formattedSize || formatFileSize(image.sizeBytes)}
             </Descriptions.Item>
             <Descriptions.Item label="格式">
-              {image.format ? (
-                <Tag>{image.format.toUpperCase()}</Tag>
-              ) : (
-                "-"
-              )}
+              {image.format ? <Tag>{image.format.toUpperCase()}</Tag> : "-"}
             </Descriptions.Item>
             <Descriptions.Item label="分辨率">
               {image.width && image.height
@@ -1227,10 +1227,7 @@ export default function DatasetDetail() {
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={6}>
             <Card size="small">
-              <Statistic
-                title="总图片数"
-                value={statistics?.fileCount ?? 0}
-              />
+              <Statistic title="总图片数" value={statistics?.fileCount ?? 0} />
             </Card>
           </Col>
           <Col span={6}>
@@ -1356,7 +1353,10 @@ export default function DatasetDetail() {
             {selectedFileIds.size > 0 && (
               <>
                 <Tag color="blue">已选择 {selectedFileIds.size} 项</Tag>
-                <Button size="small" onClick={() => setSelectedFileIds(new Set())}>
+                <Button
+                  size="small"
+                  onClick={() => setSelectedFileIds(new Set())}
+                >
                   清除选择
                 </Button>
               </>

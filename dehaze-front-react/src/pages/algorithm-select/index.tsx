@@ -1,10 +1,23 @@
 import { AlgorithmAPI, type Algorithm } from "dehaze-sdk-js";
 import { useDebounceFn } from "ahooks";
 import {
-  CheckCircleFilled, ReloadOutlined, SearchOutlined, ThunderboltFilled,
+  CheckCircleFilled,
+  ReloadOutlined,
+  SearchOutlined,
+  ThunderboltFilled,
 } from "@ant-design/icons";
 import {
-  Button, Card, Col, Empty, Input, Row, Space, Tag, Tree, Typography, message,
+  Button,
+  Card,
+  Col,
+  Empty,
+  Input,
+  Row,
+  Space,
+  Tag,
+  Tree,
+  Typography,
+  message,
 } from "antd";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -26,8 +39,11 @@ function flattenAlgorithms(list: Algorithm[]): Algorithm[] {
   const result: Algorithm[] = [];
   const walk = (nodes: Algorithm[]) => {
     for (const node of nodes) {
-      if (node.children?.length) { walk(node.children); }
-      else { result.push(node); }
+      if (node.children?.length) {
+        walk(node.children);
+      } else {
+        result.push(node);
+      }
     }
   };
   walk(list);
@@ -49,15 +65,22 @@ export default function AlgorithmSelect(): React.JSX.Element {
     try {
       const data = await AlgorithmAPI.getList();
       setAlgorithmTree(Array.isArray(data) ? data : []);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // ==================== 派生数据 ====================
 
   /** 所有叶子算法 */
-  const allAlgorithms = useMemo(() => flattenAlgorithms(algorithmTree), [algorithmTree]);
+  const allAlgorithms = useMemo(
+    () => flattenAlgorithms(algorithmTree),
+    [algorithmTree]
+  );
 
   /** 按类型统计数量 */
   const typeCounts = useMemo(() => {
@@ -74,7 +97,10 @@ export default function AlgorithmSelect(): React.JSX.Element {
       key: c.key,
       title: `${c.label}（${typeCounts[c.key] || 0}）`,
     }));
-    return [{ key: "all", title: `全部算法（${allAlgorithms.length}）` }, ...nodes];
+    return [
+      { key: "all", title: `全部算法（${allAlgorithms.length}）` },
+      ...nodes,
+    ];
   }, [allAlgorithms.length, typeCounts]);
 
   /** 智能推荐 Top 3（基于算法类型推荐，取已启用算法） */
@@ -99,10 +125,11 @@ export default function AlgorithmSelect(): React.JSX.Element {
     }
     const kw = keywords.trim().toLowerCase();
     if (kw) {
-      list = list.filter((a) =>
-        a.name.toLowerCase().includes(kw) ||
-        (a.description || "").toLowerCase().includes(kw) ||
-        (a.type || "").toLowerCase().includes(kw)
+      list = list.filter(
+        (a) =>
+          a.name.toLowerCase().includes(kw) ||
+          (a.description || "").toLowerCase().includes(kw) ||
+          (a.type || "").toLowerCase().includes(kw)
       );
     }
     return list;
@@ -157,37 +184,51 @@ export default function AlgorithmSelect(): React.JSX.Element {
         </Title>
         <Row gutter={12}>
           {recommendList.length === 0 ? (
-            <Col span={24}><Empty description="暂无推荐算法" /></Col>
-          ) : recommendList.map((algo) => (
-            <Col key={algo.id} span={8}>
-              <Card
-                size="small"
-                hoverable
-                style={{
-                  borderColor: selectedId === algo.id ? "#1677ff" : undefined,
-                  background: selectedId === algo.id ? "#e6f4ff" : undefined,
-                }}
-                onClick={() => setSelectedId(algo.id)}
-              >
-                <Space direction="vertical" size={4} style={{ width: "100%" }}>
-                  <Space>
-                    {selectedId === algo.id && <CheckCircleFilled style={{ color: "#1677ff" }} />}
-                    <Text strong>{algo.name}</Text>
-                    <Tag color="orange">推荐</Tag>
-                  </Space>
-                  <Space size={4}>
-                    <Tag>{algo.type}</Tag>
-                    <Tag color={algo.status === 1 ? "green" : "default"}>
-                      {algo.status === 1 ? "启用" : "禁用"}
-                    </Tag>
-                  </Space>
-                  <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>
-                    {algo.description || "暂无描述"}
-                  </Paragraph>
-                </Space>
-              </Card>
+            <Col span={24}>
+              <Empty description="暂无推荐算法" />
             </Col>
-          ))}
+          ) : (
+            recommendList.map((algo) => (
+              <Col key={algo.id} span={8}>
+                <Card
+                  size="small"
+                  hoverable
+                  style={{
+                    borderColor: selectedId === algo.id ? "#1677ff" : undefined,
+                    background: selectedId === algo.id ? "#e6f4ff" : undefined,
+                  }}
+                  onClick={() => setSelectedId(algo.id)}
+                >
+                  <Space
+                    direction="vertical"
+                    size={4}
+                    style={{ width: "100%" }}
+                  >
+                    <Space>
+                      {selectedId === algo.id && (
+                        <CheckCircleFilled style={{ color: "#1677ff" }} />
+                      )}
+                      <Text strong>{algo.name}</Text>
+                      <Tag color="orange">推荐</Tag>
+                    </Space>
+                    <Space size={4}>
+                      <Tag>{algo.type}</Tag>
+                      <Tag color={algo.status === 1 ? "green" : "default"}>
+                        {algo.status === 1 ? "启用" : "禁用"}
+                      </Tag>
+                    </Space>
+                    <Paragraph
+                      type="secondary"
+                      ellipsis={{ rows: 2 }}
+                      style={{ marginBottom: 0 }}
+                    >
+                      {algo.description || "暂无描述"}
+                    </Paragraph>
+                  </Space>
+                </Card>
+              </Col>
+            ))
+          )}
         </Row>
       </Card>
 
@@ -216,11 +257,17 @@ export default function AlgorithmSelect(): React.JSX.Element {
                   value={keywords}
                   onChange={(e) => debouncedSearch(e.target.value)}
                 />
-                <Button icon={<ReloadOutlined />} onClick={handleReset}>重置</Button>
+                <Button icon={<ReloadOutlined />} onClick={handleReset}>
+                  重置
+                </Button>
               </Space>
             }
             extra={
-              <Button type="primary" disabled={!selectedId} onClick={handleConfirm}>
+              <Button
+                type="primary"
+                disabled={!selectedId}
+                onClick={handleConfirm}
+              >
                 确认选择
               </Button>
             }
@@ -235,14 +282,22 @@ export default function AlgorithmSelect(): React.JSX.Element {
                       size="small"
                       hoverable
                       style={{
-                        borderColor: selectedId === algo.id ? "#1677ff" : undefined,
-                        background: selectedId === algo.id ? "#e6f4ff" : undefined,
+                        borderColor:
+                          selectedId === algo.id ? "#1677ff" : undefined,
+                        background:
+                          selectedId === algo.id ? "#e6f4ff" : undefined,
                       }}
                       onClick={() => setSelectedId(algo.id)}
                     >
-                      <Space direction="vertical" size={6} style={{ width: "100%" }}>
+                      <Space
+                        direction="vertical"
+                        size={6}
+                        style={{ width: "100%" }}
+                      >
                         <Space>
-                          {selectedId === algo.id && <CheckCircleFilled style={{ color: "#1677ff" }} />}
+                          {selectedId === algo.id && (
+                            <CheckCircleFilled style={{ color: "#1677ff" }} />
+                          )}
                           <Text strong>{algo.name}</Text>
                         </Space>
                         <Space size={4}>
@@ -251,7 +306,11 @@ export default function AlgorithmSelect(): React.JSX.Element {
                             {algo.status === 1 ? "启用" : "禁用"}
                           </Tag>
                         </Space>
-                        <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 0 }}>
+                        <Paragraph
+                          type="secondary"
+                          ellipsis={{ rows: 2 }}
+                          style={{ marginBottom: 0 }}
+                        >
                           {algo.description || "暂无描述"}
                         </Paragraph>
                       </Space>

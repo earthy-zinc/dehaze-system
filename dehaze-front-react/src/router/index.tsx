@@ -12,7 +12,14 @@ import ErrorPage403 from "@/pages/error/403";
 import ErrorPage404 from "@/pages/error/404";
 import Login from "@/pages/login";
 import lazyLoad from "@/router/LazyLoad";
-import { ApartmentOutlined, BookOutlined, HomeOutlined, MenuOutlined, SafetyOutlined, SettingOutlined } from "@ant-design/icons";
+import {
+  ApartmentOutlined,
+  BookOutlined,
+  HomeOutlined,
+  MenuOutlined,
+  SafetyOutlined,
+  SettingOutlined,
+} from "@ant-design/icons";
 import UserIcon from "@/assets/icons/user.svg";
 import React, { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
@@ -221,33 +228,23 @@ const router = createBrowserRouter([
           },
           {
             path: "dept",
-            element: lazyLoad(
-              lazy(() => import("@/pages/system/dept"))
-            ),
+            element: lazyLoad(lazy(() => import("@/pages/system/dept"))),
           },
           {
             path: "dict",
-            element: lazyLoad(
-              lazy(() => import("@/pages/system/dict"))
-            ),
+            element: lazyLoad(lazy(() => import("@/pages/system/dict"))),
           },
           {
             path: "menu",
-            element: lazyLoad(
-              lazy(() => import("@/pages/system/menu"))
-            ),
+            element: lazyLoad(lazy(() => import("@/pages/system/menu"))),
           },
           {
             path: "role",
-            element: lazyLoad(
-              lazy(() => import("@/pages/system/role"))
-            ),
+            element: lazyLoad(lazy(() => import("@/pages/system/role"))),
           },
           {
             path: "user",
-            element: lazyLoad(
-              lazy(() => import("@/pages/system/user"))
-            ),
+            element: lazyLoad(lazy(() => import("@/pages/system/user"))),
           },
         ],
       },

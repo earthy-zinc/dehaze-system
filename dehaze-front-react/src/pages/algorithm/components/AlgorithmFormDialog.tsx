@@ -1,6 +1,15 @@
-import { AlgorithmAPI, type Algorithm, type CreateAlgorithmOptional } from "dehaze-sdk-js";
+import {
+  AlgorithmAPI,
+  type Algorithm,
+  type CreateAlgorithmOptional,
+} from "dehaze-sdk-js";
 import { Form, Input, Modal, Switch, TreeSelect, message } from "antd";
-import React, { forwardRef, useCallback, useImperativeHandle, useState } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useState,
+} from "react";
 
 /** 递归转换算法树为 TreeSelect 格式 */
 function buildTreeSelect(algorithms: Algorithm[]): any[] {
@@ -22,7 +31,9 @@ interface Props {
 const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
   ({ onSuccess }, ref) => {
     const [visible, setVisible] = useState(false);
-    const [dialogType, setDialogType] = useState<"add" | "edit" | "addSub">("add");
+    const [dialogType, setDialogType] = useState<"add" | "edit" | "addSub">(
+      "add"
+    );
     const [confirmLoading, setConfirmLoading] = useState(false);
     const [form] = Form.useForm();
     const [treeData, setTreeData] = useState<any[]>([]);
@@ -71,7 +82,10 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
 
     useImperativeHandle(ref, () => ({ open }), [open]);
 
-    const handleCancel = useCallback(() => { setVisible(false); form.resetFields(); }, [form]);
+    const handleCancel = useCallback(() => {
+      setVisible(false);
+      form.resetFields();
+    }, [form]);
 
     const handleSubmit = useCallback(async () => {
       try {
@@ -103,40 +117,93 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
       } catch (error: any) {
         if (error?.errorFields) return;
         message.error(error?.message || "操作失败");
-      } finally { setConfirmLoading(false); }
+      } finally {
+        setConfirmLoading(false);
+      }
     }, [form, dialogType, handleCancel, onSuccess]);
 
     const title = dialogType === "edit" ? "修改算法" : "新增算法";
 
     return (
       <Modal
-        title={title} open={visible} width={700} confirmLoading={confirmLoading}
-        okText="保存" cancelText="取消" destroyOnClose onOk={handleSubmit} onCancel={handleCancel}
+        title={title}
+        open={visible}
+        width={700}
+        confirmLoading={confirmLoading}
+        okText="保存"
+        cancelText="取消"
+        destroyOnClose
+        onOk={handleSubmit}
+        onCancel={handleCancel}
       >
-        <Form form={form} layout="vertical" colon={false} validateTrigger="onBlur">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+        <Form
+          form={form}
+          layout="vertical"
+          colon={false}
+          validateTrigger="onBlur"
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0 24px",
+            }}
+          >
             <Form.Item name="parentId" label="上级算法">
-              <TreeSelect treeData={treeData} placeholder="请选择上级算法" treeDefaultExpandAll allowClear />
+              <TreeSelect
+                treeData={treeData}
+                placeholder="请选择上级算法"
+                treeDefaultExpandAll
+                allowClear
+              />
             </Form.Item>
-            <Form.Item name="type" label="算法类型" rules={[{ required: true, message: "请输入算法类型" }]}>
-              <Input placeholder="如 deep_learning / traditional" disabled={dialogType === "edit"} />
+            <Form.Item
+              name="type"
+              label="算法类型"
+              rules={[{ required: true, message: "请输入算法类型" }]}
+            >
+              <Input
+                placeholder="如 deep_learning / traditional"
+                disabled={dialogType === "edit"}
+              />
             </Form.Item>
           </div>
-          <Form.Item name="name" label="算法名称" rules={[{ required: true, message: "请输入算法名称" }]}>
+          <Form.Item
+            name="name"
+            label="算法名称"
+            rules={[{ required: true, message: "请输入算法名称" }]}
+          >
             <Input placeholder="请输入算法名称" />
           </Form.Item>
           <Form.Item name="description" label="算法描述">
             <Input.TextArea placeholder="请输入算法描述" rows={2} />
           </Form.Item>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0 24px",
+            }}
+          >
             <Form.Item name="importPath" label="代码导入路径">
               <Input placeholder="如 models.ridcp" />
             </Form.Item>
-            <Form.Item name="status" label="状态" valuePropName="checked" getValueFromEvent={(checked: boolean) => checked ? 1 : 0}>
+            <Form.Item
+              name="status"
+              label="状态"
+              valuePropName="checked"
+              getValueFromEvent={(checked: boolean) => (checked ? 1 : 0)}
+            >
               <Switch checkedChildren="启用" unCheckedChildren="禁用" />
             </Form.Item>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0 24px",
+            }}
+          >
             <Form.Item name="flops" label="FLOPs">
               <Input placeholder="如 1.5G" />
             </Form.Item>

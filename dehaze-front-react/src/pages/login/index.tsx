@@ -125,9 +125,7 @@ export default function Login() {
                 iconRender={(visible) =>
                   visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
                 }
-                onKeyUp={(e) =>
-                  setIsCapslock(e.getModifierState("CapsLock"))
-                }
+                onKeyUp={(e) => setIsCapslock(e.getModifierState("CapsLock"))}
               />
             </Form.Item>
           </Tooltip>
@@ -168,8 +166,7 @@ export default function Login() {
       </Card>
       <div className="absolute bottom-1 text-[10px] text-center">
         <p>
-          Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫
-          版权所有
+          Copyright © 2022 - 2024 Peixin Wu All Rights Reserved. 武沛鑫 版权所有
         </p>
         <p>渝ICP备2024111923号-2</p>
       </div>

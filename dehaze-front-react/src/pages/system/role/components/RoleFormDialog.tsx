@@ -1,13 +1,5 @@
 import { RoleAPI, type RoleForm } from "dehaze-sdk-js";
-import {
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Radio,
-  Select,
-  message,
-} from "antd";
+import { Form, Input, InputNumber, Modal, Radio, Select, message } from "antd";
 import React, {
   forwardRef,
   useCallback,
@@ -89,7 +81,6 @@ const RoleFormDialog = forwardRef<RoleFormDialogRef, RoleFormDialogProps>(
 
         handleCancel();
         onSuccess?.();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } catch (error: any) {
         if (error?.errorFields) return;
         message.error(error?.message || "操作失败");
@@ -148,10 +139,7 @@ const RoleFormDialog = forwardRef<RoleFormDialogRef, RoleFormDialogProps>(
             label="数据权限"
             rules={[{ required: true, message: "请选择数据权限" }]}
           >
-            <Select
-              placeholder="请选择数据权限"
-              options={DATA_SCOPE_OPTIONS}
-            />
+            <Select placeholder="请选择数据权限" options={DATA_SCOPE_OPTIONS} />
           </Form.Item>
 
           <Form.Item
@@ -159,7 +147,11 @@ const RoleFormDialog = forwardRef<RoleFormDialogRef, RoleFormDialogProps>(
             label="排序"
             rules={[{ required: true, message: "请输入排序值" }]}
           >
-            <InputNumber min={1} style={{ width: "100%" }} placeholder="请输入排序值" />
+            <InputNumber
+              min={1}
+              style={{ width: "100%" }}
+              placeholder="请输入排序值"
+            />
           </Form.Item>
 
           <Form.Item name="status" label="状态">

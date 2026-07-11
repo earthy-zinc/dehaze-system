@@ -42,7 +42,13 @@ import {
   SearchOutlined,
   UploadOutlined,
 } from "@ant-design/icons";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import PasswordResetDialog, {
   type PasswordResetDialogRef,
 } from "./components/PasswordResetDialog";
@@ -179,7 +185,6 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     loadUserList(queryParams);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryParams, refreshFlag]);
 
   // ==================== 通用刷新 ====================
@@ -206,7 +211,11 @@ const UserManagement: React.FC = () => {
 
   /** 搜索 */
   const handleSearch = useCallback(
-    (values: { keywords?: string; status?: number; dateRange?: [any, any] }) => {
+    (values: {
+      keywords?: string;
+      status?: number;
+      dateRange?: [any, any];
+    }) => {
       const startTime =
         values.dateRange?.[0]?.format?.("YYYY-MM-DD HH:mm:ss") ?? undefined;
       const endTime =
@@ -313,7 +322,9 @@ const UserManagement: React.FC = () => {
       setStatusUpdatingId(record.id);
       UserAPI.updateStatus(record.id!, newStatus)
         .then(() => {
-          message.success(`用户「${record.username}」已${checked ? "启用" : "禁用"}`);
+          message.success(
+            `用户「${record.username}」已${checked ? "启用" : "禁用"}`
+          );
           refreshList();
         })
         .catch((error) => {
@@ -499,12 +510,7 @@ const UserManagement: React.FC = () => {
               cancelText="取消"
               okType="danger"
             >
-              <Button
-                type="link"
-                size="small"
-                danger
-                icon={<DeleteOutlined />}
-              >
+              <Button type="link" size="small" danger icon={<DeleteOutlined />}>
                 删除
               </Button>
             </Popconfirm>
@@ -512,7 +518,13 @@ const UserManagement: React.FC = () => {
         ),
       },
     ],
-    [handleEdit, handleDelete, handleResetPassword, handleStatusChange, statusUpdatingId]
+    [
+      handleEdit,
+      handleDelete,
+      handleResetPassword,
+      handleStatusChange,
+      statusUpdatingId,
+    ]
   );
 
   /** 行选择配置 */
