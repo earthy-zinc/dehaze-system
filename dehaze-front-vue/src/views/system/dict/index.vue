@@ -24,7 +24,7 @@
     <el-card class="table-container" shadow="never">
       <template #header>
         <el-button
-          v-hasPerm="['sys:dict_type:add']"
+          v-hasPerm="['sys:dict:type:add']"
           type="success"
           @click="openDialog()"
           ><i-ep-plus />新增</el-button
@@ -53,6 +53,7 @@
           </template>
         </el-table-column>
         <el-table-column align="center" label="备注" prop="remark" />
+        <el-table-column label="创建时间" prop="createTime" width="180" />
         <el-table-column align="center" fixed="right" label="操作" width="220">
           <template #default="scope">
             <el-button
@@ -63,7 +64,7 @@
               ><i-ep-Collection />字典数据</el-button
             >
             <el-button
-              v-hasPerm="['sys:dict_type:edit']"
+              v-hasPerm="['sys:dict:type:edit']"
               link
               size="small"
               type="primary"
@@ -71,11 +72,11 @@
               ><i-ep-edit />编辑</el-button
             >
             <el-button
-              v-hasPerm="['sys:dict_type:delete']"
+              v-hasPerm="['sys:dict:type:delete']"
               link
               size="small"
               type="primary"
-              @click.stop="handleDelete(scope.row.id)"
+              @click.stop="handleDelete(scope.row)"
               ><i-ep-delete />删除</el-button
             >
           </template>
@@ -270,14 +271,17 @@ function resetForm() {
 }
 
 /** 删除字典类型 */
-function handleDelete(dictTypeId?: number) {
-  const dictTypeIds = [dictTypeId || ids.value].join(",");
+function handleDelete(row?: any) {
+  const dictTypeIds = (row ? [row.id] : ids.value).join(",");
   if (!dictTypeIds) {
     ElMessage.warning("请勾选删除项");
     return;
   }
 
-  ElMessageBox.confirm("确认删除已选中的数据项?", "警告", {
+  const confirmMsg = row
+    ? `确认删除字典类型「${row.name}」吗？删除后不可恢复。`
+    : "确认删除选中的字典类型吗？删除后不可恢复。";
+  ElMessageBox.confirm(confirmMsg, "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",

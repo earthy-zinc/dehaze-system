@@ -49,21 +49,20 @@ service.interceptors.response.use(
         return result;
       }
 
-      const { code, data, msg } = response.data;
+      const { code, data } = response.data;
       if (code !== ResultEnum.SUCCESS) {
         return Promise.reject(response.data);
       }
-      // 如果 data 为 null/undefined，返回整个 response.data
-      // 否则返回 data
       const result = (await interceptors.onResponse?.(response)) || data;
-      return result !== null && result !== undefined ? result : response.data;
+      return result;
     } catch (error) {
       return Promise.reject(error);
     }
   },
   (error: AxiosError) => {
     const interceptors = configManager.getInterceptors();
-    return Promise.reject(interceptors.onResponseError?.(error) || error);
+    const result = interceptors.onResponseError?.(error);
+    return result !== undefined ? result : Promise.reject(error);
   }
 );
 
@@ -73,4 +72,5 @@ function request<T = any, R = any>(config: AxiosRequestConfig): Promise<R> {
   return service.request(config) as Promise<R>;
 }
 
+export const javaService = service;
 export default request;

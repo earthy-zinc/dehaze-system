@@ -3,6 +3,7 @@ import {
   type RolePageVO,
   type RoleQuery,
 } from "dehaze-sdk-js";
+import { useHasPerm } from "@/hooks/usePermission";
 import {
   Button,
   Card,
@@ -69,6 +70,9 @@ const RoleManagement: React.FC = () => {
   const formDialogRef = useRef<RoleFormDialogRef>(null);
   const permissionDialogRef = useRef<PermissionDialogRef>(null);
   const [refreshFlag, setRefreshFlag] = useState(0);
+
+  // 权限校验
+  const hasPerm = useHasPerm();
 
   // ==================== 数据加载 ====================
 
@@ -239,43 +243,55 @@ const RoleManagement: React.FC = () => {
         fixed: "right",
         render: (_: unknown, record: RolePageVO) => (
           <Space size="small">
-            <Button
-              type="link"
-              size="small"
-              icon={<SafetyOutlined />}
-              onClick={() => handleAssignPermission(record)}
-            >
-              分配权限
-            </Button>
-            <Button
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            >
-              编辑
-            </Button>
-            <Popconfirm
-              title={`确认删除角色「${record.name}」吗？删除后不可恢复。`}
-              onConfirm={() => handleDelete(record)}
-              okText="确定"
-              cancelText="取消"
-              okType="danger"
-            >
+            {hasPerm("sys:role:edit") && (
               <Button
                 type="link"
                 size="small"
-                danger
-                icon={<DeleteOutlined />}
+                icon={<SafetyOutlined />}
+                onClick={() => handleAssignPermission(record)}
               >
-                删除
+                分配权限
               </Button>
-            </Popconfirm>
+            )}
+            {hasPerm("sys:role:edit") && (
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => handleEdit(record)}
+              >
+                编辑
+              </Button>
+            )}
+            {hasPerm("sys:role:delete") && (
+              <Popconfirm
+                title={`确认删除角色「${record.name}」吗？删除后不可恢复。`}
+                onConfirm={() => handleDelete(record)}
+                okText="确定"
+                cancelText="取消"
+                okType="danger"
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                >
+                  删除
+                </Button>
+              </Popconfirm>
+            )}
           </Space>
         ),
       },
     ],
-    [handleStatusChange, handleAssignPermission, handleEdit, handleDelete]
+    [
+      handleStatusChange,
+      handleAssignPermission,
+      handleEdit,
+      handleDelete,
+      hasPerm,
+    ]
   );
 
   const rowSelection = useMemo(
@@ -311,21 +327,25 @@ const RoleManagement: React.FC = () => {
               >
                 重置
               </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleAdd}
-              >
-                新增
-              </Button>
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                disabled={selectedRowKeys.length === 0}
-                onClick={handleBatchDelete}
-              >
-                删除
-              </Button>
+              {hasPerm("sys:role:add") && (
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAdd}
+                >
+                  新增
+                </Button>
+              )}
+              {hasPerm("sys:role:delete") && (
+                <Button
+                  danger
+                  icon={<DeleteOutlined />}
+                  disabled={selectedRowKeys.length === 0}
+                  onClick={handleBatchDelete}
+                >
+                  删除
+                </Button>
+              )}
             </Space>
           </Form.Item>
         </Form>

@@ -38,6 +38,13 @@ describe("useUserStore", () => {
       const mockResponse = {
         tokenType: "Bearer",
         accessToken: "test-access-token",
+        refreshToken: "test-refresh-token",
+        expires: 3600,
+        user: {
+          id: 1,
+          username: "admin",
+          nickname: "管理员",
+        },
       };
 
       vi.mocked(AuthAPI.login).mockResolvedValue(mockResponse);
@@ -243,6 +250,13 @@ describe("useUserStore", () => {
       const mockLoginResponse = {
         tokenType: "Bearer",
         accessToken: "test-token",
+        refreshToken: "test-refresh-token",
+        expires: 3600,
+        user: {
+          id: 1,
+          username: "admin",
+          nickname: "管理员",
+        },
       };
       const mockUserInfo = {
         userId: 1,

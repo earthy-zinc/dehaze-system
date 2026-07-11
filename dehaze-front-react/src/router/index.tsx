@@ -6,7 +6,9 @@ import OverlapIcon from "@/assets/icons/overlap.svg";
 import ParallelIcon from "@/assets/icons/parallel.svg";
 import PresentationIcon from "@/assets/icons/presentation.svg";
 import SegmentationIcon from "@/assets/icons/segmentation.svg";
+import TaskIcon from "@/assets/icons/todolist.svg";
 import BasicLayout from "@/layout";
+import ErrorPage403 from "@/pages/error/403";
 import ErrorPage404 from "@/pages/error/404";
 import Login from "@/pages/login";
 import lazyLoad from "@/router/LazyLoad";
@@ -75,6 +77,12 @@ export const menuItems = [
     ],
   },
   {
+    key: "Task",
+    label: "任务中心",
+    icon: <TaskIcon />,
+    path: "/task",
+  },
+  {
     key: "System",
     label: "系统管理",
     icon: <SettingOutlined />,
@@ -129,6 +137,11 @@ const router = createBrowserRouter([
         element: lazyLoad(lazy(() => import("@/pages/home"))),
       },
       {
+        // 图像输入页（不在菜单中显示，通过导航跳转访问）
+        path: "image-input",
+        element: lazyLoad(lazy(() => import("@/pages/image-input"))),
+      },
+      {
         path: "dataset",
         children: [
           {
@@ -149,6 +162,11 @@ const router = createBrowserRouter([
           {
             index: true,
             element: lazyLoad(lazy(() => import("@/pages/algorithm"))),
+          },
+          {
+            // 算法选择页（不在菜单中显示）
+            path: "select",
+            element: lazyLoad(lazy(() => import("@/pages/algorithm-select"))),
           },
         ],
       },
@@ -189,6 +207,10 @@ const router = createBrowserRouter([
             element: lazyLoad(lazy(() => import("@/pages/compare/parallel"))),
           },
         ],
+      },
+      {
+        path: "task",
+        element: lazyLoad(lazy(() => import("@/pages/task"))),
       },
       {
         path: "system",
@@ -235,6 +257,10 @@ const router = createBrowserRouter([
     path: "login",
     element: <Login />,
     errorElement: <ErrorPage404 />,
+  },
+  {
+    path: "403",
+    element: <ErrorPage403 />,
   },
   {
     path: "*",

@@ -19,7 +19,7 @@ class UserAPI {
    * @param queryParams
    */
   static getPage(queryParams: UserQuery) {
-    return request<any, PageResult<UserPageVO>>({
+    return request<any, PageResult<UserPageVO[]>>({
       url: "/api/v1/users/page",
       method: "get",
       params: queryParams,

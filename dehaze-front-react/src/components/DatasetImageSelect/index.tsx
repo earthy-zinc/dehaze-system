@@ -1,4 +1,10 @@
-import { DatasetAPI, Dataset, ImageItemQuery } from "dehaze-sdk-js";
+import {
+  DatasetAPI,
+  DatasetItemAPI,
+  Dataset,
+  DatasetItemQuery,
+  DatasetItemVO,
+} from "dehaze-sdk-js";
 import Waterfall from "@/components/Waterfall";
 import { ViewCard } from "@/components/Waterfall/types";
 import { changeUrl } from "@/utils";
@@ -29,12 +35,11 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
     createTime: new Date(),
     updateTime: new Date(),
     path: "",
-    size: "",
     total: 0,
   });
   const [imageTypes, setImageTypes] = useState<ImageType[]>([]);
   const [images, setImages] = useState<ViewCard[]>([]);
-  const [queryParams, setQueryParams] = useState<ImageItemQuery>({
+  const [queryParams, setQueryParams] = useState<DatasetItemQuery>({
     pageNum: 1,
     pageSize: 10,
   });
@@ -50,23 +55,25 @@ const DatasetImageSelect: React.FC<DatasetImageSelectProps> = ({
 
   // 请求当前数据集的图片列表
   const handleQuery = async () => {
-    const response = await DatasetAPI.getImageItem(
-      selectedDatasetId,
-      queryParams
-    );
+    const response = await DatasetItemAPI.getList({
+      ...queryParams,
+      datasetId: selectedDatasetId,
+    });
     const items = response.list;
-    const totalPages = Math.ceil(response.total / queryParams.pageSize);
 
-    const currentType =
-      imageTypes.find((type) => type.enabled) || imageTypes[0];
-    const newImages = items.map((item) => ({
-      id: item.id,
-      src: changeUrl(item.imgUrl[currentType.id].url),
-      originSrc: changeUrl(item.imgUrl[currentType.id].originUrl!),
-      alt: item.imgUrl[currentType.id].description || "",
-    }));
+    const newImages = items
+      .map((item: DatasetItemVO) => {
+        const image = item.clearImage || item.hazyImages?.[0];
+        if (!image) return null;
+        return {
+          id: item.id,
+          src: changeUrl(image.url),
+          originSrc: changeUrl(image.originUrl || image.url),
+          alt: image.description || "",
+        } as ViewCard;
+      })
+      .filter((img): img is ViewCard => img !== null);
     setImages(newImages);
-    // 更新分页状态
   };
 
   // 获取数据集可选项，并默认选择第一个数据集展示

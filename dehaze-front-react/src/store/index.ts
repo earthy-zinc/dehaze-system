@@ -6,6 +6,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { persistStore } from "redux-persist";
 import permissionReducer from "./modules/permissionSlice";
 import datasetReducer from "./modules/datasetSlice";
+import taskReducer from "./modules/taskSlice";
 
 const store = configureStore({
   reducer: {
@@ -15,6 +16,7 @@ const store = configureStore({
     permission: permissionReducer,
     imageShow: imageShowReducer,
     dataset: datasetReducer,
+    task: taskReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

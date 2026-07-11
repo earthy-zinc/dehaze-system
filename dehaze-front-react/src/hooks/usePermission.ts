@@ -4,7 +4,7 @@ import { DisPatchType, RootState } from "@/store";
 import { generateRoutes } from "@/store/modules/permissionSlice";
 import { getUserInfo, resetToken } from "@/store/modules/userSlice";
 import NProgress from "nprogress";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -38,7 +38,7 @@ export const usePermission = () => {
     );
 
     if (hasRoles && !findRoute) {
-      navigate("/404", { replace: true });
+      navigate("/403", { replace: true });
       NProgress.done();
       return;
     }
@@ -69,4 +69,21 @@ export const usePermission = () => {
     permissionStore.routes,
     userStore.user.roles,
   ]);
+};
+
+/**
+ * 权限校验 Hook
+ * 基于当前用户的权限列表判断是否拥有指定权限
+ * @returns hasPerm 函数，传入权限标识返回布尔值
+ */
+export const useHasPerm = () => {
+  const userStore = useSelector((state: RootState) => state.user);
+  const hasPerm = useCallback(
+    (perm: string): boolean => {
+      const perms = userStore.user.perms || [];
+      return perms.includes(perm);
+    },
+    [userStore.user.perms]
+  );
+  return hasPerm;
 };

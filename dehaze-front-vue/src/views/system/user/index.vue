@@ -18,6 +18,7 @@
                 placeholder="用户名/昵称/手机号"
                 style="width: 200px"
                 @keyup.enter="handleQuery"
+                @input="debouncedQuery"
               />
             </el-form-item>
 
@@ -89,7 +90,7 @@
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
-                <el-button class="ml-3" @click="handleExport"
+                <el-button class="ml-3" :loading="exportLoading" @click="handleExport"
                   ><template #icon><i-ep-download /></template>导出</el-button
                 >
               </div>
@@ -144,9 +145,12 @@
 
             <el-table-column align="center" label="状态" prop="status">
               <template #default="scope">
-                <el-tag :type="scope.row.status == 1 ? 'success' : 'info'">{{
-                  scope.row.status == 1 ? "启用" : "禁用"
-                }}</el-tag>
+                <el-switch
+                  v-model="scope.row.status"
+                  :active-value="1"
+                  :inactive-value="0"
+                  @change="handleStatusChange(scope.row)"
+                />
               </template>
             </el-table-column>
             <el-table-column
@@ -178,7 +182,7 @@
                   link
                   size="small"
                   type="primary"
-                  @click="handleDelete(scope.row.id)"
+                  @click="handleDelete(scope.row)"
                   ><i-ep-delete />删除</el-button
                 >
               </template>
@@ -342,6 +346,7 @@ const userFormRef = ref(ElForm); // 用户表单
 const uploadRef = ref<UploadInstance>(); // 上传组件
 
 const loading = ref(false); //  加载状态
+const exportLoading = ref(false); // 导出加载状态
 const removeIds = ref([]); // 删除用户ID集合 用于批量删除
 const queryParams = reactive<UserQuery>({
   pageNum: 1,
@@ -385,6 +390,7 @@ const rules = reactive({
   username: [{ required: true, message: "用户名不能为空", trigger: "blur" }],
   nickname: [{ required: true, message: "用户昵称不能为空", trigger: "blur" }],
   deptId: [{ required: true, message: "所属部门不能为空", trigger: "blur" }],
+  gender: [{ required: true, message: "性别不能为空", trigger: "change" }],
   roleIds: [{ required: true, message: "用户角色不能为空", trigger: "blur" }],
   email: [
     {
@@ -414,6 +420,16 @@ function handleQuery() {
     .finally(() => {
       loading.value = false;
     });
+}
+
+/** 防抖查询（300ms） */
+const debouncedQuery = useDebounceFn(handleQuery, 300);
+
+/** 修改用户状态 */
+function handleStatusChange(row: { id: number; status: number }) {
+  UserAPI.updateStatus(row.id, row.status).then(() => {
+    ElMessage.success("状态修改成功");
+  });
 }
 
 /** 重置查询 */
@@ -559,14 +575,23 @@ const handleSubmit = useThrottleFn(() => {
 }, 3000);
 
 /** 删除用户 */
-function handleDelete(id?: number) {
-  const userIds = [id || removeIds.value].join(",");
-  if (!userIds) {
-    ElMessage.warning("请勾选删除项");
-    return;
+function handleDelete(row?: { id: number; username: string }) {
+  let userIds: string;
+  let confirmText: string;
+
+  if (row) {
+    userIds = String(row.id);
+    confirmText = `确认删除用户「${row.username}」吗？删除后不可恢复。`;
+  } else {
+    if (removeIds.value.length === 0) {
+      ElMessage.warning("请勾选删除项");
+      return;
+    }
+    userIds = removeIds.value.join(",");
+    confirmText = `确认删除选中的 ${removeIds.value.length} 个用户吗？删除后不可恢复。`;
   }
 
-  ElMessageBox.confirm("确认删除用户?", "警告", {
+  ElMessageBox.confirm(confirmText, "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
@@ -619,6 +644,7 @@ function handleFileExceed(files: any) {
 
 /** 导出用户 */
 function handleExport() {
+  exportLoading.value = true;
   UserAPI.export(queryParams).then((response: any) => {
     const fileData = response.data;
     const fileName = decodeURI(
@@ -639,10 +665,17 @@ function handleExport() {
 
     document.body.removeChild(downloadLink);
     window.URL.revokeObjectURL(downloadUrl);
+  }).finally(() => {
+    exportLoading.value = false;
   });
 }
 
-onMounted(() => {
+onMounted(async () => {
+  // 默认选中部门树第一个根节点
+  const deptOptions = await DeptAPI.getOptions();
+  if (deptOptions && deptOptions.length > 0) {
+    queryParams.deptId = Number(deptOptions[0].value);
+  }
   handleQuery();
 });
 </script>

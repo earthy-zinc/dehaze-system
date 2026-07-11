@@ -138,6 +138,11 @@ export interface DictForm {
   value?: string;
 
   /**
+   * 是否默认(1:是;0:否)
+   */
+  defaulted?: number;
+
+  /**
    * 备注
    */
   remark?: string;

@@ -102,6 +102,14 @@ export const useImageShowStore = defineStore("imageShow", () => {
     enabled: true,
   });
 
+  // 去雾算法参数（处理时使用，效果对比页用于参数对比）
+  const dehazeParams = reactive({
+    dehazeStrength: 50,
+    colorSaturation: 50,
+    contrast: 50,
+    sharpen: 30,
+  });
+
   const disableGenerate = computed(() => {
     return imageInfo.images.urls.length !== 1 || !modelId.value;
   });
@@ -220,6 +228,18 @@ export const useImageShowStore = defineStore("imageShow", () => {
     mouse.y = y;
   }
 
+  function setDehazeParams(params: {
+    dehazeStrength: number;
+    colorSaturation: number;
+    contrast: number;
+    sharpen: number;
+  }) {
+    dehazeParams.dehazeStrength = params.dehazeStrength;
+    dehazeParams.colorSaturation = params.colorSaturation;
+    dehazeParams.contrast = params.contrast;
+    dehazeParams.sharpen = params.sharpen;
+  }
+
   return {
     loading,
     scaleX,
@@ -232,6 +252,7 @@ export const useImageShowStore = defineStore("imageShow", () => {
     maskWidth,
     maskHeight,
     dividerInfo,
+    dehazeParams,
     disableGenerate,
     setLoading,
     setModelId,
@@ -252,6 +273,7 @@ export const useImageShowStore = defineStore("imageShow", () => {
     setMagnifierZoomLevel,
     setMaskXY,
     setMouseXY,
+    setDehazeParams,
   };
 });
 

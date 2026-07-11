@@ -1,11 +1,52 @@
 import { MenuAPI, type MenuForm, type MenuVO } from "dehaze-sdk-js";
 import {
+  ApartmentOutlined,
+  AppstoreOutlined,
+  BookOutlined,
+  BugOutlined,
+  BuildOutlined,
+  BulbOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  CloudOutlined,
+  CodeOutlined,
+  DashboardOutlined,
+  DatabaseOutlined,
+  DeleteOutlined,
+  DesktopOutlined,
+  EditOutlined,
+  EnvironmentOutlined,
+  EyeOutlined,
+  FileOutlined,
+  FolderOutlined,
+  GlobalOutlined,
+  HomeOutlined,
+  LockOutlined,
+  MailOutlined,
+  MenuOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  RocketOutlined,
+  SafetyOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  ShoppingOutlined,
+  SolutionOutlined,
+  StarOutlined,
+  TableOutlined,
+  TeamOutlined,
+  ThunderboltOutlined,
+  ToolOutlined,
+  UserOutlined,
+} from "@ant-design/icons";
+import {
   Form,
   Input,
   InputNumber,
   Modal,
   Radio,
   Select,
+  Space,
   TreeSelect,
   message,
 } from "antd";
@@ -24,13 +65,65 @@ const TYPE_OPTIONS = [
   { value: "EXTLINK", label: "外链" },
 ];
 
-/** 递归转换菜单数据为 TreeSelect 格式 */
+/** 常用图标映射（图标名称 -> 图标组件） */
+const ICON_MAP: Record<string, React.ReactNode> = {
+  HomeOutlined: <HomeOutlined />,
+  SettingOutlined: <SettingOutlined />,
+  MenuOutlined: <MenuOutlined />,
+  ApartmentOutlined: <ApartmentOutlined />,
+  BookOutlined: <BookOutlined />,
+  SafetyOutlined: <SafetyOutlined />,
+  UserOutlined: <UserOutlined />,
+  DatabaseOutlined: <DatabaseOutlined />,
+  AppstoreOutlined: <AppstoreOutlined />,
+  DashboardOutlined: <DashboardOutlined />,
+  FileOutlined: <FileOutlined />,
+  FolderOutlined: <FolderOutlined />,
+  ToolOutlined: <ToolOutlined />,
+  CloudOutlined: <CloudOutlined />,
+  CodeOutlined: <CodeOutlined />,
+  EyeOutlined: <EyeOutlined />,
+  EditOutlined: <EditOutlined />,
+  DeleteOutlined: <DeleteOutlined />,
+  PlusOutlined: <PlusOutlined />,
+  SearchOutlined: <SearchOutlined />,
+  ReloadOutlined: <ReloadOutlined />,
+  StarOutlined: <StarOutlined />,
+  MailOutlined: <MailOutlined />,
+  LockOutlined: <LockOutlined />,
+  TeamOutlined: <TeamOutlined />,
+  SolutionOutlined: <SolutionOutlined />,
+  TableOutlined: <TableOutlined />,
+  CalendarOutlined: <CalendarOutlined />,
+  ClockCircleOutlined: <ClockCircleOutlined />,
+  EnvironmentOutlined: <EnvironmentOutlined />,
+  GlobalOutlined: <GlobalOutlined />,
+  BugOutlined: <BugOutlined />,
+  DesktopOutlined: <DesktopOutlined />,
+  ThunderboltOutlined: <ThunderboltOutlined />,
+  BulbOutlined: <BulbOutlined />,
+  RocketOutlined: <RocketOutlined />,
+  BuildOutlined: <BuildOutlined />,
+  ShoppingOutlined: <ShoppingOutlined />,
+};
+
+/** 图标下拉选项 */
+const ICON_OPTIONS = Object.keys(ICON_MAP).map((name) => ({
+  value: name,
+  label: name,
+}));
+
+/** 递归转换菜单数据为 TreeSelect 格式，过滤掉按钮和外链类型 */
 function buildMenuTreeSelect(menus: MenuVO[]): any[] {
-  return menus.map((menu) => ({
-    title: menu.name,
-    value: menu.id,
-    children: menu.children?.length ? buildMenuTreeSelect(menu.children) : undefined,
-  }));
+  return menus
+    .filter((menu) => menu.type === "CATALOG" || menu.type === "MENU")
+    .map((menu) => ({
+      title: menu.name,
+      value: menu.id,
+      children: menu.children?.length
+        ? buildMenuTreeSelect(menu.children)
+        : undefined,
+    }));
 }
 
 export interface MenuFormDialogRef {
@@ -53,7 +146,8 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
 
     const loadMenuOptions = useCallback(async () => {
       try {
-        const data = await MenuAPI.getOptions();
+        // 使用 getList 获取完整菜单数据（含 type 字段）以支持类型过滤
+        const data = await MenuAPI.getList({});
         setMenuTree([
           { title: "顶级菜单", value: 0 },
           ...buildMenuTreeSelect(data || []),
@@ -219,7 +313,13 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
                         { required: true, message: "路由地址不能为空" },
                         { pattern: /^\//, message: "路由地址必须以 / 开头" },
                       ]
-                    : [{ required: true, message: "外链地址不能为空" }]
+                    : [
+                        { required: true, message: "外链地址不能为空" },
+                        {
+                          pattern: /^https?:\/\/.+/,
+                          message: "外链地址必须以 http:// 或 https:// 开头",
+                        },
+                      ]
                   : undefined
               }
             >
@@ -265,7 +365,18 @@ const MenuFormDialog = forwardRef<MenuFormDialogRef, MenuFormDialogProps>(
 
           {showIcon && (
             <Form.Item name="icon" label="图标">
-              <Input placeholder="请输入图标名称" />
+              <Select
+                placeholder="请选择图标"
+                allowClear
+                showSearch
+                options={ICON_OPTIONS}
+                optionRender={(option) => (
+                  <Space>
+                    {ICON_MAP[option.value as string]}
+                    <span>{option.label}</span>
+                  </Space>
+                )}
+              />
             </Form.Item>
           )}
 

@@ -12,7 +12,13 @@ import java.io.InputStream;
  */
 public interface SysFileService extends IService<SysFile> {
 
-    boolean check(String md5);
+    /**
+     * 根据md5查询文件，存在则返回文件信息，否则返回null
+     *
+     * @param md5 文件md5
+     * @return 文件信息，不存在返回null
+     */
+    SysFile check(String md5);
 
     /**
      * 保存文件，并记录到数据库中

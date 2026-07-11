@@ -1,10 +1,11 @@
 import { MenuAPI, RoleAPI, type MenuVO } from "dehaze-sdk-js";
-import { Modal, Spin, Tree, message } from "antd";
+import { Button, Modal, Space, Spin, Tree, message } from "antd";
 import React, {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useState,
 } from "react";
 
@@ -15,6 +16,19 @@ function buildMenuTree(menus: MenuVO[]): any[] {
     key: menu.id,
     children: menu.children?.length ? buildMenuTree(menu.children) : undefined,
   }));
+}
+
+/** 递归收集所有树节点key */
+function collectAllKeys(nodes: any[]): React.Key[] {
+  const keys: React.Key[] = [];
+  const walk = (list: any[]) => {
+    list.forEach((n) => {
+      keys.push(n.key);
+      if (n.children?.length) walk(n.children);
+    });
+  };
+  walk(nodes);
+  return keys;
 }
 
 export interface PermissionDialogRef {
@@ -36,6 +50,14 @@ const PermissionDialog = forwardRef<
   const [roleName, setRoleName] = useState("");
   const [menuTree, setMenuTree] = useState<any[]>([]);
   const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([]);
+  const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
+
+  // 所有树节点key（用于全选/展开所有）
+  const allKeys = useMemo(() => collectAllKeys(menuTree), [menuTree]);
+  const isAllChecked =
+    allKeys.length > 0 && checkedKeys.length >= allKeys.length;
+  const isAllExpanded =
+    allKeys.length > 0 && expandedKeys.length >= allKeys.length;
 
   const open = useCallback(
     async (id: number, name: string) => {
@@ -49,11 +71,15 @@ const PermissionDialog = forwardRef<
           MenuAPI.getList({}),
           RoleAPI.getRoleMenuIds(id),
         ]);
-        setMenuTree(buildMenuTree(menuData || []));
+        const treeData = buildMenuTree(menuData || []);
+        setMenuTree(treeData);
         setCheckedKeys(menuIds || []);
+        // 打开时默认展开所有节点
+        setExpandedKeys(collectAllKeys(treeData));
       } catch {
         setMenuTree([]);
         setCheckedKeys([]);
+        setExpandedKeys([]);
         message.error("加载权限数据失败");
       } finally {
         setLoading(false);
@@ -83,9 +109,27 @@ const PermissionDialog = forwardRef<
     }
   }, [roleId, roleName, checkedKeys, onSuccess]);
 
-  const handleCheck = useCallback((checked: React.Key[]) => {
-    setCheckedKeys(checked);
-  }, []);
+  const handleCheck = useCallback(
+    (
+      checked:
+        | React.Key[]
+        | { checked: React.Key[]; halfChecked: React.Key[] }
+    ) => {
+      const keys = Array.isArray(checked) ? checked : checked.checked;
+      setCheckedKeys(keys);
+    },
+    []
+  );
+
+  /** 全选/取消全选 */
+  const handleToggleCheckAll = useCallback(() => {
+    setCheckedKeys(isAllChecked ? [] : allKeys);
+  }, [isAllChecked, allKeys]);
+
+  /** 展开/收起所有 */
+  const handleToggleExpandAll = useCallback(() => {
+    setExpandedKeys(isAllExpanded ? [] : allKeys);
+  }, [isAllExpanded, allKeys]);
 
   return (
     <Modal
@@ -108,13 +152,25 @@ const PermissionDialog = forwardRef<
           暂无菜单数据
         </div>
       ) : (
-        <Tree
-          checkable
-          defaultExpandAll
-          treeData={menuTree}
-          checkedKeys={checkedKeys}
-          onCheck={handleCheck}
-        />
+        <>
+          {/* 工具栏：全选/取消全选、展开/收起所有 */}
+          <Space style={{ marginBottom: 8 }}>
+            <Button size="small" onClick={handleToggleCheckAll}>
+              {isAllChecked ? "取消全选" : "全选"}
+            </Button>
+            <Button size="small" onClick={handleToggleExpandAll}>
+              {isAllExpanded ? "收起所有" : "展开所有"}
+            </Button>
+          </Space>
+          <Tree
+            checkable
+            expandedKeys={expandedKeys}
+            onExpand={(keys) => setExpandedKeys(keys)}
+            treeData={menuTree}
+            checkedKeys={checkedKeys}
+            onCheck={handleCheck}
+          />
+        </>
       )}
     </Modal>
   );

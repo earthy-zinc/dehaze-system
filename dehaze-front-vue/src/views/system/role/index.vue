@@ -22,10 +22,14 @@
 
     <el-card class="table-container" shadow="never">
       <template #header>
-        <el-button type="success" @click="openDialog()"
+        <el-button
+          v-hasPerm="['sys:role:add']"
+          type="success"
+          @click="openDialog()"
           ><i-ep-plus />新增</el-button
         >
         <el-button
+          v-hasPerm="['sys:role:delete']"
           :disabled="ids.length === 0"
           type="danger"
           @click="handleDelete()"
@@ -47,16 +51,35 @@
 
         <el-table-column align="center" label="状态" width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.status === 1" type="success">正常</el-tag>
-            <el-tag v-else type="info">禁用</el-tag>
+            <el-switch
+              v-model="scope.row.status"
+              :active-value="1"
+              :inactive-value="0"
+              @change="handleStatusChange(scope.row)"
+            />
           </template>
         </el-table-column>
 
+        <el-table-column
+          align="center"
+          label="数据权限"
+          prop="dataScopeLabel"
+          width="120"
+        />
+
         <el-table-column align="center" label="排序" prop="sort" width="80" />
+
+        <el-table-column
+          align="center"
+          label="创建时间"
+          prop="createTime"
+          width="180"
+        />
 
         <el-table-column fixed="right" label="操作" width="220">
           <template #default="scope">
             <el-button
+              v-hasPerm="['sys:role:edit']"
               link
               size="small"
               type="primary"
@@ -65,6 +88,7 @@
               <i-ep-position />分配权限
             </el-button>
             <el-button
+              v-hasPerm="['sys:role:edit']"
               link
               size="small"
               type="primary"
@@ -73,10 +97,11 @@
               <i-ep-edit />编辑
             </el-button>
             <el-button
+              v-hasPerm="['sys:role:delete']"
               link
               size="small"
               type="primary"
-              @click="handleDelete(scope.row.id)"
+              @click="handleDelete(scope.row)"
             >
               <i-ep-delete />删除
             </el-button>
@@ -111,7 +136,11 @@
         </el-form-item>
 
         <el-form-item label="角色编码" prop="code">
-          <el-input v-model="formData.code" placeholder="请输入角色编码" />
+          <el-input
+            v-model="formData.code"
+            :readonly="!!formData.id"
+            placeholder="请输入角色编码"
+          />
         </el-form-item>
 
         <el-form-item label="数据权限" prop="dataScope">
@@ -154,11 +183,20 @@
       :title="'【' + checkedRole.name + '】权限分配'"
       width="800px"
     >
+      <div style="margin-bottom: 12px">
+        <el-button size="small" @click="handleToggleCheckAll">
+          {{ isCheckAll ? "取消全选" : "全选" }}
+        </el-button>
+        <el-button size="small" @click="handleToggleExpandAll">
+          {{ isExpandAll ? "收起所有" : "展开所有" }}
+        </el-button>
+      </div>
+
       <el-scrollbar v-loading="loading" max-height="600px">
         <el-tree
           ref="menuRef"
           :data="menuList"
-          :default-expand-all="true"
+          :default-expand-all="isExpandAll"
           node-key="value"
           show-checkbox
         >
@@ -217,13 +255,21 @@ const dialog = reactive({
 const formData = reactive<RoleForm>({
   sort: 1,
   status: 1,
+  dataScope: 2,
   code: "",
   name: "",
 });
 
 const rules = reactive({
   name: [{ required: true, message: "请输入角色名称", trigger: "blur" }],
-  code: [{ required: true, message: "请输入角色编码", trigger: "blur" }],
+  code: [
+    { required: true, message: "请输入角色编码", trigger: "blur" },
+    {
+      pattern: /^[A-Z_]+$/,
+      message: "角色编码只能包含大写字母和下划线",
+      trigger: "blur",
+    },
+  ],
   dataScope: [{ required: true, message: "请选择数据权限", trigger: "blur" }],
   status: [{ required: true, message: "请选择状态", trigger: "blur" }],
 });
@@ -231,6 +277,9 @@ const rules = reactive({
 const menuDialogVisible = ref(false);
 
 const menuList = ref<OptionType[]>([]);
+
+const isCheckAll = ref(false);
+const isExpandAll = ref(true);
 
 interface CheckedRole {
   id?: number;
@@ -260,6 +309,20 @@ function resetQuery() {
 /** 行checkbox 选中事件 */
 function handleSelectionChange(selection: any) {
   ids.value = selection.map((item: any) => item.id);
+}
+
+/** 切换角色状态 */
+function handleStatusChange(row: RolePageVO) {
+  const roleId = row.id;
+  if (!roleId || row.status === undefined) return;
+  const text = row.status === 1 ? "启用" : "禁用";
+  RoleAPI.updateStatus(roleId, row.status)
+    .then(() => {
+      ElMessage.success(`${text}成功`);
+    })
+    .catch(() => {
+      row.status = row.status === 1 ? 0 : 1;
+    });
 }
 
 /** 打开角色表单弹窗 */
@@ -316,17 +379,22 @@ function resetForm() {
   formData.id = undefined;
   formData.sort = 1;
   formData.status = 1;
+  formData.dataScope = 2;
 }
 
 /** 删除角色 */
-function handleDelete(roleId?: number) {
-  const roleIds = [roleId || ids.value].join(",");
+function handleDelete(row?: RolePageVO) {
+  const roleIds = row?.id ? String(row.id) : ids.value.join(",");
   if (!roleIds) {
     ElMessage.warning("请勾选删除项");
     return;
   }
 
-  ElMessageBox.confirm("确认删除已选中的数据项?", "警告", {
+  const confirmText = row
+    ? `确认删除角色「${row.name}」吗？删除后不可恢复。`
+    : "确认删除选中的角色吗？删除后不可恢复。";
+
+  ElMessageBox.confirm(confirmText, "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",
@@ -351,6 +419,8 @@ async function openMenuDialog(row: RolePageVO) {
     };
     menuDialogVisible.value = true;
     loading.value = true;
+    isCheckAll.value = false;
+    isExpandAll.value = true;
 
     // 获取所有的菜单
     menuList.value = await MenuAPI.getOptions();
@@ -367,6 +437,34 @@ async function openMenuDialog(row: RolePageVO) {
         loading.value = false;
       });
   }
+}
+
+/** 全选/取消全选 */
+function handleToggleCheckAll() {
+  if (isCheckAll.value) {
+    menuRef.value.setCheckedKeys([]);
+    isCheckAll.value = false;
+  } else {
+    const allKeys: (string | number)[] = [];
+    const walk = (nodes: OptionType[]) => {
+      nodes.forEach((n) => {
+        allKeys.push(n.value);
+        if (n.children?.length) walk(n.children);
+      });
+    };
+    walk(menuList.value);
+    menuRef.value.setCheckedKeys(allKeys);
+    isCheckAll.value = true;
+  }
+}
+
+/** 展开/收起所有 */
+function handleToggleExpandAll() {
+  isExpandAll.value = !isExpandAll.value;
+  const tree = menuRef.value as any;
+  tree.store.nodesAll.forEach((node: any) => {
+    node.expanded = isExpandAll.value;
+  });
 }
 
 /** 角色分配菜单保存提交 */

@@ -27,6 +27,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import DeptFormDialog, {
   type DeptFormDialogRef,
 } from "./components/DeptFormDialog";
+import { useHasPerm } from "@/hooks/usePermission";
 import "./index.scss";
 
 /** 状态映射 */
@@ -43,6 +44,9 @@ const DeptManagement: React.FC = () => {
 
   const dialogRef = useRef<DeptFormDialogRef>(null);
   const [refreshFlag, setRefreshFlag] = useState(0);
+
+  // 权限校验
+  const hasPerm = useHasPerm();
 
   // ==================== 数据加载 ====================
 
@@ -151,43 +155,49 @@ const DeptManagement: React.FC = () => {
         fixed: "right",
         render: (_: unknown, record: DeptVO) => (
           <Space size="small">
-            <Button
-              type="link"
-              size="small"
-              icon={<PlusOutlined />}
-              onClick={() => handleAddSub(record)}
-            >
-              新增下级
-            </Button>
-            <Button
-              type="link"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEdit(record)}
-            >
-              编辑
-            </Button>
-            <Popconfirm
-              title={`确认删除部门「${record.name}」吗？删除后不可恢复。`}
-              onConfirm={() => handleDelete(record)}
-              okText="确定"
-              cancelText="取消"
-              okType="danger"
-            >
+            {hasPerm("sys:dept:add") && (
               <Button
                 type="link"
                 size="small"
-                danger
-                icon={<DeleteOutlined />}
+                icon={<PlusOutlined />}
+                onClick={() => handleAddSub(record)}
               >
-                删除
+                新增下级
               </Button>
-            </Popconfirm>
+            )}
+            {hasPerm("sys:dept:edit") && (
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => handleEdit(record)}
+              >
+                编辑
+              </Button>
+            )}
+            {hasPerm("sys:dept:delete") && (
+              <Popconfirm
+                title={`确认删除部门「${record.name}」吗？删除后不可恢复。`}
+                onConfirm={() => handleDelete(record)}
+                okText="确定"
+                cancelText="取消"
+                okType="danger"
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                >
+                  删除
+                </Button>
+              </Popconfirm>
+            )}
           </Space>
         ),
       },
     ],
-    [handleAddSub, handleEdit, handleDelete]
+    [handleAddSub, handleEdit, handleDelete, hasPerm]
   );
 
   // ==================== 渲染 ====================
@@ -227,13 +237,15 @@ const DeptManagement: React.FC = () => {
               >
                 重置
               </Button>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={handleAdd}
-              >
-                新增
-              </Button>
+              {hasPerm("sys:dept:add") && (
+                <Button
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAdd}
+                >
+                  新增
+                </Button>
+              )}
             </Space>
           </Form.Item>
         </Form>

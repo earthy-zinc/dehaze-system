@@ -43,9 +43,11 @@ service.interceptors.response.use(
   },
   (error: AxiosError) => {
     const interceptors = pythonConfigManager.getInterceptors();
-    return Promise.reject(interceptors.onResponseError?.(error) || error);
+    const result = interceptors.onResponseError?.(error);
+    return result !== undefined ? result : Promise.reject(error);
   }
 );
 
 // 导出 axios 实例
+export const pythonService = service;
 export default service;

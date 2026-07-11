@@ -95,8 +95,12 @@
 
         <el-table-column align="center" label="状态" width="80">
           <template #default="scope">
-            <el-tag v-if="scope.row.visible === 1" type="success">显示</el-tag>
-            <el-tag v-else type="info">隐藏</el-tag>
+            <el-switch
+              v-model="scope.row.visible"
+              :active-value="1"
+              :inactive-value="0"
+              @change="(val) => handleVisibleChange(scope.row, val)"
+            />
           </template>
         </el-table-column>
 
@@ -129,7 +133,7 @@
               link
               size="small"
               type="primary"
-              @click.stop="handleDelete(scope.row.id)"
+              @click.stop="handleDelete(scope.row)"
               ><i-ep-delete />
               删除
             </el-button>
@@ -323,6 +327,8 @@ import {
   MenuTypeEnum,
   MenuVO,
 } from "dehaze-sdk-js";
+import { usePermissionStoreHook } from "@/store/modules/permission";
+import { useUserStore } from "@/store";
 
 const queryFormRef = ref(ElForm);
 const menuFormRef = ref(ElForm);
@@ -342,19 +348,48 @@ const formData = reactive<MenuForm>({
   parentId: 0,
   visible: 1,
   sort: 1,
-  type: MenuTypeEnum.MENU,
+  type: MenuTypeEnum.CATALOG,
   alwaysShow: 0,
   keepAlive: 0,
 });
 
-const rules = reactive({
-  parentId: [{ required: true, message: "请选择顶级菜单", trigger: "blur" }],
-  name: [{ required: true, message: "请输入菜单名称", trigger: "blur" }],
-  type: [{ required: true, message: "请选择菜单类型", trigger: "blur" }],
-  path: [{ required: true, message: "请输入路由路径", trigger: "blur" }],
+const userStore = useUserStore();
 
-  component: [{ required: true, message: "请输入组件路径", trigger: "blur" }],
-  visible: [{ required: true, message: "请输入路由路径", trigger: "blur" }],
+const rules = computed(() => {
+  const r: Record<string, any> = {
+    parentId: [{ required: true, message: "请选择顶级菜单", trigger: "blur" }],
+    name: [
+      { required: true, message: "请输入菜单名称", trigger: "blur" },
+      { min: 2, max: 64, message: "长度在 2 到 64 个字符", trigger: "blur" },
+    ],
+    type: [{ required: true, message: "请选择菜单类型", trigger: "blur" }],
+  };
+
+  if (formData.type === MenuTypeEnum.MENU) {
+    r.path = [
+      { required: true, message: "请输入路由路径", trigger: "blur" },
+      { pattern: /^\//, message: "路由路径需以 / 开头", trigger: "blur" },
+    ];
+    r.component = [
+      { required: true, message: "请输入组件路径", trigger: "blur" },
+    ];
+  } else if (formData.type === MenuTypeEnum.BUTTON) {
+    r.perm = [
+      { required: true, message: "请输入权限标识", trigger: "blur" },
+      {
+        pattern: /^[a-z]+:[a-z]+:[a-z]+$/,
+        message: "权限标识格式为 xxx:xxx:xxx",
+        trigger: "blur",
+      },
+    ];
+  } else if (formData.type === MenuTypeEnum.EXTLINK) {
+    r.path = [
+      { required: true, message: "请输入外链地址", trigger: "blur" },
+      { type: "url", message: "请输入正确的URL格式", trigger: "blur" },
+    ];
+  }
+
+  return r;
 });
 
 // 选择表格的行菜单ID
@@ -436,12 +471,14 @@ function submitForm() {
       if (menuId) {
         MenuAPI.update(menuId, formData).then(() => {
           ElMessage.success("修改成功");
+          usePermissionStoreHook().generateRoutes(userStore.user.roles);
           closeDialog();
           handleQuery();
         });
       } else {
         MenuAPI.add(formData).then(() => {
           ElMessage.success("新增成功");
+          usePermissionStoreHook().generateRoutes(userStore.user.roles);
           closeDialog();
           handleQuery();
         });
@@ -451,24 +488,59 @@ function submitForm() {
 }
 
 /** 删除菜单 */
-function handleDelete(menuId: number) {
-  if (!menuId) {
+function handleDelete(row: MenuVO) {
+  if (!row.id) {
     ElMessage.warning("请勾选删除项");
     return false;
   }
+  const menuId = row.id;
 
-  ElMessageBox.confirm("确认删除已选中的数据项?", "警告", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  })
+  ElMessageBox.confirm(
+    `确认删除菜单「${row.name}」吗？删除后不可恢复。`,
+    "警告",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }
+  )
     .then(() => {
       MenuAPI.deleteById(menuId).then(() => {
         ElMessage.success("删除成功");
+        usePermissionStoreHook().generateRoutes(userStore.user.roles);
         handleQuery();
       });
     })
     .catch(() => ElMessage.info("已取消删除"));
+}
+
+/** 显示状态切换 */
+function handleVisibleChange(row: MenuVO, val: string | number | boolean) {
+  const visibleVal = Number(val);
+  const oldVal = visibleVal === 1 ? 0 : 1;
+  ElMessageBox.confirm(
+    `确认${visibleVal === 1 ? "显示" : "隐藏"}菜单「${row.name}」吗？`,
+    "提示",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }
+  )
+    .then(() => {
+      MenuAPI.update(String(row.id), {
+        ...row,
+        visible: visibleVal,
+      } as MenuForm).then(() => {
+        ElMessage.success("修改成功");
+        usePermissionStoreHook().generateRoutes(userStore.user.roles);
+        handleQuery();
+      });
+    })
+    .catch(() => {
+      row.visible = oldVal;
+      ElMessage.info("已取消");
+    });
 }
 
 /** 关闭弹窗 */
@@ -486,6 +558,7 @@ function resetForm() {
   formData.parentId = 0;
   formData.visible = 1;
   formData.sort = 1;
+  formData.type = MenuTypeEnum.CATALOG;
   formData.perm = undefined;
   formData.component = undefined;
   formData.path = undefined;

@@ -4,8 +4,12 @@ export interface InterceptorCallbacks {
   onRequest?: (config: InternalAxiosRequestConfig) => InternalAxiosRequestConfig;
   onRequestError?: (error: AxiosError) => AxiosError;
 
-  onResponse?: (response: AxiosResponse) => AxiosResponse;
-  onResponseError?: (error: AxiosError) => AxiosError;
+  onResponse?: (response: AxiosResponse) => AxiosResponse | Promise<AxiosResponse>;
+  /**
+   * 响应错误处理。可返回一个 Promise 以恢复请求（如 token 刷新后重发），
+   * 返回 undefined 则按原错误拒绝。
+   */
+  onResponseError?: (error: AxiosError) => any;
 }
 
 class ConfigManager {

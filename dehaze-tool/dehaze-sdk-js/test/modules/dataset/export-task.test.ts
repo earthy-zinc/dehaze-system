@@ -86,7 +86,7 @@ describe("导出任务接口测试", () => {
     });
   });
 
-  describe("GET /api/v1/export-tasks/{taskId} - 查询导出任务状态", () => {
+  describe("GET /api/v1/tasks/{taskId} - 查询任务状态", () => {
     test("正向测试：查询任务状态", async () => {
       const request = createExportTaskRequest();
 
@@ -116,7 +116,7 @@ describe("导出任务接口测试", () => {
     });
   });
 
-  describe("DELETE /api/v1/export-tasks/{taskId} - 取消导出任务", () => {
+  describe("DELETE /api/v1/tasks/{taskId} - 取消任务", () => {
     test("正向测试：取消进行中的任务", async () => {
       const request = createExportTaskRequest();
 

@@ -5,6 +5,7 @@ import DatasetAPI, { DatasetItemAPI, ItemFileAPI, ExportTaskAPI } from "./src/ap
 import DeptAPI from "./src/api/dept";
 import DictAPI from "./src/api/dict";
 import FileAPI from "./src/api/file";
+import ImageInputHistoryAPI from "./src/api/image-input";
 import MenuAPI from "./src/api/menu";
 import ModelAPI from "./src/api/model";
 import RoleAPI from "./src/api/role";
@@ -17,6 +18,7 @@ export * from "./src/api/dataset/model";
 export * from "./src/api/dept/model";
 export * from "./src/api/dict/model";
 export * from "./src/api/file/model";
+export * from "./src/api/image-input/model";
 export * from "./src/api/menu/model";
 export * from "./src/api/model/model";
 export * from "./src/api/role/model";
@@ -26,6 +28,10 @@ export * from "./src/enums";
 
 // 配置导出
 export { configJavaAxios, configPythonAxios } from "./src/config";
+
+// Axios 实例导出（用于 token 刷新后重发请求）
+export { javaService } from "./src/utils/request";
+export { pythonService } from "./src/utils/requestPy";
 
 // API 导出
 export {
@@ -38,6 +44,7 @@ export {
   DeptAPI,
   DictAPI,
   FileAPI,
+  ImageInputHistoryAPI,
   MenuAPI,
   ModelAPI,
   RoleAPI,

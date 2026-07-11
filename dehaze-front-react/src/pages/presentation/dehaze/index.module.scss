@@ -15,7 +15,7 @@
 
 .flex-center {
   width: 64vw;
-  overflow-y: hidden;
+  overflow-y: auto;
 
   .example {
     padding-top: 100px;
@@ -39,22 +39,58 @@
     height: calc(100vh - $navbar-height - 40px - 20px - 10px);
     margin: 0 auto;
   }
+}
 
-  .effect-wrap {
-    width: 60vw;
-  }
+/* 处理进度展示区域 */
+.progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 60%;
+  margin: 60px auto;
+  padding: 24px;
+  background: #fafafa;
+  border-radius: 8px;
+}
 
-  .ev-all-wrap {
+.progress-tip {
+  margin: 0;
+  color: #888;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* 批量处理任务列表区域 */
+.batch-wrap {
+  width: 80%;
+  margin: 20px auto;
+
+  .batch-header {
     display: flex;
+    align-items: center;
     justify-content: space-between;
-    width: 60vw;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 
-    .ev-wrap {
-      width: 30%;
-      min-width: 250px;
+    h3 {
+      margin: 0;
+    }
+
+    .batch-actions {
+      display: flex;
+      gap: 8px;
     }
   }
+}
+
+/* 保存结果提示 */
+.saving-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #1890ff;
+  font-size: 14px;
 }
 
 @media screen and (width <=992px) {
@@ -73,17 +109,14 @@
       width: calc(100vw - 6vw);
       height: calc(100vh - $navbar-height - 40px);
     }
+  }
 
-    .ev-all-wrap {
-      display: flex;
-      flex-direction: column;
-      width: 82vw;
-      margin: 0 auto;
+  .progress-wrap {
+    width: 90%;
+    margin: 20px auto;
+  }
 
-      .ev-wrap {
-        width: 100%;
-        margin: 10px 0;
-      }
-    }
+  .batch-wrap {
+    width: 95%;
   }
 }

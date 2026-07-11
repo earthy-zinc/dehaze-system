@@ -3,9 +3,12 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.text.CharSequenceUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.constant.JwtClaimConstants;
 import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.common.enums.AlgorithmStatusEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
@@ -14,20 +17,26 @@ import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.AlgorithmConverter;
 import com.pei.dehaze.mapper.SysAlgorithmMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
+import com.pei.dehaze.model.entity.SysEvalLog;
+import com.pei.dehaze.model.entity.SysPredLog;
+import com.pei.dehaze.model.form.AlgorithmAuditForm;
 import com.pei.dehaze.model.form.AlgorithmForm;
 import com.pei.dehaze.model.query.AlgorithmQuery;
+import com.pei.dehaze.model.vo.AlgorithmMonitorVO;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.service.SysAlgorithmService;
+import com.pei.dehaze.service.SysEvalLogService;
+import com.pei.dehaze.service.SysPredLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -40,6 +49,8 @@ import java.util.stream.Collectors;
 public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, SysAlgorithm> implements SysAlgorithmService {
 
     private final AlgorithmConverter algorithmConverter;
+    private final SysPredLogService sysPredLogService;
+    private final SysEvalLogService sysEvalLogService;
 
     @Override
     @Cacheable(value = "algorithm:all", key = "'all'", unless = "#result == null || #result.isEmpty()")
@@ -209,5 +220,171 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
             algorithmOptions.add(option);
         }
         return algorithmOptions;
+    }
+
+    // ==================== 状态管理 ====================
+
+    @Override
+    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
+    public boolean updateStatus(Long id, Integer status) {
+        SysAlgorithm algorithm = this.getById(id);
+        if (algorithm == null) {
+            throw new BusinessException("算法不存在");
+        }
+
+        AlgorithmStatusEnum targetStatus = Arrays.stream(AlgorithmStatusEnum.values())
+                .filter(e -> e.getValue().equals(status))
+                .findFirst()
+                .orElse(null);
+        if (targetStatus == null) {
+            throw new BusinessException("无效的状态值: " + status);
+        }
+
+        // 状态流转校验
+        validateStatusTransition(algorithm.getStatus(), status);
+
+        algorithm.setStatus(status);
+        return this.updateById(algorithm);
+    }
+
+    @Override
+    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
+    public boolean auditAlgorithm(Long id, AlgorithmAuditForm form) {
+        SysAlgorithm algorithm = this.getById(id);
+        if (algorithm == null) {
+            throw new BusinessException("算法不存在");
+        }
+
+        if (!AlgorithmStatusEnum.PENDING_REVIEW.getValue().equals(algorithm.getStatus())) {
+            throw new BusinessException("只有待审核状态的算法才能进行审核操作");
+        }
+
+        if (Boolean.TRUE.equals(form.getApproved())) {
+            // 审核通过 → 已发布
+            algorithm.setStatus(AlgorithmStatusEnum.PUBLISHED.getValue());
+        } else {
+            // 审核驳回 → 测试中
+            if (CharSequenceUtil.isBlank(form.getRemark())) {
+                throw new BusinessException("驳回时必须填写审核备注");
+            }
+            algorithm.setStatus(AlgorithmStatusEnum.TESTING.getValue());
+            algorithm.setAuditRemark(form.getRemark());
+        }
+
+        algorithm.setAuditBy(getCurrentUserId());
+        algorithm.setAuditTime(LocalDateTime.now());
+
+        return this.updateById(algorithm);
+    }
+
+    @Override
+    public AlgorithmMonitorVO getMonitorData(Long id) {
+        SysAlgorithm algorithm = this.getById(id);
+        if (algorithm == null) {
+            throw new BusinessException("算法不存在");
+        }
+
+        AlgorithmMonitorVO monitor = new AlgorithmMonitorVO();
+
+        // 统计预测日志
+        long totalCalls = sysPredLogService.count(new LambdaQueryWrapper<SysPredLog>()
+                .eq(SysPredLog::getAlgorithmId, id));
+        monitor.setCallCount(totalCalls);
+
+        // 今日调用次数
+        long todayCalls = sysPredLogService.count(new LambdaQueryWrapper<SysPredLog>()
+                .eq(SysPredLog::getAlgorithmId, id)
+                .ge(SysPredLog::getCreateTime, LocalDateTime.now().withHour(0).withMinute(0).withSecond(0)));
+        monitor.setTodayCallCount(todayCalls);
+
+        // 平均处理时间
+        List<SysPredLog> predLogs = sysPredLogService.list(new LambdaQueryWrapper<SysPredLog>()
+                .eq(SysPredLog::getAlgorithmId, id)
+                .isNotNull(SysPredLog::getTime));
+        double avgTime = predLogs.stream()
+                .mapToInt(SysPredLog::getTime)
+                .average()
+                .orElse(0.0);
+        monitor.setAvgTime(Math.round(avgTime * 100.0) / 100.0);
+
+        // 成功率：有predUrl的日志视为成功
+        long successCount = predLogs.stream()
+                .filter(p -> CharSequenceUtil.isNotBlank(p.getPredUrl()))
+                .count();
+        double successRate = totalCalls > 0 ? (double) successCount / totalCalls * 100 : 100.0;
+        monitor.setSuccessRate(Math.round(successRate * 100.0) / 100.0);
+
+        return monitor;
+    }
+
+    @Override
+    public String exportAlgorithmJson(Long id) {
+        SysAlgorithm algorithm = this.getById(id);
+        if (algorithm == null) {
+            throw new BusinessException("算法不存在");
+        }
+
+        // 获取父算法名称用于导入参考
+        String parentName = "";
+        if (algorithm.getParentId() != null && algorithm.getParentId() > 0) {
+            SysAlgorithm parent = this.getById(algorithm.getParentId());
+            parentName = parent != null ? parent.getName() : "";
+        }
+
+        Map<String, Object> exportData = new LinkedHashMap<>();
+        exportData.put("formatVersion", "1.0");
+        exportData.put("name", algorithm.getName());
+        exportData.put("type", algorithm.getType());
+        exportData.put("parentName", parentName);
+        exportData.put("version", algorithm.getVersion());
+        exportData.put("description", algorithm.getDescription());
+        exportData.put("importPath", algorithm.getImportPath());
+        exportData.put("flops", algorithm.getFlops());
+        exportData.put("params", algorithm.getParams());
+        exportData.put("status", algorithm.getStatus());
+        exportData.put("statusLabel", Arrays.stream(AlgorithmStatusEnum.values())
+                .filter(e -> e.getValue().equals(algorithm.getStatus()))
+                .map(AlgorithmStatusEnum::getLabel)
+                .findFirst().orElse(""));
+        exportData.put("exportTime", LocalDateTime.now().toString());
+
+        return JSONUtil.toJsonPrettyStr(exportData);
+    }
+
+    /**
+     * 从 SecurityContext 获取当前登录用户 ID
+     */
+    private Long getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof com.pei.dehaze.security.model.SysUserDetails userDetails) {
+            return userDetails.getUserId();
+        }
+        // 尝试从 JWT claims 获取
+        if (auth != null && auth.getDetails() instanceof Map<?, ?> details) {
+            Object userId = details.get(JwtClaimConstants.USER_ID);
+            if (userId instanceof Long) return (Long) userId;
+            if (userId instanceof Number) return ((Number) userId).longValue();
+        }
+        log.warn("无法获取当前用户ID，使用默认值");
+        return 0L;
+    }
+
+    /**
+     * 校验状态流转合法性
+     */
+    private void validateStatusTransition(Integer currentStatus, Integer targetStatus) {
+        if (currentStatus == null) {
+            return;
+        }
+        // 终态不允许变更
+        if (AlgorithmStatusEnum.FINAL_STATUSES.contains(currentStatus)
+                && !AlgorithmStatusEnum.ARCHIVED.getValue().equals(currentStatus)) {
+            throw new BusinessException("终态算法不允许修改状态");
+        }
+        // 不允许直接跳转到已发布
+        if (AlgorithmStatusEnum.PUBLISHED.getValue().equals(targetStatus)
+                && !AlgorithmStatusEnum.PENDING_REVIEW.getValue().equals(currentStatus)) {
+            throw new BusinessException("算法必须经过审核才能发布");
+        }
     }
 }

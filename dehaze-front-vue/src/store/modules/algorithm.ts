@@ -42,6 +42,16 @@ export const useAlgorithmStore = defineStore("algorithm", () => {
   };
 
   /**
+   * 更新算法状态
+   * @param id 算法id
+   * @param status 状态(1:启用；0:禁用)
+   * @returns 更新结果（用于交互）
+   */
+  const updateAlgorithmStatus = async (id: number, status: number) => {
+    return await AlgorithmAPI.updateStatus(id, status);
+  };
+
+  /**
    * 删除模型数据
    * @param ids 模型id数组
    * @returns 删除结果（用于交互）
@@ -57,6 +67,7 @@ export const useAlgorithmStore = defineStore("algorithm", () => {
     getAlgorithmOptions,
     addAlgorithm,
     updateAlgorithm,
+    updateAlgorithmStatus,
     deleteAlgorithmByIds,
   };
 });

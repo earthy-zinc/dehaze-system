@@ -1,4 +1,4 @@
-import { AlgorithmAPI, FileAPI, ModelAPI } from "dehaze-sdk-js";
+import { AlgorithmAPI, FileAPI, ModelAPI, type FileInfo } from "dehaze-sdk-js";
 import AlgorithmToolBar from "@/components/AlgorithmToolBar";
 import { MagnifierInfo, Point } from "@/components/AlgorithmToolBar/types";
 import ExampleImageSelect from "@/components/ExampleImageSelect";
@@ -6,6 +6,7 @@ import Loading from "@/components/Loading";
 import OverlapImageShow from "@/components/OverlapImageShow";
 import SingleImageShow from "@/components/SingleImageShow";
 import { useWindowSize } from "@/hooks/useWindowSize";
+import { calculateFileMd5 } from "@/utils/md5";
 import { Card, Cascader, message } from "antd";
 import React, { useEffect, useMemo, useState } from "react";
 import styles from "./index.module.scss";
@@ -58,22 +59,29 @@ export default function Overlap() {
     setActivePage("camera");
   };
 
-  const handleImageUpload = (file: File) => {
+  const handleImageUpload = async (file: File) => {
     setActivePage("loading");
-    // 上传文件
-    FileAPI.upload(file)
-      .then((res) => {
-        // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
-        setImage1(res.url);
-      })
-      .then(() => {
-        // 将文件显示到 SingleImageShow 组件中
-        setActivePage("singleImage");
-      })
-      .catch((err) => {
-        setActivePage("example");
-        message.error(err.message);
-      });
+    try {
+      // 计算文件哈希进行秒传校验
+      const md5 = await calculateFileMd5(file);
+      const existing = await FileAPI.uploadCheck(md5);
+      let res: FileInfo;
+      if (existing) {
+        // 秒传命中，直接复用已有文件
+        res = existing;
+        message.success("文件秒传成功");
+      } else {
+        // 未命中，执行实际上传
+        res = await FileAPI.upload(file);
+      }
+      // 文件上传成功后拿到服务器返回的 url 地址在右侧渲染
+      setImage1(res.url);
+      // 将文件显示到 SingleImageShow 组件中
+      setActivePage("singleImage");
+    } catch (err: any) {
+      setActivePage("example");
+      message.error(err.message);
+    }
   };
 
   const handleReset = () => {

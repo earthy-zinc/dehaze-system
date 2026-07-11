@@ -14,7 +14,11 @@ import {
   selectDividerEnabled,
   selectMagnifierZoomLevel,
 } from "@/store/selector/imageShowSelector";
-import { DownOutlined } from "@ant-design/icons";
+import {
+  DownOutlined,
+  StopOutlined,
+  UploadOutlined,
+} from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -24,6 +28,7 @@ import {
   Radio,
   Slider,
   Typography,
+  Upload,
 } from "antd";
 import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -39,6 +44,24 @@ interface AlgorithmToolBarProps {
   onReset: () => void;
   onGenerate: () => void;
   onSelectFromDataset: () => void;
+  /** 去雾强度（0-100） */
+  dehazeIntensity?: number;
+  /** 锐化程度（0-100） */
+  sharpenLevel?: number;
+  /** 去雾强度变化回调 */
+  onDehazeIntensityChange?: (value: number) => void;
+  /** 锐化程度变化回调 */
+  onSharpenLevelChange?: (value: number) => void;
+  /** 批量上传回调，传入所选文件数组 */
+  onBatchUpload?: (files: File[]) => void;
+  /** 是否正在处理中 */
+  processing?: boolean;
+  /** 取消处理回调 */
+  onCancel?: () => void;
+  /** 是否显示保存结果按钮 */
+  showSave?: boolean;
+  /** 保存结果回调 */
+  onSave?: () => void;
   children: React.ReactNode;
 }
 
@@ -52,6 +75,15 @@ const AlgorithmToolBar: React.FC<AlgorithmToolBarProps> = ({
   onReset,
   onGenerate,
   onSelectFromDataset,
+  dehazeIntensity,
+  sharpenLevel,
+  onDehazeIntensityChange,
+  onSharpenLevelChange,
+  onBatchUpload,
+  processing = false,
+  onCancel,
+  showSave = false,
+  onSave,
   children,
 }) => {
   const dispatch = useDispatch();
@@ -188,6 +220,24 @@ const AlgorithmToolBar: React.FC<AlgorithmToolBarProps> = ({
             </Button>
           </Dropdown>
           <Button onClick={onReset}>清除结果</Button>
+          {/* 批量上传入口，最多20张 */}
+          {onBatchUpload && (
+            <Upload
+              multiple
+              maxCount={20}
+              beforeUpload={() => false}
+              showUploadList={false}
+              accept="image/*"
+              onChange={(info) => {
+                const files = info.fileList
+                  .map((f) => f.originFileObj)
+                  .filter((f) => !!f) as File[];
+                if (files.length > 0) onBatchUpload(files.slice(0, 20));
+              }}
+            >
+              <Button icon={<UploadOutlined />}>批量上传</Button>
+            </Upload>
+          )}
         </div>
 
         {children}
@@ -195,16 +245,51 @@ const AlgorithmToolBar: React.FC<AlgorithmToolBarProps> = ({
         <div className={styles.generateButtonGroup}>
           <Button
             type="primary"
-            disabled={disableGenerate}
+            disabled={disableGenerate || processing}
             loading={loading}
             onClick={onGenerate}
           >
             {loading ? "正在生成" : "立即生成"}
           </Button>
+          {/* 处理过程中显示取消按钮 */}
+          {processing && onCancel && (
+            <Button danger icon={<StopOutlined />} onClick={onCancel}>
+              取消处理
+            </Button>
+          )}
+          {/* 保存结果按钮 */}
+          {showSave && onSave && (
+            <Button type="primary" ghost onClick={onSave}>
+              保存结果
+            </Button>
+          )}
           <Button onClick={onEval}>评估结果</Button>
         </div>
 
         <Form className={styles.form}>
+          {/* 去雾强度滑块 */}
+          {dehazeIntensity !== undefined && onDehazeIntensityChange && (
+            <Form.Item label="去雾强度">
+              <Slider
+                min={0}
+                max={100}
+                value={dehazeIntensity}
+                onChange={onDehazeIntensityChange}
+              />
+            </Form.Item>
+          )}
+          {/* 锐化程度滑块 */}
+          {sharpenLevel !== undefined && onSharpenLevelChange && (
+            <Form.Item label="锐化程度">
+              <Slider
+                min={0}
+                max={100}
+                value={sharpenLevel}
+                onChange={onSharpenLevelChange}
+              />
+            </Form.Item>
+          )}
+
           {magnifierEnabled && !disableMore && (
             <div className={styles.magnifierOptions}>
               <Form.Item label="放大镜形状">

@@ -1,0 +1,128 @@
+import { AlgorithmAPI, Algorithm } from "../../../index";
+import { login, logout } from "#/utils/auth";
+import { expectBizErrorOrUndefined } from "#/utils/assertion";
+
+describe("算法管理新增端点测试", () => {
+  beforeAll(async () => {
+    await login();
+  }, 30000);
+
+  afterAll(async () => {
+    await logout();
+  });
+
+  let testAlgorithmId: number;
+
+  // 创建一个测试算法（通过前端的 AlgorithmFormDialog 新增后自动状态=0 草稿）
+  beforeAll(async () => {
+    const form: Partial<Algorithm> = {
+      parentId: 0,
+      name: `SdkTest_${Date.now()}`,
+      type: "TEST",
+      description: "SDK 测试用算法",
+      status: 0,
+    };
+    const id = await AlgorithmAPI.add(form) as unknown as number;
+    testAlgorithmId = typeof id === "number" ? id : Number(id);
+  }, 10000);
+
+  afterAll(async () => {
+    if (testAlgorithmId) {
+      try { await AlgorithmAPI.deleteByIds([testAlgorithmId.toString()]); } catch (_) {}
+    }
+  });
+
+  describe("PUT /api/v1/algorithms/{id}/status - 状态变更", () => {
+    test("正向测试：将草稿(0)切换为测试中(1)", async () => {
+      // 草稿 → 测试中
+      await AlgorithmAPI.updateStatus(testAlgorithmId, 1);
+
+      // 验证状态持久化
+      const info = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
+      expect(info.status).toBe(1);
+
+      // 恢复为草稿
+      await AlgorithmAPI.updateStatus(testAlgorithmId, 0);
+    });
+
+    test("参数校验：无效状态值应提示错误", async () => {
+      await expectBizErrorOrUndefined(
+        AlgorithmAPI.updateStatus(testAlgorithmId, 99),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"]
+      );
+    });
+
+    test("异常测试：不存在的算法ID应报错", async () => {
+      await expectBizErrorOrUndefined(
+        AlgorithmAPI.updateStatus(99999999, 1),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"]
+      );
+    });
+  });
+
+  describe("GET /api/v1/algorithms/{id}/versions - 版本管理", () => {
+    test("正向测试：获取版本历史列表", async () => {
+      const versions = await AlgorithmAPI.getVersions(testAlgorithmId);
+      expect(versions).toBeDefined();
+      expect(Array.isArray(versions)).toBe(true);
+    });
+
+    test("异常测试：不存在的算法ID应报错", async () => {
+      await expectBizErrorOrUndefined(
+        AlgorithmAPI.getVersions(99999999),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"]
+      );
+    });
+  });
+
+  describe("GET /api/v1/algorithms/{id}/monitor - 监控数据", () => {
+    test("正向测试：获取监控数据", async () => {
+      const monitor = await AlgorithmAPI.getMonitorData(testAlgorithmId);
+
+      expect(monitor).toBeDefined();
+      expect(typeof monitor.callCount).toBe("number");
+      expect(typeof monitor.avgTime).toBe("number");
+      expect(typeof monitor.successRate).toBe("number");
+      expect(typeof monitor.todayCallCount).toBe("number");
+    });
+
+    test("正向测试：获取监控统计报表", async () => {
+      const stats = await AlgorithmAPI.getMonitorStats(testAlgorithmId);
+      expect(stats).toBeDefined();
+      expect(typeof stats.callCount).toBe("number");
+    });
+  });
+
+  describe("GET /api/v1/algorithms/{id}/_export - 导出", () => {
+    test("正向测试：导出算法 JSON（返回 Blob）", async () => {
+      const blob = await AlgorithmAPI.exportAlgorithm(testAlgorithmId);
+      expect(blob).toBeDefined();
+      // Blob 类型检查
+      expect(blob instanceof Blob || (blob as any).size !== undefined).toBe(true);
+    });
+  });
+
+  describe("POST /api/v1/algorithms/_import/validate - 导入校验", () => {
+    test("正向测试：校验合法 JSON 文件", async () => {
+      const jsonContent = JSON.stringify({
+        name: `TestImport_${Date.now()}`,
+        type: "TEST",
+        description: "导入测试",
+        version: "0.0.1",
+      });
+      const file = new File([jsonContent], "test_algorithm.json", { type: "application/json" });
+
+      const result = await AlgorithmAPI.validateImport(file);
+      expect(result).toBeDefined();
+      expect(typeof result).toBe("string");
+    });
+
+    test("参数校验：空文件应报错", async () => {
+      const emptyFile = new File([], "empty.json", { type: "application/json" });
+      await expectBizErrorOrUndefined(
+        AlgorithmAPI.validateImport(emptyFile),
+        ["A0400", "B0001", "ERR_BAD_REQUEST"]
+      );
+    });
+  });
+});

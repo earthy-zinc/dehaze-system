@@ -1,12 +1,16 @@
 import { OptionType } from "@/types";
 import request from "@/utils/request";
-import { Algorithm, AlgorithmQuery } from "./model";
+import {
+  Algorithm,
+  AlgorithmAuditForm,
+  AlgorithmMonitorVO,
+  AlgorithmQuery,
+  AlgorithmVersionForm,
+  AlgorithmVersionVO,
+} from "./model";
 
 class AlgorithmAPI {
-  /**
-   * 算法树形表格
-   * @param queryParams
-   */
+  /** 算法树形表格 */
   static getList(queryParams?: AlgorithmQuery) {
     return request<any, Algorithm[]>({
       url: "/api/v1/algorithms",
@@ -15,9 +19,7 @@ class AlgorithmAPI {
     });
   }
 
-  /**
-   * 获取模型下拉选项列表
-   */
+  /** 获取模型下拉选项列表 */
   static getOption() {
     return request<any, OptionType[]>({
       url: "/api/v1/algorithms/options",
@@ -25,9 +27,7 @@ class AlgorithmAPI {
     });
   }
 
-  /**
-   * 获取算法详情
-   */
+  /** 获取算法详情 */
   static getAlgorithmInfoById(id: number) {
     return request<any, Algorithm>({
       url: "/api/v1/algorithms/" + id,
@@ -35,12 +35,8 @@ class AlgorithmAPI {
     });
   }
 
-  /**
-   * 新增算法
-   *
-   * @param data
-   */
-  static add(data: Algorithm) {
+  /** 新增算法 */
+  static add(data: Partial<Algorithm>) {
     return request({
       url: "/api/v1/algorithms",
       method: "post",
@@ -48,13 +44,8 @@ class AlgorithmAPI {
     });
   }
 
-  /**
-   *  修改算法
-   *
-   * @param id
-   * @param data
-   */
-  static update(id: number, data: Algorithm) {
+  /** 修改算法 */
+  static update(id: number, data: Partial<Algorithm>) {
     return request({
       url: "/api/v1/algorithms/" + id,
       method: "put",
@@ -62,11 +53,110 @@ class AlgorithmAPI {
     });
   }
 
-  /**
-   * 删除算法
-   *
-   * @param ids
-   */
+  /** 修改算法状态（6生命周期状态：0-5） */
+  static updateStatus(id: number, status: number) {
+    return request({
+      url: `/api/v1/algorithms/${id}/status`,
+      method: "put",
+      params: { status },
+    });
+  }
+
+  /** 审核算法（通过/驳回） */
+  static auditAlgorithm(id: number, data: AlgorithmAuditForm) {
+    return request({
+      url: `/api/v1/algorithms/${id}/audit`,
+      method: "put",
+      data,
+    });
+  }
+
+  /** 获取算法版本历史 */
+  static getVersions(id: number) {
+    return request<any, AlgorithmVersionVO[]>({
+      url: `/api/v1/algorithms/${id}/versions`,
+      method: "get",
+    });
+  }
+
+  /** 新增算法版本 */
+  static addVersion(id: number, data: AlgorithmVersionForm) {
+    return request({
+      url: `/api/v1/algorithms/${id}/version`,
+      method: "post",
+      data,
+    });
+  }
+
+  /** 版本回滚 */
+  static rollbackVersion(id: number, versionId: number) {
+    return request({
+      url: `/api/v1/algorithms/${id}/rollback`,
+      method: "post",
+      params: { versionId },
+    });
+  }
+
+  /** 导出单个算法（返回 JSON 文件） */
+  static exportAlgorithm(id: number) {
+    return request<any, Blob>({
+      url: `/api/v1/algorithms/${id}/_export`,
+      method: "get",
+      responseType: "blob",
+    });
+  }
+
+  /** 批量导出算法 */
+  static batchExport(ids: number[]) {
+    return request<any, Blob>({
+      url: "/api/v1/algorithms/_export",
+      method: "post",
+      data: ids,
+      responseType: "blob",
+    });
+  }
+
+  /** 校验导入包 */
+  static validateImport(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request<any, string>({
+      url: "/api/v1/algorithms/_import/validate",
+      method: "post",
+      data: formData,
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+
+  /** 导入算法 */
+  static importAlgorithm(file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request({
+      url: "/api/v1/algorithms/_import",
+      method: "post",
+      data: formData,
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  }
+
+  /** 获取算法监控数据 */
+  static getMonitorData(id: number) {
+    return request<any, AlgorithmMonitorVO>({
+      url: `/api/v1/algorithms/${id}/monitor`,
+      method: "get",
+    });
+  }
+
+  /** 获取算法统计报表 */
+  static getMonitorStats(id: number) {
+    return request<any, AlgorithmMonitorVO>({
+      url: `/api/v1/algorithms/${id}/monitor/stats`,
+      method: "get",
+    });
+  }
+
+  /** 删除算法 */
   static deleteByIds(ids: string[]) {
     return request({
       url: "/api/v1/algorithms",

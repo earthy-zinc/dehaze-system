@@ -1,23 +1,26 @@
 import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
-import { RootState } from "@/store";
+import { DisPatchType, RootState } from "@/store";
 import { toggleSidebar } from "@/store/modules/appSlice";
 import { toggleSettingsVisible } from "@/store/modules/settingsSlice";
+import { logout } from "@/store/modules/userSlice";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Breadcrumb, Dropdown } from "antd";
+import { Breadcrumb, Dropdown, Modal } from "antd";
 import "./index.scss";
 import React from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { Settings } from "./Settings";
 
 export const NavBar: React.FC = () => {
   const appStore = useSelector((state: RootState) => state.app);
   const userStore = useSelector((state: RootState) => state.user);
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<DisPatchType>();
+  const navigate = useNavigate();
   const items: MenuProps["items"] = [
     {
       key: "1",
@@ -32,7 +35,17 @@ export const NavBar: React.FC = () => {
       <MenuFoldOutlined />
     );
 
-  const handleLogout = () => {};
+  // 注销登录：弹出确认框，确认后调用 logout 并跳转登录页
+  const handleLogout = () => {
+    Modal.confirm({
+      title: "确认退出登录吗？",
+      onOk: () => {
+        dispatch(logout()).then(() => {
+          navigate("/login", { replace: true });
+        });
+      },
+    });
+  };
 
   const handleMenuStatusChange = () => {
     dispatch(

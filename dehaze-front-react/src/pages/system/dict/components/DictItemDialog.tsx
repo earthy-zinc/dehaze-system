@@ -23,6 +23,7 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
   const [data, setData] = useState<DictPageVO[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState<DictQuery>({ pageNum: 1, pageSize: 10 });
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
 
   // form state
   const [formVisible, setFormVisible] = useState(false);
@@ -46,6 +47,7 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
     setTypeCode(code);
     setTypeName(name);
     setQuery({ pageNum: 1, pageSize: 10 });
+    setSelectedRowKeys([]);
     setVisible(true);
   }, []);
 
@@ -57,7 +59,7 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
     setFormVisible(true);
     if (t === "add") {
       dictForm.resetFields();
-      dictForm.setFieldsValue({ typeCode, status: 1, sort: 1 });
+      dictForm.setFieldsValue({ typeCode, status: 1, sort: 1, defaulted: 0 });
     } else if (record?.id) {
       dictForm.resetFields();
       DictAPI.getDictFormData(record.id).then((d) => {
@@ -90,9 +92,24 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
   const handleDelete = useCallback((record: DictPageVO) => {
     DictAPI.deleteDictByIds(String(record.id)).then(() => {
       message.success("删除成功");
+      setSelectedRowKeys([]);
       loadData();
     }).catch((error) => message.error(error?.message || "删除失败"));
   }, [loadData]);
+
+  // 批量删除字典数据
+  const handleBatchDelete = useCallback(() => {
+    Modal.confirm({
+      title: "批量删除",
+      content: `确认删除选中的 ${selectedRowKeys.length} 个字典数据吗？删除后不可恢复。`,
+      okText: "确定", cancelText: "取消", okType: "danger",
+      onOk: () => DictAPI.deleteDictByIds(selectedRowKeys.join(",")).then(() => {
+        message.success(`成功删除 ${selectedRowKeys.length} 个字典数据`);
+        setSelectedRowKeys([]);
+        loadData();
+      }).catch((error) => { message.error(error?.message || "删除失败"); return Promise.reject(error); }),
+    });
+  }, [selectedRowKeys, loadData]);
 
   const columns: TableColumnsType<DictPageVO> = useMemo(() => [
     { title: "数据名称", dataIndex: "name", key: "name", width: 150 },
@@ -103,18 +120,25 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
     },
     { title: "排序", dataIndex: "sort", key: "sort", width: 80, align: "center" as const },
     { title: "备注", dataIndex: "remark", key: "remark", width: 150, render: (t: string) => t || "-" },
+    { title: "创建时间", dataIndex: "createTime" as any, key: "createTime", width: 180, align: "center" },
     {
       title: "操作", key: "action", width: 140, align: "center", fixed: "right" as const,
       render: (_: unknown, record: DictPageVO) => (
         <Space size="small">
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openForm("edit", record)}>编辑</Button>
-          <Popconfirm title="确认删除？" onConfirm={() => handleDelete(record)} okText="确定" cancelText="取消" okType="danger">
+          <Popconfirm title={`确认删除字典数据「${record.name}」吗？删除后不可恢复。`} onConfirm={() => handleDelete(record)} okText="确定" cancelText="取消" okType="danger">
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
           </Popconfirm>
         </Space>
       ),
     },
   ], [openForm, handleDelete]);
+
+  // 行选择配置
+  const rowSelection = useMemo(() => ({
+    selectedRowKeys,
+    onChange: (keys: React.Key[]) => setSelectedRowKeys(keys),
+  }), [selectedRowKeys]);
 
   return (
     <>
@@ -124,11 +148,14 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
         onCancel={() => setVisible(false)} destroyOnClose
       >
         <div style={{ marginBottom: 12 }}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm("add")}>新增</Button>
+          <Space>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => openForm("add")}>新增</Button>
+            <Button danger icon={<DeleteOutlined />} disabled={selectedRowKeys.length === 0} onClick={handleBatchDelete}>删除</Button>
+          </Space>
         </div>
         <Table
           columns={columns} dataSource={data} rowKey={(r) => r.id ?? Math.random()}
-          loading={loading} size="small"
+          loading={loading} size="small" rowSelection={rowSelection}
           pagination={{
             current: query.pageNum, pageSize: query.pageSize, total,
             showSizeChanger: true, showTotal: (t) => `共 ${t} 条`,
@@ -155,6 +182,12 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
           </Form.Item>
           <Form.Item name="remark" label="备注">
             <Input.TextArea placeholder="请输入备注" rows={2} />
+          </Form.Item>
+          <Form.Item name="defaulted" label="是否默认">
+            <Radio.Group>
+              <Radio value={1}>是</Radio>
+              <Radio value={0}>否</Radio>
+            </Radio.Group>
           </Form.Item>
           <Form.Item name="status" label="状态">
             <Radio.Group>

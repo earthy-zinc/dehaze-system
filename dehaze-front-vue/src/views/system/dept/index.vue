@@ -17,7 +17,7 @@
             clearable
             placeholder="全部"
           >
-            <el-option :value="1" label="正常" />
+            <el-option :value="1" label="启用" />
             <el-option :value="0" label="禁用" />
           </el-select>
         </el-form-item>
@@ -60,12 +60,14 @@
         <el-table-column label="部门名称" min-width="200" prop="name" />
         <el-table-column label="状态" prop="status" width="100">
           <template #default="scope">
-            <el-tag v-if="scope.row.status == 1" type="success">正常</el-tag>
+            <el-tag v-if="scope.row.status == 1" type="success">启用</el-tag>
             <el-tag v-else type="info">禁用</el-tag>
           </template>
         </el-table-column>
 
         <el-table-column label="排序" prop="sort" width="100" />
+
+        <el-table-column label="创建时间" prop="createTime" width="180" />
 
         <el-table-column align="left" fixed="right" label="操作" width="200">
           <template #default="scope">
@@ -75,7 +77,7 @@
               size="small"
               type="primary"
               @click.stop="openDialog(scope.row.id, undefined)"
-              ><i-ep-plus />新增
+              ><i-ep-plus />新增下级
             </el-button>
             <el-button
               v-hasPerm="['sys:dept:edit']"
@@ -90,7 +92,7 @@
               link
               size="small"
               type="primary"
-              @click.stop="handleDelete(scope.row.id)"
+              @click.stop="handleDelete(scope.row)"
             >
               <i-ep-delete />删除
             </el-button>
@@ -134,7 +136,7 @@
         </el-form-item>
         <el-form-item label="部门状态">
           <el-radio-group v-model="formData.status">
-            <el-radio :label="1">正常</el-radio>
+            <el-radio :label="1">启用</el-radio>
             <el-radio :label="0">禁用</el-radio>
           </el-radio-group>
         </el-form-item>
@@ -266,15 +268,19 @@ function handleSubmit() {
 }
 
 /** 删除部门 */
-function handleDelete(deptId?: number) {
-  if (deptId) {
+function handleDelete(row?: any) {
+  if (row) {
     // 单个删除
-    ElMessageBox.confirm(`确认删除已选中的数据项?`, "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    }).then(() => {
-      DeptAPI.deleteById(deptId).then(() => {
+    ElMessageBox.confirm(
+      `确认删除部门「${row.name}」吗？删除后不可恢复。`,
+      "警告",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    ).then(() => {
+      DeptAPI.deleteById(row.id).then(() => {
         ElMessage.success("删除成功");
         resetQuery();
       });
@@ -282,11 +288,15 @@ function handleDelete(deptId?: number) {
   } else if (ids.value.length > 0) {
     // 批量删除（JSON Body）
     const deptIds = ids.value;
-    ElMessageBox.confirm(`确认删除已选中的数据项?`, "警告", {
-      confirmButtonText: "确定",
-      cancelButtonText: "取消",
-      type: "warning",
-    }).then(() => {
+    ElMessageBox.confirm(
+      `确认删除选中的部门吗？删除后不可恢复。`,
+      "警告",
+      {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
+      }
+    ).then(() => {
       DeptAPI.batchDelete(deptIds).then(() => {
         ElMessage.success("删除成功");
         resetQuery();

@@ -14,6 +14,7 @@ import {
   ExportTaskRequest,
   ImageUrlVO,
   ItemFileUpdateForm,
+  TaskQuery,
 } from "./model";
 import { PageResult } from "@/types";
 import request from "@/utils/request";
@@ -483,38 +484,39 @@ class LegacyDatasetAPI {
 }
 
 /**
- * 导出任务 API
+ * 任务 API
  */
 class ExportTaskAPI {
   /**
-   * 查询导出任务状态
+   * 分页查询任务列表
+   * @param queryParams 查询参数
+   */
+  static getList(queryParams?: TaskQuery) {
+    return request<any, PageResult<DownloadTaskVO[]>>({
+      url: "/api/v1/tasks",
+      method: "get",
+      params: queryParams,
+    });
+  }
+
+  /**
+   * 查询任务状态
    * @param taskId 任务ID
    */
   static getTaskStatus(taskId: string) {
     return request<any, DownloadTaskVO>({
-      url: `/api/v1/export-tasks/${taskId}`,
+      url: `/api/v1/tasks/${taskId}`,
       method: "get",
     });
   }
 
   /**
-   * 获取导出文件下载链接
-   * @param taskId 任务ID
-   */
-  static getDownloadUrl(taskId: string) {
-    return request<any, string>({
-      url: `/api/v1/export-tasks/${taskId}/download`,
-      method: "get",
-    });
-  }
-
-  /**
-   * 取消导出任务
+   * 取消任务
    * @param taskId 任务ID
    */
   static cancelTask(taskId: string) {
     return request({
-      url: `/api/v1/export-tasks/${taskId}`,
+      url: `/api/v1/tasks/${taskId}`,
       method: "delete",
     });
   }

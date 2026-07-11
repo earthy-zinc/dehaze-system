@@ -34,8 +34,8 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
     private SysAlgorithmService sysAlgorithmService;
 
     @Override
-    public boolean check(String md5) {
-        return this.count(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5)) > 0;
+    public SysFile check(String md5) {
+        return this.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5));
     }
 
     @Override

@@ -56,6 +56,7 @@ const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
             name: record.name,
             type: record.type,
             description: record.description,
+            path: record.path,
             status: record.status ?? 1,
           });
         }
@@ -78,6 +79,7 @@ const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
             name: values.name,
             type: values.type,
             description: values.description,
+            path: values.path,
             status: String(values.status),
           };
           await DatasetAPI.update(id, updateData);
@@ -87,6 +89,7 @@ const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
           if (values.name) addData.name = values.name;
           if (values.type) addData.type = values.type;
           if (values.description) addData.description = values.description;
+          if (values.path) addData.path = values.path;
           addData.status = String(values.status ?? 1);
           await DatasetAPI.add(addData);
           message.success("新增数据集成功");
@@ -116,6 +119,9 @@ const DatasetFormDialog = forwardRef<DatasetFormDialogRef, Props>(
           </Form.Item>
           <Form.Item name="type" label="数据集类型" rules={[{ required: true, message: "请输入数据集类型" }]}>
             <Input placeholder="请输入数据集类型（如 training/test）" disabled={dialogType === "edit"} />
+          </Form.Item>
+          <Form.Item name="path" label="存储路径" rules={[{ required: true, message: "请输入数据集存储路径" }]}>
+            <Input placeholder="请输入数据集存储路径（如 /data/training）" />
           </Form.Item>
           <Form.Item name="description" label="数据集描述" rules={[{ max: 500, message: "描述不能超过500字" }]}>
             <Input.TextArea placeholder="请输入数据集描述" rows={3} />

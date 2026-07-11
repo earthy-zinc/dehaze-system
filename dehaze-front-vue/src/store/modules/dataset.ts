@@ -1,5 +1,11 @@
 // 数据集小仓库
-import { Dataset, DatasetAPI, DatasetQuery } from "dehaze-sdk-js";
+import {
+  Dataset,
+  DatasetAPI,
+  DatasetAddForm,
+  DatasetQuery,
+  DatasetUpdateForm,
+} from "dehaze-sdk-js";
 
 export const useDatasetStore = defineStore("dataset", () => {
   // 数据集列表
@@ -10,7 +16,7 @@ export const useDatasetStore = defineStore("dataset", () => {
    * @param queryParams 查询参数
    */
   const getDatasetList = async (queryParams?: DatasetQuery) => {
-    datasetList.value = await DatasetAPI.getList(queryParams);
+    datasetList.value = (await DatasetAPI.getList(queryParams)).list;
   };
 
   /**
@@ -18,7 +24,7 @@ export const useDatasetStore = defineStore("dataset", () => {
    * @param data 数据集数据
    * @returns 新增结果（用于交互）
    */
-  const addDataset = async (data: Dataset) => {
+  const addDataset = async (data: DatasetAddForm) => {
     return await DatasetAPI.add(data);
   };
 
@@ -28,17 +34,17 @@ export const useDatasetStore = defineStore("dataset", () => {
    * @param data 数据集数据
    * @returns 更新结果（用于交互）
    */
-  const updateDataset = async (id: number, data: Dataset) => {
+  const updateDataset = async (id: number, data: DatasetUpdateForm) => {
     return await DatasetAPI.update(id, data);
   };
 
   /**
    * 删除数据集数据
-   * @param ids 数据集id数组
+   * @param id 数据集id
    * @returns 删除结果（用于交互）
    */
-  const deleteDatasetByIds = async (ids: string[]) => {
-    return await DatasetAPI.deleteByIds(ids);
+  const deleteDataset = async (id: number) => {
+    return await DatasetAPI.deleteById(id);
   };
 
   return {
@@ -46,6 +52,6 @@ export const useDatasetStore = defineStore("dataset", () => {
     getDatasetList,
     addDataset,
     updateDataset,
-    deleteDatasetByIds,
+    deleteDataset,
   };
 });

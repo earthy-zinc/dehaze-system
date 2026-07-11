@@ -1,3 +1,4 @@
+import SparkMD5 from "spark-md5";
 import { CssStyleObject } from "./types";
 
 export function hasClass(el: HTMLElement, className: string) {
@@ -258,4 +259,23 @@ export function changeUrl(url: string) {
   if (!url) return "";
   const oldHost = new URL(url).host;
   return url.replace(oldHost, host);
+}
+
+/**
+ * 计算文件 MD5
+ *
+ * @param file 文件对象
+ * @returns MD5 哈希字符串
+ */
+export function computeFileMd5(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const spark = new SparkMD5.ArrayBuffer();
+      spark.append(e.target?.result as ArrayBuffer);
+      resolve(spark.end());
+    };
+    reader.onerror = (e) => reject(e);
+    reader.readAsArrayBuffer(file);
+  });
 }

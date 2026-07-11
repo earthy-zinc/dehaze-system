@@ -1,23 +1,14 @@
 import { AlgorithmAPI, type Algorithm, type AlgorithmQuery } from "dehaze-sdk-js";
 import AlgorithmFormDialog, { type AlgorithmFormDialogRef } from "@/pages/algorithm/components/AlgorithmFormDialog";
 import {
-  DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined,
+  DeleteOutlined, EditOutlined, PlusOutlined, ReloadOutlined,
 } from "@ant-design/icons";
 import {
-  Button, Card, Form, Input, message, Popconfirm, Space, Table, Tag,
+  Button, Card, Descriptions, Form, Input, message, Modal, Popconfirm, Space, Switch, Table, Tag,
   type TableColumnsType,
 } from "antd";
+import { useDebounceFn } from "ahooks";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-
-/** 算法状态映射 */
-const STATUS_MAP: Record<number, { label: string; color: string }> = {
-  0: { label: "草稿", color: "default" },
-  1: { label: "测试中", color: "processing" },
-  2: { label: "待审核", color: "warning" },
-  3: { label: "已发布", color: "green" },
-  4: { label: "已停用", color: "error" },
-  5: { label: "已归档", color: "default" },
-};
 
 /** 清理空 children */
 function cleanAlgorithms(algorithms: Algorithm[]): void {
@@ -34,6 +25,8 @@ export default function AlgorithmList(): React.JSX.Element {
   const [searchForm] = Form.useForm();
   const dialogRef = useRef<AlgorithmFormDialogRef>(null);
   const [refreshFlag, setRefreshFlag] = useState(0);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [detailRecord, setDetailRecord] = useState<Algorithm | null>(null);
 
   // ==================== 数据加载 ====================
 
@@ -52,17 +45,45 @@ export default function AlgorithmList(): React.JSX.Element {
 
   const refreshList = useCallback(() => setRefreshFlag((prev) => prev + 1), []);
 
+  // ==================== 搜索防抖（300ms） ====================
+
+  const { run: debouncedSearch } = useDebounceFn(
+    (keywords: string) => { setQueryParams({ keywords: keywords || undefined }); },
+    { wait: 300 }
+  );
+
+  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    debouncedSearch(e.target.value);
+  }, [debouncedSearch]);
+
+  const handleReset = useCallback(() => {
+    searchForm.resetFields();
+    setQueryParams({});
+  }, [searchForm]);
+
   // ==================== 事件处理 ====================
-
-  const handleSearch = useCallback((values: { keywords?: string }) => {
-    setQueryParams({ keywords: values.keywords || undefined });
-  }, []);
-
-  const handleReset = useCallback(() => { searchForm.resetFields(); setQueryParams({}); }, [searchForm]);
 
   const handleAdd = useCallback(() => dialogRef.current?.open("add"), []);
   const handleAddSub = useCallback((record: Algorithm) => dialogRef.current?.open("addSub", record), []);
   const handleEdit = useCallback((record: Algorithm) => dialogRef.current?.open("edit", record), []);
+
+  /** 查看算法详情 */
+  const handleViewDetail = useCallback((record: Algorithm) => {
+    setDetailRecord(record);
+    setDetailVisible(true);
+  }, []);
+
+  /** 切换算法启用状态 */
+  const handleStatusChange = useCallback(async (checked: boolean, record: Algorithm) => {
+    const status = checked ? 1 : 0;
+    try {
+      await AlgorithmAPI.updateStatus(record.id, status);
+      message.success(`算法「${record.name}」已${checked ? "启用" : "禁用"}`);
+      refreshList();
+    } catch (error: any) {
+      message.error(error?.message || "状态更新失败");
+    }
+  }, [refreshList]);
 
   const handleDelete = useCallback(
     (record: Algorithm) => {
@@ -79,17 +100,26 @@ export default function AlgorithmList(): React.JSX.Element {
   const columns: TableColumnsType<Algorithm> = useMemo(() => [
     {
       title: "算法名称", dataIndex: "name", key: "name", width: 200, align: "left" as const,
+      render: (text: string, record: Algorithm) => (
+        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => handleViewDetail(record)}>
+          {text}
+        </Button>
+      ),
     },
     {
       title: "类型", dataIndex: "type", key: "type", width: 120, align: "center",
       render: (text: string) => <Tag>{text}</Tag>,
     },
     {
-      title: "状态", dataIndex: "status", key: "status", width: 90, align: "center",
-      render: (status: number) => {
-        const info = STATUS_MAP[status] || { label: "未知", color: "default" };
-        return <Tag color={info.color}>{info.label}</Tag>;
-      },
+      title: "状态", dataIndex: "status", key: "status", width: 100, align: "center",
+      render: (status: number, record: Algorithm) => (
+        <Switch
+          checked={status === 1}
+          checkedChildren="启用"
+          unCheckedChildren="禁用"
+          onChange={(checked) => handleStatusChange(checked, record)}
+        />
+      ),
     },
     {
       title: "代码导入路径", dataIndex: "importPath", key: "importPath", width: 160,
@@ -114,7 +144,7 @@ export default function AlgorithmList(): React.JSX.Element {
           <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => handleAddSub(record)}>新增下级</Button>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
           <Popconfirm
-            title={`确认删除算法「${record.name}」吗？`}
+            title={`确认删除算法「${record.name}」吗？删除后不可恢复。`}
             onConfirm={() => handleDelete(record)} okText="确定" cancelText="取消" okType="danger"
           >
             <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
@@ -122,20 +152,19 @@ export default function AlgorithmList(): React.JSX.Element {
         </Space>
       ),
     },
-  ], [handleAddSub, handleEdit, handleDelete]);
+  ], [handleAddSub, handleEdit, handleDelete, handleStatusChange, handleViewDetail]);
 
   // ==================== 渲染 ====================
 
   return (
     <div className="app-container">
       <Card size="small" style={{ marginBottom: 12 }}>
-        <Form form={searchForm} layout="inline" onFinish={handleSearch}>
+        <Form form={searchForm} layout="inline">
           <Form.Item name="keywords" label="关键字">
-            <Input placeholder="算法名称" allowClear style={{ width: 200 }} />
+            <Input placeholder="算法名称" allowClear style={{ width: 200 }} onChange={handleSearchChange} />
           </Form.Item>
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>搜索</Button>
               <Button htmlType="reset" icon={<ReloadOutlined />} onClick={handleReset}>重置</Button>
               <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>新增</Button>
             </Space>
@@ -153,6 +182,30 @@ export default function AlgorithmList(): React.JSX.Element {
       </Card>
 
       <AlgorithmFormDialog ref={dialogRef} onSuccess={refreshList} />
+
+      {/* 算法详情弹窗 */}
+      <Modal
+        title="算法详情" open={detailVisible} width={680} footer={null}
+        onCancel={() => setDetailVisible(false)} destroyOnClose
+      >
+        {detailRecord && (
+          <Descriptions column={2} bordered size="small">
+            <Descriptions.Item label="算法名称">{detailRecord.name}</Descriptions.Item>
+            <Descriptions.Item label="算法类型"><Tag>{detailRecord.type}</Tag></Descriptions.Item>
+            <Descriptions.Item label="状态">
+              <Tag color={detailRecord.status === 1 ? "green" : "default"}>
+                {detailRecord.status === 1 ? "启用" : "禁用"}
+              </Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="代码导入路径">{detailRecord.importPath || "-"}</Descriptions.Item>
+            <Descriptions.Item label="FLOPs">{detailRecord.flops || "-"}</Descriptions.Item>
+            <Descriptions.Item label="参数量">{detailRecord.params || "-"}</Descriptions.Item>
+            <Descriptions.Item label="算法大小">{detailRecord.size || "-"}</Descriptions.Item>
+            <Descriptions.Item label="创建时间">{detailRecord.createTime || "-"}</Descriptions.Item>
+            <Descriptions.Item label="算法描述" span={2}>{detailRecord.description || "-"}</Descriptions.Item>
+          </Descriptions>
+        )}
+      </Modal>
     </div>
   );
 }

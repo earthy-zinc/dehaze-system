@@ -5,37 +5,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
 
-/**
- * 🐛 已知后端 Bug
- *
- * Bug ID: BACKEND-002
- *
- * 问题描述: FileService.check(md5) 方法未实现
- * 后端位置: dehaze-java/.../SysFileServiceImpl.java:37-39
- * 当前实现:
- *   @Override
- *   public boolean check(String md5) {
- *       return false;  // 直接返回false，没有实际查询逻辑
- *   }
- *
- * 错误信息: {"code":"B0001","msg":"系统执行出错"}
- *
- * 修复建议:
- *   public boolean check(String md5) {
- *       return this.count(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, md5)) > 0;
- *   }
- *
- * curl验证:
- * TOKEN=$(curl -s -X POST "http://localhost:8989/api/v1/auth/login" \
- *   -H "Content-Type: application/x-www-form-urlencoded" \
- *   -d "username=admin&password=123456" | jq -r '.data.accessToken')
- *
- * curl -s "http://localhost:8989/api/v1/files/check?md5=test123" \
- *   -H "Authorization: Bearer $TOKEN" | jq '.'
- * # 返回: {"code":"B0001","msg":"系统执行出错"}
- * # 预期: {"code":"00000","data":false,"msg":"一切ok"}
- */
-
 describe("文件管理接口测试", () => {
   const uploadedFileIds: number[] = [];
   let testFilePath: string;
@@ -59,8 +28,14 @@ describe("文件管理接口测试", () => {
   }, 30000);
 
   afterAll(async () => {
-    // 注意：清理需要使用 fileId，但我们只存储了 path
-    // 实际场景中应该存储 fileId
+    // 清理上传的文件
+    for (const fileId of uploadedFileIds) {
+      try {
+        await FileAPI.deleteById(fileId);
+      } catch (e) {
+        // 忽略清理失败
+      }
+    }
 
     // 删除本地测试文件
     if (fs.existsSync(testFilePath)) {
@@ -71,16 +46,14 @@ describe("文件管理接口测试", () => {
   });
 
   describe("GET /api/v1/files/check - 文件上传检查", () => {
-    test.skip("正向测试：检查不存在文件的MD5 - BACKEND_BUG: check方法未实现", async () => {
+    test("正向测试：检查不存在文件的MD5应返回null", async () => {
       const nonExistentMd5 = "nonexistent_" + Date.now();
       const result = await FileAPI.uploadCheck(nonExistentMd5);
 
-      expect(result).toBeDefined();
-      expect(typeof result).toBe("boolean");
-      expect(result).toBe(false);
+      expect(result).toBeNull();
     });
 
-    test.skip("正向测试：检查已存在文件的MD5 - BACKEND_BUG: check方法未实现", async () => {
+    test("正向测试：检查已存在文件的MD5应返回文件信息", async () => {
       // 先上传一个文件
       const file = fs.readFileSync(testFilePath);
       const blob = new Blob([file]);
@@ -94,9 +67,9 @@ describe("文件管理接口测试", () => {
       // 检查已上传文件的 MD5
       const result = await FileAPI.uploadCheck(testFileMd5);
 
-      expect(result).toBeDefined();
-      expect(typeof result).toBe("boolean");
-      expect(result).toBe(true);
+      expect(result).not.toBeNull();
+      expect(result?.id).toBeDefined();
+      expect(result?.url).toBeTruthy();
     });
   });
 
@@ -141,7 +114,7 @@ describe("文件管理接口测试", () => {
   });
 
   describe("DELETE /api/v1/files - 删除文件", () => {
-    test.skip("正向测试：删除文件并验证文件被删除 - BACKEND_BUG: check方法未实现无法验证", async () => {
+    test("正向测试：删除文件后MD5检查应返回null", async () => {
       // 先上传一个文件
       const file = fs.readFileSync(testFilePath);
       const blob = new Blob([file]);
@@ -155,9 +128,9 @@ describe("文件管理接口测试", () => {
       // 删除文件
       await FileAPI.deleteById(fileId);
 
-      // 验证文件已删除（MD5检查应该返回false）- 但check接口有bug
+      // 验证文件已删除（MD5检查应返回null）
       const result = await FileAPI.uploadCheck(testFileMd5);
-      expect(result).toBe(false);
+      expect(result).toBeNull();
     });
 
     test("异常测试：删除不存在的文件ID", async () => {

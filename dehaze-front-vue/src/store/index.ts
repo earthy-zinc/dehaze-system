@@ -14,5 +14,6 @@ export * from "./modules/dataset";
 export * from "./modules/permission";
 export * from "./modules/settings";
 export * from "./modules/tagsView";
+export * from "./modules/task";
 export * from "./modules/user";
 export { store };

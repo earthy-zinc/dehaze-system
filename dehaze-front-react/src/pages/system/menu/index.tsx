@@ -1,4 +1,6 @@
 import { MenuAPI, type MenuQuery, type MenuVO } from "dehaze-sdk-js";
+import { type DisPatchType, RootState } from "@/store";
+import { generateRoutes } from "@/store/modules/permissionSlice";
 import {
   Button,
   Card,
@@ -7,6 +9,7 @@ import {
   message,
   Popconfirm,
   Space,
+  Switch,
   Table,
   Tag,
   type TableColumnsType,
@@ -19,6 +22,7 @@ import {
   SearchOutlined,
 } from "@ant-design/icons";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import MenuFormDialog, {
   type MenuFormDialogRef,
 } from "./components/MenuFormDialog";
@@ -41,6 +45,9 @@ const MenuManagement: React.FC = () => {
   const dialogRef = useRef<MenuFormDialogRef>(null);
   const [refreshFlag, setRefreshFlag] = useState(0);
 
+  const dispatch = useDispatch<DisPatchType>();
+  const roles = useSelector((state: RootState) => state.user.user.roles);
+
   const loadData = useCallback(async (params: MenuQuery) => {
     setLoading(true);
     try {
@@ -58,6 +65,12 @@ const MenuManagement: React.FC = () => {
 
   const refreshList = useCallback(() => setRefreshFlag((prev) => prev + 1), []);
 
+  /** 刷新列表并重新生成路由 */
+  const refreshListAndRoutes = useCallback(() => {
+    refreshList();
+    dispatch(generateRoutes(roles));
+  }, [refreshList, dispatch, roles]);
+
   const handleSearch = useCallback(
     (values: { keywords?: string }) => {
       setQueryParams({ keywords: values.keywords || undefined });
@@ -73,16 +86,36 @@ const MenuManagement: React.FC = () => {
   const handleAdd = useCallback(() => dialogRef.current?.open("add"), []);
   const handleEdit = useCallback((record: MenuVO) => dialogRef.current?.open("edit", record), []);
 
+  /** 切换菜单显示状态 */
+  const handleToggleVisible = useCallback(
+    async (record: MenuVO) => {
+      try {
+        // 获取完整表单数据后修改 visible 字段
+        const formData = await MenuAPI.getFormData(record.id!);
+        formData.visible = record.visible === 1 ? 0 : 1;
+        await MenuAPI.update(String(record.id), formData);
+        message.success(
+          `菜单「${record.name}」${formData.visible === 1 ? "显示" : "隐藏"}成功`
+        );
+        refreshListAndRoutes();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (error: any) {
+        message.error(error?.message || "操作失败");
+      }
+    },
+    [refreshListAndRoutes]
+  );
+
   const handleDelete = useCallback(
     (record: MenuVO) => {
       MenuAPI.deleteById(record.id!)
         .then(() => {
           message.success(`菜单「${record.name}」删除成功`);
-          refreshList();
+          refreshListAndRoutes();
         })
         .catch((error) => message.error(error?.message || "删除失败"));
     },
-    [refreshList]
+    [refreshListAndRoutes]
   );
 
   const columns: TableColumnsType<MenuVO> = useMemo(
@@ -133,10 +166,15 @@ const MenuManagement: React.FC = () => {
         key: "visible",
         width: 100,
         align: "center",
-        render: (visible: number) => (
-          <Tag color={visible === 1 ? "green" : "default"}>
-            {visible === 1 ? "显示" : "隐藏"}
-          </Tag>
+        render: (_: unknown, record: MenuVO) => (
+          <Popconfirm
+            title={`确认${record.visible === 1 ? "隐藏" : "显示"}该菜单吗？`}
+            onConfirm={() => handleToggleVisible(record)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Switch checked={record.visible === 1} />
+          </Popconfirm>
         ),
       },
       {
@@ -163,7 +201,7 @@ const MenuManagement: React.FC = () => {
               编辑
             </Button>
             <Popconfirm
-              title={`确认删除菜单「${record.name}」吗？`}
+              title={`确认删除菜单「${record.name}」吗？删除后不可恢复。`}
               onConfirm={() => handleDelete(record)}
               okText="确定"
               cancelText="取消"
@@ -177,7 +215,7 @@ const MenuManagement: React.FC = () => {
         ),
       },
     ],
-    [handleEdit, handleDelete]
+    [handleEdit, handleDelete, handleToggleVisible]
   );
 
   return (
@@ -209,7 +247,7 @@ const MenuManagement: React.FC = () => {
         />
       </Card>
 
-      <MenuFormDialog ref={dialogRef} onSuccess={refreshList} />
+      <MenuFormDialog ref={dialogRef} onSuccess={refreshListAndRoutes} />
     </div>
   );
 };

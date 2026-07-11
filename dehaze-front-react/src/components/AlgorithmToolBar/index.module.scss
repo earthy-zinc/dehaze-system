@@ -1,8 +1,47 @@
-.sidebar-card {
+.sidebarContainer {
+  width: 30vw;
+}
+
+.sidebarCard {
   width: 30vw;
   height: 100%;
   padding: 0 15px;
   overflow-y: auto;
+}
+
+.title {
+  margin-bottom: 8px;
+}
+
+.description {
+  display: block;
+  margin-bottom: 16px;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.buttonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.generateButtonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.form {
+  margin-top: 8px;
+}
+
+.magnifierOptions {
+  padding: 8px 0;
+  border-top: 1px solid #f0f0f0;
 }
 
 .ant-space-compact-block {

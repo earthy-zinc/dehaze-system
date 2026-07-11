@@ -4,6 +4,8 @@ import defaultSettings from "@/settings";
 import { DisPatchType } from "@/store";
 import { login } from "@/store/modules/userSlice";
 import {
+  EyeInvisibleOutlined,
+  EyeTwoTone,
   LockOutlined,
   MoonOutlined,
   SafetyOutlined,
@@ -17,11 +19,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import "./index.scss";
 
 export default function Login() {
-  const [loginData, setLoginData] = useState<LoginData>({
-    username: "admin",
-    password: "123456",
-  });
+  const [form] = Form.useForm();
   const [captchaBase64, setCaptchaBase64] = useState("");
+  const [captchaKey, setCaptchaKey] = useState("");
   const [loading, setLoading] = useState(false);
   const [isCapslock, setIsCapslock] = useState(false);
   const [isDark, setIsDark] = useState(false);
@@ -33,16 +33,22 @@ export default function Login() {
   const getCaptcha = useCallback(() => {
     AuthAPI.getCaptcha().then((data) => {
       setCaptchaBase64(data.captchaBase64);
-      setLoginData({ ...loginData, captchaKey: data.captchaKey });
+      setCaptchaKey(data.captchaKey);
     });
-  }, [loginData]);
+  }, []);
 
   useEffect(() => {
     getCaptcha();
   }, []);
 
-  const handleLogin = () => {
+  // 登录提交（Form 的 onFinish 自带回车提交支持）
+  const handleLogin = (values: {
+    username: string;
+    password: string;
+    captchaCode: string;
+  }) => {
     setLoading(true);
+    const loginData: LoginData = { ...values, captchaKey };
     dispatch(login(loginData))
       .then(() => {
         const query = new URLSearchParams(location.search);
@@ -59,6 +65,8 @@ export default function Login() {
         });
       })
       .catch(() => {
+        // 登录失败：清空密码和验证码输入，并刷新验证码
+        form.setFieldsValue({ password: "", captchaCode: "" });
         getCaptcha();
       })
       .finally(() => {
@@ -88,69 +96,75 @@ export default function Login() {
           <Tag className="ml-2 absolute-rt">{defaultSettings.version}</Tag>
         </div>
 
-        <Form className="login-form">
-          <Form.Item>
+        <Form
+          form={form}
+          className="login-form"
+          initialValues={{ username: "admin", password: "123456" }}
+          onFinish={handleLogin}
+        >
+          <Form.Item
+            name="username"
+            rules={[{ required: true, message: "请输入用户名" }]}
+          >
             <Input
               prefix={<UserOutlined />}
               placeholder="用户名"
               size="large"
-              value={loginData.username}
-              onChange={(e) =>
-                setLoginData({ ...loginData, username: e.target.value })
+              autoFocus
+            />
+          </Form.Item>
+          <Tooltip title="大写锁定已开启" open={isCapslock}>
+            <Form.Item
+              name="password"
+              rules={[{ required: true, message: "请输入密码" }]}
+            >
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder="密码"
+                size="large"
+                iconRender={(visible) =>
+                  visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />
+                }
+                onKeyUp={(e) =>
+                  setIsCapslock(e.getModifierState("CapsLock"))
+                }
+              />
+            </Form.Item>
+          </Tooltip>
+          <Form.Item
+            name="captchaCode"
+            rules={[{ required: true, message: "请输入验证码" }]}
+          >
+            <Input
+              prefix={<SafetyOutlined />}
+              placeholder="验证码"
+              size="large"
+              suffix={
+                <img
+                  src={captchaBase64}
+                  onClick={() => getCaptcha()}
+                  alt="加载失败"
+                  style={{ height: 34, cursor: "pointer" }}
+                />
               }
             />
           </Form.Item>
           <Form.Item>
-            <Tooltip title="大写锁定已开启" open={isCapslock}>
-              <Input
-                prefix={<LockOutlined />}
-                type="password"
-                placeholder="密码"
-                size="large"
-                value={loginData.password}
-                onChange={(e) =>
-                  setLoginData({ ...loginData, password: e.target.value })
-                }
-                onKeyUp={(e) => setIsCapslock(e.getModifierState("CapsLock"))}
-              />
-            </Tooltip>
+            <Button
+              className="w-full"
+              size="large"
+              type="primary"
+              htmlType="submit"
+              loading={loading}
+            >
+              登录
+            </Button>
           </Form.Item>
-          <Form.Item>
-            <div className="flex-y-center w-full">
-              <Input
-                className="flex-1 absolute-lt"
-                prefix={<SafetyOutlined />}
-                placeholder="验证码"
-                size="large"
-                value={loginData.captchaCode}
-                onChange={(e) =>
-                  setLoginData({ ...loginData, captchaCode: e.target.value })
-                }
-              />
-              <img
-                className="rounded-tr-md rounded-br-md cursor-pointer relative h-[34px] top-1 left-55 z-36"
-                src={captchaBase64}
-                onClick={() => {
-                  getCaptcha();
-                }}
-                alt="加载失败"
-              />
-            </div>
-          </Form.Item>
-          <Button
-            className="w-full"
-            size="large"
-            type="primary"
-            loading={loading}
-            onClick={handleLogin}
-          >
-            登录
-          </Button>
-          <div className="mt-10 text-sm">
-            <span>用户名: admin</span>
-            <span className="ml-4"> 密码: 123456</span>
-          </div>
         </Form>
+        <div className="mt-10 text-sm">
+          <span>用户名: admin</span>
+          <span className="ml-4"> 密码: 123456</span>
+        </div>
       </Card>
       <div className="absolute bottom-1 text-[10px] text-center">
         <p>

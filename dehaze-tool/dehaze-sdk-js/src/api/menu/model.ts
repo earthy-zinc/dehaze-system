@@ -132,9 +132,9 @@ export interface RouteVO {
    */
   children: RouteVO[];
   /**
-   * 组件路径
+   * 组件路径，可为字符串路径或动态加载的 React 组件
    */
-  component?: string;
+  component?: any;
   meta?: Meta;
   /**
    * 路由名称

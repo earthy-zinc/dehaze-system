@@ -3,7 +3,14 @@ import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue"
 import { ViewCard } from "@/components/Waterfall/types";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { changeUrl } from "@/utils";
-import { Dataset, DatasetAPI, ImageItem, ImageItemQuery } from "dehaze-sdk-js";
+import {
+  Dataset,
+  DatasetAPI,
+  DatasetItemAPI,
+  DatasetItemQuery,
+  DatasetItemVO,
+  ImageUrlVO,
+} from "dehaze-sdk-js";
 
 defineOptions({
   name: "DatasetImageSelect",
@@ -13,7 +20,7 @@ defineOptions({
 const emit = defineEmits(["onSelected"]);
 const selectedDatasetId = ref<number>(1);
 const totalPages = ref<number>(1);
-const queryParams = reactive<ImageItemQuery>({ pageNum: 1, pageSize: 10 });
+const queryParams = reactive<DatasetItemQuery>({ pageNum: 1, pageSize: 10 });
 const renderCount = ref<number>(0);
 let datasetInfo = ref<Dataset>({
   id: 0,
@@ -24,11 +31,10 @@ let datasetInfo = ref<Dataset>({
   createTime: new Date(),
   updateTime: new Date(),
   path: "",
-  size: "",
   total: 0,
 });
 let images = ref<ViewCard[]>([]);
-let imageData = reactive<ImageItem[]>([]);
+let imageData = reactive<DatasetItemVO[]>([]);
 type ImageType = { id: number; type: string; enabled: boolean };
 
 const imageTypes = ref<ImageType[]>([
@@ -59,17 +65,27 @@ const itemWidth = computed(() => {
   return 400;
 });
 
+function extractImagesFromItem(item: DatasetItemVO): ImageUrlVO[] {
+  const allImages: ImageUrlVO[] = [];
+  if (item.clearImage) allImages.push(item.clearImage);
+  if (item.hazyImages && item.hazyImages.length > 0)
+    allImages.push(...item.hazyImages);
+  return allImages;
+}
+
 async function handleQuery() {
-  DatasetAPI.getImageItem(selectedDatasetId.value, queryParams)
+  queryParams.datasetId = selectedDatasetId.value;
+  DatasetItemAPI.getList(queryParams)
     .then((data) => {
       imageData = data.list;
-      totalPages.value = Math.ceil(data.total / queryParams.pageSize);
+      totalPages.value = Math.ceil(data.total / queryParams.pageSize!);
       switchImageUrl(curImageType.value?.id || 0);
     })
     .then(() => {
       if (imageData.length > 0) {
+        const imgs = extractImagesFromItem(imageData[0]);
         let tempImageTypes = [] as ImageType[];
-        imageData[0].imgUrl.forEach((item, index) => {
+        imgs.forEach((item, index) => {
           tempImageTypes.push({
             id: index,
             type: item.type,
@@ -86,11 +102,13 @@ async function handleQuery() {
 
 function switchImageUrl(id: number) {
   images.value = imageData.map((item) => {
+    const imgs = extractImagesFromItem(item);
+    const img = imgs[id] || imgs[0];
     return {
       id: item.id,
-      src: changeUrl(item.imgUrl[id].url),
-      originSrc: changeUrl(item.imgUrl[id].originUrl!),
-      alt: item.imgUrl[id].description,
+      src: changeUrl(img.url),
+      originSrc: changeUrl(img.originUrl!),
+      alt: img.description,
     };
   });
 }
@@ -107,8 +125,9 @@ function handleImageTypeChange(typeId: number) {
 function selectImage(itemId: number) {
   let curImageItem = imageData.find((item) => item.id === itemId);
   if (curImageItem) {
-    let haze = changeUrl(curImageItem.imgUrl[1].originUrl!);
-    let clear = changeUrl(curImageItem.imgUrl[0].originUrl!);
+    const imgs = extractImagesFromItem(curImageItem);
+    let haze = changeUrl(imgs[1].originUrl!);
+    let clear = changeUrl(imgs[0].originUrl!);
     emit("onSelected", haze, clear);
   }
 }
@@ -121,13 +140,11 @@ async function handleSelectDataset() {
   loadingObserver.value = new IntersectionObserver((entries, observer) => {
     entries.forEach((entry) => {
       if (entry.isIntersecting) {
-        queryParams.pageNum++;
-        DatasetAPI.getImageItem(selectedDatasetId.value, queryParams).then(
-          (data) => {
-            imageData.push(...data.list);
-            switchImageUrl(curImageType.value?.id || 0);
-          }
-        );
+        queryParams.pageNum!++;
+        DatasetItemAPI.getList(queryParams).then((data) => {
+          imageData.push(...data.list);
+          switchImageUrl(curImageType.value?.id || 0);
+        });
       }
     });
   });
@@ -183,9 +200,9 @@ onUnmounted(() => loadingObserver.value?.disconnect());
       </el-button-group>
 
       <el-form ref="queryFormRef" :inline="true" :model="queryParams">
-        <el-form-item label="关键字" prop="keywords">
+        <el-form-item label="关键字" prop="keyword">
           <el-input
-            v-model="queryParams.keywords"
+            v-model="queryParams.keyword"
             clearable
             placeholder="图片名称"
             @keyup.enter="handleQuery"

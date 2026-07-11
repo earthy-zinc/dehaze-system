@@ -242,6 +242,9 @@ function checkCapslock(event: KeyboardEvent) {
 
 onMounted(() => {
   getCaptcha();
+  nextTick(() => {
+    loginFormRef.value?.fields?.[0]?.ref?.focus?.();
+  });
 });
 </script>
 

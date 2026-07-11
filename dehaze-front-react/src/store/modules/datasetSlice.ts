@@ -1,4 +1,10 @@
-import { DatasetAPI, Dataset, DatasetQuery } from "dehaze-sdk-js";
+import {
+  DatasetAPI,
+  Dataset,
+  DatasetQuery,
+  DatasetAddForm,
+  DatasetUpdateForm,
+} from "dehaze-sdk-js";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { persistReducer } from "redux-persist";
 import storage from "redux-persist/lib/storage";
@@ -26,7 +32,7 @@ export const getDatasetList = createAsyncThunk(
 // Async thunk for adding a dataset
 export const addDataset = createAsyncThunk(
   "dataset/add",
-  async (data: Dataset) => {
+  async (data: DatasetAddForm) => {
     const response = await DatasetAPI.add(data);
     return response;
   }
@@ -35,7 +41,7 @@ export const addDataset = createAsyncThunk(
 // Async thunk for updating a dataset
 export const updateDataset = createAsyncThunk(
   "dataset/update",
-  async ({ id, data }: { id: number; data: Dataset }) => {
+  async ({ id, data }: { id: number; data: DatasetUpdateForm }) => {
     const response = await DatasetAPI.update(id, data);
     return response;
   }
@@ -62,7 +68,7 @@ const datasetSlice = createSlice({
         state.loading = true;
       })
       .addCase(getDatasetList.fulfilled, (state, action) => {
-        state.datasetList = action.payload;
+        state.datasetList = action.payload.list;
         state.loading = false;
       })
       .addCase(getDatasetList.rejected, (state) => {

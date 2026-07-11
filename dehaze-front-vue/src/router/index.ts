@@ -97,6 +97,39 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
     ],
   },
+  {
+    path: "/task",
+    component: Layout,
+    redirect: "/task/index",
+    meta: {
+      title: "任务中心",
+      icon: "todolist",
+    },
+    children: [
+      {
+        path: "index",
+        name: "TaskCenter",
+        component: () => import("@/views/task/index.vue"),
+        meta: {
+          title: "任务中心",
+          icon: "todolist",
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
+    path: "/algorithm-select",
+    component: Layout,
+    meta: { hidden: true },
+    children: [
+      {
+        path: "index",
+        component: () => import("@/views/algorithm-select/index.vue"),
+        meta: { title: "算法选择", icon: "model", hidden: true },
+      },
+    ],
+  },
   // {
   //   path: "/external-link",
   //   component: Layout,
@@ -141,13 +174,34 @@ export const constantRoutes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: "/image-input",
+    component: Layout,
+    redirect: "/image-input/index",
+    meta: {
+      title: "图像输入",
+      icon: "image",
+      hidden: true,
+    },
+    children: [
+      {
+        path: "index",
+        name: "ImageInput",
+        component: () => import("@/views/image-input/index.vue"),
+        meta: {
+          title: "图像输入",
+          icon: "image",
+          keepAlive: true,
+        },
+      },
+    ],
+  },
+  {
     path: "/evaluation",
     component: Layout,
     redirect: "/evaluation/index",
     meta: {
       title: "算法评测",
       icon: "evaluation",
-      hidden: true,
     },
     children: [
       {
@@ -161,35 +215,35 @@ export const constantRoutes: RouteRecordRaw[] = [
       },
     ],
   },
-  // {
-  //   path: "/compare",
-  //   component: Layout,
-  //   redirect: "/compare/overlap",
-  //   meta: {
-  //     title: "算法比较",
-  //     icon: "compare",
-  //   },
-  //   children: [
-  //     {
-  //       path: "overlap",
-  //       component: () => import("@/views/compare/overlap/index.vue"),
-  //       meta: {
-  //         title: "重叠对比",
-  //         icon: "overlap",
-  //         keepAlive: true,
-  //       },
-  //     },
-  //     {
-  //       path: "parallel",
-  //       component: () => import("@/views/compare/parallel/index.vue"),
-  //       meta: {
-  //         title: "并排比较",
-  //         icon: "parallel",
-  //         keepAlive: true,
-  //       },
-  //     },
-  //   ],
-  // },
+  {
+    path: "/compare",
+    component: Layout,
+    redirect: "/compare/overlap",
+    meta: {
+      title: "算法比较",
+      icon: "compare",
+    },
+    children: [
+      {
+        path: "overlap",
+        component: () => import("@/views/compare/overlap/index.vue"),
+        meta: {
+          title: "重叠对比",
+          icon: "overlap",
+          keepAlive: true,
+        },
+      },
+      {
+        path: "parallel",
+        component: () => import("@/views/compare/parallel/index.vue"),
+        meta: {
+          title: "并排比较",
+          icon: "parallel",
+          keepAlive: true,
+        },
+      },
+    ],
+  },
   // {
   //   path: "/curd",
   //   component: Layout,

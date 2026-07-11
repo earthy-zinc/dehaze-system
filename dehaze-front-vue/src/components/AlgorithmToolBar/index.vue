@@ -22,6 +22,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // 是否展示去雾算法参数调节区域
+  showDehazeParams: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits([
@@ -31,7 +36,29 @@ const emit = defineEmits([
   "onEval",
   "onGenerate",
   "onSelectFromDataset",
+  "onParamChange",
 ]);
+
+// 去雾算法参数（通用参数），参数变化时通过 onParamChange 事件传递给父组件
+const dehazeParams = reactive({
+  // 去雾强度 0-100，值越大去雾效果越强
+  dehazeStrength: 50,
+  // 色彩饱和度 0-100
+  colorSaturation: 50,
+  // 对比度 0-100
+  contrast: 50,
+  // 锐化程度 0-100
+  sharpen: 30,
+});
+
+// 参数变化时通知父组件
+watch(
+  dehazeParams,
+  (val) => {
+    emit("onParamChange", { ...val });
+  },
+  { deep: true }
+);
 
 const imageShowStore = useImageShowStore();
 
@@ -352,6 +379,47 @@ watch(
                 (value: Arrayable<number>) =>
                   handleImageFilterChange(Number(value), 'saturate')
               "
+            />
+          </el-form-item>
+        </template>
+
+        <!-- 去雾算法参数调节区域 -->
+        <template v-if="showDehazeParams">
+          <el-divider content-position="center">算法参数调节</el-divider>
+          <el-form-item class="more-operations" label="去雾强度">
+            <el-slider
+              v-model="dehazeParams.dehazeStrength"
+              :max="100"
+              :min="0"
+              show-input
+              :show-input-controls="false"
+            />
+          </el-form-item>
+          <el-form-item class="more-operations" label="色彩饱和度">
+            <el-slider
+              v-model="dehazeParams.colorSaturation"
+              :max="100"
+              :min="0"
+              show-input
+              :show-input-controls="false"
+            />
+          </el-form-item>
+          <el-form-item class="more-operations" label="对比度">
+            <el-slider
+              v-model="dehazeParams.contrast"
+              :max="100"
+              :min="0"
+              show-input
+              :show-input-controls="false"
+            />
+          </el-form-item>
+          <el-form-item class="more-operations" label="锐化程度">
+            <el-slider
+              v-model="dehazeParams.sharpen"
+              :max="100"
+              :min="0"
+              show-input
+              :show-input-controls="false"
             />
           </el-form-item>
         </template>

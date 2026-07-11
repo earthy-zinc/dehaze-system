@@ -19,7 +19,7 @@ const API = isDatasetList ? DatasetAPI : AlgorithmAPI;
 
 const queryFormRef = ref(ElForm);
 const loading = ref(false);
-const queryParams = reactive<AlgorithmQuery | DatasetQuery>({
+const queryParams = reactive<any>({
   pageNum: 1,
   pageSize: 20,
 });
@@ -59,8 +59,8 @@ function handleQuery() {
         loading.value = false;
       });
   } else {
-    API.getList(queryParams)
-      .then((data) => {
+    API.getList(queryParams as AlgorithmQuery)
+      .then((data: any) => {
         list.value = data;
       })
       .finally(() => {
@@ -131,7 +131,11 @@ function handleDelete(algorithmId: number) {
     type: "warning",
   })
     .then(() => {
-      API.deleteByIds([...algorithmId.toString()]);
+      if (isDatasetList) {
+        DatasetAPI.deleteById(algorithmId);
+      } else {
+        AlgorithmAPI.deleteByIds([algorithmId.toString()]);
+      }
       ElMessage.success("删除成功");
       handleQuery();
     })

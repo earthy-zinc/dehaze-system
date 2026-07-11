@@ -63,11 +63,11 @@ public class FileController {
 
     @GetMapping("/check")
     @Operation(summary = "文件校验")
-    public Result<Boolean> checkFile(
+    public Result<SysFile> checkFile(
             @Parameter(description = "文件md5") @RequestParam String md5
     ) {
-        boolean result = sysFileService.check(md5);
-        return Result.success(result);
+        SysFile fileInfo = sysFileService.check(md5);
+        return Result.success(fileInfo);
     }
 
     @GetMapping("/page")

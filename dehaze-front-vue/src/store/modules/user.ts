@@ -1,4 +1,4 @@
-import { TOKEN_KEY } from "@/enums/CacheEnum";
+import { REFRESH_TOKEN_KEY, TOKEN_KEY } from "@/enums/CacheEnum";
 import { resetRouter } from "@/router";
 import { store } from "@/store";
 
@@ -20,8 +20,29 @@ export const useUserStore = defineStore("user", () => {
     return new Promise<void>((resolve, reject) => {
       AuthAPI.login(loginData)
         .then((data) => {
-          const { tokenType, accessToken } = data;
+          const { tokenType, accessToken, refreshToken } = data;
           localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken); // Bearer eyJhbGciOiJIUzI1NiJ9.xxx.xxx
+          localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+          resolve();
+        })
+        .catch((error) => {
+          reject(error);
+        });
+    });
+  }
+
+  /**
+   * 刷新 accessToken
+   *
+   * @param refreshToken 刷新令牌
+   */
+  function refreshAccessToken(refreshToken: string) {
+    return new Promise<void>((resolve, reject) => {
+      AuthAPI.refreshToken(refreshToken)
+        .then((data) => {
+          const { tokenType, accessToken, refreshToken: newRefreshToken } = data;
+          localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken);
+          localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
           resolve();
         })
         .catch((error) => {
@@ -58,6 +79,7 @@ export const useUserStore = defineStore("user", () => {
       AuthAPI.logout()
         .then(() => {
           localStorage.setItem(TOKEN_KEY, "");
+          localStorage.setItem(REFRESH_TOKEN_KEY, "");
           location.reload(); // 清空路由
           resolve();
         })
@@ -69,9 +91,9 @@ export const useUserStore = defineStore("user", () => {
 
   // remove token
   function resetToken() {
-    console.log("resetToken");
     return new Promise<void>((resolve) => {
       localStorage.setItem(TOKEN_KEY, "");
+      localStorage.setItem(REFRESH_TOKEN_KEY, "");
       resetRouter();
       resolve();
     });
@@ -80,6 +102,7 @@ export const useUserStore = defineStore("user", () => {
   return {
     user,
     login,
+    refreshAccessToken,
     getUserInfo,
     logout,
     resetToken,

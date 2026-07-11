@@ -1,5 +1,5 @@
 import { AlgorithmAPI, type Algorithm, type CreateAlgorithmOptional } from "dehaze-sdk-js";
-import { Form, Input, Modal, Radio, TreeSelect, message } from "antd";
+import { Form, Input, Modal, Switch, TreeSelect, message } from "antd";
 import React, { forwardRef, useCallback, useImperativeHandle, useState } from "react";
 
 /** 递归转换算法树为 TreeSelect 格式 */
@@ -132,14 +132,8 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
             <Form.Item name="importPath" label="代码导入路径">
               <Input placeholder="如 models.ridcp" />
             </Form.Item>
-            <Form.Item name="status" label="状态">
-              <Radio.Group>
-                <Radio value={0}>草稿</Radio>
-                <Radio value={1}>测试中</Radio>
-                <Radio value={2}>待审核</Radio>
-                <Radio value={3}>已发布</Radio>
-                <Radio value={4}>已停用</Radio>
-              </Radio.Group>
+            <Form.Item name="status" label="状态" valuePropName="checked" getValueFromEvent={(checked: boolean) => checked ? 1 : 0}>
+              <Switch checkedChildren="启用" unCheckedChildren="禁用" />
             </Form.Item>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 24px" }}>

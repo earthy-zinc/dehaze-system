@@ -3,6 +3,7 @@
   <el-upload
     v-model:file-list="fileList"
     :before-upload="handleBeforeUpload"
+    :before-remove="handleBeforeRemove"
     :http-request="handleUpload"
     :limit="props.limit"
     :on-preview="previewImg"
@@ -18,14 +19,16 @@
 </template>
 
 <script lang="ts" setup>
+import { computeFileMd5 } from "@/utils";
 import { FileAPI } from "dehaze-sdk-js";
 import {
-  UploadFile,
   UploadProps,
   UploadRawFile,
   UploadRequestOptions,
   UploadUserFile,
 } from "element-plus";
+
+type UploadFileItem = UploadUserFile & { fileId?: number };
 
 const emit = defineEmits(["update:modelValue"]);
 
@@ -49,7 +52,7 @@ const props = defineProps({
 const previewImgUrl = ref("");
 const dialogVisible = ref(false);
 
-const fileList = ref([] as UploadUserFile[]);
+const fileList = ref([] as UploadFileItem[]);
 watch(
   () => props.modelValue,
   (newVal: string[]) => {
@@ -65,20 +68,22 @@ watch(
     }
 
     fileList.value = newVal.map((filePath) => {
-      return { url: filePath } as UploadUserFile;
+      return { url: filePath } as UploadFileItem;
     });
   },
   { immediate: true }
 );
 
 /**
- * 自定义图片上传
+ * 自定义图片上传（支持 MD5 秒传）
  *
  * @param params
  */
 async function handleUpload(options: UploadRequestOptions): Promise<any> {
-  // 上传API调用
-  const data = await FileAPI.upload(options.file);
+  // 计算文件 MD5，检查是否已存在（秒传）
+  const md5 = await computeFileMd5(options.file);
+  const existing = await FileAPI.uploadCheck(md5);
+  const data = existing ?? (await FileAPI.upload(options.file));
 
   // 上传成功需手动替换文件路径为远程URL，否则图片地址为预览地址 blob:http://
   const fileIndex = fileList.value.findIndex(
@@ -88,7 +93,8 @@ async function handleUpload(options: UploadRequestOptions): Promise<any> {
   fileList.value.splice(fileIndex, 1, {
     name: data.name,
     url: data.url,
-  } as UploadUserFile);
+    fileId: data.id,
+  } as UploadFileItem);
 
   emit(
     "update:modelValue",
@@ -97,28 +103,40 @@ async function handleUpload(options: UploadRequestOptions): Promise<any> {
 }
 
 /**
- * 删除图片
+ * 删除前确认弹窗，确认后调用 deleteById 删除文件
  */
-function handleRemove(removeFile: UploadFile) {
-  const filePath = removeFile.url;
+const handleBeforeRemove: UploadProps["beforeRemove"] = (uploadFile) => {
+  return ElMessageBox.confirm("确认删除该文件吗？删除后不可恢复。", "提示", {
+    confirmButtonText: "确定",
+    cancelButtonText: "取消",
+    type: "warning",
+  })
+    .then(async () => {
+      const item = fileList.value.find((f) => f.uid === uploadFile.uid);
+      if (item?.fileId) {
+        await FileAPI.deleteById(item.fileId);
+      }
+      return true;
+    })
+    .catch(() => false);
+};
 
-  if (filePath) {
-    FileAPI.deleteByPath(filePath).then(() => {
-      // 删除成功回调
-      emit(
-        "update:modelValue",
-        fileList.value.map((file) => file.url)
-      );
-    });
-  }
+/**
+ * 删除图片后同步 modelValue
+ */
+function handleRemove() {
+  emit(
+    "update:modelValue",
+    fileList.value.map((file) => file.url)
+  );
 }
 
 /**
  * 限制用户上传文件的格式和大小
  */
 function handleBeforeUpload(file: UploadRawFile) {
-  if (file.size > 2 * 1048 * 1048) {
-    ElMessage.warning("上传图片不能大于2M");
+  if (file.size > 100 * 1048 * 1048) {
+    ElMessage.warning("上传图片不能大于100M");
     return false;
   }
   return true;

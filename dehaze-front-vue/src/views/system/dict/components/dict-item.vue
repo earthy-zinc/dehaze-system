@@ -4,9 +4,9 @@
     <div class="search-container">
       <!-- 搜索表单 -->
       <el-form ref="queryFormRef" :inline="true" :model="queryParams">
-        <el-form-item label="关键字" prop="name">
+        <el-form-item label="关键字" prop="keywords">
           <el-input
-            v-model="queryParams.name"
+            v-model="queryParams.keywords"
             clearable
             placeholder="字典名称"
           />
@@ -22,13 +22,13 @@
     <el-card shadow="never">
       <template #header>
         <el-button
-          v-hasPerm="['sys:dict:add']"
+          v-hasPerm="['sys:dict:data:add']"
           type="success"
           @click="openDialog()"
           ><i-ep-plus />新增</el-button
         >
         <el-button
-          v-hasPerm="['sys:dict:delete']"
+          v-hasPerm="['sys:dict:data:delete']"
           :disabled="ids.length === 0"
           type="danger"
           @click="handleDelete()"
@@ -52,20 +52,23 @@
             <el-tag v-else type="info">禁用</el-tag>
           </template>
         </el-table-column>
+        <el-table-column align="center" label="排序" prop="sort" width="80" />
+        <el-table-column label="备注" prop="remark" width="150" />
+        <el-table-column label="创建时间" prop="createTime" width="180" />
         <el-table-column align="center" fixed="right" label="操作">
           <template #default="scope">
             <el-button
-              v-hasPerm="['sys:dict:edit']"
+              v-hasPerm="['sys:dict:data:edit']"
               link
               type="primary"
               @click="openDialog(scope.row.id)"
               ><i-ep-edit />编辑</el-button
             >
             <el-button
-              v-hasPerm="['sys:dict:delete']"
+              v-hasPerm="['sys:dict:data:delete']"
               link
               type="primary"
-              @click.stop="handleDelete(scope.row.id)"
+              @click.stop="handleDelete(scope.row)"
               ><i-ep-delete />删除</el-button
             >
           </template>
@@ -94,7 +97,7 @@
         :rules="rules"
         label-width="100px"
       >
-        <el-form-item label="字典名称">{{ typeName }}</el-form-item>
+        <el-form-item label="字典类型">{{ typeName }}</el-form-item>
         <el-form-item label="字典名称" prop="name">
           <el-input v-model="formData.name" placeholder="请输入字典名称" />
         </el-form-item>
@@ -113,6 +116,13 @@
             <el-radio :label="1">正常</el-radio>
             <el-radio :label="0">停用</el-radio>
           </el-radio-group>
+        </el-form-item>
+        <el-form-item label="是否默认" prop="defaulted">
+          <el-switch
+            v-model="formData.defaulted"
+            :active-value="1"
+            :inactive-value="0"
+          />
         </el-form-item>
         <el-form-item label="备注" prop="remark">
           <el-input v-model="formData.remark" type="textarea" />
@@ -182,6 +192,7 @@ const dialog = reactive({
 
 const formData = reactive<DictForm>({
   status: 1,
+  defaulted: 0,
   typeCode: props.typeCode,
   sort: 1,
 });
@@ -189,6 +200,9 @@ const formData = reactive<DictForm>({
 const rules = reactive({
   name: [{ required: true, message: "请输入字典名称", trigger: "blur" }],
   value: [{ required: true, message: "请输入字典值", trigger: "blur" }],
+  sort: [
+    { required: true, message: "请输入排序", trigger: "blur", type: "number" },
+  ],
 });
 
 /** 查询 */
@@ -277,19 +291,23 @@ function resetForm() {
 
   formData.id = undefined;
   formData.status = 1;
+  formData.defaulted = 0;
   formData.sort = 1;
   formData.typeCode = props.typeCode;
 }
 
 /** 删除字典 */
-function handleDelete(dictId?: number) {
-  const dictIds = [dictId || ids.value].join(",");
+function handleDelete(row?: any) {
+  const dictIds = (row ? [row.id] : ids.value).join(",");
   if (!dictIds) {
     ElMessage.warning("请勾选删除项");
     return;
   }
 
-  ElMessageBox.confirm("确认删除已选中的数据项?", "警告", {
+  const confirmMsg = row
+    ? `确认删除字典数据「${row.name}」吗？删除后不可恢复。`
+    : "确认删除选中的字典数据吗？删除后不可恢复。";
+  ElMessageBox.confirm(confirmMsg, "警告", {
     confirmButtonText: "确定",
     cancelButtonText: "取消",
     type: "warning",

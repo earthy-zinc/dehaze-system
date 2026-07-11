@@ -5,10 +5,12 @@ import {
   type UserPageVO,
   type UserQuery,
 } from "dehaze-sdk-js";
+import { useDebounceFn } from "ahooks";
 import {
   Button,
   Card,
   DatePicker,
+  Dropdown,
   Empty,
   Form,
   Input,
@@ -18,18 +20,27 @@ import {
   Select,
   Space,
   Spin,
+  Switch,
   Table,
-  Tag,
   Tree,
+  TreeSelect,
+  Upload,
+  type MenuProps,
   type TableColumnsType,
+  type UploadFile,
 } from "antd";
 import {
   DeleteOutlined,
+  DownOutlined,
+  DownloadOutlined,
   EditOutlined,
+  ExportOutlined,
+  ImportOutlined,
   KeyOutlined,
   PlusOutlined,
   ReloadOutlined,
   SearchOutlined,
+  UploadOutlined,
 } from "@ant-design/icons";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import PasswordResetDialog, {
@@ -42,12 +53,6 @@ import "./index.scss";
 
 const { RangePicker } = DatePicker;
 
-/** 用户状态映射 */
-const STATUS_MAP: Record<number, { label: string; color: string }> = {
-  1: { label: "启用", color: "green" },
-  0: { label: "禁用", color: "default" },
-};
-
 /** 递归转换部门数据为 Tree 组件需要的格式 */
 function buildDeptTree(depts: DeptVO[]): any[] {
   return depts.map((dept) => ({
@@ -55,6 +60,30 @@ function buildDeptTree(depts: DeptVO[]): any[] {
     key: dept.id,
     children: dept.children?.length ? buildDeptTree(dept.children) : undefined,
   }));
+}
+
+/** 递归转换部门数据为 TreeSelect 组件需要的格式 */
+function buildDeptTreeSelectData(depts: DeptVO[]): any[] {
+  return depts.map((dept) => ({
+    title: dept.name,
+    value: dept.id,
+    children: dept.children?.length
+      ? buildDeptTreeSelectData(dept.children)
+      : undefined,
+  }));
+}
+
+/** 下载二进制数据为文件 */
+function downloadBlob(data: ArrayBuffer, filename: string) {
+  const blob = new Blob([data]);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 const UserManagement: React.FC = () => {
@@ -91,6 +120,22 @@ const UserManagement: React.FC = () => {
   // 刷新标记
   const [refreshFlag, setRefreshFlag] = useState(0);
 
+  // 状态切换中的用户ID（用于Switch loading）
+  const [statusUpdatingId, setStatusUpdatingId] = useState<number | undefined>(
+    undefined
+  );
+
+  // 导出loading
+  const [exportLoading, setExportLoading] = useState(false);
+
+  // 导入弹窗
+  const [importDialogVisible, setImportDialogVisible] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importDeptId, setImportDeptId] = useState<number | undefined>(
+    undefined
+  );
+  const [importFileList, setImportFileList] = useState<UploadFile[]>([]);
+
   // ==================== 数据加载 ====================
 
   /** 加载部门树 */
@@ -99,6 +144,16 @@ const UserManagement: React.FC = () => {
     try {
       const data = await DeptAPI.getList();
       setDeptList(data || []);
+      // 默认选中第一个根部门
+      if (data && data.length > 0) {
+        const rootId = data[0].id;
+        setSelectedDeptId(rootId);
+        setQueryParams((prev) => ({
+          ...prev,
+          pageNum: 1,
+          deptId: rootId,
+        }));
+      }
     } finally {
       setDeptLoading(false);
     }
@@ -167,6 +222,15 @@ const UserManagement: React.FC = () => {
       }));
     },
     []
+  );
+
+  /** 搜索防抖：关键字输入时延时触发搜索 */
+  const { run: debouncedSearch } = useDebounceFn(
+    () => {
+      const values = searchForm.getFieldsValue();
+      handleSearch(values);
+    },
+    { wait: 300 }
   );
 
   /** 重置搜索 */
@@ -242,6 +306,100 @@ const UserManagement: React.FC = () => {
     passwordDialogRef.current?.open(record.id!, record.username!);
   }, []);
 
+  /** 切换用户状态 */
+  const handleStatusChange = useCallback(
+    (record: UserPageVO, checked: boolean) => {
+      const newStatus = checked ? 1 : 0;
+      setStatusUpdatingId(record.id);
+      UserAPI.updateStatus(record.id!, newStatus)
+        .then(() => {
+          message.success(`用户「${record.username}」已${checked ? "启用" : "禁用"}`);
+          refreshList();
+        })
+        .catch((error) => {
+          message.error(error?.message || "状态切换失败");
+        })
+        .finally(() => setStatusUpdatingId(undefined));
+    },
+    [refreshList]
+  );
+
+  /** 下载导入模板 */
+  const handleDownloadTemplate = useCallback(async () => {
+    try {
+      const data = await UserAPI.downloadTemplate();
+      downloadBlob(data, "用户导入模板.xlsx");
+      message.success("模板下载成功");
+    } catch (error: any) {
+      message.error(error?.message || "模板下载失败");
+    }
+  }, []);
+
+  /** 导出用户列表 */
+  const handleExport = useCallback(async () => {
+    setExportLoading(true);
+    try {
+      const data = await UserAPI.export(queryParams);
+      downloadBlob(data, "用户列表.xlsx");
+      message.success("导出成功");
+    } catch (error: any) {
+      message.error(error?.message || "导出失败");
+    } finally {
+      setExportLoading(false);
+    }
+  }, [queryParams]);
+
+  /** 打开导入弹窗 */
+  const handleOpenImport = useCallback(() => {
+    setImportDeptId(selectedDeptId);
+    setImportFileList([]);
+    setImportDialogVisible(true);
+  }, [selectedDeptId]);
+
+  /** 提交导入 */
+  const handleImportSubmit = useCallback(async () => {
+    if (importDeptId === undefined) {
+      message.warning("请选择所属部门");
+      return;
+    }
+    const file = importFileList[0]?.originFileObj as File | undefined;
+    if (!file) {
+      message.warning("请选择Excel文件");
+      return;
+    }
+    setImportLoading(true);
+    try {
+      await UserAPI.import(importDeptId, file);
+      message.success("导入成功");
+      setImportDialogVisible(false);
+      refreshList();
+    } catch (error: any) {
+      message.error(error?.message || "导入失败");
+    } finally {
+      setImportLoading(false);
+    }
+  }, [importDeptId, importFileList, refreshList]);
+
+  /** 导入下拉菜单点击 */
+  const importMenuItems: MenuProps["items"] = useMemo(
+    () => [
+      { key: "template", label: "下载模板", icon: <DownloadOutlined /> },
+      { key: "import", label: "导入数据", icon: <ImportOutlined /> },
+    ],
+    []
+  );
+
+  const handleImportMenuClick = useCallback(
+    ({ key }: { key: string }) => {
+      if (key === "template") {
+        handleDownloadTemplate();
+      } else if (key === "import") {
+        handleOpenImport();
+      }
+    },
+    [handleDownloadTemplate, handleOpenImport]
+  );
+
   // ==================== 表格列定义 ====================
 
   const columns: TableColumnsType<UserPageVO> = useMemo(
@@ -295,10 +453,13 @@ const UserManagement: React.FC = () => {
         key: "status",
         width: 80,
         align: "center",
-        render: (status: number) => {
-          const info = STATUS_MAP[status] || { label: "未知", color: "default" };
-          return <Tag color={info.color}>{info.label}</Tag>;
-        },
+        render: (status: number, record: UserPageVO) => (
+          <Switch
+            checked={status === 1}
+            loading={statusUpdatingId === record.id}
+            onChange={(checked) => handleStatusChange(record, checked)}
+          />
+        ),
       },
       {
         title: "创建时间",
@@ -351,7 +512,7 @@ const UserManagement: React.FC = () => {
         ),
       },
     ],
-    [handleEdit, handleDelete, handleResetPassword]
+    [handleEdit, handleDelete, handleResetPassword, handleStatusChange, statusUpdatingId]
   );
 
   /** 行选择配置 */
@@ -394,6 +555,12 @@ const UserManagement: React.FC = () => {
             form={searchForm}
             layout="inline"
             onFinish={handleSearch}
+            onValuesChange={(changed) => {
+              // 关键字输入时触发防抖搜索
+              if ("keywords" in changed) {
+                debouncedSearch();
+              }
+            }}
           >
             <Form.Item name="keywords" label="关键字">
               <Input
@@ -451,6 +618,25 @@ const UserManagement: React.FC = () => {
                 >
                   删除
                 </Button>
+                {/* 导入下拉菜单 */}
+                <Dropdown
+                  menu={{
+                    items: importMenuItems,
+                    onClick: handleImportMenuClick,
+                  }}
+                >
+                  <Button icon={<ImportOutlined />}>
+                    导入 <DownOutlined />
+                  </Button>
+                </Dropdown>
+                {/* 导出 */}
+                <Button
+                  icon={<ExportOutlined />}
+                  loading={exportLoading}
+                  onClick={handleExport}
+                >
+                  导出
+                </Button>
               </Space>
             </Form.Item>
           </Form>
@@ -484,6 +670,52 @@ const UserManagement: React.FC = () => {
 
       {/* 密码重置弹窗 */}
       <PasswordResetDialog ref={passwordDialogRef} onSuccess={refreshList} />
+
+      {/* 导入弹窗 */}
+      <Modal
+        title="导入用户"
+        open={importDialogVisible}
+        confirmLoading={importLoading}
+        onOk={handleImportSubmit}
+        onCancel={() => setImportDialogVisible(false)}
+        okText="确定"
+        cancelText="取消"
+        destroyOnClose
+      >
+        <Form layout="vertical">
+          <Form.Item label="所属部门" required>
+            <TreeSelect
+              treeData={buildDeptTreeSelectData(deptList)}
+              value={importDeptId}
+              onChange={(value: number) => setImportDeptId(value)}
+              placeholder="请选择部门"
+              allowClear
+              treeDefaultExpandAll
+            />
+          </Form.Item>
+          <Form.Item label="Excel文件" required>
+            <Upload
+              accept=".xls,.xlsx"
+              maxCount={1}
+              fileList={importFileList}
+              beforeUpload={(file) => {
+                setImportFileList([
+                  {
+                    uid: file.uid,
+                    name: file.name,
+                    status: "done",
+                    originFileObj: file,
+                  } as UploadFile,
+                ]);
+                return false;
+              }}
+              onRemove={() => setImportFileList([])}
+            >
+              <Button icon={<UploadOutlined />}>选择文件</Button>
+            </Upload>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

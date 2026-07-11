@@ -170,9 +170,9 @@ const menus = await MenuAPI.getList({});
 
 ### 文件管理
 
-- `FileAPI.uploadCheck` - 文件上传检查
-- `FileAPI.upload` - 上传文件
-- `FileAPI.deleteByPath` - 删除文件
+- `FileAPI.uploadCheck` - 文件上传检查（MD5秒传），返回 `FileInfo | null`，文件已存在则返回文件信息，否则返回 null
+- `FileAPI.upload` - 上传文件，返回 `FileInfo`
+- `FileAPI.deleteById` - 根据文件ID删除文件
 
 ### 算法管理
 

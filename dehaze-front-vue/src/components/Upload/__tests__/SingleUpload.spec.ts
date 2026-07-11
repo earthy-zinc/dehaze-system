@@ -8,6 +8,8 @@ import { FileAPI } from "dehaze-sdk-js";
 vi.mock("dehaze-sdk-js", () => ({
   FileAPI: {
     upload: vi.fn(),
+    uploadCheck: vi.fn(),
+    deleteById: vi.fn(),
   },
 }));
 
@@ -37,6 +39,8 @@ vi.mock("@/store/modules/imageShow", () => ({
 describe("SingleUpload Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(FileAPI.uploadCheck).mockResolvedValue(null);
+    vi.mocked(FileAPI.deleteById).mockResolvedValue(undefined);
   });
 
   describe("组件渲染", () => {
@@ -79,7 +83,7 @@ describe("SingleUpload Component", () => {
   });
 
   describe("文件上传验证", () => {
-    it("应该接受大小小于10MB的文件", () => {
+    it("应该接受大小小于100MB的文件", () => {
       const wrapper = mount(SingleUpload, {
         props: {
           modelValue: "",
@@ -93,7 +97,7 @@ describe("SingleUpload Component", () => {
       expect(result).toBe(true);
     });
 
-    it("应该拒绝大小大于10MB的文件并显示警告", () => {
+    it("应该拒绝大小大于100MB的文件并显示警告", () => {
       const wrapper = mount(SingleUpload, {
         props: {
           modelValue: "",
@@ -101,14 +105,14 @@ describe("SingleUpload Component", () => {
       });
 
       const file = new File(["test"], "large.jpg", { type: "image/jpeg" });
-      Object.defineProperty(file, "size", { value: 15 * 1024 * 1024 }); // 15MB
+      Object.defineProperty(file, "size", { value: 150 * 1024 * 1024 }); // 150MB
 
       const result = (wrapper.vm as any).handleBeforeUpload(file);
       expect(result).toBe(false);
-      expect(ElMessage.warning).toHaveBeenCalledWith("上传图片不能大于10M");
+      expect(ElMessage.warning).toHaveBeenCalledWith("上传图片不能大于100M");
     });
 
-    it("应该处理边界值文件大小（10MB）", () => {
+    it("应该处理边界值文件大小（100MB）", () => {
       const wrapper = mount(SingleUpload, {
         props: {
           modelValue: "",
@@ -116,7 +120,7 @@ describe("SingleUpload Component", () => {
       });
 
       const file = new File(["test"], "boundary.jpg", { type: "image/jpeg" });
-      Object.defineProperty(file, "size", { value: 10 * 1024 * 1024 }); // 正好10MB
+      Object.defineProperty(file, "size", { value: 100 * 1024 * 1024 }); // 正好100MB
 
       const result = (wrapper.vm as any).handleBeforeUpload(file);
       expect(result).toBe(true);
@@ -126,11 +130,13 @@ describe("SingleUpload Component", () => {
   describe("文件上传功能", () => {
     it("应该成功上传文件并更新URL", async () => {
       const mockUploadResponse = {
-        fileId: 0,
-        name: "",
+        id: 1,
+        name: "test.jpg",
+        path: "/test/test.jpg",
         url: "https://example.com/uploaded.jpg",
       };
       vi.mocked(FileAPI.upload).mockResolvedValue(mockUploadResponse);
+      vi.mocked(FileAPI.uploadCheck).mockResolvedValue(null);
 
       const wrapper = mount(SingleUpload, {
         props: {
@@ -148,6 +154,7 @@ describe("SingleUpload Component", () => {
 
       await (wrapper.vm as any).uploadFile(uploadOptions);
 
+      expect(FileAPI.uploadCheck).toHaveBeenCalled();
       expect(FileAPI.upload).toHaveBeenCalledWith(file, "test-model-id");
       expect(wrapper.emitted("update:modelValue")).toBeTruthy();
       expect(wrapper.emitted("update:modelValue")?.[0]).toEqual([
@@ -162,6 +169,7 @@ describe("SingleUpload Component", () => {
     it("应该在上传失败时保持原有URL", async () => {
       const initialUrl = "https://example.com/initial.jpg";
       vi.mocked(FileAPI.upload).mockRejectedValue(new Error("Upload failed"));
+      vi.mocked(FileAPI.uploadCheck).mockResolvedValue(null);
 
       const wrapper = mount(SingleUpload, {
         props: {
@@ -187,6 +195,7 @@ describe("SingleUpload Component", () => {
 
     it("应该处理网络错误", async () => {
       vi.mocked(FileAPI.upload).mockRejectedValue(new Error("Network error"));
+      vi.mocked(FileAPI.uploadCheck).mockResolvedValue(null);
 
       const wrapper = mount(SingleUpload, {
         props: {
@@ -205,6 +214,43 @@ describe("SingleUpload Component", () => {
       await expect(
         (wrapper.vm as any).uploadFile(uploadOptions)
       ).rejects.toThrow("Network error");
+    });
+  });
+
+  describe("MD5秒传", () => {
+    it("当文件已存在时应该直接使用已有URL跳过上传", async () => {
+      const existingFile = {
+        id: 99,
+        name: "existing.jpg",
+        path: "/test/existing.jpg",
+        url: "https://example.com/existing.jpg",
+      };
+      vi.mocked(FileAPI.uploadCheck).mockResolvedValue(existingFile);
+
+      const wrapper = mount(SingleUpload, {
+        props: {
+          modelValue: "",
+        },
+      });
+
+      const file = new File(["test"], "test.jpg", { type: "image/jpeg" });
+      const uploadOptions = {
+        file,
+        onProgress: vi.fn(),
+        onSuccess: vi.fn(),
+        onError: vi.fn(),
+      };
+
+      await (wrapper.vm as any).uploadFile(uploadOptions);
+
+      expect(FileAPI.uploadCheck).toHaveBeenCalled();
+      expect(FileAPI.upload).not.toHaveBeenCalled();
+      expect(wrapper.emitted("update:modelValue")?.[0]).toEqual([
+        "https://example.com/existing.jpg",
+      ]);
+      expect(wrapper.emitted("onChange")?.[0]).toEqual([
+        "https://example.com/existing.jpg",
+      ]);
     });
   });
 
@@ -292,11 +338,13 @@ describe("SingleUpload Component", () => {
   describe("事件处理", () => {
     it("应该在成功上传后触发正确的事件", async () => {
       const mockUploadResponse = {
-        fileId: 0,
-        name: "",
+        id: 1,
+        name: "test.jpg",
+        path: "/test/test.jpg",
         url: "https://example.com/uploaded.jpg",
       };
       vi.mocked(FileAPI.upload).mockResolvedValue(mockUploadResponse);
+      vi.mocked(FileAPI.uploadCheck).mockResolvedValue(null);
 
       const wrapper = mount(SingleUpload, {
         props: {
@@ -363,7 +411,7 @@ describe("SingleUpload Component", () => {
 
       const result = (wrapper.vm as any).handleBeforeUpload(file);
       expect(result).toBe(false);
-      expect(ElMessage.warning).toHaveBeenCalledWith("上传图片不能大于10M");
+      expect(ElMessage.warning).toHaveBeenCalledWith("上传图片不能大于100M");
     });
   });
 });
