@@ -523,10 +523,7 @@ onUnmounted(() => {
           <el-button type="primary" plain @click="batchDialogVisible = true">
             批量处理
           </el-button>
-          <el-button
-            v-if="batchTasks.length > 0"
-            @click="activePage('batch')"
-          >
+          <el-button v-if="batchTasks.length > 0" @click="activePage('batch')">
             查看任务列表（{{ batchTasks.length }}）
           </el-button>
         </div>
@@ -593,11 +590,7 @@ onUnmounted(() => {
       <OverlapImageShow v-if="show.overlap" class="overlap" />
       <!-- 处理完成后保存结果 -->
       <div v-if="show.overlap" class="save-result-wrap">
-        <el-button
-          :loading="saving"
-          type="success"
-          @click="handleSaveResult"
-        >
+        <el-button :loading="saving" type="success" @click="handleSaveResult">
           保存结果
         </el-button>
         <el-button type="primary" @click="handleEval"> 评估结果 </el-button>
@@ -609,9 +602,7 @@ onUnmounted(() => {
           <div class="batch-actions">
             <el-button @click="batchDialogVisible = true">添加图片</el-button>
             <el-button
-              :disabled="
-                batchTasks.length === 0 || batchProcessing
-              "
+              :disabled="batchTasks.length === 0 || batchProcessing"
               type="primary"
               @click="handleStartBatch"
             >
@@ -624,10 +615,7 @@ onUnmounted(() => {
             >
               取消全部
             </el-button>
-            <el-button
-              :disabled="batchProcessing"
-              @click="handleClearBatch"
-            >
+            <el-button :disabled="batchProcessing" @click="handleClearBatch">
               清空列表
             </el-button>
           </div>
@@ -659,8 +647,8 @@ onUnmounted(() => {
                   scope.row.status === 'failed'
                     ? 'exception'
                     : scope.row.status === 'success'
-                    ? 'success'
-                    : undefined
+                      ? 'success'
+                      : undefined
                 "
               />
             </template>
@@ -726,9 +714,7 @@ onUnmounted(() => {
         action="#"
         drag
       >
-        <div class="el-upload__text">
-          将文件拖到此处，或<em>点击上传</em>
-        </div>
+        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
         <template #tip>
           <div class="el-upload__tip">
             支持多张图片，最多20张（gif/jpeg/jpg/png/svg）

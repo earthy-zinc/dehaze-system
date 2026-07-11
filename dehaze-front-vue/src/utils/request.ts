@@ -43,10 +43,7 @@ function showReloginDialog() {
  * @param error 原始错误
  * @param service 对应的 axios 实例（用于重发请求）
  */
-function handleTokenInvalid(
-  error: any,
-  service: AxiosInstance
-): Promise<any> {
+function handleTokenInvalid(error: any, service: AxiosInstance): Promise<any> {
   const userStore = useUserStoreHook();
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 

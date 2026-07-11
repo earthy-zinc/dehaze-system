@@ -288,15 +288,11 @@ function handleDelete(row?: any) {
   } else if (ids.value.length > 0) {
     // 批量删除（JSON Body）
     const deptIds = ids.value;
-    ElMessageBox.confirm(
-      `确认删除选中的部门吗？删除后不可恢复。`,
-      "警告",
-      {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning",
-      }
-    ).then(() => {
+    ElMessageBox.confirm(`确认删除选中的部门吗？删除后不可恢复。`, "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }).then(() => {
       DeptAPI.batchDelete(deptIds).then(() => {
         ElMessage.success("删除成功");
         resetQuery();

@@ -190,7 +190,11 @@ onMounted(() => {
           width="200"
         >
           <template #default="scope">
-            <el-button link type="primary" @click.stop="handleShowDetail(scope.row)">
+            <el-button
+              link
+              type="primary"
+              @click.stop="handleShowDetail(scope.row)"
+            >
               {{ scope.row.name }}
             </el-button>
           </template>

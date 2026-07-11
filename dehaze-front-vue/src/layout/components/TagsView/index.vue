@@ -59,7 +59,12 @@
 </template>
 
 <script lang="ts" setup>
-import { useAppStore, usePermissionStore, useSettingsStore, useTagsViewStore, } from "@/store";
+import {
+  useAppStore,
+  usePermissionStore,
+  useSettingsStore,
+  useTagsViewStore,
+} from "@/store";
 import { translateRouteTitle } from "@/utils/i18n";
 import { resolve } from "path-browserify";
 import { RouteRecordRaw, useRoute, useRouter } from "vue-router";

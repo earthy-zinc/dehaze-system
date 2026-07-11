@@ -506,11 +506,7 @@ onUnmounted(() => {
               <div style="min-width: 42vw; padding-right: 20px">
                 <h3 class="text-center">算法说明</h3>
                 <el-descriptions :column="2" border>
-                  <el-descriptions-item
-                    :span="2"
-                    :width="120"
-                    label="算法名称"
-                  >
+                  <el-descriptions-item :span="2" :width="120" label="算法名称">
                     {{ algorithmInfo.name }}
                   </el-descriptions-item>
                   <el-descriptions-item label="类型"
@@ -552,7 +548,8 @@ onUnmounted(() => {
                   <el-table-column :width="125" align="center" label="值">
                     <template #default="scope">
                       <span
-                        >{{ Number(scope.row.value).toFixed(4)
+                        >{{
+                          Number(scope.row.value).toFixed(4)
                         }}&nbsp;&nbsp;</span
                       >
 

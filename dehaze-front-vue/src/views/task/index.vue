@@ -53,19 +53,16 @@
           </template>
         </el-table-column>
         <el-table-column label="创建时间" width="180" align="center">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+          <template #default="{ row }">{{
+            formatTime(row.createdAt)
+          }}</template>
         </el-table-column>
         <el-table-column label="完成时间" width="180" align="center">
           <template #default="{ row }">
             {{ formatTime(row.completedAt) }}
           </template>
         </el-table-column>
-        <el-table-column
-          label="操作"
-          width="200"
-          align="center"
-          fixed="right"
-        >
+        <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleDetail(row)">
               详情

@@ -135,11 +135,11 @@ defineExpose({ handleBeforeUpload, uploadFile, handleDelete });
     height: 22px;
     color: #fff;
     cursor: pointer;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgb(0 0 0 / 50%);
     border-radius: 50%;
 
     &:hover {
-      background-color: rgba(0, 0, 0, 0.7);
+      background-color: rgb(0 0 0 / 70%);
     }
   }
 }

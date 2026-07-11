@@ -1252,29 +1252,29 @@ onUnmounted(() => {
 <style lang="scss" scoped>
 .summary-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
 
   .summary-tags {
     display: flex;
-    gap: 8px;
     flex-wrap: wrap;
+    gap: 8px;
   }
 }
 
 .toolbar {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+  justify-content: space-between;
 
   .toolbar-left,
   .toolbar-right {
     display: flex;
-    align-items: center;
     flex-wrap: wrap;
     gap: 8px;
+    align-items: center;
   }
 }
 
@@ -1288,15 +1288,15 @@ onUnmounted(() => {
     top: 4px;
     left: 4px;
     z-index: 2;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 4px;
     padding: 2px;
+    background: rgb(255 255 255 / 80%);
+    border-radius: 4px;
   }
 
   .grid-image {
+    display: block;
     width: 100%;
     height: 180px;
-    display: block;
   }
 
   .grid-info {
@@ -1307,9 +1307,9 @@ onUnmounted(() => {
       width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
       font-size: 13px;
       color: #606266;
+      white-space: nowrap;
     }
   }
 }
@@ -1321,8 +1321,8 @@ onUnmounted(() => {
 }
 
 .pairing-rules {
-  line-height: 1.6;
   font-size: 13px;
+  line-height: 1.6;
 }
 
 /* 详情弹窗 */
@@ -1332,13 +1332,13 @@ onUnmounted(() => {
   height: 70vh;
 
   .detail-image-area {
-    flex: 1;
     display: flex;
+    flex: 1;
     flex-direction: column;
     align-items: center;
+    padding: 12px;
     background: #f5f7fa;
     border-radius: 4px;
-    padding: 12px;
 
     .detail-image {
       max-width: 100%;
@@ -1346,17 +1346,17 @@ onUnmounted(() => {
     }
 
     .detail-image-tabs {
-      margin-top: 12px;
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       justify-content: center;
+      margin-top: 12px;
     }
   }
 
   .detail-info-panel {
-    width: 320px;
     flex-shrink: 0;
+    width: 320px;
     overflow-y: auto;
 
     .detail-actions {
@@ -1368,15 +1368,15 @@ onUnmounted(() => {
 
 .detail-nav {
   display: flex;
-  justify-content: center;
-  align-items: center;
   gap: 16px;
+  align-items: center;
+  justify-content: center;
   margin-top: 16px;
 
   .nav-position {
+    min-width: 60px;
     font-size: 14px;
     color: #606266;
-    min-width: 60px;
     text-align: center;
   }
 }

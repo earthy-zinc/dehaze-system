@@ -245,7 +245,9 @@ onMounted(() => {
             @click="activeCategory = cat.value"
           >
             {{ cat.label }}
-            <span class="category-count">{{ categoryCount[cat.value] || 0 }}</span>
+            <span class="category-count">{{
+              categoryCount[cat.value] || 0
+            }}</span>
           </div>
         </div>
         <el-tree
@@ -299,8 +301,13 @@ onMounted(() => {
               </el-tag>
               <span class="algo-type-raw">{{ algo.type }}</span>
             </div>
-            <div class="algo-card-desc">{{ algo.description || "暂无描述" }}</div>
-            <div v-if="selectedAlgorithm?.id === algo.id" class="algo-card-check">
+            <div class="algo-card-desc">
+              {{ algo.description || "暂无描述" }}
+            </div>
+            <div
+              v-if="selectedAlgorithm?.id === algo.id"
+              class="algo-card-check"
+            >
               <i-ep-circle-check-filled />
             </div>
           </div>
@@ -399,13 +406,13 @@ onMounted(() => {
   }
 
   .recommend-desc {
-    color: var(--el-text-color-secondary);
-    font-size: 13px;
-    line-height: 1.5;
+    display: -webkit-box;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: -webkit-box;
     -webkit-line-clamp: 2;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--el-text-color-secondary);
     -webkit-box-orient: vertical;
   }
 }
@@ -428,8 +435,8 @@ onMounted(() => {
 
   .category-tab {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     padding: 8px 12px;
     cursor: pointer;
     border-radius: 6px;
@@ -446,8 +453,8 @@ onMounted(() => {
 
     .category-count {
       padding: 0 8px;
-      color: var(--el-text-color-secondary);
       font-size: 12px;
+      color: var(--el-text-color-secondary);
       background: var(--el-fill-color);
       border-radius: 10px;
     }
@@ -460,8 +467,8 @@ onMounted(() => {
   align-items: center;
 
   .tree-node-type {
-    color: var(--el-text-color-secondary);
     font-size: 12px;
+    color: var(--el-text-color-secondary);
   }
 }
 
@@ -497,8 +504,8 @@ onMounted(() => {
 
   .algo-card-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 10px;
 
     .algo-name {
@@ -514,19 +521,19 @@ onMounted(() => {
     margin-bottom: 8px;
 
     .algo-type-raw {
-      color: var(--el-text-color-secondary);
       font-size: 12px;
+      color: var(--el-text-color-secondary);
     }
   }
 
   .algo-card-desc {
-    color: var(--el-text-color-secondary);
-    font-size: 13px;
-    line-height: 1.5;
+    display: -webkit-box;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: -webkit-box;
     -webkit-line-clamp: 2;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--el-text-color-secondary);
     -webkit-box-orient: vertical;
   }
 
@@ -534,8 +541,8 @@ onMounted(() => {
     position: absolute;
     top: 12px;
     right: 12px;
-    color: var(--el-color-primary);
     font-size: 20px;
+    color: var(--el-color-primary);
   }
 }
 
@@ -543,8 +550,8 @@ onMounted(() => {
   position: sticky;
   bottom: 0;
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   padding: 12px 24px;
   background: var(--el-bg-color);
   border-top: 1px solid var(--el-border-color-lighter);
@@ -555,8 +562,8 @@ onMounted(() => {
     font-size: 14px;
 
     .selected-name {
-      color: var(--el-color-primary);
       font-weight: 600;
+      color: var(--el-color-primary);
     }
 
     .selected-empty {

@@ -40,7 +40,11 @@ export const useUserStore = defineStore("user", () => {
     return new Promise<void>((resolve, reject) => {
       AuthAPI.refreshToken(refreshToken)
         .then((data) => {
-          const { tokenType, accessToken, refreshToken: newRefreshToken } = data;
+          const {
+            tokenType,
+            accessToken,
+            refreshToken: newRefreshToken,
+          } = data;
           localStorage.setItem(TOKEN_KEY, tokenType + " " + accessToken);
           localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
           resolve();

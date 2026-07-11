@@ -92,10 +92,7 @@ function saveHistory(records: HistoryRecord[]) {
 }
 
 // 添加历史记录
-function addHistoryRecord(
-  url: string,
-  source: "upload" | "camera" | "sample"
-) {
+function addHistoryRecord(url: string, source: "upload" | "camera" | "sample") {
   const record: HistoryRecord = {
     id: Date.now().toString() + Math.random().toString(36).slice(2),
     url,
@@ -424,8 +421,8 @@ onActivated(() => {
 
 <style lang="scss" scoped>
 .image-input-container {
-  padding: 20px;
   height: calc(100vh - #{$navbar-height} - #{$tags-view-height});
+  padding: 20px;
   overflow-y: auto;
 }
 
@@ -441,8 +438,8 @@ onActivated(() => {
 
   p {
     margin: 0;
-    color: var(--el-text-color-secondary);
     font-size: 14px;
+    color: var(--el-text-color-secondary);
   }
 }
 
@@ -510,11 +507,11 @@ onActivated(() => {
   }
 
   .group-title {
-    margin-bottom: 12px;
     padding-left: 8px;
-    border-left: 4px solid var(--el-color-primary);
+    margin-bottom: 12px;
     font-size: 16px;
     font-weight: 600;
+    border-left: 4px solid var(--el-color-primary);
   }
 
   .history-list {
@@ -525,8 +522,8 @@ onActivated(() => {
 
   .history-card {
     display: flex;
-    align-items: center;
     gap: 12px;
+    align-items: center;
     padding: 12px;
     background-color: var(--el-bg-color-page);
     border: 1px solid var(--el-border-color-lighter);
@@ -558,8 +555,8 @@ onActivated(() => {
     }
 
     .history-source {
-      color: var(--el-text-color-secondary);
       font-size: 12px;
+      color: var(--el-text-color-secondary);
     }
   }
 

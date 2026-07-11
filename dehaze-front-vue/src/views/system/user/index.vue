@@ -90,7 +90,10 @@
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
-                <el-button class="ml-3" :loading="exportLoading" @click="handleExport"
+                <el-button
+                  class="ml-3"
+                  :loading="exportLoading"
+                  @click="handleExport"
                   ><template #icon><i-ep-download /></template>导出</el-button
                 >
               </div>
@@ -336,7 +339,14 @@ defineOptions({
   inheritAttrs: false,
 });
 
-import { DeptAPI, RoleAPI, UserAPI, UserForm, UserPageVO, UserQuery, } from "dehaze-sdk-js";
+import {
+  DeptAPI,
+  RoleAPI,
+  UserAPI,
+  UserForm,
+  UserPageVO,
+  UserQuery,
+} from "dehaze-sdk-js";
 
 import type { UploadInstance } from "element-plus";
 import { genFileId } from "element-plus";
@@ -645,29 +655,31 @@ function handleFileExceed(files: any) {
 /** 导出用户 */
 function handleExport() {
   exportLoading.value = true;
-  UserAPI.export(queryParams).then((response: any) => {
-    const fileData = response.data;
-    const fileName = decodeURI(
-      response.headers["content-disposition"].split(";")[1].split("=")[1]
-    );
-    const fileType =
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8";
+  UserAPI.export(queryParams)
+    .then((response: any) => {
+      const fileData = response.data;
+      const fileName = decodeURI(
+        response.headers["content-disposition"].split(";")[1].split("=")[1]
+      );
+      const fileType =
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=utf-8";
 
-    const blob = new Blob([fileData], { type: fileType });
-    const downloadUrl = window.URL.createObjectURL(blob);
+      const blob = new Blob([fileData], { type: fileType });
+      const downloadUrl = window.URL.createObjectURL(blob);
 
-    const downloadLink = document.createElement("a");
-    downloadLink.href = downloadUrl;
-    downloadLink.download = fileName;
+      const downloadLink = document.createElement("a");
+      downloadLink.href = downloadUrl;
+      downloadLink.download = fileName;
 
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
 
-    document.body.removeChild(downloadLink);
-    window.URL.revokeObjectURL(downloadUrl);
-  }).finally(() => {
-    exportLoading.value = false;
-  });
+      document.body.removeChild(downloadLink);
+      window.URL.revokeObjectURL(downloadUrl);
+    })
+    .finally(() => {
+      exportLoading.value = false;
+    });
 }
 
 onMounted(async () => {
