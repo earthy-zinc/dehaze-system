@@ -27,28 +27,32 @@ describe("预测与评估 API 测试", () => {
       const form = createPredictionForm();
       delete (form as any).algorithmId;
 
-      await expectBizErrorOrUndefined(
-        ModelAPI.predict(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(ModelAPI.predict(form), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("异常测试：不存在的算法ID应报错", async () => {
       const form = createPredictionForm({ algorithmId: 99999999 });
 
-      await expectBizErrorOrUndefined(
-        ModelAPI.predict(form),
-        ["A0400", "A0401", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(ModelAPI.predict(form), [
+        "A0400",
+        "A0401",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
   describe("GET /api/v1/prediction/{taskId} - 预测状态", () => {
     test("异常测试：不存在的任务ID应报错", async () => {
-      await expectBizErrorOrUndefined(
-        ModelAPI.getPredTaskStatus(99999999),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(ModelAPI.getPredTaskStatus(99999999), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -86,19 +90,21 @@ describe("预测与评估 API 测试", () => {
       const form = createEvaluationForm();
       delete (form as any).algorithmId;
 
-      await expectBizErrorOrUndefined(
-        ModelAPI.evaluate(form),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(ModelAPI.evaluate(form), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
   describe("GET /api/v1/evaluation/{taskId} - 评估状态", () => {
     test("异常测试：不存在的任务ID应报错", async () => {
-      await expectBizErrorOrUndefined(
-        ModelAPI.getEvalTaskStatus(99999999),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(ModelAPI.getEvalTaskStatus(99999999), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 

@@ -1,11 +1,6 @@
 import { PageResult } from "@/types";
 import request from "@/utils/request";
-import {
-  HistoryForm,
-  HistoryQuery,
-  HistoryUpdateForm,
-  InputHistoryVO,
-} from "./model";
+import { HistoryForm, HistoryQuery, HistoryUpdateForm, InputHistoryVO } from "./model";
 
 class ImageInputHistoryAPI {
   /** 分页查询历史记录 */

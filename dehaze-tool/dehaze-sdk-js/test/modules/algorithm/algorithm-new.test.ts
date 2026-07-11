@@ -22,13 +22,15 @@ describe("算法管理新增端点测试", () => {
       description: "SDK 测试用算法",
       status: 0,
     };
-    const id = await AlgorithmAPI.add(form) as unknown as number;
+    const id = (await AlgorithmAPI.add(form)) as unknown as number;
     testAlgorithmId = typeof id === "number" ? id : Number(id);
   }, 10000);
 
   afterAll(async () => {
     if (testAlgorithmId) {
-      try { await AlgorithmAPI.deleteByIds([testAlgorithmId.toString()]); } catch (_) {}
+      try {
+        await AlgorithmAPI.deleteByIds([testAlgorithmId.toString()]);
+      } catch (_) {}
     }
   });
 
@@ -46,17 +48,19 @@ describe("算法管理新增端点测试", () => {
     });
 
     test("参数校验：无效状态值应提示错误", async () => {
-      await expectBizErrorOrUndefined(
-        AlgorithmAPI.updateStatus(testAlgorithmId, 99),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(AlgorithmAPI.updateStatus(testAlgorithmId, 99), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("异常测试：不存在的算法ID应报错", async () => {
-      await expectBizErrorOrUndefined(
-        AlgorithmAPI.updateStatus(99999999, 1),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(AlgorithmAPI.updateStatus(99999999, 1), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -68,10 +72,11 @@ describe("算法管理新增端点测试", () => {
     });
 
     test("异常测试：不存在的算法ID应报错", async () => {
-      await expectBizErrorOrUndefined(
-        AlgorithmAPI.getVersions(99999999),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(AlgorithmAPI.getVersions(99999999), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -119,10 +124,11 @@ describe("算法管理新增端点测试", () => {
 
     test("参数校验：空文件应报错", async () => {
       const emptyFile = new File([], "empty.json", { type: "application/json" });
-      await expectBizErrorOrUndefined(
-        AlgorithmAPI.validateImport(emptyFile),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(AlgorithmAPI.validateImport(emptyFile), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 });

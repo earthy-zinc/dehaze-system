@@ -16,7 +16,11 @@ describe("图像输入历史记录 API 测试", () => {
   afterAll(async () => {
     // 清理所有创建的历史记录
     for (const id of createdIds) {
-      try { await ImageInputHistoryAPI.deleteById(id); } catch (_) { /* 忽略 */ }
+      try {
+        await ImageInputHistoryAPI.deleteById(id);
+      } catch (_) {
+        /* 忽略 */
+      }
     }
   });
 
@@ -105,7 +109,11 @@ describe("图像输入历史记录 API 测试", () => {
     });
 
     test("正向测试：按来源筛选历史记录", async () => {
-      const page = await ImageInputHistoryAPI.getPage({ pageNum: 1, pageSize: 10, inputSource: "upload" });
+      const page = await ImageInputHistoryAPI.getPage({
+        pageNum: 1,
+        pageSize: 10,
+        inputSource: "upload",
+      });
       expect(page).toBeDefined();
       if (page.list.length > 0) {
         page.list.forEach((item) => {
@@ -129,10 +137,11 @@ describe("图像输入历史记录 API 测试", () => {
     });
 
     test("异常测试：访问不存在的记录应报错", async () => {
-      await expectBizErrorOrUndefined(
-        ImageInputHistoryAPI.getById(99999999),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(99999999), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -174,10 +183,11 @@ describe("图像输入历史记录 API 测试", () => {
       await ImageInputHistoryAPI.deleteById(id);
 
       // 验证已删除
-      await expectBizErrorOrUndefined(
-        ImageInputHistoryAPI.getById(id),
-        ["A0400", "B0001", "ERR_BAD_REQUEST"]
-      );
+      await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(id), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("幂等性测试：删除已不存在的记录应成功", async () => {
@@ -206,10 +216,11 @@ describe("图像输入历史记录 API 测试", () => {
 
       // 验证已删除
       for (const id of batchIds) {
-        await expectBizErrorOrUndefined(
-          ImageInputHistoryAPI.getById(id),
-          ["A0400", "B0001", "ERR_BAD_REQUEST"]
-        );
+        await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(id), [
+          "A0400",
+          "B0001",
+          "ERR_BAD_REQUEST",
+        ]);
       }
     });
   });
