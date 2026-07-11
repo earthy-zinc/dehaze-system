@@ -9,3 +9,5 @@ public
 
 src/assets
 stats.html
+out
+mock/mockServiceWorker.js

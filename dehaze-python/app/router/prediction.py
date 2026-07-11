@@ -4,16 +4,18 @@
 POST /api/v1/prediction  → 执行模型预测（去雾）
 """
 import time
+import logging
 from typing import Optional
 
 from fastapi import APIRouter, Depends
-from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.core.result import Result, success, error
 from app.core.code import ResultCode
 from app.dependencies.auth import get_current_user, UserContext
 from app.service.prediction_service import prediction_service
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/prediction", tags=["预测"])
 

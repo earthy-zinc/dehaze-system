@@ -9,15 +9,10 @@
     "sourceMap": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "lib": [
-      "esnext",
-      "dom"
-    ],
+    "lib": ["esnext", "dom"],
     "allowJs": true,
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
     "types": [
       "vite/client",
@@ -25,13 +20,10 @@
       "element-plus/global",
       "node"
     ],
-    "skipLibCheck": true
-    /* Skip type checking all .d.ts files. */,
-    "allowSyntheticDefaultImports": true
-    /* 允许默认导入 */,
-    "forceConsistentCasingInFileNames": true
-    /* Ensure that casing is correct in imports. */,
-    "jsx": "preserve",
+    "skipLibCheck": true,
+    /* Skip type checking all .d.ts files. */ "allowSyntheticDefaultImports": true,
+    /* 允许默认导入 */ "forceConsistentCasingInFileNames": true,
+    /* Ensure that casing is correct in imports. */ "jsx": "preserve",
     "jsxFactory": "h",
     "jsxFragmentFactory": "Fragment"
   },
@@ -41,9 +33,5 @@
     "src/typings/**/*.d.ts",
     ".storybook/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.js"
-  ]
+  "exclude": ["node_modules", "dist", "**/*.js"]
 }

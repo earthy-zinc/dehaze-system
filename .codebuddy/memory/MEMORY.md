@@ -62,3 +62,12 @@ Java captcha 存 Redis db0（Jackson 序列化带引号），Go/Python captcha �
 - Java 17 + Spring Boot 3.3.11 + Maven
 - 添加了 `me.paulschwarz:spring-dotenv:4.0.0` 以支持 `.env` 加载
 - 跳过测试编译启动：`mvn spring-boot:run -DskipTests -Dmaven.test.skip=true`
+- **权限校验**：`@PreAuthorize("@ss.hasPerm('xxx')")` 通过 `PermissionService.hasPerm()` 校验，ROOT 角色绕过所有检查（`SecurityUtils.isRoot()`）
+- admin 用户已关联 ROOT + ADMIN 角色，可通过所有权限校验
+- **Python 算法服务 URL**：`http://127.0.0.1:8014`（不是 5000），配置在 `AlgorithmProperties` + `application-dev.yml`
+
+### SDK 测试（dehaze-tool/dehaze-sdk-js）
+- vitest 集成测试需在 `vitest.setup.ts` 中设置 `javaService.defaults.baseURL`（Node.js 无浏览器 origin）
+- 登录需先获取验证码 → 从 Redis db0 读取 captcha code（Jackson 序列化带双引号需去除）
+- 响应拦截器已支持 `arraybuffer` + `blob` 两种二进制响应类型
+- 预测/评估正向测试依赖 Python 服务 + 真实图片 + 模型文件，基础设施未就绪时优雅 skip

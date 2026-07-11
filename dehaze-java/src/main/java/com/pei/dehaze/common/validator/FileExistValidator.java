@@ -9,6 +9,10 @@ public class FileExistValidator implements ConstraintValidator<FileExists, Strin
 
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
+        // null 或空字符串视为可选字段，校验通过
+        if (value == null || value.isEmpty()) {
+            return true;
+        }
         File file = new File(value);
         return file.exists(); // 路径存在
     }

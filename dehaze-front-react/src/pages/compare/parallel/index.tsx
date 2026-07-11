@@ -59,7 +59,10 @@ const Parallel: React.FC = () => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
   // 缓存当前悬停图片的显示尺寸，用于放大镜背景计算
-  const hoveredRectRef = useRef<{ width: number; height: number } | null>(null);
+  const [hoveredRect, setHoveredRect] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   /** 处理图片上传，将File转为URL加入列表 */
   const handleAddImages = (files: File[]) => {
@@ -101,7 +104,7 @@ const Parallel: React.FC = () => {
     const rect = target.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    hoveredRectRef.current = { width: rect.width, height: rect.height };
+    setHoveredRect({ width: rect.width, height: rect.height });
     setHoveredIndex(index);
     setLensPos({ x, y });
   };
@@ -109,16 +112,15 @@ const Parallel: React.FC = () => {
   /** 鼠标离开图片时隐藏放大镜 */
   const handleMouseLeave = () => {
     setHoveredIndex(null);
-    hoveredRectRef.current = null;
+    setHoveredRect(null);
   };
 
   /** 计算放大镜透镜样式 */
   const getLensStyle = (img: ParallelImage): React.CSSProperties => {
-    const rect = hoveredRectRef.current;
-    if (!rect) return { display: "none" };
+    if (!hoveredRect) return { display: "none" };
     // 背景图按放大倍数缩放
-    const bgWidth = rect.width * magnifierZoomLevel;
-    const bgHeight = rect.height * magnifierZoomLevel;
+    const bgWidth = hoveredRect.width * magnifierZoomLevel;
+    const bgHeight = hoveredRect.height * magnifierZoomLevel;
     // 背景位置：使透镜中心对准鼠标所在点
     const bgX = lensPos.x * magnifierZoomLevel - magnifierWidth / 2;
     const bgY = lensPos.y * magnifierZoomLevel - magnifierHeight / 2;

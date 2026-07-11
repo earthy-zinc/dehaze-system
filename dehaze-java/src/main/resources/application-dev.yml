@@ -191,7 +191,7 @@ xxl:
 algorithm:
   python:
     # 服务基础地址（开发环境指向本地 dehaze-python 服务）
-    baseUrl: http://localhost:5000
+    baseUrl: http://127.0.0.1:8014
     # 连接超时（毫秒）
     connect-timeout: 5000
     # 读取超时（毫秒）—— 预测/评估可耗时较长

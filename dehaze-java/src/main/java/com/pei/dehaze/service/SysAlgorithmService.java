@@ -26,7 +26,7 @@ public interface SysAlgorithmService extends IService<SysAlgorithm> {
 
     SysAlgorithm getRootAlgorithm(Long id);
 
-    boolean addAlgorithm(AlgorithmForm algorithm);
+    Long addAlgorithm(AlgorithmForm algorithm);
 
     boolean updateAlgorithm(AlgorithmForm algorithm);
 

@@ -2,7 +2,7 @@ import { FileAPI, type FileInfo } from "dehaze-sdk-js";
 import { InboxOutlined } from "@ant-design/icons";
 import { message, Modal, Upload } from "antd";
 import type { UploadFile, UploadProps } from "antd";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { calculateFileMd5 } from "@/utils/md5";
 
@@ -49,7 +49,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
   const cancelledUids = useRef<Set<string>>(new Set());
   // value 的最新引用，供异步回调使用
   const valueRef = useRef(value);
-  valueRef.current = value;
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
 
   // 由受控值 + 上传中文件 组合出 Upload 可用的 fileList
   const fileList: UploadFile[] = [

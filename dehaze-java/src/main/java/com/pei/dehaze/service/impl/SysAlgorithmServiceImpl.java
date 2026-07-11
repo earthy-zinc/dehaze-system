@@ -16,6 +16,8 @@ import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.AlgorithmConverter;
 import com.pei.dehaze.mapper.SysAlgorithmMapper;
+import com.pei.dehaze.mapper.SysEvalLogMapper;
+import com.pei.dehaze.mapper.SysPredLogMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysEvalLog;
 import com.pei.dehaze.model.entity.SysPredLog;
@@ -25,8 +27,6 @@ import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmMonitorVO;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.service.SysAlgorithmService;
-import com.pei.dehaze.service.SysEvalLogService;
-import com.pei.dehaze.service.SysPredLogService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -49,8 +49,8 @@ import java.util.stream.Collectors;
 public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, SysAlgorithm> implements SysAlgorithmService {
 
     private final AlgorithmConverter algorithmConverter;
-    private final SysPredLogService sysPredLogService;
-    private final SysEvalLogService sysEvalLogService;
+    private final SysPredLogMapper sysPredLogMapper;
+    private final SysEvalLogMapper sysEvalLogMapper;
 
     @Override
     @Cacheable(value = "algorithm:all", key = "'all'", unless = "#result == null || #result.isEmpty()")
@@ -151,13 +151,14 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
 
     @Override
     @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
-    public boolean addAlgorithm(AlgorithmForm algorithm) {
+    public Long addAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         sysAlgorithm.setStatus(StatusEnum.ENABLE.getValue());
         if (FileUtil.isFile(sysAlgorithm.getPath())) {
             sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
         }
-        return this.save(sysAlgorithm);
+        this.save(sysAlgorithm);
+        return sysAlgorithm.getId();
     }
 
     private void collectAncestors(SysAlgorithm cur, List<SysAlgorithm> algorithms,
@@ -287,18 +288,18 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         AlgorithmMonitorVO monitor = new AlgorithmMonitorVO();
 
         // 统计预测日志
-        long totalCalls = sysPredLogService.count(new LambdaQueryWrapper<SysPredLog>()
+        long totalCalls = sysPredLogMapper.selectCount(new LambdaQueryWrapper<SysPredLog>()
                 .eq(SysPredLog::getAlgorithmId, id));
         monitor.setCallCount(totalCalls);
 
         // 今日调用次数
-        long todayCalls = sysPredLogService.count(new LambdaQueryWrapper<SysPredLog>()
+        long todayCalls = sysPredLogMapper.selectCount(new LambdaQueryWrapper<SysPredLog>()
                 .eq(SysPredLog::getAlgorithmId, id)
                 .ge(SysPredLog::getCreateTime, LocalDateTime.now().withHour(0).withMinute(0).withSecond(0)));
         monitor.setTodayCallCount(todayCalls);
 
         // 平均处理时间
-        List<SysPredLog> predLogs = sysPredLogService.list(new LambdaQueryWrapper<SysPredLog>()
+        List<SysPredLog> predLogs = sysPredLogMapper.selectList(new LambdaQueryWrapper<SysPredLog>()
                 .eq(SysPredLog::getAlgorithmId, id)
                 .isNotNull(SysPredLog::getTime));
         double avgTime = predLogs.stream()

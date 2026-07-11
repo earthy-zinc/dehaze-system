@@ -3,6 +3,7 @@
  * 在所有测试之前加载，提供 Node.js 环境下缺失的浏览器 API polyfill
  */
 import { afterAll, beforeEach, vi } from "vitest";
+import { javaService } from "./src/utils/request";
 
 class LocalStorageMock {
   private store: Record<string, string> = {};
@@ -40,6 +41,9 @@ Object.defineProperty(globalThis, "localStorage", {
   writable: true,
   configurable: true,
 });
+
+// 配置 Java 后端 baseURL（Node.js 环境无浏览器 origin 兜底，需显式指定）
+javaService.defaults.baseURL = process.env.JAVA_BASE_URL || "http://127.0.0.1:8989";
 
 // 清理所有 mock
 beforeEach(() => {

@@ -101,11 +101,15 @@ const TaskManagement: React.FC = () => {
 
   // 使用 ref 保存最新的任务列表，供轮询回调读取
   const taskListRef = useRef<DownloadTaskVO[]>([]);
-  taskListRef.current = taskList;
+  useEffect(() => {
+    taskListRef.current = taskList;
+  }, [taskList]);
 
   // 保存最新的 pollingTimer，便于清理函数读取
   const pollingTimerRef = useRef<number | null>(null);
-  pollingTimerRef.current = pollingTimer;
+  useEffect(() => {
+    pollingTimerRef.current = pollingTimer;
+  }, [pollingTimer]);
 
   // ==================== 数据加载 ====================
 

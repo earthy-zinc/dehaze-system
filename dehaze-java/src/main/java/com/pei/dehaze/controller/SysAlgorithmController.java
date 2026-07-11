@@ -72,9 +72,9 @@ public class SysAlgorithmController {
     @Operation(summary = "新增算法")
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:algorithm:add')")
-    public Result<Void> add(@RequestBody @Valid AlgorithmForm algorithm) {
-        boolean result = algorithmService.addAlgorithm(algorithm);
-        return Result.judge(result);
+    public Result<Long> add(@RequestBody @Valid AlgorithmForm algorithm) {
+        Long id = algorithmService.addAlgorithm(algorithm);
+        return Result.success(id);
     }
 
     @Operation(summary = "修改算法")

@@ -25,6 +25,7 @@ export default [
       "eslint.config.js",
       ".prettierrc.cjs",
       ".stylelintrc.cjs",
+      "mock/mockServiceWorker.js",
     ],
   },
   {

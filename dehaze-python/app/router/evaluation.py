@@ -4,8 +4,10 @@
 POST /api/v1/evaluation  → 执行效果评估（PSNR/SSIM/LPIPS/NIQE）
 """
 
+import logging
+import time
+
 from fastapi import APIRouter, Depends
-from loguru import logger
 from pydantic import BaseModel, Field
 
 from app.core.result import Result, success, error
@@ -14,7 +16,7 @@ from app.dependencies.auth import get_current_user, UserContext
 from app.service.prediction_service import prediction_service  # 复用图片下载
 from algorithm.metrics import calculate as calculate_metrics
 
-import time
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/evaluation", tags=["评估"])
 

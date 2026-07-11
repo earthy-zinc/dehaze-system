@@ -74,7 +74,9 @@ export default function AlgorithmList(): React.JSX.Element {
     }
   }, []);
 
-  useEffect(() => { loadData(queryParams); }, [queryParams, refreshFlag]); // eslint-disable-line
+  useEffect(() => {
+    loadData(queryParams);
+  }, [queryParams, refreshFlag]); // eslint-disable-line
 
   const refreshList = useCallback(() => setRefreshFlag((prev) => prev + 1), []);
 

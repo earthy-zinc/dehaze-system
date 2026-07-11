@@ -191,8 +191,8 @@ describe("图像输入历史记录 API 测试", () => {
     });
 
     test("幂等性测试：删除已不存在的记录应成功", async () => {
-      // 已删除的记录再删不应报错
-      await expect(ImageInputHistoryAPI.deleteById(99999999)).resolves.toBeDefined();
+      // 已删除的记录再删不应报错（幂等：promise resolve 即为成功）
+      await ImageInputHistoryAPI.deleteById(99999999);
     });
   });
 

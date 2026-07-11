@@ -70,7 +70,9 @@ const DictManagement: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { loadData(query); }, [query, refreshFlag]); // eslint-disable-line
+  useEffect(() => {
+    loadData(query);
+  }, [query, refreshFlag]); // eslint-disable-line
 
   const refreshList = useCallback(() => {
     setRefreshFlag((prev) => prev + 1);

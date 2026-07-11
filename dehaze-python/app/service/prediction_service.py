@@ -6,18 +6,20 @@
 
 import importlib
 import io
+import logging
 import time
 from pathlib import Path
 from typing import Optional
 
 import httpx
 import PIL.Image
-from loguru import logger
 from sqlalchemy import select
 
-from app.database import async_session_maker
+from app.database import async_session_factory
 from app.models.entity.sys_algorithm import SysAlgorithm
 from algorithm.config import algorithm_config
+
+logger = logging.getLogger(__name__)
 
 
 class PredictionService:
@@ -77,7 +79,7 @@ class PredictionService:
     @staticmethod
     async def _get_algorithm(algorithm_id: int) -> SysAlgorithm:
         """从数据库获取算法"""
-        async with async_session_maker() as session:
+        async with async_session_factory() as session:
             result = await session.execute(
                 select(SysAlgorithm).where(SysAlgorithm.id == algorithm_id)
             )

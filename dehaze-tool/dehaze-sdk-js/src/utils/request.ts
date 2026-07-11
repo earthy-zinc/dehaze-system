@@ -43,8 +43,11 @@ service.interceptors.response.use(
     try {
       const interceptors = configManager.getInterceptors();
 
-      // 处理 arraybuffer 响应类型（如文件下载、导出等）
-      if (response.config.responseType === "arraybuffer") {
+      // 处理二进制响应类型（如文件下载、导出等）
+      if (
+        response.config.responseType === "arraybuffer" ||
+        response.config.responseType === "blob"
+      ) {
         const result = (await interceptors.onResponse?.(response)) || response.data;
         return result;
       }
