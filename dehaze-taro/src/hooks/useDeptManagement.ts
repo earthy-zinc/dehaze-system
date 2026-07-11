@@ -74,7 +74,13 @@ export const useDeptManagement = () => {
   const deleteDept = useCallback(async (ids: string | number) => {
     try {
       const { DeptAPI } = await import('dehaze-sdk-js');
-      await DeptAPI.deleteByIds(String(ids));
+      const id = Number(ids);
+      if (ids.toString().includes(',')) {
+        const idArray = ids.toString().split(',').map(Number);
+        await DeptAPI.batchDelete(idArray);
+      } else {
+        await DeptAPI.deleteById(id);
+      }
       await fetchDeptOptions();
       Toast.open({ message: '删除部门成功', position: 'top' });
       return true;

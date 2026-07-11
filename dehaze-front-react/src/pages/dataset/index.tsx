@@ -56,7 +56,7 @@ export default function DatasetList() {
   const handleDelete = useCallback(
     (id: number) => {
       return () => {
-        DatasetAPI.deleteByIds([id.toString()]).then(() => {
+        DatasetAPI.deleteById(id).then(() => {
           const newDatasetList = datasetList?.filter(
             (dataset) => dataset.id !== id
           );

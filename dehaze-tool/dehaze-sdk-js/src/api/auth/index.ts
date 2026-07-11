@@ -1,36 +1,48 @@
 import request from "@/utils/request";
-import { CaptchaResult, LoginData, LoginResult } from "./model";
+import { AuthUserInfo, CaptchaResult, LoginData, LoginResult, RefreshResult } from "./model";
 
 class AuthAPI {
   /**
-   * 登录API
+   * 登录API（JSON body）
    *
    * @param data {LoginData}
-   * @returns
    */
   static login(data: LoginData) {
-    const formData = new FormData();
-    formData.append("username", data.username);
-    formData.append("password", data.password);
-    formData.append("captchaKey", data.captchaKey || "");
-    formData.append("captchaCode", data.captchaCode || "");
     return request<any, LoginResult>({
       url: "/api/v1/auth/login",
       method: "post",
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      data: data,
     });
   }
 
   /**
-   * 注销API
+   * 注销API（POST）
    */
   static logout() {
     return request({
       url: "/api/v1/auth/logout",
-      method: "delete",
+      method: "post",
+    });
+  }
+
+  /**
+   * 获取当前用户信息
+   */
+  static getCurrentUser() {
+    return request<any, AuthUserInfo>({
+      url: "/api/v1/auth/me",
+      method: "get",
+    });
+  }
+
+  /**
+   * 刷新Token（使用当前请求的 refreshToken）
+   */
+  static refreshToken(refreshToken: string) {
+    return request<any, RefreshResult>({
+      url: "/api/v1/auth/refresh",
+      method: "post",
+      data: { refreshToken },
     });
   }
 

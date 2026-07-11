@@ -267,23 +267,34 @@ function handleSubmit() {
 
 /** 删除部门 */
 function handleDelete(deptId?: number) {
-  const deptIds = [deptId || ids.value].join(",");
-
-  if (!deptIds) {
-    ElMessage.warning("请勾选删除项");
-    return;
-  }
-
-  ElMessageBox.confirm(`确认删除已选中的数据项?`, "警告", {
-    confirmButtonText: "确定",
-    cancelButtonText: "取消",
-    type: "warning",
-  }).then(() => {
-    DeptAPI.deleteByIds(deptIds).then(() => {
-      ElMessage.success("删除成功");
-      resetQuery();
+  if (deptId) {
+    // 单个删除
+    ElMessageBox.confirm(`确认删除已选中的数据项?`, "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }).then(() => {
+      DeptAPI.deleteById(deptId).then(() => {
+        ElMessage.success("删除成功");
+        resetQuery();
+      });
     });
-  });
+  } else if (ids.value.length > 0) {
+    // 批量删除（JSON Body）
+    const deptIds = ids.value;
+    ElMessageBox.confirm(`确认删除已选中的数据项?`, "警告", {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }).then(() => {
+      DeptAPI.batchDelete(deptIds).then(() => {
+        ElMessage.success("删除成功");
+        resetQuery();
+      });
+    });
+  } else {
+    ElMessage.warning("请勾选删除项");
+  }
 }
 
 /** 关闭弹窗 */

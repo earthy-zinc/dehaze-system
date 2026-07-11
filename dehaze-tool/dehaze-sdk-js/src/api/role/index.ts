@@ -18,21 +18,18 @@ class RoleAPI {
 
   /**
    * 获取角色下拉数据源
-   *
-   * @param queryParams
    */
-  static getOptions(queryParams?: RoleQuery) {
+  static getOptions() {
     return request<any, OptionType[]>({
       url: "/api/v1/roles/options",
       method: "get",
-      params: queryParams,
     });
   }
 
   /**
    * 获取角色的菜单ID集合
    *
-   * @param queryParams
+   * @param roleId
    */
   static getRoleMenuIds(roleId: number) {
     return request<any, number[]>({
@@ -42,22 +39,23 @@ class RoleAPI {
   }
 
   /**
-   * 分配菜单权限给角色
+   * 分配菜单权限给角色（PATCH）
    *
-   * @param queryParams
+   * @param roleId
+   * @param menuIds 菜单ID数组
    */
-  static updateRoleMenus(roleId: number, data: number[]) {
+  static updateRoleMenus(roleId: number, menuIds: number[]) {
     return request({
       url: "/api/v1/roles/" + roleId + "/menus",
-      method: "put",
-      data: data,
+      method: "patch",
+      data: { menuIds },
     });
   }
 
   /**
    * 获取角色表单数据
    *
-   * @param id
+   * @param id 角色ID
    */
   static getFormData(id: number) {
     return request<any, RoleForm>({
@@ -82,7 +80,7 @@ class RoleAPI {
   /**
    * 更新角色
    *
-   * @param id
+   * @param id 角色ID
    * @param data
    */
   static update(id: number, data: RoleForm) {
@@ -94,9 +92,23 @@ class RoleAPI {
   }
 
   /**
-   * 批量删除角色，多个以英文逗号(,)分割
+   * 更新角色状态（PATCH）
    *
-   * @param ids
+   * @param roleId 角色ID
+   * @param status 状态(1-启用;0-禁用)
+   */
+  static updateStatus(roleId: number, status: number) {
+    return request({
+      url: "/api/v1/roles/" + roleId + "/status",
+      method: "patch",
+      params: { status },
+    });
+  }
+
+  /**
+   * 批量删除角色（路径参数，逗号分隔）
+   *
+   * @param ids 角色ID字符串，多个以英文逗号(,)分割
    */
   static deleteByIds(ids: string) {
     return request({

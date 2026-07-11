@@ -29,7 +29,7 @@ class DeptAPI {
   /**
    * 获取部门详情
    *
-   * @param id
+   * @param id 部门ID
    */
   static getFormData(id: number) {
     return request<any, DeptForm>({
@@ -52,9 +52,9 @@ class DeptAPI {
   }
 
   /**
-   *  修改部门
+   * 修改部门
    *
-   * @param id
+   * @param id 部门ID
    * @param data
    */
   static update(id: number, data: DeptForm) {
@@ -66,14 +66,27 @@ class DeptAPI {
   }
 
   /**
-   * 删除部门
+   * 删除单个部门
    *
-   * @param ids
+   * @param id 部门ID
    */
-  static deleteByIds(ids: string) {
+  static deleteById(id: number) {
     return request({
-      url: "/api/v1/depts/" + ids,
+      url: "/api/v1/depts/" + id,
       method: "delete",
+    });
+  }
+
+  /**
+   * 批量删除部门（RequestBody JSON）
+   *
+   * @param ids 部门ID数组
+   */
+  static batchDelete(ids: number[]) {
+    return request({
+      url: "/api/v1/depts/batch",
+      method: "delete",
+      data: { ids },
     });
   }
 }

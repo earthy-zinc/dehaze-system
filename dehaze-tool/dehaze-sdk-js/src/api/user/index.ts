@@ -19,7 +19,7 @@ class UserAPI {
    * @param queryParams
    */
   static getPage(queryParams: UserQuery) {
-    return request<any, PageResult<UserPageVO[]>>({
+    return request<any, PageResult<UserPageVO>>({
       url: "/api/v1/users/page",
       method: "get",
       params: queryParams,
@@ -66,23 +66,37 @@ class UserAPI {
   }
 
   /**
-   * 修改用户密码
+   * 修改用户密码（PATCH，query param）
    *
-   * @param id
-   * @param password
+   * @param id 用户ID
+   * @param password 新密码
    */
   static updatePassword(id: number, password: string) {
     return request({
       url: "/api/v1/users/" + id + "/password",
       method: "patch",
-      params: { password: password },
+      params: { password },
     });
   }
 
   /**
-   * 删除用户
+   * 修改用户状态（PATCH，query param）
    *
-   * @param ids
+   * @param id 用户ID
+   * @param status 状态(1-启用;0-禁用)
+   */
+  static updateStatus(id: number, status: number) {
+    return request({
+      url: "/api/v1/users/" + id + "/status",
+      method: "patch",
+      params: { status },
+    });
+  }
+
+  /**
+   * 删除用户（路径参数，逗号分隔）
+   *
+   * @param ids 用户ID字符串，多个以英文逗号(,)分割
    */
   static deleteByIds(ids: string) {
     return request({
@@ -93,8 +107,6 @@ class UserAPI {
 
   /**
    * 下载用户导入模板
-   *
-   * @returns
    */
   static downloadTemplate() {
     return request({
@@ -108,7 +120,6 @@ class UserAPI {
    * 导出用户
    *
    * @param queryParams
-   * @returns
    */
   static export(queryParams?: Partial<UserQuery>) {
     return request({
@@ -120,9 +131,10 @@ class UserAPI {
   }
 
   /**
-   * 导入用户
+   * 导入用户（multipart/form-data）
    *
-   * @param file
+   * @param deptId 部门ID
+   * @param file Excel文件
    */
   static import(deptId: number, file: File) {
     const formData = new FormData();
@@ -130,7 +142,7 @@ class UserAPI {
     return request({
       url: "/api/v1/users/_import",
       method: "post",
-      params: { deptId: deptId },
+      params: { deptId },
       data: formData,
       headers: {
         "Content-Type": "multipart/form-data",

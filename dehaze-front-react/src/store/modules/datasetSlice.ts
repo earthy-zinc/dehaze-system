@@ -45,7 +45,8 @@ export const updateDataset = createAsyncThunk(
 export const deleteDatasetByIds = createAsyncThunk(
   "dataset/delete",
   async (ids: string[]) => {
-    const response = await DatasetAPI.deleteByIds(ids);
+    const numericIds = ids.map(Number);
+    const response = await DatasetAPI.batchDelete({ ids: numericIds });
     return response;
   }
 );
