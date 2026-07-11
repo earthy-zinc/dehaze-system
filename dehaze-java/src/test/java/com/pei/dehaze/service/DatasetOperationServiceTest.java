@@ -113,68 +113,6 @@ class DatasetOperationServiceTest {
     }
 
     @Test
-    @DisplayName("测试批量级联删除数据项 - 成功")
-    void testBatchDeleteDatasetItemsCascade_Success() {
-        // Given
-        List<Long> datasetItemIds = Arrays.asList(1L, 2L, 3L);
-
-        SysDatasetItem item1 = new SysDatasetItem();
-        item1.setId(1L);
-        SysDatasetItem item2 = new SysDatasetItem();
-        item2.setId(2L);
-        SysDatasetItem item3 = new SysDatasetItem();
-        item3.setId(3L);
-
-        when(sysDatasetItemService.getById(1L)).thenReturn(item1);
-        when(sysDatasetItemService.getById(2L)).thenReturn(item2);
-        when(sysDatasetItemService.getById(3L)).thenReturn(item3);
-        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
-        when(sysDatasetItemService.removeById(anyLong())).thenReturn(true);
-
-        // When
-        datasetOperationService.batchDeleteDatasetItemsCascade(datasetItemIds);
-
-        // Then
-        verify(sysDatasetItemService, times(3)).removeById(anyLong());
-    }
-
-    @Test
-    @DisplayName("测试批量级联删除数据项 - 空列表不执行任何操作")
-    void testBatchDeleteDatasetItemsCascade_EmptyList() {
-        // Given
-        List<Long> emptyList = Collections.emptyList();
-
-        // When
-        datasetOperationService.batchDeleteDatasetItemsCascade(emptyList);
-
-        // Then
-        verify(sysDatasetItemService, never()).removeById(anyLong());
-    }
-
-    @Test
-    @DisplayName("测试批量级联删除数据项 - 某个删除失败抛出异常")
-    void testBatchDeleteDatasetItemsCascade_FailureThrowsException() {
-        // Given
-        List<Long> datasetItemIds = Arrays.asList(1L, 2L);
-
-        SysDatasetItem item1 = new SysDatasetItem();
-        item1.setId(1L);
-        SysDatasetItem item2 = new SysDatasetItem();
-        item2.setId(2L);
-
-        when(sysDatasetItemService.getById(1L)).thenReturn(item1);
-        when(sysDatasetItemService.getById(2L)).thenReturn(item2);
-        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
-        when(sysDatasetItemService.removeById(1L)).thenReturn(true);
-        when(sysDatasetItemService.removeById(2L)).thenThrow(new RuntimeException("删除失败"));
-
-        // When & Then
-        assertThatThrownBy(() -> datasetOperationService.batchDeleteDatasetItemsCascade(datasetItemIds))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("删除数据项失败");
-    }
-
-    @Test
     @DisplayName("测试批量删除数据集 - 成功")
     void testBatchDeleteDatasets_Success() {
         // Given

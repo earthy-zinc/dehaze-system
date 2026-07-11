@@ -697,12 +697,17 @@ func (dos *DatasetOperationService) invalidateDatasetStatsCache(datasetID int64)
 		return
 	}
 	ctx := context.Background()
-	cacheKey := fmt.Sprintf("dataset:stats:%d", datasetID)
-	if err := dos.cache.Delete(ctx, cacheKey); err != nil {
-		logger.Warn("失效统计缓存失败", zap.String("key", cacheKey), zap.Error(err))
+	keys := []string{
+		fmt.Sprintf("dataset:stats:%d", datasetID),
+		fmt.Sprintf("dataset:leaf:%d", datasetID),
+		"dataset:all",
+		"dataset:statsMap:all",
 	}
-	leafCacheKey := fmt.Sprintf("dataset:leaf:%d", datasetID)
-	_ = dos.cache.Delete(ctx, leafCacheKey)
+	for _, key := range keys {
+		if err := dos.cache.Delete(ctx, key); err != nil {
+			logger.Warn("失效缓存失败", zap.String("key", key), zap.Error(err))
+		}
+	}
 }
 
 // invalidateDatasetItemsCache 失效数据集下所有数据项列表缓存
@@ -738,6 +743,8 @@ func (dos *DatasetOperationService) invalidateTreeCache() {
 	keys := []string{
 		"dataset:tree",
 		"dataset:tree:options",
+		"dataset:all",
+		"dataset:statsMap:all",
 	}
 	for _, key := range keys {
 		if err := dos.cache.Delete(ctx, key); err != nil {

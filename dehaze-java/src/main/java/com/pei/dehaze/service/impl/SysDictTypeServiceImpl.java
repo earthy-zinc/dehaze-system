@@ -197,25 +197,6 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         return this.removeByIds(ids);
     }
 
-    /**
-     * 获取字典类型的数据项
-     */
-    @Override
-    public List<Option<String>> listDictItemsByTypeCode(String typeCode) {
-        // 数据字典项
-        List<SysDict> dictItems = dictItemService.list(new LambdaQueryWrapper<SysDict>()
-                .eq(SysDict::getTypeCode, typeCode)
-                .select(SysDict::getValue, SysDict::getName)
-        );
-
-        // 转换下拉数据
-        return CollUtil.emptyIfNull(dictItems)
-                .stream()
-                .map(dictItem -> new Option<>(dictItem.getValue(), dictItem.getName()))
-                .toList();
-    }
-
-
 }
 
 

@@ -12,6 +12,7 @@ import com.pei.dehaze.model.vo.BatchActionFailureDetailVO;
 import com.pei.dehaze.model.vo.BatchOperationResultVO;
 import com.pei.dehaze.model.vo.DatasetItemVO;
 import com.pei.dehaze.model.vo.ImageUrlVO;
+import com.pei.dehaze.service.impl.DatasetOperationServiceImpl;
 import com.pei.dehaze.service.impl.SysDatasetItemServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -65,7 +66,12 @@ class SysDatasetItemServiceTest {
     @Mock
     private SysFileService sysFileService;
 
+    @Mock
+    private SysDatasetService sysDatasetService;
+
     private SysDatasetItemServiceImpl sysDatasetItemService;
+
+    private DatasetOperationServiceImpl datasetOperationService;
 
     private SysDatasetItem testDatasetItem;
     private List<SysItemFile> testItemFiles;
@@ -89,6 +95,21 @@ class SysDatasetItemServiceTest {
         Field sysItemFileServiceField = SysDatasetItemServiceImpl.class.getDeclaredField("sysItemFileService");
         sysItemFileServiceField.setAccessible(true);
         sysItemFileServiceField.set(sysDatasetItemService, sysItemFileService);
+
+        // 创建DatasetOperationServiceImpl并注入依赖（batchDelete已迁移至此服务）
+        datasetOperationService = spy(new DatasetOperationServiceImpl());
+
+        Field datasetOpDatasetServiceField = DatasetOperationServiceImpl.class.getDeclaredField("sysDatasetService");
+        datasetOpDatasetServiceField.setAccessible(true);
+        datasetOpDatasetServiceField.set(datasetOperationService, sysDatasetService);
+
+        Field datasetOpItemServiceField = DatasetOperationServiceImpl.class.getDeclaredField("sysDatasetItemService");
+        datasetOpItemServiceField.setAccessible(true);
+        datasetOpItemServiceField.set(datasetOperationService, sysDatasetItemService);
+
+        Field datasetOpItemFileServiceField = DatasetOperationServiceImpl.class.getDeclaredField("sysItemFileService");
+        datasetOpItemFileServiceField.setAccessible(true);
+        datasetOpItemFileServiceField.set(datasetOperationService, sysItemFileService);
 
         // Mock removeById方法调用mapper的deleteById
         lenient().doAnswer(invocation -> {
@@ -156,23 +177,27 @@ class SysDatasetItemServiceTest {
     /**
      * 测试批量删除数据项（全部成功）
      * 测试场景：批量删除多个数据项，全部成功
-     * 注意：重构后batchDeleteDatasetItems使用removeById，仅删除记录不级联删除文件
+     * 注意：批量删除已迁移至DatasetOperationService.batchDeleteDatasetItemsCascadeWithResult
      * 验证内容：
      * 1. 返回正确的成功和失败数量
      * 2. 失败详情为空
      * 3. 所有数据项都被删除
      */
     @Test
-    @DisplayName("batchDeleteDatasetItems - 批量删除全部成功")
+    @DisplayName("batchDeleteDatasetItemsCascadeWithResult - 批量删除全部成功")
     void testBatchDeleteDatasetItems_AllSuccess() {
         // Arrange
         List<Long> itemIds = Arrays.asList(1L, 2L, 3L);
 
-        // mock deleteById返回1表示成功删除
+        // mock: 数据项存在
+        doReturn(testDatasetItem).when(sysDatasetItemService).getById(anyLong());
+        // mock: 无关联文件
+        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        // mock: removeById成功（通过mapper的deleteById返回1）
         when(sysDatasetItemMapper.deleteById(anyLong())).thenReturn(1);
 
         // Act
-        BatchOperationResultVO result = sysDatasetItemService.batchDeleteDatasetItems(itemIds);
+        BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(itemIds);
 
         // Assert
         assertNotNull(result);
@@ -180,9 +205,9 @@ class SysDatasetItemServiceTest {
         assertEquals(0, result.getFailedCount());
         assertTrue(result.getFailureDetails() == null || result.getFailureDetails().isEmpty());
         // 验证每个ID都被删除了
-        verify(sysDatasetItemMapper, times(1)).deleteById(1L);
-        verify(sysDatasetItemMapper, times(1)).deleteById(2L);
-        verify(sysDatasetItemMapper, times(1)).deleteById(3L);
+        verify(sysDatasetItemService, times(1)).removeById(1L);
+        verify(sysDatasetItemService, times(1)).removeById(2L);
+        verify(sysDatasetItemService, times(1)).removeById(3L);
     }
 
     /**
@@ -194,18 +219,22 @@ class SysDatasetItemServiceTest {
      * 3. 成功的数据项被删除
      */
     @Test
-    @DisplayName("batchDeleteDatasetItems - 批量删除部分失败")
+    @DisplayName("batchDeleteDatasetItemsCascadeWithResult - 批量删除部分失败")
     void testBatchDeleteDatasetItems_PartialFailure() {
         // Arrange
         List<Long> itemIds = Arrays.asList(1L, 2L, 3L);
 
+        // mock: 数据项存在
+        doReturn(testDatasetItem).when(sysDatasetItemService).getById(anyLong());
+        // mock: 无关联文件
+        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
         // 第一个和第三个成功，第二个失败
         when(sysDatasetItemMapper.deleteById(1L)).thenReturn(1);
         when(sysDatasetItemMapper.deleteById(2L)).thenThrow(new RuntimeException("数据库连接失败"));
         when(sysDatasetItemMapper.deleteById(3L)).thenReturn(1);
 
         // Act
-        BatchOperationResultVO result = sysDatasetItemService.batchDeleteDatasetItems(itemIds);
+        BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(itemIds);
 
         // Assert
         assertNotNull(result);
@@ -240,13 +269,13 @@ class SysDatasetItemServiceTest {
      * 2. 不调用任何删除方法
      */
     @Test
-    @DisplayName("batchDeleteDatasetItems - 空列表")
+    @DisplayName("batchDeleteDatasetItemsCascadeWithResult - 空列表")
     void testBatchDeleteDatasetItems_EmptyList() {
         // Arrange
         List<Long> itemIds = Collections.emptyList();
 
         // Act
-        BatchOperationResultVO result = sysDatasetItemService.batchDeleteDatasetItems(itemIds);
+        BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(itemIds);
 
         // Assert
         assertNotNull(result);
@@ -264,13 +293,13 @@ class SysDatasetItemServiceTest {
      * 2. 不抛出异常
      */
     @Test
-    @DisplayName("batchDeleteDatasetItems - null列表")
+    @DisplayName("batchDeleteDatasetItemsCascadeWithResult - null列表")
     void testBatchDeleteDatasetItems_NullList() {
         // Arrange
         List<Long> itemIds = null;
 
         // Act
-        BatchOperationResultVO result = sysDatasetItemService.batchDeleteDatasetItems(itemIds);
+        BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(itemIds);
 
         // Assert
         assertNotNull(result);

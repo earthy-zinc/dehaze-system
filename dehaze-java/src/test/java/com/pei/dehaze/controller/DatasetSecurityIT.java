@@ -1,6 +1,7 @@
 package com.pei.dehaze.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.config.TestConfig;
@@ -142,7 +143,7 @@ class DatasetSecurityIT {
         @WithMockUser(username = "testuser", roles = {"USER"})
         @DisplayName("已登录用户访问数据集列表应返回200")
         void listDatasets_WithAuthenticatedUser_ShouldReturn200() throws Exception {
-            when(datasetService.getList(any())).thenReturn(Collections.emptyList());
+            when(datasetService.listPagedDatasets(any())).thenReturn(new Page<DatasetVO>());
 
             mockMvc.perform(get("/api/v1/datasets"))
                     .andExpect(status().isOk())
@@ -217,7 +218,7 @@ class DatasetSecurityIT {
         @WithMockUser(username = "admin", roles = {"ADMIN"})
         @DisplayName("管理员访问数据集列表应返回200")
         void listDatasets_WithAdminRole_ShouldReturn200() throws Exception {
-            when(datasetService.getList(any())).thenReturn(Collections.emptyList());
+            when(datasetService.listPagedDatasets(any())).thenReturn(new Page<DatasetVO>());
 
             mockMvc.perform(get("/api/v1/datasets"))
                     .andExpect(status().isOk())

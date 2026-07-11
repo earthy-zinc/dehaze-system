@@ -10,7 +10,8 @@ import BasicLayout from "@/layout";
 import ErrorPage404 from "@/pages/error/404";
 import Login from "@/pages/login";
 import lazyLoad from "@/router/LazyLoad";
-import { HomeOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, BookOutlined, HomeOutlined, MenuOutlined, SafetyOutlined, SettingOutlined } from "@ant-design/icons";
+import UserIcon from "@/assets/icons/user.svg";
 import React, { lazy } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 
@@ -70,6 +71,44 @@ export const menuItems = [
         label: "并行对比",
         icon: <ParallelIcon />,
         path: "/compare/parallel",
+      },
+    ],
+  },
+  {
+    key: "System",
+    label: "系统管理",
+    icon: <SettingOutlined />,
+    path: "/system",
+    children: [
+      {
+        key: "Dept",
+        label: "部门管理",
+        icon: <ApartmentOutlined />,
+        path: "/system/dept",
+      },
+      {
+        key: "Dict",
+        label: "字典管理",
+        icon: <BookOutlined />,
+        path: "/system/dict",
+      },
+      {
+        key: "Menu",
+        label: "菜单管理",
+        icon: <MenuOutlined />,
+        path: "/system/menu",
+      },
+      {
+        key: "Role",
+        label: "角色管理",
+        icon: <SafetyOutlined />,
+        path: "/system/role",
+      },
+      {
+        key: "User",
+        label: "用户管理",
+        icon: <UserIcon />,
+        path: "/system/user",
       },
     ],
   },
@@ -148,6 +187,45 @@ const router = createBrowserRouter([
           {
             path: "parallel",
             element: lazyLoad(lazy(() => import("@/pages/compare/parallel"))),
+          },
+        ],
+      },
+      {
+        path: "system",
+        children: [
+          {
+            index: true,
+            element: <Navigate to="dept" replace />,
+          },
+          {
+            path: "dept",
+            element: lazyLoad(
+              lazy(() => import("@/pages/system/dept"))
+            ),
+          },
+          {
+            path: "dict",
+            element: lazyLoad(
+              lazy(() => import("@/pages/system/dict"))
+            ),
+          },
+          {
+            path: "menu",
+            element: lazyLoad(
+              lazy(() => import("@/pages/system/menu"))
+            ),
+          },
+          {
+            path: "role",
+            element: lazyLoad(
+              lazy(() => import("@/pages/system/role"))
+            ),
+          },
+          {
+            path: "user",
+            element: lazyLoad(
+              lazy(() => import("@/pages/system/user"))
+            ),
           },
         ],
       },

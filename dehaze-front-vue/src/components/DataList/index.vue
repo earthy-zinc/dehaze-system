@@ -19,8 +19,12 @@ const API = isDatasetList ? DatasetAPI : AlgorithmAPI;
 
 const queryFormRef = ref(ElForm);
 const loading = ref(false);
-const queryParams = reactive<AlgorithmQuery | DatasetQuery>({});
+const queryParams = reactive<AlgorithmQuery | DatasetQuery>({
+  pageNum: 1,
+  pageSize: 20,
+});
 const list = ref<Algorithm[] | Dataset[]>([]);
+const total = ref(0);
 const selectedId = ref<number>();
 const selectedColumns = ref([
   "name",
@@ -45,18 +49,61 @@ const columns = [
 
 function handleQuery() {
   loading.value = true;
-  API.getList(queryParams)
-    .then((data) => {
-      list.value = data;
-    })
-    .then(() => {
-      loading.value = false;
-    });
+  if (isDatasetList) {
+    API.getList(queryParams as DatasetQuery)
+      .then((data: any) => {
+        list.value = data.list;
+        total.value = data.total;
+      })
+      .finally(() => {
+        loading.value = false;
+      });
+  } else {
+    API.getList(queryParams)
+      .then((data) => {
+        list.value = data;
+      })
+      .finally(() => {
+        loading.value = false;
+      });
+  }
 }
 
 function resetQuery() {
   queryFormRef.value.resetFields();
+  if (isDatasetList) {
+    (queryParams as DatasetQuery).pageNum = 1;
+  }
   handleQuery();
+}
+
+function handleSizeChange(size: number) {
+  (queryParams as DatasetQuery).pageSize = size;
+  (queryParams as DatasetQuery).pageNum = 1;
+  handleQuery();
+}
+
+function handleCurrentChange(page: number) {
+  (queryParams as DatasetQuery).pageNum = page;
+  handleQuery();
+}
+
+function loadChildren(
+  tree: any,
+  treeNode: unknown,
+  resolve: (children: any[]) => void
+) {
+  if (tree.hasChildren === false) {
+    resolve([]);
+    return;
+  }
+  DatasetAPI.getChildren(tree.id)
+    .then((children) => {
+      resolve(children);
+    })
+    .catch(() => {
+      resolve([]);
+    });
 }
 
 function onRowClick<T extends Algorithm | Dataset>(row: T) {
@@ -84,9 +131,9 @@ function handleDelete(algorithmId: number) {
     type: "warning",
   })
     .then(() => {
-      console.log([...algorithmId.toString()]);
       API.deleteByIds([...algorithmId.toString()]);
       ElMessage.success("删除成功");
+      handleQuery();
     })
     .catch(() => ElMessage.info("已取消删除"));
 }
@@ -112,9 +159,9 @@ onMounted(() => {
   <div class="app-container">
     <div class="search-container">
       <el-form ref="queryFormRef" :inline="true" :model="queryParams">
-        <el-form-item label="关键字" prop="keywords">
+        <el-form-item label="关键字" prop="keyword">
           <el-input
-            v-model="queryParams.keywords"
+            v-model="queryParams.keyword"
             :placeholder="isDatasetList ? '数据集名称' : '模型名称'"
             clearable
             @keyup.enter="handleQuery"
@@ -168,7 +215,9 @@ onMounted(() => {
           children: 'children',
           hasChildren: 'hasChildren',
         }"
-        default-expand-all
+        :lazy="isDatasetList"
+        :load="isDatasetList ? loadChildren : undefined"
+        :default-expand-all="!isDatasetList"
         highlight-current-row
         row-key="id"
         @row-click="onRowClick"
@@ -222,22 +271,8 @@ onMounted(() => {
           min-width="65"
         >
           <template #default="scope">
-            <el-tag
-              v-if="
-                !(
-                  scope.row.parentId === -1 && scope.row.children.length !== 0
-                ) && scope.row.status === 1
-              "
-              type="success"
-              >启用
-            </el-tag>
-            <el-tag
-              v-else-if="
-                !(
-                  scope.row.parentId === -1 && scope.row.children.length !== 0
-                ) && scope.row.status === 0
-              "
-              type="info"
+            <el-tag v-if="scope.row.status === 1" type="success">启用 </el-tag>
+            <el-tag v-else-if="scope.row.status === 0" type="info"
               >禁用
             </el-tag>
           </template>
@@ -286,9 +321,21 @@ onMounted(() => {
           </template>
         </el-table-column>
       </el-table>
+
+      <el-pagination
+        v-if="isDatasetList"
+        v-model:current-page="queryParams.pageNum"
+        v-model:page-size="queryParams.pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :total="total"
+        layout="total, sizes, prev, pager, next, jumper"
+        background
+        class="pagination-container"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
     </el-card>
 
-    <!-- 新增/编辑对话框 -->
     <EditDialog
       ref="dialogRef"
       :isDatasetList="isDatasetList"
@@ -315,6 +362,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   margin: 0 15px;
+}
+
+.pagination-container {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
 }
 </style>
 

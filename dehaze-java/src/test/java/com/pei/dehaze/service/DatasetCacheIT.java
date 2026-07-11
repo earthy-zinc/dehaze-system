@@ -2,6 +2,7 @@ package com.pei.dehaze.service;
 
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.config.TestConfig;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.model.dto.DatasetStatistics;
 import com.pei.dehaze.model.form.DatasetAddForm;
 import com.pei.dehaze.model.query.DatasetQuery;
@@ -69,7 +70,7 @@ class DatasetCacheIT {
         query.setKeyword(null);
 
         // Act
-        List<DatasetVO> result = datasetService.getList(query);
+        IPage<DatasetVO> result = datasetService.listPagedDatasets(query);
 
         // Assert - 验证返回结果
         assertThat(result).isNotNull();
@@ -87,13 +88,13 @@ class DatasetCacheIT {
         query.setKeyword(null);
 
         // Act - 第一次调用
-        List<DatasetVO> firstResult = datasetService.getList(query);
+        IPage<DatasetVO> firstResult = datasetService.listPagedDatasets(query);
 
         // Act - 第二次调用
-        List<DatasetVO> secondResult = datasetService.getList(query);
+        IPage<DatasetVO> secondResult = datasetService.listPagedDatasets(query);
 
         // Assert - 两次结果应该相同
-        assertThat(secondResult.size()).isEqualTo(firstResult.size());
+        assertThat(secondResult.getRecords().size()).isEqualTo(firstResult.getRecords().size());
     }
 
     /**
@@ -146,8 +147,8 @@ class DatasetCacheIT {
     void addDataset_ListShouldContainNewData() {
         // Arrange - 先查询一次
         DatasetQuery query = new DatasetQuery();
-        List<DatasetVO> beforeList = datasetService.getList(query);
-        int beforeCount = beforeList.size();
+        IPage<DatasetVO> beforeList = datasetService.listPagedDatasets(query);
+        int beforeCount = beforeList.getRecords().size();
 
         // Arrange - 准备新增表单
         DatasetAddForm form = new DatasetAddForm();
@@ -164,10 +165,10 @@ class DatasetCacheIT {
         assertThat(result.getId()).isNotNull();
 
         // Act - 再次查询列表
-        List<DatasetVO> afterList = datasetService.getList(query);
+        IPage<DatasetVO> afterList = datasetService.listPagedDatasets(query);
 
         // Assert - 列表应该包含新数据
-        assertThat(afterList.size()).isGreaterThanOrEqualTo(beforeCount);
+        assertThat(afterList.getRecords().size()).isGreaterThanOrEqualTo(beforeCount);
     }
 
     /**
@@ -238,11 +239,11 @@ class DatasetCacheIT {
         query2.setKeyword(null);
 
         // Act
-        List<DatasetVO> result1 = datasetService.getList(query1);
-        List<DatasetVO> result2 = datasetService.getList(query2);
+        IPage<DatasetVO> result1 = datasetService.listPagedDatasets(query1);
+        IPage<DatasetVO> result2 = datasetService.listPagedDatasets(query2);
 
         // Assert - 带不存在关键字的查询应该返回空或较少结果
-        assertThat(result1.size()).isLessThanOrEqualTo(result2.size());
+        assertThat(result1.getRecords().size()).isLessThanOrEqualTo(result2.getRecords().size());
     }
 
     /**

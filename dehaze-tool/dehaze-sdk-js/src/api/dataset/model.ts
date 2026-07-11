@@ -94,6 +94,8 @@ export interface Dataset {
   status?: number;
   /** 统计信息 */
   statistics?: DatasetStatistics;
+  /** 图片总数（用于列表展示） */
+  total?: number;
   /** 数据集创建时间 */
   createTime?: Date | string;
   /** 数据集最后修改时间 */

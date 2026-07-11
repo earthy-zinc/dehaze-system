@@ -7,16 +7,17 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.util.ImageClassificationUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
-import com.pei.dehaze.mapper.SysDatasetMapper;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.query.DatasetItemQuery;
 import com.pei.dehaze.model.vo.*;
 import com.pei.dehaze.service.SysDatasetItemService;
+import com.pei.dehaze.service.SysDatasetService;
 import com.pei.dehaze.service.SysItemFileService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,9 +43,9 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
     @Resource
     private SysItemFileService sysItemFileService;
 
-    // 使用Mapper直接查询，避免循环依赖
+    @Lazy
     @Resource
-    private SysDatasetMapper sysDatasetMapper;
+    private SysDatasetService sysDatasetService;
 
     @Override
     public SysDatasetItem createDatasetItem(Long datasetId) {
@@ -196,20 +197,18 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
     }
 
     /**
-     * 获取指定数据集的叶子节点ID列表（通过Mapper直接查询，避免循环依赖）
-     * 使用统一的TreeDataUtils工具类
+     * 获取指定数据集的叶子节点ID列表（使用缓存的 getAllDatasets 避免每次全表扫描）
      */
     private List<Long> getLeafDatasetIdsByMapper(Long datasetId) {
-        List<SysDataset> allDatasets = sysDatasetMapper.selectList(null);
+        List<SysDataset> allDatasets = sysDatasetService.getAllDatasets();
         return TreeDataUtils.findLeafIdsUnder(allDatasets, datasetId, SysDataset::getId, SysDataset::getParentId);
     }
 
     /**
-     * 获取所有叶子节点数据集ID（通过Mapper直接查询，避免循环依赖）
-     * 使用统一的TreeDataUtils工具类
+     * 获取所有叶子节点数据集ID（使用缓存的 getAllDatasets 避免每次全表扫描）
      */
     private List<Long> getAllLeafDatasetIdsByMapper() {
-        List<SysDataset> allDatasets = sysDatasetMapper.selectList(null);
+        List<SysDataset> allDatasets = sysDatasetService.getAllDatasets();
         return TreeDataUtils.findAllLeafIds(allDatasets, SysDataset::getId, SysDataset::getParentId);
     }
 

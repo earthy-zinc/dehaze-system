@@ -21,9 +21,9 @@ system:
   router-prefix: ""
 
 captcha:
-  length: 6
-  width: 240
-  height: 80
+  length: 4
+  width: 120
+  height: 40
   retry-count: 0 # 0代表无限制次数，大于0代表最多获取几次验证码
   timeout: 3600 # retry-count大于0时才生效，表示解除验证码限制时间
 

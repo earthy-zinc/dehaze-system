@@ -383,10 +383,17 @@ func (datasetItemService *DatasetItemService) invalidateDatasetStatsCache(datase
 		return
 	}
 	ctx := context.Background()
-	cacheKey := "dataset:stats:" + fmt.Sprintf("%d", datasetID)
-
-	// 同时失效统计和叶子节点缓存
-	_ = datasetItemService.cache.Delete(ctx, cacheKey)
-	leafCacheKey := "dataset:leaf:" + fmt.Sprintf("%d", datasetID)
-	_ = datasetItemService.cache.Delete(ctx, leafCacheKey)
+	keys := []string{
+		fmt.Sprintf("dataset:stats:%d", datasetID),
+		fmt.Sprintf("dataset:leaf:%d", datasetID),
+		"dataset:statsMap:all",
+		"dataset:all",
+		"dataset:tree",
+		"dataset:tree:options",
+	}
+	for _, key := range keys {
+		if err := datasetItemService.cache.Delete(ctx, key); err != nil {
+			logger.Warn("失效缓存失败", zap.String("key", key), zap.Error(err))
+		}
+	}
 }

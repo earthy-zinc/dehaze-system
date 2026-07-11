@@ -45,6 +45,9 @@ public class DatasetVO {
     @Schema(description = "统计信息（包含图片数量、分布等）")
     private DatasetStatistics statistics;
 
+    @Schema(description = "图片总数（用于列表展示）", example = "100")
+    private Long total;
+
     @Schema(description = "数据集创建时间", example = "2025-01-01T10:00:00")
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createTime;

@@ -124,25 +124,6 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         return this.baseMapper.listImageUrl(itemId);
     }
 
-    public Map<Long, List<ImageUrlVO>> getImageUrlVOsMap(List<Long> itemIds) {
-        if (itemIds == null || itemIds.isEmpty()) {
-            return new HashMap<>();
-        }
-
-        List<ImageUrlVO> allImages = this.baseMapper.listImageUrlByItemIds(itemIds);
-
-        Map<Long, List<ImageUrlVO>> result = new HashMap<>();
-        for (ImageUrlVO image : allImages) {
-            Long itemId = image.getItemId();
-            if (!result.containsKey(itemId)) {
-                result.put(itemId, new ArrayList<>());
-            }
-            result.get(itemId).add(image);
-        }
-
-        return result;
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteFile(Long id) {

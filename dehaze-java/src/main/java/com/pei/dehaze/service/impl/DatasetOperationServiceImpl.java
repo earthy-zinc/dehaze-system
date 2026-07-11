@@ -30,11 +30,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 数据集操作服务实现
@@ -66,6 +68,12 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DatasetItemVO createDatasetItemWithImages(DatasetItemUploadForm form) {
+        DatasetItemVO result = doCreateDatasetItemWithImages(form);
+        sysDatasetService.evictAllDatasetsCache();
+        return result;
+    }
+
+    private DatasetItemVO doCreateDatasetItemWithImages(DatasetItemUploadForm form) {
         // 校验配对图片分辨率一致性
         validatePairedImageResolution(form);
 
@@ -220,7 +228,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 pairForm.setHazeLevels(hazeLevels);
 
                 // 保存配对图片并获取返回结果
-                DatasetItemVO createdItem = this.createDatasetItemWithImages(pairForm);
+                DatasetItemVO createdItem = this.doCreateDatasetItemWithImages(pairForm);
                 successGroups++;
 
                 // 记录成功项详情：1张清晰图 + N张有雾图
@@ -239,6 +247,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         result.setFailed(failedGroups);
         result.setSuccessItems(successItems);
         result.setFailedItems(failedItems);
+        sysDatasetService.evictAllDatasetsCache();
         return result;
     }
 
@@ -285,6 +294,11 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteDatasetItemCascade(Long datasetItemId) {
+        doDeleteDatasetItemCascade(datasetItemId);
+        sysDatasetService.evictAllDatasetsCache();
+    }
+
+    private void doDeleteDatasetItemCascade(Long datasetItemId) {
         Assert.notNull(datasetItemId, "数据项ID不能为空");
 
         // 检查数据项是否存在
@@ -309,23 +323,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void batchDeleteDatasetItemsCascade(List<Long> datasetItemIds) {
-        if (datasetItemIds == null || datasetItemIds.isEmpty()) {
-            return;
-        }
-
-        for (Long datasetItemId : datasetItemIds) {
-            try {
-                deleteDatasetItemCascade(datasetItemId);
-            } catch (Exception e) {
-                log.error("删除数据项失败: datasetItemId={}", datasetItemId, e);
-                throw new BusinessException("删除数据项失败: " + e.getMessage());
-            }
-        }
-    }
-
-    @Override
-    @Transactional(rollbackFor = Exception.class)
     public BatchOperationResultVO batchDeleteDatasetItemsCascadeWithResult(List<Long> datasetItemIds) {
         int successCount = 0;
         int failedCount = 0;
@@ -340,9 +337,28 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                     .build();
         }
 
+        // 批量查询所有数据项的文件，避免 N+1 查询
+        List<SysItemFile> allFiles = sysItemFileService.list(
+                new LambdaQueryWrapper<SysItemFile>()
+                        .in(SysItemFile::getItemId, datasetItemIds)
+        );
+        Map<Long, List<SysItemFile>> filesByItemId = allFiles.stream()
+                .collect(Collectors.groupingBy(SysItemFile::getItemId));
+
         for (Long datasetItemId : datasetItemIds) {
             try {
-                deleteDatasetItemCascade(datasetItemId);
+                // 验证数据项是否存在
+                SysDatasetItem datasetItem = sysDatasetItemService.getById(datasetItemId);
+                if (datasetItem == null) {
+                    throw new BusinessException("数据项不存在");
+                }
+
+                List<SysItemFile> itemFiles = filesByItemId.getOrDefault(datasetItemId, Collections.emptyList());
+                for (SysItemFile itemFile : itemFiles) {
+                    sysItemFileService.deleteFile(itemFile.getId());
+                }
+
+                sysDatasetItemService.removeById(datasetItemId);
                 successCount++;
                 successIds.add(datasetItemId);
             } catch (Exception e) {
@@ -355,6 +371,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
             }
         }
 
+        sysDatasetService.evictAllDatasetsCache();
+
         return BatchOperationResultVO.builder()
                 .successCount(successCount)
                 .failedCount(failedCount)
@@ -365,6 +383,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public BatchDeleteResult batchDeleteDatasets(List<Long> datasetIds) {
         if (datasetIds == null || datasetIds.isEmpty()) {
             throw new BusinessException("删除的数据集ID列表不能为空");
@@ -386,16 +405,31 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 // 获取所有叶子节点数据集下的数据项
                 List<Long> leafDatasetIds = sysDatasetService.getLeafDatasetId(datasetId);
 
-                // 删除所有数据项（包括其下的图片文件）
-                for (Long leafId : leafDatasetIds) {
+                // 批量查询所有叶子数据集下的数据项，避免 N+1 查询
+                List<Long> allItemIds = Collections.emptyList();
+                if (!leafDatasetIds.isEmpty()) {
                     List<SysDatasetItem> items = sysDatasetItemService.list(
                             new LambdaQueryWrapper<SysDatasetItem>()
-                                    .eq(SysDatasetItem::getDatasetId, leafId)
+                                    .in(SysDatasetItem::getDatasetId, leafDatasetIds)
                     );
+                    allItemIds = items.stream().map(SysDatasetItem::getId).toList();
+                }
 
-                    for (SysDatasetItem item : items) {
-                        deleteDatasetItemCascade(item.getId());
+                // 批量查询所有数据项的文件，避免 N+1 查询
+                if (!allItemIds.isEmpty()) {
+                    List<SysItemFile> allFiles = sysItemFileService.list(
+                            new LambdaQueryWrapper<SysItemFile>()
+                                    .in(SysItemFile::getItemId, allItemIds)
+                    );
+                    // 逐个删除文件（涉及物理文件删除）
+                    for (SysItemFile itemFile : allFiles) {
+                        sysItemFileService.deleteFile(itemFile.getId());
                     }
+                }
+
+                // 批量删除数据项
+                if (!allItemIds.isEmpty()) {
+                    sysDatasetItemService.removeByIds(allItemIds);
                 }
 
                 // 删除数据集本身（从叶子节点往上删）
@@ -437,6 +471,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 log.error("删除数据集失败: datasetId={}", datasetId, e);
             }
         }
+
+        sysDatasetService.evictAllDatasetsCache();
 
         return BatchDeleteResult.builder()
                 .total(total)

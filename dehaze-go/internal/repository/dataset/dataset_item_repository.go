@@ -111,7 +111,19 @@ func (r *DatasetItemRepository) Update(ctx context.Context, item *model.SysDatas
 		Updates(item).Error
 }
 
-// CountByDatasetIDs 根据数据集 ID 列表统计数据项数量
+func (r *DatasetItemRepository) CountItemsPerDataset(ctx context.Context, datasetIDs []int64) ([]CountByDatasetResult, error) {
+	if len(datasetIDs) == 0 {
+		return nil, nil
+	}
+	var results []CountByDatasetResult
+	err := r.db.WithContext(ctx).Model(&model.SysDatasetItem{}).
+		Select("dataset_id AS dataset_id, COUNT(*) AS cnt").
+		Where("dataset_id IN ?", datasetIDs).
+		Group("dataset_id").
+		Scan(&results).Error
+	return results, err
+}
+
 func (r *DatasetItemRepository) CountByDatasetIDs(ctx context.Context, datasetIDs []int64) (int64, error) {
 	if len(datasetIDs) == 0 {
 		return 0, nil

@@ -1,7 +1,9 @@
 package query
 
-// DatasetQuery 数据集查询参数
 type DatasetQuery struct {
-	// 关键字
-	Keywords string `json:"keywords"`
+	Keywords string `form:"keyword" json:"keyword"`
+	Type     string `form:"type" json:"type"`
+	Status   *int   `form:"status" json:"status"`
+	PageNum  int    `form:"pageNum" json:"pageNum"`
+	PageSize int    `form:"pageSize" json:"pageSize"`
 }

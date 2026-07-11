@@ -3,14 +3,11 @@ package dataset
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
-	"github.com/earthyzinc/dehaze-go/internal/model/read"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
@@ -22,32 +19,38 @@ import (
 )
 
 const (
-	// DATASET_STATS_TTL 统计缓存过期时间（30分钟）
-	DATASET_STATS_TTL = 30 * time.Minute
-	// DATASET_TREE_TTL 树形结构缓存过期时间（1小时）
-	DATASET_TREE_TTL = time.Hour
-	// DATASET_LEAF_TTL 叶子节点缓存过期时间（1小时）
-	DATASET_LEAF_TTL = time.Hour
+	DATASET_STATS_TTL  = 30 * time.Minute
+	DATASET_TREE_TTL   = time.Hour
+	DATASET_ALL_TTL    = time.Hour
+	DATASET_STATSMAP_TTL = 30 * time.Minute
 )
 
-// DatasetService 数据集服务
 type DatasetService struct {
-	cache types.ICache
-
-	datasetRepo     datasetrepo.IDatasetRepository
+	cache          types.ICache
+	datasetRepo    datasetrepo.IDatasetRepository
 	datasetItemRepo datasetrepo.IDatasetItemRepository
-	itemFileRepo    filerepo.IItemFileRepository
-	fileRepo        filerepo.IFileRepository
-	treeUtils       *utils.TreeDataUtils
+	statsRepo      datasetrepo.IDatasetStatsRepository
+	itemFileRepo   filerepo.IItemFileRepository
+	fileRepo       filerepo.IFileRepository
+	treeUtils      *utils.TreeDataUtils
 }
 
-// NewDatasetService 创建数据集服务实例
-func NewDatasetService(cache types.ICache, datasetRepo datasetrepo.IDatasetRepository, datasetItemRepo datasetrepo.IDatasetItemRepository, itemFileRepo filerepo.IItemFileRepository, fileRepo filerepo.IFileRepository) *DatasetService {
+func NewDatasetService(
+	cache types.ICache,
+	datasetRepo datasetrepo.IDatasetRepository,
+	datasetItemRepo datasetrepo.IDatasetItemRepository,
+	statsRepo datasetrepo.IDatasetStatsRepository,
+	itemFileRepo filerepo.IItemFileRepository,
+	fileRepo filerepo.IFileRepository,
+) *DatasetService {
 	if datasetRepo == nil {
 		panic("DatasetService: datasetRepo 未初始化")
 	}
 	if datasetItemRepo == nil {
 		panic("DatasetService: datasetItemRepo 未初始化")
+	}
+	if statsRepo == nil {
+		panic("DatasetService: statsRepo 未初始化")
 	}
 	if itemFileRepo == nil {
 		panic("DatasetService: itemFileRepo 未初始化")
@@ -57,61 +60,386 @@ func NewDatasetService(cache types.ICache, datasetRepo datasetrepo.IDatasetRepos
 	}
 
 	return &DatasetService{
-		cache:           cache,
-		datasetRepo:     datasetRepo,
+		cache:          cache,
+		datasetRepo:    datasetRepo,
 		datasetItemRepo: datasetItemRepo,
-		itemFileRepo:    itemFileRepo,
-		fileRepo:        fileRepo,
-		treeUtils:       utils.NewTreeDataUtils(),
+		statsRepo:      statsRepo,
+		itemFileRepo:   itemFileRepo,
+		fileRepo:       fileRepo,
+		treeUtils:      utils.NewTreeDataUtils(),
 	}
 }
 
-// SetDatasetRepo 设置 Repository（测试用）
 func (s *DatasetService) SetDatasetRepo(repo datasetrepo.IDatasetRepository) {
 	s.datasetRepo = repo
 }
 
-// DatasetStatistics 数据集统计信息
-type DatasetStatistics struct {
-	ItemCount          int64            `json:"itemCount"`
-	FileCount          int64            `json:"fileCount"`
-	TotalSize          int64            `json:"totalSize"`
-	ClearCount         int64            `json:"clearCount"`
-	HazyCount          int64            `json:"hazyCount"`
-	SceneDistribution  map[string]int64 `json:"sceneDistribution"`
-	HazeDistribution   map[string]int64 `json:"hazeDistribution"`
-	FormatDistribution map[string]int64 `json:"formatDistribution"`
+func (datasetService *DatasetService) getAllDatasets(ctx context.Context) ([]model.SysDataset, error) {
+	cacheKey := "dataset:all"
+
+	if datasetService.cache != nil {
+		cachedData, err := datasetService.cache.Get(ctx, cacheKey)
+		if err == nil && cachedData != "" {
+			var datasets []model.SysDataset
+			if err := json.Unmarshal([]byte(cachedData), &datasets); err == nil {
+				return datasets, nil
+			}
+		}
+	}
+
+	datasets, err := datasetService.datasetRepo.FindAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if datasetService.cache != nil && len(datasets) > 0 {
+		if dataJSON, marshalErr := json.Marshal(datasets); marshalErr == nil {
+			_ = datasetService.cache.Set(ctx, cacheKey, dataJSON, DATASET_ALL_TTL)
+		}
+	}
+
+	return datasets, nil
 }
 
-// ====================
-// IDatasetService 接口实现
-// ====================
+func (datasetService *DatasetService) getAllDatasetStats(ctx context.Context) (map[int64]*vo.DatasetStatistics, error) {
+	cacheKey := "dataset:statsMap:all"
 
-// GetPage 数据集分页列表
+	if datasetService.cache != nil {
+		cachedData, err := datasetService.cache.Get(ctx, cacheKey)
+		if err == nil && cachedData != "" {
+			var statsMap map[int64]*vo.DatasetStatistics
+			if err := json.Unmarshal([]byte(cachedData), &statsMap); err == nil {
+				logger.Debug("所有数据集统计信息命中缓存")
+				return statsMap, nil
+			}
+		}
+	}
+
+	startTime := time.Now()
+	logger.Debug("开始计算所有数据集统计信息...")
+
+	allDatasets, err := datasetService.getAllDatasets(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	statsMap := make(map[int64]*vo.DatasetStatistics)
+	for _, ds := range allDatasets {
+		statsMap[ds.ID] = createEmptyStats()
+	}
+
+	if len(allDatasets) == 0 {
+		return statsMap, nil
+	}
+
+	childParentIDs := make(map[int64]bool)
+	for _, d := range allDatasets {
+		if d.ParentID != 0 {
+			childParentIDs[d.ParentID] = true
+		}
+	}
+
+	var leafIDs []int64
+	for _, d := range allDatasets {
+		if !childParentIDs[d.ID] {
+			leafIDs = append(leafIDs, d.ID)
+		}
+	}
+
+	if len(leafIDs) > 0 {
+		logger.Debug("发现叶子数据集", zap.Int("count", len(leafIDs)))
+
+		itemResults, err := datasetService.datasetItemRepo.CountItemsPerDataset(ctx, leafIDs)
+		if err == nil {
+			for _, r := range itemResults {
+				if stats, ok := statsMap[r.DatasetID]; ok {
+					stats.ItemCount = r.Cnt
+				}
+			}
+		}
+
+		statsResults, err := datasetService.statsRepo.CountDatasetStatsBatch(ctx, leafIDs)
+		if err == nil {
+			for _, r := range statsResults {
+				if stats, ok := statsMap[r.DatasetID]; ok {
+					stats.FileCount = r.FileCount
+					stats.TotalSize = r.TotalSize
+					stats.ClearCount = r.ClearCount
+					stats.HazyCount = r.HazyCount
+				}
+			}
+		}
+
+		sceneResults, err := datasetService.statsRepo.CountSceneDistributionBatch(ctx, leafIDs)
+		if err == nil {
+			for _, r := range sceneResults {
+				if stats, ok := statsMap[r.DatasetID]; ok {
+					stats.SceneDistribution[r.Key] += r.Cnt
+				}
+			}
+		}
+
+		hazeResults, err := datasetService.statsRepo.CountHazeDistributionBatch(ctx, leafIDs)
+		if err == nil {
+			for _, r := range hazeResults {
+				if stats, ok := statsMap[r.DatasetID]; ok {
+					stats.HazeDistribution[r.Key] += r.Cnt
+				}
+			}
+		}
+
+		formatResults, err := datasetService.statsRepo.CountFormatDistributionBatch(ctx, leafIDs)
+		if err == nil {
+			for _, r := range formatResults {
+				if stats, ok := statsMap[r.DatasetID]; ok {
+					stats.FormatDistribution[r.Key] += r.Cnt
+				}
+			}
+		}
+	}
+
+	parentToChildren := make(map[int64][]int64)
+	for _, ds := range allDatasets {
+		if ds.ParentID != 0 {
+			parentToChildren[ds.ParentID] = append(parentToChildren[ds.ParentID], ds.ID)
+		}
+	}
+
+	processed := make(map[int64]bool)
+	queue := make([]int64, 0, len(leafIDs))
+	for _, id := range leafIDs {
+		queue = append(queue, id)
+		processed[id] = true
+	}
+
+	for len(queue) > 0 {
+		currentID := queue[0]
+		queue = queue[1:]
+
+		var current *model.SysDataset
+		for i := range allDatasets {
+			if allDatasets[i].ID == currentID {
+				current = &allDatasets[i]
+				break
+			}
+		}
+		if current == nil || current.ParentID == 0 {
+			continue
+		}
+
+		parentID := current.ParentID
+		parentStats := statsMap[parentID]
+		childStats := statsMap[currentID]
+		if parentStats != nil && childStats != nil {
+			mergeStats(parentStats, childStats)
+		}
+
+		siblings := parentToChildren[parentID]
+		allSiblingsProcessed := true
+		for _, sid := range siblings {
+			if !processed[sid] {
+				allSiblingsProcessed = false
+				break
+			}
+		}
+		if allSiblingsProcessed && !processed[parentID] {
+			processed[parentID] = true
+			queue = append(queue, parentID)
+		}
+	}
+
+	costMs := time.Since(startTime).Milliseconds()
+	logger.Info("所有数据集统计信息计算完成", zap.Int64("costMs", costMs), zap.Int("leafCount", len(leafIDs)))
+
+	if datasetService.cache != nil {
+		if dataJSON, marshalErr := json.Marshal(statsMap); marshalErr == nil {
+			_ = datasetService.cache.Set(ctx, cacheKey, dataJSON, DATASET_STATSMAP_TTL)
+		}
+	}
+
+	return statsMap, nil
+}
+
+func createEmptyStats() *vo.DatasetStatistics {
+	return &vo.DatasetStatistics{
+		ItemCount:          0,
+		FileCount:          0,
+		TotalSize:          0,
+		ClearCount:         0,
+		HazyCount:          0,
+		SceneDistribution:  make(map[string]int64),
+		HazeDistribution:   make(map[string]int64),
+		FormatDistribution: make(map[string]int64),
+	}
+}
+
+func mergeStats(parent, child *vo.DatasetStatistics) {
+	parent.ItemCount += child.ItemCount
+	parent.FileCount += child.FileCount
+	parent.TotalSize += child.TotalSize
+	parent.ClearCount += child.ClearCount
+	parent.HazyCount += child.HazyCount
+	for k, v := range child.SceneDistribution {
+		parent.SceneDistribution[k] += v
+	}
+	for k, v := range child.HazeDistribution {
+		parent.HazeDistribution[k] += v
+	}
+	for k, v := range child.FormatDistribution {
+		parent.FormatDistribution[k] += v
+	}
+}
+
+func (datasetService *DatasetService) evictAllDatasetsCache(ctx context.Context) {
+	if datasetService.cache == nil {
+		return
+	}
+	keys := []string{
+		"dataset:all",
+		"dataset:statsMap:all",
+		"dataset:tree",
+		"dataset:tree:options",
+	}
+	for _, key := range keys {
+		if err := datasetService.cache.Delete(ctx, key); err != nil {
+			logger.Warn("失效缓存失败", zap.String("key", key), zap.Error(err))
+		}
+	}
+}
+
 func (datasetService *DatasetService) GetPage(ctx context.Context, q *query.DatasetQuery) (*vo.PageResult[vo.DatasetVO], error) {
-	readResult, err := datasetService.datasetRepo.FindPage(ctx, q)
+	rootDatasets, total, err := datasetService.datasetRepo.FindRootPage(ctx, q)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据集分页列表失败", err)
 	}
-	if readResult == nil {
-		return &vo.PageResult[vo.DatasetVO]{List: []vo.DatasetVO{}, Total: 0}, nil
+	if len(rootDatasets) == 0 {
+		return &vo.PageResult[vo.DatasetVO]{List: []vo.DatasetVO{}, Total: total}, nil
 	}
 
-	voList := make([]vo.DatasetVO, 0, len(readResult.List))
-	for _, item := range readResult.List {
-		voList = append(voList, mapDatasetReadToVO(item))
+	rootIDs := make([]int64, 0, len(rootDatasets))
+	for _, d := range rootDatasets {
+		rootIDs = append(rootIDs, d.ID)
+	}
+
+	allDirectChildren, err := datasetService.datasetRepo.FindByParentIDs(ctx, rootIDs)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询子数据集失败", err)
+	}
+
+	directChildrenMap := make(map[int64][]model.SysDataset)
+	childIDs := make([]int64, 0)
+	for _, c := range allDirectChildren {
+		directChildrenMap[c.ParentID] = append(directChildrenMap[c.ParentID], c)
+		childIDs = append(childIDs, c.ID)
+	}
+
+	allParentIDs := append(rootIDs, childIDs...)
+	hasChildrenMap, err := datasetService.datasetRepo.CountHasChildren(ctx, allParentIDs)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询子节点标记失败", err)
+	}
+
+	statsMap, err := datasetService.getAllDatasetStats(ctx)
+	if err != nil {
+		logger.Warn("获取统计信息失败", zap.Error(err))
+		statsMap = make(map[int64]*vo.DatasetStatistics)
+	}
+
+	voList := make([]vo.DatasetVO, 0, len(rootDatasets))
+	for _, root := range rootDatasets {
+		stats := statsMap[root.ID]
+		rootVO := datasetService.entityToVO(&root, stats, hasChildrenMap[root.ID])
+
+		directChildren := directChildrenMap[root.ID]
+		childVOs := make([]vo.DatasetVO, 0, len(directChildren))
+		for _, child := range directChildren {
+			childStats := statsMap[child.ID]
+			childVOs = append(childVOs, datasetService.entityToVO(&child, childStats, hasChildrenMap[child.ID]))
+		}
+		rootVO.Children = childVOs
+		voList = append(voList, rootVO)
 	}
 
 	return &vo.PageResult[vo.DatasetVO]{
 		List:  voList,
-		Total: readResult.Total,
+		Total: total,
 	}, nil
 }
 
-// GetDatasetOptions 数据集下拉选项
+func (datasetService *DatasetService) GetChildren(ctx context.Context, parentID int64) ([]vo.DatasetVO, error) {
+	if parentID <= 0 {
+		return []vo.DatasetVO{}, nil
+	}
+
+	children, err := datasetService.datasetRepo.FindByParentID(ctx, parentID)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询子数据集失败", err)
+	}
+	if len(children) == 0 {
+		return []vo.DatasetVO{}, nil
+	}
+
+	childIDs := make([]int64, 0, len(children))
+	for _, c := range children {
+		childIDs = append(childIDs, c.ID)
+	}
+
+	hasChildrenMap, err := datasetService.datasetRepo.CountHasChildren(ctx, childIDs)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询子节点标记失败", err)
+	}
+
+	statsMap, err := datasetService.getAllDatasetStats(ctx)
+	if err != nil {
+		logger.Warn("获取统计信息失败", zap.Error(err))
+		statsMap = make(map[int64]*vo.DatasetStatistics)
+	}
+
+	result := make([]vo.DatasetVO, 0, len(children))
+	for _, child := range children {
+		stats := statsMap[child.ID]
+		childVO := datasetService.entityToVO(&child, stats, hasChildrenMap[child.ID])
+		childVO.Children = []vo.DatasetVO{}
+		result = append(result, childVO)
+	}
+
+	return result, nil
+}
+
+func (datasetService *DatasetService) entityToVO(entity *model.SysDataset, stats *vo.DatasetStatistics, hasChildren bool) vo.DatasetVO {
+	voItem := vo.DatasetVO{
+		ID:          entity.ID,
+		ParentID:    entity.ParentID,
+		Type:        entity.Type,
+		Name:        entity.Name,
+		Description: entity.Description,
+		Path:        entity.Path,
+		Size:        entity.Size,
+		HasChildren: hasChildren,
+		Children:    []vo.DatasetVO{},
+		Status:      int(entity.Status),
+		Statistics:  stats,
+		CreateTime:  entity.CreatedAt,
+		UpdateTime:  entity.UpdatedAt,
+	}
+	if stats != nil {
+		voItem.Total = stats.FileCount
+	}
+	return voItem
+}
+
+func contains(ids []int64, id int64) bool {
+	for _, v := range ids {
+		if v == id {
+			return true
+		}
+	}
+	return false
+}
+
 func (datasetService *DatasetService) GetDatasetOptions() (options []vo.Option, err error) {
 	ctx := context.Background()
-	cacheKey := CACHE_KEY_DATASET_TREE + ":options"
+	cacheKey := "dataset:tree:options"
 
 	if datasetService.cache != nil {
 		cachedData, err := datasetService.cache.Get(ctx, cacheKey)
@@ -143,30 +471,23 @@ func (datasetService *DatasetService) GetDatasetOptions() (options []vo.Option, 
 	return options, nil
 }
 
-// buildTreeOptions 构建树形下拉选项
 func (datasetService *DatasetService) buildTreeOptions(datasetList []model.SysDataset, rootID int64) []vo.Option {
 	if len(datasetList) == 0 {
 		return []vo.Option{}
 	}
 
-	// 构建父节点到子节点的映射
 	parentToChildren := make(map[int64][]model.SysDataset)
 	for _, dataset := range datasetList {
 		parentID := dataset.ParentID
-		if parentToChildren[parentID] == nil {
-			parentToChildren[parentID] = []model.SysDataset{}
-		}
 		parentToChildren[parentID] = append(parentToChildren[parentID], dataset)
 	}
 
-	// 如果指定了rootID，从该根节点开始构建
 	var roots []model.SysDataset
 	if rootID != 0 {
 		if children, ok := parentToChildren[rootID]; ok {
 			roots = children
 		}
 	} else {
-		// 找所有根节点
 		rootIDs := datasetService.treeUtils.FindRootIDs(toTreeDataNodes(datasetList))
 		for _, rid := range rootIDs {
 			if children, ok := parentToChildren[rid]; ok {
@@ -175,7 +496,6 @@ func (datasetService *DatasetService) buildTreeOptions(datasetList []model.SysDa
 		}
 	}
 
-	// 递归构建树形选项
 	result := make([]vo.Option, 0, len(roots))
 	for _, root := range roots {
 		result = append(result, datasetService.buildNodeOption(root, parentToChildren)...)
@@ -184,14 +504,12 @@ func (datasetService *DatasetService) buildTreeOptions(datasetList []model.SysDa
 	return result
 }
 
-// buildNodeOption 递归构建节点选项
 func (datasetService *DatasetService) buildNodeOption(dataset model.SysDataset, parentToChildren map[int64][]model.SysDataset) []vo.Option {
 	option := vo.Option{
 		Value: dataset.ID,
 		Label: dataset.Name,
 	}
 
-	// 递归处理子节点
 	if children, ok := parentToChildren[dataset.ID]; ok {
 		option.Children = make([]vo.Option, 0, len(children))
 		for _, child := range children {
@@ -202,32 +520,31 @@ func (datasetService *DatasetService) buildNodeOption(dataset model.SysDataset, 
 	return []vo.Option{option}
 }
 
-// GetFormData 获取数据集表单数据
 func (datasetService *DatasetService) GetFormData(ctx context.Context, id int64) (*bo.DatasetFormBO, error) {
-	formRead, err := datasetService.datasetRepo.GetFormData(ctx, id)
+	dataset, err := datasetService.datasetRepo.GetFormData(ctx, id)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据集表单失败", err)
 	}
-	if formRead == nil || formRead.ID == nil {
+	if dataset == nil {
 		return &bo.DatasetFormBO{}, nil
 	}
 
-	// 加载统计信息
-	stats, statsErr := datasetService.GetDatasetStatistics(id)
+	statsMap, err := datasetService.getAllDatasetStats(ctx)
 	var statsBO *bo.StatisticsBO
-	if statsErr != nil {
-		logger.Warn("加载数据集统计信息失败", zap.Int64("datasetID", id), zap.Error(statsErr))
+	if err != nil || statsMap[id] == nil {
+		empty := createEmptyStats()
 		statsBO = &bo.StatisticsBO{
-			ItemCount:          0,
-			FileCount:          0,
-			TotalSize:          0,
-			ClearCount:         0,
-			HazyCount:          0,
-			SceneDistribution:  make(map[string]int64),
-			HazeDistribution:   make(map[string]int64),
-			FormatDistribution: make(map[string]int64),
+			ItemCount:          empty.ItemCount,
+			FileCount:          empty.FileCount,
+			TotalSize:          empty.TotalSize,
+			ClearCount:         empty.ClearCount,
+			HazyCount:          empty.HazyCount,
+			SceneDistribution:  empty.SceneDistribution,
+			HazeDistribution:   empty.HazeDistribution,
+			FormatDistribution: empty.FormatDistribution,
 		}
 	} else {
+		stats := statsMap[id]
 		statsBO = &bo.StatisticsBO{
 			ItemCount:          stats.ItemCount,
 			FileCount:          stats.FileCount,
@@ -240,24 +557,22 @@ func (datasetService *DatasetService) GetFormData(ctx context.Context, id int64)
 		}
 	}
 
-	// 转换 ReadModel 为 BO
+	idPtr := dataset.ID
 	return &bo.DatasetFormBO{
-		ID:          formRead.ID,
-		ParentID:    formRead.ParentID,
-		Type:        formRead.Type,
-		Name:        formRead.Name,
-		Description: formRead.Description,
-		Path:        formRead.Path,
-		Status:      formRead.Status,
-		CreateTime:  formRead.CreateTime.Format("2006-01-02T15:04:05"),
-		UpdateTime:  formRead.UpdateTime.Format("2006-01-02T15:04:05"),
+		ID:          &idPtr,
+		ParentID:    dataset.ParentID,
+		Type:        dataset.Type,
+		Name:        dataset.Name,
+		Description: dataset.Description,
+		Path:        dataset.Path,
+		Status:      dataset.Status,
+		CreateTime:  dataset.CreatedAt.Format("2006-01-02T15:04:05"),
+		UpdateTime:  dataset.UpdatedAt.Format("2006-01-02T15:04:05"),
 		Statistics:  statsBO,
 	}, nil
 }
 
-// Create 创建数据集
 func (datasetService *DatasetService) Create(ctx context.Context, form *bo.DatasetFormBO) error {
-	// 父数据集存在性校验
 	if form.ParentID != 0 {
 		parent, err := datasetService.datasetRepo.FindByID(ctx, form.ParentID)
 		if err != nil {
@@ -268,7 +583,6 @@ func (datasetService *DatasetService) Create(ctx context.Context, form *bo.Datas
 		}
 	}
 
-	// 同一父数据集下名称唯一性校验
 	exists, err := datasetService.datasetRepo.ExistsByParentIDAndName(ctx, form.ParentID, form.Name, 0)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询数据集名称失败", err)
@@ -291,18 +605,12 @@ func (datasetService *DatasetService) Create(ctx context.Context, form *bo.Datas
 		return common.WrapBizError(common.DATABASE_ERROR, "创建数据集失败", err)
 	}
 
-	// 失效缓存（使用独立 context 避免请求取消影响缓存操作）
 	cacheCtx := context.Background()
-	datasetService.invalidateStatsCache(cacheCtx, dataset.ID)
-	if form.ParentID != 0 {
-		datasetService.invalidateStatsCache(cacheCtx, form.ParentID)
-	}
-	datasetService.invalidateTreeCache(cacheCtx)
+	datasetService.evictAllDatasetsCache(cacheCtx)
 
 	return nil
 }
 
-// Update 更新数据集
 func (datasetService *DatasetService) Update(ctx context.Context, id int64, form *bo.DatasetFormBO) error {
 	dataset, err := datasetService.datasetRepo.FindByID(ctx, id)
 	if err != nil {
@@ -312,7 +620,6 @@ func (datasetService *DatasetService) Update(ctx context.Context, id int64, form
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
 	}
 
-	// 名称变更时校验唯一性
 	if form.Name != dataset.Name || form.ParentID != dataset.ParentID {
 		exists, err := datasetService.datasetRepo.ExistsByParentIDAndName(ctx, form.ParentID, form.Name, id)
 		if err != nil {
@@ -336,17 +643,12 @@ func (datasetService *DatasetService) Update(ctx context.Context, id int64, form
 	}
 
 	cacheCtx := context.Background()
-	datasetService.invalidateStatsCache(cacheCtx, id)
-	if oldParentID != form.ParentID {
-		datasetService.invalidateStatsCache(cacheCtx, oldParentID)
-		datasetService.invalidateStatsCache(cacheCtx, form.ParentID)
-	}
-	datasetService.invalidateTreeCache(cacheCtx)
+	datasetService.evictAllDatasetsCache(cacheCtx)
+	_ = oldParentID
 
 	return nil
 }
 
-// Delete 删除数据集
 func (datasetService *DatasetService) Delete(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return common.NewBizError(common.PARAM_ERROR, "删除数据为空")
@@ -356,210 +658,12 @@ func (datasetService *DatasetService) Delete(ctx context.Context, ids []int64) e
 		return common.WrapBizError(common.DATABASE_ERROR, "删除数据集失败", err)
 	}
 
-	ctx = context.Background()
-	for _, id := range ids {
-		datasetService.invalidateStatsCache(ctx, id)
-	}
-	datasetService.invalidateTreeCache(ctx)
+	cacheCtx := context.Background()
+	datasetService.evictAllDatasetsCache(cacheCtx)
 
 	return nil
 }
 
-// GetDatasetStatistics 获取数据集统计信息
-// 支持缓存，TTL 30分钟
-func (datasetService *DatasetService) GetDatasetStatistics(datasetID int64) (*DatasetStatistics, error) {
-	ctx := context.Background()
-	cacheKey := CACHE_KEY_DATASET_STATS + fmt.Sprintf("%d", datasetID)
-
-	// 1. 尝试从缓存获取
-	if datasetService.cache != nil {
-		cachedData, err := datasetService.cache.Get(ctx, cacheKey)
-		if err == nil && cachedData != "" {
-			var stats DatasetStatistics
-			if err := json.Unmarshal([]byte(cachedData), &stats); err == nil {
-				logger.Debug("统计信息命中缓存", zap.Int64("datasetID", datasetID))
-				return &stats, nil
-			}
-		}
-	}
-
-	// 2. 缓存未命中，从数据库计算
-	logger.Info("统计信息未命中缓存，开始计算", zap.Int64("datasetID", datasetID))
-	stats, err := datasetService.calculateStatisticsFromDB(ctx, datasetID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. 写入缓存
-	if datasetService.cache != nil {
-		if statsJSON, marshalErr := json.Marshal(stats); marshalErr == nil {
-			_ = datasetService.cache.Set(ctx, cacheKey, statsJSON, DATASET_STATS_TTL)
-		}
-	}
-
-	return stats, nil
-}
-
-// calculateStatisticsFromDB 从数据库计算统计信息
-func (datasetService *DatasetService) calculateStatisticsFromDB(ctx context.Context, datasetID int64) (*DatasetStatistics, error) {
-	// 获取叶子节点（使用优化的方法）
-	leafIDs, err := datasetService.getLeafDatasetIDsOptimized(ctx, datasetID)
-	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "获取叶子节点失败", err)
-	}
-
-	if len(leafIDs) == 0 {
-		return &DatasetStatistics{
-			ItemCount:          0,
-			FileCount:          0,
-			TotalSize:          0,
-			SceneDistribution:  make(map[string]int64),
-			HazeDistribution:   make(map[string]int64),
-			FormatDistribution: make(map[string]int64),
-		}, nil
-	}
-
-	// 查询数据项数量
-	itemCount, err := datasetService.datasetItemRepo.CountByDatasetIDs(ctx, leafIDs)
-	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "统计数据项数量失败", err)
-	}
-
-	// 查询数据项 ID 列表
-	itemIDs, err := datasetService.datasetItemRepo.FindIDsByDatasetIDs(ctx, leafIDs)
-	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据项ID列表失败", err)
-	}
-
-	// 查询项文件
-	itemFiles, err := datasetService.itemFileRepo.FindByItemIDs(ctx, itemIDs)
-	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询项文件失败", err)
-	}
-
-	fileCount := int64(len(itemFiles))
-
-	stats := &DatasetStatistics{
-		ItemCount:          itemCount,
-		FileCount:          fileCount,
-		TotalSize:          0,
-		ClearCount:         0,
-		HazyCount:          0,
-		SceneDistribution:  make(map[string]int64),
-		HazeDistribution:   make(map[string]int64),
-		FormatDistribution: make(map[string]int64),
-	}
-
-	// 统计清晰图/有雾图数量、雾霾程度分布、场景分布
-	fileIDs := make([]int64, 0, len(itemFiles))
-	for _, itemFile := range itemFiles {
-		fileIDs = append(fileIDs, itemFile.FileID)
-
-		switch itemFile.Type {
-		case "clear":
-			stats.ClearCount++
-		case "hazy":
-			stats.HazyCount++
-			if itemFile.HazeLevel != nil && *itemFile.HazeLevel != "" {
-				stats.HazeDistribution[*itemFile.HazeLevel]++
-			}
-		}
-
-		if itemFile.SceneType != nil && *itemFile.SceneType != "" {
-			stats.SceneDistribution[*itemFile.SceneType]++
-		}
-	}
-
-	// 查询文件详情
-	if len(fileIDs) > 0 {
-		files, err := datasetService.fileRepo.FindByIDs(ctx, fileIDs)
-		if err == nil {
-			for _, file := range files {
-				// 统计文件大小
-				size := parseSize(file.Size)
-				stats.TotalSize += size
-
-				// 统计格式分布
-				ext := getExtension(file.Name)
-				if ext != "" {
-					stats.FormatDistribution[ext]++
-				}
-			}
-		}
-	}
-
-	return stats, nil
-}
-
-// getLeafDatasetIDsOptimized 优化后的叶子节点计算（一次查询+内存计算）
-func (datasetService *DatasetService) getLeafDatasetIDsOptimized(ctx context.Context, datasetID int64) ([]int64, error) {
-	cacheKey := "dataset:leaf:" + fmt.Sprintf("%d", datasetID)
-
-	// 1. 尝试从缓存获取
-	if datasetService.cache != nil {
-		cachedData, err := datasetService.cache.Get(ctx, cacheKey)
-		if err == nil && cachedData != "" {
-			var leafIDs []int64
-			if err := json.Unmarshal([]byte(cachedData), &leafIDs); err == nil {
-				return leafIDs, nil
-			}
-		}
-	}
-
-	// 2. 一次性查询所有数据集
-	allDatasets, err := datasetService.datasetRepo.FindAll(ctx)
-	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询所有数据集失败", err)
-	}
-
-	// 3. 使用工具类查找叶子节点
-	nodes := toTreeDataNodes(allDatasets)
-	leafIDs := datasetService.treeUtils.FindLeafNodesBFS(nodes, datasetID)
-
-	// 4. 写入缓存
-	if datasetService.cache != nil {
-		if leafIDsJSON, marshalErr := json.Marshal(leafIDs); marshalErr == nil {
-			_ = datasetService.cache.Set(ctx, cacheKey, leafIDsJSON, DATASET_LEAF_TTL)
-		}
-	}
-
-	return leafIDs, nil
-}
-
-// invalidateStatsCache 失效统计缓存
-func (datasetService *DatasetService) invalidateStatsCache(ctx context.Context, datasetID int64) {
-	if datasetService.cache == nil {
-		return
-	}
-
-	cacheKey := CACHE_KEY_DATASET_STATS + fmt.Sprintf("%d", datasetID)
-	if err := datasetService.cache.Delete(ctx, cacheKey); err != nil {
-		logger.Warn("失效统计缓存失败", zap.String("key", cacheKey), zap.Error(err))
-	}
-
-	// 同时失效叶子节点缓存
-	leafCacheKey := "dataset:leaf:" + fmt.Sprintf("%d", datasetID)
-	_ = datasetService.cache.Delete(ctx, leafCacheKey)
-}
-
-func (datasetService *DatasetService) invalidateTreeCache(ctx context.Context) {
-	if datasetService.cache == nil {
-		return
-	}
-	keys := []string{
-		CACHE_KEY_DATASET_TREE,
-		CACHE_KEY_DATASET_TREE + ":options",
-	}
-	for _, key := range keys {
-		if err := datasetService.cache.Delete(ctx, key); err != nil {
-			logger.Warn("失效树缓存失败", zap.String("key", key), zap.Error(err))
-		}
-	}
-}
-
-// ========== 辅助函数 ==========
-
-// toTreeDataNodes 转换为树节点切片
 func toTreeDataNodes(datasets []model.SysDataset) []utils.TreeDataNode {
 	result := make([]utils.TreeDataNode, 0, len(datasets))
 	for i := range datasets {
@@ -568,54 +672,7 @@ func toTreeDataNodes(datasets []model.SysDataset) []utils.TreeDataNode {
 	return result
 }
 
-// parseSize 解析文件大小字符串为字节数
-func parseSize(sizeStr string) int64 {
-	// 简化实现，假设字符串已经是数字格式
-	if sizeStr == "" {
-		return 0
-	}
-
-	var size int64
-	fmt.Sscanf(sizeStr, "%d", &size)
-	return size
-}
-
-// getExtension 获取文件扩展名
-func getExtension(filename string) string {
-	idx := strings.LastIndex(filename, ".")
-	if idx == -1 {
-		return ""
-	}
-	return strings.ToLower(filename[idx:])
-}
-
-// ========== 缓存键常量 ==========
-
 const (
 	CACHE_KEY_DATASET_STATS = "dataset:stats:"
 	CACHE_KEY_DATASET_TREE  = "dataset:tree"
 )
-
-func mapDatasetReadToVO(item read.Dataset) vo.DatasetVO {
-	result := vo.DatasetVO{
-		ID:          item.ID,
-		ParentID:    item.ParentID,
-		Type:        item.Type,
-		Name:        item.Name,
-		Description: item.Description,
-		Path:        item.Path,
-		Size:        item.Size,
-		CreateTime:  item.CreateTime,
-		UpdateTime:  item.UpdateTime,
-		Status:      item.Status,
-	}
-
-	if len(item.Children) > 0 {
-		result.Children = make([]vo.DatasetVO, 0, len(item.Children))
-		for _, child := range item.Children {
-			result.Children = append(result.Children, mapDatasetReadToVO(child))
-		}
-	}
-
-	return result
-}

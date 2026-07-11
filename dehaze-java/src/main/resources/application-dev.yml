@@ -64,7 +64,7 @@ spring:
     mongodb:
       uri: mongodb://root:${DEHAZE_PASSWORD}@localhost:27017/dehaze?authSource=admin
   cache:
-    enabled: false
+    enabled: true
     # 缓存类型 redis、none(不使用缓存)
     type: redis
     # 缓存时间(单位：ms)
@@ -202,7 +202,7 @@ captcha:
   # 验证码字符配置
   code:
     type: random
-    length: 24
+    length: 4
   # 验证码字体
   font:
     name: SansSerif

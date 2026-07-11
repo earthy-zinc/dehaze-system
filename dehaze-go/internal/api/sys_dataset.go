@@ -22,18 +22,25 @@ func NewSysDatasetApi(datasetService *datasetservice.DatasetService, operationSe
 	}
 }
 
-// GetDatasetList 数据集树形列表
-// @Summary 获取数据集列表（支持树形）
+// GetDatasetList 数据集分页列表
+// @Summary 分页查询数据集列表
 // @Tags 数据集接口
 // @Accept application/json
 // @Produce application/json
-// @Param keywords query string false "关键字"
-// @Success 200 {object} common.Response{data=[]vo.DatasetVO}
+// @Param pageNum query int false "页码"
+// @Param pageSize query int false "每页数量"
+// @Param keyword query string false "关键字"
+// @Param type query string false "类型"
+// @Param status query int false "状态"
+// @Success 200 {object} common.Response{data=vo.PageResult[vo.DatasetVO]}
 // @Router /api/v1/datasets [get]
 func (api *SysDatasetApi) GetDatasetList(c *gin.Context) {
 	ctx := c.Request.Context()
 	var queryParams query.DatasetQuery
-	queryParams.Keywords = c.Query("keywords")
+	if err := c.ShouldBindQuery(&queryParams); err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数绑定失败"))
+		return
+	}
 
 	result, err := api.datasetService.GetPage(ctx, &queryParams)
 	if err != nil {
@@ -41,7 +48,33 @@ func (api *SysDatasetApi) GetDatasetList(c *gin.Context) {
 		return
 	}
 
-	common.OkWithDetailed(result.List, "查询成功", c)
+	common.OkWithDetailed(result, "查询成功", c)
+}
+
+// GetDatasetChildren 获取子数据集列表（懒加载）
+// @Summary 获取子数据集列表
+// @Tags 数据集接口
+// @Accept application/json
+// @Produce application/json
+// @Param parentId path int true "父数据集ID"
+// @Success 200 {object} common.Response{data=[]vo.DatasetVO}
+// @Router /api/v1/datasets/{parentId}/children [get]
+func (api *SysDatasetApi) GetDatasetChildren(c *gin.Context) {
+	ctx := c.Request.Context()
+	parentIdStr := c.Param("parentId")
+	parentId, err := strconv.ParseInt(parentIdStr, 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "父数据集ID格式不正确"))
+		return
+	}
+
+	children, err := api.datasetService.GetChildren(ctx, parentId)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	common.OkWithDetailed(children, "查询成功", c)
 }
 
 // GetDatasetOptions 数据集下拉选项

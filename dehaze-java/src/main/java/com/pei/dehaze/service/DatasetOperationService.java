@@ -44,13 +44,6 @@ public interface DatasetOperationService {
     void deleteDatasetItemCascade(Long datasetItemId);
 
     /**
-     * 批量级联删除数据项
-     *
-     * @param datasetItemIds 数据项ID列表
-     */
-    void batchDeleteDatasetItemsCascade(List<Long> datasetItemIds);
-
-    /**
      * 批量级联删除数据项（带返回结果）
      *
      * @param datasetItemIds 数据项ID列表

@@ -3,7 +3,7 @@ import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue"
 import { ViewCard } from "@/components/Waterfall/types";
 import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { changeUrl } from "@/utils";
-import { Dataset, DatasetAPI, ImageItem, ImageItemQuery } from "dehaze-sdk-js";
+import { Dataset, DatasetAPI, DatasetItemAPI, DatasetItemQuery, DatasetItemVO, ImageUrlVO } from "dehaze-sdk-js";
 import { api as viewerApi } from "v-viewer";
 
 defineOptions({
@@ -13,7 +13,8 @@ defineOptions({
 
 const datasetId = ref<number>(1);
 const totalPages = ref<number>(1);
-const queryParams = reactive<ImageItemQuery>({ pageNum: 1, pageSize: 10 });
+const total = ref<number>(0);
+const queryParams = reactive<DatasetItemQuery>({ pageNum: 1, pageSize: 10, datasetId: 1 });
 const renderCount = ref<number>(0);
 let datasetInfo = ref<Dataset>({
   id: 0,
@@ -28,7 +29,7 @@ let datasetInfo = ref<Dataset>({
   total: 0,
 });
 let images = ref<ViewCard[]>([]);
-let imageData = reactive<ImageItem[]>([]);
+let imageData = reactive<DatasetItemVO[]>([]);
 type ImageType = { id: number; type: string; enabled: boolean };
 
 const imageTypes = ref<ImageType[]>([
@@ -53,50 +54,91 @@ const itemWidth = computed(() => {
     { minWidth: 1024, columns: 3 },
     { minWidth: 1280, columns: 4 },
   ];
-  breakpoints.forEach((breakpoint) => {
-    if (width.value >= breakpoint.minWidth)
+  for (const breakpoint of breakpoints) {
+    if (width.value >= breakpoint.minWidth) {
       return Math.floor((width.value - 60) / breakpoint.columns);
-  });
+    }
+  }
   return 400;
 });
 
+function extractImagesFromItem(item: DatasetItemVO): ImageUrlVO[] {
+  const allImages: ImageUrlVO[] = [];
+  if (item.clearImage) {
+    allImages.push(item.clearImage);
+  }
+  if (item.hazyImages && item.hazyImages.length > 0) {
+    allImages.push(...item.hazyImages);
+  }
+  return allImages;
+}
+
 async function handleQuery() {
-  DatasetAPI.getImageItem(datasetId.value, queryParams)
+  queryParams.datasetId = datasetId.value;
+  queryParams.pageNum = 1;
+  imageData.length = 0;
+  await loadMore();
+}
+
+async function loadMore() {
+  queryParams.datasetId = datasetId.value;
+  DatasetItemAPI.getList(queryParams)
     .then((data) => {
-      imageData = data.list;
-      totalPages.value = Math.ceil(data.total / queryParams.pageSize);
+      const records = data.records || [];
+      imageData.push(...records);
+      total.value = data.total || 0;
+      totalPages.value = Math.ceil(total.value / queryParams.pageSize);
+      updateImageTypes();
       switchImageUrl(curImageType.value?.id || 0);
-    })
-    .then(() => {
-      if (imageData.length > 0) {
-        let tempImageTypes = [] as ImageType[];
-        imageData[0].imgUrl.forEach((item, index) => {
-          tempImageTypes.push({
-            id: index,
-            type: item.type,
-            enabled: index === 0,
-          });
-        });
-        imageTypes.value = tempImageTypes;
-      }
     })
     .catch((err) => {
       console.log(err);
     });
 }
 
+function updateImageTypes() {
+  if (imageData.length > 0) {
+    const firstItem = imageData[0];
+    const allImages = extractImagesFromItem(firstItem);
+    if (allImages.length > 0) {
+      let tempImageTypes = [] as ImageType[];
+      allImages.forEach((img, index) => {
+        let typeName = img.type;
+        if (img.type === 'clear') {
+          typeName = ImageTypeEnum.CLEAN;
+        } else if (img.type === 'hazy') {
+          typeName = img.hazeLevel ? `${ImageTypeEnum.HAZE}(${img.hazeLevel})` : ImageTypeEnum.HAZE;
+        }
+        tempImageTypes.push({
+          id: index,
+          type: typeName,
+          enabled: index === 0,
+        });
+      });
+      imageTypes.value = tempImageTypes;
+    }
+  }
+}
+
 function switchImageUrl(id: number) {
-  images.value = imageData.map((item) => {
+  images.value = imageData.map((item, itemIndex) => {
+    const allImages = extractImagesFromItem(item);
+    const img = allImages[id] || allImages[0];
     return {
       id: item.id,
-      src: changeUrl(item.imgUrl[id].url),
-      originSrc: changeUrl(item.imgUrl[id].originUrl!),
-      alt: item.imgUrl[id].description,
+      src: changeUrl(img.url),
+      originSrc: changeUrl(img.originUrl || img.url),
+      alt: img.description || item.name,
     };
   });
 }
 
-function resetQuery() {}
+function resetQuery() {
+  queryParams.keyword = undefined;
+  queryParams.sceneType = undefined;
+  queryParams.hazeLevel = undefined;
+  handleQuery();
+}
 
 function handleImageTypeChange(typeId: number) {
   imageTypes.value.forEach((item) => {
@@ -110,10 +152,11 @@ function showBigPicture(itemId: number) {
     let curImageItem = imageData.find((item) => item.id === itemId);
     let result = [] as string[];
     if (curImageItem) {
-      curImageItem.imgUrl.map((item) => {
-        item.originUrl
-          ? result.push(changeUrl(item.originUrl))
-          : result.push(changeUrl(item.url));
+      const allImages = extractImagesFromItem(curImageItem);
+      allImages.forEach((img) => {
+        img.originUrl
+          ? result.push(changeUrl(img.originUrl))
+          : result.push(changeUrl(img.url));
       });
     }
     return result;
@@ -128,18 +171,16 @@ function showBigPicture(itemId: number) {
 
 onMounted(async () => {
   datasetId.value = Number(route.params.id);
+  queryParams.datasetId = datasetId.value;
   await DatasetAPI.getDatasetInfoById(datasetId.value).then((data) => {
     datasetInfo.value = data;
   });
   await handleQuery();
   loadingObserver.value = new IntersectionObserver((entries, observer) => {
     entries.forEach((entry) => {
-      if (entry.isIntersecting) {
+      if (entry.isIntersecting && queryParams.pageNum < totalPages.value) {
         queryParams.pageNum++;
-        DatasetAPI.getImageItem(datasetId.value, queryParams).then((data) => {
-          imageData.push(...data.list);
-          switchImageUrl(curImageType.value?.id || 0);
-        });
+        loadMore();
       }
     });
   });
@@ -179,9 +220,9 @@ onUnmounted(() => loadingObserver.value?.disconnect());
         </el-button-group>
 
         <el-form ref="queryFormRef" :inline="true" :model="queryParams">
-          <el-form-item label="关键字" prop="keywords">
+          <el-form-item label="关键字" prop="keyword">
             <el-input
-              v-model="queryParams.keywords"
+              v-model="queryParams.keyword"
               clearable
               placeholder="图片名称"
               @keyup.enter="handleQuery"

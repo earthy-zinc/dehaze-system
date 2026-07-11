@@ -5,8 +5,8 @@ import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axio
 import axios from "axios";
 
 const service = axios.create({
-  baseURL: "http://localhost:5000",
-  timeout: 5000,
+  baseURL: "",
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json;charset=utf-8",
   },

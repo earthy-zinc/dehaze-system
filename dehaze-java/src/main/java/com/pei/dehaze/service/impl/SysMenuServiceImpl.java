@@ -69,7 +69,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * 新增/修改菜单
      */
     @Override
-    @CacheEvict(cacheNames = "menu", key = "'routes'")
+    @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean saveMenu(MenuForm menuForm) {
 
         MenuTypeEnum menuType = menuForm.getType();
@@ -100,6 +100,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * 菜单下拉数据
      */
     @Override
+    @Cacheable(cacheNames = "menu", key = "'options'", unless = "#result == null || #result.isEmpty()")
     public List<Option<Long>> listMenuOptions() {
         List<SysMenu> menuList = this.list(new LambdaQueryWrapper<SysMenu>()
                 .orderByAsc(SysMenu::getSort));
@@ -238,7 +239,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 是否修改成功
      */
     @Override
-    @CacheEvict(cacheNames = "menu", key = "'routes'")
+    @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean updateMenuVisible(Long menuId, Integer visible) {
         return this.update(new LambdaUpdateWrapper<SysMenu>()
                 .eq(SysMenu::getId, menuId)
@@ -276,7 +277,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * @return 是否删除成功
      */
     @Override
-    @CacheEvict(cacheNames = "menu", key = "'routes'")
+    @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean deleteMenu(Long id) {
         boolean result = this.remove(new LambdaQueryWrapper<SysMenu>()
                 .eq(SysMenu::getId, id)

@@ -25,14 +25,25 @@ class DatasetAPI {
   // ==================== 数据集接口 ====================
 
   /**
-   * 获取数据集列表
+   * 分页查询数据集列表
    * @param queryParams 查询参数
    */
   static getList(queryParams?: DatasetQuery) {
-    return request<any, Dataset[]>({
+    return request<any, PageResult<Dataset[]>>({
       url: "/api/v1/datasets",
       method: "get",
       params: queryParams,
+    });
+  }
+
+  /**
+   * 获取子数据集列表（懒加载）
+   * @param parentId 父数据集ID
+   */
+  static getChildren(parentId: number) {
+    return request<any, Dataset[]>({
+      url: `/api/v1/datasets/children/${parentId}`,
+      method: "get",
     });
   }
 

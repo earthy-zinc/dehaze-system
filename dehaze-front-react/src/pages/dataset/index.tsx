@@ -1,267 +1,156 @@
-import { DatasetAPI, Dataset, DatasetQuery } from "dehaze-sdk-js";
-import EditModal from "@/pages/dataset/components/EditModal";
-import { DeleteOutlined, EditOutlined, EyeOutlined } from "@ant-design/icons";
+import { DatasetAPI, type Dataset, type DatasetQuery } from "dehaze-sdk-js";
+import DatasetFormDialog, { type DatasetFormDialogRef } from "@/pages/dataset/components/DatasetFormDialog";
 import {
-  Button,
-  Card,
-  Checkbox,
-  Form,
-  Input,
-  Popconfirm,
-  Popover,
-  Table,
-  TableColumnsType,
+  DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined,
+  ReloadOutlined, SearchOutlined,
+} from "@ant-design/icons";
+import {
+  Button, Card, Form, Input, message, Popconfirm, Space, Table, Tag,
+  type TableColumnsType,
 } from "antd";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/**
- * 递归函数，用于遍历和清理 Dataset 结构
- * @param datasets - 当前遍历的 Dataset 数组
- */
-function cleanDatasets(datasets: Dataset[]): void {
-  for (const element of datasets) {
-    const dataset = element;
+const STATUS_MAP: Record<number, { label: string; color: string }> = {
+  1: { label: "启用", color: "green" },
+  0: { label: "禁用", color: "default" },
+};
 
-    if (dataset.children && dataset.children.length > 0) {
-      // 递归遍历每个子数据集
-      cleanDatasets(dataset.children);
-    } else if (dataset.children && Object.keys(dataset.children).length === 0) {
-      delete dataset.children;
-    }
+/** 清理空 children 数组 */
+function cleanDatasets(datasets: Dataset[]): void {
+  for (const d of datasets) {
+    if (d.children?.length) { cleanDatasets(d.children); }
+    else if (d.children && Object.keys(d.children).length === 0) { delete d.children; }
   }
 }
 
 export default function DatasetList() {
-  const [datasetList, setDatasetList] = useState<Dataset[]>();
+  const [datasetList, setDatasetList] = useState<Dataset[]>([]);
   const [loading, setLoading] = useState(false);
   const [queryParams, setQueryParams] = useState<DatasetQuery>({});
-
+  const [searchForm] = Form.useForm();
+  const dialogRef = useRef<DatasetFormDialogRef>(null);
+  const [refreshFlag, setRefreshFlag] = useState(0);
   const navigate = useNavigate();
-  const handleShow = useCallback(
-    (id: number) => {
-      return () => {
-        navigate(`/dataset/${id}`);
-      };
-    },
-    [navigate]
-  );
+
+  // ==================== 数据加载 ====================
+
+  const loadData = useCallback(async (params: DatasetQuery) => {
+    setLoading(true);
+    try {
+      const result = await DatasetAPI.getList(params);
+      const list = (result as any)?.list || result;
+      if (Array.isArray(list)) {
+        cleanDatasets(list as Dataset[]);
+        setDatasetList(list as Dataset[]);
+      } else {
+        setDatasetList([]);
+      }
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadData(queryParams); }, [queryParams, refreshFlag]); // eslint-disable-line
+
+  const refreshList = useCallback(() => setRefreshFlag((prev) => prev + 1), []);
+
+  // ==================== 事件处理 ====================
+
+  const handleSearch = useCallback((values: { keywords?: string }) => {
+    setQueryParams({ keyword: values.keywords || undefined });
+  }, []);
+
+  const handleReset = useCallback(() => { searchForm.resetFields(); setQueryParams({}); }, [searchForm]);
+
+  const handleAdd = useCallback(() => dialogRef.current?.open("add"), []);
+
+  const handleView = useCallback((id: number) => navigate(`/dataset/${id}`), [navigate]);
+
+  const handleAddSub = useCallback((record: Dataset) => dialogRef.current?.open("addSub", record), []);
+
+  const handleEdit = useCallback((record: Dataset) => dialogRef.current?.open("edit", record), []);
 
   const handleDelete = useCallback(
-    (id: number) => {
-      return () => {
-        DatasetAPI.deleteById(id).then(() => {
-          const newDatasetList = datasetList?.filter(
-            (dataset) => dataset.id !== id
-          );
-          setDatasetList(newDatasetList);
-        });
-      };
+    (record: Dataset) => {
+      DatasetAPI.deleteById(record.id).then(() => {
+        message.success(`数据集「${record.name}」删除成功`);
+        refreshList();
+      }).catch((error) => message.error(error?.message || "删除失败"));
     },
-    [datasetList]
+    [refreshList]
   );
 
-  const columns: TableColumnsType<Dataset> = useMemo(
-    () => [
-      {
-        title: "名称",
-        dataIndex: "name",
-        key: "name",
-        width: 160,
-        align: "center",
+  // ==================== 表格列 ====================
+
+  const columns: TableColumnsType<Dataset> = useMemo(() => [
+    {
+      title: "数据集名称", dataIndex: "name", key: "name", width: 200, align: "left" as const,
+    },
+    {
+      title: "类型", dataIndex: "type", key: "type", width: 100, align: "center",
+      render: (text: string) => <Tag>{text}</Tag>,
+    },
+    {
+      title: "状态", dataIndex: "status", key: "status", width: 80, align: "center",
+      render: (status: number) => {
+        const info = STATUS_MAP[status] || { label: "未知", color: "default" };
+        return <Tag color={info.color}>{info.label}</Tag>;
       },
-      {
-        title: "类型",
-        dataIndex: "type",
-        key: "type",
-        width: 80,
-        align: "center",
-      },
-      {
-        title: "描述",
-        dataIndex: "description",
-        key: "description",
-      },
-      {
-        title: "大小",
-        dataIndex: "size",
-        key: "size",
-        width: 90,
-        align: "center",
-      },
-      {
-        title: "存储位置",
-        dataIndex: "path",
-        key: "path",
-        width: 100,
-      },
-      {
-        title: "状态",
-        dataIndex: "status",
-        key: "status",
-        width: 50,
-        align: "center",
-        render: (status: number) => {
-          return status === 1 ? "正常" : "异常";
-        },
-      },
-      {
-        title: "操作",
-        key: "action",
-        width: 180,
-        align: "center",
-        fixed: "right",
-        render: (text: string, record: any) => (
-          <>
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={handleShow(record.id)}
-            >
-              查看
-            </Button>
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openModal("新增", record)}
-            >
-              新增
-            </Button>
-            <Button
-              type="text"
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => openModal("编辑", record)}
-            >
-              编辑
-            </Button>
-            <Popconfirm
-              title="确认要删除当前数据集吗？"
-              onConfirm={handleDelete(record.id)}
-              okText="确定"
-              cancelText="取消"
-            >
-              <Button type="text" size="small" icon={<DeleteOutlined />} danger>
-                删除
-              </Button>
-            </Popconfirm>
-          </>
-        ),
-      },
-    ],
-    [handleDelete, handleShow]
-  );
+    },
+    {
+      title: "图片数量", dataIndex: "total", key: "total", width: 100, align: "center",
+      render: (t: number) => t ?? (t === 0 ? 0 : "-"),
+    },
+    {
+      title: "描述", dataIndex: "description", key: "description",
+      render: (text: string) => text || "-",
+    },
+    {
+      title: "操作", key: "action", width: 280, align: "center", fixed: "right",
+      render: (_: unknown, record: Dataset) => (
+        <Space size="small">
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleView(record.id)}>查看</Button>
+          <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => handleAddSub(record)}>新增下级</Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>编辑</Button>
+          <Popconfirm
+            title={`确认删除数据集「${record.name}」吗？`}
+            onConfirm={() => handleDelete(record)} okText="确定" cancelText="取消" okType="danger"
+          >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>删除</Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ], [handleView, handleAddSub, handleEdit, handleDelete]);
 
-  const tableColumns = columns.map((column) => {
-    return {
-      label: column.title as string,
-      value: column.key as string,
-    };
-  });
-
-  const [selectedColumns, setSelectedColumns] = useState([
-    "name",
-    "type",
-    "description",
-    "size",
-    "path",
-    "status",
-    "action",
-  ]);
-  const handleColumnChange = (checkedValues: string[]) => {
-    setSelectedColumns(checkedValues);
-  };
-  const tableSettings = (
-    <Checkbox.Group
-      options={tableColumns}
-      defaultValue={selectedColumns}
-      onChange={handleColumnChange}
-    ></Checkbox.Group>
-  );
-
-  const visibleColumns = useMemo(() => {
-    return columns.filter((column) =>
-      selectedColumns.includes(column.key as string)
-    );
-  }, [columns, selectedColumns]);
-
-  useEffect(() => {
-    const getDatasetList = () => {
-      setLoading(true);
-      DatasetAPI.getList(queryParams).then((data) => {
-        cleanDatasets(data);
-        setDatasetList(data);
-        setLoading(false);
-      });
-    };
-    getDatasetList();
-  }, [queryParams]);
-
-  const onFinish = (values: DatasetQuery) => {
-    setQueryParams(values);
-  };
-
-  const onReset = () => {
-    setQueryParams({});
-  };
-
-  // 获取对话框实例
-  const editRef = useRef(null);
-
-  // 打开对话框
-  const openModal = (type: string, row: Dataset) => {
-    (editRef.current as any)?.open(type, row);
-  };
+  // ==================== 渲染 ====================
 
   return (
     <div className="app-container">
-      <Card className="search-container">
-        <Form layout="inline" onFinish={onFinish} onReset={onReset}>
-          <Form.Item name="keywords" label="关键字">
-            <Input placeholder="数据集名称" />
+      <Card size="small" style={{ marginBottom: 12 }}>
+        <Form form={searchForm} layout="inline" onFinish={handleSearch}>
+          <Form.Item name="keywords" label="数据集名称">
+            <Input placeholder="数据集名称" allowClear style={{ width: 200 }} />
           </Form.Item>
           <Form.Item>
-            <Button type="primary" htmlType="submit">
-              搜索
-            </Button>
-          </Form.Item>
-          <Form.Item>
-            <Button type="default" htmlType="reset">
-              重置
-            </Button>
-          </Form.Item>
-          <Form.Item>
-            <Popover content={tableSettings}>
-              <Button type="default">设置</Button>
-            </Popover>
+            <Space>
+              <Button type="primary" htmlType="submit" icon={<SearchOutlined />}>搜索</Button>
+              <Button htmlType="reset" icon={<ReloadOutlined />} onClick={handleReset}>重置</Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>新增</Button>
+            </Space>
           </Form.Item>
         </Form>
       </Card>
 
-      <Card style={{ overflowX: "hidden" }}>
+      <Card size="small" style={{ overflowX: "hidden" }}>
         <Table
-          columns={visibleColumns}
-          expandable={{
-            defaultExpandAllRows: true,
-            indentSize: 10,
-          }}
-          tableLayout={"fixed"}
-          rowKey={(record: Dataset) => record.id}
-          dataSource={datasetList}
-          loading={loading}
-          pagination={false}
+          columns={columns} dataSource={datasetList}
+          rowKey={(record) => record.id} loading={loading}
+          expandable={{ defaultExpandAllRows: true, indentSize: 30 }}
+          pagination={false} scroll={{ x: 1000 }}
         />
       </Card>
 
-      <EditModal ref={editRef} />
+      <DatasetFormDialog ref={dialogRef} onSuccess={refreshList} />
     </div>
   );
 }

@@ -9,16 +9,9 @@ import type {
 } from "axios";
 import axios from "axios";
 
-// 从环境变量获取 host 和 port
-const getBaseURL = () => {
-  const host = process.env.API_HOST || "localhost";
-  const port = process.env.API_PORT || "8989";
-  return `http://${host}:${port}`;
-};
-
 const service = axios.create({
-  baseURL: getBaseURL(),
-  timeout: 5000,
+  baseURL: "",
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json;charset=utf-8",
   },

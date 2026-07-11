@@ -645,5 +645,269 @@ class DatasetRepository(BaseRepository[SysDataset]):
         return result.rowcount
 
 
+    async def find_root_page(
+        self,
+        db: AsyncSession,
+        page_num: int = 1,
+        page_size: int = 10,
+        keywords: str | None = None,
+    ) -> tuple[list[SysDataset], int]:
+        """分页查询根节点数据集（parent_id=0）"""
+        base_stmt = select(SysDataset).where(
+            and_(SysDataset.parent_id == 0, SysDataset.deleted == 0)
+        )
+        count_stmt = select(func.count(SysDataset.id)).where(
+            and_(SysDataset.parent_id == 0, SysDataset.deleted == 0)
+        )
+
+        if keywords:
+            keyword_filter = SysDataset.name.like(
+                f"%{escape_like(keywords)}%", escape="\\"
+            )
+            base_stmt = base_stmt.where(keyword_filter)
+            count_stmt = count_stmt.where(keyword_filter)
+
+        count_result = await db.execute(count_stmt)
+        total = count_result.scalar() or 0
+
+        offset = (page_num - 1) * page_size
+        stmt = base_stmt.order_by(SysDataset.id.desc()).offset(offset).limit(page_size)
+        result = await db.execute(stmt)
+        items = list(result.scalars().all())
+
+        return items, total
+
+    async def find_by_parent_id(
+        self,
+        db: AsyncSession,
+        parent_id: int,
+    ) -> list[SysDataset]:
+        """查询指定父节点的直接子节点"""
+        stmt = select(SysDataset).where(
+            and_(SysDataset.parent_id == parent_id, SysDataset.deleted == 0)
+        ).order_by(SysDataset.id)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def find_by_parent_ids(
+        self,
+        db: AsyncSession,
+        parent_ids: list[int],
+    ) -> list[SysDataset]:
+        """批量查询多个父节点的直接子节点"""
+        if not parent_ids:
+            return []
+        stmt = select(SysDataset).where(
+            and_(SysDataset.parent_id.in_(parent_ids), SysDataset.deleted == 0)
+        ).order_by(SysDataset.id)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def count_has_children(
+        self,
+        db: AsyncSession,
+        parent_ids: list[int],
+    ) -> dict[int, bool]:
+        """批量查询哪些节点有子节点"""
+        if not parent_ids:
+            return {}
+        stmt = (
+            select(SysDataset.parent_id, func.count(SysDataset.id).label("cnt"))
+            .where(and_(SysDataset.parent_id.in_(parent_ids), SysDataset.deleted == 0))
+            .group_by(SysDataset.parent_id)
+        )
+        result = await db.execute(stmt)
+        has_children_map: dict[int, bool] = {}
+        for row in result:
+            has_children_map[int(row.parent_id)] = row.cnt > 0
+        for pid in parent_ids:
+            if pid not in has_children_map:
+                has_children_map[pid] = False
+        return has_children_map
+
+    async def find_all(
+        self,
+        db: AsyncSession,
+    ) -> list[SysDataset]:
+        """查询所有未删除的数据集"""
+        stmt = select(SysDataset).where(SysDataset.deleted == 0).order_by(SysDataset.id)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def count_items_per_dataset(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+    ) -> dict[int, int]:
+        """批量统计每个数据集的数据项数量"""
+        if not dataset_ids:
+            return {}
+        stmt = (
+            select(SysDatasetItem.dataset_id, func.count(SysDatasetItem.id).label("cnt"))
+            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
+            .group_by(SysDatasetItem.dataset_id)
+        )
+        result = await db.execute(stmt)
+        count_map: dict[int, int] = {}
+        for row in result:
+            count_map[int(row.dataset_id)] = int(row.cnt)
+        return count_map
+
+    async def count_dataset_stats_batch(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+    ) -> dict[int, dict[str, int]]:
+        """批量统计每个数据集的文件数、总大小、清晰图数、有雾图数"""
+        if not dataset_ids:
+            return {}
+        clear_cond = or_(
+            func.lower(SysItemFile.type).like("%clear%"),
+            func.lower(SysItemFile.type).like("%clean%"),
+            SysItemFile.type.like("%清晰%"),
+            SysItemFile.type.like("%无雾%"),
+        )
+        hazy_cond = or_(
+            func.lower(SysItemFile.type).like("%haze%"),
+            func.lower(SysItemFile.type).like("%hazy%"),
+            SysItemFile.type.like("%有雾%"),
+        )
+        stmt = (
+            select(
+                SysDatasetItem.dataset_id.label("dataset_id"),
+                func.count(SysItemFile.id).label("file_count"),
+                func.coalesce(func.sum(SysFile.size), 0).label("total_size"),
+                func.sum(func.case((clear_cond, 1), else_=0)).label("clear_count"),
+                func.sum(func.case((hazy_cond, 1), else_=0)).label("hazy_count"),
+            )
+            .select_from(SysDatasetItem)
+            .outerjoin(SysItemFile, SysItemFile.item_id == SysDatasetItem.id)
+            .outerjoin(SysFile, SysFile.id == SysItemFile.file_id)
+            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
+            .group_by(SysDatasetItem.dataset_id)
+        )
+        result = await db.execute(stmt)
+        stats_map: dict[int, dict[str, int]] = {}
+        for row in result:
+            ds_id = int(row.dataset_id)
+            stats_map[ds_id] = {
+                "fileCount": int(row.file_count or 0),
+                "totalSize": int(row.total_size or 0),
+                "clearCount": int(row.clear_count or 0),
+                "hazyCount": int(row.hazy_count or 0),
+            }
+        return stats_map
+
+    async def count_scene_distribution_batch(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+    ) -> dict[int, dict[str, int]]:
+        """批量统计每个数据集的场景类型分布"""
+        return await self._count_distribution_batch(db, dataset_ids, SysItemFile.scene_type, "未分类")
+
+    async def count_haze_distribution_batch(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+    ) -> dict[int, dict[str, int]]:
+        """批量统计每个数据集的雾霾程度分布"""
+        return await self._count_distribution_batch(db, dataset_ids, SysItemFile.haze_level, "未标注")
+
+    async def count_format_distribution_batch(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+    ) -> dict[int, dict[str, int]]:
+        """批量统计每个数据集的文件格式分布"""
+        if not dataset_ids:
+            return {}
+        stmt = (
+            select(
+                SysDatasetItem.dataset_id.label("dataset_id"),
+                func.coalesce(SysFile.type, "unknown").label("key"),
+                func.count(SysFile.id).label("cnt"),
+            )
+            .select_from(SysDatasetItem)
+            .join(SysItemFile, SysItemFile.item_id == SysDatasetItem.id)
+            .join(SysFile, SysFile.id == SysItemFile.file_id)
+            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
+            .group_by(SysDatasetItem.dataset_id, SysFile.type)
+        )
+        result = await db.execute(stmt)
+        dist_map: dict[int, dict[str, int]] = {}
+        for row in result:
+            ds_id = int(row.dataset_id)
+            key = str(row.key or "unknown")
+            if ds_id not in dist_map:
+                dist_map[ds_id] = {}
+            dist_map[ds_id][key] = int(row.cnt)
+        return dist_map
+
+    async def _count_distribution_batch(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+        column,
+        default_label: str,
+    ) -> dict[int, dict[str, int]]:
+        """通用批量分布统计"""
+        if not dataset_ids:
+            return {}
+        stmt = (
+            select(
+                SysDatasetItem.dataset_id.label("dataset_id"),
+                func.coalesce(column, default_label).label("key"),
+                func.count(SysItemFile.id).label("cnt"),
+            )
+            .select_from(SysDatasetItem)
+            .join(SysItemFile, SysItemFile.item_id == SysDatasetItem.id)
+            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
+            .group_by(SysDatasetItem.dataset_id, func.coalesce(column, default_label))
+        )
+        result = await db.execute(stmt)
+        dist_map: dict[int, dict[str, int]] = {}
+        for row in result:
+            ds_id = int(row.dataset_id)
+            key = str(row.key or default_label)
+            if ds_id not in dist_map:
+                dist_map[ds_id] = {}
+            dist_map[ds_id][key] = int(row.cnt)
+        return dist_map
+
+    async def get_items_with_files_batch(
+        self,
+        db: AsyncSession,
+        item_ids: list[int],
+    ) -> tuple[dict[int, SysDatasetItem], dict[int, list[tuple[SysItemFile, SysFile]]]]:
+        """批量查询数据项及其关联文件（避免N+1）"""
+        if not item_ids:
+            return {}, {}
+
+        items_stmt = select(SysDatasetItem).where(SysDatasetItem.id.in_(item_ids))
+        items_result = await db.execute(items_stmt)
+        items_map: dict[int, SysDatasetItem] = {}
+        for item in items_result.scalars().all():
+            items_map[int(item.id)] = item
+
+        files_stmt = (
+            select(SysItemFile, SysFile)
+            .select_from(SysItemFile)
+            .join(SysFile, SysItemFile.file_id == SysFile.id)
+            .where(SysItemFile.item_id.in_(item_ids))
+        )
+        files_result = await db.execute(files_stmt)
+        files_map: dict[int, list[tuple[SysItemFile, SysFile]]] = {}
+        for row in files_result.all():
+            item_file = row[0]
+            file_obj = row[1]
+            iid = int(item_file.item_id)
+            if iid not in files_map:
+                files_map[iid] = []
+            files_map[iid].append((item_file, file_obj))
+
+        return items_map, files_map
+
+
 # 单例
 dataset_repository = DatasetRepository()

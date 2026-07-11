@@ -3,7 +3,6 @@ package com.pei.dehaze.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysItemFile;
-import org.apache.ibatis.annotations.MapKey;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
@@ -25,15 +24,6 @@ public interface SysDatasetMapper extends BaseMapper<SysDataset> {
     void incrementUsageCount(@Param("id") Long id);
 
     /**
-     * 统计文件格式分布
-     *
-     * @param itemIds 数据项ID列表
-     * @return 文件格式分布List，每项包含 key(格式) 和 value(数量)
-     */
-    @MapKey("key")
-    List<Map<String, Object>> countFormatDistribution(@Param("itemIds") List<Long> itemIds);
-
-    /**
      * 获取数据集下所有图片文件列表（用于下载）
      *
      * @param datasetIds 数据集ID列表
@@ -42,12 +32,12 @@ public interface SysDatasetMapper extends BaseMapper<SysDataset> {
     List<SysItemFile> getDatasetImages(@Param("datasetIds") List<Long> datasetIds);
 
     /**
-     * 统计数据集图片总数
+     * 统计数据集的综合信息（图片数、总大小、清晰图、有雾图），一次查询替代4次
      *
      * @param datasetIds 数据集ID列表（叶子节点）
-     * @return 图片总数
+     * @return 综合统计Map
      */
-    Long countImagesByDatasetIds(@Param("datasetIds") List<Long> datasetIds);
+    Map<String, Object> countDatasetStatsSingle(@Param("datasetIds") List<Long> datasetIds);
 
     /**
      * 统计场景类型分布
@@ -55,7 +45,6 @@ public interface SysDatasetMapper extends BaseMapper<SysDataset> {
      * @param datasetIds 数据集ID列表（叶子节点）
      * @return 场景类型分布Map
      */
-    @MapKey("scene_type")
     List<Map<String, Object>> countSceneDistribution(@Param("datasetIds") List<Long> datasetIds);
 
     /**
@@ -64,7 +53,6 @@ public interface SysDatasetMapper extends BaseMapper<SysDataset> {
      * @param datasetIds 数据集ID列表（叶子节点）
      * @return 雾霾程度分布Map
      */
-    @MapKey("haze_level")
     List<Map<String, Object>> countHazeDistribution(@Param("datasetIds") List<Long> datasetIds);
 
     /**
@@ -73,7 +61,6 @@ public interface SysDatasetMapper extends BaseMapper<SysDataset> {
      * @param datasetIds 数据集ID列表（叶子节点）
      * @return 文件格式分布Map
      */
-    @MapKey("file_type")
     List<Map<String, Object>> countFormatDistributionByDatasetIds(@Param("datasetIds") List<Long> datasetIds);
 
     /**
@@ -85,26 +72,28 @@ public interface SysDatasetMapper extends BaseMapper<SysDataset> {
     Long countItemsByDatasetIds(@Param("datasetIds") List<Long> datasetIds);
 
     /**
-     * 统计文件总大小（字节）
-     *
-     * @param datasetIds 数据集ID列表（叶子节点）
-     * @return 文件总大小
+     * 批量统计每个数据集的数据项数（GROUP BY dataset_id）
      */
-    Long countTotalSizeByDatasetIds(@Param("datasetIds") List<Long> datasetIds);
+    List<Map<String, Object>> countItemsPerDataset(@Param("datasetIds") List<Long> datasetIds);
 
     /**
-     * 统计清晰图片数量
-     *
-     * @param datasetIds 数据集ID列表（叶子节点）
-     * @return 清晰图片数量
+     * 批量统计每个数据集的综合统计信息（GROUP BY dataset_id）
+     * 包括：图片数、文件总大小、清晰图片数、有雾图片数
      */
-    Long countClearImagesByDatasetIds(@Param("datasetIds") List<Long> datasetIds);
+    List<Map<String, Object>> countDatasetStatsBatch(@Param("datasetIds") List<Long> datasetIds);
 
     /**
-     * 统计有雾图片数量
-     *
-     * @param datasetIds 数据集ID列表（叶子节点）
-     * @return 有雾图片数量
+     * 批量统计每个数据集的场景类型分布（GROUP BY dataset_id, scene_type）
      */
-    Long countHazyImagesByDatasetIds(@Param("datasetIds") List<Long> datasetIds);
+    List<Map<String, Object>> countSceneDistributionBatch(@Param("datasetIds") List<Long> datasetIds);
+
+    /**
+     * 批量统计每个数据集的雾霾程度分布（GROUP BY dataset_id, haze_level）
+     */
+    List<Map<String, Object>> countHazeDistributionBatch(@Param("datasetIds") List<Long> datasetIds);
+
+    /**
+     * 批量统计每个数据集的文件格式分布（GROUP BY dataset_id, file_type）
+     */
+    List<Map<String, Object>> countFormatDistributionBatch(@Param("datasetIds") List<Long> datasetIds);
 }

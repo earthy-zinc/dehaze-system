@@ -1,6 +1,8 @@
 package com.pei.dehaze.controller;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.form.BatchDeleteRequest;
 import com.pei.dehaze.model.form.DatasetAddForm;
@@ -20,12 +22,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * 数据集控制器
- *
- * @author earthyzinc
- * @since 2020/11/6
- */
 @Tag(name = "08.数据集接口")
 @RestController
 @RequestMapping("/api/v1/datasets")
@@ -36,21 +32,29 @@ public class SysDatasetController {
 
     private final DatasetOperationService datasetOperationService;
 
-    /**
-     * 数据集树形表格
-     *
-     * @param queryParams 查询参数
-     * @return 数据集列表
-     */
     @Operation(
-            summary = "获取数据集列表",
-            description = "获取系统中所有数据集的列表信息，支持关键字搜索。返回树形结构的数据集列表，包含基本信息和统计数据。" +
-                    "适用于数据集管理页面展示、数据集选择器等场景。"
+            summary = "分页查询数据集列表",
+            description = "分页获取根级数据集列表，支持关键字搜索、类型和状态筛选。返回树形结构，根节点分页，" +
+                    "子节点通过懒加载接口获取。包含统计信息（图片数量等）。适用于数据集管理页面。"
     )
     @GetMapping
-    public Result<List<DatasetVO>> listDatasets(@ParameterObject DatasetQuery queryParams) {
-        List<DatasetVO> datasets = datasetService.getList(queryParams);
-        return Result.success(datasets);
+    public PageResult<DatasetVO> listDatasets(@ParameterObject DatasetQuery queryParams) {
+        IPage<DatasetVO> page = datasetService.listPagedDatasets(queryParams);
+        return PageResult.success(page);
+    }
+
+    @Operation(
+            summary = "获取子数据集列表（懒加载）",
+            description = "根据父数据集ID获取直接子数据集列表，用于树形表格懒加载。返回子节点列表，" +
+                    "每个节点包含hasChildren标记表示是否有下级节点。"
+    )
+    @GetMapping("/children/{parentId}")
+    public Result<List<DatasetVO>> listChildren(
+            @Parameter(description = "父数据集ID", required = true, example = "1")
+            @PathVariable Long parentId
+    ) {
+        List<DatasetVO> children = datasetService.listChildren(parentId);
+        return Result.success(children);
     }
 
     @Operation(
@@ -64,12 +68,6 @@ public class SysDatasetController {
         return Result.success(options);
     }
 
-    /**
-     * 获取数据集信息
-     *
-     * @param id 数据集id
-     * @return 数据集信息
-     */
     @Operation(
             summary = "根据ID获取数据集详细信息",
             description = "根据数据集ID获取完整的数据集信息，包括基本信息、统计数据（图片数量、使用次数）、" +
@@ -85,12 +83,6 @@ public class SysDatasetController {
         return Result.success(datasetVO);
     }
 
-    /**
-     * 新增数据集
-     *
-     * @param dataset 数据集信息
-     * @return 操作结果
-     */
     @Operation(
             summary = "新增数据集",
             description = "创建新的数据集，支持树形结构管理。系统会自动生成数据集存储目录，" +
@@ -102,13 +94,6 @@ public class SysDatasetController {
         return Result.success(result);
     }
 
-    /**
-     * 修改数据集
-     *
-     * @param id 数据集ID
-     * @param dataset 更新后的数据集信息
-     * @return 操作结果
-     */
     @Operation(
             summary = "修改数据集信息",
             description = "更新指定数据集的详细信息，支持修改名称、描述、类型和状态。" +
@@ -125,12 +110,6 @@ public class SysDatasetController {
         return Result.success(result);
     }
 
-    /**
-     * 删除单个数据集
-     *
-     * @param id 数据集ID
-     * @return 操作结果
-     */
     @Operation(
             summary = "删除单个数据集",
             description = "删除指定的数据集，支持级联删除。删除范围包括：数据集本身、所有子数据集、" +
@@ -146,12 +125,6 @@ public class SysDatasetController {
         return Result.success();
     }
 
-    /**
-     * 批量删除数据集
-     *
-     * @param request 批量删除请求
-     * @return 批量删除结果
-     */
     @Operation(
             summary = "批量删除数据集",
             description = "批量删除指定的数据集，支持级联删除。删除范围包括：数据集本身、所有子数据集、" +

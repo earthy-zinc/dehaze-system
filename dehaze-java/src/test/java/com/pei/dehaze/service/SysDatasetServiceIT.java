@@ -1,5 +1,6 @@
 package com.pei.dehaze.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
@@ -241,10 +242,10 @@ class SysDatasetServiceIT {
         datasetService.addDataset(form2);
 
         DatasetQuery query = new DatasetQuery();
-        List<DatasetVO> result = datasetService.getList(query);
+        IPage<DatasetVO> result = datasetService.listPagedDatasets(query);
 
         assertNotNull(result);
-        assertTrue(result.size() >= 2);
+        assertTrue(result.getRecords().size() >= 2);
     }
 
     /**
@@ -270,10 +271,10 @@ class SysDatasetServiceIT {
 
         DatasetQuery query = new DatasetQuery();
         query.setKeyword("测试");
-        List<DatasetVO> result = datasetService.getList(query);
+        IPage<DatasetVO> result = datasetService.listPagedDatasets(query);
 
         assertNotNull(result);
-        result.forEach(vo -> assertTrue(vo.getName().contains("测试")));
+        result.getRecords().forEach(vo -> assertTrue(vo.getName().contains("测试")));
     }
 
     /**

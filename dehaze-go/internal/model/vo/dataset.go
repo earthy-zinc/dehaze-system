@@ -2,28 +2,30 @@ package vo
 
 import "time"
 
-// DatasetVO 数据集视图对象
+type DatasetStatistics struct {
+	ItemCount          int64            `json:"itemCount"`
+	FileCount          int64            `json:"fileCount"`
+	TotalSize          int64            `json:"totalSize"`
+	ClearCount         int64            `json:"clearCount"`
+	HazyCount          int64            `json:"hazyCount"`
+	SceneDistribution  map[string]int64 `json:"sceneDistribution"`
+	HazeDistribution   map[string]int64 `json:"hazeDistribution"`
+	FormatDistribution map[string]int64 `json:"formatDistribution"`
+}
+
 type DatasetVO struct {
-	// 数据集ID
-	ID int64 `json:"id"`
-	// 父数据集ID
-	ParentID int64 `json:"parentId"`
-	// 数据集类型
-	Type string `json:"type"`
-	// 数据集名称
-	Name string `json:"name"`
-	// 数据集描述
-	Description string `json:"description"`
-	// 存储位置
-	Path string `json:"path"`
-	// 占用空间大小
-	Size string `json:"size"`
-	// 子数据集
-	Children []DatasetVO `json:"children"`
-	// 创建时间
-	CreateTime time.Time `json:"createTime"`
-	// 修改时间
-	UpdateTime time.Time `json:"updateTime"`
-	// 状态(1:启用；0:禁用)
-	Status int `json:"status"`
+	ID          int64              `json:"id"`
+	ParentID    int64              `json:"parentId"`
+	Type        string             `json:"type"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Path        string             `json:"path"`
+	Size        string             `json:"size"`
+	HasChildren bool               `json:"hasChildren"`
+	Children    []DatasetVO        `json:"children"`
+	Status      int                `json:"status"`
+	Statistics  *DatasetStatistics `json:"statistics"`
+	Total       int64              `json:"total"`
+	CreateTime  time.Time          `json:"createTime"`
+	UpdateTime  time.Time          `json:"updateTime"`
 }

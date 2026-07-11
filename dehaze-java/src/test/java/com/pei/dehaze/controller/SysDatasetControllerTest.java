@@ -1,6 +1,8 @@
 package com.pei.dehaze.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.form.BatchDeleteRequest;
 import com.pei.dehaze.model.form.DatasetAddForm;
@@ -59,9 +61,12 @@ class SysDatasetControllerTest {
         DatasetVO dataset = new DatasetVO();
         dataset.setId(1L);
         dataset.setName("测试数据集");
-        List<DatasetVO> datasets = Collections.singletonList(dataset);
 
-        when(datasetService.getList(any())).thenReturn(datasets);
+        Page<DatasetVO> page = new Page<>(1, 20);
+        page.setRecords(Collections.singletonList(dataset));
+        page.setTotal(1);
+
+        when(datasetService.listPagedDatasets(any())).thenReturn(page);
 
         // When & Then
         mockMvc.perform(get("/api/v1/datasets")
@@ -71,9 +76,9 @@ class SysDatasetControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("00000"))
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[0].id").value(1))
-                .andExpect(jsonPath("$.data[0].name").value("测试数据集"));
+                .andExpect(jsonPath("$.data.list").isArray())
+                .andExpect(jsonPath("$.data.list[0].id").value(1))
+                .andExpect(jsonPath("$.data.list[0].name").value("测试数据集"));
     }
 
     @Test
@@ -212,7 +217,10 @@ class SysDatasetControllerTest {
     @DisplayName("GET /api/v1/datasets - 带筛选条件查询")
     void testListDatasetsWithFilters() throws Exception {
         // Given
-        when(datasetService.getList(any())).thenReturn(Collections.emptyList());
+        Page<DatasetVO> emptyPage = new Page<>(1, 20);
+        emptyPage.setRecords(Collections.emptyList());
+        emptyPage.setTotal(0);
+        when(datasetService.listPagedDatasets(any())).thenReturn(emptyPage);
 
         // When & Then
         mockMvc.perform(get("/api/v1/datasets")
@@ -224,7 +232,7 @@ class SysDatasetControllerTest {
                 .andDo(print())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("00000"))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data.list").isArray());
     }
 
     // ==================== 异常场景测试 ====================

@@ -18,6 +18,7 @@ public interface DatasetConverter {
 
     @Mapping(ignore = true, target = "children")
     @Mapping(ignore = true, target = "hasChildren")
+    @Mapping(ignore = true, target = "total")
     @Mapping(source = "entity.status", target = "status")
     DatasetVO entity2Vo(SysDataset entity, DatasetStatistics statistics);
 

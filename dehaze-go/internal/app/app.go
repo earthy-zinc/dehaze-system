@@ -102,6 +102,7 @@ func (a *Application) Init() error {
 	algorithmRepo := algorepo.NewAlgorithmRepository(gormDB)
 	datasetRepo := datasetrepo.NewDatasetRepository(gormDB)
 	datasetItemRepo := datasetrepo.NewDatasetItemRepository(gormDB)
+	datasetStatsRepo := datasetrepo.NewDatasetStatsRepository(gormDB)
 	datasetItemFileRepo := datasetrepo.NewDatasetItemFileRepository(gormDB)
 	itemFileRepo := filerepo.NewItemFileRepository(gormDB)
 	fileRepo := filerepo.NewFileRepository(gormDB)
@@ -124,7 +125,7 @@ func (a *Application) Init() error {
 	taskExecutor := a.taskExecutor
 	taskService := taskservice.NewTaskService(taskRepo, datasetRepo, cacheClient, zap.L(), taskExecutor)
 	itemFileService := fileservice.NewItemFileService(cacheClient, itemFileRepo, datasetItemRepo, fileService, taskExecutor)
-	datasetService := datasetservice.NewDatasetService(cacheClient, datasetRepo, datasetItemRepo, itemFileRepo, fileRepo)
+	datasetService := datasetservice.NewDatasetService(cacheClient, datasetRepo, datasetItemRepo, datasetStatsRepo, itemFileRepo, fileRepo)
 	datasetItemService := datasetservice.NewDatasetItemService(cacheClient, datasetItemRepo, datasetRepo, itemFileRepo, fileRepo, itemFileService)
 	datasetOperationService := datasetservice.NewDatasetOperationService(
 		cacheClient,

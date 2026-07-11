@@ -19,10 +19,16 @@ import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author earthy-zinc
@@ -30,56 +36,91 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, SysAlgorithm> implements SysAlgorithmService {
 
     private final AlgorithmConverter algorithmConverter;
 
     @Override
+    @Cacheable(value = "algorithm:all", key = "'all'", unless = "#result == null || #result.isEmpty()")
+    public List<SysAlgorithm> getAllAlgorithms() {
+        return this.list(new LambdaQueryWrapper<SysAlgorithm>()
+                .orderByAsc(SysAlgorithm::getId));
+    }
+
+    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
+    public void evictAllAlgorithmsCache() {
+        log.debug("清除所有算法缓存");
+    }
+
+    @Override
+    @Cacheable(value = "algorithm:list", key = "#queryParams.keywords", unless = "#result == null || #result.isEmpty()")
     public List<AlgorithmVO> getList(AlgorithmQuery queryParams) {
         List<SysAlgorithm> algorithms = this.list(new LambdaQueryWrapper<SysAlgorithm>()
                 .like(CharSequenceUtil.isNotBlank(queryParams.getKeywords()), SysAlgorithm::getName, queryParams.getKeywords()));
 
         List<Long> rootIds = TreeDataUtils.findRootIds(algorithms, SysAlgorithm::getId, SysAlgorithm::getParentId);
 
+        // 构建 parentId -> children Map，避免 O(n²) 递归
+        Map<Long, List<SysAlgorithm>> parentToChildrenMap = algorithms.stream()
+                .collect(Collectors.groupingBy(SysAlgorithm::getParentId));
+
         return rootIds.stream()
-                .flatMap(rootId -> buildAlgorithmTree(rootId, algorithms).stream())
+                .flatMap(rootId -> buildAlgorithmTree(rootId, parentToChildrenMap).stream())
                 .toList();
     }
 
     /**
      * 根据 parentId，获取其根节点对应的SysAlgorithm
+     * 使用缓存的 getAllAlgorithms 构建 Map，避免 N+1 查询
      * @return 根节点对应的SysAlgorithm
      */
     @Override
     public SysAlgorithm getRootAlgorithm(Long id) {
         SysAlgorithm algorithm = this.getById(id);
-
         if (algorithm == null) {
             throw new BusinessException("当前算法不存在");
         }
 
+        // 使用缓存的全部算法列表构建 Map，避免逐级 getById 查询
+        Map<Long, SysAlgorithm> idToNodeMap = getAllAlgorithms().stream()
+                .collect(Collectors.toMap(SysAlgorithm::getId, a -> a));
+
         while (!algorithm.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
-            algorithm = this.getById(algorithm.getParentId());
-            if (algorithm == null) {
+            SysAlgorithm parent = idToNodeMap.get(algorithm.getParentId());
+            if (parent == null) {
                 throw new BusinessException("无法获取算法根节点");
             }
+            algorithm = parent;
         }
         return algorithm;
     }
 
     @Override
+    @Cacheable(value = "algorithm:options", key = "'all'", unless = "#result == null || #result.isEmpty()")
     public List<Option<Long>> getOption() {
         List<SysAlgorithm> algorithms = this.list(
                 new LambdaQueryWrapper<SysAlgorithm>()
                         .eq(SysAlgorithm::getStatus, StatusEnum.ENABLE.getValue()));
-        return buildAlgorithmOptions(SystemConstants.ROOT_NODE_ID, algorithms);
+        // 使用 Map 分组，避免 O(n²) 递归
+        Map<Long, List<SysAlgorithm>> parentToChildrenMap = algorithms.stream()
+                .collect(Collectors.groupingBy(SysAlgorithm::getParentId));
+        return buildAlgorithmOptions(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
     }
 
     @Override
     public SysAlgorithm getAlgorithmById(Long id) {
-        List<SysAlgorithm> algorithms = new ArrayList<>();
         SysAlgorithm cur = this.getById(id);
-        dfs(cur, algorithms);
+        if (cur == null) {
+            throw new BusinessException("当前算法不存在");
+        }
+
+        // 使用缓存的全部算法列表构建 Map，避免逐级 getById 查询
+        Map<Long, SysAlgorithm> idToNodeMap = getAllAlgorithms().stream()
+                .collect(Collectors.toMap(SysAlgorithm::getId, a -> a));
+
+        List<SysAlgorithm> algorithms = new ArrayList<>();
+        collectAncestors(cur, algorithms, idToNodeMap);
 
         if (!algorithms.isEmpty()) {
             StringBuilder fullName = new StringBuilder();
@@ -98,6 +139,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
+    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public boolean addAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         sysAlgorithm.setStatus(StatusEnum.ENABLE.getValue());
@@ -107,18 +149,23 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         return this.save(sysAlgorithm);
     }
 
-    private void dfs(SysAlgorithm cur, List<SysAlgorithm> algorithms) {
+    private void collectAncestors(SysAlgorithm cur, List<SysAlgorithm> algorithms,
+                                  Map<Long, SysAlgorithm> idToNodeMap) {
         algorithms.add(cur);
         if (cur.getParentId() == null) {
             throw new BusinessException("算法结构出现问题");
         }
         if (!cur.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
-            SysAlgorithm parent = this.getById(cur.getParentId());
-            dfs(parent, algorithms);
+            SysAlgorithm parent = idToNodeMap.get(cur.getParentId());
+            if (parent == null) {
+                throw new BusinessException("算法结构出现问题：无法找到父节点，parentId=" + cur.getParentId());
+            }
+            collectAncestors(parent, algorithms, idToNodeMap);
         }
     }
 
     @Override
+    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public boolean updateAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
         sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
@@ -126,6 +173,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     }
 
     @Override
+    @CacheEvict(value = {"algorithm:all", "algorithm:list", "algorithm:options"}, allEntries = true)
     public boolean deleteAlgorithms(List<Long> ids) {
         List<SysAlgorithm> children = this.list(new LambdaQueryWrapper<SysAlgorithm>()
                 .in(SysAlgorithm::getParentId, ids));
@@ -133,28 +181,32 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         return this.removeByIds(CollUtil.addAll(ids, childrenIds));
     }
 
-    private List<AlgorithmVO> buildAlgorithmTree(Long rootId, List<SysAlgorithm> algorithms) {
-        return CollUtil.emptyIfNull(algorithms)
-                .stream()
-                .filter(algorithm -> algorithm.getParentId().equals(rootId))
+    /**
+     * 使用 Map 分组构建算法树，时间复杂度 O(n)
+     */
+    private List<AlgorithmVO> buildAlgorithmTree(Long parentId, Map<Long, List<SysAlgorithm>> parentToChildrenMap) {
+        List<SysAlgorithm> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        return children.stream()
                 .map(entity -> {
                     AlgorithmVO algorithmVO = algorithmConverter.entity2Vo(entity);
-                    algorithmVO.setChildren(buildAlgorithmTree(entity.getId(), algorithms));
+                    algorithmVO.setChildren(buildAlgorithmTree(entity.getId(), parentToChildrenMap));
                     return algorithmVO;
                 }).toList();
     }
 
-    private List<Option<Long>> buildAlgorithmOptions(Long parentId, List<SysAlgorithm> algorithms) {
+    /**
+     * 使用 Map 分组构建算法下拉选项，时间复杂度 O(n)
+     */
+    private List<Option<Long>> buildAlgorithmOptions(Long parentId, Map<Long, List<SysAlgorithm>> parentToChildrenMap) {
+        List<SysAlgorithm> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
         List<Option<Long>> algorithmOptions = new ArrayList<>();
-        for (SysAlgorithm algorithm : algorithms) {
-            if (algorithm.getParentId().equals(parentId)) {
-                Option<Long> option = new Option<>(algorithm.getId(), algorithm.getName());
-                List<Option<Long>> subAlgorithms = buildAlgorithmOptions(algorithm.getId(), algorithms);
-                if (CollUtil.isNotEmpty(subAlgorithms)) {
-                    option.setChildren(subAlgorithms);
-                }
-                algorithmOptions.add(option);
+        for (SysAlgorithm algorithm : children) {
+            Option<Long> option = new Option<>(algorithm.getId(), algorithm.getName());
+            List<Option<Long>> subAlgorithms = buildAlgorithmOptions(algorithm.getId(), parentToChildrenMap);
+            if (CollUtil.isNotEmpty(subAlgorithms)) {
+                option.setChildren(subAlgorithms);
             }
+            algorithmOptions.add(option);
         }
         return algorithmOptions;
     }

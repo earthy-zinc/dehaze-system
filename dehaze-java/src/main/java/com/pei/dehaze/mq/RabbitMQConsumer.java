@@ -21,19 +21,6 @@ import java.util.Map;
 public abstract class RabbitMQConsumer {
 
     /**
-     * 消息处理接口
-     */
-    public interface MessageHandler {
-        /**
-         * 处理消息
-         *
-         * @param body    消息体
-         * @param traceId 追踪 ID
-         */
-        void handle(String body, String traceId);
-    }
-
-    /**
      * 从消息头提取 TraceID
      */
     protected String extractTraceId(Message message) {
@@ -60,13 +47,5 @@ public abstract class RabbitMQConsumer {
      */
     protected void handleError(String queueName, String traceId, Exception e) {
         log.error("RabbitMQ 消息处理失败: queue={}, traceId={}", queueName, traceId, e);
-    }
-
-    /**
-     * 处理消息异常（消息将被重新入队）
-     */
-    protected void handleErrorWithRetry(String queueName, String traceId, Exception e) {
-        log.error("RabbitMQ 消息处理失败，将重试: queue={}, traceId={}", queueName, traceId, e);
-        throw new RuntimeException("消息处理失败，触发重试", e);
     }
 }

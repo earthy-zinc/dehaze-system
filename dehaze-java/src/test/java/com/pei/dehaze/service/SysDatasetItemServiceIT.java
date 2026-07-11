@@ -38,6 +38,9 @@ class SysDatasetItemServiceIT {
     private SysDatasetItemService datasetItemService;
 
     @Autowired
+    private DatasetOperationService datasetOperationService;
+
+    @Autowired
     private SysDatasetItemMapper datasetItemMapper;
 
     @Autowired
@@ -185,7 +188,7 @@ class SysDatasetItemServiceIT {
         SysDatasetItem item1 = datasetItemService.createDatasetItem(testDataset.getId());
         SysDatasetItem item2 = datasetItemService.createDatasetItem(testDataset.getId());
 
-        BatchOperationResultVO result = datasetItemService.batchDeleteDatasetItems(
+        BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(
                 List.of(item1.getId(), item2.getId()));
 
         assertNotNull(result);
@@ -285,7 +288,7 @@ class SysDatasetItemServiceIT {
     @Test
     @DisplayName("批量删除空列表-成功")
     void testBatchDeleteDatasetItems_EmptyList() {
-        BatchOperationResultVO result = datasetItemService.batchDeleteDatasetItems(List.of());
+        BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(List.of());
 
         assertNotNull(result);
         assertEquals(0, result.getSuccessCount());
