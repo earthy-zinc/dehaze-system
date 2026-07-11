@@ -84,6 +84,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import PageLayout from "@/layout/index.vue";
+import { useProcessingStore } from "@/store/processing";
 import InputMethodCard from "./components/InputMethodCard.vue";
 import UploadArea from "./components/UploadArea.vue";
 import CameraArea from "./components/CameraArea.vue";
@@ -105,6 +106,9 @@ const currentImage = ref<ImageData | null>(null);
 /** 历史记录列表引用 */
 const historyListRef = ref<InstanceType<typeof HistoryList> | null>(null);
 
+/** 处理流程 Store */
+const processingStore = useProcessingStore();
+
 // ==================== 方法定义 ====================
 
 /** 切换输入方式 */
@@ -121,6 +125,9 @@ const handleMethodChange = (method: InputMethod) => {
 const handleImageSelect = (data: ImageData) => {
   currentImage.value = data;
 
+  // 同步到处理流程 Store
+  processingStore.setImage(data);
+
   // 滚动到预览区域
   setTimeout(() => {
     uni.pageScrollTo({
@@ -133,6 +140,7 @@ const handleImageSelect = (data: ImageData) => {
 /** 移除图片 */
 const handleRemoveImage = () => {
   currentImage.value = null;
+  processingStore.reset();
 };
 
 /** 下一步：跳转到算法选择 */
@@ -143,19 +151,6 @@ const handleNextStep = () => {
       icon: "none",
     });
     return;
-  }
-
-  // 保存当前图片到全局状态
-  const app = getApp<{ globalData: { currentImage?: ImageData } }>();
-  if (app.globalData) {
-    app.globalData.currentImage = currentImage.value;
-  }
-
-  // 也存储到本地，以防页面刷新丢失
-  try {
-    uni.setStorageSync("current_image", JSON.stringify(currentImage.value));
-  } catch (e) {
-    console.warn("存储图片数据失败:", e);
   }
 
   // 跳转到算法选择页面

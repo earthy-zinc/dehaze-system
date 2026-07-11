@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../models/dataset_model.dart';
 import '../providers/dataset_provider.dart';
 import '../services/dataset_service.dart';
 
+/// 图片列表状态管理
 class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
-  ImageNotifier(this._service) : super(const AsyncValue.loading());
+  ImageNotifier(this._service) : super(const AsyncValue.data([]));
 
   final DatasetService _service;
   int _currentPage = 1;
@@ -28,16 +30,14 @@ class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
       state = const AsyncValue.loading();
     }
 
-    if (!_hasMore) {
-      return;
-    }
+    if (!_hasMore || _currentDatasetId == null) return;
 
     try {
-      final response = await _service.fetchDatasetImages(
-        datasetId: datasetId,
-        page: _currentPage,
+      final response = await _service.getDatasetImages(
+        datasetId: _currentDatasetId!,
+        pageNum: _currentPage,
         imageType: _selectedType,
-        search: _searchQuery,
+        keywords: _searchQuery.isEmpty ? null : _searchQuery,
       );
 
       if (refresh) {
@@ -47,8 +47,8 @@ class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
         state = AsyncValue.data([...currentList, ...response.list]);
       }
 
+      _hasMore = response.list.isNotEmpty;
       _currentPage++;
-      _hasMore = response.page < response.totalPages;
     } catch (e, stackTrace) {
       state = AsyncValue.error(e, stackTrace);
     }
@@ -87,10 +87,12 @@ class ImageNotifier extends StateNotifier<AsyncValue<List<ImageModel>>> {
   }
 }
 
+/// 图片列表 Provider
 final imageProvider =
     StateNotifierProvider<ImageNotifier, AsyncValue<List<ImageModel>>>((ref) {
-      final service = ref.watch<DatasetService>(datasetServiceProvider);
-      return ImageNotifier(service);
-    });
+  final service = ref.watch<DatasetService>(datasetServiceProvider);
+  return ImageNotifier(service);
+});
 
+/// 图片类型筛选 Provider
 final imageTypeFilterProvider = StateProvider<ImageType?>((ref) => null);

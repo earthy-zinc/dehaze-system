@@ -57,56 +57,46 @@ const specData = ref(homeData.specs);
 
 // 事件处理函数
 const handleStartClick = () => {
-  // 临时显示提示，待实现对应页面
-  uni.showToast({
-    title: "功能开发中",
-    icon: "none",
-  });
-  // uni.navigateTo({ url: '/pages/image-input/index' })
+  uni.navigateTo({ url: "/pages/image-input/index" });
 };
 
 const handleDatasetClick = () => {
-  uni.showToast({
-    title: "数据集功能开发中",
-    icon: "none",
-  });
-  // uni.navigateTo({ url: '/pages/dataset/index' })
+  uni.navigateTo({ url: "/pages/dataset/index" });
 };
 
 const handleStepClick = (target: string) => {
-  // 根据目标跳转不同页面
   const routeMap: Record<string, string> = {
-    "image-input": "图像输入功能开发中",
-    "algorithm-select": "算法选择功能开发中",
-    processing: "图像处理功能开发中",
+    "image-input": "/pages/image-input/index",
+    "algorithm-select": "/pages/algorithm-select/index",
+    processing: "/pages/processing/index",
   };
 
-  const message = routeMap[target] || "功能开发中";
-  uni.showToast({
-    title: message,
-    icon: "none",
-  });
-
-  // if (routeMap[target]) {
-  //   uni.navigateTo({ url: routeMap[target] })
-  // }
+  const url = routeMap[target];
+  if (url) {
+    uni.navigateTo({ url });
+  } else {
+    uni.showToast({ title: "页面开发中", icon: "none" });
+  }
 };
 
 const handleToolClick = (tool: ToolItem) => {
-  uni.showToast({
-    title: `${tool.title}功能开发中`,
-    icon: "none",
-  });
-  // 处理工具点击，可以跳转到对应功能页面
-  console.log("Tool clicked:", tool);
+  // 根据工具名称跳转
+  const toolRoutes: Record<string, string> = {
+    "图像输入": "/pages/image-input/index",
+    "数据集管理": "/pages/dataset/index",
+    "算法管理": "/pages/algorithm-select/index",
+  };
+
+  const url = toolRoutes[tool.title];
+  if (url) {
+    uni.navigateTo({ url });
+  } else {
+    uni.showToast({ title: `${tool.title}开发中`, icon: "none" });
+  }
 };
 
 const handleAlgorithmClick = () => {
-  uni.showToast({
-    title: "算法详情功能开发中",
-    icon: "none",
-  });
-  // uni.navigateTo({ url: '/pages/algorithm/index' })
+  uni.navigateTo({ url: "/pages/algorithm-select/index" });
 };
 </script>
 

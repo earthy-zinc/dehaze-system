@@ -640,7 +640,7 @@ const Dehaze: React.FC = () => {
 
       <Modal
         title="选择数据集图片"
-        visible={dialogVisible}
+        open={dialogVisible}
         onCancel={() => setDialogVisible(false)}
         footer={null}
       >

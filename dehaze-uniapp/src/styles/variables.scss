@@ -1,0 +1,65 @@
+// ==================== 主题变量 ====================
+// 基于 dehaze-android 和 dehaze-front-vue 的视觉风格
+
+// ==================== 品牌色 ====================
+$color-primary: #3b82f6;
+$color-primary-light: #60a5fa;
+$color-primary-dark: #2563eb;
+$color-primary-bg: #eff6ff;
+
+// ==================== 功能色 ====================
+$color-success: #10b981;
+$color-success-light: #34d399;
+$color-success-bg: #ecfdf5;
+$color-warning: #f59e0b;
+$color-warning-light: #fbbf24;
+$color-warning-bg: #fffbeb;
+$color-danger: #ef4444;
+$color-danger-light: #f87171;
+$color-danger-bg: #fef2f2;
+$color-info: #6b7280;
+$color-info-light: #9ca3af;
+
+// ==================== 中性色 ====================
+$color-white: #ffffff;
+$color-black: #000000;
+$color-bg-primary: #f9fafb;
+$color-bg-secondary: #f3f4f6;
+$color-border: #e5e7eb;
+$color-border-light: #f3f4f6;
+$color-text-primary: #1f2937;
+$color-text-secondary: #6b7280;
+$color-text-placeholder: #9ca3af;
+$color-text-disabled: #d1d5db;
+
+// ==================== 间距 ====================
+$spacing-xs: 8rpx;
+$spacing-sm: 16rpx;
+$spacing-md: 24rpx;
+$spacing-lg: 32rpx;
+$spacing-xl: 48rpx;
+$spacing-xxl: 64rpx;
+
+// ==================== 圆角 ====================
+$radius-sm: 8rpx;
+$radius-md: 12rpx;
+$radius-lg: 16rpx;
+$radius-xl: 24rpx;
+$radius-round: 50%;
+
+// ==================== 字体大小 ====================
+$font-xs: 22rpx;
+$font-sm: 26rpx;
+$font-md: 28rpx;
+$font-lg: 32rpx;
+$font-xl: 36rpx;
+$font-xxl: 44rpx;
+
+// ==================== 阴影 ====================
+$shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+$shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+
+// ==================== 安全区域 ====================
+$safe-area-bottom: constant(safe-area-inset-bottom);
+$safe-area-bottom-env: env(safe-area-inset-bottom);

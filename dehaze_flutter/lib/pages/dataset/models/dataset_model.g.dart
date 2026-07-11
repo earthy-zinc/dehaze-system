@@ -7,94 +7,111 @@ part of 'dataset_model.dart';
 // **************************************************************************
 
 DatasetModel _$DatasetModelFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'DatasetModel',
-      json,
-      ($checkedConvert) {
-        final val = DatasetModel(
-          id: $checkedConvert('id', (v) => (v as num).toInt()),
-          name: $checkedConvert('name', (v) => v as String),
-          description: $checkedConvert('description', (v) => v as String?),
-          creator: $checkedConvert('creator', (v) => v as String),
-          thumbnail: $checkedConvert('thumbnail', (v) => v as String),
-          totalImages: $checkedConvert(
-            'total_images',
-            (v) => (v as num).toInt(),
-          ),
-          foggyCount: $checkedConvert('foggy_count', (v) => (v as num).toInt()),
-          clearCount: $checkedConvert('clear_count', (v) => (v as num).toInt()),
-          annotatedCount: $checkedConvert(
-            'annotated_count',
-            (v) => (v as num).toInt(),
-          ),
-          createdAt: $checkedConvert(
-            'created_at',
-            (v) => DateTime.parse(v as String),
-          ),
-          updatedAt: $checkedConvert(
-            'updated_at',
-            (v) => DateTime.parse(v as String),
-          ),
-        );
-        return val;
-      },
-      fieldKeyMap: const {
-        'totalImages': 'total_images',
-        'foggyCount': 'foggy_count',
-        'clearCount': 'clear_count',
-        'annotatedCount': 'annotated_count',
-        'createdAt': 'created_at',
-        'updatedAt': 'updated_at',
-      },
-    );
+    $checkedCreate('DatasetModel', json, ($checkedConvert) {
+      final val = DatasetModel(
+        id: $checkedConvert('id', (v) => (v as num).toInt()),
+        name: $checkedConvert('name', (v) => v as String),
+        createTime: $checkedConvert('createTime', (v) => v as String),
+        parentId: $checkedConvert('parentId', (v) => (v as num?)?.toInt()),
+        type: $checkedConvert('type', (v) => v as String?),
+        path: $checkedConvert('path', (v) => v as String?),
+        description: $checkedConvert('description', (v) => v as String?),
+        remark: $checkedConvert('remark', (v) => v as String?),
+        usageCount: $checkedConvert('usageCount', (v) => (v as num?)?.toInt()),
+        createBy: $checkedConvert('createBy', (v) => v as String?),
+        updateTime: $checkedConvert('updateTime', (v) => v as String?),
+        updateBy: $checkedConvert('updateBy', (v) => v as String?),
+        children: $checkedConvert(
+          'children',
+          (v) =>
+              (v as List<dynamic>?)
+                  ?.map((e) => DatasetModel.fromJson(e as Map<String, dynamic>))
+                  .toList() ??
+              const [],
+        ),
+        status: $checkedConvert('status', (v) => (v as num?)?.toInt()),
+      );
+      return val;
+    });
 
 Map<String, dynamic> _$DatasetModelToJson(DatasetModel instance) =>
     <String, dynamic>{
       'id': instance.id,
+      if (instance.parentId case final value?) 'parentId': value,
       'name': instance.name,
+      if (instance.type case final value?) 'type': value,
+      if (instance.path case final value?) 'path': value,
       if (instance.description case final value?) 'description': value,
-      'creator': instance.creator,
-      'thumbnail': instance.thumbnail,
-      'total_images': instance.totalImages,
-      'foggy_count': instance.foggyCount,
-      'clear_count': instance.clearCount,
-      'annotated_count': instance.annotatedCount,
-      'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt.toIso8601String(),
+      if (instance.remark case final value?) 'remark': value,
+      if (instance.usageCount case final value?) 'usageCount': value,
+      if (instance.createBy case final value?) 'createBy': value,
+      'createTime': instance.createTime,
+      if (instance.updateBy case final value?) 'updateBy': value,
+      if (instance.updateTime case final value?) 'updateTime': value,
+      'children': instance.children.map((e) => e.toJson()).toList(),
+      if (instance.status case final value?) 'status': value,
     };
 
-PaginatedDatasetResponse _$PaginatedDatasetResponseFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate(
-  'PaginatedDatasetResponse',
-  json,
-  ($checkedConvert) {
-    final val = PaginatedDatasetResponse(
-      list: $checkedConvert(
-        'list',
-        (v) => (v as List<dynamic>)
-            .map((e) => DatasetModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      ),
-      total: $checkedConvert('total', (v) => (v as num).toInt()),
-      page: $checkedConvert('page', (v) => (v as num).toInt()),
-      pageSize: $checkedConvert('page_size', (v) => (v as num).toInt()),
-      totalPages: $checkedConvert('total_pages', (v) => (v as num).toInt()),
-    );
-    return val;
-  },
-  fieldKeyMap: const {'pageSize': 'page_size', 'totalPages': 'total_pages'},
-);
+DatasetItemModel _$DatasetItemModelFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('DatasetItemModel', json, ($checkedConvert) {
+      final val = DatasetItemModel(
+        id: $checkedConvert('id', (v) => (v as num).toInt()),
+        datasetId: $checkedConvert('datasetId', (v) => (v as num).toInt()),
+        createTime: $checkedConvert('createTime', (v) => v as String),
+        name: $checkedConvert('name', (v) => v as String?),
+        description: $checkedConvert('description', (v) => v as String?),
+        files: $checkedConvert(
+          'files',
+          (v) =>
+              (v as List<dynamic>?)
+                  ?.map(
+                    (e) => ItemFileModel.fromJson(e as Map<String, dynamic>),
+                  )
+                  .toList() ??
+              const [],
+        ),
+      );
+      return val;
+    });
 
-Map<String, dynamic> _$PaginatedDatasetResponseToJson(
-  PaginatedDatasetResponse instance,
-) => <String, dynamic>{
-  'list': instance.list.map((e) => e.toJson()).toList(),
-  'total': instance.total,
-  'page': instance.page,
-  'page_size': instance.pageSize,
-  'total_pages': instance.totalPages,
-};
+Map<String, dynamic> _$DatasetItemModelToJson(DatasetItemModel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'datasetId': instance.datasetId,
+      if (instance.name case final value?) 'name': value,
+      if (instance.description case final value?) 'description': value,
+      'files': instance.files.map((e) => e.toJson()).toList(),
+      'createTime': instance.createTime,
+    };
+
+ItemFileModel _$ItemFileModelFromJson(Map<String, dynamic> json) =>
+    $checkedCreate('ItemFileModel', json, ($checkedConvert) {
+      final val = ItemFileModel(
+        id: $checkedConvert('id', (v) => (v as num).toInt()),
+        itemId: $checkedConvert('itemId', (v) => (v as num).toInt()),
+        fileType: $checkedConvert('fileType', (v) => v as String),
+        fileUrl: $checkedConvert('fileUrl', (v) => v as String),
+        fileId: $checkedConvert('fileId', (v) => v as String?),
+        fileName: $checkedConvert('fileName', (v) => v as String?),
+        fileSize: $checkedConvert('fileSize', (v) => (v as num?)?.toInt()),
+        width: $checkedConvert('width', (v) => (v as num?)?.toInt()),
+        height: $checkedConvert('height', (v) => (v as num?)?.toInt()),
+      );
+      return val;
+    });
+
+Map<String, dynamic> _$ItemFileModelToJson(ItemFileModel instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'itemId': instance.itemId,
+      if (instance.fileId case final value?) 'fileId': value,
+      'fileType': instance.fileType,
+      'fileUrl': instance.fileUrl,
+      if (instance.fileName case final value?) 'fileName': value,
+      if (instance.fileSize case final value?) 'fileSize': value,
+      if (instance.width case final value?) 'width': value,
+      if (instance.height case final value?) 'height': value,
+    };
 
 ImageModel _$ImageModelFromJson(Map<String, dynamic> json) => $checkedCreate(
   'ImageModel',
@@ -102,84 +119,47 @@ ImageModel _$ImageModelFromJson(Map<String, dynamic> json) => $checkedCreate(
   ($checkedConvert) {
     final val = ImageModel(
       id: $checkedConvert('id', (v) => (v as num).toInt()),
-      datasetId: $checkedConvert('dataset_id', (v) => (v as num).toInt()),
+      datasetId: $checkedConvert('datasetId', (v) => (v as num).toInt()),
       filename: $checkedConvert('filename', (v) => v as String),
-      imageUrl: $checkedConvert('image_url', (v) => v as String),
+      imageUrl: $checkedConvert('fileUrl', (v) => v as String),
       imageType: $checkedConvert(
-        'image_type',
+        'fileType',
         (v) => $enumDecode(_$ImageTypeEnumMap, v),
       ),
-      width: $checkedConvert('width', (v) => (v as num).toInt()),
-      height: $checkedConvert('height', (v) => (v as num).toInt()),
+      createdAt: $checkedConvert('createTime', (v) => v as String),
+      width: $checkedConvert('width', (v) => (v as num?)?.toInt()),
+      height: $checkedConvert('height', (v) => (v as num?)?.toInt()),
       fileSize: $checkedConvert('file_size', (v) => (v as num?)?.toInt()),
       tags: $checkedConvert('tags', (v) => v as String?),
       description: $checkedConvert('description', (v) => v as String?),
-      createdAt: $checkedConvert(
-        'created_at',
-        (v) => DateTime.parse(v as String),
-      ),
     );
     return val;
   },
   fieldKeyMap: const {
-    'datasetId': 'dataset_id',
-    'imageUrl': 'image_url',
-    'imageType': 'image_type',
+    'imageUrl': 'fileUrl',
+    'imageType': 'fileType',
+    'createdAt': 'createTime',
     'fileSize': 'file_size',
-    'createdAt': 'created_at',
   },
 );
 
 Map<String, dynamic> _$ImageModelToJson(ImageModel instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'dataset_id': instance.datasetId,
+      'datasetId': instance.datasetId,
       'filename': instance.filename,
-      'image_url': instance.imageUrl,
-      'image_type': _$ImageTypeEnumMap[instance.imageType]!,
-      'width': instance.width,
-      'height': instance.height,
+      'fileUrl': instance.imageUrl,
+      'fileType': _$ImageTypeEnumMap[instance.imageType]!,
+      if (instance.width case final value?) 'width': value,
+      if (instance.height case final value?) 'height': value,
       if (instance.fileSize case final value?) 'file_size': value,
       if (instance.tags case final value?) 'tags': value,
       if (instance.description case final value?) 'description': value,
-      'created_at': instance.createdAt.toIso8601String(),
+      'createTime': instance.createdAt,
     };
 
 const _$ImageTypeEnumMap = {
-  ImageType.foggy: 'foggy',
+  ImageType.hazy: 'hazy',
   ImageType.clear: 'clear',
-  ImageType.annotated: 'annotated',
-};
-
-PaginatedImageResponse _$PaginatedImageResponseFromJson(
-  Map<String, dynamic> json,
-) => $checkedCreate(
-  'PaginatedImageResponse',
-  json,
-  ($checkedConvert) {
-    final val = PaginatedImageResponse(
-      list: $checkedConvert(
-        'list',
-        (v) => (v as List<dynamic>)
-            .map((e) => ImageModel.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      ),
-      total: $checkedConvert('total', (v) => (v as num).toInt()),
-      page: $checkedConvert('page', (v) => (v as num).toInt()),
-      pageSize: $checkedConvert('page_size', (v) => (v as num).toInt()),
-      totalPages: $checkedConvert('total_pages', (v) => (v as num).toInt()),
-    );
-    return val;
-  },
-  fieldKeyMap: const {'pageSize': 'page_size', 'totalPages': 'total_pages'},
-);
-
-Map<String, dynamic> _$PaginatedImageResponseToJson(
-  PaginatedImageResponse instance,
-) => <String, dynamic>{
-  'list': instance.list.map((e) => e.toJson()).toList(),
-  'total': instance.total,
-  'page': instance.page,
-  'page_size': instance.pageSize,
-  'total_pages': instance.totalPages,
+  ImageType.dehazed: 'dehazed',
 };

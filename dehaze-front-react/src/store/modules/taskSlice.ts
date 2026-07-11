@@ -1,37 +1,30 @@
 import {
-  ExportTaskAPI,
-  type DownloadTaskVO,
+  TaskAPI,
+  type TaskVO,
   type TaskQuery,
+  type TaskStatus,
 } from "dehaze-sdk-js";
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
-/** 任务状态类型 */
-export type TaskStatus =
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed"
-  | "cancelled";
-
 /** 终态状态集合（无需继续轮询） */
 export const TERMINAL_STATUSES: TaskStatus[] = [
-  "completed",
-  "failed",
-  "cancelled",
+  "COMPLETED",
+  "FAILED",
+  "CANCELLED",
 ];
 
 /** 需要轮询的状态集合 */
-export const POLLING_STATUSES: TaskStatus[] = ["pending", "processing"];
+export const POLLING_STATUSES: TaskStatus[] = ["PENDING", "PROCESSING"];
 
 interface TaskState {
   /** 任务列表 */
-  taskList: DownloadTaskVO[];
+  taskList: TaskVO[];
   /** 任务总数 */
   total: number;
   /** 列表加载状态 */
   loading: boolean;
   /** 当前查看的任务详情 */
-  currentTask: DownloadTaskVO | null;
+  currentTask: TaskVO | null;
   /** 轮询定时器ID */
   pollingTimer: number | null;
 }
@@ -48,7 +41,7 @@ const initialState: TaskState = {
 export const fetchTaskList = createAsyncThunk(
   "task/fetchList",
   async (queryParams: TaskQuery) => {
-    const response = await ExportTaskAPI.getList(queryParams);
+    const response = await TaskAPI.getPage(queryParams);
     return response;
   }
 );
@@ -57,7 +50,7 @@ export const fetchTaskList = createAsyncThunk(
 export const fetchTaskStatus = createAsyncThunk(
   "task/fetchStatus",
   async (taskId: string) => {
-    const response = await ExportTaskAPI.getTaskStatus(taskId);
+    const response = await TaskAPI.getStatus(taskId);
     return response;
   }
 );
@@ -66,7 +59,7 @@ export const fetchTaskStatus = createAsyncThunk(
 export const cancelTask = createAsyncThunk(
   "task/cancel",
   async (taskId: string) => {
-    await ExportTaskAPI.cancelTask(taskId);
+    await TaskAPI.cancel(taskId);
     return taskId;
   }
 );
@@ -76,7 +69,7 @@ const taskSlice = createSlice({
   initialState,
   reducers: {
     /** 设置当前查看的任务 */
-    setCurrentTask: (state, action: { payload: DownloadTaskVO | null }) => {
+    setCurrentTask: (state, action: { payload: TaskVO | null }) => {
       state.currentTask = action.payload;
     },
     /** 设置轮询定时器ID */
@@ -118,14 +111,14 @@ const taskSlice = createSlice({
         if (index !== -1) {
           state.taskList[index] = {
             ...state.taskList[index],
-            status: "cancelled",
+            status: "CANCELLED",
             completedAt: new Date().toISOString(),
           };
         }
         if (state.currentTask?.taskId === taskId) {
           state.currentTask = {
             ...state.currentTask,
-            status: "cancelled",
+            status: "CANCELLED",
             completedAt: new Date().toISOString(),
           };
         }

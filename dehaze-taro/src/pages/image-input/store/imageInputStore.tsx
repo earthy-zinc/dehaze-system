@@ -3,18 +3,23 @@
  * 使用 Context + Reducer 模式
  */
 
-import { createContext, useContext, useReducer, ReactNode, useCallback } from 'react'
+import { createContext, useContext, useReducer, ReactNode, useCallback, useRef, useEffect } from 'react'
 import Taro from '@tarojs/taro'
+import type { InputHistoryVO } from 'dehaze-sdk-js'
 import {
   InputMethod,
   SampleCategory,
   ImageData,
   SampleImage,
-  HistoryRecord,
 } from '../services/types'
-import { ImageInputService } from '../services/imageInput'
-import { HistoryService } from '../services/history'
-import { getSampleImagesByCategory } from '../services/sampleData'
+import { ImageInputService, isImageInputError } from '../services/imageInput'
+import {
+  getHistoryPage,
+  deleteHistoryRecord,
+  clearAllHistory,
+} from '../services/history'
+import { fetchSampleImages } from '../services/sampleData'
+import { ErrorCodes } from '../services/types'
 
 // 状态类型定义
 interface ImageInputState {
@@ -32,9 +37,10 @@ interface ImageInputState {
   // 样例图片
   sampleCategory: SampleCategory
   sampleLoading: boolean
+  sampleImages: SampleImage[]
 
   // 历史记录
-  historyRecords: HistoryRecord[]
+  historyRecords: InputHistoryVO[]
   historyLoading: boolean
 
   // 预览弹窗
@@ -50,7 +56,8 @@ type ImageInputAction =
   | { type: 'SET_UPLOAD_ERROR'; payload: string | null }
   | { type: 'SET_SAMPLE_CATEGORY'; payload: SampleCategory }
   | { type: 'SET_SAMPLE_LOADING'; payload: boolean }
-  | { type: 'SET_HISTORY_RECORDS'; payload: HistoryRecord[] }
+  | { type: 'SET_SAMPLE_IMAGES'; payload: SampleImage[] }
+  | { type: 'SET_HISTORY_RECORDS'; payload: InputHistoryVO[] }
   | { type: 'SET_HISTORY_LOADING'; payload: boolean }
   | { type: 'DELETE_HISTORY_RECORD'; payload: number }
   | { type: 'CLEAR_HISTORY' }
@@ -66,6 +73,7 @@ const initialState: ImageInputState = {
   uploadError: null,
   sampleCategory: 'all',
   sampleLoading: false,
+  sampleImages: [],
   historyRecords: [],
   historyLoading: false,
   previewVisible: false,
@@ -88,6 +96,8 @@ function imageInputReducer(state: ImageInputState, action: ImageInputAction): Im
       return { ...state, sampleCategory: action.payload }
     case 'SET_SAMPLE_LOADING':
       return { ...state, sampleLoading: action.payload }
+    case 'SET_SAMPLE_IMAGES':
+      return { ...state, sampleImages: action.payload }
     case 'SET_HISTORY_RECORDS':
       return { ...state, historyRecords: action.payload, historyLoading: false }
     case 'SET_HISTORY_LOADING':
@@ -133,6 +143,8 @@ export function useImageInput() {
   }
 
   const { state, dispatch } = context
+  // 用 ref 跟踪已加载过的样例分类，避免重复请求
+  const loadedSampleCategoryRef = useRef<SampleCategory | null>(null)
 
   // 切换输入方式
   const setActiveMethod = useCallback((method: InputMethod) => {
@@ -147,6 +159,17 @@ export function useImageInput() {
     }
   }, [])
 
+  // 统一错误处理
+  const handleError = useCallback((error: any, fallbackMsg: string) => {
+    if (isImageInputError(error) && error.code === ErrorCodes.USER_CANCEL) {
+      // 用户取消，不提示
+      return
+    }
+    const msg = isImageInputError(error) ? error.message : (error?.message || fallbackMsg)
+    dispatch({ type: 'SET_UPLOAD_ERROR', payload: msg })
+    Taro.showToast({ title: msg, icon: 'none' })
+  }, [])
+
   // 从相册选择图片
   const chooseImageFromAlbum = useCallback(async () => {
     try {
@@ -159,14 +182,11 @@ export function useImageInput() {
         setCurrentImage(imageData)
       }
     } catch (error: any) {
-      if (error.code !== 'USER_CANCEL') {
-        dispatch({ type: 'SET_UPLOAD_ERROR', payload: error.message })
-        Taro.showToast({ title: error.message, icon: 'none' })
-      }
+      handleError(error, '选择图片失败')
     } finally {
       dispatch({ type: 'SET_UPLOAD_LOADING', payload: false })
     }
-  }, [setCurrentImage])
+  }, [setCurrentImage, handleError])
 
   // 拍照
   const takePhoto = useCallback(async () => {
@@ -179,7 +199,7 @@ export function useImageInput() {
       if (!hasPermission) {
         const granted = await ImageInputService.requestCameraPermission()
         if (!granted) {
-          throw { message: '相机权限被拒绝' }
+          throw new Error('相机权限被拒绝')
         }
       }
 
@@ -187,14 +207,11 @@ export function useImageInput() {
       const imageData = await ImageInputService.processImageFile(tempFile)
       setCurrentImage(imageData)
     } catch (error: any) {
-      if (error.code !== 'USER_CANCEL') {
-        dispatch({ type: 'SET_UPLOAD_ERROR', payload: error.message })
-        Taro.showToast({ title: error.message, icon: 'none' })
-      }
+      handleError(error, '拍照失败')
     } finally {
       dispatch({ type: 'SET_UPLOAD_LOADING', payload: false })
     }
-  }, [setCurrentImage])
+  }, [setCurrentImage, handleError])
 
   // 选择样例图片
   const selectSampleImage = useCallback(async (sample: SampleImage) => {
@@ -209,28 +226,58 @@ export function useImageInput() {
 
       Taro.showToast({ title: '样例图片加载成功', icon: 'success' })
     } catch (error: any) {
-      Taro.showToast({ title: error.message || '加载失败', icon: 'none' })
+      handleError(error, '加载失败')
     } finally {
       dispatch({ type: 'SET_SAMPLE_LOADING', payload: false })
     }
-  }, [setCurrentImage])
+  }, [setCurrentImage, handleError])
 
-  // 切换样例分类
+  // 切换样例分类（触发重新加载）
   const setSampleCategory = useCallback((category: SampleCategory) => {
     dispatch({ type: 'SET_SAMPLE_CATEGORY', payload: category })
   }, [])
 
-  // 获取样例图片列表
-  const getSampleImages = useCallback((category: SampleCategory) => {
-    return getSampleImagesByCategory(category)
+  // 加载样例图片
+  const loadSampleImages = useCallback(async (category: SampleCategory) => {
+    try {
+      dispatch({ type: 'SET_SAMPLE_LOADING', payload: true })
+      const images = await fetchSampleImages(category)
+      dispatch({ type: 'SET_SAMPLE_IMAGES', payload: images })
+      loadedSampleCategoryRef.current = category
+    } catch (error) {
+      console.error('加载样例图片失败:', error)
+      dispatch({ type: 'SET_SAMPLE_IMAGES', payload: [] })
+    } finally {
+      dispatch({ type: 'SET_SAMPLE_LOADING', payload: false })
+    }
   }, [])
+
+  // 当分类变化时重新加载样例图片
+  useEffect(() => {
+    if (state.activeMethod === 'sample' && loadedSampleCategoryRef.current !== state.sampleCategory) {
+      loadSampleImages(state.sampleCategory)
+    }
+  }, [state.sampleCategory, state.activeMethod, loadSampleImages])
+
+  // 切换到样例 tab 时首次加载
+  useEffect(() => {
+    if (state.activeMethod === 'sample' && state.sampleImages.length === 0 && !state.sampleLoading) {
+      loadSampleImages(state.sampleCategory)
+    }
+  }, [state.activeMethod, state.sampleImages.length, state.sampleLoading, state.sampleCategory, loadSampleImages])
+
+  // 获取当前分类的样例图片（从 state 读取）
+  const getSampleImages = useCallback((category: SampleCategory): SampleImage[] => {
+    if (category === 'all') return state.sampleImages
+    return state.sampleImages.filter(s => s.category === category)
+  }, [state.sampleImages])
 
   // 加载历史记录
   const loadHistory = useCallback(async () => {
     try {
       dispatch({ type: 'SET_HISTORY_LOADING', payload: true })
-      const records = await HistoryService.getHistory()
-      dispatch({ type: 'SET_HISTORY_RECORDS', payload: records })
+      const { list } = await getHistoryPage()
+      dispatch({ type: 'SET_HISTORY_RECORDS', payload: list })
     } catch (error) {
       console.error('加载历史记录失败:', error)
       dispatch({ type: 'SET_HISTORY_RECORDS', payload: [] })
@@ -238,9 +285,9 @@ export function useImageInput() {
   }, [])
 
   // 删除历史记录
-  const deleteHistoryRecord = useCallback(async (id: number) => {
+  const deleteHistoryRecordHandler = useCallback(async (id: number) => {
     try {
-      await HistoryService.deleteRecord(id)
+      await deleteHistoryRecord(id)
       dispatch({ type: 'DELETE_HISTORY_RECORD', payload: id })
       Taro.showToast({ title: '已删除', icon: 'success' })
     } catch (error) {
@@ -257,7 +304,7 @@ export function useImageInput() {
         confirmColor: '#ef4444',
       })
       if (res.confirm) {
-        await HistoryService.clearHistory()
+        await clearAllHistory()
         dispatch({ type: 'CLEAR_HISTORY' })
         Taro.showToast({ title: '已清空', icon: 'success' })
       }
@@ -267,15 +314,16 @@ export function useImageInput() {
   }, [])
 
   // 选择历史记录
-  const selectHistoryRecord = useCallback((record: HistoryRecord) => {
-    // 从历史记录加载图片
+  const selectHistoryRecord = useCallback((record: InputHistoryVO) => {
+    // 从历史记录加载原图
+    const url = record.originalImageUrl || ''
     setCurrentImage({
-      url: record.originalImage,
-      path: record.originalImage,
+      url,
+      path: url,
       width: 0,
       height: 0,
       size: 0,
-      name: record.fileName || '历史图片',
+      name: '历史图片',
     })
   }, [setCurrentImage])
 
@@ -297,7 +345,7 @@ export function useImageInput() {
       return
     }
 
-    // 保存当前图片到全局状态（使用 Taro 的全局变量）
+    // 保存当前图片到全局状态
     Taro.setStorageSync('current_image', JSON.stringify(state.currentImage))
 
     // 跳转到算法选择页面
@@ -320,9 +368,10 @@ export function useImageInput() {
     takePhoto,
     selectSampleImage,
     setSampleCategory,
+    loadSampleImages,
     getSampleImages,
     loadHistory,
-    deleteHistoryRecord,
+    deleteHistoryRecord: deleteHistoryRecordHandler,
     clearHistory,
     selectHistoryRecord,
     setPreviewVisible,

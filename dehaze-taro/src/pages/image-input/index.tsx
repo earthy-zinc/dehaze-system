@@ -5,8 +5,7 @@
 
 import React, { useEffect } from 'react'
 import { View, Text } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { Bolt } from '@taroify/icons'
+import { Fire } from '@taroify/icons'
 
 // 组件导入
 import InputMethodTabs from './components/InputMethodTabs'
@@ -46,15 +45,17 @@ const ImageInputContent: React.FC = () => {
     }
   }, [state.activeMethod, loadHistory])
 
-  // 获取当前分类的样例图片
+  // 获取当前分类的样例图片（从 state 读取，由 store 异步加载）
   const sampleImages = getSampleImages(state.sampleCategory)
 
   // 快速体验 - 随机选择样例图片
   const handleQuickStart = () => {
-    const allSamples = getSampleImages('all')
-    if (allSamples.length > 0) {
-      const randomIndex = Math.floor(Math.random() * allSamples.length)
-      selectSampleImage(allSamples[randomIndex])
+    if (sampleImages.length > 0) {
+      const randomIndex = Math.floor(Math.random() * sampleImages.length)
+      selectSampleImage(sampleImages[randomIndex])
+    } else {
+      // 样例数据尚未加载，切换到样例 tab 触发加载
+      setActiveMethod('sample')
     }
   }
 
@@ -118,7 +119,7 @@ const ImageInputContent: React.FC = () => {
       <View className='quick-start-card' onClick={handleQuickStart}>
         <View className='quick-start-content'>
           <View className='quick-start-icon'>
-            <Bolt size='24' color='white' />
+            <Fire size='24' color='white' />
           </View>
           <View className='quick-start-text'>
             <Text className='quick-title'>快速体验</Text>

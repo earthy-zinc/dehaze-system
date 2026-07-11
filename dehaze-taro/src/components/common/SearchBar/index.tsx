@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { View, Input } from '@tarojs/components'
 import { Search } from '@taroify/icons'
 import './SearchBar.less'
@@ -21,16 +21,17 @@ const SearchBar: React.FC<SearchBarProps> = ({
   className = '',
 }) => {
   const [searchValue, setSearchValue] = useState(value)
-  const [isComposing, setIsComposing] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 防抖搜索
   const debouncedSearch = useCallback(
     (newValue: string) => {
-      const timer = setTimeout(() => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+      timerRef.current = setTimeout(() => {
         onSearch?.(newValue.trim())
       }, 500)
-
-      return () => clearTimeout(timer)
     },
     [onSearch]
   )
@@ -38,30 +39,22 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const handleInput = (e: any) => {
     const newValue = e.detail.value
     setSearchValue(newValue)
-
-    if (!isComposing) {
-      debouncedSearch(newValue)
-    }
+    debouncedSearch(newValue)
   }
 
   const handleConfirm = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+    }
     onSearch?.(searchValue.trim())
   }
 
   const handleClear = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+    }
     setSearchValue('')
     onClear?.()
-  }
-
-  const handleCompositionStart = () => {
-    setIsComposing(true)
-  }
-
-  const handleCompositionEnd = (e: any) => {
-    setIsComposing(false)
-    const newValue = e.detail.value
-    setSearchValue(newValue)
-    onSearch?.(newValue.trim())
   }
 
   return (
@@ -74,8 +67,6 @@ const SearchBar: React.FC<SearchBarProps> = ({
           value={searchValue}
           onInput={handleInput}
           onConfirm={handleConfirm}
-          onCompositionStart={handleCompositionStart}
-          onCompositionEnd={handleCompositionEnd}
         />
         {showClear && searchValue && (
           <View className="clear-btn" onClick={handleClear}>

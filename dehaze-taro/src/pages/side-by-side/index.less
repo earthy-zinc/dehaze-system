@@ -1,0 +1,207 @@
+.side-by-side-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f6fa;
+}
+
+/* 顶部导航 */
+.navbar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  .nav-back {
+    padding: 8px;
+    margin-left: -8px;
+  }
+
+  .nav-title {
+    flex: 1;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-right: 28px;
+  }
+}
+
+/* 模式切换标签 */
+.mode-tabs {
+  display: flex;
+  background: #fff;
+  padding: 0 16px 12px;
+  gap: 8px;
+
+  .mode-tab {
+    flex: 1;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-radius: 16px;
+    font-size: 13px;
+    color: #6b7280;
+
+    &.active {
+      background: #3b82f6;
+      color: #fff;
+      font-weight: 500;
+    }
+  }
+}
+
+/* 对比内容区域 */
+.compare-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 12px;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0;
+
+  .empty-text {
+    font-size: 16px;
+    color: #6b7280;
+    margin-bottom: 8px;
+  }
+
+  .empty-hint {
+    font-size: 13px;
+    color: #9ca3af;
+  }
+}
+
+/* 图片区块 */
+.image-section {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 8px;
+
+  .image-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid #f5f5f5;
+
+    .label-tag {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+
+      &.label-original {
+        background: #fef3c7;
+        color: #d97706;
+      }
+
+      &.label-result {
+        background: #d1fae5;
+        color: #059669;
+      }
+    }
+
+    .image-name {
+      flex: 1;
+      font-size: 13px;
+      color: #6b7280;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .image-wrapper {
+    width: 100%;
+
+    .compare-image {
+      width: 100%;
+    }
+  }
+}
+
+/* 分隔线 */
+.image-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+
+  .divider-line {
+    width: 40px;
+    height: 3px;
+    background: #d1d5db;
+    border-radius: 2px;
+  }
+}
+
+/* 处理信息卡片 */
+.info-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-top: 8px;
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+
+    .info-label {
+      font-size: 13px;
+      color: #9ca3af;
+    }
+
+    .info-value {
+      font-size: 13px;
+      color: #1f2937;
+      font-weight: 500;
+    }
+
+    .cache-hit {
+      color: #059669;
+    }
+  }
+}
+
+/* 底部操作栏 */
+.bottom-toolbar {
+  display: flex;
+  background: #fff;
+  padding: 8px 16px;
+  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04);
+
+  .tool-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 0;
+
+    .tool-icon {
+      font-size: 20px;
+    }
+
+    .tool-text {
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    &:active {
+      opacity: 0.7;
+    }
+  }
+}

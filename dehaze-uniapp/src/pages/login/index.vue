@@ -8,7 +8,7 @@
         <text class="version">1.10.1</text>
       </view>
 
-      <form class="form-container">
+      <form class="form-container" @submit.prevent="handleSubmit">
         <view class="form-group">
           <input
             v-model="formData.username"
@@ -34,7 +34,13 @@
               placeholder="请输入验证码"
             />
             <view class="captcha-image" @click="refreshCaptcha">
-              <text class="captcha-text">{{ captchaValue }}</text>
+              <image
+                v-if="captchaBase64"
+                :src="captchaBase64"
+                class="captcha-img"
+                mode="aspectFit"
+              />
+              <text v-else class="captcha-text">点击获取</text>
             </view>
           </view>
           <text v-if="captchaError" class="error-message">
@@ -68,20 +74,123 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref } from "vue";
+import { reactive, ref, onMounted } from "vue";
+import { useAuthStore } from "@/store/auth";
+import { navigateToHome } from "@/routers/guard";
+
+// ==================== 状态定义 ====================
 
 const loading = ref(false);
+const authStore = useAuthStore();
+
 const formData = reactive({
   username: "",
   password: "",
   captcha: "",
 });
 
-const captchaValue = ref("");
-const captchaError = ref("");
-const handleSubmit = () => {};
+/** 验证码缓存 key（登录时需要传回） */
+const captchaKey = ref("");
 
-const refreshCaptcha = () => {};
+/** 验证码图片 Base64 */
+const captchaBase64 = ref("");
+
+/** 验证码错误提示 */
+const captchaError = ref("");
+
+// ==================== 方法定义 ====================
+
+/** 获取验证码 */
+const refreshCaptcha = async () => {
+  captchaError.value = "";
+  captchaBase64.value = "";
+
+  try {
+    const result = await authStore.getCaptcha();
+    captchaKey.value = result.captchaKey;
+    captchaBase64.value = `data:image/png;base64,${result.captchaBase64}`;
+  } catch (error) {
+    captchaError.value = "获取验证码失败，请重试";
+    console.error("[Login] 获取验证码失败:", error);
+  }
+};
+
+/** 表单校验 */
+const validateForm = (): boolean => {
+  captchaError.value = "";
+
+  if (!formData.username.trim()) {
+    uni.showToast({ title: "请输入用户名", icon: "none" });
+    return false;
+  }
+  if (!formData.password.trim()) {
+    uni.showToast({ title: "请输入密码", icon: "none" });
+    return false;
+  }
+  if (!formData.captcha.trim()) {
+    captchaError.value = "请输入验证码";
+    return false;
+  }
+
+  return true;
+};
+
+/** 提交登录 */
+const handleSubmit = async () => {
+  if (!validateForm()) return;
+
+  loading.value = true;
+
+  try {
+    await authStore.login({
+      username: formData.username,
+      password: formData.password,
+      captchaKey: captchaKey.value,
+      captchaCode: formData.captcha,
+    });
+
+    uni.showToast({
+      title: "登录成功",
+      icon: "success",
+      duration: 1500,
+    });
+
+    // 延迟跳转，让用户看到成功提示
+    setTimeout(() => {
+      navigateToHome();
+    }, 1500);
+  } catch (error) {
+    const err = error as { msg?: string; message?: string };
+    const errorMsg = err?.msg || err?.message || "登录失败，请重试";
+
+    // 验证码错误时刷新验证码
+    if (errorMsg.includes("验证码")) {
+      captchaError.value = errorMsg;
+      refreshCaptcha();
+      formData.captcha = "";
+    } else {
+      uni.showToast({
+        title: errorMsg,
+        icon: "none",
+        duration: 2500,
+      });
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+// ==================== 生命周期 ====================
+
+onMounted(() => {
+  // 如果已登录，直接跳转首页
+  if (authStore.isLoggedIn) {
+    navigateToHome();
+    return;
+  }
+  // 自动获取验证码
+  refreshCaptcha();
+});
 </script>
 
 <style lang="scss" scoped>
@@ -163,15 +272,24 @@ const refreshCaptcha = () => {};
 
           .captcha-image {
             flex: 1;
-            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
             border: 1px solid #d9d9d9;
             border-radius: 8px;
             background-color: #f8f9fa;
             cursor: pointer;
-            text-align: center;
+            min-height: 44px;
+            overflow: hidden;
 
             &:hover {
               background-color: #e6f7e6;
+            }
+
+            .captcha-img {
+              width: 100%;
+              height: 100%;
             }
           }
 

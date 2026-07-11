@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../utils/responsive_utils.dart';
 import 'models/image_input_model.dart';
@@ -278,15 +279,6 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
 
   /// 跳转到算法选择页面
   void _goToAlgorithmSelect() {
-    // TODO: 实现跳转到算法选择页面
-    // context.go('/algorithm-select');
-
-    // 临时提示
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('图片已选择，即将跳转到算法选择页面'),
-        duration: Duration(seconds: 2),
-      ),
-    );
+    context.go('/algorithm-select');
   }
 }

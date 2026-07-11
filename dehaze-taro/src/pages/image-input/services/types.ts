@@ -5,8 +5,8 @@
 // 输入方式类型
 export type InputMethod = 'upload' | 'camera' | 'sample' | 'history'
 
-// 样例图片分类
-export type SampleCategory = 'all' | 'light' | 'medium' | 'heavy' | 'special'
+// 样例图片分类（按场景，对齐设计文档需求规格 §2.3.2）
+export type SampleCategory = 'all' | 'city' | 'nature' | 'portrait' | 'night'
 
 // 难度等级
 export type DifficultyLevel = '简单' | '中等' | '困难'
@@ -15,10 +15,11 @@ export type DifficultyLevel = '简单' | '中等' | '困难'
 export interface SampleImage {
   id: number
   name: string
-  url: string
+  url: string               // 图片访问 URL
+  thumbnailUrl?: string     // 缩略图 URL
   category: Exclude<SampleCategory, 'all'>
-  difficulty: DifficultyLevel
-  sceneType?: string        // 场景类型（城市/风景/建筑等）
+  sceneType?: string        // 场景类型
+  hazeLevel?: 'light' | 'medium' | 'heavy'  // 雾霾程度
   recommendAlgorithm?: string // 推荐算法
 }
 
@@ -34,28 +35,6 @@ export interface ImageData {
   sampleInfo?: SampleImage  // 样例图片信息（如果来自样例库）
   compressed?: boolean      // 是否已压缩
   originalSize?: number     // 原始大小（压缩前）
-}
-
-// 历史记录状态
-export type HistoryStatus = 'success' | 'failed' | 'processing'
-
-// 历史记录
-export interface HistoryRecord {
-  id: number
-  originalImage: string     // 原图缩略图 URL
-  resultImage?: string      // 结果图缩略图 URL
-  algorithm?: string        // 使用的算法名称
-  algorithmId?: string      // 算法 ID
-  timestamp: string         // 处理时间 ISO 格式
-  status: HistoryStatus
-  fileName?: string         // 原始文件名
-  processingTime?: number   // 处理耗时（毫秒）
-}
-
-// 分组后的历史记录
-export interface GroupedHistory {
-  title: string             // 分组标题（今天/昨天/最近7天/更早）
-  records: HistoryRecord[]
 }
 
 // Taro 临时文件
@@ -90,41 +69,42 @@ export interface UploadProgress {
   totalBytesExpectedToSend: number
 }
 
-// 历史存储接口（便于后续扩展云端同步）
-export interface IHistoryStorage {
-  getHistory(): Promise<HistoryRecord[]>
-  addRecord(record: Omit<HistoryRecord, 'id'>): Promise<void>
-  deleteRecord(id: number): Promise<void>
-  clearHistory(): Promise<void>
-}
-
 // 错误类型
-export interface ImageInputError {
+export class ImageInputError extends Error {
   code: string
-  message: string
   details?: any
+  constructor(code: string, message: string, details?: any) {
+    super(message)
+    this.name = 'ImageInputError'
+    this.code = code
+    this.details = details
+  }
 }
 
 // 错误码
 export const ErrorCodes = {
   FILE_TOO_LARGE: 'FILE_TOO_LARGE',
   UNSUPPORTED_FORMAT: 'UNSUPPORTED_FORMAT',
+  RESOLUTION_LOW: 'RESOLUTION_LOW',
   NETWORK_ERROR: 'NETWORK_ERROR',
   UPLOAD_FAILED: 'UPLOAD_FAILED',
   COMPRESS_FAILED: 'COMPRESS_FAILED',
   PERMISSION_DENIED: 'PERMISSION_DENIED',
   CAMERA_NOT_AVAILABLE: 'CAMERA_NOT_AVAILABLE',
+  USER_CANCEL: 'USER_CANCEL',
 } as const
 
 // 错误信息映射
 export const ErrorMessages: Record<string, string> = {
   [ErrorCodes.FILE_TOO_LARGE]: '图片大小超过20MB，请选择较小的图片',
   [ErrorCodes.UNSUPPORTED_FORMAT]: '不支持该图片格式，请选择JPG/PNG/WEBP/HEIC格式',
+  [ErrorCodes.RESOLUTION_LOW]: '图片分辨率过低，建议至少 640×480',
   [ErrorCodes.NETWORK_ERROR]: '网络连接失败，请检查网络后重试',
   [ErrorCodes.UPLOAD_FAILED]: '上传失败，请重试',
   [ErrorCodes.COMPRESS_FAILED]: '图片压缩失败，请重试',
   [ErrorCodes.PERMISSION_DENIED]: '相机/相册权限被拒绝，请在设置中开启',
   [ErrorCodes.CAMERA_NOT_AVAILABLE]: '相机不可用，请检查设备',
+  [ErrorCodes.USER_CANCEL]: '用户取消操作',
 }
 
 // 文件大小限制（字节）
@@ -136,3 +116,9 @@ export const FileSizeLimit = {
 
 // 支持的图片格式
 export const SupportedFormats = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif'] as const
+
+// 最低分辨率要求
+export const MinResolution = {
+  WIDTH: 640,
+  HEIGHT: 480,
+} as const

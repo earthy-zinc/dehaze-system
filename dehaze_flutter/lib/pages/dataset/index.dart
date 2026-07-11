@@ -303,10 +303,6 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
           SliverToBoxAdapter(
             child: TypeFilterTabs(
               selectedType: ref.watch(imageTypeFilterProvider),
-              totalCount: dataset.totalImages,
-              foggyCount: dataset.foggyCount,
-              clearCount: dataset.clearCount,
-              annotatedCount: dataset.annotatedCount,
               onTypeChanged: (type) {
                 ref.read(imageTypeFilterProvider.notifier).state = type;
                 ref.read(imageProvider.notifier).filterByType(type);
@@ -420,9 +416,9 @@ class _DatasetPageState extends ConsumerState<DatasetPage> {
   /// 显示图片查看器
   void _showImageViewer(ImageModel image) {
     final typeLabels = {
-      ImageType.foggy: '有雾图像',
-      ImageType.clear: '无雾图像',
-      ImageType.annotated: '标注图像',
+      ImageType.hazy: '有雾图像',
+      ImageType.clear: '清晰图像',
+      ImageType.dehazed: '去雾结果',
     };
 
     showDialog<void>(

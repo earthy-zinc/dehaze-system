@@ -4,7 +4,6 @@ import '../models/dataset_model.dart';
 
 /// 数据集信息卡片组件
 ///
-/// 与设计稿 dataset.css 的 dataset-info-card 样式对应
 /// 展示数据集详细信息和统计数据
 class DatasetInfoCard extends StatelessWidget {
   const DatasetInfoCard({required this.dataset, super.key});
@@ -16,7 +15,6 @@ class DatasetInfoCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isMobile = ResponsiveUtils.isMobile(context);
 
-    // 设计稿颜色 - teal 到 cyan 渐变
     const tealColor = Color(0xFF14B8A6);
     const cyanColor = Color(0xFF06B6D4);
 
@@ -64,62 +62,55 @@ class DatasetInfoCard extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // 统计信息网格 - 与设计稿 stats-grid 对应
-          _buildStatsGrid(context, isMobile),
+          // 信息网格
+          _buildInfoGrid(context, isMobile),
         ],
       ),
     );
   }
 
-  Widget _buildStatsGrid(BuildContext context, bool isMobile) {
-    final stats = [
-      _StatData('总计', dataset.totalImages),
-      _StatData('有雾', dataset.foggyCount),
-      _StatData('无雾', dataset.clearCount),
-      _StatData('标注', dataset.annotatedCount),
+  Widget _buildInfoGrid(BuildContext context, bool isMobile) {
+    final info = [
+      _InfoData('类型', dataset.type ?? '未分类'),
+      _InfoData('创建时间', dataset.createTime),
+      if (dataset.usageCount != null) _InfoData('使用次数', '${dataset.usageCount}'),
+      if (dataset.children.isNotEmpty)
+        _InfoData('子数据集', '${dataset.children.length}'),
     ];
 
-    return Row(
-      children: stats.map((stat) {
-        return Expanded(
-          child: _buildStatBox(context, stat.label, stat.value, isMobile),
-        );
-      }).toList(),
+    return Wrap(
+      spacing: 16,
+      runSpacing: 8,
+      children: info.map((item) => _buildInfoItem(item, isMobile)).toList(),
     );
   }
 
-  Widget _buildStatBox(
-    BuildContext context,
-    String label,
-    int value,
-    bool isMobile,
-  ) =>
-      Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
+  Widget _buildInfoItem(_InfoData item, bool isMobile) => Container(
         padding: EdgeInsets.symmetric(
-          vertical: isMobile ? 8 : 12,
-          horizontal: 4,
+          vertical: isMobile ? 6 : 8,
+          horizontal: 12,
         ),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Column(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              '$value',
+              '${item.label}:',
               style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: isMobile ? 18 : 24,
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(width: 4),
             Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 12,
+              item.value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -127,8 +118,8 @@ class DatasetInfoCard extends StatelessWidget {
       );
 }
 
-class _StatData {
-  const _StatData(this.label, this.value);
+class _InfoData {
+  const _InfoData(this.label, this.value);
   final String label;
-  final int value;
+  final String value;
 }

@@ -14,7 +14,10 @@
     <view v-if="uploading" class="upload-progress">
       <view class="progress-content">
         <up-loading-icon mode="circle" size="32" color="#3b82f6" />
-        <text class="progress-text">正在处理...</text>
+        <text class="progress-text">正在上传... {{ uploadProgress }}%</text>
+        <view class="progress-bar">
+          <view class="progress-fill" :style="{ width: uploadProgress + '%' }" />
+        </view>
       </view>
     </view>
   </view>
@@ -22,6 +25,8 @@
 
 <script lang="ts" setup>
 import { ref } from "vue";
+import { uploadImage } from "@/api/file";
+import { useProcessingStore } from "@/store/processing";
 import {
   MAX_FILE_SIZE,
   COMPRESS_THRESHOLD,
@@ -33,7 +38,10 @@ const emit = defineEmits<{
   (e: "select", data: ImageData): void;
 }>();
 
+const processingStore = useProcessingStore();
+
 const uploading = ref(false);
+const uploadProgress = ref(0);
 
 /** 选择图片 */
 const handleChooseImage = () => {
@@ -56,21 +64,21 @@ const handleChooseImage = () => {
       }
 
       uploading.value = true;
+      uploadProgress.value = 0;
 
       try {
         let finalPath = tempFilePath;
 
-        // 大于5MB自动压缩
+        // 大于 5MB 自动压缩
         if (tempFile.size > COMPRESS_THRESHOLD) {
           uni.showToast({
             title: "图片较大，正在压缩...",
             icon: "loading",
-            duration: 3000,
+            duration: 2000,
           });
 
           try {
-            const compressResult = await compressImage(tempFilePath);
-            finalPath = compressResult;
+            finalPath = await compressImage(tempFilePath);
           } catch (e) {
             console.warn("压缩失败，使用原图:", e);
           }
@@ -87,6 +95,29 @@ const handleChooseImage = () => {
           name: extractFileName(tempFilePath),
         };
 
+        processingStore.startUploading();
+
+        // 上传到后端
+        try {
+          const fileInfo = await uploadImage(imageData, (progress) => {
+            uploadProgress.value = progress;
+            processingStore.updateUploadProgress(progress);
+          });
+
+          imageData.fileId = fileInfo.id;
+          imageData.remoteUrl = fileInfo.url;
+
+          uni.showToast({ title: "上传成功", icon: "success" });
+        } catch (uploadErr) {
+          console.error("上传失败，使用本地图片:", uploadErr);
+          uni.showToast({
+            title: "上传失败，将使用本地图片处理",
+            icon: "none",
+            duration: 2000,
+          });
+        }
+
+        processingStore.setImage(imageData);
         emit("select", imageData);
       } catch (error) {
         console.error("处理图片失败:", error);
@@ -206,10 +237,26 @@ const extractFileName = (path: string): string => {
   flex-direction: column;
   align-items: center;
   gap: 16rpx;
+  width: 70%;
 }
 
 .progress-text {
   font-size: 28rpx;
   color: #3b82f6;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8rpx;
+  background: #e5e7eb;
+  border-radius: 4rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #6366f1);
+  border-radius: 4rpx;
+  transition: width 0.3s ease;
 }
 </style>

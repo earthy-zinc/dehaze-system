@@ -54,86 +54,54 @@ export const isSuperAdmin = (userRoles: string[]): boolean => {
 };
 
 /**
- * 权限装饰器工厂（用于函数）
- * @param permissions 需要的权限
- */
-export const requirePermission = (permissions: string | string[]) => {
-  return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
-    const originalMethod = descriptor.value;
-
-    descriptor.value = function(...args: any[]) {
-      // 在实际环境中，这里可以检查当前用户的权限
-      // 如果没有权限，可以抛出异常或返回错误
-      console.log(`检查权限: ${permissions}`);
-      return originalMethod.apply(this, args);
-    };
-
-    return descriptor;
-  };
-};
-
-/**
- * 角色装饰器工厂（用于函数）
- * @param roles 需要的角色
- */
-export const requireRole = (roles: string | string[]) => {
-  return (target: any, propertyKey: string, descriptor: PropertyDescriptor) => {
-    const originalMethod = descriptor.value;
-
-    descriptor.value = function(...args: any[]) {
-      // 在实际环境中，这里可以检查当前用户的角色
-      // 如果没有对应角色，可以抛出异常或返回错误
-      console.log(`检查角色: ${roles}`);
-      return originalMethod.apply(this, args);
-    };
-
-    return descriptor;
-  };
-};
-
-/**
  * 根据权限过滤菜单项
  * @param menus 菜单列表
  * @param permissions 用户权限列表
  * @param roles 用户角色列表
- * @returns 过滤后的菜单列表
+ * @returns 过滤后的菜单列表（不可变，返回新数组）
  */
 export const filterMenusByPermission = (
   menus: any[],
   permissions: string[],
   roles: string[]
 ): any[] => {
-  return menus.filter(menu => {
-    // 如果是超级管理员，直接通过
-    if (isSuperAdmin(roles)) {
+  return menus
+    .map(menu => {
+      // 如果是超级管理员，直接通过
+      if (isSuperAdmin(roles)) {
+        return menu;
+      }
+
+      // 检查菜单权限
+      if (menu.meta?.permissions) {
+        const hasMenuPermission = hasPermission(permissions, menu.meta.permissions);
+        if (!hasMenuPermission) {
+          return null;
+        }
+      }
+
+      // 检查菜单角色
+      if (menu.meta?.roles) {
+        const hasMenuRole = hasRole(roles, menu.meta.roles);
+        if (!hasMenuRole) {
+          return null;
+        }
+      }
+
+      // 递归检查子菜单（不可变，返回新对象）
+      if (menu.children && menu.children.length > 0) {
+        const filteredChildren = filterMenusByPermission(menu.children, permissions, roles);
+        return { ...menu, children: filteredChildren };
+      }
+
+      return menu;
+    })
+    .filter(menu => {
+      if (!menu) return false;
+      // 如果有子菜单但都被过滤掉了，则不显示
+      if (menu.children && menu.children.length === 0) return false;
       return true;
-    }
-
-    // 检查菜单权限
-    if (menu.meta?.permissions) {
-      const hasMenuPermission = hasPermission(permissions, menu.meta.permissions);
-      if (!hasMenuPermission) {
-        return false;
-      }
-    }
-
-    // 检查菜单角色
-    if (menu.meta?.roles) {
-      const hasMenuRole = hasRole(roles, menu.meta.roles);
-      if (!hasMenuRole) {
-        return false;
-      }
-    }
-
-    // 递归检查子菜单
-    if (menu.children && menu.children.length > 0) {
-      menu.children = filterMenusByPermission(menu.children, permissions, roles);
-      // 如果所有子菜单都被过滤掉了，那么当前菜单也不显示
-      return menu.children.length > 0;
-    }
-
-    return true;
-  });
+    });
 };
 
 /**

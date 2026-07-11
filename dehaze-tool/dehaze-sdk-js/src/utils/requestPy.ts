@@ -14,11 +14,11 @@ const service = axios.create({
 
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const accessToken = localStorage.getItem(TOKEN_KEY);
+    const interceptors = pythonConfigManager.getInterceptors();
+    const accessToken = interceptors.getToken?.() ?? localStorage.getItem(TOKEN_KEY);
     if (accessToken) {
       config.headers.Authorization = accessToken;
     }
-    const interceptors = pythonConfigManager.getInterceptors();
     const otherConfig = interceptors.onRequest?.(config) || {};
     return { ...config, ...otherConfig };
   },

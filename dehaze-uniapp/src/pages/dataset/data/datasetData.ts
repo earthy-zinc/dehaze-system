@@ -258,67 +258,61 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
- * 模拟获取数据集列表
+ * 获取数据集列表（优先调用后端，失败时使用 Mock 降级）
  */
 export async function fetchDatasets(
   page = 1,
   search = ""
 ): Promise<{ code: number; data: PaginatedResult<Dataset> }> {
-  // 模拟网络延迟
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  try {
+    const { getDatasets } = await import("@/api/dataset");
+    const result = await getDatasets(page, search);
+    return { code: 0, data: result };
+  } catch (error) {
+    console.warn("[Dataset] 后端不可用，使用 Mock 数据:", error);
 
-  let filteredDatasets = [...MOCK_DATASETS];
-
-  // 搜索过滤
-  if (search) {
-    const keyword = search.toLowerCase();
-    filteredDatasets = filteredDatasets.filter(
-      (d) =>
-        d.name.toLowerCase().includes(keyword) ||
-        (d.description && d.description.toLowerCase().includes(keyword))
-    );
+    // Mock 降级
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    let filtered = [...MOCK_DATASETS];
+    if (search) {
+      const kw = search.toLowerCase();
+      filtered = filtered.filter((d) => d.name.toLowerCase().includes(kw) || d.description?.toLowerCase().includes(kw));
+    }
+    const pageSize = 10;
+    const start = (page - 1) * pageSize;
+    return {
+      code: 0,
+      data: {
+        list: filtered.slice(start, start + pageSize),
+        total: filtered.length,
+        page,
+        page_size: pageSize,
+        total_pages: Math.ceil(filtered.length / pageSize),
+      },
+    };
   }
-
-  const pageSize = 10;
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const list = filteredDatasets.slice(start, end);
-
-  return {
-    code: 0,
-    data: {
-      list,
-      total: filteredDatasets.length,
-      page,
-      page_size: pageSize,
-      total_pages: Math.ceil(filteredDatasets.length / pageSize),
-    },
-  };
 }
 
 /**
- * 模拟获取数据集详情
+ * 获取数据集详情（优先调用后端，失败时使用 Mock 降级）
  */
 export async function fetchDatasetDetail(
   datasetId: number
 ): Promise<{ code: number; data?: Dataset; message?: string }> {
-  // 模拟网络延迟
-  await new Promise((resolve) => setTimeout(resolve, 200));
-
-  const dataset = MOCK_DATASETS.find((d) => d.id === datasetId);
-
-  if (!dataset) {
-    return { code: 404, message: "数据集不存在" };
+  try {
+    const { getDatasetDetail } = await import("@/api/dataset");
+    const detail = await getDatasetDetail(datasetId);
+    return { code: 0, data: detail };
+  } catch {
+    // Mock 降级
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const dataset = MOCK_DATASETS.find((d) => d.id === datasetId);
+    return dataset ? { code: 0, data: dataset } : { code: 404, message: "数据集不存在" };
   }
-
-  return {
-    code: 0,
-    data: dataset,
-  };
 }
 
 /**
- * 模拟获取数据集图片
+ * 获取数据集图片（优先调用后端，失败时使用 Mock 降级）
  */
 export async function fetchDatasetImages(
   datasetId: number,
@@ -326,43 +320,60 @@ export async function fetchDatasetImages(
   imageType: ImageType = "all",
   search = ""
 ): Promise<{ code: number; data: PaginatedResult<DatasetImage> }> {
-  // 模拟网络延迟
-  await new Promise((resolve) => setTimeout(resolve, 400));
-
-  // 生成该数据集的所有图片
-  let allImages = generateMockImages(datasetId, 60);
-
-  // 类型过滤
-  if (imageType !== "all") {
-    allImages = allImages.filter((img) => img.image_type === imageType);
-  }
-
-  // 搜索过滤
-  if (search) {
-    const keyword = search.toLowerCase();
-    allImages = allImages.filter(
-      (img) =>
-        img.filename.toLowerCase().includes(keyword) ||
-        (img.tags && img.tags.toLowerCase().includes(keyword)) ||
-        (img.description && img.description.toLowerCase().includes(keyword))
-    );
-  }
-
-  const pageSize = 20;
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const list = allImages.slice(start, end);
-
-  return {
-    code: 0,
-    data: {
-      list,
-      total: allImages.length,
+  try {
+    const { getDatasetItems } = await import("@/api/dataset");
+    const result = await getDatasetItems(datasetId, {
       page,
-      page_size: pageSize,
-      total_pages: Math.ceil(allImages.length / pageSize),
-    },
-  };
+      page_size: 20,
+      image_type: imageType,
+      search: search || undefined,
+    });
+
+    // 转换后端数据格式到前端格式
+    return {
+      code: 0,
+      data: {
+        list: result.list.map((item) => ({
+          id: item.id,
+          dataset_id: item.dataset_id,
+          filename: item.filename,
+          image_url: item.image_url,
+          image_type: item.image_type,
+          width: item.width,
+          height: item.height,
+          file_size: item.file_size,
+          tags: item.tags || "",
+          description: item.description || "",
+          created_at: item.created_at,
+        })),
+        total: result.total,
+        page: result.page,
+        page_size: result.page_size,
+        total_pages: result.total_pages,
+      },
+    };
+  } catch {
+    // Mock 降级
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    let allImages = generateMockImages(datasetId, 60);
+    if (imageType !== "all") allImages = allImages.filter((img) => img.image_type === imageType);
+    if (search) {
+      const kw = search.toLowerCase();
+      allImages = allImages.filter((img) => img.filename.toLowerCase().includes(kw) || img.tags?.toLowerCase().includes(kw));
+    }
+    const pageSize = 20;
+    const start = (page - 1) * pageSize;
+    return {
+      code: 0,
+      data: {
+        list: allImages.slice(start, start + pageSize),
+        total: allImages.length,
+        page,
+        page_size: pageSize,
+        total_pages: Math.ceil(allImages.length / pageSize),
+      },
+    };
+  }
 }
 
 /** 图片类型标签映射 */

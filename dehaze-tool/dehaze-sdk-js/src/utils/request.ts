@@ -19,7 +19,8 @@ const service = axios.create({
 
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const accessToken = localStorage.getItem(TOKEN_KEY);
+    const interceptors = configManager.getInterceptors();
+    const accessToken = interceptors.getToken?.() ?? localStorage.getItem(TOKEN_KEY);
     if (accessToken) {
       // 如果 token 不包含 Bearer 前缀，则添加
       config.headers.Authorization = accessToken.startsWith("Bearer ")
@@ -27,7 +28,6 @@ service.interceptors.request.use(
         : `Bearer ${accessToken}`;
     }
 
-    const interceptors = configManager.getInterceptors();
     // 调用自定义拦截器，直接使用返回的 config（如果有的话）
     const modifiedConfig = interceptors.onRequest?.(config);
     return modifiedConfig || config;

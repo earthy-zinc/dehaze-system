@@ -4,7 +4,7 @@
 
 import React from 'react'
 import { View, Text } from '@tarojs/components'
-import { CameraOutlined } from '@taroify/icons'
+import { Photograph } from '@taroify/icons'
 import { Loading } from '@taroify/core'
 import './CameraArea.less'
 
@@ -24,7 +24,7 @@ const CameraArea: React.FC<CameraAreaProps> = ({ onCapture, loading = false }) =
     <View className='camera-area'>
       <View className='camera-zone'>
         <View className='camera-icon'>
-          <CameraOutlined size='64' color='#9ca3af' />
+          <Photograph size='64' color='#9ca3af' />
         </View>
 
         <Text className='camera-desc'>点击下方按钮打开相机</Text>
@@ -41,7 +41,7 @@ const CameraArea: React.FC<CameraAreaProps> = ({ onCapture, loading = false }) =
             </>
           ) : (
             <>
-              <CameraOutlined size='20' />
+              <Photograph size='20' />
               <Text>打开相机</Text>
             </>
           )}

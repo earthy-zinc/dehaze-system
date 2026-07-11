@@ -251,7 +251,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const userInfo = await UserAPI.getInfo()
 
       // 存储到本地
-      await storage.setToken(token);
+      storage.setToken(token);
       await storage.setUserInfo(userInfo);
       await storage.setPermissions(userInfo.perms || []);
       await storage.setRoles(userInfo.roles || []);
@@ -281,7 +281,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.error('登出接口调用失败:', error);
     } finally {
       // 清除本地存储
-      await storage.removeToken();
+      storage.removeToken();
       await storage.removeItem('userInfo');
       await storage.removeItem('permissions');
       await storage.removeItem('roles');
@@ -294,7 +294,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // 初始化认证状态
   const initAuth = async (): Promise<void> => {
     try {
-      const token = await storage.getToken();
+      const token = storage.getToken();
       const userInfo = await storage.getUserInfo();
       const permissions = await storage.getPermissions();
       const roles = await storage.getRoles();

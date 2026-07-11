@@ -20,7 +20,6 @@ import {
   Card,
   Dropdown,
   Form,
-  Menu,
   Radio,
   Slider,
   Typography,
@@ -177,27 +176,43 @@ const AlgorithmToolBar: React.FC<AlgorithmToolBarProps> = ({
     }
   };
 
-  const renderMoreMenu = () => (
-    <Menu>
-      <Menu.Item onClick={handleMagnifierToggle}>
-        {magnifierEnabled ? "关闭" : "开启"}放大镜
-      </Menu.Item>
-      <Menu.Item onClick={handleDividerToggle}>
-        {dividerEnabled ? "关闭" : "开启"}拖拽线
-      </Menu.Item>
-      <Menu.Item onClick={() => handleFilterToggle("brightness")}>
-        {filterStates.brightnessEnabled ? "关闭" : "开启"}亮度调整
-      </Menu.Item>
-      <Menu.Item onClick={() => handleFilterToggle("contrast")}>
-        {filterStates.contrastEnabled ? "关闭" : "开启"}对比度调整
-      </Menu.Item>
-      <Menu.Item onClick={() => handleFilterToggle("saturate")}>
-        {filterStates.saturateEnabled ? "关闭" : "开启"}饱和度调整
-      </Menu.Item>
-      <Menu.Item onClick={onSelectFromDataset}>从现有数据集中选择</Menu.Item>
-      <Menu.Item onClick={onEval}>评估结果</Menu.Item>
-    </Menu>
-  );
+  const renderMoreMenu = () => [
+    {
+      key: "magnifier",
+      label: `${magnifierEnabled ? "关闭" : "开启"}放大镜`,
+      onClick: handleMagnifierToggle,
+    },
+    {
+      key: "divider",
+      label: `${dividerEnabled ? "关闭" : "开启"}拖拽线`,
+      onClick: handleDividerToggle,
+    },
+    {
+      key: "brightness",
+      label: `${filterStates.brightnessEnabled ? "关闭" : "开启"}亮度调整`,
+      onClick: () => handleFilterToggle("brightness"),
+    },
+    {
+      key: "contrast",
+      label: `${filterStates.contrastEnabled ? "关闭" : "开启"}对比度调整`,
+      onClick: () => handleFilterToggle("contrast"),
+    },
+    {
+      key: "saturate",
+      label: `${filterStates.saturateEnabled ? "关闭" : "开启"}饱和度调整`,
+      onClick: () => handleFilterToggle("saturate"),
+    },
+    {
+      key: "dataset",
+      label: "从现有数据集中选择",
+      onClick: onSelectFromDataset,
+    },
+    {
+      key: "eval",
+      label: "评估结果",
+      onClick: onEval,
+    },
+  ];
 
   return (
     <div className={styles.sidebarContainer}>
@@ -210,7 +225,7 @@ const AlgorithmToolBar: React.FC<AlgorithmToolBarProps> = ({
         </Typography.Text>
 
         <div className={styles.buttonGroup}>
-          <Dropdown overlay={renderMoreMenu} trigger={["click"]}>
+          <Dropdown menu={{ items: renderMoreMenu() }} trigger={["click"]}>
             <Button>
               更多功能 <DownOutlined />
             </Button>

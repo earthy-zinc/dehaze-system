@@ -132,7 +132,8 @@ const AlgorithmFormDialog = forwardRef<AlgorithmFormDialogRef, Props>(
         confirmLoading={confirmLoading}
         okText="保存"
         cancelText="取消"
-        destroyOnClose
+        destroyOnHidden
+        forceRender
         onOk={handleSubmit}
         onCancel={handleCancel}
       >

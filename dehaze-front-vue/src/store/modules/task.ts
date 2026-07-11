@@ -1,16 +1,16 @@
 // 任务管理 store
-import { DownloadTaskVO, ExportTaskAPI, TaskQuery } from "dehaze-sdk-js";
+import { TaskAPI, TaskVO, TaskQuery } from "dehaze-sdk-js";
 
 // 需要轮询的任务状态
-const POLLING_STATUSES = ["pending", "processing"];
+const POLLING_STATUSES = ["PENDING", "PROCESSING"];
 // 轮询间隔（毫秒）
 const POLLING_INTERVAL = 3000;
 
 export const useTaskStore = defineStore("task", () => {
-  const taskList = ref<DownloadTaskVO[]>([]);
+  const taskList = ref<TaskVO[]>([]);
   const total = ref(0);
   const loading = ref(false);
-  const currentTask = ref<DownloadTaskVO | null>(null);
+  const currentTask = ref<TaskVO | null>(null);
   // 轮询定时器（内部私有，不导出）
   let pollingTimer: ReturnType<typeof setInterval> | null = null;
   // 轮询连续失败计数（避免接口持续失败时无限轮询）
@@ -21,7 +21,7 @@ export const useTaskStore = defineStore("task", () => {
   const getTaskList = async (queryParams?: TaskQuery) => {
     loading.value = true;
     try {
-      const data = await ExportTaskAPI.getList(queryParams);
+      const data = await TaskAPI.getPage(queryParams);
       taskList.value = data.list;
       total.value = data.total;
     } finally {
@@ -31,13 +31,13 @@ export const useTaskStore = defineStore("task", () => {
 
   /** 取消任务 */
   const cancelTask = async (taskId: string) => {
-    await ExportTaskAPI.cancelTask(taskId);
+    await TaskAPI.cancel(taskId);
   };
 
   /** 下载任务结果 */
   const downloadResult = async (taskId: string) => {
-    const task = await ExportTaskAPI.getTaskStatus(taskId);
-    if (task.status !== "completed") {
+    const task = await TaskAPI.getStatus(taskId);
+    if (task.status !== "COMPLETED") {
       throw new Error("任务未完成，无法下载");
     }
     if (!task.downloadUrl) {
@@ -65,7 +65,7 @@ export const useTaskStore = defineStore("task", () => {
       return;
     }
     const results = await Promise.all(
-      activeTasks.map((t) => ExportTaskAPI.getTaskStatus(t.taskId))
+      activeTasks.map((t) => TaskAPI.getStatus(t.taskId))
     );
     pollingFailCount = 0;
     results.forEach((updated, index) => {

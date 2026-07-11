@@ -1,0 +1,278 @@
+.algo-manage-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #f5f5f5;
+}
+
+// ==================== 搜索栏 ====================
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f0f0f0;
+
+  .search-icon {
+    flex-shrink: 0;
+    margin-right: 12px;
+    color: #bfbfbf;
+  }
+
+  .search-input {
+    flex: 1;
+    font-size: 28px;
+    color: #262626;
+  }
+}
+
+// ==================== 状态筛选 ====================
+
+.filter-bar {
+  white-space: nowrap;
+  background: #fff;
+  padding: 0 12px;
+  border-bottom: 1px solid #f0f0f0;
+
+  .filter-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    font-size: 26px;
+    color: #595959;
+    position: relative;
+
+    &.active {
+      color: #1890ff;
+      font-weight: 500;
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 32px;
+        height: 4px;
+        background: #1890ff;
+        border-radius: 2px;
+      }
+    }
+  }
+}
+
+// ==================== 算法列表 ====================
+
+.algo-list {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.loading-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 80px 0;
+}
+
+.empty-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 120px 0;
+
+  .empty-text {
+    font-size: 28px;
+    color: #bfbfbf;
+  }
+}
+
+// ==================== 算法节点 ====================
+
+.algo-node {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  .node-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .node-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+
+      .node-icon {
+        font-size: 28px;
+        flex-shrink: 0;
+      }
+
+      .node-name {
+        font-size: 28px;
+        font-weight: 500;
+        color: #262626;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .node-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+
+      .node-type,
+      .node-version {
+        font-size: 22px;
+        color: #8c8c8c;
+      }
+    }
+  }
+
+  .node-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #f5f5f5;
+    justify-content: flex-end;
+  }
+}
+
+// ==================== 详情弹窗 ====================
+
+.detail-popup {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.detail-content {
+  padding: 32px 24px;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 24px;
+
+  .detail-title {
+    font-size: 34px;
+    font-weight: 600;
+    color: #262626;
+  }
+
+  .detail-close {
+    font-size: 28px;
+    color: #1890ff;
+  }
+}
+
+.detail-section {
+  margin-bottom: 32px;
+
+  .section-title {
+    display: block;
+    font-size: 28px;
+    font-weight: 600;
+    color: #595959;
+    margin-bottom: 16px;
+    padding-left: 12px;
+    border-left: 6px solid #1890ff;
+  }
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #f5f5f5;
+
+  .detail-label {
+    font-size: 26px;
+    color: #8c8c8c;
+    flex-shrink: 0;
+  }
+
+  .detail-value {
+    font-size: 26px;
+    color: #262626;
+    text-align: right;
+    word-break: break-all;
+    max-width: 60%;
+  }
+}
+
+.detail-footer {
+  padding-top: 32px;
+  display: flex;
+  gap: 16px;
+}
+
+// ==================== 审核弹窗 ====================
+
+.audit-popup {
+  width: 600px;
+  max-width: 90vw;
+}
+
+.audit-content {
+  padding: 32px 24px;
+
+  .audit-title {
+    display: block;
+    font-size: 34px;
+    font-weight: 600;
+    color: #262626;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .audit-name {
+    display: block;
+    font-size: 28px;
+    color: #595959;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+}
+
+.audit-remark {
+  margin-bottom: 24px;
+
+  .remark-label {
+    display: block;
+    font-size: 26px;
+    color: #595959;
+    margin-bottom: 12px;
+  }
+
+  .remark-input {
+    width: 100%;
+    min-height: 120px;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    padding: 16px;
+    font-size: 26px;
+    color: #262626;
+  }
+}
+
+.audit-footer {
+  display: flex;
+  gap: 16px;
+}

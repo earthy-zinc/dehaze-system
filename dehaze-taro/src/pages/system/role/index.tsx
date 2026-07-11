@@ -143,7 +143,7 @@ const RoleListPage: React.FC = () => {
           <ArrowLeft onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission('system:role:create') && (
+          {hasPermission('sys:role:add') && (
             <Add onClick={handleAdd} />
           )}
         </Navbar.NavRight>
@@ -168,7 +168,7 @@ const RoleListPage: React.FC = () => {
           <Empty>
             <Empty.Image />
             <Empty.Description>暂无角色数据</Empty.Description>
-            {hasPermission('system:role:create') && (
+            {hasPermission('sys:role:add') && (
               <Button
                 className="empty-state__button"
                 color="primary"
@@ -183,7 +183,7 @@ const RoleListPage: React.FC = () => {
           roles.map((role) => (
             <SwipeCell key={role.id} className="role-swipe-cell">
               <SwipeCell.Actions side="right">
-                {hasPermission('system:role:permission') && (
+                {hasPermission('sys:role:permission') && (
                   <Button
                     className="action-btn permission-btn"
                     size="small"
@@ -193,7 +193,7 @@ const RoleListPage: React.FC = () => {
                     权限
                   </Button>
                 )}
-                {hasPermission('system:role:update') && (
+                {hasPermission('sys:role:edit') && (
                   <Button
                     className="action-btn edit-btn"
                     size="small"
@@ -203,7 +203,7 @@ const RoleListPage: React.FC = () => {
                     编辑
                   </Button>
                 )}
-                {hasPermission('system:role:delete') && (
+                {hasPermission('sys:role:delete') && (
                   <Button
                     className="action-btn delete-btn"
                     size="small"

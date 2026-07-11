@@ -4,9 +4,8 @@ import './ImageCard.less'
 
 export interface ImageCardProps {
   src: string
-  alt?: string
   filename?: string
-  imageType?: 'foggy' | 'clear' | 'annotated'
+  imageType?: 'clear' | 'hazy'
   width?: number
   height?: number
   fileSize?: number
@@ -17,7 +16,6 @@ export interface ImageCardProps {
 
 const ImageCard: React.FC<ImageCardProps> = ({
   src,
-  alt = '',
   filename,
   imageType,
   width,
@@ -29,18 +27,16 @@ const ImageCard: React.FC<ImageCardProps> = ({
 }) => {
   const getTypeLabel = (type?: string) => {
     const labels = {
-      foggy: '有雾',
+      hazy: '有雾',
       clear: '无雾',
-      annotated: '标注',
     }
     return labels[type as keyof typeof labels] || ''
   }
 
   const getTypeClass = (type?: string) => {
     const classes = {
-      foggy: 'type-badge-foggy',
+      hazy: 'type-badge-hazy',
       clear: 'type-badge-clear',
-      annotated: 'type-badge-annotated',
     }
     return classes[type as keyof typeof classes] || ''
   }
@@ -57,7 +53,6 @@ const ImageCard: React.FC<ImageCardProps> = ({
       <View className="image-wrapper">
         <Image
           src={src}
-          alt={alt}
           className="image"
           mode="aspectFill"
           lazyLoad

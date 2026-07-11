@@ -4,7 +4,7 @@
 
 import React from 'react'
 import { View, Text } from '@tarojs/components'
-import { PhotoOutlined, CameraOutlined, PhotoFail, ManagerOutlined } from '@taroify/icons'
+import { PhotoOutlined, Photograph, Photo, ManagerOutlined } from '@taroify/icons'
 import { InputMethod } from '../../services/types'
 import './InputMethodTabs.less'
 
@@ -24,13 +24,13 @@ const methodConfig = [
     key: 'camera' as InputMethod,
     label: '拍照',
     subLabel: '实时拍摄',
-    icon: CameraOutlined,
+    icon: Photograph,
   },
   {
     key: 'sample' as InputMethod,
     label: '样例图片',
     subLabel: '快速体验',
-    icon: PhotoFail,
+    icon: Photo,
   },
   {
     key: 'history' as InputMethod,

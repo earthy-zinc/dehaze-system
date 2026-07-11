@@ -12,13 +12,8 @@ import {
   ErrorMessages,
   FileSizeLimit,
   SupportedFormats,
+  MinResolution,
 } from './types'
-
-// 检查文件格式是否支持
-const isSupportedFormat = (path: string): boolean => {
-  const ext = path.split('.').pop()?.toLowerCase() || ''
-  return SupportedFormats.includes(ext as any)
-}
 
 // 获取文件扩展名
 const getFileExtension = (path: string): string => {
@@ -36,31 +31,37 @@ export const formatFileSize = (bytes: number): string => {
   }
 }
 
+// 判断错误是否为 ImageInputError
+const isImageInputError = (err: any): err is ImageInputError => {
+  return err instanceof ImageInputError || (err && typeof err.code === 'string' && err.code in ErrorCodes)
+}
+
 export const ImageInputService = {
   /**
    * 从相册选择图片
    */
   chooseImage: async (count: number = 1): Promise<TempFile[]> => {
     try {
-      const res = await Taro.chooseImage({
+      const res = await Taro.chooseMedia({
         count,
-        sizeType: ['original', 'compressed'],
+        mediaType: ['image'],
         sourceType: ['album'],
+        sizeType: ['original', 'compressed'],
       })
 
       return res.tempFiles.map(file => ({
-        path: file.path,
+        path: file.tempFilePath,
         size: file.size,
-        type: file.type,
+        type: file.fileType,
       }))
     } catch (error: any) {
       if (error.errMsg?.includes('cancel')) {
-        throw { code: 'USER_CANCEL', message: '用户取消选择' } as ImageInputError
+        throw new ImageInputError(ErrorCodes.USER_CANCEL, ErrorMessages[ErrorCodes.USER_CANCEL])
       }
-      throw {
-        code: ErrorCodes.PERMISSION_DENIED,
-        message: ErrorMessages[ErrorCodes.PERMISSION_DENIED],
-      } as ImageInputError
+      throw new ImageInputError(
+        ErrorCodes.PERMISSION_DENIED,
+        ErrorMessages[ErrorCodes.PERMISSION_DENIED]
+      )
     }
   },
 
@@ -69,32 +70,33 @@ export const ImageInputService = {
    */
   takePhoto: async (): Promise<TempFile> => {
     try {
-      const res = await Taro.chooseImage({
+      const res = await Taro.chooseMedia({
         count: 1,
-        sizeType: ['original'],
+        mediaType: ['image'],
         sourceType: ['camera'],
+        sizeType: ['original'],
       })
 
       const file = res.tempFiles[0]
       return {
-        path: file.path,
+        path: file.tempFilePath,
         size: file.size,
-        type: file.type,
+        type: file.fileType,
       }
     } catch (error: any) {
       if (error.errMsg?.includes('cancel')) {
-        throw { code: 'USER_CANCEL', message: '用户取消拍照' } as ImageInputError
+        throw new ImageInputError(ErrorCodes.USER_CANCEL, '用户取消拍照')
       }
       if (error.errMsg?.includes('auth')) {
-        throw {
-          code: ErrorCodes.PERMISSION_DENIED,
-          message: ErrorMessages[ErrorCodes.PERMISSION_DENIED],
-        } as ImageInputError
+        throw new ImageInputError(
+          ErrorCodes.PERMISSION_DENIED,
+          ErrorMessages[ErrorCodes.PERMISSION_DENIED]
+        )
       }
-      throw {
-        code: ErrorCodes.CAMERA_NOT_AVAILABLE,
-        message: ErrorMessages[ErrorCodes.CAMERA_NOT_AVAILABLE],
-      } as ImageInputError
+      throw new ImageInputError(
+        ErrorCodes.CAMERA_NOT_AVAILABLE,
+        ErrorMessages[ErrorCodes.CAMERA_NOT_AVAILABLE]
+      )
     }
   },
 
@@ -112,10 +114,7 @@ export const ImageInputService = {
         type: res.type,
       }
     } catch (error) {
-      throw {
-        code: 'GET_INFO_FAILED',
-        message: '获取图片信息失败',
-      } as ImageInputError
+      throw new ImageInputError('GET_INFO_FAILED', '获取图片信息失败')
     }
   },
 
@@ -138,19 +137,33 @@ export const ImageInputService = {
 
   /**
    * 处理选择的图片文件
-   * 包含格式检查、大小检查、自动压缩等
+   * 包含格式校验、大小检查、分辨率校验、自动压缩
    */
   processImageFile: async (tempFile: TempFile): Promise<ImageData> => {
+    // 格式校验
+    const ext = getFileExtension(tempFile.path)
+    if (!SupportedFormats.includes(ext as any)) {
+      throw new ImageInputError(
+        ErrorCodes.UNSUPPORTED_FORMAT,
+        ErrorMessages[ErrorCodes.UNSUPPORTED_FORMAT]
+      )
+    }
+
     // 检查文件大小
     if (tempFile.size > FileSizeLimit.MAX_SIZE) {
-      throw {
-        code: ErrorCodes.FILE_TOO_LARGE,
-        message: ErrorMessages[ErrorCodes.FILE_TOO_LARGE],
-      } as ImageInputError
+      throw new ImageInputError(
+        ErrorCodes.FILE_TOO_LARGE,
+        ErrorMessages[ErrorCodes.FILE_TOO_LARGE]
+      )
     }
 
     // 获取图片信息
     const imageInfo = await ImageInputService.getImageInfo(tempFile.path)
+
+    // 分辨率校验（低于最低要求时警告，但不阻止）
+    if (imageInfo.width < MinResolution.WIDTH || imageInfo.height < MinResolution.HEIGHT) {
+      Taro.showToast({ title: ErrorMessages[ErrorCodes.RESOLUTION_LOW], icon: 'none', duration: 2000 })
+    }
 
     let finalPath = tempFile.path
     let compressed = false
@@ -167,14 +180,18 @@ export const ImageInputService = {
     if (compressed) {
       try {
         const fileInfo = await Taro.getFileInfo({ filePath: finalPath })
-        finalSize = fileInfo.size
+        if ('size' in fileInfo) {
+          finalSize = fileInfo.size
+        } else {
+          finalSize = originalSize
+        }
       } catch {
         finalSize = originalSize
       }
     }
 
     // 生成文件名
-    const fileName = `image_${Date.now()}.${getFileExtension(tempFile.path)}`
+    const fileName = `image_${Date.now()}.${ext}`
 
     return {
       url: finalPath,
@@ -183,7 +200,7 @@ export const ImageInputService = {
       height: imageInfo.height,
       size: finalSize,
       name: fileName,
-      type: tempFile.type || `image/${getFileExtension(tempFile.path)}`,
+      type: tempFile.type || `image/${ext}`,
       compressed,
       originalSize: compressed ? originalSize : undefined,
     }
@@ -211,7 +228,9 @@ export const ImageInputService = {
       let fileSize = 0
       try {
         const fileInfo = await Taro.getFileInfo({ filePath: tempPath })
-        fileSize = fileInfo.size
+        if ('size' in fileInfo) {
+          fileSize = fileInfo.size
+        }
       } catch {
         fileSize = 0
       }
@@ -226,10 +245,10 @@ export const ImageInputService = {
         type: 'image/jpeg',
       }
     } catch (error) {
-      throw {
-        code: ErrorCodes.NETWORK_ERROR,
-        message: '样例图片加载失败，请检查网络后重试',
-      } as ImageInputError
+      throw new ImageInputError(
+        ErrorCodes.NETWORK_ERROR,
+        '样例图片加载失败，请检查网络后重试'
+      )
     }
   },
 
@@ -239,9 +258,9 @@ export const ImageInputService = {
   checkCameraPermission: async (): Promise<boolean> => {
     try {
       const setting = await Taro.getSetting()
-      return setting.authSetting['scope.camera'] !== false
+      return setting.authSetting['scope.camera'] === true
     } catch {
-      return true
+      return false
     }
   },
 
@@ -250,7 +269,7 @@ export const ImageInputService = {
    */
   requestCameraPermission: async (): Promise<boolean> => {
     try {
-      const res = await Taro.authorize({ scope: 'scope.camera' })
+      await Taro.authorize({ scope: 'scope.camera' })
       return true
     } catch {
       // 用户拒绝权限，引导打开设置
@@ -268,3 +287,6 @@ export const ImageInputService = {
     }
   },
 }
+
+// 导出错误判断工具供 store 使用
+export { isImageInputError }

@@ -122,7 +122,7 @@ const OverlapImageShow: React.FC = () => {
           }}
         />
       ))}
-      {dividerEnabled && (
+      {dividerEnabled && urls.length >= 2 && (
         <div
           className={styles.divider}
           style={{
@@ -133,8 +133,8 @@ const OverlapImageShow: React.FC = () => {
           onMouseDown={(e) => handleDividerDrag(e.clientX)}
         >
           <div className={styles.label}>
-            <span className={styles.leftLabel}>{urls[0].label.text}</span>
-            <span className={styles.rightLabel}>{urls[1].label.text}</span>
+            <span className={styles.leftLabel}>{urls[0]?.label?.text}</span>
+            <span className={styles.rightLabel}>{urls[1]?.label?.text}</span>
           </div>
         </div>
       )}

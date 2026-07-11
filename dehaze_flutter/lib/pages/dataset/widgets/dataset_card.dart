@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/responsive_utils.dart';
@@ -6,7 +5,6 @@ import '../models/dataset_model.dart';
 
 /// 数据集卡片组件
 ///
-/// 与设计稿 dataset.css 的 dataset-card 样式对应
 /// 支持悬停效果、点击缩放动画
 class DatasetCard extends StatefulWidget {
   const DatasetCard({required this.dataset, super.key, this.onTap});
@@ -63,9 +61,7 @@ class _DatasetCardState extends State<DatasetCard> {
   Widget _buildMobileLayout(ThemeData theme) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 缩略图
-          _buildThumbnail(height: 160),
-          // 内容区域
+          _buildIconHeader(height: 120),
           _buildContent(theme),
         ],
       );
@@ -74,41 +70,40 @@ class _DatasetCardState extends State<DatasetCard> {
   Widget _buildDesktopLayout(ThemeData theme) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 缩略图
-          _buildThumbnail(width: 128, height: 128),
-          // 内容区域
+          _buildIconHeader(width: 128, height: 128),
           Expanded(child: _buildContent(theme)),
         ],
       );
 
-  /// 构建缩略图
-  Widget _buildThumbnail({double? width, double? height}) => SizedBox(
-        width: width,
+  /// 构建图标头部（替代缩略图）
+  Widget _buildIconHeader({double? width, double? height}) => Container(
+        width: width ?? double.infinity,
         height: height,
-        child: CachedNetworkImage(
-          imageUrl: widget.dataset.thumbnail,
-          width: width,
-          height: height,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              gradient: AppTheme.getSecondaryGradient(),
-            ),
-            child: const Center(child: CircularProgressIndicator()),
-          ),
-          errorWidget: (context, url, error) => Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              gradient: AppTheme.getSecondaryGradient(),
-            ),
-            child: const Icon(
-              Icons.storage_outlined,
-              color: Colors.white,
-              size: 48,
-            ),
+        decoration: BoxDecoration(
+          gradient: AppTheme.getSecondaryGradient(),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                widget.dataset.hasChildren
+                    ? Icons.folder_outlined
+                    : Icons.storage_outlined,
+                color: Colors.white,
+                size: 40,
+              ),
+              if (widget.dataset.hasChildren) ...[
+                const SizedBox(height: 4),
+                Text(
+                  '${widget.dataset.children.length} 个子集',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       );
@@ -124,7 +119,7 @@ class _DatasetCardState extends State<DatasetCard> {
               widget.dataset.name,
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: const Color(0xFF1F2937), // gray-800
+                color: const Color(0xFF1F2937),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -136,7 +131,7 @@ class _DatasetCardState extends State<DatasetCard> {
             Text(
               widget.dataset.description ?? '暂无描述',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: const Color(0xFF6B7280), // gray-500
+                color: const Color(0xFF6B7280),
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -147,18 +142,20 @@ class _DatasetCardState extends State<DatasetCard> {
             // 统计信息
             Row(
               children: [
-                _buildStatItem(
-                  context,
-                  Icons.image_outlined,
-                  '${widget.dataset.totalImages}',
-                  const Color(0xFF14B8A6), // teal-500
-                ),
-                const SizedBox(width: 16),
+                if (widget.dataset.type != null) ...[
+                  _buildStatItem(
+                    context,
+                    Icons.category_outlined,
+                    widget.dataset.type!,
+                    const Color(0xFF14B8A6),
+                  ),
+                  const SizedBox(width: 16),
+                ],
                 _buildStatItem(
                   context,
                   Icons.access_time_outlined,
-                  _formatDate(widget.dataset.createdAt),
-                  const Color(0xFF9CA3AF), // gray-400
+                  _formatDate(widget.dataset.createTime),
+                  const Color(0xFF9CA3AF),
                 ),
               ],
             ),
@@ -179,26 +176,31 @@ class _DatasetCardState extends State<DatasetCard> {
           const SizedBox(width: 4),
           Text(
             text,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 13,
-              color: const Color(0xFF9CA3AF), // gray-400
+              color: Color(0xFF9CA3AF),
             ),
           ),
         ],
       );
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
+  String _formatDate(String dateStr) {
+    try {
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final difference = now.difference(date);
 
-    if (difference.inDays == 0) {
-      return '今天';
-    } else if (difference.inDays == 1) {
-      return '昨天';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}天前';
-    } else {
-      return '${date.month}/${date.day}';
+      if (difference.inDays == 0) {
+        return '今天';
+      } else if (difference.inDays == 1) {
+        return '昨天';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays}天前';
+      } else {
+        return '${date.month}/${date.day}';
+      }
+    } catch (_) {
+      return dateStr;
     }
   }
 }

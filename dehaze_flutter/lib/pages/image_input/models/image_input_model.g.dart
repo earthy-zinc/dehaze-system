@@ -7,33 +7,49 @@ part of 'image_input_model.dart';
 // **************************************************************************
 
 SelectedImageModel _$SelectedImageModelFromJson(Map<String, dynamic> json) =>
-    SelectedImageModel(
-      id: json['id'] as String,
-      url: json['url'] as String,
-      filename: json['filename'] as String,
-      width: (json['width'] as num).toInt(),
-      height: (json['height'] as num).toInt(),
-      fileSize: (json['file_size'] as num).toInt(),
-      source: $enumDecode(_$ImageSourceEnumMap, json['source']),
-      localPath: json['local_path'] as String?,
-      sampleInfo: json['sample_info'] == null
-          ? null
-          : SampleImageModel.fromJson(
-              json['sample_info'] as Map<String, dynamic>,
-            ),
+    $checkedCreate(
+      'SelectedImageModel',
+      json,
+      ($checkedConvert) {
+        final val = SelectedImageModel(
+          id: $checkedConvert('id', (v) => v as String),
+          url: $checkedConvert('url', (v) => v as String),
+          filename: $checkedConvert('filename', (v) => v as String),
+          width: $checkedConvert('width', (v) => (v as num).toInt()),
+          height: $checkedConvert('height', (v) => (v as num).toInt()),
+          fileSize: $checkedConvert('file_size', (v) => (v as num).toInt()),
+          source: $checkedConvert(
+            'source',
+            (v) => $enumDecode(_$ImageSourceEnumMap, v),
+          ),
+          localPath: $checkedConvert('local_path', (v) => v as String?),
+          sampleInfo: $checkedConvert(
+            'sample_info',
+            (v) => v == null
+                ? null
+                : SampleImageModel.fromJson(v as Map<String, dynamic>),
+          ),
+        );
+        return val;
+      },
+      fieldKeyMap: const {
+        'fileSize': 'file_size',
+        'localPath': 'local_path',
+        'sampleInfo': 'sample_info',
+      },
     );
 
 Map<String, dynamic> _$SelectedImageModelToJson(SelectedImageModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'url': instance.url,
-      'local_path': instance.localPath,
+      if (instance.localPath case final value?) 'local_path': value,
       'filename': instance.filename,
       'width': instance.width,
       'height': instance.height,
       'file_size': instance.fileSize,
       'source': _$ImageSourceEnumMap[instance.source]!,
-      'sample_info': instance.sampleInfo?.toJson(),
+      if (instance.sampleInfo?.toJson() case final value?) 'sample_info': value,
     };
 
 const _$ImageSourceEnumMap = {
@@ -44,14 +60,34 @@ const _$ImageSourceEnumMap = {
 };
 
 SampleImageModel _$SampleImageModelFromJson(Map<String, dynamic> json) =>
-    SampleImageModel(
-      id: (json['id'] as num).toInt(),
-      name: json['name'] as String,
-      url: json['url'] as String,
-      category: $enumDecode(_$SampleCategoryEnumMap, json['category']),
-      difficulty: $enumDecode(_$DifficultyLevelEnumMap, json['difficulty']),
-      sceneType: json['scene_type'] as String?,
-      recommendedAlgorithm: json['recommended_algorithm'] as String?,
+    $checkedCreate(
+      'SampleImageModel',
+      json,
+      ($checkedConvert) {
+        final val = SampleImageModel(
+          id: $checkedConvert('id', (v) => (v as num).toInt()),
+          name: $checkedConvert('name', (v) => v as String),
+          url: $checkedConvert('url', (v) => v as String),
+          category: $checkedConvert(
+            'category',
+            (v) => $enumDecode(_$SampleCategoryEnumMap, v),
+          ),
+          difficulty: $checkedConvert(
+            'difficulty',
+            (v) => $enumDecode(_$DifficultyLevelEnumMap, v),
+          ),
+          sceneType: $checkedConvert('scene_type', (v) => v as String?),
+          recommendedAlgorithm: $checkedConvert(
+            'recommended_algorithm',
+            (v) => v as String?,
+          ),
+        );
+        return val;
+      },
+      fieldKeyMap: const {
+        'sceneType': 'scene_type',
+        'recommendedAlgorithm': 'recommended_algorithm',
+      },
     );
 
 Map<String, dynamic> _$SampleImageModelToJson(SampleImageModel instance) =>
@@ -61,8 +97,9 @@ Map<String, dynamic> _$SampleImageModelToJson(SampleImageModel instance) =>
       'url': instance.url,
       'category': _$SampleCategoryEnumMap[instance.category]!,
       'difficulty': _$DifficultyLevelEnumMap[instance.difficulty]!,
-      'scene_type': instance.sceneType,
-      'recommended_algorithm': instance.recommendedAlgorithm,
+      if (instance.sceneType case final value?) 'scene_type': value,
+      if (instance.recommendedAlgorithm case final value?)
+        'recommended_algorithm': value,
     };
 
 const _$SampleCategoryEnumMap = {
@@ -81,48 +118,82 @@ const _$DifficultyLevelEnumMap = {
 
 PaginatedSampleResponse _$PaginatedSampleResponseFromJson(
   Map<String, dynamic> json,
-) =>
-    PaginatedSampleResponse(
-      list: (json['list'] as List<dynamic>)
-          .map((e) => SampleImageModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      total: (json['total'] as num).toInt(),
-      page: (json['page'] as num).toInt(),
-      pageSize: (json['page_size'] as num).toInt(),
-      totalPages: (json['total_pages'] as num).toInt(),
+) => $checkedCreate(
+  'PaginatedSampleResponse',
+  json,
+  ($checkedConvert) {
+    final val = PaginatedSampleResponse(
+      list: $checkedConvert(
+        'list',
+        (v) => (v as List<dynamic>)
+            .map((e) => SampleImageModel.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      ),
+      total: $checkedConvert('total', (v) => (v as num).toInt()),
+      page: $checkedConvert('page', (v) => (v as num).toInt()),
+      pageSize: $checkedConvert('page_size', (v) => (v as num).toInt()),
+      totalPages: $checkedConvert('total_pages', (v) => (v as num).toInt()),
     );
+    return val;
+  },
+  fieldKeyMap: const {'pageSize': 'page_size', 'totalPages': 'total_pages'},
+);
 
 Map<String, dynamic> _$PaginatedSampleResponseToJson(
   PaginatedSampleResponse instance,
-) =>
-    <String, dynamic>{
-      'list': instance.list.map((e) => e.toJson()).toList(),
-      'total': instance.total,
-      'page': instance.page,
-      'page_size': instance.pageSize,
-      'total_pages': instance.totalPages,
-    };
+) => <String, dynamic>{
+  'list': instance.list.map((e) => e.toJson()).toList(),
+  'total': instance.total,
+  'page': instance.page,
+  'page_size': instance.pageSize,
+  'total_pages': instance.totalPages,
+};
 
 HistoryRecordModel _$HistoryRecordModelFromJson(Map<String, dynamic> json) =>
-    HistoryRecordModel(
-      id: json['id'] as String,
-      originalThumbnail: json['original_thumbnail'] as String,
-      filename: json['filename'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      isSuccess: json['is_success'] as bool,
-      resultThumbnail: json['result_thumbnail'] as String?,
-      algorithmName: json['algorithm_name'] as String?,
-      parameters: json['parameters'] as Map<String, dynamic>?,
+    $checkedCreate(
+      'HistoryRecordModel',
+      json,
+      ($checkedConvert) {
+        final val = HistoryRecordModel(
+          id: $checkedConvert('id', (v) => v as String),
+          originalThumbnail: $checkedConvert(
+            'original_thumbnail',
+            (v) => v as String,
+          ),
+          filename: $checkedConvert('filename', (v) => v as String),
+          timestamp: $checkedConvert(
+            'timestamp',
+            (v) => DateTime.parse(v as String),
+          ),
+          isSuccess: $checkedConvert('is_success', (v) => v as bool),
+          resultThumbnail: $checkedConvert(
+            'result_thumbnail',
+            (v) => v as String?,
+          ),
+          algorithmName: $checkedConvert('algorithm_name', (v) => v as String?),
+          parameters: $checkedConvert(
+            'parameters',
+            (v) => v as Map<String, dynamic>?,
+          ),
+        );
+        return val;
+      },
+      fieldKeyMap: const {
+        'originalThumbnail': 'original_thumbnail',
+        'isSuccess': 'is_success',
+        'resultThumbnail': 'result_thumbnail',
+        'algorithmName': 'algorithm_name',
+      },
     );
 
 Map<String, dynamic> _$HistoryRecordModelToJson(HistoryRecordModel instance) =>
     <String, dynamic>{
       'id': instance.id,
       'original_thumbnail': instance.originalThumbnail,
-      'result_thumbnail': instance.resultThumbnail,
+      if (instance.resultThumbnail case final value?) 'result_thumbnail': value,
       'filename': instance.filename,
       'timestamp': instance.timestamp.toIso8601String(),
-      'algorithm_name': instance.algorithmName,
-      'parameters': instance.parameters,
+      if (instance.algorithmName case final value?) 'algorithm_name': value,
+      if (instance.parameters case final value?) 'parameters': value,
       'is_success': instance.isSuccess,
     };

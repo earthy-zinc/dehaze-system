@@ -1,0 +1,64 @@
+.compare-toolbar {
+  background-color: #fff;
+  border-top: 1px solid #f0f0f0;
+
+  .mode-tabs {
+    display: flex;
+    padding: 8px 12px;
+    gap: 6px;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-bottom: 1px solid #f5f5f5;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    .mode-tab {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border-radius: 16px;
+      background-color: #f5f5f5;
+      font-size: 13px;
+      color: #595959;
+      transition: all 0.2s ease;
+
+      &.active {
+        background-color: #1890ff;
+        color: #fff;
+      }
+    }
+  }
+
+  .action-buttons {
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 4px;
+    padding-bottom: calc(8px + constant(safe-area-inset-bottom));
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+
+    .action-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 4px 6px;
+      min-width: 48px;
+
+      .action-icon {
+        font-size: 20px;
+        line-height: 1;
+        margin-bottom: 4px;
+      }
+
+      .action-text {
+        font-size: 11px;
+        color: #595959;
+      }
+
+      &:active {
+        opacity: 0.6;
+      }
+    }
+  }
+}

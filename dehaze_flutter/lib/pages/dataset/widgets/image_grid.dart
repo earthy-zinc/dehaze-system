@@ -315,11 +315,11 @@ class _TypeBadge extends StatelessWidget {
 
   Color _getBackgroundColor() {
     switch (type) {
-      case ImageType.foggy:
+      case ImageType.hazy:
         return const Color(0xE66B7280); // rgba(107, 114, 128, 0.9)
       case ImageType.clear:
         return const Color(0xE63B82F6); // rgba(59, 130, 246, 0.9)
-      case ImageType.annotated:
+      case ImageType.dehazed:
         return const Color(0xE610B981); // rgba(16, 185, 129, 0.9)
     }
   }

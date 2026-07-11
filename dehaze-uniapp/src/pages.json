@@ -29,71 +29,94 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": ""
       }
+    },
+    {
+      "path": "pages/algorithm-select/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/processing/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/side-by-side/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "navigationBarBackgroundColor": "#000000",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/overlay/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "navigationBarBackgroundColor": "#000000",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/magnifier/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "navigationBarBackgroundColor": "#000000",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/filter/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "navigationBarBackgroundColor": "#1a1a2e",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/metrics/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "",
+        "navigationBarBackgroundColor": "#0f172a",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
+      "path": "pages/algorithm/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/user-center/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/task-history/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
+    },
+    {
+      "path": "pages/file-manage/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": ""
+      }
     }
-    // {
-    // {
-    //   "path": "pages/algorithm-select/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/processing/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/side-by-side/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/overlay/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/magnifier/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/filter/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/metrics/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/algorithm/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // },
-    // {
-    //   "path": "pages/dataset/index",
-    //   "style": {
-    //     "navigationStyle": "custom",
-    //     "navigationBarTitleText": ""
-    //   }
-    // }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
@@ -110,6 +133,14 @@
       {
         "pagePath": "pages/home/index",
         "text": "首页"
+      },
+      {
+        "pagePath": "pages/image-input/index",
+        "text": "输入"
+      },
+      {
+        "pagePath": "pages/dataset/index",
+        "text": "数据集"
       }
     ]
   },

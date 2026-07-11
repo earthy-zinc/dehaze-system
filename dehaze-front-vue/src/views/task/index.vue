@@ -6,11 +6,11 @@
       <div class="flex items-center justify-between">
         <el-radio-group v-model="statusFilter" @change="handleStatusChange">
           <el-radio-button value="">全部</el-radio-button>
-          <el-radio-button value="pending">待执行</el-radio-button>
-          <el-radio-button value="processing">执行中</el-radio-button>
-          <el-radio-button value="completed">已完成</el-radio-button>
-          <el-radio-button value="failed">失败</el-radio-button>
-          <el-radio-button value="cancelled">已取消</el-radio-button>
+          <el-radio-button value="PENDING">待执行</el-radio-button>
+          <el-radio-button value="PROCESSING">执行中</el-radio-button>
+          <el-radio-button value="COMPLETED">已完成</el-radio-button>
+          <el-radio-button value="FAILED">失败</el-radio-button>
+          <el-radio-button value="CANCELLED">已取消</el-radio-button>
         </el-radio-group>
         <el-button @click="loadTaskList"><i-ep-refresh />刷新</el-button>
       </div>
@@ -76,7 +76,7 @@
               取消
             </el-button>
             <el-button
-              v-if="row.status === 'completed'"
+              v-if="row.status === 'COMPLETED'"
               type="success"
               link
               :loading="downloadLoadingId === row.taskId"
@@ -159,7 +159,7 @@
           取消任务
         </el-button>
         <el-button
-          v-if="taskStore.currentTask?.status === 'completed'"
+          v-if="taskStore.currentTask?.status === 'COMPLETED'"
           type="success"
           :loading="downloadLoadingId === taskStore.currentTask?.taskId"
           @click="handleDownload(taskStore.currentTask)"
@@ -172,7 +172,7 @@
 </template>
 
 <script lang="ts" setup>
-import { DownloadTaskVO, TaskQuery } from "dehaze-sdk-js";
+import { TaskVO, TaskQuery } from "dehaze-sdk-js";
 import { useTaskStore } from "@/store";
 
 defineOptions({
@@ -203,20 +203,20 @@ const statusTagType: Record<
   string,
   "primary" | "success" | "warning" | "info" | "danger"
 > = {
-  pending: "primary",
-  processing: "primary",
-  completed: "success",
-  failed: "danger",
-  cancelled: "info",
+  PENDING: "primary",
+  PROCESSING: "primary",
+  COMPLETED: "success",
+  FAILED: "danger",
+  CANCELLED: "info",
 };
 
 // 状态标签文本映射
 const statusLabel: Record<string, string> = {
-  pending: "待执行",
-  processing: "执行中",
-  completed: "已完成",
-  failed: "失败",
-  cancelled: "已取消",
+  PENDING: "待执行",
+  PROCESSING: "执行中",
+  COMPLETED: "已完成",
+  FAILED: "失败",
+  CANCELLED: "已取消",
 };
 
 // 任务类型文本映射
@@ -228,7 +228,7 @@ const taskTypeLabel: Record<string, string> = {
 };
 
 // 需要轮询的任务状态
-const POLLING_STATUSES = ["pending", "processing"];
+const POLLING_STATUSES = ["PENDING", "PROCESSING"];
 
 /**
  * 格式化时间显示
@@ -245,8 +245,8 @@ function formatTime(t?: Date | string): string {
 function progressStatus(
   status: string
 ): "" | "success" | "exception" | "warning" {
-  if (status === "completed") return "success";
-  if (status === "failed") return "exception";
+  if (status === "COMPLETED") return "success";
+  if (status === "FAILED") return "exception";
   return "";
 }
 
@@ -292,7 +292,7 @@ function handleStatusChange() {
  * 查看任务详情
  * @param row 任务行数据
  */
-function handleDetail(row: DownloadTaskVO) {
+function handleDetail(row: TaskVO) {
   taskStore.currentTask = row;
   detailVisible.value = true;
 }
@@ -301,7 +301,7 @@ function handleDetail(row: DownloadTaskVO) {
  * 取消任务（二次确认）
  * @param task 任务信息
  */
-async function handleCancel(task: DownloadTaskVO) {
+async function handleCancel(task: TaskVO) {
   try {
     await ElMessageBox.confirm("确认取消该任务吗？", "提示", {
       confirmButtonText: "确定",
@@ -319,7 +319,7 @@ async function handleCancel(task: DownloadTaskVO) {
     if (taskStore.currentTask?.taskId === task.taskId) {
       taskStore.currentTask = {
         ...taskStore.currentTask,
-        status: "cancelled",
+        status: "CANCELLED",
         completedAt: new Date().toISOString(),
       };
     }
@@ -335,7 +335,7 @@ async function handleCancel(task: DownloadTaskVO) {
  * 下载任务结果
  * @param task 任务信息
  */
-async function handleDownload(task: DownloadTaskVO) {
+async function handleDownload(task: TaskVO) {
   downloadLoadingId.value = task.taskId;
   try {
     await taskStore.downloadResult(task.taskId);

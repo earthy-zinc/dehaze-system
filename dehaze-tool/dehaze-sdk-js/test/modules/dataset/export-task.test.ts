@@ -1,4 +1,4 @@
-import { DatasetAPI, DatasetItemAPI, ExportTaskAPI } from "../../../index";
+import { DatasetAPI, DatasetItemAPI, TaskAPI } from "../../../index";
 import { login, logout } from "#/utils/auth";
 import {
   createDatasetForm,
@@ -94,9 +94,9 @@ describe("导出任务接口测试", () => {
         const createResult = await DatasetAPI.createExportTask(testDatasetId, request);
 
         if (createResult?.taskId) {
-          const status = await ExportTaskAPI.getTaskStatus(createResult.taskId);
+          const status = await TaskAPI.getStatus(createResult.taskId);
           expect(status.taskId).toBe(createResult.taskId);
-          expect(["pending", "processing", "completed", "failed", "cancelled"]).toContain(
+          expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"]).toContain(
             status.status
           );
         }
@@ -108,7 +108,7 @@ describe("导出任务接口测试", () => {
 
     test("异常测试：查询不存在的任务", async () => {
       try {
-        const result = await ExportTaskAPI.getTaskStatus("non-existent-task-id");
+        const result = await TaskAPI.getStatus("non-existent-task-id");
         expect(result === undefined || result === null).toBe(true);
       } catch (error: any) {
         expect(error).toBeDefined();
@@ -116,7 +116,7 @@ describe("导出任务接口测试", () => {
     });
   });
 
-  describe("DELETE /api/v1/tasks/{taskId} - 取消任务", () => {
+  describe("POST /api/v1/tasks/{taskId}/cancel - 取消任务", () => {
     test("正向测试：取消进行中的任务", async () => {
       const request = createExportTaskRequest();
 
@@ -124,11 +124,11 @@ describe("导出任务接口测试", () => {
         const createResult = await DatasetAPI.createExportTask(testDatasetId, request);
 
         if (createResult?.taskId) {
-          await expect(ExportTaskAPI.cancelTask(createResult.taskId)).resolves.not.toThrow();
+          await expect(TaskAPI.cancel(createResult.taskId)).resolves.not.toThrow();
 
           try {
-            const status = await ExportTaskAPI.getTaskStatus(createResult.taskId);
-            expect(["cancelled", "completed", "failed"]).toContain(status.status);
+            const status = await TaskAPI.getStatus(createResult.taskId);
+            expect(["CANCELLED", "COMPLETED", "FAILED"]).toContain(status.status);
           } catch (e) {}
         }
       } catch (error: any) {
@@ -139,7 +139,7 @@ describe("导出任务接口测试", () => {
 
     test("异常测试：取消不存在的任务（后端幂等设计）", async () => {
       try {
-        await ExportTaskAPI.cancelTask("non-existent-task-id");
+        await TaskAPI.cancel("non-existent-task-id");
         console.warn("⚠️ 后端取消不存在的任务返回成功（幂等设计）");
       } catch (error: any) {
         expect(error).toBeDefined();

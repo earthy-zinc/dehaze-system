@@ -1,88 +1,51 @@
 /**
  * 历史记录服务
- * 使用本地存储实现，预留云端同步扩展接口
+ * 接入云端 SDK ImageInputHistoryAPI，对齐设计文档 API接口.md §2.3
  */
 
-import Taro from '@tarojs/taro'
-import { HistoryRecord, IHistoryStorage, GroupedHistory } from './types'
+import { ImageInputHistoryAPI } from 'dehaze-sdk-js'
+import type { InputHistoryVO, HistoryForm, HistoryQuery } from 'dehaze-sdk-js'
 
-const STORAGE_KEY = 'dehaze_history'
-const MAX_RECORDS = 20
-
-/**
- * 本地存储实现
- */
-class LocalHistoryStorage implements IHistoryStorage {
-  private storageKey: string
-  private maxRecords: number
-
-  constructor(storageKey: string = STORAGE_KEY, maxRecords: number = MAX_RECORDS) {
-    this.storageKey = storageKey
-    this.maxRecords = maxRecords
-  }
-
-  async getHistory(): Promise<HistoryRecord[]> {
-    try {
-      const data = Taro.getStorageSync(this.storageKey)
-      return data ? JSON.parse(data) : []
-    } catch (error) {
-      console.error('获取历史记录失败:', error)
-      return []
-    }
-  }
-
-  async addRecord(record: Omit<HistoryRecord, 'id'>): Promise<void> {
-    try {
-      const history = await this.getHistory()
-      const newRecord: HistoryRecord = {
-        ...record,
-        id: Date.now(),
-      }
-      history.unshift(newRecord)
-
-      // 限制记录数量
-      if (history.length > this.maxRecords) {
-        history.splice(this.maxRecords)
-      }
-
-      Taro.setStorageSync(this.storageKey, JSON.stringify(history))
-    } catch (error) {
-      console.error('添加历史记录失败:', error)
-    }
-  }
-
-  async deleteRecord(id: number): Promise<void> {
-    try {
-      const history = await this.getHistory()
-      const filtered = history.filter(record => record.id !== id)
-      Taro.setStorageSync(this.storageKey, JSON.stringify(filtered))
-    } catch (error) {
-      console.error('删除历史记录失败:', error)
-    }
-  }
-
-  async clearHistory(): Promise<void> {
-    try {
-      Taro.removeStorageSync(this.storageKey)
-    } catch (error) {
-      console.error('清空历史记录失败:', error)
-    }
-  }
+/** 分组后的历史记录 */
+export interface GroupedHistory {
+  title: string
+  records: InputHistoryVO[]
 }
 
-// 导出单例
-export const HistoryService = new LocalHistoryStorage()
+/** 分页查询历史记录 */
+export const getHistoryPage = async (query?: HistoryQuery): Promise<{ list: InputHistoryVO[]; total: number }> => {
+  const res = await ImageInputHistoryAPI.getPage({ pageNum: 1, pageSize: 100, ...query })
+  // SDK PageResult<T> 的 list 类型定义为 T，但后端实际返回数组，此处强制转换
+  const list = (res.list as unknown as InputHistoryVO[]) || []
+  return { list, total: res.total || 0 }
+}
+
+/** 获取历史记录详情 */
+export const getHistoryById = (id: number) => ImageInputHistoryAPI.getById(id)
+
+/** 创建历史记录 */
+export const createHistoryRecord = (data: HistoryForm) => ImageInputHistoryAPI.create(data)
+
+/** 更新历史记录（如收藏） */
+export const updateHistoryRecord = (id: number, data: { isFavorite?: boolean }) =>
+  ImageInputHistoryAPI.update(id, data)
+
+/** 删除单条历史记录 */
+export const deleteHistoryRecord = (id: number) => ImageInputHistoryAPI.deleteById(id)
+
+/** 清空所有历史记录 */
+export const clearAllHistory = () => ImageInputHistoryAPI.clearAll()
 
 /**
  * 将历史记录按时间分组
  */
-export const groupHistoryByDate = (records: HistoryRecord[]): GroupedHistory[] => {
+export const groupHistoryByDate = (records: InputHistoryVO[]): GroupedHistory[] => {
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000)
   const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
 
-  const groups: Record<string, HistoryRecord[]> = {
+  const groups: Record<string, InputHistoryVO[]> = {
     '今天': [],
     '昨天': [],
     '最近7天': [],
@@ -90,7 +53,12 @@ export const groupHistoryByDate = (records: HistoryRecord[]): GroupedHistory[] =
   }
 
   records.forEach(record => {
-    const recordDate = new Date(record.timestamp)
+    const ts = record.createTime
+    if (!ts) {
+      groups['更早'].push(record)
+      return
+    }
+    const recordDate = new Date(ts)
     const recordDay = new Date(recordDate.getFullYear(), recordDate.getMonth(), recordDate.getDate())
 
     if (recordDay.getTime() === today.getTime()) {
@@ -104,16 +72,16 @@ export const groupHistoryByDate = (records: HistoryRecord[]): GroupedHistory[] =
     }
   })
 
-  // 过滤空分组
   return Object.entries(groups)
-    .filter(([_, records]) => records.length > 0)
-    .map(([title, records]) => ({ title, records }))
+    .filter(([, recs]) => recs.length > 0)
+    .map(([title, recs]) => ({ title, records: recs }))
 }
 
 /**
  * 格式化时间显示
  */
-export const formatTimestamp = (timestamp: string): string => {
+export const formatTimestamp = (timestamp?: string): string => {
+  if (!timestamp) return ''
   const date = new Date(timestamp)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
@@ -131,31 +99,5 @@ export const formatTimestamp = (timestamp: string): string => {
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
     return `${year}-${month}-${day}`
-  }
-}
-
-/**
- * 创建历史记录
- */
-export const createHistoryRecord = (
-  originalImage: string,
-  options?: {
-    resultImage?: string
-    algorithm?: string
-    algorithmId?: string
-    fileName?: string
-    status?: HistoryRecord['status']
-    processingTime?: number
-  }
-): Omit<HistoryRecord, 'id'> => {
-  return {
-    originalImage,
-    resultImage: options?.resultImage,
-    algorithm: options?.algorithm,
-    algorithmId: options?.algorithmId,
-    fileName: options?.fileName,
-    status: options?.status || 'success',
-    processingTime: options?.processingTime,
-    timestamp: new Date().toISOString(),
   }
 }

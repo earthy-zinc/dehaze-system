@@ -10,12 +10,11 @@ import {
   DatasetQuery,
   DatasetOption,
   DatasetUpdateForm,
-  DownloadTaskVO,
   ExportTaskRequest,
   ImageUrlVO,
   ItemFileUpdateForm,
-  TaskQuery,
 } from "./model";
+import { TaskVO } from "../task/model";
 import { PageResult } from "@/types";
 import request from "@/utils/request";
 
@@ -123,7 +122,7 @@ class DatasetAPI {
    * @param data 导出任务请求
    */
   static createExportTask(id: number, data?: ExportTaskRequest) {
-    return request<any, DownloadTaskVO>({
+    return request<any, TaskVO>({
       url: `/api/v1/datasets/${id}/export`,
       method: "post",
       data: data,
@@ -259,7 +258,7 @@ class DatasetItemAPI {
    * @param data 批量下载表单
    */
   static batchDownload(data: BatchDownloadForm) {
-    return request<any, DownloadTaskVO>({
+    return request<any, TaskVO>({
       url: "/api/v1/dataset-items/batch/download",
       method: "post",
       data: data,
@@ -272,7 +271,7 @@ class DatasetItemAPI {
    * @param itemFileIds 需要下载的图片ID列表
    */
   static createDownloadTask(id: number, itemFileIds?: number[]) {
-    return request<any, DownloadTaskVO>({
+    return request<any, TaskVO>({
       url: `/api/v1/dataset-items/${id}/download/task`,
       method: "post",
       params: { itemFileId: itemFileIds },
@@ -483,45 +482,6 @@ class LegacyDatasetAPI {
   }
 }
 
-/**
- * 任务 API
- */
-class ExportTaskAPI {
-  /**
-   * 分页查询任务列表
-   * @param queryParams 查询参数
-   */
-  static getList(queryParams?: TaskQuery) {
-    return request<any, PageResult<DownloadTaskVO[]>>({
-      url: "/api/v1/tasks",
-      method: "get",
-      params: queryParams,
-    });
-  }
-
-  /**
-   * 查询任务状态
-   * @param taskId 任务ID
-   */
-  static getTaskStatus(taskId: string) {
-    return request<any, DownloadTaskVO>({
-      url: `/api/v1/tasks/${taskId}`,
-      method: "get",
-    });
-  }
-
-  /**
-   * 取消任务
-   * @param taskId 任务ID
-   */
-  static cancelTask(taskId: string) {
-    return request({
-      url: `/api/v1/tasks/${taskId}`,
-      method: "delete",
-    });
-  }
-}
-
 // 导出
 export default DatasetAPI;
-export { DatasetAPI, DatasetItemAPI, ItemFileAPI, ExportTaskAPI, LegacyDatasetAPI };
+export { DatasetAPI, DatasetItemAPI, ItemFileAPI, LegacyDatasetAPI };

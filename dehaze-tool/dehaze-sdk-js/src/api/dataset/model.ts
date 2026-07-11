@@ -508,46 +508,6 @@ export interface BatchDownloadForm {
   organizeByItem?: boolean;
 }
 
-/**
- * 任务查询参数
- */
-export interface TaskQuery extends PageQuery {
-  /** 任务状态：pending, processing, completed, failed, cancelled */
-  status?: string;
-  /** 任务类型：dataset_export, item_download, batch_download, custom_export */
-  taskType?: string;
-}
-
-/**
- * 任务信息
- */
-export interface DownloadTaskVO {
-  /** 任务ID */
-  taskId: string;
-  /** 任务状态：pending, processing, completed, failed, cancelled */
-  status: string;
-  /** 进度（0-100） */
-  progress: number;
-  /** 任务类型：dataset_export, item_download, batch_download, custom_export */
-  taskType?: string;
-  /** 文件总数 */
-  totalFiles?: number;
-  /** 已处理文件数 */
-  processedFiles?: number;
-  /** 下载链接（任务完成时返回） */
-  downloadUrl?: string;
-  /** 过期时间 */
-  expiresAt?: Date | string;
-  /** 创建时间 */
-  createdAt?: Date | string;
-  /** 开始执行时间 */
-  startedAt?: Date | string;
-  /** 完成时间 */
-  completedAt?: Date | string;
-  /** 错误信息（失败时返回） */
-  error?: string;
-}
-
 // ==================== 旧类型保留（兼容性） ====================
 
 /**

@@ -50,6 +50,7 @@ export interface PredictionResultVO {
   resultUrl: string;
   resultThumbnailUrl?: string;
   time: number;
+  fromCache?: boolean;
 }
 
 /** 预测日志 */
@@ -73,8 +74,8 @@ export interface PredLogQuery {
 /** 评估请求 */
 export interface EvaluationForm {
   algorithmId: number;
-  predFileId?: number;
-  gtFileId?: number;
+  predUrl?: string;
+  gtUrl?: string;
   params?: string;
 }
 
@@ -82,6 +83,7 @@ export interface EvaluationForm {
 export interface EvaluationResultVO {
   logId?: number;
   metrics: Record<string, number>;
+  qualified?: boolean;
   time: number;
 }
 

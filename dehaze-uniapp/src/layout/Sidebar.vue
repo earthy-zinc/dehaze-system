@@ -27,6 +27,27 @@
 
     <!-- 菜单内容 -->
     <scroll-view class="sidebar-content" scroll-y>
+      <!-- 用户信息区 -->
+      <view v-if="isLoggedIn" class="user-info-card" @click="goUserCenter">
+        <view class="user-avatar">
+          <text class="avatar-letter">{{ userInitial }}</text>
+        </view>
+        <view class="user-detail">
+          <text class="user-name">{{ authStore.nickname || authStore.username }}</text>
+          <text class="user-role">{{ userRoleText }}</text>
+        </view>
+        <u-icon name="arrow-right" size="16" color="#d1d5db" />
+      </view>
+
+      <!-- 未登录提示 -->
+      <view v-else class="login-prompt" @click="goLogin">
+        <u-icon name="account" size="20" color="#6b7280" />
+        <text class="login-text">点击登录</text>
+        <u-icon name="arrow-right" size="16" color="#d1d5db" />
+      </view>
+
+      <view class="menu-divider" />
+
       <!-- 首页 -->
       <view
         class="menu-item"
@@ -86,7 +107,19 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from "vue";
+import { useAuthStore } from "@/store/auth";
 import { homeItem, menuSections, isTabBarPage } from "@/config/menu";
+
+const authStore = useAuthStore();
+
+const isLoggedIn = computed(() => authStore.isLoggedIn);
+const userInitial = computed(() => (authStore.nickname || authStore.username || "U").charAt(0).toUpperCase());
+const userRoleText = computed(() => {
+  const roles = authStore.roles;
+  if (roles.length === 0) return "未登录";
+  return roles.map((r) => r.replace("ROLE_", "")).join(" | ") || "普通用户";
+});
 
 interface Props {
   /** 侧边栏是否可见 */
@@ -130,6 +163,16 @@ const navigateTo = (route: string) => {
       },
     });
   }
+};
+
+/** 跳转用户中心 */
+const goUserCenter = () => {
+  navigateTo("/pages/user-center/index");
+};
+
+/** 跳转登录 */
+const goLogin = () => {
+  uni.reLaunch({ url: "/pages/login/index" });
 };
 </script>
 
@@ -234,6 +277,48 @@ const navigateTo = (route: string) => {
   padding-bottom: calc(24rpx + constant(safe-area-inset-bottom));
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
 }
+
+/* 用户信息卡片 */
+.user-info-card {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin: 0 16rpx 8rpx;
+  padding: 24rpx;
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border-radius: 20rpx;
+  &:active { opacity: 0.8; }
+}
+
+.login-prompt {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin: 0 16rpx 8rpx;
+  padding: 24rpx;
+  background: #f3f4f6;
+  border-radius: 20rpx;
+  &:active { opacity: 0.8; }
+}
+
+.login-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #6b7280;
+}
+
+.user-avatar {
+  width: 72rpx; height: 72rpx; border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.avatar-letter { font-size: 32rpx; font-weight: 700; color: #fff; }
+
+.user-detail { flex: 1; min-width: 0; }
+.user-name { display: block; font-size: 28rpx; font-weight: 600; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.user-role { display: block; font-size: 22rpx; color: #3b82f6; margin-top: 4rpx; }
 
 .menu-divider {
   height: 2rpx;

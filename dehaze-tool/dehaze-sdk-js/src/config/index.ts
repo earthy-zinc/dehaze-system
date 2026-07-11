@@ -10,6 +10,12 @@ export interface InterceptorCallbacks {
    * 返回 undefined 则按原错误拒绝。
    */
   onResponseError?: (error: AxiosError) => any;
+
+  /**
+   * 获取 token（同步）。宿主端可注入自定义读取逻辑（如 Taro 同步存储）。
+   * 未提供时回退到 localStorage.getItem(TOKEN_KEY)。
+   */
+  getToken?: () => string | null;
 }
 
 class ConfigManager {

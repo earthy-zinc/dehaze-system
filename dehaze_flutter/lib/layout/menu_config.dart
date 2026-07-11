@@ -114,6 +114,22 @@ class MenuConfig {
         ),
       ],
     ),
+    MenuSection(
+      title: '我的',
+      icon: Icons.person_outline,
+      items: [
+        MenuItemData(
+          icon: Icons.person_outline,
+          title: '用户中心',
+          route: '/profile',
+        ),
+        MenuItemData(
+          icon: Icons.history,
+          title: '处理历史',
+          route: '/task-history',
+        ),
+      ],
+    ),
   ];
 
   /// 获取所有菜单项（平铺，包含首页）

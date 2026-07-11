@@ -84,12 +84,16 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
             <View className='sample-info'>
               <View className='sample-row'>
                 <Text className='sample-label'>场景类型</Text>
-                <Text className='sample-value'>{imageData.sampleInfo.sceneType}</Text>
+                <Text className='sample-value'>{imageData.sampleInfo.sceneType || '未标注'}</Text>
               </View>
-              <View className='sample-row'>
-                <Text className='sample-label'>难度等级</Text>
-                <Text className='sample-value'>{imageData.sampleInfo.difficulty}</Text>
-              </View>
+              {imageData.sampleInfo.hazeLevel && (
+                <View className='sample-row'>
+                  <Text className='sample-label'>雾霾程度</Text>
+                  <Text className='sample-value'>
+                    {imageData.sampleInfo.hazeLevel === 'light' ? '轻度' : imageData.sampleInfo.hazeLevel === 'medium' ? '中度' : '重度'}
+                  </Text>
+                </View>
+              )}
               {imageData.sampleInfo.recommendAlgorithm && (
                 <View className='sample-row'>
                   <Text className='sample-label'>推荐算法</Text>

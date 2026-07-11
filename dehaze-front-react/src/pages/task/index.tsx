@@ -6,7 +6,6 @@ import {
   POLLING_STATUSES,
   setCurrentTask,
   setPollingTimer,
-  type TaskStatus,
 } from "@/store/modules/taskSlice";
 import { DisPatchType, RootState } from "@/store";
 import {
@@ -36,7 +35,7 @@ import React, {
   useState,
 } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { type DownloadTaskVO, type TaskQuery } from "dehaze-sdk-js";
+import { type TaskVO, type TaskQuery, type TaskStatus } from "dehaze-sdk-js";
 import "./index.scss";
 
 /** 轮询间隔（毫秒） */
@@ -44,11 +43,11 @@ const POLLING_INTERVAL = 3000;
 
 /** 任务状态映射 */
 const STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending: { label: "待执行", color: "blue" },
-  processing: { label: "执行中", color: "blue" },
-  completed: { label: "已完成", color: "green" },
-  failed: { label: "失败", color: "red" },
-  cancelled: { label: "已取消", color: "default" },
+  PENDING: { label: "待执行", color: "blue" },
+  PROCESSING: { label: "执行中", color: "blue" },
+  COMPLETED: { label: "已完成", color: "green" },
+  FAILED: { label: "失败", color: "red" },
+  CANCELLED: { label: "已取消", color: "default" },
 };
 
 /** 任务类型映射 */
@@ -62,11 +61,11 @@ const TASK_TYPE_MAP: Record<string, string> = {
 /** 状态筛选选项 */
 const STATUS_OPTIONS = [
   { label: "全部", value: "" },
-  { label: "待执行", value: "pending" },
-  { label: "执行中", value: "processing" },
-  { label: "已完成", value: "completed" },
-  { label: "失败", value: "failed" },
-  { label: "已取消", value: "cancelled" },
+  { label: "待执行", value: "PENDING" },
+  { label: "执行中", value: "PROCESSING" },
+  { label: "已完成", value: "COMPLETED" },
+  { label: "失败", value: "FAILED" },
+  { label: "已取消", value: "CANCELLED" },
 ];
 
 /** 格式化日期时间 */
@@ -100,7 +99,7 @@ const TaskManagement: React.FC = () => {
   const [detailVisible, setDetailVisible] = useState(false);
 
   // 使用 ref 保存最新的任务列表，供轮询回调读取
-  const taskListRef = useRef<DownloadTaskVO[]>([]);
+  const taskListRef = useRef<TaskVO[]>([]);
   useEffect(() => {
     taskListRef.current = taskList;
   }, [taskList]);
@@ -235,7 +234,7 @@ const TaskManagement: React.FC = () => {
 
   /** 查看任务详情 */
   const handleViewDetail = useCallback(
-    (record: DownloadTaskVO) => {
+    (record: TaskVO) => {
       dispatch(setCurrentTask(record));
       setDetailVisible(true);
     },
@@ -250,7 +249,7 @@ const TaskManagement: React.FC = () => {
 
   /** 取消任务 */
   const handleCancelTask = useCallback(
-    (record: DownloadTaskVO) => {
+    (record: TaskVO) => {
       Modal.confirm({
         title: "取消任务",
         content: "确认取消该任务吗？取消后不可恢复。",
@@ -274,8 +273,8 @@ const TaskManagement: React.FC = () => {
   );
 
   /** 下载任务结果 */
-  const handleDownload = useCallback((record: DownloadTaskVO) => {
-    if (record.status !== "completed") {
+  const handleDownload = useCallback((record: TaskVO) => {
+    if (record.status !== "COMPLETED") {
       message.warning("任务尚未完成，无法下载");
       return;
     }
@@ -303,7 +302,7 @@ const TaskManagement: React.FC = () => {
 
   // ==================== 表格列定义 ====================
 
-  const columns: TableColumnsType<DownloadTaskVO> = useMemo(
+  const columns: TableColumnsType<TaskVO> = useMemo(
     () => [
       {
         title: "任务ID",
@@ -342,15 +341,15 @@ const TaskManagement: React.FC = () => {
         key: "progress",
         width: 200,
         align: "center",
-        render: (progress: number, record: DownloadTaskVO) => {
+        render: (progress: number, record: TaskVO) => {
           const status = record.status;
           let progressStatus: "active" | "success" | "exception" | "normal" =
             "active";
-          if (status === "completed") {
+          if (status === "COMPLETED") {
             progressStatus = "success";
-          } else if (status === "failed") {
+          } else if (status === "FAILED") {
             progressStatus = "exception";
-          } else if (status === "cancelled") {
+          } else if (status === "CANCELLED") {
             progressStatus = "normal";
           }
           return (
@@ -384,7 +383,7 @@ const TaskManagement: React.FC = () => {
         width: 220,
         align: "center",
         fixed: "right",
-        render: (_: unknown, record: DownloadTaskVO) => (
+        render: (_: unknown, record: TaskVO) => (
           <Space size="small">
             <Button
               type="link"
@@ -394,8 +393,8 @@ const TaskManagement: React.FC = () => {
             >
               详情
             </Button>
-            {(record.status === "pending" ||
-              record.status === "processing") && (
+            {(record.status === "PENDING" ||
+              record.status === "PROCESSING") && (
               <Button
                 type="link"
                 size="small"
@@ -406,7 +405,7 @@ const TaskManagement: React.FC = () => {
                 取消
               </Button>
             )}
-            {record.status === "completed" && (
+            {record.status === "COMPLETED" && (
               <Button
                 type="link"
                 size="small"
@@ -476,7 +475,7 @@ const TaskManagement: React.FC = () => {
         onCancel={handleDetailClose}
         width={640}
         footer={
-          currentTask?.status === "completed" ? (
+          currentTask?.status === "COMPLETED" ? (
             <Space>
               <Button onClick={handleDetailClose}>关闭</Button>
               <Button
@@ -487,8 +486,8 @@ const TaskManagement: React.FC = () => {
                 下载结果
               </Button>
             </Space>
-          ) : currentTask?.status === "pending" ||
-            currentTask?.status === "processing" ? (
+          ) : currentTask?.status === "PENDING" ||
+            currentTask?.status === "PROCESSING" ? (
             <Space>
               <Button onClick={handleDetailClose}>关闭</Button>
               <Button
@@ -532,11 +531,11 @@ const TaskManagement: React.FC = () => {
               <Progress
                 percent={currentTask.progress || 0}
                 status={
-                  currentTask.status === "completed"
+                  currentTask.status === "COMPLETED"
                     ? "success"
-                    : currentTask.status === "failed"
+                    : currentTask.status === "FAILED"
                       ? "exception"
-                      : currentTask.status === "cancelled"
+                      : currentTask.status === "CANCELLED"
                         ? "normal"
                         : "active"
                 }

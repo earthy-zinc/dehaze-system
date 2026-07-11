@@ -1,5 +1,6 @@
+import { PageResult } from "@/types";
 import request from "@/utils/request";
-import { FileInfo } from "./model";
+import { FileInfo, FileQuery } from "./model";
 
 class FileAPI {
   /**
@@ -54,6 +55,44 @@ class FileAPI {
       url: "/api/v1/files",
       method: "delete",
       params: { fileId },
+    });
+  }
+
+  /**
+   * 文件分页查询
+   *
+   * @param query 查询参数
+   */
+  static getPage(query?: FileQuery) {
+    return request<any, PageResult<FileInfo>>({
+      url: "/api/v1/files",
+      method: "get",
+      params: query,
+    });
+  }
+
+  /**
+   * 获取文件详情
+   *
+   * @param fileId 文件ID
+   */
+  static getById(fileId: number) {
+    return request<any, FileInfo>({
+      url: `/api/v1/files/${fileId}`,
+      method: "get",
+    });
+  }
+
+  /**
+   * 下载文件（返回 Blob，适用于浏览器端下载）
+   *
+   * @param objectName 文件存储对象名
+   */
+  static download(objectName: string) {
+    return request<any, Blob>({
+      url: `/api/v1/files/download/${objectName}`,
+      method: "get",
+      responseType: "blob",
     });
   }
 }

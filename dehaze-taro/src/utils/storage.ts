@@ -2,7 +2,6 @@ import Taro from '@tarojs/taro';
 import { TOKEN_KEY } from '@/enums/CacheEnum';
 
 const STORAGE_KEYS = {
-  TOKEN: 'token',
   USER_INFO: 'userInfo',
   PERMISSIONS: 'permissions',
   ROLES: 'roles',
@@ -66,17 +65,26 @@ class StorageManager {
     }
   }
 
-  // Token 管理
-  async setToken(token: string): Promise<void> {
-    await this.setItem(STORAGE_KEYS.TOKEN, token);
+  // ===== Token 管理（同步存储，原始字符串，供 SDK 拦截器同步读取） =====
+
+  setToken(token: string): void {
+    Taro.setStorageSync(TOKEN_KEY, token);
   }
 
-  async getToken(): Promise<string | null> {
-    return this.getItem(STORAGE_KEYS.TOKEN);
+  getToken(): string | null {
+    try {
+      return Taro.getStorageSync(TOKEN_KEY) || null;
+    } catch {
+      return null;
+    }
   }
 
-  async removeToken(): Promise<void> {
-    await this.removeItem(STORAGE_KEYS.TOKEN);
+  removeToken(): void {
+    try {
+      Taro.removeStorageSync(TOKEN_KEY);
+    } catch (error) {
+      console.error('删除Token失败:', error);
+    }
   }
 
   // 用户信息管理

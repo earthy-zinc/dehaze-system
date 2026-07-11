@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, ScrollView } from '@tarojs/components'
-import { Dataset } from '../../services/types'
+import type { Dataset } from '../../services/types'
 import DatasetCard from '../DatasetCard'
 import EmptyState from '@/components/common/EmptyState'
 import './DatasetList.less'
@@ -11,7 +11,84 @@ interface DatasetListProps {
   onLoadMore?: () => void
   hasMore?: boolean
   onDatasetClick?: (dataset: Dataset) => void
+  // 树形结构相关
+  expandedIds: number[]
+  childrenMap: Record<number, Dataset[]>
+  childrenLoading: Record<number, boolean>
+  onToggleExpand?: (id: number) => void
+  // CRUD 相关
+  onAddChild?: (parent: Dataset) => void
+  onEdit?: (dataset: Dataset) => void
+  onDelete?: (dataset: Dataset) => void
   className?: string
+}
+
+// 递归树节点渲染
+const TreeNode: React.FC<{
+  dataset: Dataset
+  depth: number
+  expandedIds: number[]
+  childrenMap: Record<number, Dataset[]>
+  childrenLoading: Record<number, boolean>
+  onDatasetClick?: (dataset: Dataset) => void
+  onToggleExpand?: (id: number) => void
+  onAddChild?: (parent: Dataset) => void
+  onEdit?: (dataset: Dataset) => void
+  onDelete?: (dataset: Dataset) => void
+}> = ({ dataset, depth, expandedIds, childrenMap, childrenLoading, onDatasetClick, onToggleExpand, onAddChild, onEdit, onDelete }) => {
+  const isExpanded = expandedIds.includes(dataset.id)
+  const hasChildren = dataset.hasChildren === true
+  const children = childrenMap[dataset.id]
+  const isLoadingChildren = childrenLoading[dataset.id]
+
+  return (
+    <View className="tree-node">
+      <DatasetCard
+        dataset={dataset}
+        depth={depth}
+        expanded={isExpanded}
+        hasChildren={hasChildren}
+        loading={isLoadingChildren}
+        onClick={() => onDatasetClick?.(dataset)}
+        onToggleExpand={() => onToggleExpand?.(dataset.id)}
+        onAddChild={onAddChild ? () => onAddChild(dataset) : undefined}
+        onEdit={onEdit ? () => onEdit(dataset) : undefined}
+        onDelete={onDelete ? () => onDelete(dataset) : undefined}
+      />
+      {/* 递归渲染子节点 */}
+      {isExpanded && children && children.length > 0 && (
+        <View className="tree-children">
+          {children.map(child => (
+            <TreeNode
+              key={child.id}
+              dataset={child}
+              depth={depth + 1}
+              expandedIds={expandedIds}
+              childrenMap={childrenMap}
+              childrenLoading={childrenLoading}
+              onDatasetClick={onDatasetClick}
+              onToggleExpand={onToggleExpand}
+              onAddChild={onAddChild}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          ))}
+        </View>
+      )}
+      {/* 子节点加载中 */}
+      {isExpanded && isLoadingChildren && (!children || children.length === 0) && (
+        <View className="children-loading">
+          <View className="loading-spinner" />
+        </View>
+      )}
+      {/* 展开但无子节点 */}
+      {isExpanded && !isLoadingChildren && children && children.length === 0 && (
+        <View className="empty-children">
+          <View className="empty-children-text">暂无子数据集</View>
+        </View>
+      )}
+    </View>
+  )
 }
 
 const DatasetList: React.FC<DatasetListProps> = ({
@@ -20,6 +97,13 @@ const DatasetList: React.FC<DatasetListProps> = ({
   onLoadMore,
   hasMore = false,
   onDatasetClick,
+  expandedIds,
+  childrenMap,
+  childrenLoading,
+  onToggleExpand,
+  onAddChild,
+  onEdit,
+  onDelete,
   className = '',
 }) => {
   const handleScrollToLower = () => {
@@ -45,10 +129,18 @@ const DatasetList: React.FC<DatasetListProps> = ({
     >
       <View className="list-content">
         {datasets.map((dataset) => (
-          <DatasetCard
+          <TreeNode
             key={dataset.id}
             dataset={dataset}
-            onClick={() => onDatasetClick?.(dataset)}
+            depth={0}
+            expandedIds={expandedIds}
+            childrenMap={childrenMap}
+            childrenLoading={childrenLoading}
+            onDatasetClick={onDatasetClick}
+            onToggleExpand={onToggleExpand}
+            onAddChild={onAddChild}
+            onEdit={onEdit}
+            onDelete={onDelete}
           />
         ))}
 

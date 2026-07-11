@@ -7,7 +7,7 @@ import { View, Text, Image } from '@tarojs/components'
 import { Loading } from '@taroify/core'
 import FilterTabs from '@/components/common/FilterTabs'
 import { SampleImage, SampleCategory } from '../../services/types'
-import { categoryTabs, difficultyColorMap } from '../../services/sampleData'
+import { categoryTabs } from '../../services/sampleData'
 import './SampleGallery.less'
 
 interface SampleGalleryProps {
@@ -51,6 +51,7 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
       ) : samples.length === 0 ? (
         <View className='empty-container'>
           <Text className='empty-text'>暂无样例图片</Text>
+          <Text className='empty-hint'>请先在数据集管理中添加公开展示的图片</Text>
         </View>
       ) : (
         <View className='sample-grid'>
@@ -63,13 +64,17 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
               <View className='sample-image-wrapper'>
                 <Image
                   className='sample-image'
-                  src={sample.url}
+                  src={sample.thumbnailUrl || sample.url}
                   mode='aspectFill'
                   lazyLoad
                 />
-                <View className={`difficulty-badge ${difficultyColorMap[sample.difficulty]}`}>
-                  {sample.difficulty}
-                </View>
+                {sample.hazeLevel && (
+                  <View className={`haze-badge ${sample.hazeLevel}`}>
+                    <Text>
+                      {sample.hazeLevel === 'light' ? '轻度' : sample.hazeLevel === 'medium' ? '中度' : '重度'}
+                    </Text>
+                  </View>
+                )}
               </View>
               <View className='sample-info'>
                 <Text className='sample-name'>{sample.name}</Text>

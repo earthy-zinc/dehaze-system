@@ -6,9 +6,8 @@ import './ImageViewer.less'
 export interface ImageViewerProps {
   visible: boolean
   src: string
-  alt?: string
   filename?: string
-  imageType?: 'foggy' | 'clear' | 'annotated'
+  imageType?: 'clear' | 'hazy'
   width?: number
   height?: number
   fileSize?: number
@@ -20,7 +19,6 @@ export interface ImageViewerProps {
 const ImageViewer: React.FC<ImageViewerProps> = ({
   visible,
   src,
-  alt,
   filename,
   imageType,
   width,
@@ -49,9 +47,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const getTypeLabel = (type?: string) => {
     const labels = {
-      foggy: '有雾图像',
+      hazy: '有雾图像',
       clear: '无雾图像',
-      annotated: '标注图像',
     }
     return labels[type as keyof typeof labels] || '未知类型'
   }
@@ -79,7 +76,6 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
         <View className="image-container">
           <Image
             src={src}
-            alt={alt}
             className="viewer-image"
             mode="aspectFit"
           />

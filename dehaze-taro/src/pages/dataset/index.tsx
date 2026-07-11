@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { View, ScrollView } from '@tarojs/components'
-import { Arrow } from '@taroify/icons'
 import Taro from '@tarojs/taro'
+import { Arrow, Add } from '@taroify/icons'
 
 // 组件导入
 import SearchBar from '@/components/common/SearchBar'
@@ -12,12 +12,21 @@ import EmptyState from '@/components/common/EmptyState'
 import DatasetList from './components/DatasetList'
 import DatasetInfo from './components/DatasetInfo'
 import ImageGrid from './components/ImageGrid'
+import DatasetFormDialog, { DatasetFormData } from './components/DatasetFormDialog'
 
 // Store 和类型
 import { DatasetProvider, useDataset } from './store/datasetStore'
-import { Dataset, DatasetImage } from './services/types'
+import type { Dataset, ImageUrlVO } from './services/types'
 
 import './index.less'
+
+// 弹窗状态
+interface DialogState {
+  visible: boolean
+  mode: 'create' | 'edit'
+  dataset: Dataset | null
+  defaultParentId: number
+}
 
 // 主组件内容
 const DatasetContent: React.FC = () => {
@@ -32,14 +41,26 @@ const DatasetContent: React.FC = () => {
     setImageSearchKeyword,
     setImageType,
     resetImages,
+    toggleExpand,
+    fetchDatasetOptions,
+    createDataset,
+    updateDataset,
+    deleteDataset,
   } = useDataset()
 
   // 本地状态
   const [searchInputValue, setSearchInputValue] = useState('')
+  const [dialog, setDialog] = useState<DialogState>({
+    visible: false,
+    mode: 'create',
+    dataset: null,
+    defaultParentId: 0,
+  })
 
-  // 初始化加载数据集列表
+  // 初始化加载数据集列表和下拉选项
   useEffect(() => {
     fetchDatasets(1, '', false)
+    fetchDatasetOptions()
   }, [])
 
   // 搜索处理
@@ -82,8 +103,9 @@ const DatasetContent: React.FC = () => {
 
   // 图片类型筛选处理
   const handleImageTypeFilter = (type: string) => {
-    setImageType(type as 'all' | 'foggy' | 'clear' | 'annotated')
-    fetchImages(state.currentDatasetId!, 1, type as any, state.imageSearchKeyword, false)
+    const filter = type as 'all' | 'clear' | 'hazy'
+    setImageType(filter)
+    fetchImages(state.currentDatasetId!, 1, filter, state.imageSearchKeyword, false)
   }
 
   // 加载更多数据集
@@ -107,16 +129,87 @@ const DatasetContent: React.FC = () => {
   }
 
   // 图片点击处理
-  const handleImageClick = (image: DatasetImage) => {
-    console.log('Image clicked:', image.filename)
+  const handleImageClick = (image: ImageUrlVO) => {
+    console.log('Image clicked:', image.fileName)
+  }
+
+  // 新增根数据集
+  const handleAddRoot = () => {
+    setDialog({
+      visible: true,
+      mode: 'create',
+      dataset: null,
+      defaultParentId: 0,
+    })
+  }
+
+  // 新增子数据集
+  const handleAddChild = (parent: Dataset) => {
+    setDialog({
+      visible: true,
+      mode: 'create',
+      dataset: null,
+      defaultParentId: parent.id,
+    })
+  }
+
+  // 编辑数据集
+  const handleEdit = (dataset: Dataset) => {
+    setDialog({
+      visible: true,
+      mode: 'edit',
+      dataset,
+      defaultParentId: dataset.parentId ?? 0,
+    })
+  }
+
+  // 删除数据集（带确认）
+  const handleDelete = (dataset: Dataset) => {
+    Taro.showModal({
+      title: '确认删除',
+      content: `确定要删除数据集「${dataset.name}」吗？此操作不可恢复。`,
+      confirmText: '删除',
+      confirmColor: '#ef4444',
+      cancelText: '取消',
+      success: (res) => {
+        if (res.confirm) {
+          deleteDataset(dataset.id)
+        }
+      },
+    })
+  }
+
+  // 表单提交处理
+  const handleSubmit = async (data: DatasetFormData): Promise<boolean> => {
+    if (dialog.mode === 'create') {
+      return await createDataset({
+        parentId: data.parentId,
+        type: data.type,
+        name: data.name,
+        description: data.description,
+        status: data.status,
+      })
+    }
+    if (!dialog.dataset) return false
+    return await updateDataset(dialog.dataset.id, {
+      type: data.type,
+      name: data.name,
+      description: data.description,
+      status: data.status,
+    })
+  }
+
+  // 关闭弹窗
+  const handleCloseDialog = () => {
+    setDialog(prev => ({ ...prev, visible: false }))
   }
 
   // 图片类型筛选标签配置
+  const stats = state.currentDataset?.statistics
   const imageTypeTabs = state.currentDataset ? [
-    { key: 'all', label: '全部', count: state.currentDataset.total_images },
-    { key: 'foggy', label: '有雾', count: state.currentDataset.foggy_count },
-    { key: 'clear', label: '无雾', count: state.currentDataset.clear_count },
-    { key: 'annotated', label: '标注', count: state.currentDataset.annotated_count },
+    { key: 'all', label: '全部', count: stats?.fileCount ?? state.currentDataset.total ?? 0 },
+    { key: 'hazy', label: '有雾', count: stats?.hazyCount ?? 0 },
+    { key: 'clear', label: '无雾', count: stats?.clearCount ?? 0 },
   ] : []
 
   return (
@@ -134,12 +227,27 @@ const DatasetContent: React.FC = () => {
       {/* 列表视图 */}
       {state.currentView === 'list' && (
         <View className="list-view">
+          {/* 顶部操作栏 */}
+          <View className="action-bar">
+            <View className="add-btn" onClick={handleAddRoot}>
+              <Add size="16" color="#ffffff" />
+              <View className="add-btn-text">新增数据集</View>
+            </View>
+          </View>
+
           <DatasetList
             datasets={state.datasets}
             loading={state.datasetsLoading}
             hasMore={state.datasetsHasMore}
             onLoadMore={handleLoadMoreDatasets}
             onDatasetClick={handleDatasetClick}
+            expandedIds={state.expandedIds}
+            childrenMap={state.childrenMap}
+            childrenLoading={state.childrenLoading}
+            onToggleExpand={toggleExpand}
+            onAddChild={handleAddChild}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
           />
         </View>
       )}
@@ -175,7 +283,6 @@ const DatasetContent: React.FC = () => {
               ) : (
                 <ImageGrid
                   images={state.images}
-                  loading={state.imagesLoading}
                   onImageClick={handleImageClick}
                 />
               )}
@@ -196,6 +303,17 @@ const DatasetContent: React.FC = () => {
           </ScrollView>
         </View>
       )}
+
+      {/* 新增/编辑弹窗 */}
+      <DatasetFormDialog
+        visible={dialog.visible}
+        mode={dialog.mode}
+        dataset={dialog.dataset}
+        options={state.datasetOptions}
+        defaultParentId={dialog.defaultParentId}
+        onSubmit={handleSubmit}
+        onClose={handleCloseDialog}
+      />
     </View>
   )
 }

@@ -2,112 +2,188 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'dataset_model.g.dart';
 
+/// 图片类型枚举（与后端一致）
 enum ImageType {
-  @JsonValue('foggy')
-  foggy,
+  @JsonValue('hazy')
+  hazy,
   @JsonValue('clear')
   clear,
-  @JsonValue('annotated')
-  annotated,
+  @JsonValue('dehazed')
+  dehazed,
 }
 
 extension ImageTypeExtension on ImageType {
   String get displayName {
     switch (this) {
-      case ImageType.foggy:
+      case ImageType.hazy:
         return '有雾';
       case ImageType.clear:
-        return '无雾';
-      case ImageType.annotated:
-        return '标注';
+        return '清晰';
+      case ImageType.dehazed:
+        return '去雾结果';
     }
   }
 }
 
+/// 数据集模型
 @JsonSerializable()
 class DatasetModel {
   const DatasetModel({
     required this.id,
     required this.name,
-    required this.creator,
-    required this.thumbnail,
-    required this.totalImages,
-    required this.foggyCount,
-    required this.clearCount,
-    required this.annotatedCount,
-    required this.createdAt,
-    required this.updatedAt,
+    required this.createTime,
+    this.parentId,
+    this.type,
+    this.path,
     this.description,
+    this.remark,
+    this.usageCount,
+    this.createBy,
+    this.updateTime,
+    this.updateBy,
+    this.children = const [],
+    this.status,
   });
 
   factory DatasetModel.fromJson(Map<String, dynamic> json) =>
       _$DatasetModelFromJson(json);
-  @JsonKey(name: 'id')
+
   final int id;
 
-  @JsonKey(name: 'name')
+  @JsonKey(name: 'parentId')
+  final int? parentId;
+
   final String name;
 
-  @JsonKey(name: 'description')
+  /// 数据集类型（如 indoor、outdoor）
+  final String? type;
+
+  /// 存储路径
+  final String? path;
+
   final String? description;
+  final String? remark;
 
-  @JsonKey(name: 'creator')
-  final String creator;
+  /// 使用次数
+  @JsonKey(name: 'usageCount')
+  final int? usageCount;
 
-  @JsonKey(name: 'thumbnail')
-  final String thumbnail;
+  @JsonKey(name: 'createBy')
+  final String? createBy;
 
-  @JsonKey(name: 'total_images')
-  final int totalImages;
+  @JsonKey(name: 'createTime')
+  final String createTime;
 
-  @JsonKey(name: 'foggy_count')
-  final int foggyCount;
+  @JsonKey(name: 'updateBy')
+  final String? updateBy;
 
-  @JsonKey(name: 'clear_count')
-  final int clearCount;
+  @JsonKey(name: 'updateTime')
+  final String? updateTime;
 
-  @JsonKey(name: 'annotated_count')
-  final int annotatedCount;
+  /// 子数据集（树形结构）
+  final List<DatasetModel> children;
 
-  @JsonKey(name: 'created_at')
-  final DateTime createdAt;
-
-  @JsonKey(name: 'updated_at')
-  final DateTime updatedAt;
+  /// 状态（1=启用 0=禁用）
+  final int? status;
 
   Map<String, dynamic> toJson() => _$DatasetModelToJson(this);
+
+  /// 是否有子数据集
+  bool get hasChildren => children.isNotEmpty;
 }
 
+/// 数据项模型
 @JsonSerializable()
-class PaginatedDatasetResponse {
-  const PaginatedDatasetResponse({
-    required this.list,
-    required this.total,
-    required this.page,
-    required this.pageSize,
-    required this.totalPages,
+class DatasetItemModel {
+  const DatasetItemModel({
+    required this.id,
+    required this.datasetId,
+    required this.createTime,
+    this.name,
+    this.description,
+    this.files = const [],
   });
 
-  factory PaginatedDatasetResponse.fromJson(Map<String, dynamic> json) =>
-      _$PaginatedDatasetResponseFromJson(json);
-  @JsonKey(name: 'list')
-  final List<DatasetModel> list;
+  factory DatasetItemModel.fromJson(Map<String, dynamic> json) =>
+      _$DatasetItemModelFromJson(json);
 
-  @JsonKey(name: 'total')
-  final int total;
+  final int id;
 
-  @JsonKey(name: 'page')
-  final int page;
+  @JsonKey(name: 'datasetId')
+  final int datasetId;
 
-  @JsonKey(name: 'page_size')
-  final int pageSize;
+  final String? name;
+  final String? description;
 
-  @JsonKey(name: 'total_pages')
-  final int totalPages;
+  /// 关联的图片文件列表
+  final List<ItemFileModel> files;
 
-  Map<String, dynamic> toJson() => _$PaginatedDatasetResponseToJson(this);
+  @JsonKey(name: 'createTime')
+  final String createTime;
+
+  Map<String, dynamic> toJson() => _$DatasetItemModelToJson(this);
 }
 
+/// 数据项图片文件
+@JsonSerializable()
+class ItemFileModel {
+  const ItemFileModel({
+    required this.id,
+    required this.itemId,
+    required this.fileType,
+    required this.fileUrl,
+    this.fileId,
+    this.fileName,
+    this.fileSize,
+    this.width,
+    this.height,
+  });
+
+  factory ItemFileModel.fromJson(Map<String, dynamic> json) =>
+      _$ItemFileModelFromJson(json);
+
+  final int id;
+
+  @JsonKey(name: 'itemId')
+  final int itemId;
+
+  @JsonKey(name: 'fileId')
+  final String? fileId;
+
+  /// 图片类型（hazy/clear/dehazed）
+  @JsonKey(name: 'fileType')
+  final String fileType;
+
+  @JsonKey(name: 'fileUrl')
+  final String fileUrl;
+
+  @JsonKey(name: 'fileName')
+  final String? fileName;
+
+  @JsonKey(name: 'fileSize')
+  final int? fileSize;
+
+  final int? width;
+  final int? height;
+
+  Map<String, dynamic> toJson() => _$ItemFileModelToJson(this);
+
+  /// 转换为 ImageType 枚举
+  ImageType get imageType {
+    switch (fileType) {
+      case 'hazy':
+        return ImageType.hazy;
+      case 'clear':
+        return ImageType.clear;
+      case 'dehazed':
+        return ImageType.dehazed;
+      default:
+        return ImageType.hazy;
+    }
+  }
+}
+
+/// 图片展示模型（前端使用）
 @JsonSerializable()
 class ImageModel {
   const ImageModel({
@@ -116,9 +192,9 @@ class ImageModel {
     required this.filename,
     required this.imageUrl,
     required this.imageType,
-    required this.width,
-    required this.height,
     required this.createdAt,
+    this.width,
+    this.height,
     this.fileSize,
     this.tags,
     this.description,
@@ -126,68 +202,29 @@ class ImageModel {
 
   factory ImageModel.fromJson(Map<String, dynamic> json) =>
       _$ImageModelFromJson(json);
-  @JsonKey(name: 'id')
+
   final int id;
 
-  @JsonKey(name: 'dataset_id')
+  @JsonKey(name: 'datasetId')
   final int datasetId;
 
-  @JsonKey(name: 'filename')
   final String filename;
 
-  @JsonKey(name: 'image_url')
+  @JsonKey(name: 'fileUrl')
   final String imageUrl;
 
-  @JsonKey(name: 'image_type')
+  @JsonKey(name: 'fileType')
+  @JsonKey(unknownEnumValue: ImageType.hazy)
   final ImageType imageType;
 
-  @JsonKey(name: 'width')
-  final int width;
-
-  @JsonKey(name: 'height')
-  final int height;
-
-  @JsonKey(name: 'file_size')
+  final int? width;
+  final int? height;
   final int? fileSize;
-
-  @JsonKey(name: 'tags')
   final String? tags;
-
-  @JsonKey(name: 'description')
   final String? description;
 
-  @JsonKey(name: 'created_at')
-  final DateTime createdAt;
+  @JsonKey(name: 'createTime')
+  final String createdAt;
 
   Map<String, dynamic> toJson() => _$ImageModelToJson(this);
-}
-
-@JsonSerializable()
-class PaginatedImageResponse {
-  const PaginatedImageResponse({
-    required this.list,
-    required this.total,
-    required this.page,
-    required this.pageSize,
-    required this.totalPages,
-  });
-
-  factory PaginatedImageResponse.fromJson(Map<String, dynamic> json) =>
-      _$PaginatedImageResponseFromJson(json);
-  @JsonKey(name: 'list')
-  final List<ImageModel> list;
-
-  @JsonKey(name: 'total')
-  final int total;
-
-  @JsonKey(name: 'page')
-  final int page;
-
-  @JsonKey(name: 'page_size')
-  final int pageSize;
-
-  @JsonKey(name: 'total_pages')
-  final int totalPages;
-
-  Map<String, dynamic> toJson() => _$PaginatedImageResponseToJson(this);
 }

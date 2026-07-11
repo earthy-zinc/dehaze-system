@@ -116,11 +116,35 @@ export const menuSections: MenuSection[] = [
         title: "数据集管理",
         route: "/pages/dataset/index",
       },
+      {
+        icon: "folder",
+        activeIcon: "folder-fill",
+        title: "文件管理",
+        route: "/pages/file-manage/index",
+      },
+    ],
+  },
+  {
+    title: "我的",
+    icon: "account",
+    items: [
+      {
+        icon: "account",
+        activeIcon: "account-fill",
+        title: "用户中心",
+        route: "/pages/user-center/index",
+      },
+      {
+        icon: "clock",
+        activeIcon: "clock-fill",
+        title: "处理历史",
+        route: "/pages/task-history/index",
+      },
     ],
   },
 ];
 
-/** 底部 TabBar 配置（移动端核心入口） */
+/** 底部 TabBar 配置（与 pages.json tabBar.list 保持一致） */
 export const tabBarItems: MenuItem[] = [
   {
     icon: "home",
@@ -135,22 +159,10 @@ export const tabBarItems: MenuItem[] = [
     route: "/pages/image-input/index",
   },
   {
-    icon: "bulb",
-    activeIcon: "bulb-fill",
-    title: "算法",
-    route: "/pages/algorithm-select/index",
-  },
-  {
-    icon: "setting",
-    activeIcon: "setting-fill",
-    title: "处理",
-    route: "/pages/processing/index",
-  },
-  {
-    icon: "grid",
-    activeIcon: "grid-fill",
-    title: "对比",
-    route: "/pages/side-by-side/index",
+    icon: "server",
+    activeIcon: "server-fill",
+    title: "数据集",
+    route: "/pages/dataset/index",
   },
 ];
 

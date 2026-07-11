@@ -4,33 +4,32 @@ import '../models/dataset_model.dart';
 
 /// 类型筛选标签组件
 ///
-/// 与设计稿 dataset.css 的 type-filter-btn 样式对应
 /// 支持横向滚动，适配移动端
 class TypeFilterTabs extends StatelessWidget {
   const TypeFilterTabs({
     required this.selectedType,
-    required this.totalCount,
-    required this.foggyCount,
-    required this.clearCount,
-    required this.annotatedCount,
     required this.onTypeChanged,
+    this.totalCount,
+    this.hazyCount,
+    this.clearCount,
+    this.dehazedCount,
     super.key,
   });
 
   final ImageType? selectedType;
-  final int totalCount;
-  final int foggyCount;
-  final int clearCount;
-  final int annotatedCount;
+  final int? totalCount;
+  final int? hazyCount;
+  final int? clearCount;
+  final int? dehazedCount;
   final void Function(ImageType?) onTypeChanged;
 
   @override
   Widget build(BuildContext context) {
     final filterOptions = [
-      _FilterOption(null, '全部', totalCount),
-      _FilterOption(ImageType.foggy, '有雾', foggyCount),
-      _FilterOption(ImageType.clear, '无雾', clearCount),
-      _FilterOption(ImageType.annotated, '标注', annotatedCount),
+      _FilterOption(null, '全部', totalCount ?? 0),
+      _FilterOption(ImageType.hazy, '有雾', hazyCount ?? 0),
+      _FilterOption(ImageType.clear, '清晰', clearCount ?? 0),
+      _FilterOption(ImageType.dehazed, '去雾结果', dehazedCount ?? 0),
     ];
 
     return Container(
@@ -61,8 +60,6 @@ class TypeFilterTabs extends StatelessWidget {
 }
 
 /// 筛选按钮组件
-///
-/// 与设计稿 type-filter-btn 样式完全对应
 class _FilterButton extends StatefulWidget {
   const _FilterButton({
     required this.label,
@@ -87,9 +84,8 @@ class _FilterButtonState extends State<_FilterButton> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // 设计稿颜色
-    const tealColor = Color(0xFF14B8A6); // Tailwind teal-500
-    const cyanColor = Color(0xFF06B6D4); // Tailwind cyan-500
+    const tealColor = Color(0xFF14B8A6);
+    const cyanColor = Color(0xFF06B6D4);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
@@ -112,14 +108,14 @@ class _FilterButtonState extends State<_FilterButton> {
                         end: Alignment.bottomRight,
                       )
                     : null,
-                color: widget.isSelected ? null : Colors.white,
+                color: widget.isSelected ? null : theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: widget.isSelected
                       ? tealColor
                       : _isHovered
                           ? tealColor
-                          : const Color(0xFFE5E7EB), // gray-200
+                          : const Color(0xFFE5E7EB),
                   width: 2,
                 ),
                 boxShadow: widget.isSelected
@@ -144,7 +140,7 @@ class _FilterButtonState extends State<_FilterButton> {
                           ? Colors.white
                           : _isHovered
                               ? tealColor
-                              : const Color(0xFF6B7280), // gray-500
+                              : const Color(0xFF6B7280),
                     ),
                   ),
                   if (widget.count > 0) ...[

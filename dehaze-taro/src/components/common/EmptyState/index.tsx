@@ -3,7 +3,7 @@ import { View, Text } from '@tarojs/components'
 import './EmptyState.less'
 
 interface EmptyStateProps {
-  type?: 'dataset' | 'image' | 'search'
+  type?: 'dataset' | 'image' | 'search' | 'history'
   title?: string
   description?: string
   className?: string
@@ -34,6 +34,12 @@ const EmptyState: React.FC<EmptyStateProps> = ({
           icon: '🔍',
           title: title || '未找到结果',
           description: description || '请尝试其他搜索关键词',
+        }
+      case 'history':
+        return {
+          icon: '📋',
+          title: title || '暂无历史记录',
+          description: description || '处理过的图片会显示在这里',
         }
       default:
         return {

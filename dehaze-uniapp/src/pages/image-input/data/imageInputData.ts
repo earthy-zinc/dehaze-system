@@ -33,7 +33,10 @@ export interface SampleImage {
 /** 图片数据 */
 export interface ImageData {
   url: string;
-  file?: File;
+  /** 后端文件 ID（上传后获得） */
+  fileId?: number;
+  /** 后端返回的 HTTP URL */
+  remoteUrl?: string;
   width: number;
   height: number;
   size: number;

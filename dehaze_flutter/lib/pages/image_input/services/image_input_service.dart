@@ -180,7 +180,7 @@ class ImageInputService {
         },
       );
 
-      if (response.statusCode == 200 && response.data?['code'] == 0) {
+      if (response.statusCode == 200 && response.data?['code']?.toString() == '00000') {
         final data = response.data!['data'] as List<dynamic>;
         return data
             .map((e) => SampleImageModel.fromJson(e as Map<String, dynamic>))

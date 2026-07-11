@@ -5,7 +5,6 @@
 
 import React from 'react'
 import { Text } from '@tarojs/components'
-import { ArrowOutlined } from '@taroify/icons'
 
 interface IconWrapperProps {
   icon?: string
@@ -22,52 +21,20 @@ const IconWrapper: React.FC<IconWrapperProps> = ({
   fallback = '📦',
   className = ''
 }) => {
-  // 尝试使用taroify图标，如果失败则使用fallback
-  try {
-    return icon ? (
-      <Text
-        className={className}
-        style={{
-          fontSize: size,
-          color,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        {icon}
-      </Text>
-    ) : (
-      <Text
-        className={className}
-        style={{
-          fontSize: size,
-          color,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        {fallback}
-      </Text>
-    )
-  } catch (error) {
-    // 如果图标渲染失败，使用fallback
-    return (
-      <Text
-        className={className}
-        style={{
-          fontSize: size,
-          color,
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        {fallback}
-      </Text>
-    )
-  }
+  return (
+    <Text
+      className={className}
+      style={{
+        fontSize: size,
+        color,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      {icon || fallback}
+    </Text>
+  )
 }
 
 export default IconWrapper

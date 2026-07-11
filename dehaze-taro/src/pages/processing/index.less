@@ -1,0 +1,459 @@
+.processing-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f5f6fa;
+}
+
+/* 顶部导航 */
+.navbar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+
+  .nav-back {
+    padding: 8px;
+    margin-left: -8px;
+  }
+
+  .nav-title {
+    flex: 1;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-right: 28px;
+  }
+}
+
+.processing-content {
+  flex: 1;
+  padding: 16px;
+}
+
+/* 信息区块 */
+.info-section {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+
+  .section-label {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 10px;
+  }
+}
+
+/* 图片预览 */
+.image-preview {
+  width: 100%;
+  max-height: 240px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  margin-bottom: 8px;
+
+  .preview-img {
+    width: 100%;
+    max-height: 240px;
+  }
+}
+
+.image-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  .meta-item {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+}
+
+/* 算法信息 */
+.algorithm-info {
+  .algo-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .algo-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    .algo-type-tag {
+      padding: 2px 8px;
+      background: #eef2ff;
+      color: #6366f1;
+      font-size: 11px;
+      border-radius: 4px;
+    }
+  }
+
+  .algo-desc {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+    margin-top: 6px;
+  }
+
+  .algo-version {
+    display: block;
+    font-size: 12px;
+    color: #9ca3af;
+    margin-top: 4px;
+  }
+
+  .algo-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 6px;
+
+    .algo-version {
+      margin-top: 0;
+    }
+
+    .algo-estimate {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+  }
+}
+
+/* 参数调节面板 */
+.params-section {
+  .params-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .toggle-text {
+    font-size: 13px;
+    color: #3b82f6;
+  }
+
+  .params-body {
+    margin-top: 12px;
+  }
+
+  .param-item {
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .param-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+
+  .param-label {
+    font-size: 13px;
+    color: #374151;
+  }
+
+  .param-value {
+    font-size: 13px;
+    font-weight: 600;
+    color: #3b82f6;
+    min-width: 32px;
+    text-align: right;
+  }
+
+  .params-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 8px;
+  }
+
+  .reset-btn {
+    padding: 6px 14px;
+    background: #f3f4f6;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #6b7280;
+
+    &:active {
+      background: #e5e7eb;
+    }
+  }
+}
+
+/* 进度条 */
+.progress-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 16px;
+
+  .progress-bar {
+    flex: 1;
+    height: 8px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #60a5fa);
+    border-radius: 4px;
+    transition: width 0.2s ease;
+  }
+
+  .progress-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #3b82f6;
+    min-width: 36px;
+    text-align: right;
+  }
+}
+
+/* 处理阶段列表 */
+.stages-list {
+  width: 100%;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stage-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  .stage-dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .stage-name {
+    font-size: 13px;
+    color: #6b7280;
+  }
+
+  &.done {
+    .stage-dot {
+      background: #d1fae5;
+      color: #059669;
+    }
+    .stage-name {
+      color: #9ca3af;
+    }
+  }
+
+  &.active {
+    background: #eff6ff;
+
+    .stage-dot {
+      background: #3b82f6;
+      color: #ffffff;
+    }
+    .stage-name {
+      color: #1f2937;
+      font-weight: 500;
+    }
+  }
+}
+
+/* 状态区域 */
+.status-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px;
+  background: #fff;
+  border-radius: 12px;
+  margin-bottom: 12px;
+
+  .status-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-top: 12px;
+  }
+
+  .status-hint {
+    font-size: 13px;
+    color: #9ca3af;
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  &.processing .status-text {
+    color: #3b82f6;
+  }
+
+  &.success .status-text {
+    color: #059669;
+  }
+
+  &.error .status-text {
+    color: #dc2626;
+  }
+}
+
+/* 处理中动画 */
+.processing-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 成功/失败图标 */
+.success-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #d1fae5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  Text {
+    font-size: 24px;
+    color: #059669;
+    font-weight: bold;
+  }
+}
+
+.error-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  Text {
+    font-size: 24px;
+    color: #dc2626;
+    font-weight: bold;
+  }
+}
+
+/* 结果预览 */
+.result-preview {
+  width: 100%;
+  margin-top: 16px;
+
+  .section-label {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 8px;
+  }
+
+  .result-image-wrapper {
+    width: 100%;
+    max-height: 240px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #f3f4f6;
+
+    .result-img {
+      width: 100%;
+      max-height: 240px;
+    }
+  }
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  width: 100%;
+
+  .btn {
+    flex: 1;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 22px;
+    font-size: 15px;
+    font-weight: 500;
+
+    &.btn-primary {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    &.btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+    }
+  }
+}
+
+/* 开始处理区域 */
+.action-section {
+  padding: 24px 0;
+
+  .start-btn {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #3b82f6;
+    border-radius: 24px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    transition: opacity 0.2s;
+
+    &.disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    &:active {
+      opacity: 0.9;
+    }
+  }
+
+  .back-link {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 14px;
+    color: #6b7280;
+  }
+}

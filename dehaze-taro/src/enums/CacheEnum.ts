@@ -3,7 +3,7 @@
  */
 export enum CacheEnum {
   // 认证相关
-  TOKEN = 'token',
+  TOKEN = 'accessToken',
   USER_INFO = 'userInfo',
   PERMISSIONS = 'permissions',
   ROLES = 'roles',

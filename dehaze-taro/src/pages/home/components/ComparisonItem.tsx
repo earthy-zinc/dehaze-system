@@ -5,10 +5,9 @@ import './ComparisonItem.less'
 
 interface ComparisonItemProps {
   imageUrl: string
-  alt?: string
 }
 
-const ComparisonItem: React.FC<ComparisonItemProps> = ({ imageUrl, alt = '去雾效果对比' }) => {
+const ComparisonItem: React.FC<ComparisonItemProps> = ({ imageUrl }) => {
   return (
     <View className='comparison-item'>
       <Image
