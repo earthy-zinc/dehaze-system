@@ -34,31 +34,28 @@ class TestRoleService:
 
     @pytest.mark.asyncio
     async def test_get_role_options_with_cache(self):
-        """测试获取角色选项（有缓存）"""
+        """测试获取角色选项（非超级管理员，不显示 ROOT 角色）"""
         mock_db = AsyncMock()
-        mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(return_value='[{"id": 1, "name": "Admin"}]')
-
-        options = await RoleService.get_role_options(mock_db, mock_redis)
-
-        assert len(options) == 1
-        assert options[0]["name"] == "Admin"
-
-    @pytest.mark.asyncio
-    async def test_get_role_options_without_cache(self):
-        """测试获取角色选项（无缓存）"""
-        mock_db = AsyncMock()
-        mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(return_value=None)
-        mock_redis.setex = AsyncMock()
 
         with patch("app.service.role_service.role_repository") as mock_repo:
             mock_repo.get_role_options = AsyncMock(return_value=[{"id": 1, "name": "Admin"}])
 
-            options = await RoleService.get_role_options(mock_db, mock_redis)
+            options = await RoleService.get_role_options(mock_db, is_root=False)
 
             assert len(options) == 1
-            mock_redis.setex.assert_called_once()
+            assert options[0]["name"] == "Admin"
+
+    @pytest.mark.asyncio
+    async def test_get_role_options_without_cache(self):
+        """测试获取角色选项（超级管理员，显示 ROOT 角色）"""
+        mock_db = AsyncMock()
+
+        with patch("app.service.role_service.role_repository") as mock_repo:
+            mock_repo.get_role_options = AsyncMock(return_value=[{"id": 1, "name": "ROOT"}, {"id": 2, "name": "Admin"}])
+
+            options = await RoleService.get_role_options(mock_db, is_root=True)
+
+            assert len(options) == 2
 
     @pytest.mark.asyncio
     async def test_create_role_success(self):
@@ -153,7 +150,7 @@ class TestRoleService:
         with patch("app.service.role_service.role_repository") as mock_repo:
             mock_repo.get_by_id = AsyncMock(return_value=mock_role)
             mock_repo.check_name_exists = AsyncMock(return_value=False)
-            mock_repo.update = AsyncMock()
+            mock_repo.update_by_id = AsyncMock()
 
             await RoleService.update_role(
                 db=mock_db,
@@ -295,7 +292,7 @@ class TestRoleService:
 
         with patch("app.service.role_service.role_repository") as mock_repo:
             mock_repo.get_by_id = AsyncMock(return_value=mock_role)
-            mock_repo.update = AsyncMock()
+            mock_repo.update_by_id = AsyncMock()
 
             await RoleService.update_role_status(
                 db=mock_db,

@@ -42,7 +42,8 @@ class TestFileService:
         mock_db = AsyncMock()
 
         with patch("app.service.file_service.file_repository") as mock_repo, \
-             patch("app.service.file_service.get_minio_client") as mock_minio:
+             patch("app.service.file_service.get_minio_client") as mock_minio, \
+             patch("app.service.file_events.file_event_bus") as mock_event_bus:
             mock_repo.get_by_md5 = AsyncMock(return_value=None)
             mock_repo.create = AsyncMock(return_value=MagicMock(id=1))
             mock_minio.return_value.bucket_exists = MagicMock(return_value=True)
@@ -84,12 +85,18 @@ class TestFileService:
         mock_db = AsyncMock()
         mock_file = MagicMock()
         mock_file.id = 1
+        mock_file.object_name = "upload/test.jpg"
+        mock_file.name = "test.jpg"
+        mock_file.md5 = "abc123"
 
-        with patch("app.service.file_service.file_repository") as mock_repo:
+        with patch("app.service.file_service.file_repository") as mock_repo, \
+             patch("app.service.file_service.get_minio_client") as mock_minio, \
+             patch("app.service.file_events.file_event_bus") as mock_event_bus:
             mock_repo.get_by_id = AsyncMock(return_value=mock_file)
-            mock_repo.delete = AsyncMock()
+            mock_repo.delete_by_ids = AsyncMock()
+            mock_minio.return_value.remove_object = MagicMock()
 
-            result = await FileService.delete_file(mock_db, 1)
+            result = await FileService.delete_file_with_storage(mock_db, 1)
 
             assert result is True
 
@@ -102,7 +109,7 @@ class TestFileService:
             mock_repo.get_by_id = AsyncMock(return_value=None)
 
             with pytest.raises(BusinessException, match="文件不存在"):
-                await FileService.delete_file(mock_db, 999)
+                await FileService.delete_file_with_storage(mock_db, 999)
 
     @pytest.mark.asyncio
     async def test_check_file_exists_true(self):

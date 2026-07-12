@@ -716,31 +716,38 @@ func (_c *MockICache_IncrBy_Call) RunAndReturn(run func(context.Context, string,
 }
 
 // Lock provides a mock function with given fields: ctx, key, expiration
-func (_m *MockICache) Lock(ctx context.Context, key string, expiration time.Duration) (bool, error) {
+func (_m *MockICache) Lock(ctx context.Context, key string, expiration time.Duration) (string, bool, error) {
 	ret := _m.Called(ctx, key, expiration)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Lock")
 	}
 
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, time.Duration) (bool, error)); ok {
+	var r0 string
+	var r1 bool
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Duration) (string, bool, error)); ok {
 		return rf(ctx, key, expiration)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, time.Duration) bool); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, time.Duration) string); ok {
 		r0 = rf(ctx, key, expiration)
 	} else {
-		r0 = ret.Get(0).(bool)
+		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, time.Duration) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, time.Duration) bool); ok {
 		r1 = rf(ctx, key, expiration)
 	} else {
-		r1 = ret.Error(1)
+		r1 = ret.Get(1).(bool)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func(context.Context, string, time.Duration) error); ok {
+		r2 = rf(ctx, key, expiration)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockICache_Lock_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Lock'
@@ -763,12 +770,12 @@ func (_c *MockICache_Lock_Call) Run(run func(ctx context.Context, key string, ex
 	return _c
 }
 
-func (_c *MockICache_Lock_Call) Return(_a0 bool, _a1 error) *MockICache_Lock_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockICache_Lock_Call) Return(_a0 string, _a1 bool, _a2 error) *MockICache_Lock_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockICache_Lock_Call) RunAndReturn(run func(context.Context, string, time.Duration) (bool, error)) *MockICache_Lock_Call {
+func (_c *MockICache_Lock_Call) RunAndReturn(run func(context.Context, string, time.Duration) (string, bool, error)) *MockICache_Lock_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1342,9 +1349,9 @@ func (_c *MockICache_TTL_Call) RunAndReturn(run func(context.Context, string) (t
 	return _c
 }
 
-// Unlock provides a mock function with given fields: ctx, key
-func (_m *MockICache) Unlock(ctx context.Context, key string) (bool, error) {
-	ret := _m.Called(ctx, key)
+// Unlock provides a mock function with given fields: ctx, key, token
+func (_m *MockICache) Unlock(ctx context.Context, key string, token string) (bool, error) {
+	ret := _m.Called(ctx, key, token)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Unlock")
@@ -1352,17 +1359,17 @@ func (_m *MockICache) Unlock(ctx context.Context, key string) (bool, error) {
 
 	var r0 bool
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
-		return rf(ctx, key)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, error)); ok {
+		return rf(ctx, key, token)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
-		r0 = rf(ctx, key)
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
+		r0 = rf(ctx, key, token)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, key)
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, key, token)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -1378,13 +1385,14 @@ type MockICache_Unlock_Call struct {
 // Unlock is a helper method to define mock.On call
 //   - ctx context.Context
 //   - key string
-func (_e *MockICache_Expecter) Unlock(ctx interface{}, key interface{}) *MockICache_Unlock_Call {
-	return &MockICache_Unlock_Call{Call: _e.mock.On("Unlock", ctx, key)}
+//   - token string
+func (_e *MockICache_Expecter) Unlock(ctx interface{}, key interface{}, token interface{}) *MockICache_Unlock_Call {
+	return &MockICache_Unlock_Call{Call: _e.mock.On("Unlock", ctx, key, token)}
 }
 
-func (_c *MockICache_Unlock_Call) Run(run func(ctx context.Context, key string)) *MockICache_Unlock_Call {
+func (_c *MockICache_Unlock_Call) Run(run func(ctx context.Context, key string, token string)) *MockICache_Unlock_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
 	})
 	return _c
 }
@@ -1394,7 +1402,7 @@ func (_c *MockICache_Unlock_Call) Return(_a0 bool, _a1 error) *MockICache_Unlock
 	return _c
 }
 
-func (_c *MockICache_Unlock_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockICache_Unlock_Call {
+func (_c *MockICache_Unlock_Call) RunAndReturn(run func(context.Context, string, string) (bool, error)) *MockICache_Unlock_Call {
 	_c.Call.Return(run)
 	return _c
 }

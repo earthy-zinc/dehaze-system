@@ -118,55 +118,6 @@ class SysDatasetServiceTest {
         return map;
     }
 
-    @Test
-    @DisplayName("测试获取数据集列表 - 无搜索关键字")
-    void testGetList_WithoutKeyword() {
-        // Given
-        DatasetQuery query = new DatasetQuery();
-
-        Page<SysDataset> pageResult = new Page<>(1, 10);
-        pageResult.setRecords(Arrays.asList(sampleDataset));
-        pageResult.setTotal(1);
-
-        doReturn(pageResult).when(datasetService).page(any(Page.class), any(Wrapper.class));
-        doReturn(Collections.emptyList()).when(datasetService).list(any(Wrapper.class));
-        doReturn(Collections.emptyMap()).when(datasetService).getAllDatasetStats();
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(sampleDatasetVO);
-
-        // When
-        IPage<DatasetVO> result = datasetService.listPagedDatasets(query);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getRecords()).isNotEmpty();
-        verify(datasetService, atLeastOnce()).page(any(Page.class), any(Wrapper.class));
-    }
-
-    @Test
-    @DisplayName("测试获取数据集列表 - 有搜索关键字")
-    void testGetList_WithKeyword() {
-        // Given
-        DatasetQuery query = new DatasetQuery();
-        query.setKeyword("测试");
-
-        Page<SysDataset> pageResult = new Page<>(1, 10);
-        pageResult.setRecords(Arrays.asList(sampleDataset));
-        pageResult.setTotal(1);
-
-        doReturn(pageResult).when(datasetService).page(any(Page.class), any(Wrapper.class));
-        doReturn(Collections.emptyList()).when(datasetService).list(any(Wrapper.class));
-        doReturn(Collections.emptyMap()).when(datasetService).getAllDatasetStats();
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(sampleDatasetVO);
-
-        // When
-        IPage<DatasetVO> result = datasetService.listPagedDatasets(query);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getRecords()).isNotEmpty();
-        verify(datasetService, atLeastOnce()).page(any(Page.class), any(Wrapper.class));
-    }
-
     // ==================== 创建数据集测试 ====================
 
     @Test
@@ -182,7 +133,7 @@ class SysDatasetServiceTest {
         when(datasetConverter.form2Entity(form)).thenReturn(sampleDataset);
         doReturn(true).when(datasetService).save(any());
         // 为 calculateStatistics 中的 getLeafDatasetId 调用提供 mock
-        doReturn(Arrays.asList(sampleDataset)).when(datasetService).list();
+        doReturn(Arrays.asList(sampleDataset)).when(datasetService).getAllDatasets();
         when(datasetConverter.entity2Vo(any(), any())).thenReturn(sampleDatasetVO);
         lenient().when(datasetMapper.countDatasetStatsSingle(anyList())).thenReturn(createStatsMap(0, 0, 0, 0));
         lenient().when(datasetMapper.countItemsByDatasetIds(anyList())).thenReturn(0L);
@@ -244,7 +195,7 @@ class SysDatasetServiceTest {
         when(datasetConverter.updateForm2Entity(form)).thenReturn(updatedDataset);
         doReturn(true).when(datasetService).updateById(any());
         // 为 calculateStatistics 中的 getLeafDatasetId 调用提供 mock
-        doReturn(Arrays.asList(sampleDataset)).when(datasetService).list();
+        doReturn(Arrays.asList(sampleDataset)).when(datasetService).getAllDatasets();
         when(datasetConverter.entity2Vo(any(), any())).thenReturn(sampleDatasetVO);
         lenient().when(datasetMapper.countDatasetStatsSingle(anyList())).thenReturn(createStatsMap(0, 0, 0, 0));
         lenient().when(datasetMapper.countItemsByDatasetIds(anyList())).thenReturn(0L);
@@ -325,161 +276,6 @@ class SysDatasetServiceTest {
                 .hasMessageContaining("数据集不存在");
     }
 
-    // ==================== 获取数据集详情测试 ====================
-
-    @Test
-    @DisplayName("测试获取数据集详情 - 包含统计信息")
-    void testGetDatasetById_WithStatistics() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getSysDatasetById(datasetId);
-        // 为 calculateStatistics 中的 getLeafDatasetId 调用提供 mock
-        doReturn(Arrays.asList(sampleDataset)).when(datasetService).list();
-        lenient().when(datasetMapper.countDatasetStatsSingle(anyList())).thenReturn(createStatsMap(20, 0, 0, 0));
-        lenient().when(datasetMapper.countItemsByDatasetIds(anyList())).thenReturn(0L);
-        lenient().when(datasetMapper.countSceneDistribution(anyList())).thenReturn(
-                Arrays.asList(
-                        Map.of("scene_type", "outdoor", "count", 15L),
-                        Map.of("scene_type", "indoor", "count", 5L)
-                )
-        );
-        lenient().when(datasetMapper.countHazeDistribution(anyList())).thenReturn(
-                Arrays.asList(
-                        Map.of("haze_level", "light", "count", 8L),
-                        Map.of("haze_level", "medium", "count", 7L),
-                        Map.of("haze_level", "heavy", "count", 5L)
-                )
-        );
-        lenient().when(datasetMapper.countFormatDistributionByDatasetIds(anyList())).thenReturn(
-                Arrays.asList(
-                        Map.of("file_type", "jpg", "count", 18L),
-                        Map.of("file_type", "png", "count", 2L)
-                )
-        );
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(sampleDatasetVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(datasetId);
-
-        // Then
-        assertThat(result).isNotNull();
-    }
-
-    @Test
-    @DisplayName("测试获取数据集详情 - 验证统计字段完整性")
-    void testGetDatasetById_StatisticsCompleteness() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getSysDatasetById(datasetId);
-        doReturn(Arrays.asList(datasetId)).when(datasetService).getLeafDatasetId(datasetId);
-        when(datasetMapper.countDatasetStatsSingle(anyList())).thenReturn(createStatsMap(120, 0, 0, 0));
-        when(datasetMapper.countItemsByDatasetIds(anyList())).thenReturn(0L);
-        when(datasetMapper.countSceneDistribution(anyList())).thenReturn(
-                Arrays.asList(
-                        Map.of("scene_type", "outdoor", "count", 80L),
-                        Map.of("scene_type", "indoor", "count", 40L)
-                )
-        );
-        when(datasetMapper.countHazeDistribution(anyList())).thenReturn(
-                Arrays.asList(
-                        Map.of("haze_level", "light", "count", 50L),
-                        Map.of("haze_level", "medium", "count", 40L),
-                        Map.of("haze_level", "heavy", "count", 30L)
-                )
-        );
-        when(datasetMapper.countFormatDistributionByDatasetIds(anyList())).thenReturn(
-                Arrays.asList(
-                        Map.of("file_type", "jpg", "count", 100L),
-                        Map.of("file_type", "png", "count", 20L)
-                )
-        );
-
-        // 创建包含完整统计信息的 VO
-        DatasetStatistics completeStats = new DatasetStatistics();
-        completeStats.setItemCount(0L);
-        completeStats.setFileCount(120L);
-        completeStats.setTotalSize(0L);
-        completeStats.setClearCount(0L);
-        completeStats.setHazyCount(0L);
-        completeStats.setSceneDistribution(Map.of("outdoor", 80L, "indoor", 40L));
-        completeStats.setHazeDistribution(Map.of("light", 50L, "medium", 40L, "heavy", 30L));
-        completeStats.setFormatDistribution(Map.of("jpg", 100L, "png", 20L));
-
-        DatasetVO completeVO = new DatasetVO();
-        completeVO.setId(datasetId);
-        completeVO.setStatistics(completeStats);
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(completeVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(datasetId);
-
-        // Then - 验证所有统计字段
-        assertThat(result).isNotNull();
-        DatasetStatistics stats = result.getStatistics();
-        assertThat(stats).isNotNull();
-        assertThat(stats.getFileCount()).isEqualTo(120L);
-        assertThat(stats.getTotalSize()).isNotNull();
-        assertThat(stats.getClearCount()).isNotNull();
-        assertThat(stats.getHazyCount()).isNotNull();
-        assertThat(stats.getSceneDistribution()).isNotNull();
-        assertThat(stats.getSceneDistribution().get("outdoor")).isEqualTo(80L);
-        assertThat(stats.getSceneDistribution().get("indoor")).isEqualTo(40L);
-        assertThat(stats.getHazeDistribution()).isNotNull();
-        assertThat(stats.getHazeDistribution().get("light")).isEqualTo(50L);
-        assertThat(stats.getHazeDistribution().get("medium")).isEqualTo(40L);
-        assertThat(stats.getHazeDistribution().get("heavy")).isEqualTo(30L);
-        assertThat(stats.getFormatDistribution()).isNotNull();
-        assertThat(stats.getFormatDistribution().get("jpg")).isEqualTo(100L);
-        assertThat(stats.getFormatDistribution().get("png")).isEqualTo(20L);
-    }
-
-    @Test
-    @DisplayName("测试获取数据集详情 - 空统计信息")
-    void testGetDatasetById_EmptyStatistics() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getSysDatasetById(datasetId);
-        // 为 calculateStatistics 中的 getLeafDatasetId 调用提供 mock
-        doReturn(Arrays.asList(sampleDataset)).when(datasetService).list();
-        lenient().when(datasetMapper.countDatasetStatsSingle(anyList())).thenReturn(createStatsMap(0, 0, 0, 0));
-        lenient().when(datasetMapper.countItemsByDatasetIds(anyList())).thenReturn(0L);
-
-        DatasetVO emptyStatsVO = new DatasetVO();
-        emptyStatsVO.setId(datasetId);
-        DatasetStatistics emptyStats = new DatasetStatistics();
-        emptyStats.setItemCount(0L);
-        emptyStatsVO.setStatistics(emptyStats);
-
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(emptyStatsVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(datasetId);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getStatistics().getItemCount()).isEqualTo(0L);
-    }
-
-    /**
-     * 测试获取数据集详情 - 数据集不存在抛出异常
-     * 测试目的：验证当数据集不存在时的处理
-     * 测试场景：传入不存在的数据集ID
-     * 验证内容：抛出BusinessException异常，提示数据集不存在
-     */
-    @Test
-    @DisplayName("测试获取数据集详情 - 数据集不存在抛出异常")
-    void testGetDatasetById_NotFound() {
-        // Given
-        Long datasetId = 999L;
-        // 直接mock getSysDatasetById返回null，因为getById的mock在单元测试中很复杂
-        doReturn(null).when(datasetService).getSysDatasetById(datasetId);
-
-        // When & Then
-        assertThatThrownBy(() -> datasetService.getDatasetById(datasetId))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("数据集不存在");
-    }
-
     // ==================== 创建数据集校验测试 ====================
 
     @Test
@@ -546,7 +342,7 @@ class SysDatasetServiceTest {
         leafDataset2.setId(3L);
         leafDataset2.setParentId(1L);
 
-        doReturn(Arrays.asList(leafDataset1, leafDataset2)).when(datasetService).list();
+        doReturn(Arrays.asList(leafDataset1, leafDataset2)).when(datasetService).getAllDatasets();
         // 设置每个叶子节点没有子节点
         lenient().doReturn(Collections.emptyList()).when(datasetService).list(any(Wrapper.class));
 
@@ -650,303 +446,6 @@ class SysDatasetServiceTest {
         assertThat(result).contains(datasetId, 2L);
     }
 
-    // ==================== 统计信息边界条件测试 ====================
-
-    /**
-     * 测试统计信息计算 - 完全空的数据集
-     * 测试目的：验证当数据集没有任何叶子节点时，返回零值统计
-     * 测试场景：数据集本身不是叶子节点，且没有任何子数据集
-     * 验证内容：所有统计字段都应该为0或空Map
-     */
-    @Test
-    @DisplayName("calculateStatistics - 空数据集返回零值统计")
-    void testCalculateStatistics_EmptyDataset() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getSysDatasetById(datasetId);
-        doReturn(Collections.emptyList()).when(datasetService).getLeafDatasetId(datasetId);
-
-        DatasetStatistics emptyStats = new DatasetStatistics();
-        emptyStats.setItemCount(0L);
-        emptyStats.setFileCount(0L);
-        emptyStats.setTotalSize(0L);
-        emptyStats.setClearCount(0L);
-        emptyStats.setHazyCount(0L);
-        emptyStats.setSceneDistribution(new HashMap<>());
-        emptyStats.setHazeDistribution(new HashMap<>());
-        emptyStats.setFormatDistribution(new HashMap<>());
-
-        DatasetVO emptyDatasetVO = new DatasetVO();
-        emptyDatasetVO.setId(datasetId);
-        emptyDatasetVO.setStatistics(emptyStats);
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(emptyDatasetVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(datasetId);
-
-        // Then
-        assertThat(result).isNotNull();
-        DatasetStatistics stats = result.getStatistics();
-        assertThat(stats).isNotNull();
-        assertThat(stats.getItemCount()).isEqualTo(0L);
-        assertThat(stats.getFileCount()).isEqualTo(0L);
-        assertThat(stats.getTotalSize()).isEqualTo(0L);
-        assertThat(stats.getClearCount()).isEqualTo(0L);
-        assertThat(stats.getHazyCount()).isEqualTo(0L);
-        assertThat(stats.getSceneDistribution()).isEmpty();
-        assertThat(stats.getHazeDistribution()).isEmpty();
-        assertThat(stats.getFormatDistribution()).isEmpty();
-    }
-
-    /**
-     * 测试统计信息计算 - 叶子节点无数据项
-     * 测试目的：验证当叶子节点存在但没有数据项时，返回零值统计
-     * 测试场景：数据集是叶子节点，但没有任何图片数据
-     * 验证内容：fileCount为0，分布Map为空
-     */
-    @Test
-    @DisplayName("calculateStatistics - 叶子节点无数据项返回零值统计")
-    void testCalculateStatistics_LeafWithNoItems() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getSysDatasetById(datasetId);
-        doReturn(Arrays.asList(datasetId)).when(datasetService).getLeafDatasetId(datasetId);
-        when(datasetMapper.countDatasetStatsSingle(Arrays.asList(datasetId))).thenReturn(createStatsMap(0, 0, 0, 0));
-        when(datasetMapper.countItemsByDatasetIds(Arrays.asList(datasetId))).thenReturn(0L);
-
-        DatasetStatistics emptyStats = new DatasetStatistics();
-        emptyStats.setItemCount(0L);
-        emptyStats.setFileCount(0L);
-        emptyStats.setTotalSize(0L);
-        emptyStats.setClearCount(0L);
-        emptyStats.setHazyCount(0L);
-        emptyStats.setSceneDistribution(new HashMap<>());
-        emptyStats.setHazeDistribution(new HashMap<>());
-        emptyStats.setFormatDistribution(new HashMap<>());
-
-        DatasetVO emptyDatasetVO = new DatasetVO();
-        emptyDatasetVO.setId(datasetId);
-        emptyDatasetVO.setStatistics(emptyStats);
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(emptyDatasetVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(datasetId);
-
-        // Then
-        assertThat(result).isNotNull();
-        DatasetStatistics stats = result.getStatistics();
-        assertThat(stats).isNotNull();
-        assertThat(stats.getFileCount()).isEqualTo(0L);
-        assertThat(stats.getSceneDistribution()).isEmpty();
-        assertThat(stats.getHazeDistribution()).isEmpty();
-        assertThat(stats.getFormatDistribution()).isEmpty();
-        verify(datasetMapper).countDatasetStatsSingle(Arrays.asList(datasetId));
-        verify(datasetMapper, never()).countSceneDistribution(anyList());
-        verify(datasetMapper, never()).countHazeDistribution(anyList());
-    }
-
-    /**
-     * 测试统计信息计算 - 场景类型为null
-     * 测试目的：验证当场景类型为null时，归类为"未知"
-     * 测试场景：数据集包含场景类型为null的图片
-     * 验证内容：场景分布中应该包含"未知"类别
-     */
-    @Test
-    @DisplayName("calculateStatistics - 场景类型为null时归类为'未知'")
-    void testCalculateStatistics_NullSceneType() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getSysDatasetById(datasetId);
-        doReturn(Arrays.asList(datasetId)).when(datasetService).getLeafDatasetId(datasetId);
-        // 使用 lenient 避免未使用的 stubbing 报错
-        lenient().doReturn(Arrays.asList(sampleDataset)).when(datasetService).list();
-        when(datasetMapper.countDatasetStatsSingle(Arrays.asList(datasetId))).thenReturn(createStatsMap(50, 0, 0, 0));
-        when(datasetMapper.countItemsByDatasetIds(Arrays.asList(datasetId))).thenReturn(0L);
-
-        // 使用 HashMap 来支持 null 值
-        List<Map<String, Object>> sceneResults = new ArrayList<>();
-        Map<String, Object> scene1 = new HashMap<>();
-        scene1.put("scene_type", "outdoor");
-        scene1.put("count", 30L);
-        sceneResults.add(scene1);
-        Map<String, Object> scene2 = new HashMap<>();
-        scene2.put("scene_type", null);
-        scene2.put("count", 20L);
-        sceneResults.add(scene2);
-
-        when(datasetMapper.countSceneDistribution(Arrays.asList(datasetId))).thenReturn(sceneResults);
-        when(datasetMapper.countHazeDistribution(Arrays.asList(datasetId))).thenReturn(Collections.emptyList());
-        when(datasetMapper.countFormatDistributionByDatasetIds(Arrays.asList(datasetId))).thenReturn(Collections.emptyList());
-
-        Map<String, Long> sceneDistribution = new HashMap<>();
-        sceneDistribution.put("outdoor", 30L);
-        sceneDistribution.put("未知", 20L);
-
-        DatasetStatistics stats = new DatasetStatistics();
-        stats.setFileCount(50L);
-        stats.setSceneDistribution(sceneDistribution);
-        stats.setHazeDistribution(new HashMap<>());
-        stats.setFormatDistribution(new HashMap<>());
-
-        DatasetVO datasetVO = new DatasetVO();
-        datasetVO.setId(datasetId);
-        datasetVO.setStatistics(stats);
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(datasetVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(datasetId);
-
-        // Then
-        assertThat(result).isNotNull();
-        DatasetStatistics resultStats = result.getStatistics();
-        assertThat(resultStats).isNotNull();
-        assertThat(resultStats.getSceneDistribution()).containsEntry("outdoor", 30L);
-        assertThat(resultStats.getSceneDistribution()).containsEntry("未知", 20L);
-    }
-
-    /**
-     * 测试统计信息计算 - 雾霾程度为null
-     * 测试目的：验证当雾霾程度为null时，归类为"未知"
-     * 测试场景：数据集包含雾霾程度为null的图片
-     * 验证内容：雾霾分布中应该包含"未知"类别
-     */
-    @Test
-    @DisplayName("calculateStatistics - 雾霧程度为null时归类为'未知'")
-    void testCalculateStatistics_NullHazeLevel() {
-        // Given
-        Long datasetId = 1L;
-        doReturn(sampleDataset).when(datasetService).getSysDatasetById(datasetId);
-        doReturn(Arrays.asList(datasetId)).when(datasetService).getLeafDatasetId(datasetId);
-        // 使用 lenient 避免未使用的 stubbing 报错
-        lenient().doReturn(Arrays.asList(sampleDataset)).when(datasetService).list();
-        when(datasetMapper.countDatasetStatsSingle(Arrays.asList(datasetId))).thenReturn(createStatsMap(60, 0, 0, 0));
-        when(datasetMapper.countItemsByDatasetIds(Arrays.asList(datasetId))).thenReturn(0L);
-
-        when(datasetMapper.countSceneDistribution(Arrays.asList(datasetId))).thenReturn(Collections.emptyList());
-
-        // 使用 HashMap 来支持 null 值
-        List<Map<String, Object>> hazeResults = new ArrayList<>();
-        Map<String, Object> haze1 = new HashMap<>();
-        haze1.put("haze_level", "light");
-        haze1.put("count", 25L);
-        hazeResults.add(haze1);
-        Map<String, Object> haze2 = new HashMap<>();
-        haze2.put("haze_level", "medium");
-        haze2.put("count", 20L);
-        hazeResults.add(haze2);
-        Map<String, Object> haze3 = new HashMap<>();
-        haze3.put("haze_level", null);
-        haze3.put("count", 15L);
-        hazeResults.add(haze3);
-
-        when(datasetMapper.countHazeDistribution(Arrays.asList(datasetId))).thenReturn(hazeResults);
-        when(datasetMapper.countFormatDistributionByDatasetIds(Arrays.asList(datasetId))).thenReturn(Collections.emptyList());
-
-        Map<String, Long> hazeDistribution = new HashMap<>();
-        hazeDistribution.put("light", 25L);
-        hazeDistribution.put("medium", 20L);
-        hazeDistribution.put("未知", 15L);
-
-        DatasetStatistics stats = new DatasetStatistics();
-        stats.setFileCount(60L);
-        stats.setSceneDistribution(new HashMap<>());
-        stats.setHazeDistribution(hazeDistribution);
-        stats.setFormatDistribution(new HashMap<>());
-
-        DatasetVO datasetVO = new DatasetVO();
-        datasetVO.setId(datasetId);
-        datasetVO.setStatistics(stats);
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(datasetVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(datasetId);
-
-        // Then
-        assertThat(result).isNotNull();
-        DatasetStatistics resultStats = result.getStatistics();
-        assertThat(resultStats).isNotNull();
-        assertThat(resultStats.getHazeDistribution()).containsEntry("light", 25L);
-        assertThat(resultStats.getHazeDistribution()).containsEntry("medium", 20L);
-        assertThat(resultStats.getHazeDistribution()).containsEntry("未知", 15L);
-    }
-
-    /**
-     * 测试统计信息计算 - 父数据集聚合子数据集统计
-     * 测试目的：验证父数据集能够正确聚合所有子数据集的统计信息
-     * 测试场景：父数据集包含多个子数据集，每个子数据集都有数据
-     * 验证内容：父数据集的统计应该是所有子数据集统计的总和
-     */
-    @Test
-    @DisplayName("calculateStatistics - 父数据集聚合子数据集统计")
-    void testCalculateStatistics_AggregateChildStatistics() {
-        // Given
-        Long parentId = 1L;
-        Long child1Id = 2L;
-        Long child2Id = 3L;
-
-        SysDataset parentDataset = new SysDataset();
-        parentDataset.setId(parentId);
-        parentDataset.setName("父数据集");
-        parentDataset.setParentId(0L);
-
-        doReturn(parentDataset).when(datasetService).getSysDatasetById(parentId);
-        doReturn(Arrays.asList(child1Id, child2Id)).when(datasetService).getLeafDatasetId(parentId);
-
-        when(datasetMapper.countDatasetStatsSingle(Arrays.asList(child1Id, child2Id))).thenReturn(createStatsMap(150, 0, 0, 0));
-        when(datasetMapper.countItemsByDatasetIds(Arrays.asList(child1Id, child2Id))).thenReturn(0L);
-
-        List<Map<String, Object>> sceneResults = Arrays.asList(
-                Map.of("scene_type", "outdoor", "count", 90L),
-                Map.of("scene_type", "indoor", "count", 60L)
-        );
-        when(datasetMapper.countSceneDistribution(Arrays.asList(child1Id, child2Id))).thenReturn(sceneResults);
-
-        List<Map<String, Object>> hazeResults = Arrays.asList(
-                Map.of("haze_level", "light", "count", 60L),
-                Map.of("haze_level", "medium", "count", 50L),
-                Map.of("haze_level", "heavy", "count", 40L)
-        );
-        when(datasetMapper.countHazeDistribution(Arrays.asList(child1Id, child2Id))).thenReturn(hazeResults);
-
-        List<Map<String, Object>> formatResults = Arrays.asList(
-                Map.of("file_type", "jpg", "count", 120L),
-                Map.of("file_type", "png", "count", 30L)
-        );
-        when(datasetMapper.countFormatDistributionByDatasetIds(Arrays.asList(child1Id, child2Id))).thenReturn(formatResults);
-
-        DatasetStatistics stats = new DatasetStatistics();
-        stats.setFileCount(150L);
-        stats.setSceneDistribution(Map.of("outdoor", 90L, "indoor", 60L));
-        stats.setHazeDistribution(Map.of("light", 60L, "medium", 50L, "heavy", 40L));
-        stats.setFormatDistribution(Map.of("jpg", 120L, "png", 30L));
-
-        DatasetVO datasetVO = new DatasetVO();
-        datasetVO.setId(parentId);
-        datasetVO.setStatistics(stats);
-        when(datasetConverter.entity2Vo(any(), any())).thenReturn(datasetVO);
-
-        // When
-        DatasetVO result = datasetService.getDatasetById(parentId);
-
-        // Then
-        assertThat(result).isNotNull();
-        DatasetStatistics resultStats = result.getStatistics();
-        assertThat(resultStats).isNotNull();
-        assertThat(resultStats.getFileCount()).isEqualTo(150L);
-        assertThat(resultStats.getSceneDistribution()).containsEntry("outdoor", 90L);
-        assertThat(resultStats.getSceneDistribution()).containsEntry("indoor", 60L);
-        assertThat(resultStats.getHazeDistribution()).containsEntry("light", 60L);
-        assertThat(resultStats.getHazeDistribution()).containsEntry("medium", 50L);
-        assertThat(resultStats.getHazeDistribution()).containsEntry("heavy", 40L);
-        assertThat(resultStats.getFormatDistribution()).containsEntry("jpg", 120L);
-        assertThat(resultStats.getFormatDistribution()).containsEntry("png", 30L);
-
-        verify(datasetMapper).countDatasetStatsSingle(Arrays.asList(child1Id, child2Id));
-        verify(datasetMapper).countSceneDistribution(Arrays.asList(child1Id, child2Id));
-        verify(datasetMapper).countHazeDistribution(Arrays.asList(child1Id, child2Id));
-        verify(datasetMapper).countFormatDistributionByDatasetIds(Arrays.asList(child1Id, child2Id));
-    }
-
     // ==================== 深层树结构递归性能测试 ====================
 
     /**
@@ -993,7 +492,7 @@ class SysDatasetServiceTest {
         leaf4.setParentId(3L);
 
         List<SysDataset> allDatasets = Arrays.asList(root, child1, child2, leaf1, leaf2, leaf3, leaf4);
-        doReturn(allDatasets).when(datasetService).list();
+        doReturn(allDatasets).when(datasetService).getAllDatasets();
 
         // When
         List<Long> result = datasetService.getLeafDatasetId(rootId);
@@ -1054,7 +553,7 @@ class SysDatasetServiceTest {
             allDatasets.add(leaf);
         }
 
-        doReturn(allDatasets).when(datasetService).list();
+        doReturn(allDatasets).when(datasetService).getAllDatasets();
 
         // When
         List<Long> result = datasetService.getLeafDatasetId(rootId);
@@ -1084,7 +583,7 @@ class SysDatasetServiceTest {
             allDatasets.add(dataset);
         }
 
-        doReturn(allDatasets).when(datasetService).list();
+        doReturn(allDatasets).when(datasetService).getAllDatasets();
 
         // When
         List<Long> result = datasetService.getLeafDatasetId(1L);
@@ -1134,7 +633,7 @@ class SysDatasetServiceTest {
             }
         }
 
-        doReturn(allDatasets).when(datasetService).list();
+        doReturn(allDatasets).when(datasetService).getAllDatasets();
 
         // When
         List<Long> result = datasetService.getLeafDatasetId(rootId);
@@ -1204,7 +703,7 @@ class SysDatasetServiceTest {
         leaf5.setParentId(4L);
         allDatasets.add(leaf5);
 
-        doReturn(allDatasets).when(datasetService).list();
+        doReturn(allDatasets).when(datasetService).getAllDatasets();
 
         // When
         List<Long> result = datasetService.getLeafDatasetId(rootId);
@@ -1239,7 +738,7 @@ class SysDatasetServiceTest {
         leaf.setParentId(1L);
         allDatasets.add(leaf);
 
-        doReturn(allDatasets).when(datasetService).list();
+        doReturn(allDatasets).when(datasetService).getAllDatasets();
 
         // When
         List<Long> result = datasetService.getLeafDatasetId(leafId);

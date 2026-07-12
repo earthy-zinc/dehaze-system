@@ -65,6 +65,9 @@ services:
       - pei-network
 
   # MinIO
+  # bind mount 本地数据集目录为 MinIO 数据根
+  # dehaze bucket（小写）通过 NTFS junction 链接各数据集子目录
+  # 文件 URL 格式：http://127.0.0.1:9000/dehaze/{dataset_path}/{subdir}/{filename}
   minio:
     image: minio/minio:latest
     container_name: minio
@@ -77,7 +80,7 @@ services:
       - MINIO_SECRET_KEY=${DEHAZE_PASSWORD}
       - MINIO_BROWSER_DEFAULT_LOCALE=zh_CN
     volumes:
-      - minio-data:/data
+      - D:/DeepLearning/dataset:/data
       - minio-config:/root/.minio
     command: server /data --console-address :9090 --address :9000
     privileged: true
@@ -591,8 +594,6 @@ volumes:
   mongo-config:
     external: true
   mongo-logs:
-    external: true
-  minio-data:
     external: true
   minio-config:
     external: true

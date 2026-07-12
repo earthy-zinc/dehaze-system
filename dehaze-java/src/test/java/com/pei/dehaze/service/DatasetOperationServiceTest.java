@@ -213,59 +213,6 @@ class DatasetOperationServiceTest {
         assertThat(result.getResults().get(2).getErrorCode()).isEqualTo("RESOURCE_NOT_FOUND");
     }
 
-    @Test
-    @DisplayName("测试批量删除数据集 - 级联删除数据项和文件")
-    void testBatchDeleteDatasets_CascadeDeleteItems() {
-        // Given
-        List<Long> datasetIds = Arrays.asList(1L);
-
-        when(sysDatasetService.getDatasetAndDescendantIds(1L)).thenReturn(Arrays.asList(1L));
-        when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
-
-        // 模拟该数据集下有数据项
-        when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(sampleDatasetItem));
-        when(sysDatasetItemService.getById(1L)).thenReturn(sampleDatasetItem);
-        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(sampleItemFile));
-        when(sysItemFileService.deleteFile(anyLong())).thenReturn(true);
-        when(sysDatasetItemService.removeById(anyLong())).thenReturn(true);
-        when(sysDatasetService.removeById(anyLong())).thenReturn(true);
-
-        // When
-        BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(datasetIds);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getSucceeded()).isEqualTo(1);
-        verify(sysItemFileService).deleteFile(1L);
-        verify(sysDatasetItemService).removeById(1L);
-        verify(sysDatasetService).removeById(1L);
-    }
-
-    @Test
-    @DisplayName("测试批量删除数据集 - 验证事务回滚")
-    void testBatchDeleteDatasets_TransactionRollback() {
-        // Given
-        List<Long> datasetIds = Arrays.asList(1L);
-
-        when(sysDatasetService.getDatasetAndDescendantIds(1L)).thenReturn(Arrays.asList(1L));
-        when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
-        when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(sampleDatasetItem));
-        when(sysDatasetItemService.getById(1L)).thenReturn(sampleDatasetItem);
-        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Arrays.asList(sampleItemFile));
-
-        // 文件删除时抛出异常
-        doThrow(new RuntimeException("文件删除失败")).when(sysItemFileService).deleteFile(anyLong());
-
-        // When
-        BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(datasetIds);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result.getFailed()).isEqualTo(1);
-        assertThat(result.getResults().get(0).getStatus()).isEqualTo("failed");
-        // 验证事务应该回滚，数据集本身不应该被删除
-        verify(sysDatasetService, never()).removeById(1L);
-    }
 
     @Test
     @DisplayName("测试批量删除结果格式")

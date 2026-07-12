@@ -323,13 +323,10 @@ class LocalFileServiceTest {
     @DisplayName("downLoadFile - 文件名包含非法字符抛出异常")
     void testDownLoadFile_InvalidFileName() throws IOException {
         // Given
-        String objectName = "test/invalid<>file.txt";
+        // 空格在 Windows 合法但文件名 regex [a-zA-Z0-9.\\-_]+ 会拒绝
+        String objectName = "test space file.txt";
         Path filePath = tempDir.resolve(objectName);
-
-        Files.createDirectories(filePath.getParent());
         Files.writeString(filePath, "invalid content");
-
-        assertThat(Files.exists(filePath)).isTrue();
 
         // When & Then
         assertThatThrownBy(() -> localFileService.downLoadFile(objectName))

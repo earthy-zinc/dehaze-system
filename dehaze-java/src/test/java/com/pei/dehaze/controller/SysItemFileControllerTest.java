@@ -62,6 +62,9 @@ class SysItemFileControllerTest {
     @MockBean
     private SysDatasetService sysDatasetService;
 
+    @MockBean
+    private com.pei.dehaze.common.util.FileBOFactory fileBOFactory;
+
     private ImageUrlVO mockImageUrlVO;
     private BatchDeleteResultVO mockBatchDeleteResult;
 

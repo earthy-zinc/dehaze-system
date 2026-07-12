@@ -251,13 +251,12 @@ class FileStorageServiceTest {
             byte[] content = "test content for download".getBytes();
             Files.write(testFile, content);
 
-            // Act
-            InputStream result = localFileService.downLoadFile("download_test.jpg");
-
-            // Assert
-            assertThat(result).isNotNull();
-            byte[] downloadedContent = result.readAllBytes();
-            assertThat(downloadedContent).isEqualTo(content);
+            // Act & Assert - 使用 try-with-resources 确保流关闭，避免 Windows 临时目录清理失败
+            try (InputStream result = localFileService.downLoadFile("download_test.jpg")) {
+                assertThat(result).isNotNull();
+                byte[] downloadedContent = result.readAllBytes();
+                assertThat(downloadedContent).isEqualTo(content);
+            }
         }
 
         /**

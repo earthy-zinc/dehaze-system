@@ -270,7 +270,9 @@ func TestAddTokenToBlacklist_Success(t *testing.T) {
 	assert.NoError(t, err)
 	expectedKey := common.BlacklistPrefix + claims.ID
 
-	f.cache.EXPECT().Set(ctx, expectedKey, "1", testJWTTTL).Return(nil).Once()
+	// TTL 使用 mock.Anything：AddTokenToBlacklist 内部计算 time.Until(claims.ExpiresAt.Time)
+	// 作为黑名单过期时间（Token 剩余有效期），与 testJWTTTL 存在微小时间差，无法精确匹配
+	f.cache.EXPECT().Set(ctx, expectedKey, "1", mock.Anything).Return(nil).Once()
 
 	err = f.authService.AddTokenToBlacklist(ctx, accessToken)
 
@@ -310,7 +312,7 @@ func TestAddTokenToBlacklist_CacheWriteFailure(t *testing.T) {
 	expectedKey := common.BlacklistPrefix + claims.ID
 
 	cacheErr := errors.New("redis connection refused")
-	f.cache.EXPECT().Set(ctx, expectedKey, "1", testJWTTTL).Return(cacheErr).Once()
+	f.cache.EXPECT().Set(ctx, expectedKey, "1", mock.Anything).Return(cacheErr).Once()
 
 	err = f.authService.AddTokenToBlacklist(ctx, accessToken)
 
@@ -455,8 +457,8 @@ func TestLogout_Success(t *testing.T) {
 	c.Request = httptest.NewRequest("POST", "/api/v1/auth/logout", nil)
 	c.Request.Header.Set("Authorization", "Bearer "+accessToken)
 
-	// 期望：Token 加入黑名单
-	f.cache.EXPECT().Set(mock.Anything, expectedKey, "1", testJWTTTL).Return(nil).Once()
+	// 期望：Token 加入黑名单（TTL 使用 mock.Anything，因为实际使用 Token 剩余有效期）
+	f.cache.EXPECT().Set(mock.Anything, expectedKey, "1", mock.Anything).Return(nil).Once()
 	// 期望：清理用户登录状态缓存（多端登录互斥场景）
 	f.cache.EXPECT().Delete(mock.Anything, "zhangsan").Return(nil).Once()
 
@@ -508,7 +510,7 @@ func TestLogout_BlacklistFailure(t *testing.T) {
 
 	// 模拟缓存写入失败
 	cacheErr := errors.New("redis connection refused")
-	f.cache.EXPECT().Set(mock.Anything, expectedKey, "1", testJWTTTL).Return(cacheErr).Once()
+	f.cache.EXPECT().Set(mock.Anything, expectedKey, "1", mock.Anything).Return(cacheErr).Once()
 
 	err = f.authService.Logout(c)
 

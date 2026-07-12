@@ -22,26 +22,17 @@ class TestTaskService:
         mock_redis = AsyncMock()
 
         with patch("app.service.task_service.task_repository") as mock_repo, \
-             patch("asyncio.create_task") as mock_create_task, \
-             patch("app.service.task_tracker.get_task_tracker") as mock_get_tracker:
+             patch.object(TaskServiceAsync, "_dispatch_task", new_callable=AsyncMock) as mock_dispatch:
             mock_db.flush = AsyncMock()
             mock_db.refresh = AsyncMock()
             mock_db.add = MagicMock()  # add 是同步方法，不需要 AsyncMock
 
-            # mock asyncio.create_task 返回一个可用的 task
-            mock_task = AsyncMock()
-            mock_task.add_done_callback = MagicMock()
-            mock_create_task.return_value = mock_task
-
-            # mock task tracker
-            mock_tracker = AsyncMock()
-            mock_tracker.register = AsyncMock()
-            mock_get_tracker.return_value = mock_tracker
+            mock_repo.count_pending_by_user_and_type = AsyncMock(return_value=0)
 
             result = await TaskServiceAsync.create_export_task(
                 db=mock_db,
                 redis=mock_redis,
-                task_type="dataset",
+                task_type="dataset_export",
                 target_id=1,
                 target_ids=None,
                 options=None,
@@ -73,12 +64,13 @@ class TestTaskService:
         """测试从缓存获取任务状态"""
         mock_db = AsyncMock()
         mock_redis = AsyncMock()
-        mock_redis.get = AsyncMock(return_value=b'{"task_id": "test-123", "status": "pending"}')
+        mock_redis.get = AsyncMock(return_value=b'{"task_id": "test-123", "status": "pending", "created_by": 1}')
 
         result = await TaskServiceAsync.get_task_status(
             db=mock_db,
             redis=mock_redis,
             task_id="test-123",
+            user_id=1,
         )
 
         assert result is not None
@@ -90,18 +82,32 @@ class TestTaskService:
         mock_db = AsyncMock()
         mock_redis = AsyncMock()
         mock_redis.get = AsyncMock(return_value=None)
+        mock_redis.setex = AsyncMock()
 
         with patch("app.service.task_service.task_repository") as mock_repo:
             mock_task = MagicMock()
             mock_task.task_id = "test-123"
             mock_task.status = "pending"
             mock_task.progress = 0
+            mock_task.created_by = 1
+            mock_task.id = 1
+            mock_task.task_type = "dataset_export"
+            mock_task.total_files = 0
+            mock_task.processed_files = 0
+            mock_task.result = None
+            mock_task.error_message = None
+            mock_task.created_at = None
+            mock_task.updated_at = None
+            mock_task.started_at = None
+            mock_task.completed_at = None
+            mock_task.expires_at = None
             mock_repo.get_by_task_id = AsyncMock(return_value=mock_task)
 
             result = await TaskServiceAsync.get_task_status(
                 db=mock_db,
                 redis=mock_redis,
                 task_id="test-123",
+                user_id=1,
             )
 
             assert result is not None
@@ -117,6 +123,7 @@ class TestTaskService:
                 db=mock_db,
                 redis=mock_redis,
                 task_id="",
+                user_id=1,
             )
 
     @pytest.mark.asyncio
@@ -124,17 +131,32 @@ class TestTaskService:
         """测试取消任务成功"""
         mock_db = AsyncMock()
         mock_redis = AsyncMock()
+        mock_redis.setex = AsyncMock()
 
         with patch("app.service.task_service.task_repository") as mock_repo:
             mock_task = MagicMock()
             mock_task.task_id = "test-123"
             mock_task.status = "pending"  # 使用字符串
+            mock_task.created_by = 1
+            mock_task.id = 1
+            mock_task.task_type = "dataset_export"
+            mock_task.progress = 0
+            mock_task.total_files = 0
+            mock_task.processed_files = 0
+            mock_task.result = None
+            mock_task.error_message = None
+            mock_task.created_at = None
+            mock_task.updated_at = None
+            mock_task.started_at = None
+            mock_task.completed_at = None
+            mock_task.expires_at = None
             mock_repo.get_by_task_id = AsyncMock(return_value=mock_task)
 
             result = await TaskServiceAsync.cancel_task(
                 db=mock_db,
                 redis=mock_redis,
                 task_id="test-123",
+                user_id=1,
             )
 
             assert result is True
@@ -153,6 +175,7 @@ class TestTaskService:
                     db=mock_db,
                     redis=mock_redis,
                     task_id="nonexistent",
+                    user_id=1,
                 )
 
     @pytest.mark.asyncio
@@ -164,13 +187,13 @@ class TestTaskService:
         with patch("app.service.task_service.task_repository") as mock_repo:
             mock_repo.get_by_task_id = AsyncMock(return_value=None)
 
-            result = await TaskServiceAsync.download_export_file(
-                db=mock_db,
-                redis=mock_redis,
-                task_id="nonexistent",
-            )
-
-            assert result is None
+            with pytest.raises(BusinessException, match="任务不存在"):
+                await TaskServiceAsync.download_export_file(
+                    db=mock_db,
+                    redis=mock_redis,
+                    task_id="nonexistent",
+                    user_id=1,
+                )
 
     @pytest.mark.asyncio
     async def test_download_export_file_empty_id(self):
@@ -183,6 +206,7 @@ class TestTaskService:
                 db=mock_db,
                 redis=mock_redis,
                 task_id="",
+                user_id=1,
             )
 
 
@@ -205,6 +229,7 @@ class TestTaskUtils:
                 self.error_message = None
                 self.created_by = 1
                 self.created_at = None
+                self.updated_at = None
                 self.started_at = None
                 self.completed_at = None
                 self.expires_at = None

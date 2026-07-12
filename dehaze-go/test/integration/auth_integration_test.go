@@ -88,7 +88,7 @@ func TestLogin_Success_Admin(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	resp := tu.ParseResponse(t, w)
 	assert.Equal(t, common.SUCCESS.Code, resp.Code)
-	assert.Equal(t, "登录成功", resp.Msg)
+	assert.Equal(t, common.SUCCESS.Msg, resp.Msg)
 
 	var loginData struct {
 		AccessToken  string `json:"accessToken"`
@@ -153,7 +153,7 @@ func TestJWT_NoToken_AccessProtectedRoute(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code, "无Token访问受保护路由应返回401")
 	resp := tu.ParseResponse(t, w)
-	assert.Equal(t, common.ACCESS_UNAUTHORIZED.Code, resp.Code, "错误码应为 ACCESS_UNAUTHORIZED")
+	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "错误码应为 TOKEN_INVALID")
 }
 
 func TestJWT_FakeToken_AccessProtectedRoute(t *testing.T) {
@@ -162,7 +162,7 @@ func TestJWT_FakeToken_AccessProtectedRoute(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code, "伪造Token应返回401")
 	resp := tu.ParseResponse(t, w)
-	assert.Equal(t, common.ACCESS_UNAUTHORIZED.Code, resp.Code, "错误码应为 ACCESS_UNAUTHORIZED")
+	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "错误码应为 TOKEN_INVALID")
 }
 
 func TestJWT_ValidToken_GetAuthInfo(t *testing.T) {
@@ -230,13 +230,14 @@ func TestLogout_TokenInvalidated(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	resp = tu.ParseResponse(t, w)
 	assert.Equal(t, common.SUCCESS.Code, resp.Code)
-	assert.Equal(t, "注销成功", resp.Msg)
+	assert.Equal(t, common.SUCCESS.Msg, resp.Msg)
 
 	// 注销后使用同一 Token 访问受保护路由应被拒绝
+	// 注销后 Token 在黑名单中，JWT 中间件返回 TOKEN_INVALID
 	w = tu.DoRequest(http.MethodGet, "/api/v1/auth/me", nil, accessToken)
 	assert.Equal(t, http.StatusUnauthorized, w.Code, "注销后 Token 应失效，返回 401")
 	resp = tu.ParseResponse(t, w)
-	assert.Equal(t, common.ACCESS_UNAUTHORIZED.Code, resp.Code, "注销后错误码应为 ACCESS_UNAUTHORIZED")
+	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "注销后错误码应为 TOKEN_INVALID")
 }
 
 // ============================================================
@@ -254,7 +255,7 @@ func TestRefresh_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	resp := tu.ParseResponse(t, w)
 	assert.Equal(t, common.SUCCESS.Code, resp.Code)
-	assert.Equal(t, "刷新成功", resp.Msg)
+	assert.Equal(t, common.SUCCESS.Msg, resp.Msg)
 
 	var newTokens struct {
 		AccessToken  string `json:"accessToken"`
@@ -296,34 +297,33 @@ func TestRefresh_OldRefreshToken_Invalidated(t *testing.T) {
 	require.NotEmpty(t, newTokens.AccessToken, "首次刷新应返回新 accessToken")
 
 	// 使用已被消费的旧 refreshToken 再次刷新应失败
-	w = tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, newTokens.AccessToken)
-	assert.Equal(t, http.StatusOK, w.Code)
+	// API 从 Header 读取 Token，JWT 中间件检测到旧 refreshToken 在黑名单中，返回 401
+	w = tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, refreshToken)
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "旧 refreshToken 已在黑名单，应返回 401")
 	resp = tu.ParseResponse(t, w)
 	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "旧 refreshToken 应已失效，错误码为 TOKEN_INVALID")
 }
 
 func TestRefresh_EmptyRefreshToken(t *testing.T) {
-	accessToken, _ := tu.LoginAndGetTokens(t, "admin", "123456")
-
+	// /refresh 路由受 JWT 中间件保护，无 Token 时中间件直接返回 401
 	refreshBody := map[string]string{
 		"refreshToken": "",
 	}
-	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, accessToken)
+	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, "")
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "无 Token 应返回 401")
 	resp := tu.ParseResponse(t, w)
-	assert.NotEqual(t, common.SUCCESS.Code, resp.Code, "空 refreshToken 不应成功")
+	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "无 Token 应返回 TOKEN_INVALID")
 }
 
 func TestRefresh_FakeRefreshToken(t *testing.T) {
-	accessToken, _ := tu.LoginAndGetTokens(t, "admin", "123456")
-
+	// /refresh 路由受 JWT 中间件保护，伪造 Token 时中间件直接返回 401
 	refreshBody := map[string]string{
 		"refreshToken": "fake.refresh.token",
 	}
-	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, accessToken)
+	w := tu.DoRequest(http.MethodPost, "/api/v1/auth/refresh", refreshBody, "fake.refresh.token")
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, http.StatusUnauthorized, w.Code, "伪造 Token 应返回 401")
 	resp := tu.ParseResponse(t, w)
-	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "伪造 refreshToken 应返回 TOKEN_INVALID")
+	assert.Equal(t, common.TOKEN_INVALID.Code, resp.Code, "伪造 Token 应返回 TOKEN_INVALID")
 }

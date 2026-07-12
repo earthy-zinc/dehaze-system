@@ -30,6 +30,8 @@ class SysFile(BaseModel):
         String(100), nullable=False, comment='文件存储名')
     size: Mapped[str] = mapped_column(
         String(100), nullable=False, default='0', comment='文件大小(格式化)')
+    size_bytes: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, default=0, comment='文件大小(字节)')
     path: Mapped[str] = mapped_column(
         String(255), nullable=False, comment='文件路径')
     md5: Mapped[str] = mapped_column(CHAR(32), nullable=False, unique=True,

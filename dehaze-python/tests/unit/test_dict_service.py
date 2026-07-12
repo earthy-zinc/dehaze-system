@@ -56,7 +56,7 @@ class TestDictService:
              patch("app.service.dict_service.dict_type_repository") as mock_type_repo:
             mock_type_repo.get_by_code = AsyncMock(return_value=mock_dict_type)
             mock_repo.get_by_type_code_and_value = AsyncMock(return_value=None)
-            mock_repo.create = AsyncMock(return_value=True)
+            mock_repo.create_dict = AsyncMock(return_value=True)
 
             # Mock 缓存清除
             with patch.object(DictService, "_invalidate_options_cache", AsyncMock()):
@@ -215,7 +215,7 @@ class TestDictTypeService:
 
         with patch("app.service.dict_service.dict_type_repository") as mock_repo:
             mock_repo.get_by_code = AsyncMock(return_value=None)
-            mock_repo.create = AsyncMock(return_value=True)
+            mock_repo.create_type = AsyncMock(return_value=True)
 
             result = await DictTypeService.create_dict_type(
                 db=mock_db,
