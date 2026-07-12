@@ -32,28 +32,68 @@ logger = logging.getLogger(__name__)
 
 
 def _extract_file_prefix(filename: str) -> str:
-    """提取文件名前缀（去除 _clear/_gt/_hazy_* 后缀和扩展名）"""
+    """提取文件名前导数字作为分组键（如 01_GT.png → "01"，1000_1_0.74905.png → "1000"）。
+    无前导数字时返回完整 stem（去除扩展名）。"""
     name = re.sub(r'\.[^.]+$', '', filename)
-    name = re.sub(r'_(clear|gt|hazy.*)$', '', name, flags=re.IGNORECASE)
+    match = re.match(r'^(\d+)', name)
+    if match:
+        return match.group(1)
     return name
 
 
 def _is_clear_image(filename: str) -> bool:
-    """判断文件名是否为清晰图（含 _clear 或 _gt）"""
-    return bool(re.search(r'_(clear|gt)\b', filename, re.IGNORECASE))
+    """判断文件名是否为清晰图（含 clear/gt/GT/clean 关键字）"""
+    name_lower = filename.lower()
+    return any(kw in name_lower for kw in ('clear', '_gt', 'gt.', 'clean'))
 
 
 def _is_hazy_image(filename: str) -> bool:
-    """判断文件名是否为有雾图（含 _hazy）"""
-    return '_hazy' in filename.lower()
+    """判断文件名是否为有雾图（含 hazy/haze 关键字）"""
+    name_lower = filename.lower()
+    return 'hazy' in name_lower or 'haze' in name_lower
+
+
+def _is_trans_image(filename: str) -> bool:
+    """判断文件名是否为透射率图（含 trans/Transmission 关键字）"""
+    name_lower = filename.lower()
+    return 'trans' in name_lower
 
 
 def _extract_haze_level(filename: str) -> str:
-    """从文件名提取雾霾程度，默认 medium"""
+    """从有雾图文件名提取雾霾程度，支持多种规范。
+    无法解析时返回空字符串（表示未标注）。
+
+    支持格式：
+    - _hazy_light / _hazy_medium / _hazy_heavy → light/medium/heavy
+    - {id}_{idx}_{beta}.png（如 1000_1_0.74905.png）→ beta=0.74905
+    - {id}_{A}_{beta}.jpg（如 0025_0.8_0.2.jpg）→ beta=0.2（无法可靠区分 A 和 idx，统一取最后一个数值作为 beta）
+    - 无参数后缀（如 01_hazy.png）→ 空字符串
+    """
+    name = re.sub(r'\.[^.]+$', '', filename)
+
+    # 1. 人工分级：_hazy_light / _hazy_medium / _hazy_heavy
     match = re.search(r'_hazy_(light|medium|heavy)', filename, re.IGNORECASE)
     if match:
         return match.group(1).lower()
-    return "medium"
+
+    # 2. 学术参数格式：{id}_{idx}_{beta} 或 {id}_{A}_{beta} 等
+    #    统一取最后一个数值作为 beta（无法可靠区分 A 和 idx）
+    parts = name.split('_')
+    if len(parts) >= 3:
+        try:
+            num_parts = []
+            for p in parts[1:]:  # 跳过第一段（id）
+                try:
+                    num_parts.append(float(p))
+                except ValueError:
+                    continue
+            if num_parts:
+                beta = num_parts[-1]
+                return f"beta={beta}"
+        except (ValueError, IndexError):
+            pass
+
+    return ""
 
 
 def _create_empty_stats() -> dict[str, Any]:
@@ -61,8 +101,8 @@ def _create_empty_stats() -> dict[str, Any]:
         "itemCount": 0,
         "fileCount": 0,
         "totalSize": 0,
-        "clearCount": 0,
-        "hazyCount": 0,
+        "annotatedCount": 0,
+        "unannotatedCount": 0,
         "sceneDistribution": {},
         "hazeDistribution": {},
         "formatDistribution": {},
@@ -73,8 +113,8 @@ def _merge_stats(parent: dict[str, Any], child: dict[str, Any]):
     parent["itemCount"] += child.get("itemCount", 0)
     parent["fileCount"] += child.get("fileCount", 0)
     parent["totalSize"] += child.get("totalSize", 0)
-    parent["clearCount"] += child.get("clearCount", 0)
-    parent["hazyCount"] += child.get("hazyCount", 0)
+    parent["annotatedCount"] += child.get("annotatedCount", 0)
+    parent["unannotatedCount"] += child.get("unannotatedCount", 0)
     for k, v in child.get("sceneDistribution", {}).items():
         parent["sceneDistribution"][k] = parent["sceneDistribution"].get(k, 0) + v
     for k, v in child.get("hazeDistribution", {}).items():
@@ -202,8 +242,8 @@ class DatasetService:
                 if ds_id in stats_map:
                     stats_map[ds_id]["fileCount"] = st["fileCount"]
                     stats_map[ds_id]["totalSize"] = st["totalSize"]
-                    stats_map[ds_id]["clearCount"] = st["clearCount"]
-                    stats_map[ds_id]["hazyCount"] = st["hazyCount"]
+                    stats_map[ds_id]["annotatedCount"] = st["annotatedCount"]
+                    stats_map[ds_id]["unannotatedCount"] = st["unannotatedCount"]
 
             scene_results = await dataset_repository.count_scene_distribution_batch(db, leaf_ids)
             for ds_id, dist in scene_results.items():
@@ -831,10 +871,9 @@ class DatasetItemService:
         clear_content_type: str = "",
         hazy_files_data: list[dict] | None = None,
     ) -> dict:
-        if clear_file_content is None:
-            raise BusinessException(ResultCode.PARAM_ERROR, "清晰图必须上传")
-        if not hazy_files_data:
-            raise BusinessException(ResultCode.PARAM_ERROR, "至少上传一张有雾图")
+        # 清晰图和有雾图均为可选（适配不同数据集规范：GT+Hazy 配对型、仅 Hazy 无 GT 型等）
+        if clear_file_content is None and not hazy_files_data:
+            raise BusinessException(ResultCode.PARAM_ERROR, "至少上传一张图片（清晰图或有雾图）")
 
         dataset = await dataset_repository.get_by_id(db, dataset_id)
         if not dataset or dataset.deleted:
@@ -848,23 +887,23 @@ class DatasetItemService:
         await db.flush()
         await db.refresh(item)
 
-        clear_sys_file = await FileService.upload_file(
-            db, clear_filename, clear_file_content, clear_content_type,
-        )
-        item_file_clear = SysItemFile(
-            item_id=item.id,
-            file_id=clear_sys_file.id,
-            type="clear",
-            scene_type=scene_type or "",
-            haze_level="",
-        )
-        db.add(item_file_clear)
+        # 清晰图（可选）
+        if clear_file_content is not None:
+            clear_sys_file = await FileService.upload_file(
+                db, clear_filename, clear_file_content, clear_content_type,
+            )
+            item_file_clear = SysItemFile(
+                item_id=item.id,
+                file_id=clear_sys_file.id,
+                type="clear",
+                scene_type=scene_type or "",
+                haze_level="",
+            )
+            db.add(item_file_clear)
 
-        for hfd in hazy_files_data:
-            haze_level = hfd.get("hazeLevel", "medium").lower()
-            if haze_level not in ("light", "medium", "heavy"):
-                haze_level = "medium"
-
+        # 有雾图（可选，haze_level 支持多种规范：light/medium/heavy、beta=X、A=X,beta=Y 等）
+        for hfd in (hazy_files_data or []):
+            haze_level = hfd.get("hazeLevel", "")
             hazy_sys_file = await FileService.upload_file(
                 db, hfd["filename"], hfd["content"], hfd.get("contentType", "application/octet-stream"),
             )
@@ -907,13 +946,10 @@ class DatasetItemService:
             filename = fd["filename"]
             clear = _is_clear_image(filename)
             hazy = _is_hazy_image(filename)
+            trans = _is_trans_image(filename)
 
-            if not clear and not hazy:
-                unpaired.append({"fileName": filename, "reason": "无法识别文件类型，文件名需包含 _clear/_gt 或 _hazy"})
-                continue
-
-            if clear and hazy:
-                unpaired.append({"fileName": filename, "reason": "文件名同时包含清晰图和有雾图标识，无法判定"})
+            if not clear and not hazy and not trans:
+                unpaired.append({"fileName": filename, "reason": "无法识别文件类型，文件名需包含 clear/gt/clean、hazy/haze 或 trans 关键字"})
                 continue
 
             prefix = _extract_file_prefix(filename)
@@ -922,11 +958,13 @@ class DatasetItemService:
                 continue
 
             if prefix not in groups:
-                groups[prefix] = {"clear": [], "hazy": []}
+                groups[prefix] = {"clear": [], "hazy": [], "trans": []}
 
-            if clear:
+            if trans:
+                groups[prefix]["trans"].append(fd)
+            elif clear:
                 groups[prefix]["clear"].append(fd)
-            else:
+            elif hazy:
                 haze_level = _extract_haze_level(filename)
                 fd["hazeLevel"] = haze_level
                 groups[prefix]["hazy"].append(fd)
@@ -936,24 +974,22 @@ class DatasetItemService:
         total = len(groups)
 
         for prefix, files in groups.items():
-            if not files["clear"]:
-                failed_items.append({"fileName": prefix, "reason": f"未找到清晰图（需要 {prefix}_clear 或 {prefix}_gt 文件）"})
-                continue
-            if not files["hazy"]:
-                failed_items.append({"fileName": prefix, "reason": f"未找到有雾图（需要 {prefix}_hazy 文件）"})
+            # 清晰图和有雾图均为可选（适配不同数据集规范）
+            if not files["clear"] and not files["hazy"]:
+                failed_items.append({"fileName": prefix, "reason": "未找到任何可识别的图片"})
                 continue
 
             try:
-                clear_fd = files["clear"][0]
+                clear_fd = files["clear"][0] if files["clear"] else None
                 details = await DatasetItemService.upload_dataset_item_with_images(
                     db=db,
                     redis=redis,
                     dataset_id=dataset_id,
                     name=prefix,
                     scene_type=scene_type,
-                    clear_file_content=clear_fd["content"],
-                    clear_filename=clear_fd["filename"],
-                    clear_content_type=clear_fd.get("contentType", "application/octet-stream"),
+                    clear_file_content=clear_fd["content"] if clear_fd else None,
+                    clear_filename=clear_fd["filename"] if clear_fd else "",
+                    clear_content_type=clear_fd.get("contentType", "application/octet-stream") if clear_fd else "",
                     hazy_files_data=files["hazy"],
                 )
                 file_count = len(details.get("files", [])) if details else 0
@@ -1016,14 +1052,8 @@ class ItemFileService:
         if not item:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
 
-        valid_types = {"clear", "hazy", "depth", "segment"}
-        if image_type not in valid_types:
-            raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的图片类型: {image_type}")
-
-        if image_type == "hazy" and haze_level:
-            valid_levels = {"light", "medium", "heavy"}
-            if haze_level not in valid_levels:
-                raise BusinessException(ResultCode.PARAM_ERROR, f"不支持的雾霾等级: {haze_level}")
+        # type 支持 clear/hazy/trans/depth/segment，不做硬性枚举校验
+        # haze_level 支持多种规范（light/medium/heavy、beta=X、A=X,beta=Y 等），可为空
 
         content = await file.read()
         if not file.filename:
@@ -1038,8 +1068,8 @@ class ItemFileService:
             item_id=item_id,
             file_id=file_info.id,
             type=image_type,
-            scene_type=scene_type or "未分类",
-            haze_level=haze_level or "未标注",
+            scene_type=scene_type or "",
+            haze_level=haze_level or "",
             description=description,
         )
         db.add(item_file)

@@ -3063,7 +3063,7 @@ const docTemplate = `{
         "bo.StatisticsBO": {
             "type": "object",
             "properties": {
-                "clearCount": {
+                "annotatedCount": {
                     "type": "integer"
                 },
                 "fileCount": {
@@ -3083,7 +3083,7 @@ const docTemplate = `{
                         "format": "int64"
                     }
                 },
-                "hazyCount": {
+                "unannotatedCount": {
                     "type": "integer"
                 },
                 "itemCount": {

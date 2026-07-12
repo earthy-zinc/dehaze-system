@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
-import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
+import {
+  IMAGE_TYPE_LABELS,
+} from "@/enums/ImageTypeEnum";
 import { changeUrl } from "@/utils";
 import {
   Dataset,
@@ -35,16 +37,9 @@ let datasetInfo = ref<Dataset>({
 });
 let images = ref<ViewCard[]>([]);
 let imageData = reactive<DatasetItemVO[]>([]);
-type ImageType = { id: number; type: string; enabled: boolean };
 
-const imageTypes = ref<ImageType[]>([
-  { id: 0, type: ImageTypeEnum.CLEAN, enabled: false },
-  { id: 1, type: ImageTypeEnum.HAZE, enabled: true },
-]);
-
-const curImageType = computed(() => {
-  return imageTypes.value.find((item) => item.enabled);
-});
+/** 当前选中的图片类型（按 type 字符串过滤，如 clear/hazy/trans/depth/segment） */
+const selectedType = ref<string>("hazy");
 
 let loadingBarRef = ref();
 const loadingObserver = ref();
@@ -65,6 +60,7 @@ const itemWidth = computed(() => {
   return 400;
 });
 
+/** 展平数据项下所有图片 */
 function extractImagesFromItem(item: DatasetItemVO): ImageUrlVO[] {
   const allImages: ImageUrlVO[] = [];
   if (item.clearImage) allImages.push(item.clearImage);
@@ -73,62 +69,70 @@ function extractImagesFromItem(item: DatasetItemVO): ImageUrlVO[] {
   return allImages;
 }
 
+/** 当前数据集中可用的图片类型集合（用于切换 Tab） */
+const availableTypes = computed<string[]>(() => {
+  const set = new Set<string>();
+  imageData.forEach((item) => {
+    extractImagesFromItem(item).forEach((img) => {
+      if (img.type) set.add(img.type);
+    });
+  });
+  return Array.from(set);
+});
+
 async function handleQuery() {
   queryParams.datasetId = selectedDatasetId.value;
   DatasetItemAPI.getList(queryParams)
     .then((data) => {
       imageData = data.list;
       totalPages.value = Math.ceil(data.total / queryParams.pageSize!);
-      switchImageUrl(curImageType.value?.id || 0);
-    })
-    .then(() => {
-      if (imageData.length > 0) {
-        const imgs = extractImagesFromItem(imageData[0]);
-        let tempImageTypes = [] as ImageType[];
-        imgs.forEach((item, index) => {
-          tempImageTypes.push({
-            id: index,
-            type: item.type,
-            enabled: index === 1,
-          });
-        });
-        imageTypes.value = tempImageTypes;
+      // 若当前选中类型不在可用类型中，回退到第一个可用类型
+      if (availableTypes.value.length > 0 && !availableTypes.value.includes(selectedType.value)) {
+        selectedType.value = availableTypes.value[0];
       }
+      switchImageUrl();
     })
     .catch((err) => {
       console.log(err);
     });
 }
 
-function switchImageUrl(id: number) {
+function switchImageUrl() {
   images.value = imageData.map((item) => {
     const imgs = extractImagesFromItem(item);
-    const img = imgs[id] || imgs[0];
+    const img = imgs.find((i) => i.type === selectedType.value) || imgs[0];
+    if (!img) {
+      return { id: item.id, src: "", originSrc: "", alt: "" } as ViewCard;
+    }
     return {
       id: item.id,
       src: changeUrl(img.url),
-      originSrc: changeUrl(img.originUrl!),
-      alt: img.description,
+      originSrc: changeUrl(img.originUrl || img.url),
+      alt: img.description || "",
     };
   });
 }
 
 function resetQuery() {}
 
-function handleImageTypeChange(typeId: number) {
-  imageTypes.value.forEach((item) => {
-    item.enabled = item.id === typeId;
-  });
-  switchImageUrl(curImageType.value?.id || typeId);
+function handleImageTypeChange(type: string) {
+  selectedType.value = type;
+  switchImageUrl();
 }
 
+/**
+ * 选择图片：按 type 查找清晰图和有雾图，而不是按索引硬编码。
+ * 适配新规范：清晰图和有雾图均为可选。
+ */
 function selectImage(itemId: number) {
-  let curImageItem = imageData.find((item) => item.id === itemId);
+  const curImageItem = imageData.find((item) => item.id === itemId);
   if (curImageItem) {
     const imgs = extractImagesFromItem(curImageItem);
-    let haze = changeUrl(imgs[1].originUrl!);
-    let clear = changeUrl(imgs[0].originUrl!);
-    emit("onSelected", haze, clear);
+    const haze = imgs.find((i) => i.type === "hazy");
+    const clear = imgs.find((i) => i.type === "clear");
+    if (haze && clear) {
+      emit("onSelected", changeUrl(haze.originUrl || haze.url), changeUrl(clear.originUrl || clear.url));
+    }
   }
 }
 
@@ -143,7 +147,7 @@ async function handleSelectDataset() {
         queryParams.pageNum!++;
         DatasetItemAPI.getList(queryParams).then((data) => {
           imageData.push(...data.list);
-          switchImageUrl(curImageType.value?.id || 0);
+          switchImageUrl();
         });
       }
     });
@@ -189,13 +193,13 @@ onUnmounted(() => loadingObserver.value?.disconnect());
     <div class="mb-1" style="display: flex; justify-content: space-between">
       <el-button-group>
         <el-button
-          v-for="imageType in imageTypes"
-          :key="imageType.id"
-          :type="imageType.enabled ? 'primary' : ''"
+          v-for="type in availableTypes"
+          :key="type"
+          :type="selectedType === type ? 'primary' : ''"
           plain
-          @click="handleImageTypeChange(imageType.id)"
+          @click="handleImageTypeChange(type)"
         >
-          {{ imageType.type }}
+          {{ IMAGE_TYPE_LABELS[type] || type }}
         </el-button>
       </el-button-group>
 

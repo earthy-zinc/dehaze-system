@@ -15,6 +15,9 @@ public class AlgorithmVO {
     @Schema(description = "算法ID")
     private long id;
 
+    @Schema(description = "父算法ID，0为顶级")
+    private Long parentId;
+
     @Schema(description = "算法名称")
     private String name;
 

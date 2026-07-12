@@ -62,10 +62,10 @@ export interface DatasetStatistics {
   fileCount: number;
   /** 总大小（字节） */
   totalSize: number;
-  /** 清晰图片数量 */
-  clearCount: number;
-  /** 有雾图片数量 */
-  hazyCount: number;
+  /** 已标注图片数量（haze_level 非空） */
+  annotatedCount: number;
+  /** 未标注图片数量（haze_level 为空） */
+  unannotatedCount: number;
   /** 场景类型分布 */
   sceneDistribution: Record<string, number>;
   /** 雾霾程度分布 */
@@ -132,8 +132,8 @@ export interface DatasetItemQuery extends PageQuery {
   keyword?: string;
   /** 场景类型 */
   sceneType?: string;
-  /** 雾霾程度 */
-  hazeLevel?: "light" | "medium" | "heavy";
+  /** 雾霾程度，支持多种规范：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，不硬性枚举校验 */
+  hazeLevel?: string;
   /** 最小图片宽度 */
   minWidth?: number;
   /** 最大图片宽度 */
@@ -184,12 +184,12 @@ export interface DatasetItemUploadForm {
   datasetId: number;
   /** 数据项名称 */
   name?: string;
-  /** 清晰图文件（base64或二进制） */
-  clearImage: string | Blob;
-  /** 有雾图文件列表 */
-  hazyImages: (string | Blob)[];
-  /** 对应的雾霾程度列表 */
-  hazeLevels: string[];
+  /** 清晰图文件（base64或二进制），可选（适配不同数据集规范） */
+  clearImage?: string | Blob;
+  /** 有雾图文件列表，可选（适配不同数据集规范） */
+  hazyImages?: (string | Blob)[];
+  /** 对应的雾霾程度列表，支持多种规范：light/medium/heavy、beta=0.5、空字符串等 */
+  hazeLevels?: string[];
   /** 场景类型 */
   sceneType?: string;
 }
@@ -260,26 +260,26 @@ export interface ItemFileUploadForm {
   file: string | Blob;
   /** 所属数据项ID */
   itemId: number;
-  /** 图片类型：clear-清晰图，hazy-有雾图 */
-  type: "clear" | "hazy";
+  /** 图片类型：clear-清晰图，hazy-有雾图，trans-透射图，depth-深度图，segment-分割图 */
+  type: "clear" | "hazy" | "trans" | "depth" | "segment";
   /** 图片描述信息 */
   description?: string;
   /** 场景类型 */
   sceneType?: string;
-  /** 雾霾程度（仅对有雾图有效） */
-  hazeLevel?: "light" | "medium" | "heavy";
+  /** 雾霾程度，支持多种规范：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
+  hazeLevel?: string;
 }
 
 /**
  * 图片更新表单
  */
 export interface ItemFileUpdateForm {
-  /** 图片类型：clear-清晰图，hazy-有雾图 */
-  type?: "clear" | "hazy";
+  /** 图片类型：clear-清晰图，hazy-有雾图，trans-透射图，depth-深度图，segment-分割图 */
+  type?: "clear" | "hazy" | "trans" | "depth" | "segment";
   /** 场景类型 */
   sceneType?: string;
-  /** 雾霾程度（仅对有雾图有效） */
-  hazeLevel?: "light" | "medium" | "heavy";
+  /** 雾霾程度，支持多种规范：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
+  hazeLevel?: string;
   /** 图片描述信息 */
   description?: string;
 }
@@ -294,7 +294,7 @@ export interface SimpleImageUrlVO {
   itemId: number;
   /** 所属数据集ID */
   datasetId: number;
-  /** 图片类型：clear-清晰图，hazy-有雾图 */
+  /** 图片类型：clear-清晰图，hazy-有雾图，trans-透射图，depth-深度图，segment-分割图 */
   type: string;
   /** 图片访问URL */
   url: string;
@@ -306,7 +306,7 @@ export interface SimpleImageUrlVO {
   width?: number;
   /** 图片高度 */
   height?: number;
-  /** 雾霾程度 */
+  /** 雾霾程度，支持多种规范：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
   hazeLevel?: string;
   /** 文件名 */
   fileName?: string;
@@ -334,7 +334,7 @@ export interface ImageUrlVO {
   datasetName?: string;
   /** 数据项简要信息 */
   datasetItem?: DatasetItemSimpleVO;
-  /** 图片类型：clear-清晰图，hazy-有雾图 */
+  /** 图片类型：clear-清晰图，hazy-有雾图，trans-透射图，depth-深度图，segment-分割图 */
   type: string;
   /** 图片访问URL */
   url: string;
@@ -350,7 +350,7 @@ export interface ImageUrlVO {
   height?: number;
   /** 场景类型 */
   sceneType?: string;
-  /** 雾霾程度 */
+  /** 雾霾程度，支持多种规范：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
   hazeLevel?: string;
   /** 文件名 */
   fileName?: string;
@@ -482,30 +482,6 @@ export interface BatchOperationResultVO {
   successIds?: number[];
   /** 失败详情列表 */
   failureDetails?: BatchActionFailureDetailVO[];
-}
-
-// ==================== 下载任务相关类型 ====================
-
-/**
- * 导出任务请求
- */
-export interface ExportTaskRequest {
-  /** 文件组织方式：by_item（按数据项）, flat（扁平结构） */
-  structure?: "by_item" | "flat";
-  /** 包含的类型：clear（清晰图）, hazy（有雾图） */
-  includeTypes?: ("clear" | "hazy")[];
-  /** 是否包含缩略图 */
-  includeThumbnail?: boolean;
-}
-
-/**
- * 批量下载表单
- */
-export interface BatchDownloadForm {
-  /** 要下载的数据项文件ID列表 */
-  itemFileIds: number[];
-  /** 是否按数据项分目录组织 */
-  organizeByItem?: boolean;
 }
 
 // ==================== 旧类型保留（兼容性） ====================

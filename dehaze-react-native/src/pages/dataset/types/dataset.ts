@@ -10,7 +10,6 @@ import type {
   ImageUrlVO,
   DatasetQuery,
   DatasetItemQuery,
-  ExportTaskRequest,
   TaskQuery,
 } from 'dehaze-sdk-js';
 
@@ -24,7 +23,7 @@ export type DatasetItem = DatasetItemVO;
 export type DatasetImage = ImageUrlVO;
 
 /** 数据集查询参数 */
-export type { DatasetQuery, DatasetItemQuery, ExportTaskRequest, TaskQuery };
+export type { DatasetQuery, DatasetItemQuery, TaskQuery };
 
 /**
  * 数据集树形节点（移动端懒加载展开/收起状态）
@@ -41,17 +40,42 @@ export interface DatasetTreeNode extends Dataset {
 }
 
 /**
- * 图片类型筛选（移动端简化版）
- * - all: 全部
- * - clear: 清晰图
- * - hazy: 有雾图
+ * 标注状态筛选（已标注/未标注二分）
+ * - annotated: 已标注（hazeLevel 非空）
+ * - unannotated: 未标注（hazeLevel 为空）
  */
-export type ImageTypeFilter = 'all' | 'clear' | 'hazy';
+export type AnnotationFilter = 'annotated' | 'unannotated';
 
 /**
- * 雾霾程度
+ * 雾霾程度（支持多种规范：light/medium/heavy、beta=0.5 等）
  */
-export type HazeLevel = 'light' | 'medium' | 'heavy';
+export type HazeLevel = string;
 
 /** 视图模式 */
 export type ViewMode = 'list' | 'detail';
+
+/**
+ * 格式化雾霾程度显示文本
+ * - light/medium/heavy → 轻度/中度/重度
+ * - beta=0.5 → β=0.5
+ * - 其他 → 原值回显
+ */
+export function formatHazeLevel(level?: string): string {
+  if (!level) return '';
+  const preset: Record<string, string> = {
+    light: '轻度',
+    medium: '中度',
+    heavy: '重度',
+  };
+  if (preset[level]) return preset[level];
+  const betaMatch = level.match(/beta=([\d.]+)/i);
+  if (betaMatch) return `β=${betaMatch[1]}`;
+  return level;
+}
+
+/**
+ * 判断图片是否已标注（hazeLevel 非空视为已标注）
+ */
+export function isImageAnnotated(hazeLevel?: string): boolean {
+  return Boolean(hazeLevel);
+}

@@ -2,9 +2,7 @@ import { createContext, useContext, useReducer, ReactNode, useCallback } from 'r
 import Taro from '@tarojs/taro'
 import { DatasetAPI, DatasetItemAPI } from 'dehaze-sdk-js'
 import type { Dataset, DatasetItemVO, ImageUrlVO, DatasetAddForm, DatasetUpdateForm, DatasetOption } from 'dehaze-sdk-js'
-
-// 图片类型筛选项（与 SDK 的 type 字段对齐：clear/hazy）
-type ImageTypeFilter = 'all' | 'clear' | 'hazy'
+import { isImageAnnotated, AnnotationFilter } from '../services/imageUtils'
 
 // 状态类型定义
 interface DatasetState {
@@ -40,7 +38,7 @@ interface DatasetState {
   imagesPage: number
   imagesHasMore: boolean
   imagesTotal: number
-  currentImageType: ImageTypeFilter
+  currentAnnotationFilter: AnnotationFilter
 
   // 搜索状态
   searchKeyword: string
@@ -70,7 +68,7 @@ type DatasetAction =
   | { type: 'SET_IMAGES_ERROR'; payload: string | null }
   | { type: 'SET_IMAGES'; payload: { images: ImageUrlVO[]; page: number; total: number; hasMore: boolean } }
   | { type: 'APPEND_IMAGES'; payload: { images: ImageUrlVO[]; page: number; hasMore: boolean } }
-  | { type: 'SET_IMAGE_TYPE'; payload: ImageTypeFilter }
+  | { type: 'SET_ANNOTATION_FILTER'; payload: AnnotationFilter }
   | { type: 'SET_SEARCH_KEYWORD'; payload: string }
   | { type: 'SET_IMAGE_SEARCH_KEYWORD'; payload: string }
   | { type: 'SET_SELECTED_IMAGE'; payload: ImageUrlVO | null }
@@ -100,7 +98,7 @@ const initialState: DatasetState = {
   imagesPage: 1,
   imagesHasMore: true,
   imagesTotal: 0,
-  currentImageType: 'all',
+  currentAnnotationFilter: 'annotated',
   searchKeyword: '',
   imageSearchKeyword: '',
   selectedImage: null,
@@ -188,8 +186,8 @@ function datasetReducer(state: DatasetState, action: DatasetAction): DatasetStat
         imagesHasMore: action.payload.hasMore,
         imagesLoading: false,
       }
-    case 'SET_IMAGE_TYPE':
-      return { ...state, currentImageType: action.payload }
+    case 'SET_ANNOTATION_FILTER':
+      return { ...state, currentAnnotationFilter: action.payload }
     case 'SET_SEARCH_KEYWORD':
       return { ...state, searchKeyword: action.payload }
     case 'SET_IMAGE_SEARCH_KEYWORD':
@@ -204,7 +202,7 @@ function datasetReducer(state: DatasetState, action: DatasetAction): DatasetStat
         imagesHasMore: true,
         imagesTotal: 0,
         imageSearchKeyword: '',
-        currentImageType: 'all',
+        currentAnnotationFilter: 'annotated',
       }
     case 'RESET_STATE':
       return initialState
@@ -213,16 +211,27 @@ function datasetReducer(state: DatasetState, action: DatasetAction): DatasetStat
   }
 }
 
-// 将数据项列表展平为图片列表
-function flattenItems(items: DatasetItemVO[], typeFilter: ImageTypeFilter): ImageUrlVO[] {
-  const allImages: ImageUrlVO[] = []
+/**
+ * 将数据项列表展平为图片列表，并按标注状态过滤：
+ * - annotated：仅保留 hazeLevel 非空的图片
+ * - unannotated：仅保留 hazeLevel 为空的图片
+ */
+function flattenItems(items: DatasetItemVO[], filter: AnnotationFilter): ImageUrlVO[] {
+  const result: ImageUrlVO[] = []
   items.forEach(item => {
-    if (item.clearImage) allImages.push(item.clearImage)
-    if (item.hazyImages) allImages.push(...item.hazyImages)
+    if (item.clearImage) {
+      const img = item.clearImage
+      if (filter === 'annotated' && isImageAnnotated(img.hazeLevel)) result.push(img)
+      else if (filter === 'unannotated' && !isImageAnnotated(img.hazeLevel)) result.push(img)
+    }
+    if (item.hazyImages) {
+      item.hazyImages.forEach(img => {
+        if (filter === 'annotated' && isImageAnnotated(img.hazeLevel)) result.push(img)
+        else if (filter === 'unannotated' && !isImageAnnotated(img.hazeLevel)) result.push(img)
+      })
+    }
   })
-
-  if (typeFilter === 'all') return allImages
-  return allImages.filter(img => img.type === typeFilter)
+  return result
 }
 
 // Context
@@ -386,11 +395,11 @@ export function useDataset() {
     }
   }, [])
 
-  // 获取图片列表（通过数据项接口获取后展平）
+  // 获取图片列表（通过数据项接口获取后展平，按标注状态过滤）
   const fetchImages = useCallback(async (
     datasetId: number,
     page = 1,
-    imageType: ImageTypeFilter = 'all',
+    annotationFilter: AnnotationFilter = 'annotated',
     search = '',
     append = false,
   ) => {
@@ -407,7 +416,7 @@ export function useDataset() {
       })
 
       const items = (response.list as unknown as DatasetItemVO[]) || []
-      const flattened = flattenItems(items, imageType)
+      const flattened = flattenItems(items, annotationFilter)
       const total = response.total || 0
       const hasMore = items.length === pageSize
 
@@ -436,8 +445,8 @@ export function useDataset() {
     dispatch({ type: 'SET_IMAGE_SEARCH_KEYWORD', payload: keyword })
   }, [])
 
-  const setImageType = useCallback((type: ImageTypeFilter) => {
-    dispatch({ type: 'SET_IMAGE_TYPE', payload: type })
+  const setAnnotationFilter = useCallback((filter: AnnotationFilter) => {
+    dispatch({ type: 'SET_ANNOTATION_FILTER', payload: filter })
   }, [])
 
   const setSelectedImage = useCallback((image: ImageUrlVO | null) => {
@@ -468,7 +477,7 @@ export function useDataset() {
     fetchImages,
     setSearchKeyword,
     setImageSearchKeyword,
-    setImageType,
+    setAnnotationFilter,
     setSelectedImage,
     resetImages,
     resetState,

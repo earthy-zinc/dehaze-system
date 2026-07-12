@@ -164,8 +164,8 @@ func (datasetService *DatasetService) getAllDatasetStats(ctx context.Context) (m
 				if stats, ok := statsMap[r.DatasetID]; ok {
 					stats.FileCount = r.FileCount
 					stats.TotalSize = r.TotalSize
-					stats.ClearCount = r.ClearCount
-					stats.HazyCount = r.HazyCount
+					stats.AnnotatedCount = r.AnnotatedCount
+					stats.UnannotatedCount = r.UnannotatedCount
 				}
 			}
 		}
@@ -265,8 +265,8 @@ func createEmptyStats() *vo.DatasetStatistics {
 		ItemCount:          0,
 		FileCount:          0,
 		TotalSize:          0,
-		ClearCount:         0,
-		HazyCount:          0,
+		AnnotatedCount:     0,
+		UnannotatedCount:   0,
 		SceneDistribution:  make(map[string]int64),
 		HazeDistribution:   make(map[string]int64),
 		FormatDistribution: make(map[string]int64),
@@ -277,8 +277,8 @@ func mergeStats(parent, child *vo.DatasetStatistics) {
 	parent.ItemCount += child.ItemCount
 	parent.FileCount += child.FileCount
 	parent.TotalSize += child.TotalSize
-	parent.ClearCount += child.ClearCount
-	parent.HazyCount += child.HazyCount
+	parent.AnnotatedCount += child.AnnotatedCount
+	parent.UnannotatedCount += child.UnannotatedCount
 	for k, v := range child.SceneDistribution {
 		parent.SceneDistribution[k] += v
 	}
@@ -621,8 +621,8 @@ func (datasetService *DatasetService) GetFormData(ctx context.Context, id int64)
 			ItemCount:          empty.ItemCount,
 			FileCount:          empty.FileCount,
 			TotalSize:          empty.TotalSize,
-			ClearCount:         empty.ClearCount,
-			HazyCount:          empty.HazyCount,
+			AnnotatedCount:     empty.AnnotatedCount,
+			UnannotatedCount:   empty.UnannotatedCount,
 			SceneDistribution:  empty.SceneDistribution,
 			HazeDistribution:   empty.HazeDistribution,
 			FormatDistribution: empty.FormatDistribution,
@@ -633,8 +633,8 @@ func (datasetService *DatasetService) GetFormData(ctx context.Context, id int64)
 			ItemCount:          stats.ItemCount,
 			FileCount:          stats.FileCount,
 			TotalSize:          stats.TotalSize,
-			ClearCount:         stats.ClearCount,
-			HazyCount:          stats.HazyCount,
+			AnnotatedCount:     stats.AnnotatedCount,
+			UnannotatedCount:   stats.UnannotatedCount,
 			SceneDistribution:  stats.SceneDistribution,
 			HazeDistribution:   stats.HazeDistribution,
 			FormatDistribution: stats.FormatDistribution,

@@ -5,8 +5,6 @@ import {
   DatasetItemCreateForm,
   DatasetItemUpdateForm,
   DatasetItemQuery,
-  ExportTaskRequest,
-  BatchDownloadForm,
   ItemFileUpdateForm,
 } from "@/api/dataset/model";
 import { uniqueName, pageQuery } from "./common";
@@ -68,27 +66,6 @@ export function createDatasetItemQuery(
     pageSize: 10,
     ...overrides,
   });
-}
-
-export function createExportTaskRequest(
-  overrides: Partial<ExportTaskRequest> = {}
-): ExportTaskRequest {
-  return {
-    includeTypes: ["clear", "hazy"],
-    structure: "by_item",
-    ...overrides,
-  };
-}
-
-export function createBatchDownloadForm(
-  itemFileIds: number[],
-  overrides: Partial<BatchDownloadForm> = {}
-): BatchDownloadForm {
-  return {
-    itemFileIds,
-    organizeByItem: true,
-    ...overrides,
-  };
 }
 
 export function createItemFileUpdateForm(

@@ -20,15 +20,26 @@ export const uniqueEmail = (prefix = "test") => {
   return `${prefix}_${timestamp}_${count}@example.com`;
 };
 
-/** 生成符合中国手机号格式的手机号（使用时间戳+计数器确保唯一） */
+/** 生成符合中国手机号格式的手机号（使用时间戳+计数器确保跨测试运行唯一）
+ * 号段必须匹配后端 UserForm 的 @Pattern 校验：
+ * ^$|^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$
+ */
 export const uniqueMobile = () => {
-  // 中国手机号第二位只能是 3,4,5,6,7,8,9
-  const secondDigits = ["3", "4", "5", "6", "7", "8", "9"];
-  const secondDigit = faker.helpers.arrayElement(secondDigits);
-  // 使用时间戳后6位 + 计数器，确保跨测试运行唯一
+  // 合法号段前缀（3位），覆盖后端 Pattern 允许的全部号段
+  const prefixes = [
+    "130", "131", "132", "133", "134", "135", "136", "137", "138", "139",
+    "145", "146", "147", "148", "149",
+    "150", "151", "152", "153", "155", "156", "157", "158", "159",
+    "162", "165", "166", "167",
+    "170", "171", "172", "173", "174", "175", "176", "177", "178",
+    "180", "181", "182", "183", "184", "185", "186", "187", "188", "189",
+    "190", "191", "192", "193", "195", "196", "197", "198", "199",
+  ];
+  const prefix = faker.helpers.arrayElement(prefixes);
+  // 后8位：时间戳后6位 + 计数器2位，保证跨测试运行唯一
   const timestamp = Date.now().toString().slice(-6);
-  const count = next().toString().padStart(3, "0");
-  return `1${secondDigit}${timestamp}${count}`;
+  const count = next().toString().padStart(2, "0");
+  return `${prefix}${timestamp}${count}`;
 };
 
 /** 生成通用编码 */

@@ -149,18 +149,13 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
 	}
 
-	// 2. 校验清晰图信息（文档规则：清晰图必填）
-	if req.ClearImage.Path == "" {
-		return nil, common.NewBizError(common.PARAM_ERROR, "清晰图路径不能为空")
+	// 2. 清晰图和有雾图均为可选（适配不同数据集规范：GT+Hazy 配对型、仅 Hazy 无 GT 型等）
+	if req.ClearImage.Path == "" && len(req.HazyImages) == 0 {
+		return nil, common.NewBizError(common.PARAM_ERROR, "至少上传一张图片（清晰图或有雾图）")
 	}
 
-	// 3. 校验有雾图（文档规则：至少上传一张 type=hazy 的图片）
-	if len(req.HazyImages) == 0 {
-		return nil, common.NewBizError(common.PARAM_ERROR, "至少需要上传一张有雾图")
-	}
-
-	// 4. 图片分辨率校验
-	if req.Options.ValidateResolution {
+	// 3. 图片分辨率校验（仅在上传了清晰图时校验）
+	if req.Options.ValidateResolution && req.ClearImage.Path != "" {
 		clearPath := req.ClearImage.Path
 		hazyPaths := make([]string, 0, len(req.HazyImages))
 		for _, img := range req.HazyImages {
@@ -178,25 +173,25 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	}
 
 	itemFiles := make([]datasetrepo.ItemFileCreate, 0, 1+len(req.HazyImages))
-	clearFileType := dos.getExtension(req.ClearImage.Name)
-	if clearFileType == "" {
-		clearFileType = dos.getExtension(req.ClearImage.Path)
-	}
-	itemFiles = append(itemFiles, datasetrepo.ItemFileCreate{
-		Type:     "clear",
-		Name:     req.ClearImage.Name,
-		Path:     req.ClearImage.Path,
-		URL:      req.ClearImage.URL,
-		Size:     req.ClearImage.Size,
-		MD5:      req.ClearImage.MD5,
-		FileType: clearFileType,
-	})
-
-	for _, hazyImg := range req.HazyImages {
-		hazeLevel := hazyImg.HazeLevel
-		if hazeLevel == "" {
-			hazeLevel = "medium" // 默认中度雾霾
+	// 清晰图（可选）
+	if req.ClearImage.Path != "" {
+		clearFileType := dos.getExtension(req.ClearImage.Name)
+		if clearFileType == "" {
+			clearFileType = dos.getExtension(req.ClearImage.Path)
 		}
+		itemFiles = append(itemFiles, datasetrepo.ItemFileCreate{
+			Type:     "clear",
+			Name:     req.ClearImage.Name,
+			Path:     req.ClearImage.Path,
+			URL:      req.ClearImage.URL,
+			Size:     req.ClearImage.Size,
+			MD5:      req.ClearImage.MD5,
+			FileType: clearFileType,
+		})
+	}
+
+	// 有雾图（可选，haze_level 支持多种规范：light/medium/heavy、beta=X、A=X,beta=Y 等，可为空）
+	for _, hazyImg := range req.HazyImages {
 		fileType := dos.getExtension(hazyImg.Name)
 		if fileType == "" {
 			fileType = dos.getExtension(hazyImg.Path)
@@ -208,7 +203,7 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 			URL:       hazyImg.URL,
 			Size:      hazyImg.Size,
 			MD5:       hazyImg.MD5,
-			HazeLevel: hazeLevel,
+			HazeLevel: hazyImg.HazeLevel, // 可为空，不再默认填充 "medium"
 			FileType:  fileType,
 		})
 	}

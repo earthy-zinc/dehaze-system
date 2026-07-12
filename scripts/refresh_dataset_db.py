@@ -2,17 +2,17 @@
 数据库刷新脚本：扫描 D:\\DeepLearning\\dataset 重建 sys_file/sys_dataset_item/sys_item_file
 
 前置条件：
-1. docker-compose 已启动（MySQL + MinIO）
-2. MinIO 容器已 bind mount D:/DeepLearning/dataset → /data/dehaze
-3. .env 中已设置 DEHAZE_PASSWORD 和 MINIO_ACCESS_KEY=admin
+1. docker-compose 已启动（MySQL + nginx-dataset）
+2. nginx-dataset 容器已 bind mount D:/DeepLearning/dataset → /usr/share/nginx/html
+3. .env 中已设置 DEHAZE_PASSWORD
 
 执行：
     python scripts/refresh_dataset_db.py
 
 说明：
 - 清空 sys_file / sys_dataset_item / sys_item_file 三张表后重建
-- 文件 URL 直连 MinIO：http://127.0.0.1:9000/dehaze/{object_name}
-- object_name = {dataset_path}/{subdir}/{filename}（与 MinIO bucket 内路径一致）
+- 文件 URL 直连 nginx-dataset：http://127.0.0.1:9000/{object_name}
+- object_name = {dataset_path}/{subdir}/{filename}（与磁盘相对路径一致）
 - 配对策略：按文件名前导数字分组（如 01_GT.png 与 01_hazy.png 都归到 "01" 组）
 - MD5 字段使用 object_name 的 MD5（保证 UNIQUE 约束，不读取文件内容以提速）
 """
@@ -32,7 +32,7 @@ from dotenv import load_dotenv
 # ============================== 配置 ==============================
 
 DATASET_ROOT = Path(r"D:\DeepLearning\dataset")
-MINIO_URL_BASE = "http://127.0.0.1:9000/dehaze"
+NGINX_URL_BASE = "http://127.0.0.1:9000"
 MYSQL_HOST = "127.0.0.1"
 MYSQL_PORT = 3306
 MYSQL_USER = "root"
@@ -117,8 +117,8 @@ def build_object_name(dataset_path: str, subdir: str, filename: str) -> str:
 
 
 def build_url(object_name: str) -> str:
-    """构造文件访问 URL（直连 MinIO）"""
-    return f"{MINIO_URL_BASE}/{object_name}"
+    """构造文件访问 URL（直连 nginx-dataset 静态服务）"""
+    return f"{NGINX_URL_BASE}/{object_name}"
 
 
 def parse_haze_level(filename: str) -> str:
@@ -279,6 +279,8 @@ def process_dataset(cursor, dataset_id: int, dataset_path: str,
         ))
         return object_name
 
+    # add_file 定义保留 size_bytes 用于 format_size，但插入时不再写入 size_bytes 列
+
     # 为每个分组构造数据项
     # 分组策略：每个 leading_number 对应一个 sys_dataset_item
     # 如果只有 hazy 没有 clear（如 RTTS），每个 hazy 文件单独成项
@@ -320,12 +322,12 @@ def process_dataset(cursor, dataset_id: int, dataset_path: str,
         print(f"  [SKIP] 无可插入的文件")
         return {"files": 0, "items": 0, "skipped": True}
 
-    # 批量插入 sys_file
-    file_columns = ["object_name", "url", "name", "type", "size_bytes", "size", "path", "md5", "create_time"]
+    # 批量插入 sys_file（实际表无 size_bytes 列，保留 size 字符串列）
+    file_columns = ["object_name", "url", "name", "type", "size", "path", "md5", "create_time", "update_time"]
     for i in range(0, len(file_specs), BATCH_SIZE):
         batch = file_specs[i:i + BATCH_SIZE]
         rows = [
-            (spec[0], spec[1], spec[2], spec[3], spec[4], format_size(spec[4]), "", spec[5], now)
+            (spec[0], spec[1], spec[2], spec[3], format_size(spec[4]), "", spec[5], now, now)
             for spec in batch
         ]
         insert_batch(cursor, "sys_file", file_columns, rows)
@@ -452,8 +454,8 @@ def main():
         print(f"  总数据项: {total_items}")
         print(f"  总关联记录: {total_item_files}")
         print(f"  总耗时: {time.time() - start_time:.1f}s")
-        print(f"\nMinIO URL 前缀: {MINIO_URL_BASE}")
-        print(f"  示例: {MINIO_URL_BASE}/Dense-Haze/clean/01_GT.png")
+        print(f"\nNginx URL 前缀: {NGINX_URL_BASE}")
+        print(f"  示例: {NGINX_URL_BASE}/Dense-Haze/clean/01_GT.png")
 
     except Exception as e:
         conn.rollback()

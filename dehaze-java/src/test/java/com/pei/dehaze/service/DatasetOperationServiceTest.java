@@ -385,32 +385,70 @@ class DatasetOperationServiceTest {
     }
 
     /**
-     * 测试雾霾程度提取 - 无效格式抛出异常
-     * 测试目的：验证当文件名不包含雾霾程度时抛出异常
-     * 测试场景：文件名不包含 light/medium/heavy
-     * 验证内容：应该抛出 BusinessException
+     * 测试雾霾程度提取 - 无参数后缀返回空字符串
+     * 测试目的：验证当文件名不包含雾霾程度标识时返回空字符串（新规范：不抛异常）
+     * 测试场景：文件名只有 _hazy 后缀，无 light/medium/heavy 或学术参数
+     * 验证内容：应该返回空字符串
      */
     @Test
-    @DisplayName("extractHazeLevel - 无效格式抛出异常")
-    void testExtractHazeLevel_InvalidFormat() throws Exception {
+    @DisplayName("extractHazeLevel - 无参数后缀返回空字符串")
+    void testExtractHazeLevel_NoLevelReturnsEmpty() throws Exception {
         // Given
-        String invalidFileName = "image001_hazy.jpg";
+        String noLevelFileName = "image001_hazy.jpg";
 
         // When - 使用反射调用私有方法
         java.lang.reflect.Method method = DatasetOperationServiceImpl.class
                 .getDeclaredMethod("extractHazeLevel", String.class);
         method.setAccessible(true);
 
-        // Then
-        assertThatThrownBy(() -> {
-            try {
-                method.invoke(datasetOperationService, invalidFileName);
-            } catch (java.lang.reflect.InvocationTargetException e) {
-                throw e.getCause();
-            }
-        })
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("文件名必须包含雾霾程度标识");
+        String level = (String) method.invoke(datasetOperationService, noLevelFileName);
+
+        // Then - 新规范：无法解析时返回空字符串，不抛异常
+        assertThat(level).isEqualTo("");
+    }
+
+    /**
+     * 测试雾霾程度提取 - 学术参数格式（β参数）
+     * 测试目的：验证能从 RESIDE/ITS 格式文件名提取 beta 参数
+     * 测试场景：文件名格式为 {id}_{idx}_{beta}.png
+     * 验证内容：应该返回 beta=数值
+     */
+    @Test
+    @DisplayName("extractHazeLevel - 学术参数格式（β参数）")
+    void testExtractHazeLevel_BetaFormat() throws Exception {
+        // Given - RESIDE/ITS 格式：{id}_{idx}_{beta}.png
+        String betaFileName = "1000_1_0.74905.png";
+
+        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
+                .getDeclaredMethod("extractHazeLevel", String.class);
+        method.setAccessible(true);
+
+        String level = (String) method.invoke(datasetOperationService, betaFileName);
+
+        // Then - 应返回 beta=0.74905
+        assertThat(level).startsWith("beta=");
+    }
+
+    /**
+     * 测试雾霾程度提取 - 学术参数格式（A+β双参数）
+     * 测试目的：验证能从 RESIDE/OTS 格式文件名提取 beta 参数
+     * 测试场景：文件名格式为 {id}_{A}_{beta}.jpg
+     * 验证内容：应该返回 beta=数值（无法可靠区分 A 和 idx，统一取最后一个数值作为 beta）
+     */
+    @Test
+    @DisplayName("extractHazeLevel - 学术参数格式（A+β双参数）")
+    void testExtractHazeLevel_ABetaFormat() throws Exception {
+        // Given - RESIDE/OTS 格式：{id}_{A}_{beta}.jpg
+        String aBetaFileName = "0025_0.8_0.2.jpg";
+
+        java.lang.reflect.Method method = DatasetOperationServiceImpl.class
+                .getDeclaredMethod("extractHazeLevel", String.class);
+        method.setAccessible(true);
+
+        String level = (String) method.invoke(datasetOperationService, aBetaFileName);
+
+        // Then - 统一返回 beta= 格式（取最后一个数值）
+        assertThat(level).startsWith("beta=");
     }
 
     /**

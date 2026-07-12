@@ -3,7 +3,6 @@ package com.pei.dehaze.model.form;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,16 +25,13 @@ public class DatasetItemUploadForm {
     @Schema(description = "数据项名称")
     private String name;
 
-    @Schema(description = "清晰图文件")
-    @NotNull(message = "清晰图不能为空")
+    @Schema(description = "清晰图文件（可选，适配不同数据集规范）")
     private MultipartFile clearImage;
 
-    @Schema(description = "有雾图文件列表")
-    @NotEmpty(message = "至少需要一张有雾图")
+    @Schema(description = "有雾图文件列表（可选，适配不同数据集规范）")
     private List<MultipartFile> hazyImages;
 
-    @Schema(description = "对应的雾霾程度列表")
-    @NotEmpty(message = "需要为每张有雾图指定雾霾程度")
+    @Schema(description = "对应的雾霾程度列表（可选，支持多种规范：light/medium/heavy、beta=X、A=X,beta=Y 等）")
     private List<String> hazeLevels;
 
     @Schema(description = "场景类型")

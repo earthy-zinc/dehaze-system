@@ -14,8 +14,8 @@ const DatasetInfo: React.FC<DatasetInfoProps> = ({
 }) => {
   const stats = dataset.statistics
   const fileCount = stats?.fileCount || dataset.total || 0
-  const clearCount = stats?.clearCount || 0
-  const hazyCount = stats?.hazyCount || 0
+  const annotatedCount = stats?.annotatedCount || 0
+  const unannotatedCount = stats?.unannotatedCount || 0
 
   const formatDate = (date?: string | Date) => {
     if (!date) return '-'
@@ -35,12 +35,12 @@ const DatasetInfo: React.FC<DatasetInfoProps> = ({
           <Text className="stat-label">总计图片</Text>
         </View>
         <View className="stat-box">
-          <Text className="stat-value">{hazyCount.toLocaleString()}</Text>
-          <Text className="stat-label">有雾图片</Text>
+          <Text className="stat-value">{annotatedCount.toLocaleString()}</Text>
+          <Text className="stat-label">已标注</Text>
         </View>
         <View className="stat-box">
-          <Text className="stat-value">{clearCount.toLocaleString()}</Text>
-          <Text className="stat-label">无雾图片</Text>
+          <Text className="stat-value">{unannotatedCount.toLocaleString()}</Text>
+          <Text className="stat-label">未标注</Text>
         </View>
       </View>
 

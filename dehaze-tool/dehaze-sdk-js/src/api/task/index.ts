@@ -48,8 +48,8 @@ class TaskAPI {
    */
   static cancel(taskId: string) {
     return request<any, void>({
-      url: `/api/v1/tasks/${taskId}/cancel`,
-      method: "post",
+      url: `/api/v1/tasks/${taskId}`,
+      method: "delete",
     });
   }
 

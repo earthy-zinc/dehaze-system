@@ -143,11 +143,13 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         );
         Assert.isTrue(count == 0, "部门名称已存在");
 
+        // 校验父部门是否存在（根部门除外）
+        Long parentId = formData.getParentId();
+        String treePath = generateDeptTreePath(parentId);
+        Assert.isTrue(treePath != null, "父部门不存在");
+
         // form->entity
         SysDept entity = deptConverter.form2Entity(formData);
-
-        // 生成部门路径(tree_path)，格式：父节点tree_path + , + 父节点ID，用于删除部门时级联删除子部门
-        String treePath = generateDeptTreePath(formData.getParentId());
         entity.setTreePath(treePath);
 
         // 保存部门并返回部门ID
@@ -174,12 +176,26 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         );
         Assert.isTrue(count == 0, "部门名称已存在");
 
+        // 循环引用校验：不能将部门移动到自身或其子部门下
+        Long parentId = formData.getParentId();
+        Assert.isTrue(!parentId.equals(deptId), "不能将部门设置为自己的上级部门");
+        if (!SystemConstants.ROOT_NODE_ID.equals(parentId)) {
+            SysDept parentDept = this.getById(parentId);
+            Assert.isTrue(parentDept != null, "父部门不存在");
+            // 父部门的 tree_path 包含当前部门ID → 父部门是当前部门的子部门 → 循环引用
+            if (parentDept.getTreePath() != null) {
+                String treePathWithCommas = "," + parentDept.getTreePath() + ",";
+                Assert.isTrue(!treePathWithCommas.contains("," + deptId + ","),
+                        "不能将部门移动到其子部门下，存在循环引用");
+            }
+        }
+
         // form->entity
         SysDept entity = deptConverter.form2Entity(formData);
         entity.setId(deptId);
 
         // 生成部门路径(tree_path)，格式：父节点tree_path + , + 父节点ID，用于删除部门时级联删除子部门
-        String treePath = generateDeptTreePath(formData.getParentId());
+        String treePath = generateDeptTreePath(parentId);
         entity.setTreePath(treePath);
 
         // 保存部门并返回部门ID

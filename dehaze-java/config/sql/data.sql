@@ -86,7 +86,25 @@ values (1, 0, '0', '系统管理', 2, '/system', 'Layout', null, 1, 1, 'system',
        (106, 2, '0,1,2', '用户导入', 4, '', null, 'sys:user:import', 1, 5, '', null, '2024-04-28 00:39:15',
         '2024-04-28 00:39:15', null, null),
        (107, 2, '0,1,2', '用户导出', 4, '', null, 'sys:user:export', 1, 6, '', null, '2024-04-28 00:39:43',
-        '2024-04-28 00:39:43', null, null);
+        '2024-04-28 00:39:43', null, null),
+       (200, 0, '0', '算法管理', 2, '/algorithm', 'Layout', null, 1, 2, 'algorithm', '/algorithm/list', '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null),
+       (201, 200, '0,200', '算法列表', 1, 'list', 'algorithm/list/index', null, 1, 1, 'list', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, 1),
+       (202, 201, '0,200,201', '算法新增', 4, '', null, 'sys:algorithm:add', 1, 1, '', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null),
+       (203, 201, '0,200,201', '算法编辑', 4, '', null, 'sys:algorithm:edit', 1, 2, '', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null),
+       (204, 201, '0,200,201', '算法删除', 4, '', null, 'sys:algorithm:delete', 1, 3, '', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null),
+       (205, 201, '0,200,201', '算法审核', 4, '', null, 'sys:algorithm:audit', 1, 4, '', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null),
+       (206, 201, '0,200,201', '版本管理', 4, '', null, 'sys:algorithm:version', 1, 5, '', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null),
+       (207, 201, '0,200,201', '算法导出', 4, '', null, 'sys:algorithm:export', 1, 6, '', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null),
+       (208, 201, '0,200,201', '算法导入', 4, '', null, 'sys:algorithm:import', 1, 7, '', null, '2024-06-08 19:05:51',
+        '2024-06-08 19:05:51', null, null);
 
 -- ----------------------------
 -- Records of sys_role
@@ -156,7 +174,16 @@ values (3, 1),
        (2, 89),
        (2, 97),
        (2, 90),
-       (2, 91);
+       (2, 91),
+       (2, 200),
+       (2, 201),
+       (2, 202),
+       (2, 203),
+       (2, 204),
+       (2, 205),
+       (2, 206),
+       (2, 207),
+       (2, 208);
 
 -- ----------------------------
 -- Records of sys_user
@@ -166,7 +193,7 @@ insert into sys_user (id, username, nickname, gender, password, dept_id, avatar,
 values (1, 'root', '有来技术', 0, '$2a$10$xVWsNOhHrCxh5UbpCE7/HuJ.PAOKcYAqRxD2CO2nVnJS.IAXkr5aq', null,
         '', '17621590365', 1,
         'youlaitech@163.com', 0, null, null),
-       (2, 'admin', '武沛鑫', 1, '$2a$10$xVWsNOhHrCxh5UbpCE7/HuJ.PAOKcYAqRxD2CO2nVnJS.IAXkr5aq', 1,
+       (2, 'admin', 'admin', 1, '$2a$10$xVWsNOhHrCxh5UbpCE7/HuJ.PAOKcYAqRxD2CO2nVnJS.IAXkr5aq', 1,
         'data:image/jpeg;base64,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',
         '18537958917', 1,
         'w1066365803@163.com', 0, '2019-10-10 13:41:22', '2024-11-13 14:40:05'),

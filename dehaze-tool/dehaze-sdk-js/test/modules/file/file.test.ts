@@ -46,11 +46,12 @@ describe("文件管理接口测试", () => {
   });
 
   describe("GET /api/v1/files/check - 文件上传检查", () => {
-    test("正向测试：检查不存在文件的MD5应返回null", async () => {
+    test("正向测试：检查不存在文件的MD5应返回空", async () => {
       const nonExistentMd5 = "nonexistent_" + Date.now();
       const result = await FileAPI.uploadCheck(nonExistentMd5);
 
-      expect(result).toBeNull();
+      // 后端返回 data:null，Jackson 省略 null 字段，SDK 解析为 undefined
+      expect(result).toBeUndefined();
     });
 
     test("正向测试：检查已存在文件的MD5应返回文件信息", async () => {
@@ -128,9 +129,9 @@ describe("文件管理接口测试", () => {
       // 删除文件
       await FileAPI.deleteById(fileId);
 
-      // 验证文件已删除（MD5检查应返回null）
+      // 验证文件已删除（MD5检查应返回空）
       const result = await FileAPI.uploadCheck(testFileMd5);
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
 
     test("异常测试：删除不存在的文件ID", async () => {

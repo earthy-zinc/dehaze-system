@@ -42,8 +42,8 @@ const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({ dataset }) => {
   const stats = dataset.statistics;
   const itemCount = stats?.itemCount ?? dataset.total ?? 0;
   const fileCount = stats?.fileCount ?? 0;
-  const hazyCount = stats?.hazyCount ?? 0;
-  const clearCount = stats?.clearCount ?? 0;
+  const annotatedCount = stats?.annotatedCount ?? 0;
+  const unannotatedCount = stats?.unannotatedCount ?? 0;
 
   return (
     <Animated.View
@@ -87,15 +87,15 @@ const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({ dataset }) => {
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
               <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
-                {clearCount}
+                {annotatedCount}
               </Text>
-              <Text style={styles.statLabel}>清晰图</Text>
+              <Text style={styles.statLabel}>已标注</Text>
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
               <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
-                {hazyCount}
+                {unannotatedCount}
               </Text>
-              <Text style={styles.statLabel}>有雾图</Text>
+              <Text style={styles.statLabel}>未标注</Text>
             </View>
           </View>
         </View>

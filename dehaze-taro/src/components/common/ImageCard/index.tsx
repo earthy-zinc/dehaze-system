@@ -1,11 +1,19 @@
 import React from 'react'
 import { View, Image, Text } from '@tarojs/components'
+import {
+  getImageTypeLabel,
+  getImageTypeBadgeClass,
+  formatHazeLevel,
+} from '@/pages/dataset/services/imageUtils'
 import './ImageCard.less'
 
 export interface ImageCardProps {
   src: string
   filename?: string
-  imageType?: 'clear' | 'hazy'
+  /** 图片类型：clear/hazy/trans/depth/segment */
+  imageType?: string
+  /** 雾霾程度：light/medium/heavy、beta=0.5 等，可为空（表示未标注） */
+  hazeLevel?: string
   width?: number
   height?: number
   fileSize?: number
@@ -18,6 +26,7 @@ const ImageCard: React.FC<ImageCardProps> = ({
   src,
   filename,
   imageType,
+  hazeLevel,
   width,
   height,
   fileSize,
@@ -25,21 +34,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
   className = '',
   onClick,
 }) => {
-  const getTypeLabel = (type?: string) => {
-    const labels = {
-      hazy: '有雾',
-      clear: '无雾',
-    }
-    return labels[type as keyof typeof labels] || ''
-  }
-
-  const getTypeClass = (type?: string) => {
-    const classes = {
-      hazy: 'type-badge-hazy',
-      clear: 'type-badge-clear',
-    }
-    return classes[type as keyof typeof classes] || ''
-  }
+  const typeLabel = getImageTypeLabel(imageType)
+  const typeBadgeClass = getImageTypeBadgeClass(imageType)
+  const hazeLevelLabel = formatHazeLevel(hazeLevel)
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '-'
@@ -58,8 +55,13 @@ const ImageCard: React.FC<ImageCardProps> = ({
           lazyLoad
         />
         {imageType && (
-          <View className={`type-badge ${getTypeClass(imageType)}`}>
-            <Text className="type-text">{getTypeLabel(imageType)}</Text>
+          <View className={`type-badge ${typeBadgeClass}`}>
+            <Text className="type-text">{typeLabel}</Text>
+          </View>
+        )}
+        {hazeLevelLabel && (
+          <View className="haze-badge">
+            <Text className="haze-text">{hazeLevelLabel}</Text>
           </View>
         )}
       </View>

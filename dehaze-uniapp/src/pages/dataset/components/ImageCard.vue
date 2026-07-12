@@ -10,8 +10,11 @@
         :fade="true"
         @load="onImageLoad"
       />
-      <view class="type-badge" :class="image.image_type">
+      <view class="type-badge" :class="image.type">
         {{ typeLabel }}
+      </view>
+      <view v-if="hazeLevelLabel" class="haze-badge">
+        {{ hazeLevelLabel }}
       </view>
     </view>
     <view class="image-info">
@@ -23,7 +26,10 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import type { DatasetImage } from "../data/datasetData";
-import { IMAGE_TYPE_LABELS } from "../data/datasetData";
+import {
+  IMAGE_TYPE_LABELS,
+  formatHazeLevel,
+} from "../data/datasetData";
 
 interface Props {
   image: DatasetImage;
@@ -42,7 +48,9 @@ const emit = defineEmits<Emits>();
 
 const imageLoaded = ref(false);
 
-const typeLabel = computed(() => IMAGE_TYPE_LABELS[props.image.image_type]);
+const typeLabel = computed(() => IMAGE_TYPE_LABELS[props.image.type] || props.image.type);
+
+const hazeLevelLabel = computed(() => formatHazeLevel(props.image.haze_level));
 
 const wrapperStyle = computed(() => {
   if (props.isWaterfall) {
@@ -115,18 +123,40 @@ const handleClick = () => {
   font-weight: 500;
   backdrop-filter: blur(8px);
   color: #ffffff;
-
-  &.foggy {
-    background: rgba(107, 114, 128, 0.9);
-  }
+  background: rgba(107, 114, 128, 0.9);
 
   &.clear {
     background: rgba(59, 130, 246, 0.9);
   }
 
-  &.annotated {
-    background: rgba(16, 185, 129, 0.9);
+  &.hazy {
+    background: rgba(107, 114, 128, 0.9);
   }
+
+  &.trans {
+    background: rgba(14, 165, 233, 0.9);
+  }
+
+  &.depth {
+    background: rgba(139, 92, 246, 0.9);
+  }
+
+  &.segment {
+    background: rgba(6, 182, 212, 0.9);
+  }
+}
+
+.haze-badge {
+  position: absolute;
+  top: 12rpx;
+  left: 12rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 24rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+  backdrop-filter: blur(8px);
+  color: #ffffff;
+  background: rgba(16, 185, 129, 0.9);
 }
 
 .image-info {
@@ -153,6 +183,11 @@ const handleClick = () => {
 /* 小屏幕适配 */
 @media (max-width: 375px) {
   .type-badge {
+    padding: 4rpx 12rpx;
+    font-size: 20rpx;
+  }
+
+  .haze-badge {
     padding: 4rpx 12rpx;
     font-size: 20rpx;
   }

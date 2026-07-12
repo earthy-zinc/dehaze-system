@@ -72,8 +72,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         # 并行执行各项统计查询
         item_count = await self._count_items(db, dataset_ids)
         file_count, total_size = await self._count_files_and_size(db, dataset_ids)
-        clear_count = await self._count_by_type(db, dataset_ids, "clear")
-        hazy_count = await self._count_by_type(db, dataset_ids, "hazy")
+        annotated_count, unannotated_count = await self._count_by_annotation(db, dataset_ids)
         scene_dist = await self._get_distribution(db, dataset_ids, "scene_type", "未分类")
         haze_dist = await self._get_distribution(db, dataset_ids, "haze_level", "未标注")
         format_dist = await self._get_format_distribution(db, dataset_ids)
@@ -82,8 +81,8 @@ class DatasetRepository(BaseRepository[SysDataset]):
             "itemCount": item_count,
             "fileCount": file_count,
             "totalSize": total_size,
-            "clearCount": clear_count,
-            "hazyCount": hazy_count,
+            "annotatedCount": annotated_count,
+            "unannotatedCount": unannotated_count,
             "sceneDistribution": scene_dist,
             "hazeDistribution": haze_dist,
             "formatDistribution": format_dist,
@@ -96,8 +95,8 @@ class DatasetRepository(BaseRepository[SysDataset]):
             "itemCount": 0,
             "fileCount": 0,
             "totalSize": 0,
-            "clearCount": 0,
-            "hazyCount": 0,
+            "annotatedCount": 0,
+            "unannotatedCount": 0,
             "sceneDistribution": {},
             "hazeDistribution": {},
             "formatDistribution": {},
@@ -139,40 +138,34 @@ class DatasetRepository(BaseRepository[SysDataset]):
             return row[0] or 0, int(row[1] or 0)
         return 0, 0
 
-    async def _count_by_type(
+    async def _count_by_annotation(
         self,
         db: AsyncSession,
         dataset_ids: list[int],
-        image_type: str,
-    ) -> int:
-        """按图片类型统计数量（clear/hazy）"""
-        if image_type == "clear":
-            type_conditions = or_(
-                func.lower(SysItemFile.type).like("%clear%"),
-                func.lower(SysItemFile.type).like("%clean%"),
-                SysItemFile.type.like("%清晰%"),
-                SysItemFile.type.like("%无雾%"),
-            )
-        else:  # hazy
-            type_conditions = or_(
-                func.lower(SysItemFile.type).like("%haze%"),
-                func.lower(SysItemFile.type).like("%hazy%"),
-                SysItemFile.type.like("%有雾%"),
-            )
-
+    ) -> tuple[int, int]:
+        """按标注状态统计数量（已标注/未标注），基于 haze_level 是否为空"""
+        annotated_cond = and_(
+            SysItemFile.haze_level.isnot(None),
+            SysItemFile.haze_level != "",
+        )
+        unannotated_cond = or_(
+            SysItemFile.haze_level.is_(None),
+            SysItemFile.haze_level == "",
+        )
         stmt = (
-            select(func.count(SysItemFile.id))
+            select(
+                func.sum(func.case((annotated_cond, 1), else_=0)).label("annotated"),
+                func.sum(func.case((unannotated_cond, 1), else_=0)).label("unannotated"),
+            )
             .select_from(SysItemFile)
             .join(SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id)
-            .where(
-                and_(
-                    SysDatasetItem.dataset_id.in_(dataset_ids),
-                    type_conditions,
-                )
-            )
+            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
         )
         result = await db.execute(stmt)
-        return result.scalar() or 0
+        row = result.first()
+        if row:
+            return int(row[0] or 0), int(row[1] or 0)
+        return 0, 0
 
     async def _get_distribution(
         self,
@@ -758,27 +751,24 @@ class DatasetRepository(BaseRepository[SysDataset]):
         db: AsyncSession,
         dataset_ids: list[int],
     ) -> dict[int, dict[str, int]]:
-        """批量统计每个数据集的文件数、总大小、清晰图数、有雾图数"""
+        """批量统计每个数据集的文件数、总大小、已标注数、未标注数"""
         if not dataset_ids:
             return {}
-        clear_cond = or_(
-            func.lower(SysItemFile.type).like("%clear%"),
-            func.lower(SysItemFile.type).like("%clean%"),
-            SysItemFile.type.like("%清晰%"),
-            SysItemFile.type.like("%无雾%"),
+        annotated_cond = and_(
+            SysItemFile.haze_level.isnot(None),
+            SysItemFile.haze_level != "",
         )
-        hazy_cond = or_(
-            func.lower(SysItemFile.type).like("%haze%"),
-            func.lower(SysItemFile.type).like("%hazy%"),
-            SysItemFile.type.like("%有雾%"),
+        unannotated_cond = or_(
+            SysItemFile.haze_level.is_(None),
+            SysItemFile.haze_level == "",
         )
         stmt = (
             select(
                 SysDatasetItem.dataset_id.label("dataset_id"),
                 func.count(SysItemFile.id).label("file_count"),
                 func.coalesce(func.sum(SysFile.size), 0).label("total_size"),
-                func.sum(func.case((clear_cond, 1), else_=0)).label("clear_count"),
-                func.sum(func.case((hazy_cond, 1), else_=0)).label("hazy_count"),
+                func.sum(func.case((annotated_cond, 1), else_=0)).label("annotated_count"),
+                func.sum(func.case((unannotated_cond, 1), else_=0)).label("unannotated_count"),
             )
             .select_from(SysDatasetItem)
             .outerjoin(SysItemFile, SysItemFile.item_id == SysDatasetItem.id)
@@ -793,8 +783,8 @@ class DatasetRepository(BaseRepository[SysDataset]):
             stats_map[ds_id] = {
                 "fileCount": int(row.file_count or 0),
                 "totalSize": int(row.total_size or 0),
-                "clearCount": int(row.clear_count or 0),
-                "hazyCount": int(row.hazy_count or 0),
+                "annotatedCount": int(row.annotated_count or 0),
+                "unannotatedCount": int(row.unannotated_count or 0),
             }
         return stats_map
 

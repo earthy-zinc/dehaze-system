@@ -1,4 +1,4 @@
-import { DatasetAPI, BatchDeleteForm, ExportTaskRequest } from "../../../index";
+import { DatasetAPI, BatchDeleteForm, TaskAPI } from "../../../index";
 import { login, logout } from "#/utils/auth";
 import { expectBizErrorOrUndefined } from "#/utils/assertion";
 import {
@@ -20,9 +20,11 @@ describe("数据集接口测试", () => {
     test("正向测试：获取所有数据集", async () => {
       const query = createDatasetQuery();
       const result = await DatasetAPI.getList(query);
-      expect(Array.isArray(result)).toBe(true);
-      if (result.length > 0) {
-        const firstItem = result[0]!;
+      // getList 返回分页结构 PageResult<Dataset[]> = { list, total }
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.list)).toBe(true);
+      if (result.list.length > 0) {
+        const firstItem = result.list[0]!;
         expect(firstItem.id).toBeDefined();
         expect(firstItem.name).toBeDefined();
         expect(firstItem.type).toBeDefined();
@@ -32,8 +34,8 @@ describe("数据集接口测试", () => {
     test("正向测试：按类型筛选数据集", async () => {
       const query = createDatasetQuery({ type: "用户数据集" });
       const result = await DatasetAPI.getList(query);
-      expect(Array.isArray(result)).toBe(true);
-      result.forEach((item) => {
+      expect(Array.isArray(result.list)).toBe(true);
+      result.list.forEach((item) => {
         expect(item.type).toBeDefined();
       });
     });
@@ -41,8 +43,8 @@ describe("数据集接口测试", () => {
     test("正向测试：按状态筛选数据集", async () => {
       const query = createDatasetQuery({ status: "1" });
       const result = await DatasetAPI.getList(query);
-      expect(Array.isArray(result)).toBe(true);
-      result.forEach((item) => {
+      expect(Array.isArray(result.list)).toBe(true);
+      result.list.forEach((item) => {
         expect(item.status).toBe(1);
       });
     });
@@ -50,7 +52,7 @@ describe("数据集接口测试", () => {
     test("边界测试：大页码返回空结果", async () => {
       const query = createDatasetQuery({ pageNum: 99999 });
       const result = await DatasetAPI.getList(query);
-      expect(Array.isArray(result)).toBe(true);
+      expect(Array.isArray(result.list)).toBe(true);
     });
   });
 
@@ -143,8 +145,8 @@ describe("数据集接口测试", () => {
         expect(result.statistics.itemCount).toBeDefined();
         expect(result.statistics.fileCount).toBeDefined();
         expect(result.statistics.totalSize).toBeDefined();
-        expect(result.statistics.clearCount).toBeDefined();
-        expect(result.statistics.hazyCount).toBeDefined();
+        expect(result.statistics.annotatedCount).toBeDefined();
+        expect(result.statistics.unannotatedCount).toBeDefined();
       }
     });
 
@@ -256,7 +258,7 @@ describe("数据集接口测试", () => {
     });
   });
 
-  describe("POST /api/v1/datasets/{id}/export - 创建数据集导出任务", () => {
+  describe("POST /api/v1/tasks - 创建数据集导出任务（dataset_export）", () => {
     let datasetId: number;
 
     beforeAll(async () => {
@@ -274,39 +276,35 @@ describe("数据集接口测试", () => {
     });
 
     test("正向测试：创建导出任务（空数据集）", async () => {
-      const request: ExportTaskRequest = {
-        includeTypes: ["clear", "hazy"],
-        structure: "by_item",
-      };
-      try {
-        const result = await DatasetAPI.createExportTask(datasetId, request);
-        expect(result.taskId).toBeDefined();
-        expect(result.status).toBeDefined();
-        expect(result.progress).toBeGreaterThanOrEqual(0);
-        expect(result.progress).toBeLessThanOrEqual(100);
-      } catch (error: any) {
-        const bizError = error.response?.data || error;
-        expect(bizError.code).toBe("B0001");
-      }
+      const result = await TaskAPI.create({
+        type: "dataset_export",
+        targetId: datasetId,
+        options: { includeTypes: ["clear", "hazy"], structure: "by_item" },
+      });
+      expect(result.taskId).toBeDefined();
+      expect(result.status).toBeDefined();
+      expect(result.progress).toBeGreaterThanOrEqual(0);
+      expect(result.progress).toBeLessThanOrEqual(100);
     });
 
     test("正向测试：使用默认参数创建导出任务", async () => {
-      const request: ExportTaskRequest = {};
-      try {
-        const result = await DatasetAPI.createExportTask(datasetId, request);
-        expect(result.taskId).toBeDefined();
-      } catch (error: any) {
-        const bizError = error.response?.data || error;
-        expect(bizError.code).toBe("B0001");
-      }
+      const result = await TaskAPI.create({
+        type: "dataset_export",
+        targetId: datasetId,
+      });
+      expect(result.taskId).toBeDefined();
     });
 
     test("异常测试：导出不存在的数据集", async () => {
-      const request: ExportTaskRequest = {};
-      await expectBizErrorOrUndefined(DatasetAPI.createExportTask(99999999, request), [
-        "B0001",
-        "A0400",
-      ]);
+      // 统一任务接口为异步执行：createTask 同步创建任务记录（PENDING），
+      // 数据集存在性校验在异步策略 DatasetExportStrategy 中执行，任务最终状态为 FAILED。
+      // 此处仅验证任务能创建成功，异步失败需通过 getStatus 轮询验证。
+      const result = await TaskAPI.create({
+        type: "dataset_export",
+        targetId: 99999999,
+      });
+      expect(result.taskId).toBeDefined();
+      expect(result.status).toBe("PENDING");
     });
   });
 });

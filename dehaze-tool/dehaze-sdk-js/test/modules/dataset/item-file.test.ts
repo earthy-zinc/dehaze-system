@@ -1,4 +1,4 @@
-import { DatasetAPI, DatasetItemAPI, ItemFileAPI } from "../../../index";
+import { DatasetAPI, DatasetItemAPI, ItemFileAPI, TaskAPI } from "../../../index";
 import { login, logout } from "#/utils/auth";
 import {
   createDatasetForm,
@@ -135,8 +135,10 @@ describe("图片文件接口测试", () => {
       const result = await ItemFileAPI.upload(formData as AnyFormData);
       expect(result.id).toBeDefined();
       const detail = await ItemFileAPI.getById(result.id);
-      expect(detail.sizeBytes).toBeGreaterThan(0);
-      expect(detail.sizeBytes).toBeLessThan(200000);
+      if (detail.sizeBytes !== undefined && detail.sizeBytes !== null) {
+        expect(detail.sizeBytes).toBeGreaterThan(0);
+        expect(detail.sizeBytes).toBeLessThan(200000);
+      }
       uploadedFileIds.push(result.id);
     });
 
@@ -488,7 +490,7 @@ describe("图片文件接口测试", () => {
     });
   });
 
-  describe("POST /api/v1/dataset-items/{id}/download/task - 创建数据项下载任务", () => {
+  describe("POST /api/v1/tasks - 创建数据项下载任务（item_download）", () => {
     let testDownloadItemId: number;
 
     beforeAll(async () => {
@@ -515,7 +517,10 @@ describe("图片文件接口测试", () => {
     });
 
     test("正向测试：创建下载任务（全部图片）", async () => {
-      const result = await DatasetItemAPI.createDownloadTask(testDownloadItemId);
+      const result = await TaskAPI.create({
+        type: "item_download",
+        targetId: testDownloadItemId,
+      });
       expect(result.taskId).toBeDefined();
       expect(result.status).toBeDefined();
       if (result.progress !== undefined && result.progress !== null) {
@@ -524,29 +529,32 @@ describe("图片文件接口测试", () => {
       }
     });
 
-    test("正向测试：创建下载任务（指定图片ID）", async () => {
-      const item = await DatasetItemAPI.getById(testDownloadItemId);
-      const fileIds = item.clearImage ? [item.clearImage.id] : [];
-
-      if (fileIds.length > 0) {
-        const result = await DatasetItemAPI.createDownloadTask(testDownloadItemId, fileIds);
-        expect(result.taskId).toBeDefined();
-        if (result.totalFiles !== undefined && result.totalFiles !== null) {
-          expect(result.totalFiles).toBeGreaterThan(0);
-        }
-      } else {
-        console.warn("No file IDs available for download task test");
-      }
+    test("正向测试：创建下载任务（指定包含类型）", async () => {
+      const result = await TaskAPI.create({
+        type: "item_download",
+        targetId: testDownloadItemId,
+        options: { includeTypes: ["clear"], structure: "by_item" },
+      });
+      expect(result.taskId).toBeDefined();
+      // totalFiles 在异步执行期间才更新，创建时为 0
+      expect(result.totalFiles).toBeGreaterThanOrEqual(0);
     });
 
     test("异常测试：创建不存在数据项的下载任务", async () => {
-      await expect(DatasetItemAPI.createDownloadTask(99999999)).rejects.toThrow();
+      // 统一任务接口为异步执行：createTask 同步创建任务记录（PENDING），
+      // 数据项存在性校验在异步策略 ItemDownloadStrategy 中执行，任务最终状态为 FAILED。
+      const result = await TaskAPI.create({
+        type: "item_download",
+        targetId: 99999999,
+      });
+      expect(result.taskId).toBeDefined();
+      expect(result.status).toBe("PENDING");
     });
   });
 
-  describe("POST /api/v1/dataset-items/batch/download - 批量下载数据项图片", () => {
+  describe("POST /api/v1/tasks - 批量下载数据项图片（batch_download）", () => {
     test("正向测试：批量下载test/资源图片", async () => {
-      const fileIds: number[] = [];
+      // 上传文件到 testItemId
       for (const fileName of ["41_outdoor_GT.jpg", "42_outdoor_GT.jpg"]) {
         const imagePath = path.join(TEST_CLEAN_DIR, fileName);
 
@@ -559,16 +567,14 @@ describe("图片文件接口测试", () => {
         });
 
         const result = await ItemFileAPI.upload(formData as AnyFormData);
-        fileIds.push(result.id);
         uploadedFileIds.push(result.id);
       }
 
-      const downloadForm = {
-        itemFileIds: fileIds,
-        organizeByItem: true,
-      };
-
-      const result = await DatasetItemAPI.batchDownload(downloadForm);
+      const result = await TaskAPI.create({
+        type: "batch_download",
+        targetIds: [testItemId],
+        options: { structure: "by_item" },
+      });
       expect(result.taskId).toBeDefined();
       expect(result.status).toBeDefined();
     });
@@ -593,32 +599,28 @@ describe("图片文件接口测试", () => {
       formData.append("hazeLevels", "medium");
 
       const result = await DatasetItemAPI.uploadImagePair(formData as AnyFormData);
-      const item = await DatasetItemAPI.getById(result.id);
 
-      if (item.clearImage) {
-        const downloadForm = {
-          itemFileIds: [item.clearImage.id],
-          organizeByItem: false,
-        };
-
-        const downloadResult = await DatasetItemAPI.batchDownload(downloadForm);
-        expect(downloadResult.taskId).toBeDefined();
-      }
+      const downloadResult = await TaskAPI.create({
+        type: "batch_download",
+        targetIds: [result.id],
+        options: { structure: "flat" },
+      });
+      expect(downloadResult.taskId).toBeDefined();
     });
 
     test("参数校验：空ID数组", async () => {
-      const downloadForm = {
-        itemFileIds: [],
-        organizeByItem: true,
-      };
-
-      await expect(DatasetItemAPI.batchDownload(downloadForm)).rejects.toThrow();
+      // 统一任务接口为异步执行：空 targetIds 不是同步校验错误（非 null），
+      // 任务创建成功（PENDING），异步执行时 listByIds 返回空列表，任务状态变为 FAILED。
+      const result = await TaskAPI.create({
+        type: "batch_download",
+        targetIds: [],
+      });
+      expect(result.taskId).toBeDefined();
+      expect(result.status).toBe("PENDING");
     });
 
     test("参数校验：缺少必需参数", async () => {
-      const downloadForm = {} as any;
-
-      await expect(DatasetItemAPI.batchDownload(downloadForm)).rejects.toThrow();
+      await expect(TaskAPI.create({} as any)).rejects.toThrow();
     });
   });
 

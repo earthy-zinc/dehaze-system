@@ -2,9 +2,11 @@ import {
   DatasetAPI,
   DatasetItemAPI,
   ItemFileAPI,
+  TaskAPI,
   type Dataset,
   type DatasetItemVO,
   type DatasetStatistics,
+  type ImageUrlVO,
 } from "dehaze-sdk-js";
 import Waterfall from "@/components/Waterfall";
 import { useWindowSize } from "@/hooks/useWindowSize";
@@ -23,6 +25,7 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import {
+  AutoComplete,
   Button,
   Card,
   Checkbox,
@@ -65,8 +68,8 @@ import { useParams } from "react-router-dom";
 /** 展示模式 */
 type DisplayMode = "list" | "waterfall" | "horizontal" | "grid";
 
-/** 图片类型 */
-type ImageTypeKey = "clear" | "hazy";
+/** 标注状态过滤：已标注/未标注二分 */
+type AnnotationFilter = "annotated" | "unannotated";
 
 /** 用于展示的图片信息 */
 interface DisplayImage {
@@ -92,9 +95,9 @@ interface DisplayImage {
   width?: number;
   /** 图片高度 */
   height?: number;
-  /** 图片类型：clear-清晰图，hazy-有雾图 */
+  /** 图片类型：clear-清晰图，hazy-有雾图，trans-透射图，depth-深度图，segment-分割图 */
   type: string;
-  /** 雾霾程度 */
+  /** 雾霾程度，支持多种规范：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
   hazeLevel?: string;
   /** 场景类型 */
   sceneType?: string;
@@ -102,11 +105,20 @@ interface DisplayImage {
 
 // ==================== 常量 ====================
 
-/** 图片类型选项 */
-const IMAGE_TYPES: { key: ImageTypeKey; label: string }[] = [
-  { key: "clear", label: "清晰图" },
-  { key: "hazy", label: "有雾图" },
+/** 标注状态过滤选项（Tab 切换为"已标注/未标注"二分） */
+const ANNOTATION_FILTERS: { key: AnnotationFilter; label: string }[] = [
+  { key: "annotated", label: "已标注" },
+  { key: "unannotated", label: "未标注" },
 ];
+
+/** 图片类型标签映射（支持 clear/hazy/trans/depth/segment 五种类型，未知类型走兜底） */
+const IMAGE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  clear: { label: "清晰图", color: "green" },
+  hazy: { label: "有雾图", color: "orange" },
+  trans: { label: "透射图", color: "blue" },
+  depth: { label: "深度图", color: "purple" },
+  segment: { label: "分割图", color: "cyan" },
+};
 
 /** 场景类型选项 */
 const SCENE_TYPE_OPTIONS = [
@@ -119,18 +131,45 @@ const SCENE_TYPE_OPTIONS = [
   { label: "山区", value: "mountain" },
 ];
 
-/** 雾霾程度选项 */
+/** 雾霾程度预设选项（允许自由输入，支持 beta=X 等多种规范） */
 const HAZE_LEVEL_OPTIONS = [
   { label: "轻度", value: "light" },
   { label: "中度", value: "medium" },
   { label: "重度", value: "heavy" },
 ];
 
-/** 雾霾程度标签映射 */
+/** 已知雾霾程度枚举的标签与颜色映射，未知值（如 beta=0.5）走兜底 */
 const HAZE_LEVEL_MAP: Record<string, { label: string; color: string }> = {
   light: { label: "轻度", color: "green" },
   medium: { label: "中度", color: "orange" },
   heavy: { label: "重度", color: "red" },
+};
+
+/** 获取图片类型标签信息（未知类型走兜底） */
+const getImageTypeInfo = (type: string) =>
+  IMAGE_TYPE_LABELS[type] || { label: type || "未知", color: "default" };
+
+/**
+ * 格式化雾霾程度用于展示：
+ * - light/medium/heavy → 轻度/中度/重度
+ * - beta=X → β=X
+ * - A=X,beta=Y → β=Y
+ * - 其他 → 原值回显
+ * - 空 → 未标注
+ */
+const formatHazeLevel = (level?: string): {
+  label: string;
+  color: string;
+} | null => {
+  if (!level) return null;
+  if (HAZE_LEVEL_MAP[level]) return HAZE_LEVEL_MAP[level];
+  // beta=X 格式
+  const betaMatch = level.match(/beta=([\d.]+)/i);
+  if (betaMatch) {
+    return { label: `β=${betaMatch[1]}`, color: "blue" };
+  }
+  // 兜底：原值回显
+  return { label: level, color: "default" };
 };
 
 /** 图表配色 */
@@ -175,50 +214,53 @@ const uniqueArray = (arr: DatasetItemVO[]) => {
   });
 };
 
-/** 将数据项列表转换为展示图片列表 */
+/** 将数据项下所有图片（含 clear/hazy/trans/depth/segment）展平为展示图片列表 */
+const extractAllImagesFromItem = (item: DatasetItemVO): DisplayImage[] => {
+  const result: DisplayImage[] = [];
+  const pushImage = (img: ImageUrlVO | undefined, itemId: number, sceneType?: string) => {
+    if (!img) return;
+    result.push({
+      itemId,
+      fileId: img.id,
+      url: img.thumbnailUrl || img.url,
+      originUrl: img.originUrl || img.url,
+      alt: img.description || img.fileName || "",
+      fileName: img.fileName || "",
+      sizeBytes: img.sizeBytes || 0,
+      formattedSize: img.formattedSize || "",
+      format: img.format || "",
+      width: img.width,
+      height: img.height,
+      type: img.type,
+      hazeLevel: img.hazeLevel,
+      sceneType: img.sceneType || sceneType,
+    });
+  };
+  pushImage(item.clearImage, item.id, item.sceneType);
+  if (item.hazyImages) {
+    item.hazyImages.forEach((img) => pushImage(img, item.id, item.sceneType));
+  }
+  return result;
+};
+
+/**
+ * 将数据项列表转换为展示图片列表，按"已标注/未标注"过滤。
+ * - annotated：hazeLevel 非空的图片
+ * - unannotated：hazeLevel 为空的图片
+ */
 const buildDisplayImages = (
   items: DatasetItemVO[],
-  type: ImageTypeKey
+  filter: AnnotationFilter
 ): DisplayImage[] => {
   const result: DisplayImage[] = [];
   for (const item of items) {
-    if (type === "clear" && item.clearImage) {
-      const img = item.clearImage;
-      result.push({
-        itemId: item.id,
-        fileId: img.id,
-        url: img.thumbnailUrl || img.url,
-        originUrl: img.originUrl || img.url,
-        alt: img.description || img.fileName || "",
-        fileName: img.fileName || "",
-        sizeBytes: img.sizeBytes || 0,
-        formattedSize: img.formattedSize || "",
-        format: img.format || "",
-        width: img.width,
-        height: img.height,
-        type: img.type,
-        hazeLevel: img.hazeLevel,
-        sceneType: img.sceneType || item.sceneType,
-      });
-    }
-    if (type === "hazy" && item.hazyImages) {
-      for (const img of item.hazyImages) {
-        result.push({
-          itemId: item.id,
-          fileId: img.id,
-          url: img.thumbnailUrl || img.url,
-          originUrl: img.originUrl || img.url,
-          alt: img.description || img.fileName || "",
-          fileName: img.fileName || "",
-          sizeBytes: img.sizeBytes || 0,
-          formattedSize: img.formattedSize || "",
-          format: img.format || "",
-          width: img.width,
-          height: img.height,
-          type: img.type,
-          hazeLevel: img.hazeLevel,
-          sceneType: img.sceneType || item.sceneType,
-        });
+    const allImages = extractAllImagesFromItem(item);
+    for (const img of allImages) {
+      const isAnnotated = Boolean(img.hazeLevel);
+      if (filter === "annotated" && isAnnotated) {
+        result.push(img);
+      } else if (filter === "unannotated" && !isAnnotated) {
+        result.push(img);
       }
     }
   }
@@ -423,7 +465,7 @@ const PairUploadDialog: React.FC<{
 }> = ({ visible, datasetId, onClose, onSuccess }) => {
   const [clearFileList, setClearFileList] = useState<UploadFile[]>([]);
   const [hazyFileList, setHazyFileList] = useState<UploadFile[]>([]);
-  const [hazeLevel, setHazeLevel] = useState<string>("light");
+  const [hazeLevel, setHazeLevel] = useState<string>("");
   const [sceneType, setSceneType] = useState<string>();
   const [name, setName] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -432,7 +474,7 @@ const PairUploadDialog: React.FC<{
   const resetState = () => {
     setClearFileList([]);
     setHazyFileList([]);
-    setHazeLevel("light");
+    setHazeLevel("");
     setSceneType(undefined);
     setName("");
   };
@@ -443,12 +485,9 @@ const PairUploadDialog: React.FC<{
   };
 
   const handleSubmit = async () => {
-    if (clearFileList.length === 0) {
-      message.warning("请上传清晰图");
-      return;
-    }
-    if (hazyFileList.length === 0) {
-      message.warning("请上传至少一张有雾图");
+    // 清晰图和有雾图均为可选（适配不同数据集规范），但至少上传一张图片
+    if (clearFileList.length === 0 && hazyFileList.length === 0) {
+      message.warning("请至少上传一张图片（清晰图或有雾图）");
       return;
     }
 
@@ -457,22 +496,17 @@ const PairUploadDialog: React.FC<{
       .map((f) => f.originFileObj as File)
       .filter(Boolean);
 
-    if (!clearFile) {
-      message.warning("清晰图文件无效");
-      return;
-    }
-    if (hazyFiles.length === 0) {
-      message.warning("有雾图文件无效");
-      return;
-    }
-
     const formData = new FormData();
     formData.append("datasetId", String(datasetId));
     if (name) formData.append("name", name);
-    formData.append("clearImage", clearFile);
-    hazyFiles.forEach((file) => formData.append("hazyImages", file));
-    // 每张有雾图对应一个雾霾程度
-    hazyFiles.forEach(() => formData.append("hazeLevels", hazeLevel));
+    if (clearFile) {
+      formData.append("clearImage", clearFile);
+    }
+    if (hazyFiles.length > 0) {
+      hazyFiles.forEach((file) => formData.append("hazyImages", file));
+      // 每张有雾图对应一个雾霾程度（支持空字符串表示未标注）
+      hazyFiles.forEach(() => formData.append("hazeLevels", hazeLevel));
+    }
     if (sceneType) formData.append("sceneType", sceneType);
 
     setSubmitting(true);
@@ -509,7 +543,7 @@ const PairUploadDialog: React.FC<{
             onChange={(e) => setName(e.target.value)}
           />
         </Form.Item>
-        <Form.Item label="清晰图（限1张）" required>
+        <Form.Item label="清晰图（限1张，可选）">
           <Upload
             listType="picture-card"
             maxCount={1}
@@ -529,7 +563,7 @@ const PairUploadDialog: React.FC<{
             )}
           </Upload>
         </Form.Item>
-        <Form.Item label="有雾图（可多张）" required>
+        <Form.Item label="有雾图（可多张，可选）">
           <Upload
             listType="picture-card"
             multiple
@@ -545,11 +579,13 @@ const PairUploadDialog: React.FC<{
         </Form.Item>
         <Row gutter={16}>
           <Col span={12}>
-            <Form.Item label="雾霾程度" required>
-              <Select
+            <Form.Item label="雾霾程度（可选，支持 beta=0.5 等格式）">
+              <AutoComplete
                 value={hazeLevel}
                 onChange={setHazeLevel}
                 options={HAZE_LEVEL_OPTIONS}
+                placeholder="如 light/medium/heavy/beta=0.5"
+                filterOption={false}
               />
             </Form.Item>
           </Col>
@@ -692,12 +728,8 @@ const ImageViewerModal: React.FC<{
 }) => {
   if (!image) return null;
 
-  const hazeInfo = image.hazeLevel
-    ? HAZE_LEVEL_MAP[image.hazeLevel] || {
-        label: image.hazeLevel,
-        color: "default",
-      }
-    : null;
+  const hazeInfo = formatHazeLevel(image.hazeLevel);
+  const typeInfo = getImageTypeInfo(image.type);
 
   return (
     <Modal
@@ -768,9 +800,7 @@ const ImageViewerModal: React.FC<{
               </Tooltip>
             </Descriptions.Item>
             <Descriptions.Item label="类型">
-              <Tag color={image.type === "clear" ? "green" : "orange"}>
-                {image.type === "clear" ? "清晰图" : "有雾图"}
-              </Tag>
+              <Tag color={typeInfo.color}>{typeInfo.label}</Tag>
             </Descriptions.Item>
             <Descriptions.Item label="大小">
               {image.formattedSize || formatFileSize(image.sizeBytes)}
@@ -846,7 +876,7 @@ export default function DatasetDetail() {
 
   const [datasetInfo, setDatasetInfo] = useState<Dataset | null>(null);
   const [imageData, setImageData] = useState<DatasetItemVO[]>([]);
-  const [imageType, setImageType] = useState<ImageTypeKey>("clear");
+  const [annotationFilter, setAnnotationFilter] = useState<AnnotationFilter>("annotated");
 
   // 展示模式
   const [mode, setMode] = useState<DisplayMode>("waterfall");
@@ -915,10 +945,10 @@ export default function DatasetDetail() {
       });
   }, [datasetId, queryParams]);
 
-  // 构建展示图片列表
+  // 构建展示图片列表（按"已标注/未标注"过滤）
   const displayImages = useMemo(
-    () => buildDisplayImages(imageData, imageType),
-    [imageData, imageType]
+    () => buildDisplayImages(imageData, annotationFilter),
+    [imageData, annotationFilter]
   );
 
   // 瀑布流组件所需的数据格式
@@ -973,9 +1003,9 @@ export default function DatasetDetail() {
     setQueryParams({ pageNum: 1, pageSize: 10, keywords: "" });
   };
 
-  /** 切换图片类型 */
-  const handleImageTypeChange = (type: ImageTypeKey) => {
-    setImageType(type);
+  /** 切换标注状态过滤 */
+  const handleAnnotationFilterChange = (filter: AnnotationFilter) => {
+    setAnnotationFilter(filter);
     setSelectedFileIds(new Set());
   };
 
@@ -1031,9 +1061,10 @@ export default function DatasetDetail() {
   /** 下载单张图片 */
   const handleDownloadOne = async (image: DisplayImage) => {
     try {
-      const task = await DatasetItemAPI.createDownloadTask(image.itemId, [
-        image.fileId,
-      ]);
+      const task = await TaskAPI.create({
+        type: "item_download",
+        targetId: image.itemId,
+      });
       if (task.downloadUrl) {
         window.open(task.downloadUrl);
       } else {
@@ -1058,13 +1089,22 @@ export default function DatasetDetail() {
 
   /** 批量下载 */
   const handleBatchDownload = async () => {
-    const ids = Array.from(selectedFileIds);
-    if (ids.length === 0) {
+    const selectedImages = displayImages.filter((img) =>
+      selectedFileIds.has(img.fileId)
+    );
+    if (selectedImages.length === 0) {
       message.warning("请先选择要下载的图片");
       return;
     }
+    // 统一任务接口 batch_download 的 targetIds 为数据项ID列表
+    const itemIds = Array.from(
+      new Set(selectedImages.map((img) => img.itemId))
+    );
     try {
-      const task = await DatasetItemAPI.batchDownload({ itemFileIds: ids });
+      const task = await TaskAPI.create({
+        type: "batch_download",
+        targetIds: itemIds,
+      });
       if (task.downloadUrl) {
         window.open(task.downloadUrl);
       } else {
@@ -1138,11 +1178,10 @@ export default function DatasetDetail() {
       dataIndex: "type",
       key: "type",
       width: 80,
-      render: (type: string) => (
-        <Tag color={type === "clear" ? "green" : "orange"}>
-          {type === "clear" ? "清晰图" : "有雾图"}
-        </Tag>
-      ),
+      render: (type: string) => {
+        const info = getImageTypeInfo(type);
+        return <Tag color={info.color}>{info.label}</Tag>;
+      },
     },
     {
       title: "雾霾程度",
@@ -1150,12 +1189,8 @@ export default function DatasetDetail() {
       key: "hazeLevel",
       width: 100,
       render: (level: string) => {
-        if (!level) return "-";
-        const info = HAZE_LEVEL_MAP[level] || {
-          label: level,
-          color: "default",
-        };
-        return <Tag color={info.color}>{info.label}</Tag>;
+        const info = formatHazeLevel(level);
+        return info ? <Tag color={info.color}>{info.label}</Tag> : "-";
       },
     },
     {
@@ -1233,8 +1268,8 @@ export default function DatasetDetail() {
           <Col span={6}>
             <Card size="small">
               <Statistic
-                title="清晰图数"
-                value={statistics?.clearCount ?? 0}
+                title="已标注"
+                value={statistics?.annotatedCount ?? 0}
                 valueStyle={{ color: "#52c41a" }}
               />
             </Card>
@@ -1242,8 +1277,8 @@ export default function DatasetDetail() {
           <Col span={6}>
             <Card size="small">
               <Statistic
-                title="有雾图数"
-                value={statistics?.hazyCount ?? 0}
+                title="未标注"
+                value={statistics?.unannotatedCount ?? 0}
                 valueStyle={{ color: "#fa8c16" }}
               />
             </Card>
@@ -1270,11 +1305,11 @@ export default function DatasetDetail() {
           }}
         >
           <Button.Group>
-            {IMAGE_TYPES.map((t) => (
+            {ANNOTATION_FILTERS.map((t) => (
               <Button
                 key={t.key}
-                type={imageType === t.key ? "primary" : "default"}
-                onClick={() => handleImageTypeChange(t.key)}
+                type={annotationFilter === t.key ? "primary" : "default"}
+                onClick={() => handleAnnotationFilterChange(t.key)}
               >
                 {t.label}
               </Button>

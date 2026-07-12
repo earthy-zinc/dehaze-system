@@ -25,11 +25,11 @@ public class DatasetStatistics implements Serializable {
     @Schema(description = "总大小（字节）", example = "15360000000")
     private Long totalSize;
 
-    @Schema(description = "清晰图片数量", example = "120")
-    private Long clearCount;
+    @Schema(description = "已标注图片数量（haze_level 非空）", example = "120")
+    private Long annotatedCount;
 
-    @Schema(description = "有雾图片数量", example = "330")
-    private Long hazyCount;
+    @Schema(description = "未标注图片数量（haze_level 为空）", example = "330")
+    private Long unannotatedCount;
 
     @Schema(description = "场景类型分布", example = "{\"outdoor\": 280, \"indoor\": 170}")
     private Map<String, Long> sceneDistribution;

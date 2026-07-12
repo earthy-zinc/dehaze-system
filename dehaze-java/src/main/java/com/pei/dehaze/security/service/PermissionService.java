@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.security.util.SecurityUtils;
+import com.pei.dehaze.service.SysMenuService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -24,6 +25,8 @@ import java.util.*;
 public class PermissionService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+
+    private final SysMenuService menuService;
 
     /**
      * 判断当前登录用户是否拥有操作权限
@@ -67,7 +70,7 @@ public class PermissionService {
 
 
     /**
-     * 从缓存中获取角色权限列表
+     * 从缓存中获取角色权限列表，缓存未命中时回源数据库
      *
      * @param roleCodes 角色编码集合
      * @return 角色权限列表
@@ -89,6 +92,11 @@ public class PermissionService {
                 Set<String> rolePerms = (Set<String>) rolePermsObj;
                 perms.addAll(rolePerms);
             }
+        }
+
+        // 缓存未命中（如 Redis 刚启动或被清空），回源数据库
+        if (perms.isEmpty()) {
+            perms = menuService.listRolePerms(roleCodes);
         }
 
         return perms;

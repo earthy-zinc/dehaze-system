@@ -35,9 +35,8 @@ public class DatasetItemQuery extends BasePageQuery {
     private String sceneType;
 
     @Schema(
-            description = "雾霾程度，人工标注的雾霾等级",
-            example = "medium",
-            allowableValues = {"light", "medium", "heavy"}
+            description = "雾霾程度，支持多种规范的字符串精确匹配：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等",
+            example = "medium"
     )
     private String hazeLevel;
 

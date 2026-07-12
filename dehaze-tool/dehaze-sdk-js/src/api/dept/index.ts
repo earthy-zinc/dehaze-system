@@ -66,27 +66,14 @@ class DeptAPI {
   }
 
   /**
-   * 删除单个部门
+   * 删除部门（支持批量，路径参数逗号分隔）
    *
-   * @param id 部门ID
+   * @param ids 部门ID字符串，多个以英文逗号(,)分割
    */
-  static deleteById(id: number) {
+  static deleteByIds(ids: string) {
     return request({
-      url: "/api/v1/depts/" + id,
+      url: "/api/v1/depts/" + ids,
       method: "delete",
-    });
-  }
-
-  /**
-   * 批量删除部门（RequestBody JSON）
-   *
-   * @param ids 部门ID数组
-   */
-  static batchDelete(ids: number[]) {
-    return request({
-      url: "/api/v1/depts/batch",
-      method: "delete",
-      data: { ids },
     });
   }
 }

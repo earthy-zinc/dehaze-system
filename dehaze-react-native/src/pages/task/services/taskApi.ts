@@ -2,8 +2,9 @@
  * 任务管理 API 封装
  *
  * 统一代理到 SDK TaskAPI，任务来源包括：
- * - 数据集导出（DatasetAPI.createExportTask）
- * - 数据项下载（DatasetItemAPI.createDownloadTask / batchDownload）
+ * - 数据集导出（type: 'dataset_export'）
+ * - 数据项下载（type: 'item_download'）
+ * - 批量下载（type: 'batch_download'）
  * - 通用任务创建（TaskAPI.create）
  */
 import { TaskAPI } from 'dehaze-sdk-js';

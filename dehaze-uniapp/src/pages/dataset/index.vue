@@ -60,12 +60,12 @@
         <!-- 数据集信息 -->
         <DatasetInfo v-if="currentDataset" :dataset="currentDataset" />
 
-        <!-- 类型筛选 -->
+        <!-- 标注状态筛选 -->
         <view class="filter-wrapper">
           <TypeFilter
-            :active-type="currentImageType"
-            :counts="imageTypeCounts"
-            @change="handleTypeChange"
+            :active-filter="currentAnnotationFilter"
+            :counts="annotationCounts"
+            @change="handleFilterChange"
           />
         </view>
 
@@ -89,7 +89,7 @@
         </view>
         <view class="tips-list">
           <text class="tips-item">• 点击数据集卡片查看详细信息</text>
-          <text class="tips-item">• 支持按类型筛选图片</text>
+          <text class="tips-item">• 支持按已标注/未标注筛选图片</text>
           <text class="tips-item">• 点击图片可查看大图</text>
           <text class="tips-item">• 支持网格和瀑布流两种展示模式</text>
         </view>
@@ -122,7 +122,11 @@
         <view class="viewer-info">
           <view class="info-row">
             <text class="info-label">类型:</text>
-            <text class="info-value">{{ getTypeLabel(selectedImage.image_type) }}</text>
+            <text class="info-value">{{ getTypeLabel(selectedImage.type) }}</text>
+          </view>
+          <view class="info-row">
+            <text class="info-label">雾霾程度:</text>
+            <text class="info-value">{{ getHazeLevelLabel(selectedImage.haze_level) }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">尺寸:</text>
@@ -143,7 +147,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import DatasetCard from "./components/DatasetCard.vue";
 import DatasetInfo from "./components/DatasetInfo.vue";
@@ -152,8 +156,8 @@ import ImageGrid from "./components/ImageGrid.vue";
 import type {
   Dataset,
   DatasetImage,
-  ImageType,
-  ImageTypeCounts,
+  AnnotationFilter,
+  AnnotationCounts,
   DisplayMode,
 } from "./data/datasetData";
 import {
@@ -161,6 +165,7 @@ import {
   fetchDatasetDetail,
   fetchDatasetImages,
   formatFileSize,
+  formatHazeLevel,
   IMAGE_TYPE_LABELS,
 } from "./data/datasetData";
 
@@ -181,8 +186,8 @@ const listLoading = ref(false);
 /** 当前选中的数据集 */
 const currentDataset = ref<Dataset | null>(null);
 
-/** 当前图片类型筛选 */
-const currentImageType = ref<ImageType>("all");
+/** 当前标注状态筛选（已标注/未标注） */
+const currentAnnotationFilter = ref<AnnotationFilter>("annotated");
 
 /** 图片列表 */
 const images = ref<DatasetImage[]>([]);
@@ -207,23 +212,28 @@ const selectedImage = ref<DatasetImage | null>(null);
 
 // ==================== 计算属性 ====================
 
-/** 图片类型计数 */
-const imageTypeCounts = computed<ImageTypeCounts>(() => {
+/** 标注状态计数 */
+const annotationCounts = computed<AnnotationCounts>(() => {
   if (!currentDataset.value) {
-    return { all: 0, foggy: 0, clear: 0, annotated: 0 };
+    return { all: 0, annotated: 0, unannotated: 0 };
   }
   return {
     all: currentDataset.value.total_images,
-    foggy: currentDataset.value.foggy_count,
-    clear: currentDataset.value.clear_count,
     annotated: currentDataset.value.annotated_count,
+    unannotated: currentDataset.value.unannotated_count,
   };
 });
 
 // ==================== 方法定义 ====================
 
-/** 获取类型标签 */
+/** 获取图片类型标签 */
 const getTypeLabel = (type: string) => IMAGE_TYPE_LABELS[type] || type;
+
+/** 获取雾霾程度展示文本 */
+const getHazeLevelLabel = (level?: string) => {
+  const label = formatHazeLevel(level);
+  return label || "未标注";
+};
 
 /** 加载数据集列表 */
 const loadDatasets = async () => {
@@ -255,7 +265,7 @@ const loadImages = async (append = false) => {
     const result = await fetchDatasetImages(
       currentDataset.value.id,
       currentPage.value,
-      currentImageType.value,
+      currentAnnotationFilter.value,
       searchKeyword.value
     );
 
@@ -303,7 +313,7 @@ const handleDatasetClick = async (dataset: Dataset) => {
     if (result.code === 0 && result.data) {
       currentDataset.value = result.data;
       currentView.value = "detail";
-      currentImageType.value = "all";
+      currentAnnotationFilter.value = "annotated";
       currentPage.value = 1;
       images.value = [];
       hasMore.value = true;
@@ -325,15 +335,15 @@ const handleDatasetClick = async (dataset: Dataset) => {
 const handleBackToList = () => {
   currentView.value = "list";
   currentDataset.value = null;
-  currentImageType.value = "all";
+  currentAnnotationFilter.value = "annotated";
   currentPage.value = 1;
   images.value = [];
   hasMore.value = true;
 };
 
-/** 类型筛选变更 */
-const handleTypeChange = (type: ImageType) => {
-  currentImageType.value = type;
+/** 标注状态筛选变更 */
+const handleFilterChange = (filter: AnnotationFilter) => {
+  currentAnnotationFilter.value = filter;
   currentPage.value = 1;
   images.value = [];
   hasMore.value = true;

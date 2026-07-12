@@ -87,8 +87,8 @@ class SysDatasetServiceTest {
         sampleStatistics.setItemCount(10L);
         sampleStatistics.setFileCount(20L);
         sampleStatistics.setTotalSize(1024000L);
-        sampleStatistics.setClearCount(10L);
-        sampleStatistics.setHazyCount(10L);
+        sampleStatistics.setAnnotatedCount(10L);
+        sampleStatistics.setUnannotatedCount(10L);
         sampleStatistics.setSceneDistribution(Map.of("outdoor", 15L, "indoor", 5L));
         sampleStatistics.setHazeDistribution(Map.of("light", 8L, "medium", 7L, "heavy", 5L));
         sampleStatistics.setFormatDistribution(Map.of("jpg", 18L, "png", 2L));
@@ -109,12 +109,12 @@ class SysDatasetServiceTest {
     /**
      * 创建 countDatasetStatsSingle 返回的统计 Map
      */
-    private Map<String, Object> createStatsMap(long imageCount, long totalSize, long clearCount, long hazyCount) {
+    private Map<String, Object> createStatsMap(long imageCount, long totalSize, long annotatedCount, long unannotatedCount) {
         Map<String, Object> map = new HashMap<>();
         map.put("image_count", imageCount);
         map.put("total_size", totalSize);
-        map.put("clear_count", clearCount);
-        map.put("hazy_count", hazyCount);
+        map.put("annotated_count", annotatedCount);
+        map.put("unannotated_count", unannotatedCount);
         return map;
     }
 

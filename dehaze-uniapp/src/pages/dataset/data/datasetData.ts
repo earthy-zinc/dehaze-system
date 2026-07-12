@@ -1,9 +1,18 @@
 /**
  * 数据集管理模块 - 数据类型定义和Mock数据
+ *
+ * 适配新规范：
+ * - 图片 type 字段：clear/hazy/trans/depth/segment
+ * - haze_level 支持多种规范：light/medium/heavy、beta=X、空值
+ * - Tab 切换改为"已标注/未标注"二分（已标注 = hazeLevel 非空）
+ * - 取消"清晰图必填/有雾图必填"硬性校验
  */
 
-/** 图片类型 */
-export type ImageType = "all" | "foggy" | "clear" | "annotated";
+/** 标注状态过滤（Tab 二分） */
+export type AnnotationFilter = "annotated" | "unannotated";
+
+/** 图片类型（数据集 type 字段，后端权威定义） */
+export type ImageType = "clear" | "hazy" | "trans" | "depth" | "segment";
 
 /** 展示模式 */
 export type DisplayMode = "grid" | "waterfall";
@@ -16,9 +25,10 @@ export interface Dataset {
   creator: string;
   thumbnail: string;
   total_images: number;
-  foggy_count: number;
-  clear_count: number;
+  /** 已标注图片数（haze_level 非空） */
   annotated_count: number;
+  /** 未标注图片数 */
+  unannotated_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +39,10 @@ export interface DatasetImage {
   dataset_id: number;
   filename: string;
   image_url: string;
-  image_type: "foggy" | "clear" | "annotated";
+  /** 图片类型：clear/hazy/trans/depth/segment */
+  type: ImageType;
+  /** 雾霾程度：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
+  haze_level?: string;
   width: number;
   height: number;
   file_size: number;
@@ -38,12 +51,14 @@ export interface DatasetImage {
   created_at: string;
 }
 
-/** 图片类型计数 */
-export interface ImageTypeCounts {
+/** 标注状态计数 */
+export interface AnnotationCounts {
+  /** 全部图片数 */
   all: number;
-  foggy: number;
-  clear: number;
+  /** 已标注（haze_level 非空） */
   annotated: number;
+  /** 未标注（haze_level 为空） */
+  unannotated: number;
 }
 
 /** 分页结果 */
@@ -65,9 +80,8 @@ export const MOCK_DATASETS: Dataset[] = [
     thumbnail:
       "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=400&h=400&fit=crop",
     total_images: 13990,
-    foggy_count: 6995,
-    clear_count: 6995,
-    annotated_count: 0,
+    annotated_count: 6995,
+    unannotated_count: 6995,
     created_at: "2024-01-15T10:30:00Z",
     updated_at: "2024-01-15T10:30:00Z",
   },
@@ -79,9 +93,8 @@ export const MOCK_DATASETS: Dataset[] = [
     thumbnail:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop",
     total_images: 90,
-    foggy_count: 45,
-    clear_count: 45,
-    annotated_count: 0,
+    annotated_count: 45,
+    unannotated_count: 45,
     created_at: "2024-01-10T14:20:00Z",
     updated_at: "2024-01-10T14:20:00Z",
   },
@@ -93,9 +106,8 @@ export const MOCK_DATASETS: Dataset[] = [
     thumbnail:
       "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=400&fit=crop",
     total_images: 70,
-    foggy_count: 35,
-    clear_count: 35,
-    annotated_count: 0,
+    annotated_count: 35,
+    unannotated_count: 35,
     created_at: "2024-01-08T09:15:00Z",
     updated_at: "2024-01-08T09:15:00Z",
   },
@@ -107,9 +119,8 @@ export const MOCK_DATASETS: Dataset[] = [
     thumbnail:
       "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&h=400&fit=crop",
     total_images: 110,
-    foggy_count: 55,
-    clear_count: 55,
-    annotated_count: 0,
+    annotated_count: 55,
+    unannotated_count: 55,
     created_at: "2024-01-05T16:45:00Z",
     updated_at: "2024-01-05T16:45:00Z",
   },
@@ -121,9 +132,8 @@ export const MOCK_DATASETS: Dataset[] = [
     thumbnail:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop",
     total_images: 110,
-    foggy_count: 55,
-    clear_count: 55,
-    annotated_count: 0,
+    annotated_count: 55,
+    unannotated_count: 55,
     created_at: "2024-01-03T11:30:00Z",
     updated_at: "2024-01-03T11:30:00Z",
   },
@@ -135,9 +145,8 @@ export const MOCK_DATASETS: Dataset[] = [
     thumbnail:
       "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=400&fit=crop",
     total_images: 1000,
-    foggy_count: 500,
-    clear_count: 500,
-    annotated_count: 0,
+    annotated_count: 500,
+    unannotated_count: 500,
     created_at: "2024-01-01T08:00:00Z",
     updated_at: "2024-01-01T08:00:00Z",
   },
@@ -177,6 +186,12 @@ const ASPECT_RATIOS = [
   { width: 1600, height: 900 },
 ];
 
+/** 图片类型候选集合（生成 Mock 数据使用） */
+const MOCK_TYPES: ImageType[] = ["clear", "hazy", "trans", "depth", "segment"];
+
+/** 雾霾程度候选值（生成 Mock 数据使用） */
+const MOCK_HAZE_LEVELS = ["light", "medium", "heavy", "beta=0.5", "beta=0.8", ""];
+
 /**
  * 生成Mock图片数据
  */
@@ -188,36 +203,24 @@ export function generateMockImages(
   const dataset = MOCK_DATASETS.find((d) => d.id === datasetId);
   if (!dataset) return images;
 
-  const imageTypes: Array<"foggy" | "clear" | "annotated"> = [
-    "foggy",
-    "clear",
-    "annotated",
-  ];
-
   for (let i = 0; i < count; i++) {
-    const type = imageTypes[i % 3];
-    const typeCount =
-      type === "foggy"
-        ? dataset.foggy_count
-        : type === "clear"
-          ? dataset.clear_count
-          : dataset.annotated_count;
-
-    if (typeCount === 0 && type === "annotated") continue;
-
-    const aspectRatio = ASPECT_RATIOS[i % ASPECT_RATIOS.length];
+    const type = MOCK_TYPES[i % MOCK_TYPES.length]!;
+    const hazeLevel = MOCK_HAZE_LEVELS[i % MOCK_HAZE_LEVELS.length]!;
+    const aspectRatio = ASPECT_RATIOS[i % ASPECT_RATIOS.length]!;
+    const sampleImage = SAMPLE_IMAGES[i % SAMPLE_IMAGES.length]!;
 
     images.push({
       id: datasetId * 1000 + i,
       dataset_id: datasetId,
       filename: `${dataset.name.replace(/\s+/g, "_")}_${type}_${String(i + 1).padStart(4, "0")}.jpg`,
-      image_url: SAMPLE_IMAGES[i % SAMPLE_IMAGES.length],
-      image_type: type,
+      image_url: sampleImage,
+      type,
+      haze_level: hazeLevel || undefined,
       width: aspectRatio.width,
       height: aspectRatio.height,
       file_size: Math.floor(Math.random() * 2000000) + 500000,
       tags: `${type},${dataset.name}`,
-      description: `${dataset.name}中的${type === "foggy" ? "有雾" : type === "clear" ? "无雾" : "标注"}图像`,
+      description: `${dataset.name}中的${IMAGE_TYPE_LABELS[type] || type}图像`,
       created_at: new Date(
         Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
       ).toISOString(),
@@ -255,6 +258,34 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + " B";
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
   return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+}
+
+/**
+ * 格式化雾霾程度用于展示：
+ * - light/medium/heavy → 轻度/中度/重度
+ * - beta=X → β=X
+ * - A=X,beta=Y → β=Y
+ * - 其他 → 原值回显
+ * - 空 → 空字符串（表示未标注）
+ */
+export function formatHazeLevel(level?: string): string {
+  if (!level) return "";
+  const preset: Record<string, string> = {
+    light: "轻度",
+    medium: "中度",
+    heavy: "重度",
+  };
+  if (preset[level]) return preset[level];
+  const betaMatch = level.match(/beta=([\d.]+)/i);
+  if (betaMatch) return `β=${betaMatch[1]}`;
+  return level;
+}
+
+/**
+ * 判断图片是否已标注（haze_level 非空视为已标注）
+ */
+export function isImageAnnotated(image: DatasetImage): boolean {
+  return Boolean(image.haze_level);
 }
 
 /**
@@ -317,7 +348,7 @@ export async function fetchDatasetDetail(
 export async function fetchDatasetImages(
   datasetId: number,
   page = 1,
-  imageType: ImageType = "all",
+  annotationFilter: AnnotationFilter = "annotated",
   search = ""
 ): Promise<{ code: number; data: PaginatedResult<DatasetImage> }> {
   try {
@@ -325,7 +356,7 @@ export async function fetchDatasetImages(
     const result = await getDatasetItems(datasetId, {
       page,
       page_size: 20,
-      image_type: imageType,
+      annotation_filter: annotationFilter,
       search: search || undefined,
     });
 
@@ -338,7 +369,8 @@ export async function fetchDatasetImages(
           dataset_id: item.dataset_id,
           filename: item.filename,
           image_url: item.image_url,
-          image_type: item.image_type,
+          type: item.type,
+          haze_level: item.haze_level,
           width: item.width,
           height: item.height,
           file_size: item.file_size,
@@ -356,7 +388,12 @@ export async function fetchDatasetImages(
     // Mock 降级
     await new Promise((resolve) => setTimeout(resolve, 400));
     let allImages = generateMockImages(datasetId, 60);
-    if (imageType !== "all") allImages = allImages.filter((img) => img.image_type === imageType);
+    // 按标注状态过滤
+    allImages = allImages.filter((img) => {
+      return annotationFilter === "annotated"
+        ? isImageAnnotated(img)
+        : !isImageAnnotated(img);
+    });
     if (search) {
       const kw = search.toLowerCase();
       allImages = allImages.filter((img) => img.filename.toLowerCase().includes(kw) || img.tags?.toLowerCase().includes(kw));
@@ -376,17 +413,26 @@ export async function fetchDatasetImages(
   }
 }
 
-/** 图片类型标签映射 */
+/** 图片类型标签映射（数据集 type 字段） */
 export const IMAGE_TYPE_LABELS: Record<string, string> = {
-  all: "全部",
-  foggy: "有雾",
-  clear: "无雾",
-  annotated: "标注",
+  clear: "清晰图",
+  hazy: "有雾图",
+  trans: "透射图",
+  depth: "深度图",
+  segment: "分割图",
 };
 
-/** 图片类型颜色映射 */
+/** 图片类型颜色映射（用于卡片角标背景色） */
 export const IMAGE_TYPE_COLORS: Record<string, string> = {
-  foggy: "#6b7280",
   clear: "#3b82f6",
-  annotated: "#10b981",
+  hazy: "#6b7280",
+  trans: "#0ea5e9",
+  depth: "#8b5cf6",
+  segment: "#06b6d4",
+};
+
+/** 标注状态过滤标签映射 */
+export const ANNOTATION_FILTER_LABELS: Record<AnnotationFilter, string> = {
+  annotated: "已标注",
+  unannotated: "未标注",
 };

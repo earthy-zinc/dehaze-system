@@ -11,9 +11,8 @@ const MOCK_DATASETS = [
     thumbnail:
       "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=400&h=400&fit=crop",
     total_images: 13990,
-    foggy_count: 6995,
-    clear_count: 6995,
-    annotated_count: 0,
+    annotated_count: 6995,
+    unannotated_count: 6995,
     created_at: "2024-01-15T10:30:00Z",
     updated_at: "2024-01-15T10:30:00Z",
   },
@@ -25,9 +24,8 @@ const MOCK_DATASETS = [
     thumbnail:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop",
     total_images: 90,
-    foggy_count: 45,
-    clear_count: 45,
-    annotated_count: 0,
+    annotated_count: 45,
+    unannotated_count: 45,
     created_at: "2024-01-10T14:20:00Z",
     updated_at: "2024-01-10T14:20:00Z",
   },
@@ -39,9 +37,8 @@ const MOCK_DATASETS = [
     thumbnail:
       "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=400&fit=crop",
     total_images: 70,
-    foggy_count: 35,
-    clear_count: 35,
-    annotated_count: 0,
+    annotated_count: 35,
+    unannotated_count: 35,
     created_at: "2024-01-08T09:15:00Z",
     updated_at: "2024-01-08T09:15:00Z",
   },
@@ -53,9 +50,8 @@ const MOCK_DATASETS = [
     thumbnail:
       "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&h=400&fit=crop",
     total_images: 110,
-    foggy_count: 55,
-    clear_count: 55,
-    annotated_count: 0,
+    annotated_count: 55,
+    unannotated_count: 55,
     created_at: "2024-01-05T16:45:00Z",
     updated_at: "2024-01-05T16:45:00Z",
   },
@@ -67,9 +63,8 @@ const MOCK_DATASETS = [
     thumbnail:
       "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop",
     total_images: 110,
-    foggy_count: 55,
-    clear_count: 55,
-    annotated_count: 0,
+    annotated_count: 55,
+    unannotated_count: 55,
     created_at: "2024-01-03T11:30:00Z",
     updated_at: "2024-01-03T11:30:00Z",
   },
@@ -81,9 +76,8 @@ const MOCK_DATASETS = [
     thumbnail:
       "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=400&fit=crop",
     total_images: 1000,
-    foggy_count: 500,
-    clear_count: 500,
-    annotated_count: 0,
+    annotated_count: 500,
+    unannotated_count: 500,
     created_at: "2024-01-01T08:00:00Z",
     updated_at: "2024-01-01T08:00:00Z",
   },
@@ -95,7 +89,7 @@ function generateMockImages(datasetId, count) {
   const dataset = MOCK_DATASETS.find((d) => d.id === datasetId);
   if (!dataset) return images;
 
-  const imageTypes = ["foggy", "clear", "annotated"];
+  const imageTypes = ["annotated", "unannotated"];
   const sampleImages = [
     "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&h=600&fit=crop",
     "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
@@ -120,13 +114,11 @@ function generateMockImages(datasetId, count) {
   ];
 
   for (let i = 0; i < count; i++) {
-    const type = imageTypes[i % 3];
+    const type = imageTypes[i % 2];
     const typeCount =
-      type === "foggy"
-        ? dataset.foggy_count
-        : type === "clear"
-        ? dataset.clear_count
-        : dataset.annotated_count;
+      type === "annotated"
+        ? dataset.annotated_count
+        : dataset.unannotated_count;
 
     if (typeCount === 0) continue;
 
@@ -570,12 +562,10 @@ async function showDetailView(container, datasetId) {
       // 更新类型计数
       container.querySelector('[data-type="all"] .count').textContent =
         dataset.total_images;
-      container.querySelector('[data-type="foggy"] .count').textContent =
-        dataset.foggy_count;
-      container.querySelector('[data-type="clear"] .count').textContent =
-        dataset.clear_count;
       container.querySelector('[data-type="annotated"] .count').textContent =
         dataset.annotated_count;
+      container.querySelector('[data-type="unannotated"] .count').textContent =
+        dataset.unannotated_count;
     }
 
     // 加载图片列表
@@ -597,22 +587,18 @@ function renderDatasetInfo(container, dataset) {
         <p class="text-sm opacity-90 mb-4">${
           dataset.description || "暂无描述"
         }</p>
-        <div class="grid grid-cols-4 gap-3">
+        <div class="grid grid-cols-3 gap-3">
             <div class="text-center">
                 <div class="text-2xl font-bold">${dataset.total_images}</div>
                 <div class="text-xs opacity-80">总计</div>
             </div>
             <div class="text-center">
-                <div class="text-2xl font-bold">${dataset.foggy_count}</div>
-                <div class="text-xs opacity-80">有雾</div>
-            </div>
-            <div class="text-center">
-                <div class="text-2xl font-bold">${dataset.clear_count}</div>
-                <div class="text-xs opacity-80">无雾</div>
-            </div>
-            <div class="text-center">
                 <div class="text-2xl font-bold">${dataset.annotated_count}</div>
-                <div class="text-xs opacity-80">标注</div>
+                <div class="text-xs opacity-80">已标注</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold">${dataset.unannotated_count}</div>
+                <div class="text-xs opacity-80">未标注</div>
             </div>
         </div>
     `;

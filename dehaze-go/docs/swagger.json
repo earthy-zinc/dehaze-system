@@ -3057,7 +3057,7 @@
         "bo.StatisticsBO": {
             "type": "object",
             "properties": {
-                "clearCount": {
+                "annotatedCount": {
                     "type": "integer"
                 },
                 "fileCount": {
@@ -3077,7 +3077,7 @@
                         "format": "int64"
                     }
                 },
-                "hazyCount": {
+                "unannotatedCount": {
                     "type": "integer"
                 },
                 "itemCount": {

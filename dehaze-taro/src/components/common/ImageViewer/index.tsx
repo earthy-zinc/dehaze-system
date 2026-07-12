@@ -1,13 +1,20 @@
 import React, { useEffect } from 'react'
 import { View, Image, Text } from '@tarojs/components'
 import { Close } from '@taroify/icons'
+import {
+  getImageTypeLabel,
+  formatHazeLevel,
+} from '@/pages/dataset/services/imageUtils'
 import './ImageViewer.less'
 
 export interface ImageViewerProps {
   visible: boolean
   src: string
   filename?: string
-  imageType?: 'clear' | 'hazy'
+  /** 图片类型：clear/hazy/trans/depth/segment */
+  imageType?: string
+  /** 雾霾程度：light/medium/heavy、beta=0.5 等，可为空（表示未标注） */
+  hazeLevel?: string
   width?: number
   height?: number
   fileSize?: number
@@ -21,6 +28,7 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
   src,
   filename,
   imageType,
+  hazeLevel,
   width,
   height,
   fileSize,
@@ -45,13 +53,8 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
 
   if (!visible) return null
 
-  const getTypeLabel = (type?: string) => {
-    const labels = {
-      hazy: '有雾图像',
-      clear: '无雾图像',
-    }
-    return labels[type as keyof typeof labels] || '未知类型'
-  }
+  const typeLabel = getImageTypeLabel(imageType) || '未知类型'
+  const hazeLevelLabel = formatHazeLevel(hazeLevel)
 
   const formatFileSize = (bytes?: number) => {
     if (!bytes) return '-'
@@ -90,9 +93,14 @@ const ImageViewer: React.FC<ImageViewerProps> = ({
             {imageType && (
               <View className="meta-item">
                 <Text className="meta-label">类型:</Text>
-                <Text className="meta-value">{getTypeLabel(imageType)}</Text>
+                <Text className="meta-value">{typeLabel}</Text>
               </View>
             )}
+
+            <View className="meta-item">
+              <Text className="meta-label">雾霾程度:</Text>
+              <Text className="meta-value">{hazeLevelLabel || '未标注'}</Text>
+            </View>
 
             {width && height && (
               <View className="meta-item">

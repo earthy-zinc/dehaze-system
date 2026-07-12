@@ -138,13 +138,6 @@ var allowedFormats = map[string]bool{
 	".gif":  true,
 }
 
-// validHazeLevels 文档规定的有效雾霾程度
-var validHazeLevels = map[string]bool{
-	"light":  true,
-	"medium": true,
-	"heavy":  true,
-}
-
 // ValidateImageType 校验图片类型是否支持（仅允许 jpg/jpeg/png/gif）
 func (v *PairedImageValidator) ValidateImageType(filename string) error {
 	ext := strings.ToLower(filepath.Ext(filename))
@@ -156,37 +149,10 @@ func (v *PairedImageValidator) ValidateImageType(filename string) error {
 	return nil
 }
 
-// ValidateHazeLevel 校验雾霾程度是否有效（仅允许 light/medium/heavy）
-func (v *PairedImageValidator) ValidateHazeLevel(hazeLevel string) error {
-	if !validHazeLevels[hazeLevel] {
-		return fmt.Errorf("无效的雾霾程度: %s，仅支持 light/medium/heavy", hazeLevel)
-	}
-	return nil
-}
-
-// ValidateHazyImageCount 校验有雾图数量与雾霾程度数量是否一致
-func (v *PairedImageValidator) ValidateHazyImageCount(hazyCount int, hazeLevels []string) error {
-	if hazyCount != len(hazeLevels) {
-		return fmt.Errorf("有雾图数量(%d)与雾霾程度数量(%d)不一致", hazyCount, len(hazeLevels))
-	}
-	for i, level := range hazeLevels {
-		if err := v.ValidateHazeLevel(level); err != nil {
-			return fmt.Errorf("第%d张有雾图: %w", i+1, err)
-		}
-	}
-	return nil
-}
-
-// ValidatePairedImages 完整的配对图片校验（清晰图必填、有雾图必填、数量匹配、雾霾程度有效）
-func (v *PairedImageValidator) ValidatePairedImages(hasClearImage bool, hazyCount int, hazeLevels []string) error {
-	if !hasClearImage {
-		return errors.New("必须上传一张清晰图(type=clear)")
-	}
-	if hazyCount == 0 {
-		return errors.New("至少上传一张有雾图(type=hazy)")
-	}
-	return v.ValidateHazyImageCount(hazyCount, hazeLevels)
-}
+// 注：原 ValidateHazeLevel / ValidateHazyImageCount / ValidatePairedImages 方法已移除。
+// 原因：haze_level 字段支持多种规范（light/medium/heavy、beta=X、A=X,beta=Y 等），
+// 不再做硬性枚举校验。清晰图和有雾图均为可选（适配不同数据集规范）。
+// 详见需求规格.md 2.6.2 节和后端实现.md 4.2 节。
 
 // GetImageDimensions 获取图片尺寸的便捷方法
 func (v *PairedImageValidator) GetImageDimensions(filePath string) (width, height int, err error) {

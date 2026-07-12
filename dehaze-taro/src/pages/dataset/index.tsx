@@ -17,6 +17,7 @@ import DatasetFormDialog, { DatasetFormData } from './components/DatasetFormDial
 // Store 和类型
 import { DatasetProvider, useDataset } from './store/datasetStore'
 import type { Dataset, ImageUrlVO } from './services/types'
+import { AnnotationFilter, ANNOTATION_FILTER_LABELS } from './services/imageUtils'
 
 import './index.less'
 
@@ -39,7 +40,7 @@ const DatasetContent: React.FC = () => {
     fetchImages,
     setSearchKeyword,
     setImageSearchKeyword,
-    setImageType,
+    setAnnotationFilter,
     resetImages,
     toggleExpand,
     fetchDatasetOptions,
@@ -71,7 +72,7 @@ const DatasetContent: React.FC = () => {
       fetchDatasets(1, keyword, false)
     } else {
       setImageSearchKeyword(keyword)
-      fetchImages(state.currentDatasetId!, 1, state.currentImageType, keyword, false)
+      fetchImages(state.currentDatasetId!, 1, state.currentAnnotationFilter, keyword, false)
     }
   }
 
@@ -89,8 +90,8 @@ const DatasetContent: React.FC = () => {
     // 加载数据集详情
     fetchDatasetDetail(dataset.id)
 
-    // 加载图片列表
-    fetchImages(dataset.id, 1, 'all', '', false)
+    // 加载图片列表（默认显示已标注）
+    fetchImages(dataset.id, 1, 'annotated', '', false)
   }
 
   // 返回列表处理
@@ -101,11 +102,11 @@ const DatasetContent: React.FC = () => {
     setImageSearchKeyword('')
   }
 
-  // 图片类型筛选处理
-  const handleImageTypeFilter = (type: string) => {
-    const filter = type as 'all' | 'clear' | 'hazy'
-    setImageType(filter)
-    fetchImages(state.currentDatasetId!, 1, filter, state.imageSearchKeyword, false)
+  // 标注状态筛选处理（已标注/未标注二分）
+  const handleAnnotationFilterChange = (filter: string) => {
+    const annotationFilter = filter as AnnotationFilter
+    setAnnotationFilter(annotationFilter)
+    fetchImages(state.currentDatasetId!, 1, annotationFilter, state.imageSearchKeyword, false)
   }
 
   // 加载更多数据集
@@ -121,7 +122,7 @@ const DatasetContent: React.FC = () => {
       fetchImages(
         state.currentDatasetId!,
         state.imagesPage + 1,
-        state.currentImageType,
+        state.currentAnnotationFilter,
         state.imageSearchKeyword,
         true
       )
@@ -204,12 +205,13 @@ const DatasetContent: React.FC = () => {
     setDialog(prev => ({ ...prev, visible: false }))
   }
 
-  // 图片类型筛选标签配置
+  // 标注状态筛选标签配置（已标注/未标注二分）
   const stats = state.currentDataset?.statistics
-  const imageTypeTabs = state.currentDataset ? [
-    { key: 'all', label: '全部', count: stats?.fileCount ?? state.currentDataset.total ?? 0 },
-    { key: 'hazy', label: '有雾', count: stats?.hazyCount ?? 0 },
-    { key: 'clear', label: '无雾', count: stats?.clearCount ?? 0 },
+  const annotatedCount = stats?.annotatedCount ?? 0
+  const unannotatedCount = stats?.unannotatedCount ?? 0
+  const annotationFilterTabs = state.currentDataset ? [
+    { key: 'annotated', label: ANNOTATION_FILTER_LABELS.annotated, count: annotatedCount },
+    { key: 'unannotated', label: ANNOTATION_FILTER_LABELS.unannotated, count: unannotatedCount },
   ] : []
 
   return (
@@ -267,12 +269,12 @@ const DatasetContent: React.FC = () => {
             {/* 数据集信息 */}
             <DatasetInfo dataset={state.currentDataset} />
 
-            {/* 图片类型筛选 */}
+            {/* 标注状态筛选 */}
             <View className="filter-section">
               <FilterTabs
-                tabs={imageTypeTabs}
-                activeKey={state.currentImageType}
-                onChange={handleImageTypeFilter}
+                tabs={annotationFilterTabs}
+                activeKey={state.currentAnnotationFilter}
+                onChange={handleAnnotationFilterChange}
               />
             </View>
 

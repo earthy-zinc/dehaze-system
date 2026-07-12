@@ -1,6 +1,5 @@
 import {
   BatchDeleteForm,
-  BatchDownloadForm,
   Dataset,
   DatasetAddForm,
   DatasetItemCreateForm,
@@ -10,11 +9,9 @@ import {
   DatasetQuery,
   DatasetOption,
   DatasetUpdateForm,
-  ExportTaskRequest,
   ImageUrlVO,
   ItemFileUpdateForm,
 } from "./model";
-import { TaskVO } from "../task/model";
 import { PageResult } from "@/types";
 import request from "@/utils/request";
 
@@ -112,19 +109,6 @@ class DatasetAPI {
     return request<any, { successIds: number[]; failedItems: { id: number; reason: string }[] }>({
       url: "/api/v1/datasets/batch",
       method: "delete",
-      data: data,
-    });
-  }
-
-  /**
-   * 创建数据集导出任务
-   * @param id 数据集ID
-   * @param data 导出任务请求
-   */
-  static createExportTask(id: number, data?: ExportTaskRequest) {
-    return request<any, TaskVO>({
-      url: `/api/v1/datasets/${id}/export`,
-      method: "post",
       data: data,
     });
   }
@@ -250,31 +234,6 @@ class DatasetItemAPI {
       url: "/api/v1/dataset-items/batch",
       method: "delete",
       data: data,
-    });
-  }
-
-  /**
-   * 批量下载数据项图片
-   * @param data 批量下载表单
-   */
-  static batchDownload(data: BatchDownloadForm) {
-    return request<any, TaskVO>({
-      url: "/api/v1/dataset-items/batch/download",
-      method: "post",
-      data: data,
-    });
-  }
-
-  /**
-   * 创建数据项下载任务
-   * @param id 数据项ID
-   * @param itemFileIds 需要下载的图片ID列表
-   */
-  static createDownloadTask(id: number, itemFileIds?: number[]) {
-    return request<any, TaskVO>({
-      url: `/api/v1/dataset-items/${id}/download/task`,
-      method: "post",
-      params: { itemFileId: itemFileIds },
     });
   }
 }

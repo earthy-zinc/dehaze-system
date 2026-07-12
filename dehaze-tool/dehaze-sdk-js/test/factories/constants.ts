@@ -14,7 +14,7 @@ export const USERS = {
   ADMIN: {
     id: 2,
     username: "admin",
-    nickname: "武沛鑫",
+    nickname: "admin",
     gender: 1,
     status: 1,
     deptId: 1,

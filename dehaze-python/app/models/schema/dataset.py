@@ -49,8 +49,8 @@ class DatasetStatisticsVO(BaseModel):
     itemCount: int = Field(default=0, description="数据项数量")
     fileCount: int = Field(default=0, description="文件总数")
     totalSize: int = Field(default=0, description="总大小(字节)")
-    clearCount: int = Field(default=0, description="清晰图数量")
-    hazyCount: int = Field(default=0, description="有雾图数量")
+    annotatedCount: int = Field(default=0, description="已标注图片数量")
+    unannotatedCount: int = Field(default=0, description="未标注图片数量")
     sceneDistribution: Optional[dict] = Field(default=None, description="场景分布")
     hazeDistribution: Optional[dict] = Field(
         default=None, description="雾霾程度分布")

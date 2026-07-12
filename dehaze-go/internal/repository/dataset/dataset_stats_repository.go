@@ -25,10 +25,8 @@ func (r *DatasetStatsRepository) CountDatasetStatsBatch(ctx context.Context, dat
 			sdi.dataset_id AS dataset_id,
 			COUNT(sif.id) AS image_count,
 			COALESCE(SUM(CAST(sf.size AS UNSIGNED)), 0) AS total_size,
-			SUM(CASE WHEN LOWER(sif.type) LIKE '%clear%' OR LOWER(sif.type) LIKE '%clean%'
-				OR sif.type LIKE '%清晰%' OR sif.type LIKE '%无雾%' THEN 1 ELSE 0 END) AS clear_count,
-			SUM(CASE WHEN LOWER(sif.type) LIKE '%haze%' OR LOWER(sif.type) LIKE '%hazy%'
-				OR sif.type LIKE '%有雾%' THEN 1 ELSE 0 END) AS hazy_count
+			SUM(CASE WHEN sif.haze_level IS NOT NULL AND sif.haze_level != '' THEN 1 ELSE 0 END) AS annotated_count,
+			SUM(CASE WHEN sif.haze_level IS NULL OR sif.haze_level = '' THEN 1 ELSE 0 END) AS unannotated_count
 		`).
 		Joins("LEFT JOIN sys_item_file sif ON sif.item_id = sdi.id").
 		Joins("LEFT JOIN sys_file sf ON sif.file_id = sf.id").

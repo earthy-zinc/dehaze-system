@@ -7,14 +7,14 @@ import {
   StyleSheet,
   Animated,
 } from 'react-native';
-import { ImageTypeFilter } from '../../types/dataset';
+import { AnnotationFilter } from '../../types/dataset';
 import { useResponsive } from '@/hooks/useResponsive';
 
 interface TypeFilterProps {
-  selectedType: ImageTypeFilter;
-  onTypeChange: (type: ImageTypeFilter) => void;
+  selectedType: AnnotationFilter;
+  onTypeChange: (type: AnnotationFilter) => void;
   /** 各类型数量（可选，来自统计信息） */
-  counts?: Partial<Record<ImageTypeFilter, number>>;
+  counts?: Partial<Record<AnnotationFilter, number>>;
 }
 
 interface FilterButtonProps {
@@ -98,10 +98,9 @@ const TypeFilter: React.FC<TypeFilterProps> = ({
 }) => {
   const { isMobile, containerPadding, spacing } = useResponsive();
 
-  const filterTypes: { key: ImageTypeFilter; label: string }[] = [
-    { key: 'all', label: '全部' },
-    { key: 'clear', label: '清晰图' },
-    { key: 'hazy', label: '有雾图' },
+  const filterTypes: { key: AnnotationFilter; label: string }[] = [
+    { key: 'annotated', label: '已标注' },
+    { key: 'unannotated', label: '未标注' },
   ];
 
   return (

@@ -91,8 +91,8 @@ class Settings(BaseSettings):
     # MongoDB 配置
     MONGO_URI: str = "mongodb://127.0.0.1:27017/"
 
-    # MinIO 配置
-    MINIO_ENDPOINT: str = "127.0.0.1:9000"
+    # MinIO 配置（MinIO 移到 9100，9000 端口由 nginx-dataset 占用）
+    MINIO_ENDPOINT: str = "127.0.0.1:9100"
     MINIO_ACCESS_KEY: str = ""  # 必须通过环境变量设置
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "dehaze"
@@ -243,7 +243,7 @@ class ProductionSettings(Settings):
     DB_HOST: str = "192.168.31.3"
     REDIS_HOST: str = "192.168.31.3"
     MONGO_URI: str = "mongodb://192.168.31.3:27017/"
-    MINIO_ENDPOINT: str = "192.168.31.3:9000"
+    MINIO_ENDPOINT: str = "192.168.31.3:9100"
     BASE_URL: str = "http://dehaze-python/api/v1/files"
     DATASET_PATH: str = "/app/dataset"
 

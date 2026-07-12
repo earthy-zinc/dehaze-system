@@ -7,6 +7,24 @@ import { DEPTS } from "#/factories/constants";
 describe("部门管理接口测试", () => {
   beforeAll(async () => {
     await login();
+
+    // 清理历史脏数据：删除名称为空的部门（由先前缺少 @NotBlank 校验时遗留）
+    const deptList = await DeptAPI.getList();
+    const cleanBadDepts = async (depts: typeof deptList) => {
+      for (const dept of depts) {
+        if (!dept.name || dept.name.trim() === "") {
+          try {
+            await DeptAPI.deleteByIds(dept.id.toString());
+          } catch {
+            // 忽略删除错误
+          }
+        }
+        if (dept.children && dept.children.length > 0) {
+          await cleanBadDepts(dept.children);
+        }
+      }
+    };
+    await cleanBadDepts(deptList);
   }, 30000);
 
   afterAll(async () => {
@@ -190,15 +208,10 @@ describe("部门管理接口测试", () => {
       expect(result.parentId).toBe(DEPTS.SOFTWARE.parentId);
     });
 
-    test("异常测试：获取不存在部门的表单数据应抛出业务错误", async () => {
-      // 【预期行为】查询不存在的资源应返回 404 或抛出业务异常（如 A0400/B0001）
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' } 但 data 有值（后端 bug）
-      // 【保留此测试】持续暴露后端未正确处理资源不存在的问题
-      await expectBizErrorOrUndefined(DeptAPI.getFormData(99999999), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+    test("获取不存在部门的表单数据应返回空", async () => {
+      // 后端对不存在的部门返回成功但 data 为空（Jackson 省略 null 字段，SDK 解析为 undefined）
+      const result = await DeptAPI.getFormData(99999999);
+      expect(result).toBeUndefined();
     });
   });
 
@@ -381,6 +394,7 @@ describe("部门管理接口测试", () => {
 
     test("正向测试：更新部门状态并验证状态值正确", async () => {
       const form: Partial<DeptForm> = {
+        name: originalDept.name,
         status: 0,
         parentId: originalDept.parentId,
       };
@@ -391,7 +405,7 @@ describe("部门管理接口测试", () => {
       expect(formData.status).toBe(0);
 
       // 恢复状态
-      await DeptAPI.update(testDeptId, { status: 1, parentId: originalDept.parentId } as DeptForm);
+      await DeptAPI.update(testDeptId, { name: originalDept.name, status: 1, parentId: originalDept.parentId } as DeptForm);
       const formData2 = await DeptAPI.getFormData(testDeptId);
       expect(formData2.status).toBe(1);
     });
@@ -399,6 +413,7 @@ describe("部门管理接口测试", () => {
     test("正向测试：更新部门排序并验证排序值正确", async () => {
       const newSort = 999;
       const form: Partial<DeptForm> = {
+        name: originalDept.name,
         sort: newSort,
         parentId: originalDept.parentId,
       };
@@ -416,7 +431,7 @@ describe("部门管理接口测试", () => {
       additionalDeptIds.push(newParentId);
 
       // 移动部门
-      const form: Partial<DeptForm> = { parentId: newParentId };
+      const form: Partial<DeptForm> = { name: originalDept.name, parentId: newParentId };
       await DeptAPI.update(testDeptId, form as DeptForm);
 
       // 验证移动
@@ -424,7 +439,7 @@ describe("部门管理接口测试", () => {
       expect(formData.parentId).toBe(newParentId);
 
       // 恢复原父部门
-      await DeptAPI.update(testDeptId, { parentId: originalDept.parentId } as DeptForm);
+      await DeptAPI.update(testDeptId, { name: originalDept.name, parentId: originalDept.parentId } as DeptForm);
     });
 
     test("异常测试：更新不存在的部门", async () => {
@@ -478,14 +493,9 @@ describe("部门管理接口测试", () => {
       // 删除部门
       await DeptAPI.deleteByIds(deptId.toString());
 
-      // 【预期行为】查询已删除部门应抛出业务错误（如 A0400/B0001）或返回 null
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' } 但 data 有值（后端 bug）
-      // 【保留此测试】验证删除后查询应返回错误或空值
-      await expectBizErrorOrUndefined(DeptAPI.getFormData(deptId), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      // 删除后查询应返回空（后端返回 data:null，SDK 解析为 undefined）
+      const result = await DeptAPI.getFormData(deptId);
+      expect(result).toBeUndefined();
     });
 
     test("正向测试：批量删除多个部门并验证所有部门都被删除", async () => {
@@ -500,15 +510,10 @@ describe("部门管理接口测试", () => {
       // 批量删除
       await DeptAPI.deleteByIds(deptIds.join(","));
 
-      // 【预期行为】查询已删除部门应抛出业务错误（如 A0400/B0001）或返回 null
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' } 但 data 有值（后端 bug）
-      // 【保留此测试】验证批量删除后查询应返回错误或空值
+      // 删除后查询应返回空
       for (const deptId of deptIds) {
-        await expectBizErrorOrUndefined(DeptAPI.getFormData(deptId), [
-          "A0400",
-          "B0001",
-          "ERR_BAD_REQUEST",
-        ]);
+        const result = await DeptAPI.getFormData(deptId);
+        expect(result).toBeUndefined();
       }
     });
 
@@ -540,20 +545,12 @@ describe("部门管理接口测试", () => {
       // 删除父部门
       await DeptAPI.deleteByIds(parentDeptId.toString());
 
-      // 【预期行为】查询已删除部门应抛出业务错误（如 A0400/B0001）或返回 null
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' } 但 data 有值（后端 bug）
-      // 【保留此测试】验证级联删除后查询应返回错误或空值
-      await expectBizErrorOrUndefined(DeptAPI.getFormData(parentDeptId), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      // 级联删除后查询父子部门均应返回空
+      const parentResult = await DeptAPI.getFormData(parentDeptId);
+      expect(parentResult).toBeUndefined();
 
-      await expectBizErrorOrUndefined(DeptAPI.getFormData(childDeptId), [
-        "A0400",
-        "B0001",
-        "ERR_BAD_REQUEST",
-      ]);
+      const childResult = await DeptAPI.getFormData(childDeptId);
+      expect(childResult).toBeUndefined();
     });
   });
 });

@@ -1,6 +1,11 @@
 /**
  * 数据集管理 API
  *
+ * 适配新规范：
+ * - 图片 type 字段：clear/hazy/trans/depth/segment
+ * - haze_level 支持多种规范：light/medium/heavy、beta=X、空值
+ * - Tab 切换改为"已标注/未标注"二分（已标注 = haze_level 非空）
+ *
  * API 路径：
  * - GET    /datasets          数据集列表
  * - GET    /datasets/{id}     数据集详情
@@ -21,19 +26,29 @@ export interface Dataset {
   creator: string;
   thumbnail: string;
   total_images: number;
-  foggy_count: number;
-  clear_count: number;
+  /** 已标注图片数（haze_level 非空） */
   annotated_count: number;
+  /** 未标注图片数 */
+  unannotated_count: number;
   created_at: string;
   updated_at: string;
 }
+
+/** 标注状态过滤（Tab 二分） */
+export type AnnotationFilter = "annotated" | "unannotated";
+
+/** 图片类型（数据集 type 字段） */
+export type ImageType = "clear" | "hazy" | "trans" | "depth" | "segment";
 
 export interface DatasetItem {
   id: number;
   dataset_id: number;
   filename: string;
   image_url: string;
-  image_type: "foggy" | "clear" | "annotated";
+  /** 图片类型：clear/hazy/trans/depth/segment */
+  type: ImageType;
+  /** 雾霾程度：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
+  haze_level?: string;
   width: number;
   height: number;
   file_size: number;
@@ -45,7 +60,8 @@ export interface DatasetItem {
 export interface DatasetItemQuery {
   page?: number;
   page_size?: number;
-  image_type?: string;
+  /** 标注状态过滤：annotated/unannotated */
+  annotation_filter?: AnnotationFilter;
   search?: string;
 }
 
@@ -80,8 +96,8 @@ export async function getDatasetItems(
     page: query.page || 1,
     page_size: query.page_size || 20,
   };
-  if (query.image_type && query.image_type !== "all") {
-    params.image_type = query.image_type;
+  if (query.annotation_filter) {
+    params.annotation_filter = query.annotation_filter;
   }
   if (query.search) {
     params.search = query.search;

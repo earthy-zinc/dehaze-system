@@ -36,7 +36,6 @@ from app.models.enum import (
     TaskStatus,
     TaskType,
     ImageType,
-    HazeLevel,
 )
 
 __all__ = [
@@ -63,7 +62,6 @@ __all__ = [
     'TaskStatus',
     'TaskType',
     'ImageType',
-    'HazeLevel',
     # 基础模型
     'BaseModel',
 ]

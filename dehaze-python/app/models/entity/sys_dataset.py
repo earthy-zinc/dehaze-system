@@ -70,9 +70,9 @@ class SysItemFile(Base):
     thumbnail_file_id: Mapped[int | None] = mapped_column(
         BigInteger, comment='缩略图文件id')
     type: Mapped[str] = mapped_column(
-        String(64), nullable=False, comment='图片类型（清晰图、雾霾图、分割图等）')
+        String(64), nullable=False, comment='图片类型：clear(清晰图/GT) / hazy(有雾图) / trans(透射率图) / depth(深度图) / segment(分割图)')
     scene_type: Mapped[str] = mapped_column(
         String(64), default='未分类', comment='场景类型')
     haze_level: Mapped[str] = mapped_column(
-        String(32), default='未标注', comment='雾霾等级')
+        String(32), default='未标注', comment='雾霾程度标识，支持多种规范：light/medium/heavy（人工分级），beta=0.5（β参数），A=0.8,beta=0.2（大气光A+β双参数），空值表示未标注或无雾')
     description: Mapped[str | None] = mapped_column(String(255), comment='描述')

@@ -18,9 +18,11 @@ import type {
   Dataset,
   DatasetItem,
   DatasetImage,
-  ImageTypeFilter,
+  AnnotationFilter,
 } from '../../types/dataset';
+import { isImageAnnotated } from '../../types/dataset';
 import { datasetApi } from '../../services/datasetApi';
+import { taskApi } from '../../../task/services/taskApi';
 
 interface DatasetDetailSectionProps {
   datasetId: number;
@@ -38,7 +40,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
 }) => {
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [items, setItems] = useState<DatasetItem[]>([]);
-  const [selectedType, setSelectedType] = useState<ImageTypeFilter>('all');
+  const [selectedType, setSelectedType] = useState<AnnotationFilter>('annotated');
   const [searchValue, setSearchValue] = useState('');
   const [isLoading, setLoading] = useState(true);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
@@ -93,7 +95,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
     [datasetId, searchValue, isLoadingImages],
   );
 
-  const handleTypeChange = useCallback((type: ImageTypeFilter) => {
+  const handleTypeChange = useCallback((type: AnnotationFilter) => {
     setSelectedType(type);
   }, []);
 
@@ -102,16 +104,25 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
     setCurrentPage(1);
   }, []);
 
-  /** 将数据项按图片类型过滤并扁平化为图片列表 */
+  /** 将数据项按标注状态过滤并扁平化为图片列表 */
   const flatImages: DatasetImage[] = React.useMemo(() => {
     const result: DatasetImage[] = [];
     for (const item of items) {
-      if (selectedType === 'all' || selectedType === 'clear') {
-        if (item.clearImage) result.push(item.clearImage);
+      if (item.clearImage) {
+        const img = item.clearImage;
+        if (selectedType === 'annotated' && isImageAnnotated(img.hazeLevel)) {
+          result.push(img);
+        } else if (selectedType === 'unannotated' && !isImageAnnotated(img.hazeLevel)) {
+          result.push(img);
+        }
       }
-      if (selectedType === 'all' || selectedType === 'hazy') {
-        if (item.hazyImages) {
-          for (const hazy of item.hazyImages) result.push(hazy);
+      if (item.hazyImages) {
+        for (const hazy of item.hazyImages) {
+          if (selectedType === 'annotated' && isImageAnnotated(hazy.hazeLevel)) {
+            result.push(hazy);
+          } else if (selectedType === 'unannotated' && !isImageAnnotated(hazy.hazeLevel)) {
+            result.push(hazy);
+          }
         }
       }
     }
@@ -164,10 +175,14 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
           text: '确认导出',
           onPress: async () => {
             try {
-              await datasetApi.createExportTask(dataset.id, {
-                structure: 'by_item',
-                includeTypes: ['clear', 'hazy'],
-                includeThumbnail: false,
+              await taskApi.create({
+                type: 'dataset_export',
+                targetId: dataset.id,
+                options: {
+                  structure: 'by_item',
+                  includeTypes: ['clear', 'hazy'],
+                  includeThumbnail: false,
+                },
               });
               Alert.alert('已创建', '导出任务已创建，请到任务中心查看进度');
             } catch (err: any) {
@@ -254,9 +269,8 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
           counts={
             dataset.statistics
               ? {
-                  all: dataset.statistics.fileCount,
-                  clear: dataset.statistics.clearCount,
-                  hazy: dataset.statistics.hazyCount,
+                  annotated: dataset.statistics.annotatedCount,
+                  unannotated: dataset.statistics.unannotatedCount,
                 }
               : undefined
           }
@@ -298,9 +312,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
             description={
               searchValue
                 ? '未找到匹配的数据项'
-                : selectedType !== 'all'
-                ? `暂无${selectedType === 'clear' ? '清晰' : '有雾'}图片`
-                : '该数据集还没有图片'
+                : `暂无${selectedType === 'annotated' ? '已标注' : '未标注'}图片`
             }
           />
         </View>

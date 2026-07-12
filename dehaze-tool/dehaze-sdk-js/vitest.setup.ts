@@ -2,7 +2,8 @@
  * Vitest 全局测试环境配置
  * 在所有测试之前加载，提供 Node.js 环境下缺失的浏览器 API polyfill
  */
-import { afterAll, beforeEach, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, vi } from "vitest";
+import { execSync } from "child_process";
 import { javaService } from "./src/utils/request";
 
 class LocalStorageMock {
@@ -42,8 +43,24 @@ Object.defineProperty(globalThis, "localStorage", {
   configurable: true,
 });
 
-// 配置 Java 后端 baseURL（Node.js 环境无浏览器 origin 兜底，需显式指定）
+// 配置 Java 后端 baseURL（Node.js 环境无浏览器 origin，需显式指定）
 javaService.defaults.baseURL = process.env.JAVA_BASE_URL || "http://127.0.0.1:8989";
+
+/**
+ * 每个测试文件开始前清理 Redis 缓存，确保测试隔离性
+ * 集成测试共享同一后端实例，前一个测试文件创建/删除的数据可能残留在 Redis 缓存中
+ * （如 @Cacheable 的 dataset:all、dict:options:* 等），导致后续测试读到脏数据
+ */
+beforeAll(async () => {
+  try {
+    execSync('docker exec redis redis-cli -a 12345678 FLUSHDB', {
+      stdio: 'pipe',
+      timeout: 5000,
+    });
+  } catch {
+    // Redis 容器未运行时忽略，由各测试文件的 login() 单独处理连接错误
+  }
+});
 
 // 清理所有 mock
 beforeEach(() => {

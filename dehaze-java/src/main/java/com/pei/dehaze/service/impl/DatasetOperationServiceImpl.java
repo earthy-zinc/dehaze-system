@@ -74,35 +74,45 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     private DatasetItemVO doCreateDatasetItemWithImages(DatasetItemUploadForm form) {
-        // 校验配对图片分辨率一致性
+        // 清晰图和有雾图均为可选（适配不同数据集规范），但至少上传一张图片
+        if (form.getClearImage() == null && (form.getHazyImages() == null || form.getHazyImages().isEmpty())) {
+            throw new BusinessException("至少上传一张图片（清晰图或有雾图）");
+        }
+
+        // 校验配对图片分辨率一致性（清晰图存在时才校验）
         validatePairedImageResolution(form);
 
         // 创建数据项
         SysDatasetItem datasetItem = sysDatasetItemService.createDatasetItem(form.getDatasetId(), form.getName());
 
-        // 保存清晰图
-        ItemFileBO clearItemBO = fileBOFactory.createItemFileBO(
-                form.getClearImage(),
-                "",
-                "clear",
-                "",
-                form.getSceneType(),
-                ""
-        );
-        sysItemFileService.saveItemFile(datasetItem.getId(), clearItemBO);
-
-        // 保存有雾图
-        for (int i = 0; i < form.getHazyImages().size(); i++) {
-            String hazeLevel = form.getHazeLevels().get(i);
-            ItemFileBO hazyItemBO = fileBOFactory.createItemFileBO(
-                    form.getHazyImages().get(i),
+        // 保存清晰图（可选）
+        if (form.getClearImage() != null) {
+            ItemFileBO clearItemBO = fileBOFactory.createItemFileBO(
+                    form.getClearImage(),
                     "",
-                    "hazy",
+                    "clear",
                     "",
                     form.getSceneType(),
-                    hazeLevel
+                    ""
             );
-            sysItemFileService.saveItemFile(datasetItem.getId(), hazyItemBO);
+            sysItemFileService.saveItemFile(datasetItem.getId(), clearItemBO);
+        }
+
+        // 保存有雾图（可选，haze_level 支持多种规范，可为空）
+        if (form.getHazyImages() != null) {
+            for (int i = 0; i < form.getHazyImages().size(); i++) {
+                String hazeLevel = form.getHazeLevels() != null && i < form.getHazeLevels().size()
+                        ? form.getHazeLevels().get(i) : "";
+                ItemFileBO hazyItemBO = fileBOFactory.createItemFileBO(
+                        form.getHazyImages().get(i),
+                        "",
+                        "hazy",
+                        "",
+                        form.getSceneType(),
+                        hazeLevel
+                );
+                sysItemFileService.saveItemFile(datasetItem.getId(), hazyItemBO);
+            }
         }
 
         // 构建返回结果
@@ -110,38 +120,43 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     /**
-     * 校验配对图片分辨率一致性
+     * 校验配对图片分辨率一致性（清晰图存在时才校验）
      */
     private void validatePairedImageResolution(DatasetItemUploadForm form) {
-        // 校验清晰图
-        imageProcessingService.validateImageFile(form.getClearImage());
+        int[] clearDimensions = null;
 
-        // 解析清晰图宽高
-        int[] clearDimensions = imageProcessingService.getImageDimensions(form.getClearImage());
-        if (clearDimensions[0] == 0 || clearDimensions[1] == 0) {
-            throw new BusinessException("无法解析清晰图分辨率");
+        // 校验清晰图（可选）
+        if (form.getClearImage() != null) {
+            imageProcessingService.validateImageFile(form.getClearImage());
+            clearDimensions = imageProcessingService.getImageDimensions(form.getClearImage());
+            if (clearDimensions[0] == 0 || clearDimensions[1] == 0) {
+                throw new BusinessException("无法解析清晰图分辨率");
+            }
         }
 
         // 检查每张有雾图的分辨率和格式
-        for (int i = 0; i < form.getHazyImages().size(); i++) {
-            MultipartFile hazyImage = form.getHazyImages().get(i);
+        if (form.getHazyImages() != null) {
+            for (int i = 0; i < form.getHazyImages().size(); i++) {
+                MultipartFile hazyImage = form.getHazyImages().get(i);
 
-            // 校验文件格式和大小
-            imageProcessingService.validateImageFile(hazyImage);
+                // 校验文件格式和大小
+                imageProcessingService.validateImageFile(hazyImage);
 
-            // 校验分辨率
-            int[] hazyDimensions = imageProcessingService.getImageDimensions(hazyImage);
-            if (hazyDimensions[0] == 0 || hazyDimensions[1] == 0) {
-                throw new BusinessException("无法解析有雾图分辨率：" + hazyImage.getOriginalFilename());
-            }
+                // 校验分辨率（如有清晰图则需一致）
+                int[] hazyDimensions = imageProcessingService.getImageDimensions(hazyImage);
+                if (hazyDimensions[0] == 0 || hazyDimensions[1] == 0) {
+                    throw new BusinessException("无法解析有雾图分辨率：" + hazyImage.getOriginalFilename());
+                }
 
-            if (hazyDimensions[0] != clearDimensions[0] || hazyDimensions[1] != clearDimensions[1]) {
-                throw new BusinessException(String.format(
-                        "配对图片分辨率不一致，清晰图：%dx%d，有雾图%s：%dx%d",
-                        clearDimensions[0], clearDimensions[1],
-                        hazyImage.getOriginalFilename(),
-                        hazyDimensions[0], hazyDimensions[1]
-                ));
+                if (clearDimensions != null &&
+                        (hazyDimensions[0] != clearDimensions[0] || hazyDimensions[1] != clearDimensions[1])) {
+                    throw new BusinessException(String.format(
+                            "配对图片分辨率不一致，清晰图：%dx%d，有雾图%s：%dx%d",
+                            clearDimensions[0], clearDimensions[1],
+                            hazyImage.getOriginalFilename(),
+                            hazyDimensions[0], hazyDimensions[1]
+                    ));
+                }
             }
         }
     }
@@ -174,21 +189,20 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
             if (isClearImage(fileName)) {
                 group.put("clear", file);
             } else if (isHazyImage(fileName)) {
-                try {
-                    String hazeLevel = extractHazeLevel(fileName);
-                    if (!group.containsKey("hazy")) {
-                        group.put("hazy", new ArrayList<Map<String, Object>>());
-                    }
-
-                    Map<String, Object> hazyInfo = new HashMap<>();
-                    hazyInfo.put("file", file);
-                    hazyInfo.put("hazeLevel", hazeLevel);
-                    ((List<Map<String, Object>>) group.get("hazy")).add(hazyInfo);
-                } catch (Exception e) {
-                    log.warn("解析雾霾程度失败: {}", fileName);
-                    // 记录单个文件错误
-                    failedItems.add(new BatchUploadFailedItemVO(fileName, "解析雾霾程度失败: " + e.getMessage()));
+                // haze_level 支持多种格式，无法解析时为空字符串（不报错）
+                String hazeLevel = extractHazeLevel(fileName);
+                if (!group.containsKey("hazy")) {
+                    group.put("hazy", new ArrayList<Map<String, Object>>());
                 }
+
+                Map<String, Object> hazyInfo = new HashMap<>();
+                hazyInfo.put("file", file);
+                hazyInfo.put("hazeLevel", hazeLevel);
+                ((List<Map<String, Object>>) group.get("hazy")).add(hazyInfo);
+            } else {
+                // 无法识别文件类型的文件归入失败列表
+                failedItems.add(new BatchUploadFailedItemVO(fileName,
+                        "无法识别文件类型，文件名需包含 clear/gt/clean、hazy/haze 或 trans 关键字"));
             }
         }
 
@@ -198,12 +212,9 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
             Map<String, Object> group = entry.getValue();
 
             try {
-                // 验证组完整性
-                if (!group.containsKey("clear")) {
-                    throw new BusinessException("缺少清晰图（需包含_clear或_gt后缀）");
-                }
-                if (!group.containsKey("hazy")) {
-                    throw new BusinessException("缺少有雾图（需包含_hazy后缀）");
+                // 清晰图和有雾图均为可选（适配不同数据集规范）
+                if (!group.containsKey("clear") && !group.containsKey("hazy")) {
+                    throw new BusinessException("分组中未找到任何可识别的图片");
                 }
 
                 // 创建配对上传表单
@@ -219,9 +230,11 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 List<MultipartFile> hazyImages = new ArrayList<>();
                 List<String> hazeLevels = new ArrayList<>();
 
-                for (Map<String, Object> hazyInfo : hazyInfos) {
-                    hazyImages.add((MultipartFile) hazyInfo.get("file"));
-                    hazeLevels.add((String) hazyInfo.get("hazeLevel"));
+                if (hazyInfos != null) {
+                    for (Map<String, Object> hazyInfo : hazyInfos) {
+                        hazyImages.add((MultipartFile) hazyInfo.get("file"));
+                        hazeLevels.add((String) hazyInfo.get("hazeLevel"));
+                    }
                 }
 
                 pairForm.setHazyImages(hazyImages);
@@ -231,8 +244,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 DatasetItemVO createdItem = this.doCreateDatasetItemWithImages(pairForm);
                 successGroups++;
 
-                // 记录成功项详情：1张清晰图 + N张有雾图
-                int fileCount = 1 + hazyImages.size();
+                // 记录成功项详情
+                int fileCount = (clearImage != null ? 1 : 0) + hazyImages.size();
                 successItems.add(new BatchUploadSuccessItemVO(createdItem.getId(), groupName, fileCount));
 
             } catch (Exception e) {
@@ -252,43 +265,75 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     /**
-     * 从文件名提取前缀（分组用）
+     * 从文件名提取前缀（分组用）。按前导数字分组（如 01_GT.png → "01"），
+     * 无前导数字时去除 _clear/_gt/_hazy 等后缀返回剩余部分。
      */
     private String extractFilePrefix(String fileName) {
         String nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
-        // 移除 _clear, _gt, _hazy 及其后缀
-        // 假设命名规则是 prefix_clear.jpg 或 prefix_hazy_light.jpg
-        return nameWithoutExt.replaceAll("(_clear|_gt|_hazy.*)$", "");
+        // 优先按前导数字分组
+        java.util.regex.Matcher numMatcher = java.util.regex.Pattern.compile("^(\\d+)").matcher(nameWithoutExt);
+        if (numMatcher.find()) {
+            return numMatcher.group(1);
+        }
+        // 无前导数字时移除类型后缀
+        return nameWithoutExt.replaceAll("(_clear|_gt|_hazy.*|_trans|_depth|_segment)$", "");
     }
 
     /**
-     * 判断是否为清晰图
+     * 判断是否为清晰图（含 clear/gt/clean 关键字，大小写不敏感）
      */
     private boolean isClearImage(String fileName) {
-        return fileName.contains("_clear") || fileName.contains("_gt");
+        String lower = fileName.toLowerCase();
+        return lower.contains("clear") || lower.contains("_gt") || lower.contains("clean");
     }
 
     /**
-     * 判断是否为有雾图
+     * 判断是否为有雾图（含 hazy/haze 关键字，大小写不敏感）
      */
     private boolean isHazyImage(String fileName) {
-        return fileName.contains("_hazy");
+        String lower = fileName.toLowerCase();
+        return lower.contains("hazy") || lower.contains("haze");
     }
 
     /**
-     * 从文件名提取雾霾程度
+     * 从文件名提取雾霾程度，支持多种规范。无法解析时返回空字符串（表示未标注）。
+     *
+     * 支持格式：
+     * - _hazy_light / _hazy_medium / _hazy_heavy → light/medium/heavy
+     * - {id}_{idx}_{beta}.png（如 1000_1_0.74905.png）→ beta=0.74905
+     * - {id}_{A}_{beta}.jpg（如 0025_0.8_0.2.jpg）→ beta=0.2（无法可靠区分 A 和 idx，统一取最后一个数值作为 beta）
+     * - 无参数后缀（如 01_hazy.png）→ 空字符串
      */
     private String extractHazeLevel(String fileName) {
-        // 匹配 *_hazy_light.*, *_hazy_medium.*, *_hazy_heavy.*
-        Pattern pattern = Pattern.compile(".*_hazy_(light|medium|heavy).*");
-        Matcher matcher = pattern.matcher(fileName);
-
-        if (matcher.matches()) {
-            return matcher.group(1);
+        // 1. 人工分级：_hazy_light / _hazy_medium / _hazy_heavy
+        java.util.regex.Matcher levelMatcher = java.util.regex.Pattern
+                .compile("_hazy_(light|medium|heavy)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(fileName);
+        if (levelMatcher.find()) {
+            return levelMatcher.group(1).toLowerCase();
         }
 
-        // 如果无法从文件名提取，抛出异常，要求文件名必须包含雾霾程度
-        throw new BusinessException("文件名必须包含雾霾程度标识(light/medium/heavy)，例如：name_hazy_light.jpg");
+        // 2. 学术参数格式：{id}_{idx}_{beta} 或 {id}_{A}_{beta} 等
+        //    统一取最后一个数值作为 beta（无法可靠区分 A 和 idx）
+        String nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+        String[] parts = nameWithoutExt.split("_");
+        if (parts.length >= 3) {
+            try {
+                java.util.List<Double> numParts = new java.util.ArrayList<>();
+                for (int i = 1; i < parts.length; i++) {
+                    try {
+                        numParts.add(Double.parseDouble(parts[i]));
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (!numParts.isEmpty()) {
+                    double beta = numParts.get(numParts.size() - 1);
+                    return String.format("beta=%s", beta);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 3. 无法解析，返回空字符串（表示未标注）
+        return "";
     }
 
     @Override

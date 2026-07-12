@@ -167,7 +167,7 @@ definitions:
     type: object
   bo.StatisticsBO:
     properties:
-      clearCount:
+      annotatedCount:
         type: integer
       fileCount:
         type: integer
@@ -181,7 +181,7 @@ definitions:
           format: int64
           type: integer
         type: object
-      hazyCount:
+      unannotatedCount:
         type: integer
       itemCount:
         type: integer

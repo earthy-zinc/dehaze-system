@@ -48,7 +48,7 @@ class RoleAPI {
     return request({
       url: "/api/v1/roles/" + roleId + "/menus",
       method: "patch",
-      data: { menuIds },
+      data: menuIds,
     });
   }
 

@@ -116,10 +116,10 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             stats.setFileCount(imgCnt != null ? ((Number) imgCnt).longValue() : 0L);
             Object sizeVal = row.get("total_size");
             stats.setTotalSize(sizeVal != null ? ((Number) sizeVal).longValue() : 0L);
-            Object clearCnt = row.get("clear_count");
-            stats.setClearCount(clearCnt != null ? ((Number) clearCnt).longValue() : 0L);
-            Object hazyCnt = row.get("hazy_count");
-            stats.setHazyCount(hazyCnt != null ? ((Number) hazyCnt).longValue() : 0L);
+            Object annotatedCnt = row.get("annotated_count");
+            stats.setAnnotatedCount(annotatedCnt != null ? ((Number) annotatedCnt).longValue() : 0L);
+            Object unannotatedCnt = row.get("unannotated_count");
+            stats.setUnannotatedCount(unannotatedCnt != null ? ((Number) unannotatedCnt).longValue() : 0L);
         }
 
         List<Map<String, Object>> sceneResults = this.baseMapper.countSceneDistributionBatch(leafIds);
@@ -193,8 +193,8 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         stats.setItemCount(0L);
         stats.setFileCount(0L);
         stats.setTotalSize(0L);
-        stats.setClearCount(0L);
-        stats.setHazyCount(0L);
+        stats.setAnnotatedCount(0L);
+        stats.setUnannotatedCount(0L);
         stats.setSceneDistribution(new HashMap<>());
         stats.setHazeDistribution(new HashMap<>());
         stats.setFormatDistribution(new HashMap<>());
@@ -205,8 +205,8 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         parent.setItemCount(parent.getItemCount() + child.getItemCount());
         parent.setFileCount(parent.getFileCount() + child.getFileCount());
         parent.setTotalSize(parent.getTotalSize() + child.getTotalSize());
-        parent.setClearCount(parent.getClearCount() + child.getClearCount());
-        parent.setHazyCount(parent.getHazyCount() + child.getHazyCount());
+        parent.setAnnotatedCount(parent.getAnnotatedCount() + child.getAnnotatedCount());
+        parent.setUnannotatedCount(parent.getUnannotatedCount() + child.getUnannotatedCount());
         child.getSceneDistribution().forEach((k, v) ->
                 parent.getSceneDistribution().merge(k, v, Long::sum));
         child.getHazeDistribution().forEach((k, v) ->
@@ -257,7 +257,9 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 .collect(Collectors.groupingBy(SysDataset::getParentId));
 
         List<Long> childIds = children.stream().map(SysDataset::getId).toList();
-        List<SysDataset> grandChildren = this.list(new LambdaQueryWrapper<SysDataset>()
+        List<SysDataset> grandChildren = childIds.isEmpty()
+                ? Collections.emptyList()
+                : this.list(new LambdaQueryWrapper<SysDataset>()
                 .in(SysDataset::getParentId, childIds)
                 .select(SysDataset::getParentId));
         Set<Long> grandParentIds = grandChildren.stream()

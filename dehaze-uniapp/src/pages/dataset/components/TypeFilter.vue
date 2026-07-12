@@ -5,7 +5,7 @@
         v-for="item in filterItems"
         :key="item.type"
         class="filter-btn"
-        :class="{ active: activeType === item.type }"
+        :class="{ active: activeFilter === item.type }"
         @click="handleChange(item.type)"
       >
         <text class="filter-text">{{ item.label }}</text>
@@ -17,32 +17,32 @@
 
 <script lang="ts" setup>
 import { computed } from "vue";
-import type { ImageType, ImageTypeCounts } from "../data/datasetData";
-import { IMAGE_TYPE_LABELS } from "../data/datasetData";
+import type { AnnotationFilter, AnnotationCounts } from "../data/datasetData";
+import { ANNOTATION_FILTER_LABELS } from "../data/datasetData";
 
 interface Props {
-  activeType: ImageType;
-  counts: ImageTypeCounts;
+  activeFilter: AnnotationFilter;
+  counts: AnnotationCounts;
 }
 
 interface Emits {
-  (e: "change", type: ImageType): void;
+  (e: "change", filter: AnnotationFilter): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const filterItems = computed(() => {
-  const types: ImageType[] = ["all", "foggy", "clear", "annotated"];
-  return types.map((type) => ({
+  const filters: AnnotationFilter[] = ["annotated", "unannotated"];
+  return filters.map((type) => ({
     type,
-    label: IMAGE_TYPE_LABELS[type],
+    label: ANNOTATION_FILTER_LABELS[type],
     count: props.counts[type],
   }));
 });
 
-const handleChange = (type: ImageType) => {
-  if (type !== props.activeType) {
+const handleChange = (type: AnnotationFilter) => {
+  if (type !== props.activeFilter) {
     emit("change", type);
   }
 };

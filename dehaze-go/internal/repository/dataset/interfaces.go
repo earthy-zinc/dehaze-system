@@ -15,11 +15,11 @@ type CountByDatasetResult struct {
 }
 
 type DatasetStatsResult struct {
-	DatasetID  int64  `gorm:"column:dataset_id"`
-	FileCount  int64  `gorm:"column:image_count"`
-	TotalSize  int64  `gorm:"column:total_size"`
-	ClearCount int64  `gorm:"column:clear_count"`
-	HazyCount  int64  `gorm:"column:hazy_count"`
+	DatasetID        int64 `gorm:"column:dataset_id"`
+	FileCount        int64 `gorm:"column:image_count"`
+	TotalSize        int64 `gorm:"column:total_size"`
+	AnnotatedCount   int64 `gorm:"column:annotated_count"`
+	UnannotatedCount int64 `gorm:"column:unannotated_count"`
 }
 
 type DistributionResult struct {

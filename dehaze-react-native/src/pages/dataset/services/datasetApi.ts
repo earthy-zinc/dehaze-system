@@ -4,6 +4,9 @@
  * 直接调用 SDK 的 DatasetAPI / DatasetItemAPI / ItemFileAPI，
  * SDK 内部已通过 configJavaAxios 注入 baseURL 和 token，
  * 并已在响应拦截器中剥离 R<T> 包装（直接返回 data 字段）。
+ *
+ * 注意：导出/下载任务已迁移至统一任务接口 /api/v1/tasks，
+ * 请使用 taskApi.create({ type: 'dataset_export' | 'item_download' | 'batch_download', ... }) 创建任务。
  */
 import {
   DatasetAPI,
@@ -16,9 +19,8 @@ import type {
   DatasetImage,
   DatasetQuery,
   DatasetItemQuery,
-  ExportTaskRequest,
 } from '../types/dataset';
-import type { PageResult, TaskVO } from 'dehaze-sdk-js';
+import type { PageResult } from 'dehaze-sdk-js';
 
 /** 分页结果 */
 export type DatasetPage = PageResult<Dataset[]>;
@@ -57,11 +59,6 @@ export const datasetApi = {
     return DatasetAPI.batchDelete({ ids });
   },
 
-  /** 创建数据集导出任务 */
-  createExportTask(id: number, options?: ExportTaskRequest): Promise<TaskVO> {
-    return DatasetAPI.createExportTask(id, options);
-  },
-
   // ==================== 数据项 ====================
 
   /** 分页查询数据项列表 */
@@ -82,16 +79,6 @@ export const datasetApi = {
   /** 批量删除数据项 */
   batchDeleteItems(ids: number[]) {
     return DatasetItemAPI.batchDelete({ ids });
-  },
-
-  /** 创建数据项下载任务 */
-  createItemDownloadTask(id: number, itemFileIds?: number[]): Promise<TaskVO> {
-    return DatasetItemAPI.createDownloadTask(id, itemFileIds);
-  },
-
-  /** 批量下载数据项图片 */
-  batchDownloadItems(itemFileIds: number[], organizeByItem = false): Promise<TaskVO> {
-    return DatasetItemAPI.batchDownload({ itemFileIds, organizeByItem });
   },
 
   // ==================== 图片文件 ====================

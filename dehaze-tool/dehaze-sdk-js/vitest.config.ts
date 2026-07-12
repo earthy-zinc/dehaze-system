@@ -42,7 +42,8 @@ export default defineConfig({
     // 全局并发
     maxConcurrency: 10,
 
-    // 所有测试文件并行运行
-    fileParallelism: true,
-  },
+    // 集成测试共享同一后端实例（Redis/MySQL），并行运行会导致缓存污染和数据竞争
+    // 必须串行执行以保证测试隔离性和可重复性
+    fileParallelism: false,
+    },
 });

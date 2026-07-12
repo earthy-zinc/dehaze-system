@@ -132,28 +132,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             throw new BusinessException("图片不存在");
         }
 
-        // 如果删除的是清晰图，检查是否还有其他清晰图
-        if ("clear".equals(sysItemFile.getType())) {
-            // 查询同一数据项下的其他清晰图数量
-            long clearCount = this.count(
-                    new LambdaQueryWrapper<SysItemFile>()
-                            .eq(SysItemFile::getItemId, sysItemFile.getItemId())
-                            .eq(SysItemFile::getType, "clear")
-                            .ne(SysItemFile::getId, id)
-            );
-            // 如果这是最后一张清晰图，检查是否还有有雾图
-            if (clearCount == 0) {
-                long hazyCount = this.count(
-                        new LambdaQueryWrapper<SysItemFile>()
-                                .eq(SysItemFile::getItemId, sysItemFile.getItemId())
-                                .eq(SysItemFile::getType, "hazy")
-                );
-                // 如果还有有雾图，则不允许删除最后一张清晰图
-                if (hazyCount > 0) {
-                    throw new BusinessException("配对组必须至少保留一张清晰图（Ground Truth），请先删除有雾图或整个数据项");
-                }
-            }
-        }
+        // 注：取消配对完整性校验（"必须保留一张清晰图"），适配不同数据集规范
 
         Long itemId = sysItemFile.getItemId();
         Long fileId = sysItemFile.getFileId();
@@ -365,21 +344,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             throw new BusinessException("图片不存在");
         }
 
-        // 更新图片类型时，校验配对完整性
+        // 更新图片类型（取消配对完整性校验，适配不同数据集规范）
         if (form.getType() != null && !form.getType().equals(itemFile.getType())) {
-            // 如果将清晰图改为有雾图，需要检查是否还有其他清晰图
-            if ("clear".equals(itemFile.getType()) && "hazy".equals(form.getType())) {
-                // 查询同一数据项下的其他清晰图数量
-                long clearCount = this.count(
-                        new LambdaQueryWrapper<SysItemFile>()
-                                .eq(SysItemFile::getItemId, itemFile.getItemId())
-                                .eq(SysItemFile::getType, "clear")
-                                .ne(SysItemFile::getId, id)
-                );
-                if (clearCount == 0) {
-                    throw new BusinessException("配对组必须至少保留一张清晰图（Ground Truth），不能将最后一张清晰图改为有雾图");
-                }
-            }
             itemFile.setType(form.getType());
         }
         // 更新标注信息

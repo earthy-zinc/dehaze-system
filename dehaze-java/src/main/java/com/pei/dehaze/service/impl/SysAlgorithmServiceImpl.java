@@ -168,7 +168,9 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     @Override
     public boolean updateAlgorithm(AlgorithmForm algorithm) {
         SysAlgorithm sysAlgorithm = algorithmConverter.form2Entity(algorithm);
-        sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        if (FileUtil.isFile(sysAlgorithm.getPath())) {
+            sysAlgorithm.setSize(FileUploadUtils.fileSize(sysAlgorithm.getPath()));
+        }
         return this.updateById(sysAlgorithm);
     }
 

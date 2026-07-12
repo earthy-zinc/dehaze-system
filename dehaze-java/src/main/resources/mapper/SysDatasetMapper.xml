@@ -16,14 +16,12 @@
         ORDER BY sdi.dataset_id, sif.item_id, sif.type
     </select>
 
-    <!-- 统计数据集综合信息（图片数、总大小、清晰图、有雾图），一次查询替代4次 -->
+    <!-- 统计数据集综合信息（图片数、总大小、已标注、未标注），一次查询替代4次 -->
     <select id="countDatasetStatsSingle" resultType="java.util.Map">
         SELECT COUNT(sif.id) AS image_count,
                COALESCE(SUM(sf.size), 0) AS total_size,
-               SUM(CASE WHEN LOWER(sif.type) LIKE '%clear%' OR LOWER(sif.type) LIKE '%clean%'
-                           OR sif.type LIKE '%清晰%' OR sif.type LIKE '%无雾%' THEN 1 ELSE 0 END) AS clear_count,
-               SUM(CASE WHEN LOWER(sif.type) LIKE '%haze%' OR LOWER(sif.type) LIKE '%hazy%'
-                           OR sif.type LIKE '%有雾%' THEN 1 ELSE 0 END) AS hazy_count
+               SUM(CASE WHEN sif.haze_level IS NOT NULL AND sif.haze_level != '' THEN 1 ELSE 0 END) AS annotated_count,
+               SUM(CASE WHEN sif.haze_level IS NULL OR sif.haze_level = '' THEN 1 ELSE 0 END) AS unannotated_count
         FROM sys_dataset_item sdi
         LEFT JOIN sys_item_file sif ON sif.item_id = sdi.id
         LEFT JOIN sys_file sf ON sif.file_id = sf.id
@@ -96,15 +94,13 @@
     </select>
 
     <!-- 批量统计每个数据集的综合统计信息（GROUP BY dataset_id）
-    包括：图片数、文件总大小、清晰图片数、有雾图片数 -->
+    包括：图片数、文件总大小、已标注图片数、未标注图片数 -->
     <select id="countDatasetStatsBatch" resultType="java.util.Map">
         SELECT sdi.dataset_id AS dataset_id,
                COUNT(sif.id) AS image_count,
                COALESCE(SUM(sf.size), 0) AS total_size,
-               SUM(CASE WHEN LOWER(sif.type) LIKE '%clear%' OR LOWER(sif.type) LIKE '%clean%'
-                           OR sif.type LIKE '%清晰%' OR sif.type LIKE '%无雾%' THEN 1 ELSE 0 END) AS clear_count,
-               SUM(CASE WHEN LOWER(sif.type) LIKE '%haze%' OR LOWER(sif.type) LIKE '%hazy%'
-                           OR sif.type LIKE '%有雾%' THEN 1 ELSE 0 END) AS hazy_count
+               SUM(CASE WHEN sif.haze_level IS NOT NULL AND sif.haze_level != '' THEN 1 ELSE 0 END) AS annotated_count,
+               SUM(CASE WHEN sif.haze_level IS NULL OR sif.haze_level = '' THEN 1 ELSE 0 END) AS unannotated_count
         FROM sys_dataset_item sdi
         LEFT JOIN sys_item_file sif ON sif.item_id = sdi.id
         LEFT JOIN sys_file sf ON sif.file_id = sf.id

@@ -2,7 +2,10 @@
 import LongitudinalWaterfall from "@/components/LongitudinalWaterfall/index.vue";
 import Waterfall from "@/components/Waterfall/index.vue";
 import { ViewCard } from "@/components/Waterfall/types";
-import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
+import {
+  IMAGE_TYPE_LABELS,
+  formatHazeLevel,
+} from "@/enums/ImageTypeEnum";
 import { changeUrl } from "@/utils";
 import {
   Dataset,
@@ -42,15 +45,10 @@ let datasetInfo = ref<Dataset>({
   total: 0,
 });
 let imageData = reactive<DatasetItemVO[]>([]);
-type ImageType = { id: number; type: string };
 
-const imageTypes = ref<ImageType[]>([
-  { id: 0, type: ImageTypeEnum.CLEAN },
-  { id: 1, type: ImageTypeEnum.HAZE },
-]);
-
-// 当前选中的图片类型索引
-const currentTypeId = ref<number>(0);
+// 标注状态过滤：已标注/未标注二分
+type AnnotationFilter = "annotated" | "unannotated";
+const annotationFilter = ref<AnnotationFilter>("annotated");
 
 let loadingBarRef = ref();
 const loadingObserver = ref();
@@ -72,13 +70,6 @@ const itemWidth = computed(() => {
   }
   return 400;
 });
-
-// 雾霾程度中文标签
-const hazeLevelLabels: Record<string, string> = {
-  light: "轻度",
-  medium: "中度",
-  heavy: "重度",
-};
 
 // ==================== 展示模式 ====================
 type DisplayMode = "list" | "vertical" | "horizontal" | "grid";
@@ -132,21 +123,64 @@ function extractImagesFromItem(item: DatasetItemVO): ImageUrlVO[] {
   return allImages;
 }
 
-// 当前展示的图片卡片（由当前类型与选中状态派生）
+/**
+ * 判断图片是否已标注（hazeLevel 非空视为已标注）。
+ * 适用于按"已标注/未标注"过滤。
+ */
+function isImageAnnotated(img: ImageUrlVO | undefined): boolean {
+  return Boolean(img && img.hazeLevel);
+}
+
+/**
+ * 从数据项中按标注过滤取代表图片：
+ * - annotated：返回第一张 hazeLevel 非空的图片
+ * - unannotated：返回第一张 hazeLevel 为空的图片
+ * 都没有则回退到第一张图片。
+ */
+function pickImageByAnnotation(
+  item: DatasetItemVO,
+  filter: AnnotationFilter
+): ImageUrlVO | undefined {
+  const all = extractImagesFromItem(item);
+  if (all.length === 0) return undefined;
+  const matched =
+    filter === "annotated"
+      ? all.find((img) => isImageAnnotated(img))
+      : all.find((img) => !isImageAnnotated(img));
+  return matched || all[0];
+}
+
+// 当前展示的图片卡片（按"已标注/未标注"过滤派生）
 const images = computed<ViewCard[]>(() => {
-  return imageData.map((item) => {
-    const allImages = extractImagesFromItem(item);
-    const img = allImages[currentTypeId.value] || allImages[0];
-    const isSelected = selectedIds.value.includes(item.id);
-    return {
-      id: item.id,
-      src: changeUrl(img.url),
-      originSrc: changeUrl(img.originUrl || img.url),
-      alt: img.description || item.name,
-      backgroundColor: isSelected ? "#ecf5ff" : "#fff",
-    };
-  });
+  return imageData
+    .map((item) => {
+      const img = pickImageFromItem(item);
+      if (!img) return null;
+      const isSelected = selectedIds.value.includes(item.id);
+      return {
+        id: item.id,
+        src: changeUrl(img.url),
+        originSrc: changeUrl(img.originUrl || img.url),
+        alt: img.description || item.name,
+        backgroundColor: isSelected ? "#ecf5ff" : "#fff",
+      } as ViewCard;
+    })
+    .filter((v): v is ViewCard => v !== null);
 });
+
+/**
+ * 根据当前 annotationFilter 从数据项中选取代表图片。
+ * 仅返回符合当前过滤条件的图片，若数据项中无符合的图片则返回 null（不在列表中展示）。
+ */
+function pickImageFromItem(item: DatasetItemVO): ImageUrlVO | undefined {
+  const all = extractImagesFromItem(item);
+  if (all.length === 0) return undefined;
+  const filtered =
+    annotationFilter.value === "annotated"
+      ? all.filter((img) => isImageAnnotated(img))
+      : all.filter((img) => !isImageAnnotated(img));
+  return filtered[0];
+}
 
 async function handleQuery() {
   queryParams.datasetId = datasetId.value;
@@ -165,34 +199,10 @@ async function loadMore() {
       imageData.push(...records);
       total.value = data.total || 0;
       totalPages.value = Math.ceil(total.value / queryParams.pageSize);
-      updateImageTypes();
     })
     .catch((err) => {
       console.log(err);
     });
-}
-
-function updateImageTypes() {
-  if (imageData.length > 0) {
-    const firstItem = imageData[0];
-    const allImages = extractImagesFromItem(firstItem);
-    if (allImages.length > 0) {
-      imageTypes.value = allImages.map((img, index) => {
-        let typeName = img.type;
-        if (img.type === "clear") {
-          typeName = ImageTypeEnum.CLEAN;
-        } else if (img.type === "hazy") {
-          typeName = img.hazeLevel
-            ? `${ImageTypeEnum.HAZE}(${hazeLevelLabels[img.hazeLevel] || img.hazeLevel})`
-            : ImageTypeEnum.HAZE;
-        }
-        return { id: index, type: typeName };
-      });
-      if (currentTypeId.value >= imageTypes.value.length) {
-        currentTypeId.value = 0;
-      }
-    }
-  }
 }
 
 function resetQuery() {
@@ -202,8 +212,20 @@ function resetQuery() {
   handleQuery();
 }
 
-function handleImageTypeChange(typeId: number) {
-  currentTypeId.value = typeId;
+/** 切换标注状态过滤 */
+function handleAnnotationFilterChange(filter: AnnotationFilter) {
+  annotationFilter.value = filter;
+  selectedIds.value = [];
+}
+
+/** 获取图片类型标签（用于详情弹窗按钮文案） */
+function getImageTypeLabel(type: string, hazeLevel?: string): string {
+  const label = IMAGE_TYPE_LABELS[type] || type;
+  if (hazeLevel) {
+    const hazeLabel = formatHazeLevel(hazeLevel);
+    return hazeLabel ? `${label}-${hazeLabel}` : label;
+  }
+  return label;
 }
 
 // ==================== 图片点击与详情弹窗 ====================
@@ -239,10 +261,7 @@ function openDetail(itemId: number) {
   const idx = imageData.findIndex((item) => item.id === itemId);
   if (idx >= 0) {
     detailIndex.value = idx;
-    detailImageIndex.value = Math.min(
-      currentTypeId.value,
-      Math.max(0, detailImages.value.length - 1)
-    );
+    detailImageIndex.value = 0;
     detailDialogVisible.value = true;
   }
 }
@@ -432,28 +451,24 @@ function handleUploadCommand(cmd: string) {
 const uploadDialogVisible = ref<boolean>(false);
 const clearFileList = ref<UploadUserFile[]>([]);
 const hazyFileList = ref<UploadUserFile[]>([]);
-const hazeLevel = ref<"light" | "medium" | "heavy">("light");
+const hazeLevel = ref<string>("");
 const pairedSceneType = ref<string>("");
 const uploading = ref<boolean>(false);
-
-function handleClearExceed() {
-  ElMessage.warning("只能上传一张清晰图像");
-}
 
 function resetPairedUpload() {
   clearFileList.value = [];
   hazyFileList.value = [];
-  hazeLevel.value = "light";
+  hazeLevel.value = "";
   pairedSceneType.value = "";
 }
 
 async function submitPairedUpload() {
-  if (clearFileList.value.length === 0) {
-    ElMessage.warning("请上传清晰图像");
-    return;
-  }
-  if (hazyFileList.value.length === 0) {
-    ElMessage.warning("请至少上传一张有雾图像");
+  // 清晰图和有雾图均为可选（适配不同数据集规范），但至少上传一张图片
+  if (
+    clearFileList.value.length === 0 &&
+    hazyFileList.value.length === 0
+  ) {
+    ElMessage.warning("请至少上传一张图片（清晰图或有雾图）");
     return;
   }
   const formData = new FormData();
@@ -461,11 +476,16 @@ async function submitPairedUpload() {
   if (pairedSceneType.value) {
     formData.append("sceneType", pairedSceneType.value);
   }
-  formData.append("clearImage", clearFileList.value[0].raw as Blob);
-  hazyFileList.value.forEach((f) => {
-    formData.append("hazyImages", f.raw as Blob);
-    formData.append("hazeLevels", hazeLevel.value);
-  });
+  if (clearFileList.value.length > 0 && clearFileList.value[0].raw) {
+    formData.append("clearImage", clearFileList.value[0].raw as Blob);
+  }
+  if (hazyFileList.value.length > 0) {
+    hazyFileList.value.forEach((f) => {
+      formData.append("hazyImages", f.raw as Blob);
+      // 每张有雾图对应一个雾霾程度（支持空字符串表示未标注）
+      formData.append("hazeLevels", hazeLevel.value);
+    });
+  }
   uploading.value = true;
   try {
     await DatasetItemAPI.uploadImagePair(formData);
@@ -528,15 +548,16 @@ const formatChartRef = ref<HTMLDivElement>();
 const resolutionChartRef = ref<HTMLDivElement>();
 let chartInstances: echarts.ECharts[] = [];
 
-// 分辨率分布（从当前已加载数据派生）
+// 分辨率分布（从当前已加载数据派生，遍历所有图片而非仅 clearImage）
 const resolutionDistribution = computed<Record<string, number>>(() => {
   const dist: Record<string, number> = {};
   imageData.forEach((item) => {
-    const img = item.clearImage;
-    if (img && img.width && img.height) {
-      const key = `${img.width}×${img.height}`;
-      dist[key] = (dist[key] || 0) + 1;
-    }
+    extractImagesFromItem(item).forEach((img) => {
+      if (img.width && img.height) {
+        const key = `${img.width}×${img.height}`;
+        dist[key] = (dist[key] || 0) + 1;
+      }
+    });
   });
   return dist;
 });
@@ -583,7 +604,7 @@ function initStatisticsCharts() {
         tooltip: { trigger: "axis" },
         xAxis: {
           type: "category",
-          data: keys.map((k) => hazeLevelLabels[k] || k),
+          data: keys.map((k) => formatHazeLevel(k) || k),
         },
         yAxis: { type: "value" },
         series: [{ type: "bar", data: Object.values(dist) }],
@@ -681,10 +702,10 @@ onUnmounted(() => {
         <div class="summary-tags">
           <el-tag>图片总数：{{ datasetInfo.total || total }}</el-tag>
           <el-tag type="success" v-if="datasetInfo.statistics">
-            清晰图：{{ datasetInfo.statistics.clearCount }}
+            已标注：{{ datasetInfo.statistics.annotatedCount }}
           </el-tag>
           <el-tag type="warning" v-if="datasetInfo.statistics">
-            有雾图：{{ datasetInfo.statistics.hazyCount }}
+            未标注：{{ datasetInfo.statistics.unannotatedCount }}
           </el-tag>
           <el-tag type="info" v-if="datasetInfo.statistics">
             文件总数：{{ datasetInfo.statistics.fileCount }}
@@ -737,17 +758,23 @@ onUnmounted(() => {
             </el-button>
           </el-button-group>
 
-          <!-- 图片类型切换 -->
+          <!-- 标注状态切换：已标注/未标注 -->
           <el-button-group>
             <el-button
-              v-for="imageType in imageTypes"
-              :key="imageType.id"
-              :type="imageType.id === currentTypeId ? 'primary' : ''"
+              :type="annotationFilter === 'annotated' ? 'primary' : ''"
               plain
               size="small"
-              @click="handleImageTypeChange(imageType.id)"
+              @click="handleAnnotationFilterChange('annotated')"
             >
-              {{ imageType.type }}
+              已标注
+            </el-button>
+            <el-button
+              :type="annotationFilter === 'unannotated' ? 'primary' : ''"
+              plain
+              size="small"
+              @click="handleAnnotationFilterChange('unannotated')"
+            >
+              未标注
             </el-button>
           </el-button-group>
 
@@ -890,15 +917,15 @@ onUnmounted(() => {
         <el-table-column label="雾霾程度" width="110" align="center">
           <template #default="{ row }">
             <el-tag
-              v-for="h in row.hazyImages || []"
+              v-for="h in extractImagesFromItem(row)"
               :key="h.id"
               size="small"
               type="warning"
               class="mr-1"
             >
-              {{ hazeLevelLabels[h.hazeLevel] || h.hazeLevel || "未标注" }}
+              {{ formatHazeLevel(h.hazeLevel) || "未标注" }}
             </el-tag>
-            <span v-if="!row.hazyImages || row.hazyImages.length === 0">-</span>
+            <span v-if="extractImagesFromItem(row).length === 0">-</span>
           </template>
         </el-table-column>
         <el-table-column label="场景类型" width="120" align="center">
@@ -1032,19 +1059,18 @@ onUnmounted(() => {
       @closed="resetPairedUpload"
     >
       <el-form label-width="120px">
-        <el-form-item label="清晰图像" required>
+        <el-form-item label="清晰图像（可选）">
           <el-upload
             v-model:file-list="clearFileList"
             :auto-upload="false"
             :limit="1"
-            :on-exceed="handleClearExceed"
             accept="image/jpeg,image/png,image/gif"
             list-type="picture-card"
           >
             <i-ep-plus />
           </el-upload>
         </el-form-item>
-        <el-form-item label="有雾图像" required>
+        <el-form-item label="有雾图像（可选）">
           <el-upload
             v-model:file-list="hazyFileList"
             :auto-upload="false"
@@ -1055,12 +1081,12 @@ onUnmounted(() => {
             <i-ep-plus />
           </el-upload>
         </el-form-item>
-        <el-form-item label="雾霾程度" required>
-          <el-select v-model="hazeLevel" placeholder="请选择雾霾程度">
-            <el-option label="轻度" value="light" />
-            <el-option label="中度" value="medium" />
-            <el-option label="重度" value="heavy" />
-          </el-select>
+        <el-form-item label="雾霾程度（可选）">
+          <el-input
+            v-model="hazeLevel"
+            placeholder="如 light/medium/heavy/beta=0.5"
+            maxlength="50"
+          />
         </el-form-item>
         <el-form-item label="场景类型">
           <el-input
@@ -1092,10 +1118,11 @@ onUnmounted(() => {
       <el-alert type="info" :closable="false" show-icon class="mb-3">
         <template #title>文件名自动识别配对规则</template>
         <div class="pairing-rules">
-          xxx_clear.jpg / xxx_gt.jpg 识别为清晰图；xxx_hazy.jpg /
-          xxx_hazy_light.jpg 识别为有雾图（轻度）；xxx_hazy_medium.jpg
-          识别为有雾图（中度）；xxx_hazy_heavy.jpg
-          识别为有雾图（重度）。同一前缀的图片自动归为一个配对组。
+          xxx_clear.jpg / xxx_gt.jpg 识别为清晰图；xxx_hazy.jpg 识别为有雾图；xxx_trans.jpg
+          识别为透射图；xxx_depth.jpg 识别为深度图；xxx_segment.jpg 识别为分割图。雾霾程度
+          支持多种规范：xxx_hazy_light.jpg / xxx_hazy_medium.jpg / xxx_hazy_heavy.jpg
+          （人工分级），或 xxx_1_0.74905.jpg（学术参数格式，统一取最后一个数值作为 beta）。
+          同一前缀（前导数字）的图片自动归为一个配对组。
         </div>
       </el-alert>
       <el-upload
@@ -1148,16 +1175,7 @@ onUnmounted(() => {
               size="small"
               @click="detailImageIndex = idx"
             >
-              {{
-                img.type === "clear"
-                  ? "清晰图"
-                  : `有雾图${
-                      img.hazeLevel
-                        ? "-" +
-                          (hazeLevelLabels[img.hazeLevel] || img.hazeLevel)
-                        : ""
-                    }`
-              }}
+              {{ getImageTypeLabel(img.type, img.hazeLevel) }}
             </el-button>
             <el-button
               size="small"
@@ -1196,11 +1214,12 @@ onUnmounted(() => {
               {{ detailImage?.formattedSize || "-" }}
             </el-descriptions-item>
             <el-descriptions-item label="雾霾程度">
-              <el-tag v-if="detailImage?.hazeLevel" size="small" type="warning">
-                {{
-                  hazeLevelLabels[detailImage.hazeLevel] ||
-                  detailImage.hazeLevel
-                }}
+              <el-tag
+                v-if="detailImage?.hazeLevel"
+                size="small"
+                type="warning"
+              >
+                {{ formatHazeLevel(detailImage.hazeLevel) }}
               </el-tag>
               <span v-else>-</span>
             </el-descriptions-item>

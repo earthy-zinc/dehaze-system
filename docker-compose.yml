@@ -65,25 +65,39 @@ services:
       - pei-network
 
   # MinIO
-  # bind mount 本地数据集目录为 MinIO 数据根
-  # dehaze bucket（小写）通过 NTFS junction 链接各数据集子目录
-  # 文件 URL 格式：http://127.0.0.1:9000/dehaze/{dataset_path}/{subdir}/{filename}
+  # 用于后端文件上传功能（用户上传的去雾结果等），端口 9100/9190
+  # 数据集原始文件的浏览通过下面的 nginx 静态服务提供（端口 9000）
   minio:
     image: minio/minio:latest
     container_name: minio
     restart: always
     ports:
-      - "9000:9000"
-      - "9090:9090"
+      - "9100:9000"
+      - "9190:9090"
     environment:
       - MINIO_ACCESS_KEY=admin
       - MINIO_SECRET_KEY=${DEHAZE_PASSWORD}
       - MINIO_BROWSER_DEFAULT_LOCALE=zh_CN
     volumes:
-      - D:/DeepLearning/dataset:/data
+      - minio-data:/data
       - minio-config:/root/.minio
     command: server /data --console-address :9090 --address :9000
     privileged: true
+    networks:
+      - pei-network
+
+  # Nginx 静态文件服务
+  # 直接服务 D:\DeepLearning\dataset 下的数据集图片，无 bucket 名限制
+  # 文件 URL 格式：http://127.0.0.1:9000/{dataset_path}/{subdir}/{filename}
+  nginx-dataset:
+    image: nginx:alpine
+    container_name: nginx-dataset
+    restart: always
+    ports:
+      - "9000:80"
+    volumes:
+      - D:/DeepLearning/dataset:/usr/share/nginx/html:ro
+      - ./config/nginx/dataset.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - pei-network
 
@@ -596,6 +610,8 @@ volumes:
   mongo-logs:
     external: true
   minio-config:
+    external: true
+  minio-data:
     external: true
 
   es-data:

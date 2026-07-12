@@ -5,31 +5,29 @@ import '../models/dataset_model.dart';
 /// 类型筛选标签组件
 ///
 /// 支持横向滚动，适配移动端
+/// Tab 切换为"已标注/未标注"二分（基于 haze_level 是否为空）
 class TypeFilterTabs extends StatelessWidget {
   const TypeFilterTabs({
     required this.selectedType,
     required this.onTypeChanged,
     this.totalCount,
-    this.hazyCount,
-    this.clearCount,
-    this.dehazedCount,
+    this.annotatedCount,
+    this.unannotatedCount,
     super.key,
   });
 
   final ImageType? selectedType;
   final int? totalCount;
-  final int? hazyCount;
-  final int? clearCount;
-  final int? dehazedCount;
+  final int? annotatedCount;
+  final int? unannotatedCount;
   final void Function(ImageType?) onTypeChanged;
 
   @override
   Widget build(BuildContext context) {
     final filterOptions = [
       _FilterOption(null, '全部', totalCount ?? 0),
-      _FilterOption(ImageType.hazy, '有雾', hazyCount ?? 0),
-      _FilterOption(ImageType.clear, '清晰', clearCount ?? 0),
-      _FilterOption(ImageType.dehazed, '去雾结果', dehazedCount ?? 0),
+      _FilterOption(ImageType.hazy, '已标注', annotatedCount ?? 0),
+      _FilterOption(ImageType.clear, '未标注', unannotatedCount ?? 0),
     ];
 
     return Container(

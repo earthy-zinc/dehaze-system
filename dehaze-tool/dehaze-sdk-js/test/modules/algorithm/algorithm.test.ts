@@ -3,50 +3,6 @@ import { login, logout } from "#/utils/auth";
 import { expectBizErrorOrUndefined } from "#/utils/assertion";
 import { createAlgorithmForm, createAlgorithmQuery } from "#/factories/algorithm";
 
-/**
- * 🐛 已知后端 Bug
- *
- * Bug ID: BACKEND-001
- * 问题描述: FileExistValidator 在 path 字段为 null 时抛出 NullPointerException
- *
- * 错误信息:
- *   {"code":"B0001","msg":"HV000028: Unexpected exception during isValid call."}
- *
- * 根本原因:
- *   AlgorithmForm 的 path 字段有 @FileExists 验证注解
- *   FileExistValidator.isValid() 方法没有处理 null 值，直接调用 new File(value)
- *   标准的 Bean Validation 约束应该对 null 值返回 true（即忽略验证）
- *
- * 后端代码位置:
- *   dehaze-java/src/main/java/com/pei/dehaze/common/validator/FileExistValidator.java:11-14
- *
- * 后端修复建议:
- *   @Override
- *   public boolean isValid(String value, ConstraintValidatorContext context) {
- *     if (value == null || value.isEmpty()) {
- *       return true; // null 值由 @NotNull 验证，@FileExists 只验证非空值
- *     }
- *     File file = new File(value);
- *     return file.exists();
- *   }
- *
- * 复现命令:
- *   TOKEN=$(curl -s -X POST "http://localhost:8989/api/v1/auth/login" \
- *     -H "Content-Type: application/x-www-form-urlencoded" \
- *     -d "username=admin&password=123456" | jq -r '.data.accessToken')
- *   curl -s -X POST "http://localhost:8989/api/v1/algorithm" \
- *     -H "Authorization: Bearer $TOKEN" \
- *     -H "Content-Type: application/json" \
- *     -d '{"parentId":0,"name":"测试","type":"TEST","status":1}' | jq '.'
- *
- * 预期: 成功创建并返回算法ID
- * 实际: 400 Bad Request with HV000028
- *
- * 影响范围:
- *   - 所有需要创建/修改算法的测试用例都会失败
- *   - 使用 .skip() 标记这些测试，等待后端修复后移除 .skip()
- */
-
 describe("算法管理接口测试", () => {
   beforeAll(async () => {
     await login();
@@ -163,8 +119,8 @@ describe("算法管理接口测试", () => {
   });
 
   describe("GET /api/v1/algorithm/{id} - 获取算法详情", () => {
-    test.skip("正向测试：获取算法详情并验证数据完整性 - BACKEND_BUG: 依赖创建接口", async () => {
-      // 需要先创建算法，但创建接口有 bug，暂时跳过
+    test("正向测试：获取算法详情并验证数据完整性", async () => {
+      // 需要先创建算法
       const form = createAlgorithmForm({ parentId: 0 });
       const testAlgorithmId = (await AlgorithmAPI.add(form)) as number;
 
@@ -191,7 +147,7 @@ describe("算法管理接口测试", () => {
   });
 
   describe("POST /api/v1/algorithm - 新增算法", () => {
-    test.skip("正向测试：创建算法并验证数据真实持久化 - BACKEND_BUG: FileExistValidator NPE", async () => {
+    test("正向测试：创建算法并验证数据真实持久化", async () => {
       const form = createAlgorithmForm({ parentId: 0 });
 
       const algorithmId = await AlgorithmAPI.add(form);
@@ -212,7 +168,7 @@ describe("算法管理接口测试", () => {
       await AlgorithmAPI.deleteByIds([(algorithmId as number).toString()]);
     });
 
-    test.skip("正向测试：创建子算法并验证父子关系 - BACKEND_BUG: FileExistValidator NPE", async () => {
+    test("正向测试：创建子算法并验证父子关系", async () => {
       // 先创建父算法
       const parentForm = createAlgorithmForm({ parentId: 0 });
       const parentAlgorithmId = (await AlgorithmAPI.add(parentForm)) as number;
@@ -230,7 +186,7 @@ describe("算法管理接口测试", () => {
       await AlgorithmAPI.deleteByIds([parentAlgorithmId.toString()]);
     });
 
-    test.skip("参数校验：缺少必需字段 name 应抛出业务错误 - BACKEND_BUG: FileExistValidator NPE 优先触发", async () => {
+    test("参数校验：缺少必需字段 name 应抛出业务错误", async () => {
       const form: Partial<Algorithm> = {
         parentId: 0,
         type: "TEST",
@@ -244,7 +200,7 @@ describe("算法管理接口测试", () => {
       ]);
     });
 
-    test.skip("参数校验：缺少必需字段 type 应抛出业务错误 - BACKEND_BUG: FileExistValidator NPE 优先触发", async () => {
+    test("参数校验：缺少必需字段 type 应抛出业务错误", async () => {
       const form: Partial<Algorithm> = {
         parentId: 0,
         name: "测试算法",
@@ -260,7 +216,7 @@ describe("算法管理接口测试", () => {
   });
 
   describe("PUT /api/v1/algorithm/{id} - 修改算法", () => {
-    test.skip("正向测试：更新算法名称并验证更新真实生效 - BACKEND_BUG: 依赖创建接口", async () => {
+    test("正向测试：更新算法名称并验证更新真实生效", async () => {
       // 先创建一个算法
       const form = createAlgorithmForm({ parentId: 0 });
       const testAlgorithmId = (await AlgorithmAPI.add(form)) as number;
@@ -268,8 +224,7 @@ describe("算法管理接口测试", () => {
 
       // 更新算法名称
       const newForm = createAlgorithmForm({ parentId: originalAlgorithm.parentId });
-      const result = await AlgorithmAPI.update(testAlgorithmId, newForm);
-      expect(result).toBeDefined();
+      await expect(AlgorithmAPI.update(testAlgorithmId, newForm)).resolves.not.toThrow();
 
       // 验证更新后的数据
       const algorithmInfo = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
@@ -279,7 +234,7 @@ describe("算法管理接口测试", () => {
       await AlgorithmAPI.deleteByIds([testAlgorithmId.toString()]);
     });
 
-    test.skip("正向测试：更新算法状态并验证状态值正确 - BACKEND_BUG: 依赖创建接口", async () => {
+    test("正向测试：更新算法状态并验证状态值正确", async () => {
       // 先创建一个算法
       const form = createAlgorithmForm({ parentId: 0, status: 1 });
       const testAlgorithmId = (await AlgorithmAPI.add(form)) as number;
@@ -311,7 +266,7 @@ describe("算法管理接口测试", () => {
   });
 
   describe("DELETE /api/v1/algorithm/{ids} - 删除算法", () => {
-    test.skip("正向测试：删除单个算法并验证算法真的被删除 - BACKEND_BUG: 依赖创建接口", async () => {
+    test("正向测试：删除单个算法并验证算法真的被删除", async () => {
       // 创建测试算法
       const form = createAlgorithmForm({ parentId: 0 });
       const algorithmId = (await AlgorithmAPI.add(form)) as number;
@@ -327,7 +282,7 @@ describe("算法管理接口测试", () => {
       ]);
     });
 
-    test.skip("正向测试：批量删除多个算法并验证所有算法都被删除 - BACKEND_BUG: 依赖创建接口", async () => {
+    test("正向测试：批量删除多个算法并验证所有算法都被删除", async () => {
       // 创建多个测试算法
       const algorithmIds: number[] = [];
       for (let i = 0; i < 3; i++) {

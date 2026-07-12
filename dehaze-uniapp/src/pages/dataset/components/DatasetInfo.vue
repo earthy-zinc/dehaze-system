@@ -8,16 +8,12 @@
         <text class="stat-label">总计</text>
       </view>
       <view class="stat-box">
-        <text class="stat-value">{{ dataset.foggy_count }}</text>
-        <text class="stat-label">有雾</text>
-      </view>
-      <view class="stat-box">
-        <text class="stat-value">{{ dataset.clear_count }}</text>
-        <text class="stat-label">无雾</text>
-      </view>
-      <view class="stat-box">
         <text class="stat-value">{{ dataset.annotated_count }}</text>
-        <text class="stat-label">标注</text>
+        <text class="stat-label">已标注</text>
+      </view>
+      <view class="stat-box">
+        <text class="stat-value">{{ dataset.unannotated_count }}</text>
+        <text class="stat-label">未标注</text>
       </view>
     </view>
   </view>
@@ -58,7 +54,7 @@ defineProps<Props>();
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 16rpx;
 }
 

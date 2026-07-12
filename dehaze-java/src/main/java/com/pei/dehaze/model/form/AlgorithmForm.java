@@ -2,6 +2,7 @@ package com.pei.dehaze.model.form;
 
 import com.pei.dehaze.common.validator.FileExists;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -16,9 +17,11 @@ public class AlgorithmForm {
     private Long parentId;
 
     @Schema(description = "算法类型")
+    @NotBlank(message = "算法类型不能为空")
     private String type;
 
     @Schema(description = "算法名称")
+    @NotBlank(message = "算法名称不能为空")
     private String name;
 
     @Schema(description = "算法模型文件存储路径")

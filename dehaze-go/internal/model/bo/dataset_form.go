@@ -34,8 +34,8 @@ type StatisticsBO struct {
 	ItemCount          int64            `json:"itemCount"`
 	FileCount          int64            `json:"fileCount"`
 	TotalSize          int64            `json:"totalSize"`
-	ClearCount         int64            `json:"clearCount"`
-	HazyCount          int64            `json:"hazyCount"`
+	AnnotatedCount     int64            `json:"annotatedCount"`
+	UnannotatedCount   int64            `json:"unannotatedCount"`
 	SceneDistribution  map[string]int64 `json:"sceneDistribution"`
 	HazeDistribution   map[string]int64 `json:"hazeDistribution"`
 	FormatDistribution map[string]int64 `json:"formatDistribution"`

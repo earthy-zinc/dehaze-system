@@ -1,6 +1,7 @@
 package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -12,6 +13,7 @@ public class DeptForm {
     private Long id;
 
     @Schema(description="部门名称")
+    @NotBlank(message = "部门名称不能为空")
     private String name;
 
     @Schema(description="父部门ID")

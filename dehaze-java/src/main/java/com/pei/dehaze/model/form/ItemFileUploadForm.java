@@ -31,10 +31,9 @@ public class ItemFileUploadForm {
     private Long itemId;
 
     @Schema(
-            description = "图片类型：clear-清晰图（Ground Truth），hazy-有雾图",
+            description = "图片类型：clear(清晰图/GT) / hazy(有雾图) / trans(透射率图) / depth(深度图) / segment(分割图)",
             requiredMode = Schema.RequiredMode.REQUIRED,
-            example = "hazy",
-            allowableValues = {"clear", "hazy"}
+            example = "hazy"
     )
     @NotBlank(message = "图片类型不能为空")
     private String type;
@@ -52,9 +51,8 @@ public class ItemFileUploadForm {
     private String sceneType;
 
     @Schema(
-            description = "雾霾程度，仅对有雾图有效：light-轻度，medium-中度，heavy-重度",
-            example = "medium",
-            allowableValues = {"light", "medium", "heavy"}
+            description = "雾霾程度，支持多种规范：light/medium/heavy（人工分级）、beta=0.5（β参数）、A=0.8,beta=0.2（A+β双参数），可为空",
+            example = "medium"
     )
     private String hazeLevel;
 }
