@@ -2,6 +2,8 @@ package com.pei.dehaze.sdk;
 
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.network.ApiException;
+import com.pei.dehaze.sdk.utils.TokenManager;
+
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -21,15 +23,15 @@ public abstract class ApiCallback<T> implements Callback<Result<T>> {
     /**
      * 请求成功但业务逻辑失败时调用
      *
-     * @param code    错误码
+     * @param code    业务错误码（如 "A0200"、"B0001"）
      * @param message 错误消息
      */
-    public void onError(int code, String message) {
+    public void onError(String code, String message) {
         // 默认空实现
     }
 
     /**
-     * 网络请求失败时调用
+     * 网络请求失败时调用（网络异常或HTTP错误）
      *
      * @param e 异常信息
      */
@@ -39,15 +41,29 @@ public abstract class ApiCallback<T> implements Callback<Result<T>> {
 
     @Override
     public void onResponse(Call<Result<T>> call, Response<Result<T>> response) {
-        if (response.isSuccessful() && response.body() != null) {
+        if (response.isSuccessful()) {
             Result<T> result = response.body();
+            if (result == null) {
+                onFailure(new ApiException(response.code(), "响应体为空"));
+                return;
+            }
             if (result.isSuccess()) {
                 onSuccess(result.getData());
             } else {
-                onError(result.getCode(), result.getMessage());
+                // 401 且 token 无效，清除本地 token
+                if (TokenManager.isTokenInvalidCode(result.getCode())) {
+                    TokenManager.clearToken();
+                }
+                onError(result.getCode(), result.getMsg());
             }
         } else {
-            onFailure(new ApiException(response.code(), "Response not successful or body is null"));
+            // HTTP 错误，解析后端返回的业务错误信息
+            ApiException exception = ApiException.handleHttpException(response, DehazeSDK.getInstance().getRetrofit());
+            // 401 自动清除 token
+            if (response.code() == 401) {
+                TokenManager.clearToken();
+            }
+            onFailure(exception);
         }
     }
 

@@ -16,6 +16,7 @@ interface FeaturesSectionProps {
   onFilterPress: () => void;
   onMetricsPress: () => void;
   onDatasetManagePress: () => void;
+  onTaskCenterPress: () => void;
 }
 
 const FeaturesSection: React.FC<FeaturesSectionProps> = ({
@@ -28,6 +29,7 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
   onFilterPress,
   onMetricsPress,
   onDatasetManagePress,
+  onTaskCenterPress,
 }) => {
   const { width, isMobile, isTablet, spacing, containerPadding, fontScale } = useResponsive();
 
@@ -92,6 +94,12 @@ const FeaturesSection: React.FC<FeaturesSectionProps> = ({
       title: '数据集管理',
       description: '浏览和管理多个专业去雾数据集',
       onPress: onDatasetManagePress,
+    },
+    {
+      icon: 'task',
+      title: '任务中心',
+      description: '查看和管理数据集导出、下载等异步任务',
+      onPress: onTaskCenterPress,
     },
   ];
 

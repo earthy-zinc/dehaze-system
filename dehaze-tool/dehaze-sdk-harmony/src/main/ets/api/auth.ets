@@ -1,47 +1,46 @@
 import { HttpManager } from '../utils/HttpManager';
-import { Result } from '../model/Result';
-import { LoginData, LoginResult, CaptchaResult } from '../model/AuthInfo';
+import { LoginData, LoginResult, CaptchaResult, AuthUserInfo } from '../model/AuthInfo';
 
 /**
- * 认证相关API服务接口
+ * 认证相关 API
+ *
+ * 路径与后端路由对齐（dehaze-go/internal/router/auth.go）：
+ * - GET  /api/v1/auth/captcha   获取验证码
+ * - POST /api/v1/auth/login      登录
+ * - POST /api/v1/auth/logout     登出
+ * - GET  /api/v1/auth/me         获取当前用户信息
+ * - POST /api/v1/auth/refresh    刷新 Token
  */
 export class AuthAPI {
   private static readonly BASE_URL: string = '/api/v1';
 
-  /**
-   * 登录API
-   *
-   * @param data 登录参数
-   * @returns 登录结果
-   */
-  public static async login(data: LoginData): Promise<Result<LoginResult>> {
-    const formData = new FormData();
-    formData.append('username', data.username);
-    formData.append('password', data.password);
-    formData.append('captchaKey', data.captchaKey || '');
-    formData.append('captchaCode', data.captchaCode || '');
-    
+  /** 获取验证码 */
+  public static async getCaptcha(): Promise<CaptchaResult> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.post<Result<LoginResult>>(`${AuthAPI.BASE_URL}/auth/login`, formData);
+    return await httpManager.get<CaptchaResult>(`${AuthAPI.BASE_URL}/auth/captcha`, undefined);
   }
 
-  /**
-   * 注销API
-   *
-   * @returns 注销结果
-   */
-  public static async logout(): Promise<Result<void>> {
+  /** 登录 */
+  public static async login(data: LoginData): Promise<LoginResult> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.delete<Result<void>>(`${AuthAPI.BASE_URL}/auth/logout`);
+    return await httpManager.post<LoginResult>(`${AuthAPI.BASE_URL}/auth/login`, data as unknown as Record<string, Object>);
   }
 
-  /**
-   * 获取验证码
-   *
-   * @returns 验证码结果
-   */
-  public static async getCaptcha(): Promise<Result<CaptchaResult>> {
+  /** 登出 */
+  public static async logout(): Promise<void> {
     const httpManager = HttpManager.getInstance();
-    return await httpManager.get<Result<CaptchaResult>>(`${AuthAPI.BASE_URL}/auth/captcha`);
+    await httpManager.post<void>(`${AuthAPI.BASE_URL}/auth/logout`, undefined);
+  }
+
+  /** 获取当前用户信息（/auth/me） */
+  public static async getMe(): Promise<AuthUserInfo> {
+    const httpManager = HttpManager.getInstance();
+    return await httpManager.get<AuthUserInfo>(`${AuthAPI.BASE_URL}/auth/me`, undefined);
+  }
+
+  /** 刷新 Token */
+  public static async refreshToken(refreshToken: string): Promise<LoginResult> {
+    const httpManager = HttpManager.getInstance();
+    return await httpManager.post<LoginResult>(`${AuthAPI.BASE_URL}/auth/refresh`, { refreshToken } as Record<string, Object>);
   }
 }

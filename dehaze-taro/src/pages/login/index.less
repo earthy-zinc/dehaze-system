@@ -1,132 +1,188 @@
+// ==================== 登录页 ====================
+
 .login-container {
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+  position: relative;
+  overflow: hidden;
+
+  // 背景装饰圆
+  &::before {
+    content: '';
+    position: absolute;
+    top: -120rpx;
+    right: -120rpx;
+    width: 400rpx;
+    height: 400rpx;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -160rpx;
+    left: -160rpx;
+    width: 480rpx;
+    height: 480rpx;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+// 顶部 Logo 区
+.login-header {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  height: 100vh;
-  background-color: #f5f7fa;
+  padding: 120rpx 0 60rpx;
+  position: relative;
+  z-index: 1;
 
-  .login-header {
-    margin-top: 32px;
+  .logo-circle {
+    width: 120rpx;
+    height: 120rpx;
+    border-radius: 36rpx;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24rpx;
+    border: 2rpx solid rgba(255, 255, 255, 0.3);
   }
 
-  .login-card {
-    width: 80vw;
-    max-width: 340px;
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 10px 10px rgba(0, 0, 0, 0.1);
-    overflow: hidden;
-    padding: 12px 24px;
-    transition: all 0.3s ease;
+  .app-title {
+    font-size: 44rpx;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 2rpx;
+    margin-bottom: 8rpx;
+  }
 
-    .login-header {
+  .app-slogan {
+    font-size: 24rpx;
+    color: rgba(255, 255, 255, 0.8);
+  }
+}
+
+// 登录卡片
+.login-card {
+  margin: 0 48rpx;
+  padding: 48rpx 40rpx;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 32rpx;
+  box-shadow: 0 16rpx 48rpx rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 1;
+}
+
+// 表单
+.form-container {
+  .form-group {
+    margin-bottom: 28rpx;
+
+    .form-label {
+      display: block;
+      font-size: 26rpx;
+      color: #6b7280;
+      margin-bottom: 12rpx;
+      font-weight: 500;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 20rpx 24rpx;
+      border: 2rpx solid #e5e7eb;
+      border-radius: 16rpx;
+      font-size: 30rpx;
+      color: #1f2937;
+      background: #f9fafb;
+      transition: all 0.2s ease;
+
+      &:focus {
+        border-color: var(--color-primary, #3b82f6);
+        background: #ffffff;
+        outline: none;
+      }
+
+      &::placeholder {
+        color: #9ca3af;
+      }
+    }
+
+    .captcha-container {
       display: flex;
-      justify-content: center;
       align-items: center;
-      text-align: center;
-      margin-bottom: 12px;
+      gap: 16rpx;
 
-      .app-title {
-        font-size: 24px;
-        font-weight: bold;
-        color: #333;
-        margin: 10px 0;
+      .form-input {
+        flex: 1;
       }
 
-      .version {
-        background-color: #e6f7e6;
-        color: #389e3c;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        margin-left: 10px;
-      }
-    }
-
-    .form-container {
-      .form-group {
-        margin-bottom: 16px;
-
-        .form-input {
-          padding: 10px 12px;
-          border: 1px solid #d9d9d9;
-          border-radius: 8px;
-          font-size: 14px;
-          transition: border-color 0.3s ease;
-
-          &:focus {
-            border-color: #389e3c;
-            outline: none;
-          }
-
-          &::placeholder {
-            color: #aaa;
-          }
-        }
-
-        .captcha-container {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-
-          .captcha-image {
-            width: 40%;
-            height: 40px;
-          }
-        }
-      }
-
-      .form-button {
-        width: 100%;
-        padding: 16px;
-        background-color: #389e3c;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        font-size: 18px;
-        font-weight: bold;
-        line-height: 24px;
-        cursor: pointer;
-        transition: background-color 0.3s ease;
-        margin-top: 36px;
-
-        &:active {
-          background-color: #2e7d32;
-        }
-
-        &:disabled {
-          background-color: #cccccc;
-          cursor: not-allowed;
-        }
-      }
-
-      .footer-info {
-        margin-top: 16px;
-        margin-bottom: 12px;
-        text-align: center;
-
-        .info-text {
-          font-size: 14px;
-          color: #666;
-          margin: 4px 0;
-        }
+      .captcha-image {
+        width: 200rpx;
+        height: 76rpx;
+        border-radius: 16rpx;
+        border: 2rpx solid #e5e7eb;
       }
     }
   }
 
-  .login-footer {
-    padding-bottom: 36px;
-    text-align: center;
-    color: #666;
-    font-size: 12px;
+  .form-button {
+    width: 100%;
+    padding: 24rpx;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #ffffff !important;
+    border: none;
+    border-radius: 16rpx;
+    font-size: 32rpx;
+    font-weight: 600;
+    line-height: 1.2;
+    box-shadow: 0 8rpx 20rpx rgba(59, 130, 246, 0.3);
+    margin-top: 16rpx;
+    transition: all 0.2s ease;
 
-    .login-footer-text {
-      margin-top: 6px;
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: 0 4rpx 12rpx rgba(59, 130, 246, 0.3);
+    }
 
-      text {
-        margin: 4px 0;
-      }
+    &:disabled {
+      background: #d1d5db;
+      box-shadow: none;
+    }
+  }
+
+  .footer-info {
+    margin-top: 32rpx;
+    display: flex;
+    justify-content: center;
+    gap: 24rpx;
+
+    .info-text {
+      font-size: 24rpx;
+      color: #9ca3af;
+    }
+  }
+}
+
+// 底部版权
+.login-footer {
+  margin-top: auto;
+  padding: 48rpx 0 64rpx;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+
+  .login-footer-text {
+    margin-top: 8rpx;
+
+    text {
+      font-size: 22rpx;
+      color: rgba(255, 255, 255, 0.6);
     }
   }
 }

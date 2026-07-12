@@ -21,8 +21,10 @@ const AppContent: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const App: React.FC<AppProps> = (props) => {
-  // 配置请求拦截器
-  configRequest();
+  // 配置请求拦截器（仅执行一次）
+  useEffect(() => {
+    configRequest();
+  }, []);
 
   return (
     <GlobalProvider>

@@ -2,15 +2,31 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "module description"
+      "value": "图像去雾系统"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "description"
+      "value": "图像去雾系统"
     },
     {
       "name": "EntryAbility_label",
-      "value": "label"
+      "value": "图像去雾"
+    },
+    {
+      "name": "permission_internet_reason",
+      "value": "用于访问后端服务进行图像去雾处理"
+    },
+    {
+      "name": "permission_read_media_reason",
+      "value": "用于读取相册中的图片进行去雾处理"
+    },
+    {
+      "name": "permission_write_media_reason",
+      "value": "用于将去雾处理后的图片保存到相册"
+    },
+    {
+      "name": "permission_camera_reason",
+      "value": "用于拍照获取图片进行去雾处理"
     }
   ]
 }

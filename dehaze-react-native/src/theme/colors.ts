@@ -7,9 +7,16 @@ export const colors = {
   success: '#34d399',
   warning: '#fbbf24',
   error: '#ef4444',
+  status: {
+    success: '#34d399',
+    warning: '#fbbf24',
+    error: '#ef4444',
+    info: '#3b82f6',
+  },
   text: {
     primary: '#1f2937',
     secondary: '#6b7280',
+    tertiary: '#9ca3af',
     muted: '#9ca3af',
     inverse: '#ffffff',
     link: '#3b82f6',

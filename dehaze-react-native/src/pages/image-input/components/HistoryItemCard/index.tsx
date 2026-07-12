@@ -19,7 +19,19 @@ import { historyStorage } from '../../services/historyStorage';
 interface HistoryItemCardProps {
   record: HistoryRecord;
   onPress: (record: HistoryRecord) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
+}
+
+/** 从 URL 中提取文件名 */
+function extractFilename(url?: string): string {
+  if (!url) return '历史图片';
+  try {
+    const pathname = new URL(url).pathname;
+    const segments = pathname.split('/');
+    return segments[segments.length - 1] || '历史图片';
+  } catch {
+    return '历史图片';
+  }
 }
 
 const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
@@ -47,7 +59,10 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
     }).start();
   };
 
-  const formattedTime = historyStorage.formatTimestamp(record.timestamp);
+  const thumbnailUrl = record.originalThumbnailUrl || record.originalImageUrl || '';
+  const filename = extractFilename(record.originalImageUrl);
+  const formattedTime = historyStorage.formatTimestamp(record.createTime);
+  const isSuccess = !!record.resultImageUrl;
 
   return (
     <TouchableOpacity
@@ -65,7 +80,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
         {/* 缩略图 */}
         <View style={styles.thumbnailContainer}>
           <ImageLoader
-            source={{ uri: record.originalThumbnail }}
+            source={{ uri: thumbnailUrl }}
             style={styles.thumbnail}
             resizeMode="cover"
           />
@@ -74,11 +89,11 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
           <View
             style={[
               styles.statusIndicator,
-              record.isSuccess ? styles.statusSuccess : styles.statusFailed,
+              isSuccess ? styles.statusSuccess : styles.statusFailed,
             ]}
           >
             <Icon
-              name={record.isSuccess ? 'checkmark' : 'close'}
+              name={isSuccess ? 'checkmark' : 'close'}
               size={10}
               color="#fff"
             />
@@ -88,7 +103,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
         {/* 信息区域 */}
         <View style={styles.infoContainer}>
           <Text style={styles.filename} numberOfLines={1}>
-            {record.filename}
+            {filename}
           </Text>
 
           <Text style={styles.time}>{formattedTime}</Text>

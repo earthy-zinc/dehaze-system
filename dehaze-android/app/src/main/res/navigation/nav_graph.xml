@@ -30,7 +30,17 @@
         android:id="@+id/datasetFragment"
         android:name="com.pei.dehaze.ui.dataset.DatasetFragment"
         android:label="数据集"
-        tools:layout="@layout/fragment_dataset" />
+        tools:layout="@layout/fragment_dataset">
+        <action
+            android:id="@+id/action_datasetFragment_to_datasetDetailFragment"
+            app:destination="@id/datasetDetailFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/datasetDetailFragment"
+        android:name="com.pei.dehaze.ui.dataset.DatasetDetailFragment"
+        android:label="数据集详情"
+        tools:layout="@layout/fragment_dataset_detail" />
 
     <!-- 算法模块 -->
     <fragment
@@ -45,7 +55,7 @@
         android:name="com.pei.dehaze.ui.compare.CompareActivity"
         android:label="图像对比"
         tools:layout="@layout/activity_compare" />
-        
+
     <action
         android:id="@+id/action_global_compareActivity"
         app:destination="@id/compareActivity" />
@@ -56,7 +66,7 @@
         android:name="com.pei.dehaze.ui.evaluation.EvaluationActivity"
         android:label="图像评估"
         tools:layout="@layout/activity_evaluation" />
-        
+
     <action
         android:id="@+id/action_global_evaluationActivity"
         app:destination="@id/evaluationActivity" />
@@ -67,10 +77,21 @@
         android:name="com.pei.dehaze.ui.presentation.PresentationActivity"
         android:label="图像展示"
         tools:layout="@layout/activity_presentation" />
-        
+
     <action
         android:id="@+id/action_global_presentationActivity"
         app:destination="@id/presentationActivity" />
+
+    <!-- 图像输入历史 Activity -->
+    <activity
+        android:id="@+id/inputHistoryActivity"
+        android:name="com.pei.dehaze.ui.input.InputHistoryActivity"
+        android:label="图像输入历史"
+        tools:layout="@layout/activity_input_history" />
+
+    <action
+        android:id="@+id/action_global_inputHistoryActivity"
+        app:destination="@id/inputHistoryActivity" />
 
     <!-- 系统管理模块 -->
     <fragment

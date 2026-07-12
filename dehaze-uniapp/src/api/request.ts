@@ -60,7 +60,10 @@ async function refreshToken(): Promise<string> {
   try {
     const refreshTokenStr = uni.getStorageSync(REFRESH_TOKEN_KEY);
     if (!refreshTokenStr) {
-      throw new Error("No refresh token");
+      // 没有 refreshToken，直接跳转登录页
+      clearAuth();
+      uni.reLaunch({ url: "/pages/login/index" });
+      throw new Error("No refresh token, please login again");
     }
 
     const res = await uni.request({
@@ -78,7 +81,9 @@ async function refreshToken(): Promise<string> {
     if (res.statusCode === 200 && response.code === ResultCode.SUCCESS) {
       const { accessToken, refreshToken: newRefreshToken } = response.data;
       uni.setStorageSync(ACCESS_TOKEN_KEY, accessToken);
-      uni.setStorageSync(REFRESH_TOKEN_KEY, newRefreshToken);
+      if (newRefreshToken) {
+        uni.setStorageSync(REFRESH_TOKEN_KEY, newRefreshToken);
+      }
       return accessToken;
     }
     throw new Error("Refresh token failed");

@@ -76,11 +76,14 @@ export const useAuthStore = defineStore("auth", () => {
     const result = await loginApi(data);
 
     accessToken.value = result.accessToken;
-    refreshToken.value = result.refreshToken;
+    // 后端可能不返回 refreshToken，这里做兼容
+    refreshToken.value = result.refreshToken || "";
 
     // 持久化 Token
     uni.setStorageSync(ACCESS_TOKEN_KEY, result.accessToken);
-    uni.setStorageSync(REFRESH_TOKEN_KEY, result.refreshToken);
+    if (result.refreshToken) {
+      uni.setStorageSync(REFRESH_TOKEN_KEY, result.refreshToken);
+    }
 
     // 登录成功后获取完整用户信息
     try {
@@ -130,7 +133,8 @@ export const useAuthStore = defineStore("auth", () => {
 
   /** 是否为管理员 */
   function isAdmin(): boolean {
-    return hasRole("ROLE_ROOT") || hasRole("ROLE_ADMIN");
+    // 后端返回的角色无 ROLE_ 前缀，兼容两种形式
+    return hasRole("ROOT") || hasRole("ADMIN") || hasRole("ROLE_ROOT") || hasRole("ROLE_ADMIN");
   }
 
   return {

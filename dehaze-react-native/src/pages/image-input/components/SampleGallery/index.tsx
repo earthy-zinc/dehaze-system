@@ -12,7 +12,8 @@ import {
 } from 'react-native';
 import { useResponsive } from '@/hooks/useResponsive';
 import { theme } from '@/theme';
-import { SampleImage, SampleCategory, SelectedImage } from '../../types/imageInput';
+import type { SelectedImage } from '@/types/image';
+import { SampleImage, SampleCategory } from '../../types/imageInput';
 import { imageInputApi } from '../../services/imageInputApi';
 import SampleCategoryTabs from '../SampleCategoryTabs';
 import SampleImageCard from '../SampleImageCard';
@@ -34,12 +35,11 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
   const loadSamples = useCallback(async (cat: SampleCategory) => {
     setLoading(true);
     try {
-      const response = await imageInputApi.fetchSamples(cat);
-      if (response.code === 0) {
-        setSamples(response.data.list);
-      }
+      const list = await imageInputApi.fetchSamples(cat);
+      setSamples(list);
     } catch (error) {
       console.error('Failed to load samples:', error);
+      setSamples([]);
     } finally {
       setLoading(false);
     }
@@ -58,27 +58,30 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
   const handleSamplePress = useCallback(async (sample: SampleImage) => {
     setLoadingImage(true);
     try {
-      // 获取图片尺寸
-      let width = 1920;
-      let height = 1080;
+      let width = sample.width || 1920;
+      let height = sample.height || 1080;
 
-      try {
-        const size = await imageInputApi.getImageSize(sample.url);
-        width = size.width;
-        height = size.height;
-      } catch (e) {
-        // 使用默认值
+      if (!width || !height) {
+        try {
+          const size = await imageInputApi.getImageSize(sample.url);
+          width = size.width;
+          height = size.height;
+        } catch (e) {
+          // 使用默认值
+        }
       }
 
       const selectedImage: SelectedImage = {
-        id: Date.now().toString(),
-        uri: sample.url,
-        filename: `${sample.name}.jpg`,
+        id: sample.id.toString(),
+        url: sample.url,
+        thumbUrl: sample.thumbUrl,
+        name: sample.name,
         width,
         height,
-        fileSize: 0, // 远程图片无法获取文件大小
         source: 'sample',
-        sampleInfo: sample,
+        sampleInfo: {
+          sceneType: sample.sceneType,
+        },
       };
 
       onSelectSample(selectedImage);

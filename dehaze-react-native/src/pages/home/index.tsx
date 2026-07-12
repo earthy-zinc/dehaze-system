@@ -1,8 +1,9 @@
-import { RootStackParamList } from '@/routes/navigator';
+import type { RootStackParamList } from '@/routes/types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, ScrollView } from 'react-native';
 import { MainLayout } from '@/layout';
+import { useAuth } from '@/store';
 import HeroSection from './components/HeroSection';
 import ShowcaseSection from './components/ShowcaseSection';
 import FeaturesSection from './components/FeaturesSection';
@@ -13,6 +14,16 @@ import FinalCTASection from './components/FinalCTASection';
 type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+  const { state, refreshUserInfo } = useAuth();
+
+  // 首页加载时获取用户信息（登录后首次进入时 state.userInfo 可能为 null）
+  useEffect(() => {
+    if (!state.userInfo) {
+      refreshUserInfo().catch(() => {
+        // 获取失败不阻塞首页展示
+      });
+    }
+  }, [state.userInfo, refreshUserInfo]);
 
   // 导航处理函数
   const handleStartPress = () => {
@@ -59,6 +70,10 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('Dataset');
   };
 
+  const handleTaskCenterPress = () => {
+    navigation.navigate('Task');
+  };
+
   const handleLearnMorePress = () => {
     navigation.navigate('Algorithm');
   };
@@ -87,6 +102,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
           onFilterPress={handleFilterPress}
           onMetricsPress={handleMetricsPress}
           onDatasetManagePress={handleDatasetManagePress}
+          onTaskCenterPress={handleTaskCenterPress}
         />
 
         <AlgorithmSection onLearnMorePress={handleLearnMorePress} />

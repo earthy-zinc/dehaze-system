@@ -247,11 +247,13 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const { tokenType, accessToken } = response;
       const token = `${tokenType} ${accessToken}`;
 
-      // 获取用户信息
+      // 先保存 token，后续请求拦截器才能读取到
+      storage.setToken(token);
+
+      // 获取用户信息（此时请求头会携带 token）
       const userInfo = await UserAPI.getInfo()
 
       // 存储到本地
-      storage.setToken(token);
       await storage.setUserInfo(userInfo);
       await storage.setPermissions(userInfo.perms || []);
       await storage.setRoles(userInfo.roles || []);

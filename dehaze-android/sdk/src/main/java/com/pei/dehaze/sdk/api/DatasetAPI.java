@@ -2,13 +2,18 @@ package com.pei.dehaze.sdk.api;
 
 import com.pei.dehaze.sdk.ApiCallback;
 import com.pei.dehaze.sdk.DehazeSDK;
-import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.sdk.model.Result;
+import com.pei.dehaze.sdk.model.dataset.BatchDeleteForm;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
+import com.pei.dehaze.sdk.model.dataset.DatasetImageFileInfo;
+import com.pei.dehaze.sdk.model.dataset.DatasetItemCreateForm;
+import com.pei.dehaze.sdk.model.dataset.DatasetItemUpdateForm;
 import com.pei.dehaze.sdk.model.dataset.DatasetQuery;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
 import com.pei.dehaze.sdk.model.dataset.ImageItemQuery;
-import com.pei.dehaze.sdk.model.dataset.DatasetImageFileInfo;
+import com.pei.dehaze.sdk.model.dataset.ItemFileUpdateForm;
 
 import java.io.File;
 import java.util.List;
@@ -23,21 +28,28 @@ import retrofit2.Call;
  */
 public class DatasetAPI {
 
+    // ===== 数据集 =====
+
     /**
-     * 数据集树形表格
-     *
-     * @param queryParams 查询参数
-     * @param callback    回调函数
+     * 分页查询数据集列表
      */
-    public static void getList(DatasetQuery queryParams, ApiCallback<List<Dataset>> callback) {
-        Call<Result<List<Dataset>>> call = DehazeSDK.getInstance().getDatasetApiService().getDatasetList(queryParams.getKeywords());
+    public static void getList(DatasetQuery query, ApiCallback<PageResult<Dataset>> callback) {
+        Call<Result<PageResult<Dataset>>> call = DehazeSDK.getInstance().getDatasetApiService()
+                .getDatasetList(query.getPageNum(), query.getPageSize(),
+                        query.getKeywords(), query.getType(), query.getStatus());
         call.enqueue(callback);
     }
 
     /**
-     * 获取数据集下拉列表
-     *
-     * @param callback 回调函数
+     * 获取完整数据集树
+     */
+    public static void getTree(ApiCallback<List<Dataset>> callback) {
+        Call<Result<List<Dataset>>> call = DehazeSDK.getInstance().getDatasetApiService().getDatasetTree();
+        call.enqueue(callback);
+    }
+
+    /**
+     * 获取数据集下拉选项
      */
     public static void getOptions(ApiCallback<List<Option>> callback) {
         Call<Result<List<Option>>> call = DehazeSDK.getInstance().getDatasetApiService().getDatasetOptions();
@@ -45,34 +57,23 @@ public class DatasetAPI {
     }
 
     /**
-     * 根据Id获取数据集信息
-     *
-     * @param id       数据集id
-     * @param callback 回调函数
+     * 获取子数据集列表（懒加载）
      */
-    public static void getDatasetInfoById(int id, ApiCallback<Dataset> callback) {
-        Call<Result<Dataset>> call = DehazeSDK.getInstance().getDatasetApiService().getDatasetInfo(id);
+    public static void getChildren(long parentId, ApiCallback<List<Dataset>> callback) {
+        Call<Result<List<Dataset>>> call = DehazeSDK.getInstance().getDatasetApiService().getDatasetChildren(parentId);
         call.enqueue(callback);
     }
 
     /**
-     * 获取数据集详细图片
-     *
-     * @param id          数据集ID
-     * @param queryParams 查询参数
-     * @param callback    回调函数
+     * 根据ID获取数据集详情
      */
-    public static void getImageItem(int id, ImageItemQuery queryParams, ApiCallback<List<ImageItem>> callback) {
-        Call<Result<List<ImageItem>>> call = DehazeSDK.getInstance().getDatasetApiService()
-                .getDatasetImageItems(id, queryParams.getPageNum(), queryParams.getPageSize(), queryParams.getKeywords());
+    public static void getDatasetInfoById(long id, ApiCallback<Dataset> callback) {
+        Call<Result<Dataset>> call = DehazeSDK.getInstance().getDatasetApiService().getDatasetById(id);
         call.enqueue(callback);
     }
 
     /**
      * 新增数据集
-     *
-     * @param data     数据集数据
-     * @param callback 回调函数
      */
     public static void add(Dataset data, ApiCallback<Void> callback) {
         Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().addDataset(data);
@@ -81,104 +82,132 @@ public class DatasetAPI {
 
     /**
      * 修改数据集
-     *
-     * @param id       数据集ID
-     * @param data     数据集数据
-     * @param callback 回调函数
      */
-    public static void update(int id, Dataset data, ApiCallback<Void> callback) {
+    public static void update(long id, Dataset data, ApiCallback<Void> callback) {
         Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().updateDataset(id, data);
         call.enqueue(callback);
     }
 
     /**
-     * 删除数据集
-     *
-     * @param ids      数据集ID列表
-     * @param callback 回调函数
+     * 删除单个数据集
      */
-    public static void deleteByIds(String ids, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().deleteDatasets(ids);
+    public static void delete(long id, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().deleteDataset(id);
         call.enqueue(callback);
     }
 
     /**
-     * 新增数据项
-     *
-     * @param datasetId 数据集ID
-     * @param name      数据项名称
-     * @param callback  回调函数
+     * 批量删除数据集
      */
-    public static void addDatasetItem(int datasetId, String name, ApiCallback<Integer> callback) {
-        Call<Result<Integer>> call = DehazeSDK.getInstance().getDatasetApiService().addDatasetItem(datasetId, name);
+    public static void batchDelete(BatchDeleteForm form, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().batchDeleteDatasets(form);
+        call.enqueue(callback);
+    }
+
+    // ===== 数据项 =====
+
+    /**
+     * 分页查询数据项列表
+     */
+    public static void getItems(ImageItemQuery query, ApiCallback<PageResult<ImageItem>> callback) {
+        Call<Result<PageResult<ImageItem>>> call = DehazeSDK.getInstance().getDatasetApiService()
+                .getDatasetItems(query.getDatasetId(), query.getPageNum(), query.getPageSize(),
+                        query.getKeywords(), query.getSceneType(), query.getHazeLevel());
         call.enqueue(callback);
     }
 
     /**
-     * 更新数据项
-     *
-     * @param datasetItemId 数据项ID
-     * @param name          数据项名称
-     * @param callback      回调函数
+     * 获取数据项详情
      */
-    public static void updateDatasetItem(int datasetItemId, String name, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().updateDatasetItem(datasetItemId, name);
+    public static void getItemById(long itemId, ApiCallback<ImageItem> callback) {
+        Call<Result<ImageItem>> call = DehazeSDK.getInstance().getDatasetApiService().getDatasetItemById(itemId);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 创建空数据项
+     */
+    public static void createItem(DatasetItemCreateForm form, ApiCallback<Long> callback) {
+        Call<Result<Long>> call = DehazeSDK.getInstance().getDatasetApiService().createDatasetItem(form);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 修改数据项
+     */
+    public static void updateItem(long itemId, DatasetItemUpdateForm form, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().updateDatasetItem(itemId, form);
         call.enqueue(callback);
     }
 
     /**
      * 删除数据项
-     *
-     * @param datasetItemId 数据项ID
-     * @param callback      回调函数
      */
-    public static void deleteDatasetItem(int datasetItemId, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().deleteDatasetItem(datasetItemId);
+    public static void deleteItem(long itemId, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().deleteDatasetItem(itemId);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 批量删除数据项
+     */
+    public static void batchDeleteItems(BatchDeleteForm form, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().batchDeleteDatasetItems(form);
+        call.enqueue(callback);
+    }
+
+    // ===== 图片文件 =====
+
+    /**
+     * 获取图片文件详情
+     */
+    public static void getItemFileById(long fileId, ApiCallback<DatasetImageFileInfo> callback) {
+        Call<Result<DatasetImageFileInfo>> call = DehazeSDK.getInstance().getDatasetApiService().getItemFileById(fileId);
         call.enqueue(callback);
     }
 
     /**
      * 上传数据项图片
      *
-     * @param datasetId     数据集ID
      * @param datasetItemId 数据项ID
-     * @param type          图片类型
-     * @param file          文件
+     * @param type          图片类型(clear/hazy/depth/segment)
+     * @param file          图片文件
      * @param description   描述
-     * @param callback      回调函数
      */
-    public static void uploadItemImage(int datasetId, int datasetItemId, String type, 
-                                       File file, String description, ApiCallback<DatasetImageFileInfo> callback) {
-        // 创建MultipartBody.Part
+    public static void uploadItemFile(long datasetItemId, String type, File file, String description,
+                                       ApiCallback<DatasetImageFileInfo> callback) {
         RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), file);
-        MultipartBody.Part body = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
-        
+        MultipartBody.Part filePart = MultipartBody.Part.createFormData("file", file.getName(), requestFile);
+        RequestBody itemIdBody = RequestBody.create(MediaType.parse("text/plain"), String.valueOf(datasetItemId));
+        RequestBody typeBody = RequestBody.create(MediaType.parse("text/plain"), type);
+        RequestBody descBody = RequestBody.create(MediaType.parse("text/plain"), description != null ? description : "");
+
         Call<Result<DatasetImageFileInfo>> call = DehazeSDK.getInstance().getDatasetApiService()
-                .uploadDatasetItemImage(datasetId, datasetItemId, type, body, description);
+                .uploadItemFile(filePart, itemIdBody, typeBody, descBody);
         call.enqueue(callback);
     }
 
     /**
-     * 更新数据项图片
-     *
-     * @param itemFileId  文件ID
-     * @param type        图片类型
-     * @param description 描述
-     * @param callback    回调函数
+     * 修改图片信息
      */
-    public static void updateItemImage(int itemFileId, String type, String description, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().updateDatasetItemImage(itemFileId, type, description);
+    public static void updateItemFile(long fileId, ItemFileUpdateForm form, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().updateItemFile(fileId, form);
         call.enqueue(callback);
     }
 
     /**
-     * 删除数据项图片
-     *
-     * @param itemFileId 文件ID
-     * @param callback   回调函数
+     * 删除图片
      */
-    public static void deleteItemImage(int itemFileId, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().deleteDatasetItemImage(itemFileId);
+    public static void deleteItemFile(long fileId, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().deleteItemFile(fileId);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 批量删除图片
+     */
+    public static void batchDeleteItemFiles(BatchDeleteForm form, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getDatasetApiService().batchDeleteItemFiles(form);
         call.enqueue(callback);
     }
 }

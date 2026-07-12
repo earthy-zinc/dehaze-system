@@ -4,7 +4,6 @@ import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.Result;
 import com.pei.dehaze.sdk.model.user.UserForm;
 import com.pei.dehaze.sdk.model.user.UserInfo;
-import com.pei.dehaze.sdk.model.user.UserInfoResponse;
 import com.pei.dehaze.sdk.model.user.UserPageVO;
 import okhttp3.MultipartBody;
 import okhttp3.ResponseBody;
@@ -15,12 +14,6 @@ import retrofit2.http.*;
  * 用户相关API服务接口
  */
 public interface UserApiService {
-    /**
-     * 获取用户信息接口
-     */
-    @GET("/api/v1/user/info")
-    Call<Result<UserInfoResponse>> getUserInfo();
-
     /**
      * 登录成功后获取用户信息（昵称、头像、权限集合和角色集合）
      */
@@ -64,6 +57,12 @@ public interface UserApiService {
     Call<Result<Void>> updateUserPassword(@Path("id") int id, @Query("password") String password);
 
     /**
+     * 修改用户状态
+     */
+    @PATCH("/api/v1/users/{id}/status")
+    Call<Result<Void>> updateUserStatus(@Path("id") long id, @Query("status") int status);
+
+    /**
      * 删除用户
      */
     @DELETE("/api/v1/users/{ids}")
@@ -80,7 +79,7 @@ public interface UserApiService {
      * 导出用户
      */
     @Streaming
-    @GET("/api/v1/users/export")
+    @GET("/api/v1/users/_export")
     Call<ResponseBody> exportUsers(@Query("pageNum") int pageNum,
                                    @Query("pageSize") int pageSize,
                                    @Query("keywords") String keywords,
@@ -94,6 +93,6 @@ public interface UserApiService {
      * 导入用户
      */
     @Multipart
-    @POST("/api/v1/users/import")
+    @POST("/api/v1/users/_import")
     Call<Result<Void>> importUsers(@Query("deptId") int deptId, @Part MultipartBody.Part file);
 }

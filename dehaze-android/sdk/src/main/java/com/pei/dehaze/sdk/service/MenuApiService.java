@@ -25,14 +25,17 @@ public interface MenuApiService {
     Call<Result<List<Option>>> getMenuOptions();
 
     @GET("/api/v1/menus/{id}/form")
-    Call<Result<MenuForm>> getMenuFormData(@Path("id") int id);
+    Call<Result<MenuForm>> getMenuFormData(@Path("id") long id);
 
     @POST("/api/v1/menus")
     Call<Result<Void>> addMenu(@Body MenuForm data);
 
     @PUT("/api/v1/menus/{id}")
-    Call<Result<Void>> updateMenu(@Path("id") String id, @Body MenuForm data);
+    Call<Result<Void>> updateMenu(@Path("id") long id, @Body MenuForm data);
 
     @DELETE("/api/v1/menus/{id}")
-    Call<Result<Void>> deleteMenu(@Path("id") int id);
+    Call<Result<Void>> deleteMenu(@Path("id") long id);
+
+    @PATCH("/api/v1/menus/{id}")
+    Call<Result<Void>> updateMenuVisible(@Path("id") long id, @Query("visible") int visible);
 }

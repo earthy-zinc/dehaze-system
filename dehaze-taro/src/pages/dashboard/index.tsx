@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { View, Text, ScrollView } from '@tarojs/components'
 import Taro from '@tarojs/taro'
-import { Navbar, Loading, Tag } from '@taroify/core'
-import { ArrowLeft } from '@taroify/icons'
+import { Loading, Tag } from '@taroify/core'
 import { AlgorithmAPI, DatasetAPI, TaskAPI, UserAPI } from 'dehaze-sdk-js'
 import type { TaskVO } from 'dehaze-sdk-js'
 import { useGlobalContext } from '@/stores/global'
+import PageLayout from '@/layout'
 import './index.less'
 
 // ==================== 常量 ====================
@@ -110,7 +110,12 @@ const Dashboard: React.FC = () => {
   // ==================== 事件处理 ====================
 
   const handleNavigate = useCallback((route: string) => {
-    Taro.navigateTo({ url: route })
+    Taro.navigateTo({
+      url: route,
+      fail: () => {
+        Taro.showToast({ title: '页面开发中', icon: 'none' })
+      }
+    })
   }, [])
 
   const handleRefresh = useCallback(() => {
@@ -128,14 +133,9 @@ const Dashboard: React.FC = () => {
   )
 
   return (
-    <View className='dashboard-page'>
-      <Navbar title='工作台'>
-        <Navbar.NavLeft>
-          <ArrowLeft />
-        </Navbar.NavLeft>
-      </Navbar>
-
-      <ScrollView scrollY className='dashboard-scroll'>
+    <PageLayout showTabbar={false} title='工作台'>
+      <View className='dashboard-page'>
+        <ScrollView scrollY className='dashboard-scroll'>
         {/* 用户欢迎区 */}
         <View className='welcome-section'>
           <View className='user-avatar'>
@@ -249,8 +249,9 @@ const Dashboard: React.FC = () => {
         <View className='dashboard-footer'>
           <Text>图像去雾系统 v1.0</Text>
         </View>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </PageLayout>
   )
 }
 

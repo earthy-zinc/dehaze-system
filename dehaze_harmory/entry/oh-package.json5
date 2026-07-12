@@ -1,10 +1,11 @@
 {
   "name": "entry",
   "version": "1.0.0",
-  "description": "Please describe the basic information.",
+  "description": "图像去雾系统鸿蒙应用",
   "main": "",
   "author": "",
   "license": "",
-  "dependencies": {}
+  "dependencies": {
+    "dehaze-sdk-harmony": "file:../../dehaze-tool/dehaze-sdk-harmony"
+  }
 }
-

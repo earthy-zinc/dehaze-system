@@ -75,11 +75,11 @@ public class DictAPI {
     /**
      * 获取字典类型的数据项
      *
-     * @param typeCode 字典类型编码
+     * @param id       字典类型ID
      * @param callback 回调函数
      */
-    public static void getDictOptions(String typeCode, ApiCallback<List<Option>> callback) {
-        Call<Result<List<Option>>> call = DehazeSDK.getInstance().getDictApiService().getDictOptions(typeCode);
+    public static void getDictOptions(long id, ApiCallback<List<Option>> callback) {
+        Call<Result<List<Option>>> call = DehazeSDK.getInstance().getDictApiService().getDictOptions(id);
         call.enqueue(callback);
     }
 

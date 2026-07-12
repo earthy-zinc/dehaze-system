@@ -9,7 +9,7 @@ import {
 import ImageLoader from '@/components/ImageLoader';
 import Card from '@/components/Card';
 import Badge from '@/components/Badge';
-import { DatasetImage } from '../../types/dataset';
+import type { DatasetImage } from '../../types/dataset';
 
 interface ImageCardProps {
   image: DatasetImage;
@@ -24,29 +24,38 @@ const ImageCard: React.FC<ImageCardProps> = ({
 }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  const getTypeLabel = (type: string) => {
+  const getTypeLabel = (type?: string) => {
     switch (type) {
-      case 'foggy':
-        return '有雾';
       case 'clear':
-        return '无雾';
-      case 'annotated':
-        return '标注';
+        return '清晰图';
+      case 'hazy':
+        return '有雾图';
       default:
-        return type;
+        return type || '图片';
     }
   };
 
-  const getBadgeVariant = (type: string) => {
+  const getBadgeVariant = (type?: string) => {
     switch (type) {
-      case 'foggy':
-        return 'foggy';
       case 'clear':
-        return 'clear';
-      case 'annotated':
-        return 'annotated';
+        return 'clear' as const;
+      case 'hazy':
+        return 'foggy' as const;
       default:
-        return 'secondary';
+        return 'secondary' as const;
+    }
+  };
+
+  const getHazeLevelLabel = (level?: string) => {
+    switch (level) {
+      case 'light':
+        return '轻度';
+      case 'medium':
+        return '中度';
+      case 'heavy':
+        return '重度';
+      default:
+        return '';
     }
   };
 
@@ -68,7 +77,9 @@ const ImageCard: React.FC<ImageCardProps> = ({
     }).start();
   };
 
-  const imageHeight = imageWidth; // 正方形比例
+  const imageHeight = imageWidth;
+  const displayUrl = image.thumbnailUrl || image.url;
+  const hazeLabel = getHazeLevelLabel(image.hazeLevel);
 
   return (
     <TouchableOpacity
@@ -80,26 +91,33 @@ const ImageCard: React.FC<ImageCardProps> = ({
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <Card padding={0} margin={0} borderRadius={12}>
-          <View style={[styles.imageContainer, { width: imageWidth, height: imageHeight }]}>
+          <View
+            style={[styles.imageContainer, { width: imageWidth, height: imageHeight }]}
+          >
             <ImageLoader
-              source={{ uri: image.image_url }}
+              source={{ uri: displayUrl }}
               style={styles.image}
               resizeMode="cover"
             />
 
-            {/* Type Badge */}
             <View style={styles.badgeContainer}>
               <Badge
-                text={getTypeLabel(image.image_type)}
-                variant={getBadgeVariant(image.image_type)}
+                text={getTypeLabel(image.type)}
+                variant={getBadgeVariant(image.type)}
                 size="small"
               />
             </View>
+
+            {hazeLabel ? (
+              <View style={styles.hazeBadgeContainer}>
+                <Badge text={hazeLabel} variant="warning" size="small" />
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.imageInfo}>
             <Text style={styles.filename} numberOfLines={1}>
-              {image.filename}
+              {image.fileName || `#${image.id}`}
             </Text>
           </View>
         </Card>
@@ -127,6 +145,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
+  },
+  hazeBadgeContainer: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
   },
   imageInfo: {
     padding: 10,

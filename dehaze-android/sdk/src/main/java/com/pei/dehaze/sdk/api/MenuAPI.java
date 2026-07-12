@@ -55,7 +55,7 @@ public class MenuAPI {
      * @param id       菜单ID
      * @param callback 回调函数
      */
-    public static void getFormData(int id, ApiCallback<MenuForm> callback) {
+    public static void getFormData(long id, ApiCallback<MenuForm> callback) {
         Call<Result<MenuForm>> call = DehazeSDK.getInstance().getMenuApiService().getMenuFormData(id);
         call.enqueue(callback);
     }
@@ -78,7 +78,7 @@ public class MenuAPI {
      * @param data     菜单表单数据
      * @param callback 回调函数
      */
-    public static void update(String id, MenuForm data, ApiCallback<Void> callback) {
+    public static void update(long id, MenuForm data, ApiCallback<Void> callback) {
         Call<Result<Void>> call = DehazeSDK.getInstance().getMenuApiService().updateMenu(id, data);
         call.enqueue(callback);
     }
@@ -89,8 +89,20 @@ public class MenuAPI {
      * @param id       菜单ID
      * @param callback 回调函数
      */
-    public static void deleteById(int id, ApiCallback<Void> callback) {
+    public static void deleteById(long id, ApiCallback<Void> callback) {
         Call<Result<Void>> call = DehazeSDK.getInstance().getMenuApiService().deleteMenu(id);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 修改菜单显示状态
+     *
+     * @param id       菜单ID
+     * @param visible   显示状态(1:显示;0:隐藏)
+     * @param callback 回调函数
+     */
+    public static void updateVisible(long id, int visible, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getMenuApiService().updateMenuVisible(id, visible);
         call.enqueue(callback);
     }
 }

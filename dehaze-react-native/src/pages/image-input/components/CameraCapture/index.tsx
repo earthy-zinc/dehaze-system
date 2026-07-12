@@ -15,7 +15,7 @@ import { launchCamera, ImagePickerResponse } from 'react-native-image-picker';
 import Icon from '@/components/Icon';
 import Button from '@/components/Button';
 import { theme } from '@/theme';
-import { SelectedImage } from '../../types/imageInput';
+import type { SelectedImage } from '@/types/image';
 import { imageInputApi } from '../../services/imageInputApi';
 
 interface CameraCaptureProps {
@@ -84,11 +84,11 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
 
       const capturedImage: SelectedImage = {
         id: Date.now().toString(),
-        uri: asset.uri,
-        filename: asset.fileName || `photo_${Date.now()}.jpg`,
+        url: asset.uri,
+        name: asset.fileName || `photo_${Date.now()}.jpg`,
         width,
         height,
-        fileSize: asset.fileSize || 0,
+        size: asset.fileSize || 0,
         source: 'camera',
       };
 

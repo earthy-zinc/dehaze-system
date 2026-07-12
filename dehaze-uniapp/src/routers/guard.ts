@@ -10,7 +10,7 @@
 import { ACCESS_TOKEN_KEY } from "@/api/config";
 
 /** 白名单页面（无需登录即可访问） */
-const WHITE_LIST = ["pages/login/index", "pages/home/index"];
+const WHITE_LIST = ["pages/login/index"];
 
 /** 登录页路径 */
 const LOGIN_PATH = "pages/login/index";

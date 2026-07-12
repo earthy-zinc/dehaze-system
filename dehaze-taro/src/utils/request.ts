@@ -1,5 +1,4 @@
 import Taro from '@tarojs/taro';
-import { Dialog } from '@taroify/core';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import {
   configJavaAxios,
@@ -15,13 +14,29 @@ function codeStartsWith(code: string | undefined, prefix: string): boolean {
   return !!code && code.startsWith(prefix);
 }
 
-/** 跳转登录页（同步清除本地认证信息后跳转） */
+/** 跳转登录页（同步清除本地认证信息后跳转，防重复跳转） */
+let isRedirecting = false;
 function redirectToLogin(): void {
+  if (isRedirecting) return;
+  isRedirecting = true;
+
+  // 如果当前已经在登录页，不再跳转
+  const pages = Taro.getCurrentPages();
+  const currentRoute = pages.length > 0 ? '/' + (pages[pages.length - 1].route || '') : '';
+  if (currentRoute === '/pages/login/index') {
+    isRedirecting = false;
+    return;
+  }
+
   storage.removeToken();
   Taro.removeStorageSync('userInfo');
   Taro.removeStorageSync('permissions');
   Taro.removeStorageSync('roles');
-  Taro.redirectTo({ url: '/pages/login/index' });
+
+  Taro.redirectTo({
+    url: '/pages/login/index',
+    complete: () => { isRedirecting = false; }
+  });
 }
 
 /**
@@ -47,12 +62,16 @@ function onResponseError(error: AxiosError): void {
         code === ResultEnum.USER_ACCOUNT_LOCKED ||
         code === ResultEnum.USER_ACCOUNT_INVALID
       ) {
-        Dialog.confirm({
+        Taro.showModal({
           title: '提示',
-          message: msg || '登录已失效，请重新登录',
-          confirm: '确定',
-          cancel: '取消',
-          onConfirm: () => redirectToLogin(),
+          content: msg || '登录已失效，请重新登录',
+          showCancel: false,
+          confirmText: '重新登录',
+          success: (res) => {
+            if (res.confirm) {
+              redirectToLogin();
+            }
+          },
         });
         return;
       }

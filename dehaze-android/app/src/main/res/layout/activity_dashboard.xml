@@ -5,7 +5,7 @@
     android:id="@+id/swipe_refresh"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.dashboard.DashboardActivity">
+    tools:context=".ui.dashboard.DashboardFragment">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -35,8 +35,8 @@
                         android:id="@+id/iv_avatar"
                         android:layout_width="80dp"
                         android:layout_height="80dp"
-                        android:src="@drawable/ic_account_circle"
-                        android:scaleType="centerCrop" />
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/ic_account_circle" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -50,16 +50,16 @@
                             android:id="@+id/tv_greeting"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="欢迎信息"
+                            android:text="欢迎"
                             android:textSize="18sp"
                             android:textStyle="bold" />
 
                         <TextView
-                            android:id="@+id/tv_weather"
+                            android:id="@+id/tv_subtitle"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:text="今日天气晴朗，气温在15℃至25℃之间，东南风。"
+                            android:text="欢迎使用去雾系统"
                             android:textSize="14sp" />
 
                     </LinearLayout>
@@ -85,9 +85,9 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="16dp"
-                        android:text="功能模块"
-                        android:textSize="18sp"
+                        android:layout_marginBottom="12dp"
+                        android:text="核心功能"
+                        android:textSize="16sp"
                         android:textStyle="bold" />
 
                     <LinearLayout
@@ -96,43 +96,101 @@
                         android:orientation="horizontal">
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/compare_module_button"
+                            android:id="@+id/btn_presentation"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
                             android:layout_marginEnd="8dp"
-                            android:text="图像对比" />
+                            android:layout_weight="1"
+                            android:text="去雾处理" />
 
                         <com.google.android.material.button.MaterialButton
-                            android:id="@+id/evaluation_module_button"
+                            android:id="@+id/btn_compare"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
                             android:layout_marginStart="8dp"
-                            android:text="图像评估" />
+                            android:layout_weight="1"
+                            android:text="效果对比" />
 
                     </LinearLayout>
 
                     <com.google.android.material.button.MaterialButton
-                        android:id="@+id/presentation_module_button"
+                        android:id="@+id/btn_evaluation"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="图像展示" />
+                        android:text="效果评估" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="8dp"
+                        android:text="系统管理"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_dataset"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:layout_weight="1"
+                            android:text="数据集" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_algorithm"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:text="算法管理" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 统计数据网格 -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rv_statistics"
+            <!-- 统计数据 -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                android:nestedScrollingEnabled="false" />
+                app:cardCornerRadius="8dp"
+                app:cardElevation="4dp">
 
-            <!-- 图表区域 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:text="统计概览"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rv_statistics"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 最近活动 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -142,20 +200,22 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:padding="16dp">
 
-                    <com.google.android.material.tabs.TabLayout
-                        android:id="@+id/tab_layout"
+                    <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:background="?attr/colorPrimary"
-                        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-                        app:tabTextColor="@android:color/white" />
+                        android:layout_marginBottom="12dp"
+                        android:text="最近去雾记录"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
 
-                    <androidx.viewpager2.widget.ViewPager2
-                        android:id="@+id/view_pager"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rv_activities"
                         android:layout_width="match_parent"
-                        android:layout_height="400dp" />
+                        android:layout_height="wrap_content"
+                        android:nestedScrollingEnabled="false" />
 
                 </LinearLayout>
 

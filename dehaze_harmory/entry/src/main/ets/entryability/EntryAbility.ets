@@ -1,48 +1,70 @@
 import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { window } from '@kit.ArkUI';
+import { window, router } from '@kit.ArkUI';
+import { DehazeSDK, Builder, TokenManager } from 'dehaze-sdk-harmony';
+import { AuthState } from '../common/AppState';
 
 const DOMAIN = 0x0000;
+const TAG = 'EntryAbility';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     try {
       this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     } catch (err) {
-      hilog.error(DOMAIN, 'testTag', 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
+      hilog.error(DOMAIN, TAG, 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
+
+    // 初始化 SDK
+    const baseUrl = 'http://127.0.0.1:8989';
+    DehazeSDK.initialize(this.context, new Builder().setBaseUrl(baseUrl).setDebug(true)).then(() => {
+      hilog.info(DOMAIN, TAG, 'DehazeSDK initialized');
+
+      // 设置 Token 失效回调（跳转登录页）
+      DehazeSDK.setTokenInvalidCallback(() => {
+        hilog.info(DOMAIN, TAG, 'Token invalid, redirecting to login');
+        AuthState.onLogout();
+        router.replaceUrl({ url: 'pages/Login' });
+      });
+
+      // 从持久化存储恢复登录态
+      AuthState.initFromStorage();
+    }).catch((err: Error) => {
+      hilog.error(DOMAIN, TAG, 'Failed to init SDK: %{public}s', err.message);
+    });
+
+    hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onCreate');
   }
 
   onDestroy(): void {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
+    hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onDestroy');
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    // Main window is created, set main page for this ability
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+    hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onWindowStageCreate');
 
-    windowStage.loadContent('pages/Index', (err) => {
+    // 根据登录态决定加载页面
+    const isLoggedIn = TokenManager.isLoggedIn();
+    const page = isLoggedIn ? 'pages/Home' : 'pages/Login';
+
+    windowStage.loadContent(page, (err) => {
       if (err.code) {
-        hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
+        hilog.error(DOMAIN, TAG, 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;
       }
-      hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+      hilog.info(DOMAIN, TAG, 'Succeeded in loading the content: %{public}s', page);
     });
   }
 
   onWindowStageDestroy(): void {
-    // Main window is destroyed, release UI related resources
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
+    hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onWindowStageDestroy');
   }
 
   onForeground(): void {
-    // Ability has brought to foreground
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
+    hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onForeground');
   }
 
   onBackground(): void {
-    // Ability has back to background
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+    hilog.info(DOMAIN, TAG, '%{public}s', 'Ability onBackground');
   }
 }

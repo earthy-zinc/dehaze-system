@@ -32,8 +32,10 @@ export interface LoginUser {
 export interface LoginResult {
   accessToken: string;
   tokenType: string;
-  refreshToken: string;
-  expires: number;
+  /** 后端当前未返回，保留为可选 */
+  refreshToken?: string;
+  /** 后端当前未返回，保留为可选 */
+  expires?: number;
   user: LoginUser;
 }
 
@@ -41,9 +43,11 @@ export interface LoginResult {
 export interface AuthUserInfo {
   userId: number;
   username: string;
-  nickname: string;
+  nickname?: string;
   avatar?: string;
+  /** 后端返回的角色列表（无 ROLE_ 前缀，如 ["ROOT","ADMIN"]） */
   roles: string[];
+  /** 后端返回的权限列表（字段名为 permissions） */
   perms: string[];
 }
 
@@ -77,7 +81,18 @@ export function logout() {
 
 /** 获取当前用户信息 */
 export function getCurrentUser() {
-  return get<AuthUserInfo>("/auth/me");
+  // 后端 /auth/me 返回 { userId, username, nickname, roles, permissions }
+  // 这里映射为前端统一类型 AuthUserInfo（perms 字段）
+  return get<Omit<AuthUserInfo, "perms"> & { permissions: string[] }>("/auth/me").then(
+    (data) => ({
+      userId: data.userId,
+      username: data.username,
+      nickname: data.nickname,
+      avatar: data.avatar,
+      roles: data.roles || [],
+      perms: data.permissions || [],
+    })
+  );
 }
 
 /** 刷新 Token */

@@ -20,7 +20,7 @@ import {
   SideNav,
   SIDE_NAV_WIDTH,
 } from './components';
-import { RootStackParamList } from '@/routes/navigator';
+import type { RootStackParamList } from '@/routes/types';
 
 interface MainLayoutProps {
   children: React.ReactNode;

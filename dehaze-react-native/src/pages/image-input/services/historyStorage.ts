@@ -1,82 +1,44 @@
 /**
- * 历史记录本地存储服务
+ * 历史记录服务
+ *
+ * 通过 SDK 的 ImageInputHistoryAPI 对接后端 /api/v1/image-input/history。
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ImageInputHistoryAPI } from 'dehaze-sdk-js';
+import type { HistoryForm } from 'dehaze-sdk-js';
 import { HistoryRecord, HistoryGroup } from '../types/imageInput';
-
-const STORAGE_KEY = 'dehaze_history';
-const MAX_RECORDS = 20;
 
 export const historyStorage = {
   /**
-   * 获取所有历史记录
+   * 获取历史记录列表（分页查询，默认取前 50 条）
    */
   getHistory: async (): Promise<HistoryRecord[]> => {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEY);
-      if (data) {
-        return JSON.parse(data) as HistoryRecord[];
-      }
-      return [];
-    } catch (error) {
-      console.error('Failed to get history:', error);
-      return [];
-    }
+    const result = await ImageInputHistoryAPI.getPage({
+      pageNum: 1,
+      pageSize: 50,
+    });
+    return result.list;
   },
 
   /**
    * 添加历史记录
    */
-  addRecord: async (record: Omit<HistoryRecord, 'id' | 'timestamp'>): Promise<void> => {
-    try {
-      const history = await historyStorage.getHistory();
-
-      const newRecord: HistoryRecord = {
-        ...record,
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-      };
-
-      // 添加到开头
-      history.unshift(newRecord);
-
-      // 限制记录数量
-      if (history.length > MAX_RECORDS) {
-        history.splice(MAX_RECORDS);
-      }
-
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    } catch (error) {
-      console.error('Failed to add history record:', error);
-      throw error;
-    }
+  addRecord: async (record: HistoryForm): Promise<number> => {
+    return await ImageInputHistoryAPI.create(record);
   },
 
   /**
    * 删除单条记录
    */
-  deleteRecord: async (id: string): Promise<void> => {
-    try {
-      const history = await historyStorage.getHistory();
-      const filtered = history.filter(record => record.id !== id);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    } catch (error) {
-      console.error('Failed to delete history record:', error);
-      throw error;
-    }
+  deleteRecord: async (id: number): Promise<void> => {
+    await ImageInputHistoryAPI.deleteById(id);
   },
 
   /**
    * 清空所有历史记录
    */
   clearHistory: async (): Promise<void> => {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEY);
-    } catch (error) {
-      console.error('Failed to clear history:', error);
-      throw error;
-    }
+    await ImageInputHistoryAPI.clearAll();
   },
 
   /**
@@ -96,7 +58,8 @@ export const historyStorage = {
     };
 
     history.forEach(record => {
-      const recordDate = new Date(record.timestamp);
+      const recordDate = new Date(record.createTime || '');
+      if (isNaN(recordDate.getTime())) return;
 
       if (recordDate >= today) {
         groups['今天'].push(record);
@@ -109,7 +72,6 @@ export const historyStorage = {
       }
     });
 
-    // 过滤空分组并转换为数组
     return Object.entries(groups)
       .filter(([_, data]) => data.length > 0)
       .map(([title, data]) => ({ title, data }));
@@ -118,8 +80,10 @@ export const historyStorage = {
   /**
    * 格式化时间显示
    */
-  formatTimestamp: (timestamp: string): string => {
+  formatTimestamp: (timestamp?: string): string => {
+    if (!timestamp) return '';
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) return '';
     const now = new Date();
     const diff = now.getTime() - date.getTime();
 
@@ -144,5 +108,3 @@ export const historyStorage = {
     }
   },
 };
-
-export { MAX_RECORDS };

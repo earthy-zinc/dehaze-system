@@ -82,15 +82,17 @@ const SampleImageCard: React.FC<SampleImageCardProps> = ({
         {/* 图片 */}
         <View style={styles.imageContainer}>
           <ImageLoader
-            source={{ uri: sample.url }}
+            source={{ uri: sample.thumbUrl || sample.url }}
             style={styles.image}
             resizeMode="cover"
           />
 
           {/* 场景类型标签 */}
-          <View style={styles.sceneTag}>
-            <Text style={styles.sceneTagText}>{sample.sceneType}</Text>
-          </View>
+          {sample.sceneType && (
+            <View style={styles.sceneTag}>
+              <Text style={styles.sceneTagText}>{sample.sceneType}</Text>
+            </View>
+          )}
         </View>
 
         {/* 信息区域 */}

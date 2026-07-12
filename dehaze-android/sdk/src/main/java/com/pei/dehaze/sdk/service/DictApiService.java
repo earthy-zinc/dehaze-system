@@ -31,8 +31,8 @@ public interface DictApiService {
     @DELETE("/api/v1/dict/types/{ids}")
     Call<Result<Void>> deleteDictTypes(@Path("ids") String ids);
 
-    @GET("/api/v1/dict/{typeCode}/options")
-    Call<Result<List<Option>>> getDictOptions(@Path("typeCode") String typeCode);
+    @GET("/api/v1/dict/{id}/options")
+    Call<Result<List<Option>>> getDictOptions(@Path("id") long id);
 
     @GET("/api/v1/dict/page")
     Call<Result<PageResult<DictPageVO>>> getDictPage(@Query("pageNum") int pageNum,

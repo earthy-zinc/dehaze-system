@@ -42,4 +42,7 @@ public interface RoleApiService {
 
     @DELETE("/api/v1/roles/{ids}")
     Call<Result<Void>> deleteRoles(@Path("ids") String ids);
+
+    @PUT("/api/v1/roles/{id}/status")
+    Call<Result<Void>> updateRoleStatus(@Path("id") long id, @Query("status") int status);
 }

@@ -1,7 +1,19 @@
-import { RootStackParamList } from '@/routes/navigator';
+/**
+ * 登录页
+ *
+ * 对接 dehaze-sdk-js AuthAPI：
+ * - 登录（用户名 + 密码 + 图形验证码）
+ * - 获取验证码图片
+ * - 登录成功后由 AuthContext 跳转 Home
+ */
+import { useAuth } from '@/store';
+import type { RootStackParamList } from '@/routes/types';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import React, { useState } from 'react';
+import { AuthAPI } from 'dehaze-sdk-js';
+import type { CaptchaResult } from 'dehaze-sdk-js';
+import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   ScrollView,
@@ -13,77 +25,64 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// 定义导航属性类型
 type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
-  const [isRegister, setIsRegister] = useState(false);
-  const [formData, setFormData] = useState({
-    username: '',
-    password: '',
-    confirmPassword: '',
-  });
+const LoginScreen: React.FC<LoginScreenProps> = () => {
+  const { login } = useAuth();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [captcha, setCaptcha] = useState<CaptchaResult | null>(null);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData({
-      ...formData,
-      [field]: value,
-    });
-  };
-
-  const handleSubmit = () => {
-    if (isRegister) {
-      handleRegister();
-    } else {
-      handleLogin();
+  const loadCaptcha = async () => {
+    setCaptchaLoading(true);
+    try {
+      const result = await AuthAPI.getCaptcha();
+      // 确保 Base64 带 data URI 前缀
+      const base64 = result.captchaBase64.startsWith('data:')
+        ? result.captchaBase64
+        : `data:image/png;base64,${result.captchaBase64}`;
+      setCaptcha({ ...result, captchaBase64: base64 });
+    } catch (e) {
+      setCaptcha(null);
+    } finally {
+      setCaptchaLoading(false);
     }
   };
 
-  const handleLogin = () => {
-    if (!formData.username || !formData.password) {
-      Alert.alert('错误', '请输入用户名和密码');
+  useEffect(() => {
+    loadCaptcha();
+  }, []);
+
+  const handleLogin = async () => {
+    if (!username || !password) {
+      Alert.alert('提示', '请输入用户名和密码');
+      return;
+    }
+    if (captcha && !captchaCode) {
+      Alert.alert('提示', '请输入验证码');
       return;
     }
 
     setLoading(true);
-    // 模拟登录请求
-    setTimeout(() => {
+    try {
+      await login({
+        username,
+        password,
+        captchaKey: captcha?.captchaKey,
+        captchaCode: captcha ? captchaCode : undefined,
+      });
+      // 登录成功后 AuthContext 更新 isAuthenticated，路由守卫自动跳转 Home
+    } catch (e: any) {
+      Alert.alert('登录失败', e?.message || '用户名或密码错误');
+      // 重新加载验证码
+      loadCaptcha();
+      setCaptchaCode('');
+    } finally {
       setLoading(false);
-      Alert.alert('成功', '登录成功', [
-        {
-          text: '确定',
-          onPress: () => {
-            // 登录成功后跳转到主页
-            navigation.navigate('Home');
-          },
-        },
-      ]);
-    }, 1000);
-  };
-
-  const handleRegister = () => {
-    if (!formData.username || !formData.password || !formData.confirmPassword) {
-      Alert.alert('错误', '请填写所有字段');
-      return;
     }
-
-    if (formData.password !== formData.confirmPassword) {
-      Alert.alert('错误', '两次输入的密码不一致');
-      return;
-    }
-
-    setLoading(true);
-    // 模拟注册请求
-    setTimeout(() => {
-      setLoading(false);
-      Alert.alert('成功', '注册成功', [
-        {
-          text: '确定',
-          onPress: () => setIsRegister(false),
-        },
-      ]);
-    }, 1000);
   };
 
   return (
@@ -95,9 +94,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               <Text style={styles.logo}>雾</Text>
             </View>
             <Text style={styles.title}>图像去雾系统</Text>
-            <Text style={styles.subtitle}>
-              {isRegister ? '创建账户' : '登录账户'}
-            </Text>
+            <Text style={styles.subtitle}>登录账户</Text>
           </View>
 
           <View style={styles.form}>
@@ -105,10 +102,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="请输入用户名"
-                value={formData.username}
-                onChangeText={value => handleInputChange('username', value)}
+                value={username}
+                onChangeText={setUsername}
                 autoCapitalize="none"
-                keyboardType="default"
                 returnKeyType="next"
               />
             </View>
@@ -117,88 +113,59 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
               <TextInput
                 style={styles.input}
                 placeholder="请输入密码"
-                value={formData.password}
-                onChangeText={value => handleInputChange('password', value)}
+                value={password}
+                onChangeText={setPassword}
                 secureTextEntry
-                returnKeyType={isRegister ? 'next' : 'done'}
+                returnKeyType={captcha ? 'next' : 'done'}
               />
-            </View>
-            <View style={styles.captcha}>
-              <TextInput
-                style={{ ...styles.input, ...styles.captchaInput }}
-                placeholder="请输入验证码"
-                value={formData.password}
-                onChangeText={value => handleInputChange('password', value)}
-                secureTextEntry
-                returnKeyType={isRegister ? 'next' : 'done'}
-              />
-              <View style={styles.captchaContainer}>
-                <Image
-                  style={styles.captchaImage}
-                  source={require('../../assets/logo.png')}
-                />
-              </View>
             </View>
 
-            {isRegister && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>确认密码</Text>
+            {captcha && (
+              <View style={styles.captcha}>
                 <TextInput
-                  style={styles.input}
-                  placeholder="请再次输入密码"
-                  value={formData.confirmPassword}
-                  onChangeText={value =>
-                    handleInputChange('confirmPassword', value)
-                  }
-                  secureTextEntry
+                  style={[styles.input, styles.captchaInput]}
+                  placeholder="请输入验证码"
+                  value={captchaCode}
+                  onChangeText={setCaptchaCode}
+                  autoCapitalize="none"
                   returnKeyType="done"
                 />
+                <TouchableOpacity
+                  style={styles.captchaContainer}
+                  onPress={loadCaptcha}
+                  disabled={captchaLoading}
+                >
+                  {captchaLoading ? (
+                    <ActivityIndicator size="small" />
+                  ) : (
+                    <Image
+                      style={styles.captchaImage}
+                      source={{ uri: captcha.captchaBase64 }}
+                      resizeMode="contain"
+                    />
+                  )}
+                </TouchableOpacity>
               </View>
             )}
 
             <TouchableOpacity
               style={styles.button}
-              onPress={handleSubmit}
+              onPress={handleLogin}
               disabled={loading}
             >
-              <Text style={styles.buttonText}>
-                {loading
-                  ? isRegister
-                    ? '注册中...'
-                    : '登录中...'
-                  : isRegister
-                  ? '注册'
-                  : '登录'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <Text style={styles.buttonText}>登录</Text>
+              )}
             </TouchableOpacity>
-
-            <View style={styles.switchContainer}>
-              <Text style={styles.switchText}>
-                {isRegister ? '已有账户? ' : '没有账户? '}
-                <Text
-                  style={styles.switchLink}
-                  onPress={() => {
-                    setIsRegister(!isRegister);
-                    setFormData({
-                      username: '',
-                      password: '',
-                      confirmPassword: '',
-                    });
-                  }}
-                >
-                  {isRegister ? '立即登录' : '立即注册'}
-                </Text>
-              </Text>
-            </View>
           </View>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Copyright © 2022 - 2024 Peixin Wu All Rights Reserved.
+            Copyright © 2022 - 2024 DehazeSystem All Rights Reserved.
           </Text>
-          <Text style={styles.footerText}>武沛鑫 版权所有</Text>
-          <Text style={styles.footerText}>渝ICP备2024111923号-2</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -223,10 +190,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 24,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
@@ -267,7 +231,6 @@ const styles = StyleSheet.create({
   },
   captcha: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
@@ -276,20 +239,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   captchaContainer: {
-    display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     width: 120,
+    height: 50,
   },
   captchaImage: {
-    width: 48,
-    height: 48,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
+    width: 120,
+    height: 50,
   },
   input: {
     height: 50,
@@ -311,18 +268,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: 'white',
     fontSize: 16,
-    fontWeight: '600',
-  },
-  switchContainer: {
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  switchText: {
-    fontSize: 16,
-    color: '#666',
-  },
-  switchLink: {
-    color: '#667eea',
     fontWeight: '600',
   },
   footer: {

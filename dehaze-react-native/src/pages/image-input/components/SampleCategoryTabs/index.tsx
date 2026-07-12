@@ -19,7 +19,6 @@ const CATEGORIES: CategoryConfig[] = [
   { key: 'light', label: '轻度雾霾' },
   { key: 'medium', label: '中度雾霾' },
   { key: 'heavy', label: '重度雾霾' },
-  { key: 'special', label: '特殊场景' },
 ];
 
 interface SampleCategoryTabsProps {

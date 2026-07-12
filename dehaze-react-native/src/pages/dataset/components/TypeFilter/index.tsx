@@ -13,18 +13,13 @@ import { useResponsive } from '@/hooks/useResponsive';
 interface TypeFilterProps {
   selectedType: ImageTypeFilter;
   onTypeChange: (type: ImageTypeFilter) => void;
-  counts: {
-    all: number;
-    foggy: number;
-    clear: number;
-    annotated: number;
-  };
+  /** 各类型数量（可选，来自统计信息） */
+  counts?: Partial<Record<ImageTypeFilter, number>>;
 }
 
 interface FilterButtonProps {
-  type: ImageTypeFilter;
   label: string;
-  count: number;
+  count?: number;
   isActive: boolean;
   onPress: () => void;
   compact?: boolean;
@@ -70,19 +65,26 @@ const FilterButton: React.FC<FilterButtonProps> = ({
         onPressOut={handlePressOut}
         activeOpacity={1}
       >
-        <Text style={[
-          styles.filterText,
-          compact && styles.filterTextCompact,
-          isActive && styles.activeText,
-        ]}>
+        <Text
+          style={[
+            styles.filterText,
+            compact && styles.filterTextCompact,
+            isActive && styles.activeText,
+          ]}
+        >
           {label}
-          <Text style={[
-            styles.countText,
-            compact && styles.countTextCompact,
-            isActive && styles.activeCountText,
-          ]}>
-            {' '}{count}
-          </Text>
+          {typeof count === 'number' && (
+            <Text
+              style={[
+                styles.countText,
+                compact && styles.countTextCompact,
+                isActive && styles.activeCountText,
+              ]}
+            >
+              {' '}
+              {count}
+            </Text>
+          )}
         </Text>
       </TouchableOpacity>
     </Animated.View>
@@ -96,11 +98,10 @@ const TypeFilter: React.FC<TypeFilterProps> = ({
 }) => {
   const { isMobile, containerPadding, spacing } = useResponsive();
 
-  const filterTypes = [
-    { key: 'all' as ImageTypeFilter, label: '全部' },
-    { key: 'foggy' as ImageTypeFilter, label: '有雾' },
-    { key: 'clear' as ImageTypeFilter, label: '无雾' },
-    { key: 'annotated' as ImageTypeFilter, label: '标注' },
+  const filterTypes: { key: ImageTypeFilter; label: string }[] = [
+    { key: 'all', label: '全部' },
+    { key: 'clear', label: '清晰图' },
+    { key: 'hazy', label: '有雾图' },
   ];
 
   return (
@@ -113,14 +114,12 @@ const TypeFilter: React.FC<TypeFilterProps> = ({
           { paddingHorizontal: containerPadding, gap: spacing },
         ]}
       >
-        {filterTypes.map((type) => {
-          const count = counts[type.key];
+        {filterTypes.map(type => {
+          const count = counts?.[type.key];
           const isActive = selectedType === type.key;
-
           return (
             <FilterButton
               key={type.key}
-              type={type.key}
               label={type.label}
               count={count}
               isActive={isActive}

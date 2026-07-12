@@ -40,27 +40,29 @@ service.interceptors.request.use(
 
 service.interceptors.response.use(
   async (response: AxiosResponse) => {
-    try {
-      const interceptors = configManager.getInterceptors();
+    const interceptors = configManager.getInterceptors();
 
-      // 处理二进制响应类型（如文件下载、导出等）
-      if (
-        response.config.responseType === "arraybuffer" ||
-        response.config.responseType === "blob"
-      ) {
-        const result = (await interceptors.onResponse?.(response)) || response.data;
-        return result;
-      }
-
-      const { code, data } = response.data;
-      if (code !== ResultEnum.SUCCESS) {
-        return Promise.reject(response.data);
-      }
-      const result = (await interceptors.onResponse?.(response)) || data;
+    // 处理二进制响应类型（如文件下载、导出等）
+    if (
+      response.config.responseType === "arraybuffer" ||
+      response.config.responseType === "blob"
+    ) {
+      const result = (await interceptors.onResponse?.(response)) || response.data;
       return result;
-    } catch (error) {
+    }
+
+    const { code, data } = response.data;
+    if (code !== ResultEnum.SUCCESS) {
+      // 构造模拟 AxiosError，让 onResponseError 能访问 response.data
+      const error = new Error(response.data?.msg || "Business error") as AxiosError;
+      error.response = response;
+      error.config = response.config;
+      error.name = "AxiosError";
+      error.isAxiosError = true;
       return Promise.reject(error);
     }
+    const result = (await interceptors.onResponse?.(response)) || data;
+    return result;
   },
   (error: AxiosError) => {
     const interceptors = configManager.getInterceptors();

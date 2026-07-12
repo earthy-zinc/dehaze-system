@@ -13,12 +13,14 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { colors } from '@/theme/colors';
 import { spacing, layout } from '@/theme/spacing';
+import { useAuth } from '@/store';
 import {
   homeItem,
   menuSections,
@@ -44,6 +46,7 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({
   onNavigate,
 }) => {
   const insets = useSafeAreaInsets();
+  const { state, logout } = useAuth();
   const translateX = useRef(new Animated.Value(DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
@@ -86,6 +89,20 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({
     },
     [onNavigate, onClose],
   );
+
+  const handleLogout = useCallback(() => {
+    Alert.alert('确认注销', '确定要退出登录吗？', [
+      { text: '取消', style: 'cancel' },
+      {
+        text: '确定',
+        style: 'destructive',
+        onPress: () => {
+          logout();
+          onClose();
+        },
+      },
+    ]);
+  }, [logout, onClose]);
 
   const renderMenuItem = (item: MenuItemData, isActive: boolean) => (
     <TouchableOpacity
@@ -195,6 +212,35 @@ const DrawerMenu: React.FC<DrawerMenuProps> = ({
           {/* 分组菜单 */}
           {menuSections.map(renderSection)}
         </ScrollView>
+
+        {/* 底部用户信息与注销 */}
+        <View style={styles.footer}>
+          <View style={styles.userInfo}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(state.userInfo?.nickname || state.userInfo?.username || '?').charAt(0)}
+              </Text>
+            </View>
+            <View style={styles.userText}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {state.userInfo?.nickname || state.userInfo?.username || '未登录'}
+              </Text>
+              {state.userInfo?.username && (
+                <Text style={styles.userSub} numberOfLines={1}>
+                  {state.userInfo.username}
+                </Text>
+              )}
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={20} color={colors.status.error} />
+            <Text style={styles.logoutText}>注销</Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   );
@@ -328,6 +374,58 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: '#fff',
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  userText: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  userSub: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: layout.borderRadius.sm,
+    backgroundColor: colors.background.tertiary,
+    gap: spacing.xs,
+  },
+  logoutText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.status.error,
   },
 });
 

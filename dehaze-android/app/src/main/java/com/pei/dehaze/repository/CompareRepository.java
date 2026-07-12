@@ -1,15 +1,28 @@
 package com.pei.dehaze.repository;
 
 import com.pei.dehaze.sdk.ApiCallback;
+import com.pei.dehaze.sdk.api.AlgorithmAPI;
+import com.pei.dehaze.sdk.api.FileAPI;
 import com.pei.dehaze.sdk.api.ModelAPI;
-import com.pei.dehaze.sdk.model.model.EvalParam;
-import com.pei.dehaze.sdk.model.model.EvalResult;
-import com.pei.dehaze.sdk.model.model.PredParam;
-import com.pei.dehaze.sdk.model.model.PredResult;
+import com.pei.dehaze.sdk.model.Option;
+import com.pei.dehaze.sdk.model.PageResult;
+import com.pei.dehaze.sdk.model.evaluation.EvalParam;
+import com.pei.dehaze.sdk.model.evaluation.EvalResult;
+import com.pei.dehaze.sdk.model.file.FileInfo;
+import com.pei.dehaze.sdk.model.prediction.PredParam;
+import com.pei.dehaze.sdk.model.prediction.PredResult;
+import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
+import com.pei.dehaze.sdk.network.ApiException;
 
+import java.io.File;
 import java.util.List;
 
 public class CompareRepository {
+
+    public interface UploadCallback {
+        void onSuccess(FileInfo fileInfo);
+        void onError(String errorMessage);
+    }
 
     public interface PredictionCallback {
         void onSuccess(PredResult result);
@@ -17,44 +30,111 @@ public class CompareRepository {
     }
 
     public interface EvaluationCallback {
-        void onSuccess(List<EvalResult> results);
+        void onSuccess(EvalResult result);
         void onError(String errorMessage);
     }
 
+    public interface OptionsCallback {
+        void onSuccess(List<Option> options);
+        void onError(String errorMessage);
+    }
+
+    public interface PredictionLogListCallback {
+        void onSuccess(List<PredictionLogVO> logs);
+        void onError(String errorMessage);
+    }
+
+    public void uploadImage(File imageFile, UploadCallback callback) {
+        FileAPI.upload(imageFile, new ApiCallback<FileInfo>() {
+            @Override
+            public void onSuccess(FileInfo data) {
+                callback.onSuccess(data);
+            }
+
+            @Override
+            public void onError(String code, String message) {
+                callback.onError("[" + code + "] " + message);
+            }
+
+            @Override
+            public void onFailure(ApiException e) {
+                callback.onError(e.getMessage());
+            }
+        });
+    }
+
+    public void getAlgorithmOptions(OptionsCallback callback) {
+        AlgorithmAPI.getOption(new ApiCallback<List<Option>>() {
+            @Override
+            public void onSuccess(List<Option> data) {
+                callback.onSuccess(data);
+            }
+
+            @Override
+            public void onError(String code, String message) {
+                callback.onError("[" + code + "] " + message);
+            }
+
+            @Override
+            public void onFailure(ApiException e) {
+                callback.onError(e.getMessage());
+            }
+        });
+    }
+
     public void getPrediction(PredParam param, PredictionCallback callback) {
-        ModelAPI.prediction(param, new ApiCallback<PredResult>() {
+        ModelAPI.predict(param, new ApiCallback<PredResult>() {
             @Override
             public void onSuccess(PredResult data) {
                 callback.onSuccess(data);
             }
 
             @Override
-            public void onError(int code, String message) {
-                callback.onError("Error " + code + ": " + message);
+            public void onError(String code, String message) {
+                callback.onError("[" + code + "] " + message);
             }
 
             @Override
-            public void onFailure(com.pei.dehaze.sdk.network.ApiException e) {
-                callback.onError("Network error: " + e.getMessage());
+            public void onFailure(ApiException e) {
+                callback.onError(e.getMessage());
             }
         });
     }
 
     public void getEvaluation(EvalParam param, EvaluationCallback callback) {
-        ModelAPI.evaluation(param, new ApiCallback<List<EvalResult>>() {
+        ModelAPI.evaluate(param, new ApiCallback<EvalResult>() {
             @Override
-            public void onSuccess(List<EvalResult> data) {
+            public void onSuccess(EvalResult data) {
                 callback.onSuccess(data);
             }
 
             @Override
-            public void onError(int code, String message) {
-                callback.onError("Error " + code + ": " + message);
+            public void onError(String code, String message) {
+                callback.onError("[" + code + "] " + message);
             }
 
             @Override
-            public void onFailure(com.pei.dehaze.sdk.network.ApiException e) {
-                callback.onError("Network error: " + e.getMessage());
+            public void onFailure(ApiException e) {
+                callback.onError(e.getMessage());
+            }
+        });
+    }
+
+    public void listPredictionLogs(int pageNum, int pageSize, PredictionLogListCallback callback) {
+        ModelAPI.listPredictionLogs(null, pageNum, pageSize, new ApiCallback<PageResult<PredictionLogVO>>() {
+            @Override
+            public void onSuccess(PageResult<PredictionLogVO> data) {
+                callback.onSuccess(data.getList());
+            }
+
+            @Override
+            public void onError(String code, String message) {
+                callback.onError("[" + code + "] " + message);
+            }
+
+            @Override
+            public void onFailure(ApiException e) {
+                callback.onError(e.getMessage());
             }
         });
     }

@@ -11,27 +11,33 @@ import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.pei.dehaze.R;
-import com.pei.dehaze.sdk.model.model.EvalResult;
 
-public class MetricAdapter extends ListAdapter<EvalResult, MetricAdapter.MetricViewHolder> {
+import java.util.Map;
+
+/**
+ * 评估指标适配器，展示 EvalResult.metrics 中的各项指标
+ */
+public class MetricAdapter extends ListAdapter<Map.Entry<String, Double>, MetricAdapter.MetricViewHolder> {
 
     public MetricAdapter() {
         super(DIFF_CALLBACK);
     }
 
-    private static final DiffUtil.ItemCallback<EvalResult> DIFF_CALLBACK = new DiffUtil.ItemCallback<EvalResult>() {
-        @Override
-        public boolean areItemsTheSame(@NonNull EvalResult oldItem, @NonNull EvalResult newItem) {
-            return oldItem.getId() == newItem.getId();
-        }
+    private static final DiffUtil.ItemCallback<Map.Entry<String, Double>> DIFF_CALLBACK =
+            new DiffUtil.ItemCallback<Map.Entry<String, Double>>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull Map.Entry<String, Double> oldItem,
+                                                @NonNull Map.Entry<String, Double> newItem) {
+                    return oldItem.getKey().equals(newItem.getKey());
+                }
 
-        @Override
-        public boolean areContentsTheSame(@NonNull EvalResult oldItem, @NonNull EvalResult newItem) {
-            return oldItem.getLabel().equals(newItem.getLabel()) &&
-                    oldItem.getValue().equals(newItem.getValue()) &&
-                    oldItem.getDescription().equals(newItem.getDescription());
-        }
-    };
+                @Override
+                public boolean areContentsTheSame(@NonNull Map.Entry<String, Double> oldItem,
+                                                  @NonNull Map.Entry<String, Double> newItem) {
+                    return oldItem.getKey().equals(newItem.getKey())
+                            && Double.compare(oldItem.getValue(), newItem.getValue()) == 0;
+                }
+            };
 
     @NonNull
     @Override
@@ -47,10 +53,10 @@ public class MetricAdapter extends ListAdapter<EvalResult, MetricAdapter.MetricV
     }
 
     static class MetricViewHolder extends RecyclerView.ViewHolder {
-        private TextView tvLabel;
-        private TextView tvValue;
-        private TextView tvDescription;
-        private TextView tvTrend;
+        private final TextView tvLabel;
+        private final TextView tvValue;
+        private final TextView tvDescription;
+        private final TextView tvTrend;
 
         MetricViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -60,20 +66,40 @@ public class MetricAdapter extends ListAdapter<EvalResult, MetricAdapter.MetricV
             tvTrend = itemView.findViewById(R.id.tv_trend);
         }
 
-        void bind(EvalResult evalResult) {
-            tvLabel.setText(evalResult.getLabel());
-            tvValue.setText(evalResult.getValue());
-            tvDescription.setText(evalResult.getDescription());
+        void bind(Map.Entry<String, Double> metric) {
+            String name = metric.getKey();
+            tvLabel.setText(name);
+            tvValue.setText(String.valueOf(metric.getValue()));
 
-            // 根据 better 字段设置趋势指示器
-            if ("higher".equals(evalResult.getBetter())) {
+            // 根据指标名称判定方向：psnr/ssim 越高越好，lpips/niqe 越低越好
+            String direction = describeMetric(name);
+            tvDescription.setText(direction);
+            if ("higher".equals(direction)) {
                 tvTrend.setText("↑");
-                tvTrend.setTextColor(itemView.getContext().getResources().getColor(android.R.color.holo_green_dark));
-            } else if ("lower".equals(evalResult.getBetter())) {
+                tvTrend.setTextColor(itemView.getContext().getResources()
+                        .getColor(android.R.color.holo_green_dark));
+            } else if ("lower".equals(direction)) {
                 tvTrend.setText("↓");
-                tvTrend.setTextColor(itemView.getContext().getResources().getColor(android.R.color.holo_red_dark));
+                tvTrend.setTextColor(itemView.getContext().getResources()
+                        .getColor(android.R.color.holo_red_dark));
             } else {
                 tvTrend.setText("");
+            }
+        }
+
+        private static String describeMetric(String name) {
+            if (name == null) {
+                return "";
+            }
+            switch (name.toLowerCase()) {
+                case "psnr":
+                case "ssim":
+                    return "higher";
+                case "lpips":
+                case "niqe":
+                    return "lower";
+                default:
+                    return "";
             }
         }
     }

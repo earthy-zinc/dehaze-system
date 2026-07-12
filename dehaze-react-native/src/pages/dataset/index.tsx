@@ -1,23 +1,16 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  StyleSheet,
-} from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/routes/navigator';
+import { View, StyleSheet } from 'react-native';
 import { MainLayout } from '@/layout';
 import DatasetListSection from './components/DatasetListSection';
 import DatasetDetailSection from './components/DatasetDetailSection';
-import { Dataset } from './types/dataset';
+import type { DatasetTreeNode } from './types/dataset';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Dataset'>;
-
-const DatasetScreen: React.FC<Props> = () => {
+const DatasetScreen: React.FC = () => {
   const [currentView, setCurrentView] = useState<'list' | 'detail'>('list');
   const [selectedDatasetId, setSelectedDatasetId] = useState<number | null>(null);
   const [searchValue, setSearchValue] = useState('');
 
-  const handleDatasetPress = useCallback((dataset: Dataset) => {
+  const handleDatasetPress = useCallback((dataset: DatasetTreeNode) => {
     setSelectedDatasetId(dataset.id);
     setCurrentView('detail');
   }, []);

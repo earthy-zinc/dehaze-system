@@ -25,7 +25,10 @@ const config = {
       '@': path.resolve(__dirname, 'src'),
     },
   },
-  watchFolders: [path.resolve(__dirname, 'src')],
+  watchFolders: [
+    path.resolve(__dirname, 'src'),
+    path.resolve(__dirname, '../dehaze-tool/dehaze-sdk-js'),
+  ],
 };
 
 const finalConfig = mergeConfig(getDefaultConfig(__dirname), config);

@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {Button, Form, Image, Input, Text, View} from '@tarojs/components';
 import Taro, { useDidShow } from '@tarojs/taro';
-import {
-  Toast,
-} from '@taroify/core';
 import './index.less';
 import { AuthAPI, CaptchaResult } from "dehaze-sdk-js";
+import { useGlobalContext } from '@/stores/global';
 
 const Login: React.FC = () => {
+  const { login } = useGlobalContext();
   const [formData, setFormData] = useState({
     username: 'admin',
     password: '123456',
@@ -37,7 +36,7 @@ const Login: React.FC = () => {
       }));
     } catch (error) {
       console.error('获取验证码失败:', error);
-      Toast.open({ message: '获取验证码失败', position: 'top' });
+      Taro.showToast({ title: '获取验证码失败', icon: 'none' });
     }
   };
 
@@ -55,17 +54,17 @@ const Login: React.FC = () => {
     const trimmedCaptcha = formData.captchaCode?.trim();
 
     if (!trimmedUsername) {
-      Toast.open({ message: '请输入用户名', position: 'top' });
+      Taro.showToast({ title: '请输入用户名', icon: 'none' });
       return;
     }
 
     if (!trimmedPassword) {
-      Toast.open({ message: '请输入密码', position: 'top' });
+      Taro.showToast({ title: '请输入密码', icon: 'none' });
       return;
     }
 
     if (!trimmedCaptcha) {
-      Toast.open({ message: '请输入验证码', position: 'top' });
+      Taro.showToast({ title: '请输入验证码', icon: 'none' });
       return;
     }
 
@@ -79,19 +78,22 @@ const Login: React.FC = () => {
         captchaCode: trimmedCaptcha
       };
 
-      await AuthAPI.login(loginData);
+      // 使用全局 login 方法，会自动保存 token、用户信息、权限到 storage 和全局状态
+      await login(loginData);
 
       // 登录成功
-      Toast.open({ message: '登录成功', position: 'top' });
+      Taro.showToast({ title: '登录成功', icon: 'success' });
 
-      // 延迟跳转，让用户看到成功提示
+      // 延迟跳转，让用户看到成功提示。登录后进入首页（tabbar 页面）
       setTimeout(() => {
-        Taro.redirectTo({url: '/pages/dashboard/index'});
+        Taro.switchTab({ url: '/pages/home/index' });
       }, 1000);
 
-    } catch (error) {
+    } catch (error: any) {
+      // 打印完整错误对象，便于诊断
       console.error('登录失败:', error);
-      Toast.open({ message: '登录失败，请检查用户名和密码', position: 'top' });
+      const errMsg = error?.response?.data?.msg || error?.message || '登录失败，请检查用户名和密码';
+      Taro.showToast({ title: errMsg, icon: 'none' });
 
       // 登录失败，刷新验证码
       await getCaptcha();
@@ -108,17 +110,20 @@ const Login: React.FC = () => {
 
   return (
     <View className='login-container'>
+      {/* 顶部 Logo 区 */}
       <View className='login-header'>
+        <View className='logo-circle'>
+          <Text style={{ fontSize: '56rpx', color: '#ffffff' }}>去雾</Text>
+        </View>
+        <Text className='app-title'>图像去雾系统</Text>
+        <Text className='app-slogan'>专业级图像处理 · 深度学习算法</Text>
       </View>
 
+      {/* 登录卡片 */}
       <View className='login-card'>
-        <View className='login-header'>
-          <Text className='app-title'>图像去雾系统</Text>
-          <Text className='version'>1.10.1</Text>
-        </View>
-
         <Form className='form-container'>
           <View className='form-group'>
+            <Text className='form-label'>用户名</Text>
             <Input
               className='form-input'
               placeholder='请输入用户名'
@@ -128,6 +133,7 @@ const Login: React.FC = () => {
           </View>
 
           <View className='form-group'>
+            <Text className='form-label'>密码</Text>
             <Input
               className='form-input'
               placeholder='请输入密码'
@@ -138,9 +144,10 @@ const Login: React.FC = () => {
           </View>
 
           <View className='form-group'>
+            <Text className='form-label'>验证码</Text>
             <View className='captcha-container'>
               <Input
-                className={`form-input`}
+                className='form-input'
                 placeholder='请输入验证码'
                 value={formData.captchaCode}
                 onInput={(e) => handleInput('captchaCode', e.detail.value)}
@@ -148,7 +155,6 @@ const Login: React.FC = () => {
               <Image className='captcha-image' src={captcha?.captchaBase64} onClick={refreshCaptcha}/>
             </View>
           </View>
-
 
           <Button
             className='form-button'
@@ -159,18 +165,15 @@ const Login: React.FC = () => {
           </Button>
 
           <View className='footer-info'>
-            <Text className='info-text mr-2'>用户名: admin</Text>
-            <Text className='info-text'>密码: 123456</Text>
+            <Text className='info-text'>账号 admin / 密码 123456</Text>
           </View>
         </Form>
       </View>
 
+      {/* 底部版权 */}
       <View className='login-footer'>
         <View className='login-footer-text'>
           <Text>Copyright © 2022 - 2024 Peixin Wu All Rights Reserved.</Text>
-        </View>
-        <View className='login-footer-text'>
-          <Text>武沛鑫 版权所有</Text>
         </View>
         <View className='login-footer-text'>
           <Text>渝ICP备2024111923号-2</Text>

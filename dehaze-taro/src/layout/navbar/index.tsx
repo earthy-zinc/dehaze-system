@@ -4,7 +4,7 @@
 import React from 'react';
 import { View, Text } from '@tarojs/components';
 import Taro from '@tarojs/taro';
-import { Search, Bars, EyeOutlined } from '@taroify/icons';
+import { Search, Bars } from '@taroify/icons';
 import { useStatusBarHeight } from '@/hooks/useLayout';
 import './index.less';
 
@@ -53,7 +53,7 @@ const AppNavbar: React.FC<AppNavbarProps> = ({
         {/* Logo + 标题 */}
         <View className='navbar-brand' onClick={goHome}>
           <View className='logo-wrapper'>
-            <EyeOutlined size='20' color='#ffffff' />
+            <Text className='logo-text'>去雾</Text>
           </View>
           <Text className='app-title'>{title}</Text>
         </View>

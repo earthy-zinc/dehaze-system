@@ -19,16 +19,6 @@ import java.io.OutputStream;
 public class UserAPI {
 
     /**
-     * 获取当前用户信息 (旧接口)
-     *
-     * @param callback 回调函数
-     */
-    public static void getCurrentUserInfo(ApiCallback<UserInfoResponse> callback) {
-        Call<Result<UserInfoResponse>> call = DehazeSDK.getInstance().getUserApiService().getUserInfo();
-        call.enqueue(callback);
-    }
-
-    /**
      * 登录成功后获取用户信息（昵称、头像、权限集合和角色集合）
      *
      * @param callback 回调函数
@@ -114,6 +104,18 @@ public class UserAPI {
      */
     public static void deleteByIds(String ids, ApiCallback<Void> callback) {
         Call<Result<Void>> call = DehazeSDK.getInstance().getUserApiService().deleteUsers(ids);
+        call.enqueue(callback);
+    }
+
+    /**
+     * 修改用户状态
+     *
+     * @param id       用户ID
+     * @param status   状态(1:启用;0:禁用)
+     * @param callback 回调函数
+     */
+    public static void updateStatus(long id, int status, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getUserApiService().updateUserStatus(id, status);
         call.enqueue(callback);
     }
 

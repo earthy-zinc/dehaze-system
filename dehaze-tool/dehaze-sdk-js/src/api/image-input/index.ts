@@ -5,7 +5,7 @@ import { HistoryForm, HistoryQuery, HistoryUpdateForm, InputHistoryVO } from "./
 class ImageInputHistoryAPI {
   /** 分页查询历史记录 */
   static getPage(query?: HistoryQuery) {
-    return request<any, PageResult<InputHistoryVO>>({
+    return request<any, PageResult<InputHistoryVO[]>>({
       url: "/api/v1/image-input/history",
       method: "get",
       params: query,

@@ -1,14 +1,9 @@
 /**
- * 分页结果基类
+ * 分页结果（后端 vo.PageResult / API 规范 §3.3）
  */
 export class PageResult<T> {
-  /**
-   * 数据列表
-   */
-  list: Array<T> = [];
-  
-  /**
-   * 总记录数
-   */
+  /** 当前页数据列表 */
+  list: T[] = [];
+  /** 总记录数 */
   total: number = 0;
 }

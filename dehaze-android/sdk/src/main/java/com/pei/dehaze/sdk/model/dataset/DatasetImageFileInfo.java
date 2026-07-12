@@ -3,13 +3,13 @@ package com.pei.dehaze.sdk.model.dataset;
 import lombok.Data;
 
 /**
- * 数据集图片文件信息模型类
+ * 图片文件信息（对齐后端 ImageFileInfo）
  */
 @Data
 public class DatasetImageFileInfo {
-    private int id;
-    private int datasetItemId;
-    private int fileId;
+    private Long id;
+    private Long datasetItemId;
+    private Long fileId;
     private String type;
     private String description;
     private String url;

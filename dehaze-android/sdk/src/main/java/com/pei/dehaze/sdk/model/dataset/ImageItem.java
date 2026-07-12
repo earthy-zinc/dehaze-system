@@ -1,13 +1,19 @@
 package com.pei.dehaze.sdk.model.dataset;
 
 import lombok.Data;
+
 import java.util.List;
 
 /**
- * 图片项模型类
+ * 数据项模型类（对齐后端 ImageItemVO）
  */
 @Data
 public class ImageItem {
-    private int id;
-    private List<ImageUrl> imgUrl;
+    private Long id;
+    private Long datasetId;
+    private String name;
+    private Integer imageCount;
+    private List<ImageUrl> hazyImages;
+    private String createTime;
+    private String updateTime;
 }

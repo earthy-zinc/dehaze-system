@@ -1,83 +1,47 @@
 package com.pei.dehaze.ui.dataset;
 
-import android.util.Log;
-
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.pei.dehaze.sdk.ApiCallback;
-import com.pei.dehaze.sdk.api.DatasetAPI;
-import com.pei.dehaze.sdk.network.ApiException;
+import com.pei.dehaze.repository.DatasetRepository;
+import com.pei.dehaze.sdk.model.PageResult;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
-import com.pei.dehaze.sdk.model.dataset.ImageItem;
-import com.pei.dehaze.sdk.model.dataset.ImageItemQuery;
-import com.pei.dehaze.sdk.model.dataset.ImageUrl;
-import com.pei.dehaze.ui.dataset.model.ImageType;
-import com.pei.dehaze.ui.dataset.model.ViewCard;
+import com.pei.dehaze.sdk.model.dataset.DatasetQuery;
 
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 数据集列表页 ViewModel（树形列表 + CRUD）
+ */
 public class DatasetViewModel extends ViewModel {
-    private static final String TAG = "DatasetViewModel";
 
-    // 数据集信息
-    private MutableLiveData<Dataset> datasetInfo = new MutableLiveData<>();
-    
-    // 图片列表
-    private MutableLiveData<List<ViewCard>> images = new MutableLiveData<>();
-    
-    // 图片类型列表
-    private MutableLiveData<List<ImageType>> imageTypes = new MutableLiveData<>();
-    
-    // 当前选中的图片类型
-    private MutableLiveData<ImageType> curImageType = new MutableLiveData<>();
-    
-    // 加载状态
-    private MutableLiveData<Boolean> loading = new MutableLiveData<>();
-    
-    // 错误信息
-    private MutableLiveData<String> error = new MutableLiveData<>();
-    
-    // 总页数
-    private MutableLiveData<Integer> totalPages = new MutableLiveData<>();
-    
-    // 当前页码
-    private int currentPage = 1;
-    
-    // 每页大小
-    private int pageSize = 10;
-    
-    // 数据集ID
-    private int datasetId;
-    
-    // 图片数据缓存
-    private List<ImageItem> imageData = new ArrayList<>();
+    private final DatasetRepository repository;
+
+    private final MutableLiveData<List<Dataset>> rootDatasets = new MutableLiveData<>();
+    private final MutableLiveData<List<Dataset>> searchResults = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> loading = new MutableLiveData<>(false);
+    private final MutableLiveData<String> error = new MutableLiveData<>();
+    private final MutableLiveData<String> operationResult = new MutableLiveData<>();
+
+    private boolean searchMode = false;
+    private String keywords = "";
+
+    private int searchPageNum = 1;
+    private final int searchPageSize = 20;
+    private long searchTotal = 0;
 
     public DatasetViewModel() {
-        images.setValue(new ArrayList<>());
-        imageTypes.setValue(new ArrayList<>());
-        loading.setValue(false);
-        error.setValue("");
-        totalPages.setValue(1);
-        datasetInfo.setValue(new Dataset());
+        repository = new DatasetRepository();
     }
 
-    public LiveData<Dataset> getDatasetInfo() {
-        return datasetInfo;
+    public LiveData<List<Dataset>> getRootDatasets() {
+        return rootDatasets;
     }
 
-    public LiveData<List<ViewCard>> getImages() {
-        return images;
-    }
-
-    public LiveData<List<ImageType>> getImageTypes() {
-        return imageTypes;
-    }
-
-    public LiveData<ImageType> getCurImageType() {
-        return curImageType;
+    public LiveData<List<Dataset>> getSearchResults() {
+        return searchResults;
     }
 
     public LiveData<Boolean> getLoading() {
@@ -88,201 +52,200 @@ public class DatasetViewModel extends ViewModel {
         return error;
     }
 
-    public LiveData<Integer> getTotalPages() {
-        return totalPages;
+    public LiveData<String> getOperationResult() {
+        return operationResult;
+    }
+
+    public boolean isSearchMode() {
+        return searchMode;
+    }
+
+    public void clearError() {
+        error.setValue(null);
+    }
+
+    public void clearOperationResult() {
+        operationResult.setValue(null);
     }
 
     /**
-     * 设置数据集ID
-     * @param datasetId 数据集ID
+     * 加载根数据集
      */
-    public void setDatasetId(int datasetId) {
-        this.datasetId = datasetId;
-    }
-
-    /**
-     * 加载数据集信息
-     */
-    public void loadDatasetInfo() {
-        if (datasetId <= 0) {
-            error.setValue("数据集ID无效");
-            return;
-        }
-
+    public void loadRoots() {
+        searchMode = false;
         loading.setValue(true);
-        DatasetAPI.getDatasetInfoById(datasetId, new ApiCallback<Dataset>() {
+        repository.getDatasetChildren(0, new DatasetRepository.Callback<List<Dataset>>() {
             @Override
-            public void onSuccess(Dataset data) {
+            public void onSuccess(List<Dataset> data) {
+                rootDatasets.postValue(data != null ? data : new ArrayList<>());
                 loading.postValue(false);
-                datasetInfo.postValue(data);
             }
 
             @Override
-            public void onError(int code, String message) {
+            public void onError(String errorMessage) {
+                error.postValue(errorMessage);
                 loading.postValue(false);
-                error.postValue("获取数据集信息失败: " + message);
-            }
-
-            @Override
-            public void onFailure(ApiException e) {
-                loading.postValue(false);
-                error.postValue("网络错误: " + e.getMessage());
             }
         });
     }
 
     /**
-     * 加载图片数据
+     * 懒加载子节点
      */
-    public void loadImages() {
-        if (datasetId <= 0) {
-            error.setValue("数据集ID无效");
-            return;
-        }
+    public void loadChildren(long parentId, DatasetRepository.Callback<List<Dataset>> callback) {
+        repository.getDatasetChildren(parentId, callback);
+    }
 
+    /**
+     * 搜索数据集（切换到搜索模式，显示扁平列表）
+     */
+    public void search(String keywords) {
+        this.keywords = keywords == null ? "" : keywords.trim();
+        searchMode = true;
+        searchPageNum = 1;
+        loadSearchPage();
+    }
+
+    public void searchNextPage() {
+        long totalPages = (long) Math.ceil(searchTotal * 1.0 / searchPageSize);
+        if (searchPageNum < totalPages) {
+            searchPageNum++;
+            loadSearchPage();
+        }
+    }
+
+    private void loadSearchPage() {
         loading.setValue(true);
-        
-        ImageItemQuery query = new ImageItemQuery();
-        query.setPageNum(currentPage);
-        query.setPageSize(pageSize);
-        
-        DatasetAPI.getImageItem(datasetId, query, new ApiCallback<List<ImageItem>>() {
+        DatasetQuery query = new DatasetQuery();
+        query.setPageNum(searchPageNum);
+        query.setPageSize(searchPageSize);
+        query.setKeywords(keywords);
+        repository.getDatasetList(query, new DatasetRepository.Callback<PageResult<Dataset>>() {
             @Override
-            public void onSuccess(List<ImageItem> data) {
-                loading.postValue(false);
-                
-                // 更新图片数据
-                if (currentPage == 1) {
-                    imageData.clear();
+            public void onSuccess(PageResult<Dataset> data) {
+                searchTotal = data != null ? data.getTotal() : 0;
+                List<Dataset> list = data != null && data.getList() != null ? data.getList() : new ArrayList<>();
+                if (searchPageNum == 1) {
+                    searchResults.postValue(list);
+                } else {
+                    List<Dataset> merged = new ArrayList<>(searchResults.getValue() != null
+                            ? searchResults.getValue() : new ArrayList<>());
+                    merged.addAll(list);
+                    searchResults.postValue(merged);
                 }
-                imageData.addAll(data);
-                
-                // 更新总页数
-                int total = datasetInfo.getValue() != null ? datasetInfo.getValue().getTotal() : 0;
-                totalPages.postValue((int) Math.ceil((double) total / pageSize));
-                
-                // 处理图片类型
-                processImageTypes();
-                
-                // 切换图片URL
-                switchImageUrl();
+                loading.postValue(false);
             }
 
             @Override
-            public void onError(int code, String message) {
+            public void onError(String errorMessage) {
+                error.postValue(errorMessage);
                 loading.postValue(false);
-                error.postValue("获取图片数据失败: " + message);
+            }
+        });
+    }
+
+    public long getSearchTotal() {
+        return searchTotal;
+    }
+
+    /**
+     * 清除搜索，回到树形模式
+     */
+    public void clearSearch() {
+        keywords = "";
+        searchMode = false;
+        loadRoots();
+    }
+
+    /**
+     * 新增数据集
+     */
+    public void addDataset(Dataset form) {
+        loading.setValue(true);
+        repository.addDataset(form, new DatasetRepository.Callback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                operationResult.postValue("新增数据集成功");
+                loading.postValue(false);
+                reload();
             }
 
             @Override
-            public void onFailure(ApiException e) {
+            public void onError(String errorMessage) {
+                error.postValue(errorMessage);
                 loading.postValue(false);
-                error.postValue("网络错误: " + e.getMessage());
             }
         });
     }
 
     /**
-     * 处理图片类型
+     * 修改数据集
      */
-    private void processImageTypes() {
-        if (imageData.isEmpty()) {
-            return;
-        }
-
-        List<ImageType> types = new ArrayList<>();
-        List<ImageUrl> urls = imageData.get(0).getImgUrl();
-        
-        for (int i = 0; i < urls.size(); i++) {
-            ImageUrl url = urls.get(i);
-            types.add(new ImageType(i, url.getType(), i == 0));
-        }
-        
-        imageTypes.postValue(types);
-        
-        // 设置当前选中的图片类型
-        for (ImageType type : types) {
-            if (type.isEnabled()) {
-                curImageType.postValue(type);
-                break;
+    public void updateDataset(long id, Dataset form) {
+        loading.setValue(true);
+        repository.updateDataset(id, form, new DatasetRepository.Callback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                operationResult.postValue("修改数据集成功");
+                loading.postValue(false);
+                reload();
             }
-        }
-    }
 
-    /**
-     * 切换图片URL
-     */
-    private void switchImageUrl() {
-        ImageType currentType = curImageType.getValue();
-        if (currentType == null || imageData.isEmpty()) {
-            images.postValue(new ArrayList<>());
-            return;
-        }
-
-        List<ViewCard> viewCards = new ArrayList<>();
-        for (ImageItem item : imageData) {
-            List<ImageUrl> urls = item.getImgUrl();
-            if (currentType.getId() < urls.size()) {
-                ImageUrl url = urls.get(currentType.getId());
-                viewCards.add(new ViewCard(
-                    item.getId(),
-                    url.getUrl(),
-                    url.getOriginUrl() != null ? url.getOriginUrl() : url.getUrl(),
-                    url.getDescription() != null ? url.getDescription() : ""
-                ));
+            @Override
+            public void onError(String errorMessage) {
+                error.postValue(errorMessage);
+                loading.postValue(false);
             }
-        }
-        
-        images.postValue(viewCards);
+        });
     }
 
     /**
-     * 切换图片类型
-     * @param typeId 图片类型ID
+     * 删除数据集
      */
-    public void switchImageType(int typeId) {
-        List<ImageType> types = imageTypes.getValue();
-        if (types == null) {
-            return;
-        }
-
-        for (ImageType type : types) {
-            type.setEnabled(type.getId() == typeId);
-            if (type.isEnabled()) {
-                curImageType.postValue(type);
+    public void deleteDataset(long id) {
+        loading.setValue(true);
+        repository.deleteDataset(id, new DatasetRepository.Callback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                operationResult.postValue("删除数据集成功");
+                loading.postValue(false);
+                reload();
             }
+
+            @Override
+            public void onError(String errorMessage) {
+                error.postValue(errorMessage);
+                loading.postValue(false);
+            }
+        });
+    }
+
+    /**
+     * 批量删除数据集
+     */
+    public void batchDeleteDatasets(List<Long> ids) {
+        loading.setValue(true);
+        repository.batchDeleteDatasets(ids, new DatasetRepository.Callback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                operationResult.postValue("批量删除成功");
+                loading.postValue(false);
+                reload();
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                error.postValue(errorMessage);
+                loading.postValue(false);
+            }
+        });
+    }
+
+    private void reload() {
+        if (searchMode) {
+            search(keywords);
+        } else {
+            loadRoots();
         }
-        
-        imageTypes.postValue(types);
-        switchImageUrl();
-    }
-
-    /**
-     * 加载更多数据
-     */
-    public void loadMore() {
-        if (currentPage < totalPages.getValue()) {
-            currentPage++;
-            loadImages();
-        }
-    }
-
-    /**
-     * 重置查询
-     */
-    public void resetQuery() {
-        currentPage = 1;
-        loadImages();
-    }
-
-    /**
-     * 搜索图片
-     * @param keywords 关键词
-     */
-    public void searchImages(String keywords) {
-        // TODO: 实现搜索功能
-        // 目前只是重新加载第一页数据
-        currentPage = 1;
-        loadImages();
     }
 }

@@ -1,5 +1,10 @@
 {
   "src": [
-    "pages/Index"
+    "pages/Login",
+    "pages/Home",
+    "pages/ImageInput",
+    "pages/AlgorithmSelect",
+    "pages/Processing",
+    "pages/Compare"
   ]
 }

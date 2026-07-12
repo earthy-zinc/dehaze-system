@@ -7,6 +7,7 @@ import {
   Easing,
 } from 'react-native';
 import Card from '@/components/Card';
+import Badge from '@/components/Badge';
 import { Dataset } from '../../types/dataset';
 import { useResponsive } from '@/hooks/useResponsive';
 
@@ -14,12 +15,9 @@ interface DatasetInfoCardProps {
   dataset: Dataset;
 }
 
-const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({
-  dataset,
-}) => {
+const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({ dataset }) => {
   const { isMobile, fontScale } = useResponsive();
 
-  // 入场动画
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -40,17 +38,32 @@ const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  // 响应式字体大小
   const titleFontSize = isMobile ? 18 : 20 * fontScale;
+  const stats = dataset.statistics;
+  const itemCount = stats?.itemCount ?? dataset.total ?? 0;
+  const fileCount = stats?.fileCount ?? 0;
+  const hazyCount = stats?.hazyCount ?? 0;
+  const clearCount = stats?.clearCount ?? 0;
 
   return (
-    <Animated.View style={{
-      opacity: fadeAnim,
-      transform: [{ translateY: slideAnim }],
-    }}>
+    <Animated.View
+      style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
+    >
       <Card padding={20} margin={0} borderRadius={16}>
         <View style={styles.gradientContainer}>
-          {/* Title and Description */}
+          {/* 类型 + 状态 */}
+          <View style={styles.tagsRow}>
+            {!!dataset.type && (
+              <Badge text={dataset.type} variant="info" size="small" />
+            )}
+            <Badge
+              text={dataset.status === 0 ? '禁用' : '启用'}
+              variant={dataset.status === 0 ? 'secondary' : 'success'}
+              size="small"
+            />
+          </View>
+
+          {/* 名称 + 描述 */}
           <Text style={[styles.name, { fontSize: titleFontSize }]}>
             {dataset.name}
           </Text>
@@ -58,34 +71,31 @@ const DatasetInfoCard: React.FC<DatasetInfoCardProps> = ({
             {dataset.description || '暂无描述'}
           </Text>
 
-          {/* Stats Grid */}
-          <View style={[
-            styles.statsGrid,
-            isMobile && styles.statsGridCompact,
-          ]}>
+          {/* 统计信息 */}
+          <View style={[styles.statsGrid, isMobile && styles.statsGridCompact]}>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
               <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
-                {dataset.total_images}
+                {itemCount}
               </Text>
-              <Text style={styles.statLabel}>总计</Text>
+              <Text style={styles.statLabel}>数据项</Text>
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
               <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
-                {dataset.foggy_count}
+                {fileCount}
               </Text>
-              <Text style={styles.statLabel}>有雾</Text>
+              <Text style={styles.statLabel}>文件</Text>
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
               <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
-                {dataset.clear_count}
+                {clearCount}
               </Text>
-              <Text style={styles.statLabel}>无雾</Text>
+              <Text style={styles.statLabel}>清晰图</Text>
             </View>
             <View style={[styles.statBox, isMobile && styles.statBoxCompact]}>
               <Text style={[styles.statValue, isMobile && styles.statValueCompact]}>
-                {dataset.annotated_count}
+                {hazyCount}
               </Text>
-              <Text style={styles.statLabel}>标注</Text>
+              <Text style={styles.statLabel}>有雾图</Text>
             </View>
           </View>
         </View>
@@ -100,6 +110,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     margin: -20,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
   },
   name: {
     fontWeight: '700',

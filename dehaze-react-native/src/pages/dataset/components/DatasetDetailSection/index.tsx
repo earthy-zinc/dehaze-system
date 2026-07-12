@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Button from '@/components/Button';
@@ -13,20 +14,30 @@ import ImageViewer from '../ImageViewer';
 import SearchBar from '../SearchBar';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import EmptyState from '@/components/EmptyState';
-import { Dataset, DatasetImage, ImageTypeFilter } from '../../types/dataset';
+import type {
+  Dataset,
+  DatasetItem,
+  DatasetImage,
+  ImageTypeFilter,
+} from '../../types/dataset';
 import { datasetApi } from '../../services/datasetApi';
 
 interface DatasetDetailSectionProps {
   datasetId: number;
   onBack: () => void;
+  /** 导出任务创建回调 */
+  onExport?: (dataset: Dataset) => void;
 }
+
+const PAGE_SIZE = 20;
 
 const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
   datasetId,
   onBack,
+  onExport,
 }) => {
   const [dataset, setDataset] = useState<Dataset | null>(null);
-  const [images, setImages] = useState<DatasetImage[]>([]);
+  const [items, setItems] = useState<DatasetItem[]>([]);
   const [selectedType, setSelectedType] = useState<ImageTypeFilter>('all');
   const [searchValue, setSearchValue] = useState('');
   const [isLoading, setLoading] = useState(true);
@@ -35,104 +46,164 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
   const [hasMore, setHasMore] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedImage, setSelectedImage] = useState<DatasetImage | null>(null);
+  const [selectedItem, setSelectedItem] = useState<DatasetItem | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 搜索防抖
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadDatasetDetail = useCallback(async () => {
     try {
-      const response = await datasetApi.fetchDatasetDetail(datasetId);
-      if (response.code === 0) {
-        setDataset(response.data);
-      } else {
-        setError('加载数据集详情失败');
-      }
-    } catch (err) {
-      setError('网络错误，请重试');
-      console.error('加载数据集详情失败:', err);
+      const detail = await datasetApi.fetchDatasetDetail(datasetId);
+      setDataset(detail);
+    } catch (err: any) {
+      setError(err?.msg || err?.message || '加载数据集详情失败');
     }
   }, [datasetId]);
 
-  const loadImages = useCallback(async (page = 1, isRefresh = false) => {
-    if (isLoadingImages && !isRefresh) return;
+  const loadItems = useCallback(
+    async (page = 1, isRefresh = false) => {
+      if (isLoadingImages && !isRefresh) return;
+      try {
+        setIsLoadingImages(true);
+        if (isRefresh) setRefreshing(true);
 
-    try {
-      setIsLoadingImages(true);
-      if (isRefresh) {
-        setRefreshing(true);
-      }
+        const result = await datasetApi.fetchDatasetItems({
+          datasetId,
+          keyword: searchValue.trim() || undefined,
+          pageNum: page,
+          pageSize: PAGE_SIZE,
+        });
 
-      const response = await datasetApi.fetchDatasetImages(
-        datasetId,
-        page,
-        selectedType,
-        searchValue
-      );
-
-      if (response.code === 0) {
+        const list = result.list || [];
         if (page === 1) {
-          setImages(response.data.list);
+          setItems(list);
         } else {
-          setImages(prev => [...prev, ...response.data.list]);
+          setItems(prev => [...prev, ...list]);
         }
-
-        setHasMore(response.data.page < response.data.total_pages);
-        setCurrentPage(response.data.page);
-      } else {
-        setError('加载图片失败');
+        setHasMore(list.length >= PAGE_SIZE);
+        setCurrentPage(page);
+      } catch (err: any) {
+        setError(err?.msg || err?.message || '加载数据项失败');
+      } finally {
+        setIsLoadingImages(false);
+        setRefreshing(false);
       }
-    } catch (err) {
-      setError('网络错误，请重试');
-      console.error('加载图片失败:', err);
-    } finally {
-      setIsLoadingImages(false);
-      setRefreshing(false);
-    }
-  }, [datasetId, selectedType, searchValue, isLoadingImages]);
+    },
+    [datasetId, searchValue, isLoadingImages],
+  );
 
   const handleTypeChange = useCallback((type: ImageTypeFilter) => {
     setSelectedType(type);
-    setCurrentPage(1);
-    setImages([]);
   }, []);
 
   const handleSearchChange = useCallback((text: string) => {
     setSearchValue(text);
     setCurrentPage(1);
-    setImages([]);
   }, []);
 
-  const handleImagePress = useCallback((image: DatasetImage) => {
-    setSelectedImage(image);
-  }, []);
+  /** 将数据项按图片类型过滤并扁平化为图片列表 */
+  const flatImages: DatasetImage[] = React.useMemo(() => {
+    const result: DatasetImage[] = [];
+    for (const item of items) {
+      if (selectedType === 'all' || selectedType === 'clear') {
+        if (item.clearImage) result.push(item.clearImage);
+      }
+      if (selectedType === 'all' || selectedType === 'hazy') {
+        if (item.hazyImages) {
+          for (const hazy of item.hazyImages) result.push(hazy);
+        }
+      }
+    }
+    return result;
+  }, [items, selectedType]);
+
+  /** 根据图片 id 回溯所属数据项 */
+  const findItemByImageId = useCallback(
+    (imageId: number): DatasetItem | null => {
+      for (const item of items) {
+        if (item.clearImage?.id === imageId) return item;
+        if (item.hazyImages?.some(h => h.id === imageId)) return item;
+      }
+      return null;
+    },
+    [items],
+  );
+
+  const handleImagePress = useCallback(
+    (image: DatasetImage) => {
+      setSelectedImage(image);
+      setSelectedItem(findItemByImageId(image.id));
+    },
+    [findItemByImageId],
+  );
 
   const handleImageClose = useCallback(() => {
     setSelectedImage(null);
+    setSelectedItem(null);
   }, []);
 
   const handleLoadMore = useCallback(() => {
     if (hasMore && !isLoadingImages) {
-      loadImages(currentPage + 1);
+      loadItems(currentPage + 1);
     }
-  }, [hasMore, isLoadingImages, currentPage, loadImages]);
+  }, [hasMore, isLoadingImages, currentPage, loadItems]);
 
   const handleRefresh = useCallback(() => {
-    loadImages(1, true);
-    loadDatasetDetail();
-  }, [loadImages, loadDatasetDetail]);
+    Promise.all([loadDatasetDetail(), loadItems(1, true)]);
+  }, [loadDatasetDetail, loadItems]);
 
+  const handleExport = useCallback(() => {
+    if (!dataset) return;
+    if (onExport) {
+      onExport(dataset);
+    } else {
+      Alert.alert('提示', `将创建数据集"${dataset.name}"的导出任务，导出完成后可在任务中心下载。`, [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '确认导出',
+          onPress: async () => {
+            try {
+              await datasetApi.createExportTask(dataset.id, {
+                structure: 'by_item',
+                includeTypes: ['clear', 'hazy'],
+                includeThumbnail: false,
+              });
+              Alert.alert('已创建', '导出任务已创建，请到任务中心查看进度');
+            } catch (err: any) {
+              Alert.alert(
+                '导出失败',
+                err?.msg || err?.message || '请稍后重试',
+              );
+            }
+          },
+        },
+      ]);
+    }
+  }, [dataset, onExport]);
+
+  // 类型切换时无需重新请求（前端过滤）
   useEffect(() => {
-    loadImages(1);
-  }, [selectedType, searchValue, loadImages]);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      loadItems(1);
+    }, 350);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue]);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      loadDatasetDetail();
-      loadImages(1);
-      setLoading(false);
-    }, [loadDatasetDetail, loadImages])
+      Promise.all([loadDatasetDetail(), loadItems(1)]).finally(() =>
+        setLoading(false),
+      );
+    }, [loadDatasetDetail, loadItems]),
   );
 
-  if (error && !dataset) {
+  if (error && !dataset && !isLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -143,11 +214,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
             icon={<Icon name="back" size={14} color="#3b82f6" />}
           />
         </View>
-        <EmptyState
-          icon="search-plus"
-          title="加载失败"
-          description={error}
-        />
+        <EmptyState icon="search-plus" title="加载失败" description={error} />
       </View>
     );
   }
@@ -162,6 +229,14 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
           variant="secondary"
           icon={<Icon name="back" size={14} color="#3b82f6" />}
         />
+        {dataset && (
+          <Button
+            title="导出"
+            onPress={handleExport}
+            variant="primary"
+            icon={<Icon name="export" size={14} color="#ffffff" />}
+          />
+        )}
       </View>
 
       {/* Dataset Info */}
@@ -176,12 +251,15 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
         <TypeFilter
           selectedType={selectedType}
           onTypeChange={handleTypeChange}
-          counts={{
-            all: dataset.total_images,
-            foggy: dataset.foggy_count,
-            clear: dataset.clear_count,
-            annotated: dataset.annotated_count,
-          }}
+          counts={
+            dataset.statistics
+              ? {
+                  all: dataset.statistics.fileCount,
+                  clear: dataset.statistics.clearCount,
+                  hazy: dataset.statistics.hazyCount,
+                }
+              : undefined
+          }
         />
       )}
 
@@ -190,13 +268,13 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
         <SearchBar
           value={searchValue}
           onChangeText={handleSearchChange}
-          placeholder="搜索图片..."
+          placeholder="搜索数据项..."
         />
       </View>
 
       {/* Image Grid */}
       <ImageGrid
-        images={images}
+        images={flatImages}
         onImagePress={handleImagePress}
         onEndReached={handleLoadMore}
         onRefresh={handleRefresh}
@@ -212,16 +290,16 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
       )}
 
       {/* Empty State */}
-      {!isLoading && !isLoadingImages && images.length === 0 && dataset && (
+      {!isLoading && !isLoadingImages && flatImages.length === 0 && dataset && (
         <View style={styles.emptyContainer}>
           <EmptyState
             icon="image"
             title="暂无图片"
             description={
               searchValue
-                ? '未找到匹配的图片'
+                ? '未找到匹配的数据项'
                 : selectedType !== 'all'
-                ? `暂无${selectedType === 'foggy' ? '有雾' : selectedType === 'clear' ? '无雾' : '标注'}图片`
+                ? `暂无${selectedType === 'clear' ? '清晰' : '有雾'}图片`
                 : '该数据集还没有图片'
             }
           />
@@ -233,6 +311,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
         visible={!!selectedImage}
         onClose={handleImageClose}
         image={selectedImage}
+        item={selectedItem}
       />
     </View>
   );
@@ -244,6 +323,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f9fafb',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 20,
     paddingBottom: 8,
     backgroundColor: '#ffffff',

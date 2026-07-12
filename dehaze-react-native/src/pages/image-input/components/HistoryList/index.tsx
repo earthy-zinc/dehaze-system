@@ -14,7 +14,8 @@ import {
 import Icon from '@/components/Icon';
 import EmptyState from '@/components/EmptyState';
 import { theme } from '@/theme';
-import { HistoryRecord, HistoryGroup, SelectedImage } from '../../types/imageInput';
+import type { SelectedImage } from '@/types/image';
+import { HistoryRecord, HistoryGroup } from '../../types/imageInput';
 import { historyStorage } from '../../services/historyStorage';
 import HistoryItemCard from '../HistoryItemCard';
 
@@ -37,6 +38,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
       setHistoryGroups(groups);
     } catch (error) {
       console.error('Failed to load history:', error);
+      setHistoryGroups([]);
     } finally {
       setLoading(false);
     }
@@ -49,12 +51,10 @@ const HistoryList: React.FC<HistoryListProps> = ({
   // 处理记录选择
   const handleRecordPress = useCallback((record: HistoryRecord) => {
     const selectedImage: SelectedImage = {
-      id: record.id,
-      uri: record.originalThumbnail,
-      filename: record.filename,
-      width: 1920,
-      height: 1080,
-      fileSize: 0,
+      id: record.id.toString(),
+      url: record.originalImageUrl || record.originalThumbnailUrl || '',
+      thumbUrl: record.originalThumbnailUrl,
+      name: record.algorithmName || '历史图片',
       source: 'history',
     };
 
@@ -62,7 +62,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
   }, [onSelectRecord]);
 
   // 处理删除记录
-  const handleDeleteRecord = useCallback((id: string) => {
+  const handleDeleteRecord = useCallback((id: number) => {
     Alert.alert(
       '删除记录',
       '确定要删除这条历史记录吗？',
@@ -167,7 +167,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
           sections={historyGroups}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
-          keyExtractor={item => item.id}
+          keyExtractor={item => item.id.toString()}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled={false}
           scrollEnabled={false} // 禁用内部滚动

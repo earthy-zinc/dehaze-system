@@ -1,62 +1,51 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { routeConfigs } from './config';
-
-// 定义所有可能的路由键
-type RouteKeys =
-  | 'Login'
-  | 'Home'
-  | 'ImageInput'
-  | 'AlgorithmSelect'
-  | 'Processing'
-  | 'SideBySide'
-  | 'Overlay'
-  | 'Magnifier'
-  | 'Filter'
-  | 'Metrics'
-  | 'Dataset'
-  | 'Algorithm';
-
-export interface RouteConfig {
-  name: RouteKeys;
-  component: React.ComponentType<any>;
-  options?: any;
-  initialParams?: any;
-}
-
-export type RootStackParamList = {
-  Login: undefined;
-  Home: undefined;
-  ImageInput: undefined;
-  AlgorithmSelect: undefined;
-  Processing: undefined;
-  SideBySide: undefined;
-  Overlay: undefined;
-  Magnifier: undefined;
-  Filter: undefined;
-  Metrics: undefined;
-  Dataset: undefined;
-  Algorithm: undefined;
-};
+import { ActivityIndicator, View } from 'react-native';
+import { useAuth } from '@/store';
+import { protectedRoutes, publicRoutes } from './config';
+import type { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+function SplashLoading() {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" />
+    </View>
+  );
+}
+
+/**
+ * 路由管理器 + 鉴权守卫
+ *
+ * 根据认证状态条件渲染路由：
+ * - loading 中：显示启动屏
+ * - 未认证：仅渲染 Login
+ * - 已认证：渲染除 Login 外的所有受保护路由
+ */
 export const RouteManager = () => {
+  const { isAuthenticated, state } = useAuth();
+
+  if (state.loading) {
+    return <SplashLoading />;
+  }
+
+  const routes = isAuthenticated ? protectedRoutes : publicRoutes;
+
   return (
     <Stack.Navigator
-      initialRouteName="Home"
+      initialRouteName={isAuthenticated ? 'Home' : 'Login'}
       screenOptions={{
-        headerShown: false, // 使用自定义 Header
+        headerShown: false,
         animation: 'slide_from_right',
       }}
     >
-      {routeConfigs.map(route => (
+      {routes.map(route => (
         <Stack.Screen
           key={route.name}
           name={route.name}
           component={route.component}
           options={route.options}
-          initialParams={route.initialParams}
         />
       ))}
     </Stack.Navigator>

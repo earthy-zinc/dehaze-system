@@ -15,7 +15,7 @@ import {
 import { launchImageLibrary, ImagePickerResponse } from 'react-native-image-picker';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
-import { SelectedImage } from '../../types/imageInput';
+import type { SelectedImage } from '@/types/image';
 import { imageInputApi } from '../../services/imageInputApi';
 
 interface UploadAreaProps {
@@ -127,11 +127,11 @@ const UploadArea: React.FC<UploadAreaProps> = ({
 
       const selectedImage: SelectedImage = {
         id: Date.now().toString(),
-        uri: asset.uri,
-        filename: asset.fileName || `image_${Date.now()}.jpg`,
+        url: asset.uri,
+        name: asset.fileName || `image_${Date.now()}.jpg`,
         width,
         height,
-        fileSize: asset.fileSize || 0,
+        size: asset.fileSize || 0,
         source: 'upload',
       };
 

@@ -108,4 +108,16 @@ public class RoleAPI {
         Call<Result<Void>> call = DehazeSDK.getInstance().getRoleApiService().deleteRoles(ids);
         call.enqueue(callback);
     }
+
+    /**
+     * 修改角色状态
+     *
+     * @param id       角色ID
+     * @param status   状态(1:启用;0:禁用)
+     * @param callback 回调函数
+     */
+    public static void updateStatus(long id, int status, ApiCallback<Void> callback) {
+        Call<Result<Void>> call = DehazeSDK.getInstance().getRoleApiService().updateRoleStatus(id, status);
+        call.enqueue(callback);
+    }
 }

@@ -10,14 +10,15 @@ import {
   Alert,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/routes/navigator';
+import type { RootStackParamList } from '@/routes/types';
 import { MainLayout } from '@/layout';
 import Card from '@/components/Card';
 import { useResponsive } from '@/hooks/useResponsive';
 import { theme } from '@/theme';
+import type { SelectedImage } from '@/types/image';
 
 // 类型
-import { InputMethod, SelectedImage } from './types/imageInput';
+import { InputMethod } from './types/imageInput';
 
 // 服务
 import { imageInputApi } from './services/imageInputApi';
@@ -66,7 +67,7 @@ const ImageInputScreen: React.FC<Props> = ({ navigation }) => {
     // 导航到算法选择页面，传递选中的图片
     navigation.navigate('AlgorithmSelect', {
       image: selectedImage,
-    } as any);
+    });
   }, [selectedImage, navigation]);
 
   // 处理快速体验
@@ -74,35 +75,39 @@ const ImageInputScreen: React.FC<Props> = ({ navigation }) => {
     setLoading(true);
     try {
       // 随机选择一张样例图片
-      const randomSample = imageInputApi.getRandomSample();
+      const randomSample = await imageInputApi.getRandomSample();
 
       // 获取图片尺寸
-      let width = 1920;
-      let height = 1080;
+      let width = randomSample.width || 1920;
+      let height = randomSample.height || 1080;
 
-      try {
-        const size = await imageInputApi.getImageSize(randomSample.url);
-        width = size.width;
-        height = size.height;
-      } catch (e) {
-        // 使用默认值
+      if (!width || !height) {
+        try {
+          const size = await imageInputApi.getImageSize(randomSample.url);
+          width = size.width;
+          height = size.height;
+        } catch (e) {
+          // 使用默认值
+        }
       }
 
       const quickStartImage: SelectedImage = {
-        id: Date.now().toString(),
-        uri: randomSample.url,
-        filename: `${randomSample.name}.jpg`,
+        id: randomSample.id.toString(),
+        url: randomSample.url,
+        thumbUrl: randomSample.thumbUrl,
+        name: randomSample.name,
         width,
         height,
-        fileSize: 0,
         source: 'sample',
-        sampleInfo: randomSample,
+        sampleInfo: {
+          sceneType: randomSample.sceneType,
+        },
       };
 
       setSelectedImage(quickStartImage);
       setCurrentMethod('sample');
     } catch (error) {
-      Alert.alert('错误', '加载样例图片失败');
+      Alert.alert('错误', error instanceof Error ? error.message : '加载样例图片失败');
     } finally {
       setLoading(false);
     }

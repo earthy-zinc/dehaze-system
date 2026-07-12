@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/routes/navigator';
+import type { RootStackParamList } from '@/routes/types';
 import { MainLayout } from '@/layout';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Algorithm'>;

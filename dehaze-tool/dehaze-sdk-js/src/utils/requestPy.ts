@@ -30,16 +30,18 @@ service.interceptors.request.use(
 
 service.interceptors.response.use(
   async (response: AxiosResponse) => {
-    try {
-      const interceptors = pythonConfigManager.getInterceptors();
-      const { code, data } = response.data;
-      if (code !== ResultEnum.SUCCESS) {
-        return Promise.reject(response.data);
-      }
-      return (await interceptors.onResponse?.(response)) || data;
-    } catch (error) {
+    const interceptors = pythonConfigManager.getInterceptors();
+    const { code, data } = response.data;
+    if (code !== ResultEnum.SUCCESS) {
+      // 构造模拟 AxiosError，让 onResponseError 能访问 response.data
+      const error = new Error(response.data?.msg || "Business error") as AxiosError;
+      error.response = response;
+      error.config = response.config;
+      error.name = "AxiosError";
+      error.isAxiosError = true;
       return Promise.reject(error);
     }
+    return (await interceptors.onResponse?.(response)) || data;
   },
   (error: AxiosError) => {
     const interceptors = pythonConfigManager.getInterceptors();

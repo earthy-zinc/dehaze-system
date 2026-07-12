@@ -11,12 +11,11 @@ import com.pei.dehaze.sdk.network.ApiException;
 import com.pei.dehaze.sdk.model.auth.CaptchaResponse;
 import com.pei.dehaze.sdk.model.auth.LoginRequest;
 import com.pei.dehaze.sdk.model.auth.LoginResponse;
+import com.pei.dehaze.sdk.utils.TokenManager;
 
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
-@Setter
 public class LoginViewModel extends ViewModel {
     private final MutableLiveData<String> username = new MutableLiveData<>();
     private final MutableLiveData<String> password = new MutableLiveData<>();
@@ -40,6 +39,21 @@ public class LoginViewModel extends ViewModel {
         loginSuccess.setValue(false);
     }
 
+    /** 设置用户名（供 UI 文本变化监听器调用） */
+    public void setUsername(String value) {
+        username.setValue(value);
+    }
+
+    /** 设置密码（供 UI 文本变化监听器调用） */
+    public void setPassword(String value) {
+        password.setValue(value);
+    }
+
+    /** 设置验证码（供 UI 文本变化监听器调用） */
+    public void setCaptchaCode(String value) {
+        captchaCode.setValue(value);
+    }
+
     /**
      * 获取验证码
      */
@@ -52,7 +66,7 @@ public class LoginViewModel extends ViewModel {
             }
 
             @Override
-            public void onError(int code, String message) {
+            public void onError(String code, String message) {
                 loginError.postValue("获取验证码失败: " + message);
             }
 
@@ -98,12 +112,14 @@ public class LoginViewModel extends ViewModel {
         AuthAPI.login(request, new ApiCallback<LoginResponse>() {
             @Override
             public void onSuccess(LoginResponse data) {
+                // 关键：登录成功后保存 Token（持久化到 SharedPreferences）
+                TokenManager.setToken(data.getAccessToken());
                 loading.postValue(false);
                 loginSuccess.postValue(true);
             }
 
             @Override
-            public void onError(int code, String message) {
+            public void onError(String code, String message) {
                 loading.postValue(false);
                 loginError.postValue("登录失败: " + message);
                 // 登录失败后刷新验证码

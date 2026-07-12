@@ -5,10 +5,13 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 图片项查询参数模型类
+ * 数据项查询参数
  */
 @EqualsAndHashCode(callSuper = true)
 @Data
 public class ImageItemQuery extends PageQuery {
+    private Long datasetId;
     private String keywords;
+    private String sceneType;
+    private String hazeLevel;
 }

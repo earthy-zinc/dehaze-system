@@ -66,6 +66,20 @@ Java captcha 存 Redis db0（Jackson 序列化带引号），Go/Python captcha �
 - admin 用户已关联 ROOT + ADMIN 角色，可通过所有权限校验
 - **Python 算法服务 URL**：`http://127.0.0.1:8014`（不是 5000），配置在 `AlgorithmProperties` + `application-dev.yml`
 
+### dehaze-uniapp 依赖版本约束（重要）
+- **Pinia 必须锁定 `2.2.4`**（精确版本，不能用 `^` 或 `~`）：uni-app 的 `@dcloudio/uni-h5` 硬编码依赖 `vue: 3.4.21`，而 pinia 2.2.5+ / 3.x 要求 `vue ^3.5.11`，不兼容
+- **`@vue/devtools-api: ^6.6.4` 必须作为直接依赖显式声明**：pnpm 不会把 transitive dep 提升到顶层 `node_modules`，导致 Vite 无法解析 pinia 中的 `import "@vue/devtools-api"`
+- **@dcloudio 主包版本**：使用 npm `vue3` dist-tag 对应的版本（非 `latest` tag，后者是 vue2 版本）。所有 @dcloudio/* 包共享同一版本号
+- **uvm 工具**：`npx @dcloudio/uvm@latest` 强制交互模式，无法非交互运行，需手动查 registry 更新 package.json
+
+### dehaze_harmory 鸿蒙应用
+- 基于 OpenHarmony/HarmonyOS（ArkTS + ArkUI），SDK 6.0.0(20)
+- 依赖 `dehaze-sdk-harmony`（file:../../dehaze-tool/dehaze-sdk-harmony）
+- SDK 核心已修复：HttpManager 用 `@kit.NetworkKit`、TokenManager 用 `@kit.ArkData`、Result 用 `code: string + msg`
+- 应用页面：Login → Home → ImageInput → AlgorithmSelect → Processing → Compare
+- 后端地址：`http://127.0.0.1:8989`（EntryAbility 中配置）
+- EntryAbility.onCreate 需 `await DehazeSDK.initialize(context, builder)` + `await TokenManager.initialize(context)`
+
 ### SDK 测试（dehaze-tool/dehaze-sdk-js）
 - vitest 集成测试需在 `vitest.setup.ts` 中设置 `javaService.defaults.baseURL`（Node.js 无浏览器 origin）
 - 登录需先获取验证码 → 从 Redis db0 读取 captcha code（Jackson 序列化带双引号需去除）

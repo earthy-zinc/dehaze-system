@@ -1,10 +1,12 @@
+// ==================== Hero 区域 ====================
+
 .hero-section {
-  padding: 60px 32px 48px;
+  padding: 48rpx 32rpx 40rpx;
   text-align: center;
   width: 100%;
   box-sizing: border-box;
   position: relative;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
 
   .hero-content {
     max-width: 100%;
@@ -13,39 +15,39 @@
 
   .hero-title {
     display: block;
-    font-size: 56px;
+    font-size: 56rpx;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -1rpx;
     background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
     background-clip: text;
     -webkit-background-clip: text;
     color: transparent;
-    margin-bottom: 12px;
+    margin-bottom: 12rpx;
     line-height: 1.2;
     text-align: center;
   }
 
   .hero-subtitle {
     display: block;
-    font-size: 32px;
+    font-size: 30rpx;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 24px;
-    letter-spacing: -0.01em;
+    margin-bottom: 20rpx;
+    letter-spacing: -0.5rpx;
     text-align: center;
   }
 
   .hero-description {
-    margin-bottom: 40px;
+    margin-bottom: 32rpx;
   }
 
   .hero-description text {
     display: block;
-    font-size: 16px;
+    font-size: 26rpx;
     color: #6b7280;
     line-height: 1.6;
     text-align: center;
-    margin-bottom: 8px;
+    margin-bottom: 6rpx;
 
     &:last-child {
       margin-bottom: 0;
@@ -54,7 +56,7 @@
 
   .hero-cta {
     display: flex;
-    gap: 20px;
+    gap: 20rpx;
     justify-content: center;
     flex-wrap: wrap;
     align-items: center;
@@ -63,46 +65,48 @@
   .cta-primary {
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white !important;
-    padding: 12px;
-    border-radius: 16px;
-    font-size: 18px;
+    padding: 16rpx 40rpx;
+    border-radius: 48rpx;
+    font-size: 28rpx;
     font-weight: 600;
     border: none;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 6rpx 16rpx rgba(59, 130, 246, 0.3);
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: relative;
-    overflow: hidden;
 
     &::after {
       display: none;
     }
+
+    &:active {
+      transform: translateY(2rpx);
+      box-shadow: 0 3rpx 8rpx rgba(59, 130, 246, 0.3);
+    }
   }
 
   .cta-icon {
-    margin-left: 6px;
+    margin-left: 6rpx;
   }
 
   .cta-secondary {
-    background: white;
+    background: #ffffff;
     color: #3b82f6 !important;
-    padding: 12px;
-    border-radius: 16px;
-    font-size: 18px;
+    padding: 16rpx 40rpx;
+    border-radius: 48rpx;
+    font-size: 28rpx;
     font-weight: 600;
-    border: 2px solid #e5e7eb;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2rpx solid #e5e7eb;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: relative;
 
     &::after {
       display: none;
+    }
+
+    &:active {
+      background: #f3f4f6;
     }
   }
 }

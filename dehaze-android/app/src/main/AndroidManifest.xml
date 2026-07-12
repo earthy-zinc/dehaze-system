@@ -35,27 +35,87 @@
             </intent-filter>
         </activity>
         
-        <!-- 仪表盘Activity -->
-        <activity
-            android:name=".ui.dashboard.DashboardActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Dehaze" />
-            
         <!-- 对比Activity -->
         <activity
             android:name=".ui.compare.CompareActivity"
             android:exported="false"
             android:theme="@style/Theme.Dehaze" />
-            
+
         <!-- 评估Activity -->
         <activity
             android:name=".ui.evaluation.EvaluationActivity"
             android:exported="false"
             android:theme="@style/Theme.Dehaze" />
-            
+
         <!-- 展示Activity -->
         <activity
             android:name=".ui.presentation.PresentationActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 算法列表 Activity -->
+        <activity
+            android:name=".ui.algorithm.AlgorithmListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 算法详情 Activity -->
+        <activity
+            android:name=".ui.algorithm.AlgorithmDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 算法选择 Activity -->
+        <activity
+            android:name=".ui.algorithm_select.AlgorithmSelectActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 部门管理 Activity -->
+        <activity
+            android:name=".ui.system.DeptListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 角色管理 Activity -->
+        <activity
+            android:name=".ui.system.RoleListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 用户管理 Activity -->
+        <activity
+            android:name=".ui.system.UserListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 文件管理 Activity -->
+        <activity
+            android:name=".ui.file.FileListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 菜单管理 Activity -->
+        <activity
+            android:name=".ui.system.MenuListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 字典类型管理 Activity -->
+        <activity
+            android:name=".ui.system.DictTypeListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 字典数据管理 Activity -->
+        <activity
+            android:name=".ui.system.DictItemListActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Dehaze" />
+
+        <!-- 图像输入历史 Activity -->
+        <activity
+            android:name=".ui.input.InputHistoryActivity"
             android:exported="false"
             android:theme="@style/Theme.Dehaze" />
     </application>

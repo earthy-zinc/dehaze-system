@@ -84,7 +84,7 @@ public class LoginViewModelIntegrationTest {
             mockedAuthAPI.when(() -> AuthAPI.getCaptcha(any()))
                     .thenAnswer(invocation -> {
                         ApiCallback<CaptchaResponse> callback = invocation.getArgument(0);
-                        callback.onError(400, "Bad Request");
+                        callback.onError("A0200", "Bad Request");
                         return null;
                     });
 
@@ -105,11 +105,10 @@ public class LoginViewModelIntegrationTest {
         loginViewModel.setUsername("admin");
         loginViewModel.setPassword("123456");
         loginViewModel.setCaptchaCode("abcd");
-        loginViewModel.setCaptchaKey("test_key");
 
         // 模拟 AuthAPI.login 成功响应
         LoginResponse mockResponse = new LoginResponse();
-        mockResponse.setToken("test_token");
+        mockResponse.setAccessToken("test_token");
 
         try (MockedStatic<AuthAPI> mockedAuthAPI = mockStatic(AuthAPI.class)) {
             mockedAuthAPI.when(() -> AuthAPI.login(any(LoginRequest.class), any()))
@@ -119,7 +118,6 @@ public class LoginViewModelIntegrationTest {
                         assertEquals("admin", request.getUsername());
                         assertEquals("123456", request.getPassword());
                         assertEquals("abcd", request.getCaptchaCode());
-                        assertEquals("test_key", request.getCaptchaKey());
                         callback.onSuccess(mockResponse);
                         return null;
                     });
@@ -144,14 +142,13 @@ public class LoginViewModelIntegrationTest {
         loginViewModel.setUsername("admin");
         loginViewModel.setPassword("123456");
         loginViewModel.setCaptchaCode("abcd");
-        loginViewModel.setCaptchaKey("test_key");
 
         // 模拟 AuthAPI.login 错误响应
         try (MockedStatic<AuthAPI> mockedAuthAPI = mockStatic(AuthAPI.class)) {
             mockedAuthAPI.when(() -> AuthAPI.login(any(LoginRequest.class), any()))
                     .thenAnswer(invocation -> {
                         ApiCallback<LoginResponse> callback = invocation.getArgument(1);
-                        callback.onError(401, "Unauthorized");
+                        callback.onError("A0201", "Unauthorized");
                         return null;
                     });
 
@@ -175,7 +172,6 @@ public class LoginViewModelIntegrationTest {
         loginViewModel.setUsername("admin");
         loginViewModel.setPassword("123456");
         loginViewModel.setCaptchaCode("abcd");
-        loginViewModel.setCaptchaKey("test_key");
 
         // 模拟网络错误
         try (MockedStatic<AuthAPI> mockedAuthAPI = mockStatic(AuthAPI.class)) {

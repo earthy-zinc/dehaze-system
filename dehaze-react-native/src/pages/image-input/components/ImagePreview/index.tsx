@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Animated,
-  Dimensions,
 } from 'react-native';
 import ImageLoader from '@/components/ImageLoader';
 import Icon from '@/components/Icon';
@@ -17,7 +16,7 @@ import Card from '@/components/Card';
 import Button from '@/components/Button';
 import { useResponsive } from '@/hooks/useResponsive';
 import { theme } from '@/theme';
-import { SelectedImage } from '../../types/imageInput';
+import type { SelectedImage } from '@/types/image';
 import { imageInputApi } from '../../services/imageInputApi';
 
 interface ImagePreviewProps {
@@ -31,7 +30,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   onRemove,
   onNext,
 }) => {
-  const { isMobile, width: screenWidth } = useResponsive();
+  const { isMobile } = useResponsive();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // 入场动画
@@ -47,10 +46,10 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   const previewHeight = isMobile ? 280 : 350;
 
   // 格式化文件大小
-  const formattedSize = imageInputApi.formatFileSize(image.fileSize);
+  const formattedSize = imageInputApi.formatFileSize(image.size || 0);
 
   // 格式化尺寸
-  const formattedDimensions = `${image.width} × ${image.height}`;
+  const formattedDimensions = `${image.width || 0} × ${image.height || 0}`;
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
@@ -70,7 +69,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
         {/* 图片预览区域 */}
         <View style={[styles.imageContainer, { height: previewHeight }]}>
           <ImageLoader
-            source={{ uri: image.uri }}
+            source={{ uri: image.url }}
             style={styles.image}
             resizeMode="contain"
           />
@@ -89,7 +88,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
           <View style={styles.infoItem}>
             <Icon name="document" size={16} color={theme.colors.primary} />
             <Text style={styles.infoText} numberOfLines={1}>
-              {image.filename}
+              {image.name || '未命名'}
             </Text>
           </View>
 
@@ -107,17 +106,11 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
         </View>
 
         {/* 样例图片额外信息 */}
-        {image.sampleInfo && (
+        {image.sampleInfo?.sceneType && (
           <View style={styles.sampleInfoContainer}>
             <View style={styles.sampleInfoItem}>
               <Text style={styles.sampleInfoLabel}>场景类型</Text>
               <Text style={styles.sampleInfoValue}>{image.sampleInfo.sceneType}</Text>
-            </View>
-            <View style={styles.sampleInfoItem}>
-              <Text style={styles.sampleInfoLabel}>推荐算法</Text>
-              <Text style={styles.sampleInfoValue}>
-                {image.sampleInfo.recommendedAlgorithm || '-'}
-              </Text>
             </View>
           </View>
         )}

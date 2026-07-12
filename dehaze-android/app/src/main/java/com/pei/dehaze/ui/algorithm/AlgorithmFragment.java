@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.pei.dehaze.databinding.FragmentAlgorithmBinding;
+import com.pei.dehaze.ui.algorithm_select.AlgorithmSelectActivity;
 
 public class AlgorithmFragment extends Fragment {
 
@@ -27,14 +28,14 @@ public class AlgorithmFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        
-        // 设置按钮点击事件
-        binding.algorithmListButton.setOnClickListener(v -> {
-            Intent intent = new Intent(getActivity(), AlgorithmListActivity.class);
-            startActivity(intent);
-        });
+
+        binding.btnAlgorithmManage.setOnClickListener(v ->
+                startActivity(new Intent(getActivity(), AlgorithmListActivity.class)));
+
+        binding.btnAlgorithmSelect.setOnClickListener(v ->
+                startActivity(new Intent(getActivity(), AlgorithmSelectActivity.class)));
     }
-    
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
