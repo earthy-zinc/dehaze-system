@@ -1,7 +1,7 @@
 package model
 
 // SysAlgorithmVersion 算法版本历史表
-// 对齐 dehaze-java/config/sql/schema.sql 中 sys_algorithm_version 表定义
+// 对齐 config/sql/schema.sql 中 sys_algorithm_version 表定义
 type SysAlgorithmVersion struct {
 	BaseModel
 	AlgorithmID int64   `gorm:"column:algorithm_id;type:bigint;not null;comment:关联算法ID" json:"algorithmId"`

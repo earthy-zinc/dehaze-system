@@ -37,7 +37,7 @@ file:
   datasetPath: D:/DeepLearning/dataset
   # 本地存储
   local:
-    uploadPath: E:/ProgramProject/new-dehaze/dehaze-java/upload
+    uploadPath: ./upload
   minio:
     enabled: false
 

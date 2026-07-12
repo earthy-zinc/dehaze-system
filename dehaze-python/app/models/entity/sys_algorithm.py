@@ -55,7 +55,7 @@ class SysAlgorithm(BaseModel):
 class SysAlgorithmVersion(BaseModel):
     """算法版本历史表 (对齐 Java SysAlgorithmVersion.java + BaseEntity)
 
-    字段完全对齐 dehaze-java/config/sql/schema.sql 中 sys_algorithm_version 表定义.
+    字段完全对齐 config/sql/schema.sql 中 sys_algorithm_version 表定义.
     """
     __tablename__ = 'sys_algorithm_version'
     __table_args__ = {'comment': '算法版本历史表'}

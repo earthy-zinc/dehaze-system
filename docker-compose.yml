@@ -568,6 +568,35 @@ services:
     networks:
       - pei-network
 
+  # Prometheus (监控采集)
+  prometheus:
+    image: ubuntu/prometheus:2.50-22.04_stable
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9091:9091"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml --web.listen-address=:9091
+    networks:
+      - pei-network
+
+  # Grafana (监控可视化)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${DEHAZE_PASSWORD}
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - pei-network
+
   #  # The Weaviate vector store.
   weaviate:
     image: semitechnologies/weaviate:1.19.0
@@ -671,4 +700,8 @@ volumes:
   ssrf-proxy-sh:
     external: true
   weaviate:
+    external: true
+  prometheus-data:
+    external: true
+  grafana-data:
     external: true

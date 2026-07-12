@@ -397,7 +397,11 @@ describe("用户管理接口测试", () => {
         pageSize: 100,
         keywords: form.username!,
       });
+      console.log(
+        `[DEBUG PUT beforeAll] username: ${form.username} total: ${userPageResult.total} list.length: ${userPageResult.list.length} usernames: ${JSON.stringify(userPageResult.list.map((u) => u.username))}`
+      );
       const createdUser = userPageResult.list.find((u) => u.username === form.username);
+      console.log(`[DEBUG PUT beforeAll] createdUser: ${JSON.stringify(createdUser)}`);
       if (createdUser?.id) {
         testUserId = createdUser.id;
         originalUser = await UserAPI.getFormData(testUserId);

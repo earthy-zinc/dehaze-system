@@ -171,6 +171,7 @@ class UserService:
         dept_id = data.get("deptId")
         mobile = data.get("mobile")
         email = data.get("email")
+        status = data.get("status", 1)
         role_ids = data.get("roleIds", [])
 
         if not username:
@@ -192,7 +193,7 @@ class UserService:
             mobile=mobile,
             email=email,
             password=hashed_password,
-            status=1,
+            status=status,
         )
 
         user = await user_repository.create_user(db, user, role_ids)
@@ -213,12 +214,13 @@ class UserService:
             data: 用户数据
 
         Raises:
-            BusinessException: 用户不存在
+            BusinessException: 用户不存在或用户名已存在
         """
         user = await user_repository.get_by_id(db, user_id)
         if not user:
             raise BusinessException("用户不存在")
 
+        username = data.get("username")
         nickname = data.get("nickname")
         gender = data.get("gender")
         dept_id = data.get("deptId")
@@ -226,6 +228,15 @@ class UserService:
         email = data.get("email")
         role_ids = data.get("roleIds", [])
         status = data.get("status")
+
+        # 用户名冲突校验（排除当前用户）
+        if username is not None and username != user.username:
+            exists = await user_repository.check_username_exists(
+                db, username, exclude_id=user_id
+            )
+            if exists:
+                raise BusinessException("用户名已存在")
+            user.username = username
 
         if nickname is not None:
             user.nickname = nickname
@@ -240,6 +251,7 @@ class UserService:
         if status is not None:
             user.status = status
 
+        await db.flush()
         await user_repository.replace_user_roles(db, user_id, role_ids)
 
     @staticmethod
@@ -502,19 +514,19 @@ class UserService:
             ws.cell(row=1, column=col, value=header)
 
         for row, user in enumerate(users, 2):
-            gender_value = int(user.gender) if user.gender is not None else 1
-            status_value = int(user.status) if user.status is not None else 1
+            gender_value = int(user["gender"]) if user.get("gender") is not None else 1
+            status_value = int(user["status"]) if user.get("status") is not None else 1
             gender_label = "男" if gender_value == 1 else "女"
             status_label = "正常" if status_value == 1 else "禁用"
 
-            ws.cell(row=row, column=1, value=user.id)
-            ws.cell(row=row, column=2, value=user.username)
-            ws.cell(row=row, column=3, value=user.nickname)
-            ws.cell(row=row, column=4, value=user.email or "")
-            ws.cell(row=row, column=5, value=user.mobile or "")
+            ws.cell(row=row, column=1, value=user["id"])
+            ws.cell(row=row, column=2, value=user["username"])
+            ws.cell(row=row, column=3, value=user["nickname"])
+            ws.cell(row=row, column=4, value=user.get("email") or "")
+            ws.cell(row=row, column=5, value=user.get("mobile") or "")
             ws.cell(row=row, column=6, value=gender_label)
             ws.cell(row=row, column=7, value=status_label)
-            ws.cell(row=row, column=8, value=user.dept_id or "")
+            ws.cell(row=row, column=8, value=user.get("dept_id") or "")
 
         output = BytesIO()
         wb.save(output)

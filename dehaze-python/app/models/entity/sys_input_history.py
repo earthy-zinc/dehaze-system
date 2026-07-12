@@ -1,7 +1,7 @@
 """
 图像输入历史记录实体
 对齐 dehaze-java SysInputHistory.java + BaseEntity
-对齐 dehaze-java/config/sql/schema.sql 中 sys_input_history 表定义
+对齐 config/sql/schema.sql 中 sys_input_history 表定义
 """
 
 from typing import Optional

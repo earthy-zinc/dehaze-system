@@ -200,7 +200,7 @@ graph TB
 #### 快速安装JS项目的所有依赖
 
 ```bash
-PNPM_APPROVE_BUILDS=1 pnpm install -r
+pnpm install -r
 ```
 
 #### Vue版本
@@ -224,7 +224,6 @@ pnpm run dev
 
 #### Java后端
 ```bash
-cd dehaze-java
 # 1. 执行数据库初始化脚本
 mysql -u root -p < sql/schema.sql
 
@@ -233,6 +232,7 @@ mysql -u root -p < sql/schema.sql
 # 配置MySQL、Redis、MinIO等连接信息
 
 # 3. 启动服务
+cd dehaze-java
 mvn clean install
 mvn spring-boot:run
 ```

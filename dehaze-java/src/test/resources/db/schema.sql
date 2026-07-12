@@ -186,6 +186,7 @@ CREATE TABLE `sys_algorithm`
     `id`          bigint      NOT NULL AUTO_INCREMENT COMMENT '模型id',
     `parent_id`   bigint           DEFAULT 0 COMMENT '模型的父id',
     `type`        varchar(100)     DEFAULT '' COMMENT '模型类型',
+    `version`     varchar(50)      DEFAULT NULL COMMENT '算法版本号',
     `name`        varchar(64) NOT NULL COMMENT '模型名称',
     `img`         TEXT             DEFAULT NULL COMMENT '模型图片',
     `path`        varchar(255)     DEFAULT '' COMMENT '模型存储路径',
@@ -195,6 +196,9 @@ CREATE TABLE `sys_algorithm`
     `import_path` varchar(255)     DEFAULT NULL COMMENT '模型代码导入路径',
     `description` varchar(2048)    DEFAULT NULL COMMENT '针对该模型的详细描述',
     `status`      tinyint(1)       DEFAULT 1 COMMENT '状态(1:启用；0:禁用)',
+    `audit_by`    bigint           DEFAULT NULL COMMENT '审核人ID',
+    `audit_time`  datetime         DEFAULT NULL COMMENT '审核时间',
+    `audit_remark` varchar(500)    DEFAULT NULL COMMENT '审核备注',
     `create_time` datetime         DEFAULT NULL COMMENT '创建时间',
     `update_time` datetime         DEFAULT NULL COMMENT '更新时间',
     `create_by`   bigint      NULL DEFAULT NULL COMMENT '创建人ID',
@@ -204,6 +208,58 @@ CREATE TABLE `sys_algorithm`
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_0900_ai_ci
   ROW_FORMAT = DYNAMIC COMMENT ='算法模型表';
+
+DROP TABLE IF EXISTS `sys_algorithm_version`;
+CREATE TABLE `sys_algorithm_version`
+(
+    `id`           bigint      NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `algorithm_id` bigint      NOT NULL COMMENT '关联算法ID',
+    `version`      varchar(50) NOT NULL COMMENT '版本号',
+    `change_log`   TEXT        NULL COMMENT '变更日志',
+    `status`       int         NULL COMMENT '该版本时的状态',
+    `config_json`  TEXT        NULL COMMENT '该版本时的配置JSON',
+    `model_file_id` bigint     NULL COMMENT '模型文件ID',
+    `is_active`    tinyint(1)  NULL DEFAULT 0 COMMENT '是否当前活跃版本',
+    `create_time`  datetime    NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`  datetime    NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by`    bigint      NULL COMMENT '创建人ID',
+    `update_by`    bigint      NULL COMMENT '修改人ID',
+    PRIMARY KEY (`id`) USING BTREE,
+    UNIQUE INDEX `uk_algo_version` (`algorithm_id`, `version`) USING BTREE,
+    INDEX `idx_algorithm_id` (`algorithm_id`) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='算法版本历史表';
+
+DROP TABLE IF EXISTS `sys_input_history`;
+CREATE TABLE `sys_input_history`
+(
+    `id`                    bigint       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `user_id`               bigint       NOT NULL COMMENT '用户ID',
+    `original_image_url`    varchar(500) NULL COMMENT '原始图片URL',
+    `original_thumbnail_url` varchar(500) NULL COMMENT '原始缩略图URL',
+    `result_image_url`      varchar(500) NULL COMMENT '处理结果图片URL',
+    `result_thumbnail_url`  varchar(500) NULL COMMENT '结果缩略图URL',
+    `algorithm_id`          bigint       NULL COMMENT '算法ID',
+    `algorithm_name`        varchar(100) NULL COMMENT '算法名称（冗余）',
+    `algorithm_params`      TEXT         NULL COMMENT '算法参数（JSON）',
+    `processing_time`       int          NULL COMMENT '处理耗时（毫秒）',
+    `status`                tinyint      NULL DEFAULT 3 COMMENT '处理状态（1=成功，2=失败，3=处理中）',
+    `input_source`          varchar(20)  NULL COMMENT '图片来源（upload/camera/sample）',
+    `is_favorite`           tinyint(1)   NULL DEFAULT 0 COMMENT '是否收藏',
+    `sync_status`           tinyint      NULL DEFAULT 0 COMMENT '同步状态（0=未同步，1=已同步）',
+    `create_time`           datetime     NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time`           datetime     NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `create_by`             bigint       NULL COMMENT '创建人ID',
+    `update_by`             bigint       NULL COMMENT '修改人ID',
+    PRIMARY KEY (`id`) USING BTREE,
+    INDEX `idx_user_time` (`user_id`, `create_time` DESC) USING BTREE,
+    INDEX `idx_user_favorite` (`user_id`, `is_favorite`, `create_time` DESC) USING BTREE
+) ENGINE = InnoDB
+  DEFAULT CHARSET = utf8mb4
+  COLLATE = utf8mb4_0900_ai_ci
+  ROW_FORMAT = DYNAMIC COMMENT ='图像输入历史记录表';
 
 DROP TABLE IF EXISTS `sys_file`;
 CREATE TABLE `sys_file`

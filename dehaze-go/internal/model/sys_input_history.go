@@ -1,7 +1,7 @@
 package model
 
 // SysInputHistory 图像输入历史记录表
-// 对齐 dehaze-java/config/sql/schema.sql 中 sys_input_history 表定义
+// 对齐 config/sql/schema.sql 中 sys_input_history 表定义
 type SysInputHistory struct {
 	BaseModel
 	UserID               int64   `gorm:"column:user_id;type:bigint;not null;comment:用户ID" json:"userId"`

@@ -5,6 +5,7 @@
 import { afterAll, beforeAll, beforeEach, vi } from "vitest";
 import { execSync } from "child_process";
 import { javaService } from "./src/utils/request";
+import { backendProfile } from "./test/config/backend";
 
 class LocalStorageMock {
   private store: Record<string, string> = {};
@@ -43,20 +44,23 @@ Object.defineProperty(globalThis, "localStorage", {
   configurable: true,
 });
 
-// 配置 Java 后端 baseURL（Node.js 环境无浏览器 origin，需显式指定）
-javaService.defaults.baseURL = process.env.JAVA_BASE_URL || "http://127.0.0.1:8989";
+// 配置后端 baseURL（Node.js 环境无浏览器 origin，需显式指定）
+// 通过 TEST_BACKEND 环境变量切换 java / python / go 后端
+javaService.defaults.baseURL = process.env.TEST_BASE_URL || backendProfile.baseURL;
 
 /**
  * 每个测试文件开始前清理 Redis 缓存，确保测试隔离性
  * 集成测试共享同一后端实例，前一个测试文件创建/删除的数据可能残留在 Redis 缓存中
  * （如 @Cacheable 的 dataset:all、dict:options:* 等），导致后续测试读到脏数据
+ *
+ * 注意: Java 后端使用 Redis db0，Python/Go 后端使用 db3，需按后端选择正确的 DB
  */
 beforeAll(async () => {
   try {
-    execSync('docker exec redis redis-cli -a 12345678 FLUSHDB', {
-      stdio: 'pipe',
-      timeout: 5000,
-    });
+    execSync(
+      `docker exec ${backendProfile.redisContainer} redis-cli -a ${backendProfile.redisPassword} -n ${backendProfile.captchaRedisDB} FLUSHDB`,
+      { stdio: "pipe", timeout: 5000 }
+    );
   } catch {
     // Redis 容器未运行时忽略，由各测试文件的 login() 单独处理连接错误
   }

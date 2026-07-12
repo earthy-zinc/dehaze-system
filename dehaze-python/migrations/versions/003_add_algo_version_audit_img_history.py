@@ -10,7 +10,7 @@ Create Date: 2026-07-11
 3. 新表 sys_input_history: 图像输入历史记录表
 4. 新表 sys_algorithm_favorite: 算法收藏表 (Python 独有功能, Java/Go 不访问)
 
-注: 本迁移脚本 1-3 项完全对齐 dehaze-java/config/sql/schema.sql 中已定义的结构,
+注: 本迁移脚本 1-3 项完全对齐 config/sql/schema.sql 中已定义的结构,
    三端(dehaze-java/dehaze-go/dehaze-python)共享同一数据库 schema.
    第 4 项 sys_algorithm_favorite 为 Python 端独有功能表, 不影响 Java/Go.
 """

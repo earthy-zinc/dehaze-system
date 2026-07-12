@@ -3,13 +3,14 @@
  * 提供登录、登出等功能
  *
  * 登录流程：获取验证码 → 从 Redis 读取验证码值 → 携带验证码登录
- * （Java 后端 captcha 存 Redis db0，key=captcha_code:{captchaKey}，值经 Jackson 序列化带双引号）
+ * 支持多后端切换（Java/Python/Go），各后端验证码在 Redis 中的存储方式有差异
  */
 import { TOKEN_KEY } from "@/enums";
 import { AuthAPI, configJavaAxios } from "../../index";
 import type { InternalAxiosRequestConfig } from "axios";
 import FormData from "form-data";
 import { execSync } from "child_process";
+import { backendProfile } from "../config/backend";
 
 let currentToken: string = "";
 
@@ -18,23 +19,21 @@ const TEST_CREDENTIALS = {
   password: process.env.TEST_PASSWORD || "123456",
 };
 
-/** Redis 配置（与 login_helper.py 保持一致） */
-const REDIS_CONTAINER = "redis";
-const REDIS_PASSWORD = "12345678";
-const REDIS_CAPTCHA_DB = "0";
-const REDIS_CAPTCHA_PREFIX = "captcha_code:";
-
 /**
- * 从 Redis 读取验证码值（Java 后端存 db0，Jackson 序列化带外层双引号）
+ * 从 Redis 读取验证码值
+ * 各后端差异:
+ *   - Java:   db0, key=captcha_code:{captchaKey}, Jackson 序列化带外层双引号
+ *   - Python: db3, key=captcha:{captchaKey}, 纯字符串
+ *   - Go:     db3, key=captcha_code:{captchaKey}, 纯字符串
  */
 function getCaptchaCodeFromRedis(captchaKey: string): string {
-  const redisKey = `${REDIS_CAPTCHA_PREFIX}${captchaKey}`;
+  const redisKey = `${backendProfile.captchaKeyPrefix}${captchaKey}`;
   const raw = execSync(
-    `docker exec -i ${REDIS_CONTAINER} redis-cli -a ${REDIS_PASSWORD} -n ${REDIS_CAPTCHA_DB} get ${redisKey}`,
+    `docker exec -i ${backendProfile.redisContainer} redis-cli -a ${backendProfile.redisPassword} -n ${backendProfile.captchaRedisDB} get ${redisKey}`,
     { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] }
   ).trim();
-  // Jackson 序列化带外层双引号，去掉
-  if (raw.startsWith('"') && raw.endsWith('"')) {
+  // Java 后端 Jackson 序列化带外层双引号，去掉；Python/Go 为纯字符串
+  if (backendProfile.captchaJacksonQuoted && raw.startsWith('"') && raw.endsWith('"')) {
     return raw.slice(1, -1);
   }
   return raw;

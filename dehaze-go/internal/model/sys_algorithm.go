@@ -3,7 +3,7 @@ package model
 import "time"
 
 // SysAlgorithm 算法模型表
-// 对齐 dehaze-java/config/sql/schema.sql 中 sys_algorithm 表定义
+// 对齐 config/sql/schema.sql 中 sys_algorithm 表定义
 type SysAlgorithm struct {
 	BaseModel
 	ParentID    int64      `gorm:"column:parent_id;type:bigint;default:0;comment:模型的父id" json:"parentId"`

@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_user import SysRole, SysUser, SysUserRole
 from app.repository.base import BaseRepository
-from app.repository.base import escape_like
 
 
 class UserRepository(BaseRepository[SysUser]):
@@ -159,14 +158,13 @@ class UserRepository(BaseRepository[SysUser]):
             .group_by(SysUser.id)
         )
 
-        # 关键词搜索
+        # 关键词搜索（与 Java 后端一致：不转义特殊字符，直接 LIKE）
         if keywords:
-            escaped = escape_like(keywords)
             base_query = base_query.where(
                 or_(
-                    SysUser.username.like(f"%{escaped}%", escape="\\"),
-                    SysUser.nickname.like(f"%{escaped}%", escape="\\"),
-                    SysUser.mobile.like(f"%{escaped}%", escape="\\"),
+                    SysUser.username.like(f"%{keywords}%"),
+                    SysUser.nickname.like(f"%{keywords}%"),
+                    SysUser.mobile.like(f"%{keywords}%"),
                 )
             )
 
@@ -193,8 +191,8 @@ class UserRepository(BaseRepository[SysUser]):
             except ValueError:
                 pass
 
-        # 排序并分页
-        base_query = base_query.order_by(SysUser.create_time.desc())
+        # 排序并分页（按 id 升序，与 Java 后端一致）
+        base_query = base_query.order_by(SysUser.id.asc())
         return await BaseRepository.paginate_rows(db, base_query, page, page_size)
 
     async def get_protected_user_ids(

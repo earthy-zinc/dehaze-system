@@ -245,6 +245,6 @@ async def get_current_user_info(
             "username": user.username,
             "nickname": user.nickname,
             "roles": user.roles,
-            "permissions": user.permissions[:10] if user.permissions else [],
+            "perms": user.permissions if user.permissions else [],
         }
     )
