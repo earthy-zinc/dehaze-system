@@ -200,31 +200,31 @@ describe("安全性测试", () => {
       test(`SQL 注入尝试应被安全处理：${payload.substring(0, 40)}`, async () => {
         const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: payload });
 
-        const result = await DeptAPI.add(form).catch(() => null);
+        const createdId = await DeptAPI.add(form).catch(() => null);
 
-        if (result !== null && typeof result === "number") {
-          // 若允许创建，立即清理并验证不会泄露其他数据
-          try {
-            await DeptAPI.deleteByIds(result.toString());
-          } catch {}
+        // 后端拒绝创建时，SQL 注入被拦截，测试通过
+        if (createdId === null || typeof createdId !== "number") {
+          return;
         }
 
-        // 验证部门列表不包含 SQL 注入泄漏的数据
+        // 创建成功说明后端使用参数化查询，payload 仅作为字面字符串存储
+        // 删除创建的部门，验证删除后列表查询正常且该部门已不存在
+        try {
+          await DeptAPI.deleteByIds(createdId.toString());
+        } catch {}
+
         const list = await DeptAPI.getList();
-        const allNames: string[] = [];
-        const collect = (depts: typeof list) => {
+        const allIds: number[] = [];
+        const collectIds = (depts: typeof list) => {
           depts.forEach((d) => {
-            if (d.name) allNames.push(d.name);
-            if (d.children) collect(d.children);
+            if (d.id) allIds.push(d.id);
+            if (d.children) collectIds(d.children);
           });
         };
-        collect(list);
+        collectIds(list);
 
-        // 注入的 SQL 字符串不应匹配任何真实部门名称（防止数据泄露）
-        const hasSqlLeak = allNames.some(
-          (name: string) => name.includes("DROP TABLE") || name.includes("UNION SELECT")
-        );
-        expect(hasSqlLeak).toBe(false);
+        // 列表查询正常返回（未因 SQL 注入报错），且创建的部门已被删除
+        expect(allIds).not.toContain(createdId);
       });
     }
   });

@@ -18,8 +18,8 @@ func NewInputHistoryService(repo ihrepo.IInputHistoryRepository) *InputHistorySe
 }
 
 // GetPage 分页查询历史记录
-func (s *InputHistoryService) GetPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, favoriteOnly bool) (*common.PageResult, error) {
-	list, total, err := s.repo.FindPage(ctx, userID, pageNum, pageSize, inputSource, keyword, favoriteOnly)
+func (s *InputHistoryService) GetPage(ctx context.Context, userID int64, pageNum, pageSize int, inputSource, keyword string, favoriteOnly bool, status int) (*common.PageResult, error) {
+	list, total, err := s.repo.FindPage(ctx, userID, pageNum, pageSize, inputSource, keyword, favoriteOnly, status)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询历史记录失败", err)
 	}
@@ -54,7 +54,7 @@ func (s *InputHistoryService) Update(ctx context.Context, id int64, userID int64
 	if history.UserID != userID {
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权操作他人的历史记录")
 	}
-	if v, ok := updates["is_favorite"]; ok {
+	if v, ok := updates["isFavorite"]; ok {
 		history.IsFavorite = ptrBool(v)
 	}
 	return s.repo.Update(ctx, history)

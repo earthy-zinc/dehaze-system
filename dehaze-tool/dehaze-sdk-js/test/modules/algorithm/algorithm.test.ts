@@ -24,7 +24,8 @@ describe("算法管理接口测试", () => {
         algorithms.forEach((algo) => {
           expect(algo.id).toBeGreaterThan(0);
           expect(algo.name).toBeTruthy();
-          expect(algo.type).toBeTruthy();
+          // type 字段在 schema 中 default:''，预置/分类节点可能为空字符串，仅校验类型
+          expect(typeof algo.type).toBe("string");
           // parentId 可能为 undefined（后端bug），使用更宽松的断言
           if (algo.parentId !== undefined) {
             expect(algo.parentId).toBeGreaterThanOrEqual(0);

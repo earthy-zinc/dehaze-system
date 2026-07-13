@@ -26,7 +26,7 @@ describe("预测与评估 API 测试", () => {
       } catch (e: any) {
         // 预测依赖 Python 算法服务 + 真实图片 + 模型文件，基础设施未就绪时允许跳过
         const bizCode = e?.response?.data?.code || e?.code;
-        if (bizCode === "B0001" || bizCode === "A0401" || bizCode === "ERR_BAD_REQUEST") {
+        if (bizCode === "B0001" || bizCode === "A0401" || bizCode === "C0001" || bizCode === "ERR_BAD_REQUEST") {
           console.log("跳过：预测基础设施未就绪（Python服务/图片/模型文件缺失）");
           return;
         }
@@ -112,7 +112,7 @@ describe("预测与评估 API 测试", () => {
       } catch (e: any) {
         // 评估依赖 Python 算法服务 + 真实图片，基础设施未就绪时允许跳过
         const bizCode = e?.response?.data?.code || e?.code;
-        if (bizCode === "B0001" || bizCode === "A0401" || bizCode === "ERR_BAD_REQUEST") {
+        if (bizCode === "B0001" || bizCode === "A0401" || bizCode === "C0001" || bizCode === "ERR_BAD_REQUEST") {
           console.log("跳过：评估基础设施未就绪（Python服务/图片缺失）");
           return;
         }

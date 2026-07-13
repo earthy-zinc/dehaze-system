@@ -28,7 +28,15 @@ func (api *SysInputHistoryApi) ListHistory(c *gin.Context) {
 	keyword := c.Query("keywords")
 	favoriteOnly := c.Query("favoriteOnly") == "true"
 
-	result, err := api.service.GetPage(ctx, userID, pageNum, pageSize, inputSource, keyword, favoriteOnly)
+	// status 处理状态筛选（1=成功，2=失败，3=处理中），0 表示不筛选
+	status := 0
+	if statusStr := c.Query("status"); statusStr != "" {
+		if n, err := strconv.Atoi(statusStr); err == nil {
+			status = n
+		}
+	}
+
+	result, err := api.service.GetPage(ctx, userID, pageNum, pageSize, inputSource, keyword, favoriteOnly, status)
 	if err != nil {
 		_ = c.Error(err)
 		return

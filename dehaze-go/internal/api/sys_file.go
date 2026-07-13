@@ -137,6 +137,12 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
+	// result 为 *model.SysFile 类型的 nil 指针时，传入 OkWithData 会因 typed-nil 生成 "data":null，
+	// 这里显式判断，文件不存在时返回不带 data 字段的成功响应，SDK 侧得到 undefined
+	if result == nil {
+		common.Ok(c)
+		return
+	}
 	common.OkWithData(result, c)
 }
 

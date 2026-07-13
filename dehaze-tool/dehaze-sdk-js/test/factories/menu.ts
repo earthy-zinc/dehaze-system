@@ -7,11 +7,15 @@ import { uniqueName, uniqueCode } from "./common";
  * @param overrides 覆盖默认值的字段
  */
 export function createMenuForm(overrides: Partial<MenuForm> = {}): MenuForm {
+  const type = overrides.type || MenuTypeEnum.CATALOG;
+  // MENU 类型必须有组件路径
+  const defaultComponent = type === MenuTypeEnum.MENU ? "test/index" : "";
   return {
     parentId: 0,
     name: uniqueName("测试菜单"),
     type: MenuTypeEnum.CATALOG,
     path: "/" + uniqueCode("test"),
+    component: defaultComponent,
     sort: 1,
     visible: 1,
     ...overrides,

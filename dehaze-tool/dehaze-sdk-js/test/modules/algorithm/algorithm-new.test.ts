@@ -43,8 +43,7 @@ describe("算法管理新增端点测试", () => {
       const info = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
       expect(info.status).toBe(1);
 
-      // 恢复为草稿
-      await AlgorithmAPI.updateStatus(testAlgorithmId, 0);
+      // 注：按设计文档 SSOT，测试中(1) 仅可流转到 待审核(2)，不可回退到草稿(0)
     });
 
     test("参数校验：无效状态值应提示错误", async () => {

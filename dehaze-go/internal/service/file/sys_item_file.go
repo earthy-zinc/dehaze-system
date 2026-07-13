@@ -324,9 +324,9 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (image
 	}
 
 	// 查询关联文件
-	sysFile, err := itemFileService.fileService.GetFileById(itemFile.FileID)
-	if err != nil {
-		logger.Warn("查询关联文件失败", zap.Int64("fileID", itemFile.FileID), zap.Error(err))
+	sysFile, fileErr := itemFileService.fileService.GetFileById(itemFile.FileID)
+	if fileErr != nil {
+		logger.Warn("查询关联文件失败", zap.Int64("fileID", itemFile.FileID), zap.Error(fileErr))
 	}
 
 	// 查询数据项以获取 datasetId
@@ -347,7 +347,7 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (image
 		HazeLevel:   utils.StringVal(itemFile.HazeLevel),
 	}
 
-	if sysFile != nil {
+	if fileErr == nil && sysFile.ID > 0 {
 		imageUrlVO.URL = utils.StringVal(sysFile.URL)
 		imageUrlVO.OriginURL = utils.StringVal(sysFile.URL)
 		imageUrlVO.FileName = sysFile.Name
