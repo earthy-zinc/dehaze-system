@@ -3,6 +3,7 @@ package com.pei.dehaze.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pei.dehaze.common.result.PageResult;
 import com.pei.dehaze.common.result.Result;
+import com.pei.dehaze.model.form.BatchDeleteForm;
 import com.pei.dehaze.model.form.HistoryForm;
 import com.pei.dehaze.model.form.HistoryUpdateForm;
 import com.pei.dehaze.model.query.HistoryQuery;
@@ -73,8 +74,8 @@ public class ImageInputController {
 
     @Operation(summary = "批量删除历史记录")
     @DeleteMapping("/batch")
-    public Result<Integer> batchDeleteHistory(@RequestBody List<Long> ids) {
-        int count = historyService.batchDeleteHistory(ids);
+    public Result<Integer> batchDeleteHistory(@Valid @RequestBody BatchDeleteForm form) {
+        int count = historyService.batchDeleteHistory(form.getIds());
         return Result.success(count);
     }
 

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysInputHistoryMapper;
 import com.pei.dehaze.model.entity.SysInputHistory;
 import com.pei.dehaze.model.form.HistoryForm;
@@ -63,7 +64,7 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
     public InputHistoryVO getHistoryById(Long id) {
         SysInputHistory history = this.getById(id);
         if (history == null) {
-            throw new BusinessException("历史记录不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "历史记录不存在");
         }
         // 校验归属
         checkOwnership(history);
@@ -100,7 +101,7 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
     public boolean updateHistory(Long id, HistoryUpdateForm form) {
         SysInputHistory history = this.getById(id);
         if (history == null) {
-            throw new BusinessException("历史记录不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "历史记录不存在");
         }
         checkOwnership(history);
 

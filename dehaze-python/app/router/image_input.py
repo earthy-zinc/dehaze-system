@@ -19,6 +19,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
@@ -98,11 +99,12 @@ async def sync_history(
 
 @router.delete("/batch", response_model=Result[int], summary="批量删除历史记录")
 async def batch_delete_history(
-    ids: List[int] = Body(...),
+    body: dict = Body(...),
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """批量删除历史记录（仅限本人）"""
+    ids = body.get("ids", [])
     count = await InputHistoryService.batch_delete(db, ids, user_id=user.id)
     return success(count)
 
@@ -128,7 +130,7 @@ async def get_history(
     """查询历史记录详情"""
     history = await InputHistoryService.get_history(db, history_id)
     if not history:
-        raise BusinessException("历史记录不存在")
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "历史记录不存在")
     return success(history)
 
 
