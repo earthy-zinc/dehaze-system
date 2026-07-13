@@ -192,12 +192,12 @@ class RoleService:
                 "dataScope", data.get("data_scope", role.data_scope))
 
         # 更新角色信息（不更新 code，编码创建后不可修改）
+        if role.code is None:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "角色编码不能为空")
         await role_repository.update_by_id(db, role_id, update_data)
         await db.commit()
 
         # 清除角色权限缓存
-        if role.code is None:
-            raise ValueError("角色编码不能为空")
         await RoleService._clear_role_perms_cache(redis, role.code)
 
     @staticmethod
@@ -219,8 +219,12 @@ class RoleService:
         """
         role_ids = [int(id) for id in ids.split(",")]
 
+        # 批量查询角色（避免 N+1）
+        roles = await role_repository.get_by_ids(db, role_ids)
+        roles_map = {int(r.id): r for r in roles}
+
         for role_id in role_ids:
-            role = await RoleService.get_role_by_id(db, role_id)
+            role = roles_map.get(role_id)
             if not role:
                 raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"角色ID {role_id} 不存在")
 
@@ -228,23 +232,28 @@ class RoleService:
             if role.code == RoleService.ROOT_ROLE_CODE:
                 raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "超级管理员角色不可删除")
 
-            # 检查角色是否已分配给用户
-            user_count = await user_repository.count_users_by_role(db, role_id)
-            if user_count > 0:
+            if role.code is None:
+                raise BusinessException(ResultCode.BUSINESS_ERROR, "角色编码不能为空")
+
+        # 批量检查角色是否已分配给用户（避免 N+1）
+        user_counts = await user_repository.count_users_by_roles(db, role_ids)
+        for role_id in role_ids:
+            role = roles_map[role_id]
+            count = user_counts.get(role_id, 0)
+            if count > 0:
                 raise BusinessException(ResultCode.BUSINESS_ERROR, f"角色【{role.name}】已分配给用户，请先解除关联后删除")
 
-            # 删除角色-菜单关联记录（物理删除）
-            await role_repository.delete_role_menus(db, role_id)
-
-            # 逻辑删除角色
+        # 批量删除角色-菜单关联 + 批量软删除角色（2 条 SQL，替代 2N 条）
+        await role_repository.delete_role_menus_by_role_ids(db, role_ids)
+        for role_id in role_ids:
             await role_repository.delete(db, role_id)
 
-            # 清除角色权限缓存
-            if role.code is None:
-                raise ValueError("角色编码不能为空")
-            await RoleService._clear_role_perms_cache(redis, role.code)
-
         await db.commit()
+
+        # 批量清除角色权限缓存
+        for role_id in role_ids:
+            role = roles_map[role_id]
+            await RoleService._clear_role_perms_cache(redis, role.code)
 
     @staticmethod
     async def update_role_status(
@@ -330,13 +339,14 @@ class RoleService:
         if not role:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
+        if role.code is None:
+            raise BusinessException(ResultCode.BUSINESS_ERROR, "角色编码不能为空")
+
         # 使用 repository 替换角色菜单
         await role_repository.replace_role_menus(db, role_id, menu_ids)
         await db.commit()
 
         # 清除角色权限缓存
-        if role.code is None:
-            raise ValueError("角色编码不能为空")
         await RoleService._clear_role_perms_cache(redis, role.code)
 
     @staticmethod

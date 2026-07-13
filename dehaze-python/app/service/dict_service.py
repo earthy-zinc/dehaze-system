@@ -302,12 +302,13 @@ class DictTypeService:
         if exist_count == 0:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
 
-        # 检查每个类型是否存在关联数据
-        for type_id in type_ids:
-            dict_type = await dict_type_repository.get_by_id(db, type_id)
-            if dict_type:
-                count = await dict_repository.count_by_type_code(db, dict_type.code)
-                if count > 0:
+        # 批量查询类型编码，批量检查关联数据（避免 N+1）
+        dict_types = await dict_type_repository.get_by_ids(db, type_ids)
+        type_codes = [dt.code for dt in dict_types if dt.code]
+        if type_codes:
+            counts = await dict_repository.count_by_type_codes(db, type_codes)
+            for dt in dict_types:
+                if counts.get(dt.code, 0) > 0:
                     raise BusinessException(
                         ResultCode.DATA_BIND_EXISTS,
                         "存在关联的字典数据，无法删除")

@@ -6,7 +6,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text
+from sqlalchemy import BigInteger, DateTime, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,7 +16,12 @@ from app.models.base import BaseModel
 class SysAlgorithm(BaseModel):
     """算法模型表 (对齐 Java SysAlgorithm + BaseEntity)"""
     __tablename__ = 'sys_algorithm'
-    __table_args__ = {'comment': '算法模型表'}
+    __table_args__ = (
+        Index('idx_algorithm_parent_id', 'parent_id'),
+        Index('idx_algorithm_status', 'status'),
+        Index('idx_algorithm_name', 'name'),
+        {'comment': '算法模型表'},
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True,
                                     autoincrement=True, comment='模型id')
@@ -58,7 +63,11 @@ class SysAlgorithmVersion(BaseModel):
     字段完全对齐 config/sql/schema.sql 中 sys_algorithm_version 表定义.
     """
     __tablename__ = 'sys_algorithm_version'
-    __table_args__ = {'comment': '算法版本历史表'}
+    __table_args__ = (
+        UniqueConstraint('algorithm_id', 'version', name='uk_algo_version'),
+        Index('idx_algo_version_algo_id', 'algorithm_id'),
+        {'comment': '算法版本历史表'},
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True, comment='主键')
     algorithm_id: Mapped[int] = mapped_column(BigInteger, nullable=False, comment='关联算法ID')

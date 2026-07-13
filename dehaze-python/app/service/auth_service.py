@@ -4,6 +4,7 @@
 提供用户登录、验证码生成等功能
 """
 
+import asyncio
 import base64
 import secrets
 import string
@@ -99,7 +100,25 @@ class AuthService:
             for _ in range(settings.CAPTCHA_LENGTH)
         )
 
-        # 生成验证码图片
+        # 生成验证码图片（PIL 是同步 CPU 密集型操作，移至线程池避免阻塞事件循环）
+        img_str = await asyncio.to_thread(
+            AuthService._generate_captcha_image, captcha_text
+        )
+
+        # 生成验证码 key
+        captcha_key = str(uuid.uuid4())
+
+        # 存储到 Redis
+        await redis.setex(f"captcha:{captcha_key}", settings.CAPTCHA_EXPIRES, captcha_text)
+
+        return {
+            "captchaKey": captcha_key,
+            "captchaBase64": f"data:image/jpeg;base64,{img_str}",
+        }
+
+    @staticmethod
+    def _generate_captcha_image(captcha_text: str) -> str:
+        """同步生成验证码图片并返回 base64 字符串（供 asyncio.to_thread 调用）"""
         image = Image.new(
             "RGB",
             (settings.CAPTCHA_WIDTH, settings.CAPTCHA_HEIGHT),
@@ -126,18 +145,7 @@ class AuthService:
         # 转换为 base64
         buffered = BytesIO()
         image.save(buffered, format="JPEG")
-        img_str = base64.b64encode(buffered.getvalue()).decode()
-
-        # 生成验证码 key
-        captcha_key = str(uuid.uuid4())
-
-        # 存储到 Redis
-        await redis.setex(f"captcha:{captcha_key}", settings.CAPTCHA_EXPIRES, captcha_text)
-
-        return {
-            "captchaKey": captcha_key,
-            "captchaBase64": f"data:image/jpeg;base64,{img_str}",
-        }
+        return base64.b64encode(buffered.getvalue()).decode()
 
     @staticmethod
     async def verify_captcha(redis: Redis, captcha_key: str, captcha_code: str) -> bool:

@@ -141,6 +141,18 @@ class RoleRepository(BaseRepository[SysRole]):
         result = await db.execute(stmt)
         return result.rowcount
 
+    async def delete_role_menus_by_role_ids(
+        self,
+        db: AsyncSession,
+        role_ids: list[int],
+    ) -> int:
+        """批量删除多个角色的菜单关联记录（物理删除，避免 N+1）"""
+        if not role_ids:
+            return 0
+        stmt = delete(SysRoleMenu).where(SysRoleMenu.role_id.in_(role_ids))
+        result = await db.execute(stmt)
+        return result.rowcount
+
     async def get_maximum_data_scope(
         self,
         db: AsyncSession,

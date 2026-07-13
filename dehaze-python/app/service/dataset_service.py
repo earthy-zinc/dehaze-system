@@ -903,7 +903,8 @@ class DatasetItemService:
 
         await dataset_repository.delete_item_files_by_item_ids(db, item_ids)
         await dataset_repository.delete_items_by_dataset_id(db, dataset_id)
-        await db.commit()
+        # 不在此处 commit：本方法由 delete_datasets 在事务内循环调用，
+        # 由外层 delete_datasets 统一提交以保证原子性
 
         return len(item_ids)
 
@@ -916,20 +917,25 @@ class DatasetItemService:
         if not item_ids:
             raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的数据项")
 
+        # 批量查询存在的数据项（避免 N+1）
+        existing_items = await dataset_repository.get_items_by_ids(db, item_ids)
+        existing_ids_set = {int(item.id) for item in existing_items}
         success_ids: list[int] = []
         failure_details: list[dict[str, str]] = []
 
         for item_id in item_ids:
-            item = await dataset_repository.get_item_by_id(db, item_id)
-            if not item:
+            if item_id in existing_ids_set:
+                success_ids.append(item_id)
+            else:
                 failure_details.append({
                     "identifier": str(item_id),
                     "reason": "数据项不存在",
                 })
-                continue
-            success_ids.append(item_id)
-            await dataset_repository.delete_item_files_by_item_id(db, item_id)
-            await dataset_repository.delete_item_by_id(db, item_id)
+
+        # 批量删除关联文件和数据项（2 条 SQL，替代 2N 条）
+        if success_ids:
+            await dataset_repository.delete_item_files_by_item_ids(db, success_ids)
+            await dataset_repository.delete_items_by_ids(db, success_ids)
 
         await db.commit()
         await DatasetService._evict_all_cache(redis)
@@ -1201,24 +1207,32 @@ class ItemFileService:
         if not file_ids:
             raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的图片")
 
-        affected_dataset_ids: set[int] = set()
+        # 批量查询存在的图片文件记录（避免 N+1）
+        existing_item_files = await dataset_repository.get_item_files_by_ids(db, file_ids)
+        existing_ids_set = {int(f.id) for f in existing_item_files}
         success_ids: list[int] = []
         failure_details: list[dict[str, str]] = []
 
         for fid in file_ids:
-            item_file = await dataset_repository.get_item_file_by_id(db, fid)
-            if not item_file:
+            if fid in existing_ids_set:
+                success_ids.append(fid)
+            else:
                 failure_details.append({
                     "identifier": str(fid),
                     "reason": "图片文件不存在",
                 })
-                continue
-            item = await dataset_repository.get_item_by_id(db, item_file.item_id)
-            if item:
-                affected_dataset_ids.add(int(item.dataset_id))
-            success_ids.append(fid)
 
+        # 批量查询受影响的数据集 ID（避免 N+1）
+        affected_dataset_ids: set[int] = set()
         if success_ids:
+            # 从已查询的 item_files 中提取 item_id，批量查询 items 获取 dataset_id
+            affected_item_ids = {int(f.item_id) for f in existing_item_files}
+            if affected_item_ids:
+                affected_items = await dataset_repository.get_items_by_ids(
+                    db, list(affected_item_ids))
+                for item in affected_items:
+                    affected_dataset_ids.add(int(item.dataset_id))
+
             await dataset_repository.delete_item_files_by_ids(db, success_ids)
         await db.commit()
 

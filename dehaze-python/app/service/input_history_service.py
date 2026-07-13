@@ -2,7 +2,6 @@
 图像输入历史记录服务
 对齐 dehaze-java SysInputHistoryServiceImpl 逻辑
 """
-import logging
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +10,6 @@ from app.core.exceptions import BusinessException
 from app.models.entity.sys_input_history import SysInputHistory
 from app.repository.input_history_repository import input_history_repository
 from app.utils.datetime_utils import format_time
-
-logger = logging.getLogger(__name__)
 
 
 class InputHistoryService:
@@ -116,7 +113,7 @@ class InputHistoryService:
         """同步历史记录（对齐 Java syncHistory：标记所有未同步记录为已同步）"""
         count = await input_history_repository.mark_all_synced(db, user_id)
         await db.commit()
-        return 1 if count > 0 else 0
+        return count
 
     @staticmethod
     def _to_vo(history: SysInputHistory) -> dict[str, Any]:

@@ -287,20 +287,20 @@ class DeptService:
         if ROOT_DEPT_ID in dept_ids:
             raise BusinessException("根部门不可删除")
 
-        # 2. 检查是否存在关联用户
+        # 2. 批量检查是否存在关联用户（避免 N+1）
+        user_counts = await user_repository.count_users_by_depts(db, dept_ids)
         for dept_id in dept_ids:
-            user_count = await user_repository.count_users_by_dept(db, dept_id)
-            if user_count > 0:
+            count = user_counts.get(dept_id, 0)
+            if count > 0:
                 dept = await dept_repository.get_by_id(db, dept_id)
                 dept_name = dept.name if dept else f"ID={dept_id}"
                 raise BusinessException(
-                    f"部门【{dept_name}】下存在 {user_count} 个用户，无法删除")
+                    f"部门【{dept_name}】下存在 {count} 个用户，无法删除")
 
-        # 3. 级联删除部门及其子部门（匹配 Java 的 tree_path LIKE 级联删除）
-        for dept_id in dept_ids:
-            deleted_count = await dept_repository.delete_dept_with_children(db, dept_id)
-            if deleted_count == 0:
-                raise BusinessException("部门删除失败")
+        # 3. 批量级联删除部门及其子部门（1 条 SQL，替代 N 条）
+        deleted_count = await dept_repository.delete_depts_with_children(db, dept_ids)
+        if deleted_count == 0:
+            raise BusinessException("部门删除失败")
 
         await db.commit()
 

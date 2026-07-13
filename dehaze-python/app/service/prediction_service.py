@@ -11,6 +11,7 @@ import io
 import json
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -32,6 +33,12 @@ logger = logging.getLogger(__name__)
 
 # 预测结果缓存 TTL：24 小时
 PREDICTION_CACHE_TTL = 24 * 60 * 60
+
+# 算法推理专用线程池：PyTorch 推理为 CPU 密集型同步操作，
+# 必须在线程池中执行以避免阻塞 asyncio 事件循环。
+# 限制并发数避免线程过多导致 GIL 争抢和内存爆炸。
+_inference_executor = ThreadPoolExecutor(
+    max_workers=2, thread_name_prefix="algo-inference")
 
 
 class PredictionService:
@@ -113,8 +120,12 @@ class PredictionService:
                 "time": elapsed,
             }
 
-        # 4. 缓存未命中，调用算法去雾
-        result_bytes = await self._run_dehaze(
+        # 4. 缓存未命中，调用算法去雾（在线程池中执行，避免阻塞事件循环）
+        import asyncio
+        loop = asyncio.get_running_loop()
+        result_bytes = await loop.run_in_executor(
+            _inference_executor,
+            self._run_dehaze,
             algorithm.import_path or algorithm.name,
             image_bytes,
         )
@@ -242,22 +253,26 @@ class PredictionService:
 
     async def _download_image(self, url: str) -> io.BytesIO:
         """从URL或本地路径下载图片"""
+        import asyncio
+
         # 处理本地文件路径 /api/v1/files/download/... → upload/...
         if url.startswith("/api/v1/files/download/"):
             local_path = url[len("/api/v1/files/download/"):]
             # 尝试相对于 upload 目录
             full_path = Path("upload") / local_path
             if full_path.exists():
-                with open(full_path, "rb") as f:
-                    return io.BytesIO(f.read())
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(
+                    None, self._read_file_sync, full_path)
             raise FileNotFoundError(f"本地文件不存在: {full_path}")
 
         # 处理绝对本地路径
         if not url.startswith("http://") and not url.startswith("https://"):
             local_path = Path(url)
             if local_path.exists():
-                with open(local_path, "rb") as f:
-                    return io.BytesIO(f.read())
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(
+                    None, self._read_file_sync, local_path)
             raise FileNotFoundError(f"图片文件不存在: {url}")
 
         # HTTP/HTTPS 下载
@@ -265,6 +280,12 @@ class PredictionService:
             response = await client.get(url)
             response.raise_for_status()
             return io.BytesIO(response.content)
+
+    @staticmethod
+    def _read_file_sync(path: Path) -> io.BytesIO:
+        """同步读取文件内容（供 run_in_executor 调用）"""
+        with open(path, "rb") as f:
+            return io.BytesIO(f.read())
 
     @staticmethod
     def _run_dehaze(import_path: str, image_bytes: io.BytesIO) -> io.BytesIO:
@@ -311,17 +332,27 @@ class PredictionService:
 
     async def _upload_result(self, result_bytes: io.BytesIO, algorithm_name: str) -> str:
         """上传结果到本地文件存储，由文件管理接口提供服务"""
+        import asyncio
+
         date_str = datetime.now().strftime("%Y%m%d")
         filename = f"{algorithm_name}_{int(time.time() * 1000)}.png"
 
         upload_dir = Path("upload/predictions") / date_str
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        dest_path = upload_dir / filename
-        with open(dest_path, "wb") as f:
-            f.write(result_bytes.getvalue())
+        loop = asyncio.get_running_loop()
+        dest_path = await loop.run_in_executor(
+            None, self._write_file_sync, upload_dir, filename, result_bytes.getvalue())
 
         logger.info(f"预测结果已保存: {dest_path}")
         return f"/api/v1/files/download/predictions/{date_str}/{filename}"
+
+    @staticmethod
+    def _write_file_sync(upload_dir: Path, filename: str, data: bytes) -> Path:
+        """同步写入文件（供 run_in_executor 调用）"""
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        dest_path = upload_dir / filename
+        with open(dest_path, "wb") as f:
+            f.write(data)
+        return dest_path
 
 
 # 单例

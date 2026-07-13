@@ -365,7 +365,20 @@ class UserService:
         failed_count = 0
         failures = []
 
-        for row_num, row in enumerate(worksheet.iter_rows(min_row=2, values_only=True), start=2):
+        # 读取所有数据行
+        rows = list(worksheet.iter_rows(min_row=2, values_only=True))
+
+        # 第一遍：收集所有用户名，批量查询已存在的（避免 N+1）
+        all_usernames = [
+            str(row[0]) for row in rows if row and row[0]
+        ]
+        existing_usernames = await user_repository.get_existing_usernames(
+            db, all_usernames
+        )
+
+        # 第二遍：逐行创建用户
+        seen_usernames: set[str] = set()
+        for row_num, row in enumerate(rows, start=2):
             try:
                 username = row[0]
                 nickname = row[1]
@@ -385,15 +398,29 @@ class UserService:
                     failed_count += 1
                     continue
 
-                existing_user = await user_repository.get_by_username(db, str(username))
-                if existing_user:
+                username_str = str(username)
+
+                # 检查数据库已存在
+                if username_str in existing_usernames:
                     failures.append({
                         "row": row_num,
-                        "username": str(username),
+                        "username": username_str,
                         "reason": "用户名已存在",
                     })
                     failed_count += 1
                     continue
+
+                # 检查本次导入批次内重复
+                if username_str in seen_usernames:
+                    failures.append({
+                        "row": row_num,
+                        "username": username_str,
+                        "reason": "用户名在导入文件中重复",
+                    })
+                    failed_count += 1
+                    continue
+
+                seen_usernames.add(username_str)
 
                 if gender == "男":
                     gender_value = 1
@@ -416,7 +443,7 @@ class UserService:
                 hashed_password = await hash_password_async(plain_password)
 
                 user = SysUser(
-                    username=str(username),
+                    username=username_str,
                     nickname=str(nickname),
                     password=hashed_password,
                     email=str(email) if email else None,

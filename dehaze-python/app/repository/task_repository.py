@@ -99,7 +99,7 @@ class TaskRepository(BaseRepository[SysTask]):
         if task_type:
             stmt = stmt.where(SysTask.task_type == task_type)
 
-        stmt = stmt.order_by(SysTask.created_at.desc())
+        stmt = stmt.order_by(SysTask.create_time.desc())
         return await self.paginate(db, stmt, page, size)
 
     async def get_terminated_task_ids(

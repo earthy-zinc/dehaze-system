@@ -79,6 +79,9 @@ async def upload_file(
             content=content,
             content_type=file.content_type or "application/octet-stream",
         )
+        # 路由层显式提交：确保后续请求（如 MD5 校验）能读到已写入的数据
+        # get_db() 的 yield 后置 commit 发生在响应发送之后，会导致跨请求不可见
+        await db.commit()
 
         return success(
             data=FileUploadResultVO(
@@ -213,6 +216,8 @@ async def delete_file(
 ) -> Result[None]:
     try:
         await FileService.delete_file_with_storage(db, fileId)
+        # 路由层显式提交：确保删除立即可见（同 upload_file）
+        await db.commit()
         return success(msg="文件删除成功")
     except BusinessException:
         raise

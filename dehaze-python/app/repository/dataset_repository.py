@@ -469,6 +469,30 @@ class DatasetRepository(BaseRepository[SysDataset]):
         result = await db.execute(stmt)
         return result.rowcount > 0
 
+    async def get_items_by_ids(
+        self,
+        db: AsyncSession,
+        item_ids: list[int],
+    ) -> list[SysDatasetItem]:
+        """批量根据 ID 获取数据项"""
+        if not item_ids:
+            return []
+        stmt = select(SysDatasetItem).where(SysDatasetItem.id.in_(item_ids))
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def delete_items_by_ids(
+        self,
+        db: AsyncSession,
+        item_ids: list[int],
+    ) -> int:
+        """批量删除数据项"""
+        if not item_ids:
+            return 0
+        stmt = delete(SysDatasetItem).where(SysDatasetItem.id.in_(item_ids))
+        result = await db.execute(stmt)
+        return result.rowcount
+
     async def delete_items_by_dataset_id(
         self,
         db: AsyncSession,
@@ -551,6 +575,18 @@ class DatasetRepository(BaseRepository[SysDataset]):
         stmt = select(SysItemFile).where(SysItemFile.id == file_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_item_files_by_ids(
+        self,
+        db: AsyncSession,
+        file_ids: list[int],
+    ) -> list[SysItemFile]:
+        """批量根据 ID 获取图片文件关联记录"""
+        if not file_ids:
+            return []
+        stmt = select(SysItemFile).where(SysItemFile.id.in_(file_ids))
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
 
     async def get_item_file_with_file(
         self,

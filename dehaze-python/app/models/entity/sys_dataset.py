@@ -11,7 +11,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 class SysDataset(BaseModel):
     __tablename__ = 'sys_dataset'
-    __table_args__ = {'comment': '数据集表'}
+    __table_args__ = (
+        Index('idx_parent_id', 'parent_id'),
+        Index('idx_deleted', 'deleted'),
+        Index('idx_status', 'status'),
+        Index('idx_name', 'name'),
+        Index('idx_parent_name', 'parent_id', 'name'),
+        Index('idx_create_time', 'create_time'),
+        {'comment': '数据集表'},
+    )
 
     id: Mapped[int] = mapped_column(
         BigInteger, primary_key=True, autoincrement=True, comment='数据集ID')

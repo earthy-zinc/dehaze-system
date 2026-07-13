@@ -35,8 +35,6 @@ _minio_client: Optional[Minio] = None
 
 # 文件名安全校验正则：禁止路径遍历、空字节、管道等特殊字符
 _UNSAFE_FILENAME_PATTERN = re.compile(r'[\\/:*?"<>|\x00-\x1f]|\.\./')
-# MD5 格式校验正则
-_MD5_PATTERN = re.compile(r'^[a-fA-F0-9]{32}$')
 
 # 文件下载分块大小 (1MB)
 _DOWNLOAD_CHUNK_SIZE = 1024 * 1024
@@ -63,11 +61,6 @@ def calculate_bytes_md5(content: bytes) -> str:
 def generate_object_name(md5: str, extension: str) -> str:
     """生成 MinIO 对象名称"""
     return f"upload/{datetime.now().strftime('%Y%m%d')}/{md5}.{extension}"
-
-
-def validate_md5_format(md5: str) -> bool:
-    """校验 MD5 格式是否有效"""
-    return bool(_MD5_PATTERN.match(md5))
 
 
 def sanitize_filename(filename: str) -> str:
@@ -186,7 +179,7 @@ class FileService:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(_minio_executor, _sync_upload)
         except Exception as e:
-            logger.error(f"文件上传到存储服务失败: {e}", exc_info=True)
+            logger.error("文件上传到存储服务失败: %s", e, exc_info=True)
             raise BusinessException(
                 ResultCode.FILE_STORAGE_ERROR, f"文件存储失败: {str(e)}")
 
@@ -206,18 +199,17 @@ class FileService:
         )
 
         # 创建数据库记录，处理并发 MD5 冲突
+        # 使用 SAVEPOINT 避免回滚整个外层事务（upload_file 常被 dataset_service 在事务内调用）
         try:
-            new_file = await file_repository.create(db, new_file)
+            async with db.begin_nested():
+                new_file = await file_repository.create(db, new_file)
         except IntegrityError:
-            # 并发上传相同 MD5 文件导致唯一索引冲突，回滚后重查
-            await db.rollback()
+            # 并发上传相同 MD5 文件导致唯一索引冲突，savepoint 自动回滚，外层事务不受影响
             existing_file = await file_repository.get_by_md5(db, file_md5)
             if existing_file:
                 return existing_file
             # 如果重查仍未找到（理论上不应发生），抛出异常
             raise BusinessException(ResultCode.FILE_STORAGE_ERROR, "文件记录创建失败")
-
-        await db.commit()
 
         # 发布文件创建事件
         from app.service.file_events import FileCreatedEvent, file_event_bus
@@ -256,9 +248,8 @@ class FileService:
         filename = file_info.name
         md5 = file_info.md5
 
-        # 删除数据库记录
+        # 删除数据库记录（事务由 get_db() 在请求边界统一提交）
         await file_repository.delete_by_ids(db, [file_id])
-        await db.commit()
 
         # 从存储中删除文件（在线程池中异步执行，不阻塞事件循环）
         minio_client = get_minio_client()
@@ -269,13 +260,13 @@ class FileService:
                 minio_client.remove_object(bucket_name, object_name)
             except Exception as e:
                 # 存储删除失败仅记录日志，不影响数据库删除结果
-                logger.warning(f"物理文件删除失败 [{object_name}]: {e}")
+                logger.warning("物理文件删除失败 [%s]: %s", object_name, e)
 
         try:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(_minio_executor, _sync_remove)
         except Exception as e:
-            logger.warning(f"物理文件删除异常 [{object_name}]: {e}")
+            logger.warning("物理文件删除异常 [%s]: %s", object_name, e)
 
         # 发布文件删除事件
         from app.service.file_events import FileDeletedEvent, file_event_bus
@@ -383,34 +374,49 @@ class FileService:
         minio_client = get_minio_client()
         bucket_name = settings.MINIO_BUCKET_NAME
 
-        def _sync_download_chunks():
-            """同步分块下载，返回所有分块的列表"""
+        # 使用生产者-消费者队列实现真正的流式下载（避免大文件 OOM）
+        _SENTINEL = object()
+        queue: asyncio.Queue = asyncio.Queue(maxsize=8)
+        loop = asyncio.get_running_loop()
+
+        def _producer():
+            """在工作线程中分块读取 MinIO 对象并推入队列（带背压）"""
             response = None
             try:
                 response = minio_client.get_object(bucket_name, object_name)
-                chunks = []
                 while True:
                     chunk = response.read(_DOWNLOAD_CHUNK_SIZE)
                     if not chunk:
                         break
-                    chunks.append(chunk)
-                return chunks
+                    fut = asyncio.run_coroutine_threadsafe(queue.put(chunk), loop)
+                    fut.result()  # 等待队列有空间（背压）
+            except Exception as exc:
+                asyncio.run_coroutine_threadsafe(queue.put(exc), loop).result()
             finally:
                 if response:
                     response.close()
                     response.release_conn()
+                asyncio.run_coroutine_threadsafe(queue.put(_SENTINEL), loop).result()
+
+        # 启动生产者线程（非阻塞，在后台运行）
+        loop.run_in_executor(_minio_executor, _producer)
 
         try:
-            loop = asyncio.get_running_loop()
-            chunks = await loop.run_in_executor(_minio_executor, _sync_download_chunks)
-            for chunk in chunks:
-                yield chunk
+            while True:
+                item = await queue.get()
+                if item is _SENTINEL:
+                    break
+                if isinstance(item, Exception):
+                    logger.error("文件下载失败 [%s]: %s", object_name, item)
+                    raise BusinessException(
+                        ResultCode.FILE_NOT_FOUND, "文件下载失败")
+                yield item
         except BusinessException:
             raise
         except Exception as e:
-            logger.error(f"文件下载失败 [{object_name}]: {e}", exc_info=True)
+            logger.error("文件下载失败 [%s]: %s", object_name, e, exc_info=True)
             raise BusinessException(
-                ResultCode.FILE_NOT_FOUND, f"文件下载失败: {str(e)}")
+                ResultCode.FILE_NOT_FOUND, "文件下载失败")
 
     @staticmethod
     async def get_file_stat(object_name: str) -> Optional[int]:
@@ -449,12 +455,12 @@ class FileService:
         def _sync_check():
             if not minio_client.bucket_exists(bucket_name):
                 minio_client.make_bucket(bucket_name)
-                logger.info(f"已自动创建 MinIO Bucket: {bucket_name}")
+                logger.info("已自动创建 MinIO Bucket: %s", bucket_name)
             else:
-                logger.info(f"MinIO Bucket 已存在: {bucket_name}")
+                logger.info("MinIO Bucket 已存在: %s", bucket_name)
 
         try:
             loop = asyncio.get_running_loop()
             await loop.run_in_executor(_minio_executor, _sync_check)
         except Exception as e:
-            logger.warning(f"检查/创建 MinIO Bucket 失败: {e}")
+            logger.warning("检查/创建 MinIO Bucket 失败: %s", e)

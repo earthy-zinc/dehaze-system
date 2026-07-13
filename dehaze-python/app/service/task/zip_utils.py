@@ -92,7 +92,7 @@ async def export_items_to_zip(
 
                 item = await dataset_repository.get_item_by_id(db, item_id)
                 if item is None:
-                    logger.warning(f"数据项不存在: itemId={item_id}")
+                    logger.warning("数据项不存在: itemId=%s", item_id)
                     continue
 
                 item_files = await dataset_repository.get_item_files_by_item_id(db, item_id)
@@ -113,19 +113,19 @@ async def export_items_to_zip(
                         await progress_callback(processed_files, total_files)
 
         logger.info(
-            f"ZIP文件创建成功: file={zip_path}, totalFiles={processed_files}")
+            "ZIP文件创建成功: file=%s, totalFiles=%s", zip_path, processed_files)
 
         # 上传到 MinIO 并生成预签名 URL
         download_url = await _upload_to_minio(zip_path, object_name)
 
         logger.info(
-            f"文件上传完成: objectName={object_name}, downloadUrl={download_url}")
+            "文件上传完成: objectName=%s, downloadUrl=%s", object_name, download_url)
         return download_url
 
     except TaskCancelledException:
         raise
     except Exception as e:
-        logger.error(f"导出文件失败", exc_info=True)
+        logger.error("导出文件失败", exc_info=True)
         from app.core.exceptions import BusinessException
         raise BusinessException(f"导出文件失败: {e}")
     finally:
@@ -162,7 +162,7 @@ async def _add_file_to_zip(
 
     file_obj = await file_repository.get_by_id(db, file_id)
     if file_obj is None:
-        logger.warning(f"文件不存在: fileId={file_id}")
+        logger.warning("文件不存在: fileId=%s", file_id)
         return
 
     # 构建 ZIP 条目路径
@@ -183,7 +183,7 @@ async def _add_file_to_zip(
     if file_bytes:
         zos.writestr(entry_path, file_bytes)
     else:
-        logger.warning(f"从存储下载文件失败，跳过: objectName={file_obj.object_name}")
+        logger.warning("从存储下载文件失败，跳过: objectName=%s", file_obj.object_name)
 
 
 def _get_extension(filename: str) -> str:
@@ -195,34 +195,43 @@ def _get_extension(filename: str) -> str:
 
 async def _download_from_minio(object_name: str) -> Optional[bytes]:
     """
-    从 MinIO 下载文件字节
+    从 MinIO 下载文件字节（在线程池中执行，避免阻塞事件循环）
 
     Returns:
         文件字节数据，失败返回 None
     """
-    try:
-        from minio import Minio
-        client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE,
-        )
-        response = client.get_object(settings.MINIO_BUCKET_NAME, object_name)
+    import asyncio
+
+    from app.service.file_service import _minio_executor, get_minio_client
+    from app.config import settings
+
+    client = get_minio_client()
+    bucket_name = settings.MINIO_BUCKET_NAME
+
+    def _sync_download() -> Optional[bytes]:
+        response = None
         try:
+            response = client.get_object(bucket_name, object_name)
             return response.read()
-        finally:
-            response.close()
-            response.release_conn()
+        except Exception as e:
+            logger.error("MinIO 下载失败: objectName=%s, error=%s", object_name, e)
             return None
+        finally:
+            if response is not None:
+                response.close()
+                response.release_conn()
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(_minio_executor, _sync_download)
     except Exception as e:
-        logger.error(f"MinIO 下载失败: objectName={object_name}, error={e}")
+        logger.error("MinIO 下载执行失败: objectName=%s, error=%s", object_name, e)
         return None
 
 
 async def _upload_to_minio(local_path: str, object_name: str) -> str:
     """
-    上传文件到 MinIO 并生成预签名 URL
+    上传文件到 MinIO 并生成预签名 URL（在线程池中执行，避免阻塞事件循环）
 
     Args:
         local_path: 本地文件路径
@@ -231,30 +240,33 @@ async def _upload_to_minio(local_path: str, object_name: str) -> str:
     Returns:
         预签名下载 URL
     """
-    try:
-        from datetime import timedelta
+    import asyncio
+    from datetime import timedelta
 
-        from minio import Minio
-        client = Minio(
-            settings.MINIO_ENDPOINT,
-            access_key=settings.MINIO_ACCESS_KEY,
-            secret_key=settings.MINIO_SECRET_KEY,
-            secure=settings.MINIO_SECURE,
-        )
+    from app.service.file_service import _minio_executor, get_minio_client
+    from app.config import settings
+
+    client = get_minio_client()
+    bucket_name = settings.MINIO_BUCKET_NAME
+
+    def _sync_upload() -> str:
         client.fput_object(
-            settings.MINIO_BUCKET_NAME,
+            bucket_name,
             object_name,
             local_path,
             content_type="application/zip",
         )
         # 生成 24 小时有效的预签名 URL
-        url = client.presigned_get_object(
-            settings.MINIO_BUCKET_NAME,
+        return client.presigned_get_object(
+            bucket_name,
             object_name,
             expires=timedelta(hours=24),
         )
-        return url
+
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(_minio_executor, _sync_upload)
     except Exception as e:
-        logger.warning(f"MinIO 上传失败，降级为本地路径: {e}")
+        logger.warning("MinIO 上传失败，降级为本地路径: %s", e)
         # 降级：返回本地下载路径（需要 Web 服务器提供 static 路由）
         return f"/downloads/{object_name}"

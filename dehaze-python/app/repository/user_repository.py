@@ -89,6 +89,22 @@ class UserRepository(BaseRepository[SysUser]):
             db.add_all(role_links)
         await db.flush()
 
+    async def get_existing_usernames(
+        self,
+        db: AsyncSession,
+        usernames: list[str],
+    ) -> set[str]:
+        """批量查询已存在的用户名（避免导入时 N+1）"""
+        if not usernames:
+            return set()
+        deleted_column = self._get_user_deleted_column()
+        stmt = select(SysUser.username).where(
+            SysUser.username.in_(usernames),
+            deleted_column == 0,
+        )
+        result = await db.execute(stmt)
+        return {row[0] for row in result.fetchall() if row[0]}
+
     async def check_username_exists(
         self,
         db: AsyncSession,
@@ -220,6 +236,22 @@ class UserRepository(BaseRepository[SysUser]):
         result = await db.execute(stmt)
         return result.scalar() or 0
 
+    async def count_users_by_roles(
+        self,
+        db: AsyncSession,
+        role_ids: list[int],
+    ) -> dict[int, int]:
+        """批量统计多个角色关联的用户数量（避免 N+1）"""
+        if not role_ids:
+            return {}
+        stmt = (
+            select(SysUserRole.role_id, func.count().label("cnt"))
+            .where(SysUserRole.role_id.in_(role_ids))
+            .group_by(SysUserRole.role_id)
+        )
+        result = await db.execute(stmt)
+        return {int(row.role_id): int(row.cnt) for row in result}
+
     async def count_users_by_dept(
         self,
         db: AsyncSession,
@@ -232,6 +264,22 @@ class UserRepository(BaseRepository[SysUser]):
         )
         result = await db.execute(stmt)
         return result.scalar() or 0
+
+    async def count_users_by_depts(
+        self,
+        db: AsyncSession,
+        dept_ids: list[int],
+    ) -> dict[int, int]:
+        """批量统计多个部门下的用户数量（避免 N+1）"""
+        if not dept_ids:
+            return {}
+        stmt = (
+            select(SysUser.dept_id, func.count().label("cnt"))
+            .where(SysUser.dept_id.in_(dept_ids), SysUser.deleted == 0)
+            .group_by(SysUser.dept_id)
+        )
+        result = await db.execute(stmt)
+        return {int(row.dept_id): int(row.cnt) for row in result}
 
     async def get_user_role_codes(
         self,

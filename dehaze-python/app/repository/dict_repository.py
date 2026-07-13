@@ -93,6 +93,18 @@ class DictRepository(BaseRepository[SysDict]):
         result = await db.execute(stmt)
         return result.scalar() or 0
 
+    async def count_by_type_codes(self, db: AsyncSession, type_codes: list[str]) -> dict[str, int]:
+        """批量统计多个类型下的字典数据数量（避免 N+1）"""
+        if not type_codes:
+            return {}
+        stmt = (
+            select(SysDict.type_code, func.count().label("cnt"))
+            .where(SysDict.type_code.in_(type_codes))
+            .group_by(SysDict.type_code)
+        )
+        result = await db.execute(stmt)
+        return {str(row.type_code): int(row.cnt) for row in result}
+
     async def count_by_ids(self, db: AsyncSession, dict_ids: list[int]) -> int:
         """根据ID列表统计存在的字典数量"""
         if not dict_ids:

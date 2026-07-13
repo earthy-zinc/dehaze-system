@@ -130,7 +130,7 @@ class TaskServiceAsync:
         )
 
         logger.info(
-            f"创建导出任务成功: taskId={task_id}, type={task_type}, userId={user_id}")
+            "创建导出任务成功: taskId=%s, type=%s, userId=%s", task_id, task_type, user_id)
 
         return task_dict
 
@@ -167,10 +167,8 @@ class TaskServiceAsync:
                 if task_data.get("created_by") != user_id:
                     raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
                 return task_data
-            except (json.JSONDecodeError, Exception) as e:
-                if isinstance(e, BusinessException):
-                    raise
-                logger.warning(f"解析缓存数据失败: {e}")
+            except json.JSONDecodeError as e:
+                logger.warning("解析缓存数据失败: %s", e)
 
         # 从数据库查询（使用 repository）
         sys_task = await task_repository.get_by_task_id(db, task_id)
@@ -265,7 +263,7 @@ class TaskServiceAsync:
 
         # 从 result 字段获取下载链接
         if not sys_task.result:
-            logger.warning(f"任务结果为空: taskId={task_id}")
+            logger.warning("任务结果为空: taskId=%s", task_id)
             return None
 
         return sys_task.result
@@ -326,7 +324,7 @@ class TaskServiceAsync:
         await redis.setex(cancel_key, TaskServiceAsync.CANCEL_FLAG_TTL, 'true')
 
         await db.commit()
-        logger.info(f"取消导出任务成功: taskId={task_id}")
+        logger.info("取消导出任务成功: taskId=%s", task_id)
         return True
 
     @staticmethod
@@ -363,10 +361,10 @@ class TaskServiceAsync:
                         "options": options or {},
                     },
                 )
-                logger.info(f"任务已发布到 RabbitMQ: taskId={task_id}")
+                logger.info("任务已发布到 RabbitMQ: taskId=%s", task_id)
                 return
             except Exception as e:
-                logger.warning(f"RabbitMQ 发布失败，降级为本地执行: {e}")
+                logger.warning("RabbitMQ 发布失败，降级为本地执行: %s", e)
 
         # Fallback：asyncio.Task + TaskTracker
         background_task = asyncio.create_task(
@@ -388,7 +386,7 @@ class TaskServiceAsync:
                 },
             )
         except Exception as e:
-            logger.warning(f"任务追踪注册失败（不影响执行）: {e}")
+            logger.warning("任务追踪注册失败（不影响执行）: %s", e)
 
     # ==================== 私有方法 ====================
 
@@ -536,13 +534,13 @@ class TaskServiceAsync:
 
         try:
             async with get_db_session() as db:
-                logger.info(f"开始执行导出任务: taskId={task_id}, type={task_type}")
+                logger.info("开始执行导出任务: taskId=%s, type=%s", task_id, task_type)
 
                 # 查询任务（使用 repository）
                 sys_task = await task_repository.get_by_id(db, db_task_id)
 
                 if sys_task is None:
-                    logger.error(f"任务不存在: taskId={task_id}")
+                    logger.error("任务不存在: taskId=%s", task_id)
                     return
 
                 try:
@@ -591,7 +589,7 @@ class TaskServiceAsync:
                                 db, redis, db_task_id, TaskStatus.COMPLETED.value, download_url, None
                             )
                             logger.info(
-                                f"导出任务完成: taskId={task_id}, downloadUrl={download_url}")
+                                "导出任务完成: taskId=%s, downloadUrl=%s", task_id, download_url)
                         else:
                             if metrics_enabled and isinstance(metrics_ctx, TaskMetricsContext):
                                 metrics_ctx.set_status("failed")
@@ -601,24 +599,24 @@ class TaskServiceAsync:
 
                 except asyncio.CancelledError:
                     # 任务被取消（优雅关闭时）
-                    logger.warning(f"导出任务被取消（服务关闭）: taskId={task_id}")
+                    logger.warning("导出任务被取消（服务关闭）: taskId=%s", task_id)
                     await TaskServiceAsync._update_task_status(
                         db, redis, db_task_id, TaskStatus.FAILED.value, None, "服务关闭，任务中断"
                     )
                     raise
 
                 except TaskCancelledException:
-                    logger.warning(f"导出任务被取消: taskId={task_id}")
+                    logger.warning("导出任务被取消: taskId=%s", task_id)
                     await TaskServiceAsync._update_task_status(
                         db, redis, db_task_id, TaskStatus.CANCELLED.value, None, None
                     )
 
                 except Exception as e:
-                    logger.error(f"导出任务执行失败: taskId={task_id}", exc_info=True)
+                    logger.error("导出任务执行失败: taskId=%s", task_id, exc_info=True)
                     await TaskServiceAsync._update_task_status(
                         db, redis, db_task_id, TaskStatus.FAILED.value, None, str(
                             e)
                     )
 
         except Exception as e:
-            logger.error(f"后台任务执行异常: {e}", exc_info=True)
+            logger.error("后台任务执行异常: %s", e, exc_info=True)

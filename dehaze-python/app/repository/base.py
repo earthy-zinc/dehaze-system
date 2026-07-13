@@ -68,6 +68,24 @@ class BaseRepository(Generic[T]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_ids(
+        self,
+        db: AsyncSession,
+        ids: list[int],
+        *,
+        with_deleted: bool = False,
+    ) -> list[T]:
+        """根据 ID 列表批量查询记录"""
+        if not ids:
+            return []
+        id_column = self._get_id_column()
+        stmt = select(self.model).where(id_column.in_(ids))
+        if not with_deleted and hasattr(self.model, "deleted"):
+            deleted_column = self._get_deleted_column()
+            stmt = stmt.where(deleted_column == 0)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_all(
         self,
         db: AsyncSession,

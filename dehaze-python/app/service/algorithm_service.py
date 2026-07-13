@@ -4,6 +4,7 @@
 提供算法 CRUD、状态机、审核、版本控制、导入/导出、监控功能
 """
 
+import asyncio
 import json
 import os
 from datetime import datetime, timezone
@@ -100,9 +101,9 @@ class AlgorithmService:
             version=data.get("version"),
         )
 
-        # 如果路径是有效文件，获取文件大小
-        if "path" in data and os.path.isfile(data["path"]):
-            algorithm.size = get_file_size(data["path"])
+        # 如果路径是有效文件，获取文件大小（同步文件 I/O 移至线程池）
+        if "path" in data and await asyncio.to_thread(os.path.isfile, data["path"]):
+            algorithm.size = await asyncio.to_thread(get_file_size, data["path"])
 
         created = await algorithm_repository.create(db, algorithm)
         await db.commit()
@@ -125,8 +126,8 @@ class AlgorithmService:
             update_data["name"] = data["name"]
         if "path" in data:
             update_data["path"] = data["path"]
-            if os.path.isfile(data["path"]):
-                update_data["size"] = get_file_size(data["path"])
+            if await asyncio.to_thread(os.path.isfile, data["path"]):
+                update_data["size"] = await asyncio.to_thread(get_file_size, data["path"])
         if "importPath" in data:
             update_data["import_path"] = data["importPath"]
         if "description" in data:
@@ -188,9 +189,9 @@ class AlgorithmService:
 
         current_status = algorithm.status
 
-        # 终态校验：已发布/已停用不允许变更（已归档除外）
-        final_statuses = {AlgorithmStatus.PUBLISHED, AlgorithmStatus.DISABLED, AlgorithmStatus.ARCHIVED}
-        if current_status in final_statuses and current_status != AlgorithmStatus.ARCHIVED:
+        # 终态校验：已发布/已停用不允许变更（已归档可重新启用）
+        final_statuses = {AlgorithmStatus.PUBLISHED, AlgorithmStatus.DISABLED}
+        if current_status in final_statuses:
             raise BusinessException("终态算法不允许修改状态")
 
         # 不允许直接跳转到已发布
@@ -449,8 +450,10 @@ class AlgorithmService:
         if not algorithm:
             raise BusinessException("算法不存在")
 
-        stats = await algorithm_repository.get_monitor_stats(db, algorithm_id)
-        today_calls = await algorithm_repository.get_today_call_count(db, algorithm_id)
+        stats, today_calls = await asyncio.gather(
+            algorithm_repository.get_monitor_stats(db, algorithm_id),
+            algorithm_repository.get_today_call_count(db, algorithm_id),
+        )
 
         total_calls = stats["totalCalls"]
         # 对齐 Java: totalCalls=0 时 successRate=100.0

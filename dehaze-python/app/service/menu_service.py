@@ -60,49 +60,56 @@ class MenuService:
         ids = {menu.id for menu in menus}
         root_ids = {menu.parent_id for menu in menus if menu.parent_id not in ids}
 
+        # 构建 children_map（O(N)），避免递归中反复扫描全量列表
+        children_map: dict[int, list[SysMenu]] = {}
+        for menu in menus:
+            children_map.setdefault(menu.parent_id, []).append(menu)
+
         tree: list[dict[str, Any]] = []
         for root_id in root_ids:
-            tree.extend(MenuService._build_menu_tree(root_id, menus))
+            tree.extend(MenuService._build_menu_tree(root_id, children_map))
         return tree
 
     @staticmethod
-    def _build_menu_tree(parent_id: int, menus: list[SysMenu]) -> list[dict[str, Any]]:
+    def _build_menu_tree(
+        parent_id: int,
+        children_map: dict[int, list[SysMenu]],
+    ) -> list[dict[str, Any]]:
         """
-        递归构建菜单树
+        递归构建菜单树（使用预构建的 children_map，O(N)）
 
         Args:
             parent_id: 父级菜单ID
-            menus: 菜单列表
+            children_map: 按 parent_id 分组的菜单字典
 
         Returns:
             树形菜单列表
         """
         tree = []
-        for menu in menus:
-            if menu.parent_id == parent_id:
-                menu_dict: dict[str, Any] = {
-                    "id": menu.id,
-                    "parentId": menu.parent_id,
-                    "name": menu.name,
-                    "type": MENU_TYPE_TO_NAME.get(menu.type, str(menu.type)),
-                    "path": menu.path,
-                    "component": menu.component,
-                    "perm": menu.perm,
-                    "visible": menu.visible,
-                    "sort": menu.sort,
-                    "icon": menu.icon,
-                    "redirect": menu.redirect,
-                    "alwaysShow": menu.always_show,
-                    "keepAlive": menu.keep_alive,
-                    "createTime": format_time(menu.create_time),
-                }
+        for menu in children_map.get(parent_id, []):
+            menu_dict: dict[str, Any] = {
+                "id": menu.id,
+                "parentId": menu.parent_id,
+                "name": menu.name,
+                "type": MENU_TYPE_TO_NAME.get(menu.type, str(menu.type)),
+                "path": menu.path,
+                "component": menu.component,
+                "perm": menu.perm,
+                "visible": menu.visible,
+                "sort": menu.sort,
+                "icon": menu.icon,
+                "redirect": menu.redirect,
+                "alwaysShow": menu.always_show,
+                "keepAlive": menu.keep_alive,
+                "createTime": format_time(menu.create_time),
+            }
 
-                # 递归查找子菜单
-                children = MenuService._build_menu_tree(menu.id, menus)
-                if children:
-                    menu_dict["children"] = children
+            # 递归查找子菜单
+            children = MenuService._build_menu_tree(menu.id, children_map)
+            if children:
+                menu_dict["children"] = children
 
-                tree.append(menu_dict)
+            tree.append(menu_dict)
 
         return tree
 
@@ -118,35 +125,45 @@ class MenuService:
             菜单下拉选项列表
         """
         menus = await menu_repository.get_list(db)
-        return MenuService._build_menu_options(0, menus)
+        if not menus:
+            return []
+
+        # 构建 children_map（O(N)）
+        children_map: dict[int, list[SysMenu]] = {}
+        for menu in menus:
+            children_map.setdefault(menu.parent_id, []).append(menu)
+
+        return MenuService._build_menu_options(0, children_map)
 
     @staticmethod
-    def _build_menu_options(parent_id: int, menus: list[SysMenu]) -> list[dict[str, Any]]:
+    def _build_menu_options(
+        parent_id: int,
+        children_map: dict[int, list[SysMenu]],
+    ) -> list[dict[str, Any]]:
         """
-        递归构建菜单下拉选项
+        递归构建菜单下拉选项（使用预构建的 children_map，O(N)）
 
         Args:
             parent_id: 父级菜单ID
-            menus: 菜单列表
+            children_map: 按 parent_id 分组的菜单字典
 
         Returns:
             菜单下拉选项列表
         """
         options = []
-        for menu in menus:
-            if menu.parent_id == parent_id:
-                # 按钮类型不显示在下拉选项中
-                if menu.type == MENU_TYPE_BUTTON:
-                    continue
+        for menu in children_map.get(parent_id, []):
+            # 按钮类型不显示在下拉选项中
+            if menu.type == MENU_TYPE_BUTTON:
+                continue
 
-                option: dict[str, Any] = {"value": menu.id, "label": menu.name}
+            option: dict[str, Any] = {"value": menu.id, "label": menu.name}
 
-                # 递归查找子菜单选项
-                children = MenuService._build_menu_options(menu.id, menus)
-                if children:
-                    option["children"] = children
+            # 递归查找子菜单选项
+            children = MenuService._build_menu_options(menu.id, children_map)
+            if children:
+                option["children"] = children
 
-                options.append(option)
+            options.append(option)
 
         return options
 
@@ -264,7 +281,15 @@ class MenuService:
 
         # 从数据库获取
         menus = await menu_repository.get_route_menus(db)
-        routes = MenuService._build_routes(0, menus)
+        if not menus:
+            return []
+
+        # 构建 children_map（O(N)）
+        children_map: dict[int, list[SysMenu]] = {}
+        for menu in menus:
+            children_map.setdefault(menu.parent_id, []).append(menu)
+
+        routes = MenuService._build_routes(0, children_map)
 
         # 写入缓存
         await cache.set_json(ROUTE_CACHE_KEY, routes, CACHE_TTL_HOUR)
@@ -272,29 +297,31 @@ class MenuService:
         return routes
 
     @staticmethod
-    def _build_routes(parent_id: int, menus: list[SysMenu]) -> list[dict[str, Any]]:
+    def _build_routes(
+        parent_id: int,
+        children_map: dict[int, list[SysMenu]],
+    ) -> list[dict[str, Any]]:
         """
-        递归构建路由列表
+        递归构建路由列表（使用预构建的 children_map，O(N)）
 
         Args:
             parent_id: 父级菜单ID
-            menus: 菜单列表
+            children_map: 按 parent_id 分组的菜单字典
 
         Returns:
             路由列表
         """
         routes = []
-        for menu in menus:
-            if menu.parent_id == parent_id:
-                # 构建路由对象
-                route = MenuService._to_route_vo(menu)
+        for menu in children_map.get(parent_id, []):
+            # 构建路由对象
+            route = MenuService._to_route_vo(menu)
 
-                # 递归查找子路由
-                children = MenuService._build_routes(menu.id, menus)
-                if children:
-                    route["children"] = children
+            # 递归查找子路由
+            children = MenuService._build_routes(menu.id, children_map)
+            if children:
+                route["children"] = children
 
-                routes.append(route)
+            routes.append(route)
 
         return routes
 

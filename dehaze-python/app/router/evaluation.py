@@ -6,6 +6,7 @@ GET  /api/v1/evaluation/logs     → 评估日志列表
 GET  /api/v1/evaluation/{taskId} → 查询评估任务状态（通过日志ID）
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -91,7 +92,7 @@ async def evaluate(
     对比预测结果与参考图像，计算 PSNR/SSIM/LPIPS/NIQE/Entropy 等多维指标，
     并基于阈值判定是否合格。
     """
-    logger.info(f"评估请求: user={user.username}, algorithmId={body.algorithmId}")
+    logger.info("评估请求: user=%s, algorithmId=%s", user.username, body.algorithmId)
 
     # 1. 校验算法存在（与Java一致）
     await prediction_service._get_algorithm(body.algorithmId)
@@ -102,27 +103,33 @@ async def evaluate(
 
     start = time.time()
     try:
-        # 下载预测图和参考图
-        pred_bytes = await prediction_service._download_image(pred_url)
-        gt_bytes = await prediction_service._download_image(gt_url)
+        # 并行下载预测图和参考图
+        pred_bytes, gt_bytes = await asyncio.gather(
+            prediction_service._download_image(pred_url),
+            prediction_service._download_image(gt_url),
+        )
 
-        # 计算图片 MD5
+        # 计算图片 MD5（CPU 密集型，移至线程池）
         from app.utils.file import calculate_bytes_md5
-        pred_md5 = calculate_bytes_md5(pred_bytes)
-        gt_md5 = calculate_bytes_md5(gt_bytes)
+        pred_md5, gt_md5 = await asyncio.gather(
+            asyncio.to_thread(calculate_bytes_md5, pred_bytes),
+            asyncio.to_thread(calculate_bytes_md5, gt_bytes),
+        )
 
-        # 调用评估
+        # 调用评估（图像处理 CPU 密集型，移至线程池避免阻塞事件循环）
         pred_bytes.seek(0)
         gt_bytes.seek(0)
-        metrics_list = calculate_metrics(pred_bytes, gt_bytes)
+        metrics_list = await asyncio.to_thread(
+            calculate_metrics, pred_bytes, gt_bytes
+        )
 
         # 转换为 { "psnr": 35.0, "ssim": 0.92, ... } 格式
         metrics = {m["metric_name"]: m["value"] for m in metrics_list}
 
         elapsed = int((time.time() - start) * 1000)
         qualified = _is_qualified(metrics)
-        logger.info(f"评估完成: algorithmId={body.algorithmId}, time={elapsed}ms, "
-                    f"qualified={qualified}, metrics={metrics}")
+        logger.info("评估完成: algorithmId=%s, time=%sms, qualified=%s, metrics=%s",
+                    body.algorithmId, elapsed, qualified, metrics)
 
         # 写入评估日志
         log_id = await _write_eval_log(
@@ -147,7 +154,7 @@ async def evaluate(
     except FileNotFoundError as e:
         return error(f"图片文件不存在: {e}", ResultCode.RESOURCE_NOT_FOUND.code)
     except Exception as e:
-        logger.exception(f"评估失败: {e}")
+        logger.exception("评估失败: %s", e)
         return error(f"评估执行失败: {e}", ResultCode.SYSTEM_EXECUTION_ERROR.code)
 
 
@@ -177,7 +184,7 @@ async def _write_eval_log(
             await db.commit()
             return log.id
     except Exception as e:
-        logger.warning(f"写入评估日志失败: {e}")
+        logger.warning("写入评估日志失败: %s", e)
         return None
 
 
@@ -244,5 +251,5 @@ async def get_evaluation_task(
     result = await db.execute(stmt)
     log = result.scalar_one_or_none()
     if not log:
-        return error("评估任务不存在", ResultCode.SYSTEM_EXECUTION_ERROR.code)
+        return error("评估任务不存在", ResultCode.RESOURCE_NOT_FOUND.code)
     return success(log)

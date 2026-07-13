@@ -11,11 +11,15 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 # 异步引擎
+# pool_pre_ping: 连接借出前先 ping 一次，避免 MySQL 重启或空闲断开后报错
+# pool_timeout: 从池中获取连接的最大等待秒数，避免无限阻塞
 engine = create_async_engine(
     settings.DATABASE_URL,
     pool_size=settings.DATABASE_POOL_SIZE,
     max_overflow=settings.DATABASE_MAX_OVERFLOW,
     pool_recycle=settings.DATABASE_POOL_RECYCLE,
+    pool_pre_ping=True,
+    pool_timeout=10,
     echo=settings.DATABASE_ECHO,
 )
 
