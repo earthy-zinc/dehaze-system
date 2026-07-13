@@ -182,23 +182,23 @@ func (_c *MockIUserService_DownloadImportTemplate_Call) RunAndReturn(run func(co
 }
 
 // ExportUsers provides a mock function with given fields: ctx, q
-func (_m *MockIUserService) ExportUsers(ctx context.Context, q *query.UserPageQuery) ([]vo.UserExportVO, error) {
+func (_m *MockIUserService) ExportUsers(ctx context.Context, q *query.UserPageQuery) (string, error) {
 	ret := _m.Called(ctx, q)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ExportUsers")
 	}
 
-	var r0 []vo.UserExportVO
+	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *query.UserPageQuery) ([]vo.UserExportVO, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *query.UserPageQuery) (string, error)); ok {
 		return rf(ctx, q)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *query.UserPageQuery) []vo.UserExportVO); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *query.UserPageQuery) string); ok {
 		r0 = rf(ctx, q)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]vo.UserExportVO)
+			r0 = ret.Get(0).(string)
 		}
 	}
 
@@ -230,12 +230,12 @@ func (_c *MockIUserService_ExportUsers_Call) Run(run func(ctx context.Context, q
 	return _c
 }
 
-func (_c *MockIUserService_ExportUsers_Call) Return(_a0 []vo.UserExportVO, _a1 error) *MockIUserService_ExportUsers_Call {
+func (_c *MockIUserService_ExportUsers_Call) Return(_a0 string, _a1 error) *MockIUserService_ExportUsers_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockIUserService_ExportUsers_Call) RunAndReturn(run func(context.Context, *query.UserPageQuery) ([]vo.UserExportVO, error)) *MockIUserService_ExportUsers_Call {
+func (_c *MockIUserService_ExportUsers_Call) RunAndReturn(run func(context.Context, *query.UserPageQuery) (string, error)) *MockIUserService_ExportUsers_Call {
 	_c.Call.Return(run)
 	return _c
 }
