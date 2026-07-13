@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -81,9 +81,10 @@ async def update_algorithm(
 @router.put("/{algorithm_id}/status", response_model=Result[None], summary="修改算法状态")
 async def update_algorithm_status(
     algorithm_id: int,
-    status: int = Query(..., description="目标状态(0:草稿;1:测试中;2:待审核;3:已发布;4:已停用;5:已归档)"),
+    body: dict = Body(...),
     db: AsyncSession = Depends(get_db),
 ):
+    status = body.get("status")
     await AlgorithmService.update_status(db, algorithm_id, status)
     return success(msg="算法状态更新成功")
 

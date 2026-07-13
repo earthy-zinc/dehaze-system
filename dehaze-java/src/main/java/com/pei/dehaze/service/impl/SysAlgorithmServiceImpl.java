@@ -12,6 +12,7 @@ import com.pei.dehaze.common.enums.AlgorithmStatusEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.AlgorithmConverter;
@@ -113,28 +114,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public SysAlgorithm getAlgorithmById(Long id) {
         SysAlgorithm cur = this.getById(id);
         if (cur == null) {
-            throw new BusinessException("当前算法不存在");
-        }
-
-        // 使用缓存的全部算法列表构建 Map，避免逐级 getById 查询
-        Map<Long, SysAlgorithm> idToNodeMap = getAllAlgorithms().stream()
-                .collect(Collectors.toMap(SysAlgorithm::getId, a -> a));
-
-        List<SysAlgorithm> algorithms = new ArrayList<>();
-        collectAncestors(cur, algorithms, idToNodeMap);
-
-        if (!algorithms.isEmpty()) {
-            StringBuilder fullName = new StringBuilder();
-            StringBuilder fullDescription = new StringBuilder();
-            for (int i = algorithms.size() - 1; i >= 0; i--) { // 从根节点到当前节点
-                fullName.append(algorithms.get(i).getName()).append("/");
-                fullDescription.append(algorithms.get(i).getDescription()).append("\n");
-            }
-            if (fullName.length() > 4) {
-                fullName.setLength(fullName.length() - 1);
-            }
-            cur.setName(fullName.toString());
-            cur.setDescription(fullDescription.toString());
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
         return cur;
     }
@@ -148,21 +128,6 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
         }
         this.save(sysAlgorithm);
         return sysAlgorithm.getId();
-    }
-
-    private void collectAncestors(SysAlgorithm cur, List<SysAlgorithm> algorithms,
-                                  Map<Long, SysAlgorithm> idToNodeMap) {
-        algorithms.add(cur);
-        if (cur.getParentId() == null) {
-            throw new BusinessException("算法结构出现问题");
-        }
-        if (!cur.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
-            SysAlgorithm parent = idToNodeMap.get(cur.getParentId());
-            if (parent == null) {
-                throw new BusinessException("算法结构出现问题：无法找到父节点，parentId=" + cur.getParentId());
-            }
-            collectAncestors(parent, algorithms, idToNodeMap);
-        }
     }
 
     @Override

@@ -34,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author earthy-zinc
@@ -101,8 +102,8 @@ public class SysAlgorithmController {
     @PreAuthorize("@ss.hasPerm('sys:algorithm:edit')")
     public Result<Void> updateStatus(
             @Parameter(description = "算法ID") @PathVariable Long id,
-            @Parameter(description = "目标状态") @RequestParam Integer status) {
-        boolean result = algorithmService.updateStatus(id, status);
+            @RequestBody Map<String, Integer> body) {
+        boolean result = algorithmService.updateStatus(id, body.get("status"));
         return Result.judge(result);
     }
 
