@@ -7,12 +7,11 @@
     <!-- 获取角色拥有的菜单ID集合 -->
     <select id="listMenuIdsByRoleId" resultType="java.lang.Long">
         SELECT
-            rm.menu_id
+            menu_id
         FROM
-            sys_role_menu rm
-                INNER JOIN sys_menu m ON rm.menu_id = m.id
+            sys_role_menu
         WHERE
-            rm.role_id = #{roleId}
+            role_id = #{roleId}
     </select>
 
     <!-- 权限和拥有权限的角色集合的Map -->

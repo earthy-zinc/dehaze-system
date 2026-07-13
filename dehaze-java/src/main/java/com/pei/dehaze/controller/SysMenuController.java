@@ -75,8 +75,10 @@ public class SysMenuController {
     @PutMapping(value = "/{id}")
     @PreAuthorize("@ss.hasPerm('sys:menu:edit')")
     public Result<Void> updateMenu(
+            @Parameter(description = "菜单ID") @PathVariable Long id,
             @RequestBody MenuForm menuForm
     ) {
+        menuForm.setId(id);
         boolean result = menuService.saveMenu(menuForm);
         return Result.judge(result);
     }

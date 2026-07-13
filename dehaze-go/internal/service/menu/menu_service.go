@@ -49,7 +49,38 @@ func (s *MenuService) GetList(ctx context.Context, q *query.MenuQuery) ([]vo.Men
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询菜单列表失败", err)
 	}
 
-	return buildMenuTree(0, menus), nil
+	if len(menus) == 0 {
+		return []vo.MenuVO{}, nil
+	}
+
+	// 对齐 Java TreeDataUtils.findRootIds：
+	// 收集结果集中的所有ID，父ID不在ID集合中的即为根
+	idSet := make(map[int64]bool, len(menus))
+	for _, menu := range menus {
+		idSet[menu.ID] = true
+	}
+
+	var rootIds []int64
+	for _, menu := range menus {
+		if !idSet[menu.ParentID] {
+			rootIds = append(rootIds, menu.ParentID)
+		}
+	}
+
+	// 去重 rootIds
+	rootIdSet := make(map[int64]bool)
+	for _, rootId := range rootIds {
+		rootIdSet[rootId] = true
+	}
+
+	var result []vo.MenuVO
+	for rootId := range rootIdSet {
+		result = append(result, buildMenuTree(rootId, menus)...)
+	}
+	if result == nil {
+		return []vo.MenuVO{}, nil
+	}
+	return result, nil
 }
 
 func (s *MenuService) GetFormData(ctx context.Context, id int64) (*bo.MenuForm, error) {
@@ -467,27 +498,23 @@ func (s *MenuService) validateMenuForm(ctx context.Context, form *bo.MenuForm, e
 	}
 
 	// 4. 菜单类型关联字段校验
-	// 4.1 按钮类型必须有权限标识
-	if form.Type == enum.MenuTypeButton && form.Perm == "" {
-		return common.NewBizError(common.PARAM_ERROR, "按钮类型必须配置权限标识")
-	}
-	// 4.2 目录类型必须有路径
+	// 4.1 目录类型必须有路径
 	if form.Type == enum.MenuTypeCatalog && form.Path == "" {
 		return common.NewBizError(common.PARAM_ERROR, "目录类型必须配置路由路径")
 	}
-	// 4.3 菜单类型必须有路径
+	// 4.2 菜单类型必须有路径
 	if form.Type == enum.MenuTypeMenu && form.Path == "" {
 		return common.NewBizError(common.PARAM_ERROR, "菜单类型必须配置路由路径")
 	}
-	// 4.4 外链类型必须有路径（外链地址）
+	// 4.3 外链类型必须有路径（外链地址）
 	if form.Type == enum.MenuTypeExtlink && form.Path == "" {
 		return common.NewBizError(common.PARAM_ERROR, "外链类型必须配置外链地址")
 	}
-	// 4.5 目录类型必须有组件（通常是Layout）
+	// 4.4 目录类型必须有组件（通常是Layout）
 	if form.Type == enum.MenuTypeCatalog && form.Component == "" {
 		return common.NewBizError(common.PARAM_ERROR, "目录类型必须配置组件")
 	}
-	// 4.6 菜单类型必须有组件
+	// 4.5 菜单类型必须有组件
 	if form.Type == enum.MenuTypeMenu && form.Component == "" {
 		return common.NewBizError(common.PARAM_ERROR, "菜单类型必须配置组件")
 	}

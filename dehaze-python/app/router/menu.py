@@ -53,8 +53,6 @@ async def get_menu_form(
     db: AsyncSession = Depends(get_db),
 ):
     menu_form = await MenuService.get_menu_form(db, menu_id)
-    if not menu_form:
-        return success(None)
     return success(menu_form)
 
 

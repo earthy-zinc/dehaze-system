@@ -33,12 +33,12 @@ func RegisterSysRoleRoutes(rg *gin.RouterGroup, sysRoleApi *api.SysRoleApi) gin.
 		sysRoleRouter.GET(":roleId/form", sysRoleApi.GetRoleForm)
 		sysRoleRouter.GET(":roleId/menuIds", sysRoleApi.GetRoleMenuIds)
 
-		// 写操作 - 需要权限校验 + 防重复提交
+		// 写操作 - 需要权限校验（POST 新增操作加防重复提交，与 Java @PreventDuplicateSubmit 一致）
 		sysRoleRouter.POST("", middleware.Permission("sys:role:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.AddRole)
-		sysRoleRouter.PUT(":roleId", middleware.Permission("sys:role:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.UpdateRole)
-		sysRoleRouter.DELETE(":ids", middleware.Permission("sys:role:delete"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.DeleteRoles)
-		sysRoleRouter.PUT(":roleId/status", middleware.Permission("sys:role:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.UpdateRoleStatus)
-		sysRoleRouter.PATCH(":roleId/menus", middleware.Permission("sys:role:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.AssignMenusToRole)
+		sysRoleRouter.PUT(":roleId", middleware.Permission("sys:role:edit"), sysRoleApi.UpdateRole)
+		sysRoleRouter.DELETE(":ids", middleware.Permission("sys:role:delete"), sysRoleApi.DeleteRoles)
+		sysRoleRouter.PUT(":roleId/status", middleware.Permission("sys:role:edit"), sysRoleApi.UpdateRoleStatus)
+		sysRoleRouter.PATCH(":roleId/menus", middleware.Permission("sys:role:edit"), sysRoleApi.AssignMenusToRole)
 	}
 	return sysRoleRouter
 }
@@ -51,10 +51,10 @@ func RegisterSysDeptRoutes(rg *gin.RouterGroup, sysDeptApi *api.SysDeptApi) gin.
 		sysDeptRouter.GET("options", sysDeptApi.ListDeptOptions)
 		sysDeptRouter.GET(":deptId/form", sysDeptApi.GetDeptForm)
 
-		// 写操作 - 需要权限校验 + 防重复提交
+		// 写操作 - 需要权限校验（POST 新增操作加防重复提交，与 Java @PreventDuplicateSubmit 一致）
 		sysDeptRouter.POST("", middleware.Permission("sys:dept:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysDeptApi.SaveDept)
-		sysDeptRouter.PUT(":deptId", middleware.Permission("sys:dept:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysDeptApi.UpdateDept)
-		sysDeptRouter.DELETE(":ids", middleware.Permission("sys:dept:delete"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysDeptApi.DeleteDepartments)
+		sysDeptRouter.PUT(":deptId", middleware.Permission("sys:dept:edit"), sysDeptApi.UpdateDept)
+		sysDeptRouter.DELETE(":ids", middleware.Permission("sys:dept:delete"), sysDeptApi.DeleteDepartments)
 	}
 	return sysDeptRouter
 }

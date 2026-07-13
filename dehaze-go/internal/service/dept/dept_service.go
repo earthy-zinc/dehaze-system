@@ -168,20 +168,23 @@ func (s *DeptService) GetFormData(ctx context.Context, id int64) (*bo.DeptFormBO
 
 // Create 创建部门
 func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, error) {
+	// 解引用 parentId（binding:"required" 已保证非 nil）
+	parentID := *form.ParentID
+
 	// 校验同一父部门下名称是否唯一
 	depts, err := s.deptRepo.FindAll(ctx, &query.DeptQuery{})
 	if err != nil {
 		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
 	}
 	for _, dept := range depts {
-		if dept.Name == form.Name && dept.ParentID == form.ParentID {
+		if dept.Name == form.Name && dept.ParentID == parentID {
 			return 0, common.NewBizError(common.DATA_EXISTS, "同一层级下部门名称已存在")
 		}
 	}
 
 	// 校验层级深度限制
-	if form.ParentID != 0 {
-		depth, err := s.calculateDepth(ctx, form.ParentID, depts)
+	if parentID != 0 {
+		depth, err := s.calculateDepth(ctx, parentID, depts)
 		if err != nil {
 			return 0, err // 直接返回，calculateDepth已经返回BizError
 		}
@@ -191,7 +194,7 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, e
 	}
 
 	// 生成部门路径
-	treePath, err := s.generateDeptTreePath(ctx, form.ParentID)
+	treePath, err := s.generateDeptTreePath(ctx, parentID)
 	if err != nil {
 		return 0, err // 直接返回
 	}
@@ -199,7 +202,7 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, e
 	// 创建部门实体
 	dept := &model.SysDept{
 		Name:     form.Name,
-		ParentID: form.ParentID,
+		ParentID: parentID,
 		Status:   form.Status,
 		Sort:     form.Sort,
 		TreePath: treePath,
@@ -220,8 +223,11 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, e
 
 // Update 更新部门
 func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO) error {
+	// 解引用 parentId（binding:"required" 已保证非 nil）
+	parentID := *form.ParentID
+
 	// 根部门保护：禁止修改上级部门
-	if id == ROOT_DEPT_ID && form.ParentID != 0 {
+	if id == ROOT_DEPT_ID && parentID != 0 {
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "根部门不能修改上级部门")
 	}
 
@@ -231,14 +237,14 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 		return common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
 	}
 	for _, dept := range depts {
-		if dept.Name == form.Name && dept.ParentID == form.ParentID && dept.ID != id {
+		if dept.Name == form.Name && dept.ParentID == parentID && dept.ID != id {
 			return common.NewBizError(common.DATA_EXISTS, "同一层级下部门名称已存在")
 		}
 	}
 
 	// 检测循环引用：不能将部门移动到自身或其子部门下
-	if form.ParentID != 0 { // 根部门不需要检测
-		isChild, err := s.isChildOrSelf(ctx, id, form.ParentID)
+	if parentID != 0 { // 根部门不需要检测
+		isChild, err := s.isChildOrSelf(ctx, id, parentID)
 		if err != nil {
 			return common.WrapBizError(common.DATABASE_ERROR, "检测循环引用失败", err)
 		}
@@ -248,7 +254,7 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 	}
 
 	// 生成部门路径
-	treePath, err := s.generateDeptTreePath(ctx, form.ParentID)
+	treePath, err := s.generateDeptTreePath(ctx, parentID)
 	if err != nil {
 		return err
 	}
@@ -264,7 +270,7 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 
 	// 更新部门
 	oldDept.Name = form.Name
-	oldDept.ParentID = form.ParentID
+	oldDept.ParentID = parentID
 	oldDept.Status = form.Status
 	oldDept.Sort = form.Sort
 	oldDept.TreePath = treePath

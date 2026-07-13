@@ -2,7 +2,6 @@ package role
 
 import (
 	"context"
-	"regexp"
 	"strings"
 	"time"
 
@@ -26,9 +25,6 @@ const (
 	// ROLE_PERMS_TTL 角色权限缓存过期时间（30分钟）
 	ROLE_PERMS_TTL = 30 * time.Minute
 )
-
-// roleCodePattern 角色编码正则（包级编译，避免每次验证重新编译）
-var roleCodePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
 
 // dataScopeLabelMap 数据权限范围中文映射
 var dataScopeLabelMap = map[int8]string{
@@ -375,10 +371,8 @@ func (s *RoleService) GetMaximumDataScope(ctx context.Context, roles []string) (
 
 // validateRoleForm 验证角色表单中 binding 标签无法覆盖的业务规则
 func (s *RoleService) validateRoleForm(form *bo.RoleFormBO) error {
-	// 正则格式校验：角色编码只允许大写字母开头、大写字母/数字/下划线组合
-	if !roleCodePattern.MatchString(form.Code) {
-		return common.NewBizError(common.PARAM_ERROR, "角色编码格式不正确，只能包含字母、数字和下划线，且必须以字母开头")
-	}
+	// 角色编码格式校验由 binding 标签（required, min, max）覆盖
+	// 与 Java/Python 一致，不额外添加正则校验
 	return nil
 }
 

@@ -7,6 +7,7 @@
 from typing import Any
 
 from app.core.exceptions import BusinessException
+from app.core.code import ResultCode
 from app.models.entity.sys_user import SysRole
 from app.repository.role_repository import role_repository
 from app.repository.user_repository import user_repository
@@ -113,15 +114,15 @@ class RoleService:
         code = data.get("code")
 
         if not name or not code:
-            raise BusinessException("角色名称和编码不能为空")
+            raise BusinessException(ResultCode.PARAM_ERROR, "角色名称和编码不能为空")
 
         # 检查角色名称是否已存在
         if await role_repository.check_name_exists(db, name):
-            raise BusinessException("角色名称已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色名称已存在")
 
         # 检查角色编码是否已存在
         if await role_repository.check_code_exists(db, code):
-            raise BusinessException("角色编码已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色编码已存在")
 
         role = SysRole(
             name=name,
@@ -157,21 +158,25 @@ class RoleService:
         """
         role = await RoleService.get_role_by_id(db, role_id)
         if not role:
-            raise BusinessException("角色不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
         name = data.get("name")
         code = data.get("code")
 
         if not name:
-            raise BusinessException("角色名称不能为空")
+            raise BusinessException(ResultCode.PARAM_ERROR, "角色名称不能为空")
+
+        # 角色编码创建后不可修改（与 Go/Java 一致，优先检查）
+        if code and code != role.code:
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "角色编码不可修改")
 
         # 检查角色名称是否已存在（排除自己）
         if await role_repository.check_name_exists(db, name, exclude_id=role_id):
-            raise BusinessException("角色名称已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色名称已存在")
 
         # 检查角色编码是否已存在（排除自己）
         if code and await role_repository.check_code_exists(db, code, exclude_id=role_id):
-            raise BusinessException("角色编码已存在")
+            raise BusinessException(ResultCode.DATA_EXISTS, "角色编码已存在")
 
         # 超级管理员角色保护：不可修改状态和数据权限
         update_data = {
@@ -217,16 +222,16 @@ class RoleService:
         for role_id in role_ids:
             role = await RoleService.get_role_by_id(db, role_id)
             if not role:
-                raise BusinessException(f"角色ID {role_id} 不存在")
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"角色ID {role_id} 不存在")
 
             # 超级管理员角色保护：code='ROOT' 的角色不能删除
             if role.code == RoleService.ROOT_ROLE_CODE:
-                raise BusinessException("超级管理员角色不可删除")
+                raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "超级管理员角色不可删除")
 
             # 检查角色是否已分配给用户
             user_count = await user_repository.count_users_by_role(db, role_id)
             if user_count > 0:
-                raise BusinessException(f"角色【{role.name}】已分配给用户，请先解除关联后删除")
+                raise BusinessException(ResultCode.BUSINESS_ERROR, f"角色【{role.name}】已分配给用户，请先解除关联后删除")
 
             # 删除角色-菜单关联记录（物理删除）
             await role_repository.delete_role_menus(db, role_id)
@@ -261,15 +266,15 @@ class RoleService:
             BusinessException: 状态值无效、角色不存在或为超级管理员
         """
         if status not in [0, 1]:
-            raise BusinessException("状态值只能为0或1")
+            raise BusinessException(ResultCode.PARAM_ERROR, "状态值只能为0或1")
 
         role = await RoleService.get_role_by_id(db, role_id)
         if not role:
-            raise BusinessException("角色不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
         # 超级管理员角色保护：code='ROOT' 的角色不能修改状态
         if role.code == RoleService.ROOT_ROLE_CODE:
-            raise BusinessException("超级管理员角色不可禁用")
+            raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "超级管理员角色不可禁用")
 
         await role_repository.update_by_id(db, role_id, {"status": status})
         await db.commit()
@@ -323,7 +328,7 @@ class RoleService:
         """
         role = await RoleService.get_role_by_id(db, role_id)
         if not role:
-            raise BusinessException("角色不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在")
 
         # 使用 repository 替换角色菜单
         await role_repository.replace_role_menus(db, role_id, menu_ids)

@@ -1,13 +1,14 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
-import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.converter.RoleConverter;
 import com.pei.dehaze.mapper.SysRoleMapper;
@@ -105,7 +106,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         SysRole oldRole = null;
         if (roleId != null) {
             oldRole = this.getById(roleId);
-            Assert.isTrue(oldRole != null, "角色不存在");
+            if (oldRole == null) {
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
+            }
+            // 角色编码创建后不可修改（与 Go/Python 一致）
+            if (!StrUtil.equals(oldRole.getCode(), roleForm.getCode())) {
+                throw new BusinessException(ResultCode.OPERATION_NOT_ALLOW, "角色编码不可修改");
+            }
         }
 
         String roleCode = roleForm.getCode();
@@ -114,7 +121,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 .and(wrapper ->
                         wrapper.eq(SysRole::getCode, roleCode).or().eq(SysRole::getName, roleForm.getName())
                 ));
-        Assert.isTrue(count == 0, "角色名称或角色编码已存在，请修改后重试！");
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "角色名称或角色编码已存在");
+        }
 
         // 实体转换
         SysRole role = roleConverter.form2Entity(roleForm);
@@ -156,9 +165,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     public boolean updateRoleStatus(Long roleId, Integer status) {
 
         SysRole role = this.getById(roleId);
-        Assert.isTrue(role != null, "角色不存在");
-
-        if (role == null) return false;
+        if (role == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
+        }
 
         role.setStatus(status);
         boolean result = this.updateById(role);
@@ -177,18 +186,23 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      */
     @Override
     public boolean deleteRoles(String ids) {
-        Assert.isTrue(StrUtil.isNotBlank(ids), "删除的角色ID不能为空");
+        if (StrUtil.isBlank(ids)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "删除的角色ID不能为空");
+        }
         List<Long> roleIds = Arrays.stream(ids.split(","))
                 .map(Long::parseLong)
                 .toList();
 
         for (Long roleId : roleIds) {
             SysRole role = this.getById(roleId);
-            Assert.isTrue(role != null, "角色不存在");
-            if (role == null) return false;
+            if (role == null) {
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
+            }
             // 判断角色是否被用户关联
             boolean isRoleAssigned = userRoleService.hasAssignedUsers(roleId);
-            Assert.isTrue(!isRoleAssigned, "角色【{}】已分配用户，请先解除关联后删除", role.getName());
+            if (isRoleAssigned) {
+                throw new BusinessException(ResultCode.BUSINESS_ERROR, "角色【" + role.getName() + "】已分配用户，请先解除关联后删除");
+            }
 
             boolean deleteResult = this.removeById(roleId);
             if (deleteResult) {
@@ -222,8 +236,9 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @CacheEvict(cacheNames = "menu", key = "'routes'")
     public boolean assignMenusToRole(Long roleId, List<Long> menuIds) {
         SysRole role = this.getById(roleId);
-        Assert.isTrue(role != null, "角色不存在");
-        if (role == null) return false;
+        if (role == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
+        }
         // 删除角色菜单
         roleMenuService.remove(
                 new LambdaQueryWrapper<SysRoleMenu>()

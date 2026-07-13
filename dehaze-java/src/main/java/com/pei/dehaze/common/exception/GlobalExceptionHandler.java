@@ -158,7 +158,7 @@ public class GlobalExceptionHandler {
     public <T> Result<T> handleBizException(BusinessException e) {
         log.error("biz exception: {}", e.getMessage());
         if (e.getResultCode() != null) {
-            return Result.failed(e.getResultCode());
+            return Result.failed(e.getResultCode(), e.getMessage());
         }
         return Result.failed(e.getMessage());
     }

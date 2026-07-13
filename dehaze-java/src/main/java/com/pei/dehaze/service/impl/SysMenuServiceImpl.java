@@ -9,7 +9,9 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
+import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.MenuConverter;
 import com.pei.dehaze.mapper.SysMenuMapper;
@@ -71,6 +73,14 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean saveMenu(MenuForm menuForm) {
+
+        // 修改时检查菜单是否存在
+        if (menuForm.getId() != null) {
+            SysMenu existingMenu = this.getById(menuForm.getId());
+            if (existingMenu == null) {
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在");
+            }
+        }
 
         MenuTypeEnum menuType = menuForm.getType();
 
@@ -267,6 +277,9 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     public MenuForm getMenuForm(Long id) {
         SysMenu entity = this.getById(id);
+        if (entity == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在");
+        }
         return menuConverter.entity2Form(entity);
     }
 
@@ -279,6 +292,12 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean deleteMenu(Long id) {
+        // 检查菜单是否存在
+        SysMenu existingMenu = this.getById(id);
+        if (existingMenu == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在");
+        }
+
         boolean result = this.remove(new LambdaQueryWrapper<SysMenu>()
                 .eq(SysMenu::getId, id)
                 .or()

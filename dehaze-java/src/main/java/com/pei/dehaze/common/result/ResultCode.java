@@ -39,9 +39,13 @@ public enum ResultCode implements IResultCode {
 
     PARAM_ERROR("A0400", "用户请求参数错误"),
     RESOURCE_NOT_FOUND("A0401", "请求资源不存在"),
-    DATA_EXISTS("A0501", "数据已存在"),
-    DATA_BIND_EXISTS("A0504", "存在关联数据，无法删除"),
     PARAM_IS_NULL("A0410", "请求必填参数为空"),
+
+    BUSINESS_ERROR("A0500", "业务异常"),
+    DATA_EXISTS("A0501", "数据已存在"),
+    DATA_STATE_NOT_ALLOW("A0502", "数据状态不允许"),
+    OPERATION_NOT_ALLOW("A0503", "操作不允许"),
+    DATA_BIND_EXISTS("A0504", "存在关联数据，无法删除"),
 
     USER_UPLOAD_FILE_ERROR("A0700", "用户上传文件异常"),
     USER_UPLOAD_FILE_TYPE_NOT_MATCH("A0701", "用户上传文件类型不匹配"),

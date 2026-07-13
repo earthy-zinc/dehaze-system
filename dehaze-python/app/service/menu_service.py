@@ -6,6 +6,7 @@
 
 from typing import Any
 
+from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
 from app.models.entity.sys_menu import SysMenu
@@ -171,6 +172,9 @@ class MenuService:
         menu = None
         if menu_id:
             menu = await menu_repository.get_by_id(db, menu_id)
+            # 修改时检查菜单是否存在
+            if menu is None:
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
         is_new = menu is None
         if is_new:
             menu = SysMenu()
@@ -351,12 +355,12 @@ class MenuService:
             BusinessException: 显示状态无效或菜单不存在
         """
         if visible not in [0, 1]:
-            raise BusinessException("显示状态只能为0或1")
+            raise BusinessException(ResultCode.PARAM_ERROR, "显示状态只能为0或1")
 
         menu = await menu_repository.get_by_id(db, menu_id)
 
         if not menu:
-            raise BusinessException("菜单不存在")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
 
         menu.visible = visible
         await db.commit()
@@ -379,7 +383,7 @@ class MenuService:
         return await menu_repository.get_role_perms(db, list(roles))
 
     @staticmethod
-    async def get_menu_form(db: AsyncSession, menu_id: int) -> dict[str, Any] | None:
+    async def get_menu_form(db: AsyncSession, menu_id: int) -> dict[str, Any]:
         """
         获取菜单表单数据
 
@@ -388,12 +392,15 @@ class MenuService:
             menu_id: 菜单ID
 
         Returns:
-            菜单表单数据（菜单不存在时返回 None，对齐 Java getMenuForm）
+            菜单表单数据
+
+        Raises:
+            BusinessException: 菜单不存在时抛出 RESOURCE_NOT_FOUND
         """
         menu = await menu_repository.get_by_id(db, menu_id)
 
         if not menu:
-            return None
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
 
         return {
             "id": menu.id,
@@ -416,13 +423,19 @@ class MenuService:
         """
         删除菜单（级联删除子菜单和角色关联）
 
-        对齐 Java deleteMenu：不检查菜单是否存在，直接执行删除（幂等）。
-
         Args:
             db: 数据库会话
             redis: Redis 客户端
             menu_id: 菜单ID
+
+        Raises:
+            BusinessException: 菜单不存在时抛出 RESOURCE_NOT_FOUND
         """
+        # 检查菜单是否存在
+        menu = await menu_repository.get_by_id(db, menu_id)
+        if not menu:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
+
         # 1. 删除角色-菜单关联
         await menu_repository.delete_role_menus_by_menu_id(db, menu_id)
 
