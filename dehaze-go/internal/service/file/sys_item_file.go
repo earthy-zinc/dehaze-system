@@ -162,11 +162,29 @@ func (itemFileService *ItemFileService) GetImageUrlVOs(itemId int64) (imageUrlVO
 		datasetID = datasetItem.DatasetID
 	}
 
+	// 批量收集所有文件 ID（含缩略图 ID），一次性查询消除 N+1
+	fileIDSet := make(map[int64]struct{})
+	for _, itemFile := range sysItemFiles {
+		fileIDSet[itemFile.FileID] = struct{}{}
+		if itemFile.ThumbnailFileID != nil {
+			fileIDSet[*itemFile.ThumbnailFileID] = struct{}{}
+		}
+	}
+	allFileIDs := make([]int64, 0, len(fileIDSet))
+	for id := range fileIDSet {
+		allFileIDs = append(allFileIDs, id)
+	}
+	fileMap, batchErr := itemFileService.fileService.GetFilesByIdsMap(ctx, allFileIDs)
+	if batchErr != nil {
+		logger.Warn("批量查询文件失败", zap.Error(batchErr))
+		fileMap = map[int64]model.SysFile{}
+	}
+
 	// 获取关联的文件信息
 	for _, itemFile := range sysItemFiles {
-		sysFile, err := itemFileService.fileService.GetFileById(itemFile.FileID)
-		if err != nil {
-			logger.Warn("查询文件失败", zap.Int64("fileID", itemFile.FileID), zap.Error(err))
+		sysFile, ok := fileMap[itemFile.FileID]
+		if !ok {
+			logger.Warn("文件记录不存在", zap.Int64("fileID", itemFile.FileID))
 			continue
 		}
 
@@ -203,7 +221,7 @@ func (itemFileService *ItemFileService) GetImageUrlVOs(itemId int64) (imageUrlVO
 
 		// 设置缩略图URL
 		if itemFile.ThumbnailFileID != nil {
-			if thumbFile, err := itemFileService.fileService.GetFileById(*itemFile.ThumbnailFileID); err == nil {
+			if thumbFile, ok := fileMap[*itemFile.ThumbnailFileID]; ok {
 				imageUrlVO.ThumbnailURL = utils.StringVal(thumbFile.URL)
 			}
 		}

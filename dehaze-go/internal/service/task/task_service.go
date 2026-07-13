@@ -183,6 +183,9 @@ func (ts *TaskService) CancelTask(taskIDStr string, userID int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新任务状态失败", err)
 	}
 
+	// 同步更新内存中的 task 状态后再缓存，避免缓存旧状态
+	task.Status = model.TaskStatusCancelled
+	task.CompletedAt = &completedAt
 	ts.cacheTask(task)
 
 	cancelKey := TASK_CANCEL_PREFIX + taskIDStr

@@ -210,7 +210,6 @@ func (a *Application) Init() error {
 func (a *Application) Run() error {
 	go func() {
 		if err := a.Server.Run(); err != nil && err != http.ErrServerClosed {
-			fmt.Printf("listen: %s\n", err)
 			logger.Error("WEB服务启动失败", zap.Error(err))
 			os.Exit(1)
 		}

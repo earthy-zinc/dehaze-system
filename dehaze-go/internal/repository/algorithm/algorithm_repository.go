@@ -29,7 +29,10 @@ func (r *AlgorithmRepository) FindByID(ctx context.Context, id int64) (*model.Sy
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-	return &algorithm, err
+	if err != nil {
+		return nil, err
+	}
+	return &algorithm, nil
 }
 
 // FindPage 分页查询算法

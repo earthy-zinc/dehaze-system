@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -210,7 +211,7 @@ func (api *AlgorithmApi) ListFavorites(c *gin.Context) {
 	userID := getCurrentUserID(c)
 	favorites, err := api.favRepo.FindByUserID(ctx, userID)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			common.OkWithData([]model.SysAlgorithmFavorite{}, c)
 			return
 		}

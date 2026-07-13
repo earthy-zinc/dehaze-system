@@ -76,17 +76,23 @@ func (s *AlgorithmService) GetTree(ctx context.Context, q *query.AlgorithmQuery)
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法列表失败", err)
 	}
 
-	// 构建树形结构（parent_id == 0 为根节点）
+	// 按 ParentID 分组，O(n) 构建树形结构
+	childrenMap := make(map[int64][]read.Algorithm)
+	for _, algo := range algorithms {
+		childrenMap[algo.ParentID] = append(childrenMap[algo.ParentID], algo)
+	}
+
 	tree := make([]vo.AlgorithmVO, 0)
 	for _, algo := range algorithms {
 		if algo.ParentID == 0 {
-			tree = append(tree, mapAlgorithmToVO(algo, algorithms))
+			tree = append(tree, buildAlgorithmVO(algo, childrenMap))
 		}
 	}
 	return tree, nil
 }
 
-func mapAlgorithmToVO(algo read.Algorithm, all []read.Algorithm) vo.AlgorithmVO {
+// buildAlgorithmVO 递归构建算法 VO（使用 map 索引，O(n) 复杂度）
+func buildAlgorithmVO(algo read.Algorithm, childrenMap map[int64][]read.Algorithm) vo.AlgorithmVO {
 	voItem := vo.AlgorithmVO{
 		ID:          algo.ID,
 		ParentID:    algo.ParentID,
@@ -101,10 +107,8 @@ func mapAlgorithmToVO(algo read.Algorithm, all []read.Algorithm) vo.AlgorithmVO 
 		Status:      algo.Status,
 		Size:        algo.Size,
 	}
-	for _, child := range all {
-		if child.ParentID == algo.ID {
-			voItem.Children = append(voItem.Children, mapAlgorithmToVO(child, all))
-		}
+	for _, child := range childrenMap[algo.ID] {
+		voItem.Children = append(voItem.Children, buildAlgorithmVO(child, childrenMap))
 	}
 	return voItem
 }
@@ -275,6 +279,9 @@ func (s *AlgorithmService) Compare(ctx context.Context, ids []int64) ([]model.Sy
 	for _, id := range ids {
 		a, err := s.algorithmRepo.FindByID(ctx, id)
 		if err != nil {
+			continue
+		}
+		if a == nil {
 			continue
 		}
 		algorithms = append(algorithms, *a)

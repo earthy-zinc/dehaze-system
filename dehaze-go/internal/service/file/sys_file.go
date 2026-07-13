@@ -107,7 +107,7 @@ func (s *FileService) DeleteFile(fileId int64) (err error) {
 
 	file, err := s.fileRepo.FindByID(ctx, fileId)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在")
 		}
 		return common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)
@@ -133,12 +133,28 @@ func (s *FileService) GetFileById(fileId int64) (sysFile model.SysFile, err erro
 
 	file, err := s.fileRepo.FindByID(ctx, fileId)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return model.SysFile{}, common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在")
 		}
 		return model.SysFile{}, common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)
 	}
 	return *file, nil
+}
+
+// GetFilesByIdsMap 批量查询文件，返回 fileID → SysFile 的映射（用于消除 N+1 查询）
+func (s *FileService) GetFilesByIdsMap(ctx context.Context, fileIDs []int64) (map[int64]model.SysFile, error) {
+	if len(fileIDs) == 0 {
+		return map[int64]model.SysFile{}, nil
+	}
+	files, err := s.fileRepo.FindByIDs(ctx, fileIDs)
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[int64]model.SysFile, len(files))
+	for i := range files {
+		result[int64(files[i].ID)] = files[i]
+	}
+	return result, nil
 }
 
 // GetPage 分页查询文件列表
@@ -159,7 +175,7 @@ func (s *FileService) GetPage(ctx context.Context, pageNum, pageSize int, keywor
 func (s *FileService) DownloadFile(ctx context.Context, objectName string) (io.ReadCloser, *model.SysFile, error) {
 	file, err := s.fileRepo.FindByObjectName(ctx, objectName)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "文件不存在")
 		}
 		return nil, nil, common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)

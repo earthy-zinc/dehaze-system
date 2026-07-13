@@ -89,10 +89,17 @@ func (s *DeptService) GetList(ctx context.Context, q *query.DeptQuery) ([]vo.Dep
 		}
 	}
 
-	var deptVOs []vo.DeptVO
+	// 按 ParentID 分组，O(n) 构建树形结构
+	childrenMap := make(map[int64][]model.SysDept)
+	for _, dept := range deptList {
+		childrenMap[dept.ParentID] = append(childrenMap[dept.ParentID], dept)
+	}
+
+	deptVOs := make([]vo.DeptVO, 0)
 	for _, rootId := range rootIds {
-		children := s.recurDeptList(rootId, deptList)
-		deptVOs = append(deptVOs, children...)
+		for _, dept := range childrenMap[rootId] {
+			deptVOs = append(deptVOs, buildDeptVO(dept, childrenMap))
+		}
 	}
 
 	// 只有未过滤的查询才写入缓存
@@ -105,26 +112,21 @@ func (s *DeptService) GetList(ctx context.Context, q *query.DeptQuery) ([]vo.Dep
 	return deptVOs, nil
 }
 
-// 递归生成部门树形列表
-func (s *DeptService) recurDeptList(parentId int64, deptList []model.SysDept) []vo.DeptVO {
-	var result []vo.DeptVO
-	for _, dept := range deptList {
-		if dept.ParentID == parentId {
-			deptVO := vo.DeptVO{
-				ID:         dept.ID,
-				ParentID:   dept.ParentID,
-				Name:       dept.Name,
-				Sort:       dept.Sort,
-				Status:     dept.Status,
-				CreateTime: dept.CreatedAt,
-				UpdateTime: dept.UpdatedAt,
-			}
-			children := s.recurDeptList(dept.ID, deptList)
-			deptVO.Children = children
-			result = append(result, deptVO)
-		}
+// buildDeptVO 递归构建部门 VO（使用 map 索引，O(n) 复杂度）
+func buildDeptVO(dept model.SysDept, childrenMap map[int64][]model.SysDept) vo.DeptVO {
+	deptVO := vo.DeptVO{
+		ID:         dept.ID,
+		ParentID:   dept.ParentID,
+		Name:       dept.Name,
+		Sort:       dept.Sort,
+		Status:     dept.Status,
+		CreateTime: dept.CreatedAt,
+		UpdateTime: dept.UpdatedAt,
 	}
-	return result
+	for _, child := range childrenMap[dept.ID] {
+		deptVO.Children = append(deptVO.Children, buildDeptVO(child, childrenMap))
+	}
+	return deptVO
 }
 
 // GetOptions 获取部门下拉选项

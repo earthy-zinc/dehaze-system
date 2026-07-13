@@ -18,7 +18,9 @@ import (
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/xuri/excelize/v2"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -542,7 +544,7 @@ func (s *UserService) ExportUsers(ctx context.Context, q *query.UserPageQuery) (
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Printf("关闭Excel文件失败: %v\n", err)
+			logger.Warn("关闭Excel文件失败", zap.Error(err))
 		}
 	}()
 
@@ -600,7 +602,7 @@ func (s *UserService) DownloadImportTemplate(ctx context.Context) (string, error
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Printf("关闭Excel文件失败: %v\n", err)
+			logger.Warn("关闭Excel文件失败", zap.Error(err))
 		}
 	}()
 
@@ -663,7 +665,7 @@ func (s *UserService) ImportUsersFromFile(ctx context.Context, file io.Reader) (
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Printf("关闭Excel文件失败: %v\n", err)
+			logger.Warn("关闭Excel文件失败", zap.Error(err))
 		}
 	}()
 
@@ -688,11 +690,21 @@ func (s *UserService) ImportUsersFromFile(ctx context.Context, file io.Reader) (
 		item := vo.UserImportVO{
 			Username: strings.TrimSpace(row[0]),
 			Nickname: strings.TrimSpace(row[1]),
-			Gender:   strings.TrimSpace(row[2]),
-			DeptName: strings.TrimSpace(row[3]),
-			Mobile:   strings.TrimSpace(row[4]),
-			Email:    strings.TrimSpace(row[5]),
-			Status:   strings.TrimSpace(row[6]),
+		}
+		if len(row) > 2 {
+			item.Gender = strings.TrimSpace(row[2])
+		}
+		if len(row) > 3 {
+			item.DeptName = strings.TrimSpace(row[3])
+		}
+		if len(row) > 4 {
+			item.Mobile = strings.TrimSpace(row[4])
+		}
+		if len(row) > 5 {
+			item.Email = strings.TrimSpace(row[5])
+		}
+		if len(row) > 6 {
+			item.Status = strings.TrimSpace(row[6])
 		}
 		data = append(data, item)
 	}

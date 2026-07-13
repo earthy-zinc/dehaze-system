@@ -2,7 +2,9 @@ package evaluation
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -13,6 +15,12 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+// md5Hex 计算字符串的 MD5 十六进制表示（32 位）
+func md5Hex(s string) string {
+	h := md5.Sum([]byte(s))
+	return fmt.Sprintf("%x", h)
+}
 
 // EvaluationService 去雾效果评估服务
 type EvaluationService struct {
@@ -42,9 +50,9 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 	resultStr := string(metricsJSON)
 	evalLog := &model.SysEvalLog{
 		AlgorithmID: algorithmID,
-		PredMD5:     fmt.Sprintf("%x", []byte(predURL))[:32],
+		PredMD5:     md5Hex(predURL),
 		PredURL:     predURL,
-		GtMD5:       fmt.Sprintf("%x", []byte(gtURL))[:32],
+		GtMD5:       md5Hex(gtURL),
 		GtURL:       gtURL,
 		Time:        resp.Time,
 		Result:      &resultStr,
@@ -63,7 +71,7 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 func (s *EvaluationService) GetLogByID(ctx context.Context, id int64) (*model.SysEvalLog, error) {
 	log, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "评估任务不存在")
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询评估日志失败", err)

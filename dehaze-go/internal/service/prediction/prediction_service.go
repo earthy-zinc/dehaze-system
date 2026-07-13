@@ -2,7 +2,9 @@ package prediction
 
 import (
 	"context"
+	"crypto/md5"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,6 +17,12 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+// md5Hex 计算字符串的 MD5 十六进制表示（32 位）
+func md5Hex(s string) string {
+	h := md5.Sum([]byte(s))
+	return fmt.Sprintf("%x", h)
+}
 
 const (
 	predCachePrefix = "pred:"
@@ -44,8 +52,8 @@ type PredictionResult struct {
 
 // Predict 执行去雾预测（带 Redis 缓存：key = pred:{algorithmId}:{imageMd5}）
 func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imageURL string, params string, userID int64) (*PredictionResult, error) {
-	// 1. 计算图片 MD5（从 URL 获取或使用传入值，简化：用 imageURL 的 hash）
-	imageMD5 := fmt.Sprintf("%x", []byte(imageURL))[:32]
+	// 1. 计算图片 URL 的 MD5 作为缓存键
+	imageMD5 := md5Hex(imageURL)
 
 	// 2. 检查 Redis 缓存
 	if s.cache != nil {
@@ -76,7 +84,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 		AlgorithmID: algorithmID,
 		OriginMD5:   imageMD5,
 		OriginURL:   imageURL,
-		PredMD5:     fmt.Sprintf("%x", []byte(resp.ResultURL))[:32],
+		PredMD5:     md5Hex(resp.ResultURL),
 		PredURL:     resp.ResultURL,
 		Time:        resp.Time,
 		CreateBy:    &userID,
@@ -107,7 +115,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 func (s *PredictionService) GetLogByID(ctx context.Context, id int64) (*model.SysPredLog, error) {
 	log, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "预测任务不存在")
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询预测日志失败", err)

@@ -24,7 +24,10 @@ func (r *taskRepository) FindByID(ctx context.Context, id int64) (*model.SysTask
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-	return &task, err
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
 }
 
 func (r *taskRepository) FindByTaskID(ctx context.Context, taskID string) (*model.SysTask, error) {
@@ -33,7 +36,10 @@ func (r *taskRepository) FindByTaskID(ctx context.Context, taskID string) (*mode
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-	return &task, err
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
 }
 
 func (r *taskRepository) FindPage(ctx context.Context, q any) (*read.PageResult[read.Task], error) {

@@ -3,6 +3,7 @@ package menu
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -73,12 +74,17 @@ func (s *MenuService) GetList(ctx context.Context, q *query.MenuQuery) ([]vo.Men
 		rootIdSet[rootId] = true
 	}
 
-	var result []vo.MenuVO
-	for rootId := range rootIdSet {
-		result = append(result, buildMenuTree(rootId, menus)...)
+	// 按 ParentID 分组，O(n) 构建树形结构
+	childrenMap := make(map[int64][]model.SysMenu)
+	for _, menu := range menus {
+		childrenMap[menu.ParentID] = append(childrenMap[menu.ParentID], menu)
 	}
-	if result == nil {
-		return []vo.MenuVO{}, nil
+
+	result := make([]vo.MenuVO, 0)
+	for rootId := range rootIdSet {
+		for _, menu := range childrenMap[rootId] {
+			result = append(result, buildMenuVO(menu, childrenMap))
+		}
 	}
 	return result, nil
 }
@@ -86,7 +92,7 @@ func (s *MenuService) GetList(ctx context.Context, q *query.MenuQuery) ([]vo.Men
 func (s *MenuService) GetFormData(ctx context.Context, id int64) (*bo.MenuForm, error) {
 	form, err := s.menuRepo.GetFormData(ctx, id)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "菜单不存在")
 		}
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询菜单失败", err)
@@ -146,7 +152,7 @@ func (s *MenuService) Create(ctx context.Context, form *bo.MenuForm) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "创建菜单失败", err)
 	}
 
-	s.clearAllRolePermsCache()
+	s.clearAllRolePermsCache(ctx)
 	return nil
 }
 
@@ -206,7 +212,7 @@ func (s *MenuService) Update(ctx context.Context, id int64, form *bo.MenuForm) e
 		return common.WrapBizError(common.DATABASE_ERROR, "更新菜单失败", err)
 	}
 
-	s.clearAllRolePermsCache()
+	s.clearAllRolePermsCache(ctx)
 	return nil
 }
 
@@ -239,7 +245,7 @@ func (s *MenuService) Delete(ctx context.Context, id int64) error {
 	}
 
 	// 刷新权限缓存（同时会清除路由缓存）
-	s.clearAllRolePermsCache()
+	s.clearAllRolePermsCache(ctx)
 
 	return nil
 }
@@ -250,7 +256,17 @@ func (s *MenuService) GetOptions(ctx context.Context) ([]vo.Option, error) {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询菜单列表失败", err)
 	}
 
-	return buildMenuOptionsVO(0, options), nil
+	// 按 ParentID 分组，O(n) 构建树形结构
+	childrenMap := make(map[int64][]read.MenuOptionRead)
+	for _, menu := range options {
+		childrenMap[menu.ParentID] = append(childrenMap[menu.ParentID], menu)
+	}
+
+	result := make([]vo.Option, 0)
+	for _, menu := range childrenMap[0] {
+		result = append(result, buildOptionVO(menu, childrenMap))
+	}
+	return result, nil
 }
 
 func (s *MenuService) GetRoutes(ctx context.Context, roles []string) ([]vo.RouteVO, error) {
@@ -272,7 +288,7 @@ func (s *MenuService) GetRoutes(ctx context.Context, roles []string) ([]vo.Route
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询路由列表失败", err)
 	}
 
-	result := buildRoutesVO(0, routes)
+	result := buildRoutesVO(routes)
 
 	// 写入缓存
 	if s.cache != nil {
@@ -284,11 +300,10 @@ func (s *MenuService) GetRoutes(ctx context.Context, roles []string) ([]vo.Route
 	return result, nil
 }
 
-func (s *MenuService) clearAllRolePermsCache() {
+func (s *MenuService) clearAllRolePermsCache(ctx context.Context) {
 	if s.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	// 清除角色权限缓存
 	_ = s.cache.Delete(ctx, ROLE_PERMS_PREFIX)
 	// 清除路由缓存
@@ -306,104 +321,103 @@ func (s *MenuService) generateMenuTreePath(ctx context.Context, parentId int64) 
 	return parent.TreePath + "," + strconv.FormatInt(parent.ID, 10)
 }
 
-func buildMenuTree(parentId int64, menuList []model.SysMenu) []vo.MenuVO {
-	var menuVOs []vo.MenuVO
-	for _, menu := range menuList {
-		if menu.ParentID == parentId {
-			children := buildMenuTree(menu.ID, menuList)
-			menuVO := vo.MenuVO{
-				ID:        menu.ID,
-				ParentID:  menu.ParentID,
-				Name:      menu.Name,
-				Type:      enum.GetMenuTypeEnumName(int(menu.Type)),
-				Path:      menu.Path,
-				Component: menu.Component,
-				Sort:      menu.Sort,
-				Visible:   int(menu.Visible),
-				Icon:      menu.Icon,
-				Redirect:  menu.Redirect,
-				Perm:      menu.Perm,
-				Children:  children,
-			}
-			menuVOs = append(menuVOs, menuVO)
-		}
+// buildMenuVO 递归构建菜单 VO（使用 map 索引，O(n) 复杂度）
+func buildMenuVO(menu model.SysMenu, childrenMap map[int64][]model.SysMenu) vo.MenuVO {
+	menuVO := vo.MenuVO{
+		ID:        menu.ID,
+		ParentID:  menu.ParentID,
+		Name:      menu.Name,
+		Type:      enum.GetMenuTypeEnumName(int(menu.Type)),
+		Path:      menu.Path,
+		Component: menu.Component,
+		Sort:      menu.Sort,
+		Visible:   int(menu.Visible),
+		Icon:      menu.Icon,
+		Redirect:  menu.Redirect,
+		Perm:      menu.Perm,
+		Children:  []vo.MenuVO{},
 	}
-	if menuVOs == nil {
-		return []vo.MenuVO{}
+	for _, child := range childrenMap[menu.ID] {
+		menuVO.Children = append(menuVO.Children, buildMenuVO(child, childrenMap))
 	}
-	return menuVOs
+	return menuVO
 }
 
-func buildMenuOptionsVO(parentId int64, menuList []read.MenuOptionRead) []vo.Option {
-	var options []vo.Option
-	for _, menu := range menuList {
-		if menu.ParentID == parentId {
-			option := vo.Option{
-				Value: menu.ID,
-				Label: menu.Name,
-			}
-			children := buildMenuOptionsVO(menu.ID, menuList)
-			if len(children) > 0 {
-				option.Children = children
-			}
-			options = append(options, option)
-		}
+// buildOptionVO 递归构建菜单选项 VO（使用 map 索引，O(n) 复杂度）
+func buildOptionVO(menu read.MenuOptionRead, childrenMap map[int64][]read.MenuOptionRead) vo.Option {
+	option := vo.Option{
+		Value: menu.ID,
+		Label: menu.Name,
 	}
-	if options == nil {
-		return []vo.Option{}
+	children := make([]vo.Option, 0)
+	for _, child := range childrenMap[menu.ID] {
+		children = append(children, buildOptionVO(child, childrenMap))
 	}
-	return options
+	if len(children) > 0 {
+		option.Children = children
+	}
+	return option
 }
 
-func buildRoutesVO(parentId int64, routeList []read.MenuRouteRead) []vo.RouteVO {
-	var routes []vo.RouteVO
+// buildRoutesVO 构建路由树形列表（使用 map 索引，O(n) 复杂度）
+func buildRoutesVO(routeList []read.MenuRouteRead) []vo.RouteVO {
+	// 按 ParentID 分组
+	childrenMap := make(map[int64][]read.MenuRouteRead)
 	for _, route := range routeList {
-		if route.ParentID == parentId {
-			// 处理角色列表：将逗号分隔的字符串解析为切片
-			var roles []string
-			if route.Roles != "" {
-				roles = strings.Split(route.Roles, ",")
-			} else {
-				roles = []string{}
-			}
-
-			meta := vo.RouteMeta{
-				Title:  route.Name,
-				Icon:   route.Icon,
-				Roles:  roles,
-				Hidden: route.Visible == 0,
-			}
-
-			if route.Type == enum.MenuTypeCatalog && route.KeepAlive == 1 {
-				keepAlive := true
-				meta.KeepAlive = &keepAlive
-			}
-
-			if route.Type == enum.MenuTypeMenu && route.AlwaysShow == 1 {
-				alwaysShow := true
-				meta.AlwaysShow = &alwaysShow
-			}
-
-			routeVO := vo.RouteVO{
-				Name:      utils.ToCamelCase(route.Path),
-				Path:      route.Path,
-				Redirect:  route.Redirect,
-				Component: route.Component,
-				Meta:      meta,
-			}
-
-			children := buildRoutesVO(route.ID, routeList)
-			if len(children) > 0 {
-				routeVO.Children = children
-			}
-
-			routes = append(routes, routeVO)
-		}
+		childrenMap[route.ParentID] = append(childrenMap[route.ParentID], route)
 	}
-	if routes == nil {
-		return []vo.RouteVO{}
+
+	routes := make([]vo.RouteVO, 0)
+	for _, route := range childrenMap[0] {
+		routes = append(routes, buildRouteVO(route, childrenMap))
 	}
 	return routes
+}
+
+// buildRouteVO 递归构建路由 VO
+func buildRouteVO(route read.MenuRouteRead, childrenMap map[int64][]read.MenuRouteRead) vo.RouteVO {
+	// 处理角色列表：将逗号分隔的字符串解析为切片
+	var roles []string
+	if route.Roles != "" {
+		roles = strings.Split(route.Roles, ",")
+	} else {
+		roles = []string{}
+	}
+
+	meta := vo.RouteMeta{
+		Title:  route.Name,
+		Icon:   route.Icon,
+		Roles:  roles,
+		Hidden: route.Visible == 0,
+	}
+
+	if route.Type == enum.MenuTypeCatalog && route.KeepAlive == 1 {
+		keepAlive := true
+		meta.KeepAlive = &keepAlive
+	}
+
+	if route.Type == enum.MenuTypeMenu && route.AlwaysShow == 1 {
+		alwaysShow := true
+		meta.AlwaysShow = &alwaysShow
+	}
+
+	routeVO := vo.RouteVO{
+		Name:      utils.ToCamelCase(route.Path),
+		Path:      route.Path,
+		Redirect:  route.Redirect,
+		Component: route.Component,
+		Meta:      meta,
+	}
+
+	children := make([]vo.RouteVO, 0)
+	for _, child := range childrenMap[route.ID] {
+		children = append(children, buildRouteVO(child, childrenMap))
+	}
+	if len(children) > 0 {
+		routeVO.Children = children
+	}
+
+	return routeVO
 }
 
 // UpdateMenuVisible 修改菜单显示状态（额外方法，不在 IMenuService 接口中）
@@ -422,7 +436,7 @@ func (s *MenuService) UpdateMenuVisible(ctx context.Context, menuId int64, visib
 	}
 
 	// 刷新权限缓存
-	s.clearAllRolePermsCache()
+	s.clearAllRolePermsCache(ctx)
 	return nil
 }
 

@@ -30,7 +30,10 @@ func (r *DictRepository) FindByID(ctx context.Context, id int64) (*model.SysDict
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
-	return &dict, err
+	if err != nil {
+		return nil, err
+	}
+	return &dict, nil
 }
 
 // FindByIDs 根据 ID 列表批量查询字典
