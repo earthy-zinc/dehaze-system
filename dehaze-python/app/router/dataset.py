@@ -5,8 +5,6 @@
 """
 from typing import Optional
 
-from app.core.exceptions import BusinessException
-from app.core.code import ResultCode
 from app.core.result import success
 from app.database import get_db
 from app.dependencies.auth import get_current_user
@@ -65,8 +63,6 @@ async def get_dataset(
     redis: Redis = Depends(get_redis),
 ):
     dataset = await DatasetService.get_dataset_by_id(db, redis, dataset_id)
-    if not dataset:
-        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
     return success(dataset)
 
 

@@ -3,6 +3,7 @@ package com.pei.dehaze.service.impl;
 import cn.hutool.core.lang.Assert;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.FileBOFactory;
 import com.pei.dehaze.model.bo.ItemFileBO;
 import com.pei.dehaze.model.entity.SysDataset;
@@ -349,7 +350,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         // 检查数据项是否存在
         SysDatasetItem datasetItem = sysDatasetItemService.getById(datasetItemId);
         if (datasetItem == null) {
-            throw new BusinessException("数据项不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在");
         }
 
         // 先删除数据项下的所有图片文件

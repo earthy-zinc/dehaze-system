@@ -98,7 +98,7 @@ class TaskServiceAsync:
                 'options': options or {}
             }),
             created_by=user_id,
-            created_at=now,
+            create_time=now,
             expires_at=now +
             timedelta(hours=TaskServiceAsync.TASK_EXPIRE_HOURS)
         )
@@ -406,7 +406,7 @@ class TaskServiceAsync:
             'result': task.result,
             'error_message': task.error_message,
             'created_by': task.created_by,
-            'created_at': task.created_at.isoformat() if task.created_at else None,
+            'created_at': task.create_time.isoformat() if task.create_time else None,
             'started_at': task.started_at.isoformat() if task.started_at else None,
             'completed_at': task.completed_at.isoformat() if task.completed_at else None,
             'expires_at': task.expires_at.isoformat() if task.expires_at else None

@@ -59,7 +59,7 @@ async def cleanup_expired_tasks() -> str:
         stmt_completed = delete(SysTask).where(
             and_(
                 SysTask.status.in_([TaskStatus.COMPLETED.value, TaskStatus.CANCELLED.value]),
-                SysTask.created_at < seven_days_ago,
+                SysTask.create_time < seven_days_ago,
             )
         )
         result_completed = await db.execute(stmt_completed)
@@ -68,7 +68,7 @@ async def cleanup_expired_tasks() -> str:
         stmt_old = delete(SysTask).where(
             and_(
                 SysTask.status.not_in([TaskStatus.PENDING.value, TaskStatus.PROCESSING.value]),
-                SysTask.created_at < thirty_days_ago,
+                SysTask.create_time < thirty_days_ago,
             )
         )
         result_old = await db.execute(stmt_old)
@@ -130,7 +130,7 @@ async def cleanup_stuck_tasks() -> str:
             .where(
                 and_(
                     SysTask.status == TaskStatus.PENDING.value,
-                    SysTask.created_at < pending_threshold,
+                    SysTask.create_time < pending_threshold,
                 )
             )
             .values(

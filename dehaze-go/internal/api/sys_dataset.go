@@ -223,7 +223,8 @@ func (api *SysDatasetApi) DeleteDataset(c *gin.Context) {
 	}
 
 	// 走级联删除逻辑（包含子数据集和关联数据项的递归删除）
-	_, err = api.operationService.BatchDeleteDatasets(ctx, bo.BatchDeleteForm{IDs: []int64{id}})
+	// 单个删除语义为级联删除，与 Java/Python 行为一致
+	_, err = api.operationService.BatchDeleteDatasets(ctx, bo.BatchDeleteForm{IDs: []int64{id}, Force: true})
 	if err != nil {
 		_ = c.Error(err)
 		return

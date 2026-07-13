@@ -94,7 +94,7 @@ class TestTaskService:
             mock_task.processed_files = 0
             mock_task.result = None
             mock_task.error_message = None
-            mock_task.created_at = None
+            mock_task.create_time = None
             mock_task.started_at = None
             mock_task.completed_at = None
             mock_task.expires_at = None
@@ -142,7 +142,7 @@ class TestTaskService:
             mock_task.processed_files = 0
             mock_task.result = None
             mock_task.error_message = None
-            mock_task.created_at = None
+            mock_task.create_time = None
             mock_task.started_at = None
             mock_task.completed_at = None
             mock_task.expires_at = None
@@ -224,7 +224,7 @@ class TestTaskUtils:
                 self.result = None
                 self.error_message = None
                 self.created_by = 1
-                self.created_at = None
+                self.create_time = None
                 self.started_at = None
                 self.completed_at = None
                 self.expires_at = None

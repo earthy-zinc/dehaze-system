@@ -66,7 +66,7 @@ class TaskServiceIT {
         task.setProgress(0);
         task.setTotalFiles(0);
         task.setProcessedFiles(0);
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreateTime(LocalDateTime.now());
 
         taskMapper.insert(task);
 
@@ -94,7 +94,7 @@ class TaskServiceIT {
         task.setProgress(50);
         task.setTotalFiles(100);
         task.setProcessedFiles(50);
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreateTime(LocalDateTime.now());
         taskMapper.insert(task);
 
         // 查询任务状态
@@ -154,7 +154,7 @@ class TaskServiceIT {
         task.setTotalFiles(100);
         task.setProcessedFiles(100);
         task.setResult("http://example.com/download/file.zip");
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now().minusMinutes(5));
         task.setCompletedAt(LocalDateTime.now());
         taskMapper.insert(task);
@@ -187,7 +187,7 @@ class TaskServiceIT {
         task.setTotalFiles(100);
         task.setProcessedFiles(60);
         task.setErrorMessage("文件处理失败：磁盘空间不足");
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now().minusMinutes(3));
         taskMapper.insert(task);
 
@@ -218,7 +218,7 @@ class TaskServiceIT {
         task.setProgress(30);
         task.setTotalFiles(100);
         task.setProcessedFiles(30);
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now().minusMinutes(1));
         taskMapper.insert(task);
 
@@ -312,7 +312,7 @@ class TaskServiceIT {
         task.setProgress(0);
         task.setTotalFiles(100);
         task.setProcessedFiles(0);
-        task.setCreatedAt(LocalDateTime.now());
+        task.setCreateTime(LocalDateTime.now());
         task.setStartedAt(LocalDateTime.now());
         taskMapper.insert(task);
 

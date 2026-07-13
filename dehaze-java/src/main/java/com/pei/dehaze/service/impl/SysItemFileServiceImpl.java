@@ -72,28 +72,21 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         ItemFileBO thumbnailItemBO = getThumbnailItemBO(itemBO);
         SysFile thumbnailSysFile = sysFileService.saveFile(thumbnailItemBO);
 
-        // 查询是否已经存在关联关系
-        SysItemFile sysItemFile = this.getOne(new LambdaQueryWrapper<SysItemFile>()
-                .eq(SysItemFile::getFileId, sysFile.getId())
-                .eq(SysItemFile::getThumbnailFileId, thumbnailSysFile.getId()));
-
-        if (sysItemFile == null) {
-            // 保存数据项与文件关联关系
-            sysItemFile = new SysItemFile();
-            sysItemFile.setItemId(itemId);
-            sysItemFile.setFileId(sysFile.getId());
-            sysItemFile.setThumbnailFileId(thumbnailSysFile.getId());
-            sysItemFile.setType(itemBO.getType());
-            sysItemFile.setDescription(itemBO.getDescription());
-            // 保存图片宽高
-            sysItemFile.setWidth(itemBO.getWidth());
-            sysItemFile.setHeight(itemBO.getHeight());
-            // 保存上传时的可选标注信息
-            sysItemFile.setSceneType(itemBO.getSceneType());
-            sysItemFile.setHazeLevel(itemBO.getHazeLevel());
-            sysItemFile.setUsageCount(0L);
-            this.save(sysItemFile);
-        }
+        // 每个数据项独立关联文件记录（文件本体在 sys_file 层去重，关联关系按数据项独立创建）
+        SysItemFile sysItemFile = new SysItemFile();
+        sysItemFile.setItemId(itemId);
+        sysItemFile.setFileId(sysFile.getId());
+        sysItemFile.setThumbnailFileId(thumbnailSysFile.getId());
+        sysItemFile.setType(itemBO.getType());
+        sysItemFile.setDescription(itemBO.getDescription());
+        // 保存图片宽高
+        sysItemFile.setWidth(itemBO.getWidth());
+        sysItemFile.setHeight(itemBO.getHeight());
+        // 保存上传时的可选标注信息
+        sysItemFile.setSceneType(itemBO.getSceneType());
+        sysItemFile.setHazeLevel(itemBO.getHazeLevel());
+        sysItemFile.setUsageCount(0L);
+        this.save(sysItemFile);
 
         ImageUrlVO result = new ImageUrlVO();
         result.setId(sysItemFile.getId());

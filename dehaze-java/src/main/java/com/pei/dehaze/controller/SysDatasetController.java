@@ -89,9 +89,9 @@ public class SysDatasetController {
                     "并验证父数据集存在性和名称唯一性。创建成功后可立即使用。"
     )
     @PostMapping
-    public Result<DatasetVO> add(@RequestBody @Valid DatasetAddForm dataset) {
+    public Result<Long> add(@RequestBody @Valid DatasetAddForm dataset) {
         DatasetVO result = datasetService.addDataset(dataset);
-        return Result.success(result);
+        return Result.success(result.getId());
     }
 
     @Operation(

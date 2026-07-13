@@ -7,7 +7,7 @@ from typing import Optional
 
 from app.database import Base
 from sqlalchemy import (BigInteger, Column, DateTime, Index, Integer, String,
-                        Text)
+                        Text, func)
 from sqlalchemy.orm import Mapped, mapped_column
 
 
@@ -37,8 +37,10 @@ class SysTask(Base):
     error_message: Mapped[Optional[str]] = mapped_column(Text, comment='错误信息')
     created_by: Mapped[Optional[int]] = mapped_column(
         BigInteger, comment='创建人ID')
-    created_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, comment='创建时间')
+    create_time: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, server_default=func.now(), comment='创建时间')
+    update_time: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), comment='更新时间')
     started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, comment='开始时间')
     completed_at: Mapped[Optional[datetime]

@@ -3,7 +3,9 @@ package com.pei.dehaze.model.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
 
@@ -14,8 +16,9 @@ import java.time.LocalDateTime;
  * @since 2026-01-10
  */
 @Data
+@EqualsAndHashCode(callSuper = true)
 @TableName("sys_task")
-public class SysTask {
+public class SysTask extends BaseEntity {
 
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -39,8 +42,6 @@ public class SysTask {
     private String errorMessage;
 
     private Long createdBy;
-
-    private LocalDateTime createdAt;
 
     private LocalDateTime startedAt;
 

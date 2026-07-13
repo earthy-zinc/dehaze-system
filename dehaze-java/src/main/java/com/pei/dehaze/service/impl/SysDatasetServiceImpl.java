@@ -531,12 +531,12 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     @Override
     public DatasetVO getDatasetById(Long id) {
         if (id == null || id <= 0) {
-            throw new BusinessException("数据集ID无效");
+            return null;
         }
 
         SysDataset dataset = this.getById(id);
         if (dataset == null) {
-            throw new BusinessException("数据集不存在");
+            return null;
         }
 
         DatasetStatistics stats = getAllDatasetStats().get(id);

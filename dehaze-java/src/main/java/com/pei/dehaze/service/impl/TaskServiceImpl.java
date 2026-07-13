@@ -62,7 +62,6 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         sysTask.setProcessedFiles(0);
         sysTask.setParams(JSONUtil.toJsonStr(form));
         sysTask.setCreatedBy(currentUserId);
-        sysTask.setCreatedAt(LocalDateTime.now());
         sysTask.setStartedAt(null);
         sysTask.setCompletedAt(null);
         sysTask.setExpiresAt(LocalDateTime.now().plusSeconds(TaskConstants.TASK_EXPIRE_SECONDS));
@@ -192,7 +191,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         Page<SysTask> page = new Page<>(pageNum, pageSize);
         IPage<SysTask> taskPage = this.page(page, new LambdaQueryWrapper<SysTask>()
                 .eq(SysTask::getCreatedBy, currentUserId)
-                .orderByDesc(SysTask::getCreatedAt));
+                .orderByDesc(SysTask::getCreateTime));
 
         IPage<TaskVO> voPage = taskPage.convert(this::convertToTaskVO);
 
@@ -227,7 +226,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         }
 
         taskVO.setExpiresAt(sysTask.getExpiresAt());
-        taskVO.setCreatedAt(sysTask.getCreatedAt());
+        taskVO.setCreatedAt(sysTask.getCreateTime());
         taskVO.setStartedAt(sysTask.getStartedAt());
         taskVO.setCompletedAt(sysTask.getCompletedAt());
 

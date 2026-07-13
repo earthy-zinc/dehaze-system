@@ -545,7 +545,7 @@ class DatasetService:
 
         await DatasetService._evict_all_cache(redis)
 
-        return await DatasetService.get_dataset_by_id(db, redis, dataset.id)
+        return dataset.id
 
     @staticmethod
     async def update_dataset(

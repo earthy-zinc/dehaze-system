@@ -68,7 +68,7 @@ public class TaskCleanupJob {
             LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
             List<SysTask> oldTasks = sysTaskMapper.selectList(
                     new LambdaQueryWrapper<SysTask>()
-                            .lt(SysTask::getCreatedAt, thirtyDaysAgo)
+                            .lt(SysTask::getCreateTime, thirtyDaysAgo)
             );
 
             if (!oldTasks.isEmpty()) {
@@ -110,7 +110,7 @@ public class TaskCleanupJob {
             List<SysTask> stuckTasks = sysTaskMapper.selectList(
                     new LambdaQueryWrapper<SysTask>()
                             .in(SysTask::getStatus, "pending", "processing")
-                            .lt(SysTask::getCreatedAt, oneDayAgo)
+                            .lt(SysTask::getCreateTime, oneDayAgo)
             );
 
             if (!stuckTasks.isEmpty()) {

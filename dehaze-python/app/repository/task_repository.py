@@ -76,7 +76,7 @@ class TaskRepository(BaseRepository[SysTask]):
         stmt = (
             select(SysTask)
             .where(SysTask.created_by == user_id)
-            .order_by(SysTask.created_at.desc())
+            .order_by(SysTask.create_time.desc())
             .limit(limit)
         )
         result = await db.execute(stmt)
@@ -114,7 +114,7 @@ class TaskRepository(BaseRepository[SysTask]):
                     TaskStatus.PENDING.value,
                     TaskStatus.PROCESSING.value,
                 ]),
-                SysTask.created_at < before,
+                SysTask.create_time < before,
             )
         )
         result = await db.execute(stmt)
