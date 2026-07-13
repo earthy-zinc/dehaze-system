@@ -56,14 +56,14 @@ class RegisterForm(BaseModel):
     """注册表单"""
     username: str = Field(..., min_length=1, description="用户名")
     password: str = Field(..., min_length=1, description="密码")
-    nickname: str = Field(..., min_length=1, description="昵称")
+    nickname: str = Field(..., min_length=1, max_length=64, description="昵称")
 
 
 class UserForm(BaseModel):
     """用户表单"""
     id: Optional[int] = Field(default=None, description="用户ID")
     username: str = Field(..., min_length=1, description="用户名")
-    nickname: str = Field(..., min_length=1, description="昵称")
+    nickname: str = Field(..., min_length=1, max_length=64, description="昵称")
     mobile: Optional[str] = Field(
         default=None,
         pattern=r"^$|^1(3\d|4[5-9]|5[0-35-9]|6[2567]|7[0-8]|8\d|9[0-35-9])\d{8}$",
