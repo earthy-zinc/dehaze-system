@@ -46,7 +46,7 @@ describe("用户管理接口测试", () => {
 
   describe("GET /api/v1/users/page - 用户分页列表", () => {
     test("获取用户分页列表并验证分页逻辑", async () => {
-      const query = createUserQuery();
+      const query = createUserQuery({ pageSize: 100 });
 
       const result = await UserAPI.getPage(query);
 

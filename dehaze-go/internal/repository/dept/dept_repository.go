@@ -87,10 +87,13 @@ func (r *DeptRepository) Update(ctx context.Context, dept *model.SysDept) error 
 		Updates(dept).Error
 }
 
-// Delete 删除部门
-func (r *DeptRepository) Delete(ctx context.Context, id int64) error {
+// Delete 删除部门（支持批量软删除）
+func (r *DeptRepository) Delete(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return nil
+	}
 	return r.db.WithContext(ctx).Model(&model.SysDept{}).
-		Where("id = ?", id).
+		Where("id IN ?", ids).
 		Update("deleted", 1).Error
 }
 

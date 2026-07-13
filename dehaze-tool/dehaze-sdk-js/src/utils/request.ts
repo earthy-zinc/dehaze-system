@@ -62,7 +62,7 @@ service.interceptors.response.use(
       return Promise.reject(error);
     }
     const result = (await interceptors.onResponse?.(response)) || data;
-    return result;
+    return result === null ? undefined : result;
   },
   (error: AxiosError) => {
     const interceptors = configManager.getInterceptors();

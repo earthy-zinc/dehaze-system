@@ -24,7 +24,7 @@
 
 ### 核心特性
 
-- **🎯 智能去雾**: 集成20+种主流去雾算法(RIDCP、WPXNet、Dehamer等),基于深度学习实现高质量图像恢复
+- **🎯 智能去雾**: 集成30+种主流去雾算法(RIDCP、WPXNet、Dehamer等),基于深度学习实现高质量图像恢复
 - **🌐 全栈开发**: 前后端分离架构,支持Vue/React双前端方案,Java/Go/Python多后端技术栈
 - **📱 多端支持**: Web端、Android App、React Native、Taro小程序、Electron桌面应用
 - **⚡ 实时处理**: WebSocket实时推送去雾进度,异步任务处理提高系统吞吐量
@@ -56,7 +56,7 @@ graph TB
     end
     
     subgraph 算法服务层
-        D[Python算法服务<br/>PyTorch + Flask]
+        D[Python算法服务<br/>PyTorch + FastAPI]
     end
     
     subgraph 数据存储层
@@ -80,7 +80,7 @@ graph TB
 | **前端展示层** | Vue3/React + TypeScript + Vite | 响应式设计,支持PC/移动端 |
 | **API网关层** | Nginx | 负载均衡,反向代理 |
 | **业务服务层** | Spring Boot 3 / Gin | 用户管理,权限控制,业务逻辑 |
-| **算法服务层** | PyTorch + Flask + Gunicorn | 深度学习模型推理,图像处理 |
+| **算法服务层** | PyTorch + FastAPI + Uvicorn | 深度学习模型推理,图像处理 |
 | **数据持久层** | MySQL + MongoDB + Redis | 关系型/非关系型数据存储 |
 | **对象存储层** | MinIO / 阿里云OSS | 图片文件存储 |
 
@@ -91,11 +91,11 @@ graph TB
 ### 前端技术
 
 #### Vue版本 (dehaze-front-vue)
-- **核心框架**: Vue 3.4 + Vite 5 + TypeScript 5
-- **UI组件库**: Element Plus 2.7
-- **状态管理**: Pinia 2.1
-- **路由管理**: Vue Router 4.3
-- **工具库**: VueUse、Lodash-ES、ECharts 5.5
+- **核心框架**: Vue 3.5 + Vite 7 + TypeScript 5
+- **UI组件库**: Element Plus 2.13
+- **状态管理**: Pinia 3.0
+- **路由管理**: Vue Router 4.6
+- **工具库**: VueUse、Lodash-ES、ECharts 6.0
 - **实时通信**: SockJS + StompJS (WebSocket)
 - **代码规范**: ESLint + Prettier + Stylelint + Husky
 
@@ -107,10 +107,10 @@ graph TB
 - 动态路由+静态路由分离
 
 #### React版本 (dehaze-front-react)
-- **核心框架**: React 18 + TypeScript + Vite
+- **核心框架**: React 19 + TypeScript + Vite 7
 - **UI组件库**: Ant Design 5.x
 - **状态管理**: Redux Toolkit
-- **桌面端**: Electron 31
+- **桌面端**: Electron 38
 - **样式方案**: UnoCSS
 
 ### 后端技术
@@ -139,7 +139,7 @@ graph TB
 
 #### Go后端 (dehaze-go)
 - **核心框架**: Gin + GORM
-- **版本要求**: Go 1.20+
+- **版本要求**: Go 1.25+
 - **数据库**: MySQL + MongoDB + Redis
 - **安全机制**: JWT + RBAC
 - **接口文档**: Swagger
@@ -151,12 +151,12 @@ graph TB
 - 灵活的中间件机制
 
 #### Python算法服务 (dehaze-python)
-- **深度学习**: PyTorch 1.7+
-- **Web框架**: Flask + Gunicorn
+- **深度学习**: PyTorch 2.9+
+- **Web框架**: FastAPI + Uvicorn
 - **容器化**: Docker (NVIDIA CUDA 12.1镜像)
-- **依赖管理**: Conda + requirements.txt
+- **依赖管理**: uv + pyproject.toml
 
-**支持的去雾算法** (20+种):
+**支持的去雾算法** (30+种):
 - RIDCP: 基于高质量码本的双分支网络
 - WPXNet: 金字塔空洞邻域注意力
 - Dehamer: Transformer邻域注意力
@@ -187,9 +187,9 @@ graph TB
 |------|----------|------|
 | Node.js | 18.0+ | 前端开发环境 |
 | Java JDK | 17+ | Java后端运行环境 |
-| Python | 3.8+ | 算法服务环境 |
-| Go | 1.20+ | Go后端运行环境 |
-| MySQL | 8.0+ | 主数据库 |
+| Python | 3.10+ | 算法服务环境 |
+| Go | 1.25+ | Go后端运行环境 |
+| MySQL | 8.4+ | 主数据库 |
 | MongoDB | 4.4+ | 非结构化数据存储 |
 | Redis | 6.0+ | 缓存与分布式锁 |
 | Docker | 可选 | 容器化部署 |
@@ -252,18 +252,20 @@ go run main.go
 #### Python算法服务
 ```bash
 cd dehaze-python
-# 创建虚拟环境
-conda create -n dehaze_backend python=3.10
-conda activate dehaze_backend
+# 创建虚拟环境并安装依赖
+uv venv .venv --python 3.11
+source .venv/bin/activate  # Linux/Mac
+# Windows: .venv\Scripts\activate
+uv sync
 
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动服务(开发环境)
-python run.py
+# 启动服务(开发环境，热重载)
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 # 生产环境部署
-gunicorn -w 4 run:app
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+
+# 或使用一键启动脚本
+./start.sh
 ```
 
 ---
@@ -304,22 +306,20 @@ dehaze-system/
 │   └── sql/schema.sql          # 数据库初始化脚本
 │
 ├── dehaze-go/                 # Go后端 (备选方案)
-│   ├── api/                  # API层
-│   ├── service/              # 服务层
-│   ├── model/                # 模型层
-│   ├── router/               # 路由
-│   ├── middleware/           # 中间件
+│   ├── cmd/                  # 应用入口
+│   ├── internal/             # 内部业务逻辑（app/model/router/service/middleware）
+│   ├── pkg/                  # 可复用公共包（database/redis/response等）
 │   └── config/               # 配置
 │
 ├── dehaze-python/             # Python算法服务 (核心)
-│   ├── algorithm/            # 20+种去雾算法
+│   ├── algorithm/            # 30+种去雾算法
 │   │   ├── RIDCP/
 │   │   ├── WPXNet/
 │   │   ├── Dehamer/
 │   │   └── ...
-│   ├── app/                  # Flask应用
-│   ├── run.py                # 启动脚本
-│   └── requirements.txt      # Python依赖
+│   ├── app/                  # FastAPI应用
+│   ├── pyproject.toml        # 项目配置与依赖
+│   └── start.sh              # 一键启动脚本
 │
 ├── dehaze-java-cloud/         # Java微服务版本
 │   ├── pei-api/              # API接口定义
@@ -352,456 +352,43 @@ dehaze-system/
 
 ---
 
-## 🧠 核心算法介绍
+## ☁️ 微服务版本
 
-### 基于高质量码本先验的双分支多尺度图像去雾算法
+项目提供两个微服务版本，均基于 Spring Cloud 架构，适用于大规模分布式部署场景：
 
-本项目提出的创新算法,针对非均匀雾霾场景的图像去雾问题:
+| 版本 | 目录 | 基础框架 | 特点 |
+|------|------|----------|------|
+| 微服务版 | `dehaze-java-cloud/` | Spring Cloud Alibaba + Nacos | 基于 RuoYi-Cloud，集成 Sa-Token、SkyWalking、Spring Boot Admin |
+| 微服务增强版 | `dehaze-java-cloud-plus/` | Spring Cloud 2024 + Dubbo 3.X | 新增 Seata 分布式事务、Sentinel 熔断、RocketMQ、XXL-JOB、AI 大模型模块 |
 
-#### 核心创新点
-
-1. **高质量码本先验**: 使用VQGAN训练离散码本,封装清晰图像的色彩和结构先验知识
-2. **金字塔空洞邻域注意力编码器**: 聚合多层级特征,实现多尺度特征提取
-3. **增强解码器**: 结合像素级和通道级注意力机制,处理浓雾区域
-4. **双分支网络结构**: 通过特征融合提升去雾效果
-
-#### 性能表现
-
-在多个公开数据集上的实验结果:
-- **O-HAZE数据集**: PSNR提升2.3dB, SSIM提升0.05
-- **DENSE-HAZE数据集**: 浓雾场景下效果显著提升
-- **推理速度**: 单张图像处理时间<2秒(GPU加速)
-
-#### 算法使用
-
-```bash
-cd dehaze-algorithm
-pip install -r requirements.txt
-
-# 单张图像去雾
-python inference_ridcp.py \
-  -i inputs/foggy_image.jpg \
-  -w weights/ridcp_model.pth \
-  -o results/
-
-# 批量处理
-python inference_ridcp.py \
-  -i inputs/ \
-  -w weights/ridcp_model.pth \
-  -o results/
-```
+两版本共享相同的前端和算法服务，核心业务模块包括：用户/角色/部门/菜单/字典管理、算法管理、数据集管理、图像处理、文件管理等。
 
 ---
 
-## ☁️ 微服务版本介绍
+## 📚 文档与资源
 
-### dehaze-java-cloud (微服务版本)
-
-基于 RuoYi-Cloud-Plus 微服务架构构建的图像去雾系统，旨在提供一个高性能、可扩展的图像处理平台。系统采用现代化微服务技术架构，集成20+种主流去雾算法，提供完整的端到端图像去雾解决方案。
-
-#### 核心特性
-
-- **🎯 智能去雾**: 集成20+种主流去雾算法(RIDCP、WPXNet、Dehamer等)，基于深度学习实现高质量图像恢复
-- **🌐 微服务架构**: 基于Spring Cloud Alibaba的微服务架构，支持服务治理、配置管理、熔断限流等企业级特性
-- **⚡ 高性能处理**: 异步任务处理、Redis缓存优化、GPU加速推理，提高系统吞吐量
-- **🔐 安全可靠**: JWT+RBAC权限模型、Redisson分布式锁、完善的安全防护机制
-- **📱 多端支持**: Web端管理后台，配合Android App、React Native等多端应用
-
-#### 系统技术特性
-
-- **前端项目**: 支持Vue3、React、Taro多技术栈，采用TypeScript语言，Element Plus/Ant Design等UI库，Vite构建工具，支持Web、移动端、桌面端多端应用
-- **微服务架构**: 基于Spring Cloud Alibaba微服务架构，服务拆分清晰，包含网关、认证、系统管理、资源管理等核心服务，支持服务注册发现、配置管理、负载均衡等微服务特性
-- **分布式注册中心**: 集成Alibaba Nacos作为服务注册与发现中心，支持服务实例的自动注册与健康检查
-- **分布式配置中心**: 基于Alibaba Nacos实现配置管理，支持配置的动态更新和多环境配置管理
-- **服务网关**: 采用Spring Cloud Gateway作为API网关，提供路由转发、权限校验、请求限流、跨域处理、日志记录等功能
-- **权限认证**: 集成Sa-Token和JWT实现认证授权机制，支持Token签发、验证、续期、黑名单管理等功能
-- **数据库支持**: 基于MyBatis-Plus支持MySQL、Oracle、PostgreSQL、SQLServer等主流关系型数据库，支持多数据源和动态数据源切换
-- **缓存数据库**: 集成Redis作为分布式缓存，支持数据缓存、分布式锁、会话存储、消息队列等高级功能
-- **文件存储**: 集成Minio实现分布式文件存储，支持多机、多硬盘、多分片、多副本存储，具备权限管理和文件加密功能
-- **服务监控**: 集成Spring Boot Admin实现服务监控，基于Actuator探针机制，支持在线日志查看和应用状态监控
-- **链路追踪**: 集成Apache SkyWalking实现分布式链路追踪，支持请求路径分析和性能瓶颈定位
-
-#### 系统业务模块
-
-- 租户管理、租户套餐管理
-- 用户管理、部门管理、岗位管理
-- 菜单管理、角色管理、字典管理
-- 参数管理、通知公告、操作日志
-- 登录日志、文件管理、文件配置管理
-- 在线用户管理、定时任务、代码生成
-- 系统接口、服务监控、缓存监控
-- 算法管理、数据集管理、图像处理
-
-### dehaze-java-cloud-plus (微服务增强版)
-
-图像去雾系统（微服务增强版）是基于 Spring Cloud 的分布式图像处理系统，采用现代化微服务架构设计，提供完整的端到端图像去雾解决方案。系统集成了20+种主流去雾算法，基于深度学习实现高质量图像恢复，支持高并发、高可用的企业级部署。
-
-#### 核心特性
-
-- **🎯 智能去雾**: 集成20+种主流去雾算法(RIDCP、WPXNet、Dehamer等)，基于深度学习实现高质量图像恢复
-- **🌐 微服务架构**: 基于Spring Cloud 2024 + Spring Boot 3.4 + Java 17构建，支持服务治理、配置管理、熔断限流等企业级特性
-- **⚡ 高性能处理**: 异步任务处理、Redis缓存优化、GPU加速推理，提高系统吞吐量
-- **🔐 安全可靠**: JWT+RBAC权限模型、Redisson分布式锁、完善的安全防护机制
-- **📱 多端支持**: Web端管理后台，配合Android App、React Native等多端应用
-
-#### 技术架构
-
-- **微服务框架**: Spring Cloud 2024 + Spring Boot 3.4 + Java 17
-- **服务注册与发现**: Nacos
-- **配置中心**: Nacos
-- **服务网关**: Spring Cloud Gateway
-- **负载均衡**: Spring Cloud LoadBalancer
-- **RPC调用**: Apache Dubbo 3.X
-- **熔断限流**: Sentinel
-- **分布式事务**: Seata
-- **安全框架**: Sa-Token + JWT
-- **数据库**: MySQL 8.4 + MyBatis Plus
-- **缓存**: Redis 6 + Redisson
-- **对象存储**: MinIO
-- **消息队列**: RocketMQ
-- **定时任务**: XXL-JOB
-- **监控**: Prometheus + Grafana
-- **链路追踪**: SkyWalking
-- **日志系统**: ELK
-
-#### 核心模块介绍
-
-##### pei-module-ai（AI大模型模块）
-
-AI模块是系统的核心智能处理模块，支持多种大模型平台接入，包括通义千问、文心一言、讯飞星火、智谱GLM、DeepSeek、OpenAI、Ollama、Midjourney、StableDiffusion、Suno等。
-
-主要功能：
-- 聊天助手（Chat）
-- 图像生成（Image Generation）
-- 音乐创作（Music Creation）
-- 思维导图（Mind Map）
-- 写作辅助（Writing Assistant）
-- 工作流引擎（Workflow Engine）
-- 知识库管理（Knowledge Base）
-
-##### pei-module-system（系统功能模块）
-
-系统功能模块提供基础的用户管理、权限控制、菜单管理、部门管理、角色管理等功能。
-
-主要功能：
-- 用户管理：用户注册、登录、信息维护
-- 权限管理：RBAC权限模型，菜单权限、按钮权限控制
-- 部门管理：组织架构管理，支持树形结构
-- 角色管理：角色分配，权限配置
-- 字典管理：系统字典维护
-- 通知公告：系统消息发布
-- 操作日志：用户操作记录
-- 登录日志：用户登录记录
-
-##### pei-module-infra（基础设施模块）
-
-基础设施模块提供文件管理、代码生成、系统监控等基础功能。
-
-主要功能：
-- 文件管理：支持本地、MinIO、阿里云OSS等多种存储方式
-- 代码生成：基于数据库表结构自动生成前后端代码
-- 系统监控：服务状态监控、缓存监控、操作日志等
-- API文档：自动生成接口文档，支持在线调试
-- 定时任务：分布式任务调度管理
+- **详细文档**: 位于 `dehaze-doc/` 目录（需求分析、系统设计、用户手册）
+- **API 文档**: Java 后端启动后访问 `http://localhost:8989/doc.html`（Knife4j）
+- **学术论文**: 位于 `dehaze-paper/` 目录，包含 LaTeX 源码
 
 ---
 
-## 📊 系统功能模块
+## 🤝 贡献与协议
 
-### 用户管理模块
-- 用户注册/登录/登出
-- JWT令牌认证机制
-- 角色-权限-菜单三级控制(RBAC)
-- 部门树形结构管理
-- 用户信息加密传输
+欢迎通过 Issue 和 PR 参与贡献，代码请遵循各子项目对应的规范（ESLint / 阿里巴巴 Java 手册 / PEP 8）。
 
-### 数据集管理模块
-- 数据集CRUD操作
-- 瀑布流展示+懒加载
-- 图片MD5校验去重
-- 批量上传(支持分片)
-- 数据集导入导出
-- 图片数量统计
-
-### 图像处理模块
-- 实时摄像头捕获
-- 图像叠加对比(CSS clip-path)
-- 放大镜细节查看(Canvas)
-- 亮度/对比度实时调节
-- 图像参数可视化
-
-### 算法管理模块
-- 20+种去雾算法支持
-- 算法参数配置
-- 模型动态加载
-- 批量图像处理
-- 处理进度实时推送(WebSocket)
-- 算法效果评估指标(PSNR/SSIM)
-
-### 系统配置模块
-- 主题色动态切换
-- 暗黑模式支持
-- 布局模式切换(侧边/顶部/混合)
-- 水印开关
-- 多语言支持(i18n)
+本项目采用 **Apache License 2.0** 开源协议，详见 [LICENSE](LICENSE) 文件。
 
 ---
 
-## 🛠️ 部署方案
+## 📞 联系
 
-### Docker容器化部署
-
-#### 构建镜像
-
-```bash
-# Vue前端
-cd dehaze-front-vue
-docker build -t dehaze-front-vue:latest .
-
-# Java后端
-cd dehaze-java
-docker build -t dehaze-java:latest .
-
-# Python算法服务(支持GPU)
-cd dehaze-python
-docker build -t dehaze-python:latest .
-```
-
-#### Docker Compose一键部署
-
-```yaml
-version: '3.8'
-services:
-  frontend:
-    image: dehaze-front-vue:latest
-    ports:
-      - "80:80"
-  
-  backend:
-    image: dehaze-java:latest
-    ports:
-      - "8989:8989"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/dehaze
-      - SPRING_REDIS_HOST=redis
-  
-  algorithm:
-    image: dehaze-python:latest
-    ports:
-      - "5000:5000"
-    runtime: nvidia  # GPU支持
-  
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_DATABASE: dehaze
-  
-  redis:
-    image: redis:6.0
-```
-
-### Nginx配置
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    
-    # 前端静态资源
-    location / {
-        root /usr/share/nginx/html;
-        index index.html;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    # API代理
-    location /api/ {
-        proxy_pass http://backend:8989/;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-    
-    # WebSocket支持
-    location /ws/ {
-        proxy_pass http://backend:8989/ws/;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
-
-### CI/CD流程
-
-```mermaid
-graph LR
-    A[代码提交] --> B[自动构建]
-    B --> C[单元测试]
-    C --> D[代码扫描]
-    D --> E[Docker镜像构建]
-    E --> F[推送镜像仓库]
-    F --> G[部署到测试环境]
-    G --> H[自动化测试]
-    H --> I[部署到生产环境]
-```
-
----
-
-## 📈 性能优化
-
-### 前端优化策略
-
-1. **资源加载优化**
-   - 组件懒加载,按需引入
-   - 图片懒加载(vue3-lazyload)
-   - 路由懒加载
-   - Vite构建优化(代码分割)
-
-2. **渲染性能优化**
-   - 虚拟滚动(大列表优化)
-   - 防抖/节流(高频操作)
-   - CSS transform硬件加速
-
-3. **网络优化**
-   - API请求合并
-   - 资源CDN加速
-   - Gzip压缩
-
-### 后端优化策略
-
-1. **数据库优化**
-   - 索引优化(联合索引)
-   - 慢SQL检测与优化
-   - 分页查询优化
-
-2. **缓存策略**
-   - Redis多级缓存
-   - 布隆过滤器防缓存穿透
-   - 缓存预热机制
-
-3. **并发处理**
-   - Redisson分布式锁
-   - CompletableFuture异步处理
-   - 线程池参数调优
-
-### 算法服务优化
-
-1. **模型推理优化**
-   - ONNX Runtime加速
-   - TensorRT优化(GPU)
-   - 模型量化(减小体积)
-
-2. **资源管理**
-   - 模型缓存机制
-   - GPU显存管理
-   - 多进程负载均衡
-
-3. **通信优化**
-   - gRPC替代HTTP
-   - 结果异步返回
-   - 熔断降级机制
-
----
-
-## 📚 文档资源
-
-### 技术文档
-
-详细文档位于 `dehaze-doc` 目录:
-
-- [系统需求分析](dehaze-doc/docs/项目文档/图像去雾系统/需求分析/总体需求分析.md)
-- [系统设计文档](dehaze-doc/docs/项目文档/图像去雾系统/代码详细设计/java/总体系统架构.md)
-- [用户使用手册](dehaze-doc/docs/项目文档/图像去雾系统/用户手册.md)
-
-### API接口文档
-
-- **Knife4j文档**: http://localhost:8989/doc.html
-- **Swagger文档**: http://localhost:8989/swagger-ui/index.html
-- **Apifox在线文档**: [查看文档](https://www.apifox.cn/apidoc/shared-195e783f-4d85-4235-a038-eec696de4ea5)
-
-### 学术论文
-
-详见 `dehaze-paper` 目录,包含完整的LaTeX论文源码和参考文献。
-
----
-
-## 🤝 贡献指南
-
-我们欢迎任何形式的贡献,包括但不限于:
-
-### 如何贡献
-
-1. **Fork项目** - 点击右上角Fork按钮
-2. **创建分支** - `git checkout -b feature/AmazingFeature`
-3. **提交代码** - `git commit -m 'Add some AmazingFeature'`
-4. **推送分支** - `git push origin feature/AmazingFeature`
-5. **提交PR** - 在GitHub/Gitee上创建Pull Request
-
-### 代码规范
-
-- **前端**: 遵循ESLint + Prettier规范
-- **后端**: 遵循阿里巴巴Java开发手册
-- **Python**: 遵循PEP 8规范
-- **提交信息**: 遵循Conventional Commits规范
-
-### 问题反馈
-
-如遇到问题,请通过以下方式反馈:
-- 提交Issue描述问题
-- 加入开发者交流群讨论
-- 发送邮件至项目维护者
-
----
-
-## 📄 开源协议
-
-本项目采用 **Apache License 2.0** 开源协议。
-
-- ✅ 允许商业使用
-- ✅ 允许修改和分发
-- ✅ 提供专利授权
-- ⚠️ 需保留版权声明和许可证
-- ⚠️ 修改需说明变更
-
-详见 [LICENSE](LICENSE) 文件。
-
----
-
-## 👥 开发团队
-
-**项目负责人**: 土味锌 (武沛鑫)
-- Gitee: [@earthy-zinc](https://gitee.com/earthy-zinc)
-- GitHub: [@earthy-zinc](https://github.com/earthy-zinc)
-
----
-
-## 🙏 致谢
-
-### 开源项目
-感谢以下优秀的开源项目:
-- Vue.js / React.js - 前端框架
-- Spring Boot - Java后端框架
-- PyTorch - 深度学习框架
-- Element Plus / Ant Design - UI组件库
-- BasicSR - 图像超分辨率框架
-
-### 研究贡献
-感谢图像去雾领域的研究者和论文作者,为本项目提供了理论基础和算法支持。
-
-### 社区支持
-感谢所有参与项目开发、测试、文档编写的贡献者。
-
----
-
-## 📞 联系方式
-
+- **项目负责人**: 土味锌 (武沛鑫)
 - **项目主页**: https://gitee.com/earthy-zinc/dehaze-system
-- **问题反馈**: [提交Issue](https://gitee.com/earthy-zinc/dehaze-system/issues)
-- **技术讨论**: 欢迎Star和Fork
+- **问题反馈**: [提交 Issue](https://gitee.com/earthy-zinc/dehaze-system/issues)
 
 ---
 
 <p align="center">
-  <b>如果这个项目对你有帮助,请点个Star⭐支持一下!</b>
+  <b>如果这个项目对你有帮助，请点个 Star 支持一下！</b>
 </p>

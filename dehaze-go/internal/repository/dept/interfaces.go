@@ -29,8 +29,8 @@ type IDeptRepository interface {
 	// Update 更新部门
 	Update(ctx context.Context, dept *model.SysDept) error
 
-	// Delete 删除部门
-	Delete(ctx context.Context, id int64) error
+	// Delete 删除部门（支持批量软删除）
+	Delete(ctx context.Context, ids []int64) error
 
 	// HasChildren 检查部门是否有子部门
 	HasChildren(ctx context.Context, id int64) (bool, error)

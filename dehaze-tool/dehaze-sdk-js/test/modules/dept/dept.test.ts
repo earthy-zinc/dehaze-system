@@ -369,8 +369,7 @@ describe("部门管理接口测试", () => {
     test("正向测试：更新部门名称并验证更新真实生效", async () => {
       const newForm = createDeptForm({ parentId: originalDept.parentId });
 
-      const result = await DeptAPI.update(testDeptId, newForm);
-      expect(result).toBeDefined();
+      await DeptAPI.update(testDeptId, newForm);
 
       // 验证更新后的数据
       const formData = await DeptAPI.getFormData(testDeptId);

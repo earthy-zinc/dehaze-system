@@ -49,8 +49,11 @@ func NewDeptService(cache types.ICache, deptRepo deptrepo.IDeptRepository) *Dept
 
 // GetList 获取部门列表
 func (s *DeptService) GetList(ctx context.Context, q *query.DeptQuery) ([]vo.DeptVO, error) {
-	// 尝试从缓存获取部门树
-	if s.cache != nil {
+	// 只有未过滤的查询才使用缓存
+	isUnfiltered := q == nil || (q.Keywords == "" && q.Status == nil)
+
+	// 尝试从缓存获取部门树（仅未过滤查询）
+	if isUnfiltered && s.cache != nil {
 		cached, err := s.cache.Get(ctx, DEPT_TREE_KEY)
 		if err == nil && cached != "" {
 			var deptVOs []vo.DeptVO
@@ -92,8 +95,8 @@ func (s *DeptService) GetList(ctx context.Context, q *query.DeptQuery) ([]vo.Dep
 		deptVOs = append(deptVOs, children...)
 	}
 
-	// 写入缓存
-	if s.cache != nil {
+	// 只有未过滤的查询才写入缓存
+	if isUnfiltered && s.cache != nil {
 		if data, jsonErr := json.Marshal(deptVOs); jsonErr == nil {
 			_ = s.cache.Set(ctx, DEPT_TREE_KEY, string(data), DEPT_CACHE_TTL)
 		}
@@ -277,41 +280,76 @@ func (s *DeptService) Update(ctx context.Context, id int64, form *bo.DeptFormBO)
 	return nil
 }
 
-// Delete 删除部门
-func (s *DeptService) Delete(ctx context.Context, id int64) error {
-	// 根部门保护：禁止删除
-	if id == ROOT_DEPT_ID {
-		return common.NewBizError(common.OPERATION_NOT_ALLOW, "根部门不能删除")
+// Delete 删除部门（支持批量，级联删除子部门）
+func (s *DeptService) Delete(ctx context.Context, ids []int64) error {
+	if len(ids) == 0 {
+		return common.NewBizError(common.PARAM_ERROR, "删除的部门ID不能为空")
+	}
+
+	// 根部门保护
+	for _, id := range ids {
+		if id == ROOT_DEPT_ID {
+			return common.NewBizError(common.OPERATION_NOT_ALLOW, "根部门不能删除")
+		}
+	}
+
+	// 获取所有部门用于查找子部门和验证存在性
+	depts, err := s.deptRepo.FindAll(ctx, &query.DeptQuery{})
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
 	}
 
 	// 检查部门是否存在
-	dept, err := s.deptRepo.FindByID(ctx, id)
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询部门失败", err)
+	existingMap := make(map[int64]bool)
+	for _, dept := range depts {
+		existingMap[dept.ID] = true
 	}
-	if dept == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "部门不存在")
+	for _, id := range ids {
+		if !existingMap[id] {
+			return common.NewBizError(common.RESOURCE_NOT_FOUND, "部门不存在")
+		}
 	}
 
-	// 检查是否有子部门
-	hasChildren, err := s.deptRepo.HasChildren(ctx, id)
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "检查子部门失败", err)
+	// 构建父子关系映射，收集所有子部门ID（级联删除）
+	childrenMap := make(map[int64][]int64)
+	for _, dept := range depts {
+		childrenMap[dept.ParentID] = append(childrenMap[dept.ParentID], dept.ID)
 	}
-	if hasChildren {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "该部门存在子部门，不能删除")
+
+	allIDs := make(map[int64]bool)
+	var collectChildren func(id int64)
+	collectChildren = func(id int64) {
+		if allIDs[id] {
+			return
+		}
+		allIDs[id] = true
+		for _, childID := range childrenMap[id] {
+			collectChildren(childID)
+		}
+	}
+	for _, id := range ids {
+		collectChildren(id)
 	}
 
 	// 检查是否有关联用户
-	hasUsers, err := s.deptRepo.HasUsers(ctx, id)
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "检查关联用户失败", err)
-	}
-	if hasUsers {
-		return common.NewBizError(common.DATA_BIND_EXISTS, "该部门存在关联用户，不能删除")
+	for id := range allIDs {
+		hasUsers, err := s.deptRepo.HasUsers(ctx, id)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "检查关联用户失败", err)
+		}
+		if hasUsers {
+			return common.NewBizError(common.DATA_BIND_EXISTS, "部门存在关联用户，不能删除")
+		}
 	}
 
-	if err := s.deptRepo.Delete(ctx, id); err != nil {
+	// 转换为切片
+	idList := make([]int64, 0, len(allIDs))
+	for id := range allIDs {
+		idList = append(idList, id)
+	}
+
+	// 批量删除
+	if err := s.deptRepo.Delete(ctx, idList); err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除部门失败", err)
 	}
 

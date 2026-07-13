@@ -1,3 +1,39 @@
+## 项目介绍
+
+基于深度学习的图像去雾系统 Vue3 前端，详细设计文档见 `dehaze-doc/`。
+
+## 技术栈
+
+- Vue 3.5 + Vite 7 + TypeScript 5
+- Element Plus 2.13 + Pinia 3.0 + Vue Router 4.6
+- UnoCSS + ECharts 6.0 + SockJS/StompJS (WebSocket)
+- ESLint + Prettier + Stylelint + Husky
+
+## 项目启动
+
+```bash
+# 安装 pnpm
+npm install pnpm -g
+
+# 安装依赖
+pnpm install
+
+# 启动开发服务
+pnpm run dev
+```
+
+访问: http://localhost:5173
+
+## 常用命令
+
+| 命令 | 说明 |
+|------|------|
+| `pnpm run build` | 生产构建 |
+| `pnpm run test:unit` | 单元测试 (Vitest) |
+| `pnpm run test:e2e` | E2E 测试 (Playwright) |
+| `pnpm run lint` | 代码检查 |
+| `pnpm run storybook` | Storybook 组件开发 |
+| `pnpm run dev:electron` | Electron 桌面端开发 |
 ## 📢 项目介绍
 
 基于深度学习的在线实时响应的图像去雾系统，主要功能是改善受到雾霾影响的图像质量，从⽽实现图像去雾的⽬标。采用 Vue3 + Vite4+ TypeScript5 + Element-Plus + Pinia 等最新主流技术栈构建。

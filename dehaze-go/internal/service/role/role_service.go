@@ -321,12 +321,15 @@ func (s *RoleService) GetMenuIDs(ctx context.Context, roleID int64) ([]int64, er
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询角色信息失败", err)
 	}
 	if role == nil {
-		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "角色不存在")
+		return []int64{}, nil
 	}
 
 	menuIDs, err := s.roleRepo.GetMenuIDs(ctx, roleID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "获取角色菜单ID集合失败", err)
+	}
+	if menuIDs == nil {
+		return []int64{}, nil
 	}
 	return menuIDs, nil
 }

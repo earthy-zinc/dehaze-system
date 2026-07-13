@@ -22,8 +22,8 @@ type IDeptService interface {
 	// Update 更新部门
 	Update(ctx context.Context, id int64, form *bo.DeptFormBO) error
 
-	// Delete 删除部门
-	Delete(ctx context.Context, id int64) error
+	// Delete 删除部门（支持批量，级联删除子部门）
+	Delete(ctx context.Context, ids []int64) error
 
 	// GetOptions 获取部门下拉选项
 	GetOptions(ctx context.Context) ([]vo.Option, error)

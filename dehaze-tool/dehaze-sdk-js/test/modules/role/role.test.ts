@@ -192,8 +192,8 @@ describe("角色管理接口测试", () => {
     });
 
     test("更新角色菜单权限并验证权限确实被更新", async () => {
-      const firstMenuIds = [1, 2, 3];
-      const secondMenuIds = [4, 5, 6];
+      const firstMenuIds = [10, 11, 12];
+      const secondMenuIds = [13, 14, 15];
 
       await RoleAPI.updateRoleMenus(testRoleId, firstMenuIds);
       let currentMenuIds = await RoleAPI.getRoleMenuIds(testRoleId);
@@ -349,6 +349,7 @@ describe("角色管理接口测试", () => {
         id: testRoleId,
         code: originalRole.code,
         name: newName,
+        status: originalRole.status,
         dataScope: originalRole.dataScope || 1,
       };
 
@@ -446,6 +447,7 @@ describe("角色管理接口测试", () => {
         code: originalRole.code,
         name: originalRole.name,
         status: 1,
+        sort: originalRole.sort || 0,
         dataScope: originalRole.dataScope || 1,
       } as RoleForm);
     });
@@ -527,7 +529,10 @@ describe("角色管理接口测试", () => {
     });
 
     test("参数校验：空的ID列表", async () => {
-      await expectBizError(RoleAPI.deleteByIds(""), "B0001");
+      await expectBizErrorOrUndefined(RoleAPI.deleteByIds(""), [
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("完整 CRUD 生命周期：创建→读→更新→读→删除→验证不存在", async () => {

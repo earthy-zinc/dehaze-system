@@ -1,6 +1,6 @@
 import { MenuForm, MenuQuery } from "@/api/menu/model";
 import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
-import { uniqueName } from "./common";
+import { uniqueName, uniqueCode } from "./common";
 
 /**
  * 创建菜单表单数据
@@ -11,7 +11,7 @@ export function createMenuForm(overrides: Partial<MenuForm> = {}): MenuForm {
     parentId: 0,
     name: uniqueName("测试菜单"),
     type: MenuTypeEnum.CATALOG,
-    path: "/test",
+    path: "/" + uniqueCode("test"),
     sort: 1,
     visible: 1,
     ...overrides,

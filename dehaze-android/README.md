@@ -1,5 +1,33 @@
 # 图像去雾系统 Android 应用
 
+将 dehaze-front-vue 完整重写为原生 Android 应用，使用 Java 语言开发。
+
+## 技术栈
+
+- Java + MVVM + Android Jetpack Components
+- Retrofit + OkHttp（网络）、Glide（图片加载）
+- Room（本地缓存）、DataStore（首选项）
+
+## 功能模块
+
+登录认证、数据集管理、算法浏览、图像去雾处理、效果对比（并排/叠加）、指标评估、系统管理
+
+## 构建与运行
+
+- 环境：Android Studio Flamingo+、JDK 8+、API 23+
+- 后端地址配置：[DehazeApplication.java](app/src/main/java/com/pei/dehaze/DehazeApplication.java) 中 `setBaseUrl("http://10.0.2.2:8989")`（模拟器用 `10.0.2.2` 访问本机）
+
+```bash
+./gradlew build          # 构建
+./gradlew installDebug   # 安装到设备
+./gradlew testDebugUnitTest  # 运行测试
+```
+
+## SDK
+
+项目包含 [dehaze-sdk-android](sdk/) 目录，基于 Retrofit2 + OkHttp3 封装的 API 客户端，支持 Token 自动管理、文件上传下载、异步回调。
+# 图像去雾系统 Android 应用
+
 [![License](https://img.shields.io/github/license/earthy-zinc/reading-note)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android-green.svg)](https://www.android.com)
 [![API](https://img.shields.io/badge/API-23%2B-brightgreen.svg?style=flat)](https://developer.android.com/studio/releases/platforms)

@@ -76,17 +76,17 @@ func (_c *MockIDeptRepository_Create_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// Delete provides a mock function with given fields: ctx, id
-func (_m *MockIDeptRepository) Delete(ctx context.Context, id int64) error {
-	ret := _m.Called(ctx, id)
+// Delete provides a mock function with given fields: ctx, ids
+func (_m *MockIDeptRepository) Delete(ctx context.Context, ids []int64) error {
+	ret := _m.Called(ctx, ids)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Delete")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64) error); ok {
-		r0 = rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) error); ok {
+		r0 = rf(ctx, ids)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -101,14 +101,14 @@ type MockIDeptRepository_Delete_Call struct {
 
 // Delete is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int64
-func (_e *MockIDeptRepository_Expecter) Delete(ctx interface{}, id interface{}) *MockIDeptRepository_Delete_Call {
-	return &MockIDeptRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, id)}
+//   - ids []int64
+func (_e *MockIDeptRepository_Expecter) Delete(ctx interface{}, ids interface{}) *MockIDeptRepository_Delete_Call {
+	return &MockIDeptRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, ids)}
 }
 
-func (_c *MockIDeptRepository_Delete_Call) Run(run func(ctx context.Context, id int64)) *MockIDeptRepository_Delete_Call {
+func (_c *MockIDeptRepository_Delete_Call) Run(run func(ctx context.Context, ids []int64)) *MockIDeptRepository_Delete_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64))
+		run(args[0].(context.Context), args[1].([]int64))
 	})
 	return _c
 }
@@ -118,7 +118,7 @@ func (_c *MockIDeptRepository_Delete_Call) Return(_a0 error) *MockIDeptRepositor
 	return _c
 }
 
-func (_c *MockIDeptRepository_Delete_Call) RunAndReturn(run func(context.Context, int64) error) *MockIDeptRepository_Delete_Call {
+func (_c *MockIDeptRepository_Delete_Call) RunAndReturn(run func(context.Context, []int64) error) *MockIDeptRepository_Delete_Call {
 	_c.Call.Return(run)
 	return _c
 }
