@@ -156,15 +156,16 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             }
         }
 
+        // 构造 id -> dataset 映射，避免循环内 O(n) 线性查找
+        Map<Long, SysDataset> idToDataset = allDatasets.stream()
+                .collect(Collectors.toMap(SysDataset::getId, d -> d));
+
         Queue<Long> queue = new LinkedList<>(leafIds);
         Set<Long> processed = new java.util.HashSet<>(leafIds);
 
         while (!queue.isEmpty()) {
             Long currentId = queue.poll();
-            SysDataset current = allDatasets.stream()
-                    .filter(d -> d.getId().equals(currentId))
-                    .findFirst()
-                    .orElse(null);
+            SysDataset current = idToDataset.get(currentId);
             if (current == null || current.getParentId() == null
                     || current.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
                 continue;

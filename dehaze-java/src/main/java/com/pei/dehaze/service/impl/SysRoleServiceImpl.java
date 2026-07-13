@@ -193,20 +193,24 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 .map(Long::parseLong)
                 .toList();
 
-        for (Long roleId : roleIds) {
-            SysRole role = this.getById(roleId);
-            if (role == null) {
-                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
-            }
-            // 判断角色是否被用户关联
-            boolean isRoleAssigned = userRoleService.hasAssignedUsers(roleId);
-            if (isRoleAssigned) {
+        // 批量查询角色，避免循环内逐条 getById
+        List<SysRole> roles = this.listByIds(roleIds);
+        if (roles.size() != roleIds.size()) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "角色不存在");
+        }
+
+        // 批量校验角色是否被用户关联
+        for (SysRole role : roles) {
+            if (userRoleService.hasAssignedUsers(role.getId())) {
                 throw new BusinessException(ResultCode.BUSINESS_ERROR, "角色【" + role.getName() + "】已分配用户，请先解除关联后删除");
             }
+        }
 
-            boolean deleteResult = this.removeById(roleId);
-            if (deleteResult) {
-                // 删除成功，刷新权限缓存
+        // 批量删除角色
+        boolean deleteResult = this.removeByIds(roleIds);
+        if (deleteResult) {
+            // 刷新所有删除角色的权限缓存
+            for (SysRole role : roles) {
                 roleMenuService.refreshRolePermsCache(role.getCode());
             }
         }

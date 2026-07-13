@@ -29,6 +29,14 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -61,32 +69,18 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     private SysDatasetMapper sysDatasetMapper;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO) {
-        // 使用 ImageProcessingService 校验图片文件
+        // 1. 图片校验（事务外，避免占用数据库连接）
         imageProcessingService.validateImageFile(itemBO.getFile());
 
-        // 保存源文件
+        // 2. 上传源文件到 MinIO（事务外，避免长事务占用连接）
         SysFile sysFile = sysFileService.saveFile(itemBO);
-        // 生成缩略图并保存
+        // 3. 生成缩略图并上传（事务外）
         ItemFileBO thumbnailItemBO = getThumbnailItemBO(itemBO);
         SysFile thumbnailSysFile = sysFileService.saveFile(thumbnailItemBO);
 
-        // 每个数据项独立关联文件记录（文件本体在 sys_file 层去重，关联关系按数据项独立创建）
-        SysItemFile sysItemFile = new SysItemFile();
-        sysItemFile.setItemId(itemId);
-        sysItemFile.setFileId(sysFile.getId());
-        sysItemFile.setThumbnailFileId(thumbnailSysFile.getId());
-        sysItemFile.setType(itemBO.getType());
-        sysItemFile.setDescription(itemBO.getDescription());
-        // 保存图片宽高
-        sysItemFile.setWidth(itemBO.getWidth());
-        sysItemFile.setHeight(itemBO.getHeight());
-        // 保存上传时的可选标注信息
-        sysItemFile.setSceneType(itemBO.getSceneType());
-        sysItemFile.setHazeLevel(itemBO.getHazeLevel());
-        sysItemFile.setUsageCount(0L);
-        this.save(sysItemFile);
+        // 4. 短事务写入 DB 关联记录
+        SysItemFile sysItemFile = saveItemFileRecord(itemId, itemBO, sysFile, thumbnailSysFile);
 
         ImageUrlVO result = new ImageUrlVO();
         result.setId(sysItemFile.getId());
@@ -109,6 +103,27 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         eventPublisher.publishEvent(new ItemFileCreatedEvent(itemId, sysFile.getId()));
 
         return result;
+    }
+
+    /**
+     * 短事务写入数据项文件关联记录
+     * 将 DB 写入与 MinIO 上传分离，避免长事务占用数据库连接
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public SysItemFile saveItemFileRecord(Long itemId, ItemFileBO itemBO, SysFile sysFile, SysFile thumbnailSysFile) {
+        SysItemFile sysItemFile = new SysItemFile();
+        sysItemFile.setItemId(itemId);
+        sysItemFile.setFileId(sysFile.getId());
+        sysItemFile.setThumbnailFileId(thumbnailSysFile.getId());
+        sysItemFile.setType(itemBO.getType());
+        sysItemFile.setDescription(itemBO.getDescription());
+        sysItemFile.setWidth(itemBO.getWidth());
+        sysItemFile.setHeight(itemBO.getHeight());
+        sysItemFile.setSceneType(itemBO.getSceneType());
+        sysItemFile.setHazeLevel(itemBO.getHazeLevel());
+        sysItemFile.setUsageCount(0L);
+        this.save(sysItemFile);
+        return sysItemFile;
     }
 
 
@@ -289,8 +304,19 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         detail.setHasPairedImages(!pairedFiles.isEmpty());
         detail.setPairedCount(pairedFiles.size() + 1);
 
-        // 转换配对图片列表
+        // 转换配对图片列表（批量查询文件，避免 N+1）
         if (!pairedFiles.isEmpty()) {
+            // 批量收集所有 fileId（源文件 + 缩略图）
+            Set<Long> allFileIds = new HashSet<>();
+            for (SysItemFile pairedFile : pairedFiles) {
+                if (pairedFile.getFileId() != null) allFileIds.add(pairedFile.getFileId());
+                if (pairedFile.getThumbnailFileId() != null) allFileIds.add(pairedFile.getThumbnailFileId());
+            }
+            Map<Long, SysFile> fileMap = allFileIds.isEmpty()
+                ? Collections.emptyMap()
+                : sysFileService.listByIds(allFileIds).stream()
+                    .collect(Collectors.toMap(SysFile::getId, f -> f));
+
             List<SimpleImageUrlVO> pairedVOList = new ArrayList<>();
             for (SysItemFile pairedFile : pairedFiles) {
                 SimpleImageUrlVO simpleVO = new SimpleImageUrlVO();
@@ -299,8 +325,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                 simpleVO.setDatasetId(detail.getDatasetId());
                 simpleVO.setType(pairedFile.getType());
 
-                // 获取文件信息
-                SysFile pairedSysFile = sysFileService.getById(pairedFile.getFileId());
+                // 从批量查询的 Map 中获取文件信息
+                SysFile pairedSysFile = fileMap.get(pairedFile.getFileId());
                 if (pairedSysFile != null) {
                     simpleVO.setUrl(pairedSysFile.getUrl());
                     simpleVO.setFileName(pairedSysFile.getName());
@@ -308,9 +334,9 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                     simpleVO.setFormat(pairedSysFile.getType());
                 }
 
-                // 获取缩略图URL
+                // 从 Map 中获取缩略图URL
                 if (pairedFile.getThumbnailFileId() != null) {
-                    SysFile pairedThumbnail = sysFileService.getById(pairedFile.getThumbnailFileId());
+                    SysFile pairedThumbnail = fileMap.get(pairedFile.getThumbnailFileId());
                     if (pairedThumbnail != null) {
                         simpleVO.setThumbnailUrl(pairedThumbnail.getUrl());
                     }

@@ -21,7 +21,6 @@ import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 模型预测服务 —— 生产级实现
@@ -40,7 +39,6 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
     private final PythonAlgorithmClient pythonClient;
 
     @Override
-    @Transactional
     public PredictionResultVO predict(PredictionForm form) {
         // 1. 校验算法存在且可用
         SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
@@ -54,7 +52,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
             throw new BusinessException("图片来源不能为空，请提供 fileId 或 imageUrl");
         }
 
-        // 3. 记录预测请求日志
+        // 3. 记录预测请求日志（独立短事务，避免远程调用期间占用数据库连接）
         SysPredLog predLog = new SysPredLog();
         predLog.setAlgorithmId(form.getAlgorithmId());
         if (form.getFileId() != null) {
@@ -63,7 +61,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         predLog.setOriginUrl(imageUrl);
         this.save(predLog);
 
-        // 4. 调用 Python 算法服务
+        // 4. 调用 Python 算法服务（事务外远程调用，不占用数据库连接）
         long startTime = System.currentTimeMillis();
         try {
             JSONObject result = pythonClient.predict(
@@ -71,7 +69,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
                     imageUrl,
                     form.getParams());
 
-            // 5. 更新日志（成功）
+            // 5. 更新日志（成功，独立短事务）
             int elapsed = (int) (System.currentTimeMillis() - startTime);
             predLog.setTime(elapsed);
             predLog.setPredUrl(result.getStr("resultUrl"));

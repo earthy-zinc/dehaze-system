@@ -20,7 +20,6 @@ import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -42,7 +41,6 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
     private final PythonAlgorithmClient pythonClient;
 
     @Override
-    @Transactional
     public EvaluationResultVO evaluate(EvaluationForm form) {
         // 1. 校验算法存在
         SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
@@ -50,7 +48,7 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND.getMsg() + ": 算法不存在");
         }
 
-        // 2. 记录评估请求日志
+        // 2. 记录评估请求日志（独立短事务，避免远程调用期间占用数据库连接）
         SysEvalLog evalLog = new SysEvalLog();
         evalLog.setAlgorithmId(form.getAlgorithmId());
         if (form.getPredFileId() != null) {
@@ -61,7 +59,7 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         }
         this.save(evalLog);
 
-        // 3. 调用 Python 评估服务
+        // 3. 调用 Python 评估服务（事务外远程调用，不占用数据库连接）
         long startTime = System.currentTimeMillis();
         try {
             String predUrl = resolveFileUrl(form.getPredFileId(), "pred");

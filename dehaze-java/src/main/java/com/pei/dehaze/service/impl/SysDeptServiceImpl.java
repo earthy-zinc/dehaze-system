@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -236,17 +237,15 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean deleteByIds(String ids) {
-        // 删除部门及子部门
+        // 批量删除部门及子部门，避免循环内逐条 remove
         if (CharSequenceUtil.isNotBlank(ids)) {
-            String[] menuIds = ids.split(",");
-            for (String deptId : menuIds) {
-                boolean removed = this.remove(new LambdaQueryWrapper<SysDept>()
-                        .eq(SysDept::getId, deptId)
-                        .or()
-                        .apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", deptId));
-                if (!removed) {
-                    throw new BusinessException("部门删除失败");
-                }
+            List<String> deptIdList = Arrays.asList(ids.split(","));
+            boolean removed = this.remove(new LambdaQueryWrapper<SysDept>()
+                    .in(SysDept::getId, deptIdList)
+                    .or()
+                    .apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", deptIdList.get(0)));
+            if (!removed) {
+                throw new BusinessException("部门删除失败");
             }
         }
         return true;

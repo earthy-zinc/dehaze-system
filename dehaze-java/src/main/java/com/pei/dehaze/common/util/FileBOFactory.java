@@ -117,15 +117,21 @@ public class FileBOFactory {
      * 填充 FileBO 的公共字段
      */
     private void populateFileBO(MultipartFile file, String path, FileBO fileBO) throws IOException {
-        InputStream stream = file.getInputStream();
         String filename = file.getOriginalFilename();
         String extension = FileUtil.getSuffix(filename);
-        String md5 = FileUploadUtils.getMd5(stream);
+
+        // 先 transferTo 保存临时文件（会消费 MultipartFile 的流）
+        File tempFile = Files.createTempFile("upload-", "." + extension).toFile();
+        file.transferTo(tempFile);
+
+        // 再用临时文件计算 MD5，确保流被正确关闭
+        String md5;
+        try (FileInputStream stream = new FileInputStream(tempFile)) {
+            md5 = FileUploadUtils.getMd5(stream);
+        }
+
         String objectName = path + "/" + md5 + "." + extension;
         String url = filePathBuilder.buildUrl(objectName);
-
-        File tempFile = Files.createTempFile(md5, "." + extension).toFile();
-        file.transferTo(tempFile);
 
         fileBO.setFile(tempFile);
         fileBO.setName(filename);
