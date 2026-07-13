@@ -118,11 +118,12 @@ func (a *Application) Init() error {
 	fileRepo := filerepo.NewFileRepository(gormDB)
 	taskRepo := taskrepo.NewTaskRepository(gormDB)
 	inputHistoryRepo := ihrepo.NewInputHistoryRepository(gormDB)
+	predLogRepo := predrepo.NewPredLogRepository(gormDB)
 
 	// services
 	userService := userservice.NewUserService(userRepo, roleRepo, deptRepo, menuRepo)
 	authService := authservice.NewAuthService(cacheClient, userService)
-	algorithmService := algoservice.NewAlgorithmService(algorithmRepo)
+	algorithmService := algoservice.NewAlgorithmService(algorithmRepo, predLogRepo)
 	menuService := menuservice.NewMenuService(cacheClient, menuRepo)
 	roleService := roleservice.NewRoleService(cacheClient, roleRepo, menuRepo)
 	deptService := deptservice.NewDeptService(cacheClient, deptRepo)
@@ -156,7 +157,6 @@ func (a *Application) Init() error {
 	taskApi := api.NewSysTaskApi(taskService, taskRepo)
 	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
 	algoClient := algo.NewClient(cfg.Algorithm)
-	predLogRepo := predrepo.NewPredLogRepository(gormDB)
 	predictionService := predservice.NewPredictionService(predLogRepo, algoClient, cacheClient)
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algoClient)

@@ -194,5 +194,18 @@ func (r *AlgorithmRepository) HasChildrenByParentIDs(ctx context.Context, parent
 	return count > 0, err
 }
 
+// FindVersionsByAlgorithmID 查询算法版本历史（按创建时间降序）
+func (r *AlgorithmRepository) FindVersionsByAlgorithmID(ctx context.Context, algorithmID int64) ([]model.SysAlgorithmVersion, error) {
+	var versions []model.SysAlgorithmVersion
+	err := r.db.WithContext(ctx).
+		Where("algorithm_id = ?", algorithmID).
+		Order("create_time DESC").
+		Find(&versions).Error
+	if err != nil {
+		return nil, err
+	}
+	return versions, nil
+}
+
 // Ensure AlgorithmRepository implements IAlgorithmRepository
 var _ IAlgorithmRepository = (*AlgorithmRepository)(nil)

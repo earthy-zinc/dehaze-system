@@ -1,6 +1,9 @@
 package api
 
 import (
+	"fmt"
+	"io"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -233,4 +236,89 @@ func (api *AlgorithmApi) CheckFavorite(c *gin.Context) {
 		return
 	}
 	common.OkWithData(favorited, c)
+}
+
+// GetVersions 获取算法版本历史
+func (api *AlgorithmApi) GetVersions(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		return
+	}
+	versions, err := api.algorithmService.GetVersionHistory(ctx, id)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(versions, c)
+}
+
+// GetMonitorData 获取算法监控数据
+func (api *AlgorithmApi) GetMonitorData(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		return
+	}
+	monitor, err := api.algorithmService.GetMonitorData(ctx, id)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(monitor, c)
+}
+
+// GetMonitorStats 获取算法统计报表（与监控数据结构一致）
+func (api *AlgorithmApi) GetMonitorStats(c *gin.Context) {
+	api.GetMonitorData(c)
+}
+
+// ExportAlgorithm 导出单个算法（返回 JSON 文件下载）
+func (api *AlgorithmApi) ExportAlgorithm(c *gin.Context) {
+	ctx := c.Request.Context()
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+		return
+	}
+	jsonStr, err := api.algorithmService.ExportAlgorithmJson(ctx, id)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=algorithm_%d.json", id))
+	c.Data(http.StatusOK, "application/json", []byte(jsonStr))
+}
+
+// ValidateImport 校验导入包（multipart 文件上传，字段名 file）
+func (api *AlgorithmApi) ValidateImport(c *gin.Context) {
+	ctx := c.Request.Context()
+	file, err := c.FormFile("file")
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "导入文件不能为空"))
+		return
+	}
+	if file.Size == 0 {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "导入文件不能为空"))
+		return
+	}
+	f, err := file.Open()
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "读取导入文件失败"))
+		return
+	}
+	defer f.Close()
+	content, err := io.ReadAll(f)
+	if err != nil {
+		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "读取导入文件失败"))
+		return
+	}
+	result, err := api.algorithmService.ValidateImport(ctx, file.Filename, content)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	common.OkWithData(result, c)
 }

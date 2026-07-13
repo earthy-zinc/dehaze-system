@@ -41,4 +41,16 @@ type IAlgorithmService interface {
 
 	// Compare 批量查询算法用于对比
 	Compare(ctx context.Context, ids []int64) ([]model.SysAlgorithm, error)
+
+	// GetVersionHistory 获取算法版本历史
+	GetVersionHistory(ctx context.Context, algorithmID int64) ([]vo.AlgorithmVersionVO, error)
+
+	// GetMonitorData 获取算法监控数据
+	GetMonitorData(ctx context.Context, algorithmID int64) (*vo.AlgorithmMonitorVO, error)
+
+	// ExportAlgorithmJson 导出算法为 JSON 字符串
+	ExportAlgorithmJson(ctx context.Context, id int64) (string, error)
+
+	// ValidateImport 校验导入文件（filename 用于后缀校验，content 为文件内容）
+	ValidateImport(ctx context.Context, filename string, content []byte) (string, error)
 }

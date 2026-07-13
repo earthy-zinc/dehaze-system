@@ -11,12 +11,21 @@ func RegisterAlgorithmRoutes(rg *gin.RouterGroup, algorithmApi *api.AlgorithmApi
 
 	{
 		// 读操作 - 无需额外权限
+		// 注意：静态路径（/compare、/options、/favorites、/_import/validate 等）
+		// 必须在 /:id 之前注册，避免被 /:id 参数路由匹配
 		algorithmRouterGroup.GET("", algorithmApi.GetList)             // 获取算法树形表格
 		algorithmRouterGroup.GET("/compare", algorithmApi.Compare)     // 算法对比
 		algorithmRouterGroup.GET("/options", algorithmApi.GetOptions)  // 获取模型下拉选项列表
 		algorithmRouterGroup.GET("/favorites", algorithmApi.ListFavorites)
 		algorithmRouterGroup.GET("/favorites/check", algorithmApi.CheckFavorite)
-		algorithmRouterGroup.GET("/:id", algorithmApi.GetById)         // 根据ID获取算法信息
+		algorithmRouterGroup.POST("/_import/validate", algorithmApi.ValidateImport) // 校验导入包
+
+		// /:id 及其子路径
+		algorithmRouterGroup.GET("/:id", algorithmApi.GetById)                  // 根据ID获取算法信息
+		algorithmRouterGroup.GET("/:id/versions", algorithmApi.GetVersions)     // 获取算法版本历史
+		algorithmRouterGroup.GET("/:id/monitor", algorithmApi.GetMonitorData)   // 获取算法监控数据
+		algorithmRouterGroup.GET("/:id/monitor/stats", algorithmApi.GetMonitorStats) // 获取算法统计报表
+		algorithmRouterGroup.GET("/:id/_export", algorithmApi.ExportAlgorithm)  // 导出单个算法
 
 		// 写操作 - 需要权限校验
 		algorithmRouterGroup.POST("/:id/favorite", algorithmApi.ToggleFavorite) // 切换收藏

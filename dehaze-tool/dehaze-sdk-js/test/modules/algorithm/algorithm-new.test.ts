@@ -65,7 +65,7 @@ describe("算法管理新增端点测试", () => {
     });
   });
 
-  describe.skip("GET /api/v1/algorithms/{id}/versions - 版本管理", () => {
+  describe("GET /api/v1/algorithms/{id}/versions - 版本管理", () => {
     test("正向测试：获取版本历史列表", async () => {
       const versions = await AlgorithmAPI.getVersions(testAlgorithmId);
       expect(versions).toBeDefined();
@@ -90,7 +90,7 @@ describe("算法管理新增端点测试", () => {
     });
   });
 
-  describe.skip("GET /api/v1/algorithms/{id}/monitor - 监控数据", () => {
+  describe("GET /api/v1/algorithms/{id}/monitor - 监控数据", () => {
     test("正向测试：获取监控数据", async () => {
       const monitor = await AlgorithmAPI.getMonitorData(testAlgorithmId);
 
@@ -114,7 +114,7 @@ describe("算法管理新增端点测试", () => {
     });
   });
 
-  describe.skip("GET /api/v1/algorithms/{id}/_export - 导出", () => {
+  describe("GET /api/v1/algorithms/{id}/_export - 导出", () => {
     test("正向测试：导出算法 JSON（返回 Blob）", async () => {
       const blob = await AlgorithmAPI.exportAlgorithm(testAlgorithmId);
       expect(blob).toBeDefined();
@@ -124,7 +124,7 @@ describe("算法管理新增端点测试", () => {
     });
   });
 
-  describe.skip("POST /api/v1/algorithms/_import/validate - 导入校验", () => {
+  describe("POST /api/v1/algorithms/_import/validate - 导入校验", () => {
     test("正向测试：校验合法 JSON 文件", async () => {
       const jsonContent = JSON.stringify({
         name: `TestImport_${Date.now()}`,

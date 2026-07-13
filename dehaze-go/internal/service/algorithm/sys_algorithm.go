@@ -2,7 +2,11 @@ package algorithm
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"math"
+	"strings"
+	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -12,16 +16,18 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	"github.com/earthyzinc/dehaze-go/internal/service/mapper"
 	algorepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm"
+	predlog "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
 )
 
 // AlgorithmService 算法服务
 type AlgorithmService struct {
 	algorithmRepo algorepo.IAlgorithmRepository
+	predLogRepo   predlog.IPredLogRepository
 }
 
 // NewAlgorithmService 创建算法服务实例
-func NewAlgorithmService(algorithmRepo algorepo.IAlgorithmRepository) *AlgorithmService {
-	return &AlgorithmService{algorithmRepo: algorithmRepo}
+func NewAlgorithmService(algorithmRepo algorepo.IAlgorithmRepository, predLogRepo predlog.IPredLogRepository) *AlgorithmService {
+	return &AlgorithmService{algorithmRepo: algorithmRepo, predLogRepo: predLogRepo}
 }
 
 // ====================
@@ -274,6 +280,170 @@ func (s *AlgorithmService) Compare(ctx context.Context, ids []int64) ([]model.Sy
 		algorithms = append(algorithms, *a)
 	}
 	return algorithms, nil
+}
+
+// GetVersionHistory 获取算法版本历史
+// 查询 sys_algorithm_version 表，按 create_time 降序排序
+// 表不存在或查询失败时返回空数组（兼容性处理）
+func (s *AlgorithmService) GetVersionHistory(ctx context.Context, algorithmID int64) ([]vo.AlgorithmVersionVO, error) {
+	versions, err := s.algorithmRepo.FindVersionsByAlgorithmID(ctx, algorithmID)
+	if err != nil {
+		return []vo.AlgorithmVersionVO{}, nil
+	}
+
+	result := make([]vo.AlgorithmVersionVO, 0, len(versions))
+	for _, v := range versions {
+		var isActive *bool
+		if v.IsActive != nil {
+			b := *v.IsActive != 0
+			isActive = &b
+		}
+		result = append(result, vo.AlgorithmVersionVO{
+			ID:          v.ID,
+			AlgorithmID: v.AlgorithmID,
+			Version:     v.Version,
+			ChangeLog:   v.ChangeLog,
+			Status:      v.Status,
+			IsActive:    isActive,
+			ModelFileID: v.ModelFileID,
+			CreateTime:  v.CreatedAt,
+		})
+	}
+	return result, nil
+}
+
+// GetMonitorData 获取算法监控数据
+// 查询 sys_pred_log 表统计；表不存在或查询失败时返回零值（successRate=100）
+func (s *AlgorithmService) GetMonitorData(ctx context.Context, algorithmID int64) (*vo.AlgorithmMonitorVO, error) {
+	monitor := &vo.AlgorithmMonitorVO{
+		CallCount:      0,
+		AvgTime:        0,
+		SuccessRate:    100.0,
+		TodayCallCount: 0,
+	}
+
+	stats, err := s.predLogRepo.GetMonitorStats(ctx, algorithmID)
+	if err != nil {
+		return monitor, nil
+	}
+
+	monitor.CallCount = stats.CallCount
+	monitor.TodayCallCount = stats.TodayCallCount
+	monitor.AvgTime = math.Round(stats.AvgTime*100) / 100
+	if stats.CallCount > 0 {
+		rate := float64(stats.SuccessCount) / float64(stats.CallCount) * 100
+		monitor.SuccessRate = math.Round(rate*100) / 100
+	}
+	return monitor, nil
+}
+
+// algorithmExportData 算法导出数据结构（字段顺序对齐 Java 导出格式）
+type algorithmExportData struct {
+	FormatVersion string  `json:"formatVersion"`
+	Name          string  `json:"name"`
+	Type          string  `json:"type"`
+	ParentName    string  `json:"parentName"`
+	Version       *string `json:"version"`
+	Description   string  `json:"description"`
+	ImportPath    string  `json:"importPath"`
+	Flops         string  `json:"flops"`
+	Params        string  `json:"params"`
+	Status        int8    `json:"status"`
+	StatusLabel   string  `json:"statusLabel"`
+	ExportTime    string  `json:"exportTime"`
+}
+
+// algorithmStatusLabel 返回算法状态对应的中文标签（对齐 Java AlgorithmStatusEnum）
+func algorithmStatusLabel(status int8) string {
+	switch status {
+	case 0:
+		return "草稿"
+	case 1:
+		return "测试中"
+	case 2:
+		return "待审核"
+	case 3:
+		return "已发布"
+	case 4:
+		return "已停用"
+	case 5:
+		return "已归档"
+	default:
+		return ""
+	}
+}
+
+// ExportAlgorithmJson 导出算法为 JSON 字符串
+func (s *AlgorithmService) ExportAlgorithmJson(ctx context.Context, id int64) (string, error) {
+	algorithm, err := s.algorithmRepo.FindByID(ctx, id)
+	if err != nil {
+		return "", common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+	}
+	if algorithm == nil {
+		return "", common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+	}
+
+	// 获取父算法名称用于导入参考
+	parentName := ""
+	if algorithm.ParentID > 0 {
+		parent, err := s.algorithmRepo.FindByID(ctx, algorithm.ParentID)
+		if err == nil && parent != nil {
+			parentName = parent.Name
+		}
+	}
+
+	data := algorithmExportData{
+		FormatVersion: "1.0",
+		Name:          algorithm.Name,
+		Type:          algorithm.Type,
+		ParentName:    parentName,
+		Version:       algorithm.Version,
+		Description:   algorithm.Description,
+		ImportPath:    algorithm.ImportPath,
+		Flops:         algorithm.Flops,
+		Params:        algorithm.Params,
+		Status:        algorithm.Status,
+		StatusLabel:   algorithmStatusLabel(algorithm.Status),
+		ExportTime:    time.Now().Format("2006-01-02T15:04:05"),
+	}
+
+	bytes, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "序列化算法数据失败", err)
+	}
+	return string(bytes), nil
+}
+
+// ValidateImport 校验导入文件
+//   - 空文件返回业务错误
+//   - 非 .json 后缀返回业务错误
+//   - 解析 JSON，校验 name 和 type 字段非空
+//   - 成功返回 "校验通过: 算法名称=xxx, 类型=xxx"
+func (s *AlgorithmService) ValidateImport(ctx context.Context, filename string, content []byte) (string, error) {
+	if len(content) == 0 {
+		return "", common.NewBizError(common.PARAM_ERROR, "导入文件不能为空")
+	}
+
+	if !strings.HasSuffix(strings.ToLower(filename), ".json") {
+		return "", common.NewBizError(common.PARAM_ERROR, "仅支持 .json 格式的算法导出文件")
+	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(content, &data); err != nil {
+		return "", common.NewBizError(common.PARAM_ERROR, "导入文件解析失败: "+err.Error())
+	}
+
+	name, _ := data["name"].(string)
+	if strings.TrimSpace(name) == "" {
+		return "", common.NewBizError(common.PARAM_ERROR, "导入文件缺少必填字段: name")
+	}
+
+	typ, _ := data["type"].(string)
+	if strings.TrimSpace(typ) == "" {
+		return "", common.NewBizError(common.PARAM_ERROR, "导入文件缺少必填字段: type")
+	}
+
+	return "校验通过: 算法名称=" + name + ", 类型=" + typ, nil
 }
 
 func mapAlgorithmReadChildren(children []read.Algorithm) []vo.AlgorithmVO {
