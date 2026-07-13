@@ -2,10 +2,11 @@
 预测 API 路由 —— 去雾处理核心入口
 
 POST /api/v1/prediction          → 执行模型预测（去雾）
-GET  /api/v1/prediction/{taskId} → 查询预测任务状态（通过日志ID）
 GET  /api/v1/prediction/logs     → 预测日志列表
+GET  /api/v1/prediction/{taskId} → 查询预测任务状态（通过日志ID）
 """
 import logging
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -13,11 +14,10 @@ from pydantic import BaseModel, Field
 
 from app.core.result import Result, success, error
 from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.dependencies.auth import get_current_user, UserContext
-from app.dependencies.redis import get_redis_client
-from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.database import get_db
-from app.models.schema.common import BasePageQuery, PageResult
+from app.models.schema.common import PageResult
 from app.repository.pred_eval_log_repository import pred_log_repository
 from app.service.prediction_service import prediction_service
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +31,8 @@ router = APIRouter(prefix="/api/v1/prediction", tags=["预测"],
 class PredictionRequest(BaseModel):
     """预测请求"""
     algorithmId: int = Field(description="算法ID")
-    imageUrl: str = Field(description="输入图片URL")
+    fileId: Optional[int] = Field(default=None, description="原始图片文件ID")
+    imageUrl: Optional[str] = Field(default=None, description="原始图片URL（与fileId二选一）")
     params: Optional[str] = Field(default=None, description="预测参数(JSON)")
 
 
@@ -52,10 +53,17 @@ async def predict(
     """
     执行模型预测（去雾处理）
 
-    接收雾化图片URL，调用指定算法进行去雾，返回处理后的图片URL。
+    接收雾化图片URL或文件ID，调用指定算法进行去雾，返回处理后的图片URL。
     基于 (algorithmId, imageMd5) 的 Redis 缓存，缓存命中直接返回结果。
     """
     logger.info(f"预测请求: user={user.username}, algorithmId={body.algorithmId}")
+
+    # 解析图片来源 URL（fileId 优先）
+    image_url = body.imageUrl
+    if body.fileId is not None:
+        image_url = f"/api/v1/files/download/{body.fileId}"
+    if not image_url:
+        raise BusinessException("图片来源不能为空，请提供 fileId 或 imageUrl")
 
     params = None
     if body.params:
@@ -68,7 +76,7 @@ async def predict(
     try:
         result = await prediction_service.predict(
             algorithm_id=body.algorithmId,
-            image_url=body.imageUrl,
+            image_url=image_url,
             params=params,
             user_id=user.id,
         )
@@ -81,10 +89,12 @@ async def predict(
             fromCache=result.get("fromCache", False),
         ))
 
+    except BusinessException:
+        raise
     except FileNotFoundError as e:
         return error(f"图片文件不存在: {e}", ResultCode.RESOURCE_NOT_FOUND.code)
     except ValueError as e:
-        return error(f"算法模块错误: {e}", ResultCode.SYSTEM_RESOURCE_ERROR.code)
+        return error(f"算法模块错误: {e}", ResultCode.SYSTEM_EXECUTION_ERROR.code)
     except Exception as e:
         logger.exception(f"预测失败: {e}")
         return error(f"预测执行失败: {e}", ResultCode.SYSTEM_EXECUTION_ERROR.code)
@@ -99,9 +109,26 @@ class PredictionLogVO(BaseModel):
     predMd5: Optional[str] = Field(default=None, validation_alias="pred_md5", serialization_alias="predMd5", description="预测结果MD5")
     predUrl: Optional[str] = Field(default=None, validation_alias="pred_url", serialization_alias="predUrl", description="预测结果URL")
     time: Optional[int] = Field(default=None, description="推理耗时(秒)")
-    createTime: Optional[str] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
+    createTime: Optional[datetime] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
 
     model_config = {"populate_by_name": True}
+
+
+@router.get("/logs", response_model=Result[PageResult[PredictionLogVO]], summary="预测日志列表")
+async def list_prediction_logs(
+    algorithmId: Optional[int] = Query(default=None, description="算法ID筛选"),
+    pageNum: int = Query(default=1, ge=1, description="页码"),
+    pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
+    db: AsyncSession = Depends(get_db),
+):
+    """分页查询预测日志"""
+    logs, total = await pred_log_repository.get_paginated(
+        db=db,
+        algorithm_id=algorithmId,
+        page=pageNum,
+        size=pageSize,
+    )
+    return success(PageResult(list=logs, total=total))
 
 
 @router.get("/{task_id}", response_model=Result[PredictionLogVO], summary="查询预测任务状态")
@@ -120,22 +147,5 @@ async def get_prediction_task(
     result = await db.execute(stmt)
     log = result.scalar_one_or_none()
     if not log:
-        return error("预测任务不存在", ResultCode.PREDICTION_TASK_NOT_FOUND.code)
+        return error("预测任务不存在", ResultCode.SYSTEM_EXECUTION_ERROR.code)
     return success(log)
-
-
-@router.get("/logs", response_model=Result[PageResult[PredictionLogVO]], summary="预测日志列表")
-async def list_prediction_logs(
-    algorithmId: Optional[int] = Query(default=None, description="算法ID筛选"),
-    pageNum: int = Query(default=1, ge=1, description="页码"),
-    pageSize: int = Query(default=10, ge=1, le=100, description="每页数量"),
-    db: AsyncSession = Depends(get_db),
-):
-    """分页查询预测日志"""
-    logs, total = await pred_log_repository.get_paginated(
-        db=db,
-        algorithm_id=algorithmId,
-        page=pageNum,
-        size=pageSize,
-    )
-    return success(PageResult(list=logs, total=total))

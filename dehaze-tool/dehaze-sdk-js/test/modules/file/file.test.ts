@@ -62,15 +62,16 @@ describe("文件管理接口测试", () => {
 
       const uploadResult = await FileAPI.upload(formFile);
       expect(uploadResult).toBeDefined();
-      expect(uploadResult.id).toBeDefined();
+      expect(uploadResult.id).toBeGreaterThan(0);
       uploadedFileIds.push(uploadResult.id);
 
       // 检查已上传文件的 MD5
       const result = await FileAPI.uploadCheck(testFileMd5);
 
       expect(result).not.toBeNull();
-      expect(result?.id).toBeDefined();
+      expect(result?.id).toBeGreaterThan(0);
       expect(result?.url).toBeTruthy();
+      expect(typeof result?.url).toBe("string");
     });
   });
 
@@ -83,10 +84,13 @@ describe("文件管理接口测试", () => {
       const result = await FileAPI.upload(formFile);
 
       expect(result).toBeDefined();
-      expect(result.name).toBeTruthy();
-      expect(result.path).toBeTruthy();
-      expect(result.url).toBeTruthy();
-      expect(result.id).toBeDefined();
+      expect(result.id).toBeGreaterThan(0);
+      expect(typeof result.name).toBe("string");
+      expect(result.name.length).toBeGreaterThan(0);
+      expect(typeof result.path).toBe("string");
+      expect(result.path.length).toBeGreaterThan(0);
+      expect(typeof result.url).toBe("string");
+      expect(result.url).toMatch(/^https?:\/\//);
       uploadedFileIds.push(result.id);
     });
 
@@ -98,10 +102,9 @@ describe("文件管理接口测试", () => {
       const result = await FileAPI.upload(formFile, 1);
 
       expect(result).toBeDefined();
-      expect(result.name).toBeTruthy();
-      expect(result.path).toBeTruthy();
-      expect(result.url).toBeTruthy();
-      expect(result.id).toBeDefined();
+      expect(result.id).toBeGreaterThan(0);
+      expect(typeof result.name).toBe("string");
+      expect(typeof result.url).toBe("string");
       uploadedFileIds.push(result.id);
     });
 
@@ -123,7 +126,7 @@ describe("文件管理接口测试", () => {
 
       const uploadResult = await FileAPI.upload(formFile);
       expect(uploadResult).toBeDefined();
-      expect(uploadResult.id).toBeDefined();
+      expect(uploadResult.id).toBeGreaterThan(0);
       const fileId = uploadResult.id;
 
       // 删除文件
@@ -138,6 +141,7 @@ describe("文件管理接口测试", () => {
       const nonExistId = 999999999;
       // 删除不存在的文件，后端可能返回成功（幂等）或错误
       await expectBizErrorOrUndefined(FileAPI.deleteById(nonExistId), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",

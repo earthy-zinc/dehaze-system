@@ -16,8 +16,7 @@ class FileIdQuery(BaseModel):
 
 class FileCheckQuery(BaseModel):
     """文件校验查询参数"""
-    md5: str = Field(..., min_length=32, max_length=32,
-                     pattern=r'^[a-fA-F0-9]{32}$', description="文件MD5值")
+    md5: str = Field(..., description="文件MD5值")
 
 
 class FilePageQuery(BaseModel):

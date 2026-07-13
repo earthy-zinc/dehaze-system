@@ -58,7 +58,7 @@ class AlgorithmAPI {
     return request({
       url: `/api/v1/algorithms/${id}/status`,
       method: "put",
-      params: { status },
+      data: { status },
     });
   }
 

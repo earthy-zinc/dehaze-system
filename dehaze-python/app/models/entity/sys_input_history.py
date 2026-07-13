@@ -6,7 +6,7 @@
 
 from typing import Optional
 
-from sqlalchemy import BigInteger, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Integer, String, Text
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,7 +32,7 @@ class SysInputHistory(BaseModel):
     status: Mapped[Optional[int]] = mapped_column(
         mysql_types.TINYINT, default=3, comment='处理状态（1=成功，2=失败，3=处理中）')
     input_source: Mapped[Optional[str]] = mapped_column(String(20), comment='图片来源（upload/camera/sample）')
-    is_favorite: Mapped[Optional[int]] = mapped_column(
-        mysql_types.TINYINT(1), default=0, comment='是否收藏')
+    is_favorite: Mapped[Optional[bool]] = mapped_column(
+        Boolean, default=False, comment='是否收藏')
     sync_status: Mapped[Optional[int]] = mapped_column(
         mysql_types.TINYINT, default=0, comment='同步状态（0=未同步，1=已同步）')

@@ -1,7 +1,6 @@
 from typing import Optional
 
-from app.core.code import ResultCode
-from app.core.result import Result, error, success
+from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
@@ -44,12 +43,10 @@ async def get_dept_form(
     db: AsyncSession = Depends(get_db),
 ):
     dept_form = await DeptService.get_dept_form(db, dept_id)
-    if not dept_form:
-        return error("部门不存在", ResultCode.RESOURCE_NOT_FOUND.code)
     return success(dept_form)
 
 
-@router.post("", response_model=Result[dict[str, int]], summary="新增部门")
+@router.post("", response_model=Result[int], summary="新增部门")
 @require_permission("sys:dept:add")
 async def create_dept(
     body: DeptForm,  # type: ignore
@@ -58,10 +55,10 @@ async def create_dept(
     user: UserContext = Depends(get_current_user),
 ):
     dept_id = await DeptService.create_dept(db, redis, body.model_dump(exclude_none=True))
-    return success({"id": dept_id}, msg="部门创建成功")
+    return success(dept_id, msg="部门创建成功")
 
 
-@router.put("/{dept_id}", response_model=Result[dict[str, int]], summary="修改部门")
+@router.put("/{dept_id}", response_model=Result[int], summary="修改部门")
 @require_permission("sys:dept:edit")
 async def update_dept(
     dept_id: int = Path(...),
@@ -71,7 +68,7 @@ async def update_dept(
     user: UserContext = Depends(get_current_user),
 ):
     updated_id = await DeptService.update_dept(db, redis, dept_id, body.model_dump(exclude_none=True))
-    return success({"id": updated_id}, msg="部门更新成功")
+    return success(updated_id, msg="部门更新成功")
 
 
 @router.delete("/{ids}", response_model=Result[None], summary="删除部门")

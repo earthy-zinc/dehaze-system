@@ -24,11 +24,16 @@ from app.models.entity.sys_dataset import (SysDataset, SysDatasetItem,
 from app.repository.dataset_repository import dataset_repository
 from app.service.file_service import FileService
 from app.utils.datetime_utils import format_time
-from app.utils.tree import generate_tree_path
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
+
+# XSS 危险模式：HTML 标签起始、javascript 协议、事件处理器（onXxx=）
+_XSS_PATTERN = re.compile(
+    r'<\s*/?\s*[a-zA-Z]|javascript:\s*|on\w+\s*=',
+    re.IGNORECASE,
+)
 
 
 def _extract_file_prefix(filename: str) -> str:
@@ -109,6 +114,36 @@ def _create_empty_stats() -> dict[str, Any]:
     }
 
 
+def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
+    """构建图片文件 VO（统一字段命名，对齐 SDK ImageUrlVO）。
+    用于 ItemFileService 和 DatasetItemService 的所有文件响应。"""
+    # 从文件名提取格式（扩展名），统一返回小写
+    file_format = None
+    if file_obj and file_obj.name and "." in file_obj.name:
+        file_format = file_obj.name.rsplit(".", 1)[-1].lower()
+    elif file_obj and file_obj.type:
+        file_format = file_obj.type.lower()
+
+    return {
+        "id": item_file.id,
+        "itemId": item_file.item_id,
+        "fileId": item_file.file_id,
+        "type": item_file.type,
+        "sceneType": item_file.scene_type,
+        "hazeLevel": item_file.haze_level,
+        "description": item_file.description,
+        "url": file_obj.url if file_obj else None,
+        "thumbnailUrl": file_obj.url if file_obj else None,
+        "fileName": file_obj.name if file_obj else None,
+        "name": file_obj.name if file_obj else None,
+        "sizeBytes": file_obj.size_bytes if file_obj else None,
+        "size": file_obj.size_bytes if file_obj else None,
+        "formattedSize": file_obj.size if file_obj else None,
+        "format": file_format,
+        "md5": file_obj.md5 if file_obj else None,
+    }
+
+
 def _merge_stats(parent: dict[str, Any], child: dict[str, Any]):
     parent["itemCount"] += child.get("itemCount", 0)
     parent["fileCount"] += child.get("fileCount", 0)
@@ -135,6 +170,12 @@ class DatasetService:
     CACHE_TREE_TTL = 3600
 
     ROOT_NODE_ID = 0
+
+    @staticmethod
+    def _validate_name_safety(name: str) -> None:
+        """校验数据集名称安全性，拦截 XSS 攻击"""
+        if name and _XSS_PATTERN.search(name):
+            raise BusinessException(ResultCode.PARAM_ERROR, "数据集名称包含不安全的字符")
 
     @staticmethod
     async def _evict_all_cache(redis: Redis):
@@ -176,7 +217,6 @@ class DatasetService:
                 serializable.append({
                     "id": ds.id,
                     "parent_id": ds.parent_id,
-                    "tree_path": ds.tree_path,
                     "type": ds.type,
                     "name": ds.name,
                     "img": ds.img,
@@ -318,7 +358,6 @@ class DatasetService:
         vo: dict[str, Any] = {
             "id": entity.id,
             "parentId": entity.parent_id,
-            "treePath": entity.tree_path,
             "type": entity.type,
             "name": entity.name,
             "img": entity.img,
@@ -342,9 +381,13 @@ class DatasetService:
         redis: Redis,
         page_num: int = 1,
         page_size: int = 10,
-        keywords: str | None = None,
+        keyword: str | None = None,
+        type: str | None = None,
+        status: int | None = None,
     ) -> dict[str, Any]:
-        root_datasets, total = await dataset_repository.find_root_page(db, page_num, page_size, keywords)
+        root_datasets, total = await dataset_repository.find_root_page(
+            db, page_num, page_size, keyword, type, status,
+        )
         if not root_datasets:
             return {"list": [], "total": total, "pageNum": page_num, "pageSize": page_size}
 
@@ -452,7 +495,6 @@ class DatasetService:
         return {
             "id": dataset.id,
             "parentId": dataset.parent_id,
-            "treePath": dataset.tree_path,
             "type": dataset.type,
             "name": dataset.name,
             "img": dataset.img,
@@ -460,7 +502,6 @@ class DatasetService:
             "path": dataset.path,
             "size": dataset.size,
             "status": dataset.status,
-            "deleted": dataset.deleted,
             "createTime": format_time(dataset.create_time),
             "updateTime": format_time(dataset.update_time),
             "statistics": statistics,
@@ -471,9 +512,11 @@ class DatasetService:
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
-    ) -> int:
+    ) -> dict[str, Any]:
         parent_id = data.get("parentId", 0)
         name = data.get("name", "")
+
+        DatasetService._validate_name_safety(name)
 
         if parent_id != 0:
             parent = await dataset_repository.get_by_id(db, parent_id)
@@ -485,11 +528,8 @@ class DatasetService:
             if exists:
                 raise BusinessException(ResultCode.PARAM_ERROR, "同一层级下数据集名称已存在")
 
-        tree_path = await DatasetService._generate_tree_path(db, parent_id)
-
         dataset = SysDataset(
             parent_id=parent_id,
-            tree_path=tree_path,
             type=data.get("type", ""),
             name=data.get("name", ""),
             description=data.get("description", ""),
@@ -501,17 +541,11 @@ class DatasetService:
         db.add(dataset)
         await db.flush()
         await db.refresh(dataset)
+        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
-        return dataset.id
-
-    @staticmethod
-    async def _generate_tree_path(db: AsyncSession, parent_id: int) -> str:
-        if parent_id == 0:
-            return "0"
-        tree_path = await dataset_repository.get_dataset_tree_path(db, parent_id)
-        return generate_tree_path(tree_path, parent_id)
+        return await DatasetService.get_dataset_by_id(db, redis, dataset.id)
 
     @staticmethod
     async def update_dataset(
@@ -519,7 +553,7 @@ class DatasetService:
         redis: Redis,
         dataset_id: int,
         data: dict[str, Any],
-    ) -> int:
+    ) -> dict[str, Any]:
         dataset = await dataset_repository.get_by_id(db, dataset_id)
         if not dataset:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
@@ -536,13 +570,10 @@ class DatasetService:
             if await DatasetService._would_create_cycle(db, dataset_id, new_parent_id):
                 raise BusinessException(ResultCode.PARAM_ERROR, "不能将数据集移动到其子节点下")
 
-            old_tree_path = dataset.tree_path
-            new_tree_path = await DatasetService._generate_tree_path(db, new_parent_id)
-            dataset.tree_path = new_tree_path
             dataset.parent_id = new_parent_id
-            await DatasetService._update_children_tree_paths(db, dataset_id, old_tree_path, new_tree_path)
 
         if "name" in data and data["name"] != dataset.name:
+            DatasetService._validate_name_safety(data["name"])
             check_parent = new_parent_id if new_parent_id is not None else old_parent_id
             exists = await dataset_repository.check_name_exists(
                 db, check_parent, data["name"], exclude_id=dataset_id,
@@ -562,10 +593,11 @@ class DatasetService:
             dataset.status = data["status"]
 
         dataset.update_time = datetime.now()
+        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
-        return dataset_id
+        return await DatasetService.get_dataset_by_id(db, redis, dataset_id)
 
     @staticmethod
     async def _would_create_cycle(db: AsyncSession, dataset_id: int, new_parent_id: int) -> bool:
@@ -575,18 +607,16 @@ class DatasetService:
         return new_parent_id in descendants
 
     @staticmethod
-    async def _update_children_tree_paths(
+    async def delete_dataset(
         db: AsyncSession,
+        redis: Redis,
         dataset_id: int,
-        old_prefix: str,
-        new_prefix: str,
-    ):
-        children = await dataset_repository.get_all_descendant_ids(db, dataset_id)
-        for child_id in children:
-            child = await dataset_repository.get_by_id(db, child_id, with_deleted=True)
-            if child and child.tree_path and child.tree_path.startswith(old_prefix):
-                suffix = child.tree_path[len(old_prefix):]
-                child.tree_path = f"{new_prefix}{suffix}"
+    ) -> None:
+        """删除单个数据集（匹配 Java deleteDataset 行为：不存在时抛异常，成功返回 void）"""
+        dataset = await dataset_repository.get_by_id(db, dataset_id)
+        if not dataset:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在")
+        await DatasetService.delete_datasets(db, redis, [dataset_id])
 
     @staticmethod
     async def delete_datasets(
@@ -607,11 +637,16 @@ class DatasetService:
                 dataset = await dataset_repository.get_by_id(db, dataset_id, with_deleted=True)
                 if not dataset:
                     failed += 1
-                    results.append({"datasetId": dataset_id, "status": "failed", "message": "数据集不存在"})
+                    results.append({
+                        "id": dataset_id,
+                        "status": "failed",
+                        "message": "数据集不存在",
+                        "errorCode": "RESOURCE_NOT_FOUND",
+                    })
                     continue
 
                 all_dataset_ids = await DatasetService._get_dataset_and_descendant_ids(db, dataset_id)
-                all_datasets = await dataset_repository.get_all_datasets_for_tree_path_update(db, all_dataset_ids)
+                all_datasets = await dataset_repository.get_datasets_by_ids(db, all_dataset_ids)
 
                 children_map: dict[int, list[SysDataset]] = {}
                 for ds in all_datasets:
@@ -625,23 +660,39 @@ class DatasetService:
                 for leaf_id in leaf_ids:
                     await DatasetItemService.delete_items_by_dataset(db, redis, leaf_id)
 
-                depth_map = await dataset_repository.get_dataset_depth(db, all_dataset_ids)
+                # 通过 BFS 计算深度，从深到浅删除
+                depth_map: dict[int, int] = {dataset_id: 0}
+                queue: list[int] = [dataset_id]
+                while queue:
+                    current = queue.pop(0)
+                    current_depth = depth_map.get(current, 0)
+                    for child in children_map.get(current, []):
+                        child_id = int(child.id)
+                        depth_map[child_id] = current_depth + 1
+                        queue.append(child_id)
                 sorted_ids = sorted(all_dataset_ids, key=lambda x: depth_map.get(x, 0), reverse=True)
                 await dataset_repository.delete_by_ids(db, sorted_ids)
 
                 succeeded += 1
-                results.append({"datasetId": dataset_id, "status": "success"})
+                results.append({"id": dataset_id, "status": "success"})
 
             except Exception as e:
                 failed += 1
-                results.append({"datasetId": dataset_id, "status": "failed", "message": str(e)})
+                results.append({
+                    "id": dataset_id,
+                    "status": "failed",
+                    "message": str(e),
+                    "errorCode": "SYSTEM_ERROR",
+                })
 
+        await db.commit()
         await DatasetService._evict_all_cache(redis)
 
         return {
-            "success": True,
-            "message": f"删除完成：成功 {succeeded} 个，失败 {failed} 个",
-            "data": {"total": total, "succeeded": succeeded, "failed": failed, "results": results},
+            "total": total,
+            "succeeded": succeeded,
+            "failed": failed,
+            "results": results,
         }
 
     @staticmethod
@@ -653,12 +704,16 @@ class DatasetService:
     async def get_image_items(
         db: AsyncSession,
         redis: Redis,
-        dataset_id: int,
+        dataset_id: int | None,
         page_num: int = 1,
         page_size: int = 20,
         keywords: str | None = None,
+        scene_type: str | None = None,
     ) -> dict[str, Any]:
-        leaf_ids = await dataset_repository.get_leaf_ids(db, dataset_id)
+        if dataset_id:
+            leaf_ids = await dataset_repository.get_leaf_ids(db, dataset_id)
+        else:
+            leaf_ids = []
         total = await dataset_repository.get_items_count(db, leaf_ids, keywords)
         offset = (page_num - 1) * page_size
         items = await dataset_repository.get_items_paginated(db, leaf_ids, offset, page_size, keywords)
@@ -676,26 +731,21 @@ class DatasetService:
 
             files = []
             image_urls = []
+            clear_image = None
+            hazy_images = []
             for item_file, file_obj in item_files:
-                files.append({
-                    "id": item_file.id,
-                    "itemId": item_file.item_id,
-                    "fileId": item_file.file_id,
-                    "type": item_file.type,
-                    "sceneType": item_file.scene_type,
-                    "hazeLevel": item_file.haze_level,
-                    "description": item_file.description,
-                    "url": file_obj.url,
-                    "name": file_obj.name,
-                    "size": file_obj.size,
-                    "md5": file_obj.md5,
-                })
+                file_vo = _build_file_vo(item_file, file_obj)
+                files.append(file_vo)
                 image_urls.append({
                     "id": file_obj.id,
                     "type": item_file.type,
                     "url": file_obj.url,
                     "thumbnailUrl": file_obj.url,
                 })
+                if item_file.type == "clear" and clear_image is None:
+                    clear_image = file_vo
+                elif item_file.type == "hazy":
+                    hazy_images.append(file_vo)
 
             records.append({
                 "id": item.id,
@@ -705,6 +755,8 @@ class DatasetService:
                 "updateTime": format_time(item.update_time) if hasattr(item, "update_time") else None,
                 "files": files,
                 "imgUrl": image_urls,
+                "clearImage": clear_image,
+                "hazyImages": hazy_images,
             })
 
         return {
@@ -723,7 +775,7 @@ class DatasetItemService:
         db: AsyncSession,
         redis: Redis,
         data: dict[str, Any],
-    ) -> int:
+    ) -> dict[str, Any]:
         dataset_id = data.get("datasetId")
         if not dataset_id:
             raise BusinessException(ResultCode.PARAM_ERROR, "数据集ID不能为空")
@@ -736,18 +788,30 @@ class DatasetItemService:
         if children_count > 0:
             raise BusinessException(ResultCode.PARAM_ERROR, "不能在目录类型的数据集中创建数据项")
 
+        item_name = data.get("name", "")
         dataset_item = SysDatasetItem(
             dataset_id=dataset_id,
-            name=data.get("name", ""),
+            name=item_name,
         )
 
         db.add(dataset_item)
         await db.flush()
         await db.refresh(dataset_item)
+        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
-        return dataset_item.id
+        return {
+            "id": dataset_item.id,
+            "datasetId": dataset_item.dataset_id,
+            "name": dataset_item.name,
+        }
+
+    @staticmethod
+    def _build_item_file_vo(item_file, file_obj) -> dict[str, Any]:
+        """构建数据项详情中的文件 VO（对齐 SDK ImageUrlVO）。
+        委托给模块级 _build_file_vo，保留方法签名以兼容现有调用。"""
+        return _build_file_vo(item_file, file_obj)
 
     @staticmethod
     async def get_item_detail(db: AsyncSession, item_id: int) -> dict[str, Any]:
@@ -757,26 +821,22 @@ class DatasetItemService:
 
         files = []
         image_urls = []
+        clear_image = None
+        hazy_images = []
         for item_file, file_obj in item_files:
-            files.append({
-                "id": item_file.id,
-                "itemId": item_file.item_id,
-                "fileId": item_file.file_id,
-                "type": item_file.type,
-                "sceneType": item_file.scene_type,
-                "hazeLevel": item_file.haze_level,
-                "description": item_file.description,
-                "url": file_obj.url,
-                "name": file_obj.name,
-                "size": file_obj.size,
-                "md5": file_obj.md5,
-            })
+            file_vo = _build_file_vo(item_file, file_obj)
+            files.append(file_vo)
             image_urls.append({
                 "id": file_obj.id,
                 "type": item_file.type,
                 "url": file_obj.url,
                 "thumbnailUrl": file_obj.url,
             })
+            # 按类型拆分：clearImage / hazyImages（对齐 SDK DatasetItemVO）
+            if item_file.type == "clear" and clear_image is None:
+                clear_image = file_vo
+            elif item_file.type == "hazy":
+                hazy_images.append(file_vo)
 
         return {
             "id": item.id,
@@ -786,6 +846,8 @@ class DatasetItemService:
             "updateTime": format_time(item.update_time) if hasattr(item, "update_time") else None,
             "files": files,
             "imgUrl": image_urls,
+            "clearImage": clear_image,
+            "hazyImages": hazy_images,
         }
 
     @staticmethod
@@ -803,10 +865,15 @@ class DatasetItemService:
             item.name = data["name"]
 
         item.update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
-        return {"id": item_id}
+        return {
+            "id": item.id,
+            "datasetId": item.dataset_id,
+            "name": item.name,
+        }
 
     @staticmethod
     async def delete_dataset_item(
@@ -816,11 +883,11 @@ class DatasetItemService:
     ):
         item = await dataset_repository.get_item_by_id(db, item_id)
         if not item:
-            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在")
+            return
 
-        dataset_id = item.dataset_id
         await dataset_repository.delete_item_files_by_item_id(db, item_id)
         await dataset_repository.delete_item_by_id(db, item_id)
+        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -836,6 +903,7 @@ class DatasetItemService:
 
         await dataset_repository.delete_item_files_by_item_ids(db, item_ids)
         await dataset_repository.delete_items_by_dataset_id(db, dataset_id)
+        await db.commit()
 
         return len(item_ids)
 
@@ -844,20 +912,35 @@ class DatasetItemService:
         db: AsyncSession,
         redis: Redis,
         item_ids: list[int],
-    ):
+    ) -> dict[str, Any]:
         if not item_ids:
             raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的数据项")
 
-        affected_dataset_ids: set[int] = set()
+        success_ids: list[int] = []
+        failure_details: list[dict[str, str]] = []
+
         for item_id in item_ids:
             item = await dataset_repository.get_item_by_id(db, item_id)
             if not item:
+                failure_details.append({
+                    "identifier": str(item_id),
+                    "reason": "数据项不存在",
+                })
                 continue
-            affected_dataset_ids.add(int(item.dataset_id))
+            success_ids.append(item_id)
             await dataset_repository.delete_item_files_by_item_id(db, item_id)
             await dataset_repository.delete_item_by_id(db, item_id)
 
+        await db.commit()
         await DatasetService._evict_all_cache(redis)
+
+        return {
+            "successCount": len(success_ids),
+            "failedCount": len(failure_details),
+            "message": f"批量删除完成: 成功{len(success_ids)}个, 失败{len(failure_details)}个",
+            "successIds": success_ids,
+            "failureDetails": failure_details,
+        }
 
     @staticmethod
     async def upload_dataset_item_with_images(
@@ -917,6 +1000,7 @@ class DatasetItemService:
             db.add(item_file_hazy)
 
         await db.flush()
+        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -971,7 +1055,8 @@ class DatasetItemService:
 
         success_items = []
         failed_items = []
-        total = len(groups)
+        # total 为上传的文件总数（对齐 SDK BatchUploadResultVO.total = 总文件数）
+        total = len(files_data)
 
         for prefix, files in groups.items():
             # 清晰图和有雾图均为可选（适配不同数据集规范）
@@ -1014,26 +1099,18 @@ class ItemFileService:
     """图片文件服务"""
 
     @staticmethod
+    def _build_file_vo(item_file, file_obj) -> dict[str, Any]:
+        """构建图片文件 VO（委托给模块级 _build_file_vo）"""
+        return _build_file_vo(item_file, file_obj)
+
+    @staticmethod
     async def get_item_file_detail(db: AsyncSession, file_id: int) -> dict[str, Any] | None:
         result = await dataset_repository.get_item_file_with_file(db, file_id)
         if not result:
             return None
 
         item_file, file_obj = result
-        return {
-            "id": item_file.id,
-            "itemId": item_file.item_id,
-            "fileId": item_file.file_id,
-            "type": item_file.type,
-            "sceneType": item_file.scene_type,
-            "hazeLevel": item_file.haze_level,
-            "description": item_file.description,
-            "url": file_obj.url if file_obj else None,
-            "thumbnailUrl": file_obj.url if file_obj else None,
-            "name": file_obj.name if file_obj else None,
-            "size": file_obj.size if file_obj else None,
-            "md5": file_obj.md5 if file_obj else None,
-        }
+        return _build_file_vo(item_file, file_obj)
 
     @staticmethod
     async def upload_item_file(
@@ -1075,22 +1152,11 @@ class ItemFileService:
         db.add(item_file)
         await db.flush()
         await db.refresh(item_file)
+        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
-        return {
-            "id": item_file.id,
-            "itemId": item_file.item_id,
-            "fileId": item_file.file_id,
-            "type": item_file.type,
-            "sceneType": item_file.scene_type,
-            "hazeLevel": item_file.haze_level,
-            "description": item_file.description,
-            "url": file_info.url,
-            "name": file_info.name,
-            "size": file_info.size_bytes,
-            "md5": file_info.md5,
-        }
+        return ItemFileService._build_file_vo(item_file, file_info)
 
     @staticmethod
     async def update_item_file(db: AsyncSession, redis: Redis, file_id: int, data: dict[str, Any]):
@@ -1106,6 +1172,8 @@ class ItemFileService:
             item_file.haze_level = data["hazeLevel"]
         if "description" in data:
             item_file.description = data["description"]
+
+        await db.commit()
 
         item = await dataset_repository.get_item_by_id(db, item_file.item_id)
         if item:
@@ -1123,6 +1191,7 @@ class ItemFileService:
             dataset_id = item.dataset_id
 
         await dataset_repository.delete_item_file_by_id(db, file_id)
+        await db.commit()
 
         if dataset_id:
             await DatasetService._evict_all_cache(redis)
@@ -1133,15 +1202,33 @@ class ItemFileService:
             raise BusinessException(ResultCode.PARAM_ERROR, "未指定要删除的图片")
 
         affected_dataset_ids: set[int] = set()
+        success_ids: list[int] = []
+        failure_details: list[dict[str, str]] = []
+
         for fid in file_ids:
             item_file = await dataset_repository.get_item_file_by_id(db, fid)
             if not item_file:
+                failure_details.append({
+                    "identifier": str(fid),
+                    "reason": "图片文件不存在",
+                })
                 continue
             item = await dataset_repository.get_item_by_id(db, item_file.item_id)
             if item:
                 affected_dataset_ids.add(int(item.dataset_id))
+            success_ids.append(fid)
 
-        await dataset_repository.delete_item_files_by_ids(db, file_ids)
+        if success_ids:
+            await dataset_repository.delete_item_files_by_ids(db, success_ids)
+        await db.commit()
 
         if affected_dataset_ids:
             await DatasetService._evict_all_cache(redis)
+
+        return {
+            "successCount": len(success_ids),
+            "failedCount": len(failure_details),
+            "message": f"批量删除完成: 成功{len(success_ids)}个, 失败{len(failure_details)}个",
+            "successIds": success_ids,
+            "failureDetails": failure_details,
+        }

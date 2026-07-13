@@ -38,7 +38,7 @@ func RegisterSysRoleRoutes(rg *gin.RouterGroup, sysRoleApi *api.SysRoleApi) gin.
 		sysRoleRouter.PUT(":roleId", middleware.Permission("sys:role:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.UpdateRole)
 		sysRoleRouter.DELETE(":ids", middleware.Permission("sys:role:delete"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.DeleteRoles)
 		sysRoleRouter.PUT(":roleId/status", middleware.Permission("sys:role:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.UpdateRoleStatus)
-		sysRoleRouter.PUT(":roleId/menus", middleware.Permission("sys:role:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.AssignMenusToRole)
+		sysRoleRouter.PATCH(":roleId/menus", middleware.Permission("sys:role:edit"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysRoleApi.AssignMenusToRole)
 	}
 	return sysRoleRouter
 }

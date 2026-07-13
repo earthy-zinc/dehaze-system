@@ -152,12 +152,13 @@ func (api *SysDatasetApi) SaveDataset(c *gin.Context) {
 		return
 	}
 
-	if err := api.datasetService.Create(ctx, &datasetFormBO); err != nil {
+	id, err := api.datasetService.Create(ctx, &datasetFormBO)
+	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithMessage("新增数据集成功", c)
+	common.OkWithData(id, c)
 }
 
 // UpdateDataset 修改数据集
@@ -167,7 +168,7 @@ func (api *SysDatasetApi) SaveDataset(c *gin.Context) {
 // @Produce application/json
 // @Param id path int true "数据集ID"
 // @Param datasetForm body bo.DatasetFormBO true "数据集表单数据"
-// @Success 200 {object} common.Response
+// @Success 200 {object} common.Response{data=bo.DatasetFormBO}
 // @Router /api/v1/datasets/{id} [put]
 func (api *SysDatasetApi) UpdateDataset(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -184,13 +185,13 @@ func (api *SysDatasetApi) UpdateDataset(c *gin.Context) {
 		return
 	}
 
-	err = api.datasetService.Update(ctx, id, &datasetFormBO)
+	updated, err := api.datasetService.Update(ctx, id, &datasetFormBO)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithMessage("修改数据集成功", c)
+	common.OkWithDetailed(updated, "修改数据集成功", c)
 }
 
 // DeleteDataset 删除单个数据集（含级联删除子数据集和关联数据）
@@ -202,6 +203,7 @@ func (api *SysDatasetApi) UpdateDataset(c *gin.Context) {
 // @Success 200 {object} common.Response
 // @Router /api/v1/datasets/{id} [delete]
 func (api *SysDatasetApi) DeleteDataset(c *gin.Context) {
+	ctx := c.Request.Context()
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -209,8 +211,19 @@ func (api *SysDatasetApi) DeleteDataset(c *gin.Context) {
 		return
 	}
 
+	// 校验数据集是否存在
+	formData, err := api.datasetService.GetFormData(ctx, id)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if formData.ID == nil {
+		_ = c.Error(common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在"))
+		return
+	}
+
 	// 走级联删除逻辑（包含子数据集和关联数据项的递归删除）
-	_, err = api.operationService.BatchDeleteDatasets(c.Request.Context(), bo.BatchDeleteForm{IDs: []int64{id}})
+	_, err = api.operationService.BatchDeleteDatasets(ctx, bo.BatchDeleteForm{IDs: []int64{id}})
 	if err != nil {
 		_ = c.Error(err)
 		return

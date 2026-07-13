@@ -22,7 +22,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var ErrUserNotFound = common.NewBizError(common.USER_NOT_EXIST, "用户不存在")
+var ErrUserNotFound = common.NewBizError(common.RESOURCE_NOT_FOUND, "用户不存在")
 var ErrInvalidPassword = common.NewBizError(common.USERNAME_OR_PASSWORD_ERROR, "密码错误")
 
 // UserService 用户服务
@@ -233,6 +233,26 @@ func (s *UserService) Create(ctx context.Context, form *bo.UserFormBO) error {
 
 // Update 更新用户
 func (s *UserService) Update(ctx context.Context, id int64, form *bo.UserFormBO) error {
+	// 校验用户是否存在
+	existingUser, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询用户失败", err)
+	}
+	if existingUser == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "用户不存在")
+	}
+
+	// 校验用户名冲突（如果要修改用户名）
+	if form.Username != existingUser.Username {
+		exists, err := s.userRepo.ExistsByUsername(ctx, form.Username, id)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "检查用户名是否存在失败", err)
+		}
+		if exists {
+			return common.NewBizError(common.DATA_EXISTS, "用户名已存在")
+		}
+	}
+
 	// 检查手机号是否已存在（排除当前用户）
 	if form.Mobile != "" {
 		exists, err := s.userRepo.ExistsByMobile(ctx, form.Mobile, id)
@@ -296,7 +316,7 @@ func (s *UserService) UpdatePassword(ctx context.Context, id int64, password str
 		return common.WrapBizError(common.DATABASE_ERROR, "查询用户失败", err)
 	}
 	if user == nil {
-		return common.NewBizError(common.USER_NOT_EXIST, "用户不存在")
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "用户不存在")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -318,7 +338,7 @@ func (s *UserService) ResetPassword(ctx context.Context, id int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询用户失败", err)
 	}
 	if user == nil {
-		return common.NewBizError(common.USER_NOT_EXIST, "用户不存在")
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "用户不存在")
 	}
 
 	// 加密默认密码

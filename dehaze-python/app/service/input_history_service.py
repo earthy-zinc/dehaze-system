@@ -1,6 +1,6 @@
 """
 图像输入历史记录服务
-对齐 dehaze-java SysInputHistory 字段
+对齐 dehaze-java SysInputHistoryServiceImpl 逻辑
 """
 import logging
 from typing import Any, Optional
@@ -8,7 +8,6 @@ from typing import Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
-from app.core.code import ResultCode
 from app.models.entity.sys_input_history import SysInputHistory
 from app.repository.input_history_repository import input_history_repository
 from app.utils.datetime_utils import format_time
@@ -23,6 +22,7 @@ class InputHistoryService:
     async def list_history(
         db: AsyncSession,
         user_id: int,
+        status: Optional[int] = None,
         input_source: Optional[str] = None,
         favorite_only: bool = False,
         keywords: Optional[str] = None,
@@ -33,6 +33,7 @@ class InputHistoryService:
         histories, total = await input_history_repository.get_paginated(
             db=db,
             user_id=user_id,
+            status=status,
             input_source=input_source,
             favorite_only=favorite_only,
             keywords=keywords,
@@ -52,7 +53,7 @@ class InputHistoryService:
 
     @staticmethod
     async def create_history(db: AsyncSession, data: dict[str, Any], user_id: int) -> int:
-        """创建历史记录 (对齐 Java SysInputHistory 字段)"""
+        """创建历史记录 (对齐 Java SysInputHistoryServiceImpl.createHistory)"""
         history = await input_history_repository.create_history(
             db=db,
             user_id=user_id,
@@ -66,61 +67,56 @@ class InputHistoryService:
             processing_time=data.get("processingTime"),
             status=data.get("status", 3),
             input_source=data.get("inputSource", "upload"),
-            is_favorite=data.get("isFavorite", 0),
-            sync_status=data.get("syncStatus", 0),
+            is_favorite=False,
+            sync_status=0,
         )
+        await db.commit()
         return history.id
 
     @staticmethod
     async def update_history(
         db: AsyncSession,
         history_id: int,
-        data: dict[str, Any],
+        is_favorite: Optional[bool],
         user_id: int,
     ) -> None:
-        """更新历史记录（如收藏、同步状态）"""
+        """更新历史记录（仅支持收藏切换，对齐 Java updateHistory）"""
         history = await input_history_repository.get_by_id(db, history_id)
         if not history:
-            raise BusinessException("历史记录不存在", ResultCode.RESOURCE_NOT_FOUND.code)
+            raise BusinessException("历史记录不存在")
         if history.user_id != user_id:
-            raise BusinessException("无权操作该历史记录", ResultCode.ACCESS_UNAUTHORIZED.code)
-        await input_history_repository.update_by_id(db, history_id, data)
+            raise BusinessException("无权操作该历史记录")
+        if is_favorite is not None:
+            history.is_favorite = is_favorite
+            await db.flush()
+        await db.commit()
 
     @staticmethod
     async def delete_history(db: AsyncSession, history_id: int, user_id: int) -> None:
-        """删除单条历史记录（仅限本人）"""
-        deleted = await input_history_repository.delete_by_user(db, user_id, history_id)
-        if not deleted:
-            raise BusinessException("历史记录不存在或无权删除", ResultCode.RESOURCE_NOT_FOUND.code)
+        """删除单条历史记录（幂等，对齐 Java deleteHistory）"""
+        await input_history_repository.delete_by_user(db, user_id, history_id)
+        await db.commit()
 
     @staticmethod
     async def batch_delete(db: AsyncSession, ids: list[int], user_id: int) -> int:
         """批量删除历史记录（仅限本人）"""
-        return await input_history_repository.batch_delete_by_user(db, user_id, ids)
+        result = await input_history_repository.batch_delete_by_user(db, user_id, ids)
+        await db.commit()
+        return result
 
     @staticmethod
     async def clear_history(db: AsyncSession, user_id: int) -> int:
         """清空用户所有历史记录"""
-        return await input_history_repository.clear_by_user(db, user_id)
+        result = await input_history_repository.clear_by_user(db, user_id)
+        await db.commit()
+        return result
 
     @staticmethod
-    async def sync_history(
-        db: AsyncSession,
-        items: list[dict[str, Any]],
-        user_id: int,
-    ) -> dict[str, int]:
-        """同步本地历史记录到云端"""
-        synced = 0
-        failed = 0
-        for item in items:
-            try:
-                item["syncStatus"] = 1
-                await InputHistoryService.create_history(db, item, user_id)
-                synced += 1
-            except Exception as e:
-                logger.warning(f"同步历史记录失败: {e}")
-                failed += 1
-        return {"synced": synced, "failed": failed}
+    async def sync_history(db: AsyncSession, user_id: int) -> int:
+        """同步历史记录（对齐 Java syncHistory：标记所有未同步记录为已同步）"""
+        count = await input_history_repository.mark_all_synced(db, user_id)
+        await db.commit()
+        return 1 if count > 0 else 0
 
     @staticmethod
     def _to_vo(history: SysInputHistory) -> dict[str, Any]:

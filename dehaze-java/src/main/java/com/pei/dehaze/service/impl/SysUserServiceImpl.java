@@ -10,6 +10,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.DateUtils;
 import com.pei.dehaze.converter.UserConverter;
 import com.pei.dehaze.mapper.SysUserMapper;
@@ -186,6 +188,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public boolean updatePassword(Long userId, String password) {
+        if (StrUtil.isBlank(password)) {
+            throw new BusinessException(ResultCode.PARAM_IS_NULL);
+        }
         return this.update(new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getPassword, passwordEncoder.encode(password))

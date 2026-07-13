@@ -1,6 +1,5 @@
-CREATE DATABASE IF NOT EXISTS dehaze DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_general_ci;
-
-use dehaze;
+-- 数据库由 Docker MYSQL_DATABASE 环境变量或运维脚本自动创建
+-- 此文件仅负责建表，不包含 CREATE DATABASE / USE 语句
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
@@ -326,7 +325,7 @@ CREATE TABLE `sys_task`
     `id`              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `task_id`         VARCHAR(64) NOT NULL COMMENT '任务ID（UUID）',
     `task_type`       VARCHAR(32) NOT NULL COMMENT '任务类型',
-    `status`          VARCHAR(32) NOT NULL DEFAULT 'pending' COMMENT '任务状态',
+    `status`          VARCHAR(32) NOT NULL DEFAULT 'PENDING' COMMENT '任务状态',
     `progress`        INT                  DEFAULT 0 COMMENT '任务进度（百分比）',
     `total_files`     INT                  DEFAULT 0 COMMENT '总文件数',
     `processed_files` INT                  DEFAULT 0 COMMENT '已处理文件数',

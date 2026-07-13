@@ -1,6 +1,6 @@
 import { MenuAPI, MenuVO } from "../../../index";
 import { login, logout } from "#/utils/auth";
-import { expectBizErrorOrUndefined } from "#/utils/assertion";
+import { expectBizError, expectBizErrorOrUndefined } from "#/utils/assertion";
 import { createMenuForm, createMenuQuery } from "#/factories/menu";
 import { MenuTypeEnum } from "@/enums/MenuTypeEnum";
 
@@ -61,9 +61,11 @@ describe("菜单管理接口测试", () => {
 
       // 验证路由结构
       if (result.length > 0) {
-        const route = result[0];
-        expect(route).toHaveProperty("path");
-        expect(route).toHaveProperty("name");
+        const route = result[0]!;
+        expect(typeof route.path).toBe("string");
+        expect(route.path!.length).toBeGreaterThan(0);
+        expect(typeof route.name).toBe("string");
+        expect(route.name!.length).toBeGreaterThan(0);
       }
     });
   });
@@ -98,38 +100,31 @@ describe("菜单管理接口测试", () => {
     test("正向测试：按关键词搜索菜单并验证搜索结果", async () => {
       // 先获取所有菜单
       const allMenus = await MenuAPI.getList(createMenuQuery());
-      if (allMenus.length === 0) {
-        console.warn("数据库中没有菜单数据，跳过搜索测试");
-        return;
-      }
+      expect(allMenus.length).toBeGreaterThan(0);
 
-      const firstMenu = allMenus[0];
-      if (!firstMenu?.name) {
-        console.warn("第一个菜单没有名称，跳过搜索测试");
-        return;
-      }
-      const searchKeyword = firstMenu.name.substring(0, 2);
+      const firstMenu = allMenus[0]!;
+      expect(firstMenu?.name).toBeTruthy();
+      const searchKeyword = firstMenu.name!.substring(0, 2);
       const query = createMenuQuery({ keywords: searchKeyword });
       const result = await MenuAPI.getList(query);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
 
       // 验证搜索结果
-      if (result.length > 0) {
-        const verifyKeyword = (menus: typeof result, keyword: string) => {
-          menus.forEach((menu) => {
-            if (menu.name) {
-              const nameContains = menu.name.toLowerCase().includes(keyword.toLowerCase());
-              expect(nameContains).toBe(true);
-            }
-            if (menu.children && menu.children.length > 0) {
-              verifyKeyword(menu.children, keyword);
-            }
-          });
-        };
-        verifyKeyword(result, searchKeyword);
-      }
+      const verifyKeyword = (menus: typeof result, keyword: string) => {
+        menus.forEach((menu) => {
+          if (menu.name) {
+            const nameContains = menu.name.toLowerCase().includes(keyword.toLowerCase());
+            expect(nameContains).toBe(true);
+          }
+          if (menu.children && menu.children.length > 0) {
+            verifyKeyword(menu.children, keyword);
+          }
+        });
+      };
+      verifyKeyword(result, searchKeyword);
     });
   });
 
@@ -141,8 +136,10 @@ describe("菜单管理接口测试", () => {
       expect(Array.isArray(result)).toBe(true);
 
       if (result.length > 0) {
-        expect(result[0]).toHaveProperty("value");
-        expect(result[0]).toHaveProperty("label");
+        const firstOption = result[0]!;
+        expect(typeof firstOption.value).toBe("number");
+        expect(typeof firstOption.label).toBe("string");
+        expect(firstOption.label!.length).toBeGreaterThan(0);
       }
     });
   });
@@ -176,13 +173,7 @@ describe("菜单管理接口测试", () => {
     });
 
     test("异常测试：获取不存在菜单应抛出业务错误", async () => {
-      // 【预期行为】获取不存在的菜单应返回业务错误（如 A0400/B0001）
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' } 但 data 为空（后端 bug）
-      // 【保留此测试】验证不存在资源时返回值为空或抛出错误
-      const result = await MenuAPI.getFormData(99999999);
-      // 期望 result 为空（undefined/null）或抛出错误
-      // 当前后端返回成功但 data 可能为空对象
-      expect(result === null || result === undefined || !result.id).toBe(true);
+      await expectBizError(MenuAPI.getFormData(99999999), ["A0401"]);
     });
   });
 
@@ -343,7 +334,6 @@ describe("菜单管理接口测试", () => {
 
       await MenuAPI.update(testMenuId.toString(), {
         ...newForm,
-        id: String(testMenuId),
       });
 
       // 验证更新后的数据
@@ -367,13 +357,8 @@ describe("菜单管理接口测试", () => {
     });
 
     test("异常测试：更新不存在的菜单应抛出业务错误", async () => {
-      // 【预期行为】更新不存在的菜单应返回业务错误（如 A0400/B0001）
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' }（后端 bug）
-      // 【保留此测试】持续暴露后端缺少资源不存在校验的问题
       const form = createMenuForm();
-
-      // 当前后端对不存在的菜单更新返回成功，验证至少不会抛出非预期错误
-      await expect(MenuAPI.update("99999999", { ...form, id: "99999999" })).resolves.not.toThrow();
+      await expectBizError(MenuAPI.update("99999999", { ...form }), ["A0401"]);
     });
   });
 
@@ -392,18 +377,45 @@ describe("菜单管理接口测试", () => {
       // 删除菜单
       await MenuAPI.deleteById(menuId);
 
-      // 【预期行为】查询已删除菜单应返回业务错误（如 A0400/B0001）或 null
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' } 但 data 为空（后端 bug）
-      // 【保留此测试】验证删除后查询返回空值
-      const result = await MenuAPI.getFormData(menuId);
-      expect(result === null || result === undefined || !result.id).toBe(true);
+      // 验证已删除
+      await expectBizError(MenuAPI.getFormData(menuId), ["A0401"]);
     });
 
     test("异常测试：删除不存在的菜单应抛出业务错误", async () => {
-      // 【预期行为】删除不存在的菜单应返回业务错误（如 A0400/B0001）
-      // 【实际行为】后端返回 { code: '00000', msg: '一切ok' }（后端 bug）
-      // 【保留此测试】验证不会抛出非预期错误
-      await expect(MenuAPI.deleteById(99999999)).resolves.not.toThrow();
+      await expectBizError(MenuAPI.deleteById(99999999), ["A0401"]);
+    });
+  });
+
+  describe("边界测试：菜单管理", () => {
+    const createdMenuIds: number[] = [];
+
+    afterAll(async () => {
+      for (const menuId of createdMenuIds.reverse()) {
+        try {
+          await MenuAPI.deleteById(menuId);
+        } catch {}
+      }
+    });
+
+    test("超长菜单名称应被拒绝", async () => {
+      const form = createMenuForm({ name: "x".repeat(500), parentId: 0 });
+      await expectBizErrorOrUndefined(MenuAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("特殊字符菜单名称不应污染存储", async () => {
+      const specialName = "测试<>&\"'菜单";
+      const form = createMenuForm({ name: specialName, parentId: 0 });
+
+      await MenuAPI.add(form);
+
+      const menuList = await MenuAPI.getList(createMenuQuery({ keywords: specialName }));
+      if (menuList.length > 0) {
+        const found = menuList.find((m) => m.name === specialName);
+        if (found?.id) {
+          createdMenuIds.push(found.id);
+          expect(found.name).not.toMatch(/<[^>]+>/);
+        }
+      }
     });
   });
 });

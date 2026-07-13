@@ -10,7 +10,8 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import BatchDeleteForm
-from app.models.schema.dataset import ItemFileUpdateForm, ItemFileVO
+from app.models.schema.dataset import (BatchOperationResultVO,
+                                       ItemFileUpdateForm, ItemFileVO)
 from app.service.dataset_service import ItemFileService
 from fastapi import (APIRouter, Body, Depends, File, Form, Path,
                      UploadFile)
@@ -22,17 +23,6 @@ router = APIRouter(
     tags=["图片文件管理"],
     dependencies=[Depends(get_current_user)],
 )
-
-
-@router.get("/{file_id}", response_model=Result[ItemFileVO], summary="获取图片详细信息")
-async def get_item_file(
-    file_id: int = Path(..., description="图片文件关联ID"),
-    db: AsyncSession = Depends(get_db),
-):
-    detail = await ItemFileService.get_item_file_detail(db, file_id)
-    if not detail:
-        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
-    return success(detail)
 
 
 @router.post("", response_model=Result[ItemFileVO], summary="上传数据项图片")
@@ -59,6 +49,27 @@ async def upload_item_file(
     return success(result, "上传成功")
 
 
+@router.delete("/batch", response_model=Result[BatchOperationResultVO], summary="批量删除图片")
+async def batch_delete_item_files(
+    body: BatchDeleteForm = Body(...),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    result = await ItemFileService.batch_delete_item_files(db, redis, body.ids)
+    return success(result, "删除成功")
+
+
+@router.get("/{file_id}", response_model=Result[ItemFileVO], summary="获取图片详细信息")
+async def get_item_file(
+    file_id: int = Path(..., description="图片文件关联ID"),
+    db: AsyncSession = Depends(get_db),
+):
+    detail = await ItemFileService.get_item_file_detail(db, file_id)
+    if not detail:
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片文件不存在")
+    return success(detail)
+
+
 @router.put("/{file_id}", response_model=Result[None], summary="修改图片信息")
 async def update_item_file(
     file_id: int = Path(..., description="图片文件关联ID"),
@@ -79,14 +90,4 @@ async def delete_item_file(
     redis: Redis = Depends(get_redis),
 ):
     await ItemFileService.delete_item_file(db, redis, file_id)
-    return success(msg="删除成功")
-
-
-@router.delete("/batch", response_model=Result[None], summary="批量删除图片")
-async def batch_delete_item_files(
-    body: BatchDeleteForm = Body(...),
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
-):
-    await ItemFileService.batch_delete_item_files(db, redis, body.ids)
     return success(msg="删除成功")

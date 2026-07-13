@@ -38,7 +38,7 @@ class TaskRepository(BaseRepository[SysTask]):
         stmt = (
             update(SysTask)
             .where(SysTask.task_id == task_id)
-            .values(status=status, updated_at=datetime.now())
+            .values(status=status)
         )
         result = await db.execute(stmt)
         await db.flush()
@@ -60,7 +60,6 @@ class TaskRepository(BaseRepository[SysTask]):
                 progress=progress,
                 processed_files=processed_files,
                 total_files=total_files,
-                updated_at=datetime.now(),
             )
         )
         result = await db.execute(stmt)
@@ -102,26 +101,6 @@ class TaskRepository(BaseRepository[SysTask]):
 
         stmt = stmt.order_by(SysTask.created_at.desc())
         return await self.paginate(db, stmt, page, size)
-
-    async def count_pending_by_user_and_type(
-        self,
-        db: AsyncSession,
-        user_id: int,
-        task_type: str,
-    ) -> int:
-        """统计用户同类型未完成任务数（用于并发限制检查）"""
-        stmt = select(func.count()).select_from(SysTask).where(
-            and_(
-                SysTask.created_by == user_id,
-                SysTask.task_type == task_type,
-                SysTask.status.in_([
-                    TaskStatus.PENDING.value,
-                    TaskStatus.PROCESSING.value,
-                ]),
-            )
-        )
-        result = await db.execute(stmt)
-        return result.scalar() or 0
 
     async def get_terminated_task_ids(
         self,

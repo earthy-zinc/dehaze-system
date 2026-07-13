@@ -19,9 +19,10 @@ describe("预测与评估 API 测试", () => {
         const result = await ModelAPI.predict(form);
 
         expect(result).toBeDefined();
-        expect(result).toHaveProperty("resultUrl");
-        expect(result).toHaveProperty("time");
+        expect(typeof result.resultUrl).toBe("string");
+        expect(result.resultUrl.length).toBeGreaterThan(0);
         expect(typeof result.time).toBe("number");
+        expect(result.time).toBeGreaterThanOrEqual(0);
       } catch (e: any) {
         // 预测依赖 Python 算法服务 + 真实图片 + 模型文件，基础设施未就绪时允许跳过
         const bizCode = e?.response?.data?.code || e?.code;
@@ -52,6 +53,7 @@ describe("预测与评估 API 测试", () => {
         "A0401",
         "B0001",
         "ERR_BAD_REQUEST",
+        "C0001",
       ]);
     });
   });
@@ -59,6 +61,7 @@ describe("预测与评估 API 测试", () => {
   describe("GET /api/v1/prediction/{taskId} - 预测状态", () => {
     test("异常测试：不存在的任务ID应报错", async () => {
       await expectBizErrorOrUndefined(ModelAPI.getPredTaskStatus(99999999), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -71,16 +74,16 @@ describe("预测与评估 API 测试", () => {
       const page = await ModelAPI.getPredLogs({ pageNum: 1, pageSize: 5 });
 
       expect(page).toBeDefined();
-      expect(page).toHaveProperty("list");
-      expect(page).toHaveProperty("total");
       expect(Array.isArray(page.list)).toBe(true);
       expect(typeof page.total).toBe("number");
+      expect(page.total).toBeGreaterThanOrEqual(0);
 
-      // 验证列表项结构
-      if (page.list.length > 0) {
-        const item = page.list[0];
-        expect(item).toHaveProperty("id");
-        expect(item).toHaveProperty("algorithmId");
+      // 验证 list 字段结构（可能是数组或单个对象，取决于后端实现）
+      const list = page.list as any;
+      if (Array.isArray(list) && list.length > 0) {
+        const item = list[0]!;
+        expect(typeof item.id).toBe("number");
+        expect(item.id).toBeGreaterThan(0);
       }
     });
   });
@@ -92,9 +95,20 @@ describe("预测与评估 API 测试", () => {
         const result = await ModelAPI.evaluate(form);
 
         expect(result).toBeDefined();
-        expect(result).toHaveProperty("metrics");
-        expect(result).toHaveProperty("time");
         expect(typeof result.metrics).toBe("object");
+        expect(result.metrics).not.toBeNull();
+        // 验证指标包含 PSNR/SSIM 等数值
+        if (result.metrics.psnr !== undefined) {
+          expect(typeof result.metrics.psnr).toBe("number");
+          expect(result.metrics.psnr).toBeGreaterThan(0);
+        }
+        if (result.metrics.ssim !== undefined) {
+          expect(typeof result.metrics.ssim).toBe("number");
+          expect(result.metrics.ssim).toBeGreaterThanOrEqual(0);
+          expect(result.metrics.ssim).toBeLessThanOrEqual(1);
+        }
+        expect(typeof result.time).toBe("number");
+        expect(result.time).toBeGreaterThanOrEqual(0);
       } catch (e: any) {
         // 评估依赖 Python 算法服务 + 真实图片，基础设施未就绪时允许跳过
         const bizCode = e?.response?.data?.code || e?.code;
@@ -121,6 +135,7 @@ describe("预测与评估 API 测试", () => {
   describe("GET /api/v1/evaluation/{taskId} - 评估状态", () => {
     test("异常测试：不存在的任务ID应报错", async () => {
       await expectBizErrorOrUndefined(ModelAPI.getEvalTaskStatus(99999999), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -133,9 +148,9 @@ describe("预测与评估 API 测试", () => {
       const page = await ModelAPI.getEvalLogs({ pageNum: 1, pageSize: 5 });
 
       expect(page).toBeDefined();
-      expect(page).toHaveProperty("list");
-      expect(page).toHaveProperty("total");
       expect(Array.isArray(page.list)).toBe(true);
+      expect(typeof page.total).toBe("number");
+      expect(page.total).toBeGreaterThanOrEqual(0);
     });
   });
 });

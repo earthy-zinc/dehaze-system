@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -180,13 +181,14 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 			clearFileType = dos.getExtension(req.ClearImage.Path)
 		}
 		itemFiles = append(itemFiles, datasetrepo.ItemFileCreate{
-			Type:     "clear",
-			Name:     req.ClearImage.Name,
-			Path:     req.ClearImage.Path,
-			URL:      req.ClearImage.URL,
-			Size:     req.ClearImage.Size,
-			MD5:      req.ClearImage.MD5,
-			FileType: clearFileType,
+			Type:      "clear",
+			Name:      req.ClearImage.Name,
+			Path:      req.ClearImage.Path,
+			URL:       req.ClearImage.URL,
+			Size:      req.ClearImage.Size,
+			MD5:       req.ClearImage.MD5,
+			FileType:  clearFileType,
+			SceneType: req.SceneType,
 		})
 	}
 
@@ -205,6 +207,7 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 			MD5:       hazyImg.MD5,
 			HazeLevel: hazyImg.HazeLevel, // 可为空，不再默认填充 "medium"
 			FileType:  fileType,
+			SceneType: req.SceneType,
 		})
 	}
 
@@ -263,31 +266,78 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 		logger.Warn("查询文件失败", zap.Error(err))
 	}
 
-	// 构建文件URL映射
+	// 构建文件信息映射
 	fileURLMap := make(map[int64]string)
-	for _, file := range files {
-		fileURLMap[int64(file.ID)] = utils.StringVal(file.URL)
+	fileInfoMap := make(map[int64]*model.SysFile)
+	for i := range files {
+		fileURLMap[int64(files[i].ID)] = utils.StringVal(files[i].URL)
+		fileInfoMap[int64(files[i].ID)] = &files[i]
 	}
 
 	imageUrls := make([]vo.ImageUrlVO, 0, len(createdItemFiles))
+	var clearImage *vo.ImageUrlVO
+	var sceneTypeStr, descriptionStr string
 	for _, itemFile := range createdItemFiles {
-		imageUrls = append(imageUrls, vo.ImageUrlVO{
+		url := fileURLMap[itemFile.FileID]
+		imageUrlVO := vo.ImageUrlVO{
 			ID:          itemFile.ID,
+			ItemID:      itemFile.ItemID,
+			DatasetID:   req.DatasetID,
 			Type:        itemFile.Type,
-			URL:         fileURLMap[itemFile.FileID],
-			OriginURL:   fileURLMap[itemFile.FileID],
+			URL:         url,
+			OriginURL:   url,
 			Description: utils.StringVal(itemFile.Description),
-		})
+			SceneType:   utils.StringVal(itemFile.SceneType),
+			HazeLevel:   utils.StringVal(itemFile.HazeLevel),
+		}
+
+		if fileInfo := fileInfoMap[itemFile.FileID]; fileInfo != nil {
+			imageUrlVO.FileName = fileInfo.Name
+			if size, parseErr := strconv.ParseInt(fileInfo.Size, 10, 64); parseErr == nil {
+				imageUrlVO.SizeBytes = size
+			}
+			if idx := strings.LastIndex(fileInfo.Name, "."); idx != -1 {
+				imageUrlVO.Format = fileInfo.Name[idx+1:]
+			}
+		}
+
+		if itemFile.Width != nil {
+			imageUrlVO.Width = *itemFile.Width
+		}
+		if itemFile.Height != nil {
+			imageUrlVO.Height = *itemFile.Height
+		}
+
+		if itemFile.Type == "clear" {
+			clearImage = &imageUrlVO
+		} else {
+			imageUrls = append(imageUrls, imageUrlVO)
+		}
+
+		if sceneTypeStr == "" && itemFile.SceneType != nil {
+			sceneTypeStr = utils.StringVal(itemFile.SceneType)
+		}
+		if descriptionStr == "" && itemFile.Description != nil {
+			descriptionStr = utils.StringVal(itemFile.Description)
+		}
+	}
+
+	imageCount := len(imageUrls)
+	if clearImage != nil {
+		imageCount++
 	}
 
 	return &vo.ImageItemVO{
-		ID:         itemID,
-		DatasetID:  req.DatasetID,
-		Name:       itemName,
-		ImageCount: len(imageUrls),
-		HazyImages: imageUrls,
-		CreateTime: time.Now().Format("2006-01-02 15:04:05"),
-		UpdateTime: time.Now().Format("2006-01-02 15:04:05"),
+		ID:          itemID,
+		DatasetID:   req.DatasetID,
+		Name:        itemName,
+		SceneType:   sceneTypeStr,
+		Description: descriptionStr,
+		ImageCount:  imageCount,
+		ClearImage:  clearImage,
+		HazyImages:  imageUrls,
+		CreateTime:  time.Now().Format("2006-01-02 15:04:05"),
+		UpdateTime:  time.Now().Format("2006-01-02 15:04:05"),
 	}, nil
 }
 
@@ -423,6 +473,9 @@ func (dos *DatasetOperationService) DeleteDatasetItemCascade(ctx context.Context
 			return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据项不存在")
 		}
 		return common.WrapBizError(common.DATABASE_ERROR, "查询数据项失败", err)
+	}
+	if item == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据项不存在")
 	}
 
 	datasetID := item.DatasetID

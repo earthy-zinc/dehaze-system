@@ -12,11 +12,14 @@ services:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=${DEHAZE_PASSWORD}
+      - MYSQL_DATABASE=dehaze
       - TZ=Asia/Shanghai
     volumes:
       - mysql-data:/var/lib/mysql
       - mysql-logs:/var/log/mysql
       - mysql-config:/etc/mysql/conf.d
+      - ./config/sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./config/sql/data.sql:/docker-entrypoint-initdb.d/02_data.sql:ro
     command: --character-set-server=utf8mb4
       --collation-server=utf8mb4_general_ci
     privileged: true

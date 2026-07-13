@@ -79,8 +79,6 @@ describe("图像输入历史记录 API 测试", () => {
       const page = await ImageInputHistoryAPI.getPage({ pageNum: 1, pageSize: 20 });
 
       expect(page).toBeDefined();
-      expect(page).toHaveProperty("list");
-      expect(page).toHaveProperty("total");
       expect(Array.isArray(page.list)).toBe(true);
       expect(typeof page.total).toBe("number");
 
@@ -89,12 +87,13 @@ describe("图像输入历史记录 API 测试", () => {
 
       // 验证列表项结构
       if (page.list.length > 0) {
-        const item = page.list[0];
-        expect(item).toHaveProperty("id");
-        expect(item).toHaveProperty("originalImageUrl");
-        expect(item).toHaveProperty("status");
-        expect(item).toHaveProperty("inputSource");
-        expect(item).toHaveProperty("createTime");
+        const item = page.list[0]!;
+        expect(typeof item.id).toBe("number");
+        expect(item.id).toBeGreaterThan(0);
+        expect(typeof item.originalImageUrl).toBe("string");
+        expect(typeof item.status).toBe("number");
+        expect(typeof item.inputSource).toBe("string");
+        expect(typeof item.createTime).toBe("string");
       }
     });
 
@@ -124,22 +123,24 @@ describe("图像输入历史记录 API 测试", () => {
   });
 
   describe("GET /api/v1/image-input/history/{id} - 获取详情", () => {
-    test("正向测试：获取已创建的历史记录详情", async () => {
-      if (createdIds.length === 0) return;
+    test("正向测试：获取已创建的历史记录详情并验证字段值", async () => {
+      expect(createdIds.length).toBeGreaterThan(0);
 
-      const detail = await ImageInputHistoryAPI.getById(createdIds[0]);
+      const detail = await ImageInputHistoryAPI.getById(createdIds[0]!);
 
       expect(detail).toBeDefined();
       expect(detail.id).toBe(createdIds[0]);
-      expect(detail.originalImageUrl).toBeDefined();
-      expect(detail.status).toBeDefined();
-      expect(detail.inputSource).toBeDefined();
+      expect(detail.originalImageUrl).toBe("/images/test_haze.jpg");
+      expect(detail.algorithmName).toBe("DCP");
+      expect(detail.status).toBe(1);
+      expect(detail.inputSource).toBe("upload");
+      expect(typeof detail.createTime).toBe("string");
     });
 
     test("异常测试：访问不存在的记录应报错", async () => {
       await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(99999999), [
+        "A0401",
         "A0400",
-        "B0001",
         "ERR_BAD_REQUEST",
       ]);
     });
@@ -147,22 +148,22 @@ describe("图像输入历史记录 API 测试", () => {
 
   describe("PUT /api/v1/image-input/history/{id} - 更新记录", () => {
     test("正向测试：添加收藏标记", async () => {
-      if (createdIds.length === 0) return;
+      expect(createdIds.length).toBeGreaterThan(0);
 
       const updateForm: HistoryUpdateForm = { isFavorite: true };
-      await ImageInputHistoryAPI.update(createdIds[0], updateForm);
+      await ImageInputHistoryAPI.update(createdIds[0]!, updateForm);
 
-      const detail = await ImageInputHistoryAPI.getById(createdIds[0]);
+      const detail = await ImageInputHistoryAPI.getById(createdIds[0]!);
       expect(detail.isFavorite).toBe(true);
     });
 
     test("正向测试：取消收藏标记", async () => {
-      if (createdIds.length === 0) return;
+      expect(createdIds.length).toBeGreaterThan(0);
 
       const updateForm: HistoryUpdateForm = { isFavorite: false };
-      await ImageInputHistoryAPI.update(createdIds[0], updateForm);
+      await ImageInputHistoryAPI.update(createdIds[0]!, updateForm);
 
-      const detail = await ImageInputHistoryAPI.getById(createdIds[0]);
+      const detail = await ImageInputHistoryAPI.getById(createdIds[0]!);
       expect(detail.isFavorite).toBe(false);
     });
   });
@@ -184,8 +185,8 @@ describe("图像输入历史记录 API 测试", () => {
 
       // 验证已删除
       await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(id), [
+        "A0401",
         "A0400",
-        "B0001",
         "ERR_BAD_REQUEST",
       ]);
     });
@@ -217,8 +218,8 @@ describe("图像输入历史记录 API 测试", () => {
       // 验证已删除
       for (const id of batchIds) {
         await expectBizErrorOrUndefined(ImageInputHistoryAPI.getById(id), [
+          "A0401",
           "A0400",
-          "B0001",
           "ERR_BAD_REQUEST",
         ]);
       }

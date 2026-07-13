@@ -442,13 +442,13 @@ Authorization: Bearer <token>
 | **用户管理** | `/api/v1/users` | 用户 CRUD、导入导出 |
 | **角色管理** | `/api/v1/roles` | 角色 CRUD、权限分配 |
 | **菜单管理** | `/api/v1/menus` | 菜单 CRUD、路由配置 |
-| **部门管理** | `/api/v1/dept` | 部门树形管理 |
+| **部门管理** | `/api/v1/depts` | 部门树形管理 |
 | **字典管理** | `/api/v1/dict` | 字典类型与数据 |
 | **文件管理** | `/api/v1/files` | 文件上传下载 |
 | **数据集管理** | `/api/v1/datasets` | 数据集 CRUD |
 | **数据项管理** | `/api/v1/dataset-items` | 数据项上传、配对 |
 | **数据项图片** | `/api/v1/item-files` | 数据项图片管理 |
-| **算法管理** | `/api/v1/algorithm` | 算法配置 |
+| **算法管理** | `/api/v1/algorithms` | 算法配置 |
 
 ### 8.2 通用 CRUD 接口模板
 

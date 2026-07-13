@@ -14,11 +14,19 @@ from app.utils.datetime_utils import format_time
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# 菜单类型枚举（与设计文档保持一致）
-MENU_TYPE_CATALOG = 1  # 目录
-MENU_TYPE_MENU = 2     # 菜单
-MENU_TYPE_EXTLINK = 3  # 外链
-MENU_TYPE_BUTTON = 4   # 按钮
+# 菜单类型枚举（对齐 Java MenuTypeEnum）
+MENU_TYPE_MENU = 1      # 菜单
+MENU_TYPE_CATALOG = 2   # 目录
+MENU_TYPE_EXTLINK = 3   # 外链
+MENU_TYPE_BUTTON = 4    # 按钮
+
+# 整数 → 字符串枚举名（用于响应序列化，对齐 Java MenuTypeEnum 的 Jackson 序列化）
+MENU_TYPE_TO_NAME = {
+    MENU_TYPE_MENU: "MENU",
+    MENU_TYPE_CATALOG: "CATALOG",
+    MENU_TYPE_EXTLINK: "EXTLINK",
+    MENU_TYPE_BUTTON: "BUTTON",
+}
 
 # 路由缓存 Key
 ROUTE_CACHE_KEY = "menu:routes"
@@ -32,6 +40,9 @@ class MenuService:
         """
         获取菜单列表（树形结构）
 
+        对齐 Java listMenus：使用 TreeDataUtils.findRootIds 找出结果集中的根节点
+        （父ID不在当前结果集ID中的节点作为根），再从根节点构建树。
+
         Args:
             db: 数据库会话
             keywords: 搜索关键字（菜单名称）
@@ -40,7 +51,18 @@ class MenuService:
             菜单列表
         """
         menus = await menu_repository.get_list(db, keyword=keywords)
-        return MenuService._build_menu_tree(0, menus)
+        if not menus:
+            return []
+
+        # 对齐 Java TreeDataUtils.findRootIds：
+        # 收集结果集中的所有ID和父ID，父ID不在ID集合中的即为根
+        ids = {menu.id for menu in menus}
+        root_ids = {menu.parent_id for menu in menus if menu.parent_id not in ids}
+
+        tree: list[dict[str, Any]] = []
+        for root_id in root_ids:
+            tree.extend(MenuService._build_menu_tree(root_id, menus))
+        return tree
 
     @staticmethod
     def _build_menu_tree(parent_id: int, menus: list[SysMenu]) -> list[dict[str, Any]]:
@@ -61,7 +83,7 @@ class MenuService:
                     "id": menu.id,
                     "parentId": menu.parent_id,
                     "name": menu.name,
-                    "type": menu.type,
+                    "type": MENU_TYPE_TO_NAME.get(menu.type, str(menu.type)),
                     "path": menu.path,
                     "component": menu.component,
                     "perm": menu.perm,
@@ -128,65 +150,12 @@ class MenuService:
         return options
 
     @staticmethod
-    async def _validate_menu_data(db: AsyncSession, data: dict[str, Any], is_update: bool = False) -> None:
-        """
-        校验菜单数据
-
-        Args:
-            db: 数据库会话
-            data: 菜单数据
-            is_update: 是否为更新操作
-
-        Raises:
-            BusinessException: 校验失败
-        """
-        name = data.get("name", "")
-        parent_id = data.get("parentId", 0)
-        menu_type = data.get("type")
-        path = data.get("path", "")
-        component = data.get("component")
-        perm = data.get("perm")
-        menu_id = data.get("id")
-
-        # 1. 检查菜单名称唯一性（同一父级下）
-        if name:
-            exclude_id = menu_id if is_update else None
-            if await menu_repository.check_name_exists(db, name, parent_id, exclude_id=exclude_id):
-                raise BusinessException("同一父级下菜单名称已存在")
-
-        # 2. 校验父级菜单类型（按钮和外链不能作为父级）
-        if parent_id != 0:
-            parent_menu = await menu_repository.get_by_id(db, parent_id)
-            if not parent_menu:
-                raise BusinessException("父级菜单不存在")
-            if parent_menu.type == MENU_TYPE_BUTTON:
-                raise BusinessException("按钮类型不能作为父级菜单")
-            if parent_menu.type == MENU_TYPE_EXTLINK:
-                raise BusinessException("外链类型不能作为父级菜单")
-
-        # 3. 根据菜单类型校验必填字段
-        if menu_type == MENU_TYPE_MENU:
-            # 菜单类型必须配置路由地址
-            if not path:
-                raise BusinessException("菜单类型必须配置路由地址")
-            # 菜单类型必须配置组件路径
-            if not component:
-                raise BusinessException("菜单类型必须配置组件路径")
-
-        elif menu_type == MENU_TYPE_BUTTON:
-            # 按钮类型必须配置权限标识
-            if not perm:
-                raise BusinessException("按钮类型必须配置权限标识")
-
-        elif menu_type == MENU_TYPE_EXTLINK:
-            # 外链类型必须配置路由地址
-            if not path:
-                raise BusinessException("外链类型必须配置路由地址")
-
-    @staticmethod
     async def save_menu(db: AsyncSession, redis: Redis, data: dict[str, Any]) -> SysMenu:
         """
         保存菜单（新增/修改）
+
+        对齐 Java saveMenu：不做额外业务校验，使用 saveOrUpdate 语义
+        （ID 存在则更新，不存在则新增）。
 
         Args:
             db: 数据库会话
@@ -195,23 +164,18 @@ class MenuService:
 
         Returns:
             保存的菜单对象
-
-        Raises:
-            BusinessException: 校验失败或菜单不存在（更新时）
         """
         menu_id = data.get("id")
-        is_update = bool(menu_id)
 
-        # 业务规则校验
-        await MenuService._validate_menu_data(db, data, is_update)
-
-        # 检查菜单是否存在（更新时）
-        if is_update and menu_id is not None:
+        # saveOrUpdate 语义：ID 存在则查询已有记录，不存在则新建
+        menu = None
+        if menu_id:
             menu = await menu_repository.get_by_id(db, menu_id)
-            if not menu:
-                raise BusinessException("菜单不存在")
-        else:
+        is_new = menu is None
+        if is_new:
             menu = SysMenu()
+            if menu_id:
+                menu.id = menu_id
 
         # 设置菜单属性
         menu.parent_id = data.get("parentId", 0)
@@ -231,7 +195,7 @@ class MenuService:
         tree_path = await MenuService._generate_menu_tree_path(db, menu.parent_id)
         menu.tree_path = tree_path
 
-        # 根据类型处理特殊字段
+        # 根据类型处理特殊字段（对齐 Java saveMenu）
         if menu.type == MENU_TYPE_CATALOG:
             # 目录类型：根目录补全路径前缀，设置 component 为 "Layout"
             if menu.parent_id == 0 and menu.path and not menu.path.startswith("/"):
@@ -241,13 +205,12 @@ class MenuService:
             # 外链类型：清空 component
             menu.component = None
 
-        if is_update:
-            # 更新
-            merged = await menu_repository.update_menu(db, menu)
+        if is_new:
+            merged = await menu_repository.create_menu(db, menu)
         else:
-            # 新增
-            created = await menu_repository.create_menu(db, menu)
-            merged = created
+            merged = await menu_repository.update_menu(db, menu)
+
+        await db.commit()
 
         # 清除缓存
         await MenuService._clear_menu_cache(redis)
@@ -396,6 +359,7 @@ class MenuService:
             raise BusinessException("菜单不存在")
 
         menu.visible = visible
+        await db.commit()
 
         # 清除缓存
         await MenuService._clear_menu_cache(redis)
@@ -424,7 +388,7 @@ class MenuService:
             menu_id: 菜单ID
 
         Returns:
-            菜单表单数据
+            菜单表单数据（菜单不存在时返回 None，对齐 Java getMenuForm）
         """
         menu = await menu_repository.get_by_id(db, menu_id)
 
@@ -435,7 +399,7 @@ class MenuService:
             "id": menu.id,
             "parentId": menu.parent_id,
             "name": menu.name,
-            "type": menu.type,
+            "type": MENU_TYPE_TO_NAME.get(menu.type, str(menu.type)),
             "path": menu.path,
             "component": menu.component,
             "perm": menu.perm,
@@ -452,24 +416,19 @@ class MenuService:
         """
         删除菜单（级联删除子菜单和角色关联）
 
+        对齐 Java deleteMenu：不检查菜单是否存在，直接执行删除（幂等）。
+
         Args:
             db: 数据库会话
             redis: Redis 客户端
             menu_id: 菜单ID
-
-        Raises:
-            BusinessException: 菜单不存在
         """
-        menu = await menu_repository.get_by_id(db, menu_id)
-
-        if not menu:
-            raise BusinessException("菜单不存在")
-
         # 1. 删除角色-菜单关联
         await menu_repository.delete_role_menus_by_menu_id(db, menu_id)
 
         # 2. 删除菜单及其子菜单
         await menu_repository.delete_menu_and_children(db, menu_id)
+        await db.commit()
 
         # 3. 清除缓存
         await MenuService._clear_menu_cache(redis)

@@ -5,20 +5,19 @@
 
 /**
  * 从错误对象中提取业务错误信息
- * 响应拦截器会将业务错误直接reject为{code, msg}对象
- * 但axios错误会包含response.data
+ *
+ * 优先从 axios 错误的 response.data 中提取业务错误码和消息，
+ * 这样无论后端返回 HTTP 200（业务错误码在 body 中）还是 HTTP 400（业务错误码也在 body 中），
+ * 都能正确提取真实的业务错误码。
  */
 export function getBizError(error: any): { code?: string; msg?: string } {
-  // 如果error本身有code属性且是字符串，说明是响应拦截器处理过的业务错误
-  if (error && typeof error.code === "string") {
-    return error;
-  }
-  // 尝试从axios错误中获取
+  // 优先从 axios 错误的 response.data 中提取业务错误
+  // 适用于：HTTP 400/422 等场景（Python 后端），以及 SDK 拦截器构造的 mock error（HTTP 200 业务错误）
   if (error?.response?.data) {
     return error.response.data;
   }
-  // 如果是axios错误，可能有code属性（如ERR_BAD_REQUEST）
-  if (error?.code) {
+  // 如果 error 本身有 code 属性且是字符串（如网络错误 ERR_NETWORK）
+  if (error && typeof error.code === "string") {
     return { code: error.code, msg: error.message };
   }
   return error || {};

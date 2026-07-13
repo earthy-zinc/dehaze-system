@@ -1,19 +1,27 @@
 """
-WebSocket 服务
+WebSocket 服务（跨 Worker 支持）
 
-使用 FastAPI 原生 WebSocket 实现实时通信
+使用 Redis Pub/Sub 实现多 Worker 间的消息广播：
+- 每个 Worker 维护本地 WebSocket 连接
+- send_personal / broadcast 通过 Redis Pub/Sub 跨 Worker 投递
+- 在线用户列表通过 Redis sorted set + 心跳维护
+
+降级策略：Redis 不可用时自动降级为本地单 Worker 模式
 """
 
 import asyncio
 import json
 import logging
+import time
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 from app.config import settings
+from app.dependencies.redis import get_redis_client
 from fastapi import WebSocket, WebSocketDisconnect
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTError
+from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 
@@ -32,33 +40,51 @@ class WebSocketConnection:
         }
 
 
-class ConnectionManager:
+class DistributedConnectionManager:
     """
-    WebSocket 连接管理器
+    跨 Worker 的 WebSocket 连接管理器
 
-    管理所有活跃的 WebSocket 连接，支持：
-    - 用户连接/断开
-    - 广播消息
-    - 定向推送
+    - 本地连接：dict[user_id, list[WebSocketConnection]]，仅本 Worker 的连接
+    - 跨 Worker 通信：Redis Pub/Sub 频道 dehaze:ws:broadcast
+    - 在线用户：Redis sorted set dehaze:ws:online_users，score=心跳时间戳
     """
 
     def __init__(self):
-        # user_id -> list[WebSocketConnection]
-        self._connections: dict[int, list[WebSocketConnection]] = {}
+        self._local_connections: dict[int, list[WebSocketConnection]] = {}
         self._lock = asyncio.Lock()
+        self._redis: Optional[Redis] = None
+        self._pubsub_task: Optional[asyncio.Task] = None
+        self._heartbeat_task: Optional[asyncio.Task] = None
+        self._started = False
+
+    async def start(self, redis: Redis):
+        """启动跨 Worker 通信（在 lifespan 中调用）"""
+        if self._started:
+            return
+        self._redis = redis
+        self._started = True
+        self._pubsub_task = asyncio.create_task(self._subscribe_loop())
+        self._heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+        logger.info("WebSocket 跨 Worker 通信已启动")
+
+    async def stop(self):
+        """停止跨 Worker 通信（在 lifespan 中调用）"""
+        self._started = False
+        for task in (self._pubsub_task, self._heartbeat_task):
+            if task:
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+        self._pubsub_task = None
+        self._heartbeat_task = None
+        logger.info("WebSocket 跨 Worker 通信已停止")
+
+    # ===== 连接管理 =====
 
     async def connect(self, websocket: WebSocket, user_id: int, username: str = "") -> bool:
-        """
-        接受 WebSocket 连接
-
-        Args:
-            websocket: WebSocket 连接对象
-            user_id: 用户 ID
-            username: 用户名
-
-        Returns:
-            是否连接成功
-        """
+        """接受 WebSocket 连接"""
         try:
             await websocket.accept()
             conn = WebSocketConnection(
@@ -68,46 +94,139 @@ class ConnectionManager:
             )
 
             async with self._lock:
-                if user_id not in self._connections:
-                    self._connections[user_id] = []
-                self._connections[user_id].append(conn)
+                if user_id not in self._local_connections:
+                    self._local_connections[user_id] = []
+                self._local_connections[user_id].append(conn)
 
-            logger.info(
-                f"WebSocket 连接成功: user_id={user_id}, username={username}")
+            # 更新 Redis 在线状态
+            await self._update_online_status(user_id)
+
+            logger.info(f"WebSocket 连接成功: user_id={user_id}, username={username}")
             return True
         except Exception as e:
             logger.error(f"WebSocket 连接失败: {e}")
             return False
 
     async def disconnect(self, websocket: WebSocket, user_id: int):
-        """
-        断开 WebSocket 连接
+        """断开 WebSocket 连接"""
+        await self._disconnect_local(websocket, user_id)
 
-        Args:
-            websocket: WebSocket 连接对象
-            user_id: 用户 ID
-        """
+        # 如果本 Worker 已无该用户的连接，由心跳机制负责清理 Redis 在线状态
         async with self._lock:
-            if user_id in self._connections:
-                self._connections[user_id] = [
-                    conn for conn in self._connections[user_id]
-                    if conn.websocket != websocket
-                ]
-                if not self._connections[user_id]:
-                    del self._connections[user_id]
+            has_local = user_id in self._local_connections and self._local_connections[user_id]
+
+        if not has_local:
+            # 主动从 Redis 清除（延迟，防止重连瞬间被清）
+            asyncio.create_task(self._delayed_cleanup_online(user_id))
 
         logger.info(f"WebSocket 断开连接: user_id={user_id}")
 
-    async def send_personal(self, user_id: int, message: dict[str, Any]):
-        """
-        向指定用户发送消息（所有连接）
-
-        Args:
-            user_id: 用户 ID
-            message: 消息内容
-        """
+    async def _disconnect_local(self, websocket: WebSocket, user_id: int):
+        """清理本地连接"""
         async with self._lock:
-            connections = self._connections.get(user_id, [])[:]
+            if user_id in self._local_connections:
+                self._local_connections[user_id] = [
+                    conn for conn in self._local_connections[user_id]
+                    if conn.websocket != websocket
+                ]
+                if not self._local_connections[user_id]:
+                    del self._local_connections[user_id]
+
+    async def _delayed_cleanup_online(self, user_id: int):
+        """延迟清理 Redis 在线状态（5 秒后，防止快速重连被误清）"""
+        await asyncio.sleep(5)
+        async with self._lock:
+            has_local = user_id in self._local_connections and self._local_connections[user_id]
+        if not has_local and self._redis:
+            try:
+                await self._redis.zrem(settings.WS_ONLINE_KEY, str(user_id))
+            except Exception as e:
+                logger.warning(f"清理 Redis 在线状态失败: user_id={user_id}, error={e}")
+
+    # ===== 消息投递 =====
+
+    async def send_personal(self, user_id: int, message: dict[str, Any]):
+        """向指定用户发送消息（跨 Worker）"""
+        if self._redis and self._started:
+            try:
+                msg = json.dumps({
+                    "target_user_id": user_id,
+                    "message": message,
+                }, ensure_ascii=False)
+                await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
+                return
+            except Exception as e:
+                logger.warning(f"Redis Pub/Sub 发布失败，降级为本地发送: {e}")
+
+        # 降级：仅本地发送
+        await self._send_to_local_user(user_id, message)
+
+    async def broadcast(self, message: dict[str, Any], exclude_user: int | None = None):
+        """广播消息（跨 Worker）"""
+        if self._redis and self._started:
+            try:
+                msg = json.dumps({
+                    "exclude_user": exclude_user,
+                    "message": message,
+                }, ensure_ascii=False)
+                await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
+                return
+            except Exception as e:
+                logger.warning(f"Redis Pub/Sub 广播失败，降级为本地广播: {e}")
+
+        await self._broadcast_local(message, exclude_user)
+
+    async def get_online_users(self) -> list[dict[str, Any]]:
+        """获取在线用户列表（跨 Worker）"""
+        if self._redis and self._started:
+            try:
+                now = time.time()
+                min_score = now - settings.WS_ONLINE_TTL
+                raw = await self._redis.zrangebyscore(
+                    settings.WS_ONLINE_KEY, min_score, now
+                )
+                # 从本地连接补充用户名信息
+                user_name_map = {}
+                async with self._lock:
+                    for uid, conns in self._local_connections.items():
+                        if conns:
+                            user_name_map[uid] = conns[0].username
+
+                users = []
+                for uid_str in raw:
+                    try:
+                        uid = int(uid_str)
+                        users.append({
+                            "user_id": uid,
+                            "username": user_name_map.get(uid, ""),
+                        })
+                    except (ValueError, TypeError):
+                        pass
+                return users
+            except Exception as e:
+                logger.warning(f"获取在线用户失败，降级为本地查询: {e}")
+
+        # 降级：仅本地查询
+        async with self._lock:
+            users = []
+            seen = set()
+            for user_id, connections in self._local_connections.items():
+                if user_id not in seen and connections:
+                    seen.add(user_id)
+                    users.append(connections[0].to_dict())
+            return users
+
+    @property
+    def online_count(self) -> int:
+        """本地在线用户数"""
+        return len(self._local_connections)
+
+    # ===== 内部方法 =====
+
+    async def _send_to_local_user(self, user_id: int, message: dict[str, Any]):
+        """向本 Worker 的本地连接发送消息"""
+        async with self._lock:
+            connections = self._local_connections.get(user_id, [])[:]
 
         if not connections:
             return
@@ -122,21 +241,14 @@ class ConnectionManager:
                 logger.warning(f"发送消息失败: user_id={user_id}, error={e}")
                 disconnected.append(conn.websocket)
 
-        # 清理断开的连接
         for ws in disconnected:
-            await self.disconnect(ws, user_id)
+            await self._disconnect_local(ws, user_id)
 
-    async def broadcast(self, message: dict[str, Any], exclude_user: int | None = None):
-        """
-        广播消息给所有用户
-
-        Args:
-            message: 消息内容
-            exclude_user: 排除的用户 ID
-        """
+    async def _broadcast_local(self, message: dict[str, Any], exclude_user: int | None = None):
+        """向本 Worker 的所有本地连接广播"""
         async with self._lock:
             all_connections: list[WebSocketConnection] = []
-            for user_id, conns in self._connections.items():
+            for user_id, conns in self._local_connections.items():
                 if user_id != exclude_user:
                     all_connections.extend(conns)
 
@@ -151,30 +263,88 @@ class ConnectionManager:
             except Exception as e:
                 logger.warning(f"广播消息失败: user_id={conn.user_id}, error={e}")
 
-    async def get_online_users(self) -> list[dict[str, Any]]:
-        """
-        获取在线用户列表
+    async def _subscribe_loop(self):
+        """订阅 Redis Pub/Sub 频道，接收跨 Worker 消息"""
+        while self._started:
+            try:
+                pubsub = self._redis.pubsub()
+                await pubsub.subscribe(settings.WS_REDIS_CHANNEL)
+                logger.info(f"已订阅 WebSocket 频道: {settings.WS_REDIS_CHANNEL}")
 
-        Returns:
-            在线用户信息列表
-        """
-        async with self._lock:
-            users = []
-            seen = set()
-            for user_id, connections in self._connections.items():
-                if user_id not in seen and connections:
-                    seen.add(user_id)
-                    users.append(connections[0].to_dict())
-            return users
+                async for message in pubsub.listen():
+                    if not self._started:
+                        break
+                    if message["type"] == "message":
+                        data = message["data"]
+                        if isinstance(data, bytes):
+                            data = data.decode("utf-8")
+                        await self._handle_pubsub_message(data)
 
-    @property
-    def online_count(self) -> int:
-        """在线用户数"""
-        return len(self._connections)
+                await pubsub.unsubscribe(settings.WS_REDIS_CHANNEL)
+                await pubsub.aclose()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"WebSocket Pub/Sub 异常: {e}, 3秒后重连")
+                await asyncio.sleep(3)
+
+    async def _handle_pubsub_message(self, data: str):
+        """处理 Pub/Sub 消息"""
+        try:
+            msg = json.loads(data)
+            target_user_id = msg.get("target_user_id")
+            message_content = msg.get("message", {})
+            exclude_user = msg.get("exclude_user")
+
+            if target_user_id is not None:
+                # 定向消息：只发给本 Worker 的本地连接
+                await self._send_to_local_user(target_user_id, message_content)
+            else:
+                # 广播消息：发给所有本地连接
+                await self._broadcast_local(message_content, exclude_user)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Pub/Sub 消息解析失败: {e}")
+        except Exception as e:
+            logger.warning(f"处理 Pub/Sub 消息失败: {e}")
+
+    async def _heartbeat_loop(self):
+        """心跳循环：定期更新本 Worker 连接的用户的在线状态"""
+        while self._started:
+            try:
+                await asyncio.sleep(settings.WS_HEARTBEAT_INTERVAL)
+
+                async with self._lock:
+                    user_ids = list(self._local_connections.keys())
+
+                if user_ids and self._redis:
+                    now = time.time()
+                    pipe = self._redis.pipeline()
+                    for uid in user_ids:
+                        pipe.zadd(settings.WS_ONLINE_KEY, {str(uid): now})
+                    # 清理过期用户
+                    pipe.zremrangebyscore(
+                        settings.WS_ONLINE_KEY, 0, now - settings.WS_ONLINE_TTL
+                    )
+                    await pipe.execute()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.warning(f"WebSocket 心跳失败: {e}")
+
+    async def _update_online_status(self, user_id: int):
+        """更新单个用户的在线状态"""
+        if self._redis:
+            try:
+                await self._redis.zadd(
+                    settings.WS_ONLINE_KEY,
+                    {str(user_id): time.time()},
+                )
+            except Exception as e:
+                logger.warning(f"更新 Redis 在线状态失败: user_id={user_id}, error={e}")
 
 
 # 全局连接管理器
-manager = ConnectionManager()
+manager = DistributedConnectionManager()
 
 
 class WebSocketService:
@@ -182,15 +352,7 @@ class WebSocketService:
 
     @staticmethod
     async def verify_token(token: str) -> dict[str, Any] | None:
-        """
-        验证 JWT Token
-
-        Args:
-            token: JWT Token 字符串
-
-        Returns:
-            解码后的 payload，验证失败返回 None
-        """
+        """验证 JWT Token"""
         if not token:
             return None
 
@@ -210,30 +372,20 @@ class WebSocketService:
 
     @staticmethod
     async def broadcast_shutdown_notification():
-        """
-        广播服务器关闭通知
-
-        通知所有连接的客户端服务器即将关闭
-        """
+        """广播服务器关闭通知（跨 Worker）"""
         try:
             await manager.broadcast({
                 "type": "server_shutdown",
                 "message": "服务器正在关闭，请保存工作",
                 "reconnect": False,
             })
-            logger.info(f"已广播关闭通知给 {manager.online_count} 个用户")
+            logger.info("已广播关闭通知")
         except Exception as e:
             logger.error(f"广播关闭通知失败: {e}")
 
     @staticmethod
     async def handle_connection(websocket: WebSocket, token: str):
-        """
-        处理 WebSocket 连接
-
-        Args:
-            websocket: WebSocket 连接对象
-            token: JWT Token
-        """
+        """处理 WebSocket 连接"""
         # 验证 Token
         payload = await WebSocketService.verify_token(token)
         if not payload:
@@ -263,7 +415,6 @@ class WebSocketService:
             return
 
         try:
-            # 发送连接成功消息
             await websocket.send_json({
                 "type": "connected",
                 "message": f"用户 {username} 连接成功",
@@ -288,7 +439,6 @@ class WebSocketService:
             logger.error(f"WebSocket 异常: user_id={user_id}, error={e}")
         finally:
             await manager.disconnect(websocket, user_id)
-            # 通知其他用户
             await manager.broadcast({
                 "type": "user_offline",
                 "user_id": user_id,
@@ -302,15 +452,7 @@ class WebSocketService:
         username: str,
         data: str
     ):
-        """
-        处理 WebSocket 消息
-
-        Args:
-            websocket: WebSocket 连接对象
-            user_id: 用户 ID
-            username: 用户名
-            data: 消息数据
-        """
+        """处理 WebSocket 消息"""
         try:
             message = json.loads(data)
             msg_type = message.get("type")
@@ -363,3 +505,17 @@ class WebSocketService:
                 "type": "error",
                 "message": "处理消息失败"
             })
+
+
+async def init_websocket_manager():
+    """初始化 WebSocket 管理器（在 lifespan 中调用）"""
+    redis = await get_redis_client()
+    if redis:
+        await manager.start(redis)
+    else:
+        logger.warning("Redis 不可用，WebSocket 以本地单 Worker 模式运行")
+
+
+async def close_websocket_manager():
+    """关闭 WebSocket 管理器（在 lifespan 中调用）"""
+    await manager.stop()

@@ -132,7 +132,11 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 		return
 	}
 
-	result := api.fileService.CheckFile(md5)
+	result, err := api.fileService.CheckFile(md5)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	common.OkWithData(result, c)
 }
 

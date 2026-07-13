@@ -2,13 +2,14 @@
 评估 API 路由 —— 去雾效果评估
 
 POST /api/v1/evaluation          → 执行效果评估（PSNR/SSIM/LPIPS/NIQE/Entropy）
-GET  /api/v1/evaluation/{taskId} → 查询评估任务状态（通过日志ID）
 GET  /api/v1/evaluation/logs     → 评估日志列表
+GET  /api/v1/evaluation/{taskId} → 查询评估任务状态（通过日志ID）
 """
 
 import json
 import logging
 import time
+from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -18,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.result import Result, success, error
 from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.dependencies.auth import get_current_user, UserContext
 from app.database import get_db
 from app.models.entity.sys_log import SysEvalLog
@@ -57,8 +59,9 @@ def _is_qualified(metrics: dict[str, float]) -> bool:
 class EvaluationRequest(BaseModel):
     """评估请求"""
     algorithmId: int = Field(description="算法ID")
-    predUrl: str = Field(description="预测结果图片URL")
-    gtUrl: str = Field(description="Ground Truth 参考图片URL")
+    predFileId: Optional[int] = Field(default=None, description="预测结果文件ID")
+    gtFileId: Optional[int] = Field(default=None, description="Ground Truth参考图片文件ID")
+    params: Optional[str] = Field(default=None, description="评估参数(JSON)")
 
 
 class EvaluationResponse(BaseModel):
@@ -67,6 +70,14 @@ class EvaluationResponse(BaseModel):
     metrics: dict[str, float] = Field(description="评估指标 {psnr, ssim, lpips, niqe, entropy}")
     qualified: bool = Field(default=False, description="是否合格（基于 PSNR≥30/SSIM≥0.8/LPIPS≤0.3/NIQE≤5.0）")
     time: int = Field(default=0, description="处理时间(毫秒)")
+
+
+def _resolve_file_url(file_id: Optional[int], file_type: str) -> str:
+    """根据文件ID构造下载URL（与Java resolveFileUrl一致）"""
+    if file_id is not None:
+        return f"/api/v1/files/download/{file_id}"
+    label = "预测" if file_type == "pred" else "参考"
+    raise BusinessException(f"缺少{label}图片")
 
 
 @router.post("", response_model=Result[EvaluationResponse])
@@ -82,11 +93,18 @@ async def evaluate(
     """
     logger.info(f"评估请求: user={user.username}, algorithmId={body.algorithmId}")
 
+    # 1. 校验算法存在（与Java一致）
+    await prediction_service._get_algorithm(body.algorithmId)
+
+    # 2. 解析文件URL
+    pred_url = _resolve_file_url(body.predFileId, "pred")
+    gt_url = _resolve_file_url(body.gtFileId, "gt")
+
     start = time.time()
     try:
         # 下载预测图和参考图
-        pred_bytes = await prediction_service._download_image(body.predUrl)
-        gt_bytes = await prediction_service._download_image(body.gtUrl)
+        pred_bytes = await prediction_service._download_image(pred_url)
+        gt_bytes = await prediction_service._download_image(gt_url)
 
         # 计算图片 MD5
         from app.utils.file import calculate_bytes_md5
@@ -110,9 +128,9 @@ async def evaluate(
         log_id = await _write_eval_log(
             algorithm_id=body.algorithmId,
             pred_md5=pred_md5,
-            pred_url=body.predUrl,
+            pred_url=pred_url,
             gt_md5=gt_md5,
-            gt_url=body.gtUrl,
+            gt_url=gt_url,
             result=metrics,
             time_ms=elapsed,
         )
@@ -124,6 +142,8 @@ async def evaluate(
             time=elapsed,
         ))
 
+    except BusinessException:
+        raise
     except FileNotFoundError as e:
         return error(f"图片文件不存在: {e}", ResultCode.RESOURCE_NOT_FOUND.code)
     except Exception as e:
@@ -171,27 +191,9 @@ class EvaluationLogVO(BaseModel):
     gtUrl: Optional[str] = Field(default=None, validation_alias="gt_url", serialization_alias="gtUrl", description="GT图URL")
     time: Optional[int] = Field(default=None, description="评估耗时(秒)")
     result: Optional[dict] = Field(default=None, description="评估指标 JSON")
-    createTime: Optional[str] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
+    createTime: Optional[datetime] = Field(default=None, validation_alias="create_time", serialization_alias="createTime", description="创建时间")
 
     model_config = {"populate_by_name": True}
-
-
-@router.get("/{task_id}", response_model=Result[EvaluationLogVO], summary="查询评估任务状态")
-async def get_evaluation_task(
-    task_id: int,
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    查询评估任务状态（通过日志ID查询）
-
-    文档中的 taskId 对应 sys_eval_log.id
-    """
-    stmt = select(SysEvalLog).where(SysEvalLog.id == task_id)
-    result = await db.execute(stmt)
-    log = result.scalar_one_or_none()
-    if not log:
-        return error("评估任务不存在", ResultCode.EVALUATION_TASK_NOT_FOUND.code)
-    return success(log)
 
 
 @router.get("/logs", response_model=Result[PageResult[EvaluationLogVO]], summary="评估日志列表")
@@ -226,3 +228,21 @@ async def list_evaluation_logs(
         }
         log_list.append(log_dict)
     return success(PageResult(list=log_list, total=total))
+
+
+@router.get("/{task_id}", response_model=Result[EvaluationLogVO], summary="查询评估任务状态")
+async def get_evaluation_task(
+    task_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    查询评估任务状态（通过日志ID查询）
+
+    文档中的 taskId 对应 sys_eval_log.id
+    """
+    stmt = select(SysEvalLog).where(SysEvalLog.id == task_id)
+    result = await db.execute(stmt)
+    log = result.scalar_one_or_none()
+    if not log:
+        return error("评估任务不存在", ResultCode.SYSTEM_EXECUTION_ERROR.code)
+    return success(log)

@@ -3,6 +3,7 @@ package api
 import (
 	"strconv"
 
+	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -17,6 +18,33 @@ type SysTaskApi struct {
 
 func NewSysTaskApi(taskService *taskservice.TaskService, taskRepo taskrepo.ITaskRepository) *SysTaskApi {
 	return &SysTaskApi{taskService: taskService, taskRepo: taskRepo}
+}
+
+// CreateTask 创建任务
+// 统一任务接口：同步创建任务记录（PENDING），异步执行具体策略
+// @Summary 创建任务
+// @Tags 任务接口
+// @Accept application/json
+// @Produce application/json
+// @Param form body bo.ExportTaskCreateForm true "任务创建表单"
+// @Success 200 {object} common.Response{data=vo.TaskVO}
+// @Router /api/v1/tasks [post]
+func (api *SysTaskApi) CreateTask(c *gin.Context) {
+	var form bo.ExportTaskCreateForm
+	if err := c.ShouldBindJSON(&form); err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	userID := getCurrentUserID(c)
+	task, err := api.taskService.CreateExportTask(form, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+
+	taskVO := api.taskService.ConvertToTaskVO(task)
+	common.OkWithDetailed(taskVO, "任务创建成功", c)
 }
 
 // GetTaskPage 任务分页列表
@@ -42,7 +70,14 @@ func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithData(task, c)
+
+	if task == nil {
+		common.OkWithData(nil, c)
+		return
+	}
+
+	taskVO := api.taskService.ConvertToTaskVO(task)
+	common.OkWithData(taskVO, c)
 }
 
 // CancelTask 取消任务

@@ -51,7 +51,7 @@ class ImageInputHistoryAPI {
     return request<any, number>({
       url: "/api/v1/image-input/history/batch",
       method: "delete",
-      data: ids,
+      data: { ids },
     });
   }
 

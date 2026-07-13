@@ -22,6 +22,7 @@ from sqlalchemy import select
 from app.database import async_session_factory
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
+from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.repository.pred_eval_log_repository import pred_log_repository
 from app.utils.file import calculate_bytes_md5
@@ -236,7 +237,7 @@ class PredictionService:
             )
             algorithm = result.scalar_one_or_none()
             if algorithm is None:
-                raise ValueError(f"算法不存在: id={algorithm_id}")
+                raise BusinessException("请求资源不存在: 算法不存在")
             return algorithm
 
     async def _download_image(self, url: str) -> io.BytesIO:

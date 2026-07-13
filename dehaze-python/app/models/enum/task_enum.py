@@ -6,12 +6,12 @@ from enum import Enum
 
 
 class TaskStatus(str, Enum):
-    """任务状态枚举"""
-    PENDING = 'pending'
-    PROCESSING = 'processing'
-    COMPLETED = 'completed'
-    FAILED = 'failed'
-    CANCELLED = 'cancelled'
+    """任务状态枚举（与 Java TaskConstants 保持一致，使用大写值）"""
+    PENDING = 'PENDING'
+    PROCESSING = 'PROCESSING'
+    COMPLETED = 'COMPLETED'
+    FAILED = 'FAILED'
+    CANCELLED = 'CANCELLED'
 
 
 class TaskType(str, Enum):

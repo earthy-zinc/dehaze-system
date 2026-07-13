@@ -9,8 +9,8 @@ from app.core.result import Result, error, success
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.schema.file import FilePageVO, FileUploadResultVO, FileVO
-from app.service.file_service import FileService, validate_md5_format
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from app.service.file_service import FileService
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -52,6 +52,7 @@ def _validate_file(file: UploadFile) -> tuple[bool, ResultCode | None, str]:
 )
 async def upload_file(
     file: UploadFile = File(..., description="要上传的文件"),
+    modelId: Optional[int] = Form(default=None, description="模型ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FileUploadResultVO]:
     # 校验文件
@@ -85,7 +86,6 @@ async def upload_file(
                 name=file_info.name,
                 type=file_info.type,
                 size=file_info.size,
-                sizeBytes=file_info.size_bytes,
                 url=file_info.url,
                 path=file_info.path,
                 objectName=file_info.object_name,
@@ -104,19 +104,29 @@ async def upload_file(
 @router.get(
     "/check",
     summary="文件校验",
-    description="根据MD5值校验文件是否已存在",
-    response_model=Result[bool],
+    description="根据MD5值校验文件是否已存在，存在则返回文件信息",
+    response_model=Result[FileVO],
 )
 async def check_file(
-    md5: str = Query(..., min_length=32, max_length=32, description="文件MD5值"),
+    md5: str = Query(..., description="文件MD5值"),
     db: AsyncSession = Depends(get_db),
-) -> Result[bool]:
-    # MD5 格式校验
-    if not validate_md5_format(md5):
-        return error("MD5格式无效，必须为32位十六进制字符串", ResultCode.FILE_MD5_INVALID.code)
-
-    exists = await FileService.check_file_exists(db, md5)
-    return success(data=exists)
+) -> Result[FileVO]:
+    file_info = await FileService.get_file_by_md5(db, md5)
+    if not file_info:
+        return success(data=None)
+    return success(
+        data=FileVO(
+            id=file_info.id,
+            name=file_info.name,
+            type=file_info.type,
+            size=file_info.size,
+            url=file_info.url,
+            path=file_info.path,
+            objectName=file_info.object_name,
+            md5=file_info.md5,
+            createTime=file_info.create_time,
+        )
+    )
 
 
 @router.get(
@@ -224,7 +234,7 @@ async def get_file_info(
     file_info = await FileService.get_file_by_id(db, file_id)
 
     if not file_info:
-        return error(ResultCode.FILE_NOT_FOUND.msg, ResultCode.FILE_NOT_FOUND.code)
+        return success(data=None)
 
     return success(
         data=FileVO(

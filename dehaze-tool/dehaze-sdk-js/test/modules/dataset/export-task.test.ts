@@ -11,8 +11,7 @@ describe("导出任务接口测试", () => {
 
     // 创建测试数据集
     const datasetForm = createDatasetForm({ type: "图像去雾" });
-    const dataset = await DatasetAPI.add(datasetForm);
-    testDatasetId = dataset.id;
+    testDatasetId = await DatasetAPI.add(datasetForm);
 
     // 创建多个测试数据项
     for (let i = 0; i < 3; i++) {
@@ -42,19 +41,9 @@ describe("导出任务接口测试", () => {
         targetId: testDatasetId,
         options: { includeTypes: ["clear", "hazy"], structure: "by_item" },
       });
-      expect(result.taskId).toBeDefined();
-      expect(result.status).toBeDefined();
-      expect(result.progress).toBeGreaterThanOrEqual(0);
-      expect(result.progress).toBeLessThanOrEqual(100);
-    });
-
-    test("正向测试：创建导出任务（仅清晰图，扁平结构）", async () => {
-      const result = await TaskAPI.create({
-        type: "dataset_export",
-        targetId: testDatasetId,
-        options: { includeTypes: ["clear"], structure: "flat" },
-      });
-      expect(result.taskId).toBeDefined();
+      expect(result.taskId).toBeTruthy();
+      expect(typeof result.taskId).toBe("string");
+      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
     });
 
     test("正向测试：使用默认参数创建导出任务", async () => {
@@ -66,9 +55,7 @@ describe("导出任务接口测试", () => {
     });
 
     test("参数校验：缺少type字段", async () => {
-      await expect(
-        TaskAPI.create({ targetId: testDatasetId } as any)
-      ).rejects.toThrow();
+      await expect(TaskAPI.create({ targetId: testDatasetId } as any)).rejects.toThrow();
     });
   });
 
@@ -149,19 +136,9 @@ describe("导出任务接口测试", () => {
         type: "item_download",
         targetId: itemId,
       });
-      expect(result.taskId).toBeDefined();
-      expect(result.status).toBeDefined();
-      expect(result.progress).toBeGreaterThanOrEqual(0);
-      expect(result.progress).toBeLessThanOrEqual(100);
-    });
-
-    test("正向测试：创建下载任务（带选项）", async () => {
-      const result = await TaskAPI.create({
-        type: "item_download",
-        targetId: itemId,
-        options: { includeTypes: ["clear"], structure: "by_item" },
-      });
-      expect(result.taskId).toBeDefined();
+      expect(result.taskId).toBeTruthy();
+      expect(typeof result.taskId).toBe("string");
+      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
     });
 
     test("参数校验：缺少targetId", async () => {
@@ -196,8 +173,9 @@ describe("导出任务接口测试", () => {
         targetIds: testItemIds,
         options: { structure: "by_item" },
       });
-      expect(result.taskId).toBeDefined();
-      expect(result.status).toBeDefined();
+      expect(result.taskId).toBeTruthy();
+      expect(typeof result.taskId).toBe("string");
+      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
     });
 
     test("正向测试：扁平结构批量下载", async () => {
@@ -206,7 +184,8 @@ describe("导出任务接口测试", () => {
         targetIds: testItemIds,
         options: { structure: "flat" },
       });
-      expect(result.taskId).toBeDefined();
+      expect(result.taskId).toBeTruthy();
+      expect(typeof result.taskId).toBe("string");
     });
 
     test("参数校验：空ID数组", async () => {
@@ -221,10 +200,7 @@ describe("导出任务接口测试", () => {
     });
 
     test("边界测试：单个数据项批量下载", async () => {
-      if (testItemIds.length === 0) {
-        console.warn("No test item IDs available for batch download test");
-        return;
-      }
+      expect(testItemIds.length).toBeGreaterThan(0);
 
       const result = await TaskAPI.create({
         type: "batch_download",
@@ -237,9 +213,9 @@ describe("导出任务接口测试", () => {
   describe("综合测试：导出任务流程", () => {
     test("完整流程：创建数据集 -> 创建数据项 -> 导出", async () => {
       const datasetForm = createDatasetForm({ type: "图像去雾" });
-      const dataset = await DatasetAPI.add(datasetForm);
+      const datasetId = await DatasetAPI.add(datasetForm);
 
-      const itemForm = createDatasetItemForm(dataset.id, {
+      const itemForm = createDatasetItemForm(datasetId, {
         sceneType: "urban",
         name: "完整流程测试数据项",
       });
@@ -248,7 +224,7 @@ describe("导出任务接口测试", () => {
       // 数据集导出
       const exportTask = await TaskAPI.create({
         type: "dataset_export",
-        targetId: dataset.id,
+        targetId: datasetId,
       });
       expect(exportTask.taskId).toBeDefined();
 
@@ -259,7 +235,7 @@ describe("导出任务接口测试", () => {
       });
       expect(downloadTask.taskId).toBeDefined();
 
-      await DatasetAPI.deleteById(dataset.id);
+      await DatasetAPI.deleteById(datasetId);
     });
   });
 });

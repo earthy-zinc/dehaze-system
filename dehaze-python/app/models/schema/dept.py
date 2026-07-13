@@ -32,7 +32,7 @@ class DeptIdsPath(BaseModel):
 class DeptForm(BaseModel):
     """部门表单"""
     id: Optional[int] = Field(default=None, description="部门ID")
-    parentId: Optional[int] = Field(default=None, description="父部门ID")
+    parentId: int = Field(..., description="父部门ID")
     name: str = Field(..., min_length=1, max_length=50, description="部门名称")
     sort: Optional[int] = Field(default=0, ge=0, description="排序(数字越小排名越靠前)")
     status: Optional[int] = Field(

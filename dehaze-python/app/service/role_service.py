@@ -4,12 +4,10 @@
 提供角色 CRUD 功能，支持菜单分配和数据权限管理
 """
 
-import re
 from typing import Any
 
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_user import SysRole
-from app.repository.base import escape_like
 from app.repository.role_repository import role_repository
 from app.repository.user_repository import user_repository
 from redis.asyncio import Redis
@@ -50,8 +48,8 @@ class RoleService:
 
         if keywords:
             search_fields = [
-                (SysRole.name, "like", f"%{escape_like(keywords)}%"),
-                (SysRole.code, "like", f"%{escape_like(keywords)}%"),
+                ("name", "like", f"%{keywords}%"),
+                ("code", "like", f"%{keywords}%"),
             ]
 
         return await role_repository.get_list(
@@ -117,10 +115,6 @@ class RoleService:
         if not name or not code:
             raise BusinessException("角色名称和编码不能为空")
 
-        # 校验角色编码格式：大写字母、数字、下划线
-        if not re.match(r"^[A-Z][A-Z0-9_]*$", code):
-            raise BusinessException("角色编码格式错误，必须以大写字母开头，只能包含大写字母、数字和下划线")
-
         # 检查角色名称是否已存在
         if await role_repository.check_name_exists(db, name):
             raise BusinessException("角色名称已存在")
@@ -138,6 +132,7 @@ class RoleService:
         )
 
         created = await role_repository.create(db, role)
+        await db.commit()
 
         return created
 
@@ -165,6 +160,7 @@ class RoleService:
             raise BusinessException("角色不存在")
 
         name = data.get("name")
+        code = data.get("code")
 
         if not name:
             raise BusinessException("角色名称不能为空")
@@ -173,9 +169,14 @@ class RoleService:
         if await role_repository.check_name_exists(db, name, exclude_id=role_id):
             raise BusinessException("角色名称已存在")
 
+        # 检查角色编码是否已存在（排除自己）
+        if code and await role_repository.check_code_exists(db, code, exclude_id=role_id):
+            raise BusinessException("角色编码已存在")
+
         # 超级管理员角色保护：不可修改状态和数据权限
         update_data = {
             "name": name,
+            "code": code or role.code,
             "sort": data.get("sort", role.sort),
         }
 
@@ -187,6 +188,7 @@ class RoleService:
 
         # 更新角色信息（不更新 code，编码创建后不可修改）
         await role_repository.update_by_id(db, role_id, update_data)
+        await db.commit()
 
         # 清除角色权限缓存
         if role.code is None:
@@ -237,6 +239,8 @@ class RoleService:
                 raise ValueError("角色编码不能为空")
             await RoleService._clear_role_perms_cache(redis, role.code)
 
+        await db.commit()
+
     @staticmethod
     async def update_role_status(
         db: AsyncSession,
@@ -268,6 +272,7 @@ class RoleService:
             raise BusinessException("超级管理员角色不可禁用")
 
         await role_repository.update_by_id(db, role_id, {"status": status})
+        await db.commit()
 
     @staticmethod
     async def get_role_menu_ids(db: AsyncSession, role_id: int) -> list[int]:
@@ -322,6 +327,7 @@ class RoleService:
 
         # 使用 repository 替换角色菜单
         await role_repository.replace_role_menus(db, role_id, menu_ids)
+        await db.commit()
 
         # 清除角色权限缓存
         if role.code is None:

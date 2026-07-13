@@ -2,29 +2,12 @@ import { DeptAPI, DeptForm, DeptQuery } from "../../../index";
 import { login, logout } from "#/utils/auth";
 import { expectBizErrorOrUndefined } from "#/utils/assertion";
 import { createDeptForm, createDeptQuery } from "#/factories/dept";
+import { uniqueName } from "#/factories/common";
 import { DEPTS } from "#/factories/constants";
 
 describe("部门管理接口测试", () => {
   beforeAll(async () => {
     await login();
-
-    // 清理历史脏数据：删除名称为空的部门（由先前缺少 @NotBlank 校验时遗留）
-    const deptList = await DeptAPI.getList();
-    const cleanBadDepts = async (depts: typeof deptList) => {
-      for (const dept of depts) {
-        if (!dept.name || dept.name.trim() === "") {
-          try {
-            await DeptAPI.deleteByIds(dept.id.toString());
-          } catch {
-            // 忽略删除错误
-          }
-        }
-        if (dept.children && dept.children.length > 0) {
-          await cleanBadDepts(dept.children);
-        }
-      }
-    };
-    await cleanBadDepts(deptList);
   }, 30000);
 
   afterAll(async () => {
@@ -195,7 +178,7 @@ describe("部门管理接口测试", () => {
       expect(result.id).toBe(deptId);
       expect(result.name).toBe(DEPTS.CQUPT.name);
       expect(result.parentId).toBe(DEPTS.CQUPT.parentId);
-      expect(result.status).toBeDefined();
+      expect([0, 1]).toContain(result.status);
     });
 
     test("正向测试：获取子部门的表单数据", async () => {
@@ -338,6 +321,7 @@ describe("部门管理接口测试", () => {
 
       // 尝试创建同名部门
       await expectBizErrorOrUndefined(DeptAPI.add({ ...form, sort: form.sort! + 1 }), [
+        "A0501",
         "B0001",
         "ERR_BAD_REQUEST",
       ]);
@@ -349,7 +333,12 @@ describe("部门管理接口测试", () => {
       // 【保留此测试】持续暴露后端缺少父部门存在性校验的问题
       const form = createDeptForm({ parentId: 99999999 });
 
-      await expectBizErrorOrUndefined(DeptAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+      await expectBizErrorOrUndefined(DeptAPI.add(form), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
   });
 
@@ -394,7 +383,7 @@ describe("部门管理接口测试", () => {
 
     test("正向测试：更新部门状态并验证状态值正确", async () => {
       const form: Partial<DeptForm> = {
-        name: originalDept.name,
+        name: originalDept.name ?? "",
         status: 0,
         parentId: originalDept.parentId,
       };
@@ -405,7 +394,11 @@ describe("部门管理接口测试", () => {
       expect(formData.status).toBe(0);
 
       // 恢复状态
-      await DeptAPI.update(testDeptId, { name: originalDept.name, status: 1, parentId: originalDept.parentId } as DeptForm);
+      await DeptAPI.update(testDeptId, {
+        name: originalDept.name ?? "",
+        status: 1,
+        parentId: originalDept.parentId,
+      } as DeptForm);
       const formData2 = await DeptAPI.getFormData(testDeptId);
       expect(formData2.status).toBe(1);
     });
@@ -413,7 +406,7 @@ describe("部门管理接口测试", () => {
     test("正向测试：更新部门排序并验证排序值正确", async () => {
       const newSort = 999;
       const form: Partial<DeptForm> = {
-        name: originalDept.name,
+        name: originalDept.name ?? "",
         sort: newSort,
         parentId: originalDept.parentId,
       };
@@ -431,7 +424,10 @@ describe("部门管理接口测试", () => {
       additionalDeptIds.push(newParentId);
 
       // 移动部门
-      const form: Partial<DeptForm> = { name: originalDept.name, parentId: newParentId };
+      const form: Partial<DeptForm> = {
+        name: originalDept.name ?? "",
+        parentId: newParentId,
+      };
       await DeptAPI.update(testDeptId, form as DeptForm);
 
       // 验证移动
@@ -439,13 +435,17 @@ describe("部门管理接口测试", () => {
       expect(formData.parentId).toBe(newParentId);
 
       // 恢复原父部门
-      await DeptAPI.update(testDeptId, { name: originalDept.name, parentId: originalDept.parentId } as DeptForm);
+      await DeptAPI.update(testDeptId, {
+        name: originalDept.name ?? "",
+        parentId: originalDept.parentId,
+      } as DeptForm);
     });
 
     test("异常测试：更新不存在的部门", async () => {
       const form = createDeptForm();
 
       await expectBizErrorOrUndefined(DeptAPI.update(99999999, form), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -464,7 +464,7 @@ describe("部门管理接口测试", () => {
           name: anotherForm.name!,
           parentId: DEPTS.CQUPT.id,
         } as DeptForm),
-        ["B0001", "ERR_BAD_REQUEST"]
+        ["A0501", "B0001", "ERR_BAD_REQUEST"]
       );
     });
 
@@ -519,6 +519,7 @@ describe("部门管理接口测试", () => {
 
     test("异常测试：删除不存在的部门", async () => {
       await expectBizErrorOrUndefined(DeptAPI.deleteByIds("99999999"), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -551,6 +552,69 @@ describe("部门管理接口测试", () => {
 
       const childResult = await DeptAPI.getFormData(childDeptId);
       expect(childResult).toBeUndefined();
+    });
+
+    test("完整 CRUD 生命周期：创建→读→更新→读→删除→验证不存在", async () => {
+      // Create: 创建部门
+      const createForm = createDeptForm({ parentId: DEPTS.CQUPT.id, sort: 50 });
+      const deptId = (await DeptAPI.add(createForm)) as number;
+      expect(deptId).toBeGreaterThan(0);
+
+      // Read: 验证字段与创建时一致
+      const readResult = await DeptAPI.getFormData(deptId);
+      expect(readResult.id).toBe(deptId);
+      expect(readResult.name).toBe(createForm.name);
+      expect(readResult.parentId).toBe(createForm.parentId);
+      expect(readResult.sort).toBe(createForm.sort);
+      expect(readResult.status).toBe(createForm.status);
+
+      // Update: 更新部门名称和排序
+      const newName = `更新后_${Date.now()}`;
+      const newSort = 999;
+      await DeptAPI.update(deptId, {
+        name: newName,
+        parentId: DEPTS.CQUPT.id,
+        sort: newSort,
+        status: 1,
+      } as DeptForm);
+
+      // Read: 验证更新已生效
+      const updatedResult = await DeptAPI.getFormData(deptId);
+      expect(updatedResult.name).toBe(newName);
+      expect(updatedResult.sort).toBe(newSort);
+      expect(updatedResult.name).not.toBe(createForm.name);
+
+      // Delete: 删除部门
+      await DeptAPI.deleteByIds(deptId.toString());
+
+      // Verify: 验证数据已彻底不存在
+      const deletedResult = await DeptAPI.getFormData(deptId);
+      expect(deletedResult).toBeUndefined();
+    });
+
+    test("边界测试：超长部门名称应被拒绝", async () => {
+      const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: "x".repeat(256) });
+      await expectBizErrorOrUndefined(DeptAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("边界测试：特殊字符部门名称不应污染存储", async () => {
+      const specialName = uniqueName("测试<>&\"'部门");
+      const form = createDeptForm({ parentId: DEPTS.CQUPT.id, name: specialName });
+
+      const deptId = (await DeptAPI.add(form)) as number;
+      expect(deptId).toBeGreaterThan(0);
+
+      try {
+        const formData = await DeptAPI.getFormData(deptId);
+        // 特殊字符应被原样保存或转义，不应产生 HTML 标签污染
+        expect(typeof formData.name).toBe("string");
+        expect(formData.name!.length).toBeGreaterThan(0);
+        expect(formData.name).not.toMatch(/<[^>]+>/);
+      } finally {
+        try {
+          await DeptAPI.deleteByIds(deptId.toString());
+        } catch {}
+      }
     });
   });
 });

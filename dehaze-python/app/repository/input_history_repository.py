@@ -4,7 +4,7 @@
 """
 from typing import Optional
 
-from sqlalchemy import delete, desc, func, or_, select
+from sqlalchemy import delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_input_history import SysInputHistory
@@ -20,6 +20,7 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
         self,
         db: AsyncSession,
         user_id: int,
+        status: Optional[int] = None,
         input_source: Optional[str] = None,
         favorite_only: bool = False,
         keywords: Optional[str] = None,
@@ -28,10 +29,12 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
     ) -> tuple[list[SysInputHistory], int]:
         """分页查询历史记录（按用户隔离）"""
         stmt = select(SysInputHistory).where(SysInputHistory.user_id == user_id)
+        if status is not None:
+            stmt = stmt.where(SysInputHistory.status == status)
         if input_source:
             stmt = stmt.where(SysInputHistory.input_source == input_source)
         if favorite_only:
-            stmt = stmt.where(SysInputHistory.is_favorite == 1)
+            stmt = stmt.where(SysInputHistory.is_favorite == True)
         if keywords:
             stmt = stmt.where(
                 or_(
@@ -46,23 +49,6 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
         """创建历史记录"""
         history = SysInputHistory(**kwargs)
         return await self.create(db, history)
-
-    async def update_by_id(
-        self,
-        db: AsyncSession,
-        history_id: int,
-        data: dict,
-    ) -> Optional[SysInputHistory]:
-        """更新历史记录（调用方应已排除 None 值）"""
-        history = await self.get_by_id(db, history_id)
-        if not history:
-            return None
-        for key, value in data.items():
-            if hasattr(history, key):
-                setattr(history, key, value)
-        await db.flush()
-        await db.refresh(history)
-        return history
 
     async def delete_by_user(self, db: AsyncSession, user_id: int, history_id: int) -> bool:
         """删除单条（仅限本人）"""
@@ -103,6 +89,17 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
             SysInputHistory.user_id == user_id
         )
         return (await db.execute(stmt)).scalar() or 0
+
+    async def mark_all_synced(self, db: AsyncSession, user_id: int) -> int:
+        """将用户所有未同步记录标记为已同步"""
+        stmt = (
+            update(SysInputHistory)
+            .where(SysInputHistory.user_id == user_id)
+            .where(SysInputHistory.sync_status == 0)
+            .values(sync_status=1)
+        )
+        result = await db.execute(stmt)
+        return result.rowcount
 
 
 input_history_repository = InputHistoryRepository()

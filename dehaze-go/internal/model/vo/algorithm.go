@@ -4,6 +4,8 @@ package vo
 type AlgorithmVO struct {
 	// 算法ID
 	ID int64 `json:"id"`
+	// 父算法ID
+	ParentID int64 `json:"parentId"`
 	// 算法名称
 	Name string `json:"name"`
 	// 算法类型

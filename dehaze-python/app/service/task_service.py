@@ -79,13 +79,6 @@ class TaskServiceAsync:
         if task_type not in valid_types:
             raise BusinessException(ResultCode.TASK_TYPE_UNSUPPORTED)
 
-        # 并发限制检查（P1-07）
-        pending_count = await task_repository.count_pending_by_user_and_type(
-            db, user_id, task_type
-        )
-        if pending_count >= settings.TASK_MAX_CONCURRENT_PER_USER:
-            raise BusinessException(ResultCode.TASK_CONCURRENT_LIMIT)
-
         # 生成任务 ID
         task_id = str(uuid.uuid4())
 
@@ -106,7 +99,6 @@ class TaskServiceAsync:
             }),
             created_by=user_id,
             created_at=now,
-            updated_at=now,
             expires_at=now +
             timedelta(hours=TaskServiceAsync.TASK_EXPIRE_HOURS)
         )
@@ -115,6 +107,7 @@ class TaskServiceAsync:
         db.add(sys_task)
         await db.flush()
         await db.refresh(sys_task)
+        await db.commit()
 
         # 缓存任务信息到 Redis
         cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
@@ -318,7 +311,6 @@ class TaskServiceAsync:
         # 更新任务状态
         sys_task.status = TaskStatus.CANCELLED.value
         sys_task.completed_at = datetime.now()
-        sys_task.updated_at = datetime.now()
 
         # 更新缓存
         cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
@@ -333,6 +325,7 @@ class TaskServiceAsync:
         cancel_key = TaskServiceAsync.TASK_CANCEL_PREFIX + task_id
         await redis.setex(cancel_key, TaskServiceAsync.CANCEL_FLAG_TTL, 'true')
 
+        await db.commit()
         logger.info(f"取消导出任务成功: taskId={task_id}")
         return True
 
@@ -414,7 +407,6 @@ class TaskServiceAsync:
             'error_message': task.error_message,
             'created_by': task.created_by,
             'created_at': task.created_at.isoformat() if task.created_at else None,
-            'updated_at': task.updated_at.isoformat() if task.updated_at else None,
             'started_at': task.started_at.isoformat() if task.started_at else None,
             'completed_at': task.completed_at.isoformat() if task.completed_at else None,
             'expires_at': task.expires_at.isoformat() if task.expires_at else None
@@ -434,7 +426,6 @@ class TaskServiceAsync:
 
         if sys_task:
             sys_task.status = status
-            sys_task.updated_at = datetime.now()
             if result:
                 sys_task.result = result
             if error_message:
@@ -479,6 +470,7 @@ class TaskServiceAsync:
             )
             sys_task.progress = progress
             sys_task.processed_files = processed_files
+            await db.commit()
 
             # 更新独立进度缓存（P1-05）
             progress_key = TaskServiceAsync.TASK_PROGRESS_PREFIX + sys_task.task_id
@@ -557,7 +549,6 @@ class TaskServiceAsync:
                     # 更新任务状态为 processing
                     sys_task.status = TaskStatus.PROCESSING.value
                     sys_task.started_at = datetime.now()
-                    sys_task.updated_at = datetime.now()
                     await db.commit()
                     await TaskServiceAsync._update_cache(redis, sys_task)
 

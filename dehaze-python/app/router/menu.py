@@ -1,7 +1,6 @@
 from typing import Optional
 
-from app.core.code import ResultCode
-from app.core.result import Result, error, success
+from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
@@ -55,7 +54,7 @@ async def get_menu_form(
 ):
     menu_form = await MenuService.get_menu_form(db, menu_id)
     if not menu_form:
-        return error("菜单不存在", ResultCode.RESOURCE_NOT_FOUND.code)
+        return success(None)
     return success(menu_form)
 
 
@@ -67,8 +66,8 @@ async def add_menu(
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    menu = await MenuService.save_menu(db, redis, body.model_dump(exclude_none=True))
-    return success({"id": menu.id}, msg="保存成功")
+    await MenuService.save_menu(db, redis, body.model_dump(exclude_none=True))
+    return success(msg="保存成功")
 
 
 @router.put("/{menu_id}", response_model=Result[dict[str, int]], summary="修改菜单")
@@ -82,8 +81,8 @@ async def update_menu(
 ):
     data = body.model_dump(exclude_none=True)
     data["id"] = menu_id
-    menu = await MenuService.save_menu(db, redis, data)
-    return success({"id": menu.id}, msg="保存成功")
+    await MenuService.save_menu(db, redis, data)
+    return success(msg="保存成功")
 
 
 @router.delete("/{menu_id}", response_model=Result[None], summary="删除菜单", description="级联删除子菜单和角色关联")

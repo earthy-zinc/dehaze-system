@@ -68,7 +68,8 @@ func (api *SysInputHistoryApi) CreateHistory(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithData(history, c)
+	// 与 Java 后端一致，返回创建的历史记录 ID
+	common.OkWithData(history.ID, c)
 }
 
 // UpdateHistory 更新历史记录
@@ -98,14 +99,13 @@ func (api *SysInputHistoryApi) UpdateHistory(c *gin.Context) {
 // DeleteHistory 删除单条历史记录
 func (api *SysInputHistoryApi) DeleteHistory(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "ID格式不正确"))
 		return
 	}
-	if err := api.service.Delete(ctx, id, userID); err != nil {
+	if err := api.service.Delete(ctx, id); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -127,7 +127,7 @@ func (api *SysInputHistoryApi) BatchDeleteHistory(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithMessage("批量删除成功", c)
+	common.OkWithData(int64(len(req.IDs)), c)
 }
 
 // ClearHistory 清空历史记录
@@ -140,5 +140,11 @@ func (api *SysInputHistoryApi) ClearHistory(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithMessage("已清空 "+strconv.FormatInt(count, 10)+" 条历史记录", c)
+	common.OkWithData(count, c)
+}
+
+// SyncHistory 同步历史记录
+func (api *SysInputHistoryApi) SyncHistory(c *gin.Context) {
+	// Go后端无需从Python同步，直接返回0
+	common.OkWithData(int64(0), c)
 }

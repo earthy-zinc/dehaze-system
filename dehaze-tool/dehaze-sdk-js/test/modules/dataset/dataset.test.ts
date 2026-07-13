@@ -23,11 +23,15 @@ describe("数据集接口测试", () => {
       // getList 返回分页结构 PageResult<Dataset[]> = { list, total }
       expect(result).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
+      expect(typeof result.total).toBe("number");
+
       if (result.list.length > 0) {
         const firstItem = result.list[0]!;
-        expect(firstItem.id).toBeDefined();
-        expect(firstItem.name).toBeDefined();
-        expect(firstItem.type).toBeDefined();
+        expect(typeof firstItem.id).toBe("number");
+        expect(firstItem.id).toBeGreaterThan(0);
+        expect(typeof firstItem.name).toBe("string");
+        expect(firstItem.name.length).toBeGreaterThan(0);
+        expect(typeof firstItem.type).toBe("string");
       }
     });
 
@@ -36,7 +40,8 @@ describe("数据集接口测试", () => {
       const result = await DatasetAPI.getList(query);
       expect(Array.isArray(result.list)).toBe(true);
       result.list.forEach((item) => {
-        expect(item.type).toBeDefined();
+        expect(typeof item.type).toBe("string");
+        expect(item.type).toBe("用户数据集");
       });
     });
 
@@ -60,11 +65,13 @@ describe("数据集接口测试", () => {
     test("正向测试：获取下拉选项并验证结构", async () => {
       const options = await DatasetAPI.getOptions();
       expect(Array.isArray(options)).toBe(true);
-      if (options.length > 0) {
-        const firstOption = options[0]!;
-        expect(firstOption.value).toBeDefined();
-        expect(firstOption.label).toBeDefined();
-      }
+
+      options.forEach((option: any) => {
+        expect(option.value).toBeTruthy();
+        expect(typeof option.value).toBe("number");
+        expect(option.label).toBeTruthy();
+        expect(typeof option.label).toBe("string");
+      });
     });
   });
 
@@ -83,15 +90,9 @@ describe("数据集接口测试", () => {
 
     test("正向测试：创建有效数据集", async () => {
       const form = createDatasetForm();
-      const result = await DatasetAPI.add(form);
-      expect(result.id).toBeDefined();
-      expect(result.name).toBe(form.name);
-      expect(result.type).toBe(form.type);
-      expect(result.description).toBe(form.description);
-      expect(result.status).toBe(1);
-      expect(result.parentId).toBe(0);
-      expect(result.statistics).toBeDefined();
-      createdIds.push(result.id);
+      const datasetId = await DatasetAPI.add(form);
+      expect(datasetId).toBeGreaterThan(0);
+      createdIds.push(datasetId);
     });
 
     test("正向测试：创建带可选字段的数据集", async () => {
@@ -99,10 +100,9 @@ describe("数据集接口测试", () => {
         description: "带描述的测试数据集",
         status: "1",
       });
-      const result = await DatasetAPI.add(form);
-      expect(result.id).toBeDefined();
-      expect(result.description).toBe(form.description);
-      createdIds.push(result.id);
+      const datasetId = await DatasetAPI.add(form);
+      expect(datasetId).toBeGreaterThan(0);
+      createdIds.push(datasetId);
     });
 
     test("参数校验：缺少必需字段 name", async () => {
@@ -114,11 +114,11 @@ describe("数据集接口测试", () => {
 
   describe("GET /api/v1/datasets/{id} - 获取数据集详细信息", () => {
     let datasetId: number;
+    let createForm: ReturnType<typeof createDatasetForm>;
 
     beforeAll(async () => {
-      const form = createDatasetForm();
-      const result = await DatasetAPI.add(form);
-      datasetId = result.id;
+      createForm = createDatasetForm();
+      datasetId = await DatasetAPI.add(createForm);
     });
 
     afterAll(async () => {
@@ -132,10 +132,10 @@ describe("数据集接口测试", () => {
     test("正向测试：获取有效数据集详情", async () => {
       const result = await DatasetAPI.getDatasetInfoById(datasetId);
       expect(result.id).toBe(datasetId);
-      expect(result.name).toBeDefined();
-      expect(result.type).toBeDefined();
-      expect(result.path).toBeDefined();
-      expect(result.parentId).toBeDefined();
+      expect(typeof result.name).toBe("string");
+      expect(result.name.length).toBeGreaterThan(0);
+      expect(typeof result.type).toBe("string");
+      expect(result.parentId).toBeGreaterThanOrEqual(0);
     });
 
     test("正向测试：验证统计信息结构", async () => {
@@ -151,7 +151,8 @@ describe("数据集接口测试", () => {
     });
 
     test("异常测试：不存在的ID", async () => {
-      await expectBizErrorOrUndefined(DatasetAPI.getDatasetInfoById(99999999), ["B0001", "A0400"]);
+      const result = await DatasetAPI.getDatasetInfoById(99999999);
+      expect(result === null || result === undefined).toBe(true);
     });
   });
 
@@ -160,8 +161,7 @@ describe("数据集接口测试", () => {
 
     beforeAll(async () => {
       const form = createDatasetForm();
-      const result = await DatasetAPI.add(form);
-      datasetId = result.id;
+      datasetId = await DatasetAPI.add(form);
     });
 
     afterAll(async () => {
@@ -197,19 +197,33 @@ describe("数据集接口测试", () => {
 
     test("异常测试：更新不存在的数据集", async () => {
       const form = createDatasetUpdateForm();
-      await expectBizErrorOrUndefined(DatasetAPI.update(99999999, form), ["B0001", "A0400"]);
+      await expectBizErrorOrUndefined(DatasetAPI.update(99999999, form), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
     });
   });
 
   describe("DELETE /api/v1/datasets/{id} - 删除单个数据集", () => {
     test("正向测试：删除有效数据集", async () => {
       const form = createDatasetForm();
-      const result = await DatasetAPI.add(form);
-      await expect(DatasetAPI.deleteById(result.id)).resolves.not.toThrow();
+      const datasetId = await DatasetAPI.add(form);
+      expect(datasetId).toBeGreaterThan(0);
+
+      await DatasetAPI.deleteById(datasetId);
+
+      // 验证已删除
+      const result = await DatasetAPI.getDatasetInfoById(datasetId);
+      expect(result === null || result === undefined).toBe(true);
     });
 
     test("异常测试：删除不存在的数据集", async () => {
-      await expectBizErrorOrUndefined(DatasetAPI.deleteById(99999999), ["B0001", "A0400"]);
+      await expectBizErrorOrUndefined(DatasetAPI.deleteById(99999999), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
     });
   });
 
@@ -218,8 +232,8 @@ describe("数据集接口测试", () => {
       const datasetIds: number[] = [];
       for (let i = 0; i < 3; i++) {
         const form = createDatasetForm();
-        const result = await DatasetAPI.add(form);
-        datasetIds.push(result.id);
+        const datasetId = await DatasetAPI.add(form);
+        datasetIds.push(datasetId);
       }
 
       const batchForm: BatchDeleteForm = {
@@ -263,8 +277,7 @@ describe("数据集接口测试", () => {
 
     beforeAll(async () => {
       const form = createDatasetForm();
-      const result = await DatasetAPI.add(form);
-      datasetId = result.id;
+      datasetId = await DatasetAPI.add(form);
     });
 
     afterAll(async () => {
@@ -281,8 +294,9 @@ describe("数据集接口测试", () => {
         targetId: datasetId,
         options: { includeTypes: ["clear", "hazy"], structure: "by_item" },
       });
-      expect(result.taskId).toBeDefined();
-      expect(result.status).toBeDefined();
+      expect(result.taskId).toBeTruthy();
+      expect(typeof result.taskId).toBe("string");
+      expect(["PENDING", "PROCESSING", "COMPLETED", "FAILED"]).toContain(result.status);
       expect(result.progress).toBeGreaterThanOrEqual(0);
       expect(result.progress).toBeLessThanOrEqual(100);
     });
@@ -305,6 +319,69 @@ describe("数据集接口测试", () => {
       });
       expect(result.taskId).toBeDefined();
       expect(result.status).toBe("PENDING");
+    });
+  });
+
+  describe("完整 CRUD 生命周期：数据集管理", () => {
+    test("创建→读→更新→读→删除→验证不存在", async () => {
+      // Create: 创建数据集
+      const createForm = createDatasetForm({ description: "CRUD生命周期测试" });
+      const datasetId = await DatasetAPI.add(createForm);
+      expect(datasetId).toBeGreaterThan(0);
+
+      // Read: 验证字段与创建时一致
+      const detail = await DatasetAPI.getDatasetInfoById(datasetId);
+      expect(detail.name).toBe(createForm.name);
+      expect(detail.type).toBe(createForm.type);
+      expect(detail.description).toBe("CRUD生命周期测试");
+      expect(detail.parentId).toBe(0);
+
+      // Update: 更新数据集名称和描述
+      const newName = `CRUD更新_${Date.now()}`;
+      const newDesc = "更新后的描述";
+      const updateForm = createDatasetUpdateForm({
+        name: newName,
+        description: newDesc,
+      });
+      const updated = await DatasetAPI.update(datasetId, updateForm);
+      expect(updated.name).toBe(newName);
+      expect(updated.description).toBe(newDesc);
+
+      // Read: 再次验证更新已生效
+      const readUpdated = await DatasetAPI.getDatasetInfoById(datasetId);
+      expect(readUpdated.name).toBe(newName);
+      expect(readUpdated.name).not.toBe(createForm.name);
+
+      // Delete: 删除数据集
+      await DatasetAPI.deleteById(datasetId);
+
+      // Verify: 验证数据已不存在
+      const result = await DatasetAPI.getDatasetInfoById(datasetId);
+      expect(result === null || result === undefined).toBe(true);
+    });
+
+    test("边界测试：超长数据集名称应被拒绝", async () => {
+      const form = createDatasetForm({ name: "x".repeat(500) });
+      await expectBizErrorOrUndefined(DatasetAPI.add(form), ["A0400", "B0001", "ERR_BAD_REQUEST"]);
+    });
+
+    test("边界测试：特殊字符数据集名称不应污染存储", async () => {
+      const specialName = `测试<>&"'数据集_${Date.now()}`;
+      const form = createDatasetForm({ name: specialName });
+
+      const datasetId = await DatasetAPI.add(form);
+      expect(datasetId).toBeGreaterThan(0);
+
+      try {
+        const detail = await DatasetAPI.getDatasetInfoById(datasetId);
+        expect(typeof detail.name).toBe("string");
+        expect(detail.name.length).toBeGreaterThan(0);
+        expect(detail.name).not.toMatch(/<[^>]+>/);
+      } finally {
+        try {
+          await DatasetAPI.deleteById(datasetId);
+        } catch {}
+      }
     });
   });
 });

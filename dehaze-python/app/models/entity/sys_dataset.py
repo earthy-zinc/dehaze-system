@@ -17,8 +17,6 @@ class SysDataset(BaseModel):
         BigInteger, primary_key=True, autoincrement=True, comment='数据集ID')
     parent_id: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, comment='父数据集ID')
-    tree_path: Mapped[str] = mapped_column(
-        String(255), default='', comment='父节点ID路径')
     type: Mapped[str] = mapped_column(
         String(64), nullable=False, default='', comment='数据集类型')
     name: Mapped[str] = mapped_column(

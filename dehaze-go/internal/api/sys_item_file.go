@@ -53,10 +53,10 @@ func (api *SysItemFileApi) GetItemFileById(c *gin.Context) {
 // @Accept multipart/form-data
 // @Produce application/json
 // @Param file formData file true "表单文件对象"
-// @Param datasetItemId formData int true "所属数据项ID"
+// @Param itemId formData int true "所属数据项ID"
 // @Param type formData string true "图片类型"
 // @Param description formData string false "图片描述"
-// @Success 200 {object} common.Response{data=dto.ImageFileInfo}
+// @Success 200 {object} common.Response{data=vo.ImageUrlVO}
 // @Router /api/v1/item-files [post]
 func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -67,8 +67,8 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 		return
 	}
 
-	datasetItemIdStr := c.PostForm("datasetItemId")
-	datasetItemId, err := strconv.ParseInt(datasetItemIdStr, 10, 64)
+	itemIdStr := c.PostForm("itemId")
+	datasetItemId, err := strconv.ParseInt(itemIdStr, 10, 64)
 	if err != nil {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "数据项ID格式不正确"))
 		return
@@ -76,6 +76,8 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 
 	fileType := c.PostForm("type")
 	description := c.PostForm("description")
+	sceneType := c.PostForm("sceneType")
+	hazeLevel := c.PostForm("hazeLevel")
 
 	// 打开文件流并计算 MD5
 	file, err := fileHeader.Open()
@@ -106,15 +108,17 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 		},
 		Type:        fileType,
 		Description: description,
+		SceneType:   sceneType,
+		HazeLevel:   hazeLevel,
 	}
 
-	imageFileInfo, err := api.itemFileService.SaveItemFile(datasetItemId, sysFile, itemBO, true)
+	imageUrlVO, err := api.itemFileService.SaveItemFile(datasetItemId, sysFile, itemBO, true)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithData(imageFileInfo, c)
+	common.OkWithDetailed(imageUrlVO, "上传成功", c)
 }
 
 // UpdateImageById 修改图片信息
@@ -123,7 +127,7 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param id path int true "图片文件ID"
-// @Success 200 {object} common.Response
+// @Success 200 {object} common.Response{data=vo.ImageUrlVO}
 // @Router /api/v1/item-files/{id} [put]
 func (api *SysItemFileApi) UpdateImageById(c *gin.Context) {
 	idStr := c.Param("id")
@@ -139,13 +143,13 @@ func (api *SysItemFileApi) UpdateImageById(c *gin.Context) {
 		return
 	}
 
-	err = api.itemFileService.UpdateItemFileInfo(id, form)
+	imageUrlVO, err := api.itemFileService.UpdateItemFileInfo(id, form)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithMessage("更新成功", c)
+	common.OkWithDetailed(imageUrlVO, "更新成功", c)
 }
 
 // RemoveImageById 删除图片
@@ -179,7 +183,7 @@ func (api *SysItemFileApi) RemoveImageById(c *gin.Context) {
 // @Accept application/json
 // @Produce application/json
 // @Param request body bo.BatchDeleteForm true "批量删除请求"
-// @Success 200 {object} common.Response
+// @Success 200 {object} common.Response{data=batchImageDeleteResult}
 // @Router /api/v1/item-files/batch [delete]
 func (api *SysItemFileApi) BatchRemoveImages(c *gin.Context) {
 	var req bo.BatchDeleteForm
@@ -188,12 +192,44 @@ func (api *SysItemFileApi) BatchRemoveImages(c *gin.Context) {
 		return
 	}
 
+	successIds := make([]int64, 0, len(req.IDs))
+	failedItems := make([]batchImageDeleteFailure, 0)
+	successCount := 0
+	failedCount := 0
+
 	for _, id := range req.IDs {
 		if err := api.itemFileService.DeleteItemFile(id); err != nil {
-			_ = c.Error(err)
-			return
+			failedCount++
+			failedItems = append(failedItems, batchImageDeleteFailure{
+				ID:     id,
+				Reason: err.Error(),
+			})
+			continue
 		}
+		successCount++
+		successIds = append(successIds, id)
 	}
 
-	common.OkWithMessage("批量删除图片成功", c)
+	result := batchImageDeleteResult{
+		SuccessCount: successCount,
+		FailedCount:  failedCount,
+		SuccessIds:   successIds,
+		FailedItems:  failedItems,
+	}
+
+	common.OkWithDetailed(result, "批量删除完成", c)
+}
+
+// batchImageDeleteResult 批量删除图片结果
+type batchImageDeleteResult struct {
+	SuccessCount int                       `json:"successCount"`
+	FailedCount  int                       `json:"failedCount"`
+	SuccessIds   []int64                   `json:"successIds,omitempty"`
+	FailedItems  []batchImageDeleteFailure `json:"failedItems,omitempty"`
+}
+
+// batchImageDeleteFailure 批量删除失败项
+type batchImageDeleteFailure struct {
+	ID     int64  `json:"id"`
+	Reason string `json:"reason"`
 }

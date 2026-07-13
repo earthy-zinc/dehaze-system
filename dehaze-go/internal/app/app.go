@@ -170,7 +170,7 @@ func (a *Application) Init() error {
 	sysMenuApi := api.NewSysMenuApi(menuService)
 	algorithmApi := api.NewAlgorithmApi(algorithmService, algorithmFavRepo)
 	datasetApi := api.NewSysDatasetApi(datasetService, datasetOperationService)
-	datasetItemApi := api.NewSysDatasetItemApi(datasetItemService, datasetOperationService)
+	datasetItemApi := api.NewSysDatasetItemApi(datasetItemService, datasetOperationService, fileService)
 	itemFileApi := api.NewSysItemFileApi(itemFileService, fileService)
 	fileApi := api.NewSysFileApi(fileService)
 	inputHistoryApi := api.NewSysInputHistoryApi(inputHistoryService)

@@ -12,10 +12,11 @@ from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.dependencies.redis import get_redis
 from app.models.schema.common import BatchDeleteForm
-from app.models.schema.dataset import (BatchUploadResultVO,
-                                       DatasetItemCreateForm, DatasetItemIdVO,
+from app.models.schema.dataset import (BatchOperationResultVO,
+                                       BatchUploadResultVO,
+                                       DatasetItemCreateForm, DatasetItemVO,
                                        DatasetItemPageVO,
-                                       DatasetItemUpdateForm, DatasetItemVO)
+                                       DatasetItemUpdateForm)
 from app.service.dataset_service import DatasetItemService, DatasetService
 from fastapi import (APIRouter, Body, Depends, File, Form, Path, Query,
                      UploadFile)
@@ -31,15 +32,16 @@ router = APIRouter(
 
 @router.get("", response_model=Result[DatasetItemPageVO], summary="分页查询数据项列表")
 async def list_dataset_items(
-    datasetId: int = Query(..., description="所属数据集ID"),
+    datasetId: Optional[int] = Query(default=None, description="所属数据集ID"),
     pageNum: int = Query(default=1, ge=1, description="页码"),
     pageSize: int = Query(default=20, ge=1, le=100, description="每页数量"),
     keywords: Optional[str] = Query(default=None, description="搜索关键词"),
+    sceneType: Optional[str] = Query(default=None, description="场景类型筛选"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
     result = await DatasetService.get_image_items(
-        db, redis, datasetId, pageNum, pageSize, keywords,
+        db, redis, datasetId, pageNum, pageSize, keywords, sceneType,
     )
     return success(result)
 
@@ -55,16 +57,16 @@ async def get_dataset_item(
     return success(detail)
 
 
-@router.post("", response_model=Result[DatasetItemIdVO], summary="创建空数据项")
+@router.post("", response_model=Result[DatasetItemVO], summary="创建空数据项")
 async def create_dataset_item(
     body: DatasetItemCreateForm,
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    item_id = await DatasetItemService.create_dataset_item(
+    result = await DatasetItemService.create_dataset_item(
         db, redis, body.model_dump(exclude_none=True),
     )
-    return success(DatasetItemIdVO(id=item_id), "创建成功")
+    return success(result, "创建成功")
 
 
 @router.post("/upload", response_model=Result[DatasetItemVO], summary="创建数据项并上传配对图片")
@@ -72,23 +74,23 @@ async def upload_dataset_item_with_images(
     datasetId: int = Form(..., description="数据集ID"),
     name: Optional[str] = Form(default=None, description="数据项名称"),
     sceneType: Optional[str] = Form(default=None, description="场景类型"),
-    clearFile: UploadFile = File(..., description="清晰图文件"),
-    hazyFiles: list[UploadFile] = File(..., description="有雾图文件列表"),
-    hazeLevels: str = Form(..., description="雾霾程度列表，逗号分隔(light/medium/heavy)"),
+    clearImage: UploadFile = File(..., description="清晰图文件"),
+    hazyImages: list[UploadFile] = File(..., description="有雾图文件列表"),
+    hazeLevels: list[str] = Form(..., description="雾霾程度列表(light/medium/heavy)，每个有雾图对应一个"),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
     # 解析雾霾程度
-    levels = [lvl.strip() for lvl in hazeLevels.split(",") if lvl.strip()]
-    if len(levels) != len(hazyFiles):
+    levels = [lvl.strip() for lvl in hazeLevels if lvl.strip()]
+    if len(levels) != len(hazyImages):
         raise BusinessException(ResultCode.PARAM_ERROR, "有雾图数量与雾霾程度数量不匹配")
 
     # 读取文件内容
-    clear_content = await clearFile.read()
-    clear_ctype = clearFile.content_type or "application/octet-stream"
+    clear_content = await clearImage.read()
+    clear_ctype = clearImage.content_type or "application/octet-stream"
 
     hazy_data = []
-    for i, hf in enumerate(hazyFiles):
+    for i, hf in enumerate(hazyImages):
         content = await hf.read()
         ctype = hf.content_type or "application/octet-stream"
         hazy_data.append({
@@ -105,7 +107,7 @@ async def upload_dataset_item_with_images(
         name=name,
         scene_type=sceneType,
         clear_file_content=clear_content,
-        clear_filename=clearFile.filename or "",
+        clear_filename=clearImage.filename or "",
         clear_content_type=clear_ctype,
         hazy_files_data=hazy_data,
     )
@@ -139,17 +141,27 @@ async def batch_create_dataset_items_with_images(
     return success(result)
 
 
-@router.put("/{item_id}", response_model=Result[None], summary="修改数据项信息")
+@router.put("/{item_id}", response_model=Result[DatasetItemVO], summary="修改数据项信息")
 async def update_dataset_item(
     item_id: int = Path(..., description="数据项ID"),
     body: DatasetItemUpdateForm = Body(...),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    await DatasetItemService.update_dataset_item(
+    result = await DatasetItemService.update_dataset_item(
         db, redis, item_id, body.model_dump(exclude_none=True),
     )
-    return success(msg="更新成功")
+    return success(result, "更新成功")
+
+
+@router.delete("/batch", response_model=Result[BatchOperationResultVO], summary="批量删除数据项")
+async def batch_delete_dataset_items(
+    body: BatchDeleteForm = Body(...),
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+):
+    result = await DatasetItemService.batch_delete_items(db, redis, body.ids)
+    return success(result, "删除成功")
 
 
 @router.delete("/{item_id}", response_model=Result[None], summary="删除数据项")
@@ -159,14 +171,4 @@ async def delete_dataset_item(
     redis: Redis = Depends(get_redis),
 ):
     await DatasetItemService.delete_dataset_item(db, redis, item_id)
-    return success(msg="删除成功")
-
-
-@router.delete("/batch", response_model=Result[None], summary="批量删除数据项")
-async def batch_delete_dataset_items(
-    body: BatchDeleteForm = Body(...),
-    db: AsyncSession = Depends(get_db),
-    redis: Redis = Depends(get_redis),
-):
-    await DatasetItemService.batch_delete_items(db, redis, body.ids)
     return success(msg="删除成功")

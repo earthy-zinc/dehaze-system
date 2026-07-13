@@ -45,30 +45,29 @@ describe("字典管理接口测试", () => {
       if (result.list.length > 0) {
         const firstItem = result.list[0]!;
         expect(firstItem.id).toBeGreaterThan(0);
-        expect(firstItem.code).toBeDefined();
-        expect(firstItem.name).toBeDefined();
+        expect(typeof firstItem.code).toBe("string");
+        expect(firstItem.code!.length).toBeGreaterThan(0);
+        expect(typeof firstItem.name).toBe("string");
+        expect(firstItem.name!.length).toBeGreaterThan(0);
       }
     });
 
     test("按关键词搜索字典类型并验证搜索结果", async () => {
       const allTypes = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 100 }));
-      if (allTypes.list.length === 0) {
-        return;
-      }
+      expect(allTypes.list.length).toBeGreaterThan(0);
 
       const searchKeyword = allTypes.list[0]!.name!.substring(0, 2);
 
       const result = await DictAPI.getDictTypePage(
         createDictTypeQuery({ keywords: searchKeyword })
       );
+      expect(result.list.length).toBeGreaterThan(0);
 
-      if (result.list.length > 0) {
-        result.list.forEach((item) => {
-          const matchName = item.name!.toLowerCase().includes(searchKeyword.toLowerCase());
-          const matchCode = item.code!.toLowerCase().includes(searchKeyword.toLowerCase());
-          expect(matchName || matchCode).toBe(true);
-        });
-      }
+      result.list.forEach((item) => {
+        const matchName = item.name!.toLowerCase().includes(searchKeyword.toLowerCase());
+        const matchCode = item.code!.toLowerCase().includes(searchKeyword.toLowerCase());
+        expect(matchName || matchCode).toBe(true);
+      });
     });
 
     test("分页逻辑验证 - 不同页码返回不同数据", async () => {
@@ -104,9 +103,7 @@ describe("字典管理接口测试", () => {
   describe("GET /api/v1/dict/types/{id}/form - 字典类型表单数据", () => {
     test("获取字典类型表单数据并验证数据准确性", async () => {
       const pageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 1 }));
-      if (pageResult.list.length === 0) {
-        return;
-      }
+      expect(pageResult.list.length).toBeGreaterThan(0);
       const dictType = pageResult.list[0]!;
       const dictTypeId = dictType.id!;
 
@@ -122,7 +119,7 @@ describe("字典管理接口测试", () => {
     });
 
     test("获取不存在字典类型的表单数据应返回业务错误", async () => {
-      await expectBizError(DictAPI.getDictTypeForm(99999999), "B0001", "不存在");
+      await expectBizError(DictAPI.getDictTypeForm(99999999), "A0401", "不存在");
     });
   });
 
@@ -131,7 +128,7 @@ describe("字典管理接口测试", () => {
       const form = createDictTypeForm({ remark: "这是一个测试字典类型" });
 
       // addDictType 返回 undefined（后端 Result<Void>，data:null 被 Jackson 省略）
-      await expect(DictAPI.addDictType(form)).resolves.not.toThrow();
+      await DictAPI.addDictType(form);
 
       const pageResult = await DictAPI.getDictTypePage(
         createDictTypeQuery({ keywords: form.code! })
@@ -150,7 +147,7 @@ describe("字典管理接口测试", () => {
       const testRemark = "这是一个测试字典类型的备注";
       const form = createDictTypeForm({ remark: testRemark });
 
-      await expect(DictAPI.addDictType(form)).resolves.not.toThrow();
+      await DictAPI.addDictType(form);
 
       const pageResult = await DictAPI.getDictTypePage(
         createDictTypeQuery({ keywords: form.code! })
@@ -165,7 +162,7 @@ describe("字典管理接口测试", () => {
     test("创建禁用状态的字典类型并验证状态值", async () => {
       const form = createDictTypeForm({ status: 0 });
 
-      await expect(DictAPI.addDictType(form)).resolves.not.toThrow();
+      await DictAPI.addDictType(form);
 
       const pageResult = await DictAPI.getDictTypePage(
         createDictTypeQuery({ keywords: form.code! })
@@ -203,13 +200,11 @@ describe("字典管理接口测试", () => {
 
     test("参数校验：字典类型编码已存在", async () => {
       const pageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 1 }));
-      if (pageResult.list.length === 0) {
-        return;
-      }
+      expect(pageResult.list.length).toBeGreaterThan(0);
       const existingCode = pageResult.list[0]!.code!;
       const form = createDictTypeForm({ code: existingCode });
 
-      await expectBizError(DictAPI.addDictType(form), "B0001", ["编码", "code"]);
+      await expectBizError(DictAPI.addDictType(form), "A0501", ["编码", "code"]);
     });
   });
 
@@ -264,21 +259,19 @@ describe("字典管理接口测试", () => {
     test("更新不存在的字典类型应返回业务错误", async () => {
       await expectBizError(
         DictAPI.updateDictType(99999999, { ...originalForm, name: "测试" }),
-        "B0001",
+        "A0401",
         "不存在"
       );
     });
 
     test("参数校验：字典类型编码冲突", async () => {
       const pageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 1 }));
-      if (pageResult.list.length === 0) {
-        return;
-      }
+      expect(pageResult.list.length).toBeGreaterThan(0);
       const existingCode = pageResult.list[0]!.code!;
 
       await expectBizError(
         DictAPI.updateDictType(testDictTypeId, { ...originalForm, code: existingCode }),
-        "B0001"
+        "A0501"
       );
 
       const formData = await DictAPI.getDictTypeForm(testDictTypeId);
@@ -308,7 +301,7 @@ describe("字典管理接口测试", () => {
     test("删除单个字典类型并验证真的被删除", async () => {
       const dictTypeId = testDictTypeIds[0];
       await DictAPI.deleteDictTypes(dictTypeId!.toString());
-      await expectBizError(DictAPI.getDictTypeForm(dictTypeId!), "B0001", "不存在");
+      await expectBizError(DictAPI.getDictTypeForm(dictTypeId!), "A0401", "不存在");
     });
 
     test("批量删除多个字典类型并验证所有都被删除", async () => {
@@ -317,16 +310,21 @@ describe("字典管理接口测试", () => {
       await DictAPI.deleteDictTypes(ids.join(","));
 
       for (const dictTypeId of ids) {
-        await expectBizError(DictAPI.getDictTypeForm(dictTypeId!), "B0001");
+        await expectBizError(DictAPI.getDictTypeForm(dictTypeId!), "A0401");
       }
     });
 
     test("删除不存在的字典类型应返回业务错误", async () => {
-      await expectBizError(DictAPI.deleteDictTypes("99999999"), "B0001", "不存在");
+      await expectBizError(DictAPI.deleteDictTypes("99999999"), "A0401", "不存在");
     });
 
     test("参数校验：空的ID列表", async () => {
-      await expectBizError(DictAPI.deleteDictTypes(""), "B0001");
+      // 空字符串在 Gin 路由 :ids 下不会命中（返回 404），invalid 表示非数字 ID
+      await expectBizErrorOrUndefined(DictAPI.deleteDictTypes("invalid"), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
     });
 
     test("业务校验：不能删除有字典数据的字典类型", async () => {
@@ -345,7 +343,7 @@ describe("字典管理接口测试", () => {
       });
       await DictAPI.addDict(dictForm);
 
-      await expectBizError(DictAPI.deleteDictTypes(dictTypeId!.toString()), "B0001", "字典数据");
+      await expectBizError(DictAPI.deleteDictTypes(dictTypeId!.toString()), "A0504", "字典数据");
 
       // 验证字典类型仍存在
       const formData = await DictAPI.getDictTypeForm(dictTypeId!);
@@ -368,19 +366,18 @@ describe("字典管理接口测试", () => {
   describe("GET /api/v1/dict/{typeCode}/options - 字典下拉列表", () => {
     test("获取字典下拉列表并验证数据格式", async () => {
       const pageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 1 }));
-      if (pageResult.list.length === 0) {
-        return;
-      }
+      expect(pageResult.list.length).toBeGreaterThan(0);
       const typeCode = pageResult.list[0]!.code!;
 
       const result = await DictAPI.getDictOptions(typeCode);
-
       expect(Array.isArray(result)).toBe(true);
-      if (result.length > 0) {
-        const firstOption = result[0]!;
-        expect(firstOption.value).toBeTruthy();
-        expect(firstOption.label).toBeDefined();
-      }
+
+      result.forEach((option: any) => {
+        expect(option.value).toBeTruthy();
+        expect(typeof option.value).toBe("string");
+        expect(typeof option.label).toBe("string");
+        expect(option.label.length).toBeGreaterThan(0);
+      });
     });
 
     test("获取不存在的字典类型的下拉列表应返回空数组", async () => {
@@ -412,6 +409,18 @@ describe("字典管理接口测试", () => {
       } else {
         testTypeCode = typePageResult.list[0]!.code!;
       }
+
+      // 创建测试字典数据项，确保搜索测试有数据可用
+      for (let i = 0; i < 3; i++) {
+        const dictForm = createDictForm({ typeCode: testTypeCode });
+        await DictAPI.addDict(dictForm);
+        // 查询并记录创建的字典ID用于清理
+        const dictPage = await DictAPI.getDictPage(
+          createDictQuery({ typeCode: testTypeCode, keywords: dictForm.name, pageSize: 100 })
+        );
+        const created = dictPage.list.find((d) => d.name === dictForm.name);
+        if (created?.id) createdDictIds.push(created.id);
+      }
     });
 
     test("获取字典分页列表并验证数据结构", async () => {
@@ -426,8 +435,10 @@ describe("字典管理接口测试", () => {
       if (result.list.length > 0) {
         const firstItem = result.list[0]!;
         expect(firstItem.id).toBeGreaterThan(0);
-        expect(firstItem.name).toBeDefined();
-        expect(firstItem.value).toBeDefined();
+        expect(typeof firstItem.name).toBe("string");
+        expect(firstItem.name!.length).toBeGreaterThan(0);
+        expect(typeof firstItem.value).toBe("string");
+        expect(firstItem.value!.length).toBeGreaterThan(0);
       }
     });
 
@@ -441,26 +452,20 @@ describe("字典管理接口测试", () => {
       const allDicts = await DictAPI.getDictPage(
         createDictQuery({ typeCode: testTypeCode, pageSize: 100 })
       );
-      if (allDicts.list.length === 0) {
-        return;
-      }
+      expect(allDicts.list.length).toBeGreaterThan(0);
       const firstDict = allDicts.list[0]!;
-      if (!firstDict.name || firstDict.name.length < 1) {
-        return;
-      }
+      expect(firstDict.name).toBeTruthy();
       const searchKeyword = firstDict.name!.substring(0, 1);
 
       const result = await DictAPI.getDictPage(
         createDictQuery({ typeCode: testTypeCode, keywords: searchKeyword })
       );
+      expect(result.list.length).toBeGreaterThan(0);
 
-      if (result.list.length > 0) {
-        result.list.forEach((item) => {
-          if (item.name) {
-            expect(item.name.toLowerCase()).toContain(searchKeyword.toLowerCase());
-          }
-        });
-      }
+      result.list.forEach((item) => {
+        expect(item.name).toBeTruthy();
+        expect(item.name!.toLowerCase()).toContain(searchKeyword.toLowerCase());
+      });
     });
   });
 
@@ -468,6 +473,8 @@ describe("字典管理接口测试", () => {
     test("获取字典数据表单数据并验证数据准确性", async () => {
       // getDictPage 要求 typeCode 必填，先获取一个存在 typeCode 下有字典数据的页
       const typePageResult = await DictAPI.getDictTypePage(createDictTypeQuery({ pageSize: 100 }));
+      expect(typePageResult.list.length).toBeGreaterThan(0);
+
       let dictPage: { list: any[]; total: number } | null = null;
       for (const dictType of typePageResult.list) {
         const page = await DictAPI.getDictPage(
@@ -478,10 +485,8 @@ describe("字典管理接口测试", () => {
           break;
         }
       }
-      if (!dictPage || dictPage.list.length === 0) {
-        return;
-      }
-      const dict = dictPage.list[0]!;
+      expect(dictPage).not.toBeNull();
+      const dict = dictPage!.list[0]!;
       const dictId = dict.id!;
 
       const result = await DictAPI.getDictFormData(dictId);
@@ -490,11 +495,11 @@ describe("字典管理接口测试", () => {
       expect(result.name).toBe(dict.name);
       expect(result.value).toBe(dict.value);
       expect(result.status).toBe(dict.status);
-      expect(result.sort).toBeDefined();
+      expect(typeof result.sort).toBe("number");
     });
 
     test("获取不存在字典数据的表单数据应返回业务错误", async () => {
-      await expectBizError(DictAPI.getDictFormData(99999999), "B0001", "不存在");
+      await expectBizError(DictAPI.getDictFormData(99999999), "A0401", "不存在");
     });
   });
 
@@ -523,7 +528,7 @@ describe("字典管理接口测试", () => {
       });
 
       // addDict 返回 undefined（后端 Result<Void>，data:null 被 Jackson 省略）
-      await expect(DictAPI.addDict(form)).resolves.not.toThrow();
+      await DictAPI.addDict(form);
 
       const pageResult = await DictAPI.getDictPage(
         createDictQuery({ typeCode: testTypeCode, keywords: form.name! })
@@ -556,7 +561,7 @@ describe("字典管理接口测试", () => {
         remark: testRemark,
       });
 
-      await expect(DictAPI.addDict(form)).resolves.not.toThrow();
+      await DictAPI.addDict(form);
 
       const pageResult = await DictAPI.getDictPage(
         createDictQuery({ typeCode: testTypeCode, keywords: form.name! })
@@ -580,7 +585,7 @@ describe("字典管理接口测试", () => {
         status: 0,
       });
 
-      await expect(DictAPI.addDict(form)).resolves.not.toThrow();
+      await DictAPI.addDict(form);
 
       const pageResult = await DictAPI.getDictPage(
         createDictQuery({ typeCode: testTypeCode, keywords: form.name! })
@@ -628,14 +633,11 @@ describe("字典管理接口测试", () => {
     });
 
     test("参数校验：字典类型编码不存在应抛出业务错误", async () => {
-      // 【预期行为】创建字典时，typeCode 应引用存在的字典类型，不存在应返回业务错误（如 A0400/B0001）
-      // 【实际行为】后端未校验 typeCode 外键约束，允许创建引用不存在类型的字典（后端 bug）
-      // 【保留此测试】持续暴露后端缺少外键约束校验的问题
       const form = createDictForm({
         typeCode: uniqueCode("NON_EXIST"),
       });
 
-      await expectBizError(DictAPI.addDict(form), "A0400", ["类型", "typeCode"]);
+      await expectBizError(DictAPI.addDict(form), "A0401", ["类型", "typeCode"]);
     });
   });
 
@@ -720,7 +722,7 @@ describe("字典管理接口测试", () => {
     test("更新不存在的字典应返回业务错误", async () => {
       await expectBizError(
         DictAPI.updateDict(99999999, { ...originalDictForm, name: "测试" }),
-        "B0001",
+        "A0401",
         "不存在"
       );
     });
@@ -760,7 +762,7 @@ describe("字典管理接口测试", () => {
     test("删除单个字典并验证字典真的被删除", async () => {
       const dictId = testDictIds[0];
       await DictAPI.deleteDictByIds(dictId!.toString());
-      await expectBizError(DictAPI.getDictFormData(dictId!), "B0001", "不存在");
+      await expectBizError(DictAPI.getDictFormData(dictId!), "A0401", "不存在");
     });
 
     test("批量删除多个字典并验证所有字典都被删除", async () => {
@@ -769,16 +771,80 @@ describe("字典管理接口测试", () => {
       await DictAPI.deleteDictByIds(ids.join(","));
 
       for (const dictId of ids) {
-        await expectBizError(DictAPI.getDictFormData(dictId!), "B0001");
+        await expectBizError(DictAPI.getDictFormData(dictId!), "A0401");
       }
     });
 
     test("删除不存在的字典应返回业务错误", async () => {
-      await expectBizError(DictAPI.deleteDictByIds("99999999"), "B0001", "不存在");
+      await expectBizError(DictAPI.deleteDictByIds("99999999"), "A0401", "不存在");
     });
 
     test("参数校验：空的ID列表", async () => {
-      await expectBizError(DictAPI.deleteDictByIds(""), "B0001");
+      // 空字符串在 Gin 路由 :ids 下不会命中（返回 404），invalid 表示非数字 ID
+      // 两种情况均为参数校验错误
+      await expectBizErrorOrUndefined(DictAPI.deleteDictByIds("invalid"), [
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("完整 CRUD 生命周期：字典类型+字典数据联合生命周期", async () => {
+      // Create: 创建字典类型
+      const dictTypeForm = createDictTypeForm({ remark: "CRUD生命周期测试" });
+      await DictAPI.addDictType(dictTypeForm);
+
+      const typePage = await DictAPI.getDictTypePage(
+        createDictTypeQuery({ keywords: dictTypeForm.code! })
+      );
+      const createdType = typePage.list.find((d) => d.code === dictTypeForm.code);
+      expect(createdType).toBeDefined();
+      const dictTypeId = createdType!.id!;
+
+      // Read: 验证字典类型字段
+      const typeFormData = await DictAPI.getDictTypeForm(dictTypeId);
+      expect(typeFormData.name).toBe(dictTypeForm.name);
+      expect(typeFormData.code).toBe(dictTypeForm.code);
+      expect(typeFormData.remark).toBe("CRUD生命周期测试");
+
+      // Create: 创建字典数据
+      const dictForm = createDictForm({ typeCode: dictTypeForm.code!, sort: 1 });
+      await DictAPI.addDict(dictForm);
+
+      const dictPage = await DictAPI.getDictPage(
+        createDictQuery({ typeCode: dictTypeForm.code!, keywords: dictForm.name! })
+      );
+      const createdDict = dictPage.list.find(
+        (d) => d.name === dictForm.name && d.value === dictForm.value
+      );
+      expect(createdDict).toBeDefined();
+      const dictId = createdDict!.id!;
+
+      // Read: 验证字典数据字段
+      const dictFormData = await DictAPI.getDictFormData(dictId);
+      expect(dictFormData.name).toBe(dictForm.name);
+      expect(dictFormData.value).toBe(dictForm.value);
+      expect(dictFormData.typeCode).toBe(dictTypeForm.code);
+
+      // Update: 更新字典数据名称
+      const newDictName = `CRUD更新_${Date.now()}`;
+      await DictAPI.updateDict(dictId, { ...dictFormData, name: newDictName });
+
+      // Read: 验证更新已生效
+      const updatedDict = await DictAPI.getDictFormData(dictId);
+      expect(updatedDict.name).toBe(newDictName);
+
+      // Delete: 删除字典数据
+      await DictAPI.deleteDictByIds(dictId.toString());
+
+      // Verify: 验证字典数据已不存在
+      await expectBizError(DictAPI.getDictFormData(dictId), "A0401", "不存在");
+
+      // Delete: 删除字典类型
+      await DictAPI.deleteDictTypes(dictTypeId.toString());
+
+      // Verify: 验证字典类型已不存在
+      await expectBizError(DictAPI.getDictTypeForm(dictTypeId), "A0401", "不存在");
     });
   });
 });

@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
-	"github.com/earthyzinc/dehaze-go/internal/model/dto"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
@@ -55,7 +56,7 @@ func NewItemFileService(
 
 // SaveItemFile 保存项文件
 // sysFile: 已上传完成的文件记录（由 API 层调用 FileService.UploadFile 获取）
-func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model.SysFile, itemBO bo.DatasetItemBO, asyncThumbnail bool) (imageFileInfo dto.ImageFileInfo, err error) {
+func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model.SysFile, itemBO bo.DatasetItemBO, asyncThumbnail bool) (imageUrlVO vo.ImageUrlVO, err error) {
 	ctx := context.Background()
 
 	// 创建项文件关联记录
@@ -65,10 +66,16 @@ func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model
 		Type:        itemBO.Type,
 		Description: utils.StringPtr(itemBO.Description),
 	}
+	if itemBO.SceneType != "" {
+		sysItemFile.SceneType = utils.StringPtr(itemBO.SceneType)
+	}
+	if itemBO.HazeLevel != "" {
+		sysItemFile.HazeLevel = utils.StringPtr(itemBO.HazeLevel)
+	}
 
 	err = itemFileService.itemFileRepo.Create(ctx, &sysItemFile)
 	if err != nil {
-		return imageFileInfo, common.WrapBizError(common.DATABASE_ERROR, "创建项文件关联失败", err)
+		return imageUrlVO, common.WrapBizError(common.DATABASE_ERROR, "创建项文件关联失败", err)
 	}
 
 	// 异步生成缩略图
@@ -76,17 +83,52 @@ func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model
 		itemFileService.submitThumbnailTask(itemId, int64(sysFile.ID), sysItemFile.ID)
 	}
 
-	// 构建返回对象
-	imageFileInfo = dto.ImageFileInfo{
-		ID:            sysItemFile.ID,
-		DatasetItemID: itemId,
-		FileID:        int64(sysFile.ID),
-		Type:          sysItemFile.Type,
-		Description:   utils.StringVal(sysItemFile.Description),
-		URL:           utils.StringVal(sysFile.URL),
+	// 查询数据项以获取 datasetId
+	var datasetID int64
+	datasetItem, err := itemFileService.datasetItemRepo.FindByID(ctx, itemId)
+	if err == nil && datasetItem != nil {
+		datasetID = datasetItem.DatasetID
 	}
 
-	return imageFileInfo, nil
+	// 构建返回对象
+	imageUrlVO = vo.ImageUrlVO{
+		ID:          sysItemFile.ID,
+		ItemID:      itemId,
+		DatasetID:   datasetID,
+		Type:        sysItemFile.Type,
+		URL:         utils.StringVal(sysFile.URL),
+		OriginURL:   utils.StringVal(sysFile.URL),
+		Description: utils.StringVal(sysItemFile.Description),
+		SceneType:   utils.StringVal(sysItemFile.SceneType),
+		HazeLevel:   utils.StringVal(sysItemFile.HazeLevel),
+		FileName:    sysFile.Name,
+	}
+
+	// 解析文件大小
+	if size, parseErr := strconv.ParseInt(sysFile.Size, 10, 64); parseErr == nil {
+		imageUrlVO.SizeBytes = size
+	}
+
+	// 从文件名提取格式
+	if idx := strings.LastIndex(sysFile.Name, "."); idx != -1 {
+		imageUrlVO.Format = sysFile.Name[idx+1:]
+	}
+
+	// 设置宽高
+	if sysItemFile.Width != nil {
+		imageUrlVO.Width = *sysItemFile.Width
+	}
+	if sysItemFile.Height != nil {
+		imageUrlVO.Height = *sysItemFile.Height
+	}
+
+	// 失效缓存
+	itemFileService.invalidateItemFilesCache(itemId)
+	if datasetID > 0 {
+		itemFileService.invalidateDatasetStatsCache(datasetID)
+	}
+
+	return imageUrlVO, nil
 }
 
 // GetImageUrlVOs 获取图片URL VO列表（带缓存）
@@ -113,6 +155,13 @@ func (itemFileService *ItemFileService) GetImageUrlVOs(itemId int64) (imageUrlVO
 
 	imageUrlVOs = make([]vo.ImageUrlVO, 0, len(sysItemFiles))
 
+	// 查询数据项以获取 datasetId
+	var datasetID int64
+	datasetItem, err := itemFileService.datasetItemRepo.FindByID(ctx, itemId)
+	if err == nil && datasetItem != nil {
+		datasetID = datasetItem.DatasetID
+	}
+
 	// 获取关联的文件信息
 	for _, itemFile := range sysItemFiles {
 		sysFile, err := itemFileService.fileService.GetFileById(itemFile.FileID)
@@ -123,11 +172,42 @@ func (itemFileService *ItemFileService) GetImageUrlVOs(itemId int64) (imageUrlVO
 
 		imageUrlVO := vo.ImageUrlVO{
 			ID:          itemFile.ID,
+			ItemID:      itemFile.ItemID,
+			DatasetID:   datasetID,
 			Type:        itemFile.Type,
 			URL:         utils.StringVal(sysFile.URL),
 			OriginURL:   utils.StringVal(sysFile.URL),
 			Description: utils.StringVal(itemFile.Description),
+			SceneType:   utils.StringVal(itemFile.SceneType),
+			HazeLevel:   utils.StringVal(itemFile.HazeLevel),
+			FileName:    sysFile.Name,
 		}
+
+		// 解析文件大小
+		if size, parseErr := strconv.ParseInt(sysFile.Size, 10, 64); parseErr == nil {
+			imageUrlVO.SizeBytes = size
+		}
+
+		// 从文件名提取格式
+		if idx := strings.LastIndex(sysFile.Name, "."); idx != -1 {
+			imageUrlVO.Format = sysFile.Name[idx+1:]
+		}
+
+		// 设置宽高
+		if itemFile.Width != nil {
+			imageUrlVO.Width = *itemFile.Width
+		}
+		if itemFile.Height != nil {
+			imageUrlVO.Height = *itemFile.Height
+		}
+
+		// 设置缩略图URL
+		if itemFile.ThumbnailFileID != nil {
+			if thumbFile, err := itemFileService.fileService.GetFileById(*itemFile.ThumbnailFileID); err == nil {
+				imageUrlVO.ThumbnailURL = utils.StringVal(thumbFile.URL)
+			}
+		}
+
 		imageUrlVOs = append(imageUrlVOs, imageUrlVO)
 	}
 
@@ -218,8 +298,8 @@ func (itemFileService *ItemFileService) DeleteItemFileByItemId(itemId int64) (er
 	return nil
 }
 
-// GetItemFileById 根据ID获取项文件（带缓存）
-func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (sysItemFile model.SysItemFile, err error) {
+// GetItemFileById 根据ID获取项文件（带缓存），返回 ImageUrlVO
+func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (imageUrlVO vo.ImageUrlVO, err error) {
 	ctx := context.Background()
 	cacheKey := fmt.Sprintf("item:file:%d", itemFileId)
 
@@ -227,9 +307,9 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (sysIt
 	if itemFileService.cache != nil {
 		cachedData, err := itemFileService.cache.Get(ctx, cacheKey)
 		if err == nil && cachedData != "" {
-			if err := json.Unmarshal([]byte(cachedData), &sysItemFile); err == nil {
+			if err := json.Unmarshal([]byte(cachedData), &imageUrlVO); err == nil {
 				logger.Debug("项文件命中缓存", zap.Int64("itemFileID", itemFileId))
-				return sysItemFile, nil
+				return imageUrlVO, nil
 			}
 		}
 	}
@@ -237,33 +317,82 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (sysIt
 	// 2. 从数据库查询
 	itemFile, err := itemFileService.itemFileRepo.FindByID(ctx, itemFileId)
 	if err != nil {
-		return sysItemFile, common.WrapBizError(common.DATABASE_ERROR, "查询项文件失败", err)
+		return imageUrlVO, common.WrapBizError(common.DATABASE_ERROR, "查询项文件失败", err)
 	}
 	if itemFile == nil {
-		return sysItemFile, common.NewBizError(common.RESOURCE_NOT_FOUND, "项文件不存在")
+		return imageUrlVO, common.NewBizError(common.RESOURCE_NOT_FOUND, "项文件不存在")
 	}
-	sysItemFile = *itemFile
 
-	// 3. 写入缓存
-	if itemFileService.cache != nil {
-		if itemFileJSON, marshalErr := json.Marshal(sysItemFile); marshalErr == nil {
-			_ = itemFileService.cache.Set(ctx, cacheKey, itemFileJSON, ITEM_FILE_TTL)
+	// 查询关联文件
+	sysFile, err := itemFileService.fileService.GetFileById(itemFile.FileID)
+	if err != nil {
+		logger.Warn("查询关联文件失败", zap.Int64("fileID", itemFile.FileID), zap.Error(err))
+	}
+
+	// 查询数据项以获取 datasetId
+	var datasetID int64
+	datasetItem, err := itemFileService.datasetItemRepo.FindByID(ctx, itemFile.ItemID)
+	if err == nil && datasetItem != nil {
+		datasetID = datasetItem.DatasetID
+	}
+
+	// 构建 ImageUrlVO
+	imageUrlVO = vo.ImageUrlVO{
+		ID:          itemFile.ID,
+		ItemID:      itemFile.ItemID,
+		DatasetID:   datasetID,
+		Type:        itemFile.Type,
+		Description: utils.StringVal(itemFile.Description),
+		SceneType:   utils.StringVal(itemFile.SceneType),
+		HazeLevel:   utils.StringVal(itemFile.HazeLevel),
+	}
+
+	if sysFile != nil {
+		imageUrlVO.URL = utils.StringVal(sysFile.URL)
+		imageUrlVO.OriginURL = utils.StringVal(sysFile.URL)
+		imageUrlVO.FileName = sysFile.Name
+		if size, parseErr := strconv.ParseInt(sysFile.Size, 10, 64); parseErr == nil {
+			imageUrlVO.SizeBytes = size
+		}
+		if idx := strings.LastIndex(sysFile.Name, "."); idx != -1 {
+			imageUrlVO.Format = sysFile.Name[idx+1:]
 		}
 	}
 
-	return sysItemFile, nil
+	if itemFile.Width != nil {
+		imageUrlVO.Width = *itemFile.Width
+	}
+	if itemFile.Height != nil {
+		imageUrlVO.Height = *itemFile.Height
+	}
+
+	// 设置缩略图URL
+	if itemFile.ThumbnailFileID != nil {
+		if thumbFile, err := itemFileService.fileService.GetFileById(*itemFile.ThumbnailFileID); err == nil {
+			imageUrlVO.ThumbnailURL = utils.StringVal(thumbFile.URL)
+		}
+	}
+
+	// 3. 写入缓存
+	if itemFileService.cache != nil {
+		if voJSON, marshalErr := json.Marshal(imageUrlVO); marshalErr == nil {
+			_ = itemFileService.cache.Set(ctx, cacheKey, voJSON, ITEM_FILE_TTL)
+		}
+	}
+
+	return imageUrlVO, nil
 }
 
-// UpdateItemFileInfo 更新图片信息
-func (itemFileService *ItemFileService) UpdateItemFileInfo(itemFileID int64, form bo.ItemFileUpdateForm) error {
+// UpdateItemFileInfo 更新图片信息，返回更新后的 VO
+func (itemFileService *ItemFileService) UpdateItemFileInfo(itemFileID int64, form bo.ItemFileUpdateForm) (vo.ImageUrlVO, error) {
 	ctx := context.Background()
 
 	itemFile, err := itemFileService.itemFileRepo.FindByID(ctx, itemFileID)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询项文件失败", err)
+		return vo.ImageUrlVO{}, common.WrapBizError(common.DATABASE_ERROR, "查询项文件失败", err)
 	}
 	if itemFile == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "项文件不存在")
+		return vo.ImageUrlVO{}, common.NewBizError(common.RESOURCE_NOT_FOUND, "项文件不存在")
 	}
 
 	// 更新提供的字段
@@ -282,14 +411,15 @@ func (itemFileService *ItemFileService) UpdateItemFileInfo(itemFileID int64, for
 
 	err = itemFileService.itemFileRepo.Update(ctx, itemFile)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "更新项文件失败", err)
+		return vo.ImageUrlVO{}, common.WrapBizError(common.DATABASE_ERROR, "更新项文件失败", err)
 	}
 
 	// 失效缓存
 	itemFileService.invalidateItemFileCache(itemFileID)
 	itemFileService.invalidateItemFilesCache(itemFile.ItemID)
 
-	return nil
+	// 返回更新后的 VO
+	return itemFileService.GetItemFileById(itemFileID)
 }
 
 // UpdateThumbnail 更新缩略图

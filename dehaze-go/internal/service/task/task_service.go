@@ -56,6 +56,8 @@ func (ts *TaskService) GetTaskExecutor() AsyncTaskExecutor {
 }
 
 // CreateExportTask 创建导出任务
+// 统一任务接口为异步执行：同步创建任务记录（PENDING），资源存在性校验在异步策略中执行。
+// 即使任务执行器发布失败，也不阻断任务创建，仅记录日志，任务最终由异步策略或超时清理处理。
 func (ts *TaskService) CreateExportTask(form bo.ExportTaskCreateForm, userID int64) (*model.SysTask, error) {
 	ctx := context.Background()
 	taskIDStr := uuid.New().String()
@@ -70,7 +72,7 @@ func (ts *TaskService) CreateExportTask(form bo.ExportTaskCreateForm, userID int
 
 	task := model.SysTask{
 		TaskID:         taskIDStr,
-		TaskType:       model.TaskTypeExport,
+		TaskType:       model.TaskTypeDatasetExport,
 		Status:         model.TaskStatusPending,
 		Progress:       0,
 		TotalFiles:     0,
@@ -86,17 +88,18 @@ func (ts *TaskService) CreateExportTask(form bo.ExportTaskCreateForm, userID int
 	}
 
 	ts.cacheTask(&task)
+
+	// 发布异步任务，失败时仅记录日志，不阻断任务创建
+	// 资源存在性校验在异步策略中执行，任务最终状态可能为 FAILED
 	if ts.taskExecutor == nil {
-		return nil, common.NewBizError(common.SYSTEM_EXECUTION_ERROR, "任务执行器未初始化")
-	}
-	if err := ts.taskExecutor.PublishExportTask(ctx, task.ID, form); err != nil {
-		completedAt := time.Now()
-		_ = ts.taskRepo.UpdateFields(ctx, task.ID, map[string]interface{}{
-			"status":        model.TaskStatusFailed,
-			"error_message": err.Error(),
-			"completed_at":  &completedAt,
-		})
-		return nil, common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "发布导出任务失败", err)
+		ts.logger.Warn("任务执行器未初始化，任务将保持 PENDING 状态",
+			zap.Int64("taskID", task.ID),
+			zap.String("taskIDStr", taskIDStr))
+	} else if err := ts.taskExecutor.PublishExportTask(ctx, task.ID, form); err != nil {
+		ts.logger.Warn("发布导出任务失败，任务保持 PENDING 状态",
+			zap.Int64("taskID", task.ID),
+			zap.String("taskIDStr", taskIDStr),
+			zap.Error(err))
 	}
 
 	ts.logger.Info("创建导出任务成功",
@@ -109,9 +112,14 @@ func (ts *TaskService) CreateExportTask(form bo.ExportTaskCreateForm, userID int
 }
 
 // GetTaskStatus 查询任务状态
+// 任务不存在时返回 (nil, nil)，由调用方返回 data=null 给前端
 func (ts *TaskService) GetTaskStatus(taskIDStr string) (*model.SysTask, error) {
 	task, err := ts.getTaskFromCacheOrDB(taskIDStr)
 	if err != nil {
+		// 任务不存在时返回 nil，不返回错误
+		if bizErr, ok := common.AsBizError(err); ok && bizErr.Code() == common.RESOURCE_NOT_FOUND {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return task, nil

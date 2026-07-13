@@ -28,7 +28,7 @@ const (
 )
 
 // roleCodePattern 角色编码正则（包级编译，避免每次验证重新编译）
-var roleCodePattern = regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`)
+var roleCodePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_]*$`)
 
 // dataScopeLabelMap 数据权限范围中文映射
 var dataScopeLabelMap = map[int8]string{
@@ -374,7 +374,7 @@ func (s *RoleService) GetMaximumDataScope(ctx context.Context, roles []string) (
 func (s *RoleService) validateRoleForm(form *bo.RoleFormBO) error {
 	// 正则格式校验：角色编码只允许大写字母开头、大写字母/数字/下划线组合
 	if !roleCodePattern.MatchString(form.Code) {
-		return common.NewBizError(common.PARAM_ERROR, "角色编码格式不正确，只能包含大写字母、数字和下划线，且必须以大写字母开头")
+		return common.NewBizError(common.PARAM_ERROR, "角色编码格式不正确，只能包含字母、数字和下划线，且必须以字母开头")
 	}
 	return nil
 }

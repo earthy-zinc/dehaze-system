@@ -28,21 +28,31 @@ func (_m *MockIAlgorithmService) EXPECT() *MockIAlgorithmService_Expecter {
 }
 
 // Create provides a mock function with given fields: ctx, form
-func (_m *MockIAlgorithmService) Create(ctx context.Context, form *bo.AlgorithmFormBO) error {
+func (_m *MockIAlgorithmService) Create(ctx context.Context, form *bo.AlgorithmFormBO) (int64, error) {
 	ret := _m.Called(ctx, form)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Create")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *bo.AlgorithmFormBO) error); ok {
-		r0 = rf(ctx, form)
+	var r0 int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, *bo.AlgorithmFormBO) (int64, error)); ok {
+		return rf(ctx, form)
+	}
+	if rf, ok := ret.Get(0).(int64); ok {
+		r0 = rf
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(int64)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, *bo.AlgorithmFormBO) error); ok {
+		r1 = rf(ctx, form)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockIAlgorithmService_Create_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Create'
@@ -64,12 +74,12 @@ func (_c *MockIAlgorithmService_Create_Call) Run(run func(ctx context.Context, f
 	return _c
 }
 
-func (_c *MockIAlgorithmService_Create_Call) Return(_a0 error) *MockIAlgorithmService_Create_Call {
-	_c.Call.Return(_a0)
+func (_c *MockIAlgorithmService_Create_Call) Return(_a0 int64, _a1 error) *MockIAlgorithmService_Create_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockIAlgorithmService_Create_Call) RunAndReturn(run func(context.Context, *bo.AlgorithmFormBO) error) *MockIAlgorithmService_Create_Call {
+func (_c *MockIAlgorithmService_Create_Call) RunAndReturn(run func(context.Context, *bo.AlgorithmFormBO) (int64, error)) *MockIAlgorithmService_Create_Call {
 	_c.Call.Return(run)
 	return _c
 }

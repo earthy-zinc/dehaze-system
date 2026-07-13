@@ -1,9 +1,8 @@
 """
 Schema 模型包 - Pydantic 模型定义，用于自动生成 OpenAPI 文档
 """
-from app.models.schema.algorithm import (AlgorithmDeleteResultVO,
-                                         AlgorithmForm, AlgorithmIdPath,
-                                         AlgorithmIdsQuery, AlgorithmIdVO,
+from app.models.schema.algorithm import (AlgorithmForm, AlgorithmIdPath,
+                                         AlgorithmIdsQuery, AlgorithmMonitorVO,
                                          AlgorithmOptionVO, AlgorithmQuery,
                                          AlgorithmVO)
 from app.models.schema.common import BasePageQuery, IdsPath, Option, PageResult
@@ -131,10 +130,7 @@ __all__ = [
     "AlgorithmForm",
     "AlgorithmVO",
     "AlgorithmOptionVO",
-    "AlgorithmIdVO",
-    "AlgorithmDeleteResultVO",
-    "AlgorithmIdVO",
-    "AlgorithmDeleteResultVO",
+    "AlgorithmMonitorVO",
     # file
     "FileIdQuery",
     "FileCheckQuery",

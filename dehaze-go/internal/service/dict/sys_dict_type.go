@@ -188,10 +188,14 @@ func (s *DictTypeService) Delete(ctx context.Context, ids []int64) error {
 		return common.NewBizError(common.PARAM_ERROR, "删除数据为空")
 	}
 
-	// 查询要删除的字典类型编码
+	// 查询要删除的字典类型编码（同时用于校验字典类型是否存在）
 	dictTypeCodes, err := s.dictTypeRepo.FindCodesByIDs(ctx, ids)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询字典类型编码失败", err)
+	}
+	// 校验字典类型是否存在（所有 ID 都不存在时返回错误）
+	if len(dictTypeCodes) == 0 {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典类型不存在")
 	}
 
 	// 检查是否存在关联的字典数据

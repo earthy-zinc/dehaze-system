@@ -125,13 +125,13 @@ func (api *SysDeptApi) SaveDept(c *gin.Context) {
 
 	// 调用服务保存部门
 	ctx := c.Request.Context()
-	err := api.deptService.Create(ctx, &deptFormBO)
+	id, err := api.deptService.Create(ctx, &deptFormBO)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
-	common.OkWithMessage("新增部门成功", c)
+	common.OkWithData(id, c)
 }
 
 // UpdateDept 修改部门

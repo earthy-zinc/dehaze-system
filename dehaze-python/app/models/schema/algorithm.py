@@ -33,27 +33,21 @@ class AlgorithmForm(BaseModel):
     id: Optional[int] = Field(default=None, description="算法ID")
     parentId: int = Field(
         default=0, ge=0, alias="parentId", description="父级ID")
-    type: Optional[str] = Field(default="", description="算法类型")
+    type: str = Field(..., min_length=1, description="算法类型")
     name: str = Field(..., min_length=1, max_length=100, description="算法名称")
     path: Optional[str] = Field(default="", description="模型路径")
     importPath: Optional[str] = Field(
         default="", alias="importPath", description="导入路径")
     description: Optional[str] = Field(default="", description="算法描述")
-    status: int = Field(default=0, ge=0, le=5, description="状态(0:草稿;1:测试中;2:待审核;3:已发布;4:已停用;5:已归档)")
+    status: Optional[int] = Field(default=None, description="算法状态")
     version: Optional[str] = Field(default=None, description="算法版本号")
 
     model_config = {"populate_by_name": True}
 
 
-class AlgorithmStatusForm(BaseModel):
-    """算法状态修改表单"""
-    status: int = Field(..., ge=0, le=5, description="目标状态(0:草稿;1:测试中;2:待审核;3:已发布;4:已停用;5:已归档)")
-
-
 class AlgorithmAuditForm(BaseModel):
-    """算法审核表单"""
-    # passed=True 通过，False 驳回
-    passed: bool = Field(..., description="是否通过")
+    """算法审核表单 (对齐 Java AlgorithmAuditForm)"""
+    approved: bool = Field(..., description="是否通过")
     remark: Optional[str] = Field(default=None, description="审核备注（驳回时必填）")
 
 
@@ -74,13 +68,6 @@ class AlgorithmVersionForm(BaseModel):
         if not re.match(r"^v\d+\.\d+\.\d+$", v):
             raise ValueError("版本号格式必须为 vX.Y.Z")
         return v
-
-
-class AlgorithmRollbackForm(BaseModel):
-    """版本回滚表单"""
-    versionId: int = Field(..., alias="versionId", description="目标版本ID")
-
-    model_config = {"populate_by_name": True}
 
 
 # ==================== 响应模型 ====================
@@ -119,16 +106,6 @@ class AlgorithmOptionVO(BaseModel):
         default=None, description="子选项列表")
 
 
-class AlgorithmIdVO(BaseModel):
-    """算法ID响应VO"""
-    id: int = Field(description="算法ID")
-
-
-class AlgorithmDeleteResultVO(BaseModel):
-    """算法删除结果VO"""
-    count: int = Field(description="删除数量")
-
-
 class AlgorithmVersionVO(BaseModel):
     """算法版本历史VO (对齐 Java AlgorithmVersionVO)"""
     id: int = Field(description="版本ID")
@@ -146,35 +123,11 @@ class AlgorithmVersionVO(BaseModel):
 
 
 class AlgorithmMonitorVO(BaseModel):
-    """算法监控数据VO"""
-    algorithmId: int = Field(description="算法ID")
-    algorithmName: Optional[str] = Field(default=None, description="算法名称")
-    # 实时指标
-    totalCalls: int = Field(default=0, description="总调用次数")
-    avgTime: float = Field(default=0, description="平均耗时(毫秒)")
-    successRate: float = Field(default=0, description="成功率(0-1)")
-    # 最近调用
-    lastCallTime: Optional[str] = Field(default=None, description="最近调用时间")
-
-
-class AlgorithmMonitorStatsVO(BaseModel):
-    """算法监控统计报表VO"""
-    algorithmId: int = Field(description="算法ID")
-    # 时间序列
-    timeSeries: List[dict] = Field(default_factory=list, description="时间序列数据")
-    # 汇总
-    totalCalls: int = Field(default=0, description="总调用次数")
-    avgTime: float = Field(default=0, description="平均耗时")
-    maxTime: int = Field(default=0, description="最大耗时")
-    minTime: int = Field(default=0, description="最小耗时")
-    successRate: float = Field(default=0, description="成功率")
-
-
-class AlgorithmImportResultVO(BaseModel):
-    """算法导入结果VO"""
-    success: bool = Field(description="是否成功")
-    algorithmId: Optional[int] = Field(default=None, description="导入后的算法ID")
-    message: str = Field(default="", description="消息")
+    """算法监控数据VO (对齐 Java AlgorithmMonitorVO)"""
+    callCount: int = Field(default=0, description="调用次数")
+    avgTime: float = Field(default=0, description="平均处理时间(毫秒)")
+    successRate: float = Field(default=0, description="成功率(0-100)")
+    todayCallCount: int = Field(default=0, description="今日调用次数")
 
 
 # 解决自引用

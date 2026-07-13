@@ -8,6 +8,8 @@ type MenuVO struct {
 	ParentID int64 `json:"parentId"`
 	// 菜单名称
 	Name string `json:"name"`
+	// 菜单类型(MENU/CATALOG/EXTLINK/BUTTON)
+	Type string `json:"type"`
 	// 路由路径
 	Path string `json:"path"`
 	// 组件路径

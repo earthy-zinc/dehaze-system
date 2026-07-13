@@ -17,7 +17,7 @@ type IDeptService interface {
 	GetFormData(ctx context.Context, id int64) (*bo.DeptFormBO, error)
 
 	// Create 创建部门
-	Create(ctx context.Context, form *bo.DeptFormBO) error
+	Create(ctx context.Context, form *bo.DeptFormBO) (int64, error)
 
 	// Update 更新部门
 	Update(ctx context.Context, id int64, form *bo.DeptFormBO) error

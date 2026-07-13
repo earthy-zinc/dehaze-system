@@ -205,6 +205,33 @@ class Settings(BaseSettings):
     # 部门管理配置
     DEPT_MAX_DEPTH: int = 5  # 部门层级深度限制
 
+    # ===== 安全防护配置（平台级） =====
+    # 限流
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_DEFAULT_TIMES: int = 60  # 默认每分钟 60 次
+    RATE_LIMIT_DEFAULT_SECONDS: int = 60
+
+    # 防重复提交
+    REPEAT_SUBMIT_ENABLED: bool = True
+    REPEAT_SUBMIT_DEFAULT_INTERVAL: int = 5  # 默认 5 秒内禁止重复提交
+
+    # IP 黑名单（自动封禁异常请求的 IP）
+    IP_BLACKLIST_ENABLED: bool = True
+    IP_BLACKLIST_THRESHOLD: int = 100  # 追踪窗口内异常请求次数阈值
+    IP_BLACKLIST_DURATION: int = 3600  # 自动封禁时长（秒），默认 1 小时
+    IP_BLACKLIST_TRACKING_WINDOW: int = 60  # 异常请求追踪窗口（秒）
+
+    # ===== WebSocket 跨 Worker 配置 =====
+    WS_REDIS_CHANNEL: str = "dehaze:ws:broadcast"  # Pub/Sub 频道名
+    WS_ONLINE_KEY: str = "dehaze:ws:online_users"  # 在线用户 Redis sorted set key
+    WS_HEARTBEAT_INTERVAL: int = 30  # 心跳间隔（秒）
+    WS_ONLINE_TTL: int = 90  # 在线状态过期时间（秒），应 >= 3 倍心跳间隔
+
+    # ===== TaskTracker 跨 Worker 配置 =====
+    TASK_REDIS_KEY_PREFIX: str = "task:running"  # Redis 任务状态 key 前缀
+    TASK_HEARTBEAT_INTERVAL: int = 30  # 任务心跳间隔（秒）
+    TASK_REDIS_TTL: int = 3600  # Redis 任务状态 TTL（秒）
+
 
 class DevelopmentSettings(Settings):
     """开发环境配置"""

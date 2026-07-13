@@ -22,6 +22,12 @@ func Permission(perms ...string) gin.HandlerFunc {
 			return
 		}
 
+		// 超级管理员放行（与 Java 后端 SecurityUtils.isRoot() 逻辑一致）
+		if security.IsRoot(c) {
+			c.Next()
+			return
+		}
+
 		// 检查是否有任一权限
 		hasPerm, err := security.HasAnyPermission(c, perms...)
 		if err != nil {
@@ -97,6 +103,12 @@ func PermissionWithWildcard(perms ...string) gin.HandlerFunc {
 func RequireAllPermission(perms ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if len(perms) == 0 {
+			c.Next()
+			return
+		}
+
+		// 超级管理员放行
+		if security.IsRoot(c) {
 			c.Next()
 			return
 		}

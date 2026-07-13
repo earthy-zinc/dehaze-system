@@ -2,26 +2,24 @@ package model
 
 import "time"
 
-// TaskStatus 任务状态枚举
+// TaskStatus 任务状态枚举（与前端 SDK 约定一致，使用大写）
 type TaskStatus string
 
 const (
-	TaskStatusPending    TaskStatus = "pending"    // 待执行
-	TaskStatusProcessing TaskStatus = "processing" // 执行中
-	TaskStatusCompleted  TaskStatus = "completed"  // 已完成
-	TaskStatusFailed     TaskStatus = "failed"     // 失败
-	TaskStatusCancelled  TaskStatus = "cancelled"  // 已取消
+	TaskStatusPending    TaskStatus = "PENDING"    // 待执行
+	TaskStatusProcessing TaskStatus = "PROCESSING" // 执行中
+	TaskStatusCompleted  TaskStatus = "COMPLETED"  // 已完成
+	TaskStatusFailed     TaskStatus = "FAILED"     // 失败
+	TaskStatusCancelled  TaskStatus = "CANCELLED"  // 已取消
 )
 
-// TaskType 任务类型枚举
+// TaskType 任务类型枚举（与前端 SDK 约定一致，使用小写带下划线）
 type TaskType string
 
 const (
-	TaskTypeExport      TaskType = "export"      // 导出任务
-	TaskTypeImport      TaskType = "import"      // 导入任务
-	TaskTypeThumbnail   TaskType = "thumbnail"   // 缩略图生成任务
-	TaskTypeCompression TaskType = "compression" // 压缩任务
-	TaskTypeCleanup     TaskType = "cleanup"     // 清理任务
+	TaskTypeDatasetExport TaskType = "dataset_export" // 数据集导出任务
+	TaskTypeItemDownload  TaskType = "item_download"  // 数据项下载任务
+	TaskTypeBatchDownload TaskType = "batch_download" // 批量下载任务
 )
 
 // SysTask 系统任务表

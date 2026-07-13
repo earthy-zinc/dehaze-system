@@ -51,9 +51,11 @@ func (r *DatasetItemFileRepository) CreateDatasetItemWithFiles(ctx context.Conte
 				FileID: fileID,
 				Type:   file.Type,
 			}
+			if file.SceneType != "" {
+				itemFile.SceneType = utils.StringPtr(file.SceneType)
+			}
 			if file.HazeLevel != "" {
-				hazeDesc := fmt.Sprintf("雾霾程度: %s", file.HazeLevel)
-				itemFile.Description = &hazeDesc
+				itemFile.HazeLevel = utils.StringPtr(file.HazeLevel)
 			}
 			if err := tx.Create(&itemFile).Error; err != nil {
 				return fmt.Errorf("创建项文件关联失败: %w", err)

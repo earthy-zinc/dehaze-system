@@ -11,7 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.entity.sys_algorithm import SysAlgorithm, SysAlgorithmVersion
 from app.models.entity.sys_log import SysPredLog
 from app.repository.base import BaseRepository
-from app.repository.base import escape_like
 
 
 # 算法状态机常量
@@ -22,23 +21,6 @@ class AlgorithmStatus:
     PUBLISHED = 3   # 已发布
     DISABLED = 4    # 已停用
     ARCHIVED = 5    # 已归档
-
-
-# 状态流转规则
-STATUS_TRANSITIONS = {
-    AlgorithmStatus.DRAFT: {AlgorithmStatus.TESTING},
-    AlgorithmStatus.TESTING: {AlgorithmStatus.PENDING_AUDIT},
-    AlgorithmStatus.PENDING_AUDIT: {AlgorithmStatus.PUBLISHED, AlgorithmStatus.TESTING},  # 通过/驳回
-    AlgorithmStatus.PUBLISHED: {AlgorithmStatus.DISABLED},
-    AlgorithmStatus.DISABLED: {AlgorithmStatus.PUBLISHED, AlgorithmStatus.ARCHIVED},
-    AlgorithmStatus.ARCHIVED: set(),  # 终态
-}
-
-
-def can_transition(current: int, target: int) -> bool:
-    """检查状态流转是否合法"""
-    allowed = STATUS_TRANSITIONS.get(current, set())
-    return target in allowed
 
 
 class AlgorithmRepository(BaseRepository[SysAlgorithm]):
@@ -54,7 +36,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         """获取算法列表（支持关键词搜索）"""
         stmt = select(SysAlgorithm)
         if keywords:
-            stmt = stmt.where(SysAlgorithm.name.like(f"%{escape_like(keywords)}%", escape="\\"))
+            stmt = stmt.where(SysAlgorithm.name.like(f"%{keywords}%"))
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -90,7 +72,7 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         db: AsyncSession,
     ) -> list[dict]:
         """获取算法下拉选项列表（树形结构）"""
-        stmt = select(SysAlgorithm).where(SysAlgorithm.status == AlgorithmStatus.PUBLISHED)
+        stmt = select(SysAlgorithm).where(SysAlgorithm.status == 1)
         result = await db.execute(stmt)
         algorithms = result.scalars().all()
 
@@ -277,6 +259,25 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
             "minTime": int(row.min_time or 0),
             "successRate": 1.0,  # 日志表只记录成功的调用
         }
+
+    async def get_today_call_count(
+        self,
+        db: AsyncSession,
+        algorithm_id: int,
+    ) -> int:
+        """获取算法今日调用次数（对齐 Java: create_time >= 今日零点）"""
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        stmt = (
+            select(func.count())
+            .select_from(SysPredLog)
+            .where(
+                SysPredLog.algorithm_id == algorithm_id,
+                SysPredLog.create_time >= today_start,
+            )
+        )
+        return (await db.execute(stmt)).scalar() or 0
 
     async def get_recent_calls(
         self,

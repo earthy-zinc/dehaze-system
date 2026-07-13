@@ -28,7 +28,7 @@ type IAlgorithmService interface {
 	GetFormData(ctx context.Context, id int64) (*bo.AlgorithmFormBO, error)
 
 	// Create 创建算法
-	Create(ctx context.Context, form *bo.AlgorithmFormBO) error
+	Create(ctx context.Context, form *bo.AlgorithmFormBO) (int64, error)
 
 	// Update 更新算法
 	Update(ctx context.Context, id int64, form *bo.AlgorithmFormBO) error

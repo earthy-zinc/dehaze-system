@@ -11,8 +11,8 @@ export function createPredictionForm(overrides: Partial<PredictionForm> = {}): P
 export function createEvaluationForm(overrides: Partial<EvaluationForm> = {}): EvaluationForm {
   return {
     algorithmId: 1,
-    predFileId: 1,
-    gtFileId: 2,
+    predUrl: "/api/v1/files/download/test_pred.jpg",
+    gtUrl: "/api/v1/files/download/test_gt.jpg",
     ...overrides,
   };
 }

@@ -88,7 +88,7 @@ export default withMermaid(
             },
           ],
         },
-        { text: "临时文件", link: "/04-临时文件/改造方案" },
+        { text: "改造计划", link: "/04-改造计划/产品拓展升级规划" },
       ],
 
       sidebar: {
@@ -114,6 +114,20 @@ export default withMermaid(
               { text: "API规范", link: "/02-系统架构/04-API规范" },
               { text: "测试架构", link: "/02-系统架构/05-测试架构" },
               { text: "部署架构", link: "/02-系统架构/06-部署架构" },
+              {
+                text: "后端基础设施设计(Go)",
+                link: "/02-系统架构/07-后端基础设施设计(Go)",
+              },
+              {
+                text: "后端基础设施设计(Python)",
+                link: "/02-系统架构/08-后端基础设施设计(Python)",
+              },
+              {
+                text: "后端基础设施设计(Java)",
+                link: "/02-系统架构/09-后端基础设施设计(Java)",
+              },
+              { text: "后端额外说明", link: "/02-系统架构/10-后端额外说明" },
+              { text: "前端额外说明", link: "/02-系统架构/11-前端额外说明" },
             ],
           },
         ],
@@ -443,14 +457,27 @@ export default withMermaid(
             ],
           },
         ],
-        "/04-临时文件/": [
+        "/04-改造计划/": [
           {
-            text: "临时文件",
+            text: "改造计划",
             items: [
-              { text: "改造方案", link: "/04-临时文件/改造方案" },
-              { text: "架构评审报告", link: "/04-临时文件/架构评审报告" },
-              { text: "测试实施指南", link: "/04-临时文件/测试实施指南" },
-              { text: "详细实施指南", link: "/04-临时文件/详细实施指南" },
+              {
+                text: "产品拓展升级规划",
+                link: "/04-改造计划/产品拓展升级规划",
+              },
+              {
+                text: "核心模块改造规划",
+                link: "/04-改造计划/核心模块改造规划",
+              },
+              {
+                text: "Java基础设施存在问题",
+                link: "/04-改造计划/java基础设施存在问题",
+              },
+              {
+                text: "Python基础设施存在问题",
+                link: "/04-改造计划/python基础设施存在问题",
+              },
+              { text: "分布式锁", link: "/04-改造计划/分布式锁" },
             ],
           },
         ],
@@ -464,7 +491,7 @@ export default withMermaid(
       ],
       footer: {
         message: "图像去雾系统项目文档",
-        copyright: "Copyright © 2024 earthy zinc",
+        copyright: "Copyright © 2024-2026 earthy zinc",
       },
 
       search: {

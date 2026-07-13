@@ -3,10 +3,19 @@
 """
 from typing import TYPE_CHECKING, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 if TYPE_CHECKING:
     pass
+
+
+# 菜单类型字符串枚举 → 整数映射（对齐 Java MenuTypeEnum）
+MENU_TYPE_NAME_TO_VALUE = {
+    "MENU": 1,
+    "CATALOG": 2,
+    "EXTLINK": 3,
+    "BUTTON": 4,
+}
 
 
 # ==================== 查询参数模型 ====================
@@ -62,6 +71,14 @@ class MenuForm(BaseModel):
     alwaysShow: Optional[int] = Field(
         default=None, ge=0, le=1, description="【目录】只有一个子路由是否始终显示")
 
+    @field_validator("type", mode="before")
+    @classmethod
+    def convert_type_from_enum_name(cls, v):
+        """支持字符串枚举名（CATALOG/MENU/EXTLINK/BUTTON），对齐 Java MenuTypeEnum 序列化"""
+        if isinstance(v, str) and v in MENU_TYPE_NAME_TO_VALUE:
+            return MENU_TYPE_NAME_TO_VALUE[v]
+        return v
+
 
 # ==================== 响应模型 ====================
 
@@ -70,7 +87,7 @@ class MenuVO(BaseModel):
     id: int = Field(description="菜单ID")
     parentId: int = Field(description="父菜单ID")
     name: str = Field(description="菜单名称")
-    type: int = Field(description="菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)")
+    type: str = Field(description="菜单类型(MENU/CATALOG/EXTLINK/BUTTON)")
     path: Optional[str] = Field(default=None, description="路由路径")
     component: Optional[str] = Field(default=None, description="组件路径")
     sort: int = Field(description="菜单排序(数字越小排名越靠前)")
@@ -112,7 +129,7 @@ class MenuFormVO(BaseModel):
     id: int = Field(description="菜单ID")
     parentId: int = Field(default=0, description="父菜单ID")
     name: str = Field(description="菜单名称")
-    type: int = Field(description="菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)")
+    type: str = Field(description="菜单类型(MENU/CATALOG/EXTLINK/BUTTON)")
     path: Optional[str] = Field(default=None, description="路由路径")
     component: Optional[str] = Field(default=None, description="组件路径")
     perm: Optional[str] = Field(default=None, description="权限标识")

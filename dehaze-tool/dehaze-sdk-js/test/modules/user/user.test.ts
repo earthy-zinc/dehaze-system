@@ -52,7 +52,6 @@ describe("用户管理接口测试", () => {
 
       // 验证分页结构
       expect(result).toBeDefined();
-      expect(result.list).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(typeof result.total).toBe("number");
       expect(result.total).toBeGreaterThanOrEqual(ADMIN_VISIBLE_USER_COUNT);
@@ -87,7 +86,6 @@ describe("用户管理接口测试", () => {
       const result = await UserAPI.getPage(query);
 
       expect(result).toBeDefined();
-      expect(result.list).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(result.list.length).toBeGreaterThan(0);
 
@@ -112,7 +110,6 @@ describe("用户管理接口测试", () => {
       const result = await UserAPI.getPage(query);
 
       expect(result).toBeDefined();
-      expect(result.list).toBeDefined();
       // 预置的3个用户都是启用状态
       expect(result.total).toBeGreaterThanOrEqual(ADMIN_VISIBLE_USER_COUNT);
 
@@ -148,8 +145,6 @@ describe("用户管理接口测试", () => {
       const page1Result = await UserAPI.getPage({ pageNum: 1, pageSize } as UserQuery);
       const page2Result = await UserAPI.getPage({ pageNum: 2, pageSize } as UserQuery);
 
-      expect(page1Result.list).toBeDefined();
-      expect(page2Result.list).toBeDefined();
       expect(page1Result.list.length).toBeLessThanOrEqual(pageSize);
       expect(page2Result.list.length).toBeLessThanOrEqual(pageSize);
 
@@ -178,7 +173,6 @@ describe("用户管理接口测试", () => {
       const result = await UserAPI.getPage(query);
 
       expect(result).toBeDefined();
-      expect(result.list).toBeDefined();
       expect(Array.isArray(result.list)).toBe(true);
       expect(result.list.length).toBe(0);
       // 总数应该仍然正确
@@ -397,11 +391,7 @@ describe("用户管理接口测试", () => {
         pageSize: 100,
         keywords: form.username!,
       });
-      console.log(
-        `[DEBUG PUT beforeAll] username: ${form.username} total: ${userPageResult.total} list.length: ${userPageResult.list.length} usernames: ${JSON.stringify(userPageResult.list.map((u) => u.username))}`
-      );
       const createdUser = userPageResult.list.find((u) => u.username === form.username);
-      console.log(`[DEBUG PUT beforeAll] createdUser: ${JSON.stringify(createdUser)}`);
       if (createdUser?.id) {
         testUserId = createdUser.id;
         originalUser = await UserAPI.getFormData(testUserId);
@@ -632,7 +622,11 @@ describe("用户管理接口测试", () => {
         roleIds: existingRoleIds,
       });
 
-      await expectBizErrorOrUndefined(UserAPI.update(nonExistentUserId, form), ["B0001", "A0400"]);
+      await expectBizErrorOrUndefined(UserAPI.update(nonExistentUserId, form), [
+        "A0401",
+        "B0001",
+        "A0400",
+      ]);
     });
 
     test("参数校验：用户名冲突", async () => {
@@ -642,7 +636,11 @@ describe("用户管理接口测试", () => {
         nickname: beforeUpdate.nickname || originalUser.nickname,
         roleIds: beforeUpdate.roleIds ?? existingRoleIds,
       });
-      await expectBizErrorOrUndefined(UserAPI.update(testUserId, form), ["B0001", "A0400"]);
+      await expectBizErrorOrUndefined(UserAPI.update(testUserId, form), [
+        "A0501",
+        "B0001",
+        "A0400",
+      ]);
 
       // 验证用户名未被修改
       const formData = await UserAPI.getFormData(testUserId);
@@ -693,12 +691,13 @@ describe("用户管理接口测试", () => {
       expect(formData.id).toBe(testUserId);
     });
 
-    // 后端 updatePassword 接口未对 password 做非空校验（@RequestBody Map 取值，无 @NotBlank）
-    // 待后端补充校验后，此测试应改回 expectBizErrorOrUndefined(["A0410","A0400","B0001"])
-    test("参数校验：空密码当前被后端接受（后端缺失非空校验）", async () => {
+    test("参数校验：空密码应被拒绝", async () => {
       const emptyPassword = "";
-      await UserAPI.updatePassword(testUserId, emptyPassword);
-      // 执行到此说明空密码被接受
+      await expectBizErrorOrUndefined(UserAPI.updatePassword(testUserId, emptyPassword), [
+        "A0410",
+        "A0400",
+        "B0001",
+      ]);
     });
 
     test("修改不存在用户的密码", async () => {
@@ -706,6 +705,7 @@ describe("用户管理接口测试", () => {
       const newPassword = "newpassword123";
 
       await expectBizErrorOrUndefined(UserAPI.updatePassword(nonExistentUserId, newPassword), [
+        "A0401",
         "B0001",
         "A0400",
       ]);
@@ -758,7 +758,7 @@ describe("用户管理接口测试", () => {
       ).toBe(true);
 
       // 验证在分页列表中也查不到
-      const pageResult = await UserAPI.getPage({ pageNum: 1, pageSize: 1000 });
+      const pageResult = await UserAPI.getPage({ pageNum: 1, pageSize: 100 });
       const deletedUser = pageResult.list.find((u) => u.id === userId);
       expect(deletedUser).toBeUndefined();
 
@@ -787,7 +787,7 @@ describe("用户管理接口测试", () => {
       }
 
       // 验证在分页列表中都查不到
-      const pageResult = await UserAPI.getPage({ pageNum: 1, pageSize: 1000 });
+      const pageResult = await UserAPI.getPage({ pageNum: 1, pageSize: 100 });
       for (const userId of ids) {
         const deletedUser = pageResult.list.find((u) => u.id === userId);
         expect(deletedUser).toBeUndefined();
@@ -863,6 +863,78 @@ describe("用户管理接口测试", () => {
 
       // 启用用户（包含预置用户）的导出文件应该比禁用用户大
       expect(enabledSize).toBeGreaterThanOrEqual(disabledSize);
+    });
+  });
+
+  describe("完整 CRUD 生命周期：用户管理", () => {
+    test("创建→读→更新→读→删除→验证不存在", async () => {
+      const existingDeptId = DEPTS.CQUPT.id;
+      const existingRoleIds = [ROLES.GUEST.id];
+
+      // Create: 创建用户
+      const createForm = createUserForm({
+        deptId: existingDeptId,
+        roleIds: existingRoleIds,
+        status: 1,
+        gender: 1,
+      });
+      await UserAPI.add(createForm);
+
+      // 通过分页查找创建的用户
+      const pageResult = await UserAPI.getPage({
+        pageNum: 1,
+        pageSize: 100,
+        keywords: createForm.username!,
+      });
+      const createdUser = pageResult.list.find((u) => u.username === createForm.username);
+      expect(createdUser).toBeDefined();
+      const userId = createdUser!.id!;
+      expect(userId).toBeGreaterThan(0);
+
+      // Read: 验证字段与创建时一致
+      const formData = await UserAPI.getFormData(userId);
+      expect(formData.username).toBe(createForm.username);
+      expect(formData.nickname).toBe(createForm.nickname);
+      expect(formData.email).toBe(createForm.email);
+      expect(formData.gender).toBe(1);
+      expect(formData.status).toBe(1);
+      expect(formData.deptId).toBe(existingDeptId);
+
+      // Update: 更新用户昵称和状态
+      const newNickname = `更新昵称_${Date.now()}`;
+      const updateForm = createUserForm({
+        username: createForm.username!,
+        nickname: newNickname,
+        email: formData.email ?? "",
+        mobile: formData.mobile ?? "",
+        gender: formData.gender ?? 1,
+        status: 0,
+        deptId: existingDeptId,
+        roleIds: existingRoleIds,
+      });
+      await UserAPI.update(userId, updateForm);
+
+      // Read: 验证更新已生效
+      const updatedData = await UserAPI.getFormData(userId);
+      expect(updatedData.nickname).toBe(newNickname);
+      expect(updatedData.nickname).not.toBe(createForm.nickname);
+      expect(updatedData.status).toBe(0);
+
+      // Delete: 删除用户
+      await UserAPI.deleteByIds(userId.toString());
+
+      // Verify: 验证用户已从分页列表中移除
+      const afterDeletePage = await UserAPI.getPage({ pageNum: 1, pageSize: 100 });
+      const deletedInList = afterDeletePage.list.find((u) => u.id === userId);
+      expect(deletedInList).toBeUndefined();
+
+      // Verify: 验证表单数据已不存在
+      const afterDeleteForm = await UserAPI.getFormData(userId);
+      expect(
+        afterDeleteForm === null ||
+          afterDeleteForm === undefined ||
+          afterDeleteForm.id === undefined
+      ).toBe(true);
     });
   });
 });

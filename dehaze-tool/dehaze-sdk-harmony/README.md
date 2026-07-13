@@ -82,15 +82,19 @@ TokenManager.setToken('your-jwt-token');
 
 ### API 列表
 
-SDK 当前包含以下 API 模块：
+SDK 当前导出以下 API 模块（详见 `src/main/ets/index.ets`）：
 
-- AlgorithmAPI - 算法相关接口
-- AuthAPI - 认证相关接口
-- DatasetAPI - 数据集相关接口
-- DeptAPI - 部门相关接口
-- DictAPI - 字典相关接口
-- FileAPI - 文件相关接口
-- MenuAPI - 菜单相关接口
-- ModelAPI - 模型相关接口
-- RoleAPI - 角色相关接口
-- UserAPI - 用户相关接口
+| 模块 | 导入名 | 说明 |
+|------|--------|------|
+| 认证 | `AuthAPI` | 登录、登出、验证码 |
+| 用户 | `UserAPI` | 用户 CRUD、密码管理 |
+| 算法 | `AlgorithmAPI` | 算法 CRUD、版本管理 |
+| 数据集 | `DatasetAPI` | 数据集树形 CRUD、数据项管理 |
+| 预测 | `PredictionAPI` | 模型预测、日志查询 |
+| 评估 | `EvaluationAPI` | 模型评估 |
+| 图像历史 | `InputHistoryAPI` | 图像输入历史记录 CRUD |
+| 部门 | `DeptAPI` | 部门树形 CRUD |
+| 字典 | `DictAPI` | 字典类型 + 字典数据 CRUD |
+| 文件 | `FileAPI` | 文件上传、下载 |
+| 菜单 | `MenuAPI` | 菜单/路由 CRUD |
+| 角色 | `RoleAPI` | 角色 CRUD、菜单权限分配 |

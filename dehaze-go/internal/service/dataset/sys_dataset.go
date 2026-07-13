@@ -656,23 +656,23 @@ func (datasetService *DatasetService) GetFormData(ctx context.Context, id int64)
 	}, nil
 }
 
-func (datasetService *DatasetService) Create(ctx context.Context, form *bo.DatasetFormBO) error {
+func (datasetService *DatasetService) Create(ctx context.Context, form *bo.DatasetFormBO) (int64, error) {
 	if form.ParentID != 0 {
 		parent, err := datasetService.datasetRepo.FindByID(ctx, form.ParentID)
 		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询父数据集失败", err)
+			return 0, common.WrapBizError(common.DATABASE_ERROR, "查询父数据集失败", err)
 		}
 		if parent == nil {
-			return common.NewBizError(common.PARAM_ERROR, "父数据集不存在")
+			return 0, common.NewBizError(common.PARAM_ERROR, "父数据集不存在")
 		}
 	}
 
 	exists, err := datasetService.datasetRepo.ExistsByParentIDAndName(ctx, form.ParentID, form.Name, 0)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询数据集名称失败", err)
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询数据集名称失败", err)
 	}
 	if exists {
-		return common.NewBizError(common.BUSINESS_ERROR, "同一父数据集下已存在同名数据集")
+		return 0, common.NewBizError(common.DATA_EXISTS, "同一父数据集下已存在同名数据集")
 	}
 
 	dataset := &model.SysDataset{
@@ -686,35 +686,34 @@ func (datasetService *DatasetService) Create(ctx context.Context, form *bo.Datas
 	}
 
 	if err := datasetService.datasetRepo.Create(ctx, dataset); err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "创建数据集失败", err)
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "创建数据集失败", err)
 	}
 
 	cacheCtx := context.Background()
 	datasetService.evictAllDatasetsCache(cacheCtx)
 
-	return nil
+	return dataset.ID, nil
 }
 
-func (datasetService *DatasetService) Update(ctx context.Context, id int64, form *bo.DatasetFormBO) error {
+func (datasetService *DatasetService) Update(ctx context.Context, id int64, form *bo.DatasetFormBO) (*bo.DatasetFormBO, error) {
 	dataset, err := datasetService.datasetRepo.FindByID(ctx, id)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询数据集失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据集失败", err)
 	}
 	if dataset == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
 	}
 
 	if form.Name != dataset.Name || form.ParentID != dataset.ParentID {
 		exists, err := datasetService.datasetRepo.ExistsByParentIDAndName(ctx, form.ParentID, form.Name, id)
 		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询数据集名称失败", err)
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据集名称失败", err)
 		}
 		if exists {
-			return common.NewBizError(common.BUSINESS_ERROR, "同一父数据集下已存在同名数据集")
+			return nil, common.NewBizError(common.DATA_EXISTS, "同一父数据集下已存在同名数据集")
 		}
 	}
 
-	oldParentID := dataset.ParentID
 	dataset.ParentID = form.ParentID
 	dataset.Type = form.Type
 	dataset.Name = form.Name
@@ -723,19 +722,30 @@ func (datasetService *DatasetService) Update(ctx context.Context, id int64, form
 	dataset.Status = form.Status
 
 	if err := datasetService.datasetRepo.Update(ctx, dataset); err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "更新数据集失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "更新数据集失败", err)
 	}
 
 	cacheCtx := context.Background()
 	datasetService.evictAllDatasetsCache(cacheCtx)
-	_ = oldParentID
 
-	return nil
+	// 返回更新后的数据集表单数据
+	return datasetService.GetFormData(ctx, id)
 }
 
 func (datasetService *DatasetService) Delete(ctx context.Context, ids []int64) error {
 	if len(ids) == 0 {
 		return common.NewBizError(common.PARAM_ERROR, "删除数据为空")
+	}
+
+	// 校验数据集是否存在
+	for _, id := range ids {
+		dataset, err := datasetService.datasetRepo.FindByID(ctx, id)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "查询数据集失败", err)
+		}
+		if dataset == nil {
+			return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
+		}
 	}
 
 	if err := datasetService.datasetRepo.Delete(ctx, ids); err != nil {

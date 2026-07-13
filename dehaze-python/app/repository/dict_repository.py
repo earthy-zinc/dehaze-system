@@ -42,8 +42,8 @@ class DictRepository(BaseRepository[SysDict]):
         total_result = await db.execute(count_stmt)
         total = total_result.scalar()
 
-        # 排序: sort ASC, create_time DESC
-        stmt = stmt.order_by(SysDict.sort.asc(), SysDict.create_time.desc())
+        # 排序: sort ASC, create_time DESC, id ASC (id 作为 tiebreaker 保证分页确定性)
+        stmt = stmt.order_by(SysDict.sort.asc(), SysDict.create_time.desc(), SysDict.id.asc())
 
         # 分页查询
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
@@ -90,6 +90,14 @@ class DictRepository(BaseRepository[SysDict]):
     async def count_by_type_code(self, db: AsyncSession, type_code: str) -> int:
         """统计某类型下的字典数据数量"""
         stmt = select(func.count()).where(SysDict.type_code == type_code)
+        result = await db.execute(stmt)
+        return result.scalar() or 0
+
+    async def count_by_ids(self, db: AsyncSession, dict_ids: list[int]) -> int:
+        """根据ID列表统计存在的字典数量"""
+        if not dict_ids:
+            return 0
+        stmt = select(func.count()).where(SysDict.id.in_(dict_ids))
         result = await db.execute(stmt)
         return result.scalar() or 0
 
@@ -211,8 +219,8 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         total_result = await db.execute(count_stmt)
         total = total_result.scalar()
 
-        # 排序
-        stmt = stmt.order_by(SysDictType.create_time.desc())
+        # 排序: create_time DESC, id ASC (id 作为 tiebreaker 保证分页确定性)
+        stmt = stmt.order_by(SysDictType.create_time.desc(), SysDictType.id.asc())
 
         # 分页查询
         stmt = stmt.offset((page - 1) * page_size).limit(page_size)
@@ -283,12 +291,13 @@ class DictTypeRepository(BaseRepository[SysDictType]):
         await db.flush()
         return True
 
-    async def delete_by_ids(self, db: AsyncSession, ids: list[int]) -> bool:
-        """删除字典类型"""
-        type_ids = ids
-        stmt = delete(SysDictType).where(SysDictType.id.in_(type_ids))
-        await db.execute(stmt)
-        return True
+    async def count_by_ids(self, db: AsyncSession, type_ids: list[int]) -> int:
+        """根据ID列表统计存在的字典类型数量"""
+        if not type_ids:
+            return 0
+        stmt = select(func.count()).where(SysDictType.id.in_(type_ids))
+        result = await db.execute(stmt)
+        return result.scalar() or 0
 
 
 # 单例

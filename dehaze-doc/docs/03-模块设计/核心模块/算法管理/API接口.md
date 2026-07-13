@@ -5,7 +5,7 @@
 本文档定义 **算法管理** 模块的 HTTP API 规范,是该模块 API 契约的**唯一权威来源**。
 
 - **基础路径**:
-  - 算法管理: `/api/v1/algorithm`
+  - 算法管理: `/api/v1/algorithms`
   - 模型预测: `/api/v1/prediction`
   - 效果评估: `/api/v1/evaluation`
 - **公共约定**: 参见 [../../02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
@@ -20,34 +20,34 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/algorithm` | GET | 获取算法树形表格 | - | F-M05-001 |
-| `/api/v1/algorithm/{id}` | GET | 根据ID获取算法详情 | - | F-M05-002 |
-| `/api/v1/algorithm/options` | GET | 获取算法下拉选项 | - | F-M05-001 |
-| `/api/v1/algorithm` | POST | 新增算法 | `sys:algorithm:add` | F-M05-003 |
-| `/api/v1/algorithm/{id}` | PUT | 修改算法 | `sys:algorithm:edit` | F-M05-005 |
-| `/api/v1/algorithm/{id}/status` | PUT | 修改算法状态 | `sys:algorithm:edit` | F-M05-006 |
-| `/api/v1/algorithm/{id}/audit` | PUT | 审核算法（通过/驳回） | `sys:algorithm:audit` | F-M05-004 |
-| `/api/v1/algorithm/{id}` | DELETE | 删除单个算法 | `sys:algorithm:delete` | F-M05-006 |
-| `/api/v1/algorithm` | DELETE | 批量删除算法 | `sys:algorithm:delete` | F-M05-006 |
-| `/api/v1/algorithm/{id}/version` | POST | 新增算法版本 | `sys:algorithm:version` | F-M05-005 |
-| `/api/v1/algorithm/{id}/versions` | GET | 获取算法版本历史 | - | F-M05-005 |
-| `/api/v1/algorithm/{id}/rollback` | POST | 版本回滚 | `sys:algorithm:version` | F-M05-005 |
+| `/api/v1/algorithms` | GET | 获取算法树形表格 | - | F-M05-001 |
+| `/api/v1/algorithms/{id}` | GET | 根据ID获取算法详情 | - | F-M05-002 |
+| `/api/v1/algorithms/options` | GET | 获取算法下拉选项 | - | F-M05-001 |
+| `/api/v1/algorithms` | POST | 新增算法 | `sys:algorithm:add` | F-M05-003 |
+| `/api/v1/algorithms/{id}` | PUT | 修改算法 | `sys:algorithm:edit` | F-M05-005 |
+| `/api/v1/algorithms/{id}/status` | PUT | 修改算法状态 | `sys:algorithm:edit` | F-M05-006 |
+| `/api/v1/algorithms/{id}/audit` | PUT | 审核算法（通过/驳回） | `sys:algorithm:audit` | F-M05-004 |
+| `/api/v1/algorithms/{id}` | DELETE | 删除单个算法 | `sys:algorithm:delete` | F-M05-006 |
+| `/api/v1/algorithms` | DELETE | 批量删除算法 | `sys:algorithm:delete` | F-M05-006 |
+| `/api/v1/algorithms/{id}/version` | POST | 新增算法版本 | `sys:algorithm:version` | F-M05-005 |
+| `/api/v1/algorithms/{id}/versions` | GET | 获取算法版本历史 | - | F-M05-005 |
+| `/api/v1/algorithms/{id}/rollback` | POST | 版本回滚 | `sys:algorithm:version` | F-M05-005 |
 
 ### 2.2 算法导入/导出接口
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/algorithm/{id}/_export` | GET | 导出单个算法（配置+模型） | `sys:algorithm:export` | F-M05-007 |
-| `/api/v1/algorithm/_export` | POST | 批量导出算法 | `sys:algorithm:export` | F-M05-007 |
-| `/api/v1/algorithm/_import` | POST | 导入算法包 | `sys:algorithm:import` | F-M05-007 |
-| `/api/v1/algorithm/_import/validate` | POST | 校验导入包 | `sys:algorithm:import` | F-M05-007 |
+| `/api/v1/algorithms/{id}/_export` | GET | 导出单个算法（配置+模型） | `sys:algorithm:export` | F-M05-007 |
+| `/api/v1/algorithms/_export` | POST | 批量导出算法 | `sys:algorithm:export` | F-M05-007 |
+| `/api/v1/algorithms/_import` | POST | 导入算法包 | `sys:algorithm:import` | F-M05-007 |
+| `/api/v1/algorithms/_import/validate` | POST | 校验导入包 | `sys:algorithm:import` | F-M05-007 |
 
 ### 2.3 性能监控接口
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/algorithm/{id}/monitor` | GET | 获取算法监控数据 | `sys:algorithm:monitor` | F-M05-008 |
-| `/api/v1/algorithm/{id}/monitor/stats` | GET | 获取统计报表 | `sys:algorithm:monitor` | F-M05-008 |
+| `/api/v1/algorithms/{id}/monitor` | GET | 获取算法监控数据 | `sys:algorithm:monitor` | F-M05-008 |
+| `/api/v1/algorithms/{id}/monitor/stats` | GET | 获取统计报表 | `sys:algorithm:monitor` | F-M05-008 |
 
 ### 2.4 模型预测接口
 

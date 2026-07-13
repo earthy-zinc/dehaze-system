@@ -39,8 +39,6 @@ class SysTask(Base):
         BigInteger, comment='创建人ID')
     created_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, comment='创建时间')
-    updated_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, comment='更新时间')
     started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, comment='开始时间')
     completed_at: Mapped[Optional[datetime]

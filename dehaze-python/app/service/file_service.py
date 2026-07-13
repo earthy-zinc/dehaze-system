@@ -201,7 +201,7 @@ class FileService:
             object_name=object_name,
             size=convert_size(file_size),
             size_bytes=file_size,
-            path="",
+            path=object_name,
             md5=file_md5,
         )
 
@@ -216,6 +216,8 @@ class FileService:
                 return existing_file
             # 如果重查仍未找到（理论上不应发生），抛出异常
             raise BusinessException(ResultCode.FILE_STORAGE_ERROR, "文件记录创建失败")
+
+        await db.commit()
 
         # 发布文件创建事件
         from app.service.file_events import FileCreatedEvent, file_event_bus
@@ -247,7 +249,7 @@ class FileService:
         file_info = await file_repository.get_by_id(db, file_id)
 
         if not file_info:
-            raise BusinessException(ResultCode.FILE_NOT_FOUND)
+            raise BusinessException("不存在当前文件")
 
         # 保存信息用于事件发布和存储删除
         object_name = file_info.object_name
@@ -256,6 +258,7 @@ class FileService:
 
         # 删除数据库记录
         await file_repository.delete_by_ids(db, [file_id])
+        await db.commit()
 
         # 从存储中删除文件（在线程池中异步执行，不阻塞事件循环）
         minio_client = get_minio_client()

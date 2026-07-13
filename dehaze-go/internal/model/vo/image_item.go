@@ -8,8 +8,14 @@ type ImageItemVO struct {
 	DatasetID int64 `json:"datasetId"`
 	// 数据项名称
 	Name string `json:"name"`
+	// 场景类型
+	SceneType string `json:"sceneType,omitempty"`
+	// 数据项描述
+	Description string `json:"description,omitempty"`
 	// 图片数量
 	ImageCount int `json:"imageCount"`
+	// 清晰图信息
+	ClearImage *ImageUrlVO `json:"clearImage,omitempty"`
 	// 模糊图片
 	HazyImages []ImageUrlVO `json:"hazyImages"`
 	// 创建时间

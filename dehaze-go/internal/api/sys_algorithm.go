@@ -31,7 +31,7 @@ func (api *AlgorithmApi) GetList(c *gin.Context) {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数绑定失败"))
 		return
 	}
-	result, err := api.algorithmService.GetPage(ctx, &q)
+	result, err := api.algorithmService.GetTree(ctx, &q)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -98,11 +98,12 @@ func (api *AlgorithmApi) Add(c *gin.Context) {
 		_ = c.Error(err)
 		return
 	}
-	if err := api.algorithmService.Create(ctx, &form); err != nil {
+	id, err := api.algorithmService.Create(ctx, &form)
+	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-	common.OkWithMessage("新增成功", c)
+	common.OkWithData(id, c)
 }
 
 // Update 修改算法

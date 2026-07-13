@@ -42,6 +42,7 @@ func (s *AlgorithmService) GetPage(ctx context.Context, q *query.AlgorithmQuery)
 	for _, item := range readResult.List {
 		voList = append(voList, vo.AlgorithmVO{
 			ID:          item.ID,
+			ParentID:    item.ParentID,
 			Name:        item.Name,
 			Type:        item.Type,
 			Img:         item.Img,
@@ -82,6 +83,7 @@ func (s *AlgorithmService) GetTree(ctx context.Context, q *query.AlgorithmQuery)
 func mapAlgorithmToVO(algo read.Algorithm, all []read.Algorithm) vo.AlgorithmVO {
 	voItem := vo.AlgorithmVO{
 		ID:          algo.ID,
+		ParentID:    algo.ParentID,
 		Name:        algo.Name,
 		Type:        algo.Type,
 		Img:         algo.Img,
@@ -136,15 +138,15 @@ func (s *AlgorithmService) GetFormData(ctx context.Context, id int64) (*bo.Algor
 }
 
 // Create 创建算法
-func (s *AlgorithmService) Create(ctx context.Context, form *bo.AlgorithmFormBO) error {
+func (s *AlgorithmService) Create(ctx context.Context, form *bo.AlgorithmFormBO) (int64, error) {
 	// 如果父节点ID不为0，检查父节点是否存在
 	if form.ParentID != 0 {
 		parentAlgorithm, err := s.algorithmRepo.FindByID(ctx, form.ParentID)
 		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询父算法失败", err)
+			return 0, common.WrapBizError(common.DATABASE_ERROR, "查询父算法失败", err)
 		}
 		if parentAlgorithm == nil {
-			return common.NewBizError(common.RESOURCE_NOT_FOUND, "父算法不存在")
+			return 0, common.NewBizError(common.RESOURCE_NOT_FOUND, "父算法不存在")
 		}
 	}
 
@@ -159,9 +161,9 @@ func (s *AlgorithmService) Create(ctx context.Context, form *bo.AlgorithmFormBO)
 	}
 
 	if err := s.algorithmRepo.Create(ctx, algorithm); err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "创建算法失败", err)
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "创建算法失败", err)
 	}
-	return nil
+	return algorithm.ID, nil
 }
 
 // Update 更新算法
@@ -207,6 +209,17 @@ func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 		return common.NewBizError(common.PARAM_ERROR, "请选择要删除的算法")
 	}
 
+	// 校验算法是否存在
+	for _, id := range ids {
+		algorithm, err := s.algorithmRepo.FindByID(ctx, id)
+		if err != nil {
+			return common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
+		}
+		if algorithm == nil {
+			return common.NewBizError(common.RESOURCE_NOT_FOUND, "算法不存在")
+		}
+	}
+
 	// 检查是否有子算法
 	hasChildren, err := s.algorithmRepo.HasChildrenByParentIDs(ctx, ids)
 	if err != nil {
@@ -214,7 +227,7 @@ func (s *AlgorithmService) Delete(ctx context.Context, ids []int64) error {
 	}
 
 	if hasChildren {
-		return common.NewBizError(common.BUSINESS_ERROR, "存在子算法，无法删除")
+		return common.NewBizError(common.DATA_BIND_EXISTS, "存在子算法，无法删除")
 	}
 
 	if err := s.algorithmRepo.Delete(ctx, ids); err != nil {
@@ -272,6 +285,7 @@ func mapAlgorithmReadChildren(children []read.Algorithm) []vo.AlgorithmVO {
 	for _, child := range children {
 		result = append(result, vo.AlgorithmVO{
 			ID:          child.ID,
+			ParentID:    child.ParentID,
 			Name:        child.Name,
 			Type:        child.Type,
 			Img:         child.Img,

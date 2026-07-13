@@ -2,6 +2,7 @@ from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
+from app.models.enum.task_enum import TaskStatus
 from app.models.schema.task import \
     ExportTaskCreateForm as ExportTaskCreateRequest
 from app.models.schema.task import TaskPageVO
@@ -27,17 +28,16 @@ def _dict_to_task_data(task_data: dict) -> TaskData:
         processedFiles=task_data.get("processed_files", 0),
         result=task_data.get("result"),
         downloadUrl=task_data.get("result") if task_data.get(
-            "status") == "completed" else None,
+            "status") == TaskStatus.COMPLETED.value else None,
         error=task_data.get("error_message"),
         createdAt=task_data.get("created_at"),
-        updatedAt=task_data.get("updated_at"),
         startedAt=task_data.get("started_at"),
         completedAt=task_data.get("completed_at"),
         expiresAt=task_data.get("expires_at"),
     )
 
 
-@router.get("/", response_model=Result[TaskPageVO], summary="查询任务列表")
+@router.get("", response_model=Result[TaskPageVO], summary="查询任务列表")
 async def list_tasks(
     status_filter: str | None = Query(
         default=None, alias="status", description="状态筛选"),
@@ -72,7 +72,7 @@ async def list_tasks(
     )
 
 
-@router.post("/", response_model=Result[TaskData], summary="创建任务")
+@router.post("", response_model=Result[TaskData], summary="创建任务")
 async def create_export_task(
     request: ExportTaskCreateRequest,
     db: AsyncSession = Depends(get_db),
@@ -128,8 +128,7 @@ async def get_task_status(
     task_data = await TaskServiceAsync.get_task_status(db, redis, task_id, user_id=user.id)
 
     if task_data is None:
-        from app.core.result import error
-        return error("任务不存在", code="B0301")
+        return success(None)
 
     return success(_dict_to_task_data(task_data))
 

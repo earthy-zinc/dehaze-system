@@ -4,7 +4,7 @@
 
 本文档定义 **部门管理** 模块的 HTTP API 规范,是该模块 API 契约的**唯一权威来源**。
 
-- **基础路径**:`/api/v1/dept`
+- **基础路径**:`/api/v1/depts`
 - **公共约定**:参见 [02-系统架构/04-API规范.md](../../../02-系统架构/04-API规范.md)
 - **需求规格**:[需求规格.md](./需求规格.md)
 
@@ -14,12 +14,12 @@
 
 | 路径 | 方法 | 功能描述 | 权限标识 | 关联功能点 |
 |------|------|---------|---------|-----------|
-| `/api/v1/dept` | GET | 获取部门列表(树形结构) | - | F-DM-001 |
-| `/api/v1/dept` | POST | 新增部门 | `sys:dept:add` | F-DM-002 |
-| `/api/v1/dept/{deptId}/form` | GET | 获取部门表单数据 | - | F-DM-003 |
-| `/api/v1/dept/{deptId}` | PUT | 修改部门 | `sys:dept:edit` | F-DM-003 |
-| `/api/v1/dept/{ids}` | DELETE | 删除部门(支持批量) | `sys:dept:delete` | F-DM-004 |
-| `/api/v1/dept/options` | GET | 获取部门下拉选项(树形结构) | - | F-DM-008 |
+| `/api/v1/depts` | GET | 获取部门列表(树形结构) | - | F-DM-001 |
+| `/api/v1/depts` | POST | 新增部门 | `sys:dept:add` | F-DM-002 |
+| `/api/v1/depts/{deptId}/form` | GET | 获取部门表单数据 | - | F-DM-003 |
+| `/api/v1/depts/{deptId}` | PUT | 修改部门 | `sys:dept:edit` | F-DM-003 |
+| `/api/v1/depts/{ids}` | DELETE | 删除部门(支持批量) | `sys:dept:delete` | F-DM-004 |
+| `/api/v1/depts/options` | GET | 获取部门下拉选项(树形结构) | - | F-DM-008 |
 
 ## 3. 权限标识汇总
 

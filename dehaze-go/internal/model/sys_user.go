@@ -10,7 +10,7 @@ type SysUser struct {
 	DeptID   int64     `gorm:"column:dept_id;type:bigint;comment:部门ID" json:"deptId"`
 	Avatar   string    `gorm:"column:avatar;type:text;comment:用户头像" json:"avatar"`
 	Mobile   string    `gorm:"column:mobile;type:varchar(20);comment:联系方式" json:"mobile"`
-	Status   int8      `gorm:"column:status;type:tinyint;default:1;comment:用户状态((1:正常;0:禁用))" json:"status"`
+	Status   int8      `gorm:"column:status;type:tinyint;comment:用户状态((1:正常;0:禁用))" json:"status"`
 	Email    string    `gorm:"column:email;type:varchar(128);comment:用户邮箱" json:"email"`
 	Deleted  int8      `gorm:"column:deleted;type:tinyint;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
 	Roles    []SysRole `gorm:"many2many:sys_user_role;joinForeignKey:user_id;joinReferences:role_id"`

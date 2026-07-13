@@ -71,11 +71,6 @@ func (s *MenuService) Create(ctx context.Context, form *bo.MenuForm) error {
 		return common.NewBizError(common.PARAM_ERROR, "表单数据不能为空")
 	}
 
-	// 业务校验
-	if err := s.validateMenuForm(ctx, form, 0); err != nil {
-		return err
-	}
-
 	menuType := form.Type
 	path := form.Path
 	// 目录类型：设置默认Layout组件
@@ -89,12 +84,17 @@ func (s *MenuService) Create(ctx context.Context, form *bo.MenuForm) error {
 		form.Component = ""
 	}
 
+	// 业务校验
+	if err := s.validateMenuForm(ctx, form, 0); err != nil {
+		return err
+	}
+
 	treePath := s.generateMenuTreePath(ctx, form.ParentID)
 
 	menu := &model.SysMenu{
 		ParentID:   form.ParentID,
 		Name:       form.Name,
-		Type:       form.Type,
+		Type:       int8(form.Type),
 		Path:       path,
 		Component:  form.Component,
 		Perm:       form.Perm,
@@ -133,11 +133,6 @@ func (s *MenuService) Update(ctx context.Context, id int64, form *bo.MenuForm) e
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "菜单不存在")
 	}
 
-	// 业务校验（排除自身ID）
-	if err := s.validateMenuForm(ctx, form, id); err != nil {
-		return err
-	}
-
 	menuType := form.Type
 	path := form.Path
 
@@ -152,13 +147,18 @@ func (s *MenuService) Update(ctx context.Context, id int64, form *bo.MenuForm) e
 		form.Component = ""
 	}
 
+	// 业务校验（排除自身ID）
+	if err := s.validateMenuForm(ctx, form, id); err != nil {
+		return err
+	}
+
 	treePath := s.generateMenuTreePath(ctx, form.ParentID)
 
 	menu := &model.SysMenu{
 		BaseModel:  model.BaseModel{ID: id},
 		ParentID:   form.ParentID,
 		Name:       form.Name,
-		Type:       form.Type,
+		Type:       int8(form.Type),
 		Path:       path,
 		Component:  form.Component,
 		Perm:       form.Perm,
@@ -284,6 +284,7 @@ func buildMenuTree(parentId int64, menuList []model.SysMenu) []vo.MenuVO {
 				ID:        menu.ID,
 				ParentID:  menu.ParentID,
 				Name:      menu.Name,
+				Type:      enum.GetMenuTypeEnumName(int(menu.Type)),
 				Path:      menu.Path,
 				Component: menu.Component,
 				Sort:      menu.Sort,

@@ -164,15 +164,15 @@ func (s *DeptService) GetFormData(ctx context.Context, id int64) (*bo.DeptFormBO
 }
 
 // Create 创建部门
-func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) error {
+func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) (int64, error) {
 	// 校验同一父部门下名称是否唯一
 	depts, err := s.deptRepo.FindAll(ctx, &query.DeptQuery{})
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询部门列表失败", err)
 	}
 	for _, dept := range depts {
 		if dept.Name == form.Name && dept.ParentID == form.ParentID {
-			return common.NewBizError(common.DATA_EXISTS, "同一层级下部门名称已存在")
+			return 0, common.NewBizError(common.DATA_EXISTS, "同一层级下部门名称已存在")
 		}
 	}
 
@@ -180,17 +180,17 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) error {
 	if form.ParentID != 0 {
 		depth, err := s.calculateDepth(ctx, form.ParentID, depts)
 		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "计算层级深度失败", err)
+			return 0, err // 直接返回，calculateDepth已经返回BizError
 		}
 		if depth+1 > MAX_DEPT_DEPTH {
-			return common.NewBizError(common.BUSINESS_ERROR, "部门层级超过5级限制")
+			return 0, common.NewBizError(common.BUSINESS_ERROR, "部门层级超过5级限制")
 		}
 	}
 
 	// 生成部门路径
 	treePath, err := s.generateDeptTreePath(ctx, form.ParentID)
 	if err != nil {
-		return err
+		return 0, err // 直接返回
 	}
 
 	// 创建部门实体
@@ -206,13 +206,13 @@ func (s *DeptService) Create(ctx context.Context, form *bo.DeptFormBO) error {
 	dept.UpdatedAt = time.Now()
 
 	if err := s.deptRepo.Create(ctx, dept); err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "创建部门失败", err)
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "创建部门失败", err)
 	}
 
 	// 清除缓存
 	s.clearCache(ctx)
 
-	return nil
+	return dept.ID, nil
 }
 
 // Update 更新部门
@@ -282,6 +282,15 @@ func (s *DeptService) Delete(ctx context.Context, id int64) error {
 	// 根部门保护：禁止删除
 	if id == ROOT_DEPT_ID {
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "根部门不能删除")
+	}
+
+	// 检查部门是否存在
+	dept, err := s.deptRepo.FindByID(ctx, id)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询部门失败", err)
+	}
+	if dept == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "部门不存在")
 	}
 
 	// 检查是否有子部门

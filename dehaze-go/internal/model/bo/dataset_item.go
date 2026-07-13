@@ -5,4 +5,6 @@ type DatasetItemBO struct {
 	FileBO
 	Type        string `json:"type"`
 	Description string `json:"description"`
+	SceneType   string `json:"sceneType"`
+	HazeLevel   string `json:"hazeLevel"`
 }

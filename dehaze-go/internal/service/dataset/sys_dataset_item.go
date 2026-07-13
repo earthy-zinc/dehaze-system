@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -126,7 +127,7 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByDatasetID(dataset
 	return items, nil
 }
 
-// GetDatasetItemsByPage 分页查询数据项列表（支持关键字搜索和雾霾程度筛选）
+// GetDatasetItemsByPage 分页查询数据项列表（支持关键字搜索、雾霾程度和场景类型筛选）
 // 使用批量查询避免 N+1 问题：一次性获取所有数据项的关联文件
 func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pageSize int, datasetId int64, sceneType, keyword, hazeLevel string) ([]*vo.ImageItemVO, int64, error) {
 	ctx := context.Background()
@@ -145,11 +146,9 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pag
 		items = filterItemsByHazeLevel(items, hazeLevel, datasetItemService.itemFileRepo)
 		total = int64(len(items))
 	}
-	// sceneType 筛选在查询时通过 JOIN sys_item_file 完成（待优化）
-	_ = sceneType
-
-	if len(items) == 0 {
-		return nil, 0, common.WrapBizError(common.DATABASE_ERROR, "查询数据项分页列表失败", err)
+	if sceneType != "" {
+		items = filterItemsBySceneType(items, sceneType, datasetItemService.itemFileRepo)
+		total = int64(len(items))
 	}
 
 	if len(items) == 0 {
@@ -178,6 +177,7 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pag
 
 	// 批量查询文件信息（URL 等）
 	fileURLMap := make(map[int64]string)
+	fileInfoMap := make(map[int64]*model.SysFile)
 	if len(fileIDSet) > 0 {
 		fileIDs := make([]int64, 0, len(fileIDSet))
 		for id := range fileIDSet {
@@ -187,8 +187,9 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pag
 		if err != nil {
 			logger.Warn("批量查询文件信息失败", zap.Error(err))
 		} else {
-			for _, file := range files {
-				fileURLMap[int64(file.ID)] = utils.StringVal(file.URL)
+			for i := range files {
+				fileURLMap[int64(files[i].ID)] = utils.StringVal(files[i].URL)
+				fileInfoMap[int64(files[i].ID)] = &files[i]
 			}
 		}
 	}
@@ -198,29 +199,82 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pag
 	for _, item := range items {
 		itemFiles := itemFilesMap[item.ID]
 		imageUrls := make([]vo.ImageUrlVO, 0, len(itemFiles))
+
+		var sceneTypeStr, descriptionStr string
+		var clearImage *vo.ImageUrlVO
 		for _, itemFile := range itemFiles {
-			imageUrls = append(imageUrls, vo.ImageUrlVO{
+			url := fileURLMap[itemFile.FileID]
+			fileInfo := fileInfoMap[itemFile.FileID]
+
+			imageUrlVO := vo.ImageUrlVO{
 				ID:          itemFile.ID,
+				ItemID:      itemFile.ItemID,
+				DatasetID:   item.DatasetID,
 				Type:        itemFile.Type,
-				URL:         fileURLMap[itemFile.FileID],
-				OriginURL:   fileURLMap[itemFile.FileID],
+				URL:         url,
+				OriginURL:   url,
 				Description: utils.StringVal(itemFile.Description),
-			})
+				SceneType:   utils.StringVal(itemFile.SceneType),
+				HazeLevel:   utils.StringVal(itemFile.HazeLevel),
+			}
+
+			if itemFile.Width != nil {
+				imageUrlVO.Width = *itemFile.Width
+			}
+			if itemFile.Height != nil {
+				imageUrlVO.Height = *itemFile.Height
+			}
+
+			if fileInfo != nil {
+				imageUrlVO.FileName = fileInfo.Name
+				if size, parseErr := strconv.ParseInt(fileInfo.Size, 10, 64); parseErr == nil {
+					imageUrlVO.SizeBytes = size
+				}
+				// 从文件名提取格式
+				if idx := strings.LastIndex(fileInfo.Name, "."); idx != -1 {
+					imageUrlVO.Format = fileInfo.Name[idx+1:]
+				}
+			}
+
+			if itemFile.Type == "clear" {
+				clearImage = &imageUrlVO
+			} else {
+				imageUrls = append(imageUrls, imageUrlVO)
+			}
+
+			// 从第一个有 sceneType 的文件提取场景类型
+			if sceneTypeStr == "" && itemFile.SceneType != nil {
+				sceneTypeStr = utils.StringVal(itemFile.SceneType)
+			}
+			if descriptionStr == "" && itemFile.Description != nil {
+				descriptionStr = utils.StringVal(itemFile.Description)
+			}
 		}
 
 		itemVO := &vo.ImageItemVO{
-			ID:         item.ID,
-			DatasetID:  item.DatasetID,
-			Name:       item.Name,
-			ImageCount: len(imageUrls),
-			HazyImages: imageUrls,
-			CreateTime: item.CreatedAt.Format("2006-01-02 15:04:05"),
-			UpdateTime: item.UpdatedAt.Format("2006-01-02 15:04:05"),
+			ID:          item.ID,
+			DatasetID:   item.DatasetID,
+			Name:        item.Name,
+			SceneType:   sceneTypeStr,
+			Description: descriptionStr,
+			ImageCount:  len(imageUrls) + boolToInt(clearImage != nil),
+			ClearImage:  clearImage,
+			HazyImages:  imageUrls,
+			CreateTime:  item.CreatedAt.Format("2006-01-02 15:04:05"),
+			UpdateTime:  item.UpdatedAt.Format("2006-01-02 15:04:05"),
 		}
 		result = append(result, itemVO)
 	}
 
 	return result, total, nil
+}
+
+// boolToInt 将 bool 转换为 int
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // GetDatasetItemById 根据ID获取数据集项（带缓存）
@@ -269,23 +323,51 @@ func (datasetItemService *DatasetItemService) GetDatasetItemVOByID(itemID int64)
 
 	// 获取关联文件
 	itemFileService := datasetItemService.itemFileService
-	hazyImages, err := itemFileService.GetImageUrlVOs(itemID)
+	allImages, err := itemFileService.GetImageUrlVOs(itemID)
 	if err != nil {
 		logger.Warn("获取数据项文件失败", zap.Int64("itemID", itemID), zap.Error(err))
-		hazyImages = []vo.ImageUrlVO{}
+		allImages = []vo.ImageUrlVO{}
 	}
 
-	vo := &vo.ImageItemVO{
-		ID:         item.ID,
-		DatasetID:  item.DatasetID,
-		Name:       item.Name,
-		ImageCount: len(hazyImages),
-		HazyImages: hazyImages,
-		CreateTime: item.CreatedAt.Format("2006-01-02 15:04:05"),
-		UpdateTime: item.UpdatedAt.Format("2006-01-02 15:04:05"),
+	// 分离清晰图和有雾图
+	var clearImage *vo.ImageUrlVO
+	hazyImages := make([]vo.ImageUrlVO, 0, len(allImages))
+	var sceneTypeStr, descriptionStr string
+
+	for idx := range allImages {
+		img := allImages[idx]
+		if img.Type == "clear" {
+			clearImage = &img
+		} else {
+			hazyImages = append(hazyImages, img)
+		}
+		if sceneTypeStr == "" && img.SceneType != "" {
+			sceneTypeStr = img.SceneType
+		}
+		if descriptionStr == "" && img.Description != "" {
+			descriptionStr = img.Description
+		}
 	}
 
-	return vo, nil
+	imageCount := len(hazyImages)
+	if clearImage != nil {
+		imageCount++
+	}
+
+	itemVO := &vo.ImageItemVO{
+		ID:          item.ID,
+		DatasetID:   item.DatasetID,
+		Name:        item.Name,
+		SceneType:   sceneTypeStr,
+		Description: descriptionStr,
+		ImageCount:  imageCount,
+		ClearImage:  clearImage,
+		HazyImages:  hazyImages,
+		CreateTime:  item.CreatedAt.Format("2006-01-02 15:04:05"),
+		UpdateTime:  item.UpdatedAt.Format("2006-01-02 15:04:05"),
+	}
+
+	return itemVO, nil
 }
 
 // DeleteDatasetItem 删除数据集项
@@ -319,26 +401,27 @@ func (datasetItemService *DatasetItemService) DeleteDatasetItem(datasetItemId in
 	return nil
 }
 
-// UpdateDatasetItem 更新数据集项
-func (datasetItemService *DatasetItemService) UpdateDatasetItem(datasetItemId int64, itemName string) (err error) {
+// UpdateDatasetItem 更新数据集项，返回更新后的 VO
+func (datasetItemService *DatasetItemService) UpdateDatasetItem(datasetItemId int64, itemName string) (*vo.ImageItemVO, error) {
 	ctx := context.Background()
 
 	// 先查询数据项
 	item, err := datasetItemService.itemRepo.FindByID(ctx, datasetItemId)
 	if err != nil || item == nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据项不存在")
+		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "数据项不存在")
 	}
 
 	item.Name = itemName
 	err = datasetItemService.itemRepo.Update(ctx, item)
 	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "更新数据项失败", err)
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "更新数据项失败", err)
 	}
 
 	// 失效缓存
 	datasetItemService.invalidateItemCache(item.ID)
 
-	return nil
+	// 返回更新后的 VO
+	return datasetItemService.GetDatasetItemVOByID(datasetItemId)
 }
 
 // BatchUpdateDatasetItems 批量更新数据项
@@ -351,7 +434,7 @@ func (datasetItemService *DatasetItemService) BatchUpdateDatasetItems(updates ma
 	itemIDs := make([]int64, 0, len(updates))
 
 	for itemID, itemName := range updates {
-		err := datasetItemService.UpdateDatasetItem(itemID, itemName)
+		_, err := datasetItemService.UpdateDatasetItem(itemID, itemName)
 		if err != nil {
 			logger.Warn("更新数据项失败", zap.Int64("itemID", itemID), zap.Error(err))
 			continue
@@ -445,6 +528,36 @@ func filterItemsByHazeLevel(items []model.SysDatasetItem, hazeLevel string, item
 	matchedIDs := make(map[int64]bool)
 	for _, itemFile := range itemFiles {
 		if itemFile.HazeLevel != nil && strings.EqualFold(*itemFile.HazeLevel, hazeLevel) {
+			matchedIDs[itemFile.ItemID] = true
+		}
+	}
+	result := make([]model.SysDatasetItem, 0)
+	for _, item := range items {
+		if matchedIDs[item.ID] {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+// filterItemsBySceneType 按场景类型过滤（需关联 item_file 表）
+func filterItemsBySceneType(items []model.SysDatasetItem, sceneType string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
+	if len(items) == 0 {
+		return items
+	}
+	ctx := context.Background()
+	ids := make([]int64, len(items))
+	for i, item := range items {
+		ids[i] = item.ID
+	}
+	itemFiles, err := itemFileRepo.FindByItemIDs(ctx, ids)
+	if err != nil {
+		logger.Warn("查询场景类型失败", zap.Error(err))
+		return items
+	}
+	matchedIDs := make(map[int64]bool)
+	for _, itemFile := range itemFiles {
+		if itemFile.SceneType != nil && strings.EqualFold(*itemFile.SceneType, sceneType) {
 			matchedIDs[itemFile.ItemID] = true
 		}
 	}

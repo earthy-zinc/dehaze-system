@@ -1,7 +1,7 @@
 {
-  "name": "reading-note",
+  "name": "dehaze-doc",
   "version": "1.0.0",
-  "description": "full stack learning about software engineer",
+  "description": "图像去雾系统项目技术文档（VitePress）",
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.18.0",

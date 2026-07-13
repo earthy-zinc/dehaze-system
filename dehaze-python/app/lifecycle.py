@@ -39,7 +39,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     task_tracker = init_task_tracker(
         shutdown_timeout=settings.GRACEFUL_SHUTDOWN_TIMEOUT
     )
+    # 启动 Redis 背景状态同步（跨 Worker 全局视图）
+    await task_tracker.start(redis)
     app.state.task_tracker = task_tracker
+
+    # 初始化 WebSocket 跨 Worker 通信（Redis Pub/Sub）
+    from app.service.websocket_service import init_websocket_manager
+    await init_websocket_manager()
 
     # 检查/创建 MinIO Bucket（仅 MinIO 模式）
     from app.service.file_service import FileService
@@ -86,7 +92,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     if task_tracker:
         await task_tracker.initiate_shutdown()
 
-    # 2. 通知 WebSocket 客户端
+    # 2. 通知 WebSocket 客户端（跨 Worker 广播）
     try:
         from app.service.websocket_service import WebSocketService
         await WebSocketService.broadcast_shutdown_notification()
@@ -104,6 +110,18 @@ async def _graceful_shutdown(app: FastAPI) -> None:
                 f"任务等待完成: completed={completed}, cancelled={cancelled}")
         else:
             logger.info("没有运行中的任务")
+
+    # 3.5 停止 TaskTracker Redis 状态同步
+    if task_tracker:
+        await task_tracker.stop()
+
+    # 3.6 关闭 WebSocket 跨 Worker 通信
+    try:
+        from app.service.websocket_service import close_websocket_manager
+        await close_websocket_manager()
+        logger.info("WebSocket 跨 Worker 通信已关闭")
+    except Exception as e:
+        logger.warning(f"关闭 WebSocket 跨 Worker 通信失败: {e}")
 
     # 4. 关闭 XXL-Job 执行器
     from app.infrastructure.job.executor import close_xxljob

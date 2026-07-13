@@ -77,7 +77,6 @@ class TaskVO(BaseModel):
     downloadUrl: Optional[str] = Field(default=None, description="下载链接")
     error: Optional[str] = Field(default=None, description="错误信息")
     createdAt: Optional[datetime] = Field(default=None, description="创建时间")
-    updatedAt: Optional[datetime] = Field(default=None, description="更新时间")
     startedAt: Optional[datetime] = Field(default=None, description="开始时间")
     completedAt: Optional[datetime] = Field(default=None, description="完成时间")
     expiresAt: Optional[datetime] = Field(default=None, description="过期时间")

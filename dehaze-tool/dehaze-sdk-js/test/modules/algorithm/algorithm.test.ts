@@ -50,18 +50,16 @@ describe("算法管理接口测试", () => {
     test("正向测试：按关键词搜索算法并验证搜索结果", async () => {
       // 先获取所有算法，找到一个已存在的算法名称
       const allAlgorithms = await AlgorithmAPI.getList();
-      if (allAlgorithms.length === 0) {
-        console.warn("数据库中没有算法数据，跳过搜索测试");
-        return;
-      }
+      expect(allAlgorithms.length).toBeGreaterThan(0);
 
-      const firstAlgorithm = allAlgorithms[0];
+      const firstAlgorithm = allAlgorithms[0]!;
       const searchKeyword = firstAlgorithm.name.substring(0, 2);
       const query = createAlgorithmQuery({ keywords: searchKeyword });
       const result = await AlgorithmAPI.getList(query);
 
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThan(0);
 
       // 递归验证所有搜索结果都包含关键词
       const verifyKeyword = (algorithms: typeof result, keyword: string) => {
@@ -74,9 +72,7 @@ describe("算法管理接口测试", () => {
         });
       };
 
-      if (result.length > 0) {
-        verifyKeyword(result, searchKeyword);
-      }
+      verifyKeyword(result, searchKeyword);
     });
 
     test("正向测试：验证算法层级关系", async () => {
@@ -111,9 +107,11 @@ describe("算法管理接口测试", () => {
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
 
-      result.forEach((option) => {
-        expect(option.value).toBeDefined();
+      result.forEach((option: any) => {
+        expect(option.value).toBeTruthy();
+        expect(typeof option.value).toBe("number");
         expect(option.label).toBeTruthy();
+        expect(typeof option.label).toBe("string");
       });
     });
   });
@@ -139,6 +137,7 @@ describe("算法管理接口测试", () => {
 
     test("异常测试：获取不存在算法应抛出业务错误", async () => {
       await expectBizErrorOrUndefined(AlgorithmAPI.getAlgorithmInfoById(99999999), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -224,7 +223,7 @@ describe("算法管理接口测试", () => {
 
       // 更新算法名称
       const newForm = createAlgorithmForm({ parentId: originalAlgorithm.parentId });
-      await expect(AlgorithmAPI.update(testAlgorithmId, newForm)).resolves.not.toThrow();
+      await AlgorithmAPI.update(testAlgorithmId, newForm);
 
       // 验证更新后的数据
       const algorithmInfo = await AlgorithmAPI.getAlgorithmInfoById(testAlgorithmId);
@@ -258,6 +257,7 @@ describe("算法管理接口测试", () => {
       const form = createAlgorithmForm();
 
       await expectBizErrorOrUndefined(AlgorithmAPI.update(99999999, form), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -276,6 +276,7 @@ describe("算法管理接口测试", () => {
 
       // 验证删除
       await expectBizErrorOrUndefined(AlgorithmAPI.getAlgorithmInfoById(algorithmId), [
+        "A0401",
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",
@@ -297,6 +298,7 @@ describe("算法管理接口测试", () => {
       // 验证所有算法都被删除
       for (const algorithmId of algorithmIds) {
         await expectBizErrorOrUndefined(AlgorithmAPI.getAlgorithmInfoById(algorithmId), [
+          "A0401",
           "A0400",
           "B0001",
           "ERR_BAD_REQUEST",
@@ -306,6 +308,53 @@ describe("算法管理接口测试", () => {
 
     test("异常测试：删除不存在的算法应抛出业务错误", async () => {
       await expectBizErrorOrUndefined(AlgorithmAPI.deleteByIds(["99999999"]), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("完整 CRUD 生命周期：创建→读→更新→读→删除→验证不存在", async () => {
+      // Create: 创建算法
+      const createForm = createAlgorithmForm({ parentId: 0, description: "CRUD生命周期测试" });
+      const algorithmId = (await AlgorithmAPI.add(createForm)) as number;
+      expect(algorithmId).toBeGreaterThan(0);
+
+      // Read: 验证字段与创建时一致
+      const detail = await AlgorithmAPI.getAlgorithmInfoById(algorithmId);
+      expect(detail.id).toBe(algorithmId);
+      expect(detail.name).toBe(createForm.name);
+      expect(detail.type).toBe(createForm.type);
+      expect(detail.description).toBe("CRUD生命周期测试");
+      if (detail.parentId !== undefined) {
+        expect(detail.parentId).toBe(0);
+      }
+
+      // Update: 更新算法名称
+      const newForm = createAlgorithmForm({ parentId: 0 });
+      await AlgorithmAPI.update(algorithmId, newForm);
+
+      // Read: 验证更新已生效
+      const updatedDetail = await AlgorithmAPI.getAlgorithmInfoById(algorithmId);
+      expect(updatedDetail.name).toBe(newForm.name);
+      expect(updatedDetail.name).not.toBe(createForm.name);
+
+      // Delete: 删除算法
+      await AlgorithmAPI.deleteByIds([algorithmId.toString()]);
+
+      // Verify: 验证数据已不存在
+      await expectBizErrorOrUndefined(AlgorithmAPI.getAlgorithmInfoById(algorithmId), [
+        "A0401",
+        "A0400",
+        "B0001",
+        "ERR_BAD_REQUEST",
+      ]);
+    });
+
+    test("边界测试：超长算法名称应被拒绝", async () => {
+      const form = createAlgorithmForm({ parentId: 0, name: "x".repeat(500) });
+      await expectBizErrorOrUndefined(AlgorithmAPI.add(form as any), [
         "A0400",
         "B0001",
         "ERR_BAD_REQUEST",

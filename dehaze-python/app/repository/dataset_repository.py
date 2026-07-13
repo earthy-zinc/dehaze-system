@@ -9,9 +9,9 @@ from typing import Any
 from app.models.entity.sys_dataset import (SysDataset, SysDatasetItem,
                                            SysItemFile)
 from app.models.entity.sys_file import SysFile
-from app.repository.base import BaseRepository, escape_like
+from app.repository.base import BaseRepository
 from app.utils.tree import bfs_collect_ids
-from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy import and_, case, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -154,8 +154,8 @@ class DatasetRepository(BaseRepository[SysDataset]):
         )
         stmt = (
             select(
-                func.sum(func.case((annotated_cond, 1), else_=0)).label("annotated"),
-                func.sum(func.case((unannotated_cond, 1), else_=0)).label("unannotated"),
+                func.sum(case((annotated_cond, 1), else_=0)).label("annotated"),
+                func.sum(case((unannotated_cond, 1), else_=0)).label("unannotated"),
             )
             .select_from(SysItemFile)
             .join(SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id)
@@ -307,8 +307,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         """获取数据集列表（支持关键字搜索）"""
         stmt = select(SysDataset).where(SysDataset.deleted == 0)
         if keywords:
-            stmt = stmt.where(SysDataset.name.like(
-                f"%{escape_like(keywords)}%", escape="\\"))
+            stmt = stmt.where(SysDataset.name.like(f"%{keywords}%"))
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
@@ -396,8 +395,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         )
         if keywords:
             stmt = stmt.where(
-                SysDatasetItem.name.like(
-                    f"%{escape_like(keywords)}%", escape="\\")
+                SysDatasetItem.name.like(f"%{keywords}%")
             )
         result = await db.execute(stmt)
         return result.scalar() or 0
@@ -416,8 +414,7 @@ class DatasetRepository(BaseRepository[SysDataset]):
         )
         if keywords:
             stmt = stmt.where(
-                SysDatasetItem.name.like(
-                    f"%{escape_like(keywords)}%", escape="\\")
+                SysDatasetItem.name.like(f"%{keywords}%")
             )
         stmt = stmt.order_by(SysDatasetItem.id.desc()
                              ).offset(offset).limit(limit)
@@ -531,59 +528,17 @@ class DatasetRepository(BaseRepository[SysDataset]):
 
         return item, item_files
 
-    async def get_dataset_tree_path(
-        self,
-        db: AsyncSession,
-        dataset_id: int,
-    ) -> str | None:
-        """获取数据集的树路径"""
-        stmt = select(SysDataset.tree_path).where(SysDataset.id == dataset_id)
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def update_tree_path(
-        self,
-        db: AsyncSession,
-        dataset_id: int,
-        tree_path: str,
-    ) -> bool:
-        """更新数据集树路径"""
-        stmt = select(SysDataset).where(SysDataset.id == dataset_id)
-        result = await db.execute(stmt)
-        dataset = result.scalar_one_or_none()
-        if not dataset:
-            return False
-        dataset.tree_path = tree_path
-        return True
-
-    async def get_all_datasets_for_tree_path_update(
+    async def get_datasets_by_ids(
         self,
         db: AsyncSession,
         dataset_ids: list[int],
     ) -> list[SysDataset]:
-        """获取需要更新树路径的数据集列表"""
+        """获取指定数据集列表（用于级联删除等场景）"""
         if not dataset_ids:
             return []
         stmt = select(SysDataset).where(SysDataset.id.in_(dataset_ids))
         result = await db.execute(stmt)
         return list(result.scalars().all())
-
-    async def get_dataset_depth(
-        self,
-        db: AsyncSession,
-        dataset_ids: list[int],
-    ) -> dict[int, int]:
-        """获取数据集的深度（用于排序删除）"""
-        if not dataset_ids:
-            return {}
-        stmt = select(SysDataset.id, SysDataset.tree_path).where(
-            SysDataset.id.in_(dataset_ids))
-        result = await db.execute(stmt)
-        depth_map = {}
-        for row in result:
-            tree_path = row.tree_path or ""
-            depth_map[row.id] = tree_path.count(",") if tree_path else 0
-        return depth_map
 
     # ── ItemFile 相关方法 ─────────────────────────────
 
@@ -643,9 +598,11 @@ class DatasetRepository(BaseRepository[SysDataset]):
         db: AsyncSession,
         page_num: int = 1,
         page_size: int = 10,
-        keywords: str | None = None,
+        keyword: str | None = None,
+        type: str | None = None,
+        status: int | None = None,
     ) -> tuple[list[SysDataset], int]:
-        """分页查询根节点数据集（parent_id=0）"""
+        """分页查询根节点数据集（parent_id=0），支持 keyword/type/status 过滤"""
         base_stmt = select(SysDataset).where(
             and_(SysDataset.parent_id == 0, SysDataset.deleted == 0)
         )
@@ -653,12 +610,16 @@ class DatasetRepository(BaseRepository[SysDataset]):
             and_(SysDataset.parent_id == 0, SysDataset.deleted == 0)
         )
 
-        if keywords:
-            keyword_filter = SysDataset.name.like(
-                f"%{escape_like(keywords)}%", escape="\\"
-            )
+        if keyword:
+            keyword_filter = SysDataset.name.like(f"%{keyword}%")
             base_stmt = base_stmt.where(keyword_filter)
             count_stmt = count_stmt.where(keyword_filter)
+        if type:
+            base_stmt = base_stmt.where(SysDataset.type == type)
+            count_stmt = count_stmt.where(SysDataset.type == type)
+        if status is not None:
+            base_stmt = base_stmt.where(SysDataset.status == status)
+            count_stmt = count_stmt.where(SysDataset.status == status)
 
         count_result = await db.execute(count_stmt)
         total = count_result.scalar() or 0
@@ -767,8 +728,8 @@ class DatasetRepository(BaseRepository[SysDataset]):
                 SysDatasetItem.dataset_id.label("dataset_id"),
                 func.count(SysItemFile.id).label("file_count"),
                 func.coalesce(func.sum(SysFile.size), 0).label("total_size"),
-                func.sum(func.case((annotated_cond, 1), else_=0)).label("annotated_count"),
-                func.sum(func.case((unannotated_cond, 1), else_=0)).label("unannotated_count"),
+                func.sum(case((annotated_cond, 1), else_=0)).label("annotated_count"),
+                func.sum(case((unannotated_cond, 1), else_=0)).label("unannotated_count"),
             )
             .select_from(SysDatasetItem)
             .outerjoin(SysItemFile, SysItemFile.item_id == SysDatasetItem.id)

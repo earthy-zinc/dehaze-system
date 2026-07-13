@@ -96,7 +96,7 @@ async def cleanup_stuck_tasks() -> str:
     """
     回收僵死任务
 
-    将超过 30 分钟 updated_at 未更新且处于 processing 状态的任务标记为 failed。
+    将超过 30 分钟仍处于 processing 状态的任务标记为 failed。
     将超过 24 小时仍处于 pending 状态的任务标记为 failed。
     这些任务可能由于进程崩溃、网络中断等原因未正常完成。
 
@@ -107,20 +107,19 @@ async def cleanup_stuck_tasks() -> str:
     pending_threshold = now - timedelta(hours=24)
 
     async with get_db_session() as db:
-        # 回收 30 分钟未更新的 processing 任务（基于 updated_at）
+        # 回收 30 分钟未完成的 processing 任务（基于 started_at）
         stmt_processing = (
             update(SysTask)
             .where(
                 and_(
                     SysTask.status == TaskStatus.PROCESSING.value,
-                    SysTask.updated_at < processing_threshold,
+                    SysTask.started_at < processing_threshold,
                 )
             )
             .values(
                 status=TaskStatus.FAILED.value,
                 error_message="任务超时（30分钟无进度更新），已被系统自动回收",
                 completed_at=now,
-                updated_at=now,
             )
         )
         result_processing = await db.execute(stmt_processing)
@@ -138,7 +137,6 @@ async def cleanup_stuck_tasks() -> str:
                 status=TaskStatus.FAILED.value,
                 error_message="任务超时（24h未启动），已被系统自动回收",
                 completed_at=now,
-                updated_at=now,
             )
         )
         result_pending = await db.execute(stmt_pending)

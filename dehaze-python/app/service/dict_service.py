@@ -73,6 +73,7 @@ class DictService:
 
         # 创建字典项
         result = await dict_repository.create_dict(db, data)
+        await db.commit()
 
         # 清除缓存
         await DictService._invalidate_options_cache(type_code)
@@ -107,6 +108,7 @@ class DictService:
 
         # 更新字典
         result = await dict_repository.update_by_id(db, dict_id, data)
+        await db.commit()
 
         # 清除缓存（typeCode 不变，只需清除一个）
         if old_dict.type_code:
@@ -119,12 +121,20 @@ class DictService:
         """
         删除字典项
 
-        删除成功后清除相关缓存
+        业务规则:
+        1. 校验字典数据项是否存在
+        2. 删除成功后清除相关缓存
         """
+        # 校验字典数据项是否存在
+        exist_count = await dict_repository.count_by_ids(db, dict_ids)
+        if exist_count == 0:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
+
         # 获取要删除的字典的 type_code 列表
         type_codes = await dict_repository.get_type_codes_by_ids(db, dict_ids)
 
         result = await dict_repository.delete_by_ids(db, dict_ids)
+        await db.commit()
 
         # 清除相关缓存
         for type_code in type_codes:
@@ -234,7 +244,9 @@ class DictTypeService:
         if existing:
             raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在")
 
-        return await dict_type_repository.create_type(db, data)
+        result = await dict_type_repository.create_type(db, data)
+        await db.commit()
+        return result
 
     @staticmethod
     async def update_dict_type(db: AsyncSession, type_id: int, data: dict[str, Any]) -> bool:
@@ -262,9 +274,14 @@ class DictTypeService:
         # 更新字典类型
         result = await dict_type_repository.update_by_id(db, type_id, data)
 
-        # code 变更时级联更新 sys_dict.type_code 并清除缓存
+        # code 变更时级联更新 sys_dict.type_code
         if result and new_code and new_code != old_type.code:
             await dict_repository.update_type_code(db, old_type.code, new_code)
+
+        await db.commit()
+
+        # 清除缓存
+        if result and new_code and new_code != old_type.code:
             await DictService._invalidate_options_cache(old_type.code)
             await DictService._invalidate_options_cache(new_code)
 
@@ -276,9 +293,15 @@ class DictTypeService:
         删除字典类型
 
         业务规则:
-        1. 检查是否存在关联的字典数据
-        2. 存在关联数据则禁止删除
+        1. 校验字典类型是否存在
+        2. 检查是否存在关联的字典数据
+        3. 存在关联数据则禁止删除
         """
+        # 校验字典类型是否存在
+        exist_count = await dict_type_repository.count_by_ids(db, type_ids)
+        if exist_count == 0:
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND)
+
         # 检查每个类型是否存在关联数据
         for type_id in type_ids:
             dict_type = await dict_type_repository.get_by_id(db, type_id)
@@ -289,4 +312,6 @@ class DictTypeService:
                         ResultCode.DATA_BIND_EXISTS,
                         f"字典类型【{dict_type.name}】存在 {count} 条关联数据，无法删除")
 
-        return await dict_type_repository.delete_by_ids(db, type_ids)
+        result = await dict_type_repository.delete_by_ids(db, type_ids)
+        await db.commit()
+        return result > 0

@@ -55,21 +55,18 @@ func (s *InputHistoryService) Update(ctx context.Context, id int64, userID int64
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权操作他人的历史记录")
 	}
 	if v, ok := updates["is_favorite"]; ok {
-		history.IsFavorite = ptrInt8(v)
+		history.IsFavorite = ptrBool(v)
 	}
 	return s.repo.Update(ctx, history)
 }
 
 // Delete 删除单条历史记录
-func (s *InputHistoryService) Delete(ctx context.Context, id int64, userID int64) error {
-	history, err := s.repo.FindByID(ctx, id)
+func (s *InputHistoryService) Delete(ctx context.Context, id int64) error {
+	err := s.repo.Delete(ctx, []int64{id})
 	if err != nil {
-		return common.NewBizError(common.RESOURCE_NOT_FOUND, "历史记录不存在")
+		return common.WrapBizError(common.DATABASE_ERROR, "删除历史记录失败", err)
 	}
-	if history.UserID != userID {
-		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权操作他人的历史记录")
-	}
-	return s.repo.Delete(ctx, []int64{id})
+	return nil
 }
 
 // BatchDelete 批量删除
@@ -85,14 +82,19 @@ func (s *InputHistoryService) ClearAll(ctx context.Context, userID int64) (int64
 	return s.repo.DeleteByUserID(ctx, userID)
 }
 
-func ptrInt8(v interface{}) *int8 {
-	switch val := v.(type) {
+func ptrBool(val interface{}) *bool {
+	if val == nil {
+		return nil
+	}
+	switch v := val.(type) {
+	case bool:
+		return &v
 	case float64:
-		i := int8(val)
-		return &i
+		b := v != 0
+		return &b
 	case int:
-		i := int8(val)
-		return &i
+		b := v != 0
+		return &b
 	default:
 		return nil
 	}

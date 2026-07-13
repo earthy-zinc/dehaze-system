@@ -70,7 +70,7 @@ class DatasetAPI {
    * @param data 数据集创建表单
    */
   static add(data: DatasetAddForm) {
-    return request<any, Dataset>({
+    return request<any, number>({
       url: "/api/v1/datasets",
       method: "post",
       data: data,

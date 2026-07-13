@@ -14,14 +14,16 @@ from pydantic import BaseModel, Field
 
 
 class DatasetQuery(BaseModel):
-    """数据集列表查询参数"""
-    keywords: Optional[str] = Field(default=None, description="关键词(数据集名称)")
+    """数据集列表查询参数（对齐 Java DatasetQuery）"""
+    keyword: Optional[str] = Field(default=None, description="关键词(数据集名称)")
+    type: Optional[str] = Field(default=None, description="数据集类型")
+    status: Optional[int] = Field(default=None, description="状态(1:启用；0:禁用)")
 
 
 class DatasetAddForm(BaseModel):
-    """数据集新增表单"""
+    """数据集新增表单（对齐 Java DatasetAddForm）"""
     parentId: int = Field(default=0, description="父数据集ID")
-    name: str = Field(..., min_length=1, max_length=100, description="数据集名称")
+    name: str = Field(..., min_length=1, max_length=255, description="数据集名称")
     type: Optional[str] = Field(default='', max_length=50, description="数据集类型")
     description: Optional[str] = Field(
         default='', max_length=500, description="数据集描述")
@@ -30,10 +32,10 @@ class DatasetAddForm(BaseModel):
 
 
 class DatasetUpdateForm(BaseModel):
-    """数据集更新表单"""
+    """数据集更新表单（对齐 Java DatasetUpdateForm）"""
     parentId: Optional[int] = Field(default=None, description="父数据集ID")
     name: Optional[str] = Field(
-        default=None, min_length=1, max_length=100, description="数据集名称")
+        default=None, min_length=1, max_length=255, description="数据集名称")
     type: Optional[str] = Field(
         default=None, max_length=50, description="数据集类型")
     description: Optional[str] = Field(
@@ -126,7 +128,9 @@ class DatasetItemCreateForm(BaseModel):
 
 class DatasetItemUpdateForm(BaseModel):
     """数据项更新表单"""
-    name: str = Field(..., min_length=1, max_length=200, description="数据项名称")
+    name: Optional[str] = Field(
+        default=None, min_length=1, max_length=200, description="数据项名称")
+    sceneType: Optional[str] = Field(default=None, description="场景类型")
 
 
 class ItemFileVO(BaseModel):
@@ -159,6 +163,8 @@ class DatasetItemVO(BaseModel):
     createTime: Optional[str] = Field(default=None, description="创建时间")
     updateTime: Optional[str] = Field(default=None, description="更新时间")
     files: List[ItemFileVO] = Field(default_factory=list, description="关联文件列表")
+    clearImage: Optional[ItemFileVO] = Field(default=None, description="清晰图信息")
+    hazyImages: List[ItemFileVO] = Field(default_factory=list, description="有雾图列表")
 
 
 class DatasetItemPageVO(BaseModel):
@@ -227,13 +233,30 @@ class BatchUploadFailedItemVO(BaseModel):
 
 class BatchUploadResultVO(BaseModel):
     """批量上传结果VO"""
-    total: int = Field(description="总配对组数")
+    total: int = Field(description="总文件数")
     succeeded: int = Field(description="成功数量")
     failed: int = Field(description="失败数量")
     successItems: List[BatchUploadSuccessItemVO] = Field(
         default_factory=list, description="成功项列表")
     failedItems: List[BatchUploadFailedItemVO] = Field(
         default_factory=list, description="失败项列表")
+
+
+class BatchActionFailureDetailVO(BaseModel):
+    """批量操作失败详情"""
+    identifier: Optional[str] = Field(default=None, description="失败记录标识")
+    reason: str = Field(description="失败原因")
+
+
+class BatchOperationResultVO(BaseModel):
+    """批量操作结果VO"""
+    successCount: int = Field(description="成功数量")
+    failedCount: int = Field(description="失败数量")
+    message: str = Field(description="操作消息")
+    successIds: Optional[List[int]] = Field(
+        default=None, description="成功的ID列表")
+    failureDetails: Optional[List[BatchActionFailureDetailVO]] = Field(
+        default=None, description="失败详情列表")
 
 
 # 树形结构自引用，需要调用 model_rebuild() 完成模型构建

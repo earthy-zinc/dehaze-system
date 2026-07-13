@@ -4,22 +4,18 @@
 提供算法 CRUD、状态机、审核、版本控制、导入/导出、监控功能
 """
 
-import io
 import json
 import os
-import zipfile
 from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import BusinessException
-from app.core.code import ResultCode
 from app.models.entity.sys_algorithm import SysAlgorithm, SysAlgorithmVersion
 from app.repository.algorithm_repository import (
     algorithm_repository,
     AlgorithmStatus,
-    can_transition,
 )
 from app.utils.datetime_utils import format_time
 from app.utils.file import get_file_size
@@ -83,11 +79,11 @@ class AlgorithmService:
         return await algorithm_repository.get_algorithm_options(db)
 
     @staticmethod
-    async def get_algorithm_by_id(db: AsyncSession, algorithm_id: int) -> dict[str, Any] | None:
+    async def get_algorithm_by_id(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
         """根据 ID 获取算法信息"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            return None
+            raise BusinessException("当前算法不存在")
         return AlgorithmService._to_vo(algorithm)
 
     @staticmethod
@@ -100,7 +96,7 @@ class AlgorithmService:
             path=data.get("path", ""),
             import_path=data.get("importPath", ""),
             description=data.get("description", ""),
-            status=data.get("status", AlgorithmStatus.DRAFT),
+            status=1,  # StatusEnum.ENABLE，对齐 Java addAlgorithm
             version=data.get("version"),
         )
 
@@ -109,6 +105,7 @@ class AlgorithmService:
             algorithm.size = get_file_size(data["path"])
 
         created = await algorithm_repository.create(db, algorithm)
+        await db.commit()
         return created.id
 
     @staticmethod
@@ -117,7 +114,7 @@ class AlgorithmService:
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
 
         if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
+            raise BusinessException("算法不存在")
 
         update_data = {}
         if "parentId" in data:
@@ -136,8 +133,11 @@ class AlgorithmService:
             update_data["description"] = data["description"]
         if "version" in data:
             update_data["version"] = data["version"]
+        if "status" in data:
+            update_data["status"] = data["status"]
 
         await algorithm_repository.update(db, algorithm, update_data)
+        await db.commit()
 
     @staticmethod
     async def delete_algorithm_single(db: AsyncSession, algorithm_id: int) -> int:
@@ -146,20 +146,17 @@ class AlgorithmService:
 
     @staticmethod
     async def delete_algorithms(db: AsyncSession, algorithm_ids: list[int]) -> int:
-        """批量删除算法（包含子算法），仅草稿/已停用状态可删除"""
-        for aid in algorithm_ids:
-            algorithm = await algorithm_repository.get_by_id(db, aid)
-            if not algorithm:
-                raise BusinessException(f"算法不存在: id={aid}", ResultCode.ALGORITHM_NOT_FOUND.code)
-            if algorithm.status not in (AlgorithmStatus.DRAFT, AlgorithmStatus.DISABLED):
-                raise BusinessException(
-                    f"算法 {algorithm.name} 当前状态不允许删除",
-                    ResultCode.ALGORITHM_STATUS_NOT_ALLOWED.code,
-                )
+        """批量删除算法（包含子算法），对齐 Java deleteAlgorithms
+
+        Java: removeByIds 返回 false 时 Result.judge(false) → Result.failed()
+        Python: 无匹配记录时抛出 BusinessException（等价于 Result.failed）
+        """
         ids_to_delete = await algorithm_repository.get_with_children_ids(db, algorithm_ids)
-        if ids_to_delete:
-            return await algorithm_repository.delete_by_ids(db, ids_to_delete)
-        return 0
+        if not ids_to_delete:
+            raise BusinessException("删除失败，算法不存在")
+        count = await algorithm_repository.delete_by_ids(db, ids_to_delete)
+        await db.commit()
+        return count
 
     # ── 状态机 ──────────────────────────────────────
 
@@ -170,27 +167,38 @@ class AlgorithmService:
         target_status: int,
     ) -> None:
         """
-        修改算法状态（状态机流转）
+        修改算法状态（对齐 Java validateStatusTransition 逻辑）
 
-        流转规则:
-        - 草稿 → 测试中（提交测试）
-        - 测试中 → 待审核（测试通过）
-        - 待审核 → 已发布（审核通过） / 测试中（审核驳回）
-        - 已发布 → 已停用
-        - 已停用 → 已发布 / 已归档
-        - 已归档为终态
+        - 校验目标状态是合法枚举值 (0-5)
+        - 终态(已发布3/已停用4)不允许变更，已归档(5)除外
+        - 不允许直接跳转到已发布(3)，必须从待审核(2)流转
         """
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
+            raise BusinessException("算法不存在")
 
-        if not can_transition(algorithm.status, target_status):
-            raise BusinessException(
-                f"状态不允许从 {algorithm.status} 流转到 {target_status}",
-                ResultCode.ALGORITHM_STATUS_NOT_ALLOWED.code,
-            )
+        # 校验目标状态是合法值
+        valid_statuses = {
+            AlgorithmStatus.DRAFT, AlgorithmStatus.TESTING,
+            AlgorithmStatus.PENDING_AUDIT, AlgorithmStatus.PUBLISHED,
+            AlgorithmStatus.DISABLED, AlgorithmStatus.ARCHIVED,
+        }
+        if target_status not in valid_statuses:
+            raise BusinessException(f"无效的状态值: {target_status}")
+
+        current_status = algorithm.status
+
+        # 终态校验：已发布/已停用不允许变更（已归档除外）
+        final_statuses = {AlgorithmStatus.PUBLISHED, AlgorithmStatus.DISABLED, AlgorithmStatus.ARCHIVED}
+        if current_status in final_statuses and current_status != AlgorithmStatus.ARCHIVED:
+            raise BusinessException("终态算法不允许修改状态")
+
+        # 不允许直接跳转到已发布
+        if target_status == AlgorithmStatus.PUBLISHED and current_status != AlgorithmStatus.PENDING_AUDIT:
+            raise BusinessException("算法必须经过审核才能发布")
 
         await algorithm_repository.update_status(db, algorithm_id, target_status)
+        await db.commit()
 
     # ── 审核 ──────────────────────────────────────
 
@@ -210,19 +218,13 @@ class AlgorithmService:
         """
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
+            raise BusinessException("算法不存在")
 
         if algorithm.status != AlgorithmStatus.PENDING_AUDIT:
-            raise BusinessException(
-                "仅待审核状态的算法可审核",
-                ResultCode.ALGORITHM_STATUS_NOT_ALLOWED.code,
-            )
+            raise BusinessException("仅待审核状态的算法可审核")
 
         if not passed and not remark:
-            raise BusinessException(
-                "驳回时必须填写原因",
-                ResultCode.ALGORITHM_AUDIT_REMARK_REQUIRED.code,
-            )
+            raise BusinessException("驳回时必须填写原因")
 
         await algorithm_repository.audit(
             db=db,
@@ -231,6 +233,7 @@ class AlgorithmService:
             passed=passed,
             remark=remark,
         )
+        await db.commit()
 
     # ── 版本控制 ──────────────────────────────────────
 
@@ -256,13 +259,10 @@ class AlgorithmService:
         """
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
+            raise BusinessException("算法不存在")
 
         if await algorithm_repository.check_version_exists(db, algorithm_id, version):
-            raise BusinessException(
-                f"版本号 {version} 已存在",
-                ResultCode.ALGORITHM_VERSION_EXISTS.code,
-            )
+            raise BusinessException(f"版本号 {version} 已存在")
 
         # 归档当前版本到历史表
         if not await algorithm_repository.check_version_exists(db, algorithm_id, algorithm.version):
@@ -289,6 +289,7 @@ class AlgorithmService:
             is_active=is_active,
         )
 
+        await db.commit()
         return algorithm_id
 
     @staticmethod
@@ -320,203 +321,153 @@ class AlgorithmService:
         """回滚到指定版本"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
+            raise BusinessException("算法不存在")
 
         # 仅已停用/已发布状态可回滚
         if algorithm.status not in (AlgorithmStatus.DISABLED, AlgorithmStatus.PUBLISHED):
-            raise BusinessException(
-                "仅已停用/已发布状态的算法可回滚",
-                ResultCode.ALGORITHM_ROLLBACK_NOT_ALLOWED.code,
-            )
+            raise BusinessException("仅已停用/已发布状态的算法可回滚")
 
         result = await algorithm_repository.rollback_to_version(db, algorithm_id, version_id)
         if not result:
-            raise BusinessException(
-                "版本不存在或不属于该算法",
-                ResultCode.ALGORITHM_ROLLBACK_NOT_ALLOWED.code,
-            )
+            raise BusinessException("版本不存在或不属于该算法")
+
+        await db.commit()
 
     # ── 导入/导出 ──────────────────────────────────────
 
     @staticmethod
-    async def export_algorithm(db: AsyncSession, algorithm_id: int) -> bytes:
+    async def export_algorithm(db: AsyncSession, algorithm_id: int) -> str:
         """
-        同步导出单个算法为 ZIP
-
-        ZIP 结构:
-        - algorithm.json (算法元数据)
-        - model/{模型文件} (如果 path 指向有效文件)
+        导出单个算法为 JSON 字符串（对齐 Java exportAlgorithmJson）
         """
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
+            raise BusinessException("算法不存在")
 
-        buf = io.BytesIO()
-        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            meta = {
-                "id": algorithm.id,
-                "name": algorithm.name,
-                "type": algorithm.type,
-                "importPath": algorithm.import_path,
-                "description": algorithm.description,
-                "version": algorithm.version,
-                "path": algorithm.path,
-                "exportedAt": datetime.now(timezone.utc).isoformat(),
-            }
-            zf.writestr("algorithm.json", json.dumps(meta, ensure_ascii=False, indent=2))
+        # 获取父算法名称
+        parent_name = ""
+        if algorithm.parent_id and algorithm.parent_id > 0:
+            parent = await algorithm_repository.get_by_id(db, algorithm.parent_id)
+            parent_name = parent.name if parent else ""
 
-            # 模型文件（如果存在）
-            model_path = algorithm.path
-            if model_path and os.path.isfile(model_path):
-                with open(model_path, "rb") as f:
-                    zf.writestr(f"model/{os.path.basename(model_path)}", f.read())
+        export_data = {
+            "formatVersion": "1.0",
+            "name": algorithm.name,
+            "type": algorithm.type,
+            "parentName": parent_name,
+            "version": algorithm.version,
+            "description": algorithm.description,
+            "importPath": algorithm.import_path,
+            "flops": algorithm.flops,
+            "params": algorithm.params,
+            "status": algorithm.status,
+            "exportTime": datetime.now(timezone.utc).isoformat(),
+        }
 
-        buf.seek(0)
-        return buf.getvalue()
+        return json.dumps(export_data, ensure_ascii=False, indent=2)
 
     @staticmethod
-    async def validate_import_package(file_bytes: bytes) -> dict[str, Any]:
+    async def validate_import_package(file_bytes: bytes, filename: str = "") -> str:
         """
-        校验导入包格式
+        校验导入包格式（对齐 Java validateImport：解析 JSON，返回校验消息字符串）
 
         Returns:
-            {"valid": bool, "name": str, "version": str, "message": str}
+            校验通过的消息字符串
+        Raises:
+            BusinessException: 校验失败
         """
+        if not file_bytes:
+            raise BusinessException("导入文件不能为空")
+
+        if not filename.lower().endswith(".json"):
+            raise BusinessException("仅支持 .json 格式的算法导出文件")
+
         try:
-            buf = io.BytesIO(file_bytes)
-            with zipfile.ZipFile(buf, "r") as zf:
-                names = zf.namelist()
-                if "algorithm.json" not in names:
-                    return {"valid": False, "message": "缺少 algorithm.json"}
+            root = json.loads(file_bytes.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
+            raise BusinessException(f"导入文件解析失败: {e}")
 
-                meta_bytes = zf.read("algorithm.json")
-                meta = json.loads(meta_bytes.decode("utf-8"))
+        name = root.get("name")
+        if not name or not str(name).strip():
+            raise BusinessException("导入文件缺少必填字段: name")
 
-                # 必填字段校验
-                if not meta.get("name"):
-                    return {"valid": False, "message": "算法名称不能为空"}
+        type_ = root.get("type")
+        if not type_ or not str(type_).strip():
+            raise BusinessException("导入文件缺少必填字段: type")
 
-                return {
-                    "valid": True,
-                    "name": meta.get("name"),
-                    "version": meta.get("version", "v1.0.0"),
-                    "message": "校验通过",
-                }
-        except zipfile.BadZipFile:
-            return {"valid": False, "message": "ZIP 文件格式错误"}
-        except json.JSONDecodeError:
-            return {"valid": False, "message": "algorithm.json 解析失败"}
-        except Exception as e:
-            return {"valid": False, "message": f"校验失败: {e}"}
+        return f"校验通过: 算法名称={name}, 类型={type_}"
 
     @staticmethod
-    async def import_algorithm(db: AsyncSession, file_bytes: bytes) -> int:
+    async def import_algorithm(db: AsyncSession, file_bytes: bytes, filename: str = "") -> int:
         """
-        导入算法包
-
-        - 校验包格式
-        - 名称唯一性校验
-        - 创建算法记录
-        - 解压模型文件到本地
+        导入算法包（对齐 Java importAlgorithm：解析 JSON 文件）
         """
-        # 校验
-        validation = await AlgorithmService.validate_import_package(file_bytes)
-        if not validation["valid"]:
-            raise BusinessException(
-                validation["message"], ResultCode.ALGORITHM_IMPORT_FORMAT_ERROR.code
-            )
+        if not file_bytes:
+            raise BusinessException("导入文件不能为空")
 
-        buf = io.BytesIO(file_bytes)
-        with zipfile.ZipFile(buf, "r") as zf:
-            meta = json.loads(zf.read("algorithm.json").decode("utf-8"))
+        if not filename.lower().endswith(".json"):
+            raise BusinessException("仅支持 .json 格式的算法导出文件")
 
-            # 名称唯一性校验
-            existing = await algorithm_repository.get_list_with_keywords(db, meta["name"])
-            for algo in existing:
-                if algo.name == meta["name"]:
-                    raise BusinessException(
-                        f"算法名称 {meta['name']} 已存在",
-                        ResultCode.ALGORITHM_NAME_EXISTS.code,
-                    )
+        root = json.loads(file_bytes.decode("utf-8"))
 
-            # 解压模型文件
-            model_dir = os.path.join("models", "imported", meta["name"])
-            os.makedirs(model_dir, exist_ok=True)
-            model_path = ""
-            for name in zf.namelist():
-                if name.startswith("model/") and not name.endswith("/"):
-                    file_data = zf.read(name)
-                    basename = os.path.basename(name)
-                    dest = os.path.join(model_dir, basename)
-                    with open(dest, "wb") as f:
-                        f.write(file_data)
-                    model_path = dest
+        name = root.get("name")
+        if not name or not str(name).strip():
+            raise BusinessException("导入失败: 缺少算法名称")
 
-            # 创建算法记录
-            algorithm = SysAlgorithm(
-                parent_id=0,
-                type=meta.get("type", ""),
-                name=meta["name"],
-                path=model_path,
-                import_path=meta.get("importPath", ""),
-                description=meta.get("description", ""),
-                status=AlgorithmStatus.DRAFT,
-                version=meta.get("version"),
-            )
-            if model_path and os.path.isfile(model_path):
-                algorithm.size = get_file_size(model_path)
+        type_ = root.get("type", "")
+        description = root.get("description", "")
+        import_path = root.get("importPath", "")
+        version = root.get("version", "0.0.1")
 
-            created = await algorithm_repository.create(db, algorithm)
-            return created.id
+        # 名称唯一性校验
+        existing = await algorithm_repository.get_list_with_keywords(db, name)
+        for algo in existing:
+            if algo.name == name:
+                raise BusinessException(f"算法名称 '{name}' 已存在")
+
+        # 创建算法记录（对齐 Java：parentId=0，status=DRAFT）
+        algorithm = SysAlgorithm(
+            parent_id=0,
+            type=type_,
+            name=name,
+            import_path=import_path,
+            description=description,
+            status=AlgorithmStatus.DRAFT,
+            version=version,
+        )
+
+        created = await algorithm_repository.create(db, algorithm)
+        await db.commit()
+        return created.id
 
     # ── 监控 ──────────────────────────────────────
 
     @staticmethod
     async def get_monitor_data(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
-        """获取算法监控数据"""
+        """获取算法监控数据（对齐 Java AlgorithmMonitorVO 字段）"""
         algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
         if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
+            raise BusinessException("算法不存在")
 
         stats = await algorithm_repository.get_monitor_stats(db, algorithm_id)
-        recent = await algorithm_repository.get_recent_calls(db, algorithm_id, limit=1)
-        last_call_time = format_time(recent[0].create_time) if recent else None
+        today_calls = await algorithm_repository.get_today_call_count(db, algorithm_id)
+
+        total_calls = stats["totalCalls"]
+        # 对齐 Java: totalCalls=0 时 successRate=100.0
+        if total_calls > 0:
+            rate = stats["successRate"]
+            success_rate = rate * 100 if rate <= 1 else rate
+        else:
+            success_rate = 100.0
 
         return {
-            "algorithmId": algorithm_id,
-            "algorithmName": algorithm.name,
-            "totalCalls": stats["totalCalls"],
-            "avgTime": stats["avgTime"],
-            "successRate": stats["successRate"],
-            "lastCallTime": last_call_time,
+            "callCount": total_calls,
+            "avgTime": round(stats["avgTime"], 2),
+            "successRate": round(success_rate, 2),
+            "todayCallCount": today_calls,
         }
 
     @staticmethod
     async def get_monitor_stats_report(db: AsyncSession, algorithm_id: int) -> dict[str, Any]:
-        """获取算法监控统计报表"""
-        algorithm = await algorithm_repository.get_by_id(db, algorithm_id)
-        if not algorithm:
-            raise BusinessException("算法不存在", ResultCode.ALGORITHM_NOT_FOUND.code)
-
-        stats = await algorithm_repository.get_monitor_stats(db, algorithm_id)
-        recent = await algorithm_repository.get_recent_calls(db, algorithm_id, limit=20)
-
-        # 构建时间序列
-        time_series = [
-            {
-                "time": format_time(log.create_time),
-                "duration": log.time,
-            }
-            for log in recent
-        ]
-        time_series.reverse()  # 时间正序
-
-        return {
-            "algorithmId": algorithm_id,
-            "timeSeries": time_series,
-            "totalCalls": stats["totalCalls"],
-            "avgTime": stats["avgTime"],
-            "maxTime": stats["maxTime"],
-            "minTime": stats["minTime"],
-            "successRate": stats["successRate"],
-        }
+        """获取算法监控统计报表（对齐 Java：直接返回 getMonitorData）"""
+        return await AlgorithmService.get_monitor_data(db, algorithm_id)

@@ -3,6 +3,7 @@ package file
 import (
 	"context"
 	"crypto/md5"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -88,10 +89,16 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 }
 
 // CheckFile 校验文件是否存在
-func (s *FileService) CheckFile(md5 string) bool {
+func (s *FileService) CheckFile(md5 string) (*model.SysFile, error) {
 	ctx := context.Background()
 	existingFile, err := s.fileRepo.FindByMD5(ctx, md5)
-	return err == nil && existingFile != nil
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询文件失败", err)
+	}
+	return existingFile, nil
 }
 
 // DeleteFile 删除文件

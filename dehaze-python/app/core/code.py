@@ -30,6 +30,7 @@ class ResultCode(Enum):
     AUTHORIZED_ERROR = ("A0300", "访问权限异常")
     ACCESS_UNAUTHORIZED = ("A0301", "访问未授权")
     FORBIDDEN_OPERATION = ("A0302", "演示环境禁止新增、修改和删除数据，请本地部署后测试")
+    IP_BLOCKED = ("A0304", "IP 已被临时封禁，请稍后重试")
 
     PARAM_ERROR = ("A0400", "用户请求参数错误")
     RESOURCE_NOT_FOUND = ("A0401", "请求资源不存在")

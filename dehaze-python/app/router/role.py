@@ -76,7 +76,7 @@ async def add_role(
 ):
     role = await RoleService.create_role(db, redis, body.model_dump(exclude_none=True))
 
-    return success({"id": role.id}, msg="创建成功")
+    return success(msg="创建成功")
 
 
 @router.get("/{role_id}/form", response_model=Result[RoleFormVO], summary="获取角色表单数据")
@@ -87,7 +87,7 @@ async def get_role_form(
     role = await RoleService.get_role_by_id(db, role_id)
 
     if not role:
-        return error("角色不存在", ResultCode.RESOURCE_NOT_FOUND.code)
+        return success(None)
 
     return success(
         {
@@ -150,7 +150,7 @@ async def get_role_menu_ids(
     role = await RoleService.get_role_by_id(db, role_id)
 
     if not role:
-        return error("角色不存在", ResultCode.RESOURCE_NOT_FOUND.code)
+        return success([])
 
     menu_ids = await RoleService.get_role_menu_ids(db, role_id)
     return success(menu_ids)

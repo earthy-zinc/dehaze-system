@@ -205,6 +205,23 @@ class DeptRepository(BaseRepository[SysDept]):
         result = await db.execute(stmt)
         return result.rowcount
 
+    async def delete_dept_with_children(
+        self,
+        db: AsyncSession,
+        dept_id: int,
+    ) -> int:
+        """删除部门及其所有子部门（基于 tree_path LIKE 级联删除，匹配 Java 行为）"""
+        stmt = delete(SysDept).where(
+            or_(
+                SysDept.id == dept_id,
+                SysDept.tree_path.like(f"%,{dept_id},%"),
+                SysDept.tree_path.like(f"{dept_id},%"),
+                SysDept.tree_path.like(f"%,{dept_id}"),
+            )
+        )
+        result = await db.execute(stmt)
+        return result.rowcount
+
     async def delete_depts_with_children(
         self,
         db: AsyncSession,

@@ -239,6 +239,10 @@ func (s *DictService) Delete(ctx context.Context, ids []int64) error {
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "查询字典数据失败", err)
 	}
+	// 校验字典数据是否存在（所有 ID 都不存在时返回错误）
+	if len(dictList) == 0 {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "字典数据项不存在")
+	}
 
 	// 收集需要清除缓存的类型编码
 	typeCodeSet := make(map[string]struct{})
