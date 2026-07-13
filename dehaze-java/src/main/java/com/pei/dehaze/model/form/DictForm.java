@@ -3,6 +3,8 @@ package com.pei.dehaze.model.form;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Schema(description = "字典表单对象")
@@ -14,14 +16,18 @@ public class DictForm {
 
     @Schema(description="类型编码")
     @NotBlank(message = "字典类型编码不能为空")
+    @Size(max = 50, message = "类型编码长度不能超过50")
     private String typeCode;
 
     @Schema(description="字典名称")
     @NotBlank(message = "字典名称不能为空")
+    @Size(max = 50, message = "字典名称长度不能超过50")
+    @Pattern(regexp = "^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "字典名称不能包含特殊字符")
     private String name;
 
     @Schema(description="字典值")
     @NotBlank(message = "字典值不能为空")
+    @Size(max = 50, message = "字典值长度不能超过50")
     private String value;
 
     @Schema(description="状态(1:启用;0:禁用)")

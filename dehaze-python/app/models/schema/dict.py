@@ -3,8 +3,8 @@
 """
 from typing import Optional
 
-from app.models.schema.common import BasePageQuery
-from pydantic import BaseModel, Field
+from app.models.schema.common import BasePageQuery, validate_no_xss
+from pydantic import BaseModel, Field, field_validator
 
 # ==================== 查询参数模型 ====================
 
@@ -53,7 +53,7 @@ class DictForm(BaseModel):
     """字典表单"""
     id: Optional[int] = Field(default=None, description="字典ID")
     typeCode: str = Field(..., min_length=1,
-                          max_length=64, description="字典类型编码")
+                          max_length=50, description="字典类型编码")
     name: str = Field(..., min_length=1, max_length=50, description="字典项名称")
     value: str = Field(..., min_length=1, max_length=50, description="字典项值")
     status: int = Field(default=1, ge=0, le=1, description="状态(1-正常；0-禁用)")
@@ -62,15 +62,25 @@ class DictForm(BaseModel):
     remark: Optional[str] = Field(
         default=None, max_length=255, description="备注")
 
+    @field_validator('name', 'value', 'typeCode')
+    @classmethod
+    def validate_no_xss(cls, v):
+        return validate_no_xss(v)
+
 
 class DictTypeForm(BaseModel):
     """字典类型表单"""
     id: Optional[int] = Field(default=None, description="字典类型ID")
-    name: str = Field(..., min_length=1, max_length=50, description="类型名称")
-    code: str = Field(..., min_length=1, max_length=64, description="类型编码")
+    name: str = Field(..., min_length=1, max_length=64, description="类型名称")
+    code: str = Field(..., min_length=1, max_length=32, description="类型编码")
     status: int = Field(default=1, ge=0, le=1, description="状态(1-正常；0-禁用)")
     remark: Optional[str] = Field(
         default=None, max_length=255, description="备注")
+
+    @field_validator('name', 'code')
+    @classmethod
+    def validate_no_xss(cls, v):
+        return validate_no_xss(v)
 
 
 # ==================== 响应模型 ====================

@@ -347,14 +347,22 @@ func (api *SysUserApi) ListExportUsers(c *gin.Context) {
 	queryParams.StartTime = c.Query("startTime")
 	queryParams.EndTime = c.Query("endTime")
 
-	// 调用服务获取导出数据
-	userExportVOs, err := api.userService.ExportUsers(c.Request.Context(), &queryParams)
+	// 调用服务生成Excel文件
+	filePath, err := api.userService.ExportUsers(c.Request.Context(), &queryParams)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
+	defer func() {
+		if filePath != "" {
+			_ = utils.DeleteTempFile(filePath)
+		}
+	}()
 
-	common.OkWithDetailed(userExportVOs, "查询成功", c)
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", "attachment; filename=users_export.xlsx")
+	c.Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.File(filePath)
 }
 
 // DownloadImportTemplate 下载导入模板

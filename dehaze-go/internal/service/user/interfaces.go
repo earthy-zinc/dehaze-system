@@ -48,8 +48,8 @@ type IUserService interface {
 	// ImportUsers 导入用户
 	ImportUsers(ctx context.Context, data []vo.UserImportVO) (*vo.ImportResultVO, error)
 
-	// ExportUsers 导出用户
-	ExportUsers(ctx context.Context, q *query.UserPageQuery) ([]vo.UserExportVO, error)
+	// ExportUsers 导出用户到Excel文件，返回临时文件路径
+	ExportUsers(ctx context.Context, q *query.UserPageQuery) (string, error)
 
 	// UpdatePassword 修改用户密码
 	UpdatePassword(ctx context.Context, id int64, password string) error

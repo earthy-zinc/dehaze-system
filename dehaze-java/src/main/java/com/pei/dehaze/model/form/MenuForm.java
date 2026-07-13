@@ -2,6 +2,8 @@ package com.pei.dehaze.model.form;
 
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Schema(description = "菜单表单对象")
@@ -15,6 +17,8 @@ public class MenuForm {
     private Long parentId;
 
     @Schema(description = "菜单名称")
+    @Size(max = 64, message = "菜单名称长度不能超过64")
+    @Pattern(regexp = "^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "菜单名称不能包含特殊字符")
     private String name;
 
     @Schema(description = "菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)")

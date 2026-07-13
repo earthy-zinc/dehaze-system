@@ -5,7 +5,7 @@ type DeptFormBO struct {
 	// 部门ID
 	ID *int64 `json:"id"`
 	// 部门名称
-	Name string `json:"name" binding:"required,min=1,max=64"`
+	Name string `json:"name" binding:"required,min=1,max=64,no_xss"`
 	// 父部门ID（指针类型 + required：仅校验字段是否提供，允许 0 表示根部门）
 	ParentID *int64 `json:"parentId" binding:"required"`
 	// 状态(1:启用;0:禁用)

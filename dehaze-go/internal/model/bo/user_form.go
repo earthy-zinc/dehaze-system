@@ -7,7 +7,7 @@ type UserFormBO struct {
 	// 用户名
 	Username string `json:"username" binding:"required,min=2,max=50"`
 	// 用户昵称
-	Nickname string `json:"nickname" binding:"required,max=50"`
+	Nickname string `json:"nickname" binding:"required,max=64,no_xss"`
 	// 手机号
 	Mobile string `json:"mobile" binding:"omitempty,len=11"`
 	// 性别(1:男;2:女)

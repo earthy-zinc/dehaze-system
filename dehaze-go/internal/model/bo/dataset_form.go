@@ -14,7 +14,7 @@ type DatasetFormBO struct {
 	// 数据集类型
 	Type string `json:"type"`
 	// 数据集名称
-	Name string `json:"name" binding:"required,max=128"`
+	Name string `json:"name" binding:"required,max=255,no_xss"`
 	// 数据集描述
 	Description string `json:"description" binding:"omitempty,max=255"`
 	// 数据集存储路径

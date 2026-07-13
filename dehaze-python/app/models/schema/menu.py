@@ -3,6 +3,7 @@
 """
 from typing import TYPE_CHECKING, List, Optional
 
+from app.models.schema.common import validate_no_xss
 from pydantic import BaseModel, Field, field_validator
 
 if TYPE_CHECKING:
@@ -50,7 +51,7 @@ class MenuForm(BaseModel):
     """菜单表单"""
     id: Optional[int] = Field(default=None, description="菜单ID")
     parentId: Optional[int] = Field(default=None, description="父菜单ID")
-    name: str = Field(..., min_length=1, max_length=100, description="菜单名称")
+    name: str = Field(..., min_length=1, max_length=64, description="菜单名称")
     type: int = Field(..., ge=1, le=4,
                       description="菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)")
     path: Optional[str] = Field(
@@ -70,6 +71,11 @@ class MenuForm(BaseModel):
         default=None, ge=0, le=1, description="【菜单】是否开启页面缓存")
     alwaysShow: Optional[int] = Field(
         default=None, ge=0, le=1, description="【目录】只有一个子路由是否始终显示")
+
+    @field_validator('name')
+    @classmethod
+    def validate_name_no_xss(cls, v):
+        return validate_no_xss(v)
 
     @field_validator("type", mode="before")
     @classmethod

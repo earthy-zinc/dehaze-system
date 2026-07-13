@@ -3,8 +3,8 @@
 """
 from typing import List, Optional
 
-from app.models.schema.common import BasePageQuery
-from pydantic import BaseModel, Field, RootModel
+from app.models.schema.common import BasePageQuery, validate_no_xss
+from pydantic import BaseModel, Field, RootModel, field_validator
 
 # ==================== 查询参数模型 ====================
 
@@ -36,12 +36,17 @@ class RoleIdsPath(BaseModel):
 class RoleForm(BaseModel):
     """角色表单"""
     id: Optional[int] = Field(default=None, description="角色ID")
-    name: str = Field(..., min_length=1, max_length=50, description="角色名称")
-    code: str = Field(..., min_length=1, max_length=50, description="角色编码")
+    name: str = Field(..., min_length=1, max_length=64, description="角色名称")
+    code: str = Field(..., min_length=1, max_length=32, description="角色编码")
     sort: int = Field(default=0, ge=0, description="排序")
     status: int = Field(default=1, ge=0, le=1, description="状态(1-正常；0-停用)")
     dataScope: int = Field(default=0, ge=0, le=3,
                            description="数据权限(0-全部数据；1-部门及子部门数据；2-本部门数据；3-本人数据)")
+
+    @field_validator('name', 'code')
+    @classmethod
+    def validate_no_xss(cls, v):
+        return validate_no_xss(v)
 
 
 class MenuIdsBody(RootModel[List[int]]):

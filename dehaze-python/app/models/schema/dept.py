@@ -3,7 +3,8 @@
 """
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from app.models.schema.common import validate_no_xss
+from pydantic import BaseModel, Field, field_validator
 
 # ==================== 查询参数模型 ====================
 
@@ -33,10 +34,15 @@ class DeptForm(BaseModel):
     """部门表单"""
     id: Optional[int] = Field(default=None, description="部门ID")
     parentId: int = Field(..., description="父部门ID")
-    name: str = Field(..., min_length=1, max_length=50, description="部门名称")
+    name: str = Field(..., min_length=1, max_length=64, description="部门名称")
     sort: Optional[int] = Field(default=0, ge=0, description="排序(数字越小排名越靠前)")
     status: Optional[int] = Field(
         default=1, ge=0, le=1, description="状态(1-启用；0-禁用)")
+
+    @field_validator('name')
+    @classmethod
+    def validate_name_no_xss(cls, v):
+        return validate_no_xss(v)
 
 
 # ==================== 响应模型 ====================

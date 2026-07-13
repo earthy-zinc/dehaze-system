@@ -531,28 +531,64 @@ func (s *UserService) ImportUsers(ctx context.Context, data []vo.UserImportVO) (
 	return &result, nil
 }
 
-// ExportUsers 导出用户
-func (s *UserService) ExportUsers(ctx context.Context, q *query.UserPageQuery) ([]vo.UserExportVO, error) {
+// ExportUsers 导出用户到Excel文件，返回临时文件路径
+func (s *UserService) ExportUsers(ctx context.Context, q *query.UserPageQuery) (string, error) {
 	readExports, err := s.userRepo.FindExportUsers(ctx, q)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询导出用户列表失败", err)
+		return "", common.WrapBizError(common.DATABASE_ERROR, "查询导出用户列表失败", err)
 	}
 
-	result := make([]vo.UserExportVO, 0, len(readExports))
-	for _, item := range readExports {
-		result = append(result, vo.UserExportVO{
-			Username:    item.Username,
-			Nickname:    item.Nickname,
-			DeptName:    item.DeptName,
-			Gender:      item.Gender,
-			Mobile:      item.Mobile,
-			Email:       item.Email,
-			StatusLabel: item.StatusLabel,
-			CreateTime:  item.CreateTime,
-		})
+	// 创建Excel文件
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			fmt.Printf("关闭Excel文件失败: %v\n", err)
+		}
+	}()
+
+	sheetName := "用户列表"
+	if err := f.SetSheetName("Sheet1", sheetName); err != nil {
+		return "", common.WrapBizError(common.FILE_UPLOAD_FAILED, "设置工作表名称失败", err)
 	}
 
-	return result, nil
+	// 设置表头
+	headers := []string{"用户名", "昵称", "部门", "性别", "手机号", "邮箱", "状态", "创建时间"}
+	for i, header := range headers {
+		cell := fmt.Sprintf("%c1", 'A'+i)
+		if err := f.SetCellValue(sheetName, cell, header); err != nil {
+			return "", common.WrapBizError(common.FILE_UPLOAD_FAILED, "设置表头失败", err)
+		}
+	}
+
+	// 填充数据
+	for i, item := range readExports {
+		row := i + 2
+		createTimeStr := ""
+		if !item.CreateTime.IsZero() {
+			createTimeStr = item.CreateTime.Format("2006-01-02 15:04:05")
+		}
+		values := []string{item.Username, item.Nickname, item.DeptName, item.Gender, item.Mobile, item.Email, item.StatusLabel, createTimeStr}
+		for j, value := range values {
+			cell := fmt.Sprintf("%c%d", 'A'+j, row)
+			if err := f.SetCellValue(sheetName, cell, value); err != nil {
+				return "", common.WrapBizError(common.FILE_UPLOAD_FAILED, "设置导出数据失败", err)
+			}
+		}
+	}
+
+	// 创建临时目录
+	tempDir := filepath.Join(os.TempDir(), "dehaze")
+	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		return "", common.WrapBizError(common.SYSTEM_RESOURCE_ERROR, "创建临时目录失败", err)
+	}
+
+	tempFile := filepath.Join(tempDir, fmt.Sprintf("users_export_%d.xlsx", time.Now().Unix()))
+
+	if err := f.SaveAs(tempFile); err != nil {
+		return "", common.WrapBizError(common.FILE_UPLOAD_FAILED, "保存导出文件失败", err)
+	}
+
+	return tempFile, nil
 }
 
 // ====================

@@ -3,8 +3,8 @@
 """
 from typing import List, Optional, Set
 
-from app.models.schema.common import BasePageQuery
-from pydantic import BaseModel, Field
+from app.models.schema.common import BasePageQuery, validate_no_xss
+from pydantic import BaseModel, Field, field_validator
 
 # ==================== 查询参数模型 ====================
 
@@ -58,6 +58,11 @@ class RegisterForm(BaseModel):
     password: str = Field(..., min_length=1, description="密码")
     nickname: str = Field(..., min_length=1, max_length=64, description="昵称")
 
+    @field_validator('nickname')
+    @classmethod
+    def validate_nickname_no_xss(cls, v):
+        return validate_no_xss(v)
+
 
 class UserForm(BaseModel):
     """用户表单"""
@@ -76,6 +81,11 @@ class UserForm(BaseModel):
         default=None, ge=0, le=1, description="用户状态(1:正常;0:禁用)")
     deptId: Optional[int] = Field(default=None, description="部门ID")
     roleIds: List[int] = Field(..., min_length=1, description="角色ID集合")
+
+    @field_validator('nickname')
+    @classmethod
+    def validate_nickname_no_xss(cls, v):
+        return validate_no_xss(v)
 
 
 class PasswordForm(BaseModel):

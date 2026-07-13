@@ -5,8 +5,8 @@
 """
 from typing import List, Optional
 
-from app.models.schema.common import BasePageQuery
-from pydantic import BaseModel, Field
+from app.models.schema.common import BasePageQuery, validate_no_xss
+from pydantic import BaseModel, Field, field_validator
 
 # ============================================================
 # 数据集 (Dataset)
@@ -30,6 +30,11 @@ class DatasetAddForm(BaseModel):
     path: Optional[str] = Field(default='', max_length=255, description="存储位置")
     status: int = Field(default=1, ge=0, le=1, description="状态(1:启用；0:禁用)")
 
+    @field_validator('name')
+    @classmethod
+    def validate_name_no_xss(cls, v):
+        return validate_no_xss(v)
+
 
 class DatasetUpdateForm(BaseModel):
     """数据集更新表单（对齐 Java DatasetUpdateForm）"""
@@ -44,6 +49,11 @@ class DatasetUpdateForm(BaseModel):
         default=None, max_length=255, description="存储位置")
     status: Optional[int] = Field(
         default=None, ge=0, le=1, description="状态(1:启用；0:禁用)")
+
+    @field_validator('name')
+    @classmethod
+    def validate_name_no_xss(cls, v):
+        return validate_no_xss(v)
 
 
 class DatasetStatisticsVO(BaseModel):

@@ -134,7 +134,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadSqlGrammarException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public <T> Result<T> handleBadSqlGrammarException(BadSqlGrammarException e) {
         log.error(e.getMessage(), e);
         String errorMsg = e.getMessage();
@@ -146,7 +146,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(SQLSyntaxErrorException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public <T> Result<T> processSQLSyntaxErrorException(SQLSyntaxErrorException e) {
         log.error(e.getMessage(), e);
         return Result.failed(e.getMessage());

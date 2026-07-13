@@ -39,3 +39,15 @@ class IdPath(BaseModel):
 class BatchDeleteForm(BaseModel):
     """批量删除表单（RequestBody JSON）"""
     ids: List[int] = Field(..., min_length=1, description="ID列表")
+
+
+def validate_no_xss(value: str) -> str:
+    """校验字符串不包含 XSS 攻击（HTML 标签或 javascript: 协议）"""
+    if value:
+        lower_val = value.lower()
+        if 'javascript:' in lower_val:
+            raise ValueError('名称不能包含 javascript: 脚本')
+        import re
+        if re.search(r'<[a-zA-Z]', value):
+            raise ValueError('名称不能包含 HTML 标签')
+    return value

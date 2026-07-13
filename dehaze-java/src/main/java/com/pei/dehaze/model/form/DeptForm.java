@@ -3,6 +3,8 @@ package com.pei.dehaze.model.form;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Schema(description = "部门表单对象")
@@ -14,6 +16,8 @@ public class DeptForm {
 
     @Schema(description="部门名称")
     @NotBlank(message = "部门名称不能为空")
+    @Size(max = 64, message = "部门名称长度不能超过64")
+    @Pattern(regexp = "^(?!.*javascript:)(?!.*<[a-zA-Z]).*$", message = "部门名称不能包含特殊字符")
     private String name;
 
     @Schema(description="父部门ID")

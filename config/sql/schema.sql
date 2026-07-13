@@ -37,6 +37,8 @@ CREATE TABLE `sys_dict`
     `remark`      varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '备注',
     `create_time` datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
     `update_time` datetime                                                      NULL DEFAULT NULL COMMENT '更新时间',
+    `create_by`   bigint                                                        NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`   bigint                                                        NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   CHARACTER SET = utf8mb4
@@ -53,6 +55,8 @@ CREATE TABLE `sys_dict_type`
     `remark`      varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '备注',
     `create_time` datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
     `update_time` datetime                                                      NULL DEFAULT NULL COMMENT '更新时间',
+    `create_by`   bigint                                                        NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`   bigint                                                        NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `type_code` (`code` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -72,6 +76,7 @@ CREATE TABLE `sys_menu`
     `component`   varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '组件路径(vue页面完整路径，省略.vue后缀)',
     `perm`        varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '权限标识',
     `visible`     tinyint(1)                                                   NOT NULL DEFAULT '1' COMMENT '显示状态(1-显示;0-隐藏)',
+    `status`      tinyint(1)                                                   NOT NULL DEFAULT '1' COMMENT '状态(1-启用;0-禁用)',
     `sort`        int                                                                   DEFAULT '0' COMMENT '排序',
     `icon`        varchar(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci          DEFAULT '' COMMENT '菜单图标',
     `redirect`    varchar(128) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci         DEFAULT NULL COMMENT '跳转路径',
@@ -79,6 +84,8 @@ CREATE TABLE `sys_menu`
     `update_time` datetime                                                              DEFAULT NULL COMMENT '更新时间',
     `always_show` tinyint                                                               DEFAULT NULL COMMENT '【目录】只有一个子路由是否始终显示(1:是 0:否)',
     `keep_alive`  tinyint                                                               DEFAULT NULL COMMENT '【菜单】是否开启页面缓存(1:是 0:否)',
+    `create_by`   bigint                                                               DEFAULT NULL COMMENT '创建人ID',
+    `update_by`   bigint                                                               DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
@@ -97,6 +104,8 @@ CREATE TABLE `sys_role`
     `deleted`     tinyint(1)                                                   NOT NULL DEFAULT 0 COMMENT '逻辑删除标识(0-未删除；1-已删除)',
     `create_time` datetime                                                     NULL     DEFAULT NULL COMMENT '更新时间',
     `update_time` datetime                                                     NULL     DEFAULT NULL COMMENT '创建时间',
+    `create_by`   bigint                                                       NULL     DEFAULT NULL COMMENT '创建人ID',
+    `update_by`   bigint                                                       NULL     DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `name` (`name` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -130,6 +139,8 @@ CREATE TABLE `sys_user`
     `deleted`     tinyint(1)                                                    NULL DEFAULT 0 COMMENT '逻辑删除标识(0:未删除;1:已删除)',
     `create_time` datetime                                                      NULL DEFAULT NULL COMMENT '创建时间',
     `update_time` datetime                                                      NULL DEFAULT NULL COMMENT '更新时间',
+    `create_by`   bigint                                                        NULL DEFAULT NULL COMMENT '创建人ID',
+    `update_by`   bigint                                                        NULL DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `login_name` (`username` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -274,6 +285,8 @@ CREATE TABLE `sys_file`
     `md5`         char(32) UNIQUE NOT NULL COMMENT '文件的MD5值，用于比对文件是否相同',
     `create_time` datetime        NOT NULL COMMENT '创建时间',
     `update_time` datetime                 DEFAULT NULL COMMENT '更新时间',
+    `create_by`   bigint                   DEFAULT NULL COMMENT '创建人ID',
+    `update_by`   bigint                   DEFAULT NULL COMMENT '修改人ID',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `md5_key` (`md5` ASC) USING BTREE
 ) ENGINE = InnoDB
@@ -342,7 +355,7 @@ CREATE TABLE `sys_task`
     UNIQUE INDEX `idx_task_id` (`task_id`) USING BTREE,
     INDEX `idx_status` (`status`) USING BTREE,
     INDEX `idx_created_by` (`created_by`) USING BTREE,
-    INDEX `idx_created_at` (`created_at`) USING BTREE
+    INDEX `idx_create_time` (`create_time`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
   COLLATE = utf8mb4_unicode_ci COMMENT ='系统任务表';

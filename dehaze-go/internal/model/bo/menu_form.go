@@ -89,7 +89,7 @@ type MenuForm struct {
 	// 父菜单ID
 	ParentID int64 `json:"parentId" binding:"min=0"`
 	// 菜单名称
-	Name string `json:"name" binding:"required,max=64"`
+	Name string `json:"name" binding:"required,max=64,no_xss"`
 	// 菜单类型(MENU/CATALOG/EXTLINK/BUTTON)
 	Type MenuType `json:"type" binding:"required"`
 	// 路由路径
