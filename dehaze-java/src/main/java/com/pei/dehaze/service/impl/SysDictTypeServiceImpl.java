@@ -106,7 +106,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         long count = this.count(new LambdaQueryWrapper<SysDictType>()
                 .eq(SysDictType::getCode, dictTypeForm.getCode()));
         if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS);
+            throw new BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在");
         }
         // 实体对象转换 form->entity
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
@@ -165,16 +165,24 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     public boolean deleteDictTypes(String idsStr) {
 
         if (CharSequenceUtil.isBlank(idsStr)) {
-            throw new BusinessException(ResultCode.PARAM_ERROR);
+            throw new BusinessException(ResultCode.PARAM_ERROR, "删除数据为空");
         }
 
-        List<String> ids = Arrays.stream(idsStr.split(",")).toList();
+        // 转换ID列表，校验非数字ID
+        List<Long> ids;
+        try {
+            ids = Arrays.stream(idsStr.split(","))
+                    .map(Long::parseLong)
+                    .toList();
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "ID格式错误");
+        }
 
         // 校验字典类型是否存在
         long existCount = this.count(new LambdaQueryWrapper<SysDictType>()
                 .in(SysDictType::getId, ids));
         if (existCount == 0) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在");
         }
 
         // 获取字典类型编码列表
@@ -190,7 +198,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             long dictCount = dictItemService.count(new LambdaQueryWrapper<SysDict>()
                     .in(SysDict::getTypeCode, dictTypeCodes));
             if (dictCount > 0) {
-                throw new BusinessException(ResultCode.DATA_BIND_EXISTS);
+                throw new BusinessException(ResultCode.DATA_BIND_EXISTS, "存在关联的字典数据，无法删除");
             }
         }
         // 删除字典类型

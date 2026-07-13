@@ -310,7 +310,7 @@ class DictTypeService:
                 if count > 0:
                     raise BusinessException(
                         ResultCode.DATA_BIND_EXISTS,
-                        f"字典类型【{dict_type.name}】存在 {count} 条关联数据，无法删除")
+                        "存在关联的字典数据，无法删除")
 
         result = await dict_type_repository.delete_by_ids(db, type_ids)
         await db.commit()

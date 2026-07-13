@@ -118,7 +118,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         long typeCount = dictTypeMapper.selectCount(new LambdaQueryWrapper<SysDictType>()
                 .eq(SysDictType::getCode, typeCode));
         if (typeCount == 0) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND);
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "字典类型不存在");
         }
 
         // 唯一性检查（同类型下 value 唯一）
