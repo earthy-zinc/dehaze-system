@@ -12,7 +12,11 @@ PORT="${DEHAZE_PYTHON_PORT:-8000}"
 HOST="${DEHAZE_PYTHON_HOST:-0.0.0.0}"
 WORKERS="${DEHAZE_PYTHON_WORKERS:-1}"
 
-mkdir -p "$LOG_DIR"
+# Prometheus 多进程指标聚合目录
+# 多 Worker 模式下通过 MultiProcessCollector 聚合所有 Worker 的指标
+MULTIPROC_DIR="$ROOT_DIR/logs/prometheus_multiproc"
+
+mkdir -p "$LOG_DIR" "$MULTIPROC_DIR"
 
 port_in_use() {
   ss -lnt "sport = :${PORT}" | awk 'NR>1{print $0}' | grep -q .
@@ -96,6 +100,14 @@ if command -v uv &> /dev/null; then
 fi
 
 echo "starting ${APP_NAME} on ${HOST}:${PORT} (workers=${WORKERS})..."
+
+# 多 Worker 模式下启用 Prometheus 多进程指标聚合
+if [[ "$WORKERS" -gt 1 ]]; then
+  echo "enabling Prometheus multiprocess mode (workers=${WORKERS})"
+  # 清理旧的指标文件（prometheus_client 要求目录在应用启动前为空）
+  rm -rf "${MULTIPROC_DIR:?}"/*
+  export PROMETHEUS_MULTIPROC_DIR="$MULTIPROC_DIR"
+fi
 
 nohup uvicorn app.main:app \
   --host "$HOST" \

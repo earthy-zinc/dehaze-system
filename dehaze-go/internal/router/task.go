@@ -16,6 +16,7 @@ func RegisterTaskRoutes(rg *gin.RouterGroup, taskApi *api.SysTaskApi) {
 
 		// 写操作 - 需要权限校验
 		taskRouterGroup.POST("", middleware.Permission("sys:task:add"), taskApi.CreateTask)    // 创建任务
+		taskRouterGroup.POST("/:id/retry", middleware.Permission("sys:task:add"), taskApi.RetryTask) // 重试失败任务
 		taskRouterGroup.DELETE("/:id", middleware.Permission("sys:task:delete"), taskApi.CancelTask) // 取消/删除任务
 	}
 }

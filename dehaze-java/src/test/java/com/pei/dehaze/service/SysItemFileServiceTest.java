@@ -1,6 +1,5 @@
 package com.pei.dehaze.service;
 
-import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.ImageUrlVO;
@@ -13,10 +12,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 /**
  * 图片文件服务单元测试
@@ -88,11 +86,10 @@ class SysItemFileServiceTest {
     @DisplayName("将SysItemFile转换为ImageUrlVO")
     void testConvertToImageUrlVO() {
         // Arrange
-        when(sysFileService.getById(1L)).thenReturn(mockFile);
-        when(sysFileService.getById(2L)).thenReturn(mockThumbnailFile);
+        Map<Long, SysFile> fileMap = Map.of(1L, mockFile, 2L, mockThumbnailFile);
 
         // Act
-        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile);
+        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile, fileMap);
 
         // Assert
         assertNotNull(result);
@@ -121,7 +118,7 @@ class SysItemFileServiceTest {
     @DisplayName("将SysItemFile转换为ImageUrlVO - null对象")
     void testConvertToImageUrlVO_Null() {
         // Act
-        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(null);
+        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(null, Map.of());
 
         // Assert
         assertNull(result);
@@ -139,10 +136,10 @@ class SysItemFileServiceTest {
     void testConvertToImageUrlVO_NoThumbnail() {
         // Arrange
         mockItemFile.setThumbnailFileId(null);
-        when(sysFileService.getById(1L)).thenReturn(mockFile);
+        Map<Long, SysFile> fileMap = Map.of(1L, mockFile);
 
         // Act
-        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile);
+        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile, fileMap);
 
         // Assert
         assertNotNull(result);
@@ -160,12 +157,11 @@ class SysItemFileServiceTest {
     @Test
     @DisplayName("将SysItemFile转换为ImageUrlVO - 无文件信息")
     void testConvertToImageUrlVO_NoFile() {
-        // Arrange
-        when(sysFileService.getById(1L)).thenReturn(null);
-        when(sysFileService.getById(2L)).thenReturn(null);
+        // Arrange: 文件Map中不包含对应的fileId，模拟文件信息不存在
+        Map<Long, SysFile> fileMap = Map.of();
 
         // Act
-        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile);
+        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile, fileMap);
 
         // Assert
         assertNotNull(result);
@@ -190,11 +186,10 @@ class SysItemFileServiceTest {
     void testConvertToImageUrlVO_NullUsageCount() {
         // Arrange
         mockItemFile.setUsageCount(null);
-        when(sysFileService.getById(1L)).thenReturn(mockFile);
-        when(sysFileService.getById(2L)).thenReturn(mockThumbnailFile);
+        Map<Long, SysFile> fileMap = Map.of(1L, mockFile, 2L, mockThumbnailFile);
 
         // Act
-        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile);
+        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile, fileMap);
 
         // Assert
         assertNotNull(result);
@@ -215,11 +210,10 @@ class SysItemFileServiceTest {
         // Arrange
         mockItemFile.setType("hazy");
         mockItemFile.setHazeLevel("moderate");
-        when(sysFileService.getById(1L)).thenReturn(mockFile);
-        when(sysFileService.getById(2L)).thenReturn(mockThumbnailFile);
+        Map<Long, SysFile> fileMap = Map.of(1L, mockFile, 2L, mockThumbnailFile);
 
         // Act
-        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile);
+        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(mockItemFile, fileMap);
 
         // Assert
         assertNotNull(result);

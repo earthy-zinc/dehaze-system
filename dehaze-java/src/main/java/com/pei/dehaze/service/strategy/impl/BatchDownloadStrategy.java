@@ -19,8 +19,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.zip.ZipOutputStream;
 
 /**
@@ -98,16 +100,21 @@ public class BatchDownloadStrategy extends AbstractExportStrategy {
         List<String> includeTypes = options.getIncludeTypes();
         Boolean includeThumbnail = options.getIncludeThumbnail();
 
-        // 计算总文件数
+        // 批量查询所有数据项的文件，避免逐项 count + list 的 N+1 查询
+        List<Long> itemIds = items.stream().map(SysDatasetItem::getId).toList();
+        Map<Long, List<SysItemFile>> itemFilesMap = sysItemFileService.list(
+                        new LambdaQueryWrapper<SysItemFile>()
+                                .in(SysItemFile::getItemId, itemIds))
+                .stream()
+                .collect(Collectors.groupingBy(SysItemFile::getItemId));
+
+        // 计算总文件数（从已加载的数据中统计，无需额外查询）
         int totalFiles = 0;
         for (SysDatasetItem item : items) {
-            long fileCount = sysItemFileService.count(
-                    new LambdaQueryWrapper<SysItemFile>()
-                            .eq(SysItemFile::getItemId, item.getId())
-            );
-            totalFiles += (int) fileCount;
+            int fileCount = itemFilesMap.getOrDefault(item.getId(), Collections.emptyList()).size();
+            totalFiles += fileCount;
             if (Boolean.TRUE.equals(includeThumbnail)) {
-                totalFiles += (int) fileCount;
+                totalFiles += fileCount;
             }
         }
 
@@ -120,10 +127,7 @@ public class BatchDownloadStrategy extends AbstractExportStrategy {
             for (SysDatasetItem item : items) {
                 callback.checkCancelled();
 
-                List<SysItemFile> itemFiles = sysItemFileService.list(
-                        new LambdaQueryWrapper<SysItemFile>()
-                                .eq(SysItemFile::getItemId, item.getId())
-                );
+                List<SysItemFile> itemFiles = itemFilesMap.getOrDefault(item.getId(), Collections.emptyList());
 
                 for (SysItemFile itemFile : itemFiles) {
                     callback.checkCancelled();

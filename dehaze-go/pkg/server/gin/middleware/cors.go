@@ -11,26 +11,12 @@ import (
 
 var traceHeaders = []string{"X-Trace-ID", "traceparent", "sw8"}
 
-// Cors 放行所有跨域请求
-func Cors() gin.HandlerFunc {
-	return cors.New(cors.Config{
-		AllowAllOrigins:  true,
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     append([]string{"Content-Type", "AccessToken", "X-CSRF-Token", "Authorization", "Token", "X-Token", "X-User-Id"}, traceHeaders...),
-		ExposeHeaders:    append([]string{"Content-Length", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Content-Type", "New-Token", "New-Expires-At"}, traceHeaders...),
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	})
-}
-
 // CorsByRules 按照配置处理跨域请求
+//
+// 生产环境强制使用白名单模式，禁止 "*" + AllowCredentials 组合。
+// 白名单为空时拒绝所有跨域请求（不使用危险的默认放行）。
 func CorsByRules() gin.HandlerFunc {
 	cfg := config.GetConfig()
-
-	// allow-all 模式：放行所有跨域请求
-	if cfg.Cors.Mode == "allow-all" {
-		return Cors()
-	}
 
 	// 构建允许的 origins 列表
 	allowOrigins := make([]string, 0, len(cfg.Cors.Whitelist))
@@ -38,33 +24,27 @@ func CorsByRules() gin.HandlerFunc {
 		allowOrigins = append(allowOrigins, w.AllowOrigin)
 	}
 
+	if len(allowOrigins) == 0 {
+		// 白名单为空：拒绝所有跨域请求
+		return func(c *gin.Context) {
+			c.AbortWithStatus(403)
+		}
+	}
+
 	// 获取第一个白名单配置作为默认 headers/methods 配置
-	var corsConfig cors.Config
-	if len(cfg.Cors.Whitelist) > 0 {
-		first := cfg.Cors.Whitelist[0]
-		corsConfig = cors.Config{
-			AllowOrigins:     allowOrigins,
-			AllowMethods:     splitAndTrim(first.AllowMethods),
-			AllowHeaders:     ensureHeaders(splitAndTrim(first.AllowHeaders), traceHeaders),
-			ExposeHeaders:    ensureHeaders(splitAndTrim(first.ExposeHeaders), traceHeaders),
-			AllowCredentials: first.AllowCredentials,
-			MaxAge:           12 * time.Hour,
-		}
-	} else {
-		// 没有配置白名单时的默认配置
-		corsConfig = cors.Config{
-			AllowOrigins:     []string{},
-			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowHeaders:     append([]string{"Content-Type", "Authorization"}, traceHeaders...),
-			AllowCredentials: true,
-			MaxAge:           12 * time.Hour,
-		}
+	first := cfg.Cors.Whitelist[0]
+	corsConfig := cors.Config{
+		AllowOrigins:     allowOrigins,
+		AllowMethods:     splitAndTrim(first.AllowMethods),
+		AllowHeaders:     ensureHeaders(splitAndTrim(first.AllowHeaders), traceHeaders),
+		ExposeHeaders:    ensureHeaders(splitAndTrim(first.ExposeHeaders), traceHeaders),
+		AllowCredentials: first.AllowCredentials,
+		MaxAge:           12 * time.Hour,
 	}
 
 	// strict-whitelist 模式：严格白名单校验
 	if cfg.Cors.Mode == "strict-whitelist" {
 		corsConfig.AllowOriginFunc = func(origin string) bool {
-			// 健康检查接口始终放行
 			for _, allowed := range allowOrigins {
 				if origin == allowed {
 					return true

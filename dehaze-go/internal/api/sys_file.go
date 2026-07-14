@@ -107,7 +107,7 @@ func (api *SysFileApi) DeleteFile(c *gin.Context) {
 		return
 	}
 
-	err = api.fileService.DeleteFile(fileId)
+	err = api.fileService.DeleteFile(c.Request.Context(), fileId)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -132,7 +132,7 @@ func (api *SysFileApi) CheckFile(c *gin.Context) {
 		return
 	}
 
-	result, err := api.fileService.CheckFile(md5)
+	result, err := api.fileService.CheckFile(c.Request.Context(), md5)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -200,7 +200,7 @@ func (api *SysFileApi) GetFileDetail(c *gin.Context) {
 		return
 	}
 
-	file, err := api.fileService.GetFileById(fileId)
+	file, err := api.fileService.GetFileById(c.Request.Context(), fileId)
 	if err != nil {
 		_ = c.Error(err)
 		return

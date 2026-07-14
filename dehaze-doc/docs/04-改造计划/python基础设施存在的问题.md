@@ -30,7 +30,7 @@
 
 [app/infrastructure/cache/redis_fallback.py](file:///e:/DehazeSystem/dehaze-python/app/infrastructure/cache/redis_fallback.py) 定义了 `RedisCircuitBreaker` 熔断器和 `with_redis_retry` 重试装饰器，但**全代码库零调用**。当前仅使用 `redis_operation_with_fallback()` 降级函数，熔断器状态变更（CLOSED → OPEN → HALF_OPEN）和降级触发次数没有暴露到 Prometheus 指标，运维无法感知 Redis 健康状态的真实波动。
 
-**改进建议**：删除死代码或接入熔断器/重试，并将熔断器状态与降级次数暴露为 Prometheus 指标。
+**改进建议**：接入熔断器/重试，并将熔断器状态与降级次数暴露为 Prometheus 指标。
 
 ---
 
@@ -48,7 +48,7 @@
 
 [app/models/base.py](file:///e:/DehazeSystem/dehaze-python/app/models/base.py) 通过 SQLAlchemy `event.listens_for` 实现审计字段自动填充，但 `before_update` 事件对 Core 层批量更新（`update().where(...)`）**不触发**，批量软删除的审计字段会丢失。
 
-**改进建议**：批量更新操作显式设置审计字段，或改用逐条 save 触发事件。
+**改进建议**：批量更新操作显式设置审计字段。
 
 ---
 
@@ -63,14 +63,6 @@
 ### 4.2 [MEDIUM] fnmatch 权限匹配跨平台大小写不一致
 
 [app/decorators/permission.py](file:///e:/DehazeSystem/dehaze-python/app/decorators/permission.py) 使用 `fnmatch.fnmatch` 进行权限通配符匹配，该函数在 Windows 上大小写不敏感、Linux 上大小写敏感。应改用 `fnmatch.fnmatchcase` 保证跨平台一致。
-
-### 4.3 [MEDIUM] DEHAZE_PASSWORD 复用为多服务统一密码
-
-`DEHAZE_PASSWORD` 被复用为 MySQL、Redis、MinIO、RabbitMQ 的统一密码，单点泄露即全盘沦陷。应拆分为独立密码，通过各自的环境变量注入。
-
-### 4.4 [LOW] 默认密码 "123456" 违反自身安全策略
-
-数据库初始化脚本中 admin 用户默认密码为 "123456"，违反系统自身的密码强度策略。应改为首次登录强制改密，或使用随机生成的初始密码。
 
 ---
 
@@ -101,15 +93,6 @@ uvicorn 多 Worker 部署下未配置 `PROMETHEUS_MULTIPROC_DIR`，每个 Worker
 全项目大量 `logger.info(f"...")` 使用 f-string 直接格式化字符串，即使日志级别低于 INFO 也会执行字符串拼接。应改为 `logger.info("...", arg)` 位置参数方式，利用 logging 的懒求值优化。
 
 ---
-
-## 七、测试基础设施（Python 特有）
-
-### 7.1 [MEDIUM] 测试使用 SQLite 内存数据库替代 MySQL，方言差异风险
-
-[tests/conftest.py](file:///e:/DehazeSystem/dehaze-python/tests/conftest.py) 使用 SQLite 内存数据库替代 MySQL 进行测试，但 SQLAlchemy 异步方言差异（aiomysql vs aiosqlite）可能导致部分 SQL 行为不一致（如自增 ID、JSON 字段、`ON DUPLICATE KEY UPDATE` 等）。
-
-**改进建议**：关键路径测试增加 MySQL 环境的 CI 验证，或使用 testcontainers 启动真实 MySQL 容器。
-
 ---
 
 ## 八、修复优先级清单
@@ -129,22 +112,6 @@ uvicorn 多 Worker 部署下未配置 `PROMETHEUS_MULTIPROC_DIR`，每个 Worker
 | 4 | before_update 批量更新审计字段丢失 | base.py |
 | 5 | Token 刷新未失效旧 Token | auth.py |
 | 6 | fnmatch 跨平台大小写不一致 | permission.py |
-| 7 | DEHAZE_PASSWORD 复用 | config.py |
 | 8 | Prometheus 多 Worker 指标未聚合 | 部署配置 |
 | 9 | 推理指标未接入 | prediction_service.py |
 | 10 | f-string 日志懒求值 | 全项目 |
-| 11 | SQLite 测试方言差异 | conftest.py |
-| 12 | 默认密码 "123456" | 初始化脚本 |
-
----
-
-## 九、已确认无问题的部分
-
-- FastAPI Lifespan 优雅关闭（SIGTERM → TaskTracker → WebSocket → MQ → Redis → DB）✓
-- TraceMiddleware X-Trace-Id 透传与回写 ✓
-- WebSocket 跨 Worker Redis Pub/Sub ✓
-- MQ 优先 + asyncio.Task fallback 双通道 ✓
-- TaskTracker 跨 Worker Redis 状态同步 ✓
-- Pydantic Settings 生产环境强制校验密钥长度 ✓
-- bcrypt 密码哈希专用线程池 ✓
-- OperationLogMiddleware 异步审计日志 + 敏感字段脱敏 ✓

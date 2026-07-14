@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 from contextvars import ContextVar
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Optional
 
@@ -37,10 +38,11 @@ class JsonFormatter(BaseJsonFormatter):
 
     def add_fields(self, log_data, record, message_dict):
         super().add_fields(log_data, record, message_dict)
-        log_data["timestamp"] = record.created
+        from app.config import settings
+        log_data["timestamp"] = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
         log_data["level"] = record.levelname
         log_data["logger"] = record.name
-        log_data["service"] = "dehaze-python"
+        log_data["service"] = settings.APP_NAME
         log_data["thread"] = record.thread
         log_data["trace_id"] = _trace_id_var.get("")
 
@@ -53,48 +55,24 @@ class TraceIDFilter(logging.Filter):
         return True
 
 
-def setup_logging(
-        log_level: Optional[str] = None,
-        log_format: Optional[str] = None,
-        date_format: Optional[str] = None,
-        log_file: Optional[str] = None,
-        log_dir: Optional[str] = None,
-        max_bytes: Optional[int] = None,
-        backup_count: Optional[int] = None,
-        enable_console: Optional[bool] = None,
-        enable_file: Optional[bool] = None,
-        rotation_type: Optional[str] = None,
-        use_json_format: Optional[bool] = None
-):
+def setup_logging(use_json_format: Optional[bool] = None):
     """
-    设置日志记录系统（所有参数可选，未传入时从 config.settings 读取）
+    设置日志记录系统
 
-    Args:
-        log_level: 日志级别（DEBUG/INFO/WARNING/ERROR/CRITICAL）
-        log_format: 日志格式（仅在 use_json_format=False 时生效）
-        date_format: 日期格式（仅在 use_json_format=False 时生效）
-        log_file: 日志文件名
-        log_dir: 日志目录
-        max_bytes: 单个日志文件最大字节数
-        backup_count: 保留的备份文件数量
-        enable_console: 是否启用控制台输出
-        enable_file: 是否启用文件输出
-        rotation_type: 轮转类型 ("size" 基于大小, "time" 基于时间)
-        use_json_format: 是否使用 JSON 结构化日志（生产环境推荐）
+    所有配置从 config.settings 读取，仅 use_json_format 可外部覆盖（用于测试）。
     """
     from app.config import settings
 
-    # 从 config.settings 读取默认值
-    log_level = log_level or settings.LOG_LEVEL
-    log_format = log_format or settings.LOG_FORMAT
-    date_format = date_format or settings.LOG_DATE_FORMAT
-    log_file = log_file or settings.LOG_FILE
-    log_dir = log_dir or settings.LOG_DIR
-    max_bytes = max_bytes if max_bytes is not None else settings.LOG_MAX_BYTES
-    backup_count = backup_count if backup_count is not None else settings.LOG_BACKUP_COUNT
-    enable_console = enable_console if enable_console is not None else settings.LOG_ENABLE_CONSOLE
-    enable_file = enable_file if enable_file is not None else settings.LOG_ENABLE_FILE
-    rotation_type = rotation_type or settings.LOG_ROTATION_TYPE
+    log_level = settings.LOG_LEVEL
+    log_format = settings.LOG_FORMAT
+    date_format = settings.LOG_DATE_FORMAT
+    log_file = settings.LOG_FILE
+    log_dir = settings.LOG_DIR
+    max_bytes = settings.LOG_MAX_BYTES
+    backup_count = settings.LOG_BACKUP_COUNT
+    enable_console = settings.LOG_ENABLE_CONSOLE
+    enable_file = settings.LOG_ENABLE_FILE
+    rotation_type = settings.LOG_ROTATION_TYPE
     use_json_format = use_json_format if use_json_format is not None else settings.LOG_FORMAT_JSON
 
     # 转换日志级别字符串为 logging 常量
@@ -107,21 +85,26 @@ def setup_logging(
         root_logger.removeHandler(handler)
         handler.close()
 
-    # 创建格式化器（根据配置选择 JSON 或文本格式）
+    # 创建格式化器
+    # TraceIDFilter 必须挂载到 handler 而非 logger：
+    # Python logging 的 filter 只对直接挂载的 logger 生效，子 logger 的日志在传播到 root handler 时
+    # record 上没有 trace_id 属性，会导致 %(trace_id)s 格式化失败（KeyError）
+    trace_filter = TraceIDFilter()
+
+    # 文件输出始终使用 JSON 结构化格式（供日志集中化管道 ELK/Loki 采集）
+    file_formatter: logging.Formatter = JsonFormatter()
+    # 控制台输出：JSON 模式下使用 JSON，否则使用人类可读文本
     if use_json_format:
-        formatter: logging.Formatter = JsonFormatter()
+        console_formatter: logging.Formatter = JsonFormatter()
     else:
-        # 文本格式支持 TraceID（需在 log_format 中添加 %(trace_id)s）
-        formatter = logging.Formatter(log_format, date_format)
-        # 添加 TraceID 过滤器
-        trace_filter = TraceIDFilter()
-        root_logger.addFilter(trace_filter)
+        console_formatter = logging.Formatter(log_format, date_format)
 
     # 控制台处理器
     if enable_console:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(log_level_int)
-        console_handler.setFormatter(formatter)
+        console_handler.setFormatter(console_formatter)
+        console_handler.addFilter(trace_filter)
         root_logger.addHandler(console_handler)
 
     if enable_file:
@@ -152,12 +135,14 @@ def setup_logging(
             )
 
         file_handler.setLevel(log_level_int)
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(file_formatter)
+        file_handler.addFilter(trace_filter)
         root_logger.addHandler(file_handler)
 
     root_logger.info("日志系统初始化成功")
     root_logger.info(f"日志级别: {log_level}")
-    root_logger.info(f"日志格式: {'JSON' if use_json_format else '文本'}")
+    root_logger.info(f"控制台格式: {'JSON' if use_json_format else '文本'}")
+    root_logger.info("文件格式: JSON")
     if enable_file:
         root_logger.info(f"日志文件: {log_file}")
         root_logger.info(f"轮转类型: {rotation_type}")

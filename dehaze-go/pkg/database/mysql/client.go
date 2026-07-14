@@ -87,6 +87,8 @@ func (c *Client) initMaster() error {
 		return fmt.Errorf("注册数据权限插件失败: %w", err)
 	}
 
+	db = database.RegisterGormCallbacks(db)
+
 	// 设置表引擎
 	if c.config.MySQL.Engine != "" {
 		db.InstanceSet("gorm:table_options", "ENGINE="+c.config.MySQL.Engine)

@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -49,8 +50,8 @@ func Prometheus() gin.HandlerFunc {
 			path = c.Request.URL.Path
 		}
 
-		// 排除 swagger 和 metrics 路径
-		if path == "/swagger/*any" || path == "/metrics" || path == "/health" {
+		// 排除 swagger、metrics、健康检查路径，避免污染监控指标
+		if strings.HasPrefix(path, "/swagger") || path == "/metrics" || path == "/health" || path == "/ready" {
 			c.Next()
 			return
 		}

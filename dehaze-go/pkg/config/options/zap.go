@@ -54,6 +54,24 @@ func (c *Zap) Encoder() zapcore.Encoder {
 
 }
 
+// FileEncoder 返回用于文件输出的 JSON 编码器（结构化日志，供 ELK/Loki 采集）
+func (c *Zap) FileEncoder() zapcore.Encoder {
+	config := zapcore.EncoderConfig{
+		TimeKey:        "timestamp",
+		NameKey:        "logger",
+		LevelKey:       "level",
+		CallerKey:      "caller",
+		MessageKey:     "message",
+		StacktraceKey:  c.StacktraceKey,
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeCaller:   zapcore.FullCallerEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+	}
+	return zapcore.NewJSONEncoder(config)
+}
+
 // LevelEncoder 根据 EncodeLevel 返回 zapcore.LevelEncoder
 // Author [SliverHorn](https://github.com/SliverHorn)
 func (c *Zap) LevelEncoder() zapcore.LevelEncoder {

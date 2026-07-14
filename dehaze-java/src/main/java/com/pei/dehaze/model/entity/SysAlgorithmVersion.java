@@ -53,10 +53,4 @@ public class SysAlgorithmVersion extends BaseEntity {
      * 是否当前活跃版本
      */
     private Boolean isActive;
-
-    @TableField(fill = FieldFill.INSERT)
-    private Long createBy;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updateBy;
 }

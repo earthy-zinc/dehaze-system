@@ -14,8 +14,6 @@ type SysUser struct {
 	Email    string    `gorm:"column:email;type:varchar(128);comment:用户邮箱" json:"email"`
 	Deleted  int8      `gorm:"column:deleted;type:tinyint;default:0;comment:逻辑删除标识(0:未删除;1:已删除)" json:"deleted"`
 	Roles    []SysRole `gorm:"many2many:sys_user_role;joinForeignKey:user_id;joinReferences:role_id"`
-	CreateBy int64     `gorm:"column:create_by;type:bigint;comment:创建人ID" json:"createBy"`
-	UpdateBy int64     `gorm:"column:update_by;type:bigint;comment:修改人ID" json:"updateBy"`
 }
 
 type UserAuthInfo struct {

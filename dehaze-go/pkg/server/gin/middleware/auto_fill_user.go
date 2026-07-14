@@ -1,59 +1,28 @@
 package middleware
 
 import (
-	"reflect"
-
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/gin-gonic/gin"
 )
 
-// AutoFillUserMiddleware 自动填充用户ID中间件
-// 从JWT claims中提取用户ID并设置到上下文中
-// 配合GORM回调实现自动填充create_by和update_by字段
+// UserContextMiddleware 从JWT claims中提取用户身份信息并注入到请求上下文
+// 供 GORM 回调（autoFillCreateBy/autoFillUpdateBy）通过 db.Statement.Context
+// 读取，实现审计字段（create_by/update_by）自动填充
+// 同时注入 dataScope/deptID，供 DataScopePlugin 实现行级数据权限过滤
 //
-// 使用示例：
-//
-//	router.Use(common.GormContextMiddleware())
-//	router.Use(middleware.JWTAuth())
-//	router.Use(middleware.AutoFillUserMiddleware())
-func AutoFillUserMiddleware() gin.HandlerFunc {
+// DataScopePlugin 采用白名单模式：仅 DefaultDataScopeConfig.Tables 中显式配置的表
+// 会被过滤，未配置的表（如 sys_role/sys_menu 等系统表）不受影响，
+// 因此内部校验查询不会被误过滤。
+func UserContextMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 从JWT claims中获取用户信息
 		if claims, exists := c.Get("claims"); exists {
-			// 设置用户ID到上下文，供GORM回调使用
-			c.Set("userId", getUserIDFromClaims(claims))
+			if u, ok := claims.(database.DataScopeClaims); ok {
+				ctx := database.SetUserID(c.Request.Context(), u.GetUserID())
+				ctx = database.SetDeptID(ctx, u.GetDeptID())
+				ctx = database.SetDataScope(ctx, u.GetDataScope())
+				c.Request = c.Request.WithContext(ctx)
+			}
 		}
-
 		c.Next()
 	}
-}
-
-// getUserIDFromClaims 从claims中提取用户ID
-func getUserIDFromClaims(claims interface{}) int64 {
-	if claims == nil {
-		return 0
-	}
-
-	// 尝试将claims转换为UserClaims接口
-	if userClaims, ok := claims.(database.UserClaims); ok {
-		return userClaims.GetUserID()
-	}
-
-	// 尝试通过反射获取UserId字段
-	val := reflect.ValueOf(claims)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-	if val.Kind() == reflect.Struct {
-		userIdField := val.FieldByName("UserId")
-		if userIdField.IsValid() && userIdField.Kind() == reflect.Int64 {
-			return int64(userIdField.Int())
-		}
-		userIdField = val.FieldByName("ID")
-		if userIdField.IsValid() && userIdField.Kind() == reflect.Int64 {
-			return int64(userIdField.Int())
-		}
-	}
-
-	return 0
 }

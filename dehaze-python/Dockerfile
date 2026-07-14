@@ -29,6 +29,8 @@ ENV UV_SYSTEM_PYTHON=1
 ENV UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 ENV APP_ENV=production
 ENV BASICSR_JIT=True
+# Prometheus 多进程指标聚合（配合 uvicorn --workers 4 使用）
+ENV PROMETHEUS_MULTIPROC_DIR=/tmp/prometheus_multiproc
 
 # 设置工作目录
 WORKDIR /app

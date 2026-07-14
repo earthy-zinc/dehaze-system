@@ -41,20 +41,20 @@ public class WebsocketController {
     /**
      * 点对点发送消息
      * <p>
-     * 模拟 张三 给 李四 发送消息场景
+     * 模拟用户A 给 用户B 发送消息场景
      *
-     * @param principal 当前用户
-     * @param username  接收消息的用户
+     * @param principal 当前用户（Principal name = userId）
+     * @param userId    接收消息的用户 ID
      * @param message   消息内容
      */
-    @MessageMapping("/sendToUser/{username}")
-    public void sendToUser(Principal principal, @DestinationVariable String username, String message) {
+    @MessageMapping("/sendToUser/{userId}")
+    public void sendToUser(Principal principal, @DestinationVariable String userId, String message) {
 
-        String sender = principal.getName(); // 发送人
+        String senderId = principal.getName(); // 发送人 userId
 
-        log.info("发送人:{}; 接收人:{}", sender, username);
+        log.info("发送人 userId:{}; 接收人 userId:{}", senderId, userId);
         // 发送消息给指定用户，拼接后路径 /user/{receiver}/queue/greeting
-        messagingTemplate.convertAndSendToUser(username, "/queue/greeting", new ChatMessage(sender, message));
+        messagingTemplate.convertAndSendToUser(userId, "/queue/greeting", new ChatMessage(senderId, message));
     }
 
 }

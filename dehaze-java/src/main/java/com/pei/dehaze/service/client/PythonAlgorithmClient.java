@@ -5,19 +5,16 @@ import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.config.property.AlgorithmProperties;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Supplier;
 
 /**
  * Python 算法服务 HTTP 客户端 — 生产级实现
@@ -25,7 +22,7 @@ import java.util.function.Supplier;
  * 特性：
  * <ul>
  *   <li>指数退避重试（最大3次）</li>
- *   <li>简单熔断器（失败率超过阈值后半开探活）</li>
+ *   <li>Resilience4j 熔断器（滑动窗口统计、半开探活）</li>
  *   <li>统一 JSON 响应解析</li>
  *   <li>区分可重试/不可重试错误</li>
  * </ul>
@@ -40,18 +37,7 @@ public class PythonAlgorithmClient {
 
     private final AlgorithmProperties props;
     private final RestTemplate algorithmRestTemplate;
-
-    // ---- 熔断器状态 ----
-    private enum CircuitState { CLOSED, OPEN, HALF_OPEN }
-
-    private volatile CircuitState circuitState = CircuitState.CLOSED;
-    private final AtomicInteger failureCount = new AtomicInteger(0);
-    private final AtomicInteger totalCount = new AtomicInteger(0);
-    private final AtomicLong lastFailureTime = new AtomicLong(0);
-
-    private final Map<String, CircuitState> endpointStates = new ConcurrentHashMap<>();
-    private final Map<String, AtomicInteger> endpointFailureCounts = new ConcurrentHashMap<>();
-    private final Map<String, AtomicInteger> endpointTotalCounts = new ConcurrentHashMap<>();
+    private final CircuitBreaker circuitBreaker;
 
     @PostConstruct
     public void init() {
@@ -90,8 +76,8 @@ public class PythonAlgorithmClient {
     private JSONObject postWithRetry(String path, String jsonBody) {
         String url = props.getBaseUrl() + path;
 
-        // 熔断器检查
-        checkCircuitBreaker(path);
+        // 生成幂等键：同一逻辑请求的所有重试共用同一个键，便于下游去重
+        String idempotencyKey = java.util.UUID.randomUUID().toString();
 
         Exception lastException = null;
         long backoff = props.getRetryBackoff();
@@ -104,21 +90,21 @@ public class PythonAlgorithmClient {
                     backoff *= 2; // 指数退避
                 }
 
-                JSONObject result = doPost(url, jsonBody);
+                // 每次 doPost 交由 Resilience4j 熔断器统计成功/失败
+                return circuitBreaker.executeSupplier(() -> doPost(url, jsonBody, idempotencyKey));
 
-                // 成功后重置熔断计数器
-                recordSuccess(path);
-                return result;
-
+            } catch (CallNotPermittedException e) {
+                // 熔断器开启，快速失败，不再重试
+                throw new BusinessException("Python 算法服务熔断中，请稍后重试");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR.getMsg(), e);
             } catch (ResourceAccessException e) {
-                // 网络层异常（连接超时/拒绝）→ 可重试
+                // 网络层异常（连接超时/拒绝）→ 可重试（熔断器已通过 executeSupplier 记录失败）
                 lastException = e;
                 log.warn("Python 服务网络异常 (attempt={}/{}): {}", attempt + 1, props.getMaxRetry() + 1, e.getMessage());
             } catch (BusinessException e) {
-                // 业务异常（Python 返回错误码）→ 不重试
+                // 业务异常（Python 返回错误码）→ 不重试（熔断器已通过 executeSupplier 记录失败）
                 throw e;
             } catch (Exception e) {
                 lastException = e;
@@ -127,16 +113,22 @@ public class PythonAlgorithmClient {
         }
 
         // 全部重试失败
-        recordFailure(path);
         String msg = "Python 算法服务调用失败 (已重试 " + props.getMaxRetry() + " 次): " +
                 (lastException != null ? lastException.getMessage() : "未知错误");
         log.error(msg);
         throw new BusinessException(msg);
     }
 
-    private JSONObject doPost(String url, String jsonBody) {
+    private JSONObject doPost(String url, String jsonBody, String idempotencyKey) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        // 幂等键：重试时携带同一键，便于下游去重（防重复处理）
+        headers.set("X-Idempotency-Key", idempotencyKey);
+        // 透传 traceId 到 Python 算法服务，形成跨服务全链路追踪
+        String traceId = MDC.get("traceId");
+        if (traceId != null && !traceId.isBlank()) {
+            headers.set("X-Trace-Id", traceId);
+        }
         HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
 
         ResponseEntity<String> response = algorithmRestTemplate.postForEntity(url, entity, String.class);
@@ -161,44 +153,5 @@ public class PythonAlgorithmClient {
         }
 
         return json.getJSONObject("data");
-    }
-
-    // ==================== 熔断器 ====================
-
-    private void checkCircuitBreaker(String path) {
-        if (circuitState == CircuitState.OPEN) {
-            long elapsed = System.currentTimeMillis() - lastFailureTime.get();
-            if (elapsed > props.getCircuitBreakerHalfOpenDelay()) {
-                log.info("熔断器进入半开状态，尝试探活");
-                circuitState = CircuitState.HALF_OPEN;
-            } else {
-                throw new BusinessException("Python 算法服务熔断中，请稍后重试 (" +
-                        (props.getCircuitBreakerHalfOpenDelay() - elapsed) / 1000 + "s 后恢复)");
-            }
-        }
-    }
-
-    private void recordSuccess(String path) {
-        if (circuitState == CircuitState.HALF_OPEN) {
-            log.info("半开探活成功，熔断器恢复");
-            circuitState = CircuitState.CLOSED;
-            totalCount.set(0);
-            failureCount.set(0);
-        }
-    }
-
-    private void recordFailure(String path) {
-        int fails = failureCount.incrementAndGet();
-        int total = totalCount.incrementAndGet();
-
-        if (total >= props.getCircuitBreakerMinCalls()) {
-            double failureRate = (double) fails / total * 100;
-            if (failureRate >= props.getCircuitBreakerFailureRate()) {
-                log.warn("熔断器触发: 失败率 {:.1f}% ({} / {}), 阈值 {}%",
-                        failureRate, fails, total, props.getCircuitBreakerFailureRate());
-                circuitState = CircuitState.OPEN;
-                lastFailureTime.set(System.currentTimeMillis());
-            }
-        }
     }
 }

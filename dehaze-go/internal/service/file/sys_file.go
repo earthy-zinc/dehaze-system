@@ -89,8 +89,7 @@ func (s *FileService) UploadFile(ctx context.Context, fileHeader *multipart.File
 }
 
 // CheckFile 校验文件是否存在
-func (s *FileService) CheckFile(md5 string) (*model.SysFile, error) {
-	ctx := context.Background()
+func (s *FileService) CheckFile(ctx context.Context, md5 string) (*model.SysFile, error) {
 	existingFile, err := s.fileRepo.FindByMD5(ctx, md5)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -102,9 +101,7 @@ func (s *FileService) CheckFile(md5 string) (*model.SysFile, error) {
 }
 
 // DeleteFile 删除文件
-func (s *FileService) DeleteFile(fileId int64) (err error) {
-	ctx := context.Background()
-
+func (s *FileService) DeleteFile(ctx context.Context, fileId int64) (err error) {
 	file, err := s.fileRepo.FindByID(ctx, fileId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -128,9 +125,7 @@ func (s *FileService) DeleteFile(fileId int64) (err error) {
 }
 
 // GetFileById 根据ID获取文件
-func (s *FileService) GetFileById(fileId int64) (sysFile model.SysFile, err error) {
-	ctx := context.Background()
-
+func (s *FileService) GetFileById(ctx context.Context, fileId int64) (sysFile model.SysFile, err error) {
 	file, err := s.fileRepo.FindByID(ctx, fileId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

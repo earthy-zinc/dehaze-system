@@ -20,7 +20,6 @@ class RoleService:
 
     # 缓存常量
     ROLE_PERMS_PREFIX = "role:perms:"
-    CACHE_TTL_PERMS = 1800  # 30分钟
 
     # 超级管理员角色编码
     ROOT_ROLE_CODE = "ROOT"
@@ -129,7 +128,7 @@ class RoleService:
             code=code,
             sort=data.get("sort", 0),
             status=data.get("status", 1),
-            data_scope=data.get("dataScope", data.get("data_scope", 1)),
+            data_scope=data.get("dataScope", 1),
         )
 
         created = await role_repository.create(db, role)
@@ -188,8 +187,7 @@ class RoleService:
         # 非超级管理员角色可以修改状态和数据权限
         if role.code != RoleService.ROOT_ROLE_CODE:
             update_data["status"] = data.get("status", role.status)
-            update_data["data_scope"] = data.get(
-                "dataScope", data.get("data_scope", role.data_scope))
+            update_data["data_scope"] = data.get("dataScope", role.data_scope)
 
         # 更新角色信息（不更新 code，编码创建后不可修改）
         if role.code is None:
@@ -245,8 +243,7 @@ class RoleService:
 
         # 批量删除角色-菜单关联 + 批量软删除角色（2 条 SQL，替代 2N 条）
         await role_repository.delete_role_menus_by_role_ids(db, role_ids)
-        for role_id in role_ids:
-            await role_repository.delete(db, role_id)
+        await role_repository.delete_by_ids(db, role_ids)
 
         await db.commit()
 

@@ -191,9 +191,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         if (StrUtil.isBlank(password)) {
             throw new BusinessException(ResultCode.PARAM_IS_NULL);
         }
+        Long currentUserId = SecurityUtils.getUserId();
         return this.update(new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getPassword, passwordEncoder.encode(password))
+                .set(SysUser::getUpdateBy, currentUserId)
         );
     }
 

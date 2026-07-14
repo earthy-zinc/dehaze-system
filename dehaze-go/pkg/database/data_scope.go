@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -87,24 +86,24 @@ func (p *DataScopePlugin) Initialize(db *gorm.DB) error {
 }
 
 // dataScopeCallback 数据权限回调函数
+// 从 db.Statement.Context 读取用户身份（userID/deptID/dataScope），
+// 该上下文由 UserContextMiddleware 在 HTTP 请求路径注入，
+// 或由 MQ Consumer / CleanupJob 在异步路径通过 SetUserID/SetDataScope/SetDeptID 注入
 func (p *DataScopePlugin) dataScopeCallback(db *gorm.DB) {
 	// 未启用则跳过
 	if !p.config.Enabled {
 		return
 	}
 
-	// 获取 Gin 上下文
-	c := GetCurrentGinContext()
-	if c == nil {
-		return
-	}
-
-	// 获取用户数据权限信息
-	dataScope, deptID, userID := getUserDataScopeInfo(c)
+	ctx := db.Statement.Context
+	dataScope := GetDataScope(ctx)
 	if dataScope == DataScopeAll {
 		// 全部数据权限，无需过滤
 		return
 	}
+
+	deptID := GetDeptID(ctx)
+	userID := GetUserID(ctx)
 
 	// 获取当前查询的表名
 	tableName := getTableName(db)
@@ -112,16 +111,10 @@ func (p *DataScopePlugin) dataScopeCallback(db *gorm.DB) {
 		return
 	}
 
-	// 获取表配置
+	// 获取表配置（白名单模式：未配置的表不进行数据权限过滤）
 	tableConfig, ok := p.config.Tables[tableName]
 	if !ok {
-		// 未配置的表，使用默认配置
-		tableConfig = TableScopeConfig{
-			Enabled:       true,
-			ScopeField:    p.config.DefaultScopeField,
-			DeptField:     p.config.DefaultDeptField,
-			TreePathField: "",
-		}
+		return
 	}
 
 	// 表未启用数据权限
@@ -139,67 +132,6 @@ func (p *DataScopePlugin) dataScopeCallback(db *gorm.DB) {
 	db.Statement.AddClause(clause.Where{
 		Exprs: []clause.Expression{clause.Expr{SQL: condition, Vars: args}},
 	})
-}
-
-// getUserDataScopeInfo 从 Gin 上下文获取用户数据权限信息
-func getUserDataScopeInfo(c *gin.Context) (dataScope int8, deptID int64, userID int64) {
-	dataScope = DataScopeAll // 默认全部数据
-
-	// 从 claims 获取
-	if claims, exists := c.Get("claims"); exists {
-		type dataScopeClaims interface {
-			GetDataScope() int8
-			GetDeptID() int64
-			GetUserID() int64
-		}
-
-		// 尝试接口方式
-		if ds, ok := claims.(dataScopeClaims); ok {
-			dataScope = ds.GetDataScope()
-			deptID = ds.GetDeptID()
-			userID = ds.GetUserID()
-			return
-		}
-
-		// 尝试反射获取字段
-		claimsMap, ok := claims.(map[string]interface{})
-		if ok {
-			if ds, ok := claimsMap["dataScope"].(int8); ok {
-				dataScope = ds
-			} else if ds, ok := claimsMap["dataScope"].(float64); ok {
-				dataScope = int8(ds)
-			}
-			if dept, ok := claimsMap["deptId"].(int64); ok {
-				deptID = dept
-			} else if dept, ok := claimsMap["deptId"].(float64); ok {
-				deptID = int64(dept)
-			}
-			if uid, ok := claimsMap["userId"].(int64); ok {
-				userID = uid
-			} else if uid, ok := claimsMap["userId"].(float64); ok {
-				userID = int64(uid)
-			}
-		}
-	}
-
-	// 尝试直接从上下文获取
-	if ds, exists := c.Get("dataScope"); exists {
-		if d, ok := ds.(int8); ok {
-			dataScope = d
-		}
-	}
-	if dept, exists := c.Get("deptId"); exists {
-		if d, ok := dept.(int64); ok {
-			deptID = d
-		}
-	}
-	if uid, exists := c.Get("userId"); exists {
-		if u, ok := uid.(int64); ok {
-			userID = u
-		}
-	}
-
-	return
 }
 
 // buildDataScopeCondition 构建数据权限 SQL 条件

@@ -21,10 +21,15 @@ const (
 	// ROOT_ROLE_CODE 超级管理员角色编码
 	ROOT_ROLE_CODE = "ROOT"
 	// ROLE_PERMS_PREFIX Redis中角色权限缓存key前缀
-	ROLE_PERMS_PREFIX = "role:perms"
+	ROLE_PERMS_PREFIX = "role:perms:"
 	// ROLE_PERMS_TTL 角色权限缓存过期时间（30分钟）
 	ROLE_PERMS_TTL = 30 * time.Minute
 )
+
+// rolePermsKey 构造角色权限缓存的独立 Redis Key（逐角色独立 TTL）
+func rolePermsKey(roleCode string) string {
+	return ROLE_PERMS_PREFIX + roleCode
+}
 
 // dataScopeLabelMap 数据权限范围中文映射
 var dataScopeLabelMap = map[int8]string{
@@ -200,7 +205,7 @@ func (s *RoleService) Update(ctx context.Context, id int64, form *bo.RoleFormBO)
 
 	// 状态变更时刷新权限缓存
 	if oldRole.Status != form.Status {
-		s.refreshRolePermsCache(ctx, form.Code, "")
+		s.refreshRolePermsCache(ctx, form.Code)
 	}
 
 	return nil
@@ -252,7 +257,7 @@ func (s *RoleService) UpdateStatus(ctx context.Context, id int64, status int8) e
 	}
 
 	// 刷新权限缓存
-	s.refreshRolePermsCache(ctx, role.Code, "")
+	s.refreshRolePermsCache(ctx, role.Code)
 
 	return nil
 }
@@ -301,9 +306,13 @@ func (s *RoleService) Delete(ctx context.Context, ids []int64) error {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除角色失败", err)
 	}
 
-	// 批量清理权限缓存
-	for _, code := range roleCodes {
-		s.refreshRolePermsCache(ctx, code, "")
+	// 批量清理权限缓存（角色已删除，直接清除缓存即可，无需重新加载权限）
+	if s.cache != nil {
+		keys := make([]string, 0, len(roleCodes))
+		for _, code := range roleCodes {
+			keys = append(keys, rolePermsKey(code))
+		}
+		_ = s.cache.Delete(ctx, keys...)
 	}
 
 	return nil
@@ -347,7 +356,7 @@ func (s *RoleService) AssignMenus(ctx context.Context, roleID int64, menuIDs []i
 	}
 
 	// 刷新权限缓存
-	s.refreshRolePermsCache(ctx, role.Code, "")
+	s.refreshRolePermsCache(ctx, role.Code)
 
 	return nil
 }
@@ -376,29 +385,16 @@ func (s *RoleService) validateRoleForm(form *bo.RoleFormBO) error {
 	return nil
 }
 
-// refreshRolePermsCache 刷新角色权限缓存
-// oldRoleCode: 旧角色编码（角色编码变更时使用，否则传空字符串）
-// newRoleCode: 新角色编码（角色编码变更时使用，否则传当前角色编码）
-func (s *RoleService) refreshRolePermsCache(ctx context.Context, oldRoleCode, newRoleCode string) {
+// refreshRolePermsCache 刷新角色权限缓存（删除后重新加载）
+func (s *RoleService) refreshRolePermsCache(ctx context.Context, roleCode string) {
 	if s.cache == nil {
 		return
 	}
-
-	if oldRoleCode != "" && newRoleCode != "" && oldRoleCode != newRoleCode {
-		_ = s.cache.HDel(ctx, ROLE_PERMS_PREFIX, oldRoleCode)
-		s.loadRolePermsToCache(ctx, newRoleCode)
-		return
-	}
-
-	roleCode := oldRoleCode
-	if roleCode == "" {
-		roleCode = newRoleCode
-	}
-	_ = s.cache.HDel(ctx, ROLE_PERMS_PREFIX, roleCode)
+	_ = s.cache.Delete(ctx, rolePermsKey(roleCode))
 	s.loadRolePermsToCache(ctx, roleCode)
 }
 
-// loadRolePermsToCache 加载角色权限到缓存
+// loadRolePermsToCache 加载角色权限到缓存（独立 Key + 独立 TTL）
 func (s *RoleService) loadRolePermsToCache(ctx context.Context, roleCode string) {
 	if s.cache == nil || roleCode == "" || s.menuRepo == nil {
 		return
@@ -414,7 +410,5 @@ func (s *RoleService) loadRolePermsToCache(ctx context.Context, roleCode string)
 		return
 	}
 
-	_ = s.cache.HSet(ctx, ROLE_PERMS_PREFIX, roleCode, strings.Join(perms, ","))
-	// 为 Hash Key 设置 TTL，确保缓存不会永远残留
-	_, _ = s.cache.Expire(ctx, ROLE_PERMS_PREFIX, ROLE_PERMS_TTL)
+	_ = s.cache.Set(ctx, rolePermsKey(roleCode), strings.Join(perms, ","), ROLE_PERMS_TTL)
 }

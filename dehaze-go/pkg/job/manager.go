@@ -10,9 +10,9 @@ type JobManager struct {
 }
 
 // NewJobManager 创建任务管理器
-func NewJobManager() *JobManager {
+func NewJobManager(storageSvc StorageService) *JobManager {
 	return &JobManager{
-		cleanupJob: NewCleanupJob(),
+		cleanupJob: NewCleanupJob(storageSvc),
 	}
 }
 
@@ -37,8 +37,8 @@ func (m *JobManager) GetCleanupJob() *CleanupJob {
 var jobManager *JobManager
 
 // InitJobs 初始化定时任务
-func InitJobs() {
-	jobManager = NewJobManager()
+func InitJobs(storageSvc StorageService) {
+	jobManager = NewJobManager(storageSvc)
 	jobManager.Start()
 	logger.Info("定时任务初始化完成")
 }

@@ -24,6 +24,10 @@ class UserContext(BaseModel):
     def is_root(self) -> bool:
         return "ROOT" in self.roles
 
+    @property
+    def is_admin(self) -> bool:
+        return "ROOT" in self.roles or "ADMIN" in self.roles
+
 
 def decode_token(token: str) -> dict:
     """

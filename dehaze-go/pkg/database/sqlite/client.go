@@ -65,6 +65,8 @@ func (c *Client) init() error {
 		return fmt.Errorf("注册数据权限插件失败: %w", err)
 	}
 
+	db = database.RegisterGormCallbacks(db)
+
 	// 获取原生sql.DB并设置连接池
 	// 注意：SQLite在并发写入时会有限制，建议MaxOpenConns设置为1
 	sqlDB, err := db.DB()

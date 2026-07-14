@@ -78,6 +78,17 @@ class Settings(BaseSettings):
     REDIS_RETRY_ON_TIMEOUT: bool = True  # 超时是否重试
     REDIS_HEALTH_CHECK_INTERVAL: int = 30  # 健康检查间隔（秒）
 
+    # ===== 多级缓存防护配置 =====
+    # L1 本地缓存（防热 key 击穿 Redis）
+    CACHE_L1_ENABLED: bool = True
+    CACHE_L1_MAXSIZE: int = 1000  # 最大缓存条目数
+    CACHE_L1_TTL: int = 300  # L1 默认 TTL（秒），5 分钟
+    # SingleFlight（防缓存击穿，热点 key 失效瞬间合并并发加载）
+    CACHE_SINGLEFLIGHT_ENABLED: bool = True
+    # 空值缓存（防缓存穿透）
+    CACHE_NULL_ENABLED: bool = True
+    CACHE_NULL_TTL: int = 60  # 空值缓存 TTL（秒）
+
     @property
     def REDIS_URL(self) -> str:
         if self.DEHAZE_PASSWORD:
@@ -170,7 +181,7 @@ class Settings(BaseSettings):
     @property
     def RABBITMQ_URL(self) -> str:
         password = self.DEHAZE_PASSWORD or self.RABBITMQ_USER
-        return f"amqp://{self.RABBITMQ_USER}:{password}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
+        return f"amqp://{self.RABBITMQ_USER}:{password}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/%2F"
 
     # 任务并发限制
     TASK_MAX_CONCURRENT_PER_USER: int = 5  # 同用户同类型最大并发数
@@ -178,6 +189,10 @@ class Settings(BaseSettings):
     # Prometheus 监控配置
     PROMETHEUS_ENABLED: bool = True
     PROMETHEUS_GPU_COLLECT_INTERVAL: int = 5  # GPU 指标采集间隔（秒）
+    # 多 Worker 模式下的指标聚合目录（PROMETHEUS_MULTIPROC_DIR）
+    # 设置后 /metrics 端点将通过 MultiProcessCollector 聚合所有 Worker 的指标
+    # 留空则使用单进程模式（仅返回当前 Worker 的指标）
+    PROMETHEUS_MULTIPROC_DIR: str = ""
 
     # 优雅关闭配置
     GRACEFUL_SHUTDOWN_TIMEOUT: int = 30  # 等待任务完成超时（秒）
@@ -186,7 +201,7 @@ class Settings(BaseSettings):
     # 日志配置
     LOG_LEVEL: str = "INFO"  # 日志级别: DEBUG/INFO/WARNING/ERROR/CRITICAL
     # 文本格式日志模板
-    LOG_FORMAT: str = "%(asctime)s - %(levelname)s --- [%(thread)d] %(name)s : %(message)s"
+    LOG_FORMAT: str = "%(asctime)s - %(levelname)s [%(trace_id)s] --- [%(thread)d] %(name)s : %(message)s"
     LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"  # 日期格式
     LOG_DIR: str = "logs"  # 日志目录
     LOG_FILE: str = "dehaze-python.log"  # 日志文件名
@@ -204,6 +219,17 @@ class Settings(BaseSettings):
 
     # 部门管理配置
     DEPT_MAX_DEPTH: int = 5  # 部门层级深度限制
+
+    # ===== CORS 跨域配置 =====
+    # 开发环境白名单（生产环境通过 ProductionSettings 覆盖或 CORS_ORIGINS 环境变量配置）
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8080",
+    ]
 
     # ===== 安全防护配置（平台级） =====
     # 限流
@@ -286,6 +312,9 @@ class ProductionSettings(Settings):
     # 日志配置（生产环境启用 JSON 格式）
     LOG_FORMAT_JSON: bool = True
 
+    # Prometheus 多 Worker 指标聚合（生产环境强制启用）
+    PROMETHEUS_MULTIPROC_DIR: str = "/tmp/prometheus_multiproc"
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 生产环境强制校验关键配置
@@ -295,6 +324,9 @@ class ProductionSettings(Settings):
             raise ValueError("生产环境必须设置 JWT_SECRET_KEY 环境变量且长度 >= 32")
         if not self.DEHAZE_PASSWORD:
             raise ValueError("生产环境必须设置 DEHAZE_PASSWORD 环境变量")
+        # 生产环境 CORS_ORIGINS 必须从环境变量配置（禁止使用 localhost 白名单）
+        if not os.getenv("CORS_ORIGINS"):
+            raise ValueError("生产环境必须设置 CORS_ORIGINS 环境变量（逗号分隔的域名白名单）")
 
 
 _settings_map = {
@@ -309,7 +341,16 @@ def get_settings() -> Settings:
     """获取配置实例（缓存）"""
     env = os.getenv("APP_ENV", "development")
     settings_class = _settings_map.get(env, DevelopmentSettings)
-    return settings_class()
+    instance = settings_class()
+
+    # 传播 PROMETHEUS_MULTIPROC_DIR 到 OS 环境变量
+    # prometheus_client 在导入时检查此环境变量来决定是否启用多进程模式
+    # 必须在任何 prometheus_client 导入（如 starlette_exporter）之前设置
+    if instance.PROMETHEUS_MULTIPROC_DIR:
+        os.environ["PROMETHEUS_MULTIPROC_DIR"] = instance.PROMETHEUS_MULTIPROC_DIR
+        os.makedirs(instance.PROMETHEUS_MULTIPROC_DIR, exist_ok=True)
+
+    return instance
 
 
 settings = get_settings()

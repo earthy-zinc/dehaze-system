@@ -5,9 +5,13 @@ Prometheus 指标采集模块
 HTTP 请求指标由 starlette-exporter 中间件自动采集。
 """
 
-from app.infrastructure.metrics.gpu_metrics import (GPUMetricsCollector,
-                                                    collect_gpu_metrics,
-                                                    get_gpu_metrics_collector)
+from app.infrastructure.metrics.cache_metrics import (CACHE_HITS_TOTAL,
+                                                     CACHE_MISSES_TOTAL,
+                                                     CACHE_LOADER_TOTAL,
+                                                     record_hit, record_miss,
+                                                     record_loader)
+from app.infrastructure.metrics.gpu_metrics import GPUMetricsCollector, \
+    collect_gpu_metrics, get_gpu_metrics_collector
 from app.infrastructure.metrics.inference_metrics import (
     INFERENCE_DURATION, INFERENCE_REQUESTS_TOTAL, track_inference)
 from app.infrastructure.metrics.task_metrics import (TASK_PROCESSING_TIME,
@@ -29,4 +33,11 @@ __all__ = [
     "TASK_PROCESSING_TOTAL",
     "TASK_PROCESSING_TIME",
     "update_task_queue_depth",
+    # 缓存指标
+    "CACHE_HITS_TOTAL",
+    "CACHE_MISSES_TOTAL",
+    "CACHE_LOADER_TOTAL",
+    "record_hit",
+    "record_miss",
+    "record_loader",
 ]

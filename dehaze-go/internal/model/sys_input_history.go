@@ -17,8 +17,6 @@ type SysInputHistory struct {
 	InputSource          *string `gorm:"column:input_source;type:varchar(20);comment:图片来源（upload/camera/sample）" json:"inputSource"`
 	IsFavorite           *bool   `gorm:"column:is_favorite;type:tinyint(1);default:0;comment:是否收藏" json:"isFavorite"`
 	SyncStatus           *int8   `gorm:"column:sync_status;type:tinyint;default:0;comment:同步状态（0=未同步，1=已同步）" json:"syncStatus"`
-	CreateBy             *int64  `gorm:"column:create_by;type:bigint;comment:创建人ID" json:"createBy"`
-	UpdateBy             *int64  `gorm:"column:update_by;type:bigint;comment:修改人ID" json:"updateBy"`
 }
 
 // TableName 指定表名

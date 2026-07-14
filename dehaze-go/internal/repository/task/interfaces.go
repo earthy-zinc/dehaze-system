@@ -16,6 +16,9 @@ type ITaskRepository interface {
 	// FindByTaskID 根据任务唯一 ID 查询任务
 	FindByTaskID(ctx context.Context, taskID string) (*model.SysTask, error)
 
+	// FindByIdempotencyKey 根据客户端幂等键查询任务（用于去重）
+	FindByIdempotencyKey(ctx context.Context, key string) (*model.SysTask, error)
+
 	// FindPage 分页查询任务
 	FindPage(ctx context.Context, q any) (*read.PageResult[read.Task], error)
 

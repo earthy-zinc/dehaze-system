@@ -99,13 +99,13 @@ func (j *JWT) ParseToken(tokenString string) (*CustomClaims, error) {
 }
 
 // SetJWT 便捷包级函数，从全局配置读取（生产代码使用）
-func SetJWT(token string, userName string) error {
+func SetJWT(ctx context.Context, token string, userName string) error {
 	j := NewJWT()
-	return j.SetToken(token, userName)
+	return j.SetToken(ctx, token, userName)
 }
 
 // SetToken 将Token存入缓存，TTL来自实例字段（测试友好）
-func (j *JWT) SetToken(token string, userName string) error {
+func (j *JWT) SetToken(ctx context.Context, token string, userName string) error {
 	cacheClient := cache.GetCache()
-	return cacheClient.Set(context.Background(), userName, token, j.TTL)
+	return cacheClient.Set(ctx, userName, token, j.TTL)
 }

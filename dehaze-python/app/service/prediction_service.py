@@ -23,6 +23,7 @@ from sqlalchemy import select
 from app.database import async_session_factory
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
+from app.infrastructure.logging import _trace_id_var
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm
 from app.repository.pred_eval_log_repository import pred_log_repository
@@ -222,6 +223,8 @@ class PredictionService:
         user_id: Optional[int] = None,
     ) -> Optional[int]:
         """写入预测日志"""
+        from app.models.base import set_current_user_id
+        set_current_user_id(user_id)
         try:
             async with async_session_factory() as db:
                 log = await pred_log_repository.create_log(
@@ -238,6 +241,8 @@ class PredictionService:
         except Exception as e:
             logger.warning(f"写入预测日志失败: {e}")
             return None
+        finally:
+            set_current_user_id(None)
 
     @staticmethod
     async def _get_algorithm(algorithm_id: int) -> SysAlgorithm:
@@ -252,7 +257,11 @@ class PredictionService:
             return algorithm
 
     async def _download_image(self, url: str) -> io.BytesIO:
-        """从URL或本地路径下载图片"""
+        """从URL或本地路径下载图片
+
+        HTTP 下载采用指数退避重试（最多 3 次），仅对网络层错误和 5xx 响应重试，
+        4xx 客户端错误不重试。
+        """
         import asyncio
 
         # 处理本地文件路径 /api/v1/files/download/... → upload/...
@@ -275,11 +284,46 @@ class PredictionService:
                     None, self._read_file_sync, local_path)
             raise FileNotFoundError(f"图片文件不存在: {url}")
 
-        # HTTP/HTTPS 下载
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            return io.BytesIO(response.content)
+        # HTTP/HTTPS 下载（带指数退避重试）
+        headers = {}
+        trace_id = _trace_id_var.get("")
+        if trace_id:
+            headers["X-Trace-Id"] = trace_id
+
+        max_retry = 3
+        backoff = 1.0  # 初始退避 1 秒
+        last_exc: Optional[Exception] = None
+
+        for attempt in range(max_retry + 1):
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.get(url, headers=headers)
+                    response.raise_for_status()
+                    return io.BytesIO(response.content)
+            except httpx.HTTPStatusError as e:
+                # 4xx 客户端错误不重试（请求格式错误，重试无意义）
+                # 5xx 服务端错误可重试
+                if 400 <= e.response.status_code < 500:
+                    raise
+                last_exc = e
+                logger.warning(
+                    f"图片下载返回 {e.response.status_code} (attempt={attempt + 1}/{max_retry + 1}): {url}"
+                )
+            except (httpx.TimeoutException, httpx.TransportError) as e:
+                # 网络层错误（连接超时/拒绝/EOF）→ 可重试
+                last_exc = e
+                logger.warning(
+                    f"图片下载网络异常 (attempt={attempt + 1}/{max_retry + 1}): {url} - {e}"
+                )
+
+            if attempt < max_retry:
+                await asyncio.sleep(backoff)
+                backoff *= 2  # 指数退避
+
+        # 全部重试失败
+        raise BusinessException(
+            f"图片下载失败（已重试 {max_retry} 次）: {url} - {last_exc}"
+        )
 
     @staticmethod
     def _read_file_sync(path: Path) -> io.BytesIO:

@@ -289,10 +289,12 @@ class DeptService:
 
         # 2. 批量检查是否存在关联用户（避免 N+1）
         user_counts = await user_repository.count_users_by_depts(db, dept_ids)
+        # 批量预取部门信息（避免错误路径逐条查询触发 N+1）
+        depts_map = {int(d.id): d for d in await dept_repository.get_by_ids(db, dept_ids)}
         for dept_id in dept_ids:
             count = user_counts.get(dept_id, 0)
             if count > 0:
-                dept = await dept_repository.get_by_id(db, dept_id)
+                dept = depts_map.get(dept_id)
                 dept_name = dept.name if dept else f"ID={dept_id}"
                 raise BusinessException(
                     f"部门【{dept_name}】下存在 {count} 个用户，无法删除")

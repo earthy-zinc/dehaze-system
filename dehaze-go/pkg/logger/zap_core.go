@@ -22,16 +22,30 @@ func NewZapCore(level zapcore.Level) *ZapCore {
 		level:       level,
 		syncerCache: make(map[string]zapcore.WriteSyncer),
 	}
-	syncer := entity.WriteSyncer()
-	levelEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
-		return l == level
-	})
-	cfg := config.GetConfig()
-	entity.Core = zapcore.NewCore(cfg.Zap.Encoder(), syncer, levelEnabler)
+	entity.Core = entity.buildCore()
 	return entity
 }
 
-func (z *ZapCore) WriteSyncer(formats ...string) zapcore.WriteSyncer {
+// buildCore 构建日志 Core：文件输出使用 JSON 编码器（结构化，供 ELK/Loki 采集），
+// 控制台输出使用人类可读编码器。
+func (z *ZapCore) buildCore(formats ...string) zapcore.Core {
+	cfg := config.GetConfig()
+	levelEnabler := zap.LevelEnablerFunc(func(l zapcore.Level) bool {
+		return l == z.level
+	})
+
+	fileSyncer := z.fileSyncer(formats...)
+	fileCore := zapcore.NewCore(cfg.Zap.FileEncoder(), fileSyncer, levelEnabler)
+
+	if cfg.Zap.LogInConsole {
+		consoleCore := zapcore.NewCore(cfg.Zap.Encoder(), zapcore.AddSync(os.Stdout), levelEnabler)
+		return zapcore.NewTee(fileCore, consoleCore)
+	}
+	return fileCore
+}
+
+// fileSyncer 返回文件切割 syncer（按级别/日期/自定义 formats 分文件），带缓存
+func (z *ZapCore) fileSyncer(formats ...string) zapcore.WriteSyncer {
 	cacheKey := z.level.String()
 	for _, f := range formats {
 		cacheKey += "_" + f
@@ -60,13 +74,7 @@ func (z *ZapCore) WriteSyncer(formats ...string) zapcore.WriteSyncer {
 		CutterWithFormats(formats...),
 	)
 
-	var syncer zapcore.WriteSyncer
-	if cfg.Zap.LogInConsole {
-		syncer = zapcore.AddSync(zapcore.NewMultiWriteSyncer(os.Stdout, cutter))
-	} else {
-		syncer = zapcore.AddSync(cutter)
-	}
-
+	syncer := zapcore.AddSync(cutter)
 	z.syncerCache[cacheKey] = syncer
 	return syncer
 }
@@ -87,11 +95,9 @@ func (z *ZapCore) Check(entry zapcore.Entry, check *zapcore.CheckedEntry) *zapco
 }
 
 func (z *ZapCore) Write(entry zapcore.Entry, fields []zapcore.Field) error {
-	cfg := config.GetConfig()
 	for i := 0; i < len(fields); i++ {
 		if fields[i].Key == "business" || fields[i].Key == "folder" || fields[i].Key == "directory" {
-			syncer := z.WriteSyncer(fields[i].String)
-			core := zapcore.NewCore(cfg.Zap.Encoder(), syncer, z.level)
+			core := z.buildCore(fields[i].String)
 			return core.Write(entry, fields)
 		}
 	}

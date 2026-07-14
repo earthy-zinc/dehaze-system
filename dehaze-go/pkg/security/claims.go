@@ -151,6 +151,20 @@ func IsRoot(c *gin.Context) bool {
 	return false
 }
 
+// IsAdmin 判断当前登录用户是否为管理员（authorities 中包含 ROLE_ADMIN 或 ROLE_ROOT）
+func IsAdmin(c *gin.Context) bool {
+	claims := GetUserInfo(c)
+	if claims == nil {
+		return false
+	}
+	for _, authority := range claims.Authorities {
+		if authority == "ROLE_ROOT" || authority == "ROLE_ADMIN" {
+			return true
+		}
+	}
+	return false
+}
+
 // LoginToken 便捷包级函数（生产代码使用）
 func LoginToken(user *model.UserAuthInfo) (token string, claims CustomClaims, err error) {
 	j := NewJWT()

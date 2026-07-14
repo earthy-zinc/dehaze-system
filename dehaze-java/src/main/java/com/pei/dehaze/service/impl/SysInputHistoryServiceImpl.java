@@ -152,7 +152,8 @@ public class SysInputHistoryServiceImpl extends ServiceImpl<SysInputHistoryMappe
         LambdaUpdateWrapper<SysInputHistory> wrapper = new LambdaUpdateWrapper<SysInputHistory>()
                 .eq(SysInputHistory::getUserId, userId)
                 .eq(SysInputHistory::getSyncStatus, 0)
-                .set(SysInputHistory::getSyncStatus, 1);
+                .set(SysInputHistory::getSyncStatus, 1)
+                .set(SysInputHistory::getUpdateBy, userId);
         boolean result = this.update(wrapper);
         log.info("用户 {} 同步历史记录完成", userId);
         return result ? 1 : 0;

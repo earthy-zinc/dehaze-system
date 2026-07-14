@@ -20,6 +20,42 @@ system:
   #  路由全局前缀
   router-prefix: ""
 
+# CORS 跨域配置
+cors:
+  # 模式：strict-whitelist（严格白名单校验，推荐）
+  mode: strict-whitelist
+  whitelist:
+    - allow-origin: "http://localhost:3000"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5173"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:8080"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:3000"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5173"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:8080"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+
 captcha:
   length: 4
   width: 120
@@ -60,7 +96,7 @@ db:
 
 cache:
   # 缓存类型：redis/local/multi
-  type: redis
+  type: multi
   redis:
     enabled: true
     addr: 127.0.0.1:6379
@@ -68,28 +104,64 @@ cache:
     db: 3
     useCluster: false
     timeout: 5
+    poolSize: 20
   local:
     defaultExpire: 7200
     maxSize: 1000
-    enabled: false
+    enabled: true
   fallback:
     enabled: true
     type: local
     maxRetries: 3
     retryDelay: 100
+  # 多级缓存配置（L1 本地 + L2 Redis）
+  multiLevel:
+    enabled: true
+    l1ExpireSeconds: 300        # L1 本地缓存默认 5 分钟
+    l2ExpireSeconds: 3600       # L2 Redis 缓存默认 1 小时
+    asyncWriteBack: true
+    l1MaxSize: 1000
+    randomExpireRange: 60       # 过期时间随机抖动 60 秒，防雪崩
+  # 缓存防护配置
+  protection:
+    bloomFilter:
+      enabled: false            # 灰度策略：暂不启用，观察 L1+SingleFlight 效果后再启用
+      expectedItems: 10000
+      falsePositiveRate: 0.01
+    singleFlight:
+      enabled: true             # 启用 SingleFlight 防缓存击穿
+    circuitBreaker:
+      enabled: false            # 灰度策略：暂不启用
+      maxRequests: 3
+      interval: 60
+      timeout: 30
+      failureThreshold: 5
+    nullCache:
+      enabled: true             # 启用空值缓存防穿透
+      expireSeconds: 60
   pubsub:
     enabled: true
     channel: "cache:invalidation"
     senderId: "pod-1"
-    maxConcurrency: 32  # 可选，默认16 
+    maxConcurrency: 32  # 可选，默认16
 
 algorithm:
   serviceUrl: "http://127.0.0.1:8014" # Python 算法服务地址
   timeout: 60 # 请求超时（秒）
+  connectTimeout: 5 # 连接超时（秒）
+  # 重试配置（指数退避）
+  maxRetry: 3 # 最大重试次数（0 表示不重试）
+  retryBackoffMs: 1000 # 重试初始退避（毫秒），指数增长
+  # 熔断器配置
+  circuitBreaker:
+    enabled: true
+    failureThreshold: 5 # 失败次数阈值，达到后熔断
+    timeout: 30 # 熔断超时（秒），超时后进入半开状态
+    maxRequests: 3 # 半开状态下允许的最大请求数
 
 rabbitmq:
   enabled: true
-  url: "amqp://root:${DEHAZE_PASSWORD}@127.0.0.1:5672/"
+  url: "amqp://root:${DEHAZE_PASSWORD}@127.0.0.1:5672/%2F"
   exchange: "dehaze.tasks"
   exchangeType: "direct"
   routingKeyPrefix: "task"

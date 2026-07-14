@@ -16,6 +16,7 @@ import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.model.vo.UserPageVO;
 import com.pei.dehaze.plugin.dupsubmit.annotation.PreventDuplicateSubmit;
 import com.pei.dehaze.plugin.easyexcel.UserImportListener;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -118,9 +119,11 @@ public class SysUserController {
             @Parameter(description = "用户ID") @PathVariable Long userId,
             @Parameter(description = "用户状态(1:启用;0:禁用)") @RequestParam Integer status
     ) {
+        Long currentUserId = SecurityUtils.getUserId();
         boolean result = userService.update(new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getStatus, status)
+                .set(SysUser::getUpdateBy, currentUserId)
         );
         return Result.judge(result);
     }

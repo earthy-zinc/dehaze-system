@@ -41,11 +41,18 @@ public class SysTask extends BaseEntity {
 
     private String errorMessage;
 
-    private Long createdBy;
-
     private LocalDateTime startedAt;
 
     private LocalDateTime completedAt;
 
     private LocalDateTime expiresAt;
+
+    /** 客户端幂等键（HTTP Idempotency-Key 头） */
+    private String idempotencyKey;
+
+    /** MQ 重试次数 */
+    private Integer retryCount;
+
+    /** 执行 Worker 标识 */
+    private String workerId;
 }

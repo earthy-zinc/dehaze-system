@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.config import settings
 from app.core.code import ResultCode
+from app.core.result import _get_trace_id
 
 _logger = logging.getLogger(__name__)
 
@@ -49,6 +50,7 @@ def register_exception_handlers(app: FastAPI):
                 "code": exc.code.code,
                 "msg": exc.message,
                 "data": None,
+                "traceId": _get_trace_id(),
             },
         )
 
@@ -77,6 +79,7 @@ def register_exception_handlers(app: FastAPI):
                 "msg": msg,
                 "data": None,
                 "errors": error_details,
+                "traceId": _get_trace_id(),
             },
         )
 
@@ -88,6 +91,7 @@ def register_exception_handlers(app: FastAPI):
                 "code": ResultCode.TOKEN_INVALID.code,
                 "msg": ResultCode.TOKEN_INVALID.msg,
                 "data": None,
+                "traceId": _get_trace_id(),
             },
             headers={"WWW-Authenticate": "Bearer"},
         )
@@ -109,6 +113,7 @@ def register_exception_handlers(app: FastAPI):
                 "code": result_code.code,
                 "msg": result_code.msg,
                 "data": None,
+                "traceId": _get_trace_id(),
             },
             headers=exc.headers,
         )
@@ -123,6 +128,7 @@ def register_exception_handlers(app: FastAPI):
                 "code": ResultCode.DATABASE_ERROR.code,
                 "msg": "数据库操作失败，请稍后重试",
                 "data": None,
+                "traceId": _get_trace_id(),
             },
         )
 
@@ -138,6 +144,7 @@ def register_exception_handlers(app: FastAPI):
                     "code": ResultCode.SYSTEM_EXECUTION_ERROR.code,
                     "msg": f"系统内部错误: {type(exc).__name__}",
                     "data": None,
+                    "traceId": _get_trace_id(),
                 },
             )
 
@@ -147,5 +154,6 @@ def register_exception_handlers(app: FastAPI):
                 "code": ResultCode.SYSTEM_EXECUTION_ERROR.code,
                 "msg": ResultCode.SYSTEM_EXECUTION_ERROR.msg,
                 "data": None,
+                "traceId": _get_trace_id(),
             },
         )

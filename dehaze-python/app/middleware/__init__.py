@@ -4,6 +4,7 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.middleware.ip_blacklist import IPBlacklistMiddleware
 from app.middleware.operation_log import OperationLogMiddleware
 from app.middleware.trace import TraceMiddleware
@@ -38,28 +39,18 @@ def init_middlewares(app: FastAPI, debug: bool = False, prometheus_enabled: bool
             app_name="dehaze-python",
             prefix="dehaze",
             group_paths=True,
-            skip_paths=["/health", "/health/db", "/health/redis",
+            skip_paths=["/health", "/ready",
                         "/metrics", "/docs", "/redoc", "/openapi.json"],
         )
 
-    # CORS 中间件（最外层，开发环境也需要限制来源，防止 CSRF）
-    _cors_origins = [
-        "http://localhost:3000",
-        "http://localhost:5173",  # Vite 默认端口
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
-    ] if debug else [
-        "http://localhost:3000",
-        "http://localhost:8080",
-    ]
+    # CORS 中间件（最外层，从配置读取 Origin 白名单，禁止 "*" + credentials 组合）
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=_cors_origins,
+        allow_origins=settings.CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+        expose_headers=["X-Trace-Id"],
     )
 
 

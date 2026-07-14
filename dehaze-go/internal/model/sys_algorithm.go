@@ -21,6 +21,4 @@ type SysAlgorithm struct {
 	AuditBy     *int64     `gorm:"column:audit_by;type:bigint;comment:审核人ID" json:"auditBy"`
 	AuditTime   *time.Time `gorm:"column:audit_time;type:datetime;comment:审核时间" json:"auditTime"`
 	AuditRemark *string    `gorm:"column:audit_remark;type:varchar(500);comment:审核备注" json:"auditRemark"`
-	CreateBy    *int64     `gorm:"column:create_by;type:bigint;comment:创建人ID" json:"createBy"`
-	UpdateBy    *int64     `gorm:"column:update_by;type:bigint;comment:修改人ID" json:"updateBy"`
 }

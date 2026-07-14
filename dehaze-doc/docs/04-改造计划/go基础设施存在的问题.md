@@ -107,15 +107,6 @@ config.yaml 有 `cache.type: redis`，但 [pkg/cache/manager.go](file:///E:/Deha
 ### 5.2 [MEDIUM] AntiRepeat 仅在 2 个路由使用
 
 [internal/router/user.go](file:///E:/DehazeSystem/dehaze-go/internal/router/user.go) 第 37、55 行：仅 `sysRoleRouter.POST("")` 和 `sysDeptRouter.POST("")` 使用了 `middleware.AntiRepeat`。其他写操作（用户增删改、数据集操作、文件上传、任务创建、算法导入等）均无防重复保护。
-
-### 5.3 [OK] JWT AccessToken + RefreshToken 双令牌已实现
-
-[pkg/security/claims.go](file:///E:/DehazeSystem/dehaze-go/pkg/security/claims.go) 第 163-195 行 `LoginTokenWithRefresh`，[internal/service/auth/auth_service.go](file:///E:/DehazeSystem/dehaze-go/internal/service/auth/auth_service.go) 第 151-228 行 `RefreshToken` 完整实现。Token 黑名单基于 jti，节省 Redis 内存。
-
-### 5.4 [OK] XSS / SQL 注入 / 路径安全工具齐全
-
-[pkg/utils/xss.go](file:///E:/DehazeSystem/dehaze-go/pkg/utils/xss.go) 基于 bluemonday，[pkg/utils/sql_injection.go](file:///E:/DehazeSystem/dehaze-go/pkg/utils/sql_injection.go) 白名单校验，[pkg/validator/validator.go](file:///E:/DehazeSystem/dehaze-go/pkg/validator/validator.go) 注册 `no_xss` 自定义校验器。注意：这些工具需手动调用，未全局自动应用。
-
 ---
 
 ## 六、任务/异步层（Go 特有）
@@ -158,10 +149,6 @@ config.yaml 有 `cache.type: redis`，但 [pkg/cache/manager.go](file:///E:/Deha
 
 [config/config.yaml](file:///E:/DehazeSystem/dehaze-go/config/config.yaml) 第 30-32 行 yaml 中未设置 `refresh-token-ttl`，[pkg/config/options/jwt.go](file:///E:/DehazeSystem/dehaze-go/pkg/config/options/jwt.go) 第 6 行定义了 `RefreshTokenTTL` 但 fallback 到 7 天（魔法数字）。
 
-### 8.4 [MEDIUM] Go 版本高于设计要求
-
-[go.mod](file:///E:/DehazeSystem/dehaze-go/go.mod) 第 3 行 `go 1.25.0`，设计要求 Go 1.24。建议同步设计文档或降级 go.mod。
-
 ---
 
 ## 九、日志层（Go 特有）
@@ -180,14 +167,6 @@ config.yaml 有 `cache.type: redis`，但 [pkg/cache/manager.go](file:///E:/Deha
 
 ## 十、目录结构与分层（Go 特有）
 
-### 10.1 [MEDIUM] 缺少 `model/entity/` 子目录
-
-[internal/model/](file:///E:/DehazeSystem/dehaze-go/internal/model/) 下实体类（`sys_user.go`、`sys_role.go` 等 22 个文件）直接放在 model 根目录，而非设计要求的 `model/entity/` 子目录。子目录 `bo/dto/enum/query/read/vo` 均存在。
-
-### 10.2 [MEDIUM] `pkg/app/` 不存在，app.go 位于 `internal/app/`
-
-设计要求 `pkg/app/app.go`，实际在 [internal/app/app.go](file:///E:/DehazeSystem/dehaze-go/internal/app/app.go)。`internal/app/` 更符合 Go 的 internal 包惯例，建议反向更新设计文档。
-
 ### 10.3 [LOW] 空文件残留
 
 [pkg/config/loader.go](file:///E:/DehazeSystem/dehaze-go/pkg/config/loader.go) 和 [pkg/config/watcher.go](file:///E:/DehazeSystem/dehaze-go/pkg/config/watcher.go) 仅含 `package config` 一行，实际逻辑在 [pkg/config/viper.go](file:///E:/DehazeSystem/dehaze-go/pkg/config/viper.go)。
@@ -199,10 +178,6 @@ config.yaml 有 `cache.type: redis`，但 [pkg/cache/manager.go](file:///E:/Deha
 ### 11.1 [MEDIUM] HTTP 状态码使用不一致
 
 [pkg/common/response.go](file:///E:/DehazeSystem/dehaze-go/pkg/common/response.go) 第 28 行 `result()` 恒返回 `http.StatusOK`（200），错误码在 body 中。[pkg/server/gin/middleware/jwt.go](file:///E:/DehazeSystem/dehaze-go/pkg/server/gin/middleware/jwt.go) 第 46-52 行 `unauthorized()` 返回 `http.StatusUnauthorized`（401）。业务错误返回 200，认证错误返回 401，不一致。
-
-### 11.2 [OK] ResultCode 与 Java 端完全一致
-
-均使用字母前缀+4位数字格式（`A0001`、`B0001`、`C0001`），错误码值与描述文案完全一致。
 
 ---
 
@@ -249,21 +224,4 @@ config.yaml 有 `cache.type: redis`，但 [pkg/cache/manager.go](file:///E:/Deha
 |---|------|------|
 | 11 | FindUserAuthInfo 查询合并 | user_repository.go |
 | 12 | context.Background() 清理 | trace_id 贯通 |
-| 13 | model/entity/ 目录迁移或更新设计文档 | 规范对齐 |
-| 14 | HTTP 状态码统一 | 与 Java/Python 端一致 |
 | 15 | CleanupJob TODO 桩补全 | cleanup_job.go |
-
----
-
-## 十四、已确认无问题的部分
-
-- 依赖注入：构造函数注入，无 DI 容器 ✓
-- 数据库工厂模式与主从分离 ✓
-- JWT AccessToken + RefreshToken 双令牌 + jti 黑名单 ✓
-- 验证码参数（4 位、120×40）三端一致 ✓
-- XSS / SQL 注入 / 路径安全工具齐全 ✓
-- ResultCode 与 Java 端完全一致 ✓
-- 文件存储策略工厂（minio/local）✓
-- RabbitMQ Publisher/Consumer 自动重连 ✓
-- Viper + godotenv + fsnotify 热重载 ✓
-- 优雅关闭（SIGINT/SIGTERM + 反序关闭）✓

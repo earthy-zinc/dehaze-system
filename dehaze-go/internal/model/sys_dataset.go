@@ -12,8 +12,6 @@ type SysDataset struct {
 	Size        string `gorm:"column:size;type:varchar(100);default:'';comment:占用空间大小" json:"size"`
 	Status      int8   `gorm:"column:status;type:tinyint;not null;comment:状态(1:启用；0:禁用)" json:"status"`
 	Deleted     int8   `gorm:"column:deleted;type:tinyint;default:0;comment:逻辑删除标识(1:已删除\\;0:未删除)" json:"deleted"`
-	CreateBy    int64  `gorm:"column:create_by;type:bigint;comment:创建人ID" json:"createBy"`
-	UpdateBy    int64  `gorm:"column:update_by;type:bigint;comment:修改人ID" json:"updateBy"`
 }
 
 // GetID 实现IDGetter接口

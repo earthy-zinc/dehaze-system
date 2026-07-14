@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -108,7 +107,7 @@ func RateLimiterMiddleware(cfg RateLimiterConfig) gin.HandlerFunc {
 		mgin.WithKeyGetter(keyGetter),
 		mgin.WithLimitReachedHandler(func(c *gin.Context) {
 			// 获取限流上下文以计算剩余时间
-			ctx, err := instance.Get(context.Background(), keyGetter(c))
+			ctx, err := instance.Get(c.Request.Context(), keyGetter(c))
 			if err == nil && ctx.Reset > 0 {
 				remaining := time.Until(time.Unix(ctx.Reset, 0))
 				seconds := int(remaining.Seconds()) + 1

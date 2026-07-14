@@ -16,6 +16,7 @@ import (
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"go.uber.org/zap"
@@ -82,18 +83,7 @@ func getBatchUpdateUserID(ctx context.Context) int64 {
 	if ctx == nil {
 		return 0
 	}
-
-	// 约定：上游（handler/middleware）将 userId 写入 context
-	if userID := ctx.Value("userId"); userID != nil {
-		if id, ok := userID.(int64); ok {
-			return id
-		}
-		if id, ok := userID.(int); ok {
-			return int64(id)
-		}
-	}
-
-	return 0
+	return database.GetUserID(ctx)
 }
 
 // CreateDatasetItemWithImagesRequest 创建数据项请求
@@ -219,7 +209,7 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	// 8. 生成缩略图
 	if !req.Options.SkipThumbnail {
 		if req.Options.AsyncThumbnail {
-			dos.submitThumbnailGenerationTask(req.DatasetID, itemID, fileIDs)
+			dos.submitThumbnailGenerationTask(ctx, req.DatasetID, itemID, fileIDs)
 		} else {
 			for _, fileID := range fileIDs {
 				if err := dos.generateThumbnail(fileID); err != nil {
@@ -230,8 +220,8 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	}
 
 	// 9. 失效统计与列表缓存
-	dos.invalidateDatasetStatsCache(req.DatasetID)
-	dos.invalidateDatasetItemsCache(req.DatasetID)
+	dos.invalidateDatasetStatsCache(ctx, req.DatasetID)
+	dos.invalidateDatasetItemsCache(ctx, req.DatasetID)
 
 	logger.Info("创建数据项成功",
 		zap.Int64("datasetID", req.DatasetID),
@@ -520,13 +510,13 @@ func (dos *DatasetOperationService) DeleteDatasetItemCascade(ctx context.Context
 
 	// 7. 异步删除物理文件
 	if len(filePaths) > 0 {
-		dos.submitFileDeletionTask(datasetID, filePaths)
+		dos.submitFileDeletionTask(ctx, datasetID, filePaths)
 	}
 
 	// 8. 失效统计与列表缓存
-	dos.invalidateDatasetStatsCache(datasetID)
-	dos.invalidateDatasetItemsCache(datasetID)
-	dos.invalidateDatasetItemCache(itemID)
+	dos.invalidateDatasetStatsCache(ctx, datasetID)
+	dos.invalidateDatasetItemsCache(ctx, datasetID)
+	dos.invalidateDatasetItemCache(ctx, itemID)
 
 	logger.Info("级联删除数据项成功",
 		zap.Int64("itemID", itemID),
@@ -647,14 +637,14 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 		filePaths = append(filePaths, path)
 	}
 	if len(filePaths) > 0 {
-		dos.submitFileDeletionTask(0, filePaths)
+		dos.submitFileDeletionTask(ctx, 0, filePaths)
 	}
 
 	// 10. 清理缓存
-	dos.invalidateTreeCache()
+	dos.invalidateTreeCache(ctx)
 	for _, datasetID := range idsToDelete {
-		dos.invalidateDatasetStatsCache(datasetID)
-		dos.invalidateDatasetItemsCache(datasetID)
+		dos.invalidateDatasetStatsCache(ctx, datasetID)
+		dos.invalidateDatasetItemsCache(ctx, datasetID)
 	}
 
 	logger.Info("批量删除数据集成功",
@@ -675,7 +665,7 @@ func (dos *DatasetOperationService) BatchDeleteDatasets(ctx context.Context, req
 // ========== 异步任务相关 ==========
 
 // submitThumbnailGenerationTask 提交缩略图生成任务
-func (dos *DatasetOperationService) submitThumbnailGenerationTask(datasetID, itemID int64, fileIDs []int64) {
+func (dos *DatasetOperationService) submitThumbnailGenerationTask(ctx context.Context, datasetID, itemID int64, fileIDs []int64) {
 	taskIDStr := fmt.Sprintf("thumb_%d_%d", datasetID, itemID)
 
 	if dos.taskExecutor == nil {
@@ -695,13 +685,13 @@ func (dos *DatasetOperationService) submitThumbnailGenerationTask(datasetID, ite
 		Payload:   payload,
 		CreatedAt: time.Now(),
 	}
-	if err := dos.taskExecutor.PublishTask(context.Background(), msg); err != nil {
+	if err := dos.taskExecutor.PublishTask(ctx, msg); err != nil {
 		logger.Error("提交缩略图任务失败", zap.String("taskID", taskIDStr), zap.Error(err))
 	}
 }
 
 // submitFileDeletionTask 提交文件删除任务
-func (dos *DatasetOperationService) submitFileDeletionTask(datasetID int64, filePaths []string) {
+func (dos *DatasetOperationService) submitFileDeletionTask(ctx context.Context, datasetID int64, filePaths []string) {
 	taskIDStr := fmt.Sprintf("delete_%d_%d", datasetID, time.Now().UnixNano())
 
 	if dos.taskExecutor == nil {
@@ -720,7 +710,7 @@ func (dos *DatasetOperationService) submitFileDeletionTask(datasetID int64, file
 		Payload:   payload,
 		CreatedAt: time.Now(),
 	}
-	if err := dos.taskExecutor.PublishTask(context.Background(), msg); err != nil {
+	if err := dos.taskExecutor.PublishTask(ctx, msg); err != nil {
 		logger.Error("提交文件删除任务失败", zap.String("taskID", taskIDStr), zap.Error(err))
 	}
 }
@@ -740,11 +730,10 @@ func (dos *DatasetOperationService) generateThumbnail(fileID int64) error {
 // ========== 缓存相关 ==========
 
 // invalidateDatasetStatsCache 失效数据集统计缓存
-func (dos *DatasetOperationService) invalidateDatasetStatsCache(datasetID int64) {
+func (dos *DatasetOperationService) invalidateDatasetStatsCache(ctx context.Context, datasetID int64) {
 	if dos.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	keys := []string{
 		fmt.Sprintf("dataset:stats:%d", datasetID),
 		fmt.Sprintf("dataset:leaf:%d", datasetID),
@@ -759,11 +748,10 @@ func (dos *DatasetOperationService) invalidateDatasetStatsCache(datasetID int64)
 }
 
 // invalidateDatasetItemsCache 失效数据集下所有数据项列表缓存
-func (dos *DatasetOperationService) invalidateDatasetItemsCache(datasetID int64) {
+func (dos *DatasetOperationService) invalidateDatasetItemsCache(ctx context.Context, datasetID int64) {
 	if dos.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	cacheKey := fmt.Sprintf("dataset:items:%d", datasetID)
 	if err := dos.cache.Delete(ctx, cacheKey); err != nil {
 		logger.Warn("失效数据项列表缓存失败", zap.String("key", cacheKey), zap.Error(err))
@@ -771,11 +759,10 @@ func (dos *DatasetOperationService) invalidateDatasetItemsCache(datasetID int64)
 }
 
 // invalidateDatasetItemCache 失效单个数据项缓存
-func (dos *DatasetOperationService) invalidateDatasetItemCache(itemID int64) {
+func (dos *DatasetOperationService) invalidateDatasetItemCache(ctx context.Context, itemID int64) {
 	if dos.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	cacheKey := fmt.Sprintf("dataset:item:%d", itemID)
 	if err := dos.cache.Delete(ctx, cacheKey); err != nil {
 		logger.Warn("失效数据项缓存失败", zap.String("key", cacheKey), zap.Error(err))
@@ -783,11 +770,10 @@ func (dos *DatasetOperationService) invalidateDatasetItemCache(itemID int64) {
 }
 
 // invalidateTreeCache 失效树形结构缓存（含 options 子缓存）
-func (dos *DatasetOperationService) invalidateTreeCache() {
+func (dos *DatasetOperationService) invalidateTreeCache(ctx context.Context) {
 	if dos.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	keys := []string{
 		"dataset:tree",
 		"dataset:tree:options",

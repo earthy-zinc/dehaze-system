@@ -22,7 +22,7 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
-		if isBlacklist(token) {
+		if isBlacklist(c.Request.Context(), token) {
 			security.ClearToken(c)
 			unauthorized(c)
 			return
@@ -51,7 +51,7 @@ func unauthorized(c *gin.Context) {
 	c.Abort()
 }
 
-func isBlacklist(jwt string) bool {
+func isBlacklist(ctx context.Context, jwt string) bool {
 	cacheClient := cache.GetCache()
 
 	j := security.NewJWT()
@@ -65,7 +65,7 @@ func isBlacklist(jwt string) bool {
 		return false
 	}
 
-	exists, err := cacheClient.Exists(context.Background(), common.BlacklistPrefix+jti)
+	exists, err := cacheClient.Exists(ctx, common.BlacklistPrefix+jti)
 	if err != nil {
 		logger.Error("检查Token黑名单失败", zap.Error(err))
 		return false

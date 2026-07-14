@@ -37,16 +37,21 @@ import (
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
+	"github.com/earthyzinc/dehaze-go/pkg/cache/redis"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	_ "github.com/earthyzinc/dehaze-go/pkg/database/mysql"
 	_ "github.com/earthyzinc/dehaze-go/pkg/database/postgres"
 	_ "github.com/earthyzinc/dehaze-go/pkg/database/sqlite"
+	"github.com/earthyzinc/dehaze-go/pkg/job"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/mq"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
+	"github.com/earthyzinc/dehaze-go/pkg/websocket"
 	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
+	gingin "github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
@@ -55,6 +60,7 @@ import (
 type Application struct {
 	*gin.Server
 	taskExecutor taskservice.AsyncTaskExecutor
+	consumer     *mq.Consumer
 }
 
 func New() *Application {
@@ -90,6 +96,13 @@ func (a *Application) Init() error {
 
 	// 3) 缓存（内部会按配置决定是否初始化 Redis/本地缓存）
 	cache.Init()
+
+	// 3.1) WebSocket 管理器（依赖 Redis Pub/Sub）
+	if redisClient := redis.GetClient(); redisClient != nil {
+		if _, err := websocket.InitManager(redisClient); err != nil {
+			logger.Error("WebSocket 管理器初始化失败", zap.Error(err))
+		}
+	}
 
 	// 4) HTTP Server
 	a.Server = gin.Init()
@@ -161,6 +174,25 @@ func (a *Application) Init() error {
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algoClient)
 
+	// 启动 MQ Consumer 消费导出任务（带 DLX/DLQ 分级重试）
+	if cfg.RabbitMQ.Enabled {
+		a.consumer = mq.NewConsumer(cfg.RabbitMQ, zap.L())
+		if err := a.consumer.Connect(); err != nil {
+			logger.Error("MQ Consumer 连接失败，任务将无法异步执行", zap.Error(err))
+		} else {
+			if err := a.consumer.Consume("export", taskService.HandleExportTaskMessage); err != nil {
+				logger.Error("注册导出任务 Consumer 失败", zap.Error(err))
+			}
+			if err := a.consumer.ConsumeDLQ("export", taskService.HandleDLQMessage); err != nil {
+				logger.Error("注册死信队列 Consumer 失败", zap.Error(err))
+			}
+			logger.Info("MQ Consumer 已启动，消费 export 队列")
+		}
+	}
+
+	// 启动定时清理任务（清理过期任务、失败记录等）
+	job.InitJobs(storageService)
+
 	// apis
 	authApi := api.NewAuthApi(authService)
 	sysUserApi := api.NewSysUserApi(userService)
@@ -179,6 +211,13 @@ func (a *Application) Init() error {
 
 	// routes
 	engine := a.Server.GetEngine()
+
+	// Readiness 探针 - 检查 DB/Redis/MQ 依赖
+	engine.GET("/ready", a.readinessHandler())
+
+	// WebSocket 端点（通过 query 参数 token 认证，不走 JWT 中间件）
+	engine.GET("/ws", websocket.HandleWebSocket)
+
 	v1 := engine.Group("/api/v1")
 
 	// 公开路由（无需认证）
@@ -187,6 +226,7 @@ func (a *Application) Init() error {
 	// 需要JWT认证保护的路由
 	protectedV1 := v1.Group("")
 	protectedV1.Use(middleware.JWTAuth())
+	protectedV1.Use(middleware.UserContextMiddleware())
 	router.RegisterAuthRoutes(protectedV1, authApi)
 	router.RegisterSysUserRoutes(protectedV1, sysUserApi)
 	router.RegisterSysRoleRoutes(protectedV1, sysRoleApi)
@@ -229,12 +269,30 @@ func (a *Application) shutdown() error {
 
 	var errs []error
 
-	// 1) HTTP Server
+	// 0) 停止 WebSocket 管理器
+	if wsManager := websocket.GetManager(); wsManager != nil {
+		wsManager.Stop()
+	}
+
+	// 1) 停止定时任务
+	job.StopJobs()
+
+	// 2) HTTP Server
 	if err := a.Server.Stop(ctx); err != nil {
 		errs = append(errs, fmt.Errorf("HTTP Server: %w", err))
 	}
 
-	// 2) 异步任务执行器（RabbitMQ）
+	// 3) MQ Consumer
+	if a.consumer != nil {
+		if err := a.consumer.Close(); err != nil {
+			logger.Error("关闭 MQ Consumer 失败", zap.Error(err))
+			errs = append(errs, fmt.Errorf("MQConsumer: %w", err))
+		} else {
+			logger.Info("MQ Consumer 已关闭")
+		}
+	}
+
+	// 4) 异步任务执行器（RabbitMQ Publisher）
 	if a.taskExecutor != nil {
 		if err := a.taskExecutor.Shutdown(); err != nil {
 			logger.Error("关闭任务执行器失败", zap.Error(err))
@@ -244,7 +302,7 @@ func (a *Application) shutdown() error {
 		}
 	}
 
-	// 3) 缓存
+	// 5) 缓存
 	if cm := cache.GetCacheManager(); cm != nil {
 		if err := cm.Close(); err != nil {
 			logger.Error("关闭缓存失败", zap.Error(err))
@@ -252,7 +310,7 @@ func (a *Application) shutdown() error {
 		}
 	}
 
-	// 4) 数据库
+	// 6) 数据库
 	if err := database.Close(); err != nil {
 		logger.Error("关闭数据库连接失败", zap.Error(err))
 		errs = append(errs, fmt.Errorf("Database: %w", err))
@@ -260,7 +318,7 @@ func (a *Application) shutdown() error {
 		logger.Info("数据库连接已关闭")
 	}
 
-	// 5) 日志（最后刷新，保证上面的日志都写入）
+	// 6) 日志（最后刷新，保证上面的日志都写入）
 	logger.Info("所有资源已关闭，刷新日志缓冲区")
 	logger.Sync()
 
@@ -268,4 +326,76 @@ func (a *Application) shutdown() error {
 		return fmt.Errorf("优雅关闭时发生 %d 个错误: %v", len(errs), errs)
 	}
 	return nil
+}
+
+// readinessHandler Readiness 探针处理函数
+// 检查 DB/Redis/RabbitMQ 依赖，任一不可用返回 503
+func (a *Application) readinessHandler() gingin.HandlerFunc {
+	return func(c *gingin.Context) {
+		ctx := c.Request.Context()
+		components := make(map[string]string)
+		allHealthy := true
+
+		// DB check
+		func() {
+			db := database.DB()
+			if db == nil {
+				components["db"] = "DOWN"
+				allHealthy = false
+				return
+			}
+			sqlDB, err := db.DB()
+			if err != nil {
+				components["db"] = "DOWN"
+				allHealthy = false
+				return
+			}
+			if err := sqlDB.Ping(); err != nil {
+				components["db"] = "DOWN"
+				allHealthy = false
+				return
+			}
+			components["db"] = "UP"
+		}()
+
+		// Redis check
+		func() {
+			redisClient := redis.GetClient()
+			if redisClient == nil {
+				components["redis"] = "DOWN"
+				allHealthy = false
+				return
+			}
+			if err := redisClient.Ping(ctx).Err(); err != nil {
+				components["redis"] = "DOWN"
+				allHealthy = false
+				return
+			}
+			components["redis"] = "UP"
+		}()
+
+		// RabbitMQ check（仅当启用时检查 Consumer 与 Publisher）
+		cfg := config.GetConfig()
+		if cfg.RabbitMQ.Enabled {
+			consumerOK := a.consumer != nil && a.consumer.IsConnected()
+			publisherOK := a.taskExecutor != nil && a.taskExecutor.IsConnected()
+			if !consumerOK || !publisherOK {
+				components["rabbitmq"] = "DOWN"
+				allHealthy = false
+			} else {
+				components["rabbitmq"] = "UP"
+			}
+		}
+
+		status := "UP"
+		code := http.StatusOK
+		if !allHealthy {
+			status = "DOWN"
+			code = http.StatusServiceUnavailable
+		}
+		c.JSON(code, gingin.H{
+			"status":     status,
+			"components": components,
+		})
+	}
 }

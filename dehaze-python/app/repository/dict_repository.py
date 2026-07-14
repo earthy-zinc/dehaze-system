@@ -6,6 +6,7 @@
 
 from typing import Any
 
+from app.models.base import get_audit_update_values
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.base import BaseRepository, escape_like
 from sqlalchemy import and_, delete, func, or_, select, update
@@ -125,7 +126,9 @@ class DictRepository(BaseRepository[SysDict]):
         self, db: AsyncSession, old_code: str, new_code: str
     ) -> bool:
         """批量更新字典数据的类型编码（用于字典类型 code 变更时的级联更新）"""
-        stmt = update(SysDict).where(SysDict.type_code == old_code).values(type_code=new_code)
+        values = {"type_code": new_code}
+        values.update(get_audit_update_values())
+        stmt = update(SysDict).where(SysDict.type_code == old_code).values(**values)
         await db.execute(stmt)
         return True
 

@@ -42,6 +42,18 @@ func (r *taskRepository) FindByTaskID(ctx context.Context, taskID string) (*mode
 	return &task, nil
 }
 
+func (r *taskRepository) FindByIdempotencyKey(ctx context.Context, key string) (*model.SysTask, error) {
+	var task model.SysTask
+	err := r.db.WithContext(ctx).Where("idempotency_key = ?", key).First(&task).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &task, nil
+}
+
 func (r *taskRepository) FindPage(ctx context.Context, q any) (*read.PageResult[read.Task], error) {
 	// 根据实际查询条件实现分页
 	return nil, nil
@@ -60,7 +72,8 @@ func (r *taskRepository) UpdateFields(ctx context.Context, id int64, fields map[
 }
 
 func (r *taskRepository) UpdateStatus(ctx context.Context, id int64, status int8) error {
-	return r.db.WithContext(ctx).Model(&model.SysTask{}).Where("id = ?", id).Update("status", status).Error
+	return r.db.WithContext(ctx).Model(&model.SysTask{}).Where("id = ?", id).
+		Updates(map[string]interface{}{"status": status}).Error
 }
 
 func (r *taskRepository) Delete(ctx context.Context, ids []int64) error {

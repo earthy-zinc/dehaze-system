@@ -15,9 +15,6 @@ type IUserRepository interface {
 	// FindByID 根据 ID 查询用户
 	FindByID(ctx context.Context, id int64) (*model.SysUser, error)
 
-	// FindByUsername 根据用户名查询用户
-	FindByUsername(ctx context.Context, username string) (*model.SysUser, error)
-
 	// ExistsByUsername 检查用户名是否存在
 	ExistsByUsername(ctx context.Context, username string, excludeID ...int64) (bool, error)
 
@@ -35,9 +32,6 @@ type IUserRepository interface {
 
 	// FindExportUsers 导出用户列表
 	FindExportUsers(ctx context.Context, q *query.UserPageQuery) ([]read.UserExport, error)
-
-	// FindRoleCodesByUsername 根据用户名查询角色编码列表
-	FindRoleCodesByUsername(ctx context.Context, username string) ([]string, error)
 
 	// ExistsRootInIDs 检查是否包含超级管理员
 	ExistsRootInIDs(ctx context.Context, ids []int64) (bool, error)
@@ -68,6 +62,9 @@ type IUserRepository interface {
 
 	// FindUserAuthInfo 查询用户认证信息（含角色、权限）
 	FindUserAuthInfo(ctx context.Context, username string) (*model.UserAuthInfo, error)
+
+	// FindUserWithRoleCodesByID 根据用户ID查询用户信息和角色编码（单次JOIN查询，消除N+1）
+	FindUserWithRoleCodesByID(ctx context.Context, userID int64) (*model.SysUser, []string, error)
 
 	// AssignRoles 分配用户角色
 	AssignRoles(ctx context.Context, userID int64, roleIDs []int64) error

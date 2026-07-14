@@ -13,7 +13,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-Handler = Callable[[dict[str, Any]], Coroutine[Any, Any, None]]
+Handler = Callable[[dict[str, Any], dict[str, Any]], Coroutine[Any, Any, None]]
 
 
 class Consumer:
@@ -32,6 +32,7 @@ class Consumer:
         self._closed = False
         self._reconnect_task: Optional[asyncio.Task] = None
         self._handlers: dict[str, Handler] = {}
+        self._dlq_handlers: set[str] = set()
         self._queues: dict[str, AbstractQueue] = {}
 
     @property
@@ -119,6 +120,41 @@ class Consumer:
         if self.is_connected:
             await self._subscribe(queue_name, handler)
 
+    async def register_dlq(self, queue_name: str, handler: Handler) -> None:
+        """
+        注册死信队列消费 handler（不创建 DLX/重试队列，避免递归声明）
+
+        Args:
+            queue_name: 死信队列名称（如 "task.execute.dlx"）
+            handler: 消息处理函数
+        """
+        self._handlers[queue_name] = handler
+        self._dlq_handlers.add(queue_name)
+
+        if self.is_connected:
+            await self._subscribe_dlq(queue_name, handler)
+
+    async def _subscribe_dlq(self, queue_name: str, handler: Handler) -> None:
+        """订阅死信队列（简单声明并消费，不创建 DLX/重试队列）"""
+        if self._channel is None:
+            raise RuntimeError("Channel not connected")
+
+        exchange = await self._channel.declare_exchange(
+            settings.RABBITMQ_EXCHANGE,
+            aio_pika.ExchangeType(settings.RABBITMQ_EXCHANGE_TYPE),
+            durable=True,
+        )
+
+        queue = await self._channel.declare_queue(queue_name, durable=True)
+        routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{queue_name}"
+        await queue.bind(exchange, routing_key=routing_key)
+        await queue.consume(self._make_callback(queue_name, handler))
+        self._queues[queue_name] = queue
+
+        logger.info(
+            f"Consumer 已订阅死信队列: queue={queue_name}, routing_key={routing_key}"
+        )
+
     async def _subscribe(self, queue_name: str, handler: Handler) -> None:
         """订阅单个队列，同时声明重试队列和死信队列"""
         if self._channel is None:
@@ -141,10 +177,10 @@ class Consumer:
 
         # 声明重试队列（带 TTL，过期后重新路由到主队列）
         retry_delays = settings.RABBITMQ_RETRY_DELAYS
+        main_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{queue_name}"
         for i, delay_ms in enumerate(retry_delays):
             retry_queue_name = f"{queue_name}.retry.{i}"
-            main_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{queue_name}"
-            await self._channel.declare_queue(
+            retry_queue_obj = await self._channel.declare_queue(
                 retry_queue_name,
                 durable=True,
                 arguments={
@@ -154,17 +190,17 @@ class Consumer:
                 },
             )
             retry_routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{retry_queue_name}"
-            # 绑定重试队列到 exchange
-            retry_queue_obj = await self._channel.declare_queue(
-                retry_queue_name, durable=True, passive=True,
-            )
             await retry_queue_obj.bind(exchange, routing_key=retry_routing_key)
 
-        # 声明主队列
+        # 声明主队列（配置 DLX：过期或 reject 的消息进入死信队列）
         queue = await self._channel.declare_queue(
             queue_name,
             durable=True,
-            arguments={"x-message-ttl": 86400000},  # 24h TTL
+            arguments={
+                "x-message-ttl": 86400000,  # 24h TTL
+                "x-dead-letter-exchange": settings.RABBITMQ_EXCHANGE,
+                "x-dead-letter-routing-key": dlx_routing_key,
+            },
         )
 
         routing_key = f"{settings.RABBITMQ_ROUTING_KEY_PREFIX}.{queue_name}"
@@ -182,7 +218,10 @@ class Consumer:
         self._queues.clear()
         for queue_name, handler in self._handlers.items():
             try:
-                await self._subscribe(queue_name, handler)
+                if queue_name in self._dlq_handlers:
+                    await self._subscribe_dlq(queue_name, handler)
+                else:
+                    await self._subscribe(queue_name, handler)
             except Exception as e:
                 logger.error(f"重新订阅队列失败: queue={queue_name}, {e}")
 
@@ -194,7 +233,8 @@ class Consumer:
         async def callback(message: AbstractIncomingMessage) -> None:
             try:
                 body = json.loads(message.body.decode())
-                await handler(body)
+                headers: dict[str, Any] = dict(message.headers) if message.headers else {}
+                await handler(body, headers)
                 await message.ack()
             except json.JSONDecodeError:
                 # 无法解析的消息，直接丢弃

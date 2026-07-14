@@ -171,3 +171,27 @@ func RequireAllPermissionWithWildcard(perms ...string) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+// RequireRoot 要求当前用户为超级管理员（ROOT 角色）
+func RequireRoot() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !security.IsRoot(c) {
+			_ = c.Error(common.NewBizError(common.AUTHORIZED_ERROR, "需要超级管理员权限"))
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// RequireAdmin 要求当前用户为管理员（ADMIN 或 ROOT 角色）
+func RequireAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !security.IsAdmin(c) {
+			_ = c.Error(common.NewBizError(common.AUTHORIZED_ERROR, "需要管理员权限"))
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}

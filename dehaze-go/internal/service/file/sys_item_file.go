@@ -56,9 +56,7 @@ func NewItemFileService(
 
 // SaveItemFile 保存项文件
 // sysFile: 已上传完成的文件记录（由 API 层调用 FileService.UploadFile 获取）
-func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model.SysFile, itemBO bo.DatasetItemBO, asyncThumbnail bool) (imageUrlVO vo.ImageUrlVO, err error) {
-	ctx := context.Background()
-
+func (itemFileService *ItemFileService) SaveItemFile(ctx context.Context, itemId int64, sysFile model.SysFile, itemBO bo.DatasetItemBO, asyncThumbnail bool) (imageUrlVO vo.ImageUrlVO, err error) {
 	// 创建项文件关联记录
 	sysItemFile := model.SysItemFile{
 		ItemID:      itemId,
@@ -80,7 +78,7 @@ func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model
 
 	// 异步生成缩略图
 	if asyncThumbnail {
-		itemFileService.submitThumbnailTask(itemId, int64(sysFile.ID), sysItemFile.ID)
+		itemFileService.submitThumbnailTask(ctx, itemId, int64(sysFile.ID), sysItemFile.ID)
 	}
 
 	// 查询数据项以获取 datasetId
@@ -123,17 +121,16 @@ func (itemFileService *ItemFileService) SaveItemFile(itemId int64, sysFile model
 	}
 
 	// 失效缓存
-	itemFileService.invalidateItemFilesCache(itemId)
+	itemFileService.invalidateItemFilesCache(ctx, itemId)
 	if datasetID > 0 {
-		itemFileService.invalidateDatasetStatsCache(datasetID)
+		itemFileService.invalidateDatasetStatsCache(ctx, datasetID)
 	}
 
 	return imageUrlVO, nil
 }
 
 // GetImageUrlVOs 获取图片URL VO列表（带缓存）
-func (itemFileService *ItemFileService) GetImageUrlVOs(itemId int64) (imageUrlVOs []vo.ImageUrlVO, err error) {
-	ctx := context.Background()
+func (itemFileService *ItemFileService) GetImageUrlVOs(ctx context.Context, itemId int64) (imageUrlVOs []vo.ImageUrlVO, err error) {
 	cacheKey := fmt.Sprintf("item:files:%d", itemId)
 
 	// 1. 尝试从缓存获取
@@ -240,9 +237,7 @@ func (itemFileService *ItemFileService) GetImageUrlVOs(itemId int64) (imageUrlVO
 }
 
 // DeleteItemFile 删除项文件
-func (itemFileService *ItemFileService) DeleteItemFile(itemFileId int64) (err error) {
-	ctx := context.Background()
-
+func (itemFileService *ItemFileService) DeleteItemFile(ctx context.Context, itemFileId int64) (err error) {
 	// 先查询项文件
 	itemFile, err := itemFileService.itemFileRepo.FindByID(ctx, itemFileId)
 	if err != nil {
@@ -262,7 +257,7 @@ func (itemFileService *ItemFileService) DeleteItemFile(itemFileId int64) (err er
 	}
 
 	// 删除物理文件（异步）
-	go itemFileService.deletePhysicalFileAsync(itemFile.FileID, itemFile.ThumbnailFileID)
+	go itemFileService.deletePhysicalFileAsync(ctx, itemFile.FileID, itemFile.ThumbnailFileID)
 
 	// 删除数据库记录
 	err = itemFileService.itemFileRepo.Delete(ctx, itemFileId)
@@ -271,18 +266,16 @@ func (itemFileService *ItemFileService) DeleteItemFile(itemFileId int64) (err er
 	}
 
 	// 失效缓存
-	itemFileService.invalidateItemFilesCache(itemFile.ItemID)
+	itemFileService.invalidateItemFilesCache(ctx, itemFile.ItemID)
 	if datasetID > 0 {
-		itemFileService.invalidateDatasetStatsCache(datasetID)
+		itemFileService.invalidateDatasetStatsCache(ctx, datasetID)
 	}
 
 	return nil
 }
 
 // DeleteItemFileByItemId 根据项ID删除项文件
-func (itemFileService *ItemFileService) DeleteItemFileByItemId(itemId int64) (err error) {
-	ctx := context.Background()
-
+func (itemFileService *ItemFileService) DeleteItemFileByItemId(ctx context.Context, itemId int64) (err error) {
 	// 先查询所有项文件
 	itemFiles, err := itemFileService.itemFileRepo.FindByItemID(ctx, itemId)
 	if err != nil {
@@ -301,7 +294,7 @@ func (itemFileService *ItemFileService) DeleteItemFileByItemId(itemId int64) (er
 
 	// 删除物理文件（异步）
 	for _, fileID := range fileIDs {
-		go itemFileService.deletePhysicalFileAsync(fileID, nil)
+		go itemFileService.deletePhysicalFileAsync(ctx, fileID, nil)
 	}
 
 	// 删除数据库记录
@@ -311,14 +304,13 @@ func (itemFileService *ItemFileService) DeleteItemFileByItemId(itemId int64) (er
 	}
 
 	// 失效缓存
-	itemFileService.invalidateItemFilesCache(itemId)
+	itemFileService.invalidateItemFilesCache(ctx, itemId)
 
 	return nil
 }
 
 // GetItemFileById 根据ID获取项文件（带缓存），返回 ImageUrlVO
-func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (imageUrlVO vo.ImageUrlVO, err error) {
-	ctx := context.Background()
+func (itemFileService *ItemFileService) GetItemFileById(ctx context.Context, itemFileId int64) (imageUrlVO vo.ImageUrlVO, err error) {
 	cacheKey := fmt.Sprintf("item:file:%d", itemFileId)
 
 	// 1. 尝试从缓存获取
@@ -342,7 +334,7 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (image
 	}
 
 	// 查询关联文件
-	sysFile, fileErr := itemFileService.fileService.GetFileById(itemFile.FileID)
+	sysFile, fileErr := itemFileService.fileService.GetFileById(ctx, itemFile.FileID)
 	if fileErr != nil {
 		logger.Warn("查询关联文件失败", zap.Int64("fileID", itemFile.FileID), zap.Error(fileErr))
 	}
@@ -386,7 +378,7 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (image
 
 	// 设置缩略图URL
 	if itemFile.ThumbnailFileID != nil {
-		if thumbFile, err := itemFileService.fileService.GetFileById(*itemFile.ThumbnailFileID); err == nil {
+		if thumbFile, err := itemFileService.fileService.GetFileById(ctx, *itemFile.ThumbnailFileID); err == nil {
 			imageUrlVO.ThumbnailURL = utils.StringVal(thumbFile.URL)
 		}
 	}
@@ -402,9 +394,7 @@ func (itemFileService *ItemFileService) GetItemFileById(itemFileId int64) (image
 }
 
 // UpdateItemFileInfo 更新图片信息，返回更新后的 VO
-func (itemFileService *ItemFileService) UpdateItemFileInfo(itemFileID int64, form bo.ItemFileUpdateForm) (vo.ImageUrlVO, error) {
-	ctx := context.Background()
-
+func (itemFileService *ItemFileService) UpdateItemFileInfo(ctx context.Context, itemFileID int64, form bo.ItemFileUpdateForm) (vo.ImageUrlVO, error) {
 	itemFile, err := itemFileService.itemFileRepo.FindByID(ctx, itemFileID)
 	if err != nil {
 		return vo.ImageUrlVO{}, common.WrapBizError(common.DATABASE_ERROR, "查询项文件失败", err)
@@ -433,23 +423,22 @@ func (itemFileService *ItemFileService) UpdateItemFileInfo(itemFileID int64, for
 	}
 
 	// 失效缓存
-	itemFileService.invalidateItemFileCache(itemFileID)
-	itemFileService.invalidateItemFilesCache(itemFile.ItemID)
+	itemFileService.invalidateItemFileCache(ctx, itemFileID)
+	itemFileService.invalidateItemFilesCache(ctx, itemFile.ItemID)
 
 	// 返回更新后的 VO
-	return itemFileService.GetItemFileById(itemFileID)
+	return itemFileService.GetItemFileById(ctx, itemFileID)
 }
 
 // UpdateThumbnail 更新缩略图
-func (itemFileService *ItemFileService) UpdateThumbnail(itemFileID, thumbnailFileID int64) error {
-	ctx := context.Background()
+func (itemFileService *ItemFileService) UpdateThumbnail(ctx context.Context, itemFileID, thumbnailFileID int64) error {
 	err := itemFileService.itemFileRepo.UpdateThumbnail(ctx, itemFileID, thumbnailFileID)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "更新缩略图失败", err)
 	}
 
 	// 失效缓存
-	itemFileService.invalidateItemFileCache(itemFileID)
+	itemFileService.invalidateItemFileCache(ctx, itemFileID)
 
 	return nil
 }
@@ -457,7 +446,7 @@ func (itemFileService *ItemFileService) UpdateThumbnail(itemFileID, thumbnailFil
 // ========== 异步任务相关 ==========
 
 // submitThumbnailTask 提交缩略图生成任务
-func (itemFileService *ItemFileService) submitThumbnailTask(itemID, fileID, itemFileID int64) {
+func (itemFileService *ItemFileService) submitThumbnailTask(ctx context.Context, itemID, fileID, itemFileID int64) {
 	taskIDStr := fmt.Sprintf("thumb_%d_%d", fileID, itemFileID)
 
 	if itemFileService.taskExecutor == nil {
@@ -477,16 +466,16 @@ func (itemFileService *ItemFileService) submitThumbnailTask(itemID, fileID, item
 		Payload:   payload,
 		CreatedAt: time.Now(),
 	}
-	if err := itemFileService.taskExecutor.PublishTask(context.Background(), msg); err != nil {
+	if err := itemFileService.taskExecutor.PublishTask(ctx, msg); err != nil {
 		logger.Error("提交缩略图任务失败", zap.String("taskID", taskIDStr), zap.Error(err))
 	}
 }
 
 
 // deletePhysicalFileAsync 异步删除物理文件
-func (itemFileService *ItemFileService) deletePhysicalFileAsync(fileID int64, thumbFileID *int64) {
+func (itemFileService *ItemFileService) deletePhysicalFileAsync(ctx context.Context, fileID int64, thumbFileID *int64) {
 	// 查询文件路径
-	file, err := itemFileService.fileService.GetFileById(fileID)
+	file, err := itemFileService.fileService.GetFileById(ctx, fileID)
 	if err != nil {
 		logger.Warn("查询文件失败", zap.Int64("fileID", fileID), zap.Error(err))
 		return
@@ -499,7 +488,7 @@ func (itemFileService *ItemFileService) deletePhysicalFileAsync(fileID int64, th
 
 	// 如果有缩略图，也删除
 	if thumbFileID != nil {
-		thumbFile, err := itemFileService.fileService.GetFileById(*thumbFileID)
+		thumbFile, err := itemFileService.fileService.GetFileById(ctx, *thumbFileID)
 		if err == nil {
 			// TODO: 删除缩略图文件
 			logger.Info("删除缩略图文件",
@@ -512,31 +501,28 @@ func (itemFileService *ItemFileService) deletePhysicalFileAsync(fileID int64, th
 // ========== 缓存相关 ==========
 
 // invalidateItemFileCache 失效项文件缓存
-func (itemFileService *ItemFileService) invalidateItemFileCache(itemFileID int64) {
+func (itemFileService *ItemFileService) invalidateItemFileCache(ctx context.Context, itemFileID int64) {
 	if itemFileService.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	cacheKey := fmt.Sprintf("item:file:%d", itemFileID)
 	_ = itemFileService.cache.Delete(ctx, cacheKey)
 }
 
 // invalidateItemFilesCache 失效数据项下所有文件缓存
-func (itemFileService *ItemFileService) invalidateItemFilesCache(itemID int64) {
+func (itemFileService *ItemFileService) invalidateItemFilesCache(ctx context.Context, itemID int64) {
 	if itemFileService.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	cacheKey := fmt.Sprintf("item:files:%d", itemID)
 	_ = itemFileService.cache.Delete(ctx, cacheKey)
 }
 
 // invalidateDatasetStatsCache 失效数据集统计缓存
-func (itemFileService *ItemFileService) invalidateDatasetStatsCache(datasetID int64) {
+func (itemFileService *ItemFileService) invalidateDatasetStatsCache(ctx context.Context, datasetID int64) {
 	if itemFileService.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	cacheKey := "dataset:stats:" + fmt.Sprintf("%d", datasetID)
 	_ = itemFileService.cache.Delete(ctx, cacheKey)
 }

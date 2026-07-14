@@ -59,14 +59,12 @@ func NewDatasetItemService(
 }
 
 // CreateDatasetItem 创建数据集项（可选名称）
-func (datasetItemService *DatasetItemService) CreateDatasetItem(datasetId int64) (model.SysDatasetItem, error) {
-	return datasetItemService.CreateDatasetItemWithName(datasetId, "")
+func (datasetItemService *DatasetItemService) CreateDatasetItem(ctx context.Context, datasetId int64) (model.SysDatasetItem, error) {
+	return datasetItemService.CreateDatasetItemWithName(ctx, datasetId, "")
 }
 
 // CreateDatasetItemWithName 创建带名称的数据集项
-func (datasetItemService *DatasetItemService) CreateDatasetItemWithName(datasetId int64, itemName string) (sysDatasetItem model.SysDatasetItem, err error) {
-	ctx := context.Background()
-
+func (datasetItemService *DatasetItemService) CreateDatasetItemWithName(ctx context.Context, datasetId int64, itemName string) (sysDatasetItem model.SysDatasetItem, err error) {
 	// 校验数据集是否存在
 	dataset, err := datasetItemService.datasetRepo.FindByID(ctx, datasetId)
 	if err != nil {
@@ -87,16 +85,15 @@ func (datasetItemService *DatasetItemService) CreateDatasetItemWithName(datasetI
 	}
 
 	// 失效统计和列表缓存
-	datasetItemService.invalidateDatasetStatsCache(datasetId)
-	datasetItemService.invalidateDatasetItemsCache(datasetId)
+	datasetItemService.invalidateDatasetStatsCache(ctx, datasetId)
+	datasetItemService.invalidateDatasetItemsCache(ctx, datasetId)
 
 	return sysDatasetItem, nil
 }
 
 // GetDatasetItemsByDatasetID 获取数据集下的所有数据项
 // 支持缓存，TTL 10分钟
-func (datasetItemService *DatasetItemService) GetDatasetItemsByDatasetID(datasetID int64) ([]model.SysDatasetItem, error) {
-	ctx := context.Background()
+func (datasetItemService *DatasetItemService) GetDatasetItemsByDatasetID(ctx context.Context, datasetID int64) ([]model.SysDatasetItem, error) {
 	cacheKey := fmt.Sprintf("dataset:items:%d", datasetID)
 
 	if datasetItemService.cache != nil {
@@ -129,9 +126,7 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByDatasetID(dataset
 
 // GetDatasetItemsByPage 分页查询数据项列表（支持关键字搜索、雾霾程度和场景类型筛选）
 // 使用批量查询避免 N+1 问题：一次性获取所有数据项的关联文件
-func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pageSize int, datasetId int64, sceneType, keyword, hazeLevel string) ([]*vo.ImageItemVO, int64, error) {
-	ctx := context.Background()
-
+func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(ctx context.Context, pageNum, pageSize int, datasetId int64, sceneType, keyword, hazeLevel string) ([]*vo.ImageItemVO, int64, error) {
 	items, total, err := datasetItemService.itemRepo.FindPage(ctx, datasetId, pageNum, pageSize)
 	if err != nil {
 		return nil, 0, common.WrapBizError(common.DATABASE_ERROR, "查询数据项分页列表失败", err)
@@ -143,11 +138,11 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(pageNum, pag
 		total = int64(len(items))
 	}
 	if hazeLevel != "" {
-		items = filterItemsByHazeLevel(items, hazeLevel, datasetItemService.itemFileRepo)
+		items = filterItemsByHazeLevel(ctx, items, hazeLevel, datasetItemService.itemFileRepo)
 		total = int64(len(items))
 	}
 	if sceneType != "" {
-		items = filterItemsBySceneType(items, sceneType, datasetItemService.itemFileRepo)
+		items = filterItemsBySceneType(ctx, items, sceneType, datasetItemService.itemFileRepo)
 		total = int64(len(items))
 	}
 
@@ -278,8 +273,7 @@ func boolToInt(b bool) int {
 }
 
 // GetDatasetItemById 根据ID获取数据集项（带缓存）
-func (datasetItemService *DatasetItemService) GetDatasetItemById(datasetItemId int64) (sysDatasetItem model.SysDatasetItem, err error) {
-	ctx := context.Background()
+func (datasetItemService *DatasetItemService) GetDatasetItemById(ctx context.Context, datasetItemId int64) (sysDatasetItem model.SysDatasetItem, err error) {
 	cacheKey := fmt.Sprintf("dataset:item:%d", datasetItemId)
 
 	if datasetItemService.cache != nil {
@@ -314,16 +308,16 @@ func (datasetItemService *DatasetItemService) GetDatasetItemById(datasetItemId i
 }
 
 // GetDatasetItemVOByID 根据ID获取数据项VO（带文件信息）
-func (datasetItemService *DatasetItemService) GetDatasetItemVOByID(itemID int64) (*vo.ImageItemVO, error) {
+func (datasetItemService *DatasetItemService) GetDatasetItemVOByID(ctx context.Context, itemID int64) (*vo.ImageItemVO, error) {
 	// 查询数据项
-	item, err := datasetItemService.GetDatasetItemById(itemID)
+	item, err := datasetItemService.GetDatasetItemById(ctx, itemID)
 	if err != nil {
 		return nil, err
 	}
 
 	// 获取关联文件
 	itemFileService := datasetItemService.itemFileService
-	allImages, err := itemFileService.GetImageUrlVOs(itemID)
+	allImages, err := itemFileService.GetImageUrlVOs(ctx, itemID)
 	if err != nil {
 		logger.Warn("获取数据项文件失败", zap.Int64("itemID", itemID), zap.Error(err))
 		allImages = []vo.ImageUrlVO{}
@@ -371,9 +365,7 @@ func (datasetItemService *DatasetItemService) GetDatasetItemVOByID(itemID int64)
 }
 
 // DeleteDatasetItem 删除数据集项
-func (datasetItemService *DatasetItemService) DeleteDatasetItem(datasetItemId int64) (err error) {
-	ctx := context.Background()
-
+func (datasetItemService *DatasetItemService) DeleteDatasetItem(ctx context.Context, datasetItemId int64) (err error) {
 	// 先查询数据项
 	item, err := datasetItemService.itemRepo.FindByID(ctx, datasetItemId)
 	if err != nil || item == nil {
@@ -382,7 +374,7 @@ func (datasetItemService *DatasetItemService) DeleteDatasetItem(datasetItemId in
 
 	// 删除关联的项文件（由 ItemFileService 负责）
 	itemFileService := datasetItemService.itemFileService
-	err = itemFileService.DeleteItemFileByItemId(datasetItemId)
+	err = itemFileService.DeleteItemFileByItemId(ctx, datasetItemId)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除项文件失败", err)
 	}
@@ -394,17 +386,15 @@ func (datasetItemService *DatasetItemService) DeleteDatasetItem(datasetItemId in
 	}
 
 	// 失效缓存
-	datasetItemService.invalidateItemCache(item.ID)
-	datasetItemService.invalidateDatasetItemsCache(item.DatasetID)
-	datasetItemService.invalidateDatasetStatsCache(item.DatasetID)
+	datasetItemService.invalidateItemCache(ctx, item.ID)
+	datasetItemService.invalidateDatasetItemsCache(ctx, item.DatasetID)
+	datasetItemService.invalidateDatasetStatsCache(ctx, item.DatasetID)
 
 	return nil
 }
 
 // UpdateDatasetItem 更新数据集项，返回更新后的 VO
-func (datasetItemService *DatasetItemService) UpdateDatasetItem(datasetItemId int64, itemName string) (*vo.ImageItemVO, error) {
-	ctx := context.Background()
-
+func (datasetItemService *DatasetItemService) UpdateDatasetItem(ctx context.Context, datasetItemId int64, itemName string) (*vo.ImageItemVO, error) {
 	// 先查询数据项
 	item, err := datasetItemService.itemRepo.FindByID(ctx, datasetItemId)
 	if err != nil || item == nil {
@@ -418,14 +408,14 @@ func (datasetItemService *DatasetItemService) UpdateDatasetItem(datasetItemId in
 	}
 
 	// 失效缓存
-	datasetItemService.invalidateItemCache(item.ID)
+	datasetItemService.invalidateItemCache(ctx, item.ID)
 
 	// 返回更新后的 VO
-	return datasetItemService.GetDatasetItemVOByID(datasetItemId)
+	return datasetItemService.GetDatasetItemVOByID(ctx, datasetItemId)
 }
 
 // BatchUpdateDatasetItems 批量更新数据项
-func (datasetItemService *DatasetItemService) BatchUpdateDatasetItems(updates map[int64]string) (int, error) {
+func (datasetItemService *DatasetItemService) BatchUpdateDatasetItems(ctx context.Context, updates map[int64]string) (int, error) {
 	if len(updates) == 0 {
 		return 0, nil
 	}
@@ -434,7 +424,7 @@ func (datasetItemService *DatasetItemService) BatchUpdateDatasetItems(updates ma
 	itemIDs := make([]int64, 0, len(updates))
 
 	for itemID, itemName := range updates {
-		_, err := datasetItemService.UpdateDatasetItem(itemID, itemName)
+		_, err := datasetItemService.UpdateDatasetItem(ctx, itemID, itemName)
 		if err != nil {
 			logger.Warn("更新数据项失败", zap.Int64("itemID", itemID), zap.Error(err))
 			continue
@@ -445,7 +435,7 @@ func (datasetItemService *DatasetItemService) BatchUpdateDatasetItems(updates ma
 
 	// 批量失效缓存
 	for _, itemID := range itemIDs {
-		datasetItemService.invalidateItemCache(itemID)
+		datasetItemService.invalidateItemCache(ctx, itemID)
 	}
 
 	return updatedCount, nil
@@ -454,11 +444,10 @@ func (datasetItemService *DatasetItemService) BatchUpdateDatasetItems(updates ma
 // ========== 缓存相关 ==========
 
 // invalidateItemCache 失效数据项缓存
-func (datasetItemService *DatasetItemService) invalidateItemCache(itemID int64) {
+func (datasetItemService *DatasetItemService) invalidateItemCache(ctx context.Context, itemID int64) {
 	if datasetItemService.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	cacheKey := fmt.Sprintf("dataset:item:%d", itemID)
 	if err := datasetItemService.cache.Delete(ctx, cacheKey); err != nil {
 		logger.Warn("失效数据项缓存失败", zap.String("key", cacheKey), zap.Error(err))
@@ -466,11 +455,10 @@ func (datasetItemService *DatasetItemService) invalidateItemCache(itemID int64) 
 }
 
 // invalidateDatasetItemsCache 失效数据集下所有数据项缓存
-func (datasetItemService *DatasetItemService) invalidateDatasetItemsCache(datasetID int64) {
+func (datasetItemService *DatasetItemService) invalidateDatasetItemsCache(ctx context.Context, datasetID int64) {
 	if datasetItemService.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	cacheKey := fmt.Sprintf("dataset:items:%d", datasetID)
 	if err := datasetItemService.cache.Delete(ctx, cacheKey); err != nil {
 		logger.Warn("失效数据项列表缓存失败", zap.String("key", cacheKey), zap.Error(err))
@@ -478,11 +466,10 @@ func (datasetItemService *DatasetItemService) invalidateDatasetItemsCache(datase
 }
 
 // invalidateDatasetStatsCache 失效数据集统计缓存
-func (datasetItemService *DatasetItemService) invalidateDatasetStatsCache(datasetID int64) {
+func (datasetItemService *DatasetItemService) invalidateDatasetStatsCache(ctx context.Context, datasetID int64) {
 	if datasetItemService.cache == nil {
 		return
 	}
-	ctx := context.Background()
 	keys := []string{
 		fmt.Sprintf("dataset:stats:%d", datasetID),
 		fmt.Sprintf("dataset:leaf:%d", datasetID),
@@ -511,11 +498,10 @@ func filterItemsByKeyword(items []model.SysDatasetItem, keyword string) []model.
 }
 
 // filterItemsByHazeLevel 按雾霾程度过滤（需关联 item_file 表）
-func filterItemsByHazeLevel(items []model.SysDatasetItem, hazeLevel string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
+func filterItemsByHazeLevel(ctx context.Context, items []model.SysDatasetItem, hazeLevel string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
 	if len(items) == 0 {
 		return items
 	}
-	ctx := context.Background()
 	ids := make([]int64, len(items))
 	for i, item := range items {
 		ids[i] = item.ID
@@ -541,11 +527,10 @@ func filterItemsByHazeLevel(items []model.SysDatasetItem, hazeLevel string, item
 }
 
 // filterItemsBySceneType 按场景类型过滤（需关联 item_file 表）
-func filterItemsBySceneType(items []model.SysDatasetItem, sceneType string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
+func filterItemsBySceneType(ctx context.Context, items []model.SysDatasetItem, sceneType string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
 	if len(items) == 0 {
 		return items
 	}
-	ctx := context.Background()
 	ids := make([]int64, len(items))
 	for i, item := range items {
 		ids[i] = item.ID

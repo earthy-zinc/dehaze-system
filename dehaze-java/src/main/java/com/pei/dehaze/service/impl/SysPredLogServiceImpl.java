@@ -22,6 +22,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
  * 模型预测服务 —— 生产级实现
  * <p>
@@ -107,11 +113,21 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
 
         Page<SysPredLog> result = this.page(page, wrapper);
         Page<PredLogVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+
+        // 批量预加载算法名称，避免分页内逐条 getById 触发 N+1 查询
+        Set<Long> algorithmIds = result.getRecords().stream()
+                .map(SysPredLog::getAlgorithmId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> algorithmNameMap = algorithmIds.isEmpty()
+                ? Collections.emptyMap()
+                : algorithmService.listByIds(algorithmIds).stream()
+                        .collect(Collectors.toMap(SysAlgorithm::getId, SysAlgorithm::getName, (a, b) -> a));
+
         voPage.setRecords(result.getRecords().stream().map(log -> {
             PredLogVO vo = new PredLogVO();
             BeanUtil.copyProperties(log, vo);
-            SysAlgorithm algorithm = algorithmService.getById(log.getAlgorithmId());
-            vo.setAlgorithmName(algorithm != null ? algorithm.getName() : "未知算法");
+            vo.setAlgorithmName(algorithmNameMap.getOrDefault(log.getAlgorithmId(), "未知算法"));
             return vo;
         }).toList());
         return voPage;

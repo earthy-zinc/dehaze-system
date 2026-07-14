@@ -363,7 +363,7 @@ func (s *AuthService) handleMultiPointLogin(ctx context.Context, newToken, usern
 	}
 
 	// 存储新Token
-	if err := security.SetJWT(newToken, username); err != nil {
+	if err := security.SetJWT(ctx, newToken, username); err != nil {
 		logger.Error("存储用户登录状态失败", zap.Error(err))
 		return common.WrapBizError(common.SYSTEM_EXECUTION_ERROR, "设置登录状态失败", err)
 	}

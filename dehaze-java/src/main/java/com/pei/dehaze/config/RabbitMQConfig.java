@@ -16,6 +16,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+
 /**
  * RabbitMQ 配置
  * <p>
@@ -39,7 +42,12 @@ public class RabbitMQConfig {
     @Bean
     @Primary
     public ConnectionFactory rabbitConnectionFactory() {
-        CachingConnectionFactory factory = new CachingConnectionFactory(properties.getUrl());
+        CachingConnectionFactory factory = new CachingConnectionFactory();
+        try {
+            factory.setUri(new URI(properties.getUrl()));
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Invalid RabbitMQ URI: " + properties.getUrl(), e);
+        }
         factory.setPublisherConfirmType(CachingConnectionFactory.ConfirmType.CORRELATED);
         factory.setPublisherReturns(true);
         log.info("RabbitMQ 连接工厂已初始化: {}", properties.getUrl());
@@ -108,36 +116,35 @@ public class RabbitMQConfig {
     }
 
     /**
-     * 导出任务队列
+     * 死信交换机
+     */
+    @Bean
+    public DirectExchange taskDlxExchange() {
+        return ExchangeBuilder
+                .directExchange(properties.getExchange().getName() + ".dlx")
+                .durable(true)
+                .build();
+    }
+
+    /**
+     * 导出任务队列（配置 DLX：过期或 reject 的消息进入死信队列）
      */
     @Bean
     public Queue exportQueue() {
         return QueueBuilder
                 .durable("task.export")
                 .withArgument("x-message-ttl", 86400000) // 24小时 TTL
+                .withArgument("x-dead-letter-exchange", properties.getExchange().getName() + ".dlx")
+                .withArgument("x-dead-letter-routing-key", resolveRoutingKey("export.dlx"))
                 .build();
     }
 
     /**
-     * 批量下载队列
+     * 导出任务死信队列
      */
     @Bean
-    public Queue downloadQueue() {
-        return QueueBuilder
-                .durable("task.download")
-                .withArgument("x-message-ttl", 86400000)
-                .build();
-    }
-
-    /**
-     * 缩略图生成队列
-     */
-    @Bean
-    public Queue thumbnailQueue() {
-        return QueueBuilder
-                .durable("task.thumbnail")
-                .withArgument("x-message-ttl", 86400000)
-                .build();
+    public Queue exportDlxQueue() {
+        return QueueBuilder.durable("task.export.dlx").build();
     }
 
     /**
@@ -149,19 +156,11 @@ public class RabbitMQConfig {
     }
 
     /**
-     * 绑定下载队列到交换机
+     * 绑定导出死信队列到死信交换机
      */
     @Bean
-    public Binding downloadBinding(Queue downloadQueue, DirectExchange taskExchange) {
-        return BindingBuilder.bind(downloadQueue).to(taskExchange).with(resolveRoutingKey("download"));
-    }
-
-    /**
-     * 绑定缩略图队列到交换机
-     */
-    @Bean
-    public Binding thumbnailBinding(Queue thumbnailQueue, DirectExchange taskExchange) {
-        return BindingBuilder.bind(thumbnailQueue).to(taskExchange).with(resolveRoutingKey("thumbnail"));
+    public Binding exportDlxBinding(Queue exportDlxQueue, DirectExchange taskDlxExchange) {
+        return BindingBuilder.bind(exportDlxQueue).to(taskDlxExchange).with(resolveRoutingKey("export.dlx"));
     }
 
     /**

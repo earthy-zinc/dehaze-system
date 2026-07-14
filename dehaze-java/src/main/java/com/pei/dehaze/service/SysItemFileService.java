@@ -2,6 +2,7 @@ package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.pei.dehaze.model.bo.ItemFileBO;
+import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.form.BatchDeleteForm;
 import com.pei.dehaze.model.form.ItemFileUpdateForm;
@@ -9,6 +10,7 @@ import com.pei.dehaze.model.vo.BatchDeleteResultVO;
 import com.pei.dehaze.model.vo.ImageUrlVO;
 
 import java.util.List;
+import java.util.Map;
 
 public interface SysItemFileService extends IService<SysItemFile> {
 
@@ -71,11 +73,21 @@ public interface SysItemFileService extends IService<SysItemFile> {
     void incrementUsageCount(Long id);
 
     /**
+     * 批量预加载文件信息，构建 fileId -> SysFile 的Map
+     * 用于避免转换VO时的N+1查询
+     *
+     * @param itemFiles 数据项文件列表
+     * @return 文件Map（fileId -> SysFile）
+     */
+    Map<Long, SysFile> buildFileMap(List<SysItemFile> itemFiles);
+
+    /**
      * 将SysItemFile实体转换为ImageUrlVO
-     * 用于批量查询时避免N+1问题
+     * 使用预加载的文件Map避免N+1查询
      *
      * @param itemFile 数据项文件实体
+     * @param fileMap  预加载的文件Map（fileId -> SysFile），由调用方通过 {@link #buildFileMap} 批量构建
      * @return 图片URL信息VO
      */
-    ImageUrlVO convertToImageUrlVO(SysItemFile itemFile);
+    ImageUrlVO convertToImageUrlVO(SysItemFile itemFile, Map<Long, SysFile> fileMap);
 }

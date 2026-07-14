@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/pkg/config/options"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/trace"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
@@ -227,6 +228,9 @@ func (p *Publisher) Publish(ctx context.Context, routingKey string, body []byte)
 	if traceParent != "" {
 		headers[trace.HeaderNameTraceParent] = traceParent
 	}
+	if userID := database.GetUserID(ctx); userID > 0 {
+		headers[userIDHeader] = userID
+	}
 
 	exchange := p.resolveExchange()
 	err := ch.PublishWithContext(ctx, exchange, routingKey, false, false, amqp.Publishing{
@@ -270,6 +274,13 @@ func (p *Publisher) getChannel() *amqp.Channel {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.ch
+}
+
+// IsConnected 返回当前 RabbitMQ 连接是否活跃
+func (p *Publisher) IsConnected() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.conn != nil && !p.conn.IsClosed()
 }
 
 // Close 关闭连接并停止重连协程

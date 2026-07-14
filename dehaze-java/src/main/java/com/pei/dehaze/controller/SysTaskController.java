@@ -34,8 +34,11 @@ public class SysTaskController {
         summary = "创建任务",
         description = "创建异步任务，支持多种任务类型：dataset_export（数据集导出）、item_download（数据项下载）、batch_download（批量下载）"
     )
-    public Result<TaskVO> createTask(@Valid @RequestBody ExportTaskCreateForm form) {
-        TaskVO task = taskService.createTask(form);
+    public Result<TaskVO> createTask(
+            @Valid @RequestBody ExportTaskCreateForm form,
+            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
+    ) {
+        TaskVO task = taskService.createTask(form, idempotencyKey);
         return Result.success(task);
     }
 
@@ -83,6 +86,19 @@ public class SysTaskController {
         @PathVariable String taskId
     ) {
         taskService.cancelTask(taskId);
+    }
+
+    @PostMapping("/{taskId}/retry")
+    @Operation(
+        summary = "重试失败的任务",
+        description = "仅允许 FAILED 状态的任务重试，重置重试次数后重新提交执行"
+    )
+    public Result<TaskVO> retryTask(
+        @Parameter(description = "任务ID", required = true)
+        @PathVariable String taskId
+    ) {
+        TaskVO task = taskService.retryTask(taskId);
+        return Result.success(task);
     }
 
     @GetMapping

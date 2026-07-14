@@ -6,6 +6,7 @@
 
 import asyncio
 import contextlib
+import contextvars
 import json
 import logging
 import time
@@ -14,19 +15,26 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from redis.asyncio import Redis
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
+from app.core.constants import SYSTEM_USER_ID
 from app.core.exceptions import BusinessException, TaskCancelledException
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.metrics.task_metrics import TaskMetricsContext
+from app.models.base import set_current_user_id
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import TaskStatus, TaskType
 from app.repository.task_repository import task_repository
 
 logger = logging.getLogger(__name__)
+
+# 幂等键 Redis 前缀和 TTL
+IDEMPOTENCY_KEY_PREFIX = "idempotency:task:"
+IDEMPOTENCY_KEY_TTL = 24 * 3600  # 24 小时
 
 
 class TaskServiceAsync:
@@ -52,6 +60,7 @@ class TaskServiceAsync:
         target_ids: Optional[List[int]],
         options: Optional[Dict[str, Any]],
         user_id: int,
+        idempotency_key: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         创建导出任务
@@ -64,6 +73,7 @@ class TaskServiceAsync:
             target_ids: 批量目标 ID 列表
             options: 导出选项
             user_id: 当前用户 ID
+            idempotency_key: 客户端幂等键（HTTP Idempotency-Key 头），相同键返回已有任务
 
         Returns:
             任务信息字典
@@ -78,6 +88,16 @@ class TaskServiceAsync:
         valid_types = [t.value for t in TaskType]
         if task_type not in valid_types:
             raise BusinessException(ResultCode.TASK_TYPE_UNSUPPORTED)
+
+        # 幂等去重：相同 idempotency_key 直接返回已有任务
+        if idempotency_key:
+            existing_task = await task_repository.get_by_idempotency_key(db, idempotency_key)
+            if existing_task is not None:
+                logger.info(
+                    "幂等键命中，返回已有任务: taskId=%s, idempotencyKey=%s",
+                    existing_task.task_id, idempotency_key,
+                )
+                return TaskServiceAsync._task_to_dict(existing_task)
 
         # 生成任务 ID
         task_id = str(uuid.uuid4())
@@ -97,17 +117,34 @@ class TaskServiceAsync:
                 'targetIds': target_ids or [],
                 'options': options or {}
             }),
-            created_by=user_id,
+            create_by=user_id,
             create_time=now,
             expires_at=now +
-            timedelta(hours=TaskServiceAsync.TASK_EXPIRE_HOURS)
+            timedelta(hours=TaskServiceAsync.TASK_EXPIRE_HOURS),
+            idempotency_key=idempotency_key,
         )
 
-        # 保存任务到数据库
+        # 保存任务到数据库（处理并发场景下的唯一约束冲突）
         db.add(sys_task)
-        await db.flush()
-        await db.refresh(sys_task)
-        await db.commit()
+        try:
+            await db.flush()
+            await db.refresh(sys_task)
+            await db.commit()
+        except IntegrityError:
+            await db.rollback()
+            # 并发场景：另一个请求已用相同 idempotency_key 创建了任务
+            if idempotency_key:
+                existing_task = await task_repository.get_by_idempotency_key(db, idempotency_key)
+                if existing_task is not None:
+                    logger.info(
+                        "并发幂等键命中，返回已有任务: taskId=%s", existing_task.task_id)
+                    return TaskServiceAsync._task_to_dict(existing_task)
+            raise
+
+        # 缓存幂等键映射（快速路径）
+        if idempotency_key:
+            idempotency_redis_key = IDEMPOTENCY_KEY_PREFIX + idempotency_key
+            await redis.setex(idempotency_redis_key, IDEMPOTENCY_KEY_TTL, task_id)
 
         # 缓存任务信息到 Redis
         cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
@@ -164,7 +201,7 @@ class TaskServiceAsync:
             try:
                 task_data = json.loads(cached_task)
                 # 权限校验
-                if task_data.get("created_by") != user_id:
+                if task_data.get("create_by") != user_id:
                     raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
                 return task_data
             except json.JSONDecodeError as e:
@@ -177,7 +214,7 @@ class TaskServiceAsync:
             return None
 
         # 权限校验
-        if sys_task.created_by != user_id:
+        if sys_task.create_by != user_id:
             raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
 
         # 更新缓存
@@ -248,7 +285,7 @@ class TaskServiceAsync:
             raise BusinessException(ResultCode.TASK_NOT_FOUND)
 
         # 权限校验
-        if sys_task.created_by != user_id:
+        if sys_task.create_by != user_id:
             raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
 
         # 检查任务状态
@@ -295,7 +332,7 @@ class TaskServiceAsync:
             raise BusinessException(ResultCode.TASK_NOT_FOUND)
 
         # 权限校验
-        if sys_task.created_by != user_id:
+        if sys_task.create_by != user_id:
             raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
 
         # 检查任务状态
@@ -326,6 +363,82 @@ class TaskServiceAsync:
         await db.commit()
         logger.info("取消导出任务成功: taskId=%s", task_id)
         return True
+
+    @staticmethod
+    async def retry_task(
+        db: AsyncSession,
+        redis: Redis,
+        task_id: str,
+        user_id: int,
+    ) -> Dict[str, Any]:
+        """
+        重试失败的任务（重放入口）
+
+        仅允许 FAILED 状态的任务重试，重置 retry_count 后重新投递到 MQ。
+
+        Args:
+            db: 异步数据库会话
+            redis: Redis 异步客户端
+            task_id: 任务 ID
+            user_id: 当前用户 ID（权限校验）
+
+        Returns:
+            任务信息字典
+
+        Raises:
+            BusinessException: 任务不存在、无权限或状态不允许重试
+        """
+        if not task_id:
+            raise BusinessException(ResultCode.TASK_PARAM_ERROR, "任务ID不能为空")
+
+        sys_task = await task_repository.get_by_task_id(db, task_id)
+        if sys_task is None:
+            raise BusinessException(ResultCode.TASK_NOT_FOUND)
+
+        # 权限校验
+        if sys_task.create_by != user_id:
+            raise BusinessException(ResultCode.TASK_UNAUTHORIZED)
+
+        # 仅允许 FAILED 状态任务重试
+        if sys_task.status != TaskStatus.FAILED.value:
+            raise BusinessException(
+                ResultCode.TASK_STATUS_INVALID, "仅失败任务可重试")
+
+        # 解析原始参数
+        try:
+            params = json.loads(sys_task.params) if sys_task.params else {}
+        except json.JSONDecodeError:
+            params = {}
+
+        # 重置任务状态
+        sys_task.status = TaskStatus.PENDING.value
+        sys_task.progress = 0
+        sys_task.processed_files = 0
+        sys_task.error_message = None
+        sys_task.started_at = None
+        sys_task.completed_at = None
+        sys_task.retry_count = 0
+        sys_task.worker_id = None
+        sys_task.expires_at = datetime.now() + timedelta(
+            hours=TaskServiceAsync.TASK_EXPIRE_HOURS)
+        await db.commit()
+
+        # 更新缓存
+        await TaskServiceAsync._update_cache(redis, sys_task)
+
+        # 重新投递到 MQ
+        await TaskServiceAsync._dispatch_task(
+            db_task_id=sys_task.id,
+            task_id=sys_task.task_id,
+            task_type=sys_task.task_type,
+            target_id=params.get('targetId'),
+            target_ids=params.get('targetIds'),
+            options=params.get('options'),
+            user_id=user_id,
+        )
+
+        logger.info("重试任务: taskId=%s, userId=%s", task_id, user_id)
+        return TaskServiceAsync._task_to_dict(sys_task)
 
     @staticmethod
     async def _dispatch_task(
@@ -359,6 +472,7 @@ class TaskServiceAsync:
                         "target_id": target_id,
                         "target_ids": target_ids or [],
                         "options": options or {},
+                        "user_id": user_id,
                     },
                 )
                 logger.info("任务已发布到 RabbitMQ: taskId=%s", task_id)
@@ -403,11 +517,14 @@ class TaskServiceAsync:
             'processed_files': task.processed_files,
             'result': task.result,
             'error_message': task.error_message,
-            'created_by': task.created_by,
+            'create_by': task.create_by,
             'created_at': task.create_time.isoformat() if task.create_time else None,
             'started_at': task.started_at.isoformat() if task.started_at else None,
             'completed_at': task.completed_at.isoformat() if task.completed_at else None,
-            'expires_at': task.expires_at.isoformat() if task.expires_at else None
+            'expires_at': task.expires_at.isoformat() if task.expires_at else None,
+            'idempotency_key': task.idempotency_key,
+            'retry_count': task.retry_count,
+            'worker_id': task.worker_id,
         }
 
     @staticmethod
@@ -434,6 +551,16 @@ class TaskServiceAsync:
 
             # 更新缓存
             await TaskServiceAsync._update_cache(redis, sys_task)
+
+            # WebSocket 推送任务状态变更
+            await TaskServiceAsync._push_task_ws_message(sys_task, {
+                "type": "task_status",
+                "task_id": sys_task.task_id,
+                "status": status,
+                "result": result,
+                "error_message": error_message,
+                "timestamp": datetime.now().isoformat(),
+            })
 
     @staticmethod
     async def _update_task_progress(
@@ -482,6 +609,17 @@ class TaskServiceAsync:
             # 更新主缓存
             await TaskServiceAsync._update_cache(redis, sys_task)
 
+            # WebSocket 推送任务进度
+            await TaskServiceAsync._push_task_ws_message(sys_task, {
+                "type": "task_progress",
+                "task_id": sys_task.task_id,
+                "progress": progress,
+                "status": sys_task.status,
+                "processed_files": processed_files,
+                "total_files": total_files,
+                "timestamp": datetime.now().isoformat(),
+            })
+
             # 更新频率控制状态
             if _last_update is not None:
                 _last_update["time"] = time.monotonic()
@@ -507,6 +645,16 @@ class TaskServiceAsync:
             is_cancelled = is_cancelled.decode('utf-8')
         return is_cancelled == 'true'
 
+    @staticmethod
+    async def _push_task_ws_message(sys_task: SysTask, message: Dict[str, Any]) -> None:
+        """通过 WebSocket 推送任务消息给任务创建者（跨 Worker）"""
+        try:
+            from app.service.websocket_service import manager as ws_manager
+            if sys_task.create_by is not None:
+                await ws_manager.send_personal(sys_task.create_by, message)
+        except Exception as e:
+            logger.debug("WebSocket 推送失败（不影响任务执行）: %s", e)
+
     # ==================== 后台任务执行 ====================
 
     @staticmethod
@@ -529,94 +677,101 @@ class TaskServiceAsync:
             target_ids: 批量目标 ID 列表
             options: 导出选项
         """
-        redis = await get_redis_client()
-        metrics_enabled = settings.PROMETHEUS_ENABLED
-
+        set_current_user_id(SYSTEM_USER_ID)
         try:
-            async with get_db_session() as db:
-                logger.info("开始执行导出任务: taskId=%s, type=%s", task_id, task_type)
+            redis = await get_redis_client()
+            metrics_enabled = settings.PROMETHEUS_ENABLED
 
-                # 查询任务（使用 repository）
-                sys_task = await task_repository.get_by_id(db, db_task_id)
+            try:
+                async with get_db_session() as db:
+                    logger.info("开始执行导出任务: taskId=%s, type=%s", task_id, task_type)
 
-                if sys_task is None:
-                    logger.error("任务不存在: taskId=%s", task_id)
-                    return
+                    # 查询任务（使用 repository）
+                    sys_task = await task_repository.get_by_id(db, db_task_id)
 
-                try:
-                    # 更新任务状态为 processing
-                    sys_task.status = TaskStatus.PROCESSING.value
-                    sys_task.started_at = datetime.now()
-                    await db.commit()
-                    await TaskServiceAsync._update_cache(redis, sys_task)
+                    if sys_task is None:
+                        logger.error("任务不存在: taskId=%s", task_id)
+                        return
 
-                    # 使用 TaskMetricsContext 自动管理指标
-                    metrics_cm = TaskMetricsContext(
-                        task_type) if metrics_enabled else contextlib.AsyncExitStack()
-                    async with metrics_cm as metrics_ctx:
+                    # 恢复任务创建者上下文，用于审计字段填充
+                    set_current_user_id(sys_task.create_by)
 
-                        # 委托给策略执行器
-                        from app.service.task.factory import \
-                            TaskStrategyFactory
-                        strategy = TaskStrategyFactory.get_strategy(task_type)
+                    try:
+                        # 更新任务状态为 processing
+                        sys_task.status = TaskStatus.PROCESSING.value
+                        sys_task.started_at = datetime.now()
+                        await db.commit()
+                        await TaskServiceAsync._update_cache(redis, sys_task)
 
-                        # 进度频率控制状态
-                        progress_state = {"time": 0.0, "progress": 0}
+                        # 使用 TaskMetricsContext 自动管理指标
+                        metrics_cm = TaskMetricsContext(
+                            task_type) if metrics_enabled else contextlib.AsyncExitStack()
+                        async with metrics_cm as metrics_ctx:
 
-                        async def progress_callback(processed: int, total: int) -> None:
-                            """进度回调（带频率控制）"""
-                            await TaskServiceAsync._update_task_progress(
-                                db, redis, db_task_id, processed, total,
-                                _last_update=progress_state,
+                            # 委托给策略执行器
+                            from app.service.task.factory import \
+                                TaskStrategyFactory
+                            strategy = TaskStrategyFactory.get_strategy(task_type)
+
+                            # 进度频率控制状态
+                            progress_state = {"time": 0.0, "progress": 0}
+
+                            async def progress_callback(processed: int, total: int) -> None:
+                                """进度回调（带频率控制）"""
+                                await TaskServiceAsync._update_task_progress(
+                                    db, redis, db_task_id, processed, total,
+                                    _last_update=progress_state,
+                                )
+
+                            async def cancel_checker() -> bool:
+                                """取消检测回调"""
+                                return await TaskServiceAsync._is_task_cancelled(redis, task_id)
+
+                            download_url = await strategy.execute(
+                                db=db,
+                                sys_task=sys_task,
+                                target_id=target_id,
+                                target_ids=target_ids,
+                                options=options or {},
+                                progress_callback=progress_callback,
+                                cancel_checker=cancel_checker,
                             )
 
-                        async def cancel_checker() -> bool:
-                            """取消检测回调"""
-                            return await TaskServiceAsync._is_task_cancelled(redis, task_id)
+                            if download_url:
+                                await TaskServiceAsync._update_task_status(
+                                    db, redis, db_task_id, TaskStatus.COMPLETED.value, download_url, None
+                                )
+                                logger.info(
+                                    "导出任务完成: taskId=%s, downloadUrl=%s", task_id, download_url)
+                            else:
+                                if metrics_enabled and isinstance(metrics_ctx, TaskMetricsContext):
+                                    metrics_ctx.set_status("failed")
+                                await TaskServiceAsync._update_task_status(
+                                    db, redis, db_task_id, TaskStatus.FAILED.value, None, "导出失败"
+                                )
 
-                        download_url = await strategy.execute(
-                            db=db,
-                            sys_task=sys_task,
-                            target_id=target_id,
-                            target_ids=target_ids,
-                            options=options or {},
-                            progress_callback=progress_callback,
-                            cancel_checker=cancel_checker,
+                    except asyncio.CancelledError:
+                        # 任务被取消（优雅关闭时）—— 标记为 CANCELLED 而非 FAILED
+                        logger.warning("导出任务被取消（服务关闭）: taskId=%s", task_id)
+                        await TaskServiceAsync._update_task_status(
+                            db, redis, db_task_id, TaskStatus.CANCELLED.value, None, "服务关闭，任务中断"
+                        )
+                        raise
+
+                    except TaskCancelledException:
+                        logger.warning("导出任务被取消: taskId=%s", task_id)
+                        await TaskServiceAsync._update_task_status(
+                            db, redis, db_task_id, TaskStatus.CANCELLED.value, None, None
                         )
 
-                        if download_url:
-                            await TaskServiceAsync._update_task_status(
-                                db, redis, db_task_id, TaskStatus.COMPLETED.value, download_url, None
-                            )
-                            logger.info(
-                                "导出任务完成: taskId=%s, downloadUrl=%s", task_id, download_url)
-                        else:
-                            if metrics_enabled and isinstance(metrics_ctx, TaskMetricsContext):
-                                metrics_ctx.set_status("failed")
-                            await TaskServiceAsync._update_task_status(
-                                db, redis, db_task_id, TaskStatus.FAILED.value, None, "导出失败"
-                            )
+                    except Exception as e:
+                        logger.error("导出任务执行失败: taskId=%s", task_id, exc_info=True)
+                        await TaskServiceAsync._update_task_status(
+                            db, redis, db_task_id, TaskStatus.FAILED.value, None, str(
+                                e)
+                        )
 
-                except asyncio.CancelledError:
-                    # 任务被取消（优雅关闭时）
-                    logger.warning("导出任务被取消（服务关闭）: taskId=%s", task_id)
-                    await TaskServiceAsync._update_task_status(
-                        db, redis, db_task_id, TaskStatus.FAILED.value, None, "服务关闭，任务中断"
-                    )
-                    raise
-
-                except TaskCancelledException:
-                    logger.warning("导出任务被取消: taskId=%s", task_id)
-                    await TaskServiceAsync._update_task_status(
-                        db, redis, db_task_id, TaskStatus.CANCELLED.value, None, None
-                    )
-
-                except Exception as e:
-                    logger.error("导出任务执行失败: taskId=%s", task_id, exc_info=True)
-                    await TaskServiceAsync._update_task_status(
-                        db, redis, db_task_id, TaskStatus.FAILED.value, None, str(
-                            e)
-                    )
-
-        except Exception as e:
-            logger.error("后台任务执行异常: %s", e, exc_info=True)
+            except Exception as e:
+                logger.error("后台任务执行异常: %s", e, exc_info=True)
+        finally:
+            set_current_user_id(None)

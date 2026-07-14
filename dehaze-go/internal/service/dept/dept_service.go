@@ -339,21 +339,21 @@ func (s *DeptService) Delete(ctx context.Context, ids []int64) error {
 		collectChildren(id)
 	}
 
-	// 检查是否有关联用户
-	for id := range allIDs {
-		hasUsers, err := s.deptRepo.HasUsers(ctx, id)
-		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "检查关联用户失败", err)
-		}
-		if hasUsers {
-			return common.NewBizError(common.DATA_BIND_EXISTS, "部门存在关联用户，不能删除")
-		}
-	}
-
 	// 转换为切片
 	idList := make([]int64, 0, len(allIDs))
 	for id := range allIDs {
 		idList = append(idList, id)
+	}
+
+	// 批量检查是否有关联用户（避免循环内逐个查询 N+1）
+	hasUsersMap, err := s.deptRepo.HasUsersInBatch(ctx, idList)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "检查关联用户失败", err)
+	}
+	for _, id := range idList {
+		if hasUsersMap[id] {
+			return common.NewBizError(common.DATA_BIND_EXISTS, "部门存在关联用户，不能删除")
+		}
 	}
 
 	// 批量删除

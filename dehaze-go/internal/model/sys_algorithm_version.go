@@ -11,8 +11,6 @@ type SysAlgorithmVersion struct {
 	ConfigJSON  *string `gorm:"column:config_json;type:text;comment:该版本时的配置JSON" json:"configJson"`
 	ModelFileID *int64  `gorm:"column:model_file_id;type:bigint;comment:模型文件ID" json:"modelFileId"`
 	IsActive    *int8   `gorm:"column:is_active;type:tinyint(1);default:0;comment:是否当前活跃版本" json:"isActive"`
-	CreateBy    *int64  `gorm:"column:create_by;type:bigint;comment:创建人ID" json:"createBy"`
-	UpdateBy    *int64  `gorm:"column:update_by;type:bigint;comment:修改人ID" json:"updateBy"`
 }
 
 // TableName 指定表名

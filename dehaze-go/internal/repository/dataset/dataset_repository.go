@@ -145,7 +145,7 @@ func (r *DatasetRepository) Create(ctx context.Context, dataset *model.SysDatase
 
 func (r *DatasetRepository) Update(ctx context.Context, dataset *model.SysDataset) error {
 	return r.db.WithContext(ctx).Model(dataset).
-		Select("parent_id", "type", "name", "description", "path", "status", "update_time").
+		Select("parent_id", "type", "name", "description", "path", "status", "update_time", "update_by").
 		Updates(dataset).Error
 }
 
@@ -155,7 +155,7 @@ func (r *DatasetRepository) Delete(ctx context.Context, ids []int64) error {
 	}
 	return r.db.WithContext(ctx).Model(&model.SysDataset{}).
 		Where("id IN ?", ids).
-		Update("deleted", 1).Error
+		Updates(map[string]interface{}{"deleted": 1}).Error
 }
 
 func (r *DatasetRepository) SoftDeleteByIDs(ctx context.Context, ids []int64, updateBy int64) error {

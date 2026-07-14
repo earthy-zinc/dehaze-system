@@ -246,6 +246,7 @@ func main() {
 import (
     "github.com/earthyzinc/dehaze-go/pkg/database"
     _ "github.com/earthyzinc/dehaze-go/pkg/database/mysql"
+    "github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 )
 
 func main() {
@@ -256,9 +257,9 @@ func main() {
     // 注册回调（自动填充create_by/update_by）
     database.RegisterGormCallbacks(database.DB())
     
-    // 注册Gin中间件（必须在回调注册后）
+    // 注册Gin中间件（注入 userID/deptID/dataScope 到 context，供 GORM 回调和 DataScopePlugin 读取）
     router := gin.Default()
-    router.Use(database.GormContextMiddleware())
+    router.Use(middleware.UserContextMiddleware())
 }
 ```
 

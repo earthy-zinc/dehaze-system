@@ -22,11 +22,13 @@ func NewSysTaskApi(taskService *taskservice.TaskService, taskRepo taskrepo.ITask
 
 // CreateTask 创建任务
 // 统一任务接口：同步创建任务记录（PENDING），异步执行具体策略
+// 支持 Idempotency-Key 请求头进行幂等去重
 // @Summary 创建任务
 // @Tags 任务接口
 // @Accept application/json
 // @Produce application/json
 // @Param form body bo.ExportTaskCreateForm true "任务创建表单"
+// @Param Idempotency-Key header string false "客户端幂等键"
 // @Success 200 {object} common.Response{data=vo.TaskVO}
 // @Router /api/v1/tasks [post]
 func (api *SysTaskApi) CreateTask(c *gin.Context) {
@@ -37,7 +39,8 @@ func (api *SysTaskApi) CreateTask(c *gin.Context) {
 	}
 
 	userID := getCurrentUserID(c)
-	task, err := api.taskService.CreateExportTask(form, userID)
+	idempotencyKey := c.GetHeader("Idempotency-Key")
+	task, err := api.taskService.CreateExportTask(c.Request.Context(), form, userID, idempotencyKey)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -65,7 +68,7 @@ func (api *SysTaskApi) GetTaskPage(c *gin.Context) {
 // GetTaskById 任务详情
 func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 	idStr := c.Param("id")
-	task, err := api.taskService.GetTaskStatus(idStr)
+	task, err := api.taskService.GetTaskStatus(c.Request.Context(), idStr)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -84,11 +87,30 @@ func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 func (api *SysTaskApi) CancelTask(c *gin.Context) {
 	idStr := c.Param("id")
 	userID := getCurrentUserID(c)
-	if err := api.taskService.CancelTask(idStr, userID); err != nil {
+	if err := api.taskService.CancelTask(c.Request.Context(), idStr, userID); err != nil {
 		_ = c.Error(err)
 		return
 	}
 	common.OkWithMessage("任务已取消", c)
+}
+
+// RetryTask 重试失败的任务
+// @Summary 重试任务
+// @Tags 任务接口
+// @Produce application/json
+// @Param id path string true "任务ID"
+// @Success 200 {object} common.Response{data=vo.TaskVO}
+// @Router /api/v1/tasks/{id}/retry [post]
+func (api *SysTaskApi) RetryTask(c *gin.Context) {
+	idStr := c.Param("id")
+	userID := getCurrentUserID(c)
+	task, err := api.taskService.RetryTask(c.Request.Context(), idStr, userID)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	taskVO := api.taskService.ConvertToTaskVO(task)
+	common.OkWithDetailed(taskVO, "任务已重新提交", c)
 }
 
 // getPageParams 从请求中提取分页参数

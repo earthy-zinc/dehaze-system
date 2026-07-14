@@ -24,6 +24,7 @@ class AuthService:
     @staticmethod
     async def login(
         db: AsyncSession,
+        redis: Redis,
         username: str,
         password: str,
     ) -> dict:
@@ -32,6 +33,7 @@ class AuthService:
 
         Args:
             db: 异步数据库会话
+            redis: Redis 客户端（用于权限缓存）
             username: 用户名
             password: 密码
 
@@ -58,9 +60,10 @@ class AuthService:
         if user.status != 1:
             raise ValueError("用户已被禁用")
 
-        # 查询用户角色和权限
+        # 查询用户角色和权限（权限走 Redis 缓存）
         roles = await user_repository.get_user_role_codes(db, user.id)
-        permissions = await user_repository.get_user_permissions(db, user.id)
+        from app.service.menu_service import MenuService
+        permissions = await MenuService.list_role_perms(db, redis, roles)
 
         # 使用 JWT 工具类生成 Token
         if user.username is None or user.nickname is None:
@@ -204,9 +207,10 @@ class AuthService:
         if user.status != 1:
             raise ValueError("用户已被禁用")
 
-        # 查询用户角色和权限
+        # 查询用户角色和权限（权限走 Redis 缓存）
         roles = await user_repository.get_user_role_codes(db, user.id)
-        permissions = await user_repository.get_user_permissions(db, user.id)
+        from app.service.menu_service import MenuService
+        permissions = await MenuService.list_role_perms(db, redis, roles)
 
         # 使用 JWT 工具类生成 Token
         if user.username is None or user.nickname is None:

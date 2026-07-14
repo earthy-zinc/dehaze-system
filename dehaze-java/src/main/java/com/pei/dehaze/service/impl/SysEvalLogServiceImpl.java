@@ -21,8 +21,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 效果评估服务 —— 生产级实现
@@ -111,11 +115,21 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
 
         Page<SysEvalLog> result = this.page(page, wrapper);
         Page<EvalLogVO> voPage = new Page<>(result.getCurrent(), result.getSize(), result.getTotal());
+
+        // 批量预加载算法名称，避免分页内逐条 getById 触发 N+1 查询
+        Set<Long> algorithmIds = result.getRecords().stream()
+                .map(SysEvalLog::getAlgorithmId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> algorithmNameMap = algorithmIds.isEmpty()
+                ? Collections.emptyMap()
+                : algorithmService.listByIds(algorithmIds).stream()
+                        .collect(Collectors.toMap(SysAlgorithm::getId, SysAlgorithm::getName, (a, b) -> a));
+
         voPage.setRecords(result.getRecords().stream().map(log -> {
             EvalLogVO vo = new EvalLogVO();
             BeanUtil.copyProperties(log, vo);
-            SysAlgorithm algorithm = algorithmService.getById(log.getAlgorithmId());
-            vo.setAlgorithmName(algorithm != null ? algorithm.getName() : "未知算法");
+            vo.setAlgorithmName(algorithmNameMap.getOrDefault(log.getAlgorithmId(), "未知算法"));
             return vo;
         }).toList());
         return voPage;

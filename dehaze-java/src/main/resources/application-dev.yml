@@ -242,9 +242,9 @@ captcha:
 # RabbitMQ 配置 (异步任务分发)
 rabbitmq:
   # 是否启用 RabbitMQ
-  enabled: false
+  enabled: true
   # RabbitMQ 连接 URL (amqp://user:password@host:port/vhost)
-  url: amqp://root:${DEHAZE_PASSWORD}@localhost:5672/
+  url: amqp://root:${DEHAZE_PASSWORD}@127.0.0.1:5672/%2F
   # 交换机配置
   exchange:
     # 任务交换机名称 (与 Go 端保持一致)
@@ -259,6 +259,16 @@ rabbitmq:
     max-interval: 30000
     # 重连乘数
     multiplier: 2.0
+
+# CORS 跨域配置 (开发环境白名单)
+cors:
+  allowed-origins:
+    - http://localhost:3000
+    - http://localhost:5173
+    - http://localhost:8080
+    - http://127.0.0.1:3000
+    - http://127.0.0.1:5173
+    - http://127.0.0.1:8080
 
 # Kafka 配置 (日志收集与流处理)
 kafka:

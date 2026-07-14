@@ -52,4 +52,13 @@ public class TaskVO {
 
     @Schema(description = "错误信息")
     private String error;
+
+    @Schema(description = "客户端幂等键")
+    private String idempotencyKey;
+
+    @Schema(description = "MQ 重试次数")
+    private Integer retryCount;
+
+    @Schema(description = "执行 Worker 标识")
+    private String workerId;
 }

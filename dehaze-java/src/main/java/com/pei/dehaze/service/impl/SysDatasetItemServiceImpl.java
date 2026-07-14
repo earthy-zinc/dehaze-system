@@ -9,6 +9,7 @@ import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
+import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.query.DatasetItemQuery;
 import com.pei.dehaze.model.vo.*;
@@ -161,6 +162,9 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
                             .orderByAsc(SysItemFile::getType)
             );
 
+            // 批量预加载所有文件信息（源文件 + 缩略图），避免转换VO时N+1查询
+            Map<Long, SysFile> fileMap = sysItemFileService.buildFileMap(allItemFiles);
+
             // 按itemId分组
             Map<Long, List<SysItemFile>> itemFilesMap = allItemFiles.stream()
                     .collect(Collectors.groupingBy(SysItemFile::getItemId));
@@ -168,7 +172,7 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
             // 填充每个DatasetItemVO的图片信息
             for (DatasetItemVO itemVO : results) {
                 List<SysItemFile> itemFiles = itemFilesMap.getOrDefault(itemVO.getId(), Collections.emptyList());
-                fillDatasetItemImages(itemVO, itemFiles);
+                fillDatasetItemImages(itemVO, itemFiles, fileMap);
             }
         }
 
@@ -182,13 +186,17 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
      *
      * @param itemVO    数据项VO
      * @param itemFiles 图片文件列表
+     * @param fileMap   预加载的文件Map（fileId -> SysFile）
      */
-    private void fillDatasetItemImages(DatasetItemVO itemVO, List<SysItemFile> itemFiles) {
+    private void fillDatasetItemImages(DatasetItemVO itemVO, List<SysItemFile> itemFiles, Map<Long, SysFile> fileMap) {
         log.debug("填充数据项图片信息: itemId={}, 查询到图片数量={}", itemVO.getId(), itemFiles.size());
 
-        // 使用统一的图片分类工具类
+        // 使用统一的图片分类工具类，通过预加载的fileMap避免N+1查询
         ImageClassificationUtils.ClassificationResult result =
-                ImageClassificationUtils.classifyItemFiles(itemFiles, sysItemFileService::convertToImageUrlVO);
+                ImageClassificationUtils.classifyItemFiles(
+                        itemFiles,
+                        itemFile -> sysItemFileService.convertToImageUrlVO(itemFile, fileMap)
+                );
 
         itemVO.setImageCount(itemFiles.size());
         itemVO.setClearImage(result.getClearImage());

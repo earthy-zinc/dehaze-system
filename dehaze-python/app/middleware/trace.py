@@ -13,7 +13,7 @@ class TraceMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         # 优先从上游 header 获取（Java 后端传递），否则自动生成
         trace_id = request.headers.get(
-            "X-Trace-Id") or request.headers.get("X-Request-Id") or str(uuid.uuid4().hex[:16])
+            "X-Trace-Id") or request.headers.get("X-Request-Id") or uuid.uuid4().hex
 
         _trace_id_var.set(trace_id)
 

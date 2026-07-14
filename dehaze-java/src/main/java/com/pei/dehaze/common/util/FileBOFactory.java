@@ -57,7 +57,7 @@ public class FileBOFactory {
             FileBO fileBO = new FileBO();
 
             String filename = file.getName();
-            String extension = FileUtil.getSuffix(filename);
+            String extension = FileUtil.extName(filename);
             String md5 = FileUploadUtils.getMd5(stream);
             String objectName = path + "/" + md5 + "." + extension;
             String url = filePathBuilder.buildUrl(objectName);
@@ -118,7 +118,7 @@ public class FileBOFactory {
      */
     private void populateFileBO(MultipartFile file, String path, FileBO fileBO) throws IOException {
         String filename = file.getOriginalFilename();
-        String extension = FileUtil.getSuffix(filename);
+        String extension = FileUtil.extName(filename);
 
         // 先 transferTo 保存临时文件（会消费 MultipartFile 的流）
         File tempFile = Files.createTempFile("upload-", "." + extension).toFile();

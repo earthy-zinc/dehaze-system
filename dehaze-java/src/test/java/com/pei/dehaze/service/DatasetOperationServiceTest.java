@@ -117,13 +117,16 @@ class DatasetOperationServiceTest {
     void testBatchDeleteDatasets_Success() {
         // Given
         List<Long> datasetIds = Arrays.asList(1L, 2L);
+        SysDataset ds1 = new SysDataset(); ds1.setId(1L);
+        SysDataset ds2 = new SysDataset(); ds2.setId(2L);
 
+        when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetService.getDatasetAndDescendantIds(1L)).thenReturn(Arrays.asList(1L));
         when(sysDatasetService.getDatasetAndDescendantIds(2L)).thenReturn(Arrays.asList(2L));
         when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
         when(sysDatasetService.getLeafDatasetId(2L)).thenReturn(Arrays.asList(2L));
         when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
-        when(sysDatasetService.removeById(anyLong())).thenReturn(true);
+        when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
         BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(datasetIds);
@@ -133,7 +136,7 @@ class DatasetOperationServiceTest {
         assertThat(result.getTotal()).isEqualTo(2);
         assertThat(result.getSucceeded()).isEqualTo(2);
         assertThat(result.getFailed()).isEqualTo(0);
-        verify(sysDatasetService, times(2)).removeById(anyLong());
+        verify(sysDatasetService).removeByIds(any());
     }
 
     @Test
@@ -142,12 +145,13 @@ class DatasetOperationServiceTest {
         // Given
         List<Long> datasetIds = Arrays.asList(1L);
 
+        when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(sampleDataset));
         when(sysDatasetService.getDatasetAndDescendantIds(1L))
                 .thenReturn(Arrays.asList(1L, 2L, 3L));
         when(sysDatasetService.getLeafDatasetId(1L))
                 .thenReturn(Arrays.asList(2L, 3L));
         when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
-        when(sysDatasetService.removeById(anyLong())).thenReturn(true);
+        when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
         BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(datasetIds);
@@ -155,7 +159,7 @@ class DatasetOperationServiceTest {
         // Then
         assertThat(result).isNotNull();
         assertThat(result.getTotal()).isEqualTo(1);
-        verify(sysDatasetService, times(3)).removeById(anyLong());
+        verify(sysDatasetService).removeByIds(any());
     }
 
     @Test
@@ -184,21 +188,17 @@ class DatasetOperationServiceTest {
     void testBatchDeleteDatasets_PartialSuccess() {
         // Given
         List<Long> datasetIds = Arrays.asList(1L, 2L, 999L);
+        SysDataset ds1 = new SysDataset(); ds1.setId(1L);
+        SysDataset ds2 = new SysDataset(); ds2.setId(2L);
 
-        // 第一个数据集成功
+        // listByIds 只返回存在的数据集（不含 999L），999L 会触发 "数据集不存在"
+        when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetService.getDatasetAndDescendantIds(1L)).thenReturn(Arrays.asList(1L));
         when(sysDatasetService.getLeafDatasetId(1L)).thenReturn(Arrays.asList(1L));
-
-        // 第二个数据集成功
         when(sysDatasetService.getDatasetAndDescendantIds(2L)).thenReturn(Arrays.asList(2L));
         when(sysDatasetService.getLeafDatasetId(2L)).thenReturn(Arrays.asList(2L));
-
-        // 第三个数据集失败（不存在）
-        when(sysDatasetService.getDatasetAndDescendantIds(999L))
-                .thenThrow(new BusinessException("数据集不存在"));
-
         when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
-        when(sysDatasetService.removeById(anyLong())).thenReturn(true);
+        when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
         BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(datasetIds);
@@ -219,11 +219,14 @@ class DatasetOperationServiceTest {
     void testBatchDeleteResult_Format() {
         // Given
         List<Long> datasetIds = Arrays.asList(1L, 2L);
+        SysDataset ds1 = new SysDataset(); ds1.setId(1L);
+        SysDataset ds2 = new SysDataset(); ds2.setId(2L);
 
+        when(sysDatasetService.listByIds(any())).thenReturn(Arrays.asList(ds1, ds2));
         when(sysDatasetService.getDatasetAndDescendantIds(anyLong())).thenReturn(Arrays.asList(1L));
         when(sysDatasetService.getLeafDatasetId(anyLong())).thenReturn(Arrays.asList(1L));
         when(sysDatasetItemService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
-        when(sysDatasetService.removeById(anyLong())).thenReturn(true);
+        when(sysDatasetService.removeByIds(any())).thenReturn(true);
 
         // When
         BatchDeleteResult result = datasetOperationService.batchDeleteDatasets(datasetIds);

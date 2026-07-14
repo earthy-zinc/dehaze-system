@@ -52,6 +52,7 @@ type TaskMessage struct {
 type AsyncTaskExecutor interface {
 	Initialize() error
 	Shutdown() error
-	PublishExportTask(ctx context.Context, taskID int64, form bo.ExportTaskCreateForm) error
+	IsConnected() bool
+	PublishExportTask(ctx context.Context, taskID string, form bo.ExportTaskCreateForm) error
 	PublishTask(ctx context.Context, msg TaskMessage) error
 }

@@ -80,8 +80,11 @@ func ParseTraceParent(traceParent string) string {
 }
 
 // ExtractTraceIDFromHeaders 从请求头提取 TraceID 与 traceparent
+//
+// X-Trace-Id 头接受任意非空字符串（与 Java/Python 端行为一致，便于跨服务透传）；
+// traceparent 头仍按 W3C 标准严格解析，仅用于补充缺失的 TraceID。
 func ExtractTraceIDFromHeaders(traceIDHeader, traceParentHeader string) (string, string) {
-	traceID := NormalizeTraceID(traceIDHeader)
+	traceID := strings.TrimSpace(traceIDHeader)
 	traceParent := strings.TrimSpace(traceParentHeader)
 	if traceParent != "" {
 		parsed := ParseTraceParent(traceParent)

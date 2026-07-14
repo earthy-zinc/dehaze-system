@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 
@@ -29,6 +30,11 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
     private final RedisTemplate<String, Object> redisTemplate;
 
     /**
+     * 权限缓存 TTL（30 分钟）
+     */
+    private static final Duration ROLE_PERMS_TTL = Duration.ofMinutes(30);
+
+    /**
      * 初始化权限缓存
      */
     @PostConstruct
@@ -37,30 +43,40 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
     }
 
     /**
-     * 刷新权限缓存
+     * 构造逐角色独立 Redis Key（独立 TTL，避免单角色刷新重置全部角色 TTL）
+     */
+    private String rolePermsKey(String roleCode) {
+        return SecurityConstants.ROLE_PERMS_PREFIX + roleCode;
+    }
+
+    /**
+     * 刷新权限缓存（全量）
+     * 逐角色独立 Key + 独立 TTL，避免单角色刷新时重置全部角色的 TTL。
      */
     @Override
     public void refreshRolePermsCache() {
-        // 清理权限缓存
-        redisTemplate.opsForHash().delete(SecurityConstants.ROLE_PERMS_PREFIX, "*");
+        // 清理所有角色权限缓存 Key
+        Set<String> keys = redisTemplate.keys(SecurityConstants.ROLE_PERMS_PREFIX + "*");
+        if (CollUtil.isNotEmpty(keys)) {
+            redisTemplate.delete(keys);
+        }
 
         List<RolePermsBO> list = this.baseMapper.getRolePermsList(null);
         if (CollUtil.isNotEmpty(list)) {
             list.forEach(item -> {
                 String roleCode = item.getRoleCode();
                 Set<String> perms = item.getPerms();
-                redisTemplate.opsForHash().put(SecurityConstants.ROLE_PERMS_PREFIX, roleCode, perms);
+                redisTemplate.opsForValue().set(rolePermsKey(roleCode), perms, ROLE_PERMS_TTL);
             });
         }
     }
 
     /**
-     * 刷新权限缓存
+     * 刷新权限缓存（指定角色）
      */
     @Override
     public void refreshRolePermsCache(String roleCode) {
-        // 清理权限缓存
-        redisTemplate.opsForHash().delete(SecurityConstants.ROLE_PERMS_PREFIX, roleCode);
+        redisTemplate.delete(rolePermsKey(roleCode));
 
         List<RolePermsBO> list = this.baseMapper.getRolePermsList(roleCode);
         if (CollUtil.isNotEmpty(list)) {
@@ -68,31 +84,19 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
             if (rolePerms == null) {
                 return;
             }
-
             Set<String> perms = rolePerms.getPerms();
-            redisTemplate.opsForHash().put(SecurityConstants.ROLE_PERMS_PREFIX, roleCode, perms);
+            redisTemplate.opsForValue().set(rolePermsKey(roleCode), perms, ROLE_PERMS_TTL);
         }
     }
 
     /**
      * 刷新权限缓存 (角色编码变更时调用)
+     * 删除旧编码缓存后，按新编码刷新（复用单参数逻辑避免重复 DB 查询 + Redis 写入）
      */
     @Override
     public void refreshRolePermsCache(String oldRoleCode, String newRoleCode) {
-        // 清理旧角色权限缓存
-        redisTemplate.opsForHash().delete(SecurityConstants.ROLE_PERMS_PREFIX, oldRoleCode);
-
-        // 添加新角色权限缓存
-        List<RolePermsBO> list =this.baseMapper.getRolePermsList(newRoleCode);
-        if (CollUtil.isNotEmpty(list)) {
-            RolePermsBO rolePerms = list.get(0);
-            if (rolePerms == null) {
-                return;
-            }
-
-            Set<String> perms = rolePerms.getPerms();
-            redisTemplate.opsForHash().put(SecurityConstants.ROLE_PERMS_PREFIX, newRoleCode, perms);
-        }
+        redisTemplate.delete(rolePermsKey(oldRoleCode));
+        refreshRolePermsCache(newRoleCode);
     }
 
 

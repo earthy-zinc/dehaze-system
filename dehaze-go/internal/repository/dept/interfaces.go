@@ -38,6 +38,12 @@ type IDeptRepository interface {
 	// HasUsers 检查部门是否关联用户
 	HasUsers(ctx context.Context, deptID int64) (bool, error)
 
+	// HasUsersInBatch 批量检查部门是否关联用户（避免 N+1 查询）
+	HasUsersInBatch(ctx context.Context, deptIDs []int64) (map[int64]bool, error)
+
+	// FindIDsByNames 根据部门名称批量查询 ID（返回 name→id 映射，避免 N+1 查询）
+	FindIDsByNames(ctx context.Context, names []string) (map[string]int64, error)
+
 	// GetOptions 获取部门下拉选项
 	GetOptions(ctx context.Context) ([]read.Option, error)
 

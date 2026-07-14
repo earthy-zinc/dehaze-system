@@ -23,4 +23,14 @@ public interface SystemConstants {
      * 超级管理员角色编码
      */
     String ROOT_ROLE_CODE = "ROOT";
+
+    /**
+     * 系统用户ID
+     */
+    Long SYSTEM_USER_ID = 0L;
+
+    /**
+     * 系统用户名
+     */
+    String SYSTEM_USERNAME = "system";
 }

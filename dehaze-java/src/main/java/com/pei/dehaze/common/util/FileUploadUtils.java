@@ -105,7 +105,7 @@ public class FileUploadUtils {
             FileBO fileBO = new FileBO();
 
             String filename = file.getName();
-            String extension = FileUtil.getSuffix(filename);
+            String extension = FileUtil.extName(filename);
             String md5 = FileUploadUtils.getMd5(stream);
             String objectName = path + "/" + md5 + "." + extension;
             String url = baseUrl + "/" + objectName;

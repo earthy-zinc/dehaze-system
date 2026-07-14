@@ -38,7 +38,7 @@ func (api *SysItemFileApi) GetItemFileById(c *gin.Context) {
 		return
 	}
 
-	itemFile, err := api.itemFileService.GetItemFileById(id)
+	itemFile, err := api.itemFileService.GetItemFileById(c.Request.Context(), id)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -112,7 +112,7 @@ func (api *SysItemFileApi) AddImageById(c *gin.Context) {
 		HazeLevel:   hazeLevel,
 	}
 
-	imageUrlVO, err := api.itemFileService.SaveItemFile(datasetItemId, sysFile, itemBO, true)
+	imageUrlVO, err := api.itemFileService.SaveItemFile(c.Request.Context(), datasetItemId, sysFile, itemBO, true)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -143,7 +143,7 @@ func (api *SysItemFileApi) UpdateImageById(c *gin.Context) {
 		return
 	}
 
-	imageUrlVO, err := api.itemFileService.UpdateItemFileInfo(id, form)
+	imageUrlVO, err := api.itemFileService.UpdateItemFileInfo(c.Request.Context(), id, form)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -168,7 +168,7 @@ func (api *SysItemFileApi) RemoveImageById(c *gin.Context) {
 		return
 	}
 
-	err = api.itemFileService.DeleteItemFile(itemFileId)
+	err = api.itemFileService.DeleteItemFile(c.Request.Context(), itemFileId)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -198,7 +198,7 @@ func (api *SysItemFileApi) BatchRemoveImages(c *gin.Context) {
 	failedCount := 0
 
 	for _, id := range req.IDs {
-		if err := api.itemFileService.DeleteItemFile(id); err != nil {
+		if err := api.itemFileService.DeleteItemFile(c.Request.Context(), id); err != nil {
 			failedCount++
 			failedItems = append(failedItems, batchImageDeleteFailure{
 				ID:     id,

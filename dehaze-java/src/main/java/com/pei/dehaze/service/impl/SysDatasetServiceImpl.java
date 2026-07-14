@@ -56,14 +56,14 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     private String datasetPath;
 
     @Override
-    @Cacheable(value = "dataset:all", key = "'all'", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(value = "dataset:all", key = "'all'")
     public List<SysDataset> getAllDatasets() {
         return this.list(new LambdaQueryWrapper<SysDataset>()
                 .orderByAsc(SysDataset::getId));
     }
 
     @Override
-    @Cacheable(value = "dataset:statsMap", key = "'all'", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(value = "dataset:statsMap", key = "'all'")
     public Map<Long, DatasetStatistics> getAllDatasetStats() {
         long startTime = System.currentTimeMillis();
         log.debug("开始计算所有数据集统计信息...");
@@ -411,7 +411,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     }
 
     @Override
-    @Cacheable(value = "dataset:options", key = "'all'", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(value = "dataset:options", key = "'all'")
     public List<Option<Long>> getOptions() {
         List<SysDataset> datasets = getAllDatasets();
         return buildDatasetOptions(SystemConstants.ROOT_NODE_ID, datasets);

@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -391,11 +392,14 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         Map<Long, List<SysItemFile>> filesByItemId = allFiles.stream()
                 .collect(Collectors.groupingBy(SysItemFile::getItemId));
 
+        // 批量预检数据项存在性，避免循环内逐条 getById 触发 N+1 查询
+        Set<Long> existingItemIds = sysDatasetItemService.listByIds(datasetItemIds).stream()
+                .map(SysDatasetItem::getId)
+                .collect(Collectors.toSet());
+
         for (Long datasetItemId : datasetItemIds) {
             try {
-                // 验证数据项是否存在
-                SysDatasetItem datasetItem = sysDatasetItemService.getById(datasetItemId);
-                if (datasetItem == null) {
+                if (!existingItemIds.contains(datasetItemId)) {
                     throw new BusinessException("数据项不存在");
                 }
 
@@ -404,7 +408,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                     sysItemFileService.deleteFile(itemFile.getId());
                 }
 
-                sysDatasetItemService.removeById(datasetItemId);
                 successCount++;
                 successIds.add(datasetItemId);
             } catch (Exception e) {
@@ -415,6 +418,11 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 failureDetails.add(failureDetail);
                 failedCount++;
             }
+        }
+
+        // 批量删除成功的数据项，替代循环内逐条 removeById
+        if (!successIds.isEmpty()) {
+            sysDatasetItemService.removeByIds(successIds);
         }
 
         sysDatasetService.evictAllDatasetsCache();
@@ -439,12 +447,18 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         int succeeded = 0;
         int failed = 0;
         List<BatchDeleteResult.DeleteResultItem> results = new ArrayList<>();
+        List<Long> allDeletedDatasetIds = new ArrayList<>();
+
+        // 批量预检数据集存在性，避免循环内逐条 getById 触发 N+1 查询
+        Set<Long> existingDatasetIds = sysDatasetService.listByIds(datasetIds).stream()
+                .map(SysDataset::getId)
+                .collect(Collectors.toSet());
 
         for (Long datasetId : datasetIds) {
             try {
-                // 在删除前先获取父数据集ID，用于后续清除祖先缓存
-                SysDataset dataset = sysDatasetService.getById(datasetId);
-                Long parentId = dataset != null ? dataset.getParentId() : null;
+                if (!existingDatasetIds.contains(datasetId)) {
+                    throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
+                }
 
                 // 获取该数据集及其所有子数据集的ID
                 List<Long> allDatasetIds = sysDatasetService.getDatasetAndDescendantIds(datasetId);
@@ -467,7 +481,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                             new LambdaQueryWrapper<SysItemFile>()
                                     .in(SysItemFile::getItemId, allItemIds)
                     );
-                    // 逐个删除文件（涉及物理文件删除）
+                    // 逐个删除文件（涉及 MinIO 物理文件删除，无法批量）
                     for (SysItemFile itemFile : allFiles) {
                         sysItemFileService.deleteFile(itemFile.getId());
                     }
@@ -478,21 +492,11 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                     sysDatasetItemService.removeByIds(allItemIds);
                 }
 
-                // 删除数据集本身（从叶子节点往上删）
+                // 收集待删除的数据集 ID（去重），循环结束后统一批量删除
                 allDatasetIds = allDatasetIds.stream().distinct().toList();
-                for (int i = allDatasetIds.size() - 1; i >= 0; i--) {
-                    sysDatasetService.removeById(allDatasetIds.get(i));
-                }
+                allDeletedDatasetIds.addAll(allDatasetIds);
 
                 succeeded++;
-                // 清除已删除数据集的缓存
-                for (Long deletedId : allDatasetIds) {
-                    sysDatasetService.evictDatasetStatsCache(deletedId);
-                }
-                // 清除父数据集及其祖先的统计缓存（如果父数据集存在且不是根节点）
-                if (parentId != null && parentId != 0L) {
-                    sysDatasetService.evictDatasetAndAncestorStatsCache(parentId);
-                }
                 results.add(BatchDeleteResult.DeleteResultItem.builder()
                         .id(datasetId)
                         .status("success")
@@ -516,6 +520,11 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                         .build());
                 log.error("删除数据集失败: datasetId={}", datasetId, e);
             }
+        }
+
+        // 批量删除所有成功的数据集，替代循环内逐条 removeById
+        if (!allDeletedDatasetIds.isEmpty()) {
+            sysDatasetService.removeByIds(allDeletedDatasetIds);
         }
 
         sysDatasetService.evictAllDatasetsCache();

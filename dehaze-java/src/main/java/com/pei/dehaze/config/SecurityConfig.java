@@ -49,7 +49,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(requestMatcherRegistry ->
                         requestMatcherRegistry
                                 .requestMatchers(SecurityConstants.LOGIN_PATH).permitAll()
-                                .requestMatchers("/actuator/**").permitAll()
+                                .requestMatchers("/health", "/ready").permitAll()
+                                .requestMatchers("/actuator/health").permitAll()
+                                .requestMatchers("/actuator/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
                 .exceptionHandling(httpSecurityExceptionHandlingConfigurer ->

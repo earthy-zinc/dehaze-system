@@ -97,7 +97,7 @@ async def login(
         )
 
     try:
-        result = await AuthService.login(db, username, request.password)
+        result = await AuthService.login(db, redis, username, request.password)
         # 登录成功：清除失败计数，记录日志
         await redis.delete(attempts_key)
         user_data = result.get("user", {})

@@ -81,6 +81,8 @@ func (c *Client) initMaster() error {
 		return fmt.Errorf("注册数据权限插件失败: %w", err)
 	}
 
+	db = database.RegisterGormCallbacks(db)
+
 	// 获取原生sql.DB并设置连接池
 	sqlDB, err := db.DB()
 	if err != nil {

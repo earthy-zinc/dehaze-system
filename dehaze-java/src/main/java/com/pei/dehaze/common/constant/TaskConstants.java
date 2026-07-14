@@ -12,6 +12,14 @@ public final class TaskConstants {
     public static final String TASK_CACHE_PREFIX = "task:";
     /** 任务取消标识前缀 */
     public static final String TASK_CANCEL_PREFIX = "task:cancel:";
+    /** 幂等键缓存前缀 */
+    public static final String IDEMPOTENCY_KEY_PREFIX = "idempotency:task:";
+    /** 幂等键缓存过期时间：24小时 */
+    public static final long IDEMPOTENCY_KEY_EXPIRE_SECONDS = 24 * 60 * 60;
+
+    // ========== WebSocket Pub/Sub ==========
+    /** WebSocket 跨实例广播频道（对齐 Python dehaze:ws:broadcast） */
+    public static final String WS_CHANNEL = "dehaze:ws:broadcast";
     
     // ========== 过期时间（秒） ==========
     /** 任务缓存过期时间：24小时 */

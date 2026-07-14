@@ -8,7 +8,7 @@ from app.models.schema.task import \
 from app.models.schema.task import TaskPageVO
 from app.models.schema.task import TaskVO as TaskData
 from app.service.task_service import TaskServiceAsync
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +34,9 @@ def _dict_to_task_data(task_data: dict) -> TaskData:
         startedAt=task_data.get("started_at"),
         completedAt=task_data.get("completed_at"),
         expiresAt=task_data.get("expires_at"),
+        idempotencyKey=task_data.get("idempotency_key"),
+        retryCount=task_data.get("retry_count", 0),
+        workerId=task_data.get("worker_id"),
     )
 
 
@@ -78,6 +81,10 @@ async def create_export_task(
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
+    idempotency_key: str | None = Header(
+        default=None, alias="Idempotency-Key",
+        description="客户端幂等键，相同键返回已有任务，防止重复创建"
+    ),
 ):
     """
     创建新的导出任务，支持批量导出数据集或数据项
@@ -90,6 +97,7 @@ async def create_export_task(
     - **targetId**: 单个导出目标ID
     - **targetIds**: 批量导出目标ID列表
     - **options**: 导出选项
+    - **Idempotency-Key** (请求头): 客户端幂等键，相同键返回已有任务
     """
     # 转换 options 为字典
     options_dict = None
@@ -104,6 +112,7 @@ async def create_export_task(
         target_ids=request.targetIds,
         options=options_dict,
         user_id=user.id,
+        idempotency_key=idempotency_key,
     )
 
     return success(_dict_to_task_data(task_data))
@@ -181,3 +190,27 @@ async def cancel_task(
     """
     await TaskServiceAsync.cancel_task(db, redis, task_id, user_id=user.id)
     return success(msg="取消成功")
+
+
+@router.post(
+    "/{task_id}/retry",
+    response_model=Result[TaskData],
+    summary="重试失败的任务",
+)
+async def retry_task(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    user: UserContext = Depends(get_current_user),
+):
+    """
+    重试失败的任务（重放入口）
+
+    仅允许 FAILED 状态的任务重试，重置重试次数后重新投递到消息队列。
+
+    - **task_id**: 任务ID（UUID格式）
+    """
+    task_data = await TaskServiceAsync.retry_task(
+        db, redis, task_id, user_id=user.id
+    )
+    return success(_dict_to_task_data(task_data))

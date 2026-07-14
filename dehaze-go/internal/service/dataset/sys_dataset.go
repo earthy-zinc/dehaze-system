@@ -521,8 +521,7 @@ func contains(ids []int64, id int64) bool {
 	return false
 }
 
-func (datasetService *DatasetService) GetDatasetOptions() (options []vo.Option, err error) {
-	ctx := context.Background()
+func (datasetService *DatasetService) GetDatasetOptions(ctx context.Context) (options []vo.Option, err error) {
 	cacheKey := "dataset:tree:options"
 
 	if datasetService.cache != nil {
@@ -689,8 +688,7 @@ func (datasetService *DatasetService) Create(ctx context.Context, form *bo.Datas
 		return 0, common.WrapBizError(common.DATABASE_ERROR, "创建数据集失败", err)
 	}
 
-	cacheCtx := context.Background()
-	datasetService.evictAllDatasetsCache(cacheCtx)
+	datasetService.evictAllDatasetsCache(ctx)
 
 	return dataset.ID, nil
 }
@@ -725,8 +723,7 @@ func (datasetService *DatasetService) Update(ctx context.Context, id int64, form
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "更新数据集失败", err)
 	}
 
-	cacheCtx := context.Background()
-	datasetService.evictAllDatasetsCache(cacheCtx)
+	datasetService.evictAllDatasetsCache(ctx)
 
 	// 返回更新后的数据集表单数据
 	return datasetService.GetFormData(ctx, id)
@@ -752,8 +749,7 @@ func (datasetService *DatasetService) Delete(ctx context.Context, ids []int64) e
 		return common.WrapBizError(common.DATABASE_ERROR, "删除数据集失败", err)
 	}
 
-	cacheCtx := context.Background()
-	datasetService.evictAllDatasetsCache(cacheCtx)
+	datasetService.evictAllDatasetsCache(ctx)
 
 	return nil
 }

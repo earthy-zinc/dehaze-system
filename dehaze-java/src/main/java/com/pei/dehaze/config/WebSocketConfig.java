@@ -1,8 +1,9 @@
 package com.pei.dehaze.config;
 
 import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.jwt.JWTPayload;
 import cn.hutool.jwt.JWTUtil;
+import com.pei.dehaze.common.constant.JwtClaimConstants;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.context.annotation.Configuration;
@@ -28,18 +29,24 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @Configuration
 @EnableWebSocketMessageBroker // 启用WebSocket消息代理功能和配置STOMP协议，实现实时双向通信和消息传递
 @Slf4j
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final CorsConfig corsConfig;
 
     /**
      * 注册一个端点，客户端通过这个端点进行连接
      */
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        String[] allowedOrigins = corsConfig.getAllowedOrigins() != null
+                ? corsConfig.getAllowedOrigins().toArray(new String[0])
+                : new String[0];
         registry
                 .addEndpoint("/ws")   // 注册了一个 /ws 的端点
-                .setAllowedOriginPatterns("*") // 允许跨域的 WebSocket 连接
+                .setAllowedOriginPatterns(allowedOrigins) // 仅允许白名单 Origin 的 WebSocket 连接
                 .withSockJS();  // 启用 SockJS (浏览器不支持WebSocket，SockJS 将会提供兼容性支持)
-        registry.addEndpoint("/ws-app").setAllowedOriginPatterns("*");  // 注册了一个 /ws-app 的端点，支持 uni-app 的 ws 连接协议
+        registry.addEndpoint("/ws-app").setAllowedOriginPatterns(allowedOrigins);  // 注册了一个 /ws-app 的端点，支持 uni-app 的 ws 连接协议
     }
 
 
@@ -77,17 +84,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     // 从连接头中提取授权令牌
                     String bearerToken = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
 
-                    // 验证令牌格式并提取用户信息
+                    // 验证令牌格式并提取用户信息(userId)
                     if (CharSequenceUtil.isNotBlank(bearerToken) && bearerToken.startsWith("Bearer ")) {
                         try {
-                            // 移除 "Bearer " 前缀，从令牌中提取用户信息(username), 并设置到认证信息中
+                            // 从 JWT 中提取 userId 作为 Principal（对齐 Python/Go 的 user_id 路由）
+                            Long userId = JWTUtil.parseToken(bearerToken)
+                                    .getPayloads().getLong(JwtClaimConstants.USER_ID);
 
-                            // 这里不应该用"name"
-                            // String username = JwtUtils.parseToken(bearerToken).get("name").toString();
-                            String username = JWTUtil.parseToken(bearerToken).getPayloads().getStr(JWTPayload.SUBJECT);
-
-                            if (CharSequenceUtil.isNotBlank(username)) {
-                                accessor.setUser(() -> username);
+                            if (userId != null) {
+                                String userIdStr = String.valueOf(userId);
+                                accessor.setUser(() -> userIdStr);
                                 return message;
                             }
                         } catch (Exception e) {

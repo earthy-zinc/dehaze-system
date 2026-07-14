@@ -386,7 +386,29 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     }
 
     @Override
-    public ImageUrlVO convertToImageUrlVO(SysItemFile itemFile) {
+    public Map<Long, SysFile> buildFileMap(List<SysItemFile> itemFiles) {
+        if (itemFiles == null || itemFiles.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        // 批量收集所有 fileId（源文件 + 缩略图）
+        Set<Long> allFileIds = new HashSet<>();
+        for (SysItemFile itemFile : itemFiles) {
+            if (itemFile.getFileId() != null) {
+                allFileIds.add(itemFile.getFileId());
+            }
+            if (itemFile.getThumbnailFileId() != null) {
+                allFileIds.add(itemFile.getThumbnailFileId());
+            }
+        }
+        if (allFileIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return sysFileService.listByIds(allFileIds).stream()
+                .collect(Collectors.toMap(SysFile::getId, f -> f));
+    }
+
+    @Override
+    public ImageUrlVO convertToImageUrlVO(SysItemFile itemFile, Map<Long, SysFile> fileMap) {
         if (itemFile == null) {
             return null;
         }
@@ -403,8 +425,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         vo.setUsageCount(itemFile.getUsageCount() != null ? itemFile.getUsageCount() : 0L);
         vo.setCreateTime(itemFile.getCreateTime());
 
-        // 获取文件信息
-        SysFile sysFile = sysFileService.getById(itemFile.getFileId());
+        // 从预加载的文件Map中获取文件信息（避免N+1查询）
+        SysFile sysFile = fileMap.get(itemFile.getFileId());
         if (sysFile != null) {
             vo.setFileName(sysFile.getName());
             vo.setFormattedSize(sysFile.getSize());
@@ -413,9 +435,9 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             vo.setMd5(sysFile.getMd5());
         }
 
-        // 获取缩略图URL
+        // 从Map中获取缩略图URL
         if (itemFile.getThumbnailFileId() != null) {
-            SysFile thumbnailFile = sysFileService.getById(itemFile.getThumbnailFileId());
+            SysFile thumbnailFile = fileMap.get(itemFile.getThumbnailFileId());
             if (thumbnailFile != null) {
                 vo.setThumbnailUrl(thumbnailFile.getUrl());
             }

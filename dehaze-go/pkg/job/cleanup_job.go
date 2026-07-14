@@ -2,11 +2,16 @@ package job
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/earthyzinc/dehaze-go/internal/model"
+	tasksvc "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
+	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -16,22 +21,33 @@ const (
 	CleanupInterval = 1 * time.Hour
 	// 失败记录保留时间（7天）
 	FailedRecordRetention = 7 * 24 * time.Hour
-	// 任务缓存过期时间（1小时）
-	TaskCacheExpiration = 1 * time.Hour
+
+	// 任务清理阈值（与 Python 端对齐）
+	expiredThreshold = 7 * 24 * time.Hour  // 7天前已完成/取消任务清理
+	oldThreshold     = 30 * 24 * time.Hour // 30天前已终止任务清理
+	stuckProcessing  = 30 * time.Minute    // PROCESSING 30分钟无进展
+	stuckPending     = 24 * time.Hour      // PENDING 24小时未启动
 )
 
 // CleanupJob 清理任务管理器
 type CleanupJob struct {
-	running     bool
-	cacheClient types.ICache
-	cancelFunc  context.CancelFunc
+	running        bool
+	cacheClient    types.ICache
+	storageService StorageService
+	cancelFunc     context.CancelFunc
+}
+
+// StorageService 存储服务接口（仅声明 cleanup 所需方法）
+type StorageService interface {
+	Exists(ctx context.Context, objectName string) (bool, error)
 }
 
 // NewCleanupJob 创建清理任务管理器
-func NewCleanupJob() *CleanupJob {
+func NewCleanupJob(storageSvc StorageService) *CleanupJob {
 	return &CleanupJob{
-		running:     false,
-		cacheClient: cache.GetCache(),
+		running:        false,
+		cacheClient:    cache.GetCache(),
+		storageService: storageSvc,
 	}
 }
 
@@ -42,7 +58,7 @@ func (j *CleanupJob) Start() {
 		return
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(database.SetUserID(context.Background(), common.SystemUserID))
 	j.cancelFunc = cancel
 	j.running = true
 
@@ -82,34 +98,39 @@ func (j *CleanupJob) run(ctx context.Context) {
 }
 
 // executeCleanup 执行清理操作
-func (j *CleanupJob) executeCleanup(ctx context.Context) error {
+// 各步骤独立执行，某一步失败不阻断后续步骤
+func (j *CleanupJob) executeCleanup(ctx context.Context) {
 	logger.Info("开始执行清理任务")
 
 	// 1. 清理失败的缩略图生成记录
 	if err := j.cleanupFailedThumbnails(ctx); err != nil {
 		logger.Error("清理缩略图失败记录失败", zap.Error(err))
-		return err
 	}
 
 	// 2. 清理失败的文件删除记录
 	if err := j.cleanupFailedDeletions(ctx); err != nil {
 		logger.Error("清理删除失败记录失败", zap.Error(err))
-		return err
 	}
 
-	// 3. 清理过期的任务取消标志
-	if err := j.cleanupExpiredTaskCaches(ctx); err != nil {
-		logger.Error("清理过期任务缓存失败", zap.Error(err))
-		return err
+	// 3. 清理过期任务（对齐 Python cleanupExpiredTasks）
+	if err := j.cleanupExpiredTasks(ctx); err != nil {
+		logger.Error("清理过期任务失败", zap.Error(err))
 	}
 
-	// 4. 清理完成状态的任务记录
-	if err := j.cleanupCompletedTasks(ctx); err != nil {
-		logger.Error("清理已完成任务失败", zap.Error(err))
-		return err
+	// 4. 回收僵死任务（对齐 Python cleanupStuckTasks）
+	if err := j.cleanupStuckTasks(ctx); err != nil {
+		logger.Error("回收僵死任务失败", zap.Error(err))
 	}
 
 	logger.Info("清理任务执行完成")
+}
+
+// RunCleanupNow 立即执行一次清理（用于手动触发）
+func (j *CleanupJob) RunCleanupNow() error {
+	ctx, cancel := context.WithTimeout(database.SetUserID(context.Background(), common.SystemUserID), 5*time.Minute)
+	defer cancel()
+
+	j.executeCleanup(ctx)
 	return nil
 }
 
@@ -117,7 +138,6 @@ func (j *CleanupJob) executeCleanup(ctx context.Context) error {
 func (j *CleanupJob) cleanupFailedThumbnails(ctx context.Context) error {
 	const THUMBNAIL_FAILED_KEY = "dataset:thumbnail:failed"
 
-	// 获取所有失败的记录
 	entries, err := j.cacheClient.HGetAll(ctx, THUMBNAIL_FAILED_KEY)
 	if err != nil {
 		return fmt.Errorf("获取失败记录: %w", err)
@@ -130,7 +150,6 @@ func (j *CleanupJob) cleanupFailedThumbnails(ctx context.Context) error {
 	threshold := time.Now().Add(-FailedRecordRetention).Unix()
 	cleanedCount := 0
 
-	// 遍历记录，删除过期的
 	for fileIDStr, timestampStr := range entries {
 		var fileID int64
 		var timestamp int64
@@ -142,12 +161,9 @@ func (j *CleanupJob) cleanupFailedThumbnails(ctx context.Context) error {
 			continue
 		}
 
-		// 如果记录超过保留时间，删除它
 		if timestamp < threshold {
 			j.cacheClient.HDel(ctx, THUMBNAIL_FAILED_KEY, fileIDStr)
 			cleanedCount++
-
-			// 可以选择记录日志或通知管理员
 			logger.Info("清理过期的缩略图失败记录",
 				zap.Int64("fileID", fileID),
 				zap.Int64("ageDays", (time.Now().Unix()-timestamp)/86400))
@@ -162,10 +178,13 @@ func (j *CleanupJob) cleanupFailedThumbnails(ctx context.Context) error {
 }
 
 // cleanupFailedDeletions 清理失败的文件删除记录
+//
+// 检查文件是否仍存在于存储中：
+// - 文件已不存在 → 删除成功，从失败列表移除
+// - 文件仍存在 → 保留记录，等待后续重试
 func (j *CleanupJob) cleanupFailedDeletions(ctx context.Context) error {
 	const DELETION_FAILED_KEY = "dataset:deletion:failed"
 
-	// 获取所有失败记录
 	members, err := j.cacheClient.SMembers(ctx, DELETION_FAILED_KEY)
 	if err != nil {
 		return fmt.Errorf("获取删除失败记录: %w", err)
@@ -175,19 +194,26 @@ func (j *CleanupJob) cleanupFailedDeletions(ctx context.Context) error {
 		return nil
 	}
 
-	// 检查文件是否存在，如果文件已存在则可以从失败列表中移除
+	storageService := j.storageService
 	cleanedCount := 0
-
 	for _, filePath := range members {
-		// TODO: 检查文件是否仍然存在
-		// 这里需要调用文件存储服务检查文件存在性
-		// 如果文件不存在或已被删除，可以从失败列表中移除
+		if len(filePath) == 0 {
+			j.cacheClient.SRem(ctx, DELETION_FAILED_KEY, filePath)
+			continue
+		}
 
-		// 暂时：随机清理一些记录作为示例
-		if len(filePath) > 0 && len(filePath)%10 == 0 {
+		// 检查文件是否仍存在
+		exists, existsErr := storageService.Exists(ctx, filePath)
+		if existsErr != nil {
+			logger.Warn("检查文件存在性失败，保留记录",
+				zap.String("path", filePath), zap.Error(existsErr))
+			continue
+		}
+		if !exists {
+			// 文件已不存在，删除成功，从失败列表移除
 			j.cacheClient.SRem(ctx, DELETION_FAILED_KEY, filePath)
 			cleanedCount++
-			logger.Info("从删除失败列表移除", zap.String("path", filePath))
+			logger.Info("从删除失败列表移除（文件已不存在）", zap.String("path", filePath))
 		}
 	}
 
@@ -198,35 +224,176 @@ func (j *CleanupJob) cleanupFailedDeletions(ctx context.Context) error {
 	return nil
 }
 
-// cleanupExpiredTaskCaches 清理过期的任务取消标志
-func (j *CleanupJob) cleanupExpiredTaskCaches(ctx context.Context) error {
-	const TASK_CANCEL_PREFIX = "task:cancel:"
-	const TASK_STATUS_PREFIX = "task:status:"
+// cleanupExpiredTasks 清理过期任务（对齐 Python cleanupExpiredTasks）
+// 1. 7天前 COMPLETED/CANCELLED 任务物理删除
+// 2. 30天前所有非 PENDING/PROCESSING 任务物理删除
+func (j *CleanupJob) cleanupExpiredTasks(ctx context.Context) error {
+	db := database.DB()
+	if db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
 
-	// 使用SCAN遍历所有任务相关键
-	// 注意：生产环境可能需要更高效的批量删除策略
+	// Block 1: 7天前 COMPLETED/CANCELLED 任务
+	sevenDaysAgo := time.Now().Add(-expiredThreshold)
+	var block1Tasks []model.SysTask
+	if err := db.WithContext(ctx).
+		Where("status IN ?", []model.TaskStatus{model.TaskStatusCompleted, model.TaskStatusCancelled}).
+		Where("create_time < ?", sevenDaysAgo).
+		Find(&block1Tasks).Error; err != nil {
+		return fmt.Errorf("查询7天前已完成/取消任务失败: %w", err)
+	}
 
-	// 这里简化处理，实际应该扫描匹配的键
-	// 例如：使用 SCAN 命令获取所有 task:cancel:* 键
+	if len(block1Tasks) > 0 {
+		ids := make([]int64, len(block1Tasks))
+		cacheKeys := make([]string, 0, len(block1Tasks))
+		for i, t := range block1Tasks {
+			ids[i] = t.ID
+			if t.TaskID != "" {
+				cacheKeys = append(cacheKeys, tasksvc.TASK_CACHE_PREFIX+t.TaskID)
+			}
+		}
 
-	logger.Debug("清理过期任务缓存（简化版）")
+		// 删除 DB 记录
+		if err := db.WithContext(ctx).Where("id IN ?", ids).Delete(&model.SysTask{}).Error; err != nil {
+			return fmt.Errorf("删除7天前已完成/取消任务失败: %w", err)
+		}
+
+		// 删除 Redis 缓存
+		if len(cacheKeys) > 0 {
+			j.cacheClient.Delete(ctx, cacheKeys...)
+		}
+
+		logger.Info("清理7天前已完成/取消任务", zap.Int("count", len(block1Tasks)))
+	}
+
+	// Block 2: 30天前所有非 PENDING/PROCESSING 任务
+	thirtyDaysAgo := time.Now().Add(-oldThreshold)
+	var block2Tasks []model.SysTask
+	if err := db.WithContext(ctx).
+		Where("status NOT IN ?", []model.TaskStatus{model.TaskStatusPending, model.TaskStatusProcessing}).
+		Where("create_time < ?", thirtyDaysAgo).
+		Find(&block2Tasks).Error; err != nil {
+		return fmt.Errorf("查询30天前已终止任务失败: %w", err)
+	}
+
+	if len(block2Tasks) > 0 {
+		ids := make([]int64, len(block2Tasks))
+		cacheKeys := make([]string, 0, len(block2Tasks))
+		for i, t := range block2Tasks {
+			ids[i] = t.ID
+			if t.TaskID != "" {
+				cacheKeys = append(cacheKeys, tasksvc.TASK_CACHE_PREFIX+t.TaskID)
+			}
+		}
+
+		if err := db.WithContext(ctx).Where("id IN ?", ids).Delete(&model.SysTask{}).Error; err != nil {
+			return fmt.Errorf("删除30天前已终止任务失败: %w", err)
+		}
+
+		if len(cacheKeys) > 0 {
+			j.cacheClient.Delete(ctx, cacheKeys...)
+		}
+
+		logger.Info("清理30天前已终止任务", zap.Int("count", len(block2Tasks)))
+	}
+
 	return nil
 }
 
-// cleanupCompletedTasks 清理完成状态的任务记录
-func (j *CleanupJob) cleanupCompletedTasks(ctx context.Context) error {
-	// 查询已完成/取消/失败且超过保留时间的任务
-	// 注意：需要根据实际的任务存储方式实现
-	// 这里假设任务记录存储在 Redis 或数据库中
+// cleanupStuckTasks 回收僵死任务（对齐 Python cleanupStuckTasks）
+// 1. PROCESSING 且 startedAt < 30分钟 → FAILED
+// 2. PENDING 且 createTime < 24小时 → FAILED
+func (j *CleanupJob) cleanupStuckTasks(ctx context.Context) error {
+	db := database.DB()
+	if db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
 
-	logger.Debug("清理已完成任务（简化版）")
+	now := time.Now()
+
+	// Block 1: PROCESSING 且 startedAt < 30分钟
+	thirtyMinAgo := now.Add(-stuckProcessing)
+	var stuckProcessing []model.SysTask
+	if err := db.WithContext(ctx).
+		Where("status = ?", model.TaskStatusProcessing).
+		Where("started_at < ?", thirtyMinAgo).
+		Find(&stuckProcessing).Error; err != nil {
+		return fmt.Errorf("查询PROCESSING僵死任务失败: %w", err)
+	}
+
+	if len(stuckProcessing) > 0 {
+		errorMsg := "任务超时（30分钟无进度更新），已被系统自动回收"
+		for _, t := range stuckProcessing {
+			if err := db.WithContext(ctx).Model(&model.SysTask{}).
+				Where("id = ?", t.ID).
+				Updates(map[string]interface{}{
+					"status":        model.TaskStatusFailed,
+					"error_message": errorMsg,
+					"completed_at":  now,
+				}).Error; err != nil {
+				logger.Error("更新PROCESSING僵死任务失败",
+					zap.Int64("taskID", t.ID), zap.Error(err))
+				continue
+			}
+
+			// 更新 Redis 缓存
+			if t.TaskID != "" {
+				t.Status = model.TaskStatusFailed
+				t.ErrorMessage = errorMsg
+				t.CompletedAt = &now
+				j.cacheTask(ctx, &t)
+			}
+		}
+		logger.Warn("清理PROCESSING僵死任务", zap.Int("count", len(stuckProcessing)))
+	}
+
+	// Block 2: PENDING 且 createTime < 24小时
+	oneDayAgo := now.Add(-stuckPending)
+	var stuckPending []model.SysTask
+	if err := db.WithContext(ctx).
+		Where("status = ?", model.TaskStatusPending).
+		Where("create_time < ?", oneDayAgo).
+		Find(&stuckPending).Error; err != nil {
+		return fmt.Errorf("查询PENDING僵死任务失败: %w", err)
+	}
+
+	if len(stuckPending) > 0 {
+		errorMsg := "任务超时（24h未启动），已被系统自动回收"
+		for _, t := range stuckPending {
+			if err := db.WithContext(ctx).Model(&model.SysTask{}).
+				Where("id = ?", t.ID).
+				Updates(map[string]interface{}{
+					"status":        model.TaskStatusFailed,
+					"error_message": errorMsg,
+					"completed_at":  now,
+				}).Error; err != nil {
+				logger.Error("更新PENDING僵死任务失败",
+					zap.Int64("taskID", t.ID), zap.Error(err))
+				continue
+			}
+
+			if t.TaskID != "" {
+				t.Status = model.TaskStatusFailed
+				t.ErrorMessage = errorMsg
+				t.CompletedAt = &now
+				j.cacheTask(ctx, &t)
+			}
+		}
+		logger.Warn("清理PENDING僵死任务", zap.Int("count", len(stuckPending)))
+	}
+
 	return nil
 }
 
-// RunCleanupNow 立即执行一次清理（用于手动触发）
-func (j *CleanupJob) RunCleanupNow() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	return j.executeCleanup(ctx)
+// cacheTask 缓存任务到 Redis（须与 task_service.go 的 cacheTask 逻辑一致）
+func (j *CleanupJob) cacheTask(ctx context.Context, task *model.SysTask) {
+	cacheKey := tasksvc.TASK_CACHE_PREFIX + task.TaskID
+	taskJSON, err := json.Marshal(task)
+	if err != nil {
+		logger.Error("任务序列化失败", zap.Error(err))
+		return
+	}
+	if err := j.cacheClient.Set(ctx, cacheKey, string(taskJSON), tasksvc.TASK_EXPIRE_HOURS); err != nil {
+		logger.Error("缓存任务失败", zap.Error(err))
+	}
 }

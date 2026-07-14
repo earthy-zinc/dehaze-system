@@ -22,6 +22,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from jose import jwt
 from jose.exceptions import ExpiredSignatureError, JWTError
 from redis.asyncio import Redis
+from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,7 @@ class DistributedConnectionManager:
                 }, ensure_ascii=False)
                 await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
                 return
-            except Exception as e:
+            except RedisError as e:
                 logger.warning(f"Redis Pub/Sub 发布失败，降级为本地发送: {e}")
 
         # 降级：仅本地发送
@@ -171,7 +172,7 @@ class DistributedConnectionManager:
                 }, ensure_ascii=False)
                 await self._redis.publish(settings.WS_REDIS_CHANNEL, msg)
                 return
-            except Exception as e:
+            except RedisError as e:
                 logger.warning(f"Redis Pub/Sub 广播失败，降级为本地广播: {e}")
 
         await self._broadcast_local(message, exclude_user)
@@ -203,7 +204,7 @@ class DistributedConnectionManager:
                     except (ValueError, TypeError):
                         pass
                 return users
-            except Exception as e:
+            except RedisError as e:
                 logger.warning(f"获取在线用户失败，降级为本地查询: {e}")
 
         # 降级：仅本地查询
@@ -285,7 +286,7 @@ class DistributedConnectionManager:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning(f"WebSocket Pub/Sub 异常: {e}, 3秒后重连")
+                logger.error(f"WebSocket Pub/Sub 异常: {e}, 3秒后重连", exc_info=True)
                 await asyncio.sleep(3)
 
     async def _handle_pubsub_message(self, data: str):
@@ -328,7 +329,7 @@ class DistributedConnectionManager:
                     await pipe.execute()
             except asyncio.CancelledError:
                 break
-            except Exception as e:
+            except RedisError as e:
                 logger.warning(f"WebSocket 心跳失败: {e}")
 
     async def _update_online_status(self, user_id: int):
@@ -339,7 +340,7 @@ class DistributedConnectionManager:
                     settings.WS_ONLINE_KEY,
                     {str(user_id): time.time()},
                 )
-            except Exception as e:
+            except RedisError as e:
                 logger.warning(f"更新 Redis 在线状态失败: user_id={user_id}, error={e}")
 
 

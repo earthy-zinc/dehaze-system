@@ -10,6 +10,7 @@ import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysAlgorithmVersion;
 import com.pei.dehaze.model.form.AlgorithmVersionForm;
 import com.pei.dehaze.model.vo.AlgorithmVersionVO;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysAlgorithmVersionService;
 import lombok.RequiredArgsConstructor;
@@ -60,10 +61,12 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
         }
 
         // 将当前活跃版本置为非活跃
+        Long currentUserId = SecurityUtils.getUserId();
         this.update(new LambdaUpdateWrapper<SysAlgorithmVersion>()
                 .eq(SysAlgorithmVersion::getAlgorithmId, algorithmId)
                 .eq(SysAlgorithmVersion::getIsActive, true)
-                .set(SysAlgorithmVersion::getIsActive, false));
+                .set(SysAlgorithmVersion::getIsActive, false)
+                .set(SysAlgorithmVersion::getUpdateBy, currentUserId));
 
         // 创建新版本记录
         SysAlgorithmVersion version = new SysAlgorithmVersion();
@@ -101,10 +104,12 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
         }
 
         // 将当前活跃版本置为非活跃
+        Long currentUserId = SecurityUtils.getUserId();
         this.update(new LambdaUpdateWrapper<SysAlgorithmVersion>()
                 .eq(SysAlgorithmVersion::getAlgorithmId, algorithmId)
                 .eq(SysAlgorithmVersion::getIsActive, true)
-                .set(SysAlgorithmVersion::getIsActive, false));
+                .set(SysAlgorithmVersion::getIsActive, false)
+                .set(SysAlgorithmVersion::getUpdateBy, currentUserId));
 
         // 激活目标版本
         targetVersion.setIsActive(true);

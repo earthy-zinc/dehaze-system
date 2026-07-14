@@ -181,7 +181,7 @@ func (r *AlgorithmRepository) UpdateStatus(ctx context.Context, id int64, status
 	return r.db.WithContext(ctx).
 		Model(&model.SysAlgorithm{}).
 		Where("id = ?", id).
-		Update("status", status).Error
+		Updates(map[string]interface{}{"status": status}).Error
 }
 
 // HasChildrenByParentIDs 检查指定父 ID 列表是否存在子算法

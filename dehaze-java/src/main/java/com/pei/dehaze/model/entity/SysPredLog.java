@@ -1,8 +1,6 @@
 package com.pei.dehaze.model.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
 import lombok.Data;
@@ -30,10 +28,4 @@ public class SysPredLog extends BaseEntity {
     private String predUrl;
 
     private Integer time;
-
-    @TableField(fill = FieldFill.INSERT)
-    private Long createBy;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updateBy;
 }

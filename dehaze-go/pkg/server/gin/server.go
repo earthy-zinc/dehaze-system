@@ -14,7 +14,6 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -44,14 +43,7 @@ func Init() *Server {
 		middleware.Recovery(stack),
 		middleware.ContextErrorHandler(),
 		middleware.Prometheus(),
-		cors.New(cors.Config{
-			AllowOrigins:     []string{"*"},
-			AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "X-Trace-ID"},
-			ExposeHeaders:    []string{"X-Trace-ID"},
-			AllowCredentials: true,
-			MaxAge:           12 * time.Hour,
-		}),
+		middleware.CorsByRules(),
 	)
 
 	// 健康检查
@@ -64,8 +56,8 @@ func Init() *Server {
 		engine.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
-	// Prometheus 指标
-	engine.GET("/metrics", middleware.MetricsHandler())
+	// Prometheus 指标（需认证 + 管理员权限）
+	engine.GET("/metrics", middleware.JWTAuth(), middleware.RequireAdmin(), middleware.MetricsHandler())
 
 	return &Server{
 		engine: engine,

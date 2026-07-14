@@ -39,6 +39,7 @@ func NewMultiLevelCache(opts ...Option) (*MultiLevelCache, error) {
 func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 	// 1. 布隆过滤器检查（防穿透）
 	if m.opts.BloomFilter != nil && !m.opts.BloomFilter.MayExist(key) {
+		recordMiss("bloom")
 		return "", errs.ErrKeyNotFound
 	}
 
@@ -48,10 +49,13 @@ func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 		if err == nil {
 			// 检查是否为空值标记
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
+				recordHit("L1_null")
 				return "", errs.ErrKeyNotFound
 			}
+			recordHit("L1")
 			return val, nil
 		}
+		recordMiss("L1")
 	}
 
 	// 3. 尝试从L2获取
@@ -60,14 +64,18 @@ func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 		if err == nil {
 			// 检查是否为空值标记
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
+				recordHit("L2_null")
 				return "", errs.ErrKeyNotFound
 			}
+			recordHit("L2")
 			// 回填L1
 			m.writeBackToL1(ctx, key, val)
 			return val, nil
 		}
+		recordMiss("L2")
 	}
 
+	recordMiss("all")
 	return "", errs.ErrKeyNotFound
 }
 
@@ -76,6 +84,7 @@ func (m *MultiLevelCache) Get(ctx context.Context, key string) (string, error) {
 func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader protection.DataLoader) (string, error) {
 	// 1. 布隆过滤器检查（防穿透）
 	if m.opts.BloomFilter != nil && !m.opts.BloomFilter.MayExist(key) {
+		recordMiss("bloom")
 		return "", errs.ErrKeyNotFound
 	}
 
@@ -84,10 +93,13 @@ func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader 
 		val, err := m.opts.L1Cache.Get(ctx, key)
 		if err == nil {
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
+				recordHit("L1_null")
 				return "", errs.ErrKeyNotFound
 			}
+			recordHit("L1")
 			return val, nil
 		}
+		recordMiss("L1")
 	}
 
 	// 3. 尝试从L2获取
@@ -95,11 +107,14 @@ func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader 
 		val, err := m.getFromL2WithBreaker(ctx, key)
 		if err == nil {
 			if m.opts.NullCache != nil && m.opts.NullCache.IsNullValue(val) {
+				recordHit("L2_null")
 				return "", errs.ErrKeyNotFound
 			}
+			recordHit("L2")
 			m.writeBackToL1(ctx, key, val)
 			return val, nil
 		}
+		recordMiss("L2")
 	}
 
 	// 4. 使用SingleFlight从数据源加载（防击穿）
@@ -107,6 +122,7 @@ func (m *MultiLevelCache) GetWithLoader(ctx context.Context, key string, loader 
 		return m.loadWithSingleFlight(ctx, key, loader)
 	}
 
+	recordMiss("all")
 	return "", errs.ErrKeyNotFound
 }
 
@@ -667,10 +683,15 @@ func (m *MultiLevelCache) loadWithSingleFlight(ctx context.Context, key string, 
 	if err != nil {
 		// 数据不存在，设置空值缓存（防穿透）
 		if m.opts.NullCache != nil && errors.Is(err, errs.ErrKeyNotFound) {
+			recordLoader("miss")
 			_ = m.opts.NullCache.SetNull(ctx, key, 0)
+		} else {
+			recordLoader("error")
 		}
 		return "", err
 	}
+
+	recordLoader("hit")
 
 	val, ok := result.(string)
 	if !ok {

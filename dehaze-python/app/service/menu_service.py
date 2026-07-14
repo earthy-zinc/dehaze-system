@@ -234,7 +234,7 @@ class MenuService:
         await db.commit()
 
         # 清除缓存
-        await MenuService._clear_menu_cache(redis)
+        await MenuService._clear_menu_cache(db, redis)
 
         return merged
 
@@ -393,21 +393,42 @@ class MenuService:
         await db.commit()
 
         # 清除缓存
-        await MenuService._clear_menu_cache(redis)
+        await MenuService._clear_menu_cache(db, redis)
 
     @staticmethod
-    async def list_role_perms(db: AsyncSession, roles: set[str]) -> set[str]:
+    async def list_role_perms(db: AsyncSession, redis: Redis, roles: set[str]) -> set[str]:
         """
         获取角色权限集合
 
+        统一权限缓存策略：逐角色判断缺失 → 回源 → 回填 → 设 TTL（30min）。
+        使用 SingleFlight 防止缓存击穿（CacheService.get_json_with_loader 内置）。
+
         Args:
             db: 数据库会话
+            redis: Redis 客户端
             roles: 角色编码集合
 
         Returns:
             权限集合
         """
-        return await menu_repository.get_role_perms(db, list(roles))
+        if not roles:
+            return set()
+
+        cache = CacheService(redis)
+        all_perms: set[str] = set()
+
+        for role_code in roles:
+            cache_key = f"role:perms:{role_code}"
+            perms = await cache.get_json_with_loader(
+                cache_key,
+                loader=lambda rc=role_code: _load_role_perms(db, rc),
+                ttl=1800,  # 30 分钟
+                default=[],
+            )
+            if perms:
+                all_perms.update(perms)
+
+        return all_perms
 
     @staticmethod
     async def get_menu_form(db: AsyncSession, menu_id: int) -> dict[str, Any]:
@@ -471,12 +492,24 @@ class MenuService:
         await db.commit()
 
         # 3. 清除缓存
-        await MenuService._clear_menu_cache(redis)
+        await MenuService._clear_menu_cache(db, redis)
 
     @staticmethod
-    async def _clear_menu_cache(redis: Redis) -> None:
-        """清除菜单相关缓存"""
+    async def _clear_menu_cache(db: AsyncSession, redis: Redis) -> None:
+        """清除菜单相关缓存
+
+        精确删除所有角色的权限缓存（按 roleCode 逐个删除，禁止通配符）。
+        """
         cache = CacheService(redis)
         await cache.delete(ROUTE_CACHE_KEY)
-        # 清除所有角色权限缓存
-        await cache.delete_pattern("role:perms:*")
+        # 精确删除所有角色权限缓存（禁止通配符 delete_pattern）
+        from app.repository.role_repository import role_repository
+        role_codes = await role_repository.get_all_active_codes(db)
+        for role_code in role_codes:
+            await redis.delete(f"role:perms:{role_code}")
+
+
+async def _load_role_perms(db: AsyncSession, role_code: str) -> list[str]:
+    """加载角色权限的 loader 函数（返回 list 以支持 JSON 序列化）"""
+    perms = await menu_repository.get_role_perms(db, [role_code])
+    return list(perms) if perms else []

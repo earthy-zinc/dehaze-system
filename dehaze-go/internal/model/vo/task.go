@@ -26,6 +26,12 @@ type TaskVO struct {
 	CompletedAt *time.Time `json:"completedAt"`
 	// 错误信息
 	Error string `json:"error"`
+	// 客户端幂等键
+	IdempotencyKey *string `json:"idempotencyKey"`
+	// MQ 重试次数
+	RetryCount int `json:"retryCount"`
+	// 执行 Worker 标识
+	WorkerID *string `json:"workerId"`
 }
 
 // TaskDetailVO 任务详情视图对象

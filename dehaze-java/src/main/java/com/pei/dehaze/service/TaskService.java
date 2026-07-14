@@ -17,10 +17,11 @@ public interface TaskService extends IService<SysTask> {
     /**
      * 创建任务（统一入口）
      *
-     * @param form 任务创建表单
+     * @param form            任务创建表单
+     * @param idempotencyKey  客户端幂等键（可空），相同键返回已有任务
      * @return 任务VO
      */
-    TaskVO createTask(ExportTaskCreateForm form);
+    TaskVO createTask(ExportTaskCreateForm form, String idempotencyKey);
 
     /**
      * 查询任务状态
@@ -44,6 +45,14 @@ public interface TaskService extends IService<SysTask> {
      * @param taskId 任务ID
      */
     void cancelTask(String taskId);
+
+    /**
+     * 重试失败的任务（重放入口）
+     *
+     * @param taskId 任务ID
+     * @return 任务VO
+     */
+    TaskVO retryTask(String taskId);
 
     /**
      * 分页查询当前用户的任务列表

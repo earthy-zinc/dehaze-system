@@ -3,8 +3,10 @@
 """
 
 import logging
+import os
+import sys
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 
 from fastapi import FastAPI
 
@@ -14,6 +16,46 @@ from app.dependencies.redis import (check_redis_health, close_redis,
                                     get_redis_client)
 
 logger = logging.getLogger(__name__)
+
+# 主 Worker 文件锁句柄（保持打开以持有锁，进程退出时自动释放）
+_main_worker_lock_file = None
+
+
+def _try_become_main_worker() -> bool:
+    """尝试成为主 Worker（通过文件锁互斥）。
+
+    在多 Worker 部署（uvicorn --workers N）下，某些资源只需启动一次：
+    - XXL-Job executor daemon（绑定端口，多实例会冲突）
+    - GPU 指标采集器（重复采集同一块 GPU 无意义）
+
+    Linux/Mac 使用 fcntl 文件锁，第一个获取锁的 Worker 为主 Worker。
+    Windows 总是返回 True（开发环境通常使用 --workers 1）。
+    主 Worker 崩溃后锁自动释放，但其他 Worker 不会自动接管（需重启）。
+    """
+    global _main_worker_lock_file
+
+    if sys.platform == "win32":
+        return True
+
+    try:
+        import fcntl
+    except ImportError:
+        return True
+
+    lock_path = os.path.join(settings.LOG_DIR, "main_worker.lock")
+    os.makedirs(os.path.dirname(lock_path) or ".", exist_ok=True)
+
+    try:
+        _main_worker_lock_file = open(lock_path, "w")
+        fcntl.flock(_main_worker_lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        _main_worker_lock_file.write(str(os.getpid()))
+        _main_worker_lock_file.flush()
+        return True
+    except (IOError, OSError):
+        if _main_worker_lock_file:
+            _main_worker_lock_file.close()
+            _main_worker_lock_file = None
+        return False
 
 
 @asynccontextmanager
@@ -25,6 +67,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging(use_json_format=settings.LOG_FORMAT_JSON)
 
     logger.info(f"启动 {settings.APP_NAME} v{settings.APP_VERSION}")
+
+    # 多 Worker 守卫：判断当前 Worker 是否为主 Worker
+    # XXL-Job daemon 和 GPU 指标采集器只需在主 Worker 中启动
+    is_main_worker = _try_become_main_worker()
+    if is_main_worker:
+        logger.info("当前 Worker 为主 Worker (pid=%d)，将启动独占资源", os.getpid())
+    else:
+        logger.info("当前 Worker 为从 Worker (pid=%d)，跳过独占资源启动", os.getpid())
 
     # 初始化数据库
     await init_db()
@@ -57,16 +107,25 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.mq_publisher = publisher
     app.state.mq_consumer = consumer
 
-    # 初始化 XXL-Job 执行器（如果启用）
-    from app.infrastructure.job.executor import init_xxljob
-    xxljob_runner = await init_xxljob()
+    # 初始化 XXL-Job 执行器（仅在主 Worker 启动，避免端口冲突）
+    xxljob_runner: Optional[object] = None
+    if is_main_worker:
+        from app.infrastructure.job.executor import init_xxljob
+        xxljob_runner = await init_xxljob()
+    else:
+        if settings.XXLJOB_ENABLED:
+            logger.info("从 Worker 跳过 XXL-Job 启动（由主 Worker 负责）")
     app.state.xxljob_runner = xxljob_runner
 
-    # 启动 GPU 指标采集器（如果启用）
-    from app.infrastructure.metrics import collect_gpu_metrics
-    gpu_collector = await collect_gpu_metrics(
-        collect_interval=settings.PROMETHEUS_GPU_COLLECT_INTERVAL
-    )
+    # 启动 GPU 指标采集器（仅在主 Worker 启动，避免重复采集）
+    gpu_collector = None
+    if is_main_worker:
+        from app.infrastructure.metrics import collect_gpu_metrics
+        gpu_collector = await collect_gpu_metrics(
+            collect_interval=settings.PROMETHEUS_GPU_COLLECT_INTERVAL
+        )
+    else:
+        logger.info("从 Worker 跳过 GPU 指标采集器启动（由主 Worker 负责）")
     app.state.gpu_collector = gpu_collector
 
     logger.info(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} 启动成功")
@@ -123,15 +182,16 @@ async def _graceful_shutdown(app: FastAPI) -> None:
     except Exception as e:
         logger.warning(f"关闭 WebSocket 跨 Worker 通信失败: {e}")
 
-    # 4. 关闭 XXL-Job 执行器
-    from app.infrastructure.job.executor import close_xxljob
-    await close_xxljob()
+    # 4. 关闭 XXL-Job 执行器（仅在主 Worker 中启动了才需关闭）
+    if getattr(app.state, "xxljob_runner", None) is not None:
+        from app.infrastructure.job.executor import close_xxljob
+        await close_xxljob()
 
     # 5. 关闭 RabbitMQ 连接
     from app.infrastructure.mq.connection import close_mq
     await close_mq()
 
-    # 6. 停止 GPU 指标采集器
+    # 6. 停止 GPU 指标采集器（仅在主 Worker 中启动了才需停止）
     from app.infrastructure.metrics import GPUMetricsCollector
     gpu_collector: GPUMetricsCollector | None = getattr(
         app.state, "gpu_collector", None)

@@ -468,65 +468,6 @@ func (_c *MockIUserRepository_FindByID_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// FindByUsername provides a mock function with given fields: ctx, username
-func (_m *MockIUserRepository) FindByUsername(ctx context.Context, username string) (*model.SysUser, error) {
-	ret := _m.Called(ctx, username)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FindByUsername")
-	}
-
-	var r0 *model.SysUser
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (*model.SysUser, error)); ok {
-		return rf(ctx, username)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) *model.SysUser); ok {
-		r0 = rf(ctx, username)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*model.SysUser)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, username)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIUserRepository_FindByUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByUsername'
-type MockIUserRepository_FindByUsername_Call struct {
-	*mock.Call
-}
-
-// FindByUsername is a helper method to define mock.On call
-//   - ctx context.Context
-//   - username string
-func (_e *MockIUserRepository_Expecter) FindByUsername(ctx interface{}, username interface{}) *MockIUserRepository_FindByUsername_Call {
-	return &MockIUserRepository_FindByUsername_Call{Call: _e.mock.On("FindByUsername", ctx, username)}
-}
-
-func (_c *MockIUserRepository_FindByUsername_Call) Run(run func(ctx context.Context, username string)) *MockIUserRepository_FindByUsername_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_FindByUsername_Call) Return(_a0 *model.SysUser, _a1 error) *MockIUserRepository_FindByUsername_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIUserRepository_FindByUsername_Call) RunAndReturn(run func(context.Context, string) (*model.SysUser, error)) *MockIUserRepository_FindByUsername_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // FindExportUsers provides a mock function with given fields: ctx, q
 func (_m *MockIUserRepository) FindExportUsers(ctx context.Context, q *query.UserPageQuery) ([]read.UserExport, error) {
 	ret := _m.Called(ctx, q)
@@ -712,65 +653,6 @@ func (_c *MockIUserRepository_FindPageWithRoles_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// FindRoleCodesByUsername provides a mock function with given fields: ctx, username
-func (_m *MockIUserRepository) FindRoleCodesByUsername(ctx context.Context, username string) ([]string, error) {
-	ret := _m.Called(ctx, username)
-
-	if len(ret) == 0 {
-		panic("no return value specified for FindRoleCodesByUsername")
-	}
-
-	var r0 []string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) ([]string, error)); ok {
-		return rf(ctx, username)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) []string); ok {
-		r0 = rf(ctx, username)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]string)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, username)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIUserRepository_FindRoleCodesByUsername_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindRoleCodesByUsername'
-type MockIUserRepository_FindRoleCodesByUsername_Call struct {
-	*mock.Call
-}
-
-// FindRoleCodesByUsername is a helper method to define mock.On call
-//   - ctx context.Context
-//   - username string
-func (_e *MockIUserRepository_Expecter) FindRoleCodesByUsername(ctx interface{}, username interface{}) *MockIUserRepository_FindRoleCodesByUsername_Call {
-	return &MockIUserRepository_FindRoleCodesByUsername_Call{Call: _e.mock.On("FindRoleCodesByUsername", ctx, username)}
-}
-
-func (_c *MockIUserRepository_FindRoleCodesByUsername_Call) Run(run func(ctx context.Context, username string)) *MockIUserRepository_FindRoleCodesByUsername_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_FindRoleCodesByUsername_Call) Return(_a0 []string, _a1 error) *MockIUserRepository_FindRoleCodesByUsername_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIUserRepository_FindRoleCodesByUsername_Call) RunAndReturn(run func(context.Context, string) ([]string, error)) *MockIUserRepository_FindRoleCodesByUsername_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // FindUserAuthInfo provides a mock function with given fields: ctx, username
 func (_m *MockIUserRepository) FindUserAuthInfo(ctx context.Context, username string) (*model.UserAuthInfo, error) {
 	ret := _m.Called(ctx, username)
@@ -826,6 +708,74 @@ func (_c *MockIUserRepository_FindUserAuthInfo_Call) Return(_a0 *model.UserAuthI
 }
 
 func (_c *MockIUserRepository_FindUserAuthInfo_Call) RunAndReturn(run func(context.Context, string) (*model.UserAuthInfo, error)) *MockIUserRepository_FindUserAuthInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindUserWithRoleCodesByID provides a mock function with given fields: ctx, userID
+func (_m *MockIUserRepository) FindUserWithRoleCodesByID(ctx context.Context, userID int64) (*model.SysUser, []string, error) {
+	ret := _m.Called(ctx, userID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindUserWithRoleCodesByID")
+	}
+
+	var r0 *model.SysUser
+	var r1 []string
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*model.SysUser, []string, error)); ok {
+		return rf(ctx, userID)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *model.SysUser); ok {
+		r0 = rf(ctx, userID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.SysUser)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64) []string); ok {
+		r1 = rf(ctx, userID)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, int64) error); ok {
+		r2 = rf(ctx, userID)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockIUserRepository_FindUserWithRoleCodesByID_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindUserWithRoleCodesByID'
+type MockIUserRepository_FindUserWithRoleCodesByID_Call struct {
+	*mock.Call
+}
+
+// FindUserWithRoleCodesByID is a helper method to define mock.On call
+//   - ctx context.Context
+//   - userID int64
+func (_e *MockIUserRepository_Expecter) FindUserWithRoleCodesByID(ctx interface{}, userID interface{}) *MockIUserRepository_FindUserWithRoleCodesByID_Call {
+	return &MockIUserRepository_FindUserWithRoleCodesByID_Call{Call: _e.mock.On("FindUserWithRoleCodesByID", ctx, userID)}
+}
+
+func (_c *MockIUserRepository_FindUserWithRoleCodesByID_Call) Run(run func(ctx context.Context, userID int64)) *MockIUserRepository_FindUserWithRoleCodesByID_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64))
+	})
+	return _c
+}
+
+func (_c *MockIUserRepository_FindUserWithRoleCodesByID_Call) Return(_a0 *model.SysUser, _a1 []string, _a2 error) *MockIUserRepository_FindUserWithRoleCodesByID_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockIUserRepository_FindUserWithRoleCodesByID_Call) RunAndReturn(run func(context.Context, int64) (*model.SysUser, []string, error)) *MockIUserRepository_FindUserWithRoleCodesByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

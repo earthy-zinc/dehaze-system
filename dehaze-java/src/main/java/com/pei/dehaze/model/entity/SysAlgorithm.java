@@ -60,12 +60,6 @@ public class SysAlgorithm extends BaseEntity {
      */
     private String auditRemark;
 
-    @TableField(fill = FieldFill.INSERT)
-    private Long createBy;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updateBy;
-
     /**
      * 是否为终态（已发布/已停用/已归档）
      */

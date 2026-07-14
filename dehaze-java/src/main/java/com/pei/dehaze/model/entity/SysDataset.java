@@ -1,8 +1,6 @@
 package com.pei.dehaze.model.entity;
 
-import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.pei.dehaze.common.base.BaseEntity;
 import com.pei.dehaze.common.enums.StatusEnum;
@@ -44,11 +42,5 @@ public class SysDataset  extends BaseEntity {
      * 使用次数（用户使用该数据集的次数）
      */
     private Long usageCount;
-
-    @TableField(fill = FieldFill.INSERT)
-    private Long createBy;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private Long updateBy;
 
 }

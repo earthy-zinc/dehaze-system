@@ -41,13 +41,6 @@ type CacheStore struct {
 	Context    context.Context
 }
 
-func (rs *CacheStore) UseWithCtx(ctx context.Context) *CacheStore {
-	if ctx == nil {
-		rs.Context = ctx
-	}
-	return rs
-}
-
 func (rs *CacheStore) Set(id string, value string) error {
 	err := cacheClient.Set(rs.Context, rs.PreKey+id, value, rs.Expiration)
 	if err != nil {

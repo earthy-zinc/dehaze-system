@@ -592,7 +592,6 @@ class DatasetService:
         if "status" in data:
             dataset.status = data["status"]
 
-        dataset.update_time = datetime.now()
         await db.commit()
 
         await DatasetService._evict_all_cache(redis)
@@ -632,22 +631,40 @@ class DatasetService:
         failed = 0
         results = []
 
+        # 1. 批量预查询数据集存在性（1 次 IN 查询，替代 N 次 get_by_id）
+        existing_datasets = await dataset_repository.get_by_ids(
+            db, dataset_ids, with_deleted=True)
+        existing_map = {int(d.id): d for d in existing_datasets}
+
+        # 分类存在/不存在
+        valid_dataset_ids: list[int] = []
         for dataset_id in dataset_ids:
+            if dataset_id not in existing_map:
+                failed += 1
+                results.append({
+                    "id": dataset_id,
+                    "status": "failed",
+                    "message": "数据集不存在",
+                    "errorCode": "RESOURCE_NOT_FOUND",
+                })
+            else:
+                valid_dataset_ids.append(dataset_id)
+
+        if valid_dataset_ids:
             try:
-                dataset = await dataset_repository.get_by_id(db, dataset_id, with_deleted=True)
-                if not dataset:
-                    failed += 1
-                    results.append({
-                        "id": dataset_id,
-                        "status": "failed",
-                        "message": "数据集不存在",
-                        "errorCode": "RESOURCE_NOT_FOUND",
-                    })
-                    continue
+                # 2. 批量获取所有后代 ID（1 次全表查询 + 内存 BFS，替代 N 次 _get_dataset_and_descendant_ids）
+                descendants_map = await dataset_repository.get_all_descendant_ids_batch(
+                    db, valid_dataset_ids)
 
-                all_dataset_ids = await DatasetService._get_dataset_and_descendant_ids(db, dataset_id)
-                all_datasets = await dataset_repository.get_datasets_by_ids(db, all_dataset_ids)
+                # 3. 收集所有需要删除的数据集 ID（去重）
+                all_ids_set: set[int] = set()
+                for dataset_id in valid_dataset_ids:
+                    all_ids_set.update(descendants_map.get(dataset_id, [dataset_id]))
+                unique_ids_to_delete = list(all_ids_set)
 
+                # 4. 批量查询所有待删除数据集，构建 children_map 用于识别叶子节点
+                all_datasets = await dataset_repository.get_datasets_by_ids(
+                    db, unique_ids_to_delete)
                 children_map: dict[int, list[SysDataset]] = {}
                 for ds in all_datasets:
                     pid = int(ds.parent_id)
@@ -655,35 +672,40 @@ class DatasetService:
                         children_map[pid] = []
                     children_map[pid].append(ds)
 
-                leaf_ids = [ds_id for ds_id in all_dataset_ids if not children_map.get(ds_id)]
+                # 5. 批量识别叶子节点（待删除集合中没有子节点的）
+                all_leaf_ids = [
+                    ds_id for ds_id in unique_ids_to_delete
+                    if not children_map.get(ds_id)
+                ]
 
-                for leaf_id in leaf_ids:
-                    await DatasetItemService.delete_items_by_dataset(db, redis, leaf_id)
+                # 6. 批量删除所有叶子节点下的数据项
+                # （1 次查 item_ids + 1 次删 files + 1 次删 items，替代 N 次 delete_items_by_dataset）
+                if all_leaf_ids:
+                    all_item_ids = await dataset_repository.get_item_ids_by_dataset_ids(
+                        db, all_leaf_ids)
+                    if all_item_ids:
+                        await dataset_repository.delete_item_files_by_item_ids(db, all_item_ids)
+                        await dataset_repository.delete_items_by_ids(db, all_item_ids)
 
-                # 通过 BFS 计算深度，从深到浅删除
-                depth_map: dict[int, int] = {dataset_id: 0}
-                queue: list[int] = [dataset_id]
-                while queue:
-                    current = queue.pop(0)
-                    current_depth = depth_map.get(current, 0)
-                    for child in children_map.get(current, []):
-                        child_id = int(child.id)
-                        depth_map[child_id] = current_depth + 1
-                        queue.append(child_id)
-                sorted_ids = sorted(all_dataset_ids, key=lambda x: depth_map.get(x, 0), reverse=True)
-                await dataset_repository.delete_by_ids(db, sorted_ids)
+                # 7. 批量删除所有数据集（1 次物理删除，替代 N 次 delete_by_ids）
+                await dataset_repository.delete_by_ids(db, unique_ids_to_delete)
 
-                succeeded += 1
-                results.append({"id": dataset_id, "status": "success"})
+                # 8. 记录成功结果
+                for dataset_id in valid_dataset_ids:
+                    succeeded += 1
+                    results.append({"id": dataset_id, "status": "success"})
 
             except Exception as e:
-                failed += 1
-                results.append({
-                    "id": dataset_id,
-                    "status": "failed",
-                    "message": str(e),
-                    "errorCode": "SYSTEM_ERROR",
-                })
+                # 批量删除失败，回滚并标记所有有效数据集为失败
+                await db.rollback()
+                for dataset_id in valid_dataset_ids:
+                    failed += 1
+                    results.append({
+                        "id": dataset_id,
+                        "status": "failed",
+                        "message": str(e),
+                        "errorCode": "SYSTEM_ERROR",
+                    })
 
         await db.commit()
         await DatasetService._evict_all_cache(redis)
@@ -694,11 +716,6 @@ class DatasetService:
             "failed": failed,
             "results": results,
         }
-
-    @staticmethod
-    async def _get_dataset_and_descendant_ids(db: AsyncSession, dataset_id: int) -> list[int]:
-        descendants = await dataset_repository.get_all_descendant_ids(db, dataset_id)
-        return [dataset_id] + descendants
 
     @staticmethod
     async def get_image_items(
@@ -736,12 +753,13 @@ class DatasetService:
             for item_file, file_obj in item_files:
                 file_vo = _build_file_vo(item_file, file_obj)
                 files.append(file_vo)
-                image_urls.append({
-                    "id": file_obj.id,
-                    "type": item_file.type,
-                    "url": file_obj.url,
-                    "thumbnailUrl": file_obj.url,
-                })
+                if file_obj is not None:
+                    image_urls.append({
+                        "id": file_obj.id,
+                        "type": item_file.type,
+                        "url": file_obj.url,
+                        "thumbnailUrl": file_obj.url,
+                    })
                 if item_file.type == "clear" and clear_image is None:
                     clear_image = file_vo
                 elif item_file.type == "hazy":
@@ -826,12 +844,13 @@ class DatasetItemService:
         for item_file, file_obj in item_files:
             file_vo = _build_file_vo(item_file, file_obj)
             files.append(file_vo)
-            image_urls.append({
-                "id": file_obj.id,
-                "type": item_file.type,
-                "url": file_obj.url,
-                "thumbnailUrl": file_obj.url,
-            })
+            if file_obj is not None:
+                image_urls.append({
+                    "id": file_obj.id,
+                    "type": item_file.type,
+                    "url": file_obj.url,
+                    "thumbnailUrl": file_obj.url,
+                })
             # 按类型拆分：clearImage / hazyImages（对齐 SDK DatasetItemVO）
             if item_file.type == "clear" and clear_image is None:
                 clear_image = file_vo
@@ -863,8 +882,6 @@ class DatasetItemService:
 
         if "name" in data:
             item.name = data["name"]
-
-        item.update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         await db.commit()
 
         await DatasetService._evict_all_cache(redis)
@@ -890,23 +907,6 @@ class DatasetItemService:
         await db.commit()
 
         await DatasetService._evict_all_cache(redis)
-
-    @staticmethod
-    async def delete_items_by_dataset(
-        db: AsyncSession,
-        redis: Redis,
-        dataset_id: int,
-    ) -> int:
-        item_ids = await dataset_repository.get_item_ids_by_dataset(db, dataset_id)
-        if not item_ids:
-            return 0
-
-        await dataset_repository.delete_item_files_by_item_ids(db, item_ids)
-        await dataset_repository.delete_items_by_dataset_id(db, dataset_id)
-        # 不在此处 commit：本方法由 delete_datasets 在事务内循环调用，
-        # 由外层 delete_datasets 统一提交以保证原子性
-
-        return len(item_ids)
 
     @staticmethod
     async def batch_delete_items(

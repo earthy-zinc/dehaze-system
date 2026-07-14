@@ -35,18 +35,6 @@ func (r *UserRepository) FindByID(ctx context.Context, id int64) (*model.SysUser
 	return &user, err
 }
 
-// FindByUsername 根据用户名查询用户
-func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*model.SysUser, error) {
-	var user model.SysUser
-	err := r.db.WithContext(ctx).
-		Where("username = ? AND deleted = 0", username).
-		First(&user).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-	return &user, err
-}
-
 // ExistsByUsername 检查用户名是否存在
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string, excludeID ...int64) (bool, error) {
 	var count int64
@@ -269,18 +257,6 @@ func (r *UserRepository) FindExportUsers(ctx context.Context, q *query.UserPageQ
 	return userExports, nil
 }
 
-// FindRoleCodesByUsername 根据用户名查询角色编码列表
-func (r *UserRepository) FindRoleCodesByUsername(ctx context.Context, username string) ([]string, error) {
-	var roles []string
-	err := r.db.WithContext(ctx).Table("sys_user u").
-		Select("r.code").
-		Joins("LEFT JOIN sys_user_role ur ON u.id = ur.user_id").
-		Joins("LEFT JOIN sys_role r ON ur.role_id = r.id").
-		Where("u.username = ? AND u.deleted = 0 AND r.code IS NOT NULL", username).
-		Pluck("r.code", &roles).Error
-	return roles, err
-}
-
 // ExistsRootInIDs 检查是否包含超级管理员
 func (r *UserRepository) ExistsRootInIDs(ctx context.Context, ids []int64) (bool, error) {
 	var count int64
@@ -306,7 +282,7 @@ func (r *UserRepository) Update(ctx context.Context, user *model.SysUser) error 
 func (r *UserRepository) UpdateStatus(ctx context.Context, id int64, status int8) error {
 	return r.db.WithContext(ctx).Model(&model.SysUser{}).
 		Where("id = ?", id).
-		Update("status", status).Error
+		Updates(map[string]interface{}{"status": status}).Error
 }
 
 // UpdateStatusWithTime 更新用户状态（带更新时间）
@@ -323,7 +299,7 @@ func (r *UserRepository) UpdateStatusWithTime(ctx context.Context, id int64, sta
 func (r *UserRepository) UpdatePassword(ctx context.Context, id int64, password string) error {
 	return r.db.WithContext(ctx).Model(&model.SysUser{}).
 		Where("id = ?", id).
-		Update("password", password).Error
+		Updates(map[string]interface{}{"password": password}).Error
 }
 
 // UpdatePasswordWithTime 更新用户密码（带更新时间）
@@ -340,7 +316,7 @@ func (r *UserRepository) UpdatePasswordWithTime(ctx context.Context, id int64, p
 func (r *UserRepository) Delete(ctx context.Context, ids []int64) error {
 	return r.db.WithContext(ctx).Model(&model.SysUser{}).
 		Where("id IN ?", ids).
-		Update("deleted", 1).Error
+		Updates(map[string]interface{}{"deleted": 1}).Error
 }
 
 // SoftDeleteWithTime 逻辑删除用户（带更新时间）
@@ -355,33 +331,57 @@ func (r *UserRepository) SoftDeleteWithTime(ctx context.Context, ids []int64, up
 
 // FindUserAuthInfo 查询用户认证信息（含角色、权限）
 func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) (*model.UserAuthInfo, error) {
-	var authInfo model.UserAuthInfo
-
-	// 查询用户基本信息
+	// 合并查询用户基本信息和角色编码/数据权限（原查询1和查询2合并，消除冗余的用户表查询）
+	type userWithRole struct {
+		UserId    int64  `gorm:"column:user_id"`
+		Username  string `gorm:"column:username"`
+		Nickname  string `gorm:"column:nickname"`
+		DeptId    int64  `gorm:"column:dept_id"`
+		Password  string `gorm:"column:password"`
+		Status    int8   `gorm:"column:status"`
+		Code      string `gorm:"column:code"`
+		DataScope int8   `gorm:"column:data_scope"`
+	}
+	var rows []userWithRole
 	err := r.db.WithContext(ctx).
-		Model(&model.SysUser{}).
-		Select("id as user_id, username, nickname, dept_id, password, status").
-		Where("username = ? AND deleted = 0", username).
-		Scan(&authInfo).Error
+		Table("sys_user u").
+		Select("u.id as user_id, u.username, u.nickname, u.dept_id, u.password, u.status, r.code, r.data_scope").
+		Joins("LEFT JOIN sys_user_role sur ON u.id = sur.user_id").
+		Joins("LEFT JOIN sys_role r ON sur.role_id = r.id AND r.status = 1 AND r.deleted = 0").
+		Where("u.username = ? AND u.deleted = 0", username).
+		Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
-	if authInfo.UserId == 0 {
+	if len(rows) == 0 {
 		return nil, nil
 	}
 
-	// 查询用户角色
-	var roles []string
-	err = r.db.WithContext(ctx).
-		Model(&model.SysRole{}).
-		Select("code").
-		Joins("JOIN sys_user_role sur ON sys_role.id = sur.role_id").
-		Where("sur.user_id = ? AND sys_role.status = 1 AND sys_role.deleted = 0", authInfo.UserId).
-		Scan(&roles).Error
-	if err != nil {
-		return nil, err
+	first := rows[0]
+	authInfo := model.UserAuthInfo{
+		UserId:   first.UserId,
+		Username: first.Username,
+		Nickname: first.Nickname,
+		DeptId:   first.DeptId,
+		Password: first.Password,
+		Status:   first.Status,
+	}
+	roles := make([]string, 0, len(rows))
+	var minDataScope int8
+	hasDataScope := false
+	for _, row := range rows {
+		if row.Code != "" {
+			roles = append(roles, row.Code)
+			if !hasDataScope || row.DataScope < minDataScope {
+				minDataScope = row.DataScope
+				hasDataScope = true
+			}
+		}
 	}
 	authInfo.Roles = roles
+	if hasDataScope {
+		authInfo.DataScope = minDataScope
+	}
 
 	// 查询用户权限
 	var perms []string
@@ -397,20 +397,46 @@ func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) 
 	}
 	authInfo.Perms = perms
 
-	// 查询数据权限（取最大权限）
-	var dataScope int8
-	err = r.db.WithContext(ctx).
-		Model(&model.SysRole{}).
-		Select("MIN(data_scope)").
-		Joins("JOIN sys_user_role sur ON sys_role.id = sur.role_id").
-		Where("sur.user_id = ? AND sys_role.status = 1", authInfo.UserId).
-		Scan(&dataScope).Error
-	if err != nil {
-		return nil, err
-	}
-	authInfo.DataScope = dataScope
-
 	return &authInfo, nil
+}
+
+// FindUserWithRoleCodesByID 根据用户ID查询用户信息和角色编码（单次JOIN查询，消除N+1）
+func (r *UserRepository) FindUserWithRoleCodesByID(ctx context.Context, userID int64) (*model.SysUser, []string, error) {
+	type userWithRoleCode struct {
+		ID       int64  `gorm:"column:id"`
+		Username string `gorm:"column:username"`
+		Nickname string `gorm:"column:nickname"`
+		Avatar   string `gorm:"column:avatar"`
+		Code     string `gorm:"column:code"`
+	}
+	var rows []userWithRoleCode
+	err := r.db.WithContext(ctx).
+		Table("sys_user u").
+		Select("u.id, u.username, u.nickname, u.avatar, r.code").
+		Joins("LEFT JOIN sys_user_role sur ON u.id = sur.user_id").
+		Joins("LEFT JOIN sys_role r ON sur.role_id = r.id").
+		Where("u.id = ? AND u.deleted = 0", userID).
+		Scan(&rows).Error
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(rows) == 0 {
+		return nil, nil, nil
+	}
+	first := rows[0]
+	user := &model.SysUser{
+		BaseModel: model.BaseModel{ID: first.ID},
+		Username:  first.Username,
+		Nickname:  first.Nickname,
+		Avatar:    first.Avatar,
+	}
+	roles := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if row.Code != "" {
+			roles = append(roles, row.Code)
+		}
+	}
+	return user, roles, nil
 }
 
 // AssignRoles 分配用户角色

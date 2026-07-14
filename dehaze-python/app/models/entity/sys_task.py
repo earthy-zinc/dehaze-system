@@ -5,18 +5,19 @@
 from datetime import datetime
 from typing import Optional
 
-from app.database import Base
+from app.models.base import BaseModel
 from sqlalchemy import (BigInteger, Column, DateTime, Index, Integer, String,
-                        Text, func)
+                        Text)
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-class SysTask(Base):
+class SysTask(BaseModel):
     __tablename__ = 'sys_task'
     __table_args__ = (
         Index('idx_task_id', 'task_id', unique=True),
+        Index('idx_idempotency_key', 'idempotency_key', unique=True),
         Index('idx_status', 'status'),
-        Index('idx_created_by_status', 'created_by', 'status'),
+        Index('idx_create_by_status', 'create_by', 'status'),
         {'comment': '系统任务表'}
     )
 
@@ -35,15 +36,15 @@ class SysTask(Base):
     params: Mapped[Optional[str]] = mapped_column(Text, comment='任务参数（JSON）')
     result: Mapped[Optional[str]] = mapped_column(Text, comment='任务结果（JSON）')
     error_message: Mapped[Optional[str]] = mapped_column(Text, comment='错误信息')
-    created_by: Mapped[Optional[int]] = mapped_column(
-        BigInteger, comment='创建人ID')
-    create_time: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, server_default=func.now(), comment='创建时间')
-    update_time: Mapped[Optional[datetime]] = mapped_column(
-        DateTime, server_default=func.now(), onupdate=func.now(), comment='更新时间')
     started_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, comment='开始时间')
     completed_at: Mapped[Optional[datetime]
                          ] = mapped_column(DateTime, comment='完成时间')
     expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime, comment='过期时间')
+    idempotency_key: Mapped[Optional[str]] = mapped_column(
+        String(64), unique=True, comment='客户端幂等键（HTTP Idempotency-Key 头）')
+    retry_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default='0', comment='MQ 重试次数')
+    worker_id: Mapped[Optional[str]] = mapped_column(
+        String(64), comment='执行 Worker 标识')

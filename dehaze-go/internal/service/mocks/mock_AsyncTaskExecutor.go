@@ -70,8 +70,53 @@ func (_c *MockAsyncTaskExecutor_Initialize_Call) RunAndReturn(run func() error) 
 	return _c
 }
 
+// IsConnected provides a mock function with no fields
+func (_m *MockAsyncTaskExecutor) IsConnected() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsConnected")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockAsyncTaskExecutor_IsConnected_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsConnected'
+type MockAsyncTaskExecutor_IsConnected_Call struct {
+	*mock.Call
+}
+
+// IsConnected is a helper method to define mock.On call
+func (_e *MockAsyncTaskExecutor_Expecter) IsConnected() *MockAsyncTaskExecutor_IsConnected_Call {
+	return &MockAsyncTaskExecutor_IsConnected_Call{Call: _e.mock.On("IsConnected")}
+}
+
+func (_c *MockAsyncTaskExecutor_IsConnected_Call) Run(run func()) *MockAsyncTaskExecutor_IsConnected_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAsyncTaskExecutor_IsConnected_Call) Return(_a0 bool) *MockAsyncTaskExecutor_IsConnected_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAsyncTaskExecutor_IsConnected_Call) RunAndReturn(run func() bool) *MockAsyncTaskExecutor_IsConnected_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PublishExportTask provides a mock function with given fields: ctx, taskID, form
-func (_m *MockAsyncTaskExecutor) PublishExportTask(ctx context.Context, taskID int64, form bo.ExportTaskCreateForm) error {
+func (_m *MockAsyncTaskExecutor) PublishExportTask(ctx context.Context, taskID string, form bo.ExportTaskCreateForm) error {
 	ret := _m.Called(ctx, taskID, form)
 
 	if len(ret) == 0 {
@@ -79,7 +124,7 @@ func (_m *MockAsyncTaskExecutor) PublishExportTask(ctx context.Context, taskID i
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, bo.ExportTaskCreateForm) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, bo.ExportTaskCreateForm) error); ok {
 		r0 = rf(ctx, taskID, form)
 	} else {
 		r0 = ret.Error(0)
@@ -95,15 +140,15 @@ type MockAsyncTaskExecutor_PublishExportTask_Call struct {
 
 // PublishExportTask is a helper method to define mock.On call
 //   - ctx context.Context
-//   - taskID int64
+//   - taskID string
 //   - form bo.ExportTaskCreateForm
 func (_e *MockAsyncTaskExecutor_Expecter) PublishExportTask(ctx interface{}, taskID interface{}, form interface{}) *MockAsyncTaskExecutor_PublishExportTask_Call {
 	return &MockAsyncTaskExecutor_PublishExportTask_Call{Call: _e.mock.On("PublishExportTask", ctx, taskID, form)}
 }
 
-func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) Run(run func(ctx context.Context, taskID int64, form bo.ExportTaskCreateForm)) *MockAsyncTaskExecutor_PublishExportTask_Call {
+func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) Run(run func(ctx context.Context, taskID string, form bo.ExportTaskCreateForm)) *MockAsyncTaskExecutor_PublishExportTask_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(bo.ExportTaskCreateForm))
+		run(args[0].(context.Context), args[1].(string), args[2].(bo.ExportTaskCreateForm))
 	})
 	return _c
 }
@@ -113,7 +158,7 @@ func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) Return(_a0 error) *MockA
 	return _c
 }
 
-func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) RunAndReturn(run func(context.Context, int64, bo.ExportTaskCreateForm) error) *MockAsyncTaskExecutor_PublishExportTask_Call {
+func (_c *MockAsyncTaskExecutor_PublishExportTask_Call) RunAndReturn(run func(context.Context, string, bo.ExportTaskCreateForm) error) *MockAsyncTaskExecutor_PublishExportTask_Call {
 	_c.Call.Return(run)
 	return _c
 }

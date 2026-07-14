@@ -8,6 +8,7 @@ from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Optional
 
+from app.core.constants import SYSTEM_USER_ID
 from app.database import Base
 from sqlalchemy import BigInteger, DateTime, event
 from sqlalchemy.orm import Mapped, mapped_column
@@ -73,53 +74,54 @@ class BaseModel(Base):
 def set_create_fields(mapper, connection, target):
     """
     插入前回调：自动填充 create_time、update_time、create_by、update_by
+
+    审计字段填充失败应让事务失败（保证数据完整性），不吞掉异常。
     """
-    try:
-        if hasattr(target, "create_time") and target.create_time is None:
-            target.create_time = datetime.now(timezone.utc)
-
-        if hasattr(target, "update_time"):
-            target.update_time = datetime.now(timezone.utc)
-
-        _set_user_fields(target)
-
-    except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).error(
-            f"插入前自动填充失败: {str(e)}", exc_info=True)
+    if target.create_time is None:
+        target.create_time = datetime.now(timezone.utc)
+    target.update_time = datetime.now(timezone.utc)
+    _set_user_fields(target)
 
 
 @event.listens_for(BaseModel, "before_update")
 def set_update_fields(mapper, connection, target):
     """
     更新前回调：自动填充 update_time 和 update_by
+
+    审计字段填充失败应让事务失败（保证数据完整性），不吞掉异常。
     """
-    try:
-        if hasattr(target, "update_time"):
-            target.update_time = datetime.now(timezone.utc)
-
-        _set_user_fields(target, only_update=True)
-
-    except Exception as e:
-        import logging
-
-        logging.getLogger(__name__).error(
-            f"更新前自动填充失败: {str(e)}", exc_info=True)
+    target.update_time = datetime.now(timezone.utc)
+    _set_user_fields(target, only_update=True)
 
 
 def _set_user_fields(target, only_update: bool = False):
     """
     设置用户字段（create_by 和 update_by）
 
-    注意：FastAPI 中需要通过其他方式传递用户上下文（如 Depends）
-    此处暂时保留 None，后续可通过 contextvars 实现
+    通过 contextvars 获取当前用户 ID；异步上下文未设置时回退到系统用户。
+    BaseModel 已声明 create_by/update_by 字段，无需 hasattr 检查。
     """
     user_id = get_current_user_id()
+    if user_id is None:
+        user_id = SYSTEM_USER_ID
 
     if not only_update:
-        if hasattr(target, "create_by") and target.create_by is None:
+        if target.create_by is None:
             target.create_by = user_id
 
-    if hasattr(target, "update_by"):
-        target.update_by = user_id
+    target.update_by = user_id
+
+
+def get_audit_update_values() -> dict:
+    """
+    获取审计字段更新值（用于 SQLAlchemy Core update 语句）
+
+    Core update 绕过 ORM 事件，需手动填充 update_by 和 update_time。
+    """
+    user_id = get_current_user_id()
+    if user_id is None:
+        user_id = SYSTEM_USER_ID
+    return {
+        "update_by": user_id,
+        "update_time": datetime.now(timezone.utc),
+    }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/pkg/config/options"
+	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
 	"github.com/earthyzinc/dehaze-go/pkg/trace"
 	"go.uber.org/zap"
@@ -43,10 +44,16 @@ func (e *RabbitMQTaskExecutor) Shutdown() error {
 	return e.publisher.Close()
 }
 
+// IsConnected 返回 Publisher 连接是否活跃
+func (e *RabbitMQTaskExecutor) IsConnected() bool {
+	return e.publisher.IsConnected()
+}
+
 // PublishExportTask 发布导出任务
-func (e *RabbitMQTaskExecutor) PublishExportTask(ctx context.Context, taskID int64, form bo.ExportTaskCreateForm) error {
+// taskID 为任务 UUID（task.TaskID），非数据库自增主键
+func (e *RabbitMQTaskExecutor) PublishExportTask(ctx context.Context, taskID string, form bo.ExportTaskCreateForm) error {
 	msg := TaskMessage{
-		TaskID:    fmt.Sprintf("%d", taskID),
+		TaskID:    taskID,
 		TaskType:  "export",
 		Payload:   form,
 		CreatedAt: time.Now(),
@@ -67,6 +74,11 @@ func (e *RabbitMQTaskExecutor) PublishTask(ctx context.Context, msg TaskMessage)
 	}
 	if msg.TraceID == "" {
 		msg.TraceID = trace.GetTraceID(ctx)
+	}
+	if msg.CreatedBy == 0 {
+		if userID := database.GetUserID(ctx); userID > 0 {
+			msg.CreatedBy = userID
+		}
 	}
 
 	routingKey := e.buildRoutingKey(msg.TaskType)

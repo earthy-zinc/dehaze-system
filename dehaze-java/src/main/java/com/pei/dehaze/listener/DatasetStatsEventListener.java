@@ -28,7 +28,7 @@ public class DatasetStatsEventListener {
      * 处理文件创建事件 - 在事务提交后异步执行
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
+    @Async("datasetTaskExecutor")
     public void onItemFileCreated(ItemFileCreatedEvent event) {
         log.debug("处理文件创建事件: itemId={}, fileId={}", event.itemId(), event.fileId());
         evictDatasetStatsCache(event.itemId());
@@ -38,7 +38,7 @@ public class DatasetStatsEventListener {
      * 处理文件删除事件 - 在事务提交后异步执行
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    @Async
+    @Async("datasetTaskExecutor")
     public void onItemFileDeleted(ItemFileDeletedEvent event) {
         log.debug("处理文件删除事件: itemId={}, fileId={}", event.itemId(), event.fileId());
         evictDatasetStatsCache(event.itemId());

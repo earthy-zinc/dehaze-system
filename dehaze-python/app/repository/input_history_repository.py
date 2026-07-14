@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy import delete, desc, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import get_audit_update_values
 from app.models.entity.sys_input_history import SysInputHistory
 from app.repository.base import BaseRepository, escape_like
 
@@ -92,11 +93,13 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
 
     async def mark_all_synced(self, db: AsyncSession, user_id: int) -> int:
         """将用户所有未同步记录标记为已同步"""
+        values = {"sync_status": 1}
+        values.update(get_audit_update_values())
         stmt = (
             update(SysInputHistory)
             .where(SysInputHistory.user_id == user_id)
             .where(SysInputHistory.sync_status == 0)
-            .values(sync_status=1)
+            .values(**values)
         )
         result = await db.execute(stmt)
         return result.rowcount

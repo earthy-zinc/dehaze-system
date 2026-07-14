@@ -21,11 +21,15 @@ func InitRedis() (*RedisCache, error) {
 	cfg := config.GetConfig().Cache.Redis
 
 	_once.Do(func() {
+		poolSize := cfg.PoolSize
+		if poolSize <= 0 {
+			poolSize = 10
+		}
 		opts := &redis.Options{
 			Addr:     cfg.Addr,
 			Password: cfg.Password,
 			DB:       cfg.DB,
-			PoolSize: 10,
+			PoolSize: poolSize,
 		}
 
 		_client = redis.NewClient(opts)

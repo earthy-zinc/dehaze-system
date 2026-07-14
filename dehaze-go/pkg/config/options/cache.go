@@ -18,6 +18,7 @@ type Redis struct {
 	DB           int      `mapstructure:"db" json:"db" yaml:"db"`                               // Redis数据库编号
 	UseCluster   bool     `mapstructure:"useCluster" json:"useCluster" yaml:"useCluster"`       // 是否使用集群模式
 	Timeout      int      `mapstructure:"timeout" json:"timeout" yaml:"timeout"`                // 连接超时时间（秒）
+	PoolSize     int      `mapstructure:"poolSize" json:"poolSize" yaml:"poolSize"`             // 连接池大小
 }
 
 type Local struct {

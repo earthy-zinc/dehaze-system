@@ -5,6 +5,7 @@
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import get_audit_update_values
 from app.models.entity.sys_menu import SysRoleMenu
 from app.models.entity.sys_user import SysRole
 from app.repository.base import BaseRepository
@@ -83,9 +84,25 @@ class RoleRepository(BaseRepository[SysRole]):
         role_id: int,
     ) -> None:
         """软删除角色"""
-        stmt = update(SysRole).where(SysRole.id == role_id).values(deleted=1)
+        values = {"deleted": 1}
+        values.update(get_audit_update_values())
+        stmt = update(SysRole).where(SysRole.id == role_id).values(**values)
         await db.execute(stmt)
         await db.flush()
+
+    async def delete_by_ids(
+        self,
+        db: AsyncSession,
+        role_ids: list[int],
+    ) -> int:
+        """批量软删除角色（1 条 SQL 替代 N 条，避免 N+1）"""
+        if not role_ids:
+            return 0
+        values = {"deleted": 1}
+        values.update(get_audit_update_values())
+        stmt = update(SysRole).where(SysRole.id.in_(role_ids)).values(**values)
+        result = await db.execute(stmt)
+        return result.rowcount
 
     async def get_role_options(
         self,
@@ -229,6 +246,15 @@ class RoleRepository(BaseRepository[SysRole]):
             stmt = stmt.where(SysRole.id != exclude_id)
         result = await db.execute(stmt)
         return (result.scalar() or 0) > 0
+
+    async def get_all_active_codes(self, db: AsyncSession) -> list[str]:
+        """获取所有未删除角色的编码列表（用于权限缓存失效时精确删除）"""
+        stmt = select(SysRole.code).where(
+            SysRole.deleted == 0,
+            SysRole.code.isnot(None),
+        )
+        result = await db.execute(stmt)
+        return [row[0] for row in result.fetchall() if row[0]]
 
 
 # 单例

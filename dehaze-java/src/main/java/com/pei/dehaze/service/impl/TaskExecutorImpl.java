@@ -2,9 +2,11 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.TaskConstants;
+import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
+import com.pei.dehaze.mq.RabbitMQPublisher;
 import com.pei.dehaze.service.TaskExecutor;
 import com.pei.dehaze.service.strategy.DefaultProgressCallback;
 import com.pei.dehaze.service.strategy.ProgressCallback;
@@ -14,17 +16,21 @@ import com.pei.dehaze.service.strategy.TaskStrategy;
 import com.pei.dehaze.service.strategy.TaskStrategyFactory;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 任务执行器实现（策略模式重构版）
- * 仅负责任务调度，业务逻辑委托给具体策略
+ * 任务执行器实现（策略模式 + MQ 统一路径）
+ *
+ * <p>发布任务到 RabbitMQ，由 Consumer 调用 {@link #executeExportTask} 执行。
+ * MQ 未启用时（测试环境）fallback 到同步执行。
  *
  * @author earthy-zinc
  * @since 2026-01-10
@@ -42,11 +48,36 @@ public class TaskExecutorImpl implements TaskExecutor {
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
+    @Resource
+    private WebSocketMessageRelay wsMessageRelay;
+
+    /**
+     * MQ 发布器（MQ 未启用时为空，fallback 到同步执行）
+     */
+    private final ObjectProvider<RabbitMQPublisher> publisherProvider;
+
+    public TaskExecutorImpl(ObjectProvider<RabbitMQPublisher> publisherProvider) {
+        this.publisherProvider = publisherProvider;
+    }
+
     @Override
-    @Async("datasetTaskExecutor")
-    public void submitExportTask(Long taskId, ExportTaskCreateForm form) {
-        log.info("开始执行任务: taskId={}, type={}, thread={}",
-                taskId, form.getType(), Thread.currentThread().getName());
+    public void publishExportTask(Long taskId) {
+        RabbitMQPublisher publisher = publisherProvider.getIfAvailable();
+        if (publisher == null) {
+            // MQ 未启用（测试环境），直接同步执行
+            log.warn("MQ 未启用，直接同步执行任务: taskId={}", taskId);
+            executeExportTask(taskId, null);
+            return;
+        }
+
+        String traceId = MDC.get("traceId");
+        publisher.publish("export", taskId.toString(), traceId);
+        log.info("任务已发布到 MQ: taskId={}, traceId={}", taskId, traceId);
+    }
+
+    @Override
+    public void executeExportTask(Long taskId, ExportTaskCreateForm form) {
+        log.info("开始执行任务: taskId={}, thread={}", taskId, Thread.currentThread().getName());
 
         SysTask sysTask = sysTaskMapper.selectById(taskId);
         if (sysTask == null) {
@@ -54,16 +85,22 @@ public class TaskExecutorImpl implements TaskExecutor {
             return;
         }
 
+        // form 为空时从 DB 任务参数重建（MQ Consumer 调用路径）
+        if (form == null) {
+            form = JSONUtil.toBean(sysTask.getParams(), ExportTaskCreateForm.class);
+        }
+
         try {
             // 更新任务状态为处理中
             updateTaskStatus(sysTask, TaskConstants.STATUS_PROCESSING, null, null);
-            
+
             // 获取对应的策略
             TaskStrategy strategy = strategyFactory.getStrategy(form.getType());
 
-            // 创建进度回调
+            // 创建进度回调（传入 relay 用于 WebSocket 推送 + userId 用于用户定向推送）
             ProgressCallback callback = new DefaultProgressCallback(
-                    taskId, sysTask.getTaskId(), sysTaskMapper, redisTemplate
+                    taskId, sysTask.getTaskId(), sysTask.getCreateBy(),
+                    sysTaskMapper, redisTemplate, wsMessageRelay
             );
 
             // 解析参数为 Map
@@ -106,9 +143,9 @@ public class TaskExecutorImpl implements TaskExecutor {
      */
     private void updateTaskStatus(SysTask task, String status, String result, String errorMessage) {
         task.setStatus(status);
-        
+
         LocalDateTime now = LocalDateTime.now();
-        
+
         switch (status) {
             case TaskConstants.STATUS_PROCESSING -> task.setStartedAt(now);
             case TaskConstants.STATUS_COMPLETED -> {
@@ -129,5 +166,27 @@ public class TaskExecutorImpl implements TaskExecutor {
         // 更新Redis缓存
         String cacheKey = TaskConstants.TASK_CACHE_PREFIX + task.getTaskId();
         redisTemplate.opsForValue().set(cacheKey, task, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
+
+        // WebSocket 推送任务状态变更（通过 Redis Pub/Sub 跨实例投递）
+        pushTaskStatusMessage(task, status, result, errorMessage);
+    }
+
+    /**
+     * 通过 WebSocket 推送任务状态变更（对齐 Python 消息格式）
+     */
+    private void pushTaskStatusMessage(SysTask task, String status, String result, String errorMessage) {
+        try {
+            Map<String, Object> message = new HashMap<>();
+            message.put("type", "task_status");
+            message.put("task_id", task.getTaskId());
+            message.put("status", status);
+            message.put("progress", task.getProgress());
+            message.put("result", result);
+            message.put("error_message", errorMessage);
+            message.put("timestamp", LocalDateTime.now().toString());
+            wsMessageRelay.publishToUser(task.getCreateBy(), message);
+        } catch (Exception e) {
+            log.debug("WebSocket 推送失败（不影响任务执行）: {}", e.getMessage());
+        }
     }
 }

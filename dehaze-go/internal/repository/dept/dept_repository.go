@@ -94,7 +94,7 @@ func (r *DeptRepository) Delete(ctx context.Context, ids []int64) error {
 	}
 	return r.db.WithContext(ctx).Model(&model.SysDept{}).
 		Where("id IN ?", ids).
-		Update("deleted", 1).Error
+		Updates(map[string]interface{}{"deleted": 1}).Error
 }
 
 // HasChildren 检查部门是否有子部门
@@ -115,6 +115,63 @@ func (r *DeptRepository) HasUsers(ctx context.Context, deptID int64) (bool, erro
 		Where("dept_id = ? AND deleted = 0", deptID).
 		Count(&count).Error
 	return count > 0, err
+}
+
+// HasUsersInBatch 批量检查部门是否关联用户（避免 N+1 查询）
+func (r *DeptRepository) HasUsersInBatch(ctx context.Context, deptIDs []int64) (map[int64]bool, error) {
+	result := make(map[int64]bool, len(deptIDs))
+	if len(deptIDs) == 0 {
+		return result, nil
+	}
+
+	type deptCount struct {
+		DeptID int64 `gorm:"column:dept_id"`
+		Count  int64 `gorm:"column:cnt"`
+	}
+	var counts []deptCount
+	err := r.db.WithContext(ctx).
+		Model(&model.SysUser{}).
+		Select("dept_id, COUNT(*) as cnt").
+		Where("dept_id IN ? AND deleted = 0", deptIDs).
+		Group("dept_id").
+		Scan(&counts).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, c := range counts {
+		if c.Count > 0 {
+			result[c.DeptID] = true
+		}
+	}
+	return result, nil
+}
+
+// FindIDsByNames 根据部门名称批量查询 ID（返回 name→id 映射，避免 N+1 查询）
+func (r *DeptRepository) FindIDsByNames(ctx context.Context, names []string) (map[string]int64, error) {
+	result := make(map[string]int64, len(names))
+	if len(names) == 0 {
+		return result, nil
+	}
+
+	type nameID struct {
+		Name string `gorm:"column:name"`
+		ID   int64  `gorm:"column:id"`
+	}
+	var pairs []nameID
+	err := r.db.WithContext(ctx).
+		Model(&model.SysDept{}).
+		Select("name, id").
+		Where("name IN ? AND deleted = 0", names).
+		Scan(&pairs).Error
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range pairs {
+		result[p.Name] = p.ID
+	}
+	return result, nil
 }
 
 // DeptOptionRead 部门选项读模型（含 parent_id 用于构建树）

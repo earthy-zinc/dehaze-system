@@ -16,6 +16,7 @@ import com.pei.dehaze.model.entity.SysDictType;
 import com.pei.dehaze.model.form.DictTypeForm;
 import com.pei.dehaze.model.query.DictTypePageQuery;
 import com.pei.dehaze.model.vo.DictTypePageVO;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysDictService;
 import com.pei.dehaze.service.SysDictTypeService;
 import lombok.RequiredArgsConstructor;
@@ -146,9 +147,11 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
             String oldCode = sysDictType.getCode();
             String newCode = dictTypeForm.getCode();
             if (!CharSequenceUtil.equals(oldCode, newCode)) {
+                Long currentUserId = SecurityUtils.getUserId();
                 dictItemService.update(new LambdaUpdateWrapper<SysDict>()
                         .eq(SysDict::getTypeCode, oldCode)
                         .set(SysDict::getTypeCode, newCode)
+                        .set(SysDict::getUpdateBy, currentUserId)
                 );
             }
         }

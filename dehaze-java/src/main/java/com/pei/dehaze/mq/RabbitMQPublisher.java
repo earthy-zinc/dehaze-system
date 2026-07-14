@@ -57,7 +57,7 @@ public class RabbitMQPublisher {
 
         // 设置 TraceID 到消息头
         if (traceId != null && !traceId.isEmpty()) {
-            message.getMessageProperties().setHeader("X-Trace-ID", traceId);
+            message.getMessageProperties().setHeader("X-Trace-Id", traceId);
         }
 
         rabbitTemplate.send(exchange, routingKey, message);
@@ -97,7 +97,7 @@ public class RabbitMQPublisher {
         rabbitTemplate.convertAndSend(exchange, routingKey, object, message -> {
             message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
             if (traceId != null && !traceId.isEmpty()) {
-                message.getMessageProperties().setHeader("X-Trace-ID", traceId);
+                message.getMessageProperties().setHeader("X-Trace-Id", traceId);
             }
             return message;
         });

@@ -87,7 +87,7 @@ func AntiRepeat(config AntiRepeatConfig) gin.HandlerFunc {
 		key := defaultAntiRepeatPrefix + config.KeyGenerator(c)
 
 		// 尝试获取锁（使用缓存 SetNX）
-		ctx := context.Background()
+		ctx := c.Request.Context()
 		expire := time.Duration(config.Expire) * time.Second
 
 		// 尝试设置 key（如果 key 不存在则设置成功）
@@ -300,13 +300,12 @@ func CustomAntiRepeat(config AntiRepeatConfig) gin.HandlerFunc {
 // 返回：
 //   - bool: 是否成功设置锁（true 表示是第一次请求，false 表示锁已存在）
 //   - error: 缓存操作错误
-func SetAntiRepeatLock(key string, expire int) (bool, error) {
+func SetAntiRepeatLock(ctx context.Context, key string, expire int) (bool, error) {
 	cacheClient := cache.GetCache()
 	if cacheClient == nil {
 		return false, fmt.Errorf("缓存不可用")
 	}
 
-	ctx := context.Background()
 	expireDuration := time.Duration(expire) * time.Second
 
 	result, err := cacheClient.SetNX(ctx, defaultAntiRepeatPrefix+key, "1", expireDuration)
@@ -326,12 +325,11 @@ func SetAntiRepeatLock(key string, expire int) (bool, error) {
 //
 // 返回：
 //   - error: 缓存操作错误
-func DeleteAntiRepeatLock(key string) error {
+func DeleteAntiRepeatLock(ctx context.Context, key string) error {
 	cache := cache.GetCache()
 	if cache == nil {
 		return fmt.Errorf("缓存不可用")
 	}
 
-	ctx := context.Background()
 	return cache.Delete(ctx, defaultAntiRepeatPrefix+key)
 }

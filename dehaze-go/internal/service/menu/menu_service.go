@@ -21,9 +21,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// ROLE_PERMS_PREFIX Redis中角色权限缓存key前缀
-const ROLE_PERMS_PREFIX = "role:perms"
-
 // ROUTE_CACHE_KEY Redis中路由缓存key
 const ROUTE_CACHE_KEY = "menu::routes"
 
@@ -304,9 +301,10 @@ func (s *MenuService) clearAllRolePermsCache(ctx context.Context) {
 	if s.cache == nil {
 		return
 	}
-	// 清除角色权限缓存
-	_ = s.cache.Delete(ctx, ROLE_PERMS_PREFIX)
-	// 清除路由缓存
+	// 角色权限缓存采用逐角色独立 Key（role:perms:{code}），无法通过单次 Delete 清除全部。
+	// Go 端鉴权使用 JWT（不读取此缓存），菜单变更后各角色权限 Key 将在 TTL（30min）内自然过期。
+	// 如需立即失效，应由 RoleService.refreshRolePermsCache 逐角色刷新。
+	// 此处仅清除路由缓存。
 	_ = s.cache.Delete(ctx, ROUTE_CACHE_KEY)
 }
 

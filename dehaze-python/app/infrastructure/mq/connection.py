@@ -67,10 +67,13 @@ async def init_mq() -> tuple[Optional[Publisher], Optional[Consumer]]:
 
 async def _register_handlers(consumer: Consumer) -> None:
     """注册所有队列的消费者 handler"""
-    from app.infrastructure.mq.handlers import handle_export_task
+    from app.infrastructure.mq.handlers import handle_dlq_message, handle_export_task
 
     await consumer.register("task.execute", handle_export_task)
     logger.info("已注册消费者 handler: task.execute")
+
+    await consumer.register_dlq("task.execute.dlx", handle_dlq_message)
+    logger.info("已注册死信队列 handler: task.execute.dlx")
 
 
 async def close_mq() -> None:

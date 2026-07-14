@@ -96,7 +96,7 @@ func (api *SysDatasetApi) GetDatasetChildren(c *gin.Context) {
 // @Success 200 {object} common.Response{data=[]vo.Option}
 // @Router /api/v1/datasets/options [get]
 func (api *SysDatasetApi) GetDatasetOptions(c *gin.Context) {
-	options, err := api.datasetService.GetDatasetOptions()
+	options, err := api.datasetService.GetDatasetOptions(c.Request.Context())
 	if err != nil {
 		_ = c.Error(err)
 		return

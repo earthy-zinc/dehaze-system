@@ -164,14 +164,14 @@ func (r *RoleRepository) Update(ctx context.Context, role *model.SysRole) error 
 func (r *RoleRepository) UpdateStatus(ctx context.Context, id int64, status int8) error {
 	return r.db.WithContext(ctx).Model(&model.SysRole{}).
 		Where("id = ?", id).
-		Update("status", status).Error
+		Updates(map[string]interface{}{"status": status}).Error
 }
 
 // Delete 删除角色（逻辑删除）
 func (r *RoleRepository) Delete(ctx context.Context, ids []int64) error {
 	return r.db.WithContext(ctx).Model(&model.SysRole{}).
 		Where("id IN ?", ids).
-		Update("deleted", 1).Error
+		Updates(map[string]interface{}{"deleted": 1}).Error
 }
 
 // HasUsers 检查角色是否关联用户
@@ -270,7 +270,7 @@ func (r *RoleRepository) DeleteWithMenus(ctx context.Context, roleIDs []int64) e
 		// 逻辑删除角色
 		if err := tx.Model(&model.SysRole{}).
 			Where("id IN ?", roleIDs).
-			Update("deleted", 1).Error; err != nil {
+			Updates(map[string]interface{}{"deleted": 1}).Error; err != nil {
 			return err
 		}
 		return nil

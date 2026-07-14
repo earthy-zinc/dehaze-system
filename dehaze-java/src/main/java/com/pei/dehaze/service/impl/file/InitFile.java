@@ -136,7 +136,7 @@ public class InitFile {
 
         try (FileInputStream stream = new FileInputStream(file)) {
             String md5 = FileUploadUtils.getMd5(stream);
-            String suffix = FileUtil.getSuffix(fileName);
+            String suffix = FileUtil.extName(fileName);
             String objectName = dirRelPath + "/" + md5 + "." + suffix;
             String url = baseUrl + "/" + objectName;
 

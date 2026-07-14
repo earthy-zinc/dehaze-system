@@ -8,6 +8,7 @@ from typing import Optional
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.base import get_audit_update_values
 from app.models.entity.sys_task import SysTask
 from app.models.enum.task_enum import TaskStatus
 from app.repository.base import BaseRepository
@@ -28,6 +29,16 @@ class TaskRepository(BaseRepository[SysTask]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_by_idempotency_key(
+        self,
+        db: AsyncSession,
+        idempotency_key: str,
+    ) -> SysTask | None:
+        """根据客户端幂等键查询任务（用于幂等去重）"""
+        stmt = select(SysTask).where(SysTask.idempotency_key == idempotency_key)
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def update_status(
         self,
         db: AsyncSession,
@@ -35,10 +46,33 @@ class TaskRepository(BaseRepository[SysTask]):
         status: str,
     ) -> int:
         """更新任务状态"""
+        values = {"status": status}
+        values.update(get_audit_update_values())
         stmt = (
             update(SysTask)
             .where(SysTask.task_id == task_id)
-            .values(status=status)
+            .values(**values)
+        )
+        result = await db.execute(stmt)
+        await db.flush()
+        return result.rowcount
+
+    async def update_retry_count(
+        self,
+        db: AsyncSession,
+        task_id: str,
+        retry_count: int,
+        worker_id: Optional[str] = None,
+    ) -> int:
+        """更新任务重试次数和 Worker 标识"""
+        values: dict = {"retry_count": retry_count}
+        if worker_id is not None:
+            values["worker_id"] = worker_id
+        values.update(get_audit_update_values())
+        stmt = (
+            update(SysTask)
+            .where(SysTask.task_id == task_id)
+            .values(**values)
         )
         result = await db.execute(stmt)
         await db.flush()
@@ -53,14 +87,16 @@ class TaskRepository(BaseRepository[SysTask]):
         total_files: int,
     ) -> int:
         """更新任务进度"""
+        values = {
+            "progress": progress,
+            "processed_files": processed_files,
+            "total_files": total_files,
+        }
+        values.update(get_audit_update_values())
         stmt = (
             update(SysTask)
             .where(SysTask.task_id == task_id)
-            .values(
-                progress=progress,
-                processed_files=processed_files,
-                total_files=total_files,
-            )
+            .values(**values)
         )
         result = await db.execute(stmt)
         await db.flush()
@@ -75,7 +111,7 @@ class TaskRepository(BaseRepository[SysTask]):
         """获取用户的任务列表"""
         stmt = (
             select(SysTask)
-            .where(SysTask.created_by == user_id)
+            .where(SysTask.create_by == user_id)
             .order_by(SysTask.create_time.desc())
             .limit(limit)
         )
@@ -92,7 +128,7 @@ class TaskRepository(BaseRepository[SysTask]):
         size: int = 10,
     ) -> tuple[list[SysTask], int]:
         """获取用户的任务列表（分页+筛选）"""
-        stmt = select(SysTask).where(SysTask.created_by == user_id)
+        stmt = select(SysTask).where(SysTask.create_by == user_id)
 
         if status:
             stmt = stmt.where(SysTask.status == status)

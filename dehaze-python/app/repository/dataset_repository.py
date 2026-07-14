@@ -60,6 +60,25 @@ class DatasetRepository(BaseRepository[SysDataset]):
         children_map, _ = await self._build_children_map(db)
         return bfs_collect_ids(dataset_id, children_map, include_start=False)
 
+    async def get_all_descendant_ids_batch(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+    ) -> dict[int, list[int]]:
+        """批量获取多个数据集的后代 ID（含自身，1 次全表查询替代 N 次，避免 N+1）
+
+        Returns:
+            dict: {dataset_id: [自身ID + 所有后代ID]}
+        """
+        if not dataset_ids:
+            return {}
+        children_map, _ = await self._build_children_map(db)
+        result: dict[int, list[int]] = {}
+        for dataset_id in dataset_ids:
+            result[dataset_id] = bfs_collect_ids(
+                dataset_id, children_map, include_start=True)
+        return result
+
     async def calculate_statistics(
         self,
         db: AsyncSession,
@@ -263,6 +282,24 @@ class DatasetRepository(BaseRepository[SysDataset]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_item_files_by_item_ids(
+        self,
+        db: AsyncSession,
+        item_ids: list[int],
+    ) -> dict[int, list[SysItemFile]]:
+        """批量获取多个数据项的文件记录（按 item_id 分组，避免 N+1）"""
+        if not item_ids:
+            return {}
+        stmt = select(SysItemFile).where(SysItemFile.item_id.in_(item_ids))
+        result = await db.execute(stmt)
+        files_map: dict[int, list[SysItemFile]] = {}
+        for item_file in result.scalars().all():
+            iid = int(item_file.item_id)
+            if iid not in files_map:
+                files_map[iid] = []
+            files_map[iid].append(item_file)
+        return files_map
+
     async def get_dataset_options(
         self,
         db: AsyncSession,
@@ -429,6 +466,19 @@ class DatasetRepository(BaseRepository[SysDataset]):
         """获取数据集下所有数据项ID"""
         stmt = select(SysDatasetItem.id).where(
             SysDatasetItem.dataset_id == dataset_id)
+        result = await db.execute(stmt)
+        return [row[0] for row in result.all()]
+
+    async def get_item_ids_by_dataset_ids(
+        self,
+        db: AsyncSession,
+        dataset_ids: list[int],
+    ) -> list[int]:
+        """批量获取多个数据集下的所有数据项 ID（避免 N+1）"""
+        if not dataset_ids:
+            return []
+        stmt = select(SysDatasetItem.id).where(
+            SysDatasetItem.dataset_id.in_(dataset_ids))
         result = await db.execute(stmt)
         return [row[0] for row in result.all()]
 

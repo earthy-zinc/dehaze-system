@@ -74,9 +74,27 @@ async def export_items_to_zip(
             total_files = 0
             processed_files = 0
 
+            # 批量预加载所有数据项（避免循环内逐条 get_item_by_id 触发 N+1）
+            items_list = await dataset_repository.get_items_by_ids(db, item_ids)
+            items_map = {int(item.id): item for item in items_list}
+
+            # 批量预加载所有数据项的文件记录（避免循环内逐条 get_item_files_by_item_id 触发 N+1）
+            item_files_map = await dataset_repository.get_item_files_by_item_ids(db, item_ids)
+
+            # 收集所有需要下载的 file_id，批量预加载文件信息（避免 _add_file_to_zip 内逐条查询触发 N+1）
+            all_file_ids: set[int] = set()
+            for item_id in item_ids:
+                for item_file in item_files_map.get(item_id, []):
+                    if item_file.file_id is not None:
+                        all_file_ids.add(item_file.file_id)
+                    if include_thumbnail and item_file.thumbnail_file_id is not None:
+                        all_file_ids.add(item_file.thumbnail_file_id)
+            file_objs_list = await file_repository.get_by_ids(db, list(all_file_ids))
+            file_map = {int(f.id): f for f in file_objs_list}
+
             # 预计算文件总数
             for item_id in item_ids:
-                item_files = await dataset_repository.get_item_files_by_item_id(db, item_id)
+                item_files = item_files_map.get(item_id, [])
                 total_files += len(item_files)
                 if include_thumbnail:
                     total_files += len(item_files)
@@ -90,24 +108,24 @@ async def export_items_to_zip(
                 if await cancel_checker():
                     raise TaskCancelledException()
 
-                item = await dataset_repository.get_item_by_id(db, item_id)
+                item = items_map.get(item_id)
                 if item is None:
                     logger.warning("数据项不存在: itemId=%s", item_id)
                     continue
 
-                item_files = await dataset_repository.get_item_files_by_item_id(db, item_id)
+                item_files = item_files_map.get(item_id, [])
 
                 for item_file in item_files:
                     if _should_include_type(include_types, item_file.type):
                         await _add_file_to_zip(
-                            db, zos, item_file, structure, item.name or f"item_{item.id}", None, False
+                            zos, item_file, file_map, structure, item.name or f"item_{item.id}", None, False
                         )
                         processed_files += 1
                         await progress_callback(processed_files, total_files)
 
                     if include_thumbnail:
                         await _add_file_to_zip(
-                            db, zos, item_file, structure, item.name or f"item_{item.id}", "thumbnail", True
+                            zos, item_file, file_map, structure, item.name or f"item_{item.id}", "thumbnail", True
                         )
                         processed_files += 1
                         await progress_callback(processed_files, total_files)
@@ -142,9 +160,9 @@ def _should_include_type(include_types: Optional[List[str]], file_type: str) -> 
 
 
 async def _add_file_to_zip(
-    db: AsyncSession,
     zos: zipfile.ZipFile,
     item_file: SysItemFile,
+    file_map: Dict[int, Any],
     structure: str,
     item_name: str,
     subfolder: Optional[str],
@@ -153,14 +171,14 @@ async def _add_file_to_zip(
     """
     添加文件到 ZIP
 
-    从 MinIO 下载文件内容后写入 ZIP。
+    从 file_map 中查找文件信息，从 MinIO 下载文件内容后写入 ZIP。
     """
     # 确定要下载的文件 ID
     file_id = item_file.thumbnail_file_id if is_thumbnail else item_file.file_id
     if file_id is None:
         return
 
-    file_obj = await file_repository.get_by_id(db, file_id)
+    file_obj = file_map.get(file_id)
     if file_obj is None:
         logger.warning("文件不存在: fileId=%s", file_id)
         return

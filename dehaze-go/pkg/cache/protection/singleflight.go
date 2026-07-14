@@ -7,10 +7,9 @@ import (
 
 // call 表示一个正在进行或已完成的调用
 type call struct {
-	wg   sync.WaitGroup
 	val  any
 	err  error
-	done bool
+	done chan struct{}
 }
 
 // SingleFlight 实现请求合并，防止缓存击穿
@@ -27,28 +26,31 @@ func NewSingleFlight() *SingleFlight {
 }
 
 // Do 执行带去重的操作
-// 对于相同的key，同时发起的多个请求只会执行一次fn，其他请求等待并共享结果
+// 对于相同的key，同时发起的多个请求只会执行一次fn，其他请求等待并共享结果。
+// 某个等待者的 ctx 取消时仅影响该等待者自身，不影响 fn 的执行和其他等待者。
 func (sf *SingleFlight) Do(ctx context.Context, key string, fn func() (any, error)) (any, error) {
 	sf.mu.Lock()
 
 	// 检查是否已有相同key的调用在进行中
 	if c, ok := sf.calls[key]; ok {
 		sf.mu.Unlock()
-		// 等待已有调用完成
-		c.wg.Wait()
-		return c.val, c.err
+		// 等待已有调用完成，支持当前 ctx 取消
+		select {
+		case <-c.done:
+			return c.val, c.err
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
 	}
 
 	// 创建新的调用
-	c := &call{}
-	c.wg.Add(1)
+	c := &call{done: make(chan struct{})}
 	sf.calls[key] = c
 	sf.mu.Unlock()
 
-	// 执行实际操作
-	c.val, c.err = sf.doCall(ctx, fn)
-	c.done = true
-	c.wg.Done()
+	// 同步执行实际操作（不启动额外 goroutine，避免泄漏）
+	c.val, c.err = fn()
+	close(c.done)
 
 	// 清理
 	sf.mu.Lock()
@@ -56,25 +58,6 @@ func (sf *SingleFlight) Do(ctx context.Context, key string, fn func() (any, erro
 	sf.mu.Unlock()
 
 	return c.val, c.err
-}
-
-// doCall 执行实际的调用，支持context取消
-func (sf *SingleFlight) doCall(ctx context.Context, fn func() (any, error)) (any, error) {
-	done := make(chan struct{})
-	var val any
-	var err error
-
-	go func() {
-		val, err = fn()
-		close(done)
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-done:
-		return val, err
-	}
 }
 
 // Forget 删除指定key的调用记录

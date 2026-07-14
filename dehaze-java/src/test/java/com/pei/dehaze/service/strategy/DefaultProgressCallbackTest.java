@@ -52,7 +52,7 @@ class DefaultProgressCallbackTest {
     void setUp() {
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        progressCallback = new DefaultProgressCallback(1L, "task-1", taskMapper, redisTemplate);
+        progressCallback = new DefaultProgressCallback(1L, "task-1", 1L, taskMapper, redisTemplate, null);
 
         when(valueOperations.get(anyString())).thenReturn(false);
     }

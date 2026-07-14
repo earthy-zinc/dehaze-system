@@ -3,12 +3,15 @@ package com.pei.dehaze.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.cache.CacheProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
@@ -17,8 +20,19 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.RedisSerializer;
 
+import java.time.Duration;
+
 /**
- * Redis 缓存配置
+ * 缓存配置（L1 Caffeine + L2 Redis 多级缓存）
+ *
+ * <p>多级缓存架构：
+ * <ul>
+ *   <li>L1：Caffeine 本地缓存，TTL 5 分钟，防热 key 击穿 Redis</li>
+ *   <li>L2：Redis 分布式缓存，TTL 1 小时</li>
+ *   <li>SingleFlight：防缓存击穿（热点 key 失效瞬间合并并发回源）</li>
+ *   <li>空值缓存：allowNullValues=true，防缓存穿透</li>
+ *   <li>Prometheus 指标：dehaze_cache_hits_total / dehaze_cache_misses_total / dehaze_cache_loader_total</li>
+ * </ul>
  *
  * @author earthyzinc
  * @since 2023/12/4
@@ -26,38 +40,37 @@ import org.springframework.data.redis.serializer.RedisSerializer;
 @EnableCaching
 @EnableConfigurationProperties(CacheProperties.class)
 @Configuration
-@ConditionalOnProperty(name = "spring.cache.enabled") // xxl.job.enabled = true 才会自动装配
+@ConditionalOnProperty(name = "spring.cache.enabled", havingValue = "true", matchIfMissing = false)
 public class RedisCacheConfig {
 
     /**
-     * 自定义 RedisCacheManager
-     * <p>
-     * 修改 Redis 序列化方式，默认 JdkSerializationRedisSerializer
-     *
-     * @param redisConnectionFactory {@link RedisConnectionFactory}
-     * @param cacheProperties        {@link CacheProperties}
-     * @return {@link RedisCacheManager}
+     * L2 Redis CacheManager（不暴露为 @Primary，仅作为多级缓存的 L2 后端）
      */
     @Bean
-    public RedisCacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory, CacheProperties cacheProperties){
+    public RedisCacheManager redisCacheManager(RedisConnectionFactory redisConnectionFactory, CacheProperties cacheProperties) {
+        // 允许缓存 null 值（防穿透），通过 cacheConfiguration 的 disableCachingNullValues() 控制
         return RedisCacheManager.builder(RedisCacheWriter.nonLockingRedisCacheWriter(redisConnectionFactory))
                 .cacheDefaults(redisCacheConfiguration(cacheProperties))
                 .build();
     }
 
     /**
+     * 多级缓存管理器（@Primary，Spring Cache 注解使用此管理器）
+     */
+    @Bean
+    @Primary
+    public CacheManager cacheManager(RedisCacheManager redisCacheManager, MeterRegistry meterRegistry,
+                                     BloomFilterService bloomFilterService) {
+        return new MultiLevelCacheManager(redisCacheManager, meterRegistry, Duration.ofMinutes(5), bloomFilterService);
+    }
+
+    /**
      * 自定义 RedisCacheConfiguration
-     *
-     * @param cacheProperties {@link CacheProperties}
-     * @return {@link RedisCacheConfiguration}
      */
     @Bean
     RedisCacheConfiguration redisCacheConfiguration(CacheProperties cacheProperties) {
-
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig();
 
-        // 配置 ObjectMapper 注册 Java 8 日期时间模块，避免 LocalDateTime 序列化失败
-        // 同时启用默认类型信息（与 GenericJackson2JsonRedisSerializer 默认构造器行为一致）
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -75,14 +88,11 @@ public class RedisCacheConfig {
         if (redisProperties.getTimeToLive() != null) {
             config = config.entryTtl(redisProperties.getTimeToLive());
         }
-        if (!redisProperties.isCacheNullValues()) {
-            config = config.disableCachingNullValues();
-        }
+        // 允许缓存 null 值（防穿透），不调用 disableCachingNullValues
         if (!redisProperties.isUseKeyPrefix()) {
             config = config.disableKeyPrefix();
         }
-        config = config.computePrefixWith(name -> name + ":");//覆盖默认key双冒号  CacheKeyPrefix#prefixed
+        config = config.computePrefixWith(name -> name + ":");
         return config;
     }
-
 }

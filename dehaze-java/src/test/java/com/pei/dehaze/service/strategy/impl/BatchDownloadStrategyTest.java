@@ -396,13 +396,21 @@ class BatchDownloadStrategyTest {
             items.add(item);
         }
 
+        // 模拟不同数据项有不同数量的文件: 300 有 1 个文件, 301 有 3 个文件, 总共 4 个
+        List<SysItemFile> itemFiles = new ArrayList<>();
+        SysItemFile f1 = new SysItemFile();
+        f1.setId(10L); f1.setItemId(300L); f1.setFileId(100L); f1.setType("image");
+        itemFiles.add(f1);
+        for (long i = 1; i <= 3; i++) {
+            SysItemFile f = new SysItemFile();
+            f.setId(20L + i); f.setItemId(301L); f.setFileId(200L + i); f.setType("image");
+            itemFiles.add(f);
+        }
+
         when(sysDatasetItemService.listByIds(any())).thenReturn(items);
-        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(List.of());
-        when(sysItemFileService.count(any(LambdaQueryWrapper.class))).thenAnswer(inv -> {
-            LambdaQueryWrapper<SysItemFile> wrapper = inv.getArgument(0);
-            // 模拟不同数据项有不同数量的文件
-            return 2L;
-        });
+        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(itemFiles);
+        when(sysFileServiceDep.getById(any())).thenReturn(createMockSysFile());
+        when(fileService.downLoadFile(any())).thenReturn(new ByteArrayInputStream(new byte[1024]));
         when(fileService.uploadFile(any(), any(), anyLong(), any())).thenReturn("http://example.com/batch.zip");
 
         // Act
@@ -410,7 +418,7 @@ class BatchDownloadStrategyTest {
 
         // Assert
         assertTrue(result.isSuccess());
-        // 2个数据项，每个2个文件，总共4个
+        // 2个数据项，共4个文件
         verify(progressCallback).updateProgress(eq(0), eq(4), anyString());
     }
 

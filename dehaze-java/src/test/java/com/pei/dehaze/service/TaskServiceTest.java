@@ -125,7 +125,7 @@ class TaskServiceTest {
             mockedSecurityUtils.when(SecurityUtils::getUserId).thenReturn(1L);
 
             // Act
-            TaskVO result = taskService.createTask(mockForm);
+            TaskVO result = taskService.createTask(mockForm, null);
 
             // Assert
             assertNotNull(result);
@@ -154,7 +154,7 @@ class TaskServiceTest {
             mockedSecurityUtils.when(SecurityUtils::getUserId).thenReturn(1L);
 
             // Act
-            TaskVO result = taskService.createTask(mockForm);
+            TaskVO result = taskService.createTask(mockForm, null);
 
             // Assert
             assertNotNull(result);
@@ -186,7 +186,7 @@ class TaskServiceTest {
             mockedSecurityUtils.when(SecurityUtils::getUserId).thenReturn(1L);
 
             // Act
-            TaskVO result = taskService.createTask(mockForm);
+            TaskVO result = taskService.createTask(mockForm, null);
 
             // Assert
             assertNotNull(result);

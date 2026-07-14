@@ -51,7 +51,7 @@ func (api *SysDatasetItemApi) GetDatasetItemById(c *gin.Context) {
 		return
 	}
 
-	itemVO, err := api.datasetItemService.GetDatasetItemVOByID(id)
+	itemVO, err := api.datasetItemService.GetDatasetItemVOByID(c.Request.Context(), id)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -94,7 +94,7 @@ func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
 		}
 	}
 
-	items, total, err := api.datasetItemService.GetDatasetItemsByPage(int(pageNum), int(pageSize), datasetId, sceneType, keyword, hazeLevel)
+	items, total, err := api.datasetItemService.GetDatasetItemsByPage(c.Request.Context(), int(pageNum), int(pageSize), datasetId, sceneType, keyword, hazeLevel)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -133,14 +133,14 @@ func (api *SysDatasetItemApi) CreateDatasetItem(c *gin.Context) {
 		return
 	}
 
-	item, err := api.datasetItemService.CreateDatasetItemWithName(req.DatasetID, req.Name)
+	item, err := api.datasetItemService.CreateDatasetItemWithName(c.Request.Context(), req.DatasetID, req.Name)
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
 
 	// 返回完整 VO
-	itemVO, err := api.datasetItemService.GetDatasetItemVOByID(item.ID)
+	itemVO, err := api.datasetItemService.GetDatasetItemVOByID(c.Request.Context(), item.ID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -442,7 +442,7 @@ func (api *SysDatasetItemApi) UpdateDatasetItem(c *gin.Context) {
 		return
 	}
 
-	itemVO, err := api.datasetItemService.UpdateDatasetItem(id, req.Name)
+	itemVO, err := api.datasetItemService.UpdateDatasetItem(c.Request.Context(), id, req.Name)
 	if err != nil {
 		_ = c.Error(err)
 		return

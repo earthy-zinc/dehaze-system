@@ -231,7 +231,7 @@ class TaskStrategyFactoryTest {
         // Arrange
         SysTask mockTask = new SysTask();
         Map<String, Object> params = new HashMap<>();
-        ProgressCallback callback = new DefaultProgressCallback(1L, "task-1", null, null);
+        ProgressCallback callback = new DefaultProgressCallback(1L, "task-1", 1L, null, null, null);
 
         when(datasetStrategy.execute(any(), any(), any())).thenReturn(TaskResult.success("result"));
 

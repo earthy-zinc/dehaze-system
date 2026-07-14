@@ -228,10 +228,15 @@ class BaseRepository(Generic[T]):
             raise AttributeError(
                 f"{self.model.__name__} does not have 'deleted' field")
         id_column = self._get_id_column()
+        values: dict[str, Any] = {"deleted": 1}
+        # Core update 绕过 ORM 事件，需手动填充审计字段
+        if hasattr(self.model, "update_by"):
+            from app.models.base import get_audit_update_values
+            values.update(get_audit_update_values())
         stmt = (
             update(self.model)
             .where(id_column.in_(ids))
-            .values(deleted=1)
+            .values(**values)
         )
         result = await db.execute(stmt)
         return result.rowcount

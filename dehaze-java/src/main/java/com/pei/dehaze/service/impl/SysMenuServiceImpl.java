@@ -21,6 +21,7 @@ import com.pei.dehaze.model.form.MenuForm;
 import com.pei.dehaze.model.query.MenuQuery;
 import com.pei.dehaze.model.vo.MenuVO;
 import com.pei.dehaze.model.vo.RouteVO;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysMenuService;
 import com.pei.dehaze.service.SysRoleMenuService;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +31,11 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 菜单业务实现类
@@ -110,32 +114,34 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
      * 菜单下拉数据
      */
     @Override
-    @Cacheable(cacheNames = "menu", key = "'options'", unless = "#result == null || #result.isEmpty()")
+    @Cacheable(cacheNames = "menu", key = "'options'")
     public List<Option<Long>> listMenuOptions() {
         List<SysMenu> menuList = this.list(new LambdaQueryWrapper<SysMenu>()
                 .orderByAsc(SysMenu::getSort));
-        return buildMenuOptions(SystemConstants.ROOT_NODE_ID, menuList);
+        // 构建 parentId -> children Map，避免 O(n²) 递归
+        Map<Long, List<SysMenu>> parentToChildrenMap = menuList.stream()
+                .collect(Collectors.groupingBy(SysMenu::getParentId));
+        return buildMenuOptions(SystemConstants.ROOT_NODE_ID, parentToChildrenMap);
     }
 
     /**
      * 递归生成菜单下拉层级列表
      *
-     * @param parentId 父级ID
-     * @param menuList 菜单列表
+     * @param parentId           父级ID
+     * @param parentToChildrenMap 父级ID -> 子菜单列表 的Map（预先分组，O(1)查找）
      * @return 菜单下拉列表
      */
-    private List<Option<Long>> buildMenuOptions(Long parentId, List<SysMenu> menuList) {
+    private List<Option<Long>> buildMenuOptions(Long parentId, Map<Long, List<SysMenu>> parentToChildrenMap) {
         List<Option<Long>> menuOptions = new ArrayList<>();
 
-        for (SysMenu menu : menuList) {
-            if (menu.getParentId().equals(parentId)) {
-                Option<Long> option = new Option<>(menu.getId(), menu.getName());
-                List<Option<Long>> subMenuOptions = buildMenuOptions(menu.getId(), menuList);
-                if (!subMenuOptions.isEmpty()) {
-                    option.setChildren(subMenuOptions);
-                }
-                menuOptions.add(option);
+        List<SysMenu> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        for (SysMenu menu : children) {
+            Option<Long> option = new Option<>(menu.getId(), menu.getName());
+            List<Option<Long>> subMenuOptions = buildMenuOptions(menu.getId(), parentToChildrenMap);
+            if (!subMenuOptions.isEmpty()) {
+                option.setChildren(subMenuOptions);
             }
+            menuOptions.add(option);
         }
 
         return menuOptions;
@@ -251,9 +257,11 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Override
     @CacheEvict(cacheNames = "menu", allEntries = true)
     public boolean updateMenuVisible(Long menuId, Integer visible) {
+        Long currentUserId = SecurityUtils.getUserId();
         return this.update(new LambdaUpdateWrapper<SysMenu>()
                 .eq(SysMenu::getId, menuId)
                 .set(SysMenu::getVisible, visible)
+                .set(SysMenu::getUpdateBy, currentUserId)
         );
     }
 

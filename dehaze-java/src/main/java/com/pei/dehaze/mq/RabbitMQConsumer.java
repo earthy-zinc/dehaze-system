@@ -28,7 +28,7 @@ public abstract class RabbitMQConsumer {
         if (headers == null) {
             return null;
         }
-        Object traceId = headers.get("X-Trace-ID");
+        Object traceId = headers.get("X-Trace-Id");
         if (traceId != null) {
             return traceId.toString();
         }

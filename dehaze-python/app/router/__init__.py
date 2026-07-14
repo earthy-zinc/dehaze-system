@@ -16,8 +16,9 @@ def init_routes(app: FastAPI, prometheus_enabled: bool = False):
         prometheus_enabled: 是否启用 Prometheus 指标端点
     """
     # 健康检查路由
-    from app.router.health import router as health_router
+    from app.router.health import ready_router, router as health_router
     app.include_router(health_router)
+    app.include_router(ready_router)
 
     # Prometheus 指标端点（如果启用）
     if prometheus_enabled:

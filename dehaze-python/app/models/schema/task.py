@@ -80,6 +80,9 @@ class TaskVO(BaseModel):
     startedAt: Optional[datetime] = Field(default=None, description="开始时间")
     completedAt: Optional[datetime] = Field(default=None, description="完成时间")
     expiresAt: Optional[datetime] = Field(default=None, description="过期时间")
+    idempotencyKey: Optional[str] = Field(default=None, description="客户端幂等键")
+    retryCount: int = Field(default=0, description="MQ 重试次数")
+    workerId: Optional[str] = Field(default=None, description="执行 Worker 标识")
 
 
 class TaskPageVO(BaseModel):

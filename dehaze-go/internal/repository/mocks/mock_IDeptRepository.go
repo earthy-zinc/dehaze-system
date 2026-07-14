@@ -647,6 +647,124 @@ func (_c *MockIDeptRepository_HasUsers_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
+// HasUsersInBatch provides a mock function with given fields: ctx, deptIDs
+func (_m *MockIDeptRepository) HasUsersInBatch(ctx context.Context, deptIDs []int64) (map[int64]bool, error) {
+	ret := _m.Called(ctx, deptIDs)
+
+	if len(ret) == 0 {
+		panic("no return value specified for HasUsersInBatch")
+	}
+
+	var r0 map[int64]bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) (map[int64]bool, error)); ok {
+		return rf(ctx, deptIDs)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []int64) map[int64]bool); ok {
+		r0 = rf(ctx, deptIDs)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[int64]bool)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []int64) error); ok {
+		r1 = rf(ctx, deptIDs)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIDeptRepository_HasUsersInBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'HasUsersInBatch'
+type MockIDeptRepository_HasUsersInBatch_Call struct {
+	*mock.Call
+}
+
+// HasUsersInBatch is a helper method to define mock.On call
+//   - ctx context.Context
+//   - deptIDs []int64
+func (_e *MockIDeptRepository_Expecter) HasUsersInBatch(ctx interface{}, deptIDs interface{}) *MockIDeptRepository_HasUsersInBatch_Call {
+	return &MockIDeptRepository_HasUsersInBatch_Call{Call: _e.mock.On("HasUsersInBatch", ctx, deptIDs)}
+}
+
+func (_c *MockIDeptRepository_HasUsersInBatch_Call) Run(run func(ctx context.Context, deptIDs []int64)) *MockIDeptRepository_HasUsersInBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]int64))
+	})
+	return _c
+}
+
+func (_c *MockIDeptRepository_HasUsersInBatch_Call) Return(_a0 map[int64]bool, _a1 error) *MockIDeptRepository_HasUsersInBatch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIDeptRepository_HasUsersInBatch_Call) RunAndReturn(run func(context.Context, []int64) (map[int64]bool, error)) *MockIDeptRepository_HasUsersInBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindIDsByNames provides a mock function with given fields: ctx, names
+func (_m *MockIDeptRepository) FindIDsByNames(ctx context.Context, names []string) (map[string]int64, error) {
+	ret := _m.Called(ctx, names)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindIDsByNames")
+	}
+
+	var r0 map[string]int64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string) (map[string]int64, error)); ok {
+		return rf(ctx, names)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, []string) map[string]int64); ok {
+		r0 = rf(ctx, names)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]int64)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, []string) error); ok {
+		r1 = rf(ctx, names)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockIDeptRepository_FindIDsByNames_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindIDsByNames'
+type MockIDeptRepository_FindIDsByNames_Call struct {
+	*mock.Call
+}
+
+// FindIDsByNames is a helper method to define mock.On call
+//   - ctx context.Context
+//   - names []string
+func (_e *MockIDeptRepository_Expecter) FindIDsByNames(ctx interface{}, names interface{}) *MockIDeptRepository_FindIDsByNames_Call {
+	return &MockIDeptRepository_FindIDsByNames_Call{Call: _e.mock.On("FindIDsByNames", ctx, names)}
+}
+
+func (_c *MockIDeptRepository_FindIDsByNames_Call) Run(run func(ctx context.Context, names []string)) *MockIDeptRepository_FindIDsByNames_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockIDeptRepository_FindIDsByNames_Call) Return(_a0 map[string]int64, _a1 error) *MockIDeptRepository_FindIDsByNames_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockIDeptRepository_FindIDsByNames_Call) RunAndReturn(run func(context.Context, []string) (map[string]int64, error)) *MockIDeptRepository_FindIDsByNames_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Update provides a mock function with given fields: ctx, _a1
 func (_m *MockIDeptRepository) Update(ctx context.Context, _a1 *model.SysDept) error {
 	ret := _m.Called(ctx, _a1)

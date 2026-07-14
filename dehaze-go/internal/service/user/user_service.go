@@ -53,19 +53,17 @@ func (s *UserService) Login(ctx context.Context, u *model.SysUser) (*model.UserA
 
 	inputPassword := u.Password
 
-	user, err := s.userRepo.FindByUsername(ctx, u.Username)
+	// 直接获取认证信息（含用户基本信息、角色、权限），消除冗余的用户表查询
+	authInfo, err := s.GetUserAuthInfo(ctx, u.Username)
 	if err != nil {
-		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询用户失败", err)
-	}
-	if user == nil {
-		return nil, ErrUserNotFound
+		return nil, err
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(inputPassword)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(authInfo.Password), []byte(inputPassword)); err != nil {
 		return nil, ErrInvalidPassword
 	}
 
-	return s.GetUserAuthInfo(ctx, u.Username)
+	return authInfo, nil
 }
 
 // GetUserAuthInfo 根据用户名获取认证信息
@@ -375,8 +373,8 @@ func (s *UserService) UpdateStatus(ctx context.Context, id int64, status int8) e
 
 // GetCurrentUserInfo 获取当前登录用户信息
 func (s *UserService) GetCurrentUserInfo(ctx context.Context, userID int64) (*vo.UserInfoVO, error) {
-	// 获取用户基础信息
-	user, err := s.userRepo.FindByID(ctx, userID)
+	// 合并查询用户基础信息和角色编码（单次JOIN，消除冗余的用户表查询）
+	user, roleCodes, err := s.userRepo.FindUserWithRoleCodesByID(ctx, userID)
 	if err != nil {
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询用户失败", err)
 	}
@@ -389,14 +387,8 @@ func (s *UserService) GetCurrentUserInfo(ctx context.Context, userID int64) (*vo
 		Username: user.Username,
 		Nickname: user.Nickname,
 		Avatar:   user.Avatar,
+		Roles:    roleCodes,
 	}
-
-	// 查询用户角色编码集合
-	roleCodes, err := s.userRepo.FindRoleCodesByUsername(ctx, user.Username)
-	if err != nil {
-		return &userInfoVO, nil // 角色查询失败不影响返回用户信息
-	}
-	userInfoVO.Roles = roleCodes
 
 	// 查询用户权限标识集合
 	if len(roleCodes) > 0 {
@@ -419,6 +411,22 @@ func (s *UserService) ImportUsers(ctx context.Context, data []vo.UserImportVO) (
 	var failures []vo.ImportFailureVO
 
 	err := s.userRepo.Transaction(ctx, func(txRepo userrepo.IUserRepository) error {
+		// 批量预取部门 ID（避免循环内逐条 FindIDByName 触发 N+1 查询）
+		deptNameSet := make(map[string]struct{})
+		for _, item := range data {
+			if item.DeptName != "" {
+				deptNameSet[item.DeptName] = struct{}{}
+			}
+		}
+		deptNameList := make([]string, 0, len(deptNameSet))
+		for name := range deptNameSet {
+			deptNameList = append(deptNameList, name)
+		}
+		deptIDMap, err := s.deptRepo.FindIDsByNames(ctx, deptNameList)
+		if err != nil {
+			return err
+		}
+
 		for i, item := range data {
 			rowNum := i + 1
 
@@ -471,13 +479,10 @@ func (s *UserService) ImportUsers(ctx context.Context, data []vo.UserImportVO) (
 				status = 0
 			}
 
-			// 查询部门ID
+			// 从批量预取的映射中获取部门 ID
 			var deptID int64
 			if item.DeptName != "" {
-				id, err := s.deptRepo.FindIDByName(ctx, item.DeptName)
-				if err == nil {
-					deptID = id
-				}
+				deptID = deptIDMap[item.DeptName]
 			}
 
 			// 加密默认密码

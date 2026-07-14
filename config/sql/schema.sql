@@ -345,16 +345,21 @@ CREATE TABLE `sys_task`
     `params`          TEXT COMMENT '任务参数（JSON）',
     `result`          TEXT COMMENT '任务结果（下载链接）',
     `error_message`   TEXT COMMENT '错误信息',
-    `created_by`      BIGINT COMMENT '创建人ID',
+    `create_by`       BIGINT COMMENT '创建人ID',
+    `update_by`       BIGINT COMMENT '修改人ID',
     `create_time`     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`     DATETIME    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     `started_at`      DATETIME COMMENT '开始时间',
     `completed_at`    DATETIME COMMENT '完成时间',
     `expires_at`      DATETIME COMMENT '过期时间',
+    `idempotency_key` VARCHAR(64) COMMENT '客户端幂等键（HTTP Idempotency-Key 头）',
+    `retry_count`     INT         NOT NULL DEFAULT 0 COMMENT 'MQ 重试次数',
+    `worker_id`       VARCHAR(64) COMMENT '执行 Worker 标识',
     PRIMARY KEY (`id`) USING BTREE,
     UNIQUE INDEX `idx_task_id` (`task_id`) USING BTREE,
+    UNIQUE INDEX `idx_idempotency_key` (`idempotency_key`) USING BTREE,
     INDEX `idx_status` (`status`) USING BTREE,
-    INDEX `idx_created_by` (`created_by`) USING BTREE,
+    INDEX `idx_create_by` (`create_by`) USING BTREE,
     INDEX `idx_create_time` (`create_time`) USING BTREE
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4
