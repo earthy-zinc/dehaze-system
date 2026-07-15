@@ -72,25 +72,25 @@ func OkWithDetailed(data interface{}, message string, c *gin.Context) {
 // Fail 操作失败，使用通用错误码
 // 仿照 Java: return Result.failed(ResultCode.SYSTEM_EXECUTION_ERROR);
 func Fail(c *gin.Context) {
-	result(SYSTEM_EXECUTION_ERROR, map[string]interface{}{}, c)
+	result(SYSTEM_EXECUTION_ERROR, nil, c)
 }
 
 // FailWithMessage 操作失败，返回自定义消息
 // 仿照 Java: return Result.failed(ResultCode.SYSTEM_EXECUTION_ERROR).message("自定义消息");
 func FailWithMessage(message string, c *gin.Context) {
-	resultWithMsg(SYSTEM_EXECUTION_ERROR, map[string]interface{}{}, message, c)
+	resultWithMsg(SYSTEM_EXECUTION_ERROR, nil, message, c)
 }
 
 // FailWithCode 操作失败，使用指定错误码
 // 仿照 Java: return Result.failed(ResultCode.PARAM_ERROR);
 func FailWithCode(resultCode *ResultCode, c *gin.Context) {
-	result(resultCode, map[string]interface{}{}, c)
+	result(resultCode, nil, c)
 }
 
 // FailWithCodeAndMessage 操作失败，使用指定错误码和消息
 // 仿照 Java: return Result.failed(ResultCode.PARAM_ERROR).message("自定义消息");
 func FailWithCodeAndMessage(resultCode *ResultCode, message string, c *gin.Context) {
-	resultWithMsg(resultCode, map[string]interface{}{}, message, c)
+	resultWithMsg(resultCode, nil, message, c)
 }
 
 // FailWithDataAndCode 操作失败，返回数据和指定错误码

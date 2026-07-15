@@ -109,16 +109,18 @@ class TaskServiceIT {
     /**
      * 测试目的：验证查询不存在的任务状态
      * 测试场景：查询不存在的任务ID
-     * 验证内容：返回null
+     * 验证内容：抛出BusinessException异常
      */
     @Test
-    @DisplayName("查询不存在的任务状态-返回null")
+    @DisplayName("查询不存在的任务状态-抛出异常")
     void testGetTaskStatus_NotFound() {
         String nonExistentTaskId = "non-existent-task-id-12345";
 
-        TaskVO result = taskService.getTaskStatus(nonExistentTaskId);
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> taskService.getTaskStatus(nonExistentTaskId));
 
-        assertNull(result);
+        assertTrue(exception.getMessage().contains("任务不存在"));
     }
 
     /**
@@ -234,15 +236,15 @@ class TaskServiceIT {
     /**
      * 测试目的：验证下载不存在任务的处理
      * 测试场景：下载不存在的任务
-     * 验证内容：抛出IllegalArgumentException异常
+     * 验证内容：抛出BusinessException异常
      */
     @Test
     @DisplayName("下载不存在任务-抛出异常")
     void testGetDownloadUrl_NotFound() {
         String nonExistentTaskId = "non-existent-task-id-12345";
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> taskService.getDownloadUrl(nonExistentTaskId));
 
         assertTrue(exception.getMessage().contains("任务不存在"));
@@ -281,15 +283,15 @@ class TaskServiceIT {
     /**
      * 测试目的：验证取消不存在的任务
      * 测试场景：取消不存在的任务
-     * 验证内容：抛出IllegalArgumentException异常
+     * 验证内容：抛出BusinessException异常
      */
     @Test
     @DisplayName("取消不存在的任务-抛出异常")
     void testCancelTask_NotFound() {
         String nonExistentTaskId = "non-existent-task-id-12345";
 
-        IllegalArgumentException exception = assertThrows(
-                IllegalArgumentException.class,
+        BusinessException exception = assertThrows(
+                BusinessException.class,
                 () -> taskService.cancelTask(nonExistentTaskId));
 
         assertTrue(exception.getMessage().contains("任务不存在"));

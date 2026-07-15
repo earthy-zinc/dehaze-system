@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -138,11 +137,19 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(ctx context.
 		total = int64(len(items))
 	}
 	if hazeLevel != "" {
-		items = filterItemsByHazeLevel(ctx, items, hazeLevel, datasetItemService.itemFileRepo)
+		filtered, err := filterItemsByHazeLevel(ctx, items, hazeLevel, datasetItemService.itemFileRepo)
+		if err != nil {
+			return nil, 0, err
+		}
+		items = filtered
 		total = int64(len(items))
 	}
 	if sceneType != "" {
-		items = filterItemsBySceneType(ctx, items, sceneType, datasetItemService.itemFileRepo)
+		filtered, err := filterItemsBySceneType(ctx, items, sceneType, datasetItemService.itemFileRepo)
+		if err != nil {
+			return nil, 0, err
+		}
+		items = filtered
 		total = int64(len(items))
 	}
 
@@ -201,35 +208,10 @@ func (datasetItemService *DatasetItemService) GetDatasetItemsByPage(ctx context.
 			url := fileURLMap[itemFile.FileID]
 			fileInfo := fileInfoMap[itemFile.FileID]
 
-			imageUrlVO := vo.ImageUrlVO{
-				ID:          itemFile.ID,
-				ItemID:      itemFile.ItemID,
-				DatasetID:   item.DatasetID,
-				Type:        itemFile.Type,
-				URL:         url,
-				OriginURL:   url,
-				Description: utils.StringVal(itemFile.Description),
-				SceneType:   utils.StringVal(itemFile.SceneType),
-				HazeLevel:   utils.StringVal(itemFile.HazeLevel),
-			}
-
-			if itemFile.Width != nil {
-				imageUrlVO.Width = *itemFile.Width
-			}
-			if itemFile.Height != nil {
-				imageUrlVO.Height = *itemFile.Height
-			}
-
-			if fileInfo != nil {
-				imageUrlVO.FileName = fileInfo.Name
-				if size, parseErr := strconv.ParseInt(fileInfo.Size, 10, 64); parseErr == nil {
-					imageUrlVO.SizeBytes = size
-				}
-				// 从文件名提取格式
-				if idx := strings.LastIndex(fileInfo.Name, "."); idx != -1 {
-					imageUrlVO.Format = fileInfo.Name[idx+1:]
-				}
-			}
+			imageUrlVO := fileservice.BuildImageUrlVO(fileInfo, &itemFile, url)
+			imageUrlVO.ID = itemFile.ID
+			imageUrlVO.ItemID = itemFile.ItemID
+			imageUrlVO.DatasetID = item.DatasetID
 
 			if itemFile.Type == "clear" {
 				clearImage = &imageUrlVO
@@ -368,7 +350,10 @@ func (datasetItemService *DatasetItemService) GetDatasetItemVOByID(ctx context.C
 func (datasetItemService *DatasetItemService) DeleteDatasetItem(ctx context.Context, datasetItemId int64) (err error) {
 	// 先查询数据项
 	item, err := datasetItemService.itemRepo.FindByID(ctx, datasetItemId)
-	if err != nil || item == nil {
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询数据项失败", err)
+	}
+	if item == nil {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据项不存在")
 	}
 
@@ -397,7 +382,10 @@ func (datasetItemService *DatasetItemService) DeleteDatasetItem(ctx context.Cont
 func (datasetItemService *DatasetItemService) UpdateDatasetItem(ctx context.Context, datasetItemId int64, itemName string) (*vo.ImageItemVO, error) {
 	// 先查询数据项
 	item, err := datasetItemService.itemRepo.FindByID(ctx, datasetItemId)
-	if err != nil || item == nil {
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询数据项失败", err)
+	}
+	if item == nil {
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "数据项不存在")
 	}
 
@@ -498,9 +486,9 @@ func filterItemsByKeyword(items []model.SysDatasetItem, keyword string) []model.
 }
 
 // filterItemsByHazeLevel 按雾霾程度过滤（需关联 item_file 表）
-func filterItemsByHazeLevel(ctx context.Context, items []model.SysDatasetItem, hazeLevel string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
+func filterItemsByHazeLevel(ctx context.Context, items []model.SysDatasetItem, hazeLevel string, itemFileRepo filerepo.IItemFileRepository) ([]model.SysDatasetItem, error) {
 	if len(items) == 0 {
-		return items
+		return items, nil
 	}
 	ids := make([]int64, len(items))
 	for i, item := range items {
@@ -508,8 +496,7 @@ func filterItemsByHazeLevel(ctx context.Context, items []model.SysDatasetItem, h
 	}
 	itemFiles, err := itemFileRepo.FindByItemIDs(ctx, ids)
 	if err != nil {
-		logger.Warn("查询雾霾程度失败", zap.Error(err))
-		return items
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询雾霾程度失败", err)
 	}
 	matchedIDs := make(map[int64]bool)
 	for _, itemFile := range itemFiles {
@@ -523,13 +510,13 @@ func filterItemsByHazeLevel(ctx context.Context, items []model.SysDatasetItem, h
 			result = append(result, item)
 		}
 	}
-	return result
+	return result, nil
 }
 
 // filterItemsBySceneType 按场景类型过滤（需关联 item_file 表）
-func filterItemsBySceneType(ctx context.Context, items []model.SysDatasetItem, sceneType string, itemFileRepo filerepo.IItemFileRepository) []model.SysDatasetItem {
+func filterItemsBySceneType(ctx context.Context, items []model.SysDatasetItem, sceneType string, itemFileRepo filerepo.IItemFileRepository) ([]model.SysDatasetItem, error) {
 	if len(items) == 0 {
-		return items
+		return items, nil
 	}
 	ids := make([]int64, len(items))
 	for i, item := range items {
@@ -537,8 +524,7 @@ func filterItemsBySceneType(ctx context.Context, items []model.SysDatasetItem, s
 	}
 	itemFiles, err := itemFileRepo.FindByItemIDs(ctx, ids)
 	if err != nil {
-		logger.Warn("查询场景类型失败", zap.Error(err))
-		return items
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询场景类型失败", err)
 	}
 	matchedIDs := make(map[int64]bool)
 	for _, itemFile := range itemFiles {
@@ -552,5 +538,5 @@ func filterItemsBySceneType(ctx context.Context, items []model.SysDatasetItem, s
 			result = append(result, item)
 		}
 	}
-	return result
+	return result, nil
 }

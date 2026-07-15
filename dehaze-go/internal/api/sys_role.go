@@ -2,7 +2,6 @@ package api
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -39,26 +38,7 @@ func (api *SysRoleApi) GetRolePage(c *gin.Context) {
 	// 解析查询参数
 	var queryParams query.RolePageQuery
 	queryParams.Keywords = c.Query("keywords")
-
-	if pageNumStr := c.Query("pageNum"); pageNumStr != "" {
-		if pageNum, err := strconv.Atoi(pageNumStr); err == nil {
-			queryParams.PageNum = pageNum
-		} else {
-			queryParams.PageNum = 1
-		}
-	} else {
-		queryParams.PageNum = 1
-	}
-
-	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
-			queryParams.PageSize = pageSize
-		} else {
-			queryParams.PageSize = 10
-		}
-	} else {
-		queryParams.PageSize = 10
-	}
+	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
 
 	// 调用服务获取分页数据
 	result, err := api.roleService.GetPage(ctx, &queryParams)
@@ -202,29 +182,15 @@ func (api *SysRoleApi) UpdateRole(c *gin.Context) {
 // @Router /api/v1/roles/{ids} [delete]
 func (api *SysRoleApi) DeleteRoles(c *gin.Context) {
 	ctx := c.Request.Context()
-
-	// 获取路径参数
-	ids := c.Param("ids")
-
-	// 解析ID列表
-	idStrings := strings.Split(ids, ",")
-	var idList []int64
-	for _, idStr := range idStrings {
-		id, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "角色ID格式不正确"))
-			return
-		}
-		idList = append(idList, id)
-	}
-
-	// 调用服务删除角色
-	err := api.roleService.Delete(ctx, idList)
+	ids, err := parseIDsFromCSV(c.Param("ids"))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-
+	if err := api.roleService.Delete(ctx, ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
 	common.OkWithMessage("删除角色成功", c)
 }
 

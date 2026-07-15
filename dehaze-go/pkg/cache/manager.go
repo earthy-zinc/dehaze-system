@@ -43,7 +43,8 @@ type CacheManager struct {
 	mu sync.RWMutex
 }
 
-func Init() *CacheManager {
+func Init() (*CacheManager, error) {
+	var initErr error
 	once.Do(func() {
 		cacheManager = &CacheManager{
 			config: &config.GetConfig().Cache,
@@ -58,9 +59,10 @@ func Init() *CacheManager {
 			cacheManager.redisCache, err = redis.InitRedis()
 			if err != nil {
 				logger.Error("Redis 初始化失败", zap.Error(err))
-				// 非 fallback 模式下，Redis 是必需的，应返回错误让上层感知
+				// 非 fallback 模式下，Redis 是必需的，返回错误让上层感知
 				if !cacheManager.config.Fallback.Enabled {
-					logger.Error("Redis 初始化失败且未启用 fallback 模式，缓存服务不可用")
+					initErr = fmt.Errorf("Redis 初始化失败且未启用 fallback 模式，缓存服务不可用: %w", err)
+					cacheManager = nil
 					return
 				}
 				logger.Warn("已启用 fallback 模式，将降级使用本地缓存")
@@ -68,7 +70,8 @@ func Init() *CacheManager {
 		}
 
 		if cacheManager.localCache == nil && cacheManager.redisCache == nil {
-			logger.Error("所有缓存后端都不可用")
+			initErr = fmt.Errorf("所有缓存后端都不可用")
+			cacheManager = nil
 			return
 		}
 
@@ -85,13 +88,10 @@ func Init() *CacheManager {
 		logger.Info("缓存管理器初始化成功")
 	})
 
-	return cacheManager
+	return cacheManager, initErr
 }
 
 func GetCacheManager() *CacheManager {
-	if cacheManager == nil {
-		return Init()
-	}
 	return cacheManager
 }
 

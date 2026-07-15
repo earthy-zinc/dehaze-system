@@ -13,11 +13,11 @@ import (
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	deptrepo "github.com/earthyzinc/dehaze-go/internal/repository/dept"
 	dictrepo "github.com/earthyzinc/dehaze-go/internal/repository/dict"
+	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
 	ihrepo "github.com/earthyzinc/dehaze-go/internal/repository/input_history"
 	menurepo "github.com/earthyzinc/dehaze-go/internal/repository/menu"
 	predrepo "github.com/earthyzinc/dehaze-go/internal/repository/pred_log"
-	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	rolerepo "github.com/earthyzinc/dehaze-go/internal/repository/role"
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
 	userrepo "github.com/earthyzinc/dehaze-go/internal/repository/user"
@@ -27,11 +27,11 @@ import (
 	datasetservice "github.com/earthyzinc/dehaze-go/internal/service/dataset"
 	deptservice "github.com/earthyzinc/dehaze-go/internal/service/dept"
 	dictservice "github.com/earthyzinc/dehaze-go/internal/service/dict"
+	evalservice "github.com/earthyzinc/dehaze-go/internal/service/evaluation"
 	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
 	menuservice "github.com/earthyzinc/dehaze-go/internal/service/menu"
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
-	evalservice "github.com/earthyzinc/dehaze-go/internal/service/evaluation"
 	roleservice "github.com/earthyzinc/dehaze-go/internal/service/role"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	userservice "github.com/earthyzinc/dehaze-go/internal/service/user"
@@ -49,8 +49,8 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin"
 	"github.com/earthyzinc/dehaze-go/pkg/server/gin/middleware"
 	"github.com/earthyzinc/dehaze-go/pkg/storage"
-	"github.com/earthyzinc/dehaze-go/pkg/websocket"
 	dehazevalidator "github.com/earthyzinc/dehaze-go/pkg/validator"
+	"github.com/earthyzinc/dehaze-go/pkg/websocket"
 	gingin "github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -95,7 +95,9 @@ func (a *Application) Init() error {
 	}
 
 	// 3) 缓存（内部会按配置决定是否初始化 Redis/本地缓存）
-	cache.Init()
+	if _, err := cache.Init(); err != nil {
+		return err
+	}
 
 	// 3.1) WebSocket 管理器（依赖 Redis Pub/Sub）
 	if redisClient := redis.GetClient(); redisClient != nil {
@@ -167,26 +169,25 @@ func (a *Application) Init() error {
 		fileRepo,
 		taskExecutor,
 	)
-	taskApi := api.NewSysTaskApi(taskService, taskRepo)
+	taskApi := api.NewSysTaskApi(taskService)
 	inputHistoryService := ihservice.NewInputHistoryService(inputHistoryRepo)
 	algoClient := algo.NewClient(cfg.Algorithm)
 	predictionService := predservice.NewPredictionService(predLogRepo, algoClient, cacheClient)
 	evalLogRepo := evalrepo.NewEvalLogRepository(gormDB)
 	evaluationService := evalservice.NewEvaluationService(evalLogRepo, algoClient)
 
-	// 启动 MQ Consumer 消费导出任务（带 DLX/DLQ 分级重试）
+	// 启动 MQ Consumer 消费死信队列
+	// 注意：Go 后端不消费 export 主队列（由 Java/Python 执行任务），
+	// 仅消费 DLQ 以更新任务状态为 FAILED
 	if cfg.RabbitMQ.Enabled {
 		a.consumer = mq.NewConsumer(cfg.RabbitMQ, zap.L())
 		if err := a.consumer.Connect(); err != nil {
-			logger.Error("MQ Consumer 连接失败，任务将无法异步执行", zap.Error(err))
+			logger.Error("MQ Consumer 连接失败，死信队列将无法消费", zap.Error(err))
 		} else {
-			if err := a.consumer.Consume("export", taskService.HandleExportTaskMessage); err != nil {
-				logger.Error("注册导出任务 Consumer 失败", zap.Error(err))
-			}
 			if err := a.consumer.ConsumeDLQ("export", taskService.HandleDLQMessage); err != nil {
 				logger.Error("注册死信队列 Consumer 失败", zap.Error(err))
 			}
-			logger.Info("MQ Consumer 已启动，消费 export 队列")
+			logger.Info("MQ Consumer 已启动，消费 export 死信队列")
 		}
 	}
 

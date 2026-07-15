@@ -442,7 +442,7 @@ func (s *UserService) ImportUsers(ctx context.Context, data []vo.UserImportVO) (
 			}
 
 			// 检查用户名是否已存在
-			exists, err := txRepo.ExistsByUsernameInTx(ctx, item.Username)
+			exists, err := txRepo.ExistsByUsername(ctx, item.Username)
 			if err != nil {
 				failedCount++
 				failures = append(failures, vo.ImportFailureVO{
@@ -512,7 +512,7 @@ func (s *UserService) ImportUsers(ctx context.Context, data []vo.UserImportVO) (
 			sysUser.CreatedAt = time.Now()
 			sysUser.UpdatedAt = time.Now()
 
-			if err := txRepo.ImportUserInTx(ctx, &sysUser); err != nil {
+			if err := txRepo.Create(ctx, &sysUser); err != nil {
 				failedCount++
 				failures = append(failures, vo.ImportFailureVO{
 					Row:      rowNum,

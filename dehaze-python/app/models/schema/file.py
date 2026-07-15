@@ -19,13 +19,6 @@ class FileCheckQuery(BaseModel):
     md5: str = Field(..., description="文件MD5值")
 
 
-class FilePageQuery(BaseModel):
-    """文件分页查询参数"""
-    pageNum: int = Field(default=1, ge=1, description="页码")
-    pageSize: int = Field(default=10, ge=1, le=100, description="每页数量")
-    keywords: Optional[str] = Field(default=None, description="搜索关键词")
-
-
 # ==================== 表单参数模型 ====================
 
 class FileUploadForm(BaseModel):
@@ -46,13 +39,6 @@ class FileUploadResultVO(BaseModel):
     objectName: str = Field(description="对象存储名称")
     md5: str = Field(description="文件MD5值")
     createTime: Optional[datetime] = Field(default=None, description="创建时间")
-
-
-class FileCheckResultVO(BaseModel):
-    """文件校验结果VO"""
-    exists: bool = Field(description="文件是否存在")
-    fileId: Optional[int] = Field(default=None, description="已存在文件的ID")
-    url: Optional[str] = Field(default=None, description="已存在文件的URL")
 
 
 class FileVO(BaseModel):

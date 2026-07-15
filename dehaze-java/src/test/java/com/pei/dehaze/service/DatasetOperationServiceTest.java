@@ -2,10 +2,16 @@ package com.pei.dehaze.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.util.FileBOFactory;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.vo.BatchDeleteResult;
+import com.pei.dehaze.service.DatasetOperationService;
+import com.pei.dehaze.service.ImageProcessingService;
+import com.pei.dehaze.service.SysDatasetItemService;
+import com.pei.dehaze.service.SysDatasetService;
+import com.pei.dehaze.service.SysItemFileService;
 import com.pei.dehaze.service.impl.DatasetOperationServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,6 +48,12 @@ class DatasetOperationServiceTest {
     @Mock
     private SysItemFileService sysItemFileService;
 
+    @Mock
+    private FileBOFactory fileBOFactory;
+
+    @Mock
+    private ImageProcessingService imageProcessingService;
+
     @InjectMocks
     private DatasetOperationServiceImpl datasetOperationService;
 
@@ -74,20 +86,20 @@ class DatasetOperationServiceTest {
         Long datasetItemId = 1L;
         List<SysItemFile> files = Arrays.asList(sampleItemFile);
 
-        // 先验证数据项存在
-        when(sysDatasetItemService.getById(datasetItemId)).thenReturn(sampleDatasetItem);
+        // deleteDatasetItemCascade 委托给 batchDeleteDatasetItemsCascadeWithResult
+        when(sysDatasetItemService.listByIds(any())).thenReturn(Arrays.asList(sampleDatasetItem));
         when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(files);
         when(sysItemFileService.deleteFile(anyLong())).thenReturn(true);
-        when(sysDatasetItemService.removeById(datasetItemId)).thenReturn(true);
+        when(sysDatasetItemService.removeByIds(any())).thenReturn(true);
 
         // When
         datasetOperationService.deleteDatasetItemCascade(datasetItemId);
 
         // Then
-        verify(sysDatasetItemService).getById(datasetItemId);
+        verify(sysDatasetItemService).listByIds(any());
         verify(sysItemFileService).list(any(LambdaQueryWrapper.class));
         verify(sysItemFileService).deleteFile(1L);
-        verify(sysDatasetItemService).removeById(datasetItemId);
+        verify(sysDatasetItemService).removeByIds(any());
     }
 
     @Test
@@ -95,7 +107,8 @@ class DatasetOperationServiceTest {
     void testDeleteDatasetItemCascade_NotFound() {
         // Given
         Long datasetItemId = 999L;
-        when(sysDatasetItemService.getById(datasetItemId)).thenReturn(null);
+        when(sysDatasetItemService.listByIds(any())).thenReturn(Collections.emptyList());
+        when(sysItemFileService.list(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
 
         // When & Then
         assertThatThrownBy(() -> datasetOperationService.deleteDatasetItemCascade(datasetItemId))

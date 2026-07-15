@@ -12,8 +12,7 @@ import io.minio.http.Method;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
-import org.jetbrains.annotations.NotNull;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -34,6 +33,7 @@ import java.security.NoSuchAlgorithmException;
 @ConfigurationProperties(prefix = "file.minio")
 @RequiredArgsConstructor
 @Data
+@Slf4j
 public class MinioFileService implements FileService {
 
     /**
@@ -52,10 +52,6 @@ public class MinioFileService implements FileService {
      * 存储桶名称
      */
     private String bucketName;
-    /**
-     * 自定义域名
-     */
-    private String customDomain;
 
     private MinioClient minioClient;
 
@@ -115,7 +111,6 @@ public class MinioFileService implements FileService {
         }
     }
 
-    @NotNull
     private String getUrl(String objectName) throws ErrorResponseException, InsufficientDataException, InternalException, InvalidKeyException, InvalidResponseException, IOException, NoSuchAlgorithmException, XmlParserException, ServerException {
         // 返回文件路径
         String fileUrl;
@@ -163,11 +158,11 @@ public class MinioFileService implements FileService {
                 .object(objectName)
                 .build();
         try {
-            GetObjectResponse response = minioClient.getObject(getObjectArgs);
-            // 返回一个新的InputStream，避免在try-with-resources中关闭
-            return new ByteArrayInputStream(response.readAllBytes());
-        } catch (IOException | ErrorResponseException | InsufficientDataException | InternalException |
-                 InvalidKeyException | InvalidResponseException | NoSuchAlgorithmException | ServerException |
+            // 直接返回响应流，避免将整个文件读入内存导致OOM
+            // GetObjectResponse 继承自 FilterInputStream，调用方负责关闭返回的 InputStream
+            return minioClient.getObject(getObjectArgs);
+        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
+                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
                  XmlParserException e) {
             throw new BusinessException("下载文件失败: " + e.getMessage(), e);
         }
@@ -178,21 +173,26 @@ public class MinioFileService implements FileService {
      *
      * @param bucketName 存储桶名称
      */
-    @SneakyThrows
     private void createBucketIfAbsent(String bucketName) {
-        BucketExistsArgs bucketExistsArgs = BucketExistsArgs.builder().bucket(bucketName).build();
-        if (!minioClient.bucketExists(bucketExistsArgs)) {
-            MakeBucketArgs makeBucketArgs = MakeBucketArgs.builder().bucket(bucketName).build();
+        try {
+            BucketExistsArgs bucketExistsArgs = BucketExistsArgs.builder().bucket(bucketName).build();
+            if (!minioClient.bucketExists(bucketExistsArgs)) {
+                MakeBucketArgs makeBucketArgs = MakeBucketArgs.builder().bucket(bucketName).build();
 
-            minioClient.makeBucket(makeBucketArgs);
+                minioClient.makeBucket(makeBucketArgs);
 
-            // 设置存储桶访问权限为PUBLIC， 如果不配置，则新建的存储桶默认是PRIVATE，则存储桶文件会拒绝访问 Access Denied
-            SetBucketPolicyArgs setBucketPolicyArgs = SetBucketPolicyArgs
-                    .builder()
-                    .bucket(bucketName)
-                    .config(publicBucketPolicy(bucketName))
-                    .build();
-            minioClient.setBucketPolicy(setBucketPolicyArgs);
+                // 设置存储桶访问权限为PUBLIC， 如果不配置，则新建的存储桶默认是PRIVATE，则存储桶文件会拒绝访问 Access Denied
+                SetBucketPolicyArgs setBucketPolicyArgs = SetBucketPolicyArgs
+                        .builder()
+                        .bucket(bucketName)
+                        .config(publicBucketPolicy(bucketName))
+                        .build();
+                minioClient.setBucketPolicy(setBucketPolicyArgs);
+            }
+        } catch (ErrorResponseException | InsufficientDataException | InternalException | InvalidKeyException |
+                 InvalidResponseException | IOException | NoSuchAlgorithmException | ServerException |
+                 XmlParserException e) {
+            throw new BusinessException("初始化MinIO存储桶失败: " + e.getMessage(), e);
         }
     }
 

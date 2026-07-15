@@ -5,7 +5,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.cache.Cache;
 import org.springframework.cache.support.AbstractValueAdaptingCache;
-import org.springframework.lang.Nullable;
 
 import java.time.Duration;
 import java.util.concurrent.Callable;
@@ -17,18 +16,16 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 /**
  * 多级缓存（L1 Caffeine + L2 Redis）
  *
- * <p>读流程：L1 -> L2 -> BloomFilter 预判 -> 回源（由 Spring Cache AOP 触发）
+ * <p>读流程：L1 -> L2 -> 回源（由 Spring Cache AOP 触发）
  * <p>写流程：同时写入 L1 和 L2
  * <p>SingleFlight：相同 key 的并发回源请求合并，防缓存击穿
  * <p>空值缓存：通过 AbstractValueAdaptingCache 的 allowNullValues=true 机制缓存 null
- * <p>BloomFilter：回源前预判 key 是否可能存在，防缓存穿透
  */
 public class MultiLevelCache extends AbstractValueAdaptingCache {
 
     private final String name;
     private final com.github.benmanes.caffeine.cache.Cache<Object, Object> l1Cache;
     private final Cache l2Cache;
-    private final BloomFilterService bloomFilterService;
 
     // SingleFlight：相同 key 的并发回源合并
     private final ConcurrentHashMap<Object, CompletableFuture<Object>> inFlight = new ConcurrentHashMap<>();
@@ -39,26 +36,15 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
     private final Counter l2HitCounter;
     private final Counter l2MissCounter;
     private final Counter loaderCounter;
-    private final Counter bloomFilterBlockedCounter;
 
     public MultiLevelCache(
             String name,
             Duration l1Expire,
             Cache l2Cache,
             MeterRegistry meterRegistry) {
-        this(name, l1Expire, l2Cache, meterRegistry, null);
-    }
-
-    public MultiLevelCache(
-            String name,
-            Duration l1Expire,
-            Cache l2Cache,
-            MeterRegistry meterRegistry,
-            @Nullable BloomFilterService bloomFilterService) {
         super(true); // allowNullValues=true，启用空值缓存防穿透
         this.name = name;
         this.l2Cache = l2Cache;
-        this.bloomFilterService = bloomFilterService;
         this.l1Cache = Caffeine.newBuilder()
                 .expireAfterWrite(l1Expire)
                 .maximumSize(1000)
@@ -70,7 +56,6 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
         this.l2HitCounter = meterRegistry.counter("dehaze_cache_hits_total", nameTag.and("layer", "L2"));
         this.l2MissCounter = meterRegistry.counter("dehaze_cache_misses_total", nameTag.and("layer", "L2"));
         this.loaderCounter = meterRegistry.counter("dehaze_cache_loader_total", nameTag.and("result", "hit"));
-        this.bloomFilterBlockedCounter = meterRegistry.counter("dehaze_cache_bloom_blocked_total", nameTag);
     }
 
     @Override
@@ -122,14 +107,6 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
             return value;
         }
 
-        // BloomFilter 预判：若 key 明确不存在，直接返回 null，防缓存穿透
-        if (bloomFilterService != null && bloomFilterService.isInitialized(name)) {
-            if (!bloomFilterService.mightContain(name, key.toString())) {
-                bloomFilterBlockedCounter.increment();
-                return null;
-            }
-        }
-
         // SingleFlight：合并并发回源
         CompletableFuture<Object> future = inFlight.computeIfAbsent(key, k ->
                 CompletableFuture.supplyAsync(() -> {
@@ -147,10 +124,6 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
             if (storeValue != null) {
                 l1Cache.put(key, storeValue);
                 l2Cache.put(key, storeValue);
-                // 非空值加入布隆过滤器，后续查询可命中预判
-                if (bloomFilterService != null && fromStoreValue(storeValue) != null) {
-                    bloomFilterService.add(name, key.toString());
-                }
             }
             loaderCounter.increment();
             @SuppressWarnings("unchecked")

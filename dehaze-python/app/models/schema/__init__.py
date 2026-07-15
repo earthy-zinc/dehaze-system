@@ -9,7 +9,6 @@ from app.models.schema.common import BasePageQuery, IdsPath, Option, PageResult
 from app.models.schema.dataset import (DatasetAddForm, DatasetDeleteResultItemVO,
                                        DatasetDeleteResultVO, DatasetIdVO,
                                        DatasetItemCreateForm,
-                                       DatasetItemDeleteForm,
                                        DatasetItemIdVO,
                                        DatasetItemPageVO,
                                        DatasetItemUpdateForm, DatasetItemVO,
@@ -27,7 +26,7 @@ from app.models.schema.dict import (DictForm, DictFormVO, DictIdPath,
 from app.models.schema.file import (FileCheckQuery, FileIdQuery,
                                     FileUploadForm, FileUploadResultVO, FileVO)
 from app.models.schema.menu import (MenuForm, MenuFormVO, MenuIdPath,
-                                    MenuOptionVO, MenuQuery, MenuVisibleQuery,
+                                    MenuOptionVO, MenuQuery,
                                     MenuVO, RouteVO)
 from app.models.schema.role import (MenuIdsBody, RoleForm, RoleFormVO,
                                     RoleIdPath, RoleIdsPath, RoleOptionVO,
@@ -35,12 +34,12 @@ from app.models.schema.role import (MenuIdsBody, RoleForm, RoleFormVO,
 from app.models.schema.task import (ExportOptions, ExportTaskCreateForm,
                                     TaskIdPath, TaskVO)
 from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
-                                    LoginForm, LoginVO, PasswordForm,
+                                    LoginForm, PasswordForm,
                                     RegisterForm, UserCreateVO, UserDeleteVO,
                                     UserForm, UserFormVO, UserIdPath,
                                     UserIdsPath, UserImportVO, UserInfoVO,
                                     UserPageQuery, UserPageVO,
-                                    UserPasswordQuery, UserStatusQuery)
+                                    UserStatusQuery)
 
 __all__ = [
     # common
@@ -61,14 +60,12 @@ __all__ = [
     # user
     "UserPageQuery",
     "UserStatusQuery",
-    "UserPasswordQuery",
     "UserIdPath",
     "UserIdsPath",
     "LoginForm",
     "RegisterForm",
     "UserForm",
     "PasswordForm",
-    "LoginVO",
     "UserInfoVO",
     "UserPageVO",
     "UserFormVO",
@@ -78,7 +75,6 @@ __all__ = [
     "UserDeleteVO",
     # menu
     "MenuQuery",
-    "MenuVisibleQuery",
     "MenuIdPath",
     "MenuForm",
     "MenuVO",
@@ -117,7 +113,6 @@ __all__ = [
     "DatasetIdVO",
     "DatasetItemCreateForm",
     "DatasetItemUpdateForm",
-    "DatasetItemDeleteForm",
     "DatasetItemIdVO",
     "DatasetItemPageVO",
     "DatasetItemVO",

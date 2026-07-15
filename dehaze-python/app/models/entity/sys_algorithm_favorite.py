@@ -1,9 +1,7 @@
 """
 算法收藏实体
 """
-from typing import Optional
-
-from sqlalchemy import BigInteger, Column, Index, Integer, DateTime, UniqueConstraint
+from sqlalchemy import BigInteger, Index, DateTime, UniqueConstraint
 from datetime import datetime, timezone
 from sqlalchemy.orm import Mapped, mapped_column
 

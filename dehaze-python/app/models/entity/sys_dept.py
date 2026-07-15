@@ -2,10 +2,8 @@
 部门实体模型
 """
 
-from typing import Optional
-
 from app.models.base import BaseModel
-from sqlalchemy import BigInteger, Column, Integer, String
+from sqlalchemy import BigInteger, Integer, String
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 

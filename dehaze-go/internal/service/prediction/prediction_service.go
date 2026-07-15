@@ -2,7 +2,6 @@ package prediction
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,15 +13,10 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
-
-// md5Hex 计算字符串的 MD5 十六进制表示（32 位）
-func md5Hex(s string) string {
-	h := md5.Sum([]byte(s))
-	return fmt.Sprintf("%x", h)
-}
 
 const (
 	predCachePrefix = "pred:"
@@ -53,7 +47,7 @@ type PredictionResult struct {
 // Predict 执行去雾预测（带 Redis 缓存：key = pred:{algorithmId}:{imageMd5}）
 func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imageURL string, params string, userID int64) (*PredictionResult, error) {
 	// 1. 计算图片 URL 的 MD5 作为缓存键
-	imageMD5 := md5Hex(imageURL)
+	imageMD5 := utils.MD5Hex(imageURL)
 
 	// 2. 检查 Redis 缓存
 	if s.cache != nil {
@@ -84,7 +78,7 @@ func (s *PredictionService) Predict(ctx context.Context, algorithmID int64, imag
 		AlgorithmID: algorithmID,
 		OriginMD5:   imageMD5,
 		OriginURL:   imageURL,
-		PredMD5:     md5Hex(resp.ResultURL),
+		PredMD5:     utils.MD5Hex(resp.ResultURL),
 		PredURL:     resp.ResultURL,
 		Time:        resp.Time,
 		CreateBy:    &userID,

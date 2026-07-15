@@ -1,5 +1,7 @@
 package com.pei.dehaze.service;
 
+import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.config.WebSocketMessageRelay;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
@@ -10,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -54,10 +55,12 @@ class TaskServiceTest {
     @Mock
     private ValueOperations<String, Object> valueOperations;
 
+    @Mock
+    private WebSocketMessageRelay wsMessageRelay;
+
     private TaskServiceImpl taskService;
 
     private ExportTaskCreateForm mockForm;
-    private TaskVO mockTaskVO;
 
     @BeforeEach
     void setUp() {
@@ -65,29 +68,19 @@ class TaskServiceTest {
         mockForm.setType("dataset");
         mockForm.setTargetId(1L);
 
-        mockTaskVO = new TaskVO();
-        mockTaskVO.setTaskId("task-123");
-        mockTaskVO.setStatus("pending");
-        mockTaskVO.setProgress(0);
-        mockTaskVO.setCreatedAt(LocalDateTime.now());
-
         // Mock redisTemplate behavior
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
 
-        // 使用Spy创建TaskServiceImpl
-        taskService = org.mockito.Mockito.spy(new TaskServiceImpl());
+        // 使用Spy创建TaskServiceImpl，通过构造器注入依赖
+        taskService = org.mockito.Mockito.spy(new TaskServiceImpl(taskExecutor, redisTemplate, wsMessageRelay));
 
-        // 手动注入依赖（非final字段）
+        // 注入 baseMapper（ServiceImpl 父类字段）
         try {
-            java.lang.reflect.Field taskExecutorField = taskService.getClass().getDeclaredField("taskExecutor");
-            taskExecutorField.setAccessible(true);
-            taskExecutorField.set(taskService, taskExecutor);
-
-            java.lang.reflect.Field redisTemplateField = taskService.getClass().getDeclaredField("redisTemplate");
-            redisTemplateField.setAccessible(true);
-            redisTemplateField.set(taskService, redisTemplate);
+            java.lang.reflect.Field baseMapperField = taskService.getClass().getSuperclass().getDeclaredField("baseMapper");
+            baseMapperField.setAccessible(true);
+            baseMapperField.set(taskService, sysTaskMapper);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to inject dependencies", e);
+            throw new RuntimeException("Failed to inject baseMapper", e);
         }
 
         // Mock save方法，因为baseMapper无法注入
@@ -111,7 +104,6 @@ class TaskServiceTest {
      * 验证内容：
      * 1. 方法被正确调用
      * 2. 返回任务VO对象
-     * 注意：当前实现为空，返回null，待实现后验证返回值
      */
     @Test
     @DisplayName("createTask - 创建单个数据集导出任务")
@@ -353,7 +345,7 @@ class TaskServiceTest {
      * 测试下载导出文件 - 未完成状态
      * 测试场景：尝试下载未完成的任务文件
      * 验证内容：
-     * 1. 返回null
+     * 1. 抛出BusinessException
      */
     @Test
     @DisplayName("getDownloadUrl - 未完成任务不可下载")
@@ -367,18 +359,18 @@ class TaskServiceTest {
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
-        // Act
-        String result = taskService.getDownloadUrl(taskId);
-
-        // Assert
-        assertNull(result);
+        // Act & Assert
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> taskService.getDownloadUrl(taskId));
+        assertTrue(exception.getMessage().contains("任务未完成"));
     }
 
     /**
      * 测试下载导出文件 - 已过期
      * 测试场景：下载已过期的任务文件
      * 验证内容：
-     * 1. 返回null
+     * 1. 抛出BusinessException
      */
     @Test
     @DisplayName("getDownloadUrl - 已过期任务不可下载")
@@ -394,11 +386,11 @@ class TaskServiceTest {
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
-        // Act
-        String result = taskService.getDownloadUrl(taskId);
-
-        // Assert
-        assertNull(result);
+        // Act & Assert
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> taskService.getDownloadUrl(taskId));
+        assertTrue(exception.getMessage().contains("任务已过期"));
     }
 
     // ==================== 取消任务测试 ====================
@@ -461,7 +453,7 @@ class TaskServiceTest {
      * 测试取消任务 - 已完成状态
      * 测试场景：尝试取消已完成的任务
      * 验证内容：
-     * 1. 不更新任务状态
+     * 1. 抛出BusinessException
      */
     @Test
     @DisplayName("cancelTask - 已完成任务不可取消")
@@ -476,18 +468,18 @@ class TaskServiceTest {
 
         when(valueOperations.get(anyString())).thenReturn(sysTask);
 
-        // Act
-        taskService.cancelTask(taskId);
-
-        // Assert
-        verify(sysTaskMapper, never()).updateById(any());
+        // Act & Assert
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> taskService.cancelTask(taskId));
+        assertTrue(exception.getMessage().contains("任务已完成或失败"));
     }
 
     /**
      * 测试取消任务 - 任务不存在
      * 测试场景：取消不存在的任务
      * 验证内容：
-     * 1. 抛出异常
+     * 1. 抛出BusinessException
      */
     @Test
     @DisplayName("cancelTask - 任务不存在")
@@ -496,8 +488,12 @@ class TaskServiceTest {
         String taskId = "task-not-found";
 
         when(valueOperations.get(anyString())).thenReturn(null);
+        when(sysTaskMapper.selectOne(any())).thenReturn(null);
 
         // Act & Assert
-        assertThrows(Exception.class, () -> taskService.cancelTask(taskId));
+        BusinessException exception = assertThrows(
+                BusinessException.class,
+                () -> taskService.cancelTask(taskId));
+        assertTrue(exception.getMessage().contains("任务不存在"));
     }
 }

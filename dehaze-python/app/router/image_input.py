@@ -125,10 +125,11 @@ async def clear_history(
 @router.get("/{history_id}", response_model=Result[InputHistoryVO], summary="历史记录详情")
 async def get_history(
     history_id: int,
+    user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """查询历史记录详情"""
-    history = await InputHistoryService.get_history(db, history_id)
+    """查询历史记录详情（仅限本人）"""
+    history = await InputHistoryService.get_history(db, history_id, user.id)
     if not history:
         raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "历史记录不存在")
     return success(history)

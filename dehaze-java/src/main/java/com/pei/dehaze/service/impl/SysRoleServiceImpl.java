@@ -8,8 +8,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.RoleConverter;
 import com.pei.dehaze.mapper.SysRoleMapper;
 import com.pei.dehaze.model.entity.SysRole;
@@ -26,7 +27,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -59,14 +59,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
         // 查询数据
         Page<SysRole> rolePage = this.page(new Page<>(pageNum, pageSize),
-                new LambdaQueryWrapper<SysRole>()
+                excludeRootRoleForNonRoot(new LambdaQueryWrapper<SysRole>()
                         .and(StrUtil.isNotBlank(keywords),
                                 wrapper ->
                                         wrapper.like(StrUtil.isNotBlank(keywords), SysRole::getName, keywords)
                                                 .or()
                                                 .like(StrUtil.isNotBlank(keywords), SysRole::getCode, keywords)
-                        )
-                        .ne(!SecurityUtils.isRoot(), SysRole::getCode, SystemConstants.ROOT_ROLE_CODE) // 非超级管理员不显示超级管理员角色
+                        ))
         );
 
         // 实体转换
@@ -81,11 +80,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     public List<Option<Long>> listRoleOptions() {
         // 查询数据
-        List<SysRole> roleList = this.list(new LambdaQueryWrapper<SysRole>()
-                .ne(!SecurityUtils.isRoot(), SysRole::getCode, SystemConstants.ROOT_ROLE_CODE)
+        List<SysRole> roleList = this.list(excludeRootRoleForNonRoot(new LambdaQueryWrapper<SysRole>()
                 .select(SysRole::getId, SysRole::getName)
                 .orderByAsc(SysRole::getSort)
-        );
+        ));
 
         // 实体转换
         return roleConverter.entities2Options(roleList);
@@ -189,9 +187,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         if (StrUtil.isBlank(ids)) {
             throw new BusinessException(ResultCode.PARAM_ERROR, "删除的角色ID不能为空");
         }
-        List<Long> roleIds = Arrays.stream(ids.split(","))
-                .map(Long::parseLong)
-                .toList();
+        List<Long> roleIds = IdUtils.parseIdList(ids);
 
         // 批量查询角色，避免循环内逐条 getById
         List<SysRole> roles = this.listByIds(roleIds);
@@ -214,7 +210,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
                 roleMenuService.refreshRolePermsCache(role.getCode());
             }
         }
-        return true;
+        return deleteResult;
     }
 
     /**
@@ -272,6 +268,16 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     public Integer getMaximumDataScope(Set<String> roles) {
         return this.baseMapper.getMaximumDataScope(roles);
+    }
+
+    /**
+     * 为非超级管理员过滤掉超级管理员角色（超级管理员可见全部）
+     *
+     * @param wrapper 角色查询条件
+     * @return 追加过滤条件后的查询条件
+     */
+    private LambdaQueryWrapper<SysRole> excludeRootRoleForNonRoot(LambdaQueryWrapper<SysRole> wrapper) {
+        return wrapper.ne(!SecurityUtils.isRoot(), SysRole::getCode, SystemConstants.ROOT_ROLE_CODE);
     }
 
 }

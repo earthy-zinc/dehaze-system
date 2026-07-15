@@ -7,12 +7,13 @@ import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
+import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysDatasetItemService;
+import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
 import com.pei.dehaze.service.strategy.AbstractExportStrategy;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import com.pei.dehaze.service.strategy.TaskResult;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -30,11 +31,14 @@ import java.util.zip.ZipOutputStream;
 @Component
 public class ItemDownloadStrategy extends AbstractExportStrategy {
 
-    @Resource
-    private SysDatasetItemService sysDatasetItemService;
+    private final SysDatasetItemService sysDatasetItemService;
 
-    @Resource
-    private SysItemFileService sysItemFileService;
+    public ItemDownloadStrategy(SysFileService sysFileService, FileService fileService,
+                                SysItemFileService sysItemFileService,
+                                SysDatasetItemService sysDatasetItemService) {
+        super(sysFileService, fileService, sysItemFileService);
+        this.sysDatasetItemService = sysDatasetItemService;
+    }
 
     @Override
     public String getTaskType() {
@@ -56,13 +60,11 @@ public class ItemDownloadStrategy extends AbstractExportStrategy {
 
         log.info("开始执行数据项下载: taskId={}, itemId={}", task.getTaskId(), itemId);
 
-        // 验证数据项
         SysDatasetItem item = sysDatasetItemService.getById(itemId);
         if (item == null) {
             return TaskResult.failure("数据项不存在");
         }
 
-        // 查询文件列表
         List<SysItemFile> itemFiles = sysItemFileService.list(
                 new LambdaQueryWrapper<SysItemFile>()
                         .eq(SysItemFile::getItemId, itemId)
@@ -122,7 +124,7 @@ public class ItemDownloadStrategy extends AbstractExportStrategy {
                 }
 
                 if (Boolean.TRUE.equals(includeThumbnail)) {
-                    addFileToZip(zos, itemFile, structure, item.getName(), "thumbnail");
+                    addFileToZip(zos, itemFile, structure, item.getName(), THUMBNAIL_SUBFOLDER);
                     processedFiles++;
                     callback.updateProgress(processedFiles, totalFiles, "下载缩略图");
                 }

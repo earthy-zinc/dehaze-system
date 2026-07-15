@@ -20,7 +20,6 @@ import com.pei.dehaze.service.SysRoleService;
 import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -44,7 +43,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
     private int invalidCount;
 
     // 导入返回信息
-    StringBuilder msg = new StringBuilder();
+    private StringBuilder msg = new StringBuilder();
 
     // 部门ID
     private final Long deptId;
@@ -78,7 +77,7 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
      */
     @Override
     public void invoke(UserImportVO userImportVO, AnalysisContext analysisContext) {
-        log.info("解析到一条用户数据:{}", JSONUtil.toJsonStr(userImportVO));
+        log.debug("解析到一条用户数据:{}", JSONUtil.toJsonStr(userImportVO));
         StringBuilder validationMsg = validateUser(userImportVO);
 
         if (validationMsg.isEmpty()) {
@@ -134,7 +133,6 @@ public class UserImportListener extends MyAnalysisEventListener<UserImportVO> {
         }
     }
 
-    @NotNull
     private StringBuilder validateUser(UserImportVO userImportVO) {
         // 校验数据
         StringBuilder validationMsg = new StringBuilder();

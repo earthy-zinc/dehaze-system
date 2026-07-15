@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.database import Base
 from app.models.base import BaseModel
-from sqlalchemy import BigInteger, Column, Index, String, Text
+from sqlalchemy import BigInteger, Index, String, Text
 from sqlalchemy.dialects import mysql as mysql_types
 from sqlalchemy.orm import Mapped, mapped_column
 

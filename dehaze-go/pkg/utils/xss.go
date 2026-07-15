@@ -256,45 +256,6 @@ func (u *XSSUtil) StripXSS(input string) string {
 	return result
 }
 
-// StripDangerousTags 移除危险的 HTML 标签
-// 使用 bluemonday 进行安全的 HTML 清理
-//
-// 参数:
-//
-//	htmlContent: 可能包含 HTML 标签的字符串
-//
-// 返回:
-//
-//	移除危险标签后的安全字符串
-//
-// 注意：此方法现在内部使用 SanitizeHTML，保留安全的 HTML 格式
-// 如需移除所有标签，请使用 StripAllHTML
-func (u *XSSUtil) StripDangerousTags(htmlContent string) string {
-	if htmlContent == "" {
-		return ""
-	}
-	return u.UGCPolicy.Sanitize(htmlContent)
-}
-
-// StripDangerousAttributes 移除危险的 HTML 属性
-// 使用 bluemonday 进行安全的属性清理
-//
-// 参数:
-//
-//	htmlContent: 可能包含危险属性的 HTML 字符串
-//
-// 返回:
-//
-//	移除危险属性后的安全字符串
-//
-// 注意：此方法现在内部使用 SanitizeHTML，会同时移除危险标签和属性
-func (u *XSSUtil) StripDangerousAttributes(htmlContent string) string {
-	if htmlContent == "" {
-		return ""
-	}
-	return u.UGCPolicy.Sanitize(htmlContent)
-}
-
 // ==================== URL 清理方法 ====================
 
 // SanitizeURL 清理 URL 中的危险字符

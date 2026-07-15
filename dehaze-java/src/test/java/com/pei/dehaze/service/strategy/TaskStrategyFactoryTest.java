@@ -25,7 +25,6 @@ import static org.mockito.Mockito.*;
  * 测试范围：
  * 1. 成功获取已注册的策略实例
  * 2. 获取不存在的策略时抛出 BusinessException
- * 3. getSupportedTaskTypes() 返回所有已注册类型
  *
  * @author earthy-zinc
  * @since 2026-01-20
@@ -167,55 +166,6 @@ class TaskStrategyFactoryTest {
         assertTrue(exception.getMessage().contains("Unsupported task type"));
     }
 
-    // ==================== 获取支持类型列表测试 ====================
-
-    /**
-     * 测试获取支持的任务类型列表
-     * 测试场景：查询工厂中所有已注册的任务类型
-     * 验证内容：
-     * 1. 返回列表包含所有已注册的类型
-     * 2. 返回列表不可修改（防御性拷贝）
-     * 3. 列表大小正确
-     */
-    @Test
-    @DisplayName("getSupportedTaskTypes - 返回所有已注册类型")
-    void testGetSupportedTaskTypes_AllTypes() {
-        // Act
-        List<String> types = factory.getSupportedTaskTypes();
-
-        // Assert
-        assertNotNull(types);
-        assertEquals(3, types.size());
-        assertTrue(types.contains("dataset_export"));
-        assertTrue(types.contains("item_download"));
-        assertTrue(types.contains("batch_download"));
-
-        // 验证返回的是不可修改列表
-        assertThrows(UnsupportedOperationException.class, () -> types.add("new_type"));
-    }
-
-    /**
-     * 测试获取支持的任务类型列表 - 空列表
-     * 测试场景：工厂初始化时没有注册任何策略
-     * 验证内容：
-     * 1. 返回空列表
-     * 2. 列表不可修改
-     */
-    @Test
-    @DisplayName("getSupportedTaskTypes - 无策略时返回空列表")
-    void testGetSupportedTaskTypes_EmptyList() {
-        // Arrange
-        TaskStrategyFactory emptyFactory = new TaskStrategyFactory(List.of());
-
-        // Act
-        List<String> types = emptyFactory.getSupportedTaskTypes();
-
-        // Assert
-        assertNotNull(types);
-        assertTrue(types.isEmpty());
-        assertThrows(UnsupportedOperationException.class, () -> types.add("new_type"));
-    }
-
     // ==================== 策略执行测试 ====================
 
     /**
@@ -252,7 +202,6 @@ class TaskStrategyFactoryTest {
      * 验证内容：
      * 1. 工厂正常初始化
      * 2. 只保留最后一个策略实例
-     * 3. getSupportedTaskTypes()不包含重复类型
      */
     @Test
     @DisplayName("重复策略类型注册 - 使用最后注册的策略")
@@ -267,12 +216,9 @@ class TaskStrategyFactoryTest {
 
         // Act
         TaskStrategy strategy = factoryWithDuplicate.getStrategy("dataset_export");
-        List<String> types = factoryWithDuplicate.getSupportedTaskTypes();
 
         // Assert
         assertNotNull(strategy);
         assertEquals("dataset_export", strategy.getTaskType());
-        assertEquals(1, types.size());
-        assertTrue(types.contains("dataset_export"));
     }
 }

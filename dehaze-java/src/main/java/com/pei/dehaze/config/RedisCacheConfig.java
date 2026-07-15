@@ -59,9 +59,8 @@ public class RedisCacheConfig {
      */
     @Bean
     @Primary
-    public CacheManager cacheManager(RedisCacheManager redisCacheManager, MeterRegistry meterRegistry,
-                                     BloomFilterService bloomFilterService) {
-        return new MultiLevelCacheManager(redisCacheManager, meterRegistry, Duration.ofMinutes(5), bloomFilterService);
+    public CacheManager cacheManager(RedisCacheManager redisCacheManager, MeterRegistry meterRegistry) {
+        return new MultiLevelCacheManager(redisCacheManager, meterRegistry, Duration.ofMinutes(5));
     }
 
     /**

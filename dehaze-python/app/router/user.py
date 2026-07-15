@@ -3,7 +3,8 @@ from typing import Optional
 
 import openpyxl
 from app.core.code import ResultCode
-from app.core.result import Result, error, success
+from app.core.exceptions import BusinessException
+from app.core.result import Result, success
 from app.database import get_db
 from app.decorators.permission import require_permission
 from app.dependencies.auth import UserContext, get_current_user
@@ -134,24 +135,21 @@ async def import_users(
     user: UserContext = Depends(get_current_user),
 ):
     if not file.filename or not file.filename.endswith((".xls", ".xlsx")):
-        return error("仅支持 .xls 和 .xlsx 格式的文件", code=ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH.code)
+        raise BusinessException(ResultCode.USER_UPLOAD_FILE_TYPE_NOT_MATCH, "仅支持 .xls 和 .xlsx 格式的文件")
 
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:
-        return error("文件大小超过限制（最大 10MB）", code=ResultCode.USER_UPLOAD_FILE_SIZE_EXCEEDS.code)
+        raise BusinessException(ResultCode.USER_UPLOAD_FILE_SIZE_EXCEEDS, "文件大小超过限制（最大 10MB）")
 
-    try:
-        wb = openpyxl.load_workbook(BytesIO(contents))
-        ws = wb.active
+    wb = openpyxl.load_workbook(BytesIO(contents))
+    ws = wb.active
 
-        result = await UserService.import_users(db, ws, dept_id=deptId)
+    result = await UserService.import_users(db, ws, dept_id=deptId)
 
-        return success(
-            result,
-            msg=f'导入完成，成功{result["successCount"]}条，失败{result["failedCount"]}条',
-        )
-    except Exception as e:
-        return error(f"导入失败: {str(e)}")
+    return success(
+        result,
+        msg=f'导入完成，成功{result["successCount"]}条，失败{result["failedCount"]}条',
+    )
 
 
 @router.post("", summary="新增用户", response_model=Result[UserCreateVO])
@@ -216,7 +214,7 @@ async def update_password(
 ):
     # 只能修改自己的密码，或者有重置密码权限才能修改他人密码
     if user_id != user.id and not (user.is_root or "sys:user:password:reset" in user.permissions or "*" in user.permissions):
-        return error("无权修改其他用户的密码", code=ResultCode.ACCESS_UNAUTHORIZED.code)
+        raise BusinessException(ResultCode.ACCESS_UNAUTHORIZED, "无权修改其他用户的密码")
 
     await UserService.update_password(db, user_id, body.password)
 

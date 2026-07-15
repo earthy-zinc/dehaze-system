@@ -49,7 +49,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
         // 1. 校验算法存在且可用
         SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
         if (algorithm == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND.getMsg() + ": 算法不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
         // 2. 确定图片来源 URL

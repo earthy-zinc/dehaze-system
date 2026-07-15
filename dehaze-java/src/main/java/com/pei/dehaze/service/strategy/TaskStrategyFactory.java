@@ -46,12 +46,4 @@ public class TaskStrategyFactory {
         }
         return strategy;
     }
-
-    /**
-     * 获取支持的所有任务类型列表
-     * @return 任务类型列表
-     */
-    public List<String> getSupportedTaskTypes() {
-        return List.copyOf(strategyMap.keySet());
-    }
 }

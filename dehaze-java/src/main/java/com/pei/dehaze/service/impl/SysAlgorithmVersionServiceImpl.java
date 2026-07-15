@@ -1,10 +1,10 @@
 package com.pei.dehaze.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.converter.AlgorithmVersionConverter;
 import com.pei.dehaze.mapper.SysAlgorithmVersionMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysAlgorithmVersion;
@@ -14,7 +14,6 @@ import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysAlgorithmVersionService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,24 +23,22 @@ import java.util.List;
  * @author earthyzinc
  * @since 2024-06-12
  */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVersionMapper, SysAlgorithmVersion>
         implements SysAlgorithmVersionService {
 
     private final SysAlgorithmService algorithmService;
+    private final AlgorithmVersionConverter algorithmVersionConverter;
 
     @Override
     public List<AlgorithmVersionVO> getVersionHistory(Long algorithmId) {
         List<SysAlgorithmVersion> versions = this.list(new LambdaQueryWrapper<SysAlgorithmVersion>()
                 .eq(SysAlgorithmVersion::getAlgorithmId, algorithmId)
                 .orderByDesc(SysAlgorithmVersion::getCreateTime));
-        return versions.stream().map(v -> {
-            AlgorithmVersionVO vo = new AlgorithmVersionVO();
-            BeanUtil.copyProperties(v, vo);
-            return vo;
-        }).toList();
+        return versions.stream()
+                .map(algorithmVersionConverter::entity2Vo)
+                .toList();
     }
 
     @Override
@@ -61,12 +58,7 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
         }
 
         // 将当前活跃版本置为非活跃
-        Long currentUserId = SecurityUtils.getUserId();
-        this.update(new LambdaUpdateWrapper<SysAlgorithmVersion>()
-                .eq(SysAlgorithmVersion::getAlgorithmId, algorithmId)
-                .eq(SysAlgorithmVersion::getIsActive, true)
-                .set(SysAlgorithmVersion::getIsActive, false)
-                .set(SysAlgorithmVersion::getUpdateBy, currentUserId));
+        deactivateCurrentActiveVersion(algorithmId);
 
         // 创建新版本记录
         SysAlgorithmVersion version = new SysAlgorithmVersion();
@@ -104,12 +96,7 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
         }
 
         // 将当前活跃版本置为非活跃
-        Long currentUserId = SecurityUtils.getUserId();
-        this.update(new LambdaUpdateWrapper<SysAlgorithmVersion>()
-                .eq(SysAlgorithmVersion::getAlgorithmId, algorithmId)
-                .eq(SysAlgorithmVersion::getIsActive, true)
-                .set(SysAlgorithmVersion::getIsActive, false)
-                .set(SysAlgorithmVersion::getUpdateBy, currentUserId));
+        deactivateCurrentActiveVersion(algorithmId);
 
         // 激活目标版本
         targetVersion.setIsActive(true);
@@ -118,5 +105,17 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
         // 更新主表版本号
         algorithm.setVersion(targetVersion.getVersion());
         algorithmService.updateById(algorithm);
+    }
+
+    /**
+     * 将指定算法的当前活跃版本置为非活跃
+     */
+    private void deactivateCurrentActiveVersion(Long algorithmId) {
+        Long currentUserId = SecurityUtils.getUserId();
+        this.update(new LambdaUpdateWrapper<SysAlgorithmVersion>()
+                .eq(SysAlgorithmVersion::getAlgorithmId, algorithmId)
+                .eq(SysAlgorithmVersion::getIsActive, true)
+                .set(SysAlgorithmVersion::getIsActive, false)
+                .set(SysAlgorithmVersion::getUpdateBy, currentUserId));
     }
 }

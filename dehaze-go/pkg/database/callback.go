@@ -4,7 +4,6 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"gorm.io/gorm"
 )
 
@@ -94,9 +93,6 @@ func RegisterGormCallbacks(db *gorm.DB) *gorm.DB {
 // 支持单个结构体和批量切片两种场景
 func autoFillCreateBy(db *gorm.DB) {
 	userID := GetUserID(db.Statement.Context)
-	if userID == 0 {
-		userID = common.SystemUserID
-	}
 
 	dest := db.Statement.Dest
 	if dest == nil {
@@ -130,9 +126,6 @@ func autoFillCreateBy(db *gorm.DB) {
 // 支持单个结构体、Map和批量切片三种场景
 func autoFillUpdateBy(db *gorm.DB) {
 	userID := GetUserID(db.Statement.Context)
-	if userID == 0 {
-		userID = common.SystemUserID
-	}
 
 	dest := db.Statement.Dest
 	if dest == nil {

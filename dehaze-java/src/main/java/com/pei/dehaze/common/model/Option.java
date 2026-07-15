@@ -23,12 +23,6 @@ public class Option<T> {
         this.label = label;
     }
 
-    public Option(T value, String label, List<Option<T>> children) {
-        this.value = value;
-        this.label = label;
-        this.children= children;
-    }
-
     @Schema(description="选项的值")
     private T value;
 

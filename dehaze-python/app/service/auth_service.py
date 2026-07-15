@@ -198,14 +198,17 @@ class AuthService:
             新的访问令牌
 
         Raises:
-            ValueError: 用户不存在或已禁用
+            BusinessException: 用户不存在或已禁用
         """
+        from app.core.code import ResultCode
+        from app.core.exceptions import BusinessException
+
         # 验证用户状态
         user = await user_repository.get_by_id(db, user_id)
         if not user:
-            raise ValueError("用户不存在")
+            raise BusinessException(ResultCode.USER_NOT_EXIST, "用户不存在")
         if user.status != 1:
-            raise ValueError("用户已被禁用")
+            raise BusinessException(ResultCode.USER_ACCOUNT_LOCKED, "用户已被禁用")
 
         # 查询用户角色和权限（权限走 Redis 缓存）
         roles = await user_repository.get_user_role_codes(db, user.id)
@@ -214,7 +217,7 @@ class AuthService:
 
         # 使用 JWT 工具类生成 Token
         if user.username is None or user.nickname is None:
-            raise ValueError("用户信息不完整")
+            raise BusinessException("用户信息不完整")
         access_token = JWTUtils.create_access_token(
             user_id=user.id,
             username=user.username,

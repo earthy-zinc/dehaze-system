@@ -470,10 +470,10 @@ func (u *PathSecurityUtil) IsPathTraversalAttack(pathStr string) bool {
 	}
 
 	// 检查常见的路径遍历模式
+	// 注：末尾不再包含裸 ".."，避免误判合法的 "my..file.txt"、"v..1.0" 等含双点的文件名
 	traversalPatterns := []string{
 		"../",
 		"..\\",
-		"../",
 		"\\..\\",
 		"..%2f",
 		"..%2F",
@@ -481,7 +481,6 @@ func (u *PathSecurityUtil) IsPathTraversalAttack(pathStr string) bool {
 		"..%5C",
 		"%2e%2e",
 		"%252e%252e",
-		"..",
 	}
 
 	lowerPath := strings.ToLower(pathStr)

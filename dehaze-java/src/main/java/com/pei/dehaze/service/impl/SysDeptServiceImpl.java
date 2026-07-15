@@ -2,7 +2,6 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollectionUtil;
 import cn.hutool.core.lang.Assert;
-import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -10,6 +9,8 @@ import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
+import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.DeptConverter;
 import com.pei.dehaze.mapper.SysDeptMapper;
 import com.pei.dehaze.model.entity.SysDept;
@@ -21,10 +22,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -61,39 +62,38 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
             return Collections.emptyList();
         }
 
-        // 获取所有部门ID
-        Set<Long> deptIds = deptList.stream()
-                .map(SysDept::getId)
-                .collect(Collectors.toSet());
-        // 获取父节点ID
-        Set<Long> parentIds = deptList.stream()
-                .map(SysDept::getParentId)
-                .collect(Collectors.toSet());
-        // 获取根节点ID（递归的起点），即父节点ID中不包含在部门ID中的节点，注意这里不能拿顶级部门 O 作为根节点，因为部门筛选的时候 O 会被过滤掉
-        List<Long> rootIds = CollectionUtil.subtractToList(parentIds, deptIds);
+        // 获取根节点ID（父节点ID不在部门ID集合中的节点）
+        List<Long> rootIds = TreeDataUtils.findRootIds(deptList, SysDept::getId, SysDept::getParentId);
+
+        // 构建 parentId -> children Map，避免递归内 O(n) 过滤
+        Map<Long, List<SysDept>> parentToChildrenMap = deptList.stream()
+                .collect(Collectors.groupingBy(SysDept::getParentId));
 
         // 递归生成部门树形列表
         return rootIds.stream()
-                .flatMap(rootId -> recurDeptList(rootId, deptList).stream())
+                .flatMap(rootId -> recurDeptList(rootId, parentToChildrenMap).stream())
                 .toList();
     }
 
     /**
      * 递归生成部门树形列表
      *
-     * @param parentId 父ID
-     * @param deptList 部门列表
+     * @param parentId           父ID
+     * @param parentToChildrenMap 父级ID -> 子部门列表 的Map（预先分组，O(1)查找）
      * @return 部门树形列表
      */
-    public List<DeptVO> recurDeptList(Long parentId, List<SysDept> deptList) {
-        return deptList.stream()
-                .filter(dept -> dept.getParentId().equals(parentId))
-                .map(dept -> {
-                    DeptVO deptVO = deptConverter.entity2Vo(dept);
-                    List<DeptVO> children = recurDeptList(dept.getId(), deptList);
-                    deptVO.setChildren(children);
-                    return deptVO;
-                }).collect(Collectors.toList());
+    private List<DeptVO> recurDeptList(Long parentId, Map<Long, List<SysDept>> parentToChildrenMap) {
+        List<DeptVO> deptVOList = new ArrayList<>();
+        List<SysDept> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        for (SysDept dept : children) {
+            DeptVO deptVO = deptConverter.entity2Vo(dept);
+            List<DeptVO> subList = recurDeptList(dept.getId(), parentToChildrenMap);
+            if (!subList.isEmpty()) {
+                deptVO.setChildren(subList);
+            }
+            deptVOList.add(deptVO);
+        }
+        return deptVOList;
     }
 
     /**
@@ -113,19 +113,14 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
             return Collections.emptyList();
         }
 
-        Set<Long> deptIds = deptList.stream()
-                .map(SysDept::getId)
-                .collect(Collectors.toSet());
+        List<Long> rootIds = TreeDataUtils.findRootIds(deptList, SysDept::getId, SysDept::getParentId);
 
-        Set<Long> parentIds = deptList.stream()
-                .map(SysDept::getParentId)
-                .collect(Collectors.toSet());
-
-        List<Long> rootIds = CollectionUtil.subtractToList(parentIds, deptIds);
+        Map<Long, List<SysDept>> parentToChildrenMap = deptList.stream()
+                .collect(Collectors.groupingBy(SysDept::getParentId));
 
         // 递归生成部门树形列表
         return rootIds.stream()
-                .flatMap(rootId -> recurDeptTreeOptions(rootId, deptList).stream())
+                .flatMap(rootId -> recurDeptTreeOptions(rootId, parentToChildrenMap).stream())
                 .toList();
     }
 
@@ -144,10 +139,9 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
         );
         Assert.isTrue(count == 0, "部门名称已存在");
 
-        // 校验父部门是否存在（根部门除外）
+        // 生成部门路径(tree_path)，generateDeptTreePath 会校验父部门是否存在
         Long parentId = formData.getParentId();
         String treePath = generateDeptTreePath(parentId);
-        Assert.isTrue(treePath != null, "父部门不存在");
 
         // form->entity
         SysDept entity = deptConverter.form2Entity(formData);
@@ -209,44 +203,46 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
     /**
      * 递归生成部门表格层级列表
      *
-     * @param parentId 父ID
-     * @param deptList 部门列表
+     * @param parentId           父ID
+     * @param parentToChildrenMap 父级ID -> 子部门列表 的Map（预先分组，O(1)查找）
      * @return 部门表格层级列表
      */
-    public static List<Option<Long>> recurDeptTreeOptions(long parentId, List<SysDept> deptList) {
-        return CollectionUtil.emptyIfNull(deptList).stream()
-                .filter(dept -> dept.getParentId().equals(parentId))
-                .map(dept -> {
-                    Option<Long> option = new Option<>(dept.getId(), dept.getName());
-                    List<Option<Long>> children = recurDeptTreeOptions(dept.getId(), deptList);
-                    if (CollectionUtil.isNotEmpty(children)) {
-                        option.setChildren(children);
-                    }
-                    return option;
-                })
-                .collect(Collectors.toList());
+    private List<Option<Long>> recurDeptTreeOptions(Long parentId, Map<Long, List<SysDept>> parentToChildrenMap) {
+        List<Option<Long>> optionList = new ArrayList<>();
+        List<SysDept> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        for (SysDept dept : children) {
+            Option<Long> option = new Option<>(dept.getId(), dept.getName());
+            List<Option<Long>> subOptions = recurDeptTreeOptions(dept.getId(), parentToChildrenMap);
+            if (!subOptions.isEmpty()) {
+                option.setChildren(subOptions);
+            }
+            optionList.add(option);
+        }
+        return optionList;
     }
 
 
     /**
      * 删除部门
      *
-     * @param ids 部门ID，多个以英文逗号,拼接字符串
+     * @param ids 部门ID列表
      * @return 是否删除成功
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deleteByIds(String ids) {
-        // 批量删除部门及子部门，避免循环内逐条 remove
-        if (CharSequenceUtil.isNotBlank(ids)) {
-            List<String> deptIdList = Arrays.asList(ids.split(","));
-            boolean removed = this.remove(new LambdaQueryWrapper<SysDept>()
-                    .in(SysDept::getId, deptIdList)
-                    .or()
-                    .apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", deptIdList.get(0)));
-            if (!removed) {
-                throw new BusinessException("部门删除失败");
-            }
+    public boolean deleteByIds(List<Long> ids) {
+        if (CollectionUtil.isEmpty(ids)) {
+            return true;
+        }
+        // 批量删除部门及子部门，每个ID均参与级联匹配
+        LambdaQueryWrapper<SysDept> wrapper = new LambdaQueryWrapper<SysDept>()
+                .in(SysDept::getId, ids);
+        for (Long id : ids) {
+            wrapper.or().apply("CONCAT (',',tree_path,',') LIKE CONCAT('%,',{0},',%')", id);
+        }
+        boolean removed = this.remove(wrapper);
+        if (!removed) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "部门不存在");
         }
         return true;
     }
@@ -269,7 +265,9 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
                         SysDept::getStatus,
                         SysDept::getSort
                 ));
-
+        if (entity == null) {
+            return null;
+        }
         return deptConverter.entity2Form(entity);
     }
 
@@ -281,15 +279,13 @@ public class SysDeptServiceImpl extends ServiceImpl<SysDeptMapper, SysDept> impl
      * @return 父节点路径以英文逗号(, )分割，eg: 1,2,3
      */
     private String generateDeptTreePath(Long parentId) {
-        String treePath = null;
         if (SystemConstants.ROOT_NODE_ID.equals(parentId)) {
-            treePath = String.valueOf(parentId);
-        } else {
-            SysDept parent = this.getById(parentId);
-            if (parent != null) {
-                treePath = parent.getTreePath() + "," + parent.getId();
-            }
+            return String.valueOf(parentId);
         }
-        return treePath;
+        SysDept parent = this.getById(parentId);
+        if (parent == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "父部门不存在");
+        }
+        return parent.getTreePath() + "," + parent.getId();
     }
 }

@@ -10,7 +10,5 @@ import com.alibaba.excel.event.AnalysisEventListener;
  */
 public abstract class MyAnalysisEventListener<T> extends AnalysisEventListener<T> {
 
-    @SuppressWarnings("unused")
-    private String msg;
     public abstract String getMsg();
 }

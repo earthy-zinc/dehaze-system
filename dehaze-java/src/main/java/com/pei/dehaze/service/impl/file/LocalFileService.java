@@ -7,15 +7,11 @@ import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.util.PathSecurityUtil;
 import com.pei.dehaze.model.bo.FileBO;
 import com.pei.dehaze.service.FileService;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -32,7 +28,6 @@ import java.nio.file.Path;
 @Component
 @ConditionalOnProperty(value = "file.type", havingValue = "local")
 @ConfigurationProperties(prefix = "file.local")
-@RequiredArgsConstructor
 @Data
 @Slf4j
 public class LocalFileService implements FileService {
@@ -40,9 +35,6 @@ public class LocalFileService implements FileService {
     private String baseUrl;
 
     private String uploadPath;
-
-    @Resource
-    private ApplicationContext applicationContext;
 
     @Override
     public FileBO uploadFile(FileBO fileBO) {
@@ -64,8 +56,6 @@ public class LocalFileService implements FileService {
         } catch (IOException e) {
             throw new BusinessException("无法保存文件", e);
         }
-
-        fileBO.setPath(fileBO.getPath());
 
         String url = baseUrl + "/" + fileBO.getObjectName();
         fileBO.setUrl(url);
@@ -138,9 +128,5 @@ public class LocalFileService implements FileService {
         } catch (IOException e) {
             throw new BusinessException("文件下载失败: " + e.getMessage(), e);
         }
-    }
-
-    @PostConstruct
-    public void init() {
     }
 }

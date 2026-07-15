@@ -9,8 +9,11 @@
 import logging
 from typing import Any
 
+from redis.asyncio import Redis
+
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
+from app.infrastructure.cache.cache import CACHE_TTL_HOUR, CacheService
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.dict_repository import (dict_repository,
                                             dict_type_repository)
@@ -21,7 +24,7 @@ logger = logging.getLogger(__name__)
 # 缓存 Key 前缀
 DICT_OPTIONS_CACHE_PREFIX = "dict:options:"
 # 缓存过期时间（秒）
-DICT_OPTIONS_CACHE_TTL = 3600  # 1小时
+DICT_OPTIONS_CACHE_TTL = CACHE_TTL_HOUR
 
 
 class DictService:
@@ -44,7 +47,7 @@ class DictService:
         return await dict_repository.get_form_by_id(db, dict_id)
 
     @staticmethod
-    async def create_dict(db: AsyncSession, data: dict[str, Any]) -> SysDict:
+    async def create_dict(db: AsyncSession, redis: Redis, data: dict[str, Any]) -> SysDict:
         """
         创建字典项
 
@@ -76,12 +79,12 @@ class DictService:
         await db.commit()
 
         # 清除缓存
-        await DictService._invalidate_options_cache(type_code)
+        await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
 
         return result
 
     @staticmethod
-    async def update_dict(db: AsyncSession, dict_id: int, data: dict[str, Any]) -> bool:
+    async def update_dict(db: AsyncSession, redis: Redis, dict_id: int, data: dict[str, Any]) -> bool:
         """
         更新字典项
 
@@ -112,12 +115,12 @@ class DictService:
 
         # 清除缓存（typeCode 不变，只需清除一个）
         if old_dict.type_code:
-            await DictService._invalidate_options_cache(old_dict.type_code)
+            await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{old_dict.type_code}")
 
         return result
 
     @staticmethod
-    async def delete_dict(db: AsyncSession, dict_ids: list[int]) -> bool:
+    async def delete_dict(db: AsyncSession, redis: Redis, dict_ids: list[int]) -> bool:
         """
         删除字典项
 
@@ -137,14 +140,15 @@ class DictService:
         await db.commit()
 
         # 清除相关缓存
+        cache = CacheService(redis)
         for type_code in type_codes:
             if type_code:  # 确保 type_code 不为 None
-                await DictService._invalidate_options_cache(type_code)
+                await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
 
         return result > 0  # 返回 bool 表示是否删除成功
 
     @staticmethod
-    async def list_dict_options(db: AsyncSession, type_code: str) -> list[dict[str, Any]]:
+    async def list_dict_options(db: AsyncSession, redis: Redis, type_code: str) -> list[dict[str, Any]]:
         """
         获取字典下拉列表
 
@@ -153,8 +157,11 @@ class DictService:
         2. 缓存未命中则查数据库
         3. 写入缓存
         """
+        cache = CacheService(redis)
+        cache_key = f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}"
+
         # 尝试从缓存获取
-        cached = await DictService._get_options_from_cache(type_code)
+        cached = await cache.get_json(cache_key)
         if cached is not None:
             return cached
 
@@ -162,50 +169,9 @@ class DictService:
         options = await dict_repository.list_options_by_type(db, type_code)
 
         # 写入缓存
-        await DictService._set_options_to_cache(type_code, options)
+        await cache.set_json(cache_key, options, DICT_OPTIONS_CACHE_TTL)
 
         return options
-
-    @staticmethod
-    async def _get_options_from_cache(type_code: str) -> list[dict] | None:
-        """从缓存获取字典选项"""
-        try:
-            from app.dependencies.redis import get_redis_client
-            redis = await get_redis_client()
-            if redis:
-                import json
-                cache_key = f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}"
-                cached = await redis.get(cache_key)
-                if cached:
-                    return json.loads(cached)
-        except Exception as e:
-            logger.warning(f"获取字典缓存失败: {e}")
-        return None
-
-    @staticmethod
-    async def _set_options_to_cache(type_code: str, options: list[dict]) -> None:
-        """写入字典选项缓存"""
-        try:
-            from app.dependencies.redis import get_redis_client
-            redis = await get_redis_client()
-            if redis:
-                import json
-                cache_key = f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}"
-                await redis.setex(cache_key, DICT_OPTIONS_CACHE_TTL, json.dumps(options, ensure_ascii=False))
-        except Exception as e:
-            logger.warning(f"写入字典缓存失败: {e}")
-
-    @staticmethod
-    async def _invalidate_options_cache(type_code: str) -> None:
-        """清除字典选项缓存"""
-        try:
-            from app.dependencies.redis import get_redis_client
-            redis = await get_redis_client()
-            if redis:
-                cache_key = f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}"
-                await redis.delete(cache_key)
-        except Exception as e:
-            logger.warning(f"清除字典缓存失败: {e}")
 
 
 class DictTypeService:
@@ -249,7 +215,7 @@ class DictTypeService:
         return result
 
     @staticmethod
-    async def update_dict_type(db: AsyncSession, type_id: int, data: dict[str, Any]) -> bool:
+    async def update_dict_type(db: AsyncSession, redis: Redis, type_id: int, data: dict[str, Any]) -> bool:
         """
         更新字典类型
 
@@ -282,8 +248,9 @@ class DictTypeService:
 
         # 清除缓存
         if result and new_code and new_code != old_type.code:
-            await DictService._invalidate_options_cache(old_type.code)
-            await DictService._invalidate_options_cache(new_code)
+            cache = CacheService(redis)
+            await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{old_type.code}")
+            await cache.delete(f"{DICT_OPTIONS_CACHE_PREFIX}{new_code}")
 
         return result
 

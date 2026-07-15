@@ -133,12 +133,12 @@ func (m *MultiLevelCache) Set(ctx context.Context, key string, value any, expira
 	l1Exp := m.getExpireWithJitter(m.opts.L1DefaultExpire, expiration)
 	l2Exp := m.getExpireWithJitter(m.opts.L2DefaultExpire, expiration)
 
-	var errs []error
+	var allErrs []error
 
 	// 先写L2
 	if m.opts.L2Cache != nil {
 		if err := m.opts.L2Cache.Set(ctx, key, value, l2Exp); err != nil {
-			errs = append(errs, err)
+			allErrs = append(allErrs, err)
 			logger.Warn("写入L2缓存失败", zap.String("key", key), zap.Error(err))
 		}
 	}
@@ -146,7 +146,7 @@ func (m *MultiLevelCache) Set(ctx context.Context, key string, value any, expira
 	// 再写L1
 	if m.opts.L1Cache != nil {
 		if err := m.opts.L1Cache.Set(ctx, key, value, l1Exp); err != nil {
-			errs = append(errs, err)
+			allErrs = append(allErrs, err)
 			logger.Warn("写入L1缓存失败", zap.String("key", key), zap.Error(err))
 		}
 	}
@@ -156,21 +156,18 @@ func (m *MultiLevelCache) Set(ctx context.Context, key string, value any, expira
 		m.opts.BloomFilter.Add(key)
 	}
 
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	return nil
+	return errors.Join(allErrs...)
 }
 
 // Delete 删除缓存
 // Cache-Aside模式：先删L2，再删L1
 func (m *MultiLevelCache) Delete(ctx context.Context, keys ...string) error {
-	var errs []error
+	var allErrs []error
 
 	// 先删L2
 	if m.opts.L2Cache != nil {
 		if err := m.opts.L2Cache.Delete(ctx, keys...); err != nil {
-			errs = append(errs, err)
+			allErrs = append(allErrs, err)
 			logger.Warn("删除L2缓存失败", zap.Strings("keys", keys), zap.Error(err))
 		}
 	}
@@ -178,22 +175,23 @@ func (m *MultiLevelCache) Delete(ctx context.Context, keys ...string) error {
 	// 再删L1
 	if m.opts.L1Cache != nil {
 		if err := m.opts.L1Cache.Delete(ctx, keys...); err != nil {
-			errs = append(errs, err)
+			allErrs = append(allErrs, err)
 			logger.Warn("删除L1缓存失败", zap.Strings("keys", keys), zap.Error(err))
 		}
 	}
 
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	return nil
+	return errors.Join(allErrs...)
 }
 
 // Exists 检查key是否存在
 func (m *MultiLevelCache) Exists(ctx context.Context, key string) (bool, error) {
 	// 先查L1
 	if m.opts.L1Cache != nil {
-		if exists, _ := m.opts.L1Cache.Exists(ctx, key); exists {
+		exists, err := m.opts.L1Cache.Exists(ctx, key)
+		if err != nil {
+			logger.Warn("检查L1缓存存在性失败", zap.String("key", key), zap.Error(err))
+		}
+		if exists {
 			return true, nil
 		}
 	}

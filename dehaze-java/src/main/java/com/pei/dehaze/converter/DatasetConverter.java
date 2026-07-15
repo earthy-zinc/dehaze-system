@@ -1,6 +1,5 @@
 package com.pei.dehaze.converter;
 
-import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.model.dto.DatasetStatistics;
 import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.form.DatasetAddForm;
@@ -19,7 +18,7 @@ public interface DatasetConverter {
     @Mapping(ignore = true, target = "children")
     @Mapping(ignore = true, target = "hasChildren")
     @Mapping(ignore = true, target = "total")
-    @Mapping(source = "entity.status", target = "status")
+    @Mapping(source = "entity.status.value", target = "status")
     DatasetVO entity2Vo(SysDataset entity, DatasetStatistics statistics);
 
     @Mapping(ignore = true, target = "id")
@@ -45,11 +44,4 @@ public interface DatasetConverter {
     @Mapping(ignore = true, target = "createTime")
     @Mapping(ignore = true, target = "updateTime")
     SysDataset updateForm2Entity(DatasetUpdateForm vo);
-
-    /**
-     * StatusEnum转Integer
-     */
-    default Integer map(StatusEnum status) {
-        return status == null ? null : status.getValue();
-    }
 }

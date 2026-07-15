@@ -12,6 +12,7 @@ Redis key 设计：
 """
 
 import asyncio
+import ipaddress
 import json
 import logging
 import time
@@ -37,15 +38,14 @@ _EXCLUDE_PATHS = {
     "/favicon.ico",
 }
 
-# 内网 IP 前缀（开发环境跳过）
-_INTERNAL_IP_PREFIXES = ("127.", "10.", "192.168.", "172.16.", "172.17.", "172.18.",
-                         "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
-                         "172.24.", "172.25.", "172.26.", "172.27.", "172.28.",
-                         "172.29.", "172.30.", "172.31.", "::1", "localhost")
-
 
 def _is_internal_ip(ip: str) -> bool:
-    return any(ip.startswith(prefix) for prefix in _INTERNAL_IP_PREFIXES)
+    """判断是否为内网/回环 IP（使用标准库 ipaddress，避免字符串前缀匹配的误判）"""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return addr.is_private or addr.is_loopback
 
 
 async def _send_json_response(send: Send, status_code: int, content: dict):

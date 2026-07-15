@@ -39,23 +39,11 @@ type IUserRepository interface {
 	// Create 创建用户
 	Create(ctx context.Context, user *model.SysUser) error
 
-	// Update 更新用户
-	Update(ctx context.Context, user *model.SysUser) error
-
-	// UpdateStatus 更新用户状态
-	UpdateStatus(ctx context.Context, id int64, status int8) error
-
 	// UpdateStatusWithTime 更新用户状态（带更新时间）
 	UpdateStatusWithTime(ctx context.Context, id int64, status int8, updateTime time.Time) error
 
-	// UpdatePassword 更新用户密码
-	UpdatePassword(ctx context.Context, id int64, password string) error
-
 	// UpdatePasswordWithTime 更新用户密码（带更新时间）
 	UpdatePasswordWithTime(ctx context.Context, id int64, password string, updateTime time.Time) error
-
-	// Delete 删除用户（逻辑删除）
-	Delete(ctx context.Context, ids []int64) error
 
 	// SoftDeleteWithTime 逻辑删除用户（带更新时间）
 	SoftDeleteWithTime(ctx context.Context, ids []int64, updateTime time.Time) error
@@ -83,10 +71,4 @@ type IUserRepository interface {
 
 	// UpdateWithRoles 更新用户并更新角色（事务）
 	UpdateWithRoles(ctx context.Context, userID int64, updates map[string]interface{}, roleIDs []int64) error
-
-	// ImportUserInTx 在事务中导入用户（由 Transaction 回调内调用）
-	ImportUserInTx(ctx context.Context, user *model.SysUser) error
-
-	// ExistsByUsernameInTx 在事务中检查用户名是否存在（由 Transaction 回调内调用）
-	ExistsByUsernameInTx(ctx context.Context, username string) (bool, error)
 }

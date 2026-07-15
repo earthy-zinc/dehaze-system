@@ -41,23 +41,6 @@ class PredLogRepository(BaseRepository[SysPredLog]):
         )
         return await self.create(db, log)
 
-    async def get_by_algorithm_and_md5(
-        self,
-        db: AsyncSession,
-        algorithm_id: int,
-        origin_md5: str,
-    ) -> Optional[SysPredLog]:
-        """基于 (algorithmId, imageMd5) 查询预测缓存命中"""
-        stmt = (
-            select(SysPredLog)
-            .where(SysPredLog.algorithm_id == algorithm_id)
-            .where(SysPredLog.origin_md5 == origin_md5)
-            .order_by(desc(SysPredLog.id))
-            .limit(1)
-        )
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
     async def get_paginated(
         self,
         db: AsyncSession,

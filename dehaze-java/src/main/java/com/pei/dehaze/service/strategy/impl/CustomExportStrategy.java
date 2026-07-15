@@ -1,27 +1,24 @@
 package com.pei.dehaze.service.strategy.impl;
 
-import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.model.entity.SysDatasetItem;
-import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
+import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysDatasetItemService;
+import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
 import com.pei.dehaze.service.strategy.AbstractExportStrategy;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import com.pei.dehaze.service.strategy.TaskResult;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.ZipOutputStream;
 
 /**
  * 自定义导出策略
@@ -31,11 +28,14 @@ import java.util.zip.ZipOutputStream;
 @Component
 public class CustomExportStrategy extends AbstractExportStrategy {
 
-    @Resource
-    private SysDatasetItemService sysDatasetItemService;
+    private final SysDatasetItemService sysDatasetItemService;
 
-    @Resource
-    private SysItemFileService sysItemFileService;
+    public CustomExportStrategy(SysFileService sysFileService, FileService fileService,
+                                SysItemFileService sysItemFileService,
+                                SysDatasetItemService sysDatasetItemService) {
+        super(sysFileService, fileService, sysItemFileService);
+        this.sysDatasetItemService = sysDatasetItemService;
+    }
 
     @Override
     public String getTaskType() {
@@ -47,7 +47,7 @@ public class CustomExportStrategy extends AbstractExportStrategy {
         Object datasetId = params.get("targetId");
         Object targetIds = params.get("targetIds");
         Object filters = params.get("filters");
-        
+
         if (datasetId == null && targetIds == null && filters == null) {
             throw new BusinessException("自定义导出需要指定数据集ID、数据项ID列表或筛选条件");
         }
@@ -60,14 +60,14 @@ public class CustomExportStrategy extends AbstractExportStrategy {
 
         ExportTaskCreateForm.ExportOptions options = getExportOptions(params);
         List<SysDatasetItem> items = resolveItems(params);
-        
+
         if (items.isEmpty()) {
             return TaskResult.failure("未找到符合条件的数据项");
         }
 
         File zipFile = null;
         try {
-            zipFile = createTempZipFile("custom_export_" + IdUtil.simpleUUID());
+            zipFile = createTempZipFile("custom_export");
             String downloadUrl = exportItemsToZip(zipFile, items, options, callback);
 
             log.info("自定义导出完成: taskId={}, itemCount={}", task.getTaskId(), items.size());
@@ -95,12 +95,12 @@ public class CustomExportStrategy extends AbstractExportStrategy {
             Long datasetId = ((Number) targetId).longValue();
             LambdaQueryWrapper<SysDatasetItem> query = new LambdaQueryWrapper<SysDatasetItem>()
                     .eq(SysDatasetItem::getDatasetId, datasetId);
-            
+
             Object filters = params.get("filters");
             if (filters instanceof Map<?, ?> filterMap) {
                 applyFilters(query, (Map<String, Object>) filterMap);
             }
-            
+
             return sysDatasetItemService.list(query);
         }
 
@@ -112,59 +112,5 @@ public class CustomExportStrategy extends AbstractExportStrategy {
         if (name instanceof String nameStr && !nameStr.isBlank()) {
             query.like(SysDatasetItem::getName, nameStr);
         }
-    }
-
-    private String exportItemsToZip(File zipFile, List<SysDatasetItem> items,
-                                    ExportTaskCreateForm.ExportOptions options,
-                                    ProgressCallback callback) throws Exception {
-        String structure = options.getStructure();
-        List<String> includeTypes = options.getIncludeTypes();
-        Boolean includeThumbnail = options.getIncludeThumbnail();
-
-        int totalFiles = 0;
-        for (SysDatasetItem item : items) {
-            long fileCount = sysItemFileService.count(
-                    new LambdaQueryWrapper<SysItemFile>()
-                            .eq(SysItemFile::getItemId, item.getId())
-            );
-            totalFiles += (int) fileCount;
-            if (Boolean.TRUE.equals(includeThumbnail)) {
-                totalFiles += (int) fileCount;
-            }
-        }
-
-        callback.updateProgress(0, totalFiles, "开始自定义导出");
-
-        int processedFiles = 0;
-        try (FileOutputStream fos = new FileOutputStream(zipFile);
-             ZipOutputStream zos = new ZipOutputStream(fos)) {
-
-            for (SysDatasetItem item : items) {
-                callback.checkCancelled();
-
-                List<SysItemFile> itemFiles = sysItemFileService.list(
-                        new LambdaQueryWrapper<SysItemFile>()
-                                .eq(SysItemFile::getItemId, item.getId())
-                );
-
-                for (SysItemFile itemFile : itemFiles) {
-                    callback.checkCancelled();
-
-                    if (shouldIncludeType(includeTypes, itemFile.getType())) {
-                        addFileToZip(zos, itemFile, structure, item.getName(), null);
-                        processedFiles++;
-                        callback.updateProgress(processedFiles, totalFiles, "正在导出: " + item.getName());
-                    }
-
-                    if (Boolean.TRUE.equals(includeThumbnail)) {
-                        addFileToZip(zos, itemFile, structure, item.getName(), "thumbnail");
-                        processedFiles++;
-                        callback.updateProgress(processedFiles, totalFiles, "导出缩略图");
-                    }
-                }
-            }
-        }
-
-        return uploadZipFile(zipFile, zipFile.getName().replace(".zip", ""));
     }
 }

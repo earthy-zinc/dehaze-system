@@ -23,7 +23,7 @@ import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
 import com.pei.dehaze.service.SysItemFileService;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -49,23 +49,19 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class DatasetOperationServiceImpl implements DatasetOperationService {
 
     @Lazy
-    @Resource
-    private SysDatasetService sysDatasetService;
+    private final SysDatasetService sysDatasetService;
 
-    @Resource
-    private SysDatasetItemService sysDatasetItemService;
+    private final SysDatasetItemService sysDatasetItemService;
 
-    @Resource
-    private SysItemFileService sysItemFileService;
+    private final SysItemFileService sysItemFileService;
 
-    @Resource
-    private FileBOFactory fileBOFactory;
+    private final FileBOFactory fileBOFactory;
 
-    @Resource
-    private ImageProcessingService imageProcessingService;
+    private final ImageProcessingService imageProcessingService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -131,9 +127,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         if (form.getClearImage() != null) {
             imageProcessingService.validateImageFile(form.getClearImage());
             clearDimensions = imageProcessingService.getImageDimensions(form.getClearImage());
-            if (clearDimensions[0] == 0 || clearDimensions[1] == 0) {
-                throw new BusinessException("无法解析清晰图分辨率");
-            }
         }
 
         // 检查每张有雾图的分辨率和格式
@@ -146,13 +139,10 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
 
                 // 校验分辨率（如有清晰图则需一致）
                 int[] hazyDimensions = imageProcessingService.getImageDimensions(hazyImage);
-                if (hazyDimensions[0] == 0 || hazyDimensions[1] == 0) {
-                    throw new BusinessException("无法解析有雾图分辨率：" + hazyImage.getOriginalFilename());
-                }
 
                 if (clearDimensions != null &&
                         (hazyDimensions[0] != clearDimensions[0] || hazyDimensions[1] != clearDimensions[1])) {
-                    throw new BusinessException(String.format(
+                    throw new BusinessException(ResultCode.PARAM_ERROR, String.format(
                             "配对图片分辨率不一致，清晰图：%dx%d，有雾图%s：%dx%d",
                             clearDimensions[0], clearDimensions[1],
                             hazyImage.getOriginalFilename(),
@@ -172,7 +162,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         List<BatchUploadFailedItemVO> failedItems = new ArrayList<>();
 
         // 按文件名前缀分组
-        Map<String, Map<String, Object>> fileGroups = new HashMap<>();
+        Map<String, FileGroup> fileGroups = new HashMap<>();
 
         for (MultipartFile file : form.getFiles()) {
             String fileName = file.getOriginalFilename();
@@ -181,26 +171,15 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
             // 提取文件名前缀（去掉下划线和后缀之前的部分）
             String prefix = extractFilePrefix(fileName);
 
-            if (!fileGroups.containsKey(prefix)) {
-                fileGroups.put(prefix, new HashMap<>());
-            }
-
-            Map<String, Object> group = fileGroups.get(prefix);
+            FileGroup group = fileGroups.computeIfAbsent(prefix, k -> new FileGroup());
 
             // 判断文件类型
             if (isClearImage(fileName)) {
-                group.put("clear", file);
+                group.clearImage = file;
             } else if (isHazyImage(fileName)) {
                 // haze_level 支持多种格式，无法解析时为空字符串（不报错）
                 String hazeLevel = extractHazeLevel(fileName);
-                if (!group.containsKey("hazy")) {
-                    group.put("hazy", new ArrayList<Map<String, Object>>());
-                }
-
-                Map<String, Object> hazyInfo = new HashMap<>();
-                hazyInfo.put("file", file);
-                hazyInfo.put("hazeLevel", hazeLevel);
-                ((List<Map<String, Object>>) group.get("hazy")).add(hazyInfo);
+                group.hazyImages.add(new HazyImageInfo(file, hazeLevel));
             } else {
                 // 无法识别文件类型的文件归入失败列表
                 failedItems.add(new BatchUploadFailedItemVO(fileName,
@@ -209,13 +188,13 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         }
 
         // 处理每个分组
-        for (Map.Entry<String, Map<String, Object>> entry : fileGroups.entrySet()) {
+        for (Map.Entry<String, FileGroup> entry : fileGroups.entrySet()) {
             String groupName = entry.getKey();
-            Map<String, Object> group = entry.getValue();
+            FileGroup group = entry.getValue();
 
             try {
                 // 清晰图和有雾图均为可选（适配不同数据集规范）
-                if (!group.containsKey("clear") && !group.containsKey("hazy")) {
+                if (group.clearImage == null && group.hazyImages.isEmpty()) {
                     throw new BusinessException("分组中未找到任何可识别的图片");
                 }
 
@@ -224,19 +203,13 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 pairForm.setDatasetId(form.getDatasetId());
                 pairForm.setName(groupName);
                 pairForm.setSceneType(form.getSceneType());
+                pairForm.setClearImage(group.clearImage);
 
-                MultipartFile clearImage = (MultipartFile) group.get("clear");
-                pairForm.setClearImage(clearImage);
-
-                List<Map<String, Object>> hazyInfos = (List<Map<String, Object>>) group.get("hazy");
                 List<MultipartFile> hazyImages = new ArrayList<>();
                 List<String> hazeLevels = new ArrayList<>();
-
-                if (hazyInfos != null) {
-                    for (Map<String, Object> hazyInfo : hazyInfos) {
-                        hazyImages.add((MultipartFile) hazyInfo.get("file"));
-                        hazeLevels.add((String) hazyInfo.get("hazeLevel"));
-                    }
+                for (HazyImageInfo hazyInfo : group.hazyImages) {
+                    hazyImages.add(hazyInfo.file());
+                    hazeLevels.add(hazyInfo.hazeLevel());
                 }
 
                 pairForm.setHazyImages(hazyImages);
@@ -247,7 +220,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 successGroups++;
 
                 // 记录成功项详情
-                int fileCount = (clearImage != null ? 1 : 0) + hazyImages.size();
+                int fileCount = (group.clearImage != null ? 1 : 0) + hazyImages.size();
                 successItems.add(new BatchUploadSuccessItemVO(createdItem.getId(), groupName, fileCount));
 
             } catch (Exception e) {
@@ -273,7 +246,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     private String extractFilePrefix(String fileName) {
         String nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
         // 优先按前导数字分组
-        java.util.regex.Matcher numMatcher = java.util.regex.Pattern.compile("^(\\d+)").matcher(nameWithoutExt);
+        Matcher numMatcher = Pattern.compile("^(\\d+)").matcher(nameWithoutExt);
         if (numMatcher.find()) {
             return numMatcher.group(1);
         }
@@ -308,8 +281,8 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
      */
     private String extractHazeLevel(String fileName) {
         // 1. 人工分级：_hazy_light / _hazy_medium / _hazy_heavy
-        java.util.regex.Matcher levelMatcher = java.util.regex.Pattern
-                .compile("_hazy_(light|medium|heavy)", java.util.regex.Pattern.CASE_INSENSITIVE)
+        Matcher levelMatcher = Pattern
+                .compile("_hazy_(light|medium|heavy)", Pattern.CASE_INSENSITIVE)
                 .matcher(fileName);
         if (levelMatcher.find()) {
             return levelMatcher.group(1).toLowerCase();
@@ -320,18 +293,17 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         String nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
         String[] parts = nameWithoutExt.split("_");
         if (parts.length >= 3) {
-            try {
-                java.util.List<Double> numParts = new java.util.ArrayList<>();
-                for (int i = 1; i < parts.length; i++) {
-                    try {
-                        numParts.add(Double.parseDouble(parts[i]));
-                    } catch (NumberFormatException ignored) {}
+            List<Double> numParts = new ArrayList<>();
+            for (int i = 1; i < parts.length; i++) {
+                try {
+                    numParts.add(Double.parseDouble(parts[i]));
+                } catch (NumberFormatException ignored) {
                 }
-                if (!numParts.isEmpty()) {
-                    double beta = numParts.get(numParts.size() - 1);
-                    return String.format("beta=%s", beta);
-                }
-            } catch (Exception ignored) {}
+            }
+            if (!numParts.isEmpty()) {
+                double beta = numParts.get(numParts.size() - 1);
+                return String.format("beta=%s", beta);
+            }
         }
 
         // 3. 无法解析，返回空字符串（表示未标注）
@@ -341,31 +313,16 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteDatasetItemCascade(Long datasetItemId) {
-        doDeleteDatasetItemCascade(datasetItemId);
-        sysDatasetService.evictAllDatasetsCache();
-    }
-
-    private void doDeleteDatasetItemCascade(Long datasetItemId) {
         Assert.notNull(datasetItemId, "数据项ID不能为空");
-
-        // 检查数据项是否存在
-        SysDatasetItem datasetItem = sysDatasetItemService.getById(datasetItemId);
-        if (datasetItem == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在");
+        BatchOperationResultVO result = batchDeleteDatasetItemsCascadeWithResult(List.of(datasetItemId));
+        if (result.getFailedCount() > 0) {
+            BatchActionFailureDetailVO detail = result.getFailureDetails().get(0);
+            String reason = detail.getReason();
+            if (reason != null && reason.contains("不存在")) {
+                throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, reason);
+            }
+            throw new BusinessException(reason);
         }
-
-        // 先删除数据项下的所有图片文件
-        List<SysItemFile> itemFiles = sysItemFileService.list(
-                new LambdaQueryWrapper<SysItemFile>()
-                        .eq(SysItemFile::getItemId, datasetItemId)
-        );
-
-        for (SysItemFile itemFile : itemFiles) {
-            sysItemFileService.deleteFile(itemFile.getId());
-        }
-
-        // 再删除数据项本身
-        sysDatasetItemService.removeById(datasetItemId);
     }
 
     @Override
@@ -400,7 +357,7 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
         for (Long datasetItemId : datasetItemIds) {
             try {
                 if (!existingItemIds.contains(datasetItemId)) {
-                    throw new BusinessException("数据项不存在");
+                    throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在");
                 }
 
                 List<SysItemFile> itemFiles = filesByItemId.getOrDefault(datasetItemId, Collections.emptyList());
@@ -536,4 +493,13 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
                 .results(results)
                 .build();
     }
+
+    /** 批量上传时的文件分组，按文件名前缀归类 */
+    private static class FileGroup {
+        MultipartFile clearImage;
+        final List<HazyImageInfo> hazyImages = new ArrayList<>();
+    }
+
+    /** 有雾图的文件及其雾霾程度 */
+    private record HazyImageInfo(MultipartFile file, String hazeLevel) {}
 }

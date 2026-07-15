@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.converter.DatasetConverter;
@@ -18,7 +19,6 @@ import com.pei.dehaze.model.form.DatasetUpdateForm;
 import com.pei.dehaze.model.query.DatasetQuery;
 import com.pei.dehaze.model.dto.DatasetStatistics;
 import com.pei.dehaze.model.vo.DatasetVO;
-import com.pei.dehaze.service.DatasetOperationService;
 import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
 import lombok.RequiredArgsConstructor;
@@ -32,11 +32,13 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,9 +47,6 @@ import java.util.stream.Collectors;
 public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysDataset> implements SysDatasetService {
 
     private final DatasetConverter datasetConverter;
-
-    @Lazy
-    private final DatasetOperationService datasetOperationService;
 
     @Lazy
     private final SysDatasetItemService sysDatasetItemService;
@@ -69,27 +68,16 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         log.debug("开始计算所有数据集统计信息...");
 
         List<SysDataset> allDatasets = getAllDatasets();
-        Map<Long, DatasetStatistics> statsMap = new HashMap<>();
-
         if (allDatasets.isEmpty()) {
-            return statsMap;
+            return new HashMap<>();
         }
 
+        Map<Long, DatasetStatistics> statsMap = new HashMap<>();
         for (SysDataset ds : allDatasets) {
-            DatasetStatistics empty = createEmptyStats();
-            statsMap.put(ds.getId(), empty);
+            statsMap.put(ds.getId(), createEmptyStats());
         }
 
-        Set<Long> allChildParentIds = allDatasets.stream()
-                .filter(d -> d.getParentId() != null && !d.getParentId().equals(SystemConstants.ROOT_NODE_ID))
-                .map(SysDataset::getParentId)
-                .collect(Collectors.toSet());
-
-        List<Long> leafIds = allDatasets.stream()
-                .map(SysDataset::getId)
-                .filter(id -> !allChildParentIds.contains(id))
-                .toList();
-
+        List<Long> leafIds = findLeafDatasetIds(allDatasets);
         if (leafIds.isEmpty()) {
             log.debug("没有叶子数据集，返回空统计");
             return statsMap;
@@ -97,58 +85,70 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
         log.debug("发现 {} 个叶子数据集，开始批量查询统计信息", leafIds.size());
 
-        List<Map<String, Object>> itemResults = this.baseMapper.countItemsPerDataset(leafIds);
-        for (Map<String, Object> row : itemResults) {
-            Long dsId = ((Number) row.get("dataset_id")).longValue();
-            if (statsMap.containsKey(dsId)) {
-                statsMap.get(dsId).setItemCount(((Number) row.get("cnt")).longValue());
+        applyItemCounts(statsMap, this.baseMapper.countItemsPerDataset(leafIds));
+        applyDatasetStats(statsMap, this.baseMapper.countDatasetStatsBatch(leafIds));
+        applyDistributionBatch(statsMap, this.baseMapper.countSceneDistributionBatch(leafIds),
+                "scene_type", DatasetStatistics::getSceneDistribution);
+        applyDistributionBatch(statsMap, this.baseMapper.countHazeDistributionBatch(leafIds),
+                "haze_level", DatasetStatistics::getHazeDistribution);
+        applyDistributionBatch(statsMap, this.baseMapper.countFormatDistributionBatch(leafIds),
+                "file_type", DatasetStatistics::getFormatDistribution);
+
+        rollupToParents(allDatasets, leafIds, statsMap);
+
+        long costMs = System.currentTimeMillis() - startTime;
+        log.info("所有数据集统计信息计算完成，耗时 {} ms，叶子节点 {} 个", costMs, leafIds.size());
+        return statsMap;
+    }
+
+    private List<Long> findLeafDatasetIds(List<SysDataset> allDatasets) {
+        Set<Long> parentIds = allDatasets.stream()
+                .filter(d -> d.getParentId() != null && !d.getParentId().equals(SystemConstants.ROOT_NODE_ID))
+                .map(SysDataset::getParentId)
+                .collect(Collectors.toSet());
+        return allDatasets.stream()
+                .map(SysDataset::getId)
+                .filter(id -> !parentIds.contains(id))
+                .toList();
+    }
+
+    private void applyItemCounts(Map<Long, DatasetStatistics> statsMap, List<Map<String, Object>> rows) {
+        for (Map<String, Object> row : rows) {
+            DatasetStatistics stats = statsMap.get(toLong(row.get("dataset_id")));
+            if (stats != null) {
+                stats.setItemCount(toLong(row.get("cnt")));
             }
         }
+    }
 
-        List<Map<String, Object>> statsResults = this.baseMapper.countDatasetStatsBatch(leafIds);
-        for (Map<String, Object> row : statsResults) {
-            Long dsId = ((Number) row.get("dataset_id")).longValue();
-            if (!statsMap.containsKey(dsId)) {
+    private void applyDatasetStats(Map<Long, DatasetStatistics> statsMap, List<Map<String, Object>> rows) {
+        for (Map<String, Object> row : rows) {
+            DatasetStatistics stats = statsMap.get(toLong(row.get("dataset_id")));
+            if (stats == null) {
                 continue;
             }
-            DatasetStatistics stats = statsMap.get(dsId);
-            Object imgCnt = row.get("image_count");
-            stats.setFileCount(imgCnt != null ? ((Number) imgCnt).longValue() : 0L);
-            Object sizeVal = row.get("total_size");
-            stats.setTotalSize(sizeVal != null ? ((Number) sizeVal).longValue() : 0L);
-            Object annotatedCnt = row.get("annotated_count");
-            stats.setAnnotatedCount(annotatedCnt != null ? ((Number) annotatedCnt).longValue() : 0L);
-            Object unannotatedCnt = row.get("unannotated_count");
-            stats.setUnannotatedCount(unannotatedCnt != null ? ((Number) unannotatedCnt).longValue() : 0L);
+            stats.setFileCount(toLong(row.get("image_count")));
+            stats.setTotalSize(toLong(row.get("total_size")));
+            stats.setAnnotatedCount(toLong(row.get("annotated_count")));
+            stats.setUnannotatedCount(toLong(row.get("unannotated_count")));
         }
+    }
 
-        List<Map<String, Object>> sceneResults = this.baseMapper.countSceneDistributionBatch(leafIds);
-        for (Map<String, Object> row : sceneResults) {
-            Long dsId = ((Number) row.get("dataset_id")).longValue();
-            if (!statsMap.containsKey(dsId)) continue;
-            String key = String.valueOf(row.get("scene_type"));
-            long cnt = row.get("cnt") instanceof Number ? ((Number) row.get("cnt")).longValue() : 0L;
-            statsMap.get(dsId).getSceneDistribution().merge(key, cnt, Long::sum);
+    private void applyDistributionBatch(Map<Long, DatasetStatistics> statsMap, List<Map<String, Object>> rows,
+                                        String keyField,
+                                        Function<DatasetStatistics, Map<String, Long>> distGetter) {
+        for (Map<String, Object> row : rows) {
+            DatasetStatistics stats = statsMap.get(toLong(row.get("dataset_id")));
+            if (stats == null) {
+                continue;
+            }
+            String key = String.valueOf(row.get(keyField));
+            distGetter.apply(stats).merge(key, toLong(row.get("cnt")), Long::sum);
         }
+    }
 
-        List<Map<String, Object>> hazeResults = this.baseMapper.countHazeDistributionBatch(leafIds);
-        for (Map<String, Object> row : hazeResults) {
-            Long dsId = ((Number) row.get("dataset_id")).longValue();
-            if (!statsMap.containsKey(dsId)) continue;
-            String key = String.valueOf(row.get("haze_level"));
-            long cnt = row.get("cnt") instanceof Number ? ((Number) row.get("cnt")).longValue() : 0L;
-            statsMap.get(dsId).getHazeDistribution().merge(key, cnt, Long::sum);
-        }
-
-        List<Map<String, Object>> formatResults = this.baseMapper.countFormatDistributionBatch(leafIds);
-        for (Map<String, Object> row : formatResults) {
-            Long dsId = ((Number) row.get("dataset_id")).longValue();
-            if (!statsMap.containsKey(dsId)) continue;
-            String key = String.valueOf(row.get("file_type"));
-            long cnt = row.get("cnt") instanceof Number ? ((Number) row.get("cnt")).longValue() : 0L;
-            statsMap.get(dsId).getFormatDistribution().merge(key, cnt, Long::sum);
-        }
-
+    private void rollupToParents(List<SysDataset> allDatasets, List<Long> leafIds,
+                                 Map<Long, DatasetStatistics> statsMap) {
         Map<Long, List<Long>> parentToChildrenMap = new HashMap<>();
         for (SysDataset ds : allDatasets) {
             if (ds.getParentId() != null && !ds.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
@@ -161,7 +161,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 .collect(Collectors.toMap(SysDataset::getId, d -> d));
 
         Queue<Long> queue = new LinkedList<>(leafIds);
-        Set<Long> processed = new java.util.HashSet<>(leafIds);
+        Set<Long> processed = new HashSet<>(leafIds);
 
         while (!queue.isEmpty()) {
             Long currentId = queue.poll();
@@ -183,10 +183,10 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
                 queue.offer(parentId);
             }
         }
+    }
 
-        long costMs = System.currentTimeMillis() - startTime;
-        log.info("所有数据集统计信息计算完成，耗时 {} ms，叶子节点 {} 个", costMs, leafIds.size());
-        return statsMap;
+    private Long toLong(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 
     private DatasetStatistics createEmptyStats() {
@@ -368,7 +368,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
         SysDataset currentDataset = this.getById(id);
         if (currentDataset == null) {
-            throw new BusinessException("数据集不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
         }
 
         if (form.getName() != null && !form.getName().equals(currentDataset.getName())) {
@@ -401,7 +401,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
         SysDataset dataset = this.getById(id);
         if (dataset == null) {
-            throw new BusinessException("数据集不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
         }
 
         if (!this.removeById(id)) {
@@ -440,7 +440,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         List<SysDataset> datasets = new ArrayList<>();
         SysDataset cur = this.getById(id);
         if (cur == null) {
-            return null;
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
         }
 
         List<SysDataset> allDatasets = getAllDatasets();
@@ -470,7 +470,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         List<SysDataset> datasets = new ArrayList<>();
         SysDataset cur = this.getById(id);
         if (cur == null) {
-            return null;
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
         }
 
         List<SysDataset> allDatasets = getAllDatasets();
@@ -532,7 +532,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     @Override
     public DatasetVO getDatasetById(Long id) {
         if (id == null || id <= 0) {
-            return null;
+            throw new BusinessException("数据集ID无效");
         }
 
         SysDataset dataset = this.getById(id);
@@ -567,30 +567,19 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     @Override
     public String getDatasetNameByItemId(Long itemId) {
         if (itemId == null || itemId <= 0) {
-            throw new BusinessException("数据项ID无效");
+            throw new BusinessException(ResultCode.PARAM_ERROR, "数据项ID无效");
         }
 
         var datasetItem = sysDatasetItemService.getById(itemId);
         if (datasetItem == null) {
-            throw new BusinessException("数据项不存在，itemId: " + itemId);
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在，itemId: " + itemId);
         }
 
         SysDataset dataset = this.getById(datasetItem.getDatasetId());
         if (dataset == null) {
-            log.warn("数据项关联的数据集不存在，itemId: {}, datasetId: {}", itemId, datasetItem.getDatasetId());
-            return "";
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项关联的数据集不存在，datasetId: " + datasetItem.getDatasetId());
         }
 
         return dataset.getName();
-    }
-
-    @Override
-    public void evictDatasetStatsCache(Long datasetId) {
-        evictAllDatasetsCache();
-    }
-
-    @Override
-    public void evictDatasetAndAncestorStatsCache(Long datasetId) {
-        evictAllDatasetsCache();
     }
 }

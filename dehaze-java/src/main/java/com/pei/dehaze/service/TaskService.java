@@ -61,5 +61,5 @@ public interface TaskService extends IService<SysTask> {
      * @param pageSize 页大小
      * @return 分页结果
      */
-    PageResult<TaskVO> listMyTasks(Integer pageNum, Integer pageSize);
+    PageResult<TaskVO> listMyTasks(int pageNum, int pageSize);
 }

@@ -38,7 +38,7 @@ class TaskCancelledException(BusinessException):
     """任务取消异常（专用于任务执行中检测到取消标志时抛出）"""
 
     def __init__(self):
-        super().__init__(ResultCode.TASK_CANCELLED, "任务已被取消")
+        super().__init__(ResultCode.TASK_CANCELLED)
 
 
 def register_exception_handlers(app: FastAPI):

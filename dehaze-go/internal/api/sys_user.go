@@ -2,7 +2,6 @@ package api
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -54,26 +53,7 @@ func (api *SysUserApi) ListPagedUsers(c *gin.Context) {
 	}
 	queryParams.StartTime = c.Query("startTime")
 	queryParams.EndTime = c.Query("endTime")
-
-	if pageNumStr := c.Query("pageNum"); pageNumStr != "" {
-		if pageNum, err := strconv.Atoi(pageNumStr); err == nil {
-			queryParams.PageNum = pageNum
-		} else {
-			queryParams.PageNum = 1
-		}
-	} else {
-		queryParams.PageNum = 1
-	}
-
-	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
-			queryParams.PageSize = pageSize
-		} else {
-			queryParams.PageSize = 10
-		}
-	} else {
-		queryParams.PageSize = 10
-	}
+	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
 
 	// 调用服务获取分页数据
 	result, err := api.userService.GetPage(c.Request.Context(), &queryParams)
@@ -192,32 +172,15 @@ func (api *SysUserApi) UpdateUser(c *gin.Context) {
 // @Success 200 {object} common.Response
 // @Router /api/v1/users/{ids} [delete]
 func (api *SysUserApi) DeleteUsers(c *gin.Context) {
-	// 获取路径参数
-	idsStr := c.Param("ids")
-	if idsStr == "" {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除的用户数据为空"))
-		return
-	}
-
-	// 解析ID列表
-	idStrings := strings.Split(idsStr, ",")
-	var ids []int64
-	for _, idStr := range idStrings {
-		id, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "用户ID格式不正确"))
-			return
-		}
-		ids = append(ids, id)
-	}
-
-	// 调用服务删除用户
-	err := api.userService.Delete(c.Request.Context(), ids)
+	ids, err := parseIDsFromCSV(c.Param("ids"))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-
+	if err := api.userService.Delete(c.Request.Context(), ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
 	common.OkWithMessage("删除用户成功", c)
 }
 

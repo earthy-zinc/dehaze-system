@@ -5,7 +5,6 @@ import cn.hutool.jwt.JWTUtil;
 import com.pei.dehaze.common.constant.JwtClaimConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.messaging.Message;
@@ -77,32 +76,35 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration.interceptors(new ChannelInterceptor() {
             @Override
-            public Message<?> preSend(@NotNull Message<?> message, @NotNull MessageChannel channel) {
+            public Message<?> preSend(Message<?> message, MessageChannel channel) {
                 StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-                // 如果是连接请求（CONNECT 命令），从请求头中取出 token 并设置到认证信息中
-                if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
-                    // 从连接头中提取授权令牌
-                    String bearerToken = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
-
-                    // 验证令牌格式并提取用户信息(userId)
-                    if (CharSequenceUtil.isNotBlank(bearerToken) && bearerToken.startsWith("Bearer ")) {
-                        try {
-                            // 从 JWT 中提取 userId 作为 Principal（对齐 Python/Go 的 user_id 路由）
-                            Long userId = JWTUtil.parseToken(bearerToken)
-                                    .getPayloads().getLong(JwtClaimConstants.USER_ID);
-
-                            if (userId != null) {
-                                String userIdStr = String.valueOf(userId);
-                                accessor.setUser(() -> userIdStr);
-                                return message;
-                            }
-                        } catch (Exception e) {
-                            log.error("Failed to process authentication token.", e);
-                        }
-                    }
+                // 仅处理 CONNECT 命令，其他命令直接放行
+                if (accessor == null || !StompCommand.CONNECT.equals(accessor.getCommand())) {
+                    return ChannelInterceptor.super.preSend(message, channel);
                 }
-                // 不是连接请求，直接放行
-                return ChannelInterceptor.super.preSend(message, channel);
+
+                // 从连接头中提取授权令牌
+                String bearerToken = accessor.getFirstNativeHeader(HttpHeaders.AUTHORIZATION);
+                if (CharSequenceUtil.isBlank(bearerToken) || !bearerToken.startsWith("Bearer ")) {
+                    log.warn("WebSocket 连接被拒绝：缺少有效的 Bearer Token");
+                    return null;
+                }
+
+                try {
+                    // 从 JWT 中提取 userId 作为 Principal（对齐 Python/Go 的 user_id 路由）
+                    Long userId = JWTUtil.parseToken(bearerToken)
+                            .getPayloads().getLong(JwtClaimConstants.USER_ID);
+                    if (userId == null) {
+                        log.warn("WebSocket 连接被拒绝：Token 中缺少 userId");
+                        return null;
+                    }
+                    String userIdStr = String.valueOf(userId);
+                    accessor.setUser(() -> userIdStr);
+                    return message;
+                } catch (Exception e) {
+                    log.error("WebSocket 连接被拒绝：Token 解析失败", e);
+                    return null;
+                }
             }
         });
     }

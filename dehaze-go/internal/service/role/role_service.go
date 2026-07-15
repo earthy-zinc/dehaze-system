@@ -104,10 +104,6 @@ func (s *RoleService) GetOptions(ctx context.Context, isRoot bool) ([]vo.Option,
 
 // Create 创建角色
 func (s *RoleService) Create(ctx context.Context, form *bo.RoleFormBO) error {
-	if err := s.validateRoleForm(form); err != nil {
-		return err
-	}
-
 	// 检查编码是否重复
 	exists, err := s.roleRepo.ExistsByCode(ctx, form.Code)
 	if err != nil {
@@ -147,10 +143,6 @@ func (s *RoleService) Create(ctx context.Context, form *bo.RoleFormBO) error {
 
 // Update 更新角色
 func (s *RoleService) Update(ctx context.Context, id int64, form *bo.RoleFormBO) error {
-	if err := s.validateRoleForm(form); err != nil {
-		return err
-	}
-
 	// 查询原角色信息
 	oldRole, err := s.roleRepo.FindByID(ctx, id)
 	if err != nil {
@@ -170,17 +162,8 @@ func (s *RoleService) Update(ctx context.Context, id int64, form *bo.RoleFormBO)
 		return common.NewBizError(common.OPERATION_NOT_ALLOW, "超级管理员角色不可修改")
 	}
 
-	// 检查编码是否重复（排除自身）
-	exists, err := s.roleRepo.ExistsByCode(ctx, form.Code, id)
-	if err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "检查角色编码是否存在失败", err)
-	}
-	if exists {
-		return common.NewBizError(common.DATA_EXISTS, "角色编码已存在")
-	}
-
 	// 检查名称是否重复（排除自身）
-	exists, err = s.roleRepo.ExistsByName(ctx, form.Name, id)
+	exists, err := s.roleRepo.ExistsByName(ctx, form.Name, id)
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "检查角色名称是否存在失败", err)
 	}
@@ -376,13 +359,6 @@ func (s *RoleService) GetMaximumDataScope(ctx context.Context, roles []string) (
 		return nil, common.WrapBizError(common.DATABASE_ERROR, "获取数据权限范围失败", err)
 	}
 	return dataScope, nil
-}
-
-// validateRoleForm 验证角色表单中 binding 标签无法覆盖的业务规则
-func (s *RoleService) validateRoleForm(form *bo.RoleFormBO) error {
-	// 角色编码格式校验由 binding 标签（required, min, max）覆盖
-	// 与 Java/Python 一致，不额外添加正则校验
-	return nil
 }
 
 // refreshRolePermsCache 刷新角色权限缓存（删除后重新加载）

@@ -1,13 +1,14 @@
 package com.pei.dehaze.converter;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.pei.dehaze.common.base.IBaseEnum;
+import com.pei.dehaze.common.enums.GenderEnum;
 import com.pei.dehaze.model.bo.UserBO;
 import com.pei.dehaze.model.entity.SysUser;
 import com.pei.dehaze.model.form.UserForm;
 import com.pei.dehaze.model.vo.UserImportVO;
 import com.pei.dehaze.model.vo.UserInfoVO;
 import com.pei.dehaze.model.vo.UserPageVO;
-import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
@@ -18,11 +19,11 @@ import org.mapstruct.Mappings;
  * @author earthyzinc
  * @since 2022/6/8
  */
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", imports = {IBaseEnum.class, GenderEnum.class})
 public interface UserConverter {
 
     @Mappings({
-            @Mapping(target = "genderLabel", expression = "java(com.pei.dehaze.common.base.IBaseEnum.getLabelByValue(bo.getGender(), com.pei.dehaze.common.enums.GenderEnum.class))")
+            @Mapping(target = "genderLabel", expression = "java(IBaseEnum.getLabelByValue(bo.getGender(), GenderEnum.class))")
     })
     UserPageVO bo2PageVo(UserBO bo);
 

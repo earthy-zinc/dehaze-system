@@ -1,10 +1,10 @@
 package com.pei.dehaze.plugin.ratelimit.aspect;
 
+import cn.hutool.core.text.CharSequenceUtil;
 import com.pei.dehaze.common.exception.RateLimitException;
 import com.pei.dehaze.plugin.ratelimit.annotation.RateLimit;
 import com.pei.dehaze.security.util.SecurityUtils;
 import jakarta.servlet.http.HttpServletRequest;
-import jodd.util.StringUtil;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -24,6 +24,13 @@ import java.lang.reflect.Method;
 public class RateLimitAspect {
     private final RedissonClient redissonClient;
     private final HttpServletRequest request;
+
+    private static final String[] IP_HEADERS = {
+            "X-Forwarded-For",
+            "X-Real-IP",
+            "Proxy-Client-IP",
+            "WL-Proxy-Client-IP"
+    };
 
     @Around("@annotation(rateLimit)")
     public Object around(ProceedingJoinPoint joinPoint, RateLimit rateLimit) throws Throwable {
@@ -78,10 +85,14 @@ public class RateLimitAspect {
     }
 
     private String getClientIp() {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (StringUtil.isEmpty(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
+        for (String header : IP_HEADERS) {
+            String ip = request.getHeader(header);
+            if (CharSequenceUtil.isNotBlank(ip) && !"unknown".equalsIgnoreCase(ip)) {
+                // X-Forwarded-For 可能包含多个IP，取第一个（客户端真实IP）
+                int commaIndex = ip.indexOf(',');
+                return commaIndex > 0 ? ip.substring(0, commaIndex).trim() : ip.trim();
+            }
         }
-        return ip;
+        return request.getRemoteAddr();
     }
 }

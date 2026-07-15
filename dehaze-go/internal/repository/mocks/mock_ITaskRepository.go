@@ -8,6 +8,8 @@ import (
 	model "github.com/earthyzinc/dehaze-go/internal/model"
 	mock "github.com/stretchr/testify/mock"
 
+	query "github.com/earthyzinc/dehaze-go/internal/model/query"
+
 	read "github.com/earthyzinc/dehaze-go/internal/model/read"
 
 	time "time"
@@ -353,7 +355,7 @@ func (_c *MockITaskRepository_FindByTaskID_Call) RunAndReturn(run func(context.C
 }
 
 // FindPage provides a mock function with given fields: ctx, q
-func (_m *MockITaskRepository) FindPage(ctx context.Context, q interface{}) (*read.PageResult[read.Task], error) {
+func (_m *MockITaskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (*read.PageResult[read.Task], error) {
 	ret := _m.Called(ctx, q)
 
 	if len(ret) == 0 {
@@ -362,10 +364,10 @@ func (_m *MockITaskRepository) FindPage(ctx context.Context, q interface{}) (*re
 
 	var r0 *read.PageResult[read.Task]
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}) (*read.PageResult[read.Task], error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *query.TaskPageQuery) (*read.PageResult[read.Task], error)); ok {
 		return rf(ctx, q)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, interface{}) *read.PageResult[read.Task]); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *query.TaskPageQuery) *read.PageResult[read.Task]); ok {
 		r0 = rf(ctx, q)
 	} else {
 		if ret.Get(0) != nil {
@@ -373,7 +375,7 @@ func (_m *MockITaskRepository) FindPage(ctx context.Context, q interface{}) (*re
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, interface{}) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *query.TaskPageQuery) error); ok {
 		r1 = rf(ctx, q)
 	} else {
 		r1 = ret.Error(1)
@@ -389,14 +391,14 @@ type MockITaskRepository_FindPage_Call struct {
 
 // FindPage is a helper method to define mock.On call
 //   - ctx context.Context
-//   - q interface{}
+//   - q *query.TaskPageQuery
 func (_e *MockITaskRepository_Expecter) FindPage(ctx interface{}, q interface{}) *MockITaskRepository_FindPage_Call {
 	return &MockITaskRepository_FindPage_Call{Call: _e.mock.On("FindPage", ctx, q)}
 }
 
-func (_c *MockITaskRepository_FindPage_Call) Run(run func(ctx context.Context, q interface{})) *MockITaskRepository_FindPage_Call {
+func (_c *MockITaskRepository_FindPage_Call) Run(run func(ctx context.Context, q *query.TaskPageQuery)) *MockITaskRepository_FindPage_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(interface{}))
+		run(args[0].(context.Context), args[1].(*query.TaskPageQuery))
 	})
 	return _c
 }
@@ -406,7 +408,7 @@ func (_c *MockITaskRepository_FindPage_Call) Return(_a0 *read.PageResult[read.Ta
 	return _c
 }
 
-func (_c *MockITaskRepository_FindPage_Call) RunAndReturn(run func(context.Context, interface{}) (*read.PageResult[read.Task], error)) *MockITaskRepository_FindPage_Call {
+func (_c *MockITaskRepository_FindPage_Call) RunAndReturn(run func(context.Context, *query.TaskPageQuery) (*read.PageResult[read.Task], error)) *MockITaskRepository_FindPage_Call {
 	_c.Call.Return(run)
 	return _c
 }

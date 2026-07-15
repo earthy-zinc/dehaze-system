@@ -2,25 +2,18 @@ package evaluation
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	evalrepo "github.com/earthyzinc/dehaze-go/internal/repository/eval_log"
 	algo "github.com/earthyzinc/dehaze-go/pkg/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/utils"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
-
-// md5Hex 计算字符串的 MD5 十六进制表示（32 位）
-func md5Hex(s string) string {
-	h := md5.Sum([]byte(s))
-	return fmt.Sprintf("%x", h)
-}
 
 // EvaluationService 去雾效果评估服务
 type EvaluationService struct {
@@ -50,9 +43,9 @@ func (s *EvaluationService) Evaluate(ctx context.Context, algorithmID int64, pre
 	resultStr := string(metricsJSON)
 	evalLog := &model.SysEvalLog{
 		AlgorithmID: algorithmID,
-		PredMD5:     md5Hex(predURL),
+		PredMD5:     utils.MD5Hex(predURL),
 		PredURL:     predURL,
-		GtMD5:       md5Hex(gtURL),
+		GtMD5:       utils.MD5Hex(gtURL),
 		GtURL:       gtURL,
 		Time:        resp.Time,
 		Result:      &resultStr,

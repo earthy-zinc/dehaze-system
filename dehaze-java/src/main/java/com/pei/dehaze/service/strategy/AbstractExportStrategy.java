@@ -1,16 +1,20 @@
 package com.pei.dehaze.service.strategy;
 
 import cn.hutool.core.util.IdUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
 import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysFileService;
-import jakarta.annotation.Resource;
+import com.pei.dehaze.service.SysItemFileService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -22,16 +26,22 @@ import java.util.zip.ZipOutputStream;
  * 提供ZIP打包、文件上传等公共能力
  */
 @Slf4j
+@RequiredArgsConstructor
 public abstract class AbstractExportStrategy implements TaskStrategy {
 
     protected static final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "export/";
     protected static final String EXPORT_PREFIX = "export_";
 
-    @Resource
-    protected SysFileService sysFileService;
+    private static final String STRUCTURE_BY_ITEM = "by_item";
+    protected static final String THUMBNAIL_SUBFOLDER = "thumbnail";
+    private static final String DEFAULT_FILE_EXTENSION = ".jpg";
+    private static final String ZIP_CONTENT_TYPE = "application/zip";
+    private static final String EXPORT_OBJECT_PREFIX = "exports/";
+    private static final int ZIP_BUFFER_SIZE = 8192;
 
-    @Resource
-    protected FileService fileService;
+    protected final SysFileService sysFileService;
+    protected final FileService fileService;
+    protected final SysItemFileService sysItemFileService;
 
     /**
      * 从参数中获取导出选项
@@ -41,18 +51,22 @@ public abstract class AbstractExportStrategy implements TaskStrategy {
         if (optionsObj instanceof ExportTaskCreateForm.ExportOptions options) {
             return options;
         }
+        ExportTaskCreateForm.ExportOptions options = new ExportTaskCreateForm.ExportOptions();
         if (optionsObj instanceof Map<?, ?> optionsMap) {
-            ExportTaskCreateForm.ExportOptions options = new ExportTaskCreateForm.ExportOptions();
-            Object structureVal = optionsMap.get("structure");
-            options.setStructure(structureVal != null ? (String) structureVal : "by_item");
-            @SuppressWarnings("unchecked")
-            List<String> types = (List<String>) optionsMap.get("includeTypes");
-            options.setIncludeTypes(types);
-            Object thumbnailVal = optionsMap.get("includeThumbnail");
-            options.setIncludeThumbnail(thumbnailVal != null ? (Boolean) thumbnailVal : false);
-            return options;
+            if (optionsMap.get("structure") instanceof String structure) {
+                options.setStructure(structure);
+            }
+            if (optionsMap.get("includeTypes") instanceof List<?> list) {
+                options.setIncludeTypes(list.stream()
+                        .filter(String.class::isInstance)
+                        .map(String.class::cast)
+                        .toList());
+            }
+            if (optionsMap.get("includeThumbnail") instanceof Boolean includeThumbnail) {
+                options.setIncludeThumbnail(includeThumbnail);
+            }
         }
-        return new ExportTaskCreateForm.ExportOptions();
+        return options;
     }
 
     /**
@@ -63,6 +77,63 @@ public abstract class AbstractExportStrategy implements TaskStrategy {
             return true;
         }
         return includeTypes.contains(type);
+    }
+
+    /**
+     * 将数据项列表导出为ZIP
+     */
+    protected String exportItemsToZip(File zipFile, List<SysDatasetItem> items,
+                                      ExportTaskCreateForm.ExportOptions options,
+                                      ProgressCallback callback) throws Exception {
+        String structure = options.getStructure();
+        List<String> includeTypes = options.getIncludeTypes();
+        Boolean includeThumbnail = options.getIncludeThumbnail();
+
+        int totalFiles = 0;
+        for (SysDatasetItem item : items) {
+            long fileCount = sysItemFileService.count(
+                    new LambdaQueryWrapper<SysItemFile>()
+                            .eq(SysItemFile::getItemId, item.getId())
+            );
+            totalFiles += (int) fileCount;
+            if (Boolean.TRUE.equals(includeThumbnail)) {
+                totalFiles += (int) fileCount;
+            }
+        }
+
+        callback.updateProgress(0, totalFiles, "开始导出");
+
+        int processedFiles = 0;
+        try (FileOutputStream fos = new FileOutputStream(zipFile);
+             ZipOutputStream zos = new ZipOutputStream(fos)) {
+
+            for (SysDatasetItem item : items) {
+                callback.checkCancelled();
+
+                List<SysItemFile> itemFiles = sysItemFileService.list(
+                        new LambdaQueryWrapper<SysItemFile>()
+                                .eq(SysItemFile::getItemId, item.getId())
+                );
+
+                for (SysItemFile itemFile : itemFiles) {
+                    callback.checkCancelled();
+
+                    if (shouldIncludeType(includeTypes, itemFile.getType())) {
+                        addFileToZip(zos, itemFile, structure, item.getName(), null);
+                        processedFiles++;
+                        callback.updateProgress(processedFiles, totalFiles, "正在导出: " + item.getName());
+                    }
+
+                    if (Boolean.TRUE.equals(includeThumbnail)) {
+                        addFileToZip(zos, itemFile, structure, item.getName(), THUMBNAIL_SUBFOLDER);
+                        processedFiles++;
+                        callback.updateProgress(processedFiles, totalFiles, "导出缩略图");
+                    }
+                }
+            }
+        }
+
+        return uploadZipFile(zipFile, zipFile.getName().replace(".zip", ""));
     }
 
     /**
@@ -81,7 +152,7 @@ public abstract class AbstractExportStrategy implements TaskStrategy {
         zos.putNextEntry(zipEntry);
 
         try (InputStream inputStream = fileService.downLoadFile(sysFile.getObjectName())) {
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[ZIP_BUFFER_SIZE];
             int len;
             while ((len = inputStream.read(buffer)) > 0) {
                 zos.write(buffer, 0, len);
@@ -97,7 +168,7 @@ public abstract class AbstractExportStrategy implements TaskStrategy {
         String extension = getFileExtension(fileName);
         String baseName = fileId + extension;
 
-        if ("by_item".equals(structure)) {
+        if (STRUCTURE_BY_ITEM.equals(structure)) {
             return subfolder != null
                     ? itemName + "/" + subfolder + "/" + baseName
                     : itemName + "/" + baseName;
@@ -112,9 +183,9 @@ public abstract class AbstractExportStrategy implements TaskStrategy {
      * 获取文件扩展名
      */
     private String getFileExtension(String fileName) {
-        if (fileName == null) return ".jpg";
+        if (fileName == null) return DEFAULT_FILE_EXTENSION;
         int dotIndex = fileName.lastIndexOf('.');
-        return dotIndex > 0 ? fileName.substring(dotIndex) : ".jpg";
+        return dotIndex > 0 ? fileName.substring(dotIndex) : DEFAULT_FILE_EXTENSION;
     }
 
     /**
@@ -132,9 +203,9 @@ public abstract class AbstractExportStrategy implements TaskStrategy {
      * 上传ZIP文件到存储服务
      */
     protected String uploadZipFile(File zipFile, String zipName) throws Exception {
-        String objectName = "exports/" + zipName + "_" + IdUtil.simpleUUID() + ".zip";
+        String objectName = EXPORT_OBJECT_PREFIX + zipName + "_" + IdUtil.simpleUUID() + ".zip";
         try (FileInputStream fis = new FileInputStream(zipFile)) {
-            String url = fileService.uploadFile(objectName, fis, zipFile.length(), "application/zip");
+            String url = fileService.uploadFile(objectName, fis, zipFile.length(), ZIP_CONTENT_TYPE);
             log.info("ZIP文件上传成功: url={}", url);
             return url;
         } finally {

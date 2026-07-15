@@ -16,51 +16,18 @@ class UserRepository(BaseRepository[SysUser]):
 
     model = SysUser
 
-    def _get_user_deleted_column(self):
-        """获取 user deleted 列"""
-        return getattr(SysUser, "deleted")
-
-    def _get_role_deleted_column(self):
-        """获取 role deleted 列"""
-        return getattr(SysRole, "deleted")
-
-    def _get_menu_deleted_column(self):
-        """获取 menu deleted 列"""
-        from app.models.entity.sys_menu import SysMenu
-        return getattr(SysMenu, "deleted")
-
     async def get_by_username(
         self,
         db: AsyncSession,
         username: str,
     ) -> SysUser | None:
         """根据用户名查询"""
-        deleted_column = self._get_user_deleted_column()
         stmt = select(SysUser).where(
             SysUser.username == username,
-            deleted_column == 0,
+            SysUser.deleted == 0,
         )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
-
-    async def get_user_roles(
-        self,
-        db: AsyncSession,
-        user_id: int,
-    ) -> list[SysRole]:
-        """查询用户的角色列表"""
-        role_deleted_column = self._get_role_deleted_column()
-        stmt = (
-            select(SysRole)
-            .join(SysUserRole, SysRole.id == SysUserRole.role_id)
-            .where(
-                SysUserRole.user_id == user_id,
-                role_deleted_column == 0,
-                SysRole.status == 1,
-            )
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
 
     async def get_user_role_ids(
         self,
@@ -97,10 +64,9 @@ class UserRepository(BaseRepository[SysUser]):
         """批量查询已存在的用户名（避免导入时 N+1）"""
         if not usernames:
             return set()
-        deleted_column = self._get_user_deleted_column()
         stmt = select(SysUser.username).where(
             SysUser.username.in_(usernames),
-            deleted_column == 0,
+            SysUser.deleted == 0,
         )
         result = await db.execute(stmt)
         return {row[0] for row in result.fetchall() if row[0]}
@@ -113,10 +79,9 @@ class UserRepository(BaseRepository[SysUser]):
         exclude_id: int | None = None,
     ) -> bool:
         """检查用户名是否已存在"""
-        deleted_column = self._get_user_deleted_column()
         stmt = select(SysUser).where(
             SysUser.username == username,
-            deleted_column == 0,
+            SysUser.deleted == 0,
         )
         if exclude_id:
             stmt = stmt.where(SysUser.id != exclude_id)
@@ -194,18 +159,12 @@ class UserRepository(BaseRepository[SysUser]):
 
         # 创建时间范围
         if create_time_start:
-            try:
-                start_dt = datetime.strptime(create_time_start, "%Y-%m-%d")
-                base_query = base_query.where(SysUser.create_time >= start_dt)
-            except ValueError:
-                pass
+            start_dt = datetime.strptime(create_time_start, "%Y-%m-%d")
+            base_query = base_query.where(SysUser.create_time >= start_dt)
 
         if create_time_end:
-            try:
-                end_dt = datetime.strptime(create_time_end, "%Y-%m-%d") + timedelta(days=1)
-                base_query = base_query.where(SysUser.create_time < end_dt)
-            except ValueError:
-                pass
+            end_dt = datetime.strptime(create_time_end, "%Y-%m-%d") + timedelta(days=1)
+            base_query = base_query.where(SysUser.create_time < end_dt)
 
         # 排序并分页（按 id 升序，与 Java 后端一致）
         base_query = base_query.order_by(SysUser.id.asc())
@@ -224,18 +183,6 @@ class UserRepository(BaseRepository[SysUser]):
         result = await db.execute(stmt)
         return [row[0] for row in result.all()]
 
-    async def count_users_by_role(
-        self,
-        db: AsyncSession,
-        role_id: int,
-    ) -> int:
-        """统计关联某角色的用户数量"""
-        stmt = select(func.count()).select_from(SysUserRole).where(
-            SysUserRole.role_id == role_id
-        )
-        result = await db.execute(stmt)
-        return result.scalar() or 0
-
     async def count_users_by_roles(
         self,
         db: AsyncSession,
@@ -251,19 +198,6 @@ class UserRepository(BaseRepository[SysUser]):
         )
         result = await db.execute(stmt)
         return {int(row.role_id): int(row.cnt) for row in result}
-
-    async def count_users_by_dept(
-        self,
-        db: AsyncSession,
-        dept_id: int,
-    ) -> int:
-        """统计某部门下的用户数量"""
-        stmt = select(func.count()).select_from(SysUser).where(
-            SysUser.dept_id == dept_id,
-            SysUser.deleted == 0,
-        )
-        result = await db.execute(stmt)
-        return result.scalar() or 0
 
     async def count_users_by_depts(
         self,
@@ -320,42 +254,6 @@ class UserRepository(BaseRepository[SysUser]):
 
         return user
 
-    async def update_user(
-        self,
-        db: AsyncSession,
-        user: SysUser,
-    ) -> SysUser:
-        """更新用户"""
-        merged = await db.merge(user)
-        await db.flush()
-        return merged
-
-    async def get_user_permissions(
-        self,
-        db: AsyncSession,
-        user_id: int,
-    ) -> list[str]:
-        """获取用户权限列表（通过角色关联的菜单权限）"""
-        from app.models.entity.sys_menu import SysMenu, SysRoleMenu
-
-        stmt = (
-            select(SysMenu.perm)
-            .distinct()
-            .join(SysRoleMenu, SysRoleMenu.menu_id == SysMenu.id)
-            .join(SysRole, SysRole.id == SysRoleMenu.role_id)
-            .join(SysUserRole, SysUserRole.role_id == SysRole.id)
-            .where(
-                SysUserRole.user_id == user_id,
-                SysMenu.perm.isnot(None),
-                SysMenu.perm != "",
-                SysMenu.status == 1,
-                SysMenu.visible == 1,
-                SysRole.deleted == 0,
-                SysRole.status == 1,
-            )
-        )
-        result = await db.execute(stmt)
-        return [row[0] for row in result.fetchall() if row[0]]
 
 
 # 单例

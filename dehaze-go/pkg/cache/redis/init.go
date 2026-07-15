@@ -12,12 +12,12 @@ import (
 )
 
 var (
-	_client *redis.Client
-	_once   sync.Once
+	_client  *redis.Client
+	_once    sync.Once
+	_initErr error
 )
 
 func InitRedis() (*RedisCache, error) {
-	var initErr error
 	cfg := config.GetConfig().Cache.Redis
 
 	_once.Do(func() {
@@ -35,14 +35,18 @@ func InitRedis() (*RedisCache, error) {
 		_client = redis.NewClient(opts)
 
 		if err := _client.Ping(context.Background()).Err(); err != nil {
-			initErr = fmt.Errorf("Redis连接失败: %w", err)
+			_initErr = fmt.Errorf("Redis连接失败: %w", err)
 			_client = nil
 			logger.Error("Redis连接初始化失败", zap.Error(err))
 			return
 		}
 	})
 
-	return NewRedisCache(_client), initErr
+	// 初始化失败时返回 nil client，由调用方处理错误，不返回包装了 nil 的无效实例
+	if _initErr != nil {
+		return nil, _initErr
+	}
+	return NewRedisCache(_client), nil
 }
 
 func GetClient() *redis.Client {
@@ -50,6 +54,9 @@ func GetClient() *redis.Client {
 }
 
 func Close() error {
+	if _client == nil {
+		return nil
+	}
 	if err := _client.Close(); err != nil {
 		logger.Error("关闭Redis连接失败", zap.Error(err))
 		return err

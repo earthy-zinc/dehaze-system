@@ -85,20 +85,18 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
                     .toFile(output);
             return output;
         } catch (IOException e) {
-            log.error("生成缩略图失败: {}", e.getMessage(), e);
+            log.error("生成缩略图失败: source={}", source.getAbsolutePath(), e);
             throw new BusinessException("生成缩略图失败", e);
         }
     }
 
     @Override
     public void generateThumbnail(String srcPath, String destPath, int width, int height) {
+        File destDir = new File(destPath).getParentFile();
+        if (!destDir.exists() && !destDir.mkdirs()) {
+            throw new BusinessException("创建缩略图目录失败: " + destDir.getAbsolutePath());
+        }
         try {
-            File destDir = new File(destPath).getParentFile();
-            synchronized (destDir) {
-                if (!destDir.exists() && !destDir.mkdirs()) {
-                    throw new BusinessException("创建缩略图目录失败: " + destDir.getAbsolutePath());
-                }
-            }
             Thumbnails.of(new File(srcPath))
                     .size(width, height)
                     .outputQuality(thumbnailQuality)
@@ -111,34 +109,32 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
 
     @Override
     public int[] getImageDimensions(File file) {
-        try (InputStream is = new FileInputStream(file);
-             ImageInputStream iis = ImageIO.createImageInputStream(is)) {
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-            if (readers.hasNext()) {
-                ImageReader reader = readers.next();
-                reader.setInput(iis, true);
-                return new int[]{reader.getWidth(0), reader.getHeight(0)};
-            }
+        try (InputStream is = new FileInputStream(file)) {
+            return getImageDimensions(is);
         } catch (IOException e) {
-            log.warn("解析图片宽高失败: {}", e.getMessage());
+            throw new BusinessException("解析图片宽高失败: " + file.getAbsolutePath(), e);
         }
-        return new int[]{0, 0};
     }
 
     @Override
     public int[] getImageDimensions(MultipartFile file) {
-        try (InputStream is = file.getInputStream();
-             ImageInputStream iis = ImageIO.createImageInputStream(is)) {
+        try (InputStream is = file.getInputStream()) {
+            return getImageDimensions(is);
+        } catch (IOException e) {
+            throw new BusinessException("解析图片宽高失败: " + file.getOriginalFilename(), e);
+        }
+    }
+
+    private int[] getImageDimensions(InputStream is) throws IOException {
+        try (ImageInputStream iis = ImageIO.createImageInputStream(is)) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
             if (readers.hasNext()) {
                 ImageReader reader = readers.next();
                 reader.setInput(iis, true);
                 return new int[]{reader.getWidth(0), reader.getHeight(0)};
             }
-        } catch (IOException e) {
-            log.warn("解析图片宽高失败: {}", e.getMessage());
+            throw new IOException("不支持的图片格式");
         }
-        return new int[]{0, 0};
     }
 
     @Override

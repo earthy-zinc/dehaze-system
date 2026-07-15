@@ -2,12 +2,11 @@ package com.pei.dehaze.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.util.ImageClassificationUtils;
-import com.pei.dehaze.common.util.TreeDataUtils;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
-import com.pei.dehaze.model.entity.SysDataset;
 import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysItemFile;
@@ -16,13 +15,12 @@ import com.pei.dehaze.model.vo.*;
 import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
 import com.pei.dehaze.service.SysItemFileService;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -38,23 +36,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper, SysDatasetItem>
         implements SysDatasetItemService {
 
-    @Resource
-    private SysItemFileService sysItemFileService;
+    private final SysItemFileService sysItemFileService;
 
     @Lazy
-    @Resource
-    private SysDatasetService sysDatasetService;
-
-    @Override
-    public SysDatasetItem createDatasetItem(Long datasetId) {
-        SysDatasetItem datasetItem = new SysDatasetItem();
-        datasetItem.setDatasetId(datasetId);
-        this.save(datasetItem);
-        return datasetItem;
-    }
+    private final SysDatasetService sysDatasetService;
 
     @Override
     public SysDatasetItem createDatasetItem(Long datasetId, String itemName) {
@@ -82,6 +71,9 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
     @Override
     public void updateDatasetItem(Long datasetItemId, String itemName) {
         SysDatasetItem datasetItem = this.getById(datasetItemId);
+        if (datasetItem == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在");
+        }
         datasetItem.setName(itemName);
         this.updateById(datasetItem);
     }
@@ -91,7 +83,7 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
     public DatasetItemVO updateAndReturnDatasetItem(Long datasetItemId, String itemName, String sceneType) {
         SysDatasetItem datasetItem = this.getById(datasetItemId);
         if (datasetItem == null) {
-            throw new BusinessException("数据项不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在");
         }
 
         // 更新数据项名称
@@ -117,13 +109,10 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
 
     @Override
     public Page<DatasetItemVO> pageSearchDatasetItems(DatasetItemQuery query) {
-        // 获取数据集叶子节点ID（使用Mapper避免循环依赖）
-        List<Long> leafIds;
-        if (query.getDatasetId() != null) {
-            leafIds = getLeafDatasetIdsByMapper(query.getDatasetId());
-        } else {
-            leafIds = getAllLeafDatasetIdsByMapper();
-        }
+        // 获取数据集叶子节点ID
+        List<Long> leafIds = query.getDatasetId() != null
+                ? sysDatasetService.getLeafDatasetId(query.getDatasetId())
+                : sysDatasetService.getLeafDatasetIds();
 
         if (leafIds.isEmpty()) {
             Page<DatasetItemVO> emptyPage = new Page<>();
@@ -204,28 +193,12 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
         itemVO.setSceneType(result.getSceneType());
     }
 
-    /**
-     * 获取指定数据集的叶子节点ID列表（使用缓存的 getAllDatasets 避免每次全表扫描）
-     */
-    private List<Long> getLeafDatasetIdsByMapper(Long datasetId) {
-        List<SysDataset> allDatasets = sysDatasetService.getAllDatasets();
-        return TreeDataUtils.findLeafIdsUnder(allDatasets, datasetId, SysDataset::getId, SysDataset::getParentId);
-    }
-
-    /**
-     * 获取所有叶子节点数据集ID（使用缓存的 getAllDatasets 避免每次全表扫描）
-     */
-    private List<Long> getAllLeafDatasetIdsByMapper() {
-        List<SysDataset> allDatasets = sysDatasetService.getAllDatasets();
-        return TreeDataUtils.findAllLeafIds(allDatasets, SysDataset::getId, SysDataset::getParentId);
-    }
-
     @Override
     public DatasetItemVO getDatasetItem(Long id) {
         // 查询数据项基本信息
         SysDatasetItem datasetItem = this.getById(id);
         if (datasetItem == null) {
-            throw new BusinessException("数据项不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据项不存在");
         }
 
         // 获取数据项下的所有图片
@@ -248,14 +221,5 @@ public class SysDatasetItemServiceImpl extends ServiceImpl<SysDatasetItemMapper,
         detail.setUpdateTime(datasetItem.getUpdateTime());
 
         return detail;
-    }
-
-    @Override
-    public Long getDatasetIdByItemId(Long itemId) {
-        if (itemId == null) {
-            return null;
-        }
-        SysDatasetItem item = this.getById(itemId);
-        return item != null ? item.getDatasetId() : null;
     }
 }

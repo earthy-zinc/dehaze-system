@@ -20,7 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.core.code import ResultCode
-from app.core.constants import SYSTEM_USER_ID
+from app.core.constants import (SYSTEM_USER_ID, TASK_CACHE_PREFIX,
+                                TASK_CANCEL_PREFIX, TASK_PROGRESS_PREFIX)
 from app.core.exceptions import BusinessException, TaskCancelledException
 from app.database import get_db_session
 from app.dependencies.redis import get_redis_client
@@ -40,10 +41,6 @@ IDEMPOTENCY_KEY_TTL = 24 * 3600  # 24 小时
 class TaskServiceAsync:
     """任务服务类（异步版本）"""
 
-    # Redis 键前缀（与文档对齐）
-    TASK_CACHE_PREFIX = "task:cache:"
-    TASK_PROGRESS_PREFIX = "task:progress:"
-    TASK_CANCEL_PREFIX = "task:cancel:"
     TASK_EXPIRE_HOURS = 24  # 任务缓存 24 小时
     CANCEL_FLAG_TTL = 3600  # 取消标志 TTL 1 小时（与文档对齐）
 
@@ -147,7 +144,7 @@ class TaskServiceAsync:
             await redis.setex(idempotency_redis_key, IDEMPOTENCY_KEY_TTL, task_id)
 
         # 缓存任务信息到 Redis
-        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
+        cache_key = TASK_CACHE_PREFIX + task_id
         task_dict = TaskServiceAsync._task_to_dict(sys_task)
         await redis.setex(
             cache_key,
@@ -193,7 +190,7 @@ class TaskServiceAsync:
         if not task_id:
             raise BusinessException(ResultCode.TASK_PARAM_ERROR, "任务ID不能为空")
 
-        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
+        cache_key = TASK_CACHE_PREFIX + task_id
 
         # 先从 Redis 缓存查询
         cached_task = await redis.get(cache_key)
@@ -311,7 +308,7 @@ class TaskServiceAsync:
         redis: Redis,
         task_id: str,
         user_id: int,
-    ) -> bool:
+    ) -> None:
         """
         取消导出任务
 
@@ -321,8 +318,8 @@ class TaskServiceAsync:
             task_id: 任务 ID
             user_id: 当前用户 ID（权限校验）
 
-        Returns:
-            是否取消成功
+        Raises:
+            BusinessException: 任务不存在 / 无权限 / 状态不允许取消
         """
         if not task_id:
             raise BusinessException(ResultCode.TASK_PARAM_ERROR, "任务ID不能为空")
@@ -341,14 +338,14 @@ class TaskServiceAsync:
                 ResultCode.TASK_STATUS_INVALID, "任务已完成或失败，无法取消")
 
         if sys_task.status == TaskStatus.CANCELLED.value:
-            return True
+            return
 
         # 更新任务状态
         sys_task.status = TaskStatus.CANCELLED.value
         sys_task.completed_at = datetime.now()
 
         # 更新缓存
-        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + task_id
+        cache_key = TASK_CACHE_PREFIX + task_id
         task_dict = TaskServiceAsync._task_to_dict(sys_task)
         await redis.setex(
             cache_key,
@@ -357,12 +354,11 @@ class TaskServiceAsync:
         )
 
         # 设置取消标志位（通知执行器停止），TTL = 1 小时
-        cancel_key = TaskServiceAsync.TASK_CANCEL_PREFIX + task_id
+        cancel_key = TASK_CANCEL_PREFIX + task_id
         await redis.setex(cancel_key, TaskServiceAsync.CANCEL_FLAG_TTL, 'true')
 
         await db.commit()
         logger.info("取消导出任务成功: taskId=%s", task_id)
-        return True
 
     @staticmethod
     async def retry_task(
@@ -598,7 +594,7 @@ class TaskServiceAsync:
             await db.commit()
 
             # 更新独立进度缓存（P1-05）
-            progress_key = TaskServiceAsync.TASK_PROGRESS_PREFIX + sys_task.task_id
+            progress_key = TASK_PROGRESS_PREFIX + sys_task.task_id
             await redis.setex(
                 progress_key,
                 TaskServiceAsync.TASK_EXPIRE_HOURS * 3600,
@@ -628,7 +624,7 @@ class TaskServiceAsync:
     @staticmethod
     async def _update_cache(redis: Redis, sys_task: SysTask) -> None:
         """更新缓存"""
-        cache_key = TaskServiceAsync.TASK_CACHE_PREFIX + sys_task.task_id
+        cache_key = TASK_CACHE_PREFIX + sys_task.task_id
         task_dict = TaskServiceAsync._task_to_dict(sys_task)
         await redis.setex(
             cache_key,
@@ -639,7 +635,7 @@ class TaskServiceAsync:
     @staticmethod
     async def _is_task_cancelled(redis: Redis, task_id: str) -> bool:
         """检查任务是否已被取消"""
-        cancel_key = TaskServiceAsync.TASK_CANCEL_PREFIX + task_id
+        cancel_key = TASK_CANCEL_PREFIX + task_id
         is_cancelled = await redis.get(cancel_key)
         if isinstance(is_cancelled, bytes):
             is_cancelled = is_cancelled.decode('utf-8')

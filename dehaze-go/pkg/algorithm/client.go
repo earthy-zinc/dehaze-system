@@ -328,9 +328,13 @@ func isRetryable(err error) bool {
 }
 
 // generateIdempotencyKey 生成随机幂等键
+// crypto/rand.Read 失败属于系统级故障（熵池耗尽等），直接 panic 避免生成可预测的幂等键
+// 破坏下游去重保障
 func generateIdempotencyKey() string {
 	b := make([]byte, 16)
-	_, _ = rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Errorf("生成幂等键失败: %w", err))
+	}
 	return hex.EncodeToString(b)
 }
 

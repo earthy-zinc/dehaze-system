@@ -2,6 +2,7 @@ package com.pei.dehaze.model.form;
 
 import com.pei.dehaze.common.enums.MenuTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -22,6 +23,7 @@ public class MenuForm {
     private String name;
 
     @Schema(description = "菜单类型(1-菜单；2-目录；3-外链；4-按钮权限)")
+    @NotNull(message = "菜单类型不能为空")
     private MenuTypeEnum type;
 
     @Schema(description = "路由路径")

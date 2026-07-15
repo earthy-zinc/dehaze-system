@@ -23,8 +23,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -79,10 +77,6 @@ class DatasetExportStrategyTest {
 
     @BeforeEach
     void setUp() {
-        // 注入依赖
-        ReflectionTestUtils.setField(strategy, "fileService", fileService);
-        ReflectionTestUtils.setField(strategy, "sysFileService", sysFileServiceDep);
-
         testTask = new SysTask();
         testTask.setTaskId("1");
 

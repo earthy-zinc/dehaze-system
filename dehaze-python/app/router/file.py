@@ -5,7 +5,7 @@ from urllib.parse import quote
 from app.config import settings
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.core.result import Result, error, success
+from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.schema.file import FilePageVO, FileUploadResultVO, FileVO
@@ -20,28 +20,21 @@ router = APIRouter(prefix="/api/v1/files",
                    tags=["文件管理"], dependencies=[Depends(get_current_user)])
 
 
-def _validate_file(file: UploadFile) -> tuple[bool, ResultCode | None, str]:
-    """
-    校验上传文件
-
-    Returns:
-        (是否有效, 错误码, 错误消息)
-    """
+def _validate_file(file: UploadFile) -> None:
+    """校验上传文件，不合法时抛出 BusinessException"""
     if not file.filename:
-        return False, ResultCode.PARAM_ERROR, "请选择文件"
+        raise BusinessException(ResultCode.PARAM_ERROR, "请选择文件")
 
     # 检查文件扩展名
     ext = file.filename.rsplit(
         ".", 1)[-1].lower() if "." in file.filename else ""
     if ext not in settings.ALLOWED_EXTENSIONS:
-        return False, ResultCode.FILE_TYPE_NOT_SUPPORTED, f"不支持的文件类型: .{ext}"
+        raise BusinessException(ResultCode.FILE_TYPE_NOT_SUPPORTED, f"不支持的文件类型: .{ext}")
 
     # 检查文件大小（通过 content-length 头，如果有的话）
     if file.size and file.size > settings.MAX_UPLOAD_SIZE:
         max_mb = settings.MAX_UPLOAD_SIZE // 1024 // 1024
-        return False, ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)"
-
-    return True, None, ""
+        raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
 
 
 @router.post(
@@ -55,11 +48,7 @@ async def upload_file(
     modelId: Optional[int] = Form(default=None, description="模型ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[FileUploadResultVO]:
-    # 校验文件
-    is_valid, error_code, error_msg = _validate_file(file)
-    if not is_valid:
-        assert error_code is not None
-        return error(error_msg, error_code.code)
+    _validate_file(file)
 
     # 读取文件内容
     content = await file.read()
@@ -67,41 +56,33 @@ async def upload_file(
     # 校验实际文件大小
     if len(content) > settings.MAX_UPLOAD_SIZE:
         max_mb = settings.MAX_UPLOAD_SIZE // 1024 // 1024
-        return error(f"文件大小超过限制 ({max_mb}MB)", ResultCode.FILE_TOO_LARGE.code)
+        raise BusinessException(ResultCode.FILE_TOO_LARGE, f"文件大小超过限制 ({max_mb}MB)")
 
-    try:
-        # 上传文件
-        if file.filename is None:
-            raise ValueError("文件名不能为空")
-        file_info = await FileService.upload_file(
-            db=db,
-            filename=file.filename,
-            content=content,
-            content_type=file.content_type or "application/octet-stream",
-        )
-        # 路由层显式提交：确保后续请求（如 MD5 校验）能读到已写入的数据
-        # get_db() 的 yield 后置 commit 发生在响应发送之后，会导致跨请求不可见
-        await db.commit()
+    # 上传文件
+    file_info = await FileService.upload_file(
+        db=db,
+        filename=file.filename,
+        content=content,
+        content_type=file.content_type or "application/octet-stream",
+    )
+    # 路由层显式提交：确保后续请求（如 MD5 校验）能读到已写入的数据
+    # get_db() 的 yield 后置 commit 发生在响应发送之后，会导致跨请求不可见
+    await db.commit()
 
-        return success(
-            data=FileUploadResultVO(
-                id=file_info.id,
-                name=file_info.name,
-                type=file_info.type,
-                size=file_info.size,
-                url=file_info.url,
-                path=file_info.path,
-                objectName=file_info.object_name,
-                md5=file_info.md5,
-                createTime=file_info.create_time,
-            ),
-            msg="文件上传成功",
-        )
-    except BusinessException:
-        raise
-    except Exception as e:
-        logger.error(f"文件上传失败: {e}", exc_info=True)
-        return error("文件上传失败", ResultCode.FILE_STORAGE_ERROR.code)
+    return success(
+        data=FileUploadResultVO(
+            id=file_info.id,
+            name=file_info.name,
+            type=file_info.type,
+            size=file_info.size,
+            url=file_info.url,
+            path=file_info.path,
+            objectName=file_info.object_name,
+            md5=file_info.md5,
+            createTime=file_info.create_time,
+        ),
+        msg="文件上传成功",
+    )
 
 
 @router.get(
@@ -214,16 +195,10 @@ async def delete_file(
     fileId: int = Query(..., description="文件ID"),
     db: AsyncSession = Depends(get_db),
 ) -> Result[None]:
-    try:
-        await FileService.delete_file_with_storage(db, fileId)
-        # 路由层显式提交：确保删除立即可见（同 upload_file）
-        await db.commit()
-        return success(msg="文件删除成功")
-    except BusinessException:
-        raise
-    except Exception as e:
-        logger.error(f"文件删除失败: {e}", exc_info=True)
-        return error("文件删除失败", ResultCode.FILE_STORAGE_ERROR.code)
+    await FileService.delete_file_with_storage(db, fileId)
+    # 路由层显式提交：确保删除立即可见（同 upload_file）
+    await db.commit()
+    return success(msg="文件删除成功")
 
 
 @router.get(

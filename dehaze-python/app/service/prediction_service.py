@@ -6,6 +6,7 @@
 - 预测日志写入 sys_pred_log
 """
 
+import asyncio
 import importlib
 import io
 import json
@@ -18,14 +19,15 @@ from typing import Optional
 
 import httpx
 import PIL.Image
-from sqlalchemy import select
 
 from app.database import async_session_factory
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.infrastructure.logging import _trace_id_var
+from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm
+from app.repository.algorithm_repository import algorithm_repository
 from app.repository.pred_eval_log_repository import pred_log_repository
 from app.utils.file import calculate_bytes_md5
 from algorithm.config import algorithm_config
@@ -87,10 +89,10 @@ class PredictionService:
         start = time.time()
 
         # 1. 从数据库获取算法信息
-        algorithm = await self._get_algorithm(algorithm_id)
+        algorithm = await self.get_algorithm(algorithm_id)
 
         # 2. 下载输入图片
-        image_bytes = await self._download_image(image_url)
+        image_bytes = await self.download_image(image_url)
         image_md5 = calculate_bytes_md5(image_bytes)
 
         # 3. 查询 Redis 缓存（基于 algorithmId + imageMd5）
@@ -122,7 +124,6 @@ class PredictionService:
             }
 
         # 4. 缓存未命中，调用算法去雾（在线程池中执行，避免阻塞事件循环）
-        import asyncio
         loop = asyncio.get_running_loop()
         result_bytes = await loop.run_in_executor(
             _inference_executor,
@@ -245,25 +246,20 @@ class PredictionService:
             set_current_user_id(None)
 
     @staticmethod
-    async def _get_algorithm(algorithm_id: int) -> SysAlgorithm:
+    async def get_algorithm(algorithm_id: int) -> SysAlgorithm:
         """从数据库获取算法"""
         async with async_session_factory() as session:
-            result = await session.execute(
-                select(SysAlgorithm).where(SysAlgorithm.id == algorithm_id)
-            )
-            algorithm = result.scalar_one_or_none()
+            algorithm = await algorithm_repository.get_by_id(session, algorithm_id)
             if algorithm is None:
-                raise BusinessException("请求资源不存在: 算法不存在")
+                raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在")
             return algorithm
 
-    async def _download_image(self, url: str) -> io.BytesIO:
+    async def download_image(self, url: str) -> io.BytesIO:
         """从URL或本地路径下载图片
 
         HTTP 下载采用指数退避重试（最多 3 次），仅对网络层错误和 5xx 响应重试，
         4xx 客户端错误不重试。
         """
-        import asyncio
-
         # 处理本地文件路径 /api/v1/files/download/... → upload/...
         if url.startswith("/api/v1/files/download/"):
             local_path = url[len("/api/v1/files/download/"):]
@@ -273,7 +269,7 @@ class PredictionService:
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(
                     None, self._read_file_sync, full_path)
-            raise FileNotFoundError(f"本地文件不存在: {full_path}")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"本地文件不存在: {full_path}")
 
         # 处理绝对本地路径
         if not url.startswith("http://") and not url.startswith("https://"):
@@ -282,7 +278,7 @@ class PredictionService:
                 loop = asyncio.get_running_loop()
                 return await loop.run_in_executor(
                     None, self._read_file_sync, local_path)
-            raise FileNotFoundError(f"图片文件不存在: {url}")
+            raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, f"图片文件不存在: {url}")
 
         # HTTP/HTTPS 下载（带指数退避重试）
         headers = {}
@@ -304,7 +300,10 @@ class PredictionService:
                 # 4xx 客户端错误不重试（请求格式错误，重试无意义）
                 # 5xx 服务端错误可重试
                 if 400 <= e.response.status_code < 500:
-                    raise
+                    raise BusinessException(
+                        ResultCode.RESOURCE_NOT_FOUND,
+                        f"图片下载失败 ({e.response.status_code}): {url}",
+                    ) from e
                 last_exc = e
                 logger.warning(
                     f"图片下载返回 {e.response.status_code} (attempt={attempt + 1}/{max_retry + 1}): {url}"
@@ -344,13 +343,17 @@ class PredictionService:
         try:
             algo_module = importlib.import_module(f"algorithm.{module_name}.run")
         except ImportError:
-            raise ValueError(
+            raise BusinessException(
+                ResultCode.SYSTEM_EXECUTION_ERROR,
                 f"算法模块未找到: algorithm.{module_name}.run, "
-                f"请确认 import_path '{import_path}' 是否正确"
+                f"请确认 import_path '{import_path}' 是否正确",
             )
 
         if not hasattr(algo_module, "dehaze"):
-            raise ValueError(f"算法模块 {module_name} 未导出 dehaze() 函数")
+            raise BusinessException(
+                ResultCode.SYSTEM_EXECUTION_ERROR,
+                f"算法模块 {module_name} 未导出 dehaze() 函数",
+            )
 
         dehaze_fn = algo_module.dehaze
 
@@ -372,12 +375,13 @@ class PredictionService:
             buf.seek(0)
             return buf
         else:
-            raise ValueError(f"dehaze() 返回了不支持的类型: {type(result)}")
+            raise BusinessException(
+                ResultCode.SYSTEM_EXECUTION_ERROR,
+                f"dehaze() 返回了不支持的类型: {type(result)}",
+            )
 
     async def _upload_result(self, result_bytes: io.BytesIO, algorithm_name: str) -> str:
         """上传结果到本地文件存储，由文件管理接口提供服务"""
-        import asyncio
-
         date_str = datetime.now().strftime("%Y%m%d")
         filename = f"{algorithm_name}_{int(time.time() * 1000)}.png"
 

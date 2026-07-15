@@ -1,6 +1,7 @@
 package com.pei.dehaze.mq;
 
 import com.pei.dehaze.config.property.RabbitMQProperties;
+import com.pei.dehaze.filter.TraceIdFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
@@ -29,16 +30,6 @@ public class RabbitMQPublisher {
     private final RabbitMQProperties properties;
 
     /**
-     * 发布消息到指定队列
-     *
-     * @param queueName 队列名称 (如 export, download, thumbnail)
-     * @param payload   消息内容 (JSON 字符串)
-     */
-    public void publish(String queueName, String payload) {
-        publish(queueName, payload, null);
-    }
-
-    /**
      * 发布消息到指定队列（带 TraceID）
      *
      * @param queueName 队列名称
@@ -57,52 +48,11 @@ public class RabbitMQPublisher {
 
         // 设置 TraceID 到消息头
         if (traceId != null && !traceId.isEmpty()) {
-            message.getMessageProperties().setHeader("X-Trace-Id", traceId);
+            message.getMessageProperties().setHeader(TraceIdFilter.TRACE_ID_HEADER, traceId);
         }
 
         rabbitTemplate.send(exchange, routingKey, message);
         log.debug("RabbitMQ 消息已发布: exchange={}, routingKey={}, traceId={}",
-                exchange, routingKey, traceId);
-    }
-
-    /**
-     * 发布对象消息（自动序列化为 JSON）
-     *
-     * @param queueName 队列名称
-     * @param object    消息对象
-     */
-    public void publishObject(String queueName, Object object) {
-        String routingKey = resolveRoutingKey(queueName);
-        String exchange = properties.getExchange().getName();
-
-        rabbitTemplate.convertAndSend(exchange, routingKey, object, message -> {
-            message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-            return message;
-        });
-
-        log.debug("RabbitMQ 对象消息已发布: exchange={}, routingKey={}", exchange, routingKey);
-    }
-
-    /**
-     * 发布对象消息（带 TraceID）
-     *
-     * @param queueName 队列名称
-     * @param object    消息对象
-     * @param traceId   追踪 ID
-     */
-    public void publishObject(String queueName, Object object, String traceId) {
-        String routingKey = resolveRoutingKey(queueName);
-        String exchange = properties.getExchange().getName();
-
-        rabbitTemplate.convertAndSend(exchange, routingKey, object, message -> {
-            message.getMessageProperties().setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-            if (traceId != null && !traceId.isEmpty()) {
-                message.getMessageProperties().setHeader("X-Trace-Id", traceId);
-            }
-            return message;
-        });
-
-        log.debug("RabbitMQ 对象消息已发布: exchange={}, routingKey={}, traceId={}",
                 exchange, routingKey, traceId);
     }
 

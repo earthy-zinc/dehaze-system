@@ -4,7 +4,7 @@
 """
 from typing import Optional
 
-from sqlalchemy import delete, desc, func, or_, select, update
+from sqlalchemy import delete, desc, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import get_audit_update_values
@@ -83,13 +83,6 @@ class InputHistoryRepository(BaseRepository[SysInputHistory]):
         stmt = delete(SysInputHistory).where(SysInputHistory.user_id == user_id)
         result = await db.execute(stmt)
         return result.rowcount
-
-    async def count_by_user(self, db: AsyncSession, user_id: int) -> int:
-        """统计用户历史记录数"""
-        stmt = select(func.count()).select_from(SysInputHistory).where(
-            SysInputHistory.user_id == user_id
-        )
-        return (await db.execute(stmt)).scalar() or 0
 
     async def mark_all_synced(self, db: AsyncSession, user_id: int) -> int:
         """将用户所有未同步记录标记为已同步"""

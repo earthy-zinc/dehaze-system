@@ -1,12 +1,10 @@
 package api
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -14,8 +12,8 @@ import (
 	favrepo "github.com/earthyzinc/dehaze-go/internal/repository/algorithm_favorite"
 	algoservice "github.com/earthyzinc/dehaze-go/internal/service/algorithm"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
 type AlgorithmApi struct {
@@ -46,17 +44,9 @@ func (api *AlgorithmApi) GetList(c *gin.Context) {
 // Compare 算法对比
 func (api *AlgorithmApi) Compare(c *gin.Context) {
 	ctx := c.Request.Context()
-	idsStr := c.Query("ids")
-	var ids []int64
-	for _, s := range strings.Split(idsStr, ",") {
-		id, err := strconv.ParseInt(strings.TrimSpace(s), 10, 64)
-		if err != nil {
-			continue
-		}
-		ids = append(ids, id)
-	}
-	if len(ids) == 0 {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+	ids, err := parseIDsFromCSV(c.Query("ids"))
+	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 	algorithms, err := api.algorithmService.Compare(ctx, ids)
@@ -134,18 +124,12 @@ func (api *AlgorithmApi) Update(c *gin.Context) {
 // Delete 删除算法
 func (api *AlgorithmApi) Delete(c *gin.Context) {
 	ctx := c.Request.Context()
-	idsStr := c.Query("ids")
-	idsSlice := []int64{}
-	for _, idStr := range strings.Split(idsStr, ",") {
-		if id, err := strconv.ParseInt(idStr, 10, 64); err == nil {
-			idsSlice = append(idsSlice, id)
-		}
-	}
-	if len(idsSlice) == 0 {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "参数错误"))
+	ids, err := parseIDsFromCSV(c.Query("ids"))
+	if err != nil {
+		_ = c.Error(err)
 		return
 	}
-	if err := api.algorithmService.Delete(ctx, idsSlice); err != nil {
+	if err := api.algorithmService.Delete(ctx, ids); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -177,7 +161,11 @@ func (api *AlgorithmApi) UpdateStatus(c *gin.Context) {
 // ToggleFavorite 切换算法收藏状态
 func (api *AlgorithmApi) ToggleFavorite(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	idStr := c.Param("id")
 	algorithmID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -206,15 +194,17 @@ func (api *AlgorithmApi) ToggleFavorite(c *gin.Context) {
 }
 
 // ListFavorites 获取用户收藏列表
+// favRepo.FindByUserID 使用 Find()，无记录时返回空切片而非 ErrRecordNotFound，
+// 因此无需在 handler 层做 not-found 兜底
 func (api *AlgorithmApi) ListFavorites(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	favorites, err := api.favRepo.FindByUserID(ctx, userID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			common.OkWithData([]model.SysAlgorithmFavorite{}, c)
-			return
-		}
 		_ = c.Error(common.WrapBizError(common.DATABASE_ERROR, "查询收藏列表失败", err))
 		return
 	}
@@ -224,7 +214,11 @@ func (api *AlgorithmApi) ListFavorites(c *gin.Context) {
 // CheckFavorite 检查是否已收藏
 func (api *AlgorithmApi) CheckFavorite(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	idStr := c.Query("algorithmId")
 	algorithmID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -269,11 +263,6 @@ func (api *AlgorithmApi) GetMonitorData(c *gin.Context) {
 		return
 	}
 	common.OkWithData(monitor, c)
-}
-
-// GetMonitorStats 获取算法统计报表（与监控数据结构一致）
-func (api *AlgorithmApi) GetMonitorStats(c *gin.Context) {
-	api.GetMonitorData(c)
 }
 
 // ExportAlgorithm 导出单个算法（返回 JSON 文件下载）

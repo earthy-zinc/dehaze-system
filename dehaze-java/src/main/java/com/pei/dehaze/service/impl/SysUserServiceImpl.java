@@ -2,7 +2,6 @@ package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.collection.CollectionUtil;
-import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -13,6 +12,7 @@ import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.DateUtils;
+import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.UserConverter;
 import com.pei.dehaze.mapper.SysUserMapper;
 import com.pei.dehaze.model.bo.UserBO;
@@ -34,11 +34,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * 用户业务实现类
@@ -109,7 +107,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         String username = userForm.getUsername();
 
         long count = this.count(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, username));
-        Assert.isTrue(count == 0, "用户名已存在");
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "用户名已存在");
+        }
 
         // 实体转换 form->entity
         SysUser entity = userConverter.form2Entity(userForm);
@@ -145,7 +145,9 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 .eq(SysUser::getUsername, username)
                 .ne(SysUser::getId, userId)
         );
-        Assert.isTrue(count == 0, "用户名已存在");
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "用户名已存在");
+        }
 
         // form -> entity
         SysUser entity = userConverter.form2Entity(userForm);
@@ -170,11 +172,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
      */
     @Override
     public boolean deleteUsers(String idsStr) {
-        Assert.isTrue(StrUtil.isNotBlank(idsStr), "删除的用户数据为空");
+        if (StrUtil.isBlank(idsStr)) {
+            throw new BusinessException(ResultCode.PARAM_ERROR, "删除的用户数据为空");
+        }
         // 逻辑删除
-        List<Long> ids = Arrays.stream(idsStr.split(","))
-                .map(Long::parseLong)
-                .collect(Collectors.toList());
+        List<Long> ids = IdUtils.parseIdList(idsStr);
         return this.removeByIds(ids);
 
     }
@@ -208,17 +210,20 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public UserAuthInfo getUserAuthInfo(String username) {
         UserAuthInfo userAuthInfo = this.baseMapper.getUserAuthInfo(username);
-        if (userAuthInfo != null) {
-            Set<String> roles = userAuthInfo.getRoles();
-            if (CollectionUtil.isNotEmpty(roles)) {
-                Set<String> perms = menuService.listRolePerms(roles);
-                userAuthInfo.setPerms(perms);
-            }
-
-            // 获取最大范围的数据权限
-            Integer dataScope = roleService.getMaximumDataScope(roles);
-            userAuthInfo.setDataScope(dataScope);
+        if (userAuthInfo == null) {
+            throw new BusinessException(ResultCode.USERNAME_OR_PASSWORD_ERROR);
         }
+
+        Set<String> roles = userAuthInfo.getRoles();
+        if (CollectionUtil.isNotEmpty(roles)) {
+            Set<String> perms = menuService.listRolePerms(roles);
+            userAuthInfo.setPerms(perms);
+        }
+
+        // 获取最大范围的数据权限
+        Integer dataScope = roleService.getMaximumDataScope(roles);
+        userAuthInfo.setDataScope(dataScope);
+
         return userAuthInfo;
     }
 
@@ -263,7 +268,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 用户权限集合
         if (CollUtil.isNotEmpty(roles)) {
-            Set<String> perms = permissionService.getRolePermsFormCache(roles);
+            Set<String> perms = permissionService.getRolePermsFromCache(roles);
             userInfoVO.setPerms(perms);
         }
         return userInfoVO;

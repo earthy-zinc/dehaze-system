@@ -41,10 +41,12 @@ class InputHistoryService:
         return list_vo, total
 
     @staticmethod
-    async def get_history(db: AsyncSession, history_id: int) -> Optional[dict[str, Any]]:
-        """查询历史记录详情"""
+    async def get_history(db: AsyncSession, history_id: int, user_id: int) -> Optional[dict[str, Any]]:
+        """查询历史记录详情（仅限本人）"""
         history = await input_history_repository.get_by_id(db, history_id)
         if not history:
+            return None
+        if history.user_id != user_id:
             return None
         return InputHistoryService._to_vo(history)
 

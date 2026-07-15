@@ -7,6 +7,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	ihservice "github.com/earthyzinc/dehaze-go/internal/service/input_history"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,7 +23,11 @@ func NewSysInputHistoryApi(service *ihservice.InputHistoryService) *SysInputHist
 // ListHistory 分页查询历史记录
 func (api *SysInputHistoryApi) ListHistory(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	pageNum, pageSize := getPageParams(c)
 	inputSource := c.Query("inputSource")
 	keyword := c.Query("keywords")
@@ -52,7 +57,12 @@ func (api *SysInputHistoryApi) GetHistory(c *gin.Context) {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "ID格式不正确"))
 		return
 	}
-	history, err := api.service.GetByID(c.Request.Context(), id)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	history, err := api.service.GetByID(c.Request.Context(), id, userID)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -63,7 +73,11 @@ func (api *SysInputHistoryApi) GetHistory(c *gin.Context) {
 // CreateHistory 创建历史记录
 func (api *SysInputHistoryApi) CreateHistory(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
 	var history model.SysInputHistory
 	if err := c.ShouldBindJSON(&history); err != nil {
@@ -83,7 +97,11 @@ func (api *SysInputHistoryApi) CreateHistory(c *gin.Context) {
 // UpdateHistory 更新历史记录
 func (api *SysInputHistoryApi) UpdateHistory(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	idStr := c.Param("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
@@ -113,7 +131,12 @@ func (api *SysInputHistoryApi) DeleteHistory(c *gin.Context) {
 		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "ID格式不正确"))
 		return
 	}
-	if err := api.service.Delete(ctx, id); err != nil {
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
+	if err := api.service.Delete(ctx, id, userID); err != nil {
 		_ = c.Error(err)
 		return
 	}
@@ -123,7 +146,11 @@ func (api *SysInputHistoryApi) DeleteHistory(c *gin.Context) {
 // BatchDeleteHistory 批量删除历史记录
 func (api *SysInputHistoryApi) BatchDeleteHistory(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
 	var req bo.BatchDeleteForm
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -141,7 +168,11 @@ func (api *SysInputHistoryApi) BatchDeleteHistory(c *gin.Context) {
 // ClearHistory 清空历史记录
 func (api *SysInputHistoryApi) ClearHistory(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
 	count, err := api.service.ClearAll(ctx, userID)
 	if err != nil {
@@ -149,10 +180,4 @@ func (api *SysInputHistoryApi) ClearHistory(c *gin.Context) {
 		return
 	}
 	common.OkWithData(count, c)
-}
-
-// SyncHistory 同步历史记录
-func (api *SysInputHistoryApi) SyncHistory(c *gin.Context) {
-	// Go后端无需从Python同步，直接返回0
-	common.OkWithData(int64(0), c)
 }

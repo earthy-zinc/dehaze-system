@@ -1,8 +1,8 @@
 package com.pei.dehaze.security.util;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.convert.Convert;
 import cn.hutool.core.text.CharSequenceUtil;
+import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.security.model.SysUserDetails;
 import org.springframework.security.core.Authentication;
@@ -40,7 +40,7 @@ public class SecurityUtils {
     public static Long getUserId() {
         SysUserDetails user = getUser();
         if (user != null) {
-            return Convert.toLong(user.getUserId());
+            return user.getUserId();
         }
         return null;
     }
@@ -51,7 +51,7 @@ public class SecurityUtils {
     public static Long getDeptId() {
         SysUserDetails user = getUser();
         if (user != null) {
-            return Convert.toLong(user.getDeptId());
+            return user.getDeptId();
         }
         return null;
     }
@@ -64,7 +64,7 @@ public class SecurityUtils {
     public static Integer getDataScope() {
         SysUserDetails user = getUser();
         if (user != null) {
-            return Convert.toInt(user.getDataScope());
+            return user.getDataScope();
         }
         return null;
     }
@@ -80,8 +80,8 @@ public class SecurityUtils {
         if (authentication != null) {
             Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
             if (CollUtil.isNotEmpty(authorities)) {
-                return authorities.stream().filter(item -> item.getAuthority().startsWith("ROLE_"))
-                        .map(item -> CharSequenceUtil.removePrefix(item.getAuthority(), "ROLE_"))
+                return authorities.stream().filter(item -> item.getAuthority().startsWith(SecurityConstants.ROLE_PREFIX))
+                        .map(item -> CharSequenceUtil.removePrefix(item.getAuthority(), SecurityConstants.ROLE_PREFIX))
                         .collect(Collectors.toSet());
             }
         }

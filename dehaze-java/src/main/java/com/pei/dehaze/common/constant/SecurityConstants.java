@@ -35,5 +35,14 @@ public interface SecurityConstants {
      */
     String JWT_TOKEN_PREFIX = "Bearer ";
 
+    /**
+     * Token 类型
+     */
+    String TOKEN_TYPE = "Bearer";
+
+    /**
+     * 角色权限标识前缀
+     */
+    String ROLE_PREFIX = "ROLE_";
 
 }

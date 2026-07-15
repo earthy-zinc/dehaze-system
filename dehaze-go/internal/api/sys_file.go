@@ -30,7 +30,6 @@ func NewSysFileApi(fileService *fileservice.FileService) *SysFileApi {
 // @Accept multipart/form-data
 // @Produce application/json
 // @Param file formData file true "表单文件对象"
-// @Param modelId formData int false "模型id"
 // @Success 200 {object} common.Response{data=model.SysFile}
 // @Router /api/v1/files [post]
 func (api *SysFileApi) UploadFile(c *gin.Context) {
@@ -76,11 +75,7 @@ func (api *SysFileApi) UploadFile(c *gin.Context) {
 	// 5. 构建 baseURL
 	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
 
-	// 6. 获取模型ID参数
-	modelIdStr := c.PostForm("modelId")
-	_ = modelIdStr // 暂未使用，WPX 功能后续实现
-
-	// 7. 调用 Service 上传
+	// 6. 调用 Service 上传
 	sysFile, err := api.fileService.UploadFile(ctx, fileHeader, reader, md5Hash, baseURL)
 	if err != nil {
 		_ = c.Error(err)

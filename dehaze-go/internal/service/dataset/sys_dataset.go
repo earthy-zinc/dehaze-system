@@ -150,50 +150,55 @@ func (datasetService *DatasetService) getAllDatasetStats(ctx context.Context) (m
 		logger.Debug("发现叶子数据集", zap.Int("count", len(leafIDs)))
 
 		itemResults, err := datasetService.datasetItemRepo.CountItemsPerDataset(ctx, leafIDs)
-		if err == nil {
-			for _, r := range itemResults {
-				if stats, ok := statsMap[r.DatasetID]; ok {
-					stats.ItemCount = r.Cnt
-				}
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "统计数据项数量失败", err)
+		}
+		for _, r := range itemResults {
+			if stats, ok := statsMap[r.DatasetID]; ok {
+				stats.ItemCount = r.Cnt
 			}
 		}
 
 		statsResults, err := datasetService.statsRepo.CountDatasetStatsBatch(ctx, leafIDs)
-		if err == nil {
-			for _, r := range statsResults {
-				if stats, ok := statsMap[r.DatasetID]; ok {
-					stats.FileCount = r.FileCount
-					stats.TotalSize = r.TotalSize
-					stats.AnnotatedCount = r.AnnotatedCount
-					stats.UnannotatedCount = r.UnannotatedCount
-				}
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "统计文件数量失败", err)
+		}
+		for _, r := range statsResults {
+			if stats, ok := statsMap[r.DatasetID]; ok {
+				stats.FileCount = r.FileCount
+				stats.TotalSize = r.TotalSize
+				stats.AnnotatedCount = r.AnnotatedCount
+				stats.UnannotatedCount = r.UnannotatedCount
 			}
 		}
 
 		sceneResults, err := datasetService.statsRepo.CountSceneDistributionBatch(ctx, leafIDs)
-		if err == nil {
-			for _, r := range sceneResults {
-				if stats, ok := statsMap[r.DatasetID]; ok {
-					stats.SceneDistribution[r.Key] += r.Cnt
-				}
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "统计场景分布失败", err)
+		}
+		for _, r := range sceneResults {
+			if stats, ok := statsMap[r.DatasetID]; ok {
+				stats.SceneDistribution[r.Key] += r.Cnt
 			}
 		}
 
 		hazeResults, err := datasetService.statsRepo.CountHazeDistributionBatch(ctx, leafIDs)
-		if err == nil {
-			for _, r := range hazeResults {
-				if stats, ok := statsMap[r.DatasetID]; ok {
-					stats.HazeDistribution[r.Key] += r.Cnt
-				}
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "统计雾霾程度分布失败", err)
+		}
+		for _, r := range hazeResults {
+			if stats, ok := statsMap[r.DatasetID]; ok {
+				stats.HazeDistribution[r.Key] += r.Cnt
 			}
 		}
 
 		formatResults, err := datasetService.statsRepo.CountFormatDistributionBatch(ctx, leafIDs)
-		if err == nil {
-			for _, r := range formatResults {
-				if stats, ok := statsMap[r.DatasetID]; ok {
-					stats.FormatDistribution[r.Key] += r.Cnt
-				}
+		if err != nil {
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "统计文件格式分布失败", err)
+		}
+		for _, r := range formatResults {
+			if stats, ok := statsMap[r.DatasetID]; ok {
+				stats.FormatDistribution[r.Key] += r.Cnt
 			}
 		}
 	}
@@ -512,15 +517,6 @@ func (datasetService *DatasetService) entityToVO(entity *model.SysDataset, stats
 	return voItem
 }
 
-func contains(ids []int64, id int64) bool {
-	for _, v := range ids {
-		if v == id {
-			return true
-		}
-	}
-	return false
-}
-
 func (datasetService *DatasetService) GetDatasetOptions(ctx context.Context) (options []vo.Option, err error) {
 	cacheKey := "dataset:tree:options"
 
@@ -702,6 +698,20 @@ func (datasetService *DatasetService) Update(ctx context.Context, id int64, form
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
 	}
 
+	// 循环引用检测：父级不能是自己或自己的后代
+	if form.ParentID > 0 && form.ParentID != dataset.ParentID {
+		if form.ParentID == id {
+			return nil, common.NewBizError(common.PARAM_ERROR, "不能将数据集的父级设置为自己")
+		}
+		isDesc, err := datasetService.isDescendant(ctx, id, form.ParentID)
+		if err != nil {
+			return nil, err
+		}
+		if isDesc {
+			return nil, common.NewBizError(common.PARAM_ERROR, "不能将父级设置为自己的子数据集")
+		}
+	}
+
 	if form.Name != dataset.Name || form.ParentID != dataset.ParentID {
 		exists, err := datasetService.datasetRepo.ExistsByParentIDAndName(ctx, form.ParentID, form.Name, id)
 		if err != nil {
@@ -729,29 +739,28 @@ func (datasetService *DatasetService) Update(ctx context.Context, id int64, form
 	return datasetService.GetFormData(ctx, id)
 }
 
-func (datasetService *DatasetService) Delete(ctx context.Context, ids []int64) error {
-	if len(ids) == 0 {
-		return common.NewBizError(common.PARAM_ERROR, "删除数据为空")
-	}
-
-	// 校验数据集是否存在
-	for _, id := range ids {
-		dataset, err := datasetService.datasetRepo.FindByID(ctx, id)
+// isDescendant 检查 descendantID 是否是 ancestorID 的后代
+// 通过从 descendantID 向上遍历父级链实现
+func (datasetService *DatasetService) isDescendant(ctx context.Context, ancestorID int64, descendantID int64) (bool, error) {
+	currentID := descendantID
+	const maxDepth = 20 // 防止异常数据导致死循环
+	for i := 0; i < maxDepth && currentID > 0; i++ {
+		ds, err := datasetService.datasetRepo.FindByID(ctx, currentID)
 		if err != nil {
-			return common.WrapBizError(common.DATABASE_ERROR, "查询数据集失败", err)
+			return false, common.WrapBizError(common.DATABASE_ERROR, "查询数据集失败", err)
 		}
-		if dataset == nil {
-			return common.NewBizError(common.RESOURCE_NOT_FOUND, "数据集不存在")
+		if ds == nil {
+			return false, nil
 		}
+		if ds.ParentID == ancestorID {
+			return true, nil
+		}
+		if ds.ParentID == 0 || ds.ParentID == currentID {
+			return false, nil
+		}
+		currentID = ds.ParentID
 	}
-
-	if err := datasetService.datasetRepo.Delete(ctx, ids); err != nil {
-		return common.WrapBizError(common.DATABASE_ERROR, "删除数据集失败", err)
-	}
-
-	datasetService.evictAllDatasetsCache(ctx)
-
-	return nil
+	return false, nil
 }
 
 func toTreeDataNodes(datasets []model.SysDataset) []utils.TreeDataNode {

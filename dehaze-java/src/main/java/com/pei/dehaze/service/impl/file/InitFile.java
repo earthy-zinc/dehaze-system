@@ -15,8 +15,7 @@ import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.entity.SysWpxFile;
 import com.pei.dehaze.service.*;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
-import org.jetbrains.annotations.NotNull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -26,11 +25,16 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class InitFile {
+
+    private static final String DATASET_TYPE_DEHAZE = "图像去雾";
+    private static final List<String> HAZE_FOLDER_FLAGS = List.of("haze", "hazy");
+    private static final List<String> CLEAN_FOLDER_FLAGS = List.of("clean", "clear", "gt");
+
     @Value("${file.baseUrl}")
     private String baseUrl;
 
@@ -40,20 +44,11 @@ public class InitFile {
     @Value("${file.init}")
     private boolean init;
 
-    @Resource
-    private SysDatasetService sysDatasetService;
-
-    @Resource
-    private SysDatasetItemService sysDatasetItemService;
-
-    @Resource
-    private SysItemFileService sysItemFileService;
-
-    @Resource
-    private SysWpxFileService sysWpxFileService;
-
-    @Resource
-    private SysFileService sysFileService;
+    private final SysDatasetService sysDatasetService;
+    private final SysDatasetItemService sysDatasetItemService;
+    private final SysItemFileService sysItemFileService;
+    private final SysWpxFileService sysWpxFileService;
+    private final SysFileService sysFileService;
 
     /**
      * 文件保存后下次仅需创建 datasetItem 和 itemFile 映射关系表即可 仅需删除这两张表
@@ -69,7 +64,7 @@ public class InitFile {
             ArrayList<PairedImage> pairedImages = getPairedImages(datasetId);
             // 针对每一个数据项，进行上传
             pairedImages.forEach(pairedImage -> {
-                SysDatasetItem datasetItem = sysDatasetItemService.createDatasetItem(datasetId);
+                SysDatasetItem datasetItem = sysDatasetItemService.createDatasetItem(datasetId, null);
                 Long itemId = datasetItem.getId();
 
                 String cleanPath = pairedImage.getCleanPath();
@@ -90,19 +85,17 @@ public class InitFile {
         // 获取数据集信息并验证类型
         SysDataset sysDataset = sysDatasetService.getById(id);
         String datasetType = sysDataset.getType();
-        if (!"图像去雾".equals(datasetType)) {
+        if (!DATASET_TYPE_DEHAZE.equals(datasetType)) {
             throw new BusinessException("暂不支持非去雾数据集初始化");
         }
 
         // 获取数据集路径和文件夹标识
         String filePath = sysDataset.getPath();
         Path datasetBasePath = Path.of(datasetPath, filePath);
-        List<String> hazeFlags = Arrays.asList("haze", "hazy");
-        List<String> cleanFlags = Arrays.asList("clean", "clear", "gt", "GT");
 
-        // 获取雾霾图像和清晰图像文件夹路径
-        String hazeFlag = getValidPath(hazeFlags, datasetBasePath);
-        String cleanFlag = getValidPath(cleanFlags, datasetBasePath);
+        // 获取雾霾图像和清晰图像文件夹路径（大小写不敏感匹配）
+        String hazeFlag = getValidPath(HAZE_FOLDER_FLAGS, datasetBasePath);
+        String cleanFlag = getValidPath(CLEAN_FOLDER_FLAGS, datasetBasePath);
 
         if (hazeFlag == null || cleanFlag == null) {
             throw new BusinessException("数据集目录" + filePath + "下未找到清晰图像或雾霾图像文件夹");
@@ -124,7 +117,7 @@ public class InitFile {
 
     private ItemFileBO createDatasetItemBO(String filePath, ImageTypeEnum type) {
         File file = new File(filePath);
-        if (!file.exists() && !file.isFile()) {
+        if (!file.exists() || !file.isFile()) {
             throw new BusinessException("File not found: " + filePath);
         }
         // 获取文件所在文件夹路径
@@ -162,6 +155,9 @@ public class InitFile {
             // 根据原始图片md5查询原始文件id
             String originMd5 = sysWpxFile.getOriginMd5();
             SysFile originSysFile = sysFileService.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, originMd5));
+            if (originSysFile == null) {
+                throw new BusinessException("未找到原始文件: md5=" + originMd5);
+            }
             sysWpxFile.setOriginFileId(originSysFile.getId());
 
             // 根据新文件路径上传新图片
@@ -175,10 +171,14 @@ public class InitFile {
     }
 
     private static String getValidPath(List<String> flags, Path basePath) {
-        for (String flag : flags) {
-            Path path = basePath.resolve(flag);
-            if (PathUtil.isDirectory(path)) {
-                return flag;
+        File[] subDirs = basePath.toFile().listFiles(File::isDirectory);
+        if (subDirs == null) {
+            return null;
+        }
+        for (File subDir : subDirs) {
+            String dirName = subDir.getName();
+            if (flags.stream().anyMatch(flag -> flag.equalsIgnoreCase(dirName))) {
+                return dirName;
             }
         }
         return null;
@@ -196,8 +196,10 @@ public class InitFile {
                 .toList();
     }
 
-    @NotNull
     private static ArrayList<PairedImage> getPairImages(List<String> hazeImages, List<String> cleanImages) {
+        if (cleanImages.isEmpty() || hazeImages.isEmpty()) {
+            throw new BusinessException("成对图片数量不符：清晰图或雾图列表为空");
+        }
         if (hazeImages.size() % cleanImages.size() != 0) {
             throw new BusinessException("成对图片数量不符");
         }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
+	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
@@ -59,6 +60,37 @@ func NewTaskService(
 // GetTaskExecutor 获取任务执行器（用于关闭）
 func (ts *TaskService) GetTaskExecutor() AsyncTaskExecutor {
 	return ts.taskExecutor
+}
+
+// GetPage 任务分页列表
+func (ts *TaskService) GetPage(ctx context.Context, q *query.TaskPageQuery) (*vo.PageResult[vo.TaskVO], error) {
+	readResult, err := ts.taskRepo.FindPage(ctx, q)
+	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询任务列表失败", err)
+	}
+
+	voList := make([]vo.TaskVO, 0, len(readResult.List))
+	for i := range readResult.List {
+		item := &readResult.List[i]
+		voList = append(voList, vo.TaskVO{
+			TaskID:         item.TaskID,
+			Status:         item.Status,
+			Progress:       item.Progress,
+			TotalFiles:     item.TotalFiles,
+			ProcessedFiles: item.ProcessedFiles,
+			DownloadURL:    item.DownloadURL,
+			ExpiresAt:      item.ExpiresAt,
+			CreatedAt:      item.CreatedAt,
+			StartedAt:      item.StartedAt,
+			CompletedAt:    item.CompletedAt,
+			Error:          item.Error,
+		})
+	}
+
+	return &vo.PageResult[vo.TaskVO]{
+		List:  voList,
+		Total: readResult.Total,
+	}, nil
 }
 
 // CreateExportTask 创建导出任务

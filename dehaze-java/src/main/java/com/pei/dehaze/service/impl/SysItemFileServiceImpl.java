@@ -3,6 +3,7 @@ package com.pei.dehaze.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
+import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.common.util.FilePathBuilder;
 import com.pei.dehaze.common.util.FileUploadUtils;
 import com.pei.dehaze.mapper.SysDatasetItemMapper;
@@ -23,12 +24,14 @@ import com.pei.dehaze.model.vo.SimpleImageUrlVO;
 import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
-import jakarta.annotation.Resource;
-import org.jetbrains.annotations.NotNull;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -37,36 +40,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 @Service
+@RequiredArgsConstructor
 public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysItemFile>
         implements SysItemFileService {
 
-    @Resource
-    private SysFileService sysFileService;
-
-    @Resource
-    private ImageProcessingService imageProcessingService;
-
-    @Resource
-    private FilePathBuilder filePathBuilder;
-
-    @Resource
-    private ApplicationEventPublisher eventPublisher;
-
+    private final SysFileService sysFileService;
+    private final ImageProcessingService imageProcessingService;
+    private final FilePathBuilder filePathBuilder;
+    private final ApplicationEventPublisher eventPublisher;
     // 使用 Mapper 直接查询，避免循环依赖
-    @Resource
-    private SysDatasetItemMapper sysDatasetItemMapper;
-
-    @Resource
-    private SysDatasetMapper sysDatasetMapper;
+    private final SysDatasetItemMapper sysDatasetItemMapper;
+    private final SysDatasetMapper sysDatasetMapper;
 
     @Override
     public ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO) {
@@ -83,21 +68,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         SysItemFile sysItemFile = saveItemFileRecord(itemId, itemBO, sysFile, thumbnailSysFile);
 
         ImageUrlVO result = new ImageUrlVO();
-        result.setId(sysItemFile.getId());
-        result.setItemId(sysItemFile.getItemId());
-        result.setType(sysItemFile.getType());
-        result.setDescription(sysItemFile.getDescription());
-        result.setUrl(sysFile.getUrl());
-        result.setThumbnailUrl(thumbnailSysFile.getUrl());
-        result.setFileName(sysFile.getName());
-        result.setFormattedSize(sysFile.getSize());
-        result.setFormat(sysFile.getType());
-        result.setWidth(sysItemFile.getWidth());
-        result.setHeight(sysItemFile.getHeight());
-        result.setSceneType(sysItemFile.getSceneType());
-        result.setHazeLevel(sysItemFile.getHazeLevel());
-        result.setUsageCount(0L);
-        result.setCreateTime(sysItemFile.getCreateTime());
+        populateImageUrlVO(result, sysItemFile, sysFile, thumbnailSysFile);
 
         // 发布文件创建事件，通知数据集统计更新
         eventPublisher.publishEvent(new ItemFileCreatedEvent(itemId, sysFile.getId()));
@@ -137,7 +108,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     public boolean deleteFile(Long id) {
         SysItemFile sysItemFile = this.getById(id);
         if (sysItemFile == null) {
-            throw new BusinessException("图片不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片不存在");
         }
 
         // 注：取消配对完整性校验（"必须保留一张清晰图"），适配不同数据集规范
@@ -192,7 +163,6 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         return result;
     }
 
-    @NotNull
     private ItemFileBO getThumbnailItemBO(ItemFileBO itemBO) {
         // 使用 ImageProcessingService 生成缩略图
         File thumbnailFile = imageProcessingService.generateThumbnail(itemBO.getFile(), 400, 400);
@@ -242,38 +212,15 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     public ImageUrlVO getImageById(Long id) {
         SysItemFile itemFile = this.getById(id);
         if (itemFile == null) {
-            throw new BusinessException("图片不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片不存在");
         }
 
         ImageUrlVO detail = new ImageUrlVO();
-        detail.setId(itemFile.getId());
-        detail.setItemId(itemFile.getItemId());
-        detail.setType(itemFile.getType());
-        detail.setDescription(itemFile.getDescription());
-        detail.setSceneType(itemFile.getSceneType());
-        detail.setHazeLevel(itemFile.getHazeLevel());
-        detail.setWidth(itemFile.getWidth());
-        detail.setHeight(itemFile.getHeight());
-        detail.setUsageCount(itemFile.getUsageCount() != null ? itemFile.getUsageCount() : 0L);
-        detail.setCreateTime(itemFile.getCreateTime());
-
-        // 获取文件信息
         SysFile sysFile = sysFileService.getById(itemFile.getFileId());
-        if (sysFile != null) {
-            detail.setFileName(sysFile.getName());
-            detail.setFormattedSize(sysFile.getSize());
-            detail.setFormat(sysFile.getType());
-            detail.setUrl(sysFile.getUrl());
-            detail.setMd5(sysFile.getMd5());
-        }
-
-        // 获取缩略图URL
-        if (itemFile.getThumbnailFileId() != null) {
-            SysFile thumbnailFile = sysFileService.getById(itemFile.getThumbnailFileId());
-            if (thumbnailFile != null) {
-                detail.setThumbnailUrl(thumbnailFile.getUrl());
-            }
-        }
+        SysFile thumbnailFile = itemFile.getThumbnailFileId() != null
+                ? sysFileService.getById(itemFile.getThumbnailFileId())
+                : null;
+        populateImageUrlVO(detail, itemFile, sysFile, thumbnailFile);
 
         // 使用 Mapper 直接查询数据项和数据集，避免循环依赖
         SysDatasetItem datasetItem = sysDatasetItemMapper.selectById(itemFile.getItemId());
@@ -331,7 +278,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
                     simpleVO.setUrl(pairedSysFile.getUrl());
                     simpleVO.setFileName(pairedSysFile.getName());
                     simpleVO.setFormattedSize(pairedSysFile.getSize());
-                    simpleVO.setFormat(pairedSysFile.getType());
+                    simpleVO.setFormat(extractFormat(pairedSysFile.getName(), pairedSysFile.getType()));
                 }
 
                 // 从 Map 中获取缩略图URL
@@ -360,7 +307,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     public boolean updateItemFileInfo(Long id, ItemFileUpdateForm form) {
         SysItemFile itemFile = this.getById(id);
         if (itemFile == null) {
-            throw new BusinessException("图片不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "图片不存在");
         }
 
         // 更新图片类型（取消配对完整性校验，适配不同数据集规范）
@@ -387,7 +334,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
 
     @Override
     public Map<Long, SysFile> buildFileMap(List<SysItemFile> itemFiles) {
-        if (itemFiles == null || itemFiles.isEmpty()) {
+        if (itemFiles.isEmpty()) {
             return Collections.emptyMap();
         }
         // 批量收集所有 fileId（源文件 + 缩略图）
@@ -409,11 +356,24 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
 
     @Override
     public ImageUrlVO convertToImageUrlVO(SysItemFile itemFile, Map<Long, SysFile> fileMap) {
-        if (itemFile == null) {
-            return null;
-        }
-
         ImageUrlVO vo = new ImageUrlVO();
+        SysFile sysFile = fileMap.get(itemFile.getFileId());
+        SysFile thumbnailFile = itemFile.getThumbnailFileId() != null
+                ? fileMap.get(itemFile.getThumbnailFileId())
+                : null;
+        populateImageUrlVO(vo, itemFile, sysFile, thumbnailFile);
+        return vo;
+    }
+
+    /**
+     * 填充 ImageUrlVO 的公共字段（实体信息 + 源文件 + 缩略图）
+     *
+     * @param vo            目标 VO
+     * @param itemFile      数据项文件实体
+     * @param sysFile       源文件（可为 null）
+     * @param thumbnailFile 缩略图文件（可为 null）
+     */
+    private void populateImageUrlVO(ImageUrlVO vo, SysItemFile itemFile, SysFile sysFile, SysFile thumbnailFile) {
         vo.setId(itemFile.getId());
         vo.setItemId(itemFile.getItemId());
         vo.setType(itemFile.getType());
@@ -425,24 +385,30 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         vo.setUsageCount(itemFile.getUsageCount() != null ? itemFile.getUsageCount() : 0L);
         vo.setCreateTime(itemFile.getCreateTime());
 
-        // 从预加载的文件Map中获取文件信息（避免N+1查询）
-        SysFile sysFile = fileMap.get(itemFile.getFileId());
         if (sysFile != null) {
+            vo.setUrl(sysFile.getUrl());
             vo.setFileName(sysFile.getName());
             vo.setFormattedSize(sysFile.getSize());
-            vo.setFormat(sysFile.getType());
-            vo.setUrl(sysFile.getUrl());
+            vo.setFormat(extractFormat(sysFile.getName(), sysFile.getType()));
             vo.setMd5(sysFile.getMd5());
         }
 
-        // 从Map中获取缩略图URL
-        if (itemFile.getThumbnailFileId() != null) {
-            SysFile thumbnailFile = fileMap.get(itemFile.getThumbnailFileId());
-            if (thumbnailFile != null) {
-                vo.setThumbnailUrl(thumbnailFile.getUrl());
+        if (thumbnailFile != null) {
+            vo.setThumbnailUrl(thumbnailFile.getUrl());
+        }
+    }
+
+    /**
+     * 从文件名提取格式（扩展名，小写，不带点号）
+     * 对齐 Go/Python 端：优先从文件名提取，文件名无扩展名时 fallback 到 type 字段
+     */
+    private String extractFormat(String fileName, String fileType) {
+        if (fileName != null) {
+            int idx = fileName.lastIndexOf('.');
+            if (idx >= 0 && idx < fileName.length() - 1) {
+                return fileName.substring(idx + 1).toLowerCase();
             }
         }
-
-        return vo;
+        return fileType != null ? fileType.toLowerCase() : null;
     }
 }

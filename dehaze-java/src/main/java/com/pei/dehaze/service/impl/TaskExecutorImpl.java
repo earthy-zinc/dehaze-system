@@ -14,7 +14,6 @@ import com.pei.dehaze.service.strategy.TaskCancelledException;
 import com.pei.dehaze.service.strategy.TaskResult;
 import com.pei.dehaze.service.strategy.TaskStrategy;
 import com.pei.dehaze.service.strategy.TaskStrategyFactory;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.ObjectProvider;
@@ -39,24 +38,28 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class TaskExecutorImpl implements TaskExecutor {
 
-    @Resource
-    private SysTaskMapper sysTaskMapper;
+    private final SysTaskMapper sysTaskMapper;
 
-    @Resource
-    private TaskStrategyFactory strategyFactory;
+    private final TaskStrategyFactory strategyFactory;
 
-    @Resource
-    private RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    @Resource
-    private WebSocketMessageRelay wsMessageRelay;
+    private final WebSocketMessageRelay wsMessageRelay;
 
     /**
      * MQ 发布器（MQ 未启用时为空，fallback 到同步执行）
      */
     private final ObjectProvider<RabbitMQPublisher> publisherProvider;
 
-    public TaskExecutorImpl(ObjectProvider<RabbitMQPublisher> publisherProvider) {
+    public TaskExecutorImpl(SysTaskMapper sysTaskMapper,
+                            TaskStrategyFactory strategyFactory,
+                            RedisTemplate<String, Object> redisTemplate,
+                            WebSocketMessageRelay wsMessageRelay,
+                            ObjectProvider<RabbitMQPublisher> publisherProvider) {
+        this.sysTaskMapper = sysTaskMapper;
+        this.strategyFactory = strategyFactory;
+        this.redisTemplate = redisTemplate;
+        this.wsMessageRelay = wsMessageRelay;
         this.publisherProvider = publisherProvider;
     }
 

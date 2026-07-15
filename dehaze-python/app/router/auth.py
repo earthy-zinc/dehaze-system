@@ -1,18 +1,24 @@
+import logging
+
 from app.config import settings
 from app.core.code import ResultCode
+from app.core.exceptions import BusinessException
 from app.core.result import Result, success
 from app.database import get_db
 from app.dependencies.auth import UserContext, get_current_user
 from app.dependencies.redis import get_redis
-from app.models.schema.user import (CaptchaData, CurrentUserVO, LoginData,
+from app.models.schema.user import (CaptchaData, LoginData,
                                     LoginForm)
 from app.repository.login_log_repository import login_log_repository
 from app.service.auth_service import AuthService
 from app.utils.user_agent import parse_user_agent
 from fastapi import APIRouter, Depends, Request, status
 from app.middleware.non_null_response import NonNullJSONResponse as JSONResponse
+from jose import jwt
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/auth", tags=["认证中心"])
 
@@ -152,21 +158,18 @@ async def logout(
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
-        # 解码获取 jti
-        from jose import jwt
         try:
             payload = jwt.decode(
                 token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
             jti = payload.get("jti")
             if jti:
-                # 使用 jti 作为黑名单 key
                 await redis.setex(
                     f"token:blacklist:{jti}",
                     settings.JWT_ACCESS_TOKEN_EXPIRES,
                     "1",
                 )
-        except Exception:
-            pass  # Token 解码失败时忽略
+        except Exception as e:
+            logger.warning(f"logout 解码 Token 失败: {e}")
 
     return success(msg="一切ok")
 
@@ -179,36 +182,11 @@ async def get_captcha(
     return success(result)
 
 
-@router.get("/me", response_model=Result[CurrentUserVO], summary="获取当前用户信息", description="需要携带有效的 Bearer Token")
-async def get_current_user_info(
-    user: UserContext = Depends(get_current_user),
-):
-    return success(
-        {
-            "userId": user.id,
-            "username": user.username,
-            "nickname": user.nickname,
-            "roles": user.roles,
-            "permissions": user.permissions[:20] if user.permissions else [],
-        }
-    )
-
-
 @router.post("/refresh", response_model=Result[LoginData], summary="刷新访问令牌", description="使用当前有效的 Token 获取新的访问令牌，原 Token 的 jti 会被加入黑名单")
 async def refresh_token(
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
-    try:
-        result = await AuthService.refresh_token(db, user.id, redis)
-        return success(result)
-    except ValueError as e:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={
-                "code": ResultCode.TOKEN_INVALID.code,
-                "msg": str(e),
-                "data": None,
-            },
-        )
+    result = await AuthService.refresh_token(db, user.id, redis)
+    return success(result)

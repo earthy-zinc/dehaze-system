@@ -2,7 +2,6 @@ package api
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -40,26 +39,7 @@ func (api *SysDictApi) GetDictPage(c *gin.Context) {
 	var queryParams query.DictPageQuery
 	queryParams.Keywords = c.Query("keywords")
 	queryParams.TypeCode = c.Query("typeCode")
-
-	if pageNumStr := c.Query("pageNum"); pageNumStr != "" {
-		if pageNum, err := strconv.Atoi(pageNumStr); err == nil {
-			queryParams.PageNum = pageNum
-		} else {
-			queryParams.PageNum = 1
-		}
-	} else {
-		queryParams.PageNum = 1
-	}
-
-	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
-			queryParams.PageSize = pageSize
-		} else {
-			queryParams.PageSize = 10
-		}
-	} else {
-		queryParams.PageSize = 10
-	}
+	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
 
 	// typeCode 必填校验
 	if queryParams.TypeCode == "" {
@@ -178,40 +158,15 @@ func (api *SysDictApi) UpdateDict(c *gin.Context) {
 // @Success 200 {object} common.Response
 // @Router /api/v1/dict/{ids} [delete]
 func (api *SysDictApi) DeleteDict(c *gin.Context) {
-	// 获取路径参数
-	idsStr := c.Param("ids")
-	if idsStr == "" {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
-		return
-	}
-
-	// 解析 ID 列表
-	idStrings := strings.Split(idsStr, ",")
-	ids := make([]int64, 0, len(idStrings))
-	for _, idStr := range idStrings {
-		if idStr == "" {
-			continue
-		}
-		id, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典ID格式不正确"))
-			return
-		}
-		ids = append(ids, id)
-	}
-
-	if len(ids) == 0 {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
-		return
-	}
-
-	// 调用服务删除字典
-	err := api.dictService.Delete(c.Request.Context(), ids)
+	ids, err := parseIDsFromCSV(c.Param("ids"))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-
+	if err := api.dictService.Delete(c.Request.Context(), ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
 	common.OkWithMessage("删除字典成功", c)
 }
 
@@ -253,26 +208,7 @@ func (api *SysDictApi) GetDictTypePage(c *gin.Context) {
 	// 解析查询参数
 	var queryParams query.DictTypePageQuery
 	queryParams.Keywords = c.Query("keywords")
-
-	if pageNumStr := c.Query("pageNum"); pageNumStr != "" {
-		if pageNum, err := strconv.Atoi(pageNumStr); err == nil {
-			queryParams.PageNum = pageNum
-		} else {
-			queryParams.PageNum = 1
-		}
-	} else {
-		queryParams.PageNum = 1
-	}
-
-	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
-		if pageSize, err := strconv.Atoi(pageSizeStr); err == nil {
-			queryParams.PageSize = pageSize
-		} else {
-			queryParams.PageSize = 10
-		}
-	} else {
-		queryParams.PageSize = 10
-	}
+	queryParams.PageNum, queryParams.PageSize = getPageParams(c)
 
 	// 调用服务获取分页数据
 	result, err := api.dictTypeService.GetPage(c.Request.Context(), &queryParams)
@@ -385,39 +321,14 @@ func (api *SysDictApi) UpdateDictType(c *gin.Context) {
 // @Success 200 {object} common.Response
 // @Router /api/v1/dict/types/{ids} [delete]
 func (api *SysDictApi) DeleteDictTypes(c *gin.Context) {
-	// 获取路径参数
-	idsStr := c.Param("ids")
-	if idsStr == "" {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
-		return
-	}
-
-	// 解析 ID 列表
-	idStrings := strings.Split(idsStr, ",")
-	ids := make([]int64, 0, len(idStrings))
-	for _, idStr := range idStrings {
-		if idStr == "" {
-			continue
-		}
-		id, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "字典类型ID格式不正确"))
-			return
-		}
-		ids = append(ids, id)
-	}
-
-	if len(ids) == 0 {
-		_ = c.Error(common.NewBizError(common.PARAM_ERROR, "删除数据为空"))
-		return
-	}
-
-	// 调用服务删除字典类型
-	err := api.dictTypeService.Delete(c.Request.Context(), ids)
+	ids, err := parseIDsFromCSV(c.Param("ids"))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-
+	if err := api.dictTypeService.Delete(c.Request.Context(), ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
 	common.OkWithMessage("删除字典类型成功", c)
 }

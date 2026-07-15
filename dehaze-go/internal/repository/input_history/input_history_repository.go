@@ -2,6 +2,7 @@ package input_history
 
 import (
 	"context"
+	"errors"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"gorm.io/gorm"
@@ -13,7 +14,7 @@ type IInputHistoryRepository interface {
 	FindByID(ctx context.Context, id int64) (*model.SysInputHistory, error)
 	Create(ctx context.Context, history *model.SysInputHistory) error
 	Update(ctx context.Context, history *model.SysInputHistory) error
-	Delete(ctx context.Context, ids []int64) error
+	DeleteByUserAndIDs(ctx context.Context, userID int64, ids []int64) (int64, error)
 	DeleteByUserID(ctx context.Context, userID int64) (int64, error)
 }
 
@@ -58,6 +59,9 @@ func (r *inputHistoryRepository) FindPage(ctx context.Context, userID int64, pag
 func (r *inputHistoryRepository) FindByID(ctx context.Context, id int64) (*model.SysInputHistory, error) {
 	var history model.SysInputHistory
 	err := r.db.WithContext(ctx).First(&history, id).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +76,9 @@ func (r *inputHistoryRepository) Update(ctx context.Context, history *model.SysI
 	return r.db.WithContext(ctx).Save(history).Error
 }
 
-func (r *inputHistoryRepository) Delete(ctx context.Context, ids []int64) error {
-	return r.db.WithContext(ctx).Delete(&model.SysInputHistory{}, ids).Error
+func (r *inputHistoryRepository) DeleteByUserAndIDs(ctx context.Context, userID int64, ids []int64) (int64, error) {
+	result := r.db.WithContext(ctx).Where("user_id = ? AND id IN ?", userID, ids).Delete(&model.SysInputHistory{})
+	return result.RowsAffected, result.Error
 }
 
 func (r *inputHistoryRepository) DeleteByUserID(ctx context.Context, userID int64) (int64, error) {

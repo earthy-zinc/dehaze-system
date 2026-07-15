@@ -64,9 +64,8 @@ def generate_random_password(length: int = 12) -> str:
     password_chars.extend(secrets.choice(alphabet)
                           for _ in range(remaining_length))
 
-    # 打乱字符顺序
-    import random
-    random.shuffle(password_chars)
+    # 打乱字符顺序（使用密码学安全的 SystemRandom）
+    secrets.SystemRandom().shuffle(password_chars)
 
     return "".join(password_chars)
 

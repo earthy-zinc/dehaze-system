@@ -4,7 +4,7 @@ import cn.hutool.captcha.generator.CodeGenerator;
 import cn.hutool.captcha.generator.MathGenerator;
 import cn.hutool.captcha.generator.RandomGenerator;
 import com.pei.dehaze.plugin.captcha.CaptchaProperties;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,10 +17,10 @@ import java.awt.*;
  * @since 2023/11/24
  */
 @Configuration
+@RequiredArgsConstructor
 public class CaptchaConfig {
 
-    @Resource
-    private CaptchaProperties captchaProperties;
+    private final CaptchaProperties captchaProperties;
 
     /**
      * 验证码文字生成器

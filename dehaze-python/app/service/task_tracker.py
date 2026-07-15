@@ -92,8 +92,8 @@ class TaskTracker:
             for task_id in list(self._running_tasks.keys()):
                 try:
                     await self._redis.delete(f"{settings.TASK_REDIS_KEY_PREFIX}:{task_id}")
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Redis 任务状态清理失败: taskId={task_id}, error={e}")
 
         logger.info("TaskTracker Redis 状态同步已停止")
 

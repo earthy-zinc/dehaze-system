@@ -5,6 +5,7 @@ POST /api/v1/prediction          → 执行模型预测（去雾）
 GET  /api/v1/prediction/logs     → 预测日志列表
 GET  /api/v1/prediction/{taskId} → 查询预测任务状态（通过日志ID）
 """
+import json
 import logging
 from datetime import datetime
 from typing import Optional
@@ -12,7 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
 
-from app.core.result import Result, success, error
+from app.core.result import Result, success
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import get_current_user, UserContext
@@ -63,41 +64,29 @@ async def predict(
     if body.fileId is not None:
         image_url = f"/api/v1/files/download/{body.fileId}"
     if not image_url:
-        raise BusinessException("图片来源不能为空，请提供 fileId 或 imageUrl")
+        raise BusinessException(ResultCode.PARAM_IS_NULL, "图片来源不能为空，请提供 fileId 或 imageUrl")
 
     params = None
     if body.params:
-        import json
         try:
             params = json.loads(body.params)
         except json.JSONDecodeError:
-            return error(f"参数格式错误: {body.params}", ResultCode.PARAM_ERROR.code)
+            raise BusinessException(ResultCode.PARAM_ERROR, f"参数格式错误: {body.params}")
 
-    try:
-        result = await prediction_service.predict(
-            algorithm_id=body.algorithmId,
-            image_url=image_url,
-            params=params,
-            user_id=user.id,
-        )
+    result = await prediction_service.predict(
+        algorithm_id=body.algorithmId,
+        image_url=image_url,
+        params=params,
+        user_id=user.id,
+    )
 
-        return success(PredictionResponse(
-            logId=result.get("logId"),
-            resultUrl=result["resultUrl"],
-            resultThumbnailUrl=result.get("resultThumbnailUrl"),
-            time=result.get("time", 0),
-            fromCache=result.get("fromCache", False),
-        ))
-
-    except BusinessException:
-        raise
-    except FileNotFoundError as e:
-        return error(f"图片文件不存在: {e}", ResultCode.RESOURCE_NOT_FOUND.code)
-    except ValueError as e:
-        return error(f"算法模块错误: {e}", ResultCode.SYSTEM_EXECUTION_ERROR.code)
-    except Exception as e:
-        logger.exception(f"预测失败: {e}")
-        return error(f"预测执行失败: {e}", ResultCode.SYSTEM_EXECUTION_ERROR.code)
+    return success(PredictionResponse(
+        logId=result.get("logId"),
+        resultUrl=result["resultUrl"],
+        resultThumbnailUrl=result.get("resultThumbnailUrl"),
+        time=result.get("time", 0),
+        fromCache=result.get("fromCache", False),
+    ))
 
 
 class PredictionLogVO(BaseModel):
@@ -141,11 +130,7 @@ async def get_prediction_task(
 
     文档中的 taskId 对应 sys_pred_log.id
     """
-    from app.models.entity.sys_log import SysPredLog
-    from sqlalchemy import select
-    stmt = select(SysPredLog).where(SysPredLog.id == task_id)
-    result = await db.execute(stmt)
-    log = result.scalar_one_or_none()
+    log = await pred_log_repository.get_by_id(db, task_id)
     if not log:
-        return error("预测任务不存在", ResultCode.SYSTEM_EXECUTION_ERROR.code)
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "预测任务不存在")
     return success(log)

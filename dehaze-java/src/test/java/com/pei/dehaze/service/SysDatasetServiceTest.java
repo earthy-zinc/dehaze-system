@@ -51,9 +51,6 @@ class SysDatasetServiceTest {
     private DatasetConverter datasetConverter;
 
     @Mock
-    private DatasetOperationService datasetOperationService;
-
-    @Mock
     private SysDatasetItemService sysDatasetItemService;
 
     private SysDatasetServiceImpl datasetService;
@@ -65,7 +62,7 @@ class SysDatasetServiceTest {
     @BeforeEach
     void setUp() {
         // 手动创建 spy 对象，因为 SysDatasetServiceImpl 没有无参构造器
-        datasetService = spy(new SysDatasetServiceImpl(datasetConverter, datasetOperationService, sysDatasetItemService));
+        datasetService = spy(new SysDatasetServiceImpl(datasetConverter, sysDatasetItemService));
 
         // 注入依赖
         ReflectionTestUtils.setField(datasetService, "datasetPath", "/data/datasets");
@@ -834,13 +831,13 @@ class SysDatasetServiceTest {
     }
 
     /**
-     * 测试通过数据项ID获取数据集名称 - 数据集不存在返回空字符串
+     * 测试通过数据项ID获取数据集名称 - 数据集不存在抛出异常
      * 测试目的：验证当数据项存在但关联的数据集不存在时的处理
      * 测试场景：数据项存在，但其datasetId对应的数据集不存在
-     * 验证内容：返回空字符串（而非抛出异常）
+     * 验证内容：抛出BusinessException异常
      */
     @Test
-    @DisplayName("getDatasetNameByItemId - 数据集不存在返回空字符串")
+    @DisplayName("getDatasetNameByItemId - 数据集不存在抛出异常")
     void testGetDatasetNameByItemId_DatasetNotExists() {
         // Given
         Long itemId = 100L;
@@ -854,12 +851,10 @@ class SysDatasetServiceTest {
         when(sysDatasetItemService.getById(itemId)).thenReturn(datasetItem);
         doReturn(null).when(datasetService).getById(nonExistentDatasetId);
 
-        // When
-        String result = datasetService.getDatasetNameByItemId(itemId);
-
-        // Then
-        assertThat(result).isNotNull();
-        assertThat(result).isEmpty();
+        // When & Then
+        assertThatThrownBy(() -> datasetService.getDatasetNameByItemId(itemId))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("数据项关联的数据集不存在");
         verify(sysDatasetItemService).getById(itemId);
     }
 

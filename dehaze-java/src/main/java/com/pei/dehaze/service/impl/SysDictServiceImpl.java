@@ -5,9 +5,11 @@ import cn.hutool.core.text.CharSequenceUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.pei.dehaze.common.enums.StatusEnum;
 import com.pei.dehaze.common.exception.BusinessException;
 import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.DictConverter;
 import com.pei.dehaze.mapper.SysDictMapper;
 import com.pei.dehaze.mapper.SysDictTypeMapper;
@@ -21,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -34,6 +35,11 @@ import java.util.concurrent.TimeUnit;
 @Service
 @RequiredArgsConstructor
 public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> implements SysDictService {
+
+    /**
+     * 字典选项 Redis 缓存 key 前缀
+     */
+    private static final String DICT_OPTIONS_CACHE_KEY_PREFIX = "dict:options:";
 
     private final DictConverter dictConverter;
     private final SysDictTypeMapper dictTypeMapper;
@@ -135,7 +141,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         boolean result = this.save(entity);
 
         // 清除缓存
-        redisTemplate.delete("dict:options:" + typeCode);
+        redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode);
 
         return result;
     }
@@ -173,7 +179,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         boolean result = this.updateById(entity);
 
         // 清除缓存
-        redisTemplate.delete("dict:options:" + existDict.getTypeCode());
+        redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + existDict.getTypeCode());
 
         return result;
     }
@@ -189,9 +195,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         if (CharSequenceUtil.isBlank(idsStr)) {
             throw new BusinessException(ResultCode.PARAM_ERROR);
         }
-        List<Long> ids = Arrays.stream(idsStr.split(","))
-                .map(Long::parseLong)
-                .toList();
+        List<Long> ids = IdUtils.parseIdList(idsStr);
 
         // 校验字典数据项是否存在
         long existCount = this.count(new LambdaQueryWrapper<SysDict>()
@@ -211,7 +215,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         // 清除缓存
         for (SysDict dict : dicts) {
             if (CharSequenceUtil.isNotBlank(dict.getTypeCode())) {
-                redisTemplate.delete("dict:options:" + dict.getTypeCode());
+                redisTemplate.delete(DICT_OPTIONS_CACHE_KEY_PREFIX + dict.getTypeCode());
             }
         }
 
@@ -226,7 +230,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
      */
     @Override
     public List<Option<String>> listDictOptions(String typeCode) {
-        String cacheKey = "dict:options:" + typeCode;
+        String cacheKey = DICT_OPTIONS_CACHE_KEY_PREFIX + typeCode;
 
         // 查缓存
         Object cached = redisTemplate.opsForValue().get(cacheKey);
@@ -239,7 +243,7 @@ public class SysDictServiceImpl extends ServiceImpl<SysDictMapper, SysDict> impl
         // 查询数据字典项（只返回启用状态，按 sort 和 create_time 排序）
         List<SysDict> dictList = this.list(new LambdaQueryWrapper<SysDict>()
                 .eq(SysDict::getTypeCode, typeCode)
-                .eq(SysDict::getStatus, 1)
+                .eq(SysDict::getStatus, StatusEnum.ENABLE.getValue())
                 .select(SysDict::getValue, SysDict::getName)
                 .orderByAsc(SysDict::getSort)
                 .orderByDesc(SysDict::getCreateTime));

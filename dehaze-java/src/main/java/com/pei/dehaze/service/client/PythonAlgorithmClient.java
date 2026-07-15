@@ -16,6 +16,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.UUID;
+
 /**
  * Python 算法服务 HTTP 客户端 — 生产级实现
  * <p>
@@ -77,7 +79,7 @@ public class PythonAlgorithmClient {
         String url = props.getBaseUrl() + path;
 
         // 生成幂等键：同一逻辑请求的所有重试共用同一个键，便于下游去重
-        String idempotencyKey = java.util.UUID.randomUUID().toString();
+        String idempotencyKey = UUID.randomUUID().toString();
 
         Exception lastException = null;
         long backoff = props.getRetryBackoff();
@@ -95,28 +97,28 @@ public class PythonAlgorithmClient {
 
             } catch (CallNotPermittedException e) {
                 // 熔断器开启，快速失败，不再重试
-                throw new BusinessException("Python 算法服务熔断中，请稍后重试");
+                throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务熔断中，请稍后重试");
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR.getMsg(), e);
+                throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 算法服务调用被中断");
             } catch (ResourceAccessException e) {
                 // 网络层异常（连接超时/拒绝）→ 可重试（熔断器已通过 executeSupplier 记录失败）
                 lastException = e;
-                log.warn("Python 服务网络异常 (attempt={}/{}): {}", attempt + 1, props.getMaxRetry() + 1, e.getMessage());
+                log.warn("Python 服务网络异常 (attempt={}/{}): {}", attempt + 1, props.getMaxRetry() + 1, e.getMessage(), e);
             } catch (BusinessException e) {
                 // 业务异常（Python 返回错误码）→ 不重试（熔断器已通过 executeSupplier 记录失败）
                 throw e;
             } catch (Exception e) {
                 lastException = e;
-                log.warn("调用 Python 服务异常 (attempt={}/{}): {}", attempt + 1, props.getMaxRetry() + 1, e.getMessage());
+                log.warn("调用 Python 服务异常 (attempt={}/{}): {}", attempt + 1, props.getMaxRetry() + 1, e.getMessage(), e);
             }
         }
 
         // 全部重试失败
         String msg = "Python 算法服务调用失败 (已重试 " + props.getMaxRetry() + " 次): " +
                 (lastException != null ? lastException.getMessage() : "未知错误");
-        log.error(msg);
-        throw new BusinessException(msg);
+        log.error(msg, lastException);
+        throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, msg);
     }
 
     private JSONObject doPost(String url, String jsonBody, String idempotencyKey) {
@@ -134,12 +136,12 @@ public class PythonAlgorithmClient {
         ResponseEntity<String> response = algorithmRestTemplate.postForEntity(url, entity, String.class);
 
         if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new BusinessException("Python 服务返回非 2xx: " + response.getStatusCode() + " body=" + response.getBody());
+            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务返回非 2xx: " + response.getStatusCode() + " body=" + response.getBody());
         }
 
         String body = response.getBody();
         if (body == null || body.isBlank()) {
-            throw new BusinessException("Python 服务返回空响应");
+            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务返回空响应");
         }
 
         JSONObject json = JSONUtil.parseObj(body);
@@ -149,7 +151,7 @@ public class PythonAlgorithmClient {
         if (!"00000".equals(code)) {
             String msg = json.getStr("msg", "未知错误");
             log.error("Python 服务业务异常: code={}, msg={}", code, msg);
-            throw new BusinessException("Python 服务错误 [" + code + "]: " + msg);
+            throw new BusinessException(ResultCode.CALL_THIRD_PARTY_SERVICE_ERROR, "Python 服务错误 [" + code + "]: " + msg);
         }
 
         return json.getJSONObject("data");

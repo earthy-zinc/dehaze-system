@@ -13,11 +13,6 @@ import (
 // 3. 必须在所有数据库查询中使用参数化查询（Prepared Statements）
 // 4. 根据 OWASP 最佳实践，参数化查询是防止 SQL 注入的首要方法
 //
-// 修复说明 (P0 问题)：
-// - 从 xss.go 中分离 SQL 注入防护功能
-// - 遵循单一职责原则，XSS 和 SQL 注入防护应该分开
-// - 添加了详细的安全警告和最佳实践说明
-//
 // 安全最佳实践：
 // - 始终使用参数化查询（Prepared Statements）
 // - 对数据库用户进行最小权限配置
@@ -29,6 +24,30 @@ type SQLInjectionUtil struct{}
 // NewSQLInjectionUtil 创建 SQL 注入防护工具实例
 func NewSQLInjectionUtil() *SQLInjectionUtil {
 	return &SQLInjectionUtil{}
+}
+
+// 预编译正则，避免每次调用都重新编译
+var (
+	unionSelectRe       = regexp.MustCompile(`(?i)\bunion\s+select\b`)
+	dangerousKeywordRes = compileDangerousKeywordRegexes()
+)
+
+func compileDangerousKeywordRegexes() []*regexp.Regexp {
+	keywords := []string{
+		"drop table",
+		"truncate table",
+		"delete from",
+		"insert into",
+		"update set",
+		"exec(",
+		"execute(",
+		"xp_cmdshell",
+	}
+	res := make([]*regexp.Regexp, len(keywords))
+	for i, kw := range keywords {
+		res[i] = regexp.MustCompile(`(?i)` + regexp.QuoteMeta(kw))
+	}
+	return res
 }
 
 // StripSQLInjectionPatterns 移除常见的 SQL 注入模式
@@ -67,22 +86,11 @@ func (u *SQLInjectionUtil) StripSQLInjectionPatterns(input string) string {
 	result = strings.ReplaceAll(result, "*/", "")
 
 	// 移除联合查询
-	result = regexp.MustCompile(`(?i)\bunion\s+select\b`).ReplaceAllString(result, "")
+	result = unionSelectRe.ReplaceAllString(result, "")
 
-	// 移除常见的 SQL 注入关键词
-	dangerousKeywords := []string{
-		"drop table",
-		"truncate table",
-		"delete from",
-		"insert into",
-		"update set",
-		"exec(",
-		"execute(",
-		"xp_cmdshell",
-	}
-
-	for _, keyword := range dangerousKeywords {
-		result = regexp.MustCompile(`(?i)`+regexp.QuoteMeta(keyword)).ReplaceAllString(result, "")
+	// 移除常见的 SQL 注入关键词（使用预编译正则）
+	for _, re := range dangerousKeywordRes {
+		result = re.ReplaceAllString(result, "")
 	}
 
 	return result

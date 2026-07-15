@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from app.models.base import BaseModel
-from sqlalchemy import (BigInteger, Column, DateTime, Index, Integer, String,
+from sqlalchemy import (BigInteger, DateTime, Index, Integer, String,
                         Text)
 from sqlalchemy.orm import Mapped, mapped_column
 

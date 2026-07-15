@@ -1,10 +1,12 @@
 package com.pei.dehaze.common.constant;
 
+import java.util.Set;
+
 /**
  * 任务系统常量
  */
 public final class TaskConstants {
-    
+
     private TaskConstants() {}
     
     // ========== Redis Key 前缀 ==========
@@ -48,4 +50,12 @@ public final class TaskConstants {
     public static final String STATUS_FAILED = "FAILED";
     /** 已取消 */
     public static final String STATUS_CANCELLED = "CANCELLED";
+
+    // ========== 终态集合 ==========
+    /** 任务终态集合（已完成 / 已失败 / 已取消），用于幂等检查 */
+    public static final Set<String> TERMINAL_STATUSES = Set.of(
+            STATUS_COMPLETED,
+            STATUS_FAILED,
+            STATUS_CANCELLED
+    );
 }

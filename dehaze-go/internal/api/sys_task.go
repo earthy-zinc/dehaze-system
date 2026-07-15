@@ -2,22 +2,23 @@ package api
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
-	taskrepo "github.com/earthyzinc/dehaze-go/internal/repository/task"
+	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 )
 
 // SysTaskApi 任务管理 API
 type SysTaskApi struct {
 	taskService *taskservice.TaskService
-	taskRepo    taskrepo.ITaskRepository
 }
 
-func NewSysTaskApi(taskService *taskservice.TaskService, taskRepo taskrepo.ITaskRepository) *SysTaskApi {
-	return &SysTaskApi{taskService: taskService, taskRepo: taskRepo}
+func NewSysTaskApi(taskService *taskservice.TaskService) *SysTaskApi {
+	return &SysTaskApi{taskService: taskService}
 }
 
 // CreateTask 创建任务
@@ -38,7 +39,11 @@ func (api *SysTaskApi) CreateTask(c *gin.Context) {
 		return
 	}
 
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	idempotencyKey := c.GetHeader("Idempotency-Key")
 	task, err := api.taskService.CreateExportTask(c.Request.Context(), form, userID, idempotencyKey)
 	if err != nil {
@@ -54,12 +59,21 @@ func (api *SysTaskApi) CreateTask(c *gin.Context) {
 func (api *SysTaskApi) GetTaskPage(c *gin.Context) {
 	ctx := c.Request.Context()
 	pageNum, pageSize := getPageParams(c)
-	result, err := api.taskRepo.FindPage(ctx, map[string]interface{}{
-		"pageNum":  pageNum,
-		"pageSize": pageSize,
-	})
+	userID, err := security.RequireUserID(c)
 	if err != nil {
-		_ = c.Error(common.WrapBizError(common.DATABASE_ERROR, "查询任务列表失败", err))
+		_ = c.Error(err)
+		return
+	}
+	q := &query.TaskPageQuery{
+		PageNum:  pageNum,
+		PageSize: pageSize,
+		Status:   c.Query("status"),
+		TaskType: c.Query("taskType"),
+		UserID:   userID,
+	}
+	result, err := api.taskService.GetPage(ctx, q)
+	if err != nil {
+		_ = c.Error(err)
 		return
 	}
 	common.OkWithDetailed(result, "查询成功", c)
@@ -86,7 +100,11 @@ func (api *SysTaskApi) GetTaskById(c *gin.Context) {
 // CancelTask 取消任务
 func (api *SysTaskApi) CancelTask(c *gin.Context) {
 	idStr := c.Param("id")
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	if err := api.taskService.CancelTask(c.Request.Context(), idStr, userID); err != nil {
 		_ = c.Error(err)
 		return
@@ -103,7 +121,11 @@ func (api *SysTaskApi) CancelTask(c *gin.Context) {
 // @Router /api/v1/tasks/{id}/retry [post]
 func (api *SysTaskApi) RetryTask(c *gin.Context) {
 	idStr := c.Param("id")
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 	task, err := api.taskService.RetryTask(c.Request.Context(), idStr, userID)
 	if err != nil {
 		_ = c.Error(err)
@@ -130,15 +152,31 @@ func getPageParams(c *gin.Context) (int, int) {
 	return pageNum, pageSize
 }
 
-// getCurrentUserID 从 JWT claims 获取当前用户 ID
-func getCurrentUserID(c *gin.Context) int64 {
-	if claims, exists := c.Get("claims"); exists {
-		type userIDGetter interface {
-			GetUserID() int64
-		}
-		if u, ok := claims.(userIDGetter); ok {
-			return u.GetUserID()
-		}
+// parseIDsFromCSV 将逗号分隔的 ID 字符串解析为 []int64
+// 行为约定：
+//   - 自动 TrimSpace 每个元素
+//   - 跳过空字符串
+//   - 遇到第一个无法解析的元素立即返回 PARAM_ERROR，避免静默丢弃非法 ID 造成
+//     "用户以为查询/删除 3 个但实际只处理了 2 个" 的数据一致性问题
+func parseIDsFromCSV(csvStr string) ([]int64, error) {
+	if csvStr == "" {
+		return nil, common.NewBizError(common.PARAM_ERROR, "ID列表不能为空")
 	}
-	return 0
+	parts := strings.Split(csvStr, ",")
+	ids := make([]int64, 0, len(parts))
+	for _, s := range parts {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return nil, common.NewBizError(common.PARAM_ERROR, "ID格式不正确: "+s)
+		}
+		ids = append(ids, id)
+	}
+	if len(ids) == 0 {
+		return nil, common.NewBizError(common.PARAM_ERROR, "ID列表不能为空")
+	}
+	return ids, nil
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/read"
 	"gorm.io/gorm"
 )
@@ -54,9 +55,67 @@ func (r *taskRepository) FindByIdempotencyKey(ctx context.Context, key string) (
 	return &task, nil
 }
 
-func (r *taskRepository) FindPage(ctx context.Context, q any) (*read.PageResult[read.Task], error) {
-	// 根据实际查询条件实现分页
-	return nil, nil
+func (r *taskRepository) FindPage(ctx context.Context, q *query.TaskPageQuery) (*read.PageResult[read.Task], error) {
+	pageNum := q.PageNum
+	pageSize := q.PageSize
+	if pageNum <= 0 {
+		pageNum = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10
+	}
+
+	db := r.db.WithContext(ctx).Model(&model.SysTask{})
+	if q.Status != "" {
+		db = db.Where("status = ?", q.Status)
+	}
+	if q.TaskType != "" {
+		db = db.Where("task_type = ?", q.TaskType)
+	}
+	if q.UserID > 0 {
+		db = db.Where("create_by = ?", q.UserID)
+	}
+
+	var total int64
+	if err := db.Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	var tasks []model.SysTask
+	if err := db.Order("created_at DESC").
+		Offset((pageNum - 1) * pageSize).
+		Limit(pageSize).
+		Find(&tasks).Error; err != nil {
+		return nil, err
+	}
+
+	list := make([]read.Task, 0, len(tasks))
+	for i := range tasks {
+		t := &tasks[i]
+		item := read.Task{
+			TaskID:         t.TaskID,
+			Status:         string(t.Status),
+			Progress:       t.Progress,
+			TotalFiles:     t.TotalFiles,
+			ProcessedFiles: t.ProcessedFiles,
+			ExpiresAt:      t.ExpiresAt,
+			CreatedAt:      t.CreatedAt,
+			StartedAt:      t.StartedAt,
+			CompletedAt:   t.CompletedAt,
+			Error:          t.ErrorMessage,
+		}
+		if t.Status == model.TaskStatusCompleted && t.Result != "" {
+			item.DownloadURL = t.Result
+		}
+		list = append(list, item)
+	}
+
+	return &read.PageResult[read.Task]{
+		List:     list,
+		Total:    total,
+		PageNum:  pageNum,
+		PageSize: pageSize,
+	}, nil
 }
 
 func (r *taskRepository) Create(ctx context.Context, task *model.SysTask) error {

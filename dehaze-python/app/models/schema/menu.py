@@ -1,13 +1,10 @@
 """
 菜单模块 Schema 模型
 """
-from typing import TYPE_CHECKING, List, Optional
+from typing import List, Optional
 
 from app.models.schema.common import validate_no_xss
 from pydantic import BaseModel, Field, field_validator
-
-if TYPE_CHECKING:
-    pass
 
 
 # 菜单类型字符串枚举 → 整数映射（对齐 Java MenuTypeEnum）
@@ -26,11 +23,6 @@ class MenuQuery(BaseModel):
     keywords: Optional[str] = Field(default=None, description="关键词(菜单名称)")
     status: Optional[int] = Field(
         default=None, ge=0, le=1, description="状态(1-显示；0-隐藏)")
-
-
-class MenuVisibleQuery(BaseModel):
-    """菜单显示状态查询参数"""
-    visible: int = Field(..., ge=0, le=1, description="显示状态(1:显示;0:隐藏)")
 
 
 class MenuVisibleBody(BaseModel):

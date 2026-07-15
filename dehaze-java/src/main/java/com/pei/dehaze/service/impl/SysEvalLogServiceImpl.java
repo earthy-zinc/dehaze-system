@@ -49,7 +49,7 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         // 1. 校验算法存在
         SysAlgorithm algorithm = algorithmService.getById(form.getAlgorithmId());
         if (algorithm == null) {
-            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND.getMsg() + ": 算法不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
         // 2. 记录评估请求日志（独立短事务，避免远程调用期间占用数据库连接）
@@ -66,8 +66,8 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         // 3. 调用 Python 评估服务（事务外远程调用，不占用数据库连接）
         long startTime = System.currentTimeMillis();
         try {
-            String predUrl = resolveFileUrl(form.getPredFileId(), "pred");
-            String gtUrl = resolveFileUrl(form.getGtFileId(), "gt");
+            String predUrl = form.getPredUrl() != null ? form.getPredUrl() : resolveFileUrl(form.getPredFileId(), "pred");
+            String gtUrl = form.getGtUrl() != null ? form.getGtUrl() : resolveFileUrl(form.getGtFileId(), "gt");
 
             JSONObject result = pythonClient.evaluate(
                     form.getAlgorithmId(), predUrl, gtUrl);
@@ -139,6 +139,6 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
         if (fileId != null) {
             return "/api/v1/files/download/" + fileId;
         }
-        throw new BusinessException("缺少" + ("pred".equals(type) ? "预测" : "参考") + "图片");
+        throw new BusinessException(ResultCode.PARAM_ERROR, "缺少" + ("pred".equals(type) ? "预测" : "参考") + "图片");
     }
 }

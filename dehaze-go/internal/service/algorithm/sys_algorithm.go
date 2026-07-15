@@ -275,14 +275,14 @@ func (s *AlgorithmService) Compare(ctx context.Context, ids []int64) ([]model.Sy
 	if len(ids) == 0 {
 		return nil, common.NewBizError(common.PARAM_ERROR, "算法ID列表不能为空")
 	}
-	var algorithms []model.SysAlgorithm
+	algorithms := make([]model.SysAlgorithm, 0, len(ids))
 	for _, id := range ids {
 		a, err := s.algorithmRepo.FindByID(ctx, id)
 		if err != nil {
-			continue
+			return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法失败", err)
 		}
 		if a == nil {
-			continue
+			return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, fmt.Sprintf("算法ID %d 不存在", id))
 		}
 		algorithms = append(algorithms, *a)
 	}
@@ -291,11 +291,10 @@ func (s *AlgorithmService) Compare(ctx context.Context, ids []int64) ([]model.Sy
 
 // GetVersionHistory 获取算法版本历史
 // 查询 sys_algorithm_version 表，按 create_time 降序排序
-// 表不存在或查询失败时返回空数组（兼容性处理）
 func (s *AlgorithmService) GetVersionHistory(ctx context.Context, algorithmID int64) ([]vo.AlgorithmVersionVO, error) {
 	versions, err := s.algorithmRepo.FindVersionsByAlgorithmID(ctx, algorithmID)
 	if err != nil {
-		return []vo.AlgorithmVersionVO{}, nil
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法版本历史失败", err)
 	}
 
 	result := make([]vo.AlgorithmVersionVO, 0, len(versions))
@@ -320,23 +319,18 @@ func (s *AlgorithmService) GetVersionHistory(ctx context.Context, algorithmID in
 }
 
 // GetMonitorData 获取算法监控数据
-// 查询 sys_pred_log 表统计；表不存在或查询失败时返回零值（successRate=100）
+// 查询 sys_pred_log 表统计
 func (s *AlgorithmService) GetMonitorData(ctx context.Context, algorithmID int64) (*vo.AlgorithmMonitorVO, error) {
-	monitor := &vo.AlgorithmMonitorVO{
-		CallCount:      0,
-		AvgTime:        0,
-		SuccessRate:    100.0,
-		TodayCallCount: 0,
-	}
-
 	stats, err := s.predLogRepo.GetMonitorStats(ctx, algorithmID)
 	if err != nil {
-		return monitor, nil
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询算法监控数据失败", err)
 	}
 
-	monitor.CallCount = stats.CallCount
-	monitor.TodayCallCount = stats.TodayCallCount
-	monitor.AvgTime = math.Round(stats.AvgTime*100) / 100
+	monitor := &vo.AlgorithmMonitorVO{
+		CallCount:      stats.CallCount,
+		TodayCallCount: stats.TodayCallCount,
+		AvgTime:        math.Round(stats.AvgTime*100) / 100,
+	}
 	if stats.CallCount > 0 {
 		rate := float64(stats.SuccessCount) / float64(stats.CallCount) * 100
 		monitor.SuccessRate = math.Round(rate*100) / 100
@@ -394,7 +388,10 @@ func (s *AlgorithmService) ExportAlgorithmJson(ctx context.Context, id int64) (s
 	parentName := ""
 	if algorithm.ParentID > 0 {
 		parent, err := s.algorithmRepo.FindByID(ctx, algorithm.ParentID)
-		if err == nil && parent != nil {
+		if err != nil {
+			return "", common.WrapBizError(common.DATABASE_ERROR, "查询父算法失败", err)
+		}
+		if parent != nil {
 			parentName = parent.Name
 		}
 	}

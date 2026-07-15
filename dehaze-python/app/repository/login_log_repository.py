@@ -2,7 +2,6 @@
 登录日志 Repository
 """
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.entity.sys_log import SysLoginLog
@@ -55,31 +54,6 @@ class LoginLogRepository(BaseRepository[SysLoginLog]):
         )
         return await self.create(db, log)
 
-    async def get_recent_logs(
-        self,
-        db: AsyncSession,
-        user_id: int,
-        limit: int = 10,
-    ) -> list[SysLoginLog]:
-        """
-        获取用户最近的登录日志
-
-        Args:
-            db: 数据库会话
-            user_id: 用户ID
-            limit: 返回条数
-
-        Returns:
-            登录日志列表
-        """
-        stmt = (
-            select(SysLoginLog)
-            .where(SysLoginLog.user_id == user_id)
-            .order_by(SysLoginLog.create_time.desc())
-            .limit(limit)
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
 
 
 login_log_repository = LoginLogRepository()

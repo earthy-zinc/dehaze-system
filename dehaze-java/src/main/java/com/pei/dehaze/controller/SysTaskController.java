@@ -65,9 +65,6 @@ public class SysTaskController {
         @PathVariable String taskId
     ) {
         String downloadUrl = taskService.getDownloadUrl(taskId);
-        if (downloadUrl == null) {
-            return ResponseEntity.notFound().build();
-        }
 
         // 重定向到文件下载URL
         return ResponseEntity.status(HttpStatus.FOUND)

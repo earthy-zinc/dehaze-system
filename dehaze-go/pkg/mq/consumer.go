@@ -44,6 +44,22 @@ type Consumer struct {
 	closed   atomic.Bool
 	closeCh  chan struct{} // 通知重连协程和消费循环退出
 	reconnWg sync.WaitGroup
+
+	// topologies 记录已声明的队列拓扑，重连后用于重新声明队列与交换机
+	topologies []queueTopology
+}
+
+// queueTopology 描述一次消费订阅涉及的队列/交换机拓扑，用于重连后重新声明
+type queueTopology struct {
+	queue         string
+	exchange      string
+	dlxExchange   string
+	dlqName       string
+	routingKey    string
+	dlqRoutingKey string
+	queueArgs     amqp.Table
+	// dlqOnly 为 true 时仅声明死信队列（ConsumeDLQ 场景）
+	dlqOnly bool
 }
 
 // NewConsumer 创建 RabbitMQ 消费者
@@ -173,6 +189,10 @@ func (c *Consumer) reconnectLoop() {
 
 		if err == nil {
 			c.logger.Info("RabbitMQ Consumer 重连成功", zap.Int("attempt", attempt))
+			// 重连成功后重新声明所有已记录的队列与交换机拓扑，避免队列丢失导致消息无法路由
+			if rerr := c.redeclareAll(); rerr != nil {
+				c.logger.Error("重连后重新声明队列拓扑失败", zap.Error(rerr))
+			}
 			return
 		}
 		c.logger.Warn("RabbitMQ Consumer 重连失败",
@@ -228,37 +248,28 @@ func (c *Consumer) Consume(queue string, handler Handler) error {
 	exchange := c.resolveExchange()
 	dlxExchange := c.resolveDlxExchange()
 	dlqName := queue + ".dlq"
+	routingKey := c.resolveRoutingKey(queue)
 	dlqRoutingKey := c.resolveDlxRoutingKey(queue)
 
-	// 声明 DLX 交换机（direct 类型）
-	if err := ch.ExchangeDeclare(dlxExchange, "direct", true, false, false, false, nil); err != nil {
-		return fmt.Errorf("declare DLX exchange: %w", err)
-	}
-
-	// 声明主队列（带 DLX 参数，消息过期/reject 后进入死信交换机）
+	// 主队列带 DLX 参数，消息过期/reject 后进入死信交换机
 	queueArgs := amqp.Table{
 		"x-dead-letter-exchange":    dlxExchange,
 		"x-dead-letter-routing-key": dlqRoutingKey,
 	}
-	if _, err := ch.QueueDeclare(queue, true, false, false, false, queueArgs); err != nil {
+
+	topo := queueTopology{
+		queue:         queue,
+		exchange:      exchange,
+		dlxExchange:   dlxExchange,
+		dlqName:       dlqName,
+		routingKey:    routingKey,
+		dlqRoutingKey: dlqRoutingKey,
+		queueArgs:     queueArgs,
+	}
+	if err := c.declareTopology(ch, topo); err != nil {
 		return err
 	}
-
-	// 绑定主队列到交换机
-	routingKey := c.resolveRoutingKey(queue)
-	if err := ch.QueueBind(queue, routingKey, exchange, false, nil); err != nil {
-		return err
-	}
-
-	// 声明死信队列
-	if _, err := ch.QueueDeclare(dlqName, true, false, false, false, nil); err != nil {
-		return fmt.Errorf("declare DLQ: %w", err)
-	}
-
-	// 绑定死信队列到 DLX 交换机
-	if err := ch.QueueBind(dlqName, dlqRoutingKey, dlxExchange, false, nil); err != nil {
-		return fmt.Errorf("bind DLQ: %w", err)
-	}
+	c.recordTopology(topo)
 
 	deliveries, err := ch.Consume(queue, "", false, false, false, false, nil)
 	if err != nil {
@@ -298,9 +309,15 @@ func (c *Consumer) ConsumeDLQ(queue string, handler DLQHandler) error {
 	dlqName := queue + ".dlq"
 
 	// 确保死信队列存在
-	if _, err := ch.QueueDeclare(dlqName, true, false, false, false, nil); err != nil {
+	topo := queueTopology{
+		queue:   queue,
+		dlqName: dlqName,
+		dlqOnly: true,
+	}
+	if err := c.declareTopology(ch, topo); err != nil {
 		return err
 	}
+	c.recordTopology(topo)
 
 	deliveries, err := ch.Consume(dlqName, "", false, false, false, false, nil)
 	if err != nil {
@@ -331,23 +348,14 @@ func (c *Consumer) ConsumeDLQ(queue string, handler DLQHandler) error {
 				ctx = trace.WithLogger(ctx, c.logger.With(zap.String(trace.TraceFieldName, traceID)))
 
 				// 注入 userID：死信处理为系统行为，从 Headers 恢复原始用户身份，缺失时兜底为 SystemUserID
-				userID := common.SystemUserID
-				if uid, ok := d.Headers[userIDHeader]; ok {
-					switch n := uid.(type) {
-					case int64:
-						userID = n
-					case int32:
-						userID = int64(n)
-					case int:
-						userID = int64(n)
-					case float64:
-						userID = int64(n)
-					}
-				}
+				userID := extractUserID(d.Headers)
 				ctx = database.SetUserID(ctx, userID)
 
 				if err := handler(ctx, d.Body, map[string]interface{}(d.Headers)); err != nil {
-					c.logger.Warn("死信队列消息处理失败", zap.String("trace_id", traceID), zap.Error(err))
+					c.logger.Warn("死信队列消息处理失败，Nack 拒绝以防数据丢失", zap.String("trace_id", traceID), zap.Error(err))
+					// 处理失败时不 Ack，requeue=false 以便进入二级死信或人工介入，避免丢消息
+					_ = d.Nack(false, false)
+					continue
 				}
 				_ = d.Ack(false)
 			}
@@ -377,19 +385,7 @@ func (c *Consumer) handleMessage(d amqp.Delivery, handler Handler) {
 	// 缓存带 TraceID 的 logger，供整条链路复用
 	ctx = trace.WithLogger(ctx, c.logger.With(zap.String(trace.TraceFieldName, traceID)))
 
-	userID := common.SystemUserID
-	if uid, ok := d.Headers[userIDHeader]; ok {
-		switch n := uid.(type) {
-		case int64:
-			userID = n
-		case int32:
-			userID = int64(n)
-		case int:
-			userID = int64(n)
-		case float64:
-			userID = int64(n)
-		}
-	}
+	userID := extractUserID(d.Headers)
 	ctx = database.SetUserID(ctx, userID)
 
 	// 调用业务处理函数
@@ -434,6 +430,30 @@ func (c *Consumer) getRetryCount(headers amqp.Table) int {
 		}
 	}
 	return 0
+}
+
+// extractUserID 从 AMQP Headers 提取用户ID，缺失时返回 SystemUserID
+// AMQP message headers 中的数值经 JSON/AMQP 编码后可能为多种数值类型，统一兜底转换
+func extractUserID(headers amqp.Table) int64 {
+	if headers == nil {
+		return common.SystemUserID
+	}
+	uid, ok := headers[userIDHeader]
+	if !ok {
+		return common.SystemUserID
+	}
+	switch n := uid.(type) {
+	case int64:
+		return n
+	case int32:
+		return int64(n)
+	case int:
+		return int64(n)
+	case float64:
+		return int64(n)
+	default:
+		return common.SystemUserID
+	}
 }
 
 // republishWithRetryCount 递增 x-retry-count 后重新发布消息到主队列
@@ -559,4 +579,71 @@ func (c *Consumer) resolveDlxExchange() string {
 // resolveDlxRoutingKey 返回死信路由键（主路由键 + .dlx 后缀）
 func (c *Consumer) resolveDlxRoutingKey(queue string) string {
 	return c.resolveRoutingKey(queue) + ".dlx"
+}
+
+// declareTopology 在指定 channel 上声明队列拓扑（交换机、主队列、死信队列及绑定）
+// dlqOnly 为 true 时仅声明死信队列（ConsumeDLQ 场景）
+func (c *Consumer) declareTopology(ch *amqp.Channel, topo queueTopology) error {
+	if topo.dlqOnly {
+		if _, err := ch.QueueDeclare(topo.dlqName, true, false, false, false, nil); err != nil {
+			return fmt.Errorf("declare DLQ: %w", err)
+		}
+		return nil
+	}
+
+	// 声明 DLX 交换机（direct 类型）
+	if err := ch.ExchangeDeclare(topo.dlxExchange, "direct", true, false, false, false, nil); err != nil {
+		return fmt.Errorf("declare DLX exchange: %w", err)
+	}
+
+	// 声明主队列（带 DLX 参数，消息过期/reject 后进入死信交换机）
+	if _, err := ch.QueueDeclare(topo.queue, true, false, false, false, topo.queueArgs); err != nil {
+		return fmt.Errorf("declare queue: %w", err)
+	}
+
+	// 绑定主队列到交换机
+	if err := ch.QueueBind(topo.queue, topo.routingKey, topo.exchange, false, nil); err != nil {
+		return fmt.Errorf("bind queue: %w", err)
+	}
+
+	// 声明死信队列
+	if _, err := ch.QueueDeclare(topo.dlqName, true, false, false, false, nil); err != nil {
+		return fmt.Errorf("declare DLQ: %w", err)
+	}
+
+	// 绑定死信队列到 DLX 交换机
+	if err := ch.QueueBind(topo.dlqName, topo.dlqRoutingKey, topo.dlxExchange, false, nil); err != nil {
+		return fmt.Errorf("bind DLQ: %w", err)
+	}
+	return nil
+}
+
+// recordTopology 记录已声明的拓扑，用于重连后重新声明。重复声明是幂等的，无需去重
+func (c *Consumer) recordTopology(topo queueTopology) {
+	c.mu.Lock()
+	c.topologies = append(c.topologies, topo)
+	c.mu.Unlock()
+}
+
+// redeclareAll 重连成功后在当前 channel 上重新声明所有已记录的拓扑
+func (c *Consumer) redeclareAll() error {
+	c.mu.RLock()
+	topologies := make([]queueTopology, len(c.topologies))
+	copy(topologies, c.topologies)
+	c.mu.RUnlock()
+
+	ch := c.getChannel()
+	if ch == nil {
+		return errors.New("rabbitmq channel not available")
+	}
+
+	for _, topo := range topologies {
+		if err := c.declareTopology(ch, topo); err != nil {
+			return fmt.Errorf("redeclare topology for queue %s: %w", topo.queue, err)
+		}
+	}
+	if len(topologies) > 0 {
+		c.logger.Info("重连后已重新声明队列拓扑", zap.Int("count", len(topologies)))
+	}
+	return nil
 }

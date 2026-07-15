@@ -6,7 +6,7 @@ from app.models.entity.sys_algorithm import SysAlgorithm
 from app.models.entity.sys_dataset import SysDataset, SysDatasetItem, SysItemFile
 from app.models.entity.sys_dept import SysDept
 from app.models.entity.sys_dict import SysDict, SysDictType
-from app.models.entity.sys_file import SysFile, SysWpxFile
+from app.models.entity.sys_file import SysFile
 from app.models.entity.sys_log import SysPredLog, SysEvalLog, SysOperationLog, SysLoginLog
 from app.models.entity.sys_menu import SysMenu, SysRoleMenu
 from app.models.entity.sys_task import SysTask
@@ -15,7 +15,6 @@ from app.models.entity.sys_user import SysUser, SysRole, SysUserRole
 __all__ = [
     # 文件相关
     'SysFile',
-    'SysWpxFile',
     # 用户相关
     'SysUser',
     'SysRole',

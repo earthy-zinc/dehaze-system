@@ -79,178 +79,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
                 dataset_id, children_map, include_start=True)
         return result
 
-    async def calculate_statistics(
-        self,
-        db: AsyncSession,
-        dataset_ids: list[int],
-    ) -> dict[str, Any]:
-        """计算指定数据集的统计信息（叶子节点）"""
-        if not dataset_ids:
-            return self._empty_stats()
-
-        # 并行执行各项统计查询
-        item_count = await self._count_items(db, dataset_ids)
-        file_count, total_size = await self._count_files_and_size(db, dataset_ids)
-        annotated_count, unannotated_count = await self._count_by_annotation(db, dataset_ids)
-        scene_dist = await self._get_distribution(db, dataset_ids, "scene_type", "未分类")
-        haze_dist = await self._get_distribution(db, dataset_ids, "haze_level", "未标注")
-        format_dist = await self._get_format_distribution(db, dataset_ids)
-
-        return {
-            "itemCount": item_count,
-            "fileCount": file_count,
-            "totalSize": total_size,
-            "annotatedCount": annotated_count,
-            "unannotatedCount": unannotated_count,
-            "sceneDistribution": scene_dist,
-            "hazeDistribution": haze_dist,
-            "formatDistribution": format_dist,
-        }
-
-    @staticmethod
-    def _empty_stats() -> dict[str, Any]:
-        """返回空统计结构"""
-        return {
-            "itemCount": 0,
-            "fileCount": 0,
-            "totalSize": 0,
-            "annotatedCount": 0,
-            "unannotatedCount": 0,
-            "sceneDistribution": {},
-            "hazeDistribution": {},
-            "formatDistribution": {},
-        }
-
-    async def _count_items(
-        self,
-        db: AsyncSession,
-        dataset_ids: list[int],
-    ) -> int:
-        """统计数据项总数"""
-        stmt = select(func.count(SysDatasetItem.id)).where(
-            SysDatasetItem.dataset_id.in_(dataset_ids)
-        )
-        result = await db.execute(stmt)
-        return result.scalar() or 0
-
-    async def _count_files_and_size(
-        self,
-        db: AsyncSession,
-        dataset_ids: list[int],
-    ) -> tuple[int, int]:
-        """统计文件总数和总大小"""
-        stmt = (
-            select(func.count(SysItemFile.id), func.sum(SysFile.size))
-            .select_from(SysItemFile)
-            .join(SysFile, SysItemFile.file_id == SysFile.id)
-            .where(
-                SysItemFile.item_id.in_(
-                    select(SysDatasetItem.id).where(
-                        SysDatasetItem.dataset_id.in_(dataset_ids)
-                    )
-                )
-            )
-        )
-        result = await db.execute(stmt)
-        row = result.first()
-        if row:
-            return row[0] or 0, int(row[1] or 0)
-        return 0, 0
-
-    async def _count_by_annotation(
-        self,
-        db: AsyncSession,
-        dataset_ids: list[int],
-    ) -> tuple[int, int]:
-        """按标注状态统计数量（已标注/未标注），基于 haze_level 是否为空"""
-        annotated_cond = and_(
-            SysItemFile.haze_level.isnot(None),
-            SysItemFile.haze_level != "",
-        )
-        unannotated_cond = or_(
-            SysItemFile.haze_level.is_(None),
-            SysItemFile.haze_level == "",
-        )
-        stmt = (
-            select(
-                func.sum(case((annotated_cond, 1), else_=0)).label("annotated"),
-                func.sum(case((unannotated_cond, 1), else_=0)).label("unannotated"),
-            )
-            .select_from(SysItemFile)
-            .join(SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id)
-            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
-        )
-        result = await db.execute(stmt)
-        row = result.first()
-        if row:
-            return int(row[0] or 0), int(row[1] or 0)
-        return 0, 0
-
-    async def _get_distribution(
-        self,
-        db: AsyncSession,
-        dataset_ids: list[int],
-        field: str,
-        default_label: str,
-    ) -> dict[str, int]:
-        """获取字段值分布统计"""
-        column = getattr(SysItemFile, field)
-        stmt = (
-            select(
-                func.coalesce(column, default_label).label("label"),
-                func.count(SysItemFile.id).label("count"),
-            )
-            .select_from(SysItemFile)
-            .join(SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id)
-            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
-            .group_by(func.coalesce(column, default_label))
-        )
-        result = await db.execute(stmt)
-        dist: dict[str, int] = {}
-        for row in result:
-            label_val = getattr(row, "label", "")
-            count_val = getattr(row, "count", 0)
-            dist[str(label_val)] = int(count_val)
-        return dist
-
-    async def _get_format_distribution(
-        self,
-        db: AsyncSession,
-        dataset_ids: list[int],
-    ) -> dict[str, int]:
-        """获取文件格式分布统计"""
-        stmt = (
-            select(SysFile.type.label("file_type"),
-                   func.count(SysFile.id).label("count"))
-            .select_from(SysFile)
-            .join(SysItemFile, SysFile.id == SysItemFile.file_id)
-            .join(SysDatasetItem, SysItemFile.item_id == SysDatasetItem.id)
-            .where(SysDatasetItem.dataset_id.in_(dataset_ids))
-            .group_by(SysFile.type)
-        )
-        result = await db.execute(stmt)
-        dist: dict[str, int] = {}
-        for row in result:
-            file_type_val = getattr(row, "file_type", "")
-            count_val = getattr(row, "count", 0)
-            dist[str(file_type_val)] = int(count_val)
-        return dist
-
-    async def get_item_files(
-        self,
-        db: AsyncSession,
-        item_id: int,
-    ) -> list[tuple[SysItemFile, SysFile]]:
-        """获取数据项关联的文件列表"""
-        stmt = (
-            select(SysItemFile, SysFile)
-            .select_from(SysItemFile)
-            .join(SysFile, SysItemFile.file_id == SysFile.id)
-            .where(SysItemFile.item_id == item_id)
-        )
-        result = await db.execute(stmt)
-        return [tuple(row) for row in result.all()]
-
     async def get_items_by_dataset_id(
         self,
         db: AsyncSession,
@@ -271,16 +99,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
         stmt = select(SysDatasetItem).where(SysDatasetItem.id == item_id)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
-
-    async def get_item_files_by_item_id(
-        self,
-        db: AsyncSession,
-        item_id: int,
-    ) -> list[SysItemFile]:
-        """获取数据项关联的文件记录（仅 SysItemFile）"""
-        stmt = select(SysItemFile).where(SysItemFile.item_id == item_id)
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
 
     async def get_item_files_by_item_ids(
         self,
@@ -336,18 +154,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
 
         return build_options_tree(0)
 
-    async def get_list_with_keywords(
-        self,
-        db: AsyncSession,
-        keywords: str | None = None,
-    ) -> list[SysDataset]:
-        """获取数据集列表（支持关键字搜索）"""
-        stmt = select(SysDataset).where(SysDataset.deleted == 0)
-        if keywords:
-            stmt = stmt.where(SysDataset.name.like(f"%{keywords}%"))
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
-
     async def get_by_id(
         self,
         db: AsyncSession,
@@ -364,16 +170,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
             )
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
-
-    async def get_by_dataset_id(
-        self,
-        db: AsyncSession,
-        dataset_id: int,
-        *,
-        include_deleted: bool = False,
-    ) -> SysDataset | None:
-        """根据数据集ID获取数据集（别名方法，保持向后兼容）"""
-        return await self.get_by_id(db, dataset_id, with_deleted=include_deleted)
 
     async def get_children_count(
         self,
@@ -458,17 +254,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_item_ids_by_dataset(
-        self,
-        db: AsyncSession,
-        dataset_id: int,
-    ) -> list[int]:
-        """获取数据集下所有数据项ID"""
-        stmt = select(SysDatasetItem.id).where(
-            SysDatasetItem.dataset_id == dataset_id)
-        result = await db.execute(stmt)
-        return [row[0] for row in result.all()]
-
     async def get_item_ids_by_dataset_ids(
         self,
         db: AsyncSession,
@@ -481,33 +266,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
             SysDatasetItem.dataset_id.in_(dataset_ids))
         result = await db.execute(stmt)
         return [row[0] for row in result.all()]
-
-    async def create_item(
-        self,
-        db: AsyncSession,
-        dataset_id: int,
-        name: str,
-    ) -> SysDatasetItem:
-        """创建数据项"""
-        item = SysDatasetItem(dataset_id=dataset_id, name=name)
-        db.add(item)
-        await db.flush()
-        return item
-
-    async def update_item(
-        self,
-        db: AsyncSession,
-        item_id: int,
-        name: str,
-    ) -> bool:
-        """更新数据项名称"""
-        stmt = select(SysDatasetItem).where(SysDatasetItem.id == item_id)
-        result = await db.execute(stmt)
-        item = result.scalar_one_or_none()
-        if not item:
-            return False
-        item.name = name
-        return True
 
     async def delete_item_by_id(
         self,
@@ -540,17 +298,6 @@ class DatasetRepository(BaseRepository[SysDataset]):
         if not item_ids:
             return 0
         stmt = delete(SysDatasetItem).where(SysDatasetItem.id.in_(item_ids))
-        result = await db.execute(stmt)
-        return result.rowcount
-
-    async def delete_items_by_dataset_id(
-        self,
-        db: AsyncSession,
-        dataset_id: int,
-    ) -> int:
-        """删除数据集下所有数据项"""
-        stmt = delete(SysDatasetItem).where(
-            SysDatasetItem.dataset_id == dataset_id)
         result = await db.execute(stmt)
         return result.rowcount
 

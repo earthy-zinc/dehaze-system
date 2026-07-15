@@ -6,7 +6,7 @@ type SysUser struct {
 	Username string    `gorm:"column:username;type:varchar(64);uniqueIndex:idx_sys_user_username;comment:用户名" json:"username"`
 	Nickname string    `gorm:"column:nickname;type:varchar(64);comment:昵称" json:"nickname"`
 	Gender   int8      `gorm:"column:gender;type:tinyint;default:1;comment:性别((1:男;2:女))" json:"gender"`
-	Password string    `gorm:"column:password;type:varchar(100);comment:密码" json:"password"`
+	Password string    `gorm:"column:password;type:varchar(100);comment:密码" json:"-"`
 	DeptID   int64     `gorm:"column:dept_id;type:bigint;comment:部门ID" json:"deptId"`
 	Avatar   string    `gorm:"column:avatar;type:text;comment:用户头像" json:"avatar"`
 	Mobile   string    `gorm:"column:mobile;type:varchar(20);comment:联系方式" json:"mobile"`

@@ -190,10 +190,7 @@ class CacheService:
             return result
 
         if self._singleflight is not None:
-            try:
-                return await self._singleflight.do(key, _load)
-            except Exception:
-                return default
+            return await self._singleflight.do(key, _load)
         return await _load()
 
     async def set(
@@ -211,25 +208,30 @@ class CacheService:
             operation=lambda: self.redis.setex(key, ttl, value),
             default=False,
             operation_name=f"cache_set:{key}",
-        ) or False
+        )
 
         # 再写 L1
         if self._l1 is not None:
             self._l1.set(key, value, ttl=ttl)
-        return ok
+        return bool(ok)
 
     async def delete(self, key: str) -> bool:
-        """删除缓存（先删 L2 再删 L1，Cache-Aside 模式）"""
+        """删除缓存（先删 L2 再删 L1，Cache-Aside 模式）
+
+        注意：redis.delete 返回被删除的 key 数量，key 不存在时返回 0。
+        此处返回 True 表示删除操作已执行（不要求 key 必须存在），
+        Redis 不可用时由 redis_operation_with_fallback 记录日志并返回默认值。
+        """
         # 先删 L2
-        ok = await redis_operation_with_fallback(
+        await redis_operation_with_fallback(
             operation=lambda: self.redis.delete(key),
-            default=False,
+            default=0,
             operation_name=f"cache_delete:{key}",
-        ) or False
+        )
         # 再删 L1
         if self._l1 is not None:
             self._l1.delete(key)
-        return ok
+        return True
 
     async def delete_pattern(self, pattern: str) -> int:
         """按通配符删除缓存（先删 L2 再删 L1）"""
@@ -245,7 +247,7 @@ class CacheService:
             operation=_delete_by_pattern,
             default=0,
             operation_name=f"cache_delete_pattern:{pattern}",
-        ) or 0
+        )
 
         # 同步删除 L1 中匹配的 key
         if self._l1 is not None:
@@ -343,10 +345,7 @@ class CacheService:
             return result
 
         if self._singleflight is not None:
-            try:
-                return await self._singleflight.do(key, _load)
-            except Exception:
-                return default
+            return await self._singleflight.do(key, _load)
         return await _load()
 
 

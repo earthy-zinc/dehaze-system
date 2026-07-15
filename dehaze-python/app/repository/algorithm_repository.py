@@ -279,21 +279,6 @@ class AlgorithmRepository(BaseRepository[SysAlgorithm]):
         )
         return (await db.execute(stmt)).scalar() or 0
 
-    async def get_recent_calls(
-        self,
-        db: AsyncSession,
-        algorithm_id: int,
-        limit: int = 10,
-    ) -> list[SysPredLog]:
-        """获取最近调用记录"""
-        stmt = (
-            select(SysPredLog)
-            .where(SysPredLog.algorithm_id == algorithm_id)
-            .order_by(desc(SysPredLog.id))
-            .limit(limit)
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
 
 
 # 单例

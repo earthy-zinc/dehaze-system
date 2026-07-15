@@ -1,6 +1,7 @@
 package com.pei.dehaze.common.exception;
 
 import com.pei.dehaze.common.result.IResultCode;
+import com.pei.dehaze.common.result.ResultCode;
 import lombok.Getter;
 
 /**
@@ -12,7 +13,7 @@ import lombok.Getter;
 @Getter
 public class BusinessException extends RuntimeException {
 
-    public IResultCode resultCode;
+    private final IResultCode resultCode;
 
     public BusinessException(IResultCode errorCode) {
         super(errorCode.getMsg());
@@ -26,14 +27,17 @@ public class BusinessException extends RuntimeException {
 
     public BusinessException(String message){
         super(message);
+        this.resultCode = ResultCode.BUSINESS_ERROR;
     }
 
     public BusinessException(String message, Throwable cause){
         super(message, cause);
+        this.resultCode = ResultCode.BUSINESS_ERROR;
     }
 
     public BusinessException(Throwable cause){
         super(cause);
+        this.resultCode = ResultCode.SYSTEM_EXECUTION_ERROR;
     }
 
 

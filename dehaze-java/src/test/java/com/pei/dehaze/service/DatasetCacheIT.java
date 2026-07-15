@@ -173,7 +173,7 @@ class DatasetCacheIT {
 
     /**
      * 测试缓存清除功能
-     * 验证：调用evictDatasetStatsCache后，缓存应被清除
+     * 验证：调用evictAllDatasetsCache后，缓存应被清除
      */
     @Test
     @Transactional
@@ -191,7 +191,7 @@ class DatasetCacheIT {
         datasetService.calculateStatistics(datasetId);
 
         // Act - 手动清除缓存
-        datasetService.evictDatasetStatsCache(datasetId);
+        datasetService.evictAllDatasetsCache();
 
         // Assert - 缓存清除方法应该正常执行（不抛异常）
         // 由于测试环境可能禁用缓存，这里只验证方法能正常调用

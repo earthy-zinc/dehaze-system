@@ -176,53 +176,6 @@ func (_c *MockIUserRepository_CreateWithRoles_Call) RunAndReturn(run func(contex
 	return _c
 }
 
-// Delete provides a mock function with given fields: ctx, ids
-func (_m *MockIUserRepository) Delete(ctx context.Context, ids []int64) error {
-	ret := _m.Called(ctx, ids)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Delete")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []int64) error); ok {
-		r0 = rf(ctx, ids)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockIUserRepository_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
-type MockIUserRepository_Delete_Call struct {
-	*mock.Call
-}
-
-// Delete is a helper method to define mock.On call
-//   - ctx context.Context
-//   - ids []int64
-func (_e *MockIUserRepository_Expecter) Delete(ctx interface{}, ids interface{}) *MockIUserRepository_Delete_Call {
-	return &MockIUserRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, ids)}
-}
-
-func (_c *MockIUserRepository_Delete_Call) Run(run func(ctx context.Context, ids []int64)) *MockIUserRepository_Delete_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]int64))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_Delete_Call) Return(_a0 error) *MockIUserRepository_Delete_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockIUserRepository_Delete_Call) RunAndReturn(run func(context.Context, []int64) error) *MockIUserRepository_Delete_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ExistsByUsername provides a mock function with given fields: ctx, username, excludeID
 func (_m *MockIUserRepository) ExistsByUsername(ctx context.Context, username string, excludeID ...int64) (bool, error) {
 	_va := make([]interface{}, len(excludeID))
@@ -291,63 +244,6 @@ func (_c *MockIUserRepository_ExistsByUsername_Call) Return(_a0 bool, _a1 error)
 }
 
 func (_c *MockIUserRepository_ExistsByUsername_Call) RunAndReturn(run func(context.Context, string, ...int64) (bool, error)) *MockIUserRepository_ExistsByUsername_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ExistsByUsernameInTx provides a mock function with given fields: ctx, username
-func (_m *MockIUserRepository) ExistsByUsernameInTx(ctx context.Context, username string) (bool, error) {
-	ret := _m.Called(ctx, username)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ExistsByUsernameInTx")
-	}
-
-	var r0 bool
-	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
-		return rf(ctx, username)
-	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) bool); ok {
-		r0 = rf(ctx, username)
-	} else {
-		r0 = ret.Get(0).(bool)
-	}
-
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, username)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockIUserRepository_ExistsByUsernameInTx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ExistsByUsernameInTx'
-type MockIUserRepository_ExistsByUsernameInTx_Call struct {
-	*mock.Call
-}
-
-// ExistsByUsernameInTx is a helper method to define mock.On call
-//   - ctx context.Context
-//   - username string
-func (_e *MockIUserRepository_Expecter) ExistsByUsernameInTx(ctx interface{}, username interface{}) *MockIUserRepository_ExistsByUsernameInTx_Call {
-	return &MockIUserRepository_ExistsByUsernameInTx_Call{Call: _e.mock.On("ExistsByUsernameInTx", ctx, username)}
-}
-
-func (_c *MockIUserRepository_ExistsByUsernameInTx_Call) Run(run func(ctx context.Context, username string)) *MockIUserRepository_ExistsByUsernameInTx_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_ExistsByUsernameInTx_Call) Return(_a0 bool, _a1 error) *MockIUserRepository_ExistsByUsernameInTx_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockIUserRepository_ExistsByUsernameInTx_Call) RunAndReturn(run func(context.Context, string) (bool, error)) *MockIUserRepository_ExistsByUsernameInTx_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -898,53 +794,6 @@ func (_c *MockIUserRepository_GetUserRoleIDs_Call) RunAndReturn(run func(context
 	return _c
 }
 
-// ImportUserInTx provides a mock function with given fields: ctx, _a1
-func (_m *MockIUserRepository) ImportUserInTx(ctx context.Context, _a1 *model.SysUser) error {
-	ret := _m.Called(ctx, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ImportUserInTx")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *model.SysUser) error); ok {
-		r0 = rf(ctx, _a1)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockIUserRepository_ImportUserInTx_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ImportUserInTx'
-type MockIUserRepository_ImportUserInTx_Call struct {
-	*mock.Call
-}
-
-// ImportUserInTx is a helper method to define mock.On call
-//   - ctx context.Context
-//   - _a1 *model.SysUser
-func (_e *MockIUserRepository_Expecter) ImportUserInTx(ctx interface{}, _a1 interface{}) *MockIUserRepository_ImportUserInTx_Call {
-	return &MockIUserRepository_ImportUserInTx_Call{Call: _e.mock.On("ImportUserInTx", ctx, _a1)}
-}
-
-func (_c *MockIUserRepository_ImportUserInTx_Call) Run(run func(ctx context.Context, _a1 *model.SysUser)) *MockIUserRepository_ImportUserInTx_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*model.SysUser))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_ImportUserInTx_Call) Return(_a0 error) *MockIUserRepository_ImportUserInTx_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockIUserRepository_ImportUserInTx_Call) RunAndReturn(run func(context.Context, *model.SysUser) error) *MockIUserRepository_ImportUserInTx_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SoftDeleteWithTime provides a mock function with given fields: ctx, ids, updateTime
 func (_m *MockIUserRepository) SoftDeleteWithTime(ctx context.Context, ids []int64, updateTime time.Time) error {
 	ret := _m.Called(ctx, ids, updateTime)
@@ -1040,101 +889,6 @@ func (_c *MockIUserRepository_Transaction_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-// Update provides a mock function with given fields: ctx, _a1
-func (_m *MockIUserRepository) Update(ctx context.Context, _a1 *model.SysUser) error {
-	ret := _m.Called(ctx, _a1)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Update")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *model.SysUser) error); ok {
-		r0 = rf(ctx, _a1)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockIUserRepository_Update_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Update'
-type MockIUserRepository_Update_Call struct {
-	*mock.Call
-}
-
-// Update is a helper method to define mock.On call
-//   - ctx context.Context
-//   - _a1 *model.SysUser
-func (_e *MockIUserRepository_Expecter) Update(ctx interface{}, _a1 interface{}) *MockIUserRepository_Update_Call {
-	return &MockIUserRepository_Update_Call{Call: _e.mock.On("Update", ctx, _a1)}
-}
-
-func (_c *MockIUserRepository_Update_Call) Run(run func(ctx context.Context, _a1 *model.SysUser)) *MockIUserRepository_Update_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*model.SysUser))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_Update_Call) Return(_a0 error) *MockIUserRepository_Update_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockIUserRepository_Update_Call) RunAndReturn(run func(context.Context, *model.SysUser) error) *MockIUserRepository_Update_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdatePassword provides a mock function with given fields: ctx, id, password
-func (_m *MockIUserRepository) UpdatePassword(ctx context.Context, id int64, password string) error {
-	ret := _m.Called(ctx, id, password)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdatePassword")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, string) error); ok {
-		r0 = rf(ctx, id, password)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockIUserRepository_UpdatePassword_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePassword'
-type MockIUserRepository_UpdatePassword_Call struct {
-	*mock.Call
-}
-
-// UpdatePassword is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id int64
-//   - password string
-func (_e *MockIUserRepository_Expecter) UpdatePassword(ctx interface{}, id interface{}, password interface{}) *MockIUserRepository_UpdatePassword_Call {
-	return &MockIUserRepository_UpdatePassword_Call{Call: _e.mock.On("UpdatePassword", ctx, id, password)}
-}
-
-func (_c *MockIUserRepository_UpdatePassword_Call) Run(run func(ctx context.Context, id int64, password string)) *MockIUserRepository_UpdatePassword_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_UpdatePassword_Call) Return(_a0 error) *MockIUserRepository_UpdatePassword_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockIUserRepository_UpdatePassword_Call) RunAndReturn(run func(context.Context, int64, string) error) *MockIUserRepository_UpdatePassword_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // UpdatePasswordWithTime provides a mock function with given fields: ctx, id, password, updateTime
 func (_m *MockIUserRepository) UpdatePasswordWithTime(ctx context.Context, id int64, password string, updateTime time.Time) error {
 	ret := _m.Called(ctx, id, password, updateTime)
@@ -1180,54 +934,6 @@ func (_c *MockIUserRepository_UpdatePasswordWithTime_Call) Return(_a0 error) *Mo
 }
 
 func (_c *MockIUserRepository_UpdatePasswordWithTime_Call) RunAndReturn(run func(context.Context, int64, string, time.Time) error) *MockIUserRepository_UpdatePasswordWithTime_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateStatus provides a mock function with given fields: ctx, id, status
-func (_m *MockIUserRepository) UpdateStatus(ctx context.Context, id int64, status int8) error {
-	ret := _m.Called(ctx, id, status)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateStatus")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, int64, int8) error); ok {
-		r0 = rf(ctx, id, status)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockIUserRepository_UpdateStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateStatus'
-type MockIUserRepository_UpdateStatus_Call struct {
-	*mock.Call
-}
-
-// UpdateStatus is a helper method to define mock.On call
-//   - ctx context.Context
-//   - id int64
-//   - status int8
-func (_e *MockIUserRepository_Expecter) UpdateStatus(ctx interface{}, id interface{}, status interface{}) *MockIUserRepository_UpdateStatus_Call {
-	return &MockIUserRepository_UpdateStatus_Call{Call: _e.mock.On("UpdateStatus", ctx, id, status)}
-}
-
-func (_c *MockIUserRepository_UpdateStatus_Call) Run(run func(ctx context.Context, id int64, status int8)) *MockIUserRepository_UpdateStatus_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int64), args[2].(int8))
-	})
-	return _c
-}
-
-func (_c *MockIUserRepository_UpdateStatus_Call) Return(_a0 error) *MockIUserRepository_UpdateStatus_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockIUserRepository_UpdateStatus_Call) RunAndReturn(run func(context.Context, int64, int8) error) *MockIUserRepository_UpdateStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

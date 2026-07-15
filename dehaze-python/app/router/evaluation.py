@@ -6,55 +6,28 @@ GET  /api/v1/evaluation/logs     → 评估日志列表
 GET  /api/v1/evaluation/{taskId} → 查询评估任务状态（通过日志ID）
 """
 
-import asyncio
 import json
 import logging
-import time
 from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.result import Result, success, error
+from app.core.result import Result, success
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.dependencies.auth import get_current_user, UserContext
 from app.database import get_db
-from app.models.entity.sys_log import SysEvalLog
 from app.models.schema.common import PageResult
 from app.repository.pred_eval_log_repository import eval_log_repository
-from app.service.prediction_service import prediction_service
-from algorithm.metrics import calculate as calculate_metrics
+from app.service.evaluation_service import evaluation_service
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/evaluation", tags=["评估"],
                    dependencies=[Depends(get_current_user)])
-
-# 评估合格阈值（文档要求）
-QUALIFIED_THRESHOLDS = {
-    "psnr": 30.0,   # ≥ 30 dB
-    "ssim": 0.8,    # ≥ 0.8
-    "lpips": 0.3,   # ≤ 0.3
-    "niqe": 5.0,    # ≤ 5.0
-}
-
-
-def _is_qualified(metrics: dict[str, float]) -> bool:
-    """基于阈值判定是否合格"""
-    if not metrics:
-        return False
-    psnr = metrics.get("psnr", 0)
-    ssim = metrics.get("ssim", 0)
-    lpips = metrics.get("lpips", 1.0)
-    niqe = metrics.get("niqe", 99.0)
-    return (psnr >= QUALIFIED_THRESHOLDS["psnr"]
-            and ssim >= QUALIFIED_THRESHOLDS["ssim"]
-            and lpips <= QUALIFIED_THRESHOLDS["lpips"]
-            and niqe <= QUALIFIED_THRESHOLDS["niqe"])
 
 
 class EvaluationRequest(BaseModel):
@@ -73,14 +46,6 @@ class EvaluationResponse(BaseModel):
     time: int = Field(default=0, description="处理时间(毫秒)")
 
 
-def _resolve_file_url(file_id: Optional[int], file_type: str) -> str:
-    """根据文件ID构造下载URL（与Java resolveFileUrl一致）"""
-    if file_id is not None:
-        return f"/api/v1/files/download/{file_id}"
-    label = "预测" if file_type == "pred" else "参考"
-    raise BusinessException(f"缺少{label}图片")
-
-
 @router.post("", response_model=Result[EvaluationResponse])
 async def evaluate(
     body: EvaluationRequest,
@@ -92,100 +57,17 @@ async def evaluate(
     对比预测结果与参考图像，计算 PSNR/SSIM/LPIPS/NIQE/Entropy 等多维指标，
     并基于阈值判定是否合格。
     """
-    logger.info("评估请求: user=%s, algorithmId=%s", user.username, body.algorithmId)
-
-    # 1. 校验算法存在（与Java一致）
-    await prediction_service._get_algorithm(body.algorithmId)
-
-    # 2. 解析文件URL
-    pred_url = _resolve_file_url(body.predFileId, "pred")
-    gt_url = _resolve_file_url(body.gtFileId, "gt")
-
-    start = time.time()
-    try:
-        # 并行下载预测图和参考图
-        pred_bytes, gt_bytes = await asyncio.gather(
-            prediction_service._download_image(pred_url),
-            prediction_service._download_image(gt_url),
-        )
-
-        # 计算图片 MD5（CPU 密集型，移至线程池）
-        from app.utils.file import calculate_bytes_md5
-        pred_md5, gt_md5 = await asyncio.gather(
-            asyncio.to_thread(calculate_bytes_md5, pred_bytes),
-            asyncio.to_thread(calculate_bytes_md5, gt_bytes),
-        )
-
-        # 调用评估（图像处理 CPU 密集型，移至线程池避免阻塞事件循环）
-        pred_bytes.seek(0)
-        gt_bytes.seek(0)
-        metrics_list = await asyncio.to_thread(
-            calculate_metrics, pred_bytes, gt_bytes
-        )
-
-        # 转换为 { "psnr": 35.0, "ssim": 0.92, ... } 格式
-        metrics = {m["metric_name"]: m["value"] for m in metrics_list}
-
-        elapsed = int((time.time() - start) * 1000)
-        qualified = _is_qualified(metrics)
-        logger.info("评估完成: algorithmId=%s, time=%sms, qualified=%s, metrics=%s",
-                    body.algorithmId, elapsed, qualified, metrics)
-
-        # 写入评估日志
-        log_id = await _write_eval_log(
-            algorithm_id=body.algorithmId,
-            pred_md5=pred_md5,
-            pred_url=pred_url,
-            gt_md5=gt_md5,
-            gt_url=gt_url,
-            result=metrics,
-            time_ms=elapsed,
-        )
-
-        return success(EvaluationResponse(
-            logId=log_id,
-            metrics=metrics,
-            qualified=qualified,
-            time=elapsed,
-        ))
-
-    except BusinessException:
-        raise
-    except FileNotFoundError as e:
-        return error(f"图片文件不存在: {e}", ResultCode.RESOURCE_NOT_FOUND.code)
-    except Exception as e:
-        logger.exception("评估失败: %s", e)
-        return error(f"评估执行失败: {e}", ResultCode.SYSTEM_EXECUTION_ERROR.code)
-
-
-async def _write_eval_log(
-    algorithm_id: int,
-    pred_md5: str,
-    pred_url: str,
-    gt_md5: str,
-    gt_url: str,
-    result: dict,
-    time_ms: int,
-) -> Optional[int]:
-    """写入评估日志"""
-    from app.database import async_session_factory
-    try:
-        async with async_session_factory() as db:
-            log = await eval_log_repository.create_log(
-                db=db,
-                algorithm_id=algorithm_id,
-                pred_md5=pred_md5,
-                pred_url=pred_url,
-                gt_md5=gt_md5,
-                gt_url=gt_url,
-                result=result,
-                time_ms=time_ms,
-            )
-            await db.commit()
-            return log.id
-    except Exception as e:
-        logger.warning("写入评估日志失败: %s", e)
-        return None
+    result = await evaluation_service.evaluate(
+        algorithm_id=body.algorithmId,
+        pred_file_id=body.predFileId,
+        gt_file_id=body.gtFileId,
+    )
+    return success(EvaluationResponse(
+        logId=result["logId"],
+        metrics=result["metrics"],
+        qualified=result["qualified"],
+        time=result["time"],
+    ))
 
 
 class EvaluationLogVO(BaseModel):
@@ -247,9 +129,7 @@ async def get_evaluation_task(
 
     文档中的 taskId 对应 sys_eval_log.id
     """
-    stmt = select(SysEvalLog).where(SysEvalLog.id == task_id)
-    result = await db.execute(stmt)
-    log = result.scalar_one_or_none()
+    log = await eval_log_repository.get_by_id(db, task_id)
     if not log:
-        return error("评估任务不存在", ResultCode.RESOURCE_NOT_FOUND.code)
+        raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "评估任务不存在")
     return success(log)

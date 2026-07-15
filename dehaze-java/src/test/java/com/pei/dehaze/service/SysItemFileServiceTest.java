@@ -109,22 +109,6 @@ class SysItemFileServiceTest {
     }
 
     /**
-     * 测试转换null对象
-     * 测试场景：传入null对象
-     * 验证内容：
-     * 1. 返回null
-     */
-    @Test
-    @DisplayName("将SysItemFile转换为ImageUrlVO - null对象")
-    void testConvertToImageUrlVO_Null() {
-        // Act
-        ImageUrlVO result = sysItemFileServiceImpl.convertToImageUrlVO(null, Map.of());
-
-        // Assert
-        assertNull(result);
-    }
-
-    /**
      * 测试转换无缩略图的图片
      * 测试场景：图片没有缩略图（thumbnailFileId为null）
      * 验证内容：

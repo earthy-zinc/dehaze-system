@@ -75,53 +75,6 @@ func (_c *MockIDatasetRepository_Create_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
-// Delete provides a mock function with given fields: ctx, ids
-func (_m *MockIDatasetRepository) Delete(ctx context.Context, ids []int64) error {
-	ret := _m.Called(ctx, ids)
-
-	if len(ret) == 0 {
-		panic("no return value specified for Delete")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []int64) error); ok {
-		r0 = rf(ctx, ids)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockIDatasetRepository_Delete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Delete'
-type MockIDatasetRepository_Delete_Call struct {
-	*mock.Call
-}
-
-// Delete is a helper method to define mock.On call
-//   - ctx context.Context
-//   - ids []int64
-func (_e *MockIDatasetRepository_Expecter) Delete(ctx interface{}, ids interface{}) *MockIDatasetRepository_Delete_Call {
-	return &MockIDatasetRepository_Delete_Call{Call: _e.mock.On("Delete", ctx, ids)}
-}
-
-func (_c *MockIDatasetRepository_Delete_Call) Run(run func(ctx context.Context, ids []int64)) *MockIDatasetRepository_Delete_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]int64))
-	})
-	return _c
-}
-
-func (_c *MockIDatasetRepository_Delete_Call) Return(_a0 error) *MockIDatasetRepository_Delete_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockIDatasetRepository_Delete_Call) RunAndReturn(run func(context.Context, []int64) error) *MockIDatasetRepository_Delete_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // FindAll provides a mock function with given fields: ctx
 func (_m *MockIDatasetRepository) FindAll(ctx context.Context) ([]model.SysDataset, error) {
 	ret := _m.Called(ctx)

@@ -10,7 +10,6 @@ import com.pei.dehaze.model.vo.DatasetItemVO;
 import java.util.List;
 
 public interface SysDatasetItemService extends IService<SysDatasetItem> {
-    SysDatasetItem createDatasetItem(Long datasetId);
     SysDatasetItem createDatasetItem(Long datasetId, String itemName);
 
     /**
@@ -50,12 +49,4 @@ public interface SysDatasetItemService extends IService<SysDatasetItem> {
      * @return 数据项详情VO，包含配对图片信息
      */
     DatasetItemVO getDatasetItem(Long id);
-
-    /**
-     * 根据数据项ID获取所属数据集ID
-     *
-     * @param itemId 数据项ID
-     * @return 数据集ID，如果不存在返回null
-     */
-    Long getDatasetIdByItemId(Long itemId);
 }

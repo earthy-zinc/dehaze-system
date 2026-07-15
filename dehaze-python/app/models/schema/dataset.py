@@ -5,7 +5,7 @@
 """
 from typing import List, Optional
 
-from app.models.schema.common import BasePageQuery, validate_no_xss
+from app.models.schema.common import validate_no_xss
 from pydantic import BaseModel, Field, field_validator
 
 # ============================================================
@@ -56,20 +56,6 @@ class DatasetUpdateForm(BaseModel):
         return validate_no_xss(v)
 
 
-class DatasetStatisticsVO(BaseModel):
-    """数据集统计信息"""
-    itemCount: int = Field(default=0, description="数据项数量")
-    fileCount: int = Field(default=0, description="文件总数")
-    totalSize: int = Field(default=0, description="总大小(字节)")
-    annotatedCount: int = Field(default=0, description="已标注图片数量")
-    unannotatedCount: int = Field(default=0, description="未标注图片数量")
-    sceneDistribution: Optional[dict] = Field(default=None, description="场景分布")
-    hazeDistribution: Optional[dict] = Field(
-        default=None, description="雾霾程度分布")
-    formatDistribution: Optional[dict] = Field(
-        default=None, description="格式分布")
-
-
 class DatasetVO(BaseModel):
     """数据集VO"""
     id: int = Field(description="数据集ID")
@@ -82,7 +68,7 @@ class DatasetVO(BaseModel):
     itemCount: Optional[int] = Field(default=0, description="数据项数量")
     fileCount: Optional[int] = Field(default=0, description="文件数量")
     totalSize: Optional[int] = Field(default=0, description="总大小(字节)")
-    statistics: Optional[DatasetStatisticsVO] = Field(
+    statistics: Optional[dict] = Field(
         default=None, description="统计信息")
     createTime: Optional[str] = Field(default=None, description="创建时间")
     updateTime: Optional[str] = Field(default=None, description="更新时间")
@@ -122,12 +108,6 @@ class DatasetDeleteResultVO(BaseModel):
 # ============================================================
 # 数据项 (DatasetItem)
 # ============================================================
-
-class DatasetItemQuery(BasePageQuery):
-    """数据项分页查询参数"""
-    datasetId: int = Field(..., description="所属数据集ID")
-    keywords: Optional[str] = Field(default=None, description="搜索关键词")
-
 
 class DatasetItemCreateForm(BaseModel):
     """创建空数据项表单"""
@@ -191,26 +171,9 @@ class DatasetItemIdVO(BaseModel):
     id: int = Field(description="数据项ID")
 
 
-class DatasetItemDeleteForm(BaseModel):
-    """数据项删除表单（兼容旧接口）"""
-    datasetItemId: int = Field(..., description="数据项ID")
-
-
 # ============================================================
 # 图片文件 (ItemFile)
 # ============================================================
-
-class ItemFileAddForm(BaseModel):
-    """上传数据项图片表单（元数据部分，文件通过 UploadFile 传递）"""
-    itemId: int = Field(..., description="所属数据项ID")
-    type: str = Field(..., description="图片类型(clear/hazy/depth/segment)")
-    sceneType: Optional[str] = Field(
-        default=None, max_length=64, description="场景类型")
-    hazeLevel: Optional[str] = Field(
-        default=None, max_length=32, description="雾霾等级(light/medium/heavy)")
-    description: Optional[str] = Field(
-        default=None, max_length=255, description="描述")
-
 
 class ItemFileUpdateForm(BaseModel):
     """修改图片信息表单"""

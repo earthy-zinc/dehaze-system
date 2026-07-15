@@ -193,14 +193,43 @@ const (
 	defaultLockPrefix = "lock:"
 )
 
+// lockEntry 锁定条目，记录持有者 token 与过期时间，确保锁能在 expiration 后自动失效
+type lockEntry struct {
+	token    string
+	expireAt time.Time
+}
+
 func (c *LocalCache) Lock(ctx context.Context, key string, expiration time.Duration) (string, bool, error) {
 	lockKey := fmt.Sprintf("%s%s", defaultLockPrefix, key)
 	token := uuid.New().String()
-	if _, found := c.locks.Load(lockKey); found {
+	now := time.Now()
+	entry := &lockEntry{token: token, expireAt: now.Add(expiration)}
+
+	// 快路径：锁不存在时直接抢占
+	if _, loaded := c.locks.LoadOrStore(lockKey, entry); !loaded {
+		return token, true, nil
+	}
+
+	// 锁已存在，检查是否已过期；过期则尝试接管
+	actual, ok := c.locks.Load(lockKey)
+	if !ok {
+		// 并发下被释放，再次尝试抢占
+		if _, loaded := c.locks.LoadOrStore(lockKey, entry); !loaded {
+			return token, true, nil
+		}
 		return "", false, nil
 	}
-	c.locks.Store(lockKey, token)
-	return token, true, nil
+	existing := actual.(*lockEntry)
+	if now.Before(existing.expireAt) {
+		return "", false, nil
+	}
+	// 已过期：仅当旧条目未被他人替换时才接管
+	old, _ := c.locks.Swap(lockKey, entry)
+	if old == existing {
+		return token, true, nil
+	}
+	// 旧锁已被其他协程替换为新的有效锁
+	return "", false, nil
 }
 
 func (c *LocalCache) Unlock(ctx context.Context, key string, token string) (bool, error) {
@@ -209,8 +238,8 @@ func (c *LocalCache) Unlock(ctx context.Context, key string, token string) (bool
 	if !found {
 		return false, nil
 	}
-	// 仅当 token 匹配时才释放
-	if existing.(string) != token {
+	// 仅当 token 匹配时才释放（锁已过期被他人接管时 token 不匹配，释放失败）
+	if existing.(*lockEntry).token != token {
 		return false, nil
 	}
 	c.locks.Delete(lockKey)

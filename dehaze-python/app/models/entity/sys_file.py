@@ -6,7 +6,7 @@ from typing import Optional
 
 from app.database import Base
 from app.models.base import BaseModel
-from sqlalchemy import (CHAR, VARCHAR, BigInteger, Column, Index, Integer,
+from sqlalchemy import (CHAR, Index, Integer,
                         String, Text)
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,23 +36,3 @@ class SysFile(BaseModel):
         String(255), nullable=False, comment='文件路径')
     md5: Mapped[str] = mapped_column(CHAR(32), nullable=False, unique=True,
                                      comment='文件的MD5值，用于比对文件是否相同')
-
-
-class SysWpxFile(Base):
-    __tablename__ = 'sys_wpx_file'
-    __table_args__ = {'comment': 'WPX文件表'}
-
-    id: Mapped[int] = mapped_column(
-        BigInteger, primary_key=True, autoincrement=True, comment='id')
-    origin_file_id: Mapped[Optional[int]] = mapped_column(
-        BigInteger, comment='旧文件id')
-    origin_md5: Mapped[str] = mapped_column(CHAR(32), unique=True,
-                                            nullable=False, comment='旧文件的MD5值')
-    origin_path: Mapped[str] = mapped_column(
-        VARCHAR(255), nullable=False, comment='旧文件路径')
-    new_file_id: Mapped[Optional[int]] = mapped_column(
-        BigInteger, comment='新文件id')
-    new_path: Mapped[str] = mapped_column(
-        VARCHAR(255), nullable=False, comment='新文件路径')
-    new_md5: Mapped[str] = mapped_column(
-        CHAR(32), unique=True, nullable=False, comment='新文件的MD5值')

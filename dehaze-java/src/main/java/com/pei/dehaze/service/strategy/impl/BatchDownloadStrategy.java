@@ -1,6 +1,5 @@
 package com.pei.dehaze.service.strategy.impl;
 
-import cn.hutool.core.util.IdUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.common.exception.BusinessException;
@@ -8,12 +7,13 @@ import com.pei.dehaze.model.entity.SysDatasetItem;
 import com.pei.dehaze.model.entity.SysItemFile;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.model.form.ExportTaskCreateForm;
+import com.pei.dehaze.service.FileService;
 import com.pei.dehaze.service.SysDatasetItemService;
+import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
 import com.pei.dehaze.service.strategy.AbstractExportStrategy;
 import com.pei.dehaze.service.strategy.ProgressCallback;
 import com.pei.dehaze.service.strategy.TaskResult;
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -33,11 +33,14 @@ import java.util.zip.ZipOutputStream;
 @Component
 public class BatchDownloadStrategy extends AbstractExportStrategy {
 
-    @Resource
-    private SysDatasetItemService sysDatasetItemService;
+    private final SysDatasetItemService sysDatasetItemService;
 
-    @Resource
-    private SysItemFileService sysItemFileService;
+    public BatchDownloadStrategy(SysFileService sysFileService, FileService fileService,
+                                 SysItemFileService sysItemFileService,
+                                 SysDatasetItemService sysDatasetItemService) {
+        super(sysFileService, fileService, sysItemFileService);
+        this.sysDatasetItemService = sysDatasetItemService;
+    }
 
     @Override
     public String getTaskType() {
@@ -66,7 +69,6 @@ public class BatchDownloadStrategy extends AbstractExportStrategy {
 
         log.info("开始执行批量下载: taskId={}, itemCount={}", task.getTaskId(), itemIds.size());
 
-        // 验证数据项存在性
         List<SysDatasetItem> items = sysDatasetItemService.listByIds(itemIds);
         if (items.isEmpty()) {
             return TaskResult.failure("未找到有效的数据项");
@@ -74,8 +76,8 @@ public class BatchDownloadStrategy extends AbstractExportStrategy {
 
         File zipFile = null;
         try {
-            zipFile = createTempZipFile("batch_download_" + IdUtil.simpleUUID());
-            String downloadUrl = exportItemsToZip(zipFile, items, options, callback);
+            zipFile = createTempZipFile("batch_download");
+            String downloadUrl = exportItemsToZipBatch(zipFile, items, options, callback);
 
             log.info("批量下载完成: taskId={}, itemCount={}", task.getTaskId(), items.size());
             return TaskResult.success(downloadUrl, Map.of(
@@ -91,16 +93,15 @@ public class BatchDownloadStrategy extends AbstractExportStrategy {
     }
 
     /**
-     * 将多个数据项导出为ZIP
+     * 批量查询所有数据项的文件并导出为ZIP（避免逐项 count + list 的 N+1 查询）
      */
-    private String exportItemsToZip(File zipFile, List<SysDatasetItem> items,
-                                    ExportTaskCreateForm.ExportOptions options,
-                                    ProgressCallback callback) throws Exception {
+    private String exportItemsToZipBatch(File zipFile, List<SysDatasetItem> items,
+                                         ExportTaskCreateForm.ExportOptions options,
+                                         ProgressCallback callback) throws Exception {
         String structure = options.getStructure();
         List<String> includeTypes = options.getIncludeTypes();
         Boolean includeThumbnail = options.getIncludeThumbnail();
 
-        // 批量查询所有数据项的文件，避免逐项 count + list 的 N+1 查询
         List<Long> itemIds = items.stream().map(SysDatasetItem::getId).toList();
         Map<Long, List<SysItemFile>> itemFilesMap = sysItemFileService.list(
                         new LambdaQueryWrapper<SysItemFile>()
@@ -108,7 +109,6 @@ public class BatchDownloadStrategy extends AbstractExportStrategy {
                 .stream()
                 .collect(Collectors.groupingBy(SysItemFile::getItemId));
 
-        // 计算总文件数（从已加载的数据中统计，无需额外查询）
         int totalFiles = 0;
         for (SysDatasetItem item : items) {
             int fileCount = itemFilesMap.getOrDefault(item.getId(), Collections.emptyList()).size();
@@ -139,7 +139,7 @@ public class BatchDownloadStrategy extends AbstractExportStrategy {
                     }
 
                     if (Boolean.TRUE.equals(includeThumbnail)) {
-                        addFileToZip(zos, itemFile, structure, item.getName(), "thumbnail");
+                        addFileToZip(zos, itemFile, structure, item.getName(), THUMBNAIL_SUBFOLDER);
                         processedFiles++;
                         callback.updateProgress(processedFiles, totalFiles, "下载缩略图");
                     }

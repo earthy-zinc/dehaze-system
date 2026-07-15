@@ -9,17 +9,20 @@ import (
 func RegisterSysUserRoutes(rg *gin.RouterGroup, sysUserApi *api.SysUserApi) gin.IRoutes {
 	sysUserRouter := rg.Group("users")
 	{
+		// 读操作 - 无需额外权限
 		sysUserRouter.GET("page", sysUserApi.ListPagedUsers)
 		sysUserRouter.GET(":userId/form", sysUserApi.GetUserForm)
-		sysUserRouter.POST("", sysUserApi.SaveUser)
-		sysUserRouter.PUT(":userId", sysUserApi.UpdateUser)
-		sysUserRouter.DELETE(":ids", sysUserApi.DeleteUsers)
-		sysUserRouter.PATCH(":userId/password", sysUserApi.UpdatePassword)
-		sysUserRouter.PATCH(":userId/status", sysUserApi.UpdateUserStatus)
 		sysUserRouter.GET("me", sysUserApi.GetCurrentUserInfo)
 		sysUserRouter.GET("_export", sysUserApi.ListExportUsers)
 		sysUserRouter.GET("template", sysUserApi.DownloadImportTemplate)
-		sysUserRouter.POST("_import", sysUserApi.ImportUsers)
+
+		// 写操作 - 需要权限校验（POST 新增操作加防重复提交，与 Java @PreventDuplicateSubmit 一致）
+		sysUserRouter.POST("", middleware.Permission("sys:user:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 3}), sysUserApi.SaveUser)
+		sysUserRouter.PUT(":userId", middleware.Permission("sys:user:edit"), sysUserApi.UpdateUser)
+		sysUserRouter.DELETE(":ids", middleware.Permission("sys:user:delete"), sysUserApi.DeleteUsers)
+		sysUserRouter.PATCH(":userId/password", middleware.Permission("sys:user:edit"), sysUserApi.UpdatePassword)
+		sysUserRouter.PATCH(":userId/status", middleware.Permission("sys:user:edit"), sysUserApi.UpdateUserStatus)
+		sysUserRouter.POST("_import", middleware.Permission("sys:user:add"), sysUserApi.ImportUsers)
 	}
 	return sysUserRouter
 }

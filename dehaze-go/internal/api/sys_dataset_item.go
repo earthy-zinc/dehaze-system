@@ -74,10 +74,7 @@ func (api *SysDatasetItemApi) GetDatasetItemById(c *gin.Context) {
 // @Success 200 {object} common.Response{data=[]vo.ImageItemVO}
 // @Router /api/v1/dataset-items [get]
 func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
-	pageNumStr := c.DefaultQuery("pageNum", "1")
-	pageSizeStr := c.DefaultQuery("pageSize", "10")
-	pageNum, _ := strconv.ParseInt(pageNumStr, 10, 64)
-	pageSize, _ := strconv.ParseInt(pageSizeStr, 10, 64)
+	pageNum, pageSize := getPageParams(c)
 
 	datasetIdStr := c.Query("datasetId")
 	sceneType := c.Query("sceneType")
@@ -85,8 +82,8 @@ func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
 	hazeLevel := c.Query("hazeLevel")
 
 	var datasetId int64
-	var err error
 	if datasetIdStr != "" {
+		var err error
 		datasetId, err = strconv.ParseInt(datasetIdStr, 10, 64)
 		if err != nil {
 			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "数据集ID格式不正确"))
@@ -94,7 +91,7 @@ func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
 		}
 	}
 
-	items, total, err := api.datasetItemService.GetDatasetItemsByPage(c.Request.Context(), int(pageNum), int(pageSize), datasetId, sceneType, keyword, hazeLevel)
+	items, total, err := api.datasetItemService.GetDatasetItemsByPage(c.Request.Context(), pageNum, pageSize, datasetId, sceneType, keyword, hazeLevel)
 	if err != nil {
 		_ = c.Error(err)
 		return
@@ -103,8 +100,8 @@ func (api *SysDatasetItemApi) GetDatasetItems(c *gin.Context) {
 	result := common.PageResult{
 		List:     items,
 		Total:    total,
-		Page:     int(pageNum),
-		PageSize: int(pageSize),
+		Page:     pageNum,
+		PageSize: pageSize,
 	}
 
 	common.OkWithDetailed(result, "查询成功", c)
@@ -189,9 +186,15 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 
 	baseURL := fmt.Sprintf("http://%s/api/v1/files/download", c.Request.Host)
 
+	form, err := c.MultipartForm()
+	if err != nil {
+		_ = c.Error(common.WrapBizError(common.PARAM_ERROR, "解析上传表单失败", err))
+		return
+	}
+
 	// 上传清晰图（可选）
-	if clearHeader, err := c.FormFile("clearImage"); err == nil {
-		clearInfo, err := api.uploadFormFile(ctx, clearHeader, baseURL)
+	if clearHeaders := form.File["clearImage"]; len(clearHeaders) > 0 {
+		clearInfo, err := api.uploadFormFile(ctx, clearHeaders[0], baseURL)
 		if err != nil {
 			_ = c.Error(err)
 			return
@@ -201,19 +204,17 @@ func (api *SysDatasetItemApi) CreateDatasetItemWithImages(c *gin.Context) {
 
 	// 上传有雾图（可选，可多个）
 	hazeLevels := c.PostFormArray("hazeLevels")
-	if form, err := c.MultipartForm(); err == nil {
-		hazyHeaders := form.File["hazyImages"]
-		for i, hazyHeader := range hazyHeaders {
-			hazyInfo, err := api.uploadFormFile(ctx, hazyHeader, baseURL)
-			if err != nil {
-				_ = c.Error(err)
-				return
-			}
-			if i < len(hazeLevels) {
-				hazyInfo.HazeLevel = hazeLevels[i]
-			}
-			req.HazyImages = append(req.HazyImages, hazyInfo)
+	hazyHeaders := form.File["hazyImages"]
+	for i, hazyHeader := range hazyHeaders {
+		hazyInfo, err := api.uploadFormFile(ctx, hazyHeader, baseURL)
+		if err != nil {
+			_ = c.Error(err)
+			return
 		}
+		if i < len(hazeLevels) {
+			hazyInfo.HazeLevel = hazeLevels[i]
+		}
+		req.HazyImages = append(req.HazyImages, hazyInfo)
 	}
 
 	result, err := api.operationService.CreateDatasetItemWithImages(ctx, req)
@@ -415,8 +416,7 @@ type batchUploadFailedItem struct {
 
 // updateDatasetItemRequest 修改数据项请求
 type updateDatasetItemRequest struct {
-	Name      string `json:"name"`
-	SceneType string `json:"sceneType"`
+	Name string `json:"name"`
 }
 
 // UpdateDatasetItem 修改数据项

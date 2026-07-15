@@ -3,7 +3,6 @@ package dept
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
@@ -235,23 +234,19 @@ func (r *DeptRepository) GetFormData(ctx context.Context, deptID int64) (*bo.Dep
 }
 
 // GetSubDeptIDs 获取部门及所有子部门 ID
+// tree_path 格式：逗号分隔的祖先 ID 路径，如 "0,1,2"
+// 查询策略：匹配所有 tree_path 以 "当前部门tree_path," 开头的记录（即后代），并包含自身
 func (r *DeptRepository) GetSubDeptIDs(ctx context.Context, deptID int64) ([]int64, error) {
-	// 先获取当前部门的 tree_path
 	dept, err := r.FindByID(ctx, deptID)
-	if err != nil || dept == nil {
+	if err != nil {
 		return nil, err
+	}
+	if dept == nil {
+		return nil, nil
 	}
 
 	var ids []int64
-	// 构建 tree_path 前缀匹配
-	prefix := dept.TreePath
-	if prefix == "" {
-		prefix = "/" + string(rune(deptID))
-	}
-	if !strings.HasSuffix(prefix, "/") {
-		prefix += "/"
-	}
-
+	prefix := dept.TreePath + ","
 	err = r.db.WithContext(ctx).
 		Model(&model.SysDept{}).
 		Select("id").

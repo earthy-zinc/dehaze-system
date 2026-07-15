@@ -8,6 +8,7 @@ import com.pei.dehaze.model.vo.MenuVO;
 import com.pei.dehaze.model.vo.RouteVO;
 import com.pei.dehaze.plugin.dupsubmit.annotation.PreventDuplicateSubmit;
 import com.pei.dehaze.service.SysMenuService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -66,7 +67,7 @@ public class SysMenuController {
     @PostMapping
     @PreAuthorize("@ss.hasPerm('sys:menu:add')")
     @PreventDuplicateSubmit
-    public Result<Void> addMenu(@RequestBody MenuForm menuForm) {
+    public Result<Void> addMenu(@Valid @RequestBody MenuForm menuForm) {
         boolean result = menuService.saveMenu(menuForm);
         return Result.judge(result);
     }
@@ -76,7 +77,7 @@ public class SysMenuController {
     @PreAuthorize("@ss.hasPerm('sys:menu:edit')")
     public Result<Void> updateMenu(
             @Parameter(description = "菜单ID") @PathVariable Long id,
-            @RequestBody MenuForm menuForm
+            @Valid @RequestBody MenuForm menuForm
     ) {
         menuForm.setId(id);
         boolean result = menuService.saveMenu(menuForm);

@@ -2,7 +2,6 @@ package api
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
 	"github.com/earthyzinc/dehaze-go/internal/model/query"
@@ -183,28 +182,14 @@ func (api *SysDeptApi) UpdateDept(c *gin.Context) {
 // @Router /api/v1/depts/{ids} [delete]
 func (api *SysDeptApi) DeleteDepartments(c *gin.Context) {
 	ctx := c.Request.Context()
-
-	// 获取路径参数
-	idsStr := c.Param("ids")
-
-	// 解析ID列表
-	idStrings := strings.Split(idsStr, ",")
-	var idList []int64
-	for _, idStr := range idStrings {
-		id, err := strconv.ParseInt(strings.TrimSpace(idStr), 10, 64)
-		if err != nil {
-			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "部门ID格式不正确"))
-			return
-		}
-		idList = append(idList, id)
-	}
-
-	// 调用服务删除部门
-	err := api.deptService.Delete(ctx, idList)
+	ids, err := parseIDsFromCSV(c.Param("ids"))
 	if err != nil {
 		_ = c.Error(err)
 		return
 	}
-
+	if err := api.deptService.Delete(ctx, ids); err != nil {
+		_ = c.Error(err)
+		return
+	}
 	common.OkWithMessage("删除部门成功", c)
 }

@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import get_audit_update_values
@@ -38,24 +38,6 @@ class TaskRepository(BaseRepository[SysTask]):
         stmt = select(SysTask).where(SysTask.idempotency_key == idempotency_key)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
-
-    async def update_status(
-        self,
-        db: AsyncSession,
-        task_id: str,
-        status: str,
-    ) -> int:
-        """更新任务状态"""
-        values = {"status": status}
-        values.update(get_audit_update_values())
-        stmt = (
-            update(SysTask)
-            .where(SysTask.task_id == task_id)
-            .values(**values)
-        )
-        result = await db.execute(stmt)
-        await db.flush()
-        return result.rowcount
 
     async def update_retry_count(
         self,
@@ -101,22 +83,6 @@ class TaskRepository(BaseRepository[SysTask]):
         result = await db.execute(stmt)
         await db.flush()
         return result.rowcount
-
-    async def get_user_tasks(
-        self,
-        db: AsyncSession,
-        user_id: int,
-        limit: int = 10,
-    ) -> list[SysTask]:
-        """获取用户的任务列表"""
-        stmt = (
-            select(SysTask)
-            .where(SysTask.create_by == user_id)
-            .order_by(SysTask.create_time.desc())
-            .limit(limit)
-        )
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
 
     async def get_user_tasks_paginated(
         self,

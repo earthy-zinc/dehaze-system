@@ -2,9 +2,9 @@ package com.pei.dehaze.security.model;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import com.pei.dehaze.common.constant.SecurityConstants;
 import com.pei.dehaze.model.dto.UserAuthInfo;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,7 +25,6 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class SysUserDetails implements UserDetails {
 
-    @Getter
     private Long userId;
 
     private String username;
@@ -51,7 +50,7 @@ public class SysUserDetails implements UserDetails {
         Set<SimpleGrantedAuthority> authorities;
         if (CollUtil.isNotEmpty(roles)) {
             authorities = roles.stream()
-                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role)) // 标识角色
+                    .map(role -> new SimpleGrantedAuthority(SecurityConstants.ROLE_PREFIX + role)) // 标识角色
                     .collect(Collectors.toSet());
         } else {
             authorities = Collections.emptySet();
@@ -79,21 +78,6 @@ public class SysUserDetails implements UserDetails {
     @Override
     public String getUsername() {
         return this.username;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() {
-        return UserDetails.super.isAccountNonExpired();
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return UserDetails.super.isAccountNonLocked();
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return UserDetails.super.isCredentialsNonExpired();
     }
 
     @Override

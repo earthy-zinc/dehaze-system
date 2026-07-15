@@ -6,7 +6,6 @@ import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.pei.dehaze.common.constant.JwtClaimConstants;
 import com.pei.dehaze.common.constant.SystemConstants;
 import com.pei.dehaze.common.enums.AlgorithmStatusEnum;
 import com.pei.dehaze.common.enums.StatusEnum;
@@ -27,11 +26,9 @@ import com.pei.dehaze.model.form.AlgorithmForm;
 import com.pei.dehaze.model.query.AlgorithmQuery;
 import com.pei.dehaze.model.vo.AlgorithmMonitorVO;
 import com.pei.dehaze.model.vo.AlgorithmVO;
+import com.pei.dehaze.security.util.SecurityUtils;
 import com.pei.dehaze.service.SysAlgorithmService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -44,7 +41,6 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, SysAlgorithm> implements SysAlgorithmService {
 
     private final AlgorithmConverter algorithmConverter;
@@ -82,7 +78,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public SysAlgorithm getRootAlgorithm(Long id) {
         SysAlgorithm algorithm = this.getById(id);
         if (algorithm == null) {
-            throw new BusinessException("当前算法不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "当前算法不存在");
         }
 
         // 使用缓存的全部算法列表构建 Map，避免逐级 getById 查询
@@ -183,7 +179,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public boolean updateStatus(Long id, Integer status) {
         SysAlgorithm algorithm = this.getById(id);
         if (algorithm == null) {
-            throw new BusinessException("算法不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
         AlgorithmStatusEnum targetStatus = Arrays.stream(AlgorithmStatusEnum.values())
@@ -191,7 +187,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
                 .findFirst()
                 .orElse(null);
         if (targetStatus == null) {
-            throw new BusinessException("无效的状态值: " + status);
+            throw new BusinessException(ResultCode.DATA_STATE_NOT_ALLOW, "无效的状态值: " + status);
         }
 
         // 状态流转校验
@@ -205,7 +201,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public boolean auditAlgorithm(Long id, AlgorithmAuditForm form) {
         SysAlgorithm algorithm = this.getById(id);
         if (algorithm == null) {
-            throw new BusinessException("算法不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
         if (!AlgorithmStatusEnum.PENDING_REVIEW.getValue().equals(algorithm.getStatus())) {
@@ -234,7 +230,7 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public AlgorithmMonitorVO getMonitorData(Long id) {
         SysAlgorithm algorithm = this.getById(id);
         if (algorithm == null) {
-            throw new BusinessException("算法不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
         AlgorithmMonitorVO monitor = new AlgorithmMonitorVO();
@@ -274,12 +270,12 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
     public String exportAlgorithmJson(Long id) {
         SysAlgorithm algorithm = this.getById(id);
         if (algorithm == null) {
-            throw new BusinessException("算法不存在");
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "算法不存在");
         }
 
         // 获取父算法名称用于导入参考
         String parentName = "";
-        if (algorithm.getParentId() != null && algorithm.getParentId() > 0) {
+        if (algorithm.getParentId() != null && !algorithm.getParentId().equals(SystemConstants.ROOT_NODE_ID)) {
             SysAlgorithm parent = this.getById(algorithm.getParentId());
             parentName = parent != null ? parent.getName() : "";
         }
@@ -308,18 +304,11 @@ public class SysAlgorithmServiceImpl extends ServiceImpl<SysAlgorithmMapper, Sys
      * 从 SecurityContext 获取当前登录用户 ID
      */
     private Long getCurrentUserId() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof com.pei.dehaze.security.model.SysUserDetails userDetails) {
-            return userDetails.getUserId();
+        Long userId = SecurityUtils.getUserId();
+        if (userId == null) {
+            throw new BusinessException(ResultCode.TOKEN_INVALID, "无法获取当前登录用户信息");
         }
-        // 尝试从 JWT claims 获取
-        if (auth != null && auth.getDetails() instanceof Map<?, ?> details) {
-            Object userId = details.get(JwtClaimConstants.USER_ID);
-            if (userId instanceof Long) return (Long) userId;
-            if (userId instanceof Number) return ((Number) userId).longValue();
-        }
-        log.warn("无法获取当前用户ID，使用默认值");
-        return 0L;
+        return userId;
     }
 
     /**

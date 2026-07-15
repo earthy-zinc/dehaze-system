@@ -31,11 +31,17 @@ func (s *InputHistoryService) GetPage(ctx context.Context, userID int64, pageNum
 	}, nil
 }
 
-// GetByID 查询历史记录详情
-func (s *InputHistoryService) GetByID(ctx context.Context, id int64) (*model.SysInputHistory, error) {
+// GetByID 查询历史记录详情（校验归属）
+func (s *InputHistoryService) GetByID(ctx context.Context, id, userID int64) (*model.SysInputHistory, error) {
 	history, err := s.repo.FindByID(ctx, id)
 	if err != nil {
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询历史记录失败", err)
+	}
+	if history == nil {
 		return nil, common.NewBizError(common.RESOURCE_NOT_FOUND, "历史记录不存在")
+	}
+	if history.UserID != userID {
+		return nil, common.NewBizError(common.OPERATION_NOT_ALLOW, "无权查看他人的历史记录")
 	}
 	return history, nil
 }
@@ -46,9 +52,12 @@ func (s *InputHistoryService) Create(ctx context.Context, history *model.SysInpu
 }
 
 // Update 更新历史记录（如收藏标记）
-func (s *InputHistoryService) Update(ctx context.Context, id int64, userID int64, updates map[string]interface{}) error {
+func (s *InputHistoryService) Update(ctx context.Context, id, userID int64, updates map[string]interface{}) error {
 	history, err := s.repo.FindByID(ctx, id)
 	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询历史记录失败", err)
+	}
+	if history == nil {
 		return common.NewBizError(common.RESOURCE_NOT_FOUND, "历史记录不存在")
 	}
 	if history.UserID != userID {
@@ -60,21 +69,38 @@ func (s *InputHistoryService) Update(ctx context.Context, id int64, userID int64
 	return s.repo.Update(ctx, history)
 }
 
-// Delete 删除单条历史记录
-func (s *InputHistoryService) Delete(ctx context.Context, id int64) error {
-	err := s.repo.Delete(ctx, []int64{id})
+// Delete 删除单条历史记录（校验归属）
+func (s *InputHistoryService) Delete(ctx context.Context, id, userID int64) error {
+	history, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "查询历史记录失败", err)
+	}
+	if history == nil {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "历史记录不存在")
+	}
+	if history.UserID != userID {
+		return common.NewBizError(common.OPERATION_NOT_ALLOW, "无权删除他人的历史记录")
+	}
+	_, err = s.repo.DeleteByUserAndIDs(ctx, userID, []int64{id})
 	if err != nil {
 		return common.WrapBizError(common.DATABASE_ERROR, "删除历史记录失败", err)
 	}
 	return nil
 }
 
-// BatchDelete 批量删除
+// BatchDelete 批量删除（通过 user_id 过滤确保只删除当前用户的记录）
 func (s *InputHistoryService) BatchDelete(ctx context.Context, ids []int64, userID int64) error {
 	if len(ids) == 0 {
 		return common.NewBizError(common.PARAM_ERROR, "删除列表不能为空")
 	}
-	return s.repo.Delete(ctx, ids)
+	affected, err := s.repo.DeleteByUserAndIDs(ctx, userID, ids)
+	if err != nil {
+		return common.WrapBizError(common.DATABASE_ERROR, "批量删除历史记录失败", err)
+	}
+	if affected == 0 {
+		return common.NewBizError(common.RESOURCE_NOT_FOUND, "未找到可删除的历史记录")
+	}
+	return nil
 }
 
 // ClearAll 清空用户所有历史记录

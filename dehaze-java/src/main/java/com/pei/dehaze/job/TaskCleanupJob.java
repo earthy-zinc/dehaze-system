@@ -6,7 +6,7 @@ import com.pei.dehaze.common.constant.TaskConstants;
 import com.pei.dehaze.mapper.SysTaskMapper;
 import com.pei.dehaze.model.entity.SysTask;
 import com.pei.dehaze.security.util.SystemSecurityContext;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -27,13 +27,12 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class TaskCleanupJob {
 
-    @Resource
-    private SysTaskMapper sysTaskMapper;
+    private final SysTaskMapper sysTaskMapper;
 
-    @Resource
-    private RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 每天凌晨2点执行清理任务
@@ -107,53 +106,45 @@ public class TaskCleanupJob {
      * 物理删除任务记录并清除 Redis 缓存
      */
     private void physicalDeleteTasks(LambdaQueryWrapper<SysTask> wrapper, String logLabel) {
-        try {
-            List<SysTask> tasks = sysTaskMapper.selectList(wrapper);
-            if (tasks.isEmpty()) {
-                return;
-            }
-
-            List<Long> ids = tasks.stream()
-                    .map(SysTask::getId)
-                    .collect(Collectors.toList());
-            sysTaskMapper.deleteBatchIds(ids);
-
-            for (SysTask task : tasks) {
-                if (StrUtil.isNotBlank(task.getTaskId())) {
-                    redisTemplate.delete(TaskConstants.TASK_CACHE_PREFIX + task.getTaskId());
-                }
-            }
-            log.info("清理{}: 共清理{}条记录", logLabel, tasks.size());
-        } catch (Exception e) {
-            log.error("清理{}失败", logLabel, e);
+        List<SysTask> tasks = sysTaskMapper.selectList(wrapper);
+        if (tasks.isEmpty()) {
+            return;
         }
+
+        List<Long> ids = tasks.stream()
+                .map(SysTask::getId)
+                .collect(Collectors.toList());
+        sysTaskMapper.deleteBatchIds(ids);
+
+        for (SysTask task : tasks) {
+            if (StrUtil.isNotBlank(task.getTaskId())) {
+                redisTemplate.delete(TaskConstants.TASK_CACHE_PREFIX + task.getTaskId());
+            }
+        }
+        log.info("清理{}: 共清理{}条记录", logLabel, tasks.size());
     }
 
     /**
      * 将僵死任务标记为 FAILED 并清除缓存（evict 而非写回，确保重试时从 DB 读取最新状态）
      */
     private void markStuckTasksAsFailed(LambdaQueryWrapper<SysTask> wrapper, String errorMsg) {
-        try {
-            List<SysTask> tasks = sysTaskMapper.selectList(wrapper);
-            if (tasks.isEmpty()) {
-                return;
-            }
-
-            LocalDateTime now = LocalDateTime.now();
-            for (SysTask task : tasks) {
-                task.setStatus(TaskConstants.STATUS_FAILED);
-                task.setErrorMessage(errorMsg);
-                task.setCompletedAt(now);
-                sysTaskMapper.updateById(task);
-
-                // 清除缓存：用户重试后从 DB 读取最新状态，避免读到旧 FAILED 缓存
-                if (StrUtil.isNotBlank(task.getTaskId())) {
-                    redisTemplate.delete(TaskConstants.TASK_CACHE_PREFIX + task.getTaskId());
-                }
-            }
-            log.warn("清理僵死任务[{}]: 共{}条", errorMsg, tasks.size());
-        } catch (Exception e) {
-            log.error("标记僵死任务 FAILED 失败[{}]", errorMsg, e);
+        List<SysTask> tasks = sysTaskMapper.selectList(wrapper);
+        if (tasks.isEmpty()) {
+            return;
         }
+
+        LocalDateTime now = LocalDateTime.now();
+        for (SysTask task : tasks) {
+            task.setStatus(TaskConstants.STATUS_FAILED);
+            task.setErrorMessage(errorMsg);
+            task.setCompletedAt(now);
+            sysTaskMapper.updateById(task);
+
+            // 清除缓存：用户重试后从 DB 读取最新状态，避免读到旧 FAILED 缓存
+            if (StrUtil.isNotBlank(task.getTaskId())) {
+                redisTemplate.delete(TaskConstants.TASK_CACHE_PREFIX + task.getTaskId());
+            }
+        }
+        log.warn("清理僵死任务[{}]: 共{}条", errorMsg, tasks.size());
     }
 }

@@ -21,7 +21,6 @@ import com.pei.dehaze.security.util.JwtUtils;
 import com.pei.dehaze.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -50,6 +49,7 @@ public class AuthServiceImpl implements AuthService {
     private final CodeGenerator codeGenerator;
     private final Font captchaFont;
     private final CaptchaProperties captchaProperties;
+    private final JwtUtils jwtUtils;
 
     @Override
     public LoginResult login(LoginForm form) {
@@ -71,20 +71,12 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication = authenticationManager.authenticate(authenticationToken);
 
         // 3. 生成 Token
-        String accessToken = JwtUtils.createToken(authentication);
+        String accessToken = jwtUtils.createToken(authentication);
 
         // 4. 获取用户信息
         SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
 
-        return LoginResult.builder()
-                .tokenType("Bearer")
-                .accessToken(accessToken)
-                .user(LoginResult.UserInfo.builder()
-                        .id(userDetails.getUserId())
-                        .username(userDetails.getUsername())
-                        .nickname(userDetails.getNickname())
-                        .build())
-                .build();
+        return buildLoginResult(accessToken, userDetails);
     }
 
     @Override
@@ -151,7 +143,7 @@ public class AuthServiceImpl implements AuthService {
         // 角色列表（去掉 ROLE_ 前缀）
         result.put("roles", authentication.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
-                .map(a -> a.startsWith("ROLE_") ? a.substring(5) : a)
+                .map(a -> a.startsWith(SecurityConstants.ROLE_PREFIX) ? a.substring(SecurityConstants.ROLE_PREFIX.length()) : a)
                 .collect(Collectors.toList()));
 
         // 权限列表
@@ -169,11 +161,32 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ResultCode.TOKEN_INVALID);
         }
 
-        String accessToken = JwtUtils.createToken(authentication);
+        String accessToken = jwtUtils.createToken(authentication);
         SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
 
+        return buildLoginResult(accessToken, userDetails);
+    }
+
+    private AbstractCaptcha getAbstractCaptcha(String captchaType) {
+        int width = captchaProperties.getWidth();
+        int height = captchaProperties.getHeight();
+        int interfereCount = captchaProperties.getInterfereCount();
+        int codeLength = captchaProperties.getCode().getLength();
+
+        return switch (CaptchaTypeEnum.valueOf(captchaType.toUpperCase())) {
+            case CIRCLE -> CaptchaUtil.createCircleCaptcha(width, height, codeLength, interfereCount);
+            case GIF -> CaptchaUtil.createGifCaptcha(width, height, codeLength);
+            case LINE -> CaptchaUtil.createLineCaptcha(width, height, codeLength, interfereCount);
+            case SHEAR -> CaptchaUtil.createShearCaptcha(width, height, codeLength, interfereCount);
+        };
+    }
+
+    /**
+     * 构建登录结果
+     */
+    private LoginResult buildLoginResult(String accessToken, SysUserDetails userDetails) {
         return LoginResult.builder()
-                .tokenType("Bearer")
+                .tokenType(SecurityConstants.TOKEN_TYPE)
                 .accessToken(accessToken)
                 .user(LoginResult.UserInfo.builder()
                         .id(userDetails.getUserId())
@@ -181,27 +194,5 @@ public class AuthServiceImpl implements AuthService {
                         .nickname(userDetails.getNickname())
                         .build())
                 .build();
-    }
-
-    @NotNull
-    private AbstractCaptcha getAbstractCaptcha(String captchaType) {
-        int width = captchaProperties.getWidth();
-        int height = captchaProperties.getHeight();
-        int interfereCount = captchaProperties.getInterfereCount();
-        int codeLength = captchaProperties.getCode().getLength();
-
-        AbstractCaptcha captcha;
-        if (CaptchaTypeEnum.CIRCLE.name().equalsIgnoreCase(captchaType)) {
-            captcha = CaptchaUtil.createCircleCaptcha(width, height, codeLength, interfereCount);
-        } else if (CaptchaTypeEnum.GIF.name().equalsIgnoreCase(captchaType)) {
-            captcha = CaptchaUtil.createGifCaptcha(width, height, codeLength);
-        } else if (CaptchaTypeEnum.LINE.name().equalsIgnoreCase(captchaType)) {
-            captcha = CaptchaUtil.createLineCaptcha(width, height, codeLength, interfereCount);
-        } else if (CaptchaTypeEnum.SHEAR.name().equalsIgnoreCase(captchaType)) {
-            captcha = CaptchaUtil.createShearCaptcha(width, height, codeLength, interfereCount);
-        } else {
-            throw new IllegalArgumentException("Invalid captcha type: " + captchaType);
-        }
-        return captcha;
     }
 }

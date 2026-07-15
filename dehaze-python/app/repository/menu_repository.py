@@ -7,18 +7,12 @@ from app.models.entity.sys_user import SysRole
 from app.repository.base import BaseRepository, escape_like
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.expression import ColumnElement
-from sqlalchemy.types import Integer
 
 
 class MenuRepository(BaseRepository[SysMenu]):
     """菜单数据访问层"""
 
     model = SysMenu
-
-    def _get_role_deleted_column(self) -> ColumnElement[Integer]:
-        """获取角色 deleted 列"""
-        return getattr(SysRole, "deleted")
 
     async def get_list(
         self,
@@ -47,44 +41,6 @@ class MenuRepository(BaseRepository[SysMenu]):
         )
         result = await db.execute(stmt)
         return list(result.scalars().all())
-
-    async def get_by_id_with_deleted(
-        self,
-        db: AsyncSession,
-        menu_id: int,
-    ) -> SysMenu | None:
-        """根据 ID 查询菜单（包含已删除）"""
-        stmt = select(SysMenu).where(SysMenu.id == menu_id)
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def get_by_parent_id(
-        self,
-        db: AsyncSession,
-        parent_id: int,
-    ) -> SysMenu | None:
-        """根据父级 ID 查询菜单"""
-        stmt = select(SysMenu).where(SysMenu.id == parent_id)
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
-
-    async def check_name_exists(
-        self,
-        db: AsyncSession,
-        name: str,
-        parent_id: int,
-        *,
-        exclude_id: int | None = None,
-    ) -> bool:
-        """检查同一父级下菜单名称是否已存在"""
-        stmt = select(func.count()).select_from(SysMenu).where(
-            SysMenu.name == name,
-            SysMenu.parent_id == parent_id,
-        )
-        if exclude_id:
-            stmt = stmt.where(SysMenu.id != exclude_id)
-        result = await db.execute(stmt)
-        return (result.scalar() or 0) > 0
 
     async def create_menu(
         self,
@@ -160,7 +116,6 @@ class MenuRepository(BaseRepository[SysMenu]):
         """获取角色权限集合（通过角色编码）"""
         if not role_codes:
             return set()
-        role_deleted_column = self._get_role_deleted_column()
         stmt = (
             select(SysMenu.perm)
             .select_from(SysRoleMenu)
@@ -168,7 +123,7 @@ class MenuRepository(BaseRepository[SysMenu]):
             .join(SysRole, SysRoleMenu.role_id == SysRole.id)
             .where(
                 SysRole.code.in_(role_codes),
-                role_deleted_column == 0,
+                SysRole.deleted == 0,
                 SysMenu.perm.isnot(None),
                 SysMenu.perm != "",
             )
@@ -177,16 +132,6 @@ class MenuRepository(BaseRepository[SysMenu]):
         perms = result.scalars().all()
         return {p for p in perms if p is not None and p != ""}
 
-    async def get_menu_ids_by_role(
-        self,
-        db: AsyncSession,
-        role_id: int,
-    ) -> list[int]:
-        """获取角色关联的菜单 ID 列表"""
-        stmt = select(SysRoleMenu.menu_id).where(
-            SysRoleMenu.role_id == role_id)
-        result = await db.execute(stmt)
-        return [int(row[0]) for row in result.fetchall()]
 
 
 # 单例

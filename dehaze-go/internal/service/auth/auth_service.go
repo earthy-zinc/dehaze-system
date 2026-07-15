@@ -293,9 +293,11 @@ func (s *AuthService) AddTokenToBlacklist(ctx context.Context, token string) err
 	j := security.NewJWT()
 	claims, err := j.ParseToken(token)
 	if err != nil {
-		// Token解析失败，无需加入黑名单（无效Token本身就无法通过验证）
-		logger.Warn("解析Token失败，无需加入黑名单", zap.Error(err))
-		return nil
+		if errors.Is(err, security.ErrTokenExpired) {
+			// Token已过期，无法通过验证，无需加入黑名单
+			return nil
+		}
+		return common.WrapBizError(common.TOKEN_INVALID, "解析Token失败", err)
 	}
 
 	jti := claims.ID
@@ -357,8 +359,11 @@ func (s *AuthService) handleMultiPointLogin(ctx context.Context, newToken, usern
 		if oldClaims, parseErr := j.ParseToken(oldToken); parseErr == nil && oldClaims.ID != "" {
 			cfg := config.GetConfig()
 			ttl := time.Duration(cfg.JWT.TTL) * time.Second
-			s.cacheClient.Set(ctx, common.BlacklistPrefix+oldClaims.ID, "1", ttl)
-			logger.Info("多端登录：已将旧Token加入黑名单", zap.String("username", username), zap.String("jti", oldClaims.ID))
+			if setErr := s.cacheClient.Set(ctx, common.BlacklistPrefix+oldClaims.ID, "1", ttl); setErr != nil {
+				logger.Error("多端登录：将旧Token加入黑名单失败", zap.String("username", username), zap.String("jti", oldClaims.ID), zap.Error(setErr))
+			} else {
+				logger.Info("多端登录：已将旧Token加入黑名单", zap.String("username", username), zap.String("jti", oldClaims.ID))
+			}
 		}
 	}
 

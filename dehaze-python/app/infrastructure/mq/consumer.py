@@ -1,111 +1,54 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-import math
-from typing import Any, Callable, Coroutine, Optional
+from typing import Any, Callable, Coroutine
 
 import aio_pika
-from aio_pika.abc import (AbstractChannel, AbstractConnection,
-                          AbstractIncomingMessage, AbstractQueue)
+from aio_pika.abc import (AbstractChannel, AbstractIncomingMessage,
+                          AbstractQueue)
 from app.config import settings
+
+from app.infrastructure.mq.base import BaseRabbitMQClient
 
 logger = logging.getLogger(__name__)
 
 Handler = Callable[[dict[str, Any], dict[str, Any]], Coroutine[Any, Any, None]]
 
 
-class Consumer:
+class Consumer(BaseRabbitMQClient):
     """
     RabbitMQ 消费者
 
-    - 连接断开时自动指数退避重连
+    - 连接断开时自动指数退避重连（由基类提供）
     - 支持注册多个队列的 handler
     - nack 时不 requeue，通过重试队列分级延迟重投
     - prefetch 限流
     """
 
+    _name = "RabbitMQ Consumer"
+
     def __init__(self) -> None:
-        self._conn: Optional[AbstractConnection] = None
-        self._channel: Optional[AbstractChannel] = None
-        self._closed = False
-        self._reconnect_task: Optional[asyncio.Task] = None
+        super().__init__()
         self._handlers: dict[str, Handler] = {}
         self._dlq_handlers: set[str] = set()
         self._queues: dict[str, AbstractQueue] = {}
 
-    @property
-    def is_connected(self) -> bool:
-        return (
-            self._conn is not None
-            and not self._conn.is_closed
-            and self._channel is not None
-            and not self._channel.is_closed
-        )
+    async def _on_connected(self, channel: AbstractChannel) -> None:
+        await channel.set_qos(prefetch_count=settings.RABBITMQ_PREFETCH_COUNT)
+        if self._handlers:
+            await self._resubscribe_all()
 
-    async def connect(self) -> None:
-        if self._closed:
-            raise RuntimeError("Consumer already closed")
-
-        try:
-            conn = await aio_pika.connect_robust(
-                settings.RABBITMQ_URL,
-                reconnect_interval=settings.RABBITMQ_RECONNECT_INITIAL_INTERVAL,
-            )
-            conn.close_callbacks.add(self._on_connection_lost)
-
-            channel = await conn.channel()
-            await channel.set_qos(prefetch_count=settings.RABBITMQ_PREFETCH_COUNT)
-
-            self._conn = conn
-            self._channel = channel
-
-            logger.info("RabbitMQ Consumer 已连接")
-
-            if self._handlers:
-                await self._resubscribe_all()
-
-        except Exception as e:
-            logger.error(f"RabbitMQ Consumer 连接失败: {e}")
-            raise
-
-    def _on_connection_lost(self, *args: Any) -> None:
-        if self._closed:
-            return
-        logger.warning("RabbitMQ Consumer 连接断开，启动自动重连")
+    def _on_disconnect(self) -> None:
         self._queues.clear()
-        if self._reconnect_task is None or self._reconnect_task.done():
-            self._reconnect_task = asyncio.create_task(self._reconnect_loop())
 
-    async def _reconnect_loop(self) -> None:
-        """指数退避重连循环"""
-        attempt = 0
-        max_retries = settings.RABBITMQ_RECONNECT_MAX_RETRIES
-        initial = settings.RABBITMQ_RECONNECT_INITIAL_INTERVAL
-        max_interval = settings.RABBITMQ_RECONNECT_MAX_INTERVAL
-
-        while not self._closed:
-            if max_retries > 0 and attempt >= max_retries:
-                logger.error(
-                    f"RabbitMQ Consumer 重连已达最大重试次数({max_retries})，放弃重连"
-                )
-                return
-
-            interval = min(initial * math.pow(2, attempt), max_interval)
-            attempt += 1
-            logger.info(
-                f"RabbitMQ Consumer 重连等待: attempt={attempt}, interval={interval:.1f}s"
-            )
-            await asyncio.sleep(interval)
-
+    async def _on_closing(self) -> None:
+        for queue_name, queue in self._queues.items():
             try:
-                await self.connect()
-                logger.info(f"RabbitMQ Consumer 重连成功: attempt={attempt}")
-                return
-            except Exception as e:
-                logger.warning(
-                    f"RabbitMQ Consumer 重连失败: attempt={attempt}, {e}")
+                await queue.cancel(queue_name)
+            except Exception:
+                pass
+        self._queues.clear()
 
     async def register(self, queue_name: str, handler: Handler) -> None:
         """
@@ -318,27 +261,3 @@ class Consumer:
                 f"消息已投递到死信队列（重试耗尽）: queue={dlx_queue}, "
                 f"totalRetries={retry_count}"
             )
-
-    async def close(self) -> None:
-        self._closed = True
-
-        if self._reconnect_task and not self._reconnect_task.done():
-            self._reconnect_task.cancel()
-            try:
-                await self._reconnect_task
-            except asyncio.CancelledError:
-                pass
-
-        for queue_name, queue in self._queues.items():
-            try:
-                await queue.cancel(queue_name)
-            except Exception:
-                pass
-        self._queues.clear()
-
-        if self._channel and not self._channel.is_closed:
-            await self._channel.close()
-        if self._conn and not self._conn.is_closed:
-            await self._conn.close()
-
-        logger.info("RabbitMQ Consumer 已关闭")

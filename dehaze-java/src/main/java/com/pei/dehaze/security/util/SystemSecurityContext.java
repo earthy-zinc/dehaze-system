@@ -42,18 +42,4 @@ public class SystemSecurityContext {
     public static void clearContext() {
         SecurityContextHolder.clearContext();
     }
-
-    /**
-     * 以系统用户身份执行操作
-     *
-     * @param action 待执行的操作
-     */
-    public static void runAsSystem(Runnable action) {
-        setSystemContext();
-        try {
-            action.run();
-        } finally {
-            clearContext();
-        }
-    }
 }

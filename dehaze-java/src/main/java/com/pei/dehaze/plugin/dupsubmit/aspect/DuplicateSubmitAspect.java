@@ -50,30 +50,23 @@ public class DuplicateSubmitAspect {
 
         String resubmitLockKey = generateResubmitLockKey();
         if (resubmitLockKey != null) {
-            int expire = preventDuplicateSubmit.expire(); // 防重提交锁过期时间
+            long leaseTimeMs = TimeUnit.SECONDS.toMillis(preventDuplicateSubmit.expire());
             RLock lock = redissonClient.getLock(resubmitLockKey);
-            boolean lockResult = false;
-            int retryTimes = 3; // 重试次数
-            for (int i = 0; i < retryTimes; i++) {
-                lockResult = lock.tryLock(0, expire, TimeUnit.SECONDS);
-                if (lockResult) {
-                    break;
-                }
-                // 等待一段时间后重试，减少立即重试带来的系统压力
-                Thread.sleep(100);
-            }
+            boolean lockResult = lock.tryLock(300, leaseTimeMs, TimeUnit.MILLISECONDS);
 
             if (!lockResult) {
-                log.error("多次尝试获取锁失败，lock key: {}", resubmitLockKey);
                 throw new BusinessException(ResultCode.REPEAT_SUBMIT_ERROR);
             }
             try {
                 return pjp.proceed();
-            } catch (Throwable t) {
-                log.error("方法执行异常, lock key: {}", resubmitLockKey, t);
-                throw t;
             } finally {
-                lock.unlock();
+                if (lock.isHeldByCurrentThread()) {
+                    try {
+                        lock.unlock();
+                    } catch (IllegalMonitorStateException e) {
+                        // 锁已过期，无需解锁
+                    }
+                }
             }
         }
         return pjp.proceed();

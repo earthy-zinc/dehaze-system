@@ -467,14 +467,23 @@ func (s *MenuService) validateMenuForm(ctx context.Context, form *bo.MenuForm, e
 		}
 
 		// 1.3 层级限制校验：最多5层
-		depth := s.getMenuDepth(ctx, form.ParentID)
+		depth, err := s.getMenuDepth(ctx, form.ParentID)
+		if err != nil {
+			return err
+		}
 		if depth >= 5 {
 			return common.NewBizError(common.PARAM_ERROR, "菜单层级不能超过5层")
 		}
 
 		// 1.4 循环引用校验：更新时不能将父菜单设置为自己或自己的子菜单
-		if excludeID > 0 && s.isDescendant(ctx, excludeID, form.ParentID) {
-			return common.NewBizError(common.PARAM_ERROR, "不能将父菜单设置为自己或自己的子菜单")
+		if excludeID > 0 {
+			isDesc, err := s.isDescendant(ctx, excludeID, form.ParentID)
+			if err != nil {
+				return err
+			}
+			if isDesc {
+				return common.NewBizError(common.PARAM_ERROR, "不能将父菜单设置为自己或自己的子菜单")
+			}
 		}
 	}
 
@@ -535,34 +544,39 @@ func (s *MenuService) validateMenuForm(ctx context.Context, form *bo.MenuForm, e
 }
 
 // getMenuDepth 获取菜单深度（从根菜单到当前菜单的层级数）
-func (s *MenuService) getMenuDepth(ctx context.Context, menuID int64) int {
+func (s *MenuService) getMenuDepth(ctx context.Context, menuID int64) (int, error) {
 	if menuID == 0 {
-		return 0
+		return 0, nil
 	}
 	menu, err := s.menuRepo.FindByID(ctx, menuID)
-	if err != nil || menu == nil {
-		return 0
+	if err != nil {
+		return 0, common.WrapBizError(common.DATABASE_ERROR, "查询菜单失败", err)
 	}
-	// 通过TreePath计算深度，TreePath格式为 "0,1,2"
-	if menu.TreePath == "" || menu.TreePath == "0" {
-		return 1
+	if menu == nil {
+		return 0, nil
 	}
-	// 计算逗号数量+1得到层级
-	return len(strings.Split(menu.TreePath, ",")) + 1
+	if menu.TreePath == "" {
+		return 1, nil
+	}
+	// 通过TreePath计算深度，TreePath格式为 "0,1,2"，层级数 = 路径节点数
+	return len(strings.Split(menu.TreePath, ",")), nil
 }
 
 // isDescendant 检查targetID是否是ancestorID的后代
-func (s *MenuService) isDescendant(ctx context.Context, ancestorID int64, targetID int64) bool {
+func (s *MenuService) isDescendant(ctx context.Context, ancestorID int64, targetID int64) (bool, error) {
 	if targetID == 0 {
-		return false
+		return false, nil
 	}
 	if ancestorID == targetID {
-		return true
+		return true, nil
 	}
 	// 获取targetID的菜单信息
 	target, err := s.menuRepo.FindByID(ctx, targetID)
-	if err != nil || target == nil {
-		return false
+	if err != nil {
+		return false, common.WrapBizError(common.DATABASE_ERROR, "查询菜单失败", err)
+	}
+	if target == nil {
+		return false, nil
 	}
 	// 通过TreePath判断：如果TreePath包含ancestorID，则是后代
 	if target.TreePath != "" {
@@ -571,9 +585,9 @@ func (s *MenuService) isDescendant(ctx context.Context, ancestorID int64, target
 		parts := strings.Split(target.TreePath, ",")
 		for _, part := range parts {
 			if part == ancestorIDStr {
-				return true
+				return true, nil
 			}
 		}
 	}
-	return false
+	return false, nil
 }

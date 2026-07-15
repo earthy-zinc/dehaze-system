@@ -3,7 +3,7 @@ package com.pei.dehaze.config;
 import cn.hutool.json.JSONUtil;
 import com.pei.dehaze.common.constant.TaskConstants;
 import jakarta.annotation.PostConstruct;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
 import org.springframework.data.redis.connection.MessageListener;
@@ -27,16 +27,14 @@ import java.util.Map;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class WebSocketMessageRelay implements MessageListener {
 
-    @Resource
-    private StringRedisTemplate stringRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
-    @Resource
-    private SimpMessagingTemplate messagingTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    @Resource
-    private RedisMessageListenerContainer redisMessageListenerContainer;
+    private final RedisMessageListenerContainer redisMessageListenerContainer;
 
     @PostConstruct
     public void init() {
@@ -58,7 +56,7 @@ public class WebSocketMessageRelay implements MessageListener {
             envelope.put("message", message);
             stringRedisTemplate.convertAndSend(TaskConstants.WS_CHANNEL, JSONUtil.toJsonStr(envelope));
         } catch (Exception e) {
-            log.debug("Redis Pub/Sub 发布失败（不影响任务执行）: {}", e.getMessage());
+            log.warn("Redis Pub/Sub 发布失败（不影响任务执行）: userId={}", userId, e);
         }
     }
 
@@ -88,7 +86,7 @@ public class WebSocketMessageRelay implements MessageListener {
 
             messagingTemplate.convertAndSendToUser(userId, "/queue/task", message);
         } catch (Exception e) {
-            log.debug("WebSocket 消息本地投递失败: {}", e.getMessage());
+            log.warn("WebSocket 消息本地投递失败", e);
         }
     }
 }

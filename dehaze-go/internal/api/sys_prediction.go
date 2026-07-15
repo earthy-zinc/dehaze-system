@@ -5,6 +5,7 @@ import (
 
 	predservice "github.com/earthyzinc/dehaze-go/internal/service/prediction"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,7 +21,11 @@ func NewSysPredictionApi(service *predservice.PredictionService) *SysPredictionA
 // Predict 执行去雾预测
 func (api *SysPredictionApi) Predict(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
 	var req struct {
 		AlgorithmID int64  `json:"algorithmId" binding:"required"`
@@ -61,7 +66,15 @@ func (api *SysPredictionApi) GetPredictionLog(c *gin.Context) {
 // ListPredictionLogs 预测日志列表
 func (api *SysPredictionApi) ListPredictionLogs(c *gin.Context) {
 	ctx := c.Request.Context()
-	algorithmID, _ := strconv.ParseInt(c.Query("algorithmId"), 10, 64)
+	var algorithmID int64
+	if algorithmIDStr := c.Query("algorithmId"); algorithmIDStr != "" {
+		var err error
+		algorithmID, err = strconv.ParseInt(algorithmIDStr, 10, 64)
+		if err != nil {
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "algorithmId格式不正确"))
+			return
+		}
+	}
 	pageNum, pageSize := getPageParams(c)
 
 	result, err := api.service.GetLogPage(ctx, algorithmID, pageNum, pageSize)

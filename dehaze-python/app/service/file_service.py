@@ -22,6 +22,7 @@ from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_file import SysFile
 from app.repository.file_repository import file_repository
+from app.service.file_events import FileCreatedEvent, FileDeletedEvent, file_event_bus
 from app.utils.file import convert_size
 
 logger = logging.getLogger(__name__)
@@ -51,11 +52,6 @@ def get_minio_client() -> Minio:
             secure=settings.MINIO_SECURE,
         )
     return _minio_client
-
-
-def calculate_bytes_md5(content: bytes) -> str:
-    """计算字节数据的 MD5 值"""
-    return hashlib.md5(content).hexdigest()
 
 
 def generate_object_name(md5: str, extension: str) -> str:
@@ -143,7 +139,7 @@ class FileService:
         filename = sanitize_filename(filename)
 
         # 计算 MD5
-        file_md5 = calculate_bytes_md5(content)
+        file_md5 = hashlib.md5(content).hexdigest()
         file_size = len(content)
 
         # 检查文件是否已存在（根据 MD5 去重）
@@ -212,7 +208,6 @@ class FileService:
             raise BusinessException(ResultCode.FILE_STORAGE_ERROR, "文件记录创建失败")
 
         # 发布文件创建事件
-        from app.service.file_events import FileCreatedEvent, file_event_bus
         file_event_bus.publish(FileCreatedEvent(
             file_id=new_file.id,
             filename=new_file.name,
@@ -224,19 +219,19 @@ class FileService:
         return new_file
 
     @staticmethod
-    async def delete_file_with_storage(db: AsyncSession, file_id: int) -> bool:
+    async def delete_file_with_storage(db: AsyncSession, file_id: int) -> None:
         """
         删除文件记录及物理存储
+
+        DB 记录删除后，物理文件删除为 best-effort（失败仅记录日志，
+        由孤儿文件清理任务 FILE_ORPHAN_CLEANUP_HOURS 兜底）。
 
         Args:
             db: 异步数据库会话
             file_id: 文件 ID
 
-        Returns:
-            bool: 是否删除成功
-
         Raises:
-            BusinessException: 文件不存在或删除失败
+            BusinessException: 文件不存在
         """
         file_info = await file_repository.get_by_id(db, file_id)
 
@@ -269,15 +264,12 @@ class FileService:
             logger.warning("物理文件删除异常 [%s]: %s", object_name, e)
 
         # 发布文件删除事件
-        from app.service.file_events import FileDeletedEvent, file_event_bus
         file_event_bus.publish(FileDeletedEvent(
             file_id=file_id,
             filename=filename,
             object_name=object_name,
             md5=md5,
         ))
-
-        return True
 
     @staticmethod
     async def check_file_exists(db: AsyncSession, md5: str) -> bool:

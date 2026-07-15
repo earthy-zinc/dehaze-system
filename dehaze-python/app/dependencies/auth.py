@@ -70,17 +70,21 @@ def _extract_permissions(payload: dict) -> list[str]:
     """
     从 JWT payload 提取权限列表
 
+    JWT 字段契约由签发端（Java/Go/Python）统一为 `permissions`：
+    - 字符串：逗号分隔的权限列表
+    - 列表：权限项列表
+
     Args:
         payload: JWT payload
 
     Returns:
         权限列表
     """
-    permissions = payload.get("permissions") or payload.get("perms") or payload.get("perms_list", [])
+    permissions = payload.get("permissions", [])
 
     if isinstance(permissions, str):
         return [p.strip() for p in permissions.split(",") if p.strip()]
-    elif isinstance(permissions, list):
+    if isinstance(permissions, list):
         return [str(p) for p in permissions if p]
     return []
 
@@ -155,7 +159,7 @@ async def get_current_user(
         )
 
     # sub 统一为 username（与 Java/Go 一致）
-    username = payload.get("sub") or payload.get("username", "")
+    username = payload.get("sub", "")
 
     user_context = UserContext(
         id=int(user_id),
@@ -176,7 +180,9 @@ async def get_current_user_optional(
     """
     获取当前登录用户（可选）
 
-    用于可选认证场景，如公开接口但登录用户有额外权限
+    用于可选认证场景，如公开接口但登录用户有额外权限。
+    仅"无 Token"时返回 None；Token 存在但无效/过期时抛 401（与 get_current_user 一致），
+    让前端感知到需要刷新 Token，而不是把过期 Token 当作游客处理。
 
     Args:
         credentials: Bearer Token
@@ -187,31 +193,40 @@ async def get_current_user_optional(
     if credentials is None:
         return None
 
-    try:
-        payload = decode_token(credentials.credentials)
+    payload = decode_token(credentials.credentials)
 
-        jti = payload.get("jti")
-        if jti:
-            from app.dependencies.redis import get_redis_client
-            redis = await get_redis_client()
-            if redis:
-                is_blacklisted = await redis.get(f"token:blacklist:{jti}")
-                if is_blacklisted:
-                    return None
+    jti = payload.get("jti")
+    if jti:
+        from app.dependencies.redis import get_redis_client
+        redis = await get_redis_client()
+        if redis:
+            is_blacklisted = await redis.get(f"token:blacklist:{jti}")
+            if is_blacklisted:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token 已失效，请重新登录",
+                    headers={"WWW-Authenticate": 'Bearer error="invalid_token"'},
+                )
 
-        user_id = payload.get("userId")
-        if not user_id:
-            return None
-
-        # sub 统一为 username（与 Java/Go 一致）
-        username = payload.get("sub") or payload.get("username", "")
-
-        return UserContext(
-            id=int(user_id),
-            username=username,
-            nickname=payload.get("nickname"),
-            roles=_extract_roles(payload),
-            permissions=_extract_permissions(payload),
+    user_id = payload.get("userId")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=ResultCode.TOKEN_INVALID.msg,
+            headers={"WWW-Authenticate": "Bearer"},
         )
-    except HTTPException:
-        return None
+
+    # sub 统一为 username（与 Java/Go 一致）
+    username = payload.get("sub", "")
+
+    user_context = UserContext(
+        id=int(user_id),
+        username=username,
+        nickname=payload.get("nickname"),
+        roles=_extract_roles(payload),
+        permissions=_extract_permissions(payload),
+    )
+
+    set_current_user_id(user_context.id)
+
+    return user_context

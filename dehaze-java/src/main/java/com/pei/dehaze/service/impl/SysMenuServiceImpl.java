@@ -1,6 +1,5 @@
 package com.pei.dehaze.service.impl;
 
-import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -65,9 +64,13 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         );
         List<Long> rootIds = TreeDataUtils.findRootIds(menus, SysMenu::getId, SysMenu::getParentId);
 
-        // 使用递归函数来构建菜单树
+        // 构建 parentId -> children Map，避免递归内 O(n) 过滤
+        Map<Long, List<SysMenu>> parentToChildrenMap = menus.stream()
+                .collect(Collectors.groupingBy(SysMenu::getParentId));
+
+        // 递归函数来构建菜单树
         return rootIds.stream()
-                .flatMap(rootId -> buildMenuTree(rootId, menus).stream())
+                .flatMap(rootId -> buildMenuTree(rootId, parentToChildrenMap).stream())
                 .toList();
     }
 
@@ -88,13 +91,13 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
 
         MenuTypeEnum menuType = menuForm.getType();
 
-        if (menuType == MenuTypeEnum.CATALOG) {  // 如果是外链
+        if (menuType == MenuTypeEnum.CATALOG) {  // 如果是目录
             String path = menuForm.getPath();
             if (menuForm.getParentId() == 0 && !path.startsWith("/")) {
                 menuForm.setPath("/" + path); // 一级目录需以 / 开头
             }
             menuForm.setComponent("Layout");
-        } else if (menuType == MenuTypeEnum.EXTLINK) {   // 如果是目录
+        } else if (menuType == MenuTypeEnum.EXTLINK) {   // 如果是外链
 
             menuForm.setComponent(null);
         }
@@ -184,20 +187,22 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     /**
      * 递归生成菜单列表
      *
-     * @param parentId 父级ID
-     * @param menuList 菜单列表
+     * @param parentId           父级ID
+     * @param parentToChildrenMap 父级ID -> 子菜单列表 的Map（预先分组，O(1)查找）
      * @return 菜单列表
      */
-    private List<MenuVO> buildMenuTree(Long parentId, List<SysMenu> menuList) {
-        return CollUtil.emptyIfNull(menuList)
-                .stream()
-                .filter(menu -> menu.getParentId().equals(parentId))
-                .map(entity -> {
-                    MenuVO menuVO = menuConverter.entity2Vo(entity);
-                    List<MenuVO> children = buildMenuTree(entity.getId(), menuList);
-                    menuVO.setChildren(children);
-                    return menuVO;
-                }).toList();
+    private List<MenuVO> buildMenuTree(Long parentId, Map<Long, List<SysMenu>> parentToChildrenMap) {
+        List<MenuVO> menuList = new ArrayList<>();
+        List<SysMenu> children = parentToChildrenMap.getOrDefault(parentId, Collections.emptyList());
+        for (SysMenu menu : children) {
+            MenuVO menuVO = menuConverter.entity2Vo(menu);
+            List<MenuVO> subMenuList = buildMenuTree(menu.getId(), parentToChildrenMap);
+            if (!subMenuList.isEmpty()) {
+                menuVO.setChildren(subMenuList);
+            }
+            menuList.add(menuVO);
+        }
+        return menuList;
     }
 
     /**
@@ -232,7 +237,7 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     }
 
     /**
-     * 部门路径生成
+     * 菜单路径生成
      *
      * @param parentId 父ID
      * @return 父节点路径以英文逗号(, )分割，eg: 1,2,3
@@ -240,10 +245,12 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     private String generateMenuTreePath(Long parentId) {
         if (SystemConstants.ROOT_NODE_ID.equals(parentId)) {
             return String.valueOf(parentId);
-        } else {
-            SysMenu parent = this.getById(parentId);
-            return parent != null ? parent.getTreePath() + "," + parent.getId() : null;
         }
+        SysMenu parent = this.getById(parentId);
+        if (parent == null) {
+            throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "父级菜单不存在");
+        }
+        return parent.getTreePath() + "," + parent.getId();
     }
 
 

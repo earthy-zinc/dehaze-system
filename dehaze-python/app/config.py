@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import Optional
 
 from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -95,13 +94,6 @@ class Settings(BaseSettings):
             return f"redis://:{self.DEHAZE_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
-    @property
-    def REDIS_PASSWORD(self) -> Optional[str]:
-        return self.DEHAZE_PASSWORD if self.DEHAZE_PASSWORD else None
-
-    # MongoDB 配置
-    MONGO_URI: str = "mongodb://127.0.0.1:27017/"
-
     # MinIO 配置（MinIO 移到 9100，9000 端口由 nginx-dataset 占用）
     MINIO_ENDPOINT: str = "127.0.0.1:9100"
     MINIO_ACCESS_KEY: str = ""  # 必须通过环境变量设置
@@ -137,8 +129,6 @@ class Settings(BaseSettings):
     FILE_TEMP_CLEANUP_HOURS: int = 24
 
     # 文件存储
-    BASE_URL: str = "http://localhost:8989/api/v1/files"
-    DATASET_PATH: str = "/mnt/d/DeepLearning/dataset"
 
     # 临时文件目录
     TEMP_DIR: str = ""
@@ -179,9 +169,13 @@ class Settings(BaseSettings):
         5000, 30000, 300000]  # 分级重试延迟（ms）: 5s/30s/5min
 
     @property
+    def RABBITMQ_PASSWORD(self) -> str:
+        """RabbitMQ 密码：复用 DEHAZE_PASSWORD 统一凭证，未设置时返回开发默认值 guest"""
+        return self.DEHAZE_PASSWORD or "guest"
+
+    @property
     def RABBITMQ_URL(self) -> str:
-        password = self.DEHAZE_PASSWORD or self.RABBITMQ_USER
-        return f"amqp://{self.RABBITMQ_USER}:{password}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/%2F"
+        return f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASSWORD}@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/%2F"
 
     # 任务并发限制
     TASK_MAX_CONCURRENT_PER_USER: int = 5  # 同用户同类型最大并发数
@@ -232,15 +226,6 @@ class Settings(BaseSettings):
     ]
 
     # ===== 安全防护配置（平台级） =====
-    # 限流
-    RATE_LIMIT_ENABLED: bool = True
-    RATE_LIMIT_DEFAULT_TIMES: int = 60  # 默认每分钟 60 次
-    RATE_LIMIT_DEFAULT_SECONDS: int = 60
-
-    # 防重复提交
-    REPEAT_SUBMIT_ENABLED: bool = True
-    REPEAT_SUBMIT_DEFAULT_INTERVAL: int = 5  # 默认 5 秒内禁止重复提交
-
     # IP 黑名单（自动封禁异常请求的 IP）
     IP_BLACKLIST_ENABLED: bool = True
     IP_BLACKLIST_THRESHOLD: int = 100  # 追踪窗口内异常请求次数阈值
@@ -295,10 +280,7 @@ class ProductionSettings(Settings):
 
     DB_HOST: str = "192.168.31.3"
     REDIS_HOST: str = "192.168.31.3"
-    MONGO_URI: str = "mongodb://192.168.31.3:27017/"
     MINIO_ENDPOINT: str = "192.168.31.3:9100"
-    BASE_URL: str = "http://dehaze-python/api/v1/files"
-    DATASET_PATH: str = "/app/dataset"
 
     # XXL-Job 配置（生产环境启用）
     XXLJOB_ENABLED: bool = True

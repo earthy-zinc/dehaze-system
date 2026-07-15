@@ -148,16 +148,6 @@ class RoleRepository(BaseRepository[SysRole]):
             db.add_all(role_menus)
         await db.flush()
 
-    async def delete_role_menus(
-        self,
-        db: AsyncSession,
-        role_id: int,
-    ) -> int:
-        """删除角色的菜单关联记录（物理删除）"""
-        stmt = delete(SysRoleMenu).where(SysRoleMenu.role_id == role_id)
-        result = await db.execute(stmt)
-        return result.rowcount
-
     async def delete_role_menus_by_role_ids(
         self,
         db: AsyncSession,
@@ -219,28 +209,6 @@ class RoleRepository(BaseRepository[SysRole]):
         stmt = select(func.count()).select_from(SysRole).where(
             SysRole.deleted == 0,
             SysRole.code == code,
-        )
-        if exclude_id:
-            stmt = stmt.where(SysRole.id != exclude_id)
-        result = await db.execute(stmt)
-        return (result.scalar() or 0) > 0
-
-    async def check_name_or_code_exists(
-        self,
-        db: AsyncSession,
-        name: str,
-        code: str,
-        *,
-        exclude_id: int | None = None,
-    ) -> bool:
-        """
-        检查角色名称或编码是否已存在
-
-        注意：此方法用于创建时检查，更新时请分别调用 check_name_exists 和 check_code_exists
-        """
-        stmt = select(func.count()).select_from(SysRole).where(
-            SysRole.deleted == 0,
-            (SysRole.name == name) | (SysRole.code == code),
         )
         if exclude_id:
             stmt = stmt.where(SysRole.id != exclude_id)

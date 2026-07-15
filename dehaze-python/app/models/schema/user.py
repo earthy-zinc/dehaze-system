@@ -25,11 +25,6 @@ class UserStatusQuery(BaseModel):
     status: int = Field(..., ge=0, le=1, description="状态(1-启用；0-停用)")
 
 
-class UserPasswordQuery(BaseModel):
-    """用户密码修改查询参数"""
-    pass
-
-
 # ==================== 路径参数模型 ====================
 
 class UserIdPath(BaseModel):
@@ -106,19 +101,6 @@ class CaptchaData(BaseModel):
     """验证码响应数据"""
     captchaKey: str = Field(description="验证码 key")
     captchaBase64: str = Field(description="验证码图片 Base64")
-
-
-class LoginUserVO(BaseModel):
-    """登录用户信息"""
-    id: int = Field(description="用户ID")
-    username: str = Field(description="用户名")
-    nickname: str = Field(description="昵称")
-
-
-class LoginVO(BaseModel):
-    """登录响应"""
-    token: str = Field(description="访问令牌")
-    user: LoginUserVO = Field(description="用户信息")
 
 
 class UserInfoVO(BaseModel):

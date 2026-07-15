@@ -7,7 +7,7 @@ from typing import Any
 from app.models.entity.sys_dept import SysDept
 from app.repository.base import BaseRepository, escape_like
 from app.utils.tree import generate_tree_path as gen_tree_path
-from sqlalchemy import delete, func, or_, select
+from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.expression import BinaryExpression
 
@@ -33,49 +33,6 @@ class DeptRepository(BaseRepository[SysDept]):
         result = await db.execute(stmt)
         child_ids = [int(row[0]) for row in result.fetchall()]
         return [int(dept.id)] + child_ids
-
-    async def count_children(
-        self,
-        db: AsyncSession,
-        dept_id: int,
-    ) -> int:
-        """统计直接子部门数量"""
-        stmt = select(func.count()).select_from(SysDept).where(
-            SysDept.parent_id == dept_id,
-            SysDept.deleted == 0,
-        )
-        result = await db.execute(stmt)
-        return result.scalar() or 0
-
-    async def get_max_child_depth(
-        self,
-        db: AsyncSession,
-        dept_id: int,
-    ) -> int:
-        """获取子部门最大深度"""
-        dept = await self.get_by_id(db, dept_id)
-        if not dept:
-            return 0
-
-        # 查询所有子部门的 tree_path
-        stmt = select(SysDept.tree_path).where(
-            SysDept.tree_path.like(f"{dept.tree_path}%"),
-            SysDept.id != dept_id,
-            SysDept.deleted == 0,
-        )
-        result = await db.execute(stmt)
-        tree_paths = [row[0] for row in result.fetchall() if row[0]]
-
-        if not tree_paths:
-            return 0
-
-        # 计算最大深度
-        max_depth = 0
-        for path in tree_paths:
-            depth = len(path.split(",")) if path else 0
-            max_depth = max(max_depth, depth)
-
-        return max_depth
 
     async def check_name_exists(
         self,
@@ -134,20 +91,6 @@ class DeptRepository(BaseRepository[SysDept]):
             "sort": dept.sort,
         }
 
-    async def get_dept_options(
-        self,
-        db: AsyncSession,
-    ) -> list[dict[str, Any]]:
-        """获取部门下拉选项列表（平铺格式）"""
-        stmt = (
-            select(SysDept)
-            .where(SysDept.deleted == 0, SysDept.status == 1)
-            .order_by(SysDept.sort)
-        )
-        result = await db.execute(stmt)
-        depts = result.scalars().all()
-        return [{"value": dept.id, "label": dept.name} for dept in depts]
-
     async def get_dept_options_tree(
         self,
         db: AsyncSession,
@@ -169,7 +112,7 @@ class DeptRepository(BaseRepository[SysDept]):
 
         root_options: list[dict[str, Any]] = []
         for dept in dept_list:
-            parent_id = getattr(dept, "parent_id", 0)
+            parent_id = dept.parent_id
             if parent_id == 0:
                 root_options.append(dept_dict[dept.id])
             else:
@@ -188,39 +131,8 @@ class DeptRepository(BaseRepository[SysDept]):
         if parent_id == 0:
             return "0"
         parent_dept = await self.get_by_id(db, parent_id)
-        parent_tree_path = getattr(
-            parent_dept, "tree_path", None) if parent_dept else None
+        parent_tree_path = parent_dept.tree_path if parent_dept else None
         return gen_tree_path(parent_tree_path, parent_id)
-
-    async def delete_depts(
-        self,
-        db: AsyncSession,
-        dept_ids: list[int],
-    ) -> int:
-        """删除部门（物理删除）"""
-        if not dept_ids:
-            return 0
-
-        stmt = delete(SysDept).where(SysDept.id.in_(dept_ids))
-        result = await db.execute(stmt)
-        return result.rowcount
-
-    async def delete_dept_with_children(
-        self,
-        db: AsyncSession,
-        dept_id: int,
-    ) -> int:
-        """删除部门及其所有子部门（基于 tree_path LIKE 级联删除，匹配 Java 行为）"""
-        stmt = delete(SysDept).where(
-            or_(
-                SysDept.id == dept_id,
-                SysDept.tree_path.like(f"%,{dept_id},%"),
-                SysDept.tree_path.like(f"{dept_id},%"),
-                SysDept.tree_path.like(f"%,{dept_id}"),
-            )
-        )
-        result = await db.execute(stmt)
-        return result.rowcount
 
     async def delete_depts_with_children(
         self,

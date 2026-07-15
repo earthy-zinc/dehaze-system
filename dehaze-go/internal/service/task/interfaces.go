@@ -5,13 +5,14 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
+	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 )
 
 // ITaskService 任务服务接口
 type ITaskService interface {
 	// GetPage 任务分页列表
-	GetPage(ctx context.Context, q any) (*vo.PageResult[vo.TaskVO], error)
+	GetPage(ctx context.Context, q *query.TaskPageQuery) (*vo.PageResult[vo.TaskVO], error)
 
 	// GetByID 根据 ID 获取任务详情
 	GetByID(ctx context.Context, id int64) (*vo.TaskDetailVO, error)

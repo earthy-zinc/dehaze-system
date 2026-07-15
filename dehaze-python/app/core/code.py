@@ -2,9 +2,6 @@ from enum import Enum
 
 
 class ResultCode(Enum):
-    code: str
-    msg: str
-
     SUCCESS = ("00000", "一切ok")
 
     USER_ERROR = ("A0001", "用户端错误")
@@ -47,36 +44,8 @@ class ResultCode(Enum):
     USER_UPLOAD_FILE_SIZE_EXCEEDS = ("A0702", "用户上传文件太大")
     USER_UPLOAD_IMAGE_SIZE_EXCEEDS = ("A0703", "用户上传图片太大")
 
+    # 系统级错误码 B0xxx
     SYSTEM_EXECUTION_ERROR = ("B0001", "系统执行出错")
-    SYSTEM_EXECUTION_TIMEOUT = ("B0100", "系统执行超时")
-    SYSTEM_ORDER_PROCESSING_TIMEOUT = ("B0101", "系统订单处理超时")
-
-    SYSTEM_DISASTER_RECOVERY_TRIGGER = ("B0200", "系统容灾功能被触发")
-    FLOW_LIMITING = ("B0210", "系统并发限流")
-    RATE_LIMITING = ("B0211", "系统速率限流")
-    DEGRADATION = ("B0220", "系统功能降级")
-
-    SYSTEM_RESOURCE_ERROR = ("B0300", "系统资源异常")
-    SYSTEM_RESOURCE_EXHAUSTION = ("B0310", "系统资源耗尽")
-    SYSTEM_RESOURCE_ACCESS_ERROR = ("B0320", "系统资源访问异常")
-    SYSTEM_READ_DISK_FILE_ERROR = ("B0321", "系统读取磁盘文件失败")
-
-    # 文件模块错误码 B04xx
-    FILE_NOT_FOUND = ("B0401", "文件不存在")
-    FILE_TOO_LARGE = ("B0402", "文件大小超过限制")
-    FILE_TYPE_NOT_SUPPORTED = ("B0403", "不支持的文件类型")
-    FILE_MD5_INVALID = ("B0404", "MD5格式无效")
-    FILE_STORAGE_ERROR = ("B0405", "文件存储失败")
-    FILE_CORRUPTED = ("B0406", "文件已损坏")
-
-    # 任务模块错误码 B03xx
-    TASK_NOT_FOUND = ("B0301", "任务不存在")
-    TASK_UNAUTHORIZED = ("B0302", "无权操作该任务")
-    TASK_STATUS_INVALID = ("B0303", "任务状态不允许此操作")
-    TASK_TYPE_UNSUPPORTED = ("B0304", "不支持的任务类型")
-    TASK_PARAM_ERROR = ("B0305", "任务参数错误")
-    TASK_CANCELLED = ("B0306", "任务已被取消")
-    TASK_CONCURRENT_LIMIT = ("B0307", "同类型任务并发数已达上限")
 
     # 算法模块错误码 B02xx
     ALGORITHM_NOT_FOUND = ("B0200", "算法不存在")
@@ -95,6 +64,23 @@ class ResultCode(Enum):
     PREDICTION_GT_MISSING = ("B0213", "缺少清晰图（Ground Truth）")
     EVALUATION_TASK_NOT_FOUND = ("B0220", "评估任务不存在")
     EVALUATION_TASK_EXPIRED = ("B0221", "评估任务结果已过期")
+
+    # 任务模块错误码 B03xx
+    TASK_NOT_FOUND = ("B0301", "任务不存在")
+    TASK_UNAUTHORIZED = ("B0302", "无权操作该任务")
+    TASK_STATUS_INVALID = ("B0303", "任务状态不允许此操作")
+    TASK_TYPE_UNSUPPORTED = ("B0304", "不支持的任务类型")
+    TASK_PARAM_ERROR = ("B0305", "任务参数错误")
+    TASK_CANCELLED = ("B0306", "任务已被取消")
+    TASK_CONCURRENT_LIMIT = ("B0307", "同类型任务并发数已达上限")
+
+    # 文件模块错误码 B04xx
+    FILE_NOT_FOUND = ("B0401", "文件不存在")
+    FILE_TOO_LARGE = ("B0402", "文件大小超过限制")
+    FILE_TYPE_NOT_SUPPORTED = ("B0403", "不支持的文件类型")
+    FILE_MD5_INVALID = ("B0404", "MD5格式无效")
+    FILE_STORAGE_ERROR = ("B0405", "文件存储失败")
+    FILE_CORRUPTED = ("B0406", "文件已损坏")
 
     CALL_THIRD_PARTY_SERVICE_ERROR = ("C0001", "调用第三方服务出错")
     MIDDLEWARE_SERVICE_ERROR = ("C0100", "中间件服务出错")
@@ -119,10 +105,3 @@ class ResultCode(Enum):
 
     def __str__(self):
         return f'{{"code":"{self.code}", "msg":"{self.msg}"}}'
-
-    @staticmethod
-    def get_value(code: str) -> "ResultCode":
-        for result_code in ResultCode:
-            if result_code.code == code:
-                return result_code
-        return ResultCode.SYSTEM_EXECUTION_ERROR  # 默认系统执行错误

@@ -15,7 +15,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -53,7 +53,6 @@ public class FileController {
 
     @DeleteMapping
     @Operation(summary = "文件删除")
-    @SneakyThrows
     public Result<Void> deleteFile(
             @Parameter(description = "文件路径") @RequestParam Long fileId
     ) {

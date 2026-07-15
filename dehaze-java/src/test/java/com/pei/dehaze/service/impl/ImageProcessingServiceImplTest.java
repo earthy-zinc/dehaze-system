@@ -149,13 +149,12 @@ class ImageProcessingServiceImplTest {
     }
 
     @Test
-    @DisplayName("解析图片宽高 - 无效文件返回零值")
-    void getImageDimensions_withInvalidFile_shouldReturnZeros() throws IOException {
+    @DisplayName("解析图片宽高 - 无效文件抛出异常")
+    void getImageDimensions_withInvalidFile_shouldThrowException() throws IOException {
         Path textFile = tempDir.resolve("text.jpg");
         Files.write(textFile, "not an image".getBytes());
 
-        int[] dimensions = imageProcessingService.getImageDimensions(textFile.toFile());
-
-        assertArrayEquals(new int[]{0, 0}, dimensions);
+        assertThrows(BusinessException.class,
+                () -> imageProcessingService.getImageDimensions(textFile.toFile()));
     }
 }

@@ -50,10 +50,10 @@ public interface SysDeptService extends IService<SysDept> {
     /**
      * 删除部门
      *
-     * @param ids 部门ID，多个以英文逗号,拼接字符串
-     * @return
+     * @param ids 部门ID列表
+     * @return 是否删除成功
      */
-    boolean deleteByIds(String ids);
+    boolean deleteByIds(List<Long> ids);
 
     /**
      * 获取部门详情

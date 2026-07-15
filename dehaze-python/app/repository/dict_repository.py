@@ -9,7 +9,7 @@ from typing import Any
 from app.models.base import get_audit_update_values
 from app.models.entity.sys_dict import SysDict, SysDictType
 from app.repository.base import BaseRepository, escape_like
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -88,12 +88,6 @@ class DictRepository(BaseRepository[SysDict]):
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def count_by_type_code(self, db: AsyncSession, type_code: str) -> int:
-        """统计某类型下的字典数据数量"""
-        stmt = select(func.count()).where(SysDict.type_code == type_code)
-        result = await db.execute(stmt)
-        return result.scalar() or 0
-
     async def count_by_type_codes(self, db: AsyncSession, type_codes: list[str]) -> dict[str, int]:
         """批量统计多个类型下的字典数据数量（避免 N+1）"""
         if not type_codes:
@@ -129,8 +123,8 @@ class DictRepository(BaseRepository[SysDict]):
         values = {"type_code": new_code}
         values.update(get_audit_update_values())
         stmt = update(SysDict).where(SysDict.type_code == old_code).values(**values)
-        await db.execute(stmt)
-        return True
+        result = await db.execute(stmt)
+        return result.rowcount > 0
 
     async def create_dict(self, db: AsyncSession, data: dict[str, Any]) -> SysDict:
         """创建字典项"""
@@ -176,12 +170,6 @@ class DictRepository(BaseRepository[SysDict]):
             dict_item.remark = data["remark"]
 
         await db.flush()
-        return True
-
-    async def delete_dicts_by_ids(self, db: AsyncSession, dict_ids: list[int]) -> bool:
-        """删除字典项"""
-        stmt = delete(SysDict).where(SysDict.id.in_(dict_ids))
-        await db.execute(stmt)
         return True
 
     async def list_options_by_type(

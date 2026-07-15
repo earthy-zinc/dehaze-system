@@ -1,14 +1,15 @@
 package com.pei.dehaze.security.util;
 
 import cn.hutool.core.convert.Convert;
-import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.RegisteredPayload;
 import com.pei.dehaze.common.constant.JwtClaimConstants;
+import com.pei.dehaze.config.property.SecurityProperties;
 import com.pei.dehaze.security.model.SysUserDetails;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -28,29 +30,10 @@ import java.util.stream.Collectors;
  * @since 2.6.0
  */
 @Component
+@RequiredArgsConstructor
 public class JwtUtils {
 
-    /**
-     * JWT 加解密使用的密钥
-     */
-    private static byte[] key;
-
-
-    /**
-     * JWT Token 的有效时间(单位:秒)
-     */
-    private static int ttl;
-
-
-    @Value("${security.jwt.key}")
-    public void setKey(String key) {
-        JwtUtils.key = key.getBytes();
-    }
-
-    @Value("${security.jwt.ttl}")
-    public void setTtl(Integer ttl) {
-        JwtUtils.ttl = ttl;
-    }
+    private final SecurityProperties securityProperties;
 
     /**
      * 生成 JWT Token
@@ -58,7 +41,7 @@ public class JwtUtils {
      * @param authentication 用户认证信息
      * @return Token 字符串
      */
-    public static String createToken(Authentication authentication) {
+    public String createToken(Authentication authentication) {
 
         SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
 
@@ -75,13 +58,14 @@ public class JwtUtils {
 
 
         Date now = new Date();
-        Date expiration = DateUtil.offsetSecond(now, ttl);
+        long ttlSeconds = securityProperties.getJwt().getTtl();
+        Date expiration = new Date(now.getTime() + ttlSeconds * 1000L);
         payload.put(RegisteredPayload.ISSUED_AT, now);
         payload.put(RegisteredPayload.EXPIRES_AT, expiration);
         payload.put(RegisteredPayload.SUBJECT, authentication.getName());
         payload.put(RegisteredPayload.JWT_ID, IdUtil.simpleUUID());
 
-        return JWTUtil.createToken(payload, key);
+        return JWTUtil.createToken(payload, securityProperties.getJwt().getKey().getBytes());
     }
 
 
@@ -99,8 +83,8 @@ public class JwtUtils {
 
         userDetails.setUsername(payloads.getStr(RegisteredPayload.SUBJECT)); // 用户名
         // 角色集合
-        Set<SimpleGrantedAuthority> authorities = new java.util.HashSet<>();
-        cn.hutool.json.JSONArray jsonArray = payloads.getJSONArray(JwtClaimConstants.AUTHORITIES);
+        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+        JSONArray jsonArray = payloads.getJSONArray(JwtClaimConstants.AUTHORITIES);
         if (jsonArray != null) {
             authorities = jsonArray.stream()
                     .map(authority -> new SimpleGrantedAuthority(Convert.toStr(authority)))

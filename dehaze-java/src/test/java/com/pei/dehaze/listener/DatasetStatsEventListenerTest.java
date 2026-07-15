@@ -2,9 +2,7 @@ package com.pei.dehaze.listener;
 
 import com.pei.dehaze.model.event.ItemFileCreatedEvent;
 import com.pei.dehaze.model.event.ItemFileDeletedEvent;
-import com.pei.dehaze.service.SysDatasetItemService;
 import com.pei.dehaze.service.SysDatasetService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,9 +17,6 @@ import static org.mockito.Mockito.*;
 class DatasetStatsEventListenerTest {
 
     @Mock
-    private SysDatasetItemService datasetItemService;
-
-    @Mock
     private SysDatasetService datasetService;
 
     @InjectMocks
@@ -32,14 +27,10 @@ class DatasetStatsEventListenerTest {
     void onItemFileCreated_shouldEvictCache() {
         Long itemId = 1L;
         Long fileId = 100L;
-        Long datasetId = 10L;
-
-        when(datasetItemService.getDatasetIdByItemId(itemId)).thenReturn(datasetId);
 
         listener.onItemFileCreated(new ItemFileCreatedEvent(itemId, fileId));
 
-        verify(datasetItemService).getDatasetIdByItemId(itemId);
-        verify(datasetService).evictDatasetAndAncestorStatsCache(datasetId);
+        verify(datasetService).evictAllDatasetsCache();
     }
 
     @Test
@@ -47,41 +38,22 @@ class DatasetStatsEventListenerTest {
     void onItemFileDeleted_shouldEvictCache() {
         Long itemId = 1L;
         Long fileId = 100L;
-        Long datasetId = 10L;
-
-        when(datasetItemService.getDatasetIdByItemId(itemId)).thenReturn(datasetId);
 
         listener.onItemFileDeleted(new ItemFileDeletedEvent(itemId, fileId));
 
-        verify(datasetItemService).getDatasetIdByItemId(itemId);
-        verify(datasetService).evictDatasetAndAncestorStatsCache(datasetId);
+        verify(datasetService).evictAllDatasetsCache();
     }
 
     @Test
-    @DisplayName("处理事件 - 数据项不存在时不抛出异常")
-    void onItemFileCreated_whenItemNotFound_shouldNotThrow() {
-        Long itemId = 999L;
-        Long fileId = 100L;
-
-        when(datasetItemService.getDatasetIdByItemId(itemId)).thenReturn(null);
-
-        listener.onItemFileCreated(new ItemFileCreatedEvent(itemId, fileId));
-
-        verify(datasetItemService).getDatasetIdByItemId(itemId);
-        verify(datasetService, never()).evictDatasetAndAncestorStatsCache(any());
-    }
-
-    @Test
-    @DisplayName("处理事件 - 发生异常时不抛出")
-    void onItemFileCreated_whenExceptionOccurs_shouldNotThrow() {
+    @DisplayName("处理事件 - 清除缓存异常时不抛出")
+    void onItemFileCreated_whenEvictionFails_shouldNotThrow() {
         Long itemId = 1L;
         Long fileId = 100L;
 
-        when(datasetItemService.getDatasetIdByItemId(itemId)).thenThrow(new RuntimeException("Database error"));
+        doThrow(new RuntimeException("Cache error")).when(datasetService).evictAllDatasetsCache();
 
         listener.onItemFileCreated(new ItemFileCreatedEvent(itemId, fileId));
 
-        verify(datasetItemService).getDatasetIdByItemId(itemId);
-        verify(datasetService, never()).evictDatasetAndAncestorStatsCache(any());
+        verify(datasetService).evictAllDatasetsCache();
     }
 }

@@ -21,8 +21,14 @@ public class EvaluationForm {
     @Schema(description = "预测结果文件ID")
     private Long predFileId;
 
+    @Schema(description = "预测结果图片URL")
+    private String predUrl;
+
     @Schema(description = "Ground Truth参考图片文件ID")
     private Long gtFileId;
+
+    @Schema(description = "Ground Truth参考图片URL")
+    private String gtUrl;
 
     @Schema(description = "评估参数（JSON）")
     private String params;

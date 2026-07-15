@@ -9,6 +9,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 	"github.com/ulule/limiter/v3"
 	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
@@ -154,13 +155,14 @@ func GenerateIPKey(prefix string) func(c *gin.Context) string {
 }
 
 // GenerateUserKey 生成用户限流key
+// 通过 security.GetUserID 从 JWT claims 读取用户ID，缺失时退化为 IP 限流
 func GenerateUserKey(prefix string) func(c *gin.Context) string {
 	return func(c *gin.Context) string {
-		userID, exists := c.Get("user_id")
-		if !exists {
+		userID := security.GetUserID(c)
+		if userID == 0 {
 			return fmt.Sprintf("user:%s:%s", prefix, c.ClientIP())
 		}
-		return fmt.Sprintf("user:%s:%v", prefix, userID)
+		return fmt.Sprintf("user:%s:%d", prefix, userID)
 	}
 }
 

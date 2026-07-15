@@ -18,7 +18,7 @@ type JWT struct {
 }
 
 var (
-	ErrTokenValid            = errors.New("未知错误")
+	ErrTokenUnknown          = errors.New("未知错误")
 	ErrTokenExpired          = errors.New("token已过期")
 	ErrTokenNotValidYet      = errors.New("token尚未激活")
 	ErrTokenMalformed        = errors.New("这不是一个token")
@@ -95,7 +95,7 @@ func (j *JWT) ParseToken(tokenString string) (*CustomClaims, error) {
 			return claims, nil
 		}
 	}
-	return nil, ErrTokenValid
+	return nil, ErrTokenUnknown
 }
 
 // SetJWT 便捷包级函数，从全局配置读取（生产代码使用）

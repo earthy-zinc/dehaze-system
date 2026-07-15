@@ -26,14 +26,8 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
     public void insertFill(MetaObject metaObject) {
         this.strictInsertFill(metaObject, "createTime", LocalDateTime::now, LocalDateTime.class);
         this.strictUpdateFill(metaObject, "updateTime", LocalDateTime::now, LocalDateTime.class);
-        this.strictInsertFill(metaObject, "createBy", () -> {
-            Long userId = SecurityUtils.getUserId();
-            return userId != null ? userId : SystemConstants.SYSTEM_USER_ID;
-        }, Long.class);
-        this.strictUpdateFill(metaObject, "updateBy", () -> {
-            Long userId = SecurityUtils.getUserId();
-            return userId != null ? userId : SystemConstants.SYSTEM_USER_ID;
-        }, Long.class);
+        this.strictInsertFill(metaObject, "createBy", this::currentUserId, Long.class);
+        this.strictUpdateFill(metaObject, "updateBy", this::currentUserId, Long.class);
     }
 
     /**
@@ -44,10 +38,15 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
     @Override
     public void updateFill(MetaObject metaObject) {
         this.strictUpdateFill(metaObject, "updateTime", LocalDateTime::now, LocalDateTime.class);
-        this.strictUpdateFill(metaObject, "updateBy", () -> {
-            Long userId = SecurityUtils.getUserId();
-            return userId != null ? userId : SystemConstants.SYSTEM_USER_ID;
-        }, Long.class);
+        this.strictUpdateFill(metaObject, "updateBy", this::currentUserId, Long.class);
+    }
+
+    /**
+     * 获取当前操作用户ID，无登录上下文时回退为系统用户ID
+     */
+    private Long currentUserId() {
+        Long userId = SecurityUtils.getUserId();
+        return userId != null ? userId : SystemConstants.SYSTEM_USER_ID;
     }
 
 }

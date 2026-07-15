@@ -13,7 +13,6 @@ from app.models.base import BaseModel
 # 数据库实体模型
 from app.models.entity import (
     SysFile,
-    SysWpxFile,
     SysUser,
     SysRole,
     SysUserRole,
@@ -41,7 +40,6 @@ from app.models.enum import (
 __all__ = [
     # 数据库实体
     'SysFile',
-    'SysWpxFile',
     'SysUser',
     'SysRole',
     'SysUserRole',

@@ -20,19 +20,12 @@ public class MultiLevelCacheManager implements CacheManager {
     private final CacheManager l2CacheManager;
     private final MeterRegistry meterRegistry;
     private final Duration l1Expire;
-    private final BloomFilterService bloomFilterService;
     private final ConcurrentMap<String, Cache> cacheMap = new ConcurrentHashMap<>();
 
     public MultiLevelCacheManager(CacheManager l2CacheManager, MeterRegistry meterRegistry, Duration l1Expire) {
-        this(l2CacheManager, meterRegistry, l1Expire, null);
-    }
-
-    public MultiLevelCacheManager(CacheManager l2CacheManager, MeterRegistry meterRegistry, Duration l1Expire,
-                                  BloomFilterService bloomFilterService) {
         this.l2CacheManager = l2CacheManager;
         this.meterRegistry = meterRegistry;
         this.l1Expire = l1Expire;
-        this.bloomFilterService = bloomFilterService;
     }
 
     @Override
@@ -42,7 +35,7 @@ public class MultiLevelCacheManager implements CacheManager {
             if (l2Cache == null) {
                 return null;
             }
-            return new MultiLevelCache(n, l1Expire, l2Cache, meterRegistry, bloomFilterService);
+            return new MultiLevelCache(n, l1Expire, l2Cache, meterRegistry);
         });
     }
 

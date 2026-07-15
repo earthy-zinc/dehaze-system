@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	"github.com/earthyzinc/dehaze-go/internal/model/query"
 	"github.com/earthyzinc/dehaze-go/internal/model/read"
 )
 
@@ -20,7 +21,7 @@ type ITaskRepository interface {
 	FindByIdempotencyKey(ctx context.Context, key string) (*model.SysTask, error)
 
 	// FindPage 分页查询任务
-	FindPage(ctx context.Context, q any) (*read.PageResult[read.Task], error)
+	FindPage(ctx context.Context, q *query.TaskPageQuery) (*read.PageResult[read.Task], error)
 
 	// Create 创建任务
 	Create(ctx context.Context, task *model.SysTask) error

@@ -17,22 +17,16 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class MyAuthenticationEntryPoint implements AuthenticationEntryPoint {
-        @Override
-        public void commence(HttpServletRequest request, HttpServletResponse response,
-                             AuthenticationException authException) {
+    @Override
+    public void commence(HttpServletRequest request, HttpServletResponse response,
+                         AuthenticationException authException) {
         int status = response.getStatus();
         if (status == HttpServletResponse.SC_NOT_FOUND) {
-            // 资源不存在
             ResponseUtils.writeErrMsg(response, ResultCode.RESOURCE_NOT_FOUND);
+        } else if (authException instanceof BadCredentialsException) {
+            ResponseUtils.writeErrMsg(response, ResultCode.USERNAME_OR_PASSWORD_ERROR);
         } else {
-
-            if(authException instanceof BadCredentialsException){
-                // 用户名或密码错误
-                ResponseUtils.writeErrMsg(response, ResultCode.USERNAME_OR_PASSWORD_ERROR);
-            }else {
-                // 未认证或者token过期
-                ResponseUtils.writeErrMsg(response, ResultCode.TOKEN_INVALID);
-            }
+            ResponseUtils.writeErrMsg(response, ResultCode.TOKEN_INVALID);
         }
     }
 }

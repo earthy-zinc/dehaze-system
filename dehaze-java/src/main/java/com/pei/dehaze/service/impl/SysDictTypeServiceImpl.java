@@ -7,8 +7,8 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.pei.dehaze.common.exception.BusinessException;
-import com.pei.dehaze.common.model.Option;
 import com.pei.dehaze.common.result.ResultCode;
+import com.pei.dehaze.common.util.IdUtils;
 import com.pei.dehaze.converter.DictTypeConverter;
 import com.pei.dehaze.mapper.SysDictTypeMapper;
 import com.pei.dehaze.model.entity.SysDict;
@@ -23,7 +23,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -56,9 +55,11 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         Page<SysDictType> dictTypePage = this.page(
                 new Page<>(pageNum, pageSize),
                 new LambdaQueryWrapper<SysDictType>()
-                        .like(CharSequenceUtil.isNotBlank(keywords), SysDictType::getName, keywords)
-                        .or()
-                        .like(CharSequenceUtil.isNotBlank(keywords), SysDictType::getCode, keywords)
+                        .and(CharSequenceUtil.isNotBlank(keywords),
+                                wrapper -> wrapper
+                                        .like(SysDictType::getName, keywords)
+                                        .or()
+                                        .like(SysDictType::getCode, keywords))
                         .select(
                                 SysDictType::getId,
                                 SysDictType::getName,
@@ -104,11 +105,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     @Override
     public boolean saveDictType(DictTypeForm dictTypeForm) {
         // 检查编码唯一性
-        long count = this.count(new LambdaQueryWrapper<SysDictType>()
-                .eq(SysDictType::getCode, dictTypeForm.getCode()));
-        if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在");
-        }
+        validateCodeUnique(dictTypeForm.getCode(), null);
         // 实体对象转换 form->entity
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
         // 持久化
@@ -132,12 +129,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         }
 
         // 检查编码唯一性（排除自身ID）
-        long count = this.count(new LambdaQueryWrapper<SysDictType>()
-                .eq(SysDictType::getCode, dictTypeForm.getCode())
-                .ne(SysDictType::getId, id));
-        if (count > 0) {
-            throw new BusinessException(ResultCode.DATA_EXISTS);
-        }
+        validateCodeUnique(dictTypeForm.getCode(), id);
 
         SysDictType entity = dictTypeConverter.form2Entity(dictTypeForm);
         entity.setId(id);  // 设置ID，确保更新正确执行
@@ -159,6 +151,21 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
     }
 
     /**
+     * 校验字典类型编码唯一性
+     *
+     * @param code      字典类型编码
+     * @param excludeId 排除的字典类型ID（更新时传自身ID，新增时传 null）
+     */
+    private void validateCodeUnique(String code, Long excludeId) {
+        long count = this.count(new LambdaQueryWrapper<SysDictType>()
+                .eq(SysDictType::getCode, code)
+                .ne(excludeId != null, SysDictType::getId, excludeId));
+        if (count > 0) {
+            throw new BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在");
+        }
+    }
+
+    /**
      * 删除字典类型
      *
      * @param idsStr 字典类型ID，多个以英文逗号(,)分割
@@ -172,14 +179,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
         }
 
         // 转换ID列表，校验非数字ID
-        List<Long> ids;
-        try {
-            ids = Arrays.stream(idsStr.split(","))
-                    .map(Long::parseLong)
-                    .toList();
-        } catch (NumberFormatException e) {
-            throw new BusinessException(ResultCode.PARAM_ERROR, "ID格式错误");
-        }
+        List<Long> ids = IdUtils.parseIdList(idsStr);
 
         // 校验字典类型是否存在
         long existCount = this.count(new LambdaQueryWrapper<SysDictType>()

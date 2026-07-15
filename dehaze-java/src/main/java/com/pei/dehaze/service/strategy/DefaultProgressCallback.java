@@ -23,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 public class DefaultProgressCallback implements ProgressCallback {
 
     private static final long UPDATE_INTERVAL_MS = 2000; // 进度更新间隔2秒
+    private static final int PROGRESS_COMPLETE = 100;
+    private static final int PROGRESS_UPDATE_THRESHOLD = 5;
 
     private final Long taskId;
     private final String taskIdStr;
@@ -55,13 +57,13 @@ public class DefaultProgressCallback implements ProgressCallback {
         // 先检查取消状态
         checkCancelled();
 
-        int progress = total > 0 ? (current * 100 / total) : 100;
+        int progress = total > 0 ? (current * PROGRESS_COMPLETE / total) : PROGRESS_COMPLETE;
         long now = System.currentTimeMillis();
 
         // 节流：进度变化>=5% 或 时间间隔>=2秒 或 已完成时才更新
-        boolean shouldUpdate = (progress - lastProgress >= 5)
+        boolean shouldUpdate = (progress - lastProgress >= PROGRESS_UPDATE_THRESHOLD)
                 || (now - lastUpdateTime >= UPDATE_INTERVAL_MS)
-                || (progress >= 100);
+                || (progress >= PROGRESS_COMPLETE);
 
         if (!shouldUpdate) {
             return;
@@ -89,7 +91,7 @@ public class DefaultProgressCallback implements ProgressCallback {
                         TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
             }
         } catch (Exception e) {
-            log.debug("Redis 缓存进度刷新失败（不影响任务执行）: {}", e.getMessage());
+            log.warn("Redis 缓存进度刷新失败（不影响任务执行）", e);
         }
 
         // WebSocket 推送任务进度（对齐 Python 消息格式）
@@ -117,7 +119,7 @@ public class DefaultProgressCallback implements ProgressCallback {
             msg.put("timestamp", LocalDateTime.now().toString());
             wsMessageRelay.publishToUser(createBy, msg);
         } catch (Exception e) {
-            log.debug("WebSocket 进度推送失败（不影响任务执行）: {}", e.getMessage());
+            log.warn("WebSocket 进度推送失败（不影响任务执行）", e);
         }
     }
 

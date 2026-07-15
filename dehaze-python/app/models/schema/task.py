@@ -54,14 +54,6 @@ class ExportTaskCreateForm(BaseModel):
     )
 
 
-class TaskListQuery(BaseModel):
-    """任务列表查询参数"""
-    status: Optional[str] = Field(default=None, description="状态筛选")
-    taskType: Optional[str] = Field(default=None, description="类型筛选")
-    page: int = Field(default=1, ge=1, description="页码")
-    size: int = Field(default=10, ge=1, le=100, description="每页数量")
-
-
 # ==================== 响应模型 ====================
 
 class TaskVO(BaseModel):

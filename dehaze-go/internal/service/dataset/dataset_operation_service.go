@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/earthyzinc/dehaze-go/internal/model/vo"
 	datasetrepo "github.com/earthyzinc/dehaze-go/internal/repository/dataset"
 	filerepo "github.com/earthyzinc/dehaze-go/internal/repository/file"
+	fileservice "github.com/earthyzinc/dehaze-go/internal/service/file"
 	taskservice "github.com/earthyzinc/dehaze-go/internal/service/task"
 	"github.com/earthyzinc/dehaze-go/pkg/cache/types"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
@@ -60,21 +60,6 @@ func NewDatasetOperationService(
 		pairedImageValidator: NewPairedImageValidator(),
 		treeUtils:            utils.NewTreeDataUtils(),
 	}
-}
-
-// SetRepositories 设置 Repository（测试用）
-func (dos *DatasetOperationService) SetRepositories(
-	datasetRepo datasetrepo.IDatasetRepository,
-	datasetItemRepo datasetrepo.IDatasetItemRepository,
-	datasetItemFileRepo datasetrepo.IDatasetItemFileRepository,
-	itemFileRepo filerepo.IItemFileRepository,
-	fileRepo filerepo.IFileRepository,
-) {
-	dos.datasetRepo = datasetRepo
-	dos.datasetItemRepo = datasetItemRepo
-	dos.datasetItemFileRepo = datasetItemFileRepo
-	dos.itemFileRepo = itemFileRepo
-	dos.fileRepo = fileRepo
 }
 
 // getBatchUpdateUserID 从上下文中获取当前用户ID
@@ -232,16 +217,7 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	// 查询创建的文件URL列表
 	createdItemFiles, err := dos.itemFileRepo.FindByItemID(ctx, itemID)
 	if err != nil {
-		logger.Warn("查询项文件失败", zap.Error(err))
-		return &vo.ImageItemVO{
-			ID:         itemID,
-			DatasetID:  req.DatasetID,
-			Name:       itemName,
-			ImageCount: 0,
-			HazyImages: []vo.ImageUrlVO{},
-			CreateTime: time.Now().Format("2006-01-02 15:04:05"),
-			UpdateTime: time.Now().Format("2006-01-02 15:04:05"),
-		}, nil
+		return nil, common.WrapBizError(common.DATABASE_ERROR, "查询创建的项文件失败", err)
 	}
 
 	// 收集文件ID
@@ -269,34 +245,12 @@ func (dos *DatasetOperationService) CreateDatasetItemWithImages(
 	var sceneTypeStr, descriptionStr string
 	for _, itemFile := range createdItemFiles {
 		url := fileURLMap[itemFile.FileID]
-		imageUrlVO := vo.ImageUrlVO{
-			ID:          itemFile.ID,
-			ItemID:      itemFile.ItemID,
-			DatasetID:   req.DatasetID,
-			Type:        itemFile.Type,
-			URL:         url,
-			OriginURL:   url,
-			Description: utils.StringVal(itemFile.Description),
-			SceneType:   utils.StringVal(itemFile.SceneType),
-			HazeLevel:   utils.StringVal(itemFile.HazeLevel),
-		}
+		fileInfo := fileInfoMap[itemFile.FileID]
 
-		if fileInfo := fileInfoMap[itemFile.FileID]; fileInfo != nil {
-			imageUrlVO.FileName = fileInfo.Name
-			if size, parseErr := strconv.ParseInt(fileInfo.Size, 10, 64); parseErr == nil {
-				imageUrlVO.SizeBytes = size
-			}
-			if idx := strings.LastIndex(fileInfo.Name, "."); idx != -1 {
-				imageUrlVO.Format = fileInfo.Name[idx+1:]
-			}
-		}
-
-		if itemFile.Width != nil {
-			imageUrlVO.Width = *itemFile.Width
-		}
-		if itemFile.Height != nil {
-			imageUrlVO.Height = *itemFile.Height
-		}
+		imageUrlVO := fileservice.BuildImageUrlVO(fileInfo, &itemFile, url)
+		imageUrlVO.ID = itemFile.ID
+		imageUrlVO.ItemID = itemFile.ItemID
+		imageUrlVO.DatasetID = req.DatasetID
 
 		if itemFile.Type == "clear" {
 			clearImage = &imageUrlVO

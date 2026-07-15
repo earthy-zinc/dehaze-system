@@ -1,17 +1,19 @@
-from typing import Annotated, Optional
+from typing import Optional
 
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
-from app.core.result import Result, error, success
+from app.core.result import Result, success
 from app.database import get_db
 from app.decorators import require_permission
 from app.dependencies.auth import UserContext, get_current_user
+from app.dependencies.redis import get_redis
 from app.models.schema.common import PageResult
 from app.models.schema.dict import (DictForm, DictFormVO, DictOptionVO,
                                     DictPageVO, DictTypeForm, DictTypeFormVO,
                                     DictTypePageVO)
 from app.service.dict_service import DictService, DictTypeService
 from fastapi import APIRouter, Body, Depends, Path, Query
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/v1/dict", tags=["字典管理"], dependencies=[Depends(get_current_user)])
@@ -62,10 +64,8 @@ async def create_dict_type(
     db: AsyncSession = Depends(get_db),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DictTypeService.create_dict_type(db, body.model_dump(exclude_none=True))
-    if result:
-        return success(msg="新增成功")
-    return error("新增失败")
+    await DictTypeService.create_dict_type(db, body.model_dump(exclude_none=True))
+    return success(msg="新增成功")
 
 
 @router.put("/types/{type_id}", response_model=Result[None], summary="修改字典类型")
@@ -73,13 +73,12 @@ async def create_dict_type(
 async def update_dict_type(
     type_id: int = Path(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
     body: DictTypeForm = Body(...),
 ):
-    result = await DictTypeService.update_dict_type(db, type_id, body.model_dump(exclude_none=True))
-    if result:
-        return success(msg="修改成功")
-    return error("修改失败")
+    await DictTypeService.update_dict_type(db, redis, type_id, body.model_dump(exclude_none=True))
+    return success(msg="修改成功")
 
 
 @router.delete("/types/{type_ids}", response_model=Result[None], summary="删除字典类型", description="存在关联字典数据时禁止删除")
@@ -91,12 +90,10 @@ async def delete_dict_types(
 ):
     try:
         id_list = [int(i) for i in type_ids.split(",")]
-        result = await DictTypeService.delete_dict_types(db, id_list)
-        if result:
-            return success(msg="删除成功")
-        return error("删除失败")
     except ValueError:
-        return error("参数错误", code=ResultCode.PARAM_ERROR.code)
+        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
+    await DictTypeService.delete_dict_types(db, id_list)
+    return success(msg="删除成功")
 
 
 @router.get("/page", response_model=Result[PageResult[DictPageVO]], summary="字典分页列表")
@@ -148,12 +145,11 @@ async def get_dict_form(
 async def create_dict(
     body: DictForm,
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
-    result = await DictService.create_dict(db, body.model_dump(exclude_none=True))
-    if result:
-        return success(msg="新增成功")
-    return error("新增失败")
+    await DictService.create_dict(db, redis, body.model_dump(exclude_none=True))
+    return success(msg="新增成功")
 
 
 @router.put("/{dict_id}", response_model=Result[None], summary="修改字典")
@@ -161,13 +157,12 @@ async def create_dict(
 async def update_dict(
     dict_id: int = Path(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
     body: DictForm = Body(...),
 ):
-    result = await DictService.update_dict(db, dict_id, body.model_dump(exclude_none=True))
-    if result:
-        return success(msg="修改成功")
-    return error("修改失败")
+    await DictService.update_dict(db, redis, dict_id, body.model_dump(exclude_none=True))
+    return success(msg="修改成功")
 
 
 @router.delete("/{dict_ids}", response_model=Result[None], summary="删除字典", description="多个ID以逗号分隔")
@@ -175,22 +170,22 @@ async def update_dict(
 async def delete_dict(
     dict_ids: str = Path(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
     user: UserContext = Depends(get_current_user),
 ):
     try:
         id_list = [int(i) for i in dict_ids.split(",")]
-        result = await DictService.delete_dict(db, id_list)
-        if result:
-            return success(msg="删除成功")
-        return error("删除失败")
     except ValueError:
-        return error("参数错误", code=ResultCode.PARAM_ERROR.code)
+        raise BusinessException(ResultCode.PARAM_ERROR, "参数错误")
+    await DictService.delete_dict(db, redis, id_list)
+    return success(msg="删除成功")
 
 
 @router.get("/{type_code}/options", response_model=Result[list[DictOptionVO]], summary="字典下拉列表", dependencies=[Depends(get_current_user)])
 async def list_dict_options(
     type_code: str = Path(...),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ):
-    options = await DictService.list_dict_options(db, type_code)
+    options = await DictService.list_dict_options(db, redis, type_code)
     return success(options)

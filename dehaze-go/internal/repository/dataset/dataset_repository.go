@@ -149,15 +149,6 @@ func (r *DatasetRepository) Update(ctx context.Context, dataset *model.SysDatase
 		Updates(dataset).Error
 }
 
-func (r *DatasetRepository) Delete(ctx context.Context, ids []int64) error {
-	if len(ids) == 0 {
-		return nil
-	}
-	return r.db.WithContext(ctx).Model(&model.SysDataset{}).
-		Where("id IN ?", ids).
-		Updates(map[string]interface{}{"deleted": 1}).Error
-}
-
 func (r *DatasetRepository) SoftDeleteByIDs(ctx context.Context, ids []int64, updateBy int64) error {
 	if len(ids) == 0 {
 		return nil

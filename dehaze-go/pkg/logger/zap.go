@@ -17,8 +17,7 @@ import (
 var (
 	// 默认使用 Nop，避免在未显式 Init 时出现空指针。
 	_globalLogger *zap.Logger = zap.NewNop()
-	_once         sync.Once                  // 保证Init方法仅执行一次
-	_defaultLog   *zap.Logger = zap.NewNop() // 默认日志实例（初始化前临时使用）
+	_once         sync.Once // 保证Init方法仅执行一次
 )
 
 func InitDefaultLogger() {
@@ -28,7 +27,6 @@ func InitDefaultLogger() {
 	if err != nil {
 		panic(fmt.Sprintf("初始化默认日志失败: %v", err))
 	}
-	_defaultLog = defaultLog
 	_globalLogger = defaultLog
 	zap.ReplaceGlobals(defaultLog)
 }

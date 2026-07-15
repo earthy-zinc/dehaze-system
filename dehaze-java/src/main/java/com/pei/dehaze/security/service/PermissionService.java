@@ -41,6 +41,11 @@ public class PermissionService {
     private static final long SINGLEFLIGHT_TIMEOUT_SECONDS = 30;
 
     /**
+     * SingleFlight 最大重试次数
+     */
+    private static final int SINGLEFLIGHT_MAX_RETRIES = 3;
+
+    /**
      * SingleFlight 飞行表：合并同一 roleCode 的并发回源请求，防止缓存击穿
      */
     private final ConcurrentHashMap<String, CompletableFuture<Set<String>>> singleFlightMap = new ConcurrentHashMap<>();
@@ -68,7 +73,7 @@ public class PermissionService {
         }
 
         // 获取当前登录用户的所有角色的权限列表
-        Set<String> rolePerms = this.getRolePermsFormCache(roleCodes);
+        Set<String> rolePerms = this.getRolePermsFromCache(roleCodes);
         if (CollUtil.isEmpty(rolePerms)) {
             return false;
         }
@@ -80,7 +85,7 @@ public class PermissionService {
                 );
 
         if (!hasPermission) {
-            log.error("用户无操作权限");
+            log.debug("用户无操作权限");
         }
         return hasPermission;
     }
@@ -95,7 +100,7 @@ public class PermissionService {
      * @param roleCodes 角色编码集合
      * @return 角色权限列表
      */
-    public Set<String> getRolePermsFormCache(Set<String> roleCodes) {
+    public Set<String> getRolePermsFromCache(Set<String> roleCodes) {
         if (CollUtil.isEmpty(roleCodes)) {
             return Collections.emptySet();
         }
@@ -140,6 +145,7 @@ public class PermissionService {
      * @return 该角色的权限集合（回源失败时返回空集合，不影响其他角色的鉴权）
      */
     private Set<String> loadRolePermsWithSingleFlight(String roleCode) {
+        int retries = 0;
         while (true) {
             // 检查是否有正在进行的加载
             CompletableFuture<Set<String>> existing = singleFlightMap.get(roleCode);
@@ -147,11 +153,14 @@ public class PermissionService {
                 try {
                     return existing.get(SINGLEFLIGHT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 } catch (TimeoutException e) {
-                    log.warn("SingleFlight 等待超时: roleCode={}", roleCode);
+                    log.warn("SingleFlight 等待超时: roleCode={}", roleCode, e);
                     return Collections.emptySet();
                 } catch (Exception e) {
                     // 前一个加载失败，移除并重试
                     singleFlightMap.remove(roleCode, existing);
+                    if (++retries > SINGLEFLIGHT_MAX_RETRIES) {
+                        throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR);
+                    }
                     continue;
                 }
             }
@@ -164,10 +173,13 @@ public class PermissionService {
                 try {
                     return raced.get(SINGLEFLIGHT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                 } catch (TimeoutException e) {
-                    log.warn("SingleFlight 等待超时: roleCode={}", roleCode);
+                    log.warn("SingleFlight 等待超时: roleCode={}", roleCode, e);
                     return Collections.emptySet();
                 } catch (Exception e) {
                     singleFlightMap.remove(roleCode, raced);
+                    if (++retries > SINGLEFLIGHT_MAX_RETRIES) {
+                        throw new BusinessException(ResultCode.SYSTEM_EXECUTION_ERROR);
+                    }
                     continue;
                 }
             }

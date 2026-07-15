@@ -1,6 +1,5 @@
 package com.pei.dehaze.service.impl;
 
-import cn.hutool.core.lang.Assert;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -19,7 +18,7 @@ import com.pei.dehaze.model.vo.TaskVO;
 import com.pei.dehaze.service.TaskService;
 import com.pei.dehaze.service.TaskExecutor;
 import com.pei.dehaze.security.util.SecurityUtils;
-import jakarta.annotation.Resource;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -38,16 +37,14 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> implements TaskService {
 
-    @Resource
-    private TaskExecutor taskExecutor;
+    private final TaskExecutor taskExecutor;
 
-    @Resource
-    private RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
 
-    @Resource
-    private WebSocketMessageRelay wsMessageRelay;
+    private final WebSocketMessageRelay wsMessageRelay;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -112,23 +109,10 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("任务ID不能为空");
         }
 
-        String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
-        SysTask cachedTask = (SysTask) redisTemplate.opsForValue().get(cacheKey);
-
-        if (cachedTask != null) {
-            log.debug("从Redis缓存查询任务状态: taskId={}", taskId);
-            return convertToTaskVO(cachedTask);
-        }
-
-        SysTask sysTask = this.getOne(new LambdaQueryWrapper<SysTask>()
-                .eq(SysTask::getTaskId, taskId));
-
+        SysTask sysTask = getTaskEntity(taskId);
         if (sysTask == null) {
-            log.warn("任务不存在: taskId={}", taskId);
             return null;
         }
-
-        redisTemplate.opsForValue().set(cacheKey, sysTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
 
         log.info("查询任务状态: taskId={}, status={}", taskId, sysTask.getStatus());
 
@@ -142,21 +126,20 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         }
 
         SysTask sysTask = getTaskEntity(taskId);
-        Assert.notNull(sysTask, "任务不存在");
+        if (sysTask == null) {
+            throw new BusinessException("任务不存在: " + taskId);
+        }
 
         if (!TaskConstants.STATUS_COMPLETED.equals(sysTask.getStatus())) {
-            log.warn("任务未完成，无法下载: taskId={}, status={}", taskId, sysTask.getStatus());
-            return null;
+            throw new BusinessException("任务未完成，无法下载: status=" + sysTask.getStatus());
         }
 
         if (sysTask.getExpiresAt() != null && sysTask.getExpiresAt().isBefore(LocalDateTime.now())) {
-            log.warn("任务已过期，无法下载: taskId={}, expiresAt={}", taskId, sysTask.getExpiresAt());
-            return null;
+            throw new BusinessException("任务已过期，无法下载: expiresAt=" + sysTask.getExpiresAt());
         }
 
         if (StrUtil.isBlank(sysTask.getResult())) {
-            log.warn("任务结果为空: taskId={}", taskId);
-            return null;
+            throw new BusinessException("任务结果为空: " + taskId);
         }
 
         String downloadUrl = sysTask.getResult();
@@ -173,17 +156,17 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         }
 
         SysTask sysTask = getTaskEntity(taskId);
-        Assert.notNull(sysTask, "任务不存在");
+        if (sysTask == null) {
+            throw new BusinessException("任务不存在: " + taskId);
+        }
 
         if (TaskConstants.STATUS_COMPLETED.equals(sysTask.getStatus()) ||
             TaskConstants.STATUS_FAILED.equals(sysTask.getStatus())) {
-            log.warn("任务已完成或失败，无法取消: taskId={}, status={}", taskId, sysTask.getStatus());
-            return;
+            throw new BusinessException("任务已完成或失败，无法取消: status=" + sysTask.getStatus());
         }
 
         if (TaskConstants.STATUS_CANCELLED.equals(sysTask.getStatus())) {
-            log.warn("任务已取消: taskId={}", taskId);
-            return;
+            throw new BusinessException("任务已取消: " + taskId);
         }
 
         sysTask.setStatus(TaskConstants.STATUS_CANCELLED);
@@ -209,7 +192,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             message.put("timestamp", LocalDateTime.now().toString());
             wsMessageRelay.publishToUser(sysTask.getCreateBy(), message);
         } catch (Exception e) {
-            log.debug("WebSocket 推送取消通知失败（不影响任务执行）: {}", e.getMessage());
+            log.warn("WebSocket 推送取消通知失败（不影响任务执行）: taskId={}", taskId, e);
         }
 
         log.info("取消任务成功: taskId={}", taskId);
@@ -227,9 +210,10 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
             throw new BusinessException("用户未登录");
         }
 
-        SysTask sysTask = this.getOne(new LambdaQueryWrapper<SysTask>()
-                .eq(SysTask::getTaskId, taskId));
-        Assert.notNull(sysTask, "任务不存在");
+        SysTask sysTask = getTaskEntity(taskId);
+        if (sysTask == null) {
+            throw new BusinessException("任务不存在: " + taskId);
+        }
 
         if (!sysTask.getCreateBy().equals(currentUserId)) {
             throw new BusinessException("无权操作他人任务");
@@ -242,14 +226,14 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         // 解析原始参数
         ExportTaskCreateForm form = JSONUtil.toBean(sysTask.getParams(), ExportTaskCreateForm.class);
 
-        // 重置任务状态
+        // 重置任务状态，递增重试次数
         sysTask.setStatus(TaskConstants.STATUS_PENDING);
         sysTask.setProgress(0);
         sysTask.setProcessedFiles(0);
         sysTask.setErrorMessage(null);
         sysTask.setStartedAt(null);
         sysTask.setCompletedAt(null);
-        sysTask.setRetryCount(0);
+        sysTask.setRetryCount(sysTask.getRetryCount() + 1);
         sysTask.setWorkerId(null);
         sysTask.setExpiresAt(LocalDateTime.now().plusSeconds(TaskConstants.TASK_EXPIRE_SECONDS));
         this.updateById(sysTask);
@@ -261,22 +245,15 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         // 重新提交任务
         taskExecutor.publishExportTask(sysTask.getId());
 
-        log.info("重试任务: taskId={}, userId={}", taskId, currentUserId);
+        log.info("重试任务: taskId={}, userId={}, retryCount={}", taskId, currentUserId, sysTask.getRetryCount());
         return convertToTaskVO(sysTask);
     }
 
     @Override
-    public PageResult<TaskVO> listMyTasks(Integer pageNum, Integer pageSize) {
+    public PageResult<TaskVO> listMyTasks(int pageNum, int pageSize) {
         Long currentUserId = SecurityUtils.getUserId();
         if (currentUserId == null) {
             throw new BusinessException("用户未登录");
-        }
-
-        if (pageNum == null || pageNum < 1) {
-            pageNum = 1;
-        }
-        if (pageSize == null || pageSize < 1 || pageSize > 100) {
-            pageSize = 10;
         }
 
         Page<SysTask> page = new Page<>(pageNum, pageSize);

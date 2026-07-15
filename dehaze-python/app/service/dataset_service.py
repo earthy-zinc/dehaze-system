@@ -206,8 +206,8 @@ class DatasetService:
                     result.append(ds)
                 if result:
                     return result
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"读取数据集缓存失败: {e}")
 
         datasets = await dataset_repository.find_all(db)
 
@@ -242,8 +242,8 @@ class DatasetService:
             cached = await redis.get(DatasetService.CACHE_STATSMAP_KEY)
             if cached:
                 return json.loads(cached)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"读取统计缓存失败: {e}")
 
         start_time = time.time()
         logger.debug("开始计算所有数据集统计信息...")
@@ -463,8 +463,8 @@ class DatasetService:
             cached = await redis.get(DatasetService.CACHE_OPTIONS_KEY)
             if cached:
                 return json.loads(cached)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"读取选项缓存失败: {e}")
 
         options = await dataset_repository.get_dataset_options(db)
 

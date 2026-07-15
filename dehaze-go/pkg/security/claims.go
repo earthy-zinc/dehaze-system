@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
+	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/earthyzinc/dehaze-go/pkg/config"
 	"github.com/earthyzinc/dehaze-go/pkg/logger"
 	"github.com/gin-gonic/gin"
@@ -80,7 +81,8 @@ func GetToken(c *gin.Context) string {
 	claims, err := j.ParseToken(token)
 	if err != nil {
 		logger.Error("重新写入cookie token失败,未能成功解析token,请检查请求头是否存在Authorization且claims是否为规定结构")
-		return token
+		// token 无法解析时返回空串，避免下游 ParseToken 对无效 token 反复失败
+		return ""
 	}
 	SetToken(c, token, int((claims.ExpiresAt.Unix()-time.Now().Unix())/60))
 	return token
@@ -108,6 +110,16 @@ func GetUserID(c *gin.Context) int64 {
 		waitUse := claims.(*CustomClaims)
 		return waitUse.UserID
 	}
+}
+
+// RequireUserID 获取当前登录用户 ID，未认证（userID==0）时返回 401 错误。
+// 用于需要登录态的 handler，禁止静默使用 userID=0 继续执行业务逻辑。
+func RequireUserID(c *gin.Context) (int64, error) {
+	userID := GetUserID(c)
+	if userID == 0 {
+		return 0, common.NewBizError(common.ACCESS_UNAUTHORIZED, "访问未授权")
+	}
+	return userID, nil
 }
 
 func GetUserName(c *gin.Context) string {

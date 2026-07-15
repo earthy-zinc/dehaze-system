@@ -45,7 +45,9 @@ func InitTestEnv(projectRootRelPath string) {
 	if err := database.Init(database.GetDatabaseConfig()); err != nil {
 		panic("初始化数据库失败: " + err.Error())
 	}
-	cache.Init()
+	if _, err := cache.Init(); err != nil {
+		panic("初始化缓存失败: " + err.Error())
+	}
 }
 
 // SetupAuthRouter 构建与生产一致的认证模块路由 + 中间件链路。

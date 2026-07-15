@@ -46,10 +46,6 @@ public interface SysDatasetService extends IService<SysDataset> {
 
     String getDatasetNameByItemId(Long itemId);
 
-    void evictDatasetStatsCache(Long datasetId);
-
-    void evictDatasetAndAncestorStatsCache(Long datasetId);
-
     void evictAllDatasetsCache();
 
     DatasetStatistics calculateStatistics(Long datasetId);

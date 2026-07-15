@@ -10,6 +10,8 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.jdbc.BadSqlGrammarException;
@@ -156,7 +158,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public <T> Result<T> handleBizException(BusinessException e) {
-        log.error("biz exception: {}", e.getMessage());
+        log.error("biz exception: {}", e.getMessage(), e);
         if (e.getResultCode() != null) {
             return Result.failed(e.getResultCode(), e.getMessage());
         }
@@ -164,19 +166,37 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(RateLimitException.class)
+    @ResponseStatus(HttpStatus.TOO_MANY_REQUESTS)
     public Result<Void> handleRateLimitException(RateLimitException ex) {
         return Result.failed(ResultCode.RATE_LIMIT, ex.getMessage());
     }
 
-    @ExceptionHandler(Exception.class)
+    @ExceptionHandler(DuplicateKeyException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public <T> Result<T> handleException(Exception e) throws Exception{
+    public <T> Result<T> handleDuplicateKeyException(DuplicateKeyException e) {
+        log.error("DuplicateKeyException: {}", e.getMessage());
+        return Result.failed(ResultCode.DATA_EXISTS, "数据已存在，请检查唯一字段");
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public <T> Result<T> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
+        log.error("DataIntegrityViolationException: {}", e.getMessage());
+        if (e instanceof DuplicateKeyException) {
+            return Result.failed(ResultCode.DATA_EXISTS, "数据已存在，请检查唯一字段");
+        }
+        return Result.failed(ResultCode.SYSTEM_EXECUTION_ERROR, "数据完整性约束违反: " + e.getMessage());
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public <T> Result<T> handleException(Exception e) throws Exception {
         // 将 Spring Security 异常继续抛出，以便交给自定义处理器处理
         if (e instanceof AccessDeniedException
                 || e instanceof AuthenticationException) {
             throw e;
         }
-        log.error("unknown exception: {}", e.getMessage());
+        log.error("unknown exception: {}", e.getMessage(), e);
         return Result.failed(e.getLocalizedMessage());
     }
 

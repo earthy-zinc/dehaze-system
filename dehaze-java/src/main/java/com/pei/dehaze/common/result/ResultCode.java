@@ -1,6 +1,7 @@
 package com.pei.dehaze.common.result;
 
 import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 /**
  * 响应码枚举
@@ -8,6 +9,7 @@ import lombok.AllArgsConstructor;
  * @author earthyzinc
  * @since 2020-06-23
  **/
+@Getter
 @AllArgsConstructor
 public enum ResultCode implements IResultCode {
 
@@ -83,19 +85,9 @@ public enum ResultCode implements IResultCode {
     DATABASE_DEADLOCK("C0331", "数据库死锁"),
     DATABASE_PRIMARY_KEY_CONFLICT("C0341", "主键冲突");
 
-    @Override
-    public String getCode() {
-        return code;
-    }
+    private final String code;
 
-    @Override
-    public String getMsg() {
-        return msg;
-    }
-
-    private String code;
-
-    private String msg;
+    private final String msg;
 
     @Override
     public String toString() {
@@ -103,15 +95,5 @@ public enum ResultCode implements IResultCode {
                 "\"code\":\"" + code + '\"' +
                 ", \"msg\":\"" + msg + '\"' +
                 '}';
-    }
-
-
-    public static ResultCode getValue(String code){
-        for (ResultCode value : values()) {
-            if (value.getCode().equals(code)) {
-                return value;
-            }
-        }
-        return SYSTEM_EXECUTION_ERROR; // 默认系统执行错误
     }
 }

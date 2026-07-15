@@ -271,20 +271,6 @@ func (r *UserRepository) Create(ctx context.Context, user *model.SysUser) error 
 	return r.db.WithContext(ctx).Create(user).Error
 }
 
-// Update 更新用户
-func (r *UserRepository) Update(ctx context.Context, user *model.SysUser) error {
-	return r.db.WithContext(ctx).Model(user).
-		Select("nickname", "mobile", "email", "gender", "avatar", "dept_id", "status", "update_by").
-		Updates(user).Error
-}
-
-// UpdateStatus 更新用户状态
-func (r *UserRepository) UpdateStatus(ctx context.Context, id int64, status int8) error {
-	return r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{"status": status}).Error
-}
-
 // UpdateStatusWithTime 更新用户状态（带更新时间）
 func (r *UserRepository) UpdateStatusWithTime(ctx context.Context, id int64, status int8, updateTime time.Time) error {
 	return r.db.WithContext(ctx).Model(&model.SysUser{}).
@@ -295,13 +281,6 @@ func (r *UserRepository) UpdateStatusWithTime(ctx context.Context, id int64, sta
 		}).Error
 }
 
-// UpdatePassword 更新用户密码
-func (r *UserRepository) UpdatePassword(ctx context.Context, id int64, password string) error {
-	return r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("id = ?", id).
-		Updates(map[string]interface{}{"password": password}).Error
-}
-
 // UpdatePasswordWithTime 更新用户密码（带更新时间）
 func (r *UserRepository) UpdatePasswordWithTime(ctx context.Context, id int64, password string, updateTime time.Time) error {
 	return r.db.WithContext(ctx).Model(&model.SysUser{}).
@@ -310,13 +289,6 @@ func (r *UserRepository) UpdatePasswordWithTime(ctx context.Context, id int64, p
 			"password":    password,
 			"update_time": updateTime,
 		}).Error
-}
-
-// Delete 删除用户（逻辑删除）
-func (r *UserRepository) Delete(ctx context.Context, ids []int64) error {
-	return r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("id IN ?", ids).
-		Updates(map[string]interface{}{"deleted": 1}).Error
 }
 
 // SoftDeleteWithTime 逻辑删除用户（带更新时间）
@@ -557,20 +529,6 @@ func (r *UserRepository) UpdateWithRoles(ctx context.Context, userID int64, upda
 		}
 		return nil
 	})
-}
-
-// ImportUserInTx 在事务中导入用户（由 Transaction 回调内调用）
-func (r *UserRepository) ImportUserInTx(ctx context.Context, user *model.SysUser) error {
-	return r.db.WithContext(ctx).Create(user).Error
-}
-
-// ExistsByUsernameInTx 在事务中检查用户名是否存在（由 Transaction 回调内调用）
-func (r *UserRepository) ExistsByUsernameInTx(ctx context.Context, username string) (bool, error) {
-	var count int64
-	err := r.db.WithContext(ctx).Model(&model.SysUser{}).
-		Where("username = ? AND deleted = 0", username).
-		Count(&count).Error
-	return count > 0, err
 }
 
 // Ensure UserRepository implements IUserRepository

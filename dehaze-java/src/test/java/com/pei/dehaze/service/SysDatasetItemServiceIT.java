@@ -73,7 +73,7 @@ class SysDatasetItemServiceIT {
     @DisplayName("创建数据项-成功")
     @Transactional
     void testCreateDatasetItem_Success() {
-        SysDatasetItem result = datasetItemService.createDatasetItem(testDataset.getId());
+        SysDatasetItem result = datasetItemService.createDatasetItem(testDataset.getId(), null);
 
         assertNotNull(result);
         assertNotNull(result.getId());
@@ -131,7 +131,7 @@ class SysDatasetItemServiceIT {
     @DisplayName("删除数据项-成功")
     @Transactional
     void testDeleteDatasetItem_Success() {
-        SysDatasetItem item = datasetItemService.createDatasetItem(testDataset.getId());
+        SysDatasetItem item = datasetItemService.createDatasetItem(testDataset.getId(), null);
 
         datasetItemService.deleteDatasetItem(item.getId());
 
@@ -185,8 +185,8 @@ class SysDatasetItemServiceIT {
     @DisplayName("批量删除数据项-成功")
     @Transactional
     void testBatchDeleteDatasetItems_Success() {
-        SysDatasetItem item1 = datasetItemService.createDatasetItem(testDataset.getId());
-        SysDatasetItem item2 = datasetItemService.createDatasetItem(testDataset.getId());
+        SysDatasetItem item1 = datasetItemService.createDatasetItem(testDataset.getId(), null);
+        SysDatasetItem item2 = datasetItemService.createDatasetItem(testDataset.getId(), null);
 
         BatchOperationResultVO result = datasetOperationService.batchDeleteDatasetItemsCascadeWithResult(
                 List.of(item1.getId(), item2.getId()));
@@ -270,7 +270,7 @@ class SysDatasetItemServiceIT {
     @DisplayName("数据项与数据集关联-成功")
     @Transactional
     void testItemDatasetAssociation_Success() {
-        SysDatasetItem item = datasetItemService.createDatasetItem(testDataset.getId());
+        SysDatasetItem item = datasetItemService.createDatasetItem(testDataset.getId(), null);
 
         assertNotNull(item);
         assertEquals(testDataset.getId(), item.getDatasetId());

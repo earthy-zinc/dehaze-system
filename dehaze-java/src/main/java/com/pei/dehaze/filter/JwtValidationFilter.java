@@ -3,6 +3,7 @@ package com.pei.dehaze.filter;
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.jwt.JWT;
+import cn.hutool.jwt.JWTException;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.RegisteredPayload;
 import com.pei.dehaze.common.constant.SecurityConstants;
@@ -13,7 +14,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
@@ -47,8 +47,8 @@ public class JwtValidationFilter extends OncePerRequestFilter {
      * 如果不合法则清空 Spring Security Context 上下文，并直接返回响应
      */
     @Override
-    protected void doFilterInternal(HttpServletRequest request, @NotNull HttpServletResponse response,
-                                    @NotNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         try {
@@ -76,7 +76,7 @@ public class JwtValidationFilter extends OncePerRequestFilter {
                     return;
                 }
             }
-        } catch (Exception e) {
+        } catch (JWTException e) {
             SecurityContextHolder.clearContext();
             ResponseUtils.writeErrMsg(response, ResultCode.TOKEN_INVALID);
             return;

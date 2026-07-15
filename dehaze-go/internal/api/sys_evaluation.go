@@ -5,6 +5,7 @@ import (
 
 	evaluationservice "github.com/earthyzinc/dehaze-go/internal/service/evaluation"
 	"github.com/earthyzinc/dehaze-go/pkg/common"
+	"github.com/earthyzinc/dehaze-go/pkg/security"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,7 +21,11 @@ func NewSysEvaluationApi(service *evaluationservice.EvaluationService) *SysEvalu
 // Evaluate 执行效果评估
 func (api *SysEvaluationApi) Evaluate(c *gin.Context) {
 	ctx := c.Request.Context()
-	userID := getCurrentUserID(c)
+	userID, err := security.RequireUserID(c)
+	if err != nil {
+		_ = c.Error(err)
+		return
+	}
 
 	var req struct {
 		AlgorithmID int64  `json:"algorithmId" binding:"required"`
@@ -61,7 +66,15 @@ func (api *SysEvaluationApi) GetEvaluationLog(c *gin.Context) {
 // ListEvaluationLogs 评估日志列表
 func (api *SysEvaluationApi) ListEvaluationLogs(c *gin.Context) {
 	ctx := c.Request.Context()
-	algorithmID, _ := strconv.ParseInt(c.Query("algorithmId"), 10, 64)
+	var algorithmID int64
+	if algorithmIDStr := c.Query("algorithmId"); algorithmIDStr != "" {
+		var err error
+		algorithmID, err = strconv.ParseInt(algorithmIDStr, 10, 64)
+		if err != nil {
+			_ = c.Error(common.NewBizError(common.PARAM_ERROR, "algorithmId格式不正确"))
+			return
+		}
+	}
 	pageNum, pageSize := getPageParams(c)
 
 	result, err := api.service.GetLogPage(ctx, algorithmID, pageNum, pageSize)

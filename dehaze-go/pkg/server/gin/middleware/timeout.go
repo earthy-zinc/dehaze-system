@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/earthyzinc/dehaze-go/pkg/common"
 	"github.com/gin-contrib/timeout"
 	"github.com/gin-gonic/gin"
 )
@@ -19,10 +20,11 @@ func TimeoutMiddleware(duration time.Duration) gin.HandlerFunc {
 }
 
 // timeoutResponse 超时响应处理
+// 使用与 common.Response 一致的结构，便于前端拦截器统一解析
 func timeoutResponse(c *gin.Context) {
 	c.Header("Connection", "close")
-	c.AbortWithStatusJSON(http.StatusGatewayTimeout, gin.H{
-		"code": 504,
-		"msg":  "请求超时",
+	c.JSON(http.StatusOK, common.Response{
+		Code: common.SYSTEM_EXECUTION_TIMEOUT.Code,
+		Msg:  common.SYSTEM_EXECUTION_TIMEOUT.Msg,
 	})
 }

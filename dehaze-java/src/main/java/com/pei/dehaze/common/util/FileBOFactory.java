@@ -102,10 +102,10 @@ public class FileBOFactory {
             itemBO.setSceneType(sceneType);
             itemBO.setHazeLevel(hazeLevel);
 
-            // 使用 ImageProcessingService 解析图片宽高
-            int[] dimensions = imageProcessingService.getImageDimensions(file);
-            itemBO.setWidth(dimensions[0] > 0 ? dimensions[0] : null);
-            itemBO.setHeight(dimensions[1] > 0 ? dimensions[1] : null);
+            // 使用已保存的临时文件解析图片宽高（transferTo 后 MultipartFile 已消费）
+            int[] dimensions = imageProcessingService.getImageDimensions(itemBO.getFile());
+            itemBO.setWidth(dimensions[0]);
+            itemBO.setHeight(dimensions[1]);
 
             return itemBO;
         } catch (IOException e) {

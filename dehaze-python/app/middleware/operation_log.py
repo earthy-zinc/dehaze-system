@@ -16,6 +16,7 @@ import time
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.database import get_db_session
+from app.models.base import get_current_user_id
 from app.models.entity.sys_log import SysOperationLog
 
 _logger = logging.getLogger(__name__)
@@ -46,9 +47,12 @@ SENSITIVE_FIELDS = {
 # 响应体采集上限（字节），超出部分截断
 _MAX_RESPONSE_CAPTURE = 500
 
+# 敏感数据递归过滤最大深度
+_MAX_FILTER_DEPTH = 5
+
 
 def filter_sensitive_data(data: dict | str | None) -> str:
-    """过滤敏感数据"""
+    """过滤敏感数据（递归过滤嵌套字典中的敏感字段）"""
     if not data:
         return ""
 
@@ -61,21 +65,25 @@ def filter_sensitive_data(data: dict | str | None) -> str:
     if not isinstance(data, dict):
         return str(data)[:500]
 
+    return json.dumps(_filter_dict(data, depth=0), ensure_ascii=False)
+
+
+def _filter_dict(data: dict, depth: int) -> dict:
+    """递归过滤字典中的敏感字段"""
+    if depth >= _MAX_FILTER_DEPTH:
+        return {k: "..." for k in data}
+
     filtered = {}
     for key, value in data.items():
         if key.lower() in SENSITIVE_FIELDS:
             filtered[key] = "******"
         elif isinstance(value, dict):
-            filtered[key] = json.dumps(
-                {k: "******" if k.lower() in SENSITIVE_FIELDS else v for k, v in value.items()},
-                ensure_ascii=False,
-            )
+            filtered[key] = _filter_dict(value, depth + 1)
         elif isinstance(value, str) and len(value) > 200:
             filtered[key] = value[:200] + "..."
         else:
             filtered[key] = value
-
-    return json.dumps(filtered, ensure_ascii=False)
+    return filtered
 
 
 def _is_streaming_response(headers: list[tuple[bytes, bytes]]) -> bool:
@@ -91,8 +99,8 @@ def _is_streaming_response(headers: list[tuple[bytes, bytes]]) -> bool:
                 return True
             if decoded_name == "transfer-encoding" and "chunked" in decoded_value:
                 return True
-        except Exception:
-            pass
+        except (UnicodeDecodeError, AttributeError) as e:
+            _logger.debug(f"解析响应头失败: {e}")
     return False
 
 
@@ -190,7 +198,6 @@ class OperationLogMiddleware:
                     break
 
             # 从 contextvar 获取 user_id（由 auth 依赖注入设置）
-            from app.models.base import get_current_user_id
             user_id = get_current_user_id()
 
             # 后台异步保存日志（不阻塞响应）

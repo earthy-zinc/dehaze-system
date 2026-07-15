@@ -16,6 +16,5 @@ func RegisterImageInputRoutes(rg *gin.RouterGroup, api *api.SysInputHistoryApi) 
 		historyGroup.DELETE("/:id", api.DeleteHistory)   // 删除单条
 		historyGroup.DELETE("/batch", api.BatchDeleteHistory) // 批量删除
 		historyGroup.DELETE("/clear", api.ClearHistory)  // 清空历史
-		historyGroup.POST("/sync", api.SyncHistory)      // 同步历史
 	}
 }

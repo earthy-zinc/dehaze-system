@@ -17,6 +17,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -84,7 +85,11 @@ public class SysDeptController {
     public Result<Void> deleteDepartments(
             @Parameter(description ="部门ID，多个以英文逗号(,)分割") @PathVariable("ids") String ids
     ) {
-        boolean result = deptService.deleteByIds(ids);
+        List<Long> idList = Arrays.stream(ids.split(","))
+                .map(String::trim)
+                .map(Long::valueOf)
+                .toList();
+        boolean result = deptService.deleteByIds(idList);
         return Result.judge(result);
     }
 
@@ -92,10 +97,7 @@ public class SysDeptController {
     @DeleteMapping("/batch")
     @PreAuthorize("@ss.hasPerm('sys:dept:delete')")
     public Result<Void> batchDeleteDepartments(@RequestBody BatchDeleteRequest request) {
-        String ids = request.getIds().stream()
-                .map(String::valueOf)
-                .collect(java.util.stream.Collectors.joining(","));
-        boolean result = deptService.deleteByIds(ids);
+        boolean result = deptService.deleteByIds(request.getIds());
         return Result.judge(result);
     }
 

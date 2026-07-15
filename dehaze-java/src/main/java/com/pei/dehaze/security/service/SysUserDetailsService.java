@@ -24,9 +24,6 @@ public class SysUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
         UserAuthInfo userAuthInfo = sysUserService.getUserAuthInfo(username);
-        if (userAuthInfo == null) {
-            throw new UsernameNotFoundException(username);
-        }
         return new SysUserDetails(userAuthInfo);
     }
 }

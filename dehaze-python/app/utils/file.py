@@ -11,15 +11,7 @@ def convert_size(size_bytes) -> str:
     i = int(math.floor(math.log(size_bytes, 1024)))
     p = math.pow(1024, i)
     s = round(size_bytes / p, 2)
-    return "%s %s" % (s, size_name[i])
-
-
-def calculate_file_md5(file_path: str) -> str:
-    hash_md5 = hashlib.md5()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return hash_md5.hexdigest()
+    return f"{s} {size_name[i]}"
 
 
 def calculate_bytes_md5(bytes_io: BytesIO) -> str:
@@ -38,17 +30,7 @@ def calculate_bytes_md5(bytes_io: BytesIO) -> str:
     return hash_md5.hexdigest()
 
 
-def get_file_bytes(filepath: str) -> BytesIO:
-    with open(filepath, 'rb') as f:
-        img_bytes = BytesIO(f.read())
-        img_bytes.seek(0)
-        return img_bytes
-
-
 def get_file_size(filepath: str) -> str:
-    """获取文件大小"""
-    try:
-        size = os.path.getsize(filepath)
-        return convert_size(size)
-    except:
-        return "0B"
+    """获取文件大小（调用方应已通过 os.path.isfile 校验）"""
+    size = os.path.getsize(filepath)
+    return convert_size(size)

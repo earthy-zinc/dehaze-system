@@ -20,7 +20,8 @@ from datetime import datetime, timedelta
 from pyxxl import JobHandler
 from sqlalchemy import and_, delete, update
 
-from app.core.constants import SYSTEM_USER_ID
+from app.core.constants import (SYSTEM_USER_ID, TASK_CACHE_PREFIX,
+                                TASK_CANCEL_PREFIX, TASK_PROGRESS_PREFIX)
 from app.database import get_db_session
 from app.models.base import get_audit_update_values, set_current_user_id
 from app.models.entity.sys_task import SysTask
@@ -31,12 +32,6 @@ logger = logging.getLogger(__name__)
 
 # 全局 handler 注册器（由 executor.py 导入并绑定到 PyxxlRunner）
 xxl_handler = JobHandler()
-
-# 任务缓存 Redis Key 前缀（从 TaskServiceAsync 导入，避免重复定义）
-from app.service.task_service import TaskServiceAsync
-_TASK_CACHE_PREFIX = TaskServiceAsync.TASK_CACHE_PREFIX
-_TASK_PROGRESS_PREFIX = TaskServiceAsync.TASK_PROGRESS_PREFIX
-_TASK_CANCEL_PREFIX = TaskServiceAsync.TASK_CANCEL_PREFIX
 
 
 @xxl_handler.register(name="cleanupExpiredTasks")
@@ -253,9 +248,9 @@ async def _cleanup_task_redis_keys(task_ids: list[str]) -> int:
         # 精准删除：根据 task_id 构造 Key
         keys_to_delete = []
         for tid in task_ids:
-            keys_to_delete.append(f"{_TASK_CACHE_PREFIX}{tid}")
-            keys_to_delete.append(f"{_TASK_PROGRESS_PREFIX}{tid}")
-            keys_to_delete.append(f"{_TASK_CANCEL_PREFIX}{tid}")
+            keys_to_delete.append(f"{TASK_CACHE_PREFIX}{tid}")
+            keys_to_delete.append(f"{TASK_PROGRESS_PREFIX}{tid}")
+            keys_to_delete.append(f"{TASK_CANCEL_PREFIX}{tid}")
 
         deleted = 0
         if keys_to_delete:

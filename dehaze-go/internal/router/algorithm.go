@@ -24,7 +24,6 @@ func RegisterAlgorithmRoutes(rg *gin.RouterGroup, algorithmApi *api.AlgorithmApi
 		algorithmRouterGroup.GET("/:id", algorithmApi.GetById)                  // 根据ID获取算法信息
 		algorithmRouterGroup.GET("/:id/versions", algorithmApi.GetVersions)     // 获取算法版本历史
 		algorithmRouterGroup.GET("/:id/monitor", algorithmApi.GetMonitorData)   // 获取算法监控数据
-		algorithmRouterGroup.GET("/:id/monitor/stats", algorithmApi.GetMonitorStats) // 获取算法统计报表
 		algorithmRouterGroup.GET("/:id/_export", algorithmApi.ExportAlgorithm)  // 导出单个算法
 
 		// 写操作 - 需要权限校验
