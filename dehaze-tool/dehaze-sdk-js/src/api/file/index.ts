@@ -65,7 +65,7 @@ class FileAPI {
    */
   static getPage(query?: FileQuery) {
     return request<any, PageResult<FileInfo>>({
-      url: "/api/v1/files",
+      url: "/api/v1/files/page",
       method: "get",
       params: query,
     });
