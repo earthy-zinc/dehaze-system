@@ -181,3 +181,10 @@ func (api *SysInputHistoryApi) ClearHistory(c *gin.Context) {
 	}
 	common.OkWithData(count, c)
 }
+
+// SyncHistory 同步历史记录
+// 服务端为数据源，客户端无本地待同步数据时返回 0
+func (api *SysInputHistoryApi) SyncHistory(c *gin.Context) {
+	// 服务端无需从客户端拉取数据，同步计数为 0
+	common.OkWithData(int64(0), c)
+}

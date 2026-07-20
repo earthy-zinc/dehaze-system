@@ -293,11 +293,9 @@ func (s *AuthService) AddTokenToBlacklist(ctx context.Context, token string) err
 	j := security.NewJWT()
 	claims, err := j.ParseToken(token)
 	if err != nil {
-		if errors.Is(err, security.ErrTokenExpired) {
-			// Token已过期，无法通过验证，无需加入黑名单
-			return nil
-		}
-		return common.WrapBizError(common.TOKEN_INVALID, "解析Token失败", err)
+		// 任何解析失败的 Token（过期、格式错误、签名无效等）都无法通过 JWT 验证，
+		// 无需加入黑名单，直接返回 nil
+		return nil
 	}
 
 	jti := claims.ID

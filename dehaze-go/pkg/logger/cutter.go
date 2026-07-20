@@ -2,6 +2,7 @@ package logger
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -100,7 +101,8 @@ func (c *Cutter) rotate(currentDate string) error {
 
 func (c *Cutter) cleanOldLogs() {
 	if err := removeNDaysFolders(c.director, c.retentionDay); err != nil {
-		fmt.Printf("清理过期日志失败: %v\n", err)
+		// 使用标准 log 输出（避免循环依赖 pkg/logger → Cutter → pkg/logger）
+		log.Printf("[WARN] 清理过期日志失败: %v\n", err)
 	}
 }
 

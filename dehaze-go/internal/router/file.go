@@ -16,8 +16,8 @@ func RegisterFileRoutes(rg *gin.RouterGroup, fileApi *api.SysFileApi) {
 		fileRouterGroup.GET("/download/*objectName", fileApi.DownloadFile) // 文件下载
 		fileRouterGroup.GET("/:fileId", fileApi.GetFileDetail)             // 文件详情
 
-		// 写操作 - 需要权限校验
-		fileRouterGroup.POST("", middleware.Permission("sys:file:add"), fileApi.UploadFile)         // 文件上传
+		// 写操作 - 需要权限校验 + 防重复提交
+		fileRouterGroup.POST("", middleware.Permission("sys:file:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), fileApi.UploadFile)         // 文件上传
 		fileRouterGroup.DELETE("", middleware.Permission("sys:file:delete"), fileApi.DeleteFile)     // 文件删除
 	}
 }

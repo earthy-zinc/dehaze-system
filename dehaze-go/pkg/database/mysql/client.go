@@ -88,6 +88,7 @@ func (c *Client) initMaster() error {
 	}
 
 	db = database.RegisterGormCallbacks(db)
+	db = database.RegisterSoftDeleteCallback(db)
 
 	// 设置表引擎
 	if c.config.MySQL.Engine != "" {

@@ -31,7 +31,7 @@ func NewCacheStore() *CacheStore {
 	return &CacheStore{
 		Expiration: time.Second * 120,
 		PreKey:     common.CaptchaCodePrefix,
-		Context:    context.TODO(),
+		Context:    context.Background(),
 	}
 }
 

@@ -98,8 +98,22 @@ func (j *CleanupJob) run(ctx context.Context) {
 }
 
 // executeCleanup 执行清理操作
+// 使用分布式锁防止多实例并发执行清理任务
 // 各步骤独立执行，某一步失败不阻断后续步骤
 func (j *CleanupJob) executeCleanup(ctx context.Context) {
+	// 分布式锁：防止多实例并发清理
+	lockKey := "cleanup:job"
+	token, acquired, lockErr := j.cacheClient.Lock(ctx, lockKey, CleanupInterval-time.Minute)
+	if lockErr != nil {
+		logger.Warn("获取清理任务锁失败，跳过本次清理", zap.Error(lockErr))
+		return
+	}
+	if !acquired {
+		logger.Debug("其他实例正在执行清理任务，跳过")
+		return
+	}
+	defer j.cacheClient.Unlock(ctx, lockKey, token)
+
 	logger.Info("开始执行清理任务")
 
 	// 1. 清理失败的缩略图生成记录

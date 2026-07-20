@@ -30,6 +30,16 @@ cors:
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
       allow-credentials: true
+    - allow-origin: "http://localhost:3001"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:3011"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
     - allow-origin: "http://localhost:5173"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
@@ -41,6 +51,16 @@ cors:
       expose-headers: "X-Trace-ID"
       allow-credentials: true
     - allow-origin: "http://127.0.0.1:3000"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:3001"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:3011"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
@@ -66,6 +86,7 @@ captcha:
 jwt:
   key: ${JWT_SECRET_KEY}
   ttl: 7200
+  refresh-token-ttl: 604800 # RefreshToken 过期时间（秒），7天
 
 db:
   driver: mysql
@@ -95,7 +116,8 @@ db:
   log-zap: true
 
 cache:
-  # 缓存类型：redis/local/multi
+  # 缓存类型（仅供参考）：实际后端选择由 redis.enabled / local.enabled 决定，
+  # multiLevel.enabled 控制是否启用多级缓存。此字段不影响运行时行为。
   type: multi
   redis:
     enabled: true

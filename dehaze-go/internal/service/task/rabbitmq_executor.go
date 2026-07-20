@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model/bo"
+	"github.com/earthyzinc/dehaze-go/pkg/cache"
 	"github.com/earthyzinc/dehaze-go/pkg/config/options"
 	"github.com/earthyzinc/dehaze-go/pkg/database"
 	"github.com/earthyzinc/dehaze-go/pkg/mq"
@@ -62,6 +63,7 @@ func (e *RabbitMQTaskExecutor) PublishExportTask(ctx context.Context, taskID str
 }
 
 // PublishTask 发布通用任务消息
+// 使用分布式锁防止同一 taskID 被重复发布
 func (e *RabbitMQTaskExecutor) PublishTask(ctx context.Context, msg TaskMessage) error {
 	if msg.TaskID == "" {
 		return errors.New("taskId is empty")
@@ -78,6 +80,20 @@ func (e *RabbitMQTaskExecutor) PublishTask(ctx context.Context, msg TaskMessage)
 	if msg.CreatedBy == 0 {
 		if userID := database.GetUserID(ctx); userID > 0 {
 			msg.CreatedBy = userID
+		}
+	}
+
+	// 分布式锁：防止同一 taskID 被并发重复发布
+	lockKey := "task:publish:" + msg.TaskID
+	cacheClient := cache.GetCache()
+	if cacheClient != nil {
+		token, acquired, lockErr := cacheClient.Lock(ctx, lockKey, 30*time.Second)
+		if lockErr != nil {
+			e.logger.Warn("获取任务发布锁失败，降级放行", zap.String("taskID", msg.TaskID), zap.Error(lockErr))
+		} else if !acquired {
+			return fmt.Errorf("任务 %s 正在发布中，请勿重复提交", msg.TaskID)
+		} else {
+			defer cacheClient.Unlock(ctx, lockKey, token)
 		}
 	}
 

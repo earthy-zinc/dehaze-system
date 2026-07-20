@@ -82,6 +82,7 @@ func (c *Client) initMaster() error {
 	}
 
 	db = database.RegisterGormCallbacks(db)
+	db = database.RegisterSoftDeleteCallback(db)
 
 	// 获取原生sql.DB并设置连接池
 	sqlDB, err := db.DB()

@@ -60,11 +60,18 @@ func (s *MinioStorageService) ensureBucket(ctx context.Context) error {
 }
 
 // Upload 上传文件到 MinIO
+// 存储层兜底去重：若同名对象已存在（objectName 含 MD5），跳过上传
 func (s *MinioStorageService) Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) error {
+	// 兜底去重：检查对象是否已存在（objectName 由 MD5 生成，相同内容 → 相同名称）
+	exists, err := s.Exists(ctx, objectName)
+	if err == nil && exists {
+		return nil // 文件已存在，跳过重复上传
+	}
+
 	if contentType == "" {
 		contentType = "application/octet-stream"
 	}
-	_, err := s.client.PutObject(ctx, s.bucketName, objectName, reader, size, minio.PutObjectOptions{
+	_, err = s.client.PutObject(ctx, s.bucketName, objectName, reader, size, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {

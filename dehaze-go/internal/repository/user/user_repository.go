@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/earthyzinc/dehaze-go/internal/model"
@@ -27,6 +28,7 @@ func NewUserRepository(db *gorm.DB) *UserRepository {
 func (r *UserRepository) FindByID(ctx context.Context, id int64) (*model.SysUser, error) {
 	var user model.SysUser
 	err := r.db.WithContext(ctx).
+		InstanceSet("skip_data_scope", true).
 		Where("id = ? AND deleted = 0", id).
 		First(&user).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -302,8 +304,8 @@ func (r *UserRepository) SoftDeleteWithTime(ctx context.Context, ids []int64, up
 }
 
 // FindUserAuthInfo 查询用户认证信息（含角色、权限）
+// 单次 JOIN 查询合并用户基本信息、角色编码/数据权限和权限列表
 func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) (*model.UserAuthInfo, error) {
-	// 合并查询用户基本信息和角色编码/数据权限（原查询1和查询2合并，消除冗余的用户表查询）
 	type userWithRole struct {
 		UserId    int64  `gorm:"column:user_id"`
 		Username  string `gorm:"column:username"`
@@ -313,11 +315,18 @@ func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) 
 		Status    int8   `gorm:"column:status"`
 		Code      string `gorm:"column:code"`
 		DataScope int8   `gorm:"column:data_scope"`
+		Perms     string `gorm:"column:perms"`
 	}
 	var rows []userWithRole
 	err := r.db.WithContext(ctx).
 		Table("sys_user u").
-		Select("u.id as user_id, u.username, u.nickname, u.dept_id, u.password, u.status, r.code, r.data_scope").
+		Select(`u.id as user_id, u.username, u.nickname, u.dept_id, u.password, u.status,
+			r.code, r.data_scope,
+			(SELECT GROUP_CONCAT(DISTINCT m.perm SEPARATOR ',')
+			 FROM sys_menu m
+			 JOIN sys_role_menu srm ON m.id = srm.menu_id
+			 JOIN sys_user_role sur2 ON srm.role_id = sur2.role_id
+			 WHERE sur2.user_id = u.id AND m.perm IS NOT NULL AND m.perm != '') as perms`).
 		Joins("LEFT JOIN sys_user_role sur ON u.id = sur.user_id").
 		Joins("LEFT JOIN sys_role r ON sur.role_id = r.id AND r.status = 1 AND r.deleted = 0").
 		Where("u.username = ? AND u.deleted = 0", username).
@@ -338,6 +347,8 @@ func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) 
 		Password: first.Password,
 		Status:   first.Status,
 	}
+
+	// 聚合角色编码和最小数据权限
 	roles := make([]string, 0, len(rows))
 	var minDataScope int8
 	hasDataScope := false
@@ -355,19 +366,12 @@ func (r *UserRepository) FindUserAuthInfo(ctx context.Context, username string) 
 		authInfo.DataScope = minDataScope
 	}
 
-	// 查询用户权限
-	var perms []string
-	err = r.db.WithContext(ctx).
-		Model(&model.SysMenu{}).
-		Select("DISTINCT perm").
-		Joins("JOIN sys_role_menu srm ON sys_menu.id = srm.menu_id").
-		Joins("JOIN sys_user_role sur ON srm.role_id = sur.role_id").
-		Where("sur.user_id = ? AND sys_menu.perm IS NOT NULL AND sys_menu.perm != ''", authInfo.UserId).
-		Scan(&perms).Error
-	if err != nil {
-		return nil, err
+	// 解析权限列表（从 GROUP_CONCAT 结果拆分）
+	if first.Perms != "" {
+		authInfo.Perms = strings.Split(first.Perms, ",")
+	} else {
+		authInfo.Perms = []string{}
 	}
-	authInfo.Perms = perms
 
 	return &authInfo, nil
 }
@@ -447,6 +451,7 @@ func (r *UserRepository) GetFormData(ctx context.Context, userID int64) (*bo.Use
 	var form bo.UserFormBO
 	err := r.db.WithContext(ctx).
 		Model(&model.SysUser{}).
+		InstanceSet("skip_data_scope", true).
 		Select("id, username, nickname, mobile, email, gender, avatar, dept_id, status").
 		Where("id = ? AND deleted = 0", userID).
 		Scan(&form).Error

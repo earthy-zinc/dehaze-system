@@ -114,7 +114,7 @@ func (r *RoleRepository) FindPage(ctx context.Context, q *query.RolePageQuery) (
 		pageSize = 10
 	}
 
-	err := db.Order("sort ASC, create_time DESC").
+	err := db.Order("sort ASC, create_time DESC, id ASC").
 		Offset((pageNum - 1) * pageSize).
 		Limit(pageSize).
 		Scan(&roles).Error

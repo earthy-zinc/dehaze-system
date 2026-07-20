@@ -22,7 +22,7 @@ func RegisterSysUserRoutes(rg *gin.RouterGroup, sysUserApi *api.SysUserApi) gin.
 		sysUserRouter.DELETE(":ids", middleware.Permission("sys:user:delete"), sysUserApi.DeleteUsers)
 		sysUserRouter.PATCH(":userId/password", middleware.Permission("sys:user:edit"), sysUserApi.UpdatePassword)
 		sysUserRouter.PATCH(":userId/status", middleware.Permission("sys:user:edit"), sysUserApi.UpdateUserStatus)
-		sysUserRouter.POST("_import", middleware.Permission("sys:user:add"), sysUserApi.ImportUsers)
+		sysUserRouter.POST("_import", middleware.Permission("sys:user:add"), middleware.AntiRepeat(middleware.AntiRepeatConfig{Expire: 5}), sysUserApi.ImportUsers)
 	}
 	return sysUserRouter
 }

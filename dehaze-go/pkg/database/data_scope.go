@@ -95,6 +95,14 @@ func (p *DataScopePlugin) dataScopeCallback(db *gorm.DB) {
 		return
 	}
 
+	// 支持通过 InstanceSet("skip_data_scope", true) 跳过数据权限过滤
+	// 用于直接 ID 查询（FindByID/GetFormData 等），这些查询由 API 层控制权限
+	if skip, ok := db.InstanceGet("skip_data_scope"); ok {
+		if skipBool, ok := skip.(bool); ok && skipBool {
+			return
+		}
+	}
+
 	ctx := db.Statement.Context
 	dataScope := GetDataScope(ctx)
 	if dataScope == DataScopeAll {
@@ -164,10 +172,19 @@ func (p *DataScopePlugin) buildDataScopeCondition(dataScope int8, deptID, userID
 		}
 
 		if config.TreePathField != "" {
-			// 使用树路径查询（性能更好）
+			// 使用树路径查询：匹配本部门 + 所有子部门
+			// tree_path 格式为 "0,1,2"（逗号分隔的祖先 ID 链）
+			// 需覆盖：本部门(id=deptID) + 路径末尾(%,deptID) + 路径中间(%,deptID,%) + 路径开头(deptID,%)
 			treeField := prefix + config.TreePathField
-			conditions = append(conditions, fmt.Sprintf("(%s = ? OR %s LIKE ?)", treeField, treeField))
-			args = append(args, deptID, fmt.Sprintf("%%,%d,%%", deptID))
+			conditions = append(conditions,
+				fmt.Sprintf("(id = ? OR %s LIKE ? OR %s LIKE ? OR %s LIKE ?)",
+					treeField, treeField, treeField))
+			args = append(args,
+				deptID,
+				fmt.Sprintf("%%,%d", deptID),   // 末尾：如 "0,1"
+				fmt.Sprintf("%%,%d,%%", deptID), // 中间：如 "0,1,2"
+				fmt.Sprintf("%d,%%", deptID),    // 开头：如 "1,2"
+			)
 		} else {
 			// 仅本部门（无树路径字段时降级）
 			conditions = append(conditions, fmt.Sprintf("%s%s = ?", prefix, deptField))
@@ -236,6 +253,12 @@ func getTableAlias(db *gorm.DB) string {
 
 // DefaultDataScopeConfig 默认数据权限配置
 // 包含常见业务表的数据权限配置
+// 白名单模式：仅此处显式配置的表会被 DataScopePlugin 过滤，
+// 未配置的表（如 sys_role/sys_menu 等系统表）不受影响。
+//
+// 注意：配置表时必须确认该表拥有 ScopeField（默认 create_by）和 DeptField（默认 dept_id）列，
+// 否则当用户拥有部门级数据权限时，查询会因 Unknown column 报错。
+// 新增业务表前请先核实表结构。
 func DefaultDataScopeConfig() DataScopeConfig {
 	return DataScopeConfig{
 		Enabled:           true,

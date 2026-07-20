@@ -66,6 +66,7 @@ func (c *Client) init() error {
 	}
 
 	db = database.RegisterGormCallbacks(db)
+	db = database.RegisterSoftDeleteCallback(db)
 
 	// 获取原生sql.DB并设置连接池
 	// 注意：SQLite在并发写入时会有限制，建议MaxOpenConns设置为1
