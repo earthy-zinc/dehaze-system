@@ -36,9 +36,14 @@ public class SecurityProperties {
         private String key;
 
         /**
-         * JWT 过期时间
+         * JWT 过期时间（秒）
          */
         private Long ttl;
+
+        /**
+         * 刷新令牌过期时间（秒），默认 7 天
+         */
+        private Long refreshTtl = 604800L;
 
     }
 }

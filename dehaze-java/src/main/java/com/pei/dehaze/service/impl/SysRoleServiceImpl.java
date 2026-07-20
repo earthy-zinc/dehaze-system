@@ -232,7 +232,7 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
      * @return {@link Boolean}
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @CacheEvict(cacheNames = "menu", key = "'routes'")
     public boolean assignMenusToRole(Long roleId, List<Long> menuIds) {
         SysRole role = this.getById(roleId);

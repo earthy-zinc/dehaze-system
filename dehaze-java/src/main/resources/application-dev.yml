@@ -26,7 +26,7 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true&allowMultiQueries=true
+    url: jdbc:mysql://localhost:3306/dehaze?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
     username: root
     password: ${DEHAZE_PASSWORD}
     druid:
@@ -109,6 +109,7 @@ security:
   jwt:
     key: ${JWT_SECRET_KEY:SecretKey012345678901234567890123456789012345678901234567890123456789}
     ttl: 7200
+    refresh-ttl: 604800
   ignore-urls:
     - /v3/api-docs/**
     - /doc.html
@@ -119,6 +120,8 @@ security:
     - /swagger-ui.html
     - /api/v1/files/download/**
     - /api/v1/auth/captcha
+    - /api/v1/auth/login
+    - /api/v1/auth/refresh
 
 # 监控配置 (开发环境适度开放，禁止暴露 heapdump/env/configprops 等高危端点)
 management:
@@ -264,9 +267,13 @@ rabbitmq:
 cors:
   allowed-origins:
     - http://localhost:3000
+    - http://localhost:3001
+    - http://localhost:3011
     - http://localhost:5173
     - http://localhost:8080
     - http://127.0.0.1:3000
+    - http://127.0.0.1:3001
+    - http://127.0.0.1:3011
     - http://127.0.0.1:5173
     - http://127.0.0.1:8080
 

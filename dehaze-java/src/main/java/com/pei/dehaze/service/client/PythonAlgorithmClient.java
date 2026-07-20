@@ -7,6 +7,7 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.config.property.AlgorithmProperties;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,7 @@ public class PythonAlgorithmClient {
     private final AlgorithmProperties props;
     private final RestTemplate algorithmRestTemplate;
     private final CircuitBreaker circuitBreaker;
+    private final Timer pythonCallTimer;
 
     @PostConstruct
     public void init() {
@@ -59,7 +61,7 @@ public class PythonAlgorithmClient {
         if (params != null) {
             body.set("params", JSONUtil.parseObj(params));
         }
-        return postWithRetry(props.getPredictPath(), body.toString());
+        return pythonCallTimer.record(() -> postWithRetry(props.getPredictPath(), body.toString()));
     }
 
     /**
@@ -70,7 +72,7 @@ public class PythonAlgorithmClient {
         body.set("algorithmId", algorithmId);
         body.set("predUrl", predUrl);
         body.set("gtUrl", gtUrl);
-        return postWithRetry(props.getEvaluatePath(), body.toString());
+        return pythonCallTimer.record(() -> postWithRetry(props.getEvaluatePath(), body.toString()));
     }
 
     // ==================== 核心请求方法 ====================

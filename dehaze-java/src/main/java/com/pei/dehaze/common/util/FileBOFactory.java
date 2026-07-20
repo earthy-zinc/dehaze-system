@@ -104,8 +104,8 @@ public class FileBOFactory {
 
             // 使用已保存的临时文件解析图片宽高（transferTo 后 MultipartFile 已消费）
             int[] dimensions = imageProcessingService.getImageDimensions(itemBO.getFile());
-            itemBO.setWidth(dimensions[0]);
-            itemBO.setHeight(dimensions[1]);
+            itemBO.setWidth(dimensions[0] > 0 ? dimensions[0] : null);
+            itemBO.setHeight(dimensions[1] > 0 ? dimensions[1] : null);
 
             return itemBO;
         } catch (IOException e) {

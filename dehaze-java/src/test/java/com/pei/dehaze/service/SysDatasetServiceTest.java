@@ -62,7 +62,9 @@ class SysDatasetServiceTest {
     @BeforeEach
     void setUp() {
         // 手动创建 spy 对象，因为 SysDatasetServiceImpl 没有无参构造器
-        datasetService = spy(new SysDatasetServiceImpl(datasetConverter, sysDatasetItemService));
+        // self 参数先传 mock，创建 spy 后再替换为 spy 自身（解决 @Cacheable 自调用）
+        datasetService = spy(new SysDatasetServiceImpl(datasetConverter, sysDatasetItemService, mock(SysDatasetService.class)));
+        ReflectionTestUtils.setField(datasetService, "self", datasetService);
 
         // 注入依赖
         ReflectionTestUtils.setField(datasetService, "datasetPath", "/data/datasets");

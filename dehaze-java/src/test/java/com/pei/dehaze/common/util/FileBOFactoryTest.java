@@ -93,7 +93,7 @@ class FileBOFactoryTest {
         );
 
         when(filePathBuilder.buildUrl(anyString())).thenReturn("http://example.com/test.jpg");
-        when(imageProcessingService.getImageDimensions(any(MockMultipartFile.class)))
+        when(imageProcessingService.getImageDimensions(any(File.class)))
                 .thenReturn(new int[]{800, 600});
 
         ItemFileBO result = fileBOFactory.createItemFileBO(
@@ -121,7 +121,7 @@ class FileBOFactoryTest {
         );
 
         when(filePathBuilder.buildUrl(anyString())).thenReturn("http://example.com/test.jpg");
-        when(imageProcessingService.getImageDimensions(any(MockMultipartFile.class)))
+        when(imageProcessingService.getImageDimensions(any(File.class)))
                 .thenReturn(new int[]{0, 0});
 
         ItemFileBO result = fileBOFactory.createItemFileBO(

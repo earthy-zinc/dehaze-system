@@ -3,6 +3,7 @@ package com.pei.dehaze.service;
 import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
+import com.pei.dehaze.model.dto.RefreshTokenForm;
 
 import java.util.Map;
 
@@ -41,7 +42,8 @@ public interface AuthService {
     /**
      * 刷新令牌
      *
-     * @return 新的登录结果
+     * @param form 包含 refreshToken 的表单
+     * @return 新的登录结果（含新的 accessToken 和 refreshToken）
      */
-    LoginResult refreshToken();
+    LoginResult refreshToken(RefreshTokenForm form);
 }

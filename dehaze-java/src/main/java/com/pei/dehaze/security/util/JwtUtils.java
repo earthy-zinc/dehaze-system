@@ -45,17 +45,7 @@ public class JwtUtils {
 
         SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put(JwtClaimConstants.USER_ID, userDetails.getUserId()); // 用户ID
-        payload.put(JwtClaimConstants.DEPT_ID, userDetails.getDeptId()); // 部门ID
-        payload.put(JwtClaimConstants.DATA_SCOPE, userDetails.getDataScope()); // 数据权限范围
-
-        // claims 中添加角色信息
-        Set<String> roles = userDetails.getAuthorities().stream()
-                .map(GrantedAuthority::getAuthority)
-                .collect(Collectors.toSet());
-        payload.put(JwtClaimConstants.AUTHORITIES, roles);
-
+        Map<String, Object> payload = buildBasePayload(userDetails, authentication.getName());
 
         Date now = new Date();
         long ttlSeconds = securityProperties.getJwt().getTtl();
@@ -68,6 +58,69 @@ public class JwtUtils {
         return JWTUtil.createToken(payload, securityProperties.getJwt().getKey().getBytes());
     }
 
+    /**
+     * 生成刷新令牌（Refresh Token）
+     * <p>
+     * 与访问令牌使用相同的签名密钥，但具有更长的有效期。
+     * 不包含角色权限信息（刷新时需重新加载），通过 type 字段区分令牌类型。
+     *
+     * @param authentication 用户认证信息
+     * @return 刷新令牌字符串
+     */
+    public String createRefreshToken(Authentication authentication) {
+        SysUserDetails userDetails = (SysUserDetails) authentication.getPrincipal();
+
+        Map<String, Object> payload = buildBasePayload(userDetails, authentication.getName());
+        payload.put("type", "refresh");
+
+        Date now = new Date();
+        Long refreshTtl = securityProperties.getJwt().getRefreshTtl();
+        if (refreshTtl == null || refreshTtl <= 0) {
+            refreshTtl = 604800L; // 默认 7 天
+        }
+        Date expiration = new Date(now.getTime() + refreshTtl * 1000L);
+        payload.put(RegisteredPayload.ISSUED_AT, now);
+        payload.put(RegisteredPayload.EXPIRES_AT, expiration);
+        payload.put(RegisteredPayload.SUBJECT, authentication.getName());
+        payload.put(RegisteredPayload.JWT_ID, IdUtil.simpleUUID());
+
+        return JWTUtil.createToken(payload, securityProperties.getJwt().getKey().getBytes());
+    }
+
+    /**
+     * 构建基础 payload（包含用户ID、部门ID、数据权限）
+     */
+    private Map<String, Object> buildBasePayload(SysUserDetails userDetails, String subject) {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put(JwtClaimConstants.USER_ID, userDetails.getUserId());
+        payload.put(JwtClaimConstants.DEPT_ID, userDetails.getDeptId());
+        payload.put(JwtClaimConstants.DATA_SCOPE, userDetails.getDataScope());
+
+        Set<String> roles = userDetails.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toSet());
+        payload.put(JwtClaimConstants.AUTHORITIES, roles);
+        return payload;
+    }
+
+
+    /**
+     * 获取签名密钥字节数组
+     */
+    public byte[] getSecretKeyBytes() {
+        return securityProperties.getJwt().getKey().getBytes();
+    }
+
+    /**
+     * 获取刷新令牌过期时间（秒）
+     */
+    public Long getRefreshTtlSeconds() {
+        Long refreshTtl = securityProperties.getJwt().getRefreshTtl();
+        if (refreshTtl == null || refreshTtl <= 0) {
+            refreshTtl = 604800L; // 默认 7 天
+        }
+        return refreshTtl;
+    }
 
     /**
      * 从 JWT Token 中解析 Authentication  用户认证信息

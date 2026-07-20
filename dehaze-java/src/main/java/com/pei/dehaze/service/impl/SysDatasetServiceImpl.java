@@ -51,6 +51,12 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
     @Lazy
     private final SysDatasetItemService sysDatasetItemService;
 
+    /**
+     * 自注入代理，解决 @Cacheable 方法自调用绕过 AOP 代理的问题
+     */
+    @Lazy
+    private final SysDatasetService self;
+
     @Value("${file.datasetPath}")
     private String datasetPath;
 
@@ -67,7 +73,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         long startTime = System.currentTimeMillis();
         log.debug("开始计算所有数据集统计信息...");
 
-        List<SysDataset> allDatasets = getAllDatasets();
+        List<SysDataset> allDatasets = self.getAllDatasets();
         if (allDatasets.isEmpty()) {
             return new HashMap<>();
         }
@@ -352,7 +358,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
 
         SysDataset sysDataset = datasetConverter.form2Entity(dataset);
         if (this.save(sysDataset)) {
-            evictAllDatasetsCache();
+            self.evictAllDatasetsCache();
             DatasetStatistics stats = getAllDatasetStats().get(sysDataset.getId());
             return datasetConverter.entity2Vo(sysDataset, stats);
         } else {
@@ -385,7 +391,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         sysDataset.setId(id);
 
         if (this.updateById(sysDataset)) {
-            evictAllDatasetsCache();
+            self.evictAllDatasetsCache();
             DatasetStatistics stats = getAllDatasetStats().get(id);
             return datasetConverter.entity2Vo(sysDataset, stats);
         } else {
@@ -407,31 +413,31 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
         if (!this.removeById(id)) {
             throw new BusinessException("删除数据集失败");
         }
-        evictAllDatasetsCache();
+        self.evictAllDatasetsCache();
     }
 
     @Override
     @Cacheable(value = "dataset:options", key = "'all'")
     public List<Option<Long>> getOptions() {
-        List<SysDataset> datasets = getAllDatasets();
+        List<SysDataset> datasets = self.getAllDatasets();
         return buildDatasetOptions(SystemConstants.ROOT_NODE_ID, datasets);
     }
 
     @Override
     public List<Long> getLeafDatasetIds() {
-        List<SysDataset> allDatasets = getAllDatasets();
+        List<SysDataset> allDatasets = self.getAllDatasets();
         return TreeDataUtils.findAllLeafIds(allDatasets, SysDataset::getId, SysDataset::getParentId);
     }
 
     @Override
     public List<Long> getLeafDatasetId(Long id) {
-        List<SysDataset> allDatasets = getAllDatasets();
+        List<SysDataset> allDatasets = self.getAllDatasets();
         return TreeDataUtils.findLeafIdsUnder(allDatasets, id, SysDataset::getId, SysDataset::getParentId);
     }
 
     @Override
     public List<Long> getDatasetAndDescendantIds(Long datasetId) {
-        List<SysDataset> allDatasets = getAllDatasets();
+        List<SysDataset> allDatasets = self.getAllDatasets();
         return TreeDataUtils.findDescendantIds(allDatasets, datasetId, SysDataset::getId, SysDataset::getParentId);
     }
 
@@ -443,7 +449,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
         }
 
-        List<SysDataset> allDatasets = getAllDatasets();
+        List<SysDataset> allDatasets = self.getAllDatasets();
         Map<Long, SysDataset> idToNodeMap = allDatasets.stream()
                 .collect(Collectors.toMap(SysDataset::getId, d -> d));
 
@@ -473,7 +479,7 @@ public class SysDatasetServiceImpl extends ServiceImpl<SysDatasetMapper, SysData
             throw new BusinessException(ResultCode.RESOURCE_NOT_FOUND, "数据集不存在");
         }
 
-        List<SysDataset> allDatasets = getAllDatasets();
+        List<SysDataset> allDatasets = self.getAllDatasets();
         Map<Long, SysDataset> idToNodeMap = allDatasets.stream()
                 .collect(Collectors.toMap(SysDataset::getId, d -> d));
 

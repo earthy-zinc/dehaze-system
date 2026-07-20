@@ -71,7 +71,7 @@ public class FileController {
 
     @GetMapping("/page")
     @Operation(summary = "分页查询文件")
-    public Result<PageResult<SysFile>> listPagedFiles(
+    public PageResult<SysFile> listPagedFiles(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "关键字") @RequestParam(required = false) String keywords
@@ -84,7 +84,7 @@ public class FileController {
                     .like(SysFile::getType, keywords);
         }
         Page<SysFile> result = sysFileService.page(page, queryWrapper);
-        return Result.success(PageResult.success(result));
+        return PageResult.success(result);
     }
 
     @GetMapping("/{fileId}")

@@ -54,11 +54,21 @@ public class JwtValidationFilter extends OncePerRequestFilter {
         try {
             if (CharSequenceUtil.isNotBlank(token) && token.startsWith(SecurityConstants.JWT_TOKEN_PREFIX)) {
                 token = token.substring(SecurityConstants.JWT_TOKEN_PREFIX.length()); // 去除 Bearer 前缀
-                // 校验 Token 是否有效
+                // 校验 Token 签名是否有效
                 if (JWTUtil.verify(token, secretKey)) {
                     // 解析 Token 获取有效载荷
                     JWT jwt = JWTUtil.parseToken(token);
                     JSONObject payloads = jwt.getPayloads();
+
+                    // 校验 Token 是否过期（exp claim）
+                    Long expiresAt = payloads.getLong(RegisteredPayload.EXPIRES_AT);
+                    if (expiresAt != null) {
+                        long currentTimeSeconds = System.currentTimeMillis() / 1000;
+                        if (expiresAt < currentTimeSeconds) {
+                            ResponseUtils.writeErrMsg(response, ResultCode.TOKEN_INVALID);
+                            return;
+                        }
+                    }
 
                     // 检查 Token 是否已被加入黑名单
                     String jti = payloads.getStr(RegisteredPayload.JWT_ID);

@@ -16,6 +16,7 @@ import com.pei.dehaze.model.query.PredLogQuery;
 import com.pei.dehaze.model.vo.PredLogVO;
 import com.pei.dehaze.model.vo.PredictionResultVO;
 import com.pei.dehaze.service.SysAlgorithmService;
+import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysPredLogService;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
 
     private final SysAlgorithmService algorithmService;
     private final PythonAlgorithmClient pythonClient;
+    private final SysFileService sysFileService;
 
     @Override
     public PredictionResultVO predict(PredictionForm form) {
@@ -138,9 +140,13 @@ public class SysPredLogServiceImpl extends ServiceImpl<SysPredLogMapper, SysPred
      */
     private String resolveImageUrl(PredictionForm form) {
         if (form.getFileId() != null) {
-            // 从文件管理模块获取文件 URL
-            // TODO: 注入 SysFileService 获取文件URL
-            return "/api/v1/files/download/" + form.getFileId();
+            // 从文件管理模块获取文件的绝对 URL（Python 服务需要可直接访问的地址）
+            com.pei.dehaze.model.entity.SysFile sysFile = sysFileService.getById(form.getFileId());
+            if (sysFile != null && CharSequenceUtil.isNotBlank(sysFile.getUrl())) {
+                return sysFile.getUrl();
+            }
+            log.warn("文件不存在或 URL 为空: fileId={}", form.getFileId());
+            return null;
         }
         return form.getImageUrl();
     }

@@ -1,7 +1,8 @@
 package com.pei.dehaze.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.PolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,11 +40,16 @@ public class RedisConfig {
         // 创建支持 Java 8 日期时间类型的 JSON 序列化器，并启用类型信息保存
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
-        // 启用类型信息保存，这样反序列化时能正确还原对象类型
-        objectMapper.activateDefaultTyping(
-                LaissezFaireSubTypeValidator.instance,
-                NON_FINAL
-        );
+        // 使用限制性类型验证器，仅允许项目内部类型和安全的 JDK 类型，防止反序列化 RCE 攻击
+        PolymorphicTypeValidator ptv = BasicPolymorphicTypeValidator.builder()
+                .allowIfBaseType(Object.class)
+                .allowIfSubType("com.pei.dehaze.")
+                .allowIfSubType("java.util.")
+                .allowIfSubType("java.time.")
+                .allowIfSubType("java.lang.")
+                .allowIfSubType("org.springframework.security.")
+                .build();
+        objectMapper.activateDefaultTyping(ptv, NON_FINAL);
         GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
 
         redisTemplate.setKeySerializer(RedisSerializer.string());

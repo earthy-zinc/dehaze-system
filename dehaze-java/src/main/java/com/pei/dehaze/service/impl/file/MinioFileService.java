@@ -58,18 +58,57 @@ public class MinioFileService implements FileService {
     @Value("${file.baseUrl}")
     private String baseUrl;
 
-    // 依赖注入完成之后执行初始化
+    /**
+     * 标记桶是否已初始化（用于延迟创建）
+     */
+    private volatile boolean bucketInitialized = false;
+
+    // 依赖注入完成之后执行初始化（带重试，MinIO 不可达时不阻塞应用启动）
     @PostConstruct
     public void init() {
         minioClient = MinioClient.builder()
                 .endpoint(endpoint)
                 .credentials(accessKey, secretKey)
                 .build();
-        createBucketIfAbsent(bucketName);
+
+        // 重试3次，每次间隔2秒；全部失败时仅记录警告，不阻塞启动
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                createBucketIfAbsent(bucketName);
+                bucketInitialized = true;
+                return;
+            } catch (Exception e) {
+                log.warn("MinIO 初始化失败 (attempt={}/3): {}", attempt, e.getMessage());
+                if (attempt < 3) {
+                    try {
+                        Thread.sleep(2000L);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        log.warn("MinIO 存储桶初始化失败，将在首次文件操作时重试。endpoint={}", endpoint);
+    }
+
+    /**
+     * 确保桶已初始化（延迟创建，用于启动时 MinIO 不可达的场景）
+     */
+    private void ensureBucketInitialized() {
+        if (!bucketInitialized) {
+            synchronized (this) {
+                if (!bucketInitialized) {
+                    createBucketIfAbsent(bucketName);
+                    bucketInitialized = true;
+                }
+            }
+        }
     }
 
     @Override
     public FileBO uploadFile(FileBO fileBO) {
+        ensureBucketInitialized();
         String objectName = fileBO.getObjectName();
         String mimeType = FileUtil.getMimeType(fileBO.getName());
         Assert.notBlank(objectName);
@@ -94,6 +133,7 @@ public class MinioFileService implements FileService {
 
     @Override
     public String uploadFile(String objectName, InputStream inputStream, long fileSize, String contentType) {
+        ensureBucketInitialized();
         Assert.notBlank(objectName, "objectName不能为空");
         Assert.notNull(inputStream, "inputStream不能为空");
 
@@ -197,8 +237,9 @@ public class MinioFileService implements FileService {
     }
 
     /**
-     * PUBLIC桶策略
-     * 如果不配置，则新建的存储桶默认是PRIVATE，则存储桶文件会拒绝访问 Access Denied
+     * PUBLIC桶策略（只读）
+     * 仅允许匿名 GetObject（用于文件预览/下载），不允许匿名写入和删除
+     * 写入/删除操作通过服务端 MinioClient（携带 AccessKey/SecretKey）执行
      *
      * @param bucketName 存储桶名称
      */
@@ -207,15 +248,15 @@ public class MinioFileService implements FileService {
          * AWS的S3存储桶策略
          * Principal: 生效用户对象
          * Resource:  指定存储桶
-         * Action: 操作行为
+         * Action: 操作行为（仅允许只读访问）
          */
         return "{\"Version\":\"2012-10-17\","
                 + "\"Statement\":[{\"Effect\":\"Allow\","
                 + "\"Principal\":{\"AWS\":[\"*\"]},"
-                + "\"Action\":[\"s3:ListBucketMultipartUploads\",\"s3:GetBucketLocation\",\"s3:ListBucket\"],"
+                + "\"Action\":[\"s3:GetBucketLocation\",\"s3:ListBucket\"],"
                 + "\"Resource\":[\"arn:aws:s3:::" + bucketName + "\"]},"
                 + "{\"Effect\":\"Allow\"," + "\"Principal\":{\"AWS\":[\"*\"]},"
-                + "\"Action\":[\"s3:ListMultipartUploadParts\",\"s3:PutObject\",\"s3:AbortMultipartUpload\",\"s3:DeleteObject\",\"s3:GetObject\"],"
+                + "\"Action\":[\"s3:GetObject\"],"
                 + "\"Resource\":[\"arn:aws:s3:::" + bucketName + "/*\"]}]}";
     }
 }

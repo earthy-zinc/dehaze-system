@@ -171,7 +171,7 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
      * @param idsStr 字典类型ID，多个以英文逗号(,)分割
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public boolean deleteDictTypes(String idsStr) {
 
         if (CharSequenceUtil.isBlank(idsStr)) {

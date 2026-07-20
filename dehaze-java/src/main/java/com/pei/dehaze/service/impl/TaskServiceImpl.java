@@ -23,6 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -96,7 +98,19 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
 
         TaskVO taskVO = convertToTaskVO(sysTask);
 
-        taskExecutor.publishExportTask(sysTask.getId());
+        // 事务提交后再发布任务，避免异步线程读不到未提交的数据
+        Long taskIdForAsync = sysTask.getId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    taskExecutor.publishExportTask(taskIdForAsync);
+                }
+            });
+        } else {
+            // 无活跃事务同步（如单元测试），直接发布
+            taskExecutor.publishExportTask(taskIdForAsync);
+        }
 
         log.info("创建任务成功: taskId={}, type={}, userId={}", taskId, form.getType(), currentUserId);
 
@@ -242,8 +256,19 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
         String cacheKey = TaskConstants.TASK_CACHE_PREFIX + taskId;
         redisTemplate.opsForValue().set(cacheKey, sysTask, TaskConstants.TASK_EXPIRE_SECONDS, TimeUnit.SECONDS);
 
-        // 重新提交任务
-        taskExecutor.publishExportTask(sysTask.getId());
+        // 事务提交后再重新发布任务，避免异步线程读不到未提交的数据
+        Long taskIdForAsync = sysTask.getId();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    taskExecutor.publishExportTask(taskIdForAsync);
+                }
+            });
+        } else {
+            // 无活跃事务同步（如单元测试），直接发布
+            taskExecutor.publishExportTask(taskIdForAsync);
+        }
 
         log.info("重试任务: taskId={}, userId={}, retryCount={}", taskId, currentUserId, sysTask.getRetryCount());
         return convertToTaskVO(sysTask);

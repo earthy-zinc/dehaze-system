@@ -24,6 +24,17 @@ public interface SysItemFileService extends IService<SysItemFile> {
     ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO);
 
     /**
+     * 短事务写入数据项文件关联记录（将 DB 写入与 MinIO 上传分离）
+     *
+     * @param itemId           所属数据项ID
+     * @param itemBO           图片业务对象
+     * @param sysFile          源文件实体
+     * @param thumbnailSysFile 缩略图文件实体
+     * @return 数据项文件实体
+     */
+    SysItemFile saveItemFileRecord(Long itemId, ItemFileBO itemBO, SysFile sysFile, SysFile thumbnailSysFile);
+
+    /**
      * 获取指定数据项的图片列表
      *
      * @param itemId 数据项ID
@@ -38,6 +49,14 @@ public interface SysItemFileService extends IService<SysItemFile> {
      * @return 是否删除成功
      */
     boolean deleteFile(Long id);
+
+    /**
+     * 短事务删除数据项文件 DB 记录（MinIO 删除在事务外完成后调用）
+     *
+     * @param id 图片ID
+     * @return 是否删除成功
+     */
+    boolean deleteFileRecord(Long id);
 
     /**
      * 批量删除图片

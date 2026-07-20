@@ -64,7 +64,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     private final ImageProcessingService imageProcessingService;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public DatasetItemVO createDatasetItemWithImages(DatasetItemUploadForm form) {
         DatasetItemVO result = doCreateDatasetItemWithImages(form);
         sysDatasetService.evictAllDatasetsCache();
@@ -154,7 +153,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BatchUploadResultVO batchCreateDatasetItemsWithImages(BatchDatasetItemUploadForm form) {
         int successGroups = 0;
         int failedGroups = 0;
@@ -311,7 +309,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void deleteDatasetItemCascade(Long datasetItemId) {
         Assert.notNull(datasetItemId, "数据项ID不能为空");
         BatchOperationResultVO result = batchDeleteDatasetItemsCascadeWithResult(List.of(datasetItemId));
@@ -326,7 +323,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BatchOperationResultVO batchDeleteDatasetItemsCascadeWithResult(List<Long> datasetItemIds) {
         int successCount = 0;
         int failedCount = 0;
@@ -394,7 +390,6 @@ public class DatasetOperationServiceImpl implements DatasetOperationService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BatchDeleteResult batchDeleteDatasets(List<Long> datasetIds) {
         if (datasetIds == null || datasetIds.isEmpty()) {
             throw new BusinessException("删除的数据集ID列表不能为空");

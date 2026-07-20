@@ -42,7 +42,7 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public SysAlgorithmVersion addVersion(Long algorithmId, AlgorithmVersionForm form) {
         SysAlgorithm algorithm = algorithmService.getById(algorithmId);
         if (algorithm == null) {
@@ -78,7 +78,7 @@ public class SysAlgorithmVersionServiceImpl extends ServiceImpl<SysAlgorithmVers
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void rollbackToVersion(Long algorithmId, Long versionId) {
         SysAlgorithm algorithm = algorithmService.getById(algorithmId);
         if (algorithm == null) {

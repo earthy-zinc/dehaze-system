@@ -4,9 +4,12 @@ import com.pei.dehaze.common.result.Result;
 import com.pei.dehaze.model.dto.CaptchaResult;
 import com.pei.dehaze.model.dto.LoginForm;
 import com.pei.dehaze.model.dto.LoginResult;
+import com.pei.dehaze.model.dto.RefreshTokenForm;
+import com.pei.dehaze.plugin.ratelimit.annotation.RateLimit;
 import com.pei.dehaze.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,6 +24,8 @@ public class AuthController {
     private final AuthService authService;
 
     @Operation(summary = "登录")
+    @RateLimit(key = "rate_limit:login:", timeWindow = 60, maxRequests = 10,
+            type = RateLimit.LimitType.IP, message = "登录尝试过于频繁，请60秒后再试")
     @PostMapping("/login")
     public Result<LoginResult> login(@RequestBody LoginForm form) {
         LoginResult loginResult = authService.login(form);
@@ -49,7 +54,7 @@ public class AuthController {
 
     @Operation(summary = "刷新令牌")
     @PostMapping("/refresh")
-    public Result<LoginResult> refresh() {
-        return Result.success(authService.refreshToken());
+    public Result<LoginResult> refresh(@Valid @RequestBody RefreshTokenForm form) {
+        return Result.success(authService.refreshToken(form));
     }
 }

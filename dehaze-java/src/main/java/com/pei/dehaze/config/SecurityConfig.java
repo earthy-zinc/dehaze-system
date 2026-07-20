@@ -6,7 +6,9 @@ import com.pei.dehaze.config.property.SecurityProperties;
 import com.pei.dehaze.filter.JwtValidationFilter;
 import com.pei.dehaze.security.exception.MyAccessDeniedHandler;
 import com.pei.dehaze.security.exception.MyAuthenticationEntryPoint;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -30,16 +32,28 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * @author Ray Hao
  * @since 2023/2/17
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private static final String DEFAULT_DEV_KEY = "SecretKey012345678901234567890123456789012345678901234567890123456789";
+
     private final MyAuthenticationEntryPoint authenticationEntryPoint;
     private final MyAccessDeniedHandler accessDeniedHandler;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SecurityProperties securityProperties;
+
+    @PostConstruct
+    public void validateJwtKey() {
+        String key = securityProperties.getJwt().getKey();
+        if (DEFAULT_DEV_KEY.equals(key)) {
+            log.warn("⚠️  安全警告：当前使用硬编码的默认 JWT 密钥！请设置环境变量 JWT_SECRET_KEY 以使用安全密钥。" +
+                    "生产环境必须设置，否则攻击者可伪造任意用户 Token。");
+        }
+    }
 
 
 

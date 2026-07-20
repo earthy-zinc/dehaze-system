@@ -25,7 +25,9 @@ import com.pei.dehaze.service.ImageProcessingService;
 import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.SysItemFileService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysItemFile>
@@ -53,33 +56,49 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     private final SysDatasetItemMapper sysDatasetItemMapper;
     private final SysDatasetMapper sysDatasetMapper;
 
+    /**
+     * 自注入代理，解决同类内部调用 @Transactional 方法时绕过 Spring AOP 代理的问题
+     */
+    @Lazy
+    private final SysItemFileService self;
+
     @Override
     public ImageUrlVO saveItemFile(Long itemId, ItemFileBO itemBO) {
         // 1. 图片校验（事务外，避免占用数据库连接）
         imageProcessingService.validateImageFile(itemBO.getFile());
 
-        // 2. 上传源文件到 MinIO（事务外，避免长事务占用连接）
-        SysFile sysFile = sysFileService.saveFile(itemBO);
-        // 3. 生成缩略图并上传（事务外）
-        ItemFileBO thumbnailItemBO = getThumbnailItemBO(itemBO);
-        SysFile thumbnailSysFile = sysFileService.saveFile(thumbnailItemBO);
+        File sourceTempFile = itemBO.getFile();
+        File thumbnailTempFile = null;
+        try {
+            // 2. 上传源文件到 MinIO（事务外，避免长事务占用连接）
+            SysFile sysFile = sysFileService.saveFile(itemBO);
+            // 3. 生成缩略图并上传（事务外）
+            ItemFileBO thumbnailItemBO = getThumbnailItemBO(itemBO);
+            thumbnailTempFile = thumbnailItemBO.getFile();
+            SysFile thumbnailSysFile = sysFileService.saveFile(thumbnailItemBO);
 
-        // 4. 短事务写入 DB 关联记录
-        SysItemFile sysItemFile = saveItemFileRecord(itemId, itemBO, sysFile, thumbnailSysFile);
+            // 4. 短事务写入 DB 关联记录（通过代理调用，确保 @Transactional 生效）
+            SysItemFile sysItemFile = self.saveItemFileRecord(itemId, itemBO, sysFile, thumbnailSysFile);
 
-        ImageUrlVO result = new ImageUrlVO();
-        populateImageUrlVO(result, sysItemFile, sysFile, thumbnailSysFile);
+            ImageUrlVO result = new ImageUrlVO();
+            populateImageUrlVO(result, sysItemFile, sysFile, thumbnailSysFile);
 
-        // 发布文件创建事件，通知数据集统计更新
-        eventPublisher.publishEvent(new ItemFileCreatedEvent(itemId, sysFile.getId()));
+            // 发布文件创建事件，通知数据集统计更新
+            eventPublisher.publishEvent(new ItemFileCreatedEvent(itemId, sysFile.getId()));
 
-        return result;
+            return result;
+        } finally {
+            // 清理临时文件，防止泄漏撑满临时目录
+            deleteTempFileQuietly(sourceTempFile);
+            deleteTempFileQuietly(thumbnailTempFile);
+        }
     }
 
     /**
      * 短事务写入数据项文件关联记录
      * 将 DB 写入与 MinIO 上传分离，避免长事务占用数据库连接
      */
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public SysItemFile saveItemFileRecord(Long itemId, ItemFileBO itemBO, SysFile sysFile, SysFile thumbnailSysFile) {
         SysItemFile sysItemFile = new SysItemFile();
@@ -104,7 +123,6 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public boolean deleteFile(Long id) {
         SysItemFile sysItemFile = this.getById(id);
         if (sysItemFile == null) {
@@ -117,6 +135,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         Long fileId = sysItemFile.getFileId();
         Long thumbnailFileId = sysItemFile.getThumbnailFileId();
 
+        // MinIO 删除在事务外执行，避免网络 I/O 占用 DB 连接
         boolean res1 = sysFileService.deleteFile(fileId);
         if (!res1) {
             throw new BusinessException("删除原图失败");
@@ -127,7 +146,8 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             throw new BusinessException("删除缩略图失败");
         }
 
-        boolean result = this.removeById(id);
+        // 短事务删除 DB 记录（通过代理调用，确保 @Transactional 生效）
+        boolean result = self.deleteFileRecord(id);
 
         // 发布文件删除事件，通知数据集统计更新
         if (result) {
@@ -135,6 +155,15 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         }
 
         return result;
+    }
+
+    /**
+     * 短事务删除数据项文件 DB 记录
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteFileRecord(Long id) {
+        return this.removeById(id);
     }
 
     @Override
@@ -145,7 +174,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
 
         for (Long id : ids) {
             try {
-                boolean deleted = this.deleteFile(id);
+                boolean deleted = self.deleteFile(id);
                 if (deleted) {
                     successIds.add(id);
                 } else {
@@ -410,5 +439,18 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
             }
         }
         return fileType != null ? fileType.toLowerCase() : null;
+    }
+
+    /**
+     * 安全删除临时文件（不抛异常）
+     */
+    private void deleteTempFileQuietly(File file) {
+        if (file != null && file.exists()) {
+            try {
+                java.nio.file.Files.deleteIfExists(file.toPath());
+            } catch (Exception e) {
+                log.warn("清理临时文件失败: {}", file.getAbsolutePath(), e);
+            }
+        }
     }
 }
