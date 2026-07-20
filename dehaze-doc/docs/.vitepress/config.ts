@@ -467,10 +467,6 @@ export default withMermaid(
                 text: "核心模块改造规划",
                 link: "/04-改造计划/核心模块改造规划",
               },
-              {
-                text: "Java基础设施存在问题",
-                link: "/04-改造计划/java基础设施存在问题",
-              },
               { text: "分布式锁", link: "/04-改造计划/分布式锁" },
             ],
           },
