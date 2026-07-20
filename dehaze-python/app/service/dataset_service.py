@@ -541,7 +541,6 @@ class DatasetService:
         db.add(dataset)
         await db.flush()
         await db.refresh(dataset)
-        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -591,8 +590,6 @@ class DatasetService:
             dataset.path = data["path"]
         if "status" in data:
             dataset.status = data["status"]
-
-        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -707,7 +704,6 @@ class DatasetService:
                         "errorCode": "SYSTEM_ERROR",
                     })
 
-        await db.commit()
         await DatasetService._evict_all_cache(redis)
 
         return {
@@ -815,7 +811,6 @@ class DatasetItemService:
         db.add(dataset_item)
         await db.flush()
         await db.refresh(dataset_item)
-        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -882,7 +877,6 @@ class DatasetItemService:
 
         if "name" in data:
             item.name = data["name"]
-        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -904,7 +898,6 @@ class DatasetItemService:
 
         await dataset_repository.delete_item_files_by_item_id(db, item_id)
         await dataset_repository.delete_item_by_id(db, item_id)
-        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -937,7 +930,6 @@ class DatasetItemService:
             await dataset_repository.delete_item_files_by_item_ids(db, success_ids)
             await dataset_repository.delete_items_by_ids(db, success_ids)
 
-        await db.commit()
         await DatasetService._evict_all_cache(redis)
 
         return {
@@ -1006,7 +998,6 @@ class DatasetItemService:
             db.add(item_file_hazy)
 
         await db.flush()
-        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -1158,7 +1149,6 @@ class ItemFileService:
         db.add(item_file)
         await db.flush()
         await db.refresh(item_file)
-        await db.commit()
 
         await DatasetService._evict_all_cache(redis)
 
@@ -1179,8 +1169,6 @@ class ItemFileService:
         if "description" in data:
             item_file.description = data["description"]
 
-        await db.commit()
-
         item = await dataset_repository.get_item_by_id(db, item_file.item_id)
         if item:
             await DatasetService._evict_all_cache(redis)
@@ -1197,7 +1185,6 @@ class ItemFileService:
             dataset_id = item.dataset_id
 
         await dataset_repository.delete_item_file_by_id(db, file_id)
-        await db.commit()
 
         if dataset_id:
             await DatasetService._evict_all_cache(redis)
@@ -1234,7 +1221,6 @@ class ItemFileService:
                     affected_dataset_ids.add(int(item.dataset_id))
 
             await dataset_repository.delete_item_files_by_ids(db, success_ids)
-        await db.commit()
 
         if affected_dataset_ids:
             await DatasetService._evict_all_cache(redis)

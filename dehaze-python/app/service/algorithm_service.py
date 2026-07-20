@@ -106,7 +106,6 @@ class AlgorithmService:
             algorithm.size = await asyncio.to_thread(get_file_size, data["path"])
 
         created = await algorithm_repository.create(db, algorithm)
-        await db.commit()
         return created.id
 
     @staticmethod
@@ -138,7 +137,6 @@ class AlgorithmService:
             update_data["status"] = data["status"]
 
         await algorithm_repository.update(db, algorithm, update_data)
-        await db.commit()
 
     @staticmethod
     async def delete_algorithm_single(db: AsyncSession, algorithm_id: int) -> int:
@@ -156,7 +154,6 @@ class AlgorithmService:
         if not ids_to_delete:
             raise BusinessException("删除失败，算法不存在")
         count = await algorithm_repository.delete_by_ids(db, ids_to_delete)
-        await db.commit()
         return count
 
     # ── 状态机 ──────────────────────────────────────
@@ -199,7 +196,6 @@ class AlgorithmService:
             raise BusinessException("算法必须经过审核才能发布")
 
         await algorithm_repository.update_status(db, algorithm_id, target_status)
-        await db.commit()
 
     # ── 审核 ──────────────────────────────────────
 
@@ -234,7 +230,6 @@ class AlgorithmService:
             passed=passed,
             remark=remark,
         )
-        await db.commit()
 
     # ── 版本控制 ──────────────────────────────────────
 
@@ -290,7 +285,6 @@ class AlgorithmService:
             is_active=is_active,
         )
 
-        await db.commit()
         return algorithm_id
 
     @staticmethod
@@ -331,8 +325,6 @@ class AlgorithmService:
         result = await algorithm_repository.rollback_to_version(db, algorithm_id, version_id)
         if not result:
             raise BusinessException("版本不存在或不属于该算法")
-
-        await db.commit()
 
     # ── 导入/导出 ──────────────────────────────────────
 
@@ -438,7 +430,6 @@ class AlgorithmService:
         )
 
         created = await algorithm_repository.create(db, algorithm)
-        await db.commit()
         return created.id
 
     # ── 监控 ──────────────────────────────────────

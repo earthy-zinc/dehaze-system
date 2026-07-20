@@ -100,7 +100,6 @@ class AlgorithmSelectService:
         db.add(favorite)
         await db.flush()
         await db.refresh(favorite)
-        await db.commit()
         return favorite.id
 
     @staticmethod
@@ -112,7 +111,6 @@ class AlgorithmSelectService:
             .where(SysAlgorithmFavorite.algorithm_id == algorithm_id)
         )
         result = await db.execute(stmt)
-        await db.commit()
         return result.rowcount > 0
 
     @staticmethod

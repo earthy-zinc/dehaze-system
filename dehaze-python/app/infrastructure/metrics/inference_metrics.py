@@ -1,15 +1,13 @@
-import asyncio
-import contextlib
-import functools
+"""推理指标 Prometheus 采集
+
+提供 record_inference_metrics() 手动记录推理耗时、请求计数、图像尺寸等指标。
+"""
 import logging
-import time
-from typing import Any, Awaitable, Callable, Optional, TypeVar, overload
+from typing import Optional
 
 from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T")
 
 # buckets: 100ms, 500ms, 1s, 2s, 5s, 10s, 30s, 1min, 2min, 5min
 INFERENCE_DURATION = Histogram(
@@ -47,52 +45,6 @@ def _record_inference(algorithm: str, status: str, duration: float) -> None:
     INFERENCE_REQUESTS_TOTAL.labels(algorithm=algorithm, status=status).inc()
 
 
-@contextlib.contextmanager
-def _track_timing(algorithm: str):
-    """推理计时上下文管理器，统一 async/sync 的指标记录逻辑"""
-    start = time.monotonic()
-    status = "success"
-    try:
-        yield
-    except Exception:
-        status = "error"
-        raise
-    finally:
-        _record_inference(algorithm, status, time.monotonic() - start)
-
-
-def track_inference(
-    algorithm: str,
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-    """
-    推理耗时追踪装饰器
-
-    用法:
-        @track_inference(algorithm="AECRNet")
-        async def run_inference(self, image: Image) -> Result:
-            ...
-
-    Args:
-        algorithm: 算法名称
-    """
-    def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-        @functools.wraps(func)
-        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
-            with _track_timing(algorithm):
-                return await func(*args, **kwargs)
-
-        @functools.wraps(func)
-        def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
-            with _track_timing(algorithm):
-                return func(*args, **kwargs)
-
-        if asyncio.iscoroutinefunction(func):
-            return async_wrapper
-        return sync_wrapper
-
-    return decorator
-
-
 def record_inference_metrics(
     algorithm: str,
     duration_seconds: float,
@@ -101,15 +53,13 @@ def record_inference_metrics(
     batch_size: int = 1,
 ) -> None:
     """
-    手动记录推理指标
-
-    用于无法使用装饰器的场景。
+    记录推理指标
 
     Args:
         algorithm: 算法名称
         duration_seconds: 推理耗时（秒）
         status: 状态 (success/error)
-        image_size: 图像尺寸（宽*高）
+        image_size: 图像尺寸（宽*高像素数）
         batch_size: 批处理大小
     """
     _record_inference(algorithm, status, duration_seconds)

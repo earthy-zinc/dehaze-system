@@ -231,8 +231,6 @@ class MenuService:
         else:
             merged = await menu_repository.update_menu(db, menu)
 
-        await db.commit()
-
         # 清除缓存
         await MenuService._clear_menu_cache(db, redis)
 
@@ -390,7 +388,6 @@ class MenuService:
             raise BusinessException(ResultCode.RESOURCE_NOT_FOUND, "菜单不存在")
 
         menu.visible = visible
-        await db.commit()
 
         # 清除缓存
         await MenuService._clear_menu_cache(db, redis)
@@ -489,7 +486,6 @@ class MenuService:
 
         # 2. 删除菜单及其子菜单
         await menu_repository.delete_menu_and_children(db, menu_id)
-        await db.commit()
 
         # 3. 清除缓存
         await MenuService._clear_menu_cache(db, redis)

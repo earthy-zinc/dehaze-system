@@ -169,7 +169,7 @@ async def logout(
                     "1",
                 )
         except Exception as e:
-            logger.warning(f"logout 解码 Token 失败: {e}")
+            logger.warning("logout 解码 Token 失败: %s", e)
 
     return success(msg="一切ok")
 
@@ -184,9 +184,31 @@ async def get_captcha(
 
 @router.post("/refresh", response_model=Result[LoginData], summary="刷新访问令牌", description="使用当前有效的 Token 获取新的访问令牌，原 Token 的 jti 会被加入黑名单")
 async def refresh_token(
+    request: Request,
     user: UserContext = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
 ):
+    # 将旧 Token 的 jti 加入黑名单，防止重放攻击
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        old_token = auth_header[7:]
+        try:
+            payload = jwt.decode(
+                old_token, settings.JWT_SECRET_KEY, algorithms=["HS256"])
+            jti = payload.get("jti")
+            if jti:
+                # TTL = 剩余有效期（exp - now），至少 1 秒
+                import time as _time
+                exp = payload.get("exp", 0)
+                remaining_ttl = max(int(exp - _time.time()), 1)
+                await redis.setex(
+                    f"token:blacklist:{jti}",
+                    remaining_ttl,
+                    "1",
+                )
+        except Exception as e:
+            logger.warning("refresh 解码旧 Token 失败: %s", e)
+
     result = await AuthService.refresh_token(db, user.id, redis)
     return success(result)

@@ -69,7 +69,6 @@ class InputHistoryService:
             is_favorite=False,
             sync_status=0,
         )
-        await db.commit()
         return history.id
 
     @staticmethod
@@ -88,33 +87,28 @@ class InputHistoryService:
         if is_favorite is not None:
             history.is_favorite = is_favorite
             await db.flush()
-        await db.commit()
 
     @staticmethod
     async def delete_history(db: AsyncSession, history_id: int, user_id: int) -> None:
         """删除单条历史记录（幂等，对齐 Java deleteHistory）"""
         await input_history_repository.delete_by_user(db, user_id, history_id)
-        await db.commit()
 
     @staticmethod
     async def batch_delete(db: AsyncSession, ids: list[int], user_id: int) -> int:
         """批量删除历史记录（仅限本人）"""
         result = await input_history_repository.batch_delete_by_user(db, user_id, ids)
-        await db.commit()
         return result
 
     @staticmethod
     async def clear_history(db: AsyncSession, user_id: int) -> int:
         """清空用户所有历史记录"""
         result = await input_history_repository.clear_by_user(db, user_id)
-        await db.commit()
         return result
 
     @staticmethod
     async def sync_history(db: AsyncSession, user_id: int) -> int:
         """同步历史记录（对齐 Java syncHistory：标记所有未同步记录为已同步）"""
         count = await input_history_repository.mark_all_synced(db, user_id)
-        await db.commit()
         return count
 
     @staticmethod

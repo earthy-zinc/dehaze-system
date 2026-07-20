@@ -13,7 +13,7 @@ from app.infrastructure.metrics.cache_metrics import (CACHE_HITS_TOTAL,
 from app.infrastructure.metrics.gpu_metrics import GPUMetricsCollector, \
     collect_gpu_metrics, get_gpu_metrics_collector
 from app.infrastructure.metrics.inference_metrics import (
-    INFERENCE_DURATION, INFERENCE_REQUESTS_TOTAL, track_inference)
+    INFERENCE_DURATION, INFERENCE_REQUESTS_TOTAL, record_inference_metrics)
 from app.infrastructure.metrics.task_metrics import (TASK_PROCESSING_TIME,
                                                      TASK_PROCESSING_TOTAL,
                                                      TASK_QUEUE_DEPTH,
@@ -27,7 +27,7 @@ __all__ = [
     # 推理指标
     "INFERENCE_DURATION",
     "INFERENCE_REQUESTS_TOTAL",
-    "track_inference",
+    "record_inference_metrics",
     # 任务指标
     "TASK_QUEUE_DEPTH",
     "TASK_PROCESSING_TOTAL",

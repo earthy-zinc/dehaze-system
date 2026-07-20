@@ -46,19 +46,19 @@ async def init_xxljob() -> Optional[PyxxlRunner]:
             os.makedirs(os.path.dirname(pid_file), exist_ok=True)
             with open(pid_file, "w") as f:
                 f.write(str(runner.daemon.pid))
-            logger.info(f"XXL-Job 子进程 PID={runner.daemon.pid} 已写入 {pid_file}")
+            logger.info("XXL-Job 子进程 PID=%s 已写入 %s", runner.daemon.pid, pid_file)
 
         _runner = runner
         logger.info(
-            f"XXL-Job 执行器已启动: "
-            f"appName={settings.XXLJOB_EXECUTOR_APP_NAME}, "
-            f"port={settings.XXLJOB_EXECUTOR_PORT}, "
-            f"admin={settings.XXLJOB_ADMIN_URL}"
+            "XXL-Job 执行器已启动: appName=%s, port=%s, admin=%s",
+            settings.XXLJOB_EXECUTOR_APP_NAME,
+            settings.XXLJOB_EXECUTOR_PORT,
+            settings.XXLJOB_ADMIN_URL,
         )
         return _runner
 
     except Exception as e:
-        logger.error(f"XXL-Job 执行器初始化失败（服务继续启动）: {e}")
+        logger.error("XXL-Job 执行器初始化失败（服务继续启动）: %s", e)
         _runner = None
         return None
 
@@ -74,7 +74,7 @@ async def close_xxljob() -> None:
                 _runner.daemon.terminate()
                 _runner.daemon.join(timeout=5)
         except Exception as e:
-            logger.warning(f"XXL-Job 执行器关闭异常: {e}")
+            logger.warning("XXL-Job 执行器关闭异常: %s", e)
         finally:
             # 清理 PID 文件
             pid_file = settings.XXLJOB_PID_FILE

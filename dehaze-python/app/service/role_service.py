@@ -132,7 +132,6 @@ class RoleService:
         )
 
         created = await role_repository.create(db, role)
-        await db.commit()
 
         return created
 
@@ -193,7 +192,6 @@ class RoleService:
         if role.code is None:
             raise BusinessException(ResultCode.BUSINESS_ERROR, "角色编码不能为空")
         await role_repository.update_by_id(db, role_id, update_data)
-        await db.commit()
 
         # 清除角色权限缓存
         await RoleService._clear_role_perms_cache(redis, role.code)
@@ -245,8 +243,6 @@ class RoleService:
         await role_repository.delete_role_menus_by_role_ids(db, role_ids)
         await role_repository.delete_by_ids(db, role_ids)
 
-        await db.commit()
-
         # 批量清除角色权限缓存
         for role_id in role_ids:
             role = roles_map[role_id]
@@ -283,7 +279,6 @@ class RoleService:
             raise BusinessException(ResultCode.OPERATION_NOT_ALLOW, "超级管理员角色不可禁用")
 
         await role_repository.update_by_id(db, role_id, {"status": status})
-        await db.commit()
 
     @staticmethod
     async def get_role_menu_ids(db: AsyncSession, role_id: int) -> list[int]:
@@ -341,7 +336,6 @@ class RoleService:
 
         # 使用 repository 替换角色菜单
         await role_repository.replace_role_menus(db, role_id, menu_ids)
-        await db.commit()
 
         # 清除角色权限缓存
         await RoleService._clear_role_perms_cache(redis, role.code)

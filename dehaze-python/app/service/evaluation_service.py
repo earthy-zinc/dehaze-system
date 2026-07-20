@@ -11,7 +11,7 @@ import time
 from typing import Optional
 
 from app.core.exceptions import BusinessException
-from app.database import async_session_factory
+from app.database import get_db_session
 from app.repository.pred_eval_log_repository import eval_log_repository
 from app.service.prediction_service import prediction_service
 from app.utils.file import calculate_bytes_md5
@@ -140,7 +140,7 @@ class EvaluationService:
     ) -> Optional[int]:
         """写入评估日志"""
         try:
-            async with async_session_factory() as db:
+            async with get_db_session() as db:
                 log = await eval_log_repository.create_log(
                     db=db,
                     algorithm_id=algorithm_id,
@@ -151,7 +151,6 @@ class EvaluationService:
                     result=result,
                     time_ms=time_ms,
                 )
-                await db.commit()
                 return log.id
         except Exception as e:
             logger.warning("写入评估日志失败: %s", e)

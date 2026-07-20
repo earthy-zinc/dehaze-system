@@ -20,10 +20,11 @@ from typing import Optional
 import httpx
 import PIL.Image
 
-from app.database import async_session_factory
+from app.database import async_session_factory, get_db_session
 from app.dependencies.redis import get_redis_client
 from app.infrastructure.cache.redis_fallback import redis_operation_with_fallback
 from app.infrastructure.logging import _trace_id_var
+from app.infrastructure.metrics.inference_metrics import record_inference_metrics
 from app.core.code import ResultCode
 from app.core.exceptions import BusinessException
 from app.models.entity.sys_algorithm import SysAlgorithm
@@ -100,7 +101,7 @@ class PredictionService:
         cached = await self._get_cached_prediction(cache_key)
         if cached is not None:
             elapsed = int((time.time() - start) * 1000)
-            logger.info(f"预测缓存命中: algorithmId={algorithm_id}, md5={image_md5}")
+            logger.info("预测缓存命中: algorithmId=%s, md5=%s", algorithm_id, image_md5)
 
             # 写入日志（缓存命中也记录，便于审计）
             log_id = await self._write_pred_log(
@@ -124,13 +125,34 @@ class PredictionService:
             }
 
         # 4. 缓存未命中，调用算法去雾（在线程池中执行，避免阻塞事件循环）
+        # 计算输入图像尺寸（像素数），用于 Prometheus INFERENCE_IMAGE_SIZE 指标
+        try:
+            with PIL.Image.open(image_bytes) as img:
+                image_size = img.width * img.height
+            image_bytes.seek(0)  # reset after reading header
+        except Exception:
+            image_size = None
+
         loop = asyncio.get_running_loop()
-        result_bytes = await loop.run_in_executor(
-            _inference_executor,
-            self._run_dehaze,
-            algorithm.import_path or algorithm.name,
-            image_bytes,
-        )
+        inference_start = time.monotonic()
+        inference_status = "success"
+        try:
+            result_bytes = await loop.run_in_executor(
+                _inference_executor,
+                self._run_dehaze,
+                algorithm.import_path or algorithm.name,
+                image_bytes,
+            )
+        except Exception:
+            inference_status = "error"
+            raise
+        finally:
+            record_inference_metrics(
+                algorithm=algorithm.name,
+                duration_seconds=time.monotonic() - inference_start,
+                status=inference_status,
+                image_size=image_size,
+            )
 
         # 5. 上传结果图片
         result_url = await self._upload_result(result_bytes, algorithm.name)
@@ -227,7 +249,7 @@ class PredictionService:
         from app.models.base import set_current_user_id
         set_current_user_id(user_id)
         try:
-            async with async_session_factory() as db:
+            async with get_db_session() as db:
                 log = await pred_log_repository.create_log(
                     db=db,
                     algorithm_id=algorithm_id,
@@ -237,10 +259,9 @@ class PredictionService:
                     pred_url=pred_url,
                     time_ms=time_ms,
                 )
-                await db.commit()
                 return log.id
         except Exception as e:
-            logger.warning(f"写入预测日志失败: {e}")
+            logger.warning("写入预测日志失败: %s", e)
             return None
         finally:
             set_current_user_id(None)
@@ -306,13 +327,15 @@ class PredictionService:
                     ) from e
                 last_exc = e
                 logger.warning(
-                    f"图片下载返回 {e.response.status_code} (attempt={attempt + 1}/{max_retry + 1}): {url}"
+                    "图片下载返回 %s (attempt=%s/%s): %s",
+                    e.response.status_code, attempt + 1, max_retry + 1, url,
                 )
             except (httpx.TimeoutException, httpx.TransportError) as e:
                 # 网络层错误（连接超时/拒绝/EOF）→ 可重试
                 last_exc = e
                 logger.warning(
-                    f"图片下载网络异常 (attempt={attempt + 1}/{max_retry + 1}): {url} - {e}"
+                    "图片下载网络异常 (attempt=%s/%s): %s - %s",
+                    attempt + 1, max_retry + 1, url, e,
                 )
 
             if attempt < max_retry:
@@ -362,7 +385,7 @@ class PredictionService:
         model_files = list(model_dir.glob("*.pth")) + list(model_dir.glob("*.pt"))
         model_path = str(model_files[0]) if model_files else ""
 
-        logger.info(f"执行去雾: module={module_name}, model={model_path}")
+        logger.info("执行去雾: module=%s, model=%s", module_name, model_path)
 
         # 调用 dehaze 函数
         result = dehaze_fn(image_bytes, model_path)
@@ -390,7 +413,7 @@ class PredictionService:
         dest_path = await loop.run_in_executor(
             None, self._write_file_sync, upload_dir, filename, result_bytes.getvalue())
 
-        logger.info(f"预测结果已保存: {dest_path}")
+        logger.info("预测结果已保存: %s", dest_path)
         return f"/api/v1/files/download/predictions/{date_str}/{filename}"
 
     @staticmethod

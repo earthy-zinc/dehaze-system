@@ -186,7 +186,6 @@ class DeptService:
         db.add(dept)
         await db.flush()
         await db.refresh(dept)
-        await db.commit()
 
         # 清除缓存
         await DeptService._clear_cache(redis)
@@ -256,8 +255,6 @@ class DeptService:
         if "sort" in data:
             dept.sort = data["sort"]
 
-        await db.commit()
-
         # 清除缓存
         await DeptService._clear_cache(redis)
 
@@ -303,8 +300,6 @@ class DeptService:
         deleted_count = await dept_repository.delete_depts_with_children(db, dept_ids)
         if deleted_count == 0:
             raise BusinessException("部门删除失败")
-
-        await db.commit()
 
         # 清除缓存
         await DeptService._clear_cache(redis)

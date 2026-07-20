@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from fastapi import Request
 from sqlalchemy.ext.asyncio import (AsyncSession, async_sessionmaker,
                                     create_async_engine)
 from sqlalchemy.orm import DeclarativeBase
@@ -39,21 +40,13 @@ class Base(DeclarativeBase):
     pass
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI 依赖注入：获取数据库 Session（自动事务管理）
+async def get_db(request: Request) -> AsyncSession:
+    """FastAPI 依赖注入：获取数据库 Session
 
-    事务边界 = 请求边界：
-    - 请求正常完成 → 自动 commit
-    - 请求抛出异常 → 自动 rollback
-    - Service/Repository 层无需手动 commit，只需 flush() 获取 ID
+    事务边界由 DBSessionMiddleware 管理（响应发送前 commit/rollback），
+    Service/Repository 层无需手动 commit，只需 flush() 获取 ID。
     """
-    async with async_session_factory() as session:
-        try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+    return request.state.db
 
 
 @asynccontextmanager
@@ -83,7 +76,7 @@ async def init_db():
             await conn.execute(text("SELECT 1"))
             logger.info("数据库连接成功")
     except Exception as e:
-        logger.error(f"数据库连接失败: {e}")
+        logger.error("数据库连接失败: %s", e)
         raise RuntimeError(f"数据库不可用，服务启动失败: {e}") from e
 
 

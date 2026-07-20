@@ -196,7 +196,6 @@ class UserService:
         )
 
         user = await user_repository.create_user(db, user, role_ids)
-        await db.commit()
         return user
 
     @staticmethod
@@ -253,7 +252,6 @@ class UserService:
 
         await db.flush()
         await user_repository.replace_user_roles(db, user_id, role_ids)
-        await db.commit()
 
     @staticmethod
     async def update_user_status(
@@ -280,7 +278,6 @@ class UserService:
             raise BusinessException("超级管理员不可禁用")
 
         user.status = status
-        await db.commit()
 
     @staticmethod
     async def update_password(
@@ -310,7 +307,6 @@ class UserService:
 
         hashed_password = await hash_password_async(new_password)
         user.password = hashed_password
-        await db.commit()
 
     @staticmethod
     async def delete_users(db: AsyncSession, ids: str) -> dict[str, int]:
@@ -339,7 +335,6 @@ class UserService:
 
         if ids_to_delete:
             await user_repository.soft_delete_by_ids(db, ids_to_delete)
-            await db.commit()
 
         return {"deleted_count": len(ids_to_delete), "protected_count": len(protected_ids)}
 
@@ -463,7 +458,6 @@ class UserService:
                 })
                 failed_count += 1
 
-        await db.commit()
         return {
             "successCount": success_count,
             "failedCount": failed_count,

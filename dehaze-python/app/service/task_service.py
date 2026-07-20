@@ -126,7 +126,6 @@ class TaskServiceAsync:
         try:
             await db.flush()
             await db.refresh(sys_task)
-            await db.commit()
         except IntegrityError:
             await db.rollback()
             # 并发场景：另一个请求已用相同 idempotency_key 创建了任务
@@ -357,7 +356,6 @@ class TaskServiceAsync:
         cancel_key = TASK_CANCEL_PREFIX + task_id
         await redis.setex(cancel_key, TaskServiceAsync.CANCEL_FLAG_TTL, 'true')
 
-        await db.commit()
         logger.info("取消导出任务成功: taskId=%s", task_id)
 
     @staticmethod
@@ -417,7 +415,6 @@ class TaskServiceAsync:
         sys_task.worker_id = None
         sys_task.expires_at = datetime.now() + timedelta(
             hours=TaskServiceAsync.TASK_EXPIRE_HOURS)
-        await db.commit()
 
         # 更新缓存
         await TaskServiceAsync._update_cache(redis, sys_task)
@@ -543,7 +540,6 @@ class TaskServiceAsync:
                 sys_task.error_message = error_message
             if status in (TaskStatus.COMPLETED.value, TaskStatus.FAILED.value, TaskStatus.CANCELLED.value):
                 sys_task.completed_at = datetime.now()
-            await db.commit()
 
             # 更新缓存
             await TaskServiceAsync._update_cache(redis, sys_task)
@@ -591,7 +587,6 @@ class TaskServiceAsync:
             )
             sys_task.progress = progress
             sys_task.processed_files = processed_files
-            await db.commit()
 
             # 更新独立进度缓存（P1-05）
             progress_key = TASK_PROGRESS_PREFIX + sys_task.task_id
@@ -696,7 +691,6 @@ class TaskServiceAsync:
                         # 更新任务状态为 processing
                         sys_task.status = TaskStatus.PROCESSING.value
                         sys_task.started_at = datetime.now()
-                        await db.commit()
                         await TaskServiceAsync._update_cache(redis, sys_task)
 
                         # 使用 TaskMetricsContext 自动管理指标

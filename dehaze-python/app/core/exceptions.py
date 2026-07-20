@@ -44,6 +44,7 @@ class TaskCancelledException(BusinessException):
 def register_exception_handlers(app: FastAPI):
     @app.exception_handler(BusinessException)
     async def business_exception_handler(request: Request, exc: BusinessException):
+        request.state.db_should_rollback = True
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -98,6 +99,7 @@ def register_exception_handlers(app: FastAPI):
 
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException):
+        request.state.db_should_rollback = True
         # 根据 HTTP 状态码映射到对应的 ResultCode
         status_code_map = {
             status.HTTP_401_UNAUTHORIZED: ResultCode.TOKEN_INVALID,
@@ -120,6 +122,7 @@ def register_exception_handlers(app: FastAPI):
 
     @app.exception_handler(SQLAlchemyError)
     async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError):
+        request.state.db_should_rollback = True
         _logger.error(f"数据库异常: {exc}", exc_info=True)
 
         return JSONResponse(
@@ -135,6 +138,7 @@ def register_exception_handlers(app: FastAPI):
     @app.exception_handler(Exception)
     async def generic_exception_handler(request: Request, exc: Exception):
         """通用异常（兜底）"""
+        request.state.db_should_rollback = True
         _logger.error(f"未处理异常: {exc}\n{traceback.format_exc()}")
 
         if settings.DEBUG:

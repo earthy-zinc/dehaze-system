@@ -27,9 +27,9 @@ def _match_permission(user_permissions: list[str], required_permission: str) -> 
         return True
 
     for user_perm in user_permissions:
-        if fnmatch.fnmatch(required_permission, user_perm):
+        if fnmatch.fnmatchcase(required_permission, user_perm):
             return True
-        if fnmatch.fnmatch(user_perm, required_permission):
+        if fnmatch.fnmatchcase(user_perm, required_permission):
             return True
 
     return False

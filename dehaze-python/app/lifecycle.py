@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.infrastructure.logging import setup_logging
     setup_logging(use_json_format=settings.LOG_FORMAT_JSON)
 
-    logger.info(f"启动 {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info("启动 %s v%s", settings.APP_NAME, settings.APP_VERSION)
 
     # 多 Worker 守卫：判断当前 Worker 是否为主 Worker
     # XXL-Job daemon 和 GPU 指标采集器只需在主 Worker 中启动
@@ -128,7 +128,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("从 Worker 跳过 GPU 指标采集器启动（由主 Worker 负责）")
     app.state.gpu_collector = gpu_collector
 
-    logger.info(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} 启动成功")
+    logger.info("✅ %s v%s 启动成功", settings.APP_NAME, settings.APP_VERSION)
 
     yield
 
@@ -157,16 +157,16 @@ async def _graceful_shutdown(app: FastAPI) -> None:
         await WebSocketService.broadcast_shutdown_notification()
         logger.info("已通知 WebSocket 客户端")
     except Exception as e:
-        logger.warning(f"通知 WebSocket 客户端失败: {e}")
+        logger.warning("通知 WebSocket 客户端失败: %s", e)
 
     # 3. 等待进行中的任务完成
     if task_tracker:
         running_count = task_tracker.running_count
         if running_count > 0:
-            logger.info(f"等待 {running_count} 个任务完成...")
+            logger.info("等待 %s 个任务完成...", running_count)
             completed, cancelled = await task_tracker.wait_for_completion()
             logger.info(
-                f"任务等待完成: completed={completed}, cancelled={cancelled}")
+                "任务等待完成: completed=%s, cancelled=%s", completed, cancelled)
         else:
             logger.info("没有运行中的任务")
 
@@ -180,7 +180,7 @@ async def _graceful_shutdown(app: FastAPI) -> None:
         await close_websocket_manager()
         logger.info("WebSocket 跨 Worker 通信已关闭")
     except Exception as e:
-        logger.warning(f"关闭 WebSocket 跨 Worker 通信失败: {e}")
+        logger.warning("关闭 WebSocket 跨 Worker 通信失败: %s", e)
 
     # 4. 关闭 XXL-Job 执行器（仅在主 Worker 中启动了才需关闭）
     if getattr(app.state, "xxljob_runner", None) is not None:

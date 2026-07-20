@@ -76,7 +76,6 @@ class DictService:
 
         # 创建字典项
         result = await dict_repository.create_dict(db, data)
-        await db.commit()
 
         # 清除缓存
         await CacheService(redis).delete(f"{DICT_OPTIONS_CACHE_PREFIX}{type_code}")
@@ -111,7 +110,6 @@ class DictService:
 
         # 更新字典
         result = await dict_repository.update_by_id(db, dict_id, data)
-        await db.commit()
 
         # 清除缓存（typeCode 不变，只需清除一个）
         if old_dict.type_code:
@@ -137,7 +135,6 @@ class DictService:
         type_codes = await dict_repository.get_type_codes_by_ids(db, dict_ids)
 
         result = await dict_repository.delete_by_ids(db, dict_ids)
-        await db.commit()
 
         # 清除相关缓存
         cache = CacheService(redis)
@@ -211,7 +208,6 @@ class DictTypeService:
             raise BusinessException(ResultCode.DATA_EXISTS, "字典类型编码已存在")
 
         result = await dict_type_repository.create_type(db, data)
-        await db.commit()
         return result
 
     @staticmethod
@@ -243,8 +239,6 @@ class DictTypeService:
         # code 变更时级联更新 sys_dict.type_code
         if result and new_code and new_code != old_type.code:
             await dict_repository.update_type_code(db, old_type.code, new_code)
-
-        await db.commit()
 
         # 清除缓存
         if result and new_code and new_code != old_type.code:
@@ -281,5 +275,4 @@ class DictTypeService:
                         "存在关联的字典数据，无法删除")
 
         result = await dict_type_repository.delete_by_ids(db, type_ids)
-        await db.commit()
         return result > 0
