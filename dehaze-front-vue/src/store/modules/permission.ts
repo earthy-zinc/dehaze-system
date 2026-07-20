@@ -33,13 +33,24 @@ const hasPermission = (roles: string[], route: RouteRecordRaw) => {
  *
  * @param routes 接口返回所有的动态路由
  * @param roles 用户角色集合
+ * @param parentPath 父级完整路径（用于生成唯一 name，避免 Vue Router 4 的 name 冲突）
  * @returns 返回用户有权限的动态路由
  */
-const filterAsyncRoutes = (routes: RouteVO[], roles: string[]) => {
+const filterAsyncRoutes = (
+  routes: RouteVO[],
+  roles: string[],
+  parentPath = ""
+) => {
   const asyncRoutes: RouteRecordRaw[] = [];
   routes.forEach((route) => {
     const tmpRoute = { ...route } as RouteRecordRaw; // 深拷贝 route 对象 避免污染
     if (hasPermission(roles, tmpRoute)) {
+      // 生成基于完整路径的唯一 name，避免 Vue Router 4 在多个子路由同名时只能注册第一个的问题
+      // 例如：/algorithm/list 与 /dataset/list 在原后端逻辑下 name 都为 "List"
+      const fullPath = resolveFullPath(parentPath, tmpRoute.path);
+      if (fullPath) {
+        tmpRoute.name = fullPath;
+      }
       // 如果是顶级目录，替换为 Layout 组件
       if (tmpRoute.component?.toString() == "Layout") {
         tmpRoute.component = Layout;
@@ -54,7 +65,11 @@ const filterAsyncRoutes = (routes: RouteVO[], roles: string[]) => {
       }
 
       if (tmpRoute.children) {
-        tmpRoute.children = filterAsyncRoutes(route.children, roles);
+        tmpRoute.children = filterAsyncRoutes(
+          route.children,
+          roles,
+          fullPath
+        );
       }
 
       asyncRoutes.push(tmpRoute);
@@ -63,6 +78,18 @@ const filterAsyncRoutes = (routes: RouteVO[], roles: string[]) => {
 
   return asyncRoutes;
 };
+
+/**
+ * 拼接父子路径生成完整路径（用于路由 name 唯一化）
+ * 例如：parentPath="/algorithm"，childPath="list" → "/algorithm/list"
+ */
+function resolveFullPath(parentPath: string, childPath: string): string {
+  if (!childPath) return parentPath;
+  // 子路径以 "/" 开头时视为绝对路径
+  if (childPath.startsWith("/")) return childPath;
+  if (!parentPath) return childPath;
+  return `${parentPath.replace(/\/$/, "")}/${childPath}`;
+}
 // setup
 export const usePermissionStore = defineStore("permission", () => {
   const routes = ref<RouteRecordRaw[]>([]);

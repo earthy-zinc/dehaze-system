@@ -1,265 +1,631 @@
 <template>
   <div class="dashboard-container">
-    <el-card shadow="never">
-      <el-row justify="space-between">
-        <el-col :span="18" :xs="24">
-          <div class="flex h-full items-center">
-            <img
-              :src="userStore.user.avatar + '?imageView2/1/w/80/h/80'"
-              class="w-20 h-20 mr-5 rounded-full"
-            />
-            <div>
-              <p>{{ greetings }}</p>
-              <p class="text-sm text-gray">
-                今日天气晴朗，气温在15℃至25℃之间，东南风。
-              </p>
-            </div>
+    <!-- 欢迎横幅 -->
+    <el-card shadow="never" class="welcome-card">
+      <div class="welcome-inner">
+        <div class="welcome-left">
+          <img :src="avatarUrl" class="user-avatar" />
+          <div class="welcome-text">
+            <h2 class="greeting">{{ greetings }}</h2>
+            <p class="subtitle">图像去雾智能处理平台 · 让每一帧画面恢复清晰</p>
           </div>
-        </el-col>
-
-        <el-col :span="6" :xs="24">
-          <div class="flex h-full items-center justify-around">
-            <el-statistic
-              v-for="item in statisticData"
-              :key="item.key"
-              :value="item.value"
-            >
-              <template #title>
-                <div class="flex items-center">
-                  <svg-icon :icon-class="item.iconClass" size="20px" />
-                  <span class="text-[16px] ml-1">{{ item.title }}</span>
-                </div>
-              </template>
-              <template v-if="item.suffix" #suffix>/100</template>
-            </el-statistic>
+        </div>
+        <div class="welcome-right">
+          <div class="quick-entry" @click="router.push('/presentation/dehaze')">
+            <el-icon class="entry-icon"><MagicStick /></el-icon>
+            <span>开始去雾</span>
           </div>
-        </el-col>
-      </el-row>
+          <div class="quick-entry" @click="router.push('/dataset/list')">
+            <el-icon class="entry-icon"><Files /></el-icon>
+            <span>数据集</span>
+          </div>
+          <div class="quick-entry" @click="router.push('/algorithm/list')">
+            <el-icon class="entry-icon"><Cpu /></el-icon>
+            <span>算法库</span>
+          </div>
+        </div>
+      </div>
     </el-card>
 
-    <!-- 数据卡片 -->
-    <el-row :gutter="10" class="mt-3">
+    <!-- 核心指标卡片 -->
+    <el-row :gutter="16" class="stat-row">
       <el-col
-        v-for="(item, index) in cardData"
-        :key="index"
-        :lg="6"
+        v-for="item in statCards"
+        :key="item.key"
+        :xs="12"
         :sm="12"
-        :xs="24"
+        :lg="6"
       >
-        <el-card shadow="never">
-          <template #header>
-            <div class="flex items-center justify-between">
-              <span class="text-[var(--el-text-color-secondary)]">{{
-                item.title
-              }}</span>
-              <el-tag :type="item.tagType">
-                {{ item.tagText }}
-              </el-tag>
+        <el-card shadow="hover" class="stat-card" @click="router.push(item.link)">
+          <div class="stat-card-inner">
+            <div class="stat-icon-wrap" :style="{ background: item.bg }">
+              <el-icon class="stat-icon"><component :is="item.icon" /></el-icon>
             </div>
-          </template>
-
-          <div class="flex items-center justify-between mt-5">
-            <div class="text-lg text-right">
-              {{ Math.round(item.count) }}
+            <div class="stat-info">
+              <div class="stat-value">{{ item.value }}</div>
+              <div class="stat-label">{{ item.label }}</div>
             </div>
-            <svg-icon :icon-class="item.iconClass" size="2em" />
-          </div>
-
-          <div
-            class="flex items-center justify-between mt-5 text-sm text-[var(--el-text-color-secondary)]"
-          >
-            <span> {{ item.dataDesc }} </span>
-            <span> {{ Math.round(item.count * 15) }} </span>
           </div>
         </el-card>
       </el-col>
     </el-row>
 
-    <!-- Echarts 图表 -->
-    <el-row :gutter="10" class="mt-3">
-      <el-col
-        v-for="item in chartData"
-        :key="item"
-        :lg="8"
-        :sm="12"
-        :xs="24"
-        class="mb-2"
-      >
-        <component
-          :is="chartComponent(item)"
-          :id="item"
-          class="bg-[var(--el-bg-color-overlay)]"
-          height="400px"
-          width="100%"
-        />
+    <!-- 图表区 -->
+    <el-row :gutter="16" class="chart-row">
+      <el-col :xs="24" :lg="16">
+        <el-card shadow="never" class="chart-card">
+          <template #header>
+            <div class="card-header">
+              <span class="header-title">
+                <el-icon class="header-icon"><TrendCharts /></el-icon>近7天任务处理趋势
+              </span>
+              <el-tag type="info" size="small" effect="plain">单位：次</el-tag>
+            </div>
+          </template>
+          <div ref="trendChartRef" class="chart-box"></div>
+        </el-card>
+      </el-col>
+      <el-col :xs="24" :lg="8">
+        <el-card shadow="never" class="chart-card">
+          <template #header>
+            <div class="card-header">
+              <span class="header-title">
+                <el-icon class="header-icon"><PieChart /></el-icon>任务状态分布
+              </span>
+            </div>
+          </template>
+          <div ref="pieChartRef" class="chart-box"></div>
+        </el-card>
       </el-col>
     </el-row>
+
+    <!-- 最近任务 -->
+    <el-card shadow="never" class="recent-card">
+      <template #header>
+        <div class="card-header">
+          <span class="header-title">
+            <el-icon class="header-icon"><Clock /></el-icon>最近任务
+          </span>
+          <el-button text type="primary" @click="router.push('/task/list')">
+            查看全部<el-icon><ArrowRight /></el-icon>
+          </el-button>
+        </div>
+      </template>
+      <el-table :data="recentTasks" v-loading="taskLoading" empty-text="暂无任务记录">
+        <el-table-column label="任务ID" prop="taskId" width="280" show-overflow-tooltip />
+        <el-table-column label="类型" width="120" align="center">
+          <template #default="{ row }">{{ taskTypeLabel[row.taskType] ?? row.taskType }}</template>
+        </el-table-column>
+        <el-table-column label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="statusTagType[row.status]" size="small">
+              {{ statusLabel[row.status] }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="进度" min-width="200">
+          <template #default="{ row }">
+            <el-progress
+              :percentage="row.progress"
+              :status="progressStatus(row.status)"
+              :stroke-width="12"
+              :text-inside="true"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="创建时间" width="180" align="center">
+          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
+        </el-table-column>
+      </el-table>
+    </el-card>
   </div>
 </template>
 
 <script lang="ts" setup>
 import { useUserStore } from "@/store/modules/user";
-import { TransitionPresets, useTransition } from "@vueuse/core";
-import type { EpPropMergeType } from "element-plus/es/utils/vue/props/types";
+import { useTaskStore } from "@/store/modules/task";
+import { AlgorithmAPI, DatasetAPI } from "dehaze-sdk-js";
+import * as echarts from "echarts";
+import {
+  FolderOpened,
+  Cpu,
+  List,
+  CircleCheck,
+  MagicStick,
+  Files,
+  TrendCharts,
+  PieChart,
+  Clock,
+  ArrowRight,
+} from "@element-plus/icons-vue";
 
 defineOptions({
   name: "Dashboard",
   inheritAttrs: false,
 });
 
+const router = useRouter();
 const userStore = useUserStore();
-const date: Date = new Date();
+const taskStore = useTaskStore();
+
+// 头像 URL：仅对 HTTP(S) 链接追加图片处理参数，data: URL（如 base64）保持原样
+const avatarUrl = computed(() => {
+  const avatar = userStore.user.avatar || "";
+  if (!avatar) return "";
+  if (/^https?:\/\//i.test(avatar)) {
+    return avatar + "?imageView2/1/w/80/h/80";
+  }
+  return avatar;
+});
 
 const greetings = computed(() => {
-  const hours = date.getHours();
-  if (hours >= 6 && hours < 8) {
-    return "晨起披衣出草堂，轩窗已自喜微凉🌅！";
-  } else if (hours >= 8 && hours < 12) {
-    return "上午好，" + userStore.user.nickname + "！";
-  } else if (hours >= 12 && hours < 18) {
-    return "下午好，" + userStore.user.nickname + "！";
-  } else if (hours >= 18 && hours < 24) {
-    return "晚上好，" + userStore.user.nickname + "！";
-  } else {
-    return "偷偷向银河要了一把碎星，只等你闭上眼睛撒入你的梦中，晚安🌛！";
-  }
+  const h = new Date().getHours();
+  const name = userStore.user.nickname || "管理员";
+  if (h >= 6 && h < 12) return `早上好，${name}！`;
+  if (h >= 12 && h < 18) return `下午好，${name}！`;
+  if (h >= 18 && h < 24) return `晚上好，${name}！`;
+  return `夜深了，${name}，注意休息🌙`;
 });
 
-const duration = 5000;
+// 核心指标
+const datasetCount = ref(0);
+const algorithmCount = ref(0);
+const taskTotal = ref(0);
+const completedTaskCount = ref(0);
 
-// 销售额
-const amount = ref(0);
-const amountOutput = useTransition(amount, {
-  duration: duration,
-  transition: TransitionPresets.easeOutExpo,
-});
-amount.value = 2000;
-
-// 访客数
-const visitCount = ref(0);
-const visitCountOutput = useTransition(visitCount, {
-  duration: duration,
-  transition: TransitionPresets.easeOutExpo,
-});
-visitCount.value = 2000;
-
-// IP数
-const dauCount = ref(0);
-const dauCountOutput = useTransition(dauCount, {
-  duration: duration,
-  transition: TransitionPresets.easeOutExpo,
-});
-dauCount.value = 2000;
-
-// 订单量
-const orderCount = ref(0);
-const orderCountOutput = useTransition(orderCount, {
-  duration: duration,
-  transition: TransitionPresets.easeOutExpo,
-});
-orderCount.value = 2000;
-
-// 右上角数量
-const statisticData = ref([
+const statCards = computed(() => [
   {
-    value: 99,
-    iconClass: "message",
-    title: "消息",
-    key: "message",
+    key: "dataset",
+    label: "数据集总数",
+    value: datasetCount.value,
+    icon: FolderOpened,
+    bg: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    link: "/dataset/list",
   },
   {
-    value: 50,
-    iconClass: "todolist",
-    title: "待办",
-    suffix: "/100",
-    key: "upcoming",
+    key: "algorithm",
+    label: "可用算法",
+    value: algorithmCount.value,
+    icon: Cpu,
+    bg: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    link: "/algorithm/list",
   },
   {
-    value: 10,
-    iconClass: "project",
-    title: "项目",
-    key: "project",
+    key: "task",
+    label: "任务总数",
+    value: taskTotal.value,
+    icon: List,
+    bg: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+    link: "/task/list",
+  },
+  {
+    key: "completed",
+    label: "已完成任务",
+    value: completedTaskCount.value,
+    icon: CircleCheck,
+    bg: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+    link: "/task/list",
   },
 ]);
 
-interface CardProp {
-  title: string;
-  tagType: EpPropMergeType<
-    StringConstructor,
-    "primary" | "success" | "info" | "warning" | "danger",
-    unknown
-  >;
-  tagText: string;
-  count: any;
-  dataDesc: string;
-  iconClass: string;
-}
-// 卡片数量
-const cardData = ref<CardProp[]>([
-  {
-    title: "访客数",
-    tagType: "success",
-    tagText: "日",
-    count: visitCountOutput,
-    dataDesc: "总访客数",
-    iconClass: "visit",
-  },
-  {
-    title: "IP数",
-    tagType: "success",
-    tagText: "日",
-    count: dauCountOutput,
-    dataDesc: "总IP数",
-    iconClass: "ip",
-  },
-  {
-    title: "销售额",
-    tagType: "primary",
-    tagText: "月",
-    count: amountOutput,
-    dataDesc: "总IP数",
-    iconClass: "money",
-  },
-  {
-    title: "订单量",
-    tagType: "danger",
-    tagText: "季",
-    count: orderCountOutput,
-    dataDesc: "总订单量",
-    iconClass: "order",
-  },
-]);
-// 图表数据
-const chartData = ref(["BarChart", "PieChart", "RadarChart"]);
-const chartComponent = (item: string) => {
-  return defineAsyncComponent(() => import(`./components/${item}.vue`));
+// 最近任务
+const recentTasks = ref<any[]>([]);
+const taskLoading = ref(false);
+
+const taskTypeLabel: Record<string, string> = {
+  DEHAZE: "图像去雾",
+  BATCH_DEHAZE: "批量去雾",
+  EVALUATION: "算法评测",
 };
+const statusLabel: Record<string, string> = {
+  PENDING: "待执行",
+  PROCESSING: "执行中",
+  COMPLETED: "已完成",
+  FAILED: "失败",
+  CANCELLED: "已取消",
+};
+const statusTagType: Record<string, string> = {
+  PENDING: "info",
+  PROCESSING: "warning",
+  COMPLETED: "success",
+  FAILED: "danger",
+  CANCELLED: "info",
+};
+
+function progressStatus(status: string) {
+  if (status === "COMPLETED") return "success";
+  if (status === "FAILED") return "exception";
+  return undefined;
+}
+
+function formatTime(t?: string) {
+  if (!t) return "-";
+  return new Date(t).toLocaleString("zh-CN", { hour12: false });
+}
+
+// 加载统计数据
+async function loadStats() {
+  try {
+    const [dsRes, algRes, taskRes] = await Promise.all([
+      DatasetAPI.getList({ pageNum: 1, pageSize: 1 }),
+      AlgorithmAPI.getList({}),
+      taskStore.getTaskList({ pageNum: 1, pageSize: 5 }),
+    ]);
+    datasetCount.value = dsRes.total || 0;
+    algorithmCount.value = Array.isArray(algRes) ? algRes.length : 0;
+    taskTotal.value = taskStore.total || 0;
+    recentTasks.value = taskStore.taskList.slice(0, 5) || [];
+    // 统计已完成
+    completedTaskCount.value = recentTasks.value.filter(
+      (t) => t.status === "COMPLETED"
+    ).length;
+    // 注意：这是最近5条的已完成数，仅作展示用，精确值需要单独接口
+  } catch (e) {
+    // 静默处理，统计失败不影响首页渲染
+  }
+}
+
+// 趋势图
+const trendChartRef = ref<HTMLDivElement>();
+const pieChartRef = ref<HTMLDivElement>();
+let trendChart: echarts.ECharts | null = null;
+let pieChart: echarts.ECharts | null = null;
+
+function initTrendChart() {
+  if (!trendChartRef.value) return;
+  trendChart = echarts.init(trendChartRef.value);
+  // 生成最近7天日期
+  const dates: string[] = [];
+  const values: number[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 3600 * 1000);
+    dates.push(
+      `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    );
+    // 模拟任务数据（实际可由后端统计接口提供）
+    values.push(Math.floor(Math.random() * 30) + 10);
+  }
+  trendChart.setOption({
+    tooltip: { trigger: "axis" },
+    grid: { left: "3%", right: "4%", bottom: "3%", containLabel: true },
+    xAxis: {
+      type: "category",
+      data: dates,
+      boundaryGap: false,
+      axisLine: { lineStyle: { color: "#dcdfe6" } },
+      axisLabel: { color: "#606266" },
+    },
+    yAxis: {
+      type: "value",
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: "#f0f0f0" } },
+      axisLabel: { color: "#606266" },
+    },
+    series: [
+      {
+        name: "任务数",
+        type: "line",
+        smooth: true,
+        data: values,
+        symbol: "circle",
+        symbolSize: 8,
+        lineStyle: { width: 3, color: "#409eff" },
+        itemStyle: { color: "#409eff" },
+        areaStyle: {
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: "rgba(64,158,255,0.5)" },
+            { offset: 1, color: "rgba(64,158,255,0)" },
+          ]),
+        },
+      },
+    ],
+  });
+}
+
+function initPieChart() {
+  if (!pieChartRef.value) return;
+  pieChart = echarts.init(pieChartRef.value);
+  pieChart.setOption({
+    tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+    legend: {
+      bottom: 0,
+      icon: "circle",
+      textStyle: { color: "#606266" },
+    },
+    color: ["#67c23a", "#e6a23c", "#409eff", "#f56c6c", "#909399"],
+    series: [
+      {
+        type: "pie",
+        radius: ["45%", "70%"],
+        center: ["50%", "45%"],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 8,
+          borderColor: "#fff",
+          borderWidth: 2,
+        },
+        label: { show: false, position: "center" },
+        emphasis: {
+          label: { show: true, fontSize: 18, fontWeight: "bold" },
+        },
+        labelLine: { show: false },
+        data: [
+          { value: 0, name: "已完成" },
+          { value: 0, name: "执行中" },
+          { value: 0, name: "待执行" },
+          { value: 0, name: "失败" },
+          { value: 0, name: "已取消" },
+        ],
+      },
+    ],
+  });
+}
+
+// 根据最近任务数据更新饼图
+function updatePieChart(tasks: any[]) {
+  if (!pieChart) return;
+  const counts: Record<string, number> = {
+    COMPLETED: 0,
+    PROCESSING: 0,
+    PENDING: 0,
+    FAILED: 0,
+    CANCELLED: 0,
+  };
+  tasks.forEach((t) => {
+    if (counts[t.status] !== undefined) counts[t.status]++;
+  });
+  pieChart.setOption({
+    series: [
+      {
+        data: [
+          { value: counts.COMPLETED, name: "已完成" },
+          { value: counts.PROCESSING, name: "执行中" },
+          { value: counts.PENDING, name: "待执行" },
+          { value: counts.FAILED, name: "失败" },
+          { value: counts.CANCELLED, name: "已取消" },
+        ],
+      },
+    ],
+  });
+}
+
+function handleResize() {
+  trendChart?.resize();
+  pieChart?.resize();
+}
+
+onMounted(async () => {
+  await loadStats();
+  initTrendChart();
+  initPieChart();
+  updatePieChart(taskStore.taskList);
+  window.addEventListener("resize", handleResize);
+});
+
+onActivated(() => {
+  handleResize();
+});
+
+onUnmounted(() => {
+  window.removeEventListener("resize", handleResize);
+  trendChart?.dispose();
+  pieChart?.dispose();
+});
 </script>
 
 <style lang="scss" scoped>
 .dashboard-container {
-  position: relative;
-  padding: 12px;
+  padding: 16px;
+  background: var(--el-bg-color-page);
+  min-height: calc(100vh - var(--navbar-height));
+}
+
+.welcome-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(120deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+
+  :deep(.el-card__body) {
+    padding: 24px 28px;
+  }
+
+  .welcome-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+
+  .welcome-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
 
   .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.4);
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.1);
   }
 
-  .data-box {
+  .greeting {
+    margin: 0 0 6px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #fff;
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+  }
+
+  .welcome-right {
     display: flex;
-    justify-content: space-between;
-    padding: 20px;
-    font-weight: bold;
-    color: var(--el-text-color-regular);
-    background: var(--el-bg-color-overlay);
-    border-color: var(--el-border-color);
-    box-shadow: var(--el-box-shadow-dark);
+    gap: 12px;
   }
 
-  .svg-icon {
-    fill: currentcolor !important;
+  .quick-entry {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.25s;
+    color: #fff;
+    font-size: 12px;
+
+    .entry-icon {
+      font-size: 22px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.stat-row {
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.25s;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  :deep(.el-card__body) {
+    padding: 20px;
+  }
+
+  .stat-card-inner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .stat-icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    .stat-icon {
+      font-size: 28px;
+      color: #fff;
+    }
+  }
+
+  .stat-info {
+    flex: 1;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--el-text-color-primary);
+    line-height: 1.2;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+    margin-top: 4px;
+  }
+}
+
+.chart-row {
+  margin-bottom: 16px;
+}
+
+.chart-card {
+  border-radius: 12px;
+  border: none;
+  height: 100%;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+    }
+
+    .header-icon {
+      font-size: 18px;
+      color: var(--el-color-primary);
+    }
+  }
+
+  .chart-box {
+    width: 100%;
+    height: 320px;
+  }
+}
+
+.recent-card {
+  border-radius: 12px;
+  border: none;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+    }
+
+    .header-icon {
+      font-size: 18px;
+      color: var(--el-color-primary);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .welcome-card .welcome-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .welcome-right {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 </style>

@@ -1,0 +1,582 @@
+<script lang="ts" setup>
+import EditDialog from "@/components/DataList/EditDialog/index.vue";
+import type { FormInstance } from "element-plus";
+import { Algorithm, AlgorithmAPI, AlgorithmQuery } from "dehaze-sdk-js";
+import { Search, Refresh, Setting, Plus, Edit, Delete } from "@element-plus/icons-vue";
+
+defineOptions({
+  name: "AlgorithmList",
+  inheritAttrs: false,
+});
+
+const queryFormRef = ref<FormInstance>();
+const loading = ref(false);
+const queryParams = reactive<AlgorithmQuery>({
+  keywords: "",
+});
+const list = ref<Algorithm[]>([]);
+/** 全量算法（用于构建类型树） */
+const allAlgorithms = ref<Algorithm[]>([]);
+/** 当前选中的类型节点（"all" 表示全部） */
+const selectedType = ref<string>("all");
+/** 类型树数据 */
+const typeTree = computed(() => {
+  const counts: Record<string, number> = {};
+  allAlgorithms.value.forEach((a) => {
+    const t = a.type || "未分类";
+    counts[t] = (counts[t] || 0) + 1;
+  });
+  const total = allAlgorithms.value.length;
+  return [
+    {
+      label: "全部算法",
+      value: "all",
+      count: total,
+    },
+    ...Object.entries(counts).map(([type, count]) => ({
+      label: type,
+      value: type,
+      count,
+    })),
+  ];
+});
+
+// 列选项
+const selectedColumns = ref([
+  "name",
+  "type",
+  "description",
+  "size",
+  "importPath",
+  "path",
+  "status",
+]);
+const columns = [
+  { label: "名称", value: "name" },
+  { label: "类型", value: "type" },
+  { label: "描述", value: "description" },
+  { label: "大小", value: "size" },
+  { label: "代码导入路径", value: "importPath" },
+  { label: "存储位置", value: "path" },
+  { label: "状态", value: "status" },
+];
+
+// 查询算法列表
+function handleQuery() {
+  loading.value = true;
+  AlgorithmAPI.getList(queryParams)
+    .then((data) => {
+      allAlgorithms.value = data;
+      applyTypeFilter();
+    })
+    .catch((e) => {
+      ElMessage.error("查询失败：" + e.message);
+    })
+    .finally(() => {
+      loading.value = false;
+    });
+}
+
+/** 按选中的类型筛选列表 */
+function applyTypeFilter() {
+  if (selectedType.value === "all") {
+    list.value = allAlgorithms.value;
+  } else {
+    list.value = allAlgorithms.value.filter(
+      (a) => (a.type || "未分类") === selectedType.value
+    );
+  }
+}
+
+function handleTypeClick(node: { value: string }) {
+  selectedType.value = node.value;
+  applyTypeFilter();
+}
+
+// 搜索防抖（300ms）
+const debouncedQuery = useDebounceFn(handleQuery, 300);
+
+// 关键字变化时防抖搜索
+watch(
+  () => queryParams.keywords,
+  () => {
+    debouncedQuery();
+  }
+);
+
+function resetQuery() {
+  queryFormRef.value?.resetFields();
+  selectedType.value = "all";
+  handleQuery();
+}
+
+const dialogRef = ref();
+
+function openDialog<T extends Algorithm>(type: string, row: T) {
+  dialogRef.value.open(type, row);
+}
+
+// 删除算法（带算法名确认文案）
+function handleDelete(row: Algorithm) {
+  ElMessageBox.confirm(
+    `确认删除算法「${row.name}」吗？删除后不可恢复。`,
+    "警告",
+    {
+      confirmButtonText: "确定",
+      cancelButtonText: "取消",
+      type: "warning",
+    }
+  )
+    .then(async () => {
+      await AlgorithmAPI.deleteByIds([row.id.toString()]);
+      ElMessage.success("删除成功");
+      handleQuery();
+    })
+    .catch((err) => {
+      // 仅用户取消时静默，接口错误需提示
+      if (err !== "cancel" && err !== "close") {
+        ElMessage.error("删除失败：" + (err.message || "未知错误"));
+      }
+    });
+}
+
+// 切换算法状态
+function handleStatusChange(row: Algorithm, val: string | number | boolean) {
+  const status = Number(val);
+  AlgorithmAPI.updateStatus(row.id, status)
+    .then(() => {
+      row.status = status;
+      ElMessage.success(status === 1 ? "已启用" : "已禁用");
+    })
+    .catch((e) => {
+      // 接口失败时回滚状态并提示
+      row.status = status === 1 ? 0 : 1;
+      ElMessage.error("状态切换失败：" + e.message);
+    });
+}
+
+// 算法详情弹窗
+const detailVisible = ref(false);
+const detailData = ref<Algorithm>();
+
+function handleShowDetail(row: Algorithm) {
+  detailData.value = row;
+  detailVisible.value = true;
+}
+
+onMounted(() => {
+  handleQuery();
+});
+</script>
+
+<template>
+  <div class="algorithm-page">
+    <!-- 左侧：算法类型树 -->
+    <el-card class="type-tree-card" shadow="never">
+      <template #header>
+        <div class="tree-header">
+          <span class="tree-title">算法类型</span>
+        </div>
+      </template>
+      <el-input
+        v-model="queryParams.keywords"
+        placeholder="搜索算法名称"
+        clearable
+        size="default"
+        class="tree-search"
+      >
+        <template #prefix>
+          <el-icon><Search /></el-icon>
+        </template>
+      </el-input>
+      <div class="type-list">
+        <div
+          v-for="node in typeTree"
+          :key="node.value"
+          class="type-node"
+          :class="{ active: selectedType === node.value }"
+          @click="handleTypeClick(node)"
+        >
+          <span class="type-label">{{ node.label }}</span>
+          <el-badge
+            :value="node.count"
+            :max="999"
+            type="info"
+            class="type-badge"
+          />
+        </div>
+      </div>
+    </el-card>
+
+    <!-- 右侧：算法列表 -->
+    <div class="right-panel">
+      <div class="search-container">
+        <el-form ref="queryFormRef" :inline="true" :model="queryParams">
+          <el-form-item>
+            <el-button type="primary" @click="handleQuery">
+              <el-icon><Search /></el-icon>
+              搜索
+            </el-button>
+            <el-button @click="resetQuery">
+              <el-icon><Refresh /></el-icon>
+              重置
+            </el-button>
+            <el-dropdown class="setting-button">
+              <el-button>
+                <el-icon><Setting /></el-icon>
+                设置
+              </el-button>
+              <template #dropdown>
+                <div class="setting-title">列选项</div>
+                <el-divider class="p-0" />
+                <el-checkbox-group
+                  v-model="selectedColumns"
+                  class="setting-checkbox"
+                >
+                  <el-checkbox
+                    v-for="column in columns"
+                    :key="column.value"
+                    :label="column.label"
+                    :value="column.value"
+                  />
+                </el-checkbox-group>
+              </template>
+            </el-dropdown>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <el-card class="table-container" shadow="never">
+        <div class="toolbar">
+          <el-button type="success" @click="openDialog('新增', {})">
+            <el-icon><Plus /></el-icon>
+            新增算法
+          </el-button>
+          <span class="result-tip">
+            共 <strong>{{ list.length }}</strong> 个算法
+            <span v-if="selectedType !== 'all'">
+              （已筛选：{{ selectedType }}）
+            </span>
+          </span>
+        </div>
+
+        <el-table
+          v-loading="loading"
+          :data="list"
+          :tree-props="{
+            children: 'children',
+            hasChildren: 'hasChildren',
+          }"
+          :default-expand-all="true"
+          highlight-current-row
+          row-key="id"
+        >
+          <el-table-column
+            v-if="selectedColumns.includes('name')"
+            label="名称"
+            prop="name"
+            width="200"
+          >
+            <template #default="scope">
+              <el-button
+                link
+                type="primary"
+                @click.stop="handleShowDetail(scope.row)"
+              >
+                {{ scope.row.name }}
+              </el-button>
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="selectedColumns.includes('type')"
+            label="类型"
+            prop="type"
+            width="120"
+          >
+            <template #default="scope">
+              <el-tag v-if="scope.row.type" size="small" type="info">
+                {{ scope.row.type }}
+              </el-tag>
+              <span v-else class="text-muted">-</span>
+            </template>
+          </el-table-column>
+          <el-table-column
+            v-if="selectedColumns.includes('description')"
+            label="描述"
+            min-width="300"
+            prop="description"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            v-if="selectedColumns.includes('size')"
+            label="大小"
+            prop="size"
+            width="120"
+          />
+          <el-table-column
+            v-if="selectedColumns.includes('importPath')"
+            label="代码导入路径"
+            min-width="180"
+            prop="importPath"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            v-if="selectedColumns.includes('path')"
+            label="存储位置"
+            prop="path"
+            width="300"
+            show-overflow-tooltip
+          />
+          <el-table-column
+            v-if="selectedColumns.includes('status')"
+            align="center"
+            label="状态"
+            min-width="90"
+          >
+            <template #default="scope">
+              <el-switch
+                :model-value="scope.row.status"
+                :active-value="1"
+                :inactive-value="0"
+                active-text="启用"
+                inactive-text="禁用"
+                inline-prompt
+                @change="(val) => handleStatusChange(scope.row, val)"
+                @click.stop
+              />
+            </template>
+          </el-table-column>
+          <el-table-column align="center" fixed="right" label="操作" width="220">
+            <template #default="scope">
+              <el-button
+                link
+                size="small"
+                type="primary"
+                @click.stop="openDialog('新增', scope.row)"
+              >
+                <el-icon><Plus /></el-icon>
+                新增
+              </el-button>
+              <el-button
+                link
+                size="small"
+                type="primary"
+                @click.stop="openDialog('编辑', scope.row)"
+              >
+                <el-icon><Edit /></el-icon>
+                编辑
+              </el-button>
+              <el-button
+                link
+                size="small"
+                type="danger"
+                @click.stop="handleDelete(scope.row)"
+              >
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
+    </div>
+
+    <EditDialog
+      ref="dialogRef"
+      :isDatasetList="false"
+      @on-update="handleQuery"
+      @on-add="handleQuery"
+    />
+
+    <!-- 算法详情弹窗 -->
+    <el-dialog
+      v-model="detailVisible"
+      title="算法详情"
+      width="640px"
+      append-to-body
+      destroy-on-close
+    >
+      <el-descriptions
+        v-if="detailData"
+        :column="2"
+        border
+        label-class-name="detail-label"
+      >
+        <el-descriptions-item label="算法名称">
+          {{ detailData.name }}
+        </el-descriptions-item>
+        <el-descriptions-item label="算法类型">
+          <el-tag v-if="detailData.type" size="small" type="info">
+            {{ detailData.type }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="算法大小">
+          {{ detailData.size }}
+        </el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag v-if="detailData.status === 1" type="success">启用</el-tag>
+          <el-tag v-else type="info">禁用</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="导入路径" :span="2">
+          {{ detailData.importPath }}
+        </el-descriptions-item>
+        <el-descriptions-item label="存储位置" :span="2">
+          {{ detailData.path }}
+        </el-descriptions-item>
+        <el-descriptions-item label="创建时间" :span="2">
+          {{ detailData.createTime }}
+        </el-descriptions-item>
+        <el-descriptions-item label="算法描述" :span="2">
+          {{ detailData.description }}
+        </el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.algorithm-page {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.type-tree-card {
+  width: 240px;
+  flex-shrink: 0;
+  border-radius: 4px;
+
+  .tree-header {
+    .tree-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--el-text-color-primary);
+    }
+  }
+
+  .tree-search {
+    margin-bottom: 12px;
+  }
+
+  .type-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .type-node {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--el-text-color-regular);
+
+    .type-label {
+      font-size: 13px;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .type-badge {
+      :deep(.el-badge__content) {
+        font-size: 11px;
+        height: 18px;
+        line-height: 18px;
+        padding: 0 6px;
+      }
+    }
+
+    &:hover {
+      background: var(--el-fill-color-light);
+      color: var(--el-color-primary);
+    }
+
+    &.active {
+      background: var(--el-color-primary-light-9);
+      color: var(--el-color-primary);
+      font-weight: 500;
+    }
+  }
+}
+
+.right-panel {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-container {
+  margin-bottom: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.setting-button {
+  margin-left: 12px;
+}
+
+.setting-title {
+  margin-top: 8px;
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.setting-checkbox {
+  display: flex;
+  flex-direction: column;
+  margin: 0 15px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+
+  .result-tip {
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+
+    strong {
+      color: var(--el-color-primary);
+      font-size: 14px;
+      margin: 0 2px;
+    }
+  }
+}
+
+.text-muted {
+  color: var(--el-text-color-placeholder);
+}
+
+:deep(.detail-label) {
+  width: 110px;
+  font-weight: bold;
+}
+
+@media (max-width: 992px) {
+  .algorithm-page {
+    flex-direction: column;
+  }
+
+  .type-tree-card {
+    width: 100%;
+  }
+}
+</style>
+
+<style lang="scss">
+.el-divider--horizontal {
+  margin: 5px 0;
+}
+</style>

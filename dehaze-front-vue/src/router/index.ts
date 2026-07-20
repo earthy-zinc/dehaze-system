@@ -57,63 +57,18 @@ export const constantRoutes: RouteRecordRaw[] = [
   {
     path: "/dataset",
     component: Layout,
-    redirect: "/dataset/index",
-    meta: {},
+    meta: { hidden: true },
     children: [
       {
-        path: "index",
-        component: () => import("@/views/dataset/DatasetList.vue"),
-        meta: {
-          title: "数据集",
-          icon: "dataset",
-          keepAlive: true,
-        },
-      },
-      {
-        path: ":id",
-        component: () => import("@/views/dataset/DataItem.vue"),
+        // 数据集详情页（不挂在菜单上，仅通过路由跳转访问）
+        // 使用正则约束仅匹配数字 ID，避免与 /dataset/list 等子路径冲突
+        path: ":id(\\d+)",
+        name: "DatasetDetail",
+        component: () => import("@/views/dataset/list/detail.vue"),
         meta: {
           title: "数据集展示",
           icon: "dataset",
           hidden: true,
-        },
-      },
-    ],
-  },
-  {
-    path: "/algorithm",
-    component: Layout,
-    redirect: "/algorithm/index",
-    meta: {},
-    children: [
-      {
-        path: "index",
-        component: () => import("@/views/algorithm/index.vue"),
-        meta: {
-          title: "模型管理",
-          icon: "model",
-          keepAlive: true,
-        },
-      },
-    ],
-  },
-  {
-    path: "/task",
-    component: Layout,
-    redirect: "/task/index",
-    meta: {
-      title: "任务中心",
-      icon: "todolist",
-    },
-    children: [
-      {
-        path: "index",
-        name: "TaskCenter",
-        component: () => import("@/views/task/index.vue"),
-        meta: {
-          title: "任务中心",
-          icon: "todolist",
-          keepAlive: true,
         },
       },
     ],

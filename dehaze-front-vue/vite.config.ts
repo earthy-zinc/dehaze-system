@@ -72,6 +72,13 @@ export default defineConfig(({ mode }: ConfigEnv): UserConfig => {
           rewrite: (path) =>
             path.replace(new RegExp("^" + env.VITE_PYTHON_BASE_API), ""),
         },
+        /** 代理前缀为 /dataset-api 的请求（nginx-dataset 静态数据集文件） */
+        [env.VITE_DATASET_BASE_API]: {
+          changeOrigin: true,
+          target: env.VITE_DATASET_API_URL,
+          rewrite: (path) =>
+            path.replace(new RegExp("^" + env.VITE_DATASET_BASE_API), ""),
+        },
       },
     },
     plugins: [

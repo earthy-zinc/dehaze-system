@@ -133,13 +133,43 @@ function handleCancelProcess() {
 }
 
 // 选择模型后生成对比图（原图 | 去雾图），含5阶段进度显示
-function handleGenerateImage() {
+async function handleGenerateImage() {
   if (!selectedModel.value) {
     ElMessage.error("请选择去雾模型");
     return;
   }
   if (!imgUrls.value[0]) {
     ElMessage.error("请先上传图片");
+    return;
+  }
+  // 显示确认对话框
+  const modelOption = algorithmStore.algorithmOptions.find(
+    (m: any) => m.value === selectedModel.value
+  );
+  const modelName = modelOption?.label || `模型ID: ${selectedModel.value}`;
+  const imgUrl = imgUrls.value[0].url;
+  const imageName = imgUrl.split("/").pop() || "未命名图片";
+  try {
+    await ElMessageBox.confirm(
+      [
+        `图片：${imageName}`,
+        `算法：${modelName}`,
+        `参数：去雾强度 ${dehazeParams.value.dehazeStrength}% / 色彩饱和度 ${dehazeParams.value.colorSaturation}% / 对比度 ${dehazeParams.value.contrast}% / 锐化 ${dehazeParams.value.sharpen}%`,
+        "",
+        "确认开始去雾处理？处理期间请勿离开页面。",
+      ].join("\n"),
+      "去雾处理确认",
+      {
+        confirmButtonText: "开始处理",
+        cancelButtonText: "取消",
+        type: "info",
+        distinguishCancelAndClose: true,
+      }
+    );
+  } catch (action) {
+    if (action === "cancel") {
+      ElMessage.info("已取消处理");
+    }
     return;
   }
   const modelId = selectedModel.value;
@@ -151,7 +181,6 @@ function handleGenerateImage() {
   activePage.value = "loading";
   // 启动模拟进度
   startProgressSimulation(95);
-  const imgUrl = imgUrls.value[0].url;
   ModelAPI.prediction({
     modelId,
     url: imgUrl,
