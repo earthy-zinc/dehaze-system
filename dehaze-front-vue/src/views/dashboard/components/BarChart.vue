@@ -5,7 +5,7 @@
       <div class="title">
         业绩柱状图
         <el-tooltip content="点击试试下载" effect="dark" placement="bottom">
-          <i-ep-download class="download" @click="downloadEchart" />
+          <el-icon class="download" @click="downloadEchart"><Download /></el-icon>
         </el-tooltip>
       </div>
     </template>
@@ -16,6 +16,7 @@
 
 <script lang="ts" setup>
 import * as echarts from "echarts";
+import { Download } from "@element-plus/icons-vue";
 
 const props = defineProps({
   id: {

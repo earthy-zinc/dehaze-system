@@ -15,6 +15,22 @@ import {
   DatasetItemVO,
   ImageUrlVO,
 } from "dehaze-sdk-js";
+import {
+  ArrowLeft,
+  ArrowRight,
+  DataAnalysis,
+  Delete,
+  Download,
+  Grid,
+  List,
+  Menu,
+  Plus,
+  Refresh,
+  Search,
+  Sort,
+  Upload,
+  UploadFilled,
+} from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 import type { UploadUserFile } from "element-plus";
 
@@ -713,7 +729,7 @@ onUnmounted(() => {
         </div>
         <el-button type="primary" plain @click="statisticsDialogVisible = true">
           <template #icon>
-            <i-ep-data-analysis />
+            <el-icon><DataAnalysis /></el-icon>
           </template>
           统计分析
         </el-button>
@@ -730,7 +746,7 @@ onUnmounted(() => {
               title="列表模式"
               @click="displayMode = 'list'"
             >
-              <i-ep-list />
+              <el-icon><List /></el-icon>
             </el-button>
             <el-button
               :type="displayMode === 'vertical' ? 'primary' : ''"
@@ -738,7 +754,7 @@ onUnmounted(() => {
               title="纵向瀑布流"
               @click="displayMode = 'vertical'"
             >
-              <i-ep-menu />
+              <el-icon><Menu /></el-icon>
             </el-button>
             <el-button
               :type="displayMode === 'horizontal' ? 'primary' : ''"
@@ -746,7 +762,7 @@ onUnmounted(() => {
               title="横向瀑布流"
               @click="displayMode = 'horizontal'"
             >
-              <i-ep-sort />
+              <el-icon><Sort /></el-icon>
             </el-button>
             <el-button
               :type="displayMode === 'grid' ? 'primary' : ''"
@@ -754,7 +770,7 @@ onUnmounted(() => {
               title="网格模式"
               @click="displayMode = 'grid'"
             >
-              <i-ep-grid />
+              <el-icon><Grid /></el-icon>
             </el-button>
           </el-button-group>
 
@@ -799,11 +815,11 @@ onUnmounted(() => {
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleQuery">
-                <i-ep-search />
+                <el-icon><Search /></el-icon>
                 搜索
               </el-button>
               <el-button @click="resetQuery">
-                <i-ep-refresh />
+                <el-icon><Refresh /></el-icon>
                 重置
               </el-button>
             </el-form-item>
@@ -823,7 +839,7 @@ onUnmounted(() => {
           <!-- 上传下拉 -->
           <el-dropdown @command="handleUploadCommand">
             <el-button type="primary" size="small">
-              <i-ep-upload />
+              <el-icon><Upload /></el-icon>
               上传
             </el-button>
             <template #dropdown>
@@ -840,7 +856,7 @@ onUnmounted(() => {
             :disabled="selectedIds.length === 0"
             @click="handleBatchDownload"
           >
-            <i-ep-download />
+            <el-icon><Download /></el-icon>
             下载({{ selectedIds.length }})
           </el-button>
           <el-button
@@ -849,7 +865,7 @@ onUnmounted(() => {
             :disabled="selectedIds.length === 0"
             @click="handleBatchDelete"
           >
-            <i-ep-delete />
+            <el-icon><Delete /></el-icon>
             删除({{ selectedIds.length }})
           </el-button>
         </div>
@@ -1067,7 +1083,7 @@ onUnmounted(() => {
             accept="image/jpeg,image/png,image/gif"
             list-type="picture-card"
           >
-            <i-ep-plus />
+            <el-icon><Plus /></el-icon>
           </el-upload>
         </el-form-item>
         <el-form-item label="有雾图像（可选）">
@@ -1078,7 +1094,7 @@ onUnmounted(() => {
             accept="image/jpeg,image/png,image/gif"
             list-type="picture-card"
           >
-            <i-ep-plus />
+            <el-icon><Plus /></el-icon>
           </el-upload>
         </el-form-item>
         <el-form-item label="雾霾程度（可选）">
@@ -1132,7 +1148,7 @@ onUnmounted(() => {
         accept="image/jpeg,image/png,image/gif"
         drag
       >
-        <i-ep-upload-filled />
+        <el-icon><UploadFilled /></el-icon>
         <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
       </el-upload>
       <el-form label-width="120px" class="mt-3">
@@ -1182,14 +1198,14 @@ onUnmounted(() => {
               :disabled="detailImageIndex <= 0"
               @click="prevDetailImage"
             >
-              <i-ep-arrow-left />
+              <el-icon><ArrowLeft /></el-icon>
             </el-button>
             <el-button
               size="small"
               :disabled="detailImageIndex >= detailImages.length - 1"
               @click="nextDetailImage"
             >
-              <i-ep-arrow-right />
+              <el-icon><ArrowRight /></el-icon>
             </el-button>
           </div>
         </div>
@@ -1235,11 +1251,11 @@ onUnmounted(() => {
           </el-descriptions>
           <div class="detail-actions mt-3">
             <el-button type="primary" @click="downloadDetailImage">
-              <i-ep-download />
+              <el-icon><Download /></el-icon>
               下载
             </el-button>
             <el-button type="danger" @click="deleteDetailItem">
-              <i-ep-delete />
+              <el-icon><Delete /></el-icon>
               删除
             </el-button>
           </div>
@@ -1249,7 +1265,7 @@ onUnmounted(() => {
       <!-- 导航底栏 -->
       <div class="detail-nav">
         <el-button :disabled="detailIndex <= 0" @click="prevDetail">
-          <i-ep-arrow-left />
+          <el-icon><ArrowLeft /></el-icon>
           上一张
         </el-button>
         <span class="nav-position">
@@ -1261,7 +1277,7 @@ onUnmounted(() => {
           @click="nextDetail"
         >
           下一张
-          <i-ep-arrow-right />
+          <el-icon><ArrowRight /></el-icon>
         </el-button>
       </div>
     </el-dialog>

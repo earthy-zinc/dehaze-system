@@ -8,6 +8,7 @@ import {
   DatasetAPI,
   DatasetQuery,
 } from "dehaze-sdk-js";
+import { Delete, Edit, Plus, Refresh, Search, Setting } from "@element-plus/icons-vue";
 
 const props = defineProps<{
   listType: string;
@@ -174,20 +175,20 @@ onMounted(() => {
         <el-form-item>
           <el-button type="primary" @click="handleQuery">
             <template #icon>
-              <i-ep-search />
+              <el-icon><Search /></el-icon>
             </template>
             搜索
           </el-button>
           <el-button @click="resetQuery">
             <template #icon>
-              <i-ep-refresh />
+              <el-icon><Refresh /></el-icon>
             </template>
             重置
           </el-button>
           <el-dropdown class="setting-button">
             <el-button>
               <template #icon>
-                <i-ep-setting />
+                <el-icon><Setting /></el-icon>
               </template>
               设置
             </el-button>
@@ -300,7 +301,7 @@ onMounted(() => {
               type="primary"
               @click="openDialog('新增', scope.row)"
             >
-              <i-ep-plus />
+              <el-icon><Plus /></el-icon>
               新增
             </el-button>
 
@@ -310,7 +311,7 @@ onMounted(() => {
               type="primary"
               @click="openDialog('编辑', scope.row)"
             >
-              <i-ep-edit />
+              <el-icon><Edit /></el-icon>
               编辑
             </el-button>
             <el-button
@@ -319,7 +320,7 @@ onMounted(() => {
               type="primary"
               @click="handleDelete(scope.row.id)"
             >
-              <i-ep-delete />
+              <el-icon><Delete /></el-icon>
               删除
             </el-button>
           </template>

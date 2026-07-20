@@ -3,7 +3,7 @@
   <el-card shadow="never">
     <el-input v-model="deptName" clearable placeholder="部门名称">
       <template #prefix>
-        <i-ep-search />
+        <el-icon><Search /></el-icon>
       </template>
     </el-input>
 
@@ -22,6 +22,7 @@
 
 <script lang="ts" setup>
 import { DeptAPI } from "dehaze-sdk-js";
+import { Search } from "@element-plus/icons-vue";
 
 const props = defineProps({
   modelValue: {

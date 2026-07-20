@@ -16,7 +16,7 @@
     />
     <div v-else class="flex flex-col justify-center items-center">
       <el-icon class="single-uploader__icon">
-        <i-ep-plus />
+        <Plus />
       </el-icon>
       <div class="mt-5 font-size-4">{{ tooltip }}</div>
     </div>
@@ -25,7 +25,7 @@
       class="single-uploader__delete"
       @click.stop="handleDelete"
     >
-      <el-icon><i-ep-close /></el-icon>
+      <el-icon><Close /></el-icon>
     </div>
   </el-upload>
 </template>
@@ -34,6 +34,7 @@
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { computeFileMd5 } from "@/utils";
 import { FileAPI } from "dehaze-sdk-js";
+import { Close, Plus } from "@element-plus/icons-vue";
 import { UploadRawFile, UploadRequestOptions } from "element-plus";
 
 const props = defineProps({

@@ -13,6 +13,7 @@ import {
   DatasetItemVO,
   ImageUrlVO,
 } from "dehaze-sdk-js";
+import { Refresh, Search } from "@element-plus/icons-vue";
 
 defineOptions({
   name: "DatasetImageSelect",
@@ -215,13 +216,13 @@ onUnmounted(() => loadingObserver.value?.disconnect());
         <el-form-item>
           <el-button type="primary" @click="handleQuery">
             <template #icon>
-              <i-ep-search />
+              <el-icon><Search /></el-icon>
             </template>
             搜索
           </el-button>
           <el-button @click="resetQuery">
             <template #icon>
-              <i-ep-refresh />
+              <el-icon><Refresh /></el-icon>
             </template>
             重置
           </el-button>

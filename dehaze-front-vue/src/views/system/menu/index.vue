@@ -12,10 +12,10 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery"
-            ><template #icon><i-ep-search /></template>搜索</el-button
+            ><template #icon><el-icon><Search /></el-icon></template>搜索</el-button
           >
           <el-button @click="resetQuery">
-            <template #icon><i-ep-refresh /></template>
+            <template #icon><el-icon><Refresh /></el-icon></template>
             重置</el-button
           >
         </el-form-item>
@@ -29,7 +29,7 @@
           type="success"
           @click="openDialog(0)"
         >
-          <template #icon><i-ep-plus /></template>
+          <template #icon><el-icon><Plus /></el-icon></template>
           新增</el-button
         >
       </template>
@@ -116,7 +116,7 @@
               type="primary"
               @click.stop="openDialog(scope.row.id)"
             >
-              <i-ep-plus />新增
+              <el-icon><Plus /></el-icon>新增
             </el-button>
 
             <el-button
@@ -126,7 +126,7 @@
               type="primary"
               @click.stop="openDialog(undefined, scope.row.id)"
             >
-              <i-ep-edit />编辑
+              <el-icon><Edit /></el-icon>编辑
             </el-button>
             <el-button
               v-hasPerm="['sys:menu:delete']"
@@ -134,7 +134,7 @@
               size="small"
               type="primary"
               @click.stop="handleDelete(scope.row)"
-              ><i-ep-delete />
+              ><el-icon><Delete /></el-icon>
               删除
             </el-button>
           </template>
@@ -248,7 +248,7 @@
                   >是：根目录只有一个子路由显示目录
                   <br />否：根目录只有一个子路由不显示目录，只显示子路由
                 </template>
-                <i-ep-QuestionFilled class="inline-block" />
+                <el-icon class="inline-block"><QuestionFilled /></el-icon>
               </el-tooltip>
             </div>
           </template>
@@ -327,6 +327,14 @@ import {
   MenuTypeEnum,
   MenuVO,
 } from "dehaze-sdk-js";
+import {
+  Delete,
+  Edit,
+  Plus,
+  QuestionFilled,
+  Refresh,
+  Search,
+} from "@element-plus/icons-vue";
 import { usePermissionStoreHook } from "@/store/modules/permission";
 import { useUserStore } from "@/store";
 

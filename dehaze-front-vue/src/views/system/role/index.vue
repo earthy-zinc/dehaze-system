@@ -13,9 +13,9 @@
 
         <el-form-item>
           <el-button type="primary" @click="handleQuery"
-            ><i-ep-search />搜索</el-button
+            ><el-icon><Search /></el-icon>搜索</el-button
           >
-          <el-button @click="resetQuery"><i-ep-refresh />重置</el-button>
+          <el-button @click="resetQuery"><el-icon><Refresh /></el-icon>重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -26,14 +26,14 @@
           v-hasPerm="['sys:role:add']"
           type="success"
           @click="openDialog()"
-          ><i-ep-plus />新增</el-button
+          ><el-icon><Plus /></el-icon>新增</el-button
         >
         <el-button
           v-hasPerm="['sys:role:delete']"
           :disabled="ids.length === 0"
           type="danger"
           @click="handleDelete()"
-          ><i-ep-delete />删除</el-button
+          ><el-icon><Delete /></el-icon>删除</el-button
         >
       </template>
 
@@ -85,7 +85,7 @@
               type="primary"
               @click="openMenuDialog(scope.row)"
             >
-              <i-ep-position />分配权限
+              <el-icon><Position /></el-icon>分配权限
             </el-button>
             <el-button
               v-hasPerm="['sys:role:edit']"
@@ -94,7 +94,7 @@
               type="primary"
               @click="openDialog(scope.row.id)"
             >
-              <i-ep-edit />编辑
+              <el-icon><Edit /></el-icon>编辑
             </el-button>
             <el-button
               v-hasPerm="['sys:role:delete']"
@@ -103,7 +103,7 @@
               type="primary"
               @click="handleDelete(scope.row)"
             >
-              <i-ep-delete />删除
+              <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
         </el-table-column>
@@ -226,6 +226,14 @@ import {
   RolePageVO,
   RoleQuery,
 } from "dehaze-sdk-js";
+import {
+  Delete,
+  Edit,
+  Plus,
+  Position,
+  Refresh,
+  Search,
+} from "@element-plus/icons-vue";
 
 defineOptions({
   name: "Role",

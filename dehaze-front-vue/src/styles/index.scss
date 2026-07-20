@@ -1,16 +1,25 @@
 @use "./reset";
 
 .app-container {
-  padding: 10px;
+  padding: 16px;
 }
 
-.search-container {
-  padding: 18px 0 0 10px;
-  margin-bottom: 10px;
+.search-container,
+.el-card.search-container {
+  padding: 18px 18px 0 18px;
+  margin-bottom: 16px;
   background-color: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color-light);
-  border-radius: 4px;
+  border-radius: 8px;
   box-shadow: var(--el-box-shadow-light);
+  --el-card-border-radius: 8px;
+  --el-card-padding: 18px;
+}
+
+.table-container,
+.el-card.table-container {
+  border-radius: 8px;
+  --el-card-border-radius: 8px;
 }
 
 .table-container > .el-card__header {

@@ -23,10 +23,10 @@
         </el-form-item>
         <el-form-item>
           <el-button class="filter-item" type="primary" @click="handleQuery">
-            <i-ep-search />
+            <el-icon><Search /></el-icon>
             搜索
           </el-button>
-          <el-button @click="resetQuery"> <i-ep-refresh />重置 </el-button>
+          <el-button @click="resetQuery"> <el-icon><Refresh /></el-icon>重置 </el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -37,14 +37,14 @@
           v-hasPerm="['sys:dept:add']"
           type="success"
           @click="openDialog(0, undefined)"
-          ><i-ep-plus />新增</el-button
+          ><el-icon><Plus /></el-icon>新增</el-button
         >
         <el-button
           v-hasPerm="['sys:dept:delete']"
           :disabled="ids.length === 0"
           type="danger"
           @click="handleDelete()"
-          ><i-ep-delete />删除
+          ><el-icon><Delete /></el-icon>删除
         </el-button>
       </template>
 
@@ -77,7 +77,7 @@
               size="small"
               type="primary"
               @click.stop="openDialog(scope.row.id, undefined)"
-              ><i-ep-plus />新增下级
+              ><el-icon><Plus /></el-icon>新增下级
             </el-button>
             <el-button
               v-hasPerm="['sys:dept:edit']"
@@ -85,7 +85,7 @@
               size="small"
               type="primary"
               @click.stop="openDialog(scope.row.parentId, scope.row.id)"
-              ><i-ep-edit />编辑
+              ><el-icon><Edit /></el-icon>编辑
             </el-button>
             <el-button
               v-hasPerm="['sys:dept:delete']"
@@ -94,7 +94,7 @@
               type="primary"
               @click.stop="handleDelete(scope.row)"
             >
-              <i-ep-delete />删除
+              <el-icon><Delete /></el-icon>删除
             </el-button>
           </template>
         </el-table-column>
@@ -159,6 +159,7 @@ defineOptions({
 });
 
 import { DeptAPI, DeptForm, DeptQuery, DeptVO } from "dehaze-sdk-js";
+import { Delete, Edit, Plus, Refresh, Search } from "@element-plus/icons-vue";
 
 const queryFormRef = ref(ElForm);
 const deptFormRef = ref(ElForm);

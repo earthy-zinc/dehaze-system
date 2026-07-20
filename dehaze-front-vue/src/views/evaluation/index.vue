@@ -6,6 +6,7 @@ import { ImageTypeEnum } from "@/enums/ImageTypeEnum";
 import { useImageShowStore } from "@/store/modules/imageShow";
 import { Arrayable } from "@vueuse/core";
 import { Algorithm, AlgorithmAPI, EvalResult, ModelAPI } from "dehaze-sdk-js";
+import { Setting } from "@element-plus/icons-vue";
 import * as echarts from "echarts";
 
 defineOptions({
@@ -375,7 +376,7 @@ onUnmounted(() => {
         <el-popover :width="400" placement="bottom-start" trigger="click">
           <template #reference>
             <div class="settings">
-              <i-ep-setting class="icon" />
+              <el-icon class="icon"><Setting /></el-icon>
             </div>
           </template>
           <template #default>

@@ -98,7 +98,7 @@
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTagType[row.status]" size="small">
+            <el-tag :color="statusTagColor[row.status]" effect="dark" size="small">
               {{ statusLabel[row.status] }}
             </el-tag>
           </template>
@@ -224,12 +224,12 @@ const statusLabel: Record<string, string> = {
   FAILED: "失败",
   CANCELLED: "已取消",
 };
-const statusTagType: Record<string, string> = {
-  PENDING: "info",
-  PROCESSING: "warning",
-  COMPLETED: "success",
-  FAILED: "danger",
-  CANCELLED: "info",
+const statusTagColor: Record<string, string> = {
+  PENDING: "#1890ff",
+  PROCESSING: "#1890ff",
+  COMPLETED: "#52c41a",
+  FAILED: "#ff4d4f",
+  CANCELLED: "#8c8c8c",
 };
 
 function progressStatus(status: string) {

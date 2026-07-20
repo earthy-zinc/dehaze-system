@@ -14,9 +14,9 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleQuery()"
-            ><i-ep-search />搜索</el-button
+            ><el-icon><Search /></el-icon>搜索</el-button
           >
-          <el-button @click="resetQuery()"><i-ep-refresh />重置</el-button>
+          <el-button @click="resetQuery()"><el-icon><Refresh /></el-icon>重置</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -27,13 +27,13 @@
           v-hasPerm="['sys:dict:type:add']"
           type="success"
           @click="openDialog()"
-          ><i-ep-plus />新增</el-button
+          ><el-icon><Plus /></el-icon>新增</el-button
         >
         <el-button
           :disabled="ids.length === 0"
           type="danger"
           @click="handleDelete()"
-          ><i-ep-delete />删除</el-button
+          ><el-icon><Delete /></el-icon>删除</el-button
         >
       </template>
       <el-table
@@ -61,7 +61,7 @@
               size="small"
               type="primary"
               @click.stop="openDictDialog(scope.row)"
-              ><i-ep-Collection />字典数据</el-button
+              ><el-icon><Collection /></el-icon>字典数据</el-button
             >
             <el-button
               v-hasPerm="['sys:dict:type:edit']"
@@ -69,7 +69,7 @@
               size="small"
               type="primary"
               @click.stop="openDialog(scope.row.id)"
-              ><i-ep-edit />编辑</el-button
+              ><el-icon><Edit /></el-icon>编辑</el-button
             >
             <el-button
               v-hasPerm="['sys:dict:type:delete']"
@@ -77,7 +77,7 @@
               size="small"
               type="primary"
               @click.stop="handleDelete(scope.row)"
-              ><i-ep-delete />删除</el-button
+              ><el-icon><Delete /></el-icon>删除</el-button
             >
           </template>
         </el-table-column>
@@ -160,6 +160,14 @@ import {
   DictTypePageVO,
   DictTypeQuery,
 } from "dehaze-sdk-js";
+import {
+  Collection,
+  Delete,
+  Edit,
+  Plus,
+  Refresh,
+  Search,
+} from "@element-plus/icons-vue";
 
 const queryFormRef = ref(ElForm);
 const dataFormRef = ref(ElForm);

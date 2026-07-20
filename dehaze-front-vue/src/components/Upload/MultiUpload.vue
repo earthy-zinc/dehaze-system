@@ -10,7 +10,7 @@
     :on-remove="handleRemove"
     list-type="picture-card"
   >
-    <i-ep-plus />
+    <el-icon><Plus /></el-icon>
   </el-upload>
 
   <el-dialog v-model="dialogVisible">
@@ -21,6 +21,7 @@
 <script lang="ts" setup>
 import { computeFileMd5 } from "@/utils";
 import { FileAPI } from "dehaze-sdk-js";
+import { Plus } from "@element-plus/icons-vue";
 import {
   UploadProps,
   UploadRawFile,

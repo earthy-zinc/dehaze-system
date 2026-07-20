@@ -15,12 +15,12 @@
         @contextmenu.prevent="openContentMenu(tag, $event)"
       >
         {{ translateRouteTitle(tag.title) }}
-        <i-ep-close
+        <el-icon
           v-if="!isAffix(tag)"
           class="close-icon"
           size="12px"
           @click.prevent.stop="closeSelectedTag(tag)"
-        />
+        ><Close /></el-icon>
       </router-link>
     </el-scrollbar>
 
@@ -66,6 +66,7 @@ import {
   useTagsViewStore,
 } from "@/store";
 import { translateRouteTitle } from "@/utils/i18n";
+import { Close } from "@element-plus/icons-vue";
 import { resolve } from "path-browserify";
 import { RouteRecordRaw, useRoute, useRouter } from "vue-router";
 

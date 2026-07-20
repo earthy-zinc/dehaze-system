@@ -393,18 +393,13 @@ function handleClearBatch() {
   batchTasks.value = [];
 }
 
-function statusTagType(
-  status: BatchTask["status"]
-): "primary" | "success" | "warning" | "info" | "danger" {
-  const map: Record<
-    BatchTask["status"],
-    "primary" | "success" | "warning" | "info" | "danger"
-  > = {
-    pending: "info",
-    processing: "warning",
-    success: "success",
-    failed: "danger",
-    cancelled: "info",
+function statusTagColor(status: BatchTask["status"]): string {
+  const map: Record<BatchTask["status"], string> = {
+    pending: "#1890ff",
+    processing: "#1890ff",
+    success: "#52c41a",
+    failed: "#ff4d4f",
+    cancelled: "#8c8c8c",
   };
   return map[status];
 }
@@ -643,7 +638,7 @@ onUnmounted(() => {
           <el-table-column label="图片名称" min-width="180" prop="name" />
           <el-table-column :width="100" align="center" label="状态">
             <template #default="scope">
-              <el-tag :type="statusTagType(scope.row.status)">
+              <el-tag :color="statusTagColor(scope.row.status)" effect="dark">
                 {{ statusText(scope.row.status) }}
               </el-tag>
             </template>

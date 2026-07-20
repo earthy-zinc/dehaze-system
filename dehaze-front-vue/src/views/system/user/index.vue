@@ -48,10 +48,10 @@
 
             <el-form-item>
               <el-button type="primary" @click="handleQuery"
-                ><i-ep-search />搜索</el-button
+                ><el-icon><Search /></el-icon>搜索</el-button
               >
               <el-button @click="resetQuery">
-                <i-ep-refresh />
+                <el-icon><Refresh /></el-icon>
                 重置</el-button
               >
             </el-form-item>
@@ -66,14 +66,14 @@
                   v-hasPerm="['sys:user:add']"
                   type="success"
                   @click="openDialog('user-form')"
-                  ><i-ep-plus />新增</el-button
+                  ><el-icon><Plus /></el-icon>新增</el-button
                 >
                 <el-button
                   v-hasPerm="['sys:user:delete']"
                   :disabled="removeIds.length === 0"
                   type="danger"
                   @click="handleDelete()"
-                  ><i-ep-delete />删除</el-button
+                  ><el-icon><Delete /></el-icon>删除</el-button
                 >
               </div>
               <div>
@@ -82,10 +82,10 @@
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item @click="downloadTemplate">
-                        <i-ep-download />下载模板</el-dropdown-item
+                        <el-icon><Download /></el-icon>下载模板</el-dropdown-item
                       >
                       <el-dropdown-item @click="openDialog('user-import')">
-                        <i-ep-top />导入数据</el-dropdown-item
+                        <el-icon><Top /></el-icon>导入数据</el-dropdown-item
                       >
                     </el-dropdown-menu>
                   </template>
@@ -94,7 +94,7 @@
                   class="ml-3"
                   :loading="exportLoading"
                   @click="handleExport"
-                  ><template #icon><i-ep-download /></template>导出</el-button
+                  ><template #icon><el-icon><Download /></el-icon></template>导出</el-button
                 >
               </div>
             </div>
@@ -170,7 +170,7 @@
                   size="small"
                   type="primary"
                   @click="resetPassword(scope.row)"
-                  ><i-ep-refresh-left />重置密码</el-button
+                  ><el-icon><RefreshLeft /></el-icon>重置密码</el-button
                 >
                 <el-button
                   v-hasPerm="['sys:user:edit']"
@@ -178,7 +178,7 @@
                   size="small"
                   type="primary"
                   @click="openDialog('user-form', scope.row.id)"
-                  ><i-ep-edit />编辑</el-button
+                  ><el-icon><Edit /></el-icon>编辑</el-button
                 >
                 <el-button
                   v-hasPerm="['sys:user:delete']"
@@ -186,7 +186,7 @@
                   size="small"
                   type="primary"
                   @click="handleDelete(scope.row)"
-                  ><i-ep-delete />删除</el-button
+                  ><el-icon><Delete /></el-icon>删除</el-button
                 >
               </template>
             </el-table-column>
@@ -310,7 +310,7 @@
             drag
           >
             <el-icon class="el-icon--upload">
-              <i-ep-upload-filled />
+              <UploadFilled />
             </el-icon>
             <div class="el-upload__text">
               将文件拖到此处，或
@@ -347,6 +347,18 @@ import {
   UserPageVO,
   UserQuery,
 } from "dehaze-sdk-js";
+
+import {
+  Delete,
+  Download,
+  Edit,
+  Plus,
+  Refresh,
+  RefreshLeft,
+  Search,
+  Top,
+  UploadFilled,
+} from "@element-plus/icons-vue";
 
 import type { UploadInstance } from "element-plus";
 import { genFileId } from "element-plus";

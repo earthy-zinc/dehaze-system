@@ -1,5 +1,13 @@
 <script lang="ts" setup>
 import { Algorithm, AlgorithmAPI } from "dehaze-sdk-js";
+import {
+  CircleCheckFilled,
+  Folder,
+  Grid,
+  MagicStick,
+  Refresh,
+  Search,
+} from "@element-plus/icons-vue";
 
 defineOptions({
   name: "AlgorithmSelect",
@@ -184,12 +192,12 @@ onMounted(() => {
           class="search-input"
         >
           <template #prefix>
-            <i-ep-search />
+            <el-icon><Search /></el-icon>
           </template>
         </el-input>
         <el-button @click="resetFilter">
           <template #icon>
-            <i-ep-refresh />
+            <el-icon><Refresh /></el-icon>
           </template>
           重置
         </el-button>
@@ -200,7 +208,7 @@ onMounted(() => {
     <el-card class="recommend-card" shadow="never">
       <template #header>
         <div class="card-title">
-          <i-ep-magic-stick />
+          <el-icon><MagicStick /></el-icon>
           <span>智能推荐</span>
           <el-tag size="small" type="success">Top 3</el-tag>
         </div>
@@ -235,7 +243,7 @@ onMounted(() => {
       <el-card class="tree-card" shadow="never">
         <template #header>
           <div class="card-title">
-            <i-ep-folder />
+            <el-icon><Folder /></el-icon>
             <span>算法分类</span>
           </div>
         </template>
@@ -274,7 +282,7 @@ onMounted(() => {
       <el-card class="cards-card" shadow="never">
         <template #header>
           <div class="card-title">
-            <i-ep-grid />
+            <el-icon><Grid /></el-icon>
             <span>算法列表</span>
             <el-tag size="small">共 {{ filteredAlgorithms.length }} 个</el-tag>
           </div>
@@ -309,7 +317,7 @@ onMounted(() => {
               v-if="selectedAlgorithm?.id === algo.id"
               class="algo-card-check"
             >
-              <i-ep-circle-check-filled />
+              <el-icon><CircleCheckFilled /></el-icon>
             </div>
           </div>
           <el-empty

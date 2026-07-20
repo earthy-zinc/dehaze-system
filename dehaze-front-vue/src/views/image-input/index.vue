@@ -5,6 +5,7 @@ import { useImageShowStore } from "@/store/modules/imageShow";
 import { changeUrl } from "@/utils";
 import examples from "@/views/presentation/dehaze/exampleImages";
 import { FileAPI } from "dehaze-sdk-js";
+import { UploadFilled } from "@element-plus/icons-vue";
 import type { UploadRawFile, UploadRequestOptions } from "element-plus";
 
 defineOptions({
@@ -273,7 +274,7 @@ onActivated(() => {
             :disabled="uploading"
           >
             <el-icon class="el-icon--upload">
-              <i-ep-upload-filled />
+              <UploadFilled />
             </el-icon>
             <div class="el-upload__text">
               拖拽图片到此处，或<em>点击上传</em>

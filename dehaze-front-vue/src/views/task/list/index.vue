@@ -12,7 +12,7 @@
           <el-radio-button value="FAILED">失败</el-radio-button>
           <el-radio-button value="CANCELLED">已取消</el-radio-button>
         </el-radio-group>
-        <el-button @click="loadTaskList"><i-ep-refresh />刷新</el-button>
+        <el-button @click="loadTaskList"><el-icon><Refresh /></el-icon>刷新</el-button>
       </div>
     </el-card>
 
@@ -37,7 +37,7 @@
         </el-table-column>
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTagType[row.status]">
+            <el-tag :color="statusTagColor[row.status]" effect="dark">
               {{ statusLabel[row.status] }}
             </el-tag>
           </template>
@@ -104,7 +104,7 @@
             {{ taskStore.currentTask.taskId }}
           </el-descriptions-item>
           <el-descriptions-item label="状态">
-            <el-tag :type="statusTagType[taskStore.currentTask.status]">
+            <el-tag :color="statusTagColor[taskStore.currentTask.status]" effect="dark">
               {{ statusLabel[taskStore.currentTask.status] }}
             </el-tag>
           </el-descriptions-item>
@@ -173,6 +173,7 @@
 
 <script lang="ts" setup>
 import { TaskVO, TaskQuery } from "dehaze-sdk-js";
+import { Refresh } from "@element-plus/icons-vue";
 import { useTaskStore } from "@/store";
 
 defineOptions({
@@ -198,16 +199,13 @@ const cancelLoading = ref(false);
 // 下载操作加载状态（记录正在下载的任务ID）
 const downloadLoadingId = ref<string | null>(null);
 
-// 状态标签类型映射
-const statusTagType: Record<
-  string,
-  "primary" | "success" | "warning" | "info" | "danger"
-> = {
-  PENDING: "primary",
-  PROCESSING: "primary",
-  COMPLETED: "success",
-  FAILED: "danger",
-  CANCELLED: "info",
+// 状态标签颜色映射（按需求规格 5.3 节）
+const statusTagColor: Record<string, string> = {
+  PENDING: "#1890ff",
+  PROCESSING: "#1890ff",
+  COMPLETED: "#52c41a",
+  FAILED: "#ff4d4f",
+  CANCELLED: "#8c8c8c",
 };
 
 // 状态标签文本映射
