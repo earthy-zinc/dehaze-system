@@ -21,7 +21,6 @@
 | [API 规范](./04-API规范.md) | 全局 API 规范、认证方式、错误码 |
 | [后端基础设施设计(Java)](./09-后端基础设施设计(Java).md) | Java 端对等基础设施设计 |
 | [后端基础设施设计(Go)](./07-后端基础设施设计(Go).md) | Go 端对等基础设施设计 |
-| [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) | 当前架构问题与改进计划 |
 
 ---
 
@@ -43,7 +42,7 @@ dehaze-python/
 │   │   ├── auth.py                    # JWT 认证依赖（UserContext / get_current_user / get_current_user_optional）
 │   │   └── redis.py                   # Redis 连接池 / 单例管理 / 健康检查
 │   ├── decorators/                    # 横切关注点装饰器
-│   │   ├── permission.py             # 权限检查装饰器（require_permission / require_any_permission / PermissionChecker）
+│   │   ├── permission.py             # 权限检查装饰器（require_permission / require_any_permission）
 │   │   ├── rate_limit.py             # 接口限流装饰器（基于 Redis 计数）
 │   │   └── repeat_submit.py          # 防重复提交装饰器
 │   ├── middleware/                    # ASGI 中间件
@@ -56,19 +55,22 @@ dehaze-python/
 │   │   ├── logging.py                # 日志系统（UTF-8 轮转处理器 + JSON 格式化）
 │   │   ├── cache/                    # 缓存体系
 │   │   │   ├── cache.py              # CacheService + DeptCacheKeys
-│   │   │   └── redis_fallback.py     # Redis 降级 / 重试 / 熔断器
+│   │   │   ├── redis_fallback.py     # Redis 降级（redis_operation_with_fallback）
+│   │   │   └── local_cache.py        # L1 本地缓存（TTLCache + SingleFlight）
 │   │   ├── metrics/                  # Prometheus 指标采集
 │   │   │   ├── gpu_metrics.py        # GPU 利用率 / 显存 / 温度
 │   │   │   ├── inference_metrics.py  # 推理耗时 / 请求计数
-│   │   │   └── task_metrics.py       # 任务队列深度 / 处理耗时
+│   │   │   ├── task_metrics.py       # 任务队列深度 / 处理耗时
+│   │   │   └── cache_metrics.py      # 缓存命中率指标
 │   │   ├── mq/                       # RabbitMQ 消息队列
+│   │   │   ├── base.py               # BaseRabbitMQClient 基类（连接/重连公共逻辑）
 │   │   │   ├── publisher.py          # 消息发布（自动重连 + 指数退避）
 │   │   │   ├── consumer.py           # 多队列消费（handler 注册 + ack/nack）
 │   │   │   ├── connection.py         # 全局单例管理 + Lifespan 集成
 │   │   │   └── handlers.py           # 消费者 handler（导出任务等）
 │   │   └── job/                      # XXL-Job 定时任务
 │   │       ├── executor.py           # 执行器生命周期管理（pyxxl daemon）
-│   │       └── handlers.py           # 定时任务 handler（清理/回收/健康检查）
+│   │       └── handlers.py           # 定时任务 handler（5 个：清理/回收/健康检查/孤儿文件/临时文件）
 │   ├── models/                        # 数据模型
 │   │   ├── base.py                    # BaseModel（SQLAlchemy 事件自动填充审计字段 + ContextVar）
 │   │   ├── entity/                    # ORM 实体（与表对应）
@@ -147,7 +149,7 @@ flowchart TB
         OpLog["操作日志"]
         Trace["TraceID"]
         JWT["JWT 认证<br/>get_current_user"]
-        Permission["权限校验<br/>PermissionChecker"]
+        Permission["权限校验<br/>@require_permission"]
     end
 
     subgraph Router["Router 层 (app/router/)"]
@@ -227,7 +229,7 @@ flowchart TB
 - 使用 `Depends()` 声明依赖关系，由框架自动解析
 - 数据库 Session 通过 `get_db`（`database.py`）异步生成器注入，自动管理生命周期
 - Redis 连接通过 `get_redis`（`dependencies/redis.py`）生成器注入，或通过 `get_redis_client()` 获取全局单例（后台任务/中间件用）
-- 权限校验通过 `PermissionChecker` 工厂函数（`decorators/permission.py`）生成 `Depends` 包装器
+- 权限校验通过 `@require_permission` 装饰器（`decorators/permission.py`）实现，装饰器内部依赖 `get_current_user` 注入 `UserContext`
 
 ```mermaid
 flowchart LR
@@ -235,7 +237,7 @@ flowchart LR
     Depends --> JWT["JWT 解析 → UserContext<br/>set_current_user_id"]
     Router --> Depends2["Depends(get_db)"]
     Depends2 --> Session["AsyncSession"]
-    Router --> Depends3["PermissionChecker('sys:user:add')"]
+    Router --> Depends3["@require_permission('sys:user:add')"]
     Depends3 --> Check["权限校验"]
     Router --> Depends4["Depends(get_redis)"]
     Depends4 --> Redis["Redis Async Client"]
@@ -323,7 +325,7 @@ uvicorn 收到 `SIGTERM/SIGINT` 后自动触发 Lifespan 关闭阶段，由 `_gr
 | **生产** | `uvicorn app.main:app --host 0.0.0.0 --port 80 --workers 4` | 多 Worker 进程 |
 | **Docker** | NVIDIA CUDA 12.1 基础镜像 | uvicorn 多 Worker + GPU 推理 |
 
-> **多 Worker 注意事项**：XXL-Job executor 端口、GPU 指标采集器、Prometheus 指标聚合在多 Worker 部署下存在已知问题，详见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第九节。
+> **多 Worker 注意事项**：XXL-Job executor、GPU 指标采集器、Prometheus 指标聚合通过 `app/lifecycle.py` 的 fcntl 文件锁主 Worker 守卫 + `PROMETHEUS_MULTIPROC_DIR` 环境变量统一处理，仅主 Worker 启动守护进程，多 Worker 指标通过 `MultiProcessCollector` 聚合。
 
 ---
 
@@ -430,7 +432,7 @@ DEHAZE_PASSWORD=shared-password-for-mysql-redis-minio
 - `Settings.__init__` 在所有环境校验 `SECRET_KEY` 和 `JWT_SECRET_KEY` 非空
 - `ProductionSettings.__init__` 额外校验密钥长度 ≥ 32 且 `DEHAZE_PASSWORD` 非空
 
-> **已知问题**：`DEHAZE_PASSWORD` 被复用为 MySQL、Redis、MinIO、RabbitMQ 的统一密码，单点泄露即全盘沦陷。改进计划见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第八节。
+> **设计取舍**：`DEHAZE_PASSWORD` 被复用为 MySQL、Redis、MinIO、RabbitMQ 的统一密码，简化部署但单点泄露即全盘沦陷。生产环境应通过独立 Secret 管理各组件凭证（未来改进）。
 
 ---
 
@@ -519,8 +521,6 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 > **设计决策**：不引入 `@transactional` 装饰器。FastAPI 的 `Depends(get_db)` 天然就是事务边界的最佳承载点，装饰器会与 DI 签名冲突、且需要额外实现事务传播语义（REQUIRED/REQUIRES_NEW 等），性价比不高。
 
-> **已知问题**：实际代码中 Service 层存在多处显式 `db.commit()`（违反上述设计规范），以及少数 Router 层显式 commit（为解决 `get_db()` yield 后置 commit 跨请求不可见问题）。改进计划见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第三节。
-
 ### 6.4 Repository 层
 
 引入泛型 `BaseRepository[T]`，提供标准 CRUD 操作，子类只需声明 `model` 类型即可继承全部能力：
@@ -580,7 +580,7 @@ get_current_user (依赖注入) → set_current_user_id(user.id)
     → before_insert/before_update 事件读取
 ```
 
-> **已知问题**：`before_update` 事件对 Core 层批量更新（`update().where(...)`）不触发，批量软删除的审计字段会丢失；后台任务（MQ/Job）中未调用 `set_current_user_id`，审计字段为 None。改进计划见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第四节。
+> **实现要点**：`before_update` 事件对 Core 层批量更新（`update().where(...)`）不触发是 SQLAlchemy 框架固有限制。`app/models/base.py` 提供 `get_audit_update_values()` 工具函数，所有 Core update 调用点（`base.py` / `task_repository.py` / `role_repository.py` / `dict_repository.py` / `input_history_repository.py`）已显式调用该函数注入审计字段；后台任务通过 `set_current_user_id(user_id)` 注入用户上下文，无上下文时回退 `SYSTEM_USER_ID`。
 
 ### 6.6 存储分工
 
@@ -672,6 +672,7 @@ flowchart TB
 | 机制 | 实现 | 说明 |
 |------|------|------|
 | **优雅降级** | `redis_operation_with_fallback()` | Redis 不可用时执行 fallback 函数或返回默认值 |
+| **L1 本地缓存** | `local_cache.py`（TTLCache + SingleFlight） | 进程内缓存，降低 Redis 压力，配合 SingleFlight 防击穿 |
 
 ```python
 # redis_fallback.py
@@ -690,7 +691,7 @@ async def redis_operation_with_fallback(
         return default
 ```
 
-> **已知问题**：`RedisCircuitBreaker` 熔断器和 `with_redis_retry` 重试装饰器已定义但从未被调用（死代码）；缓存穿透/击穿/雪崩三大风险无防护；缺少 L1 本地缓存层。改进计划见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第五节。
+> **实现要点**：缓存穿透/击穿/雪崩三大风险中，击穿通过 `local_cache.py` 的 SingleFlight 防护，雪崩通过 TTL 随机抖动防护；穿透（布隆过滤器）当前仅在 `local_cache.py` 提供 `BloomFilter` 工具类，需业务侧主动接入。`CacheService` 当前在 `menu_service`/`dept_service`/`dict_service` 等处每请求 `CacheService(redis)` 重新构造（共 10 处），L1 实例每请求新建，未来可改为单例以复用 L1 缓存。
 
 ### 7.5 CacheService
 
@@ -709,13 +710,13 @@ async def redis_operation_with_fallback(
 
 ### 7.6 缓存演进规划
 
-| 优先级 | 改进项 | 说明 |
-|--------|--------|------|
-| P0 | 删除死代码或接入熔断器/重试 | `RedisCircuitBreaker` / `with_redis_retry` 当前零调用 |
-| P1 | 缓存 Key 统一管理 | 引入 `CacheKeys` 命名空间，避免 Key 散落各处 |
-| P1 | 缓存穿透/击穿/雪崩防护 | 空值缓存、SETNX 互斥锁、TTL 随机抖动 |
-| P2 | 推理结果缓存 | 相同输入图像 + 相同算法的推理结果可缓存，避免重复计算 |
-| P3 | 与 Go/Java 端对齐多级缓存 | 评估引入本地缓存层（Python 端受限于 GPU 内存优先级较低） |
+| 优先级 | 改进项 | 说明 | 状态 |
+|--------|--------|------|------|
+| P0 | 删除死代码 | `RedisCircuitBreaker` / `with_redis_retry` 已删除 | ✅ 已完成 |
+| P0 | CacheService 单例化 | `menu_service`/`dept_service` 等每请求新建 CacheService，L1 失效 | 📋 规划中 |
+| P1 | 缓存 Key 统一管理 | 引入 `CacheKeys` 命名空间，避免 Key 散落各处 | 📋 规划中 |
+| P1 | 缓存穿透/雪崩防护 | 空值缓存、TTL 随机抖动（击穿已通过 SingleFlight 防护） | 📋 规划中 |
+| P2 | 推理结果缓存 | 相同输入图像 + 相同算法的推理结果可缓存，避免重复计算 | 📋 规划中 |
 
 ---
 
@@ -958,6 +959,8 @@ flowchart LR
 | `cleanupExpiredTasks` | `0 0 2 * * ?` | 删除 7 天前已完成/取消任务、30 天前所有任务，清理 Redis 缓存 | ✅ 已实现 |
 | `cleanupStuckTasks` | `0 0 * * * ?` | 将超过 24h 的 pending/processing 任务标记为 failed | ✅ 已实现 |
 | `modelHealthCheck` | `0 */30 * * * ?` | 检查 GPU 可用性/显存使用率、DB 连接、Redis 连接 | ✅ 已实现 |
+| `cleanupOrphanFiles` | 建议 `0 0 4 * * ?` | 清理 MinIO 中无数据库记录关联的孤儿文件 | ✅ 已实现 |
+| `cleanupTempFiles` | 建议 `0 0 5 * * ?` | 清理临时目录中过期的上传/导出临时文件 | ✅ 已实现 |
 
 ### 9.4 XXL-Job 配置
 
@@ -985,7 +988,7 @@ app/infrastructure/job/
 
 `executor.py` 使用 `PyxxlRunner.run_with_daemon()` 启动 daemon 子进程（`multiprocessing.Process`），主进程退出时通过 `daemon.terminate()` 终止子进程，并清理 PID 文件。
 
-> **已知问题**：uvicorn 多 Worker 部署下，每个 Worker 都会启动一个 PyxxlRunner daemon 监听同一端口，第二个 Worker 起会因端口占用而失败。改进计划见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第九节。
+> **多 Worker 守卫**：`app/lifecycle.py` 的 `_try_become_main_worker()` 使用 fcntl 文件锁（`LOCK_EX | LOCK_NB`）互斥，确保 uvicorn 多 Worker 部署下仅主 Worker 启动 XXL-Job executor daemon，避免端口冲突。Windows 开发环境（单 Worker）直接返回 True。
 
 ### 9.6 迁移进度
 
@@ -994,7 +997,8 @@ app/infrastructure/job/
 | **Phase 1** | 部署 XXL-Job Admin（与 Java/Go 端共享） | ✅ 已完成 |
 | **Phase 2** | 引入 pyxxl 执行器，注册到调度中心 | ✅ 已完成 |
 | **Phase 3** | 实现任务清理、僵死回收、模型健康检查 | ✅ 已完成 |
-| **Phase 4** | 新增缓存预热、统计报表等高级定时任务 | 📋 规划中 |
+| **Phase 4** | 实现孤儿文件清理、临时文件清理 | ✅ 已完成 |
+| **Phase 5** | 新增缓存预热、统计报表等高级定时任务 | 📋 规划中 |
 
 ---
 
@@ -1082,7 +1086,7 @@ flowchart LR
     IPBlacklist --> OpLog["操作日志<br/>OperationLogMiddleware"]
     OpLog --> Trace["TraceID<br/>TraceMiddleware"]
     Trace --> JWT["JWT 认证<br/>Depends(get_current_user)"]
-    JWT --> Permission["权限校验<br/>PermissionChecker"]
+    JWT --> Permission["权限校验<br/>@require_permission 装饰器"]
     Permission --> Handler["业务处理"]
 ```
 
@@ -1092,14 +1096,16 @@ flowchart LR
 |------|------|------|----------|
 | `CORSMiddleware` | Starlette 中间件 | 跨域资源共享，开发/生产环境配置不同 Origin | 全局 |
 | `PrometheusMiddleware` | starlette-exporter | Prometheus HTTP 指标采集 | 全局（条件启用） |
-| `IPBlacklistMiddleware` | BaseHTTPMiddleware | IP 黑名单检查 + 异常请求自动封禁 | 全局 |
-| `OperationLogMiddleware` | BaseHTTPMiddleware | 请求/响应全链路记录（异步写入 MySQL） | 全局（排除健康检查等路径） |
+| `IPBlacklistMiddleware` | ASGI 中间件 | IP 黑名单检查 + 异常请求自动封禁 | 全局 |
+| `OperationLogMiddleware` | ASGI 中间件 | 请求/响应全链路记录（异步写入 MySQL） | 全局（排除健康检查等路径） |
 | `TraceMiddleware` | BaseHTTPMiddleware | TraceID 生成 / 透传 / 回写响应头 | 全局 |
 | `get_current_user` | FastAPI Depends | JWT Token 验证、UserContext 注入、Token 黑名单检查 | 受保护路由 |
-| `PermissionChecker` | FastAPI Depends 工厂 | RBAC 权限校验（支持通配符匹配） | 受保护路由 |
-| `require_permission` | 函数装饰器 | 权限检查（装饰器风格，替代方案） | 受保护路由 |
+| `get_current_user_optional` | FastAPI Depends | 未登录返回 None（不设置 user_id） | 可选认证路由 |
+| `require_permission` | 函数装饰器 | RBAC 权限校验（支持通配符匹配） | 受保护路由 |
 | `rate_limit` | 函数装饰器 | 接口限流（基于 Redis 计数） | 受保护路由 |
 | `repeat_submit` | 函数装饰器 | 防重复提交 | 受保护路由 |
+
+> 注：权限校验**仅通过 `require_permission` 装饰器**实现，不存在 `PermissionChecker` Depends 工厂。装饰器内部依赖 `get_current_user` 注入 `UserContext`。
 
 ### 11.4 CORS 配置
 
@@ -1110,11 +1116,12 @@ flowchart LR
 
 ### 11.5 路由注册
 
-采用 FastAPI APIRouter 模式，在 `app/router/__init__.py` 的 `init_routes()` 集中注册：
+采用 FastAPI APIRouter 模式，在 `app/router/__init__.py` 的 `init_routes()` 集中注册，`main.py` 中额外注册 WebSocket 路由，共 18 个 APIRouter 实例 + 1 个 WebSocket：
 
 | 路由模块 | 路径前缀 | 说明 |
 |----------|----------|------|
-| health | `/health` | 健康检查（`/health`、`/health/db`、`/health/redis`） |
+| health | `/health` | 健康检查（liveness） |
+| ready | （无前缀） | 就绪检查（`/ready`，检查 DB/Redis/RabbitMQ） |
 | metrics | `/metrics` | Prometheus 指标端点（条件启用） |
 | auth | `/api/v1/auth` | 认证（登录/注销/刷新/验证码） |
 | user | `/api/v1/users` | 用户管理 |
@@ -1166,19 +1173,7 @@ class UserContext(BaseModel):
 
 ### 12.2 权限体系
 
-提供两种权限校验方式（依赖注入 + 装饰器），适应不同场景：
-
-**方式 1：依赖注入（推荐）**
-
-```python
-@router.post("/users")
-async def create_user(
-    _: None = PermissionChecker("sys:user:add"),
-):
-    ...
-```
-
-**方式 2：装饰器**
+权限校验通过 **`require_permission` 装饰器**实现，装饰器内部依赖 `get_current_user` 注入 `UserContext`：
 
 ```python
 @router.post("/users")
@@ -1196,7 +1191,7 @@ async def create_user(user: UserContext, ...):
 fnmatch 双向匹配: sys:user:* ↔ sys:user:add
 ```
 
-> **已知问题**：`fnmatch.fnmatch` 在 Windows 上大小写不敏感、Linux 上大小写敏感，应改用 `fnmatch.fnmatchcase`。详见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第八节。
+> **跨平台一致性**：权限匹配使用 `fnmatch.fnmatchcase`（大小写敏感），确保 Windows 和 Linux 行为一致。
 
 ### 12.3 安全防护
 
@@ -1210,7 +1205,9 @@ fnmatch 双向匹配: sys:user:* ↔ sys:user:add
 | 限流 | `rate_limit` 装饰器 | 基于 Redis 计数，默认 60 次/分钟 |
 | 防重复提交 | `repeat_submit` 装饰器 | 默认 5 秒内禁止重复提交 |
 
-> **已知问题**：Token 刷新未失效旧 Token（可重放）、默认密码 "123456" 违反自身策略、XSS 防护正则可绕过。改进计划见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第八节。
+> **XSS 防护**：`app/models/schema/common.py` 的 `validate_no_xss` 校验器在 Pydantic Schema 层拦截 HTML 标签和 `javascript:` 协议，已覆盖 dataset/dept/dict/menu/role/user 全部用户输入模型；`app/service/dataset_service.py` 和 `dept_service.py` 额外在 Service 层通过 `_XSS_PATTERN` 正则做二次校验。
+>
+> **Token 刷新**：`auth.py` 的 `refresh_token` 端点在签发新 Token 时，将旧 Token 的 jti 加入 Redis 黑名单（TTL = 旧 Token 剩余有效期），防止旧 Token 被重放。
 
 ---
 
@@ -1307,8 +1304,8 @@ flowchart TB
 |------|------|------|
 | 应用日志 | ✅ 已实现 | 文件 + 控制台双输出，支持 JSON 结构化 |
 | 操作审计日志 | ✅ 已实现 | 全链路请求记录，异步写入 MySQL |
-| 健康检查 | ✅ 已实现 | `GET /health`、`/health/db`、`/health/redis` |
-| Prometheus 指标 | ✅ 已实现 | HTTP / GPU / 推理 / 任务 四大类指标 |
+| 健康检查 | ✅ 已实现 | `GET /health`（liveness）+ `GET /ready`（readiness） |
+| Prometheus 指标 | ✅ 已实现 | HTTP / GPU / 推理 / 任务 / 缓存 五大类指标 |
 | TraceID | ✅ 已实现 | 请求级 TraceID 透传与回写 |
 | 分布式追踪 | 📋 规划中 | OpenTelemetry 集成（跨服务 Span） |
 
@@ -1316,9 +1313,8 @@ flowchart TB
 
 | 端点 | 功能 | 返回信息 |
 |------|------|----------|
-| `GET /health` | 应用存活探针 | status / app / version |
-| `GET /health/db` | 数据库连接检查 | `SELECT 1` 验证连接 |
-| `GET /health/redis` | Redis 连接检查 | 连接状态 + 延迟(ms) |
+| `GET /health` | liveness 探针 | status / app / version（始终 200） |
+| `GET /ready` | readiness 探针 | 检查 DB + Redis + RabbitMQ（如启用），任一不可用返回 503 |
 
 ### 15.3 Prometheus 指标体系
 
@@ -1338,15 +1334,12 @@ PROMETHEUS_ENABLED = True
 PROMETHEUS_GPU_COLLECT_INTERVAL = 5  # 秒
 ```
 
-> **已知问题**：多 Worker 部署下未配置 `PROMETHEUS_MULTIPROC_DIR`，每个 Worker 进程独立维护指标，`/metrics` 端点仅返回局部数据；推理指标已定义但未接入 `prediction_service`。改进计划见 [Python 基础设施存在的问题](../04-改造计划/python基础设施存在的问题.md) 第九节。
+> **多 Worker 指标聚合**：`config.py` 在 Settings 加载时将 `PROMETHEUS_MULTIPROC_DIR` 传播到 OS 环境变量并创建目录；`router/metrics.py` 的 `/metrics` 端点检测到该环境变量后切换到 `MultiProcessCollector`，聚合所有 Worker 进程的指标。推理指标通过 `prediction_service.predict()` 的 finally 块手动调用 `record_inference_metrics()` 采集，包含 `algorithm` / `duration_seconds` / `status` / `image_size` 参数。
 
 ### 15.4 可观测性演进规划
 
 | 优先级 | 改进项 | 说明 |
 |--------|--------|------|
-| P0 | Prometheus 多进程指标聚合 | 配置 `PROMETHEUS_MULTIPROC_DIR` + `MultiProcessCollector` |
-| P0 | 推理指标接入 | `prediction_service.predict` 接入 `@track_inference` |
-| P1 | f-string 日志懒求值 | 全项目 `logger.info(f"...")` 改为 `%s` 位置参数 |
 | P2 | OpenTelemetry 集成 | 跨服务 Span 追踪，httpx 请求透传 TraceID |
 | P3 | Grafana Dashboard | 预置 GPU 利用率、推理吞吐、任务积压等面板 |
 
@@ -1389,18 +1382,18 @@ PROMETHEUS_GPU_COLLECT_INTERVAL = 5  # 秒
 | **HTTP 框架** | FastAPI (uvicorn) | Spring MVC (Tomcat) | Gin | 接口语义一致 |
 | **ORM** | SQLAlchemy 2.0 (异步) | MyBatis-Plus | GORM | 功能对等 |
 | **Repository** | BaseRepository 泛型基类 | Mapper 层 | Repository 接口 | 功能对等 |
-| **缓存** | Redis (单级 + 降级) | Spring Cache + Redis | 多级缓存 (FreeCache + Redis) | Python 端规划引入多级 |
-| **消息队列** | ✅ aio-pika RabbitMQ (MQ优先+fallback) | ✅ RabbitMQ + Kafka | ✅ 已实现 RabbitMQ | 三端已对齐 |
-| **定时任务** | ✅ pyxxl XXL-Job (3个任务已注册) | @Scheduled + XXL-Job | Ticker → XXL-Job | 三端共享 XXL-Job Admin |
+| **缓存** | Redis (单级 + local_cache L1) | Spring Cache + 多级 (Caffeine L1 + Redis L2) | 多级缓存 (gkit local_cache + Redis) | Java/Go 已多级，Python L1 部分接入 |
+| **消息队列** | ✅ aio-pika RabbitMQ (MQ优先+fallback) | ✅ RabbitMQ（消费者 TODO 桩） | ✅ RabbitMQ（handler.go TODO 桩） | 三端已搭建，handler 均未落地 |
+| **定时任务** | ✅ pyxxl XXL-Job (5 个任务已注册) | 仅集成 Executor，未注册 @XxlJob | Ticker → XXL-Job | Python 端落地最多 |
 | **日志** | Python logging + JSON | SLF4J + Logback | Zap | 格式/级别统一 |
-| **日志管道** | 未实现 → Kafka(规划) | 未实现 → Kafka(规划) | 未实现 → Kafka(规划) | 统一规划 |
+| **日志管道** | 未实现 → Kafka(规划) | Kafka 死代码已删除 | 未实现 → Kafka(规划) | 统一规划 |
 | **认证** | python-jose JWT | Spring Security + JWT | 自研中间件 + JWT | Token 格式互通 |
-| **权限** | RBAC (Depends + 装饰器) | RBAC (@PreAuthorize) | RBAC (中间件) | 权限标识一致 |
-| **数据权限** | SQLAlchemy 查询装饰(规划) | MyBatis-Plus 拦截器 | GORM Scopes | 语义一致 |
+| **权限** | RBAC (Depends + @require_permission 装饰器) | RBAC (@PreAuthorize) | RBAC (中间件) | 权限标识一致 |
+| **数据权限** | SQLAlchemy 查询装饰(规划) | MyBatis-Plus 拦截器 | GORM Plugin (Callback) | 语义一致，Go DataScope 当前永不生效 |
 | **自动填充** | SQLAlchemy Event + ContextVar | MetaObjectHandler | GORM Callback | 字段名一致 |
 | **API 文档** | FastAPI OpenAPI 3.1 | Knife4j (OpenAPI 3) | Swagger (swag) | 规范一致 |
 | **监控** | prometheus-client | Micrometer + Prometheus | client_golang | 指标命名统一 |
-| **健康检查** | `/health` + `/health/db` + `/health/redis` | Actuator `/actuator/health` | `/health` | 功能对等 |
+| **健康检查** | `/health` + `/ready` | Actuator `/actuator/health` | `/health` + `/ready` | 功能对等 |
 | **错误码** | 5 位字符串 (A0/B0/C0) | 5 位字符串 (A0/B0/C0) | 5 位字符串 (A0/B0/C0) | ✅ 完全一致 |
 | **响应格式** | `{code, msg, data}` | `{code, msg, data}` | `{code, msg, data}` | ✅ 完全一致 |
 | **WebSocket** | FastAPI 原生 WebSocket + Redis Pub/Sub | STOMP + SockJS | — | Python 跨 Worker 已实现 |

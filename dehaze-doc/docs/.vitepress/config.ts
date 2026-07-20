@@ -126,8 +126,6 @@ export default withMermaid(
                 text: "后端基础设施设计(Java)",
                 link: "/02-系统架构/09-后端基础设施设计(Java)",
               },
-              { text: "后端额外说明", link: "/02-系统架构/10-后端额外说明" },
-              { text: "前端额外说明", link: "/02-系统架构/11-前端额外说明" },
             ],
           },
         ],
@@ -472,10 +470,6 @@ export default withMermaid(
               {
                 text: "Java基础设施存在问题",
                 link: "/04-改造计划/java基础设施存在问题",
-              },
-              {
-                text: "Python基础设施存在问题",
-                link: "/04-改造计划/python基础设施存在问题",
               },
               { text: "分布式锁", link: "/04-改造计划/分布式锁" },
             ],

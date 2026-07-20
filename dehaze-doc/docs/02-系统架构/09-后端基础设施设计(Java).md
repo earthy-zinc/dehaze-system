@@ -42,34 +42,44 @@ dehaze-java/
 │   │   │   │   ├── util/               # 工具类（XSS/路径安全/文件/日期）
 │   │   │   │   └── validator/          # 自定义校验注解
 │   │   │   ├── config/                 # 配置类
-│   │   │   │   ├── property/           # 配置属性类（@ConfigurationProperties）
+│   │   │   │   ├── property/           # 配置属性类（SecurityProperties/CaptchaProperties/AlgorithmProperties/RabbitMQProperties）
 │   │   │   │   ├── SecurityConfig.java # Spring Security 过滤器链
 │   │   │   │   ├── MybatisConfig.java  # MyBatis-Plus 分页/数据权限/自动填充
 │   │   │   │   ├── RedisConfig.java    # Redis 序列化
-│   │   │   │   ├── RedisCacheConfig.java # Spring Cache 集成
+│   │   │   │   ├── RedisCacheConfig.java # Spring Cache + 多级缓存（Caffeine L1 + Redis L2）
+│   │   │   │   ├── MultiLevelCache.java # 多级缓存接口
+│   │   │   │   ├── MultiLevelCacheManager.java # 多级缓存管理器（含 Prometheus 指标）
+│   │   │   │   ├── RabbitMQConfig.java # RabbitMQ Exchange/Queue/DLX/Template
+│   │   │   │   ├── ResilienceConfig.java # Resilience4j 熔断器配置
+│   │   │   │   ├── RestClientConfig.java # HTTP 客户端配置
 │   │   │   │   ├── CorsConfig.java     # 跨域配置
-│   │   │   │   ├── AsyncConfig.java    # 异步线程池
+│   │   │   │   ├── AsyncConfig.java    # 异步线程池（含 MDC 传播 TaskDecorator）
 │   │   │   │   ├── WebMvcConfig.java   # MVC 序列化/校验
 │   │   │   │   ├── WebSocketConfig.java # WebSocket STOMP
+│   │   │   │   ├── WebSocketMessageRelay.java # WebSocket 消息中继
 │   │   │   │   ├── SwaggerConfig.java  # Knife4j API 文档
-│   │   │   │   ├── XxlJobConfig.java   # XXL-Job 定时任务
+│   │   │   │   ├── XxlJobConfig.java   # XXL-Job 执行器（条件装配）
 │   │   │   │   └── CaptchaConfig.java  # 验证码
 │   │   │   ├── filter/                 # Servlet 过滤器
 │   │   │   │   ├── JwtValidationFilter.java
-│   │   │   │   ├── CaptchaValidationFilter.java
+│   │   │   │   ├── TraceIdFilter.java  # TraceID 透传/生成
 │   │   │   │   └── RequestLogFilter.java
 │   │   │   ├── security/              # 安全组件
-│   │   │   │   ├── exception/          # 认证/授权异常处理器
+│   │   │   │   ├── exception/          # 认证/授权异常处理器（MyAccessDeniedHandler/MyAuthenticationEntryPoint）
 │   │   │   │   ├── model/              # SysUserDetails
 │   │   │   │   ├── service/            # UserDetailsService/PermissionService
 │   │   │   │   └── util/               # JwtUtils/SecurityUtils
+│   │   │   ├── mq/                     # 消息队列（RabbitMQ 生产者/消费者/DLX）
+│   │   │   │   ├── RabbitMQPublisher.java
+│   │   │   │   ├── RabbitMQConsumer.java
+│   │   │   │   ├── ExportTaskConsumer.java
+│   │   │   │   └── ExportDlxConsumer.java
 │   │   │   ├── plugin/                 # 插件化扩展组件
 │   │   │   │   ├── mybatis/            # MyBatis 插件（数据权限/自动填充）
 │   │   │   │   ├── dupsubmit/          # 防重复提交（AOP + Redisson）
 │   │   │   │   ├── ratelimit/          # 接口限流（AOP + Redisson）
 │   │   │   │   ├── captcha/            # 验证码配置属性
-│   │   │   │   ├── easyexcel/          # Excel 导入监听器
-│   │   │   │   └── xxljob/             # XXL-Job 任务处理器
+│   │   │   │   └── easyexcel/          # Excel 导入监听器
 │   │   │   ├── controller/             # Controller 层（请求处理）
 │   │   │   ├── service/                # Service 层（业务逻辑）
 │   │   │   │   ├── impl/               # Service 实现
@@ -430,6 +440,12 @@ flowchart TB
             Annotation["@Cacheable / @CacheEvict<br/>声明式缓存"]
         end
 
+        subgraph MultiLevel["多级缓存 (MultiLevelCacheManager)"]
+            L1["L1 Caffeine<br/>本地缓存（5min TTL）"]
+            L2["L2 Redis<br/>分布式缓存（1h TTL）"]
+            Metrics["Prometheus 指标<br/>hits/misses/loader"]
+        end
+
         subgraph RedisTemplate["RedisTemplate (编程式)"]
             KV["Key-Value 操作"]
             Hash["Hash 操作"]
@@ -445,7 +461,9 @@ flowchart TB
         Redis[("Redis<br/>Lettuce 连接池")]
     end
 
-    SpringCache --> Redis
+    SpringCache --> MultiLevel
+    L1 --> L2
+    L2 --> Redis
     RedisTemplate --> Redis
     Redisson --> Redis
 ```
@@ -454,12 +472,14 @@ flowchart TB
 
 | 配置项 | 值 | 说明 |
 |--------|------|------|
-| 后端类型 | Redis | `spring.cache.type=redis` |
-| 默认 TTL | 3600s | `spring.cache.redis.time-to-live` |
-| 空值缓存 | 启用 | 防止缓存穿透 |
+| 后端类型 | Multi-Level (Caffeine + Redis) | `@Primary cacheManager = MultiLevelCacheManager` |
+| L1 TTL | 5min | Caffeine 本地缓存 |
+| L2 TTL | 3600s | Redis 分布式缓存 |
+| 空值缓存 | 启用 | `allowNullValues=true`，防缓存穿透 |
 | Key 序列化 | StringRedisSerializer | 可读性 |
 | Value 序列化 | GenericJackson2JsonRedisSerializer | JSON 格式，支持 JSR-310 时间类型 |
 | Key 前缀 | `cacheName:` | 覆盖默认双冒号分隔符 |
+| 开关 | `spring.cache.enabled=true` | `@ConditionalOnProperty` 控制启用 |
 
 ### 7.3 Redis 序列化
 
@@ -479,14 +499,31 @@ Hash Value: GenericJackson2JsonRedisSerializer
 | 防重复提交 | `RLock` + `tryLock` | 基于 Token JTI + 请求路径生成锁 Key |
 | 接口限流 | `RRateLimiter` | 基于 Redisson 令牌桶算法 |
 
-### 7.5 缓存演进规划
+### 7.5 多级缓存指标
 
-与 Go 端保持一致的演进方向：
+`MultiLevelCacheManager` 内置 Prometheus 指标采集：
+
+| 指标 | 类型 | 说明 |
+|------|------|------|
+| `dehaze_cache_hits_total` | Counter | 缓存命中次数（含 L1/L2 标签） |
+| `dehaze_cache_misses_total` | Counter | 缓存未命中次数（含 L1/L2 标签） |
+| `dehaze_cache_loader_total` | Counter | 回源加载次数 |
+
+### 7.6 缓存使用情况
+
+Spring Cache 注解使用位置（共 10 处）：
+
+| 模块 | 缓存名 | 注解 |
+|------|--------|------|
+| SysMenuServiceImpl | `menu` | `@Cacheable(key='options'\|'routes')` + `@CacheEvict` |
+| SysDatasetServiceImpl | `dataset:all` / `dataset:statsMap` / `dataset:options` | `@Cacheable` + `@CacheEvict(allEntries=true)` |
+| SysRoleServiceImpl | `menu` | `@CacheEvict(key='routes')` |
+
+### 7.7 缓存演进规划
 
 ```
-当前: Spring Cache → Redis (单级缓存)
-规划: L1 本地缓存 (Caffeine) + L2 Redis (多级缓存)
-      + 布隆过滤器 (穿透防护)
+当前: Spring Cache → Caffeine (L1) + Redis (L2) 多级缓存
+规划: + 布隆过滤器 (穿透防护，使用 Redisson RBloomFilter)
       + SingleFlight (击穿防护)
       + Pub/Sub (多实例 L1 失效广播)
 ```
@@ -501,12 +538,49 @@ Hash Value: GenericJackson2JsonRedisSerializer
 
 | 消息中间件 | 用途 | 当前状态 |
 |------------|------|----------|
-| **RabbitMQ** | 异步任务分发（导出、批量操作等） | 📋 规划中（当前使用 @Async 线程池） |
-| **Kafka** | 日志收集与流处理 | 📋 规划中 |
+| **RabbitMQ** | 异步任务分发（导出、批量操作等） | ✅ 已实现（`spring-boot-starter-amqp`） |
+| **Kafka** | 日志收集与流处理 | 📋 规划中（`spring-kafka` 死依赖待清理或激活） |
 
-### 8.2 当前方案：@Async 异步线程池
+### 8.2 双通道任务分发架构
 
-当前使用 Spring `@Async` + 自定义线程池处理异步任务：
+采用 **MQ 消费者 + @Async 线程池** 双通道架构。`TaskExecutorImpl` 通过 `@Async` 直接执行策略，同时 `ExportTaskConsumer` 监听 RabbitMQ 队列（当前消费者实现仍为 TODO 桩，待与 @Async 路径合并为单一 MQ 路径）：
+
+```mermaid
+flowchart LR
+    subgraph TaskSystem["异步任务系统"]
+        Controller["TaskController"] --> TaskService
+        TaskService --> TaskExecutor["TaskExecutorImpl<br/>@Async(datasetTaskExecutor)"]
+        TaskService --> Publisher["RabbitMQPublisher"]
+        TaskExecutor --> Factory["TaskStrategyFactory"]
+        Factory --> S1["DatasetExportStrategy"]
+        Factory --> S2["BatchDownloadStrategy"]
+        Factory --> S3["CustomExportStrategy"]
+        Factory --> S4["ItemDownloadStrategy"]
+    end
+
+    subgraph MQ["RabbitMQ Broker"]
+        Exchange["dehaze.tasks<br/>(direct exchange)"]
+        Q1["task.export<br/>导出任务队列"]
+        DLX["Dead Letter Exchange<br/>死信交换机"]
+    end
+
+    subgraph Consumer["消费者 (dehaze-java)"]
+        ExportConsumer["ExportTaskConsumer<br/>@RabbitListener"]
+        DlxConsumer["ExportDlxConsumer<br/>@RabbitListener(DLX)"]
+    end
+
+    subgraph Progress["进度回调"]
+        WebSocket["WebSocket STOMP"]
+    end
+
+    Publisher --> Exchange --> Q1 --> ExportConsumer
+    Q1 -.->|"nack/超时"| DLX --> DlxConsumer
+    TaskExecutor -.->|"ProgressCallback"| WebSocket
+```
+
+### 8.3 线程池配置
+
+`@Async` 使用的线程池配置：
 
 ```java
 @Bean("datasetTaskExecutor")
@@ -521,74 +595,27 @@ public Executor datasetTaskExecutor() {
 }
 ```
 
-配合**策略模式** (`TaskStrategy`) 实现任务类型路由：
+### 8.4 RabbitMQ 配置
 
-```mermaid
-flowchart LR
-    subgraph TaskSystem["异步任务系统"]
-        Controller["TaskController"] --> TaskService
-        TaskService --> TaskExecutor["TaskExecutorImpl<br/>@Async"]
-        TaskExecutor --> Factory["TaskStrategyFactory"]
-        Factory --> S1["DatasetExportStrategy"]
-        Factory --> S2["BatchDownloadStrategy"]
-        Factory --> S3["CustomExportStrategy"]
-        Factory --> S4["ItemDownloadStrategy"]
-    end
+`RabbitMQConfig.java` 中声明的拓扑：
 
-    subgraph Progress["进度回调"]
-        WebSocket["WebSocket STOMP"]
-    end
+| 组件 | 名称 | 说明 |
+|------|------|------|
+| Exchange | `dehaze.tasks` (direct) | 与 Go/Python 端一致 |
+| Queue | `task.export` | 导出任务队列（durable, TTL=24h） |
+| DLX Exchange | 死信交换机 | nack/超时消息转入 |
+| DLX Queue | `task.export.dlx` | 死信队列，由 `ExportDlxConsumer` 消费 |
 
-    TaskExecutor -.->|"ProgressCallback"| WebSocket
-```
+### 8.5 已知问题
 
-### 8.3 RabbitMQ 集成规划
+| 问题 | 严重级别 | 概述 |
+|------|----------|------|
+| **MQ 消费者为 TODO 桩** | P0 | `ExportTaskConsumer` 收到消息后未实际调用策略，需补全或将 `@RabbitListener` 改为调用 `TaskExecutor.submitExportTask` |
+| **双路径死代码** | P1 | `@Async` 与 MQ 并存，MQ 路径从未被真正调用 |
+| **Kafka 死依赖** | P2 | `pom.xml` 引入 `spring-kafka` 但无任何 `@KafkaListener`/`KafkaTemplate` 使用 |
+| **MongoDB 死依赖** | P2 | `pom.xml` 引入 `spring-boot-starter-data-mongodb` 但无 `@Document`/`MongoTemplate` 使用 |
 
-与 Go 端对齐，采用相同的交换机和队列设计：
-
-```mermaid
-flowchart LR
-    subgraph Producer["生产者 (dehaze-java)"]
-        TaskService2["TaskService"]
-        Publisher["RabbitTemplate"]
-    end
-
-    subgraph RabbitMQ["RabbitMQ Broker"]
-        Exchange["dehaze.tasks<br/>(direct exchange)"]
-        Q1["task.export<br/>导出任务队列"]
-        Q2["task.download<br/>批量下载队列"]
-        Q3["task.thumbnail<br/>缩略图生成队列"]
-        DLX["Dead Letter Exchange<br/>死信交换机"]
-    end
-
-    subgraph Consumer["消费者 (dehaze-java)"]
-        Worker1["ExportWorker"]
-        Worker2["DownloadWorker"]
-        Worker3["ThumbnailWorker"]
-    end
-
-    TaskService2 --> Publisher
-    Publisher --> Exchange
-    Exchange -->|"routing_key"| Q1
-    Exchange -->|"routing_key"| Q2
-    Exchange -->|"routing_key"| Q3
-    Q1 --> Worker1
-    Q2 --> Worker2
-    Q3 --> Worker3
-    Q1 -.->|"nack/超时"| DLX
-    Q2 -.->|"nack/超时"| DLX
-    Q3 -.->|"nack/超时"| DLX
-```
-
-**迁移计划**：
-
-| 阶段 | 内容 |
-|------|------|
-| **Phase 1** | 引入 `spring-boot-starter-amqp`，配置 RabbitMQ 连接 |
-| **Phase 2** | 将现有 @Async 任务迁移为 RabbitMQ 消费者，复用策略模式 |
-| **Phase 3** | 与 Go 端共享队列，实现跨语言任务协作 |
-
-### 8.4 Kafka 规划（日志管道）
+### 8.6 Kafka 规划（日志管道）
 
 与 Go 端保持一致：
 
@@ -616,23 +643,23 @@ flowchart LR
 
 ## 9. 定时任务
 
-### 9.1 当前方案：Spring @Scheduled + XXL-Job（条件装配）
+### 9.1 当前方案：Spring @Scheduled（XXL-Job 仅集成框架）
 
 | 调度方式 | 适用场景 | 当前状态 |
 |----------|----------|----------|
 | `@Scheduled` | 轻量级、单实例定时任务 | ✅ 已启用 |
-| XXL-Job | 分布式调度、Web 管理 | ✅ 已集成（条件装配） |
+| XXL-Job | 分布式调度、Web 管理 | ⚠️ 仅集成 `XxlJobSpringExecutor` Bean，**未注册任何 `@XxlJob` Handler** |
 
-### 9.2 内置定时任务
+### 9.2 内置定时任务（@Scheduled）
 
 | 任务 | CRON | 功能 |
 |------|------|------|
-| `cleanupExpiredTasks` | `0 0 2 * * ?` | 每天凌晨 2 点清理 7 天前已完成任务、30 天前所有任务 |
-| `cleanupStuckTasks` | `0 0 * * * ?` | 每小时清理超过 24 小时的异常状态任务 |
+| `cleanupExpiredTasks` | `0 0 2 * * ?` | 每天凌晨 2 点清理 7 天前已完成/取消任务、30 天前所有任务 |
+| `cleanupStuckTasks` | `0 0 * * * ?` | 每小时清理超过 24 小时的异常状态任务（PROCESSING 超 30min / PENDING 超 24h 标记 FAILED） |
 
 ### 9.3 XXL-Job 集成
 
-通过 `@ConditionalOnProperty(name = "xxl.job.enabled")` 按需装配：
+通过 `@ConditionalOnProperty(name = "xxl.job.enabled")` 按需装配 `XxlJobSpringExecutor`：
 
 ```yaml
 xxl:
@@ -655,21 +682,22 @@ flowchart LR
     end
 
     subgraph JavaExecutor["dehaze-java Executor"]
-        Handler1["TaskCleanupHandler"]
-        Handler2["XxlJobSampleHandler"]
+        Bean["XxlJobSpringExecutor<br/>(仅注册 Bean)"]
+        Note["⚠️ 无 @XxlJob Handler<br/>待迁移 @Scheduled 任务"]
     end
 
-    Scheduler -->|"HTTP 回调触发"| JavaExecutor
-    JavaExecutor -->|"执行结果上报"| Scheduler
+    Scheduler -.->|"预留 HTTP 回调通道"| JavaExecutor
+    JavaExecutor -.->|"预留结果上报"| Scheduler
 ```
 
 ### 9.4 迁移计划
 
-| 阶段 | 内容 |
-|------|------|
-| **Phase 1** | XXL-Job Admin 部署（与 Go 端共享） |
-| **Phase 2** | 将 `@Scheduled` 任务迁移到 XXL-Job，保留代码但切换触发方式 |
-| **Phase 3** | 新增统计/维护类任务直接注册到 XXL-Job |
+| 阶段 | 内容 | 状态 |
+|------|------|------|
+| **Phase 1** | XXL-Job Admin 部署（与 Go/Python 端共享） | ✅ 已完成 |
+| **Phase 2** | `XxlJobSpringExecutor` Bean 集成 | ✅ 已完成 |
+| **Phase 3** | 将 `@Scheduled` 任务迁移到 XXL-Job（注册 `@XxlJob` Handler） | 📋 规划中 |
+| **Phase 4** | 新增统计/维护类任务直接注册到 XXL-Job | 📋 规划中 |
 
 ---
 
@@ -759,19 +787,21 @@ flowchart LR
 ```mermaid
 flowchart LR
     Req["请求"] --> CORS["跨域处理<br/>CorsFilter<br/>order=-101"]
-    CORS --> Captcha["验证码校验<br/>CaptchaFilter"]
-    Captcha --> JWT["JWT 校验<br/>JwtValidationFilter"]
+    CORS --> Trace["TraceID 透传<br/>TraceIdFilter"]
+    Trace --> JWT["JWT 校验<br/>JwtValidationFilter"]
     JWT --> Security["Spring Security<br/>FilterChain"]
     Security --> Permission["权限校验<br/>@PreAuthorize"]
     Permission --> Handler["业务处理<br/>Controller"]
 ```
+
+> 注：验证码校验逻辑已合并到登录流程内（不再使用独立 `CaptchaValidationFilter`）。
 
 ### 11.3 过滤器清单
 
 | 过滤器 | 文件 | 功能 | 作用范围 |
 |--------|------|------|----------|
 | CorsFilter | `CorsConfig.java` | 跨域资源共享，order=-101（先于 Security） | 全局 |
-| CaptchaValidationFilter | `filter/CaptchaValidationFilter.java` | 登录验证码校验 | 登录接口 |
+| TraceIdFilter | `filter/TraceIdFilter.java` | TraceID 生成/透传/回写 MDC | 全局 |
 | JwtValidationFilter | `filter/JwtValidationFilter.java` | JWT Token 验证、SecurityContext 注入 | 受保护路由 |
 | SecurityFilterChain | `SecurityConfig.java` | Spring Security 认证/授权链 | 全局 |
 | RequestLogFilter | `filter/RequestLogFilter.java` | 请求 URI 日志 | 全局 |
@@ -911,29 +941,32 @@ flowchart LR
 
 ### 14.3 全局异常处理
 
-通过 `@RestControllerAdvice` + `@ExceptionHandler` 统一拦截并格式化输出：
+通过 `@RestControllerAdvice` + `@ExceptionHandler` 统一拦截并格式化输出，共处理 18 类异常：
 
 ```mermaid
 flowchart TB
-    E1["BindException<br/>ConstraintViolationException<br/>MethodArgumentNotValidException"] -->|400| R1["ResultCode.PARAM_ERROR"]
+    E1["BindException<br/>ConstraintViolationException<br/>MethodArgumentNotValidException<br/>MissingServletRequestParameterException<br/>MethodArgumentTypeMismatchException<br/>TypeMismatchException<br/>JsonProcessingException<br/>HttpMessageNotReadableException<br/>IllegalArgumentException<br/>ServletException"] -->|400| R1["ResultCode.PARAM_ERROR"]
     E2["BusinessException"] -->|400| R2["自定义 ResultCode"]
     E3["RateLimitException"] -->|429| R3["ResultCode.RATE_LIMIT"]
     E4["NoHandlerFoundException"] -->|404| R4["ResultCode.RESOURCE_NOT_FOUND"]
-    E5["AccessDeniedException<br/>AuthenticationException"] -->|"继续抛出"| R5["Security 异常处理器"]
-    E6["Exception (兜底)"] -->|400| R6["错误消息"]
+    E5["DuplicateKeyException<br/>DataIntegrityViolationException"] -->|400| R5["唯一键/数据完整性冲突"]
+    E6["BadSqlGrammarException<br/>SQLSyntaxErrorException"] -->|500| R6["SQL 语法错误"]
+    E7["AccessDeniedException<br/>AuthenticationException"] -->|"继续抛出"| R7["Security 异常处理器<br/>MyAccessDeniedHandler / MyAuthenticationEntryPoint"]
+    E8["Exception (兜底)"] -->|500| R8["SYSTEM_EXECUTION_ERROR"]
 ```
 
 **异常分类处理**：
 
 | 异常类型 | HTTP 状态码 | 处理方式 |
 |----------|-------------|----------|
-| 参数校验异常 | 400 | 收集所有校验错误信息，拼接返回 |
+| 参数校验异常（含类型转换/JSON 解析/缺失参数等 10 类） | 400 | 收集校验错误信息，拼接返回 |
 | 业务异常 | 400 | 返回 BusinessException 中的 ResultCode |
-| 限流异常 | 200 | 返回 RATE_LIMIT 错误码 |
+| 限流异常 | 429 | 返回 RATE_LIMIT 错误码 |
 | 资源不存在 | 404 | 返回 RESOURCE_NOT_FOUND |
-| SQL 异常 | 403 | 检测是否为权限不足 |
-| Security 异常 | - | 继续抛出交由 Spring Security 处理 |
-| 未知异常 | 400 | 兜底处理，记录日志 |
+| 唯一键冲突 / 数据完整性 | 400 | 返回数据库冲突信息 |
+| SQL 语法错误 | 500 | 返回系统执行错误 |
+| Security 异常（`AccessDeniedException` / `AuthenticationException`） | - | 兜底处理器内 `instanceof` 判断后**重新抛出**，由 `MyAccessDeniedHandler`/`MyAuthenticationEntryPoint` 处理 |
+| 未知异常 | 500 | 兜底处理，记录日志 |
 
 ---
 
@@ -1058,23 +1091,27 @@ management:
 | **安全** | Spring Security | 6.x | 认证与授权 |
 | **ORM** | MyBatis-Plus | 3.5.5 | 数据库操作 |
 | **连接池** | Druid | 1.2.16 | 数据库连接池 |
-| **缓存** | Spring Data Redis (Lettuce) | - | Redis 客户端 |
+| **缓存** | Spring Data Redis (Lettuce) + Caffeine | - | Redis 客户端 + L1 本地缓存 |
 | **分布式锁/限流** | Redisson | 3.24.3 | 分布式锁、令牌桶限流 |
-| **日志** | SLF4J + Logback | - | 结构化日志 |
+| **熔断器** | Resilience4j | 2.2.0 | 熔断/重试/限流 |
+| **日志** | SLF4J + Logback + logstash-logback-encoder | 7.4 | 结构化日志（含 JSON 编码器） |
 | **认证** | Hutool JWT | 5.8.40 | JWT Token |
 | **校验** | Hibernate Validator | - | 参数校验 |
 | **API 文档** | Knife4j (OpenAPI 3) | 4.3.0 | Swagger API 文档 |
-| **对象转换** | MapStruct | 1.5.5 | 编译期对象转换 |
+| **对象转换** | MapStruct | 1.5.5.Final | 编译期对象转换 |
 | **Excel** | EasyExcel | 3.2.1 | Excel 导入导出 |
 | **图片处理** | Thumbnailator | 0.4.20 | 图片压缩/缩略图 |
 | **对象存储** | MinIO / 阿里云 OSS | 8.6.0 / 3.16.3 | 文件存储 |
 | **WebSocket** | Spring WebSocket + STOMP | - | 实时通信 |
 | **监控** | Micrometer + Prometheus | - | 指标采集 |
-| **定时任务** | @Scheduled + XXL-Job | 3.3.0 | 定时任务调度 |
-| **消息队列** | RabbitMQ（规划） | - | 异步任务分发 |
-| **日志管道** | Kafka（规划） | - | 日志收集与流处理 |
-| **测试** | JUnit 5 + TestContainers + H2 | 1.19.3 | 单元/集成测试 |
-| **MongoDB** | Spring Data MongoDB | - | 文档存储（日志等） |
+| **定时任务** | @Scheduled + XXL-Job (Executor) | 3.3.0 | 定时任务调度（XXL-Job Handler 未注册） |
+| **消息队列** | RabbitMQ (spring-boot-starter-amqp) | - | 异步任务分发（消费者 TODO 桩） |
+| **日志管道** | Kafka（死依赖，规划激活） | - | 日志收集与流处理 |
+| **HTTP 客户端** | Apache HttpClient 5 | - | 调用 Python 算法服务 |
+| **测试** | JUnit 5 + TestContainers + H2 | 1.19.3 / 2.2.224 | 单元/集成测试 |
+| **Lombok** | Lombok + lombok-mapstruct-binding | 1.18.32 / 0.2.0 | 样板代码消除 |
+
+> ⚠️ **死依赖提示**：`spring-boot-starter-data-mongodb` 和 `spring-kafka` 在 `pom.xml` 中声明但代码中无任何使用，建议清理或激活。
 
 ---
 
@@ -1085,14 +1122,14 @@ management:
 | **HTTP 框架** | Spring MVC (Tomcat) | Gin | 接口语义一致 |
 | **ORM** | MyBatis-Plus | GORM | 功能对等 |
 | **连接池** | Druid | GORM 内置 | — |
-| **缓存** | Spring Cache + Redis | 多级缓存 (FreeCache + Redis) | Java 端规划引入 L1 |
+| **缓存** | Spring Cache + Caffeine L1 + Redis L2 | 多级缓存 (gokit local + Redis) | 已对齐多级缓存 |
 | **分布式锁** | Redisson | go-redis | 语义一致 |
-| **消息队列** | 规划 RabbitMQ | 已实现 RabbitMQ | 共享 Exchange/Queue |
-| **定时任务** | @Scheduled + XXL-Job | Ticker → XXL-Job | 共享 XXL-Job Admin |
+| **消息队列** | ✅ RabbitMQ（消费者 TODO 桩） | ✅ RabbitMQ（已实现） | 共享 Exchange/Queue |
+| **定时任务** | @Scheduled + XXL-Job（仅 Executor） | Ticker + XXL-Job（规划） | 共享 XXL-Job Admin |
 | **日志** | Logback | Zap | 格式/级别统一 |
 | **认证** | Spring Security + JWT | 自研中间件 + JWT | Token 格式互通 |
 | **权限** | RBAC (@PreAuthorize) | RBAC (中间件) | 权限标识一致 |
-| **数据权限** | MyBatis-Plus 拦截器 | GORM Scopes | 语义一致 |
+| **数据权限** | MyBatis-Plus 拦截器 | GORM Plugin (DataScopePlugin) | 语义一致 |
 | **自动填充** | MetaObjectHandler | GORM Callback | 字段名一致 |
 | **API 文档** | Knife4j (OpenAPI 3) | Swagger (swag) | 规范一致 |
 | **监控** | Micrometer + Prometheus | client_golang | 指标命名统一 |
@@ -1101,4 +1138,4 @@ management:
 | **XSS 防护** | XssUtils | bluemonday | 功能对等 |
 | **路径安全** | PathSecurityUtil | path_security.go | 功能对等 |
 | **WebSocket** | STOMP + SockJS | — | Java 独有 |
-| **MongoDB** | Spring Data MongoDB | — | Java 独有 |
+| **TraceID** | TraceIdFilter + MDC | trace.go + Context | 语义一致 |
