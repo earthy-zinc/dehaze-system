@@ -11,6 +11,7 @@ import {
   EditOutlined,
   PlusOutlined,
   ReloadOutlined,
+  SearchOutlined,
 } from "@ant-design/icons";
 import {
   Button,
@@ -99,6 +100,12 @@ export default function AlgorithmList(): React.JSX.Element {
   const handleReset = useCallback(() => {
     searchForm.resetFields();
     setQueryParams({});
+  }, [searchForm]);
+
+  /** 点击搜索按钮：读取表单当前值并触发查询 */
+  const handleSearch = useCallback(() => {
+    const keywords = searchForm.getFieldValue("keywords") as string | undefined;
+    setQueryParams({ keywords: keywords || undefined });
   }, [searchForm]);
 
   // ==================== 事件处理 ====================
@@ -271,18 +278,26 @@ export default function AlgorithmList(): React.JSX.Element {
 
   return (
     <div className="app-container">
-      <Card size="small" style={{ marginBottom: 12 }}>
-        <Form form={searchForm} layout="inline">
+      <Card className="search-card" size="small">
+        <Form form={searchForm} layout="inline" onFinish={handleSearch}>
           <Form.Item name="keywords" label="关键字">
             <Input
               placeholder="算法名称"
               allowClear
               style={{ width: 200 }}
               onChange={handleSearchChange}
+              onPressEnter={handleSearch}
             />
           </Form.Item>
           <Form.Item>
             <Space>
+              <Button
+                type="primary"
+                htmlType="submit"
+                icon={<SearchOutlined />}
+              >
+                搜索
+              </Button>
               <Button
                 htmlType="reset"
                 icon={<ReloadOutlined />}
@@ -302,7 +317,7 @@ export default function AlgorithmList(): React.JSX.Element {
         </Form>
       </Card>
 
-      <Card size="small" style={{ overflowX: "hidden" }}>
+      <Card className="table-card" size="small">
         <Table
           columns={columns}
           dataSource={algorithmList}
@@ -323,7 +338,7 @@ export default function AlgorithmList(): React.JSX.Element {
         width={680}
         footer={null}
         onCancel={() => setDetailVisible(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         {detailRecord && (
           <Descriptions column={2} bordered size="small">

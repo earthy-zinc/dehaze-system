@@ -692,7 +692,7 @@ const UserManagement: React.FC = () => {
         onCancel={() => setImportDialogVisible(false)}
         okText="确定"
         cancelText="取消"
-        destroyOnClose
+        destroyOnHidden
       >
         <Form layout="vertical">
           <Form.Item label="所属部门" required>

@@ -221,7 +221,7 @@ export default function DatasetList() {
 
   return (
     <div className="app-container">
-      <Card size="small" style={{ marginBottom: 12 }}>
+      <Card className="search-card" size="small">
         <Form form={searchForm} layout="inline" onFinish={handleSearch}>
           <Form.Item name="keywords" label="数据集名称">
             <Input placeholder="数据集名称" allowClear style={{ width: 200 }} />
@@ -254,7 +254,7 @@ export default function DatasetList() {
         </Form>
       </Card>
 
-      <Card size="small" style={{ overflowX: "hidden" }}>
+      <Card className="table-card" size="small">
         <Table
           columns={columns}
           dataSource={datasetList}

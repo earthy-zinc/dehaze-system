@@ -5,22 +5,45 @@
   flex-direction: row;
   width: 100%;
   min-height: 100vh;
+  background-color: #f5f7fa;
 }
 
+/* 侧边栏：参考 §5.2 Level 3 阴影 */
 .side-bar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 11;
   width: $sidebar-width;
   height: 100vh;
-  background-color: var(--ant-layout-light-sider-bg) !important;
+  background-color: #fff !important;
+  border-right: 1px solid #eef0f3;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.04);
 }
 
 .layout-left {
   display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
 }
 
+/* 顶部导航栏：参考 §6.4 顶部导航栏 */
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: $navbar-height;
-  background-color: var(--ant-layout-light-sider-bg);
+  padding: 0 24px;
+  background-color: #fff;
+  border-bottom: 1px solid #eef0f3;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* 内容区域 */
+:global(.ant-layout-content) {
+  background-color: #f5f7fa;
 }

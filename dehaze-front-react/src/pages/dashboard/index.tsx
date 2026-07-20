@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
       title: "已处理图片",
       value: 1286,
       icon: <FileImageOutlined />,
-      color: "#1890ff",
+      color: "#3B82F6",
       suffix: "张",
     },
     {

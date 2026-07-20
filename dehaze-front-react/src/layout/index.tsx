@@ -1,5 +1,6 @@
 import { LayoutEnum } from "@/enums/LayoutEnum";
 import { SidebarStatusEnum } from "@/enums/SidebarStatusEnum";
+import { usePermission } from "@/hooks/usePermission";
 import { TopMenu } from "@/layout/components/MenuBar/TopMenu";
 import { RootState } from "@/store";
 import "./index.scss";
@@ -12,23 +13,24 @@ import { Outlet } from "react-router-dom";
 import { SideMenu } from "./components/MenuBar/SideMenu";
 import { NavBar } from "./components/NavBar";
 
+/** 侧边栏宽度（参考 UI/UX 设计规范 §3.2 侧边菜单） */
+const SIDEBAR_WIDTH = 220;
+const SIDEBAR_WIDTH_COLLAPSED = 64;
+
 const BasicLayout: React.FC = (props: any) => {
+  // 激活路由守卫：未登录跳转 /login，登录后自动拉取用户信息与动态路由
+  usePermission();
   const settingsStore = useSelector((state: RootState) => state.settings);
   const appStore = useSelector((state: RootState) => state.app);
   const collapsed = appStore.sidebarStatus === SidebarStatusEnum.COLLAPSED;
-  const sidebarWidthCollapsed = Number(
-    window
-      .getComputedStyle(document.documentElement)
-      .getPropertyValue("--sidebar-width-collapsed")
-      .replace("px", "")
-  );
   return (
     <Layout className="main-container">
       {settingsStore.layout !== LayoutEnum.TOP && (
         <Sider
           collapsible
           collapsed={collapsed}
-          collapsedWidth={sidebarWidthCollapsed}
+          width={SIDEBAR_WIDTH}
+          collapsedWidth={SIDEBAR_WIDTH_COLLAPSED}
           className="side-bar"
           trigger={null}
         >

@@ -249,7 +249,7 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
         width={900}
         footer={null}
         onCancel={() => setVisible(false)}
-        destroyOnClose
+        destroyOnHidden
       >
         <div style={{ marginBottom: 12 }}>
           <Space>
@@ -296,7 +296,7 @@ const DictItemDialog = forwardRef<DictItemDialogRef>((_props, ref) => {
         confirmLoading={confirmLoading}
         okText="保存"
         cancelText="取消"
-        destroyOnClose
+        destroyOnHidden
         onOk={handleFormSubmit}
         onCancel={() => {
           setFormVisible(false);

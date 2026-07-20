@@ -79,7 +79,7 @@ const DictTypeFormDialog = forwardRef<DictTypeFormDialogRef, Props>(
         confirmLoading={confirmLoading}
         okText="保存"
         cancelText="取消"
-        destroyOnClose
+        destroyOnHidden
         onOk={handleSubmit}
         onCancel={handleCancel}
       >

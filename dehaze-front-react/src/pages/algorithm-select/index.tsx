@@ -194,8 +194,8 @@ export default function AlgorithmSelect(): React.JSX.Element {
                   size="small"
                   hoverable
                   style={{
-                    borderColor: selectedId === algo.id ? "#1677ff" : undefined,
-                    background: selectedId === algo.id ? "#e6f4ff" : undefined,
+                    borderColor: selectedId === algo.id ? "#3B82F6" : undefined,
+                    background: selectedId === algo.id ? "#eff6ff" : undefined,
                   }}
                   onClick={() => setSelectedId(algo.id)}
                 >
@@ -206,7 +206,7 @@ export default function AlgorithmSelect(): React.JSX.Element {
                   >
                     <Space>
                       {selectedId === algo.id && (
-                        <CheckCircleFilled style={{ color: "#1677ff" }} />
+                        <CheckCircleFilled style={{ color: "#3B82F6" }} />
                       )}
                       <Text strong>{algo.name}</Text>
                       <Tag color="orange">推荐</Tag>
@@ -283,9 +283,9 @@ export default function AlgorithmSelect(): React.JSX.Element {
                       hoverable
                       style={{
                         borderColor:
-                          selectedId === algo.id ? "#1677ff" : undefined,
+                          selectedId === algo.id ? "#3B82F6" : undefined,
                         background:
-                          selectedId === algo.id ? "#e6f4ff" : undefined,
+                          selectedId === algo.id ? "#eff6ff" : undefined,
                       }}
                       onClick={() => setSelectedId(algo.id)}
                     >
@@ -296,7 +296,7 @@ export default function AlgorithmSelect(): React.JSX.Element {
                       >
                         <Space>
                           {selectedId === algo.id && (
-                            <CheckCircleFilled style={{ color: "#1677ff" }} />
+                            <CheckCircleFilled style={{ color: "#3B82F6" }} />
                           )}
                           <Text strong>{algo.name}</Text>
                         </Space>

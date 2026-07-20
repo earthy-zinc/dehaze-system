@@ -134,7 +134,7 @@ const PermissionDialog = forwardRef<PermissionDialogRef, PermissionDialogProps>(
         confirmLoading={confirmLoading}
         okText="确定"
         cancelText="取消"
-        destroyOnClose
+        destroyOnHidden
         onOk={handleOk}
         onCancel={handleCancel}
       >

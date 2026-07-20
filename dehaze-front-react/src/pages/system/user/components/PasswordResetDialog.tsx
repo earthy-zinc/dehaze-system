@@ -60,7 +60,7 @@ const PasswordResetDialog = React.forwardRef<
       confirmLoading={confirmLoading}
       okText="确定"
       cancelText="取消"
-      destroyOnClose
+      destroyOnHidden
       onOk={handleSubmit}
       onCancel={handleCancel}
     >

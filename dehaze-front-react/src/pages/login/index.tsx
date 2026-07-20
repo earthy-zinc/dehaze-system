@@ -1,4 +1,5 @@
 import { AuthAPI, LoginData } from "dehaze-sdk-js";
+import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { ThemeEnum } from "@/enums/ThemeEnum";
 import defaultSettings from "@/settings";
 import { DisPatchType } from "@/store";
@@ -38,6 +39,11 @@ export default function Login() {
   }, []);
 
   useEffect(() => {
+    // 已登录用户访问登录页 -> 直接跳转首页
+    if (localStorage.getItem(TOKEN_KEY)) {
+      navigate("/", { replace: true });
+      return;
+    }
     getCaptcha();
   }, []);
 
@@ -138,12 +144,23 @@ export default function Login() {
               placeholder="验证码"
               size="large"
               suffix={
-                <img
-                  src={captchaBase64}
-                  onClick={() => getCaptcha()}
-                  alt="加载失败"
-                  style={{ height: 34, cursor: "pointer" }}
-                />
+                captchaBase64 ? (
+                  <img
+                    src={captchaBase64}
+                    onClick={() => getCaptcha()}
+                    alt="加载失败"
+                    style={{ height: 34, cursor: "pointer" }}
+                  />
+                ) : (
+                  <Button
+                    type="link"
+                    size="small"
+                    onClick={getCaptcha}
+                    style={{ height: 34, padding: 0 }}
+                  >
+                    加载验证码
+                  </Button>
+                )
               }
             />
           </Form.Item>

@@ -174,7 +174,7 @@ const formatHazeLevel = (level?: string): {
 
 /** 图表配色 */
 const CHART_COLORS = [
-  "#1677ff",
+  "#3B82F6",
   "#52c41a",
   "#faad14",
   "#ff4d4f",
@@ -398,7 +398,7 @@ const DistributionBar: React.FC<{
           <Progress
             percent={(value / max) * 100}
             showInfo={false}
-            strokeColor="#1677ff"
+            strokeColor="#3B82F6"
           />
         </div>
       ))}
@@ -533,7 +533,7 @@ const PairUploadDialog: React.FC<{
       okText="上传"
       cancelText="取消"
       width={680}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form layout="vertical">
         <Form.Item label="数据项名称">
@@ -672,7 +672,7 @@ const BatchUploadDialog: React.FC<{
       okText="上传"
       cancelText="取消"
       width={680}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form layout="vertical">
         <Form.Item label="场景类型">
@@ -738,7 +738,7 @@ const ImageViewerModal: React.FC<{
       onCancel={onClose}
       footer={null}
       width={960}
-      destroyOnClose
+      destroyOnHidden
     >
       <Row gutter={16}>
         {/* 左侧：图片预览 + 上一张/下一张 */}
@@ -1503,7 +1503,7 @@ export default function DatasetDetail() {
                         width: 220,
                         position: "relative",
                         border: selectedFileIds.has(img.fileId)
-                          ? "2px solid #1677ff"
+                          ? "2px solid #3B82F6"
                           : "2px solid transparent",
                         borderRadius: 8,
                         overflow: "hidden",
@@ -1560,10 +1560,10 @@ export default function DatasetDetail() {
                       <Card
                         size="small"
                         hoverable
-                        bodyStyle={{ padding: 0 }}
+                        styles={{ body: { padding: 0 } }}
                         style={{
                           border: selectedFileIds.has(img.fileId)
-                            ? "2px solid #1677ff"
+                            ? "2px solid #3B82F6"
                             : "1px solid #f0f0f0",
                         }}
                       >
