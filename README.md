@@ -347,6 +347,105 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8991
 uvicorn app.main:app --host 0.0.0.0 --port 8991 --workers 4
 ```
 
+### 算法训练
+
+#### 1. 安装依赖
+
+```bash
+cd dehaze-algorithm
+pip install -e .
+```
+
+> `setup.py` 会读取 `requirements.txt` 安装全部依赖。如需编译 CUDA 算子（如 DCN），请设置环境变量 `BASICSR_EXT=True`。
+
+#### 2. 推理
+
+使用 `inference_ridcp.py` 进行单图或批量推理：
+
+```bash
+python inference_ridcp.py \
+    -i inputs \
+    -w path/to/model_weight.pth \
+    -o results \
+    --use_weight \
+    --alpha 1.0
+```
+
+参数说明：
+
+- `-i / --input`：输入图片或文件夹，默认 `inputs`
+- `-w / --weight`：模型权重路径
+- `-o / --output`：输出文件夹，默认 `results`
+- `--use_weight`：启用权重融合
+- `--alpha`：权重融合系数，默认 `1.0`
+- `--max_size`：单张图片最大尺寸，超过则启用分块推理，默认 `10000`
+
+#### 3. 训练
+
+通过 `basicsr/train.py` 启动训练，配置文件位于 `options/` 目录：
+
+```bash
+python basicsr/train.py -opt options/common/NH-HAZE-20.yml
+```
+
+#### 4. 测试
+
+通过 `basicsr/test.py` 跑测试集评估：
+
+```bash
+python basicsr/test.py -opt options/common/NH-HAZE-20.yml
+```
+
+### 论文编译
+
+#### 1. 安装 TeX Live
+
+##### Windows
+
+1. 下载 [install-tl-windows.exe](https://www.tug.org/texlive/acquire-netinstall.html)，以管理员身份运行
+2. 将 `C:\texlive\2025\bin\win32` 添加到系统 PATH
+
+##### Linux
+
+```bash
+sudo perl install-tl
+export PATH=/usr/local/texlive/2025/bin/x86_64-linux:$PATH
+```
+
+##### macOS
+
+```bash
+brew install --cask mactex
+```
+
+#### 2. 验证安装
+
+```bash
+tex --version
+```
+
+#### 3. 编译论文
+
+依次执行以下命令：
+
+```bash
+cd dehaze-paper
+pdflatex "CMFR-Net.tex"
+bibtex "CMFR-Net"
+pdflatex "CMFR-Net.tex"
+pdflatex "CMFR-Net.tex"
+```
+
+编译完成后会在当前目录下生成 `CMFR-Net.pdf`。
+
+#### 4. 缺包处理
+
+如编译过程提示缺少宏包，使用 `tlmgr` 安装：
+
+```bash
+tlmgr install <package_name>
+```
+
 ---
 
 ## 🔌 端口规范
@@ -427,7 +526,7 @@ dehaze-system/
 │   │   └── store/            # Redux状态
 │   └── desktop/              # Electron桌面端
 │
-├── dehaze-java/               # Java后端 (主要后端)
+├── dehaze-java/               # Java后端
 │   ├── src/main/java/com/pei/dehaze/
 │   │   ├── controller/       # 控制器层
 │   │   ├── service/          # 服务层
@@ -435,15 +534,14 @@ dehaze-system/
 │   │   ├── model/            # 实体类
 │   │   └── config/           # 配置类
 │   ├── pom.xml               # Spring Boot 3.3
-│   └── sql/schema.sql          # 数据库初始化脚本
 │
-├── dehaze-go/                 # Go后端 (备选方案)
+├── dehaze-go/                 # Go后端
 │   ├── cmd/                  # 应用入口
 │   ├── internal/             # 内部业务逻辑（app/model/router/service/middleware）
 │   ├── pkg/                  # 可复用公共包（database/redis/response等）
 │   └── config/               # 配置
 │
-├── dehaze-python/             # Python算法服务 (核心)
+├── dehaze-python/             # Python后端
 │   ├── algorithm/            # 30+种去雾算法
 │   │   ├── RIDCP/
 │   │   ├── WPXNet/
