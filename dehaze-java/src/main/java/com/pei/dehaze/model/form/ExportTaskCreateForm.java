@@ -19,8 +19,8 @@ public class ExportTaskCreateForm {
 
     @Schema(
             description = "导出类型",
-            example = "dataset",
-            allowableValues = {"dataset", "dataset_item", "batch_items", "custom"}
+            example = "dataset_export",
+            allowableValues = {"dataset_export", "item_download", "batch_download", "custom_export"}
     )
     @NotBlank(message = "导出类型不能为空")
     private String type;

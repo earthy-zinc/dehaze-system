@@ -17,14 +17,14 @@ import lombok.EqualsAndHashCode;
 public class TaskQuery extends BasePageQuery {
 
     @Schema(
-            description = "任务类型：dataset_export-数据集导出, item_download-数据项下载, batch_download-批量下载",
+            description = "任务类型：dataset_export-数据集导出, item_download-数据项下载, batch_download-批量下载, custom_export-自定义导出",
             example = "dataset_export"
     )
     private String taskType;
 
     @Schema(
-            description = "任务状态：pending-等待中, processing-处理中, completed-已完成, failed-失败, cancelled-已取消",
-            example = "processing"
+            description = "任务状态：PENDING-等待中, PROCESSING-处理中, COMPLETED-已完成, FAILED-失败, CANCELLED-已取消",
+            example = "PROCESSING"
     )
     private String status;
 }

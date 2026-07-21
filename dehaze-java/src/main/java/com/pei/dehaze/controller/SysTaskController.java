@@ -32,7 +32,7 @@ public class SysTaskController {
     @PostMapping
     @Operation(
         summary = "创建任务",
-        description = "创建异步任务，支持多种任务类型：dataset_export（数据集导出）、item_download（数据项下载）、batch_download（批量下载）"
+        description = "创建异步任务，支持多种任务类型：dataset_export（数据集导出）、item_download（数据项下载）、batch_download（批量下载）、custom_export（自定义导出）"
     )
     public Result<TaskVO> createTask(
             @Valid @RequestBody ExportTaskCreateForm form,
@@ -73,16 +73,16 @@ public class SysTaskController {
     }
 
     @DeleteMapping("/{taskId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
         summary = "取消任务",
         description = "取消正在执行的任务，只能取消自己创建的任务"
     )
-    public void cancelTask(
+    public Result<Void> cancelTask(
         @Parameter(description = "任务ID", required = true)
         @PathVariable String taskId
     ) {
         taskService.cancelTask(taskId);
+        return Result.success();
     }
 
     @PostMapping("/{taskId}/retry")

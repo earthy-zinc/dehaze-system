@@ -308,6 +308,7 @@ public class TaskServiceImpl extends ServiceImpl<SysTaskMapper, SysTask> impleme
     private TaskVO convertToTaskVO(SysTask sysTask) {
         TaskVO taskVO = new TaskVO();
         taskVO.setTaskId(sysTask.getTaskId());
+        taskVO.setTaskType(sysTask.getTaskType());
         taskVO.setStatus(sysTask.getStatus());
         taskVO.setProgress(sysTask.getProgress());
         taskVO.setTotalFiles(sysTask.getTotalFiles());

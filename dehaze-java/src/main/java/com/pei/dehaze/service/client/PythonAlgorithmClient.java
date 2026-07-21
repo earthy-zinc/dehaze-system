@@ -16,6 +16,8 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.UUID;
 
@@ -59,7 +61,8 @@ public class PythonAlgorithmClient {
         body.set("algorithmId", algorithmId);
         body.set("imageUrl", imageUrl);
         if (params != null) {
-            body.set("params", JSONUtil.parseObj(params));
+            // Python 端约定 params 为 JSON 字符串，直接透传，不能解析成对象
+            body.set("params", params);
         }
         return pythonCallTimer.record(() -> postWithRetry(props.getPredictPath(), body.toString()));
     }
@@ -132,6 +135,17 @@ public class PythonAlgorithmClient {
         String traceId = MDC.get("traceId");
         if (traceId != null && !traceId.isBlank()) {
             headers.set("X-Trace-Id", traceId);
+        }
+        // 透传当前用户的 Authorization（Bearer token）：
+        // Python 算法服务的 prediction/evaluation 接口需要 JWT 认证，
+        // 且与 Java 后端共享同一 JWT 密钥，透传即可通过校验
+        ServletRequestAttributes requestAttributes =
+                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (requestAttributes != null) {
+            String authorization = requestAttributes.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+            if (authorization != null && !authorization.isBlank()) {
+                headers.set(HttpHeaders.AUTHORIZATION, authorization);
+            }
         }
         HttpEntity<String> entity = new HttpEntity<>(jsonBody, headers);
 
