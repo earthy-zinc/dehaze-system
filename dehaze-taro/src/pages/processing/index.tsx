@@ -4,6 +4,7 @@ import Taro from '@tarojs/taro'
 import { ArrowLeft } from '@taroify/icons'
 import { ModelAPI } from 'dehaze-sdk-js'
 import type { Algorithm, PredictionResultVO } from 'dehaze-sdk-js'
+import { uploadImage } from '@/utils/upload'
 import './index.less'
 
 interface ImageData {
@@ -68,6 +69,8 @@ const ProcessingPage: React.FC = () => {
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const stageTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // 缓存已上传的文件 ID，重试时复用，避免重复上传
+  const uploadedFileIdRef = useRef<number | null>(null)
 
   // 清理定时器
   const clearAllTimers = useCallback(() => {
@@ -175,9 +178,15 @@ const ProcessingPage: React.FC = () => {
     startProgressSimulation()
 
     try {
+      // 本地临时路径（blob:/wxfile://）服务端不可访问，需先上传换取 fileId
+      if (!uploadedFileIdRef.current) {
+        const fileInfo = await uploadImage(currentImage.url, currentImage.name)
+        uploadedFileIdRef.current = fileInfo.id
+      }
+
       const res = await ModelAPI.predict({
         algorithmId: selectedAlgorithm.id,
-        imageUrl: currentImage.url,
+        fileId: uploadedFileIdRef.current,
         params: JSON.stringify(params),
       })
 

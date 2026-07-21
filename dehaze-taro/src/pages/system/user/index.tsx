@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View } from '@tarojs/components';
-import Taro, { usePageScroll } from '@tarojs/taro';
+import Taro, { useLoad, usePageScroll } from '@tarojs/taro';
 import {
   Navbar,
   Search,
@@ -37,10 +37,10 @@ const UserListPage: React.FC = () => {
   // 页面滚动监听
   usePageScroll(({ scrollTop }) => setReachTop(scrollTop === 0));
 
-  // 初始化数据
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  // 初始化数据（页面加载时拉取一次，避免依赖 fetchUsers 造成无限重取）
+  useLoad(async () => {
+    await fetchUsers();
+  });
 
   // 下拉刷新
   const handleRefresh = async () => {

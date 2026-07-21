@@ -29,6 +29,20 @@ export default {
   h5: {
     devServer: {
       open: false,
+      port: 10086,
+      proxy: {
+        // H5 开发环境经 devServer 代理转发，规避浏览器 CORS 限制
+        // 小程序端不受影响（小程序不存在跨域问题，直连绝对地址）
+        "/api": {
+          target: "http://localhost:8989",
+          changeOrigin: true,
+          // 浏览器同源请求会带上 Origin 头，服务端转发时移除，
+          // 避免被后端 CORS 白名单拦截（403）。代理转发属同源请求，无需 CORS。
+          onProxyReq: (proxyReq: { removeHeader: (name: string) => void }) => {
+            proxyReq.removeHeader("origin");
+          },
+        },
+      },
     },
   },
 } satisfies UserConfigExport<"webpack5">;
