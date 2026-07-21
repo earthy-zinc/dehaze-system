@@ -197,6 +197,7 @@ graph TB
 
 ### 前端启动
 
+#### dehaze-front-vue/dehaze-front-react
 ```bash
 # 快速安装JS项目的所有依赖
 pnpm install -r
@@ -213,6 +214,85 @@ pnpm run dev
 ```
 访问: http://localhost:5174 (Vue) / http://localhost:5173 (React)
 
+#### dehaze-react-native
+
+```bash
+# 安装依赖
+yarn
+
+# 运行 Android
+yarn android
+# 或先启动 Metro，再运行原生构建:
+yarn start
+yarn react-native run-android
+
+# 运行 iOS
+yarn ios
+# 或先启动 Metro，再运行原生构建:
+yarn start
+yarn react-native run-ios
+
+# 测试与检查
+yarn test
+yarn lint
+```
+
+#### dehaze-taro/dehaze-uniapp
+
+| 平台 | 开发模式 | 生产构建 |
+|------|---------|---------|
+| 微信小程序 | `pnpm dev:weapp` | `pnpm build:weapp` |
+| H5 网页 | `pnpm dev:h5` | `pnpm build:h5` |
+| 支付宝小程序 | `pnpm dev:alipay` | `pnpm build:alipay` |
+| 百度小程序 | `pnpm dev:swan` | `pnpm build:swan` |
+| 头条小程序 | `pnpm dev:tt` | `pnpm build:tt` |
+| QQ 小程序 | `pnpm dev:qq` | `pnpm build:qq` |
+| 京东小程序 | `pnpm dev:jd` | `pnpm build:jd` |
+| 快应用 | `pnpm dev:quickapp` | `pnpm build:quickapp` |
+
+#### dehaze_flutter
+
+##### 技术栈
+
+- Flutter 3.35+ / Dart 3.9+
+- Riverpod（状态管理）
+- GoRouter（路由管理，含路由守卫）
+- Dio（网络请求，拦截器链：Auth → Response → Retry → Error）
+- SharedPreferences（Token 持久化）
+- json_serializable + build_runner（序列化）
+
+```bash
+# 安装依赖
+flutter pub get
+
+# 生成序列化代码
+dart run build_runner build --delete-conflicting-outputs
+
+# 运行（需后端 Java 服务运行在 127.0.0.1:8989）
+flutter run -d chrome --web-port 5177    # Web（固定端口 5177）
+flutter run -d windows                    # Windows
+flutter run -d android                    # Android
+```
+
+#### dehaze-android
+
+```bash
+./gradlew build              # 构建
+./gradlew installDebug       # 安装到设备
+./gradlew testDebugUnitTest  # 运行单元测试
+./gradlew jacocoTestReport   # 生成测试覆盖率报告
+```
+
+应用默认连接本地开发服务器，地址配置在 DehazeApplication.java 中：
+
+```java
+DehazeSDK.Builder()
+    .setBaseUrl("http://10.0.2.2:8989") // Android模拟器访问本机需要使用10.0.2.2
+    .setDebug(true)
+```
+
+如果需要更改服务器地址，请修改此处配置。
+
 ### 后端启动
 
 #### Java后端
@@ -227,7 +307,10 @@ mysql -u root -p < sql/schema.sql
 # 3. 启动服务
 cd dehaze-java
 mvn clean install
-mvn spring-boot:run
+mvn spring-boot:run -DskipTests
+
+# 4. 打包
+mvn package -DskipTests
 ```
 访问接口文档: http://localhost:8989/doc.html
 
@@ -240,6 +323,12 @@ vim config/config.yaml
 # 启动服务
 go mod download
 go run main.go
+
+# 测试
+go test ./...
+
+# 打包
+go build ./cmd/main.go
 ```
 
 #### Python算法服务
