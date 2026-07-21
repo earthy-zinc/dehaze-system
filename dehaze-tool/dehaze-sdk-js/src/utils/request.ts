@@ -1,5 +1,4 @@
 import { configManager } from "@/config";
-import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { ResultEnum } from "@/enums/ResultEnum";
 import type {
   AxiosError,
@@ -20,7 +19,7 @@ const service = axios.create({
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const interceptors = configManager.getInterceptors();
-    const accessToken = interceptors.getToken?.() ?? localStorage.getItem(TOKEN_KEY);
+    const accessToken = interceptors.getToken?.();
     if (accessToken) {
       // 如果 token 不包含 Bearer 前缀，则添加
       config.headers.Authorization = accessToken.startsWith("Bearer ")
@@ -43,10 +42,7 @@ service.interceptors.response.use(
     const interceptors = configManager.getInterceptors();
 
     // 处理二进制响应类型（如文件下载、导出等）
-    if (
-      response.config.responseType === "arraybuffer" ||
-      response.config.responseType === "blob"
-    ) {
+    if (response.config.responseType === "arraybuffer" || response.config.responseType === "blob") {
       const result = (await interceptors.onResponse?.(response)) || response.data;
       return result;
     }

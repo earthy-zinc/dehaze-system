@@ -12,8 +12,8 @@ export interface InterceptorCallbacks {
   onResponseError?: (error: AxiosError) => any;
 
   /**
-   * 获取 token（同步）。宿主端可注入自定义读取逻辑（如 Taro 同步存储）。
-   * 未提供时回退到 localStorage.getItem(TOKEN_KEY)。
+   * 获取 token（同步）。宿主端必须注入自定义读取逻辑
+   * （如 Web 端 localStorage、Taro 同步存储、React Native 内存镜像）。
    */
   getToken?: () => string | null;
 }

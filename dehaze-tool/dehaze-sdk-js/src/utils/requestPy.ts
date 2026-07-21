@@ -1,5 +1,4 @@
 import { pythonConfigManager } from "@/config";
-import { TOKEN_KEY } from "@/enums/CacheEnum";
 import { ResultEnum } from "@/enums/ResultEnum";
 import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import axios from "axios";
@@ -15,7 +14,7 @@ const service = axios.create({
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const interceptors = pythonConfigManager.getInterceptors();
-    const accessToken = interceptors.getToken?.() ?? localStorage.getItem(TOKEN_KEY);
+    const accessToken = interceptors.getToken?.();
     if (accessToken) {
       config.headers.Authorization = accessToken;
     }
