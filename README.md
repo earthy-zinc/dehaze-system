@@ -197,28 +197,21 @@ graph TB
 
 ### 前端启动
 
-#### 快速安装JS项目的所有依赖
-
 ```bash
+# 快速安装JS项目的所有依赖
 pnpm install -r
 ```
 
-#### Vue版本
 ```bash
+# Vue版本
 cd dehaze-front-vue
-npm install pnpm -g
-pnpm install
-pnpm run dev
-```
-访问: http://localhost:5174 (Vue) / http://localhost:5173 (React)
-
-#### React版本
-```bash
+# React版本
 cd dehaze-front-react
 npm install pnpm -g
 pnpm install
 pnpm run dev
 ```
+访问: http://localhost:5174 (Vue) / http://localhost:5173 (React)
 
 ### 后端启动
 
@@ -263,9 +256,6 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8991
 
 # 生产环境部署
 uvicorn app.main:app --host 0.0.0.0 --port 8991 --workers 4
-
-# 或使用一键启动脚本
-./start.sh
 ```
 
 ---
@@ -423,25 +413,3 @@ dehaze-system/
 - **详细文档**: 位于 `dehaze-doc/` 目录（需求分析、系统设计、用户手册）
 - **API 文档**: Java 后端启动后访问 `http://localhost:8989/doc.html`（Knife4j）
 - **学术论文**: 位于 `dehaze-paper/` 目录，包含 LaTeX 源码
-
----
-
-## 🤝 贡献与协议
-
-欢迎通过 Issue 和 PR 参与贡献，代码请遵循各子项目对应的规范（ESLint / 阿里巴巴 Java 手册 / PEP 8）。
-
-本项目采用 **Apache License 2.0** 开源协议，详见 [LICENSE](LICENSE) 文件。
-
----
-
-## 📞 联系
-
-- **项目负责人**: 土味锌 (武沛鑫)
-- **项目主页**: https://gitee.com/earthy-zinc/dehaze-system
-- **问题反馈**: [提交 Issue](https://gitee.com/earthy-zinc/dehaze-system/issues)
-
----
-
-<p align="center">
-  <b>如果这个项目对你有帮助，请点个 Star 支持一下！</b>
-</p>
