@@ -128,7 +128,7 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.MenuViewHolder
             MenuVO menu = item.menu;
             tvName.setText(menu.getName());
             tvType.setText(typeLabel(menu.getType()));
-            tvPath.setText(menu.getRoutePath() != null ? menu.getRoutePath() : "");
+            tvPath.setText(menu.getPath() != null ? menu.getPath() : "");
             tvPerm.setText(menu.getPerm() != null ? menu.getPerm() : "");
             tvVisible.setText(menu.getVisible() != null && menu.getVisible() == 1 ? "显示" : "隐藏");
             tvSort.setText(menu.getSort() != null ? String.valueOf(menu.getSort()) : "");
@@ -165,14 +165,14 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.MenuViewHolder
             });
         }
 
-        private String typeLabel(Integer type) {
+        private String typeLabel(String type) {
             if (type == null) return "";
             switch (type) {
-                case 1: return "目录";
-                case 2: return "菜单";
-                case 3: return "按钮";
-                case 4: return "外链";
-                default: return String.valueOf(type);
+                case "CATALOG": return "目录";
+                case "MENU": return "菜单";
+                case "BUTTON": return "按钮";
+                case "EXTLINK": return "外链";
+                default: return type;
             }
         }
     }

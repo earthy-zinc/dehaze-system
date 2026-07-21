@@ -95,12 +95,4 @@ public class TaskAPI {
         Call<Result<Void>> call = DehazeSDK.getInstance().getTaskApiService().cancelTask(taskId);
         call.enqueue(callback);
     }
-
-    /**
-     * 删除任务
-     */
-    public static void deleteTask(long id, ApiCallback<Void> callback) {
-        Call<Result<Void>> call = DehazeSDK.getInstance().getTaskApiService().deleteTask(id);
-        call.enqueue(callback);
-    }
 }

@@ -54,15 +54,8 @@ public interface TaskApiService {
 
     /**
      * 取消任务
-     * POST /api/v1/tasks/{taskId}/cancel
+     * DELETE /api/v1/tasks/{taskId}
      */
-    @POST("/api/v1/tasks/{taskId}/cancel")
+    @retrofit2.http.DELETE("/api/v1/tasks/{taskId}")
     Call<Result<Void>> cancelTask(@Path("taskId") String taskId);
-
-    /**
-     * 删除任务（Go 后端）
-     * DELETE /api/v1/tasks/{id}
-     */
-    @retrofit2.http.DELETE("/api/v1/tasks/{id}")
-    Call<Result<Void>> deleteTask(@Path("id") long id);
 }

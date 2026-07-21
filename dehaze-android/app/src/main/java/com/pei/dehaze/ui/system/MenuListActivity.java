@@ -223,12 +223,12 @@ public class MenuListActivity extends AppCompatActivity {
         return et.getText() != null ? et.getText().toString().trim() : "";
     }
 
-    private int typeFromRadio(RadioGroup rgType) {
+    private String typeFromRadio(RadioGroup rgType) {
         int checkedId = rgType.getCheckedRadioButtonId();
-        if (checkedId == R.id.rb_type_dir) return 1;
-        if (checkedId == R.id.rb_type_menu) return 2;
-        if (checkedId == R.id.rb_type_button) return 3;
-        return 1;
+        if (checkedId == R.id.rb_type_dir) return "CATALOG";
+        if (checkedId == R.id.rb_type_menu) return "MENU";
+        if (checkedId == R.id.rb_type_button) return "BUTTON";
+        return "CATALOG";
     }
 
     private int visibleFromRadio(RadioGroup rgVisible) {
@@ -236,11 +236,11 @@ public class MenuListActivity extends AppCompatActivity {
         return checkedId == R.id.rb_visible_yes ? 1 : 0;
     }
 
-    private void selectTypeRadio(RadioGroup rgType, int type) {
+    private void selectTypeRadio(RadioGroup rgType, String type) {
         RadioButton rb;
-        if (type == 2) {
+        if ("MENU".equals(type)) {
             rb = rgType.findViewById(R.id.rb_type_menu);
-        } else if (type == 3) {
+        } else if ("BUTTON".equals(type)) {
             rb = rgType.findViewById(R.id.rb_type_button);
         } else {
             rb = rgType.findViewById(R.id.rb_type_dir);

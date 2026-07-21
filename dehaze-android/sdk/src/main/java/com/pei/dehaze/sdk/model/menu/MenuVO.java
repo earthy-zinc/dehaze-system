@@ -47,16 +47,11 @@ public class MenuVO {
      * 跳转路径
      */
     private String redirect;
-    
+
     /**
-     * 路由名称
+     * 路由路径
      */
-    private String routeName;
-    
-    /**
-     * 路由相对路径
-     */
-    private String routePath;
+    private String path;
     
     /**
      * 菜单排序(数字越小排名越靠前)
@@ -64,9 +59,9 @@ public class MenuVO {
     private Integer sort;
     
     /**
-     * 菜单类型
+     * 菜单类型(CATALOG:目录;MENU:菜单;BUTTON:按钮;EXTLINK:外链)
      */
-    private Integer type;
+    private String type;
     
     /**
      * 菜单是否可见(1:显示;0:隐藏)

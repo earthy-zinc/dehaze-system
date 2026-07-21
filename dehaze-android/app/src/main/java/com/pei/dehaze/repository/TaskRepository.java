@@ -131,28 +131,6 @@ public class TaskRepository {
     }
 
     /**
-     * 删除任务
-     */
-    public void deleteTask(long id, ActionCallback callback) {
-        TaskAPI.deleteTask(id, new ApiCallback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                callback.onSuccess();
-            }
-
-            @Override
-            public void onError(String code, String message) {
-                callback.onError(code, message);
-            }
-
-            @Override
-            public void onFailure(ApiException e) {
-                callback.onError(e.getCode(), e.getMessage());
-            }
-        });
-    }
-
-    /**
      * 下载任务结果文件到下载目录
      *
      * @param taskId 任务ID

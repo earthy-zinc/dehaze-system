@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
 import com.pei.dehaze.sdk.model.dataset.ImageUrl;
 
@@ -196,7 +197,7 @@ public class DatasetImageAdapter extends ListAdapter<ImageItem, DatasetImageAdap
             ImageUrl imageUrl = findImageUrl(item);
             if (imageUrl != null && imageUrl.getUrl() != null && !imageUrl.getUrl().isEmpty()) {
                 Glide.with(itemView.getContext())
-                        .load(imageUrl.getUrl())
+                        .load(DehazeSDK.getInstance().resolveUrl(imageUrl.getUrl()))
                         .placeholder(R.drawable.ic_image)
                         .error(R.drawable.ic_broken_image)
                         .into(imageView);

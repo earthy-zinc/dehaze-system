@@ -21,6 +21,7 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.evaluation.EvalResult;
 import com.pei.dehaze.sdk.model.file.FileInfo;
@@ -165,7 +166,7 @@ public class EvaluationActivity extends AppCompatActivity {
     private void showHazyImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
         ivHazy.setVisibility(View.VISIBLE);
-        Glide.with(this).load(fileInfo.getUrl())
+        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivHazy);
@@ -174,7 +175,7 @@ public class EvaluationActivity extends AppCompatActivity {
     private void showClearImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
         ivClear.setVisibility(View.VISIBLE);
-        Glide.with(this).load(fileInfo.getUrl())
+        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivClear);

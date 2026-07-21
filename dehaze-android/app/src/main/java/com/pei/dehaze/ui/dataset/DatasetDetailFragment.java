@@ -29,6 +29,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.dataset.Dataset;
 import com.pei.dehaze.sdk.model.dataset.DatasetStatistics;
 import com.pei.dehaze.sdk.model.dataset.ImageItem;
@@ -320,8 +321,8 @@ public class DatasetDetailFragment extends Fragment {
             tvStatItems.setText("数据项: " + (stats.getItemCount() != null ? stats.getItemCount() : 0));
             tvStatFiles.setText("文件: " + (stats.getFileCount() != null ? stats.getFileCount() : 0));
             tvStatSize.setText("大小: " + (stats.getTotalSize() != null ? stats.getTotalSize() : 0));
-            tvStatClear.setText("清晰: " + (stats.getClearCount() != null ? stats.getClearCount() : 0));
-            tvStatHazy.setText("雾化: " + (stats.getHazyCount() != null ? stats.getHazyCount() : 0));
+            tvStatClear.setText("已标注: " + (stats.getAnnotatedCount() != null ? stats.getAnnotatedCount() : 0));
+            tvStatHazy.setText("未标注: " + (stats.getUnannotatedCount() != null ? stats.getUnannotatedCount() : 0));
             tvStatDistribution.setText(formatDistribution(stats));
         } else {
             tvStatItems.setText("数据项: 0");
@@ -520,7 +521,7 @@ public class DatasetDetailFragment extends Fragment {
         View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_image_preview, null);
         ImageView ivPreview = view.findViewById(R.id.iv_preview);
         Glide.with(requireContext())
-                .load(imageUrl)
+                .load(DehazeSDK.getInstance().resolveUrl(imageUrl))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivPreview);

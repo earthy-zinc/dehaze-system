@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
 import com.pei.dehaze.ui.compare.viewmodel.CompareViewModel;
@@ -49,7 +50,7 @@ public class ParallelFragment extends Fragment {
 
     private void showOriginal(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
-        Glide.with(this).load(fileInfo.getUrl())
+        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivOriginal);
@@ -58,7 +59,7 @@ public class ParallelFragment extends Fragment {
     private void showDehazed(PredResult result) {
         if (result == null) return;
         if (result.getResultUrl() == null) return;
-        Glide.with(this).load(result.getResultUrl())
+        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivDehazed);
@@ -70,7 +71,7 @@ public class ParallelFragment extends Fragment {
         if (results == null || results.isEmpty()) return;
         PredResult first = results.values().iterator().next();
         if (first.getResultUrl() == null) return;
-        Glide.with(this).load(first.getResultUrl())
+        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(first.getResultUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivDehazed);

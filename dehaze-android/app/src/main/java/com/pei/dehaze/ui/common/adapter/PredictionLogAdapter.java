@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.prediction.PredictionLogVO;
 
 /**
@@ -87,7 +88,7 @@ public class PredictionLogAdapter extends ListAdapter<PredictionLogVO, Predictio
             String predUrl = log.getPredUrl();
             if (predUrl != null && !predUrl.isEmpty()) {
                 Glide.with(itemView.getContext())
-                        .load(predUrl)
+                        .load(DehazeSDK.getInstance().resolveUrl(predUrl))
                         .placeholder(R.drawable.ic_image)
                         .error(R.drawable.ic_broken_image)
                         .centerCrop()

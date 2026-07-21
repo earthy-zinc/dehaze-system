@@ -169,27 +169,6 @@ public class TaskViewModel extends ViewModel {
     }
 
     /**
-     * 删除任务
-     */
-    public void deleteTask(long id) {
-        loading.setValue(true);
-        taskRepository.deleteTask(id, new TaskRepository.ActionCallback() {
-            @Override
-            public void onSuccess() {
-                operationResult.postValue("删除成功");
-                loading.postValue(false);
-                loadTasks();
-            }
-
-            @Override
-            public void onError(String code, String message) {
-                error.postValue("删除失败: [" + code + "] " + message);
-                loading.postValue(false);
-            }
-        });
-    }
-
-    /**
      * 查看任务详情
      */
     public void getTaskDetail(String taskId) {

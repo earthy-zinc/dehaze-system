@@ -26,6 +26,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.checkbox.MaterialCheckBox;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryForm;
 import com.pei.dehaze.sdk.model.input_history.InputHistoryUpdateForm;
@@ -539,7 +540,7 @@ public class InputHistoryActivity extends AppCompatActivity {
             url = item.getOriginalImageUrl();
         }
         Glide.with(this)
-                .load(url)
+                .load(DehazeSDK.getInstance().resolveUrl(url))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivPreview);

@@ -31,7 +31,7 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
     private static final DiffUtil.ItemCallback<TaskVO> DIFF_CALLBACK = new DiffUtil.ItemCallback<TaskVO>() {
         @Override
         public boolean areItemsTheSame(@NonNull TaskVO oldItem, @NonNull TaskVO newItem) {
-            return oldItem.getId() == newItem.getId();
+            return oldItem.getTaskId() != null && oldItem.getTaskId().equals(newItem.getTaskId());
         }
 
         @Override
@@ -69,7 +69,6 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
         private ProgressBar progressBar;
         private TextView btnCancel;
         private TextView btnDownload;
-        private TextView btnDelete;
 
         TaskViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -82,7 +81,6 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
             progressBar = itemView.findViewById(R.id.task_progress_bar);
             btnCancel = itemView.findViewById(R.id.btn_cancel);
             btnDownload = itemView.findViewById(R.id.btn_download);
-            btnDelete = itemView.findViewById(R.id.btn_delete);
 
             itemView.setOnClickListener(v -> {
                 int position = getAdapterPosition();
@@ -102,13 +100,6 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
                 int position = getAdapterPosition();
                 if (listener != null && position != RecyclerView.NO_POSITION) {
                     listener.onDownloadClick(getItem(position));
-                }
-            });
-
-            btnDelete.setOnClickListener(v -> {
-                int position = getAdapterPosition();
-                if (listener != null && position != RecyclerView.NO_POSITION) {
-                    listener.onDeleteClick(getItem(position));
                 }
             });
         }
@@ -134,7 +125,6 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
             boolean canDownload = TaskStatus.COMPLETED.getValue().equalsIgnoreCase(task.getStatus());
             btnCancel.setVisibility(canCancel ? View.VISIBLE : View.GONE);
             btnDownload.setVisibility(canDownload ? View.VISIBLE : View.GONE);
-            btnDelete.setVisibility(View.VISIBLE);
         }
 
         private String getTypeLabel(String typeValue) {
@@ -179,6 +169,5 @@ public class TaskAdapter extends ListAdapter<TaskVO, TaskAdapter.TaskViewHolder>
         void onTaskClick(TaskVO task);
         void onCancelClick(TaskVO task);
         void onDownloadClick(TaskVO task);
-        void onDeleteClick(TaskVO task);
     }
 }

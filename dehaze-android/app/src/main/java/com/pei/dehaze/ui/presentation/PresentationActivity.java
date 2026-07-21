@@ -30,6 +30,7 @@ import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.file.FileInfo;
@@ -179,11 +180,12 @@ public class PresentationActivity extends AppCompatActivity {
     private void showOriginalImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
         ivOriginal.setVisibility(View.VISIBLE);
-        Glide.with(this).load(fileInfo.getUrl())
+        String resolved = DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl());
+        Glide.with(this).load(resolved)
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivOriginal);
-        pagerAdapter.setOriginalUrl(fileInfo.getUrl());
+        pagerAdapter.setOriginalUrl(resolved);
     }
 
     private void updateAlgorithmSpinner(List<Option> options) {
@@ -220,7 +222,7 @@ public class PresentationActivity extends AppCompatActivity {
     private void onPredictionResult(PredResult result) {
         if (result == null) return;
         cardResult.setVisibility(View.VISIBLE);
-        pagerAdapter.setResultUrl(result.getResultUrl());
+        pagerAdapter.setResultUrl(DehazeSDK.getInstance().resolveUrl(result.getResultUrl()));
         Long algorithmId = getCurrentAlgorithmId();
         if (algorithmId != null) {
             presentationViewModel.getAlgorithmDetail(algorithmId.intValue());
@@ -349,7 +351,7 @@ public class PresentationActivity extends AppCompatActivity {
             Bundle args = getArguments();
             String url = args != null ? args.getString(ARG_URL) : null;
             if (url != null && !url.isEmpty()) {
-                Glide.with(this).load(url)
+                Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(url))
                         .placeholder(R.drawable.ic_image)
                         .error(R.drawable.ic_broken_image)
                         .into(imageView);

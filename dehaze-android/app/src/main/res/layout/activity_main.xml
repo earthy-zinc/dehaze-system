@@ -15,7 +15,10 @@
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize" />
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/brand_primary"
+            app:titleTextColor="@color/white"
+            app:subtitleTextColor="@color/white" />
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -39,39 +42,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
+            android:background="@color/bg_card"
+            app:itemIconTint="@color/bottom_nav_item_color"
+            app:itemTextColor="@color/bottom_nav_item_color"
+            app:labelVisibilityMode="labeled"
             app:menu="@menu/bottom_navigation_menu" />
-
-        <!-- 自定义底部导航栏 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:background="?attr/colorSurface">
-
-            <Button
-                android:id="@+id/btn_compare"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="图像对比"
-                style="@style/Widget.Material3.Button.TextButton.Icon" />
-
-            <Button
-                android:id="@+id/btn_evaluation"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="图像评估"
-                style="@style/Widget.Material3.Button.TextButton.Icon" />
-
-            <Button
-                android:id="@+id/btn_presentation"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="图像展示"
-                style="@style/Widget.Material3.Button.TextButton.Icon" />
-        </LinearLayout>
 
     </LinearLayout>
 

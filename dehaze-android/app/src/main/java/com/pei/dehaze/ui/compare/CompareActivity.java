@@ -26,6 +26,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.DehazeSDK;
 import com.pei.dehaze.sdk.model.Option;
 import com.pei.dehaze.sdk.model.file.FileInfo;
 import com.pei.dehaze.sdk.model.prediction.PredResult;
@@ -168,7 +169,7 @@ public class CompareActivity extends AppCompatActivity {
     private void showUploadedImage(FileInfo fileInfo) {
         if (fileInfo == null || fileInfo.getUrl() == null) return;
         ivSelectedImage.setVisibility(View.VISIBLE);
-        Glide.with(this).load(fileInfo.getUrl())
+        Glide.with(this).load(DehazeSDK.getInstance().resolveUrl(fileInfo.getUrl()))
                 .placeholder(R.drawable.ic_image)
                 .error(R.drawable.ic_broken_image)
                 .into(ivSelectedImage);

@@ -18,7 +18,10 @@ import com.pei.dehaze.sdk.utils.TokenManager;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.logging.Logger;
+
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
 
 import lombok.Getter;
 import okhttp3.Interceptor;
@@ -29,6 +32,10 @@ import okhttp3.logging.HttpLoggingInterceptor;
 import org.jetbrains.annotations.NotNull;
 import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * SDK主类，用于初始化和配置API客户端
@@ -95,19 +102,36 @@ public class DehazeSDK {
             }
         });
 
-        // 添加日志拦截器
+        // 添加日志拦截器（通过 System.out 输出，Android 会重定向到 logcat，tag=System.out）
         if (builder.debug) {
-            Logger logger = Logger.getLogger("DehazeSDK");
-            HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(logger::info);
+            HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(message ->
+                    System.out.println("DehazeSDK " + message));
             loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
             okHttpClientBuilder.addInterceptor(loggingInterceptor);
         }
 
         // 构建Retrofit实例
+        // 配置 Gson 日期反序列化：后端返回的日期格式可能是 "yyyy-MM-dd HH:mm:ss" 或 "yyyy-MM-dd HH:mm"
+        // （部分表/字段无秒级精度），需同时兼容两种格式以避免解析失败
+        String[] dateFormats = {"yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm"};
+        JsonDeserializer<Date> dateDeserializer = (json, typeOfT, context) -> {
+            if (json.isJsonNull()) return null;
+            String dateStr = json.getAsString();
+            if (dateStr == null || dateStr.isEmpty()) return null;
+            for (String pattern : dateFormats) {
+                try {
+                    return new SimpleDateFormat(pattern, java.util.Locale.CHINA).parse(dateStr);
+                } catch (ParseException ignored) {
+                }
+            }
+            return null;
+        };
+        GsonBuilder gsonBuilder = new GsonBuilder()
+                .registerTypeAdapter(Date.class, dateDeserializer);
         retrofit = new Retrofit.Builder()
                 .baseUrl(baseUrl)
                 .client(okHttpClientBuilder.build())
-                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gsonBuilder.create()))
                 .build();
 
         // 创建API服务实例
@@ -135,6 +159,25 @@ public class DehazeSDK {
             }
         }
         return instance;
+    }
+
+    /**
+     * 将后端返回的相对 URL 解析为绝对 URL。
+     * - 以 http:// 或 https:// 开头：直接返回
+     * - 以 / 开头：拼接 baseUrl
+     * - 其他：原样返回（可能是本地文件路径或已是绝对路径）
+     */
+    public String resolveUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return url;
+        }
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            return url;
+        }
+        if (url.startsWith("/")) {
+            return retrofit.baseUrl().toString().replaceAll("/+$", "") + url;
+        }
+        return url;
     }
 
     public static void initialize(Builder builder) {

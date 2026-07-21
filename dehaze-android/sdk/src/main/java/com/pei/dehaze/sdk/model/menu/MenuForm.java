@@ -50,9 +50,9 @@ public class MenuForm {
     private String redirect;
 
     /**
-     * 菜单类型
+     * 菜单类型(CATALOG:目录;MENU:菜单;BUTTON:按钮;EXTLINK:外链)
      */
-    private int type;
+    private String type;
 
     /**
      * 权限标识

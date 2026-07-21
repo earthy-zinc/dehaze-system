@@ -125,11 +125,6 @@ public class TaskListActivity extends AppCompatActivity {
                     storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE);
                 }
             }
-
-            @Override
-            public void onDeleteClick(TaskVO task) {
-                confirmDelete(task);
-            }
         });
 
         findViewById(R.id.btn_create).setOnClickListener(v -> showCreateDialog());
@@ -234,15 +229,6 @@ public class TaskListActivity extends AppCompatActivity {
                 .setTitle("下载任务结果")
                 .setMessage("确认下载任务 \"" + task.getTaskId() + "\" 的结果文件吗？")
                 .setPositiveButton("下载", (d, w) -> taskViewModel.downloadTaskFile(task.getTaskId()))
-                .setNegativeButton("取消", null)
-                .show();
-    }
-
-    private void confirmDelete(TaskVO task) {
-        new AlertDialog.Builder(this)
-                .setTitle("删除任务")
-                .setMessage("确认删除该任务吗？删除后不可恢复。")
-                .setPositiveButton("删除", (d, w) -> taskViewModel.deleteTask(task.getId()))
                 .setNegativeButton("取消", null)
                 .show();
     }

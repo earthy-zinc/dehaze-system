@@ -2,7 +2,7 @@ package com.pei.dehaze.sdk.model.task;
 
 /**
  * 任务类型枚举
- * 对齐后端 TaskType：dataset_export、item_download、batch_download、custom_export
+ * 对齐后端 TaskConstants：dataset_export、item_download、batch_download、custom_export
  */
 public enum TaskType {
     DATASET_EXPORT("dataset_export", "数据集导出"),

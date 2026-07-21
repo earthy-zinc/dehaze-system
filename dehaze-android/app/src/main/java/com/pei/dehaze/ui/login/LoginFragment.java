@@ -20,10 +20,10 @@ import androidx.navigation.Navigation;
 
 import com.bumptech.glide.Glide;
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
 import com.pei.dehaze.databinding.FragmentLoginBinding;
+import com.pei.dehaze.sdk.utils.TokenManager;
 
 import timber.log.Timber;
 
@@ -42,17 +42,23 @@ public class LoginFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        
+
+        // 自动登录：如果本地已存在有效 token，直接跳转到仪表盘
+        if (TokenManager.hasToken()) {
+            Navigation.findNavController(view).navigate(R.id.action_login_to_dashboard);
+            return;
+        }
+
         // 初始化 ViewModel
         loginViewModel = new ViewModelProvider(this).get(LoginViewModel.class);
-        
+
         // 设置数据绑定
         binding.setViewModel(loginViewModel);
         binding.setLifecycleOwner(this);
-        
+
         // 初始化界面
         setupUI();
-        
+
         // 获取验证码
         loginViewModel.loadCaptcha();
     }
