@@ -2,7 +2,7 @@
   <view class="image-card" :class="{ waterfall: isWaterfall }" @click="handleClick">
     <view class="image-wrapper" :style="wrapperStyle">
       <up-image
-        :src="image.image_url"
+        :src="image.imageUrl"
         :mode="isWaterfall ? 'widthFix' : 'aspectFill'"
         width="100%"
         :height="isWaterfall ? 'auto' : '100%'"
@@ -50,7 +50,7 @@ const imageLoaded = ref(false);
 
 const typeLabel = computed(() => IMAGE_TYPE_LABELS[props.image.type] || props.image.type);
 
-const hazeLevelLabel = computed(() => formatHazeLevel(props.image.haze_level));
+const hazeLevelLabel = computed(() => formatHazeLevel(props.image.hazeLevel));
 
 const wrapperStyle = computed(() => {
   if (props.isWaterfall) {

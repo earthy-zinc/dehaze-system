@@ -51,8 +51,8 @@ export const menuSections: MenuSection[] = [
         route: "/pages/image-input/index",
       },
       {
-        icon: "bulb",
-        activeIcon: "bulb-fill",
+        icon: "gift",
+        activeIcon: "gift-fill",
         title: "算法选择",
         route: "/pages/algorithm-select/index",
       },
@@ -87,14 +87,14 @@ export const menuSections: MenuSection[] = [
         route: "/pages/magnifier/index",
       },
       {
-        icon: "slider",
-        activeIcon: "slider-fill",
+        icon: "setting",
+        activeIcon: "setting-fill",
         title: "滤镜调节",
         route: "/pages/filter/index",
       },
       {
-        icon: "bar-chart",
-        activeIcon: "bar-chart-fill",
+        icon: "integral",
+        activeIcon: "integral-fill",
         title: "指标评估",
         route: "/pages/metrics/index",
       },
@@ -111,14 +111,14 @@ export const menuSections: MenuSection[] = [
     icon: "folder",
     items: [
       {
-        icon: "server",
+        icon: "server-fill",
         activeIcon: "server-fill",
         title: "数据集管理",
         route: "/pages/dataset/index",
       },
       {
         icon: "folder",
-        activeIcon: "folder-fill",
+        activeIcon: "folder",
         title: "文件管理",
         route: "/pages/file-manage/index",
       },
@@ -159,7 +159,7 @@ export const tabBarItems: MenuItem[] = [
     route: "/pages/image-input/index",
   },
   {
-    icon: "server",
+    icon: "server-fill",
     activeIcon: "server-fill",
     title: "数据集",
     route: "/pages/dataset/index",

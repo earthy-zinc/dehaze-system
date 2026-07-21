@@ -13,7 +13,7 @@
     <view class="sidebar-header">
       <view class="header-content">
         <view class="logo-wrapper">
-          <u-icon name="cloud-fill" color="#fff" size="24" />
+          <u-icon name="play-circle-fill" color="#fff" size="24" />
         </view>
         <view class="header-text">
           <text class="app-name">图像去雾系统</text>

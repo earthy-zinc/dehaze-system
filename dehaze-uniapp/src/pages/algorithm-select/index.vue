@@ -4,7 +4,7 @@
       <!-- 页面标题 -->
       <view class="page-header-card">
         <view class="header-icon">
-          <u-icon name="bulb" size="28" color="#8b5cf6" />
+          <u-icon name="gift" size="28" color="#8b5cf6" />
         </view>
         <view class="header-text">
           <text class="header-title">选择算法</text>
@@ -171,12 +171,7 @@ function handleNext() {
 // ==================== 生命周期 ====================
 
 onMounted(() => {
-  // 没有图片则返回上页
-  if (!processingStore.hasImage) {
-    uni.showToast({ title: "请先选择图片", icon: "none", duration: 2000 });
-    setTimeout(() => uni.navigateBack(), 2000);
-    return;
-  }
+  // 允许无图浏览算法列表；“下一步”按钮会检查是否已选图片
   loadAlgorithms();
 });
 </script>

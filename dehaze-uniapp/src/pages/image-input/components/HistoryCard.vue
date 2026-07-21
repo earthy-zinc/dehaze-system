@@ -18,7 +18,7 @@
       <text class="card-filename">{{ record.fileName }}</text>
       <text class="card-time">{{ formatTime(record.timestamp) }}</text>
       <view v-if="record.algorithm" class="card-algorithm">
-        <u-icon name="bulb" size="14" color="#3b82f6" />
+        <u-icon name="gift" size="14" color="#3b82f6" />
         <text class="algorithm-text">{{ record.algorithm }}</text>
       </view>
     </view>

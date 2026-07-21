@@ -17,38 +17,52 @@ export type ImageType = "clear" | "hazy" | "trans" | "depth" | "segment";
 /** 展示模式 */
 export type DisplayMode = "grid" | "waterfall";
 
-/** 数据集模型 */
+/** 数据集统计信息（对应后端 DatasetStatistics） */
+export interface DatasetStatistics {
+  itemCount: number;
+  fileCount: number;
+  totalSize: number;
+  annotatedCount: number;
+  unannotatedCount: number;
+  sceneDistribution: Record<string, number>;
+  hazeDistribution: Record<string, number>;
+  formatDistribution: Record<string, number>;
+}
+
+/** 数据集模型（字段与后端 DatasetVO 对齐） */
 export interface Dataset {
   id: number;
+  parentId: number;
   name: string;
   description: string;
-  creator: string;
-  thumbnail: string;
-  total_images: number;
-  /** 已标注图片数（haze_level 非空） */
-  annotated_count: number;
-  /** 未标注图片数 */
-  unannotated_count: number;
-  created_at: string;
-  updated_at: string;
+  type: string;
+  path: string;
+  hasChildren: boolean;
+  children: Dataset[];
+  status: number;
+  statistics: DatasetStatistics;
+  /** 图片总数（用于列表展示） */
+  total: number;
+  createTime: string;
+  updateTime: string;
 }
 
 /** 图片模型 */
 export interface DatasetImage {
   id: number;
-  dataset_id: number;
+  datasetId: number;
   filename: string;
-  image_url: string;
+  imageUrl: string;
   /** 图片类型：clear/hazy/trans/depth/segment */
   type: ImageType;
   /** 雾霾程度：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
-  haze_level?: string;
+  hazeLevel?: string;
   width: number;
   height: number;
-  file_size: number;
+  fileSize: number;
   tags: string;
   description: string;
-  created_at: string;
+  createTime: string;
 }
 
 /** 标注状态计数 */
@@ -74,81 +88,147 @@ export interface PaginatedResult<T> {
 export const MOCK_DATASETS: Dataset[] = [
   {
     id: 1,
+    parentId: 0,
     name: "RESIDE数据集",
     description: "大规模真实场景图像去雾数据集，包含室内外多种场景",
-    creator: "Li Boyi",
-    thumbnail:
-      "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=400&h=400&fit=crop",
-    total_images: 13990,
-    annotated_count: 6995,
-    unannotated_count: 6995,
-    created_at: "2024-01-15T10:30:00Z",
-    updated_at: "2024-01-15T10:30:00Z",
+    type: "图像去雾",
+    path: "RESIDE",
+    hasChildren: false,
+    children: [],
+    status: 1,
+    statistics: {
+      itemCount: 13990,
+      fileCount: 13990,
+      totalSize: 0,
+      annotatedCount: 6995,
+      unannotatedCount: 6995,
+      sceneDistribution: {},
+      hazeDistribution: {},
+      formatDistribution: {},
+    },
+    total: 13990,
+    createTime: "2024-01-15T10:30:00",
+    updateTime: "2024-01-15T10:30:00",
   },
   {
     id: 2,
+    parentId: 0,
     name: "O-HAZE数据集",
     description: "户外真实雾霾图像数据集，包含45对有雾/无雾图像",
-    creator: "Ancuti Codruta",
-    thumbnail:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop",
-    total_images: 90,
-    annotated_count: 45,
-    unannotated_count: 45,
-    created_at: "2024-01-10T14:20:00Z",
-    updated_at: "2024-01-10T14:20:00Z",
+    type: "图像去雾",
+    path: "O-HAZE",
+    hasChildren: false,
+    children: [],
+    status: 1,
+    statistics: {
+      itemCount: 90,
+      fileCount: 90,
+      totalSize: 0,
+      annotatedCount: 45,
+      unannotatedCount: 45,
+      sceneDistribution: {},
+      hazeDistribution: {},
+      formatDistribution: {},
+    },
+    total: 90,
+    createTime: "2024-01-10T14:20:00",
+    updateTime: "2024-01-10T14:20:00",
   },
   {
     id: 3,
+    parentId: 0,
     name: "I-HAZE数据集",
     description: "室内真实雾霾图像数据集，包含35对有雾/无雾图像",
-    creator: "Ancuti Codruta",
-    thumbnail:
-      "https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&h=400&fit=crop",
-    total_images: 70,
-    annotated_count: 35,
-    unannotated_count: 35,
-    created_at: "2024-01-08T09:15:00Z",
-    updated_at: "2024-01-08T09:15:00Z",
+    type: "图像去雾",
+    path: "I-HAZE",
+    hasChildren: false,
+    children: [],
+    status: 1,
+    statistics: {
+      itemCount: 70,
+      fileCount: 70,
+      totalSize: 0,
+      annotatedCount: 35,
+      unannotatedCount: 35,
+      sceneDistribution: {},
+      hazeDistribution: {},
+      formatDistribution: {},
+    },
+    total: 70,
+    createTime: "2024-01-08T09:15:00",
+    updateTime: "2024-01-08T09:15:00",
   },
   {
     id: 4,
+    parentId: 0,
     name: "Dense-Haze数据集",
     description: "密集雾霾场景数据集，专注于极端雾霾条件",
-    creator: "Ancuti Codruta",
-    thumbnail:
-      "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&h=400&fit=crop",
-    total_images: 110,
-    annotated_count: 55,
-    unannotated_count: 55,
-    created_at: "2024-01-05T16:45:00Z",
-    updated_at: "2024-01-05T16:45:00Z",
+    type: "图像去雾",
+    path: "Dense-Haze",
+    hasChildren: false,
+    children: [],
+    status: 1,
+    statistics: {
+      itemCount: 110,
+      fileCount: 110,
+      totalSize: 0,
+      annotatedCount: 55,
+      unannotatedCount: 55,
+      sceneDistribution: {},
+      hazeDistribution: {},
+      formatDistribution: {},
+    },
+    total: 110,
+    createTime: "2024-01-05T16:45:00",
+    updateTime: "2024-01-05T16:45:00",
   },
   {
     id: 5,
+    parentId: 0,
     name: "NH-HAZE数据集",
     description: "非均匀雾霾数据集，模拟真实世界的复杂雾霾分布",
-    creator: "Ancuti Codruta",
-    thumbnail:
-      "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=400&fit=crop",
-    total_images: 110,
-    annotated_count: 55,
-    unannotated_count: 55,
-    created_at: "2024-01-03T11:30:00Z",
-    updated_at: "2024-01-03T11:30:00Z",
+    type: "图像去雾",
+    path: "NH-HAZE",
+    hasChildren: false,
+    children: [],
+    status: 1,
+    statistics: {
+      itemCount: 110,
+      fileCount: 110,
+      totalSize: 0,
+      annotatedCount: 55,
+      unannotatedCount: 55,
+      sceneDistribution: {},
+      hazeDistribution: {},
+      formatDistribution: {},
+    },
+    total: 110,
+    createTime: "2024-01-03T11:30:00",
+    updateTime: "2024-01-03T11:30:00",
   },
   {
     id: 6,
+    parentId: 0,
     name: "SOTS数据集",
     description: "合成雾霾数据集，包含室内外场景",
-    creator: "Li Boyi",
-    thumbnail:
-      "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=400&fit=crop",
-    total_images: 1000,
-    annotated_count: 500,
-    unannotated_count: 500,
-    created_at: "2024-01-01T08:00:00Z",
-    updated_at: "2024-01-01T08:00:00Z",
+    type: "图像去雾",
+    path: "SOTS",
+    hasChildren: false,
+    children: [],
+    status: 1,
+    statistics: {
+      itemCount: 1000,
+      fileCount: 1000,
+      totalSize: 0,
+      annotatedCount: 500,
+      unannotatedCount: 500,
+      sceneDistribution: {},
+      hazeDistribution: {},
+      formatDistribution: {},
+    },
+    total: 1000,
+    createTime: "2024-01-01T08:00:00",
+    updateTime: "2024-01-01T08:00:00",
   },
 ];
 
@@ -211,17 +291,17 @@ export function generateMockImages(
 
     images.push({
       id: datasetId * 1000 + i,
-      dataset_id: datasetId,
+      datasetId,
       filename: `${dataset.name.replace(/\s+/g, "_")}_${type}_${String(i + 1).padStart(4, "0")}.jpg`,
-      image_url: sampleImage,
+      imageUrl: sampleImage,
       type,
-      haze_level: hazeLevel || undefined,
+      hazeLevel: hazeLevel || undefined,
       width: aspectRatio.width,
       height: aspectRatio.height,
-      file_size: Math.floor(Math.random() * 2000000) + 500000,
+      fileSize: Math.floor(Math.random() * 2000000) + 500000,
       tags: `${type},${dataset.name}`,
       description: `${dataset.name}中的${IMAGE_TYPE_LABELS[type] || type}图像`,
-      created_at: new Date(
+      createTime: new Date(
         Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
       ).toISOString(),
     });
@@ -282,10 +362,10 @@ export function formatHazeLevel(level?: string): string {
 }
 
 /**
- * 判断图片是否已标注（haze_level 非空视为已标注）
+ * 判断图片是否已标注（hazeLevel 非空视为已标注）
  */
 export function isImageAnnotated(image: DatasetImage): boolean {
-  return Boolean(image.haze_level);
+  return Boolean(image.hazeLevel);
 }
 
 /**
@@ -360,24 +440,11 @@ export async function fetchDatasetImages(
       search: search || undefined,
     });
 
-    // 转换后端数据格式到前端格式
+    // 后端与前端统一使用 camelCase，无需转换
     return {
       code: 0,
       data: {
-        list: result.list.map((item) => ({
-          id: item.id,
-          dataset_id: item.dataset_id,
-          filename: item.filename,
-          image_url: item.image_url,
-          type: item.type,
-          haze_level: item.haze_level,
-          width: item.width,
-          height: item.height,
-          file_size: item.file_size,
-          tags: item.tags || "",
-          description: item.description || "",
-          created_at: item.created_at,
-        })),
+        list: result.list as DatasetImage[],
         total: result.total,
         page: result.page,
         page_size: result.page_size,

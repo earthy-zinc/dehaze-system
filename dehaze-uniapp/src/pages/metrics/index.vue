@@ -3,7 +3,7 @@
     <view class="main-content">
       <view class="page-header-card">
         <view class="header-icon">
-          <u-icon name="bar-chart" size="28" color="#ec4899" />
+          <u-icon name="integral" size="28" color="#ec4899" />
         </view>
         <view class="header-text">
           <text class="header-title">指标评估</text>
@@ -62,7 +62,7 @@
             <u-icon name="grid" size="20" color="#ec4899" /><text>并排对比</text>
           </view>
           <view class="nav-item" @click="switchPage('/pages/filter/index')">
-            <u-icon name="slider" size="20" color="#ec4899" /><text>滤镜调节</text>
+            <u-icon name="setting" size="20" color="#ec4899" /><text>滤镜调节</text>
           </view>
         </view>
       </view>

@@ -2,7 +2,7 @@
 import { onHide, onLaunch, onShow } from "@dcloudio/uni-app";
 import { useAuthStore } from "@/store/auth";
 import { useUserStore } from "@/store/user";
-import { setupRouteGuard } from "@/routers/guard";
+import { setupRouteGuard, checkInitialAuth } from "@/routers/guard";
 
 onLaunch(() => {
   console.log("[App] Launch");
@@ -17,6 +17,11 @@ onLaunch(() => {
   // 初始化用户偏好
   const userStore = useUserStore();
   userStore.initPreferences();
+
+  // 检查初始登录态：若未登录且当前页需要登录，则跳转登录页
+  // uni-app 的 addInterceptor 不会拦截应用首次启动时自动加载的首页，因此需要显式检查
+  // 放在 init() 之后，确保 token 已从 storage 恢复
+  checkInitialAuth();
 });
 
 onShow(() => {

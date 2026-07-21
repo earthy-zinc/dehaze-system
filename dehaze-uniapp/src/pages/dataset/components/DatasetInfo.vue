@@ -4,15 +4,15 @@
     <text class="info-desc">{{ dataset.description || "暂无描述" }}</text>
     <view class="stats-grid">
       <view class="stat-box">
-        <text class="stat-value">{{ dataset.total_images }}</text>
+        <text class="stat-value">{{ totalCount }}</text>
         <text class="stat-label">总计</text>
       </view>
       <view class="stat-box">
-        <text class="stat-value">{{ dataset.annotated_count }}</text>
+        <text class="stat-value">{{ annotatedCount }}</text>
         <text class="stat-label">已标注</text>
       </view>
       <view class="stat-box">
-        <text class="stat-value">{{ dataset.unannotated_count }}</text>
+        <text class="stat-value">{{ unannotatedCount }}</text>
         <text class="stat-label">未标注</text>
       </view>
     </view>
@@ -20,13 +20,18 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from "vue";
 import type { Dataset } from "../data/datasetData";
 
 interface Props {
   dataset: Dataset;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const totalCount = computed(() => props.dataset.total ?? props.dataset.statistics?.itemCount ?? 0);
+const annotatedCount = computed(() => props.dataset.statistics?.annotatedCount ?? 0);
+const unannotatedCount = computed(() => props.dataset.statistics?.unannotatedCount ?? 0);
 </script>
 
 <style lang="scss" scoped>

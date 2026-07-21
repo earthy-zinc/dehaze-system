@@ -58,11 +58,11 @@
             <text>放大镜</text>
           </view>
           <view class="action-item" @click="handleFilter">
-            <u-icon name="slider" size="20" color="#3b82f6" />
+            <u-icon name="setting" size="20" color="#3b82f6" />
             <text>滤镜调节</text>
           </view>
           <view class="action-item" @click="handleMetrics">
-            <u-icon name="bar-chart" size="20" color="#3b82f6" />
+            <u-icon name="integral" size="20" color="#3b82f6" />
             <text>指标评估</text>
           </view>
         </view>

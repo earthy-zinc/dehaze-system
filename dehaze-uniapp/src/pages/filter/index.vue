@@ -3,7 +3,7 @@
     <view class="main-content">
       <view class="page-header-card">
         <view class="header-icon">
-          <u-icon name="slider" size="28" color="#10b981" />
+          <u-icon name="setting" size="28" color="#10b981" />
         </view>
         <view class="header-text">
           <text class="header-title">滤镜调节</text>

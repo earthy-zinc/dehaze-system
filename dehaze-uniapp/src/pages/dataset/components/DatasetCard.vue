@@ -2,7 +2,7 @@
   <view class="dataset-card" @click="handleClick">
     <view class="card-thumbnail">
       <up-image
-        :src="dataset.thumbnail"
+        :src="thumbnailUrl"
         mode="aspectFill"
         width="100%"
         height="100%"
@@ -15,7 +15,7 @@
       <view class="card-stats">
         <view class="stat-item">
           <u-icon name="photo" size="14" color="#14b8a6" />
-          <text class="stat-text">{{ dataset.total_images }}</text>
+          <text class="stat-text">{{ imageCount }}</text>
         </view>
         <view class="stat-item">
           <u-icon name="clock" size="14" color="#9ca3af" />
@@ -42,7 +42,18 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const formattedDate = computed(() => formatDate(props.dataset.created_at));
+/** 图片数量：优先用 total，回退到 statistics.itemCount */
+const imageCount = computed(() => {
+  return props.dataset.total ?? props.dataset.statistics?.itemCount ?? 0;
+});
+
+const formattedDate = computed(() => formatDate(props.dataset.createTime));
+
+/** 缩略图：后端暂无 thumbnail 字段，使用 path 生成占位 */
+const thumbnailUrl = computed(() => {
+  // 使用数据集路径作为种子生成占位图（避免外部 unsplash 依赖）
+  return `/dataset-api/${props.dataset.path || "default"}/hazy/001.JPG`;
+});
 
 const handleClick = () => {
   emit("click", props.dataset);

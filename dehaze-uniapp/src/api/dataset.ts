@@ -19,19 +19,33 @@ import { get, post, put, del } from "./request";
 
 // ==================== 类型定义 ====================
 
+/** 数据集统计信息（对应后端 DatasetStatistics） */
+export interface DatasetStatistics {
+  itemCount: number;
+  fileCount: number;
+  totalSize: number;
+  annotatedCount: number;
+  unannotatedCount: number;
+  sceneDistribution: Record<string, number>;
+  hazeDistribution: Record<string, number>;
+  formatDistribution: Record<string, number>;
+}
+
 export interface Dataset {
   id: number;
+  parentId: number;
+  type: string;
   name: string;
   description: string;
-  creator: string;
-  thumbnail: string;
-  total_images: number;
-  /** 已标注图片数（haze_level 非空） */
-  annotated_count: number;
-  /** 未标注图片数 */
-  unannotated_count: number;
-  created_at: string;
-  updated_at: string;
+  path: string;
+  hasChildren: boolean;
+  children: Dataset[];
+  status: number;
+  statistics: DatasetStatistics;
+  /** 图片总数（用于列表展示） */
+  total: number;
+  createTime: string;
+  updateTime: string;
 }
 
 /** 标注状态过滤（Tab 二分） */
@@ -42,19 +56,19 @@ export type ImageType = "clear" | "hazy" | "trans" | "depth" | "segment";
 
 export interface DatasetItem {
   id: number;
-  dataset_id: number;
+  datasetId: number;
   filename: string;
-  image_url: string;
+  imageUrl: string;
   /** 图片类型：clear/hazy/trans/depth/segment */
   type: ImageType;
   /** 雾霾程度：light/medium/heavy、beta=0.5、A=0.8,beta=0.2 等，可为空 */
-  haze_level?: string;
+  hazeLevel?: string;
   width: number;
   height: number;
-  file_size: number;
+  fileSize: number;
   tags: string;
   description: string;
-  created_at: string;
+  createTime: string;
 }
 
 export interface DatasetItemQuery {

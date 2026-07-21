@@ -20,10 +20,12 @@ const HOME_PATH = "pages/home/index";
 
 /** 检查是否需要登录 */
 function isWhitePath(path: string): boolean {
-  return WHITE_LIST.some((item) => path.startsWith(item));
+  // 兼容带 / 或不带 / 前缀的路径
+  const normalized = path.replace(/^\//, "");
+  return WHITE_LIST.some((item) => normalized.startsWith(item));
 }
 
-/** 获取当前页面路径 */
+/** 获取当前页面路径（不带前导 /） */
 function getCurrentPagePath(): string {
   const pages = getCurrentPages();
   if (pages.length > 0) {
@@ -91,6 +93,21 @@ export function setupRouteGuard() {
       return true;
     },
   });
+}
+
+/**
+ * 启动时检查登录态
+ *
+ * uni-app 的 addInterceptor 不会拦截应用首次启动时自动加载的首页，
+ * 因此需要在 App.vue onLaunch 中显式调用此方法：
+ * 若未登录且当前不在白名单页面，则跳转到登录页。
+ */
+export function checkInitialAuth() {
+  if (hasValidToken()) return;
+  const current = getCurrentPagePath();
+  if (current && isWhitePath(current)) return;
+  // 当前页面需要登录但无 token，跳转登录页
+  uni.reLaunch({ url: `/${LOGIN_PATH}` });
 }
 
 /** 跳转到登录页 */

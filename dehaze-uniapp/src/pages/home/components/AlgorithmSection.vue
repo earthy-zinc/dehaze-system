@@ -12,7 +12,7 @@
             :key="index"
             class="feature-item"
           >
-            <u-icon name="check-circle" size="20" color="#34d399" />
+            <u-icon name="checkmark-circle" size="20" color="#34d399" />
             <text class="feature-text">{{ feature }}</text>
           </view>
         </view>

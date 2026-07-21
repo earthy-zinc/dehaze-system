@@ -46,7 +46,7 @@ export const homeData = {
       number: "02",
       title: "智能算法",
       description: "多种去雾算法可选\nAI智能推荐最优方案",
-      icon: "cpu",
+      icon: "gift",
       target: "algorithm-select",
     },
     {
@@ -54,7 +54,7 @@ export const homeData = {
       number: "03",
       title: "一键处理",
       description: "毫秒级处理速度\n实时预览处理效果",
-      icon: "flash",
+      icon: "play-circle-fill",
       target: "processing",
     },
   ] as WorkflowStep[],
@@ -72,7 +72,7 @@ export const homeData = {
       id: "overlay",
       title: "重叠对比",
       description: "拖动分割线实时对比，支持横向和纵向模式",
-      icon: "layer",
+      icon: "photo",
       target: "overlay",
     },
     {
@@ -100,7 +100,7 @@ export const homeData = {
       id: "dataset",
       title: "数据集管理",
       description: "浏览和管理多个专业去雾数据集",
-      icon: "database",
+      icon: "server-fill",
       target: "dataset",
     },
   ] as ToolItem[],
@@ -108,19 +108,19 @@ export const homeData = {
   // 技术规格数据
   specs: [
     {
-      icon: "flash",
+      icon: "play-circle-fill",
       title: "高性能",
       value: "60fps",
       description: "流畅运行，响应时间<200ms",
     },
     {
-      icon: "iphone",
+      icon: "grid",
       title: "全平台",
       value: "100%",
       description: "完美适配手机、平板、桌面",
     },
     {
-      icon: "cpu",
+      icon: "gift",
       title: "智能算法",
       value: "8+",
       description: "支持多种先进去雾算法",

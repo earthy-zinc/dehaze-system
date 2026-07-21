@@ -8,7 +8,7 @@
       <!-- Logo + 标题 -->
       <view class="navbar-brand" @click="goHome">
         <view class="logo-wrapper">
-          <u-icon name="cloud-fill" color="#fff" size="18" />
+          <u-icon name="play-circle-fill" color="#fff" size="18" />
         </view>
         <text class="app-title">图像去雾系统</text>
       </view>

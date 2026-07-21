@@ -4,7 +4,7 @@
       <!-- 页面标题卡片 -->
       <view class="page-header-card">
         <view class="header-icon">
-          <u-icon name="server" size="28" color="#14b8a6" />
+          <u-icon name="server-fill" size="28" color="#14b8a6" />
         </view>
         <view class="header-text">
           <text class="header-title">数据集管理</text>
@@ -113,7 +113,7 @@
         </view>
         <view class="viewer-image">
           <up-image
-            :src="selectedImage.image_url"
+            :src="selectedImage.imageUrl"
             mode="widthFix"
             width="100%"
             :lazy-load="false"
@@ -126,7 +126,7 @@
           </view>
           <view class="info-row">
             <text class="info-label">雾霾程度:</text>
-            <text class="info-value">{{ getHazeLevelLabel(selectedImage.haze_level) }}</text>
+            <text class="info-value">{{ getHazeLevelLabel(selectedImage.hazeLevel) }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">尺寸:</text>
@@ -134,7 +134,7 @@
           </view>
           <view class="info-row">
             <text class="info-label">大小:</text>
-            <text class="info-value">{{ formatFileSize(selectedImage.file_size) }}</text>
+            <text class="info-value">{{ formatFileSize(selectedImage.fileSize) }}</text>
           </view>
           <view v-if="selectedImage.tags" class="info-row">
             <text class="info-label">标签:</text>
@@ -218,9 +218,9 @@ const annotationCounts = computed<AnnotationCounts>(() => {
     return { all: 0, annotated: 0, unannotated: 0 };
   }
   return {
-    all: currentDataset.value.total_images,
-    annotated: currentDataset.value.annotated_count,
-    unannotated: currentDataset.value.unannotated_count,
+    all: currentDataset.value.total ?? currentDataset.value.statistics?.itemCount ?? 0,
+    annotated: currentDataset.value.statistics?.annotatedCount ?? 0,
+    unannotated: currentDataset.value.statistics?.unannotatedCount ?? 0,
   };
 });
 
