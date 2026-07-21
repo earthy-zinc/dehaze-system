@@ -80,7 +80,7 @@ class AlgorithmInfoPage extends ConsumerWidget {
               Text('基本信息', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 12),
               _buildInfoRow(theme, '算法名称', algorithm.name),
-              _buildInfoRow(theme, '算法类型', algorithm.type.displayName),
+              _buildInfoRow(theme, '算法类型', algorithm.type),
               _buildInfoRow(theme, '算法状态', algorithm.status.displayName),
               if (algorithm.remark != null)
                 _buildInfoRow(theme, '备注', algorithm.remark!),
@@ -129,8 +129,8 @@ class AlgorithmInfoPage extends ConsumerWidget {
                 _buildInfoRow(theme, '创建时间', algorithm.createTime!),
               if (algorithm.updateTime != null)
                 _buildInfoRow(theme, '更新时间', algorithm.updateTime!),
-              if (algorithm.modelPath != null)
-                _buildInfoRow(theme, '模型路径', algorithm.modelPath!),
+              if (algorithm.path != null)
+                _buildInfoRow(theme, '模型路径', algorithm.path!),
             ],
           ),
         ),

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../core/constants/api_constants.dart';
@@ -27,6 +29,43 @@ class FileService {
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(
         filePath,
+        filename: fileName,
+      ),
+    });
+
+    final response = await _dio.post<Map<String, dynamic>>(
+      ApiConstants.filesUpload,
+      data: formData,
+      options: Options(
+        headers: {'Content-Type': 'multipart/form-data'},
+      ),
+      onSendProgress: onProgress,
+    );
+
+    final result = response.data!;
+    if (result['code']?.toString() == ApiConstants.successCode) {
+      return FileUploadResponse.fromJson(
+        result['data'] as Map<String, dynamic>,
+      );
+    }
+    throw Exception(result['msg'] ?? '文件上传失败');
+  }
+
+  /// 从字节流上传文件（跨平台，Web 端首选）
+  ///
+  /// POST /files
+  /// Content-Type: multipart/form-data
+  ///
+  /// 本地图片在选择时即被读取为 [bytes]，直接上传字节流，
+  /// 避免依赖 dart:io 的文件路径（Web 端不可用）。
+  Future<FileUploadResponse> uploadBytes(
+    Uint8List bytes,
+    String fileName, {
+    void Function(int sent, int total)? onProgress,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        bytes,
         filename: fileName,
       ),
     });

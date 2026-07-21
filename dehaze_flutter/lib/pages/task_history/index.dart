@@ -170,7 +170,7 @@ class _LogCard extends StatelessWidget {
                   width: 80,
                   height: 80,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (_, _, _) => Container(
                     width: 80,
                     height: 80,
                     color: theme.colorScheme.surfaceContainerHighest,
@@ -258,7 +258,7 @@ class _LogCard extends StatelessWidget {
           ),
           Expanded(
             child: Image.network(url, fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image))),
+                errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image))),
           ),
         ],
       );

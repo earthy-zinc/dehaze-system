@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/dehaze_image.dart';
 
 /// 并排对比页面
 ///
@@ -20,6 +21,7 @@ class SideBySidePage extends ConsumerWidget {
     final theme = Theme.of(context);
 
     final originalUrl = state.selectedImage?.fileUrl;
+    final originalBytes = state.selectedImage?.bytes;
     final resultUrl = state.predictionResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
@@ -33,6 +35,7 @@ class SideBySidePage extends ConsumerWidget {
           Expanded(
             child: _BeforeAfterSlider(
               beforeUrl: originalUrl,
+              beforeBytes: originalBytes,
               afterUrl: resultUrl,
             ),
           ),
@@ -95,10 +98,15 @@ class SideBySidePage extends ConsumerWidget {
 
 /// 滑动分割线对比组件
 class _BeforeAfterSlider extends StatefulWidget {
-  const _BeforeAfterSlider({required this.beforeUrl, required this.afterUrl});
+  const _BeforeAfterSlider({
+    required this.beforeUrl,
+    required this.afterUrl,
+    this.beforeBytes,
+  });
 
   final String beforeUrl;
   final String afterUrl;
+  final Uint8List? beforeBytes;
 
   @override
   State<_BeforeAfterSlider> createState() => _BeforeAfterSliderState();
@@ -124,7 +132,8 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
           // 前图（原图），用 ClipRect 裁剪
           ClipRect(
             clipper: _LeftClipper(_position),
-            child: Positioned.fill(child: _buildImage(widget.beforeUrl)),
+            child: Positioned.fill(
+                child: _buildImage(widget.beforeUrl, bytes: widget.beforeBytes)),
           ),
 
           // 分割线
@@ -170,11 +179,12 @@ class _BeforeAfterSliderState extends State<_BeforeAfterSlider> {
     );
   }
 
-  Widget _buildImage(String url) {
-    if (url.startsWith('http')) {
-      return Image.network(url, fit: BoxFit.cover);
-    }
-    return Image.file(File(url), fit: BoxFit.cover);
+  Widget _buildImage(String url, {Uint8List? bytes}) {
+    return DehazeImage(
+      bytes: bytes,
+      url: url,
+      fit: BoxFit.cover,
+    );
   }
 }
 

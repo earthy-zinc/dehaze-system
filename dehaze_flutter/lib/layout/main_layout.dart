@@ -224,7 +224,7 @@ class MainLayout extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  user.nickname,
+                  user.nickname ?? user.username,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -450,7 +450,9 @@ class MainLayout extends ConsumerWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              user != null ? user.nickname : AppConstants.appName,
+                              user?.nickname ??
+                                  user?.username ??
+                                  AppConstants.appName,
                               style:
                                   Theme.of(context).textTheme.titleLarge?.copyWith(
                                 color: Colors.white,

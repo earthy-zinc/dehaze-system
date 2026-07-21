@@ -8,7 +8,7 @@ class UserModel {
   const UserModel({
     required this.userId,
     required this.username,
-    required this.nickname,
+    this.nickname,
     this.avatar,
     this.deptId,
     this.deptName,
@@ -28,8 +28,8 @@ class UserModel {
   /// 用户名
   final String username;
 
-  /// 昵称
-  final String nickname;
+  /// 昵称（后端 /auth/me 可能不返回，为空时回退用用户名）
+  final String? nickname;
 
   /// 头像 URL
   final String? avatar;
@@ -80,8 +80,9 @@ class UserModel {
 
   /// 获取头像首字母（用于默认头像）
   String get avatarInitials {
-    if (nickname.isNotEmpty) {
-      return nickname.substring(0, 1).toUpperCase();
+    final nick = nickname;
+    if (nick != null && nick.isNotEmpty) {
+      return nick.substring(0, 1).toUpperCase();
     }
     if (username.isNotEmpty) {
       return username.substring(0, 1).toUpperCase();

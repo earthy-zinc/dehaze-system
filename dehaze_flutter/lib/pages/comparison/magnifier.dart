@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/dehaze_image.dart';
 
 /// 放大镜对比页面
 ///
@@ -29,6 +30,7 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
     final state = ref.watch(processingProvider);
     final theme = Theme.of(context);
     final originalUrl = state.selectedImage?.fileUrl;
+    final originalBytes = state.selectedImage?.bytes;
     final resultUrl = state.predictionResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
@@ -84,7 +86,10 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
                                     child: SizedBox(
                                       width: constraints.maxWidth * 2,
                                       height: constraints.maxHeight * 2,
-                                      child: _buildImage(_showOriginal ? originalUrl : resultUrl),
+                                      child: _buildImage(
+                                        _showOriginal ? originalUrl : resultUrl,
+                                        bytes: _showOriginal ? originalBytes : null,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -159,9 +164,12 @@ class _MagnifierPageState extends ConsumerState<MagnifierPage> {
         ),
       );
 
-  Widget _buildImage(String url) {
-    if (url.startsWith('http')) return Image.network(url, fit: BoxFit.cover);
-    return Image.file(File(url), fit: BoxFit.cover);
+  Widget _buildImage(String url, {Uint8List? bytes}) {
+    return DehazeImage(
+      bytes: bytes,
+      url: url,
+      fit: BoxFit.cover,
+    );
   }
 
   Widget _buildBottomNav(BuildContext context) => Container(

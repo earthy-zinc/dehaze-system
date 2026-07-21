@@ -1,14 +1,14 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../models/algorithm_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/dehaze_image.dart';
 
 /// 去雾处理页面
 class ProcessingPage extends ConsumerStatefulWidget {
@@ -165,16 +165,16 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
       ),
       child: resultUrl != null
           ? _buildBeforeAfterView(theme, image, resultUrl)
-          : _buildSingleImage(theme, image.fileUrl),
+          : _buildSingleImage(theme, image),
     );
   }
 
-  Widget _buildSingleImage(ThemeData theme, String url) {
+  Widget _buildSingleImage(ThemeData theme, SelectedImage image) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppTheme.radiusL),
       child: AspectRatio(
         aspectRatio: 16 / 10,
-        child: _imageWidget(url),
+        child: _imageWidget(image.fileUrl, bytes: image.bytes),
       ),
     );
   }
@@ -191,7 +191,8 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            Expanded(child: _labeledImage('原图', image.fileUrl)),
+            Expanded(
+                child: _labeledImage('原图', image.fileUrl, bytes: image.bytes)),
             const SizedBox(width: 12),
             Expanded(child: _labeledImage('去雾结果', resultUrl)),
           ],
@@ -203,7 +204,7 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _labeledImage('原图', image.fileUrl),
+          _labeledImage('原图', image.fileUrl, bytes: image.bytes),
           const SizedBox(height: 12),
           _labeledImage('去雾结果', resultUrl),
         ],
@@ -211,7 +212,7 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
     );
   }
 
-  Widget _labeledImage(String label, String url) => Column(
+  Widget _labeledImage(String label, String url, {Uint8List? bytes}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
@@ -221,31 +222,18 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
             borderRadius: BorderRadius.circular(AppTheme.radiusM),
             child: AspectRatio(
               aspectRatio: 16 / 10,
-              child: _imageWidget(url),
+              child: _imageWidget(url, bytes: bytes),
             ),
           ),
         ],
       );
 
-  Widget _imageWidget(String url) {
-    // 本地文件 vs 网络图片
-    if (url.startsWith('http')) {
-      return Image.network(
-        url,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const ColoredBox(
-          color: Colors.grey,
-          child: Center(child: Icon(Icons.broken_image, size: 48)),
-        ),
-      );
-    }
-    return Image.file(
-      File(url),
+  Widget _imageWidget(String url, {Uint8List? bytes}) {
+    // 跨平台渲染：字节流优先（原图），网络地址次之（结果图）
+    return DehazeImage(
+      bytes: bytes,
+      url: url,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => const ColoredBox(
-        color: Colors.grey,
-        child: Center(child: Icon(Icons.broken_image, size: 48)),
-      ),
     );
   }
 
@@ -273,7 +261,7 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
                     ),
                   ),
                   Text(
-                    state.selectedAlgorithm!.type.displayName,
+                    state.selectedAlgorithm!.type,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

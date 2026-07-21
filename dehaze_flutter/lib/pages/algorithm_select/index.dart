@@ -8,6 +8,7 @@ import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../image_input/providers/image_input_provider.dart';
 
 /// 算法选择页面
 class AlgorithmSelectPage extends ConsumerStatefulWidget {
@@ -21,6 +22,7 @@ class AlgorithmSelectPage extends ConsumerStatefulWidget {
 class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   List<AlgorithmModel> _algorithms = [];
   bool _isLoading = true;
+  bool _isUploading = false;
   String? _errorMessage;
 
   @override
@@ -72,6 +74,64 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   String _extractErrorMessage(dynamic e) {
     if (e is ApiException) return e.message;
     return e.toString().replaceFirst('Exception: ', '');
+  }
+
+  /// 下一步：上传选中的图片并进入去雾处理
+  ///
+  /// 打通 图像输入 → 算法选择 → 去雾处理 的关键衔接：
+  /// 将图像输入页选中的图片字节流上传到文件服务，
+  /// 拿到 fileId 后设置到处理流程，再跳转处理页。
+  Future<void> _uploadAndProceed() async {
+    final selectedImage = ref.read(selectedImageProvider);
+    if (selectedImage == null) {
+      _showSnackBar('请先选择图片');
+      return;
+    }
+
+    final bytes = selectedImage.bytes;
+    if (bytes == null || bytes.isEmpty) {
+      _showSnackBar('图片数据无效，请重新选择');
+      return;
+    }
+
+    setState(() => _isUploading = true);
+
+    try {
+      final fileService = ref.read(fileServiceProvider);
+      final uploadResult = await fileService.uploadBytes(
+        bytes,
+        selectedImage.filename,
+      );
+
+      if (!mounted) return;
+
+      // 构造处理流程所需的 SelectedImage 并设置
+      ref.read(processingProvider.notifier).setSelectedImage(SelectedImage(
+            fileId: uploadResult.fileId,
+            fileUrl: uploadResult.fileUrl,
+            fileName: selectedImage.filename,
+            bytes: bytes,
+          ));
+
+      context.go(AppRouterConfig.processing);
+    } catch (e) {
+      if (mounted) {
+        _showSnackBar('图片上传失败: ${_extractErrorMessage(e)}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
@@ -224,9 +284,18 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
                 ),
               ),
               FilledButton.icon(
-                onPressed: () => context.go(AppRouterConfig.processing),
-                icon: const Icon(Icons.arrow_forward),
-                label: const Text('下一步'),
+                onPressed: _isUploading ? null : _uploadAndProceed,
+                icon: _isUploading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_forward),
+                label: Text(_isUploading ? '上传中...' : '下一步'),
               ),
             ],
           ),
@@ -317,7 +386,7 @@ class _AlgorithmCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            algorithm.type.displayName,
+                            algorithm.type,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w500,

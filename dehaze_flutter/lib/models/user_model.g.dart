@@ -13,7 +13,7 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) => $checkedCreate(
     final val = UserModel(
       userId: $checkedConvert('userId', (v) => (v as num).toInt()),
       username: $checkedConvert('username', (v) => v as String),
-      nickname: $checkedConvert('nickname', (v) => v as String),
+      nickname: $checkedConvert('nickname', (v) => v as String?),
       avatar: $checkedConvert('avatar', (v) => v as String?),
       deptId: $checkedConvert('deptId', (v) => (v as num?)?.toInt()),
       deptName: $checkedConvert('deptName', (v) => v as String?),
@@ -37,7 +37,7 @@ UserModel _$UserModelFromJson(Map<String, dynamic> json) => $checkedCreate(
 Map<String, dynamic> _$UserModelToJson(UserModel instance) => <String, dynamic>{
   'userId': instance.userId,
   'username': instance.username,
-  'nickname': instance.nickname,
+  if (instance.nickname case final value?) 'nickname': value,
   if (instance.avatar case final value?) 'avatar': value,
   if (instance.deptId case final value?) 'deptId': value,
   if (instance.deptName case final value?) 'deptName': value,

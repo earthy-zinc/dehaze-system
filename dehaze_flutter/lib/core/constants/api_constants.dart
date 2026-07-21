@@ -16,7 +16,7 @@ class ApiConstants {
   static const String datasets = '/datasets';
   static const String datasetItems = '/dataset-items';
   static const String itemFiles = '/item-files';
-  static const String algorithm = '/algorithm';
+  static const String algorithm = '/algorithms';
   static const String prediction = '/prediction';
   static const String evaluation = '/evaluation';
   static const String tasks = '/tasks';

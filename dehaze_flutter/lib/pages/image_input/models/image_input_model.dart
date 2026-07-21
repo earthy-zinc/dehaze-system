@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:json_annotation/json_annotation.dart';
 
 part 'image_input_model.g.dart';
@@ -120,6 +122,7 @@ class SelectedImageModel {
     required this.fileSize,
     required this.source,
     this.localPath,
+    this.bytes,
     this.sampleInfo,
   });
 
@@ -134,6 +137,10 @@ class SelectedImageModel {
 
   @JsonKey(name: 'local_path')
   final String? localPath; // 本地文件路径
+
+  /// 图片字节流（内存态，跨平台渲染本地图片，不参与序列化）
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final Uint8List? bytes;
 
   @JsonKey(name: 'filename')
   final String filename;
@@ -159,6 +166,7 @@ class SelectedImageModel {
     String? id,
     String? url,
     String? localPath,
+    Uint8List? bytes,
     String? filename,
     int? width,
     int? height,
@@ -170,6 +178,7 @@ class SelectedImageModel {
         id: id ?? this.id,
         url: url ?? this.url,
         localPath: localPath ?? this.localPath,
+        bytes: bytes ?? this.bytes,
         filename: filename ?? this.filename,
         width: width ?? this.width,
         height: height ?? this.height,

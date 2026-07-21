@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/dehaze_image.dart';
 
 /// 重叠对比页面
 ///
@@ -26,6 +27,7 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
     final state = ref.watch(processingProvider);
     final theme = Theme.of(context);
     final originalUrl = state.selectedImage?.fileUrl;
+    final originalBytes = state.selectedImage?.bytes;
     final resultUrl = state.predictionResult?.resultUrl;
 
     if (originalUrl == null || resultUrl == null) {
@@ -36,7 +38,8 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
       body: Column(
         children: [
           _buildHeader(theme, context),
-          Expanded(child: _buildImageStack(originalUrl, resultUrl)),
+          Expanded(
+              child: _buildImageStack(originalUrl, resultUrl, originalBytes)),
           _buildControls(theme),
           _buildBottomNav(context),
         ],
@@ -59,7 +62,12 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
         ),
       );
 
-  Widget _buildImageStack(String originalUrl, String resultUrl) => Stack(
+  Widget _buildImageStack(
+    String originalUrl,
+    String resultUrl,
+    Uint8List? originalBytes,
+  ) =>
+      Stack(
         children: [
           // 底层：结果图
           Positioned.fill(child: _buildImage(resultUrl)),
@@ -67,7 +75,7 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
           Positioned.fill(
             child: Opacity(
               opacity: _opacity,
-              child: _buildImage(originalUrl),
+              child: _buildImage(originalUrl, bytes: originalBytes),
             ),
           ),
           // 标签
@@ -114,9 +122,12 @@ class _OverlayPageState extends ConsumerState<OverlayPage> {
         ),
       );
 
-  Widget _buildImage(String url) {
-    if (url.startsWith('http')) return Image.network(url, fit: BoxFit.contain);
-    return Image.file(File(url), fit: BoxFit.contain);
+  Widget _buildImage(String url, {Uint8List? bytes}) {
+    return DehazeImage(
+      bytes: bytes,
+      url: url,
+      fit: BoxFit.contain,
+    );
   }
 
   Widget _buildBottomNav(BuildContext context) => Container(

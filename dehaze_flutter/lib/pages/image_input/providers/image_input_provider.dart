@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +57,12 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
         return;
       }
 
-      await _processFile(File(pickedFile.path), ImageSource.upload);
+      final bytes = await pickedFile.readAsBytes();
+      await _processBytes(
+        Uint8List.fromList(bytes),
+        pickedFile.name,
+        ImageSource.upload,
+      );
     } catch (e) {
       _ref.read(uploadProgressProvider.notifier).state = UploadProgress(
         progress: 0,
@@ -88,7 +93,12 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
         return;
       }
 
-      await _processFile(File(pickedFile.path), ImageSource.camera);
+      final bytes = await pickedFile.readAsBytes();
+      await _processBytes(
+        Uint8List.fromList(bytes),
+        pickedFile.name,
+        ImageSource.camera,
+      );
     } catch (e) {
       _ref.read(uploadProgressProvider.notifier).state = UploadProgress(
         progress: 0,
@@ -99,15 +109,19 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
     }
   }
 
-  /// 处理文件（验证、压缩）
-  Future<void> _processFile(File file, ImageSource source) async {
+  /// 处理图片字节流（验证、压缩）
+  Future<void> _processBytes(
+    Uint8List bytes,
+    String filename,
+    ImageSource source,
+  ) async {
     // 验证图片
     _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
       progress: 0.2,
       status: UploadStatus.validating,
     );
 
-    final validation = await _service.validateImage(file);
+    final validation = await _service.validateImage(bytes, filename);
     if (!validation.isValid) {
       _ref.read(uploadProgressProvider.notifier).state = UploadProgress(
         progress: 0,
@@ -118,14 +132,14 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
     }
 
     // 压缩图片（如果需要）
-    File processedFile = file;
+    Uint8List processedBytes = bytes;
     if (validation.needsCompression) {
       _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
         progress: 0.4,
         status: UploadStatus.compressing,
       );
 
-      processedFile = await _service.compressImage(file);
+      processedBytes = await _service.compressImage(bytes);
     }
 
     // 获取图片信息
@@ -134,14 +148,15 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
       status: UploadStatus.uploading,
     );
 
-    final imageInfo = await _service.getImageInfo(processedFile);
+    final imageInfo = await _service.getImageInfo(processedBytes);
 
-    // 创建选中的图片模型
+    // 创建选中的图片模型（携带字节流用于跨平台渲染）
     final selectedImage = SelectedImageModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      url: processedFile.path,
-      localPath: processedFile.path,
-      filename: file.path.split('/').last,
+      url: filename,
+      localPath: null,
+      bytes: processedBytes,
+      filename: filename.split('/').last,
       width: imageInfo.width,
       height: imageInfo.height,
       fileSize: imageInfo.fileSize,
@@ -166,14 +181,14 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
     );
 
     try {
-      // 下载样例图片
-      final file = await _service.downloadImage(sample.url);
-      final imageInfo = await _service.getImageInfo(file);
+      // 下载样例图片为字节流
+      final bytes = await _service.downloadImageBytes(sample.url);
+      final imageInfo = await _service.getImageInfo(bytes);
 
       final selectedImage = SelectedImageModel(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         url: sample.url,
-        localPath: file.path,
+        bytes: bytes,
         filename: '${sample.name}.jpg',
         width: imageInfo.width,
         height: imageInfo.height,

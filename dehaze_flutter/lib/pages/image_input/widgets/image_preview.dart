@@ -1,9 +1,7 @@
-import 'dart:io';
-
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../widgets/dehaze_image.dart';
 import '../models/image_input_model.dart';
 import '../providers/image_input_provider.dart';
 
@@ -110,43 +108,13 @@ class ImagePreview extends ConsumerWidget {
   }
 
   Widget _buildImage(SelectedImageModel image) {
-    // 如果有本地路径，优先使用本地文件
-    if (image.localPath != null && image.localPath!.isNotEmpty) {
-      return Image.file(
-        File(image.localPath!),
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
-      );
-    }
-
-    // 否则使用网络图片
-    return CachedNetworkImage(
-      imageUrl: image.url,
+    // 跨平台渲染：字节流优先（本地选择/拍摄），网络地址次之（样例图片）
+    return DehazeImage(
+      bytes: image.bytes,
+      url: image.url,
       fit: BoxFit.contain,
-      placeholder: (context, url) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-      errorWidget: (context, url, error) => _buildErrorWidget(),
     );
   }
-
-  Widget _buildErrorWidget() => const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.broken_image_outlined,
-              size: 48,
-              color: Color(0xFF9CA3AF),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '图片加载失败',
-              style: TextStyle(color: Color(0xFF9CA3AF)),
-            ),
-          ],
-        ),
-      );
 
   Widget _buildImageInfo(BuildContext context, SelectedImageModel image) {
     final theme = Theme.of(context);

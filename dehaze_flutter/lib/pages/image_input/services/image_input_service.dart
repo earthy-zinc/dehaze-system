@@ -1,10 +1,7 @@
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 import '../models/image_input_model.dart';
 
@@ -33,19 +30,19 @@ class ImageInputService {
     'heic',
   ];
 
-  /// 验证图片格式和大小
-  Future<ImageValidationResult> validateImage(File file) async {
-    // 检查文件是否存在
-    if (!await file.exists()) {
+  /// 验证图片格式和大小（基于字节流，跨平台）
+  Future<ImageValidationResult> validateImage(
+    Uint8List bytes,
+    String filename,
+  ) async {
+    // 检查文件大小
+    if (bytes.isEmpty) {
       return const ImageValidationResult(
         isValid: false,
-        errorMessage: '文件不存在',
+        errorMessage: '文件为空',
       );
     }
-
-    // 检查文件大小
-    final fileSize = await file.length();
-    if (fileSize > maxFileSizeBytes) {
+    if (bytes.length > maxFileSizeBytes) {
       return const ImageValidationResult(
         isValid: false,
         errorMessage: '图片大小超过20MB，请选择较小的图片',
@@ -53,7 +50,7 @@ class ImageInputService {
     }
 
     // 检查文件格式
-    final extension = file.path.split('.').last.toLowerCase();
+    final extension = filename.split('.').last.toLowerCase();
     if (!supportedFormats.contains(extension)) {
       return const ImageValidationResult(
         isValid: false,
@@ -63,7 +60,6 @@ class ImageInputService {
 
     // 检查图片尺寸
     try {
-      final bytes = await file.readAsBytes();
       final image = img.decodeImage(bytes);
       if (image == null) {
         return const ImageValidationResult(
@@ -80,7 +76,7 @@ class ImageInputService {
       }
 
       // 检查是否需要压缩
-      final needsCompression = fileSize > compressionThresholdBytes;
+      final needsCompression = bytes.length > compressionThresholdBytes;
 
       return ImageValidationResult(
         isValid: true,
@@ -94,56 +90,27 @@ class ImageInputService {
     }
   }
 
-  /// 压缩图片（>5MB 自动压缩）
-  Future<File> compressImage(File file, {int quality = compressionQuality}) async {
+  /// 压缩图片（>5MB 自动压缩，返回压缩后的字节流）
+  Future<Uint8List> compressImage(
+    Uint8List bytes, {
+    int quality = compressionQuality,
+  }) async {
     try {
-      final bytes = await file.readAsBytes();
       final image = img.decodeImage(bytes);
-
       if (image == null) {
         throw Exception('无法解析图片');
       }
 
       // 编码为 JPEG 并压缩
-      final compressedBytes = img.encodeJpg(image, quality: quality);
-
-      // 创建临时文件
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final cacheManager = DefaultCacheManager();
-      final compressedFile = await cacheManager.putFile(
-        'compressed_$timestamp.jpg',
-        Uint8List.fromList(compressedBytes),
-        fileExtension: 'jpg',
-      );
-
-      return compressedFile;
+      return Uint8List.fromList(img.encodeJpg(image, quality: quality));
     } catch (e) {
       throw Exception('图片压缩失败: $e');
     }
   }
 
-  /// 获取图片信息（宽高、大小）
-  Future<ImageInfo> getImageInfo(File file) async {
-    final bytes = await file.readAsBytes();
+  /// 获取图片信息（宽高、大小，基于字节流）
+  Future<ImageInfo> getImageInfo(Uint8List bytes) async {
     final image = img.decodeImage(bytes);
-
-    if (image == null) {
-      throw Exception('无法解析图片');
-    }
-
-    final fileSize = await file.length();
-
-    return ImageInfo(
-      width: image.width,
-      height: image.height,
-      fileSize: fileSize,
-    );
-  }
-
-  /// 从 Uint8List 获取图片信息
-  Future<ImageInfo> getImageInfoFromBytes(Uint8List bytes) async {
-    final image = img.decodeImage(bytes);
-
     if (image == null) {
       throw Exception('无法解析图片');
     }
@@ -155,13 +122,14 @@ class ImageInputService {
     );
   }
 
-  /// 从 URL 下载图片
-  Future<File> downloadImage(String url) async {
+  /// 从 URL 下载图片为字节流（跨平台）
+  Future<Uint8List> downloadImageBytes(String url) async {
     try {
-      // 使用 flutter_cache_manager 下载和缓存图片
-      final cacheManager = DefaultCacheManager();
-      final file = await cacheManager.getSingleFile(url);
-      return file;
+      final response = await _dio.get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return Uint8List.fromList(response.data ?? []);
     } catch (e) {
       throw Exception('图片下载失败: $e');
     }

@@ -2,25 +2,6 @@ import 'package:json_annotation/json_annotation.dart';
 
 part 'algorithm_model.g.dart';
 
-/// 算法类型枚举
-enum AlgorithmType {
-  @JsonValue('traditional')
-  traditional,
-  @JsonValue('deep_learning')
-  deepLearning,
-}
-
-extension AlgorithmTypeExtension on AlgorithmType {
-  String get displayName {
-    switch (this) {
-      case AlgorithmType.traditional:
-        return '传统算法';
-      case AlgorithmType.deepLearning:
-        return '深度学习';
-    }
-  }
-}
-
 /// 算法状态枚举
 enum AlgorithmStatus {
   @JsonValue(1)
@@ -73,7 +54,8 @@ class AlgorithmModel {
     required this.status,
     this.parentId,
     this.description,
-    this.modelPath,
+    this.path,
+    this.importPath,
     this.config,
     this.remark,
     this.createTime,
@@ -87,8 +69,9 @@ class AlgorithmModel {
   final int id;
   final String name;
 
-  @JsonKey(unknownEnumValue: AlgorithmType.traditional)
-  final AlgorithmType type;
+  /// 算法任务分类（后端返回中文，如"图像去雾"、"图像去噪"、"图像去雨"、"图像去模糊"）
+  @JsonKey(defaultValue: '未分类')
+  final String type;
 
   @JsonKey(defaultValue: AlgorithmStatus.disabled)
   final AlgorithmStatus status;
@@ -98,8 +81,11 @@ class AlgorithmModel {
 
   final String? description;
 
-  @JsonKey(name: 'modelPath')
-  final String? modelPath;
+  /// 模型文件相对路径（如 AECR-Net/NH_train.pk）
+  final String? path;
+
+  /// 模型导入路径（如 algorithm.AECRNet.run，深度学习模型才有）
+  final String? importPath;
 
   /// 算法配置参数（JSON 字符串）
   final Map<String, dynamic>? config;
@@ -117,8 +103,9 @@ class AlgorithmModel {
 
   Map<String, dynamic> toJson() => _$AlgorithmModelToJson(this);
 
-  /// 是否为深度学习算法
-  bool get isDeepLearning => type == AlgorithmType.deepLearning;
+  /// 是否为深度学习算法（后端以 importPath 标识可导入的模型）
+  bool get isDeepLearning =>
+      importPath != null && importPath!.trim().isNotEmpty;
 
   /// 是否已启用
   bool get isEnabled => status == AlgorithmStatus.enabled;

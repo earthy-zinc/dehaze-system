@@ -75,7 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final request = LoginRequest(
       username: _usernameController.text.trim(),
       password: _passwordController.text,
-      captchaId: _captcha!.captchaId,
+      captchaKey: _captcha!.captchaKey,
       captchaCode: _captchaController.text.trim(),
     );
 
@@ -226,10 +226,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                         AppTheme.radiusM),
                                     child: Image.memory(
                                       _decodeBase64Image(
-                                          _captcha!.captchaImg),
+                                          _captcha!.captchaBase64),
                                       fit: BoxFit.cover,
                                       gaplessPlayback: true,
-                                      errorBuilder: (_, __, ___) =>
+                                      errorBuilder: (_, _, _) =>
                                           const Center(
                                         child: Icon(Icons.broken_image),
                                       ),

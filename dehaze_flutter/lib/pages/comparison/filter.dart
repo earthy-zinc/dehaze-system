@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
@@ -8,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../providers/processing_provider.dart';
 import '../../router/config.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/dehaze_image.dart';
 
 /// 滤镜调节页面
 ///
@@ -64,9 +64,10 @@ class _FilterPageState extends ConsumerState<FilterPage> {
   Widget _buildImageWithFilter(String url) => Center(
         child: ColorFiltered(
           colorFilter: ui.ColorFilter.matrix(_buildColorMatrix()),
-          child: url.startsWith('http')
-              ? Image.network(url, fit: BoxFit.contain)
-              : Image.file(File(url), fit: BoxFit.contain),
+          child: DehazeImage(
+            url: url,
+            fit: BoxFit.contain,
+          ),
         ),
       );
 

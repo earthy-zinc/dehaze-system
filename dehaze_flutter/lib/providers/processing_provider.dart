@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -84,12 +85,16 @@ class SelectedImage {
     required this.fileUrl,
     required this.fileName,
     this.localPath,
+    this.bytes,
   });
 
   final String fileId;
   final String fileUrl;
   final String fileName;
   final String? localPath;
+
+  /// 原图字节流（内存态，跨平台渲染，Web 端不依赖文件路径）
+  final Uint8List? bytes;
 }
 
 /// 处理流程状态管理
