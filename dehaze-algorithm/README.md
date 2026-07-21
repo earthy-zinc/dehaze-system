@@ -1,13 +1,59 @@
-# 基于高质量码本的双分支多尺度图像去雾算法
+# 算法研究 (dehaze-algorithm)
 
-本论文提出了一种创新的图像去雾方法，通过结合高质量码本先验知识和双分支网络结构，有效处理非均匀雾霾场景。主要创新点包括：
+基于高质量码本的双分支多尺度图像去雾算法源码实现。详细业务文档见 [dehaze-doc](../dehaze-doc/docs/05-子项目实现/学术论文文档.md)。
 
-1. 使用VQGAN训练高质量码本作为先验知识，补充纹理细节信息
-2. 设计金字塔扩张邻域注意力编码器，实现多尺度特征提取  
-3. 提出增强解码器，结合像素级和通道级注意力机制
-4. 采用双分支网络结构，通过特征融合处理浓雾区域
+## 技术栈
 
-实验结果表明，该方法在O-HAZE、DENSE-HAZE等多个数据集上均取得了优异性能。
+- Python
+- PyTorch
+- BasicSR（基于 BasicSR 框架的训练/测试管线）
 
-该仓库为源码，请勿用于商业用途。
+## 快速开始
 
+### 1. 安装依赖
+
+```bash
+pip install -e .
+```
+
+> `setup.py` 会读取 `requirements.txt` 安装全部依赖。如需编译 CUDA 算子（如 DCN），请设置环境变量 `BASICSR_EXT=True`。
+
+### 2. 推理
+
+使用 `inference_ridcp.py` 进行单图或批量推理：
+
+```bash
+python inference_ridcp.py \
+    -i inputs \
+    -w path/to/model_weight.pth \
+    -o results \
+    --use_weight \
+    --alpha 1.0
+```
+
+参数说明：
+
+- `-i / --input`：输入图片或文件夹，默认 `inputs`
+- `-w / --weight`：模型权重路径
+- `-o / --output`：输出文件夹，默认 `results`
+- `--use_weight`：启用权重融合
+- `--alpha`：权重融合系数，默认 `1.0`
+- `--max_size`：单张图片最大尺寸，超过则启用分块推理，默认 `10000`
+
+### 3. 训练
+
+通过 `basicsr/train.py` 启动训练，配置文件位于 `options/` 目录：
+
+```bash
+python basicsr/train.py -opt options/common/NH-HAZE-20.yml
+```
+
+### 4. 测试
+
+通过 `basicsr/test.py` 跑测试集评估：
+
+```bash
+python basicsr/test.py -opt options/common/NH-HAZE-20.yml
+```
+
+> 消融实验与对比实验配置分别位于 `options/ablation/` 与 `options/compare/`。

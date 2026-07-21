@@ -1,30 +1,68 @@
-# 后端基础设施设计（dehaze-go）
+# Go 后端 (dehaze-go)
 
-## 1. 文档概述
+基于 Go 1.25、Gin、GORM、JWT、Redis、Swagger 构建的前后端分离图像去雾系统后端。包括用户管理、角色管理、菜单管理、部门管理、字典管理等多个功能。使用 Swagger 自动生成接口文档，支持在线调试。
 
-### 1.1 文档目的
+> 构建/运行/测试说明见项目根目录的 `README.md`。
 
-本文档描述 `dehaze-go` 后端项目的基础设施层设计，包括项目分层架构、应用生命周期、配置管理、数据访问层、缓存体系、消息队列、定时任务、安全中间件链、日志系统和可观测性等基础能力。
+## 一、项目概览
 
-本文档**不涉及**具体业务模块的实现逻辑，业务模块详见 [模块设计](../03-模块设计/) 各子目录。
+### 1.1 主要功能模块
 
-### 1.2 适用范围
+| 模块类型 | 核心实现 | 关键技术点 |
+|------|------|------|
+| 安全认证 | JWT 中间件 + 权限中间件 | JWT 令牌签发校验、RBAC 权限控制 |
+| 文件管理 | FileHandler / 存储服务 | 适配多存储方案，支持本地/MinIO/OSS 存储 |
+| 系统管理 | SystemHandler / 服务 | RBAC 模型实现、部门树形结构管理 |
+| 算法管理 | AlgorithmHandler | 算法模型动态加载、Python 服务集成 |
+| 图像处理 | ImageUtil / 文件服务 | 图像处理、元数据提取 |
+| 数据权限 | GORM Plugin + DataScopePlugin | UserContextMiddleware 注入 context，Callback 自动追加 WHERE 条件，支持本部门/本部门及下级/仅本人/自定义范围 |
 
-面向参与 `dehaze-go` 后端开发的工程师，提供技术基座的全局视图和设计决策依据。
+### 1.2 项目难点与解决方案
 
-### 1.3 相关文档
+1. **并发控制:** 使用 Go 原生 goroutine 和 channel 处理并发，配合 Redis 分布式锁解决并发竞争
+2. **文件上传:** 实现分片上传，利用 Go 的并发特性优化大文件上传性能
+3. **服务间通信:** 使用标准化 RESTful API 与 Python 算法服务通信，通过 context 实现超时控制
+4. **权限控制:** 基于 RBAC 的多层次权限验证，GORM Plugin 机制实现行级数据权限（DataScopePlugin）
+5. **多数据库支持:** 通过工厂模式 + 驱动注册机制，支持 MySQL/PostgreSQL/SQLite 零修改切换
 
-| 文档 | 说明 |
-|------|------|
-| [01-总体架构设计](./01-总体架构设计.md) | 系统全局分层、数据流与安全策略 |
-| [03-数据库设计](./03-数据库设计.md) | 表结构、索引、ER 关系图 |
-| [04-API 规范](./04-API规范.md) | 全局 API 规范、认证方式、错误码 |
-| [任务管理/后端实现](../03-模块设计/基础模块/任务管理/后端实现.md) | 异步任务业务模块设计 |
-| [文件管理/后端实现](../03-模块设计/基础模块/文件管理/后端实现.md) | 文件存储业务模块设计 |
+### 1.3 项目亮点
 
----
+1. **高性能:** 充分利用 Go 的并发特性（goroutine/channel），提供高吞吐低延迟的服务能力
+2. **内存管理:** Go 的垃圾回收机制提供更稳定的内存管理，避免 Java GC 停顿问题
+3. **优雅的 API 设计:** 使用 Gin 框架提供 RESTful API，中间件链支持灵活扩展
+4. **完整的错误处理:** 统一的错误处理机制，5 位错误码与 Java/Python 端完全一致
+5. **数据权限插件化:** DataScopePlugin 通过 GORM Plugin 机制实现，业务代码零侵入
+6. **多级缓存:** gkit local_cache L1 + Redis L2，配合布隆过滤器防止缓存穿透
 
-## 2. 项目目录结构
+### 1.4 接口文档
+
+- Swagger 接口文档: `http://localhost:8990/swagger/index.html`
+
+### 1.5 后续优化方案
+
+1. **性能优化**
+    - 连接池参数调优
+    - 使用 gRPC 替代 HTTP 通信
+    - 引入缓存中间件
+
+2. **架构优化**
+    - 服务模块化拆分
+    - 引入服务发现
+    - 完善监控系统
+
+3. **安全性增强**
+    - 实现请求签名机制
+    - 添加操作审计
+    - 加强数据加密
+
+### 1.6 相关工程
+
+- [dehaze-front](https://github.com/earthy-zinc/dehaze_front) - 前端项目
+- [dehaze-python](https://github.com/earthy-zinc/dehaze_python) - 算法服务
+
+## 二、技术基础设施
+
+### 2.1 项目目录结构
 
 ```
 dehaze-go/
@@ -66,11 +104,7 @@ dehaze-go/
     └── integration/            # 集成测试（含 testutil/ 测试工具）
 ```
 
----
-
-## 3. 分层架构设计
-
-### 3.1 架构分层
+### 2.2 分层架构设计
 
 项目采用**经典分层架构 + 显式依赖注入**的设计，不使用运行时 DI 容器。
 
@@ -122,7 +156,7 @@ flowchart TB
     Client --> Middleware --> API --> Service --> Repository --> Infrastructure
 ```
 
-### 3.2 层级职责
+#### 2.2.1 层级职责
 
 | 层级 | 包路径 | 职责 | 依赖方向 |
 |------|--------|------|----------|
@@ -132,7 +166,7 @@ flowchart TB
 | **Repository 层** | `internal/repository/` | 数据库 CRUD、SQL 构建 | → GORM |
 | **基础设施层** | `pkg/` | 配置、数据库、缓存、MQ、日志等基础能力 | 被所有层依赖 |
 
-### 3.3 依赖注入策略
+#### 2.2.2 依赖注入策略
 
 项目采用**构造函数注入**（Constructor Injection），在 `pkg/app/app.go` 的 `Init()` 方法中完成全部 wiring：
 
@@ -144,7 +178,7 @@ flowchart TB
 
 **设计决策**：选择显式 wiring 而非 Wire/Dig 等 DI 框架，原因是项目规模适中，显式构造更易调试和理解。当服务数量超过 30+ 时可考虑引入自动 wiring 工具。
 
-### 3.4 数据模型分层
+#### 2.2.3 数据模型分层
 
 ```mermaid
 flowchart LR
@@ -167,67 +201,9 @@ flowchart LR
 | **DTO** | `model/dto/` | 服务间数据传输 | `LoginResult` |
 | **Enum** | `model/enum/` | 枚举常量定义 | `MenuType` |
 
----
+### 2.3 配置管理
 
-## 4. 应用生命周期管理
-
-### 4.1 启动流程
-
-```mermaid
-sequenceDiagram
-    participant Main as cmd/main.go
-    participant App as Application
-    participant Config as 配置管理
-    participant Logger as 日志系统
-    participant DB as 数据库
-    participant Cache as 缓存
-    participant Server as HTTP Server
-    participant Wiring as 依赖装配
-
-    Main->>App: app.Run()
-    App->>Config: config.Init()
-    Note right of Config: Viper 加载 YAML<br/>环境变量展开<br/>配置校验
-    App->>Logger: logger.Init()
-    Note right of Logger: Zap 初始化<br/>日志切割配置
-    App->>DB: database.Init()
-    Note right of DB: 工厂模式创建实例<br/>支持 MySQL/PG/SQLite
-    App->>Cache: cache.Init()
-    Note right of Cache: 本地缓存/Redis/多级缓存<br/>防护组件初始化
-    App->>Server: gin.Init()
-    Note right of Server: 中间件链注册<br/>健康检查/Swagger/Metrics
-    App->>Wiring: 显式依赖装配
-    Note right of Wiring: Repo → Service → API → Router
-    App->>Server: server.Run() (goroutine)
-    App->>App: server.Stop() 等待信号
-```
-
-### 4.2 优雅关闭
-
-```
-收到 SIGINT/SIGTERM
-    → HTTP Server 5s 超时关闭（drain in-flight 请求）
-    → 缓存连接关闭（Pub/Sub 停止 → Redis 断连）
-    → 数据库连接关闭
-    → 日志 Sync
-```
-
-### 4.3 配置热更新
-
-基于 `fsnotify` 文件监听，配置变更后触发：
-
-```
-文件变更检测 → Viper 重新解析 → 结构体反序列化 → 校验
-    → setConfig() 原子替换 → SystemEvents.TriggerReload()
-    → 各组件注册的 reloadHandler 依次执行
-```
-
-支持热更新的组件通过 `config.GlobalSystemEvents.RegisterReloadHandler()` 注册回调。
-
----
-
-## 5. 配置管理
-
-### 5.1 技术选型
+#### 2.3.1 技术选型
 
 | 组件 | 选型 | 说明 |
 |------|------|------|
@@ -235,7 +211,7 @@ sequenceDiagram
 | 环境变量 | godotenv + `os.ExpandEnv` | `.env` 文件 + `${VAR}` 语法展开 |
 | 配置校验 | go-playground/validator | 结构体标签校验 |
 
-### 5.2 配置结构
+#### 2.3.2 配置结构
 
 ```yaml
 # config.yaml 配置结构概览
@@ -250,7 +226,7 @@ zap:          # 日志配置（级别、格式、切割策略）
 cors:         # 跨域配置
 ```
 
-### 5.3 多环境支持
+#### 2.3.3 多环境支持
 
 | 环境 | Gin Mode | 配置文件 | 特性差异 |
 |------|----------|----------|----------|
@@ -258,7 +234,7 @@ cors:         # 跨域配置
 | **测试** | test | `config.test.yaml` | SQLite 内存数据库、本地缓存 |
 | **生产** | release | `config.production.yaml` | Release 模式、Swagger 禁用 |
 
-### 5.4 敏感信息管理
+#### 2.3.4 敏感信息管理
 
 敏感配置（密码、密钥等）通过环境变量注入，YAML 中使用 `${ENV_VAR}` 占位符：
 
@@ -270,11 +246,9 @@ rabbitmq:
   url: "amqp://root:${DEHAZE_PASSWORD}@host:5672/"
 ```
 
----
+### 2.4 数据访问层
 
-## 6. 数据访问层
-
-### 6.1 技术选型
+#### 2.4.1 技术选型
 
 | 组件 | 选型 | 说明 |
 |------|------|------|
@@ -282,7 +256,7 @@ rabbitmq:
 | 数据库驱动 | MySQL / PostgreSQL / SQLite | 工厂模式，通过配置切换 |
 | 连接池 | GORM 内置 | `MaxIdleConns` / `MaxOpenConns` 可配 |
 
-### 6.2 工厂模式与驱动注册
+#### 2.4.2 工厂模式与驱动注册
 
 ```mermaid
 classDiagram
@@ -328,13 +302,13 @@ classDiagram
 
 各驱动通过 `init()` 调用 `database.RegisterFactory()` 完成自注册，应用侧通过 `import _` 控制启用哪些驱动。
 
-### 6.3 主从分离
+#### 2.4.3 主从分离
 
 `DBer` 接口提供 `Master()` / `Slave()` 语义：
 - MySQL/PostgreSQL：支持独立配置主从地址
 - SQLite：`Slave()` 直接返回 `Master()` 实例（接口兼容）
 
-### 6.4 GORM Callback 增强
+#### 2.4.4 GORM Callback 增强
 
 | Callback | 触发时机 | 功能 |
 |----------|----------|------|
@@ -342,7 +316,7 @@ classDiagram
 | `beforeUpdate` | UPDATE 前 | 自动填充 `update_time`、`update_by` |
 | `afterQuery` | SELECT 后 | 数据权限过滤（DataScope Plugin） |
 
-### 6.5 数据权限（DataScope）
+#### 2.4.5 数据权限（DataScope）
 
 基于 GORM Plugin（`db.Use()`）注册 Query/Row Callback 实现行级数据权限控制：
 
@@ -354,13 +328,249 @@ classDiagram
 | 仅本人数据 | `WHERE create_by = ?` |
 | 自定义范围 | `WHERE dept_id IN (指定部门列表)` |
 
-> **实现要点**：`UserContextMiddleware`（[auto_fill_user.go:21-22](file:///E:/DehazeSystem/dehaze-go/pkg/server/gin/middleware/auto_fill_user.go#L21)）从 JWT claims 提取身份后，调用 `database.SetDeptID`/`database.SetDataScope` 注入到 request context，GORM 通过 `db.Statement.Context` 透传到 `dataScopeCallback`，实现行级数据权限过滤。
+> **实现要点**：`UserContextMiddleware`（`dehaze-go/pkg/server/gin/middleware/auto_fill_user.go:21-22`）从 JWT claims 提取身份后，调用 `database.SetDeptID`/`database.SetDataScope` 注入到 request context，GORM 通过 `db.Statement.Context` 透传到 `dataScopeCallback`，实现行级数据权限过滤。
 
----
+#### 2.4.6 数据权限插件配置（DataScopePlugin）
 
-## 7. 多级缓存体系
+`DataScopePlugin`（`pkg/database/data_scope.go`）是 2.4.5 节行级权限的实现载体，基于 GORM Plugin 机制注册 `Query`/`Row` 回调，在 SQL 生成前自动追加 WHERE 条件。
 
-### 7.1 架构设计
+##### 数据权限范围常量
+
+```go
+const (
+    DataScopeAll      int8 = 0 // 全部数据
+    DataScopeDeptTree int8 = 1 // 部门及子部门数据
+    DataScopeDept     int8 = 2 // 本部门数据
+    DataScopeSelf     int8 = 3 // 本人数据
+)
+```
+
+##### 配置结构
+
+```go
+type DataScopeConfig struct {
+    Enabled            bool
+    Tables             map[string]TableScopeConfig // 表级白名单
+    DefaultScopeField  string                      // 默认 create_by
+    DefaultDeptField   string                      // 默认 dept_id
+}
+
+type TableScopeConfig struct {
+    Enabled       bool
+    ScopeField    string // 创建人字段（"本人数据"场景）
+    DeptField     string // 部门字段（"部门数据"场景）
+    TreePathField string // 部门树路径字段（"部门及子部门"场景）
+    Alias         string // 表别名（JOIN 场景）
+}
+```
+
+##### 工作机制
+
+1. **白名单模式**：仅在 `Tables` 中显式配置的表会被过滤，未配置的表（如 `sys_role`/`sys_menu`）不受影响。
+2. **上下文注入**：从 `db.Statement.Context` 读取 `userID`/`deptID`/`dataScope`，由 `UserContextMiddleware` 在 HTTP 路径注入，或由 MQ Consumer / CleanupJob 在异步路径通过 `SetUserID`/`SetDataScope`/`SetDeptID` 注入。
+3. **跳过过滤**：`db.InstanceSet("skip_data_scope", true)` 可跳过过滤，用于直接 ID 查询（如 `FindByID`/`GetFormData`），由 API 层自行控制权限。
+4. **回调注册**：在 `gorm:query` / `gorm:row` 之前注册 `data_scope:query` / `data_scope:row` 回调。
+
+##### 注册方式
+
+```go
+// 使用默认配置（包含 sys_user / sys_dept 等常见业务表）
+if err := database.RegisterDataScopePlugin(database.DB()); err != nil {
+    panic(err)
+}
+
+// 或自定义配置
+plugin := database.NewDataScopePlugin(database.DataScopeConfig{
+    Enabled:           true,
+    DefaultScopeField: "create_by",
+    DefaultDeptField:  "dept_id",
+    Tables: map[string]database.TableScopeConfig{
+        "biz_order": {Enabled: true, ScopeField: "create_by", DeptField: "dept_id"},
+    },
+})
+if err := database.DB().Use(plugin); err != nil {
+    panic(err)
+}
+```
+
+##### 默认配置
+
+`DefaultDataScopeConfig()` 内置：
+- `sys_user`：`ScopeField=id`（本人数据按 ID 过滤），`DeptField=dept_id`
+- `sys_dept`：`ScopeField=create_by`，`DeptField=id`，`TreePathField=tree_path`
+
+> ⚠️ 配置表时必须确认该表拥有 `ScopeField`（默认 `create_by`）和 `DeptField`（默认 `dept_id`）列，否则当用户拥有部门级数据权限时查询会因 `Unknown column` 报错。新增业务表前请先核实表结构。
+
+##### 部门及子部门（DeptTree）匹配
+
+当 `TreePathField` 配置不为空时，使用 `tree_path` 字段匹配本部门及所有子部门：
+- `tree_path` 格式为 `0,1,2`（逗号分隔的祖先 ID 链）
+- 匹配条件覆盖：本部门 `id = deptID`、路径末尾 `%,deptID`、路径中间 `%,deptID,%`、路径开头 `deptID,%`
+
+#### 2.4.7 逻辑删除回调（RegisterSoftDeleteCallback）
+
+`pkg/database/soft_delete.go` 中的 `RegisterSoftDeleteCallback` 对所有包含 `Deleted` 字段的模型，在查询时自动追加 `deleted = 0` 条件，防止业务代码遗漏手动过滤导致已删除数据泄露。
+
+##### 函数签名
+
+```go
+func RegisterSoftDeleteCallback(db *gorm.DB) *gorm.DB
+```
+
+##### 工作机制
+
+1. **回调注册**：在 `gorm:query` / `gorm:row` 之前注册 `soft_delete:query` / `soft_delete:row` 回调。
+2. **字段检测**：通过反射检查 `Statement.Model` 或 `Statement.Dest` 是否包含名为 `Deleted` 的字段（支持切片、指针、内嵌结构体）。
+3. **条件追加**：使用 `clause.CurrentTable` 让 GORM 自动解析为当前表名/别名，确保 JOIN 查询中正确引用主表别名：
+
+   ```go
+   stmt.AddClause(clause.Where{
+       Exprs: []clause.Expression{
+           clause.Eq{Column: clause.Column{Table: clause.CurrentTable, Name: "deleted"}, Value: 0},
+       },
+   })
+   ```
+
+4. **防重复**：通过 `soft_delete_enabled` 标记避免重复添加 WHERE 条件。
+5. **Unscoped 支持**：`stmt.Unscoped` 为 true 时跳过过滤，与 GORM 内置软删除行为一致。
+
+##### 使用方式
+
+```go
+database.Init(dbConfig)
+defer database.Close()
+
+// 注册逻辑删除自动过滤
+database.RegisterSoftDeleteCallback(database.DB())
+```
+
+> 注意：本组件使用业务自定义的 `Deleted` 字段（int 类型，0=未删除，1=已删除），并非 GORM 内置的 `gorm.DeletedAt`。若模型已使用 `gorm.DeletedAt`，则不需要再调用此回调。
+
+#### 2.4.8 扩展新数据库
+
+新增数据库（如 Oracle/MongoDB）仅需以下步骤，**无需修改任何现有代码**：
+
+1. 创建新的子目录（如 `oracle/`）
+2. 实现 `DBer` 和 `Factory` 接口：
+
+   ```go
+   package oracle
+
+   import "github.com/earthyzinc/dehaze-go/pkg/database"
+
+   func init() {
+       database.RegisterFactory("oracle", &oracleFactory{})
+   }
+
+   type oracleFactory struct{}
+
+   func (f *oracleFactory) Create(config *database.Config) (database.DBer, error) {
+       return NewClient(config)
+   }
+
+   type Client struct {
+       master *gorm.DB
+       slaves []*gorm.DB
+   }
+
+   // 实现 DBer 接口的所有方法
+   func (c *Client) Master(ctx ...context.Context) *gorm.DB { ... }
+   func (c *Client) Slave(ctx ...context.Context) *gorm.DB { ... }
+   func (c *Client) DB(ctx ...context.Context) *gorm.DB { ... }
+   func (c *Client) Close() error { ... }
+   func (c *Client) GetRawDB() (any, error) { ... }
+   ```
+
+3. 扩展 `Config` 结构体：
+
+   ```go
+   // pkg/database/config.go
+   type Config struct {
+       // ... 现有字段
+       Oracle OracleConfig `mapstructure:"oracle" json:"oracle" yaml:"oracle"`
+   }
+
+   type OracleConfig struct {
+       Master OracleInstanceConfig
+       Slaves []OracleInstanceConfig
+   }
+   ```
+
+4. 在 main 包中导入：`import _ "github.com/earthyzinc/dehaze-go/pkg/database/oracle"`
+
+#### 2.4.9 迁移要点
+
+旧架构（`global.DB` 全局变量 + switch-case 切换）已彻底移除，迁移到新架构的关键步骤：
+
+##### 迁移检查清单
+
+- [ ] 1. 添加驱动下划线导入（触发 `init()` 注册）
+- [ ] 2. 修改初始化代码为 `database.Init(database.GetDatabaseConfig())`
+- [ ] 3. 替换 `global.DB` 为 `database.DB()` / `Master()` / `Slave()`
+- [ ] 4. 注册 Gorm 回调（`RegisterGormCallbacks` / `RegisterDataScopePlugin` / `RegisterSoftDeleteCallback`）
+- [ ] 5. 测试验证
+
+##### 关键替换规则
+
+| 旧代码 | 新代码（默认） | 新代码（显式读写分离） |
+|--------|----------------|------------------------|
+| `global.DB.Create(&u)` | `database.DB().Create(&u)` | `database.Master().Create(&u)` |
+| `global.DB.Find(&users)` | `database.DB().Find(&users)` | `database.Slave().Find(&users)` |
+| `global.DB.Begin()` | `database.DB().Begin()` | `database.Master().Begin()` |
+| `global.DB.WithContext(ctx).Find(&users)` | `database.DB(ctx).Find(&users)` | `database.Slave(ctx).Find(&users)` |
+| `global.DB.Raw(...)` | `database.DB().Raw(...)` | `database.Slave().Raw(...)` |
+| `global.DB.Exec(...)` | `database.DB().Exec(...)` | `database.Master().Exec(...)` |
+
+##### 读写分离使用约定
+
+- **Master**：写操作（Create/Update/Delete/事务）
+- **Slave**：读操作（Find/First/Count/查询）
+- **DB**：默认等同于 Master，不确定时使用
+
+##### 完整初始化模板
+
+```go
+import (
+    "github.com/earthyzinc/dehaze-go/pkg/database"
+    _ "github.com/earthyzinc/dehaze-go/pkg/database/mysql"
+    _ "github.com/earthyzinc/dehaze-go/pkg/database/postgres"
+    _ "github.com/earthyzinc/dehaze-go/pkg/database/sqlite"
+)
+
+func main() {
+    // 从全局配置构建数据库配置
+    dbConfig := database.GetDatabaseConfig()
+    if err := database.Init(dbConfig); err != nil {
+        panic(err)
+    }
+    defer database.Close()
+
+    // 注册回调（按需）
+    database.RegisterGormCallbacks(database.DB())            // 自动填充 create_by/update_by
+    database.RegisterDataScopePlugin(database.DB())          // 数据权限
+    database.RegisterSoftDeleteCallback(database.DB())       // 逻辑删除自动过滤
+}
+```
+
+##### 常见问题
+
+- **Q: 为什么需要 `import _` 下划线导入？**  
+  A: 触发包的 `init()` 注册驱动工厂。不导入会运行时报错 `database: unknown driver "mysql"`。
+
+- **Q: SQLite 有主从分离吗？**  
+  A: 没有。SQLite 是单文件数据库，`Slave()` 直接返回 `Master()` 实例，接口兼容。建议 `MaxOpenConns=1` 避免并发写入冲突。
+
+- **Q: 如何支持多数据库实例？**  
+  A: 当前全局单例不支持。如需多库，为每个库创建独立的 `DBer` 实例（不使用全局单例），通过依赖注入分别注入到不同的 Repository。
+
+- **Q: 如何隐藏 DSN 中的密码？**  
+  A: 自动处理。日志输出时会调用 `MaskDSN()` 隐藏密码，输出形如 `root:***@tcp(localhost:3306)/dehaze`。
+
+> 旧架构已彻底移除，不保留向后兼容：旧版无参 `Init()` 函数、`gorm.go` 入口、`db/` 和 `common/` 目录均已删除，不提供 `MigrateFromOldConfig()` 之类的迁移辅助函数，新代码统一使用 `database.GetDatabaseConfig()` 从全局配置构建 `Config`。
+
+### 2.5 缓存体系
+
+#### 2.5.1 架构设计
 
 ```mermaid
 flowchart TB
@@ -393,14 +603,14 @@ flowchart TB
     PubSub -.->|"清除 L1"| L1
 ```
 
-### 7.2 多级缓存读写流程
+#### 2.5.2 多级缓存读写流程
 
 ```
 读操作: L1 → L2 → DB → 回写 L2 → 回写 L1
 写操作: 写 DB → 删除 L2 → Pub/Sub 广播删除所有实例 L1
 ```
 
-### 7.3 缓存防护矩阵
+#### 2.5.3 缓存防护矩阵
 
 | 场景 | 防护组件 | 策略 |
 |------|----------|------|
@@ -409,7 +619,7 @@ flowchart TB
 | **缓存雪崩** | 随机过期抖动 | TTL 添加 `RandomExpireRange` 随机偏移量 |
 | **Redis 故障** | 熔断器 + 本地降级 | Redis 连续失败触发熔断，自动降级到本地缓存 |
 
-### 7.4 缓存接口 (ICache)
+#### 2.5.4 缓存接口 (ICache)
 
 统一缓存接口，支持透明切换后端实现：
 
@@ -424,11 +634,9 @@ flowchart TB
 | Set | `SAdd` / `SMembers` / `SRem` |
 | Pipeline | `Pipeline` |
 
----
+### 2.6 消息队列
 
-## 8. 消息队列
-
-### 8.1 技术选型
+#### 2.6.1 技术选型
 
 | 消息中间件 | 用途 | 当前状态 |
 |------------|------|----------|
@@ -439,7 +647,7 @@ flowchart TB
 - RabbitMQ：成熟的任务队列语义（ACK 机制、死信队列、路由灵活），适合异步任务场景
 - Kafka：高吞吐日志管道，适合日志采集 → 存储/分析的流式场景
 
-### 8.2 RabbitMQ 架构
+#### 2.6.2 RabbitMQ 架构
 
 ```mermaid
 flowchart LR
@@ -475,7 +683,7 @@ flowchart LR
     Q3 -.->|"nack/超时"| DLX
 ```
 
-### 8.3 RabbitMQ 配置
+#### 2.6.3 RabbitMQ 配置
 
 ```yaml
 rabbitmq:
@@ -486,7 +694,7 @@ rabbitmq:
   routingKeyPrefix: "task"        # 路由键前缀
 ```
 
-### 8.4 Kafka 规划（日志管道）
+#### 2.6.4 Kafka 规划（日志管道）
 
 ```mermaid
 flowchart LR
@@ -519,11 +727,9 @@ kafka:
   clientId: "dehaze-go"
 ```
 
----
+### 2.7 定时任务
 
-## 9. 定时任务
-
-### 9.1 当前方案：内置 Ticker
+#### 2.7.1 当前方案：内置 Ticker
 
 当前使用 Go 原生 `time.Ticker` 实现轻量级定时任务：
 
@@ -531,11 +737,11 @@ kafka:
 |------|------|------|
 | CleanupJob | 1 小时 | 清理过期缩略图失败记录、文件删除失败记录、过期任务缓存、已完成任务 |
 
-### 9.2 规划方案：XXL-Job 集成
+#### 2.7.2 规划方案：XXL-Job 集成
 
 随着定时任务场景增多（数据统计、报表生成、模型预热等），计划引入 **XXL-Job** 作为分布式任务调度平台。
 
-#### 9.2.1 选型理由
+##### 选型理由
 
 | 维度 | 内置 Ticker | XXL-Job |
 |------|-------------|---------|
@@ -546,7 +752,7 @@ kafka:
 | 重试机制 | 需自行实现 | 内置失败重试 |
 | CRON 管理 | 代码中硬编码 | 控制台可视化编辑 |
 
-#### 9.2.2 集成架构
+##### 集成架构
 
 ```mermaid
 flowchart LR
@@ -564,7 +770,7 @@ flowchart LR
     GoExecutor -->|"执行结果上报"| Scheduler
 ```
 
-#### 9.2.3 迁移计划
+##### 迁移计划
 
 | 阶段 | 内容 | 状态 |
 |------|------|------|
@@ -572,60 +778,18 @@ flowchart LR
 | **Phase 2** | Go 端集成 xxl-job-executor-go SDK，将现有 CleanupJob 迁移到 XXL-Job 管理 | 📋 未开始 |
 | **Phase 3** | 新增统计类、维护类定时任务直接注册到 XXL-Job | 📋 未开始 |
 
----
+### 2.8 安全中间件
 
-## 10. 日志系统
+#### 2.8.1 HTTP 服务与中间件
 
-### 10.1 技术选型
-
-| 组件 | 选型 | 说明 |
-|------|------|------|
-| 日志框架 | Zap | 高性能结构化日志 |
-| 日志切割 | 自研 Cutter | 按天切割 + 保留天数控制 |
-
-### 10.2 日志配置
-
-```yaml
-zap:
-  level: info                          # 日志级别
-  format: console                      # console / json
-  prefix: "[dehaze-go]"                # 日志前缀
-  directory: log                       # 日志目录
-  show-line: true                      # 显示行号
-  encode-level: LowercaseColorLevelEncoder
-  stacktrace-key: stacktrace
-  log-in-console: true                 # 同时输出到控制台
-  retention-day: -1                    # 保留天数（-1 = 不清理）
-```
-
-### 10.3 日志分层
-
-| 层级 | 日志内容 | 示例 |
-|------|----------|------|
-| **中间件层** | 请求日志（Method/Path/Status/Duration） | `[GIN] 200 | 12.3ms | POST /api/v1/users` |
-| **Service 层** | 业务关键节点 | `用户登录成功 userId=123` |
-| **Repository 层** | SQL 日志（GORM 日志适配） | `[SQL] SELECT * FROM sys_user WHERE id = ?` |
-| **基础设施层** | 组件生命周期 | `缓存管理器初始化成功` |
-
-### 10.4 日志演进规划
-
-```
-当前: Zap → 文件（按天切割）
-规划: Zap → Kafka → Elasticsearch（检索） / 对象存储（归档）
-```
-
----
-
-## 11. HTTP 服务与中间件
-
-### 11.1 技术选型
+##### 技术选型
 
 | 组件 | 选型 | 说明 |
 |------|------|------|
 | HTTP 框架 | Gin | 高性能、生态丰富 |
 | API 文档 | Swagger (swag + gin-swagger) | 注解生成、非生产环境自动挂载 |
 
-### 11.2 中间件链
+##### 中间件链
 
 请求经过的中间件按注册顺序执行：
 
@@ -644,7 +808,7 @@ flowchart LR
     RateLimit --> Handler["业务处理"]
 ```
 
-### 11.3 中间件清单
+##### 中间件清单
 
 | 中间件 | 文件 | 功能 | 作用范围 |
 |--------|------|------|----------|
@@ -665,11 +829,9 @@ flowchart LR
 
 > 共 14 个中间件。
 
----
+#### 2.8.2 安全基础设施
 
-## 12. 安全基础设施
-
-### 12.1 认证体系
+##### 认证体系
 
 | 组件 | 实现 | 说明 |
 |------|------|------|
@@ -677,7 +839,7 @@ flowchart LR
 | Claims | `pkg/security/claims.go` | 自定义 Claims 结构、Token 解析 |
 | 验证码 | `pkg/security/captcha.go` | base64Captcha，支持次数限制和超时 |
 
-### 12.2 权限体系
+##### 权限体系
 
 RBAC 权限模型实现在 `pkg/security/permission.go`：
 
@@ -686,7 +848,7 @@ RBAC 权限模型实现在 `pkg/security/permission.go`：
 权限格式: 模块:功能:操作（如 sys:user:add）
 ```
 
-### 12.3 安全工具
+##### 安全工具
 
 | 工具 | 文件 | 功能 |
 |------|------|------|
@@ -694,11 +856,49 @@ RBAC 权限模型实现在 `pkg/security/permission.go`：
 | SQL 注入防护 | `utils/sql_injection.go` | 排序字段白名单校验 |
 | 路径安全 | `utils/path_security.go` | 路径穿越检测、安全路径拼接 |
 
----
+### 2.9 日志系统
 
-## 13. 可观测性
+#### 2.9.1 技术选型
 
-### 13.1 指标采集（Metrics）
+| 组件 | 选型 | 说明 |
+|------|------|------|
+| 日志框架 | Zap | 高性能结构化日志 |
+| 日志切割 | 自研 Cutter | 按天切割 + 保留天数控制 |
+
+#### 2.9.2 日志配置
+
+```yaml
+zap:
+  level: info                          # 日志级别
+  format: console                      # console / json
+  prefix: "[dehaze-go]"                # 日志前缀
+  directory: log                       # 日志目录
+  show-line: true                      # 显示行号
+  encode-level: LowercaseColorLevelEncoder
+  stacktrace-key: stacktrace
+  log-in-console: true                 # 同时输出到控制台
+  retention-day: -1                    # 保留天数（-1 = 不清理）
+```
+
+#### 2.9.3 日志分层
+
+| 层级 | 日志内容 | 示例 |
+|------|----------|------|
+| **中间件层** | 请求日志（Method/Path/Status/Duration） | `[GIN] 200 | 12.3ms | POST /api/v1/users` |
+| **Service 层** | 业务关键节点 | `用户登录成功 userId=123` |
+| **Repository 层** | SQL 日志（GORM 日志适配） | `[SQL] SELECT * FROM sys_user WHERE id = ?` |
+| **基础设施层** | 组件生命周期 | `缓存管理器初始化成功` |
+
+#### 2.9.4 日志演进规划
+
+```
+当前: Zap → 文件（按天切割）
+规划: Zap → Kafka → Elasticsearch（检索） / 对象存储（归档）
+```
+
+### 2.10 可观测性
+
+#### 2.10.1 指标采集（Metrics）
 
 | 指标类型 | 实现方式 | 端点 |
 |----------|----------|------|
@@ -709,7 +909,7 @@ RBAC 权限模型实现在 `pkg/security/permission.go`：
 - `http_requests_total`：请求总数（按 method/path/status 分维度）
 - `http_request_duration_seconds`：请求延迟分布
 
-### 13.2 健康检查
+#### 2.10.2 健康检查
 
 | 端点 | 功能 |
 |------|------|
@@ -717,16 +917,68 @@ RBAC 权限模型实现在 `pkg/security/permission.go`：
 | `GET /ready` | 就绪探针（readiness，检查 RabbitMQ Consumer/Publisher 状态，任一不可用返回 503） |
 | 缓存 HealthCheck | Redis Ping 检测，支持降级 |
 
-### 13.3 API 文档
+#### 2.10.3 API 文档
 
 - 非生产环境自动挂载 Swagger UI：`GET /swagger/*any`
 - 注解驱动生成，通过 `swag init` 更新
 
----
+### 2.11 应用生命周期管理
 
-## 14. 统一响应与错误处理
+#### 2.11.1 启动流程
 
-### 14.1 响应格式
+```mermaid
+sequenceDiagram
+    participant Main as cmd/main.go
+    participant App as Application
+    participant Config as 配置管理
+    participant Logger as 日志系统
+    participant DB as 数据库
+    participant Cache as 缓存
+    participant Server as HTTP Server
+    participant Wiring as 依赖装配
+
+    Main->>App: app.Run()
+    App->>Config: config.Init()
+    Note right of Config: Viper 加载 YAML<br/>环境变量展开<br/>配置校验
+    App->>Logger: logger.Init()
+    Note right of Logger: Zap 初始化<br/>日志切割配置
+    App->>DB: database.Init()
+    Note right of DB: 工厂模式创建实例<br/>支持 MySQL/PG/SQLite
+    App->>Cache: cache.Init()
+    Note right of Cache: 本地缓存/Redis/多级缓存<br/>防护组件初始化
+    App->>Server: gin.Init()
+    Note right of Server: 中间件链注册<br/>健康检查/Swagger/Metrics
+    App->>Wiring: 显式依赖装配
+    Note right of Wiring: Repo → Service → API → Router
+    App->>Server: server.Run() (goroutine)
+    App->>App: server.Stop() 等待信号
+```
+
+#### 2.11.2 优雅关闭
+
+```
+收到 SIGINT/SIGTERM
+    → HTTP Server 5s 超时关闭（drain in-flight 请求）
+    → 缓存连接关闭（Pub/Sub 停止 → Redis 断连）
+    → 数据库连接关闭
+    → 日志 Sync
+```
+
+#### 2.11.3 配置热更新
+
+基于 `fsnotify` 文件监听，配置变更后触发：
+
+```
+文件变更检测 → Viper 重新解析 → 结构体反序列化 → 校验
+    → setConfig() 原子替换 → SystemEvents.TriggerReload()
+    → 各组件注册的 reloadHandler 依次执行
+```
+
+支持热更新的组件通过 `config.GlobalSystemEvents.RegisterReloadHandler()` 注册回调。
+
+### 2.12 统一响应与错误处理
+
+#### 2.12.1 响应格式
 
 ```json
 {
@@ -736,7 +988,7 @@ RBAC 权限模型实现在 `pkg/security/permission.go`：
 }
 ```
 
-### 14.2 错误码体系
+#### 2.12.2 错误码体系
 
 错误码采用 **5 位字符串** 编码，首位表示错误类别：
 
@@ -747,7 +999,7 @@ RBAC 权限模型实现在 `pkg/security/permission.go`：
 | `B0` | 系统执行错误 | `B0001` - 系统执行出错 |
 | `C0` | 第三方服务错误 | `C0001` - 调用第三方服务出错 |
 
-### 14.3 业务异常
+#### 2.12.3 业务异常
 
 通过 `BizError` 结构体承载业务错误，中间件 `ContextErrorHandler` 统一拦截并格式化输出：
 
@@ -757,26 +1009,22 @@ Service 层 → c.Error(BizError{Code, Msg})
     → 统一 JSON 响应
 ```
 
----
+### 2.13 参数校验
 
-## 15. 参数校验
-
-### 15.1 技术选型
+#### 2.13.1 技术选型
 
 | 组件 | 选型 | 说明 |
 |------|------|------|
 | 校验框架 | go-playground/validator v10 | 结构体标签校验 |
 | 中文翻译 | 自研初始化 | `pkg/validator/validator.go` |
 
-### 15.2 校验策略
+#### 2.13.2 校验策略
 
 - BO 对象使用 `binding` / `validate` 标签声明校验规则
 - Gin `ShouldBindJSON()` 自动触发校验
 - 校验失败返回中文错误提示（通过 `universal-translator` 翻译）
 
----
-
-## 16. 技术栈总览
+### 2.14 技术栈总览
 
 | 分类 | 技术 | 版本 | 用途 |
 |------|------|------|------|
@@ -796,3 +1044,13 @@ Service 层 → c.Error(BizError{Code, Msg})
 | **Excel** | excelize | v2.9 | Excel 导入导出 |
 | **定时任务** | 内置 Ticker → XXL-Job（规划） | - | 定时任务调度 |
 | **日志管道** | Kafka（规划） | - | 日志收集与流处理 |
+
+## 相关文档
+
+| 文档 | 说明 |
+|------|------|
+| [01-总体架构设计](../02-系统架构/01-总体架构设计.md) | 系统全局分层、数据流与安全策略 |
+| [03-数据库设计](../02-系统架构/03-数据库设计.md) | 表结构、索引、ER 关系图 |
+| [04-API 规范](../02-系统架构/04-API规范.md) | 全局 API 规范、认证方式、错误码 |
+| [任务管理/后端实现](../03-模块设计/基础模块/任务管理/后端实现.md) | 异步任务业务模块设计 |
+| [文件管理/后端实现](../03-模块设计/基础模块/文件管理/后端实现.md) | 文件存储业务模块设计 |

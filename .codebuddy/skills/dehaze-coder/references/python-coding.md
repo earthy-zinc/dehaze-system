@@ -2,6 +2,8 @@
 
 基于 dehaze-python 项目实际代码结构提炼的编码约定，所有 Python 代码必须遵守。
 
+> 项目架构与基础设施详见 `dehaze-doc/docs/05-子项目实现/Python算法服务基础设施文档.md`
+
 ---
 
 ## 技术栈
@@ -11,29 +13,6 @@
 - **数据模型**：Pydantic v2（Schema 校验）+ SQLAlchemy Declarative（Entity）
 - **配置**：pydantic-settings `BaseSettings`，从 `app/config.py` 导入 `settings`
 - **Python 版本**：3.10+（使用 `X | Y` 联合类型语法）
-
----
-
-## 项目分层与职责
-
-```text
-app/
-  router/           HTTP 路由层（FastAPI APIRouter）
-  service/          业务逻辑层（静态方法 class，不持有状态）
-  repository/       数据访问层（实例方法 class，继承 BaseRepository）
-  models/
-    entity/         SQLAlchemy ORM 实体（映射数据库表）
-    schema/         Pydantic Schema（请求/响应数据结构）
-  core/
-    code.py         ResultCode 枚举
-    result.py       Result[T] 泛型 + success/error/warning 函数
-    exceptions.py   BusinessException + 全局异常处理注册
-  dependencies/
-    auth.py         JWT 解码、UserContext、get_current_user
-    redis.py        Redis 客户端依赖
-  infrastructure/   基础设施（对象存储、任务队列等）
-  middleware/       请求中间件
-```
 
 ---
 
@@ -137,45 +116,6 @@ raise BusinessException("用户名已存在")
 
 - 禁止在 router 层 try-catch 后返回自定义 dict，统一由全局 handler 处理
 - `SQLAlchemyError` 由全局 handler 捕获，返回 `DATABASE_ERROR`；不需要在 service 层 catch
-
----
-
-## 响应封装
-
-统一使用 `app/core/result.py` 的工具函数：
-
-```python
-from app.core.result import Result, success, error, warning
-
-# 成功响应（data 可以是 dict、Pydantic model 或 None）
-return success({"id": user.id, "username": user.username})
-return success(user_vo, msg="创建成功")
-
-# 失败响应（直接返回，不抛异常）
-return error("仅支持 xlsx 格式", code="B0001")
-
-# 使用 ResultCode（返回 warning 级别的业务失败）
-return warning(ResultCode.DATA_EXISTS)
-```
-
-`Result[T]` 的结构固定为 `{"code": "00000", "msg": "一切ok", "data": ...}`。
-
----
-
-## 依赖注入
-
-```python
-# 数据库会话（必须在每个有 db 操作的路由中注入）
-db: AsyncSession = Depends(get_db)
-
-# 当前用户（必须鉴权的接口）
-user: UserContext = Depends(get_current_user)
-
-# 可选鉴权（公开接口但登录用户有额外权限）
-user: Optional[UserContext] = Depends(get_current_user_optional)
-```
-
-`UserContext` 的 `is_root` 属性判断是否为超级管理员（`ROOT` in roles）。
 
 ---
 

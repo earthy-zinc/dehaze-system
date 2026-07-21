@@ -2,25 +2,13 @@
 
 适用于：`dehaze-java*` 系列后端项目（Spring Boot / MyBatis-Plus）
 
+> 项目架构与基础设施详见 `dehaze-doc/docs/05-子项目实现/Java后端基础设施文档.md`
+
 ## 优先级
 
 1. 分层与职责边界明确：Controller / Service / Mapper（Repository）
 2. 依赖注入可测试：构造注入优先，外部依赖必须可替换（接口/网关封装）
 3. 输入校验与安全：Bean Validation + 权限边界 + 日志可观测
-
-## 架构与分层
-
-- RESTful：HTTP 方法/状态码语义正确
-- Controller：只做入参校验、DTO/VO 转换、权限/调用编排；不写业务规则
-- Service：承载业务逻辑与事务边界；复杂流程写清楚一致性策略
-- Mapper（MyBatis-Plus）：只做数据访问，不承载业务逻辑
-    - 复杂查询推荐 XML，且保持统一风格
-    - 分页优先使用 MyBatis-Plus 分页规范，不在 Controller 手写分页计算
-
-## 配置与属性
-
-- 使用 `application.yml/properties` + Profiles 区分环境
-- 优先用 `@ConfigurationProperties` 管理配置（类型安全）
 
 ## 外部服务调用必须可替换
 
@@ -38,25 +26,8 @@
 - 入参校验：Bean Validation（`@Valid`、自定义校验器等）
 - 统一异常处理：`@ControllerAdvice` + `@ExceptionHandler`（返回结构一致）
 
-## 安全
-
-- Spring Security：认证/授权边界清晰
-- 密码：使用 BCrypt 等安全编码
-- 必要时配置 CORS
-
-## 日志与监控
-
-- 日志：SLF4J + Logback，等级合理（ERROR/WARN/INFO/DEBUG）
-- 监控：Actuator 指标与健康检查
-
 ## 代码规模限制
 
 - 单文件不超过 800 行
 - 单函数不超过 80 行
 - 单元测试文件不超过 1600 行；单测函数不超过 160 行
-
-## API 文档
-
-- 使用 Knife4j / springdoc
-- DTO/VO 字段要有清晰注释与校验注解（`@Schema` / `@NotNull` 等）
-- 安全接口标注鉴权方式（如 Bearer token）

@@ -89,6 +89,7 @@ export default withMermaid(
           ],
         },
         { text: "改造计划", link: "/04-改造计划/产品拓展升级规划" },
+        { text: "子项目实现", link: "/05-子项目实现/Go后端架构文档" },
       ],
 
       sidebar: {
@@ -114,18 +115,6 @@ export default withMermaid(
               { text: "API规范", link: "/02-系统架构/04-API规范" },
               { text: "测试架构", link: "/02-系统架构/05-测试架构" },
               { text: "部署架构", link: "/02-系统架构/06-部署架构" },
-              {
-                text: "后端基础设施设计(Go)",
-                link: "/02-系统架构/07-后端基础设施设计(Go)",
-              },
-              {
-                text: "后端基础设施设计(Python)",
-                link: "/02-系统架构/08-后端基础设施设计(Python)",
-              },
-              {
-                text: "后端基础设施设计(Java)",
-                link: "/02-系统架构/09-后端基础设施设计(Java)",
-              },
             ],
           },
         ],
@@ -468,6 +457,37 @@ export default withMermaid(
                 link: "/04-改造计划/核心模块改造规划",
               },
               { text: "分布式锁", link: "/04-改造计划/分布式锁" },
+            ],
+          },
+        ],
+        "/05-子项目实现/": [
+          {
+            text: "子项目实现",
+            items: [
+              { text: "Go 后端架构文档", link: "/05-子项目实现/Go后端架构文档" },
+              { text: "Java 后端架构文档", link: "/05-子项目实现/Java后端架构文档" },
+              {
+                text: "Python 算法服务架构文档",
+                link: "/05-子项目实现/Python算法服务架构文档",
+              },
+              {
+                text: "Java 微服务版架构文档",
+                link: "/05-子项目实现/Java微服务版架构文档",
+              },
+              {
+                text: "Java 微服务增强版架构文档",
+                link: "/05-子项目实现/Java微服务增强版架构文档",
+              },
+              { text: "Vue 前端架构文档", link: "/05-子项目实现/Vue前端架构文档" },
+              { text: "React 前端架构文档", link: "/05-子项目实现/React前端架构文档" },
+              { text: "Taro 前端架构文档", link: "/05-子项目实现/Taro前端架构文档" },
+              {
+                text: "ReactNative 前端架构文档",
+                link: "/05-子项目实现/ReactNative前端架构文档",
+              },
+              { text: "Flutter 前端架构文档", link: "/05-子项目实现/Flutter前端架构文档" },
+              { text: "Android 前端架构文档", link: "/05-子项目实现/Android前端架构文档" },
+              { text: "学术论文文档", link: "/05-子项目实现/学术论文文档" },
             ],
           },
         ],

@@ -2,31 +2,7 @@
 
 基于 dehaze-go 项目实际代码结构提炼的编码约定，所有 Go 代码必须遵守。
 
----
-
-## 项目分层与职责
-
-```text
-internal/
-  api/          Handler 层：HTTP 路由处理，参数绑定，调用 Service
-  service/      Service 层：业务逻辑，每个模块一个目录
-    [module]/
-      interfaces.go     接口定义（IXxxService）
-      xxx_service.go    接口实现
-  repository/   Repository 层：数据库操作，每个模块一个目录
-    [module]/
-      interfaces.go     接口定义（IXxxRepository）
-      xxx_repository.go 接口实现
-  model/        领域模型
-    bo/           业务对象（请求参数，对应 Service 入参）
-    dto/          传输对象（Service 内部传递的结果）
-    vo/           视图对象（Handler 层返回给前端的数据结构）
-    query/        分页/筛选查询参数
-    read/         只读投影（Repository 层多表查询结果）
-    enum/         枚举值定义
-pkg/
-  common/       通用工具：响应封装、错误码、业务错误
-```
+> 项目架构与基础设施详见 `dehaze-doc/docs/05-子项目实现/Go后端基础设施文档.md`
 
 ---
 
@@ -96,40 +72,6 @@ if bizErr, ok := common.AsBizError(err); ok {
 
 ---
 
-## 响应封装
-
-统一使用 `pkg/common` 的响应函数，不直接调用 `c.JSON`：
-
-```go
-// 成功响应
-common.OkWithData(data, c)
-common.OkWithMessage("操作成功", c)
-common.OkWithDetailed(data, "创建成功", c)
-
-// 失败响应
-common.FailWithCode(common.PARAM_ERROR, c)
-common.FailWithCodeAndMessage(common.BUSINESS_ERROR, "数据已存在", c)
-common.NoAuth("访问未授权", c)  // 返回 HTTP 401
-```
-
-响应结构固定为 `{"code": "00000", "data": {...}, "msg": "一切ok"}`。
-
----
-
-## ResultCode 使用
-
-所有错误码定义在 `pkg/common/result_code.go`，按字母前缀分类：
-
-| 前缀 | 分类 |
-|------|------|
-| A0xxx | 用户端错误（参数、认证、权限、业务） |
-| B0xxx | 系统端错误（超时、资源、限流） |
-| C0xxx | 第三方服务错误（DB、缓存、消息、存储） |
-
-新增错误码前先检查是否有可复用的已有码。自定义消息通过 `FailWithCodeAndMessage` 传入，不修改全局 ResultCode 的 Msg。
-
----
-
 ## Repository 层规范
 
 - 构造函数接收 `*gorm.DB`，支持 `WithContext(ctx)` 传递 context
@@ -167,20 +109,3 @@ r.db.WithContext(ctx).Model(user).
 所有 Repository 和 Service 方法必须接收 `context.Context` 作为第一个参数，通过 `db.WithContext(ctx)` 传递，确保超时、取消信号能正常传播。
 
 Handler 层从 `c.Request.Context()` 或直接传入 `c`（Gin 场景）获取 context。
-
----
-
-## 日志规范
-
-使用 `pkg/logger`（基于 zap）：
-
-```go
-logger.Info("用户登录成功", zap.String("username", username), zap.String("clientIP", clientIP))
-logger.Warn("登录失败次数超限", zap.String("username", username), zap.Int("failCount", count))
-logger.Error("生成Token失败", zap.Error(err))
-```
-
-- `Info`：正常业务事件（登录、注销、关键操作）
-- `Warn`：可恢复的异常（失败次数超限、缓存操作失败）
-- `Error`：不可恢复的异常（Token 生成失败、核心流程出错）
-- 禁止在日志中输出密码、Token 完整内容等敏感信息

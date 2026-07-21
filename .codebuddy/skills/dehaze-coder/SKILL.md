@@ -90,8 +90,8 @@ dehaze-system 是图像去雾系统 monorepo：
 
 ### 项目文档位置
 
-- 系统架构：`dehaze-doc/docs/项目文档/图像去雾系统/新结构/02-系统架构/`
-- 模块设计：`dehaze-doc/docs/项目文档/图像去雾系统/新结构/03-模块设计/`
+- 系统架构：`dehaze-doc/docs/02-系统架构/`
+- 模块设计：`dehaze-doc/docs/03-模块设计/`
 - API 规范：各模块下的 `API接口.md`
 
 ---
