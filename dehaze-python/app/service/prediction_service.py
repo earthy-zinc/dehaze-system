@@ -358,9 +358,15 @@ class PredictionService:
         """
         调用算法去雾
         """
-        # 映射到实际模块名
+        # 数据库 import_path 统一为完整路径格式 'algorithm.{模块名}.run'，
+        # 先剥离前缀/后缀得到纯模块名，再经注册表做别名映射（如 DarkChannelPrior -> DCP）
+        module_name = import_path
+        if module_name.startswith("algorithm."):
+            module_name = module_name[len("algorithm."):]
+        if module_name.endswith(".run"):
+            module_name = module_name[:-len(".run")]
         module_name = PredictionService.ALGORITHM_REGISTRY.get(
-            import_path, import_path
+            module_name, module_name
         )
 
         try:
@@ -404,26 +410,39 @@ class PredictionService:
             )
 
     async def _upload_result(self, result_bytes: io.BytesIO, algorithm_name: str) -> str:
-        """上传结果到本地文件存储，由文件管理接口提供服务"""
+        """上传结果到 MinIO（与文件管理模块共享存储桶），由文件下载接口统一提供服务"""
+        from app.config import settings
+        from app.service.file_service import get_minio_client
+
         date_str = datetime.now().strftime("%Y%m%d")
         filename = f"{algorithm_name}_{int(time.time() * 1000)}.png"
+        object_name = f"predictions/{date_str}/{filename}"
 
-        upload_dir = Path("upload/predictions") / date_str
+        data = result_bytes.getvalue()
         loop = asyncio.get_running_loop()
-        dest_path = await loop.run_in_executor(
-            None, self._write_file_sync, upload_dir, filename, result_bytes.getvalue())
 
-        logger.info("预测结果已保存: %s", dest_path)
-        return f"/api/v1/files/download/predictions/{date_str}/{filename}"
+        def _sync_upload():
+            client = get_minio_client()
+            bucket_name = settings.MINIO_BUCKET_NAME
+            if not client.bucket_exists(bucket_name):
+                client.make_bucket(bucket_name)
+            client.put_object(
+                bucket_name,
+                object_name,
+                data=io.BytesIO(data),
+                length=len(data),
+                content_type="image/png",
+            )
 
-    @staticmethod
-    def _write_file_sync(upload_dir: Path, filename: str, data: bytes) -> Path:
-        """同步写入文件（供 run_in_executor 调用）"""
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        dest_path = upload_dir / filename
-        with open(dest_path, "wb") as f:
-            f.write(data)
-        return dest_path
+        try:
+            await loop.run_in_executor(None, _sync_upload)
+        except Exception as e:
+            logger.error("预测结果上传存储失败: %s", e, exc_info=True)
+            raise BusinessException(
+                ResultCode.FILE_STORAGE_ERROR, f"结果存储失败: {str(e)}")
+
+        logger.info("预测结果已上传到存储: %s", object_name)
+        return f"/api/v1/files/download/{object_name}"
 
 
 # 单例
