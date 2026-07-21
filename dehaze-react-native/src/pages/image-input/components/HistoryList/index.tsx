@@ -37,7 +37,7 @@ const HistoryList: React.FC<HistoryListProps> = ({
       const groups = historyStorage.groupHistoryByDate(history);
       setHistoryGroups(groups);
     } catch (error) {
-      console.error('Failed to load history:', error);
+      console.warn('Failed to load history:', error);
       setHistoryGroups([]);
     } finally {
       setLoading(false);

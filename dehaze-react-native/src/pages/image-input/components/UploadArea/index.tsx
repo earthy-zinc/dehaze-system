@@ -102,7 +102,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
 
       processImage(asset);
     } catch (error) {
-      console.error('Image selection error:', error);
+      console.warn('Image selection error:', error);
       Alert.alert('错误', '选择图片时发生错误');
     }
   }, [loading, onImageSelected]);
@@ -137,7 +137,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
 
       onImageSelected(selectedImage);
     } catch (error) {
-      console.error('Process image error:', error);
+      console.warn('Process image error:', error);
       Alert.alert('错误', '处理图片时发生错误');
     }
   }, [onImageSelected]);

@@ -8,11 +8,13 @@ import {
   ScrollView,
   StyleSheet,
   Alert,
+  Text,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/routes/types';
 import { MainLayout } from '@/layout';
 import Card from '@/components/Card';
+import Icon from '@/components/Icon';
 import { useResponsive } from '@/hooks/useResponsive';
 import { theme } from '@/theme';
 import type { SelectedImage } from '@/types/image';
@@ -167,15 +169,13 @@ const ImageInputScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.header}>
             <View style={styles.titleContainer}>
               <View style={styles.titleIcon}>
-                <View style={styles.titleIconInner} />
+                <Icon name="image" size={20} color={theme.colors.primary} />
               </View>
-              <View>
-                <View style={styles.titleRow}>
-                  <View style={styles.titleDot} />
-                  <View style={styles.titleTextContainer}>
-                    <View style={styles.titleLine} />
-                  </View>
-                </View>
+              <View style={styles.titleTextWrap}>
+                <Text style={styles.titleText}>图像输入</Text>
+                <Text style={styles.titleSubtitle}>
+                  支持上传、拍照、样张与历史记录
+                </Text>
               </View>
             </View>
           </View>
@@ -239,32 +239,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: theme.spacing.md,
   },
-  titleIconInner: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    backgroundColor: theme.colors.primary,
+  titleTextWrap: {
+    flex: 1,
+    flexDirection: 'column',
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  titleText: {
+    fontSize: theme.typography.sizes.h6,
+    fontWeight: theme.typography.weights.bold,
+    color: theme.colors.text.primary,
+    letterSpacing: theme.typography.letterSpacing.tight,
   },
-  titleDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: theme.colors.primary,
-    marginRight: theme.spacing.sm,
-  },
-  titleTextContainer: {
-    height: 20,
-    justifyContent: 'center',
-  },
-  titleLine: {
-    width: 80,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.colors.text.primary,
+  titleSubtitle: {
+    fontSize: theme.typography.sizes.caption,
+    color: theme.colors.text.secondary,
+    marginTop: 2,
   },
   inputContent: {
     minHeight: 200,

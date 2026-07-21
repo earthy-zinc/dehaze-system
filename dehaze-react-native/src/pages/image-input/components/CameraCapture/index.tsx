@@ -94,7 +94,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
 
       onCapture(capturedImage);
     } catch (error) {
-      console.error('Camera error:', error);
+      console.warn('Camera error:', error);
       Alert.alert('错误', '打开相机时发生错误');
     }
   }, [loading, onCapture]);

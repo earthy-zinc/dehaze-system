@@ -38,7 +38,7 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
       const list = await imageInputApi.fetchSamples(cat);
       setSamples(list);
     } catch (error) {
-      console.error('Failed to load samples:', error);
+      console.warn('Failed to load samples:', error);
       setSamples([]);
     } finally {
       setLoading(false);
@@ -86,7 +86,7 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
 
       onSelectSample(selectedImage);
     } catch (error) {
-      console.error('Failed to select sample:', error);
+      console.warn('Failed to select sample:', error);
     } finally {
       setLoadingImage(false);
     }

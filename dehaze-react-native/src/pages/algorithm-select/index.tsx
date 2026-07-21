@@ -107,9 +107,8 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
       .then(data => {
         setRecommendations(data || []);
       })
-      .catch(err => {
-        // 推荐失败不阻塞页面
-        console.error('Recommend failed:', err);
+      .catch(() => {
+        // 推荐服务不可用（Python 后端未启动）时静默失败，不阻塞页面
       })
       .finally(() => setRecommendLoading(false));
   }, [hasRemoteImage, image?.url]);
@@ -122,8 +121,8 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
         setFavorites(favList.map(r => r.algorithm));
         setFavoriteIds(new Set(favList.map(r => r.algorithm.id)));
       })
-      .catch(err => {
-        console.error('Load favorites failed:', err);
+      .catch(() => {
+        // 收藏服务不可用（Python 后端未启动）时静默失败，不影响页面使用
       });
   }, []);
 

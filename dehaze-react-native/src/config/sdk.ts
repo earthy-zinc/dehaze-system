@@ -5,6 +5,9 @@
  * - baseURL（Java 主后端 / Python 辅助后端）
  * - token（同步读取，由 tokenStore 维护内存副本）
  * - 响应错误处理（token 失效触发回调）
+ *
+ * 响应拦截器约定：SDK 内部已校验 code===SUCCESS，并解包返回 response.data.data（业务载荷）。
+ * 因此 onResponse 必须返回 response.data.data，与 LoginResult/CaptchaResult 等类型定义对齐。
  */
 import { configJavaAxios, configPythonAxios } from 'dehaze-sdk-js';
 import { API_CONFIG } from './env';
@@ -26,7 +29,8 @@ configJavaAxios({
     return config;
   },
   onRequestError: error => error,
-  onResponse: response => response.data,
+  // 返回业务载荷（response.data.data），与 SDK 类型定义一致
+  onResponse: response => response.data.data,
   onResponseError: error => {
     if (isTokenInvalid(error)) {
       tokenStore.clear();
@@ -44,7 +48,7 @@ configPythonAxios({
     return config;
   },
   onRequestError: error => error,
-  onResponse: response => response.data,
+  onResponse: response => response.data.data,
   onResponseError: error => {
     if (isTokenInvalid(error)) {
       tokenStore.clear();
