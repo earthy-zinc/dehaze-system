@@ -30,8 +30,8 @@
 
 ### 运行端口记录（勿重复启动）
 - **Java**: 8989 (Spring Boot devtools 热重载，已在运行)
-- **Go**: 8999 (二进制，改代码后需 `go build` + 重启)
-- **Python**: 8014 (启动 `.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8014`)
+- **Go**: 8990 (二进制，改代码后需 `go build` + 重启)
+- **Python**: 8991 (启动 `.venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8991`)
 - Docker 容器: MySQL 3306, Redis 6379, MongoDB 27017, MinIO 9000/9090, PostgreSQL 5432, RabbitMQ 5672/15672
 
 ### JWT claims 统一格式（三端互认）
@@ -64,7 +64,7 @@ Java captcha 存 Redis db0（Jackson 序列化带引号），Go/Python captcha �
 - 跳过测试编译启动：`mvn spring-boot:run -DskipTests -Dmaven.test.skip=true`
 - **权限校验**：`@PreAuthorize("@ss.hasPerm('xxx')")` 通过 `PermissionService.hasPerm()` 校验，ROOT 角色绕过所有检查（`SecurityUtils.isRoot()`）
 - admin 用户已关联 ROOT + ADMIN 角色，可通过所有权限校验
-- **Python 算法服务 URL**：`http://127.0.0.1:8014`（不是 5000），配置在 `AlgorithmProperties` + `application-dev.yml`
+- **Python 算法服务 URL**：`http://127.0.0.1:8991`（不是 5000），配置在 `AlgorithmProperties` + `application-dev.yml`
 
 ### dehaze-uniapp 依赖版本约束（重要）
 - **Pinia 必须锁定 `2.2.4`**（精确版本，不能用 `^` 或 `~`）：uni-app 的 `@dcloudio/uni-h5` 硬编码依赖 `vue: 3.4.21`，而 pinia 2.2.5+ / 3.x 要求 `vue ^3.5.11`，不兼容

@@ -576,7 +576,7 @@ definitions:
         description: 用户名
         type: string
     type: object
-host: localhost:8080
+host: localhost:8990
 info:
   contact:
     email: support@dehaze.com

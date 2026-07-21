@@ -29,7 +29,7 @@ export default {
   h5: {
     devServer: {
       open: false,
-      port: 10086,
+      port: 5175,
       proxy: {
         // H5 开发环境经 devServer 代理转发，规避浏览器 CORS 限制
         // 小程序端不受影响（小程序不存在跨域问题，直连绝对地址）

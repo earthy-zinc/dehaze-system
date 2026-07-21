@@ -32,7 +32,7 @@ public class DehazeSDKTest {
     public void testSDKInitialization() {
         // 测试SDK初始化
         try {
-            DehazeSDK.initialize(new DehazeSDK.Builder().setBaseUrl("http://localhost:8080"));
+            DehazeSDK.initialize(new DehazeSDK.Builder().setBaseUrl("http://localhost:8989"));
             assertNotNull("SDK实例不应为null", DehazeSDK.getInstance());
         } catch (Exception e) {
             fail("SDK初始化失败: " + e.getMessage());

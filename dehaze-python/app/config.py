@@ -216,17 +216,24 @@ class Settings(BaseSettings):
 
     # ===== CORS 跨域配置 =====
     # 开发环境白名单（生产环境通过 ProductionSettings 覆盖或 CORS_ORIGINS 环境变量配置）
+    # 端口规范：5173 React / 5174 Vue / 5175 Taro / 5176 uniapp / 5177 Flutter Web / 5183 React Electron / 5184 Vue Electron / 8081 RN Metro
     CORS_ORIGINS: list[str] = [
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "http://localhost:3011",
         "http://localhost:5173",
-        "http://localhost:8080",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:3011",
+        "http://localhost:5174",
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://localhost:5183",
+        "http://localhost:5184",
+        "http://localhost:8081",
         "http://127.0.0.1:5173",
-        "http://127.0.0.1:8080",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
+        "http://127.0.0.1:5176",
+        "http://127.0.0.1:5177",
+        "http://127.0.0.1:5183",
+        "http://127.0.0.1:5184",
+        "http://127.0.0.1:8081",
     ]
 
     # ===== 安全防护配置（平台级） =====

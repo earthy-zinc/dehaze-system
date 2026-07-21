@@ -11,7 +11,7 @@ backend 可选: go(默认) / python / java / all
 
 环境依赖:
     - Docker Redis 容器名为 "redis"，密码 12345678
-    - 三端服务: Java 8989 / Go 8999 / Python 8014
+    - 三端服务: Java 8989 / Go 8990 / Python 8991
     - 统一账号: admin / 123456
 
 注意:
@@ -29,13 +29,13 @@ import urllib.request
 # 后端配置
 BACKENDS = {
     "go": {
-        "base": "http://127.0.0.1:8999",
+        "base": "http://127.0.0.1:8990",
         "captcha_db": 3,
         "captcha_key_prefix": "captcha_code:",
         "strip_quotes": False,
     },
     "python": {
-        "base": "http://127.0.0.1:8014",
+        "base": "http://127.0.0.1:8991",
         "captcha_db": 3,
         "captcha_key_prefix": "captcha:",
         "strip_quotes": False,

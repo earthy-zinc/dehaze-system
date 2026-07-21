@@ -31,7 +31,7 @@ import { configJavaAxios, configPythonAxios } from 'dehaze-sdk-js';
 configJavaAxios({
   onRequest: (config) => {
     // 修改请求配置
-    config.baseURL = 'http://localhost:8080';
+    config.baseURL = 'http://localhost:8989';
     config.timeout = 5000;
     return config;
   },
@@ -55,7 +55,7 @@ configJavaAxios({
 configPythonAxios({
   onRequest: (config) => {
     // 修改请求配置
-    config.baseURL = 'http://localhost:5000';
+    config.baseURL = 'http://localhost:8991';
     return config;
   },
   onRequestError: (error) => {

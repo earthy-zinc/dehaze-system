@@ -11,7 +11,7 @@ zap:
 
 # system configuration
 system:
-  port: 8999
+  port: 8990
   use-multi-point: false
   # IP限制次数 一个小时15000次
   ip-limit-count: 15000
@@ -21,46 +21,47 @@ system:
   router-prefix: ""
 
 # CORS 跨域配置
+# 端口规范：5173 React / 5174 Vue / 5175 Taro / 5176 uniapp / 5177 Flutter Web / 5183 React Electron / 5184 Vue Electron / 8081 RN Metro
 cors:
   # 模式：strict-whitelist（严格白名单校验，推荐）
   mode: strict-whitelist
   whitelist:
-    - allow-origin: "http://localhost:3000"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:3001"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
-    - allow-origin: "http://localhost:3011"
-      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
-      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
-      expose-headers: "X-Trace-ID"
-      allow-credentials: true
     - allow-origin: "http://localhost:5173"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
       allow-credentials: true
-    - allow-origin: "http://localhost:8080"
+    - allow-origin: "http://localhost:5174"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
       allow-credentials: true
-    - allow-origin: "http://127.0.0.1:3000"
+    - allow-origin: "http://localhost:5175"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
       allow-credentials: true
-    - allow-origin: "http://127.0.0.1:3001"
+    - allow-origin: "http://localhost:5176"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
       allow-credentials: true
-    - allow-origin: "http://127.0.0.1:3011"
+    - allow-origin: "http://localhost:5177"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5183"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:5184"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://localhost:8081"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
@@ -70,7 +71,37 @@ cors:
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
       allow-credentials: true
-    - allow-origin: "http://127.0.0.1:8080"
+    - allow-origin: "http://127.0.0.1:5174"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5175"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5176"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5177"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5183"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:5184"
+      allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
+      expose-headers: "X-Trace-ID"
+      allow-credentials: true
+    - allow-origin: "http://127.0.0.1:8081"
       allow-methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       allow-headers: "Content-Type,Authorization,X-Trace-ID,traceparent"
       expose-headers: "X-Trace-ID"
@@ -168,7 +199,7 @@ cache:
     maxConcurrency: 32  # 可选，默认16
 
 algorithm:
-  serviceUrl: "http://127.0.0.1:8014" # Python 算法服务地址
+  serviceUrl: "http://127.0.0.1:8991" # Python 算法服务地址
   timeout: 60 # 请求超时（秒）
   connectTimeout: 5 # 连接超时（秒）
   # 重试配置（指数退避）
@@ -190,7 +221,7 @@ rabbitmq:
 
 file:
   type: minio # 存储类型：minio/local
-  baseUrl: "http://127.0.0.1:8999/api/v1/files/download" # 文件访问基础URL
+  baseUrl: "http://127.0.0.1:8990/api/v1/files/download" # 文件访问基础URL
   maxSize: 104857600 # 单文件最大大小（字节），默认100MB
   minio:
     endpoint: "127.0.0.1:9100"

@@ -57,8 +57,8 @@ curl -s -X POST "http://localhost:${API_PORT:-8989}/api/v1/users" \
 环境与多后端切换约定：
 
 - 8989：Java/Spring Boot 后端（`dehaze-java`）。
-- 8999：Go/Gin 后端（`dehaze-go`）。
-- 5000：Python/FastAPI 后端（`dehaze-python`）。
+- 8990：Go/Gin 后端（`dehaze-go`）。
+- 8991：Python/FastAPI 后端（`dehaze-python`）。
 - 通过环境变量 `API_PORT` 切换目标后端；排查时应明确当前指向哪个实现。
 - 当怀疑"环境差异"导致失败时：第一步仍是 curl 对比两个环境的真实响应，再决定是 SDK/测试还是后端差异。
 

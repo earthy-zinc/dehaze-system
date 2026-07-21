@@ -43,7 +43,7 @@ graph TD
 go run ./cmd/main.go
 ```
 
-- 接口文档: `http://localhost:8999/swagger/index.html`
+- 接口文档: `http://localhost:8990/swagger/index.html`
 - 日志: `log/dehaze-go.log`
 
 ## 常用命令
@@ -121,7 +121,7 @@ graph TD
 
 ## 🌈 接口文档
 
-- Swagger 接口文档：`http://localhost:8080/swagger/index.html`
+- Swagger 接口文档：`http://localhost:8990/swagger/index.html`
 
 ## 🚀 项目启动
 

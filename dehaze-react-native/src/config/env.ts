@@ -15,7 +15,7 @@ export const API_CONFIG = {
     : 'https://api.dehaze.com',
   // Python 辅助后端：算法智能推荐/收藏/对比
   PYTHON_BASE_URL: isDev
-    ? `http://${DEV_HOST}:8014`
+    ? `http://${DEV_HOST}:8991`
     : 'https://ai.dehaze.com',
 } as const;
 

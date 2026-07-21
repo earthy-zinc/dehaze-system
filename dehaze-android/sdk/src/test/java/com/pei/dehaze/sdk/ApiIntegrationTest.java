@@ -42,7 +42,7 @@ public class ApiIntegrationTest {
         
         // 初始化SDK
         try {
-            DehazeSDK.initialize(new DehazeSDK.Builder().setBaseUrl("http://localhost:8080"));
+            DehazeSDK.initialize(new DehazeSDK.Builder().setBaseUrl("http://localhost:8989"));
         } catch (Exception e) {
             // 如果已经初始化则忽略
         }

@@ -228,7 +228,7 @@ vi.mock("element-plus", async () => ({
 ```typescript
 // Mock window and document
 Object.defineProperty(window, "location", {
-  value: { host: "localhost:5173" },
+  value: { host: "localhost:5174" },
   writable: true,
 });
 

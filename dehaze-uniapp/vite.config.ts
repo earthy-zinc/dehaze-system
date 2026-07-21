@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [uni()],
   server: {
     open: false,
+    port: 5176,
     // H5 开发代理：将 /api 请求转发到后端
     proxy: {
       "/api": {

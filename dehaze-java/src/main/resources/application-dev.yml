@@ -202,7 +202,7 @@ xxl:
 algorithm:
   python:
     # 服务基础地址（开发环境指向本地 dehaze-python 服务，端口与 dehaze-python 启动端口一致）
-    baseUrl: http://127.0.0.1:8000
+    baseUrl: http://127.0.0.1:8991
     # 连接超时（毫秒）
     connect-timeout: 5000
     # 读取超时（毫秒）—— 预测/评估可耗时较长
@@ -266,18 +266,23 @@ rabbitmq:
 # CORS 跨域配置 (开发环境白名单)
 cors:
   allowed-origins:
-    - http://localhost:3000
-    - http://localhost:3001
-    - http://localhost:3011
-    - http://localhost:5173
-    - http://localhost:8080
-    - http://localhost:10086
-    - http://127.0.0.1:3000
-    - http://127.0.0.1:3001
-    - http://127.0.0.1:3011
+    # 前端开发服务器（Vite/Metro/Taro）
+    - http://localhost:5173   # dehaze-front-react (Vite)
+    - http://localhost:5174   # dehaze-front-vue (Vite)
+    - http://localhost:5175   # dehaze-taro (H5)
+    - http://localhost:5176   # dehaze-uniapp (H5)
+    - http://localhost:5177   # dehaze-flutter (Web)
+    - http://localhost:5183   # dehaze-front-react (Electron)
+    - http://localhost:5184   # dehaze-front-vue (Electron)
+    - http://localhost:8081    # dehaze-react-native (Metro)
     - http://127.0.0.1:5173
-    - http://127.0.0.1:8080
-    - http://127.0.0.1:10086
+    - http://127.0.0.1:5174
+    - http://127.0.0.1:5175
+    - http://127.0.0.1:5176
+    - http://127.0.0.1:5177
+    - http://127.0.0.1:5183
+    - http://127.0.0.1:5184
+    - http://127.0.0.1:8081
 
 # Kafka 配置 (日志收集与流处理)
 kafka:

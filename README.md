@@ -210,7 +210,7 @@ npm install pnpm -g
 pnpm install
 pnpm run dev
 ```
-访问: http://localhost:5173
+访问: http://localhost:5174 (Vue) / http://localhost:5173 (React)
 
 #### React版本
 ```bash
@@ -259,14 +259,67 @@ source .venv/bin/activate  # Linux/Mac
 uv sync
 
 # 启动服务(开发环境，热重载)
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8991
 
 # 生产环境部署
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+uvicorn app.main:app --host 0.0.0.0 --port 8991 --workers 4
 
 # 或使用一键启动脚本
 ./start.sh
 ```
+
+---
+
+## 🔌 端口规范
+
+本项目对所有服务的端口号进行了统一规范化，按服务类别分段分配，避免冲突。
+
+### 应用服务端口
+
+| 类别 | 项目 | 端口 | 说明 |
+|------|------|------|------|
+| **后端** | dehaze-java | 8989 | Spring Boot 主服务 |
+| **后端** | dehaze-go | 8990 | Go Gin 服务 |
+| **后端** | dehaze-python | 8991 | FastAPI 算法服务 |
+| **前端** | dehaze-front-react | 5173 | Vite dev server |
+| **前端** | dehaze-front-vue | 5174 | Vite dev server |
+| **前端** | dehaze-taro (H5) | 5175 | Taro H5 dev server |
+| **前端** | dehaze-uniapp (H5) | 5176 | uni-app H5 dev server |
+| **前端** | dehaze-flutter (Web) | 5177 | Flutter Web dev server |
+| **前端** | dehaze-front-react (Electron) | 5183 | Electron renderer |
+| **前端** | dehaze-front-vue (Electron) | 5184 | Electron renderer |
+| **前端** | dehaze-react-native (Metro) | 8081 | React Native bundler |
+
+### 基础服务端口（docker-compose.yml）
+
+| 类别 | 服务 | 宿主端口 | 说明 |
+|------|------|----------|------|
+| **数据库** | MySQL | 3306 | 主数据库 |
+| **数据库** | MongoDB | 27017 | 非结构化数据 |
+| **数据库** | TDengine | 6030/6041/6043-6049/6060 | 时序数据库 |
+| **缓存** | Redis | 6379 | 缓存与分布式锁 |
+| **消息队列** | RabbitMQ | 5672 / 15672 | AMQP / 管理界面 |
+| **消息队列** | Kafka | 9092 / 19092 | Kafka / Manager |
+| **消息队列** | RocketMQ | 9876 / 10909-10912 / 19876 | Namesrv / Broker / Console |
+| **协调** | Zookeeper | 2181 | Kafka 协调 |
+| **注册中心** | Nacos | 8848 / 9848 / 10848 | HTTP / gRPC / 控制台 |
+| **对象存储** | MinIO API | 9100 | S3 兼容 API |
+| **对象存储** | MinIO Console | 9190 | 管理界面 |
+| **对象存储** | nginx-dataset | 9000 | 数据集静态文件 |
+| **搜索** | Elasticsearch | 9200 / 9300 | HTTP / 传输 |
+| **搜索** | Kibana | 5601 | ES 可视化 |
+| **搜索** | Logstash | 4560 | 日志管道 |
+| **监控** | Prometheus | 9091 | 指标采集 |
+| **监控** | Grafana | 3001 | 可视化面板 |
+| **监控** | SkyWalking | 11800 / 12800 / 18080 | gRPC / HTTP / UI |
+| **任务调度** | XXL-Job Admin | 14980 | 定时任务控制台 |
+
+### 端口分配规则
+
+- **后端段 8989-8999**：业务服务端口集中分配，便于记忆和管理
+- **前端段 5173-5186**：前端开发服务器统一使用 Vite 默认段，避免与 Grafana(3001) 等冲突（5173 React / 5174 Vue / 5175 Taro / 5176 uniapp / 5177 Flutter Web / 5183 React Electron / 5184 Vue Electron / 8081 RN Metro）
+- **基础设施段**：保持各组件官方默认端口，仅对冲突端口调整
+- **CORS 白名单**：三端后端（Java/Go/Python）的 CORS 配置需同步包含所有前端端口
 
 ---
 

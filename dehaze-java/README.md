@@ -24,7 +24,7 @@ mvn spring-boot:run -DskipTests
 ```
 
 - 接口文档: `http://localhost:8989/doc.html`
-- Python 算法服务地址: `http://127.0.0.1:8014`（配置在 `application-dev.yml`）
+- Python 算法服务地址: `http://127.0.0.1:8991`（配置在 `application-dev.yml`）
 
 ## 常用命令
 

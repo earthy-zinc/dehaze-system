@@ -58,9 +58,9 @@ flutter pub get
 dart run build_runner build --delete-conflicting-outputs
 
 # 运行（需后端 Java 服务运行在 127.0.0.1:8989）
-flutter run -d chrome    # Web
-flutter run -d windows   # Windows
-flutter run -d android   # Android
+flutter run -d chrome --web-port 5177    # Web（固定端口 5177）
+flutter run -d windows                    # Windows
+flutter run -d android                    # Android
 ```
 
 ## 后端配置

@@ -15,8 +15,8 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "algorithm.python")
 public class AlgorithmProperties {
 
-    /** Python 算法服务基础 URL（如 http://python-service:5000） */
-    private String baseUrl = "http://127.0.0.1:8014";
+    /** Python 算法服务基础 URL（如 http://127.0.0.1:8991） */
+    private String baseUrl = "http://127.0.0.1:8991";
 
     /** 连接超时（毫秒） */
     private int connectTimeout = 5000;

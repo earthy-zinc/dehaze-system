@@ -28,8 +28,8 @@ DehazeSystem 三端 API 调试辅助脚本
     python debug_helper.py status
 
 环境:
-    - Go: 8999 (dehaze-go/)
-    - Python: 8014 (dehaze-python/)
+    - Go: 8990 (dehaze-go/)
+    - Python: 8991 (dehaze-python/)
     - Java: 8989 (dehaze-java/, devtools 热重载)
     - MySQL: 容器 "mysql", 密码 12345678, 库 dehaze
     - Redis: 容器 "redis", 密码 12345678
@@ -49,8 +49,8 @@ PY_VENV = os.path.join(WORKSPACE, "dehaze-python", ".venv", "Scripts", "python.e
 
 BACKENDS = {
     "java":   {"base": "http://127.0.0.1:8989", "port": 8989},
-    "go":     {"base": "http://127.0.0.1:8999", "port": 8999},
-    "python": {"base": "http://127.0.0.1:8014", "port": 8014},
+    "go":     {"base": "http://127.0.0.1:8990", "port": 8990},
+    "python": {"base": "http://127.0.0.1:8991", "port": 8991},
 }
 
 MYSQL_CONTAINER = "mysql"
@@ -160,7 +160,7 @@ def cmd_restart(args):
         print("编译成功")
 
         print("[Go] 重启中...", end=" ")
-        kill_port(8999)
+        kill_port(8990)
         log_file = LOG_FILES["go"]
         with open(log_file, "w") as f:
             pass  # 清空日志
@@ -172,24 +172,24 @@ def cmd_restart(args):
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
         time.sleep(3)
-        print("已启动" if is_port_listening(8999) else "启动失败!")
+        print("已启动" if is_port_listening(8990) else "启动失败!")
 
     if target in ("python", "all"):
         print("[Python] 重启中...", end=" ")
-        kill_port(8014)
+        kill_port(8991)
         py_dir = os.path.join(WORKSPACE, "dehaze-python")
         log_file = LOG_FILES["python"]
         with open(log_file, "w") as f:
             pass
         subprocess.Popen(
-            [PY_VENV, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8014"],
+            [PY_VENV, "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8991"],
             cwd=py_dir,
             stdout=open(log_file, "w"),
             stderr=subprocess.STDOUT,
             creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0,
         )
         time.sleep(5)
-        print("已启动" if is_port_listening(8014) else "启动失败!")
+        print("已启动" if is_port_listening(8991) else "启动失败!")
 
     if target == "all":
         print("[Java] devtools 热重载，无需手动重启（XML 改动需手动复制到 target/classes/）")

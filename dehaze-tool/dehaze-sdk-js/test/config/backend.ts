@@ -3,8 +3,8 @@
  *
  * 通过环境变量 TEST_BACKEND 选择后端:
  *   TEST_BACKEND=java   (默认)  → http://127.0.0.1:8989
- *   TEST_BACKEND=python         → http://127.0.0.1:8000
- *   TEST_BACKEND=go             → http://127.0.0.1:8999
+ *   TEST_BACKEND=python         → http://127.0.0.1:8991
+ *   TEST_BACKEND=go             → http://127.0.0.1:8990
  *
  * 三个后端业务逻辑相同、API 路径统一为 /api/v1/...，
  * 但验证码在 Redis 中的存储 key 前缀、序列化方式、所用 DB 号有差异。
@@ -47,7 +47,7 @@ const PROFILES: Record<BackendType, BackendProfile> = {
   },
   python: {
     type: "python",
-    baseURL: "http://127.0.0.1:8000",
+    baseURL: "http://127.0.0.1:8991",
     redisContainer: REDIS_CONTAINER,
     redisPassword: REDIS_PASSWORD,
     captchaRedisDB: "3",
@@ -57,7 +57,7 @@ const PROFILES: Record<BackendType, BackendProfile> = {
   },
   go: {
     type: "go",
-    baseURL: "http://127.0.0.1:8999",
+    baseURL: "http://127.0.0.1:8990",
     redisContainer: REDIS_CONTAINER,
     redisPassword: REDIS_PASSWORD,
     captchaRedisDB: "3",

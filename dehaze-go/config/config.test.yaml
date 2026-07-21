@@ -12,7 +12,7 @@ zap:
 
 # system configuration
 system:
-  port: 8999
+  port: 8990
   use-multi-point: false
   # IP限制次数 一个小时15000次
   ip-limit-count: 15000

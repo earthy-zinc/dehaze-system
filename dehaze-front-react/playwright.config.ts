@@ -33,7 +33,7 @@ export default defineConfig({
   // 所有测试的共享配置
   use: {
     // 基础 URL
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:5173",
 
     // 失败时截图
     screenshot: "only-on-failure",
@@ -80,7 +80,7 @@ export default defineConfig({
   // 在测试前启动开发服务器
   webServer: {
     command: "pnpm dev",
-    url: "http://localhost:3000",
+    url: "http://localhost:5173",
     reuseExistingServer: !process.env.CI,
     timeout: 12000,
   },

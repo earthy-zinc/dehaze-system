@@ -22,7 +22,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 // Mock window and document
 Object.defineProperty(window, "location", {
   value: {
-    host: "localhost:5173",
+    host: "localhost:5174",
   },
   writable: true,
 });

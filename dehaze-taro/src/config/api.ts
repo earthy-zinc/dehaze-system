@@ -8,7 +8,7 @@
 const isH5 = process.env.TARO_ENV === 'h5'
 
 const JAVA_BASE_URL = isH5 ? '' : 'http://localhost:8989'
-const PYTHON_BASE_URL = isH5 ? '' : 'http://localhost:8000'
+const PYTHON_BASE_URL = isH5 ? '' : 'http://localhost:8991'
 
 export const apiConfig = {
   java: JAVA_BASE_URL,
