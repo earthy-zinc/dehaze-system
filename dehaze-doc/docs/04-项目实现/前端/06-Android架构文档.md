@@ -2,7 +2,7 @@
 
 将 dehaze-front-vue（桌面 Web）的核心业务功能等价迁移为原生 Android 应用，使用 Java 语言开发。
 
-> 构建运行、测试命令、API 配置见项目根目录 [README](../../dehaze-android/README.md)。
+> 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
 ## 1. 功能特性
 

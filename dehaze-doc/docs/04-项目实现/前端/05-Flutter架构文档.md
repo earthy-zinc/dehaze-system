@@ -2,7 +2,7 @@
 
 图像去雾系统的 Flutter 客户端，提供 iOS/Android/Web/Desktop 全平台支持。
 
-> 构建运行、测试命令见项目根目录 [README](../../dehaze_flutter/README.md)。
+> 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
 ## 1. 功能特性
 

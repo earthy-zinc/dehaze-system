@@ -2,7 +2,7 @@
 
 基于 Taro 4 + React + TypeScript 构建的多端图像去雾应用，一份代码可编译到微信小程序、H5、支付宝小程序等多个平台。
 
-> 构建运行、测试命令见项目根目录 [README](../../dehaze-taro/README.md)。
+> 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
 ## 1. 功能特性
 

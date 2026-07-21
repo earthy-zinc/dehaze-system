@@ -2,7 +2,7 @@
 
 基于 React Native + TypeScript 构建的移动端图像去雾应用，支持 iOS 和 Android 双平台。
 
-> 构建运行、测试命令见项目根目录 [README](../../dehaze-react-native/README.md)。
+> 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
 ## 1. 功能特性
 

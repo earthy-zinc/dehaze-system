@@ -2,7 +2,7 @@
 
 基于深度学习的在线实时响应的图像去雾系统 Web 前端，主要功能是改善受到雾霾影响的图像质量。采用 React + TypeScript + Vite + Ant Design + Redux Toolkit 构建，并通过 Electron 提供桌面端应用。
 
-> 构建运行、测试命令、部署说明见项目根目录 [README](../../dehaze-front-react/README.md)。
+> 构建运行、测试命令、部署说明见项目根目录 [README](/README.md)。
 
 ## 1. 功能特性
 
