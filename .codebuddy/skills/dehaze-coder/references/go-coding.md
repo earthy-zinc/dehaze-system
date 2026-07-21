@@ -2,7 +2,7 @@
 
 基于 dehaze-go 项目实际代码结构提炼的编码约定，所有 Go 代码必须遵守。
 
-> 项目架构与基础设施详见 `dehaze-doc/docs/05-子项目实现/Go后端基础设施文档.md`
+> 项目架构与基础设施详见 `dehaze-doc/docs/04-项目实现/后端/04-Go架构文档.md`
 
 ---
 
@@ -31,22 +31,6 @@ func NewAuthService(cacheClient types.ICache, userService userservice.IUserServi
 // 文件末尾静态断言，防止接口未实现时编译通过
 var _ IAuthService = (*AuthService)(nil)
 ```
-
----
-
-## 方法注释
-
-公开方法必须有注释，格式：`// FuncName 说明`，并注明对应的 Java 惯例（如有）：
-
-```go
-// OkWithData 操作成功，返回数据
-// 仿照 Java: return Result.ok(data);
-func OkWithData(data interface{}, c *gin.Context) {
-    result(SUCCESS, data, c)
-}
-```
-
-私有辅助方法（如 `getLoginSecurityConfig`）建议也有简短注释说明用途。
 
 ---
 
@@ -101,11 +85,3 @@ r.db.WithContext(ctx).Model(user).
 | model/dto | 大驼峰 + `Result` / `DTO` | `LoginResult`, `CaptchaResult` |
 | query | 大驼峰 + `PageQuery` | `UserPageQuery` |
 | 常量 | 全大写下划线 | `BlacklistPrefix` |
-
----
-
-## Context 传递
-
-所有 Repository 和 Service 方法必须接收 `context.Context` 作为第一个参数，通过 `db.WithContext(ctx)` 传递，确保超时、取消信号能正常传播。
-
-Handler 层从 `c.Request.Context()` 或直接传入 `c`（Gin 场景）获取 context。

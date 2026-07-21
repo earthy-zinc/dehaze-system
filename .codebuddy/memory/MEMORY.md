@@ -17,8 +17,8 @@
 - `.env` 文件需放置在各后端项目的根目录（Go 加载位置为 CWD，Python/pydantic-settings 同）
 
 ### 调试辅助脚本（三端 API 一致性验证）
-- **登录脚本**：`.codebuddy/scripts/login_helper.py [go|python|java|all]` — 自动获取验证码+登录，返回 token
-- **调试脚本**：`.codebuddy/scripts/debug_helper.py <command>` — 封装常用调试操作
+- **登录脚本**：`scripts/login_helper.py [go|python|java|all]` — 自动获取验证码+登录，返回 token
+- **调试脚本**：`scripts/debug_helper.py <command>` — 封装常用调试操作
   - `status` — 三端服务状态
   - `restart go|python|all` — 重启服务（Go 自动编译）
   - `compare /api/v1/xxx [METHOD] [BODY]` — 三端对比同一 API（自动登录+一致性判断）
@@ -27,6 +27,14 @@
   - `logs python|go` — 服务日志 / `kill <port>` — 杀端口进程
 - 账号：admin / 123456（数据库密码也是 123456，基础设施密码是 12345678）
 - Git Bash 中 compare 需加 `MSYS_NO_PATHCONV=1` 前缀避免路径转换
+
+### 后端生命周期管理（docker-like，跨平台）
+- **统一脚本**：`scripts/run.py <command> [args...]`（Windows/macOS/Linux 通用，无 .sh/.bat/.ps1 多套实现）
+- **薄壳调用**：Windows `scripts\run.cmd ...` / Bash `./scripts/run ...`
+- 命令：`run|stop|restart <svc>[,svc...]`、`ps`、`logs <svc> [lines]`、`kill <port>`
+- 服务：`dehaze-go`(8990, 自动 go build) / `dehaze-python`(8991, .venv uvicorn) / `dehaze-java`(8989, mvn spring-boot:run)
+- 支持别名（`go`/`python`/`java`）和 `all`，PID 文件落各服务目录
+- 旧的 `dehaze-go/start.sh` / `dehaze-python/start.sh` 已删除，统一走 run.py
 
 ### 运行端口记录（勿重复启动）
 - **Java**: 8989 (Spring Boot devtools 热重载，已在运行)

@@ -2,17 +2,7 @@
 
 基于 dehaze-python 项目实际代码结构提炼的编码约定，所有 Python 代码必须遵守。
 
-> 项目架构与基础设施详见 `dehaze-doc/docs/05-子项目实现/Python算法服务基础设施文档.md`
-
----
-
-## 技术栈
-
-- **Web 框架**：FastAPI（异步）
-- **ORM**：SQLAlchemy 2.0（异步 `AsyncSession`，使用 `select()` / `update()` / `delete()` 语句）
-- **数据模型**：Pydantic v2（Schema 校验）+ SQLAlchemy Declarative（Entity）
-- **配置**：pydantic-settings `BaseSettings`，从 `app/config.py` 导入 `settings`
-- **Python 版本**：3.10+（使用 `X | Y` 联合类型语法）
+> 项目架构与基础设施详见 `dehaze-doc/docs/04-项目实现/后端/05-Python算法服务架构文档.md`
 
 ---
 
@@ -56,21 +46,10 @@ class UserService:
         page_size: int,
         keywords: str | None = None,
     ) -> tuple[list[SysUser], int]:
-        """获取用户列表
-
-        Args:
-            db: 数据库会话
-            page: 页码（从 1 开始）
-            page_size: 每页记录数
-
-        Returns:
-            (用户列表, 总数)
-        """
         return await user_repository.get_page(db, page=page, page_size=page_size, keywords=keywords)
 ```
 
 - 所有公开方法必须有类型注解（参数和返回值）
-- 文档字符串使用 Google 风格（Args/Returns/Raises）
 - 业务校验失败时抛出 `BusinessException`，不返回错误响应
 
 ---
@@ -119,45 +98,6 @@ raise BusinessException("用户名已存在")
 
 ---
 
-## 类型注解
-
-- 所有公开函数必须有参数和返回值类型注解
-- 使用 Python 3.10+ 语法：`X | Y` 代替 `Union[X, Y]`，`X | None` 代替 `Optional[X]`
-- Pydantic Schema 中必填字段直接声明，可选字段使用 `field: Type | None = None`
-- 避免使用 `Any` 类型，优先用具体类型或泛型
-
-```python
-# 推荐
-async def get_user(db: AsyncSession, user_id: int) -> SysUser | None: ...
-
-# 不推荐
-async def get_user(db, user_id) -> Any: ...
-```
-
----
-
-## 异步规范
-
-- 所有 I/O 操作（db、Redis、HTTP 调用、文件读写）必须使用 `async/await`
-- 禁止在 async 函数中使用同步阻塞调用（`time.sleep`、`requests.get`、`open()` 读大文件）
-- 长耗时计算（去雾算法、图像处理）放到 `asyncio.get_event_loop().run_in_executor()` 或独立 task queue
-
----
-
-## 命名规范
-
-| 场景 | 规范 | 示例 |
-|------|------|------|
-| 模块/文件 | `snake_case` | `user_service.py`, `auth_repository.py` |
-| 类名 | 大驼峰 | `UserService`, `UserRepository` |
-| 函数/方法 | `snake_case` | `get_user_list`, `create_user_with_roles` |
-| Pydantic Schema | 大驼峰 + 用途后缀 | `UserPageVO`, `UserForm`, `LoginRequest` |
-| SQLAlchemy Entity | 大驼峰 | `SysUser`, `SysRole` |
-| 常量 | 全大写下划线 | `MAX_PAGE_SIZE = 100` |
-| 私有函数 | `_` 前缀 | `_extract_permissions`, `_get_role_deleted_column` |
-
----
-
 ## 配置访问
 
 统一从 `app/config.py` 导入 `settings`，禁止直接读取环境变量：
@@ -165,7 +105,6 @@ async def get_user(db, user_id) -> Any: ...
 ```python
 from app.config import settings
 
-# 使用
 if settings.DEBUG:
     ...
 ttl = settings.JWT_SECRET_KEY

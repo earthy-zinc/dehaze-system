@@ -13,38 +13,27 @@ description: 业务感知型代码评审技能。当用户提及"代码评审"�
 - **需求文档**：提取需求关键点，用于业务层评审
 - **PR/分支评审**：执行 `git diff --stat <base>...HEAD` 和 `git diff --name-only <base>...HEAD` 获取变更概览
 
-对每个变更文件，识别所属模块（用户/数据集/任务等），加载对应的项目编码规范。
+对每个变更文件，识别所属模块（用户/数据集/任务等），加载对应的项目规范。
 
-如果当前需求有对应的代码设计文档（通常位于 `dehaze-doc/docs/03-模块设计/[模块]/`），应优先读取并作为业务层和架构层评审的参考依据。对照设计文档验证实现是否偏离预期设计，将偏差作为评审发现项记录。
+## 项目文档查阅
 
-## Pre-Review: Lint Auto-Fix
+评审前应查阅 `dehaze-doc` 中的相关文档，作为业务契合度和架构设计评审的参考依据：
 
-在正式评审前，建议先运行 lint 工具自动修复基础问题：
+- **系统架构**：`dehaze-doc/docs/02-系统架构/` — 总体架构、API 规范、数据库设计、测试架构
+- **模块设计**：`dehaze-doc/docs/03-模块设计/[模块]/` — 需求规格、API 接口、后端/前端实现、测试用例
+- **项目实现**：`dehaze-doc/docs/04-项目实现/` — 各技术栈的架构文档
 
-```bash
-# 在 dehaze-front-vue 目录下执行
-cd dehaze-front-vue
-pnpm lint
+对照设计文档验证实现是否偏离预期设计，将偏差作为评审发现项记录。仅检索与当前任务直接相关的部分，避免全量阅读。
 
-# Go 后端（如需要）
-cd dehaze-go
-go fmt ./...
-go vet ./...
+## 评审维度
 
-# Python 后端（如需要）
-cd dehaze-python
-ruff check --fix .
-```
+按五个维度逐一评审：
 
-## Core Workflows
-
-按五个维度逐一评审，各维度的详细检查点参考：
-
-- 业务层：`references/business-checklist.md` — 需求覆盖、边界处理、流程完整性
-- 架构层：`references/architecture-checklist.md` — 模块职责、依赖方向、代码复用
-- 技术层：`references/technical-checklist.md` — 类型安全、状态管理、异步处理
-- 性能层：`references/performance-checklist.md` — 数据库与缓存、运行时性能、前端优化
-- 简化层：`references/simplification-checklist.md` — 命名可读性、函数设计、代码重复、控制流
+- **业务层** — 需求覆盖、边界处理、流程完整性
+- **架构层** — 模块职责、依赖方向、代码复用
+- **技术层** — 类型安全、状态管理、异步处理
+- **性能层** — 数据库与缓存、运行时性能、前端优化
+- **简化层** — 命名可读性、函数设计、代码重复、控制流
 
 ### 严重程度标识
 
@@ -75,7 +64,7 @@ ruff check --fix .
 
 ## Output Format
 
-参考以下结构输出五维度评审报告。完整示例结构同此模板：
+参考以下结构输出五维度评审报告：
 
 ```
 # Code Review Report

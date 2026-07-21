@@ -42,7 +42,7 @@ import sys
 import time
 import urllib.request
 
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LOGIN_HELPER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "login_helper.py")
 PYTHON_BIN = r"C:\Python313\python.exe"
 PY_VENV = os.path.join(WORKSPACE, "dehaze-python", ".venv", "Scripts", "python.exe")

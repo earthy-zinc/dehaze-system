@@ -15,32 +15,6 @@
 
 ## 快速开始
 
-### 一键启动（推荐）
-
-项目提供了 `start.sh` 脚本，自动完成虚拟环境激活、依赖同步、旧进程清理和后台启动：
-
-```bash
-./start.sh
-```
-
-脚本支持通过环境变量自定义参数：
-
-| 环境变量 | 默认值 | 说明 |
-|---|---|---|
-| `DEHAZE_PYTHON_PORT` | `8991` | 监听端口 |
-| `DEHAZE_PYTHON_HOST` | `0.0.0.0` | 监听地址 |
-| `DEHAZE_PYTHON_WORKERS` | `1` | uvicorn worker 进程数 |
-
-示例：
-
-```bash
-DEHAZE_PYTHON_PORT=9000 DEHAZE_PYTHON_WORKERS=4 ./start.sh
-```
-
-启动后日志输出到 `logs/dehaze-python.log`，PID 文件位于 `logs/dehaze-python.pid`。
-
-### 手动启动
-
 ```bash
 # 创建虚拟环境并安装依赖
 uv venv .venv --python 3.11
