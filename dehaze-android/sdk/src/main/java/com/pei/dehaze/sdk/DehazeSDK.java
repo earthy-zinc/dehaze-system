@@ -111,9 +111,18 @@ public class DehazeSDK {
         }
 
         // 构建Retrofit实例
-        // 配置 Gson 日期反序列化：后端返回的日期格式可能是 "yyyy-MM-dd HH:mm:ss" 或 "yyyy-MM-dd HH:mm"
-        // （部分表/字段无秒级精度），需同时兼容两种格式以避免解析失败
-        String[] dateFormats = {"yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd HH:mm"};
+        // 配置 Gson 日期反序列化：兼容后端多种日期格式
+        // - "yyyy-MM-dd HH:mm:ss" 标准日期时间
+        // - "yyyy-MM-dd HH:mm" 无秒级精度
+        // - "yyyy-MM-dd" 仅日期（部分表/字段无时分秒）
+        // - ISO 8601 "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"（部分接口返回）
+        String[] dateFormats = {
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd HH:mm",
+                "yyyy-MM-dd",
+                "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+                "yyyy-MM-dd'T'HH:mm:ss'Z'"
+        };
         JsonDeserializer<Date> dateDeserializer = (json, typeOfT, context) -> {
             if (json.isJsonNull()) return null;
             String dateStr = json.getAsString();
