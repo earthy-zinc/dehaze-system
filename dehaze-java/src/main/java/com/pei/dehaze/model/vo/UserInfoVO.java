@@ -1,8 +1,10 @@
 package com.pei.dehaze.model.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
@@ -32,5 +34,9 @@ public class UserInfoVO {
 
     @Schema(description="用户权限标识集合")
     private Set<String> perms;
+
+    @Schema(description="注册时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime createTime;
 
 }
