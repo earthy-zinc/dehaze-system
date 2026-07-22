@@ -10,9 +10,10 @@ Create Date: 2026-07-11
 3. 新表 sys_input_history: 图像输入历史记录表
 4. 新表 sys_algorithm_favorite: 算法收藏表 (Python 独有功能, Java/Go 不访问)
 
-注: 本迁移脚本 1-3 项完全对齐 config/sql/schema.sql 中已定义的结构,
+注: 本迁移脚本 1-4 项完全对齐 config/sql/schema.sql 中已定义的结构,
    三端(dehaze-java/dehaze-go/dehaze-python)共享同一数据库 schema.
-   第 4 项 sys_algorithm_favorite 为 Python 端独有功能表, 不影响 Java/Go.
+   第 4 项 sys_algorithm_favorite 由 Python 端使用, Java/Go 不访问,
+   但建表语句已纳入权威 schema.sql 以保证全量初始化时一并创建.
 """
 from alembic import op
 import sqlalchemy as sa
@@ -102,8 +103,8 @@ def upgrade():
         sa.Column('create_time', sa.DateTime, nullable=False, server_default=sa.func.now(), comment='收藏时间'),
         comment='算法收藏表',
     )
-    op.create_index('idx_algo_favorite_user_id', 'sys_algorithm_favorite', ['user_id'])
-    op.create_index('idx_algo_favorite_algorithm_id', 'sys_algorithm_favorite', ['algorithm_id'])
+    op.create_index('idx_user_id', 'sys_algorithm_favorite', ['user_id'])
+    op.create_index('idx_algorithm_id', 'sys_algorithm_favorite', ['algorithm_id'])
     op.create_unique_constraint('uk_user_algorithm', 'sys_algorithm_favorite', ['user_id', 'algorithm_id'])
 
 

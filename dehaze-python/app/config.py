@@ -119,7 +119,8 @@ class Settings(BaseSettings):
 
     # 文件存储策略: minio / local
     FILE_STORAGE_TYPE: str = "minio"
-    # 文件访问基础 URL（用于拼接文件访问地址）
+    # 文件访问基础 URL（用于拼接文件访问地址）。
+    # 留空时返回相对路径 /api/v1/files/download/...；配置后返回绝对 URL，与 Java file.baseUrl 风格一致。
     FILE_BASE_URL: str = ""
     # 本地存储路径（FILE_STORAGE_TYPE=local 时生效）
     LOCAL_STORAGE_PATH: str = "/data/files"
@@ -268,6 +269,9 @@ class DevelopmentSettings(Settings):
     # Redis 配置
     REDIS_HOST: str = "127.0.0.1"
     REDIS_DB: int = 3
+
+    # 文件访问基础 URL（与 Java 端 file.baseUrl 一致，统一使用 127.0.0.1 避免 localhost DNS 解析开销）
+    FILE_BASE_URL: str = "http://127.0.0.1:8989/api/v1/files/download"
 
     # XXL-Job 配置（Docker 中未运行 xxl-job-admin，关闭避免启动卡住）
     XXLJOB_ENABLED: bool = False

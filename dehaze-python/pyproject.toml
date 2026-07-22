@@ -29,9 +29,13 @@ dependencies = [
     "httpx>=0.28.1",
     "requests>=2.32.5",
     # 深度学习
+    # PyTorch CUDA 版本通过 [tool.uv.sources] 指向 PyTorch 官方 CUDA 12.1 源
     "torch>=2.9.0",
     "torchvision>=0.24.0",
     "pillow>=12.0.0",
+    # CUDA 算子编译依赖（RIDCP/WPXNet 等 DCN 模块 torch.utils.cpp_extension.load 需要）
+    "setuptools>=80.0.0",
+    "ninja>=1.11.0",
     # 工具
     "python-dotenv>=1.1.1",
     "pyyaml>=6.0.1",
@@ -58,3 +62,21 @@ test = [
 
 [tool.uv]
 index-url = "https://mirrors.aliyun.com/pypi/simple/"
+
+# PyTorch CUDA 版本源（GPU 版本）
+# 阿里云镜像默认提供 CPU 版本 wheel，需从 PyTorch 官方源获取 CUDA 版本
+# cu128 源提供 torch 2.9.x Windows/Linux wheel；驱动 610.62 支持 CUDA 13.3，向下兼容 cu128
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+]
+torchvision = [
+    { index = "pytorch-cu128", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-cu128", marker = "sys_platform == 'linux'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true

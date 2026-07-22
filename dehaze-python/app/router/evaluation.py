@@ -31,10 +31,15 @@ router = APIRouter(prefix="/api/v1/evaluation", tags=["评估"],
 
 
 class EvaluationRequest(BaseModel):
-    """评估请求"""
+    """评估请求
+
+    与 Java 端 PythonAlgorithmClient.evaluate 的请求体一致：
+    Java 已在 SysEvalLogServiceImpl 中将 predFileId/gtFileId 解析为 URL 字符串，
+    始终以 predUrl/gtUrl 字符串形式转发给 Python，不再透传文件ID。
+    """
     algorithmId: int = Field(description="算法ID")
-    predFileId: Optional[int] = Field(default=None, description="预测结果文件ID")
-    gtFileId: Optional[int] = Field(default=None, description="Ground Truth参考图片文件ID")
+    predUrl: str = Field(description="预测结果图片URL")
+    gtUrl: str = Field(description="Ground Truth参考图片URL")
     params: Optional[str] = Field(default=None, description="评估参数(JSON)")
 
 
@@ -59,8 +64,8 @@ async def evaluate(
     """
     result = await evaluation_service.evaluate(
         algorithm_id=body.algorithmId,
-        pred_file_id=body.predFileId,
-        gt_file_id=body.gtFileId,
+        pred_url=body.predUrl,
+        gt_url=body.gtUrl,
     )
     return success(EvaluationResponse(
         logId=result["logId"],

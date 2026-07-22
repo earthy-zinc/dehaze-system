@@ -42,25 +42,22 @@ def _is_qualified(metrics: dict[str, float]) -> bool:
             and niqe <= QUALIFIED_THRESHOLDS["niqe"])
 
 
-def _resolve_file_url(file_id: Optional[int], file_type: str) -> str:
-    """根据文件ID构造下载URL（与Java resolveFileUrl一致）"""
-    if file_id is not None:
-        return f"/api/v1/files/download/{file_id}"
-    label = "预测" if file_type == "pred" else "参考"
-    raise BusinessException(f"缺少{label}图片")
-
-
 class EvaluationService:
     """去雾效果评估服务"""
 
     async def evaluate(
         self,
         algorithm_id: int,
-        pred_file_id: Optional[int] = None,
-        gt_file_id: Optional[int] = None,
+        pred_url: str,
+        gt_url: str,
     ) -> dict:
         """
         执行效果评估
+
+        Args:
+            algorithm_id: 算法ID
+            pred_url: 预测结果图片URL（由 Java 端解析后透传，可为绝对URL或 /api/v1/files/download/... 相对路径）
+            gt_url: Ground Truth 参考图片URL（同上）
 
         Returns:
             {
@@ -75,25 +72,21 @@ class EvaluationService:
         # 1. 校验算法存在
         await prediction_service.get_algorithm(algorithm_id)
 
-        # 2. 解析文件URL
-        pred_url = _resolve_file_url(pred_file_id, "pred")
-        gt_url = _resolve_file_url(gt_file_id, "gt")
-
         start = time.time()
 
-        # 3. 并行下载预测图和参考图
+        # 2. 并行下载预测图和参考图
         pred_bytes, gt_bytes = await asyncio.gather(
             prediction_service.download_image(pred_url),
             prediction_service.download_image(gt_url),
         )
 
-        # 4. 计算图片 MD5（CPU 密集型，移至线程池）
+        # 3. 计算图片 MD5（CPU 密集型，移至线程池）
         pred_md5, gt_md5 = await asyncio.gather(
             asyncio.to_thread(calculate_bytes_md5, pred_bytes),
             asyncio.to_thread(calculate_bytes_md5, gt_bytes),
         )
 
-        # 5. 调用评估（图像处理 CPU 密集型，移至线程池避免阻塞事件循环）
+        # 4. 调用评估（图像处理 CPU 密集型，移至线程池避免阻塞事件循环）
         pred_bytes.seek(0)
         gt_bytes.seek(0)
         metrics_list = await asyncio.to_thread(
@@ -110,7 +103,7 @@ class EvaluationService:
             algorithm_id, elapsed, qualified, metrics,
         )
 
-        # 6. 写入评估日志
+        # 5. 写入评估日志
         log_id = await self._write_eval_log(
             algorithm_id=algorithm_id,
             pred_md5=pred_md5,

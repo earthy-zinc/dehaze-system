@@ -442,6 +442,11 @@ class PredictionService:
                 ResultCode.FILE_STORAGE_ERROR, f"结果存储失败: {str(e)}")
 
         logger.info("预测结果已上传到存储: %s", object_name)
+        # 与 Java 端 file.baseUrl 风格一致：FILE_BASE_URL 配置后返回绝对 URL，
+        # 留空时回退为相对路径 /api/v1/files/download/...
+        base_url = settings.FILE_BASE_URL.rstrip("/")
+        if base_url:
+            return f"{base_url}/{object_name}"
         return f"/api/v1/files/download/{object_name}"
 
 
