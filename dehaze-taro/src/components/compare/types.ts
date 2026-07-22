@@ -16,6 +16,7 @@ export interface CompareImageData {
   width?: number;
   height?: number;
   size?: number;
+  cleanUrl?: string;
 }
 
 /**
@@ -45,6 +46,7 @@ export interface CompareContext {
   originImage: CompareImageData | null;
   result: PredictionResultVO | null;
   algorithm: Algorithm | null;
+  cleanUrl?: string;
 }
 
 /**
@@ -55,9 +57,14 @@ export const loadCompareContext = (): CompareContext => {
   let result: PredictionResultVO | null = null;
   let algorithm: Algorithm | null = null;
 
+  let cleanUrl: string | undefined;
+
   try {
     const imgStr = Taro.getStorageSync("current_image");
-    if (imgStr) originImage = JSON.parse(imgStr);
+    if (imgStr) {
+      originImage = JSON.parse(imgStr);
+      cleanUrl = originImage?.cleanUrl;
+    }
   } catch {
     /* ignore */
   }
@@ -76,7 +83,7 @@ export const loadCompareContext = (): CompareContext => {
     /* ignore */
   }
 
-  return { originImage, result, algorithm };
+  return { originImage, result, algorithm, cleanUrl };
 };
 
 /**

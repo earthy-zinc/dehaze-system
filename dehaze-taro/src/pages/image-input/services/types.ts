@@ -15,12 +15,13 @@ export type DifficultyLevel = "简单" | "中等" | "困难";
 export interface SampleImage {
   id: number;
   name: string;
-  url: string; // 图片访问 URL
+  url: string; // 图片访问 URL（有雾图，作为去雾输入）
   thumbnailUrl?: string; // 缩略图 URL
   category: Exclude<SampleCategory, "all">;
   sceneType?: string; // 场景类型
   hazeLevel?: "light" | "medium" | "heavy"; // 雾霾程度
   recommendAlgorithm?: string; // 推荐算法
+  cleanUrl?: string; // 对应的清晰图 URL（作为 GT 参考图）
 }
 
 // 图片数据
@@ -35,6 +36,7 @@ export interface ImageData {
   sampleInfo?: SampleImage; // 样例图片信息（如果来自样例库）
   compressed?: boolean; // 是否已压缩
   originalSize?: number; // 原始大小（压缩前）
+  cleanUrl?: string; // 对应的清晰图 URL（作为 GT 参考图，仅样例图片有）
 }
 
 // Taro 临时文件

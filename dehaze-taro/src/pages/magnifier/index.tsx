@@ -25,7 +25,8 @@ const MagnifierPage: React.FC = () => {
   const [lensPos, setLensPos] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  // 缓存容器边界信息（跨端兼容：小程序不支持 getBoundingClientRect）
+  const containerRectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
   const lastTapTime = useRef(0);
 
   useEffect(() => {
@@ -35,15 +36,20 @@ const MagnifierPage: React.FC = () => {
   const { originImage, result } = ctx;
   const hasResult = originImage && result?.resultUrl;
 
-  // 获取容器尺寸
+  // 获取容器尺寸（使用 Taro 节点查询 API，兼容小程序）
   useEffect(() => {
     if (!hasResult) return;
     const timer = setTimeout(() => {
-      const rect = containerRef.current?.getBoundingClientRect();
-      if (rect) {
-        setContainerSize({ width: rect.width, height: rect.height });
-        setLensPos({ x: rect.width / 2, y: rect.height / 2 });
-      }
+      const query = Taro.createSelectorQuery();
+      query.select(".image-container").boundingClientRect();
+      query.exec((res) => {
+        if (res && res[0]) {
+          const rect = res[0];
+          containerRectRef.current = rect;
+          setContainerSize({ width: rect.width, height: rect.height });
+          setLensPos({ x: rect.width / 2, y: rect.height / 2 });
+        }
+      });
     }, 300);
     return () => clearTimeout(timer);
   }, [hasResult]);
@@ -51,7 +57,7 @@ const MagnifierPage: React.FC = () => {
   // 触摸移动放大镜
   const handleTouchMove = useCallback((e: any) => {
     const touch = e.touches[0];
-    const rect = containerRef.current?.getBoundingClientRect();
+    const rect = containerRectRef.current;
     if (!rect) return;
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
@@ -160,7 +166,6 @@ const MagnifierPage: React.FC = () => {
           {/* 图片容器 + 放大镜 */}
           <View
             className="image-container"
-            ref={containerRef as any}
             onTouchStart={handleTouchStart}
             onTouchMove={(e: any) => {
               handleTouchMove(e);

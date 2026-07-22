@@ -3,11 +3,12 @@ import { View, Text, Button, Image } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Arrow, Success } from "@taroify/icons";
 
+import { apiConfig } from "@/config/api";
 import "./AlgorithmSection.less";
 
 const AlgorithmSection: React.FC = () => {
-  const algorithmImageUrl =
-    "https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/f49e4b9e-6079-4a0b-8f91-bcab5deec2c7/image_1763727581_1_3.jpg";
+  // 使用 nginx-dataset 提供的 NH-HAZE-2023 清晰图样张
+  const algorithmImageUrl = `${apiConfig.dataset}/NH-HAZE-2023/clean/01_GT.png`;
 
   const handleLearnMoreClick = () => {
     try {

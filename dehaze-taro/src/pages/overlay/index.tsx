@@ -10,7 +10,8 @@ import "./index.less";
 const OverlayPage: React.FC = () => {
   const [ctx, setCtx] = useState(loadCompareContext);
   const [sliderPos, setSliderPos] = useState(50);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // 缓存容器边界信息（跨端兼容：小程序不支持 getBoundingClientRect）
+  const containerRectRef = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
   const isDragging = useRef(false);
 
   useEffect(() => {
@@ -18,12 +19,28 @@ const OverlayPage: React.FC = () => {
   }, []);
 
   const { originImage, result, algorithm } = ctx;
+  const hasResult = originImage && result?.resultUrl;
+
+  // 查询容器尺寸（使用 Taro 节点查询 API，兼容小程序）
+  useEffect(() => {
+    if (!hasResult) return;
+    const timer = setTimeout(() => {
+      const query = Taro.createSelectorQuery();
+      query.select(".image-container").boundingClientRect();
+      query.exec((res) => {
+        if (res && res[0]) {
+          containerRectRef.current = res[0];
+        }
+      });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [hasResult]);
 
   // 触摸开始
   const handleTouchStart = useCallback((e: any) => {
     isDragging.current = true;
     const touch = e.touches[0];
-    const rect = containerRef.current?.getBoundingClientRect();
+    const rect = containerRectRef.current;
     if (rect) {
       const x = touch.clientX - rect.left;
       const pos = (x / rect.width) * 100;
@@ -35,7 +52,7 @@ const OverlayPage: React.FC = () => {
   const handleTouchMove = useCallback((e: any) => {
     if (!isDragging.current) return;
     const touch = e.touches[0];
-    const rect = containerRef.current?.getBoundingClientRect();
+    const rect = containerRectRef.current;
     if (rect) {
       const x = touch.clientX - rect.left;
       const pos = (x / rect.width) * 100;
@@ -47,8 +64,6 @@ const OverlayPage: React.FC = () => {
   const handleTouchEnd = useCallback(() => {
     isDragging.current = false;
   }, []);
-
-  const hasResult = originImage && result?.resultUrl;
 
   return (
     <View className="overlay-page">
@@ -71,7 +86,6 @@ const OverlayPage: React.FC = () => {
           <>
             <View
               className="image-container"
-              ref={containerRef as any}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}

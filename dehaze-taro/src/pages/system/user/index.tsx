@@ -13,6 +13,7 @@ import { Plus } from "@taroify/icons";
 import { useUserManagement } from "@/hooks/useUserManagement";
 import { usePermission } from "@/hooks/usePermission";
 import type { UserPageVO } from "dehaze-sdk-js";
+import ErrorState from "@/components/common/ErrorState";
 import UserCard from "./components/UserCard";
 import "./index.scss";
 
@@ -21,6 +22,7 @@ const UserListPage: React.FC = () => {
   const {
     users,
     loading,
+    loadError,
     total,
     queryParams,
     fetchUsers,
@@ -181,7 +183,14 @@ const UserListPage: React.FC = () => {
 
           {loading && <Loading>加载中...</Loading>}
 
-          {!loading && users.length === 0 && (
+          {!loading && loadError && users.length === 0 && (
+            <ErrorState
+              message={loadError}
+              onRetry={() => fetchUsers()}
+            />
+          )}
+
+          {!loading && !loadError && users.length === 0 && (
             <Empty>
               <Empty.Image />
               <Empty.Description>

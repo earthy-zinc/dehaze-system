@@ -269,6 +269,10 @@ const DatasetContent: React.FC = () => {
           <DatasetList
             datasets={state.datasets}
             loading={state.datasetsLoading}
+            error={state.datasetsError}
+            onRetry={() =>
+              fetchDatasets(1, state.searchKeyword, false)
+            }
             hasMore={state.datasetsHasMore}
             onLoadMore={handleLoadMoreDatasets}
             onDatasetClick={handleDatasetClick}

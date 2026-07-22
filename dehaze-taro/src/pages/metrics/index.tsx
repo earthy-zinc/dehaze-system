@@ -53,16 +53,22 @@ const MetricsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const { algorithm, result: prediction } = ctx;
+  const { algorithm, result: prediction, cleanUrl } = ctx;
 
   useEffect(() => {
     setCtx(loadCompareContext());
   }, []);
 
-  // 执行评估
+  // 执行评估（GT 必须是 clean 图，不能用 hazy 原图）
   const fetchEvaluation = useCallback(async () => {
     if (!algorithm || !prediction?.resultUrl) {
       setLoading(false);
+      return;
+    }
+
+    if (!cleanUrl) {
+      setLoading(false);
+      setError("该图片无GT参考，无法评估");
       return;
     }
 
@@ -73,7 +79,7 @@ const MetricsPage: React.FC = () => {
       const res = await ModelAPI.evaluate({
         algorithmId: algorithm.id,
         predUrl: prediction.resultUrl,
-        gtUrl: ctx.originImage?.url, // 用原图作为参考图（无真实GT时的最佳近似）
+        gtUrl: cleanUrl,
       });
       setEvaluation(res);
     } catch (err: any) {
@@ -81,7 +87,7 @@ const MetricsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [algorithm, prediction]);
+  }, [algorithm, prediction, cleanUrl]);
 
   useEffect(() => {
     fetchEvaluation();

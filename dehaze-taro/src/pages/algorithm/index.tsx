@@ -5,6 +5,7 @@ import { Navbar, Loading, Tag, Button, Popup, Textarea } from "@taroify/core";
 import { ArrowLeft, Search } from "@taroify/icons";
 import { AlgorithmAPI } from "dehaze-sdk-js";
 import type { Algorithm, AlgorithmAuditForm } from "dehaze-sdk-js";
+import ErrorState from "@/components/common/ErrorState";
 import "./index.less";
 
 // ==================== 状态定义 ====================
@@ -93,6 +94,7 @@ function filterTree(
 const AlgorithmManagePage: React.FC = () => {
   const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [statusFilter, setStatusFilter] = useState<number | "">("");
 
@@ -114,11 +116,12 @@ const AlgorithmManagePage: React.FC = () => {
 
   const fetchAlgorithms = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const data = await AlgorithmAPI.getList();
       setAlgorithms(data || []);
     } catch (err: any) {
-      Taro.showToast({ title: err?.message || "加载失败", icon: "none" });
+      setLoadError(err?.message || "加载失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -410,6 +413,8 @@ const AlgorithmManagePage: React.FC = () => {
           <View className="loading-wrapper">
             <Loading>加载中...</Loading>
           </View>
+        ) : loadError ? (
+          <ErrorState message={loadError} onRetry={fetchAlgorithms} />
         ) : flatList.length === 0 ? (
           <View className="empty-wrapper">
             <Text className="empty-text">暂无算法数据</Text>

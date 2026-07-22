@@ -247,6 +247,7 @@ export function useImageInput() {
         setCurrentImage({
           ...imageData,
           sampleInfo: sample,
+          cleanUrl: sample.cleanUrl,
         });
 
         Taro.showToast({ title: "样例图片加载成功", icon: "success" });

@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Add, Edit, Delete, Lock } from "@taroify/icons";
 import { useRoleManagement } from "@/hooks/useRoleManagement";
 import { usePermission } from "@/hooks/usePermission";
+import ErrorState from "@/components/common/ErrorState";
 import "./index.scss";
 
 // 日期格式化函数
@@ -41,6 +42,7 @@ const RoleListPage: React.FC = () => {
   const {
     roles,
     loading,
+    loadError,
     total,
     queryParams,
     fetchRoles,
@@ -173,6 +175,8 @@ const RoleListPage: React.FC = () => {
       <View className="role-list">
         {loading && roles.length === 0 ? (
           <Loading>加载中...</Loading>
+        ) : loadError && roles.length === 0 ? (
+          <ErrorState message={loadError} onRetry={() => fetchRoles()} />
         ) : roles.length === 0 ? (
           <Empty>
             <Empty.Image />

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { View, Text, Image, ScrollView, Slider } from "@tarojs/components";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { View, Text, Image, ScrollView, Slider, Canvas } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { ArrowLeft } from "@taroify/icons";
 import CompareToolbar from "@/components/compare/CompareToolbar";
@@ -111,6 +111,14 @@ const FilterPage: React.FC = () => {
     { name: string; params: FilterParams }[]
   >([]);
 
+  // 小程序端 Canvas 相关状态
+  const [canvasDisplaySize, setCanvasDisplaySize] = useState({
+    width: 0,
+    height: 0,
+  });
+  const canvasNodeRef = useRef<any>(null);
+  const canvasCtxRef = useRef<any>(null);
+
   useEffect(() => {
     setCtx(loadCompareContext());
     // 加载自定义预设
@@ -125,7 +133,7 @@ const FilterPage: React.FC = () => {
   const { result } = ctx;
   const hasResult = result?.resultUrl;
 
-  // 构建 CSS filter 字符串
+  // 构建 CSS filter 字符串（H5 端 Image style 与小程序端 Canvas ctx.filter 共用）
   const filterStyle = useMemo(() => {
     // brightness: 1 + value/100
     const brightness = 1 + params.brightness / 100;
@@ -135,16 +143,113 @@ const FilterPage: React.FC = () => {
     const saturation = 1 + params.saturation / 100;
     // 色温: 用 sepia + hue-rotate 近似
     const sepia = Math.abs(params.temperature) / 100;
-    const hueRotate =
-      params.temperature > 0
-        ? params.temperature * 0.5
-        : params.temperature * 0.5;
+    const hueRotate = params.temperature * 0.5;
     // 锐化/降噪: CSS 不直接支持，用 contrast 微调近似
     const sharpenBoost = 1 + params.sharpen / 200;
     const denoiseBlur = params.denoise / 200;
 
     return `brightness(${brightness}) contrast(${contrast * sharpenBoost}) saturate(${saturation}) sepia(${sepia}) hue-rotate(${hueRotate}deg) blur(${denoiseBlur}px)`;
   }, [params]);
+
+  // 当前预览图 URL
+  const currentPreviewUrl = useMemo(() => {
+    if (showOrigin) return ctx.originImage?.url || "";
+    return result?.resultUrl || "";
+  }, [showOrigin, ctx.originImage, result]);
+
+  // 小程序端：获取图片尺寸以确定 Canvas 显示尺寸
+  useEffect(() => {
+    if (process.env.TARO_ENV === "h5") return;
+    if (!hasResult || !currentPreviewUrl) {
+      setCanvasDisplaySize({ width: 0, height: 0 });
+      return;
+    }
+
+    let cancelled = false;
+    Taro.getImageInfo({ src: currentPreviewUrl })
+      .then((info) => {
+        if (cancelled) return;
+        const sysInfo = Taro.getSystemInfoSync();
+        const maxWidth = sysInfo.windowWidth;
+        const maxHeight = sysInfo.windowHeight * 0.4; // 对应 40vh
+        let displayWidth = maxWidth;
+        let displayHeight = (info.height / info.width) * displayWidth;
+        if (displayHeight > maxHeight) {
+          displayHeight = maxHeight;
+          displayWidth = (info.width / info.height) * displayHeight;
+        }
+        setCanvasDisplaySize({ width: displayWidth, height: displayHeight });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        const sysInfo = Taro.getSystemInfoSync();
+        setCanvasDisplaySize({
+          width: sysInfo.windowWidth,
+          height: sysInfo.windowWidth * 0.75,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasResult, currentPreviewUrl]);
+
+  // 小程序端：在 Canvas 上绘制带滤镜的图片
+  useEffect(() => {
+    if (process.env.TARO_ENV === "h5") return;
+    if (!hasResult || !currentPreviewUrl) return;
+    if (canvasDisplaySize.width === 0 || canvasDisplaySize.height === 0) return;
+
+    const query = Taro.createSelectorQuery();
+    query
+      .select("#filterCanvas")
+      .fields({ node: true, size: true })
+      .exec((res) => {
+        if (!res || !res[0] || !res[0].node) return;
+        const canvas = res[0].node;
+        const ctx2d = canvas.getContext("2d") as CanvasRenderingContext2D;
+        const dpr = Taro.getSystemInfoSync().pixelRatio;
+        canvas.width = canvasDisplaySize.width * dpr;
+        canvas.height = canvasDisplaySize.height * dpr;
+        ctx2d.scale(dpr, dpr);
+
+        canvasNodeRef.current = canvas;
+        canvasCtxRef.current = ctx2d;
+
+        const img = canvas.createImage();
+        img.onload = () => {
+          ctx2d.clearRect(
+            0,
+            0,
+            canvasDisplaySize.width,
+            canvasDisplaySize.height
+          );
+          // 应用滤镜（原图不应用滤镜）
+          ctx2d.filter = showOrigin ? "none" : filterStyle;
+          // aspectFit 绘制
+          const imgAspect = img.width / img.height;
+          const canvasAspect =
+            canvasDisplaySize.width / canvasDisplaySize.height;
+          let drawW: number;
+          let drawH: number;
+          let drawX: number;
+          let drawY: number;
+          if (imgAspect > canvasAspect) {
+            drawW = canvasDisplaySize.width;
+            drawH = drawW / imgAspect;
+            drawX = 0;
+            drawY = (canvasDisplaySize.height - drawH) / 2;
+          } else {
+            drawH = canvasDisplaySize.height;
+            drawW = drawH * imgAspect;
+            drawX = (canvasDisplaySize.width - drawW) / 2;
+            drawY = 0;
+          }
+          ctx2d.drawImage(img, drawX, drawY, drawW, drawH);
+        };
+        img.src = currentPreviewUrl;
+      });
+  }, [canvasDisplaySize, filterStyle, showOrigin, hasResult, currentPreviewUrl]);
 
   // 参数变更
   const handleParamChange = useCallback(
@@ -209,6 +314,9 @@ const FilterPage: React.FC = () => {
     );
   }, [params]);
 
+  // 是否为 H5 环境
+  const isH5 = process.env.TARO_ENV === "h5";
+
   return (
     <View className="filter-page">
       {/* 顶部导航 */}
@@ -228,13 +336,27 @@ const FilterPage: React.FC = () => {
         <>
           {/* 实时预览区 */}
           <View className="preview-area">
-            <Image
-              src={showOrigin ? ctx.originImage?.url || "" : result!.resultUrl}
-              className="preview-image"
-              mode="widthFix"
-              style={showOrigin ? {} : { filter: filterStyle }}
-              lazyLoad
-            />
+            {isH5 ? (
+              // H5 端：使用 CSS filter 直接作用于 Image
+              <Image
+                src={currentPreviewUrl}
+                className="preview-image"
+                mode="widthFix"
+                style={showOrigin ? {} : { filter: filterStyle }}
+                lazyLoad
+              />
+            ) : (
+              // 小程序端：使用 Canvas 2D 渲染带滤镜的图片
+              <Canvas
+                type="2d"
+                id="filterCanvas"
+                className="preview-canvas"
+                style={{
+                  width: `${canvasDisplaySize.width}px`,
+                  height: `${canvasDisplaySize.height}px`,
+                }}
+              />
+            )}
             <View
               className="preview-toggle"
               onClick={() => setShowOrigin((prev) => !prev)}

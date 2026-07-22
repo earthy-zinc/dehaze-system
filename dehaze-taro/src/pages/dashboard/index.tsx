@@ -5,6 +5,7 @@ import { Loading, Tag } from "@taroify/core";
 import { AlgorithmAPI, DatasetAPI, TaskAPI, UserAPI } from "dehaze-sdk-js";
 import type { TaskVO } from "dehaze-sdk-js";
 import { useGlobalContext } from "@/stores/global";
+import { isTabBarPage } from "@/config/menu";
 import PageLayout from "@/layout";
 import "./index.less";
 
@@ -136,12 +137,30 @@ const Dashboard: React.FC = () => {
   // ==================== 事件处理 ====================
 
   const handleNavigate = useCallback((route: string) => {
-    Taro.navigateTo({
-      url: route,
-      fail: () => {
-        Taro.showToast({ title: "页面开发中", icon: "none" });
-      },
-    });
+    // 效果对比入口：需先有处理记录，否则提示用户先处理图片
+    if (route === "/pages/side-by-side/index") {
+      const hasPredictionResult = (() => {
+        try {
+          return !!Taro.getStorageSync("prediction_result");
+        } catch {
+          return false;
+        }
+      })();
+      if (!hasPredictionResult) {
+        Taro.showToast({ title: "请先处理图片后再对比", icon: "none" });
+        return;
+      }
+    }
+    if (isTabBarPage(route)) {
+      Taro.reLaunch({ url: route });
+    } else {
+      Taro.navigateTo({
+        url: route,
+        fail: () => {
+          Taro.showToast({ title: "页面开发中", icon: "none" });
+        },
+      });
+    }
   }, []);
 
   const handleRefresh = useCallback(() => {

@@ -1,12 +1,13 @@
 import React from "react";
 import { View, Text } from "@tarojs/components";
 
+import { apiConfig } from "@/config/api";
 import ComparisonItem from "./ComparisonItem";
 import "./ShowcaseSection.less";
 
 const ShowcaseSection: React.FC = () => {
-  const showcaseImageUrl =
-    "https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/20b8704f-d37e-45b9-a6c8-3c5d297e8a98/image_1763727568_3_3.jpg";
+  // 使用 nginx-dataset 提供的 NH-HAZE-2023 样张
+  const showcaseImageUrl = `${apiConfig.dataset}/NH-HAZE-2023/hazy/01_hazy.png`;
 
   return (
     <View className="showcase-section">

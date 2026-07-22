@@ -98,7 +98,12 @@ const HistoryList: React.FC<HistoryListProps> = ({
                     </View>
                     <View className="item-info">
                       <Text className="item-name">
-                        {record.algorithmName || "未命名图片"}
+                        {(() => {
+                          const url = record.originalImageUrl || "";
+                          const path = url.split("?")[0];
+                          const segments = path.split("/");
+                          return segments[segments.length - 1] || "未命名图片";
+                        })()}
                       </Text>
                       <Text className="item-time">
                         {formatTimestamp(record.createTime)}

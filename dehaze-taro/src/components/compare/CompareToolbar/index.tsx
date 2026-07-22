@@ -13,7 +13,7 @@ interface CompareToolbarProps {
 
 /**
  * 对比模式通用工具栏
- * 包含模式切换标签 + 6 个操作按钮（保存/分享/重新处理/换算法/导出报告/收藏）
+ * 包含模式切换标签 + 4 个操作按钮（保存/分享/重新处理/换算法）
  */
 const CompareToolbar: React.FC<CompareToolbarProps> = ({
   currentMode,
@@ -28,23 +28,70 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
     [currentMode]
   );
 
-  // 保存结果到相册
-  const handleSave = useCallback(() => {
+  // 保存结果到相册（先下载到本地临时路径，再保存）
+  const handleSave = useCallback(async () => {
     if (!resultUrl) {
       Taro.showToast({ title: "无结果图片可保存", icon: "none" });
       return;
     }
-    Taro.saveImageToPhotosAlbum({
-      filePath: resultUrl,
-      success: () => Taro.showToast({ title: "已保存到相册", icon: "success" }),
-      fail: () => Taro.showToast({ title: "保存失败", icon: "none" }),
-    });
+    try {
+      const downloadRes = await Taro.downloadFile({ url: resultUrl });
+      if (downloadRes.statusCode !== 200) {
+        throw new Error("下载结果图片失败");
+      }
+      if (process.env.TARO_ENV === "h5") {
+        // H5 端：通过 a 标签触发下载
+        const link = document.createElement("a");
+        link.href = downloadRes.tempFilePath;
+        link.download = `dehaze-result-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        Taro.showToast({ title: "已开始下载", icon: "success" });
+        return;
+      }
+      await Taro.saveImageToPhotosAlbum({
+        filePath: downloadRes.tempFilePath,
+      });
+      Taro.showToast({ title: "已保存到相册", icon: "success" });
+    } catch (error: any) {
+      if (
+        error?.errMsg?.includes("auth deny") ||
+        error?.errMsg?.includes("authorize")
+      ) {
+        Taro.showModal({
+          title: "提示",
+          content: "需要相册权限才能保存图片，请在设置中开启",
+          confirmText: "去设置",
+          success: (res) => {
+            if (res.confirm) {
+              Taro.openSetting();
+            }
+          },
+        });
+      } else {
+        Taro.showToast({ title: error?.message || "保存失败", icon: "none" });
+      }
+    }
   }, [resultUrl]);
 
   // 分享图片
   const handleShare = useCallback(() => {
     if (!resultUrl) {
       Taro.showToast({ title: "无结果图片可分享", icon: "none" });
+      return;
+    }
+    if (process.env.TARO_ENV === "h5") {
+      // H5 端：优先使用 Web Share API，失败则在新标签页打开
+      if (typeof navigator !== "undefined" && navigator.share) {
+        navigator
+          .share({ title: "去雾结果", url: resultUrl })
+          .catch(() => {
+            window.open(resultUrl, "_blank");
+          });
+      } else {
+        window.open(resultUrl, "_blank");
+      }
       return;
     }
     Taro.showShareImageMenu({
@@ -63,23 +110,11 @@ const CompareToolbar: React.FC<CompareToolbarProps> = ({
     Taro.redirectTo({ url: "/pages/algorithm-select/index" });
   }, []);
 
-  // 导出报告
-  const handleExportReport = useCallback(() => {
-    Taro.showToast({ title: "报告导出功能开发中", icon: "none" });
-  }, []);
-
-  // 收藏
-  const handleFavorite = useCallback(() => {
-    Taro.showToast({ title: "已收藏", icon: "success" });
-  }, []);
-
   const actions = [
     { icon: "💾", text: "保存", onClick: handleSave },
     { icon: "📤", text: "分享", onClick: handleShare },
     { icon: "🔄", text: "重新处理", onClick: handleReprocess },
     { icon: "⚡", text: "换算法", onClick: handleChangeAlgorithm },
-    { icon: "📄", text: "导出报告", onClick: handleExportReport },
-    { icon: "⭐", text: "收藏", onClick: handleFavorite },
   ];
 
   return (

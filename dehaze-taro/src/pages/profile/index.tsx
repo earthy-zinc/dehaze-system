@@ -3,6 +3,7 @@ import { View, Text, ScrollView, Image } from "@tarojs/components";
 import Taro from "@tarojs/taro";
 import { Tag } from "@taroify/core";
 import { useAuth } from "@/hooks/useAuth";
+import { isTabBarPage } from "@/config/menu";
 import PageLayout from "@/layout";
 import "./index.less";
 
@@ -32,14 +33,18 @@ const PROFILE_ENTRIES = [
 const ProfilePage: React.FC = () => {
   const { user, roles, permissions, logout } = useAuth();
 
-  /** 跳转到指定页面 */
+  /** 跳转到指定页面（tabbar 页面用 reLaunch，其余用 navigateTo） */
   const handleNavigate = useCallback((route: string) => {
-    Taro.navigateTo({
-      url: route,
-      fail: () => {
-        Taro.showToast({ title: "页面跳转失败", icon: "none" });
-      },
-    });
+    if (isTabBarPage(route)) {
+      Taro.reLaunch({ url: route });
+    } else {
+      Taro.navigateTo({
+        url: route,
+        fail: () => {
+          Taro.showToast({ title: "页面跳转失败", icon: "none" });
+        },
+      });
+    }
   }, []);
 
   /** 退出登录（二次确认） */

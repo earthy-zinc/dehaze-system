@@ -1,6 +1,7 @@
 import React from "react";
 import { View, ScrollView } from "@tarojs/components";
 import EmptyState from "@/components/common/EmptyState";
+import ErrorState from "@/components/common/ErrorState";
 import type { Dataset } from "../../services/types";
 import DatasetCard from "../DatasetCard";
 import "./DatasetList.less";
@@ -8,6 +9,8 @@ import "./DatasetList.less";
 interface DatasetListProps {
   datasets: Dataset[];
   loading?: boolean;
+  error?: string | null;
+  onRetry?: () => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
   onDatasetClick?: (dataset: Dataset) => void;
@@ -110,6 +113,8 @@ const TreeNode: React.FC<{
 const DatasetList: React.FC<DatasetListProps> = ({
   datasets,
   loading = false,
+  error,
+  onRetry,
   onLoadMore,
   hasMore = false,
   onDatasetClick,
@@ -127,6 +132,14 @@ const DatasetList: React.FC<DatasetListProps> = ({
       onLoadMore();
     }
   };
+
+  if (error && datasets.length === 0 && !loading) {
+    return (
+      <View className={`dataset-list ${className}`}>
+        <ErrorState message={error} onRetry={onRetry} />
+      </View>
+    );
+  }
 
   if (datasets.length === 0 && !loading) {
     return (

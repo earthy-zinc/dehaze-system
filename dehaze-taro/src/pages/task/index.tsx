@@ -17,6 +17,7 @@ import {
 import { ArrowLeft } from "@taroify/icons";
 import { TaskAPI } from "dehaze-sdk-js";
 import type { TaskVO, TaskQuery, TaskStatus } from "dehaze-sdk-js";
+import ErrorState from "@/components/common/ErrorState";
 import "./index.less";
 
 // ==================== 常量定义 ====================
@@ -85,6 +86,7 @@ function shortTaskId(taskId: string): string {
 const TaskPage: React.FC = () => {
   const [taskList, setTaskList] = useState<TaskVO[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<"" | TaskStatus>("");
   const [pageNum, setPageNum] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -112,6 +114,7 @@ const TaskPage: React.FC = () => {
   /** 加载任务列表（第一页） */
   const loadTaskList = useCallback(async (status: "" | TaskStatus) => {
     setLoading(true);
+    setLoadError(null);
     try {
       const query: TaskQuery = {
         pageNum: 1,
@@ -124,7 +127,7 @@ const TaskPage: React.FC = () => {
       setPageNum(1);
       setHasMore(list.length < (res.total || 0));
     } catch (err: any) {
-      Taro.showToast({ title: err?.message || "加载失败", icon: "none" });
+      setLoadError(err?.message || "加载失败，请重试");
     } finally {
       setLoading(false);
     }
@@ -306,12 +309,18 @@ const TaskPage: React.FC = () => {
         Taro.showToast({ title: "任务结果已过期", icon: "none" });
         return;
       }
-      // 下载文件并打开
+      // 下载文件
       const downloadRes = await Taro.downloadFile({ url: latest.downloadUrl });
-      await Taro.openDocument({
-        filePath: downloadRes.tempFilePath,
-        showMenu: true,
-      });
+      if (process.env.TARO_ENV === "h5") {
+        // H5 端：openDocument 不可用，通过新标签页打开下载
+        window.open(downloadRes.tempFilePath, "_blank");
+      } else {
+        // 小程序端：使用 openDocument 打开文件
+        await Taro.openDocument({
+          filePath: downloadRes.tempFilePath,
+          showMenu: true,
+        });
+      }
     } catch (err: any) {
       Taro.showToast({ title: err?.message || "下载失败", icon: "none" });
     } finally {
@@ -424,6 +433,11 @@ const TaskPage: React.FC = () => {
           <View className="loading-wrapper">
             <Loading>加载中...</Loading>
           </View>
+        ) : loadError && taskList.length === 0 ? (
+          <ErrorState
+            message={loadError}
+            onRetry={() => loadTaskList(statusFilter)}
+          />
         ) : taskList.length === 0 ? (
           <Empty>
             <Empty.Description>暂无任务</Empty.Description>

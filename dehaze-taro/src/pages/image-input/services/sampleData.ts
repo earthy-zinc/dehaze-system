@@ -61,6 +61,7 @@ const convertItemToSample = (item: DatasetItemVO): SampleImage | null => {
     category,
     sceneType,
     hazeLevel: hazyImage?.hazeLevel as "light" | "medium" | "heavy" | undefined,
+    cleanUrl: clearImage?.url,
   };
 };
 

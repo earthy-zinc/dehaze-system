@@ -6,6 +6,7 @@ export const useUserManagement = () => {
   // 状态定义
   const [users, setUsers] = useState<UserPageVO[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [queryParams, setQueryParams] = useState<UserQuery>({
     pageNum: 1,
@@ -16,6 +17,7 @@ export const useUserManagement = () => {
   const fetchUsers = useCallback(
     async (params?: Partial<UserQuery>) => {
       setLoading(true);
+      setLoadError(null);
       try {
         const { UserAPI } = await import("dehaze-sdk-js");
         const query = { ...queryParams, ...params };
@@ -24,9 +26,8 @@ export const useUserManagement = () => {
         setTotal(response.total);
         setQueryParams(query);
         return response;
-      } catch (error) {
-        console.error("获取用户列表失败:", error);
-        Taro.showToast({ title: "获取用户列表失败", icon: "none" });
+      } catch (error: any) {
+        setLoadError(error?.message || "获取用户列表失败，请重试");
         throw error;
       } finally {
         setLoading(false);
@@ -141,6 +142,7 @@ export const useUserManagement = () => {
     // 状态
     users,
     loading,
+    loadError,
     total,
     queryParams,
 

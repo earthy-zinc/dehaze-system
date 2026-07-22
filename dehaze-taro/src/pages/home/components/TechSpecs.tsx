@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text } from "@tarojs/components";
 import {
   Fire,
@@ -6,6 +6,8 @@ import {
   BulbOutlined,
   ChartTrendingOutlined,
 } from "@taroify/icons";
+import { AlgorithmAPI } from "dehaze-sdk-js";
+import type { Algorithm } from "dehaze-sdk-js";
 
 import "./TechSpecs.less";
 
@@ -34,31 +36,53 @@ const SpecCard: React.FC<SpecCardProps> = ({
   );
 };
 
+/** 递归统计算法树节点总数 */
+function countAlgorithmNodes(nodes: Algorithm[]): number {
+  return nodes.reduce(
+    (sum, n) => sum + 1 + (n.children ? countAlgorithmNodes(n.children) : 0),
+    0
+  );
+}
+
 const TechSpecs: React.FC = () => {
+  const [algorithmCount, setAlgorithmCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const fetchAlgorithmCount = async () => {
+      try {
+        const tree = await AlgorithmAPI.getList();
+        setAlgorithmCount(countAlgorithmNodes(tree || []));
+      } catch {
+        setAlgorithmCount(null);
+      }
+    };
+    fetchAlgorithmCount();
+  }, []);
+
   const specs = [
     {
       icon: <Fire size="28" color="#ffffff" />,
       title: "高性能",
-      value: "60fps",
-      description: "流畅运行，响应时间<200ms",
+      value: "实时",
+      description: "后端 GPU 加速去雾处理",
     },
     {
       icon: <PhoneOutlined size="28" color="#ffffff" />,
       title: "全平台",
-      value: "100%",
-      description: "完美适配手机、平板、桌面",
+      value: "H5·小程序",
+      description: "适配手机、平板、桌面浏览器",
     },
     {
       icon: <BulbOutlined size="28" color="#ffffff" />,
       title: "智能算法",
-      value: "8+",
+      value: algorithmCount === null ? "-" : `${algorithmCount}`,
       description: "支持多种先进去雾算法",
     },
     {
       icon: <ChartTrendingOutlined size="28" color="#ffffff" />,
       title: "专业评估",
-      value: "5+",
-      description: "多维度定量分析指标",
+      value: "多维",
+      description: "PSNR / SSIM 等定量指标",
     },
   ];
 

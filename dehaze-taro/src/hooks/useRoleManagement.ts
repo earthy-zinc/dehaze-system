@@ -12,6 +12,7 @@ export const useRoleManagement = () => {
   const [roles, setRoles] = useState<RolePageVO[]>([]);
   const [permissions, setPermissions] = useState<OptionType[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const [queryParams, setQueryParams] = useState<RoleQuery>({
     pageNum: 1,
@@ -22,6 +23,7 @@ export const useRoleManagement = () => {
   const fetchRoles = useCallback(
     async (params?: Partial<RoleQuery>) => {
       setLoading(true);
+      setLoadError(null);
       try {
         const { RoleAPI } = await import("dehaze-sdk-js");
         const query = { ...queryParams, ...params };
@@ -30,9 +32,8 @@ export const useRoleManagement = () => {
         setTotal(response.total);
         setQueryParams(query);
         return response;
-      } catch (error) {
-        console.error("获取角色列表失败:", error);
-        Taro.showToast({ title: "获取角色列表失败", icon: "none" });
+      } catch (error: any) {
+        setLoadError(error?.message || "获取角色列表失败，请重试");
         throw error;
       } finally {
         setLoading(false);
@@ -175,6 +176,7 @@ export const useRoleManagement = () => {
     roles,
     permissions,
     loading,
+    loadError,
     total,
     queryParams,
 

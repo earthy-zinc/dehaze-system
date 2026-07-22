@@ -37,7 +37,7 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
 
   // 处理参数默认值（去雾强度/饱和度/对比度/锐化）
   const paramConfigs = [
-    { key: "dehazeStrength", label: "去雾强度", default: 50 },
+    { key: "strength", label: "去雾强度", default: 50 },
     { key: "saturation", label: "色彩饱和度", default: 50 },
     { key: "contrast", label: "对比度", default: 50 },
     { key: "sharpen", label: "锐化程度", default: 30 },

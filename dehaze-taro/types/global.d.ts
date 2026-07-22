@@ -32,5 +32,11 @@ declare namespace NodeJS {
      * @see https://taro-docs.jd.com/docs/next/env-mode-config#特殊环境变量-taro_app_id
      */
     TARO_APP_ID: string;
+    /** Java 后端服务地址（小程序端使用，H5 走 devServer 代理） */
+    TARO_APP_JAVA_BASE_URL?: string;
+    /** Python 后端服务地址（小程序端使用，H5 走 devServer 代理） */
+    TARO_APP_PYTHON_BASE_URL?: string;
+    /** 数据集静态服务地址（nginx-dataset） */
+    TARO_APP_DATASET_BASE_URL?: string;
   }
 }
