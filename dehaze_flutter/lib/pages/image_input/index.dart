@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../router/config.dart';
 import '../../utils/responsive_utils.dart';
 import 'models/image_input_model.dart';
 import 'providers/image_input_provider.dart';
 import 'providers/sample_provider.dart';
 import 'widgets/camera_capture.dart';
-import 'widgets/history_list.dart';
 import 'widgets/image_preview.dart';
 import 'widgets/input_method_selector.dart';
 import 'widgets/sample_gallery.dart';
@@ -16,7 +16,7 @@ import 'widgets/upload_area.dart';
 /// 图像输入页面
 ///
 /// 与设计稿 imageInput.js 功能对应
-/// 支持：上传图片、拍照、样例图片、历史记录
+/// 支持：上传图片、拍照、样例图片
 class ImageInputPage extends ConsumerStatefulWidget {
   const ImageInputPage({super.key});
 
@@ -175,14 +175,6 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
             child: SampleGallery(),
           ),
         );
-      case InputMethod.history:
-        return SizedBox(
-          height: 400,
-          child: const Padding(
-            padding: EdgeInsets.only(top: 16, bottom: 16),
-            child: HistoryList(),
-          ),
-        );
     }
   }
 
@@ -279,6 +271,6 @@ class _ImageInputPageState extends ConsumerState<ImageInputPage> {
 
   /// 跳转到算法选择页面
   void _goToAlgorithmSelect() {
-    context.go('/algorithm-select');
+    context.go(AppRouterConfig.algorithmSelect);
   }
 }

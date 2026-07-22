@@ -17,6 +17,7 @@ class ProcessingState {
     this.selectedAlgorithm,
     this.predictionResult,
     this.errorMessage,
+    this.processingStartTime,
   });
 
   /// 当前选中的图片（含文件 ID）
@@ -34,15 +35,20 @@ class ProcessingState {
   /// 错误信息
   final String? errorMessage;
 
+  /// 处理开始时间（用于计算已用时间），仅在 processing 状态下有值
+  final DateTime? processingStartTime;
+
   ProcessingState copyWith({
     ProcessingStatus? status,
     SelectedImage? selectedImage,
     AlgorithmModel? selectedAlgorithm,
     PredictionResponse? predictionResult,
     String? errorMessage,
+    DateTime? processingStartTime,
     bool clearImage = false,
     bool clearAlgorithm = false,
     bool clearResult = false,
+    bool clearProcessingStartTime = false,
   }) =>
       ProcessingState(
         status: status ?? this.status,
@@ -54,6 +60,9 @@ class ProcessingState {
         predictionResult:
             clearResult ? null : (predictionResult ?? this.predictionResult),
         errorMessage: errorMessage,
+        processingStartTime: clearProcessingStartTime
+            ? null
+            : (processingStartTime ?? this.processingStartTime),
       );
 
   /// 是否可以开始处理
@@ -78,6 +87,7 @@ class SelectedImage {
     required this.fileUrl,
     required this.fileName,
     this.bytes,
+    this.cleanUrl,
   });
 
   /// 文件 ID（后端 SysFile.id）
@@ -87,6 +97,10 @@ class SelectedImage {
 
   /// 原图字节流（内存态，跨平台渲染，Web 端不依赖文件路径）
   final Uint8List? bytes;
+
+  /// 清晰图（Ground Truth）URL，用于指标评估
+  /// 仅样例图片有值，上传/拍照图片为 null（无法评估）
+  final String? cleanUrl;
 }
 
 /// 处理流程状态管理
@@ -124,6 +138,7 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
       state = state.copyWith(
         errorMessage: '请先选择图片和算法',
         status: ProcessingStatus.error,
+        clearProcessingStartTime: true,
       );
       return;
     }
@@ -132,6 +147,7 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
       status: ProcessingStatus.processing,
       errorMessage: null,
       clearResult: true,
+      processingStartTime: DateTime.now(),
     );
 
     try {
@@ -147,17 +163,20 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
         state = state.copyWith(
           predictionResult: response,
           status: ProcessingStatus.success,
+          clearProcessingStartTime: true,
         );
       } else {
         state = state.copyWith(
           status: ProcessingStatus.error,
           errorMessage: '处理未返回结果，请重试',
+          clearProcessingStartTime: true,
         );
       }
     } catch (e) {
       state = state.copyWith(
         status: ProcessingStatus.error,
         errorMessage: _extractErrorMessage(e),
+        clearProcessingStartTime: true,
       );
     }
   }
@@ -172,6 +191,7 @@ class ProcessingNotifier extends StateNotifier<ProcessingState> {
     state = state.copyWith(
       errorMessage: null,
       status: ProcessingStatus.idle,
+      clearProcessingStartTime: true,
     );
   }
 

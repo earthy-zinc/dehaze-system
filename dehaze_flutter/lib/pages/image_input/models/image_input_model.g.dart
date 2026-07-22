@@ -56,7 +56,6 @@ const _$ImageSourceEnumMap = {
   ImageSource.upload: 'upload',
   ImageSource.camera: 'camera',
   ImageSource.sample: 'sample',
-  ImageSource.history: 'history',
 };
 
 SampleImageModel _$SampleImageModelFromJson(Map<String, dynamic> json) =>
@@ -81,6 +80,7 @@ SampleImageModel _$SampleImageModelFromJson(Map<String, dynamic> json) =>
             'recommended_algorithm',
             (v) => v as String?,
           ),
+          cleanUrl: $checkedConvert('cleanUrl', (v) => v as String?),
         );
         return val;
       },
@@ -100,6 +100,7 @@ Map<String, dynamic> _$SampleImageModelToJson(SampleImageModel instance) =>
       if (instance.sceneType case final value?) 'scene_type': value,
       if (instance.recommendedAlgorithm case final value?)
         'recommended_algorithm': value,
+      if (instance.cleanUrl case final value?) 'cleanUrl': value,
     };
 
 const _$SampleCategoryEnumMap = {
@@ -148,52 +149,3 @@ Map<String, dynamic> _$PaginatedSampleResponseToJson(
   'page_size': instance.pageSize,
   'total_pages': instance.totalPages,
 };
-
-HistoryRecordModel _$HistoryRecordModelFromJson(Map<String, dynamic> json) =>
-    $checkedCreate(
-      'HistoryRecordModel',
-      json,
-      ($checkedConvert) {
-        final val = HistoryRecordModel(
-          id: $checkedConvert('id', (v) => v as String),
-          originalThumbnail: $checkedConvert(
-            'original_thumbnail',
-            (v) => v as String,
-          ),
-          filename: $checkedConvert('filename', (v) => v as String),
-          timestamp: $checkedConvert(
-            'timestamp',
-            (v) => DateTime.parse(v as String),
-          ),
-          isSuccess: $checkedConvert('is_success', (v) => v as bool),
-          resultThumbnail: $checkedConvert(
-            'result_thumbnail',
-            (v) => v as String?,
-          ),
-          algorithmName: $checkedConvert('algorithm_name', (v) => v as String?),
-          parameters: $checkedConvert(
-            'parameters',
-            (v) => v as Map<String, dynamic>?,
-          ),
-        );
-        return val;
-      },
-      fieldKeyMap: const {
-        'originalThumbnail': 'original_thumbnail',
-        'isSuccess': 'is_success',
-        'resultThumbnail': 'result_thumbnail',
-        'algorithmName': 'algorithm_name',
-      },
-    );
-
-Map<String, dynamic> _$HistoryRecordModelToJson(HistoryRecordModel instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'original_thumbnail': instance.originalThumbnail,
-      if (instance.resultThumbnail case final value?) 'result_thumbnail': value,
-      'filename': instance.filename,
-      'timestamp': instance.timestamp.toIso8601String(),
-      if (instance.algorithmName case final value?) 'algorithm_name': value,
-      if (instance.parameters case final value?) 'parameters': value,
-      'is_success': instance.isSuccess,
-    };

@@ -23,6 +23,7 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
   EvaluationMetrics? _metrics;
   bool _isEvaluating = false;
   String? _errorMessage;
+  bool _noGtReference = false;
 
   @override
   void initState() {
@@ -34,15 +35,27 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
     final state = ref.read(processingProvider);
     final predUrl = state.predictionResult?.resultUrl;
     final algorithmId = state.selectedAlgorithm?.id;
+    final gtUrl = state.selectedImage?.cleanUrl;
 
     if (predUrl == null || algorithmId == null) {
       setState(() => _errorMessage = '缺少预测结果或算法信息');
       return;
     }
 
+    // 无 GT 参考图（上传/拍照图片）时无法评估，PSNR/SSIM 等指标无意义
+    if (gtUrl == null) {
+      setState(() {
+        _noGtReference = true;
+        _isEvaluating = false;
+        _errorMessage = null;
+      });
+      return;
+    }
+
     setState(() {
       _isEvaluating = true;
       _errorMessage = null;
+      _noGtReference = false;
     });
 
     try {
@@ -50,6 +63,7 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
       final request = EvaluationRequest(
         algorithmId: algorithmId,
         predUrl: predUrl,
+        gtUrl: gtUrl,
       );
       // 评估为同步接口，直接返回指标
       final result = await service.evaluate(request);
@@ -105,6 +119,31 @@ class _MetricsPageState extends ConsumerState<MetricsPage> {
             const SizedBox(height: 16),
             Text('正在计算评估指标...', style: theme.textTheme.bodyLarge),
           ],
+        ),
+      );
+    }
+
+    // 无 GT 参考图：上传/拍照图片无法进行有意义的指标评估
+    if (_noGtReference) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.block_outlined, size: 64, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(height: 16),
+              Text('无法评估', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                '当前图片无 GT 参考，无法评估。\n请使用数据集样例图片进行评估。',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

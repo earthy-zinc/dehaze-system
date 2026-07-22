@@ -157,6 +157,10 @@ class ImageInputService {
 
     final samples = <SampleImageModel>[];
     for (final item in items) {
+      // 获取清晰图（GT）URL，用于后续指标评估
+      final clearImage = item['clearImage'] as Map<String, dynamic>?;
+      final cleanUrl = clearImage?['url'] as String?;
+
       final hazyImages = (item['hazyImages'] as List<dynamic>? ?? [])
           .whereType<Map<String, dynamic>>();
       for (final image in hazyImages) {
@@ -173,6 +177,7 @@ class ImageInputService {
           difficulty: _difficultyFromHazeLevel(image['hazeLevel'] as String?),
           sceneType:
               image['sceneType'] as String? ?? item['sceneType'] as String?,
+          cleanUrl: cleanUrl,
         ));
       }
     }

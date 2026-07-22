@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/network/api_config.dart';
 import '../../../theme/app_theme.dart';
 import '../../../utils/responsive_utils.dart';
 import '../models/dataset_model.dart';
@@ -61,7 +62,7 @@ class _DatasetCardState extends State<DatasetCard> {
   Widget _buildMobileLayout(ThemeData theme) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildIconHeader(height: 120),
+          _buildThumbnail(height: 120),
           _buildContent(theme),
         ],
       );
@@ -70,13 +71,44 @@ class _DatasetCardState extends State<DatasetCard> {
   Widget _buildDesktopLayout(ThemeData theme) => Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildIconHeader(width: 128, height: 128),
+          _buildThumbnail(width: 128, height: 128),
           Expanded(child: _buildContent(theme)),
         ],
       );
 
-  /// 构建图标头部（替代缩略图）
-  Widget _buildIconHeader({double? width, double? height}) => Container(
+  /// 构建缩略图头部
+  ///
+  /// 优先使用数据集 path 拼接真实样本图（hazy/001.JPG）作为封面；
+  /// path 为空或图片加载失败时，fallback 到渐变图标占位。
+  Widget _buildThumbnail({double? width, double? height}) {
+    final path = widget.dataset.path;
+    final hasSample = path != null && path.isNotEmpty;
+
+    if (!hasSample) {
+      return _buildGradientFallback(width: width, height: height);
+    }
+
+    final sampleUrl = '${ApiConfig.datasetBaseUrl}/$path/hazy/001.JPG';
+    return SizedBox(
+      width: width ?? double.infinity,
+      height: height,
+      child: Image.network(
+        sampleUrl,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          // 加载中显示渐变图标占位
+          return _buildGradientFallback(width: width, height: height);
+        },
+        errorBuilder: (_, _, _) =>
+            _buildGradientFallback(width: width, height: height),
+      ),
+    );
+  }
+
+  /// 渐变图标占位（path 为空或图片加载失败时的 fallback）
+  Widget _buildGradientFallback({double? width, double? height}) => Container(
         width: width ?? double.infinity,
         height: height,
         decoration: BoxDecoration(

@@ -6,6 +6,7 @@ import '../../models/prediction_model.dart';
 import '../../providers/processing_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/responsive_utils.dart';
+import '../../widgets/dehaze_image.dart';
 
 /// 处理历史页面
 class TaskHistoryPage extends ConsumerStatefulWidget {
@@ -164,25 +165,12 @@ class _LogCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: log.predUrl != null
-                    ? Image.network(
-                        log.predUrl!,
-                        width: 80,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          width: 80,
-                          height: 80,
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          child: const Icon(Icons.broken_image, size: 32),
-                        ),
-                      )
-                    : Container(
-                        width: 80,
-                        height: 80,
-                        color: theme.colorScheme.surfaceContainerHighest,
-                        child: const Icon(Icons.image_not_supported, size: 32),
-                      ),
+                child: DehazeImage(
+                  url: log.predUrl,
+                  width: 80,
+                  height: 80,
+                  fit: BoxFit.cover,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -249,10 +237,10 @@ class _LogCard extends StatelessWidget {
             child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
           ),
           Expanded(
-            child: url != null
-                ? Image.network(url, fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Center(child: Icon(Icons.broken_image)))
-                : const Center(child: Icon(Icons.image_not_supported)),
+            child: DehazeImage(
+              url: url,
+              fit: BoxFit.contain,
+            ),
           ),
         ],
       );

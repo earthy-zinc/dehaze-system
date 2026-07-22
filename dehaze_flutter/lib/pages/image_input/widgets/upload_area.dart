@@ -7,7 +7,7 @@ import '../providers/image_input_provider.dart';
 /// 图片上传区域
 ///
 /// 支持点击上传
-/// 显示上传进度
+/// 显示处理状态（不定式加载，不显示假进度百分比）
 /// 自动压缩大图片
 class UploadArea extends ConsumerWidget {
   const UploadArea({super.key});
@@ -47,7 +47,7 @@ class UploadArea extends ConsumerWidget {
         return theme.dividerColor;
       case UploadStatus.validating:
       case UploadStatus.compressing:
-      case UploadStatus.uploading:
+      case UploadStatus.processingInfo:
         return const Color(0xFF3B82F6); // blue-500
       case UploadStatus.success:
         return const Color(0xFF10B981); // emerald-500
@@ -65,11 +65,11 @@ class UploadArea extends ConsumerWidget {
       case UploadStatus.selecting:
         return _buildLoadingState(theme, '选择图片中...');
       case UploadStatus.validating:
-        return _buildProgressState(theme, progress, '验证图片...');
+        return _buildLoadingState(theme, '验证图片...');
       case UploadStatus.compressing:
-        return _buildProgressState(theme, progress, '压缩图片中...');
-      case UploadStatus.uploading:
-        return _buildProgressState(theme, progress, '处理中...');
+        return _buildLoadingState(theme, '压缩图片中...');
+      case UploadStatus.processingInfo:
+        return _buildLoadingState(theme, '准备图片...');
       case UploadStatus.success:
         return _buildSuccessState(theme);
       case UploadStatus.error:
@@ -117,6 +117,7 @@ class UploadArea extends ConsumerWidget {
         ],
       );
 
+  /// 不定式加载状态（转圈 + 文案，不显示百分比）
   Widget _buildLoadingState(ThemeData theme, String message) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -124,40 +125,6 @@ class UploadArea extends ConsumerWidget {
             width: 48,
             height: 48,
             child: CircularProgressIndicator(strokeWidth: 3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-        ],
-      );
-
-  Widget _buildProgressState(ThemeData theme, UploadProgress progress, String message) =>
-      Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 64,
-            height: 64,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: progress.progress,
-                  strokeWidth: 4,
-                  backgroundColor: theme.dividerColor,
-                ),
-                Text(
-                  '${(progress.progress * 100).toInt()}%',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
           ),
           const SizedBox(height: 16),
           Text(

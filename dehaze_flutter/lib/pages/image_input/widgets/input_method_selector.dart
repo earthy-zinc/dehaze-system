@@ -7,8 +7,8 @@ import '../providers/image_input_provider.dart';
 
 /// 输入方式选择器
 ///
-/// 4个输入方式按钮的网格布局
-/// 支持响应式：移动端 2x2，桌面端 1x4
+/// 3个输入方式按钮的网格布局
+/// 支持响应式：移动端 2列，桌面端 1x3
 class InputMethodSelector extends ConsumerWidget {
   const InputMethodSelector({super.key, this.onMethodChanged});
 
@@ -22,7 +22,7 @@ class InputMethodSelector extends ConsumerWidget {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: isWide ? 4 : 2,
+      crossAxisCount: isWide ? 3 : 2,
       mainAxisSpacing: 12,
       crossAxisSpacing: 12,
       childAspectRatio: isWide ? 1.5 : 1.2,
@@ -68,8 +68,6 @@ class _InputMethodButtonState extends State<_InputMethodButton> {
         return Icons.camera_alt_outlined;
       case InputMethod.sample:
         return Icons.collections_outlined;
-      case InputMethod.history:
-        return Icons.history_outlined;
     }
   }
 
@@ -81,8 +79,6 @@ class _InputMethodButtonState extends State<_InputMethodButton> {
         return const Color(0xFF10B981); // emerald-500
       case InputMethod.sample:
         return const Color(0xFF8B5CF6); // violet-500
-      case InputMethod.history:
-        return const Color(0xFFF59E0B); // amber-500
     }
   }
 

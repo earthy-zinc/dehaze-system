@@ -95,11 +95,11 @@ class AlgorithmSection extends StatelessWidget {
         ),
         SizedBox(height: AppTheme.spacingXL),
 
-        // 了解更多按钮
+        // 浏览全部算法按钮（直达算法选择列表，避免进入无上下文的算法详情空状态）
         ElevatedButton.icon(
-          onPressed: () => context.go(AppRouterConfig.algorithm),
+          onPressed: () => context.go(AppRouterConfig.algorithmSelect),
           icon: Icon(Icons.arrow_forward, size: 16),
-          label: const Text('了解更多算法详情'),
+          label: const Text('浏览全部算法'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
             foregroundColor: const Color(0xFF3b82f6),

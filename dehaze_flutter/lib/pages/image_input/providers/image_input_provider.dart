@@ -41,7 +41,6 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
   /// 从相册选择图片
   Future<void> pickImage() async {
     _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-      progress: 0,
       status: UploadStatus.selecting,
     );
 
@@ -65,7 +64,6 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
       );
     } catch (e) {
       _ref.read(uploadProgressProvider.notifier).state = UploadProgress(
-        progress: 0,
         status: UploadStatus.error,
         errorMessage: '选择图片失败: $e',
       );
@@ -76,7 +74,6 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
   /// 拍照
   Future<void> captureImage() async {
     _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-      progress: 0,
       status: UploadStatus.selecting,
     );
 
@@ -101,7 +98,6 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
       );
     } catch (e) {
       _ref.read(uploadProgressProvider.notifier).state = UploadProgress(
-        progress: 0,
         status: UploadStatus.error,
         errorMessage: '拍照失败: $e',
       );
@@ -109,7 +105,9 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
     }
   }
 
-  /// 处理图片字节流（验证、压缩）
+  /// 处理图片字节流（验证、压缩、获取尺寸信息）
+  ///
+  /// 此阶段为本地图片处理，无网络上传，进度使用不定式加载展示。
   Future<void> _processBytes(
     Uint8List bytes,
     String filename,
@@ -117,14 +115,12 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
   ) async {
     // 验证图片
     _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-      progress: 0.2,
       status: UploadStatus.validating,
     );
 
     final validation = await _service.validateImage(bytes, filename);
     if (!validation.isValid) {
       _ref.read(uploadProgressProvider.notifier).state = UploadProgress(
-        progress: 0,
         status: UploadStatus.error,
         errorMessage: validation.errorMessage,
       );
@@ -135,17 +131,15 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
     Uint8List processedBytes = bytes;
     if (validation.needsCompression) {
       _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-        progress: 0.4,
         status: UploadStatus.compressing,
       );
 
       processedBytes = await _service.compressImage(bytes);
     }
 
-    // 获取图片信息
+    // 获取图片信息（尺寸等）
     _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-      progress: 0.8,
-      status: UploadStatus.uploading,
+      status: UploadStatus.processingInfo,
     );
 
     final imageInfo = await _service.getImageInfo(processedBytes);
@@ -166,7 +160,6 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
     // 更新状态
     _ref.read(selectedImageProvider.notifier).state = selectedImage;
     _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-      progress: 1.0,
       status: UploadStatus.success,
     );
     state = AsyncValue.data(selectedImage);
@@ -176,8 +169,7 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
   Future<void> selectSampleImage(SampleImageModel sample) async {
     state = const AsyncValue.loading();
     _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-      progress: 0.3,
-      status: UploadStatus.uploading,
+      status: UploadStatus.processingInfo,
     );
 
     try {
@@ -199,39 +191,14 @@ class ImageInputNotifier extends StateNotifier<AsyncValue<SelectedImageModel?>> 
 
       _ref.read(selectedImageProvider.notifier).state = selectedImage;
       _ref.read(uploadProgressProvider.notifier).state = const UploadProgress(
-        progress: 1.0,
         status: UploadStatus.success,
       );
       state = AsyncValue.data(selectedImage);
     } catch (e) {
       _ref.read(uploadProgressProvider.notifier).state = UploadProgress(
-        progress: 0,
         status: UploadStatus.error,
         errorMessage: '加载样例图片失败: $e',
       );
-      state = AsyncValue.error(e, StackTrace.current);
-    }
-  }
-
-  /// 从历史记录加载
-  Future<void> loadFromHistory(HistoryRecordModel record) async {
-    state = const AsyncValue.loading();
-
-    try {
-      // 从历史记录创建选中的图片
-      final selectedImage = SelectedImageModel(
-        id: record.id,
-        url: record.originalThumbnail,
-        filename: record.filename,
-        width: 0, // 历史记录可能没有保存尺寸信息
-        height: 0,
-        fileSize: 0,
-        source: ImageSource.history,
-      );
-
-      _ref.read(selectedImageProvider.notifier).state = selectedImage;
-      state = AsyncValue.data(selectedImage);
-    } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);
     }
   }

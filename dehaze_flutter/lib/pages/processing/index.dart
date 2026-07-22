@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -25,9 +26,34 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
   double _contrast = 100; // 对比度 0-200
   double _sharpen = 30; // 锐化 0-100
 
+  /// 已用时间刷新定时器，仅在处理中运行，每 100ms 触发一次重绘
+  Timer? _elapsedTimer;
+
+  @override
+  void dispose() {
+    _elapsedTimer?.cancel();
+    super.dispose();
+  }
+
+  /// 根据处理状态启停已用时间定时器
+  void _syncElapsedTimer(ProcessingStatus status) {
+    if (status == ProcessingStatus.processing) {
+      _elapsedTimer ??= Timer.periodic(
+        const Duration(milliseconds: 100),
+        (_) {
+          if (mounted) setState(() {});
+        },
+      );
+    } else {
+      _elapsedTimer?.cancel();
+      _elapsedTimer = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(processingProvider);
+    _syncElapsedTimer(state.status);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -357,24 +383,7 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
         );
 
       case ProcessingStatus.processing:
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: AppTheme.brandBlue.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(AppTheme.radiusL),
-          ),
-          child: Column(
-            children: [
-              const CircularProgressIndicator(),
-              const SizedBox(height: 16),
-              const Text('正在处理...'),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                backgroundColor: AppTheme.brandBlue.withValues(alpha: 0.1),
-              ),
-            ],
-          ),
-        );
+        return _buildProcessingIndicator(theme, state);
 
       case ProcessingStatus.success:
         return Column(
@@ -462,6 +471,38 @@ class _ProcessingPageState extends ConsumerState<ProcessingPage> {
           ),
         );
     }
+  }
+
+  /// 构建处理中指示器：进度环 + 真实已用时间（不显示假百分比）
+  Widget _buildProcessingIndicator(ThemeData theme, ProcessingState state) {
+    final startTime = state.processingStartTime;
+    final elapsed = startTime != null
+        ? DateTime.now().difference(startTime)
+        : Duration.zero;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.brandBlue.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppTheme.radiusL),
+      ),
+      child: Column(
+        children: [
+          const CircularProgressIndicator(),
+          const SizedBox(height: 16),
+          const Text('正在处理...'),
+          if (startTime != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              '已用 ${elapsed.inSeconds}s',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   void _startProcessing(WidgetRef ref) {

@@ -72,14 +72,28 @@ class _FilterPageState extends ConsumerState<FilterPage> {
       );
 
   List<double> _buildColorMatrix() {
-    final b = 1 + _brightness;
-    final c = 1 + _contrast;
+    // Luminance weights for RGB grayscale conversion.
+    const lumR = 0.3086;
+    const lumG = 0.6094;
+    const lumB = 0.0820;
+
+    // Slider _saturation range is -1..1 where 0 = original, -1 = grayscale,
+    // 1 = doubled. Standard saturation formula uses s where 1 = original,
+    // 0 = grayscale, 2 = doubled, so shift by 1.
     final s = 1 + _saturation;
+    final sr = (1 - s) * lumR;
+    final sg = (1 - s) * lumG;
+    final sb = (1 - s) * lumB;
+
+    // Contrast scales RGB, brightness adds to RGB offset.
+    final c = 1 + _contrast;
+    final bOffset = _brightness * 255;
+
     return <double>[
-      c * b, 0, 0, 0, _brightness * 255 * (1 - c),
-      0, c * b, 0, 0, _brightness * 255 * (1 - c),
-      0, 0, c * b, 0, _brightness * 255 * (1 - c),
-      0, 0, 0, s, 0,
+      c * (sr + s), c * sg,       c * sb,       0, bOffset,
+      c * sr,       c * (sg + s), c * sb,       0, bOffset,
+      c * sr,       c * sg,       c * (sb + s), 0, bOffset,
+      0,            0,            0,            1, 0,
     ];
   }
 

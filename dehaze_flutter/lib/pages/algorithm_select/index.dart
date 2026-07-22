@@ -24,6 +24,17 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
   bool _isLoading = true;
   bool _isUploading = false;
   String? _errorMessage;
+  String _searchQuery = '';
+
+  List<AlgorithmModel> get _filteredAlgorithms {
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isEmpty) return _algorithms;
+    return _algorithms.where((algo) {
+      final name = algo.name.toLowerCase();
+      final desc = (algo.description ?? '').toLowerCase();
+      return name.contains(query) || desc.contains(query);
+    }).toList();
+  }
 
   @override
   void initState() {
@@ -111,6 +122,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
             fileUrl: uploadResult.url,
             fileName: uploadResult.name,
             bytes: bytes,
+            cleanUrl: selectedImage.sampleInfo?.cleanUrl,
           ));
 
       context.go(AppRouterConfig.processing);
@@ -147,6 +159,9 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
           slivers: [
             // 页面头部
             SliverToBoxAdapter(child: _buildHeader(theme)),
+
+            // 搜索框
+            SliverToBoxAdapter(child: _buildSearchBar(theme)),
 
             // 内容区域
             SliverPadding(
@@ -197,6 +212,32 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
         ),
       );
 
+  Widget _buildSearchBar(ThemeData theme) => Container(
+        padding: ResponsiveUtils.getResponsivePadding(context),
+        color: theme.colorScheme.surface,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 12),
+            TextField(
+              onChanged: (value) => setState(() => _searchQuery = value),
+              decoration: InputDecoration(
+                hintText: '搜索算法名称或描述',
+                prefixIcon: const Icon(Icons.search_outlined),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () =>
+                            setState(() => _searchQuery = ''),
+                      )
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      );
+
   Widget _buildContent(ThemeData theme, AlgorithmModel? selected) {
     if (_isLoading) {
       return const SliverFillRemaining(
@@ -240,10 +281,18 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
       );
     }
 
+    final filtered = _filteredAlgorithms;
+
+    if (filtered.isEmpty) {
+      return const SliverFillRemaining(
+        child: Center(child: Text('未找到匹配的算法')),
+      );
+    }
+
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          final algorithm = _algorithms[index];
+          final algorithm = filtered[index];
           final isSelected = selected?.id == algorithm.id;
           return Padding(
             padding: const EdgeInsets.only(bottom: 12),
@@ -258,7 +307,7 @@ class _AlgorithmSelectPageState extends ConsumerState<AlgorithmSelectPage> {
             ),
           );
         },
-        childCount: _algorithms.length,
+        childCount: filtered.length,
       ),
     );
   }

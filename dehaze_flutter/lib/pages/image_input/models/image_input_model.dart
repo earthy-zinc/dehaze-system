@@ -12,8 +12,6 @@ enum InputMethod {
   camera, // 拍照
   @JsonValue('sample')
   sample, // 样例图片
-  @JsonValue('history')
-  history, // 历史记录
 }
 
 extension InputMethodExtension on InputMethod {
@@ -25,8 +23,6 @@ extension InputMethodExtension on InputMethod {
         return '拍照';
       case InputMethod.sample:
         return '样例图片';
-      case InputMethod.history:
-        return '历史记录';
     }
   }
 
@@ -38,8 +34,6 @@ extension InputMethodExtension on InputMethod {
         return '实时拍摄';
       case InputMethod.sample:
         return '快速体验';
-      case InputMethod.history:
-        return '最近处理';
     }
   }
 }
@@ -106,8 +100,6 @@ enum ImageSource {
   camera, // 拍照
   @JsonValue('sample')
   sample, // 样例
-  @JsonValue('history')
-  history, // 历史
 }
 
 /// 选中的图片模型
@@ -199,6 +191,7 @@ class SampleImageModel {
     required this.difficulty,
     this.sceneType,
     this.recommendedAlgorithm,
+    this.cleanUrl,
   });
 
   factory SampleImageModel.fromJson(Map<String, dynamic> json) =>
@@ -224,6 +217,11 @@ class SampleImageModel {
 
   @JsonKey(name: 'recommended_algorithm')
   final String? recommendedAlgorithm;
+
+  /// 清晰图（Ground Truth）URL，用于指标评估
+  /// 仅样例图片有值（来自数据集项的 clearImage），上传/拍照图片无 GT 参考
+  @JsonKey(name: 'cleanUrl')
+  final String? cleanUrl;
 
   Map<String, dynamic> toJson() => _$SampleImageModelToJson(this);
 }
@@ -260,50 +258,6 @@ class PaginatedSampleResponse {
   Map<String, dynamic> toJson() => _$PaginatedSampleResponseToJson(this);
 }
 
-/// 历史记录模型
-@JsonSerializable()
-class HistoryRecordModel {
-  const HistoryRecordModel({
-    required this.id,
-    required this.originalThumbnail,
-    required this.filename,
-    required this.timestamp,
-    required this.isSuccess,
-    this.resultThumbnail,
-    this.algorithmName,
-    this.parameters,
-  });
-
-  factory HistoryRecordModel.fromJson(Map<String, dynamic> json) =>
-      _$HistoryRecordModelFromJson(json);
-
-  @JsonKey(name: 'id')
-  final String id;
-
-  @JsonKey(name: 'original_thumbnail')
-  final String originalThumbnail;
-
-  @JsonKey(name: 'result_thumbnail')
-  final String? resultThumbnail;
-
-  @JsonKey(name: 'filename')
-  final String filename;
-
-  @JsonKey(name: 'timestamp')
-  final DateTime timestamp;
-
-  @JsonKey(name: 'algorithm_name')
-  final String? algorithmName;
-
-  @JsonKey(name: 'parameters')
-  final Map<String, dynamic>? parameters;
-
-  @JsonKey(name: 'is_success')
-  final bool isSuccess;
-
-  Map<String, dynamic> toJson() => _$HistoryRecordModelToJson(this);
-}
-
 /// 图片验证结果
 class ImageValidationResult {
   const ImageValidationResult({
@@ -320,16 +274,14 @@ class ImageValidationResult {
 /// 上传进度状态
 class UploadProgress {
   const UploadProgress({
-    required this.progress,
     required this.status,
     this.errorMessage,
   });
 
-  final double progress; // 0.0 - 1.0
   final UploadStatus status;
   final String? errorMessage;
 
-  static const idle = UploadProgress(progress: 0, status: UploadStatus.idle);
+  static const idle = UploadProgress(status: UploadStatus.idle);
 }
 
 enum UploadStatus {
@@ -337,7 +289,7 @@ enum UploadStatus {
   selecting,
   validating,
   compressing,
-  uploading,
+  processingInfo, // 本地图片处理阶段（获取尺寸等），非网络上传
   success,
   error,
 }

@@ -1,3 +1,7 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 /// API 基础配置
 ///
 /// 管理后端服务器地址、超时时间等网络配置
@@ -5,8 +9,25 @@
 class ApiConfig {
   const ApiConfig._();
 
-  /// 后端服务地址（Java 后端端口 8989）
-  static const String baseUrl = 'http://127.0.0.1:8989';
+  /// Backend server address (Java backend port 8989)
+  ///
+  /// Android emulator must use 10.0.2.2 to reach the host machine;
+  /// other platforms (Windows/Web/iOS emulator) use 127.0.0.1.
+  /// Resolved at runtime, so it is a getter, not a const.
+  static String get baseUrl {
+    if (kIsWeb) return 'http://127.0.0.1:8989';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8989';
+    return 'http://127.0.0.1:8989';
+  }
+
+  /// Dataset static file server address (port 9000)
+  ///
+  /// Platform-dependent, same rule as [baseUrl].
+  static String get datasetBaseUrl {
+    if (kIsWeb) return 'http://127.0.0.1:9000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:9000';
+    return 'http://127.0.0.1:9000';
+  }
 
   /// API 版本前缀
   static const String apiVersion = 'api/v1';
