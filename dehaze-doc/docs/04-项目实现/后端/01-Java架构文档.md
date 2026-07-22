@@ -21,7 +21,7 @@
 | 安全认证 | JwtValidationFilter / SecurityConfig / SysUserDetailsService | JWT 令牌签发校验、Spring Security 鉴权 |
 | 文件管理 | FileController / MinioFileService / FileUploadUtils | 适配多存储方案，支持本地/MinIO/OSS 存储，文件分片上传 |
 | 系统管理 | SysController + SysServiceImpl + SysMapper | RBAC 模型、部门树形结构管理 |
-| 算法管理 | SysAlgorithmController | 算法模型动态加载、Python 服务集成，对接 Python 端全部 34 种去雾算法 |
+| 算法管理 | SysAlgorithmController | 算法模型动态加载、Python 服务集成，对接 Python 端全部 29 种去雾算法 |
 | 图像处理 | ImageUtils / FileService | 缩略图生成、EXIF 信息提取 |
 
 ### 1.2 项目难点与解决方案

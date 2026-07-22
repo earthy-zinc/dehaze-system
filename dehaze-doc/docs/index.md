@@ -27,8 +27,6 @@ features:
 
 ## 关于本文档
 
-本文档采用VitePress编写，[点击此处](https://vitepress.dev/)查看如何搭建一个VitePress网页文档。
+本文档采用 VitePress 构建，[点击此处](https://vitepress.dev/)查看官方文档。
 
-本文档采用华为云DevCloud进行流水线部署，[点击此处](https://devcloud.cn-southwest-2.huaweicloud.com/home#/locale=zh-cn)查看如何部署。
-
-本文档采用Gitee进行源代码管理。[点击此处](https://gitee.com/earthy-zinc/reading-note)获取源代码。
+本项目源代码托管于 Gitee，[点击此处](https://gitee.com/earthy-zinc)查看作者主页。

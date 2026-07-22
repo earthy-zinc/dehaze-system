@@ -10,7 +10,7 @@
 
 ### 1.1 模块划分
 
-- **算法模块**: `algorithm/` 目录下包含 34 种去雾算法模型（如 RIDCP、WPXNet、Dehamer 等），每个算法有独立的模型定义、运行脚本和依赖配置。通过 `importPath` 配置动态加载不同算法模型
+- **算法模块**: `algorithm/` 目录下包含 29 种去雾算法模型（如 RIDCP、WPXNet、Dehamer 等），每个算法有独立的模型定义、运行脚本和依赖配置。通过 `importPath` 配置动态加载不同算法模型
 - **服务模块**: `app/` 目录提供 API 接口层，包含文件处理、模型调用、结果返回等功能
 - **测试模块**: `tests/` 目录包含模型测试用例和数据集配置
 - **部署模块**: 通过 Docker 容器化（Dockerfile）实现环境一致性，使用 NVIDIA CUDA 12.1 镜像支持 GPU 加速
@@ -194,7 +194,7 @@ dehaze-python/
 │       ├── path_builder.py            # 路径构建工具
 │       ├── image_processor.py         # 图像处理工具
 │       └── user_agent.py             # User-Agent 解析工具
-├── algorithm/                         # 去雾算法模块（34 种算法）
+├── algorithm/                         # 去雾算法模块（29 种算法）
 ├── config.py                          # 算法模块配置（设备 / 路径）
 ├── migrations/                        # Alembic 数据库迁移
 ├── tests/                             # 测试
