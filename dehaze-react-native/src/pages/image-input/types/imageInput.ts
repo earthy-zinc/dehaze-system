@@ -18,6 +18,8 @@ export interface SampleImage {
   id: number;
   name: string;
   url: string;
+  /** GT 参考图（清晰图）URL，来自 DatasetItemVO.clearImage，用于指标评估 */
+  cleanUrl?: string;
   thumbUrl?: string;
   category: SampleCategory;
   difficulty: DifficultyLevel;

@@ -30,7 +30,7 @@ type DisplayMode = 'original' | 'processed' | 'compare';
 const MAGNIFIER_SIZE = 150;
 
 const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
   const [zoom, setZoom] = useState<2 | 3 | 5>(2);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('compare');
   const [magnifierPos, setMagnifierPos] = useState({ x: 100, y: 100 });
@@ -87,7 +87,7 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="Magnifier"
         navigation={navigation}
-        params={{ originalUrl, processedUrl }}
+        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
 
       {/* 控制栏 */}

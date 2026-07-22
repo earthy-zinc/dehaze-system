@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import Section from '@/components/Section';
 import ImageLoader from '@/components/ImageLoader';
@@ -6,6 +6,7 @@ import Card from '@/components/Card';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useFadeSlideAnimation } from '@/hooks/useAnimation';
 import { theme } from '@/theme';
+import { imageInputApi } from '@/pages/image-input/services/imageInputApi';
 
 interface ShowcaseSectionProps {
   onPress?: () => void;
@@ -19,7 +20,16 @@ const ShowcaseSection: React.FC<ShowcaseSectionProps> = ({ onPress }) => {
     slideDistance: 0, // Only scale and fade
   });
 
-  const showcaseImageUrl = 'https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/20b8704f-d37e-45b9-a6c8-3c5d297e8a98/image_1763727568_3_3.jpg';
+  // 从后端获取 NH-HAZE-2023 样张（由 nginx-dataset:9000 直服），避免硬编码外部图片 URL
+  const [showcaseImageUrl, setShowcaseImageUrl] = useState<string>('');
+  useEffect(() => {
+    imageInputApi
+      .getRandomSample()
+      .then(sample => setShowcaseImageUrl(sample.url))
+      .catch(() => {
+        // 样例加载失败不阻塞页面，保留占位
+      });
+  }, []);
 
   // 响应式图片尺寸
   const imageWidth = width - containerPadding * 2;
@@ -40,15 +50,25 @@ const ShowcaseSection: React.FC<ShowcaseSectionProps> = ({ onPress }) => {
       >
         <Card onPress={onPress} margin={0} padding={0} borderRadius={theme.layout.borderRadius.xxl}>
           <View style={styles.comparisonContainer}>
-            <ImageLoader
-              source={{ uri: showcaseImageUrl }}
-              style={styles.showcaseImage}
-              containerStyle={{
-                ...styles.imageContainer,
-                width: imageWidth,
-                height: imageHeight,
-              }}
-            />
+            {showcaseImageUrl ? (
+              <ImageLoader
+                source={{ uri: showcaseImageUrl }}
+                style={styles.showcaseImage}
+                containerStyle={{
+                  ...styles.imageContainer,
+                  width: imageWidth,
+                  height: imageHeight,
+                }}
+              />
+            ) : (
+              <View
+                style={{
+                  ...styles.imageContainer,
+                  width: imageWidth,
+                  height: imageHeight,
+                }}
+              />
+            )}
             <View style={[
               styles.comparisonLabel,
               isMobile && styles.comparisonLabelMobile,

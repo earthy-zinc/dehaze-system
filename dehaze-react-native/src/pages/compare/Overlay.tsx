@@ -27,7 +27,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Overlay'>;
 type Direction = 'vertical' | 'horizontal';
 
 const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
   const [direction, setDirection] = useState<Direction>('vertical');
   const [dividerPos, setDividerPos] = useState(0.5);
   const layoutRef = useRef({ width: 0, height: 0 });
@@ -82,7 +82,7 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="Overlay"
         navigation={navigation}
-        params={{ originalUrl, processedUrl }}
+        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
 
       {/* 控制栏 */}

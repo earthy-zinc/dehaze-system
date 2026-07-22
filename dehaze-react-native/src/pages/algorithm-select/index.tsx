@@ -48,6 +48,7 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
   // 数据状态
   const [tree, setTree] = useState<Algorithm[]>([]);
   const [treeLoading, setTreeLoading] = useState(true);
+  const [treeError, setTreeError] = useState<string | null>(null);
   const [recommendations, setRecommendations] = useState<AlgorithmRecommendVO[]>([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteVO[]>([]);
@@ -116,12 +117,14 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
   // 加载算法树
   useEffect(() => {
     setTreeLoading(true);
+    setTreeError(null);
     AlgorithmAPI.getList()
       .then(data => {
         setTree(data || []);
       })
       .catch(err => {
-        Alert.alert('加载失败', err instanceof Error ? err.message : '无法加载算法列表');
+        const msg = err instanceof Error ? err.message : '无法加载算法列表';
+        setTreeError(msg);
       })
       .finally(() => setTreeLoading(false));
   }, []);
@@ -376,6 +379,33 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
       );
     }
 
+    if (treeError) {
+      return (
+        <View style={styles.centerContainer}>
+          <Icon name="cloud-offline" size={48} color={theme.colors.text.tertiary} />
+          <Text style={styles.emptyText}>算法列表加载失败</Text>
+          <Text style={styles.emptySubtext}>{treeError}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              setTreeLoading(true);
+              setTreeError(null);
+              AlgorithmAPI.getList()
+                .then(data => setTree(data || []))
+                .catch(err => {
+                  setTreeError(err instanceof Error ? err.message : '无法加载算法列表');
+                })
+                .finally(() => setTreeLoading(false));
+            }}
+            activeOpacity={0.7}
+          >
+            <Icon name="refresh" size={14} color="#fff" />
+            <Text style={styles.retryButtonText}>重试</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     // 搜索模式：扁平渲染过滤后的算法卡片
     if (searchKeyword.trim()) {
       if (filteredAlgorithms.length === 0) {
@@ -486,8 +516,8 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
           {/* Tab 选择器 */}
           {renderTabs()}
 
-          {/* 搜索框（仅浏览Tab显示） */}
-          {activeTab === 'browse' && !treeLoading && renderSearchBar()}
+          {/* 搜索框（仅浏览Tab且无错误时显示） */}
+          {activeTab === 'browse' && !treeLoading && !treeError && renderSearchBar()}
 
           {/* 内容区域 */}
           {renderContent()}
@@ -604,6 +634,23 @@ const styles = StyleSheet.create({
   emptySubtext: {
     fontSize: theme.typography.sizes.small,
     color: theme.colors.text.tertiary,
+    textAlign: 'center',
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.layout.borderRadius.md,
+    backgroundColor: theme.colors.primary,
+  },
+  retryButtonText: {
+    fontSize: theme.typography.sizes.body,
+    fontWeight: theme.typography.weights.semibold,
+    color: '#fff',
   },
   sectionTitle: {
     fontSize: theme.typography.sizes.body,

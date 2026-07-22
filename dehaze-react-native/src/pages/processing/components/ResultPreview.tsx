@@ -79,11 +79,17 @@ const ResultPreview: React.FC<ResultPreviewProps> = ({
               <Text style={styles.previewLabelText}>去雾后</Text>
             </View>
           </View>
-          <ImageLoader
-            source={{ uri: result.resultThumbnailUrl || result.resultUrl }}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
+          {result.resultThumbnailUrl || result.resultUrl ? (
+            <ImageLoader
+              source={{ uri: result.resultThumbnailUrl || result.resultUrl }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={[styles.previewImage, styles.previewPlaceholder]}>
+              <Icon name="image" size={32} color={theme.colors.text.tertiary} />
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -194,6 +200,11 @@ const styles = StyleSheet.create({
   previewImage: {
     width: '100%',
     height: 200,
+  },
+  previewPlaceholder: {
+    backgroundColor: theme.colors.background.tertiary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actions: {
     flexDirection: 'row',

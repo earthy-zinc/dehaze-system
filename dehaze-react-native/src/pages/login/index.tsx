@@ -250,7 +250,7 @@ const LoginScreen: React.FC = () => {
 
             <View style={styles.footer}>
               <Text style={[styles.footerText, styles.footerTextSpacing]}>
-                Copyright © 2022 - 2024 DehazeSystem All Rights Reserved.
+                {`Copyright © 2022 - ${new Date().getFullYear()} DehazeSystem All Rights Reserved.`}
               </Text>
             </View>
           </ScrollView>

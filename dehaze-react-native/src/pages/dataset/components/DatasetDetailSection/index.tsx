@@ -218,7 +218,7 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
     }, [loadDatasetDetail, loadItems]),
   );
 
-  if (error && !dataset && !isLoading) {
+  if (isLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -229,7 +229,29 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
             icon={<Icon name="back" size={14} color="#3b82f6" />}
           />
         </View>
-        <EmptyState icon="search-plus" title="加载失败" description={error} />
+        <View style={styles.loadingContainer}>
+          <LoadingSpinner size="large" text="加载数据中..." />
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !dataset) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Button
+            title="返回"
+            onPress={onBack}
+            variant="secondary"
+            icon={<Icon name="back" size={14} color="#3b82f6" />}
+          />
+        </View>
+        <EmptyState
+          icon="search-plus"
+          title={error ? '加载失败' : '数据集不存在'}
+          description={error || '该数据集可能已被删除或无法访问'}
+        />
       </View>
     );
   }
@@ -244,38 +266,32 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
           variant="secondary"
           icon={<Icon name="back" size={14} color="#3b82f6" />}
         />
-        {dataset && (
-          <Button
-            title="导出"
-            onPress={handleExport}
-            variant="primary"
-            icon={<Icon name="export" size={14} color="#ffffff" />}
-          />
-        )}
+        <Button
+          title="导出"
+          onPress={handleExport}
+          variant="primary"
+          icon={<Icon name="export" size={14} color="#ffffff" />}
+        />
       </View>
 
       {/* Dataset Info */}
-      {dataset && (
-        <View style={styles.infoSection}>
-          <DatasetInfoCard dataset={dataset} />
-        </View>
-      )}
+      <View style={styles.infoSection}>
+        <DatasetInfoCard dataset={dataset} />
+      </View>
 
       {/* Type Filter */}
-      {dataset && (
-        <TypeFilter
-          selectedType={selectedType}
-          onTypeChange={handleTypeChange}
-          counts={
-            dataset.statistics
-              ? {
-                  annotated: dataset.statistics.annotatedCount,
-                  unannotated: dataset.statistics.unannotatedCount,
-                }
-              : undefined
-          }
-        />
-      )}
+      <TypeFilter
+        selectedType={selectedType}
+        onTypeChange={handleTypeChange}
+        counts={
+          dataset.statistics
+            ? {
+                annotated: dataset.statistics.annotatedCount,
+                unannotated: dataset.statistics.unannotatedCount,
+              }
+            : undefined
+        }
+      />
 
       {/* Search Bar */}
       <View style={styles.searchContainer}>
@@ -296,15 +312,8 @@ const DatasetDetailSection: React.FC<DatasetDetailSectionProps> = ({
         isLoading={isLoadingImages}
       />
 
-      {/* Loading State */}
-      {isLoading && (
-        <View style={styles.loadingContainer}>
-          <LoadingSpinner size="large" text="加载数据中..." />
-        </View>
-      )}
-
       {/* Empty State */}
-      {!isLoading && !isLoadingImages && flatImages.length === 0 && dataset && (
+      {!isLoadingImages && flatImages.length === 0 && (
         <View style={styles.emptyContainer}>
           <EmptyState
             icon="image"

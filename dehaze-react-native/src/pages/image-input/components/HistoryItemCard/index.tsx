@@ -55,7 +55,7 @@ const HistoryItemCard: React.FC<HistoryItemCardProps> = ({
     }).start();
   };
 
-  const thumbnailUrl = record.originalThumbnailUrl || record.originalImageUrl || '';
+  const thumbnailUrl = record.originalThumbnailUrl || '';
   const filename = extractFilename(record.originalImageUrl);
   const formattedTime = historyStorage.formatTimestamp(record.createTime);
   const isSuccess = !!record.resultImageUrl;

@@ -19,7 +19,6 @@ const SUPPORTED_FORMATS = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'
 
 // 文件大小限制
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
-const COMPRESSION_THRESHOLD = 5 * 1024 * 1024; // 5MB
 
 /** hazeLevel 到 SampleCategory 的映射 */
 function hazeLevelToCategory(hazeLevel?: string): SampleCategory {
@@ -41,16 +40,19 @@ function hazeLevelToDifficulty(hazeLevel?: string): DifficultyLevel {
   }
 }
 
-/** 将后端 DatasetItemVO 列表映射为样例图片列表（展开 hazyImages） */
+/** 将后端 DatasetItemVO 列表映射为样例图片列表（展开 hazyImages，附带 clearImage 作为 GT） */
 function mapToSamples(items: DatasetItemVO[]): SampleImage[] {
   const samples: SampleImage[] = [];
   for (const item of items) {
+    // GT 参考图（清晰图）：取数据项的 clearImage，用于指标评估
+    const cleanUrl = item.clearImage?.url;
     if (!item.hazyImages || item.hazyImages.length === 0) continue;
     for (const img of item.hazyImages) {
       samples.push({
         id: img.id,
         name: img.fileName || item.name,
         url: img.url,
+        cleanUrl,
         thumbUrl: img.thumbnailUrl,
         category: hazeLevelToCategory(img.hazeLevel),
         difficulty: hazeLevelToDifficulty(img.hazeLevel),
@@ -101,13 +103,6 @@ export const imageInputApi = {
     }
 
     return { valid: true };
-  },
-
-  /**
-   * 检查是否需要压缩
-   */
-  needsCompression: (fileSize: number): boolean => {
-    return fileSize > COMPRESSION_THRESHOLD;
   },
 
   /**
@@ -169,4 +164,4 @@ export const imageInputApi = {
   },
 };
 
-export { MAX_FILE_SIZE, COMPRESSION_THRESHOLD };
+export { MAX_FILE_SIZE };

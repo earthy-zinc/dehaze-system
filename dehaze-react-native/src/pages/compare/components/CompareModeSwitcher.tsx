@@ -30,10 +30,11 @@ const MODES: ModeConfig[] = [
 interface CompareModeSwitcherProps {
   current: CompareMode;
   navigation: NativeStackNavigationProp<RootStackParamList>;
-  /** 共享参数（原图/处理后URL等） */
+  /** 共享参数（原图/处理后URL/GT参考图/算法ID） */
   params: {
     originalUrl: string;
     processedUrl: string;
+    cleanUrl?: string;
     algorithmId?: number;
   };
 }
@@ -45,18 +46,12 @@ const CompareModeSwitcher: React.FC<CompareModeSwitcherProps> = ({
 }) => {
   const handleSwitch = (mode: CompareMode) => {
     if (mode === current) return;
-    if (mode === 'Metrics') {
-      navigation.navigate(mode, {
-        originalUrl: params.originalUrl,
-        processedUrl: params.processedUrl,
-        ...(params.algorithmId ? { algorithmId: params.algorithmId } : {}),
-      } as any);
-    } else {
-      navigation.navigate(mode, {
-        originalUrl: params.originalUrl,
-        processedUrl: params.processedUrl,
-      } as any);
-    }
+    navigation.navigate(mode, {
+      originalUrl: params.originalUrl,
+      processedUrl: params.processedUrl,
+      cleanUrl: params.cleanUrl,
+      algorithmId: params.algorithmId,
+    } as any);
   };
 
   return (

@@ -68,6 +68,15 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
       return;
     }
 
+    // 历史记录复用：携带 algorithmId 与参数时直接进入处理页，跳过算法选择
+    if (selectedImage.algorithmId) {
+      navigation.navigate('Processing', {
+        algorithmId: selectedImage.algorithmId,
+        image: selectedImage,
+      });
+      return;
+    }
+
     // 导航到算法选择页面，传递选中的图片
     navigation.navigate('AlgorithmSelect', {
       image: selectedImage,
@@ -98,6 +107,7 @@ const ImageInputScreen: React.FC<Props> = ({ navigation, route }) => {
       const quickStartImage: SelectedImage = {
         id: randomSample.id.toString(),
         url: randomSample.url,
+        cleanUrl: randomSample.cleanUrl,
         thumbUrl: randomSample.thumbUrl,
         name: randomSample.name,
         width,

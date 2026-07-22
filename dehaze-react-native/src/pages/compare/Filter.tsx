@@ -180,7 +180,7 @@ function buildFilterPrimitives(params: FilterParams) {
 }
 
 const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
   const [params, setParams] = useState<FilterParams>({ ...DEFAULT_PARAMS });
   const [showOriginal, setShowOriginal] = useState(false);
   const { width: windowWidth } = useWindowDimensions();
@@ -232,7 +232,7 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="Filter"
         navigation={navigation}
-        params={{ originalUrl, processedUrl }}
+        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
 
       {/* 控制栏 */}

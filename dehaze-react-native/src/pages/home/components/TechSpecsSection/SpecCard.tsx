@@ -6,7 +6,6 @@ import Icon from '@/components/Icon';
 interface SpecCardProps {
   icon: string;
   title: string;
-  value: string;
   description: string;
   compact?: boolean;
 }
@@ -14,7 +13,6 @@ interface SpecCardProps {
 const SpecCard: React.FC<SpecCardProps> = ({
   icon,
   title,
-  value,
   description,
   compact = false,
 }) => {
@@ -68,12 +66,6 @@ const SpecCard: React.FC<SpecCardProps> = ({
           {title}
         </Text>
         <Text style={[
-          styles.value,
-          compact && styles.valueCompact,
-        ]}>
-          {value}
-        </Text>
-        <Text style={[
           styles.description,
           compact && styles.descriptionCompact,
         ]}>
@@ -108,18 +100,6 @@ const styles = StyleSheet.create({
   titleCompact: {
     fontSize: 12,
     marginBottom: 8,
-  },
-  value: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#3b82f6',
-    marginBottom: 8,
-    textAlign: 'center',
-    lineHeight: 48,
-  },
-  valueCompact: {
-    fontSize: 32,
-    lineHeight: 36,
   },
   description: {
     fontSize: 14,

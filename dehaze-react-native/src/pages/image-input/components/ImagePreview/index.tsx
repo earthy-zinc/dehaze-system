@@ -25,6 +25,22 @@ interface ImagePreviewProps {
   onNext: () => void;
 }
 
+/** 根据来源返回标签文案 */
+function getSourceLabel(source?: string): string | null {
+  switch (source) {
+    case 'upload':
+      return '上传图片';
+    case 'camera':
+      return '拍照图片';
+    case 'sample':
+      return '样例图片';
+    case 'history':
+      return '历史图片';
+    default:
+      return null;
+  }
+}
+
 const ImagePreview: React.FC<ImagePreviewProps> = ({
   image,
   onRemove,
@@ -51,6 +67,9 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   // 格式化尺寸
   const formattedDimensions = `${image.width || 0} × ${image.height || 0}`;
 
+  // 来源标签
+  const sourceLabel = getSourceLabel(image.source);
+
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <Card padding={theme.spacing.lg} elevation>
@@ -74,11 +93,11 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
             resizeMode="contain"
           />
 
-          {/* 样例图片标签 */}
-          {image.sampleInfo && (
+          {/* 来源标签 */}
+          {sourceLabel && (
             <View style={styles.sampleBadge}>
               <Icon name="images" size={12} color="#fff" />
-              <Text style={styles.sampleBadgeText}>样例图片</Text>
+              <Text style={styles.sampleBadgeText}>{sourceLabel}</Text>
             </View>
           )}
         </View>

@@ -24,6 +24,7 @@ import { useAuth } from '@/store';
 import { theme } from '@/theme';
 import { historyStorage } from '@/pages/image-input/services/historyStorage';
 import type { HistoryRecord } from '@/pages/image-input/types/imageInput';
+import ImageLoader from '@/components/ImageLoader';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -276,11 +277,20 @@ const HistoryRow: React.FC<{ record: HistoryRecord; last?: boolean }> = ({
 }) => {
   const filename = extractFilename(record.originalImageUrl);
   const time = historyStorage.formatTimestamp(record.createTime);
+  const thumbUrl = record.originalThumbnailUrl || '';
 
   return (
     <View style={[styles.historyRow, last && styles.historyRowLast]}>
       <View style={styles.historyThumb}>
-        <Ionicons name="image-outline" size={20} color={theme.colors.text.tertiary} />
+        {thumbUrl ? (
+          <ImageLoader
+            source={{ uri: thumbUrl }}
+            style={styles.historyThumbImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <Ionicons name="image-outline" size={20} color={theme.colors.text.tertiary} />
+        )}
       </View>
       <View style={styles.historyInfo}>
         <Text style={styles.historyFilename} numberOfLines={1}>
@@ -482,6 +492,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.tertiary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  historyThumbImage: {
+    width: '100%',
+    height: '100%',
   },
   historyInfo: {
     flex: 1,

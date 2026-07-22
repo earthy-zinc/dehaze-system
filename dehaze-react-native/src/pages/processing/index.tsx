@@ -56,8 +56,18 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
   const [algorithm, setAlgorithm] = useState<Algorithm | null>(null);
   const [algorithmLoading, setAlgorithmLoading] = useState(false);
 
-  // 参数
-  const [params, setParams] = useState<CommonAlgorithmParams>({ ...DEFAULT_PARAMS });
+  // 参数（历史记录复用时从 image.algorithmParams 初始化）
+  const [params, setParams] = useState<CommonAlgorithmParams>(() => {
+    if (image?.algorithmParams) {
+      try {
+        const parsed = JSON.parse(image.algorithmParams) as CommonAlgorithmParams;
+        return { ...DEFAULT_PARAMS, ...parsed };
+      } catch {
+        // 参数解析失败时回退到默认值
+      }
+    }
+    return { ...DEFAULT_PARAMS };
+  });
   const [showParams, setShowParams] = useState(false);
 
   // 处理状态
@@ -184,12 +194,14 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
   /** 进入效果对比 */
   const handleEnterCompare = useCallback(() => {
     if (!image?.url || !result?.resultUrl) return;
-    // 默认进入并排对比
+    // 默认进入并排对比（携带 algorithmId 与 GT 参考图 cleanUrl，供指标评估使用）
     navigation.navigate('SideBySide', {
       originalUrl: image.url,
       processedUrl: result.resultUrl,
+      cleanUrl: image.cleanUrl,
+      algorithmId,
     });
-  }, [image, result, navigation]);
+  }, [image, result, navigation, algorithmId]);
 
   /** 返回图像输入页 */
   const handleBackToImageInput = useCallback(() => {
@@ -275,7 +287,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
             </View>
             <View style={styles.imagePreviewItem}>
               <View style={[styles.imageThumb, styles.imageThumbPlaceholder]}>
-                {result ? (
+                {result && (result.resultThumbnailUrl || result.resultUrl) ? (
                   <ImageLoader
                     source={{ uri: result.resultThumbnailUrl || result.resultUrl }}
                     style={styles.imageThumb}

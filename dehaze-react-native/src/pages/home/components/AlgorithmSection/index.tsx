@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import ImageLoader from '@/components/ImageLoader';
 import Button from '@/components/Button';
@@ -7,6 +7,7 @@ import Card from '@/components/Card';
 import { useResponsive } from '@/hooks/useResponsive';
 import { useFadeSlideAnimation } from '@/hooks/useAnimation';
 import { theme } from '@/theme';
+import { imageInputApi } from '@/pages/image-input/services/imageInputApi';
 
 interface AlgorithmSectionProps {
   onLearnMorePress: () => void;
@@ -36,7 +37,16 @@ const AlgorithmSection: React.FC<AlgorithmSectionProps> = ({
     '支持批量处理和参数自定义',
   ];
 
-  const algorithmImageUrl = 'https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/f49e4b9e-6079-4a0b-8f91-bcab5deec2c7/image_1763727581_1_3.jpg';
+  // 从后端获取 NH-HAZE-2023 样张（由 nginx-dataset:9000 直服），避免硬编码外部图片 URL
+  const [algorithmImageUrl, setAlgorithmImageUrl] = useState<string>('');
+  useEffect(() => {
+    imageInputApi
+      .getRandomSample()
+      .then(sample => setAlgorithmImageUrl(sample.url))
+      .catch(() => {
+        // 样例加载失败不阻塞页面，保留占位
+      });
+  }, []);
 
   // 响应式字体大小
   const titleFontSize = isMobile ? theme.typography.sizes.h3 : theme.typography.sizes.h1 * fontScale;
@@ -94,14 +104,23 @@ const AlgorithmSection: React.FC<AlgorithmSectionProps> = ({
           imageAnimStyle,
         ]}>
           <Card padding={0} margin={0} borderRadius={theme.layout.borderRadius.xl}>
-            <ImageLoader
-              source={{ uri: algorithmImageUrl }}
-              style={styles.algorithmImage}
-              containerStyle={{
-                ...styles.imageContainer,
-                height: imageHeight,
-              }}
-            />
+            {algorithmImageUrl ? (
+              <ImageLoader
+                source={{ uri: algorithmImageUrl }}
+                style={styles.algorithmImage}
+                containerStyle={{
+                  ...styles.imageContainer,
+                  height: imageHeight,
+                }}
+              />
+            ) : (
+              <View
+                style={{
+                  ...styles.imageContainer,
+                  height: imageHeight,
+                }}
+              />
+            )}
           </Card>
         </Animated.View>
       </View>

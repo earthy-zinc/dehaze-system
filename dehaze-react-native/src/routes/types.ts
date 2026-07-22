@@ -15,15 +15,23 @@ export type RootStackParamList = {
     | { algorithmId: number; image?: SelectedImage }
     | undefined;
   SideBySide:
-    | { originalUrl: string; processedUrl: string }
+    | { originalUrl: string; processedUrl: string; cleanUrl?: string; algorithmId?: number }
     | undefined;
-  Overlay: { originalUrl: string; processedUrl: string } | undefined;
-  Magnifier: { originalUrl: string; processedUrl: string } | undefined;
-  Filter: { originalUrl: string; processedUrl: string } | undefined;
+  Overlay:
+    | { originalUrl: string; processedUrl: string; cleanUrl?: string; algorithmId?: number }
+    | undefined;
+  Magnifier:
+    | { originalUrl: string; processedUrl: string; cleanUrl?: string; algorithmId?: number }
+    | undefined;
+  Filter:
+    | { originalUrl: string; processedUrl: string; cleanUrl?: string; algorithmId?: number }
+    | undefined;
   Metrics:
     | {
         originalUrl: string;
         processedUrl: string;
+        /** GT 参考图（清晰图）URL，用于指标评估 */
+        cleanUrl?: string;
         metrics?: EvaluationMetrics;
         algorithmId?: number;
       }

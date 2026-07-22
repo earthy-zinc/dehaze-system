@@ -136,22 +136,6 @@ const UploadArea: React.FC<UploadAreaProps> = ({
         return;
       }
 
-      // 检查是否需要压缩
-      if (imageInputApi.needsCompression(asset.fileSize || 0)) {
-        Alert.alert(
-          '图片较大',
-          '图片大于5MB，建议压缩后上传以获得更好的体验',
-          [
-            { text: '取消', style: 'cancel' },
-            {
-              text: '继续使用',
-              onPress: () => processImage(asset),
-            },
-          ]
-        );
-        return;
-      }
-
       processImage(asset);
     } catch (error) {
       console.warn('Image selection error:', error);
@@ -177,7 +161,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
             <Text style={styles.loadingText}>
-              {uploading ? '正在上传图片...' : '正在处理图片...'}
+              {uploading ? '正在上传图片...' : '正在加载图片...'}
             </Text>
           </View>
         ) : (

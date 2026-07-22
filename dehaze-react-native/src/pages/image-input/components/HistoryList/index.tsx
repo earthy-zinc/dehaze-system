@@ -52,10 +52,12 @@ const HistoryList: React.FC<HistoryListProps> = ({
   const handleRecordPress = useCallback((record: HistoryRecord) => {
     const selectedImage: SelectedImage = {
       id: record.id.toString(),
-      url: record.originalImageUrl || record.originalThumbnailUrl || '',
+      url: record.originalImageUrl || '',
       thumbUrl: record.originalThumbnailUrl,
       name: record.algorithmName || '历史图片',
       source: 'history',
+      algorithmId: record.algorithmId,
+      algorithmParams: record.algorithmParams,
     };
 
     onSelectRecord(selectedImage);

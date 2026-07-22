@@ -11,25 +11,21 @@ const TechSpecsSection: React.FC = () => {
     {
       icon: 'bolt',
       title: '高性能',
-      value: '60fps',
       description: '流畅运行，响应时间<200ms',
     },
     {
       icon: 'mobile-alt',
       title: '全平台',
-      value: '100%',
-      description: '完美适配手机、平板、桌面',
+      description: '适配手机、平板、桌面',
     },
     {
       icon: 'brain',
       title: '智能算法',
-      value: '8+',
       description: '支持多种先进去雾算法',
     },
     {
       icon: 'chart-bar',
       title: '专业评估',
-      value: '5+',
       description: '多维度定量分析指标',
     },
   ];

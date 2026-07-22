@@ -24,6 +24,7 @@ import Icon from '@/components/Icon';
 import { ModelAPI } from 'dehaze-sdk-js';
 import type { EvaluationResultVO } from 'dehaze-sdk-js';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
+import ImageLoader from '@/components/ImageLoader';
 import type { EvaluationMetrics } from '@/types/evaluation';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Metrics'>;
@@ -39,7 +40,7 @@ interface MetricItem {
 }
 
 const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl, metrics: presetMetrics, algorithmId } = route.params ?? {
+  const { originalUrl, processedUrl, cleanUrl, metrics: presetMetrics, algorithmId } = route.params ?? {
     originalUrl: '',
     processedUrl: '',
   };
@@ -52,13 +53,18 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
       setError('缺少算法 ID，无法调用评估接口');
       return;
     }
+    if (!cleanUrl) {
+      setError('该图片无GT参考，无法评估');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const res = await ModelAPI.evaluate({
         algorithmId,
         predUrl: processedUrl,
-        gtUrl: originalUrl,
+        // GT 必须是清晰图（cleanUrl），禁止使用 hazy 原图或结果图本身
+        gtUrl: cleanUrl,
       });
       setResult(res);
     } catch (err) {
@@ -68,11 +74,11 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, [algorithmId, originalUrl, processedUrl]);
+  }, [algorithmId, cleanUrl, processedUrl]);
 
-  // 自动评估一次（如果有 algorithmId 且没有预传入 metrics）
+  // 自动评估一次（需同时具备 algorithmId 与 GT 参考图，且未预传入 metrics）
   useEffect(() => {
-    if (!presetMetrics && algorithmId) {
+    if (!presetMetrics && algorithmId && cleanUrl) {
       handleEvaluate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,7 +114,7 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="Metrics"
         navigation={navigation}
-        params={{ originalUrl, processedUrl, algorithmId }}
+        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
 
       <ScrollView style={styles.scrollView}>
@@ -119,9 +125,11 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
             <Text style={styles.statusTitle}>效果评估</Text>
           </View>
           <Text style={styles.statusDesc}>
-            {algorithmId
-              ? '点击下方按钮重新评估，获取最新量化指标'
-              : '当前未携带算法信息，仅展示预传入指标'}
+            {!algorithmId
+              ? '当前未携带算法信息，仅展示预传入指标'
+              : !cleanUrl
+                ? '该图片无GT参考，无法评估'
+                : '点击下方按钮重新评估，获取最新量化指标'}
           </Text>
 
           {loading && (
@@ -140,9 +148,12 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
 
           {algorithmId && (
             <TouchableOpacity
-              style={[styles.evaluateButton, loading && styles.evaluateButtonDisabled]}
+              style={[
+                styles.evaluateButton,
+                (loading || !cleanUrl) && styles.evaluateButtonDisabled,
+              ]}
               onPress={handleEvaluate}
-              disabled={loading}
+              disabled={loading || !cleanUrl}
             >
               <Icon name="refresh" size={14} color="#fff" />
               <Text style={styles.evaluateButtonText}>
@@ -217,8 +228,6 @@ const MetricsScreen: React.FC<Props> = ({ route, navigation }) => {
 
 /** 简化的图片预览组件 */
 const ImageLoaderMini: React.FC<{ url: string }> = ({ url }) => {
-  // 延迟导入避免循环依赖
-  const ImageLoader = require('@/components/ImageLoader').default;
   return (
     <ImageLoader
       source={{ uri: url }}

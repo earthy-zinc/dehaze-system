@@ -29,7 +29,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SideBySide'>;
 type DisplayMode = 'both' | 'original' | 'processed';
 
 const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
-  const { originalUrl, processedUrl } = route.params ?? { originalUrl: '', processedUrl: '' };
+  const { originalUrl, processedUrl, cleanUrl, algorithmId } = route.params ?? { originalUrl: '', processedUrl: '' };
   const { isPortrait, isTablet, isDesktop, containerPadding } = useResponsive();
   const [displayMode, setDisplayMode] = useState<DisplayMode>('both');
   const [zoomed, setZoomed] = useState(false);
@@ -75,7 +75,7 @@ const SideBySideScreen: React.FC<Props> = ({ route, navigation }) => {
       <CompareModeSwitcher
         current="SideBySide"
         navigation={navigation}
-        params={{ originalUrl, processedUrl }}
+        params={{ originalUrl, processedUrl, cleanUrl, algorithmId }}
       />
 
       {/* 模式切换标签 */}

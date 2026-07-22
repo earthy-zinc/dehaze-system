@@ -74,6 +74,7 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
       const selectedImage: SelectedImage = {
         id: sample.id.toString(),
         url: sample.url,
+        cleanUrl: sample.cleanUrl,
         thumbUrl: sample.thumbUrl,
         name: sample.name,
         width,
