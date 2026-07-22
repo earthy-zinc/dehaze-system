@@ -75,12 +75,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     }
   }, [navigation]);
 
-  // 搜索处理
-  const handleSearch = useCallback(() => {
-    // TODO: 实现搜索功能
-    console.log('Search pressed');
-  }, []);
-
   // 渲染内容区域
   const renderContent = useMemo(
     () => (
@@ -101,10 +95,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({
             title={title}
             showBack={showBack}
             showMenu={!showBack}
-            showSearch={!showBack}
             onBackPress={handleBack}
             onMenuPress={handleOpenDrawer}
-            onSearchPress={handleSearch}
             rightActions={headerRightActions}
           />
         )}
@@ -140,9 +132,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           title={title}
           showBack={showBack}
           showMenu={false}
-          showSearch={true}
           onBackPress={handleBack}
-          onSearchPress={handleSearch}
           rightActions={headerRightActions}
         />
       )}

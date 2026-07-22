@@ -147,7 +147,7 @@ const MagnifierScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 };
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   controlBar: {

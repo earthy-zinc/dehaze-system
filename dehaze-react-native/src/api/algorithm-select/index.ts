@@ -6,33 +6,39 @@
  */
 import { pythonService } from 'dehaze-sdk-js';
 import type {
+  AlgorithmCompareVO,
+  AlgorithmRecommendVO,
+  FavoriteToggleResult,
+  FavoriteVO,
   RecommendRequest,
-  RecommendResult,
-  CompareResult,
 } from '@/types/algorithm';
 
 class AlgorithmSelectAPI {
-  /** 智能推荐 Top3 */
-  static recommend(data: RecommendRequest): Promise<RecommendResult[]> {
+  /** 智能推荐 Top N（默认 3） */
+  static recommend(data: RecommendRequest): Promise<AlgorithmRecommendVO[]> {
     return pythonService.post('/api/v1/algorithm-select/recommend', data);
   }
 
-  /** 切换收藏 */
-  static toggleFavorite(algorithmId: number): Promise<{ favorite: boolean }> {
+  /** 切换收藏（未收藏→添加，已收藏→取消） */
+  static toggleFavorite(algorithmId: number): Promise<FavoriteToggleResult> {
     return pythonService.post('/api/v1/algorithm-select/favorite', {
       algorithmId,
     });
   }
 
   /** 收藏列表 */
-  static listFavorites(): Promise<RecommendResult[]> {
+  static listFavorites(): Promise<FavoriteVO[]> {
     return pythonService.get('/api/v1/algorithm-select/favorites');
   }
 
-  /** 算法对比（最多 3 个） */
-  static compare(algorithmIds: number[]): Promise<CompareResult[]> {
+  /** 算法对比（2-4 个） */
+  static compare(
+    algorithmIds: number[],
+    imageUrl?: string,
+  ): Promise<AlgorithmCompareVO[]> {
     return pythonService.post('/api/v1/algorithm-select/compare', {
       algorithmIds,
+      imageUrl,
     });
   }
 }

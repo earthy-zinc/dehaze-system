@@ -132,7 +132,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
     if (!algorithmId) return;
     AlgorithmSelectAPI.listFavorites()
       .then(list => {
-        setIsFavorite(list.some(r => r.algorithm.id === algorithmId));
+        setIsFavorite(list.some(r => r.algorithmId === algorithmId));
       })
       .catch(() => {
         /* Python 后端未启动时静默忽略 */
@@ -186,7 +186,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
     setFavoriteBusy(true);
     AlgorithmSelectAPI.toggleFavorite(algorithm.id)
       .then(res => {
-        setIsFavorite(res.favorite);
+        setIsFavorite(res.favorited);
       })
       .catch(err => {
         Alert.alert(
@@ -209,16 +209,9 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
     }
   }, [algorithm]);
 
-  /** 返回 */
-  const handleBack = useCallback(() => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    }
-  }, [navigation]);
-
   if (loading) {
     return (
-      <MainLayout title="算法详情" showBack onBackPress={handleBack}>
+      <MainLayout title="算法详情" showBack>
         <View style={styles.stateContainer}>
           <LoadingSpinner size="large" color={theme.colors.primary} text="加载算法详情..." />
         </View>
@@ -228,7 +221,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
 
   if (error || !algorithm) {
     return (
-      <MainLayout title="算法详情" showBack onBackPress={handleBack}>
+      <MainLayout title="算法详情" showBack>
         <View style={styles.stateContainer}>
           <EmptyState
             icon="error"
@@ -243,7 +236,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
   const statusInfo = ALGORITHM_STATUS_MAP[algorithm.status ?? 0] || ALGORITHM_STATUS_MAP[0];
 
   return (
-    <MainLayout title="算法详情" showBack onBackPress={handleBack} showBottomNav={false}>
+    <MainLayout title="算法详情" showBack showBottomNav={false}>
       <View style={styles.container}>
         {/* 章节锚点导航条 */}
         <View style={styles.sectionNav}>
@@ -487,47 +480,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
           >
             <SectionTitle icon="star" title="用户评价" />
             <View style={styles.card}>
-              <View style={styles.ratingRow}>
-                <Text style={styles.ratingValue}>4.6</Text>
-                <View style={styles.starsRow}>
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <Ionicons
-                      key={i}
-                      name={i <= 4 ? 'star' : 'star-half'}
-                      size={16}
-                      color="#FBBF24"
-                    />
-                  ))}
-                </View>
-                <Text style={styles.ratingCount}>128 条评价</Text>
-              </View>
-              <View style={styles.reviewItem}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewAvatar}>
-                    <Text style={styles.reviewAvatarText}>张</Text>
-                  </View>
-                  <View style={styles.reviewMeta}>
-                    <Text style={styles.reviewUser}>张研究员</Text>
-                    <View style={styles.starsRow}>
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <Ionicons
-                          key={i}
-                          name={i <= 5 ? 'star' : 'star-outline'}
-                          size={11}
-                          color="#FBBF24"
-                        />
-                      ))}
-                    </View>
-                  </View>
-                </View>
-                <Text style={styles.reviewText}>
-                  处理效果稳定，对中度雾霾场景的还原非常自然，速度也很快。
-                </Text>
-              </View>
-              <TouchableOpacity style={styles.viewAllReviews} activeOpacity={0.7}>
-                <Text style={styles.viewAllReviewsText}>查看全部评价</Text>
-                <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
-              </TouchableOpacity>
+              <Text style={styles.emptyInlineText}>暂无用户评价</Text>
             </View>
           </View>
 
@@ -538,21 +491,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
           >
             <SectionTitle icon="link" title="相关链接" />
             <View style={styles.card}>
-              <LinkItem
-                icon="document-text"
-                title="算法白皮书"
-                subtitle="查看算法原理与设计文档"
-              />
-              <LinkItem
-                icon="logo-github"
-                title="开源仓库"
-                subtitle="github.com/dehaze/algorithm"
-              />
-              <LinkItem
-                icon="paper-plane"
-                title="论文引用"
-                subtitle="IEEE CVPR 2024"
-              />
+              <Text style={styles.emptyInlineText}>暂无相关链接</Text>
             </View>
           </View>
 
@@ -716,26 +655,6 @@ const MetricBar: React.FC<{
     </View>
   );
 };
-
-/** 链接项 */
-const LinkItem: React.FC<{
-  icon: string;
-  title: string;
-  subtitle: string;
-}> = ({ icon, title, subtitle }) => (
-  <TouchableOpacity style={styles.linkItem} activeOpacity={0.7}>
-    <View style={styles.linkIcon}>
-      <Ionicons name={icon as any} size={18} color={theme.colors.primary} />
-    </View>
-    <View style={styles.linkContent}>
-      <Text style={styles.linkTitle}>{title}</Text>
-      <Text style={styles.linkSubtitle} numberOfLines={1}>
-        {subtitle}
-      </Text>
-    </View>
-    <Ionicons name="chevron-forward" size={16} color={theme.colors.text.tertiary} />
-  </TouchableOpacity>
-);
 
 /** 格式化参数 JSON */
 function formatParams(params: string): string {
@@ -1043,108 +962,6 @@ const styles = StyleSheet.create({
   metricBarFill: {
     height: '100%',
     borderRadius: 4,
-  },
-  // 评价
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    paddingBottom: theme.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.light,
-    marginBottom: theme.spacing.md,
-  },
-  ratingValue: {
-    fontSize: 32,
-    fontWeight: theme.typography.weights.bold,
-    color: theme.colors.text.primary,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    gap: 1,
-  },
-  ratingCount: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.tertiary,
-    marginLeft: 'auto',
-  },
-  reviewItem: {
-    paddingVertical: theme.spacing.sm,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  reviewAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  reviewAvatarText: {
-    fontSize: theme.typography.sizes.bodySmall,
-    fontWeight: theme.typography.weights.bold,
-    color: '#fff',
-  },
-  reviewMeta: {
-    gap: 2,
-  },
-  reviewUser: {
-    fontSize: theme.typography.sizes.bodySmall,
-    fontWeight: theme.typography.weights.semibold,
-    color: theme.colors.text.primary,
-  },
-  reviewText: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.secondary,
-    lineHeight: 20,
-  },
-  viewAllReviews: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: theme.spacing.sm,
-    marginTop: theme.spacing.xs,
-  },
-  viewAllReviewsText: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.primary,
-    fontWeight: theme.typography.weights.medium,
-  },
-  // 链接
-  linkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: theme.spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border.light,
-  },
-  linkIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: theme.layout.borderRadius.md,
-    backgroundColor: `${theme.colors.primary}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  linkContent: {
-    flex: 1,
-  },
-  linkTitle: {
-    fontSize: theme.typography.sizes.bodySmall,
-    color: theme.colors.text.primary,
-    fontWeight: theme.typography.weights.semibold,
-  },
-  linkSubtitle: {
-    fontSize: theme.typography.sizes.small,
-    color: theme.colors.text.tertiary,
-    marginTop: 2,
   },
   // 版本时间线
   timeline: {

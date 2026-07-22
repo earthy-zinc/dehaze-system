@@ -2,7 +2,7 @@
  * 拍照组件
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { launchCamera, ImagePickerResponse } from 'react-native-image-picker';
 import Icon from '@/components/Icon';
@@ -27,8 +28,11 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
   onCapture,
   loading = false,
 }) => {
+  const [uploading, setUploading] = useState(false);
+  const busy = loading || uploading;
+
   const handleOpenCamera = useCallback(async () => {
-    if (loading) return;
+    if (busy) return;
 
     try {
       const result: ImagePickerResponse = await launchCamera({
@@ -52,7 +56,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
             '请在设置中允许应用访问相机',
             [
               { text: '取消', style: 'cancel' },
-              { text: '去设置', onPress: () => {} },
+              { text: '去设置', onPress: () => Linking.openSettings() },
             ]
           );
         } else {
@@ -82,10 +86,25 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
         }
       }
 
+      const fileName = asset.fileName || `photo_${Date.now()}.jpg`;
+
+      // 上传到后端文件服务，获取后端可访问的远程 URL
+      setUploading(true);
+      let fileInfo;
+      try {
+        fileInfo = await imageInputApi.uploadImage(asset.uri, fileName, asset.type);
+      } catch (error) {
+        setUploading(false);
+        Alert.alert('上传失败', error instanceof Error ? error.message : '图片上传失败，请重试');
+        return;
+      }
+      setUploading(false);
+
       const capturedImage: SelectedImage = {
         id: Date.now().toString(),
-        url: asset.uri,
-        name: asset.fileName || `photo_${Date.now()}.jpg`,
+        url: fileInfo.url,
+        thumbUrl: asset.uri,
+        name: fileInfo.name || fileName,
         width,
         height,
         size: asset.fileSize || 0,
@@ -97,7 +116,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
       console.warn('Camera error:', error);
       Alert.alert('错误', '打开相机时发生错误');
     }
-  }, [loading, onCapture]);
+  }, [busy, onCapture]);
 
   return (
     <View style={styles.container}>
@@ -115,7 +134,7 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({
           title="打开相机"
           onPress={handleOpenCamera}
           variant="primary"
-          loading={loading}
+          loading={busy}
           icon={<Icon name="camera" size={18} color="#fff" />}
         />
       </View>

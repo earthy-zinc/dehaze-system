@@ -22,16 +22,12 @@ interface HistoryItemCardProps {
   onDelete: (id: number) => void;
 }
 
-/** 从 URL 中提取文件名 */
+/** 从 URL 中提取文件名（兼容 http 与 file:// 地址） */
 function extractFilename(url?: string): string {
   if (!url) return '历史图片';
-  try {
-    const pathname = new URL(url).pathname;
-    const segments = pathname.split('/');
-    return segments[segments.length - 1] || '历史图片';
-  } catch {
-    return '历史图片';
-  }
+  const path = url.split('?')[0];
+  const segments = path.split('/');
+  return segments[segments.length - 1] || '历史图片';
 }
 
 const HistoryItemCard: React.FC<HistoryItemCardProps> = ({

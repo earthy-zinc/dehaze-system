@@ -7,8 +7,6 @@
  * - 登录成功后由 AuthContext 跳转 Home
  */
 import { useAuth } from '@/store';
-import type { RootStackParamList } from '@/routes/types';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthAPI } from 'dehaze-sdk-js';
 import type { CaptchaResult } from 'dehaze-sdk-js';
 import React, { useEffect, useState } from 'react';
@@ -28,11 +26,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { theme } from '@/theme';
 
-type LoginScreenProps = NativeStackScreenProps<RootStackParamList, 'Login'>;
-
-const LoginScreen: React.FC<LoginScreenProps> = () => {
+const LoginScreen: React.FC = () => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -50,7 +45,7 @@ const LoginScreen: React.FC<LoginScreenProps> = () => {
         ? result.captchaBase64
         : `data:image/png;base64,${result.captchaBase64}`;
       setCaptcha({ ...result, captchaBase64: base64 });
-    } catch (e: any) {
+    } catch {
       setCaptcha(null);
     } finally {
       setCaptchaLoading(false);

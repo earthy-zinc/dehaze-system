@@ -1,11 +1,16 @@
 /**
  * 滤镜调节对比模式
  *
- * 对处理后的图片应用滤镜（亮度/对比度/饱和度/色温/锐化/降噪），
- * 实时预览调节效果。提供预设方案与重置功能。
+ * 对处理后的图片应用滤镜（亮度/对比度/饱和度/色温/锐化/降噪），实时预览调节效果。
  *
- * 注：React Native Image 不直接支持滤镜参数，需通过样式滤镜近似（仅 iOS 部分支持）。
- * 此处通过 ImageStyle 的 tintColor/colorMatrix 模拟视觉效果。
+ * 实现原理：通过 react-native-svg 的滤镜原语在 GPU 上对图像做真实像素级处理：
+ *  - 饱和度       → FeColorMatrix type="saturate"
+ *  - 亮度/对比度/色温 → FeColorMatrix type="matrix"（线性变换 + 通道偏移）
+ *  - 降噪         → FeGaussianBlur
+ *  - 锐化         → FeGaussianBlur + FeComposite(arithmetic) 非锐化掩模
+ *
+ * 上述原语均为 react-native-svg 已实现的原生滤镜组件，
+ * 通过 result/in 链式组合，最终作用于 <Image>。
  */
 import React, { useState } from 'react';
 import {
@@ -14,14 +19,22 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
+import {
+  Svg,
+  Defs,
+  Filter,
+  FeColorMatrix,
+  FeGaussianBlur,
+  FeComposite,
+  Image as SvgImage,
+} from 'react-native-svg';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/routes/types';
 import { MainLayout } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
-import ImageLoader from '@/components/ImageLoader';
 import CompareModeSwitcher from './components/CompareModeSwitcher';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Filter'>;
@@ -45,11 +58,11 @@ const DEFAULT_PARAMS: FilterParams = {
 };
 
 const PRESETS: { key: string; name: string; params: FilterParams }[] = [
-  { key: 'natural', name: '自然', params: { ...DEFAULT_PARAMS, brightness: 5, contrast: 10, saturation: 5, warmth: 0, sharpen: 0, denoise: 0 } },
-  { key: 'vivid', name: '鲜艳', params: { ...DEFAULT_PARAMS, brightness: 0, contrast: 30, saturation: 40, warmth: 0, sharpen: 0, denoise: 0 } },
-  { key: 'soft', name: '柔和', params: { ...DEFAULT_PARAMS, brightness: 0, contrast: -20, saturation: 0, warmth: 0, sharpen: -10, denoise: 0 } },
-  { key: 'clear', name: '清晰', params: { ...DEFAULT_PARAMS, brightness: 0, contrast: 20, saturation: 0, warmth: 0, sharpen: 40, denoise: 0 } },
-  { key: 'vintage', name: '复古', params: { ...DEFAULT_PARAMS, brightness: 0, contrast: 0, saturation: -20, warmth: 30, sharpen: 0, denoise: 0 } },
+  { key: 'natural', name: '自然', params: { ...DEFAULT_PARAMS, brightness: 5, contrast: 10, saturation: 5 } },
+  { key: 'vivid', name: '鲜艳', params: { ...DEFAULT_PARAMS, contrast: 30, saturation: 40 } },
+  { key: 'soft', name: '柔和', params: { ...DEFAULT_PARAMS, contrast: -20, denoise: 15 } },
+  { key: 'clear', name: '清晰', params: { ...DEFAULT_PARAMS, contrast: 20, sharpen: 40 } },
+  { key: 'vintage', name: '复古', params: { ...DEFAULT_PARAMS, saturation: -20, warmth: 30 } },
 ];
 
 const PARAM_LIST: { key: keyof FilterParams; label: string; min: number; max: number; step: number }[] = [
@@ -61,24 +74,123 @@ const PARAM_LIST: { key: keyof FilterParams; label: string; min: number; max: nu
   { key: 'denoise', label: '降噪', min: 0, max: 100, step: 1 },
 ];
 
+const FILTER_ID = 'dehaze-filter';
+
+/**
+ * 根据滤镜参数构建 SVG 滤镜原语链。
+ * 返回 { primitives, hasFilter }：无任何调节时不应用滤镜。
+ */
+function buildFilterPrimitives(params: FilterParams) {
+  const primitives: React.ReactNode[] = [];
+  let currentIn = 'SourceGraphic';
+  let seq = 0;
+  const nextResult = () => `r${seq++}`;
+
+  // 饱和度：saturate 矩阵（0=灰度，1=原图，>1=增强）
+  if (params.saturation !== 0) {
+    const saturate = Math.max(0, 1 + params.saturation / 100);
+    const out = nextResult();
+    primitives.push(
+      <FeColorMatrix
+        key="saturation"
+        in={currentIn}
+        type="saturate"
+        values={saturate}
+        result={out}
+      />,
+    );
+    currentIn = out;
+  }
+
+  // 亮度/对比度/色温：单一 matrix 线性变换
+  // slope = 亮度斜率 × 对比度斜率；intercept = 对比度截距 × 亮度斜率
+  // 色温：R 通道正向偏移、B 通道负向偏移
+  if (params.brightness !== 0 || params.contrast !== 0 || params.warmth !== 0) {
+    const bSlope = 1 + params.brightness / 100; // 0 ~ 2
+    const cSlope = 1 + params.contrast / 100; // 0 ~ 2
+    const slope = bSlope * cSlope;
+    const intercept = 0.5 * (1 - cSlope) * bSlope;
+    const warmthOffset = (params.warmth / 100) * 0.3; // -0.3 ~ 0.3
+
+    const out = nextResult();
+    primitives.push(
+      <FeColorMatrix
+        key="bcm"
+        in={currentIn}
+        type="matrix"
+        values={[
+          slope, 0, 0, 0, intercept + warmthOffset,
+          0, slope, 0, 0, intercept,
+          0, 0, slope, 0, intercept - warmthOffset,
+          0, 0, 0, 1, 0,
+        ]}
+        result={out}
+      />,
+    );
+    currentIn = out;
+  }
+
+  // 降噪：高斯模糊
+  if (params.denoise > 0) {
+    const stdDeviation = (params.denoise / 100) * 2; // 0 ~ 2
+    const out = nextResult();
+    primitives.push(
+      <FeGaussianBlur
+        key="denoise"
+        in={currentIn}
+        stdDeviation={stdDeviation}
+        edgeMode="none"
+        result={out}
+      />,
+    );
+    currentIn = out;
+  }
+
+  // 锐化：非锐化掩模 = 原图 × (1+amount) - 模糊图 × amount
+  if (params.sharpen > 0) {
+    const amount = (params.sharpen / 100) * 1.5; // 0 ~ 1.5
+    const blurOut = nextResult();
+    primitives.push(
+      <FeGaussianBlur
+        key="sharpen-blur"
+        in={currentIn}
+        stdDeviation={1}
+        edgeMode="none"
+        result={blurOut}
+      />,
+    );
+    const out = nextResult();
+    primitives.push(
+      <FeComposite
+        key="sharpen-composite"
+        in={currentIn}
+        in2={blurOut}
+        operator="arithmetic"
+        k1={0}
+        k2={1 + amount}
+        k3={-amount}
+        k4={0}
+        result={out}
+      />,
+    );
+    currentIn = out;
+  }
+
+  return { primitives, hasFilter: primitives.length > 0 };
+}
+
 const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
   const { originalUrl, processedUrl } = route.params ?? { originalUrl: '', processedUrl: '' };
   const [params, setParams] = useState<FilterParams>({ ...DEFAULT_PARAMS });
   const [showOriginal, setShowOriginal] = useState(false);
+  const { width: windowWidth } = useWindowDimensions();
 
-  /** 计算滤镜样式（RN 仅支持 tintColor 近似） */
-  const computeFilterStyle = () => {
-    // 按住看原图时不应用滤镜
-    if (showOriginal) {
-      return { opacity: 1 };
-    }
-    // 简化：通过 opacity 近似模拟亮度
-    // brightness: -100~100 → opacity 0.5~1.5
-    const opacity = 1 + params.brightness / 200;
-    return {
-      opacity: Math.max(0.1, Math.min(1.5, opacity)),
-    };
-  };
+  const svgWidth = windowWidth - theme.spacing.md * 2;
+  const svgHeight = 260;
+
+  const { primitives, hasFilter } = buildFilterPrimitives(params);
+  // 按住看原图或无任何调节时不应用滤镜
+  const applyFilter = hasFilter && !showOriginal;
 
   const handleStepChange = (key: keyof FilterParams, delta: number) => {
     setParams(prev => {
@@ -127,11 +239,20 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
       <ScrollView style={styles.scrollView}>
         {/* 预览区 */}
         <View style={styles.previewContainer}>
-          <ImageLoader
-            source={{ uri: showOriginal ? originalUrl : processedUrl }}
-            style={{ ...styles.previewImage, ...computeFilterStyle() }}
-            resizeMode="contain"
-          />
+          <Svg width={svgWidth} height={svgHeight}>
+            <Defs>
+              <Filter id={FILTER_ID}>{primitives}</Filter>
+            </Defs>
+            <SvgImage
+              href={{ uri: showOriginal ? originalUrl : processedUrl }}
+              x="0"
+              y="0"
+              width="100%"
+              height="100%"
+              preserveAspectRatio="xMidYMid meet"
+              filter={applyFilter ? `url(#${FILTER_ID})` : undefined}
+            />
+          </Svg>
           <View style={styles.previewLabelRow}>
             <View style={[styles.previewLabel, showOriginal ? styles.previewLabelOriginal : styles.previewLabelResult]}>
               <Text style={styles.previewLabelText}>{showOriginal ? '原图' : '滤镜预览'}</Text>
@@ -199,8 +320,6 @@ const FilterScreen: React.FC<Props> = ({ route, navigation }) => {
   );
 };
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
@@ -242,10 +361,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.background.tertiary,
     overflow: 'hidden',
     ...theme.layout.shadows.sm,
-  },
-  previewImage: {
-    width: '100%',
-    height: screenHeight * 0.3,
   },
   previewLabelRow: {
     position: 'absolute',

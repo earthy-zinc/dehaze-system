@@ -5,8 +5,8 @@
  */
 
 import { Image } from 'react-native';
-import { DatasetItemAPI } from 'dehaze-sdk-js';
-import type { DatasetItemVO } from 'dehaze-sdk-js';
+import { DatasetItemAPI, FileAPI } from 'dehaze-sdk-js';
+import type { DatasetItemVO, FileInfo } from 'dehaze-sdk-js';
 import {
   SampleImage,
   SampleCategory,
@@ -134,6 +134,26 @@ export const imageInputApi = {
     } else {
       return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
     }
+  },
+
+  /**
+   * 上传本地图片到后端文件服务（/api/v1/files）
+   *
+   * React Native 中通过 FormData 文件描述符 {uri, name, type} 上传，
+   * 返回的 FileInfo.url 为后端可访问的远程地址，用于后续预测/评估。
+   */
+  uploadImage: async (
+    uri: string,
+    fileName: string,
+    fileType?: string,
+  ): Promise<FileInfo> => {
+    // RN 的 FormData 接受 {uri, name, type} 形式的文件描述符
+    const fileDescriptor = {
+      uri,
+      name: fileName,
+      type: fileType || 'image/jpeg',
+    } as unknown as File;
+    return await FileAPI.upload(fileDescriptor);
   },
 
   /**

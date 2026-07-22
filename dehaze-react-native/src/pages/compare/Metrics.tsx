@@ -15,7 +15,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/routes/types';
@@ -326,8 +325,6 @@ function getBarColor(key: string, value: number): string {
   }
   return theme.colors.primary;
 }
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   scrollView: {

@@ -28,6 +28,9 @@ const UploadArea: React.FC<UploadAreaProps> = ({
   loading = false,
 }) => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [uploading, setUploading] = React.useState(false);
+
+  const busy = loading || uploading;
 
   const handlePressIn = () => {
     Animated.spring(scaleAnim, {
@@ -47,8 +50,56 @@ const UploadArea: React.FC<UploadAreaProps> = ({
     }).start();
   };
 
+  const processImage = useCallback(async (asset: any) => {
+    setUploading(true);
+    try {
+      // 获取图片尺寸
+      let width = asset.width || 0;
+      let height = asset.height || 0;
+
+      if (!width || !height) {
+        try {
+          const size = await imageInputApi.getImageSize(asset.uri);
+          width = size.width;
+          height = size.height;
+        } catch (e) {
+          // 使用默认值
+          width = 1920;
+          height = 1080;
+        }
+      }
+
+      const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+
+      // 上传到后端文件服务，获取后端可访问的远程 URL
+      const fileInfo = await imageInputApi.uploadImage(
+        asset.uri,
+        fileName,
+        asset.type,
+      );
+
+      const selectedImage: SelectedImage = {
+        id: Date.now().toString(),
+        url: fileInfo.url,
+        thumbUrl: asset.uri,
+        name: fileInfo.name || fileName,
+        width,
+        height,
+        size: asset.fileSize || 0,
+        source: 'upload',
+      };
+
+      onImageSelected(selectedImage);
+    } catch (error) {
+      console.warn('Upload image error:', error);
+      Alert.alert('上传失败', error instanceof Error ? error.message : '图片上传失败，请重试');
+    } finally {
+      setUploading(false);
+    }
+  }, [onImageSelected]);
+
   const handleSelectImage = useCallback(async () => {
-    if (loading) return;
+    if (busy) return;
 
     try {
       const result: ImagePickerResponse = await launchImageLibrary({
@@ -105,42 +156,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
       console.warn('Image selection error:', error);
       Alert.alert('错误', '选择图片时发生错误');
     }
-  }, [loading, onImageSelected]);
-
-  const processImage = useCallback(async (asset: any) => {
-    try {
-      // 获取图片尺寸
-      let width = asset.width || 0;
-      let height = asset.height || 0;
-
-      if (!width || !height) {
-        try {
-          const size = await imageInputApi.getImageSize(asset.uri);
-          width = size.width;
-          height = size.height;
-        } catch (e) {
-          // 使用默认值
-          width = 1920;
-          height = 1080;
-        }
-      }
-
-      const selectedImage: SelectedImage = {
-        id: Date.now().toString(),
-        url: asset.uri,
-        name: asset.fileName || `image_${Date.now()}.jpg`,
-        width,
-        height,
-        size: asset.fileSize || 0,
-        source: 'upload',
-      };
-
-      onImageSelected(selectedImage);
-    } catch (error) {
-      console.warn('Process image error:', error);
-      Alert.alert('错误', '处理图片时发生错误');
-    }
-  }, [onImageSelected]);
+  }, [busy, processImage]);
 
   return (
     <TouchableOpacity
@@ -148,7 +164,7 @@ const UploadArea: React.FC<UploadAreaProps> = ({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
-      disabled={loading}
+      disabled={busy}
     >
       <Animated.View
         style={[
@@ -156,10 +172,12 @@ const UploadArea: React.FC<UploadAreaProps> = ({
           { transform: [{ scale: scaleAnim }] },
         ]}
       >
-        {loading ? (
+        {busy ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.loadingText}>正在处理图片...</Text>
+            <Text style={styles.loadingText}>
+              {uploading ? '正在上传图片...' : '正在处理图片...'}
+            </Text>
           </View>
         ) : (
           <>

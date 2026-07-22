@@ -1,5 +1,8 @@
 /**
  * 算法对比弹窗组件
+ *
+ * 调用 Python 后端 /api/v1/algorithm-select/compare 获取多算法元数据对比，
+ * 展示参数量/计算量/处理耗时等指标，并支持选择其一进入处理流程。
  */
 
 import React, { useEffect, useState } from 'react';
@@ -14,24 +17,37 @@ import {
 } from 'react-native';
 import Icon from '@/components/Icon';
 import { theme } from '@/theme';
-import type { Algorithm, CompareResult } from '@/types/algorithm';
+import type { Algorithm, AlgorithmCompareVO } from '@/types/algorithm';
 import AlgorithmSelectAPI from '@/api/algorithm-select';
 
 interface CompareModalProps {
   visible: boolean;
   algorithms: Algorithm[];
+  /** 待对比图片 URL（可选，传给后端用于实际效果对比） */
+  imageUrl?: string;
   onClose: () => void;
   onSelect: (algorithm: Algorithm) => void;
 }
 
+/** 状态枚举映射（与算法详情页保持一致） */
+const STATUS_LABEL: Record<number, string> = {
+  0: '草稿',
+  1: '测试中',
+  2: '待审核',
+  3: '已发布',
+  4: '已停用',
+  5: '已归档',
+};
+
 const CompareModal: React.FC<CompareModalProps> = ({
   visible,
   algorithms,
+  imageUrl,
   onClose,
   onSelect,
 }) => {
   const [loading, setLoading] = useState(true);
-  const [results, setResults] = useState<CompareResult[]>([]);
+  const [results, setResults] = useState<AlgorithmCompareVO[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,10 +57,10 @@ const CompareModal: React.FC<CompareModalProps> = ({
     setLoading(true);
     setError(null);
 
-    AlgorithmSelectAPI.compare(algorithms.map(a => a.id))
+    AlgorithmSelectAPI.compare(algorithms.map(a => a.id), imageUrl)
       .then(data => {
         if (!cancelled) {
-          setResults(data);
+          setResults(data || []);
           setLoading(false);
         }
       })
@@ -58,13 +74,20 @@ const CompareModal: React.FC<CompareModalProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [visible, algorithms]);
+  }, [visible, algorithms, imageUrl]);
 
-  const renderMetricRow = (label: string, getValue: (r: CompareResult) => string | undefined) => (
+  /** 根据对比结果 ID 找回完整的 Algorithm（用于「使用」按钮跳转） */
+  const findAlgorithm = (id: number): Algorithm | undefined =>
+    algorithms.find(a => a.id === id);
+
+  const renderMetricRow = (
+    label: string,
+    getValue: (r: AlgorithmCompareVO) => string | undefined,
+  ) => (
     <View style={styles.metricRow}>
       <Text style={styles.metricLabel}>{label}</Text>
       {results.map(r => (
-        <Text key={r.algorithm.id} style={styles.metricValue}>
+        <Text key={r.algorithmId} style={styles.metricValue}>
           {getValue(r) ?? '-'}
         </Text>
       ))}
@@ -98,68 +121,47 @@ const CompareModal: React.FC<CompareModalProps> = ({
             <View style={styles.metricRow}>
               <Text style={styles.metricLabel}>算法</Text>
               {results.map(r => (
-                <Text key={r.algorithm.id} style={styles.algorithmName} numberOfLines={2}>
-                  {r.algorithm.name}
+                <Text key={r.algorithmId} style={styles.algorithmName} numberOfLines={2}>
+                  {r.algorithmName}
                 </Text>
               ))}
             </View>
 
-            {/* 类型行 */}
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>类型</Text>
-              {results.map(r => (
-                <Text key={r.algorithm.id} style={styles.metricValue}>
-                  {r.algorithm.type || '-'}
-                </Text>
-              ))}
-            </View>
+            {/* 类型 */}
+            {renderMetricRow('类型', r => r.type)}
 
-            {/* PSNR */}
-            {renderMetricRow('PSNR', r => r.metrics?.psnr?.toFixed(2))}
+            {/* 参数量 */}
+            {renderMetricRow('参数量', r => r.params)}
 
-            {/* SSIM */}
-            {renderMetricRow('SSIM', r => r.metrics?.ssim?.toFixed(4))}
+            {/* 计算量 */}
+            {renderMetricRow('计算量', r => r.flops)}
 
-            {/* 速度 */}
-            {renderMetricRow('速度(ms)', r => r.metrics?.speed?.toFixed(0))}
+            {/* 处理耗时 */}
+            {renderMetricRow('耗时(ms)', r =>
+              r.processTime != null ? String(r.processTime) : undefined,
+            )}
 
-            {/* 评分 */}
-            {renderMetricRow('评分', r => r.metrics?.rating?.toFixed(1))}
-
-            {/* 版本 */}
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>版本</Text>
-              {results.map(r => (
-                <Text key={r.algorithm.id} style={styles.metricValue}>
-                  {r.algorithm.version || '-'}
-                </Text>
-              ))}
-            </View>
-
-            {/* 大小 */}
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>大小</Text>
-              {results.map(r => (
-                <Text key={r.algorithm.id} style={styles.metricValue}>
-                  {r.algorithm.size || '-'}
-                </Text>
-              ))}
-            </View>
+            {/* 状态 */}
+            {renderMetricRow('状态', r => STATUS_LABEL[r.status] ?? String(r.status))}
 
             {/* 操作按钮 */}
             <View style={styles.actionRow}>
-              {results.map(r => (
-                <TouchableOpacity
-                  key={r.algorithm.id}
-                  style={styles.useButton}
-                  onPress={() => {
-                    onSelect(r.algorithm);
-                    onClose();
-                  }}
-                >
-                  <Text style={styles.useButtonText}>使用 {r.algorithm.name}</Text>
-                </TouchableOpacity>
-              ))}
+              {results.map(r => {
+                const algorithm = findAlgorithm(r.algorithmId);
+                if (!algorithm) return null;
+                return (
+                  <TouchableOpacity
+                    key={r.algorithmId}
+                    style={styles.useButton}
+                    onPress={() => {
+                      onSelect(algorithm);
+                      onClose();
+                    }}
+                  >
+                    <Text style={styles.useButtonText}>使用 {r.algorithmName}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </ScrollView>
         )}

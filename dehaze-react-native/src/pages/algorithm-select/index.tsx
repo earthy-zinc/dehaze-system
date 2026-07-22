@@ -26,7 +26,7 @@ import { MainLayout } from '@/layout';
 import { theme } from '@/theme';
 import Icon from '@/components/Icon';
 import type { SelectedImage } from '@/types/image';
-import type { Algorithm, RecommendResult } from '@/types/algorithm';
+import type { Algorithm, AlgorithmRecommendVO, FavoriteVO } from '@/types/algorithm';
 import { AlgorithmAPI } from 'dehaze-sdk-js';
 import AlgorithmSelectAPI from '@/api/algorithm-select';
 
@@ -47,9 +47,9 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
   // 数据状态
   const [tree, setTree] = useState<Algorithm[]>([]);
   const [treeLoading, setTreeLoading] = useState(true);
-  const [recommendations, setRecommendations] = useState<RecommendResult[]>([]);
+  const [recommendations, setRecommendations] = useState<AlgorithmRecommendVO[]>([]);
   const [recommendLoading, setRecommendLoading] = useState(false);
-  const [favorites, setFavorites] = useState<Algorithm[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteVO[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
 
   // UI 状态
@@ -85,6 +85,21 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
     [allLeafAlgorithms],
   );
 
+  /**
+   * 将 Python 后端返回的扁平 VO 解析为 Algorithm：
+   * 优先从算法树中取完整信息，取不到时用 VO 字段构造最小对象
+   */
+  const resolveAlgorithm = useCallback(
+    (id: number, name?: string, type?: string): Algorithm => {
+      const found = findAlgorithmById(id);
+      if (found) {
+        return found;
+      }
+      return { id, parentId: 0, name: name ?? `算法${id}`, type: type ?? '', description: '' };
+    },
+    [findAlgorithmById],
+  );
+
   // 加载算法树
   useEffect(() => {
     setTreeLoading(true);
@@ -118,8 +133,8 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
     AlgorithmSelectAPI.listFavorites()
       .then(data => {
         const favList = data || [];
-        setFavorites(favList.map(r => r.algorithm));
-        setFavoriteIds(new Set(favList.map(r => r.algorithm.id)));
+        setFavorites(favList);
+        setFavoriteIds(new Set(favList.map(r => r.algorithmId)));
       })
       .catch(() => {
         // 收藏服务不可用（Python 后端未启动）时静默失败，不影响页面使用
@@ -154,7 +169,7 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
     (algorithm: Algorithm) => {
       AlgorithmSelectAPI.toggleFavorite(algorithm.id)
         .then(res => {
-          const isFav = res.favorite;
+          const isFav = res.favorited;
           setFavoriteIds(prev => {
             const next = new Set(prev);
             if (isFav) {
@@ -166,10 +181,18 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
           });
           setFavorites(prev =>
             isFav
-              ? prev.some(a => a.id === algorithm.id)
+              ? prev.some(f => f.algorithmId === algorithm.id)
                 ? prev
-                : [...prev, algorithm]
-              : prev.filter(a => a.id !== algorithm.id),
+                : [
+                    ...prev,
+                    {
+                      id: res.favoriteId ?? 0,
+                      userId: 0,
+                      algorithmId: algorithm.id,
+                      algorithmName: algorithm.name,
+                    },
+                  ]
+              : prev.filter(f => f.algorithmId !== algorithm.id),
           );
         })
         .catch(err => {
@@ -287,20 +310,23 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
         <Text style={styles.sectionTitle}>
           为您推荐 Top {recommendations.length} 算法
         </Text>
-        {recommendations.map(r => (
-          <AlgorithmCard
-            key={r.algorithm.id}
-            algorithm={r.algorithm}
-            matchScore={Math.round(r.score * 100)}
-            reason={r.reason}
-            isFavorite={favoriteIds.has(r.algorithm.id)}
-            isSelected={compareIds.has(r.algorithm.id)}
-            onSelect={handleSelect}
-            onToggleFavorite={handleToggleFavorite}
-            onViewDetail={handleViewDetail}
-            onToggleCompare={handleToggleCompare}
-          />
-        ))}
+        {recommendations.map(r => {
+          const algorithm = resolveAlgorithm(r.algorithmId, r.algorithmName, r.type);
+          return (
+            <AlgorithmCard
+              key={r.algorithmId}
+              algorithm={algorithm}
+              matchScore={Math.round(r.score)}
+              reason={r.reason}
+              isFavorite={favoriteIds.has(r.algorithmId)}
+              isSelected={compareIds.has(r.algorithmId)}
+              onSelect={handleSelect}
+              onToggleFavorite={handleToggleFavorite}
+              onViewDetail={handleViewDetail}
+              onToggleCompare={handleToggleCompare}
+            />
+          );
+        })}
       </View>
     );
   };
@@ -344,18 +370,21 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
       <View>
         <Text style={styles.sectionTitle}>已收藏 {favorites.length} 个算法</Text>
-        {favorites.map(algo => (
-          <AlgorithmCard
-            key={algo.id}
-            algorithm={algo}
-            isFavorite={true}
-            isSelected={compareIds.has(algo.id)}
-            onSelect={handleSelect}
-            onToggleFavorite={handleToggleFavorite}
-            onViewDetail={handleViewDetail}
-            onToggleCompare={handleToggleCompare}
-          />
-        ))}
+        {favorites.map(fav => {
+          const algo = resolveAlgorithm(fav.algorithmId, fav.algorithmName);
+          return (
+            <AlgorithmCard
+              key={fav.algorithmId}
+              algorithm={algo}
+              isFavorite={true}
+              isSelected={compareIds.has(fav.algorithmId)}
+              onSelect={handleSelect}
+              onToggleFavorite={handleToggleFavorite}
+              onViewDetail={handleViewDetail}
+              onToggleCompare={handleToggleCompare}
+            />
+          );
+        })}
       </View>
     );
   };
@@ -407,6 +436,7 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
         <CompareModal
           visible={showCompareModal}
           algorithms={compareAlgorithms}
+          imageUrl={hasRemoteImage ? image?.url : undefined}
           onClose={() => setShowCompareModal(false)}
           onSelect={handleSelect}
         />

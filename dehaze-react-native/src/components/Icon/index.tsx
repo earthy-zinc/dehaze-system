@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import { View, StyleSheet, TextStyle } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 interface IconProps {
@@ -8,7 +8,7 @@ interface IconProps {
   color?: string;
   backgroundColor?: string;
   borderRadius?: number;
-  style?: ViewStyle;
+  style?: TextStyle;
 }
 
 // 业务自定义图标名 -> Ionicons 名称映射

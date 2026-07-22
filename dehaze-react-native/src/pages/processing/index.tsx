@@ -40,6 +40,7 @@ import {
   predictSingle,
   DEFAULT_PARAMS,
 } from './services/processingApi';
+import { historyStorage } from '@/pages/image-input/services/historyStorage';
 import ProcessingProgress from './components/ProcessingProgress';
 import ParamsPanel from './components/ParamsPanel';
 import ResultPreview from './components/ResultPreview';
@@ -128,6 +129,24 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
       .then(res => {
         setResult(res);
         setPhase('done');
+
+        // 写入图像输入历史记录（失败不阻塞主流程）
+        historyStorage
+          .addRecord({
+            originalImageUrl: image.url,
+            originalThumbnailUrl: image.thumbUrl,
+            resultImageUrl: res.resultUrl,
+            resultThumbnailUrl: res.resultThumbnailUrl,
+            algorithmId,
+            algorithmName: algorithm?.name,
+            algorithmParams: JSON.stringify(params),
+            processingTime: res.time,
+            status: 1,
+            inputSource: image.source,
+          })
+          .catch(() => {
+            /* 历史记录写入失败不影响处理结果展示 */
+          });
       })
       .catch(err => {
         const isCanceled = err instanceof Error && err.message.includes('取消');
@@ -143,7 +162,7 @@ const ProcessingScreen: React.FC<Props> = ({ route, navigation }) => {
           Alert.alert('处理失败', err instanceof Error ? err.message : '请稍后重试');
         }
       });
-  }, [image, algorithmId, params]);
+  }, [image, algorithmId, algorithm, params]);
 
   /** 取消处理 */
   const handleCancel = useCallback(() => {

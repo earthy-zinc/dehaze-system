@@ -20,10 +20,8 @@ interface AppHeaderProps {
   title?: string;
   showBack?: boolean;
   showMenu?: boolean;
-  showSearch?: boolean;
   onBackPress?: () => void;
   onMenuPress?: () => void;
-  onSearchPress?: () => void;
   rightActions?: React.ReactNode;
   transparent?: boolean;
 }
@@ -32,10 +30,8 @@ const AppHeader: React.FC<AppHeaderProps> = ({
   title = '图像去雾系统',
   showBack = false,
   showMenu = true,
-  showSearch = true,
   onBackPress,
   onMenuPress,
-  onSearchPress,
   rightActions,
   transparent = false,
 }) => {
@@ -81,15 +77,6 @@ const AppHeader: React.FC<AppHeaderProps> = ({
         {/* 右侧区域 */}
         <View style={styles.rightSection}>
           {rightActions}
-          {showSearch && (
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={onSearchPress}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="search" size={22} color={colors.text.primary} />
-            </TouchableOpacity>
-          )}
           {showMenu && (
             <TouchableOpacity
               style={styles.iconButton}
