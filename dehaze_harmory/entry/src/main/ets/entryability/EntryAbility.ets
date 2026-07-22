@@ -3,6 +3,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { window, router } from '@kit.ArkUI';
 import { DehazeSDK, Builder, TokenManager } from 'dehaze-sdk-harmony';
 import { AuthState } from '../common/AppState';
+import { AppConfig } from '../common/Config';
 
 const DOMAIN = 0x0000;
 const TAG = 'EntryAbility';
@@ -15,9 +16,10 @@ export default class EntryAbility extends UIAbility {
       hilog.error(DOMAIN, TAG, 'Failed to set colorMode. Cause: %{public}s', JSON.stringify(err));
     }
 
-    // 初始化 SDK
-    const baseUrl = 'http://127.0.0.1:8989';
-    DehazeSDK.initialize(this.context, new Builder().setBaseUrl(baseUrl).setDebug(true)).then(() => {
+    // 初始化 SDK（后端地址统一从 AppConfig 读取，避免硬编码）
+    DehazeSDK.initialize(this.context, new Builder()
+      .setBaseUrl(AppConfig.BACKEND_BASE_URL)
+      .setDebug(AppConfig.SDK_DEBUG)).then(() => {
       hilog.info(DOMAIN, TAG, 'DehazeSDK initialized');
 
       // 设置 Token 失效回调（跳转登录页）

@@ -202,7 +202,7 @@ struct Login {
 
       // 底部提示
       Column() {
-        Text('默认账号: admin    密码: 123456')
+        Text('图像去雾系统 v1.0.0')
           .fontSize(13)
           .fontColor('#999999')
           .margin({ top: 24 })

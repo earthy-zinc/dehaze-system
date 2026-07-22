@@ -5,6 +5,7 @@
     "pages/ImageInput",
     "pages/AlgorithmSelect",
     "pages/Processing",
-    "pages/Compare"
+    "pages/Compare",
+    "pages/Profile"
   ]
 }

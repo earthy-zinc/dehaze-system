@@ -9,6 +9,7 @@ import { ProcessingContext } from '../common/AppState';
  * - 树形展示算法分类与算法
  * - 点击算法卡片选择
  * - 搜索筛选
+ * - 收藏/取消收藏算法
  * 选中后跳转到去雾处理页
  */
 @Entry
@@ -18,9 +19,13 @@ struct AlgorithmSelect {
   @State loading: boolean = false;
   @State keywords: string = '';
   @State expandedIds: Set<number> = new Set();
+  // 收藏的算法 ID 列表
+  @State favoriteIds: number[] = [];
+  @State favoriteToggling: Set<number> = new Set();
 
   aboutToAppear(): void {
     this.loadAlgorithms();
+    this.loadFavorites();
   }
 
   /** 加载算法列表 */
@@ -36,6 +41,16 @@ struct AlgorithmSelect {
     }
   }
 
+  /** 加载已收藏的算法列表 */
+  async loadFavorites(): Promise<void> {
+    try {
+      const favorites = await AlgorithmAPI.listFavorites();
+      this.favoriteIds = (favorites || []).map((a: Algorithm) => a.id);
+    } catch (e) {
+      // 加载收藏失败静默处理
+    }
+  }
+
   /** 切换展开/收起 */
   toggleExpand(id: number): void {
     if (this.expandedIds.has(id)) {
@@ -45,6 +60,37 @@ struct AlgorithmSelect {
     }
     // 触发刷新
     this.expandedIds = new Set(this.expandedIds);
+  }
+
+  /** 切换收藏 */
+  async toggleFavorite(id: number): Promise<void> {
+    if (this.favoriteToggling.has(id)) {
+      return;
+    }
+    this.favoriteToggling.add(id);
+    this.favoriteToggling = new Set(this.favoriteToggling);
+
+    const wasFavorite = this.favoriteIds.includes(id);
+    try {
+      await AlgorithmAPI.toggleFavorite(id);
+      if (wasFavorite) {
+        this.favoriteIds = this.favoriteIds.filter((fid: number) => fid !== id);
+        promptAction.showToast({ message: '已取消收藏' });
+      } else {
+        this.favoriteIds = [...this.favoriteIds, id];
+        promptAction.showToast({ message: '已收藏' });
+      }
+    } catch (e) {
+      promptAction.showToast({ message: '操作失败，请重试' });
+    } finally {
+      this.favoriteToggling.delete(id);
+      this.favoriteToggling = new Set(this.favoriteToggling);
+    }
+  }
+
+  /** 判断是否已收藏 */
+  isFavorite(id: number): boolean {
+    return this.favoriteIds.includes(id);
   }
 
   /** 选择算法 */
@@ -95,14 +141,27 @@ struct AlgorithmSelect {
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
-        // 叶子节点显示选择按钮
+        // 叶子节点：收藏按钮 + 选择按钮
         if (!algo.children || algo.children.length === 0) {
+          // 收藏按钮
+          Text(this.isFavorite(algo.id) ? '⭐' : '☆')
+            .fontSize(18)
+            .fontColor(this.isFavorite(algo.id) ? '#fa8c16' : '#CCCCCC')
+            .width(32)
+            .height(32)
+            .textAlign(TextAlign.Center)
+            .onClick(() => {
+              this.toggleFavorite(algo.id);
+            })
+
+          // 选择按钮
           Text('选择')
             .fontSize(13)
             .fontColor('#389e3c')
             .padding({ left: 12, right: 12, top: 6, bottom: 6 })
             .border({ width: 1, color: '#389e3c' })
             .borderRadius(16)
+            .margin({ left: 4 })
         }
       }
       .width('100%')

@@ -7,7 +7,7 @@ import { AuthUserInfo, LoginResult } from 'dehaze-sdk-harmony';
  * 基于 AppStorage 实现跨页面状态共享，管理：
  * - 登录态（isLoggedIn）
  * - 当前用户信息（userInfo）
- * - 去雾处理流程中的上下文（原图 URL、选中算法、处理结果）
+ * - 去雾处理流程中的上下文（原图 URL、选中算法、处理结果、GT 参考图、算法参数）
  */
 
 /** AppStorage 键名 */
@@ -18,6 +18,8 @@ export class AppKeys {
   static readonly USER_INFO: string = 'userInfo';
   /** 用户昵称 */
   static readonly NICKNAME: string = 'nickname';
+  /** 用户头像 URL */
+  static readonly AVATAR: string = 'avatar';
   /** 去雾处理-原图 URL */
   static readonly ORIGINAL_URL: string = 'originalUrl';
   /** 去雾处理-原图文件 URI（本地） */
@@ -30,6 +32,10 @@ export class AppKeys {
   static readonly RESULT_URL: string = 'resultUrl';
   /** 去雾处理-处理耗时 */
   static readonly PROCESSING_TIME: string = 'processingTime';
+  /** 去雾处理-GT 参考图 URL（必须是 clean 图） */
+  static readonly GT_URL: string = 'gtUrl';
+  /** 去雾处理-算法参数（JSON 字符串） */
+  static readonly ALGORITHM_PARAMS: string = 'algorithmParams';
 }
 
 /**
@@ -46,11 +52,14 @@ export class AuthState {
       try {
         const userInfo: AuthUserInfo = JSON.parse(userInfoStr);
         AppStorage.setOrCreate<string>(AppKeys.NICKNAME, userInfo.nickname || userInfo.username);
+        AppStorage.setOrCreate<string>(AppKeys.AVATAR, userInfo.avatar || '');
       } catch (e) {
         AppStorage.setOrCreate<string>(AppKeys.NICKNAME, '');
+        AppStorage.setOrCreate<string>(AppKeys.AVATAR, '');
       }
     } else {
       AppStorage.setOrCreate<string>(AppKeys.NICKNAME, '');
+      AppStorage.setOrCreate<string>(AppKeys.AVATAR, '');
     }
   }
 
@@ -65,6 +74,7 @@ export class AuthState {
 
     if (userInfo) {
       AppStorage.setOrCreate<string>(AppKeys.NICKNAME, userInfo.nickname || userInfo.username);
+      AppStorage.setOrCreate<string>(AppKeys.AVATAR, userInfo.avatar || '');
       await TokenManager.setUserInfo(JSON.stringify(userInfo));
     } else if (result.user) {
       AppStorage.setOrCreate<string>(AppKeys.NICKNAME, result.user.nickname || result.user.username);
@@ -76,12 +86,9 @@ export class AuthState {
     await TokenManager.clearToken();
     AppStorage.setOrCreate<boolean>(AppKeys.IS_LOGGED_IN, false);
     AppStorage.setOrCreate<string>(AppKeys.NICKNAME, '');
+    AppStorage.setOrCreate<string>(AppKeys.AVATAR, '');
     // 清除处理上下文
-    AppStorage.setOrCreate<string>(AppKeys.ORIGINAL_URL, '');
-    AppStorage.setOrCreate<string>(AppKeys.ORIGINAL_URI, '');
-    AppStorage.setOrCreate<number>(AppKeys.ALGORITHM_ID, 0);
-    AppStorage.setOrCreate<string>(AppKeys.ALGORITHM_NAME, '');
-    AppStorage.setOrCreate<string>(AppKeys.RESULT_URL, '');
+    ProcessingContext.clear();
   }
 }
 
@@ -89,12 +96,20 @@ export class AuthState {
  * 去雾处理上下文管理
  */
 export class ProcessingContext {
-  /** 设置原图 */
-  static setOriginal(url: string, uri?: string): void {
+  /** 设置原图，可同时设置 GT 参考图（clean 图） */
+  static setOriginal(url: string, uri?: string, gtUrl?: string): void {
     AppStorage.setOrCreate<string>(AppKeys.ORIGINAL_URL, url);
     if (uri) {
       AppStorage.setOrCreate<string>(AppKeys.ORIGINAL_URI, uri);
     }
+    if (gtUrl !== undefined) {
+      AppStorage.setOrCreate<string>(AppKeys.GT_URL, gtUrl);
+    }
+  }
+
+  /** 设置 GT 参考图（必须是 clean 图） */
+  static setGtUrl(gtUrl: string): void {
+    AppStorage.setOrCreate<string>(AppKeys.GT_URL, gtUrl);
   }
 
   /** 获取原图 URL */
@@ -105,6 +120,11 @@ export class ProcessingContext {
   /** 获取原图文件 URI */
   static getOriginalUri(): string {
     return AppStorage.get<string>(AppKeys.ORIGINAL_URI) || '';
+  }
+
+  /** 获取 GT 参考图 URL */
+  static getGtUrl(): string {
+    return AppStorage.get<string>(AppKeys.GT_URL) || '';
   }
 
   /** 设置选中的算法 */
@@ -123,6 +143,16 @@ export class ProcessingContext {
     return AppStorage.get<string>(AppKeys.ALGORITHM_NAME) || '';
   }
 
+  /** 设置算法参数（JSON 字符串） */
+  static setAlgorithmParams(params: string): void {
+    AppStorage.setOrCreate<string>(AppKeys.ALGORITHM_PARAMS, params);
+  }
+
+  /** 获取算法参数（JSON 字符串） */
+  static getAlgorithmParams(): string {
+    return AppStorage.get<string>(AppKeys.ALGORITHM_PARAMS) || '';
+  }
+
   /** 设置处理结果 */
   static setResult(url: string, time?: number): void {
     AppStorage.setOrCreate<string>(AppKeys.RESULT_URL, url);
@@ -139,5 +169,17 @@ export class ProcessingContext {
   /** 获取处理耗时 */
   static getProcessingTime(): number {
     return AppStorage.get<number>(AppKeys.PROCESSING_TIME) || 0;
+  }
+
+  /** 清空处理上下文 */
+  static clear(): void {
+    AppStorage.setOrCreate<string>(AppKeys.ORIGINAL_URL, '');
+    AppStorage.setOrCreate<string>(AppKeys.ORIGINAL_URI, '');
+    AppStorage.setOrCreate<number>(AppKeys.ALGORITHM_ID, 0);
+    AppStorage.setOrCreate<string>(AppKeys.ALGORITHM_NAME, '');
+    AppStorage.setOrCreate<string>(AppKeys.RESULT_URL, '');
+    AppStorage.setOrCreate<number>(AppKeys.PROCESSING_TIME, 0);
+    AppStorage.setOrCreate<string>(AppKeys.GT_URL, '');
+    AppStorage.setOrCreate<string>(AppKeys.ALGORITHM_PARAMS, '');
   }
 }
