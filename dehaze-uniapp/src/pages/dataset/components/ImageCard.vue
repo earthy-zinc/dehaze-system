@@ -1,5 +1,9 @@
 <template>
-  <view class="image-card" :class="{ waterfall: isWaterfall }" @click="handleClick">
+  <view
+    class="image-card"
+    :class="{ waterfall: isWaterfall }"
+    @click="handleClick"
+  >
     <view class="image-wrapper" :style="wrapperStyle">
       <up-image
         :src="image.imageUrl"
@@ -26,10 +30,7 @@
 <script lang="ts" setup>
 import { computed, ref } from "vue";
 import type { DatasetImage } from "../data/datasetData";
-import {
-  IMAGE_TYPE_LABELS,
-  formatHazeLevel,
-} from "../data/datasetData";
+import { IMAGE_TYPE_LABELS, formatHazeLevel } from "../data/datasetData";
 
 interface Props {
   image: DatasetImage;
@@ -48,7 +49,9 @@ const emit = defineEmits<Emits>();
 
 const imageLoaded = ref(false);
 
-const typeLabel = computed(() => IMAGE_TYPE_LABELS[props.image.type] || props.image.type);
+const typeLabel = computed(
+  () => IMAGE_TYPE_LABELS[props.image.type] || props.image.type
+);
 
 const hazeLevelLabel = computed(() => formatHazeLevel(props.image.hazeLevel));
 

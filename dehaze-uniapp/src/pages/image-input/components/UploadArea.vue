@@ -16,7 +16,10 @@
         <up-loading-icon mode="circle" size="32" color="#3b82f6" />
         <text class="progress-text">正在上传... {{ uploadProgress }}%</text>
         <view class="progress-bar">
-          <view class="progress-fill" :style="{ width: uploadProgress + '%' }" />
+          <view
+            class="progress-fill"
+            :style="{ width: uploadProgress + '%' }"
+          />
         </view>
       </view>
     </view>
@@ -101,7 +104,6 @@ const handleChooseImage = () => {
         try {
           const fileInfo = await uploadImage(imageData, (progress) => {
             uploadProgress.value = progress;
-            processingStore.updateUploadProgress(progress);
           });
 
           imageData.fileId = fileInfo.id;

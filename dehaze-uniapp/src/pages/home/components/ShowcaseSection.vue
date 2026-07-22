@@ -5,16 +5,14 @@
       subtitle="智能算法自动识别雾霾程度，精准还原图像细节"
     />
     <view class="comparison-showcase">
-      <view class="comparison-item">
-        <image
-          src="https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/20b8704f-d37e-45b9-a6c8-3c5d297e8a98/image_1763727568_3_3.jpg"
-          mode="widthFix"
-          class="showcase-image"
-        />
-        <view class="comparison-label">
-          <text class="label-before">去雾前</text>
-          <text class="label-divider">→</text>
-          <text class="label-after">去雾后</text>
+      <view class="comparison-pair">
+        <view class="comparison-item">
+          <image :src="hazyUrl" mode="widthFix" class="showcase-image" />
+          <view class="image-label label-hazy">去雾前</view>
+        </view>
+        <view class="comparison-item">
+          <image :src="cleanUrl" mode="widthFix" class="showcase-image" />
+          <view class="image-label label-clean">去雾后</view>
         </view>
       </view>
     </view>
@@ -23,6 +21,11 @@
 
 <script lang="ts" setup>
 import SectionHeader from "@/components/common/SectionHeader.vue";
+import { DATASET_BASE_URL } from "@/api/config";
+
+// 使用真实数据集图片（NH-HAZE-2023 样例）
+const hazyUrl = `${DATASET_BASE_URL}/NH-HAZE-2023/hazy/001.JPG`;
+const cleanUrl = `${DATASET_BASE_URL}/NH-HAZE-2023/clean/001.JPG`;
 </script>
 
 <style lang="scss" scoped>
@@ -38,8 +41,14 @@ import SectionHeader from "@/components/common/SectionHeader.vue";
   box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.15);
 }
 
+.comparison-pair {
+  display: flex;
+  gap: 4rpx;
+}
+
 .comparison-item {
   position: relative;
+  flex: 1;
 }
 
 .showcase-image {
@@ -48,35 +57,24 @@ import SectionHeader from "@/components/common/SectionHeader.vue";
   display: block;
 }
 
-.comparison-label {
+.image-label {
   position: absolute;
-  bottom: 24rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(10rpx);
-  padding: 12rpx 24rpx;
+  top: 16rpx;
+  left: 16rpx;
+  padding: 6rpx 16rpx;
   border-radius: 100rpx;
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
+  font-size: 22rpx;
+  font-weight: 600;
+  backdrop-filter: blur(10rpx);
 }
 
-.label-before {
-  color: #fbbf24;
-  font-size: 24rpx;
-  font-weight: 600;
+.label-hazy {
+  background: rgba(251, 191, 36, 0.85);
+  color: #ffffff;
 }
 
-.label-after {
-  color: #34d399;
-  font-size: 24rpx;
-  font-weight: 600;
-}
-
-.label-divider {
-  color: #9ca3af;
-  font-size: 24rpx;
-  font-weight: 600;
+.label-clean {
+  background: rgba(52, 211, 153, 0.85);
+  color: #ffffff;
 }
 </style>

@@ -7,14 +7,22 @@
         :class="{ active: displayMode === 'grid' }"
         @click="handleModeChange('grid')"
       >
-        <u-icon name="grid" size="18" :color="displayMode === 'grid' ? '#ffffff' : '#6b7280'" />
+        <u-icon
+          name="grid"
+          size="18"
+          :color="displayMode === 'grid' ? '#ffffff' : '#6b7280'"
+        />
       </view>
       <view
         class="mode-btn"
         :class="{ active: displayMode === 'waterfall' }"
         @click="handleModeChange('waterfall')"
       >
-        <u-icon name="list" size="18" :color="displayMode === 'waterfall' ? '#ffffff' : '#6b7280'" />
+        <u-icon
+          name="list"
+          size="18"
+          :color="displayMode === 'waterfall' ? '#ffffff' : '#6b7280'"
+        />
       </view>
     </view>
 
@@ -31,7 +39,11 @@
 
     <!-- 瀑布流模式 -->
     <view v-else class="waterfall-view">
-      <view class="waterfall-column" v-for="(column, index) in waterfallColumns" :key="index">
+      <view
+        class="waterfall-column"
+        v-for="(column, index) in waterfallColumns"
+        :key="index"
+      >
         <ImageCard
           v-for="image in column"
           :key="image.id"
@@ -54,19 +66,32 @@
     </view>
 
     <!-- 加载更多触发器 -->
-    <view v-if="hasMore && !loading && images.length > 0" class="load-more-trigger" id="loadMoreTrigger">
+    <view
+      v-if="hasMore && !loading && images.length > 0"
+      class="load-more-trigger"
+      id="loadMoreTrigger"
+    >
       <text class="load-more-text">上滑加载更多</text>
     </view>
 
     <!-- 全部加载完成 -->
     <view v-if="!hasMore && images.length > 0" class="load-complete">
-      <text class="load-complete-text">已加载全部 {{ images.length }} 张图片</text>
+      <text class="load-complete-text"
+        >已加载全部 {{ images.length }} 张图片</text
+      >
     </view>
   </view>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted, onUnmounted, getCurrentInstance } from "vue";
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onUnmounted,
+  getCurrentInstance,
+} from "vue";
 import ImageCard from "./ImageCard.vue";
 import type { DatasetImage, DisplayMode } from "../data/datasetData";
 
@@ -100,7 +125,10 @@ const columnCount = ref(2);
 
 // 计算瀑布流列数据
 const waterfallColumns = computed(() => {
-  const columns: DatasetImage[][] = Array.from({ length: columnCount.value }, () => []);
+  const columns: DatasetImage[][] = Array.from(
+    { length: columnCount.value },
+    () => []
+  );
   const columnHeights = Array(columnCount.value).fill(0);
 
   props.images.forEach((image) => {
@@ -132,7 +160,7 @@ const updateColumnCount = () => {
   try {
     const sysInfo = uni.getSystemInfoSync();
     const width = sysInfo.windowWidth || 375;
-    
+
     if (width >= 1024) {
       columnCount.value = 4;
     } else if (width >= 768) {
@@ -150,16 +178,18 @@ let observer: UniApp.IntersectionObserver | null = null;
 
 const setupInfiniteScroll = () => {
   if (!instance) return;
-  
+
   observer = uni.createIntersectionObserver(instance.proxy, {
     thresholds: [0.1],
   });
-  
-  observer.relativeToViewport({ bottom: 100 }).observe("#loadMoreTrigger", (res) => {
-    if (res.intersectionRatio > 0 && props.hasMore && !props.loading) {
-      emit("load-more");
-    }
-  });
+
+  observer
+    .relativeToViewport({ bottom: 100 })
+    .observe("#loadMoreTrigger", (res) => {
+      if (res.intersectionRatio > 0 && props.hasMore && !props.loading) {
+        emit("load-more");
+      }
+    });
 };
 
 const destroyObserver = () => {
@@ -171,7 +201,7 @@ const destroyObserver = () => {
 
 onMounted(() => {
   updateColumnCount();
-  
+
   // 延迟设置无限滚动，确保DOM已渲染
   setTimeout(() => {
     setupInfiniteScroll();
@@ -184,21 +214,24 @@ onMounted(() => {
 
 onUnmounted(() => {
   destroyObserver();
-  
+
   // #ifdef H5
   window.removeEventListener("resize", updateColumnCount);
   // #endif
 });
 
 // 监听hasMore变化，重新设置观察器
-watch(() => props.hasMore, (newVal) => {
-  if (newVal) {
-    setTimeout(() => {
-      destroyObserver();
-      setupInfiniteScroll();
-    }, 100);
+watch(
+  () => props.hasMore,
+  (newVal) => {
+    if (newVal) {
+      setTimeout(() => {
+        destroyObserver();
+        setupInfiniteScroll();
+      }, 100);
+    }
   }
-});
+);
 </script>
 
 <style lang="scss" scoped>

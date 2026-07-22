@@ -23,8 +23,16 @@
 
       <form class="form-container" @submit.prevent="handleSubmit">
         <view class="form-group">
-          <view class="input-wrapper" :class="{ focused: focusedField === 'username' }">
-            <u-icon name="account" size="20" color="#9ca3af" class="input-icon" />
+          <view
+            class="input-wrapper"
+            :class="{ focused: focusedField === 'username' }"
+          >
+            <u-icon
+              name="account"
+              size="20"
+              color="#9ca3af"
+              class="input-icon"
+            />
             <input
               v-model="formData.username"
               class="form-input"
@@ -37,7 +45,10 @@
         </view>
 
         <view class="form-group">
-          <view class="input-wrapper" :class="{ focused: focusedField === 'password' }">
+          <view
+            class="input-wrapper"
+            :class="{ focused: focusedField === 'password' }"
+          >
             <u-icon name="lock" size="20" color="#9ca3af" class="input-icon" />
             <input
               v-model="formData.password"
@@ -55,9 +66,17 @@
           <view class="captcha-container">
             <view
               class="input-wrapper captcha-input"
-              :class="{ focused: focusedField === 'captcha', error: !!captchaError }"
+              :class="{
+                focused: focusedField === 'captcha',
+                error: !!captchaError,
+              }"
             >
-              <u-icon name="checkmark-circle" size="20" color="#9ca3af" class="input-icon" />
+              <u-icon
+                name="checkmark-circle"
+                size="20"
+                color="#9ca3af"
+                class="input-icon"
+              />
               <input
                 v-model="formData.captcha"
                 class="form-input"
@@ -95,7 +114,7 @@
 
         <view class="hint-area">
           <u-icon name="info-circle" size="12" color="#9ca3af" />
-          <text class="hint-text">默认账号: admin / 123456</text>
+          <text class="hint-text">请输入账号和密码登录</text>
         </view>
       </form>
     </view>
@@ -254,7 +273,8 @@ $shadow-input-focus: 0 0 0 3px rgba(59, 130, 246, 0.12);
   flex-direction: column;
   min-height: 100vh;
   background: $bg-page;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 
   /* #ifdef H5 */

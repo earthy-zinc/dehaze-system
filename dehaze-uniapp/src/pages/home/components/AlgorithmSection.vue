@@ -33,7 +33,7 @@
       </view>
       <view class="algorithm-visual">
         <image
-          src="https://zhiyan-ai-agent-with-1258344702.cos.ap-guangzhou.tencentcos.cn/with/f49e4b9e-6079-4a0b-8f91-bcab5deec2c7/image_1763727581_1_3.jpg"
+          :src="algorithmImageUrl"
           mode="widthFix"
           class="algorithm-image"
         />
@@ -45,6 +45,7 @@
 <script lang="ts" setup>
 import { ref } from "vue";
 import { homeData } from "../data/homeData";
+import { DATASET_BASE_URL } from "@/api/config";
 
 interface Emits {
   (e: "learn-more"): void;
@@ -52,6 +53,9 @@ interface Emits {
 
 const emit = defineEmits<Emits>();
 const algorithmFeatures = ref(homeData.algorithmFeatures);
+
+// 使用真实数据集图片
+const algorithmImageUrl = `${DATASET_BASE_URL}/NH-HAZE-2023/clean/002.JPG`;
 
 const learnMoreButtonStyle = {
   background: "#ffffff",

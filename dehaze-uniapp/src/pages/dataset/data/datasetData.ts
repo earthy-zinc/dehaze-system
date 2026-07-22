@@ -1,5 +1,5 @@
 /**
- * 数据集管理模块 - 数据类型定义和Mock数据
+ * 数据集管理模块 - 数据类型定义
  *
  * 适配新规范：
  * - 图片 type 字段：clear/hazy/trans/depth/segment
@@ -84,232 +84,6 @@ export interface PaginatedResult<T> {
   total_pages: number;
 }
 
-/** Mock数据集 */
-export const MOCK_DATASETS: Dataset[] = [
-  {
-    id: 1,
-    parentId: 0,
-    name: "RESIDE数据集",
-    description: "大规模真实场景图像去雾数据集，包含室内外多种场景",
-    type: "图像去雾",
-    path: "RESIDE",
-    hasChildren: false,
-    children: [],
-    status: 1,
-    statistics: {
-      itemCount: 13990,
-      fileCount: 13990,
-      totalSize: 0,
-      annotatedCount: 6995,
-      unannotatedCount: 6995,
-      sceneDistribution: {},
-      hazeDistribution: {},
-      formatDistribution: {},
-    },
-    total: 13990,
-    createTime: "2024-01-15T10:30:00",
-    updateTime: "2024-01-15T10:30:00",
-  },
-  {
-    id: 2,
-    parentId: 0,
-    name: "O-HAZE数据集",
-    description: "户外真实雾霾图像数据集，包含45对有雾/无雾图像",
-    type: "图像去雾",
-    path: "O-HAZE",
-    hasChildren: false,
-    children: [],
-    status: 1,
-    statistics: {
-      itemCount: 90,
-      fileCount: 90,
-      totalSize: 0,
-      annotatedCount: 45,
-      unannotatedCount: 45,
-      sceneDistribution: {},
-      hazeDistribution: {},
-      formatDistribution: {},
-    },
-    total: 90,
-    createTime: "2024-01-10T14:20:00",
-    updateTime: "2024-01-10T14:20:00",
-  },
-  {
-    id: 3,
-    parentId: 0,
-    name: "I-HAZE数据集",
-    description: "室内真实雾霾图像数据集，包含35对有雾/无雾图像",
-    type: "图像去雾",
-    path: "I-HAZE",
-    hasChildren: false,
-    children: [],
-    status: 1,
-    statistics: {
-      itemCount: 70,
-      fileCount: 70,
-      totalSize: 0,
-      annotatedCount: 35,
-      unannotatedCount: 35,
-      sceneDistribution: {},
-      hazeDistribution: {},
-      formatDistribution: {},
-    },
-    total: 70,
-    createTime: "2024-01-08T09:15:00",
-    updateTime: "2024-01-08T09:15:00",
-  },
-  {
-    id: 4,
-    parentId: 0,
-    name: "Dense-Haze数据集",
-    description: "密集雾霾场景数据集，专注于极端雾霾条件",
-    type: "图像去雾",
-    path: "Dense-Haze",
-    hasChildren: false,
-    children: [],
-    status: 1,
-    statistics: {
-      itemCount: 110,
-      fileCount: 110,
-      totalSize: 0,
-      annotatedCount: 55,
-      unannotatedCount: 55,
-      sceneDistribution: {},
-      hazeDistribution: {},
-      formatDistribution: {},
-    },
-    total: 110,
-    createTime: "2024-01-05T16:45:00",
-    updateTime: "2024-01-05T16:45:00",
-  },
-  {
-    id: 5,
-    parentId: 0,
-    name: "NH-HAZE数据集",
-    description: "非均匀雾霾数据集，模拟真实世界的复杂雾霾分布",
-    type: "图像去雾",
-    path: "NH-HAZE",
-    hasChildren: false,
-    children: [],
-    status: 1,
-    statistics: {
-      itemCount: 110,
-      fileCount: 110,
-      totalSize: 0,
-      annotatedCount: 55,
-      unannotatedCount: 55,
-      sceneDistribution: {},
-      hazeDistribution: {},
-      formatDistribution: {},
-    },
-    total: 110,
-    createTime: "2024-01-03T11:30:00",
-    updateTime: "2024-01-03T11:30:00",
-  },
-  {
-    id: 6,
-    parentId: 0,
-    name: "SOTS数据集",
-    description: "合成雾霾数据集，包含室内外场景",
-    type: "图像去雾",
-    path: "SOTS",
-    hasChildren: false,
-    children: [],
-    status: 1,
-    statistics: {
-      itemCount: 1000,
-      fileCount: 1000,
-      totalSize: 0,
-      annotatedCount: 500,
-      unannotatedCount: 500,
-      sceneDistribution: {},
-      hazeDistribution: {},
-      formatDistribution: {},
-    },
-    total: 1000,
-    createTime: "2024-01-01T08:00:00",
-    updateTime: "2024-01-01T08:00:00",
-  },
-];
-
-/** 示例图片URL列表 */
-const SAMPLE_IMAGES = [
-  "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1426604966848-d7adac402bff?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1418065460487-3e41a6c84dc5?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1511593358241-7eea1f3c84e5?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1502082553048-f009c37129b9?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1542435503-956c469947f6?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800&h=600&fit=crop",
-  "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800&h=500&fit=crop",
-];
-
-/** 随机图片宽高比（用于瀑布流） */
-const ASPECT_RATIOS = [
-  { width: 1920, height: 1080 },
-  { width: 1920, height: 1280 },
-  { width: 1600, height: 1200 },
-  { width: 1200, height: 1600 },
-  { width: 1080, height: 1920 },
-  { width: 1600, height: 900 },
-];
-
-/** 图片类型候选集合（生成 Mock 数据使用） */
-const MOCK_TYPES: ImageType[] = ["clear", "hazy", "trans", "depth", "segment"];
-
-/** 雾霾程度候选值（生成 Mock 数据使用） */
-const MOCK_HAZE_LEVELS = ["light", "medium", "heavy", "beta=0.5", "beta=0.8", ""];
-
-/**
- * 生成Mock图片数据
- */
-export function generateMockImages(
-  datasetId: number,
-  count: number
-): DatasetImage[] {
-  const images: DatasetImage[] = [];
-  const dataset = MOCK_DATASETS.find((d) => d.id === datasetId);
-  if (!dataset) return images;
-
-  for (let i = 0; i < count; i++) {
-    const type = MOCK_TYPES[i % MOCK_TYPES.length]!;
-    const hazeLevel = MOCK_HAZE_LEVELS[i % MOCK_HAZE_LEVELS.length]!;
-    const aspectRatio = ASPECT_RATIOS[i % ASPECT_RATIOS.length]!;
-    const sampleImage = SAMPLE_IMAGES[i % SAMPLE_IMAGES.length]!;
-
-    images.push({
-      id: datasetId * 1000 + i,
-      datasetId,
-      filename: `${dataset.name.replace(/\s+/g, "_")}_${type}_${String(i + 1).padStart(4, "0")}.jpg`,
-      imageUrl: sampleImage,
-      type,
-      hazeLevel: hazeLevel || undefined,
-      width: aspectRatio.width,
-      height: aspectRatio.height,
-      fileSize: Math.floor(Math.random() * 2000000) + 500000,
-      tags: `${type},${dataset.name}`,
-      description: `${dataset.name}中的${IMAGE_TYPE_LABELS[type] || type}图像`,
-      createTime: new Date(
-        Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000
-      ).toISOString(),
-    });
-  }
-
-  return images;
-}
-
 /**
  * 格式化日期
  */
@@ -369,61 +143,30 @@ export function isImageAnnotated(image: DatasetImage): boolean {
 }
 
 /**
- * 获取数据集列表（优先调用后端，失败时使用 Mock 降级）
+ * 获取数据集列表
  */
 export async function fetchDatasets(
   page = 1,
   search = ""
 ): Promise<{ code: number; data: PaginatedResult<Dataset> }> {
-  try {
-    const { getDatasets } = await import("@/api/dataset");
-    const result = await getDatasets(page, search);
-    return { code: 0, data: result };
-  } catch (error) {
-    console.warn("[Dataset] 后端不可用，使用 Mock 数据:", error);
-
-    // Mock 降级
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    let filtered = [...MOCK_DATASETS];
-    if (search) {
-      const kw = search.toLowerCase();
-      filtered = filtered.filter((d) => d.name.toLowerCase().includes(kw) || d.description?.toLowerCase().includes(kw));
-    }
-    const pageSize = 10;
-    const start = (page - 1) * pageSize;
-    return {
-      code: 0,
-      data: {
-        list: filtered.slice(start, start + pageSize),
-        total: filtered.length,
-        page,
-        page_size: pageSize,
-        total_pages: Math.ceil(filtered.length / pageSize),
-      },
-    };
-  }
+  const { getDatasets } = await import("@/api/dataset");
+  const result = await getDatasets(page, search);
+  return { code: 0, data: result };
 }
 
 /**
- * 获取数据集详情（优先调用后端，失败时使用 Mock 降级）
+ * 获取数据集详情
  */
 export async function fetchDatasetDetail(
   datasetId: number
 ): Promise<{ code: number; data?: Dataset; message?: string }> {
-  try {
-    const { getDatasetDetail } = await import("@/api/dataset");
-    const detail = await getDatasetDetail(datasetId);
-    return { code: 0, data: detail };
-  } catch {
-    // Mock 降级
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const dataset = MOCK_DATASETS.find((d) => d.id === datasetId);
-    return dataset ? { code: 0, data: dataset } : { code: 404, message: "数据集不存在" };
-  }
+  const { getDatasetDetail } = await import("@/api/dataset");
+  const detail = await getDatasetDetail(datasetId);
+  return { code: 0, data: detail };
 }
 
 /**
- * 获取数据集图片（优先调用后端，失败时使用 Mock 降级）
+ * 获取数据集图片
  */
 export async function fetchDatasetImages(
   datasetId: number,
@@ -431,53 +174,24 @@ export async function fetchDatasetImages(
   annotationFilter: AnnotationFilter = "annotated",
   search = ""
 ): Promise<{ code: number; data: PaginatedResult<DatasetImage> }> {
-  try {
-    const { getDatasetItems } = await import("@/api/dataset");
-    const result = await getDatasetItems(datasetId, {
-      page,
-      page_size: 20,
-      annotation_filter: annotationFilter,
-      search: search || undefined,
-    });
+  const { getDatasetItems } = await import("@/api/dataset");
+  const result = await getDatasetItems(datasetId, {
+    page,
+    page_size: 20,
+    annotation_filter: annotationFilter,
+    search: search || undefined,
+  });
 
-    // 后端与前端统一使用 camelCase，无需转换
-    return {
-      code: 0,
-      data: {
-        list: result.list as DatasetImage[],
-        total: result.total,
-        page: result.page,
-        page_size: result.page_size,
-        total_pages: result.total_pages,
-      },
-    };
-  } catch {
-    // Mock 降级
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    let allImages = generateMockImages(datasetId, 60);
-    // 按标注状态过滤
-    allImages = allImages.filter((img) => {
-      return annotationFilter === "annotated"
-        ? isImageAnnotated(img)
-        : !isImageAnnotated(img);
-    });
-    if (search) {
-      const kw = search.toLowerCase();
-      allImages = allImages.filter((img) => img.filename.toLowerCase().includes(kw) || img.tags?.toLowerCase().includes(kw));
-    }
-    const pageSize = 20;
-    const start = (page - 1) * pageSize;
-    return {
-      code: 0,
-      data: {
-        list: allImages.slice(start, start + pageSize),
-        total: allImages.length,
-        page,
-        page_size: pageSize,
-        total_pages: Math.ceil(allImages.length / pageSize),
-      },
-    };
-  }
+  return {
+    code: 0,
+    data: {
+      list: result.list as DatasetImage[],
+      total: result.total,
+      page: result.page,
+      page_size: result.page_size,
+      total_pages: result.total_pages,
+    },
+  };
 }
 
 /** 图片类型标签映射（数据集 type 字段） */

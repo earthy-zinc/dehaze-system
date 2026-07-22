@@ -122,19 +122,27 @@
         <view class="viewer-info">
           <view class="info-row">
             <text class="info-label">类型:</text>
-            <text class="info-value">{{ getTypeLabel(selectedImage.type) }}</text>
+            <text class="info-value">{{
+              getTypeLabel(selectedImage.type)
+            }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">雾霾程度:</text>
-            <text class="info-value">{{ getHazeLevelLabel(selectedImage.hazeLevel) }}</text>
+            <text class="info-value">{{
+              getHazeLevelLabel(selectedImage.hazeLevel)
+            }}</text>
           </view>
           <view class="info-row">
             <text class="info-label">尺寸:</text>
-            <text class="info-value">{{ selectedImage.width }} × {{ selectedImage.height }}</text>
+            <text class="info-value"
+              >{{ selectedImage.width }} × {{ selectedImage.height }}</text
+            >
           </view>
           <view class="info-row">
             <text class="info-label">大小:</text>
-            <text class="info-value">{{ formatFileSize(selectedImage.fileSize) }}</text>
+            <text class="info-value">{{
+              formatFileSize(selectedImage.fileSize)
+            }}</text>
           </view>
           <view v-if="selectedImage.tags" class="info-row">
             <text class="info-label">标签:</text>
@@ -218,7 +226,10 @@ const annotationCounts = computed<AnnotationCounts>(() => {
     return { all: 0, annotated: 0, unannotated: 0 };
   }
   return {
-    all: currentDataset.value.total ?? currentDataset.value.statistics?.itemCount ?? 0,
+    all:
+      currentDataset.value.total ??
+      currentDataset.value.statistics?.itemCount ??
+      0,
     annotated: currentDataset.value.statistics?.annotatedCount ?? 0,
     unannotated: currentDataset.value.statistics?.unannotatedCount ?? 0,
   };

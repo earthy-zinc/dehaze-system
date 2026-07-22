@@ -15,6 +15,11 @@ export default defineConfig({
         // WebSocket 代理（处理进度推送）
         ws: true,
       },
+      "/dataset": {
+        target: "http://127.0.0.1:9000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/dataset/, ""),
+      },
     },
   },
   css: {

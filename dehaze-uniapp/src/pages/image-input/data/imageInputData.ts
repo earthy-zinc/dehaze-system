@@ -1,6 +1,8 @@
 /**
- * 图像输入模块 - 数据类型定义和Mock数据
+ * 图像输入模块 - 数据类型定义和样例数据
  */
+
+import { DATASET_BASE_URL } from "@/api/config";
 
 /** 输入方式 */
 export type InputMethod = "upload" | "camera" | "sample" | "history";
@@ -24,6 +26,8 @@ export interface SampleImage {
   id: number;
   name: string;
   url: string;
+  /** 对应的无雾GT图片URL（用于指标评估参考） */
+  cleanUrl?: string;
   category: FogLevel;
   difficulty: Difficulty;
   scene?: string;
@@ -42,17 +46,6 @@ export interface ImageData {
   size: number;
   name: string;
   sampleInfo?: SampleImage;
-}
-
-/** 历史记录 */
-export interface HistoryRecord {
-  id: number;
-  thumbnail: string;
-  resultThumbnail?: string;
-  fileName: string;
-  algorithm?: string;
-  timestamp: string;
-  status: "success" | "failed";
 }
 
 /** 分类Tab配置 */
@@ -98,195 +91,60 @@ export const CATEGORY_TABS: CategoryTab[] = [
   { key: "special", label: "特殊场景" },
 ];
 
-/** 样例图片库数据 */
+/** NH-HAZE-2023 数据集基础路径 */
+const NH_HAZE_HAZY = `${DATASET_BASE_URL}/NH-HAZE-2023/hazy`;
+const NH_HAZE_CLEAN = `${DATASET_BASE_URL}/NH-HAZE-2023/clean`;
+
+/** 构建样例图片数据 */
+function makeSample(
+  id: number,
+  num: string,
+  category: Exclude<FogLevel, "all">,
+  difficulty: Difficulty,
+  scene: string,
+  recommendAlgorithm: string
+): SampleImage {
+  return {
+    id,
+    name: `${difficulty}雾霾-${scene}`,
+    url: `${NH_HAZE_HAZY}/${num}.JPG`,
+    cleanUrl: `${NH_HAZE_CLEAN}/${num}.JPG`,
+    category,
+    difficulty,
+    scene,
+    recommendAlgorithm,
+  };
+}
+
+/** 样例图片库数据（使用 NH-HAZE-2023 真实雾图数据集） */
 export const SAMPLE_IMAGES: Record<Exclude<FogLevel, "all">, SampleImage[]> = {
   light: [
-    {
-      id: 1,
-      name: "轻度雾霾-城市街道",
-      url: "https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800",
-      category: "light",
-      difficulty: "简单",
-      scene: "城市",
-      recommendAlgorithm: "DCP",
-    },
-    {
-      id: 2,
-      name: "轻度雾霾-公园景观",
-      url: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800",
-      category: "light",
-      difficulty: "简单",
-      scene: "公园",
-      recommendAlgorithm: "DCP",
-    },
-    {
-      id: 3,
-      name: "轻度雾霾-建筑物",
-      url: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800",
-      category: "light",
-      difficulty: "简单",
-      scene: "建筑",
-      recommendAlgorithm: "AOD-Net",
-    },
-    {
-      id: 4,
-      name: "轻度雾霾-山景",
-      url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800",
-      category: "light",
-      difficulty: "简单",
-      scene: "山景",
-      recommendAlgorithm: "DCP",
-    },
-    {
-      id: 5,
-      name: "轻度雾霾-湖泊",
-      url: "https://images.unsplash.com/photo-1439066615861-d1af74d74000?w=800",
-      category: "light",
-      difficulty: "简单",
-      scene: "湖泊",
-      recommendAlgorithm: "DCP",
-    },
+    makeSample(1, "001", "light", "简单", "城市街道", "DCP"),
+    makeSample(2, "002", "light", "简单", "建筑景观", "DCP"),
+    makeSample(3, "003", "light", "简单", "室外场景", "AOD-Net"),
+    makeSample(4, "004", "light", "简单", "街景", "DCP"),
+    makeSample(5, "005", "light", "简单", "自然景观", "DCP"),
   ],
   medium: [
-    {
-      id: 6,
-      name: "中度雾霾-城市天际线",
-      url: "https://images.unsplash.com/photo-1480714378408-67cf0d13bc1b?w=800",
-      category: "medium",
-      difficulty: "中等",
-      scene: "城市",
-      recommendAlgorithm: "DehazeNet",
-    },
-    {
-      id: 7,
-      name: "中度雾霾-道路",
-      url: "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800",
-      category: "medium",
-      difficulty: "中等",
-      scene: "道路",
-      recommendAlgorithm: "AOD-Net",
-    },
-    {
-      id: 8,
-      name: "中度雾霾-森林",
-      url: "https://images.unsplash.com/photo-1448375240586-882707db888b?w=800",
-      category: "medium",
-      difficulty: "中等",
-      scene: "森林",
-      recommendAlgorithm: "DehazeNet",
-    },
-    {
-      id: 9,
-      name: "中度雾霾-海岸",
-      url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800",
-      category: "medium",
-      difficulty: "中等",
-      scene: "海岸",
-      recommendAlgorithm: "FFA-Net",
-    },
-    {
-      id: 10,
-      name: "中度雾霾-乡村",
-      url: "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=800",
-      category: "medium",
-      difficulty: "中等",
-      scene: "乡村",
-      recommendAlgorithm: "DehazeNet",
-    },
+    makeSample(6, "006", "medium", "中等", "城市天际线", "DehazeNet"),
+    makeSample(7, "007", "medium", "中等", "道路", "AOD-Net"),
+    makeSample(8, "008", "medium", "中等", "远景", "DehazeNet"),
+    makeSample(9, "009", "medium", "中等", "开阔地带", "FFA-Net"),
+    makeSample(10, "010", "medium", "中等", "室外场景", "DehazeNet"),
   ],
   heavy: [
-    {
-      id: 11,
-      name: "重度雾霾-城市中心",
-      url: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800",
-      category: "heavy",
-      difficulty: "困难",
-      scene: "城市",
-      recommendAlgorithm: "FFA-Net",
-    },
-    {
-      id: 12,
-      name: "重度雾霾-高速公路",
-      url: "https://images.unsplash.com/photo-1465447142348-e9952c393450?w=800",
-      category: "heavy",
-      difficulty: "困难",
-      scene: "道路",
-      recommendAlgorithm: "GridDehazeNet",
-    },
-    {
-      id: 13,
-      name: "重度雾霾-山区",
-      url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800",
-      category: "heavy",
-      difficulty: "困难",
-      scene: "山区",
-      recommendAlgorithm: "FFA-Net",
-    },
-    {
-      id: 14,
-      name: "重度雾霾-港口",
-      url: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=800",
-      category: "heavy",
-      difficulty: "困难",
-      scene: "港口",
-      recommendAlgorithm: "GridDehazeNet",
-    },
-    {
-      id: 15,
-      name: "重度雾霾-工业区",
-      url: "https://images.unsplash.com/photo-1513002749550-c59d786b8e6c?w=800",
-      category: "heavy",
-      difficulty: "困难",
-      scene: "工业",
-      recommendAlgorithm: "FFA-Net",
-    },
+    makeSample(11, "011", "heavy", "困难", "城市中心", "FFA-Net"),
+    makeSample(12, "012", "heavy", "困难", "街景", "GridDehazeNet"),
+    makeSample(13, "013", "heavy", "困难", "远景", "FFA-Net"),
+    makeSample(14, "014", "heavy", "困难", "开阔地带", "GridDehazeNet"),
+    makeSample(15, "015", "heavy", "困难", "建筑群", "FFA-Net"),
   ],
   special: [
-    {
-      id: 16,
-      name: "特殊场景-夜景雾霾",
-      url: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=800",
-      category: "special",
-      difficulty: "困难",
-      scene: "夜景",
-      recommendAlgorithm: "MSBDN",
-    },
-    {
-      id: 17,
-      name: "特殊场景-逆光雾霾",
-      url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800",
-      category: "special",
-      difficulty: "困难",
-      scene: "逆光",
-      recommendAlgorithm: "FFA-Net",
-    },
-    {
-      id: 18,
-      name: "特殊场景-雨雾",
-      url: "https://images.unsplash.com/photo-1428908728789-d2de25dbd4e2?w=800",
-      category: "special",
-      difficulty: "中等",
-      scene: "雨雾",
-      recommendAlgorithm: "DehazeNet",
-    },
-    {
-      id: 19,
-      name: "特殊场景-晨雾",
-      url: "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800",
-      category: "special",
-      difficulty: "简单",
-      scene: "晨雾",
-      recommendAlgorithm: "DCP",
-    },
-    {
-      id: 20,
-      name: "特殊场景-雪雾",
-      url: "https://images.unsplash.com/photo-1491002052546-bf38f186af56?w=800",
-      category: "special",
-      difficulty: "中等",
-      scene: "雪雾",
-      recommendAlgorithm: "AOD-Net",
-    },
+    makeSample(16, "016", "special", "困难", "特殊场景", "MSBDN"),
+    makeSample(17, "017", "special", "困难", "特殊场景", "FFA-Net"),
+    makeSample(18, "018", "special", "中等", "特殊场景", "DehazeNet"),
+    makeSample(19, "019", "special", "简单", "特殊场景", "DCP"),
+    makeSample(20, "020", "special", "中等", "特殊场景", "AOD-Net"),
   ],
 };
 
@@ -328,101 +186,6 @@ export const DIFFICULTY_BG_COLORS: Record<Difficulty, string> = {
   困难: "#fee2e2",
 };
 
-// ==================== 历史记录管理 ====================
-
-const STORAGE_KEY = "dehaze_history";
-const MAX_RECORDS = 20;
-
-/** 获取历史记录 */
-export function getHistoryRecords(): HistoryRecord[] {
-  try {
-    const data = uni.getStorageSync(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    console.error("读取历史记录失败:", e);
-    return [];
-  }
-}
-
-/** 保存历史记录 */
-export function saveHistoryRecord(record: Omit<HistoryRecord, "id">): void {
-  try {
-    const history = getHistoryRecords();
-    const newRecord: HistoryRecord = {
-      ...record,
-      id: Date.now(),
-    };
-    history.unshift(newRecord);
-
-    // 限制记录数量
-    if (history.length > MAX_RECORDS) {
-      history.splice(MAX_RECORDS);
-    }
-
-    uni.setStorageSync(STORAGE_KEY, JSON.stringify(history));
-  } catch (e) {
-    console.error("保存历史记录失败:", e);
-  }
-}
-
-/** 删除历史记录 */
-export function deleteHistoryRecord(id: number): void {
-  try {
-    const history = getHistoryRecords();
-    const filtered = history.filter((record) => record.id !== id);
-    uni.setStorageSync(STORAGE_KEY, JSON.stringify(filtered));
-  } catch (e) {
-    console.error("删除历史记录失败:", e);
-  }
-}
-
-/** 清空历史记录 */
-export function clearHistoryRecords(): void {
-  try {
-    uni.removeStorageSync(STORAGE_KEY);
-  } catch (e) {
-    console.error("清空历史记录失败:", e);
-  }
-}
-
-/** 按时间分组历史记录 */
-export interface GroupedHistory {
-  title: string;
-  records: HistoryRecord[];
-}
-
-export function groupHistoryByTime(
-  records: HistoryRecord[]
-): GroupedHistory[] {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-  const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-  const groups: GroupedHistory[] = [
-    { title: "今天", records: [] },
-    { title: "昨天", records: [] },
-    { title: "最近7天", records: [] },
-    { title: "更早", records: [] },
-  ];
-
-  records.forEach((record) => {
-    const recordDate = new Date(record.timestamp);
-    if (recordDate >= today) {
-      groups[0].records.push(record);
-    } else if (recordDate >= yesterday) {
-      groups[1].records.push(record);
-    } else if (recordDate >= weekAgo) {
-      groups[2].records.push(record);
-    } else {
-      groups[3].records.push(record);
-    }
-  });
-
-  // 过滤空分组
-  return groups.filter((group) => group.records.length > 0);
-}
-
 // ==================== 工具函数 ====================
 
 /** 格式化文件大小 */
@@ -433,9 +196,11 @@ export function formatFileSize(bytes: number): string {
   return (bytes / (1024 * 1024)).toFixed(2) + " MB";
 }
 
-/** 格式化时间 */
+/** 格式化时间（相对时间） */
 export function formatTime(timestamp: string): string {
+  if (!timestamp) return "-";
   const date = new Date(timestamp);
+  if (isNaN(date.getTime())) return "-";
   const now = new Date();
   const diff = now.getTime() - date.getTime();
 

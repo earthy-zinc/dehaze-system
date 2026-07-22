@@ -31,7 +31,6 @@ import { ref, onMounted } from "vue";
 
 interface Emits {
   (e: "toggle-menu"): void;
-  (e: "search"): void;
 }
 
 const emit = defineEmits<Emits>();
@@ -54,10 +53,9 @@ const goHome = () => {
   uni.switchTab({ url: "/pages/home/index" });
 };
 
-/** 搜索按钮点击 */
+/** 搜索按钮点击 - 跳转到算法选择页（该页面已实现算法搜索） */
 const handleSearch = () => {
-  emit("search");
-  uni.showToast({ title: "搜索功能开发中", icon: "none" });
+  uni.navigateTo({ url: "/pages/algorithm-select/index" });
 };
 
 /** 切换菜单 */

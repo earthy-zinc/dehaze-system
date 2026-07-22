@@ -12,6 +12,25 @@
         </view>
       </view>
 
+      <!-- 搜索框 -->
+      <view class="search-bar">
+        <u-icon name="search" size="18" color="#9ca3af" />
+        <input
+          v-model="searchKeyword"
+          class="search-input"
+          type="text"
+          placeholder="搜索算法名称、类型或描述"
+          placeholder-class="search-placeholder"
+        />
+        <view
+          v-if="searchKeyword"
+          class="search-clear"
+          @click="searchKeyword = ''"
+        >
+          <u-icon name="close-circle-fill" size="16" color="#9ca3af" />
+        </view>
+      </view>
+
       <!-- 已选图片预览 -->
       <view v-if="processingStore.hasImage" class="image-preview-section">
         <text class="section-label">已选图片</text>
@@ -26,7 +45,8 @@
               {{ processingStore.currentImage?.name || "图片" }}
             </text>
             <text class="preview-size">
-              {{ processingStore.currentImage?.width }} × {{ processingStore.currentImage?.height }}
+              {{ processingStore.currentImage?.width }} ×
+              {{ processingStore.currentImage?.height }}
             </text>
           </view>
         </view>
@@ -40,10 +60,13 @@
 
       <!-- 算法列表 -->
       <view v-else class="algorithm-section">
-        <text class="section-label">可用算法 ({{ algorithmList.length }})</text>
+        <text class="section-label"
+          >可用算法 ({{ filteredList.length
+          }}{{ searchKeyword ? "/" + algorithmList.length : "" }})</text
+        >
         <view class="algorithm-list">
           <view
-            v-for="algorithm in algorithmList"
+            v-for="algorithm in filteredList"
             :key="algorithm.id"
             class="algorithm-card"
             :class="{ selected: selectedId === algorithm.id }"
@@ -52,26 +75,41 @@
             <view class="algorithm-header">
               <view class="algorithm-name">
                 <text class="name-text">{{ algorithm.name }}</text>
-                <text class="type-badge">{{ algorithm.type || "未知类型" }}</text>
+                <text class="type-badge">{{
+                  algorithm.type || "未知类型"
+                }}</text>
               </view>
               <view v-if="selectedId === algorithm.id" class="check-icon">
-                <u-icon name="checkmark-circle-fill" size="24" color="#8b5cf6" />
+                <u-icon
+                  name="checkmark-circle-fill"
+                  size="24"
+                  color="#8b5cf6"
+                />
               </view>
             </view>
             <text class="algorithm-desc">
               {{ algorithm.description || "暂无描述" }}
             </text>
             <view class="algorithm-meta">
-              <text v-if="algorithm.version" class="meta-item">v{{ algorithm.version }}</text>
-              <text v-if="algorithm.flops" class="meta-item">{{ algorithm.flops }}</text>
-              <text v-if="algorithm.size" class="meta-item">{{ algorithm.size }}</text>
+              <text v-if="algorithm.version" class="meta-item"
+                >v{{ algorithm.version }}</text
+              >
+              <text v-if="algorithm.flops" class="meta-item">{{
+                algorithm.flops
+              }}</text>
+              <text v-if="algorithm.size" class="meta-item">{{
+                algorithm.size
+              }}</text>
             </view>
           </view>
         </view>
 
         <!-- 空状态 -->
-        <view v-if="algorithmList.length === 0" class="empty-state">
-          <up-empty mode="search" text="暂无可用算法" />
+        <view v-if="filteredList.length === 0" class="empty-state">
+          <up-empty
+            :mode="searchKeyword ? 'search' : 'data'"
+            :text="searchKeyword ? '未找到匹配的算法' : '暂无可用算法'"
+          />
         </view>
       </view>
 
@@ -104,7 +142,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore } from "@/store/processing";
 import { getAlgorithmList } from "@/api/algorithm";
@@ -118,6 +156,21 @@ const error = ref("");
 const algorithmList = ref<Algorithm[]>([]);
 const selectedId = ref<number | null>(null);
 const selectedAlgorithm = ref<Algorithm | null>(null);
+const searchKeyword = ref("");
+
+// ==================== 计算属性 ====================
+
+/** 按关键词过滤算法列表 */
+const filteredList = computed<Algorithm[]>(() => {
+  const kw = searchKeyword.value.trim().toLowerCase();
+  if (!kw) return algorithmList.value;
+  return algorithmList.value.filter(
+    (a) =>
+      a.name.toLowerCase().includes(kw) ||
+      (a.type || "").toLowerCase().includes(kw) ||
+      (a.description || "").toLowerCase().includes(kw)
+  );
+});
 
 // ==================== 方法 ====================
 
@@ -211,13 +264,60 @@ onMounted(() => {
   justify-content: center;
 }
 
-.header-text { flex: 1; }
-.header-title { display: block; font-size: 36rpx; font-weight: 700; color: #1f2937; margin-bottom: 8rpx; }
-.header-subtitle { display: block; font-size: 26rpx; color: #6b7280; }
+.header-text {
+  flex: 1;
+}
+.header-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+.header-subtitle {
+  display: block;
+  font-size: 26rpx;
+  color: #6b7280;
+}
+
+/* 搜索框 */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #1f2937;
+}
+
+.search-placeholder {
+  color: #9ca3af;
+  font-size: 28rpx;
+}
+
+.search-clear {
+  padding: 8rpx;
+}
 
 /* 图片预览 */
-.image-preview-section { margin-bottom: 24rpx; }
-.section-label { font-size: 28rpx; font-weight: 600; color: #374151; margin-bottom: 16rpx; display: block; }
+.image-preview-section {
+  margin-bottom: 24rpx;
+}
+.section-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 16rpx;
+  display: block;
+}
 
 .preview-card {
   display: flex;
@@ -259,8 +359,15 @@ onMounted(() => {
 }
 
 /* 算法列表 */
-.algorithm-section { margin-bottom: 24rpx; }
-.algorithm-list { display: flex; flex-direction: column; gap: 20rpx; margin-top: 16rpx; }
+.algorithm-section {
+  margin-bottom: 24rpx;
+}
+.algorithm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 16rpx;
+}
 
 .algorithm-card {
   background: #ffffff;
@@ -276,7 +383,9 @@ onMounted(() => {
     box-shadow: 0 4rpx 16rpx rgba(139, 92, 246, 0.15);
   }
 
-  &:active { transform: scale(0.98); }
+  &:active {
+    transform: scale(0.98);
+  }
 }
 
 .algorithm-header {
@@ -309,7 +418,9 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.check-icon { flex-shrink: 0; }
+.check-icon {
+  flex-shrink: 0;
+}
 
 .algorithm-desc {
   display: block;
@@ -319,13 +430,33 @@ onMounted(() => {
   margin-bottom: 12rpx;
 }
 
-.algorithm-meta { display: flex; gap: 16rpx; }
-.meta-item { font-size: 22rpx; color: #9ca3af; background: #f3f4f6; padding: 4rpx 12rpx; border-radius: 8rpx; }
+.algorithm-meta {
+  display: flex;
+  gap: 16rpx;
+}
+.meta-item {
+  font-size: 22rpx;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
 
 /* 加载/空/错误 */
-.loading-container { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.loading-text { margin-top: 24rpx; font-size: 28rpx; color: #9ca3af; }
-.empty-state { padding: 80rpx 0; }
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.loading-text {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
+.empty-state {
+  padding: 80rpx 0;
+}
 
 .error-state {
   display: flex;
@@ -334,8 +465,19 @@ onMounted(() => {
   padding: 80rpx 0;
 }
 
-.error-text { font-size: 28rpx; color: #ef4444; margin-bottom: 24rpx; }
-.retry-btn { padding: 16rpx 48rpx; background: #8b5cf6; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; }
+.error-text {
+  font-size: 28rpx;
+  color: #ef4444;
+  margin-bottom: 24rpx;
+}
+.retry-btn {
+  padding: 16rpx 48rpx;
+  background: #8b5cf6;
+  color: #fff;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}
 
 /* 底部操作栏 */
 .bottom-bar {

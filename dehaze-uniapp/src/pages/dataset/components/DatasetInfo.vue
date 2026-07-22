@@ -29,9 +29,15 @@ interface Props {
 
 const props = defineProps<Props>();
 
-const totalCount = computed(() => props.dataset.total ?? props.dataset.statistics?.itemCount ?? 0);
-const annotatedCount = computed(() => props.dataset.statistics?.annotatedCount ?? 0);
-const unannotatedCount = computed(() => props.dataset.statistics?.unannotatedCount ?? 0);
+const totalCount = computed(
+  () => props.dataset.total ?? props.dataset.statistics?.itemCount ?? 0
+);
+const annotatedCount = computed(
+  () => props.dataset.statistics?.annotatedCount ?? 0
+);
+const unannotatedCount = computed(
+  () => props.dataset.statistics?.unannotatedCount ?? 0
+);
 </script>
 
 <style lang="scss" scoped>

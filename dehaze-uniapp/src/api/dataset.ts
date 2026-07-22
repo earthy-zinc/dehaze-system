@@ -92,7 +92,10 @@ export interface PaginatedResult<T> {
 /** 获取数据集列表 */
 export async function getDatasets(page = 1, search = "") {
   return get<PaginatedResult<Dataset>>("/datasets", {
-    data: { page, page_size: 10, search: search || undefined } as Record<string, unknown>,
+    data: { page, page_size: 10, search: search || undefined } as Record<
+      string,
+      unknown
+    >,
   });
 }
 
@@ -116,7 +119,9 @@ export async function getDatasetItems(
   if (query.search) {
     params.search = query.search;
   }
-  return get<PaginatedResult<DatasetItem>>(`/datasets/${datasetId}/items`, { data: params });
+  return get<PaginatedResult<DatasetItem>>(`/datasets/${datasetId}/items`, {
+    data: params,
+  });
 }
 
 /** 新增数据集 */

@@ -44,7 +44,9 @@ export interface AlgorithmOption {
 // ==================== API 方法 ====================
 
 /** 获取算法列表 */
-export async function getAlgorithmList(query?: AlgorithmQuery): Promise<Algorithm[]> {
+export async function getAlgorithmList(
+  query?: AlgorithmQuery
+): Promise<Algorithm[]> {
   return get<Algorithm[]>("/algorithms", {
     data: query as Record<string, unknown>,
   });

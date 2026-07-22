@@ -68,7 +68,8 @@ const handleStepClick = (target: string) => {
   const routeMap: Record<string, string> = {
     "image-input": "/pages/image-input/index",
     "algorithm-select": "/pages/algorithm-select/index",
-    processing: "/pages/processing/index",
+    // 处理步骤需先选图选算法，引导到图像输入
+    processing: "/pages/image-input/index",
   };
 
   const url = routeMap[target];
@@ -80,14 +81,17 @@ const handleStepClick = (target: string) => {
 };
 
 const handleToolClick = (tool: ToolItem) => {
-  // 根据工具名称跳转
+  // 使用 tool.target 字段做路由映射
   const toolRoutes: Record<string, string> = {
-    "图像输入": "/pages/image-input/index",
-    "数据集管理": "/pages/dataset/index",
-    "算法管理": "/pages/algorithm-select/index",
+    "side-by-side": "/pages/side-by-side/index",
+    overlay: "/pages/overlay/index",
+    magnifier: "/pages/magnifier/index",
+    filter: "/pages/filter/index",
+    metrics: "/pages/metrics/index",
+    dataset: "/pages/dataset/index",
   };
 
-  const url = toolRoutes[tool.title];
+  const url = toolRoutes[tool.target];
   if (url) {
     uni.navigateTo({ url });
   } else {

@@ -2,6 +2,7 @@
   <view class="dataset-card" @click="handleClick">
     <view class="card-thumbnail">
       <up-image
+        v-if="thumbnailUrl"
         :src="thumbnailUrl"
         mode="aspectFill"
         width="100%"
@@ -30,6 +31,7 @@
 import { computed } from "vue";
 import type { Dataset } from "../data/datasetData";
 import { formatDate } from "../data/datasetData";
+import { DATASET_BASE_URL } from "@/api/config";
 
 interface Props {
   dataset: Dataset;
@@ -49,10 +51,12 @@ const imageCount = computed(() => {
 
 const formattedDate = computed(() => formatDate(props.dataset.createTime));
 
-/** 缩略图：后端暂无 thumbnail 字段，使用 path 生成占位 */
+/** 缩略图：使用数据集 path 拼接数据集静态服务地址，取该数据集首张有雾图 */
 const thumbnailUrl = computed(() => {
-  // 使用数据集路径作为种子生成占位图（避免外部 unsplash 依赖）
-  return `/dataset-api/${props.dataset.path || "default"}/hazy/001.JPG`;
+  const path = props.dataset.path;
+  // path 为空时无法定位图片，返回空字符串由组件占位渐变背景兜底
+  if (!path) return "";
+  return `${DATASET_BASE_URL}/${path}/hazy/001.JPG`;
 });
 
 const handleClick = () => {

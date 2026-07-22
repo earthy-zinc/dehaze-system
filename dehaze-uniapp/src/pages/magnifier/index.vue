@@ -13,17 +13,14 @@
 
       <view v-if="hasImages" class="content-area">
         <!-- 原图背景 + 放大镜 -->
-        <view class="magnifier-wrapper" @touchmove="handleMove" @touchstart="handleMove">
+        <view
+          class="magnifier-wrapper"
+          @touchmove="handleMove"
+          @touchstart="handleMove"
+        >
           <image :src="originUrl" class="base-image" mode="widthFix" />
-          <view
-            v-if="active"
-            class="lens"
-            :style="lensStyle"
-          >
-            <view
-              class="lens-image"
-              :style="lensImageStyle"
-            />
+          <view v-if="active" class="lens" :style="lensStyle">
+            <view class="lens-image" :style="lensImageStyle" />
           </view>
         </view>
 
@@ -43,17 +40,31 @@
         <!-- 镜片大小调节 -->
         <view class="size-control">
           <text class="control-label">镜片大小</text>
-          <slider :value="lensSize" :min="60" :max="160" :step="10" active-color="#f59e0b" block-size="20"
-            @change="(e:any) => lensSize = e.detail.value" />
+          <slider
+            :value="lensSize"
+            :min="60"
+            :max="160"
+            :step="10"
+            active-color="#f59e0b"
+            block-size="20"
+            @change="(e: any) => (lensSize = e.detail.value)"
+          />
         </view>
 
         <!-- 导航 -->
         <view class="nav-row">
           <view class="nav-item" @click="switchPage('/pages/overlay/index')">
-            <u-icon name="photo" size="20" color="#f59e0b" /><text>重叠对比</text>
+            <u-icon name="photo" size="20" color="#f59e0b" /><text
+              >重叠对比</text
+            >
           </view>
-          <view class="nav-item" @click="switchPage('/pages/side-by-side/index')">
-            <u-icon name="grid" size="20" color="#f59e0b" /><text>并排对比</text>
+          <view
+            class="nav-item"
+            @click="switchPage('/pages/side-by-side/index')"
+          >
+            <u-icon name="grid" size="20" color="#f59e0b" /><text
+              >并排对比</text
+            >
           </view>
         </view>
       </view>
@@ -82,7 +93,9 @@ const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
 
-const lensImg = computed(() => currentMode.value === "result" ? resultUrl.value : originUrl.value);
+const lensImg = computed(() =>
+  currentMode.value === "result" ? resultUrl.value : originUrl.value
+);
 
 const modes = [
   { key: "result" as const, label: "处理结果" },
@@ -119,51 +132,148 @@ function handleMove(e: any) {
   }
 }
 
-function switchPage(url: string) { uni.navigateTo({ url }); }
-function handleBack() { uni.navigateBack(); }
+function switchPage(url: string) {
+  uni.navigateTo({ url });
+}
+function handleBack() {
+  uni.navigateBack();
+}
 
-onMounted(() => { if (!hasImages.value) uni.showToast({ title: "请先完成去雾处理", icon: "none" }); });
+onMounted(() => {
+  if (!hasImages.value)
+    uni.showToast({ title: "请先完成去雾处理", icon: "none" });
+});
 </script>
 
 <style lang="scss" scoped>
-.page { width: 100%; min-height: 100vh; background: #000; }
-.main-content { padding: 24rpx; }
-.page-header-card {
-  display: flex; align-items: center; gap: 24rpx;
-  background: rgba(255,255,255,0.95); border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx;
+.page {
+  width: 100%;
+  min-height: 100vh;
+  background: #000;
 }
-.header-icon { width: 80rpx; height: 80rpx; background: #fef3c7; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
-.header-title { font-size: 36rpx; font-weight: 700; color: #1f2937; }
-.header-subtitle { font-size: 26rpx; color: #6b7280; }
+.main-content {
+  padding: 24rpx;
+}
+.page-header-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+.header-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: #fef3c7;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+.header-subtitle {
+  font-size: 26rpx;
+  color: #6b7280;
+}
 
-.magnifier-wrapper { position: relative; width: 100%; }
-.base-image { width: 100%; display: block; border-radius: 16rpx; }
+.magnifier-wrapper {
+  position: relative;
+  width: 100%;
+}
+.base-image {
+  width: 100%;
+  display: block;
+  border-radius: 16rpx;
+}
 
 .lens {
-  position: fixed; border: 4rpx solid #f59e0b;
-  box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.5), 0 0 0 9999rpx rgba(0,0,0,0.3);
-  overflow: hidden; pointer-events: none; z-index: 999;
+  position: fixed;
+  border: 4rpx solid #f59e0b;
+  box-shadow:
+    0 4rpx 24rpx rgba(0, 0, 0, 0.5),
+    0 0 0 9999rpx rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 999;
 }
-.lens-image { width: 100%; height: 100%; }
+.lens-image {
+  width: 100%;
+  height: 100%;
+}
 
-.mode-row { display: flex; gap: 16rpx; margin-top: 24rpx; }
+.mode-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
 .mode-btn {
-  flex: 1; text-align: center; padding: 20rpx; border-radius: 16rpx;
-  font-size: 26rpx; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.08);
-  &.active { background: rgba(245,158,11,0.2); color: #f59e0b; font-weight: 600; }
+  flex: 1;
+  text-align: center;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  &.active {
+    background: rgba(245, 158, 11, 0.2);
+    color: #f59e0b;
+    font-weight: 600;
+  }
 }
 
-.size-control { background: rgba(255,255,255,0.06); border-radius: 20rpx; padding: 24rpx 28rpx; margin-top: 24rpx; }
-.control-label { font-size: 26rpx; color: rgba(255,255,255,0.5); margin-bottom: 8rpx; display: block; }
+.size-control {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+  margin-top: 24rpx;
+}
+.control-label {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8rpx;
+  display: block;
+}
 
-.nav-row { display: flex; gap: 20rpx; margin-top: 32rpx; }
+.nav-row {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
 .nav-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 12rpx;
-  padding: 28rpx; background: rgba(255,255,255,0.08); border-radius: 20rpx;
-  font-size: 24rpx; color: rgba(255,255,255,0.6);
-  &:active { background: rgba(245,158,11,0.15); }
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 28rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+  &:active {
+    background: rgba(245, 158, 11, 0.15);
+  }
 }
 
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.back-btn { margin-top: 32rpx; padding: 16rpx 48rpx; background: #f59e0b; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.back-btn {
+  margin-top: 32rpx;
+  padding: 16rpx 48rpx;
+  background: #f59e0b;
+  color: #fff;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}
 </style>

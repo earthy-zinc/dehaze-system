@@ -53,7 +53,7 @@ export const homeData = {
       id: "processing",
       number: "03",
       title: "一键处理",
-      description: "毫秒级处理速度\n实时预览处理效果",
+      description: "快速处理图像\n实时预览处理效果",
       icon: "play-circle-fill",
       target: "processing",
     },
@@ -110,26 +110,26 @@ export const homeData = {
     {
       icon: "play-circle-fill",
       title: "高性能",
-      value: "60fps",
-      description: "流畅运行，响应时间<200ms",
+      value: "GPU加速",
+      description: "CUDA深度学习推理加速",
     },
     {
       icon: "grid",
       title: "全平台",
-      value: "100%",
-      description: "完美适配手机、平板、桌面",
+      value: "多端",
+      description: "支持H5、小程序、App多端访问",
     },
     {
       icon: "gift",
       title: "智能算法",
-      value: "8+",
+      value: "29+",
       description: "支持多种先进去雾算法",
     },
     {
       icon: "integral",
       title: "专业评估",
-      value: "5+",
-      description: "多维度定量分析指标",
+      value: "4项",
+      description: "PSNR、SSIM、MSE、FSIM定量指标",
     },
   ] as SpecItem[],
 
@@ -137,7 +137,7 @@ export const homeData = {
   algorithmFeatures: [
     "智能推荐最适合的去雾算法",
     "实时对比不同算法的处理效果",
-    "毫秒级处理速度，即时查看结果",
-    "支持批量处理和参数自定义",
+    "GPU加速推理，快速查看结果",
+    "支持参数自定义和效果评估",
   ],
 };

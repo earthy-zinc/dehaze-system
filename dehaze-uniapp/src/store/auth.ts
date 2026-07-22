@@ -9,10 +9,24 @@
 
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import type { AuthUserInfo, CaptchaResult, LoginData, LoginResult } from "@/api/auth";
-import { login as loginApi, logout as logoutApi, getCurrentUser, getCaptcha as getCaptchaApi } from "@/api/auth";
+import type {
+  AuthUserInfo,
+  CaptchaResult,
+  LoginData,
+  LoginResult,
+} from "@/api/auth";
+import {
+  login as loginApi,
+  logout as logoutApi,
+  getCurrentUser,
+  getCaptcha as getCaptchaApi,
+} from "@/api/auth";
 import { clearAuth as clearStorageAuth } from "@/api/request";
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, USER_INFO_KEY } from "@/api/config";
+import {
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+  USER_INFO_KEY,
+} from "@/api/config";
 
 export const useAuthStore = defineStore("auth", () => {
   // ==================== 状态 ====================
@@ -134,7 +148,12 @@ export const useAuthStore = defineStore("auth", () => {
   /** 是否为管理员 */
   function isAdmin(): boolean {
     // 后端返回的角色无 ROLE_ 前缀，兼容两种形式
-    return hasRole("ROOT") || hasRole("ADMIN") || hasRole("ROLE_ROOT") || hasRole("ROLE_ADMIN");
+    return (
+      hasRole("ROOT") ||
+      hasRole("ADMIN") ||
+      hasRole("ROLE_ROOT") ||
+      hasRole("ROLE_ADMIN")
+    );
   }
 
   return {

@@ -16,11 +16,15 @@
       <view class="info-section">
         <view class="info-row">
           <text class="info-label">选择算法</text>
-          <text class="info-value">{{ store.selectedAlgorithm?.name || "-" }}</text>
+          <text class="info-value">{{
+            store.selectedAlgorithm?.name || "-"
+          }}</text>
         </view>
         <view class="info-row">
           <text class="info-label">图片文件</text>
-          <text class="info-value ellipsis">{{ store.currentImage?.name || "-" }}</text>
+          <text class="info-value ellipsis">{{
+            store.currentImage?.name || "-"
+          }}</text>
         </view>
       </view>
 
@@ -43,7 +47,10 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="(e: { detail: { value: number } }) => updateParam('intensity', e.detail.value)"
+            @change="
+              (e: { detail: { value: number } }) =>
+                updateParam('intensity', e.detail.value)
+            "
           />
         </view>
 
@@ -59,7 +66,10 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="(e: { detail: { value: number } }) => updateParam('saturation', e.detail.value)"
+            @change="
+              (e: { detail: { value: number } }) =>
+                updateParam('saturation', e.detail.value)
+            "
           />
         </view>
 
@@ -75,7 +85,10 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="(e: { detail: { value: number } }) => updateParam('contrast', e.detail.value)"
+            @change="
+              (e: { detail: { value: number } }) =>
+                updateParam('contrast', e.detail.value)
+            "
           />
         </view>
 
@@ -91,7 +104,10 @@
             :step="5"
             active-color="#f59e0b"
             block-size="20"
-            @change="(e: { detail: { value: number } }) => updateParam('sharpness', e.detail.value)"
+            @change="
+              (e: { detail: { value: number } }) =>
+                updateParam('sharpness', e.detail.value)
+            "
           />
         </view>
       </view>
@@ -114,7 +130,9 @@
           />
           <view class="result-info">
             <text class="result-time">处理耗时: {{ store.result.time }}s</text>
-            <text v-if="store.result.fromCache" class="cache-badge">缓存命中</text>
+            <text v-if="store.result.fromCache" class="cache-badge"
+              >缓存命中</text
+            >
           </view>
         </view>
       </view>
@@ -124,7 +142,9 @@
     <view class="bottom-bar">
       <view class="bar-content">
         <!-- 处理前：开始按钮 -->
-        <template v-if="store.status === 'algorithm' || store.status === 'failed'">
+        <template
+          v-if="store.status === 'algorithm' || store.status === 'failed'"
+        >
           <button
             class="process-btn"
             :disabled="processing"
@@ -138,7 +158,7 @@
         <template v-else-if="store.status === 'processing'">
           <view class="processing-indicator">
             <up-loading-icon mode="circle" size="24" color="#ffffff" />
-            <text class="processing-text">去雾处理中... {{ store.progress }}%</text>
+            <text class="processing-text">去雾处理中...</text>
           </view>
         </template>
 
@@ -157,7 +177,10 @@
 import { ref, computed, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
 import { useProcessingStore, DEFAULT_DEHAZE_PARAMS } from "@/store/processing";
-import { predict as predictApi, type PredictionResultVO } from "@/api/prediction";
+import {
+  predict as predictApi,
+  type PredictionResultVO,
+} from "@/api/prediction";
 
 // ==================== 状态 ====================
 
@@ -181,7 +204,10 @@ const statusText = computed(() => {
 // ==================== 方法 ====================
 
 /** 更新单个参数 */
-function updateParam(key: "intensity" | "saturation" | "contrast" | "sharpness", value: number) {
+function updateParam(
+  key: "intensity" | "saturation" | "contrast" | "sharpness",
+  value: number
+) {
   store.updateParams({ [key]: value });
 }
 
@@ -221,7 +247,10 @@ async function handleProcess() {
       algorithmId: store.selectedAlgorithm.id,
       fileId: store.fileId ?? undefined,
       imageUrl: !store.fileId ? store.currentImage.url : undefined,
-      params: Object.keys(paramsObj).length > 0 ? JSON.stringify(paramsObj) : undefined,
+      params:
+        Object.keys(paramsObj).length > 0
+          ? JSON.stringify(paramsObj)
+          : undefined,
     });
 
     store.complete(result);
@@ -304,9 +333,21 @@ onMounted(() => {
   justify-content: center;
 }
 
-.header-text { flex: 1; }
-.header-title { display: block; font-size: 36rpx; font-weight: 700; color: #1f2937; margin-bottom: 8rpx; }
-.header-subtitle { display: block; font-size: 26rpx; color: #6b7280; }
+.header-text {
+  flex: 1;
+}
+.header-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 8rpx;
+}
+.header-subtitle {
+  display: block;
+  font-size: 26rpx;
+  color: #6b7280;
+}
 
 /* 处理信息 */
 .info-section {
@@ -323,11 +364,20 @@ onMounted(() => {
   align-items: center;
   padding: 16rpx 0;
 
-  & + & { border-top: 1rpx solid #f3f4f6; }
+  & + & {
+    border-top: 1rpx solid #f3f4f6;
+  }
 }
 
-.info-label { font-size: 26rpx; color: #6b7280; }
-.info-value { font-size: 28rpx; font-weight: 500; color: #1f2937; }
+.info-label {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+.info-value {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+}
 
 .ellipsis {
   max-width: 60%;
@@ -352,10 +402,19 @@ onMounted(() => {
   margin-bottom: 24rpx;
 }
 
-.params-title { font-size: 30rpx; font-weight: 600; color: #1f2937; }
-.params-reset { font-size: 24rpx; color: #f59e0b; }
+.params-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+.params-reset {
+  font-size: 24rpx;
+  color: #f59e0b;
+}
 
-.param-item { margin-bottom: 28rpx; }
+.param-item {
+  margin-bottom: 28rpx;
+}
 
 .param-label {
   display: flex;
@@ -365,7 +424,10 @@ onMounted(() => {
   color: #374151;
 }
 
-.param-value { color: #f59e0b; font-weight: 600; }
+.param-value {
+  color: #f59e0b;
+  font-weight: 600;
+}
 
 /* 错误卡片 */
 .error-card {
@@ -379,11 +441,23 @@ onMounted(() => {
   margin-bottom: 24rpx;
 }
 
-.error-msg { font-size: 26rpx; color: #ef4444; flex: 1; }
+.error-msg {
+  font-size: 26rpx;
+  color: #ef4444;
+  flex: 1;
+}
 
 /* 结果区域 */
-.result-section { margin-bottom: 24rpx; }
-.section-label { font-size: 28rpx; font-weight: 600; color: #374151; margin-bottom: 16rpx; display: block; }
+.result-section {
+  margin-bottom: 24rpx;
+}
+.section-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 16rpx;
+  display: block;
+}
 
 .result-card {
   background: #ffffff;
@@ -405,8 +479,17 @@ onMounted(() => {
   padding: 20rpx 24rpx;
 }
 
-.result-time { font-size: 26rpx; color: #6b7280; }
-.cache-badge { font-size: 22rpx; color: #10b981; background: #ecfdf5; padding: 4rpx 12rpx; border-radius: 8rpx; }
+.result-time {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+.cache-badge {
+  font-size: 22rpx;
+  color: #10b981;
+  background: #ecfdf5;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+}
 
 /* 底部操作栏 */
 .bottom-bar {
@@ -423,7 +506,11 @@ onMounted(() => {
   z-index: 100;
 }
 
-.bar-content { display: flex; align-items: center; justify-content: center; }
+.bar-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .process-btn {
   width: 100%;
@@ -440,7 +527,9 @@ onMounted(() => {
     color: #9ca3af;
   }
 
-  &:active:not(:disabled) { opacity: 0.85; }
+  &:active:not(:disabled) {
+    opacity: 0.85;
+  }
 }
 
 .processing-indicator {
@@ -452,7 +541,11 @@ onMounted(() => {
   border-radius: 16rpx;
 }
 
-.processing-text { font-size: 30rpx; font-weight: 600; color: #ffffff; }
+.processing-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #ffffff;
+}
 
 .compare-btn {
   width: 100%;
@@ -464,6 +557,8 @@ onMounted(() => {
   font-size: 32rpx;
   font-weight: 700;
 
-  &:active { opacity: 0.85; }
+  &:active {
+    opacity: 0.85;
+  }
 }
 </style>

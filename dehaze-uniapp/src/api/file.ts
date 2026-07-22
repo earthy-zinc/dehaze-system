@@ -7,6 +7,7 @@
  */
 
 import { get } from "./request";
+import { BASE_URL } from "./config";
 import type { ImageData } from "@/pages/image-input/data/imageInputData";
 
 // ==================== 类型定义 ====================
@@ -70,11 +71,13 @@ export async function uploadImage(
   onProgress?: (progress: number) => void
 ): Promise<FileInfo> {
   const accessToken = uni.getStorageSync("access_token") || "";
-  const authorization = accessToken.startsWith("Bearer ") ? accessToken : `Bearer ${accessToken}`;
+  const authorization = accessToken.startsWith("Bearer ")
+    ? accessToken
+    : `Bearer ${accessToken}`;
 
   return new Promise((resolve, reject) => {
     const uploadTask = uni.uploadFile({
-      url: getBaseUrl() + "/files",
+      url: BASE_URL + "/files",
       filePath: imageData.url,
       name: "file",
       formData: {},
@@ -84,7 +87,11 @@ export async function uploadImage(
       success: (res) => {
         if (res.statusCode === 200) {
           try {
-            const response = JSON.parse(res.data) as { code: string; data: FileInfo; msg: string };
+            const response = JSON.parse(res.data) as {
+              code: string;
+              data: FileInfo;
+              msg: string;
+            };
             if (response.code === "00000") {
               resolve(response.data);
             } else {
@@ -108,14 +115,4 @@ export async function uploadImage(
       });
     }
   });
-}
-
-/** 获取平台相关的 baseURL */
-function getBaseUrl(): string {
-  // #ifdef H5
-  return "/api/v1";
-  // #endif
-  // #ifndef H5
-  return "http://127.0.0.1:8989/api/v1";
-  // #endif
 }

@@ -14,7 +14,11 @@
       <view v-if="hasImages" class="content-area">
         <!-- 叠加容器 -->
         <view class="overlay-container">
-          <image :src="originUrl" class="overlay-image bottom-image" mode="widthFix" />
+          <image
+            :src="originUrl"
+            class="overlay-image bottom-image"
+            mode="widthFix"
+          />
           <image
             :src="resultUrl"
             class="overlay-image top-image"
@@ -34,7 +38,7 @@
               :step="1"
               active-color="#8b5cf6"
               block-size="22"
-              @change="(e:any) => opacity = e.detail.value"
+              @change="(e: any) => (opacity = e.detail.value)"
             />
             <text class="slider-label">处理后</text>
           </view>
@@ -43,18 +47,40 @@
 
         <!-- 预设按钮 -->
         <view class="preset-row">
-          <view class="preset-btn" :class="{ active: opacity === 0 }" @click="opacity = 0">仅原图</view>
-          <view class="preset-btn" :class="{ active: opacity === 50 }" @click="opacity = 50">半透明</view>
-          <view class="preset-btn" :class="{ active: opacity === 100 }" @click="opacity = 100">仅结果</view>
+          <view
+            class="preset-btn"
+            :class="{ active: opacity === 0 }"
+            @click="opacity = 0"
+            >仅原图</view
+          >
+          <view
+            class="preset-btn"
+            :class="{ active: opacity === 50 }"
+            @click="opacity = 50"
+            >半透明</view
+          >
+          <view
+            class="preset-btn"
+            :class="{ active: opacity === 100 }"
+            @click="opacity = 100"
+            >仅结果</view
+          >
         </view>
 
         <!-- 导航 -->
         <view class="nav-row">
-          <view class="nav-item" @click="switchPage('/pages/side-by-side/index')">
-            <u-icon name="grid" size="20" color="#8b5cf6" /><text>并排对比</text>
+          <view
+            class="nav-item"
+            @click="switchPage('/pages/side-by-side/index')"
+          >
+            <u-icon name="grid" size="20" color="#8b5cf6" /><text
+              >并排对比</text
+            >
           </view>
           <view class="nav-item" @click="switchPage('/pages/magnifier/index')">
-            <u-icon name="search" size="20" color="#8b5cf6" /><text>放大镜</text>
+            <u-icon name="search" size="20" color="#8b5cf6" /><text
+              >放大镜</text
+            >
           </view>
         </view>
       </view>
@@ -79,53 +105,157 @@ const originUrl = computed(() => store.originUrl);
 const resultUrl = computed(() => store.result?.resultUrl || "");
 const hasImages = computed(() => !!(originUrl.value && resultUrl.value));
 
-function switchPage(url: string) { uni.navigateTo({ url }); }
-function handleBack() { uni.navigateBack(); }
+function switchPage(url: string) {
+  uni.navigateTo({ url });
+}
+function handleBack() {
+  uni.navigateBack();
+}
 
-onMounted(() => { if (!hasImages.value) uni.showToast({ title: "请先完成去雾处理", icon: "none" }); });
+onMounted(() => {
+  if (!hasImages.value)
+    uni.showToast({ title: "请先完成去雾处理", icon: "none" });
+});
 </script>
 
 <style lang="scss" scoped>
-.page { width: 100%; min-height: 100vh; background: #000; }
-.main-content { padding: 24rpx; }
-.page-header-card {
-  display: flex; align-items: center; gap: 24rpx;
-  background: rgba(255,255,255,0.95); border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx;
+.page {
+  width: 100%;
+  min-height: 100vh;
+  background: #000;
 }
-.header-icon { width: 80rpx; height: 80rpx; background: #ede9fe; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
-.header-title { font-size: 36rpx; font-weight: 700; color: #1f2937; }
-.header-subtitle { font-size: 26rpx; color: #6b7280; }
+.main-content {
+  padding: 24rpx;
+}
+.page-header-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+}
+.header-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: #ede9fe;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+.header-subtitle {
+  font-size: 26rpx;
+  color: #6b7280;
+}
 
 .overlay-container {
-  position: relative; width: 100%; border-radius: 16rpx; overflow: hidden; background: #000;
+  position: relative;
+  width: 100%;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #000;
 }
-.overlay-image { width: 100%; display: block; }
-.top-image { position: absolute; top: 0; left: 0; }
+.overlay-image {
+  width: 100%;
+  display: block;
+}
+.top-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
 
 .control-panel {
-  background: rgba(255,255,255,0.06); border-radius: 20rpx; padding: 28rpx; margin-top: 24rpx;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin-top: 24rpx;
 }
-.slider-row { display: flex; align-items: center; gap: 16rpx; }
-.slider-label { font-size: 24rpx; color: rgba(255,255,255,0.5); flex-shrink: 0; }
-slider { flex: 1; }
-.opacity-badge { text-align: center; margin-top: 12rpx; font-size: 32rpx; font-weight: 700; color: #8b5cf6; }
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.slider-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+slider {
+  flex: 1;
+}
+.opacity-badge {
+  text-align: center;
+  margin-top: 12rpx;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #8b5cf6;
+}
 
-.preset-row { display: flex; gap: 16rpx; margin-top: 24rpx; }
+.preset-row {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
 .preset-btn {
-  flex: 1; text-align: center; padding: 20rpx; border-radius: 16rpx;
-  font-size: 26rpx; color: rgba(255,255,255,0.5); background: rgba(255,255,255,0.08);
-  &.active { background: rgba(139,92,246,0.2); color: #8b5cf6; font-weight: 600; }
-  &:active { opacity: 0.7; }
+  flex: 1;
+  text-align: center;
+  padding: 20rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  &.active {
+    background: rgba(139, 92, 246, 0.2);
+    color: #8b5cf6;
+    font-weight: 600;
+  }
+  &:active {
+    opacity: 0.7;
+  }
 }
 
-.nav-row { display: flex; gap: 20rpx; margin-top: 32rpx; }
+.nav-row {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 32rpx;
+}
 .nav-item {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 12rpx;
-  padding: 28rpx; background: rgba(255,255,255,0.08); border-radius: 20rpx;
-  font-size: 24rpx; color: rgba(255,255,255,0.6);
-  &:active { background: rgba(139,92,246,0.15); }
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 28rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+  &:active {
+    background: rgba(139, 92, 246, 0.15);
+  }
 }
 
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.back-btn { margin-top: 32rpx; padding: 16rpx 48rpx; background: #8b5cf6; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.back-btn {
+  margin-top: 32rpx;
+  padding: 16rpx 48rpx;
+  background: #8b5cf6;
+  color: #fff;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}
 </style>

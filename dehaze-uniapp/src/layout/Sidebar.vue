@@ -33,7 +33,9 @@
           <text class="avatar-letter">{{ userInitial }}</text>
         </view>
         <view class="user-detail">
-          <text class="user-name">{{ authStore.nickname || authStore.username }}</text>
+          <text class="user-name">{{
+            authStore.nickname || authStore.username
+          }}</text>
           <text class="user-role">{{ userRoleText }}</text>
         </view>
         <u-icon name="arrow-right" size="16" color="#d1d5db" />
@@ -114,7 +116,9 @@ import { homeItem, menuSections, isTabBarPage } from "@/config/menu";
 const authStore = useAuthStore();
 
 const isLoggedIn = computed(() => authStore.isLoggedIn);
-const userInitial = computed(() => (authStore.nickname || authStore.username || "U").charAt(0).toUpperCase());
+const userInitial = computed(() =>
+  (authStore.nickname || authStore.username || "U").charAt(0).toUpperCase()
+);
 const userRoleText = computed(() => {
   const roles = authStore.roles;
   if (roles.length === 0) return "未登录";
@@ -287,7 +291,9 @@ const goLogin = () => {
   padding: 24rpx;
   background: linear-gradient(135deg, #eff6ff, #dbeafe);
   border-radius: 20rpx;
-  &:active { opacity: 0.8; }
+  &:active {
+    opacity: 0.8;
+  }
 }
 
 .login-prompt {
@@ -298,7 +304,9 @@ const goLogin = () => {
   padding: 24rpx;
   background: #f3f4f6;
   border-radius: 20rpx;
-  &:active { opacity: 0.8; }
+  &:active {
+    opacity: 0.8;
+  }
 }
 
 .login-text {
@@ -308,17 +316,41 @@ const goLogin = () => {
 }
 
 .user-avatar {
-  width: 72rpx; height: 72rpx; border-radius: 50%;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 50%;
   background: linear-gradient(135deg, #3b82f6, #6366f1);
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
 }
 
-.avatar-letter { font-size: 32rpx; font-weight: 700; color: #fff; }
+.avatar-letter {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #fff;
+}
 
-.user-detail { flex: 1; min-width: 0; }
-.user-name { display: block; font-size: 28rpx; font-weight: 600; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.user-role { display: block; font-size: 22rpx; color: #3b82f6; margin-top: 4rpx; }
+.user-detail {
+  flex: 1;
+  min-width: 0;
+}
+.user-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-role {
+  display: block;
+  font-size: 22rpx;
+  color: #3b82f6;
+  margin-top: 4rpx;
+}
 
 .menu-divider {
   height: 2rpx;

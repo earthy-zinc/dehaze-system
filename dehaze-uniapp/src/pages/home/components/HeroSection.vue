@@ -31,17 +31,17 @@
       <!-- 数据指标 -->
       <view class="hero-stats">
         <view class="stat-item">
-          <text class="stat-value">92+</text>
+          <text class="stat-value">29+</text>
           <text class="stat-label">去雾算法</text>
         </view>
         <view class="stat-divider" />
         <view class="stat-item">
-          <text class="stat-value">200ms</text>
-          <text class="stat-label">响应时间</text>
+          <text class="stat-value">GPU</text>
+          <text class="stat-label">推理加速</text>
         </view>
         <view class="stat-divider" />
         <view class="stat-item">
-          <text class="stat-value">5+</text>
+          <text class="stat-value">4项</text>
           <text class="stat-label">评估指标</text>
         </view>
       </view>

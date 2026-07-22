@@ -134,41 +134,133 @@ onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
-.page { width: 100%; min-height: 100vh; background: #f9fafb; }
-.main-content { padding: 24rpx; padding-bottom: calc(80rpx + constant(safe-area-inset-bottom)); }
+.page {
+  width: 100%;
+  min-height: 100vh;
+  background: #f9fafb;
+}
+.main-content {
+  padding: 24rpx;
+  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+}
 
 .page-header-card {
-  display: flex; align-items: center; gap: 24rpx;
-  background: #fff; border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
 }
-.header-icon { width: 80rpx; height: 80rpx; background: #d1fae5; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
-.header-title { font-size: 36rpx; font-weight: 700; color: #1f2937; display: block; margin-bottom: 8rpx; }
-.header-subtitle { font-size: 26rpx; color: #6b7280; display: block; }
+.header-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: #d1fae5;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 8rpx;
+}
+.header-subtitle {
+  font-size: 26rpx;
+  color: #6b7280;
+  display: block;
+}
 
-.file-list { display: flex; flex-direction: column; gap: 16rpx; }
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
 .file-card {
-  display: flex; align-items: center; gap: 20rpx;
-  background: #fff; border-radius: 20rpx; padding: 24rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.03);
-  &:active { background: #f9fafb; }
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
+  &:active {
+    background: #f9fafb;
+  }
 }
 .file-icon {
-  width: 80rpx; height: 80rpx; background: #ecfdf5; border-radius: 16rpx;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  width: 80rpx;
+  height: 80rpx;
+  background: #ecfdf5;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-.file-info { flex: 1; min-width: 0; }
-.file-name { display: block; font-size: 28rpx; font-weight: 500; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6rpx; }
-.file-meta { font-size: 24rpx; color: #9ca3af; }
-.file-arrow { flex-shrink: 0; }
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+.file-name {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6rpx;
+}
+.file-meta {
+  font-size: 24rpx;
+  color: #9ca3af;
+}
+.file-arrow {
+  flex-shrink: 0;
+}
 
-.end-text { text-align: center; font-size: 24rpx; color: #d1d5db; padding: 32rpx 0; }
-.load-more { text-align: center; padding: 24rpx 0; }
-.load-more-text { font-size: 26rpx; color: #10b981; }
+.end-text {
+  text-align: center;
+  font-size: 24rpx;
+  color: #d1d5db;
+  padding: 32rpx 0;
+}
+.load-more {
+  text-align: center;
+  padding: 24rpx 0;
+}
+.load-more-text {
+  font-size: 26rpx;
+  color: #10b981;
+}
 
-.loading-container { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.loading-text { margin-top: 24rpx; font-size: 28rpx; color: #9ca3af; }
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.loading-text {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
 
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 80rpx 0; }
-.empty-hint { font-size: 26rpx; color: #9ca3af; margin-top: 16rpx; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+}
+.empty-hint {
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin-top: 16rpx;
+}
 </style>

@@ -10,7 +10,12 @@
  * - 统一错误提示
  */
 
-import { BASE_URL, REQUEST_TIMEOUT, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "./config";
+import {
+  BASE_URL,
+  REQUEST_TIMEOUT,
+  ACCESS_TOKEN_KEY,
+  REFRESH_TOKEN_KEY,
+} from "./config";
 import { ResultCode, TOKEN_INVALID_CODES } from "./enums";
 
 /** 统一响应结构 */
@@ -163,9 +168,9 @@ export async function request<T = unknown>(
   const requestKey = method !== "GET" ? getRequestKey(url, method, data) : "";
   if (requestKey && pendingRequests.has(requestKey)) {
     console.warn("[Request] 检测到重复请求:", requestKey);
-    return pendingRequests.get(requestKey)!.then(
-      (res) => (res.data as ApiResponse<T>).data
-    );
+    return pendingRequests
+      .get(requestKey)!
+      .then((res) => (res.data as ApiResponse<T>).data);
   }
 
   return new Promise<T>((resolve, reject) => {
@@ -199,9 +204,20 @@ export async function request<T = unknown>(
           // Token 过期处理
           if (
             retryOnTokenExpired &&
-            TOKEN_INVALID_CODES.includes(response.code as typeof ResultCode.TOKEN_INVALID)
+            TOKEN_INVALID_CODES.includes(
+              response.code as typeof ResultCode.TOKEN_INVALID
+            )
           ) {
-            handleTokenExpired(url, method, data, headers, timeout, doRequest, resolve, reject);
+            handleTokenExpired(
+              url,
+              method,
+              data,
+              headers,
+              timeout,
+              doRequest,
+              resolve,
+              reject
+            );
             return;
           }
 
@@ -306,22 +322,36 @@ function getNetworkErrorMessage(err: UniApp.GeneralCallbackResult): string {
 // ==================== 便捷方法 ====================
 
 /** GET 请求 */
-export function get<T = unknown>(url: string, options?: Omit<RequestOptions, "url" | "method">) {
+export function get<T = unknown>(
+  url: string,
+  options?: Omit<RequestOptions, "url" | "method">
+) {
   return request<T>({ ...options, url, method: "GET" });
 }
 
 /** POST 请求 */
-export function post<T = unknown>(url: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, "url" | "method" | "data">) {
+export function post<T = unknown>(
+  url: string,
+  data?: Record<string, unknown>,
+  options?: Omit<RequestOptions, "url" | "method" | "data">
+) {
   return request<T>({ ...options, url, method: "POST", data });
 }
 
 /** PUT 请求 */
-export function put<T = unknown>(url: string, data?: Record<string, unknown>, options?: Omit<RequestOptions, "url" | "method" | "data">) {
+export function put<T = unknown>(
+  url: string,
+  data?: Record<string, unknown>,
+  options?: Omit<RequestOptions, "url" | "method" | "data">
+) {
   return request<T>({ ...options, url, method: "PUT", data });
 }
 
 /** DELETE 请求 */
-export function del<T = unknown>(url: string, options?: Omit<RequestOptions, "url" | "method">) {
+export function del<T = unknown>(
+  url: string,
+  options?: Omit<RequestOptions, "url" | "method">
+) {
   return request<T>({ ...options, url, method: "DELETE" });
 }
 
@@ -341,7 +371,12 @@ export function uploadFile(
     onProgress?: (progress: number) => void;
   }
 ): Promise<string> {
-  const { url = "/files", name = "file", formData = {}, onProgress } = options || {};
+  const {
+    url = "/files",
+    name = "file",
+    formData = {},
+    onProgress,
+  } = options || {};
 
   return new Promise((resolve, reject) => {
     const accessToken = uni.getStorageSync(ACCESS_TOKEN_KEY) || "";
@@ -352,12 +387,16 @@ export function uploadFile(
       name,
       formData,
       header: {
-        Authorization: accessToken.startsWith("Bearer ") ? accessToken : `Bearer ${accessToken}`,
+        Authorization: accessToken.startsWith("Bearer ")
+          ? accessToken
+          : `Bearer ${accessToken}`,
       },
       success: (res) => {
         if (res.statusCode === 200) {
           try {
-            const response = JSON.parse(res.data) as ApiResponse<{ url: string }>;
+            const response = JSON.parse(res.data) as ApiResponse<{
+              url: string;
+            }>;
             if (response.code === ResultCode.SUCCESS) {
               resolve(response.data.url);
             } else {

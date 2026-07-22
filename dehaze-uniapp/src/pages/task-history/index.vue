@@ -29,9 +29,11 @@
             <image :src="record.predUrl" class="thumb-img" mode="aspectFill" />
           </view>
           <view class="record-body">
-            <text class="record-algo">{{ record.algorithmName || "未知算法" }}</text>
+            <text class="record-algo">{{
+              record.algorithmName || "未知算法"
+            }}</text>
             <text class="record-time">
-              耗时 {{ record.time ? record.time + 's' : '-' }}
+              耗时 {{ record.time ? record.time + "s" : "-" }}
             </text>
             <text class="record-date">{{ formatDate(record.createTime) }}</text>
           </view>
@@ -60,7 +62,11 @@
 <script lang="ts" setup>
 import { ref, onMounted } from "vue";
 import PageLayout from "@/layout/index.vue";
-import { getPredictionLogs, type PredLogVO, type PageResult } from "@/api/prediction";
+import {
+  getPredictionLogs,
+  type PredLogVO,
+  type PageResult,
+} from "@/api/prediction";
 
 const loading = ref(false);
 const records = ref<PredLogVO[]>([]);
@@ -112,49 +118,159 @@ function formatDate(time?: string): string {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
   if (diff < 172800000) return "昨天";
-  return d.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 onMounted(() => loadData());
 </script>
 
 <style lang="scss" scoped>
-.page { width: 100%; min-height: 100vh; background: #f9fafb; }
-.main-content { padding: 24rpx; padding-bottom: calc(80rpx + constant(safe-area-inset-bottom)); }
+.page {
+  width: 100%;
+  min-height: 100vh;
+  background: #f9fafb;
+}
+.main-content {
+  padding: 24rpx;
+  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+}
 
 .page-header-card {
-  display: flex; align-items: center; gap: 24rpx;
-  background: #fff; border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
 }
-.header-icon { width: 80rpx; height: 80rpx; background: #e0e7ff; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
-.header-title { font-size: 36rpx; font-weight: 700; color: #1f2937; display: block; margin-bottom: 8rpx; }
-.header-subtitle { font-size: 26rpx; color: #6b7280; display: block; }
+.header-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: #e0e7ff;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 8rpx;
+}
+.header-subtitle {
+  font-size: 26rpx;
+  color: #6b7280;
+  display: block;
+}
 
-.record-list { display: flex; flex-direction: column; gap: 16rpx; }
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
 .record-card {
-  display: flex; align-items: center; gap: 20rpx;
-  background: #fff; border-radius: 20rpx; padding: 24rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.03);
-  &:active { background: #f9fafb; }
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
+  &:active {
+    background: #f9fafb;
+  }
 }
 .record-thumb {
-  width: 100rpx; height: 100rpx; border-radius: 16rpx; overflow: hidden; flex-shrink: 0; background: #f3f4f6;
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #f3f4f6;
 }
-.thumb-img { width: 100%; height: 100%; }
-.record-body { flex: 1; min-width: 0; }
-.record-algo { display: block; font-size: 28rpx; font-weight: 600; color: #1f2937; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6rpx; }
-.record-time { display: block; font-size: 24rpx; color: #6b7280; margin-bottom: 4rpx; }
-.record-date { font-size: 22rpx; color: #9ca3af; }
-.record-arrow { flex-shrink: 0; }
+.thumb-img {
+  width: 100%;
+  height: 100%;
+}
+.record-body {
+  flex: 1;
+  min-width: 0;
+}
+.record-algo {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 6rpx;
+}
+.record-time {
+  display: block;
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-bottom: 4rpx;
+}
+.record-date {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+.record-arrow {
+  flex-shrink: 0;
+}
 
-.end-text { text-align: center; font-size: 24rpx; color: #d1d5db; padding: 32rpx 0; }
-.load-more { text-align: center; font-size: 26rpx; color: #6366f1; padding: 24rpx 0; }
+.end-text {
+  text-align: center;
+  font-size: 24rpx;
+  color: #d1d5db;
+  padding: 32rpx 0;
+}
+.load-more {
+  text-align: center;
+  font-size: 26rpx;
+  color: #6366f1;
+  padding: 24rpx 0;
+}
 
-.loading-container { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.loading-text { margin-top: 24rpx; font-size: 28rpx; color: #9ca3af; }
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.loading-text {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
 
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 80rpx 0; }
-.empty-hint { font-size: 26rpx; color: #9ca3af; margin: 16rpx 0 32rpx; }
-.start-btn { padding: 16rpx 48rpx; background: #6366f1; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80rpx 0;
+}
+.empty-hint {
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin: 16rpx 0 32rpx;
+}
+.start-btn {
+  padding: 16rpx 48rpx;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}
 </style>

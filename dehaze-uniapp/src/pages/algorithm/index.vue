@@ -16,10 +16,26 @@
         <view class="section">
           <text class="section-title">基本信息</text>
           <view class="info-card">
-            <view class="info-row"><text class="label">名称</text><text class="value">{{ algorithm.name }}</text></view>
-            <view class="info-row"><text class="label">类型</text><text class="value type-tag">{{ algorithm.type || "未知" }}</text></view>
-            <view class="info-row"><text class="label">版本</text><text class="value">v{{ algorithm.version || "-" }}</text></view>
-            <view class="info-row"><text class="label">状态</text><text class="value">{{ algorithm.status === 1 ? "✅ 启用" : "⏸ 停用" }}</text></view>
+            <view class="info-row"
+              ><text class="label">名称</text
+              ><text class="value">{{ algorithm.name }}</text></view
+            >
+            <view class="info-row"
+              ><text class="label">类型</text
+              ><text class="value type-tag">{{
+                algorithm.type || "未知"
+              }}</text></view
+            >
+            <view class="info-row"
+              ><text class="label">版本</text
+              ><text class="value">v{{ algorithm.version || "-" }}</text></view
+            >
+            <view class="info-row"
+              ><text class="label">状态</text
+              ><text class="value">{{
+                algorithm.status === 1 ? "✅ 启用" : "⏸ 停用"
+              }}</text></view
+            >
           </view>
         </view>
 
@@ -49,7 +65,9 @@
             </view>
             <view class="spec-card">
               <text class="spec-label">创建时间</text>
-              <text class="spec-value small">{{ formatTime(algorithm.createTime) }}</text>
+              <text class="spec-value small">{{
+                formatTime(algorithm.createTime)
+              }}</text>
             </view>
           </view>
         </view>
@@ -113,42 +131,155 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.page { width: 100%; min-height: 100vh; background: #f9fafb; }
-.main-content { padding: 24rpx; padding-bottom: calc(80rpx + constant(safe-area-inset-bottom)); }
+.page {
+  width: 100%;
+  min-height: 100vh;
+  background: #f9fafb;
+}
+.main-content {
+  padding: 24rpx;
+  padding-bottom: calc(80rpx + constant(safe-area-inset-bottom));
+}
 .page-header-card {
-  display: flex; align-items: center; gap: 24rpx;
-  background: #fff; border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx; box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
 }
-.header-icon { width: 80rpx; height: 80rpx; background: linear-gradient(135deg, #e0e7ff, #c7d2fe); border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
-.header-title { font-size: 36rpx; font-weight: 700; color: #1f2937; display: block; margin-bottom: 8rpx; }
-.header-subtitle { font-size: 26rpx; color: #6b7280; display: block; }
-
-.section { margin-bottom: 24rpx; }
-.section-title { font-size: 28rpx; font-weight: 600; color: #374151; margin-bottom: 12rpx; display: block; }
-
-.info-card, .desc-card, .params-card {
-  background: #fff; border-radius: 20rpx; padding: 28rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
+.header-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.info-row { display: flex; justify-content: space-between; align-items: center; padding: 14rpx 0;
-  & + & { border-top: 1rpx solid #f3f4f6; }
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 8rpx;
 }
-.label { font-size: 26rpx; color: #6b7280; }
-.value { font-size: 26rpx; font-weight: 500; color: #1f2937; }
-.type-tag { color: #6366f1; background: #e0e7ff; padding: 4rpx 12rpx; border-radius: 8rpx; font-size: 22rpx; }
+.header-subtitle {
+  font-size: 26rpx;
+  color: #6b7280;
+  display: block;
+}
 
-.desc-text { font-size: 26rpx; color: #4b5563; line-height: 1.6; }
-.params-text { font-size: 24rpx; color: #4b5563; line-height: 1.6; font-family: monospace; white-space: pre-wrap; }
+.section {
+  margin-bottom: 24rpx;
+}
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12rpx;
+  display: block;
+}
 
-.specs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16rpx; }
+.info-card,
+.desc-card,
+.params-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14rpx 0;
+  & + & {
+    border-top: 1rpx solid #f3f4f6;
+  }
+}
+.label {
+  font-size: 26rpx;
+  color: #6b7280;
+}
+.value {
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #1f2937;
+}
+.type-tag {
+  color: #6366f1;
+  background: #e0e7ff;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+}
+
+.desc-text {
+  font-size: 26rpx;
+  color: #4b5563;
+  line-height: 1.6;
+}
+.params-text {
+  font-size: 24rpx;
+  color: #4b5563;
+  line-height: 1.6;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+
+.specs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16rpx;
+}
 .spec-card {
-  background: #fff; border-radius: 16rpx; padding: 24rpx; box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.03); text-align: center;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.03);
+  text-align: center;
 }
-.spec-label { display: block; font-size: 22rpx; color: #9ca3af; margin-bottom: 8rpx; }
-.spec-value { display: block; font-size: 28rpx; font-weight: 700; color: #1f2937; &.small { font-size: 22rpx; font-weight: 500; } }
+.spec-label {
+  display: block;
+  font-size: 22rpx;
+  color: #9ca3af;
+  margin-bottom: 8rpx;
+}
+.spec-value {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #1f2937;
+  &.small {
+    font-size: 22rpx;
+    font-weight: 500;
+  }
+}
 
-.loading-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.loading-text { margin-top: 24rpx; font-size: 28rpx; color: #9ca3af; }
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.loading-text {
+  margin-top: 24rpx;
+  font-size: 28rpx;
+  color: #9ca3af;
+}
 
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.empty-hint { font-size: 26rpx; color: #9ca3af; margin-top: 16rpx; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.empty-hint {
+  font-size: 26rpx;
+  color: #9ca3af;
+  margin-top: 16rpx;
+}
 </style>

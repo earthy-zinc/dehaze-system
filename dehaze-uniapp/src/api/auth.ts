@@ -71,7 +71,10 @@ export function getCaptcha() {
 
 /** 登录 */
 export function login(data: LoginData) {
-  return post<LoginResult>("/auth/login", data as unknown as Record<string, unknown>);
+  return post<LoginResult>(
+    "/auth/login",
+    data as unknown as Record<string, unknown>
+  );
 }
 
 /** 登出 */
@@ -83,16 +86,16 @@ export function logout() {
 export function getCurrentUser() {
   // 后端 /auth/me 返回 { userId, username, nickname, roles, permissions }
   // 这里映射为前端统一类型 AuthUserInfo（perms 字段）
-  return get<Omit<AuthUserInfo, "perms"> & { permissions: string[] }>("/auth/me").then(
-    (data) => ({
-      userId: data.userId,
-      username: data.username,
-      nickname: data.nickname,
-      avatar: data.avatar,
-      roles: data.roles || [],
-      perms: data.permissions || [],
-    })
-  );
+  return get<Omit<AuthUserInfo, "perms"> & { permissions: string[] }>(
+    "/auth/me"
+  ).then((data) => ({
+    userId: data.userId,
+    username: data.username,
+    nickname: data.nickname,
+    avatar: data.avatar,
+    roles: data.roles || [],
+    perms: data.permissions || [],
+  }));
 }
 
 /** 刷新 Token */

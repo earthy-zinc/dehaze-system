@@ -40,21 +40,47 @@
 }
 
 // ==================== 间距工具类 ====================
-.mt-xs { margin-top: $spacing-xs; }
-.mt-sm { margin-top: $spacing-sm; }
-.mt-md { margin-top: $spacing-md; }
-.mt-lg { margin-top: $spacing-lg; }
-.mb-sm { margin-bottom: $spacing-sm; }
-.mb-md { margin-bottom: $spacing-md; }
-.mb-lg { margin-bottom: $spacing-lg; }
-.p-md { padding: $spacing-md; }
-.p-lg { padding: $spacing-lg; }
+.mt-xs {
+  margin-top: $spacing-xs;
+}
+
+.mt-sm {
+  margin-top: $spacing-sm;
+}
+
+.mt-md {
+  margin-top: $spacing-md;
+}
+
+.mt-lg {
+  margin-top: $spacing-lg;
+}
+
+.mb-sm {
+  margin-bottom: $spacing-sm;
+}
+
+.mb-md {
+  margin-bottom: $spacing-md;
+}
+
+.mb-lg {
+  margin-bottom: $spacing-lg;
+}
+
+.p-md {
+  padding: $spacing-md;
+}
+
+.p-lg {
+  padding: $spacing-lg;
+}
 
 // ==================== 卡片容器 ====================
 .card-box {
+  padding: $spacing-lg;
   background: $color-white;
   border-radius: $radius-xl;
-  padding: $spacing-lg;
   box-shadow: $shadow-md;
 }
 
@@ -62,10 +88,10 @@
 .page-container {
   width: 100%;
   min-height: 100vh;
-  background: $color-bg-primary;
   padding: $spacing-md;
   padding-bottom: calc(120rpx + $safe-area-bottom-env);
   padding-bottom: calc(120rpx + $safe-area-bottom);
+  background: $color-bg-primary;
 }
 
 // ==================== 安全区域 ====================
@@ -78,13 +104,13 @@
 .btn-primary {
   width: 100%;
   padding: 28rpx;
-  background: $color-primary;
-  color: $color-white;
-  border: none;
-  border-radius: $radius-md;
   font-size: $font-lg;
   font-weight: 600;
+  color: $color-white;
   text-align: center;
+  background: $color-primary;
+  border: none;
+  border-radius: $radius-md;
 
   &:active {
     background: $color-primary-dark;

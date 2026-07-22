@@ -57,17 +57,26 @@ export interface PageResult<T> {
 // ==================== API 方法 ====================
 
 /** 执行预测（去雾处理） */
-export async function predict(data: PredictionForm): Promise<PredictionResultVO> {
-  return post<PredictionResultVO>("/prediction", data as unknown as Record<string, unknown>);
+export async function predict(
+  data: PredictionForm
+): Promise<PredictionResultVO> {
+  return post<PredictionResultVO>(
+    "/prediction",
+    data as unknown as Record<string, unknown>
+  );
 }
 
 /** 查询预测任务状态 */
-export async function getPredictionStatus(taskId: number): Promise<PredictionResultVO> {
+export async function getPredictionStatus(
+  taskId: number
+): Promise<PredictionResultVO> {
   return get<PredictionResultVO>(`/prediction/${taskId}`);
 }
 
 /** 获取预测日志列表（历史记录） */
-export async function getPredictionLogs(query?: PredLogQuery): Promise<PageResult<PredLogVO>> {
+export async function getPredictionLogs(
+  query?: PredLogQuery
+): Promise<PageResult<PredLogVO>> {
   return get<PageResult<PredLogVO>>("/prediction/logs", {
     data: query as unknown as Record<string, unknown>,
   });

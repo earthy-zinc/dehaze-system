@@ -21,8 +21,8 @@ $color-info: #6b7280;
 $color-info-light: #9ca3af;
 
 // ==================== 中性色 ====================
-$color-white: #ffffff;
-$color-black: #000000;
+$color-white: #fff;
+$color-black: #000;
 $color-bg-primary: #f9fafb;
 $color-bg-secondary: #f3f4f6;
 $color-border: #e5e7eb;
@@ -56,9 +56,9 @@ $font-xl: 36rpx;
 $font-xxl: 44rpx;
 
 // ==================== 阴影 ====================
-$shadow-sm: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
-$shadow-md: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
-$shadow-lg: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+$shadow-sm: 0 2rpx 8rpx rgb(0 0 0 / 4%);
+$shadow-md: 0 4rpx 16rpx rgb(0 0 0 / 6%);
+$shadow-lg: 0 8rpx 32rpx rgb(0 0 0 / 8%);
 
 // ==================== 安全区域 ====================
 $safe-area-bottom: constant(safe-area-inset-bottom);

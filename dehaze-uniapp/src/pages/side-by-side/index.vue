@@ -13,9 +13,17 @@
 
       <!-- 对比容器 -->
       <view v-if="hasImages" class="compare-wrapper">
-        <view class="compare-container" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
+        <view
+          class="compare-container"
+          @touchmove="handleTouchMove"
+          @touchend="handleTouchEnd"
+        >
           <!-- 底部：原图 -->
-          <image :src="originUrl" class="compare-image base-image" mode="widthFix" />
+          <image
+            :src="originUrl"
+            class="compare-image base-image"
+            mode="widthFix"
+          />
           <!-- 顶部：结果图（clip 裁剪） -->
           <image
             :src="resultUrl"
@@ -95,11 +103,21 @@ function handleTouchMove(e: any) {
 
 function handleTouchEnd() {}
 
-function handleOverlay() { uni.navigateTo({ url: "/pages/overlay/index" }); }
-function handleMagnifier() { uni.navigateTo({ url: "/pages/magnifier/index" }); }
-function handleFilter() { uni.navigateTo({ url: "/pages/filter/index" }); }
-function handleMetrics() { uni.navigateTo({ url: "/pages/metrics/index" }); }
-function handleBack() { uni.navigateBack(); }
+function handleOverlay() {
+  uni.navigateTo({ url: "/pages/overlay/index" });
+}
+function handleMagnifier() {
+  uni.navigateTo({ url: "/pages/magnifier/index" });
+}
+function handleFilter() {
+  uni.navigateTo({ url: "/pages/filter/index" });
+}
+function handleMetrics() {
+  uni.navigateTo({ url: "/pages/metrics/index" });
+}
+function handleBack() {
+  uni.navigateBack();
+}
 
 onMounted(() => {
   if (!hasImages.value) {
@@ -109,50 +127,155 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.page { width: 100%; min-height: 100vh; background: #000; }
-.main-content { padding: 24rpx; }
+.page {
+  width: 100%;
+  min-height: 100vh;
+  background: #000;
+}
+.main-content {
+  padding: 24rpx;
+}
 .page-header-card {
-  display: flex; align-items: center; gap: 24rpx;
-  background: rgba(255,255,255,0.95); border-radius: 24rpx; padding: 32rpx; margin-bottom: 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
 }
-.header-icon { width: 80rpx; height: 80rpx; background: #dbeafe; border-radius: 20rpx; display: flex; align-items: center; justify-content: center; }
-.header-title { font-size: 36rpx; font-weight: 700; color: #fff; }
-.header-subtitle { font-size: 26rpx; color: rgba(255,255,255,0.6); }
-.page-header-card .header-title { color: #1f2937; }
-.page-header-card .header-subtitle { color: #6b7280; }
+.header-icon {
+  width: 80rpx;
+  height: 80rpx;
+  background: #dbeafe;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #fff;
+}
+.header-subtitle {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+.page-header-card .header-title {
+  color: #1f2937;
+}
+.page-header-card .header-subtitle {
+  color: #6b7280;
+}
 
-.compare-wrapper { position: relative; }
+.compare-wrapper {
+  position: relative;
+}
 .compare-container {
-  position: relative; width: 100%; overflow: hidden;
-  border-radius: 16rpx; background: #000; touch-action: none;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16rpx;
+  background: #000;
+  touch-action: none;
 }
-.compare-image { width: 100%; display: block; }
-.overlay-image { position: absolute; top: 0; left: 0; }
+.compare-image {
+  width: 100%;
+  display: block;
+}
+.overlay-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
 
-.divider { position: absolute; top: 0; bottom: 0; width: 4rpx; transform: translateX(-50%); pointer-events: none; }
-.divider-line { width: 100%; height: 100%; background: #fff; box-shadow: 0 0 8rpx rgba(0,0,0,0.5); }
+.divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 4rpx;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.divider-line {
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  box-shadow: 0 0 8rpx rgba(0, 0, 0, 0.5);
+}
 .divider-handle {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  width: 64rpx; height: 64rpx; background: #fff; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.3);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64rpx;
+  height: 64rpx;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.3);
 }
-.handle-arrow { font-size: 24rpx; color: #3b82f6; }
+.handle-arrow {
+  font-size: 24rpx;
+  color: #3b82f6;
+}
 
-.label-row { display: flex; justify-content: space-between; padding: 16rpx 8rpx; }
-.label { font-size: 24rpx; color: rgba(255,255,255,0.5); }
-.left-label { color: #3b82f6; }
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 16rpx 8rpx;
+}
+.label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.5);
+}
+.left-label {
+  color: #3b82f6;
+}
 
-.action-section { margin-top: 40rpx; }
-.action-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20rpx; }
+.action-section {
+  margin-top: 40rpx;
+}
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
 .action-item {
-  display: flex; flex-direction: column; align-items: center; gap: 12rpx;
-  padding: 32rpx; background: rgba(255,255,255,0.08); border-radius: 20rpx;
-  font-size: 24rpx; color: rgba(255,255,255,0.7);
-  &:active { background: rgba(59,130,246,0.15); }
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  padding: 32rpx;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.7);
+  &:active {
+    background: rgba(59, 130, 246, 0.15);
+  }
 }
 
-.empty-state { display: flex; flex-direction: column; align-items: center; padding: 120rpx 0; }
-.empty-hint { font-size: 26rpx; color: rgba(255,255,255,0.4); margin: 16rpx 0 32rpx; }
-.back-btn { padding: 16rpx 48rpx; background: #3b82f6; color: #fff; border: none; border-radius: 16rpx; font-size: 28rpx; }
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120rpx 0;
+}
+.empty-hint {
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 16rpx 0 32rpx;
+}
+.back-btn {
+  padding: 16rpx 48rpx;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 28rpx;
+}
 </style>

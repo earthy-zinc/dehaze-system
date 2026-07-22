@@ -1,7 +1,7 @@
 <template>
   <view class="page-layout">
     <!-- 顶部导航栏 -->
-    <AppNavbar @toggle-menu="toggleSidebar" @search="handleSearch" />
+    <AppNavbar @toggle-menu="toggleSidebar" />
 
     <!-- 侧边菜单 -->
     <AppSidebar
@@ -36,7 +36,6 @@ interface Props {
 }
 
 interface Emits {
-  (e: "search"): void;
   (e: "navigate", route: string): void;
 }
 
@@ -54,11 +53,6 @@ const { currentRoute, updateCurrentRoute } = useCurrentRoute();
 onMounted(() => {
   updateCurrentRoute();
 });
-
-// 搜索处理
-const handleSearch = () => {
-  emit("search");
-};
 
 // 导航处理
 const handleNavigate = (route: string) => {

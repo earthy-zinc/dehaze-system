@@ -47,5 +47,12 @@ module.exports = {
         ignoreAtRules: ["apply", "use"],
       },
     ],
+    // 允许 uni-app 的 rpx 单位
+    "unit-no-unknown": [
+      true,
+      {
+        ignoreUnits: ["rpx"],
+      },
+    ],
   },
 };

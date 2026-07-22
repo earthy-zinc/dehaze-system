@@ -16,13 +16,13 @@ import type { PredictionResultVO } from "@/api/prediction";
 
 /** 处理状态 */
 export type ProcessingStatus =
-  | "idle"         // 空闲
-  | "selected"     // 已选图片
-  | "algorithm"    // 已选算法
-  | "uploading"    // 上传中
-  | "processing"   // 处理中
-  | "completed"    // 已完成
-  | "failed";      // 失败
+  | "idle" // 空闲
+  | "selected" // 已选图片
+  | "algorithm" // 已选算法
+  | "uploading" // 上传中
+  | "processing" // 处理中
+  | "completed" // 已完成
+  | "failed"; // 失败
 
 /** 去雾处理参数 */
 export interface DehazeParams {
@@ -65,9 +65,6 @@ export const useProcessingStore = defineStore("processing", () => {
   /** 处理结果 */
   const result = ref<PredictionResultVO | null>(null);
 
-  /** 处理进度 0-100 */
-  const progress = ref(0);
-
   /** 错误信息 */
   const errorMessage = ref("");
 
@@ -75,7 +72,10 @@ export const useProcessingStore = defineStore("processing", () => {
 
   /** 是否可以开始处理 */
   const canProcess = computed(
-    () => status.value === "algorithm" && currentImage.value && selectedAlgorithm.value
+    () =>
+      status.value === "algorithm" &&
+      currentImage.value &&
+      selectedAlgorithm.value
   );
 
   /** 是否有图片 */
@@ -121,38 +121,24 @@ export const useProcessingStore = defineStore("processing", () => {
   /** 开始上传 */
   function startUploading() {
     status.value = "uploading";
-    progress.value = 0;
-  }
-
-  /** 上传进度更新 */
-  function updateUploadProgress(p: number) {
-    progress.value = p;
   }
 
   /** 开始处理 */
   function startProcessing() {
     status.value = "processing";
-    progress.value = 0;
     errorMessage.value = "";
-  }
-
-  /** 更新处理进度 */
-  function updateProgress(p: number) {
-    progress.value = p;
   }
 
   /** 处理完成 */
   function complete(resultData: PredictionResultVO) {
     status.value = "completed";
     result.value = resultData;
-    progress.value = 100;
   }
 
   /** 处理失败 */
   function fail(error: string) {
     status.value = "failed";
     errorMessage.value = error;
-    progress.value = 0;
   }
 
   /** 重置状态 */
@@ -163,7 +149,6 @@ export const useProcessingStore = defineStore("processing", () => {
     selectedAlgorithm.value = null;
     params.value = { ...DEFAULT_DEHAZE_PARAMS };
     result.value = null;
-    progress.value = 0;
     errorMessage.value = "";
   }
 
@@ -175,7 +160,6 @@ export const useProcessingStore = defineStore("processing", () => {
     selectedAlgorithm,
     params,
     result,
-    progress,
     errorMessage,
 
     // 计算属性
@@ -191,9 +175,7 @@ export const useProcessingStore = defineStore("processing", () => {
     setAlgorithm,
     updateParams,
     startUploading,
-    updateUploadProgress,
     startProcessing,
-    updateProgress,
     complete,
     fail,
     reset,
