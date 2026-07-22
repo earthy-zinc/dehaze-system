@@ -16,12 +16,12 @@
 .role-card {
   margin-bottom: 12px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
 
   &__header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     padding: 16px 16px 0;
   }
 
@@ -36,10 +36,10 @@
 
     .action-btn {
       height: 100%;
-      border: none;
       padding: 0 16px;
       font-size: 12px;
       color: #fff;
+      border: none;
 
       &.permission-btn {
         background-color: #722ed1;
@@ -60,10 +60,10 @@
   flex: 1;
 
   .role-name {
+    margin-bottom: 4px;
     font-size: 16px;
     font-weight: 600;
     color: #262626;
-    margin-bottom: 4px;
   }
 
   .role-code {
@@ -78,10 +78,10 @@
 }
 
 .role-description {
-  font-size: 14px;
-  color: #595959;
-  line-height: 1.5;
   margin-bottom: 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #595959;
 }
 
 .role-meta {
@@ -94,9 +94,9 @@
     margin-right: 20px;
 
     .meta-label {
+      margin-right: 4px;
       font-size: 12px;
       color: #8c8c8c;
-      margin-right: 4px;
     }
 
     .meta-value {
@@ -131,7 +131,7 @@
 }
 
 // 响应式适配
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .role-list-page {
     .search-bar {
       padding: 10px 12px;
@@ -167,8 +167,7 @@
 }
 
 // 小程序特定样式
-#if MP
-.role-list-page {
+#if mp .role-list-page {
   .search-bar {
     .taroify-search {
       background-color: #f8f8f8;
@@ -180,6 +179,7 @@
       .action-btn {
         // 小程序中按钮样式调整
         border-radius: 0;
+
         &::after {
           border: none;
         }

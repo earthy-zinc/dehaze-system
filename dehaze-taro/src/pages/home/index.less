@@ -1,9 +1,9 @@
 /* 首页主样式 */
 .home-page {
+  box-sizing: border-box;
   width: 100%;
   min-height: 100vh;
-  background: #ffffff;
-  box-sizing: border-box;
+  background: #fff;
 
   /* 确保图片加载时的占位样式 */
   image {
@@ -13,8 +13,8 @@
 
   /* 按钮点击反馈 */
   button {
-    outline: none;
     user-select: none;
+    outline: none;
   }
 
   button::after {
@@ -29,8 +29,8 @@
   /* 防止内容溢出 */
   view {
     overflow: hidden;
-    word-wrap: break-word;
     word-break: break-all;
+    overflow-wrap: break-word;
   }
 }
 
@@ -40,22 +40,26 @@
 }
 
 /* 响应式布局优化 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .home-page {
     padding-top: 0;
   }
 }
 
 /* Taro平台特定样式重置 */
+
 /* #ifdef MP-WEIXIN || MP-ALIPAY */
 .home-page {
   background: #f8fafc;
 }
+
 /* #endif */
 
 /* H5平台特定优化 */
+
 /* #ifdef H5 */
 .home-page {
   scroll-behavior: smooth;
 }
+
 /* #endif */

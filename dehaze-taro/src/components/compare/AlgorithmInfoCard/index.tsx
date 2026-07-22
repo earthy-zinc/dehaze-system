@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text } from '@tarojs/components';
-import type { Algorithm, PredictionResultVO } from 'dehaze-sdk-js';
-import { formatTime } from '../types';
-import './index.less';
+import React from "react";
+import { View, Text } from "@tarojs/components";
+import type { Algorithm, PredictionResultVO } from "dehaze-sdk-js";
+import { formatTime } from "../types";
+import "./index.less";
 
 interface AlgorithmInfoCardProps {
   algorithm: Algorithm | null;
@@ -37,10 +37,10 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
 
   // 处理参数默认值（去雾强度/饱和度/对比度/锐化）
   const paramConfigs = [
-    { key: 'dehazeStrength', label: '去雾强度', default: 50 },
-    { key: 'saturation', label: '色彩饱和度', default: 50 },
-    { key: 'contrast', label: '对比度', default: 50 },
-    { key: 'sharpen', label: '锐化程度', default: 30 },
+    { key: "dehazeStrength", label: "去雾强度", default: 50 },
+    { key: "saturation", label: "色彩饱和度", default: 50 },
+    { key: "contrast", label: "对比度", default: 50 },
+    { key: "sharpen", label: "锐化程度", default: 30 },
   ];
 
   const hasParams = paramConfigs.some((cfg) => params[cfg.key] !== undefined);
@@ -100,8 +100,11 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
                 <View className="param-value">
                   <Text className="info-value">{value}</Text>
                   {diff !== 0 && (
-                    <Text className={`param-diff ${diff > 0 ? 'positive' : 'negative'}`}>
-                      ({diff > 0 ? '+' : ''}{diff})
+                    <Text
+                      className={`param-diff ${diff > 0 ? "positive" : "negative"}`}
+                    >
+                      ({diff > 0 ? "+" : ""}
+                      {diff})
                     </Text>
                   )}
                 </View>
@@ -124,7 +127,9 @@ const AlgorithmInfoCard: React.FC<AlgorithmInfoCardProps> = ({
           {result.fromCache !== undefined && (
             <View className="info-row">
               <Text className="info-label">缓存命中</Text>
-              <Text className="info-value">{result.fromCache ? '是' : '否'}</Text>
+              <Text className="info-value">
+                {result.fromCache ? "是" : "否"}
+              </Text>
             </View>
           )}
           {evaluationTime !== undefined && (

@@ -1,45 +1,56 @@
-import React from 'react'
-import { View, ScrollView } from '@tarojs/components'
-import type { Dataset } from '../../services/types'
-import DatasetCard from '../DatasetCard'
-import EmptyState from '@/components/common/EmptyState'
-import './DatasetList.less'
+import React from "react";
+import { View, ScrollView } from "@tarojs/components";
+import EmptyState from "@/components/common/EmptyState";
+import type { Dataset } from "../../services/types";
+import DatasetCard from "../DatasetCard";
+import "./DatasetList.less";
 
 interface DatasetListProps {
-  datasets: Dataset[]
-  loading?: boolean
-  onLoadMore?: () => void
-  hasMore?: boolean
-  onDatasetClick?: (dataset: Dataset) => void
+  datasets: Dataset[];
+  loading?: boolean;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  onDatasetClick?: (dataset: Dataset) => void;
   // 树形结构相关
-  expandedIds: number[]
-  childrenMap: Record<number, Dataset[]>
-  childrenLoading: Record<number, boolean>
-  onToggleExpand?: (id: number) => void
+  expandedIds: number[];
+  childrenMap: Record<number, Dataset[]>;
+  childrenLoading: Record<number, boolean>;
+  onToggleExpand?: (id: number) => void;
   // CRUD 相关
-  onAddChild?: (parent: Dataset) => void
-  onEdit?: (dataset: Dataset) => void
-  onDelete?: (dataset: Dataset) => void
-  className?: string
+  onAddChild?: (parent: Dataset) => void;
+  onEdit?: (dataset: Dataset) => void;
+  onDelete?: (dataset: Dataset) => void;
+  className?: string;
 }
 
 // 递归树节点渲染
 const TreeNode: React.FC<{
-  dataset: Dataset
-  depth: number
-  expandedIds: number[]
-  childrenMap: Record<number, Dataset[]>
-  childrenLoading: Record<number, boolean>
-  onDatasetClick?: (dataset: Dataset) => void
-  onToggleExpand?: (id: number) => void
-  onAddChild?: (parent: Dataset) => void
-  onEdit?: (dataset: Dataset) => void
-  onDelete?: (dataset: Dataset) => void
-}> = ({ dataset, depth, expandedIds, childrenMap, childrenLoading, onDatasetClick, onToggleExpand, onAddChild, onEdit, onDelete }) => {
-  const isExpanded = expandedIds.includes(dataset.id)
-  const hasChildren = dataset.hasChildren === true
-  const children = childrenMap[dataset.id]
-  const isLoadingChildren = childrenLoading[dataset.id]
+  dataset: Dataset;
+  depth: number;
+  expandedIds: number[];
+  childrenMap: Record<number, Dataset[]>;
+  childrenLoading: Record<number, boolean>;
+  onDatasetClick?: (dataset: Dataset) => void;
+  onToggleExpand?: (id: number) => void;
+  onAddChild?: (parent: Dataset) => void;
+  onEdit?: (dataset: Dataset) => void;
+  onDelete?: (dataset: Dataset) => void;
+}> = ({
+  dataset,
+  depth,
+  expandedIds,
+  childrenMap,
+  childrenLoading,
+  onDatasetClick,
+  onToggleExpand,
+  onAddChild,
+  onEdit,
+  onDelete,
+}) => {
+  const isExpanded = expandedIds.includes(dataset.id);
+  const hasChildren = dataset.hasChildren === true;
+  const children = childrenMap[dataset.id];
+  const isLoadingChildren = childrenLoading[dataset.id];
 
   return (
     <View className="tree-node">
@@ -58,7 +69,7 @@ const TreeNode: React.FC<{
       {/* 递归渲染子节点 */}
       {isExpanded && children && children.length > 0 && (
         <View className="tree-children">
-          {children.map(child => (
+          {children.map((child) => (
             <TreeNode
               key={child.id}
               dataset={child}
@@ -76,20 +87,25 @@ const TreeNode: React.FC<{
         </View>
       )}
       {/* 子节点加载中 */}
-      {isExpanded && isLoadingChildren && (!children || children.length === 0) && (
-        <View className="children-loading">
-          <View className="loading-spinner" />
-        </View>
-      )}
+      {isExpanded &&
+        isLoadingChildren &&
+        (!children || children.length === 0) && (
+          <View className="children-loading">
+            <View className="loading-spinner" />
+          </View>
+        )}
       {/* 展开但无子节点 */}
-      {isExpanded && !isLoadingChildren && children && children.length === 0 && (
-        <View className="empty-children">
-          <View className="empty-children-text">暂无子数据集</View>
-        </View>
-      )}
+      {isExpanded &&
+        !isLoadingChildren &&
+        children &&
+        children.length === 0 && (
+          <View className="empty-children">
+            <View className="empty-children-text">暂无子数据集</View>
+          </View>
+        )}
     </View>
-  )
-}
+  );
+};
 
 const DatasetList: React.FC<DatasetListProps> = ({
   datasets,
@@ -104,20 +120,20 @@ const DatasetList: React.FC<DatasetListProps> = ({
   onAddChild,
   onEdit,
   onDelete,
-  className = '',
+  className = "",
 }) => {
   const handleScrollToLower = () => {
     if (onLoadMore && hasMore && !loading) {
-      onLoadMore()
+      onLoadMore();
     }
-  }
+  };
 
   if (datasets.length === 0 && !loading) {
     return (
       <View className={`dataset-list ${className}`}>
         <EmptyState type="dataset" />
       </View>
-    )
+    );
   }
 
   return (
@@ -160,7 +176,7 @@ const DatasetList: React.FC<DatasetListProps> = ({
         )}
       </View>
     </ScrollView>
-  )
-}
+  );
+};
 
-export default DatasetList
+export default DatasetList;

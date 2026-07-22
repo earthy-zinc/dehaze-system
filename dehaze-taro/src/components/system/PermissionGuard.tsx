@@ -1,15 +1,14 @@
-import React from 'react';
-import { View } from '@tarojs/components';
-import { useAuth } from '@/hooks/useAuth';
-import { usePermission } from '@/hooks/usePermission';
-import Loading from '@/components/common/Loading';
-
+import React from "react";
+import { View } from "@tarojs/components";
+import { useAuth } from "@/hooks/useAuth";
+import { usePermission } from "@/hooks/usePermission";
+import Loading from "@/components/common/Loading";
 
 const NoAuth = (
-      <View className="permission-fallback">
-        <View className="no-permission">抱歉，您没有权限访问此页面</View>
-      </View>
-)
+  <View className="permission-fallback">
+    <View className="no-permission">抱歉，您没有权限访问此页面</View>
+  </View>
+);
 interface PermissionGuardProps {
   children: React.ReactNode;
   // 权限要求
@@ -33,7 +32,11 @@ const PermissionGuard: React.FC<PermissionGuardProps> = (props) => {
     loadingComponent = <Loading>加载中...</Loading>,
   } = props;
   const { isAuthenticated, loading: authLoading } = useAuth();
-  const { hasPermission: hasPermissionFn, hasRole: hasRoleFn, isSuperAdmin } = usePermission();
+  const {
+    hasPermission: hasPermissionFn,
+    hasRole: hasRoleFn,
+    isSuperAdmin,
+  } = usePermission();
 
   // 如果正在加载认证状态，显示加载组件
   if (authLoading) {

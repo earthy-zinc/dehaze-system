@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, Input, ScrollView } from '@tarojs/components';
-import Taro, { useLoad, usePullDownRefresh } from '@tarojs/taro';
+import React, { useState } from "react";
+import { View, Text, Input, ScrollView } from "@tarojs/components";
+import Taro, { useLoad, usePullDownRefresh } from "@tarojs/taro";
 import {
   Navbar,
   Search,
@@ -8,22 +8,21 @@ import {
   Loading,
   Empty,
   SwipeCell,
-  Dialog,
   Tag,
   Cell,
   Popup,
   Switch,
-} from '@taroify/core';
-import { ArrowLeft, Add, Edit, Delete, Arrow } from '@taroify/icons';
-import { useDeptManagement } from '@/hooks/useDeptManagement';
-import { usePermission } from '@/hooks/usePermission';
-import type { DeptVO, DeptForm } from 'dehaze-sdk-js';
-import './index.scss';
+} from "@taroify/core";
+import { ArrowLeft, Add, Edit, Delete, Arrow } from "@taroify/icons";
+import { useDeptManagement } from "@/hooks/useDeptManagement";
+import { usePermission } from "@/hooks/usePermission";
+import type { DeptVO, DeptForm } from "dehaze-sdk-js";
+import "./index.scss";
 
 // 默认表单
 const DEFAULT_FORM: DeptForm = {
   parentId: 0,
-  name: '',
+  name: "",
   sort: 1,
   status: 1,
 };
@@ -57,7 +56,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     <View className="dept-tree-node">
       <SwipeCell className="dept-swipe-cell">
         <SwipeCell.Actions side="right">
-          {hasPermission('sys:dept:add') && (
+          {hasPermission("sys:dept:add") && (
             <Button
               className="action-btn add-btn"
               size="small"
@@ -67,7 +66,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               子级
             </Button>
           )}
-          {hasPermission('sys:dept:edit') && (
+          {hasPermission("sys:dept:edit") && (
             <Button
               className="action-btn edit-btn"
               size="small"
@@ -77,7 +76,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               编辑
             </Button>
           )}
-          {hasPermission('sys:dept:delete') && (
+          {hasPermission("sys:dept:delete") && (
             <Button
               className="action-btn delete-btn"
               size="small"
@@ -96,7 +95,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           <View className="dept-row">
             {hasChildren ? (
               <View className="dept-toggle">
-                <Arrow className={isExpanded ? 'arrow-expanded' : 'arrow-collapsed'} />
+                <Arrow
+                  className={isExpanded ? "arrow-expanded" : "arrow-collapsed"}
+                />
               </View>
             ) : (
               <View className="dept-toggle-placeholder" />
@@ -105,9 +106,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               <View className="dept-name-row">
                 <Text className="dept-name">{node.name}</Text>
                 {node.status === 1 ? (
-                  <Tag color="success" size="small">启用</Tag>
+                  <Tag color="success" size="small">
+                    启用
+                  </Tag>
                 ) : (
-                  <Tag color="default" size="small">禁用</Tag>
+                  <Tag color="default" size="small">
+                    禁用
+                  </Tag>
                 )}
               </View>
               <View className="dept-meta">
@@ -143,7 +148,7 @@ const expandFirstLevel = (list: DeptVO[]): number[] => {
   return list
     .filter((item) => item.children && item.children.length > 0)
     .map((item) => item.id!)
-    .filter((id): id is number => typeof id === 'number');
+    .filter((id): id is number => typeof id === "number");
 };
 
 const DeptPage: React.FC = () => {
@@ -163,7 +168,7 @@ const DeptPage: React.FC = () => {
 
   const { hasPermission } = usePermission();
 
-  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
 
   // 表单弹窗状态
@@ -171,10 +176,6 @@ const DeptPage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | undefined>();
   const [formData, setFormData] = useState<DeptForm>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
-
-  // 删除确认弹窗
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletingDept, setDeletingDept] = useState<DeptVO | null>(null);
 
   useLoad(async () => {
     const list = await fetchDeptList();
@@ -198,7 +199,7 @@ const DeptPage: React.FC = () => {
 
   // 搜索处理
   const handleSearch = async (event: any) => {
-    const value = event.detail?.value || '';
+    const value = event.detail?.value || "";
     setSearchKeyword(value);
     if (value.trim()) {
       await searchDepts(value.trim());
@@ -243,16 +244,23 @@ const DeptPage: React.FC = () => {
 
   // 删除部门
   const handleDelete = (node: DeptVO) => {
-    setDeletingDept(node);
-    setShowDeleteDialog(true);
+    Taro.showModal({
+      title: "确认删除",
+      content: `确定要删除部门 "${node.name}" 吗？如有子部门需先删除子部门，此操作不可恢复。`,
+      confirmText: "删除",
+      cancelText: "取消",
+      success: (res) => {
+        if (res.confirm) {
+          confirmDelete(node);
+        }
+      },
+    });
   };
 
-  const confirmDelete = async () => {
-    if (!deletingDept?.id) return;
+  const confirmDelete = async (node: DeptVO) => {
+    if (!node?.id) return;
     try {
-      await deleteDept(deletingDept.id);
-      setShowDeleteDialog(false);
-      setDeletingDept(null);
+      await deleteDept(node.id);
     } catch {
       // 错误已在 hook 中处理
     }
@@ -266,7 +274,7 @@ const DeptPage: React.FC = () => {
   // 表单校验
   const validateForm = (): boolean => {
     if (!formData.name?.trim()) {
-      Taro.showToast({ title: '部门名称不能为空', icon: 'none' });
+      Taro.showToast({ title: "部门名称不能为空", icon: "none" });
       return false;
     }
     return true;
@@ -298,7 +306,7 @@ const DeptPage: React.FC = () => {
           <ArrowLeft onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission('sys:dept:add') && <Add onClick={handleAdd} />}
+          {hasPermission("sys:dept:add") && <Add onClick={handleAdd} />}
         </Navbar.NavRight>
       </Navbar>
 
@@ -309,7 +317,7 @@ const DeptPage: React.FC = () => {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.detail.value)}
           onSearch={handleSearch}
-          onClear={() => handleSearch('')}
+          onClear={() => handleSearch("")}
         />
       </View>
 
@@ -321,7 +329,7 @@ const DeptPage: React.FC = () => {
           <Empty>
             <Empty.Image />
             <Empty.Description>暂无部门数据</Empty.Description>
-            {hasPermission('sys:dept:add') && (
+            {hasPermission("sys:dept:add") && (
               <Button color="primary" size="small" onClick={handleAdd}>
                 新增部门
               </Button>
@@ -344,32 +352,17 @@ const DeptPage: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* 删除确认弹窗 */}
-      <Dialog
-        open={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        title="确认删除"
-      >
-        <Dialog.Content>
-          确定要删除部门 "{deletingDept?.name}" 吗？如有子部门需先删除子部门，此操作不可恢复。
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onClick={() => setShowDeleteDialog(false)}>取消</Button>
-          <Button color="danger" onClick={confirmDelete}>删除</Button>
-        </Dialog.Actions>
-      </Dialog>
-
       {/* 部门表单弹窗 */}
       <Popup
         open={showFormDialog}
         onClose={() => setShowFormDialog(false)}
         placement="bottom"
-        style={{ height: '60%' }}
+        style={{ height: "60%" }}
       >
         <View className="form-popup">
           <View className="form-header">
             <Text className="form-title">
-              {editingId ? '编辑部门' : '新增部门'}
+              {editingId ? "编辑部门" : "新增部门"}
             </Text>
           </View>
           <View className="form-body">
@@ -378,8 +371,10 @@ const DeptPage: React.FC = () => {
               <Text className="form-label">上级部门</Text>
               <View className="parent-dept-display">
                 {formData.parentId === 0
-                  ? '顶级部门'
-                  : deptOptions.find((opt) => Number(opt.value) === formData.parentId)?.label || '未知部门'}
+                  ? "顶级部门"
+                  : deptOptions.find(
+                      (opt) => Number(opt.value) === formData.parentId
+                    )?.label || "未知部门"}
               </View>
             </View>
 
@@ -389,8 +384,8 @@ const DeptPage: React.FC = () => {
               <Input
                 className="form-input"
                 placeholder="请输入部门名称"
-                value={formData.name || ''}
-                onInput={(e) => handleFieldChange('name', e.detail.value)}
+                value={formData.name || ""}
+                onInput={(e) => handleFieldChange("name", e.detail.value)}
               />
             </View>
 
@@ -402,7 +397,9 @@ const DeptPage: React.FC = () => {
                 type="number"
                 placeholder="请输入排序值"
                 value={String(formData.sort ?? 1)}
-                onInput={(e) => handleFieldChange('sort', Number(e.detail.value) || 1)}
+                onInput={(e) =>
+                  handleFieldChange("sort", Number(e.detail.value) || 1)
+                }
               />
             </View>
 
@@ -412,9 +409,11 @@ const DeptPage: React.FC = () => {
               <View className="form-switch">
                 <Switch
                   checked={formData.status === 1}
-                  onChange={(checked) => handleFieldChange('status', checked ? 1 : 0)}
+                  onChange={(checked) =>
+                    handleFieldChange("status", checked ? 1 : 0)
+                  }
                 />
-                <Text>{formData.status === 1 ? '启用' : '禁用'}</Text>
+                <Text>{formData.status === 1 ? "启用" : "禁用"}</Text>
               </View>
             </View>
           </View>

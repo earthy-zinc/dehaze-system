@@ -1,25 +1,24 @@
-import React, { useState } from 'react';
-import { View } from '@tarojs/components';
-import Taro, { useRouter, useLoad } from '@tarojs/taro';
+import React, { useState } from "react";
+import { View } from "@tarojs/components";
+import Taro, { useRouter, useLoad } from "@tarojs/taro";
 import {
   Navbar,
   Form,
   Input,
   Radio,
   Button,
-  Toast,
   Loading,
   Cell,
   Picker,
   Popup,
   Field,
-} from '@taroify/core';
-import { ArrowLeft } from '@taroify/icons';
-import { useUserManagement } from '@/hooks/useUserManagement';
-import { useDeptManagement } from '@/hooks/useDeptManagement';
-import { useRoleManagement } from '@/hooks/useRoleManagement';
-import type { UserForm } from 'dehaze-sdk-js';
-import './detail.scss';
+} from "@taroify/core";
+import { ArrowLeft } from "@taroify/icons";
+import { useUserManagement } from "@/hooks/useUserManagement";
+import { useDeptManagement } from "@/hooks/useDeptManagement";
+import { useRoleManagement } from "@/hooks/useRoleManagement";
+import type { UserForm } from "dehaze-sdk-js";
+import "./detail.scss";
 
 const UserDetailPage: React.FC = () => {
   const router = useRouter();
@@ -36,10 +35,10 @@ const UserDetailPage: React.FC = () => {
   const [openRolePicker, setOpenRolePicker] = useState(false);
   const [roleOptions, setRoleOptions] = useState<any[]>([]);
   const [formData, setFormData] = useState<UserForm>({
-    username: '',
-    nickname: '',
-    mobile: '',
-    email: '',
+    username: "",
+    nickname: "",
+    mobile: "",
+    email: "",
     gender: 0,
     status: 1,
     deptId: undefined,
@@ -52,7 +51,7 @@ const UserDetailPage: React.FC = () => {
       // 并行获取部门选项和角色选项
       await Promise.all([
         fetchDeptOptions(),
-        getRoleOptions().then(roles => setRoleOptions(roles))
+        getRoleOptions().then((roles) => setRoleOptions(roles)),
       ]);
 
       // 如果是编辑模式，获取用户详情
@@ -60,8 +59,8 @@ const UserDetailPage: React.FC = () => {
         await loadUserData();
       }
     } catch (error) {
-      console.error('初始化数据失败:', error);
-      Toast.open({ message: '初始化数据失败', position: 'top' });
+      console.error("初始化数据失败:", error);
+      Taro.showToast({ title: "初始化数据失败", icon: "none" });
     }
   });
 
@@ -73,18 +72,18 @@ const UserDetailPage: React.FC = () => {
       setLoading(true);
       const userData = await getUserDetail(Number(id));
       setFormData({
-        username: userData.username || '',
-        nickname: userData.nickname || '',
-        mobile: userData.mobile || '',
-        email: userData.email || '',
+        username: userData.username || "",
+        nickname: userData.nickname || "",
+        mobile: userData.mobile || "",
+        email: userData.email || "",
         gender: userData.gender ?? 0,
         status: userData.status ?? 1,
         deptId: userData.deptId,
         roleIds: userData.roleIds || [],
       });
     } catch (error) {
-      Toast.open({ message: '获取用户信息失败', position: 'top' });
-      console.error('获取用户信息失败:', error);
+      Taro.showToast({ title: "获取用户信息失败", icon: "none" });
+      console.error("获取用户信息失败:", error);
       // 加载失败时返回上一页
       setTimeout(() => {
         Taro.navigateBack();
@@ -96,9 +95,9 @@ const UserDetailPage: React.FC = () => {
 
   // 表单字段更新
   const handleFieldChange = (field: keyof UserForm, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -107,28 +106,28 @@ const UserDetailPage: React.FC = () => {
     // 表单验证
     const trimmedUsername = formData.username?.trim();
     if (!trimmedUsername) {
-      Toast.open({ message: '请输入用户名', position: 'top' });
+      Taro.showToast({ title: "请输入用户名", icon: "none" });
       return;
     }
 
     const trimmedNickname = formData.nickname?.trim();
     if (!trimmedNickname) {
-      Toast.open({ message: '请输入用户昵称', position: 'top' });
+      Taro.showToast({ title: "请输入用户昵称", icon: "none" });
       return;
     }
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      Toast.open({ message: '请输入正确的邮箱地址', position: 'top' });
+      Taro.showToast({ title: "请输入正确的邮箱地址", icon: "none" });
       return;
     }
 
     if (formData.mobile && !/^1[3-9]\d{9}$/.test(formData.mobile)) {
-      Toast.open({ message: '请输入正确的手机号码', position: 'top' });
+      Taro.showToast({ title: "请输入正确的手机号码", icon: "none" });
       return;
     }
 
     if (!formData.roleIds || formData.roleIds.length === 0) {
-      Toast.open({ message: '请选择用户角色', position: 'top' });
+      Taro.showToast({ title: "请选择用户角色", icon: "none" });
       return;
     }
 
@@ -144,17 +143,16 @@ const UserDetailPage: React.FC = () => {
 
       if (isEdit) {
         await updateUser(Number(id), submitData);
-        Toast.open({ message: '更新成功', position: 'top' });
+        Taro.showToast({ title: "更新成功", icon: "none" });
       } else {
         await createUser(submitData);
-        Toast.open({ message: '创建成功', position: 'top' });
+        Taro.showToast({ title: "创建成功", icon: "none" });
       }
 
       // 返回列表页
       setTimeout(() => {
         Taro.navigateBack();
       }, 1000);
-
     } catch (error) {
       // 错误已在 hook 中处理
     } finally {
@@ -168,9 +166,7 @@ const UserDetailPage: React.FC = () => {
 
   return (
     <View className="user-detail-page">
-      <Navbar
-        title={isEdit ? '编辑用户' : '新增用户'}
-      >
+      <Navbar title={isEdit ? "编辑用户" : "新增用户"}>
         <Navbar.NavLeft>
           <ArrowLeft onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
@@ -179,25 +175,31 @@ const UserDetailPage: React.FC = () => {
       <Form className="user-form" onSubmit={handleSubmit}>
         {/* 基本信息 */}
         <Cell.Group inset title="基本信息">
-          <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
+          <Form.Item
+            name="username"
+            rules={[{ required: true, message: "请输入用户名" }]}
+          >
             <Form.Label>用户名</Form.Label>
             <Form.Control>
               <Input
                 value={formData.username}
                 readonly={isEdit}
                 placeholder="请输入用户名"
-                onChange={(value) => handleFieldChange('username', value)}
+                onChange={(value) => handleFieldChange("username", value)}
               />
             </Form.Control>
           </Form.Item>
 
-          <Form.Item name="nickname" rules={[{ required: true, message: '请输入用户昵称' }]}>
+          <Form.Item
+            name="nickname"
+            rules={[{ required: true, message: "请输入用户昵称" }]}
+          >
             <Form.Label>用户昵称</Form.Label>
             <Form.Control>
               <Input
                 value={formData.nickname}
                 placeholder="请输入用户昵称"
-                onChange={(value) => handleFieldChange('nickname', value)}
+                onChange={(value) => handleFieldChange("nickname", value)}
               />
             </Form.Control>
           </Form.Item>
@@ -207,7 +209,7 @@ const UserDetailPage: React.FC = () => {
             <Form.Control>
               <Radio.Group
                 value={formData.gender}
-                onChange={(value) => handleFieldChange('gender', Number(value))}
+                onChange={(value) => handleFieldChange("gender", Number(value))}
               >
                 <Radio name={0}>未知</Radio>
                 <Radio name={1}>男</Radio>
@@ -228,7 +230,12 @@ const UserDetailPage: React.FC = () => {
             <Input
               readonly
               placeholder="请选择所属部门"
-              value={formData.deptId ? deptOptions?.find(dept => dept.value === formData.deptId)?.label : ''}
+              value={
+                formData.deptId
+                  ? deptOptions?.find((dept) => dept.value === formData.deptId)
+                      ?.label
+                  : ""
+              }
             />
           </Field>
 
@@ -242,9 +249,18 @@ const UserDetailPage: React.FC = () => {
             <Input
               readonly
               placeholder="请选择用户角色"
-              value={formData.roleIds && formData.roleIds.length > 0
-                ? formData.roleIds.map(roleId => roleOptions?.find((role: any) => role.value === roleId)?.label).filter(Boolean).join('、')
-                : ''
+              value={
+                formData.roleIds && formData.roleIds.length > 0
+                  ? formData.roleIds
+                      .map(
+                        (roleId) =>
+                          roleOptions?.find(
+                            (role: any) => role.value === roleId
+                          )?.label
+                      )
+                      .filter(Boolean)
+                      .join("、")
+                  : ""
               }
             />
           </Field>
@@ -254,7 +270,7 @@ const UserDetailPage: React.FC = () => {
             <Form.Control>
               <Radio.Group
                 value={formData.status}
-                onChange={(value) => handleFieldChange('status', Number(value))}
+                onChange={(value) => handleFieldChange("status", Number(value))}
               >
                 <Radio name={1}>正常</Radio>
                 <Radio name={0}>禁用</Radio>
@@ -273,7 +289,7 @@ const UserDetailPage: React.FC = () => {
                 placeholder="请输入手机号码"
                 type="number"
                 maxlength={11}
-                onChange={(value) => handleFieldChange('mobile', value)}
+                onChange={(value) => handleFieldChange("mobile", value)}
               />
             </Form.Control>
           </Form.Item>
@@ -284,7 +300,7 @@ const UserDetailPage: React.FC = () => {
               <Input
                 value={formData.email}
                 placeholder="请输入邮箱"
-                onChange={(value) => handleFieldChange('email', value)}
+                onChange={(value) => handleFieldChange("email", value)}
               />
             </Form.Control>
           </Form.Item>
@@ -292,44 +308,59 @@ const UserDetailPage: React.FC = () => {
 
         {/* 表单操作 */}
         <View className="form-actions">
-          <Button
-            block
-            color="primary"
-            formType="submit"
-            loading={submitting}
-          >
-            {isEdit ? '更新' : '创建'}
+          <Button block color="primary" formType="submit" loading={submitting}>
+            {isEdit ? "更新" : "创建"}
           </Button>
         </View>
 
         {/* 部门选择弹窗 */}
-        <Popup open={openDeptPicker} rounded placement="bottom" onClose={setOpenDeptPicker}>
+        <Popup
+          open={openDeptPicker}
+          rounded
+          placement="bottom"
+          onClose={setOpenDeptPicker}
+        >
           <Popup.Backdrop />
           <Picker
             title="选择所属部门"
             cancelText="取消"
             confirmText="确认"
-            columns={deptOptions?.map(dept => ({ text: dept.label, value: String(dept.value) })) || []}
+            columns={
+              deptOptions?.map((dept) => ({
+                text: dept.label,
+                value: String(dept.value),
+              })) || []
+            }
             onCancel={() => setOpenDeptPicker(false)}
             onConfirm={(values) => {
-              handleFieldChange('deptId', Number(values[0]));
+              handleFieldChange("deptId", Number(values[0]));
               setOpenDeptPicker(false);
             }}
           />
         </Popup>
 
         {/* 角色选择弹窗 */}
-        <Popup open={openRolePicker} rounded placement="bottom" onClose={setOpenRolePicker}>
+        <Popup
+          open={openRolePicker}
+          rounded
+          placement="bottom"
+          onClose={setOpenRolePicker}
+        >
           <Popup.Backdrop />
           <Picker
             title="选择用户角色"
             cancelText="取消"
             confirmText="确认"
-            columns={roleOptions?.map(role => ({ text: role.label, value: String(role.value) })) || []}
+            columns={
+              roleOptions?.map((role) => ({
+                text: role.label,
+                value: String(role.value),
+              })) || []
+            }
             onCancel={() => setOpenRolePicker(false)}
             onConfirm={(values) => {
               // 单选模式，如果需要多选可能需要使用其他组件或自定义实现
-              handleFieldChange('roleIds', [Number(values[0])]);
+              handleFieldChange("roleIds", [Number(values[0])]);
               setOpenRolePicker(false);
             }}
           />

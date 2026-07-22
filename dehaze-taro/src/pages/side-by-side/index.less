@@ -12,7 +12,7 @@
   height: 44px;
   padding: 0 16px;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
 
   .nav-back {
     padding: 8px;
@@ -21,36 +21,36 @@
 
   .nav-title {
     flex: 1;
-    text-align: center;
+    margin-right: 28px;
     font-size: 17px;
     font-weight: 600;
     color: #1f2937;
-    margin-right: 28px;
+    text-align: center;
   }
 }
 
 /* 模式切换标签 */
 .mode-tabs {
   display: flex;
-  background: #fff;
-  padding: 0 16px 12px;
   gap: 8px;
+  padding: 0 16px 12px;
+  background: #fff;
 
   .mode-tab {
-    flex: 1;
-    height: 32px;
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
-    background: #f3f4f6;
-    border-radius: 16px;
+    height: 32px;
     font-size: 13px;
     color: #6b7280;
+    background: #f3f4f6;
+    border-radius: 16px;
 
     &.active {
-      background: #3b82f6;
-      color: #fff;
       font-weight: 500;
+      color: #fff;
+      background: #3b82f6;
     }
   }
 }
@@ -58,8 +58,8 @@
 /* 对比内容区域 */
 .compare-content {
   flex: 1;
-  overflow: hidden;
   padding: 12px;
+  overflow: hidden;
 }
 
 /* 空状态 */
@@ -71,9 +71,9 @@
   padding: 80px 0;
 
   .empty-text {
+    margin-bottom: 8px;
     font-size: 16px;
     color: #6b7280;
-    margin-bottom: 8px;
   }
 
   .empty-hint {
@@ -84,40 +84,40 @@
 
 /* 图片区块 */
 .image-section {
+  margin-bottom: 8px;
+  overflow: hidden;
   background: #fff;
   border-radius: 12px;
-  overflow: hidden;
-  margin-bottom: 8px;
 
   .image-label {
     display: flex;
-    align-items: center;
     gap: 8px;
+    align-items: center;
     padding: 10px 14px;
     border-bottom: 1px solid #f5f5f5;
 
     .label-tag {
       padding: 2px 8px;
-      border-radius: 4px;
       font-size: 11px;
+      border-radius: 4px;
 
       &.label-original {
-        background: #fef3c7;
         color: #d97706;
+        background: #fef3c7;
       }
 
       &.label-result {
-        background: #d1fae5;
         color: #059669;
+        background: #d1fae5;
       }
     }
 
     .image-name {
       flex: 1;
-      font-size: 13px;
-      color: #6b7280;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-size: 13px;
+      color: #6b7280;
       white-space: nowrap;
     }
   }
@@ -148,15 +148,15 @@
 
 /* 处理信息卡片 */
 .info-card {
-  background: #fff;
-  border-radius: 12px;
   padding: 14px 16px;
   margin-top: 8px;
+  background: #fff;
+  border-radius: 12px;
 
   .info-row {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     padding: 6px 0;
 
     .info-label {
@@ -166,8 +166,8 @@
 
     .info-value {
       font-size: 13px;
-      color: #1f2937;
       font-weight: 500;
+      color: #1f2937;
     }
 
     .cache-hit {
@@ -179,16 +179,16 @@
 /* 底部操作栏 */
 .bottom-toolbar {
   display: flex;
-  background: #fff;
   padding: 8px 16px;
-  box-shadow: 0 -1px 4px rgba(0, 0, 0, 0.04);
+  background: #fff;
+  box-shadow: 0 -1px 4px rgb(0 0 0 / 4%);
 
   .tool-btn {
-    flex: 1;
     display: flex;
+    flex: 1;
     flex-direction: column;
-    align-items: center;
     gap: 4px;
+    align-items: center;
     padding: 8px 0;
 
     .tool-icon {

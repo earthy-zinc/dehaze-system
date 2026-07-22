@@ -19,8 +19,8 @@
 
 .form-actions {
   padding: 20px 16px;
-  background-color: #fff;
   margin-top: 16px;
+  background-color: #fff;
 
   .taroify-button {
     height: 44px;
@@ -38,7 +38,7 @@
 }
 
 // 响应式适配
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .user-detail-page {
     .user-form {
       padding: 8px;
@@ -51,8 +51,7 @@
 }
 
 // 小程序特定样式
-#if MP
-.user-detail-page {
+#if mp .user-detail-page {
   .user-form {
     .taroify-cell-group {
       margin: 0 8px 16px;

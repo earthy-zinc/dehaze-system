@@ -1,22 +1,22 @@
 /* 图片卡片组件样式 */
 .image-card {
+  overflow: hidden;
+  cursor: pointer;
   background: white;
   border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
   transition: all 0.3s ease;
-  cursor: pointer;
   animation: fadeIn 0.3s ease;
 }
 
 .image-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
   transform: translateY(-2px);
 }
 
 .image-card:active {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
   transform: scale(0.98);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 @keyframes fadeIn {
@@ -24,6 +24,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -48,46 +49,46 @@
   position: absolute;
   top: 8px;
   right: 8px;
+  z-index: 1;
   padding: 4px 8px;
   border-radius: 12px;
   backdrop-filter: blur(8px);
-  z-index: 1;
 }
 
 .type-badge-hazy {
-  background: rgba(107, 114, 128, 0.9);
   color: white;
+  background: rgb(107 114 128 / 90%);
 }
 
 .type-badge-clear {
-  background: rgba(59, 130, 246, 0.9);
   color: white;
+  background: rgb(59 130 246 / 90%);
 }
 
 .type-badge-trans {
-  background: rgba(14, 165, 233, 0.9);
   color: white;
+  background: rgb(14 165 233 / 90%);
 }
 
 .type-badge-depth {
-  background: rgba(139, 92, 246, 0.9);
   color: white;
+  background: rgb(139 92 246 / 90%);
 }
 
 .type-badge-segment {
-  background: rgba(6, 182, 212, 0.9);
   color: white;
+  background: rgb(6 182 212 / 90%);
 }
 
 .haze-badge {
   position: absolute;
   top: 8px;
   left: 8px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  background: rgba(16, 185, 129, 0.9);
-  backdrop-filter: blur(8px);
   z-index: 1;
+  padding: 4px 8px;
+  background: rgb(16 185 129 / 90%);
+  border-radius: 12px;
+  backdrop-filter: blur(8px);
 }
 
 .haze-text {
@@ -109,20 +110,20 @@
 
 .image-filename {
   display: block;
-  font-size: 13px;
-  color: #374151;
   margin-bottom: 4px;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-size: 13px;
   font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
 }
 
 .image-meta {
   display: block;
+  margin-bottom: 2px;
   font-size: 11px;
   color: #9ca3af;
-  margin-bottom: 2px;
 }
 
 .image-tags {
@@ -135,15 +136,15 @@
 .tag {
   display: inline-block;
   padding: 2px 6px;
-  background: #f3f4f6;
-  color: #6b7280;
   font-size: 10px;
-  border-radius: 4px;
   line-height: 1.2;
+  color: #6b7280;
+  background: #f3f4f6;
+  border-radius: 4px;
 }
 
 /* 响应式适配 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .image-info {
     padding: 10px;
   }
@@ -157,12 +158,12 @@
   }
 
   .tag {
-    font-size: 9px;
     padding: 1px 4px;
+    font-size: 9px;
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .image-info {
     padding: 8px;
   }

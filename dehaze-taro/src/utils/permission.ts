@@ -20,9 +20,7 @@ export const hasPermission = (
     ? requiredPermissions
     : [requiredPermissions];
 
-  return permissions.some(permission =>
-    userPermissions.includes(permission)
-  );
+  return permissions.some((permission) => userPermissions.includes(permission));
 };
 
 /**
@@ -41,7 +39,7 @@ export const hasRole = (
 
   const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
 
-  return roles.some(role => userRoles.includes(role));
+  return roles.some((role) => userRoles.includes(role));
 };
 
 /**
@@ -50,7 +48,7 @@ export const hasRole = (
  * @returns 是否为超级管理员
  */
 export const isSuperAdmin = (userRoles: string[]): boolean => {
-  return userRoles.includes('ROOT');
+  return userRoles.includes("ROOT");
 };
 
 /**
@@ -66,7 +64,7 @@ export const filterMenusByPermission = (
   roles: string[]
 ): any[] => {
   return menus
-    .map(menu => {
+    .map((menu) => {
       // 如果是超级管理员，直接通过
       if (isSuperAdmin(roles)) {
         return menu;
@@ -74,7 +72,10 @@ export const filterMenusByPermission = (
 
       // 检查菜单权限
       if (menu.meta?.permissions) {
-        const hasMenuPermission = hasPermission(permissions, menu.meta.permissions);
+        const hasMenuPermission = hasPermission(
+          permissions,
+          menu.meta.permissions
+        );
         if (!hasMenuPermission) {
           return null;
         }
@@ -90,13 +91,17 @@ export const filterMenusByPermission = (
 
       // 递归检查子菜单（不可变，返回新对象）
       if (menu.children && menu.children.length > 0) {
-        const filteredChildren = filterMenusByPermission(menu.children, permissions, roles);
+        const filteredChildren = filterMenusByPermission(
+          menu.children,
+          permissions,
+          roles
+        );
         return { ...menu, children: filteredChildren };
       }
 
       return menu;
     })
-    .filter(menu => {
+    .filter((menu) => {
       if (!menu) return false;
       // 如果有子菜单但都被过滤掉了，则不显示
       if (menu.children && menu.children.length === 0) return false;
@@ -119,8 +124,10 @@ export const generatePermission = (module: string, action: string): string => {
  * @param permission 权限标识符
  * @returns 解析后的模块和操作
  */
-export const parsePermission = (permission: string): { module: string; action: string } => {
-  const [module, action] = permission.split(':');
+export const parsePermission = (
+  permission: string
+): { module: string; action: string } => {
+  const [module, action] = permission.split(":");
   return { module, action };
 };
 

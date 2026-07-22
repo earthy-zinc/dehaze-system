@@ -1,14 +1,14 @@
 /* 筛选标签组件样式 */
 .filter-tabs {
-  width: 100%;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .tabs-container {
   display: flex;
-  overflow-x: auto;
   gap: 8px;
   padding: 4px 0;
+  overflow-x: auto;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
 }
@@ -18,111 +18,106 @@
 }
 
 .tab-item {
-  flex-shrink: 0;
-  padding: 8px 16px;
-  border-radius: 20px;
-  background: white;
-  border: 2px solid #e5e7eb;
-  color: #6b7280;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
   display: flex;
-  align-items: center;
+  flex-shrink: 0;
   gap: 4px;
-  min-height: 36px;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 14px;
 
   /* #ifdef MP-WEIXIN || MP-ALIPAY */
   font-size: 13px;
-  padding: 6px 14px;
-  min-height: 32px;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: nowrap;
+  cursor: pointer;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+
   /* #endif */
 }
 
 .tab-item:hover {
-  border-color: #14b8a6;
   color: #14b8a6;
   background: #f0fdfa;
+  border-color: #14b8a6;
 }
 
 .tab-item.active {
+  color: white;
   background: linear-gradient(135deg, #14b8a6, #06b6d4);
   border-color: #14b8a6;
-  color: white;
-  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3);
+  box-shadow: 0 4px 12px rgb(20 184 166 / 30%);
 }
 
 .tab-text {
   font-size: inherit;
-  color: inherit;
   font-weight: inherit;
   line-height: 1.2;
+  color: inherit;
 }
 
 .tab-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 18px;
-  padding: 0 6px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: inherit;
-  line-height: 1;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
 
   /* #ifdef MP-WEIXIN || MP-ALIPAY */
   font-size: 11px;
-  height: 16px;
-  min-width: 18px;
-  padding: 0 4px;
+  font-weight: 600;
+  line-height: 1;
+  color: inherit;
+  background: rgb(255 255 255 / 20%);
+  border-radius: 10px;
+
   /* #endif */
 }
 
 .tab-item:not(.active) .tab-count {
-  background: #f3f4f6;
   color: #6b7280;
+  background: #f3f4f6;
 }
 
 /* 响应式适配 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .tabs-container {
     gap: 6px;
   }
 
   .tab-item {
+    min-height: 32px;
     padding: 6px 14px;
     font-size: 13px;
-    min-height: 32px;
   }
 
   .tab-count {
-    font-size: 11px;
-    height: 16px;
     min-width: 18px;
+    height: 16px;
     padding: 0 4px;
+    font-size: 11px;
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .tabs-container {
     gap: 4px;
   }
 
   .tab-item {
+    min-height: 30px;
     padding: 6px 12px;
     font-size: 12px;
-    min-height: 30px;
   }
 
   .tab-count {
-    font-size: 10px;
-    height: 14px;
     min-width: 16px;
+    height: 14px;
     padding: 0 3px;
+    font-size: 10px;
   }
 }

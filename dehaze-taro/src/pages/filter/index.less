@@ -19,27 +19,27 @@
 
   .nav-title {
     flex: 1;
-    text-align: center;
+    margin-right: 28px;
     font-size: 16px;
     font-weight: 600;
     color: #262626;
-    margin-right: 28px;
+    text-align: center;
   }
 }
 
 .empty-state {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
   padding: 60px 20px;
   text-align: center;
 
   .empty-text {
+    margin-bottom: 8px;
     font-size: 16px;
     color: #8c8c8c;
-    margin-bottom: 8px;
   }
 
   .empty-hint {
@@ -50,27 +50,27 @@
 
 .preview-area {
   position: relative;
-  background-color: #000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
   max-height: 40vh;
   overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  background-color: #000;
 
   .preview-image {
-    width: 100%;
     display: block;
+    width: 100%;
   }
 
   .preview-toggle {
     position: absolute;
-    bottom: 12px;
     right: 12px;
+    bottom: 12px;
     padding: 6px 14px;
-    background-color: rgba(0, 0, 0, 0.6);
-    border-radius: 16px;
     font-size: 12px;
     color: #fff;
+    background-color: rgb(0 0 0 / 60%);
+    border-radius: 16px;
   }
 }
 
@@ -80,16 +80,16 @@
 
   .preset-section,
   .filter-sliders {
-    background-color: #fff;
-    margin: 12px 16px;
-    border-radius: 8px;
     padding: 12px 16px;
+    margin: 12px 16px;
+    background-color: #fff;
+    border-radius: 8px;
   }
 
   .section-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     margin-bottom: 12px;
 
     .section-title {
@@ -112,15 +112,15 @@
 
     .preset-item {
       padding: 6px 16px;
-      border: 1px solid #d9d9d9;
-      border-radius: 16px;
       font-size: 13px;
       color: #595959;
       background-color: #fff;
+      border: 1px solid #d9d9d9;
+      border-radius: 16px;
 
       &.custom {
-        border-color: #722ed1;
         color: #722ed1;
+        border-color: #722ed1;
       }
 
       &:active {
@@ -138,8 +138,8 @@
 
     .slider-label-row {
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      justify-content: space-between;
       margin-bottom: 8px;
 
       .slider-label {
@@ -149,8 +149,8 @@
 
       .slider-value {
         font-size: 13px;
-        color: #1890ff;
         font-weight: 500;
+        color: #1890ff;
       }
     }
   }

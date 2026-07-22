@@ -1,9 +1,9 @@
 .tech-specs-section {
-  padding: 60px 32px;
-  background: white;
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  box-sizing: border-box;
+  padding: 60px 32px;
+  background: white;
 
   .specs-grid {
     display: grid;
@@ -14,62 +14,61 @@
   }
 
   .spec-card {
-    text-align: center;
-    padding: 32px 20px;
-    background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
-    border-radius: 20px;
-    border: 2px solid #e5e7eb;
-    transition: all 0.3s ease;
-    box-sizing: border-box;
     position: relative;
+    box-sizing: border-box;
+    padding: 32px 20px;
+    text-align: center;
+    background: linear-gradient(180deg, #f9fafb 0%, #fff 100%);
+    border: 2px solid #e5e7eb;
+    border-radius: 20px;
+    transition: all 0.3s ease;
 
     &:active {
-      transform: scale(0.98);
       border-color: #3b82f6;
+      transform: scale(0.98);
     }
   }
 
   .spec-icon {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 20px;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
     color: white;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 50%;
     transition: all 0.3s;
   }
 
   .spec-title {
     display: block;
+    margin-bottom: 6px;
     font-size: 20px;
     font-weight: 600;
     color: #6b7280;
-    margin-bottom: 6px;
+    text-align: center;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    text-align: center;
   }
 
   .spec-value {
     display: block;
+    margin-bottom: 14px;
     font-size: 26px;
     font-weight: 700;
+    line-height: 1;
+    color: transparent;
+    text-align: center;
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    margin-bottom: 14px;
-    line-height: 1;
-    text-align: center;
   }
 
   .spec-desc {
     font-size: 14px;
-    color: #9ca3af;
     line-height: 1.4;
+    color: #9ca3af;
     text-align: center;
   }
 }

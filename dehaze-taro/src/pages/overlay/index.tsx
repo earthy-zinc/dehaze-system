@@ -1,54 +1,54 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { View, Text, Image, ScrollView } from '@tarojs/components'
-import Taro from '@tarojs/taro'
-import { ArrowLeft } from '@taroify/icons'
-import CompareToolbar from '@/components/compare/CompareToolbar'
-import AlgorithmInfoCard from '@/components/compare/AlgorithmInfoCard'
-import { loadCompareContext } from '@/components/compare/types'
-import './index.less'
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { View, Text, Image, ScrollView } from "@tarojs/components";
+import Taro from "@tarojs/taro";
+import { ArrowLeft } from "@taroify/icons";
+import CompareToolbar from "@/components/compare/CompareToolbar";
+import AlgorithmInfoCard from "@/components/compare/AlgorithmInfoCard";
+import { loadCompareContext } from "@/components/compare/types";
+import "./index.less";
 
 const OverlayPage: React.FC = () => {
-  const [ctx, setCtx] = useState(loadCompareContext)
-  const [sliderPos, setSliderPos] = useState(50)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const isDragging = useRef(false)
+  const [ctx, setCtx] = useState(loadCompareContext);
+  const [sliderPos, setSliderPos] = useState(50);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
-    setCtx(loadCompareContext())
-  }, [])
+    setCtx(loadCompareContext());
+  }, []);
 
-  const { originImage, result, algorithm } = ctx
+  const { originImage, result, algorithm } = ctx;
 
   // 触摸开始
   const handleTouchStart = useCallback((e: any) => {
-    isDragging.current = true
-    const touch = e.touches[0]
-    const rect = containerRef.current?.getBoundingClientRect()
+    isDragging.current = true;
+    const touch = e.touches[0];
+    const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
-      const x = touch.clientX - rect.left
-      const pos = (x / rect.width) * 100
-      setSliderPos(Math.max(0, Math.min(100, pos)))
+      const x = touch.clientX - rect.left;
+      const pos = (x / rect.width) * 100;
+      setSliderPos(Math.max(0, Math.min(100, pos)));
     }
-  }, [])
+  }, []);
 
   // 触摸移动
   const handleTouchMove = useCallback((e: any) => {
-    if (!isDragging.current) return
-    const touch = e.touches[0]
-    const rect = containerRef.current?.getBoundingClientRect()
+    if (!isDragging.current) return;
+    const touch = e.touches[0];
+    const rect = containerRef.current?.getBoundingClientRect();
     if (rect) {
-      const x = touch.clientX - rect.left
-      const pos = (x / rect.width) * 100
-      setSliderPos(Math.max(0, Math.min(100, pos)))
+      const x = touch.clientX - rect.left;
+      const pos = (x / rect.width) * 100;
+      setSliderPos(Math.max(0, Math.min(100, pos)));
     }
-  }, [])
+  }, []);
 
   // 触摸结束
   const handleTouchEnd = useCallback(() => {
-    isDragging.current = false
-  }, [])
+    isDragging.current = false;
+  }, []);
 
-  const hasResult = originImage && result?.resultUrl
+  const hasResult = originImage && result?.resultUrl;
 
   return (
     <View className="overlay-page">
@@ -108,10 +108,16 @@ const OverlayPage: React.FC = () => {
               </View>
               {/* 标签 */}
               <View className="image-labels">
-                <View className="label-tag label-original" style={{ opacity: sliderPos > 10 ? 1 : 0 }}>
+                <View
+                  className="label-tag label-original"
+                  style={{ opacity: sliderPos > 10 ? 1 : 0 }}
+                >
                   <Text>原图</Text>
                 </View>
-                <View className="label-tag label-result" style={{ opacity: sliderPos < 90 ? 1 : 0 }}>
+                <View
+                  className="label-tag label-result"
+                  style={{ opacity: sliderPos < 90 ? 1 : 0 }}
+                >
                   <Text>处理后</Text>
                 </View>
               </View>
@@ -130,7 +136,7 @@ const OverlayPage: React.FC = () => {
       {/* 底部工具栏 */}
       <CompareToolbar currentMode="overlay" resultUrl={result?.resultUrl} />
     </View>
-  )
-}
+  );
+};
 
-export default OverlayPage
+export default OverlayPage;

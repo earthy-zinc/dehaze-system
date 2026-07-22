@@ -2,20 +2,20 @@
  * 样例图片库组件
  */
 
-import React from 'react'
-import { View, Text, Image } from '@tarojs/components'
-import { Loading } from '@taroify/core'
-import FilterTabs from '@/components/common/FilterTabs'
-import { SampleImage, SampleCategory } from '../../services/types'
-import { categoryTabs } from '../../services/sampleData'
-import './SampleGallery.less'
+import React from "react";
+import { View, Text, Image } from "@tarojs/components";
+import { Loading } from "@taroify/core";
+import FilterTabs from "@/components/common/FilterTabs";
+import { SampleImage, SampleCategory } from "../../services/types";
+import { categoryTabs } from "../../services/sampleData";
+import "./SampleGallery.less";
 
 interface SampleGalleryProps {
-  samples: SampleImage[]
-  category: SampleCategory
-  loading?: boolean
-  onCategoryChange: (category: SampleCategory) => void
-  onSelect: (sample: SampleImage) => void
+  samples: SampleImage[];
+  category: SampleCategory;
+  loading?: boolean;
+  onCategoryChange: (category: SampleCategory) => void;
+  onSelect: (sample: SampleImage) => void;
 }
 
 const SampleGallery: React.FC<SampleGalleryProps> = ({
@@ -26,15 +26,15 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
   onSelect,
 }) => {
   // 转换为 FilterTabs 需要的格式
-  const tabs = categoryTabs.map(tab => ({
+  const tabs = categoryTabs.map((tab) => ({
     key: tab.key,
     label: tab.label,
-  }))
+  }));
 
   return (
-    <View className='sample-gallery'>
+    <View className="sample-gallery">
       {/* 分类筛选 */}
-      <View className='filter-section'>
+      <View className="filter-section">
         <FilterTabs
           tabs={tabs}
           activeKey={category}
@@ -44,42 +44,48 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
 
       {/* 图片网格 */}
       {loading ? (
-        <View className='loading-container'>
-          <Loading size='32px' />
-          <Text className='loading-text'>加载中...</Text>
+        <View className="loading-container">
+          <Loading size="32px" />
+          <Text className="loading-text">加载中...</Text>
         </View>
       ) : samples.length === 0 ? (
-        <View className='empty-container'>
-          <Text className='empty-text'>暂无样例图片</Text>
-          <Text className='empty-hint'>请先在数据集管理中添加公开展示的图片</Text>
+        <View className="empty-container">
+          <Text className="empty-text">暂无样例图片</Text>
+          <Text className="empty-hint">
+            请先在数据集管理中添加公开展示的图片
+          </Text>
         </View>
       ) : (
-        <View className='sample-grid'>
+        <View className="sample-grid">
           {samples.map((sample) => (
             <View
               key={sample.id}
-              className='sample-card'
+              className="sample-card"
               onClick={() => onSelect(sample)}
             >
-              <View className='sample-image-wrapper'>
+              <View className="sample-image-wrapper">
                 <Image
-                  className='sample-image'
+                  className="sample-image"
                   src={sample.thumbnailUrl || sample.url}
-                  mode='aspectFill'
+                  mode="aspectFill"
                   lazyLoad
                 />
                 {sample.hazeLevel && (
                   <View className={`haze-badge ${sample.hazeLevel}`}>
                     <Text>
-                      {sample.hazeLevel === 'light' ? '轻度' : sample.hazeLevel === 'medium' ? '中度' : '重度'}
+                      {sample.hazeLevel === "light"
+                        ? "轻度"
+                        : sample.hazeLevel === "medium"
+                          ? "中度"
+                          : "重度"}
                     </Text>
                   </View>
                 )}
               </View>
-              <View className='sample-info'>
-                <Text className='sample-name'>{sample.name}</Text>
+              <View className="sample-info">
+                <Text className="sample-name">{sample.name}</Text>
                 {sample.sceneType && (
-                  <Text className='sample-scene'>{sample.sceneType}</Text>
+                  <Text className="sample-scene">{sample.sceneType}</Text>
                 )}
               </View>
             </View>
@@ -88,11 +94,11 @@ const SampleGallery: React.FC<SampleGalleryProps> = ({
       )}
 
       {/* 快速体验提示 */}
-      <View className='quick-tip'>
-        <Text className='tip-text'>点击任意图片即可快速体验去雾效果</Text>
+      <View className="quick-tip">
+        <Text className="tip-text">点击任意图片即可快速体验去雾效果</Text>
       </View>
     </View>
-  )
-}
+  );
+};
 
-export default SampleGallery
+export default SampleGallery;

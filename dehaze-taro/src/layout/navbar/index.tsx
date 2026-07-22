@@ -1,12 +1,12 @@
 /**
  * 顶部导航栏组件
  */
-import React from 'react';
-import { View, Text } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import { Search, Bars } from '@taroify/icons';
-import { useStatusBarHeight } from '@/hooks/useLayout';
-import './index.less';
+import React from "react";
+import { View, Text } from "@tarojs/components";
+import Taro from "@tarojs/taro";
+import { Search, Bars } from "@taroify/icons";
+import { useStatusBarHeight } from "@/hooks/useLayout";
+import "./index.less";
 
 interface AppNavbarProps {
   /** 切换菜单回调 */
@@ -20,13 +20,13 @@ interface AppNavbarProps {
 const AppNavbar: React.FC<AppNavbarProps> = ({
   onToggleMenu,
   onSearch,
-  title = '图像去雾系统',
+  title = "图像去雾系统",
 }) => {
   const statusBarHeight = useStatusBarHeight();
 
   /** 跳转首页 */
   const goHome = () => {
-    Taro.switchTab({ url: '/pages/home/index' });
+    Taro.reLaunch({ url: "/pages/home/index" });
   };
 
   /** 搜索按钮点击 */
@@ -34,7 +34,7 @@ const AppNavbar: React.FC<AppNavbarProps> = ({
     if (onSearch) {
       onSearch();
     } else {
-      Taro.showToast({ title: '搜索功能开发中', icon: 'none' });
+      Taro.showToast({ title: "搜索功能开发中", icon: "none" });
     }
   };
 
@@ -44,27 +44,27 @@ const AppNavbar: React.FC<AppNavbarProps> = ({
   };
 
   return (
-    <View className='app-navbar'>
+    <View className="app-navbar">
       {/* 状态栏占位 */}
-      <View className='status-bar' style={{ height: `${statusBarHeight}px` }} />
+      <View className="status-bar" style={{ height: `${statusBarHeight}px` }} />
 
       {/* 导航栏内容 */}
-      <View className='navbar-content'>
+      <View className="navbar-content">
         {/* Logo + 标题 */}
-        <View className='navbar-brand' onClick={goHome}>
-          <View className='logo-wrapper'>
-            <Text className='logo-text'>去雾</Text>
+        <View className="navbar-brand" onClick={goHome}>
+          <View className="logo-wrapper">
+            <Text className="logo-text">去雾</Text>
           </View>
-          <Text className='app-title'>{title}</Text>
+          <Text className="app-title">{title}</Text>
         </View>
 
         {/* 右侧操作区 */}
-        <View className='navbar-actions'>
-          <View className='action-btn' onClick={handleSearch}>
-            <Search size='18' color='#374151' />
+        <View className="navbar-actions">
+          <View className="action-btn" onClick={handleSearch}>
+            <Search size="18" color="#374151" />
           </View>
-          <View className='action-btn menu-btn' onClick={handleToggleMenu}>
-            <Bars size='18' color='#374151' />
+          <View className="action-btn menu-btn" onClick={handleToggleMenu}>
+            <Bars size="18" color="#374151" />
           </View>
         </View>
       </View>

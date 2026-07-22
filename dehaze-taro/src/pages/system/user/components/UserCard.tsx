@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Image, Text } from '@tarojs/components';
-import { Tag, Button, Space } from '@taroify/core';
-import { Edit, Delete, Lock, Phone } from '@taroify/icons';
-import type { UserPageVO } from 'dehaze-sdk-js';
-import { usePermission } from '@/hooks/usePermission';
-import './UserCard.scss';
+import React from "react";
+import { View, Image, Text } from "@tarojs/components";
+import { Tag, Button, Space } from "@taroify/core";
+import { Edit, Delete, Lock, Phone } from "@taroify/icons";
+import type { UserPageVO } from "dehaze-sdk-js";
+import { usePermission } from "@/hooks/usePermission";
+import "./UserCard.scss";
 
 interface UserCardProps {
   user: UserPageVO;
@@ -23,20 +23,20 @@ const UserCard: React.FC<UserCardProps> = ({
 
   const getGenderLabel = (genderLabel?: string) => {
     const genderMap: Record<string, string> = {
-      '男': '男',
-      '女': '女',
-      '未知': '未知',
+      男: "男",
+      女: "女",
+      未知: "未知",
     };
-    return genderMap[genderLabel || '未知'] || '未知';
+    return genderMap[genderLabel || "未知"] || "未知";
   };
 
   const getGenderColor = (genderLabel?: string) => {
-    const colorMap: Record<string, 'primary' | 'danger' | 'default'> = {
-      '男': 'primary',
-      '女': 'danger',
-      '未知': 'default',
+    const colorMap: Record<string, "primary" | "danger" | "default"> = {
+      男: "primary",
+      女: "danger",
+      未知: "default",
     };
-    return colorMap[genderLabel || '未知'] || 'default';
+    return colorMap[genderLabel || "未知"] || "default";
   };
 
   return (
@@ -44,7 +44,7 @@ const UserCard: React.FC<UserCardProps> = ({
       <View className="user-card__header">
         <View className="user-avatar">
           <Image
-            src={user.avatar || '/assets/default-avatar.png'}
+            src={user.avatar || "/assets/default-avatar.png"}
             className="user-avatar__img"
             mode="aspectFill"
           />
@@ -55,16 +55,14 @@ const UserCard: React.FC<UserCardProps> = ({
             {user.nickname}
             <Tag
               size="small"
-              color={user.status === 1 ? 'success' : 'default'}
+              color={user.status === 1 ? "success" : "default"}
               className="user-info__status"
             >
-              {user.status === 1 ? '启用' : '禁用'}
+              {user.status === 1 ? "启用" : "禁用"}
             </Tag>
           </View>
 
-          <View className="user-info__username">
-            @ {user.username}
-          </View>
+          <View className="user-info__username">@ {user.username}</View>
 
           <View className="user-info__meta">
             <Tag size="small" color={getGenderColor(user.genderLabel)}>
@@ -99,14 +97,17 @@ const UserCard: React.FC<UserCardProps> = ({
           <View className="roles-item">
             <View className="roles-label">角色：</View>
             <View className="roles-list">
-              {user.roleNames.split(',').slice(0, 2).map((roleName, index) => (
-                <Tag key={index} size="small" variant="outlined">
-                  {roleName.trim()}
-                </Tag>
-              ))}
-              {user.roleNames.split(',').length > 2 && (
+              {user.roleNames
+                .split(",")
+                .slice(0, 2)
+                .map((roleName, index) => (
+                  <Tag key={index} size="small" variant="outlined">
+                    {roleName.trim()}
+                  </Tag>
+                ))}
+              {user.roleNames.split(",").length > 2 && (
                 <Tag size="small" variant="outlined">
-                  +{user.roleNames.split(',').length - 2}
+                  +{user.roleNames.split(",").length - 2}
                 </Tag>
               )}
             </View>
@@ -116,27 +117,19 @@ const UserCard: React.FC<UserCardProps> = ({
 
       <View className="user-card__footer">
         <Space className="action-buttons">
-          {hasPermission('sys:user:password:reset') && (
-            <Button
-              size="mini"
-              variant="outlined"
-              onClick={onResetPassword}
-            >
+          {hasPermission("sys:user:password:reset") && (
+            <Button size="mini" variant="outlined" onClick={onResetPassword}>
               <Lock /> 重置密码
             </Button>
           )}
 
-          {hasPermission('sys:user:edit') && (
-            <Button
-              size="mini"
-              variant="outlined"
-              onClick={onEdit}
-            >
+          {hasPermission("sys:user:edit") && (
+            <Button size="mini" variant="outlined" onClick={onEdit}>
               <Edit /> 编辑
             </Button>
           )}
 
-          {hasPermission('sys:user:delete') && (
+          {hasPermission("sys:user:delete") && (
             <Button
               size="mini"
               variant="outlined"

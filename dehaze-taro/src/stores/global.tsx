@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useReducer } from 'react';
-import { storage } from '@/utils/storage';
-import { type UserInfo, type LoginData, UserAPI } from 'dehaze-sdk-js';
+import React, { createContext, useContext, useReducer } from "react";
+import { storage } from "@/utils/storage";
+import { type UserInfo, type LoginData, UserAPI } from "dehaze-sdk-js";
 
 // 全局状态类型定义
 interface GlobalState {
@@ -25,43 +25,54 @@ interface SystemState {
 
 interface UIState {
   loading: boolean;
-  theme: 'light' | 'dark';
-  networkStatus: 'online' | 'offline';
+  theme: "light" | "dark";
+  networkStatus: "online" | "offline";
 }
 
 // Action 类型定义
 type AuthAction =
-  | { type: 'LOGIN_START' }
-  | { type: 'LOGIN_SUCCESS'; payload: { user: UserInfo; token: string } }
-  | { type: 'LOGIN_FAILURE' }
-  | { type: 'LOGOUT' }
-  | { type: 'UPDATE_USER'; payload: Partial<UserInfo> }
-  | { type: 'SET_PERMISSIONS'; payload: string[] }
-  | { type: 'SET_ROLES'; payload: string[] }
-  | { type: 'INIT_AUTH_SUCCESS'; payload: { user: UserInfo; token: string; permissions: string[]; roles: string[] } };
+  | { type: "LOGIN_START" }
+  | { type: "LOGIN_SUCCESS"; payload: { user: UserInfo; token: string } }
+  | { type: "LOGIN_FAILURE" }
+  | { type: "LOGOUT" }
+  | { type: "UPDATE_USER"; payload: Partial<UserInfo> }
+  | { type: "SET_PERMISSIONS"; payload: string[] }
+  | { type: "SET_ROLES"; payload: string[] }
+  | {
+      type: "INIT_AUTH_SUCCESS";
+      payload: {
+        user: UserInfo;
+        token: string;
+        permissions: string[];
+        roles: string[];
+      };
+    };
 
 type SystemAction =
-  | { type: 'SET_SELECTED_DEPT'; payload: number | null }
-  | { type: 'CLEAR_CACHE' }
-  | { type: 'SET_CACHE_EXPIRE'; payload: { key: string; expireTime: number } };
+  | { type: "SET_SELECTED_DEPT"; payload: number | null }
+  | { type: "CLEAR_CACHE" }
+  | { type: "SET_CACHE_EXPIRE"; payload: { key: string; expireTime: number } };
 
 type UIAction =
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_THEME'; payload: 'light' | 'dark' }
-  | { type: 'SET_NETWORK_STATUS'; payload: 'online' | 'offline' };
+  | { type: "SET_LOADING"; payload: boolean }
+  | { type: "SET_THEME"; payload: "light" | "dark" }
+  | { type: "SET_NETWORK_STATUS"; payload: "online" | "offline" };
 
 type GlobalAction = AuthAction | SystemAction | UIAction;
 
 // Reducer 函数
-const globalReducer = (state: GlobalState, action: GlobalAction): GlobalState => {
+const globalReducer = (
+  state: GlobalState,
+  action: GlobalAction
+): GlobalState => {
   switch (action.type) {
-    case 'LOGIN_START':
+    case "LOGIN_START":
       return {
         ...state,
-        auth: { ...state.auth, loading: true }
+        auth: { ...state.auth, loading: true },
       };
 
-    case 'LOGIN_SUCCESS':
+    case "LOGIN_SUCCESS":
       return {
         ...state,
         auth: {
@@ -70,10 +81,10 @@ const globalReducer = (state: GlobalState, action: GlobalAction): GlobalState =>
           isAuthenticated: true,
           user: action.payload.user,
           token: action.payload.token,
-        }
+        },
       };
 
-    case 'LOGIN_FAILURE':
+    case "LOGIN_FAILURE":
       return {
         ...state,
         auth: {
@@ -84,10 +95,10 @@ const globalReducer = (state: GlobalState, action: GlobalAction): GlobalState =>
           token: null,
           permissions: [],
           roles: [],
-        }
+        },
       };
 
-    case 'LOGOUT':
+    case "LOGOUT":
       return {
         ...state,
         auth: {
@@ -97,37 +108,39 @@ const globalReducer = (state: GlobalState, action: GlobalAction): GlobalState =>
           token: null,
           permissions: [],
           roles: [],
-        }
+        },
       };
 
-    case 'UPDATE_USER':
+    case "UPDATE_USER":
       return {
         ...state,
         auth: {
           ...state.auth,
-          user: state.auth.user ? { ...state.auth.user, ...action.payload } : null
-        }
+          user: state.auth.user
+            ? { ...state.auth.user, ...action.payload }
+            : null,
+        },
       };
 
-    case 'SET_PERMISSIONS':
+    case "SET_PERMISSIONS":
       return {
         ...state,
         auth: {
           ...state.auth,
-          permissions: action.payload
-        }
+          permissions: action.payload,
+        },
       };
 
-    case 'SET_ROLES':
+    case "SET_ROLES":
       return {
         ...state,
         auth: {
           ...state.auth,
-          roles: action.payload
-        }
+          roles: action.payload,
+        },
       };
 
-    case 'INIT_AUTH_SUCCESS':
+    case "INIT_AUTH_SUCCESS":
       return {
         ...state,
         auth: {
@@ -138,64 +151,64 @@ const globalReducer = (state: GlobalState, action: GlobalAction): GlobalState =>
           permissions: action.payload.permissions,
           roles: action.payload.roles,
           loading: false,
-        }
+        },
       };
 
-    case 'SET_SELECTED_DEPT':
+    case "SET_SELECTED_DEPT":
       return {
         ...state,
         system: {
           ...state.system,
-          selectedDeptId: action.payload
-        }
+          selectedDeptId: action.payload,
+        },
       };
 
-    case 'CLEAR_CACHE':
+    case "CLEAR_CACHE":
       return {
         ...state,
         system: {
           ...state.system,
-          cacheExpireTime: {}
-        }
+          cacheExpireTime: {},
+        },
       };
 
-    case 'SET_CACHE_EXPIRE':
+    case "SET_CACHE_EXPIRE":
       return {
         ...state,
         system: {
           ...state.system,
           cacheExpireTime: {
             ...state.system.cacheExpireTime,
-            [action.payload.key]: action.payload.expireTime
-          }
-        }
+            [action.payload.key]: action.payload.expireTime,
+          },
+        },
       };
 
-    case 'SET_LOADING':
+    case "SET_LOADING":
       return {
         ...state,
         ui: {
           ...state.ui,
-          loading: action.payload
-        }
+          loading: action.payload,
+        },
       };
 
-    case 'SET_THEME':
+    case "SET_THEME":
       return {
         ...state,
         ui: {
           ...state.ui,
-          theme: action.payload
-        }
+          theme: action.payload,
+        },
       };
 
-    case 'SET_NETWORK_STATUS':
+    case "SET_NETWORK_STATUS":
       return {
         ...state,
         ui: {
           ...state.ui,
-          networkStatus: action.payload
-        }
+          networkStatus: action.payload,
+        },
       };
 
     default:
@@ -219,8 +232,8 @@ const initialState: GlobalState = {
   },
   ui: {
     loading: false,
-    theme: 'light',
-    networkStatus: 'online',
+    theme: "light",
+    networkStatus: "online",
   },
 };
 
@@ -234,15 +247,17 @@ const GlobalContext = createContext<{
 } | null>(null);
 
 // Provider 组件
-export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [state, dispatch] = useReducer(globalReducer, initialState);
 
   // 登录函数
   const login = async (loginData: LoginData): Promise<UserInfo> => {
-    dispatch({ type: 'LOGIN_START' });
+    dispatch({ type: "LOGIN_START" });
 
     try {
-      const { AuthAPI } = await import('dehaze-sdk-js');
+      const { AuthAPI } = await import("dehaze-sdk-js");
       const response = await AuthAPI.login(loginData);
       const { tokenType, accessToken } = response;
       const token = `${tokenType} ${accessToken}`;
@@ -251,7 +266,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       storage.setToken(token);
 
       // 获取用户信息（此时请求头会携带 token）
-      const userInfo = await UserAPI.getInfo()
+      const userInfo = await UserAPI.getInfo();
 
       // 存储到本地
       await storage.setUserInfo(userInfo);
@@ -260,16 +275,16 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       // 更新状态
       dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: { user: userInfo, token }
+        type: "LOGIN_SUCCESS",
+        payload: { user: userInfo, token },
       });
 
-      dispatch({ type: 'SET_PERMISSIONS', payload: userInfo.perms || [] });
-      dispatch({ type: 'SET_ROLES', payload: userInfo.roles || [] });
+      dispatch({ type: "SET_PERMISSIONS", payload: userInfo.perms || [] });
+      dispatch({ type: "SET_ROLES", payload: userInfo.roles || [] });
 
       return userInfo;
     } catch (error) {
-      dispatch({ type: 'LOGIN_FAILURE' });
+      dispatch({ type: "LOGIN_FAILURE" });
       throw error;
     }
   };
@@ -277,19 +292,19 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   // 登出函数
   const logout = async (): Promise<void> => {
     try {
-      const { AuthAPI } = await import('dehaze-sdk-js');
+      const { AuthAPI } = await import("dehaze-sdk-js");
       await AuthAPI.logout();
     } catch (error) {
-      console.error('登出接口调用失败:', error);
+      console.error("登出接口调用失败:", error);
     } finally {
       // 清除本地存储
       storage.removeToken();
-      await storage.removeItem('userInfo');
-      await storage.removeItem('permissions');
-      await storage.removeItem('roles');
+      await storage.removeItem("userInfo");
+      await storage.removeItem("permissions");
+      await storage.removeItem("roles");
 
       // 更新状态
-      dispatch({ type: 'LOGOUT' });
+      dispatch({ type: "LOGOUT" });
     }
   };
 
@@ -303,12 +318,12 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       if (token && userInfo) {
         dispatch({
-          type: 'INIT_AUTH_SUCCESS',
-          payload: { user: userInfo, token, permissions, roles }
+          type: "INIT_AUTH_SUCCESS",
+          payload: { user: userInfo, token, permissions, roles },
         });
       }
     } catch (error) {
-      console.error('初始化认证状态失败:', error);
+      console.error("初始化认证状态失败:", error);
     }
   };
 
@@ -331,7 +346,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 export const useGlobalContext = () => {
   const context = useContext(GlobalContext);
   if (!context) {
-    throw new Error('useGlobalContext must be used within GlobalProvider');
+    throw new Error("useGlobalContext must be used within GlobalProvider");
   }
   return context;
 };

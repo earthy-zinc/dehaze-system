@@ -17,21 +17,14 @@
     "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     },
     "jsx": "react-jsx",
     "allowJs": true,
     "resolveJsonModule": true,
-    "typeRoots": [
-      "node_modules/@types"
-    ],
+    "typeRoots": ["node_modules/@types"],
     "skipLibCheck": true
   },
-  "include": [
-    "./src",
-    "./types"
-  ],
+  "include": ["./src", "./types"],
   "compileOnSave": false
 }

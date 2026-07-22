@@ -27,7 +27,7 @@
 }
 
 // 响应式适配
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .user-list-page {
     .search-bar {
       padding: 10px 12px;
@@ -40,8 +40,7 @@
 }
 
 // 小程序特定样式
-#if MP
-.user-list-page {
+#if mp .user-list-page {
   .search-bar {
     .taroify-search {
       background-color: #f8f8f8;

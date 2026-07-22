@@ -1,12 +1,12 @@
 // ==================== Hero 区域 ====================
 
 .hero-section {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
   padding: 48rpx 32rpx 40rpx;
   text-align: center;
-  width: 100%;
-  box-sizing: border-box;
-  position: relative;
-  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 100%);
+  background: linear-gradient(180deg, #eff6ff 0%, #fff 100%);
 
   .hero-content {
     max-width: 100%;
@@ -15,26 +15,25 @@
 
   .hero-title {
     display: block;
+    margin-bottom: 12rpx;
     font-size: 56rpx;
     font-weight: 700;
+    line-height: 1.2;
+    color: transparent;
+    text-align: center;
     letter-spacing: -1rpx;
     background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
     background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    margin-bottom: 12rpx;
-    line-height: 1.2;
-    text-align: center;
   }
 
   .hero-subtitle {
     display: block;
+    margin-bottom: 20rpx;
     font-size: 30rpx;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 20rpx;
-    letter-spacing: -0.5rpx;
     text-align: center;
+    letter-spacing: -0.5rpx;
   }
 
   .hero-description {
@@ -43,11 +42,11 @@
 
   .hero-description text {
     display: block;
-    font-size: 26rpx;
-    color: #6b7280;
-    line-height: 1.6;
-    text-align: center;
     margin-bottom: 6rpx;
+    font-size: 26rpx;
+    line-height: 1.6;
+    color: #6b7280;
+    text-align: center;
 
     &:last-child {
       margin-bottom: 0;
@@ -56,32 +55,32 @@
 
   .hero-cta {
     display: flex;
-    gap: 20rpx;
-    justify-content: center;
     flex-wrap: wrap;
+    gap: 20rpx;
     align-items: center;
+    justify-content: center;
   }
 
   .cta-primary {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    color: white !important;
-    padding: 16rpx 40rpx;
-    border-radius: 48rpx;
-    font-size: 28rpx;
-    font-weight: 600;
-    border: none;
-    box-shadow: 0 6rpx 16rpx rgba(59, 130, 246, 0.3);
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    padding: 16rpx 40rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: white !important;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none;
+    border-radius: 48rpx;
+    box-shadow: 0 6rpx 16rpx rgb(59 130 246 / 30%);
 
     &::after {
       display: none;
     }
 
     &:active {
+      box-shadow: 0 3rpx 8rpx rgb(59 130 246 / 30%);
       transform: translateY(2rpx);
-      box-shadow: 0 3rpx 8rpx rgba(59, 130, 246, 0.3);
     }
   }
 
@@ -90,16 +89,16 @@
   }
 
   .cta-secondary {
-    background: #ffffff;
-    color: #3b82f6 !important;
-    padding: 16rpx 40rpx;
-    border-radius: 48rpx;
-    font-size: 28rpx;
-    font-weight: 600;
-    border: 2rpx solid #e5e7eb;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    padding: 16rpx 40rpx;
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #3b82f6 !important;
+    background: #fff;
+    border: 2rpx solid #e5e7eb;
+    border-radius: 48rpx;
 
     &::after {
       display: none;

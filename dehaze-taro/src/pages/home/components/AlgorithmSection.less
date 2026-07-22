@@ -1,18 +1,18 @@
 .algorithm-section {
-  padding: 60px 32px;
-  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-  color: white;
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  box-sizing: border-box;
+  padding: 60px 32px;
+  color: white;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
 
   .algorithm-content {
-    max-width: 100%;
-    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 40px;
     align-items: center;
+    max-width: 100%;
+    margin: 0 auto;
   }
 
   .algorithm-text {
@@ -21,20 +21,20 @@
 
   .section-title {
     display: block;
+    margin-bottom: 16px;
     font-size: 36px;
     font-weight: 700;
     color: white;
-    margin-bottom: 16px;
-    letter-spacing: -0.02em;
     text-align: center;
+    letter-spacing: -0.02em;
   }
 
   .section-subtitle {
     display: block;
-    font-size: 16px;
-    color: rgba(255, 255, 255, 0.8);
-    line-height: 1.5;
     margin-bottom: 32px;
+    font-size: 16px;
+    line-height: 1.5;
+    color: rgb(255 255 255 / 80%);
     text-align: center;
   }
 
@@ -44,10 +44,10 @@
 
   .feature-item {
     display: flex;
-    align-items: center;
     gap: 16px;
+    align-items: center;
     margin-bottom: 20px;
-    color: rgba(255, 255, 255, 0.95);
+    color: rgb(255 255 255 / 95%);
 
     &:last-child {
       margin-bottom: 0;
@@ -60,21 +60,21 @@
   }
 
   .learn-more-btn {
-    background: white;
-    color: #3b82f6 !important;
-    padding: 12px 40px;
-    border-radius: 12px;
-    font-size: 18px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s;
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-height: 80px;
-    position: relative;
+    padding: 12px 40px;
     margin: 0 auto;
+    font-size: 18px;
+    font-weight: 600;
+    color: #3b82f6 !important;
+    cursor: pointer;
+    background: white;
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s;
 
     &::after {
       display: none;
@@ -90,10 +90,10 @@
   }
 
   .algorithm-image {
+    display: block;
     width: 100%;
     height: auto;
     border-radius: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    display: block;
+    box-shadow: 0 20px 60px rgb(0 0 0 / 30%);
   }
 }

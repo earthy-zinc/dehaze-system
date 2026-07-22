@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
-import configRequest from '@/utils/request';
-import { GlobalProvider } from '@/stores/global';
-import { useAuth } from '@/hooks/useAuth';
-import './app.less';
+import React, { useEffect } from "react";
+import configRequest from "@/utils/request";
+import { GlobalProvider } from "@/stores/global";
+import { useAuth } from "@/hooks/useAuth";
+import "./app.less";
 
 interface AppProps {
   children: React.ReactNode;
@@ -28,9 +28,7 @@ const App: React.FC<AppProps> = (props) => {
 
   return (
     <GlobalProvider>
-      <AppContent>
-        {props.children}
-      </AppContent>
+      <AppContent>{props.children}</AppContent>
     </GlobalProvider>
   );
 };

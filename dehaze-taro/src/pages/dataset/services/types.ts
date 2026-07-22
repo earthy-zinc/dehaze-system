@@ -6,4 +6,4 @@ export type {
   DatasetQuery,
   DatasetItemQuery,
   DatasetStatistics,
-} from 'dehaze-sdk-js';
+} from "dehaze-sdk-js";

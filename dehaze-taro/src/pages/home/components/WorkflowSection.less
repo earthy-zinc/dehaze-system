@@ -1,31 +1,31 @@
 /* 功能区样式 - 基于750设计稿 */
 .workflow-section {
-  padding: 60px 32px;
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  box-sizing: border-box;
-  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+  padding: 60px 32px;
+  background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
 
   .features-header {
-    text-align: center;
     margin-bottom: 48px;
+    text-align: center;
   }
 
   .section-title {
     display: block;
+    margin-bottom: 16px;
     font-size: 36px;
     font-weight: 700;
     color: #1f2937;
-    margin-bottom: 16px;
-    letter-spacing: -0.02em;
     text-align: center;
+    letter-spacing: -0.02em;
   }
 
   .section-subtitle {
     display: block;
     font-size: 16px;
-    color: #6b7280;
     line-height: 1.5;
+    color: #6b7280;
     text-align: center;
   }
 
@@ -33,27 +33,27 @@
   .workflow-container {
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 24px;
-    margin-bottom: 48px;
+    align-items: center;
     max-width: 100%;
+    margin-bottom: 48px;
   }
 
   .workflow-step {
+    position: relative;
+    box-sizing: border-box;
     width: 100%;
-    background: white;
-    border-radius: 24px;
     padding: 32px 28px;
     text-align: center;
     cursor: pointer;
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 5%);
     transition: all 0.3s ease;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
-    position: relative;
-    box-sizing: border-box;
 
     &:active {
-      transform: scale(0.98);
       background: #f8fafc;
+      transform: scale(0.98);
     }
   }
 
@@ -61,44 +61,44 @@
     position: absolute;
     top: 20px;
     right: 20px;
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    color: #3b82f6;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 48px;
+    height: 48px;
     font-size: 24px;
     font-weight: 700;
+    color: #3b82f6;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-radius: 50%;
   }
 
   .step-icon {
-    width: 88px;
-    height: 88px;
-    margin: 0 auto 20px;
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    border-radius: 22px;
     display: flex;
     align-items: center;
     justify-content: center;
+    width: 88px;
+    height: 88px;
+    margin: 0 auto 20px;
     color: white;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border-radius: 22px;
     transition: all 0.3s;
   }
 
   .step-title {
     display: block;
+    margin-bottom: 12px;
     font-size: 20px;
     font-weight: 600;
     color: #1f2937;
-    margin-bottom: 12px;
     text-align: center;
   }
 
   .step-desc {
     font-size: 16px;
-    color: #6b7280;
     line-height: 1.5;
+    color: #6b7280;
     text-align: center;
   }
 
@@ -115,7 +115,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transform: rotate(90deg);
     padding: 8px 0;
+    transform: rotate(90deg);
   }
 }

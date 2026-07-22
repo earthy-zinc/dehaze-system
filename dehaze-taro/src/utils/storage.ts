@@ -1,12 +1,12 @@
-import Taro from '@tarojs/taro';
-import { TOKEN_KEY } from '@/enums/CacheEnum';
+import Taro from "@tarojs/taro";
+import { TOKEN_KEY } from "@/enums/CacheEnum";
 
 const STORAGE_KEYS = {
-  USER_INFO: 'userInfo',
-  PERMISSIONS: 'permissions',
-  ROLES: 'roles',
-  SELECTED_DEPT: 'selectedDept',
-  CACHE_EXPIRE: 'cacheExpire',
+  USER_INFO: "userInfo",
+  PERMISSIONS: "permissions",
+  ROLES: "roles",
+  SELECTED_DEPT: "selectedDept",
+  CACHE_EXPIRE: "cacheExpire",
 } as const;
 
 // 存储管理类
@@ -21,10 +21,10 @@ class StorageManager {
 
       await Taro.setStorage({
         key,
-        data: JSON.stringify(data)
+        data: JSON.stringify(data),
       });
     } catch (error) {
-      console.error('存储失败:', error);
+      console.error("存储失败:", error);
       throw error;
     }
   }
@@ -52,7 +52,7 @@ class StorageManager {
     try {
       await Taro.removeStorage({ key });
     } catch (error) {
-      console.error('删除存储失败:', error);
+      console.error("删除存储失败:", error);
     }
   }
 
@@ -61,7 +61,7 @@ class StorageManager {
     try {
       await Taro.clearStorage();
     } catch (error) {
-      console.error('清空存储失败:', error);
+      console.error("清空存储失败:", error);
     }
   }
 
@@ -83,7 +83,7 @@ class StorageManager {
     try {
       Taro.removeStorageSync(TOKEN_KEY);
     } catch (error) {
-      console.error('删除Token失败:', error);
+      console.error("删除Token失败:", error);
     }
   }
 

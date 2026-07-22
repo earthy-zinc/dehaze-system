@@ -22,6 +22,7 @@ export default defineAppConfig({
     "pages/filter/index",
     "pages/task/index",
     "pages/algorithm/index",
+    "pages/profile/index",
   ],
   window: {
     backgroundTextStyle: "light",

@@ -1,11 +1,11 @@
-import {defineConfig, type UserConfigExport} from "@tarojs/cli";
+import { defineConfig, type UserConfigExport } from "@tarojs/cli";
 import path from "path";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import devConfig from "./dev";
 import prodConfig from "./prod";
 
 // https://taro-docs.jd.com/docs/next/config#defineconfig-辅助函数
-export default defineConfig<"webpack5">(async (merge, {command, mode}) => {
+export default defineConfig<"webpack5">(async (merge, { command, mode }) => {
   const baseConfig: UserConfigExport<"webpack5"> = {
     projectName: "dehaze-taro",
     date: "2025-9-22",

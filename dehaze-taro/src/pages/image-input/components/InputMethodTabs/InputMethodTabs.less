@@ -11,10 +11,10 @@
     align-items: center;
     justify-content: center;
     padding: 16px 12px;
+    cursor: pointer;
     background: #f8fafc;
     border: 2px solid transparent;
     border-radius: 12px;
-    cursor: pointer;
     transition: all 0.2s ease;
 
     &:active {
@@ -35,14 +35,14 @@
       margin-bottom: 8px;
       background: white;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
     }
 
     .tab-label {
+      margin-bottom: 2px;
       font-size: 14px;
       font-weight: 600;
       color: #374151;
-      margin-bottom: 2px;
     }
 
     .tab-sub-label {
@@ -59,7 +59,7 @@
 }
 
 /* 小屏适配 */
-@media (max-width: 375px) {
+@media (width <= 375px) {
   .input-method-tabs {
     gap: 8px;
     padding: 0 12px;

@@ -16,16 +16,16 @@
     }
 
     .taroify-textarea {
-      background-color: #fff;
       min-height: 80px;
+      background-color: #fff;
     }
   }
 }
 
 .form-actions {
   padding: 20px 16px;
-  background-color: #fff;
   margin-top: 16px;
+  background-color: #fff;
 
   .taroify-button {
     height: 44px;
@@ -44,7 +44,7 @@
 }
 
 // 响应式适配
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .role-detail-page {
     .role-form {
       padding: 8px;
@@ -57,8 +57,7 @@
 }
 
 // 小程序特定样式
-#if MP
-.role-detail-page {
+#if mp .role-detail-page {
   .role-form {
     .taroify-cell-group {
       margin: 0 8px 16px;

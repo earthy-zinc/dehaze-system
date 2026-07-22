@@ -2,13 +2,13 @@
  * 通用页面布局组件
  * 封装导航栏、侧边栏、底部导航的统一布局
  */
-import React, { useState } from 'react';
-import { View } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import AppNavbar from './navbar';
-import AppSidebar from './sidebar';
-import AppTabbar from './tabbar';
-import './index.less';
+import React, { useState } from "react";
+import { View } from "@tarojs/components";
+import Taro from "@tarojs/taro";
+import AppNavbar from "./navbar";
+import AppSidebar from "./sidebar";
+import AppTabbar from "./tabbar";
+import "./index.less";
 
 interface PageLayoutProps {
   /** 子元素 */
@@ -31,7 +31,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
   children,
   showTabbar = true,
   showNavbar = true,
-  title = '图像去雾系统',
+  title = "图像去雾系统",
   currentRoute,
   onSearch,
   onNavigate,
@@ -44,15 +44,15 @@ const PageLayout: React.FC<PageLayoutProps> = ({
     const pages = Taro.getCurrentPages();
     if (pages.length > 0) {
       const page = pages[pages.length - 1];
-      return '/' + (page.route || 'pages/home/index');
+      return "/" + (page.route || "pages/home/index");
     }
-    return '/pages/home/index';
+    return "/pages/home/index";
   };
 
   const route = getCurrentRoute();
 
   return (
-    <View className='page-layout'>
+    <View className="page-layout">
       {/* 顶部导航栏 */}
       {showNavbar && (
         <AppNavbar
@@ -71,7 +71,7 @@ const PageLayout: React.FC<PageLayoutProps> = ({
       />
 
       {/* 主内容区 */}
-      <View className={`page-content ${showTabbar ? 'with-tabbar' : ''}`}>
+      <View className={`page-content ${showTabbar ? "with-tabbar" : ""}`}>
         {children}
       </View>
 

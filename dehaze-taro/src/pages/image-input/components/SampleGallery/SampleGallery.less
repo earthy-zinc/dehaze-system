@@ -30,16 +30,16 @@
   }
 
   .sample-card {
+    overflow: hidden;
+    cursor: pointer;
     background: white;
     border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    cursor: pointer;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
     transition: all 0.2s ease;
 
     &:active {
+      box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
       transform: scale(0.98);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
   }
 
@@ -61,21 +61,21 @@
     top: 8px;
     right: 8px;
     padding: 4px 8px;
-    border-radius: 6px;
     font-size: 11px;
     font-weight: 500;
     color: white;
+    border-radius: 6px;
 
     &.light {
-      background: rgba(34, 197, 94, 0.9);
+      background: rgb(34 197 94 / 90%);
     }
 
     &.medium {
-      background: rgba(245, 158, 11, 0.9);
+      background: rgb(245 158 11 / 90%);
     }
 
     &.heavy {
-      background: rgba(239, 68, 68, 0.9);
+      background: rgb(239 68 68 / 90%);
     }
   }
 
@@ -85,27 +85,27 @@
 
   .sample-name {
     display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-size: 13px;
     font-weight: 500;
     color: #374151;
-    overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .sample-scene {
     display: block;
+    margin-top: 4px;
     font-size: 11px;
     color: #9ca3af;
-    margin-top: 4px;
   }
 
   .quick-tip {
-    margin-top: 16px;
     padding: 12px;
+    margin-top: 16px;
+    text-align: center;
     background: #eff6ff;
     border-radius: 8px;
-    text-align: center;
 
     .tip-text {
       font-size: 13px;
@@ -115,7 +115,7 @@
 }
 
 /* 小屏适配 */
-@media (max-width: 375px) {
+@media (width <= 375px) {
   .sample-gallery {
     .sample-grid {
       gap: 8px;
@@ -136,7 +136,7 @@
 }
 
 /* 大屏适配 */
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .sample-gallery {
     .sample-grid {
       grid-template-columns: repeat(3, 1fr);

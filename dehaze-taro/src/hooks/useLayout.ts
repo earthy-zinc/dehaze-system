@@ -2,8 +2,8 @@
  * 布局相关 Hook
  * 提供响应式布局判断和侧边栏控制
  */
-import { useState, useEffect, useCallback } from 'react';
-import Taro from '@tarojs/taro';
+import { useState, useEffect, useCallback } from "react";
+import Taro from "@tarojs/taro";
 
 /** 布局断点配置 */
 const BREAKPOINTS = {
@@ -68,16 +68,16 @@ export function useLayout(): LayoutState {
           isLandscape: width > height,
         });
       } catch (error) {
-        console.warn('[useLayout] Failed to get system info:', error);
+        console.warn("[useLayout] Failed to get system info:", error);
       }
     };
 
     updateScreenSize();
 
     // H5 环境监听窗口变化
-    if (process.env.TARO_ENV === 'h5') {
-      window.addEventListener('resize', updateScreenSize);
-      return () => window.removeEventListener('resize', updateScreenSize);
+    if (process.env.TARO_ENV === "h5") {
+      window.addEventListener("resize", updateScreenSize);
+      return () => window.removeEventListener("resize", updateScreenSize);
     }
   }, []);
 
@@ -106,13 +106,13 @@ export function useSidebar() {
  * 获取当前页面路由
  */
 export function useCurrentRoute(): string {
-  const [route, setRoute] = useState('/pages/home/index');
+  const [route, setRoute] = useState("/pages/home/index");
 
   useEffect(() => {
     const pages = Taro.getCurrentPages();
     if (pages.length > 0) {
       const currentPage = pages[pages.length - 1];
-      setRoute('/' + (currentPage.route || 'pages/home/index'));
+      setRoute("/" + (currentPage.route || "pages/home/index"));
     }
   }, []);
 
@@ -130,7 +130,10 @@ export function useStatusBarHeight(): number {
       const sysInfo = Taro.getSystemInfoSync();
       setHeight(sysInfo.statusBarHeight || 0);
     } catch (error) {
-      console.warn('[useStatusBarHeight] Failed to get statusBarHeight:', error);
+      console.warn(
+        "[useStatusBarHeight] Failed to get statusBarHeight:",
+        error
+      );
     }
   }, []);
 

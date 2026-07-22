@@ -1,9 +1,9 @@
 .loading-container {
   display: flex;
-  justify-content: center;
   align-items: center;
-  padding: 20px;
+  justify-content: center;
   min-height: 100px;
+  padding: 20px;
 
   &.small {
     min-height: 60px;

@@ -28,12 +28,12 @@
 
     .clear-btn {
       display: flex;
-      align-items: center;
       gap: 4px;
+      align-items: center;
       padding: 6px 12px;
+      cursor: pointer;
       background: #fef2f2;
       border-radius: 6px;
-      cursor: pointer;
 
       text {
         font-size: 13px;
@@ -51,18 +51,18 @@
 
     .group-title {
       display: block;
+      padding-left: 4px;
+      margin-bottom: 10px;
       font-size: 13px;
       font-weight: 500;
       color: #9ca3af;
-      margin-bottom: 10px;
-      padding-left: 4px;
     }
 
     .group-list {
+      overflow: hidden;
       background: white;
       border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      box-shadow: 0 2px 8px rgb(0 0 0 / 4%);
     }
   }
 
@@ -70,9 +70,9 @@
     display: flex;
     align-items: center;
     padding: 12px;
+    cursor: pointer;
     background: white;
     border-bottom: 1px solid #f3f4f6;
-    cursor: pointer;
 
     &:last-child {
       border-bottom: none;
@@ -85,11 +85,11 @@
 
   .item-thumbnail {
     position: relative;
+    flex-shrink: 0;
     width: 64px;
     height: 64px;
-    border-radius: 8px;
     overflow: hidden;
-    flex-shrink: 0;
+    border-radius: 8px;
 
     .thumbnail-image {
       width: 100%;
@@ -102,7 +102,7 @@
       bottom: 4px;
       left: 4px;
       padding: 2px 6px;
-      background: rgba(34, 197, 94, 0.9);
+      background: rgb(34 197 94 / 90%);
       border-radius: 4px;
 
       text {
@@ -111,41 +111,41 @@
       }
 
       &.failed {
-        background: rgba(239, 68, 68, 0.9);
+        background: rgb(239 68 68 / 90%);
       }
     }
   }
 
   .item-info {
     flex: 1;
-    margin-left: 12px;
     min-width: 0;
+    margin-left: 12px;
 
     .item-name {
       display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
       font-size: 14px;
       font-weight: 500;
       color: #374151;
-      overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
     .item-time {
       display: block;
+      margin-top: 4px;
       font-size: 12px;
       color: #9ca3af;
-      margin-top: 4px;
     }
 
     .item-algorithm {
       display: inline-block;
+      padding: 2px 8px;
+      margin-top: 6px;
       font-size: 11px;
       color: #3b82f6;
       background: #eff6ff;
-      padding: 2px 8px;
       border-radius: 4px;
-      margin-top: 6px;
     }
   }
 
@@ -155,8 +155,8 @@
   }
 
   .history-footer {
-    text-align: center;
     padding: 16px;
+    text-align: center;
 
     .footer-text {
       font-size: 12px;

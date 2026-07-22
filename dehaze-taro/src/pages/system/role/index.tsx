@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
-import { View } from '@tarojs/components';
-import Taro, { useLoad, usePullDownRefresh, useReachBottom } from '@tarojs/taro';
+import React, { useState } from "react";
+import { View } from "@tarojs/components";
+import Taro, {
+  useLoad,
+  usePullDownRefresh,
+  useReachBottom,
+} from "@tarojs/taro";
 import {
   Navbar,
   Search,
@@ -8,28 +12,27 @@ import {
   Loading,
   Empty,
   SwipeCell,
-  Dialog,
   Tag,
   Cell,
-} from '@taroify/core';
-import { ArrowLeft, Add, Edit, Delete, Lock } from '@taroify/icons';
-import { useRoleManagement } from '@/hooks/useRoleManagement';
-import './index.scss';
-import { usePermission } from '@/hooks/usePermission';
+} from "@taroify/core";
+import { ArrowLeft, Add, Edit, Delete, Lock } from "@taroify/icons";
+import { useRoleManagement } from "@/hooks/useRoleManagement";
+import { usePermission } from "@/hooks/usePermission";
+import "./index.scss";
 
 // 日期格式化函数
 const formatDateTime = (date: Date | string | undefined): string => {
-  if (!date) return '';
+  if (!date) return "";
 
-  const d = typeof date === 'string' ? new Date(date) : date;
-  if (isNaN(d.getTime())) return '';
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "";
 
   const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const seconds = String(d.getSeconds()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const seconds = String(d.getSeconds()).padStart(2, "0");
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
@@ -48,9 +51,7 @@ const RoleListPage: React.FC = () => {
 
   const { hasPermission } = usePermission();
 
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletingRole, setDeletingRole] = useState<any>(null);
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   // 页面加载
   useLoad(async () => {
@@ -76,7 +77,7 @@ const RoleListPage: React.FC = () => {
 
   // 搜索处理
   const handleSearch = async (event: any) => {
-    const value = event.detail?.value || '';
+    const value = event.detail?.value || "";
     setSearchKeyword(value);
     if (value.trim()) {
       await searchRoles(value.trim());
@@ -88,7 +89,7 @@ const RoleListPage: React.FC = () => {
   // 新增角色
   const handleAdd = () => {
     Taro.navigateTo({
-      url: '/pages/system/role/detail'
+      url: "/pages/system/role/detail",
     });
   };
 
@@ -96,7 +97,7 @@ const RoleListPage: React.FC = () => {
   const handleEdit = (id: number | undefined) => {
     if (!id) return;
     Taro.navigateTo({
-      url: `/pages/system/role/detail?id=${id}`
+      url: `/pages/system/role/detail?id=${id}`,
     });
   };
 
@@ -104,24 +105,30 @@ const RoleListPage: React.FC = () => {
   const handlePermission = (id: number | undefined) => {
     if (!id) return;
     Taro.navigateTo({
-      url: `/pages/system/role/permission?id=${id}`
+      url: `/pages/system/role/permission?id=${id}`,
     });
   };
 
   // 删除确认
   const handleDelete = (role: any) => {
-    setDeletingRole(role);
-    setShowDeleteDialog(true);
+    Taro.showModal({
+      title: "确认删除",
+      content: `确定要删除角色 "${role.name}" 吗？此操作不可恢复。`,
+      confirmText: "删除",
+      cancelText: "取消",
+      success: (res) => {
+        if (res.confirm) {
+          confirmDelete(role);
+        }
+      },
+    });
   };
 
   // 确认删除
-  const confirmDelete = async () => {
-    if (!deletingRole) return;
-
+  const confirmDelete = async (role: any) => {
+    if (!role) return;
     try {
-      await deleteRole(deletingRole.id);
-      setShowDeleteDialog(false);
-      setDeletingRole(null);
+      await deleteRole(role.id);
     } catch (error) {
       // 错误已在 hook 中处理
     }
@@ -129,23 +136,25 @@ const RoleListPage: React.FC = () => {
 
   // 获取状态标签
   const getStatusTag = (status?: number) => {
-    return status === 1
-      ? <Tag color="success" size="small">启用</Tag>
-      : <Tag color="danger" size="small">禁用</Tag>;
+    return status === 1 ? (
+      <Tag color="success" size="small">
+        启用
+      </Tag>
+    ) : (
+      <Tag color="danger" size="small">
+        禁用
+      </Tag>
+    );
   };
 
   return (
     <View className="role-list-page">
-      <Navbar
-        title="角色管理"
-      >
+      <Navbar title="角色管理">
         <Navbar.NavLeft>
           <ArrowLeft onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission('sys:role:add') && (
-            <Add onClick={handleAdd} />
-          )}
+          {hasPermission("sys:role:add") && <Add onClick={handleAdd} />}
         </Navbar.NavRight>
       </Navbar>
 
@@ -156,7 +165,7 @@ const RoleListPage: React.FC = () => {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.detail.value)}
           onSearch={handleSearch}
-          onClear={() => handleSearch('')}
+          onClear={() => handleSearch("")}
         />
       </View>
 
@@ -168,7 +177,7 @@ const RoleListPage: React.FC = () => {
           <Empty>
             <Empty.Image />
             <Empty.Description>暂无角色数据</Empty.Description>
-            {hasPermission('sys:role:add') && (
+            {hasPermission("sys:role:add") && (
               <Button
                 className="empty-state__button"
                 color="primary"
@@ -183,7 +192,7 @@ const RoleListPage: React.FC = () => {
           roles.map((role) => (
             <SwipeCell key={role.id} className="role-swipe-cell">
               <SwipeCell.Actions side="right">
-                {hasPermission('sys:role:permission') && (
+                {hasPermission("sys:role:permission") && (
                   <Button
                     className="action-btn permission-btn"
                     size="small"
@@ -193,7 +202,7 @@ const RoleListPage: React.FC = () => {
                     权限
                   </Button>
                 )}
-                {hasPermission('sys:role:edit') && (
+                {hasPermission("sys:role:edit") && (
                   <Button
                     className="action-btn edit-btn"
                     size="small"
@@ -203,7 +212,7 @@ const RoleListPage: React.FC = () => {
                     编辑
                   </Button>
                 )}
-                {hasPermission('sys:role:delete') && (
+                {hasPermission("sys:role:delete") && (
                   <Button
                     className="action-btn delete-btn"
                     size="small"
@@ -219,9 +228,7 @@ const RoleListPage: React.FC = () => {
                   <View className="role-name">{role.name}</View>
                   <View className="role-code">编码: {role.code}</View>
                 </View>
-                <View className="role-status">
-                  {getStatusTag(role.status)}
-                </View>
+                <View className="role-status">{getStatusTag(role.status)}</View>
                 <View className="role-meta">
                   <View className="meta-item">
                     <View className="meta-label">排序:</View>
@@ -245,28 +252,6 @@ const RoleListPage: React.FC = () => {
           <Loading size="small">加载中...</Loading>
         </View>
       )}
-
-      {/* 删除确认弹窗 */}
-      <Dialog
-        open={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        title="确认删除"
-      >
-        <Dialog.Content>
-          确定要删除角色 "{deletingRole?.name}" 吗？此操作不可恢复。
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onClick={() => setShowDeleteDialog(false)}>
-            取消
-          </Button>
-          <Button
-            color="danger"
-            onClick={confirmDelete}
-          >
-            删除
-          </Button>
-        </Dialog.Actions>
-      </Dialog>
     </View>
   );
 };

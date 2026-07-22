@@ -1,13 +1,13 @@
 /**
  * 侧边菜单组件
  */
-import React from 'react';
-import { View, Text, ScrollView } from '@tarojs/components';
-import Taro from '@tarojs/taro';
-import { Popup } from '@taroify/core';
-import { Cross, EyeOutlined } from '@taroify/icons';
-import { homeItem, menuSections, isTabBarPage, type MenuItem } from '@/config/menu';
-import './index.less';
+import React from "react";
+import { View, Text, ScrollView } from "@tarojs/components";
+import Taro from "@tarojs/taro";
+import { Popup } from "@taroify/core";
+import { Cross, EyeOutlined } from "@taroify/icons";
+import { homeItem, menuSections, type MenuItem } from "@/config/menu";
+import "./index.less";
 
 interface AppSidebarProps {
   /** 侧边栏是否可见 */
@@ -22,7 +22,7 @@ interface AppSidebarProps {
 
 const AppSidebar: React.FC<AppSidebarProps> = ({
   visible,
-  currentRoute = '/pages/home/index',
+  currentRoute = "/pages/home/index",
   onClose,
   onNavigate,
 }) => {
@@ -34,68 +34,64 @@ const AppSidebar: React.FC<AppSidebarProps> = ({
     onNavigate?.(route);
     onClose();
 
-    // 判断是否为 tabBar 页面
-    if (isTabBarPage(route)) {
-      Taro.switchTab({ url: route });
-    } else {
-      Taro.navigateTo({
-        url: route,
-        fail: () => {
-          Taro.showToast({ title: '页面开发中', icon: 'none' });
-        },
-      });
-    }
+    // 使用 reLaunch 统一跳转（项目使用自定义 tabbar 组件，未配置原生 tabBar）
+    Taro.reLaunch({
+      url: route,
+      fail: () => {
+        Taro.showToast({ title: "页面开发中", icon: "none" });
+      },
+    });
   };
 
   /** 渲染菜单项 */
   const renderMenuItem = (item: MenuItem) => (
     <View
       key={item.route}
-      className={`menu-item ${isActive(item.route) ? 'active' : ''}`}
+      className={`menu-item ${isActive(item.route) ? "active" : ""}`}
       onClick={() => navigateTo(item.route)}
     >
-      <Text className='menu-title'>{item.title}</Text>
-      {item.badge && <View className='menu-badge'>{item.badge}</View>}
-      {item.isNew && <View className='menu-new'>NEW</View>}
+      <Text className="menu-title">{item.title}</Text>
+      {item.badge && <View className="menu-badge">{item.badge}</View>}
+      {item.isNew && <View className="menu-new">NEW</View>}
     </View>
   );
 
   return (
     <Popup
       open={visible}
-      placement='right'
-      style={{ width: '70vw', maxWidth: '280px' }}
+      placement="right"
+      style={{ width: "70vw", maxWidth: "280px" }}
       onClose={onClose}
     >
-      <View className='sidebar-container'>
+      <View className="sidebar-container">
         {/* 头部 */}
-        <View className='sidebar-header'>
-          <View className='header-content'>
-            <View className='logo-wrapper'>
-              <EyeOutlined size='18' color='#ffffff' />
+        <View className="sidebar-header">
+          <View className="header-content">
+            <View className="logo-wrapper">
+              <EyeOutlined size="18" color="#ffffff" />
             </View>
-            <View className='header-text'>
-              <Text className='app-name'>图像去雾系统</Text>
-              <Text className='app-desc'>功能菜单</Text>
+            <View className="header-text">
+              <Text className="app-name">图像去雾系统</Text>
+              <Text className="app-desc">功能菜单</Text>
             </View>
           </View>
-          <View className='close-btn' onClick={onClose}>
-            <Cross size='16' color='#fff' />
+          <View className="close-btn" onClick={onClose}>
+            <Cross size="16" color="#fff" />
           </View>
         </View>
 
         {/* 菜单内容 */}
-        <ScrollView className='sidebar-content' scrollY>
+        <ScrollView className="sidebar-content" scrollY>
           {/* 首页 */}
           {renderMenuItem(homeItem)}
 
-          <View className='menu-divider' />
+          <View className="menu-divider" />
 
           {/* 分组菜单 */}
           {menuSections.map((section) => (
-            <View key={section.title} className='menu-section'>
-              <View className='section-header'>
-                <Text className='section-title'>{section.title}</Text>
+            <View key={section.title} className="menu-section">
+              <View className="section-header">
+                <Text className="section-title">{section.title}</Text>
               </View>
               {section.items.map(renderMenuItem)}
             </View>

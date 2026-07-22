@@ -15,16 +15,16 @@
 
 .dict-swipe-cell {
   margin-bottom: 12px;
-  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 6%);
 
   .action-btn {
     height: 100%;
-    border: none;
     padding: 0 16px;
     font-size: 12px;
     color: #fff;
+    border: none;
 
     &.data-btn {
       background-color: #722ed1;
@@ -45,10 +45,10 @@
     flex: 1;
 
     .dict-name {
+      margin-bottom: 4px;
       font-size: 16px;
       font-weight: 600;
       color: #262626;
-      margin-bottom: 4px;
     }
 
     .dict-code {
@@ -63,9 +63,9 @@
   }
 
   .dict-remark {
+    margin-top: 4px;
     font-size: 12px;
     color: #8c8c8c;
-    margin-top: 4px;
   }
 }
 
@@ -96,8 +96,8 @@
 
   .form-body {
     flex: 1;
-    overflow-y: auto;
     padding: 16px;
+    overflow-y: auto;
   }
 
   .form-item {
@@ -105,19 +105,19 @@
 
     .form-label {
       display: block;
+      margin-bottom: 8px;
       font-size: 14px;
       color: #262626;
-      margin-bottom: 8px;
     }
 
     .form-input {
+      box-sizing: border-box;
       width: 100%;
       height: 40px;
       padding: 0 12px;
+      font-size: 14px;
       border: 1px solid #d9d9d9;
       border-radius: 4px;
-      font-size: 14px;
-      box-sizing: border-box;
 
       &:focus {
         border-color: #1890ff;
@@ -125,19 +125,19 @@
     }
 
     .form-textarea {
+      box-sizing: border-box;
       width: 100%;
       min-height: 80px;
       padding: 8px 12px;
+      font-size: 14px;
       border: 1px solid #d9d9d9;
       border-radius: 4px;
-      font-size: 14px;
-      box-sizing: border-box;
     }
 
     .form-switch {
       display: flex;
-      align-items: center;
       gap: 8px;
+      align-items: center;
     }
   }
 
@@ -163,8 +163,8 @@
 
   .item-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
     padding: 16px;
     border-bottom: 1px solid #f0f0f0;
 
@@ -177,14 +177,14 @@
 
   .item-list {
     flex: 1;
-    overflow-y: auto;
     padding: 12px 16px;
+    overflow-y: auto;
   }
 
   .item-swipe-cell {
     margin-bottom: 12px;
-    border-radius: 8px;
     overflow: hidden;
+    border-radius: 8px;
   }
 
   .item-cell {
@@ -192,10 +192,10 @@
       flex: 1;
 
       .item-name {
+        margin-bottom: 4px;
         font-size: 15px;
         font-weight: 500;
         color: #262626;
-        margin-bottom: 4px;
       }
 
       .item-value {

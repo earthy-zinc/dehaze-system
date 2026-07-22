@@ -1,45 +1,45 @@
 /* 最终CTA区域样式 - 基于750设计稿 */
 .final-cta-section {
-  padding: 80px 32px 60px;
-  text-align: center;
-  background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
-  box-sizing: border-box;
+  padding: 80px 32px 60px;
+  text-align: center;
+  background: linear-gradient(180deg, #fff 0%, #f9fafb 100%);
 
   .cta-title {
     display: block;
+    margin-bottom: 16px;
     font-size: 36px;
     font-weight: 700;
     color: #1f2937;
-    margin-bottom: 16px;
-    letter-spacing: -0.02em;
     text-align: center;
+    letter-spacing: -0.02em;
   }
 
   .cta-subtitle {
     display: block;
+    margin-bottom: 40px;
     font-size: 16px;
     color: #6b7280;
-    margin-bottom: 40px;
     text-align: center;
   }
 
   .cta-large-btn {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-    color: white !important;
-    padding: 12px 64px;
-    border-radius: 16px;
-    font-size: 18px;
-    font-weight: 700;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: relative;
+    padding: 12px 64px;
+    font-size: 18px;
+    font-weight: 700;
+    color: white !important;
+    cursor: pointer;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgb(59 130 246 / 30%);
+    transition: all 0.3s ease;
 
     &::after {
       display: none;

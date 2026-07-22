@@ -1,45 +1,44 @@
 /* 搜索栏组件样式 */
 .search-bar {
-  width: 100%;
   box-sizing: border-box;
+  width: 100%;
 }
 
 .search-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  background: white;
-  border-radius: 12px;
-  border: 2px solid #e5e7eb;
-  transition: all 0.3s ease;
   overflow: hidden;
+  background: white;
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  transition: all 0.3s ease;
 }
 
 .search-input-wrapper:focus-within {
   border-color: #14b8a6;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.1);
+  box-shadow: 0 0 0 3px rgb(20 184 166 / 10%);
 }
 
 .search-icon {
-  flex-shrink: 0;
-  margin-left: 12px;
-  margin-right: 8px;
   z-index: 1;
+  flex-shrink: 0;
+  margin-right: 8px;
+  margin-left: 12px;
 }
 
 .search-input {
   flex: 1;
-  height: 44px;
+  height: 40px;
   padding: 0 12px 0 0;
-  font-size: 16px;
-  color: #374151;
-  background: transparent;
-  border: none;
-  outline: none;
 
   /* #ifdef MP-WEIXIN || MP-ALIPAY */
   font-size: 14px;
-  height: 40px;
+  color: #374151;
+  outline: none;
+  background: transparent;
+  border: none;
+
   /* #endif */
 }
 
@@ -48,19 +47,19 @@
 }
 
 .clear-btn {
+  display: flex;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
   width: 24px;
   height: 24px;
   margin: 0 8px;
-  background: #9ca3af;
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   font-size: 14px;
   font-weight: bold;
+  color: white;
   cursor: pointer;
+  background: #9ca3af;
+  border-radius: 50%;
   transition: all 0.2s ease;
 }
 
@@ -74,14 +73,14 @@
 }
 
 /* 响应式适配 */
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .search-input-wrapper {
     border-radius: 10px;
   }
 
   .search-icon {
-    margin-left: 10px;
     margin-right: 6px;
+    margin-left: 10px;
     font-size: 18px;
   }
 

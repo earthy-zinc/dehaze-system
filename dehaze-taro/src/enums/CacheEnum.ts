@@ -3,22 +3,22 @@
  */
 export enum CacheEnum {
   // 认证相关
-  TOKEN = 'accessToken',
-  USER_INFO = 'userInfo',
-  PERMISSIONS = 'permissions',
-  ROLES = 'roles',
+  TOKEN = "accessToken",
+  USER_INFO = "userInfo",
+  PERMISSIONS = "permissions",
+  ROLES = "roles",
 
   // 系统配置
-  SELECTED_DEPT = 'selectedDept',
-  CACHE_EXPIRE = 'cacheExpire',
+  SELECTED_DEPT = "selectedDept",
+  CACHE_EXPIRE = "cacheExpire",
 
   // 主题设置
-  THEME = 'theme',
-  LANGUAGE = 'language',
+  THEME = "theme",
+  LANGUAGE = "language",
 
   // 应用配置
-  APP_CONFIG = 'appConfig',
-  USER_CONFIG = 'userConfig',
+  APP_CONFIG = "appConfig",
+  USER_CONFIG = "userConfig",
 }
 
 /**

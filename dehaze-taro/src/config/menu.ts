@@ -32,89 +32,101 @@ export interface MenuSection {
 
 /** 首页菜单项 */
 export const homeItem: MenuItem = {
-  icon: 'home-o',
-  activeIcon: 'wap-home',
-  title: '首页',
-  route: '/pages/home/index',
+  icon: "home-o",
+  activeIcon: "wap-home",
+  title: "首页",
+  route: "/pages/home/index",
 };
 
 /** 分组菜单配置 */
 export const menuSections: MenuSection[] = [
   {
-    title: '处理流程',
-    icon: 'play-circle-o',
+    title: "处理流程",
+    icon: "play-circle-o",
     items: [
       {
-        icon: 'photograph',
-        activeIcon: 'photograph',
-        title: '图像输入',
-        route: '/pages/image-input/index',
+        icon: "photograph",
+        activeIcon: "photograph",
+        title: "图像输入",
+        route: "/pages/image-input/index",
       },
       {
-        icon: 'bulb-o',
-        activeIcon: 'bulb-o',
-        title: '算法选择',
-        route: '/pages/algorithm-select/index',
+        icon: "bulb-o",
+        activeIcon: "bulb-o",
+        title: "算法选择",
+        route: "/pages/algorithm-select/index",
       },
       {
-        icon: 'setting-o',
-        activeIcon: 'setting',
-        title: '去雾处理',
-        route: '/pages/processing/index',
+        icon: "setting-o",
+        activeIcon: "setting",
+        title: "去雾处理",
+        route: "/pages/processing/index",
       },
     ],
   },
   {
-    title: '效果对比',
-    icon: 'apps-o',
+    title: "效果对比",
+    icon: "apps-o",
     items: [
       {
-        icon: 'apps-o',
-        activeIcon: 'apps-o',
-        title: '并排对比',
-        route: '/pages/side-by-side/index',
+        icon: "apps-o",
+        activeIcon: "apps-o",
+        title: "并排对比",
+        route: "/pages/side-by-side/index",
       },
       {
-        icon: 'photo-o',
-        activeIcon: 'photo',
-        title: '重叠对比',
-        route: '/pages/overlay/index',
+        icon: "photo-o",
+        activeIcon: "photo",
+        title: "重叠对比",
+        route: "/pages/overlay/index",
       },
       {
-        icon: 'search',
-        activeIcon: 'search',
-        title: '放大镜',
-        route: '/pages/magnifier/index',
+        icon: "search",
+        activeIcon: "search",
+        title: "放大镜",
+        route: "/pages/magnifier/index",
       },
       {
-        icon: 'filter-o',
-        activeIcon: 'filter-o',
-        title: '滤镜调节',
-        route: '/pages/filter/index',
+        icon: "filter-o",
+        activeIcon: "filter-o",
+        title: "滤镜调节",
+        route: "/pages/filter/index",
       },
       {
-        icon: 'bar-chart-o',
-        activeIcon: 'bar-chart-o',
-        title: '指标评估',
-        route: '/pages/metrics/index',
+        icon: "bar-chart-o",
+        activeIcon: "bar-chart-o",
+        title: "指标评估",
+        route: "/pages/metrics/index",
       },
       {
-        icon: 'info-o',
-        activeIcon: 'info',
-        title: '算法信息',
-        route: '/pages/algorithm/index',
+        icon: "info-o",
+        activeIcon: "info",
+        title: "算法信息",
+        route: "/pages/algorithm/index",
       },
     ],
   },
   {
-    title: '数据管理',
-    icon: 'orders-o',
+    title: "数据管理",
+    icon: "orders-o",
     items: [
       {
-        icon: 'orders-o',
-        activeIcon: 'orders-o',
-        title: '数据集管理',
-        route: '/pages/dataset/index',
+        icon: "orders-o",
+        activeIcon: "orders-o",
+        title: "数据集管理",
+        route: "/pages/dataset/index",
+      },
+    ],
+  },
+  {
+    title: "个人中心",
+    icon: "manager-o",
+    items: [
+      {
+        icon: "manager-o",
+        activeIcon: "manager",
+        title: "个人中心",
+        route: "/pages/profile/index",
       },
     ],
   },
@@ -123,34 +135,40 @@ export const menuSections: MenuSection[] = [
 /** 底部 TabBar 配置（移动端核心入口） */
 export const tabBarItems: MenuItem[] = [
   {
-    icon: 'home-o',
-    activeIcon: 'wap-home',
-    title: '首页',
-    route: '/pages/home/index',
+    icon: "home-o",
+    activeIcon: "wap-home",
+    title: "首页",
+    route: "/pages/home/index",
   },
   {
-    icon: 'photograph',
-    activeIcon: 'photograph',
-    title: '输入',
-    route: '/pages/image-input/index',
+    icon: "photograph",
+    activeIcon: "photograph",
+    title: "输入",
+    route: "/pages/image-input/index",
   },
   {
-    icon: 'bulb-o',
-    activeIcon: 'bulb-o',
-    title: '算法',
-    route: '/pages/algorithm-select/index',
+    icon: "bulb-o",
+    activeIcon: "bulb-o",
+    title: "算法",
+    route: "/pages/algorithm-select/index",
   },
   {
-    icon: 'setting-o',
-    activeIcon: 'setting',
-    title: '处理',
-    route: '/pages/processing/index',
+    icon: "setting-o",
+    activeIcon: "setting",
+    title: "处理",
+    route: "/pages/processing/index",
   },
   {
-    icon: 'apps-o',
-    activeIcon: 'apps-o',
-    title: '对比',
-    route: '/pages/side-by-side/index',
+    icon: "apps-o",
+    activeIcon: "apps-o",
+    title: "对比",
+    route: "/pages/side-by-side/index",
+  },
+  {
+    icon: "manager-o",
+    activeIcon: "manager",
+    title: "我的",
+    route: "/pages/profile/index",
   },
 ];
 
@@ -189,7 +207,9 @@ export const containsRoute = (route: string): boolean => {
  * 根据路由获取所属分组
  */
 export const findSectionByRoute = (route: string): MenuSection | undefined => {
-  return menuSections.find((section) => section.items.some((item) => item.route === route));
+  return menuSections.find((section) =>
+    section.items.some((item) => item.route === route)
+  );
 };
 
 /**

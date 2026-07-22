@@ -12,7 +12,7 @@
   height: 44px;
   padding: 0 16px;
   background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
 
   .nav-back {
     padding: 8px;
@@ -21,44 +21,44 @@
 
   .nav-title {
     flex: 1;
-    text-align: center;
+    margin-right: 28px;
     font-size: 17px;
     font-weight: 600;
     color: #1f2937;
-    margin-right: 28px;
+    text-align: center;
   }
 }
 
 /* 模式切换标签 */
 .mode-tabs {
   display: flex;
-  background: #fff;
-  padding: 0 16px 12px;
   gap: 8px;
+  padding: 0 16px 12px;
+  background: #fff;
 
   .mode-tab {
-    flex: 1;
-    height: 32px;
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
-    background: #f3f4f6;
-    border-radius: 16px;
+    height: 32px;
     font-size: 13px;
     color: #6b7280;
+    background: #f3f4f6;
+    border-radius: 16px;
 
     &.active {
-      background: #3b82f6;
-      color: #fff;
       font-weight: 500;
+      color: #fff;
+      background: #3b82f6;
     }
   }
 }
 
 /* 对比内容 */
 .overlay-content {
-  flex: 1;
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -72,9 +72,9 @@
   align-items: center;
 
   .empty-text {
+    margin-bottom: 8px;
     font-size: 16px;
     color: #6b7280;
-    margin-bottom: 8px;
   }
 
   .empty-hint {
@@ -88,14 +88,14 @@
   position: relative;
   width: 100%;
   max-width: 400px;
-  border-radius: 12px;
   overflow: hidden;
-  background: #000;
   touch-action: none;
+  background: #000;
+  border-radius: 12px;
 
   .base-image {
-    width: 100%;
     display: block;
+    width: 100%;
   }
 
   .overlay-image-wrapper {
@@ -107,8 +107,8 @@
     overflow: hidden;
 
     .overlay-image {
-      width: 100%;
       display: block;
+      width: 100%;
     }
   }
 
@@ -117,10 +117,10 @@
     position: absolute;
     top: 0;
     bottom: 0;
+    z-index: 10;
     width: 2px;
     background: #fff;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
-    z-index: 10;
+    box-shadow: 0 0 8px rgb(0 0 0 / 30%);
 
     .slider-line {
       width: 100%;
@@ -131,16 +131,16 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      transform: translate(-50%, -50%);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       display: flex;
+      gap: 2px;
       align-items: center;
       justify-content: center;
-      gap: 2px;
+      width: 36px;
+      height: 36px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+      transform: translate(-50%, -50%);
 
       .slider-arrow-left,
       .slider-arrow-right {
@@ -154,26 +154,26 @@
   .image-labels {
     position: absolute;
     top: 8px;
-    left: 8px;
     right: 8px;
+    left: 8px;
     display: flex;
     justify-content: space-between;
     pointer-events: none;
 
     .label-tag {
       padding: 3px 8px;
-      border-radius: 4px;
       font-size: 11px;
+      border-radius: 4px;
       transition: opacity 0.2s;
 
       &.label-original {
-        background: rgba(217, 119, 6, 0.9);
         color: #fff;
+        background: rgb(217 119 6 / 90%);
       }
 
       &.label-result {
-        background: rgba(5, 150, 105, 0.9);
         color: #fff;
+        background: rgb(5 150 105 / 90%);
       }
     }
   }

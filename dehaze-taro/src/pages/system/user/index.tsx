@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View } from '@tarojs/components';
-import Taro, { useLoad, usePageScroll } from '@tarojs/taro';
+import React, { useState } from "react";
+import { View } from "@tarojs/components";
+import Taro, { useLoad, usePageScroll } from "@tarojs/taro";
 import {
   Navbar,
   Search,
@@ -8,14 +8,13 @@ import {
   Loading,
   Empty,
   PullRefresh,
-  Toast
-} from '@taroify/core';
-import { Plus } from '@taroify/icons';
-import UserCard from './components/UserCard';
-import { useUserManagement } from '@/hooks/useUserManagement';
-import { usePermission } from '@/hooks/usePermission';
-import type { UserPageVO } from 'dehaze-sdk-js';
-import './index.scss';
+} from "@taroify/core";
+import { Plus } from "@taroify/icons";
+import { useUserManagement } from "@/hooks/useUserManagement";
+import { usePermission } from "@/hooks/usePermission";
+import type { UserPageVO } from "dehaze-sdk-js";
+import UserCard from "./components/UserCard";
+import "./index.scss";
 
 const UserListPage: React.FC = () => {
   const { hasPermission } = usePermission();
@@ -30,7 +29,7 @@ const UserListPage: React.FC = () => {
     searchUsers,
   } = useUserManagement();
 
-  const [searchValue, setSearchValue] = useState('');
+  const [searchValue, setSearchValue] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [reachTop, setReachTop] = useState(true);
 
@@ -61,7 +60,7 @@ const UserListPage: React.FC = () => {
 
   // 搜索
   const handleSearch = async (event: any) => {
-    const value = event.detail.value || '';
+    const value = event.detail.value || "";
     setSearchValue(value);
     if (value.trim()) {
       await searchUsers(value.trim());
@@ -74,7 +73,7 @@ const UserListPage: React.FC = () => {
   const handleDelete = async (user: UserPageVO) => {
     const confirmed = await new Promise<boolean>((resolve) => {
       Taro.showModal({
-        title: '确认删除',
+        title: "确认删除",
         content: `确定要删除用户"${user.nickname}"吗？`,
         success: (res) => {
           if (res.confirm) {
@@ -82,7 +81,7 @@ const UserListPage: React.FC = () => {
           } else if (res.cancel) {
             resolve(false);
           }
-        }
+        },
       });
     });
 
@@ -99,7 +98,7 @@ const UserListPage: React.FC = () => {
   const handleResetPassword = async (user: UserPageVO) => {
     const confirmed = await new Promise<boolean>((resolve) => {
       Taro.showModal({
-        title: '重置密码',
+        title: "重置密码",
         content: `确定要重置用户"${user.nickname}"的密码为默认密码"123456"吗？`,
         success: (res) => {
           if (res.confirm) {
@@ -107,33 +106,33 @@ const UserListPage: React.FC = () => {
           } else if (res.cancel) {
             resolve(false);
           }
-        }
+        },
       });
     });
 
     if (confirmed && user.id) {
       try {
-        const newPassword = '123456'; // 默认密码
+        const newPassword = "123456"; // 默认密码
         await resetPassword(user.id, newPassword);
       } catch (error) {
         // 错误已在 hook 中处理
       }
     } else {
-      Toast.open({ message: '请输入新密码', position: 'top' });
+      Taro.showToast({ title: "请输入新密码", icon: "none" });
     }
   };
 
   // 新增用户
   const handleAddUser = () => {
     Taro.navigateTo({
-      url: '/pages/system/user/detail'
+      url: "/pages/system/user/detail",
     });
   };
 
   // 编辑用户
   const handleEditUser = (userId: number) => {
     Taro.navigateTo({
-      url: `/pages/system/user/detail?id=${userId}`
+      url: `/pages/system/user/detail?id=${userId}`,
     });
   };
 
@@ -142,12 +141,8 @@ const UserListPage: React.FC = () => {
       {/* 导航栏 */}
       <Navbar title="用户管理">
         <Navbar.NavRight>
-          {hasPermission('sys:user:add') && (
-            <Button
-              size="small"
-              color="primary"
-              onClick={handleAddUser}
-            >
+          {hasPermission("sys:user:add") && (
+            <Button size="small" color="primary" onClick={handleAddUser}>
               <Plus /> 新增
             </Button>
           )}
@@ -190,21 +185,17 @@ const UserListPage: React.FC = () => {
             <Empty>
               <Empty.Image />
               <Empty.Description>
-                {searchValue ? '没有找到匹配的用户' : '暂无用户数据'}
+                {searchValue ? "没有找到匹配的用户" : "暂无用户数据"}
               </Empty.Description>
             </Empty>
           )}
         </View>
       </PullRefresh>
 
-          {/* 上拉加载提示 */}
+      {/* 上拉加载提示 */}
       {users.length > 0 && users.length < total && !loading && (
         <View className="load-more-tip">
-          <Button
-            size="small"
-            variant="outlined"
-            onClick={handleLoadMore}
-          >
+          <Button size="small" variant="outlined" onClick={handleLoadMore}>
             加载更多
           </Button>
         </View>
@@ -217,7 +208,7 @@ const UserListPage: React.FC = () => {
             <Empty.Image />
             <Empty.Description>暂无用户数据</Empty.Description>
           </Empty>
-          {hasPermission('sys:user:add') && (
+          {hasPermission("sys:user:add") && (
             <Button
               color="primary"
               className="empty-state__button"

@@ -1,31 +1,34 @@
-import React, { useCallback } from 'react'
-import { View } from '@tarojs/components'
-import type { ImageUrlVO } from '../../services/types'
-import ImageCard from '@/components/common/ImageCard'
-import ImageViewer from '@/components/common/ImageViewer'
-import './ImageGrid.less'
+import React, { useCallback } from "react";
+import { View } from "@tarojs/components";
+import ImageCard from "@/components/common/ImageCard";
+import ImageViewer from "@/components/common/ImageViewer";
+import type { ImageUrlVO } from "../../services/types";
+import "./ImageGrid.less";
 
 interface ImageGridProps {
-  images: ImageUrlVO[]
-  className?: string
-  onImageClick?: (image: ImageUrlVO) => void
+  images: ImageUrlVO[];
+  className?: string;
+  onImageClick?: (image: ImageUrlVO) => void;
 }
 
 const ImageGrid: React.FC<ImageGridProps> = ({
   images,
-  className = '',
+  className = "",
   onImageClick,
 }) => {
-  const [viewerImage, setViewerImage] = React.useState<ImageUrlVO | null>(null)
+  const [viewerImage, setViewerImage] = React.useState<ImageUrlVO | null>(null);
 
-  const handleImageClick = useCallback((image: ImageUrlVO) => {
-    setViewerImage(image)
-    onImageClick?.(image)
-  }, [onImageClick])
+  const handleImageClick = useCallback(
+    (image: ImageUrlVO) => {
+      setViewerImage(image);
+      onImageClick?.(image);
+    },
+    [onImageClick]
+  );
 
   const handleCloseViewer = useCallback(() => {
-    setViewerImage(null)
-  }, [])
+    setViewerImage(null);
+  }, []);
 
   return (
     <>
@@ -48,7 +51,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
 
       <ImageViewer
         visible={!!viewerImage}
-        src={viewerImage?.url || ''}
+        src={viewerImage?.url || ""}
         filename={viewerImage?.fileName}
         imageType={viewerImage?.type}
         hazeLevel={viewerImage?.hazeLevel}
@@ -59,7 +62,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({
         onClose={handleCloseViewer}
       />
     </>
-  )
-}
+  );
+};
 
-export default ImageGrid
+export default ImageGrid;

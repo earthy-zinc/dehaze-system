@@ -1,7 +1,7 @@
 .image-input-page {
   min-height: 100vh;
-  background: #f8fafc;
   padding-bottom: calc(32px + env(safe-area-inset-bottom));
+  background: #f8fafc;
 
   .page-header {
     padding: 24px 16px 16px;
@@ -10,10 +10,10 @@
 
     .page-title {
       display: block;
+      margin-bottom: 4px;
       font-size: 22px;
       font-weight: 700;
       color: #1f2937;
-      margin-bottom: 4px;
     }
 
     .page-subtitle {
@@ -23,20 +23,20 @@
   }
 
   .content-area {
-    padding: 16px 0;
     min-height: 300px;
+    padding: 16px 0;
   }
 
   .quick-start-card {
-    margin: 0 16px;
-    padding: 20px;
-    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-    border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    padding: 20px;
+    margin: 0 16px;
     cursor: pointer;
-    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgb(59 130 246 / 30%);
 
     &:active {
       transform: scale(0.99);
@@ -44,8 +44,8 @@
 
     .quick-start-content {
       display: flex;
-      align-items: center;
       gap: 14px;
+      align-items: center;
     }
 
     .quick-start-icon {
@@ -54,7 +54,7 @@
       justify-content: center;
       width: 44px;
       height: 44px;
-      background: rgba(255, 255, 255, 0.2);
+      background: rgb(255 255 255 / 20%);
       border-radius: 12px;
     }
 
@@ -64,15 +64,15 @@
     }
 
     .quick-title {
+      margin-bottom: 2px;
       font-size: 16px;
       font-weight: 600;
       color: white;
-      margin-bottom: 2px;
     }
 
     .quick-desc {
       font-size: 12px;
-      color: rgba(255, 255, 255, 0.85);
+      color: rgb(255 255 255 / 85%);
     }
 
     .quick-btn {
@@ -90,7 +90,7 @@
 }
 
 /* 横屏适配 */
-@media (orientation: landscape) and (max-height: 600px) {
+@media (orientation: landscape) and (height <= 600px) {
   .image-input-page {
     .page-header {
       padding: 12px 16px;
@@ -105,13 +105,13 @@
     }
 
     .content-area {
-      padding: 12px 0;
       min-height: auto;
+      padding: 12px 0;
     }
 
     .quick-start-card {
-      margin: 12px 16px;
       padding: 14px 16px;
+      margin: 12px 16px;
 
       .quick-start-icon {
         width: 36px;
@@ -130,7 +130,7 @@
 }
 
 /* 平板适配 */
-@media (min-width: 768px) {
+@media (width >= 768px) {
   .image-input-page {
     max-width: 800px;
     margin: 0 auto;
@@ -152,8 +152,8 @@
     }
 
     .quick-start-card {
-      margin: 0 24px;
       padding: 24px;
+      margin: 0 24px;
 
       .quick-start-icon {
         width: 52px;

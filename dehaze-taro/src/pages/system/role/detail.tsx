@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View } from '@tarojs/components';
-import Taro, { useRouter, useLoad } from '@tarojs/taro';
+import React, { useState } from "react";
+import { View } from "@tarojs/components";
+import Taro, { useRouter, useLoad } from "@tarojs/taro";
 import {
   Navbar,
   Form,
@@ -8,15 +8,14 @@ import {
   Radio,
   Stepper,
   Button,
-  Toast,
   Loading,
   Cell,
   Field,
-} from '@taroify/core';
-import { ArrowLeft } from '@taroify/icons';
-import { useRoleManagement } from '@/hooks/useRoleManagement';
-import type { RoleForm } from 'dehaze-sdk-js';
-import './detail.scss';
+} from "@taroify/core";
+import { ArrowLeft } from "@taroify/icons";
+import { useRoleManagement } from "@/hooks/useRoleManagement";
+import type { RoleForm } from "dehaze-sdk-js";
+import "./detail.scss";
 
 const RoleDetailPage: React.FC = () => {
   const router = useRouter();
@@ -28,8 +27,8 @@ const RoleDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState<RoleForm>({
-    name: '',
-    code: '',
+    name: "",
+    code: "",
     sort: 0,
     status: 1,
     dataScope: 1,
@@ -49,18 +48,18 @@ const RoleDetailPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const { RoleAPI } = await import('dehaze-sdk-js');
+      const { RoleAPI } = await import("dehaze-sdk-js");
       const roleData = await RoleAPI.getFormData(Number(id));
       setFormData({
-        name: roleData.name || '',
-        code: roleData.code || '',
+        name: roleData.name || "",
+        code: roleData.code || "",
         sort: roleData.sort || 0,
         status: roleData.status ?? 1,
         dataScope: roleData.dataScope || 1,
       });
     } catch (error) {
-      Toast.open({ message: '获取角色信息失败', position: 'top' });
-      console.error('获取角色信息失败:', error);
+      Taro.showToast({ title: "获取角色信息失败", icon: "none" });
+      console.error("获取角色信息失败:", error);
     } finally {
       setLoading(false);
     }
@@ -68,27 +67,30 @@ const RoleDetailPage: React.FC = () => {
 
   // 表单字段更新
   const handleFieldChange = (field: keyof RoleForm, value: any) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
   // 表单验证
   const validateForm = () => {
     if (!formData.name.trim()) {
-      Toast.open({ message: '请输入角色名称', position: 'top' });
+      Taro.showToast({ title: "请输入角色名称", icon: "none" });
       return false;
     }
 
     if (!formData.code.trim()) {
-      Toast.open({ message: '请输入角色编码', position: 'top' });
+      Taro.showToast({ title: "请输入角色编码", icon: "none" });
       return false;
     }
 
     // 验证编码格式（只允许字母、数字、下划线）
     if (!/^[a-zA-Z0-9_]+$/.test(formData.code)) {
-      Toast.open({ message: '角色编码只能包含字母、数字和下划线', position: 'top' });
+      Taro.showToast({
+        title: "角色编码只能包含字母、数字和下划线",
+        icon: "none",
+      });
       return false;
     }
 
@@ -106,17 +108,16 @@ const RoleDetailPage: React.FC = () => {
 
       if (isEdit) {
         await updateRole(Number(id), formData);
-        Toast.open({ message: '更新成功', position: 'top' });
+        Taro.showToast({ title: "更新成功", icon: "none" });
       } else {
         await createRole(formData);
-        Toast.open({ message: '创建成功', position: 'top' });
+        Taro.showToast({ title: "创建成功", icon: "none" });
       }
 
       // 返回列表页
       setTimeout(() => {
         Taro.navigateBack();
       }, 1000);
-
     } catch (error) {
       // 错误已在 hook 中处理
     } finally {
@@ -130,9 +131,7 @@ const RoleDetailPage: React.FC = () => {
 
   return (
     <View className="role-detail-page">
-      <Navbar
-        title={isEdit ? '编辑角色' : '新增角色'}
-      >
+      <Navbar title={isEdit ? "编辑角色" : "新增角色"}>
         <Navbar.NavLeft>
           <ArrowLeft onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
@@ -141,38 +140,41 @@ const RoleDetailPage: React.FC = () => {
       <Form className="role-form" onSubmit={handleSubmit}>
         {/* 基本信息 */}
         <Cell.Group inset title="基本信息">
-          <Form.Item name="name" rules={[{ required: true, message: '请输入角色名称' }]}>
+          <Form.Item
+            name="name"
+            rules={[{ required: true, message: "请输入角色名称" }]}
+          >
             <Form.Label>角色名称</Form.Label>
             <Form.Control>
               <Input
                 value={formData.name}
                 placeholder="请输入角色名称"
-                onChange={(value) => handleFieldChange('name', value)}
+                onChange={(value) => handleFieldChange("name", value)}
               />
             </Form.Control>
           </Form.Item>
 
-          <Form.Item name="code" rules={[{ required: true, message: '请输入角色编码' }]}>
+          <Form.Item
+            name="code"
+            rules={[{ required: true, message: "请输入角色编码" }]}
+          >
             <Form.Label>角色编码</Form.Label>
             <Form.Control>
               <Input
                 value={formData.code}
                 placeholder="请输入角色编码"
                 readonly={isEdit}
-                onChange={(value) => handleFieldChange('code', value)}
+                onChange={(value) => handleFieldChange("code", value)}
               />
             </Form.Control>
           </Form.Item>
 
-          <Field
-            name="sort"
-            label="显示排序"
-          >
+          <Field name="sort" label="显示排序">
             <Stepper
               value={formData.sort}
               min={0}
               max={999}
-              onChange={(value) => handleFieldChange('sort', Number(value))}
+              onChange={(value) => handleFieldChange("sort", Number(value))}
             />
           </Field>
         </Cell.Group>
@@ -184,7 +186,7 @@ const RoleDetailPage: React.FC = () => {
             <Form.Control>
               <Radio.Group
                 value={formData.status}
-                onChange={(value) => handleFieldChange('status', Number(value))}
+                onChange={(value) => handleFieldChange("status", Number(value))}
               >
                 <Radio name={1}>启用</Radio>
                 <Radio name={0}>禁用</Radio>
@@ -197,7 +199,9 @@ const RoleDetailPage: React.FC = () => {
             <Form.Control>
               <Radio.Group
                 value={formData.dataScope}
-                onChange={(value) => handleFieldChange('dataScope', String(value))}
+                onChange={(value) =>
+                  handleFieldChange("dataScope", String(value))
+                }
               >
                 <Radio name="1">全部数据</Radio>
                 <Radio name="2">部门数据</Radio>
@@ -210,13 +214,8 @@ const RoleDetailPage: React.FC = () => {
 
         {/* 表单操作 */}
         <View className="form-actions">
-          <Button
-            block
-            color="primary"
-            formType="submit"
-            loading={submitting}
-          >
-            {isEdit ? '更新' : '创建'}
+          <Button block color="primary" formType="submit" loading={submitting}>
+            {isEdit ? "更新" : "创建"}
           </Button>
         </View>
       </Form>

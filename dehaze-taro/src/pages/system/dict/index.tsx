@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, Input, Textarea } from '@tarojs/components';
-import Taro, { useLoad, usePullDownRefresh, useReachBottom } from '@tarojs/taro';
+import React, { useState } from "react";
+import { View, Text, Input, Textarea } from "@tarojs/components";
+import Taro, {
+  useLoad,
+  usePullDownRefresh,
+  useReachBottom,
+} from "@tarojs/taro";
 import {
   Navbar,
   Search,
@@ -8,17 +12,16 @@ import {
   Loading,
   Empty,
   SwipeCell,
-  Dialog,
   Tag,
   Cell,
   Popup,
   Switch,
-} from '@taroify/core';
-import { ArrowLeft, Add, Edit, Delete, SettingOutlined } from '@taroify/icons';
-import { useDictManagement } from '@/hooks/useDictManagement';
-import { usePermission } from '@/hooks/usePermission';
-import type { DictTypeForm, DictForm } from 'dehaze-sdk-js';
-import './index.scss';
+} from "@taroify/core";
+import { ArrowLeft, Add, Edit, Delete, SettingOutlined } from "@taroify/icons";
+import { useDictManagement } from "@/hooks/useDictManagement";
+import { usePermission } from "@/hooks/usePermission";
+import type { DictTypeForm, DictForm } from "dehaze-sdk-js";
+import "./index.scss";
 
 const DictPage: React.FC = () => {
   const {
@@ -45,43 +48,37 @@ const DictPage: React.FC = () => {
 
   const { hasPermission } = usePermission();
 
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletingType, setDeletingType] = useState<any>(null);
+  const [searchKeyword, setSearchKeyword] = useState("");
 
   // 字典类型表单弹窗
   const [showTypeDialog, setShowTypeDialog] = useState(false);
   const [editingTypeId, setEditingTypeId] = useState<number | undefined>();
   const [typeForm, setTypeForm] = useState<DictTypeForm>({
-    name: '',
-    code: '',
+    name: "",
+    code: "",
     status: 1,
-    remark: '',
+    remark: "",
   });
   const [submittingType, setSubmittingType] = useState(false);
 
   // 字典数据管理弹窗
   const [showItemDialog, setShowItemDialog] = useState(false);
-  const [currentTypeCode, setCurrentTypeCode] = useState('');
-  const [currentTypeName, setCurrentTypeName] = useState('');
+  const [currentTypeCode, setCurrentTypeCode] = useState("");
+  const [currentTypeName, setCurrentTypeName] = useState("");
 
   // 字典数据表单弹窗
   const [showItemFormDialog, setShowItemFormDialog] = useState(false);
   const [editingItemId, setEditingItemId] = useState<number | undefined>();
   const [itemForm, setItemForm] = useState<DictForm>({
-    name: '',
-    value: '',
-    typeCode: '',
+    name: "",
+    value: "",
+    typeCode: "",
     sort: 1,
     status: 1,
     defaulted: 0,
-    remark: '',
+    remark: "",
   });
   const [submittingItem, setSubmittingItem] = useState(false);
-
-  // 字典数据删除确认
-  const [showItemDeleteDialog, setShowItemDeleteDialog] = useState(false);
-  const [deletingItem, setDeletingItem] = useState<any>(null);
 
   useLoad(async () => {
     await fetchDictTypes();
@@ -104,7 +101,7 @@ const DictPage: React.FC = () => {
 
   // 搜索
   const handleSearch = async (event: any) => {
-    const value = event.detail?.value || '';
+    const value = event.detail?.value || "";
     setSearchKeyword(value);
     if (value.trim()) {
       await searchDictTypes(value.trim());
@@ -116,7 +113,7 @@ const DictPage: React.FC = () => {
   // 新增字典类型
   const handleAddType = () => {
     setEditingTypeId(undefined);
-    setTypeForm({ name: '', code: '', status: 1, remark: '' });
+    setTypeForm({ name: "", code: "", status: 1, remark: "" });
     setShowTypeDialog(true);
   };
 
@@ -135,11 +132,11 @@ const DictPage: React.FC = () => {
   // 提交字典类型表单
   const submitTypeForm = async () => {
     if (!typeForm.name?.trim()) {
-      Taro.showToast({ title: '字典名称不能为空', icon: 'none' });
+      Taro.showToast({ title: "字典名称不能为空", icon: "none" });
       return;
     }
     if (!typeForm.code?.trim()) {
-      Taro.showToast({ title: '字典编码不能为空', icon: 'none' });
+      Taro.showToast({ title: "字典编码不能为空", icon: "none" });
       return;
     }
 
@@ -160,16 +157,23 @@ const DictPage: React.FC = () => {
 
   // 删除字典类型
   const handleDeleteType = (dictType: any) => {
-    setDeletingType(dictType);
-    setShowDeleteDialog(true);
+    Taro.showModal({
+      title: "确认删除",
+      content: `确定要删除字典类型 "${dictType.name}" 吗？关联的字典数据也将被删除，此操作不可恢复。`,
+      confirmText: "删除",
+      cancelText: "取消",
+      success: (res) => {
+        if (res.confirm) {
+          confirmDeleteType(dictType);
+        }
+      },
+    });
   };
 
-  const confirmDeleteType = async () => {
-    if (!deletingType) return;
+  const confirmDeleteType = async (dictType: any) => {
+    if (!dictType) return;
     try {
-      await deleteDictTypes(String(deletingType.id));
-      setShowDeleteDialog(false);
-      setDeletingType(null);
+      await deleteDictTypes(String(dictType.id));
     } catch {
       // 错误已在 hook 中处理
     }
@@ -187,13 +191,13 @@ const DictPage: React.FC = () => {
   const handleAddItem = () => {
     setEditingItemId(undefined);
     setItemForm({
-      name: '',
-      value: '',
+      name: "",
+      value: "",
       typeCode: currentTypeCode,
       sort: 1,
       status: 1,
       defaulted: 0,
-      remark: '',
+      remark: "",
     });
     setShowItemFormDialog(true);
   };
@@ -213,11 +217,11 @@ const DictPage: React.FC = () => {
   // 提交字典数据表单
   const submitItemForm = async () => {
     if (!itemForm.name?.trim()) {
-      Taro.showToast({ title: '字典标签不能为空', icon: 'none' });
+      Taro.showToast({ title: "字典标签不能为空", icon: "none" });
       return;
     }
     if (!itemForm.value?.trim()) {
-      Taro.showToast({ title: '字典键值不能为空', icon: 'none' });
+      Taro.showToast({ title: "字典键值不能为空", icon: "none" });
       return;
     }
 
@@ -239,16 +243,23 @@ const DictPage: React.FC = () => {
 
   // 删除字典数据
   const handleDeleteItem = (item: any) => {
-    setDeletingItem(item);
-    setShowItemDeleteDialog(true);
+    Taro.showModal({
+      title: "确认删除",
+      content: `确定要删除字典数据 "${item.name}" 吗？`,
+      confirmText: "删除",
+      cancelText: "取消",
+      success: (res) => {
+        if (res.confirm) {
+          confirmDeleteItem(item);
+        }
+      },
+    });
   };
 
-  const confirmDeleteItem = async () => {
-    if (!deletingItem) return;
+  const confirmDeleteItem = async (item: any) => {
+    if (!item) return;
     try {
-      await deleteDictItems(String(deletingItem.id));
-      setShowItemDeleteDialog(false);
-      setDeletingItem(null);
+      await deleteDictItems(String(item.id));
       await fetchDictItems({ typeCode: currentTypeCode });
     } catch {
       // 错误已在 hook 中处理
@@ -256,9 +267,15 @@ const DictPage: React.FC = () => {
   };
 
   const getStatusTag = (status?: number) => {
-    return status === 1
-      ? <Tag color="success" size="small">启用</Tag>
-      : <Tag color="danger" size="small">禁用</Tag>;
+    return status === 1 ? (
+      <Tag color="success" size="small">
+        启用
+      </Tag>
+    ) : (
+      <Tag color="danger" size="small">
+        禁用
+      </Tag>
+    );
   };
 
   return (
@@ -268,7 +285,7 @@ const DictPage: React.FC = () => {
           <ArrowLeft onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission('sys:dict:type:add') && (
+          {hasPermission("sys:dict:type:add") && (
             <Add onClick={handleAddType} />
           )}
         </Navbar.NavRight>
@@ -281,7 +298,7 @@ const DictPage: React.FC = () => {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.detail.value)}
           onSearch={handleSearch}
-          onClear={() => handleSearch('')}
+          onClear={() => handleSearch("")}
         />
       </View>
 
@@ -293,7 +310,7 @@ const DictPage: React.FC = () => {
           <Empty>
             <Empty.Image />
             <Empty.Description>暂无字典类型</Empty.Description>
-            {hasPermission('sys:dict:type:add') && (
+            {hasPermission("sys:dict:type:add") && (
               <Button color="primary" size="small" onClick={handleAddType}>
                 新增字典类型
               </Button>
@@ -303,7 +320,7 @@ const DictPage: React.FC = () => {
           dictTypes.map((dictType) => (
             <SwipeCell key={dictType.id} className="dict-swipe-cell">
               <SwipeCell.Actions side="right">
-                {hasPermission('sys:dict:data:list') && (
+                {hasPermission("sys:dict:data:list") && (
                   <Button
                     className="action-btn data-btn"
                     size="small"
@@ -313,7 +330,7 @@ const DictPage: React.FC = () => {
                     数据
                   </Button>
                 )}
-                {hasPermission('sys:dict:type:edit') && (
+                {hasPermission("sys:dict:type:edit") && (
                   <Button
                     className="action-btn edit-btn"
                     size="small"
@@ -323,7 +340,7 @@ const DictPage: React.FC = () => {
                     编辑
                   </Button>
                 )}
-                {hasPermission('sys:dict:type:delete') && (
+                {hasPermission("sys:dict:type:delete") && (
                   <Button
                     className="action-btn delete-btn"
                     size="small"
@@ -358,32 +375,17 @@ const DictPage: React.FC = () => {
         </View>
       )}
 
-      {/* 字典类型删除确认弹窗 */}
-      <Dialog
-        open={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        title="确认删除"
-      >
-        <Dialog.Content>
-          确定要删除字典类型 "{deletingType?.name}" 吗？关联的字典数据也将被删除，此操作不可恢复。
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onClick={() => setShowDeleteDialog(false)}>取消</Button>
-          <Button color="danger" onClick={confirmDeleteType}>删除</Button>
-        </Dialog.Actions>
-      </Dialog>
-
       {/* 字典类型表单弹窗 */}
       <Popup
         open={showTypeDialog}
         onClose={() => setShowTypeDialog(false)}
         placement="bottom"
-        style={{ height: '60%' }}
+        style={{ height: "60%" }}
       >
         <View className="form-popup">
           <View className="form-header">
             <Text className="form-title">
-              {editingTypeId ? '编辑字典类型' : '新增字典类型'}
+              {editingTypeId ? "编辑字典类型" : "新增字典类型"}
             </Text>
           </View>
           <View className="form-body">
@@ -392,8 +394,10 @@ const DictPage: React.FC = () => {
               <Input
                 className="form-input"
                 placeholder="请输入字典名称"
-                value={typeForm.name || ''}
-                onInput={(e) => setTypeForm({ ...typeForm, name: e.detail.value })}
+                value={typeForm.name || ""}
+                onInput={(e) =>
+                  setTypeForm({ ...typeForm, name: e.detail.value })
+                }
               />
             </View>
             <View className="form-item">
@@ -401,9 +405,11 @@ const DictPage: React.FC = () => {
               <Input
                 className="form-input"
                 placeholder="请输入字典编码"
-                value={typeForm.code || ''}
+                value={typeForm.code || ""}
                 disabled={!!editingTypeId}
-                onInput={(e) => setTypeForm({ ...typeForm, code: e.detail.value })}
+                onInput={(e) =>
+                  setTypeForm({ ...typeForm, code: e.detail.value })
+                }
               />
             </View>
             <View className="form-item">
@@ -411,9 +417,11 @@ const DictPage: React.FC = () => {
               <View className="form-switch">
                 <Switch
                   checked={typeForm.status === 1}
-                  onChange={(checked) => setTypeForm({ ...typeForm, status: checked ? 1 : 0 })}
+                  onChange={(checked) =>
+                    setTypeForm({ ...typeForm, status: checked ? 1 : 0 })
+                  }
                 />
-                <Text>{typeForm.status === 1 ? '启用' : '禁用'}</Text>
+                <Text>{typeForm.status === 1 ? "启用" : "禁用"}</Text>
               </View>
             </View>
             <View className="form-item">
@@ -422,14 +430,20 @@ const DictPage: React.FC = () => {
                 className="form-textarea"
                 placeholder="请输入备注信息（最多200字符）"
                 maxlength={200}
-                value={typeForm.remark || ''}
-                onInput={(e) => setTypeForm({ ...typeForm, remark: e.detail.value })}
+                value={typeForm.remark || ""}
+                onInput={(e) =>
+                  setTypeForm({ ...typeForm, remark: e.detail.value })
+                }
               />
             </View>
           </View>
           <View className="form-footer">
             <Button onClick={() => setShowTypeDialog(false)}>取消</Button>
-            <Button color="primary" loading={submittingType} onClick={submitTypeForm}>
+            <Button
+              color="primary"
+              loading={submittingType}
+              onClick={submitTypeForm}
+            >
               确定
             </Button>
           </View>
@@ -441,12 +455,12 @@ const DictPage: React.FC = () => {
         open={showItemDialog}
         onClose={() => setShowItemDialog(false)}
         placement="bottom"
-        style={{ height: '80%' }}
+        style={{ height: "80%" }}
       >
         <View className="item-popup">
           <View className="item-header">
             <Text className="item-title">字典数据 - {currentTypeName}</Text>
-            {hasPermission('sys:dict:data:add') && (
+            {hasPermission("sys:dict:data:add") && (
               <Button size="small" color="primary" onClick={handleAddItem}>
                 <Add /> 新增
               </Button>
@@ -464,7 +478,7 @@ const DictPage: React.FC = () => {
               dictItems.map((item) => (
                 <SwipeCell key={item.id} className="item-swipe-cell">
                   <SwipeCell.Actions side="right">
-                    {hasPermission('sys:dict:data:edit') && (
+                    {hasPermission("sys:dict:data:edit") && (
                       <Button
                         size="small"
                         onClick={() => handleEditItem(item.id!)}
@@ -472,7 +486,7 @@ const DictPage: React.FC = () => {
                         <Edit /> 编辑
                       </Button>
                     )}
-                    {hasPermission('sys:dict:data:delete') && (
+                    {hasPermission("sys:dict:data:delete") && (
                       <Button
                         color="danger"
                         size="small"
@@ -509,12 +523,12 @@ const DictPage: React.FC = () => {
         open={showItemFormDialog}
         onClose={() => setShowItemFormDialog(false)}
         placement="bottom"
-        style={{ height: '70%' }}
+        style={{ height: "70%" }}
       >
         <View className="form-popup">
           <View className="form-header">
             <Text className="form-title">
-              {editingItemId ? '编辑字典数据' : '新增字典数据'}
+              {editingItemId ? "编辑字典数据" : "新增字典数据"}
             </Text>
           </View>
           <View className="form-body">
@@ -523,8 +537,10 @@ const DictPage: React.FC = () => {
               <Input
                 className="form-input"
                 placeholder="请输入字典标签"
-                value={itemForm.name || ''}
-                onInput={(e) => setItemForm({ ...itemForm, name: e.detail.value })}
+                value={itemForm.name || ""}
+                onInput={(e) =>
+                  setItemForm({ ...itemForm, name: e.detail.value })
+                }
               />
             </View>
             <View className="form-item">
@@ -532,8 +548,10 @@ const DictPage: React.FC = () => {
               <Input
                 className="form-input"
                 placeholder="请输入字典键值"
-                value={itemForm.value || ''}
-                onInput={(e) => setItemForm({ ...itemForm, value: e.detail.value })}
+                value={itemForm.value || ""}
+                onInput={(e) =>
+                  setItemForm({ ...itemForm, value: e.detail.value })
+                }
               />
             </View>
             <View className="form-item">
@@ -543,7 +561,12 @@ const DictPage: React.FC = () => {
                 type="number"
                 placeholder="请输入排序值"
                 value={String(itemForm.sort || 1)}
-                onInput={(e) => setItemForm({ ...itemForm, sort: Number(e.detail.value) || 1 })}
+                onInput={(e) =>
+                  setItemForm({
+                    ...itemForm,
+                    sort: Number(e.detail.value) || 1,
+                  })
+                }
               />
             </View>
             <View className="form-item">
@@ -551,9 +574,11 @@ const DictPage: React.FC = () => {
               <View className="form-switch">
                 <Switch
                   checked={itemForm.defaulted === 1}
-                  onChange={(checked) => setItemForm({ ...itemForm, defaulted: checked ? 1 : 0 })}
+                  onChange={(checked) =>
+                    setItemForm({ ...itemForm, defaulted: checked ? 1 : 0 })
+                  }
                 />
-                <Text>{itemForm.defaulted === 1 ? '是' : '否'}</Text>
+                <Text>{itemForm.defaulted === 1 ? "是" : "否"}</Text>
               </View>
             </View>
             <View className="form-item">
@@ -561,9 +586,11 @@ const DictPage: React.FC = () => {
               <View className="form-switch">
                 <Switch
                   checked={itemForm.status === 1}
-                  onChange={(checked) => setItemForm({ ...itemForm, status: checked ? 1 : 0 })}
+                  onChange={(checked) =>
+                    setItemForm({ ...itemForm, status: checked ? 1 : 0 })
+                  }
                 />
-                <Text>{itemForm.status === 1 ? '启用' : '禁用'}</Text>
+                <Text>{itemForm.status === 1 ? "启用" : "禁用"}</Text>
               </View>
             </View>
             <View className="form-item">
@@ -572,34 +599,25 @@ const DictPage: React.FC = () => {
                 className="form-textarea"
                 placeholder="请输入备注信息（最多200字符）"
                 maxlength={200}
-                value={itemForm.remark || ''}
-                onInput={(e) => setItemForm({ ...itemForm, remark: e.detail.value })}
+                value={itemForm.remark || ""}
+                onInput={(e) =>
+                  setItemForm({ ...itemForm, remark: e.detail.value })
+                }
               />
             </View>
           </View>
           <View className="form-footer">
             <Button onClick={() => setShowItemFormDialog(false)}>取消</Button>
-            <Button color="primary" loading={submittingItem} onClick={submitItemForm}>
+            <Button
+              color="primary"
+              loading={submittingItem}
+              onClick={submitItemForm}
+            >
               确定
             </Button>
           </View>
         </View>
       </Popup>
-
-      {/* 字典数据删除确认弹窗 */}
-      <Dialog
-        open={showItemDeleteDialog}
-        onClose={() => setShowItemDeleteDialog(false)}
-        title="确认删除"
-      >
-        <Dialog.Content>
-          确定要删除字典数据 "{deletingItem?.name}" 吗？
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onClick={() => setShowItemDeleteDialog(false)}>取消</Button>
-          <Button color="danger" onClick={confirmDeleteItem}>删除</Button>
-        </Dialog.Actions>
-      </Dialog>
     </View>
   );
 };

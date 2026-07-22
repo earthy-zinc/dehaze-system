@@ -10,27 +10,27 @@
  * 上传接口不走 SDK 的 axios 拦截器，需手动注入 Authorization 与 baseURL，
  * 与 dehaze-uniapp 的上传实现保持一致。
  */
-import Taro from '@tarojs/taro'
-import type { FileInfo } from 'dehaze-sdk-js'
-import { storage } from '@/utils/storage'
-import { apiConfig } from '@/config/api'
+import Taro from "@tarojs/taro";
+import type { FileInfo } from "dehaze-sdk-js";
+import { storage } from "@/utils/storage";
+import { apiConfig } from "@/config/api";
 
 /** 统一响应结构（上传返回的 data 为 JSON 字符串，需自行解析） */
 interface UploadResponse {
-  code: string
-  msg: string
-  data: FileInfo
+  code: string;
+  msg: string;
+  data: FileInfo;
 }
 
 /** 组装 Authorization 请求头 */
 function getAuthorization(): string {
-  const token = storage.getToken() || ''
-  return token.startsWith('Bearer ') ? token : `Bearer ${token}`
+  const token = storage.getToken() || "";
+  return token.startsWith("Bearer ") ? token : `Bearer ${token}`;
 }
 
 /** 上传接口地址（H5 端 baseURL 为空，拼接后为相对路径 /api/v1/files，走代理） */
 function getUploadUrl(): string {
-  return `${apiConfig.java}/api/v1/files`
+  return `${apiConfig.java}/api/v1/files`;
 }
 
 /**
@@ -41,41 +41,41 @@ async function uploadInH5(
   fileName: string,
   onProgress?: (progress: number) => void
 ): Promise<FileInfo> {
-  const blob = await fetch(filePath).then((res) => res.blob())
-  const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' })
-  const formData = new FormData()
-  formData.append('file', file)
+  const blob = await fetch(filePath).then((res) => res.blob());
+  const file = new File([blob], fileName, { type: blob.type || "image/jpeg" });
+  const formData = new FormData();
+  formData.append("file", file);
 
   return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', getUploadUrl())
-    xhr.setRequestHeader('Authorization', getAuthorization())
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", getUploadUrl());
+    xhr.setRequestHeader("Authorization", getAuthorization());
     xhr.onload = () => {
       if (xhr.status !== 200) {
-        reject(new Error(`上传失败: HTTP ${xhr.status}`))
-        return
+        reject(new Error(`上传失败: HTTP ${xhr.status}`));
+        return;
       }
       try {
-        const response = JSON.parse(xhr.responseText) as UploadResponse
-        if (response.code === '00000') {
-          resolve(response.data)
+        const response = JSON.parse(xhr.responseText) as UploadResponse;
+        if (response.code === "00000") {
+          resolve(response.data);
         } else {
-          reject(new Error(response.msg || '上传失败'))
+          reject(new Error(response.msg || "上传失败"));
         }
       } catch {
-        reject(new Error('上传响应解析失败'))
+        reject(new Error("上传响应解析失败"));
       }
-    }
-    xhr.onerror = () => reject(new Error('上传失败，请检查网络'))
+    };
+    xhr.onerror = () => reject(new Error("上传失败，请检查网络"));
     if (onProgress) {
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          onProgress(Math.round((event.loaded / event.total) * 100))
+          onProgress(Math.round((event.loaded / event.total) * 100));
         }
-      }
+      };
     }
-    xhr.send(formData)
-  })
+    xhr.send(formData);
+  });
 }
 
 /**
@@ -90,38 +90,42 @@ function uploadInMini(
     const uploadTask = Taro.uploadFile({
       url: getUploadUrl(),
       filePath,
-      name: 'file',
+      name: "file",
       formData: { name: fileName },
       header: {
         Authorization: getAuthorization(),
       },
       success: (res) => {
         if (res.statusCode !== 200) {
-          reject(new Error(`上传失败: HTTP ${res.statusCode}`))
-          return
+          reject(new Error(`上传失败: HTTP ${res.statusCode}`));
+          return;
         }
         try {
-          const response = JSON.parse(res.data as string) as UploadResponse
-          if (response.code === '00000') {
-            resolve(response.data)
+          const response = JSON.parse(res.data as string) as UploadResponse;
+          if (response.code === "00000") {
+            resolve(response.data);
           } else {
-            reject(new Error(response.msg || '上传失败'))
+            reject(new Error(response.msg || "上传失败"));
           }
         } catch {
-          reject(new Error('上传响应解析失败'))
+          reject(new Error("上传响应解析失败"));
         }
       },
       fail: (err) => {
-        reject(new Error(err.errMsg || '上传失败，请检查网络'))
+        reject(new Error(err.errMsg || "上传失败，请检查网络"));
       },
-    })
+    });
 
-    if (onProgress && uploadTask && typeof uploadTask.onProgressUpdate === 'function') {
+    if (
+      onProgress &&
+      uploadTask &&
+      typeof uploadTask.onProgressUpdate === "function"
+    ) {
       uploadTask.onProgressUpdate((res) => {
-        onProgress(res.progress)
-      })
+        onProgress(res.progress);
+      });
     }
-  })
+  });
 }
 
 /**
@@ -136,8 +140,8 @@ export function uploadImage(
   fileName: string,
   onProgress?: (progress: number) => void
 ): Promise<FileInfo> {
-  if (process.env.TARO_ENV === 'h5') {
-    return uploadInH5(filePath, fileName, onProgress)
+  if (process.env.TARO_ENV === "h5") {
+    return uploadInH5(filePath, fileName, onProgress);
   }
-  return uploadInMini(filePath, fileName, onProgress)
+  return uploadInMini(filePath, fileName, onProgress);
 }

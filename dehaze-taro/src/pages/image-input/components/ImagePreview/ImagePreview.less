@@ -23,9 +23,9 @@
       justify-content: center;
       width: 32px;
       height: 32px;
+      cursor: pointer;
       background: #f3f4f6;
       border-radius: 50%;
-      cursor: pointer;
 
       &:active {
         background: #e5e7eb;
@@ -35,21 +35,21 @@
 
   .preview-image-container {
     position: relative;
-    flex: 1;
     display: flex;
+    flex: 1;
     align-items: center;
     justify-content: center;
-    padding: 16px;
-    background: #f8fafc;
     min-height: 200px;
     max-height: 320px;
+    padding: 16px;
     overflow: hidden;
+    background: #f8fafc;
 
     .preview-image {
       max-width: 100%;
       max-height: 100%;
       border-radius: 8px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 16px rgb(0 0 0 / 10%);
     }
 
     .sample-badge {
@@ -57,13 +57,13 @@
       top: 24px;
       right: 24px;
       padding: 6px 12px;
-      background: rgba(59, 130, 246, 0.9);
+      background: rgb(59 130 246 / 90%);
       border-radius: 6px;
 
       text {
         font-size: 12px;
-        color: white;
         font-weight: 500;
+        color: white;
       }
     }
   }
@@ -84,20 +84,20 @@
     }
 
     .info-icon {
-      width: 28px;
-      height: 28px;
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-right: 12px;
       background: #f8fafc;
       border-radius: 6px;
-      margin-right: 12px;
     }
 
     .info-label {
+      margin-right: 8px;
       font-size: 14px;
       color: #6b7280;
-      margin-right: 8px;
     }
 
     .info-value {
@@ -107,8 +107,8 @@
     }
 
     .compress-hint {
-      margin-top: 12px;
       padding: 10px 12px;
+      margin-top: 12px;
       background: #fefce8;
       border-radius: 6px;
 
@@ -119,8 +119,8 @@
     }
 
     .sample-info {
-      margin-top: 16px;
       padding: 12px;
+      margin-top: 16px;
       background: #f8fafc;
       border-radius: 8px;
 
@@ -146,9 +146,9 @@
         color: #374151;
 
         &.recommend {
+          padding: 2px 8px;
           color: #3b82f6;
           background: #eff6ff;
-          padding: 2px 8px;
           border-radius: 4px;
         }
       }
@@ -166,13 +166,13 @@
     .action-btn {
       flex: 1;
       height: 48px;
-      border-radius: 12px;
       font-size: 15px;
       font-weight: 500;
+      border-radius: 12px;
 
       &.cancel {
-        border-color: #e5e7eb;
         color: #6b7280;
+        border-color: #e5e7eb;
       }
 
       &.confirm {

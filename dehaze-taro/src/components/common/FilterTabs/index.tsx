@@ -1,32 +1,32 @@
-import React from 'react'
-import { View, Text } from '@tarojs/components'
-import './FilterTabs.less'
+import React from "react";
+import { View, Text } from "@tarojs/components";
+import "./FilterTabs.less";
 
 export interface FilterTab {
-  key: string
-  label: string
-  count?: number
-  active?: boolean
+  key: string;
+  label: string;
+  count?: number;
+  active?: boolean;
 }
 
 interface FilterTabsProps {
-  tabs: FilterTab[]
-  activeKey: string
-  onChange: (key: string) => void
-  className?: string
+  tabs: FilterTab[];
+  activeKey: string;
+  onChange: (key: string) => void;
+  className?: string;
 }
 
 const FilterTabs: React.FC<FilterTabsProps> = ({
   tabs,
   activeKey,
   onChange,
-  className = '',
+  className = "",
 }) => {
   const handleTabClick = (key: string) => {
     if (key !== activeKey) {
-      onChange(key)
+      onChange(key);
     }
-  }
+  };
 
   return (
     <View className={`filter-tabs ${className}`}>
@@ -34,7 +34,7 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
         {tabs.map((tab) => (
           <View
             key={tab.key}
-            className={`tab-item ${activeKey === tab.key ? 'active' : ''}`}
+            className={`tab-item ${activeKey === tab.key ? "active" : ""}`}
             onClick={() => handleTabClick(tab.key)}
           >
             <Text className="tab-text">{tab.label}</Text>
@@ -45,7 +45,7 @@ const FilterTabs: React.FC<FilterTabsProps> = ({
         ))}
       </View>
     </View>
-  )
-}
+  );
+};
 
-export default FilterTabs
+export default FilterTabs;

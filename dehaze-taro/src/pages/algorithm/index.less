@@ -10,8 +10,8 @@
 .search-bar {
   display: flex;
   align-items: center;
-  background: #fff;
   padding: 16px 24px;
+  background: #fff;
   border-bottom: 1px solid #f0f0f0;
 
   .search-icon {
@@ -30,34 +30,34 @@
 // ==================== 状态筛选 ====================
 
 .filter-bar {
+  padding: 0 12px;
   white-space: nowrap;
   background: #fff;
-  padding: 0 12px;
   border-bottom: 1px solid #f0f0f0;
 
   .filter-item {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     padding: 12px 16px;
     font-size: 26px;
     color: #595959;
-    position: relative;
 
     &.active {
-      color: #1890ff;
       font-weight: 500;
+      color: #1890ff;
 
       &::after {
-        content: '';
         position: absolute;
         bottom: 0;
         left: 50%;
-        transform: translateX(-50%);
         width: 32px;
         height: 4px;
+        content: "";
         background: #1890ff;
         border-radius: 2px;
+        transform: translateX(-50%);
       }
     }
   }
@@ -67,21 +67,21 @@
 
 .algo-list {
   flex: 1;
-  overflow: auto;
   padding: 16px;
+  overflow: auto;
 }
 
 .loading-wrapper {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   padding: 80px 0;
 }
 
 .empty-wrapper {
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   padding: 120px 0;
 
   .empty-text {
@@ -93,44 +93,44 @@
 // ==================== 算法节点 ====================
 
 .algo-node {
-  background: #fff;
-  border-radius: 12px;
   padding: 20px 24px;
   margin-bottom: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 4%);
 
   .node-main {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: space-between;
 
     .node-info {
       display: flex;
-      align-items: center;
-      gap: 8px;
       flex: 1;
+      gap: 8px;
+      align-items: center;
       min-width: 0;
 
       .node-icon {
-        font-size: 28px;
         flex-shrink: 0;
+        font-size: 28px;
       }
 
       .node-name {
+        overflow: hidden;
+        text-overflow: ellipsis;
         font-size: 28px;
         font-weight: 500;
         color: #262626;
-        overflow: hidden;
-        text-overflow: ellipsis;
         white-space: nowrap;
       }
     }
 
     .node-meta {
       display: flex;
-      align-items: center;
-      gap: 8px;
       flex-shrink: 0;
+      gap: 8px;
+      align-items: center;
 
       .node-type,
       .node-version {
@@ -143,10 +143,10 @@
   .node-actions {
     display: flex;
     gap: 12px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid #f5f5f5;
     justify-content: flex-end;
+    padding-top: 16px;
+    margin-top: 16px;
+    border-top: 1px solid #f5f5f5;
   }
 }
 
@@ -163,11 +163,11 @@
 
 .detail-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  justify-content: space-between;
   padding-bottom: 24px;
-  border-bottom: 1px solid #f0f0f0;
   margin-bottom: 24px;
+  border-bottom: 1px solid #f0f0f0;
 
   .detail-title {
     font-size: 34px;
@@ -186,41 +186,41 @@
 
   .section-title {
     display: block;
+    padding-left: 12px;
+    margin-bottom: 16px;
     font-size: 28px;
     font-weight: 600;
     color: #595959;
-    margin-bottom: 16px;
-    padding-left: 12px;
     border-left: 6px solid #1890ff;
   }
 }
 
 .detail-item {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px solid #f5f5f5;
 
   .detail-label {
+    flex-shrink: 0;
     font-size: 26px;
     color: #8c8c8c;
-    flex-shrink: 0;
   }
 
   .detail-value {
+    max-width: 60%;
     font-size: 26px;
     color: #262626;
     text-align: right;
     word-break: break-all;
-    max-width: 60%;
   }
 }
 
 .detail-footer {
-  padding-top: 32px;
   display: flex;
   gap: 16px;
+  padding-top: 32px;
 }
 
 // ==================== 审核弹窗 ====================
@@ -235,19 +235,19 @@
 
   .audit-title {
     display: block;
+    margin-bottom: 16px;
     font-size: 34px;
     font-weight: 600;
     color: #262626;
     text-align: center;
-    margin-bottom: 16px;
   }
 
   .audit-name {
     display: block;
+    margin-bottom: 24px;
     font-size: 28px;
     color: #595959;
     text-align: center;
-    margin-bottom: 24px;
   }
 }
 
@@ -256,19 +256,19 @@
 
   .remark-label {
     display: block;
+    margin-bottom: 12px;
     font-size: 26px;
     color: #595959;
-    margin-bottom: 12px;
   }
 
   .remark-input {
     width: 100%;
     min-height: 120px;
-    border: 1px solid #d9d9d9;
-    border-radius: 8px;
     padding: 16px;
     font-size: 26px;
     color: #262626;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
   }
 }
 

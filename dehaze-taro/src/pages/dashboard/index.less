@@ -8,9 +8,9 @@
 }
 
 .dashboard-scroll {
+  box-sizing: border-box;
   flex: 1;
   height: 0;
-  box-sizing: border-box;
 }
 
 // ==================== 用户欢迎区 ====================
@@ -20,10 +20,10 @@
   align-items: center;
   padding: 24rpx 32rpx;
   margin: 24rpx;
+  color: #fff;
   background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
   border-radius: 20rpx;
-  box-shadow: 0 8rpx 24rpx rgba(24, 144, 255, 0.25);
-  color: #ffffff;
+  box-shadow: 0 8rpx 24rpx rgb(24 144 255 / 25%);
 
   .user-avatar {
     display: flex;
@@ -31,32 +31,32 @@
     justify-content: center;
     width: 96rpx;
     height: 96rpx;
-    border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.25);
     margin-right: 24rpx;
     overflow: hidden;
+    background-color: rgb(255 255 255 / 25%);
+    border-radius: 50%;
 
     .avatar-text {
       font-size: 40rpx;
       font-weight: 600;
-      color: #ffffff;
+      color: #fff;
     }
   }
 
   .user-info {
-    flex: 1;
     display: flex;
+    flex: 1;
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
 
     .user-name {
-      font-size: 34rpx;
-      font-weight: 600;
-      color: #ffffff;
       margin-bottom: 12rpx;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-size: 34rpx;
+      font-weight: 600;
+      color: #fff;
       white-space: nowrap;
     }
 
@@ -67,7 +67,7 @@
 
       .user-role-text {
         font-size: 24rpx;
-        color: rgba(255, 255, 255, 0.8);
+        color: rgb(255 255 255 / 80%);
       }
     }
   }
@@ -75,12 +75,12 @@
   .refresh-btn {
     padding: 12rpx 24rpx;
     font-size: 26rpx;
-    color: #ffffff;
-    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    background-color: rgb(255 255 255 / 20%);
     border-radius: 32rpx;
 
     &:active {
-      background-color: rgba(255, 255, 255, 0.35);
+      background-color: rgb(255 255 255 / 35%);
     }
   }
 }
@@ -100,15 +100,15 @@
     align-items: center;
     justify-content: center;
     padding: 32rpx 24rpx;
-    background-color: #ffffff;
+    background-color: #fff;
     border-radius: 16rpx;
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
     .stat-value {
+      margin-bottom: 12rpx;
       font-size: 48rpx;
       font-weight: 700;
       line-height: 1.2;
-      margin-bottom: 12rpx;
     }
 
     .stat-label {
@@ -126,10 +126,10 @@
 
   .section-title {
     display: block;
+    margin-bottom: 20rpx;
     font-size: 30rpx;
     font-weight: 600;
     color: #262626;
-    margin-bottom: 20rpx;
   }
 
   .section-header {
@@ -166,9 +166,9 @@
     align-items: center;
     justify-content: center;
     padding: 32rpx 16rpx;
-    background-color: #ffffff;
+    background-color: #fff;
     border-radius: 16rpx;
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+    box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
     transition: transform 0.2s ease;
 
     &:active {
@@ -176,15 +176,15 @@
     }
 
     .entry-icon {
-      font-size: 56rpx;
       margin-bottom: 16rpx;
+      font-size: 56rpx;
     }
 
     .entry-title {
+      margin-bottom: 8rpx;
       font-size: 28rpx;
       font-weight: 600;
       color: #262626;
-      margin-bottom: 8rpx;
     }
 
     .entry-desc {
@@ -202,10 +202,10 @@
 // ==================== 管理入口列表 ====================
 
 .management-list {
-  background-color: #ffffff;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  background-color: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
   .management-item {
     display: flex;
@@ -222,8 +222,8 @@
     }
 
     .management-icon {
-      font-size: 40rpx;
       margin-right: 20rpx;
+      font-size: 40rpx;
     }
 
     .management-title {
@@ -234,8 +234,8 @@
 
     .management-arrow {
       font-size: 32rpx;
-      color: #bfbfbf;
       font-weight: 300;
+      color: #bfbfbf;
     }
   }
 }
@@ -243,10 +243,10 @@
 // ==================== 最近任务 ====================
 
 .task-list {
-  background-color: #ffffff;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
   overflow: hidden;
+  background-color: #fff;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgb(0 0 0 / 4%);
 
   .recent-task {
     display: flex;
@@ -265,24 +265,24 @@
 
     .task-info {
       display: flex;
-      align-items: center;
       flex: 1;
+      align-items: center;
       overflow: hidden;
 
       .task-type {
         margin-left: 16rpx;
-        font-size: 26rpx;
-        color: #262626;
         overflow: hidden;
         text-overflow: ellipsis;
+        font-size: 26rpx;
+        color: #262626;
         white-space: nowrap;
       }
     }
 
     .task-time {
+      margin-left: 16rpx;
       font-size: 24rpx;
       color: #8c8c8c;
-      margin-left: 16rpx;
     }
   }
 }
@@ -301,17 +301,17 @@
   align-items: center;
   justify-content: center;
   padding: 48rpx 0;
-  background-color: #ffffff;
-  border-radius: 16rpx;
   font-size: 26rpx;
   color: #8c8c8c;
+  background-color: #fff;
+  border-radius: 16rpx;
 }
 
 // ==================== 页脚 ====================
 
 .dashboard-footer {
-  text-align: center;
   padding: 32rpx 0 48rpx;
   font-size: 24rpx;
   color: #bfbfbf;
+  text-align: center;
 }

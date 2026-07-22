@@ -1,17 +1,14 @@
 /* 图片查看器组件样式 */
 .image-viewer {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.9);
+  inset: 0;
   z-index: 9999;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  box-sizing: border-box;
+  background: rgb(0 0 0 / 90%);
   animation: fadeIn 0.3s ease;
 }
 
@@ -19,6 +16,7 @@
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -26,12 +24,12 @@
 
 .viewer-container {
   position: relative;
-  max-width: 90vw;
-  max-height: 90vh;
-  width: 100%;
-  height: 100%;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 90vw;
+  height: 100%;
+  max-height: 90vh;
   background: transparent;
 }
 
@@ -39,20 +37,20 @@
   position: absolute;
   top: -40px;
   right: 0;
-  width: 40px;
-  height: 40px;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 50%;
+  width: 40px;
+  height: 40px;
   cursor: pointer;
+  background: rgb(255 255 255 / 10%);
+  border-radius: 50%;
   transition: all 0.2s ease;
-  z-index: 10;
 }
 
 .close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgb(255 255 255 / 20%);
   transform: scale(1.1);
 }
 
@@ -61,41 +59,46 @@
 }
 
 .image-container {
-  flex: 1;
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
   margin-bottom: 20px;
+  overflow: hidden;
+  background: rgb(255 255 255 / 5%);
+  border-radius: 12px;
 }
 
 .viewer-image {
-  max-width: 100%;
-  max-height: 100%;
   width: auto;
+  max-width: 100%;
   height: auto;
-  border-radius: 8px;
+  max-height: 100%;
   background: transparent;
+  border-radius: 8px;
 }
 
 .image-details {
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4), transparent);
-  padding: 20px;
-  border-radius: 12px;
-  color: white;
   max-height: 30vh;
+  padding: 20px;
   overflow-y: auto;
+  color: white;
+  background: linear-gradient(
+    to top,
+    rgb(0 0 0 / 80%),
+    rgb(0 0 0 / 40%),
+    transparent
+  );
+  border-radius: 12px;
 }
 
 .detail-filename {
   display: block;
+  margin-bottom: 12px;
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 12px;
-  color: white;
   line-height: 1.3;
+  color: white;
 }
 
 .detail-meta {
@@ -107,28 +110,28 @@
 
 .meta-item {
   display: flex;
-  align-items: center;
   gap: 8px;
+  align-items: center;
 }
 
 .meta-label {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
   min-width: 50px;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgb(255 255 255 / 70%);
 }
 
 .meta-value {
   font-size: 14px;
-  color: white;
   font-weight: 400;
+  color: white;
 }
 
 .detail-description {
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.5;
   margin-top: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 80%);
 }
 
 /* 滚动条样式 */
@@ -137,21 +140,21 @@
 }
 
 .image-details::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgb(255 255 255 / 10%);
   border-radius: 2px;
 }
 
 .image-details::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgb(255 255 255 / 30%);
   border-radius: 2px;
 }
 
 .image-details::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  background: rgb(255 255 255 / 50%);
 }
 
 /* 响应式适配 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .image-viewer {
     padding: 16px;
   }
@@ -185,7 +188,7 @@
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .image-viewer {
     padding: 12px;
   }

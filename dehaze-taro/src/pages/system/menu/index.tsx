@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, Input, ScrollView } from '@tarojs/components';
-import Taro, { useLoad, usePullDownRefresh } from '@tarojs/taro';
+import React, { useState } from "react";
+import { View, Text, Input, ScrollView } from "@tarojs/components";
+import Taro, { useLoad, usePullDownRefresh } from "@tarojs/taro";
 import {
   Navbar,
   Search,
@@ -8,45 +8,47 @@ import {
   Loading,
   Empty,
   SwipeCell,
-  Dialog,
   Tag,
   Cell,
   Popup,
   Switch,
-} from '@taroify/core';
-import { ArrowLeft, Add, Edit, Delete, Arrow } from '@taroify/icons';
-import { useMenuManagement } from '@/hooks/useMenuManagement';
-import { usePermission } from '@/hooks/usePermission';
-import type { MenuVO, MenuForm } from 'dehaze-sdk-js';
-import { MenuTypeEnum } from 'dehaze-sdk-js';
-import './index.scss';
+} from "@taroify/core";
+import { ArrowLeft, Add, Edit, Delete, Arrow } from "@taroify/icons";
+import { useMenuManagement } from "@/hooks/useMenuManagement";
+import { usePermission } from "@/hooks/usePermission";
+import type { MenuVO, MenuForm } from "dehaze-sdk-js";
+import { MenuTypeEnum } from "dehaze-sdk-js";
+import "./index.scss";
 
 // 菜单类型配置
-const MENU_TYPE_CONFIG: Record<string, { label: string; color: 'primary' | 'success' | 'warning' | 'info' }> = {
-  [MenuTypeEnum.CATALOG]: { label: '目录', color: 'primary' },
-  [MenuTypeEnum.MENU]: { label: '菜单', color: 'success' },
-  [MenuTypeEnum.BUTTON]: { label: '按钮', color: 'warning' },
-  [MenuTypeEnum.EXTLINK]: { label: '外链', color: 'info' },
+const MENU_TYPE_CONFIG: Record<
+  string,
+  { label: string; color: "primary" | "success" | "warning" | "info" }
+> = {
+  [MenuTypeEnum.CATALOG]: { label: "目录", color: "primary" },
+  [MenuTypeEnum.MENU]: { label: "菜单", color: "success" },
+  [MenuTypeEnum.BUTTON]: { label: "按钮", color: "warning" },
+  [MenuTypeEnum.EXTLINK]: { label: "外链", color: "info" },
 };
 
 // 菜单类型选项
 const MENU_TYPE_OPTIONS = [
-  { value: MenuTypeEnum.CATALOG, label: '目录' },
-  { value: MenuTypeEnum.MENU, label: '菜单' },
-  { value: MenuTypeEnum.BUTTON, label: '按钮' },
-  { value: MenuTypeEnum.EXTLINK, label: '外链' },
+  { value: MenuTypeEnum.CATALOG, label: "目录" },
+  { value: MenuTypeEnum.MENU, label: "菜单" },
+  { value: MenuTypeEnum.BUTTON, label: "按钮" },
+  { value: MenuTypeEnum.EXTLINK, label: "外链" },
 ];
 
 // 默认表单
 const DEFAULT_FORM: MenuForm = {
   type: MenuTypeEnum.CATALOG,
   parentId: 0,
-  name: '',
-  path: '',
-  component: '',
-  perm: '',
-  icon: '',
-  redirect: '',
+  name: "",
+  path: "",
+  component: "",
+  perm: "",
+  icon: "",
+  redirect: "",
   visible: 1,
   sort: 1,
 };
@@ -81,7 +83,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     <View className="menu-tree-node">
       <SwipeCell className="menu-swipe-cell">
         <SwipeCell.Actions side="right">
-          {hasPermission('sys:menu:add') && (
+          {hasPermission("sys:menu:add") && (
             <Button
               className="action-btn add-btn"
               size="small"
@@ -91,7 +93,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               子级
             </Button>
           )}
-          {hasPermission('sys:menu:edit') && (
+          {hasPermission("sys:menu:edit") && (
             <Button
               className="action-btn edit-btn"
               size="small"
@@ -101,7 +103,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({
               编辑
             </Button>
           )}
-          {hasPermission('sys:menu:delete') && (
+          {hasPermission("sys:menu:delete") && (
             <Button
               className="action-btn delete-btn"
               size="small"
@@ -120,7 +122,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           <View className="menu-row">
             {hasChildren ? (
               <View className="menu-toggle">
-                <Arrow className={isExpanded ? 'arrow-expanded' : 'arrow-collapsed'} />
+                <Arrow
+                  className={isExpanded ? "arrow-expanded" : "arrow-collapsed"}
+                />
               </View>
             ) : (
               <View className="menu-toggle-placeholder" />
@@ -178,7 +182,7 @@ const expandFirstLevel = (list: MenuVO[]): number[] => {
   return list
     .filter((item) => item.children && item.children.length > 0)
     .map((item) => item.id!)
-    .filter((id): id is number => typeof id === 'number');
+    .filter((id): id is number => typeof id === "number");
 };
 
 const MenuPage: React.FC = () => {
@@ -198,7 +202,7 @@ const MenuPage: React.FC = () => {
 
   const { hasPermission } = usePermission();
 
-  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState("");
   const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
 
   // 表单弹窗状态
@@ -206,10 +210,6 @@ const MenuPage: React.FC = () => {
   const [editingId, setEditingId] = useState<string | undefined>();
   const [formData, setFormData] = useState<MenuForm>(DEFAULT_FORM);
   const [submitting, setSubmitting] = useState(false);
-
-  // 删除确认弹窗
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletingMenu, setDeletingMenu] = useState<MenuVO | null>(null);
 
   useLoad(async () => {
     const list = await fetchMenus();
@@ -233,7 +233,7 @@ const MenuPage: React.FC = () => {
 
   // 搜索处理
   const handleSearch = async (event: any) => {
-    const value = event.detail?.value || '';
+    const value = event.detail?.value || "";
     setSearchKeyword(value);
     if (value.trim()) {
       await searchMenus(value.trim());
@@ -278,16 +278,23 @@ const MenuPage: React.FC = () => {
 
   // 删除菜单
   const handleDelete = (node: MenuVO) => {
-    setDeletingMenu(node);
-    setShowDeleteDialog(true);
+    Taro.showModal({
+      title: "确认删除",
+      content: `确定要删除菜单 "${node.name}" 吗？如有子菜单需先删除子菜单，此操作不可恢复。`,
+      confirmText: "删除",
+      cancelText: "取消",
+      success: (res) => {
+        if (res.confirm) {
+          confirmDelete(node);
+        }
+      },
+    });
   };
 
-  const confirmDelete = async () => {
-    if (!deletingMenu?.id) return;
+  const confirmDelete = async (node: MenuVO) => {
+    if (!node?.id) return;
     try {
-      await deleteMenu(deletingMenu.id);
-      setShowDeleteDialog(false);
-      setDeletingMenu(null);
+      await deleteMenu(node.id);
     } catch {
       // 错误已在 hook 中处理
     }
@@ -303,48 +310,51 @@ const MenuPage: React.FC = () => {
     setFormData((prev) => ({
       ...prev,
       type,
-      path: type === MenuTypeEnum.BUTTON ? prev.path : '',
-      component: type === MenuTypeEnum.MENU ? prev.component : '',
-      perm: type === MenuTypeEnum.BUTTON ? prev.perm : '',
-      redirect: type === MenuTypeEnum.CATALOG ? prev.redirect : '',
+      path: type === MenuTypeEnum.BUTTON ? prev.path : "",
+      component: type === MenuTypeEnum.MENU ? prev.component : "",
+      perm: type === MenuTypeEnum.BUTTON ? prev.perm : "",
+      redirect: type === MenuTypeEnum.CATALOG ? prev.redirect : "",
     }));
   };
 
   // 表单校验
   const validateForm = (): boolean => {
     if (!formData.name?.trim()) {
-      Taro.showToast({ title: '菜单名称不能为空', icon: 'none' });
+      Taro.showToast({ title: "菜单名称不能为空", icon: "none" });
       return false;
     }
     if (formData.type === MenuTypeEnum.MENU) {
       if (!formData.path?.trim()) {
-        Taro.showToast({ title: '路由地址不能为空', icon: 'none' });
+        Taro.showToast({ title: "路由地址不能为空", icon: "none" });
         return false;
       }
-      if (!formData.path.startsWith('/')) {
-        Taro.showToast({ title: '路由地址必须以 / 开头', icon: 'none' });
+      if (!formData.path.startsWith("/")) {
+        Taro.showToast({ title: "路由地址必须以 / 开头", icon: "none" });
         return false;
       }
       if (!formData.component?.trim()) {
-        Taro.showToast({ title: '组件路径不能为空', icon: 'none' });
+        Taro.showToast({ title: "组件路径不能为空", icon: "none" });
         return false;
       }
     } else if (formData.type === MenuTypeEnum.BUTTON) {
       if (!formData.perm?.trim()) {
-        Taro.showToast({ title: '权限标识不能为空', icon: 'none' });
+        Taro.showToast({ title: "权限标识不能为空", icon: "none" });
         return false;
       }
       if (!/^[a-z]+:[a-z]+:[a-z]+$/.test(formData.perm)) {
-        Taro.showToast({ title: '权限标识格式应为 模块:功能:操作', icon: 'none' });
+        Taro.showToast({
+          title: "权限标识格式应为 模块:功能:操作",
+          icon: "none",
+        });
         return false;
       }
     } else if (formData.type === MenuTypeEnum.EXTLINK) {
       if (!formData.path?.trim()) {
-        Taro.showToast({ title: '外链地址不能为空', icon: 'none' });
+        Taro.showToast({ title: "外链地址不能为空", icon: "none" });
         return false;
       }
       if (!/^https?:\/\/.+/.test(formData.path)) {
-        Taro.showToast({ title: '请输入正确的外链地址', icon: 'none' });
+        Taro.showToast({ title: "请输入正确的外链地址", icon: "none" });
         return false;
       }
     }
@@ -371,10 +381,14 @@ const MenuPage: React.FC = () => {
   };
 
   // 根据菜单类型动态显示字段
-  const showPath = formData.type === MenuTypeEnum.MENU || formData.type === MenuTypeEnum.EXTLINK;
+  const showPath =
+    formData.type === MenuTypeEnum.MENU ||
+    formData.type === MenuTypeEnum.EXTLINK;
   const showComponent = formData.type === MenuTypeEnum.MENU;
   const showPerm = formData.type === MenuTypeEnum.BUTTON;
-  const showIcon = formData.type === MenuTypeEnum.CATALOG || formData.type === MenuTypeEnum.MENU;
+  const showIcon =
+    formData.type === MenuTypeEnum.CATALOG ||
+    formData.type === MenuTypeEnum.MENU;
   const showRedirect = formData.type === MenuTypeEnum.CATALOG;
 
   return (
@@ -384,7 +398,7 @@ const MenuPage: React.FC = () => {
           <ArrowLeft onClick={() => Taro.navigateBack()} />
         </Navbar.NavLeft>
         <Navbar.NavRight>
-          {hasPermission('sys:menu:add') && <Add onClick={handleAdd} />}
+          {hasPermission("sys:menu:add") && <Add onClick={handleAdd} />}
         </Navbar.NavRight>
       </Navbar>
 
@@ -395,7 +409,7 @@ const MenuPage: React.FC = () => {
           value={searchKeyword}
           onChange={(e) => setSearchKeyword(e.detail.value)}
           onSearch={handleSearch}
-          onClear={() => handleSearch('')}
+          onClear={() => handleSearch("")}
         />
       </View>
 
@@ -407,7 +421,7 @@ const MenuPage: React.FC = () => {
           <Empty>
             <Empty.Image />
             <Empty.Description>暂无菜单数据</Empty.Description>
-            {hasPermission('sys:menu:add') && (
+            {hasPermission("sys:menu:add") && (
               <Button color="primary" size="small" onClick={handleAdd}>
                 新增菜单
               </Button>
@@ -430,32 +444,17 @@ const MenuPage: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* 删除确认弹窗 */}
-      <Dialog
-        open={showDeleteDialog}
-        onClose={() => setShowDeleteDialog(false)}
-        title="确认删除"
-      >
-        <Dialog.Content>
-          确定要删除菜单 "{deletingMenu?.name}" 吗？如有子菜单需先删除子菜单，此操作不可恢复。
-        </Dialog.Content>
-        <Dialog.Actions>
-          <Button onClick={() => setShowDeleteDialog(false)}>取消</Button>
-          <Button color="danger" onClick={confirmDelete}>删除</Button>
-        </Dialog.Actions>
-      </Dialog>
-
       {/* 菜单表单弹窗 */}
       <Popup
         open={showFormDialog}
         onClose={() => setShowFormDialog(false)}
         placement="bottom"
-        style={{ height: '85%' }}
+        style={{ height: "85%" }}
       >
         <View className="form-popup">
           <View className="form-header">
             <Text className="form-title">
-              {editingId ? '编辑菜单' : '新增菜单'}
+              {editingId ? "编辑菜单" : "新增菜单"}
             </Text>
           </View>
           <ScrollView scrollY className="form-body">
@@ -466,7 +465,7 @@ const MenuPage: React.FC = () => {
                 {MENU_TYPE_OPTIONS.map((option) => (
                   <View
                     key={option.value}
-                    className={`type-option ${formData.type === option.value ? 'active' : ''}`}
+                    className={`type-option ${formData.type === option.value ? "active" : ""}`}
                     onClick={() => handleTypeChange(option.value)}
                   >
                     <Text>{option.label}</Text>
@@ -480,8 +479,10 @@ const MenuPage: React.FC = () => {
               <Text className="form-label">上级菜单</Text>
               <View className="parent-menu-display">
                 {formData.parentId === 0
-                  ? '顶级菜单'
-                  : menuOptions.find((opt) => Number(opt.value) === formData.parentId)?.label || '未知菜单'}
+                  ? "顶级菜单"
+                  : menuOptions.find(
+                      (opt) => Number(opt.value) === formData.parentId
+                    )?.label || "未知菜单"}
               </View>
             </View>
 
@@ -491,8 +492,8 @@ const MenuPage: React.FC = () => {
               <Input
                 className="form-input"
                 placeholder="请输入菜单名称"
-                value={formData.name || ''}
-                onInput={(e) => handleFieldChange('name', e.detail.value)}
+                value={formData.name || ""}
+                onInput={(e) => handleFieldChange("name", e.detail.value)}
               />
             </View>
 
@@ -500,17 +501,19 @@ const MenuPage: React.FC = () => {
             {showPath && (
               <View className="form-item">
                 <Text className="form-label">
-                  {formData.type === MenuTypeEnum.EXTLINK ? '外链地址 *' : '路由地址 *'}
+                  {formData.type === MenuTypeEnum.EXTLINK
+                    ? "外链地址 *"
+                    : "路由地址 *"}
                 </Text>
                 <Input
                   className="form-input"
                   placeholder={
                     formData.type === MenuTypeEnum.EXTLINK
-                      ? '请输入外链地址（https://）'
-                      : '请输入路由地址（/开头）'
+                      ? "请输入外链地址（https://）"
+                      : "请输入路由地址（/开头）"
                   }
-                  value={formData.path || ''}
-                  onInput={(e) => handleFieldChange('path', e.detail.value)}
+                  value={formData.path || ""}
+                  onInput={(e) => handleFieldChange("path", e.detail.value)}
                 />
               </View>
             )}
@@ -522,8 +525,10 @@ const MenuPage: React.FC = () => {
                 <Input
                   className="form-input"
                   placeholder="请输入组件路径"
-                  value={formData.component || ''}
-                  onInput={(e) => handleFieldChange('component', e.detail.value)}
+                  value={formData.component || ""}
+                  onInput={(e) =>
+                    handleFieldChange("component", e.detail.value)
+                  }
                 />
               </View>
             )}
@@ -535,8 +540,8 @@ const MenuPage: React.FC = () => {
                 <Input
                   className="form-input"
                   placeholder="格式：模块:功能:操作（如 sys:menu:add）"
-                  value={formData.perm || ''}
-                  onInput={(e) => handleFieldChange('perm', e.detail.value)}
+                  value={formData.perm || ""}
+                  onInput={(e) => handleFieldChange("perm", e.detail.value)}
                 />
               </View>
             )}
@@ -548,8 +553,8 @@ const MenuPage: React.FC = () => {
                 <Input
                   className="form-input"
                   placeholder="请输入图标名称"
-                  value={formData.icon || ''}
-                  onInput={(e) => handleFieldChange('icon', e.detail.value)}
+                  value={formData.icon || ""}
+                  onInput={(e) => handleFieldChange("icon", e.detail.value)}
                 />
               </View>
             )}
@@ -561,8 +566,8 @@ const MenuPage: React.FC = () => {
                 <Input
                   className="form-input"
                   placeholder="请输入路由重定向地址"
-                  value={formData.redirect || ''}
-                  onInput={(e) => handleFieldChange('redirect', e.detail.value)}
+                  value={formData.redirect || ""}
+                  onInput={(e) => handleFieldChange("redirect", e.detail.value)}
                 />
               </View>
             )}
@@ -575,7 +580,9 @@ const MenuPage: React.FC = () => {
                 type="number"
                 placeholder="请输入排序值"
                 value={String(formData.sort ?? 1)}
-                onInput={(e) => handleFieldChange('sort', Number(e.detail.value) || 1)}
+                onInput={(e) =>
+                  handleFieldChange("sort", Number(e.detail.value) || 1)
+                }
               />
             </View>
 
@@ -585,9 +592,11 @@ const MenuPage: React.FC = () => {
               <View className="form-switch">
                 <Switch
                   checked={formData.visible === 1}
-                  onChange={(checked) => handleFieldChange('visible', checked ? 1 : 0)}
+                  onChange={(checked) =>
+                    handleFieldChange("visible", checked ? 1 : 0)
+                  }
                 />
-                <Text>{formData.visible === 1 ? '显示' : '隐藏'}</Text>
+                <Text>{formData.visible === 1 ? "显示" : "隐藏"}</Text>
               </View>
             </View>
           </ScrollView>

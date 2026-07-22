@@ -1,90 +1,89 @@
 /* 空状态组件样式 */
 .empty-state {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
   padding: 60px 20px;
   text-align: center;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .empty-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-  opacity: 0.5;
-  line-height: 1;
+  margin-bottom: 12px;
 
   /* #ifdef MP-WEIXIN || MP-ALIPAY */
   font-size: 56px;
-  margin-bottom: 12px;
+  line-height: 1;
+  opacity: 0.5;
+
   /* #endif */
 }
 
 .empty-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #374151;
   margin-bottom: 8px;
-  line-height: 1.4;
 
   /* #ifdef MP-WEIXIN || MP-ALIPAY */
   font-size: 16px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #374151;
+
   /* #endif */
 }
 
 .empty-description {
-  font-size: 14px;
-  color: #9ca3af;
-  line-height: 1.5;
   max-width: 300px;
 
   /* #ifdef MP-WEIXIN || MP-ALIPAY */
   font-size: 13px;
+  line-height: 1.5;
+  color: #9ca3af;
+
   /* #endif */
 }
 
 /* 响应式适配 */
-@media (max-width: 768px) {
+@media (width <= 768px) {
   .empty-state {
     padding: 50px 16px;
   }
 
   .empty-icon {
-    font-size: 56px;
     margin-bottom: 14px;
+    font-size: 56px;
   }
 
   .empty-title {
-    font-size: 17px;
     margin-bottom: 7px;
+    font-size: 17px;
   }
 
   .empty-description {
-    font-size: 13px;
     max-width: 280px;
+    font-size: 13px;
   }
 }
 
-@media (max-width: 480px) {
+@media (width <= 480px) {
   .empty-state {
     padding: 40px 12px;
   }
 
   .empty-icon {
-    font-size: 48px;
     margin-bottom: 12px;
+    font-size: 48px;
   }
 
   .empty-title {
-    font-size: 16px;
     margin-bottom: 6px;
+    font-size: 16px;
   }
 
   .empty-description {
-    font-size: 12px;
     max-width: 250px;
+    font-size: 12px;
   }
 }
 

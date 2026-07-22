@@ -19,27 +19,27 @@
 
   .nav-title {
     flex: 1;
-    text-align: center;
+    margin-right: 28px;
     font-size: 16px;
     font-weight: 600;
     color: #262626;
-    margin-right: 28px;
+    text-align: center;
   }
 }
 
 .empty-state {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
   padding: 60px 20px;
   text-align: center;
 
   .empty-text {
+    margin-bottom: 8px;
     font-size: 16px;
     color: #8c8c8c;
-    margin-bottom: 8px;
   }
 
   .empty-hint {
@@ -55,14 +55,14 @@
   background-color: #000;
 
   .base-image {
-    width: 100%;
     display: block;
+    width: 100%;
   }
 
   .magnifier-lens {
     position: absolute;
-    pointer-events: none;
     z-index: 10;
+    pointer-events: none;
     transition: opacity 0.2s ease;
 
     &.lens-origin {
@@ -77,18 +77,18 @@
 
 .magnifier-hint {
   padding: 8px 16px;
-  background-color: #fff;
-  text-align: center;
   font-size: 12px;
   color: #8c8c8c;
+  text-align: center;
+  background-color: #fff;
   border-top: 1px solid #f0f0f0;
 }
 
 .control-panel {
-  background-color: #fff;
-  padding: 12px 16px;
   max-height: 280px;
+  padding: 12px 16px;
   overflow-y: auto;
+  background-color: #fff;
 
   .control-group {
     margin-bottom: 12px;
@@ -100,28 +100,28 @@
 
   .control-label {
     display: block;
+    margin-bottom: 8px;
     font-size: 13px;
     color: #595959;
-    margin-bottom: 8px;
   }
 
   .control-options {
     display: flex;
-    gap: 8px;
     flex-wrap: wrap;
+    gap: 8px;
 
     .control-option {
       padding: 6px 16px;
-      border: 1px solid #d9d9d9;
-      border-radius: 16px;
       font-size: 13px;
       color: #595959;
       background-color: #fff;
+      border: 1px solid #d9d9d9;
+      border-radius: 16px;
 
       &.active {
-        border-color: #1890ff;
         color: #1890ff;
         background-color: #e6f7ff;
+        border-color: #1890ff;
       }
     }
   }

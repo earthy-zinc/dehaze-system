@@ -1,23 +1,23 @@
 /* 图片网格组件样式 - 基于750设计稿 */
 .image-grid {
+  box-sizing: border-box;
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
   width: 100%;
-  box-sizing: border-box;
 
   .grid-item {
-    width: calc(50% - 8px);
     flex-shrink: 0;
+    width: calc(50% - 8px);
+    overflow: hidden;
     background: white;
     border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
     transition: all 0.3s ease;
 
     &:active {
+      box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
       transform: scale(0.98);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
   }
 
@@ -27,17 +27,14 @@
   }
 
   .image-grid.loading::after {
-    content: "";
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.8);
+    inset: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 10;
+    content: "";
+    background: rgb(255 255 255 / 80%);
   }
 
   /* 空状态 */
@@ -47,7 +44,7 @@
     justify-content: center;
     min-height: 200px;
     background: #f9fafb;
-    border-radius: 12px;
     border: 2px dashed #e5e7eb;
+    border-radius: 12px;
   }
 }

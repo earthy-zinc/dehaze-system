@@ -1,61 +1,61 @@
-import React, { useState, useCallback, useRef } from 'react'
-import { View, Input } from '@tarojs/components'
-import { Search } from '@taroify/icons'
-import './SearchBar.less'
+import React, { useState, useCallback, useRef } from "react";
+import { View, Input } from "@tarojs/components";
+import { Search } from "@taroify/icons";
+import "./SearchBar.less";
 
 interface SearchBarProps {
-  placeholder?: string
-  value?: string
-  onSearch?: (value: string) => void
-  onClear?: () => void
-  showClear?: boolean
-  className?: string
+  placeholder?: string;
+  value?: string;
+  onSearch?: (value: string) => void;
+  onClear?: () => void;
+  showClear?: boolean;
+  className?: string;
 }
 
 const SearchBar: React.FC<SearchBarProps> = ({
-  placeholder = '搜索数据集或图片...',
-  value = '',
+  placeholder = "搜索数据集或图片...",
+  value = "",
   onSearch,
   onClear,
   showClear = true,
-  className = '',
+  className = "",
 }) => {
-  const [searchValue, setSearchValue] = useState(value)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [searchValue, setSearchValue] = useState(value);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 防抖搜索
   const debouncedSearch = useCallback(
     (newValue: string) => {
       if (timerRef.current) {
-        clearTimeout(timerRef.current)
+        clearTimeout(timerRef.current);
       }
       timerRef.current = setTimeout(() => {
-        onSearch?.(newValue.trim())
-      }, 500)
+        onSearch?.(newValue.trim());
+      }, 500);
     },
     [onSearch]
-  )
+  );
 
   const handleInput = (e: any) => {
-    const newValue = e.detail.value
-    setSearchValue(newValue)
-    debouncedSearch(newValue)
-  }
+    const newValue = e.detail.value;
+    setSearchValue(newValue);
+    debouncedSearch(newValue);
+  };
 
   const handleConfirm = () => {
     if (timerRef.current) {
-      clearTimeout(timerRef.current)
+      clearTimeout(timerRef.current);
     }
-    onSearch?.(searchValue.trim())
-  }
+    onSearch?.(searchValue.trim());
+  };
 
   const handleClear = () => {
     if (timerRef.current) {
-      clearTimeout(timerRef.current)
+      clearTimeout(timerRef.current);
     }
-    setSearchValue('')
-    onClear?.()
-  }
+    setSearchValue("");
+    onClear?.();
+  };
 
   return (
     <View className={`search-bar ${className}`}>
@@ -75,7 +75,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         )}
       </View>
     </View>
-  )
-}
+  );
+};
 
-export default SearchBar
+export default SearchBar;
