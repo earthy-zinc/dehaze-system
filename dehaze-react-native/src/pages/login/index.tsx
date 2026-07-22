@@ -249,7 +249,7 @@ const LoginScreen: React.FC = () => {
             </View>
 
             <View style={styles.footer}>
-              <Text style={[styles.footerText, { marginTop: 4 }]}>
+              <Text style={[styles.footerText, styles.footerTextSpacing]}>
                 Copyright © 2022 - 2024 DehazeSystem All Rights Reserved.
               </Text>
             </View>
@@ -411,6 +411,9 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',
+  },
+  footerTextSpacing: {
+    marginTop: 4,
   },
 });
 

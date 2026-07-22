@@ -476,7 +476,7 @@ const AlgorithmSelectScreen: React.FC<Props> = ({ route, navigation }) => {
           style={styles.scrollView}
           contentContainerStyle={[
             styles.scrollContent,
-            compareIds.size > 0 && { paddingBottom: 80 },
+            compareIds.size > 0 && styles.scrollContentWithCompare,
           ]}
           showsVerticalScrollIndicator={false}
         >
@@ -524,6 +524,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: theme.spacing.lg,
+  },
+  scrollContentWithCompare: {
+    paddingBottom: 80,
   },
   imageBanner: {
     flexDirection: 'row',

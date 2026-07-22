@@ -542,7 +542,7 @@ const AlgorithmScreen: React.FC<Props> = ({ route, navigation }) => {
           </View>
 
           {/* 底部留白给操作栏 */}
-          <View style={{ height: 100 }} />
+          <View style={styles.bottomSpacer} />
         </ScrollView>
 
         {/* 底部操作栏 */}
@@ -716,6 +716,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: theme.spacing.xl,
+  },
+  bottomSpacer: {
+    height: 100,
   },
   // Hero
   hero: {

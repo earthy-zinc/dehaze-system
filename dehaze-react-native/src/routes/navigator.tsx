@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useAuth } from '@/store';
 import { protectedRoutes, publicRoutes } from './config';
 import type { RootStackParamList } from './types';
@@ -9,11 +9,19 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function SplashLoading() {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+    <View style={styles.splash}>
       <ActivityIndicator size="large" />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
 
 /**
  * 路由管理器 + 鉴权守卫

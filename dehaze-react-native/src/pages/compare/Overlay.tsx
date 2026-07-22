@@ -152,8 +152,8 @@ const OverlayScreen: React.FC<Props> = ({ route, navigation }) => {
             style={[
               styles.dividerLine,
               direction === 'vertical'
-                ? { width: 2, height: '100%' }
-                : { height: 2, width: '100%' },
+                ? styles.dividerLineVertical
+                : styles.dividerLineHorizontal,
             ]}
           />
           <View style={styles.dividerHandle}>
@@ -232,6 +232,14 @@ const styles = StyleSheet.create({
   },
   dividerLine: {
     backgroundColor: theme.colors.primary,
+  },
+  dividerLineVertical: {
+    width: 2,
+    height: '100%',
+  },
+  dividerLineHorizontal: {
+    height: 2,
+    width: '100%',
   },
   dividerHandle: {
     width: 32,
