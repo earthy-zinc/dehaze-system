@@ -104,6 +104,8 @@ file:
   baseUrl: http://10.16.12.65:8989/api/v1/files/download
   # 初始化数据集所在文件夹
   datasetPath: /app/dataset
+  # nginx-dataset 静态服务基础 URL
+  datasetBaseUrl: http://127.0.0.1:9000
   # 本地存储
   local:
     uploadPath: /app/upload

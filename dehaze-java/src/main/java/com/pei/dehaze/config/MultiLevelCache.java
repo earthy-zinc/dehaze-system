@@ -3,6 +3,7 @@ package com.pei.dehaze.config;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.support.AbstractValueAdaptingCache;
 
@@ -21,6 +22,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
  * <p>SingleFlight：相同 key 的并发回源请求合并，防缓存击穿
  * <p>空值缓存：通过 AbstractValueAdaptingCache 的 allowNullValues=true 机制缓存 null
  */
+@Slf4j
 public class MultiLevelCache extends AbstractValueAdaptingCache {
 
     private final String name;
@@ -79,7 +81,17 @@ public class MultiLevelCache extends AbstractValueAdaptingCache {
         l1MissCounter.increment();
 
         // 2. L2 Redis（使用 get(key) 返回 ValueWrapper，不触发 loader）
-        org.springframework.cache.Cache.ValueWrapper l2Wrapper = l2Cache.get(key);
+        // 包裹 try/catch：L2 中可能存在因 schema 变化或类型信息不匹配而无法反序列化的脏数据，
+        // 此时 evict 该 key（清 L1+L2）并返回 null，让上层 CacheInterceptor 视为未命中回源查库，
+        // 而不是把反序列化异常抛上去被误判为业务错误。
+        org.springframework.cache.Cache.ValueWrapper l2Wrapper;
+        try {
+            l2Wrapper = l2Cache.get(key);
+        } catch (RuntimeException e) {
+            log.warn("L2 Redis 反序列化失败，清除脏缓存并回源: cache={}, key={}, error={}", name, key, e.getMessage());
+            evict(key);
+            return null;
+        }
         if (l2Wrapper != null) {
             Object l2Value = l2Wrapper.get();
             // L2 缓存了 null 值（防穿透场景）：ValueWrapper 非 null 但 get() 返回 null。

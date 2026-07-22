@@ -23,13 +23,16 @@ import com.pei.dehaze.security.util.JwtUtils;
 import com.pei.dehaze.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -44,6 +47,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final AuthenticationManager authenticationManager;
@@ -94,8 +98,8 @@ public class AuthServiceImpl implements AuthService {
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(authenticationToken);
-        } catch (Exception e) {
-            // 认证失败：递增失败计数
+        } catch (BadCredentialsException | UsernameNotFoundException e) {
+            // 凭证错误 / 用户不存在：递增失败计数（这些是用户自身责任，应计入锁定计数）
             Long count = redisTemplate.opsForValue().increment(failKey);
             if (count != null && count == 1) {
                 redisTemplate.expire(failKey, LOCK_DURATION_MINUTES, TimeUnit.MINUTES);
@@ -106,6 +110,11 @@ public class AuthServiceImpl implements AuthService {
             } else {
                 throw new BusinessException("账户已被锁定，请" + LOCK_DURATION_MINUTES + "分钟后再试");
             }
+        } catch (Exception e) {
+            // 基础设施异常（Redis 反序列化失败、数据库不可达等）：不计入失败计数，
+            // 避免因缓存脏数据/网络抖动连锁触发账号误锁。
+            log.error("认证过程发生非凭证类异常，未递增失败计数: username={}", username, e);
+            throw new BusinessException("认证服务暂时不可用，请稍后重试");
         }
 
         // 4. 认证成功：清除失败计数

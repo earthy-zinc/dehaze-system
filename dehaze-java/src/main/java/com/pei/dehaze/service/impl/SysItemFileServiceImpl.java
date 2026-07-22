@@ -104,7 +104,7 @@ public class SysItemFileServiceImpl extends ServiceImpl<SysItemFileMapper, SysIt
         SysItemFile sysItemFile = new SysItemFile();
         sysItemFile.setItemId(itemId);
         sysItemFile.setFileId(sysFile.getId());
-        sysItemFile.setThumbnailFileId(thumbnailSysFile.getId());
+        sysItemFile.setThumbnailFileId(thumbnailSysFile != null ? thumbnailSysFile.getId() : null);
         sysItemFile.setType(itemBO.getType());
         sysItemFile.setDescription(itemBO.getDescription());
         sysItemFile.setWidth(itemBO.getWidth());

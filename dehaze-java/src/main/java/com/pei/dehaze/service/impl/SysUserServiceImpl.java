@@ -31,6 +31,7 @@ import com.pei.dehaze.service.SysUserRoleService;
 import com.pei.dehaze.service.SysUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -204,12 +205,18 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     /**
-     * 根据用户名获取认证信息
+     * 根据用户名获取认证信息（带缓存，TTL 由 CacheManager 统一管理）
+     * <p>
+     * 缓存对象为 {@link UserAuthInfo}（纯 POJO，仅含 Long/String/Integer/Set&lt;String&gt;，
+     * Jackson 可正确往返序列化）。禁止缓存 SysUserDetails —— 其 authorities 字段类型
+     * SimpleGrantedAuthority 无法被 Jackson 反序列化，会导致登录失败误判为密码错误。
+     * 用户信息变更通过本类 update* 方法上的 @CacheEvict 清除。
      *
      * @param username 用户名
      * @return 用户认证信息 {@link UserAuthInfo}
      */
     @Override
+    @Cacheable(value = "user:auth", key = "#username")
     public UserAuthInfo getUserAuthInfo(String username) {
         UserAuthInfo userAuthInfo = this.baseMapper.getUserAuthInfo(username);
         if (userAuthInfo == null) {

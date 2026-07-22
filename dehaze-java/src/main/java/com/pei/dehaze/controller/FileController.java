@@ -20,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -104,6 +106,10 @@ public class FileController {
         String filename = FileUtil.getName(objectName);
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"");
+        // 根据文件名后缀推断真实 MIME 类型（如 image/jpeg、image/png），避免浏览器/客户端按 application/json 解析图片
+        MediaType mediaType = MediaTypeFactory.getMediaType(filename)
+                .orElse(MediaType.APPLICATION_OCTET_STREAM);
+        headers.setContentType(mediaType);
         InputStreamResource resource = new InputStreamResource(sysFileService.download(objectName));
         return ResponseEntity.ok()
                 .headers(headers)

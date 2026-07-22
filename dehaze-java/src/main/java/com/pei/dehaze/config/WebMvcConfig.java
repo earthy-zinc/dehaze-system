@@ -25,8 +25,11 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
-    public void configureMessageConverters(List<HttpMessageConverter<?>> converters) {
-        converters.add(new StringHttpMessageConverter());
+    public void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+        // 注意：必须使用 extendMessageConverters（而非 configureMessageConverters），
+        // 否则会替换 Spring Boot 默认的转换器列表，导致 ResourceHttpMessageConverter 丢失，
+        // 进而使 ResponseEntity<Resource>（如文件下载）回退到 Jackson 序列化，
+        // 返回错误的 Content-Type: application/json 而非图片真实的 MIME 类型。
 
         MappingJackson2HttpMessageConverter jackson2HttpMessageConverter = new MappingJackson2HttpMessageConverter();
         ObjectMapper objectMapper = jackson2HttpMessageConverter.getObjectMapper();
@@ -42,7 +45,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
         objectMapper.registerModule(simpleModule);
 
         jackson2HttpMessageConverter.setObjectMapper(objectMapper);
-        converters.add(jackson2HttpMessageConverter);
+
+        // 移除默认的 Jackson 转换器，替换为使用自定义 ObjectMapper 的实例
+        converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
+        // StringHttpMessageConverter 与 Jackson 一起插入到列表头部，保证优先级
+        converters.add(0, new StringHttpMessageConverter());
+        converters.add(0, jackson2HttpMessageConverter);
     }
 
     @Bean

@@ -1,6 +1,7 @@
 package com.pei.dehaze.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -10,12 +11,14 @@ import com.pei.dehaze.common.result.ResultCode;
 import com.pei.dehaze.mapper.SysEvalLogMapper;
 import com.pei.dehaze.model.entity.SysAlgorithm;
 import com.pei.dehaze.model.entity.SysEvalLog;
+import com.pei.dehaze.model.entity.SysFile;
 import com.pei.dehaze.model.form.EvaluationForm;
 import com.pei.dehaze.model.query.EvalLogQuery;
 import com.pei.dehaze.model.vo.EvalLogVO;
 import com.pei.dehaze.model.vo.EvaluationResultVO;
 import com.pei.dehaze.service.SysAlgorithmService;
 import com.pei.dehaze.service.SysEvalLogService;
+import com.pei.dehaze.service.SysFileService;
 import com.pei.dehaze.service.client.PythonAlgorithmClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +46,7 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
 
     private final SysAlgorithmService algorithmService;
     private final PythonAlgorithmClient pythonClient;
+    private final SysFileService sysFileService;
 
     @Override
     public EvaluationResultVO evaluate(EvaluationForm form) {
@@ -137,7 +141,13 @@ public class SysEvalLogServiceImpl extends ServiceImpl<SysEvalLogMapper, SysEval
 
     private String resolveFileUrl(Long fileId, String type) {
         if (fileId != null) {
-            return "/api/v1/files/download/" + fileId;
+            // 从文件管理模块获取文件的绝对 URL（与 SysPredLogServiceImpl.resolveImageUrl 一致），
+            // 而非直接拼 /api/v1/files/download/{fileId}（下载接口期望 objectName 而非数字 fileId）
+            SysFile sysFile = sysFileService.getById(fileId);
+            if (sysFile != null && CharSequenceUtil.isNotBlank(sysFile.getUrl())) {
+                return sysFile.getUrl();
+            }
+            log.warn("文件不存在或 URL 为空: fileId={}", fileId);
         }
         throw new BusinessException(ResultCode.PARAM_ERROR, "缺少" + ("pred".equals(type) ? "预测" : "参考") + "图片");
     }

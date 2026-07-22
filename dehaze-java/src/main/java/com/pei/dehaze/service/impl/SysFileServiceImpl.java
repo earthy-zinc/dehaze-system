@@ -63,6 +63,26 @@ public class SysFileServiceImpl extends ServiceImpl<SysFileMapper, SysFile> impl
     }
 
     @Override
+    public SysFile saveFileRecord(FileBO fileBO) {
+        // MD5 去重
+        SysFile sysFile = this.getOne(new LambdaQueryWrapper<SysFile>().eq(SysFile::getMd5, fileBO.getMd5()));
+        if (sysFile != null) return sysFile;
+
+        // 仅创建 DB 记录，不上传到对象存储（文件由 nginx 直服）
+        sysFile = SysFile.builder()
+                .name(fileBO.getName())
+                .objectName(fileBO.getObjectName())
+                .size(FileUtil.readableFileSize(fileBO.getSize()))
+                .type(fileBO.getExtension())
+                .url(fileBO.getUrl())
+                .md5(fileBO.getMd5())
+                .path(fileBO.getPath())
+                .build();
+        this.save(sysFile);
+        return sysFile;
+    }
+
+    @Override
     public SysFile getWpxFile(SysFile oldFile, Long modelId) {
         // 利用sysWpxFileService查询一条originMd5为fileInfo.getOriginMd5()的数据
         SysAlgorithm algorithm = sysAlgorithmService.getRootAlgorithm(modelId);
