@@ -100,4 +100,11 @@
         android:label="系统管理"
         tools:layout="@layout/fragment_system_management" />
 
+    <!-- 个人中心模块 -->
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.pei.dehaze.ui.profile.ProfileFragment"
+        android:label="我的"
+        tools:layout="@layout/fragment_profile" />
+
 </navigation>

@@ -221,7 +221,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:text="测试账号: admin  /  密码: 123456"
+                    android:text="请输入账号和密码登录"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:layout_gravity="center" />

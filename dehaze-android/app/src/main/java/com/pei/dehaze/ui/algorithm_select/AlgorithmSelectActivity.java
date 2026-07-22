@@ -1,7 +1,10 @@
 package com.pei.dehaze.ui.algorithm_select;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.view.inputmethod.EditorInfo;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
@@ -16,9 +19,12 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.textfield.TextInputEditText;
 import com.pei.dehaze.R;
+import com.pei.dehaze.sdk.model.algorithm.Algorithm;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmCompareVO;
 import com.pei.dehaze.sdk.model.algorithm_select.AlgorithmRecommendVO;
 import com.pei.dehaze.sdk.model.algorithm_select.FavoriteVO;
+import com.pei.dehaze.ui.algorithm.viewmodel.AlgorithmViewModel;
+import com.pei.dehaze.ui.algorithm_select.adapter.AlgorithmBrowseAdapter;
 import com.pei.dehaze.ui.algorithm_select.adapter.AlgorithmCompareResultAdapter;
 import com.pei.dehaze.ui.algorithm_select.adapter.AlgorithmFavoriteAdapter;
 import com.pei.dehaze.ui.algorithm_select.adapter.AlgorithmRecommendAdapter;
@@ -32,12 +38,27 @@ import java.util.List;
 
 public class AlgorithmSelectActivity extends AppCompatActivity {
 
+    public static final String EXTRA_ALGORITHM_ID = "extra_algorithm_id";
+    public static final String EXTRA_ALGORITHM_NAME = "extra_algorithm_name";
     private static final Integer[] TOP_N_VALUES = {1, 2, 3, 5, 10};
+    private static final int TAB_SEARCH = 0;
+    private static final int TAB_RECOMMEND = 1;
+    private static final int TAB_FAVORITES = 2;
+    private static final int TAB_COMPARE = 3;
 
     private AlgorithmSelectViewModel viewModel;
+    private AlgorithmViewModel algorithmViewModel;
     private Toolbar toolbar;
     private TabLayout tabLayout;
     private android.widget.ViewFlipper viewFlipper;
+
+    // 搜索 Tab
+    private TextInputEditText etSearchKeywords;
+    private MaterialButton btnSearchAlgo;
+    private MaterialButton btnResetSearch;
+    private SwipeRefreshLayout swipeSearch;
+    private RecyclerView rvSearch;
+    private AlgorithmBrowseAdapter browseAdapter;
 
     // 推荐 Tab
     private TextInputEditText etRecommendImageUrl;
@@ -70,6 +91,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         initViewModel();
         setupObservers();
         loadFavorites();
+        algorithmViewModel.loadAlgorithms();
     }
 
     private void initViews() {
@@ -80,6 +102,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         toolbar.setNavigationOnClickListener(v -> finish());
 
+        tabLayout.addTab(tabLayout.newTab().setText("全部算法"));
         tabLayout.addTab(tabLayout.newTab().setText("智能推荐"));
         tabLayout.addTab(tabLayout.newTab().setText("我的收藏"));
         tabLayout.addTab(tabLayout.newTab().setText("算法对比"));
@@ -87,7 +110,7 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 viewFlipper.setDisplayedChild(tab.getPosition());
-                if (tab.getPosition() == 1) {
+                if (tab.getPosition() == TAB_FAVORITES) {
                     loadFavorites();
                 }
             }
@@ -98,6 +121,50 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
 
             @Override
             public void onTabReselected(TabLayout.Tab tab) {
+            }
+        });
+
+        // 搜索 Tab
+        etSearchKeywords = findViewById(R.id.et_search_keywords);
+        btnSearchAlgo = findViewById(R.id.btn_search_algo);
+        btnResetSearch = findViewById(R.id.btn_reset_search);
+        swipeSearch = findViewById(R.id.swipe_search);
+        rvSearch = findViewById(R.id.rv_search);
+
+        browseAdapter = new AlgorithmBrowseAdapter();
+        rvSearch.setLayoutManager(new LinearLayoutManager(this));
+        rvSearch.setAdapter(browseAdapter);
+
+        swipeSearch.setOnRefreshListener(() -> algorithmViewModel.loadAlgorithms());
+        btnSearchAlgo.setOnClickListener(v -> doSearch());
+        btnResetSearch.setOnClickListener(v -> {
+            etSearchKeywords.setText("");
+            algorithmViewModel.resetQuery();
+            algorithmViewModel.loadAlgorithms();
+        });
+        etSearchKeywords.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
+                doSearch();
+                return true;
+            }
+            return false;
+        });
+
+        browseAdapter.setOnBrowseActionListener(new AlgorithmBrowseAdapter.OnBrowseActionListener() {
+            @Override
+            public void onUse(Algorithm algorithm) {
+                Intent data = new Intent();
+                data.putExtra(EXTRA_ALGORITHM_ID, algorithm.getId());
+                data.putExtra(EXTRA_ALGORITHM_NAME, algorithm.getName());
+                setResult(Activity.RESULT_OK, data);
+                ToastUtils.showShort(AlgorithmSelectActivity.this,
+                        "已选择算法：" + algorithm.getName());
+                finish();
+            }
+
+            @Override
+            public void onFavorite(Algorithm algorithm) {
+                algorithmViewModel.toggleFavorite(algorithm.getId());
             }
         });
 
@@ -176,8 +243,15 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         btnCompare.setOnClickListener(v -> doCompare());
     }
 
+    private void doSearch() {
+        String keywords = etSearchKeywords.getText() == null ? "" : etSearchKeywords.getText().toString().trim();
+        algorithmViewModel.setKeywords(keywords);
+        algorithmViewModel.loadAlgorithms();
+    }
+
     private void initViewModel() {
         viewModel = new ViewModelProvider(this).get(AlgorithmSelectViewModel.class);
+        algorithmViewModel = new ViewModelProvider(this).get(AlgorithmViewModel.class);
     }
 
     private void setupObservers() {
@@ -217,6 +291,27 @@ public class AlgorithmSelectActivity extends AppCompatActivity {
         viewModel.getFavoriteToggleResult().observe(this, result -> {
             if (result != null) {
                 viewModel.clearFavoriteToggleResult();
+            }
+        });
+
+        // 搜索 Tab 的观察者
+        algorithmViewModel.getAlgorithmList().observe(this, list ->
+                browseAdapter.submitList(list));
+
+        algorithmViewModel.getLoading().observe(this, isLoading ->
+                swipeSearch.setRefreshing(isLoading != null && isLoading));
+
+        algorithmViewModel.getError().observe(this, errorMessage -> {
+            if (errorMessage != null && !errorMessage.isEmpty()) {
+                ToastUtils.showShort(this, errorMessage);
+                algorithmViewModel.clearError();
+            }
+        });
+
+        algorithmViewModel.getOperationResult().observe(this, result -> {
+            if (result != null && !result.isEmpty()) {
+                ToastUtils.showShort(this, result);
+                algorithmViewModel.clearOperationResult();
             }
         });
     }

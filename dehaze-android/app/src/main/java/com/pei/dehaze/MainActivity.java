@@ -38,7 +38,8 @@ public class MainActivity extends AppCompatActivity {
                 R.id.dashboardFragment,
                 R.id.datasetFragment,
                 R.id.algorithmFragment,
-                R.id.systemManagementFragment)
+                R.id.systemManagementFragment,
+                R.id.profileFragment)
                 .build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
     }
